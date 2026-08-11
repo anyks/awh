@@ -54,7 +54,14 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
         ${SNAPPY_INCLUDE_DIR}
         ${LIZARD_INCLUDE_DIR}
         ${DENSITY_INCLUDE_DIR}
-        ${BROTLI_INCLUDE_ENCODE_DIR}
+        # Каталог заголовков Brotli в список НЕ входит намеренно: обращения к нему
+        # идут с приставкой - «brotli/encode.h», «brotli/decode.h», - и разрешаются
+        # каталогом BORINGSSL_INCLUDE_DIR, который и есть «third_party/include»
+        #
+        # Выставленный же наружу, этот каталог заслоняет системные заголовки своими:
+        # в нём лежит «port.h», и у Sun Solaris с illumos он подменял собой заголовок
+        # очереди оповещений ядра. Сборка при этом валилась не на подмене, а на
+        # неизвестных именах вроде port_associate, и причина была вовсе не видна
         ${BORINGSSL_INCLUDE_DIR}
     )
 # Если операцинная система относится к Nix-подобной
@@ -86,7 +93,14 @@ else()
         ${SNAPPY_INCLUDE_DIR}
         ${LIZARD_INCLUDE_DIR}
         ${DENSITY_INCLUDE_DIR}
-        ${BROTLI_INCLUDE_ENCODE_DIR}
+        # Каталог заголовков Brotli в список НЕ входит намеренно: обращения к нему
+        # идут с приставкой - «brotli/encode.h», «brotli/decode.h», - и разрешаются
+        # каталогом BORINGSSL_INCLUDE_DIR, который и есть «third_party/include»
+        #
+        # Выставленный же наружу, этот каталог заслоняет системные заголовки своими:
+        # в нём лежит «port.h», и у Sun Solaris с illumos он подменял собой заголовок
+        # очереди оповещений ядра. Сборка при этом валилась не на подмене, а на
+        # неизвестных именах вроде port_associate, и причина была вовсе не видна
         ${BORINGSSL_INCLUDE_DIR}
     )
 endif()

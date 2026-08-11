@@ -26,6 +26,7 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <codec/xml/encoding.hpp>
+#include <codec/xml/reader.hpp>
 
 /**
  * Подключаем заголовочные файлы тестового окружения
@@ -530,4 +531,174 @@ TEST(CodecXmlEncoding, MalformedEncodings) {
 	ASSERT_FALSE(convert(string("<a>\xD0</a>").substr(0, 4), 4096, result, error, enc));
 	// Выполняем проверку кода ошибки приведения
 	ASSERT_EQ(error, xml::error_t::INVALID_ENCODING);
+}
+/**
+ * @brief Проверка независимости разбора от кодировки исходного текста
+ *
+ * @details Кодек обещает разбирать один и тот же текст одинаково, в какой бы из
+ *          принимаемых кодировок он ни пришёл: приведение к UTF-8 ведётся до разбора,
+ *          и ниже него кодировка исходного текста не различима вовсе. Сличается вся
+ *          выдача, включая место каждого события, - место считается строками и
+ *          знаками, а не байтами, и кодировкой разниться не вправе
+ *
+ */
+TEST(CodecXmlEncoding, SameTextAcrossEncodings) {
+	/**
+	 * @brief Метод приведения текста разметки из UTF-8 в UTF-16
+	 *
+	 * @param source приводимый текст разметки в кодировке UTF-8
+	 * @param big    признак прямого порядка байтов в приведённом тексте
+	 * @return       приведённый текст разметки в кодировке UTF-16
+	 *
+	 */
+	const auto transcode = [](const string & source, const bool big) noexcept -> string {
+		// Собираемый текст разметки в кодировке UTF-16
+		string result;
+		// Выполняем добавление метки порядка байтов
+		result.append(big ? "\xFE\xFF" : "\xFF\xFE", 2);
+		/**
+		 * Выполняем перебор всех знаков приводимого текста разметки
+		 */
+		for(size_t i = 0; i < source.size();){
+			// Получаем очередной байт приводимого текста разметки
+			const uint8_t byte = static_cast <uint8_t> (source[i]);
+			// Значение знака, собираемое из байтов
+			uint32_t code = byte;
+			// Количество байтов, занятых знаком
+			size_t length = 1;
+			// Если знак записан четырьмя байтами
+			if(byte >= 0xF0){ code = (byte & 0x07); length = 4; }
+			// Если знак записан тремя байтами
+			else if(byte >= 0xE0){ code = (byte & 0x0F); length = 3; }
+			// Если знак записан двумя байтами
+			else if(byte >= 0xC0){ code = (byte & 0x1F); length = 2; }
+			/**
+			 * Выполняем перебор всех продолжающих байтов знака
+			 */
+			for(size_t k = 1; k < length; k++)
+				// Выполняем добавление разрядов продолжающего байта к значению знака
+				code = ((code << 6) | (static_cast <uint8_t> (source[i + k]) & 0x3F));
+			// Выполняем переход к следующему знаку приводимого текста
+			i += length;
+			// Пара шестнадцатибитных значений, записывающих знак
+			uint16_t units[2] = {0, 0};
+			// Количество шестнадцатибитных значений, занятых знаком
+			size_t count = 1;
+			/**
+			 * Если знак лежит за пределами основного набора
+			 */
+			if(code >= 0x10000){
+				// Получаем остаток значения знака сверх основного набора
+				const uint32_t rest = (code - 0x10000);
+				// Запоминаем старшее значение суррогатной пары
+				units[0] = static_cast <uint16_t> (0xD800 + (rest >> 10));
+				// Запоминаем младшее значение суррогатной пары
+				units[1] = static_cast <uint16_t> (0xDC00 + (rest & 0x3FF));
+				// Запоминаем количество значений, занятых знаком
+				count = 2;
+			// Запоминаем единственное значение, записывающее знак
+			} else units[0] = static_cast <uint16_t> (code);
+			/**
+			 * Выполняем перебор всех значений, записывающих знак
+			 */
+			for(size_t k = 0; k < count; k++){
+				// Получаем старший байт очередного значения
+				const char high = static_cast <char> (units[k] >> 8);
+				// Получаем младший байт очередного значения
+				const char low = static_cast <char> (units[k] & 0xFF);
+				// Выполняем добавление байтов значения в заданном порядке
+				if(big){ result.push_back(high); result.push_back(low); }
+				else { result.push_back(low); result.push_back(high); }
+			}
+		}
+		// Выводим приведённый текст разметки
+		return result;
+	};
+	/**
+	 * @brief Метод сборки слепка выдачи разбора текста разметки
+	 *
+	 * @param text  разбираемый текст разметки
+	 * @param chunk размер куска подачи текста разметки
+	 * @return      собранный слепок выдачи разбора
+	 *
+	 */
+	const auto events = [](const string & text, const size_t chunk) noexcept -> string {
+		// Настройки разбора текста разметки
+		xml::reader_t::settings_t settings;
+		// Выполняем склеивание подряд идущих кусков содержимого
+		settings.mergeText = true;
+		// Объект потокового чтения текста разметки
+		xml::reader_t reader;
+		// Выполняем установку настроек разбора текста разметки
+		reader.settings(settings);
+		// Собираемый слепок выдачи разбора
+		string result;
+		// Положение подачи в разбираемом тексте разметки
+		size_t offset = 0;
+		/**
+		 * Выполняем сборку слепка до исчерпания выдачи разбора
+		 */
+		while(true){
+			/**
+			 * Выполняем подачу текста разметки до получения очередного события
+			 */
+			while(!reader.next()){
+				// Если разбор события не ждёт либо подавать больше нечего
+				if((reader.state() != xml::state_t::HUNGRY) || (offset >= text.size()))
+					// Выводим собранный слепок вместе с итогом разбора
+					return result.append("=").append(std::to_string(static_cast <uint32_t> (reader.state())))
+						.append("/").append(std::to_string(static_cast <uint32_t> (reader.error())));
+				// Получаем размер очередного куска подачи текста разметки
+				const size_t size = (((offset + chunk) > text.size()) ? (text.size() - offset) : chunk);
+				// Выполняем подачу очередного куска текста разметки
+				reader.feed(text.data() + offset, size, ((offset + size) >= text.size()));
+				// Выполняем смещение положения подачи текста разметки
+				offset += size;
+			}
+			// Дописываем к слепку разновидность полученного события
+			result.append(std::to_string(static_cast <uint32_t> (reader.event()))).append(":");
+			// Дописываем к слепку содержимое полученного события
+			result.append(reader.text()).append("@");
+			// Дописываем к слепку место начала полученного события
+			result.append(std::to_string(reader.location().line)).append(",");
+			result.append(std::to_string(reader.location().column)).append("|");
+		}
+	};
+	// Разбираемый текст разметки в кодировке UTF-8
+	const string text(
+		"<r xmlns:ns=\"urn:example\" a=\"значение\">"
+		"содержимое<ns:item/><!-- примечание --><![CDATA[дословно]]>\xF0\x9D\x84\x9E</r>"
+	);
+	// Слепок выдачи разбора текста разметки в кодировке UTF-8
+	const string sample = events(text, text.size());
+	// Выполняем проверку того, что разбор исходного текста удался
+	ASSERT_NE(sample.find("=2/0"), string::npos) << sample;
+	/**
+	 * Выполняем перебор обоих порядков байтов кодировки UTF-16
+	 */
+	for(const bool big : {false, true}){
+		// Выполняем приведение текста разметки к кодировке UTF-16
+		const string wide = transcode(text, big);
+		/**
+		 * Выполняем перебор размеров куска подачи текста разметки
+		 *
+		 * @note Однобайтовый кусок разрывает всякое шестнадцатибитное значение, а
+		 *       трёхбайтовый - ещё и всякую суррогатную пару, не совпадая с её длиной
+		 */
+		for(const size_t chunk : {wide.size(), static_cast <size_t> (1), static_cast <size_t> (3)})
+			// Выполняем проверку совпадения выдачи разбора с выдачей по кодировке UTF-8
+			ASSERT_EQ(events(wide, chunk), sample) << big << " " << chunk;
+	}
+	// Разбираемый текст разметки в кодировке ISO-8859-1
+	const string latin("<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?><r a=\"caf\xE9\">\xC7</r>");
+	// Слепок выдачи разбора текста разметки в кодировке ISO-8859-1
+	const string second = events(latin, latin.size());
+	// Выполняем проверку того, что разбор текста в кодировке ISO-8859-1 удался
+	ASSERT_NE(second.find("=2/0"), string::npos) << second;
+	/**
+	 * Выполняем перебор размеров куска подачи текста разметки
+	 */
+	for(size_t chunk = 1; chunk < 8; chunk++)
+		// Выполняем проверку независимости выдачи разбора от нарезки на куски
+		ASSERT_EQ(events(latin, chunk), second) << chunk;
 }

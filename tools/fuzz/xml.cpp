@@ -23,7 +23,9 @@
  */
 #include <string>
 #include <vector>
+#include <algorithm>
 #include <random>
+#include <functional>
 #include <cstdio>
 #include <cstdlib>
 #include <cstdint>
@@ -97,11 +99,13 @@ namespace {
 		string value;
 		// Признак того, что значение взято из объявления по умолчанию
 		bool defaulted;
+		// Место атрибута в исходном тексте
+		uint32_t line, column;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
-		Property() noexcept : defaulted(false) {}
+		Property() noexcept : defaulted(false), line(0), column(0) {}
 		/**
 		 * @brief Оператор сравнения
 		 *
@@ -116,7 +120,9 @@ namespace {
 				(this->local != other.local) ||
 				(this->uri != other.uri) ||
 				(this->value != other.value) ||
-				(this->defaulted != other.defaulted)
+				(this->defaulted != other.defaulted) ||
+				(this->line != other.line) ||
+				(this->column != other.column)
 			);
 		}
 	};
@@ -136,6 +142,10 @@ namespace {
 		string text;
 		// Глубина вложенности узла события
 		uint32_t depth;
+		// Место начала события в исходном тексте
+		uint32_t line, column;
+		// Смещение начала события в исходном тексте
+		uint64_t position;
 		// Обращение с пробельным содержимым в узле события
 		uint8_t space;
 		// Признак того, что узел записан самозакрывающейся меткой
@@ -148,7 +158,7 @@ namespace {
 		 * @brief Конструктор
 		 *
 		 */
-		Event() noexcept : event(0), depth(0), space(0), empty(false) {}
+		Event() noexcept : event(0), depth(0), line(0), column(0), position(0), space(0), empty(false) {}
 		/**
 		 * @brief Оператор сравнения
 		 *
@@ -163,6 +173,8 @@ namespace {
 			if((this->event != other.event) || (this->prefix != other.prefix) ||
 			   (this->local != other.local) || (this->uri != other.uri) ||
 			   (this->text != other.text) || (this->depth != other.depth) ||
+			   (this->line != other.line) || (this->column != other.column) ||
+			   (this->position != other.position) ||
 			   (this->space != other.space) || (this->empty != other.empty) ||
 			   (this->attributes.size() != other.attributes.size()) ||
 			   (this->bindings.size() != other.bindings.size()))
@@ -286,12 +298,13 @@ namespace {
 	/**
 	 * @brief Метод построения содержимого узла разметки
 	 *
-	 * @param engine источник псевдослучайных чисел
-	 * @param valid  признак построения заведомо правильной разметки
-	 * @return       построенное содержимое узла разметки
+	 * @param engine   источник псевдослучайных чисел
+	 * @param valid    признак построения заведомо правильной разметки
+	 * @param declared признак объявленных описанием типа сущностей
+	 * @return         построенное содержимое узла разметки
 	 *
 	 */
-	string content(mt19937 & engine, const bool valid) noexcept {
+	string content(mt19937 & engine, const bool valid, const bool declared) noexcept {
 		// Результат работы функции - построенное содержимое узла разметки
 		string result;
 		/**
@@ -301,13 +314,20 @@ namespace {
 			// Дописываем простое содержимое
 			case 0: result.append("text"); break;
 			// Дописываем пробельное содержимое
-			case 1: result.append(" \t\r\n "); break;
+			case 1: result.append(((engine() % 4) == 0) ? string(80, ' ') : string(" \t\r\n ")); break;
 			// Дописываем содержимое со ссылками на отведённые договором сущности
 			case 2: result.append("&lt;&amp;&gt;&quot;&apos;"); break;
 			// Дописываем содержимое с числовыми ссылками
 			case 3: result.append("&#65;&#x416;&#x10FFFF;&#0;"); break;
 			// Дописываем содержимое со ссылкой на объявленную сущность
-			case 4: if(!valid) result.append("&plain; &markup; &loop;"); break;
+			case 4: {
+				// Если сущности объявлены описанием типа документа
+				if(declared)
+					// Дописываем содержимое со ссылками на объявленные сущности
+					result.append(valid ? "&plain;&plain;&plain;&plain;&plain;&plain;&plain;&plain;" : "&plain; &markup; &loop;");
+				// Иначе дописываем содержимое со ссылками на отведённые договором сущности
+				else result.append("&amp;&amp;&amp;");
+			} break;
 			// Дописываем содержимое со ссылкой на необъявленную сущность
 			case 5: if(!valid) result.append("&missing;"); break;
 			// Дописываем содержимое с незавершённой ссылкой
@@ -347,11 +367,12 @@ namespace {
 	 *
 	 * @param result текст разметки, к которому дописывается построенный узел
 	 * @param engine источник псевдослучайных чисел
-	 * @param depth  текущая глубина вложенности узла разметки
-	 * @param valid  признак построения заведомо правильной разметки
+	 * @param depth    текущая глубина вложенности узла разметки
+	 * @param valid    признак построения заведомо правильной разметки
+	 * @param declared признак объявленных описанием типа сущностей
 	 *
 	 */
-	void element(string & result, mt19937 & engine, const uint32_t depth, const bool valid) noexcept {
+	void element(string & result, mt19937 & engine, const uint32_t depth, const bool valid, const bool declared) noexcept {
 		// Имя построенного узла разметки
 		const string name(::title(engine, valid));
 		// Дописываем знак начала открывающей метки узла
@@ -408,7 +429,7 @@ namespace {
 				// Дописываем атрибут обращения с пробельным содержимым
 				case 3: result.append((engine() % 2) == 0 ? "xml:space=\"preserve\"" : "xml:space=\"default\""); break;
 				// Дописываем атрибут со значением, требующим приведения
-				case 4: result.append(valid ? "attr=\"a\tb\r\nc\rd &amp; e\"" : "attr=\"a\tb\nc &amp; &plain;\""); break;
+				case 4: result.append(valid ? "attr=\"a\tb\r\nc\rd &amp; e\"" : (declared ? "attr=\"a\tb\nc &amp; &plain;\"" : "attr=\"a\tb\nc &amp; d\"")); break;
 				// Дописываем атрибут со значением в одиночных кавычках
 				case 5: result.append("other='value'"); break;
 				// Дописываем атрибут без кавычек вокруг значения
@@ -446,7 +467,7 @@ namespace {
 				// Дописываем текстовое содержимое узла
 				case 0:
 				case 1:
-				case 2: result.append(::content(engine, valid)); break;
+				case 2: result.append(::content(engine, valid, declared)); break;
 				// Дописываем раздел дословного текста
 				case 3: result.append(((engine() % 2) == 0) ? "<![CDATA[ a < b & c ]]>" : "<![CDATA[ a\r\n b\r c ]]>"); break;
 				// Дописываем примечание
@@ -459,7 +480,7 @@ namespace {
 					// Если предел глубины вложенности не исчерпан
 					if(depth < 6)
 						// Выполняем построение вложенного узла разметки
-						::element(result, engine, (depth + 1), valid);
+						::element(result, engine, (depth + 1), valid, declared);
 					// Иначе дописываем текстовое содержимое узла
 					else result.append("deep");
 				} break;
@@ -495,6 +516,14 @@ namespace {
 	string generate(mt19937 & engine, const bool valid) noexcept {
 		// Результат работы функции - построенный текст разметки
 		string result;
+		/**
+		 * Признак объявленных описанием типа документа сущностей
+		 *
+		 * @note Ссылка на необъявленную сущность разбор отвергает, и в заведомо
+		 *       правильной разметке её быть не вправе: ссылки ставятся лишь туда,
+		 *       где описание типа объявило, на что они указывают
+		 */
+		bool declared = false;
 		/**
 		 * Если требуется дописать метку порядка байтов
 		 */
@@ -539,6 +568,8 @@ namespace {
 			if((engine() % 4) != 0){
 				// Дописываем начало внутреннего подмножества
 				result.append(" [\n");
+				// Запоминаем, что сущности объявлены описанием типа документа
+				declared = true;
 				/**
 				 * Выполняем построение объявлений внутреннего подмножества
 				 */
@@ -548,13 +579,23 @@ namespace {
 					// Дописываем объявление сущности, содержащей разметку
 					case 1: result.append("<!ENTITY plain \"v\">\n<!ENTITY markup \"<b>текст</b>\">\n"); break;
 					// Дописываем объявление сущности, ссылающейся на себя
-					case 2: if(!valid) result.append("<!ENTITY loop \"&loop;\">\n"); break;
+					case 2: result.append(valid ? "<!ENTITY plain \"\">\n" : "<!ENTITY loop \"&loop;\">\n<!ENTITY plain \"\">\n"); break;
 					// Дописываем объявление сущности с многократной подстановкой
 					case 3: result.append("<!ENTITY a0 \"xxxxxxxx\">\n<!ENTITY plain \"&a0;&a0;&a0;&a0;\">\n"); break;
 					// Дописываем объявление умолчаний атрибутов
-					case 4: result.append("<!ELEMENT a ANY>\n<!ATTLIST a q CDATA \"умолчание\" r ID #IMPLIED>\n"); break;
+					case 4: {
+						// Дописываем объявление строения узла и умолчаний его атрибутов
+						result.append("<!ELEMENT a ANY>\n<!ATTLIST a q CDATA \"умолчание\" r ID #IMPLIED>\n");
+						// Запоминаем, что сущностей описание типа документа не объявило
+						declared = false;
+					} break;
 					// Дописываем объявление внешней сущности и указание обработчику
-					case 5: result.append("<!ENTITY ext SYSTEM \"e.xml\">\n<?target данные?>\n<!-- примечание -->\n"); break;
+					case 5: {
+						// Дописываем объявление внешней сущности с прочими записями подмножества
+						result.append("<!ENTITY ext SYSTEM \"e.xml\">\n<?target данные?>\n<!-- примечание -->\n");
+						// Запоминаем, что сущности «plain» описание типа документа не объявило
+						declared = false;
+					} break;
 				}
 				// Дописываем завершение внутреннего подмножества
 				result.push_back(']');
@@ -577,11 +618,11 @@ namespace {
 				// Дописываем указание обработчику
 				case 1: result.append("<?target голова?>\n"); break;
 				// Дописываем пробельное содержимое
-				case 2: result.append("  \n"); break;
+				case 2: result.append((engine() % 4) == 0 ? string(80, ' ') : string("  \n")); break;
 			}
 		}
 		// Выполняем построение корневого узла разметки
-		::element(result, engine, 0, valid);
+		::element(result, engine, 0, valid, declared);
 		/**
 		 * Если требуется дописать второй узел верхнего уровня
 		 *
@@ -590,7 +631,7 @@ namespace {
 		 */
 		if(!valid && ((engine() % 8) == 0))
 			// Выполняем построение второго узла верхнего уровня
-			::element(result, engine, 0, valid);
+			::element(result, engine, 0, valid, declared);
 		// Дописываем знак завершения строки
 		result.push_back('\n');
 		// Выводим построенный текст разметки
@@ -659,7 +700,7 @@ namespace {
 	 * @return         состояние чтения по завершении разбора
 	 *
 	 */
-	xml::state_t consume(const string & text, const xml::reader_t::settings_t & options, const size_t chunk, vector <Event> & events) noexcept {
+	xml::state_t consume(const string & text, const xml::reader_t::settings_t & options, const size_t chunk, vector <Event> & events, Event * failure = nullptr) noexcept {
 		// Создаём объект чтения текста разметки
 		xml::reader_t reader(options);
 		// Размер куска подачи текста разметки
@@ -698,6 +739,12 @@ namespace {
 				event.text.assign(reader.text());
 				// Запоминаем глубину вложенности узла события
 				event.depth = reader.depth();
+				// Запоминаем строку начала события в исходном тексте
+				event.line = reader.location().line;
+				// Запоминаем положение начала события в строке исходного текста
+				event.column = reader.location().column;
+				// Запоминаем смещение начала события от начала исходного текста
+				event.position = reader.location().offset;
 				// Запоминаем обращение с пробельным содержимым в узле события
 				event.space = static_cast <uint8_t> (reader.space());
 				// Запоминаем признак записи узла самозакрывающейся меткой
@@ -718,6 +765,10 @@ namespace {
 					property.value.assign(attribute.value);
 					// Запоминаем признак получения значения из объявления по умолчанию
 					property.defaulted = attribute.defaulted;
+					// Запоминаем строку атрибута в исходном тексте
+					property.line = attribute.location.line;
+					// Запоминаем положение атрибута в строке исходного текста
+					property.column = attribute.location.column;
 					// Выполняем сохранение атрибута в перечне
 					event.attributes.push_back(::move(property));
 				}
@@ -745,6 +796,19 @@ namespace {
 				break;
 		// Выполняем подачу до исчерпания текста разметки
 		} while(offset < text.length());
+		/**
+		 * Если место отказа требуется запомнить
+		 */
+		if(failure != nullptr){
+			// Запоминаем код ошибки разбора
+			failure->event = static_cast <uint8_t> (reader.error());
+			// Запоминаем строку обнаружения ошибки разбора
+			failure->line = reader.errorLocation().line;
+			// Запоминаем положение ошибки в строке исходного текста
+			failure->column = reader.errorLocation().column;
+			// Запоминаем смещение ошибки от начала исходного текста
+			failure->position = reader.errorLocation().offset;
+		}
 		// Выводим состояние чтения по завершении разбора
 		return reader.state();
 	}
@@ -821,6 +885,108 @@ namespace {
 	}
 
 	/**
+	 * @brief Метод проверки связности узла дерева разметки
+	 *
+	 * @details Дерево обходится и вперёд, и назад, и вверх: узел, полученный движением
+	 * в одну сторону, обязан вернуть исходный движением в обратную. Порванная связь
+	 * означает обход, уходящий не туда, а то и вовсе не кончающийся
+	 *
+	 * @param node проверяемый узел дерева разметки
+	 * @return     результат проверки связности узла
+	 *
+	 */
+	bool linked(const xml::node_t & node) noexcept {
+		// Количество вложенных узлов, обойдённых вперёд
+		size_t forward = 0;
+		// Последний обойдённый вложенный узел
+		xml::node_t last;
+		/**
+		 * Выполняем перебор всех вложенных узлов вперёд
+		 */
+		for(xml::node_t child = node.first(); child.valid(); child = child.next()){
+			/**
+			 * Если родитель вложенного узла не совпадает с обходимым узлом
+			 */
+			if((child.parent().valid() != node.valid()) || (node.valid() && (child.parent() != node))){
+				// Выводим сообщение о порванной связи с родителем
+				::fprintf(stderr, "xml fuzz: parent link broken\n");
+				// Выводим результат проверки связности узла
+				return false;
+			}
+			/**
+			 * Если сосед позади вложенного узла не совпадает с предыдущим
+			 *
+			 * @note Непригодные узлы сличаются признаком пригодности, а не оператором:
+			 *       оператор сличает и дерево, которому узел принадлежит, отчего
+			 *       непригодный узел дерева не равен непригодному узлу ниоткуда
+			 */
+			if((child.prev().valid() != last.valid()) || (last.valid() && (child.prev() != last))){
+				// Выводим сообщение о порванной связи с соседом
+				::fprintf(stderr, "xml fuzz: sibling link broken\n");
+				// Выводим результат проверки связности узла
+				return false;
+			}
+			// Запоминаем обойдённый вложенный узел
+			last = child;
+			// Выполняем учёт обойдённого вложенного узла
+			forward++;
+		}
+		/**
+		 * Если последний обойдённый узел не совпадает с последним вложенным
+		 */
+		if((last.valid() != node.last().valid()) || (last.valid() && (last != node.last()))){
+			// Выводим сообщение о расхождении последнего вложенного узла
+			::fprintf(stderr, "xml fuzz: last child differs\n");
+			// Выводим результат проверки связности узла
+			return false;
+		}
+		// Количество вложенных узлов, обойдённых назад
+		size_t backward = 0;
+		/**
+		 * Выполняем перебор всех вложенных узлов назад
+		 */
+		for(xml::node_t child = node.last(); child.valid(); child = child.prev())
+			// Выполняем учёт обойдённого вложенного узла
+			backward++;
+		/**
+		 * Если обходы вперёд и назад разошлись количеством узлов
+		 */
+		if(forward != backward){
+			// Выводим сообщение о расхождении обходов дерева
+			::fprintf(stderr, "xml fuzz: %zu children forward, %zu backward\n", forward, backward);
+			// Выводим результат проверки связности узла
+			return false;
+		}
+		// Выводим результат проверки связности узла
+		return true;
+	}
+
+	/**
+	 * @brief Метод проверки связности узла дерева со всем его содержимым
+	 *
+	 * @param node проверяемый узел дерева разметки
+	 * @return     результат проверки связности узла
+	 *
+	 */
+	bool broken(const xml::node_t & node) noexcept {
+		// Если связность самого узла нарушена, проверку прекращаем
+		if(!linked(node))
+			// Выводим результат проверки связности узла
+			return false;
+		/**
+		 * Выполняем перебор всех вложенных узлов дерева разметки
+		 */
+		for(xml::node_t child = node.first(); child.valid(); child = child.next()){
+			// Если связность вложенного узла нарушена, проверку прекращаем
+			if(!broken(child))
+				// Выводим результат проверки связности узла
+				return false;
+		}
+		// Выводим результат проверки связности узла
+		return true;
+	}
+
+	/**
 	 * @brief Метод обхода узла дерева разметки со всем его содержимым
 	 *
 	 * @param node обходимый узел дерева разметки
@@ -858,6 +1024,223 @@ namespace {
 		for(xml::node_t child = node.first(); child.valid(); child = child.next())
 			// Выполняем обход вложенного узла дерева разметки
 			traverse(child);
+	}
+
+	/**
+	 * @brief Метод переноса накопленного содержимого в слепок дерева
+	 *
+	 * @param result собираемый слепок дерева разметки
+	 * @param text   накопленное содержимое, ещё не перенесённое в слепок
+	 * @param strip  признак пропуска содержимого из одних пробельных знаков
+	 * @param exact  признак содержимого, взятого дословно и пропуску не подлежащего
+	 *
+	 */
+	void flush(string & result, string & text, const bool strip, bool & exact) noexcept {
+		/**
+		 * Если накопленного содержимого нет, переносить нечего
+		 */
+		if(text.empty()){
+			// Выполняем сброс признака дословно взятого содержимого
+			exact = false;
+			// Выходим из переноса накопленного содержимого
+			return;
+		}
+		// Признак того, что накопленное содержимое состоит из одних пробельных знаков
+		bool blank = true;
+		/**
+		 * Выполняем перебор всех знаков накопленного содержимого
+		 */
+		for(const char letter : text){
+			/**
+			 * Если обнаружен знак, не являющийся пробельным
+			 */
+			if(!xml::isSpace(static_cast <uint32_t> (static_cast <uint8_t> (letter)))){
+				// Запоминаем, что содержимое пробельным не является
+				blank = false;
+				// Выходим из перебора знаков содержимого
+				break;
+			}
+		}
+		/**
+		 * Если содержимое переносить в слепок требуется
+		 *
+		 * @note Нарядная запись ставит отступы сама, и содержимое из одних пробельных
+		 *       знаков она вправе как убрать, так и добавить: слепок его не считает
+		 */
+		if(!strip || !blank || exact)
+			// Выполняем перенос накопленного содержимого в слепок
+			result.append("|").append(text);
+		// Выполняем очистку накопленного содержимого
+		text.clear();
+		// Выполняем сброс признака дословно взятого содержимого
+		exact = false;
+	}
+
+	/**
+	 * @brief Метод сборки слепка узла дерева разметки
+	 *
+	 * @details Слепок описывает дерево по смыслу, а не по написанию: имена берутся
+	 * обозначением пространства имён и местным именем без префикса - запись назначает
+	 * префиксы заново, - атрибуты складываются упорядоченно, а описание типа документа
+	 * пропускается: записывать его модуль не умеет вовсе
+	 *
+	 * @note Подряд идущее содержимое сливается в одно, а вид его - текстовое,
+	 * пробельное либо дословное - не различается. Различия эти обратного перехода не
+	 * переживают, и не по вине перехода: примечание и указание обработчику содержимое
+	 * разрывают, а в дерево при отключённой их выдаче не попадают, - записанному
+	 * разрывать содержимое уже нечем. Так же и пробельное содержимое рядом с
+	 * непробельным: записанные подряд, они читаются обратно одним узлом
+	 *
+	 * @param node   узел дерева разметки, слепок которого собирается
+	 * @param result собираемый слепок узла дерева разметки
+	 * @param text   накопленное содержимое, ещё не перенесённое в слепок
+	 * @param exact  признак содержимого, взятого дословно и пропуску не подлежащего
+	 * @param base   признак пропуска пробельного содержимого, заданный изначально
+	 *
+	 */
+	void snapshot(const xml::node_t & node, string & result, string & text, const bool strip, bool & exact, const bool base) noexcept {
+		/**
+		 * Определяем вид узла дерева разметки
+		 */
+		switch(static_cast <uint8_t> (node.kind())){
+			// Если узел является описанием типа документа, слепок его пропускаем
+			case static_cast <uint8_t> (xml::kind_t::DOCTYPE): return;
+			/**
+			 * Если узел является разделом дословного текста
+			 *
+			 * @note Раздел дословного текста значим сам по себе: пропускать его наравне
+			 *       с отступом нельзя даже тогда, когда он собран одними пробелами
+			 */
+			case static_cast <uint8_t> (xml::kind_t::CDATA):
+				// Запоминаем, что накопленное содержимое взято дословно
+				exact = true;
+			// Если узел является текстовым содержимым либо пробельным
+			case static_cast <uint8_t> (xml::kind_t::TEXT):
+			case static_cast <uint8_t> (xml::kind_t::SPACE):
+				// Выполняем накопление содержимого узла
+				text.append(node.text());
+			// Выходим из сборки слепка узла дерева разметки
+			return;
+		}
+		// Выполняем перенос накопленного содержимого в слепок
+		flush(result, text, strip, exact);
+		/**
+		 * Определяем вид узла дерева разметки
+		 */
+		switch(static_cast <uint8_t> (node.kind())){
+			// Если узел является узлом разметки
+			case static_cast <uint8_t> (xml::kind_t::ELEMENT): {
+				// Дописываем к слепку имя узла разметки
+				result.append("<{").append(node.name().uri).append("}").append(node.name().local);
+				// Собираемый перечень атрибутов узла разметки
+				vector <string> items;
+				/**
+				 * Выполняем перебор всех атрибутов узла разметки
+				 */
+				for(const xml::attribute_t & attribute : node.attributes()){
+					// Собираемая запись очередного атрибута узла
+					string item;
+					// Дописываем к записи имя атрибута с обозначением пространства имён
+					item.append("{").append(attribute.name.uri).append("}").append(attribute.name.local);
+					// Дописываем к записи значение атрибута
+					item.append("=").append(attribute.value);
+					// Выполняем сохранение записи атрибута в перечне
+					items.push_back(::move(item));
+				}
+				/**
+				 * Выполняем упорядочение перечня атрибутов узла
+				 *
+				 * @note Порядок атрибутов договором не задан, и запись вправе его менять:
+				 *       объявления пространств имён она ставит первыми
+				 */
+				::sort(items.begin(), items.end());
+				/**
+				 * Выполняем перебор всех записей атрибутов узла
+				 */
+				for(const string & item : items)
+					// Дописываем к слепку очередной атрибут узла
+					result.append(" ").append(item);
+				// Дописываем к слепку конец записи узла разметки
+				result.append(">");
+			} break;
+			// Если узел является примечанием
+			case static_cast <uint8_t> (xml::kind_t::COMMENT):
+				// Дописываем к слепку содержимое примечания
+				result.append("!").append(node.text());
+			break;
+			// Если узел является указанием обработчику
+			case static_cast <uint8_t> (xml::kind_t::PROCESSING):
+				// Дописываем к слепку цель указания обработчику и его данные
+				result.append("?").append(node.name().local).append(" ").append(node.text());
+			break;
+		}
+		// Признак пропуска пробельного содержимого внутри узла
+		bool inner = strip;
+		/**
+		 * Если узел является узлом разметки
+		 */
+		if(node.kind() == xml::kind_t::ELEMENT){
+			/**
+			 * Получаем заданное узлом обращение с пробельным содержимым
+			 *
+			 * @note Атрибут отыскивается обоими написаниями: с выключенным разрешением
+			 *       префиксов имя его в дереве не разделено и пространства имён не имеет
+			 */
+			const string_view spacing = (!node.attribute("space", xml::XML_NAMESPACE).empty() ?
+				node.attribute("space", xml::XML_NAMESPACE) : node.attribute("xml:space"));
+			/**
+			 * Если узел требует сохранения пробельного содержимого
+			 *
+			 * @note Послабление на пробельное содержимое даётся отступам нарядной записи,
+			 *       а внутри такого узла отступов быть не должно вовсе: пробельные знаки
+			 *       там значимы, и запись обязана сохранить их знак в знак
+			 */
+			if(!spacing.empty())
+				/**
+				 * Запоминаем обращение с пробельным содержимым, заданное узлом
+				 *
+				 * @note Значение, договором не отведённое, толкуется отменой наравне с
+				 *       `default` - тем же самым образом, каким его толкуют чтение и запись
+				 */
+				inner = ((spacing.compare("preserve") == 0) ? false : base);
+		}
+		/**
+		 * Выполняем перебор всех вложенных узлов дерева разметки
+		 */
+		for(xml::node_t child = node.first(); child.valid(); child = child.next())
+			// Выполняем сборку слепка вложенного узла дерева разметки
+			snapshot(child, result, text, inner, exact, base);
+		/**
+		 * Если узел является узлом разметки
+		 */
+		if(node.kind() == xml::kind_t::ELEMENT){
+			// Выполняем перенос накопленного содержимого в слепок
+			flush(result, text, inner, exact);
+			// Дописываем к слепку завершение записи узла разметки
+			result.append("</>");
+		}
+	}
+
+	/**
+	 * @brief Метод сборки слепка дерева разметки целиком
+	 *
+	 * @param document дерево разметки, слепок которого собирается
+	 * @return         собранный слепок дерева разметки
+	 *
+	 */
+	string snapshot(const xml::document_t & document, const bool strip, const bool base) noexcept {
+		// Собираемый слепок дерева разметки
+		string result;
+		// Накопленное содержимое, ещё не перенесённое в слепок
+		string text;
+		// Признак содержимого, взятого дословно и пропуску не подлежащего
+		bool exact = false;
+		// Выполняем сборку слепка дерева разметки
+		snapshot(document.root(), result, text, strip, exact, base);
+		// Выполняем перенос накопленного содержимого в слепок
+		flush(result, text, strip, exact);
+		// Выводим собранный слепок дерева разметки
+		return result;
 	}
 
 	/**
@@ -904,19 +1287,32 @@ namespace {
 			return true;
 		// Выполняем обход всего собранного дерева разметки
 		traverse(document.root());
+		/**
+		 * Если связность собранного дерева разметки нарушена
+		 */
+		if(!broken(document.root())){
+			// Выводим разбираемый текст разметки
+			dump(text);
+			// Выводим результат проверки дерева разметки
+			return false;
+		}
 		// Собираемые настройки записи текста разметки
 		xml::writer_t::settings_t settings;
+		// Устанавливаем вид записи собираемого текста разметки
+		settings.format = (((engine() % 2) == 0) ? xml::format_t::PRETTY : xml::format_t::COMPACT);
 		/**
-		 * Устанавливаем вид записи собираемого текста разметки
-		 *
-		 * @note Устойчивость перезаписи проверяется лишь на плотной записи. Отступы
-		 *       нарядной записи ложатся в текст пробельным содержимым, дерево принимает
-		 *       его наравне с прочим содержимым узла - выпадать из записи оно не вправе,
-		 *       - и следующая запись отступает уже от него. Разметка от этого растёт
-		 *       отступами, оставаясь равнозначной по смыслу: знак в знак нарядная запись
-		 *       не повторяется по устройству, а не по недосмотру
+		 * Выполняем выборку знака отступа нарядной записи
 		 */
-		settings.format = (((engine() % 4) == 0) ? xml::format_t::PRETTY : xml::format_t::COMPACT);
+		switch(engine() % 3){
+			// Устанавливаем отступ знаками горизонтальной табуляции
+			case 0: settings.separator = xml::separator_t::TABS; break;
+			// Устанавливаем отступ пробелами
+			case 1: settings.separator = xml::separator_t::SPACES; break;
+			// Отменяем отступ вовсе
+			case 2: settings.separator = xml::separator_t::NONE; break;
+		}
+		// Устанавливаем количество знаков отступа на один уровень вложенности
+		settings.indent = (1 + (engine() % 3));
 		// Устанавливаем флаг записи узлов без содержимого самозакрывающейся меткой
 		settings.collapse = ((engine() % 2) == 0);
 		// Устанавливаем флаг экранирования знаков, выходящих за пределы US-ASCII
@@ -971,6 +1367,31 @@ namespace {
 			// Выводим результат проверки дерева разметки
 			return false;
 		}
+		// Признак пропуска пробельного содержимого при сличении слепков
+		const bool strip = (settings.format == xml::format_t::PRETTY);
+		// Слепок исходного дерева разметки
+		const string before = ::snapshot(document, strip, strip);
+		// Слепок дерева, собранного разбором перезаписи
+		const string after = ::snapshot(repeat, strip, strip);
+		/**
+		 * Если слепки деревьев разошлись
+		 *
+		 * @note Сличаются слепки лишь плотной записи. Нарядная ставит отступы и внутри
+		 *       узлов со смешанным содержимым, а там пробельные знаки содержимым и
+		 *       являются: дерево принимает их наравне с прочим, и слепок разрастается
+		 *       пробельными узлами. Устройство это намеренное - отступы ставятся ради
+		 *       удобства чтения, - и равнозначности написания от нарядной записи не ждут
+		 */
+		if(before != after){
+			// Выводим сообщение о расхождении слепков деревьев
+			::fprintf(stderr, "xml fuzz: tree differs after rewrite\n  до    [%s]\n  после [%s]\n", before.c_str(), after.c_str());
+			// Выводим исходный текст разметки
+			dump(text);
+			// Выводим перезапись дерева разметки
+			dump(first);
+			// Выводим результат проверки дерева разметки
+			return false;
+		}
 		// Текст повторной перезаписи дерева разметки
 		string second;
 		/**
@@ -987,7 +1408,7 @@ namespace {
 		/**
 		 * Если повторная перезапись разошлась с первой
 		 */
-		if((settings.format == xml::format_t::COMPACT) && (second != first)){
+		if(second != first){
 			// Выводим сообщение о расхождении повторной перезаписи
 			::fprintf(stderr, "xml fuzz: rewrite unstable, collapse=%d escape=%d ns=%d ent=%d com=%d pi=%d sp=%d def=%d depth=%u name=%u attrs=%u ents=%u exp=%llu event=%llu\n",
 				(int) settings.collapse, (int) settings.escapeNonAscii,
@@ -1002,8 +1423,247 @@ namespace {
 			// Выводим результат проверки дерева разметки
 			return false;
 		}
+		// Перечень узлов разметки, годных к записи поддеревом
+		vector <xml::node_t> nodes;
+		/**
+		 * @brief Метод сбора узлов разметки собранного дерева
+		 *
+		 * @param node узел дерева разметки, с которого ведётся сбор
+		 *
+		 */
+		const function <void (const xml::node_t &)> collect = [&nodes, &collect](const xml::node_t & node) noexcept -> void {
+			// Если узел является узлом разметки, берём его в перечень
+			if(node.kind() == xml::kind_t::ELEMENT) nodes.push_back(node);
+			/**
+			 * Выполняем перебор всех вложенных узлов дерева разметки
+			 */
+			for(xml::node_t child = node.first(); child.valid(); child = child.next())
+				// Выполняем сбор узлов разметки вложенного узла
+				collect(child);
+		};
+		// Выполняем сбор узлов разметки собранного дерева
+		collect(document.root());
+		/**
+		 * Если собранное дерево несёт узлы разметки
+		 *
+		 * @details Записывать можно всякий узел дерева, а не только корень, и записанное
+		 * поддерево обязано остаться равнозначным исходному: пространства имён предков
+		 * запись объявляет заново, а обращение с пробельным содержимым, заданное выше по
+		 * дереву, - наследует. Проверялась прежде одна лишь запись корня, и потеря
+		 * значимых пробелов у поддерева под `xml:space="preserve"` тем и пряталась
+		 */
+		if(!nodes.empty()){
+			// Выбираем узел разметки, записываемый поддеревом
+			const xml::node_t node = nodes.at(engine() % nodes.size());
+			// Создаём объект записи текста разметки поддерева
+			xml::writer_t writer(settings);
+			// Выполняем учёт перезаписи поддерева разметки
+			totals.rewrites++;
+			/**
+			 * Если запись поддерева разметки удалась
+			 */
+			if(writer.element(node) && writer.complete()){
+				// Создаём дерево разметки для разбора записанного поддерева
+				xml::document_t subtree;
+				/**
+				 * Если разбор записанного поддерева не удался
+				 */
+				if(!subtree.parse(writer.text(), relaxed)){
+					// Выводим сообщение об отказе разбора записанного поддерева
+					::fprintf(stderr, "xml fuzz: subtree reparse failed, error=%u\n", static_cast <uint32_t> (subtree.error()));
+					// Выводим исходный текст разметки
+					dump(text);
+					// Выводим записанное поддерево разметки
+					dump(writer.text());
+					// Выводим результат проверки дерева разметки
+					return false;
+				}
+				// Признак сохранения пробельного содержимого, унаследованный поддеревом
+				bool preserve = false;
+				/**
+				 * Выполняем перебор всех объемлющих узлов записанного поддерева
+				 */
+				for(xml::node_t parent = node.parent(); parent.valid(); parent = parent.parent()){
+					// Если объемлющий узел узлом разметки не является, обращения он не задаёт
+					if(parent.kind() != xml::kind_t::ELEMENT) continue;
+					// Получаем заданное объемлющим узлом обращение с пробельным содержимым
+					const string_view spacing = (!parent.attribute("space", xml::XML_NAMESPACE).empty() ?
+						parent.attribute("space", xml::XML_NAMESPACE) : parent.attribute("xml:space"));
+					// Если обращения объемлющий узел не задаёт, поднимаемся выше по дереву
+					if(spacing.empty()) continue;
+					// Запоминаем обращение с пробельным содержимым, заданное объемлющим узлом
+					preserve = (spacing.compare("preserve") == 0);
+					// Выходим из перебора объемлющих узлов
+					break;
+				}
+				/**
+				 * Признак пропуска пробельного содержимого при сличении слепков поддерева
+				 *
+				 * @note Под сохранением пробелов послабление не даётся: отступов запись там
+				 *       не ставит вовсе, и пробельные знаки обязаны совпасть знак в знак
+				 */
+				const bool loose = ((settings.format == xml::format_t::PRETTY) && !preserve);
+				/**
+				 * Признак пропуска пробельного содержимого вне сохранения пробелов
+				 *
+				 * @note Узел, сохранение отменяющий, возвращает послабление обратно: отступы
+				 *       внутри него запись ставит по-прежнему, и сличать их знак в знак нельзя
+				 */
+				const bool base = (settings.format == xml::format_t::PRETTY);
+				// Слепок исходного поддерева разметки
+				string source, content;
+				// Признак содержимого, взятого дословно и пропуску не подлежащего
+				bool exact = false;
+				// Выполняем сборку слепка исходного поддерева разметки
+				snapshot(node, source, content, loose, exact, base);
+				// Выполняем перенос накопленного содержимого в слепок
+				flush(source, content, loose, exact);
+				// Слепок дерева, собранного разбором записанного поддерева
+				const string written = ::snapshot(subtree, loose, base);
+				/**
+				 * Если слепки поддеревьев разошлись
+				 */
+				if(source != written){
+					// Выводим сообщение о расхождении слепков поддеревьев
+					::fprintf(stderr, "xml fuzz: subtree differs after rewrite\n  до    [%s]\n  после [%s]\n", source.c_str(), written.c_str());
+					// Выводим исходный текст разметки
+					dump(text);
+					// Выводим записанное поддерево разметки
+					dump(writer.text());
+					// Выводим результат проверки дерева разметки
+					return false;
+				}
+			}
+		}
 		// Выводим результат проверки дерева разметки
 		return true;
+	}
+
+	/**
+	 * @brief Метод приведения текста разметки из UTF-8 в UTF-16
+	 *
+	 * @details Кодек обещает одинаковый разбор одного и того же текста, в какой бы из
+	 * принимаемых кодировок он ни пришёл. Проверить обещание нечем, пока подача ведётся
+	 * одной лишь UTF-8, и приведение здесь строит второй вид того же самого текста
+	 *
+	 * @param source приводимый текст разметки в кодировке UTF-8
+	 * @param big    признак прямого порядка байтов в приведённом тексте
+	 * @param result собираемый текст разметки в кодировке UTF-16
+	 * @return       результат выполнения операции
+	 *
+	 */
+	bool transcode(const string & source, const bool big, string & result) noexcept {
+		// Выполняем очистку собираемого текста разметки
+		result.clear();
+		// Выполняем добавление метки порядка байтов
+		result.append(big ? "\xFE\xFF" : "\xFF\xFE", 2);
+		/**
+		 * Определяем положение начала приводимого текста разметки
+		 *
+		 * @note Метка порядка байтов, стоящая в исходном тексте, приведению не подлежит:
+		 *       приведённый текст получает свою собственную, а перенесённая наравне с
+		 *       содержимым стала бы обычным знаком перед объявлением
+		 */
+		const size_t begin = ((source.compare(0, 3, "\xEF\xBB\xBF") == 0) ? 3 : 0);
+		/**
+		 * Выполняем перебор всех знаков приводимого текста разметки
+		 */
+		for(size_t i = begin; i < source.size();){
+			// Получаем очередной байт приводимого текста разметки
+			const uint8_t byte = static_cast <uint8_t> (source[i]);
+			// Значение знака, собираемое из байтов
+			uint32_t code = byte;
+			// Количество байтов, занятых знаком
+			size_t length = 1;
+			// Если знак записан четырьмя байтами
+			if(byte >= 0xF0){ code = (byte & 0x07); length = 4; }
+			// Если знак записан тремя байтами
+			else if(byte >= 0xE0){ code = (byte & 0x0F); length = 3; }
+			// Если знак записан двумя байтами
+			else if(byte >= 0xC0){ code = (byte & 0x1F); length = 2; }
+			// Если знак записан продолжающим байтом, приведение невозможно
+			else if(byte >= 0x80) return false;
+			// Если знак выходит за пределы приводимого текста, приведение невозможно
+			if((i + length) > source.size()) return false;
+			/**
+			 * Выполняем перебор всех продолжающих байтов знака
+			 */
+			for(size_t k = 1; k < length; k++){
+				// Получаем очередной продолжающий байт знака
+				const uint8_t next = static_cast <uint8_t> (source[i + k]);
+				// Если байт продолжающим не является, приведение невозможно
+				if((next & 0xC0) != 0x80) return false;
+				// Выполняем добавление разрядов продолжающего байта к значению знака
+				code = ((code << 6) | (next & 0x3F));
+			}
+			// Выполняем переход к следующему знаку приводимого текста
+			i += length;
+			/**
+			 * Если знак записан длиннее необходимого, приведение невозможно
+			 *
+			 * @note Проверка обязательна: избыточная запись знака кодеком отвергается,
+			 *       а приведение, её принявшее, построило бы из отвергнутого текста
+			 *       текст пригодный - и сличение кодировок поймало бы собственный изъян
+			 *       приведения вместо расхождения кодека
+			 */
+			if((length > 1) && (code < (((length == 2) ? 0x80u : ((length == 3) ? 0x800u : 0x10000u)))))
+				// Выводим отрицательный результат выполнения операции
+				return false;
+			// Если знак недопустим договором, приведение невозможно
+			if(!xml::isChar(code)) return false;
+			// Пара шестнадцатибитных значений, записывающих знак
+			uint16_t units[2] = {0, 0};
+			// Количество шестнадцатибитных значений, занятых знаком
+			size_t count = 1;
+			/**
+			 * Если знак лежит за пределами основного набора
+			 */
+			if(code >= 0x10000){
+				// Получаем остаток значения знака сверх основного набора
+				const uint32_t rest = (code - 0x10000);
+				// Запоминаем старшее значение суррогатной пары
+				units[0] = static_cast <uint16_t> (0xD800 + (rest >> 10));
+				// Запоминаем младшее значение суррогатной пары
+				units[1] = static_cast <uint16_t> (0xDC00 + (rest & 0x3FF));
+				// Запоминаем количество значений, занятых знаком
+				count = 2;
+			// Запоминаем единственное значение, записывающее знак
+			} else units[0] = static_cast <uint16_t> (code);
+			/**
+			 * Выполняем перебор всех значений, записывающих знак
+			 */
+			for(size_t k = 0; k < count; k++){
+				// Получаем старший байт очередного значения
+				const char high = static_cast <char> (units[k] >> 8);
+				// Получаем младший байт очередного значения
+				const char low = static_cast <char> (units[k] & 0xFF);
+				// Выполняем добавление байтов значения в заданном порядке
+				if(big){ result.push_back(high); result.push_back(low); }
+				else { result.push_back(low); result.push_back(high); }
+			}
+		}
+		// Выводим результат выполнения операции
+		return true;
+	}
+
+	/**
+	 * @brief Метод сброса смещений начала событий в перечне
+	 *
+	 * @note Смещение считается байтами исходного текста и кодировкой его разнится
+	 *       по самому устройству: один и тот же знак занимает в UTF-16 вдвое больше
+	 *       места. Сличению кодировок оно потому не подлежит, в отличие от места
+	 *       события, считаемого строками и знаками
+	 *
+	 * @param events перечень событий, смещения которого сбрасываются
+	 *
+	 */
+	void detach(vector <Event> & events) noexcept {
+		/**
+		 * Выполняем перебор всех событий перечня
+		 */
+		for(Event & event : events)
+			// Выполняем сброс смещения начала события
+			event.position = 0;
 	}
 }
 
@@ -1022,8 +1682,21 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	if(argc > 1)
 		// Выполняем чтение количества проходов из параметра командной строки
 		count = static_cast <uint64_t> (::strtoull(argv[1], nullptr, 10));
+	// Зерно источника псевдослучайных чисел
+	uint32_t seed = 0x5A1CE;
+	/**
+	 * Если зерно задано вторым параметром командной строки
+	 *
+	 * @note Зерно закреплено по умолчанию: прогон обязан воспроизводиться. Задавать
+	 *       его иным стоит затем, что построения одного зерна складываются в один и
+	 *       тот же набор, сколько проходов ни задай, - несколько зёрен обходят
+	 *       разметку шире, чем один длинный прогон
+	 */
+	if(argc > 2)
+		// Выполняем чтение зерна из параметра командной строки
+		seed = static_cast <uint32_t> (::strtoul(argv[2], nullptr, 10));
 	// Создаём источник псевдослучайных чисел с закреплённым зерном
-	mt19937 engine(0x5A1CE);
+	mt19937 engine(seed);
 	/**
 	 * Выполняем проходы генератора
 	 */
@@ -1061,8 +1734,10 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 			totals.intact++;
 		// Перечень событий подачи текста разметки целиком
 		vector <Event> whole;
+		// Место отказа разбора текста разметки, поданного целиком
+		Event failure;
 		// Выполняем подачу текста разметки целиком
-		const xml::state_t state = ::consume(text, options, 0, whole);
+		const xml::state_t state = ::consume(text, options, 0, whole, &failure);
 		/**
 		 * Если текст разметки разобран до конца
 		 */
@@ -1074,16 +1749,123 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 				// Выполняем учёт принятого разбором правильного текста разметки
 				totals.accepted++;
 		}
-		// Размер куска подачи текста разметки
-		const size_t chunk = (1 + (engine() % 16));
-		// Перечень событий подачи текста разметки кусками
-		vector <Event> chunked;
-		// Выполняем подачу текста разметки кусками
-		::consume(text, options, chunk, chunked);
-		// Если перечни выданных разбором событий разошлись
-		if(!::compare(whole, chunked, chunk, text, options))
-			// Выходим из приложения с кодом ошибки
-			return EXIT_FAILURE;
+		/**
+		 * Выполняем сличение подачи целиком с подачей кусками нескольких размеров
+		 *
+		 * @note Размеров берётся несколько, а не один: расхождения предела объёма
+		 *       события проступают лишь при таких размерах куска, где накопление
+		 *       успевает превысить предел прежде, чем построение будет дочитано,
+		 *       и одиночный размер их обходит стороной
+		 */
+		for(uint32_t attempt = 0; attempt < 3; attempt++){
+			// Размер куска подачи текста разметки
+			const size_t chunk = ((attempt == 0) ? 1 : (1 + (engine() % 24)));
+			// Перечень событий подачи текста разметки кусками
+			vector <Event> chunked;
+			// Место отказа разбора текста разметки, поданного кусками
+			Event second;
+			// Выполняем подачу текста разметки кусками
+			const xml::state_t reached = ::consume(text, options, chunk, chunked, &second);
+			// Если перечни выданных разбором событий разошлись
+			if(!::compare(whole, chunked, chunk, text, options))
+				// Выходим из приложения с кодом ошибки
+				return EXIT_FAILURE;
+			/**
+			 * Если состояние разбора либо место отказа разошлись
+			 */
+			if((reached != state) || (failure.event != second.event) || (failure.line != second.line) ||
+			   (failure.column != second.column) || (failure.position != second.position)){
+				// Выводим сообщение о расхождении итога разбора
+				::fprintf(stderr, "xml fuzz: chunk=%zu outcome differs: state %u/%u error %u/%u at %u:%u/%u:%u offset %llu/%llu\n",
+					chunk, (unsigned) state, (unsigned) reached, failure.event, second.event,
+					failure.line, failure.column, second.line, second.column,
+					(unsigned long long) failure.position, (unsigned long long) second.position);
+				// Выводим разбираемый текст разметки
+				dump(text);
+				// Выходим из приложения с кодом ошибки
+				return EXIT_FAILURE;
+			}
+		}
+		/**
+		 * Выполняем сличение подачи того же текста разметки в кодировке UTF-16
+		 *
+		 * @details Кодек обещает разбирать один и тот же текст одинаково, в какой бы из
+		 * принимаемых кодировок он ни пришёл: приведение к UTF-8 ведётся до разбора, и
+		 * ниже него кодировка исходного текста не различима вовсе. Проверяется обещание
+		 * обоими порядками байтов и подачей кусками - границы кусков ложатся при этом
+		 * посреди шестнадцатибитных значений и посреди суррогатных пар
+		 *
+		 * @note Текст с объявленной кодировкой пропускается: объявление разошлось бы с
+		 *       меткой порядка байтов, и разбор отверг бы его по этому расхождению.
+		 *       Ищется одно лишь слово, без знака присваивания: договор допускает пробелы
+		 *       вокруг него, и `encoding ="UTF-8"` иначе проскакивал бы мимо пропуска
+		 *
+		 * @note Предел объёма события снимается: он меряется байтами разметки, а их в
+		 *       UTF-16 вдвое больше при том же самом тексте
+		 */
+		if(!text.empty() && (text.find("encoding") == string::npos)){
+			// Настройки разбора со снятым пределом объёма события
+			xml::reader_t::settings_t relaxed = options;
+			// Выполняем снятие предела объёма одного события
+			relaxed.maxEvent = 0;
+			// Перечень событий подачи текста разметки в кодировке UTF-8
+			vector <Event> narrow;
+			// Место отказа разбора текста разметки в кодировке UTF-8
+			Event first;
+			// Выполняем подачу текста разметки в кодировке UTF-8 целиком
+			const xml::state_t reached = ::consume(text, relaxed, 0, narrow, &first);
+			// Выполняем сброс смещений начала событий, кодировкой разнящихся
+			::detach(narrow);
+			/**
+			 * Выполняем перебор обоих порядков байтов кодировки UTF-16
+			 */
+			for(const bool big : {false, true}){
+				// Текст разметки, приведённый к кодировке UTF-16
+				string wide;
+				// Если приведение текста разметки к кодировке UTF-16 не удалось
+				if(!::transcode(text, big, wide))
+					// Выполняем переход к следующему порядку байтов
+					continue;
+				/**
+				 * Выполняем перебор размеров куска подачи текста разметки
+				 *
+				 * @note Нулевой размер означает подачу целиком, однобайтовый разрывает
+				 *       всякое шестнадцатибитное значение, а трёхбайтовый - ещё и всякую
+				 *       суррогатную пару, не совпадая с её длиной
+				 */
+				for(const size_t chunk : {static_cast <size_t> (0), static_cast <size_t> (1), static_cast <size_t> (3)}){
+					// Перечень событий подачи текста разметки в кодировке UTF-16
+					vector <Event> broad;
+					// Место отказа разбора текста разметки в кодировке UTF-16
+					Event second;
+					// Выполняем подачу текста разметки в кодировке UTF-16
+					const xml::state_t arrived = ::consume(wide, relaxed, chunk, broad, &second);
+					// Выполняем сброс смещений начала событий, кодировкой разнящихся
+					::detach(broad);
+					// Если перечни выданных разбором событий разошлись
+					if(!::compare(narrow, broad, chunk, text, relaxed)){
+						// Выводим сообщение о кодировке, при которой обнаружено расхождение
+						::fprintf(stderr, "xml fuzz: UTF-16%s\n", (big ? "BE" : "LE"));
+						// Выходим из приложения с кодом ошибки
+						return EXIT_FAILURE;
+					}
+					/**
+					 * Если состояние разбора либо место отказа разошлись
+					 */
+					if((arrived != reached) || (first.event != second.event) ||
+					   (first.line != second.line) || (first.column != second.column)){
+						// Выводим сообщение о расхождении итога разбора между кодировками
+						::fprintf(stderr, "xml fuzz: UTF-16%s chunk=%zu outcome differs: state %u/%u error %u/%u at %u:%u/%u:%u\n",
+							(big ? "BE" : "LE"), chunk, (unsigned) reached, (unsigned) arrived,
+							first.event, second.event, first.line, first.column, second.line, second.column);
+						// Выводим разбираемый текст разметки
+						dump(text);
+						// Выходим из приложения с кодом ошибки
+						return EXIT_FAILURE;
+					}
+				}
+			}
+		}
 		// Если проверка дерева разметки не удалась
 		if(!::tree(text, options, engine))
 			// Выходим из приложения с кодом ошибки
@@ -1092,7 +1874,8 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	// Выводим статистику работы генератора
 	::fprintf(
 		stdout,
-		"xml fuzz: %llu texts (%llu corrupted), %llu events, %llu parsed to the end, %llu trees, %llu rewrites, %llu of %llu intact texts accepted\n",
+		"xml fuzz: seed=%u, %llu texts (%llu corrupted), %llu events, %llu parsed to the end, %llu trees, %llu rewrites, %llu of %llu intact texts accepted\n",
+		seed,
 		static_cast <unsigned long long> (totals.texts),
 		static_cast <unsigned long long> (totals.corrupted),
 		static_cast <unsigned long long> (totals.events),

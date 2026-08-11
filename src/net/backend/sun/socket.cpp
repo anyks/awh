@@ -53,9 +53,14 @@
 #include <netinet/udp.h>
 
 /**
- * Для операционной системы FreeBSD
+ * Для операционных систем FreeBSD, Sun Solaris и illumos
+ *
+ * @note Из BSD протокол SCTP несёт одна FreeBSD, оттого условие и было написано её
+ *       именем. Sun Solaris с illumos несут его тоже, и настройка отложенной отправки
+ *       у них зовётся так же - SCTP_NODELAY
+ *
  */
-#if __FreeBSD__
+#if __FreeBSD__ || defined(__sun)
 	/**
 	 * Заголовочный файл для работы с протоколом SCTP
 	 */
@@ -1924,9 +1929,16 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					break;
 				}
 				/**
-				 * Если операционной системой является FreeBSD
+				 * Если операционной системой является FreeBSD, Sun Solaris либо illumos
+				 *
+				 * @note Из BSD протокол SCTP несёт одна FreeBSD, оттого условие и было
+				 *       написано её именем. Sun Solaris с illumos несут его тоже, и
+				 *       разбор по протоколу нужен им ровно так же: проверено опытом
+				 *       12.08.2026 - TCP_NODELAY на сокете SCTP отвергается у обеих с
+				 *       «Option not supported by protocol», а SCTP_NODELAY принимается
+				 *
 				 */
-				#if __FreeBSD__
+				#if __FreeBSD__ || defined(__sun)
 					/**
 					 * Определяем протокол сокета
 					 *
@@ -1965,8 +1977,20 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 						default: {
 							// Длина протокола сокета
 							socklen_t length = sizeof(protocol);
-							// Получаем протокол сокета у ядра
-							resolved = (::getsockopt(sock, SOL_SOCKET, SO_PROTOCOL, &protocol, &length) == 0);
+							/**
+							 * Получаем протокол сокета у ядра
+							 *
+							 * @note Имя настройки у систем разное. Sun Solaris зовёт её
+							 *       SO_PROTOTYPE и имени SO_PROTOCOL не знает вовсе,
+							 *       illumos несёт оба имени, прочие - только SO_PROTOCOL.
+							 *       Проверено опытом на обоих стендах: SO_PROTOTYPE
+							 *       отвечает там же 132, то есть IPPROTO_SCTP
+							 */
+							#if defined(SO_PROTOCOL)
+								resolved = (::getsockopt(sock, SOL_SOCKET, SO_PROTOCOL, &protocol, &length) == 0);
+							#else
+								resolved = (::getsockopt(sock, SOL_SOCKET, SO_PROTOTYPE, &protocol, &length) == 0);
+							#endif
 						}
 					}
 					// Если протокол сокета определён
@@ -2329,7 +2353,39 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					// Устанавливаем обработку сигнала записи в оборванное соединение
 					if(!(result = !static_cast <bool> (::sigaction(SIGPIPE, &act, nullptr)))){
 				#else
+				/**
+				 * Глушим сигнал настройкой сокета, а на протоколах её не берущих - процессом
+				 *
+				 * @warning Настройка эта берётся НЕ ВСЯКИМ сокетом. Проверено опытом
+				 *          12.08.2026 на Sun Solaris: сокет TCP её принимает, а сокет SCTP
+				 *          отвергает с «Option not supported by protocol». Без отступного
+				 *          пути установка целого набора настроек отвечала бы отказом из-за
+				 *          одной этой, и узел SCTP не заводился бы вовсе
+				 *
+				 * @note Отступной путь тот же, что у illumos, где настройки нет вовсе:
+				 *       глушение сигнала для всего процесса. Замена НЕ равноценна - она
+				 *       общепроцессная против посокетной, - и оттого берётся лишь тогда,
+				 *       когда ядро отказало именно непригодностью настройки для протокола
+				 */
 				if(!(result = !static_cast <bool> (::setsockopt(sock, SOL_SOCKET, SO_NOSIGPIPE, &flags, sizeof(flags))))){
+					// Если ядро отвергло настройку как непригодную для протокола сокета
+					if((errno == ENOPROTOOPT) || (errno == EOPNOTSUPP)){
+						// Объект обработки сигнала записи в оборванное соединение
+						struct sigaction act;
+						// Зануляем объект обработки сигнала
+						::memset(&act, 0, sizeof(act));
+						// Зануляем набор блокируемых сигналов
+						::sigemptyset(&act.sa_mask);
+						// Устанавливаем признаки обработки сигнала
+						act.sa_flags = (SA_ONSTACK | SA_RESTART);
+						// Глушим сигнал при включении настройки и возвращаем его обработку при снятии
+						act.sa_handler = (flags ? SIG_IGN : SIG_DFL);
+						// Устанавливаем обработку сигнала записи в оборванное соединение
+						result = !static_cast <bool> (::sigaction(SIGPIPE, &act, nullptr));
+					}
+				}
+				// Если настройка не установлена ни одним из путей
+				if(!result){
 				#endif
 					/**
 					 * Если включён режим отладки
@@ -4082,11 +4138,29 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 											// Печатаем дескриптор созданного сокета
 											return ::socket(AF_INET, SOCK_DGRAM | mode, 0);
 										/**
-										 *Для операционной системы FreeBSD
+										 * Для операционных систем FreeBSD, Sun Solaris и illumos
+										 *
+										 * @note Из BSD упорядоченные сообщения поверх SCTP несёт одна
+										 *       FreeBSD, оттого условие и было написано её именем. Sun
+										 *       Solaris с illumos их несут тоже - проверено пробой
+										 *       12.08.2026 на обеих системах, сокет заводится и для
+										 *       IPv4, и для IPv6
+										 *
+										 * @warning Ветви для этих систем здесь НЕ БЫЛО ВОВСЕ, и условие
+										 *          не имело завершающего пути: заведение сокета молча
+										 *          не возвращало ничего. Наружу это выходило тем, что
+										 *          событие SEQPACKET не заводилось, а причина в отказе
+										 *          не называлась
 										 */
-										#elif __FreeBSD__
+										#elif __FreeBSD__ || defined(__sun)
 											// Печатаем дескриптор созданного сокета
 											return ::socket(AF_INET, SOCK_SEQPACKET | mode, IPPROTO_SCTP);
+										/**
+										 * Если система упорядоченных сообщений поверх SCTP не несёт
+										 */
+										#else
+											// Отмечаем, что сокет завести не удалось
+											ok = false;
 										#endif
 									} break;
 									// Если установлен другой протокол

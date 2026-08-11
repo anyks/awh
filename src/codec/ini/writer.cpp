@@ -202,9 +202,13 @@ namespace {
 		 *       разбор их управляющей последовательностью признаёт, а сами по себе они
 		 *       в тексте настроек недопустимы, и записать их иначе как последовательностью
 		 *       нельзя - прочитать записанное обратно не удалось бы
+		 *
+		 * @note Берутся все управляющие знаки, а не одни лишь имеющие краткое
+		 *       обозначение: разбор отвергает сырыми весь набор ниже пробела вместе со
+		 *       знаком забоя, и знак без краткого обозначения записывается видом `\xNN`
 		 */
-		return ((letter == '\n') || (letter == '\r') || (letter == '\t') || (letter == '\\') || (letter == '"') ||
-		        (letter == '\b') || (letter == '\f') || (letter == '\v') || (letter == '\a') || (letter == '\0'));
+		return ((static_cast <uint8_t> (letter) < 0x20) || (static_cast <uint8_t> (letter) == 0x7F) ||
+		        (letter == '\\') || (letter == '"'));
 	}
 	/**
 	 * @brief Метод записи знака управляющей последовательностью
@@ -260,10 +264,28 @@ namespace {
 				// Выполняем добавление обозначения знака к тексту
 				result.push_back('0');
 			break;
-			// Если знак записывается сам собою за обратной косой чертой
-			default:
+			/**
+			 * Если знак записывается сам собою за обратной косой чертой
+			 */
+			default: {
+				/**
+				 * Если знак краткого обозначения не имеет
+				 *
+				 * @details Управляющий знак без краткого обозначения записывается видом
+				 * `\xNN` двумя знаками шестнадцатеричного числа: разбор читает ровно два,
+				 * и следующий за ними знак, годный в шестнадцатеричные, к числу уже не
+				 * пристаёт. Одна цифра разбором отвергается, и меньше двух писать нельзя
+				 */
+				if((static_cast <uint8_t> (letter) < 0x20) || (static_cast <uint8_t> (letter) == 0x7F)){
+					// Запись знака шестнадцатеричным числом
+					char buffer[4];
+					// Выполняем сборку записи знака шестнадцатеричным числом
+					::snprintf(buffer, sizeof(buffer), "x%02X", static_cast <uint8_t> (letter));
+					// Выполняем добавление записи знака к тексту
+					result.append(buffer, 3);
 				// Выполняем добавление знака к тексту
-				result.push_back(letter);
+				} else result.push_back(letter);
+			}
 		}
 	}
 };
@@ -392,7 +414,7 @@ bool awh::codec::ini::Writer::verify(const string_view name, const bool section)
 	/**
 	 * Если длина имени предел настроек превышает
 	 */
-	if(name.length() > this->_settings.maxName){
+	if((this->_settings.maxName > 0) && (name.length() > this->_settings.maxName)){
 		// Запоминаем код ошибки записи
 		this->_error = error_t::NAME_TOO_LONG;
 		// Выводим отрицательный результат выполнения операции
@@ -618,6 +640,34 @@ void awh::codec::ini::Writer::newline() noexcept {
 	this->_text.append(awh::codec::ini::newline(this->_settings.newline));
 }
 /**
+ * @brief Метод ограждения примечания, оканчивающегося продолжением
+ *
+ * @param blank признак того, что очередной записью идёт пустая строка, ограждением
+ *              служащая сама по себе
+ *
+ */
+void awh::codec::ini::Writer::guard(const bool blank) noexcept {
+	/**
+	 * Если ограждение не требуется
+	 */
+	if(!this->_guarded)
+		// Выходим из ограждения примечания
+		return;
+	// Выполняем сброс признака ожидающего ограждения
+	this->_guarded = false;
+	/**
+	 * Если очередной записью идёт пустая строка
+	 *
+	 * @note Пустая строка прекращает склеивание сама по себе, и ставить перед нею
+	 *       вторую значило бы растить текст пустыми строками с каждой перезаписью
+	 */
+	if(blank)
+		// Выходим из ограждения примечания
+		return;
+	// Выполняем запись пустой строки, склеивание прекращающей
+	this->newline();
+}
+/**
  * @brief Метод получения текущих настроек записи
  *
  * @return текущие настройки записи текста настроек
@@ -652,6 +702,8 @@ bool awh::codec::ini::Writer::section(const string_view section, const string_vi
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
 		return false;
+	// Выполняем ограждение примечания, оканчивающегося продолжением
+	this->guard(false);
 	/**
 	 * Если проверку имени раздела выполнить не удалось
 	 */
@@ -791,6 +843,8 @@ bool awh::codec::ini::Writer::property(const string_view key, const string_view 
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
 		return false;
+	// Выполняем ограждение примечания, оканчивающегося продолжением
+	this->guard(false);
 	/**
 	 * Если проверку имени свойства выполнить не удалось
 	 *
@@ -847,6 +901,8 @@ bool awh::codec::ini::Writer::property(const string_view key, const string_view 
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
 		return false;
+	// Выполняем ограждение примечания, оканчивающегося продолжением
+	this->guard(false);
 	/**
 	 * Если проверку имени свойства выполнить не удалось
 	 */
@@ -905,6 +961,8 @@ bool awh::codec::ini::Writer::property(const string_view key) noexcept {
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
 		return false;
+	// Выполняем ограждение примечания, оканчивающегося продолжением
+	this->guard(false);
 	/**
 	 * Если проверку имени свойства выполнить не удалось
 	 */
@@ -938,6 +996,8 @@ bool awh::codec::ini::Writer::comment(const string_view text) noexcept {
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
 		return false;
+	// Выполняем ограждение примечания, оканчивающегося продолжением
+	this->guard(false);
 	// Положение начала очередной строки примечания
 	size_t offset = 0;
 	/**
@@ -974,6 +1034,13 @@ bool awh::codec::ini::Writer::comment(const string_view text) noexcept {
 		// Выполняем запись знака конца строки
 		this->newline();
 		/**
+		 * Запоминаем, оканчивается ли записанная строка примечания продолжением
+		 *
+		 * @note Признак взводится по каждой строке, а держится по последней: склеить
+		 *       со следующей строкой читающий может лишь её одну
+		 */
+		this->_guarded = (this->_settings.continuations && ::continued(line));
+		/**
 		 * Если примечание записано целиком
 		 */
 		if(position >= text.length())
@@ -999,6 +1066,13 @@ bool awh::codec::ini::Writer::trailing(const string_view text) noexcept {
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
 		return false;
+	/**
+	 * Выполняем сброс ожидающего ограждения примечания
+	 *
+	 * @note Примечание дописывается к готовой строке, и продолжение прежней строки
+	 *       оказывается уже не в её конце: ограждать нечего
+	 */
+	this->_guarded = false;
 	/**
 	 * Выполняем перебор знаков содержимого примечания
 	 */
@@ -1058,6 +1132,13 @@ bool awh::codec::ini::Writer::trailing(const string_view text) noexcept {
 		// Выполняем запись содержимого примечания
 		this->_text.append(text);
 	}
+	/**
+	 * Запоминаем, оканчивается ли дописанное примечание продолжением
+	 *
+	 * @note Дописанное примечание завершает строку наравне с записанным отдельно, и
+	 *       склеивание со следующей строкой грозит ей точно так же
+	 */
+	this->_guarded = (this->_settings.continuations && ::continued(text));
 	// Выполняем запись знака конца строки
 	this->newline();
 	// Выводим положительный результат выполнения операции
@@ -1076,6 +1157,8 @@ bool awh::codec::ini::Writer::blank() noexcept {
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
 		return false;
+	// Выполняем ограждение примечания, оканчивающегося продолжением
+	this->guard(true);
 	// Выполняем запись знака конца строки
 	this->newline();
 	// Выводим положительный результат выполнения операции
@@ -1110,6 +1193,8 @@ void awh::codec::ini::Writer::clear() noexcept {
 	this->_error = error_t::NONE;
 	// Выполняем сброс признака объявления раздела
 	this->_sectioned = false;
+	// Выполняем сброс признака ожидающего ограждения примечания
+	this->_guarded = false;
 	// Выполняем очистку собранного текста настроек
 	this->_text.clear();
 }
@@ -1117,7 +1202,7 @@ void awh::codec::ini::Writer::clear() noexcept {
  * @brief Конструктор
  *
  */
-awh::codec::ini::Writer::Writer() noexcept : _error(error_t::NONE), _sectioned(false) {}
+awh::codec::ini::Writer::Writer() noexcept : _error(error_t::NONE), _sectioned(false), _guarded(false) {}
 /**
  * @brief Конструктор
  *
@@ -1125,7 +1210,7 @@ awh::codec::ini::Writer::Writer() noexcept : _error(error_t::NONE), _sectioned(f
  *
  */
 awh::codec::ini::Writer::Writer(const settings_t & settings) noexcept :
- _error(error_t::NONE), _sectioned(false), _settings(settings) {}
+ _error(error_t::NONE), _sectioned(false), _guarded(false), _settings(settings) {}
 /**
  * @brief Деструктор
  *

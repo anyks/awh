@@ -763,16 +763,19 @@ bool awh::codec::ini::Document::expand(const string_view value, const uint32_t s
 /**
  * @brief Метод подстановки обращений к значениям других свойств
  *
- * @return результат выполнения операции
+ * @param strict признак прекращения подстановки неразрешимым обращением
+ * @return       результат выполнения операции
  *
  */
-bool awh::codec::ini::Document::resolve() noexcept {
+bool awh::codec::ini::Document::resolve(const bool strict) noexcept {
 	/**
 	 * Если подстановка обращений настройками не задана
 	 */
 	if(this->_settings.references == reference_t::NONE)
 		// Выводим положительный результат выполнения операции
 		return true;
+	// Выполняем сброс признака неразрешимого обращения
+	this->_dangling = false;
 	// Остаток допустимого объёма подстановки в байтах
 	uint64_t budget = this->_settings.maxExpansion;
 	/**
@@ -793,8 +796,14 @@ bool awh::codec::ini::Document::resolve() noexcept {
 		if(this->_records.at(i).kind != kind_t::PROPERTY)
 			// Выполняем переход к следующей записи
 			continue;
-		// Получаем значение очередного свойства
-		const string_view value = this->get(this->_records.at(i).value);
+		/**
+		 * Получаем значение очередного свойства до подстановки
+		 *
+		 * @note Берётся именно исходное значение, а не разрешённое прежде: подстановка
+		 *       выполняется заново при всякой правке дерева, и разрешение разрешённого
+		 *       подставляло бы дважды там, где подставленное само несёт знак обращения
+		 */
+		const string_view value = this->get(this->_records.at(i).raw);
 		// Знак, которым начинается обращение к значению
 		const char letter = ((this->_settings.references == reference_t::SHELL) ? '$' : '%');
 		/**
@@ -803,6 +812,8 @@ bool awh::codec::ini::Document::resolve() noexcept {
 		if(value.find(letter) == string_view::npos)
 			// Выполняем переход к следующей записи
 			continue;
+		// Запоминаем, что дерево несёт обращения к значениям
+		this->_referenced = true;
 		// Разрешённое значение очередного свойства
 		string result;
 		// Перечень свойств, разрешаемых в настоящее время
@@ -812,16 +823,34 @@ bool awh::codec::ini::Document::resolve() noexcept {
 		/**
 		 * Если разрешение значения свойства выполнить не удалось
 		 */
-		if(!this->expand(value, this->_records.at(i).section, stack, budget, result))
-			// Выводим отрицательный результат выполнения операции
-			return false;
+		if(!this->expand(value, this->_records.at(i).section, stack, budget, result)){
+			/**
+			 * Если неразрешимое обращение подстановку прекращает
+			 */
+			if(strict)
+				// Выводим отрицательный результат выполнения операции
+				return false;
+			/**
+			 * Выполняем сброс кода ошибки неразрешимого обращения
+			 *
+			 * @details Пересчёт после правки снисходителен: правка вправе оставить дерево
+			 * в состоянии, где обращение разрешить не по чему - источник удалён либо ещё
+			 * не заведён, - и объявлять правку неудавшейся за это нельзя. Значение
+			 * остаётся таким, каким записано, и разрешится само, едва источник появится
+			 */
+			this->_error = error_t::NONE;
+			// Запоминаем, что дерево несёт неразрешимое обращение
+			this->_dangling = true;
+			// Запоминаем значение свойства в виде, в каком оно записано
+			result.assign(value);
+		}
 		// Выполняем добавление разрешённого значения к перечню
 		resolved.emplace_back(static_cast <uint32_t> (i), std::move(result));
 	}
 	/**
 	 * Выполняем перебор всех разрешённых значений свойств
 	 */
-	for(auto & item : resolved)
+	for(auto & item : resolved){
 		// Выполняем перенос разрешённого значения в хранилище знаков
 		this->_records.at(item.first).value = this->add(item.second);
 		/**
@@ -830,8 +859,52 @@ bool awh::codec::ini::Document::resolve() noexcept {
 		if(this->_error == error_t::OVERFLOW_LIMIT)
 			// Выводим отрицательный результат выполнения операции
 			return false;
+	}
 	// Выводим положительный результат выполнения операции
 	return true;
+}
+/**
+ * @brief Метод пересчёта подстановки обращений после правки дерева
+ *
+ * @return результат выполнения операции
+ *
+ */
+bool awh::codec::ini::Document::substitute() noexcept {
+	/**
+	 * Если дерево обращений к значениям не несёт
+	 *
+	 * @note Пересчёт обходится перебором всех записей, и дереву без обращений платить
+	 *       за него незачем: подставлять там нечего
+	 */
+	if(!this->_referenced || (this->_settings.references == reference_t::NONE))
+		// Выводим положительный результат выполнения операции
+		return true;
+	// Запоминаем, что подстановка обращений устарела
+	this->_stale = true;
+	// Выводим положительный результат выполнения операции
+	return true;
+}
+/**
+ * @brief Метод пересчёта устаревшей подстановки перед чтением значения
+ *
+ */
+void awh::codec::ini::Document::refresh() const noexcept {
+	/**
+	 * Если подстановка обращений не устарела
+	 */
+	if(!this->_stale)
+		// Выходим из пересчёта подстановки обращений
+		return;
+	// Выполняем сброс признака устаревшей подстановки
+	this->_stale = false;
+	/**
+	 * Выполняем снисходительный пересчёт подстановки обращений
+	 *
+	 * @note Постоянность чтения пересчётом не нарушается: он приводит разрешённые
+	 *       значения в соответствие с записанными, смысла дерева не меняя, - и ради
+	 *       этого одного здесь снимается постоянность
+	 */
+	const_cast <Document *> (this)->resolve(false);
 }
 /**
  * @brief Метод получения текущих настроек дерева
@@ -1206,6 +1279,8 @@ bool awh::codec::ini::Document::has(const string_view key, const string_view sec
  *
  */
 string_view awh::codec::ini::Document::get(const string_view key, const string_view section, const string_view subsection) const noexcept {
+	// Выполняем пересчёт подстановки обращений, устаревшей после правки
+	this->refresh();
 	// Выполняем поиск объявлений свойства
 	const vector <uint32_t> * records = this->locate(key, section, subsection);
 	/**
@@ -1236,6 +1311,8 @@ string_view awh::codec::ini::Document::get(const string_view key, const string_v
  *
  */
 vector <string_view> awh::codec::ini::Document::values(const string_view key, const string_view section, const string_view subsection) const noexcept {
+	// Выполняем пересчёт подстановки обращений, устаревшей после правки
+	this->refresh();
 	// Собираемый перечень значений свойства
 	vector <string_view> result;
 	// Порядковый номер найденного раздела
@@ -1496,9 +1573,10 @@ bool awh::codec::ini::Document::set(const string_view key, const string_view val
 		/**
 		 * Запоминаем место нового значения свойства до подстановки обращений
 		 *
-		 * @note Установленное значение подстановке не подвергается: разрешать его
-		 *       поздно - прочие значения уже разрешены, - и обращение в нём попало
-		 *       бы в файл настроек как есть
+		 * @note Место до подстановки держится ради обратной записи: в файл настроек
+		 *       уходит именно оно, и обращение попадает туда как записано. Само же
+		 *       значение разрешается заново по завершении правки - вместе со всеми
+		 *       прочими, на которые правка могла повлиять
 		 */
 		this->_records.at(target).raw = this->_records.at(target).value;
 		/**
@@ -1518,8 +1596,19 @@ bool awh::codec::ini::Document::set(const string_view key, const string_view val
 		this->_records.at(target).append = false;
 		// Снимаем признак значения, заключённого в кавычки
 		this->_records.at(target).quoted = false;
-		// Выводим положительный результат выполнения операции
-		return true;
+		/**
+		 * Если установленное значение несёт обращение к другому значению
+		 *
+		 * @note Признак взводится здесь, а не одной лишь подстановкой: обращение,
+		 *       заведённое правкой, подстановка иначе не разрешила бы вовсе - дерево
+		 *       считалось бы обращений не несущим
+		 */
+		if((this->_settings.references != reference_t::NONE) &&
+		   (value.find((this->_settings.references == reference_t::SHELL) ? '$' : '%') != string_view::npos))
+			// Запоминаем, что дерево несёт обращения к значениям
+			this->_referenced = true;
+		// Выводим результат пересчёта подстановки обращений
+		return this->substitute();
 	}
 	/**
 	 * Положение вставки записи в перечень записей
@@ -1580,15 +1669,37 @@ bool awh::codec::ini::Document::set(const string_view key, const string_view val
 			this->_order.at(index).push_back(target);
 		// Выполняем добавление свойства к указателю свойств
 		records.push_back(target);
-		// Выводим положительный результат выполнения операции
-		return true;
+		/**
+		 * Если установленное значение несёт обращение к другому значению
+		 *
+		 * @note Признак взводится здесь, а не одной лишь подстановкой: обращение,
+		 *       заведённое правкой, подстановка иначе не разрешила бы вовсе - дерево
+		 *       считалось бы обращений не несущим
+		 */
+		if((this->_settings.references != reference_t::NONE) &&
+		   (value.find((this->_settings.references == reference_t::SHELL) ? '$' : '%') != string_view::npos))
+			// Запоминаем, что дерево несёт обращения к значениям
+			this->_referenced = true;
+		// Выводим результат пересчёта подстановки обращений
+		return this->substitute();
 	}
 	// Выполняем вставку записи в перечень записей
 	this->_records.insert(this->_records.begin() + static_cast <ptrdiff_t> (position), record);
 	// Выполняем перестроение указателей поиска
 	this->reindex();
-	// Выводим положительный результат выполнения операции
-	return true;
+	/**
+	 * Если установленное значение несёт обращение к другому значению
+	 *
+	 * @note Признак взводится здесь, а не одной лишь подстановкой: обращение,
+	 *       заведённое правкой, подстановка иначе не разрешила бы вовсе - дерево
+	 *       считалось бы обращений не несущим
+	 */
+	if((this->_settings.references != reference_t::NONE) &&
+	   (value.find((this->_settings.references == reference_t::SHELL) ? '$' : '%') != string_view::npos))
+		// Запоминаем, что дерево несёт обращения к значениям
+		this->_referenced = true;
+	// Выводим результат пересчёта подстановки обращений
+	return this->substitute();
 }
 /**
  * @brief Метод удаления свойства
@@ -1669,8 +1780,13 @@ bool awh::codec::ini::Document::erase(const string_view key, const string_view s
 	}
 	// Выполняем изъятие свойства из указателя свойств
 	this->_properties.erase(i);
-	// Выводим положительный результат выполнения операции
-	return true;
+	/**
+	 * Выводим результат пересчёта подстановки обращений
+	 *
+	 * @note Удалённое свойство могло быть источником обращения, и разрешённые прежде
+	 *       значения без пересчёта остались бы подставленными по нему
+	 */
+	return this->substitute();
 }
 /**
  * @brief Метод удаления раздела
@@ -1723,8 +1839,13 @@ bool awh::codec::ini::Document::remove(const string_view section, const string_v
 	this->_sections.at(index).declared = false;
 	// Выполняем перестроение указателей поиска
 	this->reindex();
-	// Выводим положительный результат выполнения операции
-	return true;
+	/**
+	 * Выводим результат пересчёта подстановки обращений
+	 *
+	 * @note Удалённый раздел мог нести источники обращений, и разрешённые прежде
+	 *       значения без пересчёта остались бы подставленными по ним
+	 */
+	return this->substitute();
 }
 /**
  * @brief Метод получения количества объявленных разделов
@@ -1777,6 +1898,12 @@ bool awh::codec::ini::Document::empty() const noexcept {
 void awh::codec::ini::Document::clear() noexcept {
 	// Выполняем сброс кода ошибки разбора
 	this->_error = error_t::NONE;
+	// Выполняем сброс признака наличия обращений к значениям
+	this->_referenced = false;
+	// Выполняем сброс признака устаревшей подстановки обращений
+	this->_stale = false;
+	// Выполняем сброс признака неразрешимого обращения
+	this->_dangling = false;
 	// Выполняем сброс положения обнаруженной ошибки
 	this->_errorLocation = location_t();
 	// Выполняем очистку хранилища знаков
@@ -1866,6 +1993,22 @@ string awh::codec::ini::Document::text() const noexcept {
 string awh::codec::ini::Document::text(const writer_t::settings_t & settings) const noexcept {
 	// Выполняем сброс кода ошибки последней операции
 	this->_error = error_t::NONE;
+	// Выполняем пересчёт подстановки обращений, устаревшей после правки
+	this->refresh();
+	/**
+	 * Если дерево несёт неразрешимое обращение
+	 *
+	 * @details Правка вправе удалить источник обращения, и чтение такое значение выдаёт
+	 * в записанном виде. Записать же дерево целиком нельзя: текст с обращением в пустоту
+	 * разбор отвергает по неизвестному обращению, и выдать его значило бы отдать
+	 * заведомо негодный файл настроек тому, кто отказа не спросил
+	 */
+	if(this->_dangling){
+		// Запоминаем код ошибки записи
+		this->_error = error_t::UNKNOWN_REFERENCE;
+		// Выводим пустой текст настроек
+		return string();
+	}
 	// Получаем настройки записи текста настроек
 	writer_t::settings_t options = settings;
 	/**
@@ -1980,14 +2123,14 @@ string awh::codec::ini::Document::text(const writer_t::settings_t & settings) co
  * @brief Конструктор
  *
  */
-awh::codec::ini::Document::Document() noexcept : _error(error_t::NONE) {}
+awh::codec::ini::Document::Document() noexcept : _error(error_t::NONE), _referenced(false), _stale(false), _dangling(false) {}
 /**
  * @brief Конструктор
  *
  * @param settings настройки дерева настроек
  *
  */
-awh::codec::ini::Document::Document(const settings_t & settings) noexcept : _error(error_t::NONE), _settings(settings) {}
+awh::codec::ini::Document::Document(const settings_t & settings) noexcept : _error(error_t::NONE), _referenced(false), _stale(false), _dangling(false), _settings(settings) {}
 /**
  * @brief Деструктор
  *

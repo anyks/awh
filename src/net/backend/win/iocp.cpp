@@ -905,8 +905,13 @@ static int32_t __awh_recv__(const SOCKET sock, void * buffer, const size_t size,
 	 * @note Обычное обращение остаётся путём запасным, и берётся оно всякий раз,
 	 *       когда родной приём по дескриптору не заведён: буферы пула конечны, да и
 	 *       годны родному приёму не все дескрипторы
+	 *
+	 * @note Подглядывание из пула не обслуживается: смысл его в том, чтобы данные
+	 *       остались в сокете, а забранное из пула в сокет уже не вернуть. Обращений
+	 *       с подглядыванием у движка сейчас нет вовсе, и заслон этот - оберег на
+	 *       случай их появления
 	 */
-	if(::__awh_pool_receive__(sock, buffer, size, fetched))
+	if(((flags & MSG_PEEK) == 0) && ::__awh_pool_receive__(sock, buffer, size, fetched))
 		// Выводим размер принятых данных
 		return static_cast <int32_t> (fetched);
 	// Выводим размер принятых данных
@@ -5756,6 +5761,22 @@ namespace pool {
 	 */
 	static vector <uint16_t> released;
 
+	// ЩУП: число поданных родных приёмов
+	static uint64_t __probe_posted__ = 0;
+	// ЩУП: число приёмов, обслуженных из пула
+	static uint64_t __probe_served__ = 0;
+	// ЩУП: число октетов, полученных без обращения к ядру
+	static uint64_t __probe_bytes__ = 0;
+
+	// ЩУП: печать итога на выходе из процесса
+	struct Probe { ~Probe(){
+		::fprintf(stderr, "SCOUT: posted=%llu served=%llu bytes=%llu\n",
+		 (unsigned long long) ::pool::__probe_posted__, (unsigned long long) ::pool::__probe_served__,
+		 (unsigned long long) ::pool::__probe_bytes__);
+		::fflush(stderr);
+	} };
+	static Probe __probe__;
+
 	/**
 	 * @brief Функция занятия буфера приёма
 	 *
@@ -5886,6 +5907,17 @@ namespace pool {
 			// Выходим из функции
 			return;
 		}
+		/**
+		 * Если по дескриптору держится буфер с незабранным принятым - освобождаем его
+		 *
+		 * @note Заход этот означал бы потерю данных, и подача приёма поверх
+		 *       незабранного заслонена условием годности подписки. Освобождение
+		 *       оставлено оберегом: буфер, потерянный здесь, не вернулся бы в пул
+		 *       никогда, и пул иссяк бы молча
+		 */
+		if(record->ready && (record->bid != bid))
+			// Освобождаем буфер с незабранным принятым
+			::pool::give(record->bid);
 		// Отмечаем родной приём снятым
 		record->armed = false;
 		// Забываем метку завершения приёма
@@ -5988,6 +6020,10 @@ namespace pool {
 			// Забываем номер буфера приёма
 			record->bid = ::pool::INVALID;
 		}
+		// ЩУП: учитываем обслуженный из пула приём
+		::pool::__probe_served__++;
+		// ЩУП: учитываем октеты, полученные без обращения к ядру
+		::pool::__probe_bytes__ += static_cast <uint64_t> (portion);
 		// Устанавливаем количество принятых октетов
 		result = static_cast <ssize_t> (portion);
 		// Выводим признак обслуженного приёма
@@ -6349,6 +6385,8 @@ namespace post {
 		DWORD flags = 0;
 		// Выполняем подачу приёма данных
 		const bool accepted = (::WSARecv(static_cast <SOCKET> (sock), &chunk, 1, &bytes, &flags, &slot->overlapped, nullptr) == 0);
+		// ЩУП: учитываем поданный родной приём
+		::pool::__probe_posted__++;
 		// Получаем результат подачи родного приёма
 		const uint64_t token = ::post::submitted(accepted, static_cast <DWORD> (::WSAGetLastError()), result, "receive");
 		// Если подать родной приём не удалось - освобождаем занятый буфер
@@ -8629,7 +8667,7 @@ namespace kernel {
 		const bool suitable = (
 			((events & ~static_cast <uint32_t> (EPOLLRDHUP)) == static_cast <uint32_t> (EPOLLIN)) &&
 			exchanging && !limited && (node->state.type == event::type_t::STREAM) &&
-			(::kernel::listeners.count(state.sock) == 0)
+			(::kernel::listeners.count(state.sock) == 0) && !::pool::pending(state.sock)
 		);
 		/**
 		 * Выполняем подачу ожидания готовности
@@ -8932,6 +8970,12 @@ namespace kernel {
 		 *       освободи мы их прежде, чем поданные операции сняты, она дописывала
 		 *       бы по освобождённой памяти
 		 */
+		// ЩУП: печатаем итог работы родного приёма
+		::fprintf(stderr, "ЩУП: подано родных приёмов=%llu, обслужено из пула=%llu, октетов=%llu\n",
+		 (unsigned long long) ::pool::__probe_posted__, (unsigned long long) ::pool::__probe_served__,
+		 (unsigned long long) ::pool::__probe_bytes__);
+		// ЩУП: сбрасываем поток
+		::fflush(stderr);
 		::pool::destroy();
 		// Очищаем учёт заведённых подписок
 		::kernel::registry.clear();

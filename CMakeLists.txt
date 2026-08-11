@@ -433,7 +433,14 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
     # Библиотека libdladm нужна модулю сетевых интерфейсов: приёмов заведения и
     # сноса устройств передачи данных, какие есть у BSD, эти системы не имеют
-    SET(AWH_PARAMS "-lsocket -lnsl -ldladm -lc -Wno-cpp -Wno-deprecated")
+    #
+    # Библиотека libsctp несёт приёмы протокола SCTP - sctp_sendmsg, sctp_recvmsg,
+    # sctp_peeloff и sctp_connectx. У FreeBSD они лежат в самой libc, здесь же
+    # вынесены отдельно, и без неё сборка валится на неразрешённых именах уже при
+    # сборке набора проверок, тогда как сама библиотека собирается молча. Ставить
+    # её отдельно, как это делается у Linux, не требуется - она входит в состав обеих
+    # систем
+    SET(AWH_PARAMS "-lsocket -lnsl -ldladm -lsctp -lc -Wno-cpp -Wno-deprecated")
 # Устанавливаем параметры игнорирования ошибок для Windows и Linux
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Windows" OR ${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
     SET(AWH_PARAMS "-Wno-cpp -Wno-deprecated")

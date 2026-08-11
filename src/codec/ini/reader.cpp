@@ -768,7 +768,7 @@ bool awh::codec::ini::Reader::join(const size_t begin, const size_t length) noex
 	/**
 	 * Если длина логической строки предел настроек превышает
 	 */
-	if(static_cast <uint64_t> (length) > static_cast <uint64_t> (this->_settings.maxLine))
+	if((this->_settings.maxLine > 0) && (static_cast <uint64_t> (length) > static_cast <uint64_t> (this->_settings.maxLine)))
 		// Выводим сообщение об ошибке разбора
 		return this->fail(error_t::LINE_TOO_LONG, begin, this->_line, 1);
 	// Длина первой физической строки без знака её конца
@@ -981,7 +981,7 @@ bool awh::codec::ini::Reader::header(const string_view line, const size_t offset
 	/**
 	 * Если длина имени раздела предел настроек превышает
 	 */
-	if(content.length() > this->_settings.maxName)
+	if((this->_settings.maxName > 0) && (content.length() > this->_settings.maxName))
 		// Выводим сообщение об ошибке разбора
 		return this->fail(error_t::NAME_TOO_LONG, offset, this->_line, 1);
 	// Выполняем очистку имени текущего подраздела
@@ -1530,7 +1530,7 @@ bool awh::codec::ini::Reader::assign(const string_view line, const size_t offset
 	/**
 	 * Если длина имени свойства предел настроек превышает
 	 */
-	if(key.length() > this->_settings.maxName)
+	if((this->_settings.maxName > 0) && (key.length() > this->_settings.maxName))
 		// Выводим сообщение об ошибке разбора
 		return this->fail(error_t::NAME_TOO_LONG, offset, this->_line, 1);
 	/**

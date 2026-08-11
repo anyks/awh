@@ -678,6 +678,104 @@ namespace {
 	}
 
 	/**
+	 * @brief Функция получения аппаратного адреса сетевого интерфейса
+	 *
+	 * @details Ищет канальную запись устройства в уже полученном списке, а не найдя её,
+	 *          отыскивает собственный адрес устройства в кэше соседей
+	 *
+	 * @warning Sun Solaris НЕ ОТДАЁТ канальных записей в списке сетевых интерфейсов
+	 *          вовсе - проверено пробой: из четырёх записей ни одной с семейством
+	 *          AF_LINK. illumos их отдаёт, и здесь системы расходятся, причём в пользу
+	 *          illumos. Оттого поиск и двухступенчат: без отступного пути аппаратный
+	 *          адрес у Solaris не добывался бы никогда, а признаком этого служил бы
+	 *          нуль - неотличимый от настоящего незаполненного адреса
+	 *
+	 * @note Собственный адрес машины лежит в кэше соседей постоянной записью -
+	 *       «arp -a» показывает её с признаками SPLA, - и аппаратный адрес в ней тот
+	 *       самый. Кэш этот модуль и без того снимает через mib2, так что нового пути
+	 *       к ядру не заводится
+	 *
+	 * @note Прямой путь через DLPI - открыть устройство и запросить DL_PHYS_ADDR_REQ -
+	 *       проверен и ОТВЕРГНУТ: открытие «/dev/net/<имя>» требует полномочий и
+	 *       обычному приложению отвечает отказом в доступе. Требовать полномочий ради
+	 *       чтения собственного аппаратного адреса нельзя
+	 *
+	 * @param list  список сетевых интерфейсов
+	 * @param iface название искомого сетевого интерфейса
+	 * @param mac   буфер аппаратного адреса на шесть октетов
+	 * @return      результат поиска аппаратного адреса
+	 *
+	 */
+	bool hwaddr(struct ifaddrs * list, const char * iface, uint8_t * mac) noexcept {
+		// Если доводы поиска не заданы, искать нечего
+		if((list == nullptr) || (iface == nullptr) || (mac == nullptr))
+			// Выводим результат поиска
+			return false;
+		// Собственный адрес IPv4 сетевого интерфейса
+		uint32_t own = 0;
+		/**
+		 * Перебираем все сетевые интерфейсы
+		 */
+		for(struct ifaddrs * ifa = list; ifa != nullptr; ifa = ifa->ifa_next){
+			// Пропускаем не совпадающие имена интерфейсов
+			if((ifa->ifa_name == nullptr) || (ifa->ifa_addr == nullptr) || (::strcmp(ifa->ifa_name, iface) != 0))
+				// Переходим к интерфейсу следующему
+				continue;
+			// Запоминаем собственный адрес устройства для поиска по кэшу соседей
+			if(ifa->ifa_addr->sa_family == AF_INET)
+				// Запоминаем адрес устройства
+				own = reinterpret_cast <const struct sockaddr_in *> (ifa->ifa_addr)->sin_addr.s_addr;
+			// Если запись является канальной
+			else if(ifa->ifa_addr->sa_family == AF_LINK) {
+				// Получаем текущее значение аппаратного сетевого адреса
+				struct sockaddr_dl * sdl = reinterpret_cast <struct sockaddr_dl *> (ifa->ifa_addr);
+				// Если длина аппаратного адреса верна
+				if(sdl->sdl_alen == 6){
+					// Копируем аппаратный адрес в результат
+					::memcpy(mac, LLADDR(sdl), 6);
+					// Выводим результат поиска
+					return true;
+				}
+			}
+		}
+		// Если собственного адреса устройства нет, искать в кэше соседей нечего
+		if(own == 0)
+			// Выводим результат поиска
+			return false;
+		// Записи кэша соседей IPv4
+		vector <char> records;
+		// Выполняем снятие кэша соседей IPv4
+		if(!::mib::table(MIB2_IP, MIB2_IP_MEDIA, records))
+			// Выводим результат поиска
+			return false;
+		// Получаем количество записей кэша соседей
+		const size_t count = (records.size() / sizeof(mib2_ipNetToMediaEntry_t));
+		// Получаем записи кэша соседей
+		const mib2_ipNetToMediaEntry_t * entries = reinterpret_cast <const mib2_ipNetToMediaEntry_t *> (records.data());
+		/**
+		 * Переходим по всем записям кэша соседей
+		 */
+		for(size_t i = 0; i < count; i++){
+			// Получаем текущую запись кэша соседей
+			const mib2_ipNetToMediaEntry_t & entry = entries[i];
+			// Если аппаратный адрес записи не заполнен, запись не годится
+			if(entry.ipNetToMediaPhysAddress.o_length < 6)
+				// Выполняем пропуск
+				continue;
+			// Если запись не о собственном адресе устройства, пропускаем
+			if(own != static_cast <uint32_t> (entry.ipNetToMediaNetAddress))
+				// Выполняем пропуск
+				continue;
+			// Копируем аппаратный адрес в результат
+			::memcpy(mac, entry.ipNetToMediaPhysAddress.o_bytes, 6);
+			// Выводим результат поиска
+			return true;
+		}
+		// Выводим результат поиска
+		return false;
+	}
+
+	/**
 	 * @brief Функция вычисления контрольной суммы
 	 *
 	 * @param data   указатель на данные
@@ -748,31 +846,8 @@ void awh::eth::Network_Address::fillSource(net::src_t & source) const noexcept {
 				if(::getifaddrs(&ptr) != 0)
 					// Выходим из функции
 					return;
-				// Переменная результата
-				bool result = false;
-				/**
-				 * Перебираем все сетевые интерфейсы
-				 */
-				for(struct ifaddrs * ifa = ptr; ifa != nullptr; ifa = ifa->ifa_next){
-					// Пропускаем не совпадающие имена интерфейсов
-					if((ifa->ifa_name == nullptr) || !this->_fmk->compare(ifa->ifa_name, source.iface))
-						// Переходим к следующему интерфейсу
-						continue;
-					// Ищем MAC-адрес интерфейса
-					if((ifa->ifa_addr != nullptr) && (ifa->ifa_addr->sa_family == AF_LINK)){
-						// Получаем текущее значение аппаратного сетевого адреса
-						struct sockaddr_dl * sdl = reinterpret_cast <struct sockaddr_dl *> (ifa->ifa_addr);
-						// Проверяем длину MAC-адреса
-						if((result = (sdl->sdl_alen == 6))){
-							// Копируем MAC-адрес в результат
-							const uint8_t * ptr = reinterpret_cast <const uint8_t *> (LLADDR(sdl));
-							// Копируем MAC-адрес в результат
-							::memcpy(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], ptr, 6);
-							// Завершаем поиск MAC-адреса
-							break;
-						}
-					}
-				}
+				// Выполняем поиск аппаратного адреса сетевого интерфейса
+				const bool result = ::hwaddr(ptr, source.iface.c_str(), &awh_cast <net::addr_mac_t *> (source.mac.get())->address[0]);
 				// Освобождаем память списка сетевых интерфейсов
 				::freeifaddrs(ptr);
 				/**
@@ -1513,29 +1588,16 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 								}
 							// Если IP-адрес не установлен
 							} else {
-								// Признак того, что MAC-адрес найден
-								bool found = false;
 								// Буфер MAC-адреса текущего интерфейса
 								uint8_t mac[6] = {0};
 								/**
-								 * Извлекаем MAC текущего интерфейса из уже полученного списка (без повторного системного вызова)
+								 * Извлекаем аппаратный адрес устройства из уже полученного списка
+								 *
+								 * @note Посредник обходится без повторного обращения к списку
+								 *       устройств, а не найдя канальной записи - её у Sun Solaris
+								 *       не бывает вовсе, - отыскивает адрес в кэше соседей
 								 */
-								for(struct ifaddrs * link = ptr; link != nullptr; link = link->ifa_next){
-									// Ищем запись канального уровня с тем же именем интерфейса
-									if((link->ifa_addr != nullptr) && (link->ifa_addr->sa_family == AF_LINK) && (link->ifa_name != nullptr) && (::strcmp(link->ifa_name, ifa->ifa_name) == 0)){
-										// Получаем текущее значение аппаратного сетевого адреса
-										struct sockaddr_dl * sdl = reinterpret_cast <struct sockaddr_dl *> (link->ifa_addr);
-										// Если длина MAC-адреса корректна
-										if(sdl->sdl_alen == 6){
-											// Копируем MAC-адрес в буфер
-											::memcpy(mac, LLADDR(sdl), 6);
-											// Помечаем, что MAC-адрес найден
-											found = true;
-										}
-										// Завершаем поиск
-										break;
-									}
-								}
+								const bool found = ::hwaddr(ptr, ifa->ifa_name, mac);
 								// Сравниваем MAC-адреса
 								if(found && (::memcmp(mac, &awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], 6) == 0)){
 									// Устанавливаем название сетевого интерфейса
@@ -1613,29 +1675,16 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 								}
 							// Если IP-адрес не установлен
 							} else {
-								// Признак того, что MAC-адрес найден
-								bool found = false;
 								// Буфер MAC-адреса текущего интерфейса
 								uint8_t mac[6] = {0};
 								/**
-								 * Извлекаем MAC текущего интерфейса из уже полученного списка (без повторного системного вызова)
+								 * Извлекаем аппаратный адрес устройства из уже полученного списка
+								 *
+								 * @note Посредник обходится без повторного обращения к списку
+								 *       устройств, а не найдя канальной записи - её у Sun Solaris
+								 *       не бывает вовсе, - отыскивает адрес в кэше соседей
 								 */
-								for(struct ifaddrs * link = ptr; link != nullptr; link = link->ifa_next){
-									// Ищем запись канального уровня с тем же именем интерфейса
-									if((link->ifa_addr != nullptr) && (link->ifa_addr->sa_family == AF_LINK) && (link->ifa_name != nullptr) && (::strcmp(link->ifa_name, ifa->ifa_name) == 0)){
-										// Получаем текущее значение аппаратного сетевого адреса
-										struct sockaddr_dl * sdl = reinterpret_cast <struct sockaddr_dl *> (link->ifa_addr);
-										// Если длина MAC-адреса корректна
-										if(sdl->sdl_alen == 6){
-											// Копируем MAC-адрес в буфер
-											::memcpy(mac, LLADDR(sdl), 6);
-											// Помечаем, что MAC-адрес найден
-											found = true;
-										}
-										// Завершаем поиск
-										break;
-									}
-								}
+								const bool found = ::hwaddr(ptr, ifa->ifa_name, mac);
 								// Сравниваем MAC-адреса
 								if(found && (::memcmp(mac, &awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], 6) == 0)){
 									// Устанавливаем название сетевого интерфейса
