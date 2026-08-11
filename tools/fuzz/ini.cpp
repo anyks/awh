@@ -316,18 +316,32 @@ namespace {
 		 * Выполняем внесение искажений в текст настроек
 		 */
 		for(uint32_t i = 0; i < count; i++){
+			// Разновидность вносимого искажения
+			const uint32_t kind = (engine() % 4);
+			/**
+			 * Положение вносимого искажения
+			 *
+			 * @note Обращения к источнику разнесены по отдельным предложениям
+			 *       намеренно: порядок вычисления доводов одного выражения языком
+			 *       не определён, и два обращения в одном выражении давали бы разную
+			 *       последовательность у разных построителей. Прогон обязан
+			 *       воспроизводиться не только на своей машине
+			 */
+			const size_t place = (engine() % text.length());
+			// Знак, вносимый искажением
+			const char letter = static_cast <char> (engine() % 256);
 			/**
 			 * Выполняем выборку разновидности искажения
 			 */
-			switch(engine() % 4){
+			switch(kind){
 				// Выполняем замену произвольного знака
-				case 0: text.at(engine() % text.length()) = static_cast <char> (engine() % 256); break;
+				case 0: text.at(place) = letter; break;
 				// Выполняем обрезание текста настроек
-				case 1: text.resize(engine() % text.length()); break;
+				case 1: text.resize(place); break;
 				// Выполняем вставку произвольного знака
-				case 2: text.insert(engine() % text.length(), 1, static_cast <char> (engine() % 256)); break;
+				case 2: text.insert(place, 1, letter); break;
 				// Выполняем удаление произвольного знака
-				case 3: text.erase(engine() % text.length(), 1); break;
+				case 3: text.erase(place, 1); break;
 			}
 			// Если текст настроек опустел, то порчу прекращаем
 			if(text.empty())
