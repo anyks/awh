@@ -831,6 +831,16 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 					 * Если знак недопустим в разметке
 					 */
 					if((letter < 0x20) && (letter != 0x09) && (letter != 0x0A) && (letter != 0x0D)){
+						/**
+						 * Выполняем добавление проверенного отрезка к приведённому тексту
+						 *
+						 * @note Проверенное переносится целыми отрезками по их окончании, и отказ
+						 *       посреди отрезка отбросил бы уже проверенное его начало. Разбор выдаёт
+						 *       события по приведённому тексту, и потеря начала отрезка отняла бы у
+						 *       него события всей уже пройденной разметки: выдача разбора зависела бы
+						 *       тогда от того, где легла граница куска исходного текста
+						 */
+						result.append(data + begin, offset - begin);
 						// Запоминаем код ошибки приведения
 						this->_error = error_t::INVALID_CHARACTER;
 						// Выводим отрицательный результат выполнения операции
@@ -855,6 +865,8 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 					 * Если последовательность знака построена ошибочно
 					 */
 					if((letter < 0xC2) || ((static_cast <uint8_t> (data[offset + 1]) & 0xC0) != 0x80)){
+						// Выполняем добавление проверенного отрезка к приведённому тексту
+						result.append(data + begin, offset - begin);
 						// Запоминаем код ошибки приведения
 						this->_error = error_t::INVALID_ENCODING;
 						// Выводим отрицательный результат выполнения операции
@@ -888,6 +900,8 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 					if(((second & 0xC0) != 0x80) || ((third & 0xC0) != 0x80) ||
 					   ((letter == 0xE0) && (second < 0xA0)) ||
 					   ((letter == 0xED) && (second >= 0xA0))){
+						// Выполняем добавление проверенного отрезка к приведённому тексту
+						result.append(data + begin, offset - begin);
 						// Запоминаем код ошибки приведения
 						this->_error = error_t::INVALID_ENCODING;
 						// Выводим отрицательный результат выполнения операции
@@ -900,6 +914,8 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 					 *       отведённые договором о всеобщей кодировке под неназначенные
 					 */
 					if((letter == 0xEF) && (second == 0xBF) && ((third == 0xBE) || (third == 0xBF))){
+						// Выполняем добавление проверенного отрезка к приведённому тексту
+						result.append(data + begin, offset - begin);
 						// Запоминаем код ошибки приведения
 						this->_error = error_t::INVALID_CHARACTER;
 						// Выводим отрицательный результат выполнения операции
@@ -922,6 +938,8 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 					 * Если исходный текст на этом окончен
 					 */
 					if(end){
+						// Выполняем добавление проверенного отрезка к приведённому тексту
+						result.append(data + begin, offset - begin);
 						// Запоминаем код ошибки приведения
 						this->_error = error_t::INVALID_ENCODING;
 						// Выводим отрицательный результат выполнения операции
@@ -940,6 +958,8 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 				 * Если последовательность знака построена ошибочно
 				 */
 				if(code == INVALID_CODEPOINT){
+					// Выполняем добавление проверенного отрезка к приведённому тексту
+					result.append(data + begin, offset - begin);
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_ENCODING;
 					// Выводим отрицательный результат выполнения операции
@@ -949,6 +969,8 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 				 * Если знак недопустим в разметке
 				 */
 				if(!isChar(code)){
+					// Выполняем добавление проверенного отрезка к приведённому тексту
+					result.append(data + begin, offset - begin);
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_CHARACTER;
 					// Выводим отрицательный результат выполнения операции

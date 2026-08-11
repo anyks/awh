@@ -67,6 +67,7 @@ if (${GTest_FOUND})
         # Источники для сборки юнит-тестов
         SET(${PROJECT_NAME}_UNITTEST_SOURCES
             ../main.cpp
+            xml/common.cpp
             xml/encoding.cpp
             xml/reader.cpp
             xml/document.cpp

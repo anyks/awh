@@ -1,6 +1,6 @@
 /**
- * @file: kqueue.cpp
- * @date: 2025-11-06
+ * @file: ports.cpp
+ * @date: 2026-08-11
  * @license: LicenseRef-AWH-1.0
  *
  * @telegram: @forman
@@ -10,13 +10,43 @@
  * @site: https://anyks.com
  *
  * @brief Реализация асинхронного движка ввода-вывода —
- *        цикл событий поверх нативных механизмов операционной системы (kqueue),
+ *        цикл событий поверх очереди оповещений Sun Solaris и illumos (Event Ports),
  *        управление подписками на сокеты, файлы и каталоги, внутренние таймеры и списки контроля доступа
  *
- * @copyright: Copyright © 2025
+ * @details ПОДПИСКА ЗДЕСЬ ОДНОКРАТНА. Выдав оповещение, ядро снимает связь дескриптора
+ *          с портом, и следующего оповещения не будет, пока связь не заведут снова.
+ *          Оттого всякий разбор выданного оповещения обязан заканчиваться перевзводом.
+ *          Ловушка в том, что в движке kqueue, с которого этот снят, места перевзвода
+ *          выглядят ОТСУТСТВИЕМ кода: там подписка держится сама. Пропущенный перевзвод
+ *          не даёт ни ошибки, ни записи в журнал - события просто перестают приходить,
+ *          и выглядит это зависанием
+ *
+ * @warning Перевзвод на каждое событие выглядит расточительством, и соблазн заменить
+ *          его на «/dev/poll», где подписка постоянна, а изменения уходят пачкой,
+ *          возникает сам собой: по числу обращений к ядру «/dev/poll» выигрывает на
+ *          ДВА ПОРЯДКА. ДЕЛАТЬ ЭТОГО НЕ СЛЕДУЕТ, и вот замер, почему.
+ *
+ *          Стенд «tools/benchmark/queues», обе системы, 11.08.2026. Работающих сокетов
+ *          постоянно десять, заведённых всё больше:
+ *
+ *            заведено   Solaris devpoll / ports   illumos devpoll / ports
+ *               1 000       111 000 /  84 000        293 000 / 221 000
+ *              10 000        91 000 /  85 000        218 000 / 216 000
+ *              30 000        53 000 /  86 000        100 000 / 216 000  (событий в секунду)
+ *
+ *          Event Ports держат выработку РОВНО при любом наборе, «/dev/poll» проседает
+ *          втрое уже на тридцати тысячах. Причина в том, что «/dev/poll» расходует по
+ *          числу ЗАВЕДЁННЫХ сокетов, а Event Ports - по числу СРАБОТАВШИХ. Перелом
+ *          лежит около десяти тысяч; на сотнях тысяч соединений «/dev/poll» негоден,
+ *          и заменили его ровно за это.
+ *
+ *          Отсюда общий вывод, который стоит держать в уме и за пределами этого файла:
+ *          число обращений к ядру - НЕ мера производительности. Здесь Event Ports
+ *          делают 33 300 вызовов против 301 и выигрывают вдвое
+ *
+ * @copyright: Copyright © 2026
  *
  */
-
 /**
  * Если размер пакета для таймеров не определён
  */
@@ -4564,55 +4594,205 @@ namespace events {
 		}
 	}
 	/**
-	 * @brief Функция добавления события в список изменений
+	 * @brief Желаемый набор событий по дескриптору
 	 *
-	 * @param ev объект события для добавления
+	 * @details Заведён ради того, чего у kqueue не требуется вовсе. Там чтение и
+	 *          запись - ДВА НЕЗАВИСИМЫХ фильтра на одном дескрипторе: подписались на
+	 *          чтение, отдельно на запись, сняли одно - второе живёт своей жизнью.
+	 *          У Event Ports связь с дескриптором ОДНА, и набор ожидаемых событий у
+	 *          неё один: повторное заведение не добавляет к прежнему набору, а
+	 *          ЗАМЕНЯЕТ его целиком
+	 *
+	 * @warning Оттого подписку на чтение и на запись нельзя заводить порознь: завести
+	 *          связь ради записи означает молча снять чтение. Здесь хранится то, чего
+	 *          узел хочет В СОВОКУПНОСТИ, и связь заводится по этой совокупности, а не
+	 *          по тому месту, откуда пришёл вызов. Ошибка «включили запись, потеряли
+	 *          чтение» становится невозможной по устройству, а не по внимательности
 	 *
 	 */
-	static void add(struct kevent && ev) noexcept {
+	static unordered_map <awh::net::socket_t, int32_t> __awh_wanted__;
+
+	/**
+	 * @brief Функция сведения желаемого набора событий и заведения связи
+	 *
+	 * @details Складывает или снимает разряды набора для дескриптора и заводит связь
+	 *          по тому, что осталось. Пустой набор означает, что дескриптор никому
+	 *          больше не нужен - связь снимается целиком
+	 *
+	 * @note Заведение связи здесь НЕМЕДЛЕННОЕ. Накопить пакет изменений и отдать его
+	 *       ядру одним обращением, как это делает kqueue, у Event Ports нечем:
+	 *       port_associate принимает ровно один дескриптор. Плата за это замерена и
+	 *       признана выгодной - довод в заголовке файла
+	 *
+	 * @param sock   дескриптор, для которого меняется набор
+	 * @param events разряды набора событий
+	 * @param mode   режим правки набора: сложить разряды либо снять их
+	 * @param udata  пользовательские данные оповещения
+	 * @param log    объект работы с логами
+	 * @return       результат правки набора
+	 *
+	 */
+	static bool wanted(const awh::net::socket_t sock, const int32_t events, const bool mode, void * udata, const awh::log_t * log) noexcept {
+		// Получаем прежний желаемый набор событий дескриптора
+		auto i = ::events::__awh_wanted__.find(sock);
+		// Получаем набор событий, каким он был до правки
+		const int32_t before = ((i != ::events::__awh_wanted__.end()) ? i->second : 0);
+		// Получаем набор событий, каким он станет после правки
+		const int32_t after = (mode ? (before | events) : (before & ~events));
+		// Если набор событий не изменился, ядро тревожить незачем
+		if(after == before)
+			// Выводим результат
+			return true;
+		// Если желаемых событий не осталось вовсе
+		if(after == 0){
+			// Если запись о дескрипторе заведена
+			if(i != ::events::__awh_wanted__.end())
+				// Снимаем запись о желаемом наборе событий
+				::events::__awh_wanted__.erase(i);
+			// Снимаем связь дескриптора с очередью оповещений
+			return ::ports::dissociate(sock, log);
+		}
+		// Запоминаем новый желаемый набор событий дескриптора
+		::events::__awh_wanted__[sock] = after;
+		// Заводим связь дескриптора с очередью по всему желаемому набору
+		return ::ports::associate(sock, after, udata, log);
+	}
+
+	/**
+	 * @brief Функция снятия дескриптора с учёта целиком
+	 *
+	 * @details Зовётся перед закрытием дескриптора. У BSD снятие приходилось делать
+	 *          по фильтру на каждый вид подписки - отдельно чтение, отдельно запись.
+	 *          Здесь связь с дескриптором ОДНА, и снимается она разом, чем бы он ни
+	 *          был занят
+	 *
+	 * @warning Запись о желаемом наборе снимается ОБЯЗАТЕЛЬНО: номер закрытого
+	 *          дескриптора система выдаст другому объекту, и оставшаяся запись
+	 *          завела бы ему чужую подписку
+	 *
+	 * @param sock дескриптор, снимаемый с учёта
+	 * @param log  объект работы с логами
+	 *
+	 */
+	static void forget(const awh::net::socket_t sock, const awh::log_t * log) noexcept {
+		// Если дескриптор не действительный, снимать нечего
+		if(sock == awh::net::invalid_socket_t)
+			// Выходим из функции
+			return;
+		// Получаем запись о желаемом наборе событий дескриптора
+		auto i = ::events::__awh_wanted__.find(sock);
+		// Если запись о желаемом наборе заведена
+		if(i != ::events::__awh_wanted__.end())
+			// Снимаем запись о желаемом наборе событий
+			::events::__awh_wanted__.erase(i);
+		// Снимаем связь дескриптора с очередью оповещений
+		::ports::dissociate(sock, log);
+	}
+
+	/**
+	 * @brief Функция перевзвода связи дескриптора после выданного оповещения
+	 *
+	 * @details Зовётся разбором оповещения и ничем иным. Выдав оповещение, ядро
+	 *          снимает связь, и без перевзвода следующего оповещения не будет
+	 *
+	 * @warning Перевзвод идёт по СОХРАНЁННОМУ желаемому набору, а не по тому, что
+	 *          пришло в оповещении: пришла готовность к чтению, а узел ждёт ещё и
+	 *          записи - перевзвод одним чтением потерял бы запись
+	 *
+	 * @param sock  дескриптор, связь которого перевзводится
+	 * @param udata пользовательские данные оповещения
+	 * @param log   объект работы с логами
+	 * @return      результат перевзвода связи
+	 *
+	 */
+	static bool rearm(const awh::net::socket_t sock, void * udata, const awh::log_t * log) noexcept {
+		// Получаем желаемый набор событий дескриптора
+		auto i = ::events::__awh_wanted__.find(sock);
+		// Если желаемого набора нет, дескриптор снят с учёта и перевзводить нечего
+		if(i == ::events::__awh_wanted__.end())
+			// Выводим результат
+			return true;
+		// Заводим связь дескриптора с очередью по всему желаемому набору
+		return ::ports::associate(sock, i->second, udata, log);
+	}
+
+	/**
+	 * @brief Структура изменения подписки
+	 *
+	 * @details Заменяет собой структуру kevent, какой изменения описывались у BSD.
+	 *          Полей у неё меньше и они иные: у kqueue изменение несёт фильтр и набор
+	 *          признаков, здесь - источник оповещения и разряды ожидаемых событий
+	 *
+	 */
+	typedef struct Change {
+		bool mode;                  // Режим изменения: завести подписку либо снять её
+		int32_t source;             // Источник оповещения очереди
+		int32_t events;             // Разряды ожидаемых событий
+		awh::net::socket_t sock;    // Дескриптор либо опознаватель оповещения
+		void * udata;               // Пользовательские данные оповещения
 		/**
-		 * Если включён режим отладки
+		 * @brief Конструктор
+		 *
+		 * @param mode   режим изменения подписки
+		 * @param source источник оповещения очереди
+		 * @param events разряды ожидаемых событий
+		 * @param sock   дескриптор либо опознаватель оповещения
+		 * @param udata  пользовательские данные оповещения
+		 *
 		 */
-		#if DEBUG_MODE
-			// Устанавливаем флаг EV_RECEIPT для получения результата активации события
-			ev.flags |= EV_RECEIPT;
-		#endif
+		explicit Change(const bool mode, const int32_t source, const int32_t events, const awh::net::socket_t sock, void * udata) noexcept :
+		 mode(mode), source(source), events(events), sock(sock), udata(udata) {}
+		/**
+		 * @brief Конструктор
+		 *
+		 * @note Пустое изменение нужно оттого, что оно объявляется ДО ветвления, а
+		 *       заполняется уже в ветвях - так устроены места смены подписки
+		 *
+		 */
+		explicit Change() noexcept :
+		 mode(false), source(0), events(0), sock(awh::net::invalid_socket_t), udata(nullptr) {}
+	} change_t;
+
+	/**
+	 * @brief Функция применения изменения подписки
+	 *
+	 * @details У BSD изменения копились в пакет и уходили в ядро одним обращением
+	 *          вместе с ожиданием. У Event Ports накопить их нечем - port_associate
+	 *          принимает ровно один дескриптор, - поэтому изменение применяется здесь
+	 *          же, немедленно. Замер платы за это и довод в её пользу - в заголовке файла
+	 *
+	 * @warning Подписка по дескриптору идёт ЧЕРЕЗ желаемый набор, а не напрямую: связь
+	 *          с дескриптором одна, и заводить чтение с записью порознь нельзя
+	 *
+	 * @param change изменение подписки для применения
+	 * @param log    объект работы с логами
+	 *
+	 */
+	static bool add(change_t && change, const awh::log_t * log) noexcept {
 		// Если изменение является взводом таймера дедлайнов, отмечаем его отложенным
-		if((ev.filter == EVFILT_TIMER) && (ev.ident == 0))
+		if((change.source == PORT_SOURCE_TIMER) && (change.sock == 0))
 			// Взводим признак отложенного взвода таймера дедлайнов
 			::events::__awh_timer_deferred__ = true;
-		/**
-		 * Линейный поиск (для пакетов < 100 событий — быстрее хэш-таблицы!)
-		 */
-		for(auto & item : ::local::change){
-			// Если нашли событие с таким же ident, filter и flags
-			if((item.ident == ev.ident) && (item.filter == ev.filter) && (item.flags == ev.flags)){
-				// Заменяем старое событие новым (последнее побеждает)
-				item = ::move(ev);
-				// Выходим из функции, так как событие уже добавлено
-				return;
-			}
-		}
 		// Получаем текущее значение узла
-		::io::node_t * node = reinterpret_cast <::io::node_t *> (ev.udata);
+		::io::node_t * node = reinterpret_cast <::io::node_t *> (change.udata);
 		// Если за событием стоит узел, а не внутренний таймер дедлайнов
-		if((node != nullptr) && (ev.udata != ::local::internal)){
+		if((node != nullptr) && (change.udata != ::local::internal)){
 			/**
 			 * @note Подписки по дескриптору для узла, помеченного на уничтожение,
-			 *       в список изменений не попадают. Его дескриптор к этому моменту
-			 *       уже закрыт, а освободившийся номер операционная система успевает
-			 *       выдать другому объекту - вплоть до самой очереди событий, подписка
-			 *       которой на саму себя отвергается ядром. Пользовательские события
-			 *       и таймеры под это правило не подпадают: они работают не по
-			 *       дескриптору, и именно ими завершается уничтожение узла.
+			 *       не заводятся вовсе. Его дескриптор к этому моменту уже закрыт, а
+			 *       освободившийся номер операционная система успевает выдать другому
+			 *       объекту - вплоть до самой очереди событий, подписка которой на саму
+			 *       себя отвергается ядром. Пользовательские события и таймеры под это
+			 *       правило не подпадают: они работают не по дескриптору, и именно ими
+			 *       завершается уничтожение узла.
 			 *
 			 */
 			// Если узел подлежит уничтожению
 			if((node->state.status == event::status_t::DESTROYED) || (node->state.status == event::status_t::GARBAGE)){
 				// Если подписка выполняется по дескриптору
-				if((ev.filter == EVFILT_READ) || (ev.filter == EVFILT_WRITE) || (ev.filter == EVFILT_VNODE))
-					// Выходим из функции, не добавляя запись в список изменений
-					return;
+				if((change.source == PORT_SOURCE_FD) || (change.source == PORT_SOURCE_FILE))
+					// Выходим из функции, не заводя подписку
+					return false;
 			}
 			/**
 			 * Определяем чем является текущий узел
@@ -4834,8 +5014,21 @@ namespace events {
 				} break;
 			}
 		}
-		// Добавляем новое событие в список изменений
-		::local::change.push_back(::move(ev));
+		/**
+		 * Применяем изменение подписки немедленно
+		 */
+		switch(change.source){
+			// Если подписка выполняется по дескриптору
+			case PORT_SOURCE_FD:
+				// Правим желаемый набор событий дескриптора и заводим связь по нему
+				return ::events::wanted(change.sock, change.events, change.mode, change.udata, log);
+			// Если подача является пользовательским оповещением
+			case PORT_SOURCE_USER:
+				// Подаём пользовательское оповещение в очередь
+				return ::ports::notify(change.events, change.udata, log);
+		}
+		// Выводим результат
+		return true;
 	}
 	/**
 	 * @brief Функция активации/деактивации событий готовности сокета к чтению
@@ -4872,12 +5065,12 @@ namespace events {
 							// Если передан режим активации события
 							case static_cast <uint8_t> (event::mode_t::ENABLED):
 								// Активируем событие готовности сокета к чтению
-								EV_SET(&event, sock, EVFILT_READ, EV_ENABLE, 0, 0, node);
+								event = ::events::change_t(true, PORT_SOURCE_FD, POLLIN, sock, node);
 							break;
 							// Если передан режим деактивации события
 							case static_cast <uint8_t> (event::mode_t::DISABLED):
 								// Деактивируем событие готовности сокета к чтению
-								EV_SET(&event, sock, EVFILT_READ, EV_DISABLE, 0, 0, node);
+								event = ::events::change_t(false, PORT_SOURCE_FD, POLLIN, sock, node);
 							break;
 						}
 						// Активируем событие в ядре операционной системы через Kqueue
@@ -4908,12 +5101,12 @@ namespace events {
 							// Если передан режим активации события
 							case static_cast <uint8_t> (event::mode_t::ENABLED): {
 								// Активируем событие готовности сокета к чтению
-								EV_SET(&event, sock, EVFILT_READ, EV_ENABLE, 0, 0, node);
+								event = ::events::change_t(true, PORT_SOURCE_FD, POLLIN, sock, node);
 							} break;
 							// Если передан режим деактивации события
 							case static_cast <uint8_t> (event::mode_t::DISABLED):
 								// Деактивируем событие готовности сокета к чтению
-								EV_SET(&event, sock, EVFILT_READ, EV_DISABLE, 0, 0, node);
+								event = ::events::change_t(false, PORT_SOURCE_FD, POLLIN, sock, node);
 							break;
 						}
 						// Добавляем новое событие в список изменений
@@ -4977,12 +5170,12 @@ namespace events {
 							// Если передан режим активации события
 							case static_cast <uint8_t> (event::mode_t::ENABLED):
 								// Активируем событие готовности сокета к записи
-								EV_SET(&event, sock, EVFILT_WRITE, EV_ADD | EV_ONESHOT, 0, 0, node);
+								event = ::events::change_t(true, PORT_SOURCE_FD, POLLOUT, sock, node);
 							break;
 							// Если передан режим деактивации события
 							case static_cast <uint8_t> (event::mode_t::DISABLED):
 								// Деактивируем событие готовности сокета к записи
-								EV_SET(&event, sock, EVFILT_WRITE, EV_DELETE, 0, 0, nullptr);
+								event = ::events::change_t(false, PORT_SOURCE_FD, POLLOUT, sock, nullptr);
 							break;
 						}
 						// Активируем событие в ядре операционной системы через Kqueue
@@ -5013,12 +5206,12 @@ namespace events {
 							// Если передан режим активации события
 							case static_cast <uint8_t> (event::mode_t::ENABLED):
 								// Активируем событие готовности сокета к записи
-								EV_SET(&event, sock, EVFILT_WRITE, EV_ADD | EV_ONESHOT, 0, 0, node);
+								event = ::events::change_t(true, PORT_SOURCE_FD, POLLOUT, sock, node);
 							break;
 							// Если передан режим деактивации события
 							case static_cast <uint8_t> (event::mode_t::DISABLED):
 								// Деактивируем событие готовности сокета к записи
-								EV_SET(&event, sock, EVFILT_WRITE, EV_DELETE, 0, 0, nullptr);
+								event = ::events::change_t(false, PORT_SOURCE_FD, POLLOUT, sock, nullptr);
 							break;
 						}
 						// Добавляем новое событие в список изменений
@@ -26557,7 +26750,7 @@ namespace io {
 										// Создаём объект события для Kqueue
 										struct kevent event{};
 										// Деактивируем событие на чтение данных из сокета
-										EV_SET(&event, ipc->transfer.fd, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
+										event = ::events::change_t(false, PORT_SOURCE_FD, POLLIN, ipc->transfer.fd, nullptr);
 										// Добавляем новое событие в список изменений
 										::events::add(::move(event));
 									// Если Kqueue не инициализирован
@@ -26732,7 +26925,7 @@ namespace io {
 										// Создаём объект события для Kqueue
 										struct kevent event{};
 										// Деактивируем событие на чтение данных из сокета
-										EV_SET(&event, tunnel->fd, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
+										event = ::events::change_t(false, PORT_SOURCE_FD, POLLIN, tunnel->fd, nullptr);
 										// Добавляем новое событие в список изменений
 										::events::add(::move(event));
 									// Если Kqueue не инициализирован
@@ -26992,7 +27185,7 @@ namespace io {
 										// Создаём объект события для Kqueue
 										struct kevent event{};
 										// Деактивируем событие на чтение данных из сокета
-										EV_SET(&event, server->fd, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
+										event = ::events::change_t(false, PORT_SOURCE_FD, POLLIN, server->fd, nullptr);
 										// Добавляем новое событие в список изменений
 										::events::add(::move(event));
 									// Если Kqueue не инициализирован
@@ -29908,7 +30101,7 @@ namespace io {
 								// Создаём объект события для Kqueue
 								struct kevent event{};
 								// Устанавливаем событие на чтение и активируем его
-								EV_SET(&event, peer->transfer.fd, EVFILT_READ, EV_ADD, 0, 0, peer);
+								event = ::events::change_t(true, PORT_SOURCE_FD, POLLIN, peer->transfer.fd, peer);
 								// Добавляем новое событие в список изменений
 								::events::add(::move(event));
 								// Отмечаем активность чтения данных
@@ -36172,7 +36365,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 									// Создаём объект события для Kqueue
 									struct kevent event{};
 									// Устанавливаем событие на чтение и активируем его
-									EV_SET(&event, ipc->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, ipc);
+									event = ::events::change_t(true, PORT_SOURCE_FD, POLLIN, ipc->transfer.fd, ipc);
 									// Добавляем новое событие в список изменений
 									::events::add(::move(event));
 									// Устанавливаем флаг разрешающий выполнять чтение из сокета
@@ -36338,7 +36531,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							// Создаём объект события для Kqueue
 							struct kevent event{};
 							// Устанавливаем событие на чтение и активируем его
-							EV_SET(&event, tunnel->fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, tunnel);
+							event = ::events::change_t(true, PORT_SOURCE_FD, POLLIN, tunnel->fd, tunnel);
 							// Добавляем новое событие в список изменений
 							::events::add(::move(event));
 							// Устанавливаем флаг разрешающий выполнять чтение из сокета
@@ -36590,7 +36783,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 												// Создаём объект события для Kqueue
 												struct kevent event{};
 												// Устанавливаем событие на чтение но отключаем его
-												EV_SET(&event, client->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, client);
+												event = ::events::change_t(true, PORT_SOURCE_FD, POLLIN, client->transfer.fd, client);
 												// Добавляем новое событие в список изменений
 												::events::add(::move(event));
 												// Устанавливаем флаг разрешающий выполнять чтение из сокета
@@ -36682,7 +36875,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 												// Создаём объект события для Kqueue
 												struct kevent event{};
 												// Устанавливаем событие на чтение но отключаем его
-												EV_SET(&event, client->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, client);
+												event = ::events::change_t(true, PORT_SOURCE_FD, POLLIN, client->transfer.fd, client);
 												// Добавляем новое событие в список изменений
 												::events::add(::move(event));
 												// Устанавливаем флаг разрешающий выполнять чтение из сокета
@@ -36990,7 +37183,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 														// Создаём объект события для Kqueue
 														struct kevent event{};
 														// Устанавливаем событие на чтение но отключаем его
-														EV_SET(&event, client->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, client);
+														event = ::events::change_t(true, PORT_SOURCE_FD, POLLIN, client->transfer.fd, client);
 														// Добавляем новое событие в список изменений
 														::events::add(::move(event));
 														// Устанавливаем флаг разрешающий выполнять чтение из сокета
@@ -37184,7 +37377,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															// Создаём объект события для Kqueue
 															struct kevent event{};
 															// Устанавливаем событие на чтение но отключаем его
-															EV_SET(&event, client->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, client);
+															event = ::events::change_t(true, PORT_SOURCE_FD, POLLIN, client->transfer.fd, client);
 															// Добавляем новое событие в список изменений
 															::events::add(::move(event));
 															// Устанавливаем флаг разрешающий выполнять чтение из сокета
@@ -37226,7 +37419,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		// Создаём объект события для Kqueue
 																		struct kevent event{};
 																		// Устанавливаем событие на чтение но отключаем его
-																		EV_SET(&event, client->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, client);
+																		event = ::events::change_t(true, PORT_SOURCE_FD, POLLIN, client->transfer.fd, client);
 																		// Добавляем новое событие в список изменений
 																		::events::add(::move(event));
 																		// Устанавливаем флаг разрешающий выполнять чтение из сокета
@@ -37323,7 +37516,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		// Создаём объект события для Kqueue
 																		struct kevent event{};
 																		// Устанавливаем событие на чтение но отключаем его
-																		EV_SET(&event, client->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, client);
+																		event = ::events::change_t(true, PORT_SOURCE_FD, POLLIN, client->transfer.fd, client);
 																		// Добавляем новое событие в список изменений
 																		::events::add(::move(event));
 																		// Устанавливаем флаг разрешающий выполнять чтение из сокета
@@ -37414,7 +37607,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																			// Создаём объект события для Kqueue
 																			struct kevent event{};
 																			// Устанавливаем событие на чтение но отключаем его
-																			EV_SET(&event, client->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, client);
+																			event = ::events::change_t(true, PORT_SOURCE_FD, POLLIN, client->transfer.fd, client);
 																			// Добавляем новое событие в список изменений
 																			::events::add(::move(event));
 																			// Устанавливаем флаг разрешающий выполнять чтение из сокета
@@ -37537,7 +37730,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	// Создаём объект события для Kqueue
 																	struct kevent event{};
 																	// Устанавливаем событие на чтение но отключаем его
-																	EV_SET(&event, client->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, client);
+																	event = ::events::change_t(true, PORT_SOURCE_FD, POLLIN, client->transfer.fd, client);
 																	// Добавляем новое событие в список изменений
 																	::events::add(::move(event));
 																	// Устанавливаем флаг разрешающий выполнять чтение из сокета
@@ -37773,7 +37966,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															// Создаём объект события для Kqueue
 															struct kevent event{};
 															// Устанавливаем событие на чтение но отключаем его
-															EV_SET(&event, client->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, client);
+															event = ::events::change_t(true, PORT_SOURCE_FD, POLLIN, client->transfer.fd, client);
 															// Добавляем новое событие в список изменений
 															::events::add(::move(event));
 															// Устанавливаем флаг разрешающий выполнять чтение из сокета
@@ -37820,7 +38013,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		// Создаём объект события для Kqueue
 																		struct kevent event{};
 																		// Устанавливаем событие на чтение но отключаем его
-																		EV_SET(&event, client->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, client);
+																		event = ::events::change_t(true, PORT_SOURCE_FD, POLLIN, client->transfer.fd, client);
 																		// Добавляем новое событие в список изменений
 																		::events::add(::move(event));
 																		// Устанавливаем флаг разрешающий выполнять чтение из сокета
@@ -37922,7 +38115,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		// Создаём объект события для Kqueue
 																		struct kevent event{};
 																		// Устанавливаем событие на чтение но отключаем его
-																		EV_SET(&event, client->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, client);
+																		event = ::events::change_t(true, PORT_SOURCE_FD, POLLIN, client->transfer.fd, client);
 																		// Добавляем новое событие в список изменений
 																		::events::add(::move(event));
 																		// Устанавливаем флаг разрешающий выполнять чтение из сокета
@@ -38025,7 +38218,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																			// Создаём объект события для Kqueue
 																			struct kevent event{};
 																			// Устанавливаем событие на чтение но отключаем его
-																			EV_SET(&event, client->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, client);
+																			event = ::events::change_t(true, PORT_SOURCE_FD, POLLIN, client->transfer.fd, client);
 																			// Добавляем новое событие в список изменений
 																			::events::add(::move(event));
 																			// Устанавливаем флаг разрешающий выполнять чтение из сокета
@@ -38157,7 +38350,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	// Создаём объект события для Kqueue
 																	struct kevent event{};
 																	// Устанавливаем событие на чтение но отключаем его
-																	EV_SET(&event, client->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, client);
+																	event = ::events::change_t(true, PORT_SOURCE_FD, POLLIN, client->transfer.fd, client);
 																	// Добавляем новое событие в список изменений
 																	::events::add(::move(event));
 																	// Устанавливаем флаг разрешающий выполнять чтение из сокета
@@ -38451,7 +38644,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 												// Создаём объект события для Kqueue
 												struct kevent event{};
 												// Устанавливаем событие на чтение но отключаем его
-												EV_SET(&event, server->fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, server);
+												event = ::events::change_t(true, PORT_SOURCE_FD, POLLIN, server->fd, server);
 												// Добавляем новое событие в список изменений
 												::events::add(::move(event));
 												// Устанавливаем флаг разрешающий выполнять чтение из сокета
@@ -38527,7 +38720,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 												// Создаём объект события для Kqueue
 												struct kevent event{};
 												// Устанавливаем событие на чтение но отключаем его
-												EV_SET(&event, server->fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, server);
+												event = ::events::change_t(true, PORT_SOURCE_FD, POLLIN, server->fd, server);
 												// Добавляем новое событие в список изменений
 												::events::add(::move(event));
 												// Устанавливаем флаг разрешающий выполнять чтение из сокета
@@ -38761,7 +38954,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 														// Создаём объект события для Kqueue
 														struct kevent event{};
 														// Устанавливаем событие на чтение но отключаем его
-														EV_SET(&event, server->fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, server);
+														event = ::events::change_t(true, PORT_SOURCE_FD, POLLIN, server->fd, server);
 														// Добавляем новое событие в список изменений
 														::events::add(::move(event));
 														// Устанавливаем флаг разрешающий выполнять чтение из сокета
@@ -38926,7 +39119,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															// Создаём объект события для Kqueue
 															struct kevent event{};
 															// Устанавливаем событие на чтение но отключаем его
-															EV_SET(&event, server->fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, server);
+															event = ::events::change_t(true, PORT_SOURCE_FD, POLLIN, server->fd, server);
 															// Добавляем новое событие в список изменений
 															::events::add(::move(event));
 															// Устанавливаем флаг разрешающий выполнять чтение из сокета
@@ -39098,7 +39291,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															// Создаём объект события для Kqueue
 															struct kevent event{};
 															// Устанавливаем событие на чтение но отключаем его
-															EV_SET(&event, server->fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, server);
+															event = ::events::change_t(true, PORT_SOURCE_FD, POLLIN, server->fd, server);
 															// Добавляем новое событие в список изменений
 															::events::add(::move(event));
 															// Устанавливаем флаг разрешающий выполнять чтение из сокета
@@ -66068,7 +66261,7 @@ void awh::engine::IO::clear() noexcept {
 									// Создаём объект события для Kqueue
 									struct kevent event{};
 									// Деактивируем событие на чтение данных из сокета
-									EV_SET(&event, ipc->transfer.fd, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
+									event = ::events::change_t(false, PORT_SOURCE_FD, POLLIN, ipc->transfer.fd, nullptr);
 									// Выполняем удаление события из списка ожидания
 									::kevent(::__awh_port__, &event, 1, nullptr, 0, nullptr);
 								}
@@ -66138,22 +66331,14 @@ void awh::engine::IO::clear() noexcept {
 						if(peer->transfer.fd != net::invalid_socket_t){
 							// Если в сокете нет ошибок
 							if(this->_eth.socket.getError(peer->transfer.fd) == 0){
-								// Количество событий для удаления
-								size_t count = 0;
-								// Объекты событий для удаления из списка ожидания
-								struct kevent events[2] = {0};
-								// Если активность на чтения данных установлена
-								if(peer->activity & ::activity::READ)
-									// Деактивируем событие на чтение данных из сокета
-									EV_SET(&events[count++], peer->transfer.fd, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
-								// Если активность на запись данных установлена
-								if(peer->activity & ::activity::WRITE)
-									// Деактивируем событие на запись данных в сокет
-									EV_SET(&events[count++], peer->transfer.fd, EVFILT_WRITE, EV_DELETE, 0, 0, nullptr);
-								// Если у нас есть события которые нужно удалить
-								if(count > 0)
-									// Выполняем удаление события из списка ожидания
-									::kevent(::__awh_port__, &events[0], count, nullptr, 0, nullptr);
+								/**
+								 * Снимаем дескриптор с учёта очереди целиком
+								 *
+								 * @note У BSD здесь снимались подписки по фильтру - отдельно чтение,
+								 *       отдельно запись. Связь с дескриптором тут одна, и разбирать
+								 *       по видам подписки незачем
+								 */
+								::events::forget(peer->transfer.fd, this->_log);
 							}
 							// Закрываем дескриптор сокета
 							::close(peer->transfer.fd);
@@ -66232,7 +66417,7 @@ void awh::engine::IO::clear() noexcept {
 									// Создаём объект события для Kqueue
 									struct kevent event{};
 									// Деактивируем событие на чтение данных из сокета
-									EV_SET(&event, tunnel->fd, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
+									event = ::events::change_t(false, PORT_SOURCE_FD, POLLIN, tunnel->fd, nullptr);
 									// Выполняем удаление события из списка ожидания
 									::kevent(::__awh_port__, &event, 1, nullptr, 0, nullptr);
 								}
@@ -66328,22 +66513,14 @@ void awh::engine::IO::clear() noexcept {
 						if(client->transfer.fd != net::invalid_socket_t){
 							// Если в сокете нет ошибок
 							if(this->_eth.socket.getError(client->transfer.fd) == 0){
-								// Количество событий для удаления
-								size_t count = 0;
-								// Объекты событий для удаления из списка ожидания
-								struct kevent events[2] = {0};
-								// Если активность на чтения данных установлена
-								if(client->activity & ::activity::READ)
-									// Деактивируем событие на чтение данных из сокета
-									EV_SET(&events[count++], client->transfer.fd, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
-								// Если активность на запись данных установлена
-								if(client->activity & ::activity::WRITE)
-									// Деактивируем событие на запись данных в сокет
-									EV_SET(&events[count++], client->transfer.fd, EVFILT_WRITE, EV_DELETE, 0, 0, nullptr);
-								// Если у нас есть события которые нужно удалить
-								if(count > 0)
-									// Выполняем удаление события из списка ожидания
-									::kevent(::__awh_port__, &events[0], count, nullptr, 0, nullptr);
+								/**
+								 * Снимаем дескриптор с учёта очереди целиком
+								 *
+								 * @note У BSD здесь снимались подписки по фильтру - отдельно чтение,
+								 *       отдельно запись. Связь с дескриптором тут одна, и разбирать
+								 *       по видам подписки незачем
+								 */
+								::events::forget(client->transfer.fd, this->_log);
 							}
 							// Закрываем дескриптор сокета
 							::close(client->transfer.fd);
@@ -66422,7 +66599,7 @@ void awh::engine::IO::clear() noexcept {
 									// Создаём объект события для Kqueue
 									struct kevent event{};
 									// Деактивируем событие на чтение данных из сокета
-									EV_SET(&event, server->fd, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
+									event = ::events::change_t(false, PORT_SOURCE_FD, POLLIN, server->fd, nullptr);
 									// Выполняем удаление события из списка ожидания
 									::kevent(::__awh_port__, &event, 1, nullptr, 0, nullptr);
 								}
@@ -66872,7 +67049,7 @@ bool awh::engine::IO::reinitialize() noexcept {
 							// Создаём объект события для Kqueue
 							struct kevent event{};
 							// Устанавливаем событие на чтение и активируем его
-							EV_SET(&event, peer->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, peer);
+							event = ::events::change_t(true, PORT_SOURCE_FD, POLLIN, peer->transfer.fd, peer);
 							// Добавляем новое событие в список изменений
 							::events::add(::move(event));
 							// Если событие чтения из сокета разрешено
@@ -66941,7 +67118,7 @@ bool awh::engine::IO::reinitialize() noexcept {
 							// Создаём объект события для Kqueue
 							struct kevent event{};
 							// Устанавливаем событие на чтение но отключаем его
-							EV_SET(&event, peer->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, peer);
+							event = ::events::change_t(true, PORT_SOURCE_FD, POLLIN, peer->transfer.fd, peer);
 							// Добавляем новое событие в список изменений
 							::events::add(::move(event));
 							// Увеличиваем значение итератора
@@ -67026,7 +67203,7 @@ bool awh::engine::IO::reinitialize() noexcept {
 							// Создаём объект события для Kqueue
 							struct kevent event{};
 							// Устанавливаем событие на чтение но отключаем его
-							EV_SET(&event, tunnel->fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, tunnel);
+							event = ::events::change_t(true, PORT_SOURCE_FD, POLLIN, tunnel->fd, tunnel);
 							// Добавляем новое событие в список изменений
 							::events::add(::move(event));
 						// Если событие находится в состоянии остановки
@@ -67041,7 +67218,7 @@ bool awh::engine::IO::reinitialize() noexcept {
 							// Создаём объект события для Kqueue
 							struct kevent event{};
 							// Активируем событие на чтение для серверного сокета
-							EV_SET(&event, tunnel->fd, EVFILT_READ, EV_ENABLE, 0, 0, tunnel);
+							event = ::events::change_t(true, PORT_SOURCE_FD, POLLIN, tunnel->fd, tunnel);
 							// Добавляем новое событие в список изменений
 							::events::add(::move(event));
 						}
@@ -67065,7 +67242,7 @@ bool awh::engine::IO::reinitialize() noexcept {
 							// Создаём объект события для Kqueue
 							struct kevent event{};
 							// Устанавливаем событие на чтение но отключаем его
-							EV_SET(&event, client->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, client);
+							event = ::events::change_t(true, PORT_SOURCE_FD, POLLIN, client->transfer.fd, client);
 							// Добавляем новое событие в список изменений
 							::events::add(::move(event));
 						// Если событие находится в состоянии остановки
@@ -67206,7 +67383,7 @@ bool awh::engine::IO::reinitialize() noexcept {
 							// Создаём объект события для Kqueue
 							struct kevent event{};
 							// Устанавливаем событие на чтение но отключаем его
-							EV_SET(&event, server->fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, server);
+							event = ::events::change_t(true, PORT_SOURCE_FD, POLLIN, server->fd, server);
 							// Добавляем новое событие в список изменений
 							::events::add(::move(event));
 						// Если событие находится в состоянии остановки

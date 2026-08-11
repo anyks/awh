@@ -472,3 +472,62 @@ TEST(CodecXmlEncoding, Ranges) {
 	// Выполняем проверку недопустимости пробела внутри имени
 	ASSERT_FALSE(xml::isName(' '));
 }
+/**
+ * @brief Проверка отклонения ошибочных построений в кодировках, кроме UTF-8
+ *
+ * @details Замер охвата показал, что до отказов приведения из кодировок UTF-16,
+ *          ISO-8859-1 и US-ASCII не доходило ни одно испытание, а ворошитель их не
+ *          достигает вовсе: он строит текст в UTF-8. Ход, ни разу не исполнявшийся,
+ *          не проверен ничем — код ошибки в нём может не отвечать поводу
+ *
+ */
+TEST(CodecXmlEncoding, MalformedEncodings) {
+	// Приведённый к кодировке UTF-8 текст
+	string result;
+	// Код ошибки приведения
+	xml::error_t error = xml::error_t::NONE;
+	// Определённая кодировка исходного текста
+	xml::encoding_t enc = xml::encoding_t::NONE;
+	/**
+	 * Выполняем проверку отклонения старшей половины суррогатной пары без младшей
+	 *
+	 * @note За старшей половиной стоит обычный знак: договор о всеобщей кодировке
+	 *       требует именно младшей половины, и всякое иное значение построение рушит
+	 */
+	ASSERT_FALSE(convert(string("\xFF\xFE\x3D\xD8\x41\x00", 6), 4096, result, error, enc));
+	// Выполняем проверку кода ошибки приведения
+	ASSERT_EQ(error, xml::error_t::INVALID_ENCODING);
+	// Выполняем проверку отклонения младшей половины суррогатной пары без старшей
+	ASSERT_FALSE(convert(string("\xFF\xFE\x00\xDE\x41\x00", 6), 4096, result, error, enc));
+	// Выполняем проверку кода ошибки приведения
+	ASSERT_EQ(error, xml::error_t::INVALID_ENCODING);
+	// Выполняем проверку отклонения знака, недопустимого в разметке
+	ASSERT_FALSE(convert(string("\xFF\xFE\x01\x00", 4), 4096, result, error, enc));
+	// Выполняем проверку кода ошибки приведения
+	ASSERT_EQ(error, xml::error_t::INVALID_CHARACTER);
+	/**
+	 * Выполняем проверку отклонения текста, оборванного посреди знака
+	 *
+	 * @note Половина кодового значения удерживается до следующего куска, и конец
+	 *       текста на ней означает оборванный знак, а не конец разметки
+	 */
+	ASSERT_FALSE(convert(string("\xFF\xFE\x41\x00\x42", 5), 4096, result, error, enc));
+	// Выполняем проверку кода ошибки приведения
+	ASSERT_EQ(error, xml::error_t::INVALID_ENCODING);
+	// Выполняем проверку отклонения знака сверх US-ASCII вопреки объявленной кодировке
+	ASSERT_FALSE(convert(string("<?xml version=\"1.0\" encoding=\"US-ASCII\"?><a>\xE9</a>"), 4096, result, error, enc));
+	// Выполняем проверку кода ошибки приведения
+	ASSERT_EQ(error, xml::error_t::INVALID_ENCODING);
+	// Выполняем проверку отклонения управляющего знака в кодировке ISO-8859-1
+	ASSERT_FALSE(convert(string("<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?><a>\x01</a>"), 4096, result, error, enc));
+	// Выполняем проверку кода ошибки приведения
+	ASSERT_EQ(error, xml::error_t::INVALID_CHARACTER);
+	// Выполняем проверку отклонения управляющего знака в кодировке US-ASCII
+	ASSERT_FALSE(convert(string("<?xml version=\"1.0\" encoding=\"US-ASCII\"?><a>\x01</a>"), 4096, result, error, enc));
+	// Выполняем проверку кода ошибки приведения
+	ASSERT_EQ(error, xml::error_t::INVALID_CHARACTER);
+	// Выполняем проверку отклонения текста, оборванного посреди знака UTF-8
+	ASSERT_FALSE(convert(string("<a>\xD0</a>").substr(0, 4), 4096, result, error, enc));
+	// Выполняем проверку кода ошибки приведения
+	ASSERT_EQ(error, xml::error_t::INVALID_ENCODING);
+}

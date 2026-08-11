@@ -735,6 +735,17 @@ bool awh::codec::xml::Reader::crosses(const size_t begin, const size_t end) cons
 	// Выводим признак того, что разметка границу подстановки не пересекает
 	return false;
 }
+/**
+ * @brief Метод проверки разметки события на превышение предела объёма
+ *
+ * @param end положение конца разметки события в приведённом тексте
+ * @return    признак превышения заданного настройками предела
+ *
+ */
+bool awh::codec::xml::Reader::oversize(const size_t end) const noexcept {
+	// Выводим признак превышения заданного настройками предела объёма события
+	return ((this->_settings.maxEvent > 0) && (end > this->_offset) && ((end - this->_offset) > this->_settings.maxEvent));
+}
 void awh::codec::xml::Reader::compact() noexcept {
 	/**
 	 * Если открыта область подставленной сущности
@@ -3454,10 +3465,17 @@ awh::codec::xml::Reader::step_t awh::codec::xml::Reader::parseText() noexcept {
 		/**
 		 * Если приведённое содержимое оказалось пустым
 		 *
-		 * @note Так выходит, когда содержимое начинается со ссылки на сущность с
-		 *       разметкой: выдавать пустое событие незачем
+		 * @details Так выходит двумя путями: содержимое начинается со ссылки на
+		 * сущность с разметкой либо целиком составлено ссылками на сущности, чьи
+		 * значения пусты. Выдавать пустое событие незачем ни там, ни там: узлу оно
+		 * ничего не добавляет, а дерево от него получает пустой узел содержимого,
+		 * из-за которого запись узла перестаёт складываться самозакрывающейся меткой
+		 * - и переход текст→дерево→текст, повторённый дважды, даёт разное написание
+		 *
+		 * @note Признак непробельной части содержимого пустое содержимое не взводит:
+		 * взводить его нечем, знаков в нём нет вовсе
 		 */
-		if(this->_scratch.empty() && (end <= this->_offset)){
+		if(this->_scratch.empty()){
 			// Выполняем переход к подставляемой сущности
 			this->advance(end);
 			// Выводим итог выполненного шага разбора
@@ -3467,6 +3485,18 @@ awh::codec::xml::Reader::step_t awh::codec::xml::Reader::parseText() noexcept {
 		this->_text = string_view(this->_scratch.data(), this->_scratch.size());
 	// Запоминаем содержимое узла без приведения
 	} else this->_text = raw;
+	/**
+	 * Если разметка содержимого узла превысила предел объёма события
+	 *
+	 * @note Приведение содержимого укорачивает его - ссылки на сущности замещаются
+	 *       своими значениями, - и содержимое, уместившееся в предел, приходит из
+	 *       разметки, в предел не уместившейся. Накопление же сличает с пределом
+	 *       именно разметку: без настоящей проверки предел зависел бы от того, где
+	 *       легла граница куска
+	 */
+	if(this->oversize(end))
+		// Выводим ошибку превышения заданного настройками предела
+		return this->fail(error_t::OVERFLOW_LIMIT, this->_offset);
 	// Запоминаем вид полученного события разбора
 	this->_event = ((spaces && !this->_dirty && this->_settings.separateSpaces) ? event_t::SPACE : event_t::TEXT);
 	/**
@@ -3512,6 +3542,12 @@ awh::codec::xml::Reader::step_t awh::codec::xml::Reader::parseComment() noexcept
 		// Выводим требование следующего куска исходного текста
 		return step_t::HUNGRY;
 	}
+	/**
+	 * Если разметка примечания превысила предел объёма события
+	 */
+	if(this->oversize(stop + 3))
+		// Выводим ошибку превышения заданного настройками предела
+		return this->fail(error_t::OVERFLOW_LIMIT, this->_offset);
 	// Получаем содержимое примечания
 	const string_view content(this->_buffer.data() + this->_offset + 4, stop - (this->_offset + 4));
 	/**
@@ -3667,6 +3703,12 @@ awh::codec::xml::Reader::step_t awh::codec::xml::Reader::parseCdata() noexcept {
 			// Выводим требование следующего куска исходного текста
 			return step_t::HUNGRY;
 	}
+	/**
+	 * Если разметка раздела дословного текста превысила предел объёма события
+	 */
+	if(this->oversize(end))
+		// Выводим ошибку превышения заданного настройками предела
+		return this->fail(error_t::OVERFLOW_LIMIT, this->_offset);
 	// Получаем содержимое раздела дословного текста
 	const string_view content(this->_buffer.data() + this->_offset, end - this->_offset);
 	/**
@@ -3752,6 +3794,12 @@ awh::codec::xml::Reader::step_t awh::codec::xml::Reader::parseProcessing() noexc
 		// Выводим требование следующего куска исходного текста
 		return step_t::HUNGRY;
 	}
+	/**
+	 * Если разметка указания обработчику превысила предел объёма события
+	 */
+	if(this->oversize(end + 2))
+		// Выводим ошибку превышения заданного настройками предела
+		return this->fail(error_t::OVERFLOW_LIMIT, this->_offset);
 	// Положение разбора указания обработчику
 	size_t pos = (this->_offset + 2);
 	// Префикс цели указания обработчику
@@ -4277,6 +4325,12 @@ awh::codec::xml::Reader::step_t awh::codec::xml::Reader::parseDoctype() noexcept
 		// Выводим требование следующего куска исходного текста
 		return step_t::HUNGRY;
 	}
+	/**
+	 * Если разметка описания типа документа превысила предел объёма события
+	 */
+	if(this->oversize(end + 1))
+		// Выводим ошибку превышения заданного настройками предела
+		return this->fail(error_t::OVERFLOW_LIMIT, this->_offset);
 	// Выполняем возврат к началу разбора описания типа документа
 	pos = (this->_offset + 9);
 	/**
@@ -4955,6 +5009,12 @@ awh::codec::xml::Reader::step_t awh::codec::xml::Reader::parseElement() noexcept
 		// Выводим требование следующего куска исходного текста
 		return step_t::HUNGRY;
 	}
+	/**
+	 * Если разметка открывающей метки узла превысила предел объёма события
+	 */
+	if(this->oversize(end + 1))
+		// Выводим ошибку превышения заданного настройками предела
+		return this->fail(error_t::OVERFLOW_LIMIT, this->_offset);
 	// Положение разбора открывающей метки узла
 	size_t pos = (this->_offset + 1);
 	// Префикс имени разбираемого узла
@@ -5359,6 +5419,12 @@ awh::codec::xml::Reader::step_t awh::codec::xml::Reader::parseClosing() noexcept
 		// Выводим требование следующего куска исходного текста
 		return step_t::HUNGRY;
 	}
+	/**
+	 * Если разметка закрывающей метки узла превысила предел объёма события
+	 */
+	if(this->oversize(end + 1))
+		// Выводим ошибку превышения заданного настройками предела
+		return this->fail(error_t::OVERFLOW_LIMIT, this->_offset);
 	// Положение разбора закрывающей метки узла
 	size_t pos = (this->_offset + 2);
 	// Префикс имени закрываемого узла
@@ -5748,6 +5814,8 @@ void awh::codec::xml::Reader::reset() noexcept {
 	this->_event = event_t::NONE;
 	// Выполняем сброс кода ошибки разбора
 	this->_error = error_t::NONE;
+	// Выполняем сброс отложенного кода ошибки приведения исходного текста
+	this->_decoding = error_t::NONE;
 	// Выполняем сброс определённой кодировки исходного текста
 	this->_encoding = encoding_t::NONE;
 	// Выполняем сброс признака самодостаточности текста разметки
@@ -5856,9 +5924,9 @@ bool awh::codec::xml::Reader::feed(const void * buffer, const size_t size, const
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	/**
-	 * Если исходный текст уже окончен
+	 * Если исходный текст уже окончен либо приведение отказало
 	 */
-	if(this->_final)
+	if(this->_final || (this->_decoding != error_t::NONE))
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	/**
@@ -5872,17 +5940,19 @@ bool awh::codec::xml::Reader::feed(const void * buffer, const size_t size, const
 	 *       между наборами разбор не видит
 	 */
 	if(!this->_decoder.convert(buffer, size, end, this->_buffer)){
-		// Запоминаем код ошибки разбора
-		this->_error = this->_decoder.error();
-		// Запоминаем положение обнаруженной ошибки
-		this->_errorLocation = this->locate(this->_buffer.size());
-		// Запоминаем состояние прекращённого ошибкой разбора
-		this->_state = state_t::FAILED;
-		// Выводим отрицательный результат выполнения операции
-		return false;
-	}
+		/**
+		 * Запоминаем код ошибки приведения для отложенной выдачи
+		 *
+		 * @note Приведение переносит в хранилище всё, что успело проверить, и лишь
+		 *       затем отвечает отказом. Отказать сразу значило бы отбросить уже
+		 *       приведённое начало текста, и разбор одного и того же текста целиком
+		 *       и кусками расходился бы: кусками события начала текста выдаются,
+		 *       а целиком - нет. Оттого отказ откладывается до исчерпания
+		 *       приведённого начала текста
+		 */
+		this->_decoding = this->_decoder.error();
 	// Запоминаем признак получения последнего куска исходного текста
-	this->_final = end;
+	} else this->_final = end;
 	// Запоминаем определённую кодировку исходного текста
 	this->_encoding = this->_decoder.encoding();
 	// Выводим положительный результат выполнения операции
@@ -5962,6 +6032,18 @@ bool awh::codec::xml::Reader::next() noexcept {
 			return false;
 		// Если для продолжения разбора требуется следующий кусок текста
 		case static_cast <uint8_t> (step_t::HUNGRY): {
+			/**
+			 * Если приведение исходного текста отказало
+			 *
+			 * @note Приведённое начало текста разобрано и выдано целиком, и держать
+			 *       отказ приведения дольше незачем: следующего куска не будет
+			 */
+			if(this->_decoding != error_t::NONE){
+				// Выполняем выдачу отложенной ошибки приведения исходного текста
+				this->fail(this->_decoding, this->_offset);
+				// Выводим отсутствие очередного события разбора
+				return false;
+			}
 			// Запоминаем состояние ожидания следующего куска
 			this->_state = state_t::HUNGRY;
 			// Выводим отсутствие очередного события разбора
@@ -6212,7 +6294,7 @@ awh::codec::xml::Reader::Reader() noexcept :
  _final(false), _root(false), _declared(false), _doctype(false), _empty(false),
  _closing(false), _cdata(false), _section(0), _dirty(false), _foreign(false), _overlong(false), _offset(0), _consumed(0), _line(1), _column(1),
  _depth(0), _truncate(string::npos), _expansion(0), _state(state_t::HUNGRY),
- _event(event_t::NONE), _error(error_t::NONE), _encoding(encoding_t::NONE),
+ _event(event_t::NONE), _error(error_t::NONE), _decoding(error_t::NONE), _encoding(encoding_t::NONE),
  _standalone(standalone_t::NONE), _space(space_t::DEFAULT) {
 	// Выполняем сброс разбора в исходное состояние
 	this->reset();
@@ -6227,7 +6309,7 @@ awh::codec::xml::Reader::Reader(const settings_t & settings) noexcept :
  _final(false), _root(false), _declared(false), _doctype(false), _empty(false),
  _closing(false), _cdata(false), _section(0), _dirty(false), _foreign(false), _overlong(false), _offset(0), _consumed(0), _line(1), _column(1),
  _depth(0), _truncate(string::npos), _expansion(0), _settings(settings),
- _state(state_t::HUNGRY), _event(event_t::NONE), _error(error_t::NONE),
+ _state(state_t::HUNGRY), _event(event_t::NONE), _error(error_t::NONE), _decoding(error_t::NONE),
  _encoding(encoding_t::NONE), _standalone(standalone_t::NONE), _space(space_t::DEFAULT) {
 	// Выполняем сброс разбора в исходное состояние
 	this->reset();
