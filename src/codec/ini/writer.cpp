@@ -66,11 +66,12 @@ namespace {
 	 * @param value          проверяемое значение свойства
 	 * @param comments       знаки, которые читающий признаёт началом примечания
 	 * @param inlineComments признак признания примечания в конце строки читающим
+	 * @param trimmed        признак отбрасывания пробельной обвязки значения читающим
 	 * @param stripped       признак снятия кавычек читающим
 	 * @return               результат проверки
 	 *
 	 */
-	static bool quotable(const string_view value, const marker_t comments, const bool inlineComments, const bool stripped) noexcept {
+	static bool quotable(const string_view value, const marker_t comments, const bool inlineComments, const bool trimmed, const bool stripped) noexcept {
 		/**
 		 * Если значение пусто
 		 *
@@ -82,8 +83,11 @@ namespace {
 			return false;
 		/**
 		 * Если значение несёт пробельную обвязку
+		 *
+		 * @note Пробелы начала значения отбрасывает всякий читающий - они неотличимы от
+		 *       отступа за разделителем, - а пробелы конца лишь тот, кому это задано
 		 */
-		if(ascii::isSpace(value.front()) || ascii::isSpace(value.back()))
+		if(ascii::isSpace(value.front()) || (trimmed && ascii::isSpace(value.back())))
 			// Выводим положительный результат проверки значения
 			return true;
 		/**
@@ -295,7 +299,7 @@ namespace {
  *
  */
 awh::codec::ini::Writer::Settings::Settings() noexcept :
- marker(';'), separator('='), delimiter('.'), quoting(quoting_t::AUTO),
+ marker(';'), separator('='), delimiter('.'), global(true), arrays(false), valueless(false), trim(true), quotes(true), quoting(quoting_t::AUTO),
  subsections(subsection_t::NONE), newline(newline_t::LF), inlineComments(false), comments(marker_t::BOTH),
  spaces(true), escapes(false), continuations(false), indent(false), indents(false), separated(true), maxName(MAX_NAME) {}
 /**
@@ -318,6 +322,8 @@ awh::codec::ini::Writer::Settings awh::codec::ini::Writer::Settings::windows() n
 	 *       бы отдать читающему значение вместе с ними
 	 */
 	result.quoting = quoting_t::NEVER;
+	// Устанавливаем признак того, что читающий кавычки со значения не снимает
+	result.quotes = false;
 	// Устанавливаем вид знака конца строки собираемого текста
 	result.newline = newline_t::CRLF;
 	// Устанавливаем запрет записи пробелов вокруг разделителя
@@ -336,12 +342,16 @@ awh::codec::ini::Writer::Settings awh::codec::ini::Writer::Settings::python() no
 	Settings result;
 	// Устанавливаем запись многострочного значения продолжением отступом
 	result.indents = true;
+	// Устанавливаем запрет свойств, объявленных до первого раздела
+	result.global = false;
 	// Устанавливаем знак начала примечания
 	result.marker = '#';
 	// Устанавливаем знак разделителя имени и значения
 	result.separator = '=';
 	// Устанавливаем обращение с ограждением значения кавычками
 	result.quoting = quoting_t::NEVER;
+	// Устанавливаем признак того, что читающий кавычки со значения не снимает
+	result.quotes = false;
 	// Выводим собранные настройки записи
 	return result;
 }
@@ -362,6 +372,8 @@ awh::codec::ini::Writer::Settings awh::codec::ini::Writer::Settings::systemd() n
 	result.escapes = true;
 	// Устанавливаем запрет записи пробелов вокруг разделителя
 	result.spaces = false;
+	// Устанавливаем запрет свойств, объявленных до первого раздела
+	result.global = false;
 	// Устанавливаем склеивание строк, продолженных обратной косой чертой, читающим
 	result.continuations = true;
 	// Выводим собранные настройки записи
@@ -382,6 +394,10 @@ awh::codec::ini::Writer::Settings awh::codec::ini::Writer::Settings::git() noexc
 	result.quoting = quoting_t::AUTO;
 	// Устанавливаем построение имени подраздела кавычками
 	result.subsections = subsection_t::QUOTED;
+	// Устанавливаем признание свойства без значения читающим
+	result.valueless = true;
+	// Устанавливаем запрет свойств, объявленных до первого раздела
+	result.global = false;
 	// Устанавливаем признание примечания в конце строки читающим
 	result.inlineComments = true;
 	// Устанавливаем запись управляющих последовательностей в значении
@@ -500,10 +516,79 @@ bool awh::codec::ini::Writer::verify(const string_view name, const bool section)
  *
  */
 bool awh::codec::ini::Writer::escape(const string_view value) noexcept {
-	// Получаем признак нужды в ограждении значения кавычками
-	const bool needed = ::quotable(value, this->_settings.comments, this->_settings.inlineComments, (this->_settings.quoting != quoting_t::NEVER));
+	/**
+	 * Получаем признак нужды в ограждении значения кавычками
+	 *
+	 * @note Толкование кавычек берётся у читающего, а не у собственной настройки
+	 *       ограждения: запись, кавычек не ставящая, читающему их снимать не запрещает,
+	 *       и значение, кавычкой начинающееся, досталось бы ему без неё
+	 */
+	const bool needed = ::quotable(value, this->_settings.comments, this->_settings.inlineComments, this->_settings.trim, this->_settings.quotes);
 	// Получаем признак ограждения значения кавычками
 	const bool quoted = ((this->_settings.quoting == quoting_t::ALWAYS) || ((this->_settings.quoting == quoting_t::AUTO) && needed));
+	/**
+	 * Если значение ограждается кавычками, которых читающий не снимает
+	 *
+	 * @note Настройки эти друг другу противоречат: ограждение назначено для читающего,
+	 *       кавычки снимающего, а объявлен читающий, считающий их частью значения.
+	 *       Записанное досталось бы ему вместе с кавычками, и молчать об этом нельзя
+	 */
+	if(quoted && !this->_settings.quotes){
+		// Запоминаем код ошибки записи
+		this->_error = error_t::CONFLICTING_SETTINGS;
+		// Выводим отрицательный результат выполнения операции
+		return false;
+	}
+	/**
+	 * Получаем признак того, что значение защищается управляющими последовательностями
+	 *
+	 * @note Значение, ограждения требующее, но кавычками не ограждаемое, читающий
+	 *       прочёл бы изменённым: пробельную обвязку он отбросит, а на знаке примечания
+	 *       значение обрежет. Защитить его остаётся лишь управляющими последовательностями,
+	 *       а при выключенной их записи - отвергнуть, что и делается ниже
+	 */
+	const bool guarded = (needed && !quoted && this->_settings.escapes);
+	/**
+	 * Если значение записывается строками продолжения с отступом
+	 *
+	 * @note Обвязку строки продолжения читающий отбрасывает всегда, отбрасывает он её
+	 *       и у последней строки такого значения - настройка отбрасывания обвязки тут
+	 *       не властна. Пробельная обвязка многострочного значения этим способом не
+	 *       записывается вовсе, а управляющие последовательности здесь запрещены
+	 *       настройками: остаётся отказ
+	 */
+	if(!this->_settings.escapes && this->_settings.indents && (value.find('\n') != string_view::npos) &&
+	   (ascii::isSpace(value.front()) || ascii::isSpace(value.back()))){
+		// Запоминаем код ошибки записи
+		this->_error = error_t::INVALID_CHARACTER;
+		// Выводим отрицательный результат выполнения операции
+		return false;
+	}
+	// Положение первого знака значения за пробельной обвязкой
+	size_t head = 0;
+	// Положение знака значения, которым пробельная обвязка конца начинается
+	size_t tail = value.length();
+	/**
+	 * Если значение защищается управляющими последовательностями
+	 */
+	if(guarded){
+		/**
+		 * Выполняем поиск конца пробельной обвязки начала значения
+		 */
+		while((head < value.length()) && ascii::isSpace(value[head]))
+			// Выполняем переход к следующему знаку значения
+			head++;
+		/**
+		 * Выполняем поиск начала пробельной обвязки конца значения
+		 *
+		 * @note Обвязка эта защищается лишь у читающего, её отбрасывающего: сохраняющему
+		 *       она достаётся как записана, и запись последовательностями лишь замусорила
+		 *       бы текст настроек
+		 */
+		while(this->_settings.trim && (tail > head) && ascii::isSpace(value[tail - 1]))
+			// Выполняем переход к предыдущему знаку значения
+			tail--;
+	}
 	/**
 	 * Выполняем перебор всех знаков значения свойства
 	 */
@@ -587,17 +672,48 @@ bool awh::codec::ini::Writer::escape(const string_view value) noexcept {
 	 */
 	for(size_t i = 0; i < value.length(); i++){
 		/**
+		 * Если знак значения защиты управляющей последовательностью требует
+		 *
+		 * @note Защищаются лишь те знаки, которые читающий прочёл бы иначе: пробельная
+		 *       обвязка значения и знак примечания, значение обрывающий. Пробел внутри
+		 *       значения защиты не требует вовсе, и записывать его последовательностью
+		 *       значило бы обратить читаемый текст настроек в нечитаемый
+		 */
+		if(guarded && (((i < head) || (i >= tail)) || (this->_settings.inlineComments && commented(value[i], this->_settings.comments)))){
+			/**
+			 * Если знак записывается кратким обозначением
+			 */
+			if(::escapable(value[i]))
+				// Выполняем запись знака управляющей последовательностью
+				::escaped(value[i], this->_text);
+			/**
+			 * Если краткого обозначения у знака нет
+			 *
+			 * @note Знаки эти сами по себе печатны, и записывать их шестнадцатеричным
+			 *       кодовым значением незачем: разбор признаёт обратную косую черту
+			 *       перед пробелом и знаками примечания
+			 */
+			else {
+				// Выполняем запись обратной косой черты управляющей последовательности
+				this->_text.push_back('\\');
+				// Выполняем запись защищаемого знака значения
+				this->_text.push_back(value[i]);
+			}
+			// Выполняем переход к следующему знаку значения
+			continue;
+		}
+		/**
 		 * Если знак записывается управляющей последовательностью
 		 */
 		if(this->_settings.escapes && ::escapable(value[i])){
 			/**
 			 * Если знаком является кавычка вне ограждения кавычками
 			 *
-			 * @note Кавычка вне ограждения значения не портит: разбор снимает лишь
-			 *       ту, что открывает значение, а прочие оставляет как есть. Записывать
-			 *       её управляющей последовательностью там незачем
+			 * @note Кавычка вне ограждения значения не портит там, где читающий кавычек
+			 *       не снимает вовсе. Снимающему же достаточно кавычки в начале значения,
+			 *       чтобы прочесть его без неё, и такую записывают последовательностью
 			 */
-			if((value[i] == '"') && !quoted){
+			if((value[i] == '"') && !quoted && !this->_settings.quotes){
 				// Выполняем запись знака значения
 				this->_text.push_back(value[i]);
 				// Выполняем переход к следующему знаку значения
@@ -612,6 +728,23 @@ bool awh::codec::ini::Writer::escape(const string_view value) noexcept {
 		 * Если знаком является знак конца строки при записи продолжением отступом
 		 */
 		if((value[i] == '\n') && !this->_settings.escapes && this->_settings.indents){
+			/**
+			 * Если знак конца строки окружён пробельными знаками либо завершает значение
+			 *
+			 * @note Строку продолжения читающий отделяет от предыдущей отступом и
+			 *       обвязку её отбрасывает - и ту, что перед знаком конца строки, и ту,
+			 *       что за отступом продолжения; пустую же строку продолжения он теряет
+			 *       вовсе, отчего знак конца строки в конце значения не переживает
+			 *       обратного чтения. Записать такое значение этим способом нечем, а
+			 *       управляющие последовательности здесь запрещены настройками: остаётся
+			 *       отказ, но не молчаливая потеря
+			 */
+			if(((i > 0) && ascii::isSpace(value[i - 1])) || ((i + 1) >= value.length()) || ascii::isSpace(value[i + 1])){
+				// Запоминаем код ошибки записи
+				this->_error = error_t::INVALID_CHARACTER;
+				// Выводим отрицательный результат выполнения операции
+				return false;
+			}
 			// Выполняем запись знака конца строки
 			this->newline();
 			// Выполняем запись отступа, которым продолжение задаётся
@@ -810,6 +943,8 @@ bool awh::codec::ini::Writer::section(const string_view section, const string_vi
 	this->newline();
 	// Запоминаем признак того, что раздел текста настроек объявлен
 	this->_sectioned = true;
+	// Выполняем сброс признака записанного свойства
+	this->_valued = false;
 	// Выводим положительный результат выполнения операции
 	return true;
 }
@@ -843,6 +978,31 @@ bool awh::codec::ini::Writer::property(const string_view key, const string_view 
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
 		return false;
+	/**
+	 * Если читающий добавления к перечню значений не признаёт
+	 *
+	 * @note Скобки перечня достались бы такому читающему частью имени свойства, и он
+	 *       отверг бы его как ошибочно построенное
+	 */
+	if(!this->_settings.arrays){
+		// Запоминаем код ошибки записи
+		this->_error = error_t::INVALID_KEY;
+		// Выводим отрицательный результат выполнения операции
+		return false;
+	}
+	/**
+	 * Если свойство записывается прежде объявления раздела при читающем, таких свойств
+	 * не признающем
+	 *
+	 * @note Читающий отвергает такое свойство как объявленное вне раздела, и собранный
+	 *       текст ему не прочитать вовсе
+	 */
+	if(!this->_settings.global && !this->_sectioned){
+		// Запоминаем код ошибки записи
+		this->_error = error_t::KEY_OUTSIDE_SECTION;
+		// Выводим отрицательный результат выполнения операции
+		return false;
+	}
 	// Выполняем ограждение примечания, оканчивающегося продолжением
 	this->guard(false);
 	/**
@@ -858,8 +1018,13 @@ bool awh::codec::ini::Writer::property(const string_view key, const string_view 
 	const size_t position = this->_text.length();
 	/**
 	 * Если запись отступа перед свойствами раздела настройками задана
+	 *
+	 * @note Отступ этот украшающий, и при читающем, признающем продолжение отступом,
+	 *       он не пишется вовсе: строка с отступом досталась бы такому читающему
+	 *       продолжением значения предыдущего свойства, и свойства раздела слились бы
+	 *       в одно. Украшение уступает сохранности записанного
 	 */
-	if(this->_settings.indent && this->_sectioned)
+	if(this->_settings.indent && !this->_settings.indents && this->_sectioned)
 		// Выполняем запись отступа перед именем свойства
 		this->_text.push_back('\t');
 	// Выполняем запись имени свойства
@@ -889,6 +1054,8 @@ bool awh::codec::ini::Writer::property(const string_view key, const string_view 
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
+	// Запоминаем, что последней записанной строкой было свойство
+	this->_valued = true;
 	// Выполняем запись знака конца строки
 	this->newline();
 	// Выводим положительный результат выполнения операции
@@ -901,6 +1068,19 @@ bool awh::codec::ini::Writer::property(const string_view key, const string_view 
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
 		return false;
+	/**
+	 * Если свойство записывается прежде объявления раздела при читающем, таких свойств
+	 * не признающем
+	 *
+	 * @note Читающий отвергает такое свойство как объявленное вне раздела, и собранный
+	 *       текст ему не прочитать вовсе
+	 */
+	if(!this->_settings.global && !this->_sectioned){
+		// Запоминаем код ошибки записи
+		this->_error = error_t::KEY_OUTSIDE_SECTION;
+		// Выводим отрицательный результат выполнения операции
+		return false;
+	}
 	// Выполняем ограждение примечания, оканчивающегося продолжением
 	this->guard(false);
 	/**
@@ -913,8 +1093,13 @@ bool awh::codec::ini::Writer::property(const string_view key, const string_view 
 	const size_t position = this->_text.length();
 	/**
 	 * Если запись отступа перед свойствами раздела настройками задана
+	 *
+	 * @note Отступ этот украшающий, и при читающем, признающем продолжение отступом,
+	 *       он не пишется вовсе: строка с отступом досталась бы такому читающему
+	 *       продолжением значения предыдущего свойства, и свойства раздела слились бы
+	 *       в одно. Украшение уступает сохранности записанного
 	 */
-	if(this->_settings.indent && this->_sectioned)
+	if(this->_settings.indent && !this->_settings.indents && this->_sectioned)
 		// Выполняем запись отступа перед именем свойства
 		this->_text.push_back('\t');
 	// Выполняем запись имени свойства
@@ -942,6 +1127,8 @@ bool awh::codec::ini::Writer::property(const string_view key, const string_view 
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
+	// Запоминаем, что последней записанной строкой было свойство
+	this->_valued = true;
 	// Выполняем запись знака конца строки
 	this->newline();
 	// Выводим положительный результат выполнения операции
@@ -961,6 +1148,31 @@ bool awh::codec::ini::Writer::property(const string_view key) noexcept {
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
 		return false;
+	/**
+	 * Если читающий свойства без значения не признаёт
+	 *
+	 * @note Записанное таким читающим не прочитать вовсе: он отвергает строку по
+	 *       отсутствию разделителя имени и значения
+	 */
+	if(!this->_settings.valueless){
+		// Запоминаем код ошибки записи
+		this->_error = error_t::MISSING_SEPARATOR;
+		// Выводим отрицательный результат выполнения операции
+		return false;
+	}
+	/**
+	 * Если свойство записывается прежде объявления раздела при читающем, таких свойств
+	 * не признающем
+	 *
+	 * @note Читающий отвергает такое свойство как объявленное вне раздела, и собранный
+	 *       текст ему не прочитать вовсе
+	 */
+	if(!this->_settings.global && !this->_sectioned){
+		// Запоминаем код ошибки записи
+		this->_error = error_t::KEY_OUTSIDE_SECTION;
+		// Выводим отрицательный результат выполнения операции
+		return false;
+	}
 	// Выполняем ограждение примечания, оканчивающегося продолжением
 	this->guard(false);
 	/**
@@ -971,12 +1183,19 @@ bool awh::codec::ini::Writer::property(const string_view key) noexcept {
 		return false;
 	/**
 	 * Если запись отступа перед свойствами раздела настройками задана
+	 *
+	 * @note Отступ этот украшающий, и при читающем, признающем продолжение отступом,
+	 *       он не пишется вовсе: строка с отступом досталась бы такому читающему
+	 *       продолжением значения предыдущего свойства, и свойства раздела слились бы
+	 *       в одно. Украшение уступает сохранности записанного
 	 */
-	if(this->_settings.indent && this->_sectioned)
+	if(this->_settings.indent && !this->_settings.indents && this->_sectioned)
 		// Выполняем запись отступа перед именем свойства
 		this->_text.push_back('\t');
 	// Выполняем запись имени свойства
 	this->_text.append(key);
+	// Запоминаем, что последней записанной строкой было свойство
+	this->_valued = true;
 	// Выполняем запись знака конца строки
 	this->newline();
 	// Выводим положительный результат выполнения операции
@@ -996,6 +1215,8 @@ bool awh::codec::ini::Writer::comment(const string_view text) noexcept {
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
 		return false;
+	// Выполняем сброс признака записанного свойства
+	this->_valued = false;
 	// Выполняем ограждение примечания, оканчивающегося продолжением
 	this->guard(false);
 	// Положение начала очередной строки примечания
@@ -1072,6 +1293,20 @@ bool awh::codec::ini::Writer::trailing(const string_view text) noexcept {
 	 * @note Примечание дописывается к готовой строке, и продолжение прежней строки
 	 *       оказывается уже не в её конце: ограждать нечего
 	 */
+	/**
+	 * Если примечание к готовой строке дописать нельзя
+	 *
+	 * @note Читающий, примечания в конце строки не признающий, дописанное возьмёт
+	 *       частью значения свойства либо отвергнет как содержимое за объявлением
+	 *       раздела. А признающий отделяет примечание пробелом, и пробел этот
+	 *       читающему, пробельной обвязки не отбрасывающему, достаётся частью значения:
+	 *       оно росло бы пробелом при каждом обороте «чтение - запись». Примечание
+	 *       уходит в обоих случаях отдельной строкой - место его украшение, а значение
+	 *       записано потребителем
+	 */
+	if(!this->_settings.inlineComments || (!this->_settings.trim && this->_valued))
+		// Выполняем запись примечания отдельной строкой
+		return this->comment(text);
 	this->_guarded = false;
 	/**
 	 * Выполняем перебор знаков содержимого примечания
@@ -1119,8 +1354,16 @@ bool awh::codec::ini::Writer::trailing(const string_view text) noexcept {
 	 *       строки в ожидании примечания, которого чаще всего не будет
 	 */
 	this->_text.resize(this->_text.length() - newline.length());
-	// Выполняем запись пробела перед знаком начала примечания
-	this->_text.push_back(' ');
+	/**
+	 * Если читающий отбрасывает пробельную обвязку значения
+	 *
+	 * @note Пробел этот украшающий, и сохраняющему обвязку читающему он достался бы
+	 *       частью значения предыдущего свойства: значение росло бы пробелом при каждом
+	 *       обороте «чтение - запись». Украшение уступает сохранности записанного
+	 */
+	if(this->_settings.trim)
+		// Выполняем запись пробела перед знаком начала примечания
+		this->_text.push_back(' ');
 	// Выполняем запись знака начала примечания
 	this->_text.push_back(this->_settings.marker);
 	/**
@@ -1157,6 +1400,8 @@ bool awh::codec::ini::Writer::blank() noexcept {
 	if(this->_error != error_t::NONE)
 		// Выводим отрицательный результат выполнения операции
 		return false;
+	// Выполняем сброс признака записанного свойства
+	this->_valued = false;
 	// Выполняем ограждение примечания, оканчивающегося продолжением
 	this->guard(true);
 	// Выполняем запись знака конца строки
@@ -1193,6 +1438,8 @@ void awh::codec::ini::Writer::clear() noexcept {
 	this->_error = error_t::NONE;
 	// Выполняем сброс признака объявления раздела
 	this->_sectioned = false;
+	// Выполняем сброс признака записанного свойства
+	this->_valued = false;
 	// Выполняем сброс признака ожидающего ограждения примечания
 	this->_guarded = false;
 	// Выполняем очистку собранного текста настроек
@@ -1202,7 +1449,7 @@ void awh::codec::ini::Writer::clear() noexcept {
  * @brief Конструктор
  *
  */
-awh::codec::ini::Writer::Writer() noexcept : _error(error_t::NONE), _sectioned(false), _guarded(false) {}
+awh::codec::ini::Writer::Writer() noexcept : _error(error_t::NONE), _sectioned(false), _valued(false), _guarded(false) {}
 /**
  * @brief Конструктор
  *
@@ -1210,7 +1457,7 @@ awh::codec::ini::Writer::Writer() noexcept : _error(error_t::NONE), _sectioned(f
  *
  */
 awh::codec::ini::Writer::Writer(const settings_t & settings) noexcept :
- _error(error_t::NONE), _sectioned(false), _guarded(false), _settings(settings) {}
+ _error(error_t::NONE), _sectioned(false), _valued(false), _guarded(false), _settings(settings) {}
 /**
  * @brief Деструктор
  *

@@ -2693,6 +2693,82 @@ namespace {
 		}
 
 		/**
+		 * @brief Функция отправки сообщения по заведённой связи SCTP
+		 *
+		 * @details У сокета упорядоченных сообщений («один ко многим») связей много, и
+		 *          отправка обязана называть, по какой именно идти. Адрес получателя тут
+		 *          означает не «кому слать», а «завести связь», и указанный повторно
+		 *          отвергается отказом «Address already in use» - так прямо и сказано в
+		 *          руководстве sctp(4P) обеих систем
+		 *
+		 * @warning Приёма отправки с опознавателем связи в libsctp НЕТ: у sctp_sendmsg
+		 *          такого довода не предусмотрено вовсе. Оттого отправка идёт обычным
+		 *          sendmsg, а опознаватель уходит служебным сообщением SCTP_SNDRCV -
+		 *          единственным путём, каким его вообще можно передать
+		 *
+		 * @note Пока связь не заведена, опознавателя нет, и отправка идёт с адресом:
+		 *       она эту связь и заводит. Отсюда две ветви, а не одна
+		 *
+		 * @param sock    дескриптор сокета отправки
+		 * @param buffer  буфер отправляемых данных
+		 * @param size    размер буфера отправляемых данных
+		 * @param info    сведения об отправляемом сообщении
+		 * @param assoc   опознаватель заведённой связи, ноль - связь ещё не заведена
+		 * @param address адрес получателя для заведения связи
+		 * @param length  размер адреса получателя
+		 * @return        количество отправленных октетов
+		 *
+		 */
+		static ssize_t send(const awh::net::socket_t sock, const void * buffer, const size_t size, const struct sctp_sndrcvinfo & info, const sctp_assoc_t assoc, const struct sockaddr * address, const socklen_t length) noexcept {
+			// Если связь ещё не заведена, заводим её самой отправкой по адресу получателя
+			if(assoc == 0)
+				// Выполняем отправку данных с заведением связи
+				return ::sctp_sendmsg(
+					sock, buffer, size, const_cast <struct sockaddr *> (address), length,
+					info.sinfo_ppid, info.sinfo_flags, info.sinfo_stream,
+					info.sinfo_timetolive, info.sinfo_context
+				);
+			// Описание отправляемого сообщения
+			struct msghdr message;
+			// Описание блока отправляемых данных
+			struct iovec iov;
+			// Буфер служебных сообщений отправки
+			uint8_t control[CMSG_SPACE(sizeof(struct sctp_sndrcvinfo))];
+			// Зануляем описание отправляемого сообщения
+			::memset(&message, 0, sizeof(message));
+			// Зануляем буфер служебных сообщений
+			::memset(control, 0, sizeof(control));
+			// Устанавливаем буфер отправляемых данных
+			iov.iov_base = const_cast <void *> (buffer);
+			// Устанавливаем размер буфера отправляемых данных
+			iov.iov_len = size;
+			// Устанавливаем блок отправляемых данных
+			message.msg_iov = &iov;
+			// Устанавливаем количество блоков отправляемых данных
+			message.msg_iovlen = 1;
+			// Устанавливаем буфер служебных сообщений
+			message.msg_control = control;
+			// Устанавливаем размер буфера служебных сообщений
+			message.msg_controllen = sizeof(control);
+			// Получаем заголовок служебного сообщения
+			struct cmsghdr * cmsg = CMSG_FIRSTHDR(&message);
+			// Устанавливаем уровень служебного сообщения
+			cmsg->cmsg_level = IPPROTO_SCTP;
+			// Устанавливаем тип служебного сообщения
+			cmsg->cmsg_type = SCTP_SNDRCV;
+			// Устанавливаем размер служебного сообщения
+			cmsg->cmsg_len = CMSG_LEN(sizeof(struct sctp_sndrcvinfo));
+			// Получаем сведения об отправляемом сообщении
+			struct sctp_sndrcvinfo * sinfo = reinterpret_cast <struct sctp_sndrcvinfo *> (CMSG_DATA(cmsg));
+			// Переносим сведения об отправляемом сообщении
+			(* sinfo) = info;
+			// Устанавливаем опознаватель заведённой связи
+			sinfo->sinfo_assoc_id = assoc;
+			// Выполняем отправку данных по заведённой связи
+			return ::sendmsg(sock, &message, 0);
+		}
+
+		/**
 		 * @brief Функция снятия таймера дедлайнов
 		 *
 		 * @warning Зовётся ОБЯЗАТЕЛЬНО при всяком закрытии очереди оповещений. Очередь
@@ -17214,19 +17290,31 @@ namespace io {
 										 * Если операционной системой является FreeBSD
 										 */
 										#if __FreeBSD__ || defined(__sun)
+											/**
+											 * Отправка по УЖЕ ЗАВЕДЁННОЙ связи идёт БЕЗ адреса получателя
+											 *
+											 * @warning Адрес в отправке означает не «кому слать», а «завести
+											 *          связь с этим узлом». На сокете упорядоченных сообщений
+											 *          связей много, и Sun Solaris отвечает на вторую связь с
+											 *          тем же узлом отказом «Address already in use» - проверено
+											 *          прогоном 12.08.2026: связь устанавливалась, первая же
+											 *          отправка возвращала ноль октетов и рвала соединение
+											 *
+											 * @note Ветвь эта работает при состоянии «подключено», то есть связь
+											 *       заведена заведомо, и адрес здесь не нужен вовсе. Отправка же
+											 *       до подключения адрес по-прежнему несёт - там он и означает
+											 *       заведение связи
+											 */
 											// Если протокол интернета установлен как SCTP
 											if(client->state.protocol == event::protocol_t::SCTP)
 												// Выполняем отправку данных в TCP/IP сокет
-												bytes = ::sctp_sendmsg(
+												bytes = ::ports::send(
 													client->transfer.fd,
 													reinterpret_cast <const uint8_t *> (buffer), size,
+													client->transfer.sctp.use().info,
+													client->transfer.sctp.use().id,
 													&::trust_cast <struct sockaddr> (client->endpoint.server),
-													client->endpoint.size,
-													client->transfer.sctp.use().info.sinfo_ppid,
-													client->transfer.sctp.use().info.sinfo_flags,
-													client->transfer.sctp.use().info.sinfo_stream,
-													client->transfer.sctp.use().info.sinfo_timetolive,
-													client->transfer.sctp.use().info.sinfo_context
+													client->endpoint.size
 												);
 											// Выполняем отправку данных в TCP/IP сокет
 											else bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
@@ -24831,19 +24919,31 @@ namespace io {
 										#if __FreeBSD__ || defined(__sun)
 											// Количество прочитанных байт
 											ssize_t bytes = 0;
+											/**
+											 * Отправка по УЖЕ ЗАВЕДЁННОЙ связи идёт БЕЗ адреса получателя
+											 *
+											 * @warning Адрес в отправке означает не «кому слать», а «завести
+											 *          связь с этим узлом». На сокете упорядоченных сообщений
+											 *          связей много, и Sun Solaris отвечает на вторую связь с
+											 *          тем же узлом отказом «Address already in use» - проверено
+											 *          прогоном 12.08.2026: связь устанавливалась, первая же
+											 *          отправка возвращала ноль октетов и рвала соединение
+											 *
+											 * @note Ветвь эта работает при состоянии «подключено», то есть связь
+											 *       заведена заведомо, и адрес здесь не нужен вовсе. Отправка же
+											 *       до подключения адрес по-прежнему несёт - там он и означает
+											 *       заведение связи
+											 */
 											// Если протокол интернета установлен как SCTP
 											if(client->state.protocol == event::protocol_t::SCTP)
 												// Выполняем отправку данных в сокет
-												bytes = ::sctp_sendmsg(
+												bytes = ::ports::send(
 													client->transfer.fd,
 													buffer, size,
+													client->transfer.sctp.use().info,
+													client->transfer.sctp.use().id,
 													&::trust_cast <struct sockaddr> (client->endpoint.server),
-													client->endpoint.size,
-													client->transfer.sctp.use().info.sinfo_ppid,
-													client->transfer.sctp.use().info.sinfo_flags,
-													client->transfer.sctp.use().info.sinfo_stream,
-													client->transfer.sctp.use().info.sinfo_timetolive,
-													client->transfer.sctp.use().info.sinfo_context
+													client->endpoint.size
 												);
 											// Выполняем отправку данных в сокет
 											else bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
@@ -32214,6 +32314,37 @@ namespace sctp {
 						net::sctp::event_assoc_change_t * association = awh_cast <net::sctp::event_assoc_change_t *> (event.get());
 						// Устанавливаем идентификатор ассоциации SCTP
 						association->id = sac->sac_assoc_id;
+						/**
+						 * Запоминаем опознаватель связи в самом узле
+						 *
+						 * @details У сокета упорядоченных сообщений связей много, и отправка
+						 *          обязана называть, по какой именно идти. Опознаватель этот
+						 *          ядро сообщает единственно здесь - оповещением о заведении
+						 *          связи, - и больше взять его неоткуда
+						 *
+						 * @warning Без него отправка по уже заведённой связи отвечает у Sun
+						 *          Solaris и illumos отказом «Address already in use»: адрес
+						 *          получателя означает там «завести связь», и повторное его
+						 *          указание читается как вторая связь с тем же узлом. Так
+						 *          прямо и сказано в руководстве sctp(4P)
+						 */
+						#if defined(__sun)
+							/**
+							 * Определяем чем является текущий узел
+							 */
+							switch(static_cast <uint8_t> (node->state.node)){
+								// Если узел является одноранговым узлом
+								case static_cast <uint8_t> (event::node_t::PEER):
+									// Запоминаем опознаватель связи однорангового узла
+									awh_cast <::io::peer_t *> (node)->transfer.sctp.use().id = sac->sac_assoc_id;
+								break;
+								// Если узел является клиентом
+								case static_cast <uint8_t> (event::node_t::CLIENT):
+									// Запоминаем опознаватель связи клиента
+									awh_cast <::io::client_t *> (node)->transfer.sctp.use().id = sac->sac_assoc_id;
+								break;
+							}
+						#endif
 						// Устанавливаем тип ассоциации SCTP
 						association->type = net::sctp::event_type_t::ASSOC_CHANGE;
 						// Устанавливаем код ошибки ассоциации SCTP
@@ -58803,22 +58934,67 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 														 *          сервер сообщает сам, ответом на установление связи.
 														 *          Теряется единственно наше предпочтение среди них
 														 */
-														#if defined(__illumos__)
-															// Длина структуры адреса подключения
-															socklen_t length = 0;
+														#if defined(__sun)
+															// Признак заведённой связи с удалённым сервером
+															bool established = false;
 															/**
-															 * Определяем семейство адреса подключения
+															 * Связь упорядоченных сообщений заранее НЕ заводится
+															 *
+															 * @details Сокет упорядоченных сообщений держит МНОГО связей, и
+															 *          заводятся они самой отправкой: адрес получателя в ней
+															 *          означает не «кому слать», а «завести связь». Так и
+															 *          сказано в руководстве sctp(4P): деятельной стороне
+															 *          звать connect не требуется вовсе
+															 *
+															 * @warning Заведя связь заранее, мы загоняем себя в тупик. Первая
+															 *          же отправка несёт адрес - и получает отказ «Address
+															 *          already in use», потому что связь с этим узлом уже есть.
+															 *          Отправить же по опознавателю связи нельзя: опознаватель
+															 *          приходит оповещением, которого к этому мгновению ещё не
+															 *          было, а спросить его у сокета можно лишь у Sun Solaris -
+															 *          у illumos приёма для этого нет вовсе. Проверено пробой
+															 *          на обеих системах 12.08.2026
+															 *
+															 * @note Узел переходит в «подключено» без обращения к ядру, и это
+															 *       намеренно: связь заведёт первая отправка, а опознаватель
+															 *       её придёт оповещением SCTP_ASSOC_CHANGE и ляжет в узел
 															 */
-															switch(addrs[0].sa_family){
-																// Если адрес принадлежит к семейству IPv4
-																case AF_INET: length = sizeof(struct sockaddr_in); break;
-																// Если адрес принадлежит к семейству IPv6
-																case AF_INET6: length = sizeof(struct sockaddr_in6); break;
+															if(client->state.type == event::type_t::SEQPACKET)
+																// Отмечаем связь заведённой, не обращаясь к ядру
+																established = true;
+															/**
+															 * Если сокет держит одну связь, заводим её обычным путём
+															 */
+															else {
+																/**
+																 * Если операционной системой является illumos
+																 */
+																#if defined(__illumos__)
+																	// Длина структуры адреса подключения
+																	socklen_t length = 0;
+																	/**
+																	 * Определяем семейство адреса подключения
+																	 */
+																	switch(addrs[0].sa_family){
+																		// Если адрес принадлежит к семейству IPv4
+																		case AF_INET: length = sizeof(struct sockaddr_in); break;
+																		// Если адрес принадлежит к семейству IPv6
+																		case AF_INET6: length = sizeof(struct sockaddr_in6); break;
+																	}
+																	// Выполняем подключение к удалённому серверу
+																	established = (::connect(client->transfer.fd, &addrs[0], length) == 0);
+																/**
+																 * Если операционная система функцию многодомного подключения несёт
+																 */
+																#else
+																	// Выполняем многодомное подключение к удалённому серверу
+																	established = (::sctp_connectx(client->transfer.fd, &addrs[0], addrs.size(), &client->transfer.sctp.use().id) == 0);
+																#endif
 															}
 															// Если подключение к удаленному серверу не выполнено
-															if(!(result = (::connect(client->transfer.fd, &addrs[0], length) == 0))){
+															if(!(result = established)){
 														/**
-														 * Если операционная система функцию многодомного подключения несёт
+														 * Если операционной системой является FreeBSD
 														 */
 														#else
 															// Если подключение к удаленному серверу не выполнено

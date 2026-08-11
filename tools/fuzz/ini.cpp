@@ -486,6 +486,32 @@ namespace {
 	 * @param text выводимый текст настроек
 	 *
 	 */
+	/**
+	 * @brief Метод вывода настроек разбора текста настроек
+	 *
+	 * @details Поля настроек перебираются поодиночке, и без их вывода находку не
+	 * воспроизвести: наречие по итогу перебора уже не узнать
+	 *
+	 * @param settings выводимые настройки разбора текста настроек
+	 *
+	 */
+	void dump(const ini::reader_t::settings_t & settings) noexcept {
+		// Выводим значения полей настроек разбора текста настроек
+		::fprintf(stderr, "ini fuzz: settings comments=%u separators=%u duplicates=%u quotes=%u subsections=%u"
+			" delimiter='%c' inlineComments=%d escapes=%d continuations=%d indents=%d valueless=%d arrays=%d"
+			" sensitive=%d sensitiveSections=%d trim=%d global=%d emitComments=%d emitBlanks=%d"
+			" maxLine=%u maxName=%u maxDepth=%u maxContinuation=%u\n",
+			static_cast <uint32_t> (settings.comments), static_cast <uint32_t> (settings.separators),
+			static_cast <uint32_t> (settings.duplicates), static_cast <uint32_t> (settings.quotes),
+			static_cast <uint32_t> (settings.subsections), settings.delimiter,
+			static_cast <int32_t> (settings.inlineComments), static_cast <int32_t> (settings.escapes),
+			static_cast <int32_t> (settings.continuations), static_cast <int32_t> (settings.indents),
+			static_cast <int32_t> (settings.valueless), static_cast <int32_t> (settings.arrays),
+			static_cast <int32_t> (settings.sensitive), static_cast <int32_t> (settings.sensitiveSections),
+			static_cast <int32_t> (settings.trim), static_cast <int32_t> (settings.global),
+			static_cast <int32_t> (settings.emitComments), static_cast <int32_t> (settings.emitBlanks),
+			settings.maxLine, settings.maxName, settings.maxDepth, settings.maxContinuation);
+	}
 	void dump(const string & text) noexcept {
 		// Выводим начало записи разбираемого текста настроек
 		::fprintf(stderr, "ini fuzz: text=\"");
@@ -775,6 +801,10 @@ namespace {
 		if(second != first){
 			// Выводим сообщение о расхождении повторной перезаписи
 			::fprintf(stderr, "ini fuzz: rewrite unstable\n");
+			// Выводим настройки разбора текста настроек
+			dump(settings.reader);
+			// Выводим исходный текст настроек
+			dump(text);
 			// Выводим первую перезапись дерева настроек
 			dump(first);
 			// Выводим повторную перезапись дерева настроек
@@ -808,6 +838,137 @@ namespace {
 				case 3: document.erase(key, section, subsection); break;
 				// Выполняем удаление раздела
 				case 4: document.remove(section, subsection); break;
+			}
+		}
+		/**
+		 * Выполняем проверку перевода дерева настроек в другое наречие
+		 *
+		 * @details Перевод собирает текст настройками одного наречия, а читается он
+		 * настройками того же наречия: значения обязаны пережить его без потерь. Наречия
+		 * расходятся тем, чем защищают значение, и то, что одно записывает кавычками,
+		 * другое обязано записать управляющими последовательностями либо отвергнуть
+		 */
+		{
+			// Порядковый номер наречия, в которое переводится дерево настроек
+			const uint32_t index = (engine() % 4);
+			// Настройки записи текста настроек выбранного наречия
+			ini::writer_t::settings_t writing;
+			// Настройки разбора текста настроек выбранного наречия
+			ini::document_t::settings_t reading;
+			/**
+			 * Выполняем выборку наречия перевода дерева настроек
+			 */
+			switch(index){
+				// Выполняем выборку наречия MS Windows
+				case 0: {
+					// Устанавливаем настройки записи наречия MS Windows
+					writing = ini::writer_t::settings_t::windows();
+					// Устанавливаем настройки разбора наречия MS Windows
+					reading.reader = ini::reader_t::settings_t::windows();
+				} break;
+				// Выполняем выборку наречия языка Python
+				case 1: {
+					// Устанавливаем настройки записи наречия языка Python
+					writing = ini::writer_t::settings_t::python();
+					// Устанавливаем настройки разбора наречия языка Python
+					reading.reader = ini::reader_t::settings_t::python();
+				} break;
+				// Выполняем выборку наречия системы инициализации systemd
+				case 2: {
+					// Устанавливаем настройки записи наречия systemd
+					writing = ini::writer_t::settings_t::systemd();
+					// Устанавливаем настройки разбора наречия systemd
+					reading.reader = ini::reader_t::settings_t::systemd();
+				} break;
+				// Выполняем выборку наречия системы хранения версий Git
+				default: {
+					// Устанавливаем настройки записи наречия Git
+					writing = ini::writer_t::settings_t::git();
+					// Устанавливаем настройки разбора наречия Git
+					reading.reader = ini::reader_t::settings_t::git();
+				}
+			}
+			/**
+			 * Устанавливаем подстановку обращений исходного дерева настроек
+			 *
+			 * @note Обращение переносится в перевод записанным, а не подставленным, и
+			 *       разрешать его надлежит тем же способом: иначе сличалось бы
+			 *       подставленное с записанным
+			 */
+			reading.references = settings.references;
+			/**
+			 * Переносим в наречие перевода правила, значения по смыслу меняющие
+			 *
+			 * @note Обращение с повторами и учёт регистра имён наречия расходятся между
+			 *       собою намеренно: одно наречие оставляет первое объявление, другое
+			 *       последнее, а третье складывает имена к нижнему регистру. Расхождения
+			 *       эти законны и к переводу отношения не имеют - сличать надлежит то,
+			 *       что переносит сама запись
+			 */
+			reading.reader.duplicates = settings.reader.duplicates;
+			// Переносим в наречие перевода учёт регистра имён свойств
+			reading.reader.sensitive = settings.reader.sensitive;
+			// Переносим в наречие перевода учёт регистра имён разделов
+			reading.reader.sensitiveSections = settings.reader.sensitiveSections;
+			// Выполняем перевод дерева настроек в выбранное наречие
+			const string translated = document.text(writing);
+			/**
+			 * Если перевод дерева настроек удался
+			 *
+			 * @note Пустой перевод означает отказ записи: значение выбранным наречием
+			 *       невыразимо, и отказ здесь - верное поведение, а не расхождение
+			 */
+			if(!translated.empty()){
+				// Выполняем учёт перевода дерева настроек
+				totals.rewrites++;
+				// Создаём дерево настроек для обратного чтения перевода
+				ini::document_t back(reading);
+				/**
+				 * Если обратное чтение перевода не удалось
+				 */
+				if(!back.parse(translated)){
+					// Выводим сообщение об отказе обратного чтения перевода
+					::fprintf(stderr, "ini fuzz: translation reparse failed, dialect=%u, error=%u\n",
+						index, static_cast <uint32_t> (back.error()));
+					// Выводим настройки разбора исходного текста настроек
+					dump(settings.reader);
+					// Выводим перевод дерева настроек
+					dump(translated);
+					// Выводим результат проверки дерева настроек
+					return false;
+				}
+				/**
+				 * Выполняем перебор всех разделов переведённого дерева настроек
+				 */
+				for(const auto & section : document.sections()){
+					/**
+					 * Выполняем перебор всех свойств очередного раздела
+					 */
+					for(const auto & key : document.keys(section.section, section.subsection)){
+						// Получаем значение свойства из исходного дерева настроек
+						const string before(document.get(key, section.section, section.subsection));
+						// Получаем значение свойства из дерева, собранного разбором перевода
+						const string after(back.get(key, section.section, section.subsection));
+						/**
+						 * Если значения свойства разошлись
+						 *
+						 * @note Наречия расходятся приведением имён к регистру, и свойство,
+						 *       найденное в одном, в другом отыскивается уже иначе: судим
+						 *       поэтому лишь по значениям, найденным обоими
+						 */
+						if(!after.empty() && (before != after)){
+							// Выводим сообщение о расхождении значения после перевода
+							::fprintf(stderr, "ini fuzz: translation differs, dialect=%u, key=[%s]\n  исходное [%s]\n  перевод  [%s]\n",
+								index, string(key).c_str(), before.c_str(), after.c_str());
+							// Выводим настройки разбора исходного текста настроек
+							dump(settings.reader);
+							// Выводим перевод дерева настроек
+							dump(translated);
+							// Выводим результат проверки дерева настроек
+							return false;
+						}
+					}
+				}
 			}
 		}
 		/**
@@ -846,6 +1007,21 @@ namespace {
 			 *       круговой ход тут неприменим вовсе
 			 */
 			plain.references = ini::reference_t::NONE;
+			/**
+			 * Выполняем перебор обращения читающего с кавычками, управляющими
+			 * последовательностями и примечанием в конце строки
+			 *
+			 * @details Настройки эти запись берёт у чтения и по ним решает, чем защищать
+			 * значение: кавычками либо управляющими последовательностями. Сложившиеся
+			 * наречия дают лишь часть их сочетаний, а негодные выходят как раз на тех,
+			 * которых среди наречий нет: кавычки частью значения при признаваемых
+			 * управляющих последовательностях оставляли пробельную обвязку без защиты
+			 */
+			plain.reader.quotes = (((engine() % 2) == 0) ? ini::quote_t::STRIP : ini::quote_t::KEEP);
+			// Выполняем перебор признания управляющих последовательностей читающим
+			plain.reader.escapes = ((engine() % 2) == 0);
+			// Выполняем перебор признания примечания в конце строки читающим
+			plain.reader.inlineComments = ((engine() % 2) == 0);
 			// Создаём дерево настроек для проверки кругового хода значения
 			ini::document_t holder(plain);
 			/**
@@ -1022,6 +1198,51 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 			settings.maxDepth = (engine() % 3);
 			// Устанавливаем наибольшее допустимое количество строк продолжения
 			settings.maxContinuation = (engine() % 3);
+		}
+		/**
+		 * Если требуется расшатать отдельные поля настроек наречия
+		 *
+		 * @details Сложившиеся наречия дают лишь несколько сочетаний полей из многих
+		 * возможных, а разбор с записью сговариваются как раз по полям: два дефекта
+		 * записи нашлись на сочетаниях, которых среди наречий нет вовсе - кавычки
+		 * частью значения при признаваемых управляющих последовательностях и
+		 * украшающий отступ при продолжении отступом
+		 */
+		if((engine() % 2) == 0){
+			// Выполняем перебор знаков, признаваемых началом примечания
+			settings.comments = static_cast <ini::marker_t> (engine() % 4);
+			// Выполняем перебор знаков, признаваемых разделителем имени и значения
+			settings.separators = static_cast <ini::separator_t> (engine() % 3);
+			// Выполняем перебор обращения с повторными объявлениями свойства
+			settings.duplicates = static_cast <ini::duplicate_t> (engine() % 4);
+			// Выполняем перебор обращения с кавычками значения
+			settings.quotes = static_cast <ini::quote_t> (engine() % 2);
+			// Выполняем перебор построения имени подраздела
+			settings.subsections = static_cast <ini::subsection_t> (engine() % 3);
+			// Выполняем перебор признания примечания в конце строки
+			settings.inlineComments = ((engine() % 2) == 0);
+			// Выполняем перебор признания управляющих последовательностей
+			settings.escapes = ((engine() % 2) == 0);
+			// Выполняем перебор склеивания строк обратной косой чертой
+			settings.continuations = ((engine() % 2) == 0);
+			// Выполняем перебор признания продолжения значения отступом
+			settings.indents = ((engine() % 2) == 0);
+			// Выполняем перебор признания свойства без значения
+			settings.valueless = ((engine() % 2) == 0);
+			// Выполняем перебор признания повтора свойства перечнем значений
+			settings.arrays = ((engine() % 2) == 0);
+			// Выполняем перебор чувствительности имён свойств к регистру
+			settings.sensitive = ((engine() % 2) == 0);
+			// Выполняем перебор чувствительности имён разделов к регистру
+			settings.sensitiveSections = ((engine() % 2) == 0);
+			// Выполняем перебор отбрасывания пробельной обвязки значения
+			settings.trim = ((engine() % 2) == 0);
+			// Выполняем перебор признания свойств до первого объявления раздела
+			settings.global = ((engine() % 2) == 0);
+			// Выполняем перебор выдачи событий примечаний
+			settings.emitComments = ((engine() % 2) == 0);
+			// Выполняем перебор выдачи событий пустых строк
+			settings.emitBlanks = ((engine() % 2) == 0);
 		}
 		// Выполняем построение текста настроек
 		string text = generate(engine);

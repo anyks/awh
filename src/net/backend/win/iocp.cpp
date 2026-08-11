@@ -5761,22 +5761,6 @@ namespace pool {
 	 */
 	static vector <uint16_t> released;
 
-	// ЩУП: число поданных родных приёмов
-	static uint64_t __probe_posted__ = 0;
-	// ЩУП: число приёмов, обслуженных из пула
-	static uint64_t __probe_served__ = 0;
-	// ЩУП: число октетов, полученных без обращения к ядру
-	static uint64_t __probe_bytes__ = 0;
-
-	// ЩУП: печать итога на выходе из процесса
-	struct Probe { ~Probe(){
-		::fprintf(stderr, "SCOUT: posted=%llu served=%llu bytes=%llu\n",
-		 (unsigned long long) ::pool::__probe_posted__, (unsigned long long) ::pool::__probe_served__,
-		 (unsigned long long) ::pool::__probe_bytes__);
-		::fflush(stderr);
-	} };
-	static Probe __probe__;
-
 	/**
 	 * @brief Функция занятия буфера приёма
 	 *
@@ -6020,10 +6004,6 @@ namespace pool {
 			// Забываем номер буфера приёма
 			record->bid = ::pool::INVALID;
 		}
-		// ЩУП: учитываем обслуженный из пула приём
-		::pool::__probe_served__++;
-		// ЩУП: учитываем октеты, полученные без обращения к ядру
-		::pool::__probe_bytes__ += static_cast <uint64_t> (portion);
 		// Устанавливаем количество принятых октетов
 		result = static_cast <ssize_t> (portion);
 		// Выводим признак обслуженного приёма
@@ -6385,8 +6365,6 @@ namespace post {
 		DWORD flags = 0;
 		// Выполняем подачу приёма данных
 		const bool accepted = (::WSARecv(static_cast <SOCKET> (sock), &chunk, 1, &bytes, &flags, &slot->overlapped, nullptr) == 0);
-		// ЩУП: учитываем поданный родной приём
-		::pool::__probe_posted__++;
 		// Получаем результат подачи родного приёма
 		const uint64_t token = ::post::submitted(accepted, static_cast <DWORD> (::WSAGetLastError()), result, "receive");
 		// Если подать родной приём не удалось - освобождаем занятый буфер
@@ -8970,12 +8948,6 @@ namespace kernel {
 		 *       освободи мы их прежде, чем поданные операции сняты, она дописывала
 		 *       бы по освобождённой памяти
 		 */
-		// ЩУП: печатаем итог работы родного приёма
-		::fprintf(stderr, "ЩУП: подано родных приёмов=%llu, обслужено из пула=%llu, октетов=%llu\n",
-		 (unsigned long long) ::pool::__probe_posted__, (unsigned long long) ::pool::__probe_served__,
-		 (unsigned long long) ::pool::__probe_bytes__);
-		// ЩУП: сбрасываем поток
-		::fflush(stderr);
 		::pool::destroy();
 		// Очищаем учёт заведённых подписок
 		::kernel::registry.clear();

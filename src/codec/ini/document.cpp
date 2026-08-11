@@ -1977,6 +1977,16 @@ awh::codec::ini::Writer::Settings awh::codec::ini::Document::writing() const noe
 	 *       несущее кавычку, записать без управляющих последовательностей нечем
 	 */
 	result.quoting = ((this->_settings.reader.quotes == quote_t::STRIP) ? quoting_t::AUTO : quoting_t::NEVER);
+	// Устанавливаем признак снятия кавычек читающим
+	result.quotes = (this->_settings.reader.quotes == quote_t::STRIP);
+	// Устанавливаем признак отбрасывания пробельной обвязки значения читающим
+	result.trim = this->_settings.reader.trim;
+	// Устанавливаем признак признания свойств до первого раздела читающим
+	result.global = this->_settings.reader.global;
+	// Устанавливаем признак признания свойства без значения читающим
+	result.valueless = this->_settings.reader.valueless;
+	// Устанавливаем признак признания добавления к перечню значений читающим
+	result.arrays = this->_settings.reader.arrays;
 	// Выводим собранные настройки записи
 	return result;
 }
@@ -2072,13 +2082,17 @@ string awh::codec::ini::Document::text(const writer_t::settings_t & settings) co
 			// Если записью является примечание
 			case static_cast <uint8_t> (kind_t::COMMENT): {
 				/**
-				 * Если знак примечания записи с настройками записи расходится
+				 * Если знак примечания записи с настройками записи расходится, а читающий
+				 * его признаёт
 				 *
 				 * @note Знак берётся из исходного текста: человек, писавший файл
 				 *       руками, выбрал его сам, и подменять его при перезаписи
-				 *       значило бы править то, о чём не просили
+				 *       значило бы править то, о чём не просили. А вот при переводе в
+				 *       наречие, знака этого не признающее, сохранять его нельзя: строка
+				 *       примечания досталась бы читающему свойством и была бы отвергнута
 				 */
-				if(writer.settings().marker != this->_records.at(i).marker){
+				if((writer.settings().marker != this->_records.at(i).marker) &&
+				   commented(this->_records.at(i).marker, writer.settings().comments)){
 					// Получаем настройки записи текста настроек
 					writer_t::settings_t current = writer.settings();
 					// Запоминаем знак начала примечания записи
