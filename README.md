@@ -6,31 +6,37 @@
 
 ## Project goals and features
 
-- **HTTP / HTTPS**: WEB - CLIENT / SERVER.
-- **WS / WSS**: WebSocket - CLIENT / SERVER.
-- **Proxy**: HTTP(S) / SOCKS5 PROXY - CLIENT / SERVER.
-- **Compress**: GZIP / BZIP2 / ZSTD / LZ4 / LZMA / DEFLATE / BROTLI - compression support.
+- **HTTP / HTTPS**:   WEB - CLIENT / SERVER.
+- **WS / WSS**:       WebSocket - CLIENT / SERVER.
+- **Proxy**:          HTTP(S) / SOCKS5 PROXY - CLIENT / SERVER.
+- **Compress**:       GZIP / BZIP2 / ZSTD / LZ4 / LZMA / DEFLATE / BROTLI - compression support.
 - **Authentication**: BASIC / DIGEST - authentication support.
 
 ## Supported protocols
 
-- **HTTP/1.1** (RFC 9112)
-- **HTTP/2** (RFC-9113)
-- **HTTP/3** (RFC-9114)
+| PROTOCOL     | RFC  |
+|--------------|------|
+| **HTTP/1.1** | 9112 |
+| **HTTP/2**   | 9113 |
+| **HTTP/3**   | 9114 |
+| **QUIC**     | 9000 |
 
 ## Supported operating systems
-- **iOS** (kqueue)
-- **macOS** (kqueue)
-- **FreeBSD** (kqueue)
-- **OpenBSD** (kqueue)
-- **NetBSD** (kqueue)
-- **DragonFly BSD** (kqueue)
-- **Android** (epoll)
-- **Linux** (epoll)
-- **Linux** (io_uring)
-- **Solaris 11.4** (event ports)
-- **OpenIndiana** (event ports)
-- **Windows** (IOCP)
+
+| OS                | Engine      |
+|-------------------|-------------|
+| **iOS**           | kqueue      |
+| **macOS**         | kqueue      |
+| **FreeBSD**       | kqueue      |
+| **OpenBSD**       | kqueue      |
+| **NetBSD**        | kqueue      |
+| **DragonFly BSD** | kqueue      |
+| **Android**       | epoll       |
+| **Linux**         | epoll       |
+| **Linux**         | io_uring    |
+| **Solaris 11.4**  | event ports |
+| **OpenIndiana**   | event ports |
+| **Windows**       | IOCP        |
 
 ## Requirements
 

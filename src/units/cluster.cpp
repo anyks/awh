@@ -44,7 +44,18 @@
 	 */
 	#include <dlfcn.h>
 	#include <sys/wait.h>
-	#include <execinfo.h>
+	/**
+	 * Разбор стека вызовов доступен не везде
+	 *
+	 * @note Заголовок execinfo.h вместе с backtrace() - принадлежность glibc и систем
+	 *       BSD, а НЕ стандарта. У musl его нет вовсе: обращение к нему валит сборку
+	 *       ещё на подключении - проверено на стенде Alpine 3.24 (12.08.2026).
+	 *       Признак __GLIBC__ musl не объявляет, им и различаются
+	 */
+	#if !__linux__ || defined(__GLIBC__)
+		#define AWH_BACKTRACE_SUPPORTED 1
+		#include <execinfo.h>
+	#endif
 #endif
 
 /**
@@ -316,6 +327,22 @@ namespace {
 			 *
 			 */
 			void childCrashHandler(const int32_t sig) noexcept {
+				/**
+				 * Если разбор стека вызовов системой не поддерживается
+				 *
+				 * @note Сообщение о падении печатается и здесь: без стека оно менее
+				 *       подробно, но молчать о падении дочернего процесса нельзя
+				 */
+				#if !defined(AWH_BACKTRACE_SUPPORTED)
+					// Записываем в лог сообщение о падении дочернего процесса
+					cerr << "Child PID " << ::getpid() << " crashed with signal " << sig << " (" << ::strsignal(sig) << ")" << endl;
+					// Возвращаем стандартный обработчик, чтобы операционная система создала полноценный отчёт
+					::signal(sig, SIG_DFL);
+					// Повторно вызываем сигнал
+					::kill(::getpid(), sig);
+					// Выходим из функции
+					return;
+				#endif
 				// Буфер для формирования ошибки
 				void * array[50];
 				// Определяем размер бэктрейса
