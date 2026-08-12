@@ -35,6 +35,14 @@
  */
 #if _WIN32 || _WIN64
 	#include <sys/win32.hpp>
+	/**
+	 * @brief Заголовок перечня сетевых устройств машины
+	 *
+	 * @details Нужен ради отыскания устройства петли: названия вида `lo0` у этой
+	 *          системы нет, и петля отыскивается по виду устройства в перечне
+	 *
+	 */
+	#include <iphlpapi.h>
 /**
  * Для операционных систем Linux, FreeBSD, NetBSD, OpenBSD, macOS и Solaris
  */
@@ -68,7 +76,57 @@
  *       системам пришлось бы править во всех местах разом
  *
  */
-#if __linux__
+#if defined(_WIN32) || defined(_WIN64)
+	/**
+	 * @brief Функция добычи названия устройства петли у MS Windows
+	 *
+	 * @details Названия вида `lo` либо `lo0` у этой системы нет вовсе: устройства
+	 *          зовутся своими GUID (`{F49A2CB0-...}`), и выдаются они порознь на
+	 *          каждой машине. Отыскивается петля оттого по виду устройства, а не по
+	 *          названию: вид `IF_TYPE_SOFTWARE_LOOPBACK` носит она одна
+	 *
+	 * @return название устройства петли либо пустая строка, если его нет
+	 *
+	 */
+	static std::string __awh_loopback_iface__() noexcept {
+		// Состав запрашиваемых сведений
+		const ULONG flags = (GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST | GAA_FLAG_SKIP_DNS_SERVER | GAA_FLAG_SKIP_FRIENDLY_NAME);
+		// Объём буфера под перечень устройств
+		ULONG size = 16384;
+		// Буфер под перечень сетевых устройств
+		std::vector <uint8_t> buffer(static_cast <size_t> (size));
+		// Выполняем опрос перечня сетевых устройств
+		ULONG code = ::GetAdaptersAddresses(AF_UNSPEC, flags, nullptr, reinterpret_cast <PIP_ADAPTER_ADDRESSES> (buffer.data()), &size);
+		// Если буфера не хватило - опрашиваем повторно с запрошенным объёмом
+		if(code == ERROR_BUFFER_OVERFLOW){
+			// Выполняем расширение буфера под перечень устройств
+			buffer.resize(static_cast <size_t> (size));
+			// Выполняем повторный опрос перечня устройств
+			code = ::GetAdaptersAddresses(AF_UNSPEC, flags, nullptr, reinterpret_cast <PIP_ADAPTER_ADDRESSES> (buffer.data()), &size);
+		}
+		// Если перечень устройств получить не удалось
+		if(code != NO_ERROR)
+			// Выводим отсутствие названия устройства петли
+			return std::string{};
+		/**
+		 * Выполняем перебор всех сетевых устройств машины
+		 */
+		for(PIP_ADAPTER_ADDRESSES adapter = reinterpret_cast <PIP_ADAPTER_ADDRESSES> (buffer.data()); adapter != nullptr; adapter = adapter->Next){
+			// Если устройство является петлёй и название его получено
+			if((adapter->IfType == IF_TYPE_SOFTWARE_LOOPBACK) && (adapter->AdapterName != nullptr))
+				// Выводим название устройства петли
+				return std::string(adapter->AdapterName);
+		}
+		// Выводим отсутствие названия устройства петли
+		return std::string{};
+	}
+
+	// Название устройства петли, выясненное у системы
+	static const std::string __awh_loopback__ = __awh_loopback_iface__();
+
+	// Название сетевого устройства петли
+	#define LOOPBACK_IFACE (__awh_loopback__.c_str())
+#elif __linux__
 	static constexpr const char * LOOPBACK_IFACE = "lo";
 #else
 	static constexpr const char * LOOPBACK_IFACE = "lo0";

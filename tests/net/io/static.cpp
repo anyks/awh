@@ -709,8 +709,24 @@ TEST_F(IoFixture, IoSuiteTest){
 			ASSERT_NE(mac, this->_io->getAddress(eid6, awh::event::address_t::MAC));
 			// Проверяем, что адрес назначения получен
 			ASSERT_FALSE(this->_io->getTarget(eid6).empty());
-			// Проверяем, что адрес установлен и правильный
-			ASSERT_EQ("/tmp/awh.txt", this->_io->getAddress(eid6, awh::event::address_t::FS));
+			/**
+			 * Проверяем, что адрес установлен и правильный
+			 *
+			 * @note Установка адреса приводит путь к полному (`fs::fullpath`), и у
+			 *       MS Windows полный путь неизбежно несёт букву диска:
+			 *       `/tmp/awh.txt` становится `C:\tmp\awh.txt`. Дословного совпадения
+			 *       оттого ждать нельзя - буква диска зависит от того, откуда запущен
+			 *       набор, - и сличается здесь хвост пути. У систем POSIX полный путь
+			 *       с исходным совпадает, и сличение остаётся дословным
+			 */
+			#if defined(_WIN32) || defined(_WIN64)
+				// Получаем адрес файловой системы события
+				const std::string fspath = this->_io->getAddress(eid6, awh::event::address_t::FS);
+				// Проверяем, что путь приведён к полному и оканчивается заданным
+				ASSERT_TRUE((fspath.size() > 11) && (fspath.compare((fspath.size() - 11), 11, "tmp\\awh.txt") == 0)) << fspath;
+			#else
+				ASSERT_EQ("/tmp/awh.txt", this->_io->getAddress(eid6, awh::event::address_t::FS));
+			#endif
 			
 			// Добавляем новое событие клиента TCP
 			awh::event::id_t eid7 = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
@@ -3534,6 +3550,20 @@ TEST_F(IoFixture, IoUDSTest){
 }
 
 /**
+ * Дейтаграммных UNIX-доменных сокетов у MS Windows нет вовсе
+ *
+ * @details Система несёт UNIX-доменные сокеты с 2018 года, но лишь ПОТОКОВЫЕ:
+ *          `SOCK_DGRAM` для семейства `AF_UNIX` она не заводит ни в каком виде.
+ *          Отказ этот не заглушка движка и не пробел переноса - подменять
+ *          дейтаграммный сокет потоковым было бы подлогом, границы сообщений на
+ *          потоке не держатся.
+ *
+ *          Проверка оттого экранируется целиком, а не правится под систему: править
+ *          в ней нечего, проверяемого средства у системы не существует
+ *
+ */
+#if !(defined(_WIN32) || defined(_WIN64))
+/**
  * @brief Тест проверки работы UDP UDS-соединения
  *
  */
@@ -4243,6 +4273,7 @@ TEST_F(IoFixture, IoUDPUDSTest){
 	// Уничтожаем все события после получения ответа
 	ASSERT_TRUE(this->_io->deinitialize());
 }
+#endif
 
 /**
  * @brief Тест проверки работы широковещательного события
@@ -13413,6 +13444,18 @@ TEST_F(IoFixture, IoDTLSTest){
 	 *
 	 */
 	TEST_F(IoFixture, IoSCTPSeqPacketAuthTest){
+		/**
+		 * Если операционной системой является Solaris или illumos
+		 */
+		#if defined(__sun)
+			/**
+			 * Аутентификации SCTP по RFC 4895 нет ни у Solaris, ни у illumos: заголовок
+			 * Solaris объявляет номер события, но самой структуры не несёт, а у illumos
+			 * нет и номера. Движок отвечает отказом намеренно - молчаливый успех дал бы
+			 * вызывающему повод считать движение защищённым, когда оно открыто
+			 */
+			GTEST_SKIP() << "SCTP authentication (RFC 4895) is not implemented on this platform";
+		#endif
 		// Флаг остановки теста
 		bool stop = false;
 		// Выполняем генерацию порта

@@ -776,3 +776,172 @@ TEST(CodecTomlReader, EmptyTableName) {
 	// Выполняем проверку количества выданных разбором событий
 	ASSERT_EQ(events.size(), 5u);
 }
+/**
+ * @brief Проверка меры предела длины записи
+ *
+ * @details Разбор записи оканчивается за знаком конца строки, а окончание это
+ * содержимым записи не является: считая его, одна и та же строка предел то превышала
+ * бы, то нет - смотря по тому, оканчивается ли ею текст, и каким из двух видов
+ * окончания она отделена от следующей
+ *
+ */
+TEST(CodecTomlReader, LineLimitTerminator) {
+	// Настройки разбора текста настроек
+	toml::reader_t::settings_t settings;
+	// Запоминаем предел длины записи, равный длине содержимого строки
+	settings.maxLine = 5;
+	// Собранные события разбора
+	vector <Event> events;
+	// Выполняем проверку разбора строки, знаком конца строки не оканчиваемой
+	ASSERT_EQ(consume("a = 1", 0, settings, events), toml::state_t::FINISHED);
+	// Выполняем очистку собранных событий разбора
+	events.clear();
+	// Выполняем проверку разбора той же строки с переводом строки
+	ASSERT_EQ(consume("a = 1\n", 0, settings, events), toml::state_t::FINISHED);
+	// Выполняем очистку собранных событий разбора
+	events.clear();
+	// Выполняем проверку разбора той же строки с возвратом каретки и переводом строки
+	ASSERT_EQ(consume("a = 1\r\n", 0, settings, events), toml::state_t::FINISHED);
+	// Выполняем очистку собранных событий разбора
+	events.clear();
+	// Выполняем проверку отказа разбора строки, предел превышающей
+	ASSERT_EQ(consume("aa = 1\n", 0, settings, events), toml::state_t::FAILED);
+}
+/**
+ * @brief Проверка места отказа превышения предела длины записи
+ *
+ * @details Предел длины меряется по разборе записи целиком, и разбор к этому времени
+ * стоит уже на следующей строке: без отматывания счёта строк назад место отказа
+ * указывало бы на строку, следующую за виновной
+ *
+ */
+TEST(CodecTomlReader, LineLimitLocation) {
+	/**
+	 * Выполняем перебор мест виновной записи в разбираемом тексте
+	 */
+	for(const auto & item : {
+		make_pair(string("bbbbbb = 1\nc = 2\n"), 1u),
+		make_pair(string("c = 2\nbbbbbb = 1\nd = 3\n"), 2u),
+		make_pair(string("c = 2\n\n\nbbbbbb = 1\n"), 4u),
+		make_pair(string("a = \"\"\"\nx\ny\n\"\"\"\nb = 2\n"), 1u)
+	}){
+		// Настройки разбора текста настроек
+		toml::reader_t::settings_t settings;
+		// Запоминаем предел длины записи
+		settings.maxLine = 8;
+		// Объект потокового чтения текста настроек
+		toml::reader_t reader(settings);
+		// Выполняем подачу разбираемого текста настроек целиком
+		static_cast <void> (reader.feed(item.first.data(), item.first.size(), true));
+		/**
+		 * Выполняем перебор выданных разбором событий
+		 */
+		while(reader.next()){}
+		// Выполняем проверку кода ошибки разбора
+		ASSERT_EQ(reader.error(), toml::error_t::LINE_TOO_LONG);
+		// Выполняем проверку номера строки места отказа
+		ASSERT_EQ(reader.errorLocation().line, item.second);
+		// Выполняем проверку положения места отказа в строке
+		ASSERT_EQ(reader.errorLocation().column, 1u);
+	}
+}
+/**
+ * @brief Проверка обрыва накопленного текста на пробеле отметки времени
+ *
+ * @details Описание дозволяет отделять время от даты пробелом наравне со знаком «T»,
+ * и завершает ли пробел запись значения, видно лишь по знаку за ним: обрыв текста
+ * ровно на этом пробеле обязан требовать продолжения, а не решать запись одной датой
+ *
+ */
+TEST(CodecTomlReader, StampSpaceBoundary) {
+	// Разбираемый текст настроек с отметкой времени, отделяемой пробелом
+	const string text = "stamp = 1979-05-27 07:32:00\n";
+	// Настройки разбора текста настроек
+	const toml::reader_t::settings_t settings;
+	/**
+	 * Выполняем перебор размеров куска подачи разбираемого текста
+	 */
+	for(const size_t chunk : {static_cast <size_t> (0), static_cast <size_t> (1),
+	                          static_cast <size_t> (3), static_cast <size_t> (18)}){
+		// Собранные события разбора
+		vector <Event> events;
+		// Выполняем проверку разбора текста настроек до конца
+		ASSERT_EQ(consume(text, chunk, settings, events), toml::state_t::FINISHED);
+		// Выполняем проверку количества выданных разбором событий
+		ASSERT_EQ(events.size(), 2u);
+		// Выполняем проверку типа значения отметки времени
+		ASSERT_EQ(events.at(1).type, static_cast <uint8_t> (toml::type_t::LOCAL_DATETIME));
+	}
+}
+/**
+ * @brief Проверка запрета дополнения таблицы, объявленной исподволь
+ *
+ * @details Таблица объявляется исподволь всяким объемлющим именем: заголовок «[a.b]»
+ * и составное имя ключа «a.b = 1» заводят таблицу «a», собственного объявления не
+ * имеющую. Описание запрещает дополнять её набором таблиц наравне с объявленной:
+ * значение по имени меняло бы при этом свой тип
+ *
+ */
+TEST(CodecTomlReader, ImplicitTableAppend) {
+	/**
+	 * Выполняем перебор текстов настроек, дополняющих таблицу набором
+	 */
+	for(const string & text : {
+		string("[value.0]\n[[value]]\n"),
+		string("a.b = 1\n[[a]]\n"),
+		string("[a.b.c]\n[[a.b]]\n")
+	}){
+		// Собранные события разбора
+		vector <Event> events;
+		// Настройки разбора текста настроек
+		const toml::reader_t::settings_t settings;
+		// Выполняем проверку отказа разбора текста настроек
+		ASSERT_EQ(consume(text, 0, settings, events), toml::state_t::FAILED);
+	}
+	/**
+	 * Выполняем перебор текстов настроек, дополнением не являющихся
+	 */
+	for(const string & text : {
+		string("[[fruit]]\n[fruit.apple]\n[[fruit]]\n[fruit.apple]\n"),
+		string("[[a]]\n[[a.b]]\n[[a]]\n[[a.b]]\n"),
+		string("[a.b]\n[a]\n")
+	}){
+		// Собранные события разбора
+		vector <Event> events;
+		// Настройки разбора текста настроек
+		const toml::reader_t::settings_t settings;
+		// Выполняем проверку разбора текста настроек до конца
+		ASSERT_EQ(consume(text, 0, settings, events), toml::state_t::FINISHED);
+	}
+}
+/**
+ * @brief Проверка запрета управляющих знаков в примечании
+ *
+ * @details Описание дозволяет примечанию нести из управляющих знаков одну лишь
+ * табуляцию. Возврат каретки к тому же неотличим в примечании от окончания строки:
+ * примечание, его несущее, записью выдавалось бы окончанием, и перезапись текста
+ * настроек устойчивости лишалась бы
+ *
+ */
+TEST(CodecTomlReader, CommentControlCharacter) {
+	// Настройки разбора текста настроек
+	const toml::reader_t::settings_t settings;
+	/**
+	 * Выполняем перебор примечаний с управляющими знаками
+	 */
+	for(const string & text : {
+		string("a = 1 # хвост\rb = 2\n"),
+		string("# отдельное\rпримечание\n"),
+		string("a = 1 # хвост\x01\n"),
+		string("a = 1 # хвост\x7F\n")
+	}){
+		// Собранные события разбора
+		vector <Event> events;
+		// Выполняем проверку отказа разбора текста настроек
+		ASSERT_EQ(consume(text, 0, settings, events), toml::state_t::FAILED);
+	}
+	// Собранные события разбора
+	vector <Event> events;
+	// Выполняем проверку разбора примечания с табуляцией
+	ASSERT_EQ(consume("a = 1 # хвост\tсквозь табуляцию\n", 0, settings, events), toml::state_t::FINISHED);
+}

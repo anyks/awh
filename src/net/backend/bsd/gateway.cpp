@@ -1531,27 +1531,34 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 						/**
 						 * РЕЖИМ 2:
 						 * Точное совпадение по заданным параметрам
+						 *
+						 * @warning Условия совпадения НАКАПЛИВАЮТСЯ через "match = match && ...",
+						 * а не перезаписываются. Присваивание вместо накопления означает, что верх
+						 * берёт последняя проверка, а прежние отбрасываются: запрос на удаление
+						 * хостового маршрута до 192.0.2.1 через шлюз 10.100.1.10 сводился к одному
+						 * лишь условию по шлюзу и сносил ВСЕ маршруты через этот шлюз, включая
+						 * маршрут по умолчанию. Стенд Solaris так и остался без сети (12.08.2026)
 						 */
 						// Если маска подсети задана
 						if(netmsk > 0)
 							// Устанавливаем флаг совпадения по маске подсети маршрута
-							match = ((mask != nullptr) && (mask->sin_addr.s_addr == netmsk));
+							match = (match && (mask != nullptr) && (mask->sin_addr.s_addr == netmsk));
 						// Если адрес назначения инициализирован
 						if(route.destination != nullptr){
 							// Если адрес назначения маршрута задан
 							if(awh_cast <net::addr_net_ipv4_t *> (route.destination.get())->address > 0)
 								// Устанавливаем флаг совпадения по адресу назначения маршрута
-								match = ((dst != nullptr) && (dst->sin_addr.s_addr == awh_cast <net::addr_net_ipv4_t *> (route.destination.get())->address));
+								match = (match && (dst != nullptr) && (dst->sin_addr.s_addr == awh_cast <net::addr_net_ipv4_t *> (route.destination.get())->address));
 						// Инициализируем объект адреса назначения в маршруте
 						} else const_cast <route_t &> (route).destination = make_unique <net::addr_net_ipv4_t> ();
 						// Если адрес шлюза маршрута задан
 						if(awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address > 0)
 							// Устанавливаем флаг совпадения по адресу шлюза маршрута
-							match = ((gw != nullptr) && (gw->sin_addr.s_addr == awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address));
+							match = (match && (gw != nullptr) && (gw->sin_addr.s_addr == awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address));
 						// Если имя сетевого интерфейса задано (и шлюз НЕ задан)
 						else if(!route.ifname.empty())
 							// Устанавливаем флаг совпадения по имени сетевого интерфейса маршрута
-							match = ((ifp != nullptr) && (ifp->sdl_index == searchIfIndex));
+							match = (match && (ifp != nullptr) && (ifp->sdl_index == searchIfIndex));
 						// Если адрес не совпадает
 						if(!match){
 							// Переходим к следующему маршруту
