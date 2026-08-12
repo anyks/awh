@@ -306,11 +306,27 @@ namespace awh {
 					/**
 					 * @brief Метод записи составного имени ключа
 					 *
-					 * @param path записываемое составное имя ключа
-					 * @return     результат выполнения операции
+					 * @note Имя принимается указателем с количеством частей, а не
+					 *       перечнем: имя из одной части передаётся тогда без построения
+					 *       перечня, а построение это обходилось выделением памяти на
+					 *       каждую записанную пару - на файле в две сотни пар их
+					 *       набиралось столько же
+					 *
+					 * @param parts указатель на составные части имени ключа
+					 * @param count количество составных частей имени ключа
+					 * @return      результат выполнения операции
 					 *
 					 */
-					bool naming(const vector <part_t> & path) noexcept;
+					bool naming(const part_t * parts, const size_t count) noexcept;
+					/**
+					 * @brief Метод записи имени ключа пары со знаком равенства
+					 *
+					 * @param parts указатель на составные части имени ключа
+					 * @param count количество составных частей имени ключа
+					 * @return      результат выполнения операции
+					 *
+					 */
+					bool keyed(const part_t * parts, const size_t count) noexcept;
 					/**
 					 * @brief Метод записи составной части имени ключа
 					 *
@@ -349,12 +365,13 @@ namespace awh {
 					/**
 					 * @brief Метод записи объявления таблицы
 					 *
-					 * @param path  записываемое имя таблицы
+					 * @param parts указатель на составные части имени таблицы
+					 * @param count количество составных частей имени таблицы
 					 * @param array признак объявления очередной таблицы набора таблиц
 					 * @return      результат выполнения операции
 					 *
 					 */
-					bool declare(const vector <part_t> & path, const bool array) noexcept;
+					bool declare(const part_t * parts, const size_t count, const bool array) noexcept;
 				public:
 					/**
 					 * @brief Метод получения текущих настроек записи

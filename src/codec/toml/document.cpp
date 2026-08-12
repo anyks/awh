@@ -22,6 +22,7 @@
  */
 #include <limits>
 #include <cstdlib>
+#include <unordered_set>
 #include <cstring>
 #include <type_traits>
 
@@ -278,6 +279,15 @@ void awh::codec::toml::Document::reindex() noexcept {
 	// Ключ указателя объемлющего имени
 	string parent;
 	/**
+	 * Объявленные дочерние имена по каждому объемлющему имени
+	 *
+	 * @note Перечень дочерних имён держится порядком объявления, и сличать
+	 *       добавляемое имя перебором его значило бы обращать перестроение в
+	 *       квадратичное: текст из одних объявлений таблиц собирался вдевятеро
+	 *       медленнее текста с парами, и замер это показал сразу
+	 */
+	unordered_map <string, unordered_set <string_view>> declared;
+	/**
 	 * Выполняем перебор всех записей дерева настроек
 	 */
 	for(uint32_t i = 0; i < static_cast <uint32_t> (this->_records.size()); i++){
@@ -350,22 +360,12 @@ void awh::codec::toml::Document::reindex() noexcept {
 		for(uint32_t j = 0; j < record.path.length; j++){
 			// Получаем порядковый номер составной части имени
 			const uint32_t key = (record.path.offset + j);
-			// Получаем перечень дочерних имён объемлющего имени
-			vector <uint32_t> & children = this->_children[parent];
-			// Признак того, что дочернее имя уже объявлено
-			bool declared = false;
 			/**
-			 * Выполняем перебор всех объявленных дочерних имён
+			 * Если дочернее имя объемлющему имени ещё не объявлено
 			 */
-			for(size_t k = 0; !declared && (k < children.size()); k++)
-				// Выполняем сличение имени объявленной части с добавляемой
-				declared = (this->get(this->_keys.at(children.at(k)).name) == this->get(this->_keys.at(key).name));
-			/**
-			 * Если дочернее имя ещё не объявлено
-			 */
-			if(!declared)
+			if(declared[parent].emplace(this->get(this->_keys.at(key).name)).second)
 				// Выполняем добавление дочернего имени к объемлющему имени
-				children.push_back(key);
+				this->_children[parent].push_back(key);
 			// Выполняем добавление знака соединения составных частей имени
 			parent.push_back(SEPARATOR);
 			// Выполняем добавление очередной составной части к объемлющему имени

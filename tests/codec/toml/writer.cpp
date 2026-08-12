@@ -1069,3 +1069,41 @@ TEST(CodecTomlWriter, CarriageReturn) {
 	// Выполняем проверку кода ошибки записи
 	ASSERT_EQ(writer.error(), toml::error_t::INVALID_VALUE);
 }
+/**
+ * @brief Проверка отступа строк многострочного перечня
+ *
+ * @details Отступ перед парами таблицы украшающий, и строки продолжения перечня
+ * обязаны нести его наравне со строкой самой пары: без него продолжение уходило бы
+ * левее её начала
+ *
+ */
+TEST(CodecTomlWriter, IndentedArray) {
+	// Получаем настройки записи текста настроек
+	toml::writer_t::settings_t settings;
+	// Задаём запись отступа перед парами таблицы
+	settings.indent = true;
+	// Отменяем запись пустой строки перед объявлением таблицы
+	settings.separated = false;
+	// Объект записи текста настроек
+	toml::writer_t writer(settings);
+	// Выполняем запись объявления таблицы
+	ASSERT_TRUE(writer.table("server"));
+	// Выполняем запись имени ключа пары
+	ASSERT_TRUE(writer.key("hosts"));
+	// Выполняем запись начала перечня значений несколькими строками
+	ASSERT_TRUE(writer.arrayOpen(true));
+	// Выполняем запись первого значения перечня
+	ASSERT_TRUE(writer.integer(1));
+	// Выполняем запись второго значения перечня
+	ASSERT_TRUE(writer.integer(2));
+	// Выполняем запись конца перечня значений
+	ASSERT_TRUE(writer.arrayClose());
+	// Выполняем проверку собранного текста настроек
+	ASSERT_EQ(writer.text(), "[server]\n\thosts = [\n\t\t1,\n\t\t2\n\t]\n");
+	// Собранные события разбора значений
+	vector <Scalar> events;
+	// Выполняем проверку разбора собранного текста настроек
+	ASSERT_EQ(::reread(writer.text(), events), toml::error_t::NONE);
+	// Выполняем проверку количества прочитанных значений
+	ASSERT_EQ(events.size(), 2u);
+}

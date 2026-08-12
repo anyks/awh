@@ -425,6 +425,40 @@ void awh::codec::toml::Reader::assemble(const uint32_t part, const uint32_t part
 	}
 }
 /**
+ * @brief Метод переноса имени в хранилище объявленных имён
+ *
+ * @param name переносимое имя ключа либо таблицы
+ * @return     ссылка на имя, перенесённое в хранилище
+ *
+ */
+string_view awh::codec::toml::Reader::intern(const string_view name) noexcept {
+	/**
+	 * @brief Размер блока хранилища объявленных имён в байтах
+	 *
+	 */
+	constexpr size_t BLOCK = 0x4000;
+	/**
+	 * Если блока хранилища не заведено либо в нём не осталось места
+	 *
+	 * @note Место в блоке отводится заранее и не наращивается: дописывание сверх
+	 *       отведённого перенесло бы содержимое блока, обесценив ссылки на имена
+	 */
+	if(this->_blocks.empty() || ((this->_blocks.back().length() + name.length()) > this->_blocks.back().capacity())){
+		// Выполняем заведение очередного блока хранилища
+		this->_blocks.push_back(string());
+		// Выполняем отведение места под содержимое блока хранилища
+		this->_blocks.back().reserve((name.length() > BLOCK) ? name.length() : BLOCK);
+	}
+	// Получаем блок хранилища объявленных имён
+	string & block = this->_blocks.back();
+	// Запоминаем смещение начала имени в блоке хранилища
+	const size_t offset = block.length();
+	// Выполняем перенос имени в блок хранилища
+	block.append(name);
+	// Выводим ссылку на имя, перенесённое в хранилище
+	return string_view(block.data() + offset, name.length());
+}
+/**
  * @brief Метод проверки повторного объявления имени
  *
  * @param name  проверяемое полное имя ключа либо таблицы
@@ -2678,9 +2712,9 @@ bool awh::codec::toml::Reader::record(const bool end) noexcept {
 	 */
 	if(this->_appending && this->_settings.duplicates){
 		// Выполняем запоминание имени набора таблиц
-		this->_arrays.emplace(this->_pendingTable);
+		this->_arrays.emplace(this->intern(this->_pendingTable));
 		// Выполняем запоминание объявленного имени
-		this->_declared.emplace(this->_pendingTable);
+		this->_declared.emplace(this->intern(this->_pendingTable));
 		/**
 		 * Выполняем снятие имён ключей объявленной прежде таблицы набора
 		 */
@@ -2706,7 +2740,7 @@ bool awh::codec::toml::Reader::record(const bool end) noexcept {
 	 */
 	for(auto & name : this->_pending)
 		// Выполняем запоминание объявленного имени
-		this->_declared.emplace(name);
+		this->_declared.emplace(this->intern(name));
 	/**
 	 * Если разбираемой записью объявлена таблица
 	 */
@@ -3078,6 +3112,8 @@ void awh::codec::toml::Reader::clear() noexcept {
 	this->_table.clear();
 	// Выполняем очистку перечня объявленных ключей и таблиц
 	this->_declared.clear();
+	// Выполняем очистку хранилища объявленных имён
+	this->_blocks.clear();
 	// Выполняем очистку перечня объявленных наборов таблиц
 	this->_arrays.clear();
 	// Выполняем очистку имён, объявляемых разбираемой записью

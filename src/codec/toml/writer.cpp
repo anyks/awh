@@ -429,11 +429,11 @@ bool awh::codec::toml::Writer::naming(const part_t & part) noexcept {
  * @return     результат выполнения операции
  *
  */
-bool awh::codec::toml::Writer::naming(const vector <part_t> & path) noexcept {
+bool awh::codec::toml::Writer::naming(const part_t * parts, const size_t count) noexcept {
 	/**
 	 * Если составное имя ключа пусто
 	 */
-	if(path.empty()){
+	if((parts == nullptr) || (count == 0)){
 		// Запоминаем код ошибки записи
 		this->_error = error_t::EMPTY_KEY;
 		// Выводим отрицательный результат выполнения операции
@@ -442,7 +442,7 @@ bool awh::codec::toml::Writer::naming(const vector <part_t> & path) noexcept {
 	/**
 	 * Если количество составных частей имени превышает допустимое
 	 */
-	if((this->_settings.maxParts > 0) && (path.size() > static_cast <size_t> (this->_settings.maxParts))){
+	if((this->_settings.maxParts > 0) && (count > static_cast <size_t> (this->_settings.maxParts))){
 		// Запоминаем код ошибки записи
 		this->_error = error_t::PARTS_EXCEEDED;
 		// Выводим отрицательный результат выполнения операции
@@ -451,7 +451,7 @@ bool awh::codec::toml::Writer::naming(const vector <part_t> & path) noexcept {
 	/**
 	 * Выполняем перебор всех составных частей имени ключа
 	 */
-	for(size_t i = 0; i < path.size(); i++){
+	for(size_t i = 0; i < count; i++){
 		/**
 		 * Если записывается не первая составная часть имени
 		 */
@@ -461,7 +461,7 @@ bool awh::codec::toml::Writer::naming(const vector <part_t> & path) noexcept {
 		/**
 		 * Если записать составную часть имени не удалось
 		 */
-		if(!this->naming(path.at(i)))
+		if(!this->naming(parts[i]))
 			// Выводим отрицательный результат выполнения операции
 			return false;
 	}
@@ -907,7 +907,7 @@ bool awh::codec::toml::Writer::stamped(const stamp_t & stamp, const type_t type)
  * @return      результат выполнения операции
  *
  */
-bool awh::codec::toml::Writer::declare(const vector <part_t> & path, const bool array) noexcept {
+bool awh::codec::toml::Writer::declare(const part_t * parts, const size_t count, const bool array) noexcept {
 	/**
 	 * Если запись очередной строки текста не готова
 	 */
@@ -943,7 +943,7 @@ bool awh::codec::toml::Writer::declare(const vector <part_t> & path, const bool 
 	/**
 	 * Если записать имя таблицы не удалось
 	 */
-	if(!this->naming(path))
+	if(!this->naming(parts, count))
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	// Выполняем запись закрывающей скобки объявления таблицы
@@ -984,7 +984,7 @@ void awh::codec::toml::Writer::settings(const settings_t & settings) noexcept {
  */
 bool awh::codec::toml::Writer::table(const vector <part_t> & path) noexcept {
 	// Выполняем запись объявления таблицы
-	return this->declare(path, false);
+	return this->declare(path.data(), path.size(), false);
 }
 /**
  * @brief Метод записи объявления таблицы
@@ -994,12 +994,17 @@ bool awh::codec::toml::Writer::table(const vector <part_t> & path) noexcept {
  *
  */
 bool awh::codec::toml::Writer::table(const string_view name) noexcept {
-	// Составное имя записываемой таблицы
-	vector <part_t> path(1);
+	/**
+	 * Составное имя записываемой таблицы
+	 *
+	 * @note Имя собирается на стопе, а не перечнем: перечень выделял бы память на
+	 *       каждое объявление
+	 */
+	part_t part;
 	// Устанавливаем имя записываемой таблицы
-	path.front().name = name;
+	part.name = name;
 	// Выполняем запись объявления таблицы
-	return this->declare(path, false);
+	return this->declare(&part, 1, false);
 }
 /**
  * @brief Метод записи объявления очередной таблицы набора таблиц
@@ -1010,7 +1015,7 @@ bool awh::codec::toml::Writer::table(const string_view name) noexcept {
  */
 bool awh::codec::toml::Writer::arrayTable(const vector <part_t> & path) noexcept {
 	// Выполняем запись объявления очередной таблицы набора таблиц
-	return this->declare(path, true);
+	return this->declare(path.data(), path.size(), true);
 }
 /**
  * @brief Метод записи объявления очередной таблицы набора таблиц
@@ -1021,11 +1026,11 @@ bool awh::codec::toml::Writer::arrayTable(const vector <part_t> & path) noexcept
  */
 bool awh::codec::toml::Writer::arrayTable(const string_view name) noexcept {
 	// Составное имя записываемого набора таблиц
-	vector <part_t> path(1);
+	part_t part;
 	// Устанавливаем имя записываемого набора таблиц
-	path.front().name = name;
+	part.name = name;
 	// Выполняем запись объявления очередной таблицы набора таблиц
-	return this->declare(path, true);
+	return this->declare(&part, 1, true);
 }
 /**
  * @brief Метод записи имени ключа пары
@@ -1034,7 +1039,7 @@ bool awh::codec::toml::Writer::arrayTable(const string_view name) noexcept {
  * @return     результат выполнения операции
  *
  */
-bool awh::codec::toml::Writer::key(const vector <part_t> & path) noexcept {
+bool awh::codec::toml::Writer::keyed(const part_t * parts, const size_t count) noexcept {
 	/**
 	 * Выполняем выбор окружения, в котором ведётся запись
 	 */
@@ -1069,7 +1074,7 @@ bool awh::codec::toml::Writer::key(const vector <part_t> & path) noexcept {
 	/**
 	 * Если записать имя ключа не удалось
 	 */
-	if(!this->naming(path))
+	if(!this->naming(parts, count))
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	// Выполняем запись знака равенства с пробелами вокруг него
@@ -1086,13 +1091,29 @@ bool awh::codec::toml::Writer::key(const vector <part_t> & path) noexcept {
  * @return     результат выполнения операции
  *
  */
-bool awh::codec::toml::Writer::key(const string_view name) noexcept {
-	// Составное имя записываемого ключа
-	vector <part_t> path(1);
-	// Устанавливаем имя записываемого ключа
-	path.front().name = name;
+bool awh::codec::toml::Writer::key(const vector <part_t> & path) noexcept {
 	// Выполняем запись имени ключа пары
-	return this->key(path);
+	return this->keyed(path.data(), path.size());
+}
+/**
+ * @brief Метод записи имени ключа пары
+ *
+ * @param name записываемое имя ключа
+ * @return     результат выполнения операции
+ *
+ */
+bool awh::codec::toml::Writer::key(const string_view name) noexcept {
+	/**
+	 * Составное имя записываемого ключа
+	 *
+	 * @note Имя собирается на стопе, а не перечнем: перечень выделял бы память на
+	 *       каждую записанную пару
+	 */
+	part_t part;
+	// Устанавливаем имя записываемого ключа
+	part.name = name;
+	// Выполняем запись имени ключа пары
+	return this->keyed(&part, 1);
 }
 /**
  * @brief Метод записи значения

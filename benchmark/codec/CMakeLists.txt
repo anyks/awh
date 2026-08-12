@@ -62,6 +62,26 @@ if (${CMAKE_BUILD_${BENCHMARK_NAME}_BENCHMARKS})
         message(STATUS "Build benchmarks INI submodule: No\n")
     endif (${CMAKE_BUILD_${BENCHMARK_NAME}_INI_BENCHMARK})
 
+    # Указываем что нужно собрать бенчмарки для контейнера TOML
+    option(CMAKE_BUILD_${BENCHMARK_NAME}_TOML_BENCHMARK "Build TOML benchmark for ${BENCHMARK_NAME}" ON)
+
+    # Если нужно собрать бенчмарки для контейнера TOML
+    if (${CMAKE_BUILD_${BENCHMARK_NAME}_TOML_BENCHMARK})
+        # Выводим сообщение о сборке бенчмарков для контейнера TOML
+        message(STATUS "Build benchmarks TOML submodule: Yes\n")
+        # Дополняем список источников бенчмарками для контейнера TOML
+        list(APPEND ${PROJECT_NAME}_BENCHMARK_SOURCES
+            toml/toml.cpp
+            toml/reader.cpp
+            toml/writer.cpp
+            toml/document.cpp
+        )
+    # Если не нужно собрать бенчмарки для контейнера TOML
+    else()
+        # Выводим сообщение о сборке бенчмарков для контейнера TOML
+        message(STATUS "Build benchmarks TOML submodule: No\n")
+    endif (${CMAKE_BUILD_${BENCHMARK_NAME}_TOML_BENCHMARK})
+
     # Указывает каталог для ВСЕХ исполняемых файлов
     SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/benchmarks)
 
