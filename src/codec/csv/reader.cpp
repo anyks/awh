@@ -192,12 +192,24 @@ bool awh::codec::csv::Reader::complete() noexcept {
 			/**
 			 * Если имя поля в заголовке уже объявлено
 			 */
-			if(this->_unique.find(name) != this->_unique.end())
+			if(this->_unique.find(string(name)) != this->_unique.end())
 				// Выводим ошибку повторного объявления имени поля
 				return this->fail(error_t::DUPLICATE_HEADER);
 		}
 		// Запоминаем указание на имя поля в хранилище имён
 		const span_t stored(static_cast <uint32_t> (this->_names.size()), content.length);
+		/**
+		 * Если проверка повторного объявления имён включена
+		 *
+		 * @note Имя заносится в набор владеющей копией, а не ссылкой в хранилище имён:
+		 *       хранилище по ходу разбора заголовка прирастает и вправе быть перенесено
+		 *       в памяти, обесценив всякую ссылку в него. Прежде имена заносились по
+		 *       окончании заголовка, а сверка велась по ходу его разбора - то есть с
+		 *       набором, всегда пустым, и повтор не ловился вовсе
+		 */
+		if(this->_settings.duplicates)
+			// Заносим имя поля в набор для проверки повторного объявления
+			this->_unique.emplace(name);
 		// Переносим имя поля в хранилище имён
 		this->_names.append(name);
 		// Запоминаем указание на имя поля заголовка
@@ -280,31 +292,31 @@ bool awh::codec::csv::Reader::commit() noexcept {
 	if((this->_settings.header == header_t::PRESENT) && !this->_headed){
 		// Запоминаем признак того, что заголовок разобран
 		this->_headed = true;
-		/**
-		 * Если проверка повторного объявления имён включена
-		 *
-		 * @note Имена заносятся в набор здесь, а не по мере разбора: хранилище имён
-		 *       по ходу разбора заголовка прирастает и вправе быть перенесено в
-		 *       памяти, обесценив ссылки, уже занесённые в набор
-		 */
-		if(this->_settings.duplicates){
-			/**
-			 * Выполняем перебор всех имён полей заголовка
-			 */
-			for(const span_t & name : this->_header)
-				// Заносим имя поля в набор для проверки повторного объявления
-				this->_unique.emplace(this->_names.data() + name.offset, name.length);
-		}
 	/**
 	 * Если разбиралась обыкновенная запись
 	 */
-	} else if((this->_settings.header == header_t::PRESENT) && (this->_settings.ragged != ragged_t::ALLOW)) {
-		// Получаем количество полей заголовка
-		const uint32_t expected = static_cast <uint32_t> (this->_header.size());
+	} else if(this->_settings.ragged != ragged_t::ALLOW) {
 		/**
-		 * Если количество полей записи расходится с количеством полей заголовка
+		 * Получаем количество полей, каким надлежит обладать записи
+		 *
+		 * @note Заголовок, коль скоро он объявлен, количество это и назначает, а без
+		 *       него назначает первая запись: договор велит записям обладать
+		 *       одинаковым количеством полей независимо от наличия заголовка, и
+		 *       бездействие настройки без заголовка было бы её молчаливым отключением
 		 */
-		if(this->_count != expected){
+		const uint32_t expected = (this->_settings.header == header_t::PRESENT ?
+			static_cast <uint32_t> (this->_header.size()) : this->_expected
+		);
+		/**
+		 * Если количество полей записи ещё не назначено
+		 */
+		if(expected == 0)
+			// Запоминаем количество полей, назначенное первой записью
+			this->_expected = this->_count;
+		/**
+		 * Если количество полей записи расходится с назначенным количеством
+		 */
+		else if(this->_count != expected){
 			/**
 			 * Если расхождение прекращает разбор ошибкой
 			 */
@@ -331,7 +343,7 @@ bool awh::codec::csv::Reader::commit() noexcept {
 				/**
 				 * Если поле имеет имя в заголовке
 				 */
-				if(this->_field < expected)
+				if(this->_field < static_cast <uint32_t> (this->_header.size()))
 					// Запоминаем указание на имя поля события
 					item.name = this->_header.at(this->_field);
 				// Заносим собранное событие в очередь выдачи
@@ -391,6 +403,22 @@ bool awh::codec::csv::Reader::parse(const char letter) noexcept {
 		return this->fail(error_t::RECORD_TOO_LONG);
 	// Увеличиваем длину текущей записи
 	this->_length++;
+	// Выполняем разбор знака состоянием разбора
+	return this->step(letter);
+}
+/**
+ * @brief Метод разбора знака состоянием разбора
+ *
+ * @details Знак, сменивший состояние, разбирается заново уже новым состоянием, и разбор
+ * потому вызывает себя повторно тем же знаком. Учёт длины записи вынесен наружу именно
+ * поэтому: считаемый здесь, он рос бы на всякий заход и отсекал запись прежде
+ * положенного предела - тем более прежде, чем больше состояний знак сменил
+ *
+ * @param letter разбираемый знак
+ * @return       признак продолжения разбора
+ *
+ */
+bool awh::codec::csv::Reader::step(const char letter) noexcept {
 	/**
 	 * Определяем состояние разбора текста
 	 */
@@ -425,7 +453,7 @@ bool awh::codec::csv::Reader::parse(const char letter) noexcept {
 				return true;
 			}
 			// Разбираем знак заново в состоянии начала записи
-			return this->parse(letter);
+			return this->step(letter);
 		}
 		/**
 		 * Если разбор находится в состоянии начала записи
@@ -459,7 +487,7 @@ bool awh::codec::csv::Reader::parse(const char letter) noexcept {
 			// Переводим разбор в состояние начала поля
 			this->_state = state_t::FIELD_START;
 			// Разбираем знак заново в состоянии начала поля
-			return this->parse(letter);
+			return this->step(letter);
 		}
 		/**
 		 * Если разбор находится в состоянии строки примечания
@@ -555,7 +583,7 @@ bool awh::codec::csv::Reader::parse(const char letter) noexcept {
 			// Переводим разбор в состояние поля без кавычек
 			this->_state = state_t::UNQUOTED;
 			// Разбираем знак заново в состоянии поля без кавычек
-			return this->parse(letter);
+			return this->step(letter);
 		}
 		/**
 		 * Если разбор находится в состоянии поля без кавычек
@@ -825,8 +853,16 @@ bool awh::codec::csv::Reader::parse(const char letter) noexcept {
 				return this->fail(error_t::TRAILING_CHARACTERS);
 			// Дописываем знак к содержимому поля
 			this->_storage.push_back(letter);
-			// Переводим разбор в состояние поля в кавычках
-			this->_state = state_t::QUOTED;
+			/**
+			 * Переводим разбор в состояние поля без кавычек
+			 *
+			 * @note Именно без кавычек, а не обратно в кавычки: кавычка эта поле уже
+			 *       закрыла, и разделитель, стоящий далее, обязан поле разделять. Возврат
+			 *       же в состояние поля в кавычках сделал бы разделитель содержимым, и
+			 *       запись «"a"b,c» дала бы одно поле вместо двух, а текст без второй
+			 *       закрывающей кавычки - отказ «незакрытое поле»
+			 */
+			this->_state = state_t::UNQUOTED;
 			// Увеличиваем смещение от начала текста
 			this->_offset++;
 			// Увеличиваем положение в текущей строке
@@ -1137,6 +1173,8 @@ void awh::codec::csv::Reader::reset() noexcept {
 	this->_marked = false;
 	// Сбрасываем признак подачи текста целиком
 	this->_last = false;
+	// Сбрасываем количество полей, назначенное первой записью
+	this->_expected = 0;
 	// Сбрасываем признак разбора заголовка
 	this->_headed = false;
 	// Сбрасываем признак заключения поля в кавычки
@@ -1499,7 +1537,7 @@ void awh::codec::csv::Reader::settings(const settings_t & settings) noexcept {
  */
 awh::codec::csv::Reader::Reader() noexcept :
  _state(state_t::RECORD_START), _error(error_t::NONE), _encoding(encoding_t::NONE),
- _separator(','), _marked(false), _last(false), _headed(false), _quoted(false),
+ _separator(','), _expected(0), _marked(false), _last(false), _headed(false), _quoted(false),
  _modified(false), _started(false), _offset(0), _line(1), _column(1),
  _record(0), _field(0), _count(0), _length(0), _begin(0), _detected(true) {
 	// Выполняем сброс состояния разбора

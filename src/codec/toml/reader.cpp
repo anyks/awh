@@ -786,6 +786,8 @@ void awh::codec::toml::Reader::compact() noexcept {
 	this->_bol = ((this->_bol > this->_offset) ? (this->_bol - this->_offset) : 0);
 	// Выполняем сдвиг положения начала разбираемой записи
 	this->_start = ((this->_start > this->_offset) ? (this->_start - this->_offset) : 0);
+	// Выполняем сдвиг положения поиска знака конца строки
+	this->_probed = ((this->_probed > this->_offset) ? (this->_probed - this->_offset) : 0);
 	// Выполняем сдвиг положения разбираемого знака
 	this->_offset = 0;
 }
@@ -3115,6 +3117,37 @@ bool awh::codec::toml::Reader::pair(const bool end) noexcept {
  *
  */
 bool awh::codec::toml::Reader::record(const bool end) noexcept {
+	/**
+	 * Если разбор записи откачен нуждою в продолжении текста
+	 *
+	 * @details Запись, продолжения не дождавшаяся, откатывается целиком и разбирается
+	 * заново по приходе очередного куска. Браться за неё заново прежде времени незачем:
+	 * оканчивается запись знаком конца строки, а с накопленным прежде текстом она не
+	 * окончилась - стало быть, знак этот стоит среди пришедшего. Нет его - нет и записи,
+	 * и разбор накопленного начала был бы повторён впустую
+	 *
+	 * @note Без этой ограды подача по байту обращала бы разбор одной записи в
+	 *       квадратичный: запись в мегабайт кусками по шестьдесят четыре байта отнимала
+	 *       сорок три секунды против пятидесяти миллисекунд кусками по шестьдесят
+	 *       четыре килобайта
+	 *
+	 * @warning Откладывать разбор дозволено лишь покуда текст вправе прирасти: отказ
+	 *          приведения к UTF-8 накопленный текст обрывает, и запись, отложенная за
+	 *          знаком конца строки, которого уже не будет, осталась бы неразобранной -
+	 *          выдался бы отказ приведения вместо ошибки самой записи, и итог разбора
+	 *          зависел бы от нарезки. Ворошитель это и поймал
+	 */
+	if((this->_state == state_t::HUNGRY) && !end && (this->_decoding == error_t::NONE)){
+		/**
+		 * Если знака конца строки среди пришедшего текста нет
+		 */
+		if(this->_buffer.find('\n', this->_probed) == string::npos){
+			// Запоминаем, что накопленный текст знака конца строки не несёт
+			this->_probed = this->_buffer.length();
+			// Выводим признак того, что запись не разобрана
+			return false;
+		}
+	}
 	// Выполняем сброс признака нужды в продолжении текста
 	this->_hungry = false;
 	// Выполняем очистку очереди собранных событий записи
@@ -3264,6 +3297,13 @@ bool awh::codec::toml::Reader::record(const bool end) noexcept {
 			this->_bol = bol;
 			// Запоминаем состояние нужды в продолжении текста
 			this->_state = state_t::HUNGRY;
+			/**
+			 * Запоминаем, откуда искать знак конца строки при следующей подаче
+			 *
+			 * @note Накопленным текстом запись не окончилась, и знак конца её стоит среди
+			 *       того, что ещё не пришло: искать его прежде этого места незачем
+			 */
+			this->_probed = this->_buffer.length();
 			// Выполняем очистку очереди собранных событий записи
 			this->_items.clear();
 		}
@@ -3690,6 +3730,8 @@ void awh::codec::toml::Reader::clear() noexcept {
 	this->_offset = 0;
 	// Выполняем сброс положения начала разбираемой записи
 	this->_start = 0;
+	// Выполняем сброс положения поиска знака конца записи
+	this->_probed = 0;
 	// Выполняем сброс смещения начала приведённого текста
 	this->_base = 0;
 	// Выполняем сброс номера разбираемой строки
@@ -3737,7 +3779,7 @@ void awh::codec::toml::Reader::clear() noexcept {
  */
 awh::codec::toml::Reader::Reader() noexcept :
  _state(state_t::READY), _error(error_t::NONE), _decoding(error_t::NONE), _hungry(false), _final(false),
- _offset(0), _start(0), _base(0), _line(1), _bol(0), _current(0), _declaring(false), _appending(false) {}
+ _offset(0), _start(0), _probed(0), _base(0), _line(1), _bol(0), _current(0), _declaring(false), _appending(false) {}
 /**
  * @brief Конструктор
  *
@@ -3746,7 +3788,7 @@ awh::codec::toml::Reader::Reader() noexcept :
  */
 awh::codec::toml::Reader::Reader(const settings_t & settings) noexcept :
  _state(state_t::READY), _error(error_t::NONE), _decoding(error_t::NONE), _hungry(false), _final(false),
- _settings(settings), _offset(0), _start(0), _base(0), _line(1), _bol(0), _current(0),
+ _settings(settings), _offset(0), _start(0), _probed(0), _base(0), _line(1), _bol(0), _current(0),
  _declaring(false), _appending(false) {
 	// Выполняем установку навязанной извне кодировки исходного текста
 	this->_decoder.encoding(settings.encoding);

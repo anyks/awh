@@ -158,7 +158,7 @@ const char * awh::codec::csv::message(const error_t error) noexcept {
 			return "too many fields in record";
 		// Если количество полей записи расходится с количеством полей заголовка
 		case static_cast <uint8_t> (error_t::FIELD_COUNT_MISMATCH):
-			return "field count differs from header";
+			return "field count differs from expected";
 		// Если разделитель не удалось определить по содержимому
 		case static_cast <uint8_t> (error_t::SEPARATOR_UNDETECTED):
 			return "field separator could not be detected";

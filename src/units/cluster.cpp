@@ -1985,6 +1985,18 @@ void awh::unit::Cluster::stop() noexcept {
  *
  */
 void awh::unit::Cluster::start() noexcept {
+	/**
+	 * Если кластер отвергнут как второй в процессе, запускать его нельзя
+	 *
+	 * @note Отказ этот - единственное место, где о нём узнают: конструктор сообщить о
+	 *       нём не может, а исключения в движке не применяются
+	 */
+	if(this->_rejected){
+		// Записываем ошибку в лог
+		this->_log->print("Cluster is rejected as the second one in this process and cannot be started", log_t::flag_t::CRITICAL);
+		// Выходим из функции
+		return;
+	}
 	// Если процесс является родительским
 	if(this->master()){
 		// Если работа юнита ещё не запущена
@@ -2460,7 +2472,7 @@ bool awh::unit::Cluster::setBufferSize(const pid_t pid, const event::action_t ac
  *
  */
 awh::unit::Cluster::Cluster(const fmk_t * fmk, const log_t * log) noexcept :
- unit_t(fmk, log), _name{AWH_SHORT_NAME},
+ unit_t(fmk, log), _name{AWH_SHORT_NAME}, _rejected(false),
  _count(0), _wakeup(0), _type(event::type_t::SEQPACKET) {
 	/**
 	 * Для операционной системы MS Windows
@@ -2468,10 +2480,20 @@ awh::unit::Cluster::Cluster(const fmk_t * fmk, const log_t * log) noexcept :
 	#if _WIN32 || _WIN64
 		// Обнуляем дескриптор объекта родительского процесса (захватывается дочерним процессом при запуске)
 		this->_master = 0;
-		// Если кластер уже был создан ранее
-		if(::__awh_cluster__ != nullptr)
-			// Выполняем генерацию исключения
-			throw std::logic_error("A cluster cannot exist twice");
+		/**
+		 * Если кластер уже был создан ранее
+		 *
+		 * @warning Отвергнутый кластер объекта процесса НЕ перехватывает: перехват
+		 *          увёл бы к нему дочерние процессы первого кластера
+		 */
+		if(::__awh_cluster__ != nullptr){
+			// Помечаем кластер отвергнутым
+			this->_rejected = true;
+			// Записываем ошибку в лог
+			this->_log->print("A cluster already exists in this process: the second one is rejected and will not be started", log_t::flag_t::CRITICAL);
+			// Выходим из конструктора
+			return;
+		}
 		// Выполняем установку объекта кластера
 		::__awh_cluster__ = this;
 		// Устанавливаем количество доступных ядер в системе
@@ -2484,17 +2506,24 @@ awh::unit::Cluster::Cluster(const fmk_t * fmk, const log_t * log) noexcept :
 		else if(this->_count > 1)
 			// Уменьшаем количество воркеров в два раза
 			this->_count /= 2;
-	#endif
 	/**
 	 * Для операционных систем, отличных от MS Windows
 	 */
-	#if !_WIN32 && !_WIN64
-		// Если кластер уже был создан ранее
-		if(::__awh_cluster__ != nullptr)
-			// Выполняем генерацию исключения
-			throw std::logic_error("A cluster cannot exist twice");
+	#else
+		/**
+		 * Если кластер уже был создан ранее
+		 *
+		 * @warning Отвергнутый кластер НЕ трогает ни объект процесса, ни перехватчик
+		 *          сигнала SIGCHLD: перехват увёл бы к нему дочерние процессы первого
+		 *          кластера, а снятие оставило бы первый без оповещений вовсе
+		 */
+		if(::__awh_cluster__ != nullptr){
+			// Помечаем кластер отвергнутым
+			this->_rejected = true;
+			// Записываем ошибку в лог
+			this->_log->print("A cluster already exists in this process: the second one is rejected and will not be started", log_t::flag_t::CRITICAL);
 		// Если кластер ещё не создан
-		else {
+		} else {
 			// Выполняем установку объекта кластера
 			::__awh_cluster__ = this;
 			// Устанавливаем функцию перехватчика событий
@@ -2583,11 +2612,10 @@ awh::unit::Cluster::~Cluster() noexcept {
 			// Сбрасываем глобальный указатель на объект кластера
 			::__awh_cluster__ = nullptr;
 		}
-	#endif
 	/**
 	 * Для операционных систем, отличных от MS Windows
 	 */
-	#if !_WIN32 && !_WIN64
+	#else
 		// Если разрушаемый объект является текущим зарегистрированным кластером
 		if(::__awh_cluster__ == this){
 			// Создаём объект восстановления стандартного обработчика сигнала

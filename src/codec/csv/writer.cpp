@@ -93,7 +93,14 @@ void awh::codec::csv::Writer::quoted(const string_view text) noexcept {
 		/**
 		 * Если знаком является знак отмены, а кавычка записывается им же
 		 */
-		} else if((letter == '\\') && (this->_settings.escape == escape_t::BACKSLASH))
+		/**
+		 * Если знаком является знак отмены, а разбор знак отмены признаёт
+		 *
+		 * @note Удваивается он и при записи кавычки удвоением, коль скоро разбор
+		 *       признаёт оба способа: одиночный знак отмены такой разбор снял бы,
+		 *       забрав вместе с собою следующий за ним знак
+		 */
+		} else if((letter == '\\') && (this->_settings.escape != escape_t::DOUBLE))
 			// Записываем знак отмены
 			this->_text.push_back('\\');
 		// Записываем знак содержимого поля
@@ -120,9 +127,21 @@ void awh::codec::csv::Writer::field(const string_view text) noexcept {
 	// Запоминаем признак наличия полей у записи
 	this->_started = true;
 	/**
+	 * Признак необходимости кавычек, вызванной знаком отмены в содержимом поля
+	 *
+	 * @note Поле, содержащее знак отмены, при разборе, знак отмены признающем, теряет
+	 *       его вместе со следующим за ним знаком. Правило необходимости кавычек знать
+	 *       о способе записи кавычки не обязано, а потому знак этот проверяется здесь
+	 */
+	const bool escaped = (
+		(this->_settings.escape != escape_t::DOUBLE) &&
+		(this->_settings.quoting != quoting_t::NONE) &&
+		(text.find('\\') != string_view::npos)
+	);
+	/**
 	 * Если поле требуется заключить в кавычки
 	 */
-	if(quotable(text, this->_settings.separator, this->_settings.quote, this->_settings.quoting)){
+	if(escaped || quotable(text, this->_settings.separator, this->_settings.quote, this->_settings.quoting)){
 		// Записываем содержимое поля с обрамлением кавычками
 		this->quoted(text);
 		// Выходим из метода

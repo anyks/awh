@@ -77,6 +77,11 @@ if (${GTest_FOUND})
             ini/reader.cpp
             ini/writer.cpp
             ini/document.cpp
+            csv/common.cpp
+            csv/encoding.cpp
+            csv/reader.cpp
+            csv/writer.cpp
+            csv/document.cpp
             toml/common.cpp
             toml/encoding.cpp
             toml/reader.cpp

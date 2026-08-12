@@ -54,7 +54,7 @@
 
 ## Build tools
 
-The build needs CMake, Git, a C++20 compiler and **GNU Make** — the build scripts call
+The build needs CMake, Git, a C++17 compiler and **GNU Make** — the build scripts call
 `gmake` on the BSD systems, where the system `make` is a different program. Unit tests
 additionally need **GoogleTest**; without it CMake stops with an explicit error instead of
 silently producing no tests.
