@@ -311,6 +311,26 @@ message(STATUS "Build dir: ${CMAKE_CURRENT_BINARY_DIR}\n")
 
 # Получаем архитектуру
 EXECUTE_PROCESS(COMMAND uname -m COMMAND tr -d '\n' OUTPUT_VARIABLE ARCHITECTURE )
+
+##
+# У MS Windows набор команд читается из названия системы, а не у uname -m
+#
+# Оболочка MSYS2 исполняется под подражанием x86-64, и uname -m отвечает x86_64 даже
+# на машине ARM64 - вслед за ним и uname -p, отдающий unknown. Строка же названия
+# системы оканчивается на ARM64 при любой из оболочек MSYS2, а у машины x86-64
+# суффикса не несёт вовсе - проверено опытом на обоих стендах Windows
+#
+# Цена ошибки не отвлечённая: приняв ARM64 за x86-64, сборка подставляет -mrdrnd и
+# -march=core2, и компилятор отвечает "unsupported option '-mrdrnd' for target
+# 'aarch64-w64-windows-gnu'"
+#
+# Тем же признаком пользуется и sh/build_third_party.sh, чтобы опознание было единым
+##
+EXECUTE_PROCESS(COMMAND uname -s OUTPUT_VARIABLE SYSTEM_NAME OUTPUT_STRIP_TRAILING_WHITESPACE)
+if (SYSTEM_NAME MATCHES "ARM64")
+    SET(ARCHITECTURE "aarch64")
+endif()
+
 message(STATUS "Architecture: ${ARCHITECTURE}")
 
 # Если сборка производится под операционную систему Linux
