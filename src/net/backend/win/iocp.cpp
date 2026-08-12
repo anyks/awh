@@ -8890,11 +8890,6 @@ namespace kernel {
 		 */
 		// Признак дейтаграммного дескриптора
 		const bool datagram = (exchanging && (node->state.type == event::type_t::DATAGRAM));
-		const bool suitable = false && (
-			((events & ~static_cast <uint32_t> (EPOLLRDHUP)) == static_cast <uint32_t> (EPOLLIN)) &&
-			exchanging && !limited && ((node->state.type == event::type_t::STREAM) || datagram) &&
-			(::kernel::listeners.count(state.sock) == 0) && !::pool::pending(state.sock)
-		);
 		/**
 		 * Выполняем подачу ожидания готовности
 		 *
@@ -8903,6 +8898,11 @@ namespace kernel {
 		 *       приём выдаётся той же готовностью к чтению, и учёт подписок о разнице
 		 *       не знает
 		 */
+		const bool suitable = (
+			((events & ~static_cast <uint32_t> (EPOLLRDHUP)) == static_cast <uint32_t> (EPOLLIN)) &&
+			exchanging && !limited && ((node->state.type == event::type_t::STREAM) || datagram) &&
+			(::kernel::listeners.count(state.sock) == 0) && !::pool::pending(state.sock)
+		);
 		/**
 		 * Если дескриптор к порту завершений ещё не привязан - привязываем его
 		 *
