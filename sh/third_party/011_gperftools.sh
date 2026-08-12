@@ -168,12 +168,35 @@ if [ -n "$1" ]; then
 
 			# Выполняем конфигурацию проекта
 			if [[ $OS = "Windows" ]]; then
+				##
+				# Наличие nanosleep задаётся, а не проверяется
+				#
+				# Настройка gperftools ищет его вызовом check_symbol_exists, а тот не только
+				# разбирает заголовок, но и компонует пробу. Библиотека потоков ей при этом не
+				# передаётся: link_libraries(Threads::Threads) на пробные сборки не
+				# распространяется, а лежит nanosleep именно в libwinpthread. Проба падает на
+				# компоновке, и признак выходит нулём
+				#
+				# Следом gperftools подставляет своё объявление nanosleep (src/windows/port.h),
+				# и оно сталкивается с настоящим из pthread_time.h: то стоит внутри extern "C",
+				# это - вне его, а язык запрещает объявлять одну функцию с разной связкой.
+				# Сборка отвечает "declaration of 'nanosleep' has a different language linkage"
+				#
+				# Проверено опытом на стенде Windows 11 ARM64: сборка пробы отвечает "undefined
+				# symbol: nanosleep64" без -lwinpthread и проходит с ним, то есть функция на
+				# месте, а ошибается проверка. С набором MinGW64 на x86-64 отказ не всплывает:
+				# у gcc библиотека потоков подключается сама, и проба проходит
+				#
+				# Итог check_symbol_exists кладёт в названную ей переменную, потому заданная
+				# снаружи она проверку минует
+				##
 				cmake \
 				 -DCMAKE_BUILD_TYPE=Release \
 				 -DBUILD_TESTING="OFF" \
 				 -DBUILD_SHARED_LIBS="OFF" \
 				 -DDEFAULT_BUILD_MINIMAL="ON" \
 				 -DDEFAULT_BUILD_DEBUGALLOC="OFF" \
+				 -DHAVE_DECL_NANOSLEEP=1 \
 				 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
 				 -G "MSYS Makefiles" \
 				 .. || exit 1

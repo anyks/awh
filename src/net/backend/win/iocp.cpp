@@ -8382,8 +8382,17 @@ namespace kernel {
 		 *
 		 * @note Заводится он наложенным: принятое подключение обслуживает тот же порт
 		 *       завершений, а сокет без наложения к нему не привязывается вовсе
+		 *
+		 * @note Протокол берётся по семейству, а не задаётся TCP всегда: у семейства
+		 *       AF_UNIX протокола нет вовсе, и передача ему `IPPROTO_TCP` оканчивается
+		 *       отказом 10043 (`WSAEPROTONOSUPPORT`). Установлено прогоном: набор терял
+		 *       `IoUDSTest` - сервер слушал, клиент подключался, а принять подключение
+		 *       было нечем
 		 */
-		const SOCKET peer = ::WSASocketW(static_cast <int32_t> (bound.ss_family), SOCK_STREAM, IPPROTO_TCP, nullptr, 0, WSA_FLAG_OVERLAPPED);
+		const SOCKET peer = ::WSASocketW(
+			static_cast <int32_t> (bound.ss_family), SOCK_STREAM,
+			((bound.ss_family == AF_UNIX) ? 0 : IPPROTO_TCP), nullptr, 0, WSA_FLAG_OVERLAPPED
+		);
 		// Если сокет под принимаемое подключение завести не удалось
 		if(peer == static_cast <SOCKET> (~static_cast <SOCKET> (0))){
 			// Записываем ошибку в лог
