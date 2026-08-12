@@ -23,20 +23,20 @@
 
 ## Supported operating systems
 
-| OS                | Engine      |
-|-------------------|-------------|
-| **iOS**           | kqueue      |
-| **macOS**         | kqueue      |
-| **FreeBSD**       | kqueue      |
-| **OpenBSD**       | kqueue      |
-| **NetBSD**        | kqueue      |
-| **DragonFly BSD** | kqueue      |
-| **Android**       | epoll       |
-| **Linux**         | epoll       |
-| **Linux**         | io_uring    |
-| **Solaris 11.4**  | event ports |
-| **OpenIndiana**   | event ports |
-| **Windows**       | IOCP        |
+| OS                | Engine      | CPU            |
+|-------------------|-------------|----------------|
+| **iOS**           | kqueue      | ARM64          |
+| **macOS**         | kqueue      | x86_64 / ARM64 |
+| **FreeBSD**       | kqueue      | AMD64 / ARM64  |
+| **OpenBSD**       | kqueue      | AMD64 / ARM64  |
+| **NetBSD**        | kqueue      | AMD64 / ARM64  |
+| **DragonFly BSD** | kqueue      | x86_64         |
+| **Android**       | epoll       | ARM64          |
+| **Linux**         | epoll       | AMD64 / ARM64  |
+| **Linux**         | io_uring    | AMD64 / ARM64  |
+| **Solaris 11.4**  | event ports | x86_64         |
+| **OpenIndiana**   | event ports | x86_64         |
+| **Windows**       | IOCP        | AMD64 / ARM64  |
 
 ## Requirements
 

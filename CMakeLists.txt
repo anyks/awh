@@ -551,7 +551,27 @@ if (CMAKE_BUILD_TYPE MATCHES Debug)
          # строками: программа с одним потоком, собранная с признаком, падает, а без
          # него работает. К самому коду это отношения не имеет
          ##
-        if (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows" AND NOT APPLE AND NOT ${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD")
+         ##
+         # Стандартная библиотека musl исключена третьей причиной
+         #
+         # Признак профилирования требует особого стартового объекта gcrt1.o, а musl
+         # его не поставляет вовсе - профилирования gprof она не поддерживает. Связывание
+         # валится с "cannot find gcrt1.o", причём на самом последнем шаге, когда всё уже
+         # собрано. Проверено на стенде Alpine 3.24 (12.08.2026)
+         #
+         # Опознаётся musl по цели собирателя: у Alpine она оканчивается на -musl.
+         # Признака в самом CMake для этого нет, а по названию системы musl от glibc
+         # не отличить - обе зовутся Linux
+         ##
+        SET(AWH_LIBC_MUSL FALSE)
+        if (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+            EXECUTE_PROCESS(COMMAND ${CMAKE_CXX_COMPILER} -dumpmachine OUTPUT_VARIABLE AWH_COMPILER_TARGET OUTPUT_STRIP_TRAILING_WHITESPACE)
+            if (AWH_COMPILER_TARGET MATCHES "musl")
+                SET(AWH_LIBC_MUSL TRUE)
+                message(STATUS "Detected libc: musl (${AWH_COMPILER_TARGET}) — gprof profiling is not available")
+            endif()
+        endif()
+        if (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows" AND NOT APPLE AND NOT ${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD" AND NOT AWH_LIBC_MUSL)
             # Устанавливаем сборку профилировщика
             SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pg")
             SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pg")
