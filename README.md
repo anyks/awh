@@ -18,6 +18,20 @@
 - **HTTP/2** (RFC-9113)
 - **HTTP/3** (RFC-9114)
 
+## Supported operating systems
+- **iOS** (kqueue)
+- **macOS** (kqueue)
+- **FreeBSD** (kqueue)
+- **OpenBSD** (kqueue)
+- **NetBSD** (kqueue)
+- **DragonFly BSD** (kqueue)
+- **Android** (epoll)
+- **Linux** (epoll)
+- **Linux** (io_uring)
+- **Solaris 11.4** (event ports)
+- **OpenIndiana** (event ports)
+- **Windows** (IOCP)
+
 ## Requirements
 
 - [LZ4](https://lz4.org)

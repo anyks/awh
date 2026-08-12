@@ -3747,9 +3747,19 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 							// Печатаем дескриптор созданного сокета
 							return ::socket(AF_UNIX, SOCK_DGRAM | mode, 0);
 						/**
-						 * Для операционной системы FreeBSD
+						 * Для операционных систем FreeBSD и DragonFly BSD
+						 *
+						 * @note DragonFly пакетные сокеты семейства AF_UNIX держит наравне с
+						 *       FreeBSD - проверено пробой на стенде 12.08.2026, а не выведено
+						 *       из родословной: ответвление шло от FreeBSD 4.8, где их ещё не
+						 *       было, и по одной родословной система попала бы в запасную
+						 *       ветвь, подменяющую пакетный сокет дейтаграммным
+						 *
+						 * @warning Ветви для DragonFly здесь не было вовсе, а запасного пути у
+						 *          цепочки нет: система не подпадала ни под одно условие, и
+						 *          функция завершалась БЕЗ возврата значения
 						 */
-						#elif __FreeBSD__
+						#elif __FreeBSD__ || defined(__DragonFly__)
 							// Печатаем дескриптор созданного сокета
 							return ::socket(AF_UNIX, SOCK_SEQPACKET | mode, 0);
 						#endif
@@ -3902,10 +3912,19 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 									case static_cast <uint8_t> (event::protocol_t::TCP):
 										// Печатаем дескриптор созданного сокета
 										return ::socket(AF_INET, SOCK_STREAM | mode, IPPROTO_TCP);
-									// Если протокол определён как SCTP
-									case static_cast <uint8_t> (event::protocol_t::SCTP):
-										// Печатаем дескриптор созданного сокета
-										return ::socket(AF_INET, SOCK_STREAM | mode, IPPROTO_SCTP);
+									/**
+									 * Если протокол определён как SCTP
+									 *
+									 * @note У DragonFly BSD протокола этого нет вовсе - ни заголовка
+									 *       netinet/sctp.h, ни даже опознавателя IPPROTO_SCTP, - оттого
+									 *       случай и снимается сборкой целиком. Запрос на SCTP уходит
+									 *       к общему отказу ниже, а не заводит сокет чужого протокола
+									 */
+									#if !defined(__DragonFly__)
+										case static_cast <uint8_t> (event::protocol_t::SCTP):
+											// Печатаем дескриптор созданного сокета
+											return ::socket(AF_INET, SOCK_STREAM | mode, IPPROTO_SCTP);
+									#endif
 									// Если установлен другой протокол
 									default: ok = false;
 								}
@@ -3924,10 +3943,19 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 									case static_cast <uint8_t> (event::protocol_t::TCP):
 										// Печатаем дескриптор созданного сокета
 										return ::socket(AF_INET6, SOCK_STREAM | mode, IPPROTO_TCP);
-									// Если протокол определён как SCTP
-									case static_cast <uint8_t> (event::protocol_t::SCTP):
-										// Печатаем дескриптор созданного сокета
-										return ::socket(AF_INET6, SOCK_STREAM | mode, IPPROTO_SCTP);
+									/**
+									 * Если протокол определён как SCTP
+									 *
+									 * @note У DragonFly BSD протокола этого нет вовсе - ни заголовка
+									 *       netinet/sctp.h, ни даже опознавателя IPPROTO_SCTP, - оттого
+									 *       случай и снимается сборкой целиком. Запрос на SCTP уходит
+									 *       к общему отказу ниже, а не заводит сокет чужого протокола
+									 */
+									#if !defined(__DragonFly__)
+										case static_cast <uint8_t> (event::protocol_t::SCTP):
+											// Печатаем дескриптор созданного сокета
+											return ::socket(AF_INET6, SOCK_STREAM | mode, IPPROTO_SCTP);
+									#endif
 									// Если установлен другой протокол
 									default: ok = false;
 								}
@@ -4055,7 +4083,7 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 										/**
 										 * Для операционной системы macOS, NetBSD, OpenBSD
 										 */
-										#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
+										#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__ || defined(__DragonFly__)
 											// Печатаем дескриптор созданного сокета
 											return ::socket(AF_INET, SOCK_DGRAM | mode, 0);
 										/**
@@ -4076,10 +4104,16 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 								 * Определяем протокол
 								 */
 								switch(static_cast <uint8_t> (proto)){
-									// Если протокол определён как SCTP
-									case static_cast <uint8_t> (event::protocol_t::SCTP):
-										// Печатаем дескриптор созданного сокета
-										return ::socket(AF_INET6, SOCK_SEQPACKET | mode, IPPROTO_SCTP);
+									/**
+									 * Если протокол определён как SCTP
+									 *
+									 * @note DragonFly BSD опознавателя IPPROTO_SCTP не несёт вовсе
+									 */
+									#if !defined(__DragonFly__)
+										case static_cast <uint8_t> (event::protocol_t::SCTP):
+											// Печатаем дескриптор созданного сокета
+											return ::socket(AF_INET6, SOCK_SEQPACKET | mode, IPPROTO_SCTP);
+									#endif
 									// Если установлен другой протокол
 									default: ok = false;
 								}

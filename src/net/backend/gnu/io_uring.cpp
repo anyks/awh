@@ -923,8 +923,17 @@ namespace io {
 			return;
 		// Сохраняем объект функций обратного вызова SCTP
 		auto callbacks = ::move(this->_sctp->callbacks);
-		// Выполняем зануление набора параметров SCTP
-		::memset(this->_sctp.get(), 0, sizeof(sctp_endpoint_t));
+		/**
+		 * Выполняем сброс набора параметров SCTP присваиванием пустого набора
+		 *
+		 * @warning Заносить сюда `memset` НЕЛЬЗЯ: набор несёт список типов
+		 *          событий подписки - хранилище `unordered_set`, держащее
+		 *          память в куче. Зануление его внутреннего устройства теряет
+		 *          выданную память безвозвратно и оставляет хранилище в
+		 *          негодном виде, а всякое последующее обращение к нему, как и
+		 *          его же разрушение, становится действием неопределённым
+		 */
+		(* this->_sctp) = sctp_endpoint_t();
 		// Восстанавливаем объект функций обратного вызова SCTP
 		this->_sctp->callbacks = ::move(callbacks);
 	}
@@ -31383,8 +31392,14 @@ namespace io {
 						{
 							// Сохраняем объект функции обратного вызова SCTP
 							auto callbacks = ::move(server->sctp.callbacks);
-							// Выполняем зануление объекта информации SCTP
-							::memset(&server->sctp, 0, sizeof(server->sctp));
+							/**
+							 * Выполняем сброс набора параметров SCTP присваиванием пустого набора
+							 *
+							 * @warning Заносить сюда `memset` НЕЛЬЗЯ: набор несёт список типов
+							 *          событий подписки - хранилище `unordered_set`, держащее
+							 *          память в куче
+							 */
+							server->sctp = ::io::sctp_endpoint_t();
 							// Восстанавливаем объект функции обратного вызова SCTP
 							server->sctp.callbacks = ::move(callbacks);
 						}
@@ -70543,8 +70558,14 @@ void awh::engine::IO::clear() noexcept {
 						{
 							// Сохраняем объект функции обратного вызова SCTP
 							auto callbacks = ::move(server->sctp.callbacks);
-							// Выполняем зануление объекта информации SCTP
-							::memset(&server->sctp, 0, sizeof(server->sctp));
+							/**
+							 * Выполняем сброс набора параметров SCTP присваиванием пустого набора
+							 *
+							 * @warning Заносить сюда `memset` НЕЛЬЗЯ: набор несёт список типов
+							 *          событий подписки - хранилище `unordered_set`, держащее
+							 *          память в куче
+							 */
+							server->sctp = ::io::sctp_endpoint_t();
 							// Восстанавливаем объект функции обратного вызова SCTP
 							server->sctp.callbacks = ::move(callbacks);
 						}

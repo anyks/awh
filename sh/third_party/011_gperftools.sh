@@ -16,6 +16,29 @@ if [ "$OS" = "OpenBSD" ]; then
 	return 0 2>/dev/null || exit 0
 fi
 
+##
+# У DragonFly BSD собрать TcMalloc тоже нечем
+#
+# Библиотека gperftools объявляет malloc_usable_size(void *), а система - через
+# malloc_np.h - объявляет её же с const: size_t malloc_usable_size(const void *).
+# Объявления расходятся, и собиратель отвергает их как противоречащие друг другу.
+#
+# У FreeBSD объявление системы точно такое же, и разницы в нём нет вовсе - расходятся
+# системы в другом: DragonFly подключает malloc_np.h из самого stdlib.h, а FreeBSD
+# этого не делает, оттого gperftools там объявления системы попросту не видит.
+# Проверено на стенде 12.08.2026 собирателем gcc 14.2
+#
+# Подпирать это своими силами нельзя: править чужой подмодуль означало бы держать
+# заплату вечно. Распределитель памяти при этом не пропадает - его задачу берёт на
+# себя собственный распределитель системы
+##
+if [ "$OS" = "DragonFly" ]; then
+	# Сообщаем о пропуске сборки распределителя памяти
+	echo "TcMalloc is not available on DragonFly BSD: skipping gperftools"
+	# Завершаем работу без ошибки
+	return 0 2>/dev/null || exit 0
+fi
+
 # Если команда указана
 if [ -n "$1" ]; then
 	# Если необходимо удалить или очистить модуль
@@ -258,8 +281,8 @@ if [ -n "$1" ]; then
 				cp "$src/build_awh/$i" "$PREFIX/lib/$i" || exit 1
 			done
 
-			# Если сборка производится в операционной системе macOS, FreeBSD, NetBSD или OpenBSD
-			if [ $OS = "Darwin" ] || [ $OS = "FreeBSD" ] || [ $OS = "NetBSD" ] || [ $OS = "OpenBSD" ]; then
+			# Если сборка производится в операционной системе macOS, FreeBSD, DragonFly, NetBSD или OpenBSD
+			if [ $OS = "Darwin" ] || [ $OS = "FreeBSD" ] || [ $OS = "DragonFly" ] || [ $OS = "NetBSD" ] || [ $OS = "OpenBSD" ]; then
 				# Используем find для поиска всех .h файлов и копируем их с воссозданием структуры
 				cd "$src/src" || exit 1
 				# Выполняем перенос всех заголовочных файлов

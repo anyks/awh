@@ -528,14 +528,157 @@ string_view awh::codec::toml::Reader::intern(const string_view name) noexcept {
 	return string_view(block.data() + offset, name.length());
 }
 /**
- * @brief Метод проверки повторного объявления имени
+ * @brief Метод получения рода уже объявленного имени
  *
- * @param name  проверяемое полное имя ключа либо таблицы
- * @param error код ошибки повторного объявления
- * @return      признак того, что имя объявляется впервые
+ * @param name искомое полное имя ключа либо таблицы
+ * @return     род объявленного имени
  *
  */
-bool awh::codec::toml::Reader::declare(const string & name, const error_t error) noexcept {
+awh::codec::toml::Reader::kind_t awh::codec::toml::Reader::lookup(const string_view name) const noexcept {
+	/**
+	 * Выполняем поиск имени среди объявляемых разбираемой записью
+	 *
+	 * @note Поиск ведётся первым: запись вправе объявить имя дважды сама, и имена её
+	 *       в указатель родов до окончания разбора не переносятся
+	 */
+	const size_t position = this->staged(name);
+	/**
+	 * Если имя объявляется разбираемой записью
+	 */
+	if(position < this->_pending.size())
+		// Выводим род объявляемого имени
+		return this->_pending.at(position).kind;
+	// Выполняем поиск имени в указателе родов объявленных имён
+	auto i = this->_names.find(name);
+	// Выводим род объявленного имени
+	return ((i != this->_names.end()) ? i->second : kind_t::NONE);
+}
+/**
+ * @brief Метод поиска имени среди объявляемых разбираемой записью
+ *
+ * @param name искомое полное имя ключа либо таблицы
+ * @return     номер имени в очереди объявляемых либо количество их
+ *
+ */
+size_t awh::codec::toml::Reader::staged(const string_view name) const noexcept {
+	/**
+	 * Если указатель имён записи заведён
+	 */
+	if(!this->_staged.empty()){
+		// Выполняем поиск имени в указателе имён записи
+		auto i = this->_staged.find(name);
+		// Выводим номер найденного имени в очереди объявляемых
+		return ((i != this->_staged.end()) ? static_cast <size_t> (i->second) : this->_pending.size());
+	}
+	/**
+	 * Выполняем перебор имён, объявляемых разбираемой записью
+	 *
+	 * @note Перебор ведётся, пока имён немного: обычная запись объявляет их считанные
+	 *       единицы, и указатель стоил бы ей выделения памяти на всякое имя
+	 */
+	for(size_t i = 0; i < this->_pending.size(); i++){
+		/**
+		 * Если имя объявляется разбираемой записью
+		 */
+		if(this->_pending.at(i).name.compare(name) == 0)
+			// Выводим номер найденного имени в очереди объявляемых
+			return i;
+	}
+	// Выводим количество имён, объявляемых разбираемой записью
+	return this->_pending.size();
+}
+/**
+ * @brief Метод учёта имени, объявляемого разбираемой записью
+ *
+ * @param name    объявляемое полное имя ключа либо таблицы
+ * @param kind    род объявляемого имени
+ * @param implied признак того, что имя заведено исподволь
+ *
+ */
+void awh::codec::toml::Reader::stage(const string_view name, const kind_t kind, const bool implied) noexcept {
+	/**
+	 * @brief Порог числа имён, за которым перебор их обращается в указатель
+	 *
+	 */
+	constexpr size_t THRESHOLD = 16;
+	// Выполняем запоминание имени, объявляемого разбираемой записью
+	this->_pending.emplace_back(name, kind, implied);
+	/**
+	 * Если имён записи для заведения указателя недостаточно
+	 */
+	if(this->_pending.size() <= THRESHOLD)
+		// Выходим из учёта объявляемого имени
+		return;
+	/**
+	 * Если указатель имён записи ещё не заведён
+	 */
+	if(this->_staged.empty()){
+		/**
+		 * Выполняем перебор всех имён, объявляемых разбираемой записью
+		 */
+		for(size_t i = 0; i < this->_pending.size(); i++)
+			// Выполняем установку объявляемого имени указателем
+			this->_staged.emplace(this->_pending.at(i).name, static_cast <uint32_t> (i));
+		// Выходим из учёта объявляемого имени
+		return;
+	}
+	// Выполняем установку объявляемого имени указателем
+	this->_staged.emplace(this->_pending.back().name, static_cast <uint32_t> (this->_pending.size() - 1));
+}
+/**
+ * @brief Метод проверки занятости объемлющих имён
+ *
+ * @param name   проверяемое полное имя ключа либо таблицы
+ * @param offset положение объявления в приведённом тексте
+ * @return       признак того, что объемлющие имена свободны
+ *
+ */
+bool awh::codec::toml::Reader::occupied(const string & name, const size_t offset) noexcept {
+	/**
+	 * Выполняем перебор всех объемлющих имён проверяемого имени
+	 *
+	 * @note Разделитель стоит перед всякой частью имени, и всякое его вхождение,
+	 *       кроме первого, отделяет очередное объемлющее имя
+	 */
+	for(size_t i = 0; (i = name.find('\x1F', i + 1)) != string::npos;){
+		/**
+		 * Определяем род объемлющего имени
+		 */
+		switch(static_cast <uint8_t> (this->lookup(string_view(name).substr(0, i)))){
+			/**
+			 * Если объемлющее имя занято встроенной таблицей
+			 *
+			 * @note Встроенная таблица закрыта своими скобками: описание запрещает
+			 *       дополнять её и заголовком, и составным именем ключа
+			 */
+			case static_cast <uint8_t> (kind_t::INLINE):
+				// Выполняем запоминание ошибки дополнения встроенной таблицы
+				return this->failure(error_t::EXTEND_INLINE_TABLE, offset);
+			/**
+			 * Если объемлющее имя занято парой
+			 *
+			 * @note Под простым значением и под перечнем не заводится ничего: имя
+			 *       меняло бы при этом свой тип
+			 */
+			case static_cast <uint8_t> (kind_t::VALUE):
+				// Выполняем запоминание ошибки переопределения заданного значения
+				return this->failure(error_t::REDEFINE_TABLE, offset);
+		}
+	}
+	// Выводим признак того, что объемлющие имена свободны
+	return true;
+}
+/**
+ * @brief Метод проверки повторного объявления имени
+ *
+ * @param name   объявляемое полное имя ключа либо таблицы
+ * @param kind   род объявляемого имени
+ * @param error  код ошибки повторного объявления
+ * @param offset положение объявления в приведённом тексте
+ * @return       признак того, что имя объявляется впервые
+ *
+ */
+bool awh::codec::toml::Reader::declare(const string & name, const kind_t kind, const error_t error, const size_t offset) noexcept {
 	/**
 	 * Если проверка повторного объявления настройками отключена
 	 */
@@ -543,24 +686,78 @@ bool awh::codec::toml::Reader::declare(const string & name, const error_t error)
 		// Выводим признак того, что имя объявляется впервые
 		return true;
 	/**
-	 * Если имя уже объявлено
+	 * Если объемлющие имена объявляемого имени заняты
 	 */
-	if(this->_declared.count(name) > 0)
-		// Выполняем запоминание ошибки повторного объявления имени
-		return this->failure(error, this->_start);
+	if(!this->occupied(name, offset))
+		// Выводим признак неудачного объявления имени
+		return false;
+	// Получаем род уже объявленного имени
+	const kind_t current = this->lookup(name);
 	/**
-	 * Выполняем перебор имён, объявляемых разбираемой записью
+	 * Определяем род объявляемого имени
 	 */
-	for(auto & declared : this->_pending){
+	switch(static_cast <uint8_t> (kind)){
 		/**
-		 * Если имя объявляется записью повторно
+		 * Если объявляется заголовок таблицы
+		 *
+		 * @note Таблицу, заведённую исподволь объемлющим именем заголовка, дозволено
+		 *       объявить явно: описание отводит заголовку «[x]» право объявить
+		 *       надтаблицу, заведённую прежде заголовком «[x.y]»
 		 */
-		if(declared.compare(name) == 0)
-			// Выполняем запоминание ошибки повторного объявления имени
-			return this->failure(error, this->_start);
+		case static_cast <uint8_t> (kind_t::TABLE): {
+			/**
+			 * Если имя уже занято
+			 */
+			if((current != kind_t::NONE) && (current != kind_t::IMPLICIT))
+				// Выполняем запоминание ошибки повторного объявления имени
+				return this->failure(error, offset);
+		} break;
+		/**
+		 * Если объявляется заголовок набора таблиц
+		 */
+		case static_cast <uint8_t> (kind_t::ARRAY): {
+			/**
+			 * Если имя уже занято не набором таблиц
+			 *
+			 * @note Дополнять набором таблиц имя, набором таблиц не являющееся,
+			 *       описание запрещает: значение по имени меняло бы свой тип
+			 */
+			if((current != kind_t::NONE) && (current != kind_t::ARRAY))
+				// Выполняем запоминание ошибки дополнения таблицы набором
+				return this->failure(error, offset);
+		} break;
+		/**
+		 * Если объявляется пара имени ключа со значением
+		 */
+		default: {
+			/**
+			 * Если имя уже занято
+			 */
+			if(current != kind_t::NONE)
+				// Выполняем запоминание ошибки повторного объявления имени
+				return this->failure(error, offset);
+		}
 	}
-	// Выполняем запоминание имени, объявляемого разбираемой записью
-	this->_pending.push_back(name);
+	/**
+	 * Выполняем перебор всех объемлющих имён объявляемого имени
+	 *
+	 * @note Всякое объемлющее имя заводит таблицу исподволь, и род её разнится:
+	 *       заведённую заголовком дозволено объявить явно, а заведённую составным
+	 *       именем ключа - нет
+	 */
+	for(size_t i = 0; (i = name.find('\x1F', i + 1)) != string::npos;){
+		// Получаем очередное объемлющее имя
+		const string_view prefix = string_view(name).substr(0, i);
+		/**
+		 * Если объемлющее имя ещё не заведено
+		 */
+		if(this->lookup(prefix) == kind_t::NONE)
+			// Выполняем учёт имени, заводимого исподволь
+			this->stage(prefix, (((kind == kind_t::TABLE) || (kind == kind_t::ARRAY)) ?
+				kind_t::IMPLICIT : kind_t::DOTTED), true);
+	}
+	// Выполняем учёт имени, объявляемого разбираемой записью
+	this->stage(name, kind, false);
 	// Выводим признак того, что имя объявляется впервые
 	return true;
 }
@@ -618,6 +815,74 @@ bool awh::codec::toml::Reader::completed(const bool end) noexcept {
 	return false;
 }
 /**
+ * @brief Метод разбора примечания, начатого текущим знаком
+ *
+ * @details Разбор ведётся от знака начала примечания, на который указывает текущее
+ * положение, и до места конца содержимого его. Собранное событие уходит в очередь
+ * выдачи, если выдача примечаний настройками разрешена
+ *
+ * @param position положение конца содержимого примечания
+ * @param trailing признак примечания, дописанного к готовой строке
+ * @return         признак успешного разбора
+ *
+ */
+bool awh::codec::toml::Reader::commented(const size_t position, const bool trailing) noexcept {
+	// Собираемое событие примечания
+	item_t item;
+	// Запоминаем вид собранного события
+	item.event = event_t::COMMENT;
+	// Запоминаем признак того, что примечание дописано к готовой строке
+	item.trailing = trailing;
+	// Запоминаем место примечания в исходном тексте
+	item.location = this->locate(this->_offset);
+	// Выполняем пропуск знака начала примечания
+	this->step(this->_offset + 1);
+	// Получаем содержимое примечания
+	string_view text = string_view(this->_buffer).substr(this->_offset, (position - this->_offset));
+	/**
+	 * Если содержимое примечания оканчивается возвратом каретки
+	 */
+	if(!text.empty() && (text.back() == '\r'))
+		// Выполняем отбрасывание возврата каретки
+		text = text.substr(0, (text.length() - 1));
+	/**
+	 * Выполняем перебор всех знаков содержимого примечания
+	 */
+	for(size_t i = 0; i < text.length(); i++){
+		// Получаем беззнаковое значение очередного знака содержимого
+		const uint8_t letter = static_cast <uint8_t> (text[i]);
+		/**
+		 * Если знак содержимого примечания является управляющим
+		 *
+		 * @note Описание дозволяет примечанию нести из управляющих знаков одну лишь
+		 *       табуляцию. Возврат каретки к тому же неотличим здесь от окончания
+		 *       строки: примечание, его несущее, записью выдавалось бы окончанием,
+		 *       и перезапись текста настроек устойчивости лишалась бы
+		 */
+		if(((letter < 0x20) && (text[i] != '\t')) || (letter == 0x7F))
+			// Выполняем запоминание ошибки недопустимого знака
+			return this->failure(error_t::INVALID_CHARACTER, (this->_offset + i));
+	}
+	/**
+	 * Выполняем отбрасывание пробельной обвязки содержимого примечания
+	 */
+	while(!text.empty() && ::blank(text.front()))
+		// Выполняем отбрасывание пробельного знака начала содержимого
+		text = text.substr(1);
+	// Запоминаем содержимое примечания в хранилище записи
+	item.content = this->keep(text);
+	// Выполняем перемещение разбора за содержимое примечания
+	this->step(position);
+	/**
+	 * Если выдача событий примечаний настройками разрешена
+	 */
+	if(this->_settings.emitComments)
+		// Выполняем добавление собранного события в очередь выдачи
+		this->_items.push_back(item);
+	// Выводим признак успешного разбора
+	return true;
+}
+/**
  * @brief Метод разбора остатка строки за завершённой записью
  *
  * @param end признак того, что текст поступил целиком
@@ -652,16 +917,6 @@ bool awh::codec::toml::Reader::tail(const bool end) noexcept {
 		if(!this->completed(end))
 			// Выводим признак неудачного разбора
 			return false;
-		// Собираемое событие примечания
-		item_t item;
-		// Запоминаем вид собранного события
-		item.event = event_t::COMMENT;
-		// Запоминаем признак того, что примечание дописано к готовой строке
-		item.trailing = true;
-		// Запоминаем место примечания в исходном тексте
-		item.location = this->locate(this->_offset);
-		// Выполняем пропуск знака начала примечания
-		this->step(this->_offset + 1);
 		// Положение конца содержимого примечания
 		size_t position = this->_buffer.find('\n', this->_offset);
 		/**
@@ -670,48 +925,12 @@ bool awh::codec::toml::Reader::tail(const bool end) noexcept {
 		if(position == string::npos)
 			// Запоминаем положение конца содержимого примечания
 			position = this->_buffer.length();
-		// Получаем содержимое примечания
-		string_view text = string_view(this->_buffer).substr(this->_offset, (position - this->_offset));
 		/**
-		 * Если содержимое примечания оканчивается возвратом каретки
+		 * Если разобрать примечание не удалось
 		 */
-		if(!text.empty() && (text.back() == '\r'))
-			// Выполняем отбрасывание возврата каретки
-			text = text.substr(0, (text.length() - 1));
-		/**
-		 * Выполняем перебор всех знаков содержимого примечания
-		 */
-		for(size_t i = 0; i < text.length(); i++){
-			// Получаем беззнаковое значение очередного знака содержимого
-			const uint8_t letter = static_cast <uint8_t> (text[i]);
-			/**
-			 * Если знак содержимого примечания является управляющим
-			 *
-			 * @note Описание дозволяет примечанию нести из управляющих знаков одну лишь
-			 *       табуляцию. Возврат каретки к тому же неотличим здесь от окончания
-			 *       строки: примечание, его несущее, записью выдавалось бы окончанием,
-			 *       и перезапись текста настроек устойчивости лишалась бы
-			 */
-			if(((letter < 0x20) && (text[i] != '\t')) || (letter == 0x7F))
-				// Выполняем запоминание ошибки недопустимого знака
-				return this->failure(error_t::INVALID_CHARACTER, (this->_offset + i));
-		}
-		/**
-		 * Выполняем отбрасывание пробельной обвязки содержимого примечания
-		 */
-		while(!text.empty() && ::blank(text.front()))
-			// Выполняем отбрасывание пробельного знака начала содержимого
-			text = text.substr(1);
-		// Запоминаем содержимое примечания в хранилище записи
-		item.content = this->keep(text);
-		// Выполняем перемещение разбора за содержимое примечания
-		this->step(position);
-		/**
-		 * Если выдача событий примечаний настройками разрешена
-		 */
-		if(this->_settings.emitComments)
-			// Выполняем добавление собранного события в очередь выдачи
-			this->_items.push_back(item);
+		if(!this->commented(position, true))
+			// Выводим признак неудачного разбора
+			return false;
 	}
 	/**
 	 * Если накопленный текст исчерпан
@@ -1253,11 +1472,48 @@ bool awh::codec::toml::Reader::name(const bool end, uint32_t & count) noexcept {
 			/**
 			 * Выполняем перебор знаков составной части имени
 			 */
-			while((position < this->_buffer.length()) &&
-			      (bare(this->_buffer[position]) ||
-			       (this->_settings.unicode && (static_cast <uint8_t> (this->_buffer[position]) >= 0x80))))
+			while(position < this->_buffer.length()){
+				/**
+				 * Если знак имени задан знаком US-ASCII
+				 */
+				if(bare(this->_buffer[position])){
+					// Выполняем переход к следующему знаку имени
+					position++;
+					// Переходим к следующему знаку составной части имени
+					continue;
+				}
+				/**
+				 * Если знаки Юникода в имени без кавычек настройками не признаются
+				 */
+				if(!this->_settings.unicode || (static_cast <uint8_t> (this->_buffer[position]) < 0x80))
+					// Выходим из перебора знаков составной части имени
+					break;
+				// Очередной знак Юникода составной части имени
+				uint32_t code = 0;
+				// Получаем количество байт очередного знака Юникода
+				const size_t length = toml::decode(this->_buffer, position, code);
+				/**
+				 * Если знак Юникода имени оборван концом накопленного текста
+				 *
+				 * @note Оборванный знак от битого отличается лишь приходом продолжения:
+				 *       судить о нём по накопленному тексту нельзя, покуда текст не
+				 *       поступил целиком
+				 */
+				if((length == 0) && !end && ((position + 4) > this->_buffer.length())){
+					// Запоминаем нужду в продолжении текста
+					this->_hungry = true;
+					// Выводим признак неудачного разбора
+					return false;
+				}
+				/**
+				 * Если знак Юникода имени без кавычек не дозволен
+				 */
+				if((length == 0) || !toml::named(code))
+					// Выходим из перебора знаков составной части имени
+					break;
 				// Выполняем переход к следующему знаку имени
-				position++;
+				position += length;
+			}
 			/**
 			 * Если составная часть имени пуста
 			 */
@@ -1862,41 +2118,82 @@ bool awh::codec::toml::Reader::numeric(const string_view text, item_t & item) no
 		return this->failure(error_t::INVALID_NUMBER, this->_offset);
 	// Признак записи числа с плавающей точкой
 	bool real = false;
+	// Положение разбираемого знака записи числа
+	size_t position = 0;
 	/**
-	 * Выполняем перебор знаков записи числа
+	 * Выполняем перебор цифр целой части записи числа
+	 *
+	 * @note Построение записи проверяется правилом описания, а не набором знаков её:
+	 *       запись «1.e2» несёт одни лишь дозволенные знаки, а числом по описанию не
+	 *       является - десятичная точка обязана нести цифру и слева, и справа
 	 */
-	for(size_t i = 0; i < digits.length(); i++){
-		// Получаем очередной знак записи числа
-		const char letter = digits[i];
+	while((position < digits.length()) && ascii::isDigit(digits[position]))
+		// Выполняем переход к следующему знаку записи числа
+		position++;
+	/**
+	 * Если целая часть записи числа пуста
+	 */
+	if(position == 0)
+		// Выполняем запоминание ошибки построения записи числа
+		return this->failure(error_t::INVALID_NUMBER, this->_offset);
+	/**
+	 * Если за целой частью записи числа следует десятичная точка
+	 */
+	if((position < digits.length()) && (digits[position] == '.')){
+		// Запоминаем признак записи числа с плавающей точкой
+		real = true;
+		// Выполняем пропуск десятичной точки записи числа
+		position++;
+		// Положение начала дробной части записи числа
+		const size_t start = position;
 		/**
-		 * Если знаком является десятичная точка либо знак порядка
+		 * Выполняем перебор цифр дробной части записи числа
 		 */
-		if((letter == '.') || (letter == 'e') || (letter == 'E')){
-			// Запоминаем признак записи числа с плавающей точкой
-			real = true;
-			// Переходим к следующему знаку записи числа
-			continue;
-		}
+		while((position < digits.length()) && ascii::isDigit(digits[position]))
+			// Выполняем переход к следующему знаку записи числа
+			position++;
 		/**
-		 * Если знаком является знак порядка числа
+		 * Если дробная часть записи числа пуста
 		 */
-		if((letter == '+') || (letter == '-')){
-			/**
-			 * Если знак стоит не за знаком порядка
-			 */
-			if((i == 0) || ((digits[i - 1] != 'e') && (digits[i - 1] != 'E')))
-				// Выполняем запоминание ошибки построения записи числа
-				return this->failure(error_t::INVALID_NUMBER, this->_offset);
-			// Переходим к следующему знаку записи числа
-			continue;
-		}
-		/**
-		 * Если знак цифрой не является
-		 */
-		if(!ascii::isDigit(letter))
+		if(position == start)
 			// Выполняем запоминание ошибки построения записи числа
 			return this->failure(error_t::INVALID_NUMBER, this->_offset);
 	}
+	/**
+	 * Если за записью числа следует знак порядка
+	 */
+	if((position < digits.length()) && ((digits[position] == 'e') || (digits[position] == 'E'))){
+		// Запоминаем признак записи числа с плавающей точкой
+		real = true;
+		// Выполняем пропуск знака порядка записи числа
+		position++;
+		/**
+		 * Если порядок записи числа несёт знак
+		 */
+		if((position < digits.length()) && ((digits[position] == '+') || (digits[position] == '-')))
+			// Выполняем пропуск знака порядка записи числа
+			position++;
+		// Положение начала порядка записи числа
+		const size_t start = position;
+		/**
+		 * Выполняем перебор цифр порядка записи числа
+		 */
+		while((position < digits.length()) && ascii::isDigit(digits[position]))
+			// Выполняем переход к следующему знаку записи числа
+			position++;
+		/**
+		 * Если порядок записи числа пуст
+		 */
+		if(position == start)
+			// Выполняем запоминание ошибки построения записи числа
+			return this->failure(error_t::INVALID_NUMBER, this->_offset);
+	}
+	/**
+	 * Если запись числа разобрана не до конца
+	 */
+	if(position < digits.length())
+		// Выполняем запоминание ошибки построения записи числа
+		return this->failure(error_t::INVALID_NUMBER, this->_offset);
 	/**
 	 * Если запись числа несёт незначащий ноль в начале
 	 *
@@ -1911,12 +2208,6 @@ bool awh::codec::toml::Reader::numeric(const string_view text, item_t & item) no
 	 * Если число записано с плавающей точкой
 	 */
 	if(real){
-		/**
-		 * Если запись числа десятичной точкой либо знаком порядка оканчивается
-		 */
-		if(!ascii::isDigit(digits.back()) || !ascii::isDigit(digits.front()))
-			// Выполняем запоминание ошибки построения записи числа
-			return this->failure(error_t::INVALID_NUMBER, this->_offset);
 		// Собираемое значение числа с плавающей точкой
 		double number = 0.0;
 		// Выполняем разбор числа с плавающей точкой
@@ -1960,12 +2251,13 @@ bool awh::codec::toml::Reader::numeric(const string_view text, item_t & item) no
 /**
  * @brief Метод разбора значения
  *
- * @param end   признак того, что текст поступил целиком
- * @param depth текущая глубина вложенности значения
- * @return      признак успешного разбора
+ * @param end    признак того, что текст поступил целиком
+ * @param depth  текущая глубина вложенности значения
+ * @param prefix полное имя пары значения, пустой указатель - имени нет
+ * @return       признак успешного разбора
  *
  */
-bool awh::codec::toml::Reader::content(const bool end, const uint32_t depth) noexcept {
+bool awh::codec::toml::Reader::content(const bool end, const uint32_t depth, const string * prefix) noexcept {
 	// Выполняем пропуск пробельных знаков строки
 	this->spaces();
 	/**
@@ -1994,9 +2286,46 @@ bool awh::codec::toml::Reader::content(const bool end, const uint32_t depth) noe
 	/**
 	 * Если значением является встроенная таблица
 	 */
-	if(letter == '{')
-		// Выполняем разбор встроенной таблицы
-		return this->inlined(end, depth);
+	if(letter == '{'){
+		// Номер имени встроенной таблицы среди имён разбираемой записи
+		size_t declared = this->_pending.size();
+		/**
+		 * Если собственное имя у встроенной таблицы есть
+		 */
+		if((prefix != nullptr) && this->_settings.duplicates){
+			// Выполняем поиск имени встроенной таблицы среди объявляемых записью
+			const size_t position = this->staged(* prefix);
+			/**
+			 * Если имя встроенной таблицы объявлено разбираемой записью
+			 */
+			if((position < this->_pending.size()) && !this->_pending.at(position).implied){
+				// Запоминаем номер имени встроенной таблицы
+				declared = position;
+				/**
+				 * Запоминаем род имени открытой встроенной таблицы
+				 *
+				 * @note Пока таблица не закрыта, ключи её объявляются законно, и род
+				 *       закрытой таблицы отвергал бы их дополнением: род этот ставится
+				 *       лишь по закрытии скобки
+				 */
+				this->_pending.at(declared).kind = kind_t::DOTTED;
+			}
+		}
+		/**
+		 * Если разбор встроенной таблицы не удался
+		 */
+		if(!this->inlined(end, depth, prefix))
+			// Выводим признак неудачного разбора
+			return false;
+		/**
+		 * Если имя разобранной встроенной таблицы объявлено
+		 */
+		if(declared < this->_pending.size())
+			// Запоминаем род имени закрытой встроенной таблицы
+			this->_pending.at(declared).kind = kind_t::INLINE;
+		// Выводим признак успешного разбора
+		return true;
+	}
 	/**
 	 * Если значение оборвано концом строки
 	 */
@@ -2100,6 +2429,36 @@ bool awh::codec::toml::Reader::array(const bool end, const uint32_t depth) noexc
 			// Получаем очередной знак содержимого перечня
 			const char letter = this->_buffer[this->_offset];
 			/**
+			 * Если знаком является возврат каретки
+			 */
+			if(letter == '\r'){
+				/**
+				 * Если за возвратом каретки перевода строки не накоплено
+				 */
+				if((this->_offset + 1) >= this->_buffer.length()){
+					/**
+					 * Если текст поступил целиком
+					 *
+					 * @note Возврат каретки сам по себе концом строки не является:
+					 *       описание отводит концом строки перевод строки и пару из
+					 *       возврата с переводом
+					 */
+					if(end)
+						// Выполняем запоминание ошибки недопустимого знака
+						return this->failure(error_t::INVALID_CHARACTER, this->_offset);
+					// Запоминаем нужду в продолжении текста
+					this->_hungry = true;
+					// Выводим признак неудачного разбора
+					return false;
+				}
+				/**
+				 * Если за возвратом каретки перевод строки не следует
+				 */
+				if(this->_buffer[this->_offset + 1] != '\n')
+					// Выполняем запоминание ошибки недопустимого знака
+					return this->failure(error_t::INVALID_CHARACTER, this->_offset);
+			}
+			/**
 			 * Если знаком является пробельный знак либо знак конца строки
 			 */
 			if(::blank(letter) || (letter == '\n') || (letter == '\r')){
@@ -2129,8 +2488,41 @@ bool awh::codec::toml::Reader::array(const bool end, const uint32_t depth) noexc
 					// Выводим признак неудачного разбора
 					return false;
 				}
-				// Выполняем пропуск примечания вместе со знаком конца строки
-				this->step(position + 1);
+				/**
+				 * Признак примечания, дописанного к готовой строке
+				 *
+				 * @note Примечание внутри перечня стоит либо своей строкой, либо за
+				 *       значением на строке его: обратная запись расстановку эту хранит,
+				 *       и различаются они по тому, есть ли перед знаком начала примечания
+				 *       непробельное содержимое
+				 */
+				bool trailing = false;
+				/**
+				 * Выполняем перебор знаков строки перед началом примечания
+				 */
+				for(size_t i = this->_offset; i > this->_start; i--){
+					/**
+					 * Если знаком является конец строки
+					 */
+					if(this->_buffer[i - 1] == '\n')
+						// Выходим из перебора знаков строки
+						break;
+					/**
+					 * Если знак строки пробельным не является
+					 */
+					else if(!::blank(this->_buffer[i - 1]) && (this->_buffer[i - 1] != '\r')){
+						// Запоминаем признак примечания, дописанного к готовой строке
+						trailing = true;
+						// Выходим из перебора знаков строки
+						break;
+					}
+				}
+				/**
+				 * Если разобрать примечание не удалось
+				 */
+				if(!this->commented(position, trailing))
+					// Выводим признак неудачного разбора
+					return false;
 				// Переходим к следующему знаку содержимого перечня
 				continue;
 			}
@@ -2167,7 +2559,7 @@ bool awh::codec::toml::Reader::array(const bool end, const uint32_t depth) noexc
 		/**
 		 * Если разбор очередного значения перечня не удался
 		 */
-		if(!this->content(end, (depth + 1)))
+		if(!this->content(end, (depth + 1), nullptr))
 			// Выводим признак неудачного разбора
 			return false;
 		// Запоминаем, что очередного значения перечень не ожидает
@@ -2193,6 +2585,36 @@ bool awh::codec::toml::Reader::array(const bool end, const uint32_t depth) noexc
 			}
 			// Получаем очередной знак содержимого перечня
 			const char letter = this->_buffer[this->_offset];
+			/**
+			 * Если знаком является возврат каретки
+			 */
+			if(letter == '\r'){
+				/**
+				 * Если за возвратом каретки перевода строки не накоплено
+				 */
+				if((this->_offset + 1) >= this->_buffer.length()){
+					/**
+					 * Если текст поступил целиком
+					 *
+					 * @note Возврат каретки сам по себе концом строки не является:
+					 *       описание отводит концом строки перевод строки и пару из
+					 *       возврата с переводом
+					 */
+					if(end)
+						// Выполняем запоминание ошибки недопустимого знака
+						return this->failure(error_t::INVALID_CHARACTER, this->_offset);
+					// Запоминаем нужду в продолжении текста
+					this->_hungry = true;
+					// Выводим признак неудачного разбора
+					return false;
+				}
+				/**
+				 * Если за возвратом каретки перевод строки не следует
+				 */
+				if(this->_buffer[this->_offset + 1] != '\n')
+					// Выполняем запоминание ошибки недопустимого знака
+					return this->failure(error_t::INVALID_CHARACTER, this->_offset);
+			}
 			/**
 			 * Если знаком является пробельный знак либо знак конца строки
 			 */
@@ -2223,8 +2645,41 @@ bool awh::codec::toml::Reader::array(const bool end, const uint32_t depth) noexc
 					// Выводим признак неудачного разбора
 					return false;
 				}
-				// Выполняем пропуск примечания вместе со знаком конца строки
-				this->step(position + 1);
+				/**
+				 * Признак примечания, дописанного к готовой строке
+				 *
+				 * @note Примечание внутри перечня стоит либо своей строкой, либо за
+				 *       значением на строке его: обратная запись расстановку эту хранит,
+				 *       и различаются они по тому, есть ли перед знаком начала примечания
+				 *       непробельное содержимое
+				 */
+				bool trailing = false;
+				/**
+				 * Выполняем перебор знаков строки перед началом примечания
+				 */
+				for(size_t i = this->_offset; i > this->_start; i--){
+					/**
+					 * Если знаком является конец строки
+					 */
+					if(this->_buffer[i - 1] == '\n')
+						// Выходим из перебора знаков строки
+						break;
+					/**
+					 * Если знак строки пробельным не является
+					 */
+					else if(!::blank(this->_buffer[i - 1]) && (this->_buffer[i - 1] != '\r')){
+						// Запоминаем признак примечания, дописанного к готовой строке
+						trailing = true;
+						// Выходим из перебора знаков строки
+						break;
+					}
+				}
+				/**
+				 * Если разобрать примечание не удалось
+				 */
+				if(!this->commented(position, trailing))
+					// Выводим признак неудачного разбора
+					return false;
 				// Переходим к следующему знаку содержимого перечня
 				continue;
 			}
@@ -2245,12 +2700,13 @@ bool awh::codec::toml::Reader::array(const bool end, const uint32_t depth) noexc
 /**
  * @brief Метод разбора встроенной таблицы
  *
- * @param end   признак того, что текст поступил целиком
- * @param depth текущая глубина вложенности значения
- * @return      признак успешного разбора
+ * @param end    признак того, что текст поступил целиком
+ * @param depth  текущая глубина вложенности значения
+ * @param prefix полное имя встроенной таблицы, пустой указатель - имени нет
+ * @return       признак успешного разбора
  *
  */
-bool awh::codec::toml::Reader::inlined(const bool end, const uint32_t depth) noexcept {
+bool awh::codec::toml::Reader::inlined(const bool end, const uint32_t depth, const string * prefix) noexcept {
 	/**
 	 * Если глубина вложенности значений предел настроек превышает
 	 */
@@ -2273,6 +2729,13 @@ bool awh::codec::toml::Reader::inlined(const bool end, const uint32_t depth) noe
 	this->step(this->_offset + 1);
 	// Признак того, что встроенная таблица ожидает очередной пары
 	bool expected = false;
+	/**
+	 * Признак того, что очередная пара будет первой
+	 *
+	 * @note Пары встроенной таблицы описание требует отделять запятой: без этого
+	 *       признака запись «{a = 1 b = 2}» принималась бы наравне с правильной
+	 */
+	bool first = true;
 	/**
 	 * Выполняем разбор содержимого встроенной таблицы
 	 */
@@ -2331,6 +2794,14 @@ bool awh::codec::toml::Reader::inlined(const bool end, const uint32_t depth) noe
 		if((this->_buffer[this->_offset] == '\n') || (this->_buffer[this->_offset] == '\r'))
 			// Выполняем запоминание ошибки незакрытой встроенной таблицы
 			return this->failure(error_t::UNCLOSED_INLINE_TABLE, opening);
+		/**
+		 * Если очередная пара от предыдущей запятой не отделена
+		 */
+		if(!first && !expected)
+			// Выполняем запоминание ошибки построения значения
+			return this->failure(error_t::INVALID_VALUE, this->_offset);
+		// Запоминаем, что очередная пара первой не является
+		first = false;
 		// Собираемое событие имени ключа встроенной таблицы
 		item_t key;
 		// Запоминаем вид собранного события
@@ -2366,6 +2837,29 @@ bool awh::codec::toml::Reader::inlined(const bool end, const uint32_t depth) noe
 		if(this->_buffer[this->_offset] != '=')
 			// Выполняем запоминание ошибки отсутствия знака равенства
 			return this->failure(error_t::MISSING_EQUALS, this->_offset);
+		/**
+		 * Собираемое полное имя ключа встроенной таблицы
+		 *
+		 * @note Имя собирается лишь тогда, когда собственное имя есть и у самой
+		 *       встроенной таблицы: таблица, записанная значением перечня, имени не
+		 *       имеет вовсе, и ключи её повторами друг другу не приходятся
+		 */
+		string name;
+		/**
+		 * Если собственное имя у встроенной таблицы есть
+		 */
+		if(prefix != nullptr){
+			// Запоминаем имя встроенной таблицы началом имени ключа
+			name.assign(* prefix);
+			// Выполняем сборку полного имени ключа из составных частей
+			this->assemble(key.part, key.parts, name);
+			/**
+			 * Если имя ключа уже объявлено
+			 */
+			if(!this->declare(name, kind_t::VALUE, error_t::DUPLICATE_KEY, this->_offset))
+				// Выводим признак неудачного разбора
+				return false;
+		}
 		// Выполняем добавление собранного события в очередь выдачи
 		this->_items.push_back(key);
 		// Выполняем пропуск знака равенства
@@ -2373,7 +2867,7 @@ bool awh::codec::toml::Reader::inlined(const bool end, const uint32_t depth) noe
 		/**
 		 * Если разбор значения пары не удался
 		 */
-		if(!this->content(end, (depth + 1)))
+		if(!this->content(end, (depth + 1), ((prefix != nullptr) ? &name : nullptr)))
 			// Выводим признак неудачного разбора
 			return false;
 		// Выполняем пропуск пробельных знаков строки
@@ -2519,21 +3013,17 @@ bool awh::codec::toml::Reader::table(const bool end) noexcept {
 	 */
 	if(appended){
 		/**
-		 * Если имя уже объявлено обычной таблицей
-		 *
-		 * @note Дополнять набором таблиц имя, набором таблиц не являющееся, описание
-		 *       запрещает: значение по имени меняло бы при этом свой тип
+		 * Если объявление набора таблиц отвергнуто
 		 */
-		if(this->_settings.duplicates && (this->_arrays.count(name) == 0) &&
-		   ((this->_declared.count(name) > 0) || (this->_implicit.count(name) > 0)))
-			// Выполняем запоминание ошибки дополнения таблицы набором
-			return this->failure(error_t::APPEND_TO_TABLE, opening);
+		if(!this->declare(name, kind_t::ARRAY, error_t::APPEND_TO_TABLE, opening))
+			// Выводим признак неудачного разбора
+			return false;
 		// Запоминаем признак того, что записью объявляется набор таблиц
 		this->_appending = true;
 	/**
-	 * Если объявляется обычная таблица
+	 * Если объявление обычной таблицы отвергнуто
 	 */
-	} else if(!this->declare(name, error_t::DUPLICATE_TABLE))
+	} else if(!this->declare(name, kind_t::TABLE, error_t::DUPLICATE_TABLE, opening))
 		// Выводим признак неудачного разбора
 		return false;
 	// Запоминаем признак того, что записью объявляется таблица
@@ -2603,7 +3093,7 @@ bool awh::codec::toml::Reader::pair(const bool end) noexcept {
 	/**
 	 * Если имя ключа уже объявлено
 	 */
-	if(!this->declare(name, error_t::DUPLICATE_KEY))
+	if(!this->declare(name, kind_t::VALUE, error_t::DUPLICATE_KEY, this->_start))
 		// Выводим признак неудачного разбора
 		return false;
 	// Выполняем добавление собранного события в очередь выдачи
@@ -2611,7 +3101,7 @@ bool awh::codec::toml::Reader::pair(const bool end) noexcept {
 	/**
 	 * Если разбор значения пары не удался
 	 */
-	if(!this->content(end, 0))
+	if(!this->content(end, 0, &name))
 		// Выводим признак неудачного разбора
 		return false;
 	// Выполняем разбор остатка строки за парой
@@ -2635,6 +3125,14 @@ bool awh::codec::toml::Reader::record(const bool end) noexcept {
 	this->_store.clear();
 	// Выполняем сброс номера выдаваемого события в очереди
 	this->_current = 0;
+	/**
+	 * Выполняем очистку указателя имён, объявляемых разбираемой записью
+	 *
+	 * @note Очистка ведётся прежде очереди имён: указатель держит ссылки на её
+	 *       содержимое, и порядок обратный оставлял бы его со ссылками на
+	 *       освобождённую память
+	 */
+	this->_staged.clear();
 	// Выполняем очистку имён, объявляемых разбираемой записью
 	this->_pending.clear();
 	// Выполняем очистку имени таблицы, объявляемой разбираемой записью
@@ -2713,14 +3211,6 @@ bool awh::codec::toml::Reader::record(const bool end) noexcept {
 			 * Если строка накоплена целиком
 			 */
 			if(this->completed(end)){
-				// Собираемое событие примечания
-				item_t item;
-				// Запоминаем вид собранного события
-				item.event = event_t::COMMENT;
-				// Запоминаем место примечания в исходном тексте
-				item.location = this->locate(this->_offset);
-				// Выполняем пропуск знака начала примечания
-				this->step(this->_offset + 1);
 				// Положение конца содержимого примечания
 				size_t position = this->_buffer.find('\n', this->_offset);
 				/**
@@ -2729,48 +3219,12 @@ bool awh::codec::toml::Reader::record(const bool end) noexcept {
 				if(position == string::npos)
 					// Запоминаем положение конца содержимого примечания
 					position = this->_buffer.length();
-				// Получаем содержимое примечания
-				string_view text = string_view(this->_buffer).substr(this->_offset, (position - this->_offset));
 				/**
-				 * Если содержимое примечания оканчивается возвратом каретки
+				 * Если разобрать примечание не удалось
 				 */
-				if(!text.empty() && (text.back() == '\r'))
-					// Выполняем отбрасывание возврата каретки
-					text = text.substr(0, (text.length() - 1));
-				/**
-				 * Выполняем перебор всех знаков содержимого примечания
-				 */
-				for(size_t i = 0; i < text.length(); i++){
-					// Получаем беззнаковое значение очередного знака содержимого
-					const uint8_t letter = static_cast <uint8_t> (text[i]);
-					/**
-					 * Если знак содержимого примечания является управляющим
-					 *
-					 * @note Описание дозволяет примечанию нести из управляющих знаков одну
-					 *       лишь табуляцию. Возврат каретки к тому же неотличим здесь от
-					 *       окончания строки: примечание, его несущее, записью выдавалось бы
-					 *       окончанием, и перезапись текста настроек устойчивости лишалась бы
-					 */
-					if(((letter < 0x20) && (text[i] != '\t')) || (letter == 0x7F))
-						// Выполняем запоминание ошибки недопустимого знака
-						return this->failure(error_t::INVALID_CHARACTER, (this->_offset + i));
-				}
-				/**
-				 * Выполняем отбрасывание пробельной обвязки содержимого примечания
-				 */
-				while(!text.empty() && ::blank(text.front()))
-					// Выполняем отбрасывание пробельного знака начала содержимого
-					text = text.substr(1);
-				// Запоминаем содержимое примечания в хранилище записи
-				item.content = this->keep(text);
-				// Выполняем перемещение разбора за содержимое примечания
-				this->step(position);
-				/**
-				 * Если выдача событий примечаний настройками разрешена
-				 */
-				if(this->_settings.emitComments)
-					// Выполняем добавление собранного события в очередь выдачи
-					this->_items.push_back(item);
+				if(!this->commented(position, false))
+					// Выводим признак неудачного разбора
+					return false;
 				// Выполняем разбор остатка строки
 				result = this->tail(end);
 			}
@@ -2827,44 +3281,26 @@ bool awh::codec::toml::Reader::record(const bool end) noexcept {
 		// Выводим признак того, что запись не разобрана
 		return false;
 	/**
-	 * Если разбираемой записью объявляется набор таблиц
+	 * Если разбираемой записью объявляется очередная таблица набора таблиц
 	 *
 	 * @note Всякая таблица набора несёт свои ключи: имена, объявленные в предыдущей
-	 *       таблице набора, повтором для новой не являются
+	 *       таблице набора, повтором для новой не являются, и снимаются здесь все -
+	 *       вместе с вложенными наборами таблиц, которые новая таблица заводит заново
 	 */
 	if(this->_appending && this->_settings.duplicates){
-		// Выполняем запоминание имени набора таблиц
-		this->_arrays.emplace(this->intern(this->_pendingTable));
-		// Выполняем запоминание объявленного имени
-		this->_declared.emplace(this->intern(this->_pendingTable));
 		/**
-		 * Выполняем снятие имён ключей объявленной прежде таблицы набора
+		 * Выполняем снятие имён, объявленных прежней таблицей набора
 		 */
-		for(auto i = this->_declared.begin(); i != this->_declared.end();){
+		for(auto i = this->_names.begin(); i != this->_names.end();){
 			/**
-			 * Если имя принадлежит ключам объявленной таблицы набора
+			 * Если имя принадлежит содержимому объявленной таблицы набора
 			 */
-			if((i->length() > this->_pendingTable.length()) &&
-			   (i->compare(0, this->_pendingTable.length(), this->_pendingTable) == 0) &&
-			   (i->at(this->_pendingTable.length()) == '\x1F'))
-				// Выполняем снятие имени ключа объявленной таблицы набора
-				i = this->_declared.erase(i);
+			if((i->first.length() > this->_pendingTable.length()) &&
+			   (i->first.compare(0, this->_pendingTable.length(), this->_pendingTable) == 0) &&
+			   (i->first.at(this->_pendingTable.length()) == '\x1F'))
+				// Выполняем снятие имени, объявленного прежней таблицей набора
+				i = this->_names.erase(i);
 			// Выполняем переход к следующему объявленному имени
-			else ++i;
-		}
-		/**
-		 * Выполняем снятие таблиц, объявленных исподволь прежней таблицей набора
-		 */
-		for(auto i = this->_implicit.begin(); i != this->_implicit.end();){
-			/**
-			 * Если имя принадлежит ключам объявленной таблицы набора
-			 */
-			if((i->length() > this->_pendingTable.length()) &&
-			   (i->compare(0, this->_pendingTable.length(), this->_pendingTable) == 0) &&
-			   (i->at(this->_pendingTable.length()) == '\x1F'))
-				// Выполняем снятие таблицы, объявленной исподволь
-				i = this->_implicit.erase(i);
-			// Выполняем переход к следующей таблице
 			else ++i;
 		}
 	}
@@ -2875,22 +3311,39 @@ bool awh::codec::toml::Reader::record(const bool end) noexcept {
 	 *       продолжения текста, разбирается заново, и объявленное ею объявилось бы
 	 *       дважды - при подаче кусками текст отвергался бы повтором, которого нет
 	 */
-	for(auto & name : this->_pending){
-		// Выполняем запоминание объявленного имени
-		this->_declared.emplace(this->intern(name));
+	for(auto & pending : this->_pending){
 		/**
-		 * Выполняем перебор всех объемлющих имён объявленного имени
+		 * Если имя заведено исподволь
 		 *
-		 * @note Всякое объемлющее имя заводит таблицу исподволь, и описание запрещает
-		 *       дополнять её набором таблиц наравне с таблицей объявленной
+		 * @note Заведённое исподволь уже объявленного не подменяет: таблица,
+		 *       объявленная заголовком, объемлющим именем ключа в заведённую исподволь
+		 *       не превращается
 		 */
-		for(size_t i = 0; (i = name.find('\x1F', i + 1)) != string::npos;)
-			// Выполняем запоминание таблицы, объявленной исподволь
-			this->_implicit.emplace(this->intern(string_view(name).substr(0, i)));
+		if(pending.implied){
+			/**
+			 * Если имя ещё не объявлено
+			 */
+			if(this->_names.count(pending.name) == 0)
+				// Выполняем заведение имени исподволь
+				this->_names.emplace(this->intern(pending.name), pending.kind);
+			// Переходим к следующему объявленному имени
+			continue;
+		}
+		// Выполняем поиск объявляемого имени среди объявленных прежде
+		auto i = this->_names.find(pending.name);
+		/**
+		 * Если имя объявлено прежде
+		 *
+		 * @note Подмена рода нужна заголовку таблицы, заведённой прежде исподволь:
+		 *       объявленная явно, она перестаёт быть заведённой исподволь
+		 */
+		if(i != this->_names.end())
+			// Выполняем подмену рода объявленного имени
+			i->second = pending.kind;
+		// Выполняем запоминание объявленного имени
+		else this->_names.emplace(this->intern(pending.name), pending.kind);
 	}
-	/**
-	 * Если разбираемой записью объявлена таблица
-	 */
+
 	if(this->_declaring)
 		// Запоминаем имя текущей таблицы текста настроек
 		this->_table = this->_pendingTable;
@@ -3257,14 +3710,18 @@ void awh::codec::toml::Reader::clear() noexcept {
 	this->_comment = comment_t();
 	// Выполняем очистку имени текущей таблицы
 	this->_table.clear();
-	// Выполняем очистку перечня объявленных ключей и таблиц
-	this->_declared.clear();
+	/**
+	 * Выполняем очистку указателя родов объявленных имён
+	 *
+	 * @note Очистка ведётся прежде хранилища имён: указатель держит ссылки на
+	 *       содержимое хранилища, и порядок обратный оставлял бы его со ссылками на
+	 *       освобождённую память
+	 */
+	this->_names.clear();
 	// Выполняем очистку хранилища объявленных имён
 	this->_blocks.clear();
-	// Выполняем очистку перечня объявленных наборов таблиц
-	this->_arrays.clear();
-	// Выполняем очистку перечня таблиц, объявленных исподволь
-	this->_implicit.clear();
+	// Выполняем очистку указателя имён, объявляемых разбираемой записью
+	this->_staged.clear();
 	// Выполняем очистку имён, объявляемых разбираемой записью
 	this->_pending.clear();
 	// Выполняем очистку имени таблицы, объявляемой разбираемой записью

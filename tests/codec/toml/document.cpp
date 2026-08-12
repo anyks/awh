@@ -691,3 +691,143 @@ TEST(CodecTomlDocument, Redefine) {
 	// Выполняем проверку разбора собранного текста настроек
 	ASSERT_TRUE(reread.parse(document.text())) << static_cast <uint32_t> (reread.error());
 }
+/**
+ * @brief Проверка правил правки вровень с правилами разбора
+ *
+ * @details Правка обязана отвергать всё, что разбор отверг бы при обратном чтении:
+ * пару поверх таблицы, заголовок поверх таблицы, заведённой составным именем ключа,
+ * и всякое заведение под парой - под простым значением, перечнем и встроенной
+ * таблицей
+ *
+ */
+TEST(CodecTomlDocument, EditRules) {
+	/**
+	 * Выполняем перебор правок, правилами описания отвергаемых
+	 */
+	for(const auto & item : {
+		make_pair(string("a.b = 1\n"), false),
+		make_pair(string("[a.b]\n"), false),
+		make_pair(string("[[a]]\n"), true)
+	}){
+		// Объект дерева настроек
+		toml::document_t document;
+		// Выполняем проверку разбора исходного текста настроек
+		ASSERT_TRUE(document.parse(item.first));
+		// Выполняем проверку отказа заведения пары поверх таблицы
+		ASSERT_FALSE(document.set(vector <string_view> {"a"}, static_cast <int64_t> (1)));
+		/**
+		 * Если таблица заведена составным именем ключа
+		 */
+		if(!item.second)
+			// Выполняем проверку заведения заголовка поверх таблицы
+			ASSERT_EQ(document.create(vector <string_view> {"a"}), item.first.compare("[a.b]\n") == 0);
+		// Выполняем проверку отказа заведения заголовка поверх набора таблиц
+		else ASSERT_FALSE(document.create(vector <string_view> {"a"}));
+	}
+	/**
+	 * Выполняем перебор исходных текстов с занятым объемлющим именем
+	 */
+	for(const string & source : {
+		string("a = 1\n"),
+		string("a = [1]\n"),
+		string("a = {b = 1}\n")
+	}){
+		// Объект дерева настроек
+		toml::document_t document;
+		// Выполняем проверку разбора исходного текста настроек
+		ASSERT_TRUE(document.parse(source));
+		// Выполняем проверку отказа заведения пары под занятым именем
+		ASSERT_FALSE(document.set(vector <string_view> {"a", "c"}, static_cast <int64_t> (1)));
+		// Выполняем проверку отказа заведения таблицы под занятым именем
+		ASSERT_FALSE(document.create(vector <string_view> {"a", "c"}));
+	}
+}
+/**
+ * @brief Проверка обратной читаемости всякой принятой правки
+ *
+ * @details Правка, дерево не отвергшее, обязана давать текст, который разбор
+ * принимает: расхождение правил правки с правилами разбора иначе обнаруживалось бы
+ * лишь у потребителя
+ *
+ */
+TEST(CodecTomlDocument, EditReadable) {
+	/**
+	 * Выполняем перебор исходных текстов настроек
+	 */
+	for(const string & source : {
+		string("x = 1\n"),
+		string("[t]\nx = 1\n"),
+		string("[[a]]\nx = 1\n"),
+		string("a.b = 1\n"),
+		string("[a.b]\nx = 1\n")
+	}){
+		/**
+		 * Выполняем перебор вносимых правок
+		 */
+		for(uint32_t kind = 0; kind < 4; kind++){
+			// Объект дерева настроек
+			toml::document_t document;
+			// Выполняем проверку разбора исходного текста настроек
+			ASSERT_TRUE(document.parse(source));
+			// Признак того, что правка принята
+			bool edited = false;
+			/**
+			 * Выполняем выбор разновидности вносимой правки
+			 */
+			switch(kind){
+				// Если правкой является заведение таблицы
+				case 0: edited = document.create(vector <string_view> {"a"}); break;
+				// Если правкой является заведение пары
+				case 1: edited = document.set(vector <string_view> {"a"}, static_cast <int64_t> (1)); break;
+				// Если правкой является заведение составного имени ключа
+				case 2: edited = document.set(vector <string_view> {"a", "b"}, static_cast <int64_t> (1)); break;
+				// Если правкой является заведение вложенной таблицы
+				case 3: edited = document.create(vector <string_view> {"a", "b"}); break;
+			}
+			/**
+			 * Если правка дерева отвергнута
+			 */
+			if(!edited)
+				// Выполняем переход к следующей правке
+				continue;
+			// Выполняем перезапись правленого дерева настроек
+			const string text = document.text();
+			// Выполняем проверку того, что перезапись собрана
+			ASSERT_FALSE(text.empty());
+			// Объект дерева настроек для обратного чтения
+			toml::document_t after;
+			// Выполняем проверку обратного чтения перезаписи
+			ASSERT_TRUE(after.parse(text)) << "правка " << kind << " над «" << source << "» дала «" << text << "»";
+		}
+	}
+}
+/**
+ * @brief Проверка сохранения примечаний внутри перечня значений
+ *
+ * @details Примечание внутри перечня строкою текста настроек не является и держится
+ * узлом значения, а не записью. Перезапись, его теряющая, обедняла бы файл настроек
+ * вопреки договору дерева
+ *
+ */
+TEST(CodecTomlDocument, ArrayRemarks) {
+	/**
+	 * Выполняем перебор исходных текстов настроек
+	 */
+	for(const string & source : {
+		string("a = [\n\t1, # первое\n\t2\n]\n"),
+		string("a = [\n\t# перед первым\n\t1,\n\t2\n]\n"),
+		string("a = [ # за скобкой\n\t1\n]\n"),
+		string("a = [\n\t1\n\t# за последним\n]\n"),
+		string("a = [\n\t# одни примечания\n]\n"),
+		string("a = [\n\t[\n\t\t1, # внутри\n\t\t2\n\t], # снаружи\n\t3\n]\n"),
+		string("a = [\n\t1, #\n\t2\n]\n"),
+		string("# сверху\na = [\n\t1 # к первому\n] # к паре\n")
+	}){
+		// Объект дерева настроек
+		toml::document_t document;
+		// Выполняем проверку разбора исходного текста настроек
+		ASSERT_TRUE(document.parse(source)) << "«" << source << "»";
+		// Выполняем проверку того, что перезапись повторяет исходный текст
+		ASSERT_EQ(document.text(), source);
+	}
+}

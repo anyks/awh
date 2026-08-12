@@ -18,6 +18,11 @@
  */
 
 /**
+ * Стандартные заголовочные файлы
+ */
+#include <chrono>
+
+/**
  * Подключаем заголовочные файлы проекта
  */
 #include <gtest/gtest.h>
@@ -944,4 +949,551 @@ TEST(CodecTomlReader, CommentControlCharacter) {
 	vector <Event> events;
 	// Выполняем проверку разбора примечания с табуляцией
 	ASSERT_EQ(consume("a = 1 # хвост\tсквозь табуляцию\n", 0, settings, events), toml::state_t::FINISHED);
+}
+/**
+ * @brief Проверка отделения пар встроенной таблицы запятой
+ *
+ * @details Описание требует отделять пары встроенной таблицы запятой, а лишнюю
+ * запятую в конце запрещает: «{a = 1 b = 2}» и «{a = 1,}» записями встроенной
+ * таблицы не являются
+ *
+ */
+TEST(CodecTomlReader, InlineSeparators) {
+	// Настройки разбора текста настроек
+	const toml::reader_t::settings_t settings;
+	/**
+	 * Выполняем перебор ошибочных записей встроенной таблицы
+	 */
+	for(const string & text : {
+		string("t = {a = 1 b = 2}\n"),
+		string("t = {a = 1,}\n"),
+		string("t = {,}\n")
+	}){
+		// Собранные события разбора
+		vector <Event> events;
+		// Выполняем проверку отказа разбора текста настроек
+		ASSERT_EQ(consume(text, 0, settings, events), toml::state_t::FAILED);
+	}
+	// Собранные события разбора
+	vector <Event> events;
+	// Выполняем проверку разбора правильной записи встроенной таблицы
+	ASSERT_EQ(consume("t = {a = 1, b = 2}\n", 0, settings, events), toml::state_t::FINISHED);
+	// Выполняем проверку разбора пустой встроенной таблицы
+	events.clear();
+	// Выполняем проверку разбора текста настроек до конца
+	ASSERT_EQ(consume("t = {}\n", 0, settings, events), toml::state_t::FINISHED);
+}
+/**
+ * @brief Проверка учёта имён ключей встроенной таблицы
+ *
+ * @details Ключи встроенной таблицы объявляются наравне с прочими: повтор их
+ * описание запрещает, а сама таблица по закрытии скобки дополнению не подлежит.
+ * Ключи встроенных таблиц, записанных значениями перечня, повторами друг другу при
+ * этом не приходятся: имени у таких таблиц нет вовсе
+ *
+ */
+TEST(CodecTomlReader, InlineDeclarations) {
+	// Настройки разбора текста настроек
+	const toml::reader_t::settings_t settings;
+	/**
+	 * Выполняем перебор ошибочных текстов настроек
+	 */
+	for(const string & text : {
+		string("t = {a = 1, a = 2}\n"),
+		string("t = {a = 1}\nt.b = 2\n"),
+		string("t = {a = 1}\n[t.b]\n"),
+		string("t = {a = {b = 1}}\nt.a.c = 2\n")
+	}){
+		// Собранные события разбора
+		vector <Event> events;
+		// Выполняем проверку отказа разбора текста настроек
+		ASSERT_EQ(consume(text, 0, settings, events), toml::state_t::FAILED);
+	}
+	/**
+	 * Выполняем перебор правильных текстов настроек
+	 */
+	for(const string & text : {
+		string("t = [{a = 1}, {a = 2}]\n"),
+		string("t = {a = 1, b = {a = 2}}\n"),
+		string("t.u = {a = 1}\nt.v = 2\n")
+	}){
+		// Собранные события разбора
+		vector <Event> events;
+		// Выполняем проверку разбора текста настроек до конца
+		ASSERT_EQ(consume(text, 0, settings, events), toml::state_t::FINISHED);
+	}
+}
+/**
+ * @brief Проверка занятости имён составными именами ключей
+ *
+ * @details Составное имя ключа заводит таблицу всякой своей частью, кроме
+ * последней, и описание запрещает как заводить пару поверх такой таблицы, так и
+ * объявлять её заголовком. Под парой же не заводится ничего вовсе
+ *
+ */
+TEST(CodecTomlReader, DottedOccupancy) {
+	// Настройки разбора текста настроек
+	const toml::reader_t::settings_t settings;
+	/**
+	 * Выполняем перебор ошибочных текстов настроек
+	 */
+	for(const string & text : {
+		string("a = 1\na.b = 2\n"),
+		string("a.b = 1\na = 2\n"),
+		string("[fruit]\napple.color = \"red\"\n[fruit.apple]\n"),
+		string("a = [1]\na.b = 2\n"),
+		string("a = [1]\n[a.b]\n")
+	}){
+		// Собранные события разбора
+		vector <Event> events;
+		// Выполняем проверку отказа разбора текста настроек
+		ASSERT_EQ(consume(text, 0, settings, events), toml::state_t::FAILED);
+	}
+	/**
+	 * Выполняем перебор правильных текстов настроек
+	 */
+	for(const string & text : {
+		string("a.b = 1\na.c = 2\n"),
+		string("[fruit]\napple.color = \"red\"\n[fruit.apple.texture]\nsmooth = true\n"),
+		string("[a.b]\n[a]\n"),
+		string("[x.y.z.w]\n[x]\n")
+	}){
+		// Собранные события разбора
+		vector <Event> events;
+		// Выполняем проверку разбора текста настроек до конца
+		ASSERT_EQ(consume(text, 0, settings, events), toml::state_t::FINISHED);
+	}
+}
+/**
+ * @brief Проверка запрета одиночного возврата каретки в перечне
+ *
+ * @details Описание отводит концом строки перевод строки и пару из возврата с
+ * переводом: возврат каретки сам по себе концом строки не является нигде, и
+ * пропуск пробельных знаков перечня обязан отвергать его наравне с прочими местами
+ *
+ */
+TEST(CodecTomlReader, ArrayCarriageReturn) {
+	// Настройки разбора текста настроек
+	const toml::reader_t::settings_t settings;
+	// Собранные события разбора
+	vector <Event> events;
+	// Выполняем проверку отказа разбора перечня с одиночным возвратом каретки
+	ASSERT_EQ(consume("a = [1,\r2]\n", 0, settings, events), toml::state_t::FAILED);
+	// Выполняем очистку собранных событий разбора
+	events.clear();
+	// Выполняем проверку отказа разбора перечня с возвратом каретки перед значением
+	ASSERT_EQ(consume("a = [\r1]\n", 0, settings, events), toml::state_t::FAILED);
+	// Выполняем очистку собранных событий разбора
+	events.clear();
+	// Выполняем проверку разбора перечня с парой из возврата и перевода строки
+	ASSERT_EQ(consume("a = [1,\r\n2]\n", 0, settings, events), toml::state_t::FINISHED);
+	// Выполняем очистку собранных событий разбора
+	events.clear();
+	/**
+	 * Выполняем проверку отказа разбора примечания перечня с возвратом каретки
+	 *
+	 * @note Описание дозволяет примечанию нести из управляющих знаков одну лишь
+	 *       табуляцию, где бы примечание ни стояло
+	 */
+	ASSERT_EQ(consume("a = [1, # хво\rст\n2]\n", 0, settings, events), toml::state_t::FAILED);
+	// Выполняем очистку собранных событий разбора
+	events.clear();
+	// Выполняем проверку разбора примечания перечня, окончанием строки завершённого
+	ASSERT_EQ(consume("a = [1, # хвост\r\n2]\n", 0, settings, events), toml::state_t::FINISHED);
+}
+/**
+ * @brief Проверка равномерности учёта имён одной записи
+ *
+ * @details Всякое объявляемое имя сличается со всеми, объявленными записью прежде, и
+ * перебор их обращал бы разбор в квадратичный: встроенная таблица враждебного файла
+ * настроек отнимала бы время, растущее квадратом числа ключей
+ *
+ */
+TEST(CodecTomlReader, InlineScaling) {
+	/**
+	 * @brief Метод замера разбора встроенной таблицы с заданным числом ключей
+	 *
+	 * @param count количество ключей встроенной таблицы
+	 * @return      время разбора в микросекундах
+	 *
+	 */
+	auto measure = [](const size_t count) noexcept -> double {
+		// Собираемый текст настроек со встроенной таблицей
+		string text("t = {");
+		/**
+		 * Выполняем перебор всех ключей встроенной таблицы
+		 */
+		for(size_t i = 0; i < count; i++){
+			/**
+			 * Если ключ не первый
+			 */
+			if(i > 0)
+				// Выполняем добавление разделителя пар встроенной таблицы
+				text.append(", ");
+			// Выполняем добавление очередной пары встроенной таблицы
+			text.append("k").append(to_string(i)).append(" = 1");
+		}
+		// Выполняем закрытие встроенной таблицы
+		text.append("}\n");
+		// Настройки разбора текста настроек
+		toml::reader_t::settings_t settings;
+		// Снимаем предел длины логической строки
+		settings.maxLine = 0;
+		// Запоминаем время начала разбора
+		const auto begin = chrono::steady_clock::now();
+		// Объект потокового чтения текста настроек
+		toml::reader_t reader(settings);
+		// Выполняем подачу разбираемого текста настроек
+		static_cast <void> (reader.feed(text.data(), text.size(), true));
+		/**
+		 * Выполняем перебор выданных разбором событий
+		 */
+		while(reader.next()){}
+		// Выводим время разбора в микросекундах
+		return static_cast <double> (chrono::duration_cast <chrono::microseconds> (
+			chrono::steady_clock::now() - begin).count());
+	};
+	// Выполняем прогрев замера разбором встроенной таблицы
+	static_cast <void> (measure(2000));
+	// Получаем время разбора встроенной таблицы с двумя тысячами ключей
+	const double lesser = measure(2000);
+	// Получаем время разбора встроенной таблицы с восемью тысячами ключей
+	const double greater = measure(8000);
+	/**
+	 * Выполняем проверку роста времени разбора
+	 *
+	 * @note Порог взят с запасом: замер на отладочном стенде разнится от прогона к
+	 *       прогону, а ловится здесь рост квадратом - при нём отношение достигло бы
+	 *       шестнадцати
+	 */
+	ASSERT_LT(greater, (lesser * 24.0)) << "рост времени разбора: " << lesser << " → " << greater << " мкс";
+}
+/**
+ * @brief Проверка соответствия разбора описанию TOML версии 1.0.0
+ *
+ * @details Набор случаев взят из самого описания и покрывает все его разделы: имена
+ * ключей, четыре записи строк, четыре системы счисления чисел, четыре вида отметок
+ * времени, перечни, встроенные таблицы, таблицы и наборы таблиц. Всякий случай
+ * проверяется вдобавок на независимость выдачи от нарезки текста на куски: расхождение
+ * означало бы, что разбор одного и того же текста разнится от способа его подачи
+ *
+ */
+TEST(CodecTomlReader, Conformance) {
+	/**
+	 * @brief Итог разбора текста настроек
+	 *
+	 */
+	struct Outcome {
+		// Состояние разбора и код ошибки
+		uint32_t state, error;
+		// Место обнаружения ошибки разбора
+		uint32_t line, column;
+		// Собранная выдача разбора
+		string trace;
+	};
+	/**
+	 * @brief Метод разбора текста настроек кусками заданного размера
+	 *
+	 * @param text  разбираемый текст настроек
+	 * @param chunk размер куска подачи, ноль означает подачу целиком
+	 * @return      итог разбора текста настроек
+	 *
+	 */
+	auto outcome = [](const string & text, const size_t chunk) noexcept -> Outcome {
+		// Собираемый итог разбора текста настроек
+		Outcome result{0, 0, 0, 0, string()};
+		// Настройки разбора текста настроек
+		const toml::reader_t::settings_t settings;
+		// Объект потокового чтения текста настроек
+		toml::reader_t reader(settings);
+		// Позиция чтения разбираемого текста
+		size_t offset = 0;
+		/**
+		 * Выполняем подачу разбираемого текста кусками
+		 */
+		do {
+			// Получаем размер очередного куска подачи
+			const size_t length = ((chunk == 0) ? text.size() : min(chunk, (text.size() - offset)));
+			// Получаем признак того, что кусок является последним
+			const bool end = ((offset + length) >= text.size());
+			/**
+			 * Если подача очередного куска не удалась
+			 */
+			if(!reader.feed(text.data() + offset, length, end))
+				// Выходим из цикла подачи разбираемого текста
+				break;
+			// Выполняем переход к следующему куску подачи
+			offset += length;
+			/**
+			 * Выполняем перебор выданных разбором событий
+			 */
+			while(reader.next()){
+				// Выполняем добавление разновидности события к собираемой выдаче
+				result.trace.append(to_string(static_cast <uint32_t> (reader.event()))).append(":");
+				// Выполняем добавление типа значения события к собираемой выдаче
+				result.trace.append(to_string(static_cast <uint32_t> (reader.value().type))).append(":");
+				/**
+				 * Выполняем перебор составных частей имени ключа события
+				 */
+				for(auto & part : reader.path())
+					// Выполняем добавление составной части имени к собираемой выдаче
+					result.trace.append(part.name).append(".");
+				// Выполняем добавление содержимого значения к собираемой выдаче
+				result.trace.append(reader.value().text).append("@");
+				// Выполняем добавление номера строки события к собираемой выдаче
+				result.trace.append(to_string(reader.location().line)).append(",");
+				// Выполняем добавление положения события в строке к собираемой выдаче
+				result.trace.append(to_string(reader.location().column)).append(";");
+			}
+			/**
+			 * Если кусок оказался последним
+			 */
+			if(end)
+				// Выходим из цикла подачи разбираемого текста
+				break;
+		} while(offset <= text.size());
+		/**
+		 * Выполняем перебор оставшихся событий разбора
+		 */
+		while(reader.next()){}
+		// Запоминаем состояние разбора текста настроек
+		result.state = static_cast <uint32_t> (reader.state());
+		// Запоминаем код ошибки разбора
+		result.error = static_cast <uint32_t> (reader.error());
+		// Запоминаем номер строки места обнаружения ошибки
+		result.line = reader.errorLocation().line;
+		// Запоминаем положение места обнаружения ошибки в строке
+		result.column = reader.errorLocation().column;
+		// Выводим собранный итог разбора текста настроек
+		return result;
+	};
+	/**
+	 * Выполняем перебор всех случаев, описанием отведённых
+	 */
+	for(const auto & item : vector <pair <string, pair <const char *, bool>>> {
+		make_pair("key = \"value\"\n", make_pair("голое имя", true)),
+		make_pair("1234 = \"value\"\n", make_pair("имя из цифр", true)),
+		make_pair("\"127.0.0.1\" = \"value\"\n", make_pair("имя в кавычках с точкой", true)),
+		make_pair("= 1\n", make_pair("пустое имя без кавычек", false)),
+		make_pair("\"\" = 1\n", make_pair("пустое имя в кавычках", true)),
+		make_pair("'' = 1\n", make_pair("пустое дословное имя", true)),
+		make_pair("key = # ПУСТО\n", make_pair("имя без значения", false)),
+		make_pair("key\n", make_pair("имя без знака равенства", false)),
+		make_pair("fruit . flavor = \"banana\"\n", make_pair("пробелы вокруг точек имени", true)),
+		make_pair("\"\"\"a\"\"\" = 1\n", make_pair("многострочное имя", false)),
+		make_pair("a = \"я \\u00E9 \\t\"\n", make_pair("основная строка", true)),
+		make_pair("a = \"\\x\"\n", make_pair("недопустимая последовательность", false)),
+		make_pair("a = \"\\uD800\"\n", make_pair("суррогат в последовательности", false)),
+		make_pair("a = \"перенос\nздесь\"\n", make_pair("перенос в однострочной", false)),
+		make_pair("a = \"\"\"первая\nвторая\"\"\"\n", make_pair("многострочная с переносом", true)),
+		make_pair("a = \"\"\"один \\\n  два\"\"\"\n", make_pair("склейка обратной чертой", true)),
+		make_pair("a = \"\"\"один \\  два\"\"\"\n", make_pair("черта над пробелами без переноса", false)),
+		make_pair("a = \"\"\"он сказал \"\"да\"\" \"\"\"\n", make_pair("две кавычки внутри многострочной", true)),
+		make_pair("a = 'C:\\Users\\nodejs'\n", make_pair("дословная строка", true)),
+		make_pair("a = '''\nдословно\\n'''\n", make_pair("многострочная дословная", true)),
+		make_pair(string("a = \"\x01\"\n"), make_pair("сырой управляющий знак", false)),
+		make_pair("a = \"\tтаб\"\n", make_pair("табуляция в строке", true)),
+		make_pair("a = +99\n", make_pair("целое со знаком", true)),
+		make_pair("a = -0\n", make_pair("ноль со знаком", true)),
+		make_pair("a = 1_000_000\n", make_pair("разделители разрядов", true)),
+		make_pair("a = _1\n", make_pair("разделитель в начале", false)),
+		make_pair("a = 1_\n", make_pair("разделитель в конце", false)),
+		make_pair("a = 1__0\n", make_pair("сдвоенный разделитель", false)),
+		make_pair("a = 011\n", make_pair("незначащий ноль", false)),
+		make_pair("a = 0xDEADBEEF\n", make_pair("шестнадцатеричное", true)),
+		make_pair("a = -0x1\n", make_pair("шестнадцатеричное со знаком", false)),
+		make_pair("a = 0o755\n", make_pair("восьмеричное", true)),
+		make_pair("a = 0b11010110\n", make_pair("двоичное", true)),
+		make_pair("a = 0X1\n", make_pair("приставка в верхнем регистре", false)),
+		make_pair("a = 9223372036854775808\n", make_pair("выход за отрезок", false)),
+		make_pair("a = -9223372036854775808\n", make_pair("наименьшее целое", true)),
+		make_pair("a = 3.1415\n", make_pair("дробное", true)),
+		make_pair("a = 5e+22\n", make_pair("показатель", true)),
+		make_pair("a = 6.626e-34\n", make_pair("дробное с показателем", true)),
+		make_pair("a = 1.\n", make_pair("точка без дробной части", false)),
+		make_pair("a = .1\n", make_pair("точка без целой части", false)),
+		make_pair("a = 1e\n", make_pair("показатель без цифр", false)),
+		make_pair("a = -inf\n", make_pair("бесконечность", true)),
+		make_pair("a = nan\n", make_pair("нечисло", true)),
+		make_pair("a = true\n", make_pair("истина", true)),
+		make_pair("a = True\n", make_pair("истина в верхнем регистре", false)),
+		make_pair("a = 1979-05-27T07:32:00Z\n", make_pair("отметка со смещением", true)),
+		make_pair("a = 1979-05-27T00:32:00-07:00\n", make_pair("отметка со смещением минусом", true)),
+		make_pair("a = 1979-05-27T00:32:00.999999-07:00\n", make_pair("отметка с долей секунды", true)),
+		make_pair("a = 1979-05-27 07:32:00Z\n", make_pair("отметка через пробел", true)),
+		make_pair("a = 1979-05-27T07:32:00\n", make_pair("местная отметка", true)),
+		make_pair("a = 1979-05-27\n", make_pair("местная дата", true)),
+		make_pair("a = 07:32:00\n", make_pair("местное время", true)),
+		make_pair("a = 07:32\n", make_pair("время без секунд", false)),
+		make_pair("a = 2026-02-30\n", make_pair("несуществующая дата", false)),
+		make_pair("a = 2024-02-29\n", make_pair("двадцать девятое февраля високосного", true)),
+		make_pair("a = 2023-02-29\n", make_pair("двадцать девятое февраля обычного", false)),
+		make_pair("a = 1979-05-27T23:59:60Z\n", make_pair("добавочная секунда", true)),
+		make_pair("a = 1979-05-27T24:00:00Z\n", make_pair("час за пределом", false)),
+		make_pair("a = [1, 2, 3]\n", make_pair("перечень чисел", true)),
+		make_pair("a = [1, \"два\", 3.0]\n", make_pair("перечень разных типов", true)),
+		make_pair("a = [\n1,\n2,\n]\n", make_pair("перечень несколькими строками", true)),
+		make_pair("a = [1,]\n", make_pair("лишняя запятая перечня", true)),
+		make_pair("a = [1,,2]\n", make_pair("сдвоенная запятая перечня", false)),
+		make_pair("a = [1\n", make_pair("незакрытый перечень", false)),
+		make_pair("a = [\n1, # первое\n2\n]\n", make_pair("примечание внутри перечня", true)),
+		make_pair("a = { x = 1, y = 2 }\n", make_pair("встроенная таблица", true)),
+		make_pair("a = {}\n", make_pair("пустая встроенная таблица", true)),
+		make_pair("a = {\nx = 1}\n", make_pair("перенос во встроенной таблице", false)),
+		make_pair("[a]\nx = 1\n", make_pair("таблица", true)),
+		make_pair("[a.b.c]\nx = 1\n", make_pair("вложенная таблица", true)),
+		make_pair("[ a . b ]\nx = 1\n", make_pair("пробелы в имени таблицы", true)),
+		make_pair("[]\n", make_pair("пустое имя таблицы", false)),
+		make_pair("[a]\n[a]\n", make_pair("повтор таблицы", false)),
+		make_pair("a = 1\na = 2\n", make_pair("повтор ключа", false)),
+		make_pair("a = 1\n[a]\n", make_pair("таблица поверх ключа", false)),
+		make_pair("[[a]]\nx = 1\n[[a]]\nx = 2\n", make_pair("набор таблиц", true)),
+		make_pair("[[a]]\n[a.b]\nx = 1\n", make_pair("таблица внутри набора", true)),
+		make_pair("[a\n", make_pair("незакрытая таблица", false)),
+		make_pair("[a] x = 1\n", make_pair("содержимое за таблицей", false)),
+		make_pair("# примечание\na = 1\n", make_pair("примечание строкой", true)),
+		make_pair("", make_pair("пустой текст", true)),
+		make_pair(string("\xEF\xBB\xBF") + "a = 1\n", make_pair("метка порядка байтов", true)),
+		make_pair("a = 1", make_pair("текст без окончания строки", true)),
+		make_pair("a = 1\r\n", make_pair("окончание CRLF", true)),
+		make_pair("a = 1\rb = 2\n", make_pair("одиночный возврат каретки", false))
+	}){
+		// Выполняем разбор текста настроек, поданного целиком
+		const Outcome whole = outcome(item.first, 0);
+		// Выполняем проверку соответствия итога разбора описанию
+		ASSERT_EQ((whole.state == static_cast <uint32_t> (toml::state_t::FINISHED)), item.second.second)
+			<< item.second.first << ": ошибка " << whole.error;
+		/**
+		 * Выполняем перебор размеров куска подачи разбираемого текста
+		 */
+		for(const size_t chunk : {static_cast <size_t> (1), static_cast <size_t> (2), static_cast <size_t> (3),
+		                          static_cast <size_t> (5), static_cast <size_t> (7), static_cast <size_t> (13)}){
+			// Выполняем разбор текста настроек, поданного кусками
+			const Outcome piece = outcome(item.first, chunk);
+			// Выполняем проверку совпадения состояния разбора
+			ASSERT_EQ(piece.state, whole.state) << item.second.first << ", кусок " << chunk;
+			// Выполняем проверку совпадения кода ошибки разбора
+			ASSERT_EQ(piece.error, whole.error) << item.second.first << ", кусок " << chunk;
+			// Выполняем проверку совпадения места обнаружения ошибки
+			ASSERT_EQ(piece.line, whole.line) << item.second.first << ", кусок " << chunk;
+			// Выполняем проверку совпадения положения места ошибки в строке
+			ASSERT_EQ(piece.column, whole.column) << item.second.first << ", кусок " << chunk;
+			// Выполняем проверку совпадения выданных разбором событий
+			ASSERT_EQ(piece.trace, whole.trace) << item.second.first << ", кусок " << chunk;
+		}
+	}
+}
+/**
+ * @brief Проверка набора знаков Юникода, дозволенных имени без кавычек
+ *
+ * @details Знаки Юникода в имени без кавычек отводит черновик следующей версии
+ * описания, и набор их там задан перечнем: признавать всякий знак вне US-ASCII
+ * значило бы принимать имена, которых черновик не дозволяет - со знаками
+ * препинания и знаками оформления
+ *
+ */
+TEST(CodecTomlReader, UnicodeNames) {
+	/**
+	 * Выполняем перебор проверяемых имён ключей
+	 */
+	for(const auto & item : {
+		make_pair(string("сервер = 1\n"), true),
+		make_pair(string("日本語 = 1\n"), true),
+		make_pair(string("\xF0\x9F\x98\x80 = 1\n"), true),
+		make_pair(string("a\xE2\x80\x8C""b = 1\n"), true),
+		make_pair(string("a\xC2\xA9""b = 1\n"), false),
+		make_pair(string("\xC2\xB7 = 1\n"), false),
+		make_pair(string("\xC3\x28 = 1\n"), false)
+	}){
+		/**
+		 * Выполняем перебор размеров куска подачи исходного текста
+		 */
+		for(size_t size : {size_t(1), size_t(2), size_t(3), size_t(64)}){
+			// Настройки разбора текста настроек
+			toml::reader_t::settings_t settings;
+			// Устанавливаем признание знаков Юникода в именах без кавычек
+			settings.unicode = true;
+			// Объект потокового чтения текста настроек
+			toml::reader_t reader(settings);
+			/**
+			 * Выполняем подачу исходного текста кусками выбранного размера
+			 */
+			for(size_t i = 0; i < item.first.size(); i += size){
+				// Получаем размер очередного куска исходного текста
+				const size_t part = ((size < (item.first.size() - i)) ? size : (item.first.size() - i));
+				// Выполняем подачу очередного куска исходного текста
+				static_cast <void> (reader.feed(item.first.data() + i, part, (i + part) == item.first.size()));
+				/**
+				 * Выполняем перебор выданных разбором событий
+				 */
+				while(reader.next()){}
+			}
+			// Выполняем проверку итога разбора текста настроек
+			ASSERT_EQ((reader.error() == toml::error_t::NONE), item.second)
+			 << "«" << item.first << "» кусками по " << size;
+		}
+	}
+	// Объект записи текста настроек
+	toml::writer_t writer;
+	// Выполняем запись имени ключа со знаком, черновиком не дозволенным
+	ASSERT_TRUE(writer.key("a\xC2\xA9""b"));
+	// Выполняем запись значения пары
+	ASSERT_TRUE(writer.integer(1));
+	// Выполняем проверку того, что имя ограждено кавычками
+	ASSERT_EQ(writer.text(), string("\"a\xC2\xA9""b\" = 1\n"));
+}
+/**
+ * @brief Проверка построения записи числа с плавающей точкой
+ *
+ * @details Построение записи задано правилом описания, а не набором дозволенных ей
+ * знаков: запись «1.e2» несёт одни лишь знаки, числу отведённые, а числом не является -
+ * десятичная точка обязана нести цифру и слева, и справа. Судить о ней по первому и
+ * последнему знаку мало: разбор принимал её, а строило её приведение к числу сотней
+ *
+ */
+TEST(CodecTomlReader, FloatGrammar) {
+	/**
+	 * Выполняем перебор проверяемых записей числа
+	 */
+	for(const auto & item : {
+		make_pair(string("1.e2"), false),
+		make_pair(string("1.e+2"), false),
+		make_pair(string("1.e-2"), false),
+		make_pair(string("+1.e2"), false),
+		make_pair(string("1."), false),
+		make_pair(string(".1"), false),
+		make_pair(string("1e"), false),
+		make_pair(string("1e+"), false),
+		make_pair(string("1.2.3"), false),
+		make_pair(string("1e2e3"), false),
+		make_pair(string("1.2e3.4"), false),
+		make_pair(string("1.0e"), false),
+		make_pair(string("1.2E"), false),
+		make_pair(string("0x1.8p3"), false),
+		make_pair(string("1.0"), true),
+		make_pair(string("1e2"), true),
+		make_pair(string("1E+2"), true),
+		make_pair(string("1.2e-3"), true),
+		make_pair(string("6.626e-34"), true),
+		make_pair(string("-0.0"), true),
+		make_pair(string("0e0"), true),
+		make_pair(string("0.1"), true),
+		make_pair(string("1_000.000_001"), true),
+		make_pair(string("inf"), true),
+		make_pair(string("-inf"), true),
+		make_pair(string("nan"), true)
+	}){
+		// Собираемый текст настроек с проверяемой записью числа
+		const string text = ("a = " + item.first + "\n");
+		// Объект потокового чтения текста настроек
+		toml::reader_t reader;
+		// Выполняем подачу разбираемого текста настроек
+		static_cast <void> (reader.feed(text.data(), text.size(), true));
+		/**
+		 * Выполняем перебор выданных разбором событий
+		 */
+		while(reader.next()){}
+		// Выполняем проверку итога разбора текста настроек
+		ASSERT_EQ((reader.error() == toml::error_t::NONE), item.second) << "«" << item.first << "»";
+	}
 }

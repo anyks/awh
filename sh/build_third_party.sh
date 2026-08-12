@@ -93,7 +93,7 @@ elif [ $OS = "SunOS" ]; then
 	else
 		INSTALL_CMD="install -D -m 0644"
 	fi
-elif [ $OS = "FreeBSD" ] || [ $OS = "NetBSD" ] || [ $OS = "OpenBSD" ]; then
+elif [ $OS = "FreeBSD" ] || [ $OS = "DragonFly" ] || [ $OS = "NetBSD" ] || [ $OS = "OpenBSD" ]; then
 	INSTALL_CMD="install -m 0644"
 else
 	echo "Operating system not defined"
@@ -197,8 +197,8 @@ if [ $OS = "Darwin" ]; then
 elif [ $OS = "Windows" ] || [ $OS = "Linux" ] || [ $OS = "SunOS" ]; then
 	# Устанавливаем количество ядер системы
 	numproc=$(nproc)
-# Если сборка производится в операционной системе FreeBSD, NetBSD или OpenBSD
-elif [ $OS = "FreeBSD" ] || [ $OS = "NetBSD" ] || [ $OS = "OpenBSD" ]; then
+# Если сборка производится в операционной системе FreeBSD, DragonFly, NetBSD или OpenBSD
+elif [ $OS = "FreeBSD" ] || [ $OS = "DragonFly" ] || [ $OS = "NetBSD" ] || [ $OS = "OpenBSD" ]; then
 	##
 	# Утилита опроса системы зовётся по полному пути, а не по имени
 	#
@@ -233,8 +233,8 @@ case "$numproc" in
 	;;
 esac
 
-# Если сборка производится в операционной системе FreeBSD, NetBSD, OpenBSD или Solaris
-if [ $OS = "FreeBSD" ] || [ $OS = "NetBSD" ] || [ $OS = "OpenBSD" ] || [ $OS = "SunOS" ]; then
+# Если сборка производится в операционной системе FreeBSD, DragonFly, NetBSD, OpenBSD или Solaris
+if [ $OS = "FreeBSD" ] || [ $OS = "DragonFly" ] || [ $OS = "NetBSD" ] || [ $OS = "OpenBSD" ] || [ $OS = "SunOS" ]; then
 	# Устанавливаем сборщик
 	MAKE="gmake"
 # Если сборка производится в другой операционной системе

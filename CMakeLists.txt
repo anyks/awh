@@ -346,8 +346,18 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
      #
      # Подключается она здесь, а не списком библиотек ниже, оттого что наборы тестов
      # заводятся раньше того списка и до него не достают
+     #
+     # ПОРЯДОК ЗДЕСЬ ЗНАЧИМ. Флаги компилятора попадают в строку связывания ДО
+     # объектных файлов, а связыватель разбирает её слева направо. Библиотека,
+     # разбираемая раньше объектов, никому на тот миг ещё не нужна, и Debian с его
+     # умолчанием --as-needed отбрасывает её целиком: сборка валится россыпью
+     # "undefined reference to sctp_connectx". Прочие дистрибутивы это переживали
+     # лишь потому, что умолчание у них иное. Признак --no-as-needed обязан стоять
+     # ПЕРЕД самой библиотекой, иначе он до неё не относится - проверено опытом на
+     # стенде Debian 12.15 (12.08.2026): порядок "-lsctp объект" не связывается,
+     # "-Wl,--no-as-needed -lsctp объект" связывается
      ##
-    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -lsctp")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wl,--no-as-needed -lsctp")
     # Используем Clang
     if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
@@ -402,6 +412,26 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD")
         EXECUTE_PROCESS(COMMAND uname -a COMMAND awk "{print $3}" COMMAND tr -d '\n' OUTPUT_VARIABLE OS_VERSION)
     endif()
     message(STATUS "Detected OS: FreeBSD v${OS_VERSION}")
+    SET(DEBUGGER "-ggdb3")
+# Если сборка производится под операционную систему DragonFly BSD
+#
+# Система эта ответвилась от FreeBSD 4.8 и очередь оповещений несёт родную - kqueue,
+# оттого и движок ей подходит тот же, что и прочим BSD. Расходится она с FreeBSD в
+# двух местах: SCTP там нет вовсе (проверено на стенде - ни заголовка, ни настроек
+# в sysctl), а основной собиратель системы - gcc 8.3 от 2019 года, который наш код
+# не осиливает, потому собирать следует собирателем из портов
+elseif (${CMAKE_SYSTEM_NAME} STREQUAL "DragonFly")
+    ##
+    # Версия берётся из uname -r, а не разбором uname -a
+    #
+    # Поля в выводе uname -a у DragonFly расставлены иначе, нежели у FreeBSD: третьим
+    # там идёт не номер выпуска, а название самой системы, и разбор отдавал версию
+    # "DragonFly" вместо "6.4-RELEASE". Проверено на стенде 12.08.2026
+    ##
+    if (NOT OS_VERSION)
+        EXECUTE_PROCESS(COMMAND uname -r COMMAND tr -d '\n' OUTPUT_VARIABLE OS_VERSION)
+    endif()
+    message(STATUS "Detected OS: DragonFly BSD v${OS_VERSION}")
     SET(DEBUGGER "-ggdb3")
 # Если сборка производится под операционную систему NetBSD
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "NetBSD")
@@ -475,8 +505,8 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
 # Устанавливаем параметры игнорирования ошибок для Windows и Linux
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Windows" OR ${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
     SET(AWH_PARAMS "-Wno-cpp -Wno-deprecated")
-# Устанавливаем параметры игнорирования ошибок для FreeBSD, NetBSD и OpenBSD
-elseif (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "NetBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD")
+# Устанавливаем параметры игнорирования ошибок для FreeBSD, DragonFly, NetBSD и OpenBSD
+elseif (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "DragonFly" OR ${CMAKE_SYSTEM_NAME} STREQUAL "NetBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD")
     SET(AWH_PARAMS "-lutil -lexecinfo -Wno-cpp -Wno-deprecated -Wno-unused-command-line-argument")
 # Если операционная система не определена
 else()
@@ -612,6 +642,20 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD")
     SET(TCMALLOC_LIBRARIES "")
     # Выводим сообщение об использовании системного распределителя памяти
     message(STATUS "TcMalloc is not available on OpenBSD: using the system allocator")
+##
+# У DragonFly BSD причина иная, а исход тот же
+#
+# Библиотека gperftools объявляет malloc_usable_size(void *), а система - через
+# malloc_np.h, подключаемый прямо из stdlib.h, - объявляет её же с const. Объявления
+# расходятся, и собиратель отвергает их как противоречащие. У FreeBSD объявление
+# системы точно такое же, но stdlib.h там malloc_np.h не подключает, оттого gperftools
+# его и не видит. Подробности - в sh/third_party/011_gperftools.sh
+##
+elseif (${CMAKE_SYSTEM_NAME} STREQUAL "DragonFly")
+    # Оставляем набор библиотек TcMalloc пустым
+    SET(TCMALLOC_LIBRARIES "")
+    # Выводим сообщение об использовании системного распределителя памяти
+    message(STATUS "TcMalloc is not available on DragonFly BSD: using the system allocator")
 # Если распределитель памяти TcMalloc системой поддерживается
 else()
     # Выполняем поиск библиотеки TcMalloc
@@ -661,8 +705,8 @@ include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/include)
 include_directories(BEFORE ${CMAKE_SOURCE_DIR}/contrib/include)
 include_directories(SYSTEM ${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES})
 
-# Если сборка производится под операционные системы macOS, FreeBSD, NetBSD или OpenBSD
-if (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin" OR ${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "NetBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD")
+# Если сборка производится под операционные системы macOS, FreeBSD, DragonFly, NetBSD или OpenBSD
+if (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin" OR ${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "DragonFly" OR ${CMAKE_SYSTEM_NAME} STREQUAL "NetBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD")
     # Выполняем подключение бэкендов IO
     SET(SOURCE_FILES
         "${SOURCE_FILES}"
@@ -5785,7 +5829,7 @@ if (CMAKE_BUILD_TESTS)
     if (${CMAKE_SYSTEM_NAME} STREQUAL "NetBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD")
         # Добавляем каталог пакетов pkgsrc к путям поиска
         list(APPEND CMAKE_PREFIX_PATH "/usr/pkg")
-    elseif (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD")
+    elseif (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "DragonFly")
         # Добавляем каталог пакетов портов к путям поиска
         list(APPEND CMAKE_PREFIX_PATH "/usr/local")
     endif()

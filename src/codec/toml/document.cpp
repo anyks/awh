@@ -270,6 +270,8 @@ void awh::codec::toml::Document::reindex() noexcept {
 	this->_index.clear();
 	// Выполняем очистку порядка объявления дочерних имён
 	this->_children.clear();
+	// Выполняем очистку имён таблиц, заведённых составным именем ключа
+	this->_dotted.clear();
 	// Количество таблиц, объявленных каждым набором таблиц
 	unordered_map <string, uint32_t> ordinals;
 	// Ключ указателя таблицы, которой принадлежат разбираемые записи
@@ -370,6 +372,16 @@ void awh::codec::toml::Document::reindex() noexcept {
 			parent.push_back(SEPARATOR);
 			// Выполняем добавление очередной составной части к объемлющему имени
 			parent.append(this->get(this->_keys.at(key).name));
+			/**
+			 * Если составной частью имени пары заведена таблица
+			 *
+			 * @note Заводит её всякая часть имени пары, кроме последней: описание
+			 *       запрещает объявлять такую таблицу заголовком, тогда как таблицу,
+			 *       заведённую исподволь заголовком, объявить им дозволено
+			 */
+			if((record.kind == kind_t::PAIR) && ((j + 1) < record.path.length))
+				// Выполняем запоминание таблицы, заведённой составным именем ключа
+				this->_dotted.emplace(parent);
 		}
 	}
 }
@@ -464,13 +476,45 @@ bool awh::codec::toml::Document::compose(writer_t & writer, const uint32_t node)
 				// Выводим отрицательный результат выполнения операции
 				return false;
 			/**
-			 * Выполняем перебор всех значений перечня
+			 * Порядковый номер ближайшего незаписанного примечания перечня
+			 *
+			 * @note Примечания собраны разбором по возрастанию места своего, и перебирать
+			 *       их заново для всякого значения незачем: перечень с примечаниями к
+			 *       каждому значению обходился бы записи квадратом
 			 */
-			for(auto & child : item.items){
+			size_t next = 0;
+			/**
+			 * Выполняем перебор всех значений перечня вместе с примечаниями его
+			 */
+			for(size_t i = 0; i <= item.items.size(); i++){
+				/**
+				 * Выполняем запись всех примечаний, на этом месте перечня стоящих
+				 */
+				for(; (next < item.remarks.size()) &&
+				      (item.remarks.at(next).index == static_cast <uint32_t> (i)); next++){
+					// Получаем очередное примечание перечня
+					const remark_t & remark = item.remarks.at(next);
+					// Признак успешной записи примечания перечня
+					const bool result = (remark.trailing ?
+						writer.remarked(this->get(remark.text), (remark.index < static_cast <uint32_t> (item.items.size()))) :
+						writer.remark(this->get(remark.text)));
+					/**
+					 * Если записать примечание перечня не удалось
+					 */
+					if(!result)
+						// Выводим отрицательный результат выполнения операции
+						return false;
+				}
+				/**
+				 * Если значения перечня исчерпаны
+				 */
+				if(i == item.items.size())
+					// Выходим из перебора значений перечня
+					break;
 				/**
 				 * Если записать очередное значение перечня не удалось
 				 */
-				if(!this->compose(writer, child))
+				if(!this->compose(writer, item.items.at(i)))
 					// Выводим отрицательный результат выполнения операции
 					return false;
 			}
@@ -656,14 +700,52 @@ bool awh::codec::toml::Document::acceptable(const vector <string_view> & path, c
 			// Выводим отрицательный результат выполнения операции
 			return false;
 		}
+		// Буфер сборки ключа указателя записей
+		string buffer;
+		// Выполняем сборку ключа указателя проверяемого имени
+		this->labelled(buffer, path);
+		/**
+		 * Если таблица заведена составным именем ключа
+		 *
+		 * @note Описание запрещает объявлять такую таблицу заголовком: собранный
+		 *       правкой текст разбор отверг бы повтором объявления
+		 */
+		if(this->_dotted.count(buffer) > 0){
+			// Запоминаем код ошибки правки дерева настроек
+			this->_error = error_t::DUPLICATE_TABLE;
+			// Выводим отрицательный результат выполнения операции
+			return false;
+		}
 	/**
-	 * Если имя пары занято объявленной таблицей
+	 * Если имя пары занято таблицей
 	 */
-	} else if(this->locate(path, kind_t::TABLE) != NO_RECORD) {
-		// Запоминаем код ошибки правки дерева настроек
-		this->_error = error_t::REDEFINE_TABLE;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+	} else {
+		/**
+		 * Если имя пары занято объявленной таблицей
+		 */
+		if(this->locate(path, kind_t::TABLE) != NO_RECORD){
+			// Запоминаем код ошибки правки дерева настроек
+			this->_error = error_t::REDEFINE_TABLE;
+			// Выводим отрицательный результат выполнения операции
+			return false;
+		}
+		// Буфер сборки ключа указателя записей
+		string buffer;
+		// Выполняем сборку ключа указателя проверяемого имени
+		this->labelled(buffer, path);
+		/**
+		 * Если у проверяемого имени есть дочерние имена
+		 *
+		 * @note Имя, несущее дочерние, заведено таблицей - объявленной заголовком
+		 *       либо составным именем ключа, - и пара поверх него собрала бы текст,
+		 *       который разбор отверг бы повтором имени
+		 */
+		if(this->_children.count(buffer) > 0){
+			// Запоминаем код ошибки правки дерева настроек
+			this->_error = error_t::REDEFINE_TABLE;
+			// Выводим отрицательный результат выполнения операции
+			return false;
+		}
 	}
 	// Выводим положительный результат выполнения операции
 	return true;
@@ -978,7 +1060,8 @@ bool awh::codec::toml::Document::parse(const string_view text) noexcept {
 				 *       местам событий: перечень, закрытый строкою ниже той, где он
 				 *       начат, записан несколькими строками
 				 */
-				this->_nodes.at(stack.back()).multiline = (reader.location().line > lines.back());
+				this->_nodes.at(stack.back()).multiline = ((reader.location().line > lines.back()) ||
+				 !this->_nodes.at(stack.back()).remarks.empty());
 				// Выполняем снятие узла составного значения со стопы
 				stack.pop_back();
 				// Выполняем снятие номера строки начала составного значения
@@ -986,6 +1069,29 @@ bool awh::codec::toml::Document::parse(const string_view text) noexcept {
 			} break;
 			// Если событием является примечание
 			case static_cast <uint8_t> (event_t::COMMENT): {
+				/**
+				 * Если примечание стоит внутри составного значения
+				 *
+				 * @note Строкой текста настроек такое примечание не является: держать его
+				 *       записью значило бы выдать его наружу отдельной строкой, разорвав
+				 *       пару, внутри значения которой оно стоит
+				 */
+				if(!stack.empty()){
+					// Получаем узел составного значения, внутри которого стоит примечание
+					node_t & node = this->_nodes.at(stack.back());
+					// Собираемое примечание перечня значений
+					remark_t remark;
+					// Запоминаем количество значений перечня, записанных до примечания
+					remark.index = static_cast <uint32_t> (node.items.size());
+					// Выполняем добавление содержимого примечания к хранилищу знаков
+					remark.text = this->add(reader.comment().text);
+					// Запоминаем признак примечания, дописанного к строке значения
+					remark.trailing = reader.comment().trailing;
+					// Выполняем добавление собранного примечания перечня значений
+					node.remarks.push_back(remark);
+					// Выполняем переход к следующему событию разбора
+					break;
+				}
 				// Собираемая запись примечания
 				record_t record;
 				// Запоминаем вид собираемой записи
@@ -1372,16 +1478,19 @@ bool awh::codec::toml::Document::create(const vector <string_view> & path) noexc
  *
  */
 bool awh::codec::toml::Document::set(const vector <string_view> & path, const string_view value, const string_t quoting) noexcept {
-	// Выполняем добавление строкового значения к хранилищу знаков
-	const span_t text = this->add(value);
 	// Выполняем получение узла значения для правки
 	node_t * node = this->reach(path);
 	/**
 	 * Если узел значения для правки не получен
+	 *
+	 * @note Значение переносится в хранилище знаков лишь по получении узла: перенос
+	 *       его прежде наращивал бы хранилище всякой отвергнутой правкой
 	 */
 	if(node == nullptr)
 		// Выводим отрицательный результат выполнения операции
 		return false;
+	// Выполняем добавление строкового значения к хранилищу знаков
+	const span_t text = this->add(value);
 	// Запоминаем тип устанавливаемого значения
 	node->type = type_t::STRING;
 	// Запоминаем ограду устанавливаемого строкового значения
@@ -1669,6 +1778,8 @@ void awh::codec::toml::Document::clear() noexcept {
 	this->_index.clear();
 	// Выполняем очистку порядка объявления дочерних имён
 	this->_children.clear();
+	// Выполняем очистку имён таблиц, заведённых составным именем ключа
+	this->_dotted.clear();
 }
 /**
  * @brief Метод записи дерева обратно в текст настроек
