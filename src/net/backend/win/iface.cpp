@@ -71,6 +71,58 @@ static constexpr const char * __AWH_IFACE_BACKEND__ = "MS Windows interface back
  */
 namespace {
 	/**
+	 * @brief Функция сличения названий сетевых устройств
+	 *
+	 * @details Сличение ведётся БЕЗ учёта регистра, и это не послабление, а
+	 *          устройство системы: названием устройства у MS Windows служит GUID, и
+	 *          система выдаёт его заглавными буквами (`{F49A2CB0-...}`), тогда как
+	 *          слои выше приводят названия к нижнему регистру - у систем POSIX
+	 *          названия устройств в нижнем регистре и живут. Посимвольное сличение
+	 *          не совпадало оттого НИКОГДА: установлено прогоном, набор терял
+	 *          `IoBroadcastTest`, а привязка события к устройству отвечала отказом
+	 *          «устройство не найдено» при живом устройстве
+	 *
+	 * @note Свёртка регистра здесь своя, ASCII, а не средствами языка: `tolower`
+	 *       зависит от местности, а GUID - данные протокольные, и разбирать их по
+	 *       местности нельзя
+	 *
+	 * @param name    искомое название устройства
+	 * @param adapter название устройства, выданное системой
+	 * @return        признак совпадения названий
+	 *
+	 */
+	static bool __awh_iface_same__(const std::string_view name, const char * adapter) noexcept {
+		// Если название устройства не задано
+		if(adapter == nullptr)
+			// Выводим несовпадение названий
+			return false;
+		// Выполняем перебор символов искомого названия
+		size_t i = 0;
+		/**
+		 * Выполняем сличение названий посимвольно, свёртывая регистр
+		 */
+		for(; (i < name.size()) && (adapter[i] != '\0'); i++){
+			// Получаем очередной символ искомого названия
+			char first = name.at(i);
+			// Получаем очередной символ названия, выданного системой
+			char second = adapter[i];
+			// Свёртываем регистр символа искомого названия
+			if((first >= 'A') && (first <= 'Z'))
+				// Приводим символ к нижнему регистру
+				first = static_cast <char> (first + ('a' - 'A'));
+			// Свёртываем регистр символа названия, выданного системой
+			if((second >= 'A') && (second <= 'Z'))
+				// Приводим символ к нижнему регистру
+				second = static_cast <char> (second + ('a' - 'A'));
+			// Если символы разошлись
+			if(first != second)
+				// Выводим несовпадение названий
+				return false;
+		}
+		// Выводим совпадение названий, если оба окончились разом
+		return ((i == name.size()) && (adapter[i] == '\0'));
+	}
+	/**
 	 * @brief Функция получения перечня сетевых устройств машины
 	 *
 	 * @details Объём, потребный под перечень, заранее не известен, и система сообщает
@@ -172,7 +224,7 @@ namespace {
 		 */
 		for(PIP_ADAPTER_ADDRESSES adapter = adapters; adapter != nullptr; adapter = adapter->Next){
 			// Если название устройства с искомым совпало
-			if((adapter->AdapterName != nullptr) && (name.compare(adapter->AdapterName) == 0)){
+			if((adapter->AdapterName != nullptr) && ::__awh_iface_same__(name, adapter->AdapterName)){
 				// Запоминаем местный номер найденного устройства
 				luid = adapter->Luid;
 				// Выводим признак того, что устройство найдено
@@ -242,7 +294,7 @@ bool awh::eth::Interface::isAvailable(string_view name) const noexcept {
 	 */
 	for(PIP_ADAPTER_ADDRESSES adapter = adapters; adapter != nullptr; adapter = adapter->Next){
 		// Если название устройства совпало с искомым
-		if((adapter->AdapterName != nullptr) && (name.compare(adapter->AdapterName) == 0))
+		if((adapter->AdapterName != nullptr) && ::__awh_iface_same__(name, adapter->AdapterName))
 			// Возвращаем признак доступности устройства
 			return true;
 	}
@@ -278,7 +330,7 @@ uint32_t awh::eth::Interface::mtu(string_view name) const noexcept {
 	 */
 	for(PIP_ADAPTER_ADDRESSES adapter = adapters; adapter != nullptr; adapter = adapter->Next){
 		// Если название устройства совпало с искомым
-		if((adapter->AdapterName != nullptr) && (name.compare(adapter->AdapterName) == 0))
+		if((adapter->AdapterName != nullptr) && ::__awh_iface_same__(name, adapter->AdapterName))
 			// Возвращаем размер кадра устройства
 			return static_cast <uint32_t> (adapter->Mtu);
 	}
@@ -332,7 +384,7 @@ unordered_set <awh::event::eth_flag_t> awh::eth::Interface::flags(string_view na
 	 */
 	for(PIP_ADAPTER_ADDRESSES adapter = adapters; adapter != nullptr; adapter = adapter->Next){
 		// Если название устройства с искомым не совпало
-		if((adapter->AdapterName == nullptr) || (name.compare(adapter->AdapterName) != 0))
+		if((adapter->AdapterName == nullptr) || !::__awh_iface_same__(name, adapter->AdapterName))
 			// Переходим к следующему устройству
 			continue;
 		// Если устройство работает
@@ -409,7 +461,7 @@ bool awh::eth::Interface::isTunnel(string_view name) const noexcept {
 	 */
 	for(PIP_ADAPTER_ADDRESSES adapter = adapters; adapter != nullptr; adapter = adapter->Next){
 		// Если название устройства совпало с искомым
-		if((adapter->AdapterName != nullptr) && (name.compare(adapter->AdapterName) == 0))
+		if((adapter->AdapterName != nullptr) && ::__awh_iface_same__(name, adapter->AdapterName))
 			// Возвращаем признак того, чем устройство является
 			return (adapter->IfType == IF_TYPE_TUNNEL);
 	}
@@ -453,7 +505,7 @@ unique_ptr <awh::net::addr_t> awh::eth::Interface::getAddress(string_view name, 
 	 */
 	for(PIP_ADAPTER_ADDRESSES adapter = adapters; adapter != nullptr; adapter = adapter->Next){
 		// Если название устройства с искомым не совпало
-		if((adapter->AdapterName == nullptr) || (name.compare(adapter->AdapterName) != 0))
+		if((adapter->AdapterName == nullptr) || !::__awh_iface_same__(name, adapter->AdapterName))
 			// Переходим к следующему устройству
 			continue;
 		// Если устройство не работает - адреса его непригодны
@@ -625,7 +677,7 @@ bool awh::eth::Interface::isVirtual(string_view name) const noexcept {
 	 */
 	for(PIP_ADAPTER_ADDRESSES adapter = adapters; adapter != nullptr; adapter = adapter->Next){
 		// Если название устройства с искомым не совпало
-		if((adapter->AdapterName == nullptr) || (name.compare(adapter->AdapterName) != 0))
+		if((adapter->AdapterName == nullptr) || !::__awh_iface_same__(name, adapter->AdapterName))
 			// Переходим к следующему устройству
 			continue;
 		/**
@@ -693,7 +745,7 @@ bool awh::eth::Interface::mtu(string_view name, const uint32_t mtu) const noexce
 	 */
 	for(PIP_ADAPTER_ADDRESSES adapter = adapters; adapter != nullptr; adapter = adapter->Next){
 		// Если название устройства с искомым не совпало
-		if((adapter->AdapterName == nullptr) || (name.compare(adapter->AdapterName) != 0))
+		if((adapter->AdapterName == nullptr) || !::__awh_iface_same__(name, adapter->AdapterName))
 			// Переходим к следующему устройству
 			continue;
 		/**
@@ -1081,7 +1133,7 @@ bool awh::eth::Interface::getAddress(string_view name, unique_ptr <net::addr_t> 
 	 */
 	for(PIP_ADAPTER_ADDRESSES adapter = adapters; adapter != nullptr; adapter = adapter->Next){
 		// Если название устройства с искомым не совпало
-		if((adapter->AdapterName == nullptr) || (name.compare(adapter->AdapterName) != 0))
+		if((adapter->AdapterName == nullptr) || !::__awh_iface_same__(name, adapter->AdapterName))
 			// Переходим к следующему устройству
 			continue;
 		/**

@@ -1,0 +1,1937 @@
+/**
+ * @file: document.cpp
+ * @date: 2026-08-12
+ * @license: LicenseRef-AWH-1.0
+ *
+ * @telegram: @forman
+ * @author: Yuriy Lobarev
+ * @phone: +7 (910) 983-95-90
+ * @email: forman@anyks.com
+ * @site: https://anyks.com
+ *
+ * @brief Реализация дерева настроек TOML — сборка дерева разбором, поиск значений по
+ *        составному имени, правка записей на месте, удаление пар и таблиц, а также
+ *        обратная запись дерева в текст настроек
+ *
+ * @copyright: Copyright © 2026
+ *
+ */
+
+/**
+ * Стандартные заголовочные файлы
+ */
+#include <limits>
+#include <cstdlib>
+#include <cstring>
+#include <type_traits>
+
+/**
+ * Подключаем заголовочные файлы проекта
+ */
+#include <codec/toml/document.hpp>
+
+/**
+ * Снимаем на время реализации макросы, чьи имена заняты
+ * членами перечислений AWH (возвращает их macro_pop.hpp в конце файла)
+ */
+#include <sys/macro_push.hpp>
+
+/**
+ * Используем стандартное пространство имён
+ */
+using namespace std;
+
+/**
+ * @brief Внутренние служебные объекты
+ *
+ */
+namespace {
+	/**
+	 * Пространство имён библиотеки
+	 */
+	using namespace awh;
+	/**
+	 * Пространство имён контейнера TOML
+	 */
+	using namespace awh::codec::toml;
+
+	/**
+	 * @brief Обозначение отсутствующей записи дерева настроек
+	 *
+	 */
+	constexpr uint32_t NO_RECORD = static_cast <uint32_t> (-1);
+
+	/**
+	 * @brief Знак соединения составных частей имени в ключе указателя
+	 *
+	 * @note Знак этот в имени ключа встретиться не может: разбор его отвергает
+	 *       управляющим. Соединение точкой давало бы разночтение имён «a.b» и «"a.b"»
+	 */
+	constexpr char SEPARATOR = '\x1F';
+};
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::toml::Document::Settings::Settings() noexcept {
+	// Задаём выдачу примечаний разбором текста настроек
+	this->reader.emitComments = true;
+	// Задаём выдачу пустых строк разбором текста настроек
+	this->reader.emitBlanks = true;
+}
+
+/**
+ * @brief Метод получения содержимого отрезка хранилища знаков
+ *
+ * @param span отрезок общего хранилища знаков
+ * @return     содержимое отрезка хранилища знаков
+ *
+ */
+string_view awh::codec::toml::Document::get(const span_t & span) const noexcept {
+	// Выводим содержимое отрезка хранилища знаков
+	return string_view(this->_store).substr(span.offset, span.length);
+}
+/**
+ * @brief Метод добавления содержимого к хранилищу знаков
+ *
+ * @param text добавляемое к хранилищу содержимое
+ * @return     отрезок хранилища с добавленным содержимым
+ *
+ */
+awh::codec::toml::Document::span_t awh::codec::toml::Document::add(const string_view text) noexcept {
+	// Отрезок хранилища с добавленным содержимым
+	span_t result;
+	// Запоминаем смещение начала отрезка в хранилище знаков
+	result.offset = static_cast <uint32_t> (this->_store.length());
+	// Запоминаем длину добавляемого содержимого
+	result.length = static_cast <uint32_t> (text.length());
+	// Выполняем добавление содержимого к хранилищу знаков
+	this->_store.append(text);
+	// Выводим отрезок хранилища с добавленным содержимым
+	return result;
+}
+/**
+ * @brief Метод добавления составного имени к перечню частей имён
+ *
+ * @param path добавляемое составное имя
+ * @return     отрезок перечня частей с добавленным именем
+ *
+ */
+awh::codec::toml::Document::span_t awh::codec::toml::Document::keep(const vector <part_t> & path) noexcept {
+	// Отрезок перечня частей с добавленным именем
+	span_t result;
+	// Запоминаем смещение начала имени в перечне частей
+	result.offset = static_cast <uint32_t> (this->_keys.size());
+	// Запоминаем количество составных частей имени
+	result.length = static_cast <uint32_t> (path.size());
+	/**
+	 * Выполняем перебор всех составных частей имени
+	 */
+	for(auto & part : path){
+		// Собираемая составная часть имени
+		key_t key;
+		// Выполняем добавление имени части к хранилищу знаков
+		key.name = this->add(part.name);
+		// Запоминаем запись имени части в исходном тексте
+		key.naming = part.naming;
+		// Выполняем добавление составной части к перечню частей имён
+		this->_keys.push_back(key);
+	}
+	// Выводим отрезок перечня частей с добавленным именем
+	return result;
+}
+/**
+ * @brief Метод добавления составного имени к перечню частей имён
+ *
+ * @param path добавляемое составное имя
+ * @return     отрезок перечня частей с добавленным именем
+ *
+ */
+awh::codec::toml::Document::span_t awh::codec::toml::Document::keep(const vector <string_view> & path) noexcept {
+	// Отрезок перечня частей с добавленным именем
+	span_t result;
+	// Запоминаем смещение начала имени в перечне частей
+	result.offset = static_cast <uint32_t> (this->_keys.size());
+	// Запоминаем количество составных частей имени
+	result.length = static_cast <uint32_t> (path.size());
+	/**
+	 * Выполняем перебор всех составных частей имени
+	 */
+	for(auto & part : path){
+		// Собираемая составная часть имени
+		key_t key;
+		// Выполняем добавление имени части к хранилищу знаков
+		key.name = this->add(part);
+		/**
+		 * Выполняем подбор записи имени части
+		 *
+		 * @note Запись выбирается по пригодности имени: ограду ставит сама запись
+		 *       текста, и здесь берётся лишь пожелание
+		 */
+		key.naming = naming_t::BARE;
+		// Выполняем добавление составной части к перечню частей имён
+		this->_keys.push_back(key);
+	}
+	// Выводим отрезок перечня частей с добавленным именем
+	return result;
+}
+/**
+ * @brief Метод сборки ключа указателя записей
+ *
+ * @param buffer буфер, куда собирается ключ указателя
+ * @param path   отрезок перечня частей собираемого имени
+ * @param parent ключ указателя объемлющей таблицы
+ *
+ */
+void awh::codec::toml::Document::labelled(string & buffer, const span_t & path, const string_view parent) const noexcept {
+	// Выполняем очистку буфера сборки ключа указателя
+	buffer.clear();
+	// Выполняем добавление ключа объемлющей таблицы
+	buffer.append(parent);
+	/**
+	 * Выполняем перебор всех составных частей имени
+	 */
+	for(uint32_t i = 0; i < path.length; i++){
+		/**
+		 * Выполняем добавление знака соединения составных частей имени
+		 *
+		 * @note Знак ставится перед всякой частью, а не между частями: имя ключа
+		 *       описанием дозволено пустым, и без него имя «""» дало бы тот же ключ
+		 *       указателя, что и верхний уровень текста настроек
+		 */
+		buffer.push_back(SEPARATOR);
+		// Выполняем добавление очередной составной части имени
+		buffer.append(this->get(this->_keys.at(path.offset + i).name));
+	}
+}
+/**
+ * @brief Метод сборки ключа указателя записей
+ *
+ * @param buffer буфер, куда собирается ключ указателя
+ * @param path   составное имя записи
+ *
+ */
+void awh::codec::toml::Document::labelled(string & buffer, const vector <string_view> & path) const noexcept {
+	// Выполняем очистку буфера сборки ключа указателя
+	buffer.clear();
+	/**
+	 * Выполняем перебор всех составных частей имени
+	 */
+	for(auto & part : path){
+		// Выполняем добавление знака соединения составных частей имени
+		buffer.push_back(SEPARATOR);
+		// Выполняем добавление очередной составной части имени
+		buffer.append(part);
+	}
+}
+/**
+ * @brief Метод поиска записи по составному имени
+ *
+ * @param path составное имя искомой записи
+ * @param kind вид искомой записи
+ * @return     порядковый номер найденной записи либо количество записей
+ *
+ */
+uint32_t awh::codec::toml::Document::locate(const vector <string_view> & path, const kind_t kind) const noexcept {
+	// Буфер сборки ключа указателя записей
+	string buffer;
+	// Выполняем сборку ключа указателя записей
+	this->labelled(buffer, path);
+	// Выполняем поиск записи по составному имени
+	auto i = this->_index.find(buffer);
+	/**
+	 * Если запись по составному имени не найдена
+	 */
+	if(i == this->_index.end())
+		// Выводим обозначение отсутствующей записи
+		return NO_RECORD;
+	// Получаем вид найденной записи
+	const kind_t found = this->_records.at(i->second).kind;
+	/**
+	 * Если искомой является таблица
+	 *
+	 * @note Таблица набора таблиц таблицею и является: обращение к ней по имени с
+	 *       порядковым номером выдаёт её саму
+	 */
+	if(kind == kind_t::TABLE)
+		// Выводим порядковый номер найденной записи
+		return (((found == kind_t::TABLE) || (found == kind_t::ARRAY_TABLE)) ? i->second : NO_RECORD);
+	// Выводим порядковый номер найденной записи
+	return ((found == kind) ? i->second : NO_RECORD);
+}
+/**
+ * @brief Метод перестроения указателей поиска
+ *
+ */
+void awh::codec::toml::Document::reindex() noexcept {
+	// Выполняем очистку указателя записей
+	this->_index.clear();
+	// Выполняем очистку порядка объявления дочерних имён
+	this->_children.clear();
+	// Количество таблиц, объявленных каждым набором таблиц
+	unordered_map <string, uint32_t> ordinals;
+	// Ключ указателя таблицы, которой принадлежат разбираемые записи
+	string table;
+	// Буфер сборки ключа указателя записей
+	string buffer;
+	// Ключ указателя объемлющего имени
+	string parent;
+	/**
+	 * Выполняем перебор всех записей дерева настроек
+	 */
+	for(uint32_t i = 0; i < static_cast <uint32_t> (this->_records.size()); i++){
+		// Получаем очередную запись дерева настроек
+		record_t & record = this->_records.at(i);
+		/**
+		 * Если запись снята пометкой удаления
+		 */
+		if(record.kind == kind_t::NONE)
+			// Выполняем переход к следующей записи дерева
+			continue;
+		/**
+		 * Если записью является примечание либо пустая строка
+		 */
+		if((record.kind == kind_t::COMMENT) || (record.kind == kind_t::BLANK))
+			// Выполняем переход к следующей записи дерева
+			continue;
+		/**
+		 * Если записью является объявление таблицы
+		 */
+		if((record.kind == kind_t::TABLE) || (record.kind == kind_t::ARRAY_TABLE)){
+			// Выполняем сборку ключа указателя объявляемой таблицы
+			this->labelled(buffer, record.path);
+			/**
+			 * Если объявляется очередная таблица набора таблиц
+			 */
+			if(record.kind == kind_t::ARRAY_TABLE){
+				// Получаем порядковый номер объявляемой таблицы набора
+				const uint32_t ordinal = ordinals[buffer]++;
+				// Выполняем добавление знака соединения составных частей имени
+				buffer.push_back(SEPARATOR);
+				/**
+				 * Выполняем добавление порядкового номера таблицы набора
+				 *
+				 * @note Имя у таблиц набора общее, и различить их можно лишь номером:
+				 *       им же они и адресуются потребителем
+				 */
+				buffer.append(to_string(ordinal));
+			}
+			// Запоминаем ключ указателя таблицы разбираемых записей
+			table = buffer;
+			// Выполняем установку записи объявления таблицы указателем
+			this->_index.emplace(buffer, i);
+		/**
+		 * Если записью является пара
+		 */
+		} else {
+			// Выполняем сборку ключа указателя объявляемой пары
+			this->labelled(buffer, record.path, table);
+			// Выполняем установку записи пары указателем
+			this->_index.emplace(buffer, i);
+		}
+		/**
+		 * Выполняем сборку порядка объявления дочерних имён
+		 *
+		 * @note Порядок этот собирается по всем составным частям имени: имя «a.b.c»
+		 *       заводит дочернее имя «a» верхнему уровню, «b» имени «a» и «c» имени
+		 *       «a.b» - иначе выдача дочерних имён обходила бы всё дерево
+		 */
+		/**
+		 * Выполняем очистку ключа указателя объемлющего имени
+		 *
+		 * @note У пары объемлющим именем берётся её таблица, а у объявления таблицы -
+		 *       верхний уровень: таблица объявляется именем своим целиком
+		 */
+		parent = ((record.kind == kind_t::PAIR) ? table : string());
+		/**
+		 * Выполняем перебор всех составных частей имени записи
+		 */
+		for(uint32_t j = 0; j < record.path.length; j++){
+			// Получаем порядковый номер составной части имени
+			const uint32_t key = (record.path.offset + j);
+			// Получаем перечень дочерних имён объемлющего имени
+			vector <uint32_t> & children = this->_children[parent];
+			// Признак того, что дочернее имя уже объявлено
+			bool declared = false;
+			/**
+			 * Выполняем перебор всех объявленных дочерних имён
+			 */
+			for(size_t k = 0; !declared && (k < children.size()); k++)
+				// Выполняем сличение имени объявленной части с добавляемой
+				declared = (this->get(this->_keys.at(children.at(k)).name) == this->get(this->_keys.at(key).name));
+			/**
+			 * Если дочернее имя ещё не объявлено
+			 */
+			if(!declared)
+				// Выполняем добавление дочернего имени к объемлющему имени
+				children.push_back(key);
+			// Выполняем добавление знака соединения составных частей имени
+			parent.push_back(SEPARATOR);
+			// Выполняем добавление очередной составной части к объемлющему имени
+			parent.append(this->get(this->_keys.at(key).name));
+		}
+	}
+}
+/**
+ * @brief Метод заведения узла значения
+ *
+ * @return порядковый номер заведённого узла значения
+ *
+ */
+uint32_t awh::codec::toml::Document::reserve() noexcept {
+	// Выполняем заведение очередного узла значения
+	this->_nodes.push_back(node_t());
+	// Выводим порядковый номер заведённого узла значения
+	return static_cast <uint32_t> (this->_nodes.size() - 1);
+}
+/**
+ * @brief Метод переноса значения разбора в узел дерева
+ *
+ * @param node  порядковый номер заполняемого узла значения
+ * @param value переносимое значение разбора
+ *
+ */
+void awh::codec::toml::Document::assign(const uint32_t node, const value_t & value) noexcept {
+	// Выполняем добавление строкового значения к хранилищу знаков
+	const span_t text = this->add(value.text);
+	// Получаем заполняемый узел значения
+	node_t & item = this->_nodes.at(node);
+	// Запоминаем тип значения
+	item.type = value.type;
+	// Запоминаем ограду строкового значения
+	item.quoting = value.quoting;
+	// Запоминаем систему счисления записи целого числа
+	item.radix = value.radix;
+	// Запоминаем логическое значение
+	item.boolean = value.boolean;
+	// Запоминаем целое число со знаком
+	item.integer = value.integer;
+	// Запоминаем число с плавающей точкой
+	item.real = value.real;
+	// Запоминаем отметку времени
+	item.stamp = value.stamp;
+	// Запоминаем место строкового значения в хранилище знаков
+	item.text = text;
+}
+/**
+ * @brief Метод записи узла значения собираемым текстом
+ *
+ * @param writer запись собираемого текста настроек
+ * @param node   порядковый номер записываемого узла значения
+ * @return       результат выполнения операции
+ *
+ */
+bool awh::codec::toml::Document::compose(writer_t & writer, const uint32_t node) const noexcept {
+	// Получаем записываемый узел значения
+	const node_t & item = this->_nodes.at(node);
+	/**
+	 * Выполняем выбор типа записываемого значения
+	 */
+	switch(static_cast <uint8_t> (item.type)){
+		// Если записывается последовательность знаков
+		case static_cast <uint8_t> (type_t::STRING):
+			// Выполняем запись строкового значения
+			return writer.text(this->get(item.text), item.quoting);
+		// Если записывается логическое значение
+		case static_cast <uint8_t> (type_t::BOOLEAN):
+			// Выполняем запись логического значения
+			return writer.boolean(item.boolean);
+		// Если записывается целое число
+		case static_cast <uint8_t> (type_t::INTEGER):
+			// Выполняем запись целого числа
+			return writer.integer(item.integer, item.radix);
+		// Если записывается число с плавающей точкой
+		case static_cast <uint8_t> (type_t::FLOAT):
+			// Выполняем запись числа с плавающей точкой
+			return writer.real(item.real);
+		// Если записывается отметка времени со смещением часового пояса
+		case static_cast <uint8_t> (type_t::OFFSET_DATETIME):
+		// Если записывается отметка времени без смещения часового пояса
+		case static_cast <uint8_t> (type_t::LOCAL_DATETIME):
+		// Если записывается местная дата
+		case static_cast <uint8_t> (type_t::LOCAL_DATE):
+		// Если записывается местное время
+		case static_cast <uint8_t> (type_t::LOCAL_TIME):
+			// Выполняем запись отметки времени
+			return writer.stamp(item.stamp, item.type);
+		// Если записывается перечень значений
+		case static_cast <uint8_t> (type_t::ARRAY): {
+			/**
+			 * Если записать начало перечня значений не удалось
+			 */
+			if(!writer.arrayOpen(item.multiline))
+				// Выводим отрицательный результат выполнения операции
+				return false;
+			/**
+			 * Выполняем перебор всех значений перечня
+			 */
+			for(auto & child : item.items){
+				/**
+				 * Если записать очередное значение перечня не удалось
+				 */
+				if(!this->compose(writer, child))
+					// Выводим отрицательный результат выполнения операции
+					return false;
+			}
+			// Выполняем запись конца перечня значений
+			return writer.arrayClose();
+		}
+		// Если записывается встроенная таблица
+		case static_cast <uint8_t> (type_t::TABLE): {
+			/**
+			 * Если записать начало встроенной таблицы не удалось
+			 */
+			if(!writer.inlineOpen())
+				// Выводим отрицательный результат выполнения операции
+				return false;
+			/**
+			 * Выполняем перебор всех пар встроенной таблицы
+			 */
+			for(size_t i = 0; i < item.items.size(); i++){
+				// Собираемое составное имя ключа пары
+				vector <part_t> path(item.names.at(i).length);
+				/**
+				 * Выполняем перебор всех составных частей имени ключа
+				 */
+				for(uint32_t j = 0; j < item.names.at(i).length; j++){
+					// Получаем очередную составную часть имени ключа
+					const key_t & key = this->_keys.at(item.names.at(i).offset + j);
+					// Запоминаем имя составной части ключа
+					path.at(j).name = this->get(key.name);
+					// Запоминаем запись имени составной части ключа
+					path.at(j).naming = key.naming;
+				}
+				/**
+				 * Если записать имя ключа пары встроенной таблицы не удалось
+				 */
+				if(!writer.key(path))
+					// Выводим отрицательный результат выполнения операции
+					return false;
+				/**
+				 * Если записать значение пары встроенной таблицы не удалось
+				 */
+				if(!this->compose(writer, item.items.at(i)))
+					// Выводим отрицательный результат выполнения операции
+					return false;
+			}
+			// Выполняем запись конца встроенной таблицы
+			return writer.inlineClose();
+		}
+	}
+	// Запоминаем код ошибки записи дерева настроек
+	this->_error = error_t::INVALID_VALUE;
+	// Выводим отрицательный результат выполнения операции
+	return false;
+}
+/**
+ * @brief Метод проверки составного имени на пригодность к записи
+ *
+ * @param path проверяемое составное имя
+ * @return     результат выполнения операции
+ *
+ */
+bool awh::codec::toml::Document::acceptable(const vector <string_view> & path, const bool table) noexcept {
+	/**
+	 * Если составное имя пусто
+	 */
+	if(path.empty()){
+		// Запоминаем код ошибки правки дерева настроек
+		this->_error = error_t::EMPTY_KEY;
+		// Выводим отрицательный результат выполнения операции
+		return false;
+	}
+	/**
+	 * Если количество составных частей имени превышает допустимое
+	 */
+	if((this->_settings.reader.maxParts > 0) && (path.size() > static_cast <size_t> (this->_settings.reader.maxParts))){
+		// Запоминаем код ошибки правки дерева настроек
+		this->_error = error_t::PARTS_EXCEEDED;
+		// Выводим отрицательный результат выполнения операции
+		return false;
+	}
+	/**
+	 * Выполняем перебор всех составных частей имени
+	 */
+	for(auto & part : path){
+		/**
+		 * Если длина составной части имени превышает допустимую
+		 */
+		if((this->_settings.reader.maxKey > 0) && (part.length() > static_cast <size_t> (this->_settings.reader.maxKey))){
+			// Запоминаем код ошибки правки дерева настроек
+			this->_error = error_t::KEY_TOO_LONG;
+			// Выводим отрицательный результат выполнения операции
+			return false;
+		}
+		/**
+		 * Выполняем перебор всех знаков составной части имени
+		 */
+		for(size_t i = 0; i < part.length(); i++){
+			// Получаем беззнаковое значение очередного знака имени
+			const uint8_t letter = static_cast <uint8_t> (part[i]);
+			/**
+			 * Если знак имени является управляющим
+			 *
+			 * @note Оградить управляющий знак в имени нечем: основная строка
+			 *       записала бы его последовательностью, но разбор прочитал бы её
+			 *       обратно иным знаком, и имя перестало бы совпадать с искомым
+			 */
+			if(((letter < 0x20) && (part[i] != '\t')) || (letter == 0x7F)){
+				// Запоминаем код ошибки правки дерева настроек
+				this->_error = error_t::INVALID_KEY;
+				// Выводим отрицательный результат выполнения операции
+				return false;
+			}
+		}
+	}
+	/**
+	 * Выполняем перебор всех объемлющих имён проверяемого составного имени
+	 */
+	for(size_t i = 1; i < path.size(); i++){
+		// Собираемое объемлющее имя
+		const vector <string_view> name(path.begin(), (path.begin() + i));
+		/**
+		 * Если объемлющее имя занято парой
+		 *
+		 * @note Пара эта вправе нести встроенную таблицу, но дополнять её описание
+		 *       запрещает: собранный текст разбор отверг бы дополнением закрытой
+		 *       встроенной таблицы
+		 */
+		if(this->locate(name, kind_t::PAIR) != NO_RECORD){
+			// Запоминаем код ошибки правки дерева настроек
+			this->_error = error_t::REDEFINE_TABLE;
+			// Выводим отрицательный результат выполнения операции
+			return false;
+		}
+		// Получаем количество таблиц набора таблиц объемлющего имени
+		const size_t tables = this->count(name);
+		/**
+		 * Если объемлющее имя занято набором таблиц
+		 */
+		if(tables > 0){
+			// Получаем часть имени, за объемлющим именем следующую
+			const string_view ordinal = path.at(i);
+			// Признак того, что часть имени является порядковым номером таблицы набора
+			bool numeric = !ordinal.empty();
+			/**
+			 * Выполняем перебор всех знаков части имени
+			 */
+			for(size_t j = 0; numeric && (j < ordinal.length()); j++)
+				// Выполняем проверку знака на принадлежность к десятичным цифрам
+				numeric = ((ordinal[j] >= '0') && (ordinal[j] <= '9'));
+			/**
+			 * Если частью имени порядковый номер таблицы набора не задан
+			 *
+			 * @note Набор таблиц адресуется порядковым номером, и всякое иное имя за
+			 *       ним завело бы пару поверх набора: разбор отверг бы её дополнением
+			 *       набора таблиц именем, набором не являющимся
+			 */
+			if(!numeric || (::strtoull(string(ordinal).c_str(), nullptr, 10) >= tables)){
+				// Запоминаем код ошибки правки дерева настроек
+				this->_error = error_t::REDEFINE_TABLE;
+				// Выводим отрицательный результат выполнения операции
+				return false;
+			}
+		}
+	}
+	/**
+	 * Если проверяемое имя занято набором таблиц
+	 */
+	if(this->count(path) > 0){
+		// Запоминаем код ошибки правки дерева настроек
+		this->_error = error_t::REDEFINE_TABLE;
+		// Выводим отрицательный результат выполнения операции
+		return false;
+	}
+	/**
+	 * Если объявляемым именем является имя таблицы
+	 */
+	if(table){
+		/**
+		 * Если имя таблицы занято парой
+		 */
+		if(this->locate(path, kind_t::PAIR) != NO_RECORD){
+			// Запоминаем код ошибки правки дерева настроек
+			this->_error = error_t::REDEFINE_TABLE;
+			// Выводим отрицательный результат выполнения операции
+			return false;
+		}
+	/**
+	 * Если имя пары занято объявленной таблицей
+	 */
+	} else if(this->locate(path, kind_t::TABLE) != NO_RECORD) {
+		// Запоминаем код ошибки правки дерева настроек
+		this->_error = error_t::REDEFINE_TABLE;
+		// Выводим отрицательный результат выполнения операции
+		return false;
+	}
+	// Выводим положительный результат выполнения операции
+	return true;
+}
+/**
+ * @brief Метод получения узла значения по составному имени
+ *
+ * @param path составное имя искомой пары
+ * @return     узел значения найденной пары либо пустой указатель
+ *
+ */
+const awh::codec::toml::Document::node_t * awh::codec::toml::Document::seek(const vector <string_view> & path) const noexcept {
+	// Выполняем поиск записи пары по составному имени
+	const uint32_t record = this->locate(path, kind_t::PAIR);
+	/**
+	 * Если запись пары по составному имени не найдена
+	 */
+	if(record == NO_RECORD)
+		// Выводим пустой указатель узла значения
+		return nullptr;
+	// Выводим узел значения найденной пары
+	return &this->_nodes.at(this->_records.at(record).node);
+}
+/**
+ * @brief Метод получения узла значения для правки
+ *
+ * @param path составное имя правимой пары
+ * @return     узел значения правимой пары либо пустой указатель
+ *
+ */
+awh::codec::toml::Document::node_t * awh::codec::toml::Document::reach(const vector <string_view> & path) noexcept {
+	/**
+	 * Если составное имя к записи непригодно
+	 */
+	if(!this->acceptable(path, false))
+		// Выводим пустой указатель узла значения
+		return nullptr;
+	// Выполняем поиск записи пары по составному имени
+	const uint32_t found = this->locate(path, kind_t::PAIR);
+	/**
+	 * Если запись пары по составному имени найдена
+	 */
+	if(found != NO_RECORD){
+		/**
+		 * Выполняем заведение нового узла значения правимой пары
+		 *
+		 * @note Узел заводится новым, а не правится на месте: прежнее значение
+		 *       вправе нести перечень со вложенными узлами, и правка его на месте
+		 *       оставила бы их обрывками
+		 */
+		this->_records.at(found).node = this->reserve();
+		// Выводим узел значения правимой пары
+		return &this->_nodes.at(this->_records.at(found).node);
+	}
+	// Порядковый номер записи объявления таблицы правимой пары
+	uint32_t table = NO_RECORD;
+	// Количество составных частей имени, приходящихся на таблицу
+	size_t depth = 0;
+	/**
+	 * Выполняем поиск объявленной таблицы, которой пара принадлежит
+	 *
+	 * @note Поиск ведётся от самого длинного имени к самому короткому: пара «a.b.c»
+	 *       принадлежит таблице «a.b», когда та объявлена, и таблице «a», когда
+	 *       объявлена лишь она
+	 */
+	for(size_t i = (path.size() - 1); i > 0; i--){
+		// Собираемое составное имя искомой таблицы
+		const vector <string_view> name(path.begin(), (path.begin() + i));
+		// Выполняем поиск записи объявления таблицы
+		table = this->locate(name, kind_t::TABLE);
+		/**
+		 * Если запись объявления таблицы найдена
+		 */
+		if(table != NO_RECORD){
+			// Запоминаем количество составных частей имени таблицы
+			depth = i;
+			// Выполняем прекращение поиска объявленной таблицы
+			break;
+		}
+	}
+	// Собираемое составное имя ключа заводимой пары
+	const vector <string_view> name(path.begin() + depth, path.end());
+	/**
+	 * Место вставки записи заводимой пары
+	 *
+	 * @note Место это ищется за последней парой своей таблицы, а не перед
+	 *       объявлением следующей: пустая строка и примечание, стоящие перед тем
+	 *       объявлением, писаны к нему, и вклиниваться между ними и им не следует
+	 */
+	size_t position = ((table != NO_RECORD) ? (table + 1) : 0);
+	/**
+	 * Выполняем поиск последней пары таблицы, которой пара принадлежит
+	 */
+	for(size_t i = position; i < this->_records.size(); i++){
+		// Получаем вид очередной записи дерева настроек
+		const kind_t kind = this->_records.at(i).kind;
+		/**
+		 * Если записью является объявление таблицы
+		 *
+		 * @note Пара, записанная за объявлением таблицы, принадлежит той таблице:
+		 *       место паре есть лишь до следующего объявления
+		 */
+		if((kind == kind_t::TABLE) || (kind == kind_t::ARRAY_TABLE))
+			// Выполняем прекращение поиска последней пары таблицы
+			break;
+		/**
+		 * Если записью является пара
+		 */
+		if(kind == kind_t::PAIR){
+			// Запоминаем местом вставки место за найденной парой
+			position = (i + 1);
+			/**
+			 * Если следом за парой записано примечание, дописанное к её строке
+			 */
+			if(((i + 1) < this->_records.size()) && (this->_records.at(i + 1).kind == kind_t::COMMENT) &&
+			   this->_records.at(i + 1).trailing)
+				// Запоминаем местом вставки место за примечанием пары
+				position = (i + 2);
+		}
+	}
+	// Собираемая запись заводимой пары
+	record_t record;
+	// Запоминаем вид заводимой записи
+	record.kind = kind_t::PAIR;
+	// Выполняем добавление имени ключа к перечню частей имён
+	record.path = this->keep(name);
+	// Выполняем заведение узла значения заводимой пары
+	record.node = this->reserve();
+	// Запоминаем порядковый номер записи объявления таблицы
+	record.table = table;
+	// Выполняем вставку записи заводимой пары
+	this->_records.insert((this->_records.begin() + static_cast <long> (position)), record);
+	// Выполняем перестроение указателей поиска
+	this->reindex();
+	// Выводим узел значения заводимой пары
+	return &this->_nodes.at(record.node);
+}
+/**
+ * @brief Метод получения текущих настроек дерева
+ *
+ * @return текущие настройки дерева настроек
+ *
+ */
+const awh::codec::toml::Document::settings_t & awh::codec::toml::Document::settings() const noexcept {
+	// Выводим текущие настройки дерева настроек
+	return this->_settings;
+}
+/**
+ * @brief Метод установки настроек дерева
+ *
+ * @param settings настройки дерева настроек
+ *
+ */
+void awh::codec::toml::Document::settings(const settings_t & settings) noexcept {
+	// Выполняем установку настроек дерева настроек
+	this->_settings = settings;
+	// Задаём выдачу примечаний разбором текста настроек
+	this->_settings.reader.emitComments = true;
+	// Задаём выдачу пустых строк разбором текста настроек
+	this->_settings.reader.emitBlanks = true;
+}
+/**
+ * @brief Метод разбора текста настроек
+ *
+ * @param text разбираемый текст настроек
+ * @return     результат выполнения операции
+ *
+ */
+bool awh::codec::toml::Document::parse(const string_view text) noexcept {
+	// Выполняем освобождение дерева настроек
+	this->clear();
+	// Объект потокового чтения текста настроек
+	reader_t reader(this->_settings.reader);
+	/**
+	 * Если подача разбираемого текста не удалась
+	 */
+	if(!reader.feed(text.data(), text.length(), true)){
+		// Запоминаем код ошибки разбора текста настроек
+		this->_error = reader.error();
+		// Запоминаем положение обнаруженной ошибки
+		this->_errorLocation = reader.errorLocation();
+		// Выводим отрицательный результат выполнения операции
+		return false;
+	}
+	// Порядковый номер записи объявления таблицы разбираемых записей
+	uint32_t table = NO_RECORD;
+	// Порядковый номер узла значения, ожидающего своё содержимое
+	uint32_t target = NO_RECORD;
+	// Стопа узлов составных значений, разбираемых в настоящее время
+	vector <uint32_t> stack;
+	// Номера строк начала составных значений, разбираемых в настоящее время
+	vector <uint32_t> lines;
+	/**
+	 * Выполняем перебор выданных разбором событий
+	 */
+	while(reader.next()){
+		/**
+		 * Выполняем выбор разновидности события разбора
+		 */
+		switch(static_cast <uint8_t> (reader.event())){
+			// Если событием является объявление таблицы
+			case static_cast <uint8_t> (event_t::TABLE):
+			// Если событием является объявление очередной таблицы набора таблиц
+			case static_cast <uint8_t> (event_t::ARRAY_TABLE): {
+				// Собираемая запись объявления таблицы
+				record_t record;
+				// Запоминаем вид собираемой записи
+				record.kind = ((reader.event() == event_t::TABLE) ? kind_t::TABLE : kind_t::ARRAY_TABLE);
+				// Выполняем добавление имени таблицы к перечню частей имён
+				record.path = this->keep(reader.path());
+				// Выполняем добавление записи объявления таблицы
+				this->_records.push_back(record);
+				// Запоминаем порядковый номер записи объявления таблицы
+				table = static_cast <uint32_t> (this->_records.size() - 1);
+			} break;
+			// Если событием является имя ключа пары
+			case static_cast <uint8_t> (event_t::KEY): {
+				/**
+				 * Если имя ключа принадлежит паре встроенной таблицы
+				 */
+				if(!stack.empty()){
+					// Выполняем заведение узла значения пары встроенной таблицы
+					target = this->reserve();
+					// Выполняем добавление имени ключа к перечню частей имён
+					const span_t path = this->keep(reader.path());
+					// Выполняем добавление имени ключа к встроенной таблице
+					this->_nodes.at(stack.back()).names.push_back(path);
+					// Выполняем добавление узла значения к встроенной таблице
+					this->_nodes.at(stack.back()).items.push_back(target);
+					// Выполняем переход к следующему событию разбора
+					break;
+				}
+				// Собираемая запись пары
+				record_t record;
+				// Запоминаем вид собираемой записи
+				record.kind = kind_t::PAIR;
+				// Выполняем добавление имени ключа к перечню частей имён
+				record.path = this->keep(reader.path());
+				// Выполняем заведение узла значения пары
+				record.node = this->reserve();
+				// Запоминаем порядковый номер записи объявления таблицы
+				record.table = table;
+				// Выполняем добавление записи пары
+				this->_records.push_back(record);
+				// Запоминаем узел значения, ожидающий своё содержимое
+				target = record.node;
+			} break;
+			// Если событием является значение
+			case static_cast <uint8_t> (event_t::VALUE): {
+				/**
+				 * Если значение принадлежит перечню
+				 */
+				if(!stack.empty() && (this->_nodes.at(stack.back()).type == type_t::ARRAY)){
+					// Выполняем заведение узла значения перечня
+					target = this->reserve();
+					// Выполняем добавление узла значения к перечню
+					this->_nodes.at(stack.back()).items.push_back(target);
+				}
+				/**
+				 * Если узел значения не заведён
+				 */
+				if(target == NO_RECORD)
+					// Выполняем переход к следующему событию разбора
+					break;
+				// Выполняем перенос значения разбора в узел дерева
+				this->assign(target, reader.value());
+				// Выполняем сброс узла значения, ожидающего своё содержимое
+				target = NO_RECORD;
+			} break;
+			// Если событием является начало перечня значений
+			case static_cast <uint8_t> (event_t::ARRAY_OPEN):
+			// Если событием является начало встроенной таблицы
+			case static_cast <uint8_t> (event_t::INLINE_OPEN): {
+				/**
+				 * Если начинается значение перечня
+				 */
+				if(!stack.empty() && (this->_nodes.at(stack.back()).type == type_t::ARRAY)){
+					// Выполняем заведение узла составного значения перечня
+					target = this->reserve();
+					// Выполняем добавление узла значения к перечню
+					this->_nodes.at(stack.back()).items.push_back(target);
+				}
+				/**
+				 * Если узел значения не заведён
+				 */
+				if(target == NO_RECORD)
+					// Выполняем переход к следующему событию разбора
+					break;
+				// Запоминаем тип составного значения
+				this->_nodes.at(target).type = ((reader.event() == event_t::ARRAY_OPEN) ? type_t::ARRAY : type_t::TABLE);
+				// Выполняем добавление узла составного значения к стопе
+				stack.push_back(target);
+				// Запоминаем номер строки начала составного значения
+				lines.push_back(reader.location().line);
+				// Выполняем сброс узла значения, ожидающего своё содержимое
+				target = NO_RECORD;
+			} break;
+			// Если событием является конец перечня значений
+			case static_cast <uint8_t> (event_t::ARRAY_CLOSE):
+			// Если событием является конец встроенной таблицы
+			case static_cast <uint8_t> (event_t::INLINE_CLOSE): {
+				/**
+				 * Если стопа составных значений пуста
+				 */
+				if(stack.empty())
+					// Выполняем переход к следующему событию разбора
+					break;
+				/**
+				 * Запоминаем признак записи перечня несколькими строками
+				 *
+				 * @note Разбор о расстановке строк не сообщает, и узнаётся она по
+				 *       местам событий: перечень, закрытый строкою ниже той, где он
+				 *       начат, записан несколькими строками
+				 */
+				this->_nodes.at(stack.back()).multiline = (reader.location().line > lines.back());
+				// Выполняем снятие узла составного значения со стопы
+				stack.pop_back();
+				// Выполняем снятие номера строки начала составного значения
+				lines.pop_back();
+			} break;
+			// Если событием является примечание
+			case static_cast <uint8_t> (event_t::COMMENT): {
+				// Собираемая запись примечания
+				record_t record;
+				// Запоминаем вид собираемой записи
+				record.kind = kind_t::COMMENT;
+				// Выполняем добавление содержимого примечания к хранилищу знаков
+				record.text = this->add(reader.comment().text);
+				// Запоминаем признак примечания, дописанного к готовой строке
+				record.trailing = reader.comment().trailing;
+				// Запоминаем порядковый номер записи объявления таблицы
+				record.table = table;
+				// Выполняем добавление записи примечания
+				this->_records.push_back(record);
+			} break;
+			// Если событием является пустая строка
+			case static_cast <uint8_t> (event_t::BLANK): {
+				// Собираемая запись пустой строки
+				record_t record;
+				// Запоминаем вид собираемой записи
+				record.kind = kind_t::BLANK;
+				// Запоминаем порядковый номер записи объявления таблицы
+				record.table = table;
+				// Выполняем добавление записи пустой строки
+				this->_records.push_back(record);
+			} break;
+		}
+	}
+	/**
+	 * Если разбор текста настроек завершился ошибкой
+	 */
+	if(reader.error() != error_t::NONE){
+		// Получаем код ошибки разбора текста настроек
+		const error_t error = reader.error();
+		// Получаем положение обнаруженной ошибки
+		const location_t location = reader.errorLocation();
+		/**
+		 * Выполняем освобождение дерева настроек
+		 *
+		 * @note Освобождение выполняется прежде запоминания ошибки, а не после:
+		 *       оно сбрасывает код ошибки, и запомненное им было бы стёрто
+		 */
+		this->clear();
+		// Запоминаем код ошибки разбора текста настроек
+		this->_error = error;
+		// Запоминаем положение обнаруженной ошибки
+		this->_errorLocation = location;
+		// Выводим отрицательный результат выполнения операции
+		return false;
+	}
+	// Выполняем перестроение указателей поиска
+	this->reindex();
+	// Выводим положительный результат выполнения операции
+	return true;
+}
+/**
+ * @brief Метод разбора текста настроек с заданными настройками
+ *
+ * @param text     разбираемый текст настроек
+ * @param settings настройки дерева настроек
+ * @return         результат выполнения операции
+ *
+ */
+bool awh::codec::toml::Document::parse(const string_view text, const settings_t & settings) noexcept {
+	// Выполняем установку настроек дерева настроек
+	this->settings(settings);
+	// Выполняем разбор текста настроек
+	return this->parse(text);
+}
+/**
+ * @brief Метод получения кода ошибки последней операции
+ *
+ * @return код ошибки последней операции
+ *
+ */
+awh::codec::toml::error_t awh::codec::toml::Document::error() const noexcept {
+	// Выводим код ошибки последней операции
+	return this->_error;
+}
+/**
+ * @brief Метод получения места обнаружения ошибки
+ *
+ * @return положение обнаруженной ошибки в исходном тексте
+ *
+ */
+const awh::codec::toml::location_t & awh::codec::toml::Document::errorLocation() const noexcept {
+	// Выводим положение обнаруженной ошибки в исходном тексте
+	return this->_errorLocation;
+}
+/**
+ * @brief Метод получения перечня объявленных таблиц
+ *
+ * @return перечень объявленных таблиц текста настроек
+ *
+ */
+vector <vector <string_view>> awh::codec::toml::Document::tables() const noexcept {
+	// Перечень объявленных таблиц текста настроек
+	vector <vector <string_view>> result;
+	/**
+	 * Выполняем перебор всех записей дерева настроек
+	 */
+	for(auto & record : this->_records){
+		/**
+		 * Если записью является объявление таблицы
+		 */
+		if((record.kind == kind_t::TABLE) || (record.kind == kind_t::ARRAY_TABLE)){
+			// Собираемое составное имя объявленной таблицы
+			vector <string_view> path(record.path.length);
+			/**
+			 * Выполняем перебор всех составных частей имени таблицы
+			 */
+			for(uint32_t i = 0; i < record.path.length; i++)
+				// Запоминаем очередную составную часть имени таблицы
+				path.at(i) = this->get(this->_keys.at(record.path.offset + i).name);
+			// Выполняем добавление имени таблицы к перечню объявленных
+			result.push_back(std::move(path));
+		}
+	}
+	// Выводим перечень объявленных таблиц текста настроек
+	return result;
+}
+/**
+ * @brief Метод проверки наличия таблицы
+ *
+ * @param path составное имя искомой таблицы
+ * @return     результат проверки
+ *
+ */
+bool awh::codec::toml::Document::table(const vector <string_view> & path) const noexcept {
+	// Выводим результат поиска записи объявления таблицы
+	return (this->locate(path, kind_t::TABLE) != NO_RECORD);
+}
+/**
+ * @brief Метод получения количества таблиц набора таблиц
+ *
+ * @param path составное имя искомого набора таблиц
+ * @return     количество таблиц набора таблиц
+ *
+ */
+size_t awh::codec::toml::Document::count(const vector <string_view> & path) const noexcept {
+	// Количество таблиц набора таблиц
+	size_t result = 0;
+	// Буфер сборки ключа указателя записей
+	string buffer;
+	// Выполняем сборку ключа указателя набора таблиц
+	this->labelled(buffer, path);
+	// Получаем длину ключа указателя набора таблиц
+	const size_t length = buffer.length();
+	/**
+	 * Выполняем подсчёт таблиц набора таблиц
+	 *
+	 * @note Таблицы набора адресуются порядковым номером частью имени, и счёт их
+	 *       ведётся подбором номеров подряд: пропусков в них не бывает
+	 */
+	while(true){
+		// Выполняем усечение ключа указателя до имени набора таблиц
+		buffer.erase(length);
+		// Выполняем добавление знака соединения составных частей имени
+		buffer.push_back(SEPARATOR);
+		// Выполняем добавление очередного порядкового номера таблицы набора
+		buffer.append(to_string(result));
+		// Выполняем поиск записи объявления очередной таблицы набора
+		auto i = this->_index.find(buffer);
+		/**
+		 * Если запись объявления очередной таблицы набора не найдена
+		 */
+		if((i == this->_index.end()) || (this->_records.at(i->second).kind != kind_t::ARRAY_TABLE))
+			// Выполняем прекращение подсчёта таблиц набора
+			break;
+		// Выполняем увеличение количества таблиц набора
+		result++;
+	}
+	// Выводим количество таблиц набора таблиц
+	return result;
+}
+/**
+ * @brief Метод получения перечня дочерних имён таблицы
+ *
+ * @param path составное имя таблицы
+ * @return     перечень дочерних имён таблицы
+ *
+ */
+vector <string_view> awh::codec::toml::Document::keys(const vector <string_view> & path) const noexcept {
+	// Перечень дочерних имён таблицы
+	vector <string_view> result;
+	// Буфер сборки ключа указателя записей
+	string buffer;
+	// Выполняем сборку ключа указателя таблицы
+	this->labelled(buffer, path);
+	// Выполняем поиск перечня дочерних имён таблицы
+	auto i = this->_children.find(buffer);
+	/**
+	 * Если перечень дочерних имён таблицы не найден
+	 */
+	if(i == this->_children.end())
+		// Выводим пустой перечень дочерних имён таблицы
+		return result;
+	// Выполняем резервирование памяти под перечень дочерних имён
+	result.reserve(i->second.size());
+	/**
+	 * Выполняем перебор всех дочерних имён таблицы
+	 */
+	for(auto & key : i->second)
+		// Выполняем добавление очередного дочернего имени к перечню
+		result.push_back(this->get(this->_keys.at(key).name));
+	// Выводим перечень дочерних имён таблицы
+	return result;
+}
+/**
+ * @brief Метод проверки наличия пары
+ *
+ * @param path составное имя искомой пары
+ * @return     результат проверки
+ *
+ */
+bool awh::codec::toml::Document::has(const vector <string_view> & path) const noexcept {
+	// Выводим результат поиска записи пары
+	return (this->seek(path) != nullptr);
+}
+/**
+ * @brief Метод получения типа значения пары
+ *
+ * @param path составное имя искомой пары
+ * @return     тип значения найденной пары
+ *
+ */
+awh::codec::toml::type_t awh::codec::toml::Document::type(const vector <string_view> & path) const noexcept {
+	// Выполняем поиск узла значения по составному имени
+	const node_t * node = this->seek(path);
+	// Выводим тип значения найденной пары
+	return ((node != nullptr) ? node->type : type_t::NONE);
+}
+/**
+ * @brief Метод получения значения пары
+ *
+ * @param path   составное имя искомой пары
+ * @param result значение найденной пары
+ * @return       результат выполнения операции
+ *
+ */
+bool awh::codec::toml::Document::get(const vector <string_view> & path, value_t & result) const noexcept {
+	// Выполняем поиск узла значения по составному имени
+	const node_t * node = this->seek(path);
+	/**
+	 * Если узел значения по составному имени не найден
+	 */
+	if(node == nullptr)
+		// Выводим отрицательный результат выполнения операции
+		return false;
+	// Запоминаем тип значения
+	result.type = node->type;
+	// Запоминаем ограду строкового значения
+	result.quoting = node->quoting;
+	// Запоминаем систему счисления записи целого числа
+	result.radix = node->radix;
+	// Запоминаем логическое значение
+	result.boolean = node->boolean;
+	// Запоминаем целое число со знаком
+	result.integer = node->integer;
+	// Запоминаем число с плавающей точкой
+	result.real = node->real;
+	// Запоминаем отметку времени
+	result.stamp = node->stamp;
+	// Запоминаем строковое значение
+	result.text = this->get(node->text);
+	// Выводим положительный результат выполнения операции
+	return true;
+}
+/**
+ * @brief Метод получения строкового значения пары
+ *
+ * @param path составное имя искомой пары
+ * @return     строковое значение найденной пары либо пустая последовательность
+ *
+ */
+string_view awh::codec::toml::Document::text(const vector <string_view> & path) const noexcept {
+	// Выполняем поиск узла значения по составному имени
+	const node_t * node = this->seek(path);
+	/**
+	 * Если узел значения по составному имени не найден либо строковым не является
+	 */
+	if((node == nullptr) || (node->type != type_t::STRING))
+		// Выводим пустую последовательность знаков
+		return string_view();
+	// Выводим строковое значение найденной пары
+	return this->get(node->text);
+}
+/**
+ * @brief Метод получения количества значений перечня
+ *
+ * @param path составное имя искомого перечня
+ * @return     количество значений перечня
+ *
+ */
+size_t awh::codec::toml::Document::length(const vector <string_view> & path) const noexcept {
+	// Выполняем поиск узла значения по составному имени
+	const node_t * node = this->seek(path);
+	/**
+	 * Если узел значения по составному имени не найден либо перечнем не является
+	 */
+	if((node == nullptr) || (node->type != type_t::ARRAY))
+		// Выводим нулевое количество значений перечня
+		return 0;
+	// Выводим количество значений перечня
+	return node->items.size();
+}
+/**
+ * @brief Метод получения значения перечня по порядковому номеру
+ *
+ * @param path   составное имя искомого перечня
+ * @param index  порядковый номер значения перечня
+ * @param result значение перечня
+ * @return       результат выполнения операции
+ *
+ */
+bool awh::codec::toml::Document::item(const vector <string_view> & path, const size_t index, value_t & result) const noexcept {
+	// Выполняем поиск узла значения по составному имени
+	const node_t * node = this->seek(path);
+	/**
+	 * Если узел значения перечнем не является либо номер значения за его пределами
+	 */
+	if((node == nullptr) || (node->type != type_t::ARRAY) || (index >= node->items.size()))
+		// Выводим отрицательный результат выполнения операции
+		return false;
+	// Получаем узел значения перечня по порядковому номеру
+	const node_t & item = this->_nodes.at(node->items.at(index));
+	// Запоминаем тип значения
+	result.type = item.type;
+	// Запоминаем ограду строкового значения
+	result.quoting = item.quoting;
+	// Запоминаем систему счисления записи целого числа
+	result.radix = item.radix;
+	// Запоминаем логическое значение
+	result.boolean = item.boolean;
+	// Запоминаем целое число со знаком
+	result.integer = item.integer;
+	// Запоминаем число с плавающей точкой
+	result.real = item.real;
+	// Запоминаем отметку времени
+	result.stamp = item.stamp;
+	// Запоминаем строковое значение
+	result.text = this->get(item.text);
+	// Выводим положительный результат выполнения операции
+	return true;
+}
+/**
+ * @brief Метод объявления таблицы
+ *
+ * @param path составное имя объявляемой таблицы
+ * @return     результат выполнения операции
+ *
+ */
+bool awh::codec::toml::Document::create(const vector <string_view> & path) noexcept {
+	/**
+	 * Если составное имя к записи непригодно
+	 */
+	if(!this->acceptable(path, true))
+		// Выводим отрицательный результат выполнения операции
+		return false;
+	/**
+	 * Если таблица с таким именем уже объявлена
+	 */
+	if(this->locate(path, kind_t::TABLE) != NO_RECORD)
+		// Выводим положительный результат выполнения операции
+		return true;
+	// Собираемая запись объявления таблицы
+	record_t record;
+	// Запоминаем вид собираемой записи
+	record.kind = kind_t::TABLE;
+	// Выполняем добавление имени таблицы к перечню частей имён
+	record.path = this->keep(path);
+	// Выполняем добавление записи объявления таблицы
+	this->_records.push_back(record);
+	// Выполняем перестроение указателей поиска
+	this->reindex();
+	// Выводим положительный результат выполнения операции
+	return true;
+}
+/**
+ * @brief Метод установки строкового значения пары
+ *
+ * @param path    составное имя устанавливаемой пары
+ * @param value   устанавливаемое значение пары
+ * @param quoting запись строкового значения
+ * @return        результат выполнения операции
+ *
+ */
+bool awh::codec::toml::Document::set(const vector <string_view> & path, const string_view value, const string_t quoting) noexcept {
+	// Выполняем добавление строкового значения к хранилищу знаков
+	const span_t text = this->add(value);
+	// Выполняем получение узла значения для правки
+	node_t * node = this->reach(path);
+	/**
+	 * Если узел значения для правки не получен
+	 */
+	if(node == nullptr)
+		// Выводим отрицательный результат выполнения операции
+		return false;
+	// Запоминаем тип устанавливаемого значения
+	node->type = type_t::STRING;
+	// Запоминаем ограду устанавливаемого строкового значения
+	node->quoting = quoting;
+	// Запоминаем место строкового значения в хранилище знаков
+	node->text = text;
+	// Выводим положительный результат выполнения операции
+	return true;
+}
+/**
+ * @brief Метод установки строкового значения пары
+ *
+ * @param path    составное имя устанавливаемой пары
+ * @param value   устанавливаемое значение пары
+ * @param quoting запись строкового значения
+ * @return        результат выполнения операции
+ *
+ */
+bool awh::codec::toml::Document::set(const vector <string_view> & path, const char * value, const string_t quoting) noexcept {
+	// Выполняем установку строкового значения пары
+	return this->set(path, string_view((value != nullptr) ? value : ""), quoting);
+}
+/**
+ * @brief Метод установки логического значения пары
+ *
+ * @param path  составное имя устанавливаемой пары
+ * @param value устанавливаемое значение пары
+ * @return      результат выполнения операции
+ *
+ */
+bool awh::codec::toml::Document::set(const vector <string_view> & path, const bool value) noexcept {
+	// Выполняем получение узла значения для правки
+	node_t * node = this->reach(path);
+	/**
+	 * Если узел значения для правки не получен
+	 */
+	if(node == nullptr)
+		// Выводим отрицательный результат выполнения операции
+		return false;
+	// Запоминаем тип устанавливаемого значения
+	node->type = type_t::BOOLEAN;
+	// Запоминаем устанавливаемое логическое значение
+	node->boolean = value;
+	// Выводим положительный результат выполнения операции
+	return true;
+}
+/**
+ * @brief Метод установки целого числа значением пары
+ *
+ * @param path  составное имя устанавливаемой пары
+ * @param value устанавливаемое значение пары
+ * @param radix система счисления записи числа
+ * @return      результат выполнения операции
+ *
+ */
+bool awh::codec::toml::Document::set(const vector <string_view> & path, const int64_t value, const radix_t radix) noexcept {
+	/**
+	 * Если отрицательное число записывается системой счисления с приставкой
+	 *
+	 * @note Описание отводит знак числа лишь десятичной записи, и записать такое
+	 *       число обратно было бы нечем: отвергается оно в месте правки, а не при
+	 *       записи собранного дерева
+	 */
+	if((radix != radix_t::DECIMAL) && (value < 0)){
+		// Запоминаем код ошибки правки дерева настроек
+		this->_error = error_t::INVALID_NUMBER;
+		// Выводим отрицательный результат выполнения операции
+		return false;
+	}
+	// Выполняем получение узла значения для правки
+	node_t * node = this->reach(path);
+	/**
+	 * Если узел значения для правки не получен
+	 */
+	if(node == nullptr)
+		// Выводим отрицательный результат выполнения операции
+		return false;
+	// Запоминаем тип устанавливаемого значения
+	node->type = type_t::INTEGER;
+	// Запоминаем систему счисления записи числа
+	node->radix = radix;
+	// Запоминаем устанавливаемое целое число
+	node->integer = value;
+	// Выводим положительный результат выполнения операции
+	return true;
+}
+/**
+ * @brief Метод установки числа с плавающей точкой значением пары
+ *
+ * @param path  составное имя устанавливаемой пары
+ * @param value устанавливаемое значение пары
+ * @return      результат выполнения операции
+ *
+ */
+bool awh::codec::toml::Document::set(const vector <string_view> & path, const double value) noexcept {
+	// Выполняем получение узла значения для правки
+	node_t * node = this->reach(path);
+	/**
+	 * Если узел значения для правки не получен
+	 */
+	if(node == nullptr)
+		// Выводим отрицательный результат выполнения операции
+		return false;
+	// Запоминаем тип устанавливаемого значения
+	node->type = type_t::FLOAT;
+	// Запоминаем устанавливаемое число с плавающей точкой
+	node->real = value;
+	// Выводим положительный результат выполнения операции
+	return true;
+}
+/**
+ * @brief Метод установки отметки времени значением пары
+ *
+ * @param path  составное имя устанавливаемой пары
+ * @param value устанавливаемая отметка времени
+ * @param type  тип устанавливаемой отметки времени
+ * @return      результат выполнения операции
+ *
+ */
+bool awh::codec::toml::Document::set(const vector <string_view> & path, const stamp_t & value, const type_t type) noexcept {
+	/**
+	 * Если устанавливаемый тип отметкой времени не является
+	 */
+	if((type != type_t::OFFSET_DATETIME) && (type != type_t::LOCAL_DATETIME) &&
+	   (type != type_t::LOCAL_DATE) && (type != type_t::LOCAL_TIME)){
+		// Запоминаем код ошибки правки дерева настроек
+		this->_error = error_t::INVALID_DATETIME;
+		// Выводим отрицательный результат выполнения операции
+		return false;
+	}
+	// Выполняем получение узла значения для правки
+	node_t * node = this->reach(path);
+	/**
+	 * Если узел значения для правки не получен
+	 */
+	if(node == nullptr)
+		// Выводим отрицательный результат выполнения операции
+		return false;
+	// Запоминаем тип устанавливаемого значения
+	node->type = type;
+	// Запоминаем устанавливаемую отметку времени
+	node->stamp = value;
+	// Выводим положительный результат выполнения операции
+	return true;
+}
+/**
+ * @brief Метод удаления пары
+ *
+ * @param path составное имя удаляемой пары
+ * @return     результат выполнения операции
+ *
+ */
+bool awh::codec::toml::Document::erase(const vector <string_view> & path) noexcept {
+	// Выполняем поиск записи пары по составному имени
+	const uint32_t record = this->locate(path, kind_t::PAIR);
+	/**
+	 * Если запись пары по составному имени не найдена
+	 */
+	if(record == NO_RECORD){
+		// Запоминаем код ошибки правки дерева настроек
+		this->_error = error_t::INVALID_KEY;
+		// Выводим отрицательный результат выполнения операции
+		return false;
+	}
+	// Выполняем снятие записи пары пометкой удаления
+	this->_records.at(record).kind = kind_t::NONE;
+	/**
+	 * Если следом за парой записано примечание, дописанное к её строке
+	 *
+	 * @note Примечание это писано к удаляемой паре, и оставить его значило бы
+	 *       оставить пояснение к тому, чего в файле более нет
+	 */
+	if((static_cast <size_t> (record + 1) < this->_records.size()) &&
+	   (this->_records.at(record + 1).kind == kind_t::COMMENT) && this->_records.at(record + 1).trailing)
+		// Выполняем снятие записи примечания пометкой удаления
+		this->_records.at(record + 1).kind = kind_t::NONE;
+	// Выполняем перестроение указателей поиска
+	this->reindex();
+	// Выводим положительный результат выполнения операции
+	return true;
+}
+/**
+ * @brief Метод удаления таблицы
+ *
+ * @param path составное имя удаляемой таблицы
+ * @return     результат выполнения операции
+ *
+ */
+bool awh::codec::toml::Document::remove(const vector <string_view> & path) noexcept {
+	// Выполняем поиск записи объявления таблицы по составному имени
+	const uint32_t record = this->locate(path, kind_t::TABLE);
+	/**
+	 * Если запись объявления таблицы по составному имени не найдена
+	 */
+	if(record == NO_RECORD){
+		// Запоминаем код ошибки правки дерева настроек
+		this->_error = error_t::INVALID_TABLE;
+		// Выводим отрицательный результат выполнения операции
+		return false;
+	}
+	// Выполняем снятие записи объявления таблицы пометкой удаления
+	this->_records.at(record).kind = kind_t::NONE;
+	/**
+	 * Выполняем перебор всех записей удаляемой таблицы
+	 */
+	for(size_t i = (record + 1); i < this->_records.size(); i++){
+		// Получаем вид очередной записи дерева настроек
+		const kind_t kind = this->_records.at(i).kind;
+		/**
+		 * Если записью является объявление очередной таблицы
+		 */
+		if((kind == kind_t::TABLE) || (kind == kind_t::ARRAY_TABLE))
+			// Выполняем прекращение удаления записей таблицы
+			break;
+		// Выполняем снятие записи таблицы пометкой удаления
+		this->_records.at(i).kind = kind_t::NONE;
+	}
+	// Выполняем перестроение указателей поиска
+	this->reindex();
+	// Выводим положительный результат выполнения операции
+	return true;
+}
+/**
+ * @brief Метод получения количества объявленных таблиц
+ *
+ * @return количество объявленных таблиц текста настроек
+ *
+ */
+size_t awh::codec::toml::Document::size() const noexcept {
+	// Количество объявленных таблиц текста настроек
+	size_t result = 0;
+	/**
+	 * Выполняем перебор всех записей дерева настроек
+	 */
+	for(auto & record : this->_records){
+		/**
+		 * Если записью является объявление таблицы
+		 */
+		if((record.kind == kind_t::TABLE) || (record.kind == kind_t::ARRAY_TABLE))
+			// Выполняем увеличение количества объявленных таблиц
+			result++;
+	}
+	// Выводим количество объявленных таблиц текста настроек
+	return result;
+}
+/**
+ * @brief Метод проверки дерева на отсутствие записей
+ *
+ * @return результат проверки
+ *
+ */
+bool awh::codec::toml::Document::empty() const noexcept {
+	/**
+	 * Выполняем перебор всех записей дерева настроек
+	 */
+	for(auto & record : this->_records){
+		/**
+		 * Если запись пометкой удаления не снята
+		 */
+		if(record.kind != kind_t::NONE)
+			// Выводим отрицательный результат проверки
+			return false;
+	}
+	// Выводим положительный результат проверки
+	return true;
+}
+/**
+ * @brief Метод освобождения дерева настроек
+ *
+ */
+void awh::codec::toml::Document::clear() noexcept {
+	// Выполняем сброс кода ошибки последней операции
+	this->_error = error_t::NONE;
+	// Выполняем сброс положения обнаруженной ошибки
+	this->_errorLocation = location_t();
+	// Выполняем очистку хранилища знаков
+	this->_store.clear();
+	// Выполняем очистку перечня записей дерева
+	this->_records.clear();
+	// Выполняем очистку перечня составных частей имён
+	this->_keys.clear();
+	// Выполняем очистку перечня узлов значений
+	this->_nodes.clear();
+	// Выполняем очистку указателя записей
+	this->_index.clear();
+	// Выполняем очистку порядка объявления дочерних имён
+	this->_children.clear();
+}
+/**
+ * @brief Метод записи дерева обратно в текст настроек
+ *
+ * @param settings настройки записи текста настроек
+ * @return         собранный текст настроек
+ *
+ */
+string awh::codec::toml::Document::text(const writer_t::settings_t & settings) const noexcept {
+	// Объект записи текста настроек
+	writer_t writer(settings);
+	/**
+	 * Выполняем перебор всех записей дерева настроек
+	 */
+	for(auto & record : this->_records){
+		// Признак успешной записи очередной записи дерева
+		bool result = true;
+		/**
+		 * Выполняем выбор вида записи дерева настроек
+		 */
+		switch(static_cast <uint8_t> (record.kind)){
+			// Если запись снята пометкой удаления
+			case static_cast <uint8_t> (kind_t::NONE): continue;
+			// Если записью является пустая строка
+			case static_cast <uint8_t> (kind_t::BLANK): {
+				// Выполняем запись пустой строки
+				result = writer.blank();
+			} break;
+			// Если записью является примечание
+			case static_cast <uint8_t> (kind_t::COMMENT): {
+				/**
+				 * Если примечание дописано к готовой строке
+				 */
+				if(record.trailing)
+					// Выполняем дописывание примечания к записанной строке
+					result = writer.trailing(this->get(record.text));
+				// Выполняем запись примечания отдельной строкой
+				else result = writer.comment(this->get(record.text));
+			} break;
+			// Если записью является объявление таблицы
+			case static_cast <uint8_t> (kind_t::TABLE):
+			// Если записью является объявление очередной таблицы набора таблиц
+			case static_cast <uint8_t> (kind_t::ARRAY_TABLE):
+			// Если записью является пара
+			case static_cast <uint8_t> (kind_t::PAIR): {
+				// Собираемое составное имя записи
+				vector <part_t> path(record.path.length);
+				/**
+				 * Выполняем перебор всех составных частей имени записи
+				 */
+				for(uint32_t i = 0; i < record.path.length; i++){
+					// Получаем очередную составную часть имени записи
+					const key_t & key = this->_keys.at(record.path.offset + i);
+					// Запоминаем имя составной части
+					path.at(i).name = this->get(key.name);
+					// Запоминаем запись имени составной части
+					path.at(i).naming = key.naming;
+				}
+				/**
+				 * Если записью является объявление таблицы
+				 */
+				if(record.kind == kind_t::TABLE)
+					// Выполняем запись объявления таблицы
+					result = writer.table(path);
+				/**
+				 * Если записью является объявление очередной таблицы набора таблиц
+				 */
+				else if(record.kind == kind_t::ARRAY_TABLE)
+					// Выполняем запись объявления очередной таблицы набора таблиц
+					result = writer.arrayTable(path);
+				/**
+				 * Если записью является пара
+				 */
+				else result = (writer.key(path) && this->compose(writer, record.node));
+			} break;
+		}
+		/**
+		 * Если записать очередную запись дерева не удалось
+		 */
+		if(!result){
+			// Запоминаем код ошибки записи дерева настроек
+			this->_error = writer.error();
+			// Выводим пустой собранный текст настроек
+			return string();
+		}
+	}
+	// Выводим собранный текст настроек
+	return writer.text();
+}
+/**
+ * @brief Метод записи дерева обратно в текст настроек
+ *
+ * @return собранный текст настроек
+ *
+ */
+string awh::codec::toml::Document::text() const noexcept {
+	// Выполняем запись дерева обратно в текст настроек
+	return this->text(this->writing());
+}
+/**
+ * @brief Метод получения настроек записи, отвечающих настройкам разбора
+ *
+ * @return настройки записи текста настроек
+ *
+ */
+awh::codec::toml::writer_t::settings_t awh::codec::toml::Document::writing() const noexcept {
+	// Настройки записи текста настроек
+	writer_t::settings_t result;
+	// Задаём наибольшую допустимую длину логической строки
+	result.maxLine = this->_settings.reader.maxLine;
+	// Задаём наибольшую допустимую длину имени ключа
+	result.maxKey = this->_settings.reader.maxKey;
+	// Задаём наибольшую допустимую глубину вложенности значений
+	result.maxDepth = this->_settings.reader.maxDepth;
+	// Задаём наибольшее допустимое количество частей имени ключа
+	result.maxParts = this->_settings.reader.maxParts;
+	// Задаём признание знаков Юникода в имени без кавычек
+	result.unicode = this->_settings.reader.unicode;
+	/**
+	 * Отменяем запись пустой строки перед объявлением таблицы
+	 *
+	 * @note Расстановка пустых строк взята из исходного текста, и добавлять к ней
+	 *       свою значило бы наращивать пустые строки при каждом обороте
+	 *       «чтение - запись»
+	 */
+	result.separated = false;
+	// Выводим настройки записи текста настроек
+	return result;
+}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::toml::Document::Document() noexcept : _error(error_t::NONE) {}
+/**
+ * @brief Конструктор
+ *
+ * @param settings настройки дерева настроек
+ *
+ */
+awh::codec::toml::Document::Document(const settings_t & settings) noexcept : _error(error_t::NONE) {
+	// Выполняем установку настроек дерева настроек
+	this->settings(settings);
+}
+/**
+ * @brief Деструктор
+ *
+ */
+awh::codec::toml::Document::~Document() noexcept {
+	// Выполняем освобождение дерева настроек
+	this->clear();
+}
+
+/**
+ * @brief Шаблон типа числа результата разбора
+ *
+ * @tparam T тип числа результата разбора
+ *
+ */
+template <typename T>
+/**
+ * @brief Метод получения значения пары числом
+ *
+ * @param result ссылка на результат разбора
+ * @param path   составное имя искомой пары
+ * @return       признак успешного разбора
+ *
+ */
+bool awh::codec::toml::Document::value(T & result, const vector <string_view> & path) const noexcept {
+	// Выполняем поиск узла значения по составному имени
+	const node_t * node = this->seek(path);
+	/**
+	 * Если узел значения по составному имени не найден
+	 */
+	if(node == nullptr)
+		// Выводим отрицательный результат выполнения операции
+		return false;
+	/**
+	 * Если запрашивается логическое значение
+	 *
+	 * @note Сличение ведётся прежде целых чисел намеренно: логический тип языком
+	 *       причислен к целым, и без этого истина выдавалась бы единицей
+	 */
+	if constexpr(is_same <T, bool>::value) {
+		/**
+		 * Если значение логическим не является
+		 */
+		if(node->type != type_t::BOOLEAN)
+			// Выводим отрицательный результат выполнения операции
+			return false;
+		// Выполняем установку логического значения
+		result = node->boolean;
+		// Выводим положительный результат выполнения операции
+		return true;
+	}
+	/**
+	 * Если запрашивается число с плавающей точкой
+	 */
+	else if constexpr(is_floating_point <T>::value) {
+		/**
+		 * Если значение является числом с плавающей точкой
+		 */
+		if(node->type == type_t::FLOAT){
+			// Выполняем установку числа с плавающей точкой
+			result = static_cast <T> (node->real);
+			// Выводим положительный результат выполнения операции
+			return true;
+		}
+		/**
+		 * Если значение является целым числом
+		 *
+		 * @note Приведение целого числа к плавающей точке выполняется намеренно:
+		 *       описание записывает «1» целым числом, а потребитель, ожидающий
+		 *       дробное, вправе получить его
+		 */
+		if(node->type == type_t::INTEGER){
+			// Выполняем установку целого числа с плавающей точкой
+			result = static_cast <T> (node->integer);
+			// Выводим положительный результат выполнения операции
+			return true;
+		}
+		// Выводим отрицательный результат выполнения операции
+		return false;
+	}
+	/**
+	 * Если запрашивается целое число
+	 */
+	else {
+		/**
+		 * Если значение целым числом не является
+		 */
+		if(node->type != type_t::INTEGER)
+			// Выводим отрицательный результат выполнения операции
+			return false;
+		/**
+		 * Если значение выходит за отрезок значений запрашиваемого типа
+		 *
+		 * @note Приведение по кругу выдало бы число, значения не имеющее: отказ
+		 *       отличает переполнение от настоящего значения
+		 */
+		if((node->integer < static_cast <int64_t> (numeric_limits <T>::min())) ||
+		   (node->integer > static_cast <int64_t> (numeric_limits <T>::max())))
+			// Выводим отрицательный результат выполнения операции
+			return false;
+		// Выполняем установку целого числа
+		result = static_cast <T> (node->integer);
+		// Выводим положительный результат выполнения операции
+		return true;
+	}
+}
+
+/**
+ * Выполняем порождение метода получения значения пары числом для всех поддерживаемых типов
+ */
+template __AWH_SHARED_EXPORT__ bool awh::codec::toml::Document::value <bool> (bool &, const vector <string_view> &) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::toml::Document::value <int8_t> (int8_t &, const vector <string_view> &) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::toml::Document::value <int16_t> (int16_t &, const vector <string_view> &) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::toml::Document::value <int32_t> (int32_t &, const vector <string_view> &) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::toml::Document::value <int64_t> (int64_t &, const vector <string_view> &) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::toml::Document::value <float> (float &, const vector <string_view> &) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::toml::Document::value <double> (double &, const vector <string_view> &) const noexcept;
+
+/**
+ * Возвращаем макросы, снятые в начале файла
+ */
+#include <sys/macro_pop.hpp>

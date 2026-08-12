@@ -61,6 +61,24 @@
 #include <netioapi.h>
 
 /**
+ * @brief Заголовок перечня сетевых устройств машины
+ *
+ * @details Нужен ради номера устройства: название устройства у MS Windows -
+ *          GUID, а перевод его в номер средствами сокетов не выполняется
+ *
+ */
+#include <iphlpapi.h>
+
+/**
+ * @brief Заголовок UNIX-доменных сокетов
+ *
+ * @details Объявлены они у MS Windows отдельно от прочих средств сокетов, и
+ *          доступны с 2018 года. Потоковыми они у этой системы и остаются
+ *
+ */
+#include <afunix.h>
+
+/**
  * Используем стандартное пространство имён
  */
 using namespace std;
@@ -607,13 +625,109 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, int32_t cnt, int32
  *       if_nametoindex объявлен там же, где и прочие средства Winsock
  *
  */
+
+/**
+ * @brief Функция добычи номера сетевого устройства по его названию
+ *
+ * @details Название устройства у MS Windows - GUID вида `{F49A2CB0-...}`, и
+ *          `if_nametoindex` его НЕ понимает: тот принимает синтетические названия
+ *          вида `ethernet_6`, какие выдаёт `if_indextoname`. Номер оттого берётся
+ *          из перечня устройств машины, где он лежит рядом с названием.
+ *
+ *          Установлено прогоном: набор терял `IoMulticastMembershipAfterCommitTest`,
+ *          а в журнале стояло «устройство не найдено» при живом устройстве
+ *
+ * @note Сличение названий ведётся БЕЗ учёта регистра: система выдаёт GUID
+ *       заглавными, а слои выше приводят названия к нижнему регистру - у систем
+ *       POSIX названия устройств в нижнем регистре и живут
+ *
+ * @note Отступление к `if_nametoindex` оставлено: названия синтетического вида оно
+ *       разбирает, а перечень устройств такого названия не содержит
+ *
+ * @param ifname название сетевого устройства
+ * @param v6     признак семейства адресов IPv6
+ * @return       номер сетевого устройства либо ноль, если устройство не найдено
+ *
+ */
+static uint32_t __awh_iface_index__(const std::string_view ifname, const bool v6) noexcept {
+	// Если название сетевого устройства не передано
+	if(ifname.empty())
+		// Выводим отсутствие номера устройства
+		return 0;
+	// Состав запрашиваемых сведений
+	const ULONG flags = (GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST | GAA_FLAG_SKIP_DNS_SERVER | GAA_FLAG_SKIP_FRIENDLY_NAME);
+	// Объём буфера под перечень устройств
+	ULONG size = 16384;
+	// Буфер под перечень сетевых устройств
+	std::vector <uint8_t> buffer(static_cast <size_t> (size));
+	// Итог опроса перечня устройств
+	ULONG code = ::GetAdaptersAddresses(AF_UNSPEC, flags, nullptr, reinterpret_cast <PIP_ADAPTER_ADDRESSES> (buffer.data()), &size);
+	// Если буфера не хватило - опрашиваем повторно с запрошенным объёмом
+	if(code == ERROR_BUFFER_OVERFLOW){
+		// Выполняем расширение буфера под перечень устройств
+		buffer.resize(static_cast <size_t> (size));
+		// Выполняем повторный опрос перечня устройств
+		code = ::GetAdaptersAddresses(AF_UNSPEC, flags, nullptr, reinterpret_cast <PIP_ADAPTER_ADDRESSES> (buffer.data()), &size);
+	}
+	// Если перечень устройств получить не удалось
+	if(code != NO_ERROR)
+		// Отступаем к переводу названия средствами сокетов
+		return static_cast <uint32_t> (::if_nametoindex(std::string(ifname).c_str()));
+	/**
+	 * Выполняем перебор всех сетевых устройств машины
+	 */
+	for(PIP_ADAPTER_ADDRESSES adapter = reinterpret_cast <PIP_ADAPTER_ADDRESSES> (buffer.data()); adapter != nullptr; adapter = adapter->Next){
+		// Если название устройства не задано
+		if(adapter->AdapterName == nullptr)
+			// Переходим к устройству следующему
+			continue;
+		// Признак совпадения названий
+		bool same = true;
+		// Порядковый номер сличаемого символа
+		size_t i = 0;
+		/**
+		 * Выполняем сличение названий посимвольно, свёртывая регистр
+		 *
+		 * @note Свёртка своя, ASCII, а не средствами языка: `tolower` зависит от
+		 *       местности, а GUID - данные протокольные
+		 */
+		for(; (i < ifname.size()) && (adapter->AdapterName[i] != '\0'); i++){
+			// Получаем очередной символ искомого названия
+			char first = ifname.at(i);
+			// Получаем очередной символ названия, выданного системой
+			char second = adapter->AdapterName[i];
+			// Свёртываем регистр символа искомого названия
+			if((first >= 'A') && (first <= 'Z'))
+				// Приводим символ к нижнему регистру
+				first = static_cast <char> (first + ('a' - 'A'));
+			// Свёртываем регистр символа названия, выданного системой
+			if((second >= 'A') && (second <= 'Z'))
+				// Приводим символ к нижнему регистру
+				second = static_cast <char> (second + ('a' - 'A'));
+			// Если символы разошлись
+			if(first != second){
+				// Отмечаем названия разошедшимися
+				same = false;
+				// Завершаем сличение
+				break;
+			}
+		}
+		// Если названия совпали целиком
+		if(same && (i == ifname.size()) && (adapter->AdapterName[i] == '\0'))
+			// Выводим номер устройства того семейства, какое запрошено
+			return static_cast <uint32_t> (v6 ? adapter->Ipv6IfIndex : adapter->IfIndex);
+	}
+	// Отступаем к переводу названия средствами сокетов
+	return static_cast <uint32_t> (::if_nametoindex(std::string(ifname).c_str()));
+}
+
 bool awh::eth::Socket::setMulticastIface(const net::socket_t sock, const event::family_t family, string_view ifname) const noexcept {
 	// Если название сетевого устройства не передано
 	if(ifname.empty())
 		// Возвращаем отрицательный результат установки
 		return false;
 	// Получаем номер сетевого устройства по его названию
-	const uint32_t index = ::if_nametoindex(string(ifname).c_str());
+	const uint32_t index = ::__awh_iface_index__(ifname, (family == event::family_t::IPV6));
 	// Если номер сетевого устройства получить не удалось
 	if(index == 0){
 		// Заносим в журнал предупреждение об отсутствии сетевого устройства
@@ -817,6 +931,21 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 		case static_cast <uint8_t> (event::family_t::IPV4): domain = AF_INET; break;
 		// Если семейство адресов является IPv6
 		case static_cast <uint8_t> (event::family_t::IPV6): domain = AF_INET6; break;
+		/**
+		 * Если семейство адресов является UNIX-доменным
+		 *
+		 * @details Средства эти у MS Windows появились в 2018 году и с тех пор
+		 *          доступны наравне с прочими: сокет заводится AF_UNIX, путь его
+		 *          задаётся `struct sockaddr_un`, а объявлено всё это отдельным
+		 *          заголовком `afunix.h`
+		 *
+		 * @warning Потоковыми они у MS Windows и остаются: дейтаграммного
+		 *          UNIX-доменного сокета система не несёт вовсе, и отказ по нему -
+		 *          не заглушка, а свойство системы. Отсекается он ниже, разбором
+		 *          вида сокета
+		 *
+		 */
+		case static_cast <uint8_t> (event::family_t::UDS): domain = AF_UNIX; break;
 		// Если семейство адресов неизвестно
 		default: {
 			// Заносим в журнал предупреждение о неподдерживаемом семействе адресов
@@ -858,6 +987,35 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 			// Возвращаем признак отсутствия заведённого сокета
 			return static_cast <net::socket_t> (INVALID_SOCKET);
 		}
+	}
+	/**
+	 * Если сокет UNIX-доменный - разбираем его особо
+	 *
+	 * @details Протокол ему не задаётся вовсе: у семейства AF_UNIX его нет, и
+	 *          передача сюда IPPROTO_TCP оканчивается отказом заведения
+	 *
+	 * @warning Дейтаграммного UNIX-доменного сокета у MS Windows нет: система несёт
+	 *          лишь потоковый. Отказ этот не временный и заглушкой не является -
+	 *          подменять его потоковым сокетом было бы подлогом, границы сообщений
+	 *          на потоке не держатся
+	 *
+	 */
+	if(domain == AF_UNIX){
+		// Если сокет не потоковый
+		if(kind != SOCK_STREAM){
+			// Заносим в журнал предупреждение об отсутствии такого сокета у системы
+			this->_log->print("%s: only stream UNIX-domain sockets are available on MS Windows", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__);
+			// Возвращаем признак отсутствия заведённого сокета
+			return static_cast <net::socket_t> (INVALID_SOCKET);
+		}
+		// Выполняем заведение наложенного UNIX-доменного сокета
+		const SOCKET single = ::WSASocketW(domain, kind, 0, nullptr, 0, WSA_FLAG_OVERLAPPED);
+		// Если сокет завести не удалось
+		if(single == INVALID_SOCKET)
+			// Записываем ошибку в лог
+			this->_log->print("%s: %s", log_t::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		// Выводим заведённый сокет
+		return static_cast <net::socket_t> (single);
 	}
 	// Протокол передачи данных в понимании системы
 	int32_t protocol = 0;

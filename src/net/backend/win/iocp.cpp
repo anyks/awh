@@ -797,8 +797,10 @@ static T __awh_socket_result__(const T result) noexcept {
  *
  */
 static int32_t __awh_bind__(const SOCKET sock, const struct sockaddr * addr, const int32_t size) noexcept {
+	const int32_t r = ::bind(sock, addr, size);
+	if(r != 0) { WSAPROTOCOL_INFOW pi; int pl = sizeof(pi); int gr = ::getsockopt(sock, SOL_SOCKET, SO_PROTOCOL_INFOW, (char *) &pi, &pl); ::fprintf(stderr, "SCOUT bind: fd=%d fam=%d size=%d wsa=%d sockfam=%d socktype=%d gr=%d path=%s\n", (int) sock, (int) addr->sa_family, (int) size, (int) ::WSAGetLastError(), (gr == 0) ? (int) pi.iAddressFamily : -1, (gr == 0) ? (int) pi.iSocketType : -1, gr, (addr->sa_family == AF_UNIX) ? ((const struct sockaddr_un *) addr)->sun_path : ""); ::fflush(stderr); }
 	// Выводим результат привязки сокета
-	return ::__awh_socket_result__(::bind(sock, addr, size));
+	return ::__awh_socket_result__(r);
 }
 /**
  * @brief Функция перевода сокета в ожидание подключений
@@ -58400,15 +58402,16 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 															::strlen(::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path)
 														);
 													}
-														/**
-														 * Выполняем подачу наложенного подключения к удалённому серверу
-														 *
-														 * @note Обращения `connect` здесь нет намеренно: порту завершений сообщить
-														 *       о завершении подключения им нечем, а ожидание готовности к записи
-														 *       на подключающемся сокете подать не выходит вовсе. Подача отвечает
-														 *       тем же, чем отвечало бы неблокирующее подключение у систем POSIX, -
-														 *       начатостью, - и разбор ниже остаётся прежним
-														 */
+													/**
+													 * Если сокет потоковый - подключаемся наложенной операцией
+													 *
+													 * @note Обращения `connect` здесь нет намеренно: порту завершений сообщить
+													 *       о завершении подключения им нечем, а ожидание готовности к записи
+													 *       на подключающемся сокете подать не выходит вовсе. Подача отвечает
+													 *       тем же, чем отвечало бы неблокирующее подключение у систем POSIX, -
+													 *       начатостью, - и разбор ниже остаётся прежним
+													 */
+													if((client->state.type == event::type_t::STREAM) && (client->state.family != event::family_t::UDS)){
 														// Выполняем привязку дескриптора к порту завершений
 														::port::attach(client->transfer.fd, this->_log);
 														// Выполняем подачу наложенного подключения к удалённому серверу
@@ -58421,8 +58424,31 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 															errno = EINPROGRESS;
 														// Если подачу наложенного подключения система не приняла
 														} else errno = ECONNREFUSED;
-														// Если подключение к удаленному серверу не выполнено
-														if(!(result = false)){
+														// Отмечаем подключение несостоявшимся: наложенное сразу не завершается
+														result = false;
+													/**
+													 * Дейтаграммному и сырому сокету подключение назначается обращением
+													 *
+													 * @details Наложенное подключение им негодно вовсе: `ConnectEx` устроен для
+													 *          потоковых сокетов и отвечает отказом 10022 (`WSAEINVAL`) на всяком
+													 *          ином. Установлено прогоном: набор терял `IoUDPConnectTest`.
+													 *
+													 *          Тем же путём идут и UNIX-доменные сокеты, хоть они и потоковые:
+													 *          `ConnectEx` требует сокета, привязанного заранее, а привязывать
+													 *          UNIX-доменному клиенту нечего - путь есть у сервера, а не у него.
+													 *          Обмен же по ним местный, и подключение завершается тут же.
+													 *
+													 *          Подключение у них и не является обменом с удалённой стороной -
+													 *          оно лишь назначает сокету получателя, - оттого обращение
+													 *          завершается тут же, и ждать от порта завершений нечего
+													 */
+													} else { ::fprintf(stderr, "SCOUT connect: fd=%d family=%u size=%d\n", (int) client->transfer.fd, (unsigned) client->state.family, (int) client->endpoint.size); ::fflush(stderr); result = (::__awh_connect__(
+														static_cast <SOCKET> (client->transfer.fd),
+														&::trust_cast <struct sockaddr> (client->endpoint.server),
+														static_cast <int32_t> (client->endpoint.size)
+													) == 0); ::fprintf(stderr, "SCOUT connect: result=%d wsa=%d errno=%d\n", (int) result, (int) ::WSAGetLastError(), (int) errno); ::fflush(stderr); }
+													// Если подключение к удаленному серверу не выполнено
+													if(!result){
 														// Если ошибка не является ошибкой в процессе подключения
 														if(!(result = (errno == EINPROGRESS))){
 															// Если установлена функция обратного вызова

@@ -398,13 +398,14 @@ $ genhtml -o report awh_filtered.info
 
 ```bash
 $ pacman -Syuu
-$ pacman -S mingw64/mingw-w64-x86_64-cmake
 $ pacman -S make
+$ pacman -S cmake
 $ pacman -S curl
 $ pacman -S wget
 $ pacman -S mc
 $ pacman -S gdb
 $ pacman -S bash
+$ pacman -S unzip
 $ pacman -S clang
 $ pacman -S git
 $ pacman -S autoconf
@@ -432,13 +433,15 @@ $ cmake --build .
 
 ```bash
 $ pacman -Syu
-$ pacman -S cmake
 $ pacman -S make
+$ pacman -S cmake
 $ pacman -S curl
 $ pacman -S wget
 $ pacman -S mc
-$ pacman -S clangarm64/mingw-w64-clang-aarch64-gdbm
+$ pacman -S gdbm
 $ pacman -S bash
+$ pacman -S unzip
+$ pacman -S clang
 $ pacman -S git
 $ pacman -S autoconf
 ```
