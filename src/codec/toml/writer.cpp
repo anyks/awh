@@ -845,9 +845,12 @@ bool awh::codec::toml::Writer::stamped(const stamp_t & stamp, const type_t type)
 	if(dated){
 		/**
 		 * Если построение даты ошибочно
+		 *
+		 * @note Проверка ведётся по календарю, а не по пределам полей: «2026-02-31»
+		 *       пределам отвечает, а датой не является, и записать её значило бы собрать
+		 *       текст, который читающий отвергнет
 		 */
-		if((stamp.date.year > 9999) || (stamp.date.month < 1) || (stamp.date.month > 12) ||
-		   (stamp.date.day < 1) || (stamp.date.day > 31)){
+		if((stamp.date.year > 9999) || !toml::calendar(stamp.date.year, stamp.date.month, stamp.date.day)){
 			// Запоминаем код ошибки записи
 			this->_error = error_t::INVALID_DATETIME;
 			// Выводим отрицательный результат выполнения операции

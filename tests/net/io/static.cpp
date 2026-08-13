@@ -2242,6 +2242,114 @@ TEST_F(IoFixture, IoUDPTest){
 }
 
 /**
+ * @brief ВРЕМЕННАЯ проверка замера: обмен короткими сообщениями по петле
+ *
+ * @note Отключена штатным префиксом: это не проверка, а щуп замера. Убрать по
+ *       окончании замера родного приёма
+ *
+ */
+TEST_F(IoFixture, DISABLED_IoBenchEchoTest){
+	// Флаг остановки замера
+	bool stop = false;
+	// Число выполненных оборотов обмена
+	uint32_t count = 0;
+	// Число оборотов обмена, задаваемое окружением
+	const uint32_t rounds = ((::getenv("AWH_BENCH_ROUNDS") != nullptr) ? static_cast <uint32_t> (::atoi(::getenv("AWH_BENCH_ROUNDS"))) : 20000);
+	// Текст сообщения обмена
+	const std::string message(512, 'x');
+	// Выполняем генерацию порта
+	const uint16_t port = ::port();
+	// Добавляем новое событие клиента и сервера TCP
+	const auto events = std::move(this->_io->events(awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP));
+	/**
+	 * Проверяем, что оба идентификатора события созданы успешно
+	 */
+	for(uint8_t i = 0; i < 2; i++)
+		// Проверяем, что идентификатор события больше нуля
+		ASSERT_GT(events[i], 0);
+	// Устанавливаем порт события клиента
+	ASSERT_TRUE(this->_io->setTargetPort(events[0], port));
+	// Устанавливаем порт события сервера
+	ASSERT_TRUE(this->_io->setSourcePort(events[1], port));
+	// Инициализируем асинхронный движок ввода-вывода
+	ASSERT_TRUE(this->_io->initialize());
+	/**
+	 * Выставляем опции и параметры для каждого события
+	 */
+	for(uint8_t i = 0; i < 2; i++)
+		// Устанавливаем опции событий
+		ASSERT_TRUE(this->_io->setOptions(events[i], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::TCP_NO_DELAY));
+	/**
+	 * Серверное событие
+	 */
+	{
+		// Устанавливаем адрес сервера назначения
+		ASSERT_TRUE(this->_io->setAddress(events[1], awh::event::address_t::IPV4, "127.0.0.1"));
+		// Устанавливаем функцию обратного вызова на подключение нового клиента
+		this->_io->on(events[1], static_cast <awh::engine::callback::accept_t> ([this](const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
+			// Устанавливаем функцию обратного вызова на чтение из события
+			this->_io->on(cid, [this](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+				// Отправляем принятое обратно клиенту
+				this->_io->send(eid, reinterpret_cast <const char *> (data), size);
+			});
+		}));
+		// Выполняем фиксацию настроек события сервера
+		ASSERT_TRUE(this->_io->commit(events[1]));
+		// Запускаем прослушивание события сервера
+		ASSERT_TRUE(this->_io->listen(events[1], 100));
+	}
+	/**
+	 * Клиентское событие
+	 */
+	{
+		// Устанавливаем адрес события клиента
+		ASSERT_TRUE(this->_io->setAddress(events[0], awh::event::address_t::IPV4, "0.0.0.0"));
+		// Устанавливаем адрес сервера назначения
+		ASSERT_TRUE(this->_io->setTarget(events[0], "127.0.0.1"));
+		// Устанавливаем функцию обратного вызова на подключение события
+		this->_io->on(events[0], static_cast <awh::engine::callback::connect_t> ([&message, this](const awh::event::id_t eid, const bool ok) noexcept -> void {
+			// Если подключение удалось - начинаем обмен
+			if(ok) this->_io->send(eid, message.c_str(), message.size());
+		}));
+		// Устанавливаем функцию обратного вызова на чтение из события
+		this->_io->on(events[0], [&count, &stop, &rounds, &message, this](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+			// Если заданное число оборотов пройдено - останавливаем замер
+			if(++count >= rounds)
+				// Отмечаем замер выполненным
+				stop = true;
+			// Отправляем следующее сообщение обмена
+			else this->_io->send(eid, message.c_str(), message.size());
+		});
+		// Устанавливаем таймаут события на чтение
+		this->_io->setTimeout(events[0], awh::event::action_t::READ, 5000);
+		// Устанавливаем таймаут события на запись
+		this->_io->setTimeout(events[0], awh::event::action_t::WRITE, 5000);
+		// Устанавливаем таймаут события на подключение
+		this->_io->setTimeout(events[0], awh::event::action_t::CONNECT, 5000);
+		// Выполняем фиксацию настроек события клиента
+		ASSERT_TRUE(this->_io->commit(events[0]));
+		// Выполняем подключение события клиента
+		ASSERT_TRUE(this->_io->connect(events[0]));
+		// Запускаем событие клиента
+		ASSERT_TRUE(this->_io->launch(events[0]));
+	}
+	// Запоминаем начало замера
+	const auto begin = std::chrono::steady_clock::now();
+	/**
+	 * Запускаем опрос событий
+	 */
+	while(!stop && this->_io->poll());
+	// Вычисляем длительность замера
+	const double seconds = std::chrono::duration <double> (std::chrono::steady_clock::now() - begin).count();
+	// Уничтожаем все события после замера
+	ASSERT_TRUE(this->_io->deinitialize());
+	// Выводим итог замера
+	::fprintf(stderr, "BENCH rounds=%u seconds=%.4f rate=%.0f us_per_round=%.3f\n", count, seconds, (count / seconds), ((seconds * 1000000.0) / count));
+	// Проверяем, что обмен состоялся полностью
+	ASSERT_EQ(rounds, count);
+}
+
+/**
  * @brief Тест приёма служебных метаданных дейтаграммного пакета
  *
  * @details Настройка `DGRAM_INFO` велит движку читать сокет вместе с управляющими

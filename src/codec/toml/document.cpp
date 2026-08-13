@@ -30,6 +30,7 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <codec/toml/document.hpp>
+#include <encoding/ascii.hpp>
 
 /**
  * Снимаем на время реализации макросы, чьи имена заняты
@@ -69,6 +70,52 @@ namespace {
 	 *       управляющим. Соединение точкой давало бы разночтение имён «a.b» и «"a.b"»
 	 */
 	constexpr char SEPARATOR = '\x1F';
+
+	/**
+	 * @brief Метод получения порядкового номера из составной части имени
+	 *
+	 * @details Часть имени, состоящая из одних десятичных цифр, задаёт порядковый номер
+	 * значения перечня либо таблицы набора: «products», «1», «name»
+	 *
+	 * @note Часть с ведущим нулём номером не признаётся: «01» и «1» задавали бы одно
+	 *       значение двумя написаниями, и обращение к нему зависело бы от написания
+	 *
+	 * @param part  разбираемая составная часть имени
+	 * @param index получаемый порядковый номер
+	 * @return      результат выполнения операции
+	 *
+	 */
+	bool ordinal(const string_view part, size_t & index) noexcept {
+		/**
+		 * Если часть имени пуста либо несёт ведущий ноль
+		 */
+		if(part.empty() || ((part.length() > 1) && (part.front() == '0')))
+			// Выводим отрицательный результат выполнения операции
+			return false;
+		// Выполняем сброс получаемого порядкового номера
+		index = 0;
+		/**
+		 * Выполняем перебор всех знаков составной части имени
+		 */
+		for(size_t i = 0; i < part.length(); i++){
+			/**
+			 * Если знак десятичной цифрой не является
+			 */
+			if(!ascii::isDigit(part[i]))
+				// Выводим отрицательный результат выполнения операции
+				return false;
+			/**
+			 * Если порядковый номер за отведённый ему отрезок значений выходит
+			 */
+			if(index > ((numeric_limits <size_t>::max() - static_cast <size_t> (part[i] - '0')) / 10))
+				// Выводим отрицательный результат выполнения операции
+				return false;
+			// Выполняем дополнение порядкового номера очередной цифрой
+			index = ((index * 10) + static_cast <size_t> (part[i] - '0'));
+		}
+		// Выводим положительный результат выполнения операции
+		return true;
+	}
 };
 
 /**
@@ -496,6 +543,26 @@ uint32_t awh::codec::toml::Document::relocate(const uint32_t node, string & stor
 	nodes.at(result) = ::move(item);
 	// Выводим порядковый номер узла в уплотнённом перечне
 	return result;
+}
+/**
+ * @brief Метод проверки хранилища знаков на вместимость содержимого
+ *
+ * @param length длина добавляемого содержимого в октетах
+ * @return       результат проверки
+ *
+ */
+bool awh::codec::toml::Document::spacious(const size_t length) noexcept {
+	/**
+	 * Если содержимое в хранилище знаков не вмещается
+	 */
+	if((this->_store.length() + length) > static_cast <size_t> (numeric_limits <uint32_t>::max())){
+		// Запоминаем код ошибки правки дерева настроек
+		this->_error = error_t::INTERNAL;
+		// Выводим отрицательный результат проверки
+		return false;
+	}
+	// Выводим положительный результат проверки
+	return true;
 }
 /**
  * @brief Метод проверки дерева на засорённость мусором правки
@@ -952,16 +1019,106 @@ bool awh::codec::toml::Document::acceptable(const vector <string_view> & path, c
  *
  */
 const awh::codec::toml::Document::node_t * awh::codec::toml::Document::seek(const vector <string_view> & path) const noexcept {
-	// Выполняем поиск записи пары по составному имени
-	const uint32_t record = this->locate(path, kind_t::PAIR);
 	/**
-	 * Если запись пары по составному имени не найдена
+	 * Выполняем перебор длин начала составного имени, парой быть могущих
+	 *
+	 * @details Имя ищется от самого длинного начала к самому короткому: остаток его
+	 * ведёт внутрь составного значения найденной пары - порядковым номером в перечень,
+	 * именем ключа во встроенную таблицу. Записи «a = [[1, 2], [3, 4]]» отвечает тем
+	 * самым имя «a», «1», «0», а записи «c = {d = {e = 5}}» - имя «c», «d», «e»
+	 *
+	 * @note Порядок от длинного к короткому обязателен: таблица набора адресуется
+	 *       порядковым номером частью имени, и начни поиск с короткого начала, номер
+	 *       этот достался бы спуску внутрь значения
 	 */
-	if(record == NO_RECORD)
-		// Выводим пустой указатель узла значения
-		return nullptr;
-	// Выводим узел значения найденной пары
-	return &this->_nodes.at(this->_records.at(record).node);
+	for(size_t used = path.size(); used > 0; used--){
+		// Собираемое начало составного имени, парой быть могущее
+		const vector <string_view> head(path.begin(), (path.begin() + static_cast <long> (used)));
+		// Выполняем поиск записи пары по началу составного имени
+		const uint32_t record = this->locate(head, kind_t::PAIR);
+		/**
+		 * Если запись пары по началу составного имени не найдена
+		 */
+		if(record == NO_RECORD)
+			// Переходим к следующей длине начала составного имени
+			continue;
+		// Получаем узел значения найденной пары
+		const node_t * result = &this->_nodes.at(this->_records.at(record).node);
+		// Порядковый номер разбираемой части остатка составного имени
+		size_t i = used;
+		/**
+		 * Выполняем спуск внутрь составного значения найденной пары
+		 */
+		while(i < path.size()){
+			/**
+			 * Если значением является перечень
+			 */
+			if(result->type == type_t::ARRAY){
+				// Собираемый порядковый номер значения перечня
+				size_t index = 0;
+				/**
+				 * Если часть имени порядковым номером не является
+				 */
+				if(!ordinal(path.at(i), index) || (index >= result->items.size()))
+					// Выводим пустой указатель узла значения
+					return nullptr;
+				// Выполняем спуск в значение перечня
+				result = &this->_nodes.at(result->items.at(index));
+				// Выполняем переход к следующей части остатка имени
+				i++;
+			/**
+			 * Если значением является встроенная таблица
+			 */
+			} else if(result->type == type_t::TABLE) {
+				// Порядковый номер найденной пары встроенной таблицы
+				size_t found = result->items.size();
+				/**
+				 * Выполняем перебор всех пар встроенной таблицы
+				 */
+				for(size_t j = 0; (j < result->items.size()) && (found == result->items.size()); j++){
+					// Получаем место составного имени очередной пары
+					const span_t & name = result->names.at(j);
+					/**
+					 * Если частей остатка имени на имя пары не хватает
+					 */
+					if((i + name.length) > path.size())
+						// Переходим к следующей паре встроенной таблицы
+						continue;
+					// Признак совпадения имени пары с остатком составного имени
+					bool matched = true;
+					/**
+					 * Выполняем перебор всех составных частей имени пары
+					 */
+					for(uint32_t k = 0; matched && (k < name.length); k++)
+						// Выполняем сличение очередной части имени пары с частью остатка
+						matched = (this->get(this->_keys.at(name.offset + k).name).compare(path.at(i + k)) == 0);
+					/**
+					 * Если имя пары с остатком составного имени совпало
+					 */
+					if(matched)
+						// Запоминаем порядковый номер найденной пары встроенной таблицы
+						found = j;
+				}
+				/**
+				 * Если пара встроенной таблицы не найдена
+				 */
+				if(found == result->items.size())
+					// Выводим пустой указатель узла значения
+					return nullptr;
+				// Выполняем переход за имя найденной пары встроенной таблицы
+				i += result->names.at(found).length;
+				// Выполняем спуск в значение пары встроенной таблицы
+				result = &this->_nodes.at(result->items.at(found));
+			/**
+			 * Если значение составным не является
+			 */
+			} else return nullptr;
+		}
+		// Выводим найденный узел значения
+		return result;
+	}
+	// Выводим пустой указатель узла значения
+	return nullptr;
 }
 /**
  * @brief Метод получения узла значения для правки
@@ -981,6 +1138,20 @@ awh::codec::toml::Document::node_t * awh::codec::toml::Document::reach(const vec
 	if(this->cluttered())
 		// Выполняем перестроение указателей поиска вместе с уплотнением дерева
 		this->reindex();
+	// Собираемая длина составного имени правимой пары
+	size_t length = 0;
+	/**
+	 * Выполняем перебор всех составных частей имени
+	 */
+	for(auto & part : path)
+		// Выполняем учёт длины очередной составной части имени
+		length += part.length();
+	/**
+	 * Если составное имя в хранилище знаков не вмещается
+	 */
+	if(!this->spacious(length))
+		// Выводим пустой указатель узла значения
+		return nullptr;
 	/**
 	 * Если составное имя к записи непригодно
 	 */
@@ -1715,6 +1886,15 @@ bool awh::codec::toml::Document::create(const vector <string_view> & path) noexc
  *
  */
 bool awh::codec::toml::Document::set(const vector <string_view> & path, const string_view value, const string_t quoting) noexcept {
+	/**
+	 * Если значение в хранилище знаков не вмещается
+	 *
+	 * @note Проверка ведётся прежде правки: узел, заведённый под значение, которое не
+	 *       записать, остался бы в дереве пустым
+	 */
+	if(!this->spacious(value.length()))
+		// Выводим отрицательный результат выполнения операции
+		return false;
 	// Выполняем получение узла значения для правки
 	node_t * node = this->reach(path);
 	/**
@@ -1853,6 +2033,37 @@ bool awh::codec::toml::Document::set(const vector <string_view> & path, const st
 	 */
 	if((type != type_t::OFFSET_DATETIME) && (type != type_t::LOCAL_DATETIME) &&
 	   (type != type_t::LOCAL_DATE) && (type != type_t::LOCAL_TIME)){
+		// Запоминаем код ошибки правки дерева настроек
+		this->_error = error_t::INVALID_DATETIME;
+		// Выводим отрицательный результат выполнения операции
+		return false;
+	}
+	// Признак того, что устанавливаемая отметка несёт дату
+	const bool dated = ((type == type_t::OFFSET_DATETIME) ||
+	 (type == type_t::LOCAL_DATETIME) || (type == type_t::LOCAL_DATE));
+	/**
+	 * Если дата устанавливаемой отметки в календаре не существует
+	 *
+	 * @note Правка отвергается здесь, а не при записи собранного дерева: дерево,
+	 *       принявшее дату «2026-02-31», собрало бы текст, который свой же разбор
+	 *       отвергает, и узнал бы о том потребитель много позже правки
+	 */
+	if(dated && ((value.date.year > 9999) ||
+	   !toml::calendar(value.date.year, value.date.month, value.date.day))){
+		// Запоминаем код ошибки правки дерева настроек
+		this->_error = error_t::INVALID_DATETIME;
+		// Выводим отрицательный результат выполнения операции
+		return false;
+	}
+	/**
+	 * Если время устанавливаемой отметки за пределы суток выходит
+	 *
+	 * @note Секунда шестидесятая дозволена описанием: ею записывается секунда
+	 *       координации, добавляемая к последней минуте суток
+	 */
+	if(((type == type_t::OFFSET_DATETIME) || (type == type_t::LOCAL_DATETIME) || (type == type_t::LOCAL_TIME)) &&
+	   ((value.time.hour > 23) || (value.time.minute > 59) || (value.time.second > 60) ||
+	    (value.time.nanosecond > 999999999))){
 		// Запоминаем код ошибки правки дерева настроек
 		this->_error = error_t::INVALID_DATETIME;
 		// Выводим отрицательный результат выполнения операции

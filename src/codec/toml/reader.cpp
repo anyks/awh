@@ -1798,23 +1798,12 @@ bool awh::codec::toml::Reader::stamped(const string_view text, item_t & item) co
 		// Запоминаем день месяца отметки времени
 		stamp.date.day = static_cast <uint8_t> (value);
 		/**
-		 * Количество дней в месяцах года
+		 * Если даты такой в календаре нет
 		 *
 		 * @note Проверка эта не украшение: «2026-02-31» записью даты не является, и
 		 *       принимать её значило бы выдавать потребителю день, которого нет
 		 */
-		static const uint8_t DAYS[12] = {31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
-		/**
-		 * Если день месяца за пределы месяца выходит
-		 */
-		if(stamp.date.day > DAYS[stamp.date.month - 1])
-			// Выводим признак неудачного разбора
-			return false;
-		/**
-		 * Если днём является двадцать девятое февраля года невисокосного
-		 */
-		if((stamp.date.month == 2) && (stamp.date.day == 29) &&
-		   (((stamp.date.year % 4) != 0) || (((stamp.date.year % 100) == 0) && ((stamp.date.year % 400) != 0))))
+		if(!toml::calendar(stamp.date.year, stamp.date.month, stamp.date.day))
 			// Выводим признак неудачного разбора
 			return false;
 		// Запоминаем признак наличия даты в записи отметки

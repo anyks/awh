@@ -959,3 +959,120 @@ TEST(CodecTomlDocument, EraseGarbageCount) {
 	// Выполняем проверку того, что снятая пара более не находится
 	ASSERT_FALSE(document.value(value, {"t", "a"}));
 }
+/**
+ * @brief Проверка согласия правки отметки времени с календарём разбора
+ *
+ * @details Правка, принявшая дату несуществующую, собрала бы текст, который свой же
+ * разбор отвергает, и узнал бы о том потребитель много позже правки. Проверка ведётся
+ * общим для разбора, записи и правки календарём
+ *
+ */
+TEST(CodecTomlDocument, StampCalendar) {
+	/**
+	 * Выполняем перебор проверяемых отметок времени
+	 */
+	for(const auto & item : {
+		make_tuple(uint16_t(2026), uint8_t(2), uint8_t(31), false),
+		make_tuple(uint16_t(2025), uint8_t(2), uint8_t(29), false),
+		make_tuple(uint16_t(2026), uint8_t(13), uint8_t(1), false),
+		make_tuple(uint16_t(2026), uint8_t(4), uint8_t(31), false),
+		make_tuple(uint16_t(2026), uint8_t(1), uint8_t(0), false),
+		make_tuple(uint16_t(2024), uint8_t(2), uint8_t(29), true),
+		make_tuple(uint16_t(2000), uint8_t(2), uint8_t(29), true),
+		make_tuple(uint16_t(1900), uint8_t(2), uint8_t(29), false),
+		make_tuple(uint16_t(2026), uint8_t(12), uint8_t(31), true)
+	}){
+		// Собираемая отметка времени
+		toml::stamp_t stamp;
+		// Запоминаем год собираемой отметки времени
+		stamp.date.year = get <0> (item);
+		// Запоминаем месяц собираемой отметки времени
+		stamp.date.month = get <1> (item);
+		// Запоминаем день собираемой отметки времени
+		stamp.date.day = get <2> (item);
+		// Объект дерева настроек
+		toml::document_t document;
+		// Выполняем проверку разбора исходного текста настроек
+		ASSERT_TRUE(document.parse("a = 2026-01-01\n"));
+		// Выполняем проверку итога правки отметки времени
+		ASSERT_EQ(document.set(vector <string_view> {"a"}, stamp, toml::type_t::LOCAL_DATE), get <3> (item))
+		 << get <0> (item) << "-" << static_cast <uint32_t> (get <1> (item)) << "-" << static_cast <uint32_t> (get <2> (item));
+		// Объект записи текста настроек
+		toml::writer_t writer;
+		// Выполняем запись имени ключа пары
+		ASSERT_TRUE(writer.key("a"));
+		// Выполняем проверку итога записи отметки времени
+		ASSERT_EQ(writer.stamp(stamp, toml::type_t::LOCAL_DATE), get <3> (item));
+		/**
+		 * Если отметка времени записана
+		 */
+		if(get <3> (item)){
+			// Объект дерева настроек для обратного чтения
+			toml::document_t after;
+			// Выполняем проверку того, что записанное разбор принимает
+			ASSERT_TRUE(after.parse(document.text())) << document.text();
+		}
+	}
+}
+/**
+ * @brief Проверка чтения значений внутри составных значений
+ *
+ * @details Остаток составного имени ведёт внутрь значения пары: порядковым номером в
+ * перечень, именем ключа во встроенную таблицу. Без этого перечень перечней и
+ * встроенная таблица во встроенной таблице читались бы одним лишь обходом событий
+ *
+ */
+TEST(CodecTomlDocument, NestedReading) {
+	// Объект дерева настроек
+	toml::document_t document;
+	// Выполняем проверку разбора исходного текста настроек
+	ASSERT_TRUE(document.parse(
+		"a = [[1, 2], [3, 4]]\n"
+		"b = [10, 20]\n"
+		"c = {d = {e = 5}}\n"
+		"f = [{g = 7}, {g = 8}]\n"
+		"h = {\"i.j\" = 9, k.l = 11}\n"
+		"[[products]]\n"
+		"name = \"молоток\"\n"
+		"[[products]]\n"
+		"name = \"гвоздь\"\n"
+	));
+	// Читаемое целое значение
+	int64_t value = 0;
+	// Выполняем проверку чтения значения перечня
+	ASSERT_TRUE(document.value(value, {"b", "0"}));
+	// Выполняем проверку значения перечня
+	ASSERT_EQ(value, static_cast <int64_t> (10));
+	// Выполняем проверку чтения значения вложенного перечня
+	ASSERT_TRUE(document.value(value, {"a", "1", "0"}));
+	// Выполняем проверку значения вложенного перечня
+	ASSERT_EQ(value, static_cast <int64_t> (3));
+	// Выполняем проверку количества значений вложенного перечня
+	ASSERT_EQ(document.length({"a", "0"}), static_cast <size_t> (2));
+	// Выполняем проверку чтения значения вложенной встроенной таблицы
+	ASSERT_TRUE(document.value(value, {"c", "d", "e"}));
+	// Выполняем проверку значения вложенной встроенной таблицы
+	ASSERT_EQ(value, static_cast <int64_t> (5));
+	// Выполняем проверку чтения значения встроенной таблицы перечня
+	ASSERT_TRUE(document.value(value, {"f", "1", "g"}));
+	// Выполняем проверку значения встроенной таблицы перечня
+	ASSERT_EQ(value, static_cast <int64_t> (8));
+	// Выполняем проверку чтения значения по имени с точкой внутри
+	ASSERT_TRUE(document.value(value, {"h", "i.j"}));
+	// Выполняем проверку значения по имени с точкой внутри
+	ASSERT_EQ(value, static_cast <int64_t> (9));
+	// Выполняем проверку чтения значения по составному имени встроенной таблицы
+	ASSERT_TRUE(document.value(value, {"h", "k", "l"}));
+	// Выполняем проверку значения по составному имени встроенной таблицы
+	ASSERT_EQ(value, static_cast <int64_t> (11));
+	// Выполняем проверку того, что таблица набора номером адресуется по-прежнему
+	ASSERT_EQ(document.text({"products", "1", "name"}), string_view("гвоздь"));
+	// Выполняем проверку того, что номер за пределами перечня не читается
+	ASSERT_FALSE(document.value(value, {"b", "2"}));
+	// Выполняем проверку того, что номер с ведущим нулём не читается
+	ASSERT_FALSE(document.value(value, {"b", "01"}));
+	// Выполняем проверку того, что спуск в простое значение не выполняется
+	ASSERT_FALSE(document.value(value, {"b", "0", "0"}));
+	// Выполняем проверку того, что имя, встроенной таблице не принадлежащее, не читается
+	ASSERT_FALSE(document.value(value, {"c", "d", "x"}));
+}
