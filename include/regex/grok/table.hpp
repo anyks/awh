@@ -9,8 +9,15 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * \~russian
  * @brief Заголовочный файл встроенного набора шаблонов модуля Grok —
  *        объявление набора именованных шаблонов, поставляемого вместе с модулем
+ *
+ * \~english
+ * @brief Header file of the built-in pattern set of the Grok module —
+ *        the declaration of the set of named patterns shipped together with the module
+ *
+ * \~
  *
  * @copyright: Copyright © 2026
  *
@@ -33,18 +40,34 @@
 #include "../../sys/global.hpp"
 
 /**
+ * \~russian
  * @brief Основное пространство имён
  *
+ *
+ * \~english
+ * @brief Main namespace
+ *
+ * \~
  */
 namespace awh {
 	/**
+	 * \~russian
 	 * @brief Пространство имён модуля Grok
 	 *
+	 * \~english
+	 * @brief Namespace of the Grok module
+	 *
+	 * \~
 	 */
 	namespace grok {
 		/**
+		 * \~russian
 		 * @brief Запись встроенного набора шаблонов
 		 *
+		 * \~english
+		 * @brief Record of the built-in pattern set
+		 *
+		 * \~
 		 */
 		typedef struct __AWH_SHARED_EXPORT__ Entry {
 			// Название шаблона
@@ -54,12 +77,18 @@ namespace awh {
 		} entry_t;
 
 		/**
+		 * \~russian
 		 * @brief Количество записей встроенного набора шаблонов
 		 *
+		 * \~english
+		 * @brief Number of records of the built-in pattern set
+		 *
+		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ extern const size_t PATTERNS_COUNT;
 
 		/**
+		 * \~russian
 		 * @brief Встроенный набор шаблонов
 		 *
 		 * @details Набор поставляется вместе с модулем и служит основанием
@@ -69,6 +98,16 @@ namespace awh {
 		 *          требованию, поэтому шаблону дозволено ссылаться на шаблон,
 		 *          объявленный ниже.
 		 *
+		 * \~english
+		 * @brief Built-in pattern set
+		 * @details The set is shipped together with the module and serves as the foundation
+		 *          of the registry: parsing the user patterns rests on it
+		 *          by references of the «%{NAME}» form. The records follow in the order of declaration
+		 *          rather than in the order of resolving the references: the expansion is performed on
+		 *          demand, therefore a pattern is allowed to refer to a pattern
+		 *          declared below.
+		 *
+		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ extern const entry_t PATTERNS[];
 	}

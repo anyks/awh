@@ -374,8 +374,14 @@
 #include "fmk.hpp"
 
 /**
+ * \~russian
  * @brief Основное пространство имён
  *
+ *
+ * \~english
+ * @brief Main namespace
+ *
+ * \~
  */
 namespace awh {
 	/**
@@ -997,8 +1003,14 @@ namespace awh {
 				uint64_t microseconds; // Количество микросекунд в миллисекунде, от 0 до 999
 				uint64_t nanoseconds;  // Количество наносекунд в миллисекунде, от 0 до 999999, microseconds - его старшая часть
 				/**
+				 * \~russian
 				 * @brief Конструктор
 				 *
+				 *
+				 * \~english
+				 * @brief Constructor
+				 *
+				 * \~
 				 */
 				explicit DateTime() noexcept;
 			} __attribute__((packed)) dt_t;
@@ -2844,8 +2856,14 @@ namespace awh {
 			explicit Chrono(const fmk_t * fmk, const Logging * log) noexcept;
 		public:
 			/**
+			 * \~russian
 			 * @brief Деструктор
 			 *
+			 *
+			 * \~english
+			 * @brief Destructor
+			 *
+			 * \~
 			 */
 			~Chrono() noexcept;
 	} chrono_t;

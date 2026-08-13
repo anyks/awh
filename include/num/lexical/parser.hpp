@@ -9,9 +9,17 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * \~russian
  * @brief Заголовочный файл лексического сканера чисел — посимвольный и векторизованный (SSE2, NEON) разбор знака,
  *        целой и дробной частей,
  *        экспоненты и специальных значений с формированием промежуточной структуры разобранного числа
+ *
+ * \~english
+ * @brief Header file of the lexical number scanner — the character-by-character and vectorised (SSE2, NEON) parsing of the sign,
+ *        of the integer and of the fractional parts,
+ *        of the exponent and of the special values with the building of the intermediate structure of the parsed number
+ *
+ * \~
  *
  * @copyright: Copyright © 2026
  *
@@ -52,8 +60,14 @@
 #endif
 
 /**
+ * \~russian
  * @brief Основное пространство имён
  *
+ *
+ * \~english
+ * @brief Main namespace
+ *
+ * \~
  */
 namespace awh {
 	/**
@@ -62,30 +76,54 @@ namespace awh {
 	using namespace std;
 
 	/**
+	 * \~russian
 	 * @brief Пространство имён модуля разбора чисел
 	 *
+	 *
+	 * \~english
+	 * @brief Namespace of the number parsing module
+	 *
+	 * \~
 	 */
 	namespace lexical {
 		/**
+		 * \~russian
 		 * @brief Количество цифр, разбираемых за одну итерацию блочного разбора
 		 *
+		 * \~english
+		 * @brief Number of digits parsed in one iteration of the block parsing
+		 *
+		 * \~
 		 */
 		constexpr size_t DIGITS_PER_BLOCK = 8;
 
 		/**
+		 * \~russian
 		 * @brief Наименьшее девятнадцатизначное десятичное число
 		 *
+		 * \~english
+		 * @brief Smallest nineteen-digit decimal number
+		 *
+		 * \~
 		 */
 		constexpr uint64_t MIN_NINETEEN_DIGITS = 1000000000000000000ULL;
 
 		/**
+		 * \~russian
 		 * @brief Шаблон типа символа исходной строки
 		 *
 		 * @tparam UC тип символа исходной строки
 		 *
+		 *
+		 * \~english
+		 * @brief Template of the character type of the source string
+		 * @tparam UC character type of the source string
+		 *
+		 * \~
 		 */
 		template <typename UC>
 		/**
+		 * \~russian
 		 * @brief Функция проверки доступности векторного разбора для типа символа
 		 *
 		 * @details Векторный путь применяется только для двухбайтовых символов:
@@ -93,6 +131,13 @@ namespace awh {
 		 *
 		 * @return результат проверки
 		 *
+		 * \~english
+		 * @brief Function of checking the availability of vector parsing for a character type
+		 * @details The vector path is used only for two-byte characters:
+		 *          for one-byte ones the scalar parsing of a block is faster than the vector one.
+		 * @return result of the check
+		 *
+		 * \~
 		 */
 		AWH_ASCII_INLINE constexpr bool hasSimd() noexcept {
 			/**
@@ -111,11 +156,18 @@ namespace awh {
 		}
 
 		/**
+		 * \~russian
 		 * @brief Функция изменения порядка байт 64-битного значения
 		 *
 		 * @param value исходное значение
 		 * @return      значение с обратным порядком байт
 		 *
+		 * \~english
+		 * @brief Function of changing the byte order of a 64-bit value
+		 * @param value source value
+		 * @return      value with the reversed byte order
+		 *
+		 * \~
 		 */
 		AWH_ASCII_INLINE constexpr uint64_t swapBytes(const uint64_t value) noexcept {
 			// Выполняем перестановку байт значения
@@ -132,13 +184,21 @@ namespace awh {
 		}
 
 		/**
+		 * \~russian
 		 * @brief Шаблон типа символа исходной строки
 		 *
 		 * @tparam UC тип символа исходной строки
 		 *
+		 *
+		 * \~english
+		 * @brief Template of the character type of the source string
+		 * @tparam UC character type of the source string
+		 *
+		 * \~
 		 */
 		template <typename UC>
 		/**
+		 * \~russian
 		 * @brief Функция упаковки блока символов в 64-битное значение
 		 *
 		 * @details Символы шире одного байта усекаются до младшего байта.
@@ -147,6 +207,14 @@ namespace awh {
 		 * @param chars указатель на начало блока символов
 		 * @return      упакованное 64-битное значение
 		 *
+		 * \~english
+		 * @brief Function of packing a block of characters into a 64-bit value
+		 * @details Characters wider than one byte are truncated to the low byte.
+		 *          The result is always built in the order from the low to the high one.
+		 * @param chars pointer to the beginning of the block of characters
+		 * @return      packed 64-bit value
+		 *
+		 * \~
 		 */
 		AWH_ASCII_INLINE uint64_t readBlock(const UC * chars) noexcept {
 			// Если символы исходной строки шире одного байта
@@ -182,11 +250,18 @@ namespace awh {
 		 */
 		#ifdef AWH_LEXICAL_SSE2
 			/**
+			 * \~russian
 			 * @brief Функция упаковки блока символов из векторного регистра
 			 *
 			 * @param data загруженный векторный регистр
 			 * @return     упакованное 64-битное значение
 			 *
+			 * \~english
+			 * @brief Function of packing a block of characters from a vector register
+			 * @param data loaded vector register
+			 * @return     packed 64-bit value
+			 *
+			 * \~
 			 */
 			AWH_ASCII_INLINE uint64_t readBlockSimd(const __m128i data) noexcept {
 				// Отключаем предупреждения о выравнивании указателей
@@ -214,11 +289,18 @@ namespace awh {
 				AWH_LEXICAL_SIMD_RESTORE_WARNINGS
 			}
 			/**
+			 * \~russian
 			 * @brief Функция упаковки блока двухбайтовых символов векторными инструкциями
 			 *
 			 * @param chars указатель на начало блока символов
 			 * @return      упакованное 64-битное значение
 			 *
+			 * \~english
+			 * @brief Function of packing a block of two-byte characters by vector instructions
+			 * @param chars pointer to the beginning of the block of characters
+			 * @return      packed 64-bit value
+			 *
+			 * \~
 			 */
 			AWH_ASCII_INLINE uint64_t readBlockSimd(const char16_t * chars) noexcept {
 				// Отключаем предупреждения о выравнивании указателей
@@ -233,11 +315,18 @@ namespace awh {
 		 */
 		#elif AWH_LEXICAL_NEON
 			/**
+			 * \~russian
 			 * @brief Функция упаковки блока символов из векторного регистра
 			 *
 			 * @param data загруженный векторный регистр
 			 * @return     упакованное 64-битное значение
 			 *
+			 * \~english
+			 * @brief Function of packing a block of characters from a vector register
+			 * @param data loaded vector register
+			 * @return     packed 64-bit value
+			 *
+			 * \~
 			 */
 			AWH_ASCII_INLINE uint64_t readBlockSimd(const uint16x8_t data) noexcept {
 				// Отключаем предупреждения о выравнивании указателей
@@ -250,11 +339,18 @@ namespace awh {
 				AWH_LEXICAL_SIMD_RESTORE_WARNINGS
 			}
 			/**
+			 * \~russian
 			 * @brief Функция упаковки блока двухбайтовых символов векторными инструкциями
 			 *
 			 * @param chars указатель на начало блока символов
 			 * @return      упакованное 64-битное значение
 			 *
+			 * \~english
+			 * @brief Function of packing a block of two-byte characters by vector instructions
+			 * @param chars pointer to the beginning of the block of characters
+			 * @return      packed 64-bit value
+			 *
+			 * \~
 			 */
 			AWH_ASCII_INLINE uint64_t readBlockSimd(const char16_t * chars) noexcept {
 				// Отключаем предупреждения о выравнивании указателей
@@ -267,17 +363,30 @@ namespace awh {
 		#endif
 
 		/**
+		 * \~russian
 		 * @brief Шаблон типа символа исходной строки
 		 *
 		 * @tparam UC тип символа исходной строки
 		 *
+		 *
+		 * \~english
+		 * @brief Template of the character type of the source string
+		 * @tparam UC character type of the source string
+		 *
+		 * \~
 		 */
 		template <typename UC, enableIf_t <!hasSimd <UC> ()> = 0>
 		/**
+		 * \~russian
 		 * @brief Функция упаковки блока символов для типов без векторной поддержки
 		 *
 		 * @return всегда нулевое значение
 		 *
+		 * \~english
+		 * @brief Function of packing a block of characters for the types without vector support
+		 * @return always a zero value
+		 *
+		 * \~
 		 */
 		inline uint64_t readBlockSimd(const UC *) noexcept {
 			// Векторный разбор для данного типа символа недоступен
@@ -285,11 +394,18 @@ namespace awh {
 		}
 
 		/**
+		 * \~russian
 		 * @brief Функция разбора упакованного блока десятичных цифр
 		 *
 		 * @param value упакованные ASCII-коды восьми десятичных цифр
 		 * @return      числовое значение блока цифр
 		 *
+		 * \~english
+		 * @brief Function of parsing a packed block of decimal digits
+		 * @param value packed ASCII codes of eight decimal digits
+		 * @return      numeric value of the block of digits
+		 *
+		 * \~
 		 */
 		AWH_ASCII_INLINE constexpr uint32_t parseBlock(uint64_t value) noexcept {
 			// Маска выделения байтовых пар результата
@@ -309,18 +425,32 @@ namespace awh {
 		}
 
 		/**
+		 * \~russian
 		 * @brief Шаблон типа символа исходной строки
 		 *
 		 * @tparam UC тип символа исходной строки
 		 *
+		 *
+		 * \~english
+		 * @brief Template of the character type of the source string
+		 * @tparam UC character type of the source string
+		 *
+		 * \~
 		 */
 		template <typename UC>
 		/**
+		 * \~russian
 		 * @brief Функция разбора блока из восьми десятичных цифр
 		 *
 		 * @param chars указатель на начало блока цифр
 		 * @return      числовое значение блока цифр
 		 *
+		 * \~english
+		 * @brief Function of parsing a block of eight decimal digits
+		 * @param chars pointer to the beginning of the block of digits
+		 * @return      numeric value of the block of digits
+		 *
+		 * \~
 		 */
 		AWH_ASCII_INLINE uint32_t parseBlock(const UC * chars) noexcept {
 			// Если векторный разбор для типа символа недоступен
@@ -332,11 +462,18 @@ namespace awh {
 		}
 
 		/**
+		 * \~russian
 		 * @brief Функция проверки упакованного блока на состав из десятичных цифр
 		 *
 		 * @param value упакованный блок символов
 		 * @return      результат проверки
 		 *
+		 * \~english
+		 * @brief Function of checking whether a packed block consists of decimal digits
+		 * @param value packed block of characters
+		 * @return      result of the check
+		 *
+		 * \~
 		 */
 		AWH_ASCII_INLINE constexpr bool isDigitBlock(const uint64_t value) noexcept {
 			// Выполняем одновременную проверку всех байт блока на диапазон цифр
@@ -348,12 +485,20 @@ namespace awh {
 		 */
 		#ifdef AWH_LEXICAL_SIMD
 			/**
+			 * \~russian
 			 * @brief Функция векторного разбора блока двухбайтовых десятичных цифр
 			 *
 			 * @param chars указатель на начало блока символов
 			 * @param value ссылка на аккумулятор числового значения
 			 * @return      результат разбора блока
 			 *
+			 * \~english
+			 * @brief Function of the vector parsing of a block of two-byte decimal digits
+			 * @param chars pointer to the beginning of the block of characters
+			 * @param value reference to the accumulator of the numeric value
+			 * @return      result of parsing the block
+			 *
+			 * \~
 			 */
 			AWH_ASCII_INLINE bool parseBlockSimd(const char16_t * chars, uint64_t & value) noexcept {
 				/**
@@ -411,17 +556,30 @@ namespace awh {
 		#endif
 
 		/**
+		 * \~russian
 		 * @brief Шаблон типа символа исходной строки
 		 *
 		 * @tparam UC тип символа исходной строки
 		 *
+		 *
+		 * \~english
+		 * @brief Template of the character type of the source string
+		 * @tparam UC character type of the source string
+		 *
+		 * \~
 		 */
 		template <typename UC, enableIf_t <!hasSimd <UC> ()> = 0>
 		/**
+		 * \~russian
 		 * @brief Функция векторного разбора блока для типов без векторной поддержки
 		 *
 		 * @return всегда отрицательный результат
 		 *
+		 * \~english
+		 * @brief Function of the vector parsing of a block for the types without vector support
+		 * @return always a negative result
+		 *
+		 * \~
 		 */
 		inline bool parseBlockSimd(const UC *, uint64_t &) noexcept {
 			// Векторный разбор для данного типа символа недоступен
@@ -429,13 +587,21 @@ namespace awh {
 		}
 
 		/**
+		 * \~russian
 		 * @brief Шаблон типа символа исходной строки
 		 *
 		 * @tparam UC тип символа исходной строки
 		 *
+		 *
+		 * \~english
+		 * @brief Template of the character type of the source string
+		 * @tparam UC character type of the source string
+		 *
+		 * \~
 		 */
 		template <typename UC, enableIf_t <!is_same <UC, char>::value> = 0>
 		/**
+		 * \~russian
 		 * @brief Функция блочного разбора последовательности десятичных цифр
 		 *
 		 * @details Аккумулятор может переполниться: контроль переполнения выполняется
@@ -445,6 +611,15 @@ namespace awh {
 		 * @param pend  конец строки
 		 * @param value ссылка на аккумулятор числового значения
 		 *
+		 * \~english
+		 * @brief Function of the block parsing of a sequence of decimal digits
+		 * @details The accumulator may overflow: the overflow control is performed
+		 *          by the calling side by the number of parsed digits.
+		 * @param p     reference to the current position in the string
+		 * @param pend  end of the string
+		 * @param value reference to the accumulator of the numeric value
+		 *
+		 * \~
 		 */
 		AWH_ASCII_INLINE void parseBlocks(const UC * & p, const UC * const pend, uint64_t & value) noexcept {
 			// Если векторный разбор для типа символа недоступен
@@ -460,6 +635,7 @@ namespace awh {
 		}
 
 		/**
+		 * \~russian
 		 * @brief Функция блочного разбора последовательности десятичных цифр
 		 *
 		 * @details Аккумулятор может переполниться: контроль переполнения выполняется
@@ -469,6 +645,15 @@ namespace awh {
 		 * @param pend  конец строки
 		 * @param value ссылка на аккумулятор числового значения
 		 *
+		 * \~english
+		 * @brief Function of the block parsing of a sequence of decimal digits
+		 * @details The accumulator may overflow: the overflow control is performed
+		 *          by the calling side by the number of parsed digits.
+		 * @param p     reference to the current position in the string
+		 * @param pend  end of the string
+		 * @param value reference to the accumulator of the numeric value
+		 *
+		 * \~
 		 */
 		AWH_ASCII_INLINE void parseBlocks(const char * & p, const char * const pend, uint64_t & value) noexcept {
 			/**
@@ -483,6 +668,7 @@ namespace awh {
 		}
 
 		/**
+		 * \~russian
 		 * @brief Функция умножения с добавлением и контролем переполнения
 		 *
 		 * @param value ссылка на накапливаемое значение
@@ -490,6 +676,14 @@ namespace awh {
 		 * @param digit добавляемая цифра
 		 * @return      результат выполнения операции
 		 *
+		 * \~english
+		 * @brief Function of multiplication with addition and overflow control
+		 * @param value reference to the accumulated value
+		 * @param base  base of the numeral system
+		 * @param digit added digit
+		 * @return      result of performing the operation
+		 *
+		 * \~
 		 */
 		AWH_ASCII_INLINE bool mulAddChecked(uint64_t & value, const uint64_t base, const uint64_t digit) noexcept {
 			/**
@@ -520,15 +714,27 @@ namespace awh {
 		}
 
 		/**
+		 * \~russian
 		 * @brief Шаблон типа символа исходной строки
 		 *
 		 * @tparam UC тип символа исходной строки
 		 *
+		 *
+		 * \~english
+		 * @brief Template of the character type of the source string
+		 * @tparam UC character type of the source string
+		 *
+		 * \~
 		 */
 		template <typename UC>
 		/**
+		 * \~russian
 		 * @brief Структура результата разбора числовой строки
 		 *
+		 * \~english
+		 * @brief Structure of the result of parsing a number string
+		 *
+		 * \~
 		 */
 		struct parsedNumber_t {
 			// Признак успешного разбора
@@ -550,8 +756,14 @@ namespace awh {
 			// Указатель на первый символ за разобранным числом
 			const UC * lastmatch;
 			/**
+			 * \~russian
 			 * @brief Конструктор
 			 *
+			 *
+			 * \~english
+			 * @brief Constructor
+			 *
+			 * \~
 			 */
 			parsedNumber_t() noexcept :
 			 valid(false),
@@ -564,19 +776,34 @@ namespace awh {
 		};
 
 		/**
+		 * \~russian
 		 * @brief Шаблон типа символа исходной строки
 		 *
 		 * @tparam UC тип символа исходной строки
 		 *
+		 *
+		 * \~english
+		 * @brief Template of the character type of the source string
+		 * @tparam UC character type of the source string
+		 *
+		 * \~
 		 */
 		template <typename UC>
 		/**
+		 * \~russian
 		 * @brief Функция формирования результата разбора с ошибкой
 		 *
 		 * @param p     позиция обнаружения ошибки
 		 * @param error код причины отказа при разборе
 		 * @return      результат разбора числовой строки
 		 *
+		 * \~english
+		 * @brief Function of building a parsing result with an error
+		 * @param p     position where the error was found
+		 * @param error failure reason code of the parsing
+		 * @return      result of parsing the number string
+		 *
+		 * \~
 		 */
 		AWH_ASCII_INLINE parsedNumber_t <UC> reportError(const UC * p, const error_t error) noexcept {
 			// Результат разбора числовой строки
@@ -592,14 +819,22 @@ namespace awh {
 		}
 
 		/**
+		 * \~russian
 		 * @brief Шаблон строгого режима разбора и типа символа исходной строки
 		 *
 		 * @tparam JSON включение строгих правил формата RFC 8259
 		 * @tparam UC   тип символа исходной строки
 		 *
+		 * \~english
+		 * @brief Template of the strict parsing mode and of the character type of the source string
+		 * @tparam JSON enabling of the strict rules of the RFC 8259 format
+		 * @tparam UC   character type of the source string
+		 *
+		 * \~
 		 */
 		template <bool JSON, typename UC>
 		/**
+		 * \~russian
 		 * @brief Функция разбора числовой строки числа с плавающей точкой
 		 *
 		 * @details Диапазон символов обязан быть непустым: проверка выполняется вызывающей стороной.
@@ -609,6 +844,15 @@ namespace awh {
 		 * @param options опции разбора числовой строки
 		 * @return        результат разбора числовой строки
 		 *
+		 * \~english
+		 * @brief Function of parsing the number string of a floating-point number
+		 * @details The range of characters must be non-empty: the check is performed by the calling side.
+		 * @param p       beginning of the parsed string
+		 * @param pend    end of the parsed string
+		 * @param options parsing options of the number string
+		 * @return        result of parsing the number string
+		 *
+		 * \~
 		 */
 		inline parsedNumber_t <UC> parseNumberString(const UC * p, const UC * const pend, const options_t <UC> options) noexcept {
 			// Символ десятичной точки
@@ -843,14 +1087,22 @@ namespace awh {
 		}
 
 		/**
+		 * \~russian
 		 * @brief Шаблон типа целого результата и типа символа исходной строки
 		 *
 		 * @tparam T  тип целого результата разбора
 		 * @tparam UC тип символа исходной строки
 		 *
+		 * \~english
+		 * @brief Template of the integer result type and of the character type of the source string
+		 * @tparam T  integer result type of the parsing
+		 * @tparam UC character type of the source string
+		 *
+		 * \~
 		 */
 		template <typename T, typename UC>
 		/**
+		 * \~russian
 		 * @brief Функция разбора числовой строки целого числа
 		 *
 		 * @details Диапазон символов обязан быть непустым,
@@ -862,6 +1114,17 @@ namespace awh {
 		 * @param options опции разбора числовой строки
 		 * @return        результат разбора числовой строки
 		 *
+		 * \~english
+		 * @brief Function of parsing the number string of an integer
+		 * @details The range of characters must be non-empty,
+		 *          and the base of the numeral system checked: the checks are performed by the calling side.
+		 * @param p       beginning of the parsed string
+		 * @param pend    end of the parsed string
+		 * @param value   reference to the result of the parsing
+		 * @param options parsing options of the number string
+		 * @return        result of parsing the number string
+		 *
+		 * \~
 		 */
 		inline result_t <UC> parseIntString(const UC * p, const UC * const pend, T & value, const options_t <UC> options) noexcept {
 			// Основание системы счисления

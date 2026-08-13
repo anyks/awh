@@ -9,6 +9,7 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * \~russian
  * @brief Заголовочный файл компиляции регулярных выражений — класс Compiler, преобразующий
  *        синтаксическое дерево в программу недетерминированного конечного автомата,
  *        пригодную для исполнения без возврата
@@ -41,6 +42,37 @@
  *          проходить ряд подходящих символов одним ходом взамен исполнения трёх
  *          инструкций на каждый символ, что измерением даёт ещё четверть.
  *
+ * \~english
+ * @brief Header file of the compilation of regular expressions — the Compiler class, which converts
+ *        a syntax tree into a program of a nondeterministic finite automaton
+ *        fit for execution without backtracking
+ * @section compiler_decisions Deliberate decisions
+ * @details What is listed below looks like an incongruity, but was chosen deliberately and
+ *          is not subject to correction. The section is introduced so that reading the code does not start
+ *          every time from the same conclusions.
+ *          <b>The check of the advance through the text is placed for every unbounded
+ *          repetition except the repetition of a single character.</b> The circle of bodies for which
+ *          the check is omitted looks unduly narrow: many other bodies also admit
+ *          no empty match. However, an empty match of a body
+ *          holding constructs outside the regular subset is inferred unreliably,
+ *          and the absence of the check on an empty match leaves the repetition
+ *          without any termination at all. A single character, a character class, any character
+ *          and a single encoding unit advance through the text with any composition
+ *          of the expression, and that is what limits the circle. The extension of the circle is fixed by the test
+ *          «Regex.EngineProgress»: including groups in it leaves the expressions of the test
+ *          without correct boundaries. Removing the check from the repetition of a single character
+ *          gives by measurement an advantage of up to one and a half times, since it relieves
+ *          every turn of the repetition of saving the position and checking it.
+ *          <b>Repetitions of a single character are marked by a separate set.</b>
+ *          The mark looks like a duplication of information already held in the program,
+ *          but recognising the arrangement of a repetition at execution time would cost
+ *          several checks per every turn, whereas it is performed
+ *          once at compilation. The mark allows backtracking execution
+ *          to walk a run of matching characters in one move instead of executing three
+ *          instructions per every character, which by measurement gives another quarter.
+ *
+ * \~
+ *
  * @copyright: Copyright © 2026
  *
  */
@@ -67,8 +99,14 @@
 #include "program.hpp"
 
 /**
+ * \~russian
  * @brief Основное пространство имён
  *
+ *
+ * \~english
+ * @brief Main namespace
+ *
+ * \~
  */
 namespace awh {
 	/**
@@ -77,11 +115,17 @@ namespace awh {
 	using namespace std;
 
 	/**
+	 * \~russian
 	 * @brief Пространство имён модуля регулярных выражений
 	 *
+	 * \~english
+	 * @brief Namespace of the regular expression module
+	 *
+	 * \~
 	 */
 	namespace regex {
 		/**
+		 * \~russian
 		 * @brief Класс компиляции регулярного выражения
 		 *
 		 * @details Класс преобразует синтаксическое дерево в программу
@@ -92,6 +136,17 @@ namespace awh {
 		 *          и захватывающие кванторы, регулярному подмножеству не принадлежат
 		 *          и требуют исполнения с возвратом.
 		 *
+		 * \~english
+		 * @brief Class of the compilation of a regular expression
+		 * @details The class converts a syntax tree into a program of a
+		 *          nondeterministic finite automaton. Subject to compilation are
+		 *          the expressions belonging to the regular subset of the PCRE syntax.
+		 *          Expressions holding references to captured groups, recursive
+		 *          calls, conditional expressions, lookarounds, atomic groups
+		 *          and possessive quantifiers do not belong to the regular subset
+		 *          and require execution with backtracking.
+		 *
+		 * \~
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Compiler {
 			private:
@@ -105,12 +160,20 @@ namespace awh {
 				bool _reverse;
 			private:
 				/**
+				 * \~russian
 				 * Флаг компиляции выражения целиком
 				 *
 				 * @details Компиляция выражения целиком размещает инструкции конструкций,
 				 *          не принадлежащих регулярному подмножеству синтаксиса, исполнение
 				 *          которых доступно только способу исполнения с возвратом.
 				 *
+				 * \~english
+				 * Flag of compiling the expression as a whole
+				 * @details Compiling the expression as a whole places the instructions of the constructs
+				 *          that do not belong to the regular subset of the syntax, whose execution
+				 *          is available only to the way of execution with backtracking.
+				 *
+				 * \~
 				 */
 				bool _full;
 			private:
@@ -133,6 +196,7 @@ namespace awh {
 				error_t _error;
 			public:
 				/**
+				 * \~russian
 				 * @brief Метод компиляции регулярного выражения
 				 *
 				 * @details Компиляция выполняется по синтаксическому дереву, полученному
@@ -144,9 +208,21 @@ namespace awh {
 				 * @param program компилируемая программа регулярного выражения
 				 * @return        результат выполнения компиляции
 				 *
+				 * \~english
+				 * @brief Method of compiling a regular expression
+				 * @details The compilation is performed over the syntax tree obtained by
+				 *          the parsing object. A compilation failure with the «UNSUPPORTED» error code
+				 *          means that the expression belongs to the non-regular subset
+				 *          and requires execution of the expression with backtracking.
+				 * @param parser  parsing object of the regular expression
+				 * @param program program of the regular expression being compiled
+				 * @return        result of performing the compilation
+				 *
+				 * \~
 				 */
 				bool compile(const Parser & parser, program_t & program) noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод компиляции развёрнутого регулярного выражения
 				 *
 				 * @details Развёрнутая программа сопоставляет выражение при проходе по тексту
@@ -158,9 +234,21 @@ namespace awh {
 				 * @param program компилируемая программа регулярного выражения
 				 * @return        результат выполнения компиляции
 				 *
+				 * \~english
+				 * @brief Method of compiling a reversed regular expression
+				 * @details A reversed program matches the expression while walking the text
+				 *          backwards: the sequences of elements and of characters
+				 *          are placed in reverse order. The program is intended for searching for
+				 *          the position where a match begins and performs no capture of groups.
+				 * @param parser  parsing object of the regular expression
+				 * @param program program of the regular expression being compiled
+				 * @return        result of performing the compilation
+				 *
+				 * \~
 				 */
 				bool compileReverse(const Parser & parser, program_t & program) noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод компиляции регулярного выражения целиком
 				 *
 				 * @details Компиляция размещает инструкции всех конструкций синтаксиса,
@@ -171,42 +259,80 @@ namespace awh {
 				 * @param program компилируемая программа регулярного выражения
 				 * @return        результат выполнения компиляции
 				 *
+				 * \~english
+				 * @brief Method of compiling a regular expression as a whole
+				 * @details The compilation places the instructions of all the syntax constructs,
+				 *          including those not belonging to the regular subset. The resulting
+				 *          program is executed exclusively by the way with backtracking.
+				 * @param parser  parsing object of the regular expression
+				 * @param program program of the regular expression being compiled
+				 * @return        result of performing the compilation
+				 *
+				 * \~
 				 */
 				bool compileFull(const Parser & parser, program_t & program) noexcept;
 			public:
 				/**
+				 * \~russian
 				 * @brief Метод извлечения кода ошибки компиляции
 				 *
 				 * @return код ошибки последней операции компиляции
 				 *
+				 * \~english
+				 * @brief Method of getting the compilation error code
+				 * @return error code of the last compilation operation
+				 *
+				 * \~
 				 */
 				error_t error() const noexcept;
 			private:
 				/**
+				 * \~russian
 				 * @brief Метод компиляции цепочки узлов синтаксического дерева
 				 *
 				 * @param id индекс первого узла цепочки в арене узлов
 				 * @return   результат выполнения компиляции
 				 *
+				 * \~english
+				 * @brief Method of compiling a chain of nodes of the syntax tree
+				 * @param id index of the first node of the chain in the node arena
+				 * @return   result of performing the compilation
+				 *
+				 * \~
 				 */
 				bool compileChain(const node_id_t id) noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод компиляции узла синтаксического дерева
 				 *
 				 * @param id индекс узла в арене узлов
 				 * @return   результат выполнения компиляции
 				 *
+				 * \~english
+				 * @brief Method of compiling a node of the syntax tree
+				 * @param id index of the node in the node arena
+				 * @return   result of performing the compilation
+				 *
+				 * \~
 				 */
 				bool compileNode(const node_id_t id) noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод компиляции узла повторения
 				 *
 				 * @param id индекс узла повторения в арене узлов
 				 * @return   результат выполнения компиляции
 				 *
+				 * \~english
+				 * @brief Method of compiling a repetition node
+				 * @param id index of the repetition node in the node arena
+				 * @return   result of performing the compilation
+				 *
+				 * \~
 				 */
 				bool compileRepeat(const node_id_t id) noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод компиляции повторения элемента выражения
 				 *
 				 * @details Метод размещает инструкции повторения без учёта запрета
@@ -216,34 +342,66 @@ namespace awh {
 				 * @param id индекс узла повторения в арене узлов
 				 * @return   результат выполнения компиляции
 				 *
+				 * \~english
+				 * @brief Method of compiling a repetition of an expression element
+				 * @details The method places the instructions of the repetition without taking into account the prohibition
+				 *          of backtracking into the repeated element, which is placed by
+				 *          the method of compiling a repetition node.
+				 * @param id index of the repetition node in the node arena
+				 * @return   result of performing the compilation
+				 *
+				 * \~
 				 */
 				bool compileIteration(const node_id_t id) noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод компиляции узла выбора одной из ветвей
 				 *
 				 * @param id индекс узла выбора одной из ветвей в арене узлов
 				 * @return   результат выполнения компиляции
 				 *
+				 * \~english
+				 * @brief Method of compiling a node choosing one of the branches
+				 * @param id index of the node choosing one of the branches in the node arena
+				 * @return   result of performing the compilation
+				 *
+				 * \~
 				 */
 				bool compileAlternate(const node_id_t id) noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод компиляции узла проверки окружения
 				 *
 				 * @param id      индекс узла проверки окружения в арене узлов
 				 * @param address адрес размещённой инструкции проверки окружения
 				 * @return        результат выполнения компиляции
 				 *
+				 * \~english
+				 * @brief Method of compiling a lookaround node
+				 * @param id      index of the lookaround node in the node arena
+				 * @param address address of the placed lookaround instruction
+				 * @return        result of performing the compilation
+				 *
+				 * \~
 				 */
 				bool compileLook(const node_id_t id, address_t & address) noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод компиляции узла условного выражения
 				 *
 				 * @param id индекс узла условного выражения в арене узлов
 				 * @return   результат выполнения компиляции
 				 *
+				 * \~english
+				 * @brief Method of compiling a conditional expression node
+				 * @param id index of the conditional expression node in the node arena
+				 * @return   result of performing the compilation
+				 *
+				 * \~
 				 */
 				bool compileCondition(const node_id_t id) noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод компиляции тел рекурсивно вызываемых подвыражений
 				 *
 				 * @details Тела размещаются за основной программой отдельными разделами,
@@ -252,25 +410,46 @@ namespace awh {
 				 *
 				 * @return результат выполнения компиляции
 				 *
+				 * \~english
+				 * @brief Method of compiling the bodies of the recursively called subexpressions
+				 * @details The bodies are placed after the main program as separate sections
+				 *          terminated by a return instruction, after which the addresses of the sections
+				 *          are set in the recursive call instructions.
+				 * @return result of performing the compilation
+				 *
+				 * \~
 				 */
 				bool compileSections() noexcept;
 			private:
 				/**
+				 * \~russian
 				 * @brief Метод сбора узлов захватывающих групп выражения
 				 *
 				 * @param id индекс узла, с которого начинается сбор
 				 *
+				 * \~english
+				 * @brief Method of collecting the nodes of the capturing groups of the expression
+				 * @param id index of the node the collection starts from
+				 *
+				 * \~
 				 */
 				void collect(const node_id_t id) noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод размещения ячейки состояния исполнения
 				 *
 				 * @return номер ячейки состояния в наборе позиций захвата групп
 				 *
+				 * \~english
+				 * @brief Method of allocating an execution state cell
+				 * @return number of the state cell in the set of the group capture positions
+				 *
+				 * \~
 				 */
 				uint32_t reserve() noexcept;
 			private:
 				/**
+				 * \~russian
 				 * @brief Метод формирования предварительного отбора позиций
 				 *
 				 * @details Метод определяет набор байтов, допустимых в начале совпадения,
@@ -278,9 +457,18 @@ namespace awh {
 				 *          если выражение допускает совпадение нулевой длины, поскольку
 				 *          такое совпадение возможно в любой позиции текста.
 				 *
+				 * \~english
+				 * @brief Method of building the preliminary selection of positions
+				 * @details The method determines the set of bytes admissible at the beginning of a match
+				 *          and the mandatory literal of a match. The set of bytes is not applied
+				 *          if the expression admits a match of zero length, since
+				 *          such a match is possible at any position of the text.
+				 *
+				 * \~
 				 */
 				void analyze() noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод пометки повторений одиночного символа
 				 *
 				 * @details Метод помечает переходы по двум ветвям, ветвь повторения которых
@@ -288,9 +476,18 @@ namespace awh {
 				 *          повторения, адресом тела повторения, благодаря чему исполнение
 				 *          проходит ряд подходящих символов одним ходом.
 				 *
+				 * \~english
+				 * @brief Method of marking the repetitions of a single character
+				 * @details The method marks the two-branch jumps whose repetition branch
+				 *          consists of matching a single character and a jump to the beginning of
+				 *          the repetition, with the address of the body of the repetition, thanks to which execution
+				 *          walks a run of matching characters in one move.
+				 *
+				 * \~
 				 */
 				void mark() noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод подсчёта повторений любого символа и проверки их вложенности
 				 *
 				 * @param id     индекс проверяемого узла в арене узлов
@@ -298,18 +495,35 @@ namespace awh {
 				 * @param nested флаг обнаружения повторения в пределах повторения
 				 * @return       количество неограниченных повторений любого символа
 				 *
+				 * \~english
+				 * @brief Method of counting the repetitions of any character and checking their nesting
+				 * @param id     index of the checked node in the node arena
+				 * @param inside flag of the node being within a repetition
+				 * @param nested flag of a repetition being found within a repetition
+				 * @return       number of unbounded repetitions of any character
+				 *
+				 * \~
 				 */
 				size_t sweeps(const node_id_t id, const bool inside, bool & nested) const noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод распознавания выражения, проходящего текст единственной попыткой
 				 *
 				 * @details Признак устанавливается выражению, начинающемуся неограниченным
 				 *          жадным повторением любого символа, при отсутствии вложенных
 				 *          повторений и единственности повторения любого символа.
 				 *
+				 * \~english
+				 * @brief Method of recognising an expression walking the text in a single attempt
+				 * @details The indication is set for an expression beginning with an unbounded
+				 *          greedy repetition of any character, in the absence of nested
+				 *          repetitions and when the repetition of any character is a single one.
+				 *
+				 * \~
 				 */
 				void sweeping() noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод проверки начала сопоставления привязкой к позиции начала поиска
 				 *
 				 * @details Метод подтверждает привязку лишь тогда, когда сопоставление
@@ -321,18 +535,38 @@ namespace awh {
 				 * @param chain флаг обхода цепочки узлов одного уровня вложенности
 				 * @return      результат проверки начала сопоставления привязкой
 				 *
+				 * \~english
+				 * @brief Method of checking that matching begins with an anchor to the position where the search starts
+				 * @details The method confirms the anchor only when matching
+				 *          begins with it on all paths of the expression. Zero-length anchors
+				 *          that do not limit the positions of a match are walked through,
+				 *          and a reset of the beginning of a match stops the walk.
+				 * @param id    index of the checked node in the node arena
+				 * @param chain flag of walking a chain of nodes of the same nesting level
+				 * @return      result of checking that matching begins with an anchor
+				 *
+				 * \~
 				 */
 				bool anchoring(const node_id_t id, const bool chain) const noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод распознавания выражения, привязанного к позиции начала поиска
 				 *
 				 * @details Признак устанавливается выражению, начинающемуся привязкой
 				 *          к началу текста на всех путях, а также выражению, сопоставляемому
 				 *          в режиме «ANCHORED».
 				 *
+				 * \~english
+				 * @brief Method of recognising an expression anchored to the position where the search starts
+				 * @details The indication is set for an expression beginning with an anchor
+				 *          to the beginning of the text on all paths, as well as for an expression matched
+				 *          in the «ANCHORED» mode.
+				 *
+				 * \~
 				 */
 				void anchored() noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод проверки обязательного продвижения узла по тексту
 				 *
 				 * @details Метод подтверждает продвижение лишь для узлов, сопоставляющих
@@ -342,9 +576,19 @@ namespace awh {
 				 * @param id индекс проверяемого узла в арене узлов
 				 * @return   результат проверки обязательного продвижения узла по тексту
 				 *
+				 * \~english
+				 * @brief Method of checking the mandatory advance of a node through the text
+				 * @details The method confirms the advance only for the nodes matching
+				 *          one character each, and says nothing about the other nodes: their empty
+				 *          match is inferred unreliably.
+				 * @param id index of the checked node in the node arena
+				 * @return   result of checking the mandatory advance of the node through the text
+				 *
+				 * \~
 				 */
 				bool advancing(const node_id_t id) const noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод распознавания выражения, сопоставляемого литералом
 				 *
 				 * @details Выражение, состоящее из одной последовательности символов,
@@ -353,9 +597,19 @@ namespace awh {
 				 *          по набору инструкций и сохраняет искомую последовательность
 				 *          в программе.
 				 *
+				 * \~english
+				 * @brief Method of recognising an expression matched by a literal
+				 * @details An expression consisting of a single character sequence
+				 *          is matched by searching for that sequence in the text,
+				 *          bypassing the execution of the program. The method recognises such an expression
+				 *          by the set of instructions and keeps the sought sequence
+				 *          in the program.
+				 *
+				 * \~
 				 */
 				void condense() noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод извлечения ведущего литерала совпадения
 				 *
 				 * @details Ведущий литерал - последовательность символов, с которой
@@ -367,9 +621,21 @@ namespace awh {
 				 * @param id индекс первого узла цепочки в арене узлов
 				 * @return   ведущий литерал совпадения выражения
 				 *
+				 * \~english
+				 * @brief Method of getting the leading literal of a match
+				 * @details The leading literal is the character sequence every match
+				 *          of the expression begins with. Its presence allows
+				 *          locating the positions of a possible beginning of a match by searching for a
+				 *          sequence rather than by walking the text byte by byte.
+				 *          Anchors to a position have no length and are skipped.
+				 * @param id index of the first node of the chain in the node arena
+				 * @return   leading literal of a match of the expression
+				 *
+				 * \~
 				 */
 				string leading(const node_id_t id) const noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод дополнения набора допустимых начальных байтов
 				 *
 				 * @details Метод обходит инструкции программы, достижимые без сопоставления
@@ -380,25 +646,50 @@ namespace awh {
 				 * @param address адрес инструкции, с которой начинается обход
 				 * @return        результат применимости набора допустимых байтов
 				 *
+				 * \~english
+				 * @brief Method of extending the set of admissible starting bytes
+				 * @details The method walks the instructions of the program reachable without matching
+				 *          characters and extends the set with the bytes admissible at the beginning of
+				 *          a match. The checks of the anchors to a position in the text are considered
+				 *          satisfiable, thanks to which the set remains a superset.
+				 * @param address address of the instruction the walk starts from
+				 * @return        result of the applicability of the set of admissible bytes
+				 *
+				 * \~
 				 */
 				bool reachable(const address_t address) noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод извлечения обязательного литерала цепочки узлов
 				 *
 				 * @param id индекс первого узла цепочки в арене узлов
 				 * @return   обязательный литерал совпадения цепочки узлов
 				 *
+				 * \~english
+				 * @brief Method of getting the mandatory literal of a chain of nodes
+				 * @param id index of the first node of the chain in the node arena
+				 * @return   mandatory literal of a match of the chain of nodes
+				 *
+				 * \~
 				 */
 				string required(const node_id_t id) const noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод извлечения обязательного литерала узла
 				 *
 				 * @param id индекс узла в арене узлов
 				 * @return   обязательный литерал совпадения узла
 				 *
+				 * \~english
+				 * @brief Method of getting the mandatory literal of a node
+				 * @param id index of the node in the node arena
+				 * @return   mandatory literal of a match of the node
+				 *
+				 * \~
 				 */
 				string requiredNode(const node_id_t id) const noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод извлечения литерала, сопоставляемого узлом целиком
 				 *
 				 * @details Литерал извлекается для узлов одиночного символа и
@@ -408,43 +699,85 @@ namespace awh {
 				 * @param id индекс узла в арене узлов
 				 * @return   литерал, сопоставляемый узлом целиком
 				 *
+				 * \~english
+				 * @brief Method of getting the literal matched by a node as a whole
+				 * @details The literal is obtained for the nodes of a single character and of a
+				 *          character sequence that are not matched case-insensitively
+				 *          and are representable by the characters of the ASCII set.
+				 * @param id index of the node in the node arena
+				 * @return   literal matched by the node as a whole
+				 *
+				 * \~
 				 */
 				string literal(const node_id_t id) const noexcept;
 			private:
 				/**
+				 * \~russian
 				 * @brief Метод размещения инструкции программы
 				 *
 				 * @param type  код операции размещаемой инструкции
 				 * @param flags набор режимов компиляции инструкции
 				 * @return      адрес размещённой инструкции программы
 				 *
+				 * \~english
+				 * @brief Method of placing a program instruction
+				 * @param type  operation code of the placed instruction
+				 * @param flags set of compilation modes of the instruction
+				 * @return      address of the placed program instruction
+				 *
+				 * \~
 				 */
 				address_t emit(const opcode_t type, const uint32_t flags) noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод размещения класса символов в программе
 				 *
 				 * @param value класс символов для размещения в программе
 				 * @return      индекс класса символов в хранилище классов
 				 *
+				 * \~english
+				 * @brief Method of placing a character class in the program
+				 * @param value character class to place in the program
+				 * @return      index of the character class in the class storage
+				 *
+				 * \~
 				 */
 				uint32_t store(const class_t & value) noexcept;
 			private:
 				/**
+				 * \~russian
 				 * @brief Метод извлечения адреса следующей размещаемой инструкции
 				 *
 				 * @return адрес следующей размещаемой инструкции программы
 				 *
+				 * \~english
+				 * @brief Method of getting the address of the next instruction to place
+				 * @return address of the next program instruction to place
+				 *
+				 * \~
 				 */
 				address_t position() const noexcept;
 			public:
 				/**
+				 * \~russian
 				 * @brief Конструктор
 				 *
+				 *
+				 * \~english
+				 * @brief Constructor
+				 *
+				 * \~
 				 */
 				Compiler() noexcept;
 				/**
+				 * \~russian
 				 * @brief Деструктор
 				 *
+				 *
+				 * \~english
+				 * @brief Destructor
+				 *
+				 * \~
 				 */
 				~Compiler() noexcept {}
 		} compiler_t;

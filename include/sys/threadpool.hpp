@@ -9,8 +9,15 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * \~russian
  * @brief Заголовочный файл модуля пула потоков — класс Threadpool, распределяющий пользовательские задачи по
  *        фиксированному набору рабочих потоков с общей очередью и корректным завершением работы
+ *
+ * \~english
+ * @brief Header file of the thread pool module — the Threadpool class, which distributes the user tasks over
+ *        a fixed set of worker threads with a common queue and a correct completion of the work
+ *
+ * \~
  *
  * @copyright: Copyright © 2025
  *
@@ -39,8 +46,14 @@
 #include <condition_variable>
 
 /**
+ * \~russian
  * @brief Основное пространство имён
  *
+ *
+ * \~english
+ * @brief Main namespace
+ *
+ * \~
  */
 namespace awh {
 	/**
@@ -49,16 +62,27 @@ namespace awh {
 	using namespace std;
 
 	/**
+	 * \~russian
 	 * @brief Класс пула потоков
 	 *
+	 * \~english
+	 * @brief Thread pool class
+	 *
+	 * \~
 	 */
 	typedef class Threadpool {
 		private:
 			/**
+			 * \~russian
 			 * @brief Тип очереди задач
 			 *
 			 * @details Очередь задач хранит объекты типа std::function<void()>, представляющие задачи для выполнения в пуле потоков.
 			 *
+			 * \~english
+			 * @brief Type of the task queue
+			 * @details The task queue keeps objects of the std::function<void()> type, representing the tasks to be performed in the thread pool.
+			 *
+			 * \~
 			 */
 			typedef std::queue <function <void()>> task_t;
 		private:
@@ -82,10 +106,16 @@ namespace awh {
 			vector <std::thread> _workers;
 		private:
 			/**
+			 * \~russian
 			 * @brief Метод проверки завершения заморозки потока
 			 *
 			 * @return результат проверки
 			 *
+			 * \~english
+			 * @brief Method of checking the completion of the freezing of the thread
+			 * @return result of the check
+			 *
+			 * \~
 			 */
 			bool check() const noexcept {
 				/**
@@ -100,8 +130,13 @@ namespace awh {
 			}
 		private:
 			/**
+			 * \~russian
 			 * @brief Метод обработки очереди задач в одном потоке
 			 *
+			 * \~english
+			 * @brief Method of handling the task queue in one thread
+			 *
+			 * \~
 			 */
 			void work() noexcept {
 				/**
@@ -145,10 +180,16 @@ namespace awh {
 			}
 		public:
 			/**
+			 * \~russian
 			 * @brief Метод проверки на инициализацию тредпула
 			 *
 			 * @return результат проверки
 			 *
+			 * \~english
+			 * @brief Method of checking the initialisation of the thread pool
+			 * @return result of the check
+			 *
+			 * \~
 			 */
 			bool initialized() const noexcept {
 				// Возвращаем результат проверки
@@ -156,8 +197,13 @@ namespace awh {
 			}
 		public:
 			/**
+			 * \~russian
 			 * @brief Метод ожидания выполнения задач
 			 *
+			 * \~english
+			 * @brief Method of waiting for the tasks to be performed
+			 *
+			 * \~
 			 */
 			void wait() noexcept {
 				{
@@ -187,8 +233,13 @@ namespace awh {
 				std::queue <decltype(this->_tasks)::value_type> ().swap(this->_tasks);
 			}
 			/**
+			 * \~russian
 			 * @brief Метод завершения выполнения задач
 			 *
+			 * \~english
+			 * @brief Method of finishing the performance of the tasks
+			 *
+			 * \~
 			 */
 			void stop() noexcept {
 				{
@@ -218,8 +269,13 @@ namespace awh {
 				std::queue <decltype(this->_tasks)::value_type> ().swap(this->_tasks);
 			}
 			/**
+			 * \~russian
 			 * @brief Метод очистки списка потоков
 			 *
+			 * \~english
+			 * @brief Method of clearing the list of threads
+			 *
+			 * \~
 			 */
 			void clean() noexcept {
 				// Если в пуле остались рабочие потоки, выполняем их корректную остановку
@@ -231,10 +287,16 @@ namespace awh {
 					this->stop();
 			}
 			/**
+			 * \~russian
 			 * @brief Метод инициализации работы тредпула
 			 *
 			 * @param count количество потоков
 			 *
+			 * \~english
+			 * @brief Method of initialising the work of the thread pool
+			 * @param count number of threads
+			 *
+			 * \~
 			 */
 			void init(const uint16_t count = 0) noexcept {
 				// Если пул уже инициализирован, повторная инициализация не требуется
@@ -262,10 +324,16 @@ namespace awh {
 			}
 		public:
 			/**
+			 * \~russian
 			 * @brief Метод возврата количества сообщений в очереди задач на исполнение
 			 *
 			 * @return результат работы функции
 			 *
+			 * \~english
+			 * @brief Method of returning the number of messages in the queue of the tasks to be performed
+			 * @return result of the work of the function
+			 *
+			 * \~
 			 */
 			size_t getTaskQueueSize() const noexcept {
 				// Выполняем блокировку уникальным мютексом
@@ -275,10 +343,16 @@ namespace awh {
 			}
 		public:
 			/**
+			 * \~russian
 			 * @brief Конструктор
 			 *
 			 * @param count количество потоков
 			 *
+			 * \~english
+			 * @brief Constructor
+			 * @param count number of threads
+			 *
+			 * \~
 			 */
 			explicit Threadpool(const uint16_t count = 0) noexcept : _threads(0), _stop(false), _wait(false) {
 				// Ели количество потоков передано
@@ -293,8 +367,14 @@ namespace awh {
 					this->_threads = 1;
 			}
 			/**
+			 * \~russian
 			 * @brief Деструктор
 			 *
+			 *
+			 * \~english
+			 * @brief Destructor
+			 *
+			 * \~
 			 */
 			~Threadpool() noexcept {
 				// Выполняем ожидание завершения работы пула потоков
@@ -302,19 +382,33 @@ namespace awh {
 			}
 		public:
 			/**
+			 * \~russian
 			 * @brief Шаблон метода добавления задач в пул
 			 *
 			 * @tparam Func тип данных функции обратного вызова
 			 * @tparam Args аргумента функции обратного вызова
 			 *
+			 * \~english
+			 * @brief Template of the method of adding tasks to the pool
+			 * @tparam Func data type of the callback function
+			 * @tparam Args arguments of the callback function
+			 *
+			 * \~
 			 */
 			template <class Func, class ... Args>
 			/**
+			 * \~russian
 			 * @brief Метод добавления задач в пул
 			 *
 			 * @param func функция для обработки
 			 * @param args аргументы для передачи в функцию
 			 *
+			 * \~english
+			 * @brief Method of adding tasks to the pool
+			 * @param func function for the handling
+			 * @param args arguments to pass to the function
+			 *
+			 * \~
 			 */
 			auto push(Func && func, Args && ... args) noexcept -> std::future <typename std::invoke_result <Func, Args...>::type> {
 				// Устанавливаем тип возвращаемого значения

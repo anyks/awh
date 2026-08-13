@@ -9,9 +9,17 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * \~russian
  * @brief Заголовочный файл предварительного отбора позиций сопоставления — набор байтов,
  *        допустимых в начале совпадения, и обязательный литерал совпадения, позволяющие
  *        пропускать участки текста без запуска конечного автомата
+ *
+ * \~english
+ * @brief Header file of the preliminary selection of matching positions — the set of bytes
+ *        admissible at the beginning of a match and the mandatory literal of a match, which allow
+ *        skipping stretches of the text without starting the finite automaton
+ *
+ * \~
  *
  * @copyright: Copyright © 2026
  *
@@ -36,8 +44,14 @@
 #include "../sys/global.hpp"
 
 /**
+ * \~russian
  * @brief Основное пространство имён
  *
+ *
+ * \~english
+ * @brief Main namespace
+ *
+ * \~
  */
 namespace awh {
 	/**
@@ -46,11 +60,17 @@ namespace awh {
 	using namespace std;
 
 	/**
+	 * \~russian
 	 * @brief Пространство имён модуля регулярных выражений
 	 *
+	 * \~english
+	 * @brief Namespace of the regular expression module
+	 *
+	 * \~
 	 */
 	namespace regex {
 		/**
+		 * \~russian
 		 * @brief Предварительный отбор позиций сопоставления
 		 *
 		 * @details Отбор сокращает работу конечного автомата двумя способами. Набор
@@ -60,6 +80,16 @@ namespace awh {
 		 *          отсутствует. Оба способа дают надмножество возможных совпадений
 		 *          и на результат сопоставления не влияют.
 		 *
+		 * \~english
+		 * @brief Preliminary selection of matching positions
+		 * @details The selection reduces the work of the finite automaton in two ways. The set of
+		 *          admissible starting bytes allows skipping the positions at which
+		 *          a match cannot begin. The mandatory literal allows
+		 *          giving up matching entirely if the literal is absent
+		 *          from the text. Both ways yield a superset of the possible matches
+		 *          and do not affect the result of matching.
+		 *
+		 * \~
 		 */
 		typedef struct __AWH_SHARED_EXPORT__ Prefilter {
 			// Флаг применимости набора допустимых начальных байтов
@@ -71,6 +101,7 @@ namespace awh {
 			// Литерал, присутствующий в любом совпадении выражения
 			string literal;
 			/**
+			 * \~russian
 			 * Признак единственного допустимого начального байта
 			 *
 			 * @details Единственный допустимый байт отыскивается поиском байта
@@ -78,11 +109,20 @@ namespace awh {
 			 *          несколькими байтами сразу, тогда как набор допустимых
 			 *          байтов требует перебора текста побайтно.
 			 *
+			 * \~english
+			 * Indication of a single admissible starting byte
+			 * @details A single admissible byte is looked up by a byte search
+			 *          in the text performed by processor instructions over
+			 *          several bytes at once, whereas a set of admissible
+			 *          bytes requires walking the text byte by byte.
+			 *
+			 * \~
 			 */
 			bool unique;
 			// Единственный допустимый начальный байт совпадения
 			char letter;
 			/**
+			 * \~russian
 			 * Последовательность символов, с которой начинается любое совпадение
 			 *
 			 * @details Ведущий литерал отыскивает позиции возможного начала совпадения
@@ -90,14 +130,29 @@ namespace awh {
 			 *          байтов требует перебора текста побайтно. Поиск последовательности
 			 *          пропускает участки текста целиком и потому предпочтителен.
 			 *
+			 * \~english
+			 * The character sequence every match begins with
+			 * @details The leading literal locates the positions of a possible beginning of a match
+			 *          by searching for the sequence in the text, whereas the set of admissible
+			 *          bytes requires walking the text byte by byte. Searching for a sequence
+			 *          skips stretches of the text as a whole and is therefore preferable.
+			 *
+			 * \~
 			 */
 			string leading;
 			/**
+			 * \~russian
 			 * @brief Конструктор
 			 *
+			 *
+			 * \~english
+			 * @brief Constructor
+			 *
+			 * \~
 			 */
 			Prefilter() noexcept : active(false), utf(false), bytes{}, unique(false), letter(0) {}
 			/**
+			 * \~russian
 			 * @brief Метод завершения формирования отбора позиций
 			 *
 			 * @details Признак единственного допустимого байта определяется по
@@ -105,6 +160,14 @@ namespace awh {
 			 *          поскольку перебор набора на каждом сопоставлении обошёлся бы
 			 *          дороже самого отбора позиций.
 			 *
+			 * \~english
+			 * @brief Method of finishing the building of the position selection
+			 * @details The indication of a single admissible byte is determined from the
+			 *          set of admissible bytes once when compiling the expression,
+			 *          since walking the set on every match would cost
+			 *          more than the position selection itself.
+			 *
+			 * \~
 			 */
 			void finalize() noexcept {
 				// Количество допустимых начальных байтов совпадения
@@ -132,8 +195,13 @@ namespace awh {
 				this->unique = (count == 1);
 			}
 			/**
+			 * \~russian
 			 * @brief Метод очистки предварительного отбора позиций
 			 *
+			 * \~english
+			 * @brief Method of clearing the preliminary selection of positions
+			 *
+			 * \~
 			 */
 			void clear() noexcept {
 				// Выполняем сброс флага применимости набора байтов
@@ -156,6 +224,7 @@ namespace awh {
 					this->bytes[i] = false;
 			}
 			/**
+			 * \~russian
 			 * @brief Метод проверки возможности совпадения в оставшемся тексте
 			 *
 			 * @details Проверка выполняется по обязательному литералу совпадения.
@@ -165,6 +234,15 @@ namespace awh {
 			 * @param pos  позиция начала проверяемого участка текста
 			 * @return     результат проверки возможности совпадения
 			 *
+			 * \~english
+			 * @brief Method of checking the possibility of a match in the remaining text
+			 * @details The check is performed by the mandatory literal of a match.
+			 *          The absence of the literal means that a match is impossible.
+			 * @param text text to match
+			 * @param pos  position of the beginning of the checked stretch of the text
+			 * @return     result of checking the possibility of a match
+			 *
+			 * \~
 			 */
 			bool possible(string_view text, const size_t pos) const noexcept {
 				/**
@@ -177,6 +255,7 @@ namespace awh {
 				return (text.find(this->literal, pos) != string_view::npos);
 			}
 			/**
+			 * \~russian
 			 * @brief Метод поиска ближайшей позиции возможного начала совпадения
 			 *
 			 * @details Поиск выполняется по набору допустимых начальных байтов.
@@ -187,6 +266,16 @@ namespace awh {
 			 * @param pos  позиция начала поиска
 			 * @return     позиция возможного начала совпадения либо признак отсутствия
 			 *
+			 * \~english
+			 * @brief Method of searching for the nearest position of a possible beginning of a match
+			 * @details The search is performed by the set of admissible starting bytes.
+			 *          In the UTF-8 parsing mode the continuation bytes of a sequence
+			 *          are skipped, since a match begins at a character boundary.
+			 * @param text text to match
+			 * @param pos  position to start the search from
+			 * @return     position of a possible beginning of a match or the indication of its absence
+			 *
+			 * \~
 			 */
 			size_t search(string_view text, const size_t pos) const noexcept {
 				/**
@@ -198,11 +287,18 @@ namespace awh {
 				// Получаем размер текста сопоставления
 				const size_t size = text.size();
 				/**
+				 * \~russian
 				 * Если ведущий литерал совпадения определён
 				 *
 				 * @details Поиск последовательности пропускает участки текста целиком,
 				 *          тогда как перебор допустимых байтов проходит его побайтно.
 				 *
+				 * \~english
+				 * If the leading literal of a match is defined
+				 * @details Searching for a sequence skips stretches of the text as a whole,
+				 *          whereas walking the admissible bytes goes through it byte by byte.
+				 *
+				 * \~
 				 */
 				if(this->leading.size() > 1) {
 					// Выполняем поиск ведущего литерала совпадения в тексте
@@ -211,12 +307,20 @@ namespace awh {
 					return ((result == string_view::npos) ? size : result);
 				}
 				/**
+				 * \~russian
 				 * Если допустимый начальный байт единственный
 				 *
 				 * @details Поиск одиночного байта выполняется набором команд
 				 *          процессора над несколькими байтами сразу и проходит
 				 *          текст многократно быстрее перебора его побайтно.
 				 *
+				 * \~english
+				 * If the admissible starting byte is a single one
+				 * @details Searching for a single byte is performed by processor
+				 *          instructions over several bytes at once and goes through
+				 *          the text many times faster than walking it byte by byte.
+				 *
+				 * \~
 				 */
 				if(this->unique) {
 					// Выполняем поиск единственного допустимого байта в тексте

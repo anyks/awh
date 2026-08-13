@@ -5492,12 +5492,11 @@ namespace events {
 	 * @param sock дескриптор сокета
 	 * @param node узел в котором произошло событие
 	 * @param mode режим активации события (активировать или деактивировать)
-	 * @param rate режим ограничения скорости события
 	 * @param log  объект работы с логами
 	 * @return     результат выполнения обработки
 	 *
 	 */
-	static bool read(const net::socket_t sock, ::io::node_t * node, const event::mode_t mode, const event::rate_t rate, const log_t * log) noexcept {
+	static bool read(const net::socket_t sock, ::io::node_t * node, const event::mode_t mode, const log_t * log) noexcept {
 		// Результат работы функции
 		bool result = false;
 		// Если дескриптор сокета действительный
@@ -5506,69 +5505,41 @@ namespace events {
 			 * Выполняем перехват ошибок
 			 */
 			try {
-				/**
-				 * Определяем как быстро нужно выполнить событие
-				 */
-				switch(static_cast <uint8_t> (rate)){
-					// Если нужно выполнить событие мгновенно
-					case static_cast <uint8_t> (event::rate_t::INSTANT): {
-						// Создаём объект изменения подписки очереди оповещений
-						::events::change_t event;
+					// Создаём объект изменения подписки очереди оповещений
+					::events::change_t event;
+					/**
+					 * В зависимости от режима активации события выполняем соответствующие действия
+					 */
+					switch(static_cast <uint8_t> (mode)){
+						// Если передан режим активации события
+						case static_cast <uint8_t> (event::mode_t::ENABLED):
+							// Активируем событие готовности сокета к чтению
+							event = ::events::change_t(true, PORT_SOURCE_FD, POLLIN, sock, node);
+						break;
+						// Если передан режим деактивации события
+						case static_cast <uint8_t> (event::mode_t::DISABLED):
+							// Деактивируем событие готовности сокета к чтению
+							event = ::events::change_t(false, PORT_SOURCE_FD, POLLIN, sock, node);
+						break;
+					}
+					// Применяем изменение подписки
+					if(!(result = ::events::add(::move(event), log))){
 						/**
-						 * В зависимости от режима активации события выполняем соответствующие действия
+						 * Если включён режим отладки
 						 */
-						switch(static_cast <uint8_t> (mode)){
-							// Если передан режим активации события
-							case static_cast <uint8_t> (event::mode_t::ENABLED):
-								// Активируем событие готовности сокета к чтению
-								event = ::events::change_t(true, PORT_SOURCE_FD, POLLIN, sock, node);
-							break;
-							// Если передан режим деактивации события
-							case static_cast <uint8_t> (event::mode_t::DISABLED):
-								// Деактивируем событие готовности сокета к чтению
-								event = ::events::change_t(false, PORT_SOURCE_FD, POLLIN, sock, node);
-							break;
-						}
-						// Применяем изменение подписки
-						if(!(result = ::events::add(::move(event), log))){
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Записываем ошибку в лог
-								log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock, node->id), log_t::flag_t::WARNING, ::strerror(errno));
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Записываем ошибку в лог
-								log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-							#endif
-						}
-					} break;
-					// Если нужно выполнить отложенное событие
-					case static_cast <uint8_t> (event::rate_t::DEFERRED): {
-						// Создаём объект изменения подписки очереди оповещений
-						::events::change_t event;
+						#if DEBUG_MODE
+							// Записываем ошибку в лог
+							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock, node->id), log_t::flag_t::WARNING, ::strerror(errno));
 						/**
-						 * В зависимости от режима активации события выполняем соответствующие действия
+						 * Если режим отладки не включён
 						 */
-						switch(static_cast <uint8_t> (mode)){
-							// Если передан режим активации события
-							case static_cast <uint8_t> (event::mode_t::ENABLED): {
-								// Активируем событие готовности сокета к чтению
-								event = ::events::change_t(true, PORT_SOURCE_FD, POLLIN, sock, node);
-							} break;
-							// Если передан режим деактивации события
-							case static_cast <uint8_t> (event::mode_t::DISABLED):
-								// Деактивируем событие готовности сокета к чтению
-								event = ::events::change_t(false, PORT_SOURCE_FD, POLLIN, sock, node);
-							break;
-						}
-						// Добавляем новое событие в список изменений
-						::events::add(::move(event), log);
-					} break;
-				}
+						#else
+							// Записываем ошибку в лог
+							log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+						#endif
+					}
+				
+
 			/**
 			 * Если возникает ошибка
 			 */
@@ -5597,12 +5568,11 @@ namespace events {
 	 * @param sock дескриптор сокета
 	 * @param node узел в котором произошло событие
 	 * @param mode режим активации события (активировать или деактивировать)
-	 * @param rate режим ограничения скорости события
 	 * @param log  объект работы с логами
 	 * @return     результат выполнения обработки
 	 *
 	 */
-	static bool write(const net::socket_t sock, ::io::node_t * node, const event::mode_t mode, const event::rate_t rate, const log_t * log) noexcept {
+	static bool write(const net::socket_t sock, ::io::node_t * node, const event::mode_t mode, const log_t * log) noexcept {
 		// Результат работы функции
 		bool result = false;
 		// Если дескриптор сокета действительный
@@ -5611,69 +5581,41 @@ namespace events {
 			 * Выполняем перехват ошибок
 			 */
 			try {
-				/**
-				 * Определяем как быстро нужно выполнить событие
-				 */
-				switch(static_cast <uint8_t> (rate)){
-					// Если нужно выполнить событие мгновенно
-					case static_cast <uint8_t> (event::rate_t::INSTANT): {
-						// Создаём объект изменения подписки очереди оповещений
-						::events::change_t event;
+					// Создаём объект изменения подписки очереди оповещений
+					::events::change_t event;
+					/**
+					 * В зависимости от режима активации события выполняем соответствующие действия
+					 */
+					switch(static_cast <uint8_t> (mode)){
+						// Если передан режим активации события
+						case static_cast <uint8_t> (event::mode_t::ENABLED):
+							// Активируем событие готовности сокета к записи
+							event = ::events::change_t(true, PORT_SOURCE_FD, POLLOUT, sock, node);
+						break;
+						// Если передан режим деактивации события
+						case static_cast <uint8_t> (event::mode_t::DISABLED):
+							// Деактивируем событие готовности сокета к записи
+							event = ::events::change_t(false, PORT_SOURCE_FD, POLLOUT, sock, nullptr);
+						break;
+					}
+					// Применяем изменение подписки
+					if(!(result = ::events::add(::move(event), log))){
 						/**
-						 * В зависимости от режима активации события выполняем соответствующие действия
+						 * Если включён режим отладки
 						 */
-						switch(static_cast <uint8_t> (mode)){
-							// Если передан режим активации события
-							case static_cast <uint8_t> (event::mode_t::ENABLED):
-								// Активируем событие готовности сокета к записи
-								event = ::events::change_t(true, PORT_SOURCE_FD, POLLOUT, sock, node);
-							break;
-							// Если передан режим деактивации события
-							case static_cast <uint8_t> (event::mode_t::DISABLED):
-								// Деактивируем событие готовности сокета к записи
-								event = ::events::change_t(false, PORT_SOURCE_FD, POLLOUT, sock, nullptr);
-							break;
-						}
-						// Применяем изменение подписки
-						if(!(result = ::events::add(::move(event), log))){
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Записываем ошибку в лог
-								log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock, node->id), log_t::flag_t::WARNING, ::strerror(errno));
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Записываем ошибку в лог
-								log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-							#endif
-						}
-					} break;
-					// Если нужно выполнить отложенное событие
-					case static_cast <uint8_t> (event::rate_t::DEFERRED): {
-						// Создаём объект изменения подписки очереди оповещений
-						::events::change_t event;
+						#if DEBUG_MODE
+							// Записываем ошибку в лог
+							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock, node->id), log_t::flag_t::WARNING, ::strerror(errno));
 						/**
-						 * В зависимости от режима активации события выполняем соответствующие действия
+						 * Если режим отладки не включён
 						 */
-						switch(static_cast <uint8_t> (mode)){
-							// Если передан режим активации события
-							case static_cast <uint8_t> (event::mode_t::ENABLED):
-								// Активируем событие готовности сокета к записи
-								event = ::events::change_t(true, PORT_SOURCE_FD, POLLOUT, sock, node);
-							break;
-							// Если передан режим деактивации события
-							case static_cast <uint8_t> (event::mode_t::DISABLED):
-								// Деактивируем событие готовности сокета к записи
-								event = ::events::change_t(false, PORT_SOURCE_FD, POLLOUT, sock, nullptr);
-							break;
-						}
-						// Добавляем новое событие в список изменений
-						::events::add(::move(event), log);
-					} break;
-				}
+						#else
+							// Записываем ошибку в лог
+							log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+						#endif
+					}
+				
+
 			/**
 			 * Если возникает ошибка
 			 */
@@ -6412,11 +6354,10 @@ namespace timer {
 		/**
 		 * @brief Функция для перезапуска таймера ядра операционной системы на основе ближайшего срока истечения таймера в приоритетной очереди
 		 *
-		 * @param rate режим ограничения скорости события для которого устанавливается таймер
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static void __reschedule_kernel_timer__(const event::rate_t rate, const log_t * log) noexcept {
+		static void __reschedule_kernel_timer__(const log_t * log) noexcept {
 			/**
 			 * Выполняем перехват ошибок
 			 */
@@ -6444,52 +6385,37 @@ namespace timer {
 				const uint64_t wait = ((deadline > now) ? (deadline - now) : 0);
 				// Запоминаем срок истечения, на который взводим таймер ядра операционной системы
 				__awh_armed__ = deadline;
-				/**
-				 * Определяем как быстро нужно выполнить событие
-				 */
-				switch(static_cast <uint8_t> (rate)){
-					// Если нужно выполнить событие мгновенно
-					case static_cast <uint8_t> (event::rate_t::INSTANT): {
-						// Создаём объект изменения подписки очереди оповещений
-						::events::change_t event;
-						/**
-						 * Снимаем отложенный взвод таймера, если он был поставлен в очередь
-						 *
-						 * @note Обращение к ядру мы делаем здесь и сами, а оставленное позади
-						 *       изменение применится позже и перезапишет взведённый срок своим,
-						 *       уже устаревшим. Ближний срок тогда не наступит вовсе
-						 */
-						::events::drop();
-						// Взводим таймер дедлайнов
-						if(!::ports::arm(wait, ::local::internal, log)){
-							// Если объект логирования доступен
-							if(log != nullptr){
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Записываем ошибку в лог
-									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (rate)), log_t::flag_t::WARNING, ::strerror(errno));
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Записываем ошибку в лог
-									log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-								#endif
-							}
+					// Создаём объект изменения подписки очереди оповещений
+					::events::change_t event;
+					/**
+					 * Снимаем отложенный взвод таймера, если он был поставлен в очередь
+					 *
+					 * @note Обращение к ядру мы делаем здесь и сами, а оставленное позади
+					 *       изменение применится позже и перезапишет взведённый срок своим,
+					 *       уже устаревшим. Ближний срок тогда не наступит вовсе
+					 */
+					::events::drop();
+					// Взводим таймер дедлайнов
+					if(!::ports::arm(wait, ::local::internal, log)){
+						// Если объект логирования доступен
+						if(log != nullptr){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Записываем ошибку в лог
+								log->debug("%s", __PRETTY_FUNCTION__, make_tuple(), log_t::flag_t::WARNING, ::strerror(errno));
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Записываем ошибку в лог
+								log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+							#endif
 						}
-					} break;
-					// Если нужно выполнить отложенное событие
-					case static_cast <uint8_t> (event::rate_t::DEFERRED): {
-						// Создаём объект изменения подписки очереди оповещений
-						::events::change_t event;
-						// Выполняем поиск узла в глобальном списке узлов событий
-						auto i = ::__awh_nodes__.find(__awh_heap__.begin()->eid);
-						// Взводим таймер дедлайнов
-						::ports::arm(wait, ((i != ::__awh_nodes__.end()) ? i->second.get() : ::local::internal), log);
-					} break;
-				}
+					}
+				
+
 			/**
 			 * Если возникает ошибка
 			 */
@@ -6501,7 +6427,7 @@ namespace timer {
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (rate)), log_t::flag_t::CRITICAL, error.what());
+						log->debug("%s", __PRETTY_FUNCTION__, make_tuple(), log_t::flag_t::CRITICAL, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -6531,11 +6457,10 @@ namespace timer {
 		 *          на каждую отправку, и невстраиваемый вызов ради проверки на пустоту
 		 *          обходился дороже всей отправки вне ядра.
 		 *
-		 * @param rate режим ограничения скорости события для которого взводится таймер
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static inline void __rearm__(const event::rate_t rate, const log_t * log) noexcept {
+		static inline void __rearm__(const log_t * log) noexcept {
 			// Если дедлайнов нет вовсе, взводить ядро не на что
 			if(__awh_heap__.empty()){
 				// Если очереди событий больше нет, снимаем запомненный срок истечения
@@ -6550,7 +6475,7 @@ namespace timer {
 				// Выходим из функции, так-как ближайший дедлайн не изменился
 				return;
 			// Перезапускаем таймер ядра операционной системы
-			__reschedule_kernel_timer__(rate, log);
+			__reschedule_kernel_timer__(log);
 		}
 
 		// ─────────────────────────────────────────────────────────────
@@ -6624,13 +6549,12 @@ namespace timer {
 		 *          уже есть: таймауты ставятся при настройке события, то есть до создания
 		 *          очереди, и взвестись тогда не могли.
 		 *
-		 * @param rate режим ограничения скорости события для которого взводится таймер
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static void rearm(const event::rate_t rate, const log_t * log) noexcept {
+		static void rearm(const log_t * log) noexcept {
 			// Взводим таймер ядра операционной системы на ближайший срок истечения
-			__rearm__(rate, log);
+			__rearm__(log);
 		}
 
 		/**
@@ -6662,7 +6586,7 @@ namespace timer {
 					 * не будет. Прежде тот же отсев делался здесь по признаку "снимается
 					 * корень очереди", и он пропускал случай, когда ядро не взведено вовсе
 					 */
-					__rearm__(event::rate_t::INSTANT, nullptr);
+					__rearm__(nullptr);
 				// Если таймер не найден в lookup, снимаем только локальный статус
 				} else tm.status = event::status_t::NONE;
 			}
@@ -6680,12 +6604,11 @@ namespace timer {
 		 *
 		 * @param tm   объект таймаута
 		 * @param eid  идентификатор события для которого перевзводится таймер
-		 * @param rate режим ограничения скорости события
 		 * @param log  объект работы с логами
 		 * @return     результат выполнения перевзведения
 		 *
 		 */
-		static bool reschedule(::io::timeout_t & tm, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
+		static bool reschedule(::io::timeout_t & tm, const event::id_t eid, const log_t * log) noexcept {
 			// Если таймаут ожидания не активирован либо задержка снята, перевзводить нечего
 			if((tm.status != event::status_t::PENDING) || (tm.delay == 0))
 				// Выводим отрицательный результат
@@ -6713,7 +6636,7 @@ namespace timer {
 			 * после перевзведения и вдобавок разыменовывала начало пустой очереди, если
 			 * перевзводился единственный таймер, а вставка не удалась
 			 */
-			__rearm__(rate, log);
+			__rearm__(log);
 			// Выводим положительный результат
 			return true;
 		}
@@ -6829,11 +6752,10 @@ namespace timer {
 		 * @param tm   объект таймера
 		 * @param eid  идентификатор события для которого устанавливается таймер
 		 * @param flag флаг активации таймера
-		 * @param rate режим ограничения скорости события
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static void __set__(::io::timeout_t & tm, const event::id_t eid, const flag_t flag, const event::rate_t rate, const log_t * log) noexcept {
+		static void __set__(::io::timeout_t & tm, const event::id_t eid, const flag_t flag, const log_t * log) noexcept {
 			/**
 			 * Выполняем перехват ошибок
 			 */
@@ -6918,7 +6840,7 @@ namespace timer {
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, static_cast <uint32_t> (tm.delay), static_cast <uint16_t> (flag), static_cast <uint16_t> (rate)), log_t::flag_t::CRITICAL, error.what());
+					log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, static_cast <uint32_t> (tm.delay), static_cast <uint16_t> (flag)), log_t::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -6943,17 +6865,16 @@ namespace timer {
 		 * @param tm   объект таймера
 		 * @param eid  идентификатор события для которого устанавливается таймер
 		 * @param flag флаг активации таймера
-		 * @param rate режим ограничения скорости события
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static inline void set(::io::timeout_t & tm, const event::id_t eid, const flag_t flag, const event::rate_t rate, const log_t * log) noexcept {
+		static inline void set(::io::timeout_t & tm, const event::id_t eid, const flag_t flag, const log_t * log) noexcept {
 			// Если простому таймеру задержка не задана, ставить нечего
 			if((flag == flag_t::SIMPLE) && (tm.delay == 0))
 				// Выходим из функции, так-как дедлайн не нужен
 				return;
 			// Выполняем постановку дедлайна
-			__set__(tm, eid, flag, rate, log);
+			__set__(tm, eid, flag, log);
 		}
 
 		/**
@@ -6961,13 +6882,12 @@ namespace timer {
 		 *
 		 * @param rec  объект записи параметров для установки таймера
 		 * @param eid  идентификатор события для которого устанавливается таймер
-		 * @param rate режим ограничения скорости события
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static void set(record_t rec, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
+		static void set(record_t rec, const event::id_t eid, const log_t * log) noexcept {
 			// Устанавливаем таймер на основе переданных параметров
-			set(rec.tm, eid, rec.flag, rate, log);
+			set(rec.tm, eid, rec.flag, log);
 			/**
 			 * Перезапускаем таймер ядра операционной системы на основе ближайшего срока
 			 * истечения таймера в приоритетной очереди. Вызов безусловный: решение о том,
@@ -6976,7 +6896,7 @@ namespace timer {
 			 * угадать это по тому, стал ли поставленный таймер ближайшим, и промахивалась
 			 * ровно тогда, когда ядро не было взведено вовсе
 			 */
-			__rearm__(rate, log);
+			__rearm__(log);
 		}
 
 		/**
@@ -6985,15 +6905,14 @@ namespace timer {
 		 * @param rec1 объект записи параметров для установки первого таймера
 		 * @param rec2 объект записи параметров для установки второго таймера
 		 * @param eid  идентификатор события для которого устанавливается таймер
-		 * @param rate режим ограничения скорости события
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static void set(record_t rec1, record_t rec2, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
+		static void set(record_t rec1, record_t rec2, const event::id_t eid, const log_t * log) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
-			set(rec1.tm, eid, rec1.flag, rate, log);
+			set(rec1.tm, eid, rec1.flag, log);
 			// Устанавливаем второй таймер на основе переданных параметров
-			set(rec2.tm, eid, rec2.flag, rate, log);
+			set(rec2.tm, eid, rec2.flag, log);
 			/**
 			 * Перезапускаем таймер ядра операционной системы на основе ближайшего срока
 			 * истечения таймера в приоритетной очереди. Вызов безусловный: решение о том,
@@ -7002,7 +6921,7 @@ namespace timer {
 			 * угадать это по тому, стал ли один из поставленных таймеров ближайшим, и
 			 * промахивалась ровно тогда, когда ядро не было взведено вовсе
 			 */
-			__rearm__(rate, log);
+			__rearm__(log);
 		}
 
 		/**
@@ -7012,17 +6931,16 @@ namespace timer {
 		 * @param rec2 объект записи параметров для установки второго таймера
 		 * @param rec3 объект записи параметров для установки третьего таймера
 		 * @param eid  идентификатор события для которого устанавливается таймер
-		 * @param rate режим ограничения скорости события
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static void set(record_t rec1, record_t rec2, record_t rec3, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
+		static void set(record_t rec1, record_t rec2, record_t rec3, const event::id_t eid, const log_t * log) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
-			set(rec1.tm, eid, rec1.flag, rate, log);
+			set(rec1.tm, eid, rec1.flag, log);
 			// Устанавливаем второй таймер на основе переданных параметров
-			set(rec2.tm, eid, rec2.flag, rate, log);
+			set(rec2.tm, eid, rec2.flag, log);
 			// Устанавливаем третий таймер на основе переданных параметров
-			set(rec3.tm, eid, rec3.flag, rate, log);
+			set(rec3.tm, eid, rec3.flag, log);
 			/**
 			 * Перезапускаем таймер ядра операционной системы на основе ближайшего срока
 			 * истечения таймера в приоритетной очереди. Вызов безусловный: решение о том,
@@ -7031,7 +6949,7 @@ namespace timer {
 			 * угадать это по тому, стал ли один из поставленных таймеров ближайшим, и
 			 * промахивалась ровно тогда, когда ядро не было взведено вовсе
 			 */
-			__rearm__(rate, log);
+			__rearm__(log);
 		}
 
 		/**
@@ -7042,19 +6960,18 @@ namespace timer {
 		 * @param rec3 объект записи параметров для установки третьего таймера
 		 * @param rec4 объект записи параметров для установки четвёртого таймера
 		 * @param eid  идентификатор события для которого устанавливается таймер
-		 * @param rate режим ограничения скорости события
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
+		static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, const event::id_t eid, const log_t * log) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
-			set(rec1.tm, eid, rec1.flag, rate, log);
+			set(rec1.tm, eid, rec1.flag, log);
 			// Устанавливаем второй таймер на основе переданных параметров
-			set(rec2.tm, eid, rec2.flag, rate, log);
+			set(rec2.tm, eid, rec2.flag, log);
 			// Устанавливаем третий таймер на основе переданных параметров
-			set(rec3.tm, eid, rec3.flag, rate, log);
+			set(rec3.tm, eid, rec3.flag, log);
 			// Устанавливаем четвёртый таймер на основе переданных параметров
-			set(rec4.tm, eid, rec4.flag, rate, log);
+			set(rec4.tm, eid, rec4.flag, log);
 			/**
 			 * Перезапускаем таймер ядра операционной системы на основе ближайшего срока
 			 * истечения таймера в приоритетной очереди. Вызов безусловный: решение о том,
@@ -7063,7 +6980,7 @@ namespace timer {
 			 * угадать это по тому, стал ли один из поставленных таймеров ближайшим, и
 			 * промахивалась ровно тогда, когда ядро не было взведено вовсе
 			 */
-			__rearm__(rate, log);
+			__rearm__(log);
 		}
 
 		/**
@@ -7075,21 +6992,20 @@ namespace timer {
 		 * @param rec4 объект записи параметров для установки четвёртого таймера
 		 * @param rec5 объект записи параметров для установки пятого таймера
 		 * @param eid  идентификатор события для которого устанавливается таймер
-		 * @param rate режим ограничения скорости события
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, record_t rec5, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
+		static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, record_t rec5, const event::id_t eid, const log_t * log) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
-			set(rec1.tm, eid, rec1.flag, rate, log);
+			set(rec1.tm, eid, rec1.flag, log);
 			// Устанавливаем второй таймер на основе переданных параметров
-			set(rec2.tm, eid, rec2.flag, rate, log);
+			set(rec2.tm, eid, rec2.flag, log);
 			// Устанавливаем третий таймер на основе переданных параметров
-			set(rec3.tm, eid, rec3.flag, rate, log);
+			set(rec3.tm, eid, rec3.flag, log);
 			// Устанавливаем четвёртый таймер на основе переданных параметров
-			set(rec4.tm, eid, rec4.flag, rate, log);
+			set(rec4.tm, eid, rec4.flag, log);
 			// Устанавливаем пятый таймер на основе переданных параметров
-			set(rec5.tm, eid, rec5.flag, rate, log);
+			set(rec5.tm, eid, rec5.flag, log);
 			/**
 			 * Перезапускаем таймер ядра операционной системы на основе ближайшего срока
 			 * истечения таймера в приоритетной очереди. Вызов безусловный: решение о том,
@@ -7098,7 +7014,7 @@ namespace timer {
 			 * угадать это по тому, стал ли один из поставленных таймеров ближайшим, и
 			 * промахивалась ровно тогда, когда ядро не было взведено вовсе
 			 */
-			__rearm__(rate, log);
+			__rearm__(log);
 		}
 
 		/**
@@ -7111,23 +7027,22 @@ namespace timer {
 		 * @param rec5 объект записи параметров для установки пятого таймера
 		 * @param rec6 объект записи параметров для установки шестого таймера
 		 * @param eid  идентификатор события для которого устанавливается таймер
-		 * @param rate режим ограничения скорости события
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, record_t rec5, record_t rec6, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
+		static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, record_t rec5, record_t rec6, const event::id_t eid, const log_t * log) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
-			set(rec1.tm, eid, rec1.flag, rate, log);
+			set(rec1.tm, eid, rec1.flag, log);
 			// Устанавливаем второй таймер на основе переданных параметров
-			set(rec2.tm, eid, rec2.flag, rate, log);
+			set(rec2.tm, eid, rec2.flag, log);
 			// Устанавливаем третий таймер на основе переданных параметров
-			set(rec3.tm, eid, rec3.flag, rate, log);
+			set(rec3.tm, eid, rec3.flag, log);
 			// Устанавливаем четвёртый таймер на основе переданных параметров
-			set(rec4.tm, eid, rec4.flag, rate, log);
+			set(rec4.tm, eid, rec4.flag, log);
 			// Устанавливаем пятый таймер на основе переданных параметров
-			set(rec5.tm, eid, rec5.flag, rate, log);
+			set(rec5.tm, eid, rec5.flag, log);
 			// Устанавливаем шестой таймер на основе переданных параметров
-			set(rec6.tm, eid, rec6.flag, rate, log);
+			set(rec6.tm, eid, rec6.flag, log);
 			/**
 			 * Перезапускаем таймер ядра операционной системы на основе ближайшего срока
 			 * истечения таймера в приоритетной очереди. Вызов безусловный: решение о том,
@@ -7136,13 +7051,12 @@ namespace timer {
 			 * угадать это по тому, стал ли один из поставленных таймеров ближайшим, и
 			 * промахивалась ровно тогда, когда ядро не было взведено вовсе
 			 */
-			__rearm__(rate, log);
+			__rearm__(log);
 		}
 
 		/**
 		 * @brief Функция проверки истечения таймера
 		 *
-		 * @param rate режим ограничения скорости события
 		 * @param io   объект работы с асинхронными событиями
 		 * @param eth  объект работы с сетевыми интерфейсами
 		 * @param addr объект работы с сетевыми адресами
@@ -7151,7 +7065,7 @@ namespace timer {
 		 * @return     результат выполнения обработки
 		 *
 		 */
-		static bool examination(const event::rate_t rate, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr, const fmk_t * fmk, const log_t * log) noexcept {
+		static bool examination(const engine::io_t * io, const eth_t * eth, const net_addr_t * addr, const fmk_t * fmk, const log_t * log) noexcept {
 			/**
 			 * Выполняем перехват ошибок
 			 */
@@ -7227,7 +7141,7 @@ namespace timer {
 										 */
 										else if(node->state.status == event::status_t::PENDING)
 											// Ставим таймер на следующий период
-											set(node->timeout, node->id, flag_t::FORCED, rate, log);
+											set(node->timeout, node->id, flag_t::FORCED, log);
 									}
 								}
 							} break;
@@ -7276,7 +7190,7 @@ namespace timer {
 											// Снимаем статус активности на чтение данных
 											peer->activity &= ~::activity::READ;
 											// Деактивируем событие на чтение данных из сокета
-											::events::read(peer->transfer.fd, peer, event::mode_t::DISABLED, event::rate_t::INSTANT, log);
+											::events::read(peer->transfer.fd, peer, event::mode_t::DISABLED, log);
 										}
 										// Обрабатываем событие готовности сокета на чтение
 										::io::read(peer, 0, io, eth, addr, fmk, log);
@@ -7292,7 +7206,7 @@ namespace timer {
 											// Снимаем статус активности на запись данных
 											peer->activity &= ~::activity::WRITE;
 											// Деактивируем событие на запись данных в сокет
-											::events::write(peer->transfer.fd, peer, event::mode_t::DISABLED, event::rate_t::INSTANT, log);
+											::events::write(peer->transfer.fd, peer, event::mode_t::DISABLED, log);
 										}
 										// Обрабатываем событие доступности сокета на запись
 										::io::write(peer, io, eth, fmk, log);
@@ -7359,7 +7273,7 @@ namespace timer {
 											// Снимаем статус активности на чтение данных
 											client->activity &= ~::activity::READ;
 											// Деактивируем событие на чтение данных из сокета
-											::events::read(client->transfer.fd, client, event::mode_t::DISABLED, event::rate_t::INSTANT, log);
+											::events::read(client->transfer.fd, client, event::mode_t::DISABLED, log);
 										}
 										// Обрабатываем событие готовности сокета на чтение
 										::io::read(client, 0, io, eth, addr, fmk, log);
@@ -7375,7 +7289,7 @@ namespace timer {
 											// Снимаем статус активности на запись данных
 											client->activity &= ~::activity::WRITE;
 											// Деактивируем событие на запись данных в сокет
-											::events::write(client->transfer.fd, client, event::mode_t::DISABLED, event::rate_t::INSTANT, log);
+											::events::write(client->transfer.fd, client, event::mode_t::DISABLED, log);
 										}
 										// Обрабатываем событие доступности сокета на запись
 										::io::write(client, io, eth, fmk, log);
@@ -7514,7 +7428,7 @@ namespace timer {
 															// Устанавливаем задержку таймаута на значение в 5 секунд
 															client->timeouts.reconnect.delay = 0x1388;
 														// Добавляем таймаут на ожидание переподключения к серверу
-														set({flag_t::SIMPLE, client->timeouts.reconnect}, client->id, event::rate_t::DEFERRED, log);
+														set({flag_t::SIMPLE, client->timeouts.reconnect}, client->id, log);
 													}
 												}
 											}
@@ -7537,7 +7451,7 @@ namespace timer {
 											// Снимаем статус активности на чтение данных
 											server->activity &= ~::activity::READ;
 											// Деактивируем событие на чтение данных из сокета
-											::events::read(server->fd, server, event::mode_t::DISABLED, event::rate_t::INSTANT, log);
+											::events::read(server->fd, server, event::mode_t::DISABLED, log);
 										}
 										// Обрабатываем событие готовности сокета на чтение
 										::io::read(server, 0, io, eth, addr, fmk, log);
@@ -7553,7 +7467,7 @@ namespace timer {
 						 * на основе ближайшего срока истечения таймера в приоритетной очереди,
 						 * так-как мы могли удалить ближайший таймер
 						 */
-						__reschedule_kernel_timer__(rate, log);
+						__reschedule_kernel_timer__(log);
 						// Сообщаем, что не все таймеры были обработаны и нужно вызвать функцию снова для обработки оставшихся таймеров
 						return true;
 					}
@@ -7563,7 +7477,7 @@ namespace timer {
 				 * на основе ближайшего срока истечения таймера в приоритетной очереди,
 				 * так-как мы могли удалить ближайший таймер
 				 */
-				__reschedule_kernel_timer__(rate, log);
+				__reschedule_kernel_timer__(log);
 			/**
 			 * Если возникает ошибка
 			 */
@@ -7573,7 +7487,7 @@ namespace timer {
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (rate)), log_t::flag_t::CRITICAL, error.what());
+					log->debug("%s", __PRETTY_FUNCTION__, make_tuple(), log_t::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -7946,11 +7860,10 @@ namespace timer {
 		/**
 		 * @brief Функция для перезапуска таймера ядра операционной системы на основе ближайшего срока истечения таймера в приоритетной очереди
 		 *
-		 * @param rate режим ограничения скорости события для которого устанавливается таймер
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static void __reschedule_kernel_timer__(const event::rate_t rate, const log_t * log) noexcept {
+		static void __reschedule_kernel_timer__(const log_t * log) noexcept {
 			/**
 			 * Выполняем перехват ошибок
 			 */
@@ -7978,52 +7891,37 @@ namespace timer {
 				const uint64_t wait = ((deadline > now) ? (deadline - now) : 0);
 				// Запоминаем срок истечения, на который взводим таймер ядра операционной системы
 				__awh_armed__ = deadline;
-				/**
-				 * Определяем как быстро нужно выполнить событие
-				 */
-				switch(static_cast <uint8_t> (rate)){
-					// Если нужно выполнить событие мгновенно
-					case static_cast <uint8_t> (event::rate_t::INSTANT): {
-						// Создаём объект изменения подписки очереди оповещений
-						::events::change_t event;
-						/**
-						 * Снимаем отложенный взвод таймера, если он был поставлен в очередь
-						 *
-						 * @note Обращение к ядру мы делаем здесь и сами, а оставленное позади
-						 *       изменение применится позже и перезапишет взведённый срок своим,
-						 *       уже устаревшим. Ближний срок тогда не наступит вовсе
-						 */
-						::events::drop();
-						// Взводим таймер дедлайнов
-						if(!::ports::arm(wait, ::local::internal, log)){
-							// Если объект логирования доступен
-							if(log != nullptr){
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Записываем ошибку в лог
-									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (rate)), log_t::flag_t::WARNING, ::strerror(errno));
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Записываем ошибку в лог
-									log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-								#endif
-							}
+					// Создаём объект изменения подписки очереди оповещений
+					::events::change_t event;
+					/**
+					 * Снимаем отложенный взвод таймера, если он был поставлен в очередь
+					 *
+					 * @note Обращение к ядру мы делаем здесь и сами, а оставленное позади
+					 *       изменение применится позже и перезапишет взведённый срок своим,
+					 *       уже устаревшим. Ближний срок тогда не наступит вовсе
+					 */
+					::events::drop();
+					// Взводим таймер дедлайнов
+					if(!::ports::arm(wait, ::local::internal, log)){
+						// Если объект логирования доступен
+						if(log != nullptr){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Записываем ошибку в лог
+								log->debug("%s", __PRETTY_FUNCTION__, make_tuple(), log_t::flag_t::WARNING, ::strerror(errno));
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Записываем ошибку в лог
+								log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+							#endif
 						}
-					} break;
-					// Если нужно выполнить отложенное событие
-					case static_cast <uint8_t> (event::rate_t::DEFERRED): {
-						// Создаём объект изменения подписки очереди оповещений
-						::events::change_t event;
-						// Выполняем поиск узла в глобальном списке узлов событий
-						auto i = ::__awh_nodes__.find(__awh_heap__[0].eid);
-						// Взводим таймер дедлайнов
-						::ports::arm(wait, ((i != ::__awh_nodes__.end()) ? i->second.get() : ::local::internal), log);
-					} break;
-				}
+					}
+				
+
 			/**
 			 * Если возникает ошибка
 			 */
@@ -8035,7 +7933,7 @@ namespace timer {
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (rate)), log_t::flag_t::CRITICAL, error.what());
+						log->debug("%s", __PRETTY_FUNCTION__, make_tuple(), log_t::flag_t::CRITICAL, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -8065,11 +7963,10 @@ namespace timer {
 		 *          на каждую отправку, и невстраиваемый вызов ради проверки на пустоту
 		 *          обходился дороже всей отправки вне ядра.
 		 *
-		 * @param rate режим ограничения скорости события для которого взводится таймер
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static inline void __rearm__(const event::rate_t rate, const log_t * log) noexcept {
+		static inline void __rearm__(const log_t * log) noexcept {
 			// Если дедлайнов нет вовсе, взводить ядро не на что
 			if(__awh_heap__.empty()){
 				// Если очереди событий больше нет, снимаем запомненный срок истечения
@@ -8084,7 +7981,7 @@ namespace timer {
 				// Выходим из функции, так-как ближайший дедлайн не изменился
 				return;
 			// Перезапускаем таймер ядра операционной системы
-			__reschedule_kernel_timer__(rate, log);
+			__reschedule_kernel_timer__(log);
 		}
 
 		// ─────────────────────────────────────────────────────────────
@@ -8160,13 +8057,12 @@ namespace timer {
 		 *          уже есть: таймауты ставятся при настройке события, то есть до создания
 		 *          очереди, и взвестись тогда не могли.
 		 *
-		 * @param rate режим ограничения скорости события для которого взводится таймер
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static void rearm(const event::rate_t rate, const log_t * log) noexcept {
+		static void rearm(const log_t * log) noexcept {
 			// Взводим таймер ядра операционной системы на ближайший срок истечения
-			__rearm__(rate, log);
+			__rearm__(log);
 		}
 
 		/**
@@ -8271,7 +8167,7 @@ namespace timer {
 				 * отсев делался здесь по признаку "снимается корень кучи", и он пропускал
 				 * случай, когда ядро не взведено вовсе
 				 */
-				__rearm__(event::rate_t::INSTANT, nullptr);
+				__rearm__(nullptr);
 			}
 		}
 
@@ -8288,12 +8184,11 @@ namespace timer {
 		 *
 		 * @param tm   объект таймаута
 		 * @param eid  идентификатор события для которого перевзводится таймер
-		 * @param rate режим ограничения скорости события
 		 * @param log  объект работы с логами
 		 * @return     результат выполнения перевзведения
 		 *
 		 */
-		static bool reschedule(::io::timeout_t & tm, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
+		static bool reschedule(::io::timeout_t & tm, const event::id_t eid, const log_t * log) noexcept {
 			// Если таймаут ожидания не активирован либо задержка снята, перевзводить нечего
 			if((tm.status != event::status_t::PENDING) || (tm.delay == 0))
 				// Выводим отрицательный результат
@@ -8338,7 +8233,7 @@ namespace timer {
 			 * ядро взведено сейчас. Прежняя проверка сравнивала ближайший дедлайн до и
 			 * после перевзведения и промахивалась там, где ядро не было взведено вовсе
 			 */
-			__rearm__(rate, log);
+			__rearm__(log);
 			// Выводим положительный результат
 			return true;
 		}
@@ -8454,11 +8349,10 @@ namespace timer {
 		 * @param tm   объект таймера
 		 * @param eid  идентификатор события для которого устанавливается таймер
 		 * @param flag флаг активации таймера
-		 * @param rate режим ограничения скорости события
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static void __set__(::io::timeout_t & tm, const event::id_t eid, const flag_t flag, const event::rate_t rate, const log_t * log) noexcept {
+		static void __set__(::io::timeout_t & tm, const event::id_t eid, const flag_t flag, const log_t * log) noexcept {
 			/**
 			 * Выполняем перехват ошибок
 			 */
@@ -8588,7 +8482,7 @@ namespace timer {
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, static_cast <uint32_t> (tm.delay), static_cast <uint16_t> (flag), static_cast <uint16_t> (rate)), log_t::flag_t::CRITICAL, error.what());
+					log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, static_cast <uint32_t> (tm.delay), static_cast <uint16_t> (flag)), log_t::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -8613,17 +8507,16 @@ namespace timer {
 		 * @param tm   объект таймера
 		 * @param eid  идентификатор события для которого устанавливается таймер
 		 * @param flag флаг активации таймера
-		 * @param rate режим ограничения скорости события
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static inline void set(::io::timeout_t & tm, const event::id_t eid, const flag_t flag, const event::rate_t rate, const log_t * log) noexcept {
+		static inline void set(::io::timeout_t & tm, const event::id_t eid, const flag_t flag, const log_t * log) noexcept {
 			// Если простому таймеру задержка не задана, ставить нечего
 			if((flag == flag_t::SIMPLE) && (tm.delay == 0))
 				// Выходим из функции, так-как дедлайн не нужен
 				return;
 			// Выполняем постановку дедлайна
-			__set__(tm, eid, flag, rate, log);
+			__set__(tm, eid, flag, log);
 		}
 
 		/**
@@ -8631,13 +8524,12 @@ namespace timer {
 		 *
 		 * @param rec  объект записи параметров для установки таймера
 		 * @param eid  идентификатор события для которого устанавливается таймер
-		 * @param rate режим ограничения скорости события
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static void set(record_t rec, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
+		static void set(record_t rec, const event::id_t eid, const log_t * log) noexcept {
 			// Устанавливаем таймер на основе переданных параметров
-			set(rec.tm, eid, rec.flag, rate, log);
+			set(rec.tm, eid, rec.flag, log);
 			/**
 			 * Перезапускаем таймер ядра операционной системы на основе ближайшего срока
 			 * истечения таймера в приоритетной очереди. Вызов безусловный: решение о том,
@@ -8646,7 +8538,7 @@ namespace timer {
 			 * угадать это по тому, стал ли поставленный таймер ближайшим, и промахивалась
 			 * ровно тогда, когда ядро не было взведено вовсе
 			 */
-			__rearm__(rate, log);
+			__rearm__(log);
 		}
 
 		/**
@@ -8655,15 +8547,14 @@ namespace timer {
 		 * @param rec1 объект записи параметров для установки первого таймера
 		 * @param rec2 объект записи параметров для установки второго таймера
 		 * @param eid  идентификатор события для которого устанавливается таймер
-		 * @param rate режим ограничения скорости события
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static void set(record_t rec1, record_t rec2, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
+		static void set(record_t rec1, record_t rec2, const event::id_t eid, const log_t * log) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
-			set(rec1.tm, eid, rec1.flag, rate, log);
+			set(rec1.tm, eid, rec1.flag, log);
 			// Устанавливаем второй таймер на основе переданных параметров
-			set(rec2.tm, eid, rec2.flag, rate, log);
+			set(rec2.tm, eid, rec2.flag, log);
 			/**
 			 * Перезапускаем таймер ядра операционной системы на основе ближайшего срока
 			 * истечения таймера в приоритетной очереди. Вызов безусловный: решение о том,
@@ -8672,7 +8563,7 @@ namespace timer {
 			 * угадать это по тому, стал ли один из поставленных таймеров ближайшим, и
 			 * промахивалась ровно тогда, когда ядро не было взведено вовсе
 			 */
-			__rearm__(rate, log);
+			__rearm__(log);
 		}
 
 		/**
@@ -8682,17 +8573,16 @@ namespace timer {
 		 * @param rec2 объект записи параметров для установки второго таймера
 		 * @param rec3 объект записи параметров для установки третьего таймера
 		 * @param eid  идентификатор события для которого устанавливается таймер
-		 * @param rate режим ограничения скорости события
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static void set(record_t rec1, record_t rec2, record_t rec3, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
+		static void set(record_t rec1, record_t rec2, record_t rec3, const event::id_t eid, const log_t * log) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
-			set(rec1.tm, eid, rec1.flag, rate, log);
+			set(rec1.tm, eid, rec1.flag, log);
 			// Устанавливаем второй таймер на основе переданных параметров
-			set(rec2.tm, eid, rec2.flag, rate, log);
+			set(rec2.tm, eid, rec2.flag, log);
 			// Устанавливаем третий таймер на основе переданных параметров
-			set(rec3.tm, eid, rec3.flag, rate, log);
+			set(rec3.tm, eid, rec3.flag, log);
 			/**
 			 * Перезапускаем таймер ядра операционной системы на основе ближайшего срока
 			 * истечения таймера в приоритетной очереди. Вызов безусловный: решение о том,
@@ -8701,7 +8591,7 @@ namespace timer {
 			 * угадать это по тому, стал ли один из поставленных таймеров ближайшим, и
 			 * промахивалась ровно тогда, когда ядро не было взведено вовсе
 			 */
-			__rearm__(rate, log);
+			__rearm__(log);
 		}
 
 		/**
@@ -8712,19 +8602,18 @@ namespace timer {
 		 * @param rec3 объект записи параметров для установки третьего таймера
 		 * @param rec4 объект записи параметров для установки четвёртого таймера
 		 * @param eid  идентификатор события для которого устанавливается таймер
-		 * @param rate режим ограничения скорости события
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
+		static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, const event::id_t eid, const log_t * log) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
-			set(rec1.tm, eid, rec1.flag, rate, log);
+			set(rec1.tm, eid, rec1.flag, log);
 			// Устанавливаем второй таймер на основе переданных параметров
-			set(rec2.tm, eid, rec2.flag, rate, log);
+			set(rec2.tm, eid, rec2.flag, log);
 			// Устанавливаем третий таймер на основе переданных параметров
-			set(rec3.tm, eid, rec3.flag, rate, log);
+			set(rec3.tm, eid, rec3.flag, log);
 			// Устанавливаем четвёртый таймер на основе переданных параметров
-			set(rec4.tm, eid, rec4.flag, rate, log);
+			set(rec4.tm, eid, rec4.flag, log);
 			/**
 			 * Перезапускаем таймер ядра операционной системы на основе ближайшего срока
 			 * истечения таймера в приоритетной очереди. Вызов безусловный: решение о том,
@@ -8733,7 +8622,7 @@ namespace timer {
 			 * угадать это по тому, стал ли один из поставленных таймеров ближайшим, и
 			 * промахивалась ровно тогда, когда ядро не было взведено вовсе
 			 */
-			__rearm__(rate, log);
+			__rearm__(log);
 		}
 
 		/**
@@ -8745,21 +8634,20 @@ namespace timer {
 		 * @param rec4 объект записи параметров для установки четвёртого таймера
 		 * @param rec5 объект записи параметров для установки пятого таймера
 		 * @param eid  идентификатор события для которого устанавливается таймер
-		 * @param rate режим ограничения скорости события
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, record_t rec5, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
+		static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, record_t rec5, const event::id_t eid, const log_t * log) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
-			set(rec1.tm, eid, rec1.flag, rate, log);
+			set(rec1.tm, eid, rec1.flag, log);
 			// Устанавливаем второй таймер на основе переданных параметров
-			set(rec2.tm, eid, rec2.flag, rate, log);
+			set(rec2.tm, eid, rec2.flag, log);
 			// Устанавливаем третий таймер на основе переданных параметров
-			set(rec3.tm, eid, rec3.flag, rate, log);
+			set(rec3.tm, eid, rec3.flag, log);
 			// Устанавливаем четвёртый таймер на основе переданных параметров
-			set(rec4.tm, eid, rec4.flag, rate, log);
+			set(rec4.tm, eid, rec4.flag, log);
 			// Устанавливаем пятый таймер на основе переданных параметров
-			set(rec5.tm, eid, rec5.flag, rate, log);
+			set(rec5.tm, eid, rec5.flag, log);
 			/**
 			 * Перезапускаем таймер ядра операционной системы на основе ближайшего срока
 			 * истечения таймера в приоритетной очереди. Вызов безусловный: решение о том,
@@ -8768,7 +8656,7 @@ namespace timer {
 			 * угадать это по тому, стал ли один из поставленных таймеров ближайшим, и
 			 * промахивалась ровно тогда, когда ядро не было взведено вовсе
 			 */
-			__rearm__(rate, log);
+			__rearm__(log);
 		}
 
 		/**
@@ -8781,23 +8669,22 @@ namespace timer {
 		 * @param rec5 объект записи параметров для установки пятого таймера
 		 * @param rec6 объект записи параметров для установки шестого таймера
 		 * @param eid  идентификатор события для которого устанавливается таймер
-		 * @param rate режим ограничения скорости события
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, record_t rec5, record_t rec6, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
+		static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, record_t rec5, record_t rec6, const event::id_t eid, const log_t * log) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
-			set(rec1.tm, eid, rec1.flag, rate, log);
+			set(rec1.tm, eid, rec1.flag, log);
 			// Устанавливаем второй таймер на основе переданных параметров
-			set(rec2.tm, eid, rec2.flag, rate, log);
+			set(rec2.tm, eid, rec2.flag, log);
 			// Устанавливаем третий таймер на основе переданных параметров
-			set(rec3.tm, eid, rec3.flag, rate, log);
+			set(rec3.tm, eid, rec3.flag, log);
 			// Устанавливаем четвёртый таймер на основе переданных параметров
-			set(rec4.tm, eid, rec4.flag, rate, log);
+			set(rec4.tm, eid, rec4.flag, log);
 			// Устанавливаем пятый таймер на основе переданных параметров
-			set(rec5.tm, eid, rec5.flag, rate, log);
+			set(rec5.tm, eid, rec5.flag, log);
 			// Устанавливаем шестой таймер на основе переданных параметров
-			set(rec6.tm, eid, rec6.flag, rate, log);
+			set(rec6.tm, eid, rec6.flag, log);
 			/**
 			 * Перезапускаем таймер ядра операционной системы на основе ближайшего срока
 			 * истечения таймера в приоритетной очереди. Вызов безусловный: решение о том,
@@ -8806,13 +8693,12 @@ namespace timer {
 			 * угадать это по тому, стал ли один из поставленных таймеров ближайшим, и
 			 * промахивалась ровно тогда, когда ядро не было взведено вовсе
 			 */
-			__rearm__(rate, log);
+			__rearm__(log);
 		}
 
 		/**
 		 * @brief Функция проверки истечения таймера
 		 *
-		 * @param rate режим ограничения скорости события
 		 * @param io   объект работы с асинхронными событиями
 		 * @param eth  объект работы с сетевыми интерфейсами
 		 * @param addr объект работы с сетевыми адресами
@@ -8821,7 +8707,7 @@ namespace timer {
 		 * @return     результат выполнения обработки
 		 *
 		 */
-		static bool examination(const event::rate_t rate, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr, const fmk_t * fmk, const log_t * log) noexcept {
+		static bool examination(const engine::io_t * io, const eth_t * eth, const net_addr_t * addr, const fmk_t * fmk, const log_t * log) noexcept {
 			/**
 			 * Выполняем перехват ошибок
 			 */
@@ -8928,7 +8814,7 @@ namespace timer {
 										 */
 										else if(node->state.status == event::status_t::PENDING)
 											// Ставим таймер на следующий период
-											set(node->timeout, node->id, flag_t::FORCED, rate, log);
+											set(node->timeout, node->id, flag_t::FORCED, log);
 									}
 								}
 							} break;
@@ -8977,7 +8863,7 @@ namespace timer {
 											// Снимаем статус активности на чтение данных
 											peer->activity &= ~::activity::READ;
 											// Деактивируем событие на чтение данных из сокета
-											::events::read(peer->transfer.fd, peer, event::mode_t::DISABLED, event::rate_t::INSTANT, log);
+											::events::read(peer->transfer.fd, peer, event::mode_t::DISABLED, log);
 										}
 										// Обрабатываем событие готовности сокета на чтение
 										::io::read(peer, 0, io, eth, addr, fmk, log);
@@ -8993,7 +8879,7 @@ namespace timer {
 											// Снимаем статус активности на запись данных
 											peer->activity &= ~::activity::WRITE;
 											// Деактивируем событие на запись данных в сокет
-											::events::write(peer->transfer.fd, peer, event::mode_t::DISABLED, event::rate_t::INSTANT, log);
+											::events::write(peer->transfer.fd, peer, event::mode_t::DISABLED, log);
 										}
 										// Обрабатываем событие доступности сокета на запись
 										::io::write(peer, io, eth, fmk, log);
@@ -9060,7 +8946,7 @@ namespace timer {
 											// Снимаем статус активности на чтение данных
 											client->activity &= ~::activity::READ;
 											// Деактивируем событие на чтение данных из сокета
-											::events::read(client->transfer.fd, client, event::mode_t::DISABLED, event::rate_t::INSTANT, log);
+											::events::read(client->transfer.fd, client, event::mode_t::DISABLED, log);
 										}
 										// Обрабатываем событие готовности сокета на чтение
 										::io::read(client, 0, io, eth, addr, fmk, log);
@@ -9076,7 +8962,7 @@ namespace timer {
 											// Снимаем статус активности на запись данных
 											client->activity &= ~::activity::WRITE;
 											// Деактивируем событие на запись данных в сокет
-											::events::write(client->transfer.fd, client, event::mode_t::DISABLED, event::rate_t::INSTANT, log);
+											::events::write(client->transfer.fd, client, event::mode_t::DISABLED, log);
 										}
 										// Обрабатываем событие доступности сокета на запись
 										::io::write(client, io, eth, fmk, log);
@@ -9215,7 +9101,7 @@ namespace timer {
 															// Устанавливаем задержку таймаута на значение в 5 секунд
 															client->timeouts.reconnect.delay = 0x1388;
 														// Добавляем таймаут на ожидание переподключения к серверу
-														set({flag_t::SIMPLE, client->timeouts.reconnect}, client->id, event::rate_t::DEFERRED, log);
+														set({flag_t::SIMPLE, client->timeouts.reconnect}, client->id, log);
 													}
 												}
 											}
@@ -9238,7 +9124,7 @@ namespace timer {
 											// Снимаем статус активности на чтение данных
 											server->activity &= ~::activity::READ;
 											// Деактивируем событие на чтение данных из сокета
-											::events::read(server->fd, server, event::mode_t::DISABLED, event::rate_t::INSTANT, log);
+											::events::read(server->fd, server, event::mode_t::DISABLED, log);
 										}
 										// Обрабатываем событие готовности сокета на чтение
 										::io::read(server, 0, io, eth, addr, fmk, log);
@@ -9254,7 +9140,7 @@ namespace timer {
 						 * на основе ближайшего срока истечения таймера в приоритетной очереди,
 						 * так-как мы могли удалить ближайший таймер
 						 */
-						__reschedule_kernel_timer__(rate, log);
+						__reschedule_kernel_timer__(log);
 						// Сообщаем, что не все таймеры были обработаны и нужно вызвать функцию снова для обработки оставшихся таймеров
 						return true;
 					}
@@ -9264,7 +9150,7 @@ namespace timer {
 				 * на основе ближайшего срока истечения таймера в приоритетной очереди,
 				 * так-как мы могли удалить ближайший таймер
 				 */
-				__reschedule_kernel_timer__(rate, log);
+				__reschedule_kernel_timer__(log);
 				// Освобождаем все пустые чанки и возвращаем их в пул для переиспользования
 				__release_empty_chunks__();
 			/**
@@ -9276,7 +9162,7 @@ namespace timer {
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (rate)), log_t::flag_t::CRITICAL, error.what());
+					log->debug("%s", __PRETTY_FUNCTION__, make_tuple(), log_t::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -10103,7 +9989,7 @@ namespace io {
 											// Отмечаем активность чтения данных
 											peer->activity |= ::activity::READ;
 											// Активируем событие на чтение данных из сокета
-											::events::read(peer->transfer.fd, peer, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+											::events::read(peer->transfer.fd, peer, event::mode_t::ENABLED, log);
 										}
 										// Выходим из цикла
 										break;
@@ -10210,7 +10096,7 @@ namespace io {
 												// Отмечаем активность чтения данных
 												peer->activity |= ::activity::READ;
 												// Активируем событие на чтение данных из сокета
-												::events::read(peer->transfer.fd, peer, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+												::events::read(peer->transfer.fd, peer, event::mode_t::ENABLED, log);
 											}
 										// Если таймаут на получение данных не активирован
 										} else {
@@ -10223,12 +10109,12 @@ namespace io {
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Обновляем таймаут на получение данных
-													::timer::simple::set({::timer::flag_t::FORCED, peer->bandwidthUse().read.timeout}, peer->id, event::rate_t::DEFERRED, log);
+													::timer::simple::set({::timer::flag_t::FORCED, peer->bandwidthUse().read.timeout}, peer->id, log);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Обновляем таймаут на получение данных
-													::timer::difficult::set({::timer::flag_t::FORCED, peer->bandwidthUse().read.timeout}, peer->id, event::rate_t::DEFERRED, log);
+													::timer::difficult::set({::timer::flag_t::FORCED, peer->bandwidthUse().read.timeout}, peer->id, log);
 												break;
 											}
 										}
@@ -10268,12 +10154,12 @@ namespace io {
 								// Если тип таймера для событий сетевого движка является простым
 								case static_cast <uint8_t> (event::timer_t::SIMPLE):
 									// Обновляем таймаут на получение данных
-									::timer::simple::set({::timer::flag_t::FORCED, peer->bandwidthUse().read.timeout}, peer->id, event::rate_t::DEFERRED, log);
+									::timer::simple::set({::timer::flag_t::FORCED, peer->bandwidthUse().read.timeout}, peer->id, log);
 								break;
 								// Если тип таймера для событий сетевого движка является сложным
 								case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 									// Обновляем таймаут на получение данных
-									::timer::difficult::set({::timer::flag_t::FORCED, peer->bandwidthUse().read.timeout}, peer->id, event::rate_t::DEFERRED, log);
+									::timer::difficult::set({::timer::flag_t::FORCED, peer->bandwidthUse().read.timeout}, peer->id, log);
 								break;
 							}
 						}
@@ -10452,7 +10338,7 @@ namespace io {
 											// Отмечаем активность чтения данных
 											peer->activity |= ::activity::READ;
 											// Активируем событие на чтение данных из сокета
-											::events::read(peer->transfer.fd, peer, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+											::events::read(peer->transfer.fd, peer, event::mode_t::ENABLED, log);
 										}
 										// Выходим из цикла
 										break;
@@ -10535,12 +10421,12 @@ namespace io {
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Обновляем таймаут на получение данных
-												::timer::simple::set({::timer::flag_t::FORCED, peer->bandwidthUse().read.timeout}, peer->id, event::rate_t::DEFERRED, log);
+												::timer::simple::set({::timer::flag_t::FORCED, peer->bandwidthUse().read.timeout}, peer->id, log);
 											break;
 											// Если тип таймера для событий сетевого движка является сложным
 											case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 												// Обновляем таймаут на получение данных
-												::timer::difficult::set({::timer::flag_t::FORCED, peer->bandwidthUse().read.timeout}, peer->id, event::rate_t::DEFERRED, log);
+												::timer::difficult::set({::timer::flag_t::FORCED, peer->bandwidthUse().read.timeout}, peer->id, log);
 											break;
 										}
 										// Выходим из цикла
@@ -10713,12 +10599,12 @@ namespace io {
 								// Если тип таймера для событий сетевого движка является простым
 								case static_cast <uint8_t> (event::timer_t::SIMPLE):
 									// Обновляем таймаут на получение данных
-									::timer::simple::set({::timer::flag_t::FORCED, peer->timeouts.read}, peer->id, event::rate_t::DEFERRED, log);
+									::timer::simple::set({::timer::flag_t::FORCED, peer->timeouts.read}, peer->id, log);
 								break;
 								// Если тип таймера для событий сетевого движка является сложным
 								case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 									// Обновляем таймаут на получение данных
-									::timer::difficult::set({::timer::flag_t::FORCED, peer->timeouts.read}, peer->id, event::rate_t::DEFERRED, log);
+									::timer::difficult::set({::timer::flag_t::FORCED, peer->timeouts.read}, peer->id, log);
 								break;
 							}
 						} break;
@@ -12028,7 +11914,7 @@ namespace io {
 											// Отмечаем активность чтения данных
 											client->activity |= ::activity::READ;
 											// Активируем событие на чтение данных из сокета
-											::events::read(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+											::events::read(client->transfer.fd, client, event::mode_t::ENABLED, log);
 										}
 										// Выходим из цикла
 										break;
@@ -12135,7 +12021,7 @@ namespace io {
 												// Отмечаем активность чтения данных
 												client->activity |= ::activity::READ;
 												// Активируем событие на чтение данных из сокета
-												::events::read(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+												::events::read(client->transfer.fd, client, event::mode_t::ENABLED, log);
 											}
 										// Если таймаут на получение данных не активирован
 										} else {
@@ -12148,12 +12034,12 @@ namespace io {
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Обновляем таймаут на получение данных
-													::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().read.timeout}, client->id, event::rate_t::DEFERRED, log);
+													::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().read.timeout}, client->id, log);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Обновляем таймаут на получение данных
-													::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().read.timeout}, client->id, event::rate_t::DEFERRED, log);
+													::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().read.timeout}, client->id, log);
 												break;
 											}
 										}
@@ -12193,12 +12079,12 @@ namespace io {
 								// Если тип таймера для событий сетевого движка является простым
 								case static_cast <uint8_t> (event::timer_t::SIMPLE):
 									// Обновляем таймаут на получение данных
-									::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().read.timeout}, client->id, event::rate_t::DEFERRED, log);
+									::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().read.timeout}, client->id, log);
 								break;
 								// Если тип таймера для событий сетевого движка является сложным
 								case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 									// Обновляем таймаут на получение данных
-									::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().read.timeout}, client->id, event::rate_t::DEFERRED, log);
+									::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().read.timeout}, client->id, log);
 								break;
 							}
 						}
@@ -12505,7 +12391,7 @@ namespace io {
 											// Отмечаем активность чтения данных
 											client->activity |= ::activity::READ;
 											// Активируем событие на чтение данных из сокета
-											::events::read(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+											::events::read(client->transfer.fd, client, event::mode_t::ENABLED, log);
 										}
 										// Выходим из цикла
 										break;
@@ -12569,12 +12455,12 @@ namespace io {
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Обновляем таймаут на получение данных
-												::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().read.timeout}, client->id, event::rate_t::DEFERRED, log);
+												::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().read.timeout}, client->id, log);
 											break;
 											// Если тип таймера для событий сетевого движка является сложным
 											case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 												// Обновляем таймаут на получение данных
-												::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().read.timeout}, client->id, event::rate_t::DEFERRED, log);
+												::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().read.timeout}, client->id, log);
 											break;
 										}
 										// Выходим из цикла
@@ -12827,8 +12713,22 @@ namespace io {
 								return result;
 							}
 						}
-					// Если клиент находится в запущенном состоянии
-					} else if(client->state.status == event::status_t::LAUNCHED) {
+					/**
+					 * Если клиент не уничтожается
+					 *
+					 * @details Состояние здесь различает СПОСОБ чтения, а не дозволяет его:
+					 * подключённый сокет читается через `recv` ветвью выше, неподключённый -
+					 * через `recvfrom` с получением адреса отправителя этой ветвью
+					 *
+					 * @warning Требовать здесь `LAUNCHED` НЕЛЬЗЯ по той же причине, что и у
+					 *          отправки: состояние это проставляет запуск узла, а сокету без
+					 *          подключения запуск не нужен - читать он способен и так.
+					 *          Требование запуска отвергало бы чтение молча, ложью в ответе
+					 *
+					 * @note Отсев уничтожаемых узлов оставлен: их дескриптор уже закрыт либо
+					 *       вот-вот закроется, и читать из него нечего
+					 */
+					} else if((client->state.status != event::status_t::DESTROYED) && (client->state.status != event::status_t::GARBAGE)) {
 						// Если событие является неблокирующим
 						if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
 							// Количество прочитанных байт
@@ -13008,7 +12908,7 @@ namespace io {
 											// Отмечаем активность чтения данных
 											client->activity |= ::activity::READ;
 											// Активируем событие на чтение данных из сокета
-											::events::read(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+											::events::read(client->transfer.fd, client, event::mode_t::ENABLED, log);
 										}
 										// Выходим из цикла
 										break;
@@ -13072,12 +12972,12 @@ namespace io {
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Обновляем таймаут на получение данных
-												::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().read.timeout}, client->id, event::rate_t::DEFERRED, log);
+												::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().read.timeout}, client->id, log);
 											break;
 											// Если тип таймера для событий сетевого движка является сложным
 											case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 												// Обновляем таймаут на получение данных
-												::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().read.timeout}, client->id, event::rate_t::DEFERRED, log);
+												::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().read.timeout}, client->id, log);
 											break;
 										}
 										// Выходим из цикла
@@ -13398,7 +13298,7 @@ namespace io {
 											// Отмечаем активность чтения данных
 											client->activity |= ::activity::READ;
 											// Активируем событие на чтение данных из сокета
-											::events::read(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+											::events::read(client->transfer.fd, client, event::mode_t::ENABLED, log);
 										}
 										// Выходим из цикла
 										break;
@@ -13488,12 +13388,12 @@ namespace io {
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Обновляем таймаут на получение данных
-												::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().read.timeout}, client->id, event::rate_t::DEFERRED, log);
+												::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().read.timeout}, client->id, log);
 											break;
 											// Если тип таймера для событий сетевого движка является сложным
 											case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 												// Обновляем таймаут на получение данных
-												::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().read.timeout}, client->id, event::rate_t::DEFERRED, log);
+												::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().read.timeout}, client->id, log);
 											break;
 										}
 										// Выходим из цикла
@@ -13649,8 +13549,22 @@ namespace io {
 								return result;
 							}
 						}
-					// Если клиент находится в запущенном состоянии
-					} else if(client->state.status == event::status_t::LAUNCHED) {
+					/**
+					 * Если клиент не уничтожается
+					 *
+					 * @details Состояние здесь различает СПОСОБ чтения, а не дозволяет его:
+					 * подключённый сокет читается через `recv` ветвью выше, неподключённый -
+					 * через `recvfrom` с получением адреса отправителя этой ветвью
+					 *
+					 * @warning Требовать здесь `LAUNCHED` НЕЛЬЗЯ по той же причине, что и у
+					 *          отправки: состояние это проставляет запуск узла, а сокету без
+					 *          подключения запуск не нужен - читать он способен и так.
+					 *          Требование запуска отвергало бы чтение молча, ложью в ответе
+					 *
+					 * @note Отсев уничтожаемых узлов оставлен: их дескриптор уже закрыт либо
+					 *       вот-вот закроется, и читать из него нечего
+					 */
+					} else if((client->state.status != event::status_t::DESTROYED) && (client->state.status != event::status_t::GARBAGE)) {
 						// Если событие является неблокирующим
 						if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
 							// Количество прочитанных байт
@@ -13713,7 +13627,7 @@ namespace io {
 											// Отмечаем активность чтения данных
 											client->activity |= ::activity::READ;
 											// Активируем событие на чтение данных из сокета
-											::events::read(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+											::events::read(client->transfer.fd, client, event::mode_t::ENABLED, log);
 										}
 										// Выходим из цикла
 										break;
@@ -13803,12 +13717,12 @@ namespace io {
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Обновляем таймаут на получение данных
-												::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().read.timeout}, client->id, event::rate_t::DEFERRED, log);
+												::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().read.timeout}, client->id, log);
 											break;
 											// Если тип таймера для событий сетевого движка является сложным
 											case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 												// Обновляем таймаут на получение данных
-												::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().read.timeout}, client->id, event::rate_t::DEFERRED, log);
+												::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().read.timeout}, client->id, log);
 											break;
 										}
 										// Выходим из цикла
@@ -14012,12 +13926,12 @@ namespace io {
 								// Если тип таймера для событий сетевого движка является простым
 								case static_cast <uint8_t> (event::timer_t::SIMPLE):
 									// Обновляем таймаут на получение данных
-									::timer::simple::set({::timer::flag_t::FORCED, client->timeouts.read}, client->id, event::rate_t::DEFERRED, log);
+									::timer::simple::set({::timer::flag_t::FORCED, client->timeouts.read}, client->id, log);
 								break;
 								// Если тип таймера для событий сетевого движка является сложным
 								case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 									// Обновляем таймаут на получение данных
-									::timer::difficult::set({::timer::flag_t::FORCED, client->timeouts.read}, client->id, event::rate_t::DEFERRED, log);
+									::timer::difficult::set({::timer::flag_t::FORCED, client->timeouts.read}, client->id, log);
 								break;
 							}
 						} break;
@@ -14299,7 +14213,7 @@ namespace io {
 											// Отмечаем активность чтения данных
 											server->activity |= ::activity::READ;
 											// Активируем событие на чтение данных из сокета
-											::events::read(server->fd, server, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+											::events::read(server->fd, server, event::mode_t::ENABLED, log);
 										}
 										// Выходим из цикла
 										break;
@@ -14347,12 +14261,12 @@ namespace io {
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Обновляем таймаут на получение данных
-												::timer::simple::set({::timer::flag_t::FORCED, server->wrate.timeout}, server->id, event::rate_t::DEFERRED, log);
+												::timer::simple::set({::timer::flag_t::FORCED, server->wrate.timeout}, server->id, log);
 											break;
 											// Если тип таймера для событий сетевого движка является сложным
 											case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 												// Обновляем таймаут на получение данных
-												::timer::difficult::set({::timer::flag_t::FORCED, server->wrate.timeout}, server->id, event::rate_t::DEFERRED, log);
+												::timer::difficult::set({::timer::flag_t::FORCED, server->wrate.timeout}, server->id, log);
 											break;
 										}
 										// Выходим из цикла
@@ -14836,7 +14750,7 @@ namespace io {
 										// Если есть данные для отправки в сокет
 										if(!ipc->transfer.queue.empty())
 											// Активируем событие на запись данных в сокет
-											::events::write(ipc->transfer.fd, ipc, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+											::events::write(ipc->transfer.fd, ipc, event::mode_t::ENABLED, log);
 									// Если данные не отправлены
 									} else {
 										// Идентификатор полученной ошибки
@@ -14858,7 +14772,7 @@ namespace io {
 													// Если есть данные для отправки в сокет
 													if(!ipc->transfer.queue.empty())
 														// Активируем событие на запись данных в сокет
-														::events::write(ipc->transfer.fd, ipc, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+														::events::write(ipc->transfer.fd, ipc, event::mode_t::ENABLED, log);
 												} break;
 												// Если мы получили другую непонятную ошибку
 												default:
@@ -14989,7 +14903,7 @@ namespace io {
 								// Если есть данные для отправки в сокет
 								if(!ipc->transfer.queue.empty())
 									// Активируем событие на запись данных в сокет
-									::events::write(ipc->transfer.fd, ipc, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+									::events::write(ipc->transfer.fd, ipc, event::mode_t::ENABLED, log);
 							// Если данные не отправлены
 							} else {
 								// Идентификатор полученной ошибки
@@ -15011,7 +14925,7 @@ namespace io {
 											// Если есть данные для отправки в сокет
 											if(!ipc->transfer.queue.empty())
 												// Активируем событие на запись данных в сокет
-												::events::write(ipc->transfer.fd, ipc, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+												::events::write(ipc->transfer.fd, ipc, event::mode_t::ENABLED, log);
 										} break;
 										// Если мы получили другую непонятную ошибку
 										default:
@@ -15113,7 +15027,7 @@ namespace io {
 								// Если есть данные для отправки в сокет
 								if(!ipc->transfer.queue.empty())
 									// Активируем событие на запись данных в сокет
-									::events::write(ipc->transfer.fd, ipc, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+									::events::write(ipc->transfer.fd, ipc, event::mode_t::ENABLED, log);
 							// Если данные не отправлены
 							} else {
 								// Идентификатор полученной ошибки
@@ -15145,7 +15059,7 @@ namespace io {
 										// Если есть данные для отправки в сокет
 										if(!ipc->transfer.queue.empty())
 											// Активируем событие на запись данных в сокет
-											::events::write(ipc->transfer.fd, ipc, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+											::events::write(ipc->transfer.fd, ipc, event::mode_t::ENABLED, log);
 									} break;
 									// Если мы получили другую непонятную ошибку
 									default:
@@ -15337,12 +15251,12 @@ namespace io {
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание получения данных
-													::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.read}, peer->id, event::rate_t::DEFERRED, log);
+													::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.read}, peer->id, log);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Добавляем таймаут на ожидание получения данных
-													::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.read}, peer->id, event::rate_t::DEFERRED, log);
+													::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.read}, peer->id, log);
 												break;
 											}
 										}
@@ -15369,7 +15283,7 @@ namespace io {
 														// Отмечаем активность записи данных
 														peer->activity |= ::activity::WRITE;
 														// Активируем событие на запись данных в сокет
-														::events::write(peer->transfer.fd, peer, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+														::events::write(peer->transfer.fd, peer, event::mode_t::ENABLED, log);
 													}
 												} break;
 												// Если мы получили другую непонятную ошибку
@@ -15531,12 +15445,12 @@ namespace io {
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Обновляем таймаут на запись данных
-														::timer::simple::set({::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout}, peer->id, event::rate_t::DEFERRED, log);
+														::timer::simple::set({::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout}, peer->id, log);
 													break;
 													// Если тип таймера для событий сетевого движка является сложным
 													case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 														// Обновляем таймаут на запись данных
-														::timer::difficult::set({::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout}, peer->id, event::rate_t::DEFERRED, log);
+														::timer::difficult::set({::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout}, peer->id, log);
 													break;
 												}
 											// Если токены для отправки данных ещё есть
@@ -15544,7 +15458,7 @@ namespace io {
 												// Отмечаем активность записи данных
 												peer->activity |= ::activity::WRITE;
 												// Активируем событие на запись данных в сокет
-												::events::write(peer->transfer.fd, peer, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+												::events::write(peer->transfer.fd, peer, event::mode_t::ENABLED, log);
 											}
 											/**
 											 * Определяем тип таймера для событий сетевого движка
@@ -15553,12 +15467,12 @@ namespace io {
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание записи данных
-													::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, event::rate_t::DEFERRED, log);
+													::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, log);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Добавляем таймаут на ожидание записи данных
-													::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, event::rate_t::DEFERRED, log);
+													::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, log);
 												break;
 											}
 										}
@@ -15577,7 +15491,7 @@ namespace io {
 											::timer::simple::set(
 												{::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout},
 												{::timer::flag_t::SIMPLE, peer->timeouts.write},
-												peer->id, event::rate_t::DEFERRED, log
+												peer->id, log
 											);
 										break;
 										// Если тип таймера для событий сетевого движка является сложным
@@ -15586,7 +15500,7 @@ namespace io {
 											::timer::difficult::set(
 												{::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout},
 												{::timer::flag_t::SIMPLE, peer->timeouts.write},
-												peer->id, event::rate_t::DEFERRED, log
+												peer->id, log
 											);
 										break;
 									}
@@ -15622,7 +15536,7 @@ namespace io {
 										// Отмечаем активность записи данных
 										peer->activity |= ::activity::WRITE;
 										// Активируем событие на запись данных в сокет
-										::events::write(peer->transfer.fd, peer, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+										::events::write(peer->transfer.fd, peer, event::mode_t::ENABLED, log);
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
@@ -15630,12 +15544,12 @@ namespace io {
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Добавляем таймаут на ожидание записи данных
-												::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, event::rate_t::DEFERRED, log);
+												::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, log);
 											break;
 											// Если тип таймера для событий сетевого движка является сложным
 											case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 												// Добавляем таймаут на ожидание записи данных
-												::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, event::rate_t::DEFERRED, log);
+												::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, log);
 											break;
 										}
 									}
@@ -15708,12 +15622,12 @@ namespace io {
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Добавляем таймаут на ожидание получения данных
-														::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.read}, peer->id, event::rate_t::DEFERRED, log);
+														::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.read}, peer->id, log);
 													break;
 													// Если тип таймера для событий сетевого движка является сложным
 													case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 														// Добавляем таймаут на ожидание получения данных
-														::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.read}, peer->id, event::rate_t::DEFERRED, log);
+														::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.read}, peer->id, log);
 													break;
 												}
 											}
@@ -15750,7 +15664,7 @@ namespace io {
 														// Отмечаем активность записи данных
 														peer->activity |= ::activity::WRITE;
 														// Активируем событие на запись данных в сокет
-														::events::write(peer->transfer.fd, peer, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+														::events::write(peer->transfer.fd, peer, event::mode_t::ENABLED, log);
 													}
 												} break;
 												// Если мы получили другую непонятную ошибку
@@ -15879,12 +15793,12 @@ namespace io {
 														// Если тип таймера для событий сетевого движка является простым
 														case static_cast <uint8_t> (event::timer_t::SIMPLE):
 															// Обновляем таймаут на запись данных
-															::timer::simple::set({::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout}, peer->id, event::rate_t::DEFERRED, log);
+															::timer::simple::set({::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout}, peer->id, log);
 														break;
 														// Если тип таймера для событий сетевого движка является сложным
 														case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 															// Обновляем таймаут на запись данных
-															::timer::difficult::set({::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout}, peer->id, event::rate_t::DEFERRED, log);
+															::timer::difficult::set({::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout}, peer->id, log);
 														break;
 													}
 												// Если токены для отправки данных ещё есть
@@ -15892,7 +15806,7 @@ namespace io {
 													// Отмечаем активность записи данных
 													peer->activity |= ::activity::WRITE;
 													// Активируем событие на запись данных в сокет
-													::events::write(peer->transfer.fd, peer, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+													::events::write(peer->transfer.fd, peer, event::mode_t::ENABLED, log);
 												}
 												/**
 												 * Определяем тип таймера для событий сетевого движка
@@ -15901,12 +15815,12 @@ namespace io {
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Добавляем таймаут на ожидание записи данных
-														::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, event::rate_t::DEFERRED, log);
+														::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, log);
 													break;
 													// Если тип таймера для событий сетевого движка является сложным
 													case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 														// Добавляем таймаут на ожидание записи данных
-														::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, event::rate_t::DEFERRED, log);
+														::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, log);
 													break;
 												}
 											}
@@ -15925,7 +15839,7 @@ namespace io {
 												::timer::simple::set(
 													{::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout},
 													{::timer::flag_t::SIMPLE, peer->timeouts.write},
-													peer->id, event::rate_t::DEFERRED, log
+													peer->id, log
 												);
 											break;
 											// Если тип таймера для событий сетевого движка является сложным
@@ -15934,7 +15848,7 @@ namespace io {
 												::timer::difficult::set(
 													{::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout},
 													{::timer::flag_t::SIMPLE, peer->timeouts.write},
-													peer->id, event::rate_t::DEFERRED, log
+													peer->id, log
 												);
 											break;
 										}
@@ -15970,7 +15884,7 @@ namespace io {
 											// Отмечаем активность записи данных
 											peer->activity |= ::activity::WRITE;
 											// Активируем событие на запись данных в сокет
-											::events::write(peer->transfer.fd, peer, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+											::events::write(peer->transfer.fd, peer, event::mode_t::ENABLED, log);
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
@@ -15978,12 +15892,12 @@ namespace io {
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание записи данных
-													::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, event::rate_t::DEFERRED, log);
+													::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, log);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Добавляем таймаут на ожидание записи данных
-													::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, event::rate_t::DEFERRED, log);
+													::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, log);
 												break;
 											}
 										}
@@ -16119,12 +16033,12 @@ namespace io {
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание получения данных
-													::timer::simple::set({::timer::flag_t::SIMPLE, origin->timeouts.read}, origin->id, event::rate_t::DEFERRED, log);
+													::timer::simple::set({::timer::flag_t::SIMPLE, origin->timeouts.read}, origin->id, log);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Добавляем таймаут на ожидание получения данных
-													::timer::difficult::set({::timer::flag_t::SIMPLE, origin->timeouts.read}, origin->id, event::rate_t::DEFERRED, log);
+													::timer::difficult::set({::timer::flag_t::SIMPLE, origin->timeouts.read}, origin->id, log);
 												break;
 											}
 										}
@@ -16159,7 +16073,7 @@ namespace io {
 												// Если есть данные для отправки в сокет
 												if(!origin->transfer.queue.empty())
 													// Активируем событие на запись данных в сокет
-													::events::write(origin->transfer.fd, origin, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+													::events::write(origin->transfer.fd, origin, event::mode_t::ENABLED, log);
 											} break;
 											// Если сокет является недействительным
 											case EBADF:
@@ -16296,16 +16210,16 @@ namespace io {
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Обновляем таймаут на запись данных
-														::timer::simple::set({::timer::flag_t::FORCED, origin->wrate.timeout}, origin->id, event::rate_t::DEFERRED, log);
+														::timer::simple::set({::timer::flag_t::FORCED, origin->wrate.timeout}, origin->id, log);
 													break;
 													// Если тип таймера для событий сетевого движка является сложным
 													case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 														// Обновляем таймаут на запись данных
-														::timer::difficult::set({::timer::flag_t::FORCED, origin->wrate.timeout}, origin->id, event::rate_t::DEFERRED, log);
+														::timer::difficult::set({::timer::flag_t::FORCED, origin->wrate.timeout}, origin->id, log);
 													break;
 												}
 											// Если токены для отправки данных ещё есть, активируем событие на запись данных в сокет
-											} else ::events::write(origin->transfer.fd, origin, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+											} else ::events::write(origin->transfer.fd, origin, event::mode_t::ENABLED, log);
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
@@ -16313,12 +16227,12 @@ namespace io {
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание записи данных
-													::timer::simple::set({::timer::flag_t::SIMPLE, origin->timeouts.write}, origin->id, event::rate_t::DEFERRED, log);
+													::timer::simple::set({::timer::flag_t::SIMPLE, origin->timeouts.write}, origin->id, log);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Добавляем таймаут на ожидание записи данных
-													::timer::difficult::set({::timer::flag_t::SIMPLE, origin->timeouts.write}, origin->id, event::rate_t::DEFERRED, log);
+													::timer::difficult::set({::timer::flag_t::SIMPLE, origin->timeouts.write}, origin->id, log);
 												break;
 											}
 										}
@@ -16337,7 +16251,7 @@ namespace io {
 											::timer::simple::set(
 												{::timer::flag_t::FORCED, origin->wrate.timeout},
 												{::timer::flag_t::SIMPLE, origin->timeouts.write},
-												origin->id, event::rate_t::DEFERRED, log
+												origin->id, log
 											);
 										break;
 										// Если тип таймера для событий сетевого движка является сложным
@@ -16346,7 +16260,7 @@ namespace io {
 											::timer::difficult::set(
 												{::timer::flag_t::FORCED, origin->wrate.timeout},
 												{::timer::flag_t::SIMPLE, origin->timeouts.write},
-												origin->id, event::rate_t::DEFERRED, log
+												origin->id, log
 											);
 										break;
 									}
@@ -16380,7 +16294,7 @@ namespace io {
 									// Если есть данные для отправки в сокет
 									if(!origin->transfer.queue.empty()){
 										// Активируем событие на запись данных в сокет
-										::events::write(origin->transfer.fd, origin, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+										::events::write(origin->transfer.fd, origin, event::mode_t::ENABLED, log);
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
@@ -16388,12 +16302,12 @@ namespace io {
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Добавляем таймаут на ожидание записи данных
-												::timer::simple::set({::timer::flag_t::SIMPLE, origin->timeouts.write}, origin->id, event::rate_t::DEFERRED, log);
+												::timer::simple::set({::timer::flag_t::SIMPLE, origin->timeouts.write}, origin->id, log);
 											break;
 											// Если тип таймера для событий сетевого движка является сложным
 											case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 												// Добавляем таймаут на ожидание записи данных
-												::timer::difficult::set({::timer::flag_t::SIMPLE, origin->timeouts.write}, origin->id, event::rate_t::DEFERRED, log);
+												::timer::difficult::set({::timer::flag_t::SIMPLE, origin->timeouts.write}, origin->id, log);
 											break;
 										}
 									}
@@ -16501,7 +16415,7 @@ namespace io {
 						// Если есть данные для отправки в сокет
 						if(!tunnel->queue.empty())
 							// Активируем событие на запись данных в сокет
-							::events::write(tunnel->fd, tunnel, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+							::events::write(tunnel->fd, tunnel, event::mode_t::ENABLED, log);
 					// Если данные не отправлены
 					} else {
 						// Идентификатор полученной ошибки
@@ -16533,7 +16447,7 @@ namespace io {
 								// Если есть данные для отправки в сокет
 								if(!tunnel->queue.empty())
 									// Активируем событие на запись данных в сокет
-									::events::write(tunnel->fd, tunnel, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+									::events::write(tunnel->fd, tunnel, event::mode_t::ENABLED, log);
 							} break;
 							// Если сокет является недействительным
 							case EBADF:
@@ -16713,12 +16627,12 @@ namespace io {
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание получения данных
-													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, event::rate_t::DEFERRED, log);
+													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, log);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Добавляем таймаут на ожидание получения данных
-													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, event::rate_t::DEFERRED, log);
+													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, log);
 												break;
 											}
 										}
@@ -16745,7 +16659,7 @@ namespace io {
 														// Отмечаем активность записи данных
 														client->activity |= ::activity::WRITE;
 														// Активируем событие на запись данных в сокет
-														::events::write(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+														::events::write(client->transfer.fd, client, event::mode_t::ENABLED, log);
 													}
 												} break;
 												// Если мы получили другую непонятную ошибку
@@ -16907,12 +16821,12 @@ namespace io {
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Обновляем таймаут на запись данных
-														::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED, log);
+														::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, log);
 													break;
 													// Если тип таймера для событий сетевого движка является сложным
 													case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 														// Обновляем таймаут на запись данных
-														::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED, log);
+														::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, log);
 													break;
 												}
 											// Если токены для отправки данных ещё есть
@@ -16920,7 +16834,7 @@ namespace io {
 												// Отмечаем активность записи данных
 												client->activity |= ::activity::WRITE;
 												// Активируем событие на запись данных в сокет
-												::events::write(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+												::events::write(client->transfer.fd, client, event::mode_t::ENABLED, log);
 											}
 											/**
 											 * Определяем тип таймера для событий сетевого движка
@@ -16929,12 +16843,12 @@ namespace io {
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание записи данных
-													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Добавляем таймаут на ожидание записи данных
-													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 												break;
 											}
 										}
@@ -16953,7 +16867,7 @@ namespace io {
 											::timer::simple::set(
 												{::timer::flag_t::FORCED, client->bandwidthUse().write.timeout},
 												{::timer::flag_t::SIMPLE, client->timeouts.write},
-												client->id, event::rate_t::DEFERRED, log
+												client->id, log
 											);
 										break;
 										// Если тип таймера для событий сетевого движка является сложным
@@ -16962,7 +16876,7 @@ namespace io {
 											::timer::difficult::set(
 												{::timer::flag_t::FORCED, client->bandwidthUse().write.timeout},
 												{::timer::flag_t::SIMPLE, client->timeouts.write},
-												client->id, event::rate_t::DEFERRED, log
+												client->id, log
 											);
 										break;
 									}
@@ -16998,7 +16912,7 @@ namespace io {
 										// Отмечаем активность записи данных
 										client->activity |= ::activity::WRITE;
 										// Активируем событие на запись данных в сокет
-										::events::write(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+										::events::write(client->transfer.fd, client, event::mode_t::ENABLED, log);
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
@@ -17006,12 +16920,12 @@ namespace io {
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Добавляем таймаут на ожидание записи данных
-												::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+												::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 											break;
 											// Если тип таймера для событий сетевого движка является сложным
 											case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 												// Добавляем таймаут на ожидание записи данных
-												::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+												::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 											break;
 										}
 									}
@@ -17081,12 +16995,12 @@ namespace io {
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание получения данных
-													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, event::rate_t::DEFERRED, log);
+													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, log);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Добавляем таймаут на ожидание получения данных
-													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, event::rate_t::DEFERRED, log);
+													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, log);
 												break;
 											}
 										}
@@ -17123,7 +17037,7 @@ namespace io {
 													// Отмечаем активность записи данных
 													client->activity |= ::activity::WRITE;
 													// Активируем событие на запись данных в сокет
-													::events::write(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+													::events::write(client->transfer.fd, client, event::mode_t::ENABLED, log);
 												}
 											} break;
 											// Если мы получили другую непонятную ошибку
@@ -17252,12 +17166,12 @@ namespace io {
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Обновляем таймаут на запись данных
-														::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED, log);
+														::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, log);
 													break;
 													// Если тип таймера для событий сетевого движка является сложным
 													case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 														// Обновляем таймаут на запись данных
-														::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED, log);
+														::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, log);
 													break;
 												}
 											// Если токены для отправки данных ещё есть
@@ -17265,7 +17179,7 @@ namespace io {
 												// Отмечаем активность записи данных
 												client->activity |= ::activity::WRITE;
 												// Активируем событие на запись данных в сокет
-												::events::write(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+												::events::write(client->transfer.fd, client, event::mode_t::ENABLED, log);
 											}
 											/**
 											 * Определяем тип таймера для событий сетевого движка
@@ -17274,12 +17188,12 @@ namespace io {
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание записи данных
-													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Добавляем таймаут на ожидание записи данных
-													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 												break;
 											}
 										}
@@ -17298,7 +17212,7 @@ namespace io {
 											::timer::simple::set(
 												{::timer::flag_t::FORCED, client->bandwidthUse().write.timeout},
 												{::timer::flag_t::SIMPLE, client->timeouts.write},
-												client->id, event::rate_t::DEFERRED, log
+												client->id, log
 											);
 										break;
 										// Если тип таймера для событий сетевого движка является сложным
@@ -17307,7 +17221,7 @@ namespace io {
 											::timer::difficult::set(
 												{::timer::flag_t::FORCED, client->bandwidthUse().write.timeout},
 												{::timer::flag_t::SIMPLE, client->timeouts.write},
-												client->id, event::rate_t::DEFERRED, log
+												client->id, log
 											);
 										break;
 									}
@@ -17343,7 +17257,7 @@ namespace io {
 										// Отмечаем активность записи данных
 										client->activity |= ::activity::WRITE;
 										// Активируем событие на запись данных в сокет
-										::events::write(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+										::events::write(client->transfer.fd, client, event::mode_t::ENABLED, log);
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
@@ -17351,12 +17265,12 @@ namespace io {
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Добавляем таймаут на ожидание записи данных
-												::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+												::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 											break;
 											// Если тип таймера для событий сетевого движка является сложным
 											case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 												// Добавляем таймаут на ожидание записи данных
-												::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+												::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 											break;
 										}
 									}
@@ -17493,12 +17407,12 @@ namespace io {
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание получения данных
-													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, event::rate_t::DEFERRED, log);
+													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, log);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Добавляем таймаут на ожидание получения данных
-													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, event::rate_t::DEFERRED, log);
+													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, log);
 												break;
 											}
 										}
@@ -17535,7 +17449,7 @@ namespace io {
 													// Отмечаем активность записи данных
 													client->activity |= ::activity::WRITE;
 													// Активируем событие на запись данных в сокет
-													::events::write(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+													::events::write(client->transfer.fd, client, event::mode_t::ENABLED, log);
 												}
 											} break;
 											// Если мы получили другую непонятную ошибку
@@ -17664,12 +17578,12 @@ namespace io {
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Обновляем таймаут на запись данных
-														::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED, log);
+														::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, log);
 													break;
 													// Если тип таймера для событий сетевого движка является сложным
 													case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 														// Обновляем таймаут на запись данных
-														::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED, log);
+														::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, log);
 													break;
 												}
 											// Если токены для отправки данных ещё есть
@@ -17677,7 +17591,7 @@ namespace io {
 												// Отмечаем активность записи данных
 												client->activity |= ::activity::WRITE;
 												// Активируем событие на запись данных в сокет
-												::events::write(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+												::events::write(client->transfer.fd, client, event::mode_t::ENABLED, log);
 											}
 											/**
 											 * Определяем тип таймера для событий сетевого движка
@@ -17686,12 +17600,12 @@ namespace io {
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание записи данных
-													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Добавляем таймаут на ожидание записи данных
-													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 												break;
 											}
 										}
@@ -17710,7 +17624,7 @@ namespace io {
 											::timer::simple::set(
 												{::timer::flag_t::FORCED, client->bandwidthUse().write.timeout},
 												{::timer::flag_t::SIMPLE, client->timeouts.write},
-												client->id, event::rate_t::DEFERRED, log
+												client->id, log
 											);
 										break;
 										// Если тип таймера для событий сетевого движка является сложным
@@ -17719,7 +17633,7 @@ namespace io {
 											::timer::difficult::set(
 												{::timer::flag_t::FORCED, client->bandwidthUse().write.timeout},
 												{::timer::flag_t::SIMPLE, client->timeouts.write},
-												client->id, event::rate_t::DEFERRED, log
+												client->id, log
 											);
 										break;
 									}
@@ -17755,7 +17669,7 @@ namespace io {
 										// Отмечаем активность записи данных
 										client->activity |= ::activity::WRITE;
 										// Активируем событие на запись данных в сокет
-										::events::write(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+										::events::write(client->transfer.fd, client, event::mode_t::ENABLED, log);
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
@@ -17763,12 +17677,12 @@ namespace io {
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Добавляем таймаут на ожидание записи данных
-												::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+												::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 											break;
 											// Если тип таймера для событий сетевого движка является сложным
 											case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 												// Добавляем таймаут на ожидание записи данных
-												::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+												::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 											break;
 										}
 									}
@@ -17971,12 +17885,12 @@ namespace io {
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Добавляем таймаут на ожидание получения данных
-												::timer::simple::set({::timer::flag_t::SIMPLE, origin->timeouts.read}, origin->id, event::rate_t::DEFERRED, log);
+												::timer::simple::set({::timer::flag_t::SIMPLE, origin->timeouts.read}, origin->id, log);
 											break;
 											// Если тип таймера для событий сетевого движка является сложным
 											case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 												// Добавляем таймаут на ожидание получения данных
-												::timer::difficult::set({::timer::flag_t::SIMPLE, origin->timeouts.read}, origin->id, event::rate_t::DEFERRED, log);
+												::timer::difficult::set({::timer::flag_t::SIMPLE, origin->timeouts.read}, origin->id, log);
 											break;
 										}
 									}
@@ -17991,12 +17905,12 @@ namespace io {
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Добавляем таймаут на ожидание записи данных
-												::timer::simple::set({::timer::flag_t::SIMPLE, origin->timeouts.write}, origin->id, event::rate_t::DEFERRED, log);
+												::timer::simple::set({::timer::flag_t::SIMPLE, origin->timeouts.write}, origin->id, log);
 											break;
 											// Если тип таймера для событий сетевого движка является сложным
 											case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 												// Добавляем таймаут на ожидание записи данных
-												::timer::difficult::set({::timer::flag_t::SIMPLE, origin->timeouts.write}, origin->id, event::rate_t::DEFERRED, log);
+												::timer::difficult::set({::timer::flag_t::SIMPLE, origin->timeouts.write}, origin->id, log);
 											break;
 										}
 									}
@@ -18128,7 +18042,7 @@ namespace io {
 			// Если есть данные для отправки в сокет
 			if(hasTransferData)
 				// Активируем событие на запись данных в сокет
-				::events::write(server->fd, server, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+				::events::write(server->fd, server, event::mode_t::ENABLED, log);
 		/**
 		 * Если возникает ошибка
 		 */
@@ -18348,7 +18262,7 @@ namespace io {
 									// Если в очереди событий появились данные для отправки
 									if(!ipc->transfer.queue.empty())
 										// Активируем событие на запись данных в сокет
-										::events::write(ipc->transfer.fd, ipc, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+										::events::write(ipc->transfer.fd, ipc, event::mode_t::ENABLED, log);
 								}
 							// Если данные не отправлены
 							} else {
@@ -18382,7 +18296,7 @@ namespace io {
 											// Если в очереди событий появились данные для отправки
 											if(!ipc->transfer.queue.empty())
 												// Активируем событие на запись данных в сокет
-												::events::write(ipc->transfer.fd, ipc, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+												::events::write(ipc->transfer.fd, ipc, event::mode_t::ENABLED, log);
 										} break;
 										// Если мы получили другую непонятную ошибку
 										default:
@@ -18526,7 +18440,7 @@ namespace io {
 										// Если в очереди событий появились данные для отправки
 										if(!ipc->transfer.queue.empty())
 											// Активируем событие на запись данных в сокет
-											::events::write(ipc->transfer.fd, ipc, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+											::events::write(ipc->transfer.fd, ipc, event::mode_t::ENABLED, log);
 									// Если сокет повреждён
 									} else {
 										// Если функция обратного вызова для возврата данных при неудачной отправке установлена
@@ -18679,7 +18593,7 @@ namespace io {
 										// Если в очереди событий появились данные для отправки
 										if(!ipc->transfer.queue.empty())
 											// Активируем событие на запись данных в сокет
-											::events::write(ipc->transfer.fd, ipc, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+											::events::write(ipc->transfer.fd, ipc, event::mode_t::ENABLED, log);
 									} break;
 									// Если мы получили другую непонятную ошибку
 									default:
@@ -18797,7 +18711,7 @@ namespace io {
 											// Если в очереди событий появились данные для отправки
 											if(!ipc->transfer.queue.empty())
 												// Активируем событие на запись данных в сокет
-												::events::write(ipc->transfer.fd, ipc, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+												::events::write(ipc->transfer.fd, ipc, event::mode_t::ENABLED, log);
 										} break;
 										// Если мы получили другую непонятную ошибку
 										default:
@@ -19066,12 +18980,12 @@ namespace io {
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание получения данных
-													::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.read}, peer->id, event::rate_t::DEFERRED, log);
+													::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.read}, peer->id, log);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Добавляем таймаут на ожидание получения данных
-													::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.read}, peer->id, event::rate_t::DEFERRED, log);
+													::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.read}, peer->id, log);
 												break;
 											}
 										}
@@ -19218,12 +19132,12 @@ namespace io {
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Обновляем таймаут на запись данных
-													::timer::simple::set({::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout}, peer->id, event::rate_t::DEFERRED, log);
+													::timer::simple::set({::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout}, peer->id, log);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Обновляем таймаут на запись данных
-													::timer::difficult::set({::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout}, peer->id, event::rate_t::DEFERRED, log);
+													::timer::difficult::set({::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout}, peer->id, log);
 												break;
 											}
 										}
@@ -19234,12 +19148,12 @@ namespace io {
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Добавляем таймаут на ожидание записи данных
-												::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, event::rate_t::DEFERRED, log);
+												::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, log);
 											break;
 											// Если тип таймера для событий сетевого движка является сложным
 											case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 												// Добавляем таймаут на ожидание записи данных
-												::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, event::rate_t::DEFERRED, log);
+												::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, log);
 											break;
 										}
 									}
@@ -19296,12 +19210,12 @@ namespace io {
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Обновляем таймаут на запись данных
-													::timer::simple::set({::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout}, peer->id, event::rate_t::DEFERRED, log);
+													::timer::simple::set({::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout}, peer->id, log);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Обновляем таймаут на запись данных
-													::timer::difficult::set({::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout}, peer->id, event::rate_t::DEFERRED, log);
+													::timer::difficult::set({::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout}, peer->id, log);
 												break;
 											}
 										// Если токены для отправки данных ещё есть
@@ -19309,14 +19223,14 @@ namespace io {
 											// Отмечаем активность записи данных
 											peer->activity |= ::activity::WRITE;
 											// Активируем событие на запись данных в сокет
-											::events::write(peer->transfer.fd, peer, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+											::events::write(peer->transfer.fd, peer, event::mode_t::ENABLED, log);
 										}
 									// Если ограничитель пропускной способности на запись данных не установлен
 									} else if(!(peer->activity & ::activity::WRITE)) {
 										// Отмечаем активность записи данных
 										peer->activity |= ::activity::WRITE;
 										// Активируем событие на запись данных в сокет
-										::events::write(peer->transfer.fd, peer, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+										::events::write(peer->transfer.fd, peer, event::mode_t::ENABLED, log);
 									}
 									/**
 									 * Определяем тип таймера для событий сетевого движка
@@ -19325,12 +19239,12 @@ namespace io {
 										// Если тип таймера для событий сетевого движка является простым
 										case static_cast <uint8_t> (event::timer_t::SIMPLE):
 											// Добавляем таймаут на ожидание записи данных
-											::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, event::rate_t::DEFERRED, log);
+											::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, log);
 										break;
 										// Если тип таймера для событий сетевого движка является сложным
 										case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 											// Добавляем таймаут на ожидание записи данных
-											::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, event::rate_t::DEFERRED, log);
+											::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, log);
 										break;
 									}
 								}
@@ -19359,7 +19273,7 @@ namespace io {
 									// Отмечаем активность записи данных
 									peer->activity |= ::activity::WRITE;
 									// Активируем событие на запись данных в сокет
-									::events::write(peer->transfer.fd, peer, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+									::events::write(peer->transfer.fd, peer, event::mode_t::ENABLED, log);
 									/**
 									 * Определяем тип таймера для событий сетевого движка
 									 */
@@ -19367,12 +19281,12 @@ namespace io {
 										// Если тип таймера для событий сетевого движка является простым
 										case static_cast <uint8_t> (event::timer_t::SIMPLE):
 											// Добавляем таймаут на ожидание записи данных
-											::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, event::rate_t::DEFERRED, log);
+											::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, log);
 										break;
 										// Если тип таймера для событий сетевого движка является сложным
 										case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 											// Добавляем таймаут на ожидание записи данных
-											::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, event::rate_t::DEFERRED, log);
+											::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, log);
 										break;
 									}
 								}
@@ -19471,12 +19385,12 @@ namespace io {
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание получения данных
-													::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.read}, peer->id, event::rate_t::DEFERRED, log);
+													::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.read}, peer->id, log);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Добавляем таймаут на ожидание получения данных
-													::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.read}, peer->id, event::rate_t::DEFERRED, log);
+													::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.read}, peer->id, log);
 												break;
 											}
 										}
@@ -19614,12 +19528,12 @@ namespace io {
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Обновляем таймаут на запись данных
-														::timer::simple::set({::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout}, peer->id, event::rate_t::DEFERRED, log);
+														::timer::simple::set({::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout}, peer->id, log);
 													break;
 													// Если тип таймера для событий сетевого движка является сложным
 													case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 														// Обновляем таймаут на запись данных
-														::timer::difficult::set({::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout}, peer->id, event::rate_t::DEFERRED, log);
+														::timer::difficult::set({::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout}, peer->id, log);
 													break;
 												}
 											// Если токены для отправки данных ещё есть
@@ -19627,7 +19541,7 @@ namespace io {
 												// Отмечаем активность записи данных
 												peer->activity |= ::activity::WRITE;
 												// Активируем событие на запись данных в сокет
-												::events::write(peer->transfer.fd, peer, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+												::events::write(peer->transfer.fd, peer, event::mode_t::ENABLED, log);
 											}
 											/**
 											 * Определяем тип таймера для событий сетевого движка
@@ -19636,12 +19550,12 @@ namespace io {
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание записи данных
-													::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, event::rate_t::DEFERRED, log);
+													::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, log);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Добавляем таймаут на ожидание записи данных
-													::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, event::rate_t::DEFERRED, log);
+													::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, log);
 												break;
 											}
 										}
@@ -19663,7 +19577,7 @@ namespace io {
 											// Отмечаем активность записи данных
 											peer->activity |= ::activity::WRITE;
 											// Активируем событие на запись данных в сокет
-											::events::write(peer->transfer.fd, peer, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+											::events::write(peer->transfer.fd, peer, event::mode_t::ENABLED, log);
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
@@ -19671,12 +19585,12 @@ namespace io {
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание записи данных
-													::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, event::rate_t::DEFERRED, log);
+													::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, log);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Добавляем таймаут на ожидание записи данных
-													::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, event::rate_t::DEFERRED, log);
+													::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, log);
 												break;
 											}
 										}
@@ -19711,12 +19625,12 @@ namespace io {
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Обновляем таймаут на запись данных
-													::timer::simple::set({::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout}, peer->id, event::rate_t::DEFERRED, log);
+													::timer::simple::set({::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout}, peer->id, log);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Обновляем таймаут на запись данных
-													::timer::difficult::set({::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout}, peer->id, event::rate_t::DEFERRED, log);
+													::timer::difficult::set({::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout}, peer->id, log);
 												break;
 											}
 										}
@@ -19727,12 +19641,12 @@ namespace io {
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Добавляем таймаут на ожидание записи данных
-												::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, event::rate_t::DEFERRED, log);
+												::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, log);
 											break;
 											// Если тип таймера для событий сетевого движка является сложным
 											case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 												// Добавляем таймаут на ожидание записи данных
-												::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, event::rate_t::DEFERRED, log);
+												::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, log);
 											break;
 										}
 									}
@@ -19771,7 +19685,7 @@ namespace io {
 										// Отмечаем активность записи данных
 										peer->activity |= ::activity::WRITE;
 										// Активируем событие на запись данных в сокет
-										::events::write(peer->transfer.fd, peer, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+										::events::write(peer->transfer.fd, peer, event::mode_t::ENABLED, log);
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
@@ -19779,12 +19693,12 @@ namespace io {
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Добавляем таймаут на ожидание записи данных
-												::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, event::rate_t::DEFERRED, log);
+												::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, log);
 											break;
 											// Если тип таймера для событий сетевого движка является сложным
 											case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 												// Добавляем таймаут на ожидание записи данных
-												::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, event::rate_t::DEFERRED, log);
+												::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, log);
 											break;
 										}
 									}
@@ -19936,12 +19850,12 @@ namespace io {
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Добавляем таймаут на ожидание получения данных
-														::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.read}, peer->id, event::rate_t::DEFERRED, log);
+														::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.read}, peer->id, log);
 													break;
 													// Если тип таймера для событий сетевого движка является сложным
 													case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 														// Добавляем таймаут на ожидание получения данных
-														::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.read}, peer->id, event::rate_t::DEFERRED, log);
+														::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.read}, peer->id, log);
 													break;
 												}
 											}
@@ -20072,7 +19986,7 @@ namespace io {
 												// Отмечаем активность записи данных
 												peer->activity |= ::activity::WRITE;
 												// Активируем событие на запись данных в сокет
-												::events::write(peer->transfer.fd, peer, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+												::events::write(peer->transfer.fd, peer, event::mode_t::ENABLED, log);
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
@@ -20080,12 +19994,12 @@ namespace io {
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Добавляем таймаут на ожидание записи данных
-														::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, event::rate_t::DEFERRED, log);
+														::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, log);
 													break;
 													// Если тип таймера для событий сетевого движка является сложным
 													case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 														// Добавляем таймаут на ожидание записи данных
-														::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, event::rate_t::DEFERRED, log);
+														::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, log);
 													break;
 												}
 											}
@@ -20120,12 +20034,12 @@ namespace io {
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Обновляем таймаут на запись данных
-														::timer::simple::set({::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout}, peer->id, event::rate_t::DEFERRED, log);
+														::timer::simple::set({::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout}, peer->id, log);
 													break;
 													// Если тип таймера для событий сетевого движка является сложным
 													case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 														// Обновляем таймаут на запись данных
-														::timer::difficult::set({::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout}, peer->id, event::rate_t::DEFERRED, log);
+														::timer::difficult::set({::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout}, peer->id, log);
 													break;
 												}
 											}
@@ -20136,12 +20050,12 @@ namespace io {
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание записи данных
-													::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, event::rate_t::DEFERRED, log);
+													::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, log);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Добавляем таймаут на ожидание записи данных
-													::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, event::rate_t::DEFERRED, log);
+													::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, log);
 												break;
 											}
 										}
@@ -20178,7 +20092,7 @@ namespace io {
 											// Отмечаем активность записи данных
 											peer->activity |= ::activity::WRITE;
 											// Активируем событие на запись данных в сокет
-											::events::write(peer->transfer.fd, peer, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+											::events::write(peer->transfer.fd, peer, event::mode_t::ENABLED, log);
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
@@ -20186,12 +20100,12 @@ namespace io {
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание записи данных
-													::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, event::rate_t::DEFERRED, log);
+													::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, log);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Добавляем таймаут на ожидание записи данных
-													::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, event::rate_t::DEFERRED, log);
+													::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, log);
 												break;
 											}
 										}
@@ -20278,12 +20192,12 @@ namespace io {
 														// Если тип таймера для событий сетевого движка является простым
 														case static_cast <uint8_t> (event::timer_t::SIMPLE):
 															// Добавляем таймаут на ожидание получения данных
-															::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.read}, peer->id, event::rate_t::DEFERRED, log);
+															::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.read}, peer->id, log);
 														break;
 														// Если тип таймера для событий сетевого движка является сложным
 														case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 															// Добавляем таймаут на ожидание получения данных
-															::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.read}, peer->id, event::rate_t::DEFERRED, log);
+															::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.read}, peer->id, log);
 														break;
 													}
 												}
@@ -20421,7 +20335,7 @@ namespace io {
 													// Отмечаем активность записи данных
 													peer->activity |= ::activity::WRITE;
 													// Активируем событие на запись данных в сокет
-													::events::write(peer->transfer.fd, peer, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+													::events::write(peer->transfer.fd, peer, event::mode_t::ENABLED, log);
 													/**
 													 * Определяем тип таймера для событий сетевого движка
 													 */
@@ -20429,12 +20343,12 @@ namespace io {
 														// Если тип таймера для событий сетевого движка является простым
 														case static_cast <uint8_t> (event::timer_t::SIMPLE):
 															// Добавляем таймаут на ожидание записи данных
-															::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, event::rate_t::DEFERRED, log);
+															::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, log);
 														break;
 														// Если тип таймера для событий сетевого движка является сложным
 														case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 															// Добавляем таймаут на ожидание записи данных
-															::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, event::rate_t::DEFERRED, log);
+															::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, log);
 														break;
 													}
 												}
@@ -20469,12 +20383,12 @@ namespace io {
 														// Если тип таймера для событий сетевого движка является простым
 														case static_cast <uint8_t> (event::timer_t::SIMPLE):
 															// Обновляем таймаут на запись данных
-															::timer::simple::set({::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout}, peer->id, event::rate_t::DEFERRED, log);
+															::timer::simple::set({::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout}, peer->id, log);
 														break;
 														// Если тип таймера для событий сетевого движка является сложным
 														case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 															// Обновляем таймаут на запись данных
-															::timer::difficult::set({::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout}, peer->id, event::rate_t::DEFERRED, log);
+															::timer::difficult::set({::timer::flag_t::FORCED, peer->bandwidthUse().write.timeout}, peer->id, log);
 														break;
 													}
 												}
@@ -20485,12 +20399,12 @@ namespace io {
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Добавляем таймаут на ожидание записи данных
-														::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, event::rate_t::DEFERRED, log);
+														::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, log);
 													break;
 													// Если тип таймера для событий сетевого движка является сложным
 													case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 														// Добавляем таймаут на ожидание записи данных
-														::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, event::rate_t::DEFERRED, log);
+														::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, log);
 													break;
 												}
 											}
@@ -20529,7 +20443,7 @@ namespace io {
 												// Отмечаем активность записи данных
 												peer->activity |= ::activity::WRITE;
 												// Активируем событие на запись данных в сокет
-												::events::write(peer->transfer.fd, peer, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+												::events::write(peer->transfer.fd, peer, event::mode_t::ENABLED, log);
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
@@ -20537,12 +20451,12 @@ namespace io {
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Добавляем таймаут на ожидание записи данных
-														::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, event::rate_t::DEFERRED, log);
+														::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, log);
 													break;
 													// Если тип таймера для событий сетевого движка является сложным
 													case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 														// Добавляем таймаут на ожидание записи данных
-														::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, event::rate_t::DEFERRED, log);
+														::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, log);
 													break;
 												}
 											}
@@ -20768,12 +20682,12 @@ namespace io {
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание получения данных
-													::timer::simple::set({::timer::flag_t::SIMPLE, origin->timeouts.read}, origin->id, event::rate_t::DEFERRED, log);
+													::timer::simple::set({::timer::flag_t::SIMPLE, origin->timeouts.read}, origin->id, log);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Добавляем таймаут на ожидание получения данных
-													::timer::difficult::set({::timer::flag_t::SIMPLE, origin->timeouts.read}, origin->id, event::rate_t::DEFERRED, log);
+													::timer::difficult::set({::timer::flag_t::SIMPLE, origin->timeouts.read}, origin->id, log);
 												break;
 											}
 										}
@@ -20808,7 +20722,7 @@ namespace io {
 												// Если в очереди событий появились данные для отправки
 												if(!origin->transfer.queue.empty()){
 													// Активируем событие на запись данных в сокет
-													::events::write(origin->transfer.fd, origin, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+													::events::write(origin->transfer.fd, origin, event::mode_t::ENABLED, log);
 													/**
 													 * Определяем тип таймера для событий сетевого движка
 													 */
@@ -20816,12 +20730,12 @@ namespace io {
 														// Если тип таймера для событий сетевого движка является простым
 														case static_cast <uint8_t> (event::timer_t::SIMPLE):
 															// Добавляем таймаут на ожидание записи данных
-															::timer::simple::set({::timer::flag_t::SIMPLE, origin->timeouts.write}, origin->id, event::rate_t::DEFERRED, log);
+															::timer::simple::set({::timer::flag_t::SIMPLE, origin->timeouts.write}, origin->id, log);
 														break;
 														// Если тип таймера для событий сетевого движка является сложным
 														case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 															// Добавляем таймаут на ожидание записи данных
-															::timer::difficult::set({::timer::flag_t::SIMPLE, origin->timeouts.write}, origin->id, event::rate_t::DEFERRED, log);
+															::timer::difficult::set({::timer::flag_t::SIMPLE, origin->timeouts.write}, origin->id, log);
 														break;
 													}
 												}
@@ -20958,12 +20872,12 @@ namespace io {
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Обновляем таймаут на запись данных
-													::timer::simple::set({::timer::flag_t::FORCED, origin->wrate.timeout}, origin->id, event::rate_t::DEFERRED, log);
+													::timer::simple::set({::timer::flag_t::FORCED, origin->wrate.timeout}, origin->id, log);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Обновляем таймаут на запись данных
-													::timer::difficult::set({::timer::flag_t::FORCED, origin->wrate.timeout}, origin->id, event::rate_t::DEFERRED, log);
+													::timer::difficult::set({::timer::flag_t::FORCED, origin->wrate.timeout}, origin->id, log);
 												break;
 											}
 										}
@@ -20974,12 +20888,12 @@ namespace io {
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Добавляем таймаут на ожидание записи данных
-												::timer::simple::set({::timer::flag_t::SIMPLE, origin->timeouts.write}, origin->id, event::rate_t::DEFERRED, log);
+												::timer::simple::set({::timer::flag_t::SIMPLE, origin->timeouts.write}, origin->id, log);
 											break;
 											// Если тип таймера для событий сетевого движка является сложным
 											case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 												// Добавляем таймаут на ожидание записи данных
-												::timer::difficult::set({::timer::flag_t::SIMPLE, origin->timeouts.write}, origin->id, event::rate_t::DEFERRED, log);
+												::timer::difficult::set({::timer::flag_t::SIMPLE, origin->timeouts.write}, origin->id, log);
 											break;
 										}
 									}
@@ -21067,12 +20981,12 @@ namespace io {
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Добавляем таймаут на ожидание получения данных
-														::timer::simple::set({::timer::flag_t::SIMPLE, origin->timeouts.read}, origin->id, event::rate_t::DEFERRED, log);
+														::timer::simple::set({::timer::flag_t::SIMPLE, origin->timeouts.read}, origin->id, log);
 													break;
 													// Если тип таймера для событий сетевого движка является сложным
 													case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 														// Добавляем таймаут на ожидание получения данных
-														::timer::difficult::set({::timer::flag_t::SIMPLE, origin->timeouts.read}, origin->id, event::rate_t::DEFERRED, log);
+														::timer::difficult::set({::timer::flag_t::SIMPLE, origin->timeouts.read}, origin->id, log);
 													break;
 												}
 											}
@@ -21107,7 +21021,7 @@ namespace io {
 													// Если в очереди событий появились данные для отправки
 													if(!origin->transfer.queue.empty()){
 														// Активируем событие на запись данных в сокет
-														::events::write(origin->transfer.fd, origin, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+														::events::write(origin->transfer.fd, origin, event::mode_t::ENABLED, log);
 														/**
 														 * Определяем тип таймера для событий сетевого движка
 														 */
@@ -21115,12 +21029,12 @@ namespace io {
 															// Если тип таймера для событий сетевого движка является простым
 															case static_cast <uint8_t> (event::timer_t::SIMPLE):
 																// Добавляем таймаут на ожидание записи данных
-																::timer::simple::set({::timer::flag_t::SIMPLE, origin->timeouts.write}, origin->id, event::rate_t::DEFERRED, log);
+																::timer::simple::set({::timer::flag_t::SIMPLE, origin->timeouts.write}, origin->id, log);
 															break;
 															// Если тип таймера для событий сетевого движка является сложным
 															case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 																// Добавляем таймаут на ожидание записи данных
-																::timer::difficult::set({::timer::flag_t::SIMPLE, origin->timeouts.write}, origin->id, event::rate_t::DEFERRED, log);
+																::timer::difficult::set({::timer::flag_t::SIMPLE, origin->timeouts.write}, origin->id, log);
 															break;
 														}
 													}
@@ -21261,12 +21175,12 @@ namespace io {
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Обновляем таймаут на запись данных
-														::timer::simple::set({::timer::flag_t::FORCED, origin->wrate.timeout}, origin->id, event::rate_t::DEFERRED, log);
+														::timer::simple::set({::timer::flag_t::FORCED, origin->wrate.timeout}, origin->id, log);
 													break;
 													// Если тип таймера для событий сетевого движка является сложным
 													case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 														// Обновляем таймаут на запись данных
-														::timer::difficult::set({::timer::flag_t::FORCED, origin->wrate.timeout}, origin->id, event::rate_t::DEFERRED, log);
+														::timer::difficult::set({::timer::flag_t::FORCED, origin->wrate.timeout}, origin->id, log);
 													break;
 												}
 											}
@@ -21277,12 +21191,12 @@ namespace io {
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание записи данных
-													::timer::simple::set({::timer::flag_t::SIMPLE, origin->timeouts.write}, origin->id, event::rate_t::DEFERRED, log);
+													::timer::simple::set({::timer::flag_t::SIMPLE, origin->timeouts.write}, origin->id, log);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Добавляем таймаут на ожидание записи данных
-													::timer::difficult::set({::timer::flag_t::SIMPLE, origin->timeouts.write}, origin->id, event::rate_t::DEFERRED, log);
+													::timer::difficult::set({::timer::flag_t::SIMPLE, origin->timeouts.write}, origin->id, log);
 												break;
 											}
 										}
@@ -21560,7 +21474,7 @@ namespace io {
 								// Если в очереди событий появились данные для отправки
 								if(!tunnel->queue.empty())
 									// Активируем событие на запись данных в сокет
-									::events::write(tunnel->fd, tunnel, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+									::events::write(tunnel->fd, tunnel, event::mode_t::ENABLED, log);
 							} break;
 							// Если сокет является недействительным
 							case EBADF:
@@ -22651,12 +22565,12 @@ namespace io {
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание получения данных
-													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, event::rate_t::DEFERRED, log);
+													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, log);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Добавляем таймаут на ожидание получения данных
-													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, event::rate_t::DEFERRED, log);
+													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, log);
 												break;
 											}
 										}
@@ -22803,12 +22717,12 @@ namespace io {
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Обновляем таймаут на запись данных
-													::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED, log);
+													::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, log);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Обновляем таймаут на запись данных
-													::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED, log);
+													::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, log);
 												break;
 											}
 										}
@@ -22819,12 +22733,12 @@ namespace io {
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Добавляем таймаут на ожидание записи данных
-												::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+												::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 											break;
 											// Если тип таймера для событий сетевого движка является сложным
 											case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 												// Добавляем таймаут на ожидание записи данных
-												::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+												::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 											break;
 										}
 									}
@@ -22881,12 +22795,12 @@ namespace io {
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Обновляем таймаут на запись данных
-													::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED, log);
+													::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, log);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Обновляем таймаут на запись данных
-													::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED, log);
+													::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, log);
 												break;
 											}
 										// Если токены для отправки данных ещё есть
@@ -22894,14 +22808,14 @@ namespace io {
 											// Отмечаем активность записи данных
 											client->activity |= ::activity::WRITE;
 											// Активируем событие на запись данных в сокет
-											::events::write(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+											::events::write(client->transfer.fd, client, event::mode_t::ENABLED, log);
 										}
 									// Если ограничитель пропускной способности на запись данных не установлен
 									} else if(!(client->activity & ::activity::WRITE)) {
 										// Отмечаем активность записи данных
 										client->activity |= ::activity::WRITE;
 										// Активируем событие на запись данных в сокет
-										::events::write(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+										::events::write(client->transfer.fd, client, event::mode_t::ENABLED, log);
 									}
 									/**
 									 * Определяем тип таймера для событий сетевого движка
@@ -22910,12 +22824,12 @@ namespace io {
 										// Если тип таймера для событий сетевого движка является простым
 										case static_cast <uint8_t> (event::timer_t::SIMPLE):
 											// Добавляем таймаут на ожидание записи данных
-											::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+											::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 										break;
 										// Если тип таймера для событий сетевого движка является сложным
 										case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 											// Добавляем таймаут на ожидание записи данных
-											::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+											::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 										break;
 									}
 								}
@@ -22944,7 +22858,7 @@ namespace io {
 									// Отмечаем активность записи данных
 									client->activity |= ::activity::WRITE;
 									// Активируем событие на запись данных в сокет
-									::events::write(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+									::events::write(client->transfer.fd, client, event::mode_t::ENABLED, log);
 									/**
 									 * Определяем тип таймера для событий сетевого движка
 									 */
@@ -22952,12 +22866,12 @@ namespace io {
 										// Если тип таймера для событий сетевого движка является простым
 										case static_cast <uint8_t> (event::timer_t::SIMPLE):
 											// Добавляем таймаут на ожидание записи данных
-											::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+											::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 										break;
 										// Если тип таймера для событий сетевого движка является сложным
 										case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 											// Добавляем таймаут на ожидание записи данных
-											::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+											::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 										break;
 									}
 								}
@@ -23056,12 +22970,12 @@ namespace io {
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание получения данных
-													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, event::rate_t::DEFERRED, log);
+													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, log);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Добавляем таймаут на ожидание получения данных
-													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, event::rate_t::DEFERRED, log);
+													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, log);
 												break;
 											}
 										}
@@ -23199,12 +23113,12 @@ namespace io {
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Обновляем таймаут на запись данных
-														::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED, log);
+														::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, log);
 													break;
 													// Если тип таймера для событий сетевого движка является сложным
 													case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 														// Обновляем таймаут на запись данных
-														::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED, log);
+														::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, log);
 													break;
 												}
 											// Если токены для отправки данных ещё есть
@@ -23212,7 +23126,7 @@ namespace io {
 												// Отмечаем активность записи данных
 												client->activity |= ::activity::WRITE;
 												// Активируем событие на запись данных в сокет
-												::events::write(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+												::events::write(client->transfer.fd, client, event::mode_t::ENABLED, log);
 											}
 											/**
 											 * Определяем тип таймера для событий сетевого движка
@@ -23221,12 +23135,12 @@ namespace io {
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание записи данных
-													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Добавляем таймаут на ожидание записи данных
-													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 												break;
 											}
 										}
@@ -23248,7 +23162,7 @@ namespace io {
 											// Отмечаем активность записи данных
 											client->activity |= ::activity::WRITE;
 											// Активируем событие на запись данных в сокет
-											::events::write(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+											::events::write(client->transfer.fd, client, event::mode_t::ENABLED, log);
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
@@ -23256,12 +23170,12 @@ namespace io {
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание записи данных
-													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Добавляем таймаут на ожидание записи данных
-													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 												break;
 											}
 										}
@@ -23296,12 +23210,12 @@ namespace io {
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Обновляем таймаут на запись данных
-													::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED, log);
+													::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, log);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Обновляем таймаут на запись данных
-													::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED, log);
+													::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, log);
 												break;
 											}
 										}
@@ -23312,12 +23226,12 @@ namespace io {
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Добавляем таймаут на ожидание записи данных
-												::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+												::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 											break;
 											// Если тип таймера для событий сетевого движка является сложным
 											case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 												// Добавляем таймаут на ожидание записи данных
-												::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+												::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 											break;
 										}
 									}
@@ -23356,7 +23270,7 @@ namespace io {
 										// Отмечаем активность записи данных
 										client->activity |= ::activity::WRITE;
 										// Активируем событие на запись данных в сокет
-										::events::write(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+										::events::write(client->transfer.fd, client, event::mode_t::ENABLED, log);
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
@@ -23364,12 +23278,12 @@ namespace io {
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Добавляем таймаут на ожидание записи данных
-												::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+												::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 											break;
 											// Если тип таймера для событий сетевого движка является сложным
 											case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 												// Добавляем таймаут на ожидание записи данных
-												::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+												::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 											break;
 										}
 									}
@@ -23507,12 +23421,12 @@ namespace io {
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Добавляем таймаут на ожидание получения данных
-														::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, event::rate_t::DEFERRED, log);
+														::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, log);
 													break;
 													// Если тип таймера для событий сетевого движка является сложным
 													case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 														// Добавляем таймаут на ожидание получения данных
-														::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, event::rate_t::DEFERRED, log);
+														::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, log);
 													break;
 												}
 											}
@@ -23643,7 +23557,7 @@ namespace io {
 												// Отмечаем активность записи данных
 												client->activity |= ::activity::WRITE;
 												// Активируем событие на запись данных в сокет
-												::events::write(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+												::events::write(client->transfer.fd, client, event::mode_t::ENABLED, log);
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
@@ -23651,12 +23565,12 @@ namespace io {
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Добавляем таймаут на ожидание записи данных
-														::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+														::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 													break;
 													// Если тип таймера для событий сетевого движка является сложным
 													case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 														// Добавляем таймаут на ожидание записи данных
-														::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+														::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 													break;
 												}
 											}
@@ -23691,12 +23605,12 @@ namespace io {
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Обновляем таймаут на запись данных
-														::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED, log);
+														::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, log);
 													break;
 													// Если тип таймера для событий сетевого движка является сложным
 													case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 														// Обновляем таймаут на запись данных
-														::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED, log);
+														::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, log);
 													break;
 												}
 											}
@@ -23707,12 +23621,12 @@ namespace io {
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание записи данных
-													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Добавляем таймаут на ожидание записи данных
-													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 												break;
 											}
 										}
@@ -23749,7 +23663,7 @@ namespace io {
 											// Отмечаем активность записи данных
 											client->activity |= ::activity::WRITE;
 											// Активируем событие на запись данных в сокет
-											::events::write(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+											::events::write(client->transfer.fd, client, event::mode_t::ENABLED, log);
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
@@ -23757,12 +23671,12 @@ namespace io {
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание записи данных
-													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Добавляем таймаут на ожидание записи данных
-													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 												break;
 											}
 										}
@@ -23835,12 +23749,12 @@ namespace io {
 														// Если тип таймера для событий сетевого движка является простым
 														case static_cast <uint8_t> (event::timer_t::SIMPLE):
 															// Добавляем таймаут на ожидание получения данных
-															::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, event::rate_t::DEFERRED, log);
+															::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, log);
 														break;
 														// Если тип таймера для событий сетевого движка является сложным
 														case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 															// Добавляем таймаут на ожидание получения данных
-															::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, event::rate_t::DEFERRED, log);
+															::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, log);
 														break;
 													}
 												}
@@ -23978,7 +23892,7 @@ namespace io {
 													// Отмечаем активность записи данных
 													client->activity |= ::activity::WRITE;
 													// Активируем событие на запись данных в сокет
-													::events::write(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+													::events::write(client->transfer.fd, client, event::mode_t::ENABLED, log);
 													/**
 													 * Определяем тип таймера для событий сетевого движка
 													 */
@@ -23986,12 +23900,12 @@ namespace io {
 														// Если тип таймера для событий сетевого движка является простым
 														case static_cast <uint8_t> (event::timer_t::SIMPLE):
 															// Добавляем таймаут на ожидание записи данных
-															::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+															::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 														break;
 														// Если тип таймера для событий сетевого движка является сложным
 														case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 															// Добавляем таймаут на ожидание записи данных
-															::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+															::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 														break;
 													}
 												}
@@ -24026,12 +23940,12 @@ namespace io {
 														// Если тип таймера для событий сетевого движка является простым
 														case static_cast <uint8_t> (event::timer_t::SIMPLE):
 															// Обновляем таймаут на запись данных
-															::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED, log);
+															::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, log);
 														break;
 														// Если тип таймера для событий сетевого движка является сложным
 														case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 															// Обновляем таймаут на запись данных
-															::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED, log);
+															::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, log);
 														break;
 													}
 												}
@@ -24042,12 +23956,12 @@ namespace io {
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Добавляем таймаут на ожидание записи данных
-														::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+														::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 													break;
 													// Если тип таймера для событий сетевого движка является сложным
 													case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 														// Добавляем таймаут на ожидание записи данных
-														::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+														::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 													break;
 												}
 											}
@@ -24086,7 +24000,7 @@ namespace io {
 												// Отмечаем активность записи данных
 												client->activity |= ::activity::WRITE;
 												// Активируем событие на запись данных в сокет
-												::events::write(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+												::events::write(client->transfer.fd, client, event::mode_t::ENABLED, log);
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
@@ -24094,12 +24008,12 @@ namespace io {
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Добавляем таймаут на ожидание записи данных
-														::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+														::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 													break;
 													// Если тип таймера для событий сетевого движка является сложным
 													case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 														// Добавляем таймаут на ожидание записи данных
-														::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+														::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 													break;
 												}
 											}
@@ -24216,8 +24130,24 @@ namespace io {
 								}
 							}
 						}
-					// Если клиент находится в запущенном состоянии
-					} else if(client->state.status == event::status_t::LAUNCHED) {
+					/**
+					 * Если клиент не уничтожается
+					 *
+					 * @details Состояние здесь различает СПОСОБ отправки, а не дозволяет её:
+					 * подключённый сокет шлёт через `send` ветвью выше, неподключённый - через
+					 * `sendto` по сохранённому адресу назначения этой ветвью
+					 *
+					 * @warning Требовать здесь `LAUNCHED`, как поступают прочие движки, НЕЛЬЗЯ:
+					 *          состояние это проставляет запуск узла, а сокету без подключения
+					 *          запуск для отправки не нужен вовсе - адрес назначения известен с
+					 *          фиксации настроек. Требование запуска отвергало бы отправку у
+					 *          узла, который отправлять вполне способен, причём молча: наружу
+					 *          уходил бы ноль отправленных байт без единой записи в журнал
+					 *
+					 * @note Отсев уничтожаемых узлов оставлен: их дескриптор уже закрыт либо
+					 *       вот-вот закроется, и отправка в него смысла не имеет
+					 */
+					} else if((client->state.status != event::status_t::DESTROYED) && (client->state.status != event::status_t::GARBAGE)) {
 						// Если событие является неблокирующим
 						if(client->state.options & event::options::NO_IO_BLOCK){
 							// Если очередь передачи данных пустая
@@ -24256,12 +24186,12 @@ namespace io {
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Добавляем таймаут на ожидание получения данных
-														::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, event::rate_t::DEFERRED, log);
+														::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, log);
 													break;
 													// Если тип таймера для событий сетевого движка является сложным
 													case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 														// Добавляем таймаут на ожидание получения данных
-														::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, event::rate_t::DEFERRED, log);
+														::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, log);
 													break;
 												}
 											}
@@ -24392,7 +24322,7 @@ namespace io {
 												// Отмечаем активность записи данных
 												client->activity |= ::activity::WRITE;
 												// Активируем событие на запись данных в сокет
-												::events::write(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+												::events::write(client->transfer.fd, client, event::mode_t::ENABLED, log);
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
@@ -24400,12 +24330,12 @@ namespace io {
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Добавляем таймаут на ожидание записи данных
-														::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+														::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 													break;
 													// Если тип таймера для событий сетевого движка является сложным
 													case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 														// Добавляем таймаут на ожидание записи данных
-														::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+														::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 													break;
 												}
 											}
@@ -24440,12 +24370,12 @@ namespace io {
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Обновляем таймаут на запись данных
-														::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED, log);
+														::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, log);
 													break;
 													// Если тип таймера для событий сетевого движка является сложным
 													case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 														// Обновляем таймаут на запись данных
-														::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED, log);
+														::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, log);
 													break;
 												}
 											}
@@ -24456,12 +24386,12 @@ namespace io {
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание записи данных
-													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Добавляем таймаут на ожидание записи данных
-													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 												break;
 											}
 										}
@@ -24498,7 +24428,7 @@ namespace io {
 											// Отмечаем активность записи данных
 											client->activity |= ::activity::WRITE;
 											// Активируем событие на запись данных в сокет
-											::events::write(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+											::events::write(client->transfer.fd, client, event::mode_t::ENABLED, log);
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
@@ -24506,12 +24436,12 @@ namespace io {
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание записи данных
-													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Добавляем таймаут на ожидание записи данных
-													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 												break;
 											}
 										}
@@ -24584,12 +24514,12 @@ namespace io {
 														// Если тип таймера для событий сетевого движка является простым
 														case static_cast <uint8_t> (event::timer_t::SIMPLE):
 															// Добавляем таймаут на ожидание получения данных
-															::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, event::rate_t::DEFERRED, log);
+															::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, log);
 														break;
 														// Если тип таймера для событий сетевого движка является сложным
 														case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 															// Добавляем таймаут на ожидание получения данных
-															::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, event::rate_t::DEFERRED, log);
+															::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, log);
 														break;
 													}
 												}
@@ -24727,7 +24657,7 @@ namespace io {
 													// Отмечаем активность записи данных
 													client->activity |= ::activity::WRITE;
 													// Активируем событие на запись данных в сокет
-													::events::write(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+													::events::write(client->transfer.fd, client, event::mode_t::ENABLED, log);
 													/**
 													 * Определяем тип таймера для событий сетевого движка
 													 */
@@ -24735,12 +24665,12 @@ namespace io {
 														// Если тип таймера для событий сетевого движка является простым
 														case static_cast <uint8_t> (event::timer_t::SIMPLE):
 															// Добавляем таймаут на ожидание записи данных
-															::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+															::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 														break;
 														// Если тип таймера для событий сетевого движка является сложным
 														case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 															// Добавляем таймаут на ожидание записи данных
-															::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+															::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 														break;
 													}
 												}
@@ -24775,12 +24705,12 @@ namespace io {
 														// Если тип таймера для событий сетевого движка является простым
 														case static_cast <uint8_t> (event::timer_t::SIMPLE):
 															// Обновляем таймаут на запись данных
-															::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED, log);
+															::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, log);
 														break;
 														// Если тип таймера для событий сетевого движка является сложным
 														case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 															// Обновляем таймаут на запись данных
-															::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED, log);
+															::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, log);
 														break;
 													}
 												}
@@ -24791,12 +24721,12 @@ namespace io {
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Добавляем таймаут на ожидание записи данных
-														::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+														::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 													break;
 													// Если тип таймера для событий сетевого движка является сложным
 													case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 														// Добавляем таймаут на ожидание записи данных
-														::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+														::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 													break;
 												}
 											}
@@ -24835,7 +24765,7 @@ namespace io {
 												// Отмечаем активность записи данных
 												client->activity |= ::activity::WRITE;
 												// Активируем событие на запись данных в сокет
-												::events::write(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+												::events::write(client->transfer.fd, client, event::mode_t::ENABLED, log);
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
@@ -24843,12 +24773,12 @@ namespace io {
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Добавляем таймаут на ожидание записи данных
-														::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+														::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 													break;
 													// Если тип таймера для событий сетевого движка является сложным
 													case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 														// Добавляем таймаут на ожидание записи данных
-														::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+														::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 													break;
 												}
 											}
@@ -25076,12 +25006,12 @@ namespace io {
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Добавляем таймаут на ожидание получения данных
-														::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, event::rate_t::DEFERRED, log);
+														::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, log);
 													break;
 													// Если тип таймера для событий сетевого движка является сложным
 													case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 														// Добавляем таймаут на ожидание получения данных
-														::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, event::rate_t::DEFERRED, log);
+														::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, log);
 													break;
 												}
 											}
@@ -25212,7 +25142,7 @@ namespace io {
 												// Отмечаем активность записи данных
 												client->activity |= ::activity::WRITE;
 												// Активируем событие на запись данных в сокет
-												::events::write(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+												::events::write(client->transfer.fd, client, event::mode_t::ENABLED, log);
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
@@ -25220,12 +25150,12 @@ namespace io {
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Добавляем таймаут на ожидание записи данных
-														::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+														::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 													break;
 													// Если тип таймера для событий сетевого движка является сложным
 													case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 														// Добавляем таймаут на ожидание записи данных
-														::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+														::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 													break;
 												}
 											}
@@ -25260,12 +25190,12 @@ namespace io {
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Обновляем таймаут на запись данных
-														::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED, log);
+														::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, log);
 													break;
 													// Если тип таймера для событий сетевого движка является сложным
 													case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 														// Обновляем таймаут на запись данных
-														::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED, log);
+														::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, log);
 													break;
 												}
 											}
@@ -25276,12 +25206,12 @@ namespace io {
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание записи данных
-													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Добавляем таймаут на ожидание записи данных
-													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 												break;
 											}
 										}
@@ -25318,7 +25248,7 @@ namespace io {
 											// Отмечаем активность записи данных
 											client->activity |= ::activity::WRITE;
 											// Активируем событие на запись данных в сокет
-											::events::write(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+											::events::write(client->transfer.fd, client, event::mode_t::ENABLED, log);
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
@@ -25326,12 +25256,12 @@ namespace io {
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание записи данных
-													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Добавляем таймаут на ожидание записи данных
-													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 												break;
 											}
 										}
@@ -25431,12 +25361,12 @@ namespace io {
 														// Если тип таймера для событий сетевого движка является простым
 														case static_cast <uint8_t> (event::timer_t::SIMPLE):
 															// Добавляем таймаут на ожидание получения данных
-															::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, event::rate_t::DEFERRED, log);
+															::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, log);
 														break;
 														// Если тип таймера для событий сетевого движка является сложным
 														case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 															// Добавляем таймаут на ожидание получения данных
-															::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, event::rate_t::DEFERRED, log);
+															::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, log);
 														break;
 													}
 												}
@@ -25574,7 +25504,7 @@ namespace io {
 													// Отмечаем активность записи данных
 													client->activity |= ::activity::WRITE;
 													// Активируем событие на запись данных в сокет
-													::events::write(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+													::events::write(client->transfer.fd, client, event::mode_t::ENABLED, log);
 													/**
 													 * Определяем тип таймера для событий сетевого движка
 													 */
@@ -25582,12 +25512,12 @@ namespace io {
 														// Если тип таймера для событий сетевого движка является простым
 														case static_cast <uint8_t> (event::timer_t::SIMPLE):
 															// Добавляем таймаут на ожидание записи данных
-															::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+															::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 														break;
 														// Если тип таймера для событий сетевого движка является сложным
 														case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 															// Добавляем таймаут на ожидание записи данных
-															::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+															::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 														break;
 													}
 												}
@@ -25622,12 +25552,12 @@ namespace io {
 														// Если тип таймера для событий сетевого движка является простым
 														case static_cast <uint8_t> (event::timer_t::SIMPLE):
 															// Обновляем таймаут на запись данных
-															::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED, log);
+															::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, log);
 														break;
 														// Если тип таймера для событий сетевого движка является сложным
 														case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 															// Обновляем таймаут на запись данных
-															::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED, log);
+															::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, log);
 														break;
 													}
 												}
@@ -25638,12 +25568,12 @@ namespace io {
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Добавляем таймаут на ожидание записи данных
-														::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+														::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 													break;
 													// Если тип таймера для событий сетевого движка является сложным
 													case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 														// Добавляем таймаут на ожидание записи данных
-														::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+														::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 													break;
 												}
 											}
@@ -25682,7 +25612,7 @@ namespace io {
 												// Отмечаем активность записи данных
 												client->activity |= ::activity::WRITE;
 												// Активируем событие на запись данных в сокет
-												::events::write(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+												::events::write(client->transfer.fd, client, event::mode_t::ENABLED, log);
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
@@ -25690,12 +25620,12 @@ namespace io {
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Добавляем таймаут на ожидание записи данных
-														::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+														::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 													break;
 													// Если тип таймера для событий сетевого движка является сложным
 													case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 														// Добавляем таймаут на ожидание записи данных
-														::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+														::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 													break;
 												}
 											}
@@ -25839,8 +25769,24 @@ namespace io {
 								}
 							}
 						}
-					// Если клиент находится в запущенном состоянии
-					} else if(client->state.status == event::status_t::LAUNCHED) {
+					/**
+					 * Если клиент не уничтожается
+					 *
+					 * @details Состояние здесь различает СПОСОБ отправки, а не дозволяет её:
+					 * подключённый сокет шлёт через `send` ветвью выше, неподключённый - через
+					 * `sendto` по сохранённому адресу назначения этой ветвью
+					 *
+					 * @warning Требовать здесь `LAUNCHED`, как поступают прочие движки, НЕЛЬЗЯ:
+					 *          состояние это проставляет запуск узла, а сокету без подключения
+					 *          запуск для отправки не нужен вовсе - адрес назначения известен с
+					 *          фиксации настроек. Требование запуска отвергало бы отправку у
+					 *          узла, который отправлять вполне способен, причём молча: наружу
+					 *          уходил бы ноль отправленных байт без единой записи в журнал
+					 *
+					 * @note Отсев уничтожаемых узлов оставлен: их дескриптор уже закрыт либо
+					 *       вот-вот закроется, и отправка в него смысла не имеет
+					 */
+					} else if((client->state.status != event::status_t::DESTROYED) && (client->state.status != event::status_t::GARBAGE)) {
 						// Если событие является неблокирующим
 						if(client->state.options & event::options::NO_IO_BLOCK){
 							// Если очередь передачи данных пустая
@@ -25906,12 +25852,12 @@ namespace io {
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Добавляем таймаут на ожидание получения данных
-														::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, event::rate_t::DEFERRED, log);
+														::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, log);
 													break;
 													// Если тип таймера для событий сетевого движка является сложным
 													case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 														// Добавляем таймаут на ожидание получения данных
-														::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, event::rate_t::DEFERRED, log);
+														::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, log);
 													break;
 												}
 											}
@@ -26042,7 +25988,7 @@ namespace io {
 												// Отмечаем активность записи данных
 												client->activity |= ::activity::WRITE;
 												// Активируем событие на запись данных в сокет
-												::events::write(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+												::events::write(client->transfer.fd, client, event::mode_t::ENABLED, log);
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
@@ -26050,12 +25996,12 @@ namespace io {
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Добавляем таймаут на ожидание записи данных
-														::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+														::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 													break;
 													// Если тип таймера для событий сетевого движка является сложным
 													case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 														// Добавляем таймаут на ожидание записи данных
-														::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+														::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 													break;
 												}
 											}
@@ -26090,12 +26036,12 @@ namespace io {
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Обновляем таймаут на запись данных
-														::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED, log);
+														::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, log);
 													break;
 													// Если тип таймера для событий сетевого движка является сложным
 													case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 														// Обновляем таймаут на запись данных
-														::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED, log);
+														::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, log);
 													break;
 												}
 											}
@@ -26106,12 +26052,12 @@ namespace io {
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание записи данных
-													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Добавляем таймаут на ожидание записи данных
-													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 												break;
 											}
 										}
@@ -26148,7 +26094,7 @@ namespace io {
 											// Отмечаем активность записи данных
 											client->activity |= ::activity::WRITE;
 											// Активируем событие на запись данных в сокет
-											::events::write(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+											::events::write(client->transfer.fd, client, event::mode_t::ENABLED, log);
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
@@ -26156,12 +26102,12 @@ namespace io {
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание записи данных
-													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Добавляем таймаут на ожидание записи данных
-													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 												break;
 											}
 										}
@@ -26261,12 +26207,12 @@ namespace io {
 														// Если тип таймера для событий сетевого движка является простым
 														case static_cast <uint8_t> (event::timer_t::SIMPLE):
 															// Добавляем таймаут на ожидание получения данных
-															::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, event::rate_t::DEFERRED, log);
+															::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, log);
 														break;
 														// Если тип таймера для событий сетевого движка является сложным
 														case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 															// Добавляем таймаут на ожидание получения данных
-															::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, event::rate_t::DEFERRED, log);
+															::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, log);
 														break;
 													}
 												}
@@ -26404,7 +26350,7 @@ namespace io {
 													// Отмечаем активность записи данных
 													client->activity |= ::activity::WRITE;
 													// Активируем событие на запись данных в сокет
-													::events::write(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+													::events::write(client->transfer.fd, client, event::mode_t::ENABLED, log);
 													/**
 													 * Определяем тип таймера для событий сетевого движка
 													 */
@@ -26412,12 +26358,12 @@ namespace io {
 														// Если тип таймера для событий сетевого движка является простым
 														case static_cast <uint8_t> (event::timer_t::SIMPLE):
 															// Добавляем таймаут на ожидание записи данных
-															::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+															::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 														break;
 														// Если тип таймера для событий сетевого движка является сложным
 														case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 															// Добавляем таймаут на ожидание записи данных
-															::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+															::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 														break;
 													}
 												}
@@ -26452,12 +26398,12 @@ namespace io {
 														// Если тип таймера для событий сетевого движка является простым
 														case static_cast <uint8_t> (event::timer_t::SIMPLE):
 															// Обновляем таймаут на запись данных
-															::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED, log);
+															::timer::simple::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, log);
 														break;
 														// Если тип таймера для событий сетевого движка является сложным
 														case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 															// Обновляем таймаут на запись данных
-															::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, event::rate_t::DEFERRED, log);
+															::timer::difficult::set({::timer::flag_t::FORCED, client->bandwidthUse().write.timeout}, client->id, log);
 														break;
 													}
 												}
@@ -26468,12 +26414,12 @@ namespace io {
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Добавляем таймаут на ожидание записи данных
-														::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+														::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 													break;
 													// Если тип таймера для событий сетевого движка является сложным
 													case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 														// Добавляем таймаут на ожидание записи данных
-														::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+														::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 													break;
 												}
 											}
@@ -26512,7 +26458,7 @@ namespace io {
 												// Отмечаем активность записи данных
 												client->activity |= ::activity::WRITE;
 												// Активируем событие на запись данных в сокет
-												::events::write(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+												::events::write(client->transfer.fd, client, event::mode_t::ENABLED, log);
 												/**
 												 * Определяем тип таймера для событий сетевого движка
 												 */
@@ -26520,12 +26466,12 @@ namespace io {
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Добавляем таймаут на ожидание записи данных
-														::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+														::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 													break;
 													// Если тип таймера для событий сетевого движка является сложным
 													case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 														// Добавляем таймаут на ожидание записи данных
-														::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, log);
+														::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, log);
 													break;
 												}
 											}
@@ -27523,12 +27469,12 @@ namespace io {
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на переподключение
-													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.reconnect}, client->id, event::rate_t::DEFERRED, log);
+													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.reconnect}, client->id, log);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Добавляем таймаут на переподключение
-													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.reconnect}, client->id, event::rate_t::DEFERRED, log);
+													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.reconnect}, client->id, log);
 												break;
 											}
 											// Возвращаем результат выполнения функции
@@ -28588,12 +28534,12 @@ namespace io {
 				// Если тип таймера для событий сетевого движка является простым
 				case static_cast <uint8_t> (event::timer_t::SIMPLE):
 					// Обновляем таймаут отсрочки узла
-					::timer::simple::set({::timer::flag_t::FORCED, * timeout}, node->id, event::rate_t::DEFERRED, log);
+					::timer::simple::set({::timer::flag_t::FORCED, * timeout}, node->id, log);
 				break;
 				// Если тип таймера для событий сетевого движка является сложным
 				case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 					// Обновляем таймаут отсрочки узла
-					::timer::difficult::set({::timer::flag_t::FORCED, * timeout}, node->id, event::rate_t::DEFERRED, log);
+					::timer::difficult::set({::timer::flag_t::FORCED, * timeout}, node->id, log);
 				break;
 			}
 		/**
@@ -29443,7 +29389,7 @@ namespace io {
 					 * сокета - ровно так его и переиспользуют разборщик имён и опрос
 					 * времени, где один клиент обслуживает все запросы подряд
 					 */
-					::events::write(client->transfer.fd, client, event::mode_t::DISABLED, event::rate_t::INSTANT, log);
+					::events::write(client->transfer.fd, client, event::mode_t::DISABLED, log);
 					/**
 					 * Статус события намеренно остаётся прежним: событие уже поднято, и
 					 * возврат его в начальное состояние потребовал бы от вызывающего
@@ -29565,12 +29511,12 @@ namespace io {
 							// Если тип таймера для событий сетевого движка является простым
 							case static_cast <uint8_t> (event::timer_t::SIMPLE):
 								// Добавляем таймаут на ожидание переподключения к серверу
-								::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.reconnect}, client->id, event::rate_t::DEFERRED, log);
+								::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.reconnect}, client->id, log);
 							break;
 							// Если тип таймера для событий сетевого движка является сложным
 							case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 								// Добавляем таймаут на ожидание переподключения к серверу
-								::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.reconnect}, client->id, event::rate_t::DEFERRED, log);
+								::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.reconnect}, client->id, log);
 							break;
 						}
 					}
@@ -29767,7 +29713,7 @@ namespace io {
 				// Отмечаем активность чтения данных
 				client->activity |= ::activity::READ;
 				// Активируем событие на чтение данных из сокета
-				::events::read(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
+				::events::read(client->transfer.fd, client, event::mode_t::ENABLED, log);
 				// Если событие является неблокирующим
 				if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
 					/**
@@ -29804,12 +29750,12 @@ namespace io {
 								// Если тип таймера для событий сетевого движка является простым
 								case static_cast <uint8_t> (event::timer_t::SIMPLE):
 									// Добавляем таймаут на ожидание получения данных
-									::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, event::rate_t::DEFERRED, log);
+									::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, log);
 								break;
 								// Если тип таймера для событий сетевого движка является сложным
 								case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 									// Добавляем таймаут на ожидание получения данных
-									::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, event::rate_t::DEFERRED, log);
+									::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, log);
 								break;
 							}
 						}
@@ -30577,12 +30523,12 @@ namespace io {
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание получения данных
-													::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.read}, peer->id, event::rate_t::DEFERRED, log);
+													::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.read}, peer->id, log);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Добавляем таймаут на ожидание получения данных
-													::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.read}, peer->id, event::rate_t::DEFERRED, log);
+													::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.read}, peer->id, log);
 												break;
 											}
 										}
@@ -31462,7 +31408,7 @@ namespace io {
 							// Снимаем статус активности на чтение данных
 							peer->activity &= ~::activity::READ;
 							// Деактивируем событие на чтение данных из сокета
-							::events::read(peer->transfer.fd, peer, event::mode_t::DISABLED, event::rate_t::INSTANT, log);
+							::events::read(peer->transfer.fd, peer, event::mode_t::DISABLED, log);
 						}
 						// Если таймаут ожидания чтения данных установлен
 						if(peer->timeouts.read.delay > 0){
@@ -31492,7 +31438,7 @@ namespace io {
 							// Снимаем статус активности на чтение данных
 							client->activity &= ~::activity::READ;
 							// Деактивируем событие на чтение данных из сокета
-							::events::read(client->transfer.fd, client, event::mode_t::DISABLED, event::rate_t::INSTANT, log);
+							::events::read(client->transfer.fd, client, event::mode_t::DISABLED, log);
 						}
 						// Если таймаут ожидания чтения данных установлен
 						if(client->timeouts.read.delay > 0){
@@ -31522,7 +31468,7 @@ namespace io {
 							// Снимаем статус активности на чтение данных
 							server->activity &= ~::activity::READ;
 							// Деактивируем событие на чтение данных из сокета
-							::events::read(server->fd, server, event::mode_t::DISABLED, event::rate_t::INSTANT, log);
+							::events::read(server->fd, server, event::mode_t::DISABLED, log);
 						}
 					} break;
 				}
@@ -31768,12 +31714,12 @@ namespace io {
 							// Если тип таймера для событий сетевого движка является простым
 							case static_cast <uint8_t> (event::timer_t::SIMPLE):
 								// Обновляем таймаут на ожидание получения данных
-								::timer::simple::set({::timer::flag_t::FORCED, origin->timeouts.read}, origin->id, event::rate_t::DEFERRED, log);
+								::timer::simple::set({::timer::flag_t::FORCED, origin->timeouts.read}, origin->id, log);
 							break;
 							// Если тип таймера для событий сетевого движка является сложным
 							case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 								// Обновляем таймаут на ожидание получения данных
-								::timer::difficult::set({::timer::flag_t::FORCED, origin->timeouts.read}, origin->id, event::rate_t::DEFERRED, log);
+								::timer::difficult::set({::timer::flag_t::FORCED, origin->timeouts.read}, origin->id, log);
 							break;
 						}
 					}
@@ -32284,12 +32230,12 @@ namespace io {
 										// Если тип таймера для событий сетевого движка является простым
 										case static_cast <uint8_t> (event::timer_t::SIMPLE):
 											// Добавляем таймаут на ожидание получения данных
-											::timer::simple::set({::timer::flag_t::SIMPLE, origin->timeouts.read}, origin->id, event::rate_t::DEFERRED, log);
+											::timer::simple::set({::timer::flag_t::SIMPLE, origin->timeouts.read}, origin->id, log);
 										break;
 										// Если тип таймера для событий сетевого движка является сложным
 										case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 											// Добавляем таймаут на ожидание получения данных
-											::timer::difficult::set({::timer::flag_t::SIMPLE, origin->timeouts.read}, origin->id, event::rate_t::DEFERRED, log);
+											::timer::difficult::set({::timer::flag_t::SIMPLE, origin->timeouts.read}, origin->id, log);
 										break;
 									}
 								}
@@ -37202,12 +37148,19 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 								case static_cast <uint8_t> (event::type_t::DATAGRAM):
 								// Если событие принадлежит к типу SEQPACKET
 								case static_cast <uint8_t> (event::type_t::SEQPACKET): {
-									// Создаём объект изменения подписки очереди оповещений
-									::events::change_t event;
-									// Устанавливаем событие на чтение и активируем его
-									event = ::events::change_t(true, PORT_SOURCE_FD, POLLIN, ipc->transfer.fd, ipc);
-									// Добавляем новое событие в список изменений
-									::events::add(::move(event), this->_log);
+									/**
+									 * Подписка на готовность к чтению здесь НЕ заводится
+									 *
+									 * @details Дело фиксации настроек - подготовить узел, а завести подписку призван
+									 * запуск: он для того и служит. У kqueue подписка заводится здесь же, но
+									 * ОТКЛЮЧЁННОЙ признаком EV_DISABLE, и включает её запуск признаком EV_ENABLE
+									 *
+									 * @warning У Event Ports состояния «заведена, но отключена» нет вовсе: port_associate
+									 *          заводит связь боевой немедленно. Прежде здесь стояло заведение с
+									 *          пояснением «но отключаем его», перенесённым от kqueue, - пояснение
+									 *          описывало намерение, которого здесь не выполнить. Оттого подписка
+									 *          вставала боевой ещё до запуска узла
+									 */
 									// Устанавливаем флаг разрешающий выполнять чтение из сокета
 									ipc->transfer.actions |= ::action::READ;
 									// Устанавливаем флаг разрешающий выполнять запись в сокет
@@ -37360,12 +37313,19 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 									else this->_eth.iface.setAddress(tunnel->iface, tunnel->source.get(), tunnel->source.get(), 128);
 								} break;
 							}
-							// Создаём объект изменения подписки очереди оповещений
-							::events::change_t event;
-							// Устанавливаем событие на чтение и активируем его
-							event = ::events::change_t(true, PORT_SOURCE_FD, POLLIN, tunnel->fd, tunnel);
-							// Добавляем новое событие в список изменений
-							::events::add(::move(event), this->_log);
+							/**
+							 * Подписка на готовность к чтению здесь НЕ заводится
+							 *
+							 * @details Дело фиксации настроек - подготовить узел, а завести подписку призван
+							 * запуск: он для того и служит. У kqueue подписка заводится здесь же, но
+							 * ОТКЛЮЧЁННОЙ признаком EV_DISABLE, и включает её запуск признаком EV_ENABLE
+							 *
+							 * @warning У Event Ports состояния «заведена, но отключена» нет вовсе: port_associate
+							 *          заводит связь боевой немедленно. Прежде здесь стояло заведение с
+							 *          пояснением «но отключаем его», перенесённым от kqueue, - пояснение
+							 *          описывало намерение, которого здесь не выполнить. Оттого подписка
+							 *          вставала боевой ещё до запуска узла
+							 */
 							// Устанавливаем флаг разрешающий выполнять чтение из сокета
 							tunnel->actions |= ::action::READ;
 							// Устанавливаем флаг разрешающий выполнять запись в сокет
@@ -37604,12 +37564,19 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 													::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (source->ip.get())->address;
 												// Если источник сетевого адреса не установлен, устанавливаем адрес по умолчанию
 												else ::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_addr.s_addr = 0;
-												// Создаём объект изменения подписки очереди оповещений
-												::events::change_t event;
-												// Устанавливаем событие на чтение но отключаем его
-												event = ::events::change_t(true, PORT_SOURCE_FD, POLLIN, client->transfer.fd, client);
-												// Добавляем новое событие в список изменений
-												::events::add(::move(event), this->_log);
+												/**
+												 * Подписка на готовность к чтению здесь НЕ заводится
+												 *
+												 * @details Дело фиксации настроек - подготовить узел, а завести подписку призван
+												 * запуск: он для того и служит. У kqueue подписка заводится здесь же, но
+												 * ОТКЛЮЧЁННОЙ признаком EV_DISABLE, и включает её запуск признаком EV_ENABLE
+												 *
+												 * @warning У Event Ports состояния «заведена, но отключена» нет вовсе: port_associate
+												 *          заводит связь боевой немедленно. Прежде здесь стояло заведение с
+												 *          пояснением «но отключаем его», перенесённым от kqueue, - пояснение
+												 *          описывало намерение, которого здесь не выполнить. Оттого подписка
+												 *          вставала боевой ещё до запуска узла
+												 */
 												// Устанавливаем флаг разрешающий выполнять чтение из сокета
 												client->transfer.actions |= ::action::READ;
 												// Устанавливаем флаг разрешающий выполнять запись в сокет
@@ -37692,12 +37659,19 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 													}
 												// Если источник сетевого адреса не установлен, устанавливаем адрес по умолчанию
 												else ::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_addr.s6_addr, &in6addr_any, 16);
-												// Создаём объект изменения подписки очереди оповещений
-												::events::change_t event;
-												// Устанавливаем событие на чтение но отключаем его
-												event = ::events::change_t(true, PORT_SOURCE_FD, POLLIN, client->transfer.fd, client);
-												// Добавляем новое событие в список изменений
-												::events::add(::move(event), this->_log);
+												/**
+												 * Подписка на готовность к чтению здесь НЕ заводится
+												 *
+												 * @details Дело фиксации настроек - подготовить узел, а завести подписку призван
+												 * запуск: он для того и служит. У kqueue подписка заводится здесь же, но
+												 * ОТКЛЮЧЁННОЙ признаком EV_DISABLE, и включает её запуск признаком EV_ENABLE
+												 *
+												 * @warning У Event Ports состояния «заведена, но отключена» нет вовсе: port_associate
+												 *          заводит связь боевой немедленно. Прежде здесь стояло заведение с
+												 *          пояснением «но отключаем его», перенесённым от kqueue, - пояснение
+												 *          описывало намерение, которого здесь не выполнить. Оттого подписка
+												 *          вставала боевой ещё до запуска узла
+												 */
 												// Устанавливаем флаг разрешающий выполнять чтение из сокета
 												client->transfer.actions |= ::action::READ;
 												// Устанавливаем флаг разрешающий выполнять запись в сокет
@@ -38000,12 +37974,19 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																return false;
 															}
 														}
-														// Создаём объект изменения подписки очереди оповещений
-														::events::change_t event;
-														// Устанавливаем событие на чтение но отключаем его
-														event = ::events::change_t(true, PORT_SOURCE_FD, POLLIN, client->transfer.fd, client);
-														// Добавляем новое событие в список изменений
-														::events::add(::move(event), this->_log);
+														/**
+														 * Подписка на готовность к чтению здесь НЕ заводится
+														 *
+														 * @details Дело фиксации настроек - подготовить узел, а завести подписку призван
+														 * запуск: он для того и служит. У kqueue подписка заводится здесь же, но
+														 * ОТКЛЮЧЁННОЙ признаком EV_DISABLE, и включает её запуск признаком EV_ENABLE
+														 *
+														 * @warning У Event Ports состояния «заведена, но отключена» нет вовсе: port_associate
+														 *          заводит связь боевой немедленно. Прежде здесь стояло заведение с
+														 *          пояснением «но отключаем его», перенесённым от kqueue, - пояснение
+														 *          описывало намерение, которого здесь не выполнить. Оттого подписка
+														 *          вставала боевой ещё до запуска узла
+														 */
 														// Устанавливаем флаг разрешающий выполнять чтение из сокета
 														client->transfer.actions |= ::action::READ;
 														// Устанавливаем флаг разрешающий выполнять запись в сокет
@@ -38190,12 +38171,19 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															client->state.status = event::status_t::NONE;
 														// Если бинд выполнен успешно
 														} else {
-															// Создаём объект изменения подписки очереди оповещений
-															::events::change_t event;
-															// Устанавливаем событие на чтение но отключаем его
-															event = ::events::change_t(true, PORT_SOURCE_FD, POLLIN, client->transfer.fd, client);
-															// Добавляем новое событие в список изменений
-															::events::add(::move(event), this->_log);
+															/**
+															 * Подписка на готовность к чтению здесь НЕ заводится
+															 *
+															 * @details Дело фиксации настроек - подготовить узел, а завести подписку призван
+															 * запуск: он для того и служит. У kqueue подписка заводится здесь же, но
+															 * ОТКЛЮЧЁННОЙ признаком EV_DISABLE, и включает её запуск признаком EV_ENABLE
+															 *
+															 * @warning У Event Ports состояния «заведена, но отключена» нет вовсе: port_associate
+															 *          заводит связь боевой немедленно. Прежде здесь стояло заведение с
+															 *          пояснением «но отключаем его», перенесённым от kqueue, - пояснение
+															 *          описывало намерение, которого здесь не выполнить. Оттого подписка
+															 *          вставала боевой ещё до запуска узла
+															 */
 															// Устанавливаем флаг разрешающий выполнять чтение из сокета
 															client->transfer.actions |= ::action::READ;
 															// Устанавливаем флаг разрешающий выполнять запись в сокет
@@ -38230,12 +38218,19 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_family = AF_INET;
 																		// Устанавливаем адрес для удаленного подключения целевой машины
 																		::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (client->target.get())->ip.get())->address;
-																		// Создаём объект изменения подписки очереди оповещений
-																		::events::change_t event;
-																		// Устанавливаем событие на чтение но отключаем его
-																		event = ::events::change_t(true, PORT_SOURCE_FD, POLLIN, client->transfer.fd, client);
-																		// Добавляем новое событие в список изменений
-																		::events::add(::move(event), this->_log);
+																		/**
+																		 * Подписка на готовность к чтению здесь НЕ заводится
+																		 *
+																		 * @details Дело фиксации настроек - подготовить узел, а завести подписку призван
+																		 * запуск: он для того и служит. У kqueue подписка заводится здесь же, но
+																		 * ОТКЛЮЧЁННОЙ признаком EV_DISABLE, и включает её запуск признаком EV_ENABLE
+																		 *
+																		 * @warning У Event Ports состояния «заведена, но отключена» нет вовсе: port_associate
+																		 *          заводит связь боевой немедленно. Прежде здесь стояло заведение с
+																		 *          пояснением «но отключаем его», перенесённым от kqueue, - пояснение
+																		 *          описывало намерение, которого здесь не выполнить. Оттого подписка
+																		 *          вставала боевой ещё до запуска узла
+																		 */
 																		// Устанавливаем флаг разрешающий выполнять чтение из сокета
 																		client->transfer.actions |= ::action::READ;
 																		// Устанавливаем флаг разрешающий выполнять запись в сокет
@@ -38325,12 +38320,19 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_family = AF_INET;
 																		// Устанавливаем адрес для удаленного подключения целевой машины
 																		::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (client->target.get())->ip.get())->address;
-																		// Создаём объект изменения подписки очереди оповещений
-																		::events::change_t event;
-																		// Устанавливаем событие на чтение но отключаем его
-																		event = ::events::change_t(true, PORT_SOURCE_FD, POLLIN, client->transfer.fd, client);
-																		// Добавляем новое событие в список изменений
-																		::events::add(::move(event), this->_log);
+																		/**
+																		 * Подписка на готовность к чтению здесь НЕ заводится
+																		 *
+																		 * @details Дело фиксации настроек - подготовить узел, а завести подписку призван
+																		 * запуск: он для того и служит. У kqueue подписка заводится здесь же, но
+																		 * ОТКЛЮЧЁННОЙ признаком EV_DISABLE, и включает её запуск признаком EV_ENABLE
+																		 *
+																		 * @warning У Event Ports состояния «заведена, но отключена» нет вовсе: port_associate
+																		 *          заводит связь боевой немедленно. Прежде здесь стояло заведение с
+																		 *          пояснением «но отключаем его», перенесённым от kqueue, - пояснение
+																		 *          описывало намерение, которого здесь не выполнить. Оттого подписка
+																		 *          вставала боевой ещё до запуска узла
+																		 */
 																		// Устанавливаем флаг разрешающий выполнять чтение из сокета
 																		client->transfer.actions |= ::action::READ;
 																		// Устанавливаем флаг разрешающий выполнять запись в сокет
@@ -38412,12 +38414,19 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																			client->state.status = event::status_t::NONE;
 																		// Если бинд выполнен успешно
 																		} else {
-																			// Создаём объект изменения подписки очереди оповещений
-																			::events::change_t event;
-																			// Устанавливаем событие на чтение но отключаем его
-																			event = ::events::change_t(true, PORT_SOURCE_FD, POLLIN, client->transfer.fd, client);
-																			// Добавляем новое событие в список изменений
-																			::events::add(::move(event), this->_log);
+																			/**
+																			 * Подписка на готовность к чтению здесь НЕ заводится
+																			 *
+																			 * @details Дело фиксации настроек - подготовить узел, а завести подписку призван
+																			 * запуск: он для того и служит. У kqueue подписка заводится здесь же, но
+																			 * ОТКЛЮЧЁННОЙ признаком EV_DISABLE, и включает её запуск признаком EV_ENABLE
+																			 *
+																			 * @warning У Event Ports состояния «заведена, но отключена» нет вовсе: port_associate
+																			 *          заводит связь боевой немедленно. Прежде здесь стояло заведение с
+																			 *          пояснением «но отключаем его», перенесённым от kqueue, - пояснение
+																			 *          описывало намерение, которого здесь не выполнить. Оттого подписка
+																			 *          вставала боевой ещё до запуска узла
+																			 */
 																			// Устанавливаем флаг разрешающий выполнять чтение из сокета
 																			client->transfer.actions |= ::action::READ;
 																			// Устанавливаем флаг разрешающий выполнять запись в сокет
@@ -38531,12 +38540,19 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	client->state.status = event::status_t::NONE;
 																// Если бинд выполнен успешно
 																} else {
-																	// Создаём объект изменения подписки очереди оповещений
-																	::events::change_t event;
-																	// Устанавливаем событие на чтение но отключаем его
-																	event = ::events::change_t(true, PORT_SOURCE_FD, POLLIN, client->transfer.fd, client);
-																	// Добавляем новое событие в список изменений
-																	::events::add(::move(event), this->_log);
+																	/**
+																	 * Подписка на готовность к чтению здесь НЕ заводится
+																	 *
+																	 * @details Дело фиксации настроек - подготовить узел, а завести подписку призван
+																	 * запуск: он для того и служит. У kqueue подписка заводится здесь же, но
+																	 * ОТКЛЮЧЁННОЙ признаком EV_DISABLE, и включает её запуск признаком EV_ENABLE
+																	 *
+																	 * @warning У Event Ports состояния «заведена, но отключена» нет вовсе: port_associate
+																	 *          заводит связь боевой немедленно. Прежде здесь стояло заведение с
+																	 *          пояснением «но отключаем его», перенесённым от kqueue, - пояснение
+																	 *          описывало намерение, которого здесь не выполнить. Оттого подписка
+																	 *          вставала боевой ещё до запуска узла
+																	 */
 																	// Устанавливаем флаг разрешающий выполнять чтение из сокета
 																	client->transfer.actions |= ::action::READ;
 																	// Устанавливаем флаг разрешающий выполнять запись в сокет
@@ -38763,12 +38779,19 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															client->state.status = event::status_t::NONE;
 														// Если бинд выполнен успешно
 														} else {
-															// Создаём объект изменения подписки очереди оповещений
-															::events::change_t event;
-															// Устанавливаем событие на чтение но отключаем его
-															event = ::events::change_t(true, PORT_SOURCE_FD, POLLIN, client->transfer.fd, client);
-															// Добавляем новое событие в список изменений
-															::events::add(::move(event), this->_log);
+															/**
+															 * Подписка на готовность к чтению здесь НЕ заводится
+															 *
+															 * @details Дело фиксации настроек - подготовить узел, а завести подписку призван
+															 * запуск: он для того и служит. У kqueue подписка заводится здесь же, но
+															 * ОТКЛЮЧЁННОЙ признаком EV_DISABLE, и включает её запуск признаком EV_ENABLE
+															 *
+															 * @warning У Event Ports состояния «заведена, но отключена» нет вовсе: port_associate
+															 *          заводит связь боевой немедленно. Прежде здесь стояло заведение с
+															 *          пояснением «но отключаем его», перенесённым от kqueue, - пояснение
+															 *          описывало намерение, которого здесь не выполнить. Оттого подписка
+															 *          вставала боевой ещё до запуска узла
+															 */
 															// Устанавливаем флаг разрешающий выполнять чтение из сокета
 															client->transfer.actions |= ::action::READ;
 															// Устанавливаем флаг разрешающий выполнять запись в сокет
@@ -38808,12 +38831,19 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		 * связи неоднозначны - система не знает, которым устройством их достигать
 																		 */
 																		::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (client->target.get())->ip.get())->zone;
-																		// Создаём объект изменения подписки очереди оповещений
-																		::events::change_t event;
-																		// Устанавливаем событие на чтение но отключаем его
-																		event = ::events::change_t(true, PORT_SOURCE_FD, POLLIN, client->transfer.fd, client);
-																		// Добавляем новое событие в список изменений
-																		::events::add(::move(event), this->_log);
+																		/**
+																		 * Подписка на готовность к чтению здесь НЕ заводится
+																		 *
+																		 * @details Дело фиксации настроек - подготовить узел, а завести подписку призван
+																		 * запуск: он для того и служит. У kqueue подписка заводится здесь же, но
+																		 * ОТКЛЮЧЁННОЙ признаком EV_DISABLE, и включает её запуск признаком EV_ENABLE
+																		 *
+																		 * @warning У Event Ports состояния «заведена, но отключена» нет вовсе: port_associate
+																		 *          заводит связь боевой немедленно. Прежде здесь стояло заведение с
+																		 *          пояснением «но отключаем его», перенесённым от kqueue, - пояснение
+																		 *          описывало намерение, которого здесь не выполнить. Оттого подписка
+																		 *          вставала боевой ещё до запуска узла
+																		 */
 																		// Устанавливаем флаг разрешающий выполнять чтение из сокета
 																		client->transfer.actions |= ::action::READ;
 																		// Устанавливаем флаг разрешающий выполнять запись в сокет
@@ -38908,12 +38938,19 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		 * связи неоднозначны - система не знает, которым устройством их достигать
 																		 */
 																		::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (client->target.get())->ip.get())->zone;
-																		// Создаём объект изменения подписки очереди оповещений
-																		::events::change_t event;
-																		// Устанавливаем событие на чтение но отключаем его
-																		event = ::events::change_t(true, PORT_SOURCE_FD, POLLIN, client->transfer.fd, client);
-																		// Добавляем новое событие в список изменений
-																		::events::add(::move(event), this->_log);
+																		/**
+																		 * Подписка на готовность к чтению здесь НЕ заводится
+																		 *
+																		 * @details Дело фиксации настроек - подготовить узел, а завести подписку призван
+																		 * запуск: он для того и служит. У kqueue подписка заводится здесь же, но
+																		 * ОТКЛЮЧЁННОЙ признаком EV_DISABLE, и включает её запуск признаком EV_ENABLE
+																		 *
+																		 * @warning У Event Ports состояния «заведена, но отключена» нет вовсе: port_associate
+																		 *          заводит связь боевой немедленно. Прежде здесь стояло заведение с
+																		 *          пояснением «но отключаем его», перенесённым от kqueue, - пояснение
+																		 *          описывало намерение, которого здесь не выполнить. Оттого подписка
+																		 *          вставала боевой ещё до запуска узла
+																		 */
 																		// Устанавливаем флаг разрешающий выполнять чтение из сокета
 																		client->transfer.actions |= ::action::READ;
 																		// Устанавливаем флаг разрешающий выполнять запись в сокет
@@ -39007,12 +39044,19 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																			client->state.status = event::status_t::NONE;
 																		// Если бинд выполнен успешно
 																		} else {
-																			// Создаём объект изменения подписки очереди оповещений
-																			::events::change_t event;
-																			// Устанавливаем событие на чтение но отключаем его
-																			event = ::events::change_t(true, PORT_SOURCE_FD, POLLIN, client->transfer.fd, client);
-																			// Добавляем новое событие в список изменений
-																			::events::add(::move(event), this->_log);
+																			/**
+																			 * Подписка на готовность к чтению здесь НЕ заводится
+																			 *
+																			 * @details Дело фиксации настроек - подготовить узел, а завести подписку призван
+																			 * запуск: он для того и служит. У kqueue подписка заводится здесь же, но
+																			 * ОТКЛЮЧЁННОЙ признаком EV_DISABLE, и включает её запуск признаком EV_ENABLE
+																			 *
+																			 * @warning У Event Ports состояния «заведена, но отключена» нет вовсе: port_associate
+																			 *          заводит связь боевой немедленно. Прежде здесь стояло заведение с
+																			 *          пояснением «но отключаем его», перенесённым от kqueue, - пояснение
+																			 *          описывало намерение, которого здесь не выполнить. Оттого подписка
+																			 *          вставала боевой ещё до запуска узла
+																			 */
 																			// Устанавливаем флаг разрешающий выполнять чтение из сокета
 																			client->transfer.actions |= ::action::READ;
 																			// Устанавливаем флаг разрешающий выполнять запись в сокет
@@ -39135,12 +39179,19 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	client->state.status = event::status_t::NONE;
 																// Если бинд выполнен успешно
 																} else {
-																	// Создаём объект изменения подписки очереди оповещений
-																	::events::change_t event;
-																	// Устанавливаем событие на чтение но отключаем его
-																	event = ::events::change_t(true, PORT_SOURCE_FD, POLLIN, client->transfer.fd, client);
-																	// Добавляем новое событие в список изменений
-																	::events::add(::move(event), this->_log);
+																	/**
+																	 * Подписка на готовность к чтению здесь НЕ заводится
+																	 *
+																	 * @details Дело фиксации настроек - подготовить узел, а завести подписку призван
+																	 * запуск: он для того и служит. У kqueue подписка заводится здесь же, но
+																	 * ОТКЛЮЧЁННОЙ признаком EV_DISABLE, и включает её запуск признаком EV_ENABLE
+																	 *
+																	 * @warning У Event Ports состояния «заведена, но отключена» нет вовсе: port_associate
+																	 *          заводит связь боевой немедленно. Прежде здесь стояло заведение с
+																	 *          пояснением «но отключаем его», перенесённым от kqueue, - пояснение
+																	 *          описывало намерение, которого здесь не выполнить. Оттого подписка
+																	 *          вставала боевой ещё до запуска узла
+																	 */
 																	// Устанавливаем флаг разрешающий выполнять чтение из сокета
 																	client->transfer.actions |= ::action::READ;
 																	// Устанавливаем флаг разрешающий выполнять запись в сокет
@@ -39425,12 +39476,19 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 												::trust_cast <struct sockaddr_in> (server->endpoint.server).sin_port = htons(host->port);
 												// Устанавливаем адрес для удаленного подключения целевой машины
 												::trust_cast <struct sockaddr_in> (server->endpoint.server).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (host->ip.get())->address;
-												// Создаём объект изменения подписки очереди оповещений
-												::events::change_t event;
-												// Устанавливаем событие на чтение но отключаем его
-												event = ::events::change_t(true, PORT_SOURCE_FD, POLLIN, server->fd, server);
-												// Добавляем новое событие в список изменений
-												::events::add(::move(event), this->_log);
+												/**
+												 * Подписка на готовность к чтению здесь НЕ заводится
+												 *
+												 * @details Дело фиксации настроек - подготовить узел, а завести подписку призван
+												 * запуск: он для того и служит. У kqueue подписка заводится здесь же, но
+												 * ОТКЛЮЧЁННОЙ признаком EV_DISABLE, и включает её запуск признаком EV_ENABLE
+												 *
+												 * @warning У Event Ports состояния «заведена, но отключена» нет вовсе: port_associate
+												 *          заводит связь боевой немедленно. Прежде здесь стояло заведение с
+												 *          пояснением «но отключаем его», перенесённым от kqueue, - пояснение
+												 *          описывало намерение, которого здесь не выполнить. Оттого подписка
+												 *          вставала боевой ещё до запуска узла
+												 */
 												// Устанавливаем флаг разрешающий выполнять чтение из сокета
 												server->actions |= ::action::READ;
 												// Устанавливаем флаг разрешающий выполнять запись в сокет
@@ -39497,12 +39555,19 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 												 * и отвечает отказом в маршруте
 												 */
 												::trust_cast <struct sockaddr_in6> (server->endpoint.server).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (host->ip.get())->zone;
-												// Создаём объект изменения подписки очереди оповещений
-												::events::change_t event;
-												// Устанавливаем событие на чтение но отключаем его
-												event = ::events::change_t(true, PORT_SOURCE_FD, POLLIN, server->fd, server);
-												// Добавляем новое событие в список изменений
-												::events::add(::move(event), this->_log);
+												/**
+												 * Подписка на готовность к чтению здесь НЕ заводится
+												 *
+												 * @details Дело фиксации настроек - подготовить узел, а завести подписку призван
+												 * запуск: он для того и служит. У kqueue подписка заводится здесь же, но
+												 * ОТКЛЮЧЁННОЙ признаком EV_DISABLE, и включает её запуск признаком EV_ENABLE
+												 *
+												 * @warning У Event Ports состояния «заведена, но отключена» нет вовсе: port_associate
+												 *          заводит связь боевой немедленно. Прежде здесь стояло заведение с
+												 *          пояснением «но отключаем его», перенесённым от kqueue, - пояснение
+												 *          описывало намерение, которого здесь не выполнить. Оттого подписка
+												 *          вставала боевой ещё до запуска узла
+												 */
 												// Устанавливаем флаг разрешающий выполнять чтение из сокета
 												server->actions |= ::action::READ;
 												// Устанавливаем флаг разрешающий выполнять запись в сокет
@@ -39731,12 +39796,19 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																return false;
 															}
 														}
-														// Создаём объект изменения подписки очереди оповещений
-														::events::change_t event;
-														// Устанавливаем событие на чтение но отключаем его
-														event = ::events::change_t(true, PORT_SOURCE_FD, POLLIN, server->fd, server);
-														// Добавляем новое событие в список изменений
-														::events::add(::move(event), this->_log);
+														/**
+														 * Подписка на готовность к чтению здесь НЕ заводится
+														 *
+														 * @details Дело фиксации настроек - подготовить узел, а завести подписку призван
+														 * запуск: он для того и служит. У kqueue подписка заводится здесь же, но
+														 * ОТКЛЮЧЁННОЙ признаком EV_DISABLE, и включает её запуск признаком EV_ENABLE
+														 *
+														 * @warning У Event Ports состояния «заведена, но отключена» нет вовсе: port_associate
+														 *          заводит связь боевой немедленно. Прежде здесь стояло заведение с
+														 *          пояснением «но отключаем его», перенесённым от kqueue, - пояснение
+														 *          описывало намерение, которого здесь не выполнить. Оттого подписка
+														 *          вставала боевой ещё до запуска узла
+														 */
 														// Устанавливаем флаг разрешающий выполнять чтение из сокета
 														server->actions |= ::action::READ;
 														// Устанавливаем флаг разрешающий выполнять запись в сокет
@@ -39892,12 +39964,19 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															::_exit(EXIT_FAILURE);
 														// Если бинд события выполнен успешно
 														} else {
-															// Создаём объект изменения подписки очереди оповещений
-															::events::change_t event;
-															// Устанавливаем событие на чтение но отключаем его
-															event = ::events::change_t(true, PORT_SOURCE_FD, POLLIN, server->fd, server);
-															// Добавляем новое событие в список изменений
-															::events::add(::move(event), this->_log);
+															/**
+															 * Подписка на готовность к чтению здесь НЕ заводится
+															 *
+															 * @details Дело фиксации настроек - подготовить узел, а завести подписку призван
+															 * запуск: он для того и служит. У kqueue подписка заводится здесь же, но
+															 * ОТКЛЮЧЁННОЙ признаком EV_DISABLE, и включает её запуск признаком EV_ENABLE
+															 *
+															 * @warning У Event Ports состояния «заведена, но отключена» нет вовсе: port_associate
+															 *          заводит связь боевой немедленно. Прежде здесь стояло заведение с
+															 *          пояснением «но отключаем его», перенесённым от kqueue, - пояснение
+															 *          описывало намерение, которого здесь не выполнить. Оттого подписка
+															 *          вставала боевой ещё до запуска узла
+															 */
 															// Устанавливаем флаг разрешающий выполнять чтение из сокета
 															server->actions |= ::action::READ;
 															// Устанавливаем флаг разрешающий выполнять запись в сокет
@@ -40060,12 +40139,19 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															::_exit(EXIT_FAILURE);
 														// Если бинд события выполнен успешно
 														} else {
-															// Создаём объект изменения подписки очереди оповещений
-															::events::change_t event;
-															// Устанавливаем событие на чтение но отключаем его
-															event = ::events::change_t(true, PORT_SOURCE_FD, POLLIN, server->fd, server);
-															// Добавляем новое событие в список изменений
-															::events::add(::move(event), this->_log);
+															/**
+															 * Подписка на готовность к чтению здесь НЕ заводится
+															 *
+															 * @details Дело фиксации настроек - подготовить узел, а завести подписку призван
+															 * запуск: он для того и служит. У kqueue подписка заводится здесь же, но
+															 * ОТКЛЮЧЁННОЙ признаком EV_DISABLE, и включает её запуск признаком EV_ENABLE
+															 *
+															 * @warning У Event Ports состояния «заведена, но отключена» нет вовсе: port_associate
+															 *          заводит связь боевой немедленно. Прежде здесь стояло заведение с
+															 *          пояснением «но отключаем его», перенесённым от kqueue, - пояснение
+															 *          описывало намерение, которого здесь не выполнить. Оттого подписка
+															 *          вставала боевой ещё до запуска узла
+															 */
 															// Устанавливаем флаг разрешающий выполнять чтение из сокета
 															server->actions |= ::action::READ;
 															// Устанавливаем флаг разрешающий выполнять запись в сокет
@@ -55554,12 +55640,12 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Добавляем таймаут на ожидание получения данных
-														::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.read}, peer->id, event::rate_t::DEFERRED, this->_log);
+														::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.read}, peer->id, this->_log);
 													break;
 													// Если тип таймера для событий сетевого движка является сложным
 													case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 														// Добавляем таймаут на ожидание получения данных
-														::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.read}, peer->id, event::rate_t::DEFERRED, this->_log);
+														::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.read}, peer->id, this->_log);
 													break;
 												}
 											}
@@ -55588,12 +55674,12 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание подключения к серверу
-													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.connect}, client->id, event::rate_t::DEFERRED, this->_log);
+													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.connect}, client->id, this->_log);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Добавляем таймаут на ожидание подключения к серверу
-													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.connect}, client->id, event::rate_t::DEFERRED, this->_log);
+													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.connect}, client->id, this->_log);
 												break;
 											}
 										// Если клиент находится в состоянии переподключения и установлен таймаут на переподключение к серверу
@@ -55605,12 +55691,12 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание переподключения к серверу
-													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.reconnect}, client->id, event::rate_t::DEFERRED, this->_log);
+													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.reconnect}, client->id, this->_log);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Добавляем таймаут на ожидание переподключения к серверу
-													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.reconnect}, client->id, event::rate_t::DEFERRED, this->_log);
+													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.reconnect}, client->id, this->_log);
 												break;
 											}
 										// Если клиент находится в состоянии подключено и установлен таймаут на подключение к серверу
@@ -55624,12 +55710,12 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Добавляем таймаут на ожидание получения данных
-														::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, event::rate_t::DEFERRED, this->_log);
+														::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, this->_log);
 													break;
 													// Если тип таймера для событий сетевого движка является сложным
 													case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 														// Добавляем таймаут на ожидание получения данных
-														::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, event::rate_t::DEFERRED, this->_log);
+														::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, this->_log);
 													break;
 												}
 											}
@@ -56493,12 +56579,12 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 															// Если тип таймера для событий сетевого движка является простым
 															case static_cast <uint8_t> (event::timer_t::SIMPLE):
 																// Добавляем таймаут на ожидание получения данных
-																::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.read}, peer->id, event::rate_t::DEFERRED, this->_log);
+																::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.read}, peer->id, this->_log);
 															break;
 															// Если тип таймера для событий сетевого движка является сложным
 															case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 																// Добавляем таймаут на ожидание получения данных
-																::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.read}, peer->id, event::rate_t::DEFERRED, this->_log);
+																::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.read}, peer->id, this->_log);
 															break;
 														}
 													}
@@ -56527,12 +56613,12 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 														// Если тип таймера для событий сетевого движка является простым
 														case static_cast <uint8_t> (event::timer_t::SIMPLE):
 															// Добавляем таймаут на ожидание подключения к серверу
-															::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.connect}, client->id, event::rate_t::DEFERRED, this->_log);
+															::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.connect}, client->id, this->_log);
 														break;
 														// Если тип таймера для событий сетевого движка является сложным
 														case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 															// Добавляем таймаут на ожидание подключения к серверу
-															::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.connect}, client->id, event::rate_t::DEFERRED, this->_log);
+															::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.connect}, client->id, this->_log);
 														break;
 													}
 												// Если клиент находится в состоянии переподключения и установлен таймаут на переподключение к серверу
@@ -56544,12 +56630,12 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 														// Если тип таймера для событий сетевого движка является простым
 														case static_cast <uint8_t> (event::timer_t::SIMPLE):
 															// Добавляем таймаут на ожидание переподключения к серверу
-															::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.reconnect}, client->id, event::rate_t::DEFERRED, this->_log);
+															::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.reconnect}, client->id, this->_log);
 														break;
 														// Если тип таймера для событий сетевого движка является сложным
 														case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 															// Добавляем таймаут на ожидание переподключения к серверу
-															::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.reconnect}, client->id, event::rate_t::DEFERRED, this->_log);
+															::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.reconnect}, client->id, this->_log);
 														break;
 													}
 												// Если клиент находится в состоянии подключено и установлен таймаут на подключение к серверу
@@ -56563,12 +56649,12 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 															// Если тип таймера для событий сетевого движка является простым
 															case static_cast <uint8_t> (event::timer_t::SIMPLE):
 																// Добавляем таймаут на ожидание получения данных
-																::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, event::rate_t::DEFERRED, this->_log);
+																::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, this->_log);
 															break;
 															// Если тип таймера для событий сетевого движка является сложным
 															case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 																// Добавляем таймаут на ожидание получения данных
-																::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, event::rate_t::DEFERRED, this->_log);
+																::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, this->_log);
 															break;
 														}
 													}
@@ -58265,12 +58351,12 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 								// Если тип таймера для событий сетевого движка является простым
 								case static_cast <uint8_t> (event::timer_t::SIMPLE):
 									// Ставим таймер в простую структуру дедлайнов
-									::timer::simple::set({::timer::flag_t::FORCED, timer->timeout}, timer->id, event::rate_t::DEFERRED, this->_log);
+									::timer::simple::set({::timer::flag_t::FORCED, timer->timeout}, timer->id, this->_log);
 								break;
 								// Если тип таймера для событий сетевого движка является сложным
 								case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 									// Ставим таймер в сложную структуру дедлайнов
-									::timer::difficult::set({::timer::flag_t::FORCED, timer->timeout}, timer->id, event::rate_t::DEFERRED, this->_log);
+									::timer::difficult::set({::timer::flag_t::FORCED, timer->timeout}, timer->id, this->_log);
 								break;
 							}
 							// Оповещаем о смене статуса таймера
@@ -58339,7 +58425,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 						// Получаем текущее значение объекта межпроцессного взаимодействия
 						::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (i->second.get());
 						// Активируем событие на чтение данных из сокета
-						::events::read(ipc->transfer.fd, ipc, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
+						::events::read(ipc->transfer.fd, ipc, event::mode_t::ENABLED, this->_log);
 						// Возвращаем положительный результат
 						return true;
 					}
@@ -58353,7 +58439,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 						// Получаем текущее значение объекта туннеля
 						::io::tun_t * tunnel = awh_cast <::io::tun_t *> (i->second.get());
 						// Активируем событие на чтение данных из сокета
-						::events::read(tunnel->fd, tunnel, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
+						::events::read(tunnel->fd, tunnel, event::mode_t::ENABLED, this->_log);
 						// Возвращаем положительный результат
 						return true;
 					}
@@ -58381,7 +58467,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 								// Отмечаем активность чтения данных
 								client->activity |= ::activity::READ;
 								// Активируем событие на чтение данных из сокета
-								::events::read(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
+								::events::read(client->transfer.fd, client, event::mode_t::ENABLED, this->_log);
 								// Если необходимо активировать таймаут на чтение для клиента
 								if(client->timeouts.read.delay > 0){
 									// Если событие является неблокирующим
@@ -58395,12 +58481,12 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание получения данных
-													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, event::rate_t::DEFERRED, this->_log);
+													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, this->_log);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Добавляем таймаут на ожидание получения данных
-													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, event::rate_t::DEFERRED, this->_log);
+													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, this->_log);
 												break;
 											}
 										}
@@ -58461,7 +58547,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 								// Отмечаем активность записи данных
 								client->activity |= ::activity::WRITE;
 								// Активируем событие на запись данных в сокет
-								::events::write(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
+								::events::write(client->transfer.fd, client, event::mode_t::ENABLED, this->_log);
 								// Если необходимо активировать таймаут на подключение к серверу
 								if(client->timeouts.connect.delay > 0){
 									// Если событие является неблокирующим
@@ -58473,12 +58559,12 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Добавляем таймаут на ожидание подключения к серверу
-												::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.connect}, client->id, event::rate_t::DEFERRED, this->_log);
+												::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.connect}, client->id, this->_log);
 											break;
 											// Если тип таймера для событий сетевого движка является сложным
 											case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 												// Добавляем таймаут на ожидание подключения к серверу
-												::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.connect}, client->id, event::rate_t::DEFERRED, this->_log);
+												::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.connect}, client->id, this->_log);
 											break;
 										}
 									// Если событие является блокирующим
@@ -58538,7 +58624,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 								// Отмечаем активность чтения данных
 								server->activity |= ::activity::READ;
 								// Активируем событие на чтение данных из сокета
-								::events::read(server->fd, server, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
+								::events::read(server->fd, server, event::mode_t::ENABLED, this->_log);
 								// Возвращаем положительный результат
 								return true;
 							}
@@ -58591,7 +58677,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 								// Отмечаем активность чтения данных
 								server->activity |= ::activity::READ;
 								// Активируем событие на чтение данных из сокета
-								::events::read(server->fd, server, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
+								::events::read(server->fd, server, event::mode_t::ENABLED, this->_log);
 								// Выполняем "пинок" для применения изменений
 								return this->kick();
 							}
@@ -63424,7 +63510,7 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 								 * перевзведения: он обходится одним обращением к структуре
 								 * дедлайнов вместо снятия и повторной постановки
 								 */
-								if(!::timer::simple::reschedule(timer->timeout, timer->id, event::rate_t::INSTANT, this->_log))
+								if(!::timer::simple::reschedule(timer->timeout, timer->id, this->_log))
 									// Снимаем таймер, если перевзвести его не удалось
 									::timer::simple::cancel(timer->timeout, timer->id);
 							} break;
@@ -63435,7 +63521,7 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 								 * перевзведения: он меняет дедлайн прямо на месте, не снимая
 								 * запись и не вставляя новую
 								 */
-								if(!::timer::difficult::reschedule(timer->timeout, timer->id, event::rate_t::INSTANT, this->_log))
+								if(!::timer::difficult::reschedule(timer->timeout, timer->id, this->_log))
 									// Снимаем таймер, если перевзвести его не удалось
 									::timer::difficult::cancel(timer->timeout, timer->id);
 							} break;
@@ -63481,7 +63567,7 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 													// Деактивируем таймаут на ожидание получения данных
 													::timer::simple::cancel(peer->timeouts.read, peer->id);
 												// Иначе сдвигаем дедлайн таймаута на новую задержку
-												else ::timer::simple::reschedule(peer->timeouts.read, peer->id, event::rate_t::INSTANT, this->_log);
+												else ::timer::simple::reschedule(peer->timeouts.read, peer->id, this->_log);
 											} break;
 											// Если тип таймера для событий сетевого движка является сложным
 											case static_cast <uint8_t> (event::timer_t::DIFFICULT): {
@@ -63490,7 +63576,7 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 													// Деактивируем таймаут на ожидание получения данных
 													::timer::difficult::cancel(peer->timeouts.read, peer->id);
 												// Иначе сдвигаем дедлайн таймаута на новую задержку
-												else ::timer::difficult::reschedule(peer->timeouts.read, peer->id, event::rate_t::INSTANT, this->_log);
+												else ::timer::difficult::reschedule(peer->timeouts.read, peer->id, this->_log);
 											} break;
 										}
 									}
@@ -63527,7 +63613,7 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 													// Деактивируем таймаут на ожидание записи данных
 													::timer::simple::cancel(peer->timeouts.write, peer->id);
 												// Иначе сдвигаем дедлайн таймаута на новую задержку
-												else ::timer::simple::reschedule(peer->timeouts.write, peer->id, event::rate_t::INSTANT, this->_log);
+												else ::timer::simple::reschedule(peer->timeouts.write, peer->id, this->_log);
 											} break;
 											// Если тип таймера для событий сетевого движка является сложным
 											case static_cast <uint8_t> (event::timer_t::DIFFICULT): {
@@ -63536,7 +63622,7 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 													// Деактивируем таймаут на ожидание записи данных
 													::timer::difficult::cancel(peer->timeouts.write, peer->id);
 												// Иначе сдвигаем дедлайн таймаута на новую задержку
-												else ::timer::difficult::reschedule(peer->timeouts.write, peer->id, event::rate_t::INSTANT, this->_log);
+												else ::timer::difficult::reschedule(peer->timeouts.write, peer->id, this->_log);
 											} break;
 										}
 									}
@@ -63672,7 +63758,7 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 													// Деактивируем таймаут на ожидание получения данных
 													::timer::simple::cancel(client->timeouts.read, client->id);
 												// Иначе сдвигаем дедлайн таймаута на новую задержку
-												else ::timer::simple::reschedule(client->timeouts.read, client->id, event::rate_t::INSTANT, this->_log);
+												else ::timer::simple::reschedule(client->timeouts.read, client->id, this->_log);
 											} break;
 											// Если тип таймера для событий сетевого движка является сложным
 											case static_cast <uint8_t> (event::timer_t::DIFFICULT): {
@@ -63681,7 +63767,7 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 													// Деактивируем таймаут на ожидание получения данных
 													::timer::difficult::cancel(client->timeouts.read, client->id);
 												// Иначе сдвигаем дедлайн таймаута на новую задержку
-												else ::timer::difficult::reschedule(client->timeouts.read, client->id, event::rate_t::INSTANT, this->_log);
+												else ::timer::difficult::reschedule(client->timeouts.read, client->id, this->_log);
 											} break;
 										}
 									}
@@ -63726,7 +63812,7 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 													// Деактивируем таймаут на ожидание записи данных
 													::timer::simple::cancel(client->timeouts.write, client->id);
 												// Иначе сдвигаем дедлайн таймаута на новую задержку
-												else ::timer::simple::reschedule(client->timeouts.write, client->id, event::rate_t::INSTANT, this->_log);
+												else ::timer::simple::reschedule(client->timeouts.write, client->id, this->_log);
 											} break;
 											// Если тип таймера для событий сетевого движка является сложным
 											case static_cast <uint8_t> (event::timer_t::DIFFICULT): {
@@ -63735,7 +63821,7 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 													// Деактивируем таймаут на ожидание записи данных
 													::timer::difficult::cancel(client->timeouts.write, client->id);
 												// Иначе сдвигаем дедлайн таймаута на новую задержку
-												else ::timer::difficult::reschedule(client->timeouts.write, client->id, event::rate_t::INSTANT, this->_log);
+												else ::timer::difficult::reschedule(client->timeouts.write, client->id, this->_log);
 											} break;
 										}
 									}
@@ -64084,12 +64170,12 @@ bool awh::engine::IO::rearmTimeout(const event::id_t id, const event::action_t a
 			// Если тип таймера для событий сетевого движка является простым
 			case static_cast <uint8_t> (event::timer_t::SIMPLE):
 				// Выполняем постановку дедлайна на остаток прерванного ожидания
-				::timer::simple::set({::timer::flag_t::FORCED, * timeout}, eid, event::rate_t::INSTANT, this->_log);
+				::timer::simple::set({::timer::flag_t::FORCED, * timeout}, eid, this->_log);
 			break;
 			// Если тип таймера для событий сетевого движка является сложным
 			case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 				// Выполняем постановку дедлайна на остаток прерванного ожидания
-				::timer::difficult::set({::timer::flag_t::FORCED, * timeout}, eid, event::rate_t::INSTANT, this->_log);
+				::timer::difficult::set({::timer::flag_t::FORCED, * timeout}, eid, this->_log);
 			break;
 		}
 		// Возвращаем сроку прежнюю задержку
@@ -65023,14 +65109,14 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 									// Добавляем действие события в список разрешённых действий
 									ipc->transfer.actions |= ::action::READ;
 									// Активируем событие на чтение данных из сокета
-									::events::read(ipc->transfer.fd, ipc, mode, event::rate_t::DEFERRED, this->_log);
+									::events::read(ipc->transfer.fd, ipc, mode, this->_log);
 								} break;
 								// Если режим действия события является отключённым
 								case static_cast <uint8_t> (event::mode_t::DISABLED): {
 									// Удаляем действие события из списка разрешённых действий
 									ipc->transfer.actions &= ~::action::READ;
 									// Деактивируем событие на чтение данных из сокета
-									::events::read(ipc->transfer.fd, ipc, mode, event::rate_t::INSTANT, this->_log);
+									::events::read(ipc->transfer.fd, ipc, mode, this->_log);
 								} break;
 							}
 						} break;
@@ -65093,7 +65179,7 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 									// Добавляем действие события в список разрешённых действий
 									peer->transfer.actions |= ::action::READ;
 									// Активируем событие на чтение данных из сокета
-									::events::read(peer->transfer.fd, peer, mode, event::rate_t::DEFERRED, this->_log);
+									::events::read(peer->transfer.fd, peer, mode, this->_log);
 									// Если событие является неблокирующим
 									if((peer->state.options & event::options::NO_IO_BLOCK) || (peer->state.options & event::options::SM_IO_BLOCK)){
 										// Если таймаут используется повторно после срабатывания
@@ -65105,12 +65191,12 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание получения данных
-													::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.read}, peer->id, event::rate_t::DEFERRED, this->_log);
+													::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.read}, peer->id, this->_log);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Добавляем таймаут на ожидание получения данных
-													::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.read}, peer->id, event::rate_t::DEFERRED, this->_log);
+													::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.read}, peer->id, this->_log);
 												break;
 											}
 										}
@@ -65124,7 +65210,7 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 									// Удаляем действие события из списка разрешённых действий
 									peer->transfer.actions &= ~::action::READ;
 									// Деактивируем событие на чтение данных из сокета
-									::events::read(peer->transfer.fd, peer, mode, event::rate_t::INSTANT, this->_log);
+									::events::read(peer->transfer.fd, peer, mode, this->_log);
 									// Если событие является неблокирующим
 									if((peer->state.options & event::options::NO_IO_BLOCK) || (peer->state.options & event::options::SM_IO_BLOCK)){
 										/**
@@ -65164,7 +65250,7 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 											// Отмечаем активность записи данных
 											peer->activity |= ::activity::WRITE;
 											// Активируем событие на запись данных в сокет
-											::events::write(peer->transfer.fd, peer, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
+											::events::write(peer->transfer.fd, peer, event::mode_t::ENABLED, this->_log);
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
@@ -65172,12 +65258,12 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание записи данных
-													::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, event::rate_t::DEFERRED, this->_log);
+													::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, this->_log);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Добавляем таймаут на ожидание записи данных
-													::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, event::rate_t::DEFERRED, this->_log);
+													::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, this->_log);
 												break;
 											}
 										}
@@ -65281,12 +65367,12 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание получения данных
-													::timer::simple::set({::timer::flag_t::SIMPLE, origin->timeouts.read}, origin->id, event::rate_t::DEFERRED, this->_log);
+													::timer::simple::set({::timer::flag_t::SIMPLE, origin->timeouts.read}, origin->id, this->_log);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Добавляем таймаут на ожидание получения данных
-													::timer::difficult::set({::timer::flag_t::SIMPLE, origin->timeouts.read}, origin->id, event::rate_t::DEFERRED, this->_log);
+													::timer::difficult::set({::timer::flag_t::SIMPLE, origin->timeouts.read}, origin->id, this->_log);
 												break;
 											}
 										}
@@ -65332,7 +65418,7 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 										// Если в очереди передачи данных есть данные для отправки
 										if(!origin->transfer.queue.empty()){
 											// Активируем событие на запись данных в сокет
-											::events::write(origin->transfer.fd, origin, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
+											::events::write(origin->transfer.fd, origin, event::mode_t::ENABLED, this->_log);
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
@@ -65340,12 +65426,12 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание записи данных
-													::timer::simple::set({::timer::flag_t::SIMPLE, origin->timeouts.write}, origin->id, event::rate_t::DEFERRED, this->_log);
+													::timer::simple::set({::timer::flag_t::SIMPLE, origin->timeouts.write}, origin->id, this->_log);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Добавляем таймаут на ожидание записи данных
-													::timer::difficult::set({::timer::flag_t::SIMPLE, origin->timeouts.write}, origin->id, event::rate_t::DEFERRED, this->_log);
+													::timer::difficult::set({::timer::flag_t::SIMPLE, origin->timeouts.write}, origin->id, this->_log);
 												break;
 											}
 										}
@@ -65435,14 +65521,14 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 									// Добавляем действие события в список разрешённых действий
 									tunnel->actions |= ::action::READ;
 									// Активируем событие на чтение данных из сокета
-									::events::read(tunnel->fd, tunnel, mode, event::rate_t::DEFERRED, this->_log);
+									::events::read(tunnel->fd, tunnel, mode, this->_log);
 								} break;
 								// Если режим действия события является отключённым
 								case static_cast <uint8_t> (event::mode_t::DISABLED): {
 									// Удаляем действие события из списка разрешённых действий
 									tunnel->actions &= ~::action::READ;
 									// Деактивируем событие на чтение данных из сокета
-									::events::read(tunnel->fd, tunnel, mode, event::rate_t::INSTANT, this->_log);
+									::events::read(tunnel->fd, tunnel, mode, this->_log);
 								} break;
 							}
 						} break;
@@ -65514,7 +65600,7 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 									// Добавляем действие события в список разрешённых действий
 									client->transfer.actions |= ::action::READ;
 									// Активируем событие на чтение данных из сокета
-									::events::read(client->transfer.fd, client, mode, event::rate_t::DEFERRED, this->_log);
+									::events::read(client->transfer.fd, client, mode, this->_log);
 									// Если событие является неблокирующим
 									if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
 										// Если таймаут используется повторно после срабатывания
@@ -65526,12 +65612,12 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание получения данных
-													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, event::rate_t::DEFERRED, this->_log);
+													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, this->_log);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Добавляем таймаут на ожидание получения данных
-													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, event::rate_t::DEFERRED, this->_log);
+													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, this->_log);
 												break;
 											}
 										}
@@ -65545,7 +65631,7 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 									// Удаляем действие события из списка разрешённых действий
 									client->transfer.actions &= ~::action::READ;
 									// Деактивируем событие на чтение данных из сокета
-									::events::read(client->transfer.fd, client, mode, event::rate_t::INSTANT, this->_log);
+									::events::read(client->transfer.fd, client, mode, this->_log);
 									// Если событие является неблокирующим
 									if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
 										/**
@@ -65585,7 +65671,7 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 											// Отмечаем активность записи данных
 											client->activity |= ::activity::WRITE;
 											// Активируем событие на запись данных в сокет
-											::events::write(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
+											::events::write(client->transfer.fd, client, event::mode_t::ENABLED, this->_log);
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
@@ -65593,12 +65679,12 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание записи данных
-													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, this->_log);
+													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, this->_log);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Добавляем таймаут на ожидание записи данных
-													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, this->_log);
+													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, this->_log);
 												break;
 											}
 										}
@@ -65672,12 +65758,12 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание подключения к серверу
-													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.connect}, client->id, event::rate_t::DEFERRED, this->_log);
+													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.connect}, client->id, this->_log);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Добавляем таймаут на ожидание подключения к серверу
-													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.connect}, client->id, event::rate_t::DEFERRED, this->_log);
+													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.connect}, client->id, this->_log);
 												break;
 											}
 										}
@@ -65729,12 +65815,12 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание переподключения к серверу
-													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.reconnect}, client->id, event::rate_t::DEFERRED, this->_log);
+													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.reconnect}, client->id, this->_log);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Добавляем таймаут на ожидание переподключения к серверу
-													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.reconnect}, client->id, event::rate_t::DEFERRED, this->_log);
+													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.reconnect}, client->id, this->_log);
 												break;
 											}
 										}
@@ -65806,7 +65892,7 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 									// Добавляем действие события в список разрешённых действий
 									server->actions |= ::action::READ;
 									// Активируем событие на чтение данных из сокета
-									::events::read(server->fd, server, mode, event::rate_t::DEFERRED, this->_log);
+									::events::read(server->fd, server, mode, this->_log);
 									// Если событие является блокирующим
 									if(!(server->state.options & event::options::NO_IO_BLOCK) && !(server->state.options & event::options::SM_IO_BLOCK)){
 										// Если необходимо активировать таймаут на чтение для сервера
@@ -65823,7 +65909,7 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 									// Удаляем действие события из списка разрешённых действий
 									server->actions &= ~::action::READ;
 									// Деактивируем событие на чтение данных из сокета
-									::events::read(server->fd, server, mode, event::rate_t::INSTANT, this->_log);
+									::events::read(server->fd, server, mode, this->_log);
 									// Если событие является неблокирующим
 									if((server->state.options & event::options::NO_IO_BLOCK) || (server->state.options & event::options::SM_IO_BLOCK)){
 										/**
@@ -65909,14 +65995,14 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 										// Добавляем действие события в список разрешённых действий
 										server->actions |= ::action::ACCEPT;
 										// Активируем событие на чтение данных из сокета
-										::events::read(server->fd, server, mode, event::rate_t::DEFERRED, this->_log);
+										::events::read(server->fd, server, mode, this->_log);
 									} break;
 									// Если режим действия события является отключённым
 									case static_cast <uint8_t> (event::mode_t::DISABLED): {
 										// Удаляем действие события из списка разрешённых действий
 										server->actions &= ~::action::ACCEPT;
 										// Деактивируем событие на чтение данных из сокета
-										::events::read(server->fd, server, mode, event::rate_t::INSTANT, this->_log);
+										::events::read(server->fd, server, mode, this->_log);
 									} break;
 								}
 							}
@@ -66068,7 +66154,7 @@ bool awh::engine::IO::pause(const event::id_t id) noexcept {
 						// Устанавливаем статус события в состояние паузы
 						ipc->state.status = event::status_t::PAUSED;
 						// Деактивируем событие на чтение данных из сокета
-						::events::read(ipc->transfer.fd, ipc,  event::mode_t::DISABLED, event::rate_t::INSTANT, this->_log);
+						::events::read(ipc->transfer.fd, ipc,  event::mode_t::DISABLED, this->_log);
 						// Выполняем "пинок" для применения изменений
 						result = this->kick();
 					}
@@ -66124,7 +66210,7 @@ bool awh::engine::IO::pause(const event::id_t id) noexcept {
 							// Устанавливаем статус события в состояние паузы
 							peer->state.status = event::status_t::PAUSED;
 							// Деактивируем событие на чтение данных из сокета
-							::events::read(peer->transfer.fd, peer, event::mode_t::DISABLED, event::rate_t::INSTANT, this->_log);
+							::events::read(peer->transfer.fd, peer, event::mode_t::DISABLED, this->_log);
 							// Если событие является неблокирующим
 							if((peer->state.options & event::options::NO_IO_BLOCK) || (peer->state.options & event::options::SM_IO_BLOCK)){
 								/**
@@ -66250,7 +66336,7 @@ bool awh::engine::IO::pause(const event::id_t id) noexcept {
 							// Устанавливаем статус события в состояние паузы
 							client->state.status = event::status_t::PAUSED;
 							// Деактивируем событие на чтение данных из сокета
-							::events::read(client->transfer.fd, client, event::mode_t::DISABLED, event::rate_t::INSTANT, this->_log);
+							::events::read(client->transfer.fd, client, event::mode_t::DISABLED, this->_log);
 							// Если событие является неблокирующим
 							if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
 								/**
@@ -66330,7 +66416,7 @@ bool awh::engine::IO::pause(const event::id_t id) noexcept {
 							// Устанавливаем статус события в состояние паузы
 							server->state.status = event::status_t::PAUSED;
 							// Деактивируем событие на чтение данных из сокета
-							::events::read(server->fd, server, event::mode_t::DISABLED, event::rate_t::INSTANT, this->_log);
+							::events::read(server->fd, server, event::mode_t::DISABLED, this->_log);
 							// Если событие является неблокирующим
 							if((server->state.options & event::options::NO_IO_BLOCK) || (server->state.options & event::options::SM_IO_BLOCK)){
 								/**
@@ -66428,7 +66514,7 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 						// Если событие чтения из сокета разрешено
 						if(ipc->transfer.actions & ::action::READ){
 							// Активируем событие на чтение данных из сокета
-							::events::read(ipc->transfer.fd, ipc, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
+							::events::read(ipc->transfer.fd, ipc, event::mode_t::ENABLED, this->_log);
 							// Выполняем "пинок" для применения изменений
 							result = this->kick();
 						}
@@ -66536,7 +66622,7 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 								// Отмечаем активность чтения данных
 								peer->activity |= ::activity::READ;
 								// Активируем событие на чтение данных из сокета
-								::events::read(peer->transfer.fd, peer, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
+								::events::read(peer->transfer.fd, peer, event::mode_t::ENABLED, this->_log);
 								// Если событие является неблокирующим
 								if((peer->state.options & event::options::NO_IO_BLOCK) || (peer->state.options & event::options::SM_IO_BLOCK)){
 									// Если таймаут используется повторно после срабатывания
@@ -66548,12 +66634,12 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Добавляем таймаут на ожидание получения данных
-												::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.read}, peer->id, event::rate_t::DEFERRED, this->_log);
+												::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.read}, peer->id, this->_log);
 											break;
 											// Если тип таймера для событий сетевого движка является сложным
 											case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 												// Добавляем таймаут на ожидание получения данных
-												::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.read}, peer->id, event::rate_t::DEFERRED, this->_log);
+												::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.read}, peer->id, this->_log);
 											break;
 										}
 									}
@@ -66571,7 +66657,7 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 										// Отмечаем активность записи данных
 										peer->activity |= ::activity::WRITE;
 										// Активируем событие на запись данных в сокет
-										::events::write(peer->transfer.fd, peer, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
+										::events::write(peer->transfer.fd, peer, event::mode_t::ENABLED, this->_log);
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
@@ -66579,12 +66665,12 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Добавляем таймаут на ожидание записи данных
-												::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, event::rate_t::DEFERRED, this->_log);
+												::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, this->_log);
 											break;
 											// Если тип таймера для событий сетевого движка является сложным
 											case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 												// Добавляем таймаут на ожидание записи данных
-												::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, event::rate_t::DEFERRED, this->_log);
+												::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, this->_log);
 											break;
 										}
 									}
@@ -66618,12 +66704,12 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Добавляем таймаут на ожидание получения данных
-												::timer::simple::set({::timer::flag_t::SIMPLE, origin->timeouts.read}, origin->id, event::rate_t::DEFERRED, this->_log);
+												::timer::simple::set({::timer::flag_t::SIMPLE, origin->timeouts.read}, origin->id, this->_log);
 											break;
 											// Если тип таймера для событий сетевого движка является сложным
 											case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 												// Добавляем таймаут на ожидание получения данных
-												::timer::difficult::set({::timer::flag_t::SIMPLE, origin->timeouts.read}, origin->id, event::rate_t::DEFERRED, this->_log);
+												::timer::difficult::set({::timer::flag_t::SIMPLE, origin->timeouts.read}, origin->id, this->_log);
 											break;
 										}
 									}
@@ -66636,7 +66722,7 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 									// Если в очереди передачи данных есть данные для отправки
 									if(!origin->transfer.queue.empty()){
 										// Активируем событие на запись данных в сокет
-										::events::write(origin->transfer.fd, origin, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
+										::events::write(origin->transfer.fd, origin, event::mode_t::ENABLED, this->_log);
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
@@ -66644,12 +66730,12 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Добавляем таймаут на ожидание записи данных
-												::timer::simple::set({::timer::flag_t::SIMPLE, origin->timeouts.write}, origin->id, event::rate_t::DEFERRED, this->_log);
+												::timer::simple::set({::timer::flag_t::SIMPLE, origin->timeouts.write}, origin->id, this->_log);
 											break;
 											// Если тип таймера для событий сетевого движка является сложным
 											case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 												// Добавляем таймаут на ожидание записи данных
-												::timer::difficult::set({::timer::flag_t::SIMPLE, origin->timeouts.write}, origin->id, event::rate_t::DEFERRED, this->_log);
+												::timer::difficult::set({::timer::flag_t::SIMPLE, origin->timeouts.write}, origin->id, this->_log);
 											break;
 										}
 									}
@@ -66681,7 +66767,7 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 								// Отмечаем активность чтения данных
 								client->activity |= ::activity::READ;
 								// Активируем событие на чтение данных из сокета
-								::events::read(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
+								::events::read(client->transfer.fd, client, event::mode_t::ENABLED, this->_log);
 								// Если событие является неблокирующим
 								if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
 									// Если таймаут используется повторно после срабатывания
@@ -66693,12 +66779,12 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Добавляем таймаут на ожидание получения данных
-												::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, event::rate_t::DEFERRED, this->_log);
+												::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, this->_log);
 											break;
 											// Если тип таймера для событий сетевого движка является сложным
 											case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 												// Добавляем таймаут на ожидание получения данных
-												::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, event::rate_t::DEFERRED, this->_log);
+												::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, this->_log);
 											break;
 										}
 									}
@@ -66716,7 +66802,7 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 										// Отмечаем активность записи данных
 										client->activity |= ::activity::WRITE;
 										// Активируем событие на запись данных в сокет
-										::events::write(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
+										::events::write(client->transfer.fd, client, event::mode_t::ENABLED, this->_log);
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
@@ -66724,12 +66810,12 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Добавляем таймаут на ожидание записи данных
-												::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, this->_log);
+												::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, this->_log);
 											break;
 											// Если тип таймера для событий сетевого движка является сложным
 											case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 												// Добавляем таймаут на ожидание записи данных
-												::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, this->_log);
+												::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, this->_log);
 											break;
 										}
 									}
@@ -66757,7 +66843,7 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 									// Отмечаем активность чтения данных
 									server->activity |= ::activity::READ;
 									// Активируем событие на чтение данных из сокета
-									::events::read(server->fd, server, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
+									::events::read(server->fd, server, event::mode_t::ENABLED, this->_log);
 									// Если событие является блокирующим
 									if(!(server->state.options & event::options::NO_IO_BLOCK) && !(server->state.options & event::options::SM_IO_BLOCK)){
 										// Если необходимо активировать таймаут на чтение для сервера
@@ -66773,7 +66859,7 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 									// Отмечаем активность чтения данных
 									server->activity |= ::activity::READ;
 									// Активируем событие на чтение данных из сокета
-									::events::read(server->fd, server, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
+									::events::read(server->fd, server, event::mode_t::ENABLED, this->_log);
 								}
 							}
 							// Если событие записи в сокет разрешено
@@ -67618,12 +67704,12 @@ bool awh::engine::IO::initialize() noexcept {
 			// Если тип таймера для событий сетевого движка является простым
 			case static_cast <uint8_t> (event::timer_t::SIMPLE):
 				// Взводим таймер ядра операционной системы на ближайший срок истечения
-				::timer::simple::rearm(event::rate_t::INSTANT, this->_log);
+				::timer::simple::rearm(this->_log);
 			break;
 			// Если тип таймера для событий сетевого движка является сложным
 			case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 				// Взводим таймер ядра операционной системы на ближайший срок истечения
-				::timer::difficult::rearm(event::rate_t::INSTANT, this->_log);
+				::timer::difficult::rearm(this->_log);
 			break;
 		}
 	}
@@ -67847,7 +67933,7 @@ bool awh::engine::IO::reinitialize() noexcept {
 								// Отмечаем активность чтения данных
 								peer->activity |= ::activity::READ;
 								// Активируем событие на чтение данных из сокета
-								::events::read(peer->transfer.fd, peer, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
+								::events::read(peer->transfer.fd, peer, event::mode_t::ENABLED, this->_log);
 								// Если событие является неблокирующим
 								if((peer->state.options & event::options::NO_IO_BLOCK) || (peer->state.options & event::options::SM_IO_BLOCK)){
 									/**
@@ -67857,12 +67943,12 @@ bool awh::engine::IO::reinitialize() noexcept {
 										// Если тип таймера для событий сетевого движка является простым
 										case static_cast <uint8_t> (event::timer_t::SIMPLE):
 											// Добавляем таймаут на ожидание получения данных
-											::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.read}, peer->id, event::rate_t::DEFERRED, this->_log);
+											::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.read}, peer->id, this->_log);
 										break;
 										// Если тип таймера для событий сетевого движка является сложным
 										case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 											// Добавляем таймаут на ожидание получения данных
-											::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.read}, peer->id, event::rate_t::DEFERRED, this->_log);
+											::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.read}, peer->id, this->_log);
 										break;
 									}
 								// Если необходимо активировать таймаут на чтение для однорангового узла
@@ -67879,7 +67965,7 @@ bool awh::engine::IO::reinitialize() noexcept {
 										// Отмечаем активность записи данных
 										peer->activity |= ::activity::WRITE;
 										// Активируем событие на запись данных в сокет
-										::events::write(peer->transfer.fd, peer, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
+										::events::write(peer->transfer.fd, peer, event::mode_t::ENABLED, this->_log);
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
@@ -67887,12 +67973,12 @@ bool awh::engine::IO::reinitialize() noexcept {
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Добавляем таймаут на ожидание записи данных
-												::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, event::rate_t::DEFERRED, this->_log);
+												::timer::simple::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, this->_log);
 											break;
 											// Если тип таймера для событий сетевого движка является сложным
 											case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 												// Добавляем таймаут на ожидание записи данных
-												::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, event::rate_t::DEFERRED, this->_log);
+												::timer::difficult::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, this->_log);
 											break;
 										}
 									}
@@ -67938,12 +68024,12 @@ bool awh::engine::IO::reinitialize() noexcept {
 										// Если тип таймера для событий сетевого движка является простым
 										case static_cast <uint8_t> (event::timer_t::SIMPLE):
 											// Добавляем таймаут на ожидание получения данных
-											::timer::simple::set({::timer::flag_t::SIMPLE, origin->timeouts.read}, origin->id, event::rate_t::DEFERRED, this->_log);
+											::timer::simple::set({::timer::flag_t::SIMPLE, origin->timeouts.read}, origin->id, this->_log);
 										break;
 										// Если тип таймера для событий сетевого движка является сложным
 										case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 											// Добавляем таймаут на ожидание получения данных
-											::timer::difficult::set({::timer::flag_t::SIMPLE, origin->timeouts.read}, origin->id, event::rate_t::DEFERRED, this->_log);
+											::timer::difficult::set({::timer::flag_t::SIMPLE, origin->timeouts.read}, origin->id, this->_log);
 										break;
 									}
 								}
@@ -67955,7 +68041,7 @@ bool awh::engine::IO::reinitialize() noexcept {
 									// Если в очереди передачи данных есть данные для отправки
 									if(!origin->transfer.queue.empty()){
 										// Активируем событие на запись данных в сокет
-										::events::write(origin->transfer.fd, origin, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
+										::events::write(origin->transfer.fd, origin, event::mode_t::ENABLED, this->_log);
 										/**
 										 * Определяем тип таймера для событий сетевого движка
 										 */
@@ -67963,12 +68049,12 @@ bool awh::engine::IO::reinitialize() noexcept {
 											// Если тип таймера для событий сетевого движка является простым
 											case static_cast <uint8_t> (event::timer_t::SIMPLE):
 												// Добавляем таймаут на ожидание записи данных
-												::timer::simple::set({::timer::flag_t::SIMPLE, origin->timeouts.write}, origin->id, event::rate_t::DEFERRED, this->_log);
+												::timer::simple::set({::timer::flag_t::SIMPLE, origin->timeouts.write}, origin->id, this->_log);
 											break;
 											// Если тип таймера для событий сетевого движка является сложным
 											case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 												// Добавляем таймаут на ожидание записи данных
-												::timer::difficult::set({::timer::flag_t::SIMPLE, origin->timeouts.write}, origin->id, event::rate_t::DEFERRED, this->_log);
+												::timer::difficult::set({::timer::flag_t::SIMPLE, origin->timeouts.write}, origin->id, this->_log);
 											break;
 										}
 									}
@@ -68055,12 +68141,12 @@ bool awh::engine::IO::reinitialize() noexcept {
 									// Если тип таймера для событий сетевого движка является простым
 									case static_cast <uint8_t> (event::timer_t::SIMPLE):
 										// Добавляем таймаут на переподключение
-										::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.reconnect}, client->id, event::rate_t::DEFERRED, this->_log);
+										::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.reconnect}, client->id, this->_log);
 									break;
 									// Если тип таймера для событий сетевого движка является сложным
 									case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 										// Добавляем таймаут на переподключение
-										::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.reconnect}, client->id, event::rate_t::DEFERRED, this->_log);
+										::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.reconnect}, client->id, this->_log);
 									break;
 								}
 							// Если таймаут на подключение не был активирован
@@ -68072,7 +68158,7 @@ bool awh::engine::IO::reinitialize() noexcept {
 										// Отмечаем активность чтения данных
 										client->activity |= ::activity::READ;
 										// Активируем событие на чтение данных из сокета
-										::events::read(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
+										::events::read(client->transfer.fd, client, event::mode_t::ENABLED, this->_log);
 										// Если событие является неблокирующим
 										if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
 											// Если необходимо активировать таймаут на чтение для клиента
@@ -68084,12 +68170,12 @@ bool awh::engine::IO::reinitialize() noexcept {
 													// Если тип таймера для событий сетевого движка является простым
 													case static_cast <uint8_t> (event::timer_t::SIMPLE):
 														// Добавляем таймаут на ожидание получения данных
-														::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, event::rate_t::DEFERRED, this->_log);
+														::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, this->_log);
 													break;
 													// Если тип таймера для событий сетевого движка является сложным
 													case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 														// Добавляем таймаут на ожидание получения данных
-														::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, event::rate_t::DEFERRED, this->_log);
+														::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, this->_log);
 													break;
 												}
 											}
@@ -68108,7 +68194,7 @@ bool awh::engine::IO::reinitialize() noexcept {
 											// Отмечаем активность записи данных
 											client->activity |= ::activity::WRITE;
 											// Активируем событие на запись данных в сокет
-											::events::write(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
+											::events::write(client->transfer.fd, client, event::mode_t::ENABLED, this->_log);
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
@@ -68116,12 +68202,12 @@ bool awh::engine::IO::reinitialize() noexcept {
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание подключения к серверу
-													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.connect}, client->id, event::rate_t::DEFERRED, this->_log);
+													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.connect}, client->id, this->_log);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Добавляем таймаут на ожидание подключения к серверу
-													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.connect}, client->id, event::rate_t::DEFERRED, this->_log);
+													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.connect}, client->id, this->_log);
 												break;
 											}
 										// Если в очереди передачи данных есть данные для отправки
@@ -68129,7 +68215,7 @@ bool awh::engine::IO::reinitialize() noexcept {
 											// Отмечаем активность записи данных
 											client->activity |= ::activity::WRITE;
 											// Активируем событие на запись данных в сокет
-											::events::write(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
+											::events::write(client->transfer.fd, client, event::mode_t::ENABLED, this->_log);
 											/**
 											 * Определяем тип таймера для событий сетевого движка
 											 */
@@ -68137,12 +68223,12 @@ bool awh::engine::IO::reinitialize() noexcept {
 												// Если тип таймера для событий сетевого движка является простым
 												case static_cast <uint8_t> (event::timer_t::SIMPLE):
 													// Добавляем таймаут на ожидание записи данных
-													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, this->_log);
+													::timer::simple::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, this->_log);
 												break;
 												// Если тип таймера для событий сетевого движка является сложным
 												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 													// Добавляем таймаут на ожидание записи данных
-													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, this->_log);
+													::timer::difficult::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, this->_log);
 												break;
 											}
 										}
@@ -68192,7 +68278,7 @@ bool awh::engine::IO::reinitialize() noexcept {
 								// Отмечаем активность чтения данных
 								server->activity |= ::activity::READ;
 								// Активируем событие на чтение данных из сокета
-								::events::read(server->fd, server, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
+								::events::read(server->fd, server, event::mode_t::ENABLED, this->_log);
 								// Если событие является блокирующим
 								if(!(server->state.options & event::options::NO_IO_BLOCK) && !(server->state.options & event::options::SM_IO_BLOCK)){
 									// Если необходимо активировать таймаут на чтение для сервера
@@ -68233,12 +68319,12 @@ bool awh::engine::IO::reinitialize() noexcept {
 			// Если тип таймера для событий сетевого движка является простым
 			case static_cast <uint8_t> (event::timer_t::SIMPLE):
 				// Взводим таймер ядра операционной системы на ближайший срок истечения
-				::timer::simple::rearm(event::rate_t::INSTANT, this->_log);
+				::timer::simple::rearm(this->_log);
 			break;
 			// Если тип таймера для событий сетевого движка является сложным
 			case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 				// Взводим таймер ядра операционной системы на ближайший срок истечения
-				::timer::difficult::rearm(event::rate_t::INSTANT, this->_log);
+				::timer::difficult::rearm(this->_log);
 			break;
 		}
 	}
@@ -68658,12 +68744,12 @@ void awh::engine::IO::setInternalTimer(const event::timer_t timer) noexcept {
 						// Если тип таймера для событий сетевого движка является простым
 						case static_cast <uint8_t> (event::timer_t::SIMPLE):
 							// Ставим таймер в простую структуру дедлайнов
-							::timer::simple::set({::timer::flag_t::FORCED, node->timeout}, node->id, event::rate_t::DEFERRED, this->_log);
+							::timer::simple::set({::timer::flag_t::FORCED, node->timeout}, node->id, this->_log);
 						break;
 						// Если тип таймера для событий сетевого движка является сложным
 						case static_cast <uint8_t> (event::timer_t::DIFFICULT):
 							// Ставим таймер в сложную структуру дедлайнов
-							::timer::difficult::set({::timer::flag_t::FORCED, node->timeout}, node->id, event::rate_t::DEFERRED, this->_log);
+							::timer::difficult::set({::timer::flag_t::FORCED, node->timeout}, node->id, this->_log);
 						break;
 					}
 				} break;
@@ -69302,6 +69388,27 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 				for(ssize_t i = 0; i < events; i++){
 					// Получаем текущее значение события
 					port_event_t & ev = ::__awh_events__[i];
+					/**
+					 * ВРЕМЕННЫЙ ОПЫТ: ловим записи пачки, чей узел уже снесён
+					 *
+					 * @warning В дерево это не годится - перебор по всем узлам на каждое
+					 *          событие дорог. Опыт нужен, чтобы доказать изъян числом
+					 */
+					{
+						bool alive = false;
+						for(const auto & item : ::__awh_nodes__){
+							if(item.second.get() == reinterpret_cast <::io::node_t *> (ev.portev_user)){
+								alive = true;
+								break;
+							}
+						}
+						if(!alive && (ev.portev_user != nullptr)){
+							static uint64_t caught = 0;
+							::fprintf(stderr, "DEAD-NODE #%llu udata=%p\n", (unsigned long long) ++caught, ev.portev_user);
+							::fflush(stderr);
+							continue;
+						}
+					}
 					// Если событие является системным таймером, то выполняем обработку отложенных таймеров
 					if(ev.portev_source == PORT_SOURCE_TIMER){
 						// Отмечаем, что истёкшие дедлайны в этом опросе уже разобраны
@@ -69315,14 +69422,14 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 								// Таймер ядра однократный и после срабатывания снят, снимаем отметку о взводе
 								::timer::simple::disarm();
 								// Выполняем обработку отложенных таймеров
-								::timer::simple::examination(event::rate_t::DEFERRED, this, &this->_eth, &this->_addr, this->_fmk, this->_log);
+								::timer::simple::examination(this, &this->_eth, &this->_addr, this->_fmk, this->_log);
 							} break;
 							// Если тип таймера для событий сетевого движка является сложным
 							case static_cast <uint8_t> (event::timer_t::DIFFICULT): {
 								// Таймер ядра однократный и после срабатывания снят, снимаем отметку о взводе
 								::timer::difficult::disarm();
 								// Выполняем обработку отложенных таймеров
-								::timer::difficult::examination(event::rate_t::DEFERRED, this, &this->_eth, &this->_addr, this->_fmk, this->_log);
+								::timer::difficult::examination(this, &this->_eth, &this->_addr, this->_fmk, this->_log);
 							} break;
 						}
 						// Пропускаем событие
@@ -69454,14 +69561,14 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 						// Если ближайший дедлайн уже истёк
 						if(::timer::simple::deadline() <= now)
 							// Выполняем обработку отложенных таймеров
-							::timer::simple::examination(event::rate_t::DEFERRED, this, &this->_eth, &this->_addr, this->_fmk, this->_log);
+							::timer::simple::examination(this, &this->_eth, &this->_addr, this->_fmk, this->_log);
 					} break;
 					// Если тип таймера для событий сетевого движка является сложным
 					case static_cast <uint8_t> (event::timer_t::DIFFICULT): {
 						// Если ближайший дедлайн уже истёк
 						if(::timer::difficult::deadline() <= now)
 							// Выполняем обработку отложенных таймеров
-							::timer::difficult::examination(event::rate_t::DEFERRED, this, &this->_eth, &this->_addr, this->_fmk, this->_log);
+							::timer::difficult::examination(this, &this->_eth, &this->_addr, this->_fmk, this->_log);
 					} break;
 				}
 			}

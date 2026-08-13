@@ -204,6 +204,24 @@ class IoPingParameterizedFixture : public IoFixture, public ::testing::WithParam
 TEST_P(IoPingParameterizedFixture, DISABLED_IoPingTest){
 	// Идентификатор события
 	awh::event::id_t eid = 0;
+	// Количество принятых откликов на эхо-запрос
+	uint8_t replies = 0;
+	// Опознаватель, которым метятся наши запросы
+	const uint16_t identifier = htons(static_cast <uint16_t> (::getpid() & 0xFFFF));
+	// Номер последовательности, отклика на который мы ждём
+	uint16_t expected = 0;
+	/**
+	 * Признак сырого сокета
+	 *
+	 * @note Различие существенно для разбора отклика: сырой сокет отдаёт пакет
+	 *       ВМЕСТЕ с заголовком IP, а дейтаграммный сокет ICMP - с заголовка ICMP.
+	 *       Наложить структуру ICMP на заголовок IP значит разобрать чужие байты
+	 */
+	#if _WIN32 || _WIN64
+		const bool raw = true;
+	#else
+		const bool raw = (::getuid() == 0);
+	#endif
 	/**
 	 * Для операционной системы MS Windows
 	 */
@@ -237,13 +255,64 @@ TEST_P(IoPingParameterizedFixture, DISABLED_IoPingTest){
 		this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
 	}));
 	// Устанавливаем функцию обратного вызова на чтение из события
-	this->_io->on(eid, [this](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
-		// Результат полученных данных
-		auto icmpResponseHeader = reinterpret_cast <const struct IoPingParameterizedFixture::IcmpHeader *> (data);
-		// Добавляем полученный IP-адрес
-		this->addr->v4(icmpResponseHeader->meta.redirect.gatewayAddress);
-		// Записываем в лог сообщение о переподключении события
-		this->_log->print("Прочитано: ID=%u, %zu байт, сообщение: %s", awh::log_t::flag_t::INFO, eid, size, static_cast <std::string> (* this->addr.get()).c_str());
+	this->_io->on(eid, [this, raw, identifier, &expected, &replies](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+		// Если принятого не хватает даже на заголовок
+		if((data == nullptr) || (size == 0))
+			// Выходим из разбора отклика
+			return;
+		// Смещение заголовка ICMP от начала принятого
+		size_t offset = 0;
+		/**
+		 * Если отклик пришёл вместе с заголовком IP
+		 *
+		 * @note Длина заголовка IP берётся из младшей половины первого октета в
+		 *       четырёхоктетных словах и постоянной величиной НЕ является: заголовок
+		 *       вправе нести дополнения
+		 */
+		if(raw && (size > 0) && ((data[0] >> 4) == 4))
+			// Получаем смещение заголовка ICMP от начала принятого
+			offset = (static_cast <size_t> (data[0] & 0x0F) * 4);
+		// Если принятого не хватает на заголовок ICMP
+		if((offset + 4) > size)
+			// Выходим из разбора отклика
+			return;
+		// Получаем заголовок ICMP принятого отклика
+		auto icmp = reinterpret_cast <const struct IoPingParameterizedFixture::IcmpHeader *> (data + offset);
+		// Записываем в лог сведения о принятом отклике
+		this->_log->print(
+			"Прочитано: ID=%u, %zu байт, заголовок IP %zu байт, тип %u, код %u",
+			awh::log_t::flag_t::INFO, eid, size, offset,
+			static_cast <uint32_t> (icmp->type), static_cast <uint32_t> (icmp->code)
+		);
+		/**
+		 * Если принят отклик на эхо-запрос
+		 *
+		 * @note Тип 0 - это именно отклик на эхо-запрос. Прочие типы приходят на тот
+		 *       же сырой сокет от чужого обмена, и засчитывать их за наш отклик нельзя
+		 */
+		if(icmp->type != 0)
+			// Выходим из разбора отклика
+			return;
+		// Если принятого не хватает на тело эхо-запроса
+		if((offset + sizeof(struct IoPingParameterizedFixture::IcmpHeader)) > size)
+			// Выходим из разбора отклика
+			return;
+		/**
+		 * Если отклик пришёл не на наш запрос
+		 *
+		 * @note Опознаватель сличается ТОЛЬКО у сырого сокета: дейтаграммный сокет
+		 *       ICMP подменяет его своими силами - ядро проставляет туда собственную
+		 *       величину, отчего сличение с нашей было бы заведомо ложным
+		 */
+		if(raw && (icmp->meta.echo.identifier != identifier))
+			// Выходим из разбора отклика
+			return;
+		// Если отклик пришёл не на текущий запрос
+		if(icmp->meta.echo.sequence != htons(expected))
+			// Выходим из разбора отклика
+			return;
+		// Увеличиваем количество принятых откликов на эхо-запрос
+		replies++;
 	});
 	// Устанавливаем функцию обратного вызова на ошибку события
 	this->_io->on(eid, [this](const awh::event::id_t eid, const awh::event::error_t error, const std::string & description) noexcept -> void {
@@ -377,8 +446,29 @@ TEST_P(IoPingParameterizedFixture, DISABLED_IoPingTest){
 	this->_io->setTimeout(eid, awh::event::action_t::CONNECT, 5000);
 	// Выполняем фиксацию настроек события сервера
 	ASSERT_TRUE(this->_io->commit(eid));
-	// Выполняем запуск события
-	ASSERT_TRUE(this->_io->launch(eid));
+	/**
+	 * Запуск события здесь НЕ выполняется
+	 *
+	 * @details Дело запуска - сменить состояние узла и завести подписку на готовность
+	 * сокета. Обмен же ниже идёт вручную: `send` и `recv` зовутся прямо, цикл опроса
+	 * не запускается вовсе. Подписка такому обмену не нужна
+	 *
+	 * @warning Заводить её здесь не просто лишне, а вредно. Сокет блокирующий, и
+	 *          читаем мы его сами. Оповещения о готовности при этом копятся у очереди
+	 *          движка, а данные забирает наше же обращение к чтению - и разбор,
+	 *          добравшись до накопленного оповещения, идёт читать пустой сокет.
+	 *          Блокирующее чтение там не отвечает EAGAIN, а засыпает
+	 *
+	 * @warning Установлено замером на стенде Solaris (13.08.2026): с запуском события
+	 *          проверка отнимала 2 часа 45 минут при трёх запросах, тогда как сам
+	 *          обмен ICMP занимает сорок миллисекунд на запрос. У kqueue отказ не
+	 *          проявлялся по случайности: изменения подписок копятся там в пакет и
+	 *          уходят ядру лишь при обращении цикла опроса, а его проверка не зовёт
+	 *
+	 * @note Сказанное не значит, что блокирующему сокету подписка противопоказана: она
+	 *       вполне уместна, скажем, потоковому клиенту, которому добавляет надёжности.
+	 *       Не нужна она лишь там, где чтение ведётся вручную, - как здесь
+	 */
 	// Выполняем инициализацию генератора
 	std::random_device randev;
 	// Подключаем устройство генератора
@@ -398,29 +488,46 @@ TEST_P(IoPingParameterizedFixture, DISABLED_IoPingTest){
 	 * Выполняем пинг 3 раза 
 	 */
 	for(uint8_t i = 0; i < 3; i++){
+		// Запоминаем номер последовательности, отклика на который ждём
+		expected = sequence;
 		// Устанавливаем номер последовательности
 		icmp.meta.echo.sequence = htons(sequence);
 		// Устанавливаем идентификатор запроса
-		icmp.meta.echo.identifier = htons(::getpid() & 0xFFFF);
+		icmp.meta.echo.identifier = identifier;
 		// Устанавливаем данные полезной нагрузки
 		icmp.meta.echo.payload = static_cast <uint64_t> (dist6(generator));
 		// Обнуляем структуру (ОЧЕНЬ ВАЖНО ТАК-КАК РАСЧЁТ КОНТРОЛЬНОЙ СУММЫ НАЧИНАЕТСЯ С НУЛЯ!!!)
 		icmp.checksum = 0;
 		// Выполняем подсчёт контрольной суммы
 		icmp.checksum = IoPingParameterizedFixture::checksum(&icmp, sizeof(icmp));
-		// Запоминаем текущее значение времени в миллисекундах
-		const uint64_t mseconds = this->chrono->timestamp(awh::chrono_t::type_t::MILLISECONDS);
 		// Отправляем сообщение серверу
 		ASSERT_TRUE(this->_io->send(eid, reinterpret_cast <char *> (&icmp), sizeof(icmp)));
-		// Выполняем чтение ответа
+		/**
+		 * Выполняем чтение ответа
+		 *
+		 * @warning Утверждать, что чтение заняло не меньше миллисекунды, НЕЛЬЗЯ: время
+		 *          это ничего об обмене не говорит. Отклик приходит обработчиком, а
+		 *          само обращение управление возвращает сразу - у Solaris проверка на
+		 *          этом и валилась, тогда как отклики приходили исправно. У Linux то
+		 *          же утверждение проходило по случайности. Работу обмена доказывает
+		 *          счёт разобранных откликов ниже, а не часы
+		 */
 		ASSERT_TRUE(this->_io->recv(eid));
-		// Выполняем подсчёт количество прошедшего времени
-		ASSERT_GT(this->chrono->timestamp(awh::chrono_t::type_t::MILLISECONDS) - mseconds, 0);
 		// Увеличиваем последовательность запроса
 		sequence++;
 	}
 	// Уничтожаем все события после получения ответа
 	ASSERT_TRUE(this->_io->deinitialize());
+	/**
+	 * Проверяем, что отклики на эхо-запросы приняты и разобраны
+	 *
+	 * @warning Утверждение это - единственное, что отличает проверку работающего
+	 *          обмена ICMP от проверки, которая пройдёт при любых принятых байтах.
+	 *          Прежде тело её лишь печатало принятое, причём накладывало заголовок
+	 *          ICMP прямо на заголовок IP и выдавало из него несуществующий адрес
+	 *          шлюза, - и прошла бы она даже если бы движок вернул мусор
+	 */
+	ASSERT_EQ(replies, 3);
 }
 
 /**

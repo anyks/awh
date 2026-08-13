@@ -9,9 +9,17 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * \~russian
  * @brief Заголовочный файл общих определений модуля Юникода — идентификаторы свойств,
  *        основания их диапазонов, классы разбиения текста на графемные кластеры,
  *        положения символов в сочетаниях индийских письменностей и виды записей таблиц
+ *
+ * \~english
+ * @brief Header file of the common definitions of the Unicode module — property identifiers,
+ *        the bases of their ranges, the classes of splitting text into grapheme clusters,
+ *        the positions of characters within Indic conjuncts and the kinds of table entries
+ *
+ * \~
  *
  * @copyright: Copyright © 2026
  *
@@ -35,8 +43,13 @@
 #include "../../sys/global.hpp"
 
 /**
+ * \~russian
  * @brief Основное пространство имён
  *
+ * \~english
+ * @brief Main namespace
+ *
+ * \~
  */
 namespace awh {
 	/**
@@ -45,66 +58,122 @@ namespace awh {
 	using namespace std;
 
 	/**
+	 * \~russian
 	 * @brief Пространство имён модуля Юникода
 	 *
+	 * \~english
+	 * @brief Namespace of the Unicode module
+	 *
+	 * \~
 	 */
 	namespace unicode {
 		/**
+		 * \~russian
 		 * @brief Основание идентификаторов письменностей
 		 *
+		 * \~english
+		 * @brief Base of the script identifiers
+		 *
+		 * \~
 		 */
 		constexpr uint16_t SCRIPT_BASE = 0x0100;
 
 		/**
+		 * \~russian
 		 * @brief Основание идентификаторов письменностей с их расширениями
 		 *
 		 * @details Имя письменности, записанное без указания вида свойства, соответствует
 		 *          объединению письменности символа и набора её расширений, что установлено
 		 *          сличением с эталонной реализацией.
 		 *
+		 * \~english
+		 * @brief Base of the identifiers of scripts together with their extensions
+		 *
+		 * @details A script name recorded without stating the kind of property corresponds to the
+		 *          union of the script of the character and the set of its extensions, which has been
+		 *          established by comparison with the reference implementation.
+		 *
+		 * \~
 		 */
 		constexpr uint16_t UNITED_BASE = 0x0400;
 
 		/**
+		 * \~russian
 		 * @brief Основание идентификаторов расширений письменностей
 		 *
+		 * \~english
+		 * @brief Base of the identifiers of script extensions
+		 *
+		 * \~
 		 */
 		constexpr uint16_t EXTENDED_BASE = 0x0800;
 
 		/**
+		 * \~russian
 		 * @brief Основание идентификаторов двоичных свойств
 		 *
+		 * \~english
+		 * @brief Base of the identifiers of binary properties
+		 *
+		 * \~
 		 */
 		constexpr uint16_t BINARY_BASE = 0x1000;
 
 		/**
+		 * \~russian
 		 * @brief Основание идентификаторов классов двунаправленности
 		 *
+		 * \~english
+		 * @brief Base of the identifiers of bidirectional classes
+		 *
+		 * \~
 		 */
 		constexpr uint16_t BIDI_BASE = 0x1800;
 
 		/**
+		 * \~russian
 		 * @brief Признак завершения набора письменностей расширения
 		 *
+		 * \~english
+		 * @brief Sign of the end of the set of scripts of an extension
+		 *
+		 * \~
 		 */
 		constexpr uint16_t EXTENSION_END = 0xFFFF;
 
 		/**
+		 * \~russian
 		 * @brief Номер письменности неназначенных символов
 		 *
 		 * @details Письменность неназначенных символов диапазонами не задана
 		 *          и отведена номером, следующим за заданными письменностями.
 		 *
+		 * \~english
+		 * @brief Number of the script of unassigned characters
+		 *
+		 * @details The script of unassigned characters is not defined by ranges
+		 *          and is allotted the number following the defined scripts.
+		 *
+		 * \~
 		 */
 		extern __AWH_SHARED_EXPORT__ const size_t SCRIPTS_UNKNOWN;
 
 		/**
+		 * \~russian
 		 * @brief Идентификатор свойства Юникода
 		 *
 		 * @details Значения соответствуют общим категориям Юникода и расширенным
 		 *          классам символов PCRE. Идентификаторы письменностей размещаются
 		 *          в диапазоне, начинающемся со значения «SCRIPT».
 		 *
+		 * \~english
+		 * @brief Identifier of a Unicode property
+		 *
+		 * @details The values correspond to the Unicode general categories and to the extended
+		 *          character classes of PCRE. The script identifiers are placed within the range
+		 *          beginning at the "SCRIPT" value.
+		 *
+		 * \~
 		 */
 		enum class property_id_t : uint16_t {
 			UNKNOWN = 0x0000, // Свойство не распознано
@@ -163,11 +232,19 @@ namespace awh {
 		};
 
 		/**
+		 * \~russian
 		 * @brief Класс разбиения текста на графемные кластеры
 		 *
 		 * @details Значения соответствуют свойству разбиения графемных кластеров
 		 *          приложения по разбиению текста стандарта Юникода.
 		 *
+		 * \~english
+		 * @brief Class of splitting text into grapheme clusters
+		 *
+		 * @details The values correspond to the grapheme cluster break property of the annex
+		 *          on text segmentation of the Unicode standard.
+		 *
+		 * \~
 		 */
 		enum class cluster_t : uint8_t {
 			CONTROL    = 0x00, // Управляющий символ
@@ -188,8 +265,13 @@ namespace awh {
 		};
 
 		/**
+		 * \~russian
 		 * @brief Положение символа в сочетании индийских письменностей
 		 *
+		 * \~english
+		 * @brief Position of a character within an Indic conjunct
+		 *
+		 * \~
 		 */
 		enum class indic_t : uint8_t {
 			NONE      = 0x00, // Положение не задано
@@ -199,8 +281,13 @@ namespace awh {
 		};
 
 		/**
+		 * \~russian
 		 * @brief Диапазон кодовых значений символов, обладающих значением свойства
 		 *
+		 * \~english
+		 * @brief Range of code values of the characters holding a property value
+		 *
+		 * \~
 		 */
 		typedef struct __AWH_SHARED_EXPORT__ Interval {
 			// Наименьшее кодовое значение диапазона
@@ -212,8 +299,13 @@ namespace awh {
 		} interval_t;
 
 		/**
+		 * \~russian
 		 * @brief Диапазон кодовых значений с общим смещением приведения регистра
 		 *
+		 * \~english
+		 * @brief Range of code values with a common case folding offset
+		 *
+		 * \~
 		 */
 		typedef struct __AWH_SHARED_EXPORT__ Folding {
 			// Наименьшее кодовое значение диапазона
@@ -225,8 +317,13 @@ namespace awh {
 		} folding_t;
 
 		/**
+		 * \~russian
 		 * @brief Разложение символа набором кодовых значений
 		 *
+		 * \~english
+		 * @brief Decomposition of a character into a set of code values
+		 *
+		 * \~
 		 */
 		typedef struct __AWH_SHARED_EXPORT__ Decomposition {
 			// Кодовое значение разлагаемого символа
@@ -240,8 +337,13 @@ namespace awh {
 		} decomposition_t;
 
 		/**
+		 * \~russian
 		 * @brief Каноническое сочетание пары символов
 		 *
+		 * \~english
+		 * @brief Canonical composition of a pair of characters
+		 *
+		 * \~
 		 */
 		typedef struct __AWH_SHARED_EXPORT__ Composition {
 			// Кодовое значение начального символа пары
@@ -253,6 +355,7 @@ namespace awh {
 		} composition_t;
 
 		/**
+		 * \~russian
 		 * @brief Вид нормального представления текста
 		 *
 		 * @details Виды заданы приложением по нормализации стандарта Юникода.
@@ -260,6 +363,15 @@ namespace awh {
 		 *          различающиеся начертанием, и для приведения доменных имён
 		 *          применяются лишь на этапе преобразования символов.
 		 *
+		 * \~english
+		 * @brief Kind of the normal form of a text
+		 *
+		 * @details The kinds are defined by the annex on normalization of the Unicode standard.
+		 *          The compatibility forms bring to a common form characters differing in their
+		 *          glyph shape, and for domain name mapping they are applied only at the stage
+		 *          of character transformation.
+		 *
+		 * \~
 		 */
 		enum class form_t : uint8_t {
 			NFD  = 0x00, // Каноническое разложение
@@ -269,8 +381,13 @@ namespace awh {
 		};
 
 		/**
+		 * \~russian
 		 * @brief Соответствие имени свойства его идентификатору
 		 *
+		 * \~english
+		 * @brief Correspondence of a property name to its identifier
+		 *
+		 * \~
 		 */
 		typedef struct __AWH_SHARED_EXPORT__ Naming {
 			// Имя свойства, приведённое к нормальному виду

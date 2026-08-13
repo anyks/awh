@@ -9,9 +9,17 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * \~russian
  * @brief Заголовочный файл конфигурации библиотеки — версия, название и контактные данные проекта,
  *        локаль по умолчанию для каждой операционной системы и настройки режима отладки,
  *        включая выбор безопасного приведения типов
+ *
+ * \~english
+ * @brief Header file of the configuration of the library — the version, the name and the contact data of the project,
+ *        the default locale for every operating system and the settings of the debug mode,
+ *        including the choice of the safe type cast
+ *
+ * \~
  *
  * @copyright: Copyright © 2025
  *
@@ -53,6 +61,7 @@
 #endif
 
 /**
+ * \~russian
  * @brief Приведение типов, проверяемое в отладочной сборке
  *
  * @details Отладочная сборка приводит тип с проверкой, выпускная - без неё. Так
@@ -62,6 +71,16 @@
  *          уехавшее в выпуск неверным, есть ошибка разработчика, не поймавшего
  *          его в отладке, и проверка в выпуске её не исправит - лишь скроет
  *
+ * \~english
+ * @brief Type cast checked in a debug build
+ * @details A debug build casts the type with a check, a release one without it. That is
+ *          how it is meant, and the cast should not be replaced by a checked one in both builds:
+ *          debugging is to be done in a debug build, while a release one is
+ *          already debugged, and the greatest speed is required of it. A cast
+ *          that went into the release wrong is a mistake of the developer who did not catch
+ *          it in debugging, and a check in the release will not correct it — it will only hide it
+ *
+ * \~
  */
 /**
  * Если включён режим отладки

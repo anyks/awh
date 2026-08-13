@@ -9,8 +9,15 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * \~russian
  * @brief Заголовочный файл быстрого десятичного пути разбора чисел — вычисление двоичной экспоненты по степени десяти
  *        и построение мантиссы через таблицы степеней (алгоритм Eisel-Lemire) без обращения к длинной арифметике
+ *
+ * \~english
+ * @brief Header file of the fast decimal parsing path of numbers — computing the binary exponent from a power of ten
+ *        and building the mantissa through the power tables (the Eisel-Lemire algorithm) without resorting to long arithmetic
+ *
+ * \~
  *
  * @copyright: Copyright © 2026
  *
@@ -34,8 +41,14 @@
 #include "common.hpp"
 
 /**
+ * \~russian
  * @brief Основное пространство имён
  *
+ *
+ * \~english
+ * @brief Main namespace
+ *
+ * \~
  */
 namespace awh {
 	/**
@@ -44,11 +57,17 @@ namespace awh {
 	using namespace std;
 
 	/**
+	 * \~russian
 	 * @brief Пространство имён модуля разбора чисел
 	 *
+	 * \~english
+	 * @brief Namespace of the number parsing module
+	 *
+	 * \~
 	 */
 	namespace lexical {
 		/**
+		 * \~russian
 		 * @brief Метод вычисления смещения двоичной экспоненты для степени десяти
 		 *
 		 * @details Для показателя степени в диапазоне (0, 350) выражение
@@ -59,6 +78,16 @@ namespace awh {
 		 * @param power показатель степени десяти
 		 * @return      смещение двоичной экспоненты
 		 *
+		 * \~english
+		 * @brief Method of computing the binary exponent offset for a power of ten
+		 * @details For an exponent in the (0, 350) range the expression
+		 *          ((152170 + 65536) * power) >> 16 equals floor(p) + power,
+		 *          where p = log(5^power) / log(2). For the (-400, 0) range
+		 *          the same expression equals -ceil(p) + power.
+		 * @param power exponent of the power of ten
+		 * @return      binary exponent offset
+		 *
+		 * \~
 		 */
 		AWH_ASCII_INLINE constexpr int32_t powerExponent(const int32_t power) noexcept {
 			// Выводим приближение произведения показателя степени на двоичный логарифм пяти
@@ -66,13 +95,20 @@ namespace awh {
 		}
 
 		/**
+		 * \~russian
 		 * @brief Шаблон требуемой точности приближения
 		 *
 		 * @tparam PRECISION требуемая точность приближения в битах
 		 *
+		 * \~english
+		 * @brief Template of the required precision of the approximation
+		 * @tparam PRECISION required precision of the approximation in bits
+		 *
+		 * \~
 		 */
 		template <int32_t PRECISION>
 		/**
+		 * \~russian
 		 * @brief Метод приближённого вычисления произведения мантиссы на степень пяти
 		 *
 		 * @details Для небольших показателей степени результат является точным,
@@ -84,6 +120,17 @@ namespace awh {
 		 * @param mantissa нормализованное значение мантиссы
 		 * @return         приближённое 128-битное произведение
 		 *
+		 * \~english
+		 * @brief Method of the approximate computation of the product of the mantissa by a power of five
+		 * @details For small exponents the result is exact,
+		 *          since the product fits into 128 bits without losses.
+		 *          The exponent must belong to the range of the table:
+		 *          the check is performed by the calling side.
+		 * @param power    exponent of the power of five
+		 * @param mantissa normalised value of the mantissa
+		 * @return         approximate 128-bit product
+		 *
+		 * \~
 		 */
 		AWH_ASCII_INLINE value128_t approximateProduct(const int64_t power, const uint64_t mantissa) noexcept {
 			// Выполняем проверку допустимости требуемой точности
@@ -114,13 +161,20 @@ namespace awh {
 		}
 
 		/**
+		 * \~russian
 		 * @brief Шаблон типа параметров двоичного формата
 		 *
 		 * @tparam BINARY параметры двоичного формата результата
 		 *
+		 * \~english
+		 * @brief Template of the type of the binary format parameters
+		 * @tparam BINARY binary format parameters of the result
+		 *
+		 * \~
 		 */
 		template <typename BINARY>
 		/**
+		 * \~russian
 		 * @brief Метод вычисления мантиссы с заведомо невалидным показателем степени
 		 *
 		 * @details Показатель степени смещается на INVALID_BIAS, что помечает
@@ -131,6 +185,16 @@ namespace awh {
 		 * @param zeros    количество ведущих нулевых бит исходной мантиссы
 		 * @return         скорректированная мантисса с невалидным показателем степени
 		 *
+		 * \~english
+		 * @brief Method of computing the mantissa with a deliberately invalid exponent
+		 * @details The exponent is offset by INVALID_BIAS, which marks
+		 *          the result as requiring refinement by long arithmetic.
+		 * @param power    exponent of the power of ten
+		 * @param mantissa normalised value of the mantissa
+		 * @param zeros    number of leading zero bits of the source mantissa
+		 * @return         corrected mantissa with an invalid exponent
+		 *
+		 * \~
 		 */
 		AWH_ASCII_INLINE mantissa_t computeErrorScaled(const int64_t power, const uint64_t mantissa, const int32_t zeros) noexcept {
 			// Дополнительный сдвиг, если старший бит мантиссы не установлен
@@ -145,13 +209,20 @@ namespace awh {
 		}
 
 		/**
+		 * \~russian
 		 * @brief Шаблон типа параметров двоичного формата
 		 *
 		 * @tparam BINARY параметры двоичного формата результата
 		 *
+		 * \~english
+		 * @brief Template of the type of the binary format parameters
+		 * @tparam BINARY binary format parameters of the result
+		 *
+		 * \~
 		 */
 		template <typename BINARY>
 		/**
+		 * \~russian
 		 * @brief Метод вычисления произведения мантиссы на степень десяти без округления
 		 *
 		 * @details Результат всегда помечается невалидным показателем степени и
@@ -161,6 +232,15 @@ namespace awh {
 		 * @param mantissa значение мантиссы
 		 * @return         скорректированная мантисса с невалидным показателем степени
 		 *
+		 * \~english
+		 * @brief Method of computing the product of the mantissa by a power of ten without rounding
+		 * @details The result is always marked with an invalid exponent and
+		 *          is subject to refinement by long arithmetic.
+		 * @param power    exponent of the power of ten
+		 * @param mantissa value of the mantissa
+		 * @return         corrected mantissa with an invalid exponent
+		 *
+		 * \~
 		 */
 		AWH_ASCII_INLINE mantissa_t computeError(const int64_t power, const uint64_t mantissa) noexcept {
 			// Если показатель степени выходит за пределы таблицы степеней
@@ -178,13 +258,20 @@ namespace awh {
 		}
 
 		/**
+		 * \~russian
 		 * @brief Шаблон типа параметров двоичного формата
 		 *
 		 * @tparam BINARY параметры двоичного формата результата
 		 *
+		 * \~english
+		 * @brief Template of the type of the binary format parameters
+		 * @tparam BINARY binary format parameters of the result
+		 *
+		 * \~
 		 */
 		template <typename BINARY>
 		/**
+		 * \~russian
 		 * @brief Метод вычисления произведения мантиссы на степень десяти
 		 *
 		 * @details В подавляющем большинстве случаев метод даёт корректно округлённое
@@ -196,6 +283,17 @@ namespace awh {
 		 * @param mantissa значение мантиссы
 		 * @return         скорректированная мантисса двоичного представления
 		 *
+		 * \~english
+		 * @brief Method of computing the product of the mantissa by a power of ten
+		 * @details In the overwhelming majority of cases the method gives a correctly rounded
+		 *          binary representation of the number. In rare cases an unambiguous rounding
+		 *          is impossible: then the exponent of the result is negative and
+		 *          the calling side must refine the result by long arithmetic.
+		 * @param power    exponent of the power of ten
+		 * @param mantissa value of the mantissa
+		 * @return         corrected mantissa of the binary representation
+		 *
+		 * \~
 		 */
 		inline mantissa_t computeFloat(const int64_t power, const uint64_t mantissa) noexcept {
 			// Если мантисса нулевая или показатель степени ниже представимого

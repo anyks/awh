@@ -9,8 +9,15 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * \~russian
  * @brief Заголовочный файл модуля работы с дочерним потоком — класс Screen, обеспечивающий передачу данных между
  *        основным и рабочим потоком через очередь с контролем переполнения и состояния здоровья потока
+ *
+ * \~english
+ * @brief Header file of the module for working with a child thread — the Screen class, which provides the passing of data between
+ *        the main and the working thread through a queue with the control of the overflow and of the health state of the thread
+ *
+ * \~
  *
  * @copyright: Copyright © 2025
  *
@@ -40,26 +47,48 @@
 #include <unistd.h>
 
 /**
+ * \~russian
  * @brief Основное пространство имён
  *
+ *
+ * \~english
+ * @brief Main namespace
+ *
+ * \~
  */
 namespace awh {
 	/**
+	 * \~russian
 	 * @brief Шаблон формата данных передаваемого между потоками
 	 *
 	 * @tparam T данные передаваемые между потоками
 	 *
+	 * \~english
+	 * @brief Template of the format of the data passed between the threads
+	 * @tparam T data passed between the threads
+	 *
+	 * \~
 	 */
 	template <typename T>
 	/**
+	 * \~russian
 	 * @brief Класс для работы с дочерним потоком
 	 *
+	 * \~english
+	 * @brief Class for working with a child thread
+	 *
+	 * \~
 	 */
 	class Screen {
 		public:
 			/**
+			 * \~russian
 			 * @brief Состояние очереди
 			 *
+			 * \~english
+			 * @brief State of the queue
+			 *
+			 * \~
 			 */
 			enum class state_t : uint8_t {
 				NONE      = 0x00, // Состояние очереди не установленно
@@ -67,16 +96,26 @@ namespace awh {
 				DECREMENT = 0x02  // Уменьшение очереди
 			};
 			/**
+			 * \~russian
 			 * @brief Состояние здоровья
 			 *
+			 * \~english
+			 * @brief Health state
+			 *
+			 * \~
 			 */
 			enum class health_t : uint8_t {
 				DEAD  = 0x00, // Мёртвый
 				ALIVE = 0x01  // Живой
 			};
 			/**
+			 * \~russian
 			 * @brief Политика поведения при переполнении очереди
 			 *
+			 * \~english
+			 * @brief Policy of the behaviour on an overflow of the queue
+			 *
+			 * \~
 			 */
 			enum class overflow_t : uint8_t {
 				WAIT     = 0x00, // Блокировать поставщика до появления свободного места
@@ -85,8 +124,13 @@ namespace awh {
 			};
 		private:
 			/**
+			 * \~russian
 			 * @brief Таймаут блокировки времени по умолчанию (100ms)
 			 *
+			 * \~english
+			 * @brief Default timeout of the time lock (100ms)
+			 *
+			 * \~
 			 */
 			static constexpr const uint64_t TIMEOUT = 0x64;
 		private:
@@ -129,31 +173,55 @@ namespace awh {
 			std::unique_ptr <std::condition_variable> _space;
 		private:
 			/**
+			 * \~russian
 			 * @brief Функция обратного вызова при активации триггера
 			 *
+			 * \~english
+			 * @brief Callback function on the activation of the trigger
+			 *
+			 * \~
 			 */
 			std::function <void ()> _trigger;
 			/**
+			 * \~russian
 			 * @brief Функция обратного вызова которая срабатывает при передачи данных в дочерний поток
 			 *
 			 * @param data данные передаваемые в дочерний поток
 			 *
+			 * \~english
+			 * @brief Callback function that fires when data is passed to the child thread
+			 * @param data data passed to the child thread
+			 *
+			 * \~
 			 */
 			std::function <void (const T &)> _callback;
 			/**
+			 * \~russian
 			 * @brief Функция обратного вызова при заполнении или освобождении очереди
 			 *
 			 * @param state состояние очереди (увеличение/уменьшение)
 			 * @param size  размер очереди после изменения
 			 *
+			 * \~english
+			 * @brief Callback function on the filling or the freeing of the queue
+			 * @param state state of the queue (increase/decrease)
+			 * @param size  size of the queue after the change
+			 *
+			 * \~
 			 */
 			std::function <void (const state_t, const size_t)> _state;
 		private:
 			/**
+			 * \~russian
 			 * @brief Метод гарантирования существования рабочих примитивов синхронизации с учётом смены процесса
 			 *
 			 * @note Выполняет ленивое создание примитивов и их пересоздание после fork()
 			 *
+			 * \~english
+			 * @brief Method of guaranteeing the existence of the working synchronisation primitives taking into account a change of the process
+			 * @note Performs the lazy creation of the primitives and their recreation after fork()
+			 *
+			 * \~
 			 */
 			void _ensureProcess() noexcept {
 				// Получаем идентификатор текущего процесса
@@ -207,11 +275,18 @@ namespace awh {
 			}
 		private:
 			/**
+			 * \~russian
 			 * @brief Метод применения политики переполнения очереди
 			 *
 			 * @param lock захваченная блокировка мьютекса очереди
 			 * @return     результат: true - можно добавлять данные, false - сообщение отбрасывается
 			 *
+			 * \~english
+			 * @brief Method of applying the overflow policy of the queue
+			 * @param lock captured lock of the mutex of the queue
+			 * @return     result: true — data may be added, false — the message is discarded
+			 *
+			 * \~
 			 */
 			bool _admit(std::unique_lock <std::mutex> & lock) noexcept {
 				// Если очередь не ограничена либо свободное место есть, разрешаем добавление
@@ -251,10 +326,16 @@ namespace awh {
 			}
 		private:
 			/**
+			 * \~russian
 			 * @brief Метод вывода ошибки работы дочернего потока
 			 *
 			 * @param error объект перехваченной ошибки
 			 *
+			 * \~english
+			 * @brief Method of reporting an error of the work of the child thread
+			 * @param error object of the caught error
+			 *
+			 * \~
 			 */
 			void _error([[maybe_unused]] const std::exception & error) const noexcept {
 				/**
@@ -273,8 +354,13 @@ namespace awh {
 			}
 		private:
 			/**
+			 * \~russian
 			 * @brief Метод получения данных (тело дочернего потока)
 			 *
+			 * \~english
+			 * @brief Method of receiving the data (the body of the child thread)
+			 *
+			 * \~
 			 */
 			void receiving() noexcept {
 				/**
@@ -363,10 +449,16 @@ namespace awh {
 			}
 		public:
 			/**
+			 * \~russian
 			 * @brief Метод получения идентификатора потока
 			 *
 			 * @return идентификатор потока
 			 *
+			 * \~english
+			 * @brief Method of getting the identifier of the thread
+			 * @return identifier of the thread
+			 *
+			 * \~
 			 */
 			uint64_t id() const noexcept {
 				// Возвращаем идентификатор потока
@@ -374,20 +466,32 @@ namespace awh {
 			}
 		public:
 			/**
+			 * \~russian
 			 * @brief Метод получения размера очереди
 			 *
 			 * @return размер очереди для получения
 			 *
+			 * \~english
+			 * @brief Method of getting the size of the queue
+			 * @return size of the queue to get
+			 *
+			 * \~
 			 */
 			size_t size() const noexcept {
 				// Возвращаем размер очереди
 				return this->_payload.size();
 			}
 			/**
+			 * \~russian
 			 * @brief Метод проверки запущен ли в данный момент модуль
 			 *
 			 * @return результат проверки запущен ли модуль
 			 *
+			 * \~english
+			 * @brief Method of checking whether the module is running at the moment
+			 * @return result of the check whether the module is running
+			 *
+			 * \~
 			 */
 			bool launched() const noexcept {
 				// Возвращаем результат проверки
@@ -395,20 +499,32 @@ namespace awh {
 			}
 		public:
 			/**
+			 * \~russian
 			 * @brief Метод установки максимального размера очереди
 			 *
 			 * @param size максимальный размер очереди (0 - очередь не ограничена)
 			 *
+			 * \~english
+			 * @brief Method of setting the maximum size of the queue
+			 * @param size maximum size of the queue (0 — the queue is not bounded)
+			 *
+			 * \~
 			 */
 			void capacity(const size_t size) noexcept {
 				// Выполняем установку максимального размера очереди
 				this->_capacity = size;
 			}
 			/**
+			 * \~russian
 			 * @brief Метод установки политики поведения при переполнении очереди
 			 *
 			 * @param overflow политика поведения при переполнении очереди
 			 *
+			 * \~english
+			 * @brief Method of setting the policy of the behaviour on an overflow of the queue
+			 * @param overflow policy of the behaviour on an overflow of the queue
+			 *
+			 * \~
 			 */
 			void overflow(const overflow_t overflow) noexcept {
 				// Выполняем установку политики поведения при переполнении очереди
@@ -416,10 +532,16 @@ namespace awh {
 			}
 		public:
 			/**
+			 * \~russian
 			 * @brief Метод установки функции обратного вызова активации триггера
 			 *
 			 * @param callback функция обратного вызова для установки
 			 *
+			 * \~english
+			 * @brief Method of setting the callback function of the activation of the trigger
+			 * @param callback callback function to set
+			 *
+			 * \~
 			 */
 			void on(std::function <void ()> callback) noexcept {
 				/**
@@ -441,10 +563,16 @@ namespace awh {
 				}
 			}
 			/**
+			 * \~russian
 			 * @brief Метод установки функции обратного вызова
 			 *
 			 * @param callback функция обратного вызова для установки
 			 *
+			 * \~english
+			 * @brief Method of setting the callback function
+			 * @param callback callback function to set
+			 *
+			 * \~
 			 */
 			void on(std::function <void (const T &)> callback) noexcept {
 				/**
@@ -466,10 +594,16 @@ namespace awh {
 				}
 			}
 			/**
+			 * \~russian
 			 * @brief Метод установки функции обратного вызова получения состояния очереди
 			 *
 			 * @param callback функция обратного вызова для установки
 			 *
+			 * \~english
+			 * @brief Method of setting the callback function of getting the state of the queue
+			 * @param callback callback function to set
+			 *
+			 * \~
 			 */
 			void on(std::function <void (const state_t, const size_t)> callback) noexcept {
 				/**
@@ -492,10 +626,16 @@ namespace awh {
 			}
 		public:
 			/**
+			 * \~russian
 			 * @brief Метод установки таймаута в миллисекундах
 			 *
 			 * @param delay значение таймаута для установки в миллисекундах
 			 *
+			 * \~english
+			 * @brief Method of setting the timeout in milliseconds
+			 * @param delay value of the timeout to set in milliseconds
+			 *
+			 * \~
 			 */
 			void timeout(const uint32_t delay) noexcept {
 				/**
@@ -518,10 +658,16 @@ namespace awh {
 			}
 		public:
 			/**
+			 * \~russian
 			 * @brief Метод отправки сообщения в экран
 			 *
 			 * @param data данные отправляемого сообщения
 			 *
+			 * \~english
+			 * @brief Method of sending a message to the screen
+			 * @param data data of the sent message
+			 *
+			 * \~
 			 */
 			void send(T && data) noexcept {
 				/**
@@ -559,10 +705,16 @@ namespace awh {
 				}
 			}
 			/**
+			 * \~russian
 			 * @brief Метод отправки сообщения в экран
 			 *
 			 * @param data данные отправляемого сообщения
 			 *
+			 * \~english
+			 * @brief Method of sending a message to the screen
+			 * @param data data of the sent message
+			 *
+			 * \~
 			 */
 			void send(const T & data) noexcept {
 				/**
@@ -601,8 +753,13 @@ namespace awh {
 			}
 		public:
 			/**
+			 * \~russian
 			 * @brief Метод остановки работы модуля
 			 *
+			 * \~english
+			 * @brief Method of stopping the work of the module
+			 *
+			 * \~
 			 */
 			void stop() noexcept {
 				/**
@@ -641,8 +798,13 @@ namespace awh {
 				}
 			}
 			/**
+			 * \~russian
 			 * @brief Метод запуска работы модуля
 			 *
+			 * \~english
+			 * @brief Method of starting the work of the module
+			 *
+			 * \~
 			 */
 			void start() noexcept {
 				/**
@@ -672,20 +834,32 @@ namespace awh {
 			}
 		public:
 			/**
+			 * \~russian
 			 * @brief Оператор проверки запущен ли в данный момент модуль
 			 *
 			 * @return результат проверки запущен ли модуль
 			 *
+			 * \~english
+			 * @brief Operator of checking whether the module is running at the moment
+			 * @return result of the check whether the module is running
+			 *
+			 * \~
 			 */
 			operator bool() const noexcept {
 				// Возвращаем результат проверки
 				return this->launched();
 			}
 			/**
+			 * \~russian
 			 * @brief Оператор получения размера очереди
 			 *
 			 * @return размер очереди для получения
 			 *
+			 * \~english
+			 * @brief Operator of getting the size of the queue
+			 * @return size of the queue to get
+			 *
+			 * \~
 			 */
 			operator size_t() const noexcept {
 				// Возвращаем результат проверки
@@ -693,11 +867,18 @@ namespace awh {
 			}
 		public:
 			/**
+			 * \~russian
 			 * @brief Оператор присваивания отправки данных в экран
 			 *
 			 * @param data данные отправляемого сообщения
 			 * @return     текущий объект
 			 *
+			 * \~english
+			 * @brief Assignment operator of sending data to the screen
+			 * @param data data of the sent message
+			 * @return     the current object
+			 *
+			 * \~
 			 */
 			Screen & operator = (T && data) noexcept {
 				// Выполняем отправку данных в экран
@@ -706,11 +887,18 @@ namespace awh {
 				return (* this);
 			}
 			/**
+			 * \~russian
 			 * @brief Оператор присваивания отправки данных в экран
 			 *
 			 * @param data данные отправляемого сообщения
 			 * @return     текущий объект
 			 *
+			 * \~english
+			 * @brief Assignment operator of sending data to the screen
+			 * @param data data of the sent message
+			 * @return     the current object
+			 *
+			 * \~
 			 */
 			Screen & operator = (const T & data) noexcept {
 				// Выполняем отправку данных в экран
@@ -719,11 +907,18 @@ namespace awh {
 				return (* this);
 			}
 			/**
+			 * \~russian
 			 * @brief Оператор присваивания установки таймаута в миллисекундах
 			 *
 			 * @param delay значение таймаута для установки в миллисекундах
 			 * @return      текущий объект
 			 *
+			 * \~english
+			 * @brief Assignment operator of setting the timeout in milliseconds
+			 * @param delay value of the timeout to set in milliseconds
+			 * @return      the current object
+			 *
+			 * \~
 			 */
 			Screen & operator = (const uint32_t delay) noexcept {
 				// Выполняем установку таймаута
@@ -732,11 +927,18 @@ namespace awh {
 				return (* this);
 			}
 			/**
+			 * \~russian
 			 * @brief Оператор присваивания установки функции обратного вызова активации триггера
 			 *
 			 * @param callback функция обратного вызова для установки
 			 * @return         текущий объект
 			 *
+			 * \~english
+			 * @brief Assignment operator of setting the callback function of the activation of the trigger
+			 * @param callback callback function to set
+			 * @return         the current object
+			 *
+			 * \~
 			 */
 			Screen & operator = (std::function <void ()> callback) noexcept {
 				// Выполняем установку функции обратного вызова
@@ -745,11 +947,18 @@ namespace awh {
 				return (* this);
 			}
 			/**
+			 * \~russian
 			 * @brief Оператор присваивания установки функции обратного вызова
 			 *
 			 * @param callback функция обратного вызова для установки
 			 * @return         текущий объект
 			 *
+			 * \~english
+			 * @brief Assignment operator of setting the callback function
+			 * @param callback callback function to set
+			 * @return         the current object
+			 *
+			 * \~
 			 */
 			Screen & operator = (std::function <void (const T &)> callback) noexcept {
 				// Выполняем установку функции обратного вызова
@@ -758,11 +967,18 @@ namespace awh {
 				return (* this);
 			}
 			/**
+			 * \~russian
 			 * @brief Оператор присваивания установки функции обратного вызова получения состояния очереди
 			 *
 			 * @param callback функция обратного вызова для установки
 			 * @return         текущий объект
 			 *
+			 * \~english
+			 * @brief Assignment operator of setting the callback function of getting the state of the queue
+			 * @param callback callback function to set
+			 * @return         the current object
+			 *
+			 * \~
 			 */
 			Screen & operator = (std::function <void (const state_t, const size_t)> callback) noexcept {
 				// Выполняем установку функции обратного вызова
@@ -772,19 +988,37 @@ namespace awh {
 			}
 		public:
 			/**
+			 * \~russian
 			 * @brief Оператор копирования
 			 *
+			 *
+			 * \~english
+			 * @brief Copy assignment operator
+			 *
+			 * \~
 			 */
 			Screen & operator = (const Screen &) = delete;
 			/**
+			 * \~russian
 			 * @brief Конструктор копирования
 			 *
+			 *
+			 * \~english
+			 * @brief Copy constructor
+			 *
+			 * \~
 			 */
 			Screen(const Screen &) = delete;
 		public:
 			/**
+			 * \~russian
 			 * @brief Конструктор
 			 *
+			 *
+			 * \~english
+			 * @brief Constructor
+			 *
+			 * \~
 			 */
 			explicit Screen() noexcept :
 			 _id(0), _capacity(0),
@@ -797,10 +1031,16 @@ namespace awh {
 				this->start();
 			}
 			/**
+			 * \~russian
 			 * @brief Конструктор
 			 *
 			 * @param health статус здоровья
 			 *
+			 * \~english
+			 * @brief Constructor
+			 * @param health health status
+			 *
+			 * \~
 			 */
 			explicit Screen(const health_t health) noexcept :
 			 _id(0), _capacity(0),
@@ -815,8 +1055,14 @@ namespace awh {
 					this->start();
 			}
 			/**
+			 * \~russian
 			 * @brief Деструктор
 			 *
+			 *
+			 * \~english
+			 * @brief Destructor
+			 *
+			 * \~
 			 */
 			~Screen() noexcept {
 				// Выполняем остановку работы модуля
@@ -824,10 +1070,16 @@ namespace awh {
 			}
 	};
 	/**
+	 * \~russian
 	 * @brief Шаблон формата данных передаваемого между потоками
 	 *
 	 * @tparam T данные передаваемые между потоками
 	 *
+	 * \~english
+	 * @brief Template of the format of the data passed between the threads
+	 * @tparam T data passed between the threads
+	 *
+	 * \~
 	 */
 	template <class T>
 	/**

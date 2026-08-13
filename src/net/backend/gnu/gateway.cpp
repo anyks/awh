@@ -226,8 +226,22 @@ namespace routing {
 		message.route.rtm_dst_len = route.prefix;
 		// Устанавливаем главную таблицу маршрутов
 		message.route.rtm_table = RT_TABLE_MAIN;
-		// Устанавливаем способ заведения маршрута
-		message.route.rtm_protocol = RTPROT_STATIC;
+		/**
+		 * Устанавливаем способ заведения маршрута
+		 *
+		 * @warning При СНОСЕ поле это ядром сличается, а не описывает намерение: маршрут,
+		 *          заведённый иным способом, совпадением не считается и снос отвечает
+		 *          ESRCH («No such process»). Заводим мы маршруты способом RTPROT_STATIC,
+		 *          и снос с тем же значением умел убирать ЛИШЬ СВОИ маршруты - а
+		 *          заведённые системой при поднятии сети (RTPROT_BOOT, RTPROT_DHCP,
+		 *          RTPROT_KERNEL) не убирал вовсе, в том числе маршрут по умолчанию.
+		 *          Замерено на стенде Debian 12 (13.08.2026): маршрут, заведённый
+		 *          снаружи как `proto dhcp`, снос отвергал, а `ip route del` убирал
+		 *
+		 * @note RTPROT_UNSPEC при сносе означает «способ заведения любой» - именно так
+		 *       поступает и `ip route del`, не задающий способа вовсе
+		 */
+		message.route.rtm_protocol = ((type == RTM_DELROUTE) ? RTPROT_UNSPEC : RTPROT_STATIC);
 		// Устанавливаем область действия маршрута
 		message.route.rtm_scope = RT_SCOPE_UNIVERSE;
 		// Устанавливаем вид маршрута

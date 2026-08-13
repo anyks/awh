@@ -9,9 +9,17 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * \~russian
  * @brief Заголовочный файл публичного интерфейса модуля лексического разбора чисел —
  *        точки входа разбора целых чисел и чисел с плавающей точкой,
  *        проверка режима округления FPU и диспетчеризация по формату и типу результата
+ *
+ * \~english
+ * @brief Header file of the public interface of the lexical number parsing module —
+ *        the entry points of the parsing of integers and of floating-point numbers,
+ *        the check of the FPU rounding mode and the dispatch by the format and by the result type
+ *
+ * \~
  *
  * @copyright: Copyright © 2026
  *
@@ -40,8 +48,14 @@
 #include "digits.hpp"
 
 /**
+ * \~russian
  * @brief Основное пространство имён
  *
+ *
+ * \~english
+ * @brief Main namespace
+ *
+ * \~
  */
 namespace awh {
 	/**
@@ -50,11 +64,18 @@ namespace awh {
 	using namespace std;
 
 	/**
+	 * \~russian
 	 * @brief Пространство имён модуля разбора чисел
 	 *
+	 *
+	 * \~english
+	 * @brief Namespace of the number parsing module
+	 *
+	 * \~
 	 */
 	namespace lexical {
 		/**
+		 * \~russian
 		 * @brief Метод проверки режима округления на округление к ближайшему
 		 *
 		 * @details Проверка эквивалентна сравнению fegetround() с FE_TONEAREST,
@@ -64,6 +85,14 @@ namespace awh {
 		 *
 		 * @return результат проверки
 		 *
+		 * \~english
+		 * @brief Method of checking whether the rounding mode is rounding to nearest
+		 * @details The check is equivalent to comparing fegetround() with FE_TONEAREST,
+		 *          but is performed substantially faster.
+		 * @see https://lemire.me/blog/2022/11/16/a-fast-function-to-check-your-floating-point-rounding-mode/
+		 * @return result of the check
+		 *
+		 * \~
 		 */
 		AWH_ASCII_INLINE bool roundsToNearest() noexcept {
 			/**
@@ -134,13 +163,21 @@ namespace awh {
 		}
 
 		/**
+		 * \~russian
 		 * @brief Шаблон типа числа с плавающей точкой
 		 *
 		 * @tparam T тип числа с плавающей точкой
 		 *
+		 *
+		 * \~english
+		 * @brief Template of the floating-point type
+		 * @tparam T floating-point type
+		 *
+		 * \~
 		 */
 		template <typename T>
 		/**
+		 * \~russian
 		 * @brief Метод быстрого преобразования мантиссы и показателя степени
 		 *
 		 * @details Метод реализует быстрый путь Клингера и даёт корректно округлённый
@@ -152,6 +189,17 @@ namespace awh {
 		 * @param value    ссылка на результат преобразования
 		 * @return         результат выполнения быстрого пути
 		 *
+		 * \~english
+		 * @brief Method of the fast conversion of the mantissa and of the exponent
+		 * @details The method implements the Clinger fast path and gives a correctly rounded
+		 *          result regardless of the rounding mode set for the thread.
+		 * @param mantissa value of the mantissa
+		 * @param exponent decimal exponent
+		 * @param negative indication of a negative number
+		 * @param value    reference to the result of the conversion
+		 * @return         result of performing the fast path
+		 *
+		 * \~
 		 */
 		AWH_ASCII_INLINE bool clingerFastPath(const uint64_t mantissa, const int64_t exponent, const bool negative, T & value) noexcept {
 			// Если показатель степени выходит за пределы быстрого пути
@@ -212,14 +260,23 @@ namespace awh {
 		}
 
 		/**
+		 * \~russian
 		 * @brief Шаблон типа результата и типа символа исходной строки
 		 *
 		 * @tparam T  тип числа с плавающей точкой
 		 * @tparam UC тип символа исходной строки
 		 *
+		 *
+		 * \~english
+		 * @brief Template of the result type and of the character type of the source string
+		 * @tparam T  floating-point type
+		 * @tparam UC character type of the source string
+		 *
+		 * \~
 		 */
 		template <typename T, typename UC>
 		/**
+		 * \~russian
 		 * @brief Метод разбора специальных значений бесконечности и нечисловых значений
 		 *
 		 * @details Диапазон символов обязан быть непустым: проверка выполняется вызывающей стороной.
@@ -230,6 +287,16 @@ namespace awh {
 		 * @param options опции разбора числовой строки
 		 * @return        результат разбора числовой строки
 		 *
+		 * \~english
+		 * @brief Method of parsing the special values of infinity and of not-a-number
+		 * @details The range of characters must be non-empty: the check is performed by the calling side.
+		 * @param first   beginning of the parsed string
+		 * @param last    end of the parsed string
+		 * @param value   reference to the result of the parsing
+		 * @param options parsing options of the number string
+		 * @return        result of parsing the number string
+		 *
+		 * \~
 		 */
 		inline result_t <UC> parseInfNan(const UC * first, const UC * const last, T & value, const options_t <UC> options) noexcept {
 			// Определяем знак разбираемого значения
@@ -290,20 +357,36 @@ namespace awh {
 		}
 
 		/**
+		 * \~russian
 		 * @brief Шаблон типа результата и типа символа исходной строки
 		 *
 		 * @tparam T  тип числа с плавающей точкой
 		 * @tparam UC тип символа исходной строки
 		 *
+		 *
+		 * \~english
+		 * @brief Template of the result type and of the character type of the source string
+		 * @tparam T  floating-point type
+		 * @tparam UC character type of the source string
+		 *
+		 * \~
 		 */
 		template <typename T, typename UC>
 		/**
+		 * \~russian
 		 * @brief Метод преобразования разобранной числовой строки в число
 		 *
 		 * @param number разобранная числовая строка
 		 * @param value  ссылка на результат преобразования
 		 * @return       результат преобразования
 		 *
+		 * \~english
+		 * @brief Method of converting a parsed number string into a number
+		 * @param number parsed number string
+		 * @param value  reference to the result of the conversion
+		 * @return       result of the conversion
+		 *
+		 * \~
 		 */
 		inline result_t <UC> fromParsedNumber(const parsedNumber_t <UC> & number, T & value) noexcept {
 			// Выполняем проверку поддержки типа результата
@@ -339,14 +422,23 @@ namespace awh {
 		}
 
 		/**
+		 * \~russian
 		 * @brief Шаблон типа результата и типа символа исходной строки
 		 *
 		 * @tparam T  тип числа с плавающей точкой
 		 * @tparam UC тип символа исходной строки
 		 *
+		 *
+		 * \~english
+		 * @brief Template of the result type and of the character type of the source string
+		 * @tparam T  floating-point type
+		 * @tparam UC character type of the source string
+		 *
+		 * \~
 		 */
 		template <typename T, typename UC>
 		/**
+		 * \~russian
 		 * @brief Метод разбора числа с плавающей точкой из строки
 		 *
 		 * @param first   начало разбираемой строки
@@ -355,6 +447,15 @@ namespace awh {
 		 * @param options опции разбора числовой строки
 		 * @return        результат разбора числовой строки
 		 *
+		 * \~english
+		 * @brief Method of parsing a floating-point number from a string
+		 * @param first   beginning of the parsed string
+		 * @param last    end of the parsed string
+		 * @param value   reference to the result of the parsing
+		 * @param options parsing options of the number string
+		 * @return        result of parsing the number string
+		 *
+		 * \~
 		 */
 		inline result_t <UC> fromCharsFloat(const UC * first, const UC * const last, T & value, const options_t <UC> options) noexcept {
 			// Выполняем проверку поддержки типа результата
@@ -392,14 +493,23 @@ namespace awh {
 		}
 
 		/**
+		 * \~russian
 		 * @brief Шаблон типа результата и типа символа исходной строки
 		 *
 		 * @tparam T  тип целого числа
 		 * @tparam UC тип символа исходной строки
 		 *
+		 *
+		 * \~english
+		 * @brief Template of the result type and of the character type of the source string
+		 * @tparam T  integer type
+		 * @tparam UC character type of the source string
+		 *
+		 * \~
 		 */
 		template <typename T, typename UC>
 		/**
+		 * \~russian
 		 * @brief Метод разбора целого числа из строки
 		 *
 		 * @param first   начало разбираемой строки
@@ -408,6 +518,15 @@ namespace awh {
 		 * @param options опции разбора числовой строки
 		 * @return        результат разбора числовой строки
 		 *
+		 * \~english
+		 * @brief Method of parsing an integer from a string
+		 * @param first   beginning of the parsed string
+		 * @param last    end of the parsed string
+		 * @param value   reference to the result of the parsing
+		 * @param options parsing options of the number string
+		 * @return        result of parsing the number string
+		 *
+		 * \~
 		 */
 		inline result_t <UC> fromCharsInt(const UC * first, const UC * const last, T & value, const options_t <UC> options) noexcept {
 			// Выполняем проверку поддержки типа результата
@@ -436,15 +555,26 @@ namespace awh {
 		}
 
 		/**
+		 * \~russian
 		 * @brief Шаблон индекса категории типа результата
 		 *
 		 * @tparam INDEX индекс категории типа результата
 		 *
+		 * \~english
+		 * @brief Template of the category index of the result type
+		 * @tparam INDEX category index of the result type
+		 *
+		 * \~
 		 */
 		template <size_t INDEX>
 		/**
+		 * \~russian
 		 * @brief Структура диспетчера разбора по категории типа результата
 		 *
+		 * \~english
+		 * @brief Structure of the parsing dispatcher by the category of the result type
+		 *
+		 * \~
 		 */
 		struct dispatch_t {
 			// Выполняем проверку поддержки типа результата
@@ -452,19 +582,33 @@ namespace awh {
 		};
 
 		/**
+		 * \~russian
 		 * @brief Структура диспетчера разбора для чисел с плавающей точкой
 		 *
+		 * \~english
+		 * @brief Structure of the parsing dispatcher for floating-point numbers
+		 *
+		 * \~
 		 */
 		template <> struct dispatch_t <1> {
 			/**
+			 * \~russian
 			 * @brief Шаблон типа результата и типа символа исходной строки
 			 *
 			 * @tparam T  тип числа с плавающей точкой
 			 * @tparam UC тип символа исходной строки
 			 *
+			 *
+			 * \~english
+			 * @brief Template of the result type and of the character type of the source string
+			 * @tparam T  floating-point type
+			 * @tparam UC character type of the source string
+			 *
+			 * \~
 			 */
 			template <typename T, typename UC>
 			/**
+			 * \~russian
 			 * @brief Метод разбора числа с плавающей точкой из строки
 			 *
 			 * @param first   начало разбираемой строки
@@ -473,6 +617,15 @@ namespace awh {
 			 * @param options опции разбора числовой строки
 			 * @return        результат разбора числовой строки
 			 *
+			 * \~english
+			 * @brief Method of parsing a floating-point number from a string
+			 * @param first   beginning of the parsed string
+			 * @param last    end of the parsed string
+			 * @param value   reference to the result of the parsing
+			 * @param options parsing options of the number string
+			 * @return        result of parsing the number string
+			 *
+			 * \~
 			 */
 			static result_t <UC> call(const UC * first, const UC * const last, T & value, const options_t <UC> options) noexcept {
 				// Выполняем разбор числа с плавающей точкой
@@ -481,19 +634,33 @@ namespace awh {
 		};
 
 		/**
+		 * \~russian
 		 * @brief Структура диспетчера разбора для целых чисел
 		 *
+		 * \~english
+		 * @brief Structure of the parsing dispatcher for integers
+		 *
+		 * \~
 		 */
 		template <> struct dispatch_t <2> {
 			/**
+			 * \~russian
 			 * @brief Шаблон типа результата и типа символа исходной строки
 			 *
 			 * @tparam T  тип целого числа
 			 * @tparam UC тип символа исходной строки
 			 *
+			 *
+			 * \~english
+			 * @brief Template of the result type and of the character type of the source string
+			 * @tparam T  integer type
+			 * @tparam UC character type of the source string
+			 *
+			 * \~
 			 */
 			template <typename T, typename UC>
 			/**
+			 * \~russian
 			 * @brief Метод разбора целого числа из строки
 			 *
 			 * @param first   начало разбираемой строки
@@ -502,6 +669,15 @@ namespace awh {
 			 * @param options опции разбора числовой строки
 			 * @return        результат разбора числовой строки
 			 *
+			 * \~english
+			 * @brief Method of parsing an integer from a string
+			 * @param first   beginning of the parsed string
+			 * @param last    end of the parsed string
+			 * @param value   reference to the result of the parsing
+			 * @param options parsing options of the number string
+			 * @return        result of parsing the number string
+			 *
+			 * \~
 			 */
 			static result_t <UC> call(const UC * first, const UC * const last, T & value, const options_t <UC> options) noexcept {
 				// Выполняем разбор целого числа
@@ -510,14 +686,23 @@ namespace awh {
 		};
 
 		/**
+		 * \~russian
 		 * @brief Шаблон типа результата и типа символа исходной строки
 		 *
 		 * @tparam T  тип результата разбора
 		 * @tparam UC тип символа исходной строки
 		 *
+		 *
+		 * \~english
+		 * @brief Template of the result type and of the character type of the source string
+		 * @tparam T  result type of the parsing
+		 * @tparam UC character type of the source string
+		 *
+		 * \~
 		 */
 		template <typename T, typename UC = char>
 		/**
+		 * \~russian
 		 * @brief Метод разбора числа из строки с расширенными опциями
 		 *
 		 * @details Метод поддерживает как числа с плавающей точкой, так и целые.
@@ -528,6 +713,16 @@ namespace awh {
 		 * @param options опции разбора числовой строки
 		 * @return        результат разбора числовой строки
 		 *
+		 * \~english
+		 * @brief Method of parsing a number from a string with extended options
+		 * @details The method supports both floating-point numbers and integers.
+		 * @param first   beginning of the parsed string
+		 * @param last    end of the parsed string
+		 * @param value   reference to the result of the parsing
+		 * @param options parsing options of the number string
+		 * @return        result of parsing the number string
+		 *
+		 * \~
 		 */
 		inline result_t <UC> fromCharsAdvanced(const UC * first, const UC * const last, T & value, const options_t <UC> options) noexcept {
 			// Выполняем разбор числа диспетчером по категории типа результата
@@ -538,14 +733,23 @@ namespace awh {
 		}
 
 		/**
+		 * \~russian
 		 * @brief Шаблон типа результата и типа символа исходной строки
 		 *
 		 * @tparam T  тип числа с плавающей точкой
 		 * @tparam UC тип символа исходной строки
 		 *
+		 *
+		 * \~english
+		 * @brief Template of the result type and of the character type of the source string
+		 * @tparam T  floating-point type
+		 * @tparam UC character type of the source string
+		 *
+		 * \~
 		 */
 		template <typename T, typename UC = char, enableIf_t <is_supported_float <T>::value> = 0>
 		/**
+		 * \~russian
 		 * @brief Метод разбора числа с плавающей точкой из строки
 		 *
 		 * @details Формат записи соответствует функции strtod в локали «C».
@@ -559,6 +763,19 @@ namespace awh {
 		 * @param format допустимый формат записи числа
 		 * @return       результат разбора числовой строки
 		 *
+		 * \~english
+		 * @brief Method of parsing a floating-point number from a string
+		 * @details The format of the record corresponds to the strtod function in the «C» locale.
+		 *          The result is the nearest representable value,
+		 *          rounded by the IEEE 754 rule to the nearest even.
+		 *          The method allocates no memory and throws no exceptions.
+		 * @param first  beginning of the parsed string
+		 * @param last   end of the parsed string
+		 * @param value  reference to the result of the parsing
+		 * @param format admissible format of the number record
+		 * @return       result of parsing the number string
+		 *
+		 * \~
 		 */
 		inline result_t <UC> fromChars(const UC * first, const UC * const last, T & value, const format_t format = format_t::GENERAL) noexcept {
 			// Выполняем разбор числа с плавающей точкой
@@ -566,14 +783,23 @@ namespace awh {
 		}
 
 		/**
+		 * \~russian
 		 * @brief Шаблон типа результата и типа символа исходной строки
 		 *
 		 * @tparam T  тип целого числа
 		 * @tparam UC тип символа исходной строки
 		 *
+		 *
+		 * \~english
+		 * @brief Template of the result type and of the character type of the source string
+		 * @tparam T  integer type
+		 * @tparam UC character type of the source string
+		 *
+		 * \~
 		 */
 		template <typename T, typename UC = char, enableIf_t <is_supported_integer <T>::value> = 0>
 		/**
+		 * \~russian
 		 * @brief Метод разбора целого числа из строки
 		 *
 		 * @details Метод не выделяет память и не выбрасывает исключений.
@@ -584,6 +810,16 @@ namespace awh {
 		 * @param base  основание системы счисления в диапазоне от 2 до 36
 		 * @return      результат разбора числовой строки
 		 *
+		 * \~english
+		 * @brief Method of parsing an integer from a string
+		 * @details The method allocates no memory and throws no exceptions.
+		 * @param first beginning of the parsed string
+		 * @param last  end of the parsed string
+		 * @param value reference to the result of the parsing
+		 * @param base  base of the numeral system in the range from 2 to 36
+		 * @return      result of parsing the number string
+		 *
+		 * \~
 		 */
 		inline result_t <UC> fromChars(const UC * first, const UC * const last, T & value, const int32_t base = 10) noexcept {
 			// Выполняем разбор целого числа
@@ -591,13 +827,21 @@ namespace awh {
 		}
 
 		/**
+		 * \~russian
 		 * @brief Шаблон типа результата
 		 *
 		 * @tparam T тип числа с плавающей точкой
 		 *
+		 *
+		 * \~english
+		 * @brief Template of the result type
+		 * @tparam T floating-point type
+		 *
+		 * \~
 		 */
 		template <typename T, enableIf_t <is_supported_float <T>::value> = 0>
 		/**
+		 * \~russian
 		 * @brief Метод умножения беззнакового целого на степень десяти
 		 *
 		 * @details При переполнении результатом является бесконечность,
@@ -608,6 +852,16 @@ namespace awh {
 		 * @param exponent десятичный показатель степени
 		 * @return         результат умножения
 		 *
+		 * \~english
+		 * @brief Method of multiplying an unsigned integer by a power of ten
+		 * @details On overflow the result is infinity,
+		 *          on underflow zero. The method allocates no memory
+		 *          and throws no exceptions.
+		 * @param mantissa value of the mantissa
+		 * @param exponent decimal exponent
+		 * @return         result of the multiplication
+		 *
+		 * \~
 		 */
 		inline T integerTimesPow10(const uint64_t mantissa, const int32_t exponent) noexcept {
 			// Результат умножения
@@ -623,13 +877,21 @@ namespace awh {
 		}
 
 		/**
+		 * \~russian
 		 * @brief Шаблон типа результата
 		 *
 		 * @tparam T тип числа с плавающей точкой
 		 *
+		 *
+		 * \~english
+		 * @brief Template of the result type
+		 * @tparam T floating-point type
+		 *
+		 * \~
 		 */
 		template <typename T, enableIf_t <is_supported_float <T>::value> = 0>
 		/**
+		 * \~russian
 		 * @brief Метод умножения знакового целого на степень десяти
 		 *
 		 * @details При переполнении результатом является бесконечность,
@@ -640,6 +902,16 @@ namespace awh {
 		 * @param exponent десятичный показатель степени
 		 * @return         результат умножения
 		 *
+		 * \~english
+		 * @brief Method of multiplying a signed integer by a power of ten
+		 * @details On overflow the result is infinity,
+		 *          on underflow zero. The method allocates no memory
+		 *          and throws no exceptions.
+		 * @param mantissa value of the mantissa
+		 * @param exponent decimal exponent
+		 * @return         result of the multiplication
+		 *
+		 * \~
 		 */
 		inline T integerTimesPow10(const int64_t mantissa, const int32_t exponent) noexcept {
 			// Определяем знак значения мантиссы
@@ -661,20 +933,36 @@ namespace awh {
 		}
 
 		/**
+		 * \~russian
 		 * @brief Шаблон типа результата и типа исходного целого
 		 *
 		 * @tparam T   тип числа с плавающей точкой
 		 * @tparam INT тип исходного целого числа
 		 *
+		 *
+		 * \~english
+		 * @brief Template of the result type and of the source integer type
+		 * @tparam T   floating-point type
+		 * @tparam INT type of the source integer
+		 *
+		 * \~
 		 */
 		template <typename T = double, typename INT, enableIf_t <is_supported_float <T>::value && is_integral <INT>::value> = 0>
 		/**
+		 * \~russian
 		 * @brief Метод умножения целого произвольного типа на степень десяти
 		 *
 		 * @param mantissa значение мантиссы
 		 * @param exponent десятичный показатель степени
 		 * @return         результат умножения
 		 *
+		 * \~english
+		 * @brief Method of multiplying an integer of an arbitrary type by a power of ten
+		 * @param mantissa value of the mantissa
+		 * @param exponent decimal exponent
+		 * @return         result of the multiplication
+		 *
+		 * \~
 		 */
 		inline T integerTimesPow10(const INT mantissa, const int32_t exponent) noexcept {
 			/**

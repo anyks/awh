@@ -53,8 +53,14 @@
 #include "./macro_push.hpp"
 
 /**
+ * \~russian
  * @brief Основное пространство имён
  *
+ *
+ * \~english
+ * @brief Main namespace
+ *
+ * \~
  */
 namespace awh {
 	/**
@@ -1810,8 +1816,14 @@ namespace awh {
 			void setLogger(const Logging * log) noexcept;
 		public:
 			/**
+			 * \~russian
 			 * @brief Конструктор
 			 *
+			 *
+			 * \~english
+			 * @brief Constructor
+			 *
+			 * \~
 			 */
 			explicit Framework() noexcept;
 			/**
@@ -1827,8 +1839,14 @@ namespace awh {
 			 */
 			explicit Framework(const string & locale) noexcept;
 			/**
+			 * \~russian
 			 * @brief Деструктор
 			 *
+			 *
+			 * \~english
+			 * @brief Destructor
+			 *
+			 * \~
 			 */
 			~Framework() noexcept {}
 	} fmk_t;

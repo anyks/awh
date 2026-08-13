@@ -9,6 +9,7 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * \~russian
  * @brief Заголовочный файл порождения машинного кода ARM64 — класс Emitter, собирающий
  *        последовательность команд процессора с отложенным разрешением переходов по меткам
  *
@@ -41,6 +42,36 @@
  *          не получает вовсе. Обрез смещения дал бы переход в середину чужой
  *          команды - отказ, неотличимый от порчи памяти.
  *
+ * \~english
+ * @brief Header file of the generation of ARM64 machine code — the Emitter class, which assembles
+ *        a sequence of processor instructions with deferred resolution of the jumps by labels
+ * @section emitter_decisions Deliberate decisions
+ * @details What is listed below looks like an incongruity, but was chosen deliberately and
+ *          is not subject to correction. The section is introduced so that reading the code does not start
+ *          every time from the same conclusions.
+ *          <b>The generated code is relocatable: it holds no direct addresses.</b> Everything
+ *          that lies outside the generated code — the byte belonging tables,
+ *          the parsing subroutines, the set of character classes — is reached by an offset
+ *          from a single pointer passed at the call in the context
+ *          register. The decision was taken before writing the code generator deliberately:
+ *          it cannot be inserted after the fact, and without it the generated code can neither
+ *          be saved to disk nor loaded back, whereas the Grok superstructure
+ *          builds thousands of expressions at startup and that building costs seconds.
+ *          The price of the decision is one extra memory reference per subroutine call.
+ *          <b>The jumps are resolved after the generation rather than during it.</b> A forward
+ *          jump refers to code not yet generated, therefore its offset
+ *          is unknown at generation time. The instruction is placed empty, and its position
+ *          is remembered; the resolution walks the remembered positions and writes in the
+ *          offsets when all the labels have been laid out. Generating in two passes instead of
+ *          that would require generating everything twice.
+ *          <b>A jump offset going beyond the bounds of the instruction field is a refusal rather than a truncation.</b>
+ *          An ARM64 conditional jump carries nineteen bits of offset, an ordinary one
+ *          twenty-six, and an expression generating longer code receives no code
+ *          generation at all. Truncating the offset would give a jump into the middle of a foreign
+ *          instruction — a fault indistinguishable from memory corruption.
+ *
+ * \~
+ *
  * @copyright: Copyright © 2026
  *
  */
@@ -70,8 +101,14 @@
 #include "../sys/macro_push.hpp"
 
 /**
+ * \~russian
  * @brief Основное пространство имён
  *
+ *
+ * \~english
+ * @brief Main namespace
+ *
+ * \~
  */
 namespace awh {
 	/**
@@ -80,17 +117,28 @@ namespace awh {
 	using namespace std;
 
 	/**
+	 * \~russian
 	 * @brief Пространство имён модуля регулярных выражений
 	 *
+	 * \~english
+	 * @brief Namespace of the regular expression module
+	 *
+	 * \~
 	 */
 	namespace regex {
 		/**
+		 * \~russian
 		 * @brief Значение метки, перехода к какой не размещено
 		 *
+		 * \~english
+		 * @brief Value of a label no jump to which has been placed
+		 *
+		 * \~
 		 */
 		constexpr size_t INVALID_LABEL = static_cast <size_t> (~0ull);
 
 		/**
+		 * \~russian
 		 * @brief Класс порождения машинного кода ARM64
 		 *
 		 * @details Класс собирает последовательность команд процессора, откладывая
@@ -98,10 +146,19 @@ namespace awh {
 		 *          перемещаем: обращения за его пределы выполняются смещением
 		 *          от регистра обстановки.
 		 *
+		 * \~english
+		 * @brief Class of the generation of ARM64 machine code
+		 * @details The class assembles a sequence of processor instructions, deferring
+		 *          the resolution of the jumps until all the labels have been laid out. The generated code
+		 *          is relocatable: references beyond its bounds are performed by an offset
+		 *          from the context register.
+		 *
+		 * \~
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Emitter {
 			public:
 				/**
+				 * \~russian
 				 * @brief Номера регистров соглашения о вызове порождённого кода
 				 *
 				 * @details Порождённый сопоставитель вызывается как функция вида
@@ -111,10 +168,21 @@ namespace awh {
 				 *          Регистр обстановки удерживается на всём протяжении
 				 *          сопоставления: через него достигается всё внешнее.
 				 *
+				 * \~english
+				 * @brief Register numbers of the calling convention of the generated code
+				 * @details The generated matcher is called as a function of the form
+				 *          «bool (const char * text, size_t size, size_t start,
+				 *          size_t * bounds, const void * context)», which is why its first
+				 *          five arguments arrive in the registers from the zeroth to the fourth.
+				 *          The context register is held for the whole duration of the
+				 *          matching: everything external is reached through it.
+				 *
+				 * \~
 				 */
 				enum class reg_t : uint8_t {
 					#if (defined(__x86_64__) || defined(_M_X64)) && defined(_WIN32)
 						/**
+						 * \~russian
 						 * Номера регистров набора команд x86-64 под Windows
 						 *
 						 * @details Windows держится соглашения своего, а не
@@ -133,6 +201,24 @@ namespace awh {
 						 *          он оберегаем вызываемым, отчего переживает
 						 *          вызовы подпрограмм без сохранения.
 						 *
+						 * \~english
+						 * Register numbers of the x86-64 instruction set under Windows
+						 * @details Windows keeps to a convention of its own rather than
+						 *          System V: the call arguments arrive in the registers
+						 *          rcx, rdx, r8 and r9, the fifth argument is passed
+						 *          by the call frame, and the callee-saved ones
+						 *          are rbx, rbp, rsi, rdi and r12-r15.
+						 *          The mapping is laid out so that the first four
+						 *          arguments fall into the same assignments as
+						 *          in System V: the context subroutines take
+						 *          exactly four arguments, which is why generating a call to
+						 *          them stays common to both conventions.
+						 *          The address of the context table, the fifth argument, is read out
+						 *          of the call frame by the entry into the rdi register:
+						 *          it is callee-saved, which is why it survives
+						 *          subroutine calls without being saved.
+						 *
+						 * \~
 						 */
 						TEXT    = 0x01, // Адрес начала текста сопоставления, регистр rcx
 						SIZE    = 0x02, // Размер текста сопоставления в байтах, регистр rdx
@@ -148,6 +234,7 @@ namespace awh {
 						KEEPER  = 0x0C, // Значение, сохраняемое между шагами сопоставления, регистр r12
 					#elif defined(__x86_64__) || defined(_M_X64)
 						/**
+						 * \~russian
 						 * Номера регистров набора команд x86-64
 						 *
 						 * @details Доводы вызова приходят в регистрах rdi, rsi, rdx,
@@ -157,6 +244,16 @@ namespace awh {
 						 *          а регистров, вызовом не затираемых, всего девять,
 						 *          и одиннадцати назначениям их не достаёт.
 						 *
+						 * \~english
+						 * Register numbers of the x86-64 instruction set
+						 * @details The call arguments arrive in the registers rdi, rsi, rdx,
+						 *          rcx and r8, and the result is yielded in rax — such is the System V
+						 *          convention. The intermediate value is allotted the same
+						 *          rax as the result: they are never needed at the same time,
+						 *          and there are only nine registers not clobbered by a call,
+						 *          which is not enough for eleven assignments.
+						 *
+						 * \~
 						 */
 						TEXT    = 0x07, // Адрес начала текста сопоставления, регистр rdi
 						SIZE    = 0x06, // Размер текста сопоставления в байтах, регистр rsi
@@ -185,6 +282,7 @@ namespace awh {
 						KEEPER  = 0x0A, // Значение, сохраняемое между шагами сопоставления
 					#endif
 					/**
+					 * \~russian
 					 * Регистр адреса возврата из вызова подпрограммы
 					 *
 					 * @details Команда вызова подпрограммы записывает в этот регистр
@@ -193,6 +291,15 @@ namespace awh {
 					 *          иначе завершение сопоставителя передавало бы исполнение
 					 *          внутрь самого сопоставителя.
 					 *
+					 * \~english
+					 * Register of the return address from a subroutine call
+					 * @details The subroutine call instruction writes the return address into that register,
+					 *          which is why a call from the generated code is obliged
+					 *          to save it before the call and restore it afterwards:
+					 *          otherwise the completion of the matcher would pass execution
+					 *          inside the matcher itself.
+					 *
+					 * \~
 					 */
 					#if defined(__x86_64__) || defined(_M_X64)
 						LINK    = 0x0D,
@@ -200,6 +307,7 @@ namespace awh {
 						LINK    = 0x1E,
 					#endif
 					/**
+					 * \~russian
 					 * Указатель стека вызова
 					 *
 					 * @details Набор команд ARM64 обозначает указатель стека тем же
@@ -207,6 +315,14 @@ namespace awh {
 					 *          команда: сложение и вычитание с числом, а равно чтение
 					 *          и запись по смещению обращаются к указателю стека.
 					 *
+					 * \~english
+					 * Call stack pointer
+					 * @details The ARM64 instruction set denotes the stack pointer by the same
+					 *          number as the zero register, and it is the instruction itself that tells them apart:
+					 *          addition and subtraction with a number, as well as reading
+					 *          and writing by an offset, refer to the stack pointer.
+					 *
+					 * \~
 					 */
 					#if defined(__x86_64__) || defined(_M_X64)
 						STACK   = 0x04
@@ -215,8 +331,13 @@ namespace awh {
 					#endif
 				};
 				/**
+				 * \~russian
 				 * @brief Условие выполнения перехода
 				 *
+				 * \~english
+				 * @brief Condition for taking a jump
+				 *
+				 * \~
 				 */
 				enum class cond_t : uint8_t {
 					#if defined(__x86_64__) || defined(_M_X64)
@@ -237,12 +358,20 @@ namespace awh {
 				};
 			private:
 				/**
+				 * \~russian
 				 * Порождаемая последовательность команд процессора
 				 *
 				 * @details Последовательность ведётся байтами, а не словами: набор
 				 *          команд ARM64 несёт команды шириною постоянной, а x86-64 -
 				 *          переменной, и байтовый вид пригоден обоим.
 				 *
+				 * \~english
+				 * Generated sequence of processor instructions
+				 * @details The sequence is kept in bytes rather than in words: the ARM64 instruction
+				 *          set carries instructions of a constant width, and x86-64 of a
+				 *          variable one, and the byte form is fit for both.
+				 *
+				 * \~
 				 */
 				vector <uint8_t> _code;
 			private:
@@ -250,13 +379,23 @@ namespace awh {
 				vector <size_t> _labels;
 			private:
 				/**
+				 * \~russian
 				 * @brief Отложенный переход, подлежащий разрешению
 				 *
+				 * \~english
+				 * @brief Deferred jump subject to resolution
+				 *
+				 * \~
 				 */
 				typedef struct Fixup {
 					/**
+					 * \~russian
 					 * @brief Вид команды, смещение к метке несущей
 					 *
+					 * \~english
+					 * @brief Kind of the instruction carrying the offset to a label
+					 *
+					 * \~
 					 */
 					enum class kind_t : uint8_t {
 						JUMP    = 0x00, // Безусловный переход
@@ -270,8 +409,14 @@ namespace awh {
 					// Вид команды, смещение к метке несущей
 					kind_t kind;
 					/**
+					 * \~russian
 					 * @brief Конструктор
 					 *
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
 					 */
 					Fixup() noexcept : position(0), label(0), kind(kind_t::JUMP) {}
 				} fixup_t;
@@ -283,6 +428,7 @@ namespace awh {
 				bool _failed;
 			public:
 				/**
+				 * \~russian
 				 * @brief Метод проверки поддержки порождения машинного кода сборкой
 				 *
 				 * @details Порождение выполнено для набора команд ARM64, поэтому
@@ -292,16 +438,31 @@ namespace awh {
 				 *
 				 * @return результат проверки поддержки порождения машинного кода
 				 *
+				 * \~english
+				 * @brief Method of checking the support of machine code generation by the build
+				 * @details The generation is implemented for the ARM64 instruction set, therefore
+				 *          builds for the other instruction sets do not receive it.
+				 *          The absence of the support is not a defect: the matching
+				 *          is performed by executing the program, as before.
+				 * @return result of checking the support of machine code generation
+				 *
+				 * \~
 				 */
 				static bool available() noexcept;
 			public:
 				/**
+				 * \~russian
 				 * @brief Метод очистки порождаемой последовательности команд
 				 *
+				 * \~english
+				 * @brief Method of clearing the generated instruction sequence
+				 *
+				 * \~
 				 */
 				void clear() noexcept;
 			public:
 				/**
+				 * \~russian
 				 * @brief Метод заведения метки перехода
 				 *
 				 * @details Заведённая метка положения не имеет: положение она получает
@@ -309,17 +470,31 @@ namespace awh {
 				 *
 				 * @return номер заведённой метки перехода
 				 *
+				 * \~english
+				 * @brief Method of introducing a jump label
+				 * @details An introduced label has no position: it gets its position
+				 *          by being laid out, and before that it only takes jumps.
+				 * @return number of the introduced jump label
+				 *
+				 * \~
 				 */
 				size_t label() noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод расстановки метки перехода
 				 *
 				 * @param label номер расставляемой метки перехода
 				 *
+				 * \~english
+				 * @brief Method of laying out a jump label
+				 * @param label number of the jump label being laid out
+				 *
+				 * \~
 				 */
 				void place(const size_t label) noexcept;
 			public:
 				/**
+				 * \~russian
 				 * @brief Метод размещения входа в порождаемый сопоставитель
 				 *
 				 * @param frame размер отводимого кадра вызова в байтах
@@ -331,9 +506,21 @@ namespace awh {
 				 *          x86-64 их столько не имеет, и часть назначений
 				 *          приходится на регистры сохраняемые.
 				 *
+				 * \~english
+				 * @brief Method of placing the entry into the generated matcher
+				 * @param frame size of the allotted call frame in bytes
+				 * @details The entry saves the registers entrusted by the calling convention to the callee
+				 *          side and allots the call frame. What is saved
+				 *          is determined by the instruction set: ARM64 allots
+				 *          to the generated code registers that require no saving, whereas
+				 *          x86-64 does not have that many of them, and part of the assignments
+				 *          falls on the saved registers.
+				 *
+				 * \~
 				 */
 				void prologue(const uint32_t frame) noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод размещения выхода из порождаемого сопоставителя
 				 *
 				 * @param frame размер освобождаемого кадра вызова в байтах
@@ -342,34 +529,63 @@ namespace awh {
 				 *          входом сохранённые. Размещается он перед всяким
 				 *          завершением вызова, а не единожды.
 				 *
+				 * \~english
+				 * @brief Method of placing the exit from the generated matcher
+				 * @param frame size of the released call frame in bytes
+				 * @details The exit releases the call frame and restores the registers
+				 *          saved by the entry. It is placed before every
+				 *          completion of the call rather than once.
+				 *
+				 * \~
 				 */
 				void epilogue(const uint32_t frame) noexcept;
 			public:
 				/**
+				 * \~russian
 				 * @brief Метод размещения перехода к метке
 				 *
 				 * @param label номер метки, к какой выполняется переход
 				 *
+				 * \~english
+				 * @brief Method of placing a jump to a label
+				 * @param label number of the label the jump is taken to
+				 *
+				 * \~
 				 */
 				void jump(const size_t label) noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод размещения перехода к метке по условию
 				 *
 				 * @param cond  условие выполнения перехода
 				 * @param label номер метки, к какой выполняется переход
 				 *
+				 * \~english
+				 * @brief Method of placing a conditional jump to a label
+				 * @param cond  condition for taking the jump
+				 * @param label number of the label the jump is taken to
+				 *
+				 * \~
 				 */
 				void branch(const cond_t cond, const size_t label) noexcept;
 			public:
 				/**
+				 * \~russian
 				 * @brief Метод размещения сравнения значений регистров
 				 *
 				 * @param first  регистр уменьшаемого значения
 				 * @param second регистр вычитаемого значения
 				 *
+				 * \~english
+				 * @brief Method of placing a comparison of the register values
+				 * @param first  register of the minuend value
+				 * @param second register of the subtrahend value
+				 *
+				 * \~
 				 */
 				void compare(const reg_t first, const reg_t second) noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод размещения сравнения значения регистра с числом
 				 *
 				 * @details Число размещается в самой команде и потому ограничено
@@ -378,46 +594,85 @@ namespace awh {
 				 * @param reg   регистр сравниваемого значения
 				 * @param value сравниваемое число
 				 *
+				 * \~english
+				 * @brief Method of placing a comparison of a register value with a number
+				 * @details The number is placed in the instruction itself and is therefore bounded
+				 *          by twelve bits.
+				 * @param reg   register of the compared value
+				 * @param value compared number
+				 *
+				 * \~
 				 */
 				void compare(const reg_t reg, const uint32_t value) noexcept;
 			public:
 				/**
+				 * \~russian
 				 * @brief Метод размещения сложения значения регистра с числом
 				 *
 				 * @param target регистр итога сложения
 				 * @param source регистр слагаемого значения
 				 * @param value  прибавляемое число
 				 *
+				 * \~english
+				 * @brief Method of placing an addition of a register value with a number
+				 * @param target register of the result of the addition
+				 * @param source register of the addend value
+				 * @param value  added number
+				 *
+				 * \~
 				 */
 				void add(const reg_t target, const reg_t source, const uint32_t value) noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод размещения вычитания числа из значения регистра
 				 *
 				 * @param target регистр итога вычитания
 				 * @param source регистр уменьшаемого значения
 				 * @param value  вычитаемое число
 				 *
+				 * \~english
+				 * @brief Method of placing a subtraction of a number from a register value
+				 * @param target register of the result of the subtraction
+				 * @param source register of the minuend value
+				 * @param value  subtracted number
+				 *
+				 * \~
 				 */
 				void sub(const reg_t target, const reg_t source, const uint32_t value) noexcept;
 			public:
 				/**
+				 * \~russian
 				 * @brief Метод размещения переноса значения регистра
 				 *
 				 * @param target регистр назначения переноса
 				 * @param source регистр источника переноса
 				 *
+				 * \~english
+				 * @brief Method of placing a move of a register value
+				 * @param target destination register of the move
+				 * @param source source register of the move
+				 *
+				 * \~
 				 */
 				void move(const reg_t target, const reg_t source) noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод размещения записи числа в регистр
 				 *
 				 * @param target регистр назначения записи
 				 * @param value  записываемое число
 				 *
+				 * \~english
+				 * @brief Method of placing a write of a number into a register
+				 * @param target destination register of the write
+				 * @param value  written number
+				 *
+				 * \~
 				 */
 				void move(const reg_t target, const uint64_t value) noexcept;
 			public:
 				/**
+				 * \~russian
 				 * @brief Метод размещения чтения байта текста
 				 *
 				 * @details Байт читается по сумме адреса начала текста и позиции
@@ -428,9 +683,20 @@ namespace awh {
 				 * @param base   регистр адреса начала области чтения
 				 * @param offset регистр смещения читаемого байта
 				 *
+				 * \~english
+				 * @brief Method of placing a read of a byte of the text
+				 * @details The byte is read at the sum of the address of the beginning of the text and the matching
+				 *          position, which corresponds to referring to the text by a pointer
+				 *          without bounds checking: the position was checked by the comparison above.
+				 * @param target register of the read byte value
+				 * @param base   register of the address of the beginning of the read area
+				 * @param offset register of the offset of the read byte
+				 *
+				 * \~
 				 */
 				void load(const reg_t target, const reg_t base, const reg_t offset) noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод размещения чтения значения обстановки исполнения
 				 *
 				 * @details Обращение выполняется смещением от регистра обстановки,
@@ -439,28 +705,53 @@ namespace awh {
 				 * @param target регистр прочитанного значения
 				 * @param index  номер значения в таблице адресов обстановки
 				 *
+				 * \~english
+				 * @brief Method of placing a read of a value of the execution context
+				 * @details The reference is performed by an offset from the context register,
+				 *          which is what ensures the relocatability of the generated code.
+				 * @param target register of the read value
+				 * @param index  number of the value in the address table of the context
+				 *
+				 * \~
 				 */
 				void context(const reg_t target, const uint32_t index) noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод размещения чтения значения из памяти
 				 *
 				 * @param target регистр прочитанного значения
 				 * @param base   регистр адреса начала области чтения
 				 * @param index  номер читаемого значения в области
 				 *
+				 * \~english
+				 * @brief Method of placing a read of a value from memory
+				 * @param target register of the read value
+				 * @param base   register of the address of the beginning of the read area
+				 * @param index  number of the read value in the area
+				 *
+				 * \~
 				 */
 				void fetch(const reg_t target, const reg_t base, const uint32_t index) noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод размещения записи значения регистра в память
 				 *
 				 * @param source регистр записываемого значения
 				 * @param base   регистр адреса начала области записи
 				 * @param index  номер записываемого значения в области
 				 *
+				 * \~english
+				 * @brief Method of placing a write of a register value into memory
+				 * @param source register of the written value
+				 * @param base   register of the address of the beginning of the written area
+				 * @param index  number of the written value in the area
+				 *
+				 * \~
 				 */
 				void store(const reg_t source, const reg_t base, const uint32_t index) noexcept;
 			public:
 				/**
+				 * \~russian
 				 * @brief Метод размещения вызова подпрограммы по адресу в регистре
 				 *
 				 * @details Вызов выполняется по адресу, прочитанному из обстановки
@@ -471,9 +762,20 @@ namespace awh {
 				 *
 				 * @param reg регистр адреса вызываемой подпрограммы
 				 *
+				 * \~english
+				 * @brief Method of placing a subroutine call by an address in a register
+				 * @details The call is performed by the address read from the execution
+				 *          context, which is what keeps the relocatability of the generated
+				 *          code. The register values clobbered by the call are saved by
+				 *          the calling side: the subroutine calling convention
+				 *          promises no preservation of the lower registers.
+				 * @param reg register of the address of the called subroutine
+				 *
+				 * \~
 				 */
 				void call(const reg_t reg) noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод размещения вычисления адреса метки
 				 *
 				 * @details Адрес вычисляется прибавлением смещения к положению самой
@@ -483,31 +785,60 @@ namespace awh {
 				 * @param target регистр вычисленного адреса
 				 * @param label  номер метки, адрес какой вычисляется
 				 *
+				 * \~english
+				 * @brief Method of placing a computation of the address of a label
+				 * @details The address is computed by adding the offset to the position of the
+				 *          instruction itself, which is why the relocatability of the generated code is kept:
+				 *          the remembered address moves together with the code.
+				 * @param target register of the computed address
+				 * @param label  number of the label whose address is computed
+				 *
+				 * \~
 				 */
 				void address(const reg_t target, const size_t label) noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод размещения перехода по адресу в регистре
 				 *
 				 * @param reg регистр адреса выполняемого перехода
 				 *
+				 * \~english
+				 * @brief Method of placing a jump by an address in a register
+				 * @param reg register of the address of the taken jump
+				 *
+				 * \~
 				 */
 				void proceed(const reg_t reg) noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод размещения метки цели перехода по адресу в регистре
 				 *
 				 * @details Размещается сразу за меткой, куда приходит переход методом
 				 *          «proceed». Наборы команд, требования такого не ставящие,
 				 *          не размещают ничего.
 				 *
+				 * \~english
+				 * @brief Method of placing the target marker of a jump by an address in a register
+				 * @details It is placed right after the label the jump arrives at by the
+				 *          «proceed» method. The instruction sets that make no such requirement
+				 *          place nothing.
+				 *
+				 * \~
 				 */
 				void landing() noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод размещения завершения вызова
 				 *
+				 * \~english
+				 * @brief Method of placing the completion of the call
+				 *
+				 * \~
 				 */
 				void ret() noexcept;
 			public:
 				/**
+				 * \~russian
 				 * @brief Метод разрешения отложенных переходов
 				 *
 				 * @details Метод вписывает смещения переходов в размещённые команды
@@ -515,24 +846,44 @@ namespace awh {
 				 *
 				 * @return результат разрешения отложенных переходов
 				 *
+				 * \~english
+				 * @brief Method of resolving the deferred jumps
+				 * @details The method writes the jump offsets into the placed instructions
+				 *          and is obliged to be called after all the labels have been laid out.
+				 * @return result of resolving the deferred jumps
+				 *
+				 * \~
 				 */
 				bool resolve() noexcept;
 			public:
 				/**
+				 * \~russian
 				 * @brief Метод извлечения порождённой последовательности команд
 				 *
 				 * @return порождённая последовательность команд процессора
 				 *
+				 * \~english
+				 * @brief Method of getting the generated instruction sequence
+				 * @return generated sequence of processor instructions
+				 *
+				 * \~
 				 */
 				const vector <uint8_t> & code() const noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод извлечения размера порождённого машинного кода
 				 *
 				 * @return размер порождённого машинного кода в байтах
 				 *
+				 * \~english
+				 * @brief Method of getting the size of the generated machine code
+				 * @return size of the generated machine code in bytes
+				 *
+				 * \~
 				 */
 				size_t length() const noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод проверки отказа порождения машинного кода
 				 *
 				 * @details Отказ вызывается доводом, не помещающимся в поле команды,
@@ -542,12 +893,27 @@ namespace awh {
 				 *
 				 * @return результат проверки отказа порождения машинного кода
 				 *
+				 * \~english
+				 * @brief Method of checking a failure of the machine code generation
+				 * @details A failure is caused by an argument not fitting into the instruction field,
+				 *          by a reference to a label that was not introduced or by a jump offset
+				 *          going beyond the bounds of the field. The generation continues after a failure,
+				 *          but its code is unfit for execution.
+				 * @return result of checking a failure of the machine code generation
+				 *
+				 * \~
 				 */
 				bool failed() const noexcept;
 			public:
 				/**
+				 * \~russian
 				 * @brief Конструктор
 				 *
+				 *
+				 * \~english
+				 * @brief Constructor
+				 *
+				 * \~
 				 */
 				Emitter() noexcept;
 		} emitter_t;

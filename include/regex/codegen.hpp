@@ -9,6 +9,7 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * \~russian
  * @brief Заголовочный файл преобразования программы регулярного выражения в машинный код —
  *        класс Codegen, порождающий сопоставитель для подмножества программ, исполнимого
  *        без набора точек возврата произвольной глубины
@@ -197,6 +198,174 @@
  *          быстрее, непринятое - как прежде. Расширение подмножества - работа
  *          последующая, а не условие пригодности.
  *
+ * \~english
+ * @brief Header file of the conversion of the program of a regular expression into machine code —
+ *        the Codegen class, which generates a matcher for the subset of programs executable
+ *        without a set of backtracking points of arbitrary depth
+ * @section codegen_decisions Deliberate decisions
+ * @details What is listed below looks like an incongruity, but was chosen deliberately and
+ *          is not subject to correction. The section is introduced so that reading the code does not start
+ *          every time from the same conclusions.
+ *          <b>Every match of a single character is generated as a reference
+ *          to the byte belonging table.</b> A single character, a character class
+ *          and any character differ only by the content of the table, which is why the generated
+ *          code is one and the same for them, while the difference goes into the execution context.
+ *          Generating separate code for every kind of match would give a gain
+ *          only on a single character — one comparison instead of a reference to the table —
+ *          but would take relocatability away from the generated code: the value of the character
+ *          would have to be placed in the instruction itself.
+ *          <b>A run of a repetition of a single character is walked as a whole, while the retreat
+ *          is performed one position at a time.</b> Such an order corresponds to a greedy
+ *          repetition exactly and requires no set of backtracking points: the retreat position
+ *          of every run is kept in the call frame, and the number of runs
+ *          is known at generation time. Expressions requiring a set of backtracking points
+ *          of arbitrary depth — nested repetitions, backreferences, lookarounds —
+ *          receive no code generation at all and are executed by the program,
+ *          as before. The alternation branches, on the other hand, require no backtracking points of arbitrary depth:
+ *          their number is known at generation time on a par with the number
+ *          of runs, which is why they do receive code generation.
+ *          <b>The preliminary selection of positions is performed by a subroutine call
+ *          rather than generated in the code itself.</b> The selection searches the text for the leading literal
+ *          of a match or for the single admissible starting byte, and searching for a
+ *          sequence in the text is performed by processor instructions
+ *          over several bytes at once. Generating a byte-by-byte walk instead of
+ *          a call would cost more than the call itself on any text where the selection
+ *          skips whole stretches — and other stretches the selection does not skip at all.
+ *          The price of the decision is saving the registers clobbered by the call in the frame,
+ *          performed once per match attempt.
+ *          <b>The positions where an attempt begins are sifted in the code itself if the selection
+ *          for them was not generated.</b> The set of admissible starting bytes is sometimes described
+ *          neither by a leading literal nor by a single byte — such is every alternation
+ *          of branches whose literals begin differently — and such an expression receives no
+ *          position selection at all, trying all the branches at every position.
+ *          The sifting skips the positions whose byte is not given to begin a match,
+ *          at the price of two memory references instead of a match attempt
+ *          as a whole.
+ *          The argument against the set of admissible bytes given above concerns
+ *          a subroutine call rather than generation in the code: the subroutine speeds things up
+ *          by skipping stretches, and the sifting by the cheapness of the move. Measurement on the
+ *          expression «alpha|bravo|charlie|delta|echo|foxtrot» over a text
+ *          of sixty-four kilobytes showed a ratio to executing the program
+ *          of 0.65 without the sifting and 2.99 with it, and the expressions with a narrow set of bytes
+ *          gained as well: «[0-9]{3,5}» — from 3.64 to 4.83.
+ *          <b>The boundaries of the capturing groups are remembered only on the chains of alternation
+ *          branches, and not on the retreat of a run.</b> The retreat returns
+ *          the execution to the matching following the run, which is why the saves
+ *          placed after it are performed anew, while those placed before it
+ *          are not touched by the retreat. A branch whose matching has been broken, on the other hand,
+ *          would leave the boundaries it wrote established, and the next branch
+ *          will not overwrite them — that is why a chain of branches remembers its boundaries
+ *          at the entry and restores them at the transition to the next branch and at
+ *          the exhaustion of the chain. The set of remembered cells is known at generation time:
+ *          it is collected by walking the instruction area of the chain by addresses rather than by
+ *          execution paths. A superfluous cell in the set costs two memory
+ *          references, whereas a missing one would give wrong boundaries.
+ *          <b>The walk of a run is generated by its limit rather than by parsing the table
+ *          always.</b> Parsing the belonging table reads from memory twice
+ *          per every byte — the byte itself and the table record — whereas runs of a simple
+ *          arrangement are walked cheaper. A run accepting every byte value
+ *          runs only into the end of the text and is generated as setting the position
+ *          to its size, with no loop at all. A run bounded by a single
+ *          value is walked by searching for that value: searching for a byte in the text
+ *          is performed by processor instructions over several bytes at once.
+ *          The other runs are walked by parsing the table, as before.
+ *          The number of values not belonging to the run is counted at generation time
+ *          by walking that very table which was introduced for the run: the choice of the path
+ *          rests on what has been built rather than on the kind of the expression. Measurement on the expression
+ *          «.*needle» over a text of sixty-four kilobytes showed a ratio
+ *          to executing the program of 0.68 with parsing the table and 1.90 with searching for
+ *          the limit.
+ *          The difference from the retreat of a run by a backward search, rejected by measurement,
+ *          is in the size of what is being replaced: there a subroutine call replaced one
+ *          retreat, here the walk of a run as a whole.
+ *          <b>A lazy repetition is generated as an advance on failure rather than
+ *          as a walk of a run.</b> A lazy run goes counter to a greedy one: the matching
+ *          continues at once, and the body absorbs a character only on the failure
+ *          of the continuation. That is why a lazy run has no walk and no retreat at all,
+ *          while it occupies the same place in the frame — its own position. Marking lazy
+ *          repetitions is done by a set separate from the greedy ones: a mark in a common
+ *          set would make the interpreters walk a lazy run greedily.
+ *          <b>The failure of an attempt skips the stretch walked by the first run
+ *          rather than shifting the beginning of the attempt by one position.</b> The failure of an attempt that has
+ *          exhausted a run means that the tail of the expression did not converge at any
+ *          retreat position. A later beginning of the attempt shifts the beginning of the
+ *          run forward and leaves its end the same — the byte not belonging
+ *          to the run stands still — which is why the set of checked positions
+ *          will turn out to be a subset of the already rejected one. Without the skip the enumeration
+ *          walks the stretch again and gives the square of the length of the run: measurement on the
+ *          expression «a.*z» without a match showed a ratio of 0.004 to executing the
+ *          program, and with the skip — 44.7.
+ *          The position of the skip is the end of the run minus the length of the stretch
+ *          preceding the run: the next attempt must begin where the run
+ *          will begin past the end of the current one, and not past its own end. That length
+ *          is known at generation time, for before the first run only
+ *          matches of single characters are placed. Without the subtraction the skip passes
+ *          by the positions not yet opened to the run — that defect was found
+ *          by generated samples and fixed by corruption.
+ *          The legitimacy rests on two supports, each of which was checked
+ *          by corruption. The first is the constancy of the length of the stretch preceding the run:
+ *          alternation branches of different lengths would open positions not yet checked,
+ *          which is why expressions with chains of branches receive no skip at all.
+ *          The second is the position of the end, remembered by the first run and reset
+ *          at every attempt: the subsequent runs begin from the position
+ *          changed by the retreat of the first run, and a remainder from the previous attempt
+ *          would skip an unwalked stretch.
+ *          The tail of the expression converges or not by one position alone: the anchors
+ *          depending on the beginning of the attempt are not held by the accepted subset.
+ *          <b>Not a single register whose preservation the calling convention does not promise
+ *          survives a subroutine call.</b> Everything the
+ *          matching lives by is saved in the call frame, although the context subroutines
+ *          do not even take some of those registers. A check showed
+ *          that they take them differently under different optimisation: a missing
+ *          save shows up at «-O0» and does not show up at «-O2» and «-O3»,
+ *          which is why a release build does not reveal such a shortage. The support
+ *          of correctness is the rule rather than watching the register allocation.
+ *          The rule cannot be checked by a set of tests: a missing save
+ *          is observable only when the subroutine does take that register,
+ *          and whether it took it or not is the business of the register allocator. The rule is checked
+ *          otherwise: an assembly-language insert is ascribed to the subroutine,
+ *          deliberately occupying the checked register right before the return, after
+ *          which the comparison with executing the program is run twice — with the register saved
+ *          in the frame and without it. The absence of divergences in the first case
+ *          and their presence in the second is what means that the save does its job.
+ *          <b>In the UTF-8 parsing mode code generation is received by the expressions
+ *          matching ASCII characters alone.</b> The generated code
+ *          matches bytes, whereas the program of that mode matches
+ *          whole characters, and those two ways do not always converge, but on ASCII
+ *          characters they do exactly: the UTF-8 encoding is self-synchronising, an ASCII byte
+ *          never occurs inside a multibyte sequence at all, which is why
+ *          every single byte of it receives the refusal that matching the whole character
+ *          would give as well. A blanket refusal for every expression
+ *          of that mode, on the other hand, would leave log parsing without speed-up in every
+ *          language except English — whereas the expressions of that parsing
+ *          match the separators and the fields of a record, all ASCII signs, while other
+ *          characters lie in the field values and are matched by a negated class or
+ *          by any character, which are rejected by the subset.
+ *          The selection is driven by the matched characters rather than by the byte values:
+ *          the class «[a-zф]» matches no byte outside ASCII, while a character
+ *          it does match. Rejected are a negated class, a reference to a Unicode
+ *          property, matching any character and every range that exceeded the ASCII
+ *          limit. Case-insensitive matching is rejected as well
+ *          when an ASCII character forms a case conversion set
+ *          with a character outside ASCII: the Kelvin sign «K» converts to the letter «k»,
+ *          and the long «ſ» to the letter «s».
+ *          The positions where an attempt begins are then enumerated by character boundaries
+ *          rather than by bytes: matching at least one character will not begin an attempt
+ *          in the middle of a multibyte character — a continuation byte receives a refusal —
+ *          but an empty match carries no matching at all, and
+ *          a byte-by-byte enumeration would yield it in the middle of a character, whereas the program
+ *          shifts the beginning of the search by a whole character. Skipping the continuation bytes
+ *          costs three instructions per position and is generated only for that mode.
+ *          Measurement on texts carrying Cyrillic characters showed a ratio
+ *          to executing the program from 12.6 on an alternation of branches to 21.1
+ *          on a network address expression.
+ *          <b>A refusal to generate is not a defect.</b> Code generation accepts
+ *          a subset of programs rather than every program: what is accepted is executed
+ *          faster, what is not accepted as before. Extending the subset is subsequent
+ *          work rather than a condition of fitness.
+ *
+ * \~
+ *
  * @copyright: Copyright © 2026
  *
  */
@@ -223,8 +392,14 @@
 #include "assembly.hpp"
 
 /**
+ * \~russian
  * @brief Основное пространство имён
  *
+ *
+ * \~english
+ * @brief Main namespace
+ *
+ * \~
  */
 namespace awh {
 	/**
@@ -233,11 +408,17 @@ namespace awh {
 	using namespace std;
 
 	/**
+	 * \~russian
 	 * @brief Пространство имён модуля регулярных выражений
 	 *
+	 * \~english
+	 * @brief Namespace of the regular expression module
+	 *
+	 * \~
 	 */
 	namespace regex {
 		/**
+		 * \~russian
 		 * @brief Наибольшее допустимое количество рядов повторения в порождаемом коде
 		 *
 		 * @details Положение отступления каждого ряда занимает место в кадре вызова,
@@ -245,20 +426,37 @@ namespace awh {
 		 *          рядов ограничивается. Выражения с большим количеством рядов
 		 *          кодогенерации не получают.
 		 *
+		 * \~english
+		 * @brief Largest admissible number of repetition runs in the generated code
+		 * @details The retreat position of every run occupies a place in the call frame,
+		 *          and the frame is allocated at the entry into the matcher, therefore the number
+		 *          of runs is bounded. Expressions with a larger number of runs
+		 *          receive no code generation.
+		 *
+		 * \~
 		 */
 		constexpr size_t MAX_RUNS = 0x20;
 
 		/**
+		 * \~russian
 		 * @brief Наибольшее допустимое количество цепочек ветвей в порождаемом коде
 		 *
 		 * @details Позиция начала выбора и адрес возврата выбранной ветви занимают
 		 *          места в кадре вызова, а кадр размещается при входе в сопоставитель,
 		 *          поэтому количество цепочек ветвей ограничивается.
 		 *
+		 * \~english
+		 * @brief Largest admissible number of branch chains in the generated code
+		 * @details The position where an alternation begins and the return address of the chosen branch occupy
+		 *          places in the call frame, and the frame is allocated at the entry into the matcher,
+		 *          therefore the number of branch chains is bounded.
+		 *
+		 * \~
 		 */
 		constexpr size_t MAX_CHAINS = 0x20;
 
 		/**
+		 * \~russian
 		 * @brief Класс преобразования программы регулярного выражения в машинный код
 		 *
 		 * @details Класс порождает сопоставитель для программы, исполнимой проходом
@@ -266,16 +464,32 @@ namespace awh {
 		 *          вместе с ним обстановку исполнения: таблицы принадлежности байтов
 		 *          и набор их адресов. Владение порождённым кодом единоличное.
 		 *
+		 * \~english
+		 * @brief Class of the conversion of the program of a regular expression into machine code
+		 * @details The class generates a matcher for a program executable by walking
+		 *          the repetition runs with a retreat one position at a time, and holds
+		 *          the execution context together with it: the byte belonging tables
+		 *          and the set of their addresses. Ownership of the generated code is exclusive.
+		 *
+		 * \~
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Codegen {
 			private:
 				/**
+				 * \~russian
 				 * @brief Тип вызова порождённого сопоставителя
 				 *
 				 * @details Соглашение о вызове: адрес текста, размер текста, позиция
 				 *          начала попытки, адрес набора границ и адрес таблицы адресов
 				 *          обстановки исполнения.
 				 *
+				 * \~english
+				 * @brief Call type of the generated matcher
+				 * @details The calling convention: the address of the text, the size of the text, the position
+				 *          where the attempt begins, the address of the set of boundaries and the address of the address table
+				 *          of the execution context.
+				 *
+				 * \~
 				 */
 				typedef bool (* matcher_t) (const char *, size_t, size_t, size_t *, const void *);
 			private:
@@ -283,6 +497,7 @@ namespace awh {
 				assembly_t _assembly;
 			private:
 				/**
+				 * \~russian
 				 * Хранилище значений, к каким обращается порождённый код
 				 *
 				 * @details Хранилище несёт таблицы принадлежности значений байта
@@ -294,6 +509,18 @@ namespace awh {
 				 *          размещение значения перемещает хранилище в памяти,
 				 *          отчего адреса собираются заново по завершении порождения.
 				 *
+				 * \~english
+				 * Storage of the values the generated code refers to
+				 * @details The storage carries the tables of the belonging of the byte values to
+				 *          the matched characters, two hundred and fifty-six bytes
+				 *          for each, and the descriptors of the anchors to a position in the text,
+				 *          eight bytes for each, placed one after another.
+				 *          A single storage instead of separate ones was introduced so that
+				 *          the set of the context addresses is restored uniformly:
+				 *          placing a value moves the storage in memory,
+				 *          which is why the addresses are collected anew when the generation has finished.
+				 *
+				 * \~
 				 */
 				vector <uint8_t> _members;
 			private:
@@ -301,6 +528,7 @@ namespace awh {
 				vector <size_t> _offsets;
 			private:
 				/**
+				 * \~russian
 				 * Предварительный отбор позиций начала попытки сопоставления
 				 *
 				 * @details Отбор копируется из программы, а не берётся по ссылке
@@ -308,6 +536,14 @@ namespace awh {
 				 *          попытке сопоставления и переживает программу,
 				 *          для какой порождён.
 				 *
+				 * \~english
+				 * Preliminary selection of the positions where a match attempt begins
+				 * @details The selection is copied from the program rather than taken by a reference
+				 *          to it: the generated code refers to it at every
+				 *          match attempt and outlives the program
+				 *          it was generated for.
+				 *
+				 * \~
 				 */
 				prefilter_t _prefilter;
 			private:
@@ -324,15 +560,24 @@ namespace awh {
 				matcher_t _matcher;
 			private:
 				/**
+				 * \~russian
 				 * @brief Метод заведения таблицы принадлежности байтов сопоставления
 				 *
 				 * @param instruction сопоставляющая инструкция программы
 				 * @param program     программа регулярного выражения
 				 * @return            номер заведённой таблицы в обстановке исполнения
 				 *
+				 * \~english
+				 * @brief Method of introducing a byte belonging table of a match
+				 * @param instruction matching instruction of the program
+				 * @param program     program of the regular expression
+				 * @return            number of the introduced table in the execution context
+				 *
+				 * \~
 				 */
 				size_t table(const instruction_t & instruction, const program_t & program) noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод заведения приметы привязки к позиции в тексте
 				 *
 				 * @details Примета несёт тип привязки и набор режимов компиляции
@@ -343,25 +588,49 @@ namespace awh {
 				 * @param instruction инструкция привязки к позиции в тексте
 				 * @return            номер заведённой приметы в обстановке исполнения
 				 *
+				 * \~english
+				 * @brief Method of introducing a descriptor of an anchor to a position in the text
+				 * @details The descriptor carries the type of the anchor and the set of compilation modes
+				 *          of the instruction: the check of the anchor is performed by a context
+				 *          subroutine rather than by the generated code, if it does not lend itself
+				 *          to generation.
+				 * @param instruction instruction of the anchor to a position in the text
+				 * @return            number of the introduced descriptor in the execution context
+				 *
+				 * \~
 				 */
 				size_t guard(const instruction_t & instruction) noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод заведения значения байта, ряд повторения ограничивающего
 				 *
 				 * @param letter значение байта, ряд повторения ограничивающее
 				 * @return       номер заведённого значения в обстановке исполнения
 				 *
+				 * \~english
+				 * @brief Method of introducing the byte value bounding a repetition run
+				 * @param letter byte value bounding a repetition run
+				 * @return       number of the introduced value in the execution context
+				 *
+				 * \~
 				 */
 				size_t limiter(const uint8_t letter) noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод заведения таблицы допустимых начальных байтов совпадения
 				 *
 				 * @return номер заведённой таблицы в обстановке исполнения
 				 *
+				 * \~english
+				 * @brief Method of introducing the table of the admissible starting bytes of a match
+				 * @return number of the introduced table in the execution context
+				 *
+				 * \~
 				 */
 				size_t sieve() noexcept;
 			public:
 				/**
+				 * \~russian
 				 * @brief Метод проверки применимости кодогенерации к программе
 				 *
 				 * @details Метод проверяет принадлежность программы подмножеству,
@@ -370,10 +639,19 @@ namespace awh {
 				 * @param program проверяемая программа регулярного выражения
 				 * @return        результат проверки применимости кодогенерации
 				 *
+				 * \~english
+				 * @brief Method of checking the applicability of code generation to a program
+				 * @details The method checks the belonging of the program to the subset
+				 *          receiving code generation, without generating any code.
+				 * @param program program of the regular expression to check
+				 * @return        result of checking the applicability of code generation
+				 *
+				 * \~
 				 */
 				static bool applicable(const program_t & program) noexcept;
 			public:
 				/**
+				 * \~russian
 				 * @brief Метод порождения сопоставителя программы
 				 *
 				 * @details Порождение отказывается на программах, подмножеству
@@ -382,10 +660,19 @@ namespace awh {
 				 * @param program программа регулярного выражения
 				 * @return        результат порождения сопоставителя
 				 *
+				 * \~english
+				 * @brief Method of generating the matcher of a program
+				 * @details The generation refuses on the programs not belonging to the subset
+				 *          and on the builds that have received no code generation.
+				 * @param program program of the regular expression
+				 * @return        result of generating the matcher
+				 *
+				 * \~
 				 */
 				bool compile(const program_t & program) noexcept;
 			public:
 				/**
+				 * \~russian
 				 * @brief Метод записи порождённого сопоставителя
 				 *
 				 * @param result запись порождённого сопоставителя
@@ -398,9 +685,22 @@ namespace awh {
 				 *          принадлежат исполняемому образу, а адреса значений
 				 *          хранилища выводятся из смещений.
 				 *
+				 * \~english
+				 * @brief Method of writing the generated matcher
+				 * @param result record of the generated matcher
+				 * @return       result of writing the generated matcher
+				 * @details What is written is the generated machine code, the storage
+				 *          of the execution context values and their offsets. The rest
+				 *          the context collects itself on restoration: four subroutine addresses
+				 *          and the address of the preliminary selection of positions
+				 *          belong to the executable image, while the addresses of the storage values
+				 *          are derived from the offsets.
+				 *
+				 * \~
 				 */
 				bool save(string & result) const noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод восстановления порождённого сопоставителя
 				 *
 				 * @param data    запись порождённого сопоставителя
@@ -415,15 +715,35 @@ namespace awh {
 				 *          несовпадение оборачивается отказом - и порождением
 				 *          заново, если вызывающая сторона того желает.
 				 *
+				 * \~english
+				 * @brief Method of restoring the generated matcher
+				 * @param data    record of the generated matcher
+				 * @param offset  reading position in the record
+				 * @param program program of the generated matcher
+				 * @return        result of restoring the matcher
+				 * @details The restoration does without walking the program and without
+				 *          assembling instructions: the code is placed in executable memory
+				 *          as it is. It is fit only for the instruction set it was
+				 *          generated for, therefore the record carries its identification, and
+				 *          a mismatch turns into a refusal — and into generating it
+				 *          anew, if the calling side so wishes.
+				 *
+				 * \~
 				 */
 				bool restore(string_view data, size_t & offset, const program_t & program) noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод очистки порождённого сопоставителя
 				 *
+				 * \~english
+				 * @brief Method of clearing the generated matcher
+				 *
+				 * \~
 				 */
 				void clear() noexcept;
 			public:
 				/**
+				 * \~russian
 				 * @brief Метод сопоставления регулярного выражения порождённым кодом
 				 *
 				 * @param text     текст для сопоставления
@@ -431,45 +751,88 @@ namespace awh {
 				 * @param captures набор границ обнаруженного совпадения
 				 * @return         результат поиска совпадения
 				 *
+				 * \~english
+				 * @brief Method of matching a regular expression by the generated code
+				 * @param text     text to match
+				 * @param start    position to start the search for a match from
+				 * @param captures set of the boundaries of the found match
+				 * @return         result of searching for a match
+				 *
+				 * \~
 				 */
 				bool exec(string_view text, const size_t start, vector <pair <size_t, size_t>> & captures) const noexcept;
 			public:
 				/**
+				 * \~russian
 				 * @brief Метод проверки готовности порождённого сопоставителя
 				 *
 				 * @return результат проверки готовности порождённого сопоставителя
 				 *
+				 * \~english
+				 * @brief Method of checking the readiness of the generated matcher
+				 * @return result of checking the readiness of the generated matcher
+				 *
+				 * \~
 				 */
 				bool ready() const noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод извлечения опознания программы порождённого сопоставителя
 				 *
 				 * @return опознание программы порождённого сопоставителя
 				 *
+				 * \~english
+				 * @brief Method of getting the program identification of the generated matcher
+				 * @return program identification of the generated matcher
+				 *
+				 * \~
 				 */
 				uint64_t identity() const noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод извлечения размера порождённого машинного кода
 				 *
 				 * @return размер порождённого машинного кода в байтах
 				 *
+				 * \~english
+				 * @brief Method of getting the size of the generated machine code
+				 * @return size of the generated machine code in bytes
+				 *
+				 * \~
 				 */
 				size_t length() const noexcept;
 			public:
 				/**
+				 * \~russian
 				 * @brief Оператор присванивания
 				 *
+				 * \~english
+				 * @brief Assignment operator
+				 *
+				 * \~
 				 */
 				Codegen & operator = (const Codegen &) noexcept = delete;
 				/**
+				 * \~russian
 				 * @brief Конструктор копирования
 				 *
+				 *
+				 * \~english
+				 * @brief Copy constructor
+				 *
+				 * \~
 				 */
 				Codegen(const Codegen &) noexcept = delete;
 			public:
 				/**
+				 * \~russian
 				 * @brief Конструктор
 				 *
+				 *
+				 * \~english
+				 * @brief Constructor
+				 *
+				 * \~
 				 */
 				Codegen() noexcept;
 		} codegen_t;

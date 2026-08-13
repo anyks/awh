@@ -9,9 +9,17 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * \~russian
  * @brief Заголовочный файл модуля быстрого некриптографического хэширования — класс Hash, формирующий
  *        хэш произвольной разрядности как за один вызов, так и в потоковом режиме, с выводом результата
  *        во встроенные числовые типы и в длинные числа произвольной разрядности модуля BigNum
+ *
+ * \~english
+ * @brief Header file of the module of fast non-cryptographic hashing — the Hash class forming
+ *        a hash of arbitrary width both within a single call and in the streaming mode, with the output of the result
+ *        into the built-in numeric types and into long numbers of arbitrary width of the BigNum module
+ *
+ * \~
  *
  * @copyright: Copyright © 2026
  *
@@ -62,8 +70,13 @@
 #endif
 
 /**
+ * \~russian
  * @brief Основное пространство имён
  *
+ * \~english
+ * @brief Main namespace
+ *
+ * \~
  */
 namespace awh {
 	/**
@@ -72,6 +85,7 @@ namespace awh {
 	using namespace std;
 
 	/**
+	 * \~russian
 	 * @brief Пространство имён вычислительного движка хэширования
 	 *
 	 * @details Пространство имён содержит функции, выполняющие всю работу над сырыми
@@ -80,9 +94,20 @@ namespace awh {
 	 *          от порядка байтов процессора, поэтому хэш заданной разрядности всегда
 	 *          является префиксом хэша большей разрядности тех же самых данных.
 	 *
+	 * \~english
+	 * @brief Namespace of the computational engine of hashing
+	 *
+	 * @details The namespace contains the functions performing all the work over raw
+	 *          byte buffers. The result of hashing is formed as a stream of bytes
+	 *          of arbitrary length in the order from the least significant byte to the most significant one regardless
+	 *          of the byte order of the processor, therefore a hash of a given width is always
+	 *          a prefix of a hash of a greater width of the very same data.
+	 *
+	 * \~
 	 */
 	namespace hashing {
 		/**
+		 * \~russian
 		 * @brief Функция смешивания двух чисел
 		 *
 		 * @details Функция выполняет умножение двух чисел с получением полного
@@ -94,9 +119,22 @@ namespace awh {
 		 * @param value2 второе число для смешивания
 		 * @return       результат смешивания чисел
 		 *
+		 * \~english
+		 * @brief Function mixing two numbers
+		 *
+		 * @details The function performs the multiplication of two numbers obtaining the full
+		 *          128-bit product and adds its halves by the exclusive OR operation.
+		 *          The function is the main building block of all the other functions of the namespace.
+		 *
+		 * @param value1 first number for the mixing
+		 * @param value2 second number for the mixing
+		 * @return       result of mixing the numbers
+		 *
+		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ uint64_t mix(const uint64_t value1, const uint64_t value2) noexcept;
 		/**
+		 * \~russian
 		 * @brief Функция окончательного перемешивания числа
 		 *
 		 * @details Функция размазывает влияние каждого бита входного числа на все
@@ -105,9 +143,20 @@ namespace awh {
 		 * @param value число для перемешивания
 		 * @return      результат перемешивания числа
 		 *
+		 * \~english
+		 * @brief Function of the final stirring of a number
+		 *
+		 * @details The function spreads the influence of every bit of the input number over all
+		 *          the bits of the result, providing the avalanche effect of the hash function.
+		 *
+		 * @param value number for the stirring
+		 * @return      result of stirring the number
+		 *
+		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ uint64_t avalanche(const uint64_t value) noexcept;
 		/**
+		 * \~russian
 		 * @brief Функция сведения пары начальных значений хэширования в одно
 		 *
 		 * @details Свести пару ключей перемешиванием нельзя: перемешивание
@@ -125,9 +174,29 @@ namespace awh {
 		 * @param seed2 второе начальное значение хэширования
 		 * @return      сведённое начальное значение хэширования
 		 *
+		 * \~english
+		 * @brief Function of merging a pair of hashing seed values into one
+		 *
+		 * @details A pair of keys cannot be merged by stirring: the stirring is
+		 *          multiplicative, and a zero key nullifies it entirely - the pair
+		 *          (999, 0) gave the same result as the pair (7, 0), that is,
+		 *          the second key was lost silently, and the first one along with it.
+		 *
+		 *          Here every key goes through the final stirring
+		 *          on its own, and they are merged by addition modulo two. Each of
+		 *          the two stirrings is one-to-one, therefore it is impossible to nullify the result
+		 *          by a zero key alone, and both keys are significant at
+		 *          any of their values
+		 *
+		 * @param seed1 first hashing seed value
+		 * @param seed2 second hashing seed value
+		 * @return      merged hashing seed value
+		 *
+		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ uint64_t merge(const uint64_t seed1, const uint64_t seed2) noexcept;
 		/**
+		 * \~russian
 		 * @brief Функция формирования хэша буфера данных
 		 *
 		 * @details Функция формирует хэш указанной длины за один вызов. Результат
@@ -140,9 +209,24 @@ namespace awh {
 		 * @param result буфер для записи результата хэширования
 		 * @param length размер результата хэширования в байтах
 		 *
+		 * \~english
+		 * @brief Function forming the hash of a data buffer
+		 *
+		 * @details The function forms a hash of the specified length within a single call. The result
+		 *          fully coincides with the result of the streaming hashing of the very
+		 *          same data with the very same seed value.
+		 *
+		 * @param buffer data buffer for the hashing
+		 * @param size   size of the data buffer for the hashing
+		 * @param seed   hashing seed value
+		 * @param result buffer for writing the hashing result
+		 * @param length size of the hashing result in bytes
+		 *
+		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ void generate(const void * buffer, const size_t size, const uint64_t seed, uint8_t * result, const size_t length) noexcept;
 		/**
+		 * \~russian
 		 * @brief Функция формирования 64-битного хэша буфера данных
 		 *
 		 * @details Функция выводит первые восемь байтов результата хэширования в виде
@@ -155,9 +239,24 @@ namespace awh {
 		 * @param seed   начальное значение хэширования
 		 * @return       результат хэширования
 		 *
+		 * \~english
+		 * @brief Function forming the 64-bit hash of a data buffer
+		 *
+		 * @details The function outputs the first eight bytes of the hashing result as
+		 *          a number, bypassing the forming of the byte stream of the result, and is intended
+		 *          for the most frequent case of hashing the keys of associative
+		 *          containers.
+		 *
+		 * @param buffer data buffer for the hashing
+		 * @param size   size of the data buffer for the hashing
+		 * @param seed   hashing seed value
+		 * @return       hashing result
+		 *
+		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ uint64_t generate(const void * buffer, const size_t size, const uint64_t seed) noexcept;
 		/**
+		 * \~russian
 		 * @brief Функция приведения буфера длинного вещественного числа к конечному значению
 		 *
 		 * @details Произвольный набор байтов способен образовать бесконечность либо
@@ -168,22 +267,47 @@ namespace awh {
 		 * @param value буфер длинного вещественного числа для приведения
 		 * @param size  размер буфера длинного вещественного числа в байтах
 		 *
+		 * \~english
+		 * @brief Function bringing the buffer of a long real number to a finite value
+		 *
+		 * @details An arbitrary set of bytes is capable of forming an infinity or
+		 *          a value that is not a number, and such a value is unequal to itself
+		 *          and is unfit as a key of an associative container. The function
+		 *          extinguishes the most significant bit of the exponent of the number, turning the value into a finite one.
+		 *
+		 * @param value buffer of the long real number for the bringing
+		 * @param size  size of the buffer of the long real number in bytes
+		 *
+		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ void finite(uint8_t * value, const size_t size) noexcept;
 	};
 	/**
+	 * \~russian
 	 * @brief Пространство имён вычислительного движка хэширования
 	 *
+	 * \~english
+	 * @brief Namespace of the computational engine of hashing
+	 *
+	 * \~
 	 */
 	namespace hashing {
 		/**
+		 * \~russian
 		 * @brief Шаблон типа результата хэширования
 		 *
 		 * @tparam T тип результата хэширования
 		 *
+		 * \~english
+		 * @brief Template of the type of the hashing result
+		 *
+		 * @tparam T type of the hashing result
+		 *
+		 * \~
 		 */
 		template <typename T>
 		/**
+		 * \~russian
 		 * @brief Признак результата хэширования, выводимого числом напрямую
 		 *
 		 * @details Целое число, умещающееся в разрядность вычислительного движка,
@@ -198,16 +322,40 @@ namespace awh {
 		 *          Признак логического типа сюда не входит: разрядность его равна
 		 *          одному биту, и хэша он не несёт вовсе
 		 *
+		 * \~english
+		 * @brief Sign of a hashing result output as a number directly
+		 *
+		 * @details An integer number fitting into the width of the computational engine
+		 *          is taken off the convolution directly and does not start a stream of octets. The sign
+		 *          is no hindrance to that: the conversion of an unsigned number to a signed type
+		 *          of the same width discards the most significant bits by the remainder - this is
+		 *          mandated by the C++20 edition, and before that it was defined by the build itself and on
+		 *          all the target builds of the library it was done exactly that way, - that is, it gives
+		 *          exactly the same value as the assembly of a signed number from a stream
+		 *          of octets by shifts.
+		 *
+		 *          The sign of the boolean type is not included here: its width equals
+		 *          one bit, and it carries no hash whatsoever
+		 *
+		 * \~
 		 */
 		constexpr bool numeric = (is_integral <T>::value && !is_same <T, bool>::value && (sizeof(T) <= sizeof(uint64_t)));
 		/**
+		 * \~russian
 		 * @brief Шаблон типа результата хэширования
 		 *
 		 * @tparam T тип результата хэширования
 		 *
+		 * \~english
+		 * @brief Template of the type of the hashing result
+		 *
+		 * @tparam T type of the hashing result
+		 *
+		 * \~
 		 */
 		template <typename T>
 		/**
+		 * \~russian
 		 * @brief Функция записи результата хэширования во встроенный целочисленный тип
 		 *
 		 * @details Число собирается из потока октетов в порядке от младшего октета
@@ -218,6 +366,18 @@ namespace awh {
 		 * @param result результат хэширования для записи
 		 * @param buffer буфер сформированного хэша
 		 *
+		 * \~english
+		 * @brief Function writing the hashing result into a built-in integer type
+		 *
+		 * @details The number is assembled from the stream of octets in the order from the least significant octet
+		 *          to the most significant one regardless of the byte order of the processor, therefore
+		 *          the numeric value of the result is the same on all the platforms and
+		 *          coincides with the result of the fast path of the hash forming function.
+		 *
+		 * @param result hashing result for the writing
+		 * @param buffer buffer of the formed hash
+		 *
+		 * \~
 		 */
 		AWH_HASH_INLINE typename enable_if <is_integral <T>::value, void>::type assign(T & result, const uint8_t * buffer) noexcept {
 			/**
@@ -237,13 +397,21 @@ namespace awh {
 			result = static_cast <T> (value);
 		}
 		/**
+		 * \~russian
 		 * @brief Шаблон типа результата хэширования
 		 *
 		 * @tparam T тип результата хэширования
 		 *
+		 * \~english
+		 * @brief Template of the type of the hashing result
+		 *
+		 * @tparam T type of the hashing result
+		 *
+		 * \~
 		 */
 		template <typename T>
 		/**
+		 * \~russian
 		 * @brief Функция записи результата хэширования во встроенный вещественный тип
 		 *
 		 * @details Произвольный набор октетов образует бесконечность либо значение
@@ -255,6 +423,19 @@ namespace awh {
 		 * @param result результат хэширования для записи
 		 * @param buffer буфер сформированного хэша
 		 *
+		 * \~english
+		 * @brief Function writing the hashing result into a built-in real type
+		 *
+		 * @details An arbitrary set of octets forms an infinity or a value
+		 *          that is not a number roughly in one case out of two hundred for a number
+		 *          of single precision, and such a value is unequal to itself and is
+		 *          unfit as a key of an associative container. The function
+		 *          extinguishes the most significant bit of the exponent of the number, turning the value into a finite one.
+		 *
+		 * @param result hashing result for the writing
+		 * @param buffer buffer of the formed hash
+		 *
+		 * \~
 		 */
 		AWH_HASH_INLINE typename enable_if <is_floating_point <T>::value, void>::type assign(T & result, const uint8_t * buffer) noexcept {
 			/**
@@ -296,37 +477,68 @@ namespace awh {
 			::memcpy(&result, &value, sizeof(T));
 		}
 		/**
+		 * \~russian
 		 * @brief Шаблон размера массива байтов результата хэширования
 		 *
 		 * @tparam SIZE размер массива байтов результата хэширования
 		 *
+		 * \~english
+		 * @brief Template of the size of the byte array of the hashing result
+		 *
+		 * @tparam SIZE size of the byte array of the hashing result
+		 *
+		 * \~
 		 */
 		template <size_t SIZE>
 		/**
+		 * \~russian
 		 * @brief Функция записи результата хэширования в массив байтов
 		 *
 		 * @param result результат хэширования для записи
 		 * @param buffer буфер сформированного хэша
 		 *
+		 * \~english
+		 * @brief Function writing the hashing result into a byte array
+		 *
+		 * @param result hashing result for the writing
+		 * @param buffer buffer of the formed hash
+		 *
+		 * \~
 		 */
 		AWH_HASH_INLINE void assign(array <uint8_t, SIZE> & result, const uint8_t * buffer) noexcept {
 			// Копируем сформированный хэш в результат хэширования
 			::memcpy(result.data(), buffer, SIZE);
 		}
 		/**
+		 * \~russian
 		 * @brief Шаблон разрядности и типа длинного числа результата хэширования
 		 *
 		 * @tparam BYTES размер длинного числа в байтах
 		 * @tparam TYPE  тип хранимого длинного числа
 		 *
+		 * \~english
+		 * @brief Template of the width and of the type of the long number of the hashing result
+		 *
+		 * @tparam BYTES size of the long number in bytes
+		 * @tparam TYPE  type of the stored long number
+		 *
+		 * \~
 		 */
 		template <uint16_t BYTES, bignum::type_t TYPE>
 		/**
+		 * \~russian
 		 * @brief Функция записи результата хэширования в длинное число
 		 *
 		 * @param result результат хэширования для записи
 		 * @param buffer буфер сформированного хэша
 		 *
+		 * \~english
+		 * @brief Function writing the hashing result into a long number
+		 *
+		 * @param result hashing result for the writing
+		 * @param buffer buffer of the formed hash
+		 *
+		 * \~
 		 */
 		AWH_HASH_INLINE void assign(BigNum <BYTES, TYPE> & result, const uint8_t * buffer) noexcept {
 			/**
@@ -343,13 +555,21 @@ namespace awh {
 				hashing::finite(result.data(), BYTES);
 		}
 		/**
+		 * \~russian
 		 * @brief Шаблон типа результата хэширования
 		 *
 		 * @tparam T тип результата хэширования
 		 *
+		 * \~english
+		 * @brief Template of the type of the hashing result
+		 *
+		 * @tparam T type of the hashing result
+		 *
+		 * \~
 		 */
 		template <typename T = uint64_t>
 		/**
+		 * \~russian
 		 * @brief Функция формирования хэша буфера данных
 		 *
 		 * @details Функция выводит результат хэширования в любом типе данных,
@@ -361,6 +581,19 @@ namespace awh {
 		 * @param seed   начальное значение хэширования
 		 * @return       результат хэширования
 		 *
+		 * \~english
+		 * @brief Function forming the hash of a data buffer
+		 *
+		 * @details The function outputs the hashing result in any data type
+		 *          whose width is known at the compilation stage: in a built-in
+		 *          numeric type, in a byte array or in a long number of the BigNum module.
+		 *
+		 * @param buffer data buffer for the hashing
+		 * @param size   size of the data buffer for the hashing
+		 * @param seed   hashing seed value
+		 * @return       hashing result
+		 *
+		 * \~
 		 */
 		AWH_HASH_INLINE T create(const void * buffer, const size_t size, const uint64_t seed = 0) noexcept {
 			// Выполняем проверку типа результата хэширования на пригодность
@@ -390,6 +623,7 @@ namespace awh {
 		}
 	};
 	/**
+	 * \~russian
 	 * @brief Класс быстрого некриптографического хэширования
 	 *
 	 * @details Класс формирует хэш произвольной разрядности от буфера данных как за
@@ -408,12 +642,37 @@ namespace awh {
 	 *          подлинности данных не предназначена. Для таких задач следует
 	 *          использовать хэш-суммы и подписи модуля Crypto.
 	 *
+	 * \~english
+	 * @brief Class of fast non-cryptographic hashing
+	 *
+	 * @details The class forms a hash of arbitrary width from a data buffer both within
+	 *          a single call and in the streaming mode, when the data arrives in parts
+	 *          and does not reside in memory in whole. The result of the streaming hashing
+	 *          coincides with the result of hashing the very same data within a single call
+	 *          regardless of what parts the data arrived in.
+	 *
+	 * @details The hash is formed as a stream of bytes, therefore a hash of a lesser width
+	 *          is a prefix of a hash of a greater width: the least significant 32 bits
+	 *          of a 128-bit hash coincide with the 32-bit hash of the very same data.
+	 *          The result is output into the built-in numeric types, into byte arrays and
+	 *          into long numbers of the BigNum module of any declared width.
+	 *
+	 * @note    The hash function possesses no cryptographic strength and is not intended
+	 *          for verifying the authenticity of data. For such tasks the hash sums
+	 *          and signatures of the Crypto module should be used.
+	 *
+	 * \~
 	 */
 	typedef class __AWH_SHARED_EXPORT__ Hash {
 		public:
 			/**
+			 * \~russian
 			 * @brief Размер блока данных хэширования в байтах
 			 *
+			 * \~english
+			 * @brief Size of the data block of the hashing in bytes
+			 *
+			 * \~
 			 */
 			static constexpr size_t BLOCK = 64;
 		private:
@@ -430,48 +689,87 @@ namespace awh {
 			array <uint8_t, BLOCK> _buffer;
 		public:
 			/**
+			 * \~russian
 			 * @brief Метод сброса состояния потокового хэширования
 			 *
 			 * @details Начальное значение хэширования метод не изменяет.
 			 *
+			 * \~english
+			 * @brief Method resetting the state of the streaming hashing
+			 *
+			 * @details The method does not change the hashing seed value.
+			 *
+			 * \~
 			 */
 			void clear() noexcept;
 		public:
 			/**
+			 * \~russian
 			 * @brief Метод извлечения начального значения хэширования
 			 *
 			 * @return начальное значение хэширования
 			 *
+			 * \~english
+			 * @brief Method extracting the hashing seed value
+			 *
+			 * @return hashing seed value
+			 *
+			 * \~
 			 */
 			uint64_t seed() const noexcept;
 			/**
+			 * \~russian
 			 * @brief Метод установки начального значения хэширования
 			 *
 			 * @details Метод сбрасывает состояние потокового хэширования.
 			 *
 			 * @param seed начальное значение хэширования
 			 *
+			 * \~english
+			 * @brief Method setting the hashing seed value
+			 *
+			 * @details The method resets the state of the streaming hashing.
+			 *
+			 * @param seed hashing seed value
+			 *
+			 * \~
 			 */
 			void seed(const uint64_t seed) noexcept;
 		public:
 			/**
+			 * \~russian
 			 * @brief Метод извлечения размера обработанных данных
 			 *
 			 * @return размер обработанных данных в байтах
 			 *
+			 * \~english
+			 * @brief Method extracting the size of the processed data
+			 *
+			 * @return size of the processed data in bytes
+			 *
+			 * \~
 			 */
 			uint64_t length() const noexcept;
 		public:
 			/**
+			 * \~russian
 			 * @brief Метод добавления данных в потоковое хэширование
 			 *
 			 * @param buffer буфер данных для хэширования
 			 * @param size   размер буфера данных для хэширования
 			 *
+			 * \~english
+			 * @brief Method adding data into the streaming hashing
+			 *
+			 * @param buffer data buffer for the hashing
+			 * @param size   size of the data buffer for the hashing
+			 *
+			 * \~
 			 */
 			void update(const void * buffer, const size_t size) noexcept;
 		public:
 			/**
+			 * \~russian
 			 * @brief Метод формирования результата потокового хэширования
 			 *
 			 * @details Состояние потокового хэширования метод не изменяет, поэтому
@@ -481,9 +779,21 @@ namespace awh {
 			 * @param result буфер для записи результата хэширования
 			 * @param length размер результата хэширования в байтах
 			 *
+			 * \~english
+			 * @brief Method forming the result of the streaming hashing
+			 *
+			 * @details The method does not change the state of the streaming hashing, therefore
+			 *          the adding of data is allowed to be continued even after the forming
+			 *          of an intermediate result.
+			 *
+			 * @param result buffer for writing the hashing result
+			 * @param length size of the hashing result in bytes
+			 *
+			 * \~
 			 */
 			void digest(uint8_t * result, const size_t length) const noexcept;
 			/**
+			 * \~russian
 			 * @brief Метод формирования 64-битного результата потокового хэширования
 			 *
 			 * @details Метод выводит первые восемь октетов результата в виде числа,
@@ -492,10 +802,21 @@ namespace awh {
 			 *
 			 * @return результат хэширования
 			 *
+			 * \~english
+			 * @brief Method forming the 64-bit result of the streaming hashing
+			 *
+			 * @details The method outputs the first eight octets of the result as a number,
+			 *          bypassing the forming of the stream of octets, and is intended for the most
+			 *          frequent case — the hashing of the keys of associative containers.
+			 *
+			 * @return hashing result
+			 *
+			 * \~
 			 */
 			uint64_t digest() const noexcept;
 		public:
 			/**
+			 * \~russian
 			 * @brief Метод формирования хэша буфера данных
 			 *
 			 * @details Метод состояние потокового хэширования не затрагивает.
@@ -505,21 +826,46 @@ namespace awh {
 			 * @param result буфер для записи результата хэширования
 			 * @param length размер результата хэширования в байтах
 			 *
+			 * \~english
+			 * @brief Method forming the hash of a data buffer
+			 *
+			 * @details The method does not affect the state of the streaming hashing.
+			 *
+			 * @param buffer data buffer for the hashing
+			 * @param size   size of the data buffer for the hashing
+			 * @param result buffer for writing the hashing result
+			 * @param length size of the hashing result in bytes
+			 *
+			 * \~
 			 */
 			void hash(const void * buffer, const size_t size, uint8_t * result, const size_t length) const noexcept;
 		public:
 			/**
+			 * \~russian
 			 * @brief Шаблон типа результата хэширования
 			 *
 			 * @tparam T тип результата хэширования
 			 *
+			 * \~english
+			 * @brief Template of the type of the hashing result
+			 *
+			 * @tparam T type of the hashing result
+			 *
+			 * \~
 			 */
 			template <typename T = uint64_t>
 			/**
+			 * \~russian
 			 * @brief Метод формирования результата потокового хэширования
 			 *
 			 * @return результат хэширования
 			 *
+			 * \~english
+			 * @brief Method forming the result of the streaming hashing
+			 *
+			 * @return hashing result
+			 *
+			 * \~
 			 */
 			AWH_HASH_INLINE T digest() const noexcept {
 				// Выполняем проверку типа результата хэширования на пригодность
@@ -549,51 +895,91 @@ namespace awh {
 			}
 		public:
 			/**
+			 * \~russian
 			 * @brief Шаблон типа результата хэширования
 			 *
 			 * @tparam T тип результата хэширования
 			 *
+			 * \~english
+			 * @brief Template of the type of the hashing result
+			 *
+			 * @tparam T type of the hashing result
+			 *
+			 * \~
 			 */
 			template <typename T = uint64_t>
 			/**
+			 * \~russian
 			 * @brief Метод формирования хэша буфера данных
 			 *
 			 * @param buffer буфер данных для хэширования
 			 * @param size   размер буфера данных для хэширования
 			 * @return       результат хэширования
 			 *
+			 * \~english
+			 * @brief Method forming the hash of a data buffer
+			 *
+			 * @param buffer data buffer for the hashing
+			 * @param size   size of the data buffer for the hashing
+			 * @return       hashing result
+			 *
+			 * \~
 			 */
 			AWH_HASH_INLINE T hash(const void * buffer, const size_t size) const noexcept {
 				// Выполняем формирование хэша буфера данных
 				return hashing::create <T> (buffer, size, this->_seed);
 			}
 			/**
+			 * \~russian
 			 * @brief Шаблон типа результата хэширования
 			 *
 			 * @tparam T тип результата хэширования
 			 *
+			 * \~english
+			 * @brief Template of the type of the hashing result
+			 *
+			 * @tparam T type of the hashing result
+			 *
+			 * \~
 			 */
 			template <typename T = uint64_t>
 			/**
+			 * \~russian
 			 * @brief Метод формирования хэша текста
 			 *
 			 * @param text текст для хэширования
 			 * @return     результат хэширования
 			 *
+			 * \~english
+			 * @brief Method forming the hash of a text
+			 *
+			 * @param text text for the hashing
+			 * @return     hashing result
+			 *
+			 * \~
 			 */
 			AWH_HASH_INLINE T hash(string_view text) const noexcept {
 				// Выполняем формирование хэша текста
 				return this->hash <T> (text.data(), text.size());
 			}
 			/**
+			 * \~russian
 			 * @brief Шаблон типа результата хэширования и типа буфера данных
 			 *
 			 * @tparam A тип результата хэширования
 			 * @tparam B тип буфера данных для хэширования
 			 *
+			 * \~english
+			 * @brief Template of the type of the hashing result and of the type of the data buffer
+			 *
+			 * @tparam A type of the hashing result
+			 * @tparam B type of the data buffer for the hashing
+			 *
+			 * \~
 			 */
 			template <typename A = uint64_t, typename B, typename = decltype(std::declval <const B &> ().data())>
 			/**
+			 * \~russian
 			 * @brief Метод формирования хэша буфера данных
 			 *
 			 * @details Отбором служит наличие у буфера непрерывного хранилища, а не
@@ -605,6 +991,19 @@ namespace awh {
 			 * @param buffer буфер данных для хэширования
 			 * @return       результат хэширования
 			 *
+			 * \~english
+			 * @brief Method forming the hash of a data buffer
+			 *
+			 * @details The selection is served by the presence of contiguous storage in the buffer rather than
+			 *          by the type of the stored value alone: the set of boolean values of
+			 *          the standard library declares the type of the stored value, but
+			 *          stores it packed by bits and does not give out the storage, - and
+			 *          the selection by the type of the value brought it here, breaking the build
+			 *
+			 * @param buffer data buffer for the hashing
+			 * @return       hashing result
+			 *
+			 * \~
 			 */
 			AWH_HASH_INLINE A hash(const B & buffer) const noexcept {
 				// Выполняем формирование хэша буфера данных
@@ -612,23 +1011,38 @@ namespace awh {
 			}
 		public:
 			/**
+			 * \~russian
 			 * @brief Метод добавления текста в потоковое хэширование
 			 *
 			 * @param text текст для хэширования
 			 *
+			 * \~english
+			 * @brief Method adding a text into the streaming hashing
+			 *
+			 * @param text text for the hashing
+			 *
+			 * \~
 			 */
 			AWH_HASH_INLINE void update(string_view text) noexcept {
 				// Выполняем добавление текста в потоковое хэширование
 				this->update(text.data(), text.size());
 			}
 			/**
+			 * \~russian
 			 * @brief Шаблон типа буфера данных для хэширования
 			 *
 			 * @tparam B тип буфера данных для хэширования
 			 *
+			 * \~english
+			 * @brief Template of the type of the data buffer for the hashing
+			 *
+			 * @tparam B type of the data buffer for the hashing
+			 *
+			 * \~
 			 */
 			template <typename B, typename = decltype(std::declval <const B &> ().data())>
 			/**
+			 * \~russian
 			 * @brief Метод добавления данных в потоковое хэширование
 			 *
 			 * @details Отбором служит наличие у буфера непрерывного хранилища —
@@ -636,6 +1050,15 @@ namespace awh {
 			 *
 			 * @param buffer буфер данных для хэширования
 			 *
+			 * \~english
+			 * @brief Method adding data into the streaming hashing
+			 *
+			 * @details The selection is served by the presence of contiguous storage in the buffer —
+			 *          by the same argument as for the forming of the hash of a data buffer
+			 *
+			 * @param buffer data buffer for the hashing
+			 *
+			 * \~
 			 */
 			AWH_HASH_INLINE void update(const B & buffer) noexcept {
 				// Выполняем добавление данных в потоковое хэширование
@@ -643,38 +1066,70 @@ namespace awh {
 			}
 		public:
 			/**
+			 * \~russian
 			 * @brief Шаблон разрядности и типа длинного числа для хэширования
 			 *
 			 * @tparam BYTES размер длинного числа в байтах
 			 * @tparam TYPE  тип хранимого длинного числа
 			 *
+			 * \~english
+			 * @brief Template of the width and of the type of the long number for the hashing
+			 *
+			 * @tparam BYTES size of the long number in bytes
+			 * @tparam TYPE  type of the stored long number
+			 *
+			 * \~
 			 */
 			template <uint16_t BYTES, bignum::type_t TYPE>
 			/**
+			 * \~russian
 			 * @brief Метод добавления длинного числа в потоковое хэширование
 			 *
 			 * @param num длинное число для хэширования
 			 *
+			 * \~english
+			 * @brief Method adding a long number into the streaming hashing
+			 *
+			 * @param num long number for the hashing
+			 *
+			 * \~
 			 */
 			AWH_HASH_INLINE void update(const BigNum <BYTES, TYPE> & num) noexcept {
 				// Выполняем добавление длинного числа в потоковое хэширование
 				this->update(num.data(), BYTES);
 			}
 			/**
+			 * \~russian
 			 * @brief Шаблон типа результата хэширования, разрядности и типа длинного числа
 			 *
 			 * @tparam T     тип результата хэширования
 			 * @tparam BYTES размер длинного числа в байтах
 			 * @tparam TYPE  тип хранимого длинного числа
 			 *
+			 * \~english
+			 * @brief Template of the type of the hashing result, of the width and of the type of the long number
+			 *
+			 * @tparam T     type of the hashing result
+			 * @tparam BYTES size of the long number in bytes
+			 * @tparam TYPE  type of the stored long number
+			 *
+			 * \~
 			 */
 			template <typename T = uint64_t, uint16_t BYTES, bignum::type_t TYPE>
 			/**
+			 * \~russian
 			 * @brief Метод формирования хэша длинного числа
 			 *
 			 * @param num длинное число для хэширования
 			 * @return    результат хэширования
 			 *
+			 * \~english
+			 * @brief Method forming the hash of a long number
+			 *
+			 * @param num long number for the hashing
+			 * @return    hashing result
+			 *
+			 * \~
 			 */
 			AWH_HASH_INLINE T hash(const BigNum <BYTES, TYPE> & num) const noexcept {
 				// Выполняем формирование хэша длинного числа
@@ -682,11 +1137,19 @@ namespace awh {
 			}
 		public:
 			/**
+			 * \~russian
 			 * @brief Оператор [()] формирования хэша текста
 			 *
 			 * @param text текст для хэширования
 			 * @return     результат хэширования
 			 *
+			 * \~english
+			 * @brief Operator [()] forming the hash of a text
+			 *
+			 * @param text text for the hashing
+			 * @return     hashing result
+			 *
+			 * \~
 			 */
 			AWH_HASH_INLINE uint64_t operator () (string_view text) const noexcept {
 				// Выполняем формирование хэша текста
@@ -694,53 +1157,100 @@ namespace awh {
 			}
 		public:
 			/**
+			 * \~russian
 			 * @brief Конструктор
 			 *
+			 * \~english
+			 * @brief Constructor
+			 *
+			 * \~
 			 */
 			Hash() noexcept;
 			/**
+			 * \~russian
 			 * @brief Конструктор
 			 *
 			 * @param seed начальное значение хэширования
 			 *
+			 * \~english
+			 * @brief Constructor
+			 *
+			 * @param seed hashing seed value
+			 *
+			 * \~
 			 */
 			Hash(const uint64_t seed) noexcept;
 			/**
+			 * \~russian
 			 * @brief Деструктор
 			 *
+			 * \~english
+			 * @brief Destructor
+			 *
+			 * \~
 			 */
 			~Hash() noexcept {}
 	} hash_t;
 };
 
 /**
+ * \~russian
  * @brief Пространство имён стандартной библиотеки
  *
+ * \~english
+ * @brief Namespace of the standard library
+ *
+ * \~
  */
 namespace std {
 	/**
+	 * \~russian
 	 * @brief Шаблон разрядности и типа длинного числа
 	 *
 	 * @tparam BYTES размер длинного числа в байтах
 	 * @tparam TYPE  тип хранимого длинного числа
 	 *
+	 * \~english
+	 * @brief Template of the width and of the type of the long number
+	 *
+	 * @tparam BYTES size of the long number in bytes
+	 * @tparam TYPE  type of the stored long number
+	 *
+	 * \~
 	 */
 	template <uint16_t BYTES, awh::bignum::type_t TYPE>
 	/**
+	 * \~russian
 	 * @brief Специализация шаблона хэширования длинного числа
 	 *
 	 * @details Специализация позволяет использовать длинное число произвольной
 	 *          разрядности в качестве ключа ассоциативных контейнеров стандартной
 	 *          библиотеки, построенных на хэш-таблицах.
 	 *
+	 * \~english
+	 * @brief Specialization of the template of the hashing of a long number
+	 *
+	 * @details The specialization makes it possible to use a long number of arbitrary
+	 *          width as a key of the associative containers of the standard
+	 *          library built upon hash tables.
+	 *
+	 * \~
 	 */
 	struct hash <awh::BigNum <BYTES, TYPE>> {
 		/**
+		 * \~russian
 		 * @brief Оператор [()] формирования хэша длинного числа
 		 *
 		 * @param num длинное число для хэширования
 		 * @return    результат хэширования
 		 *
+		 * \~english
+		 * @brief Operator [()] forming the hash of a long number
+		 *
+		 * @param num long number for the hashing
+		 * @return    hashing result
+		 *
+		 * \~
 		 */
 		size_t operator () (const awh::BigNum <BYTES, TYPE> & num) const noexcept {
 			// Выполняем формирование хэша длинного числа

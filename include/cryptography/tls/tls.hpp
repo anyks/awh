@@ -9,9 +9,17 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * \~russian
  * @brief Заголовочный файл общих типов подсистемы TLS — перечисления версий протокола, наборов шифров,
  *        эллиптических групп, алгоритмов подписи, форматов точек, типов расширений, PSK, SRTP,
  *        heartbeat и методов сжатия сертификатов
+ *
+ * \~english
+ * @brief Header file of the common types of the TLS subsystem — enumerations of the protocol versions, cipher suites,
+ *        elliptic groups, signature algorithms, point formats, extension types, PSK, SRTP,
+ *        heartbeat and certificate compression methods
+ *
+ * \~
  *
  * @copyright: Copyright © 2026
  *
@@ -29,8 +37,13 @@
 #include <cstdint>
 
 /**
+ * \~russian
  * @brief Основное пространство имён
  *
+ * \~english
+ * @brief Main namespace
+ *
+ * \~
  */
 namespace awh {
 	/**
@@ -39,6 +52,7 @@ namespace awh {
 	using namespace std;
 
 	/**
+	 * \~russian
 	 * @brief пространство имён работы с TLS
 	 *
 	 * @details Наборы значений, какими описываются свойства защищённого
@@ -58,9 +72,31 @@ namespace awh {
 	 * подмешиваются в рукопожатие нарочно, чтобы посредники не привыкали к
 	 * закрытому набору значений и не ломались при появлении нового
 	 *
+	 * \~english
+	 * @brief namespace of working with TLS
+	 *
+	 * @details The sets of values by which the properties of a secured connection are
+	 * described: the versions of the agreement, the ciphers, the curves, the ways of compression and
+	 * the rest of what the parties settle upon during the handshake
+	 *
+	 * They are provided not for the sake of configuring one's own connection, but for the sake of **parsing
+	 * somebody else's**: by the set of properties declared in the handshake it becomes known what
+	 * exactly the interlocutor uses. The values are therefore translated from the numbers of the
+	 * agreement into one's own, convenient for comparison and storage
+	 *
+	 * @note Almost every set has a value for the unrecognized: the agreement
+	 * develops, new values appear constantly, and
+	 * meeting an unfamiliar one is an ordinary matter rather than a sign of a failure
+	 *
+	 * @note There is also a value for deliberately meaningless quantities. Such are
+	 * mixed into the handshake on purpose, so that intermediaries do not get accustomed to a
+	 * closed set of values and do not break upon the appearance of a new one
+	 *
+	 * \~
 	 */
 	namespace tls {
 		/**
+		 * \~russian
 		 * @brief Типы компрессоров TLS
 		 *
 		 * @details Способы сжатия, заявляемые при рукопожатии
@@ -70,6 +106,17 @@ namespace awh {
 		 * удаётся выведывать его содержимое. Встреча такого заявления - скорее
 		 * примета устаревшей стороны, чем повод его включить
 		 *
+		 * \~english
+		 * @brief Types of the TLS compressors
+		 *
+		 * @details The ways of compression declared during the handshake
+		 *
+		 * @warning Compression of the content of a secured connection has been recognized as dangerous
+		 * and removed in the new editions of the agreement: by the change of the length of the compressed stream
+		 * it becomes possible to elicit its content. Meeting such a declaration is rather
+		 * a sign of an outdated party than a reason to enable it
+		 *
+		 * \~
 		 */
 		enum class compressor_t : uint8_t {
 			NONE    = 0x00, // Сжатие не используется
@@ -80,6 +127,7 @@ namespace awh {
 		};
 
 		/**
+		 * \~russian
 		 * @brief Типы ключей обмена TLS
 		 *
 		 * @details Способы применения заранее общего ключа: сам по себе либо
@@ -90,6 +138,18 @@ namespace awh {
 		 * записанное ранее; способ с одноразовым обменом прежние сеансы
 		 * сохраняет закрытыми
 		 *
+		 * \~english
+		 * @brief Types of the TLS exchange keys
+		 *
+		 * @details The ways of applying a pre-shared key: on its own or
+		 * together with an ephemeral exchange
+		 *
+		 * @note These ways are not equivalent in their consequences. A key on its own
+		 * gives all the sessions a common foundation, and its disclosure devalues
+		 * what has been recorded earlier; the way with an ephemeral exchange keeps the former sessions
+		 * closed
+		 *
+		 * \~
 		 */
 		enum class psk_key_t : uint8_t {
 			PSK_ONLY = 0x00, // Только PSK-ключи
@@ -98,8 +158,13 @@ namespace awh {
 		};
 
 		/**
+		 * \~russian
 		 * @brief Тип формата точек эллиптической кривой TLS
 		 *
+		 * \~english
+		 * @brief Type of the format of the points of a TLS elliptic curve
+		 *
+		 * \~
 		 */
 		enum class ec_point_format_t : uint8_t {
 			UNCOMPRESSED = 0x00, // Не сжатый формат
@@ -110,6 +175,7 @@ namespace awh {
 		};
 
 		/**
+		 * \~russian
 		 * @brief Тип версии TLS
 		 *
 		 * @details Издания договора, от самых ранних до нынешних, включая
@@ -119,6 +185,17 @@ namespace awh {
 		 * Перечислены они здесь для разбора, а не для применения: встретив
 		 * такое издание, разумнее отказать в подключении
 		 *
+		 * \~english
+		 * @brief Type of the TLS version
+		 *
+		 * @details The editions of the agreement, from the earliest to the present ones, including
+		 * the editions for the datagram exchange
+		 *
+		 * @note The SSL editions and the early TLS editions have long been recognized as insecure.
+		 * They are listed here for parsing rather than for application: having met
+		 * such an edition, it is more reasonable to refuse the connection
+		 *
+		 * \~
 		 */
 		enum class version_t : uint8_t {
 			UNKNOWN  = 0x00, // Неизвестная или нераспознанная версия TLS.
@@ -133,8 +210,13 @@ namespace awh {
 		};
 
 		/**
+		 * \~russian
 		 * @brief Типы криптографических профилей SRTP для TLS
 		 *
+		 * \~english
+		 * @brief Types of the SRTP cryptographic profiles for TLS
+		 *
+		 * \~
 		 */
 		enum class srtp_t : uint8_t {
 			UNKNOWN                = 0x00, // Неизвестный или нераспознанный профиль SRTP.
@@ -149,8 +231,13 @@ namespace awh {
 		};
 
 		/**
+		 * \~russian
 		 * @brief Типы режимов поддержки активного подключения (heartbeat) в TLS
 		 *
+		 * \~english
+		 * @brief Types of the modes of maintaining an active connection (heartbeat) in TLS
+		 *
+		 * \~
 		 */
 		enum class heartbeat_t : uint8_t {
 			UNKNOWN                  = 0x00, // Неизвестный или нераспознанный режим heartbeat
@@ -159,8 +246,13 @@ namespace awh {
 		};
 
 		/**
+		 * \~russian
 		 * @brief Тип доступных шифров TLS
 		 *
+		 * \~english
+		 * @brief Type of the available TLS ciphers
+		 *
+		 * \~
 		 */
 		enum class cipher_t : uint8_t {
 			UNKNOWN                       = 0x00, // Неизвестный или нераспознанный шифр.
@@ -192,8 +284,13 @@ namespace awh {
 		};
 
 		/**
+		 * \~russian
 		 * @brief Тип группы TLS-сессий
 		 *
+		 * \~english
+		 * @brief Type of the group of TLS sessions
+		 *
+		 * \~
 		 */
 		enum class group_t : uint8_t {
 			UNKNOWN                 = 0x00, // Неизвестная или нераспознанная группа.
@@ -215,8 +312,13 @@ namespace awh {
 		};
 
 		/**
+		 * \~russian
 		 * @brief Тип доступных подписей TLS
 		 *
+		 * \~english
+		 * @brief Type of the available TLS signatures
+		 *
+		 * \~
 		 */
 		enum class signature_t : uint8_t {
 			UNKNOWN                 = 0x00, // Неизвестная или нераспознанная подпись
@@ -243,8 +345,13 @@ namespace awh {
 		};
 
 		/**
+		 * \~russian
 		 * @brief Тип доступных расширений TLS
 		 *
+		 * \~english
+		 * @brief Type of the available TLS extensions
+		 *
+		 * \~
 		 */
 		enum class extension_type_t : uint8_t {
 			UNKNOWN                          = 0x00, // Неизвестное или нераспознанное расширение.

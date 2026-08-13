@@ -9,8 +9,15 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * \~russian
  * @brief Заголовочный файл определения свойств платформы для модуля разбора чисел — детект разрядности архитектуры,
  *        доступности векторных инструкций SSE2 и NEON, поддержки 128-битных целых и особенностей компилятора
+ *
+ * \~english
+ * @brief Header file of the detection of the platform properties for the number parsing module — detection of the bitness of the architecture,
+ *        of the availability of the SSE2 and NEON vector instructions, of the support of 128-bit integers and of the compiler peculiarities
+ *
+ * \~
  *
  * @copyright: Copyright © 2026
  *
@@ -98,10 +105,16 @@
 #endif
 
 /**
+ * \~russian
  * Определяем порядок байт платформы
  *
  * @details Каждая ветвь задаёт макрос ровно один раз, повторных определений нет.
  *
+ * \~english
+ * Determine the byte order of the platform
+ * @details Every branch sets the macro exactly once, there are no repeated definitions.
+ *
+ * \~
  */
 #if __BYTE_ORDER__ && __ORDER_BIG_ENDIAN__
 	/**
@@ -289,6 +302,7 @@
 #endif
 
 /**
+ * \~russian
  * Определяем проверку внутренних инвариантов модуля
  *
  * @details Проверка активна только в отладочной сборке, в релизе разворачивается
@@ -296,6 +310,14 @@
  *          эффекты выражения: результат всех операций, способных завершиться
  *          отказом, проверяется отдельно возвращаемым значением.
  *
+ * \~english
+ * Define the check of the internal invariants of the module
+ * @details The check is active only in a debug build, in a release one it expands
+ *          into an empty operation. The logic of the module never relies on the side
+ *          effects of the expression: the result of all the operations able to end
+ *          in a failure is checked separately by the return value.
+ *
+ * \~
  */
 #ifndef AWH_LEXICAL_ASSERT
 	/**

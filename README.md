@@ -190,7 +190,14 @@ $ cd ./build
 
 $ cmake ..
 
+# Build documentation for Russian and English language
 $ cmake --build . --target doc
+
+# Build documentation for Russian language
+$ cmake --build . --target doc-ru
+
+# Build documentation for English language
+$ cmake --build . --target doc-en
 
 # Or
 

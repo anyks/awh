@@ -27,8 +27,14 @@
 
 /**
  * Системные заголовочные файлы
+ *
+ * @note Заголовок поиска символов подключается лишь для POSIX: счётчик системных
+ *       вызовов внедряется подставной библиотекой через загрузчик, а у MS Windows
+ *       ни этого заголовка, ни самого способа внедрения нет вовсе
  */
-#include <dlfcn.h>
+#if !(_WIN32 || _WIN64)
+	#include <dlfcn.h>
+#endif
 
 /**
  * Подключаем заголовочный файл главного модуля бенчмарков
@@ -36,9 +42,25 @@
 #include "main.hpp"
 
 /**
- * Если используется аллокатор TcMalloc
+ * Признак учёта выделений памяти перехватчиком аллокатора TcMalloc
+ *
+ * @note Под MS Windows перехватчик недоступен: сборка аллокатора для MinGW символа
+ *       MallocHook::AddNewHook не поставляет вовсе, и связывание валится отказом
+ *       «undefined reference to __imp_MallocHook_AddNewHook». Учёт там ведётся
+ *       собственной перегрузкой оператора выделения памяти - тою же, что и в
+ *       сборках без этого аллокатора. Обнаружено на стенде MSYS2 MinGW64
+ *       (13.08.2026)
  */
-#if __AWH_USE_TCMALLOC__
+#if __AWH_USE_TCMALLOC__ && !(_WIN32 || _WIN64)
+	#define __AWH_BENCHMARK_MALLOC_HOOK__ 1
+#else
+	#define __AWH_BENCHMARK_MALLOC_HOOK__ 0
+#endif
+
+/**
+ * Если учёт выделений памяти ведётся перехватчиком аллокатора
+ */
+#if __AWH_BENCHMARK_MALLOC_HOOK__
 	#include <gperftools/malloc_hook.h>
 #endif
 
@@ -59,7 +81,7 @@ namespace {
 /**
  * Если используется аллокатор TcMalloc
  */
-#if __AWH_USE_TCMALLOC__
+#if __AWH_BENCHMARK_MALLOC_HOOK__
 	/**
 	 * @brief Функция обратного вызова аллокатора о выполненном выделении памяти
 	 *
@@ -194,7 +216,7 @@ void awh::benchmark::counting(const bool mode) noexcept {
 	/**
 	 * Если используется аллокатор TcMalloc
 	 */
-	#if __AWH_USE_TCMALLOC__
+	#if __AWH_BENCHMARK_MALLOC_HOOK__
 		// Признак установленного перехватчика выделений памяти
 		static bool attached = false;
 		// Если перехватчик выделений памяти ещё не установлен
@@ -254,6 +276,17 @@ namespace {
 			return result;
 		// Запоминаем факт обращения к точке входа
 		resolved = true;
+		/**
+		 * Если сборка ведётся под MS Windows
+		 *
+		 * @note Способа внедрить подставную библиотеку в уже собранный процесс через
+		 *       загрузчик там нет, и точки входа взяться неоткуда: учёт системных
+		 *       вызовов на этой системе недоступен целиком
+		 */
+		#if _WIN32 || _WIN64
+			// Выводим отсутствие состояния счётчика
+			return result;
+		#else
 		// Выполняем поиск точки входа счётчика системных вызовов
 		const awh_syscount_state_t entry = reinterpret_cast <awh_syscount_state_t> (::dlsym(RTLD_DEFAULT, AWH_SYSCOUNT_ENTRY_POINT));
 		// Если подставная библиотека счётчика не внедрена
@@ -273,6 +306,7 @@ namespace {
 		result = state;
 		// Выводим состояние счётчика системных вызовов
 		return result;
+		#endif
 	}
 };
 
@@ -415,10 +449,21 @@ std::string awh::benchmark::syscall::reason() noexcept {
 	if(state != nullptr)
 		// Выводим пустую причину
 		return std::string{""};
-	// Если подставная библиотека внедрена, но её двоичный контракт не совпал
-	if(::dlsym(RTLD_DEFAULT, AWH_SYSCOUNT_ENTRY_POINT) != nullptr)
-		// Выводим причину несовпадения двоичного контракта
-		return std::string("счётчик системных вызовов собран из другой редакции - пересоберите цель awh_BENCHMARK_syscount");
+	/**
+	 * Если сборка ведётся не под MS Windows
+	 */
+	#if !(_WIN32 || _WIN64)
+		// Если подставная библиотека внедрена, но её двоичный контракт не совпал
+		if(::dlsym(RTLD_DEFAULT, AWH_SYSCOUNT_ENTRY_POINT) != nullptr)
+			// Выводим причину несовпадения двоичного контракта
+			return std::string("счётчик системных вызовов собран из другой редакции - пересоберите цель awh_BENCHMARK_syscount");
+	/**
+	 * Если сборка ведётся под MS Windows
+	 */
+	#else
+		// Выводим причину недоступности учёта на этой системе
+		return std::string("учёт системных вызовов у MS Windows недоступен - подставная библиотека внедряется загрузчиком, какого там нет");
+	#endif
 	// Выводим причину отсутствия подставной библиотеки
 	return std::string("нет счётчика системных вызовов - см. tools/benchmark/syscount/README.md");
 }

@@ -68,14 +68,15 @@ if (APPLE)
     endif()
 endif()
 
-
-# Приведение доменных имён модулем awh::idna вместо средств операционной системы
-#
-# Средствами операционной системы доменные имена приводятся лишь на MS Windows,
-# где приведение задано прежним изданием стандарта и с приложением по обработке
-# доменных имён сходится не во всём. Признак переводит приведение на модуль,
-# чем поведение на всех операционных системах делается одинаковым. На прочих
-# операционных системах приведение выполняется модулем всегда.
+##
+ # Приведение доменных имён модулем awh::idna вместо средств операционной системы
+ #
+ # Средствами операционной системы доменные имена приводятся лишь на MS Windows,
+ # где приведение задано прежним изданием стандарта и с приложением по обработке
+ # доменных имён сходится не во всём. Признак переводит приведение на модуль,
+ # чем поведение на всех операционных системах делается одинаковым. На прочих
+ # операционных системах приведение выполняется модулем всегда.
+ ##
 if (CMAKE_BUILD_IDNA)
     add_compile_definitions(AWH_IDNA)
     message(STATUS "Build with own IDNA processing: YES\n")
@@ -146,11 +147,13 @@ if (CMAKE_MAX_POLL_EVENTS_COUNT)
     message(STATUS "Build with initial poll events count: ${CMAKE_MAX_POLL_EVENTS_COUNT}\n")
 endif (CMAKE_MAX_POLL_EVENTS_COUNT)
 
-# Если активирован флаг установки числа заводимых вперёд принятий входящих связей (по умолчанию: 8)
-#
-# Величина эта касается одного лишь движка на портах завершения: у kqueue и epoll
-# принятие заранее не заводится вовсе, там ядро сообщает о готовности слушающего
-# сокета, а сокет принятой связи заводит сам вызов принятия
+##
+ # Если активирован флаг установки числа заводимых вперёд принятий входящих связей (по умолчанию: 8)
+ #
+ # Величина эта касается одного лишь движка на портах завершения: у kqueue и epoll
+ # принятие заранее не заводится вовсе, там ядро сообщает о готовности слушающего
+ # сокета, а сокет принятой связи заводит сам вызов принятия
+ ##
 if (CMAKE_COUNT_PREPOSTED_ACCEPTS)
     add_compile_definitions(AWH_COUNT_PREPOSTED_ACCEPTS=${CMAKE_COUNT_PREPOSTED_ACCEPTS})
     message(STATUS "Build with pre-posted accepts count: ${CMAKE_COUNT_PREPOSTED_ACCEPTS}\n")
@@ -313,19 +316,19 @@ message(STATUS "Build dir: ${CMAKE_CURRENT_BINARY_DIR}\n")
 EXECUTE_PROCESS(COMMAND uname -m COMMAND tr -d '\n' OUTPUT_VARIABLE ARCHITECTURE )
 
 ##
-# У MS Windows набор команд читается из названия системы, а не у uname -m
-#
-# Оболочка MSYS2 исполняется под подражанием x86-64, и uname -m отвечает x86_64 даже
-# на машине ARM64 - вслед за ним и uname -p, отдающий unknown. Строка же названия
-# системы оканчивается на ARM64 при любой из оболочек MSYS2, а у машины x86-64
-# суффикса не несёт вовсе - проверено опытом на обоих стендах Windows
-#
-# Цена ошибки не отвлечённая: приняв ARM64 за x86-64, сборка подставляет -mrdrnd и
-# -march=core2, и компилятор отвечает "unsupported option '-mrdrnd' for target
-# 'aarch64-w64-windows-gnu'"
-#
-# Тем же признаком пользуется и sh/build_third_party.sh, чтобы опознание было единым
-##
+ # У MS Windows набор команд читается из названия системы, а не у uname -m
+ #
+ # Оболочка MSYS2 исполняется под подражанием x86-64, и uname -m отвечает x86_64 даже
+ # на машине ARM64 - вслед за ним и uname -p, отдающий unknown. Строка же названия
+ # системы оканчивается на ARM64 при любой из оболочек MSYS2, а у машины x86-64
+ # суффикса не несёт вовсе - проверено опытом на обоих стендах Windows
+ #
+ # Цена ошибки не отвлечённая: приняв ARM64 за x86-64, сборка подставляет -mrdrnd и
+ # -march=core2, и компилятор отвечает "unsupported option '-mrdrnd' for target
+ # 'aarch64-w64-windows-gnu'"
+ #
+ # Тем же признаком пользуется и sh/build_third_party.sh, чтобы опознание было единым
+ ##
 EXECUTE_PROCESS(COMMAND uname -s OUTPUT_VARIABLE SYSTEM_NAME OUTPUT_STRIP_TRAILING_WHITESPACE)
 if (SYSTEM_NAME MATCHES "ARM64")
     SET(ARCHITECTURE "aarch64")
@@ -383,17 +386,19 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
         SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
      # Используем GCC
     elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-        # Признак --no-as-needed здесь не задаётся намеренно
-        #
-        # Приём этот принадлежит компоновщику GNU, а у Sun Solaris и illumos работает
-        # свой - Solaris Link Editors. Solaris 11.4 признак этот принимает, а illumos
-        # отвечает отказом "ld: fatal: unrecognized option '--no-as-needed'", и наборы
-        # проверок там не компонуются вовсе. Проверено опытом на обоих стендах
-        #
-        # Смысла он тут и не несёт: назначение его - удержать библиотеку, которую
-        # компоновщик счёл лишней, а нужна была лишь одна такая - libdl. У этих же
-        # систем dlopen лежит в libc, и замер показал, что сборка проходит и вовсе
-        # без -ldl. Библиотека оставлена ради явности, признак убран
+        ##
+         # Признак --no-as-needed здесь не задаётся намеренно
+         #
+         # Приём этот принадлежит компоновщику GNU, а у Sun Solaris и illumos работает
+         # свой - Solaris Link Editors. Solaris 11.4 признак этот принимает, а illumos
+         # отвечает отказом "ld: fatal: unrecognized option '--no-as-needed'", и наборы
+         # проверок там не компонуются вовсе. Проверено опытом на обоих стендах
+         #
+         # Смысла он тут и не несёт: назначение его - удержать библиотеку, которую
+         # компоновщик счёл лишней, а нужна была лишь одна такая - libdl. У этих же
+         # систем dlopen лежит в libc, и замер показал, что сборка проходит и вовсе
+         # без -ldl. Библиотека оставлена ради явности, признак убран
+         ##
         SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ldl")
     endif()
     # Добавляем расширения Sun Solaris
@@ -413,21 +418,23 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD")
     endif()
     message(STATUS "Detected OS: FreeBSD v${OS_VERSION}")
     SET(DEBUGGER "-ggdb3")
-# Если сборка производится под операционную систему DragonFly BSD
-#
-# Система эта ответвилась от FreeBSD 4.8 и очередь оповещений несёт родную - kqueue,
-# оттого и движок ей подходит тот же, что и прочим BSD. Расходится она с FreeBSD в
-# двух местах: SCTP там нет вовсе (проверено на стенде - ни заголовка, ни настроек
-# в sysctl), а основной собиратель системы - gcc 8.3 от 2019 года, который наш код
-# не осиливает, потому собирать следует собирателем из портов
+##
+ # Если сборка производится под операционную систему DragonFly BSD
+ #
+ # Система эта ответвилась от FreeBSD 4.8 и очередь оповещений несёт родную - kqueue,
+ # оттого и движок ей подходит тот же, что и прочим BSD. Расходится она с FreeBSD в
+ # двух местах: SCTP там нет вовсе (проверено на стенде - ни заголовка, ни настроек
+ # в sysctl), а основной собиратель системы - gcc 8.3 от 2019 года, который наш код
+ # не осиливает, потому собирать следует собирателем из портов
+ ##
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "DragonFly")
     ##
-    # Версия берётся из uname -r, а не разбором uname -a
-    #
-    # Поля в выводе uname -a у DragonFly расставлены иначе, нежели у FreeBSD: третьим
-    # там идёт не номер выпуска, а название самой системы, и разбор отдавал версию
-    # "DragonFly" вместо "6.4-RELEASE". Проверено на стенде 12.08.2026
-    ##
+     # Версия берётся из uname -r, а не разбором uname -a
+     #
+     # Поля в выводе uname -a у DragonFly расставлены иначе, нежели у FreeBSD: третьим
+     # там идёт не номер выпуска, а название самой системы, и разбор отдавал версию
+     # "DragonFly" вместо "6.4-RELEASE". Проверено на стенде 12.08.2026
+     ##
     if (NOT OS_VERSION)
         EXECUTE_PROCESS(COMMAND uname -r COMMAND tr -d '\n' OUTPUT_VARIABLE OS_VERSION)
     endif()
@@ -492,15 +499,16 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
     SET(AWH_PARAMS "-Wno-cpp -Wno-deprecated -Wno-unused-command-line-argument")
 # Устанавливаем параметры игнорирования ошибок для Solaris
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
-    # Библиотека libdladm нужна модулю сетевых интерфейсов: приёмов заведения и
-    # сноса устройств передачи данных, какие есть у BSD, эти системы не имеют
-    #
-    # Библиотека libsctp несёт приёмы протокола SCTP - sctp_sendmsg, sctp_recvmsg,
-    # sctp_peeloff и sctp_connectx. У FreeBSD они лежат в самой libc, здесь же
-    # вынесены отдельно, и без неё сборка валится на неразрешённых именах уже при
-    # сборке набора проверок, тогда как сама библиотека собирается молча. Ставить
-    # её отдельно, как это делается у Linux, не требуется - она входит в состав обеих
-    # систем
+    ##
+     # Библиотека libdladm нужна модулю сетевых интерфейсов: приёмов заведения и
+     # сноса устройств передачи данных, какие есть у BSD, эти системы не имеют
+     #
+     # Библиотека libsctp несёт приёмы протокола SCTP - sctp_sendmsg, sctp_recvmsg,
+     # sctp_peeloff и sctp_connectx. У FreeBSD они лежат в самой libc, здесь же
+     # вынесены отдельно, и без неё сборка валится на неразрешённых именах уже при
+     # сборке набора проверок, тогда как сама библиотека собирается молча. Ставить
+     # её отдельно, как это делается у Linux, не требуется - она входит в состав обеих систем
+     ##
     SET(AWH_PARAMS "-lsocket -lnsl -ldladm -lsctp -lc -Wno-cpp -Wno-deprecated")
 # Устанавливаем параметры игнорирования ошибок для Windows и Linux
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Windows" OR ${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
@@ -551,7 +559,16 @@ if (CMAKE_BUILD_TYPE MATCHES Debug)
          # строками: программа с одним потоком, собранная с признаком, падает, а без
          # него работает. К самому коду это отношения не имеет
          ##
+        ##
+         # NetBSD исключена по причине, близкой к OpenBSD, но не той же: признак
+         # профилирования подключает статическую libc, и её подготовка памяти
+         # потока (__libc_static_tls_setup) обращается к dl_iterate_phdr,
+         # который в такой сборке остаётся заглушкой - загрузчик валится по
+         # обращению к пустому адресу ещё до начала работы. Проверено теми же
+         # тремя строками на стенде NetBSD 10.1/amd64 (13.08.2026): вывод одной
+         # строки с признаком даёт отказ по сигналу, без признака - работает
          ##
+        ##
          # Стандартная библиотека musl исключена третьей причиной
          #
          # Признак профилирования требует особого стартового объекта gcrt1.o, а musl
@@ -564,27 +581,41 @@ if (CMAKE_BUILD_TYPE MATCHES Debug)
          # не отличить - обе зовутся Linux
          ##
         SET(AWH_LIBC_MUSL FALSE)
+        ##
+         # Определяем, что сборка производится под Linux
+         #
+         ##
         if (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
             EXECUTE_PROCESS(COMMAND ${CMAKE_CXX_COMPILER} -dumpmachine OUTPUT_VARIABLE AWH_COMPILER_TARGET OUTPUT_STRIP_TRAILING_WHITESPACE)
+            ##
+             # Определяем, что сборка производится под musl
+             #
+             # Проверка на musl нужна, потому что gprof там не поддерживается. Проверено
+             # на стенде Alpine 3.24 (12.08.2026): сборка с признаком -pg валится с
+             # "cannot find gcrt1.o", а без признака - работает
+             ##
             if (AWH_COMPILER_TARGET MATCHES "musl")
                 SET(AWH_LIBC_MUSL TRUE)
                 message(STATUS "Detected libc: musl (${AWH_COMPILER_TARGET}) — gprof profiling is not available")
             endif()
         endif()
-        if (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows" AND NOT APPLE AND NOT ${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD" AND NOT AWH_LIBC_MUSL)
+        ##
+         # Если сборка производится не под Windows, macOS, OpenBSD, NetBSD и musl
+         ##
+        if (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows" AND NOT APPLE AND NOT ${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD" AND NOT ${CMAKE_SYSTEM_NAME} STREQUAL "NetBSD" AND NOT AWH_LIBC_MUSL)
             # Устанавливаем сборку профилировщика
             SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pg")
             SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pg")
             SET(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -pg")
             ##
-            #
-            # sudo apt-get install graphviz
-            # sudo pip install gprof2dot
-            #
-            # gprof ./build/[executable-name] gmon.out > ./profile-data.txt
-            #
-            # gprof2dot ./profile-data.txt | dot -Tsvg -o output.svg
-            ##
+             #
+             # sudo apt-get install graphviz
+             # sudo pip install gprof2dot
+             #
+             # gprof ./build/[executable-name] gmon.out > ./profile-data.txt
+             #
+             # gprof2dot ./profile-data.txt | dot -Tsvg -o output.svg
+             ##
         endif()
     endif(NOT CMAKE_SHARED_BUILD_LIB)
     # Выводим сообщение отладочной информации
@@ -602,7 +633,14 @@ else()
      # @note Санитайзер обращений к памяти подменяет распределитель собою, и второй
      #       такой же подменщик отнимает у него всякую видимость
      ##
-    if ((NOT ${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD") AND (NOT CMAKE_BUILD_SANITIZE))
+    ##
+     # @note DragonFly исключена наравне с OpenBSD: gperftools там не собирается и
+     #       скриптом третьей стороны пропускается намеренно, а значит заголовков
+     #       распределителя на машине нет вовсе. Прежде условие о ней не знало, и
+     #       сборка Release валилась на «gperftools/malloc_extension.h: No such file»,
+     #       тогда как отладочная проходила - оттого пробел и не вскрывался
+     ##
+    if ((NOT ${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD") AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "DragonFly") AND (NOT CMAKE_BUILD_SANITIZE))
         # Активируем использование TcMalloc
         add_compile_definitions(__AWH_USE_TCMALLOC__)
     endif()
@@ -649,28 +687,28 @@ else (Dependence_FOUND)
 endif (Dependence_FOUND)
 
 ##
-# Распределитель памяти TcMalloc собирается не везде
-#
-# Библиотека gperftools обращается к системе вызовом syscall(2), а OpenBSD этот
-# вызов убрала целиком - таково их решение по усилению защиты, а не пробел выпуска.
-# Собрать её там нельзя, и подменить обращение нечем: вызов убран намеренно.
-# Распределитель памяти при этом не пропадает - его задачу берёт на себя
-# собственный распределитель OpenBSD, писанный с тем же вниманием к защите
-##
+ # Распределитель памяти TcMalloc собирается не везде
+ #
+ # Библиотека gperftools обращается к системе вызовом syscall(2), а OpenBSD этот
+ # вызов убрала целиком - таково их решение по усилению защиты, а не пробел выпуска.
+ # Собрать её там нельзя, и подменить обращение нечем: вызов убран намеренно.
+ # Распределитель памяти при этом не пропадает - его задачу берёт на себя
+ # собственный распределитель OpenBSD, писанный с тем же вниманием к защите
+ ##
 if (${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD")
     # Оставляем набор библиотек TcMalloc пустым
     SET(TCMALLOC_LIBRARIES "")
     # Выводим сообщение об использовании системного распределителя памяти
     message(STATUS "TcMalloc is not available on OpenBSD: using the system allocator")
 ##
-# У DragonFly BSD причина иная, а исход тот же
-#
-# Библиотека gperftools объявляет malloc_usable_size(void *), а система - через
-# malloc_np.h, подключаемый прямо из stdlib.h, - объявляет её же с const. Объявления
-# расходятся, и собиратель отвергает их как противоречащие. У FreeBSD объявление
-# системы точно такое же, но stdlib.h там malloc_np.h не подключает, оттого gperftools
-# его и не видит. Подробности - в sh/third_party/011_gperftools.sh
-##
+ # У DragonFly BSD причина иная, а исход тот же
+ #
+ # Библиотека gperftools объявляет malloc_usable_size(void *), а система - через
+ # malloc_np.h, подключаемый прямо из stdlib.h, - объявляет её же с const. Объявления
+ # расходятся, и собиратель отвергает их как противоречащие. У FreeBSD объявление
+ # системы точно такое же, но stdlib.h там malloc_np.h не подключает, оттого gperftools
+ # его и не видит. Подробности - в sh/third_party/011_gperftools.sh
+ ##
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "DragonFly")
     # Оставляем набор библиотек TcMalloc пустым
     SET(TCMALLOC_LIBRARIES "")
@@ -699,13 +737,55 @@ if(Doxygen_FOUND)
     if(EXISTS ${DOXYFILE_PATH})
         # Выводим сообщение, что мы нашли файл для генерации документации Doxyfile
         message(STATUS "Doxyfile found at ${DOXYFILE_PATH}\n")
-        # Создаём кастомную цель
-        add_custom_target(doc
-            COMMAND ${DOXYGEN_EXECUTABLE} ${DOXYFILE_PATH}
-            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-            COMMENT "Generating API documentation with Doxygen"
-            VERBATIM
-        )
+
+        # Языки, для которых собирается документация: суффикс файла настроек -> имя языка
+        SET(DOXYGEN_LANGUAGES ru en)
+
+        # Список целей по языкам, собираемый ниже для общей цели «doc»
+        SET(DOXYGEN_LANGUAGE_TARGETS)
+
+        # Перебираем все языки документации
+        foreach(DOXYGEN_LANGUAGE IN LISTS DOXYGEN_LANGUAGES)
+            # Формируем путь к файлу настроек конкретного языка
+            SET(DOXYFILE_LANGUAGE_PATH ${CMAKE_SOURCE_DIR}/Doxyfile.${DOXYGEN_LANGUAGE})
+
+            # Проверяем, что файл настроек языка существует
+            if(EXISTS ${DOXYFILE_LANGUAGE_PATH})
+                # Создаём цель сборки документации на конкретном языке
+                add_custom_target(doc-${DOXYGEN_LANGUAGE}
+                    # Каталог назначения создаём сами: Doxygen заводит лишь один уровень вложенности
+                    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_SOURCE_DIR}/doc/${DOXYGEN_LANGUAGE}
+                    COMMAND ${DOXYGEN_EXECUTABLE} ${DOXYFILE_LANGUAGE_PATH}
+                    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+                    COMMENT "Generating API documentation with Doxygen [${DOXYGEN_LANGUAGE}]"
+                    VERBATIM
+                )
+                # Запоминаем цель для общей сборки
+                LIST(APPEND DOXYGEN_LANGUAGE_TARGETS doc-${DOXYGEN_LANGUAGE})
+            # Если файл настроек языка не найден
+            else()
+                # Выводим сообщение об отсутствии файла настроек языка
+                message(STATUS "Doxyfile.${DOXYGEN_LANGUAGE} not found — doc-${DOXYGEN_LANGUAGE} target skipped\n")
+            # Конец проверки файла настроек языка
+            endif()
+        # Конец перебора языков документации
+        endforeach()
+
+        # Если хотя бы одна языковая цель создана
+        if(DOXYGEN_LANGUAGE_TARGETS)
+            # Создаём общую цель, собирающую документацию на всех языках
+            add_custom_target(doc DEPENDS ${DOXYGEN_LANGUAGE_TARGETS})
+        # Если языковых файлов настроек нет вовсе
+        else()
+            # Создаём кастомную цель на основе базового файла настроек
+            add_custom_target(doc
+                COMMAND ${DOXYGEN_EXECUTABLE} ${DOXYFILE_PATH}
+                WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+                COMMENT "Generating API documentation with Doxygen"
+                VERBATIM
+            )
+        # Конец проверки языковых целей
+        endif()
     # Если файл не найден
     else()
         # Выводим сообщение об отсутствии Doxyfile
@@ -746,11 +826,13 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin" OR ${CMAKE_SYSTEM_NAME} STREQUAL "Fre
             "${CMAKE_SOURCE_DIR}/src/net/backend/bsd/sctp.cpp"
         )
     endif()
-# Если сборка производится под операционные системы Solaris или illumos
-#
-# Набор модулей здесь пока заполняется: они переносятся с bsd по одному, с тем же
-# самым API, и подключаются по мере готовности. Движка ввода-вывода тут ещё нет,
-# потому наборы тестов net, proto и units под эти системы не собираются
+##
+ # Если сборка производится под операционные системы Solaris или illumos
+ #
+ # Набор модулей здесь пока заполняется: они переносятся с bsd по одному, с тем же
+ # самым API, и подключаются по мере готовности. Движка ввода-вывода тут ещё нет,
+ # потому наборы тестов net, proto и units под эти системы не собираются
+ ##
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
     # Выполняем подключение бэкендов IO
     SET(SOURCE_FILES
@@ -777,16 +859,18 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
         "${CMAKE_SOURCE_DIR}/src/net/backend/gnu/netlink.cpp"
     )
 
-    # Механизм ожидания событий под Linux
-    #
-    # Движков под Linux два, и собирается ровно один из них. Задано это одним
-    # выбором, а не двумя независимыми признаками, намеренно: два признака дают
-    # недопустимое состояние «включены оба», которое пришлось бы ловить проверкой,
-    # тогда как выбор одного из перечня недопустимого состояния не имеет вовсе.
-    #
-    # Умолчанием взят epoll: io_uring есть далеко не у всякого ядра - в том числе
-    # у Android, - и движок, требующий его, собрался бы не везде
-    SET(AWH_ENGINE "epoll" CACHE STRING "Механизм ожидания событий под Linux: epoll либо io_uring")
+    ##
+     # Механизм ожидания событий под Linux
+     #
+     # Движков под Linux два, и собирается ровно один из них. Задано это одним
+     # выбором, а не двумя независимыми признаками, намеренно: два признака дают
+     # недопустимое состояние «включены оба», которое пришлось бы ловить проверкой,
+     # тогда как выбор одного из перечня недопустимого состояния не имеет вовсе.
+     #
+     # Умолчанием взят epoll: io_uring есть далеко не у всякого ядра - в том числе
+     # у Android, - и движок, требующий его, собрался бы не везде
+     ##
+    SET(AWH_ENGINE "epoll" CACHE STRING "Event Waiting Mechanism under Linux: epoll or io_uring")
     SET_PROPERTY(CACHE AWH_ENGINE PROPERTY STRINGS "epoll" "io_uring")
 
     # Если выбран механизм ожидания epoll
@@ -798,18 +882,22 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
             "${SOURCE_FILES}"
             "${CMAKE_SOURCE_DIR}/src/net/backend/gnu/epoll.cpp"
         )
-    # Если выбран механизм ожидания io_uring
-    #
-    # Наличие самих операций проверяется пробой при запуске, а не здесь: заголовок
-    # дистрибутива отстаёт от ядра (на Ubuntu 24.10 он не знает операций, которые
-    # ядро поддерживает), поэтому сборка судит лишь о наличии заголовка, а состав
-    # возможностей выясняет движок. Устройство описано в src/net/backend/gnu/IO_URING.md
+    ##
+     # Если выбран механизм ожидания io_uring
+     #
+     # Наличие самих операций проверяется пробой при запуске, а не здесь: заголовок
+     # дистрибутива отстаёт от ядра (на Ubuntu 24.10 он не знает операций, которые
+     # ядро поддерживает), поэтому сборка судит лишь о наличии заголовка, а состав
+     # возможностей выясняет движок. Устройство описано в src/net/backend/gnu/IO_URING.md
+     ##
     elseif (${AWH_ENGINE} STREQUAL "io_uring")
-        # Выполняем проверку наличия заголовка io_uring
-        #
-        # Проверка ведётся компилятором C++, а не C: в проекте включён только C++
-        # (project(awh LANGUAGES CXX)), и проверка компилятором C отвечала бы отказом
-        # всегда - не оттого, что заголовка нет, а оттого, что проверять его нечем
+        ##
+         # Выполняем проверку наличия заголовка io_uring
+         #
+         # Проверка ведётся компилятором C++, а не C: в проекте включён только C++
+         # (project(awh LANGUAGES CXX)), и проверка компилятором C отвечала бы отказом
+         # всегда - не оттого, что заголовка нет, а оттого, что проверять его нечем
+         ##
         INCLUDE(CheckIncludeFileCXX)
         CHECK_INCLUDE_FILE_CXX("linux/io_uring.h" AWH_HAVE_IO_URING_H)
 
@@ -832,10 +920,12 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
     else()
         message(FATAL_ERROR "AWH: неизвестный механизм ожидания '${AWH_ENGINE}', допустимы epoll и io_uring")
     endif()
-# Если сборка производится под операционную систему MS Windows
-#
-# Состояние переноса движка ввода-вывода описано в src/net/backend/win/README.md.
-# Сборка ведётся только в MSYS2 MinGW 64bit, вариант с MSVC не рассматривается
+##
+ # Если сборка производится под операционную систему MS Windows
+ #
+ # Состояние переноса движка ввода-вывода описано в src/net/backend/win/README.md.
+ # Сборка ведётся только в MSYS2 MinGW 64bit, вариант с MSVC не рассматривается
+ ##
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     # Выполняем подключение бэкендов IO
     SET(SOURCE_FILES
@@ -5840,17 +5930,17 @@ if (CMAKE_BUILD_TESTS)
     endif()
 
     ##
-    # Каталог пакетов систем BSD добавляется к путям поиска
-    #
-    # Набор GTest ставится туда, куда его кладёт хранилище пакетов системы: у NetBSD и
-    # OpenBSD это /usr/pkg, у FreeBSD - /usr/local. Ни того, ни другого нет среди путей,
-    # где find_package() ищет по умолчанию, и поиск отвечал отказом
-    # "Could NOT find GTest (missing: GTEST_LIBRARY GTEST_INCLUDE_DIR GTEST_MAIN_LIBRARY)"
-    #
-    # Отказ этот сборку не прерывал: наборы просто не заводились, а сборка отвечала
-    # успехом - и молчание это выглядело как «наборы прошли», хотя их не было вовсе.
-    # Проверено опытом на стенде NetBSD 11.0 aarch64
-    ##
+     # Каталог пакетов систем BSD добавляется к путям поиска
+     #
+     # Набор GTest ставится туда, куда его кладёт хранилище пакетов системы: у NetBSD и
+     # OpenBSD это /usr/pkg, у FreeBSD - /usr/local. Ни того, ни другого нет среди путей,
+     # где find_package() ищет по умолчанию, и поиск отвечал отказом
+     # "Could NOT find GTest (missing: GTEST_LIBRARY GTEST_INCLUDE_DIR GTEST_MAIN_LIBRARY)"
+     #
+     # Отказ этот сборку не прерывал: наборы просто не заводились, а сборка отвечала
+     # успехом - и молчание это выглядело как «наборы прошли», хотя их не было вовсе.
+     # Проверено опытом на стенде NetBSD 11.0 aarch64
+     ##
     if (${CMAKE_SYSTEM_NAME} STREQUAL "NetBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD")
         # Добавляем каталог пакетов pkgsrc к путям поиска
         list(APPEND CMAKE_PREFIX_PATH "/usr/pkg")
@@ -5860,11 +5950,11 @@ if (CMAKE_BUILD_TESTS)
     endif()
 
     ##
-    # Отсутствие GTest объявляется отказом, а не пропускается молча
-    #
-    # Наборы просили собрать явно ключом CMAKE_BUILD_TESTS, и молчаливый их пропуск
-    # означал бы, что просьба обслужена, - тогда как ни одной проверки не собрано
-    ##
+     # Отсутствие GTest объявляется отказом, а не пропускается молча
+     #
+     # Наборы просили собрать явно ключом CMAKE_BUILD_TESTS, и молчаливый их пропуск
+     # означал бы, что просьба обслужена, - тогда как ни одной проверки не собрано
+     ##
     find_package(GTest)
 
     # Если набор GTest не найден
@@ -5931,9 +6021,11 @@ endif (CMAKE_BUILD_TESTS)
 
 # Если необходимо собрать бенчмарки производительности
 if (CMAKE_BUILD_BENCHMARKS)
-    # Бенчмарки собираются отдельно от тестов и линкуются с обычной библиотекой:
-    # сборка тестов инструментирована для сбора статистики покрытия кода, а
-    # инструментирование искажает измерения производительности до бессмысленности
+    ##
+     # Бенчмарки собираются отдельно от тестов и линкуются с обычной библиотекой:
+     # сборка тестов инструментирована для сбора статистики покрытия кода, а
+     # инструментирование искажает измерения производительности до бессмысленности
+     ##
     add_subdirectory(benchmark)
 endif (CMAKE_BUILD_BENCHMARKS)
 

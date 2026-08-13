@@ -1613,17 +1613,18 @@ void awh::Operating_System::releaseFreeMemory() const noexcept {
 			::_heapmin();
 		/**
 		 * Если активирован компилятор MinGW
+		 *
+		 * @note Сброс ведётся тою же _heapmin, что и у MS Visual Studio: обе среды
+		 *       выполнения зовут её из <malloc.h>, а он для MinGW подключается выше.
+		 *       Прежде здесь звалась _heap_trim, которой нет ни в msvcrt, ни в UCRT,
+		 *       и объявлялась она как extern "C" прямо в теле метода - объявление
+		 *       такое языком не дозволено вовсе, и сборка MinGW валилась отказом
+		 *       «expected unqualified-id before string constant». Обнаружено на
+		 *       стенде MSYS2 MinGW64 (13.08.2026)
 		 */
 		#elif __MINGW32__ || __MINGW64__
-			/**
-			 * MinGW: нет стандартного trim, но можно попробовать
-			 */
-			#if _UCRT || __MSVCRT_VERSION__
-				// Экспортируем нужную нам функцию
-				extern "C" int32_t _heap_trim(size_t);
-				// Выполняем сброс памяти
-				_heap_trim(0);
-			#endif
+			// Выполняем сброс памяти
+			::_heapmin();
 		#endif
 	#endif
 }

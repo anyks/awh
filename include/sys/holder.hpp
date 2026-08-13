@@ -9,8 +9,15 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * \~russian
  * @brief Заголовочный файл модуля холдера — класс Holder, реализующий RAII-владение состоянием и автоматическое
  *        восстановление предыдущего значения при выходе из области видимости
+ *
+ * \~english
+ * @brief Header file of the holder module — the Holder class, which implements RAII ownership of a state and the automatic
+ *        restoration of the previous value on leaving the scope
+ *
+ * \~
  *
  * @copyright: Copyright © 2026
  *
@@ -35,21 +42,39 @@
 #include "locker.hpp"
 
 /**
+ * \~russian
  * @brief Основное пространство имён
  *
+ *
+ * \~english
+ * @brief Main namespace
+ *
+ * \~
  */
 namespace awh {
 	/**
+	 * \~russian
 	 * @brief Шаблон формата данных статусов холдера
 	 *
 	 * @tparam T         тип данных статусов холдера
 	 * @tparam MutexType тип данных внешнего мьютекса (std::mutex или std::shared_mutex)
 	 *
+	 * \~english
+	 * @brief Template of the data format of the statuses of the holder
+	 * @tparam T         data type of the statuses of the holder
+	 * @tparam MutexType data type of the external mutex (std::mutex or std::shared_mutex)
+	 *
+	 * \~
 	 */
 	template <typename T, typename MutexType = std::mutex>
 	/**
+	 * \~russian
 	 * @brief Класс холдера
 	 *
+	 * \~english
+	 * @brief Holder class
+	 *
+	 * \~
 	 */
 	class Holder {
 		private:
@@ -63,6 +88,7 @@ namespace awh {
 			lock_state_t <MutexType> & _mtx;
 		public:
 			/**
+			 * \~russian
 			 * @brief Метод проверки на разрешение выполнения операции
 			 *
 			 * @param comp  множество для сравнения текущего статуса
@@ -70,6 +96,14 @@ namespace awh {
 			 * @param equal флаг эквивалентности (true - разрешено, если есть в comp, false - если нет)
 			 * @return      результат проверки (удалось ли захватить)
 			 *
+			 * \~english
+			 * @brief Method of checking the permission to perform an operation
+			 * @param comp  set to compare the current status against
+			 * @param hold  status that needs to be set (held)
+			 * @param equal equivalence flag (true — allowed if present in comp, false — if absent)
+			 * @return      result of the check (whether the capture succeeded)
+			 *
+			 * \~
 			 */
 			bool access(const unordered_set <T> & comp, const T hold, const bool equal = true) noexcept {
 				// Выполняем эксклюзивную блокировку потока на всю транзакцию (проверка вершины и установка холда)
@@ -89,17 +123,30 @@ namespace awh {
 			}
 		public:
 			/**
+			 * \~russian
 			 * @brief Конструктор
 			 *
 			 * @param status ссылка на стек статусов
 			 * @param mtx    ссылка на внешний мьютекс владельца стека статусов
 			 *
+			 * \~english
+			 * @brief Constructor
+			 * @param status reference to the stack of statuses
+			 * @param mtx    reference to the external mutex of the owner of the stack of statuses
+			 *
+			 * \~
 			 */
 			explicit Holder(std::stack <T> & status, lock_state_t <MutexType> & mtx) noexcept :
 			 _flag(false), _status(status), _mtx(mtx) {}
 			/**
+			 * \~russian
 			 * @brief Деструктор
 			 *
+			 *
+			 * \~english
+			 * @brief Destructor
+			 *
+			 * \~
 			 */
 			~Holder() noexcept {
 				// Если холдирование выполнено
@@ -112,11 +159,18 @@ namespace awh {
 			}
 	};
 	/**
+	 * \~russian
 	 * @brief Шаблон формата данных статусов холдера
 	 *
 	 * @tparam T         данные статусов холдера
 	 * @tparam MutexType тип данных внешнего мьютекса (std::mutex или std::shared_mutex)
 	 *
+	 * \~english
+	 * @brief Template of the data format of the statuses of the holder
+	 * @tparam T         data of the statuses of the holder
+	 * @tparam MutexType data type of the external mutex (std::mutex or std::shared_mutex)
+	 *
+	 * \~
 	 */
 	template <class T, typename MutexType = std::mutex>
 	/**

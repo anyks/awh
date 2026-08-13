@@ -9,14 +9,22 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * \~russian
  * @brief Заголовочный файл временного снятия макросов, чьи имена заняты членами перечислений AWH —
  *        сохраняет прежние определения и снимает их на время объявлений, возвращает же их macro_pop.hpp
+ *
+ * \~english
+ * @brief Header file of the temporary removal of the macros whose names are taken by the members of the AWH enumerations —
+ *        it keeps the former definitions and removes them for the duration of the declarations, while macro_pop.hpp brings them back
+ *
+ * \~
  *
  * @copyright: Copyright © 2026
  *
  */
 
 /**
+ * \~russian
  * @brief Временное снятие макросов, занимающих имена членов перечислений AWH
  *
  * @details Системные заголовки MS Windows заводят макросами обычные английские слова —
@@ -65,6 +73,46 @@
  * @warning Заголовок этот обязан идти в паре с macro_pop.hpp. Снятие без возврата
  *          отнимает имена у потребителя библиотеки — ровно то, чего пара избегает
  *
+ * \~english
+ * @brief Temporary removal of the macros taking the names of the members of the AWH enumerations
+ * @details The system headers of MS Windows introduce ordinary English words as macros —
+ *          DELETE, ERROR, STRICT and others — while the preprocessor does not parse scopes
+ *          and replaces the name even inside an enum class. The declaration `DELETE = 0x05` turns
+ *          into `(0x00010000) = 0x05`, and the build answers with a failure
+ *          The macros cannot be removed for good: those headers are public, and the removal would leak
+ *          into the translation unit of the consumer of the library, taking away from it the names it
+ *          is entitled to use. Therefore the names are removed only for the duration of the AWH declarations,
+ *          while the former definitions are kept and brought back by the macro_pop.hpp header
+ *          The order of use is to include macro_push.hpp after all the other includes
+ *          of the header, and to place macro_pop.hpp at the very end, before the closing #endif
+ *          of the guard against repeated initialisation
+ * @par To those using the library
+ *      This pair protects the **AWH declarations**, but not the references to them. Bringing the macros back
+ *      afterwards is done deliberately — it leaves the names to whoever uses them for a reason —
+ *      and the price for that is that the record `awh::event::error_t::INVALID_SOCKET` in
+ *      **your own** code under MS Windows will collide with the restored macro exactly as
+ *      the declaration itself would have collided.
+ *      Hence the single rule: whoever names such members at home protects their own file by the
+ *      same pair — `#include <sys/macro_push.hpp>` after all the includes and
+ *      `#include <sys/macro_pop.hpp>` at the end. There is no other way: removing the macros for good
+ *      would mean taking them away from those who need them, and renaming the members of the enumerations
+ *      would distort the notions of the contracts for the sake of one system.
+ *      Checked by experience: `tests/net/io/static.cpp` and `parameterized.cpp` answered
+ *      with the failure «expected unqualified-id before '(' token» pointing at the line of the
+ *      restoration itself, until that protection was put in place for them.
+ * @note The header has no guard against repeated initialisation deliberately: it is included
+ *       as many times as needed, and every include has its own removal. Nesting
+ *       is safe — the kept definitions are stacked, and the restoration goes in the
+ *       reverse order
+ * @note The list is wider than what sys/win32.hpp removes. There the removal is permanent, and therefore
+ *       is limited to the names colliding right now: the function-like macros FAILED(hr) and
+ *       TEXT(quote) expand only before an opening parenthesis and in a record of the
+ *       `FAILED = 0x02` form are harmless. Here, on the other hand, the removal is temporary and costs nothing, therefore
+ *       those names are taken as well — so that a future change of an enumeration does not uncover trouble
+ * @warning This header must go in a pair with macro_pop.hpp. A removal without a restoration
+ *          takes the names away from the consumer of the library — exactly what the pair avoids
+ *
+ * \~
  */
 #pragma push_macro("TEXT")
 #pragma push_macro("CALLBACK")
@@ -95,6 +143,7 @@
 #undef INVALID_SOCKET
 
 /**
+ * \~russian
  * Имена указателей сегментов набора команд x86
  *
  * @details Заголовок sys/regset.h у Sun Solaris и illumos заводит макросами имена
@@ -108,6 +157,19 @@
  *       под члены перечислений годятся все, и снятие их ничего не стоит - ровно тот же
  *       довод, по какому выше взяты FAILED и TEXT
  *
+ * \~english
+ * Names of the segment pointers of the x86 instruction set
+ * @details The sys/regset.h header of Sun Solaris and illumos introduces as macros the names
+ *          of the segment pointers — FS, ES, CS, SS, DS, GS — expanding them into the ordinal
+ *          numbers of the process state. It comes not directly but through the headers for working
+ *          with processes, and that is why the collision surfaces not everywhere: the enumeration
+ *          address_t with the FS member built on Solaris and failed on OpenIndiana,
+ *          where the set of included headers turned out differently
+ * @note All six are removed rather than the single colliding FS: those names are short and common,
+ *       all of them are fit for the members of enumerations, and removing them costs nothing — exactly the same
+ *       argument by which FAILED and TEXT are taken above
+ *
+ * \~
  */
 #undef FS
 #undef ES

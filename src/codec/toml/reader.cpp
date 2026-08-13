@@ -545,7 +545,7 @@ awh::codec::toml::Reader::kind_t awh::codec::toml::Reader::lookup(const string_v
 	/**
 	 * Если имя объявляется разбираемой записью
 	 */
-	if(position < this->_pending.size())
+	if(position < this->_staging)
 		// Выводим род объявляемого имени
 		return this->_pending.at(position).kind;
 	// Выполняем поиск имени в указателе родов объявленных имён
@@ -568,7 +568,7 @@ size_t awh::codec::toml::Reader::staged(const string_view name) const noexcept {
 		// Выполняем поиск имени в указателе имён записи
 		auto i = this->_staged.find(name);
 		// Выводим номер найденного имени в очереди объявляемых
-		return ((i != this->_staged.end()) ? static_cast <size_t> (i->second) : this->_pending.size());
+		return ((i != this->_staged.end()) ? static_cast <size_t> (i->second) : this->_staging);
 	}
 	/**
 	 * Выполняем перебор имён, объявляемых разбираемой записью
@@ -576,7 +576,7 @@ size_t awh::codec::toml::Reader::staged(const string_view name) const noexcept {
 	 * @note Перебор ведётся, пока имён немного: обычная запись объявляет их считанные
 	 *       единицы, и указатель стоил бы ей выделения памяти на всякое имя
 	 */
-	for(size_t i = 0; i < this->_pending.size(); i++){
+	for(size_t i = 0; i < this->_staging; i++){
 		/**
 		 * Если имя объявляется разбираемой записью
 		 */
@@ -585,7 +585,7 @@ size_t awh::codec::toml::Reader::staged(const string_view name) const noexcept {
 			return i;
 	}
 	// Выводим количество имён, объявляемых разбираемой записью
-	return this->_pending.size();
+	return this->_staging;
 }
 /**
  * @brief Метод учёта имени, объявляемого разбираемой записью
@@ -601,12 +601,32 @@ void awh::codec::toml::Reader::stage(const string_view name, const kind_t kind, 
 	 *
 	 */
 	constexpr size_t THRESHOLD = 16;
-	// Выполняем запоминание имени, объявляемого разбираемой записью
-	this->_pending.emplace_back(name, kind, implied);
+	/**
+	 * Выполняем запоминание имени, объявляемого разбираемой записью
+	 *
+	 * @note Очередь имён между записями не освобождается, а лишь укорачивается
+	 *       счётом: имя всякой записи ложится в уже заведённое место, и память под
+	 *       него выделяется единожды. Освобождение очереди выделяло память на всякое
+	 *       имя, длина которого не умещалась в короткий запас строки, - расход этот
+	 *       прятала лишь libc++ со своим запасом в 22 байта
+	 */
+	if(this->_staging < this->_pending.size()){
+		// Получаем уже заведённое место очереди объявляемых имён
+		pending_t & pending = this->_pending.at(this->_staging);
+		// Запоминаем объявляемое полное имя
+		pending.name.assign(name);
+		// Запоминаем род объявляемого имени
+		pending.kind = kind;
+		// Запоминаем признак того, что имя заведено исподволь
+		pending.implied = implied;
+	// Иначе выполняем заведение очередного места очереди объявляемых имён
+	} else this->_pending.emplace_back(name, kind, implied);
+	// Выполняем учёт очередного объявляемого имени
+	this->_staging++;
 	/**
 	 * Если имён записи для заведения указателя недостаточно
 	 */
-	if(this->_pending.size() <= THRESHOLD)
+	if(this->_staging <= THRESHOLD)
 		// Выходим из учёта объявляемого имени
 		return;
 	/**
@@ -616,14 +636,14 @@ void awh::codec::toml::Reader::stage(const string_view name, const kind_t kind, 
 		/**
 		 * Выполняем перебор всех имён, объявляемых разбираемой записью
 		 */
-		for(size_t i = 0; i < this->_pending.size(); i++)
+		for(size_t i = 0; i < this->_staging; i++)
 			// Выполняем установку объявляемого имени указателем
 			this->_staged.emplace(this->_pending.at(i).name, static_cast <uint32_t> (i));
 		// Выходим из учёта объявляемого имени
 		return;
 	}
 	// Выполняем установку объявляемого имени указателем
-	this->_staged.emplace(this->_pending.back().name, static_cast <uint32_t> (this->_pending.size() - 1));
+	this->_staged.emplace(this->_pending.at(this->_staging - 1).name, static_cast <uint32_t> (this->_staging - 1));
 }
 /**
  * @brief Метод проверки занятости объемлющих имён
@@ -1040,8 +1060,20 @@ bool awh::codec::toml::Reader::literal(const bool end, string_t & quoting, span_
 	const bool escapes = (quote == '"');
 	// Выполняем пропуск знаков ограждения значения
 	this->step(this->_offset + (multiline ? 3 : 1));
-	// Собираемое содержимое строкового значения
-	string content;
+	/**
+	 * Собираемое содержимое строкового значения
+	 *
+	 * @note Хранилище содержимого держится полем объекта, а не переменной вызова:
+	 *       очистка сохраняет за ним уже занятую память, и всякое следующее значение
+	 *       обходится без выделения. Переменная вызова выделяла память на каждое
+	 *       значение, длина которого не умещалась в короткий запас строки, а запас
+	 *       этот у разных стандартных библиотек разный - libc++ отводит 22 байта и
+	 *       расход прятала, libstdc++ отводит 15 и на крупном файле давала свыше
+	 *       миллиона выделений против двадцати шести
+	 */
+	string & content = this->_content;
+	// Выполняем очистку хранилища содержимого от прошлого значения
+	content.clear();
 	/**
 	 * Если значение записано многострочным
 	 */
@@ -2287,7 +2319,7 @@ bool awh::codec::toml::Reader::content(const bool end, const uint32_t depth, con
 	 */
 	if(letter == '{'){
 		// Номер имени встроенной таблицы среди имён разбираемой записи
-		size_t declared = this->_pending.size();
+		size_t declared = this->_staging;
 		/**
 		 * Если собственное имя у встроенной таблицы есть
 		 */
@@ -2297,7 +2329,7 @@ bool awh::codec::toml::Reader::content(const bool end, const uint32_t depth, con
 			/**
 			 * Если имя встроенной таблицы объявлено разбираемой записью
 			 */
-			if((position < this->_pending.size()) && !this->_pending.at(position).implied){
+			if((position < this->_staging) && !this->_pending.at(position).implied){
 				// Запоминаем номер имени встроенной таблицы
 				declared = position;
 				/**
@@ -2319,7 +2351,7 @@ bool awh::codec::toml::Reader::content(const bool end, const uint32_t depth, con
 		/**
 		 * Если имя разобранной встроенной таблицы объявлено
 		 */
-		if(declared < this->_pending.size())
+		if(declared < this->_staging)
 			// Запоминаем род имени закрытой встроенной таблицы
 			this->_pending.at(declared).kind = kind_t::INLINE;
 		// Выводим признак успешного разбора
@@ -3107,7 +3139,19 @@ bool awh::codec::toml::Reader::pair(const bool end) noexcept {
 	 *       часть имени идёт за ним, отчего пустое имя таблицы от верхнего уровня
 	 *       отличимо
 	 */
-	string name(this->_table);
+	/**
+	 * @note Хранилище имени держится полем объекта, а не переменной вызова: очистка
+	 *       сохраняет за ним занятую память, и всякая следующая пара обходится без
+	 *       выделения. Переменная вызова выделяла память на всякую пару, полное имя
+	 *       которой не умещалось в короткий запас строки, - на крупном файле это
+	 *       давало свыше восьмисот тысяч выделений у libstdc++, тогда как libc++ с
+	 *       её запасом в 22 байта расход этот прятала. Разбор пары повторно из себя
+	 *       не вызывается - пара разбирается лишь из разбора записи, - и поле это
+	 *       столкнуться само с собою не может
+	 */
+	string & name = this->_name;
+	// Запоминаем имя текущей таблицы началом полного имени ключа
+	name.assign(this->_table);
 	// Выполняем сборку полного имени ключа из составных частей
 	this->assemble(item.part, item.parts, name);
 	/**
@@ -3184,8 +3228,13 @@ bool awh::codec::toml::Reader::record(const bool end) noexcept {
 	 *       освобождённую память
 	 */
 	this->_staged.clear();
-	// Выполняем очистку имён, объявляемых разбираемой записью
-	this->_pending.clear();
+	/**
+	 * Выполняем укорочение очереди имён, объявляемых разбираемой записью
+	 *
+	 * @note Очередь укорачивается счётом, а не освобождается: места её достаются
+	 *       следующей записи вместе с уже занятой под имена памятью
+	 */
+	this->_staging = 0;
 	// Выполняем очистку имени таблицы, объявляемой разбираемой записью
 	this->_pendingTable.clear();
 	// Выполняем сброс счёта встроенных таблиц, собственного имени не имеющих
@@ -3371,7 +3420,9 @@ bool awh::codec::toml::Reader::record(const bool end) noexcept {
 	 *       продолжения текста, разбирается заново, и объявленное ею объявилось бы
 	 *       дважды - при подаче кусками текст отвергался бы повтором, которого нет
 	 */
-	for(auto & pending : this->_pending){
+	for(size_t index = 0; index < this->_staging; index++){
+		// Получаем очередное имя, объявленное разобранной записью
+		pending_t & pending = this->_pending.at(index);
 		/**
 		 * Если имя дано встроенной таблице, собственного имени не имеющей
 		 *
@@ -3756,6 +3807,10 @@ void awh::codec::toml::Reader::clear() noexcept {
 	this->_buffer.clear();
 	// Выполняем очистку хранилища содержимого событий записи
 	this->_store.clear();
+	// Выполняем очистку хранилища собираемого строкового значения
+	this->_content.clear();
+	// Выполняем очистку хранилища собираемого полного имени ключа
+	this->_name.clear();
 	// Выполняем сброс положения разбираемого знака
 	this->_offset = 0;
 	// Выполняем сброс положения начала разбираемой записи
@@ -3798,6 +3853,8 @@ void awh::codec::toml::Reader::clear() noexcept {
 	this->_staged.clear();
 	// Выполняем очистку имён, объявляемых разбираемой записью
 	this->_pending.clear();
+	// Выполняем сброс счёта имён, объявляемых разбираемой записью
+	this->_staging = 0;
 	// Выполняем очистку имени таблицы, объявляемой разбираемой записью
 	this->_pendingTable.clear();
 	// Выполняем сброс счёта встроенных таблиц, собственного имени не имеющих
@@ -3813,7 +3870,7 @@ void awh::codec::toml::Reader::clear() noexcept {
  */
 awh::codec::toml::Reader::Reader() noexcept :
  _state(state_t::READY), _error(error_t::NONE), _decoding(error_t::NONE), _hungry(false), _final(false),
- _offset(0), _start(0), _probed(0), _anonymous(0), _base(0), _line(1), _bol(0), _current(0), _declaring(false), _appending(false) {}
+ _offset(0), _start(0), _probed(0), _anonymous(0), _base(0), _line(1), _bol(0), _current(0), _staging(0), _declaring(false), _appending(false) {}
 /**
  * @brief Конструктор
  *
@@ -3823,7 +3880,7 @@ awh::codec::toml::Reader::Reader() noexcept :
 awh::codec::toml::Reader::Reader(const settings_t & settings) noexcept :
  _state(state_t::READY), _error(error_t::NONE), _decoding(error_t::NONE), _hungry(false), _final(false),
  _settings(settings), _offset(0), _start(0), _probed(0), _anonymous(0), _base(0), _line(1), _bol(0), _current(0),
- _declaring(false), _appending(false) {
+ _staging(0), _declaring(false), _appending(false) {
 	// Выполняем установку навязанной извне кодировки исходного текста
 	this->_decoder.encoding(settings.encoding);
 }
