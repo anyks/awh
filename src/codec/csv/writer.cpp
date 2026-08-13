@@ -38,7 +38,7 @@ using namespace std;
  *
  */
 awh::codec::csv::Writer::Settings::Settings() noexcept :
- separator(','), quote('"'), quoting(quoting_t::MINIMAL),
+ separator(','), quote('"'), comment('\0'), quoting(quoting_t::MINIMAL),
  escape(escape_t::DOUBLE), newline(newline_t::CRLF), signature(false) {}
 /**
  * @brief Метод записи метки порядка байтов
@@ -118,6 +118,8 @@ void awh::codec::csv::Writer::quoted(const string_view text) noexcept {
 void awh::codec::csv::Writer::field(const string_view text) noexcept {
 	// Выполняем запись метки порядка байтов
 	this->mark();
+	// Запоминаем признак того, что поле начинает запись
+	const bool started = this->_started;
 	/**
 	 * Если запись уже содержит поля
 	 */
@@ -126,6 +128,19 @@ void awh::codec::csv::Writer::field(const string_view text) noexcept {
 		this->_text.push_back(this->_settings.separator);
 	// Запоминаем признак наличия полей у записи
 	this->_started = true;
+	/**
+	 * Признак необходимости кавычек, вызванной знаком начала строки примечания
+	 *
+	 * @note Проверяется лишь первое поле записи: разбор признаёт примечанием строку,
+	 *       этим знаком начатую, и поле такое без кавычек унесло бы за собою всю запись.
+	 *       Знак этот - настройка разбора, а не часть договора, и записи он сообщается
+	 *       затем, чтобы записанное читалось обратно теми же настройками
+	 */
+	const bool commented = (
+		!started && (this->_settings.comment != '\0') &&
+		(this->_settings.quoting != quoting_t::NONE) &&
+		!text.empty() && (text.front() == this->_settings.comment)
+	);
 	/**
 	 * Признак необходимости кавычек, вызванной знаком отмены в содержимом поля
 	 *
@@ -141,7 +156,7 @@ void awh::codec::csv::Writer::field(const string_view text) noexcept {
 	/**
 	 * Если поле требуется заключить в кавычки
 	 */
-	if(escaped || quotable(text, this->_settings.separator, this->_settings.quote, this->_settings.quoting)){
+	if(commented || escaped || quotable(text, this->_settings.separator, this->_settings.quote, this->_settings.quoting)){
 		// Записываем содержимое поля с обрамлением кавычками
 		this->quoted(text);
 		// Выходим из метода

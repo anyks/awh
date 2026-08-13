@@ -105,8 +105,8 @@ namespace {
 		uint32_t year, month, day, hour, minute, second, nanosecond, digits;
 		// Смещение часового пояса отметки времени
 		int32_t offset;
-		// Признаки записи часового пояса знаком «Z» и разделения пробелом
-		bool zulu, spaced;
+		// Признаки записи часового пояса знаком «Z», знаком «минус» и разделения пробелом
+		bool zulu, negative, spaced;
 		// Место начала события в исходном тексте
 		uint32_t line, column;
 		// Смещение начала события от начала исходного текста
@@ -118,7 +118,7 @@ namespace {
 		Event() noexcept :
 		 event(0), type(0), quoting(0), radix(0), integer(0), real(0), boolean(false), trailing(false),
 		 year(0), month(0), day(0), hour(0), minute(0), second(0), nanosecond(0), digits(0),
-		 offset(0), zulu(false), spaced(false), line(0), column(0), position(0) {}
+		 offset(0), zulu(false), negative(false), spaced(false), line(0), column(0), position(0) {}
 		/**
 		 * @brief Оператор сравнения
 		 *
@@ -137,7 +137,8 @@ namespace {
 				(this->year != other.year) || (this->month != other.month) || (this->day != other.day) ||
 				(this->hour != other.hour) || (this->minute != other.minute) || (this->second != other.second) ||
 				(this->nanosecond != other.nanosecond) || (this->digits != other.digits) ||
-				(this->offset != other.offset) || (this->zulu != other.zulu) || (this->spaced != other.spaced) ||
+				(this->offset != other.offset) || (this->zulu != other.zulu) ||
+				(this->negative != other.negative) || (this->spaced != other.spaced) ||
 				(this->line != other.line) || (this->column != other.column) || (this->position != other.position)
 			);
 		}
@@ -225,8 +226,15 @@ namespace {
 			case 14: return "nan";
 			// Если записывается логическое значение
 			case 15: return ((engine() % 2) == 0 ? "true" : "false");
-			// Если записывается отметка времени со смещением часового пояса
-			case 16: return "1979-05-27T07:32:00.999999Z";
+			/**
+			 * Если записывается отметка времени со смещением часового пояса
+			 *
+			 * @note Нулевое смещение, записанное знаком «минус», от записанного знаком
+			 *       «плюс» описанием отличается: первым обозначено смещение неизвестное
+			 */
+			case 16: return (((engine() % 3) == 0) ? "1979-05-27T07:32:00.999999-00:00" :
+			                 (((engine() % 2) == 0) ? "1979-05-27T07:32:00.999999+00:00" :
+			                  "1979-05-27T07:32:00.999999Z"));
 			// Если записывается отметка времени без смещения часового пояса
 			case 17: return "1979-05-27 07:32:00";
 			// Если записывается местная дата
@@ -606,6 +614,8 @@ namespace {
 				event.offset = reader.value().stamp.offset;
 				// Запоминаем признак записи часового пояса знаком «Z»
 				event.zulu = reader.value().stamp.zulu;
+				// Запоминаем признак записи нулевого смещения знаком «минус»
+				event.negative = reader.value().stamp.negative;
 				// Запоминаем признак разделения даты и времени пробелом
 				event.spaced = reader.value().stamp.spaced;
 				// Запоминаем строку начала события в исходном тексте

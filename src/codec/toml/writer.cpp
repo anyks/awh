@@ -966,9 +966,16 @@ bool awh::codec::toml::Writer::stamped(const stamp_t & stamp, const type_t type)
 		}
 		// Получаем величину смещения часового пояса в минутах
 		const uint32_t value = static_cast <uint32_t> (stamp.offset < 0 ? -stamp.offset : stamp.offset);
-		// Выполняем запись смещения часового пояса
+		/**
+		 * Выполняем запись смещения часового пояса
+		 *
+		 * @note Нулевое смещение знака не несёт, и знак его берётся отдельным признаком:
+		 *       описание отводит записи «-00:00» смысл, от «+00:00» отличный - первою
+		 *       обозначено смещение неизвестное, второю смещение, заведомо нулевое
+		 */
 		const int32_t length = ::snprintf(buffer, sizeof(buffer), "%c%02u:%02u",
-		 ((stamp.offset < 0) ? '-' : '+'), (value / 60), (value % 60));
+		 (((stamp.offset < 0) || ((stamp.offset == 0) && stamp.negative)) ? '-' : '+'),
+		 (value / 60), (value % 60));
 		/**
 		 * Если запись смещения часового пояса выполнить не удалось
 		 */

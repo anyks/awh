@@ -1086,8 +1086,25 @@ awh::codec::toml::Document::node_t * awh::codec::toml::Document::reach(const vec
 	this->_records.insert((this->_records.begin() + static_cast <long> (position)), record);
 	// Выполняем перестроение указателей поиска
 	this->reindex();
+	/**
+	 * Выполняем поиск записи заведённой пары заново
+	 *
+	 * @note Перестроение указателей вправе повлечь уплотнение дерева, а уплотнение
+	 *       перечень узлов переносит: порядковый номер, взятый до него, указывал бы
+	 *       на чужой узел либо за край перечня
+	 */
+	const uint32_t created = this->locate(path, kind_t::PAIR);
+	/**
+	 * Если запись заведённой пары не найдена
+	 */
+	if(created == NO_RECORD){
+		// Запоминаем код ошибки правки дерева настроек
+		this->_error = error_t::INTERNAL;
+		// Выводим пустой указатель узла значения
+		return nullptr;
+	}
 	// Выводим узел значения заводимой пары
-	return &this->_nodes.at(record.node);
+	return &this->_nodes.at(this->_records.at(created).node);
 }
 /**
  * @brief Метод получения текущих настроек дерева
@@ -1886,11 +1903,12 @@ bool awh::codec::toml::Document::erase(const vector <string_view> & path) noexce
 	 *       оставить пояснение к тому, чего в файле более нет
 	 */
 	if((static_cast <size_t> (record + 1) < this->_records.size()) &&
-	   (this->_records.at(record + 1).kind == kind_t::COMMENT) && this->_records.at(record + 1).trailing)
+	   (this->_records.at(record + 1).kind == kind_t::COMMENT) && this->_records.at(record + 1).trailing){
 		// Выполняем снятие записи примечания пометкой удаления
 		this->_records.at(record + 1).kind = kind_t::NONE;
 		// Выполняем учёт записи, пометкой удаления снятой
 		this->_garbage++;
+	}
 	// Выполняем перестроение указателей поиска
 	this->reindex();
 	// Выводим положительный результат выполнения операции

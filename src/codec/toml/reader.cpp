@@ -1996,6 +1996,14 @@ bool awh::codec::toml::Reader::stamped(const string_view text, item_t & item) co
 		return false;
 	// Запоминаем смещение часового пояса отметки
 	stamp.offset = (negative ? -shift : shift);
+	/**
+	 * Запоминаем признак записи нулевого смещения знаком «минус»
+	 *
+	 * @note Описание отводит записи «-00:00» смысл, от «+00:00» отличный: первою
+	 *       обозначено смещение неизвестное, второю - смещение, заведомо нулевое.
+	 *       Само смещение знака не несёт: нуль отрицательным не бывает
+	 */
+	stamp.negative = (negative && (shift == 0));
 	// Запоминаем тип значения события
 	item.type = type_t::OFFSET_DATETIME;
 	// Запоминаем собранную отметку времени
@@ -2729,6 +2737,27 @@ bool awh::codec::toml::Reader::inlined(const bool end, const uint32_t depth, con
 	this->_items.push_back(item);
 	// Выполняем пропуск знака открытия встроенной таблицы
 	this->step(this->_offset + 1);
+	/**
+	 * Собственное имя встроенной таблицы, записанной значением перечня
+	 *
+	 * @note Ключи встроенной таблицы повторами друг другу приходятся всегда, есть у
+	 *       неё собственное имя или нет: учёт их ведётся по полному имени, и таблице
+	 *       безымянной имя даётся здесь своё - «@» со счётом. Столкнуться ему не с чем:
+	 *       полное имя настоящего ключа начинается разделителем частей, а живёт имя это
+	 *       лишь до конца записи и в объявленные не переносится
+	 */
+	string synthetic;
+	/**
+	 * Если собственного имени у встроенной таблицы нет
+	 */
+	if(prefix == nullptr){
+		// Выполняем запись знака начала имени, собственному имени не отведённого
+		synthetic.assign(1, '@');
+		// Выполняем запись счёта встроенных таблиц, собственного имени не имеющих
+		synthetic.append(to_string(this->_anonymous++));
+		// Запоминаем собранное имя началом имён ключей встроенной таблицы
+		prefix = &synthetic;
+	}
 	// Признак того, что встроенная таблица ожидает очередной пары
 	bool expected = false;
 	/**
@@ -3170,6 +3199,8 @@ bool awh::codec::toml::Reader::record(const bool end) noexcept {
 	this->_pending.clear();
 	// Выполняем очистку имени таблицы, объявляемой разбираемой записью
 	this->_pendingTable.clear();
+	// Выполняем сброс счёта встроенных таблиц, собственного имени не имеющих
+	this->_anonymous = 0;
 	// Выполняем сброс признака объявления таблицы разбираемой записью
 	this->_declaring = false;
 	// Выполняем сброс признака объявления набора таблиц разбираемой записью
@@ -3352,6 +3383,16 @@ bool awh::codec::toml::Reader::record(const bool end) noexcept {
 	 *       дважды - при подаче кусками текст отвергался бы повтором, которого нет
 	 */
 	for(auto & pending : this->_pending){
+		/**
+		 * Если имя дано встроенной таблице, собственного имени не имеющей
+		 *
+		 * @note Имя это живёт лишь до конца записи: встроенная таблица закрывается
+		 *       своими скобками, и дополнить её снаружи нечем - переносить имена её
+		 *       в объявленные значило бы держать в памяти то, чего никто не спросит
+		 */
+		if(!pending.name.empty() && (pending.name.front() != '\x1F'))
+			// Переходим к следующему объявленному имени
+			continue;
 		/**
 		 * Если имя заведено исподволь
 		 *
@@ -3732,6 +3773,8 @@ void awh::codec::toml::Reader::clear() noexcept {
 	this->_start = 0;
 	// Выполняем сброс положения поиска знака конца записи
 	this->_probed = 0;
+	// Выполняем сброс счёта встроенных таблиц, собственного имени не имеющих
+	this->_anonymous = 0;
 	// Выполняем сброс смещения начала приведённого текста
 	this->_base = 0;
 	// Выполняем сброс номера разбираемой строки
@@ -3768,6 +3811,8 @@ void awh::codec::toml::Reader::clear() noexcept {
 	this->_pending.clear();
 	// Выполняем очистку имени таблицы, объявляемой разбираемой записью
 	this->_pendingTable.clear();
+	// Выполняем сброс счёта встроенных таблиц, собственного имени не имеющих
+	this->_anonymous = 0;
 	// Выполняем сброс признака объявления таблицы разбираемой записью
 	this->_declaring = false;
 	// Выполняем сброс признака объявления набора таблиц разбираемой записью
@@ -3779,7 +3824,7 @@ void awh::codec::toml::Reader::clear() noexcept {
  */
 awh::codec::toml::Reader::Reader() noexcept :
  _state(state_t::READY), _error(error_t::NONE), _decoding(error_t::NONE), _hungry(false), _final(false),
- _offset(0), _start(0), _probed(0), _base(0), _line(1), _bol(0), _current(0), _declaring(false), _appending(false) {}
+ _offset(0), _start(0), _probed(0), _anonymous(0), _base(0), _line(1), _bol(0), _current(0), _declaring(false), _appending(false) {}
 /**
  * @brief Конструктор
  *
@@ -3788,7 +3833,7 @@ awh::codec::toml::Reader::Reader() noexcept :
  */
 awh::codec::toml::Reader::Reader(const settings_t & settings) noexcept :
  _state(state_t::READY), _error(error_t::NONE), _decoding(error_t::NONE), _hungry(false), _final(false),
- _settings(settings), _offset(0), _start(0), _probed(0), _base(0), _line(1), _bol(0), _current(0),
+ _settings(settings), _offset(0), _start(0), _probed(0), _anonymous(0), _base(0), _line(1), _bol(0), _current(0),
  _declaring(false), _appending(false) {
 	// Выполняем установку навязанной извне кодировки исходного текста
 	this->_decoder.encoding(settings.encoding);

@@ -1634,3 +1634,81 @@ TEST(CodecTomlReader, TruncatedDecodingOutcome) {
 		ASSERT_EQ(reader.errorLocation().column, place.column) << "кусками по " << size;
 	}
 }
+/**
+ * @brief Проверка учёта повторов во встроенной таблице, имени не имеющей
+ *
+ * @details Ключи встроенной таблицы повторами друг другу приходятся всегда, есть ли у
+ * самой таблицы собственное имя или нет: описание запрещает повтор внутри одной
+ * таблицы. Таблицы же соседние, значениями одного перечня записанные, друг другу
+ * ключами не мешают - имена их различны
+ *
+ */
+TEST(CodecTomlReader, AnonymousInlineDuplicates) {
+	/**
+	 * Выполняем перебор проверяемых текстов настроек
+	 */
+	for(const auto & item : {
+		make_pair(string("t = [{a = 1, a = 2}]\n"), false),
+		make_pair(string("t = [{a = 1, a.b = 2}]\n"), false),
+		make_pair(string("t = [{a.b = 1, a = {c = 2}}]\n"), false),
+		make_pair(string("t = [[{a = 1, a = 2}]]\n"), false),
+		make_pair(string("t = [{b = {a = 1, a = 2}}]\n"), false),
+		make_pair(string("t = [{a = 1}, {a = 2}]\n"), true),
+		make_pair(string("t = [{a = 1, b = 2}]\n"), true),
+		make_pair(string("t = [{a.b = 1, a.c = 2}]\n"), true),
+		make_pair(string("t = [{a = 1}]\nu = [{a = 2}]\n"), true)
+	}){
+		/**
+		 * Выполняем перебор размеров куска подачи исходного текста
+		 */
+		for(size_t size : {size_t(1), size_t(3), size_t(64)}){
+			// Объект потокового чтения текста настроек
+			toml::reader_t reader;
+			/**
+			 * Выполняем подачу исходного текста кусками выбранного размера
+			 */
+			for(size_t i = 0; i < item.first.size(); i += size){
+				// Получаем размер очередного куска исходного текста
+				const size_t part = ((size < (item.first.size() - i)) ? size : (item.first.size() - i));
+				// Выполняем подачу очередного куска исходного текста
+				static_cast <void> (reader.feed(item.first.data() + i, part, (i + part) == item.first.size()));
+				/**
+				 * Выполняем перебор выданных разбором событий
+				 */
+				while(reader.next()){}
+			}
+			// Выполняем проверку итога разбора текста настроек
+			ASSERT_EQ((reader.error() == toml::error_t::NONE), item.second)
+			 << "«" << item.first << "» кусками по " << size;
+		}
+	}
+}
+/**
+ * @brief Проверка сохранения знака нулевого смещения часового пояса
+ *
+ * @details Описание отводит записи «-00:00» смысл, от «+00:00» отличный: первою
+ * обозначено смещение неизвестное, второю - смещение, заведомо нулевое. Само смещение
+ * знака не несёт, и держится он отдельным признаком
+ *
+ */
+TEST(CodecTomlReader, NegativeZeroOffset) {
+	/**
+	 * Выполняем перебор проверяемых отметок времени
+	 */
+	for(const string & source : {
+		string("1979-05-27T07:32:00-00:00"),
+		string("1979-05-27T07:32:00+00:00"),
+		string("1979-05-27T07:32:00Z"),
+		string("1979-05-27T07:32:00-07:00"),
+		string("1979-05-27T07:32:00+07:00")
+	}){
+		// Собираемый текст настроек с проверяемой отметкой времени
+		const string text = ("a = " + source + "\n");
+		// Объект дерева настроек
+		toml::document_t document;
+		// Выполняем проверку разбора текста настроек
+		ASSERT_TRUE(document.parse(text)) << "«" << source << "»";
+		// Выполняем проверку того, что перезапись повторяет исходную запись
+		ASSERT_EQ(document.text(), text);
+	}
+}

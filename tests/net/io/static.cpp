@@ -2242,6 +2242,118 @@ TEST_F(IoFixture, IoUDPTest){
 }
 
 /**
+ * @brief Тест приёма служебных метаданных дейтаграммного пакета
+ *
+ * @details Настройка `DGRAM_INFO` велит движку читать сокет вместе с управляющими
+ *          сообщениями ядра и выдавать из них сведения о последнем принятом пакете -
+ *          предел жизни, класс обслуживания, признак перегрузки пути. Проверка
+ *          утверждает, что сведения эти доходят до потребителя, а не приходят пустыми
+ *
+ * @note Проверка эта нужна тем, что путь чтения у движка не один: сокет читается либо
+ *       обычным приёмом, либо приёмом с метаданными, и выбор идёт по этой самой
+ *       настройке. Разойдись подача приёма с настройкой - данные шли бы исправно, а
+ *       метаданные пропадали молча, и ни одна прочая проверка того бы не заметила
+ *
+ * @note Предел жизни у отклика с той же машины строго больше нуля: ядро ставит его
+ *       при отправке, и нулевым он не бывает
+ *
+ */
+TEST_F(IoFixture, IoDatagramInfoTest){
+	// Флаг остановки теста
+	bool stop = false;
+	// Количество принятых сведений о пакетах
+	uint8_t traffics = 0;
+	// Предел жизни последнего принятого пакета
+	uint16_t hops = 0;
+	// Выполняем генерацию порта
+	const uint16_t port = ::port();
+	// Добавляем новое событие клиента и сервера UDP
+	const auto events = std::move(this->_io->events(awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP));
+	/**
+	 * Проверяем, что оба идентификатора события созданы успешно
+	 */
+	for(uint8_t i = 0; i < 2; i++)
+		// Проверяем, что идентификатор события больше нуля
+		ASSERT_GT(events[i], 0);
+	// Устанавливаем порт события клиента
+	ASSERT_TRUE(this->_io->setTargetPort(events[0], port));
+	// Устанавливаем порт события сервера
+	ASSERT_TRUE(this->_io->setSourcePort(events[1], port));
+	// Инициализируем асинхронный движок ввода-вывода
+	ASSERT_TRUE(this->_io->initialize());
+	/**
+	 * Выставляем опции и параметры для каждого события
+	 */
+	for(uint8_t i = 0; i < 2; i++)
+		// Устанавливаем опции событий вместе с приёмом сведений о пакетах
+		ASSERT_TRUE(this->_io->setOptions(events[i], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::DGRAM_INFO));
+	/**
+	 * Серверное событие
+	 */
+	{
+		// Устанавливаем адрес сервера назначения
+		ASSERT_TRUE(this->_io->setAddress(events[1], awh::event::address_t::IPV4, "127.0.0.1"));
+		// Устанавливаем функцию обратного вызова на подключение нового клиента
+		this->_io->on(events[1], static_cast <awh::engine::callback::accept_t> ([this](const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
+			// Устанавливаем функцию обратного вызова на чтение из события
+			this->_io->on(cid, [this](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+				// Отправляем принятое обратно клиенту
+				this->_io->send(eid, reinterpret_cast <const char *> (data), size);
+			});
+		}));
+		// Выполняем фиксацию настроек события сервера
+		ASSERT_TRUE(this->_io->commit(events[1]));
+		// Запускаем событие сервера
+		ASSERT_TRUE(this->_io->launch(events[1]));
+	}
+	/**
+	 * Клиентское событие
+	 */
+	{
+		// Устанавливаем адрес события клиента
+		ASSERT_TRUE(this->_io->setAddress(events[0], awh::event::address_t::IPV4, "0.0.0.0"));
+		// Устанавливаем адрес сервера назначения
+		ASSERT_TRUE(this->_io->setTarget(events[0], "127.0.0.1"));
+		// Устанавливаем функцию обратного вызова на приём сведений о принятом пакете
+		this->_io->on(events[0], static_cast <awh::engine::callback::traffic_t> ([&traffics, &hops](const awh::event::id_t eid, const awh::net::dgram_info_t & info) noexcept -> void {
+			// Запоминаем предел жизни принятого пакета
+			hops = static_cast <uint16_t> (info.hops);
+			// Увеличиваем количество принятых сведений о пакетах
+			traffics++;
+		}));
+		// Устанавливаем функцию обратного вызова на чтение из события
+		this->_io->on(events[0], [&stop](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+			// Отмечаем проверку выполненной: отклик получен
+			stop = true;
+		});
+		// Устанавливаем таймаут события на чтение
+		this->_io->setTimeout(events[0], awh::event::action_t::READ, 3000);
+		// Устанавливаем таймаут события на запись
+		this->_io->setTimeout(events[0], awh::event::action_t::WRITE, 3000);
+		// Выполняем фиксацию настроек события клиента
+		ASSERT_TRUE(this->_io->commit(events[0]));
+		// Запускаем событие клиента
+		ASSERT_TRUE(this->_io->launch(events[0]));
+		// Текст исходящего сообщения
+		std::string message("Datagram metadata probe message!");
+		// Отправляем сообщение серверу
+		ASSERT_TRUE(this->_io->send(events[0], message.c_str(), message.size()));
+	}
+	/**
+	 * Запускаем опрос событий
+	 */
+	while(!stop && this->_io->poll());
+	// Уничтожаем все события после получения ответа
+	ASSERT_TRUE(this->_io->deinitialize());
+	// Проверяем, что отклик сервера получен
+	ASSERT_TRUE(stop);
+	// Проверяем, что сведения о принятом пакете выданы потребителю
+	ASSERT_GT(traffics, 0);
+	// Проверяем, что предел жизни принятого пакета выяснен
+	ASSERT_GT(hops, 0);
+}
+
+/**
  * @brief Тест проверки работы UDP-соединения
  *
  */

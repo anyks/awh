@@ -124,6 +124,80 @@ namespace gw {
 		return htonl((0xFFFFFFFFU) << (32 - static_cast <uint32_t> (prefix)));
 	}
 	/**
+	 * @brief Функция извлечения маски подсети IPv4 из адреса маршрута
+	 *
+	 * @details Ядро выдаёт маску подсети усечённой: хвост её, состоящий из нулей,
+	 * попросту не передаётся, а семейство адреса маской не заполняется вовсе
+	 *
+	 * @warning Читать маску как `sockaddr_in` НЕЛЬЗЯ: у маски 255.255.255.0 длина
+	 *          выходит семь байт вместо шестнадцати, а `sa_family` содержит 255 вместо
+	 *          AF_INET. Проверка семейства отбрасывала маску всегда, и `Gateway::remove`
+	 *          не мог снести ни одного маршрута с префиксом - совпадение по маске
+	 *          обращалось в ложь. Уцелел один лишь маршрут по умолчанию: маска его
+	 *          нулевой длины, и сравнение её не делается. Замерено на стенде NetBSD
+	 *          (13.08.2026), выдача ядра: MASK(len=7,fam=255)=255.255.255.0
+	 *
+	 * @param addr объект адреса маски подсети маршрута
+	 * @return     маска подсети в сетевом порядке октетов
+	 *
+	 */
+	static in_addr_t netmask4(const struct sockaddr * addr) noexcept {
+		// Если адрес маски подсети не передан
+		if(addr == nullptr)
+			// Выводим пустую маску подсети
+			return 0;
+		// Собираемая маска подсети
+		uint8_t result[4] = {0, 0, 0, 0};
+		// Получаем длину переданного адреса маски подсети
+		const size_t length = static_cast <size_t> (addr->sa_len);
+		/**
+		 * Если маска подсети несёт хоть один октет
+		 *
+		 * @note Октеты маски лежат там же, где и у адреса IPv4, - со смещения в четыре
+		 *       байта от начала, - а недостающие до четырёх октеты равны нулю
+		 */
+		if(length > offsetof(struct sockaddr_in, sin_addr)){
+			// Получаем количество переданных октетов маски подсети
+			const size_t count = (length - offsetof(struct sockaddr_in, sin_addr));
+			// Выполняем извлечение переданных октетов маски подсети
+			::memcpy(result, (reinterpret_cast <const uint8_t *> (addr) + offsetof(struct sockaddr_in, sin_addr)), (count < 4 ? count : 4));
+		}
+		// Собранная маска подсети
+		in_addr_t netmsk = 0;
+		// Выполняем сборку маски подсети
+		::memcpy(&netmsk, result, 4);
+		// Выводим собранную маску подсети
+		return netmsk;
+	}
+	/**
+	 * @brief Функция извлечения маски подсети IPv6 из адреса маршрута
+	 *
+	 * @details Маска подсети IPv6 усекается ядром ровно так же, как и маска IPv4
+	 *
+	 * @param addr   объект адреса маски подсети маршрута
+	 * @param result собираемая маска подсети из шестнадцати октетов
+	 *
+	 */
+	static void netmask6(const struct sockaddr * addr, uint8_t * result) noexcept {
+		// Выполняем сброс собираемой маски подсети
+		::memset(result, 0, 16);
+		// Если адрес маски подсети не передан
+		if(addr == nullptr)
+			// Выходим из извлечения маски подсети
+			return;
+		// Получаем длину переданного адреса маски подсети
+		const size_t length = static_cast <size_t> (addr->sa_len);
+		/**
+		 * Если маска подсети несёт хоть один октет
+		 */
+		if(length > offsetof(struct sockaddr_in6, sin6_addr)){
+			// Получаем количество переданных октетов маски подсети
+			const size_t count = (length - offsetof(struct sockaddr_in6, sin6_addr));
+			// Выполняем извлечение переданных октетов маски подсети
+			::memcpy(result, (reinterpret_cast <const uint8_t *> (addr) + offsetof(struct sockaddr_in6, sin6_addr)), (count < 16 ? count : 16));
+		}
+	}
+	/**
 	 * @brief Функция получения следующего адреса маршрута
 	 *
 	 * @param addr объект текущего адреса маршрута
@@ -354,8 +428,8 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 						struct sockaddr_in * gw = (((addrs.gw != nullptr) && (addrs.gw->sa_family == AF_INET)) ? reinterpret_cast <struct sockaddr_in *> (addrs.gw) : nullptr);
 						// Объект адреса назначения маршрута
 						struct sockaddr_in * dst = (((addrs.dst != nullptr) && (addrs.dst->sa_family == AF_INET)) ? reinterpret_cast <struct sockaddr_in *> (addrs.dst) : nullptr);
-						// Объект маски подсети маршрута
-						struct sockaddr_in * mask = (((addrs.mask != nullptr) && (addrs.mask->sa_family == AF_INET)) ? reinterpret_cast <struct sockaddr_in *> (addrs.mask) : nullptr);
+						// Маска подсети маршрута
+						const in_addr_t mask = ::gw::netmask4(addrs.mask);
 						// Объект сетевого интерфейса маршрута
 						struct sockaddr_dl * ifp = addrs.ifp;
 						// Предполагаем совпадение и проверяем условия
@@ -371,7 +445,7 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 						if(lookForDefault)
 							// Адрес назначения и маска подсети должны быть нулевыми
 							match = (((dst != nullptr ? dst->sin_addr.s_addr : 0) == 0) &&
-							         ((mask != nullptr ? mask->sin_addr.s_addr : 0) == 0) &&
+							         (mask == 0) &&
 							         ((rtm->rtm_flags & RTF_HOST) == 0));
 						// Если ищем конкретный маршрут
 						else {
@@ -416,9 +490,9 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 						// Вычисляем префикс
 						route.prefix = 0;
 						// Если задана маска подсети
-						if(mask != nullptr){
+						if(addrs.mask != nullptr){
 							// Преобразуем маску в префикс
-							uint32_t addr = ntohl(mask->sin_addr.s_addr);
+							uint32_t addr = ntohl(mask);
 							/**
 							 * Подсчитываем количество единичных бит в маске
 							 */
@@ -610,8 +684,12 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 						struct sockaddr_in6 * gw = (((addrs.gw != nullptr) && (addrs.gw->sa_family == AF_INET6)) ? reinterpret_cast <struct sockaddr_in6 *> (addrs.gw) : nullptr);
 						// Объект адреса назначения маршрута
 						struct sockaddr_in6 * dst = (((addrs.dst != nullptr) && (addrs.dst->sa_family == AF_INET6)) ? reinterpret_cast <struct sockaddr_in6 *> (addrs.dst) : nullptr);
-						// Объект маски подсети маршрута
-						struct sockaddr_in6 * mask = (((addrs.mask != nullptr) && (addrs.mask->sa_family == AF_INET6)) ? reinterpret_cast <struct sockaddr_in6 *> (addrs.mask) : nullptr);
+						// Маска подсети маршрута
+						uint8_t mask[16];
+						// Пустая маска подсети для сличения
+						const uint8_t zero[16] = {0};
+						// Выполняем извлечение маски подсети маршрута
+						::gw::netmask6(addrs.mask, mask);
 						// Объект сетевого интерфейса маршрута
 						struct sockaddr_dl * ifp = addrs.ifp;
 						// Предполагаем совпадение и проверяем условия
@@ -627,7 +705,7 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 						if(lookForDefault)
 							// Адрес назначения и маска подсети должны быть нулевыми
 							match = (((dst == nullptr) || IN6_IS_ADDR_UNSPECIFIED(&dst->sin6_addr)) &&
-							         ((mask == nullptr) || IN6_IS_ADDR_UNSPECIFIED(&mask->sin6_addr)) &&
+							         (::memcmp(mask, zero, 16) == 0) &&
 							         ((rtm->rtm_flags & RTF_HOST) == 0));
 						// Если ищем конкретный маршрут
 						else {
@@ -665,13 +743,13 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 						// Вычисляем префикс
 						route.prefix = 0;
 						// Если задана маска подсети
-						if(mask != nullptr){
+						if(addrs.mask != nullptr){
 							/**
 							 * Преобразуем маску в префикс
 							 */
 							for(uint8_t i = 0; i < 16; ++i){
 								// Получаем байт маски
-								uint8_t byte = mask->sin6_addr.s6_addr[i];
+								uint8_t byte = mask[i];
 								/**
 								 * Подсчитываем количество единичных бит в маске
 								 */
@@ -1510,8 +1588,8 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 						struct sockaddr_in * gw = (((addrs.gw != nullptr) && (addrs.gw->sa_family == AF_INET)) ? reinterpret_cast <struct sockaddr_in *> (addrs.gw) : nullptr);
 						// Объект адреса назначения маршрута
 						struct sockaddr_in * dst = (((addrs.dst != nullptr) && (addrs.dst->sa_family == AF_INET)) ? reinterpret_cast <struct sockaddr_in *> (addrs.dst) : nullptr);
-						// Объект маски подсети маршрута
-						struct sockaddr_in * mask = (((addrs.mask != nullptr) && (addrs.mask->sa_family == AF_INET)) ? reinterpret_cast <struct sockaddr_in *> (addrs.mask) : nullptr);
+						// Маска подсети маршрута
+						const in_addr_t mask = ::gw::netmask4(addrs.mask);
 						// Объект сетевого интерфейса маршрута
 						struct sockaddr_dl * ifp = addrs.ifp;
 						// Флаг совпадения маршрута
@@ -1542,7 +1620,7 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 						// Если маска подсети задана
 						if(netmsk > 0)
 							// Устанавливаем флаг совпадения по маске подсети маршрута
-							match = (match && (mask != nullptr) && (mask->sin_addr.s_addr == netmsk));
+							match = (match && (addrs.mask != nullptr) && (mask == netmsk));
 						// Если адрес назначения инициализирован
 						if(route.destination != nullptr){
 							// Если адрес назначения маршрута задан
@@ -1800,8 +1878,10 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 						struct sockaddr_in6 * gw = (((addrs.gw != nullptr) && (addrs.gw->sa_family == AF_INET6)) ? reinterpret_cast <struct sockaddr_in6 *> (addrs.gw) : nullptr);
 						// Объект адреса назначения маршрута
 						struct sockaddr_in6 * dst = (((addrs.dst != nullptr) && (addrs.dst->sa_family == AF_INET6)) ? reinterpret_cast <struct sockaddr_in6 *> (addrs.dst) : nullptr);
-						// Объект маски подсети маршрута
-						struct sockaddr_in6 * mask = (((addrs.mask != nullptr) && (addrs.mask->sa_family == AF_INET6)) ? reinterpret_cast <struct sockaddr_in6 *> (addrs.mask) : nullptr);
+						// Маска подсети маршрута
+						uint8_t mask[16];
+						// Выполняем извлечение маски подсети маршрута
+						::gw::netmask6(addrs.mask, mask);
 						// Объект сетевого интерфейса маршрута
 						struct sockaddr_dl * ifp = addrs.ifp;
 						// Флаг совпадения маршрута
@@ -1827,7 +1907,7 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 						// Если маска подсети задана
 						if(route.prefix > 0)
 							// Устанавливаем флаг совпадения по маске подсети маршрута
-							match = ((mask != nullptr) && (::memcmp(&mask->sin6_addr, &netmsk, 16) == 0));
+							match = ((addrs.mask != nullptr) && (::memcmp(mask, &netmsk, 16) == 0));
 						// Если адрес назначения инициализирован
 						if(route.destination != nullptr){
 							// Если адрес назначения маршрута задан

@@ -9386,15 +9386,27 @@ namespace kernel {
 		 */
 		// Признак дейтаграммного дескриптора
 		const bool datagram = (exchanging && (node->state.type == event::type_t::DATAGRAM));
+		// Признак сырого дескриптора
+		const bool raw = (exchanging && (node->state.type == event::type_t::RAW));
 		/**
-		 * Признак сырого дескриптора, приём которому ведётся со служебными метаданными
+		 * Признак приёма со служебными метаданными
 		 *
-		 * @note Приём этот подаётся расширенным вызовом `WSARecvMsg`: ни `WSARecv`, ни
-		 *       `WSARecvFrom` управляющих сообщений не отдают вовсе, а сырому сокету они
-		 *       и есть главное - предел жизни пакета, класс обслуживания, признак
-		 *       перегрузки пути. Не отдай мы их, разбор получал бы данные без метаданных
+		 * @details Равняется он на настройку узла, а не на вид сокета, и равняться обязан
+		 *          именно на неё: разбор выбирает по ней же способ чтения. Просят
+		 *          метаданные - читает `recvmsg`, не просят - `recvfrom`, и оба вида
+		 *          сокета, сырой и дейтаграммный, ходят обоими путями
+		 *
+		 * @note Подаётся такой приём расширенным вызовом `WSARecvMsg`: ни `WSARecv`, ни
+		 *       `WSARecvFrom` управляющих сообщений не отдают вовсе, а в них-то и лежит
+		 *       всё просимое - предел жизни пакета, класс обслуживания, признак
+		 *       перегрузки пути, опознаватель пришедшего сетевого устройства
+		 *
+		 * @warning Не равняйся подача на настройку - метаданные пропадали бы молча:
+		 *          потребитель звал бы `recvmsg`, а получал принятое обычным приёмом, где
+		 *          управляющих сообщений нет и быть не может. Данные при этом приходили
+		 *          бы исправно, и потеря выдала бы себя лишь пустыми метаданными
 		 */
-		const bool metadata = (exchanging && (node->state.type == event::type_t::RAW));
+		const bool metadata = ((raw || datagram) && ((node->state.options & event::options::DGRAM_INFO) != 0));
 		/**
 		 * Выполняем подачу ожидания готовности
 		 *
@@ -9405,7 +9417,7 @@ namespace kernel {
 		 */
 		const bool suitable = (
 			((events & ~static_cast <uint32_t> (EPOLLRDHUP)) == static_cast <uint32_t> (EPOLLIN)) &&
-			exchanging && !limited && ((node->state.type == event::type_t::STREAM) || datagram || metadata) &&
+			exchanging && !limited && ((node->state.type == event::type_t::STREAM) || datagram || raw) &&
 			!::kernel::listening(state.sock) && !::pool::pending(state.sock)
 		);
 		/**
@@ -9442,7 +9454,14 @@ namespace kernel {
 		// Если дескриптор не слушающий
 		else {
 			// Выполняем подачу родного приёма, если подписка ему годна
-			state.token = (suitable ? ::post::fetch(state.sock, &state, datagram, metadata) : ::inflight::INVALID);
+			/**
+			 * Выполняем подачу родного приёма
+			 *
+			 * @note Сырой дескриптор подаётся наравне с дейтаграммным: приём ему тоже
+			 *       обязан отдавать адрес отправителя, и разбор его тоже читает
+			 *       `recvfrom`, а не `recv`
+			 */
+			state.token = (suitable ? ::post::fetch(state.sock, &state, (datagram || raw), metadata) : ::inflight::INVALID);
 			// Запоминаем поданность родного приёма
 			fetching = (state.token != ::inflight::INVALID);
 			// Если родной приём не подавался либо подать его не удалось
