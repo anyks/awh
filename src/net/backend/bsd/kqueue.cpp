@@ -68429,27 +68429,6 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					if(reinterpret_cast <::io::node_t *> (ev.udata) == nullptr)
 						// Пропускаем событие
 						continue;
-					/**
-					 * ВРЕМЕННЫЙ ОПЫТ: ловим записи пачки, чей узел уже снесён
-					 *
-					 * @warning В дерево это не годится - перебор по всем узлам на каждое
-					 *          событие дорог. Опыт нужен, чтобы доказать изъян числом
-					 */
-					{
-						bool alive = false;
-						for(const auto & item : ::__awh_nodes__){
-							if(item.second.get() == reinterpret_cast <::io::node_t *> (ev.udata)){
-								alive = true;
-								break;
-							}
-						}
-						if(!alive && (ev.udata != nullptr)){
-							static uint64_t caught = 0;
-							::fprintf(stderr, "DEAD-NODE #%llu udata=%p\n", (unsigned long long) ++caught, ev.udata);
-							::fflush(stderr);
-							continue;
-						}
-					}
 					// Если событие является системным таймером, то выполняем обработку отложенных таймеров
 					if((ev.filter == EVFILT_TIMER) && (ev.ident == 0)){
 						// Отмечаем, что истёкшие дедлайны в этом опросе уже разобраны
