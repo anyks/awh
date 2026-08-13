@@ -82,3 +82,18 @@
 [submodule "submodules/mINI"]
 	path = submodules/mINI
 	url = https://github.com/metayeti/mINI.git
+[submodule "submodules/csv2"]
+	path = submodules/csv2
+	url = https://github.com/p-ranav/csv2.git
+[submodule "submodules/libcsv"]
+	path = submodules/libcsv
+	url = https://github.com/rgamble/libcsv.git
+[submodule "submodules/rapidcsv"]
+	path = submodules/rapidcsv
+	url = https://github.com/d99kris/rapidcsv.git
+[submodule "submodules/csv-parser"]
+	path = submodules/csv-parser
+	url = https://github.com/vincentlaucsb/csv-parser.git
+[submodule "submodules/fast-cpp-csv-parser"]
+	path = submodules/fast-cpp-csv-parser
+	url = https://github.com/ben-strasser/fast-cpp-csv-parser.git

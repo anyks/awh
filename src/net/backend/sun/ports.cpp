@@ -69388,27 +69388,6 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 				for(ssize_t i = 0; i < events; i++){
 					// Получаем текущее значение события
 					port_event_t & ev = ::__awh_events__[i];
-					/**
-					 * ВРЕМЕННЫЙ ОПЫТ: ловим записи пачки, чей узел уже снесён
-					 *
-					 * @warning В дерево это не годится - перебор по всем узлам на каждое
-					 *          событие дорог. Опыт нужен, чтобы доказать изъян числом
-					 */
-					{
-						bool alive = false;
-						for(const auto & item : ::__awh_nodes__){
-							if(item.second.get() == reinterpret_cast <::io::node_t *> (ev.portev_user)){
-								alive = true;
-								break;
-							}
-						}
-						if(!alive && (ev.portev_user != nullptr)){
-							static uint64_t caught = 0;
-							::fprintf(stderr, "DEAD-NODE #%llu udata=%p\n", (unsigned long long) ++caught, ev.portev_user);
-							::fflush(stderr);
-							continue;
-						}
-					}
 					// Если событие является системным таймером, то выполняем обработку отложенных таймеров
 					if(ev.portev_source == PORT_SOURCE_TIMER){
 						// Отмечаем, что истёкшие дедлайны в этом опросе уже разобраны

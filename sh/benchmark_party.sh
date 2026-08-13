@@ -87,5 +87,25 @@ $ROOT/submodule.sh add simpleini https://github.com/brofield/simpleini.git
 $ROOT/submodule.sh remove mINI
 $ROOT/submodule.sh add mINI https://github.com/metayeti/mINI.git
 
+# Выполняем пересборку сабмодуля csv2
+$ROOT/submodule.sh remove csv2
+$ROOT/submodule.sh add csv2 https://github.com/p-ranav/csv2.git
+
+# Выполняем пересборку сабмодуля libcsv
+$ROOT/submodule.sh remove libcsv
+$ROOT/submodule.sh add libcsv https://github.com/rgamble/libcsv.git
+
+# Выполняем пересборку сабмодуля rapidcsv
+$ROOT/submodule.sh remove rapidcsv
+$ROOT/submodule.sh add rapidcsv https://github.com/d99kris/rapidcsv.git
+
+# Выполняем пересборку сабмодуля csv-parser
+$ROOT/submodule.sh remove csv-parser
+$ROOT/submodule.sh add csv-parser https://github.com/vincentlaucsb/csv-parser.git
+
+# Выполняем пересборку сабмодуля fast-cpp-csv-parser
+$ROOT/submodule.sh remove fast-cpp-csv-parser
+$ROOT/submodule.sh add fast-cpp-csv-parser https://github.com/ben-strasser/fast-cpp-csv-parser.git
+
 # Выводим список добавленных модулей
 cat $ROOT/../.gitmodules
