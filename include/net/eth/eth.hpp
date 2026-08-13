@@ -9,9 +9,17 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * \~russian
  * @brief Заголовочный файл модуля работы с сетевым уровнем Ethernet — класс Ethernet,
  *        объединяющий работу с сетевыми интерфейсами, шлюзами, маршрутами,
  *        пробросом портов и сокетами канального уровня
+ *
+ * \~english
+ * @brief Header file of the module of working with the Ethernet network level — the Ethernet class,
+ *        uniting the work with the network interfaces, the gateways, the routes,
+ *        the port forwarding and the sockets of the link level
+ *
+ * \~
  *
  * @copyright: Copyright © 2025
  *
@@ -48,8 +56,14 @@
 #include "gateway.hpp"
 
 /**
+ * \~russian
  * @brief Основное пространство имён
  *
+ *
+ * \~english
+ * @brief Main namespace
+ *
+ * \~
  */
 namespace awh {
 	/**
@@ -58,6 +72,7 @@ namespace awh {
 	using namespace std;
 
 	/**
+	 * \~russian
 	 * @brief Класс для работы с сетевым уровнем Ethernet
 	 *
 	 * @details Сводит воедино средства работы с сетью на уровне системы - те, что
@@ -79,6 +94,25 @@ namespace awh {
 	 *          Права на такое нужны надзорные, а последствия переживают завершение
 	 *          процесса - выставленное следует снимать за собой
 	 *
+	 * \~english
+	 * @brief Class for working with the Ethernet network level
+	 * @details Brings together the means of working with the network at the level of the system — those that
+	 *          lie below a separate connection and concern the machine entirely:
+	 *          the network devices and their settings, the addresses and the routes, the gateways,
+	 *          the port forwarding, the properties of the sockets
+	 *          The class performs no work of its own and serves only as a common point of
+	 *          access: each direction is answered for by its own nested object, which
+	 *          is addressed directly. It is started so that one reference would be enough
+	 *          for the engine instead of half a dozen
+	 * @note The means of the protocol with the flow control are available only on Linux and
+	 *       FreeBSD — on the other systems the corresponding object is simply absent, and
+	 *       an address to it will not be built
+	 * @warning Much of what is here changes the settings of the **whole machine**, and not of one
+	 *          connection: bringing a device up, correcting the routes, forwarding the ports.
+	 *          The rights for such things are supervisory ones, and the consequences outlive the completion
+	 *          of the process — what has been set should be removed after oneself
+	 *
+	 * \~
 	 */
 	typedef class __AWH_SHARED_EXPORT__ Ethernet {
 		public:
@@ -104,16 +138,29 @@ namespace awh {
 			const log_t * _log;
 		public:
 			/**
+			 * \~russian
 			 * @brief Конструктор
 			 *
 			 * @param fmk объект фреймворка
 			 * @param log объект работы с логами
 			 *
+			 * \~english
+			 * @brief Constructor
+			 * @param fmk framework object
+			 * @param log object for working with logs
+			 *
+			 * \~
 			 */
 			explicit Ethernet(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
+			 * \~russian
 			 * @brief Деструктор
 			 *
+			 *
+			 * \~english
+			 * @brief Destructor
+			 *
+			 * \~
 			 */
 			~Ethernet() noexcept;
 	} eth_t;

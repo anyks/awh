@@ -9,9 +9,17 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * \~russian
  * @brief Заголовочный файл модуля определения типов сетевых адресов — класс Network_Types,
  *        распознающий во входной строке URL, домен, IP-адрес, MAC-адрес,
  *        e-mail или путь файловой системы и выполняющий разбор URL-адреса на составные части
+ *
+ * \~english
+ * @brief Header file of the module of the determination of the types of the network addresses — the Network_Types class,
+ *        recognizing in an input string a URL, a domain, an IP address, a MAC address,
+ *        an e-mail or a path of the file system and performing the parsing of a URL address into its constituent parts
+ *
+ * \~
  *
  * @copyright: Copyright © 2025
  *
@@ -37,13 +45,24 @@
 #include "../sys/global.hpp"
 
 /**
+ * \~russian
  * @brief Основное пространство имён
  *
+ *
+ * \~english
+ * @brief Main namespace
+ *
+ * \~
  */
 namespace awh {
 	/**
+	 * \~russian
 	 * @brief Прототип класса работы с логами
 	 *
+	 * \~english
+	 * @brief Prototype of the class for working with logs
+	 *
+	 * \~
 	 */
 	class Logging;
 
@@ -53,6 +72,7 @@ namespace awh {
 	using namespace std;
 
 	/**
+	 * \~russian
 	 * @brief Структура списка параметров URL
 	 *
 	 * @details Отвечает на вопрос «что это такое», а не «разбери мне вот это».
@@ -72,6 +92,26 @@ namespace awh {
 	 *       вида `host.local` доменом признана не будет
 	 *
 	 * @par Пример: определение вида записи
+	 *
+	 * \~english
+	 * @brief Structure of the list of the parameters of a URL
+	 * @details Answers the question «what is this», and not «parse this for me».
+	 *          An arbitrary string is fed to the input, at the output there is its type and the parsed
+	 *          parts. This is needed where the kind of the record is unknown in advance: the user
+	 *          has entered a string into a field, and it may turn out to be an address of a site, a bare domain,
+	 *          an IPv4 or IPv6 address, a MAC address or an electronic mail.
+	 *          By this the module differs from `uri_t`: that one parses what is already recognized as
+	 *          an identifier of a resource, and does it by the rules of RFC 3986, and here
+	 *          the very kind of the record is determined first. If a knowingly known
+	 *          URI is being parsed, one should address `uri_t` — it is stricter and fuller
+	 * @note The recognition of a domain relies on the list of the domain zones, because telling
+	 *       a domain from anything else is possible only by the zone. The list is a built-in one, and
+	 *       one's own zones are added by the `zone()` and `zones()` methods: without them a string
+	 *       of the kind `host.local` will not be recognized as a domain
+	 * @par Example: the determination of the kind of a record
+	 *
+	 * \~
+	 *
 	 * @code{.cpp}
 	 * awh::nwt_t nwt(&log);
 	 * // Добавляем собственную доменную зону, иначе она останется неизвестной
@@ -87,6 +127,7 @@ namespace awh {
 	typedef class __AWH_SHARED_EXPORT__ Network_Types {
 		public:
 			/**
+			 * \~russian
 			 * @brief Типы URL-адреса
 			 *
 			 * @note Отдельного значения для голого домена здесь нет: доменное имя -
@@ -99,6 +140,18 @@ namespace awh {
 			 *       одному из видов, и проверять его следует всегда: разбор в этом
 			 *       случае полей не заполняет
 			 *
+			 * \~english
+			 * @brief Types of a URL address
+			 * @note There is no separate value for a bare domain here: a domain name is
+			 *       a particular case of an address, and it is recognized as a `URL`, and the zone
+			 *       of the top level is put into the `domain` field. So does an address
+			 *       with a schema as well: `URL` is returned both for `anyks.com`, and for
+			 *       `https://anyks.com/path`, they differ by the filledness of the fields
+			 * @note The `NONE` value means that the string could not be attributed to
+			 *       any of the kinds, and it should always be checked: the parsing in this
+			 *       case fills no fields
+			 *
+			 * \~
 			 */
 			enum class types_t : uint8_t {
 				NONE  = 0x00, // Тип не определён
@@ -110,6 +163,7 @@ namespace awh {
 			};
 		public:
 			/**
+			 * \~russian
 			 * @brief Класс URL-адреса
 			 *
 			 * @details Итог разбора. Какие поля заполнены, зависит от распознанного
@@ -128,6 +182,23 @@ namespace awh {
 			 *       он равен нулю: подстановкой порта по умолчанию для схемы модуль не
 			 *       занимается - этим ведает `uri_t`
 			 *
+			 * \~english
+			 * @brief Class of a URL address
+			 * @details The result of the parsing. Which fields are filled depends on the recognized
+			 *          kind of the record, and relying on the filledness without a check of `type`
+			 *          is not allowed:
+			 *          | Kind | What is filled |
+			 *          |---|---|
+			 *          | `URL` | `host`, `domain`, as well as `schema`, `port`, `path`, `params`, `anchor`, `user`, `pass` — as far as they are present in the record |
+			 *          | `IPV4`, `IPV6` | `host` |
+			 *          | `MAC` | `host` |
+			 *          | `EMAIL` | `user`, `host`, `domain` |
+			 *          | `NONE` | nothing |
+			 * @note A zero `port` means that the port was absent in the record, and not that
+			 *       it equals zero: the module does not occupy itself with the substitution of the port by default for
+			 *       a schema — `uri_t` is in charge of that
+			 *
+			 * \~
 			 */
 			typedef class __AWH_SHARED_EXPORT__ URL {
 				public:
@@ -144,54 +215,99 @@ namespace awh {
 					string schema; // Протокол URL-адреса
 				public:
 					/**
+					 * \~russian
 					 * @brief Оператор перемещения
 					 *
 					 * @param url параметры адреса
 					 * @return    параметры URL-запроса
 					 *
+					 * \~english
+					 * @brief Move operator
+					 * @param url parameters of the address
+					 * @return    parameters of the URL request
+					 *
+					 * \~
 					 */
 					URL & operator = (URL && url) noexcept;
 					/**
+					 * \~russian
 					 * @brief Оператор присванивания
 					 *
 					 * @param url параметры адреса
 					 * @return    параметры URL-запроса
 					 *
+					 * \~english
+					 * @brief Assignment operator
+					 * @param url parameters of the address
+					 * @return    parameters of the URL request
+					 *
+					 * \~
 					 */
 					URL & operator = (const URL & url) noexcept;
 				public:
 					/**
+					 * \~russian
 					 * @brief Оператор сравнения
 					 *
 					 * @param url параметры адреса
 					 * @return    результат сравнения
 					 *
+					 * \~english
+					 * @brief Comparison operator
+					 * @param url parameters of the address
+					 * @return    result of the comparison
+					 *
+					 * \~
 					 */
 					bool operator == (const URL & url) const noexcept;
 				public:
 					/**
+					 * \~russian
 					 * @brief Конструктор перемещения
 					 *
 					 * @param url параметры адреса
 					 *
+					 * \~english
+					 * @brief Move constructor
+					 * @param url parameters of the address
+					 *
+					 * \~
 					 */
 					URL(URL && url) noexcept;
 					/**
+					 * \~russian
 					 * @brief Конструктор копирования
 					 *
 					 * @param url параметры адреса
 					 *
+					 * \~english
+					 * @brief Copy constructor
+					 * @param url parameters of the address
+					 *
+					 * \~
 					 */
 					URL(const URL & url) noexcept;
 				public:
 					/**
+					 * \~russian
 					 * @brief Конструктор
 					 *
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
 					 */
 					explicit URL() noexcept;
 					/**
+					 * \~russian
 					 * @brief Деструктор
 					 *
+					 *
+					 * \~english
+					 * @brief Destructor
+					 *
+					 * \~
 					 */
 					~URL() noexcept = default;
 			} url_t;
@@ -203,21 +319,34 @@ namespace awh {
 			const Logging * _log;
 		private:
 			/**
+			 * \~russian
 			 * @brief Метод проверки, является ли домен верхнего уровня известной доменной зоной
 			 *
 			 * @param domain домен верхнего уровня для проверки
 			 * @return       результат проверки (true, если зона известна)
 			 *
+			 * \~english
+			 * @brief Method of checking whether a top level domain is a known domain zone
+			 * @param domain top level domain to check
+			 * @return       result of the check (true, if the zone is known)
+			 *
+			 * \~
 			 */
 			bool isZone(const string & domain) const noexcept;
 		public:
 			/**
+			 * \~russian
 			 * @brief Метод очистки результатов парсинга
 			 *
+			 * \~english
+			 * @brief Method of clearing the results of the parsing
+			 *
+			 * \~
 			 */
 			void clear() noexcept;
 		public:
 			/**
+			 * \~russian
 			 * @brief Метод установки пользовательской зоны
 			 *
 			 * @details Добавляет доменную зону к встроенному списку. Отличить домен от
@@ -232,23 +361,48 @@ namespace awh {
 			 *
 			 * @param zone пользовательская зона
 			 *
+			 * \~english
+			 * @brief Method of setting a user zone
+			 * @details Adds a domain zone to the built-in list. Telling a domain from
+			 *          an arbitrary string is possible only by the zone of the top level,
+			 *          and therefore a record with an unknown zone will not be recognized as a domain:
+			 *          the intranet names of the kind `host.local` or `service.internal`
+			 *          require an explicit addition
+			 * @note The zones accumulate, and do not replace each other: every call
+			 *       adds one. Replacing the whole list entirely is made possible by the
+			 *       `zones()` overload
+			 * @param zone user zone
+			 *
+			 * \~
 			 */
 			void zone(string_view zone) noexcept;
 		public:
 			/**
+			 * \~russian
 			 * @brief Метод извлечения списка пользовательских зон интернета
 			 *
+			 * \~english
+			 * @brief Method of extracting the list of the user zones of the internet
+			 *
+			 * \~
 			 */
 			const unordered_set <string> & zones() const noexcept;
 			/**
+			 * \~russian
 			 * @brief Метод установки списка пользовательских зон
 			 *
 			 * @param zones список доменных зон интернета
 			 *
+			 * \~english
+			 * @brief Method of setting the list of the user zones
+			 * @param zones list of the domain zones of the internet
+			 *
+			 * \~
 			 */
 			void zones(const unordered_set <string> & zones) noexcept;
 		public:
 			/**
+			 * \~russian
 			 * @brief Метод парсинга URI-строки
 			 *
 			 * @details Определяет вид записи и разбирает её на части. Метод постоянный
@@ -266,32 +420,71 @@ namespace awh {
 			 * @param text текст для парсинга
 			 * @return     параметры полученные в результате парсинга
 			 *
+			 * \~english
+			 * @brief Method of parsing a URI string
+			 * @details Determines the kind of the record and parses it into the parts. The method is a constant one
+			 *          and does not change the state of the object, and therefore one parser can be
+			 *          held for the whole application and addressed from anywhere —
+			 *          provided that the list of the user zones is already set
+			 * @note The result is returned by value, and not by a reference to the internal state:
+			 *          the results of different parsings do not overwrite each other
+			 * @note The kind of the record should always be checked. A string not attributed to
+			 *       any kind will be returned with the type `NONE` and with the empty fields, and an address
+			 *       to them without a check will give not an error, but a quietly wrong behaviour
+			 * @param text text to parse
+			 * @return     parameters obtained as the result of the parsing
+			 *
+			 * \~
 			 */
 			url_t parse(string_view text) const noexcept;
 		public:
 			/**
+			 * \~russian
 			 * @brief Метод установки объекта логирования
 			 *
 			 * @param log объект работы с логами
 			 *
+			 * \~english
+			 * @brief Method of setting the logging object
+			 * @param log object for working with logs
+			 *
+			 * \~
 			 */
 			void setLogger(const Logging * log) noexcept;
 		public:
 			/**
+			 * \~russian
 			 * @brief Конструктор
 			 *
+			 *
+			 * \~english
+			 * @brief Constructor
+			 *
+			 * \~
 			 */
 			explicit Network_Types() noexcept;
 			/**
+			 * \~russian
 			 * @brief Конструктор
 			 *
 			 * @param log объект для работы с логами
 			 *
+			 * \~english
+			 * @brief Constructor
+			 * @param log object for working with logs
+			 *
+			 * \~
 			 */
 			explicit Network_Types(const Logging * log) noexcept;
 			/**
+			 * \~russian
 			 * @brief Деструктор
 			 *
+			 *
+			 * \~english
+			 * @brief Destructor
+			 *
+			 * \~
 			 */
 			~Network_Types() noexcept = default;
 	} nwt_t;

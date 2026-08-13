@@ -9,8 +9,15 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * \~russian
  * @brief Заголовочный файл модуля работы со шлюзами — класс eth::Gateway для получения таблицы маршрутизации,
  *        определения шлюза по умолчанию и разбора параметров маршрута на всех поддерживаемых операционных системах
+ *
+ * \~english
+ * @brief Header file of the module of working with the gateways — the eth::Gateway class for getting the routing table,
+ *        determining the default gateway and parsing the parameters of a route on all the supported operating systems
+ *
+ * \~
  *
  * @copyright: Copyright © 2026
  *
@@ -30,13 +37,24 @@
 #include "../../sys/log.hpp"
 
 /**
+ * \~russian
  * @brief Основное пространство имён
  *
+ *
+ * \~english
+ * @brief Main namespace
+ *
+ * \~
  */
 namespace awh {
 	/**
+	 * \~russian
 	 * @brief Пространство имён Ethernet протоколов
 	 *
+	 * \~english
+	 * @brief Namespace of the Ethernet protocols
+	 *
+	 * \~
 	 */
 	namespace eth {
 		/**
@@ -45,6 +63,7 @@ namespace awh {
 		using namespace std;
 
 		/**
+		 * \~russian
 		 * @brief Класс для работы с шлюзами
 		 *
 		 * @details Ведает таблицей маршрутов - той, по которой система решает, куда
@@ -60,10 +79,25 @@ namespace awh {
 		 * следует убирать за собой - иначе он останется и после выхода, а
 		 * ошибочный способен отрезать машину от сети
 		 *
+		 * \~english
+		 * @brief Class for working with the gateways
+		 * @details Is in charge of the table of the routes — the one by which the system decides where
+		 * to send a packet for the given address. Allows the needed route to be found out,
+		 * as well as one's own to be added and removed
+		 * This is needed by those who lay the paths themselves: by the tunnels that need
+		 * to turn a part of the traffic onto themselves, and by the applications choosing
+		 * the outgoing device deliberately
+		 * @warning A correction of the table changes the routing of the **whole machine**, requires
+		 * supervisory rights and outlives the completion of the process. An added route
+		 * should be removed after oneself — otherwise it will remain after the exit as well, and
+		 * an erroneous one is capable of cutting the machine off the network
+		 *
+		 * \~
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Gateway {
 			public:
 				/**
+				 * \~russian
 				 * @brief Структура маршрута
 				 *
 				 * @details Правило вида «пакеты для такой-то сети слать туда-то»: сеть
@@ -77,6 +111,18 @@ namespace awh {
 				 * @note Шлюз нужен не всякому маршруту: сеть, до которой машина
 				 * достаёт напрямую, задаётся одним устройством, без него
 				 *
+				 * \~english
+				 * @brief Structure of a route
+				 * @details A rule of the kind «the packets for such-and-such a network should be sent there-and-there»: the network
+				 * is set by the address of the destination together with the length of the prefix, and the path —
+				 * by a gateway or by a device
+				 * @note At the getting of a route the address of the destination should be filled —
+				 * the rest will be filled up by the system itself, answering how it
+				 * routes that address
+				 * @note A gateway is needed not by every route: a network the machine
+				 * reaches directly is set by a device alone, without it
+				 *
+				 * \~
 				 */
 				typedef struct __AWH_SHARED_EXPORT__ Route {
 					// Сетевой интерфейс
@@ -88,8 +134,14 @@ namespace awh {
 					// Адрес назначения
 					unique_ptr <net::addr_t> destination;
 					/**
+					 * \~russian
 					 * @brief Конструктор
 					 *
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
 					 */
 					explicit Route() noexcept;
 				} route_t;
@@ -100,6 +152,7 @@ namespace awh {
 				const log_t * _log;
 			public:
 				/**
+				 * \~russian
 				 * @brief Метод получения маршрута для указанного адреса
 				 *
 				 * @details Спрашивает у системы, каким путём она отправит пакет для
@@ -111,9 +164,20 @@ namespace awh {
 				 * @param route объект для извлечения маршрута
 				 * @return      результат получения маршрута
 				 *
+				 * \~english
+				 * @brief Method of getting the route for the specified address
+				 * @details Asks the system by which path it will send a packet for
+				 * the given address, and fills up the route object with the answer
+				 * @note The argument here is both an input and an output one: the address of the destination is set by
+				 * the asking side, and the device, the gateway and the prefix are put down by the system
+				 * @param route object to extract the route into
+				 * @return      result of the getting of the route
+				 *
+				 * \~
 				 */
 				bool get(route_t & route) const noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод добавления маршрута
 				 *
 				 * @details Добавляет правило в таблицу маршрутов системы
@@ -125,9 +189,20 @@ namespace awh {
 				 * @param route объект маршрута для добавления
 				 * @return      результат добавления маршрута
 				 *
+				 * \~english
+				 * @brief Method of adding a route
+				 * @details Adds a rule into the table of the routes of the system
+				 * @warning Is in force for the whole machine and requires supervisory rights. The rule
+				 * outlives the completion of the process, and therefore what has been added should be removed
+				 * by the method of the removal
+				 * @param route object of the route to add
+				 * @return      result of the addition of the route
+				 *
+				 * \~
 				 */
 				bool add(const route_t & route) const noexcept;
 				/**
+				 * \~russian
 				 * @brief Метод удаления маршрута
 				 *
 				 * @details Убирает правило из таблицы маршрутов системы
@@ -138,20 +213,42 @@ namespace awh {
 				 * @param route объект маршрута для удаления
 				 * @return      результат удаления маршрута
 				 *
+				 * \~english
+				 * @brief Method of removing a route
+				 * @details Removes a rule from the table of the routes of the system
+				 * @note The rule is found by the address of the destination and by the prefix, and therefore
+				 * the object must describe the same route that was added
+				 * @param route object of the route to remove
+				 * @return      result of the removal of the route
+				 *
+				 * \~
 				 */
 				bool remove(const route_t & route) const noexcept;
 			public:
 				/**
+				 * \~russian
 				 * @brief Конструктор
 				 *
 				 * @param fmk объект фреймворка
 				 * @param log объект работы с логами
 				 *
+				 * \~english
+				 * @brief Constructor
+				 * @param fmk framework object
+				 * @param log object for working with logs
+				 *
+				 * \~
 				 */
 				explicit Gateway(const fmk_t * fmk, const log_t * log) noexcept;
 				/**
+				 * \~russian
 				 * @brief Деструктор
 				 *
+				 *
+				 * \~english
+				 * @brief Destructor
+				 *
+				 * \~
 				 */
 				~Gateway() noexcept;
 		} gateway_t;

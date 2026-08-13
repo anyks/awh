@@ -9,9 +9,17 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * \~russian
  * @brief Заголовочный файл прототипов функций обратного вызова сетевого движка — сигнатуры колбэков подключения,
  *        чтения, записи, закрытия, ошибок, таймеров и событий SCTP,
  *        на которые подписываются пользователи движка ввода-вывода
+ *
+ * \~english
+ * @brief Header file of the prototypes of the callback functions of the network engine — the signatures of the callbacks of the connection,
+ *        of the reading, of the writing, of the closing, of the errors, of the timers and of the SCTP events,
+ *        which the users of the input-output engine subscribe to
+ *
+ * \~
  *
  * @copyright: Copyright © 2026
  *
@@ -35,8 +43,14 @@
 #include "event.hpp"
 
 /**
+ * \~russian
  * @brief Основное пространство имён
  *
+ *
+ * \~english
+ * @brief Main namespace
+ *
+ * \~
  */
 namespace awh {
 	/**
@@ -45,13 +59,23 @@ namespace awh {
 	using namespace std;
 
 	/**
+	 * \~russian
 	 * @brief Пространство имён движков ввода-вывода
 	 *
+	 * \~english
+	 * @brief Namespace of the input-output engines
+	 *
+	 * \~
 	 */
 	namespace engine {
 		/**
+		 * \~russian
 		 * @brief пространство имён работы с обратными вызовами
 		 *
+		 * \~english
+		 * @brief namespace of the work with the callbacks
+		 *
+		 * \~
 		 */
 		namespace callback {
 			/**
@@ -59,86 +83,156 @@ namespace awh {
 			 */
 			#if __linux__ || __FreeBSD__ || __sun
 				/**
+				 * \~russian
 				 * @brief Пространство имён для работы с SCTP
 				 *
+				 * \~english
+				 * @brief Namespace for working with SCTP
+				 *
+				 * \~
 				 */
 				namespace sctp {
 					/**
+					 * \~russian
 					 * @brief Функция обратного вызова срабатывающая при получении информационных сообщений SCTP
 					 *
 					 * @param id   идентификатор события
 					 * @param info объект информационных метаданных SCTP
 					 *
+					 * \~english
+					 * @brief Callback function triggered at the receipt of the informational messages of SCTP
+					 * @param id   identifier of the event
+					 * @param info object of the informational metadata of SCTP
+					 *
+					 * \~
 					 */
 					using minfo_t = function <void (const event::id_t, const net::sctp::minfo_t &)>;
 					/**
+					 * \~russian
 					 * @brief Функция обратного вызова срабатывающая при получении событий SCTP
 					 *
 					 * @param id    идентификатор события
 					 * @param event объект события SCTP
 					 *
+					 * \~english
+					 * @brief Callback function triggered at the receipt of the events of SCTP
+					 * @param id    identifier of the event
+					 * @param event object of the event of SCTP
+					 *
+					 * \~
 					 */
 					using events_t = function <void (const event::id_t, unique_ptr <net::sctp::event_t>)>;
 				};
 			#endif
 			/**
+			 * \~russian
 			 * @brief Функция обратного вызова срабатывающая при подключении события
 			 *
 			 * @param id идентификатор события
 			 * @param ok результат подключения события (true - подключено, false - ошибка)
 			 *
+			 * \~english
+			 * @brief Callback function triggered at the connection of an event
+			 * @param id identifier of the event
+			 * @param ok result of the connection of the event (true — connected, false — an error)
+			 *
+			 * \~
 			 */
 			using connect_t = function <void (const event::id_t, const bool)>;
 			/**
+			 * \~russian
 			 * @brief Функция обратного вызова срабатывающая при записи в событие
 			 *
 			 * @param id   идентификатор события
 			 * @param size размер записанных данных
 			 *
+			 * \~english
+			 * @brief Callback function triggered at the writing into an event
+			 * @param id   identifier of the event
+			 * @param size size of the written data
+			 *
+			 * \~
 			 */
 			using write_t = function <void (const event::id_t, const size_t)>;
 			/**
+			 * \~russian
 			 * @brief Функция обратного вызова срабатывающая при принятии события
 			 *
 			 * @param id   идентификатор события
 			 * @param peer идентификатор подключившегося события
 			 *
+			 * \~english
+			 * @brief Callback function triggered at the accepting of an event
+			 * @param id   identifier of the event
+			 * @param peer identifier of the connected event
+			 *
+			 * \~
 			 */
 			using accept_t = function <void (const event::id_t, const event::id_t)>;
 			/**
+			 * \~russian
 			 * @brief Функция обратного вызова срабатывающая при общем событии
 			 *
 			 * @param id     идентификатор события
 			 * @param action тип события
 			 *
+			 * \~english
+			 * @brief Callback function triggered at a common event
+			 * @param id     identifier of the event
+			 * @param action type of the event
+			 *
+			 * \~
 			 */
 			using event_t = function <void (const event::id_t, const event::action_t)>;
 			/**
+			 * \~russian
 			 * @brief Функция обратного вызова срабатывающая при изменении статуса события
 			 *
 			 * @param id     идентификатор события
 			 * @param status новый статус события
 			 *
+			 * \~english
+			 * @brief Callback function triggered at the change of the status of an event
+			 * @param id     identifier of the event
+			 * @param status new status of the event
+			 *
+			 * \~
 			 */
 			using status_t = function <void (const event::id_t, const event::status_t)>;
 			/**
+			 * \~russian
 			 * @brief Функция обратного вызова срабатывающая при получении информационных метаданных о дейтаграммном пакете
 			 *
 			 * @param id   идентификатор события
 			 * @param info объект информационных метаданных дейтаграммного пакета
 			 *
+			 * \~english
+			 * @brief Callback function triggered at the receipt of the informational metadata about a datagram packet
+			 * @param id   identifier of the event
+			 * @param info object of the informational metadata of the datagram packet
+			 *
+			 * \~
 			 */
 			using traffic_t = function <void (const event::id_t, const net::dgram_info_t &)>;
 			/**
+			 * \~russian
 			 * @brief Функция обратного вызова срабатывающая при чтении из события
 			 *
 			 * @param id     идентификатор события
 			 * @param buffer буфер прочитанных данных
 			 * @param size   размер прочитанных данных
 			 *
+			 * \~english
+			 * @brief Callback function triggered at the reading from an event
+			 * @param id     identifier of the event
+			 * @param buffer buffer of the read data
+			 * @param size   size of the read data
+			 *
+			 * \~
 			 */
 			using read_t = function <void (const event::id_t, const uint8_t *, const size_t)>;
 			/**
+			 * \~russian
 			 * @brief Функция обратного вызова инъекции объединённых данных в событие (splice)
 			 *
 			 * @note Позволяет транспорту, шифрующему данные на уровне соединения (QUIC),
@@ -150,27 +244,55 @@ namespace awh {
 			 * @param size   размер перенаправляемых данных
 			 * @return       результат приёма данных на инъекцию
 			 *
+			 * \~english
+			 * @brief Callback function of the injection of the joined data into an event (splice)
+			 * @note Allows a transport encrypting the data at the level of the connection (QUIC)
+			 *       to accept the bytes redirected from the source event and to send them
+			 *       by its own stream, and not to write them raw into the socket
+			 * @param id     identifier of the receiver event
+			 * @param buffer buffer of the redirected data
+			 * @param size   size of the redirected data
+			 * @return       result of the acceptance of the data for the injection
+			 *
+			 * \~
 			 */
 			using inject_t = function <bool (const event::id_t, const uint8_t *, const size_t)>;
 			/**
+			 * \~russian
 			 * @brief Функция обратного вызова срабатывающая при ошибке события
 			 *
 			 * @param id    идентификатор события
 			 * @param error код ошибки события
 			 * @param text  текстовое описание ошибки события
 			 *
+			 * \~english
+			 * @brief Callback function triggered at an error of an event
+			 * @param id    identifier of the event
+			 * @param error code of the error of the event
+			 * @param text  text description of the error of the event
+			 *
+			 * \~
 			 */
 			using error_t = function <void (const event::id_t, const event::error_t, const string &)>;
 			/**
+			 * \~russian
 			 * @brief Функция обратного вызова срабатывающая при доступности очереди на отправку данных
 			 *
 			 * @param id     идентификатор события
 			 * @param status статус события
 			 * @param size   размер доступных данных для отправки
 			 *
+			 * \~english
+			 * @brief Callback function triggered at the availability of the queue for the sending of the data
+			 * @param id     identifier of the event
+			 * @param status status of the event
+			 * @param size   size of the available data for the sending
+			 *
+			 * \~
 			 */
 			using available_t = function <void (const event::id_t, const event::status_t, const size_t)>;
 			/**
+			 * \~russian
 			 * @brief Функция обратного вызова срабатывающая при истечении таймера события
 			 *
 			 * @details Сообщает, что истёк срок, заданный через `setTimeout()`: соединение
@@ -198,9 +320,34 @@ namespace awh {
 			 * @return       для READ, WRITE и CONNECT - уничтожать ли узел; для RECONNECT -
 			 *               выполнять ли переподключение
 			 *
+			 * \~english
+			 * @brief Callback function triggered at the expiration of the timer of an event
+			 * @details Reports that the term set through `setTimeout()` has expired: the connection
+			 *          has not accepted the data (READ), has not managed to send it (WRITE), has not
+			 *          been established (CONNECT) or the time has come to repeat the attempt
+			 *          (RECONNECT)
+			 * @warning The meaning of the returned sign **depends on the action**. For READ,
+			 *          WRITE and CONNECT a positive sign destroys the node, and
+			 *          a negative one leaves it alive. For RECONNECT everything is the other way round:
+			 *          a positive one means «reconnect», and the attempt should be interrupted
+			 *          exactly by a negative one. One and the same function serving
+			 *          all the actions at once is obliged to tell these cases apart
+			 * @note If the function is not set, the node at the expiration of the term of READ, WRITE or
+			 *       CONNECT is destroyed **unconditionally**. That is the subscription is needed exactly
+			 *       in order to prevent the break or to surround it with one's own actions
+			 * @note At the expiration of the term of CONNECT `connect_t` is additionally called with
+			 *       a negative outcome, and this happens **before** the call of this function
+			 * @param id     identifier of the event
+			 * @param action on what the term has expired: READ, WRITE, CONNECT or RECONNECT
+			 * @param delay  the set term in milliseconds
+			 * @return       for READ, WRITE and CONNECT — whether the node should be destroyed; for RECONNECT —
+			 *               whether the reconnection should be performed
+			 *
+			 * \~
 			 */
 			using timeout_t = function <bool (const event::id_t, const event::action_t, const uint32_t)>;
 			/**
+			 * \~russian
 			 * @brief Функция обратного вызова срабатывающая при определении сессии дейтаграммного пакета
 			 *
 			 * @note Вызывается до маршрутизации датаграммы и позволяет протоколам с
@@ -214,9 +361,23 @@ namespace awh {
 			 * @param key    выводимый ключ сессии
 			 * @return       результат определения сессии
 			 *
+			 * \~english
+			 * @brief Callback function triggered at the determination of the session of a datagram packet
+			 * @note Is called before the routing of the datagram and allows the protocols with
+			 *       their own addressing of the sessions to set the key of the routing themselves.
+			 *       A negative result means that the datagram does not belong to the protocol
+			 *       and is subject to the discarding without the creation of a session
+			 * @param id     identifier of the event
+			 * @param buffer buffer of the received datagram
+			 * @param size   size of the received datagram
+			 * @param key    yielded key of the session
+			 * @return       result of the determination of the session
+			 *
+			 * \~
 			 */
 			using origin_t = function <bool (const event::id_t, const uint8_t *, const size_t, net::origin_key_t &)>;
 			/**
+			 * \~russian
 			 * @brief Функция обратного вызова возвращающая неотправленные данные события
 			 *
 			 * @details Вызывается, когда отправить данные не удалось: очередь события
@@ -234,9 +395,26 @@ namespace awh {
 			 * @param buffer буфер данных события
 			 * @param size   размер данных события
 			 *
+			 * \~english
+			 * @brief Callback function returning the unsent data of an event
+			 * @details Is called when the data could not be sent: the queue of the event
+			 *          is overflowed, the connection is broken or the writing is rejected. The bytes
+			 *          are returned to the calling side so that it would decide their fate itself —
+			 *          to repeat the sending later, to put them aside into its own buffer or to discard them.
+			 *          The engine does not save them and after the return from the function releases them
+			 * @note The buffer is valid ONLY for the time of the call of the callback function.
+			 *       The data needed after the exit should be copied
+			 * @param id     identifier of the event
+			 * @param error  where the data is returned from: from the event itself (IO_EVENT) or
+			 *               from its queue of the sending (IO_QUEUE)
+			 * @param buffer buffer of the data of the event
+			 * @param size   size of the data of the event
+			 *
+			 * \~
 			 */
 			using spool_t = function <void (const event::id_t, const event::send_error_t, const uint8_t *, const size_t)>;
 			/**
+			 * \~russian
 			 * @brief Функция обратного вызова срабатывающая при изменении каталога
 			 *
 			 * @note Параметр name действителен ТОЛЬКО на время вызова функции обратного вызова
@@ -246,9 +424,19 @@ namespace awh {
 			 * @param vnode  виртуальный узел события
 			 * @param name   имя изменённого файла/каталога события
 			 *
+			 * \~english
+			 * @brief Callback function triggered at the change of a directory
+			 * @note The name parameter is valid ONLY for the time of the call of the callback function
+			 * @param id     identifier of the event
+			 * @param action type of the event
+			 * @param vnode  virtual node of the event
+			 * @param name   name of the changed file/directory of the event
+			 *
+			 * \~
 			 */
 			using vnode_t = function <void (const event::id_t, const event::action_t, const event::vnode_t, const string &)>;
 			/**
+			 * \~russian
 			 * @brief Функция обратного вызова срабатывающая при получении информации о пакетах в туннельном интерфейсе
 			 *
 			 * @param id     идентификатор события
@@ -256,6 +444,14 @@ namespace awh {
 			 * @param action тип события
 			 * @param info   информация о пакетах в туннельном интерфейсе
 			 *
+			 * \~english
+			 * @brief Callback function triggered at the receipt of the information about the packets in a tunnel interface
+			 * @param id     identifier of the event
+			 * @param peer   identifier of the remote node
+			 * @param action type of the event
+			 * @param info   information about the packets in the tunnel interface
+			 *
+			 * \~
 			 */
 			using tuninfo_t = function <void (const event::id_t, const event::id_t, const event::action_t, const net::tun_info_t &)>;
 		};

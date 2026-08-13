@@ -9,6 +9,7 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * \~russian
  * @brief Заголовочный файл модуля туннельных устройств MS Windows — заведение
  *        устройства, обмен пакетами через него и его устранение
  *
@@ -58,6 +59,48 @@
  *          модуль лишь занимает свободное. Если свободных нет, заведение отвечает
  *          отказом с внятной о том записью
  *
+ * \~english
+ * @brief Header file of the module of the tunnel devices of MS Windows — the starting
+ *        of a device, the exchange of the packets through it and its elimination
+ * @details At the POSIX systems a tunnel is an ordinary descriptor: `/dev/net/tun` at Linux,
+ *          `/dev/tunN` or the `utun` control socket at BSD. One opened it — and reads by `read`,
+ *          writes by `write`, on a par with a socket. MS Windows has no built-in tunnel at all,
+ *          and a third-party driver brings it, and there are two of these drivers, and they are arranged
+ *          differently
+ *          **Wintun** gives back no descriptor at all. The packets go through a ring in the memory shared
+ *          with the driver: `WintunReceivePacket` gives out a pointer inside the ring,
+ *          `WintunReleaseReceivePacket` returns the room back. The readiness for the reading
+ *          is reported by an event, which `WintunGetReadWaitEvent` gives back
+ *          **tap-windows6** gives back a real file descriptor, opened by a name
+ *          of the kind `\\.\Global\{GUID}.tap`. Through it go the overlapped `ReadFile` and
+ *          `WriteFile` — exactly as at a named pipe, by which `SEQPACKET` already works
+ *          This module hides both differences. Outwards one thing is given: a descriptor, the reading,
+ *          the writing and the elimination — regardless of by which driver the device
+ *          is started
+ * @par Deliberate decisions
+ *      **The descriptor of Wintun is its event of the readiness.** `net::socket_t` at MS
+ *      Windows is a `uintptr_t`, and a handle of the system fits into it without losses. The event,
+ *      though, is unique per session, lives exactly as long as the session, and is fit as a key of
+ *      a registry. Thereby the signature of `Interface::create` remains common for all the systems, and does not
+ *      acquire a special kind for the sake of one
+ *      **The reception of Wintun goes by a copying, and not by the issuing of a pointer inside the ring.** The issuing
+ *      without a copying would be faster, but would oblige the caller to return the room into
+ *      the ring, and that order would have to be observed by everything that stands above. A trial on
+ *      the stand has shown that the ring tolerates the return out of order, — hence, the refusal from
+ *      the copying is possible later as well, by a separate superstructure, without breaking the present exchange
+ *      **The driver is chosen by the one who starts the device.** The difference between them is not in the speed
+ *      alone: Wintun carries only the packets of the network level and does not serve as a bridge,
+ *      tap-windows6 carries the frames together with the hardware addresses. To choose for
+ *      the caller by the presence of a library would mean changing the behaviour of the device by that,
+ *      what happened to turn out to be on the machine
+ * @warning The starting of a tunnel requires supervisory rights. Their absence answers with the refusal
+ *          ERROR_ACCESS_DENIED, and that refusal is entered into the log as a warning
+ * @warning tap-windows6 starts no new devices: they are placed by the installer of the driver, and
+ *          the module only occupies a free one. If there are no free ones, the starting answers with
+ *          a refusal with an intelligible record about it
+ *
+ * \~
+ *
  * @copyright: Copyright © 2026
  *
  */
@@ -84,8 +127,13 @@
 #include <sys/log.hpp>
 
 /**
+ * \~russian
  * @brief пространство имён библиотеки
  *
+ * \~english
+ * @brief namespace of the library
+ *
+ * \~
  */
 namespace awh {
 	/**
@@ -94,22 +142,40 @@ namespace awh {
 	 */
 	using namespace std;
 	/**
+	 * \~russian
 	 * @brief пространство имён средств MS Windows
 	 *
+	 * \~english
+	 * @brief namespace of the means of MS Windows
+	 *
+	 * \~
 	 */
 	namespace win {
 		/**
+		 * \~russian
 		 * @brief пространство имён туннельных устройств
 		 *
+		 * \~english
+		 * @brief namespace of the tunnel devices
+		 *
+		 * \~
 		 */
 		namespace tunnel {
 			/**
+			 * \~russian
 			 * @brief Драйвер, каким заведено туннельное устройство
 			 *
 			 * @details Драйверы эти устроены по-разному, и различать их приходится
 			 *          всюду, где идёт обмен: у одного кольцо в общей памяти, у
 			 *          другого дескриптор файла
 			 *
+			 * \~english
+			 * @brief The driver a tunnel device is started by
+			 * @details These drivers are arranged differently, and they have to be told apart
+			 *          everywhere the exchange goes: one has a ring in the shared memory, the
+			 *          other one a file descriptor
+			 *
+			 * \~
 			 */
 			enum class driver_t : uint8_t {
 				NONE   = 0x00, // Драйвер не определён
@@ -117,6 +183,7 @@ namespace awh {
 				TAP    = 0x02  // Дескриптор файла, канальный уровень с адресами
 			};
 			/**
+			 * \~russian
 			 * @brief Функция заведения туннельного устройства
 			 *
 			 * @details Имя здесь и входное, и выходное: пустое система дополнит сама,
@@ -128,9 +195,21 @@ namespace awh {
 			 * @param log    объект ведения журнала
 			 * @return       дескриптор заведённого устройства
 			 *
+			 * \~english
+			 * @brief Function of starting a tunnel device
+			 * @details The name here is both an input and an output one: an empty one the system will fill up by itself,
+			 *          writing the chosen one back in the form «{GUID}»
+			 * @param type   kind of the started device
+			 * @param driver driver the device is started by
+			 * @param name   name of the started device
+			 * @param log    object of the keeping of the log
+			 * @return       descriptor of the started device
+			 *
+			 * \~
 			 */
 			net::socket_t create(const event::eth_t type, const driver_t driver, string & name, const log_t * log) noexcept;
 			/**
+			 * \~russian
 			 * @brief Функция проверки доступности драйвера туннельных устройств
 			 *
 			 * @details Wintun считается доступным, если его библиотека подключается и
@@ -140,50 +219,96 @@ namespace awh {
 			 * @param driver проверяемый драйвер
 			 * @return       признак доступности драйвера
 			 *
+			 * \~english
+			 * @brief Function of checking the availability of a driver of the tunnel devices
+			 * @details Wintun is considered available if its library is linked and
+			 *          its composition is the expected one. tap-windows6 — if there is at least one
+			 *          free device in the system: the application is not given to start new ones
+			 * @param driver checked driver
+			 * @return       sign of the availability of the driver
+			 *
+			 * \~
 			 */
 			bool available(const driver_t driver) noexcept;
 			/**
+			 * \~russian
 			 * @brief Функция устранения туннельного устройства
 			 *
 			 * @param sock дескриптор устраняемого устройства
 			 * @param log  объект ведения журнала
 			 * @return     результат выполнения устранения
 			 *
+			 * \~english
+			 * @brief Function of eliminating a tunnel device
+			 * @param sock descriptor of the eliminated device
+			 * @param log  object of the keeping of the log
+			 * @return     result of the performance of the elimination
+			 *
+			 * \~
 			 */
 			bool destroy(const net::socket_t sock, const log_t * log) noexcept;
 			/**
+			 * \~russian
 			 * @brief Функция поиска туннельного устройства по его названию
 			 *
 			 * @param name название искомого устройства
 			 * @return     дескриптор найденного устройства
 			 *
+			 * \~english
+			 * @brief Function of searching for a tunnel device by its name
+			 * @param name name of the searched device
+			 * @return     descriptor of the found device
+			 *
+			 * \~
 			 */
 			net::socket_t find(const string & name) noexcept;
 			/**
+			 * \~russian
 			 * @brief Функция проверки принадлежности дескриптора туннельному устройству
 			 *
 			 * @param sock проверяемый дескриптор
 			 * @return     признак принадлежности дескриптора туннелю
 			 *
+			 * \~english
+			 * @brief Function of checking the belonging of a descriptor to a tunnel device
+			 * @param sock checked descriptor
+			 * @return     sign of the belonging of the descriptor to a tunnel
+			 *
+			 * \~
 			 */
 			bool exists(const net::socket_t sock) noexcept;
 			/**
+			 * \~russian
 			 * @brief Функция получения драйвера туннельного устройства
 			 *
 			 * @param sock дескриптор туннельного устройства
 			 * @return     драйвер, каким устройство заведено
 			 *
+			 * \~english
+			 * @brief Function of getting the driver of a tunnel device
+			 * @param sock descriptor of the tunnel device
+			 * @return     the driver the device is started by
+			 *
+			 * \~
 			 */
 			driver_t driver(const net::socket_t sock) noexcept;
 			/**
+			 * \~russian
 			 * @brief Функция получения названия туннельного устройства
 			 *
 			 * @param sock дескриптор туннельного устройства
 			 * @return     название туннельного устройства
 			 *
+			 * \~english
+			 * @brief Function of getting the name of a tunnel device
+			 * @param sock descriptor of the tunnel device
+			 * @return     name of the tunnel device
+			 *
+			 * \~
 			 */
 			string name(const net::socket_t sock) noexcept;
 			/**
+			 * \~russian
 			 * @brief Функция получения события готовности к чтению
 			 *
 			 * @details Событие это взводится, едва в устройстве появился пакет. Ждать
@@ -193,9 +318,19 @@ namespace awh {
 			 * @param sock дескриптор туннельного устройства
 			 * @return     событие готовности устройства к чтению
 			 *
+			 * \~english
+			 * @brief Function of getting the event of the readiness for the reading
+			 * @details This event is raised as soon as a packet has appeared in the device. It should be waited for
+			 *          by the means of the waiting for the events, and not by a completion port:
+			 *          the port catches the completion of an exchange, but not the raising of an event
+			 * @param sock descriptor of the tunnel device
+			 * @return     event of the readiness of the device for the reading
+			 *
+			 * \~
 			 */
 			HANDLE event(const net::socket_t sock) noexcept;
 			/**
+			 * \~russian
 			 * @brief Функция приёма пакета из туннельного устройства
 			 *
 			 * @param sock   дескриптор туннельного устройства
@@ -203,9 +338,18 @@ namespace awh {
 			 * @param size   размер буфера приёма
 			 * @return       размер принятого пакета, ноль если пакетов нет, -1 при отказе
 			 *
+			 * \~english
+			 * @brief Function of receiving a packet from a tunnel device
+			 * @param sock   descriptor of the tunnel device
+			 * @param buffer buffer the packet is received into
+			 * @param size   size of the buffer of the reception
+			 * @return       size of the received packet, zero if there are no packets, -1 at a refusal
+			 *
+			 * \~
 			 */
 			int64_t read(const net::socket_t sock, void * buffer, const size_t size) noexcept;
 			/**
+			 * \~russian
 			 * @brief Функция отправки пакета в туннельное устройство
 			 *
 			 * @param sock   дескриптор туннельного устройства
@@ -213,6 +357,14 @@ namespace awh {
 			 * @param size   размер отправляемого пакета
 			 * @return       размер отправленного пакета, -1 при отказе
 			 *
+			 * \~english
+			 * @brief Function of sending a packet into a tunnel device
+			 * @param sock   descriptor of the tunnel device
+			 * @param buffer buffer of the sent packet
+			 * @param size   size of the sent packet
+			 * @return       size of the sent packet, -1 at a refusal
+			 *
+			 * \~
 			 */
 			int64_t write(const net::socket_t sock, const void * buffer, const size_t size) noexcept;
 		}

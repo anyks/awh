@@ -12236,8 +12236,8 @@ namespace io {
 								return result;
 							}
 						}
-					// Если клиент находится в запущенном состоянии
-					} else if(client->state.status == event::status_t::LAUNCHED) {
+					// Если клиент не уничтожается: состояние различает СПОСОБ обмена, а не дозволяет его
+					} else if((client->state.status != event::status_t::DESTROYED) && (client->state.status != event::status_t::GARBAGE)) {
 						// Если событие является неблокирующим
 						if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
 							// Количество прочитанных байт
@@ -13058,8 +13058,8 @@ namespace io {
 								return result;
 							}
 						}
-					// Если клиент находится в запущенном состоянии
-					} else if(client->state.status == event::status_t::LAUNCHED) {
+					// Если клиент не уничтожается: состояние различает СПОСОБ обмена, а не дозволяет его
+					} else if((client->state.status != event::status_t::DESTROYED) && (client->state.status != event::status_t::GARBAGE)) {
 						// Если событие является неблокирующим
 						if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
 							// Количество прочитанных байт
@@ -16831,8 +16831,8 @@ namespace io {
 											// Выполняем отправку данных в TCP/IP сокет
 											bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
 										#endif
-									// Если клиент находится в запущенном состоянии
-									} else if(client->state.status == event::status_t::LAUNCHED) {
+									// Если клиент не уничтожается: состояние различает СПОСОБ обмена, а не дозволяет его
+									} else if((client->state.status != event::status_t::DESTROYED) && (client->state.status != event::status_t::GARBAGE)) {
 										/**
 										 * Сбрасываем значение errno перед отправкой данных в сокет
 										 */
@@ -23613,8 +23613,8 @@ namespace io {
 								}
 							}
 						}
-					// Если клиент находится в запущенном состоянии
-					} else if(client->state.status == event::status_t::LAUNCHED) {
+					// Если клиент не уничтожается: состояние различает СПОСОБ обмена, а не дозволяет его
+					} else if((client->state.status != event::status_t::DESTROYED) && (client->state.status != event::status_t::GARBAGE)) {
 						// Если событие является неблокирующим
 						if(client->state.options & event::options::NO_IO_BLOCK){
 							// Если очередь передачи данных пустая
@@ -25224,8 +25224,8 @@ namespace io {
 								}
 							}
 						}
-					// Если клиент находится в запущенном состоянии
-					} else if(client->state.status == event::status_t::LAUNCHED) {
+					// Если клиент не уничтожается: состояние различает СПОСОБ обмена, а не дозволяет его
+					} else if((client->state.status != event::status_t::DESTROYED) && (client->state.status != event::status_t::GARBAGE)) {
 						// Если событие является неблокирующим
 						if(client->state.options & event::options::NO_IO_BLOCK){
 							// Если очередь передачи данных пустая

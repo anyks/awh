@@ -394,6 +394,168 @@ bool awh::codec::csv::Reader::commit() noexcept {
  * @return       признак продолжения разбора
  *
  */
+/**
+ * @brief Метод перестроения разметки знаков, разбор прерывающих
+ *
+ */
+void awh::codec::csv::Reader::marking() noexcept {
+	/**
+	 * Выполняем перебор всех возможных значений знака
+	 */
+	for(uint32_t i = 0; i < 256; i++){
+		// Снимаем отметку у знака в разметке поля без кавычек
+		this->_breakUnquoted[i] = false;
+		// Снимаем отметку у знака в разметке поля в кавычках
+		this->_breakQuoted[i] = false;
+	}
+	/**
+	 * Отмечаем знаки, разбор поля без кавычек прерывающие
+	 *
+	 * @note Кавычка отмечается независимо от строгости разбора: обиходный разбор
+	 *       признаёт её обыкновенным знаком, но отметка эта лишь возвращает знак
+	 *       разбору по знакам, а тот его и признаёт. Разделять здесь два случая
+	 *       значило бы держать две разметки ради знака, в поле без кавычек редкого
+	 */
+	this->_breakUnquoted[static_cast <uint8_t> (this->_separator)] = true;
+	this->_breakUnquoted[static_cast <uint8_t> (this->_settings.quote)] = true;
+	this->_breakUnquoted[static_cast <uint8_t> ('\r')] = true;
+	this->_breakUnquoted[static_cast <uint8_t> ('\n')] = true;
+	/**
+	 * Отмечаем знаки, разбор поля в кавычках прерывающие
+	 *
+	 * @note Возврат каретки здесь не отмечается: внутри кавычек он содержимым поля и
+	 *       является. Перевод строки отмечается затем, что он двигает номер строки
+	 */
+	this->_breakQuoted[static_cast <uint8_t> (this->_settings.quote)] = true;
+	this->_breakQuoted[static_cast <uint8_t> ('\n')] = true;
+	/**
+	 * Если способ записи кавычки признаёт знак отмены
+	 */
+	if((this->_settings.escape == escape_t::BACKSLASH) || (this->_settings.escape == escape_t::BOTH))
+		// Отмечаем знак отмены
+		this->_breakQuoted[static_cast <uint8_t> ('\\')] = true;
+}
+/**
+ * @brief Метод быстрого прохода по знакам, состояния не меняющим
+ *
+ * @param buffer буфер проходимых знаков текста
+ * @param size   размер буфера проходимых знаков текста
+ * @return       количество пройденных знаков
+ *
+ */
+size_t awh::codec::csv::Reader::bulk(const char * buffer, const size_t size) noexcept {
+	// Разметка знаков, разбор прерывающих
+	const bool * marks = nullptr;
+	/**
+	 * Определяем состояние разбора текста
+	 */
+	switch(static_cast <uint8_t> (this->_state)){
+		// Если разбор находится внутри поля без кавычек
+		case static_cast <uint8_t> (state_t::UNQUOTED):
+			// Получаем разметку знаков поля без кавычек
+			marks = this->_breakUnquoted;
+		break;
+		// Если разбор находится внутри поля в кавычках
+		case static_cast <uint8_t> (state_t::QUOTED):
+			// Получаем разметку знаков поля в кавычках
+			marks = this->_breakQuoted;
+		break;
+		/**
+		 * Если разбор находится в любом другом состоянии
+		 *
+		 * @note Прочие состояния занимают по одному-два знака, и проходить их разом
+		 *       нечего: всякий знак в них меняет состояние
+		 */
+		default: return 0;
+	}
+	// Количество проходимых знаков
+	size_t length = 0;
+	/**
+	 * Выполняем поиск первого знака, разбор прерывающего
+	 */
+	while((length < size) && !marks[static_cast <uint8_t> (buffer[length])])
+		// Увеличиваем количество проходимых знаков
+		length++;
+	/**
+	 * Если проходить нечего
+	 */
+	if(length == 0)
+		// Выводим количество пройденных знаков
+		return 0;
+	/**
+	 * Если длина записи ограничена
+	 *
+	 * @note Проход укорачивается до остатка предела, а знак, предел переполняющий,
+	 *       достаётся разбору по знакам - тот и отвечает отказом в том же самом месте,
+	 *       где ответил бы без прохода
+	 */
+	if(this->_settings.maxRecord > 0){
+		// Получаем остаток предела длины записи
+		const uint32_t room = ((this->_settings.maxRecord > this->_length) ? (this->_settings.maxRecord - this->_length) : 0);
+		/**
+		 * Если остаток предела короче прохода
+		 */
+		if(length > static_cast <size_t> (room))
+			// Укорачиваем проход до остатка предела
+			length = static_cast <size_t> (room);
+		/**
+		 * Если проходить стало нечего
+		 */
+		if(length == 0)
+			// Выводим количество пройденных знаков
+			return 0;
+	}
+	// Переносим пройденные знаки в хранилище знаков записи
+	this->_storage.append(buffer, length);
+	// Увеличиваем смещение от начала текста
+	this->_offset += length;
+	// Увеличиваем положение в текущей строке
+	this->_column += static_cast <uint32_t> (length);
+	// Увеличиваем длину текущей записи
+	this->_length += static_cast <uint32_t> (length);
+	/**
+	 * Если разбор находится внутри поля без кавычек
+	 */
+	if(this->_state == state_t::UNQUOTED)
+		// Запоминаем признак наличия полей у записи
+		this->_started = true;
+	// Выводим количество пройденных знаков
+	return length;
+}
+/**
+ * @brief Метод разбора приведённого куска текста
+ *
+ * @param text разбираемый приведённый кусок текста
+ * @return     признак продолжения разбора
+ *
+ */
+bool awh::codec::csv::Reader::process(const string & text) noexcept {
+	// Смещение по разбираемому куску текста
+	size_t offset = 0;
+	/**
+	 * Выполняем разбор всего куска текста
+	 */
+	while(offset < text.size()){
+		// Выполняем быстрый проход по знакам, состояния не меняющим
+		offset += this->bulk(text.data() + offset, text.size() - offset);
+		/**
+		 * Если кусок текста исчерпан проходом
+		 */
+		if(offset >= text.size())
+			// Выводим признак продолжения разбора
+			break;
+		/**
+		 * Если разбор очередного знака не удался
+		 */
+		if(!this->parse(text[offset]))
+			// Выводим признак неудачного разбора
+			return false;
+		// Выполняем переход к следующему знаку
+		offset++;
+	}
+	// Выводим признак продолжения разбора
+	return true;
+}
 bool awh::codec::csv::Reader::parse(const char letter) noexcept {
 	/**
 	 * Если длина записи превышает допустимую
@@ -1210,6 +1372,8 @@ bool awh::codec::csv::Reader::detect() noexcept {
 		result = ',';
 	// Запоминаем определённый разделитель полей
 	this->_separator = result;
+	// Выполняем перестроение разметки знаков, разбор прерывающих
+	this->marking();
 	// Запоминаем признак того, что разделитель определён
 	this->_detected = true;
 	// Выводим признак успешного определения
@@ -1232,6 +1396,13 @@ void awh::codec::csv::Reader::reset() noexcept {
 	this->_separator = this->_settings.separator;
 	// Запоминаем признак того, задан ли разделитель настройками
 	this->_detected = (this->_settings.separator != '\0');
+	/**
+	 * Выполняем перестроение разметки знаков, разбор прерывающих
+	 *
+	 * @note Перестроение идёт при всяком сбросе, а не однажды при заведении: знаки эти
+	 *       зависят от настроек, а настройки устанавливаются именно сбросом
+	 */
+	this->marking();
 	// Сбрасываем признак разбора метки порядка байтов
 	this->_marked = false;
 	// Сбрасываем признак подачи текста целиком
@@ -1397,16 +1568,11 @@ bool awh::codec::csv::Reader::feed(const char * buffer, const size_t size, const
 			// Выводим ошибку неопределённого разделителя
 			return this->fail(error_t::SEPARATOR_UNDETECTED);
 		/**
-		 * Выполняем разбор всех знаков отложенного текста
+		 * Если разбор отложенного текста не удался
 		 */
-		for(const char letter : this->_pending){
-			/**
-			 * Если разбор знака не удался
-			 */
-			if(!this->parse(letter))
-				// Выводим признак неудачного разбора
-				return false;
-		}
+		if(!this->process(this->_pending))
+			// Выводим признак неудачного разбора
+			return false;
 		// Очищаем хранилище отложенных байтов
 		this->_pending.clear();
 		/**
@@ -1428,16 +1594,11 @@ bool awh::codec::csv::Reader::feed(const char * buffer, const size_t size, const
 		return true;
 	}
 	/**
-	 * Выполняем разбор всех знаков перекодированного текста
+	 * Если разбор перекодированного текста не удался
 	 */
-	for(const char letter : this->_decoded){
-		/**
-		 * Если разбор знака не удался
-		 */
-		if(!this->parse(letter))
-			// Выводим признак неудачного разбора
-			return false;
-	}
+	if(!this->process(this->_decoded))
+		// Выводим признак неудачного разбора
+		return false;
 	/**
 	 * Если приведение текста оборвалось ошибкой
 	 *

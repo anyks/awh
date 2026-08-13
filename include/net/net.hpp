@@ -9,9 +9,17 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * \~russian
  * @brief Заголовочный файл базовых сетевых структур — представление адресов подключения (IPv4, IPv6, MAC, UDS),
  *        атрибутов и источников соединения, информации о датаграммах, туннелях и сетевых интерфейсах,
  *        используемых всеми транспортными модулями
+ *
+ * \~english
+ * @brief Header file of the base network structures — the representation of the addresses of a connection (IPv4, IPv6, MAC, UDS),
+ *        of the attributes and of the sources of a connection, of the information about the datagrams, the tunnels and the network interfaces,
+ *        used by all the transport modules
+ *
+ * \~
  *
  * @copyright: Copyright © 2025
  *
@@ -34,6 +42,7 @@
 #include <unordered_set>
 
 /**
+ * \~russian
  * Для операционной системы не являющейся MS Windows
  *
  * @note Заголовков MS Windows здесь нет намеренно. Единая точка их подключения
@@ -42,6 +51,15 @@
  *       трансляции потребителя библиотеки, отнимая у него DELETE, NO_ERROR и прочие.
  *       Поэтому заголовки MS Windows подключаются только в файлах реализации
  *
+ * \~english
+ * For an operating system that is not MS Windows
+ * @note There are no headers of MS Windows here deliberately. The single point of their inclusion
+ *       (sys/win32.hpp) removes the macros whose names are taken by the members of the enumerations of AWH,
+ *       and were it included from a public header — these removals would leak into the translation
+ *       unit of the consumer of the library, taking away from it DELETE, NO_ERROR and the others.
+ *       Therefore the headers of MS Windows are included only in the files of the implementation
+ *
+ * \~
  */
 #if !_WIN32 && !_WIN64
 	/**
@@ -63,8 +81,14 @@
 #include "../sys/macro_push.hpp"
 
 /**
+ * \~russian
  * @brief Основное пространство имён
  *
+ *
+ * \~english
+ * @brief Main namespace
+ *
+ * \~
  */
 namespace awh {
 	/**
@@ -73,8 +97,13 @@ namespace awh {
 	using namespace std;
 
 	/**
+	 * \~russian
 	 * @brief Пространство имён для работы с сетью
 	 *
+	 * \~english
+	 * @brief Namespace for working with the network
+	 *
+	 * \~
 	 */
 	namespace net {
 		/**
@@ -82,6 +111,7 @@ namespace awh {
 		 */
 		#if _WIN32 || _WIN64
 			/**
+			 * \~russian
 			 * @brief Тип сокета
 			 *
 			 * @details Написание повторяет тип SOCKET из winsock2.h дословно: там он
@@ -93,15 +123,33 @@ namespace awh {
 			 *       написание с системным, вызовы сокетного API стали бы усекать значение
 			 *       на разрядных системах, где дескриптор сокета выходит за пределы int
 			 *
+			 * \~english
+			 * @brief Type of a socket
+			 * @details The spelling repeats the SOCKET type from winsock2.h word for word: there it
+			 *          is started as a UINT_PTR, that is an unsigned integer of the width of
+			 *          a pointer. It is written out here in one's own words so that
+			 *          a public header would not drag the headers of MS Windows along with it
+			 * @note The coincidence is fixed by a sizeof check in the file of the implementation: were
+			 *       the spelling to diverge with the system one, the calls of the socket API would begin to truncate the value
+			 *       on the wide systems, where the descriptor of a socket goes beyond the limits of an int
+			 *
+			 * \~
 			 */
 			using socket_t = uintptr_t;
 
 			/**
+			 * \~russian
 			 * @brief Некорректный сокет
 			 *
 			 * @details Значение повторяет макрос INVALID_SOCKET из winsock2.h,
 			 *          заведённый там как (SOCKET)(~0)
 			 *
+			 * \~english
+			 * @brief Invalid socket
+			 * @details The value repeats the INVALID_SOCKET macro from winsock2.h,
+			 *          started there as (SOCKET)(~0)
+			 *
+			 * \~
 			 */
 			static constexpr socket_t invalid_socket_t = static_cast <socket_t> (~0);
 		/**
@@ -109,19 +157,30 @@ namespace awh {
 		 */
 		#else
 			/**
+			 * \~russian
 			 * @brief Тип сокета
 			 *
+			 * \~english
+			 * @brief Type of a socket
+			 *
+			 * \~
 			 */
 			using socket_t = int32_t;
 
 			/**
+			 * \~russian
 			 * @brief Некорректный сокет
 			 *
+			 * \~english
+			 * @brief Invalid socket
+			 *
+			 * \~
 			 */
 			static constexpr socket_t invalid_socket_t = -1;
 		#endif
 
 		/**
+		 * \~russian
 		 * @brief Режимы установки типа сокета
 		 *
 		 * @details Переключатель настройки сокета на два положения. Пользуются им
@@ -132,6 +191,16 @@ namespace awh {
 		 *       не к узлу движка, и значения их **не совпадают числами**. Подменять
 		 *       один другим через приведение нельзя
 		 *
+		 * \~english
+		 * @brief Modes of the setting of the type of a socket
+		 * @details A switch of a setting of a socket with two positions. It is used
+		 *          where a setting comes down to «to switch on or to switch off»: the gathering
+		 *          of the information about the passing traffic, the separate properties of a socket
+		 * @note This set repeats `event::mode_t`, but relates to the socket itself, and
+		 *       not to a node of the engine, and their values **do not coincide by the numbers**. Substituting
+		 *       one for the other through a cast is not allowed
+		 *
+		 * \~
 		 */
 		enum class socket_mode_t : uint8_t {
 			ENABLED  = 0x01, // Включено
@@ -139,6 +208,7 @@ namespace awh {
 		};
 
 		/**
+		 * \~russian
 		 * @brief События сокета
 		 *
 		 * @details Указывает, к какому из двух направлений относится настройка -
@@ -146,6 +216,14 @@ namespace awh {
 		 *          задаются направлениям порознь, и этим значением выбирается, о
 		 *          котором из них речь
 		 *
+		 * \~english
+		 * @brief Events of a socket
+		 * @details Specifies which of the two directions a setting relates to —
+		 *          to the reception or to the sending. The limits of the waiting and the sizes of the accumulators
+		 *          are set to the directions separately, and by this value it is chosen which
+		 *          of them is meant
+		 *
+		 * \~
 		 */
 		enum class socket_event_t : uint8_t {
 			READ  = 0x01, // Чтение
@@ -153,6 +231,7 @@ namespace awh {
 		};
 
 		/**
+		 * \~russian
 		 * @brief Идентификаторы разновидностей адресов
 		 *
 		 * @details Признак вида у атрибутов подключения - того, чем задана точка:
@@ -167,6 +246,20 @@ namespace awh {
 		 *       непрерывность номеров - перебирать их счётчиком или заводить по ним
 		 *       таблицу - всё равно нельзя
 		 *
+		 * \~english
+		 * @brief Identifiers of the varieties of the addresses
+		 * @details The sign of the kind at the attributes of a connection — of that by which the point is set:
+		 *          by an IPv4 or an IPv6 address, by a domain name, by a path in the file system
+		 *          or by a hardware address
+		 * @note This set is **not a continuous one**: the value `0x03` is skipped deliberately.
+		 *       The numbers here are agreed with the set of the same name of the `net_addr_t` class,
+		 *       which is wider, and the skip falls on its value `URL` —
+		 *       a variety not applicable to a point of a connection. This agreement
+		 *       allows the values to be carried between the sets, but relying on
+		 *       the continuity of the numbers — traversing them by a counter or starting a table
+		 *       by them — is still not allowed
+		 *
+		 * \~
 		 */
 		enum class type_t : uint8_t {
 			NONE  = 0x00, // Не определено
@@ -178,6 +271,7 @@ namespace awh {
 		};
 
 		/**
+		 * \~russian
 		 * @brief Структура адреса
 		 *
 		 * @details Общее основание для всех видов адреса. Само по себе оно несёт
@@ -209,6 +303,36 @@ namespace awh {
 		 *       ненулевой
 		 *
 		 * @par Пример: разбор адреса по виду
+		 *
+		 * \~english
+		 * @brief Structure of an address
+		 * @details The common base for all the kinds of an address. By itself it carries
+		 *          only the length, and the bytes themselves are added by a descendant — its own for every
+		 *          kind. This is started for the sake of a single storage: an address is passed and
+		 *          held as a pointer to the base, and is cast to the needed kind by
+		 *          the place through `awh_cast`
+		 *          There are five descendants. A hardware address, the addresses of an IPv4 and of an IPv6 network — at
+		 *          the last two there is also the length of a prefix, — as well as an address
+		 *          of the file system, behind which there stands not a number, but a path
+		 * @note The length serves as the **sign of the kind** as well: six at a hardware address,
+		 *       four at IPv4, sixteen at IPv6 and zero at a path of the file system,
+		 *       whose length is unknown in advance. There is no separate field with the kind here, and
+		 *       an arriving address has to be resolved by the length
+		 * @warning It is not allowed to cast the base to a kind it does not answer to.
+		 *          A cast through `awh_cast` is checked **only in the debug
+		 *          build**, where a wrong kind gives a null pointer; in the release
+		 *          build the check is removed for the sake of the speed. This is done deliberately:
+		 *          into the release build there gets what is already debugged, and a wrong cast
+		 *          there is an oversight of the developer, and not that from which the library
+		 *          is obliged to guard at the price of the costs at every address
+		 * @note Hence the rule: the length should be checked before the cast and one should debug
+		 *       in the debug build, where a foreign kind will be caught at once. Relying
+		 *       on the result of the cast itself is not allowed — in the release build it is always
+		 *       a non-null one
+		 * @par Example: the resolution of an address by the kind
+		 *
+		 * \~
+		 *
 		 * @code{.cpp}
 		 * // Определяем вид пришедшего адреса по его длине
 		 * switch(addr->size){
@@ -228,20 +352,33 @@ namespace awh {
 			// Размер адреса
 			uint16_t size;
 			/**
+			 * \~russian
 			 * @brief Конструктор
 			 *
 			 * @param size размер адреса
 			 *
+			 * \~english
+			 * @brief Constructor
+			 * @param size size of the address
+			 *
+			 * \~
 			 */
 			explicit Address(const uint16_t size = 0) noexcept;
 			/**
+			 * \~russian
 			 * @brief Деструктор
 			 *
+			 *
+			 * \~english
+			 * @brief Destructor
+			 *
+			 * \~
 			 */
 			virtual ~Address() noexcept = default;
 		} addr_t;
 
 		/**
+		 * \~russian
 		 * @brief Структура MAC-адреса
 		 *
 		 * @details Аппаратный адрес сетевого устройства - шесть байт, закреплённых
@@ -254,18 +391,37 @@ namespace awh {
 		 *       подставляют случайный при поиске беспроводных сетей. Опираться на
 		 *       него как на неизменную примету устройства не следует
 		 *
+		 * \~english
+		 * @brief Structure of a MAC address
+		 * @details The hardware address of a network device — six bytes fastened
+		 *          to the device by the manufacturer. Serves as the addressing at the link
+		 *          level, within one segment of a network: further than the first
+		 *          router it does not go and is substituted at every hop
+		 * @note This address often turns out to be not the one fastened by the manufacturer:
+		 *       its substitution by a setting is an ordinary thing, and the mobile devices
+		 *       substitute a random one at the search for the wireless networks. Relying on
+		 *       it as on an unchanging marker of a device is not advisable
+		 *
+		 * \~
 		 */
 		typedef struct __AWH_SHARED_EXPORT__ Address_MAC : public addr_t {
 			// Буфер MAC-адреса
 			array <uint8_t, 6> address;
 			/**
+			 * \~russian
 			 * @brief Конструктор
 			 *
+			 *
+			 * \~english
+			 * @brief Constructor
+			 *
+			 * \~
 			 */
 			explicit Address_MAC() noexcept;
 		} addr_mac_t;
 
 		/**
+		 * \~russian
 		 * @brief Структура сетевого адреса
 		 *
 		 * @details Промежуточное основание для адресов, у которых помимо самого
@@ -278,21 +434,41 @@ namespace awh {
 		 *       единственный узел, а не сеть. Задавать её следует тому, кто
 		 *       выставляет адрес
 		 *
+		 * \~english
+		 * @brief Structure of a network address
+		 * @details An intermediate base for the addresses at which besides the address itself
+		 *          there is also the length of a prefix — the number of the higher digits
+		 *          given over to the network. It carries no bytes of the address of its own, they
+		 *          are added by the descendants, different at IPv4 and IPv6
+		 * @note The length of the prefix is started as the largest one — thirty two at IPv4 and one hundred
+		 *       twenty eight at IPv6, — that is at first it describes one
+		 *       single node, and not a network. It should be set by the one who
+		 *       sets out the address
+		 *
+		 * \~
 		 */
 		typedef struct __AWH_SHARED_EXPORT__ Address_Network : public addr_t {
 			// Префикс сети
 			uint8_t prefix;
 			/**
+			 * \~russian
 			 * @brief Конструктор
 			 *
 			 * @param prefix префикс сети
 			 * @param size   размер адреса
 			 *
+			 * \~english
+			 * @brief Constructor
+			 * @param prefix prefix of the network
+			 * @param size   size of the address
+			 *
+			 * \~
 			 */
 			explicit Address_Network(const uint8_t prefix, const uint16_t size) noexcept;
 		} addr_net_t;
 
 		/**
+		 * \~russian
 		 * @brief Структура IPv4 сетевого адреса
 		 *
 		 * @details Адрес IPv4 числом вместе с длиной префикса сети
@@ -302,23 +478,44 @@ namespace awh {
 		 *          Передавая адрес системным вызовам, порядок следует привести к
 		 *          сетевому явно
 		 *
+		 * \~english
+		 * @brief Structure of an IPv4 network address
+		 * @details An IPv4 address as a number together with the length of the prefix of the network
+		 * @warning The structure **does not stipulate** the order of the bytes in the field of the address and does not
+		 *          swap it itself: it is such as the one who filled it has written it. Passing
+		 *          the address to the system calls, the order should be brought to the network one explicitly
+		 *
+		 * \~
 		 */
 		typedef struct __AWH_SHARED_EXPORT__ Address_Network_IPv4 : public addr_net_t {
 			// IP-адрес сети
 			uint32_t address;
 			/**
+			 * \~russian
 			 * @brief Конструктор
 			 *
+			 *
+			 * \~english
+			 * @brief Constructor
+			 *
+			 * \~
 			 */
 			explicit Address_Network_IPv4() noexcept;
 			/**
+			 * \~russian
 			 * @brief Деструктор
 			 *
+			 *
+			 * \~english
+			 * @brief Destructor
+			 *
+			 * \~
 			 */
 			virtual ~Address_Network_IPv4() noexcept = default;
 		} addr_net_ipv4_t;
 
 		/**
+		 * \~russian
 		 * @brief Структура IPv6 сетевого адреса
 		 *
 		 * @details Адрес IPv6 шестнадцатью байтами вместе с длиной префикса сети
@@ -333,6 +530,19 @@ namespace awh {
 		 *       машина не знает, которым устройством его достигать. Прочим адресам
 		 *       зона не нужна, и у них поле остаётся нулевым
 		 *
+		 * \~english
+		 * @brief Structure of an IPv6 network address
+		 * @details An IPv6 address as sixteen bytes together with the length of the prefix of the network
+		 * @note The zone of the address is held as the **number** of a device, and not as its name:
+		 *       it is exactly the number that the system requires in the `sin6_scope_id` field, and the conversion of
+		 *       a name into a number is performed once at the parsing of a record, and not at
+		 *       every sending. Zero means the absence of a zone
+		 *       The zone is needed by the link-local addresses (`FE80::/10`) and by the link-local multicast
+		 *       addresses (`FF02::/16`): without it such an address is ambiguous —
+		 *       the machine does not know by which device to reach it. The other addresses do not need
+		 *       a zone, and at them the field remains a zero one
+		 *
+		 * \~
 		 */
 		typedef struct __AWH_SHARED_EXPORT__ Address_Network_IPv6 : public addr_net_t {
 			// Номер устройства зоны адреса
@@ -340,13 +550,20 @@ namespace awh {
 			// Буфер IP-адрес сети
 			array <uint8_t, 16> address;
 			/**
+			 * \~russian
 			 * @brief Конструктор
 			 *
+			 *
+			 * \~english
+			 * @brief Constructor
+			 *
+			 * \~
 			 */
 			explicit Address_Network_IPv6() noexcept;
 		} addr_net_ipv6_t;
 
 		/**
+		 * \~russian
 		 * @brief Структура адреса файловой системы
 		 *
 		 * @details Путь к записи в файловой системе - к файлу, каталогу или местному
@@ -361,18 +578,37 @@ namespace awh {
 		 *          символов - предел этот куда короче обычного предела на путь, и
 		 *          длинный путь будет молча обрезан при подключении
 		 *
+		 * \~english
+		 * @brief Structure of an address of the file system
+		 * @details A path to a record in the file system — to a file, to a directory or to a local
+		 *          socket. The only kind of an address behind which there stands not a number, but
+		 *          a string of a variable length
+		 * @note The length at this kind remains a zero one, and it serves as its marker as well
+		 *       at the resolution: the path has no length of its own, it is held in the string itself
+		 * @warning The path to a local socket is limited by the system to about a hundred
+		 *          characters — that limit is far shorter than the ordinary limit on a path, and
+		 *          a long path will be silently cut off at the connection
+		 *
+		 * \~
 		 */
 		typedef struct __AWH_SHARED_EXPORT__ Address_Filesystem : public addr_t {
 			// Путь к файлу, каталогу или сокету
 			string address;
 			/**
+			 * \~russian
 			 * @brief Конструктор
 			 *
+			 *
+			 * \~english
+			 * @brief Constructor
+			 *
+			 * \~
 			 */
 			explicit Address_Filesystem() noexcept;
 		} addr_fs_t;
 
 		/**
+		 * \~russian
 		 * @brief Структура сетевых адресов текущей машины
 		 *
 		 * @details Связка «устройство - его адреса»: название сетевого устройства,
@@ -385,6 +621,18 @@ namespace awh {
 		 *       передаётся снаружи и может отсутствовать: устройство, поднятое без
 		 *       адреса, - обычное дело
 		 *
+		 * \~english
+		 * @brief Structure of the network addresses of the current machine
+		 * @details The bundle «a device — its addresses»: the name of a network device,
+		 *          the address of a network fastened to it and its hardware address. Is needed where
+		 *          a machine has several devices and it is important through which exactly
+		 *          the exchange should be performed — at the choice of a source address, at the multicast to
+		 *          a group, at the polling of the available devices
+		 * @note The hardware address is started at once and always, but the address of a network
+		 *       is passed from the outside and may be absent: a device brought up without
+		 *       an address is an ordinary thing
+		 *
+		 * \~
 		 */
 		typedef struct __AWH_SHARED_EXPORT__ Source {
 			// Название сетвого интерфейса
@@ -394,15 +642,22 @@ namespace awh {
 			// MAC-адрес сети
 			unique_ptr <addr_t> mac;
 			/**
+			 * \~russian
 			 * @brief Конструктор
 			 *
 			 * @param ip адрес сетевого подключения
 			 *
+			 * \~english
+			 * @brief Constructor
+			 * @param ip address of the network connection
+			 *
+			 * \~
 			 */
 			explicit Source(unique_ptr <addr_t> ip) noexcept;
 		} src_t;
 
 		/**
+		 * \~russian
 		 * @brief Структура атрибутов подключения
 		 *
 		 * @details Общее основание для описания **точки подключения** - того, куда
@@ -434,25 +689,66 @@ namespace awh {
 		 *          неопределённого вида и пустого адреса - иначе пустая точка будет
 		 *          молча пропущена
 		 *
+		 * \~english
+		 * @brief Structure of the attributes of a connection
+		 * @details The common base for the description of a **point of a connection** — of that where
+		 *          one connects to or where one listens. Differs from an address in that it carries
+		 *          not the bytes of an address alone, but everything needed for the establishment of a link:
+		 *          together with the address also a port, and instead of the address — a domain name, if
+		 *          the node is set by a name
+		 *          There are three descendants: a point set by a domain name and by a port; a point
+		 *          set by an address of a network and by a port; and a local socket set by a path in
+		 *          the file system
+		 * @note The sign of the kind here is the **field of the kind**, and not the length, as at an address.
+		 *       These hierarchies are different and they should not be confused: an address answers the question
+		 *       «where to», the attributes — «where to and how»
+		 * @note A point set by an address of a network is started as an **empty** one: its kind is not
+		 *       defined, and the memory for the address itself is not allocated. It is intended so —
+		 *       there is no address yet, after all, and there is nothing to declare its kind in advance from.
+		 *       Formerly IPv4 was set out here with an allocation of the memory for it, but this
+		 *       generated the ambiguities: at first it was unclear why IPv6
+		 *       requires the memory, and IPv4 does not, and after the elimination of this — why
+		 *       the memory for IPv4 is allocated only to be overwritten right away
+		 *       by the memory for the real address. The emptiness rids of the ambiguities,
+		 *       and the price for it is to remember that the point is empty
+		 * @warning Hence the duty of the one who fills: to set out both the address and the kind.
+		 *          The one who resolves a point by the kind, though, is obliged to provide for the case
+		 *          of an undefined kind and of an empty address — otherwise an empty point will be
+		 *          silently skipped
+		 *
+		 * \~
 		 */
 		typedef struct __AWH_SHARED_EXPORT__ Attributes {
 			// Тип адреса подключения
 			type_t type;
 			/**
+			 * \~russian
 			 * @brief Конструктор
 			 *
 			 * @param type тип адреса подключения
 			 *
+			 * \~english
+			 * @brief Constructor
+			 * @param type type of the address of the connection
+			 *
+			 * \~
 			 */
 			explicit Attributes(const type_t type) noexcept;
 			/**
+			 * \~russian
 			 * @brief Деструктор
 			 *
+			 *
+			 * \~english
+			 * @brief Destructor
+			 *
+			 * \~
 			 */
 			virtual ~Attributes() noexcept = default;
 		} attr_t;
 
 		/**
+		 * \~russian
 		 * @brief Структура FQDN-адреса подключения
 		 *
 		 * @details Точка подключения, заданная доменным именем и портом. Разрешение
@@ -463,6 +759,16 @@ namespace awh {
 		 *       Который из них будет выбран, здесь не задаётся - это решается при
 		 *       разрешении имени
 		 *
+		 * \~english
+		 * @brief Structure of an FQDN address of a connection
+		 * @details A point of a connection set by a domain name and by a port. The resolution
+		 *          of the name into an address is postponed until the connection itself, and therefore one and
+		 *          the same point may with the time point at different nodes
+		 * @note Several addresses may answer to a name, and of different versions at once.
+		 *       Which of them will be chosen is not set here — this is decided at
+		 *       the resolution of the name
+		 *
+		 * \~
 		 */
 		typedef struct __AWH_SHARED_EXPORT__ Attributes_FQDN : public attr_t {
 			// Порт хоста
@@ -470,13 +776,20 @@ namespace awh {
 			// Доменное имя хоста
 			string domain;
 			/**
+			 * \~russian
 			 * @brief Конструктор
 			 *
+			 *
+			 * \~english
+			 * @brief Constructor
+			 *
+			 * \~
 			 */
 			explicit Attributes_FQDN() noexcept;
 		} attr_fqdn_t;
 
 		/**
+		 * \~russian
 		 * @brief Структура IP-адреса подключения
 		 *
 		 * @details Точка подключения, заданная готовым адресом сети и портом.
@@ -497,6 +810,25 @@ namespace awh {
 		 *       указатель нулевым, адрес нужно завести явно, и разновидность его в
 		 *       таких местах всегда известна
 		 *
+		 * \~english
+		 * @brief Structure of an IP address of a connection
+		 * @details A point of a connection set by a ready address of a network and by a port.
+		 *          Requires no resolution of a name, and therefore a connection by it
+		 *          is established at once
+		 * @warning The kind at the starting remains an **undefined** one and is not derived from
+		 *          the set out address by itself. It must be filled — by a choice between IPv4 and
+		 *          IPv6 — by the one who sets out the address
+		 * @note This emptiness is a **deliberate** one, and setting out IPv4 by default here is not
+		 *       advisable. Formerly it was exactly so: the kind IPv4 was started and the memory for it, —
+		 *       and a double thing came out. Firstly, it was unclear why to one
+		 *       variety the memory is given over, and to another one it is not. Secondly, for every
+		 *       address at first the memory for IPv4 was given over, and then was overwritten
+		 *       for the real variety — a work for nothing at any outcome.
+		 *       The price for the emptiness is to remember about it: where the kind has turned out to be `NONE`, and
+		 *       the pointer a null one, the address needs to be started explicitly, and its variety in
+		 *       such places is always known
+		 *
+		 * \~
 		 */
 		typedef struct __AWH_SHARED_EXPORT__ Attributes_Network : public attr_t {
 			// Порт хоста
@@ -504,13 +836,20 @@ namespace awh {
 			// IP-адрес хоста
 			unique_ptr <addr_t> ip;
 			/**
+			 * \~russian
 			 * @brief Конструктор
 			 *
+			 *
+			 * \~english
+			 * @brief Constructor
+			 *
+			 * \~
 			 */
 			explicit Attributes_Network() noexcept;
 		} attr_net_t;
 
 		/**
+		 * \~russian
 		 * @brief Структура UDS-адреса подключения
 		 *
 		 * @details Точка подключения через местный сокет - тот, что живёт в файловой
@@ -522,28 +861,54 @@ namespace awh {
 		 *       права файловой системы, что даёт разграничение доступа, которого у
 		 *       сетевого сокета нет
 		 *
+		 * \~english
+		 * @brief Structure of a UDS address of a connection
+		 * @details A point of a connection through a local socket — the one that lives in the file
+		 *          system and connects only the processes of one machine. It has no port,
+		 *          its role is played by the path
+		 * @note The exchange through a local socket bypasses the network stack entirely and is therefore much
+		 *       faster than a connection through the loopback address. The rights on it are the ordinary
+		 *       rights of the file system, which gives a delimitation of the access, which
+		 *       a network socket has not
+		 *
+		 * \~
 		 */
 		typedef struct __AWH_SHARED_EXPORT__ Attributes_Unix_Domain_Socket : public attr_t {
 			// Путь к сокету
 			unique_ptr <addr_t> path;
 			/**
+			 * \~russian
 			 * @brief Конструктор
 			 *
+			 *
+			 * \~english
+			 * @brief Constructor
+			 *
+			 * \~
 			 */
 			explicit Attributes_Unix_Domain_Socket() noexcept;
 		} attr_uds_t;
 
 		/**
+		 * \~russian
 		 * @brief Максимальный размер опакового ключа сессии
 		 *
 		 * @details Размера достаточно для идентификатора соединения QUIC, который
 		 *          ограничен двадцатью октетами (RFC 9000 §17.2), с запасом на
 		 *          иные протоколы с собственной адресацией сессий поверх UDP.
 		 *
+		 * \~english
+		 * @brief Maximum size of an opaque key of a session
+		 * @details The size is enough for the identifier of a QUIC connection, which
+		 *          is limited to twenty octets (RFC 9000 §17.2), with a reserve for
+		 *          the other protocols with their own addressing of the sessions over UDP.
+		 *
+		 * \~
 		 */
 		static constexpr uint8_t MAX_ORIGIN_KEY_SIZE = 32;
 
 		/**
+		 * \~russian
 		 * @brief Структура опакового ключа сессии
 		 *
 		 * @details Протоколы, адресующие сессию не четвёркой сокета, а собственным
@@ -551,6 +916,14 @@ namespace awh {
 		 *          сами. Содержимое ключа сетевым движком не интерпретируется:
 		 *          он лишь сравнивает и хеширует его.
 		 *
+		 * \~english
+		 * @brief Structure of an opaque key of a session
+		 * @details The protocols addressing a session not by the quadruple of a socket, but by their own
+		 *          identifier inside a datagram, set the key of the routing
+		 *          themselves. The content of the key is not interpreted by the network engine:
+		 *          it only compares and hashes it.
+		 *
+		 * \~
 		 */
 		typedef struct __AWH_SHARED_EXPORT__ Origin_Key {
 			// Размер ключа сессии
@@ -558,21 +931,35 @@ namespace awh {
 			// Данные ключа сессии
 			uint8_t data[MAX_ORIGIN_KEY_SIZE];
 			/**
+			 * \~russian
 			 * @brief Конструктор
 			 *
+			 *
+			 * \~english
+			 * @brief Constructor
+			 *
+			 * \~
 			 */
 			explicit Origin_Key() noexcept;
 			/**
+			 * \~russian
 			 * @brief Конструктор
 			 *
 			 * @param data данные ключа сессии
 			 * @param size размер ключа сессии
 			 *
+			 * \~english
+			 * @brief Constructor
+			 * @param data data of the key of the session
+			 * @param size size of the key of the session
+			 *
+			 * \~
 			 */
 			explicit Origin_Key(const uint8_t * data, const uint8_t size) noexcept;
 		} origin_key_t;
 
 		/**
+		 * \~russian
 		 * @brief Структура метаданных последнего принятого дейтаграммного пакета
 		 *
 		 * @details Сведения о пакете, извлечённые не из его содержимого, а из
@@ -594,6 +981,25 @@ namespace awh {
 		 * @note Часть полей заполняется, лишь если приём этих сведений заранее
 		 *       разрешён у сокета, - иначе они остаются в исходном состоянии
 		 *
+		 * \~english
+		 * @brief Structure of the metadata of the last received datagram packet
+		 * @details The information about a packet extracted not from its content, but from
+		 *          the headers and from the auxiliary messages of the kernel: through which
+		 *          device the packet has come, how many hops it has passed, by which
+		 *          class of the service it is marked and whether the network has reported a congestion on
+		 *          the path
+		 *          The datagram exchange, unlike the stream one, consists of
+		 *          separate messages, and every one has its own information. It is needed where
+		 *          a decision depends not only on the content: the choice of a device
+		 *          for an answer, the rejection of the packets that have come from the wrong side,
+		 *          the lowering of the rate of the sending at a congestion
+		 * @warning The information relates to the **last received** packet and
+		 *          is overwritten by the next one. It should be read right at the reception, and
+		 *          not in a postponed way
+		 * @note A part of the fields is filled only if the reception of this information is allowed
+		 *       at the socket in advance — otherwise they remain in the initial state
+		 *
+		 * \~
 		 */
 		typedef struct __AWH_SHARED_EXPORT__ Datagram_Info {
 			// Сырое значение TTL/Hop Limit последнего принятого пакета (RFC, 0..255)
@@ -609,13 +1015,20 @@ namespace awh {
 			// Класс трафика (TOS/Traffic Class)
 			event::dscp_t trafficClass;
 			/**
+			 * \~russian
 			 * @brief Конструктор
 			 *
+			 *
+			 * \~english
+			 * @brief Constructor
+			 *
+			 * \~
 			 */
 			explicit Datagram_Info() noexcept;
 		} dgram_info_t;
 
 		/**
+		 * \~russian
 		 * @brief Структура информации о пакетах в тоннеле
 		 *
 		 * @details Описание внешней оболочки туннеля - той, в которую упаковываются
@@ -633,6 +1046,22 @@ namespace awh {
 		 *          меньше, чем во внешней сети. Не учтённое, это приводит к дроблению
 		 *          либо к молчаливой потере крупных пакетов
 		 *
+		 * \~english
+		 * @brief Structure of the information about the packets in a tunnel
+		 * @details The description of the external wrapping of a tunnel — of the one the
+		 *          carried packets are packed into. Sets between which points
+		 *          the tunnel is laid, by which protocol the data is carried and how many hops
+		 *          are given over to the wrapping itself
+		 * @note These points relate to the **external** network, the one the wrapping
+		 *       goes over, and are not connected with the addresses inside the tunnel. Their families quite
+		 *       may diverge: the carrying of the IPv6 packets inside IPv4 is an ordinary
+		 *       purpose of a tunnel
+		 * @warning The wrapping adds its own headers to every packet, and therefore
+		 *          the largest size of a useful packet inside a tunnel turns out to be
+		 *          smaller than in the external network. Not taken into account, this leads to a fragmentation
+		 *          or to a silent loss of the large packets
+		 *
+		 * \~
 		 */
 		typedef struct __AWH_SHARED_EXPORT__ Tunnel_Info {
 			// Количество хопов
@@ -646,13 +1075,20 @@ namespace awh {
 			// Адрес источника подключения
 			unique_ptr <attr_t> source;
 			/**
+			 * \~russian
 			 * @brief Конструктор
 			 *
+			 *
+			 * \~english
+			 * @brief Constructor
+			 *
+			 * \~
 			 */
 			explicit Tunnel_Info() noexcept;
 		} tun_info_t;
 
 		/**
+		 * \~russian
 		 * @brief Структура сетевого интерфейса
 		 *
 		 * @details Описание сетевого устройства, каким его сообщает система:
@@ -666,14 +1102,32 @@ namespace awh {
 		 * @note Адресов устройства здесь нет - их держит связка `src_t`: у одного
 		 *       устройства адресов может быть несколько
 		 *
+		 * \~english
+		 * @brief Structure of a network interface
+		 * @details The description of a network device as the system reports it:
+		 *          the name, the largest size of a packet transmitted through it and
+		 *          the set of the signs of the state
+		 * @note The signs are gathered as a set, and not as a binary word, and are checked
+		 *       by a search in it: the values of the enumeration of the signs are the ordinal numbers,
+		 *       and not the digits, and adding them bitwise is not allowed
+		 * @note There are no addresses of a device here — they are held by the `src_t` bundle: at one
+		 *       device there may be several addresses
+		 *
+		 * \~
 		 */
 		typedef struct __AWH_SHARED_EXPORT__ Interface {
 			string name;                             // Название интерфейса
 			uint32_t mtu;                            // MTU интерфейса
 			unordered_set <event::eth_flag_t> flags; // Флаги интерфейса
 			/**
+			 * \~russian
 			 * @brief Конструктор
 			 *
+			 *
+			 * \~english
+			 * @brief Constructor
+			 *
+			 * \~
 			 */
 			explicit Interface() noexcept;
 		} iface_t;
@@ -683,6 +1137,7 @@ namespace awh {
 		 */
 		#if __linux__ || __FreeBSD__ || __sun
 			/**
+			 * \~russian
 			 * @brief Пространство имён для работы с SCTP
 			 *
 			 * @details Средства протокола, сочетающего надёжность потокового обмена с
@@ -704,9 +1159,30 @@ namespace awh {
 			 *       ветви `net.inet.sctp`. Отсутствие ошибок сборки на NetBSD
 			 *       доказательством поддержки считать нельзя
 			 *
+			 * \~english
+			 * @brief Namespace for working with SCTP
+			 * @details The means of the protocol combining the reliability of the stream exchange with
+			 *          the preservation of the boundaries of the messages. Its peculiarity is that inside
+			 *          one connection several independent streams are kept:
+			 *          a delay of a message in one does not delay the others — a trouble
+			 *          which the ordinary stream exchange suffers from. The connection moreover
+			 *          may rely on several addresses at once and outlive the failure
+			 *          of a part of them
+			 * @note The protocol is available on Linux, FreeBSD, Solaris and illumos (OpenIndiana
+			 *       and its kin) — the other systems do not carry it, and therefore all this
+			 *       namespace is built only there
+			 *       Solaris holds its own implementation, and not one ported from FreeBSD,
+			 *       and illumos has inherited it from it. macOS and OpenBSD have no protocol
+			 *       at all; NetBSD, though, sets a trap — the `netinet/sctp.h` header
+			 *       is there, and the build passes, but the kernel does not give the protocol: neither a module, nor
+			 *       the `net.inet.sctp` branch. The absence of the errors of the build on NetBSD
+			 *       cannot be considered a proof of the support
+			 *
+			 * \~
 			 */
 			namespace sctp {
 				/**
+				 * \~russian
 				 * @brief Идентификатор полезной нагрузки SCTP
 				 *
 				 * @details Пометка, которой отправитель заявляет, что за данными
@@ -718,6 +1194,17 @@ namespace awh {
 				 *       выбираться не должны: перечислены здесь лишь те, что нужны
 				 *       движку, а весь их список ведётся отдельно
 				 *
+				 * \~english
+				 * @brief Identifier of the payload of SCTP
+				 * @details A mark by which the sender declares what stands behind the data
+				 *          of a message. The protocol itself does not resolve the content and
+				 *          only carries the mark to the receiver, allowing it to choose
+				 *          a parser without looking into the data itself
+				 * @note These values are fastened to the purposes jointly and must not be chosen
+				 *       arbitrarily: enumerated here are only those needed by
+				 *       the engine, and their whole list is kept separately
+				 *
+				 * \~
 				 */
 				enum class ppid_t : uint8_t {
 					DTLS       = 0x32, // (RFC 6083) DTLS поверх SCTP
@@ -726,6 +1213,7 @@ namespace awh {
 				};
 
 				/**
+				 * \~russian
 				 * @brief Статусы таймаутов SCTP
 				 *
 				 * @details Указывает, какой из внутренних отсчётов протокола истёк.
@@ -738,6 +1226,18 @@ namespace awh {
 				 *       исчерпав их число. Известие об истечении потому стоит
 				 *       понимать как примету неполадок на пути, а не как отказ
 				 *
+				 * \~english
+				 * @brief Statuses of the timeouts of SCTP
+				 * @details Specifies which of the internal counts of the protocol has expired.
+				 *          These counts guard each its own stage: the establishment of
+				 *          a connection, the delivery of the data, the acknowledgement of the reception,
+				 *          the check of the liveness and the closing
+				 * @note The expiration of a count by itself is not a break —
+				 *       the protocol repeats an attempt and breaks a connection only
+				 *       having exhausted their number. The notice of an expiration is therefore worth
+				 *       understanding as a marker of the troubles on the path, and not as a refusal
+				 *
+				 * \~
 				 */
 				enum class timeout_t : uint8_t {
 					NONE        = 0x00, // Таймаут отсутствует
@@ -751,8 +1251,13 @@ namespace awh {
 				};
 
 				/**
+				 * \~russian
 				 * @brief Типы аутентификации события SCTP
 				 *
+				 * \~english
+				 * @brief Types of the authentication of an SCTP event
+				 *
+				 * \~
 				 */
 				enum class auth_type_t : uint8_t {
 					HMAC_RSVD    = 0x00, // ЗаSCTPрезервировано
@@ -761,6 +1266,7 @@ namespace awh {
 				};
 
 				/**
+				 * \~russian
 				 * @brief Типы чанков попадающие под аутентификацию SCTP
 				 *
 				 * @details Сообщение протокола состоит из частей, и подтверждению
@@ -774,6 +1280,19 @@ namespace awh {
 				 *          включено, не следует - важно ещё и что именно в набор
 				 *          попало
 				 *
+				 * \~english
+				 * @brief Types of the chunks falling under the authentication of SCTP
+				 * @details A message of the protocol consists of the parts, and subject to the confirmation
+				 *          of the authenticity is not everything in a row, but only a stipulated
+				 *          set. This set the sides agree at the establishment of
+				 *          a connection, and the values of the enumeration describe it
+				 * @warning The parts that have not entered the set go **without a confirmation
+				 *          of the authenticity** and anyone may substitute them. Relying
+				 *          on the authenticity of the whole exchange only because the confirmation
+				 *          is switched on is not advisable — what exactly has entered the set
+				 *          matters as well
+				 *
+				 * \~
 				 */
 				enum class auth_chunk_t : uint8_t {
 					DATA              = 0x00, // Чанк DATA подлежит аутентификации
@@ -797,8 +1316,13 @@ namespace awh {
 				};
 
 				/**
+				 * \~russian
 				 * @brief Типы индикаторов события аутентификации
 				 *
+				 * \~english
+				 * @brief Types of the indicators of an event of the authentication
+				 *
+				 * \~
 				 */
 				enum class auth_indics_t : uint8_t {
 					NONE     = 0x00, // Тип аутентификации отсутствует
@@ -808,6 +1332,7 @@ namespace awh {
 				};
 
 				/**
+				 * \~russian
 				 * @brief Флаги отправки сообщения SCTP
 				 *
 				 * @details Сообщает о судьбе сообщения, доставить которое не
@@ -818,6 +1343,16 @@ namespace awh {
 				 *       сообщение сеть не видела, и отправить его заново безопасно, а
 				 *       про ушедшее сказать, дошло ли оно частично, нельзя
 				 *
+				 * \~english
+				 * @brief Flags of the sending of an SCTP message
+				 * @details Reports the fate of a message which could not be
+				 *          delivered: whether it has managed to go into the network or has been discarded,
+				 *          without leaving the queue of the sending
+				 * @note This difference is essential at a repeated sending. A message that has not gone
+				 *       the network has not seen, and sending it anew is safe, and
+				 *       about a gone one it is impossible to say whether it has reached partially
+				 *
+				 * \~
 				 */
 				enum class send_failed_t : uint8_t {
 					NONE   = 0x00, // Флаг отсутствует
@@ -826,8 +1361,13 @@ namespace awh {
 				};
 
 				/**
+				 * \~russian
 				 * @brief Индикаторы доставки SCTP
 				 *
+				 * \~english
+				 * @brief Indicators of the delivery of SCTP
+				 *
+				 * \~
 				 */
 				enum class pdapi_indics_t : uint8_t {
 					NONE                     = 0x00, // Индикатор отсутствует
@@ -835,6 +1375,7 @@ namespace awh {
 				};
 
 				/**
+				 * \~russian
 				 * @brief Типы сброса потоков SCTP
 				 *
 				 * @details Сброс возвращает нумерацию потока к началу, не разрывая
@@ -847,6 +1388,18 @@ namespace awh {
 				 * @note Сброс требует согласия обеих сторон: сторона, его не
 				 *       поддерживающая, отклонит просьбу, и поток останется прежним
 				 *
+				 * \~english
+				 * @brief Types of the reset of the SCTP streams
+				 * @details A reset returns the numbering of a stream to the beginning, without breaking
+				 *          the connection itself, — that is how a stream is reused for a new
+				 *          exchange, without paying for the establishment of a link anew. The values
+				 *          describe what has become of the reset: it is performed for
+				 *          the outgoing or for the incoming streams, has failed or is rejected
+				 *          by the other side
+				 * @note A reset requires the agreement of both sides: a side not
+				 *       supporting it will reject the request, and the stream will remain the previous one
+				 *
+				 * \~
 				 */
 				enum class stream_reset_t : uint8_t {
 					NONE         = 0x00, // Тип сброса отсутствует
@@ -857,8 +1410,13 @@ namespace awh {
 				};
 
 				/**
+				 * \~russian
 				 * @brief Типы изменения потоков SCTP
 				 *
+				 * \~english
+				 * @brief Types of the change of the SCTP streams
+				 *
+				 * \~
 				 */
 				enum class stream_change_t : uint8_t {
 					NONE   = 0x00, // Тип изменения отсутствует
@@ -867,8 +1425,13 @@ namespace awh {
 				};
 
 				/**
+				 * \~russian
 				 * @brief Статусы состояния сокета SCTP
 				 *
+				 * \~english
+				 * @brief Statuses of the state of an SCTP socket
+				 *
+				 * \~
 				 */
 				enum class state_status_t : uint8_t {
 					NONE              = 0x00, // Статус отсутствует
@@ -885,8 +1448,13 @@ namespace awh {
 				};
 
 				/**
+				 * \~russian
 				 * @brief Типы событий SCTP
 				 *
+				 * \~english
+				 * @brief Types of the SCTP events
+				 *
+				 * \~
 				 */
 				enum class event_type_t : uint8_t {
 					NONE                   = 0x00, // Тип события отсутствует
@@ -907,8 +1475,13 @@ namespace awh {
 				};
 
 				/**
+				 * \~russian
 				 * @brief Типы сброса ассоциации SCTP
 				 *
+				 * \~english
+				 * @brief Types of the reset of an SCTP association
+				 *
+				 * \~
 				 */
 				enum class assoc_reset_t : uint8_t {
 					NONE   = 0x00, // Тип сброса отсутствует
@@ -917,8 +1490,13 @@ namespace awh {
 				};
 
 				/**
+				 * \~russian
 				 * @brief Информация об ассоциации SCTP
 				 *
+				 * \~english
+				 * @brief Information about an SCTP association
+				 *
+				 * \~
 				 */
 				enum class assoc_info_t : uint8_t {
 					NONE                = 0x00, // Информация об ассоциации отсутствует
@@ -932,8 +1510,13 @@ namespace awh {
 				};
 
 				/**
+				 * \~russian
 				 * @brief Состояния ассоциации SCTP
 				 *
+				 * \~english
+				 * @brief States of an SCTP association
+				 *
+				 * \~
 				 */
 				enum class assoc_state_t : uint8_t {
 					NONE 	      = 0x00, // Состояние ассоциации отсутствует
@@ -945,8 +1528,13 @@ namespace awh {
 				};
 
 				/**
+				 * \~russian
 				 * @brief Состояния адреса однорангового узла SCTP
 				 *
+				 * \~english
+				 * @brief States of the address of an SCTP peer node
+				 *
+				 * \~
 				 */
 				enum class paddr_state_t : uint8_t {
 					NONE        = 0x00, // Состояние адреса отсутствует
@@ -959,8 +1547,13 @@ namespace awh {
 				};
 
 				/**
+				 * \~russian
 				 * @brief Флаги информации о сообщении SCTP
 				 *
+				 * \~english
+				 * @brief Flags of the information about an SCTP message
+				 *
+				 * \~
 				 */
 				enum class info_t : uint8_t {
 					NONE               = 0x00, // Флаг отсутствует
@@ -976,12 +1569,18 @@ namespace awh {
 				};
 
 				/**
+				 * \~russian
 				 * @brief Множество типов событий SCTP
 				 *
+				 * \~english
+				 * @brief Set of the types of the SCTP events
+				 *
+				 * \~
 				 */
 				using event_types_t = unordered_set <event_type_t>;
 
 				/**
+				 * \~russian
 				 * @brief Структура метаданных сообщения SCTP
 				 *
 				 * @details Структура содержит информацию о полезной нагрузке,
@@ -999,6 +1598,21 @@ namespace awh {
 				 *      сообщение, ими описанное. Здесь же поля лишь передаются между
 				 *      своими вызовами, и выравнивание им только на пользу
 				 *
+				 * \~english
+				 * @brief Structure of the metadata of an SCTP message
+				 * @details The structure contains the information about the payload,
+				 *          about the number of the stream, about the lifetime, about the context and about the flags of the message.
+				 * @par Deliberate decisions
+				 *      **The structure is not packed.** Formerly `packed` stood on it, but
+				 *      that sign was rejected: a structure with a field-set cannot
+				 *      be packed, it is not of a simple kind. GCC reported this
+				 *      by a warning, Clang kept silent, — and the structure was packed
+				 *      neither there nor there
+				 *      It does not need the packing either: into the network go not these metadata, but
+				 *      the message described by them. Here the fields are only passed between
+				 *      one's own calls, and the alignment is only of use to them
+				 *
+				 * \~
 				 */
 				typedef struct __AWH_SHARED_EXPORT__ Message_Info {
 					ppid_t ppid;                  // Идентификатор полезной нагрузки
@@ -1007,17 +1621,29 @@ namespace awh {
 					uint32_t ctx;                 // Контекст для уведомлений об ошибках
 					unordered_set <info_t> flags; // Флаги сообщения
 					/**
+					 * \~russian
 					 * @brief Конструктор
 					 *
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
 					 */
 					explicit Message_Info() noexcept;
 				} minfo_t;
 
 				/**
+				 * \~russian
 				 * @brief Структура инициализации рукопожатия SCTP
 				 *
 				 * @details Структура содержит информацию о таймаутах, попытках подключения и количестве потоков.
 				 *
+				 * \~english
+				 * @brief Structure of the initialization of an SCTP handshake
+				 * @details The structure contains the information about the timeouts, about the attempts of the connection and about the number of the streams.
+				 *
+				 * \~
 				 */
 				typedef struct __AWH_SHARED_EXPORT__ Initialization_Message {
 					// Максимальное время инициализации SCTP
@@ -1029,17 +1655,29 @@ namespace awh {
 					// Максимальное количество входящих потоков (по умолчанию 5)
 					uint16_t istreams;
 					/**
+					 * \~russian
 					 * @brief Конструктор
 					 *
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
 					 */
 					explicit Initialization_Message() noexcept;
 				} __attribute__((packed)) initmsg_t;
 
 				/**
+				 * \~russian
 				 * @brief Структура статуса SCTP подключения
 				 *
 				 * @details Структура содержит информацию о состоянии ассоциации, размере окна передачи, количестве потоков и фрагментации.
 				 *
+				 * \~english
+				 * @brief Structure of the status of an SCTP connection
+				 * @details The structure contains the information about the state of the association, about the size of the window of the transmission, about the number of the streams and about the fragmentation.
+				 *
+				 * \~
 				 */
 				typedef struct __AWH_SHARED_EXPORT__ Status {
 					uint32_t id;          // ID ассоциации
@@ -1051,33 +1689,57 @@ namespace awh {
 					uint32_t fragpoint;   // Точка фрагментации в байтах
 					state_status_t state; // Текущее состояние ассоциации
 					/**
+					 * \~russian
 					 * @brief Конструктор
 					 *
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
 					 */
 					explicit Status() noexcept;
 				} __attribute__((packed)) status_t;
 
 				/**
+				 * \~russian
 				 * @brief Структура ошибки события SCTP
 				 *
 				 * @details Структура содержит информацию о коде и сообщении ошибки события.
 				 *
+				 * \~english
+				 * @brief Structure of an error of an SCTP event
+				 * @details The structure contains the information about the code and about the message of the error of the event.
+				 *
+				 * \~
 				 */
 				typedef struct __AWH_SHARED_EXPORT__ Error {
 					int32_t code;   // Код ошибки события
 					string message; // Сообщение ошибки события
 					/**
+					 * \~russian
 					 * @brief Конструктор
 					 *
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
 					 */
 					explicit Error() noexcept;
 				} error_t;
 
 				/**
+				 * \~russian
 				 * @brief Структура события SCTP
 				 *
 				 * @details Структура содержит идентификатор события и его тип.
 				 *
+				 * \~english
+				 * @brief Structure of an SCTP event
+				 * @details The structure contains the identifier of the event and its type.
+				 *
+				 * \~
 				 */
 				typedef struct __AWH_SHARED_EXPORT__ Event {
 					// Идентификатор события
@@ -1085,44 +1747,81 @@ namespace awh {
 					// Тип события
 					event_type_t type;
 					/**
+					 * \~russian
 					 * @brief Конструктор
 					 *
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
 					 */
 					explicit Event() noexcept;
 					/**
+					 * \~russian
 					 * @brief Деструктор
 					 *
+					 *
+					 * \~english
+					 * @brief Destructor
+					 *
+					 * \~
 					 */
 					virtual ~Event() = default;
 				} event_t;
 
 				/**
+				 * \~russian
 				 * @brief Структура адаптационного указания SCTP
 				 *
 				 * @details Структура адаптационного указания SCTP.
 				 *
+				 * \~english
+				 * @brief Structure of an SCTP adaptation indication
+				 * @details The structure of an SCTP adaptation indication.
+				 *
+				 * \~
 				 */
 				typedef struct __AWH_SHARED_EXPORT__ Event_Adaptation : public event_t {
 					// Адаптационное указание
 					uint32_t indication;
 					/**
+					 * \~russian
 					 * @brief Конструктор
 					 *
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
 					 */
 					explicit Event_Adaptation() noexcept;
 					/**
+					 * \~russian
 					 * @brief Деструктор
 					 *
+					 *
+					 * \~english
+					 * @brief Destructor
+					 *
+					 * \~
 					 */
 					virtual ~Event_Adaptation() = default;
 				} event_adaptation_t;
 
 				/**
+				 * \~russian
 				 * @brief Структура изменения ассоциации события SCTP
 				 *
 				 * @details Структура содержит информацию о состоянии ассоциации,
 				 *          количестве потоков и дополнительной информации события.
 				 *
+				 * \~english
+				 * @brief Structure of the change of the association of an SCTP event
+				 * @details The structure contains the information about the state of the association,
+				 *          about the number of the streams and the additional information of the event.
+				 *
+				 * \~
 				 */
 				typedef struct __AWH_SHARED_EXPORT__ Event_Association_Change : public event_t {
 					error_t error;              // Ошибка события
@@ -1131,23 +1830,42 @@ namespace awh {
 					assoc_state_t state;        // Состояние события
 					vector <assoc_info_t> info; // Дополнительная информация события
 					/**
+					 * \~russian
 					 * @brief Конструктор
 					 *
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
 					 */
 					explicit Event_Association_Change() noexcept;
 					/**
+					 * \~russian
 					 * @brief Деструктор
 					 *
+					 *
+					 * \~english
+					 * @brief Destructor
+					 *
+					 * \~
 					 */
 					virtual ~Event_Association_Change() = default;
 				} event_assoc_change_t;
 
 				/**
+				 * \~russian
 				 * @brief Структура сброса ассоциации SCTP
 				 *
 				 * @details Структура содержит информацию о последнем подтверждённом TSN,
 				 *          последнем подтверждённом пиром TSN и флагах сброса ассоциации.
 				 *
+				 * \~english
+				 * @brief Structure of the reset of an SCTP association
+				 * @details The structure contains the information about the last acknowledged TSN,
+				 *          about the last TSN acknowledged by the peer and about the flags of the reset of the association.
+				 *
+				 * \~
 				 */
 				typedef struct __AWH_SHARED_EXPORT__ Event_Association_Reset : public event_t {
 					// Последний TSN (Transmission Sequence Number), подтверждённый вами (вы получили его от пира)
@@ -1157,154 +1875,283 @@ namespace awh {
 					// Флаги сброса ассоциации
 					unordered_set <assoc_reset_t> flags;
 					/**
+					 * \~russian
 					 * @brief Конструктор
 					 *
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
 					 */
 					explicit Event_Association_Reset() noexcept;
 					/**
+					 * \~russian
 					 * @brief Деструктор
 					 *
+					 *
+					 * \~english
+					 * @brief Destructor
+					 *
+					 * \~
 					 */
 					virtual ~Event_Association_Reset() = default;
 				} event_assoc_reset_t;
 
 				/**
+				 * \~russian
 				 * @brief Структура ошибки удалённого узла SCTP
 				 *
 				 * @details Структура содержит информацию о коде и сообщении ошибки удалённого узла,
 				 *          а также дополнительную информацию события.
 				 *
+				 * \~english
+				 * @brief Structure of an error of an SCTP remote node
+				 * @details The structure contains the information about the code and about the message of the error of the remote node,
+				 *          as well as the additional information of the event.
+				 *
+				 * \~
 				 */
 				typedef struct Event_Remote_Error : public event_t {
 					error_t error;         // Ошибка события
 					vector <uint8_t> data; // Дополнительная информация события
 					/**
+					 * \~russian
 					 * @brief Конструктор
 					 *
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
 					 */
 					explicit Event_Remote_Error() noexcept = default;
 					/**
+					 * \~russian
 					 * @brief Деструктор
 					 *
+					 *
+					 * \~english
+					 * @brief Destructor
+					 *
+					 * \~
 					 */
 					virtual ~Event_Remote_Error() = default;
 				} event_remote_error_t;
 
 				/**
+				 * \~russian
 				 * @brief Структура изменения адреса однорангового узла SCTP
 				 *
 				 * @details Структура содержит информацию о коде ошибки события,
 				 *          состоянии адреса однорангового узла и указатель на адрес однорангового узла.
 				 *
+				 * \~english
+				 * @brief Structure of the change of the address of an SCTP peer node
+				 * @details The structure contains the information about the code of the error of the event,
+				 *          about the state of the address of the peer node and a pointer to the address of the peer node.
+				 *
+				 * \~
 				 */
 				typedef struct __AWH_SHARED_EXPORT__ Event_Address_Change : public event_t {
 					error_t error;            // Ошибка события
 					paddr_state_t state;      // Состояние события
 					unique_ptr <addr_t> addr; // Адрес однорангового узла
 					/**
+					 * \~russian
 					 * @brief Конструктор
 					 *
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
 					 */
 					explicit Event_Address_Change() noexcept;
 					/**
+					 * \~russian
 					 * @brief Деструктор
 					 *
+					 *
+					 * \~english
+					 * @brief Destructor
+					 *
+					 * \~
 					 */
 					virtual ~Event_Address_Change() = default;
 				} event_addr_change_t;
 
 				/**
+				 * \~russian
 				 * @brief Структура частичной доставки SCTP
 				 *
 				 * @details Структура содержит информацию о номере потока, последовательном номере сообщения и индикаторе частичной доставки.
 				 *
+				 * \~english
+				 * @brief Structure of a partial delivery of SCTP
+				 * @details The structure contains the information about the number of the stream, about the sequence number of the message and about the indicator of the partial delivery.
+				 *
+				 * \~
 				 */
 				typedef struct __AWH_SHARED_EXPORT__ Partial_Delivery_Event : public event_t {
 					uint16_t stream;           // Номер потока
 					uint16_t sequence;         // Последовательный номер сообщения
 					pdapi_indics_t indication; // Индикатор частичной доставки
 					/**
+					 * \~russian
 					 * @brief Конструктор
 					 *
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
 					 */
 					explicit Partial_Delivery_Event() noexcept;
 					/**
+					 * \~russian
 					 * @brief Деструктор
 					 *
+					 *
+					 * \~english
+					 * @brief Destructor
+					 *
+					 * \~
 					 */
 					virtual ~Partial_Delivery_Event() = default;
 				} event_pdapi_t;
 
 				/**
+				 * \~russian
 				 * @brief Структура аутентификации SCTP
 				 *
 				 * @details Структура содержит информацию о номере ключа и индикаторе аутентификации.
 				 *
+				 * \~english
+				 * @brief Structure of the authentication of SCTP
+				 * @details The structure contains the information about the number of the key and about the indicator of the authentication.
+				 *
+				 * \~
 				 */
 				typedef struct __AWH_SHARED_EXPORT__ Event_Authentication : public event_t {
 					uint16_t key;             // Номер ключа
 					auth_indics_t indication; // Индикатор аутентификации
 					/**
+					 * \~russian
 					 * @brief Конструктор
 					 *
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
 					 */
 					explicit Event_Authentication() noexcept;
 					/**
+					 * \~russian
 					 * @brief Деструктор
 					 *
+					 *
+					 * \~english
+					 * @brief Destructor
+					 *
+					 * \~
 					 */
 					virtual ~Event_Authentication() = default;
 				} event_auth_t;
 
 				/**
+				 * \~russian
 				 * @brief Структура ошибки отправки SCTP
 				 *
 				 * @details Структура содержит информацию о коде ошибки события,
 				 *          статусе отправки сообщения и дополнительную информацию события.
 				 *
+				 * \~english
+				 * @brief Structure of an error of the sending of SCTP
+				 * @details The structure contains the information about the code of the error of the event,
+				 *          about the status of the sending of the message and the additional information of the event.
+				 *
+				 * \~
 				 */
 				typedef struct __AWH_SHARED_EXPORT__ Event_Send_Failed : public event_t {
 					error_t error;         // Ошибка события
 					send_failed_t status;  // Статус отправки сообщения
 					vector <uint8_t> data; // Дополнительная информация события
 					/**
+					 * \~russian
 					 * @brief Конструктор
 					 *
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
 					 */
 					explicit Event_Send_Failed() noexcept;
 					/**
+					 * \~russian
 					 * @brief Деструктор
 					 *
+					 *
+					 * \~english
+					 * @brief Destructor
+					 *
+					 * \~
 					 */
 					virtual ~Event_Send_Failed() = default;
 				} event_send_failed_t;
 
 				/**
+				 * \~russian
 				 * @brief Структура сброса потоков SCTP
 				 *
 				 * @details Структура содержит информацию о номерах сброшенных потоков и типах сброса потоков.
 				 *
+				 * \~english
+				 * @brief Structure of the reset of the SCTP streams
+				 * @details The structure contains the information about the numbers of the reset streams and about the types of the reset of the streams.
+				 *
+				 * \~
 				 */
 				typedef struct Event_Stream_Reset : public event_t {
 					vector <uint16_t> streams;            // Номера сброшенных потоков
 					unordered_set <stream_reset_t> flags; // Типы сброса потоков
 					/**
+					 * \~russian
 					 * @brief Конструктор
 					 *
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
 					 */
 					explicit Event_Stream_Reset() noexcept = default;
 					/**
+					 * \~russian
 					 * @brief Деструктор
 					 *
+					 *
+					 * \~english
+					 * @brief Destructor
+					 *
+					 * \~
 					 */
 					virtual ~Event_Stream_Reset() = default;
 				} event_stream_reset_t;
 
 				/**
+				 * \~russian
 				 * @brief Структура изменения потоков SCTP
 				 *
 				 * @details Структура содержит информацию о максимальном количестве исходящих и входящих потоков, а также флаги сброса ассоциации.
 				 *
+				 * \~english
+				 * @brief Structure of the change of the SCTP streams
+				 * @details The structure contains the information about the maximum number of the outgoing and of the incoming streams, as well as the flags of the reset of the association.
+				 *
+				 * \~
 				 */
 				typedef struct __AWH_SHARED_EXPORT__ Event_Stream_Change : public event_t {
 					// Максимальное количество исходящих потоков
@@ -1314,21 +2161,38 @@ namespace awh {
 					// Флаги сброса ассоциации
 					unordered_set <stream_change_t> flags;
 					/**
+					 * \~russian
 					 * @brief Конструктор
 					 *
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
 					 */
 					explicit Event_Stream_Change() noexcept;
 					/**
+					 * \~russian
 					 * @brief Деструктор
 					 *
+					 *
+					 * \~english
+					 * @brief Destructor
+					 *
+					 * \~
 					 */
 					virtual ~Event_Stream_Change() = default;
 				} event_stream_change_t;
 			};
 
 			/**
+			 * \~russian
 			 * @brief Создаём тип данных SCTP события
 			 *
+			 * \~english
+			 * @brief Create the data type of an SCTP event
+			 *
+			 * \~
 			 */
 			using sctp_event_t = unique_ptr <sctp::event_t>;
 		#endif
