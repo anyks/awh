@@ -831,3 +831,64 @@ TEST(CodecTomlDocument, ArrayRemarks) {
 		ASSERT_EQ(document.text(), source);
 	}
 }
+/**
+ * @brief Проверка ограниченности памяти дерева при долгой правке
+ *
+ * @details Правка замещает узел значения новым, а прежний оставляет мусором: изъять
+ * его на месте нельзя, ибо прежнее значение вправе нести вложенные узлы. Дерево
+ * уплотняется само по накоплении мусора вровень с живым, и без уплотнения того
+ * четыреста тысяч правок двух ключей отнимали сто тринадцать мегабайт при неизменном
+ * составе дерева
+ *
+ */
+TEST(CodecTomlDocument, EditFootprint) {
+	// Исходный текст настроек с примечаниями, перечнями и набором таблиц
+	const string source(
+		"# сверху\n"
+		"title = \"пример\"\n"
+		"\n"
+		"[server]\n"
+		"host = '127.0.0.1' # к паре\n"
+		"ports = [\n"
+		"\t8080, # первый\n"
+		"\t8443\n"
+		"]\n"
+		"\n"
+		"[[products]]\n"
+		"name = \"молоток\"\n"
+	);
+	// Объект дерева настроек
+	toml::document_t document;
+	// Выполняем проверку разбора исходного текста настроек
+	ASSERT_TRUE(document.parse(source));
+	// Запоминаем перезапись дерева до правок
+	const string before = document.text();
+	// Запоминаем объём памяти дерева до правок
+	const size_t footprint = document.footprint();
+	// Выполняем проверку того, что объём памяти дерева получен
+	ASSERT_GT(footprint, static_cast <size_t> (0));
+	/**
+	 * Выполняем перебор вносимых правок дерева настроек
+	 */
+	for(size_t i = 0; i < 20000; i++){
+		// Выполняем правку строкового значения пары
+		ASSERT_TRUE(document.set(vector <string_view> {"server", "host"}, string_view("10.0.0.1"), toml::string_t::LITERAL));
+		// Выполняем правку целого значения пары
+		ASSERT_TRUE(document.set(vector <string_view> {"title"}, static_cast <int64_t> (i)));
+		// Выполняем возврат строкового значения пары
+		ASSERT_TRUE(document.set(vector <string_view> {"server", "host"}, string_view("127.0.0.1"), toml::string_t::LITERAL));
+		// Выполняем возврат строкового значения пары
+		ASSERT_TRUE(document.set(vector <string_view> {"title"}, string_view("пример"), toml::string_t::BASIC));
+	}
+	/**
+	 * Выполняем проверку того, что память дерева ограничена
+	 *
+	 * @note Запас взят восьмикратным против исходного: уплотнение приходит по
+	 *       накоплении мусора вровень с живым, и объём дерева гуляет между уплотнениями,
+	 *       а рост неограниченный дал бы здесь не разы, а тысячи
+	 */
+	ASSERT_LT(document.footprint(), (footprint * 8))
+	 << "до правок " << footprint << " октетов, после восьмидесяти тысяч правок " << document.footprint();
+	// Выполняем проверку того, что перезапись дерева правками не испорчена
+	ASSERT_EQ(document.text(), before);
+}

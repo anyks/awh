@@ -1,0 +1,463 @@
+/**
+ * @file: writer.cpp
+ * @date: 2026-08-13
+ * @license: LicenseRef-AWH-1.0
+ *
+ * @telegram: @forman
+ * @author: Yuriy Lobarev
+ * @phone: +7 (910) 983-95-90
+ * @email: forman@anyks.com
+ * @site: https://anyks.com
+ *
+ * @brief Проверки записи текста CSV — обрамление полей кавычками, способы отмены кавычки
+ *        внутри поля, знаки конца строки, потоковое изъятие собранного и круговой проход
+ *        записанного через разбор
+ *
+ * @copyright: Copyright © 2026
+ *
+ */
+
+/**
+ * Стандартные заголовочные файлы
+ */
+#include <string>
+#include <vector>
+
+/**
+ * Подключаем заголовочные файлы проекта
+ */
+#include <gtest/gtest.h>
+#include <codec/csv/csv.hpp>
+
+/**
+ * Используем стандартное пространство имён
+ */
+using namespace std;
+using namespace awh;
+using namespace awh::codec;
+
+/**
+ * @brief Метод разбора текста таблицы записями
+ *
+ * @param text     разбираемый текст таблицы
+ * @param settings настройки разбора текста
+ * @return         записи разобранной таблицы
+ *
+ */
+static vector <vector <string>> parse(const string & text, const csv::reader_t::settings_t & settings = csv::reader_t::settings_t()) noexcept {
+	// Записи разобранной таблицы
+	vector <vector <string>> result;
+	// Поля записи, разбираемой в настоящее время
+	vector <string> record;
+	// Объект разбора текста таблицы
+	csv::reader_t reader(settings);
+	// Выполняем подачу текста таблицы разбору
+	reader.feed(text.data(), text.size(), true);
+	/**
+	 * Выполняем перебор событий разбора текста таблицы
+	 */
+	while(reader.next()){
+		/**
+		 * Определяем событие, выданное разбором
+		 */
+		switch(static_cast <uint8_t> (reader.event())){
+			// Если разбором выдано очередное поле записи
+			case static_cast <uint8_t> (csv::event_t::FIELD):
+				// Выполняем добавление содержимого поля в текущую запись
+				record.push_back(string(reader.field().value));
+			break;
+			// Если разбором завершена очередная запись таблицы
+			case static_cast <uint8_t> (csv::event_t::RECORD): {
+				// Выполняем добавление собранной записи в таблицу
+				result.push_back(::std::move(record));
+				// Выполняем очистку полей разбираемой записи
+				record.clear();
+			} break;
+		}
+	}
+	// Выводим полученный результат
+	return result;
+}
+
+/**
+ * @brief Проверка записи полей без обрамления кавычками
+ *
+ */
+TEST(CodecCsvWriter, Simple) {
+	// Объект записи текста таблицы
+	csv::writer_t writer;
+	// Выполняем запись первого поля записи
+	writer.field("a");
+	// Выполняем запись второго поля записи
+	writer.field("b");
+	// Выполняем завершение текущей записи
+	writer.record();
+	// Выполняем проверку собранного текста
+	ASSERT_EQ(writer.text(), "a,b\r\n");
+	// Выполняем проверку размера собранного текста
+	ASSERT_EQ(writer.size(), 5u);
+}
+
+/**
+ * @brief Проверка обрамления кавычками лишь тех полей, что того требуют
+ *
+ */
+TEST(CodecCsvWriter, Minimal) {
+	// Объект записи текста таблицы
+	csv::writer_t writer;
+	// Выполняем запись целой записи полем за полем
+	writer.record(vector <string> {"a", "b,c", "d\"e", "f\ng", "h\ri"});
+	// Выполняем проверку собранного текста
+	ASSERT_EQ(writer.text(), "a,\"b,c\",\"d\"\"e\",\"f\ng\",\"h\ri\"\r\n");
+}
+
+/**
+ * @brief Проверка обрамления кавычками всех полей без разбора
+ *
+ */
+TEST(CodecCsvWriter, QuotingAll) {
+	// Настройки записи текста таблицы
+	csv::writer_t::settings_t settings;
+	// Устанавливаем правило заключения поля в кавычки
+	settings.quoting = csv::quoting_t::ALL;
+	// Объект записи текста таблицы
+	csv::writer_t writer(settings);
+	// Выполняем запись целой записи полем за полем
+	writer.record(vector <string> {"a", "1", ""});
+	// Выполняем проверку собранного текста
+	ASSERT_EQ(writer.text(), "\"a\",\"1\",\"\"\r\n");
+}
+
+/**
+ * @brief Проверка обрамления кавычками всех полей, кроме записанных числом
+ *
+ */
+TEST(CodecCsvWriter, QuotingNonNumeric) {
+	// Настройки записи текста таблицы
+	csv::writer_t::settings_t settings;
+	// Устанавливаем правило заключения поля в кавычки
+	settings.quoting = csv::quoting_t::NONNUMERIC;
+	// Объект записи текста таблицы
+	csv::writer_t writer(settings);
+	// Выполняем запись целой записи полем за полем
+	writer.record(vector <string> {"a", "1", "-2.5", "1a"});
+	// Выполняем проверку собранного текста
+	ASSERT_EQ(writer.text(), "\"a\",1,-2.5,\"1a\"\r\n");
+}
+
+/**
+ * @brief Проверка записи без кавычек вовсе
+ *
+ * @details Кавычек нет, и разделитель внутри поля предваряется знаком отмены: иначе поле
+ * при разборе распалось бы надвое
+ *
+ */
+TEST(CodecCsvWriter, QuotingNone) {
+	// Настройки записи текста таблицы
+	csv::writer_t::settings_t settings;
+	// Устанавливаем правило заключения поля в кавычки
+	settings.quoting = csv::quoting_t::NONE;
+	// Объект записи текста таблицы
+	csv::writer_t writer(settings);
+	// Выполняем запись целой записи полем за полем
+	writer.record(vector <string> {"a,b", "c"});
+	// Выполняем проверку собранного текста
+	ASSERT_EQ(writer.text(), "a\\,b,c\r\n");
+}
+
+/**
+ * @brief Проверка отмены кавычки внутри поля обратной косой чертой
+ *
+ */
+TEST(CodecCsvWriter, EscapeBackslash) {
+	// Настройки записи текста таблицы
+	csv::writer_t::settings_t settings;
+	// Устанавливаем способ записи кавычки внутри поля
+	settings.escape = csv::escape_t::BACKSLASH;
+	// Объект записи текста таблицы
+	csv::writer_t writer(settings);
+	// Выполняем запись целой записи полем за полем
+	writer.record(vector <string> {"a\"b", "c\\d"});
+	// Выполняем проверку собранного текста
+	ASSERT_EQ(writer.text(), "\"a\\\"b\",\"c\\\\d\"\r\n");
+}
+
+/**
+ * @brief Проверка записи знаков конца строки
+ *
+ */
+TEST(CodecCsvWriter, Newline) {
+	/**
+	 * Перечень проверяемых знаков конца строки и их записи
+	 */
+	const struct {
+		// Проверяемый знак конца строки
+		csv::newline_t newline;
+		// Ожидаемая запись знака конца строки
+		const char * expected;
+	} cases[] = {
+		{csv::newline_t::CRLF, "a\r\n"},
+		{csv::newline_t::LF, "a\n"},
+		{csv::newline_t::CR, "a\r"}
+	};
+	/**
+	 * Выполняем перебор проверяемых знаков конца строки
+	 */
+	for(auto & item : cases){
+		// Настройки записи текста таблицы
+		csv::writer_t::settings_t settings;
+		// Устанавливаем знак конца строки
+		settings.newline = item.newline;
+		// Объект записи текста таблицы
+		csv::writer_t writer(settings);
+		// Выполняем запись целой записи полем за полем
+		writer.record(vector <string> {"a"});
+		// Выполняем проверку собранного текста
+		ASSERT_EQ(writer.text(), item.expected);
+	}
+}
+
+/**
+ * @brief Проверка записи знака-разделителя, заданного потребителем
+ *
+ */
+TEST(CodecCsvWriter, Separator) {
+	// Настройки записи текста таблицы
+	csv::writer_t::settings_t settings;
+	// Устанавливаем знак-разделитель полей
+	settings.separator = ';';
+	// Объект записи текста таблицы
+	csv::writer_t writer(settings);
+	// Выполняем запись целой записи полем за полем
+	writer.record(vector <string> {"a;b", "c,d"});
+	// Выполняем проверку того, что в кавычки взято лишь поле с разделителем
+	ASSERT_EQ(writer.text(), "\"a;b\";c,d\r\n");
+}
+
+/**
+ * @brief Проверка записи метки порядка байтов
+ *
+ * @details Метка записывается однажды и лишь перед первым полем: текст, отданный по
+ * частям, метки посреди себя иметь не должен
+ *
+ */
+TEST(CodecCsvWriter, Signature) {
+	// Настройки записи текста таблицы
+	csv::writer_t::settings_t settings;
+	// Устанавливаем признак записи метки порядка байтов
+	settings.signature = true;
+	// Объект записи текста таблицы
+	csv::writer_t writer(settings);
+	// Выполняем запись первой записи таблицы
+	writer.record(vector <string> {"a"});
+	// Выполняем изъятие собранного текста
+	ASSERT_EQ(writer.take(), "\xEF\xBB\xBF" "a\r\n");
+	// Выполняем запись второй записи таблицы
+	writer.record(vector <string> {"b"});
+	// Выполняем проверку того, что метка вторично записана не была
+	ASSERT_EQ(writer.take(), "b\r\n");
+}
+
+/**
+ * @brief Проверка записи числовых полей
+ *
+ */
+TEST(CodecCsvWriter, Number) {
+	// Объект записи текста таблицы
+	csv::writer_t writer;
+	// Выполняем запись логического значения
+	writer.number <bool> (true);
+	// Выполняем запись знакового целого значения
+	writer.number <int32_t> (-42);
+	// Выполняем запись беззнакового целого значения
+	writer.number <uint64_t> (18446744073709551615ull);
+	// Выполняем запись значения с плавающей запятой
+	writer.number <double> (0.1);
+	// Выполняем завершение текущей записи
+	writer.record();
+	// Выполняем проверку собранного текста
+	ASSERT_EQ(writer.text(), "true,-42,18446744073709551615,0.1\r\n");
+}
+
+/**
+ * @brief Проверка кратчайшей записи значений с плавающей запятой
+ *
+ * @details Записанное обязано читаться обратно неизменным: запись, теряющая младшие
+ * разряды, портит таблицу молча
+ *
+ */
+TEST(CodecCsvWriter, Real) {
+	/**
+	 * Перечень проверяемых значений с плавающей запятой
+	 */
+	const double values[] = {0.0, 1.0, -1.5, 0.1, 3.141592653589793, 1e300, 1e-300, 2.2250738585072014e-308};
+	/**
+	 * Выполняем перебор проверяемых значений с плавающей запятой
+	 */
+	for(auto & value : values){
+		// Объект записи текста таблицы
+		csv::writer_t writer;
+		// Выполняем запись значения с плавающей запятой
+		writer.number <double> (value);
+		// Выполняем завершение текущей записи
+		writer.record();
+		// Полученное обратно значение с плавающей запятой
+		double result = 0.;
+		// Выполняем разбор текста таблицы записями
+		const auto & records = parse(writer.text());
+		// Выполняем проверку того, что запись таблицы получена
+		ASSERT_EQ(records.size(), 1u) << value;
+		// Выполняем приведение содержимого поля к числу
+		ASSERT_TRUE(csv::real(records.front().front(), result)) << value;
+		// Выполняем проверку того, что значение прочитано неизменным
+		ASSERT_EQ(result, value) << records.front().front();
+	}
+}
+
+/**
+ * @brief Проверка записи таблицы целиком
+ *
+ * @details Собранное прежде не отбрасывается: записи дописываются к нему, что позволяет
+ * предпослать таблице заголовок, собранный отдельно
+ *
+ */
+TEST(CodecCsvWriter, Write) {
+	// Объект записи текста таблицы
+	csv::writer_t writer;
+	// Выполняем запись заголовка таблицы
+	writer.record(vector <string> {"name", "value"});
+	// Выполняем запись таблицы целиком
+	writer.write(vector <vector <string>> {{"a", "1"}, {"b", "2"}});
+	// Выполняем проверку собранного текста
+	ASSERT_EQ(writer.text(), "name,value\r\na,1\r\nb,2\r\n");
+}
+
+/**
+ * @brief Проверка изъятия собранного текста
+ *
+ */
+TEST(CodecCsvWriter, Take) {
+	// Объект записи текста таблицы
+	csv::writer_t writer;
+	// Выполняем запись первой записи таблицы
+	writer.record(vector <string> {"a"});
+	// Выполняем изъятие собранного текста
+	ASSERT_EQ(writer.take(), "a\r\n");
+	// Выполняем проверку того, что собранный текст изъят целиком
+	ASSERT_EQ(writer.size(), 0u);
+	// Выполняем запись второй записи таблицы
+	writer.record(vector <string> {"b"});
+	// Выполняем проверку того, что запись продолжена изъятием не нарушенной
+	ASSERT_EQ(writer.take(), "b\r\n");
+}
+
+/**
+ * @brief Проверка отказа изъятия посреди записи
+ *
+ * @details Изъятое окончилось бы полем без завершения записи, и склеенное обратно дало бы
+ * запись, разорванную надвое
+ *
+ */
+TEST(CodecCsvWriter, TakeStarted) {
+	// Объект записи текста таблицы
+	csv::writer_t writer;
+	// Выполняем запись очередного поля записи
+	writer.field("a");
+	// Выполняем проверку отказа изъятия посреди записи
+	ASSERT_TRUE(writer.take().empty());
+	// Выполняем проверку того, что собранное изъятием не тронуто
+	ASSERT_EQ(writer.size(), 1u);
+	// Выполняем завершение текущей записи
+	writer.record();
+	// Выполняем изъятие собранного текста
+	ASSERT_EQ(writer.take(), "a\r\n");
+}
+
+/**
+ * @brief Проверка очистки собранного текста
+ *
+ */
+TEST(CodecCsvWriter, Clear) {
+	// Объект записи текста таблицы
+	csv::writer_t writer;
+	// Выполняем запись очередного поля записи
+	writer.field("a");
+	// Выполняем очистку собранного текста
+	writer.clear();
+	// Выполняем проверку того, что собранный текст очищен
+	ASSERT_EQ(writer.size(), 0u);
+	// Выполняем запись целой записи полем за полем
+	writer.record(vector <string> {"b"});
+	// Выполняем проверку того, что незавершённая запись очисткой снята
+	ASSERT_EQ(writer.text(), "b\r\n");
+}
+
+/**
+ * @brief Проверка кругового прохода записанного через разбор
+ *
+ * @details Поле, содержащее что угодно, обязано записываться так, чтобы разобраться
+ * обратно неизменным: договор этот и есть основание записи, и проверяется он на
+ * содержимом, какое обыкновенная таблица не содержит
+ *
+ */
+TEST(CodecCsvWriter, RoundTrip) {
+	/**
+	 * Проверяемая таблица с опасным содержимым полей
+	 */
+	const vector <vector <string>> records = {
+		{"обычное", "с,разделителем", "с\"кавычкой\""},
+		{"с\nпереводом", "с\r\nконцом строки", ""},
+		{"\"", ",", "\r"},
+		{" обвязка ", "\tтабуляция\t", "и\xF0\x9F\x98\x80" "знак"},
+		{"со\\знаком отмены", "\\", "\\\""},
+		{"", "", ""}
+	};
+	/**
+	 * Выполняем перебор проверяемых правил заключения поля в кавычки
+	 */
+	for(uint8_t quoting = 0; quoting < 4; quoting++){
+		/**
+		 * Выполняем перебор проверяемых способов записи кавычки внутри поля
+		 */
+		for(uint8_t escape = 0; escape < 2; escape++){
+			/**
+			 * Выполняем перебор проверяемых знаков конца строки
+			 */
+			for(uint8_t newline = 0; newline < 3; newline++){
+				// Настройки записи текста таблицы
+				csv::writer_t::settings_t settings;
+				// Устанавливаем правило заключения поля в кавычки
+				settings.quoting = static_cast <csv::quoting_t> (quoting);
+				// Устанавливаем способ записи кавычки внутри поля
+				settings.escape = static_cast <csv::escape_t> (escape);
+				// Устанавливаем знак конца строки
+				settings.newline = static_cast <csv::newline_t> (newline);
+				/**
+				 * Записью без кавычек вовсе перевод строки внутри поля не передаётся:
+				 * знак этот запись завершает, и отменить его нечем
+				 */
+				if(settings.quoting == csv::quoting_t::NONE)
+					// Выполняем переход к следующему набору настроек записи
+					continue;
+				// Объект записи текста таблицы
+				csv::writer_t writer(settings);
+				// Выполняем запись таблицы целиком
+				writer.write(records);
+				// Настройки разбора текста таблицы
+				csv::reader_t::settings_t reading;
+				// Устанавливаем способ записи кавычки внутри поля
+				reading.escape = settings.escape;
+				// Выполняем разбор записанного текста таблицы
+				const auto & result = parse(writer.text(), reading);
+				// Выполняем проверку количества полученных обратно записей
+				ASSERT_EQ(result.size(), records.size()) << int(quoting) << int(escape) << int(newline);
+				/**
+				 * Выполняем перебор полученных обратно записей таблицы
+				 */
+				for(size_t i = 0; i < result.size(); i++)
+					// Выполняем проверку того, что запись получена обратно неизменной
+					ASSERT_EQ(result.at(i), records.at(i)) << i << ' ' << int(quoting) << int(escape) << int(newline);
+			}
+		}
+	}
+}

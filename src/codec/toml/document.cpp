@@ -266,6 +266,21 @@ uint32_t awh::codec::toml::Document::locate(const vector <string_view> & path, c
  *
  */
 void awh::codec::toml::Document::reindex() noexcept {
+	/**
+	 * Если мусора, правкою накопленного, набралось вровень с живым
+	 *
+	 * @details Уплотнение стоит перебора всего дерева, и вести его на всякую правку
+	 * значило бы платить за него вдвое: порог задан долею от живого, отчего уплотнение
+	 * приходится не чаще, чем раз на половину размера дерева, и стоимость его на одну
+	 * правку выходит постоянной
+	 *
+	 * @note Хранилище знаков считается отдельно: правка строкового значения дописывает
+	 *       содержимое к нему всякий раз, а прежнее остаётся мусором, и счётом записей
+	 *       рост этот не виден вовсе
+	 */
+	if(this->cluttered())
+		// Выполняем уплотнение дерева настроек
+		this->compact();
 	// Выполняем очистку указателя записей
 	this->_index.clear();
 	// Выполняем очистку порядка объявления дочерних имён
@@ -384,6 +399,185 @@ void awh::codec::toml::Document::reindex() noexcept {
 				this->_dotted.emplace(parent);
 		}
 	}
+}
+/**
+ * @brief Метод переноса содержимого в уплотняемое хранилище знаков
+ *
+ * @param span  переносимый отрезок хранилища знаков
+ * @param store уплотняемое хранилище знаков
+ * @return      отрезок уплотнённого хранилища знаков
+ *
+ */
+awh::codec::toml::Document::span_t awh::codec::toml::Document::relocate(const span_t & span, string & store) const noexcept {
+	// Отрезок уплотнённого хранилища знаков
+	span_t result;
+	// Запоминаем смещение начала отрезка в уплотнённом хранилище
+	result.offset = static_cast <uint32_t> (store.length());
+	// Запоминаем длину переносимого содержимого
+	result.length = span.length;
+	// Выполняем перенос содержимого в уплотняемое хранилище
+	store.append(this->get(span));
+	// Выводим отрезок уплотнённого хранилища знаков
+	return result;
+}
+/**
+ * @brief Метод переноса составного имени в уплотняемый перечень частей
+ *
+ * @param span  переносимый отрезок перечня частей имён
+ * @param store уплотняемое хранилище знаков
+ * @param keys  уплотняемый перечень составных частей имён
+ * @return      отрезок уплотнённого перечня частей имён
+ *
+ */
+awh::codec::toml::Document::span_t awh::codec::toml::Document::relocate(const span_t & span, string & store, vector <key_t> & keys) const noexcept {
+	// Отрезок уплотнённого перечня частей имён
+	span_t result;
+	// Запоминаем смещение начала имени в уплотнённом перечне частей
+	result.offset = static_cast <uint32_t> (keys.size());
+	// Запоминаем количество составных частей имени
+	result.length = span.length;
+	/**
+	 * Выполняем перебор всех составных частей имени
+	 */
+	for(uint32_t i = 0; i < span.length; i++){
+		// Получаем очередную составную часть имени
+		key_t key = this->_keys.at(span.offset + i);
+		// Выполняем перенос имени части в уплотняемое хранилище знаков
+		key.name = this->relocate(key.name, store);
+		// Выполняем добавление части имени к уплотняемому перечню
+		keys.push_back(key);
+	}
+	// Выводим отрезок уплотнённого перечня частей имён
+	return result;
+}
+/**
+ * @brief Метод переноса узла значения в уплотняемый перечень узлов
+ *
+ * @param node  порядковый номер переносимого узла значения
+ * @param store уплотняемое хранилище знаков
+ * @param keys  уплотняемый перечень составных частей имён
+ * @param nodes уплотняемый перечень узлов значений
+ * @return      порядковый номер узла в уплотнённом перечне
+ *
+ */
+uint32_t awh::codec::toml::Document::relocate(const uint32_t node, string & store, vector <key_t> & keys, vector <node_t> & nodes) const noexcept {
+	// Получаем переносимый узел значения
+	node_t item = this->_nodes.at(node);
+	// Выполняем перенос строкового значения в уплотняемое хранилище знаков
+	item.text = this->relocate(this->_nodes.at(node).text, store);
+	/**
+	 * Выполняем перебор всех примечаний перечня значений
+	 */
+	for(size_t i = 0; i < item.remarks.size(); i++)
+		// Выполняем перенос содержимого примечания в уплотняемое хранилище
+		item.remarks.at(i).text = this->relocate(this->_nodes.at(node).remarks.at(i).text, store);
+	/**
+	 * Выполняем перебор всех составных имён пар встроенной таблицы
+	 */
+	for(size_t i = 0; i < item.names.size(); i++)
+		// Выполняем перенос составного имени в уплотняемый перечень частей
+		item.names.at(i) = this->relocate(this->_nodes.at(node).names.at(i), store, keys);
+	/**
+	 * Запоминаем порядковый номер узла в уплотнённом перечне
+	 *
+	 * @note Место под узел занимается прежде переноса вложенных: те заводят свои узлы
+	 *       следом, и место, взятое после них, досталось бы вложенному
+	 */
+	const uint32_t result = static_cast <uint32_t> (nodes.size());
+	// Выполняем добавление узла значения к уплотняемому перечню
+	nodes.push_back(node_t());
+	/**
+	 * Выполняем перебор всех вложенных узлов значения
+	 */
+	for(size_t i = 0; i < item.items.size(); i++)
+		// Выполняем перенос вложенного узла в уплотняемый перечень узлов
+		item.items.at(i) = this->relocate(this->_nodes.at(node).items.at(i), store, keys, nodes);
+	// Выполняем перенос собранного узла значения в уплотнённый перечень
+	nodes.at(result) = ::move(item);
+	// Выводим порядковый номер узла в уплотнённом перечне
+	return result;
+}
+/**
+ * @brief Метод проверки дерева на засорённость мусором правки
+ *
+ * @return результат проверки
+ *
+ */
+bool awh::codec::toml::Document::cluttered() const noexcept {
+	// Выводим результат проверки дерева на засорённость мусором правки
+	return ((this->_garbage > (16 + ((this->_records.size() + this->_nodes.size()) / 2))) ||
+	        (this->_store.length() > (1024 + (this->_compacted * 2))));
+}
+/**
+ * @brief Метод уплотнения дерева настроек
+ *
+ */
+void awh::codec::toml::Document::compact() noexcept {
+	// Уплотняемое хранилище знаков
+	string store;
+	// Уплотняемый перечень составных частей имён
+	vector <key_t> keys;
+	// Уплотняемый перечень узлов значений
+	vector <node_t> nodes;
+	// Уплотняемый перечень записей дерева настроек
+	vector <record_t> records;
+	// Порядковые номера записей в уплотнённом перечне
+	vector <uint32_t> moved(this->_records.size(), NO_RECORD);
+	/**
+	 * Выполняем перебор всех записей дерева настроек
+	 */
+	for(size_t i = 0; i < this->_records.size(); i++){
+		/**
+		 * Если запись снята пометкой удаления
+		 */
+		if(this->_records.at(i).kind == kind_t::NONE)
+			// Выполняем переход к следующей записи дерева настроек
+			continue;
+		// Получаем переносимую запись дерева настроек
+		record_t record = this->_records.at(i);
+		// Выполняем перенос составного имени в уплотняемый перечень частей
+		record.path = this->relocate(this->_records.at(i).path, store, keys);
+		// Выполняем перенос содержимого примечания в уплотняемое хранилище
+		record.text = this->relocate(this->_records.at(i).text, store);
+		/**
+		 * Если записью является пара
+		 */
+		if(record.kind == kind_t::PAIR)
+			// Выполняем перенос узла значения в уплотняемый перечень узлов
+			record.node = this->relocate(this->_records.at(i).node, store, keys, nodes);
+		// Запоминаем узел значения записи, значения не несущей
+		else record.node = 0;
+		// Запоминаем порядковый номер записи в уплотнённом перечне
+		moved.at(i) = static_cast <uint32_t> (records.size());
+		// Выполняем добавление записи к уплотняемому перечню
+		records.push_back(record);
+	}
+	/**
+	 * Выполняем перебор всех записей уплотнённого перечня
+	 *
+	 * @note Перенос ссылок ведётся вторым проходом: запись объявления таблицы стоит
+	 *       прежде своих пар, но порядковый номер её известен лишь по переносе всех
+	 */
+	for(auto & record : records){
+		/**
+		 * Если запись принадлежит объявленной таблице
+		 */
+		if(record.table != NO_RECORD)
+			// Выполняем перенос порядкового номера записи объявления таблицы
+			record.table = moved.at(record.table);
+	}
+	// Выполняем замену хранилища знаков уплотнённым
+	this->_store = ::move(store);
+	// Выполняем замену перечня составных частей имён уплотнённым
+	this->_keys = ::move(keys);
+	// Выполняем замену перечня узлов значений уплотнённым
+	this->_nodes = ::move(nodes);
+	// Выполняем замену перечня записей дерева настроек уплотнённым
+	this->_records = ::move(records);
+	// Выполняем сброс количества записей и узлов, правкой в мусор обращённых
+	this->_garbage = 0;
+	// Запоминаем длину хранилища знаков, снятую уплотнением
+	this->_compacted = this->_store.length();
 }
 /**
  * @brief Метод заведения узла значения
@@ -778,6 +972,16 @@ const awh::codec::toml::Document::node_t * awh::codec::toml::Document::seek(cons
  */
 awh::codec::toml::Document::node_t * awh::codec::toml::Document::reach(const vector <string_view> & path) noexcept {
 	/**
+	 * Если дерево засорено мусором правки
+	 *
+	 * @note Уплотнение ведётся здесь, а не по правке значения: правка получает указатель
+	 *       на узел и пишет в него, а уплотнение перечень узлов переносит - указатель,
+	 *       выданный до него, повис бы
+	 */
+	if(this->cluttered())
+		// Выполняем перестроение указателей поиска вместе с уплотнением дерева
+		this->reindex();
+	/**
 	 * Если составное имя к записи непригодно
 	 */
 	if(!this->acceptable(path, false))
@@ -797,6 +1001,8 @@ awh::codec::toml::Document::node_t * awh::codec::toml::Document::reach(const vec
 		 *       оставила бы их обрывками
 		 */
 		this->_records.at(found).node = this->reserve();
+		// Выполняем учёт узла прежнего значения, в мусор обращённого
+		this->_garbage++;
 		// Выводим узел значения правимой пары
 		return &this->_nodes.at(this->_records.at(found).node);
 	}
@@ -917,6 +1123,20 @@ void awh::codec::toml::Document::settings(const settings_t & settings) noexcept 
 bool awh::codec::toml::Document::parse(const string_view text) noexcept {
 	// Выполняем освобождение дерева настроек
 	this->clear();
+	/**
+	 * Если длина исходного текста отрезку хранилища не по мерке
+	 *
+	 * @note Отрезок хранилища знаков задан смещением и длиной в четыре октета: текст
+	 *       длиннее переполнил бы смещение молча, и дерево выдавало бы содержимое,
+	 *       взятое не оттуда. Отказ здесь дешевле пятой части памяти, которой стоило бы
+	 *       смещение в восемь октетов на всяком имени и всяком значении
+	 */
+	if(text.length() > static_cast <size_t> (numeric_limits <uint32_t>::max())){
+		// Запоминаем код ошибки разбора текста настроек
+		this->_error = error_t::INTERNAL;
+		// Выводим отрицательный результат выполнения операции
+		return false;
+	}
 	// Объект потокового чтения текста настроек
 	reader_t reader(this->_settings.reader);
 	/**
@@ -1657,6 +1877,8 @@ bool awh::codec::toml::Document::erase(const vector <string_view> & path) noexce
 	}
 	// Выполняем снятие записи пары пометкой удаления
 	this->_records.at(record).kind = kind_t::NONE;
+	// Выполняем учёт записи, пометкой удаления снятой
+	this->_garbage++;
 	/**
 	 * Если следом за парой записано примечание, дописанное к её строке
 	 *
@@ -1667,6 +1889,8 @@ bool awh::codec::toml::Document::erase(const vector <string_view> & path) noexce
 	   (this->_records.at(record + 1).kind == kind_t::COMMENT) && this->_records.at(record + 1).trailing)
 		// Выполняем снятие записи примечания пометкой удаления
 		this->_records.at(record + 1).kind = kind_t::NONE;
+		// Выполняем учёт записи, пометкой удаления снятой
+		this->_garbage++;
 	// Выполняем перестроение указателей поиска
 	this->reindex();
 	// Выводим положительный результат выполнения операции
@@ -1693,6 +1917,8 @@ bool awh::codec::toml::Document::remove(const vector <string_view> & path) noexc
 	}
 	// Выполняем снятие записи объявления таблицы пометкой удаления
 	this->_records.at(record).kind = kind_t::NONE;
+	// Выполняем учёт записи, пометкой удаления снятой
+	this->_garbage++;
 	/**
 	 * Выполняем перебор всех записей удаляемой таблицы
 	 */
@@ -1707,6 +1933,8 @@ bool awh::codec::toml::Document::remove(const vector <string_view> & path) noexc
 			break;
 		// Выполняем снятие записи таблицы пометкой удаления
 		this->_records.at(i).kind = kind_t::NONE;
+		// Выполняем учёт записи, пометкой удаления снятой
+		this->_garbage++;
 	}
 	// Выполняем перестроение указателей поиска
 	this->reindex();
@@ -1758,6 +1986,37 @@ bool awh::codec::toml::Document::empty() const noexcept {
 	return true;
 }
 /**
+ * @brief Метод получения объёма памяти, деревом занимаемого
+ *
+ * @return объём памяти в октетах
+ *
+ */
+size_t awh::codec::toml::Document::footprint() const noexcept {
+	// Собираемый объём памяти, деревом занимаемый
+	size_t result = 0;
+	// Выполняем учёт памяти хранилища знаков
+	result += this->_store.capacity();
+	// Выполняем учёт памяти перечня записей дерева настроек
+	result += (this->_records.capacity() * sizeof(record_t));
+	// Выполняем учёт памяти перечня составных частей имён
+	result += (this->_keys.capacity() * sizeof(key_t));
+	// Выполняем учёт памяти перечня узлов значений
+	result += (this->_nodes.capacity() * sizeof(node_t));
+	/**
+	 * Выполняем перебор всех узлов значений дерева настроек
+	 */
+	for(auto & node : this->_nodes){
+		// Выполняем учёт памяти вложенных узлов значения
+		result += (node.items.capacity() * sizeof(uint32_t));
+		// Выполняем учёт памяти составных имён пар встроенной таблицы
+		result += (node.names.capacity() * sizeof(span_t));
+		// Выполняем учёт памяти примечаний перечня значений
+		result += (node.remarks.capacity() * sizeof(remark_t));
+	}
+	// Выводим объём памяти, деревом занимаемый
+	return result;
+}
+/**
  * @brief Метод освобождения дерева настроек
  *
  */
@@ -1780,6 +2039,10 @@ void awh::codec::toml::Document::clear() noexcept {
 	this->_children.clear();
 	// Выполняем очистку имён таблиц, заведённых составным именем ключа
 	this->_dotted.clear();
+	// Выполняем сброс количества записей и узлов, правкой в мусор обращённых
+	this->_garbage = 0;
+	// Выполняем сброс длины хранилища знаков, снятой уплотнением
+	this->_compacted = 0;
 }
 /**
  * @brief Метод записи дерева обратно в текст настроек
@@ -1913,14 +2176,14 @@ awh::codec::toml::writer_t::settings_t awh::codec::toml::Document::writing() con
  * @brief Конструктор
  *
  */
-awh::codec::toml::Document::Document() noexcept : _error(error_t::NONE) {}
+awh::codec::toml::Document::Document() noexcept : _error(error_t::NONE), _garbage(0), _compacted(0) {}
 /**
  * @brief Конструктор
  *
  * @param settings настройки дерева настроек
  *
  */
-awh::codec::toml::Document::Document(const settings_t & settings) noexcept : _error(error_t::NONE) {
+awh::codec::toml::Document::Document(const settings_t & settings) noexcept : _error(error_t::NONE), _garbage(0), _compacted(0) {
 	// Выполняем установку настроек дерева настроек
 	this->settings(settings);
 }

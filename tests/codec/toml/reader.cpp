@@ -20,9 +20,9 @@
 /**
  * Стандартные заголовочные файлы
  *
- * @note Заголовок cmath нужен ради isinf и isnan. Собиратели посвежее подтягивают
+ * @note Заголовок cmath нужен ради std::isinf и std::isnan. Собиратели посвежее подтягивают
  *       его попутно другими заголовками, а gcc 12 с glibc 2.36 - нет, и сборка
- *       валится с "isinf has not been declared". Проверено на стенде Debian 12
+ *       валится с "isinf is not a member of std". Проверено на стенде Debian 12
  */
 #include <cmath>
 #include <chrono>
@@ -323,11 +323,11 @@ TEST(CodecTomlReader, Floats) {
 	// Выполняем проверку разбора числа с порядком
 	ASSERT_DOUBLE_EQ(values.at(1).real, -500.0);
 	// Выполняем проверку разбора бесконечности
-	ASSERT_TRUE(::isinf(values.at(2).real) && (values.at(2).real > 0));
+	ASSERT_TRUE(std::isinf(values.at(2).real) && (values.at(2).real > 0));
 	// Выполняем проверку разбора отрицательной бесконечности
-	ASSERT_TRUE(::isinf(values.at(3).real) && (values.at(3).real < 0));
+	ASSERT_TRUE(std::isinf(values.at(3).real) && (values.at(3).real < 0));
 	// Выполняем проверку разбора нечисла
-	ASSERT_TRUE(::isnan(values.at(4).real));
+	ASSERT_TRUE(std::isnan(values.at(4).real));
 	// Выполняем проверку разбора истины
 	ASSERT_TRUE(values.at(5).boolean);
 	// Выполняем проверку типа логического значения

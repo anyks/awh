@@ -597,7 +597,32 @@ static LPFN_WSARECVMSG __awh_wsa_recvmsg__(const SOCKET sock) noexcept {
  */
 static int32_t __awh_socket_errno__(const int32_t code) noexcept;
 
+/**
+ * @brief Функция добычи принятого родным приёмом со служебными метаданными
+ *
+ * @note Объявлена наперёд по тому же доводу, что и у приёма данных: описана она рядом
+ *       с самим пулом приёма, а зовётся отсюда - из посредника, стоящего много выше
+ *
+ * @param sock   дескриптор сокета
+ * @param msg    описание принимаемого сообщения
+ * @param result количество принятых октетов либо признак ошибки
+ * @return       признак того, что приём обслужен родным путём
+ *
+ */
+static bool __awh_pool_recvmsg__(const SOCKET sock, struct msghdr * msg, ssize_t & result) noexcept;
+
 static ssize_t recvmsg(const SOCKET sock, struct msghdr * msg, [[maybe_unused]] const int32_t flags) noexcept {
+	/**
+	 * Если приём обслужен родным приёмом - обращения к системе не происходит вовсе
+	 *
+	 * @note Порядок тот же, что и у приёма данных: система приняла сообщение в наш
+	 *       буфер сама, ещё до прихода потребителя, и остаётся лишь выдать принятое
+	 */
+	ssize_t served = 0;
+	// Если принятое родным приёмом потребителю выдано
+	if(::__awh_pool_recvmsg__(sock, msg, served))
+		// Выводим итог родного приёма
+		return served;
 	// Получаем расширенный вызов приёма сообщения
 	LPFN_WSARECVMSG receive = ::__awh_wsa_recvmsg__(sock);
 	// Если вызов взять не удалось либо описание не передано
@@ -5020,6 +5045,26 @@ namespace inflight {
 		socklen_t length;
 		// Устройство сообщения для приёма и отправки дейтаграмм
 		struct msghdr message;
+		/**
+		 * @brief Устройство сообщения строя MS Windows для приёма со служебными метаданными
+		 *
+		 * @details Держится в записи учёта, а не на стеке подачи: систему занимает оно
+		 *          до самого прихода завершения, а стек подачи не переживает и возврата
+		 *          из неё. Страницы таблицы учёта с места не двигаются, оттого адрес
+		 *          этот живёт ровно столько, сколько сама операция
+		 *
+		 */
+		WSAMSG wsamsg;
+		// Вектор буфера сообщения строя MS Windows
+		WSABUF wsabuf;
+		/**
+		 * @brief Признак приёма со служебными метаданными
+		 *
+		 * @note По нему разбор завершения и узнаёт, что вместе с данными пришли
+		 *       управляющие сообщения, и что длину их надо снять с описания
+		 *
+		 */
+		bool metadata;
 		// Вектор буферов сообщения
 		struct iovec vector;
 		// Срок ожидания в миллисекундах
@@ -5031,7 +5076,8 @@ namespace inflight {
 		Slot() noexcept :
 		 overlapped{}, kind(kind_t::NONE), busy(false), multishot(false), cancelled(false),
 		 generation(0), index(0), sock(net::invalid_socket_t), mask(0), bid(0xFFFF), udata(nullptr),
-		 addr{}, length(sizeof(struct sockaddr_storage)), message{}, vector{}, deadline(0) {
+		 addr{}, length(sizeof(struct sockaddr_storage)), message{}, wsamsg{}, wsabuf{},
+		 metadata(false), vector{}, deadline(0) {
 			// Зануляем описатель наложенного обмена
 			::memset(&this->overlapped, 0, sizeof(this->overlapped));
 		}
@@ -5214,6 +5260,8 @@ namespace inflight {
 		slot.cancelled = false;
 		// Сбрасываем номер буфера родного приёма, оставленный прежним владельцем
 		slot.bid = 0xFFFF;
+		// Сбрасываем признак приёма со служебными метаданными
+		slot.metadata = false;
 		/**
 		 * Сбрасываем длину адреса удалённой стороны
 		 *
@@ -5942,6 +5990,17 @@ namespace pool {
 	static constexpr uint32_t COUNT = 0x100;
 
 	/**
+	 * @brief Размер буфера служебных метаданных одного приёма
+	 *
+	 * @details Управляющие сообщения сырого сокета невелики: предел жизни пакета,
+	 *          класс обслуживания, признак перегрузки пути да опознаватель
+	 *          пришедшего сетевого устройства. Величина взята с запасом кратным
+	 *          восьми - выравнивание управляющих сообщений именно таково
+	 *
+	 */
+	static constexpr uint32_t CONTROL = 0x100;
+
+	/**
 	 * @brief Признак отсутствия буфера приёма
 	 *
 	 */
@@ -5985,13 +6044,27 @@ namespace pool {
 		 */
 		bool bounded;
 		/**
+		 * @brief Длина принятых служебных метаданных
+		 *
+		 * @details Лежат они не здесь, а в буфере метаданных под тем же номером, что и
+		 *          сами данные: буферы эти адреса не меняют, а таблица принятого при
+		 *          росте переезжает целиком, и система дописывала бы по памяти
+		 *          освобождённой
+		 *
+		 * @note Ноль означает приём без метаданных - потоковый, дейтаграммный либо
+		 *       сырой, которому система метаданных не отдала вовсе
+		 *
+		 */
+		uint32_t controllen;
+		/**
 		 * @brief Конструктор
 		 *
 		 */
 		fetched_t() noexcept :
 		 armed(false), ready(false), bid(::pool::INVALID), res(0), offset(0),
 		 token(::inflight::INVALID), owner(nullptr), addr{},
-		 length(sizeof(struct sockaddr_storage)), addressed(false), bounded(false) {}
+		 length(sizeof(struct sockaddr_storage)), addressed(false), bounded(false),
+		 controllen(0) {}
 	};
 
 	/**
@@ -6008,6 +6081,16 @@ namespace pool {
 	 *
 	 */
 	static vector <unique_ptr <uint8_t []>> buffers;
+
+	/**
+	 * @brief Буферы служебных метаданных, по одному на буфер приёма
+	 *
+	 * @details Заводятся порознь от буферов данных и лишь тем приёмам, что метаданные
+	 *          и просят: сырых сокетов в работе единицы, а платить за них памятью на
+	 *          каждом приёме потоковом не за что
+	 *
+	 */
+	static vector <unique_ptr <uint8_t []>> controls;
 
 	/**
 	 * @brief Очередь свободных буферов приёма
@@ -6075,6 +6158,35 @@ namespace pool {
 		// Выводим буфер приёма по его номеру
 		return (((bid != ::pool::INVALID) && (static_cast <size_t> (bid) < ::pool::buffers.size())) ?
 		 ::pool::buffers.at(static_cast <size_t> (bid)).get() : nullptr);
+	}
+	/**
+	 * @brief Функция добычи буфера служебных метаданных по номеру буфера приёма
+	 *
+	 * @details Буфер заводится по первому спросу и не освобождается до остановки: сырой
+	 *          сокет читает непрерывно, и возвращать память системе значило бы занимать
+	 *          её тут же снова
+	 *
+	 * @param bid номер буфера приёма
+	 * @return    буфер служебных метаданных либо ничего, если завести его не удалось
+	 *
+	 */
+	static uint8_t * control(const uint16_t bid) noexcept {
+		// Если номер буфера приёма неверен
+		if((bid == ::pool::INVALID) || (static_cast <size_t> (bid) >= ::pool::buffers.size()))
+			// Выводим отсутствие буфера служебных метаданных
+			return nullptr;
+		// Если места под буфер служебных метаданных не хватает
+		if(static_cast <size_t> (bid) >= ::pool::controls.size())
+			// Выполняем расширение таблицы буферов служебных метаданных
+			::pool::controls.resize((static_cast <size_t> (bid) + 1));
+		// Получаем буфер служебных метаданных
+		unique_ptr <uint8_t []> & result = ::pool::controls.at(static_cast <size_t> (bid));
+		// Если буфер служебных метаданных ещё не заведён
+		if(result == nullptr)
+			// Выполняем заведение буфера служебных метаданных
+			result.reset(new (std::nothrow) uint8_t[::pool::CONTROL]);
+		// Выводим буфер служебных метаданных
+		return result.get();
 	}
 	/**
 	 * @brief Функция добычи записи принятого под дескриптор
@@ -6178,6 +6290,16 @@ namespace pool {
 		// Отмечаем принятое пришедшим
 		record->ready = true;
 		/**
+		 * Если приём вёлся со служебными метаданными - снимаем их длину с описания
+		 *
+		 * @note Сами метаданные система написала в буфер под тем же номером, и лежат они
+		 *       там до самой выдачи потребителю. Длину же она сообщает только описанием
+		 *       сообщения, и жить оно потому обязано до прихода завершения - живёт в
+		 *       записи учёта
+		 */
+		record->controllen = ((slot != nullptr) && slot->metadata ?
+		 static_cast <uint32_t> (slot->wsamsg.Control.len) : 0);
+		/**
 		 * Если адрес отправителя системой выяснен - запоминаем его
 		 *
 		 * @note Длина нулевая означает приём потоковый: подача выставляет её лишь
@@ -6186,8 +6308,13 @@ namespace pool {
 		if((slot != nullptr) && (slot->length > 0)){
 			// Запоминаем адрес отправителя
 			::memcpy(&record->addr, &slot->addr, sizeof(struct sockaddr_storage));
-			// Запоминаем длину адреса отправителя
-			record->length = slot->length;
+			/**
+			 * Запоминаем длину адреса отправителя
+			 *
+			 * @note Приём со служебными метаданными сообщает её описанием сообщения, а не
+			 *       отдельным полем: расширенный вызов пишет выясненную длину именно туда
+			 */
+			record->length = (slot->metadata ? static_cast <socklen_t> (slot->wsamsg.namelen) : slot->length);
 			// Отмечаем адрес отправителя выясненным
 			record->addressed = true;
 			// Отмечаем принятое сохраняющим границы сообщения
@@ -6315,6 +6442,127 @@ namespace pool {
 		return true;
 	}
 	/**
+	 * @brief Функция приёма сообщения со служебными метаданными из отложенного
+	 *
+	 * @details Посредник тот же, что и у приёма данных, но выдаёт вдобавок управляющие
+	 *          сообщения: сырому сокету они и есть главное - предел жизни пакета, класс
+	 *          обслуживания, признак перегрузки пути
+	 *
+	 * @note Отдаётся сообщение целиком и за один заход, дробить его нельзя: границы у
+	 *       сырого приёма значимы ровно так же, как у дейтаграммного
+	 *
+	 * @param sock   дескриптор сокета
+	 * @param msg    описание принимаемого сообщения
+	 * @param result количество принятых октетов либо признак ошибки
+	 * @return       признак того, что приём обслужен отложенным
+	 *
+	 */
+	static bool receiving(const net::socket_t sock, struct msghdr * msg, ssize_t & result) noexcept {
+		// Получаем запись принятого по дескриптору
+		fetched_t * record = ((sock >= 0) && (static_cast <size_t> (sock) < ::pool::fetched.size()) ?
+		 &::pool::fetched.at(static_cast <size_t> (sock)) : nullptr);
+		// Если записи принятого по дескриптору нет вовсе либо описание не передано
+		if((record == nullptr) || (msg == nullptr))
+			// Выводим признак необслуженного приёма
+			return false;
+		// Если принятого по дескриптору нет
+		if(!record->ready){
+			/**
+			 * Если по дескриптору заведён родной приём - обычное обращение запрещено
+			 *
+			 * @note Довод тот же, что и у приёма данных: две операции приёма на одном
+			 *       сокете перемешали бы принятое
+			 */
+			if(record->armed){
+				// Устанавливаем признак отсутствия данных
+				errno = EAGAIN;
+				// Устанавливаем признак отказа
+				result = -1;
+				// Выводим признак обслуженного приёма
+				return true;
+			}
+			// Выводим признак необслуженного приёма
+			return false;
+		}
+		// Отмечаем принятое забранным: сообщение выдаётся целиком и за один заход
+		record->ready = false;
+		// Получаем номер буфера, в котором принятое лежит
+		const uint16_t bid = record->bid;
+		// Забываем номер буфера приёма
+		record->bid = ::pool::INVALID;
+		// Если приём завершился отказом
+		if(record->res < 0){
+			// Освобождаем буфер приёма
+			::pool::give(bid);
+			// Устанавливаем ошибку, какой её выдала система
+			errno = -record->res;
+			// Устанавливаем признак отказа
+			result = -1;
+			// Выводим признак обслуженного приёма
+			return true;
+		}
+		// Получаем буфер, в котором принятое лежит
+		const uint8_t * source = ::pool::data(bid);
+		// Количество перенесённого потребителю
+		size_t carried = 0;
+		// Вычисляем размер принятого сообщения
+		const size_t received = static_cast <size_t> (record->res);
+		/**
+		 * Выполняем перебор буферов потребителя
+		 */
+		for(size_t i = 0; (source != nullptr) && (i < msg->msg_iovlen) && (carried < received); i++){
+			// Вычисляем размер порции, влезающей в текущий буфер потребителя
+			const size_t portion = (((received - carried) < msg->msg_iov[i].iov_len) ?
+			 (received - carried) : msg->msg_iov[i].iov_len);
+			// Если переносить есть что
+			if(portion > 0)
+				// Выполняем перенос принятого в буфер потребителя
+				::memcpy(msg->msg_iov[i].iov_base, (source + carried), portion);
+			// Увеличиваем количество перенесённого потребителю
+			carried += portion;
+		}
+		// Если адрес отправителя запрошен и системой выяснен
+		if((msg->msg_name != nullptr) && record->addressed){
+			// Вычисляем размер переносимого адреса отправителя
+			const size_t length = ((static_cast <size_t> (record->length) < static_cast <size_t> (msg->msg_namelen)) ?
+			 static_cast <size_t> (record->length) : static_cast <size_t> (msg->msg_namelen));
+			// Выполняем перенос адреса отправителя
+			::memcpy(msg->msg_name, &record->addr, length);
+			// Устанавливаем длину адреса отправителя
+			msg->msg_namelen = static_cast <socklen_t> (length);
+		// Если адрес отправителя не выяснен - сообщаем об этом нулевой длиной
+		} else msg->msg_namelen = 0;
+		// Получаем буфер служебных метаданных
+		const uint8_t * metadata = ((record->controllen > 0) ? ::pool::control(bid) : nullptr);
+		// Если служебные метаданные приняты и потребитель их просит
+		if((metadata != nullptr) && (msg->msg_control != nullptr)){
+			// Вычисляем размер переносимых служебных метаданных
+			const size_t length = ((static_cast <size_t> (record->controllen) < msg->msg_controllen) ?
+			 static_cast <size_t> (record->controllen) : msg->msg_controllen);
+			// Выполняем перенос служебных метаданных
+			::memcpy(msg->msg_control, metadata, length);
+			// Устанавливаем размер принятых служебных метаданных
+			msg->msg_controllen = length;
+		// Если служебных метаданных не приняли вовсе
+		} else msg->msg_controllen = 0;
+		// Забываем длину принятых служебных метаданных
+		record->controllen = 0;
+		/**
+		 * Устанавливаем признак усечённого сообщения
+		 *
+		 * @note Ставится он по тому же доводу, по какому его ставит и система: остаток,
+		 *       не влезший в буферы потребителя, отброшен, и знать об этом потребитель
+		 *       обязан
+		 */
+		msg->msg_flags = ((carried < received) ? MSG_TRUNC : 0);
+		// Освобождаем буфер приёма
+		::pool::give(bid);
+		// Устанавливаем количество принятых октетов
+		result = static_cast <ssize_t> (carried);
+		// Выводим признак обслуженного приёма
+		return true;
+	}
+	/**
 	 * @brief Функция сброса состояния приёма по дескриптору
 	 *
 	 * @details Зовётся при удалении узла и при закрытии дескриптора: номер
@@ -6361,6 +6609,8 @@ namespace pool {
 		::pool::released.clear();
 		// Выполняем освобождение буферов приёма
 		::pool::buffers.clear();
+		// Выполняем освобождение буферов служебных метаданных
+		::pool::controls.clear();
 	}
 };
 
@@ -6377,6 +6627,10 @@ namespace pool {
 static bool __awh_pool_receive__(const SOCKET sock, void * buffer, const size_t size, ssize_t & result, struct sockaddr * addr, int32_t * length) noexcept {
 	// Выводим признак обслуженности приёма родным путём
 	return ::pool::receive(static_cast <awh::net::socket_t> (sock), buffer, size, result, addr, length);
+}
+static bool __awh_pool_recvmsg__(const SOCKET sock, struct msghdr * msg, ssize_t & result) noexcept {
+	// Выводим признак обслуженности приёма сообщения родным путём
+	return ::pool::receiving(static_cast <awh::net::socket_t> (sock), msg, result);
 }
 
 /**
@@ -6627,18 +6881,22 @@ namespace post {
 	 *       не отдаёт вовсе, оттого у io_uring дейтаграммы обслуживаются ожиданием
 	 *       готовности. `WSARecvFrom` же отдаёт адрес тем же завершением
 	 *
-	 * @note Сырые сокеты исключены отбором годности: приём им обязан отдавать
-	 *       служебные метаданные (`TTL`, `HopLimit`) из управляющего сообщения, а
-	 *       `WSARecvFrom` их не отдаёт - нужен `WSARecvMsg`, добываемый через
-	 *       `WSAIoctl` порядком `ConnectEx`. Работа отдельная
+	 * @note Сырым сокетам родной приём подаётся расширенным вызовом `WSARecvMsg`,
+	 *       добываемым через `WSAIoctl` порядком `ConnectEx`: приём им обязан отдавать
+	 *       служебные метаданные (`TTL`, `HopLimit`, класс обслуживания) управляющим
+	 *       сообщением, а ни `WSARecv`, ни `WSARecvFrom` их не отдают вовсе. Здесь
+	 *       порт завершений опять сильнее кольца io_uring: у того приём с метаданными
+	 *       наложенным не подаётся никак, и сырые сокеты обслуживаются ожиданием
+	 *       готовности
 	 *
 	 * @param sock     дескриптор, с которого читаются данные
 	 * @param udata    запись подписки, которой операция принадлежит
 	 * @param datagram признак дейтаграммного дескриптора
+	 * @param metadata признак приёма со служебными метаданными
 	 * @return         метка завершения
 	 *
 	 */
-	static uint64_t fetch(const net::socket_t sock, void * udata, const bool datagram) noexcept {
+	static uint64_t fetch(const net::socket_t sock, void * udata, const bool datagram, const bool metadata = false) noexcept {
 		// Выполняем занятие буфера приёма
 		const uint16_t bid = ::pool::take();
 		// Если свободных буферов приёма не осталось
@@ -6672,8 +6930,47 @@ namespace post {
 		DWORD flags = 0;
 		// Признак того, что обращение выполнено успешно
 		bool accepted = false;
+		// Если приём ведётся со служебными метаданными
+		if(metadata){
+			// Получаем расширенный вызов приёма сообщения
+			LPFN_WSARECVMSG receive = ::__awh_wsa_recvmsg__(static_cast <SOCKET> (sock));
+			// Получаем буфер служебных метаданных
+			uint8_t * control = ::pool::control(bid);
+			// Если расширенный вызов либо буфер служебных метаданных не добыты
+			if((receive == nullptr) || (control == nullptr)){
+				// Выполняем освобождение занятой записи учёта
+				::inflight::release(result);
+				// Освобождаем занятый буфер приёма
+				::pool::give(bid);
+				// Выводим отсутствие метки завершения: подача отступит к ожиданию готовности
+				return ::inflight::INVALID;
+			}
+			// Устанавливаем длину адреса отправителя
+			slot->length = sizeof(struct sockaddr_storage);
+			// Выполняем зануление адреса отправителя
+			::memset(&slot->addr, 0, sizeof(slot->addr));
+			// Устанавливаем буфер принимаемых данных
+			slot->wsabuf = chunk;
+			// Выполняем зануление описания принимаемого сообщения
+			::memset(&slot->wsamsg, 0, sizeof(slot->wsamsg));
+			// Устанавливаем адрес отправителя
+			slot->wsamsg.name = reinterpret_cast <LPSOCKADDR> (&slot->addr);
+			// Устанавливаем длину адреса отправителя
+			slot->wsamsg.namelen = static_cast <INT> (sizeof(struct sockaddr_storage));
+			// Устанавливаем набор буферов приёма
+			slot->wsamsg.lpBuffers = &slot->wsabuf;
+			// Устанавливаем число буферов приёма
+			slot->wsamsg.dwBufferCount = 1;
+			// Устанавливаем начало буфера служебных метаданных
+			slot->wsamsg.Control.buf = reinterpret_cast <CHAR *> (control);
+			// Устанавливаем размер буфера служебных метаданных
+			slot->wsamsg.Control.len = static_cast <ULONG> (::pool::CONTROL);
+			// Отмечаем приём ведущимся со служебными метаданными
+			slot->metadata = true;
+			// Выполняем подачу приёма сообщения со служебными метаданными
+			accepted = (receive(static_cast <SOCKET> (sock), &slot->wsamsg, &bytes, &slot->overlapped, nullptr) == 0);
 		// Если дескриптор дейтаграммный - принимаем вместе с адресом отправителя
-		if(datagram){
+		} else if(datagram){
 			// Устанавливаем длину адреса отправителя
 			slot->length = sizeof(struct sockaddr_storage);
 			// Выполняем зануление адреса отправителя
@@ -9078,18 +9375,26 @@ namespace kernel {
 		 *          получаем данные завершением - ровно как io_uring, только буфер
 		 *          наш, а не ядра
 		 *
-		 * @note Сырые сокеты исключены, и это единственный вид, которому родного
-		 *       приёма не досталось: приём им обязан отдавать служебные метаданные
-		 *       (`TTL`, `HopLimit`) из управляющего сообщения, а этого не делает ни
-		 *       `WSARecv`, ни `WSARecvFrom` - нужен `WSARecvMsg`, и это работа
-		 *       отдельная. Сокеты с последовательными пакетами исключены заодно: у
-		 *       Windows их нет вовсе
+		 * @note Сырым сокетам родной приём достался наравне с прочими, но подаётся он
+		 *       расширенным вызовом `WSARecvMsg`: приём им обязан отдавать служебные
+		 *       метаданные (`TTL`, `HopLimit`, класс обслуживания) управляющим
+		 *       сообщением, а ни `WSARecv`, ни `WSARecvFrom` их не отдают. Сокеты же с
+		 *       последовательными пакетами исключены: у Windows их нет вовсе
 		 *
 		 * @note Дескриптор приёмника объединения оставлен: он нужен перекладыванию
 		 *       через буфер, а оно от вида приёма не зависит
 		 */
 		// Признак дейтаграммного дескриптора
 		const bool datagram = (exchanging && (node->state.type == event::type_t::DATAGRAM));
+		/**
+		 * Признак сырого дескриптора, приём которому ведётся со служебными метаданными
+		 *
+		 * @note Приём этот подаётся расширенным вызовом `WSARecvMsg`: ни `WSARecv`, ни
+		 *       `WSARecvFrom` управляющих сообщений не отдают вовсе, а сырому сокету они
+		 *       и есть главное - предел жизни пакета, класс обслуживания, признак
+		 *       перегрузки пути. Не отдай мы их, разбор получал бы данные без метаданных
+		 */
+		const bool metadata = (exchanging && (node->state.type == event::type_t::RAW));
 		/**
 		 * Выполняем подачу ожидания готовности
 		 *
@@ -9100,7 +9405,7 @@ namespace kernel {
 		 */
 		const bool suitable = (
 			((events & ~static_cast <uint32_t> (EPOLLRDHUP)) == static_cast <uint32_t> (EPOLLIN)) &&
-			exchanging && !limited && ((node->state.type == event::type_t::STREAM) || datagram) &&
+			exchanging && !limited && ((node->state.type == event::type_t::STREAM) || datagram || metadata) &&
 			!::kernel::listening(state.sock) && !::pool::pending(state.sock)
 		);
 		/**
@@ -9137,7 +9442,7 @@ namespace kernel {
 		// Если дескриптор не слушающий
 		else {
 			// Выполняем подачу родного приёма, если подписка ему годна
-			state.token = (suitable ? ::post::fetch(state.sock, &state, datagram) : ::inflight::INVALID);
+			state.token = (suitable ? ::post::fetch(state.sock, &state, datagram, metadata) : ::inflight::INVALID);
 			// Запоминаем поданность родного приёма
 			fetching = (state.token != ::inflight::INVALID);
 			// Если родной приём не подавался либо подать его не удалось
