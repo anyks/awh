@@ -49,6 +49,13 @@
 #include <net/if.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
+/**
+ * Заголовок запросов ввода-вывода
+ *
+ * @note Занятое место буферов сокета системы семейства BSD, кроме macOS, сообщают
+ *       запросами FIONWRITE и FIONREAD, а объявлены те в этом заголовке
+ */
+#include <sys/ioctl.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
 #include <netinet/ip6.h>
@@ -552,17 +559,50 @@ int32_t awh::eth::Socket::getBufferAvailable(const net::socket_t sock, const net
 		return -1;
 	// Количество байт, уже лежащих в буфере сокета
 	int32_t pending = 0;
-	// Получаем размер значения количества байт
-	socklen_t length = sizeof(pending);
 	/**
-	 * Считываем занятое место буфера в зависимости от направления обмена
+	 * Если система сообщает занятое место параметрами сокета
 	 *
-	 * @note У macOS и BSD занятое место сообщают параметры сокета: SO_NWRITE - для буфера
-	 *       отправки, SO_NREAD - для буфера приёма. Свободное выводится вычитанием
+	 * @note Параметры SO_NWRITE и SO_NREAD отводит одна лишь macOS: прочие системы
+	 *       семейства BSD их не знают вовсе, и сборка там валилась отказом «SO_NWRITE
+	 *       was not declared». Обнаружено на стенде NetBSD 10.1 (14.08.2026)
 	 */
-	if(::getsockopt(sock, SOL_SOCKET, ((event == net::socket_event_t::WRITE) ? SO_NWRITE : SO_NREAD), &pending, &length) != 0)
-		// Выводим признак того, что свободное место неизвестно
-		return -1;
+	#if defined(SO_NWRITE) && defined(SO_NREAD)
+		// Получаем размер значения количества байт
+		socklen_t length = sizeof(pending);
+		// Считываем занятое место буфера в зависимости от направления обмена
+		if(::getsockopt(sock, SOL_SOCKET, ((event == net::socket_event_t::WRITE) ? SO_NWRITE : SO_NREAD), &pending, &length) != 0)
+			// Выводим признак того, что свободное место неизвестно
+			return -1;
+	/**
+	 * Если система сообщает занятое место запросами ввода-вывода
+	 *
+	 * @note Прочие BSD отводят под это запросы: FIONWRITE - для буфера отправки,
+	 *       FIONREAD - для буфера приёма. Запрос отправки есть у FreeBSD, DragonFly и
+	 *       NetBSD, а у OpenBSD его нет вовсе - там место буфера отправки остаётся
+	 *       неизвестным, и метод отвечает об этом честно, а не выдаёт наугад
+	 */
+	#else
+		/**
+		 * Если запрашивается место буфера отправки
+		 */
+		if(event == net::socket_event_t::WRITE){
+			/**
+			 * Если система запроса занятого места буфера отправки не отводит
+			 */
+			#if !defined(FIONWRITE)
+				// Выводим признак того, что свободное место неизвестно
+				return -1;
+			#else
+				// Считываем занятое место буфера отправки
+				if(::ioctl(sock, FIONWRITE, &pending) != 0)
+					// Выводим признак того, что свободное место неизвестно
+					return -1;
+			#endif
+		// Если запрашивается место буфера приёма
+		} else if(::ioctl(sock, FIONREAD, &pending) != 0)
+			// Выводим признак того, что свободное место неизвестно
+			return -1;
+	#endif
 	// Получаем вместимость буфера сокета
 	const int32_t size = this->getBufferSize(sock, event);
 	// Если вместимость буфера получить не удалось

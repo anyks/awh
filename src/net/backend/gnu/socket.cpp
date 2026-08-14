@@ -45,6 +45,22 @@
 #include <netinet/tcp.h>
 #include <netinet/udp.h>
 #include <netinet/sctp.h>
+/**
+ * Заголовки запросов ввода-вывода
+ *
+ * @note Занятое место буферов сокета Linux сообщает не параметрами сокета, а запросами
+ *       SIOCOUTQ и SIOCINQ: первый объявлен в <sys/ioctl.h>, вторые - в <linux/sockios.h>
+ */
+#include <sys/ioctl.h>
+#include <linux/sockios.h>
+/**
+ * Заголовки запросов ввода-вывода
+ *
+ * @note Занятое место буферов сокета Linux сообщает не параметрами сокета, а запросами
+ *       SIOCOUTQ и SIOCINQ: первый объявлен в <sys/ioctl.h>, вторые - в <linux/sockios.h>
+ */
+#include <sys/ioctl.h>
+#include <linux/sockios.h>
 
 /**
  * Подключаем заголовочные файлы проекта
