@@ -19875,3 +19875,198 @@ TEST_F(IoFixture, IoDataSourcePullTest){
 	// Проверяем что тело дошло до приёмника целиком и без искажений
 	ASSERT_EQ(body, received);
 }
+
+/**
+ * @brief Тест вытягивающей модели отправки на дейтаграммном сокете
+ *
+ * @details Дейтаграмма неделима, поэтому ёмкость запроса к источнику здесь считается иначе,
+ *          чем у потока: она ограничена сверху вместимостью буфера сокета, а не складывается
+ *          с ней. Проверка закрепляет три свойства такой отправки:
+ *          1. Сообщения доходят ЦЕЛИКОМ и в порядке отправки - границы не склеиваются и не дробятся.
+ *          2. Движок обращается к источнику многократно, а не отдаёт всё за один заход.
+ *          3. По исчерпании источника обращения прекращаются.
+ *
+ * @note Каждое сообщение помечено собственным номером в первом октете, поэтому перестановка
+ *       либо потеря сообщения видна сличением, а не только несовпадением количества
+ *
+ */
+TEST_F(IoFixture, IoDataSourcePullDatagramTest){
+	// Признак завершения проверки
+	bool stop = false;
+	// Признак превышения времени ожидания
+	bool expired = false;
+	// Количество обращений движка к источнику данных
+	uint32_t requests = 0;
+	// Количество обращений к источнику после его исчерпания
+	uint32_t overruns = 0;
+	// Признак того, что источник исчерпан
+	bool finished = false;
+	// Количество отправленных сообщений
+	uint16_t produced = 0;
+	// Количество ожидаемых сообщений
+	const uint16_t expected = 64;
+	// Размер одного сообщения
+	const size_t length = 1200;
+	// Номера принятых сообщений в порядке приёма
+	std::vector <uint8_t> received;
+	// Признак искажения принятых сообщений
+	bool corrupted = false;
+	// Путь к файлу UNIX-доменного сокета
+	const std::string socketPath = "/tmp/awh-datasource-dgram.sock";
+	// Удаляем файл сокета, оставшийся от предыдущего запуска
+	::unlink(socketPath.c_str());
+	// Добавляем событие сервера
+	const awh::event::id_t sid = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::UDS, awh::event::type_t::DATAGRAM);
+	// Добавляем событие клиента
+	const awh::event::id_t cid = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::UDS, awh::event::type_t::DATAGRAM);
+	// Добавляем событие ограничения времени работы проверки
+	const awh::event::id_t guard = this->_io->event(awh::event::node_t::TIMEOUT, awh::event::family_t::TIMER);
+	// Проверяем идентификаторы созданных событий
+	ASSERT_GT(sid, 0u);
+	ASSERT_GT(cid, 0u);
+	ASSERT_GT(guard, 0u);
+	// Устанавливаем предельное время работы проверки
+	this->_io->setTimeout(guard, awh::event::action_t::NONE, 15000);
+	// Инициализируем асинхронный движок ввода-вывода
+	ASSERT_TRUE(this->_io->initialize());
+	// Устанавливаем функцию обратного вызова на превышение времени ожидания
+	this->_io->on(guard, [&stop, &expired]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+		// Если время ожидания истекло
+		if(status == awh::event::status_t::SUCCESS){
+			// Запоминаем превышение времени ожидания
+			expired = true;
+			// Останавливаем проверку
+			stop = true;
+		}
+	});
+	// Выполняем фиксацию настроек ограничителя времени
+	ASSERT_TRUE(this->_io->commit(guard));
+	// Запускаем ограничитель времени
+	ASSERT_TRUE(this->_io->launch(guard));
+	/**
+	 * Событие сервера
+	 */
+	{
+		// Устанавливаем настройки события сервера
+		ASSERT_TRUE(this->_io->setOptions(sid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
+		// Устанавливаем адрес UNIX-доменного сокета сервера
+		ASSERT_TRUE(this->_io->setAddress(sid, awh::event::address_t::UDS, socketPath));
+		/**
+		 * Устанавливаем функцию обратного вызова на принятие встречной стороны
+		 *
+		 * @note У дейтаграммного сервера данные приходят НЕ на сам слушающий узел: движок
+		 *       заводит отдельный узел на каждого встречного, и чтение вешается уже на него
+		 */
+		this->_io->on(sid, static_cast <awh::engine::callback::accept_t> ([this, &received, &corrupted, &stop, &expected, &length]([[maybe_unused]] const awh::event::id_t sid, const awh::event::id_t pid) noexcept -> void {
+		// Устанавливаем функцию обратного вызова на чтение данных встречной стороны
+		this->_io->on(pid, [&received, &corrupted, &stop, &expected, &length]([[maybe_unused]] const awh::event::id_t eid, const uint8_t * buffer, const size_t size) noexcept -> void {
+			// Если размер принятого сообщения не совпадает с отправленным
+			if(size != length)
+				// Запоминаем искажение границы сообщения
+				corrupted = true;
+			// Если сообщение принято
+			if((buffer != nullptr) && (size > 0)){
+				// Запоминаем номер принятого сообщения
+				received.push_back(buffer[0]);
+				/**
+				 * Сличаем содержимое сообщения с его номером
+				 */
+				for(size_t i = 1; i < size; i++){
+					// Если очередной октет сообщения не совпадает с его номером
+					if(buffer[i] != buffer[0]){
+						// Запоминаем искажение содержимого сообщения
+						corrupted = true;
+						// Прекращаем сличение
+						break;
+					}
+				}
+			}
+			// Если приняты все ожидаемые сообщения
+			if(received.size() >= expected)
+				// Останавливаем проверку
+				stop = true;
+		});
+		}));
+		// Выполняем фиксацию настроек события сервера
+		ASSERT_TRUE(this->_io->commit(sid));
+		// Запускаем событие сервера
+		ASSERT_TRUE(this->_io->launch(sid));
+	}
+	/**
+	 * Событие клиента
+	 */
+	{
+		// Устанавливаем настройки события клиента
+		ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
+		// Устанавливаем адрес UNIX-доменного сокета сервера
+		ASSERT_TRUE(this->_io->setTarget(cid, socketPath));
+		// Выполняем фиксацию настроек события клиента
+		ASSERT_TRUE(this->_io->commit(cid));
+		// Запускаем событие клиента
+		ASSERT_TRUE(this->_io->launch(cid));
+		// Устанавливаем источник данных для вытягивающей модели отправки
+		this->_io->on(cid, static_cast <awh::engine::callback::source_t> (
+			[&produced, &requests, &overruns, &finished, &expected, &length]([[maybe_unused]] const awh::event::id_t eid, uint8_t * buffer, size_t & size) noexcept -> bool {
+				// Учитываем обращение движка к источнику данных
+				requests++;
+				// Если источник уже исчерпан
+				if(finished)
+					// Учитываем лишнее обращение к исчерпанному источнику
+					overruns++;
+				/**
+				 * Если сообщение целиком не помещается в отданную ёмкость
+				 *
+				 * @note Дробить сообщение НЕЛЬЗЯ: половина дейтаграммы смысла не имеет. Отвечаем
+				 *       «данных пока нет», и движок спросит снова, когда место освободится
+				 */
+				if(size < length){
+					// Сообщаем движку, что записывать нечего
+					size = 0;
+					// Сообщаем движку, что вытягивание нужно продолжать
+					return true;
+				}
+				// Заполняем сообщение его собственным номером
+				::memset(buffer, static_cast <int32_t> (produced & 0xFF), length);
+				// Сообщаем движку размер отданного сообщения
+				size = length;
+				// Учитываем отправленное сообщение
+				produced++;
+				// Если отправлены все ожидаемые сообщения
+				if(produced >= expected){
+					// Запоминаем, что источник исчерпан
+					finished = true;
+					// Сообщаем движку, что отдавать больше нечего
+					return false;
+				}
+				// Сообщаем движку, что вытягивание нужно продолжать
+				return true;
+			}
+		));
+		// Заводим отправку вытягивающей моделью
+		ASSERT_EQ(this->_io->send(cid, nullptr, 0), 0u);
+	}
+	/**
+	 * Запускаем опрос событий
+	 */
+	while(!stop && this->_io->poll(10000));
+	// Уничтожаем все события
+	ASSERT_TRUE(this->_io->deinitialize());
+	// Удаляем файл сокета
+	::unlink(socketPath.c_str());
+	// Проверяем что проверка завершилась не по превышению времени ожидания
+	ASSERT_FALSE(expired) << "превышено время ожидания, принято " << received.size() << " из " << expected << " сообщений, обращений к источнику " << requests;
+	// Проверяем что движок обращался к источнику многократно
+	ASSERT_GT(requests, 1u) << "сообщения ушли за одно обращение, вытягивание по частям не проверено";
+	// Проверяем что к исчерпанному источнику движок больше не обращался
+	ASSERT_EQ(overruns, 0u) << "движок обращался к источнику после его исчерпания";
+	// Проверяем что границы и содержимое сообщений сохранены
+	ASSERT_FALSE(corrupted) << "границы либо содержимое сообщений нарушены";
+	// Проверяем что приняты все отправленные сообщения
+	ASSERT_EQ(received.size(), static_cast <size_t> (expected));
+	/**
+	 * Проверяем что сообщения приняты в порядке отправки
+	 */
+	for(size_t i = 0; i < received.size(); i++)
+		// Проверяем что номер принятого сообщения совпадает с порядковым
+		ASSERT_EQ(received[i], static_cast <uint8_t> (i & 0xFF)) << "порядок сообщений нарушен на позиции " << i;
+}

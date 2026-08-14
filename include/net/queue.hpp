@@ -229,15 +229,6 @@ namespace awh {
 			// Конец вторичного региона B (только bip-режим TCP, всегда начинается с 0); 0 = регион B неактивен
 			size_t _bwrite;
 		private:
-			// Смещение участка, выданного методом tail() и ещё не подтверждённого методом commit(); отрицательного значения не бывает, признаком отсутствия выдачи служит _reserved
-			size_t _offset;
-			// Ёмкость выданного участка прямой записи (служит проверкой при подтверждении)
-			size_t _capacity;
-			// Признак выданного, но ещё не подтверждённого участка прямой записи
-			bool _reserved;
-			// Признак того, что выданный участок открывает вторичный регион B (только bip-режим TCP)
-			bool _opening;
-		private:
 			// Буфер для хранения данных очереди (выделяется лениво из пула при первой записи)
 			uint8_t * _buffer;
 		private:
@@ -454,45 +445,6 @@ namespace awh {
 			 */
 			size_t push(const void * data, const size_t size) noexcept;
 		public:
-			/**
-			 * \~russian
-			 * @brief Метод получения хвостового участка очереди для прямой записи (без промежуточного копирования)
-			 *
-			 * @details Служит вытягивающей модели отправки: источник данных пишет прямо в очередь,
-			 *          а не в свой буфер с последующим копированием методом push(). Выданный участок
-			 *          обязан быть подтверждён методом commit() либо отменён передачей нуля в него;
-			 *          до подтверждения очередь считает участок занятым и повторной выдачи не делает
-			 *
-			 * @param data указатель на начало участка для записи (устанавливается методом)
-			 * @param size ёмкость выданного участка в байтах (устанавливается методом)
-			 * @return     результат выдачи участка (false при отсутствии места либо при неподтверждённой прежней выдаче)
-			 *
-			 * \~english
-			 * @brief Method of getting the tail region of the queue for the direct writing (without an intermediate copying)
-			 * @param data pointer to the beginning of the region for the writing (is set by the method)
-			 * @param size capacity of the given region in the bytes (is set by the method)
-			 * @return     result of the giving of the region (false at an absence of the room or at an unconfirmed previous giving)
-			 *
-			 * \~
-			 */
-			bool tail(void ** data, size_t & size) noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод подтверждения данных, записанных прямо в хвостовой участок очереди
-			 *
-			 * @note Передача нуля отменяет выдачу участка, не изменяя содержимого очереди
-			 *
-			 * @param size количество действительно записанных байт (не более ёмкости выданного участка)
-			 * @return     результат подтверждения (false при отсутствии выдачи либо при превышении ёмкости)
-			 *
-			 * \~english
-			 * @brief Method of the confirmation of the data written directly into the tail region of the queue
-			 * @param size amount of the really written bytes (not more than the capacity of the given region)
-			 * @return     result of the confirmation (false at an absence of the giving or at an excess of the capacity)
-			 *
-			 * \~
-			 */
-			bool commit(const size_t size) noexcept;
 		public:
 			/**
 			 * \~russian

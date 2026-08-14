@@ -145,6 +145,21 @@ void awh::codec::csv::Writer::field(const string_view text) noexcept {
 		!text.empty() && (text.front() == this->_settings.comment)
 	);
 	/**
+	 * Признак необходимости кавычек, вызванной меткой порядка байтов
+	 *
+	 * @note Проверяется лишь самое начало собираемого текста: метку, стоящую в начале,
+	 *       разбор снимает как признак кодировки, и поле, ею начатое, опустело бы. Поле
+	 *       из одного лишь пустого содержимого записывается пустой строкой, а пустые
+	 *       строки разбор пропускает - запись пропала бы целиком. Найдено ворошителем:
+	 *       круговой ход давал три записи против четырёх
+	 */
+	const bool signatured = (
+		!started && this->_text.empty() &&
+		(this->_settings.quoting != quoting_t::NONE) &&
+		(text.length() >= 3) && (static_cast <uint8_t> (text[0]) == 0xEF) &&
+		(static_cast <uint8_t> (text[1]) == 0xBB) && (static_cast <uint8_t> (text[2]) == 0xBF)
+	);
+	/**
 	 * Признак необходимости кавычек, вызванной знаком отмены в содержимом поля
 	 *
 	 * @note Поле, содержащее знак отмены, при разборе, знак отмены признающем, теряет
@@ -159,7 +174,7 @@ void awh::codec::csv::Writer::field(const string_view text) noexcept {
 	/**
 	 * Если поле требуется заключить в кавычки
 	 */
-	if(commented || escaped || quotable(text, this->_settings.separator, this->_settings.quote, this->_settings.quoting)){
+	if(commented || signatured || escaped || quotable(text, this->_settings.separator, this->_settings.quote, this->_settings.quoting)){
 		// Записываем содержимое поля с обрамлением кавычками
 		this->quoted(text);
 		// Выходим из метода

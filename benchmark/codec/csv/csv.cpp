@@ -125,6 +125,30 @@ double awh::benchmark::table::perDocument(const outcome_t & output) noexcept {
 	return (static_cast <double> (output.allocations) / static_cast <double> (output.operations));
 }
 /**
+ * @brief Функция проверки работоспособности учёта выделений памяти
+ *
+ * @param output итоги прогона сценария
+ * @param result заполняемый результат измерения
+ * @return       признак работоспособности учёта
+ *
+ */
+bool awh::benchmark::table::counted(const outcome_t & output, awh::benchmark::result_t & result) noexcept {
+	/**
+	 * Если счётчик выделений памяти хоть что-нибудь насчитал
+	 */
+	if(output.allocations > 0)
+		// Выводим признак работоспособности учёта
+		return true;
+	// Устанавливаем признак негодности измерения
+	result.invalid = true;
+	// Устанавливаем причину негодности измерения
+	result.reason = "счётчик выделений памяти молчит - сборка ведётся без замены оператора"
+	                " выделения памяти либо стандартная библиотека подключена отдельной"
+	                " библиотекой (MinGW: связывать с ключом -static-libstdc++)";
+	// Выводим признак неработоспособности учёта
+	return false;
+}
+/**
  * @brief Функция извлечения задержки обработки одной таблицы
  *
  * @param output итоги прогона сценария

@@ -9052,7 +9052,7 @@ namespace io {
 									// Если мы получили ошибку
 									if(bytes < 0){
 										// Если нам нужно повторить попытку позже
-										if(errno == EAGAIN)
+										if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM))
 											// Выходим из цикла
 											break;
 										// Если мы получили другую ошибку
@@ -9217,7 +9217,7 @@ namespace io {
 							// Если мы получили ошибку
 							if(bytes < 0){
 								// Если нам нужно повторить попытку позже
-								if(errno == EAGAIN)
+								if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM))
 									// Выходим из цикла
 									break;
 								// Если мы получили другую ошибку
@@ -9353,7 +9353,7 @@ namespace io {
 							// Если мы получили ошибку
 							if(bytes < 0){
 								// Если нам нужно повторить попытку позже
-								if(errno == EAGAIN)
+								if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM))
 									// Выходим из цикла
 									break;
 								// Если мы получили другую ошибку
@@ -9601,7 +9601,7 @@ namespace io {
 								// Если мы получили ошибку
 								if(bytes < 0){
 									// Если нам нужно повторить попытку позже
-									if(errno == EAGAIN){
+									if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)){
 										// Если установлено ограничение пропускной способности на чтение данных из сокета
 										if((peer->limitedRead()) && !(peer->activity & ::activity::READ)){
 											// Отмечаем активность чтения данных
@@ -9840,7 +9840,7 @@ namespace io {
 								#endif
 							}
 							// Если сокет повреждён
-							if(errno != EAGAIN)
+							if((errno != EAGAIN) && (errno != EINTR) && (errno != ENOBUFS) && (errno != ENOMEM))
 								// Выполняем удаление узла
 								::io::destroy(peer, eth, log);
 							// Формируем отрицательный результат
@@ -9950,7 +9950,7 @@ namespace io {
 								// Если мы получили ошибку
 								if(bytes < 0){
 									// Если нам нужно повторить попытку позже
-									if(errno == EAGAIN){
+									if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)){
 										// Если установлено ограничение пропускной способности на чтение данных из сокета
 										if((peer->limitedRead()) && !(peer->activity & ::activity::READ)){
 											// Отмечаем активность чтения данных
@@ -10120,7 +10120,7 @@ namespace io {
 									#endif
 								}
 								// Если сокет повреждён
-								if(errno != EAGAIN)
+								if((errno != EAGAIN) && (errno != EINTR) && (errno != ENOBUFS) && (errno != ENOMEM))
 									// Выполняем удаление узла
 									::io::destroy(peer, eth, log);
 								// Формируем отрицательный результат
@@ -10321,7 +10321,7 @@ namespace io {
 					// Если мы получили ошибку
 					if(bytes < 0){
 						// Если нам нужно повторить попытку позже
-						if(errno == EAGAIN)
+						if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM))
 							// Выходим из цикла
 							break;
 						// Если мы получили другую ошибку
@@ -11526,7 +11526,7 @@ namespace io {
 								// Если мы получили ошибку
 								if(bytes < 0){
 									// Если нам нужно повторить попытку позже
-									if(errno == EAGAIN){
+									if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)){
 										// Если установлено ограничение пропускной способности на чтение данных из сокета
 										if((client->limitedRead()) && !(client->activity & ::activity::READ)){
 											// Отмечаем активность чтения данных
@@ -11765,7 +11765,7 @@ namespace io {
 								#endif
 							}
 							// Если сокет повреждён
-							if(errno != EAGAIN)
+							if((errno != EAGAIN) && (errno != EINTR) && (errno != ENOBUFS) && (errno != ENOMEM))
 								// Выполняем удаление узла
 								::io::destroy(client, eth, log);
 							// Формируем отрицательный результат
@@ -12003,7 +12003,7 @@ namespace io {
 								// Если мы получили ошибку
 								if(bytes < 0){
 									// Если нам нужно повторить попытку позже
-									if(errno == EAGAIN){
+									if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)){
 										// Если установлено ограничение пропускной способности на чтение данных из сокета
 										if((client->limitedRead()) && !(client->activity & ::activity::READ)){
 											// Отмечаем активность чтения данных
@@ -12288,7 +12288,7 @@ namespace io {
 									#endif
 								}
 								// Если сокет повреждён
-								if(errno != EAGAIN)
+								if((errno != EAGAIN) && (errno != EINTR) && (errno != ENOBUFS) && (errno != ENOMEM))
 									// Выполняем удаление узла
 									::io::destroy(client, eth, log);
 								// Формируем отрицательный результат
@@ -12506,7 +12506,7 @@ namespace io {
 								// Если мы получили ошибку
 								if(bytes < 0){
 									// Если нам нужно повторить попытку позже
-									if(errno == EAGAIN){
+									if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)){
 										// Если установлено ограничение пропускной способности на чтение данных из сокета
 										if((client->limitedRead()) && !(client->activity & ::activity::READ)){
 											// Отмечаем активность чтения данных
@@ -12804,7 +12804,7 @@ namespace io {
 									#endif
 								}
 								// Если сокет повреждён
-								if(errno != EAGAIN)
+								if((errno != EAGAIN) && (errno != EINTR) && (errno != ENOBUFS) && (errno != ENOMEM))
 									// Выполняем удаление узла
 									::io::destroy(client, eth, log);
 								// Формируем отрицательный результат
@@ -12896,7 +12896,7 @@ namespace io {
 								// Если мы получили ошибку
 								if(bytes < 0){
 									// Если нам нужно повторить попытку позже
-									if(errno == EAGAIN){
+									if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)){
 										// Если установлено ограничение пропускной способности на чтение данных из сокета
 										if((client->limitedRead()) && !(client->activity & ::activity::READ)){
 											// Отмечаем активность чтения данных
@@ -13084,7 +13084,7 @@ namespace io {
 									#endif
 								}
 								// Если сокет повреждён
-								if(errno != EAGAIN)
+								if((errno != EAGAIN) && (errno != EINTR) && (errno != ENOBUFS) && (errno != ENOMEM))
 									// Выполняем удаление узла
 									::io::destroy(client, eth, log);
 								// Формируем отрицательный результат
@@ -13211,7 +13211,7 @@ namespace io {
 								// Если мы получили ошибку
 								if(bytes < 0){
 									// Если нам нужно повторить попытку позже
-									if(errno == EAGAIN){
+									if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)){
 										// Если установлено ограничение пропускной способности на чтение данных из сокета
 										if((client->limitedRead()) && !(client->activity & ::activity::READ)){
 											// Отмечаем активность чтения данных
@@ -13412,7 +13412,7 @@ namespace io {
 									#endif
 								}
 								// Если сокет повреждён
-								if(errno != EAGAIN)
+								if((errno != EAGAIN) && (errno != EINTR) && (errno != ENOBUFS) && (errno != ENOMEM))
 									// Выполняем удаление узла
 									::io::destroy(client, eth, log);
 								// Формируем отрицательный результат
@@ -13797,7 +13797,7 @@ namespace io {
 								// Если мы получили ошибку
 								if(bytes < 0){
 									// Если нам нужно повторить попытку позже
-									if(errno == EAGAIN){
+									if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)){
 										// Если установлено ограничение пропускной способности на чтение данных из сокета
 										if((server->wrate.limit > 0) && !(server->activity & ::activity::READ)){
 											// Отмечаем активность чтения данных
@@ -14369,7 +14369,10 @@ namespace io {
 												// Если ошибки нет
 												case 0: break;
 												// Если нам нужно попытаться отправить позже
-												case EAGAIN: {
+												case EINTR:
+												case ENOMEM:
+												case EAGAIN:
+												case ENOBUFS: {
 													// Если есть данные для отправки в сокет
 													if(!ipc->transfer.queue.empty())
 														// Активируем событие на запись данных в сокет
@@ -14533,7 +14536,10 @@ namespace io {
 										// Если ошибки нет
 										case 0: break;
 										// Если нам нужно попытаться отправить позже
-										case EAGAIN: {
+										case EINTR:
+										case ENOMEM:
+										case EAGAIN:
+										case ENOBUFS: {
 											// Если есть данные для отправки в сокет
 											if(!ipc->transfer.queue.empty())
 												// Активируем событие на запись данных в сокет
@@ -14689,7 +14695,10 @@ namespace io {
 										}
 									} break;
 									// Если нам нужно попытаться отправить позже
-									case EAGAIN: {
+									case EINTR:
+									case ENOMEM:
+									case EAGAIN:
+									case ENOBUFS: {
 										// Если есть данные для отправки в сокет
 										if(!ipc->transfer.queue.empty())
 											// Активируем событие на запись данных в сокет
@@ -14911,7 +14920,10 @@ namespace io {
 												// Если ошибки нет
 												case 0: break;
 												// Если нам нужно попытаться отправить позже
-												case EAGAIN: {
+												case EINTR:
+												case ENOMEM:
+												case EAGAIN:
+												case ENOBUFS: {
 													// Если есть данные для отправки в сокет
 													if(!peer->transfer.queue.empty() && !(peer->activity & ::activity::WRITE)){
 														// Отмечаем активность записи данных
@@ -15325,7 +15337,10 @@ namespace io {
 													}
 												} break;
 												// Если нам нужно попытаться отправить позже
-												case EAGAIN: {
+												case EINTR:
+												case ENOMEM:
+												case EAGAIN:
+												case ENOBUFS: {
 													// Если есть данные для отправки в сокет
 													if(!peer->transfer.queue.empty() && !(peer->activity & ::activity::WRITE)){
 														// Отмечаем активность записи данных
@@ -15769,7 +15784,10 @@ namespace io {
 												}
 											} break;
 											// Если нам нужно попытаться отправить позже
-											case EAGAIN: {
+											case EINTR:
+											case ENOMEM:
+											case EAGAIN:
+											case ENOBUFS: {
 												// Если есть данные для отправки в сокет
 												if(!origin->transfer.queue.empty())
 													// Активируем событие на запись данных в сокет
@@ -16187,7 +16205,10 @@ namespace io {
 								}
 							} break;
 							// Если нам нужно попытаться отправить позже
-							case EAGAIN: {
+							case EINTR:
+							case ENOMEM:
+							case EAGAIN:
+							case ENOBUFS: {
 								// Если есть данные для отправки в сокет
 								if(!tunnel->queue.empty())
 									// Активируем событие на запись данных в сокет
@@ -16397,7 +16418,10 @@ namespace io {
 												// Если ошибки нет
 												case 0: break;
 												// Если нам нужно попытаться отправить позже
-												case EAGAIN: {
+												case EINTR:
+												case ENOMEM:
+												case EAGAIN:
+												case ENOBUFS: {
 													// Если есть данные для отправки в сокет
 													if(!client->transfer.queue.empty() && !(client->activity & ::activity::WRITE)){
 														// Отмечаем активность записи данных
@@ -16808,7 +16832,10 @@ namespace io {
 												}
 											} break;
 											// Если нам нужно попытаться отправить позже
-											case EAGAIN: {
+											case EINTR:
+											case ENOMEM:
+											case EAGAIN:
+											case ENOBUFS: {
 												// Если есть данные для отправки в сокет
 												if(!client->transfer.queue.empty() && !(client->activity & ::activity::WRITE)){
 													// Отмечаем активность записи данных
@@ -17241,7 +17268,10 @@ namespace io {
 												}
 											} break;
 											// Если нам нужно попытаться отправить позже
-											case EAGAIN: {
+											case EINTR:
+											case ENOMEM:
+											case EAGAIN:
+											case ENOBUFS: {
 												// Если есть данные для отправки в сокет
 												if(!client->transfer.queue.empty() && !(client->activity & ::activity::WRITE)){
 													// Отмечаем активность записи данных
@@ -17795,7 +17825,10 @@ namespace io {
 											}
 										} break;
 										// Если нам нужно попытаться отправить позже
-										case EAGAIN: {
+										case EINTR:
+										case ENOMEM:
+										case EAGAIN:
+										case ENOBUFS: {
 											// Если есть данные для отправки в сокет
 											if(!origin->transfer.queue.empty())
 												// Устанавливаем флаг наличия данных для отправки
@@ -18123,7 +18156,10 @@ namespace io {
 										// Если ошибки нет
 										case 0: break;
 										// Если нам нужно попытаться отправить позже
-										case EAGAIN: {
+										case EINTR:
+										case ENOMEM:
+										case EAGAIN:
+										case ENOBUFS: {
 											// Сохраняем оставшиеся данные для последующей отправки
 											if((result = ipc->transfer.queue.push(buffer, size)) == 0){
 												// Если установлена функция обратного вызова
@@ -18267,7 +18303,7 @@ namespace io {
 										#endif
 									}
 									// Если данные не отправлены и нужно подождать
-									if(errno == EAGAIN){
+									if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)){
 										// Сохраняем оставшиеся данные для последующей отправки
 										if((result = ipc->transfer.queue.push(buffer, size)) == 0){
 											// Если установлена функция обратного вызова
@@ -18420,7 +18456,10 @@ namespace io {
 										error = event::error_t::PACKET_TOO_BIG;
 									break;
 									// Если нам нужно попытаться отправить позже
-									case EAGAIN: {
+									case EINTR:
+									case ENOMEM:
+									case EAGAIN:
+									case ENOBUFS: {
 										// Сохраняем оставшиеся данные для последующей отправки
 										if((result = ipc->transfer.queue.push(buffer, size)) == 0){
 											// Если установлена функция обратного вызова
@@ -18538,7 +18577,10 @@ namespace io {
 											error = event::error_t::PACKET_TOO_BIG;
 										break;
 										// Если нам нужно попытаться отправить позже
-										case EAGAIN: {
+										case EINTR:
+										case ENOMEM:
+										case EAGAIN:
+										case ENOBUFS: {
 											// Сохраняем оставшиеся данные для последующей отправки
 											if((result = ipc->transfer.queue.push(buffer, size)) == 0){
 												// Если установлена функция обратного вызова
@@ -18657,7 +18699,10 @@ namespace io {
 									error = event::error_t::PACKET_TOO_BIG;
 								break;
 								// Если нам нужно попытаться отправить позже
+								case EINTR:
+								case ENOMEM:
 								case EAGAIN:
+								case ENOBUFS:
 									// Устанавливаем идентификатор полученной ошибки
 									error = event::error_t::EVENT_FAIL;
 								break;
@@ -18848,7 +18893,10 @@ namespace io {
 												// Если ошибки нет
 												case 0:
 												// Если нам нужно попытаться отправить позже
-												case EAGAIN: break;
+												case EINTR:
+												case ENOMEM:
+												case EAGAIN:
+												case ENOBUFS: break;
 												// Если мы получили другую непонятную ошибку
 												default:
 													// Устанавливаем идентификатор полученной ошибки
@@ -19098,7 +19146,7 @@ namespace io {
 										::io::postpone(peer, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 								}
 							// Если данные не отправлены и нужно подождать
-							} else if(errno == EAGAIN) {
+							} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 								// Сохраняем оставшиеся данные для последующей отправки
 								if((result = peer->transfer.queue.push(buffer, size)) == 0){
 									// Если установлена функция обратного вызова
@@ -19267,7 +19315,7 @@ namespace io {
 											#endif
 										}
 										// Если сокет повреждён
-										if(errno != EAGAIN){
+										if((errno != EAGAIN) && (errno != EINTR) && (errno != ENOBUFS) && (errno != ENOMEM)){
 											// Если функция обратного вызова для возврата данных при неудачной отправке установлена
 											if(peer->callbacks.spool != nullptr)
 												// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
@@ -19402,7 +19450,7 @@ namespace io {
 											}
 										}
 									// Если данные не отправлены и нужно подождать
-									} else if(errno == EAGAIN) {
+									} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 										// Сохраняем оставшиеся данные для последующей отправки
 										if((result = peer->transfer.queue.push(buffer, size)) == 0){
 											// Если установлена функция обратного вызова
@@ -19510,7 +19558,7 @@ namespace io {
 										// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
 										::io::postpone(peer, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, result, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 								// Если данные не отправлены и нужно подождать
-								} else if(errno == EAGAIN) {
+								} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 									// Сохраняем оставшиеся данные для последующей отправки
 									if((result = peer->transfer.queue.push(buffer, size)) == 0){
 										// Если установлена функция обратного вызова
@@ -19623,7 +19671,7 @@ namespace io {
 								#endif
 							}
 							// Если сокет повреждён
-							if(errno != EAGAIN){
+							if((errno != EAGAIN) && (errno != EINTR) && (errno != ENOBUFS) && (errno != ENOMEM)){
 								// Если функция обратного вызова для возврата данных при неудачной отправке установлена
 								if(peer->callbacks.spool != nullptr)
 									// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
@@ -19712,7 +19760,10 @@ namespace io {
 												// Если ошибки нет
 												case 0:
 												// Если нам нужно попытаться отправить позже
-												case EAGAIN: break;
+												case EINTR:
+												case ENOMEM:
+												case EAGAIN:
+												case ENOBUFS: break;
 												// Если мы получили ошибку отправки слишком большого пакета
 												case EMSGSIZE:
 													// Устанавливаем идентификатор полученной ошибки
@@ -19811,7 +19862,7 @@ namespace io {
 											// Уменьшаем количество используемых токенов
 											peer->bandwidthUse().write.tokens -= static_cast <double> (result);
 										// Если данные не отправлены и нужно подождать
-										} else if(errno == EAGAIN) {
+										} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 											// Сохраняем оставшиеся данные для последующей отправки
 											if((result = peer->transfer.queue.push(buffer, size)) == 0){
 												// Если установлена функция обратного вызова
@@ -19917,7 +19968,7 @@ namespace io {
 											// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
 											::io::postpone(peer, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, result, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 									// Если данные не отправлены и нужно подождать
-									} else if(errno == EAGAIN) {
+									} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 										// Сохраняем оставшиеся данные для последующей отправки
 										if((result = peer->transfer.queue.push(buffer, size)) == 0){
 											// Если установлена функция обратного вызова
@@ -20059,7 +20110,10 @@ namespace io {
 														error = event::error_t::PACKET_TOO_BIG;
 													break;
 													// Если нам нужно попытаться отправить позже
+													case EINTR:
+													case ENOMEM:
 													case EAGAIN:
+													case ENOBUFS:
 														// Устанавливаем идентификатор полученной ошибки
 														error = event::error_t::EVENT_FAIL;
 													break;
@@ -20160,7 +20214,7 @@ namespace io {
 												// Уменьшаем количество используемых токенов
 												peer->bandwidthUse().write.tokens -= static_cast <double> (result);
 											// Если данные не отправлены и нужно подождать
-											} else if(errno == EAGAIN) {
+											} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 												// Сохраняем оставшиеся данные для последующей отправки
 												if((result = peer->transfer.queue.push(buffer, size)) == 0){
 													// Если установлена функция обратного вызова
@@ -20268,7 +20322,7 @@ namespace io {
 												// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
 												::io::postpone(peer, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, result, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 										// Если данные не отправлены и нужно подождать
-										} else if(errno == EAGAIN) {
+										} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 											// Сохраняем оставшиеся данные для последующей отправки
 											if((result = peer->transfer.queue.push(buffer, size)) == 0){
 												// Если установлена функция обратного вызова
@@ -20378,7 +20432,10 @@ namespace io {
 										error = event::error_t::PACKET_TOO_BIG;
 									break;
 									// Если нам нужно попытаться отправить позже
+									case EINTR:
+									case ENOMEM:
 									case EAGAIN:
+									case ENOBUFS:
 										// Устанавливаем идентификатор полученной ошибки
 										error = event::error_t::EVENT_FAIL;
 									break;
@@ -20549,7 +20606,10 @@ namespace io {
 												error = event::error_t::PACKET_TOO_BIG;
 											break;
 											// Если нам нужно попытаться отправить позже
-											case EAGAIN: {
+											case EINTR:
+											case ENOMEM:
+											case EAGAIN:
+											case ENOBUFS: {
 												// Сохраняем оставшиеся данные для последующей отправки
 												if((result = origin->transfer.queue.push(buffer, size)) == 0){
 													// Если установлена функция обратного вызова
@@ -20671,7 +20731,7 @@ namespace io {
 									// Выполняем отправку данных в сокет
 									result = send(buffer, size);
 									// Если данные отправлены успешно
-									if((result > 0) && (errno != EAGAIN)){
+									if((result > 0) && ((errno != EAGAIN) && (errno != EINTR) && (errno != ENOBUFS) && (errno != ENOMEM))){
 										// Если функция обратного вызова для вывода записанных данных установлена
 										if(origin->callbacks.write != nullptr){
 											// Вызываем функцию обратного вызова для вывода записанных данных
@@ -20745,7 +20805,7 @@ namespace io {
 								// Выполняем отправку данных в сокет
 								result = send(buffer, size);
 								// Если данные отправлены успешно
-								if((result > 0) && (errno != EAGAIN)){
+								if((result > 0) && ((errno != EAGAIN) && (errno != EINTR) && (errno != ENOBUFS) && (errno != ENOMEM))){
 									// Если функция обратного вызова для вывода записанных данных установлена
 									if(origin->callbacks.write != nullptr)
 										// Вызываем функцию обратного вызова для вывода записанных данных
@@ -20848,7 +20908,10 @@ namespace io {
 													error = event::error_t::PACKET_TOO_BIG;
 												break;
 												// Если нам нужно попытаться отправить позже
-												case EAGAIN: {
+												case EINTR:
+												case ENOMEM:
+												case EAGAIN:
+												case ENOBUFS: {
 													// Сохраняем оставшиеся данные для последующей отправки
 													if((result = origin->transfer.queue.push(buffer, size)) == 0){
 														// Если установлена функция обратного вызова
@@ -21301,7 +21364,10 @@ namespace io {
 								error = event::error_t::PACKET_TOO_BIG;
 							break;
 							// Если нам нужно попытаться отправить позже
-							case EAGAIN: {
+							case EINTR:
+							case ENOMEM:
+							case EAGAIN:
+							case ENOBUFS: {
 								// Сохраняем оставшиеся данные для последующей отправки
 								if((result = tunnel->queue.push(buffer, size)) == 0){
 									// Если установлена функция обратного вызова
@@ -22433,7 +22499,10 @@ namespace io {
 												// Если ошибки нет
 												case 0:
 												// Если нам нужно попытаться отправить позже
-												case EAGAIN: break;
+												case EINTR:
+												case ENOMEM:
+												case EAGAIN:
+												case ENOBUFS: break;
 												// Если мы получили другую непонятную ошибку
 												default:
 													// Устанавливаем идентификатор полученной ошибки
@@ -22683,7 +22752,7 @@ namespace io {
 										::io::postpone(client, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 								}
 							// Если данные не отправлены и нужно подождать
-							} else if(errno == EAGAIN) {
+							} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 								// Сохраняем оставшиеся данные для последующей отправки
 								if((result = client->transfer.queue.push(buffer, size)) == 0){
 									// Если установлена функция обратного вызова
@@ -22852,7 +22921,7 @@ namespace io {
 											#endif
 										}
 										// Если сокет повреждён
-										if(errno != EAGAIN){
+										if((errno != EAGAIN) && (errno != EINTR) && (errno != ENOBUFS) && (errno != ENOMEM)){
 											// Если функция обратного вызова для возврата данных при неудачной отправке установлена
 											if(client->callbacks.spool != nullptr)
 												// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
@@ -22987,7 +23056,7 @@ namespace io {
 											}
 										}
 									// Если данные не отправлены и нужно подождать
-									} else if(errno == EAGAIN) {
+									} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 										// Сохраняем оставшиеся данные для последующей отправки
 										if((result = client->transfer.queue.push(buffer, size)) == 0){
 											// Если установлена функция обратного вызова
@@ -23095,7 +23164,7 @@ namespace io {
 										// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
 										::io::postpone(client, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, result, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 								// Если данные не отправлены и нужно подождать
-								} else if(errno == EAGAIN) {
+								} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 									// Сохраняем оставшиеся данные для последующей отправки
 									if((result = client->transfer.queue.push(buffer, size)) == 0){
 										// Если установлена функция обратного вызова
@@ -23208,7 +23277,7 @@ namespace io {
 								#endif
 							}
 							// Если сокет повреждён
-							if(errno != EAGAIN){
+							if((errno != EAGAIN) && (errno != EINTR) && (errno != ENOBUFS) && (errno != ENOMEM)){
 								// Если функция обратного вызова для возврата данных при неудачной отправке установлена
 								if(client->callbacks.spool != nullptr)
 									// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
@@ -23283,7 +23352,10 @@ namespace io {
 												// Если ошибки нет
 												case 0:
 												// Если нам нужно попытаться отправить позже
-												case EAGAIN: break;
+												case EINTR:
+												case ENOMEM:
+												case EAGAIN:
+												case ENOBUFS: break;
 												// Если мы получили ошибку отправки слишком большого пакета
 												case EMSGSIZE:
 													// Устанавливаем идентификатор полученной ошибки
@@ -23382,7 +23454,7 @@ namespace io {
 											// Уменьшаем количество используемых токенов
 											client->bandwidthUse().write.tokens -= static_cast <double> (result);
 										// Если данные не отправлены и нужно подождать
-										} else if(errno == EAGAIN) {
+										} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 											// Сохраняем оставшиеся данные для последующей отправки
 											if((result = client->transfer.queue.push(buffer, size)) == 0){
 												// Если установлена функция обратного вызова
@@ -23488,7 +23560,7 @@ namespace io {
 											// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
 											::io::postpone(client, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, result, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 									// Если данные не отправлены и нужно подождать
-									} else if(errno == EAGAIN) {
+									} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 										// Сохраняем оставшиеся данные для последующей отправки
 										if((result = client->transfer.queue.push(buffer, size)) == 0){
 											// Если установлена функция обратного вызова
@@ -23616,7 +23688,10 @@ namespace io {
 														error = event::error_t::PACKET_TOO_BIG;
 													break;
 													// Если нам нужно попытаться отправить позже
+													case EINTR:
+													case ENOMEM:
 													case EAGAIN:
+													case ENOBUFS:
 														// Устанавливаем идентификатор полученной ошибки
 														error = event::error_t::EVENT_FAIL;
 													break;
@@ -23717,7 +23792,7 @@ namespace io {
 												// Уменьшаем количество используемых токенов
 												client->bandwidthUse().write.tokens -= static_cast <double> (result);
 											// Если данные не отправлены и нужно подождать
-											} else if(errno == EAGAIN) {
+											} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 												// Сохраняем оставшиеся данные для последующей отправки
 												if((result = client->transfer.queue.push(buffer, size)) == 0){
 													// Если установлена функция обратного вызова
@@ -23825,7 +23900,7 @@ namespace io {
 												// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
 												::io::postpone(client, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, result, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 										// Если данные не отправлены и нужно подождать
-										} else if(errno == EAGAIN) {
+										} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 											// Сохраняем оставшиеся данные для последующей отправки
 											if((result = client->transfer.queue.push(buffer, size)) == 0){
 												// Если установлена функция обратного вызова
@@ -23921,7 +23996,10 @@ namespace io {
 										error = event::error_t::PACKET_TOO_BIG;
 									break;
 									// Если нам нужно попытаться отправить позже
+									case EINTR:
+									case ENOMEM:
 									case EAGAIN:
+									case ENOBUFS:
 										// Устанавливаем идентификатор полученной ошибки
 										error = event::error_t::EVENT_FAIL;
 									break;
@@ -24032,7 +24110,10 @@ namespace io {
 												// Если ошибки нет
 												case 0:
 												// Если нам нужно попытаться отправить позже
-												case EAGAIN: break;
+												case EINTR:
+												case ENOMEM:
+												case EAGAIN:
+												case ENOBUFS: break;
 												// Если мы получили ошибку отправки слишком большого пакета
 												case EMSGSIZE:
 													// Устанавливаем идентификатор полученной ошибки
@@ -24131,7 +24212,7 @@ namespace io {
 											// Уменьшаем количество используемых токенов
 											client->bandwidthUse().write.tokens -= static_cast <double> (result);
 										// Если данные не отправлены и нужно подождать
-										} else if(errno == EAGAIN) {
+										} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 											// Сохраняем оставшиеся данные для последующей отправки
 											if((result = client->transfer.queue.push(buffer, size)) == 0){
 												// Если установлена функция обратного вызова
@@ -24237,7 +24318,7 @@ namespace io {
 											// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
 											::io::postpone(client, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, result, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 									// Если данные не отправлены и нужно подождать
-									} else if(errno == EAGAIN) {
+									} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 										// Сохраняем оставшиеся данные для последующей отправки
 										if((result = client->transfer.queue.push(buffer, size)) == 0){
 											// Если установлена функция обратного вызова
@@ -24365,7 +24446,10 @@ namespace io {
 														error = event::error_t::PACKET_TOO_BIG;
 													break;
 													// Если нам нужно попытаться отправить позже
+													case EINTR:
+													case ENOMEM:
 													case EAGAIN:
+													case ENOBUFS:
 														// Устанавливаем идентификатор полученной ошибки
 														error = event::error_t::EVENT_FAIL;
 													break;
@@ -24466,7 +24550,7 @@ namespace io {
 												// Уменьшаем количество используемых токенов
 												client->bandwidthUse().write.tokens -= static_cast <double> (result);
 											// Если данные не отправлены и нужно подождать
-											} else if(errno == EAGAIN) {
+											} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 												// Сохраняем оставшиеся данные для последующей отправки
 												if((result = client->transfer.queue.push(buffer, size)) == 0){
 													// Если установлена функция обратного вызова
@@ -24574,7 +24658,7 @@ namespace io {
 												// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
 												::io::postpone(client, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, result, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 										// Если данные не отправлены и нужно подождать
-										} else if(errno == EAGAIN) {
+										} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 											// Сохраняем оставшиеся данные для последующей отправки
 											if((result = client->transfer.queue.push(buffer, size)) == 0){
 												// Если установлена функция обратного вызова
@@ -24670,7 +24754,10 @@ namespace io {
 										error = event::error_t::PACKET_TOO_BIG;
 									break;
 									// Если нам нужно попытаться отправить позже
+									case EINTR:
+									case ENOMEM:
 									case EAGAIN:
+									case ENOBUFS:
 										// Устанавливаем идентификатор полученной ошибки
 										error = event::error_t::EVENT_FAIL;
 									break;
@@ -24840,7 +24927,10 @@ namespace io {
 												// Если ошибки нет
 												case 0:
 												// Если нам нужно попытаться отправить позже
-												case EAGAIN: break;
+												case EINTR:
+												case ENOMEM:
+												case EAGAIN:
+												case ENOBUFS: break;
 												// Если мы получили ошибку отправки слишком большого пакета
 												case EMSGSIZE:
 													// Устанавливаем идентификатор полученной ошибки
@@ -24939,7 +25029,7 @@ namespace io {
 											// Уменьшаем количество используемых токенов
 											client->bandwidthUse().write.tokens -= static_cast <double> (result);
 										// Если данные не отправлены и нужно подождать
-										} else if(errno == EAGAIN) {
+										} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 											// Сохраняем оставшиеся данные для последующей отправки
 											if((result = client->transfer.queue.push(buffer, size)) == 0){
 												// Если установлена функция обратного вызова
@@ -25045,7 +25135,7 @@ namespace io {
 											// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
 											::io::postpone(client, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, result, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 									// Если данные не отправлены и нужно подождать
-									} else if(errno == EAGAIN) {
+									} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 										// Сохраняем оставшиеся данные для последующей отправки
 										if((result = client->transfer.queue.push(buffer, size)) == 0){
 											// Если установлена функция обратного вызова
@@ -25200,7 +25290,10 @@ namespace io {
 														error = event::error_t::PACKET_TOO_BIG;
 													break;
 													// Если нам нужно попытаться отправить позже
+													case EINTR:
+													case ENOMEM:
 													case EAGAIN:
+													case ENOBUFS:
 														// Устанавливаем идентификатор полученной ошибки
 														error = event::error_t::EVENT_FAIL;
 													break;
@@ -25301,7 +25394,7 @@ namespace io {
 												// Уменьшаем количество используемых токенов
 												client->bandwidthUse().write.tokens -= static_cast <double> (result);
 											// Если данные не отправлены и нужно подождать
-											} else if(errno == EAGAIN) {
+											} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 												// Сохраняем оставшиеся данные для последующей отправки
 												if((result = client->transfer.queue.push(buffer, size)) == 0){
 													// Если установлена функция обратного вызова
@@ -25409,7 +25502,7 @@ namespace io {
 												// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
 												::io::postpone(client, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, result, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 										// Если данные не отправлены и нужно подождать
-										} else if(errno == EAGAIN) {
+										} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 											// Сохраняем оставшиеся данные для последующей отправки
 											if((result = client->transfer.queue.push(buffer, size)) == 0){
 												// Если установлена функция обратного вызова
@@ -25532,7 +25625,10 @@ namespace io {
 										error = event::error_t::PACKET_TOO_BIG;
 									break;
 									// Если нам нужно попытаться отправить позже
+									case EINTR:
+									case ENOMEM:
 									case EAGAIN:
+									case ENOBUFS:
 										// Устанавливаем идентификатор полученной ошибки
 										error = event::error_t::EVENT_FAIL;
 									break;
@@ -25670,7 +25766,10 @@ namespace io {
 												// Если ошибки нет
 												case 0:
 												// Если нам нужно попытаться отправить позже
-												case EAGAIN: break;
+												case EINTR:
+												case ENOMEM:
+												case EAGAIN:
+												case ENOBUFS: break;
 												// Если мы получили ошибку отправки слишком большого пакета
 												case EMSGSIZE:
 													// Устанавливаем идентификатор полученной ошибки
@@ -25769,7 +25868,7 @@ namespace io {
 											// Уменьшаем количество используемых токенов
 											client->bandwidthUse().write.tokens -= static_cast <double> (result);
 										// Если данные не отправлены и нужно подождать
-										} else if(errno == EAGAIN) {
+										} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 											// Сохраняем оставшиеся данные для последующей отправки
 											if((result = client->transfer.queue.push(buffer, size)) == 0){
 												// Если установлена функция обратного вызова
@@ -25875,7 +25974,7 @@ namespace io {
 											// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
 											::io::postpone(client, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, result, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 									// Если данные не отправлены и нужно подождать
-									} else if(errno == EAGAIN) {
+									} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 										// Сохраняем оставшиеся данные для последующей отправки
 										if((result = client->transfer.queue.push(buffer, size)) == 0){
 											// Если установлена функция обратного вызова
@@ -26030,7 +26129,10 @@ namespace io {
 														error = event::error_t::PACKET_TOO_BIG;
 													break;
 													// Если нам нужно попытаться отправить позже
+													case EINTR:
+													case ENOMEM:
 													case EAGAIN:
+													case ENOBUFS:
 														// Устанавливаем идентификатор полученной ошибки
 														error = event::error_t::EVENT_FAIL;
 													break;
@@ -26131,7 +26233,7 @@ namespace io {
 												// Уменьшаем количество используемых токенов
 												client->bandwidthUse().write.tokens -= static_cast <double> (result);
 											// Если данные не отправлены и нужно подождать
-											} else if(errno == EAGAIN) {
+											} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 												// Сохраняем оставшиеся данные для последующей отправки
 												if((result = client->transfer.queue.push(buffer, size)) == 0){
 													// Если установлена функция обратного вызова
@@ -26239,7 +26341,7 @@ namespace io {
 												// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
 												::io::postpone(client, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, result, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 										// Если данные не отправлены и нужно подождать
-										} else if(errno == EAGAIN) {
+										} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 											// Сохраняем оставшиеся данные для последующей отправки
 											if((result = client->transfer.queue.push(buffer, size)) == 0){
 												// Если установлена функция обратного вызова
@@ -26362,7 +26464,10 @@ namespace io {
 										error = event::error_t::PACKET_TOO_BIG;
 									break;
 									// Если нам нужно попытаться отправить позже
+									case EINTR:
+									case ENOMEM:
 									case EAGAIN:
+									case ENOBUFS:
 										// Устанавливаем идентификатор полученной ошибки
 										error = event::error_t::EVENT_FAIL;
 									break;
@@ -26940,11 +27045,23 @@ namespace io {
 				/**
 				 * Если источнику больше нечего отдавать
 				 *
-				 * @note Ложь означает «всё отдано», ноль записанных байт - «данных пока нет».
-				 *       Обоим случаям отвечает одно: спрашивать прекращаем, а заведёт снова
-				 *       приложение вызовом send(id, nullptr, 0)
+				 * @note Признак вытягивания ведёт ТОЛЬКО возврат источника: ложь означает
+				 *       «всё отдано», и завести вытягивание снова сможет лишь приложение
+				 *       вызовом send(id, nullptr, 0)
 				 */
-				if(!(pulling = (proceed && (capacity > 0))))
+				if(!(pulling = proceed))
+					// Выходим из цикла вытягивания
+					break;
+				/**
+				 * Если источник не записал ни байта
+				 *
+				 * @note Данных у него либо пока нет, либо отданная ёмкость мала для очередной
+				 *       неделимой дейтаграммы. Круг прекращаем, но признак вытягивания оставляем:
+				 *       движок вернётся к источнику на ближайшем сливе очереди, когда места станет
+				 *       больше. Гасить признак здесь значило бы замолчать навсегда, оставив данные
+				 *       источника неотправленными
+				 */
+				if(capacity == 0)
 					// Выходим из цикла вытягивания
 					break;
 				// Получаем количество свободного места в очереди

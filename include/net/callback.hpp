@@ -272,10 +272,14 @@ namespace awh {
 			 * @note Источник пишет данные ПРЯМО в переданный участок очереди, промежуточного
 			 *       копирования нет. Записать больше size байт нельзя
 			 *
-			 * @note Возврат `true` при НУЛЕ записанных байт означает «данных пока нет»:
-			 *       движок перестаёт спрашивать источник и ждёт, пока приложение заведёт
-			 *       отправку заново вызовом `send(id, nullptr, 0)`. Без этого состояния
-			 *       движок крутил бы пустые запросы на каждой готовности сокета
+			 * @note Вытягивание ведёт ТОЛЬКО возвращаемое значение: `false` означает «отдавать
+			 *       больше нечего», и завести отправку заново сможет лишь приложение вызовом
+			 *       `send(id, nullptr, 0)`
+			 *
+			 * @note Возврат `true` при НУЛЕ записанных байт означает «данных пока нет либо
+			 *       отданная ёмкость мала»: движок прекращает круг запросов, но источник не
+			 *       забывает и вернётся к нему на ближайшем освобождении очереди. Так источник
+			 *       вправе отказать в тесном участке, дожидаясь места под неделимую дейтаграмму
 			 *
 			 * @param id     идентификатор события
 			 * @param buffer участок для заполнения данными
@@ -286,6 +290,12 @@ namespace awh {
 			 * @brief Callback function of the source of the data for the pull model of the sending
 			 * @note The source writes the data DIRECTLY into the given region of the queue, there is no
 			 *       intermediate copying. It is not possible to write more than size bytes
+			 * @note The pulling is driven ONLY by the returned value: `false` means "there is nothing
+			 *       more to give", and only the application is able to start the sending again by the
+			 *       call of `send(id, nullptr, 0)`
+			 * @note The return of `true` with the ZERO of the written bytes means "there is no data yet
+			 *       or the given capacity is too small": the engine stops the round of the requests, but
+			 *       does not forget the source and returns to it at the nearest release of the queue
 			 * @param id     identifier of the event
 			 * @param buffer region to fill with the data
 			 * @param size   at the input — capacity of the region in the bytes, at the output — amount of the written bytes

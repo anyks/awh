@@ -378,10 +378,16 @@ namespace {
 			// Выводим количество выданных записей
 			return count;
 		});
-		// Устанавливаем измеренное значение
-		result.value = perRecord(outcome, (records * ::LARGE_ROUNDS));
 		// Устанавливаем сведения о прогоне
 		result.details = details(outcome);
+		/**
+		 * Если учёт выделений памяти не работает
+		 */
+		if(!counted(outcome, result))
+			// Выводим результат измерения
+			return result;
+		// Устанавливаем измеренное значение
+		result.value = perRecord(outcome, (records * ::LARGE_ROUNDS));
 		// Выводим результат измерения
 		return result;
 	}
@@ -401,10 +407,16 @@ namespace {
 			// Выполняем сборку таблицы целиком
 			return ::parse(text);
 		});
-		// Устанавливаем измеренное значение
-		result.value = perDocument(outcome);
 		// Устанавливаем сведения о прогоне
 		result.details = details(outcome);
+		/**
+		 * Если учёт выделений памяти не работает
+		 */
+		if(!counted(outcome, result))
+			// Выводим результат измерения
+			return result;
+		// Устанавливаем измеренное значение
+		result.value = perDocument(outcome);
 		// Выводим результат измерения
 		return result;
 	}
