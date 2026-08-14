@@ -39293,8 +39293,8 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																			this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 																		#endif
 																	}
-																	// Выходим из приложения
-																	::_exit(EXIT_FAILURE);
+																	// Выводим результат
+																	return result;
 																}
 															} break;
 															// Если событие принадлежит к типу DATAGRAM
@@ -39346,8 +39346,8 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																			this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 																		#endif
 																	}
-																	// Выходим из приложения
-																	::_exit(EXIT_FAILURE);
+																	// Выводим результат
+																	return result;
 																}
 															} break;
 															// Для неизвестного типа сокета
@@ -39536,8 +39536,8 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 																#endif
 															}
-															// Выходим из приложения
-															::_exit(EXIT_FAILURE);
+															// Выводим результат
+															return result;
 														// Если бинд события выполнен успешно
 														} else {
 															// Создаём запись списка изменений
@@ -39699,8 +39699,8 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 																#endif
 															}
-															// Выходим из приложения
-															::_exit(EXIT_FAILURE);
+															// Выводим результат
+															return result;
 														// Если бинд события выполнен успешно
 														} else {
 															// Создаём запись списка изменений

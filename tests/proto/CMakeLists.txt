@@ -82,6 +82,8 @@ if (${GTest_FOUND})
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_SOCKS5_TEST "Build unit SOCKS5 protocol test for ${UNIT_TEST_NAME}" ON)
         # Указываем что нужно собрать тесты для подмодуля протокола QUIC
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_QUIC_TEST "Build unit QUIC protocol test for ${UNIT_TEST_NAME}" ON)
+        # Указываем что нужно собрать тесты фасадов клиента и сервера поверх TLS
+        option(CMAKE_BUILD_${UNIT_TEST_NAME}_TLS_TEST "Build unit TLS facade test for ${UNIT_TEST_NAME}" ON)
 
         # Если нужно собрать тесты для подмодуля провайдера HTTP-запроса/ответа
         if (${CMAKE_BUILD_${UNIT_TEST_NAME}_HTTP_PROVIDER_TEST})
@@ -240,6 +242,20 @@ if (${GTest_FOUND})
             # Выводим сообщение о сборке тестов для подмодуля протокола QUIC
             message(STATUS "Build tests QUIC protocol submodule: No\n")
         endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_QUIC_TEST})
+
+        # Если нужно собрать тесты фасадов клиента и сервера поверх TLS
+        if (${CMAKE_BUILD_${UNIT_TEST_NAME}_TLS_TEST})
+            # Выводим сообщение о сборке тестов фасадов клиента и сервера поверх TLS
+            message(STATUS "Build tests TLS facade: Yes\n")
+            # Дополняем список источников тестами фасадов клиента и сервера поверх TLS
+            list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
+                tls/facade.cpp
+            )
+        # Если не нужно собрать тесты фасадов клиента и сервера поверх TLS
+        else()
+            # Выводим сообщение о сборке тестов фасадов клиента и сервера поверх TLS
+            message(STATUS "Build tests TLS facade: No\n")
+        endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_TLS_TEST})
 
         # Библиотеки GTest для линковки
         SET(${PROJECT_NAME}_GTEST_LIBS

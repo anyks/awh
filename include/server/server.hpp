@@ -198,10 +198,10 @@ namespace awh {
 				} ciphertext_t;
 				// Объект транспортного уровня безопасности
 				tls::coder_t * coder;
-				// Список для сопоставления идентификаторов клиентов с идентификаторами TLS
-				unordered_map <event::id_t, tls::coder_t::id_t> safety;
 				// Список ожидающего отправки шифротекста клиентов
 				unordered_map <event::id_t, ciphertext_t> residue;
+				// Список для сопоставления идентификаторов клиентов с идентификаторами TLS
+				unordered_map <event::id_t, tls::coder_t::id_t> safety;
 				/**
 				 * \~russian
 				 * @brief Конструктор
@@ -213,6 +213,31 @@ namespace awh {
 				 */
 				explicit TLS() noexcept;
 			} tls_t;
+			/**
+			 * \~russian
+			 * @brief Структура параметров cервера
+			 *
+			 * \~english
+			 * @brief Structure of the server parameters
+			 *
+			 * \~
+			 */
+			typedef struct __AWH_SHARED_EXPORT__ Params {
+				// Тип сокета транспорта сервера (STREAM/DATAGRAM/SEQPACKET - определяет доступность датаграмм)
+				event::type_t type;
+				// Протокол транспорта сервера (выбирается при инициализации, определяет обработку данных)
+				event::protocol_t protocol;
+				/**
+				 * \~russian
+				 * @brief Конструктор
+				 *
+				 * \~english
+				 * @brief Constructor
+				 *
+				 * \~
+				 */
+				explicit Params() noexcept;
+			} params_t;
 			/**
 			 * \~russian
 			 * @brief Структура юнита сервера
@@ -263,17 +288,14 @@ namespace awh {
 			// Адрес хоста целевой машины
 			string _host;
 		protected:
+			// Параметры сервера
+			params_t _params;
+		protected:
 			// Функция обратного вызова для обработки сервера
 			callback_t _callback;
 		protected:
 			// Объект юнита сервера
 			unique_ptr <unit_t> _unit;
-		protected:
-			// Протокол транспорта сервера (выбирается при инициализации, определяет обработку данных)
-			event::protocol_t _protocol;
-		protected:
-			// Тип сокета транспорта сервера (STREAM/DATAGRAM/SEQPACKET - определяет доступность датаграмм)
-			event::type_t _type;
 		protected:
 			// Объект фреймворка
 			const fmk_t * _fmk;
@@ -349,22 +371,6 @@ namespace awh {
 		protected:
 			/**
 			 * \~russian
-			 * @brief Метод обработки события разрешения подключения
-			 *
-			 * @param eid идентификатор сервера
-			 * @param cid идентификатор клиента
-			 *
-			 * \~english
-			 * @brief Method processing the event of permitting a connection
-			 *
-			 * @param eid server identifier
-			 * @param cid client identifier
-			 *
-			 * \~
-			 */
-			virtual void accept(const event::id_t eid, const event::id_t cid) noexcept;
-			/**
-			 * \~russian
 			 * @brief Метод обработки установленного соединения QUIC (RFC 9000)
 			 *
 			 * @note Транслируется приложению как принятие нового соединения; рукопожатие
@@ -387,24 +393,20 @@ namespace awh {
 			virtual void opened(const event::id_t cid) noexcept;
 			/**
 			 * \~russian
-			 * @brief Метод обработки собранных данных потока соединения QUIC
+			 * @brief Метод обработки события разрешения подключения
 			 *
-			 * @param cid  идентификатор сессии соединения
-			 * @param sid  идентификатор потока приложения
-			 * @param data собранные данные потока
-			 * @param fin  флаг завершения потока удалённым эндпоинтом
+			 * @param eid идентификатор сервера
+			 * @param cid идентификатор клиента
 			 *
 			 * \~english
-			 * @brief Method processing the assembled data of a QUIC connection stream
+			 * @brief Method processing the event of permitting a connection
 			 *
-			 * @param cid  connection session identifier
-			 * @param sid  application stream identifier
-			 * @param data assembled stream data
-			 * @param fin  flag of the stream completion by the remote endpoint
+			 * @param eid server identifier
+			 * @param cid client identifier
 			 *
 			 * \~
 			 */
-			virtual void stream(const event::id_t cid, const uint64_t sid, const string & data, const bool fin) noexcept;
+			virtual void accept(const event::id_t eid, const event::id_t cid) noexcept;
 			/**
 			 * \~russian
 			 * @brief Метод обработки освобождения буфера отправки потока соединения QUIC (сигнал writable)
@@ -485,6 +487,26 @@ namespace awh {
 			 * \~
 			 */
 			virtual void attempts(const unit::dns_t::id_t, const string & domain, const uint8_t attempts) noexcept;
+			/**
+			 * \~russian
+			 * @brief Метод обработки собранных данных потока соединения QUIC
+			 *
+			 * @param cid  идентификатор сессии соединения
+			 * @param sid  идентификатор потока приложения
+			 * @param data собранные данные потока
+			 * @param fin  флаг завершения потока удалённым эндпоинтом
+			 *
+			 * \~english
+			 * @brief Method processing the assembled data of a QUIC connection stream
+			 *
+			 * @param cid  connection session identifier
+			 * @param sid  application stream identifier
+			 * @param data assembled stream data
+			 * @param fin  flag of the stream completion by the remote endpoint
+			 *
+			 * \~
+			 */
+			virtual void stream(const event::id_t cid, const uint64_t sid, const string & data, const bool fin) noexcept;
 			/**
 			 * \~russian
 			 * @brief Метод обработки неудачного разрешения доменного имени
@@ -818,6 +840,32 @@ namespace awh {
 		protected:
 			/**
 			 * \~russian
+			 * @brief Метод выдачи шифротекста TLS клиента сетевому движку
+			 *
+			 * @note Функция-источник вытягивающей модели: движок спрашивает данные ровно
+			 *       тогда, когда готов их отправить, поэтому записи TLS при переполнении
+			 *       очереди отправки не теряются
+			 * @param eid    идентификатор клиента
+			 * @param buffer адрес указателя на буфер выдаваемых данных
+			 * @param size   ёмкость запроса на входе и размер выданных данных на выходе
+			 * @return       признак продолжения вытягивания данных
+			 *
+			 * \~english
+			 * @brief Method of giving out the TLS ciphertext of a client to the network engine
+			 * @note Source function of the pull model: the engine asks for the data exactly
+			 *       when it is ready to send them, so the TLS records are not lost at an
+			 *       overflow of the queue of the sending
+			 * @param eid    client identifier
+			 * @param buffer address of the pointer to the buffer of the given out data
+			 * @param size   capacity of the request at the input and size of the given out data at the output
+			 * @return       flag of the continuation of the pulling of the data
+			 *
+			 * \~
+			 */
+			virtual bool source(const event::id_t eid, const uint8_t ** buffer, size_t & size) noexcept;
+		protected:
+			/**
+			 * \~russian
 			 * @brief Метод получения состояния TLS
 			 *
 			 * @param id    идентификатор TLS
@@ -896,31 +944,6 @@ namespace awh {
 			 * \~
 			 */
 			virtual void processTLS(const tls::coder_t::id_t id, const event::id_t eid, const tls::coder_t::event_t event, const uint8_t * buffer, const size_t size, void * ctx) noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод выдачи шифротекста TLS клиента сетевому движку
-			 *
-			 * @note Функция-источник вытягивающей модели: движок спрашивает данные ровно
-			 *       тогда, когда готов их отправить, поэтому записи TLS при переполнении
-			 *       очереди отправки не теряются
-			 * @param eid    идентификатор клиента
-			 * @param buffer адрес указателя на буфер выдаваемых данных
-			 * @param size   ёмкость запроса на входе и размер выданных данных на выходе
-			 * @return       признак продолжения вытягивания данных
-			 *
-			 * \~english
-			 * @brief Method of giving out the TLS ciphertext of a client to the network engine
-			 * @note Source function of the pull model: the engine asks for the data exactly
-			 *       when it is ready to send them, so the TLS records are not lost at an
-			 *       overflow of the queue of the sending
-			 * @param eid    client identifier
-			 * @param buffer address of the pointer to the buffer of the given out data
-			 * @param size   capacity of the request at the input and size of the given out data at the output
-			 * @return       flag of the continuation of the pulling of the data
-			 *
-			 * \~
-			 */
-			virtual bool source(const event::id_t eid, const uint8_t ** buffer, size_t & size) noexcept;
 		public:
 			/**
 			 * \~russian

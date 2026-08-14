@@ -57,6 +57,14 @@ awh::Server::TLS::TLS() noexcept : coder(nullptr) {}
 /**
  * @brief Конструктор
  *
+ */
+awh::Server::Params::Params() noexcept :
+ type(event::type_t::NONE),
+ protocol(event::protocol_t::NONE) {}
+
+/**
+ * @brief Конструктор
+ *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  *
@@ -83,7 +91,7 @@ bool awh::Server::active() const noexcept {
 	 * Рабочее состояние проверяется на активном юните транспорта: для транспорта
 	 * QUIC работает выделенный юнит, для остальных транспортов - общий юнит сервера
 	 */
-	return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.working() : this->_unit->server.working());
+	return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.working() : this->_unit->server.working());
 }
 /**
  * @brief Метод фиксации настроек события сервера на активном юните транспорта
@@ -105,12 +113,12 @@ bool awh::Server::commitUnit() noexcept {
 		 * опции) сохраняется. Для транспорта QUIC собственный сокет дочернего процесса
 		 * поднимается отдельным механизмом юнита QUIC, поэтому он здесь не затрагивается
 		 */
-		if((this->_protocol != event::protocol_t::QUIC) && (this->clusterMode() == event::mode_t::ENABLED) && (this->clusterFamily() == unit::cluster_t::family_t::CHILDREN))
+		if((this->_params.protocol != event::protocol_t::QUIC) && (this->clusterMode() == event::mode_t::ENABLED) && (this->clusterFamily() == unit::cluster_t::family_t::CHILDREN))
 			// Пересоздаём дескриптор слушающего события дочернего процесса кластера
 			this->_unit->server.rebuild(this->_id.eid);
 	#endif
 	// Выполняем фиксацию настроек события на активном юните транспорта
-	return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.commit(this->_id.eid) : this->_unit->server.commit(this->_id.eid));
+	return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.commit(this->_id.eid) : this->_unit->server.commit(this->_id.eid));
 }
 /**
  * @brief Метод запуска работы события сервера на активном юните транспорта
@@ -119,7 +127,7 @@ bool awh::Server::commitUnit() noexcept {
  *
  */
 bool awh::Server::launchUnit() noexcept {
-	return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.launch(this->_id.eid) : this->_unit->server.launch(this->_id.eid));
+	return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.launch(this->_id.eid) : this->_unit->server.launch(this->_id.eid));
 }
 /**
  * @brief Метод прослушивания порта события сервера на активном юните транспорта
@@ -129,7 +137,7 @@ bool awh::Server::launchUnit() noexcept {
  *
  */
 bool awh::Server::listenUnit(const uint32_t max) noexcept {
-	return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.listen(this->_id.eid, max) : this->_unit->server.listen(this->_id.eid, max));
+	return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.listen(this->_id.eid, max) : this->_unit->server.listen(this->_id.eid, max));
 }
 /**
  * @brief Метод запуска активного юнита транспорта
@@ -137,7 +145,7 @@ bool awh::Server::listenUnit(const uint32_t max) noexcept {
  */
 void awh::Server::startUnit() noexcept {
 	// Запускаем активный юнит транспорта
-	if(this->_protocol == event::protocol_t::QUIC)
+	if(this->_params.protocol == event::protocol_t::QUIC)
 		this->_unit->quic.start();
 	else this->_unit->server.start();
 }
@@ -147,7 +155,7 @@ void awh::Server::startUnit() noexcept {
  */
 void awh::Server::stopUnit() noexcept {
 	// Останавливаем активный юнит транспорта
-	if(this->_protocol == event::protocol_t::QUIC)
+	if(this->_params.protocol == event::protocol_t::QUIC)
 		this->_unit->quic.stop();
 	else this->_unit->server.stop();
 }
@@ -158,7 +166,7 @@ void awh::Server::stopUnit() noexcept {
  *
  */
 awh::event::family_t awh::Server::familyUnit() const noexcept {
-	return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.family(this->_id.eid) : this->_unit->server.family(this->_id.eid));
+	return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.family(this->_id.eid) : this->_unit->server.family(this->_id.eid));
 }
 /**
  * @brief Метод получения статуса события сервера на активном юните транспорта
@@ -167,7 +175,7 @@ awh::event::family_t awh::Server::familyUnit() const noexcept {
  *
  */
 awh::event::status_t awh::Server::statusUnit() const noexcept {
-	return ((this->_protocol == event::protocol_t::QUIC) ? awh_cast <const unit::unit_t *> (&this->_unit->quic)->status(this->_id.eid) : awh_cast <const unit::unit_t *> (&this->_unit->server)->status(this->_id.eid));
+	return ((this->_params.protocol == event::protocol_t::QUIC) ? awh_cast <const unit::unit_t *> (&this->_unit->quic)->status(this->_id.eid) : awh_cast <const unit::unit_t *> (&this->_unit->server)->status(this->_id.eid));
 }
 /**
  * @brief Метод получения адреса прослушивания события сервера на активном юните транспорта
@@ -177,7 +185,7 @@ awh::event::status_t awh::Server::statusUnit() const noexcept {
  *
  */
 string awh::Server::getAddressUnit(const event::address_t address) const noexcept {
-	return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.getAddress(this->_id.eid, address) : this->_unit->server.getAddress(this->_id.eid, address));
+	return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.getAddress(this->_id.eid, address) : this->_unit->server.getAddress(this->_id.eid, address));
 }
 /**
  * @brief Метод получения порта прослушивания события сервера на активном юните транспорта
@@ -186,7 +194,7 @@ string awh::Server::getAddressUnit(const event::address_t address) const noexcep
  *
  */
 uint16_t awh::Server::getPortUnit() const noexcept {
-	return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.getPort(this->_id.eid) : this->_unit->server.getPort(this->_id.eid));
+	return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.getPort(this->_id.eid) : this->_unit->server.getPort(this->_id.eid));
 }
 /**
  * @brief Метод установки адреса прослушивания события сервера на активном юните транспорта
@@ -197,7 +205,7 @@ uint16_t awh::Server::getPortUnit() const noexcept {
  *
  */
 bool awh::Server::setAddressUnit(const event::address_t address, string_view value) noexcept {
-	return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.setAddress(this->_id.eid, address, value) : this->_unit->server.setAddress(this->_id.eid, address, value));
+	return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.setAddress(this->_id.eid, address, value) : this->_unit->server.setAddress(this->_id.eid, address, value));
 }
 
 /**
@@ -382,6 +390,21 @@ void awh::Server::status(const uint8_t index, const event::status_t status) noex
 	}
 }
 /**
+ * @brief Метод обработки установленного соединения QUIC (RFC 9000)
+ *
+ * @param cid идентификатор сессии соединения
+ *
+ */
+void awh::Server::opened(const event::id_t cid) noexcept {
+	// Если сервер находится в рабочем состоянии
+	if(this->active())
+		/**
+		 * Транслируем приложению принятие нового соединения: рукопожатие TLS 1.3
+		 * ведёт само соединение QUIC, поэтому идентификатор TLS-контекста не выдаётся
+		 */
+		this->_callback.call <void (const event::id_t, const event::id_t, const tls::coder_t::id_t)> ("accept", static_cast <event::id_t> (this->_id.eid), cid, 0);
+}
+/**
  * @brief Метод обработки события разрешения подключения
  *
  * @param eid идентификатор сервера
@@ -451,36 +474,6 @@ void awh::Server::accept(const event::id_t eid, const event::id_t cid) noexcept 
 	} else this->_callback.call <void (const event::id_t, const event::id_t, const tls::coder_t::id_t)> ("accept", eid, cid, 0);
 }
 /**
- * @brief Метод обработки установленного соединения QUIC (RFC 9000)
- *
- * @param cid идентификатор сессии соединения
- *
- */
-void awh::Server::opened(const event::id_t cid) noexcept {
-	// Если сервер находится в рабочем состоянии
-	if(this->active())
-		/**
-		 * Транслируем приложению принятие нового соединения: рукопожатие TLS 1.3
-		 * ведёт само соединение QUIC, поэтому идентификатор TLS-контекста не выдаётся
-		 */
-		this->_callback.call <void (const event::id_t, const event::id_t, const tls::coder_t::id_t)> ("accept", static_cast <event::id_t> (this->_id.eid), cid, 0);
-}
-/**
- * @brief Метод обработки собранных данных потока соединения QUIC
- *
- * @param cid  идентификатор сессии соединения
- * @param sid  идентификатор потока приложения
- * @param data собранные данные потока
- * @param fin  флаг завершения потока удалённым эндпоинтом
- *
- */
-void awh::Server::stream(const event::id_t cid, const uint64_t sid, const string & data, const bool fin) noexcept {
-	// Если сервер находится в рабочем состоянии
-	if(this->active())
-		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const event::id_t, const uint64_t, const string &, const bool)> ("stream", cid, sid, data, fin);
-}
-/**
  * @brief Метод обработки освобождения буфера отправки потока соединения QUIC (сигнал writable)
  *
  * @param cid идентификатор сессии соединения
@@ -546,6 +539,21 @@ void awh::Server::attempts(const unit::dns_t::id_t, const string & domain, const
 		this->_callback.call <void (const string &, const uint8_t)> ("attempts_dns", domain, attempts);
 }
 /**
+ * @brief Метод обработки собранных данных потока соединения QUIC
+ *
+ * @param cid  идентификатор сессии соединения
+ * @param sid  идентификатор потока приложения
+ * @param data собранные данные потока
+ * @param fin  флаг завершения потока удалённым эндпоинтом
+ *
+ */
+void awh::Server::stream(const event::id_t cid, const uint64_t sid, const string & data, const bool fin) noexcept {
+	// Если сервер находится в рабочем состоянии
+	if(this->active())
+		// Выполняем функцию обратного вызова
+		this->_callback.call <void (const event::id_t, const uint64_t, const string &, const bool)> ("stream", cid, sid, data, fin);
+}
+/**
  * @brief Метод обработки неудачного разрешения доменного имени
  *
  * @param id     идентификатор DNS-запроса
@@ -577,7 +585,7 @@ void awh::Server::resolve(const unit::dns_t::id_t, const event::family_t family,
 			// Если сервер работает с адресами IPv4
 			case static_cast <uint8_t> (event::family_t::IPV4): {
 				// Устанавливаем адрес хоста текущей машины
-				if((this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.setAddress(this->_id.eid, event::address_t::IPV4, addr) : this->_unit->server.setAddress(this->_id.eid, event::address_t::IPV4, addr))){
+				if((this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.setAddress(this->_id.eid, event::address_t::IPV4, addr) : this->_unit->server.setAddress(this->_id.eid, event::address_t::IPV4, addr))){
 					// Если событие сервера не запущено, запускаем его
 					if(this->statusUnit() == event::status_t::NONE){
 						// Выполняем фиксацию параметров сервера
@@ -593,7 +601,7 @@ void awh::Server::resolve(const unit::dns_t::id_t, const event::family_t family,
 			// Если сервер работает с адресами IPv6
 			case static_cast <uint8_t> (event::family_t::IPV6): {
 				// Устанавливаем адрес хоста текущей машины
-				if((this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.setAddress(this->_id.eid, event::address_t::IPV6, addr) : this->_unit->server.setAddress(this->_id.eid, event::address_t::IPV6, addr))){
+				if((this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.setAddress(this->_id.eid, event::address_t::IPV6, addr) : this->_unit->server.setAddress(this->_id.eid, event::address_t::IPV6, addr))){
 					// Если событие сервера не запущено, запускаем его
 					if(this->statusUnit() == event::status_t::NONE){
 						// Выполняем фиксацию параметров сервера
@@ -909,6 +917,42 @@ void awh::Server::errorCluster(const pid_t pid, const event::error_t error, cons
 	this->_callback.call <void (const pid_t, const event::error_t, const string &)> ("cluster_error", pid, error, description);
 }
 /**
+ * @brief Метод выдачи шифротекста TLS клиента сетевому движку
+ *
+ * @param eid    идентификатор клиента
+ * @param buffer адрес указателя на буфер выдаваемых данных
+ * @param size   ёмкость запроса на входе и размер выданных данных на выходе
+ * @return       признак продолжения вытягивания данных
+ *
+ */
+bool awh::Server::source(const event::id_t eid, const uint8_t ** buffer, size_t & size) noexcept {
+	// Выполняем поиск ожидающего отправки шифротекста клиента
+	auto i = this->_tls.residue.find(eid);
+	// Если ожидающего отправки шифротекста у клиента больше нет
+	if((i == this->_tls.residue.end()) || (i->second.offset >= i->second.buffer.size())){
+		// Выданных данных нет
+		size = 0;
+		// Выводим отрицательный результат - источник исчерпан
+		return false;
+	}
+	/**
+	 * Выдаём столько шифротекста, сколько движок готов принять: записи TLS идут
+	 * потоком байт, поэтому выдача по частям порядок не нарушает
+	 */
+	const size_t actual = ((size < (i->second.buffer.size() - i->second.offset)) ? size : (i->second.buffer.size() - i->second.offset));
+	// Выдаём буфер ожидающего отправки шифротекста сетевому движку
+	(* buffer) = reinterpret_cast <const uint8_t *> (i->second.buffer.data()) + i->second.offset;
+	// Выдаём размер выдаваемого шифротекста
+	size = actual;
+	/**
+	 * Сдвигаем позицию чтения сразу: выданное движком принимается целиком, а буфер
+	 * до возврата из функции не изменяется, поэтому выданный указатель остаётся годным
+	 */
+	i->second.offset += actual;
+	// Выводим положительный результат - вытягивание продолжается
+	return true;
+}
+/**
  * @brief Метод получения состояния TLS
  *
  * @param id    идентификатор TLS
@@ -1070,42 +1114,6 @@ void awh::Server::processTLS(const tls::coder_t::id_t id, const event::id_t eid,
 			break;
 		}
 	}
-}
-/**
- * @brief Метод выдачи шифротекста TLS клиента сетевому движку
- *
- * @param eid    идентификатор клиента
- * @param buffer адрес указателя на буфер выдаваемых данных
- * @param size   ёмкость запроса на входе и размер выданных данных на выходе
- * @return       признак продолжения вытягивания данных
- *
- */
-bool awh::Server::source(const event::id_t eid, const uint8_t ** buffer, size_t & size) noexcept {
-	// Выполняем поиск ожидающего отправки шифротекста клиента
-	auto i = this->_tls.residue.find(eid);
-	// Если ожидающего отправки шифротекста у клиента больше нет
-	if((i == this->_tls.residue.end()) || (i->second.offset >= i->second.buffer.size())){
-		// Выданных данных нет
-		size = 0;
-		// Выводим отрицательный результат - источник исчерпан
-		return false;
-	}
-	/**
-	 * Выдаём столько шифротекста, сколько движок готов принять: записи TLS идут
-	 * потоком байт, поэтому выдача по частям порядок не нарушает
-	 */
-	const size_t actual = ((size < (i->second.buffer.size() - i->second.offset)) ? size : (i->second.buffer.size() - i->second.offset));
-	// Выдаём буфер ожидающего отправки шифротекста сетевому движку
-	(* buffer) = reinterpret_cast <const uint8_t *> (i->second.buffer.data()) + i->second.offset;
-	// Выдаём размер выдаваемого шифротекста
-	size = actual;
-	/**
-	 * Сдвигаем позицию чтения сразу: выданное движком принимается целиком, а буфер
-	 * до возврата из функции не изменяется, поэтому выданный указатель остаётся годным
-	 */
-	i->second.offset += actual;
-	// Выводим положительный результат - вытягивание продолжается
-	return true;
 }
 /**
  * @brief Метод очистки чёрного списка события
@@ -1345,9 +1353,9 @@ bool awh::Server::pause(const event::id_t eid) noexcept {
 	// Если DNS-резолвер или сервер находятся в рабочем состоянии
 	if(this->active()){
 		// Если идентификатор клиента найден в списке обслуживаемых клиентов
-		if((eid != this->_id.eid) && (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.isActual(eid) : this->_unit->server.isActual(eid)))
+		if((eid != this->_id.eid) && (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.isActual(eid) : this->_unit->server.isActual(eid)))
 			// Приостанавливаем событие клиента
-			return (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.pause(eid) : this->_unit->server.pause(eid));
+			return (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.pause(eid) : this->_unit->server.pause(eid));
 		// Если идентификатор клиента не найден в списке обслуживаемых клиентов
 		else {
 			/**
@@ -1379,9 +1387,9 @@ bool awh::Server::resume(const event::id_t eid) noexcept {
 	// Если DNS-резолвер или сервер находятся в рабочем состоянии
 	if(this->active()){
 		// Если идентификатор клиента найден в списке обслуживаемых клиентов
-		if((eid != this->_id.eid) && (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.isActual(eid) : this->_unit->server.isActual(eid)))
+		if((eid != this->_id.eid) && (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.isActual(eid) : this->_unit->server.isActual(eid)))
 			// Возобновляем событие клиента
-			return (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.resume(eid) : this->_unit->server.resume(eid));
+			return (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.resume(eid) : this->_unit->server.resume(eid));
 		// Если идентификатор клиента не найден в списке обслуживаемых клиентов
 		else {
 			/**
@@ -1414,9 +1422,9 @@ void awh::Server::destroy(const event::id_t eid) noexcept {
 		// Если идентификатор сервера установлен
 		if(eid == this->_id.eid)
 			// Уничтожаем событие сервера
-			return (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.destroy(this->_id.eid) : this->_unit->server.destroy(this->_id.eid));
+			return (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.destroy(this->_id.eid) : this->_unit->server.destroy(this->_id.eid));
 		// Если идентификатор клиента найден в списке обслуживаемых клиентов
-		else if((this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.isActual(eid) : this->_unit->server.isActual(eid))) {
+		else if((this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.isActual(eid) : this->_unit->server.isActual(eid))) {
 			// Если сервер ещё живой
 			if(this->_unit != nullptr){
 				// Если идентификатор TLS и объект TLS установлены
@@ -1436,7 +1444,7 @@ void awh::Server::destroy(const event::id_t eid) noexcept {
 					}
 				}
 				// Уничтожаем событие клиента
-				(this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.destroy(eid) : this->_unit->server.destroy(eid));
+				(this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.destroy(eid) : this->_unit->server.destroy(eid));
 			}
 		// Если идентификатор сервера не установлен
 		} else {
@@ -1469,7 +1477,7 @@ bool awh::Server::isAlive(const event::id_t eid) const noexcept {
 	// Если идентификатор события не соответствует текущему серверу
 	if(!(result = (eid == this->_id.eid)))
 		// Проверяем, жив ли клиент по идентификатору события
-		result = (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.isActual(eid) : this->_unit->server.isActual(eid));
+		result = (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.isActual(eid) : this->_unit->server.isActual(eid));
 	// Возвращаем результат
 	return result;
 }
@@ -1483,7 +1491,7 @@ bool awh::Server::isAlive(const event::id_t eid) const noexcept {
  */
 bool awh::Server::setContext(const event::id_t eid, void * ctx) noexcept {
 	// Устанавливаем промежуточный контекст события подключённого клиента
-	const bool result = (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.setContext(eid, ctx) : this->_unit->server.setContext(eid, ctx));
+	const bool result = (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.setContext(eid, ctx) : this->_unit->server.setContext(eid, ctx));
 	// Если промежуточный контекст события подключённого клиента успешно установлен
 	if(result){
 		// Выполняем поиск идентификатора TLS по идентификатору события клиента
@@ -1601,9 +1609,9 @@ bool awh::Server::recv(const event::id_t eid) noexcept {
 	// Если DNS-резолвер или сервер находятся в рабочем состоянии
 	if(this->active()){
 		// Если идентификатор клиента найден в списке обслуживаемых клиентов
-		if((eid != this->_id.eid) && (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.isActual(eid) : this->_unit->server.isActual(eid)))
+		if((eid != this->_id.eid) && (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.isActual(eid) : this->_unit->server.isActual(eid)))
 			// Получаем данные от клиента
-			return (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.recv(eid) : this->_unit->server.recv(eid));
+			return (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.recv(eid) : this->_unit->server.recv(eid));
 		// Если идентификатор клиента не найден в списке обслуживаемых клиентов
 		else {
 			/**
@@ -1637,7 +1645,7 @@ size_t awh::Server::send(const event::id_t eid, const void * buffer, const size_
 	// Если DNS-резолвер или сервер находятся в рабочем состоянии
 	if(this->active()){
 		// Для транспорта QUIC отправляем данные в сессию соединения потоком по умолчанию
-		if(this->_protocol == event::protocol_t::QUIC)
+		if(this->_params.protocol == event::protocol_t::QUIC)
 			// Отправляем данные в сессию соединения QUIC
 			return this->_unit->quic.send(eid, buffer, size);
 		// Если идентификатор клиента найден в списке обслуживаемых клиентов
@@ -1688,7 +1696,7 @@ size_t awh::Server::send(const event::id_t eid, const void * buffer, const size_
  */
 uint64_t awh::Server::open(const event::id_t cid, const bool mode) noexcept {
 	// Если сервер находится в рабочем состоянии и транспорт является QUIC
-	if(this->active() && (this->_protocol == event::protocol_t::QUIC))
+	if(this->active() && (this->_params.protocol == event::protocol_t::QUIC))
 		// Выводим идентификатор открытого потока приложения сессии соединения
 		return this->_unit->quic.open(cid, mode);
 	// Для транспортов без мультиплексирования соединение представляет собой единственный поток
@@ -1709,7 +1717,7 @@ size_t awh::Server::send(const event::id_t cid, const uint64_t sid, const void *
 	// Если сервер находится в рабочем состоянии
 	if(this->active()){
 		// Для транспорта QUIC отправляем данные в указанный поток сессии соединения
-		if(this->_protocol == event::protocol_t::QUIC){
+		if(this->_params.protocol == event::protocol_t::QUIC){
 			// Если постановка данных потока в очередь отправки выполнена
 			// Возвращаем число поставленных в очередь данных (частичный приём)
 			return this->_unit->quic.send(cid, sid, string_view(reinterpret_cast <const char *> (buffer), size), fin);
@@ -1730,7 +1738,7 @@ size_t awh::Server::send(const event::id_t cid, const uint64_t sid, const void *
  */
 void awh::Server::sendWaterMarks(const event::id_t cid, const size_t high, const size_t low) noexcept {
 	// Если сервер в рабочем состоянии и транспорт является QUIC
-	if(this->active() && (this->_protocol == event::protocol_t::QUIC))
+	if(this->active() && (this->_params.protocol == event::protocol_t::QUIC))
 		// Устанавливаем водяные метки буфера отправки потоков сессии соединения
 		this->_unit->quic.sendWaterMarks(cid, high, low);
 }
@@ -1744,7 +1752,7 @@ void awh::Server::sendWaterMarks(const event::id_t cid, const size_t high, const
  */
 void awh::Server::dataSource(const event::id_t cid, const uint64_t sid, quic::connection_t::data_source_callback_t source) noexcept {
 	// Если сервер в рабочем состоянии и транспорт является QUIC
-	if(this->active() && (this->_protocol == event::protocol_t::QUIC))
+	if(this->active() && (this->_params.protocol == event::protocol_t::QUIC))
 		// Назначаем pull-источник данных тела потока сессии соединения
 		this->_unit->quic.dataSource(cid, sid, source);
 }
@@ -1759,7 +1767,7 @@ void awh::Server::dataSource(const event::id_t cid, const uint64_t sid, quic::co
  */
 bool awh::Server::datagram(const event::id_t cid, const void * buffer, const size_t size) noexcept {
 	// Если сервер находится в рабочем состоянии и транспорт является QUIC
-	if(this->active() && (this->_protocol == event::protocol_t::QUIC))
+	if(this->active() && (this->_params.protocol == event::protocol_t::QUIC))
 		// Выполняем отправку датаграммы приложения соединению
 		return this->_unit->quic.datagram(cid, string_view(reinterpret_cast <const char *> (buffer), size));
 	// Возвращаем значение по умолчанию
@@ -1774,7 +1782,7 @@ bool awh::Server::datagram(const event::id_t cid, const void * buffer, const siz
  */
 size_t awh::Server::datagrams(const event::id_t cid) const noexcept {
 	// Если сервер находится в рабочем состоянии и транспорт является QUIC
-	if(this->active() && (this->_protocol == event::protocol_t::QUIC))
+	if(this->active() && (this->_params.protocol == event::protocol_t::QUIC))
 		// Выводим предельный размер данных отправляемой датаграммы сессии соединения
 		return this->_unit->quic.datagrams(cid);
 	// Возвращаем значение по умолчанию
@@ -1790,7 +1798,7 @@ size_t awh::Server::datagrams(const event::id_t cid) const noexcept {
  */
 void awh::Server::close(const event::id_t cid, const uint64_t code, string_view reason) noexcept {
 	// Если сервер находится в рабочем состоянии и транспорт является QUIC
-	if(this->active() && (this->_protocol == event::protocol_t::QUIC))
+	if(this->active() && (this->_params.protocol == event::protocol_t::QUIC))
 		// Выполняем завершение соединения приложением
 		this->_unit->quic.close(cid, code, reason);
 }
@@ -1836,10 +1844,10 @@ bool awh::Server::splice(const event::id_t eid, const event::id_t dest) noexcept
 	// Если объединяемые события не принадлежат текущему серверу
 	if((eid != this->_id.eid) && (dest != this->_id.eid)){
 		// Если один из идентификаторов события принадлежит к пирам текущего сервера
-		if((this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.isActual(eid) : this->_unit->server.isActual(eid)) ||
-		   (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.isActual(dest) : this->_unit->server.isActual(dest)))
+		if((this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.isActual(eid) : this->_unit->server.isActual(eid)) ||
+		   (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.isActual(dest) : this->_unit->server.isActual(dest)))
 			// Объединяем данные между событиями на активном юните транспорта
-			return (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.splice(eid, dest) : this->_unit->server.splice(eid, dest));
+			return (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.splice(eid, dest) : this->_unit->server.splice(eid, dest));
 	// Если идентификатор клиента не найден в списке обслуживаемых клиентов
 	} else {
 		/**
@@ -1868,9 +1876,9 @@ bool awh::Server::splice(const event::id_t eid, const event::id_t dest) noexcept
  */
 uint16_t awh::Server::getOptions(const event::id_t eid) const noexcept {
 	// Если идентификатор сервера или клиента является активным
-	if((eid == this->_id.eid) || (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.isActual(eid) : this->_unit->server.isActual(eid)))
+	if((eid == this->_id.eid) || (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.isActual(eid) : this->_unit->server.isActual(eid)))
 		// Получаем опции сервера или клиента
-		return (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.getOptions(eid) : this->_unit->server.getOptions(eid));
+		return (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.getOptions(eid) : this->_unit->server.getOptions(eid));
 	// Если идентификатор сервера или клиента не найден
 	else {
 		/**
@@ -1900,9 +1908,9 @@ uint16_t awh::Server::getOptions(const event::id_t eid) const noexcept {
  */
 bool awh::Server::setOptions(const event::id_t eid, const uint16_t options) noexcept {
 	// Если идентификатор сервера или клиента является активным
-	if((eid == this->_id.eid) || (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.isActual(eid) : this->_unit->server.isActual(eid)))
+	if((eid == this->_id.eid) || (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.isActual(eid) : this->_unit->server.isActual(eid)))
 		// Устанавливаем опции сервера или клиента
-		return (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.setOptions(eid, options) : this->_unit->server.setOptions(eid, options));
+		return (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.setOptions(eid, options) : this->_unit->server.setOptions(eid, options));
 	// Если идентификатор сервера или клиента не найден
 	else {
 		/**
@@ -1933,9 +1941,9 @@ bool awh::Server::setOptions(const event::id_t eid, const uint16_t options) noex
  */
 bool awh::Server::setOption(const event::id_t eid, const uint16_t option, const bool mode) noexcept {
 	// Если идентификатор сервера или клиента является активным
-	if((eid == this->_id.eid) || (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.isActual(eid) : this->_unit->server.isActual(eid)))
+	if((eid == this->_id.eid) || (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.isActual(eid) : this->_unit->server.isActual(eid)))
 		// Устанавливаем опцию сервера или клиента
-		return (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.setOption(eid, option, mode) : this->_unit->server.setOption(eid, option, mode));
+		return (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.setOption(eid, option, mode) : this->_unit->server.setOption(eid, option, mode));
 	// Если идентификатор сервера или клиента не найден
 	else {
 		/**
@@ -1965,7 +1973,7 @@ awh::net::dgram_info_t awh::Server::getTrafficInfo() const noexcept {
 	// Если идентификатор сервера установлен
 	if(this->_id.eid > 0)
 		// Получаем метаданные последнего принятого дейтаграммного пакета
-		return (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.getTrafficInfo(this->_id.eid) : this->_unit->server.getTrafficInfo(this->_id.eid));
+		return (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.getTrafficInfo(this->_id.eid) : this->_unit->server.getTrafficInfo(this->_id.eid));
 	// Если идентификатор сервера не установлен
 	else {
 		/**
@@ -1995,7 +2003,7 @@ uint8_t awh::Server::getCountHops() const noexcept {
 	// Если идентификатор сервера установлен
 	if(this->_id.eid > 0)
 		// Получаем количество хопов последнего принятого пакета
-		return (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.getCountHops(this->_id.eid) : this->_unit->server.getCountHops(this->_id.eid));
+		return (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.getCountHops(this->_id.eid) : this->_unit->server.getCountHops(this->_id.eid));
 	// Если идентификатор сервера не установлен
 	else {
 		/**
@@ -2026,7 +2034,7 @@ bool awh::Server::setCountHops(const uint8_t hops) noexcept {
 	// Если идентификатор сервера установлен
 	if(this->_id.eid > 0)
 		// Устанавливаем количество хопов последнего принятого пакета
-		return (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.setCountHops(this->_id.eid, hops) : this->_unit->server.setCountHops(this->_id.eid, hops));
+		return (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.setCountHops(this->_id.eid, hops) : this->_unit->server.setCountHops(this->_id.eid, hops));
 	// Если идентификатор сервера не установлен
 	else {
 		/**
@@ -2055,9 +2063,9 @@ bool awh::Server::setCountHops(const uint8_t hops) noexcept {
  */
 awh::event::hops_t awh::Server::getHops(const event::id_t eid) const noexcept {
 	// Если идентификатор сервера или клиента установлен
-	if((eid == this->_id.eid) || (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.isActual(eid) : this->_unit->server.isActual(eid)))
+	if((eid == this->_id.eid) || (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.isActual(eid) : this->_unit->server.isActual(eid)))
 		// Получаем максимальное количество хопов
-		return (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.getHops(eid) : this->_unit->server.getHops(eid));
+		return (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.getHops(eid) : this->_unit->server.getHops(eid));
 	// Если идентификатор сервера или клиента не установлен
 	else {
 		/**
@@ -2089,9 +2097,9 @@ bool awh::Server::setHops(const event::id_t eid, const event::hops_t hops) noexc
 	// Если DNS-резолвер или сервер находятся в нерабочем состоянии
 	if(!this->active()){
 		// Если идентификатор сервера или клиента установлен
-		if((eid == this->_id.eid) || (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.isActual(eid) : this->_unit->server.isActual(eid)))
+		if((eid == this->_id.eid) || (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.isActual(eid) : this->_unit->server.isActual(eid)))
 			// Устанавливаем максимальное количество хопов
-			return (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.setHops(eid, hops) : this->_unit->server.setHops(eid, hops));
+			return (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.setHops(eid, hops) : this->_unit->server.setHops(eid, hops));
 		// Если идентификатор сервера или клиента не установлен
 		else {
 			/**
@@ -2122,7 +2130,7 @@ string awh::Server::getIface() const noexcept {
 	// Если идентификатор сервера установлен
 	if(this->_id.eid > 0)
 		// Извлекаем сетевой интерфейс сервера
-		return (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.getIface(this->_id.eid) : this->_unit->server.getIface(this->_id.eid));
+		return (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.getIface(this->_id.eid) : this->_unit->server.getIface(this->_id.eid));
 	// Если идентификатор сервера не установлен
 	else {
 		/**
@@ -2155,7 +2163,7 @@ bool awh::Server::setIface(string_view name) noexcept {
 		// Если идентификатор сервера установлен
 		if(this->_id.eid > 0)
 			// Устанавливаем сетевой интерфейс сервера
-			return (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.setIface(this->_id.eid, name) : this->_unit->server.setIface(this->_id.eid, name));
+			return (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.setIface(this->_id.eid, name) : this->_unit->server.setIface(this->_id.eid, name));
 		// Если идентификатор сервера не установлен
 		else {
 			/**
@@ -2221,7 +2229,7 @@ bool awh::Server::setPort(const uint16_t port) noexcept {
 			// Если включён режим кластера
 			if(this->clusterMode() == event::mode_t::ENABLED){
 				// Если транспорт является QUIC, выполняем установку диапазона портов кластера
-				if(this->_protocol == event::protocol_t::QUIC){
+				if(this->_params.protocol == event::protocol_t::QUIC){
 					// Устанавливаем диапазон портов кластера
 					this->clusterRange(port, port);
 					// Возвращаем результат выполнения установки
@@ -2231,7 +2239,7 @@ bool awh::Server::setPort(const uint16_t port) noexcept {
 				return this->_unit->server.setPort(this->_id.eid, port);
 			}
 			// Устанавливаем порт текущего сервера
-			return (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.setPort(this->_id.eid, port) : this->_unit->server.setPort(this->_id.eid, port));
+			return (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.setPort(this->_id.eid, port) : this->_unit->server.setPort(this->_id.eid, port));
 		// Если идентификатор сервера не установлен
 		} else {
 			/**
@@ -2261,9 +2269,9 @@ bool awh::Server::setPort(const uint16_t port) noexcept {
  */
 uint16_t awh::Server::getPort(const event::id_t eid) const noexcept {
 	// Если идентификатор подключённого клиента является активным
-	if((this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.isActual(eid) : this->_unit->server.isActual(eid)))
+	if((this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.isActual(eid) : this->_unit->server.isActual(eid)))
 		// Извлекаем порт подключённого клиента
-		return (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.getPort(eid) : this->_unit->server.getPort(eid));
+		return (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.getPort(eid) : this->_unit->server.getPort(eid));
 	// Если идентификатор подключённого клиента не найден
 	else {
 		/**
@@ -2341,7 +2349,7 @@ bool awh::Server::setHost(string_view host) noexcept {
 				// Если идентификатор сервера установлен
 				if(this->_id.eid > 0){
 					// Устанавливаем адрес хоста целевой машины для сервера
-					result = (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.setAddress(this->_id.eid, event::address_t::IPV4, host) : this->_unit->server.setAddress(this->_id.eid, event::address_t::IPV4, host));
+					result = (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.setAddress(this->_id.eid, event::address_t::IPV4, host) : this->_unit->server.setAddress(this->_id.eid, event::address_t::IPV4, host));
 					// Если адрес установлен успешно, сохраняем его
 					if(result)
 						// Сохраняем адрес хоста целевой машины для сервера
@@ -2368,7 +2376,7 @@ bool awh::Server::setHost(string_view host) noexcept {
 				// Если идентификатор сервера установлен
 				if(this->_id.eid > 0){
 					// Устанавливаем адрес хоста целевой машины для сервера
-					result = (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.setAddress(this->_id.eid, event::address_t::IPV6, host) : this->_unit->server.setAddress(this->_id.eid, event::address_t::IPV6, host));
+					result = (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.setAddress(this->_id.eid, event::address_t::IPV6, host) : this->_unit->server.setAddress(this->_id.eid, event::address_t::IPV6, host));
 					// Если адрес установлен успешно, сохраняем его
 					if(result)
 						// Сохраняем адрес хоста целевой машины для сервера
@@ -2413,7 +2421,7 @@ string awh::Server::getAddress(const event::address_t address) const noexcept {
 	// Если идентификатор сервера установлен
 	if(this->_id.eid > 0)
 		// Извлекаем адрес сервера
-		return (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.getAddress(this->_id.eid, address) : this->_unit->server.getAddress(this->_id.eid, address));
+		return (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.getAddress(this->_id.eid, address) : this->_unit->server.getAddress(this->_id.eid, address));
 	// Если идентификатор сервера не установлен
 	else {
 		/**
@@ -2449,7 +2457,7 @@ bool awh::Server::setAddress(const event::address_t address, string_view value) 
 		// Если идентификатор сервера установлен
 		if(this->_id.eid > 0){
 			// Устанавливаем адрес сервера
-			if((result = (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.setAddress(this->_id.eid, address, value) : this->_unit->server.setAddress(this->_id.eid, address, value)))){
+			if((result = (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.setAddress(this->_id.eid, address, value) : this->_unit->server.setAddress(this->_id.eid, address, value)))){
 				/**
 				 * Определяем семейство адресов, с которым работает сервер
 				 */
@@ -2501,9 +2509,9 @@ bool awh::Server::setAddress(const event::address_t address, string_view value) 
  */
 string awh::Server::getAddress(const event::id_t eid, const event::address_t address) const noexcept {
 	// Если идентификатор сервера или клиента является активным
-	if((eid == this->_id.eid) || (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.isActual(eid) : this->_unit->server.isActual(eid)))
+	if((eid == this->_id.eid) || (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.isActual(eid) : this->_unit->server.isActual(eid)))
 		// Извлекаем адрес сервера или удалённого клиента
-		return (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.getAddress(eid, address) : this->_unit->server.getAddress(eid, address));
+		return (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.getAddress(eid, address) : this->_unit->server.getAddress(eid, address));
 	// Если идентификатор сервера или клиента не найден
 	else {
 		/**
@@ -2539,7 +2547,7 @@ bool awh::Server::setAddress(const event::address_t address, const net::addr_t *
 		// Если идентификатор сервера установлен
 		if(this->_id.eid > 0){
 			// Устанавливаем адрес сервера
-			if((result = (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.setAddress(this->_id.eid, address, value) : this->_unit->server.setAddress(this->_id.eid, address, value)))){
+			if((result = (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.setAddress(this->_id.eid, address, value) : this->_unit->server.setAddress(this->_id.eid, address, value)))){
 				/**
 				 * Определяем семейство адресов, с которым работает сервер
 				 */
@@ -2593,7 +2601,7 @@ bool awh::Server::getAddress(const event::address_t address, unique_ptr <net::ad
 	// Если идентификатор сервера установлен
 	if(this->_id.eid > 0)
 		// Извлекаем адрес сервера
-		return (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.getAddress(this->_id.eid, address, value) : this->_unit->server.getAddress(this->_id.eid, address, value));
+		return (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.getAddress(this->_id.eid, address, value) : this->_unit->server.getAddress(this->_id.eid, address, value));
 	// Если идентификатор сервера не установлен
 	else {
 		/**
@@ -2624,9 +2632,9 @@ bool awh::Server::getAddress(const event::address_t address, unique_ptr <net::ad
  */
 bool awh::Server::getAddress(const event::id_t eid, const event::address_t address, unique_ptr <net::addr_t> & value) const noexcept {
 	// Если идентификатор сервера или клиента является активным
-	if((eid == this->_id.eid) || (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.isActual(eid) : this->_unit->server.isActual(eid)))
+	if((eid == this->_id.eid) || (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.isActual(eid) : this->_unit->server.isActual(eid)))
 		// Извлекаем адрес сервера или удалённого клиента
-		return (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.getAddress(eid, address, value) : this->_unit->server.getAddress(eid, address, value));
+		return (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.getAddress(eid, address, value) : this->_unit->server.getAddress(eid, address, value));
 	// Если идентификатор сервера или клиента не найден
 	else {
 		/**
@@ -2657,7 +2665,7 @@ uint16_t awh::Server::getMaximumTransmissionUnit(const event::id_t eid) const no
 	// Если идентификатор сервера является активным
 	if(eid == this->_id.eid)
 		// Извлекаем MTU сетевого интерфейса
-		return (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.getMaximumTransmissionUnit(eid) : this->_unit->server.getMaximumTransmissionUnit(eid));
+		return (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.getMaximumTransmissionUnit(eid) : this->_unit->server.getMaximumTransmissionUnit(eid));
 	// Если идентификатор сервера не найден
 	else {
 		/**
@@ -2689,7 +2697,7 @@ bool awh::Server::setMaximumTransmissionUnit(const event::id_t eid, const uint32
 	// Если идентификатор сервера является активным
 	if(eid == this->_id.eid)
 		// Устанавливаем MTU сетевого интерфейса
-		return (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.setMaximumTransmissionUnit(eid, mtu) : this->_unit->server.setMaximumTransmissionUnit(eid, mtu));
+		return (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.setMaximumTransmissionUnit(eid, mtu) : this->_unit->server.setMaximumTransmissionUnit(eid, mtu));
 	// Если идентификатор сервера не найден
 	else {
 		/**
@@ -2718,9 +2726,9 @@ bool awh::Server::setMaximumTransmissionUnit(const event::id_t eid, const uint32
  */
 awh::event::delivery_mode_t awh::Server::getDelivery(const event::id_t eid) const noexcept {
 	// Если идентификатор сервера или клиента является активным
-	if((eid == this->_id.eid) || (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.isActual(eid) : this->_unit->server.isActual(eid)))
+	if((eid == this->_id.eid) || (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.isActual(eid) : this->_unit->server.isActual(eid)))
 		// Извлекаем режим трансляции пакетов сервера или удалённого клиента
-		return (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.getDelivery(eid) : this->_unit->server.getDelivery(eid));
+		return (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.getDelivery(eid) : this->_unit->server.getDelivery(eid));
 	// Если идентификатор сервера или клиента не установлен
 	else {
 		/**
@@ -2752,9 +2760,9 @@ bool awh::Server::setDelivery(const event::id_t eid, const event::delivery_mode_
 	// Если DNS-резолвер или сервер находятся в нерабочем состоянии
 	if(!this->active()){
 		// Если идентификатор сервера или клиента является активным
-		if((eid == this->_id.eid) || (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.isActual(eid) : this->_unit->server.isActual(eid)))
+		if((eid == this->_id.eid) || (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.isActual(eid) : this->_unit->server.isActual(eid)))
 			// Устанавливаем режим трансляции пакетов сервера или удалённого клиента
-			return (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.setDelivery(eid, delivery) : this->_unit->server.setDelivery(eid, delivery));
+			return (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.setDelivery(eid, delivery) : this->_unit->server.setDelivery(eid, delivery));
 		// Если идентификатор сервера или клиента не установлен
 		else {
 			/**
@@ -2785,9 +2793,9 @@ bool awh::Server::setDelivery(const event::id_t eid, const event::delivery_mode_
  */
 size_t awh::Server::getBufferSize(const event::id_t eid, const event::action_t action) const noexcept {
 	// Если идентификатор сервера или клиента является активным
-	if((eid == this->_id.eid) || (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.isActual(eid) : this->_unit->server.isActual(eid)))
+	if((eid == this->_id.eid) || (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.isActual(eid) : this->_unit->server.isActual(eid)))
 		// Извлекаем размер буфера сервера или клиента
-		return (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.getBufferSize(eid, action) : this->_unit->server.getBufferSize(eid, action));
+		return (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.getBufferSize(eid, action) : this->_unit->server.getBufferSize(eid, action));
 	// Если идентификатор сервера или клиента не найден в списке обслуживаемых клиентов
 	else {
 		/**
@@ -2818,9 +2826,9 @@ size_t awh::Server::getBufferSize(const event::id_t eid, const event::action_t a
  */
 bool awh::Server::setBufferSize(const event::id_t eid, const event::action_t action, const size_t size) noexcept {
 	// Если идентификатор сервера или клиента является активным
-	if((eid == this->_id.eid) || (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.isActual(eid) : this->_unit->server.isActual(eid)))
+	if((eid == this->_id.eid) || (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.isActual(eid) : this->_unit->server.isActual(eid)))
 		// Устанавливаем размер буфера сервера или клиента
-		return (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.setBufferSize(eid, action, size) : this->_unit->server.setBufferSize(eid, action, size));
+		return (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.setBufferSize(eid, action, size) : this->_unit->server.setBufferSize(eid, action, size));
 	// Если идентификатор сервера или клиента не найден в списке обслуживаемых клиентов
 	else {
 		/**
@@ -2890,7 +2898,7 @@ awh::event::usage_t awh::Server::getUsageReadTimeout() const noexcept {
 	// Если идентификатор сервера установлен
 	if(this->_id.eid > 0)
 		// Извлекаем режим использования таймаута на чтение события
-		return (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.getUsageReadTimeout(this->_id.eid) : this->_unit->server.getUsageReadTimeout(this->_id.eid));
+		return (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.getUsageReadTimeout(this->_id.eid) : this->_unit->server.getUsageReadTimeout(this->_id.eid));
 	// Если идентификатор сервера не установлен
 	else {
 		/**
@@ -2919,9 +2927,9 @@ awh::event::usage_t awh::Server::getUsageReadTimeout() const noexcept {
  */
 awh::event::usage_t awh::Server::getUsageReadTimeout(const event::id_t eid) const noexcept {
 	// Если идентификатор сервера или клиента является активным
-	if((eid == this->_id.eid) || (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.isActual(eid) : this->_unit->server.isActual(eid)))
+	if((eid == this->_id.eid) || (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.isActual(eid) : this->_unit->server.isActual(eid)))
 		// Извлекаем режим использования таймаута на чтение события сервера или клиента
-		return (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.getUsageReadTimeout(eid) : this->_unit->server.getUsageReadTimeout(eid));
+		return (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.getUsageReadTimeout(eid) : this->_unit->server.getUsageReadTimeout(eid));
 	// Если идентификатор сервера или клиента не найден в списке обслуживаемых клиентов
 	else {
 		/**
@@ -2951,7 +2959,7 @@ void awh::Server::setUsageReadTimeout(const event::usage_t usage) noexcept {
 	// Если идентификатор сервера установлен
 	if(this->_id.eid > 0)
 		// Устанавливаем режим использования таймаута на чтение события
-		(this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.setUsageReadTimeout(this->_id.eid, usage) : this->_unit->server.setUsageReadTimeout(this->_id.eid, usage));
+		(this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.setUsageReadTimeout(this->_id.eid, usage) : this->_unit->server.setUsageReadTimeout(this->_id.eid, usage));
 	// Если идентификатор сервера не установлен
 	else {
 		/**
@@ -2978,9 +2986,9 @@ void awh::Server::setUsageReadTimeout(const event::usage_t usage) noexcept {
  */
 void awh::Server::setUsageReadTimeout(const event::id_t eid, const event::usage_t usage) noexcept {
 	// Если идентификатор сервера или клиента является активным
-	if((eid == this->_id.eid) || (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.isActual(eid) : this->_unit->server.isActual(eid)))
+	if((eid == this->_id.eid) || (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.isActual(eid) : this->_unit->server.isActual(eid)))
 		// Устанавливаем режим использования таймаута на чтение события сервера или клиента
-		(this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.setUsageReadTimeout(eid, usage) : this->_unit->server.setUsageReadTimeout(eid, usage));
+		(this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.setUsageReadTimeout(eid, usage) : this->_unit->server.setUsageReadTimeout(eid, usage));
 	// Если идентификатор сервера или клиента не найден в списке обслуживаемых клиентов
 	else {
 		/**
@@ -3009,7 +3017,7 @@ uint32_t awh::Server::getTimeout(const event::action_t action) const noexcept {
 	// Если идентификатор сервера установлен
 	if(this->_id.eid > 0)
 		// Извлекаем таймаут сервера
-		return (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.getTimeout(this->_id.eid, action) : this->_unit->server.getTimeout(this->_id.eid, action));
+		return (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.getTimeout(this->_id.eid, action) : this->_unit->server.getTimeout(this->_id.eid, action));
 	// Если идентификатор сервера не установлен
 	else {
 		/**
@@ -3039,9 +3047,9 @@ uint32_t awh::Server::getTimeout(const event::action_t action) const noexcept {
  */
 uint32_t awh::Server::getTimeout(const event::id_t eid, const event::action_t action) const noexcept {
 	// Если идентификатор сервера или клиента является активным
-	if((eid == this->_id.eid) || (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.isActual(eid) : this->_unit->server.isActual(eid)))
+	if((eid == this->_id.eid) || (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.isActual(eid) : this->_unit->server.isActual(eid)))
 		// Извлекаем таймаут сервера или клиента
-		return (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.getTimeout(eid, action) : this->_unit->server.getTimeout(eid, action));
+		return (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.getTimeout(eid, action) : this->_unit->server.getTimeout(eid, action));
 	// Если идентификатор сервера или клиента не найден в списке обслуживаемых клиентов
 	else {
 		/**
@@ -3072,7 +3080,7 @@ void awh::Server::setTimeout(const event::action_t action, const uint32_t timeou
 	// Если идентификатор сервера установлен
 	if(this->_id.eid > 0)
 		// Устанавливаем таймаут сервера
-		(this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.setTimeout(this->_id.eid, action, timeout) : this->_unit->server.setTimeout(this->_id.eid, action, timeout));
+		(this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.setTimeout(this->_id.eid, action, timeout) : this->_unit->server.setTimeout(this->_id.eid, action, timeout));
 	// Если идентификатор сервера не установлен
 	else {
 		/**
@@ -3100,9 +3108,9 @@ void awh::Server::setTimeout(const event::action_t action, const uint32_t timeou
  */
 void awh::Server::setTimeout(const event::id_t eid, const event::action_t action, const uint32_t timeout) noexcept {
 	// Если идентификатор сервера или клиента является активным
-	if((eid == this->_id.eid) || (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.isActual(eid) : this->_unit->server.isActual(eid)))
+	if((eid == this->_id.eid) || (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.isActual(eid) : this->_unit->server.isActual(eid)))
 		// Устанавливаем таймаут сервера или клиента
-		(this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.setTimeout(eid, action, timeout) : this->_unit->server.setTimeout(eid, action, timeout));
+		(this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.setTimeout(eid, action, timeout) : this->_unit->server.setTimeout(eid, action, timeout));
 	// Если идентификатор сервера или клиента не найден в списке обслуживаемых клиентов
 	else {
 		/**
@@ -3132,7 +3140,7 @@ bool awh::Server::bandwidth(const event::limiting_t limiting, string_view bandwi
 	// Если идентификатор сервера установлен
 	if(this->_id.eid > 0)
 		// Устанавливаем пропускную способность сервера
-		return (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.bandwidth(this->_id.eid, limiting, bandwidth) : this->_unit->server.bandwidth(this->_id.eid, limiting, bandwidth));
+		return (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.bandwidth(this->_id.eid, limiting, bandwidth) : this->_unit->server.bandwidth(this->_id.eid, limiting, bandwidth));
 	// Если идентификатор сервера не установлен
 	else {
 		/**
@@ -3163,9 +3171,9 @@ bool awh::Server::bandwidth(const event::limiting_t limiting, string_view bandwi
  */
 bool awh::Server::bandwidth(const event::id_t eid, const event::limiting_t limiting, string_view bandwidth) noexcept {
 	// Если идентификатор сервера или клиента является активным
-	if((eid == this->_id.eid) || (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.isActual(eid) : this->_unit->server.isActual(eid)))
+	if((eid == this->_id.eid) || (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.isActual(eid) : this->_unit->server.isActual(eid)))
 		// Устанавливаем пропускную способность сервера или клиента
-		return (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.bandwidth(eid, limiting, bandwidth) : this->_unit->server.bandwidth(eid, limiting, bandwidth));
+		return (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.bandwidth(eid, limiting, bandwidth) : this->_unit->server.bandwidth(eid, limiting, bandwidth));
 	// Если идентификатор сервера или клиента не найден в списке обслуживаемых клиентов
 	else {
 		/**
@@ -3197,9 +3205,9 @@ bool awh::Server::bandwidth(const event::id_t eid, const event::limiting_t limit
  */
 bool awh::Server::keepAlive(const event::id_t eid, const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept {
 	// Если идентификатор сервера или клиента является активным
-	if((eid == this->_id.eid) || (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.isActual(eid) : this->_unit->server.isActual(eid)))
+	if((eid == this->_id.eid) || (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.isActual(eid) : this->_unit->server.isActual(eid)))
 		// Устанавливаем параметры keep-alive для сервера или клиента
-		return (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.keepAlive(eid, cnt, idle, intvl) : this->_unit->server.keepAlive(eid, cnt, idle, intvl));
+		return (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.keepAlive(eid, cnt, idle, intvl) : this->_unit->server.keepAlive(eid, cnt, idle, intvl));
 	// Если идентификатор сервера или клиента не найден в списке обслуживаемых клиентов
 	else {
 		/**
@@ -3229,7 +3237,7 @@ awh::event::dscp_t awh::Server::getDifferentiatedServicesCodePoint() const noexc
 	// Если идентификатор сервера установлен
 	if(this->_id.eid > 0)
 		// Получаем значение DSCP для сервера
-		return (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.getDifferentiatedServicesCodePoint(this->_id.eid) : this->_unit->server.getDifferentiatedServicesCodePoint(this->_id.eid));
+		return (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.getDifferentiatedServicesCodePoint(this->_id.eid) : this->_unit->server.getDifferentiatedServicesCodePoint(this->_id.eid));
 	// Если идентификатор сервера не установлен
 	else {
 		/**
@@ -3260,7 +3268,7 @@ bool awh::Server::setDifferentiatedServicesCodePoint(const event::dscp_t dscp) c
 	// Если идентификатор сервера установлен
 	if(this->_id.eid > 0)
 		// Устанавливаем значение DSCP для сервера
-		return (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.setDifferentiatedServicesCodePoint(this->_id.eid, dscp) : this->_unit->server.setDifferentiatedServicesCodePoint(this->_id.eid, dscp));
+		return (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.setDifferentiatedServicesCodePoint(this->_id.eid, dscp) : this->_unit->server.setDifferentiatedServicesCodePoint(this->_id.eid, dscp));
 	// Если идентификатор сервера не установлен
 	else {
 		/**
@@ -3290,7 +3298,7 @@ awh::event::mtu_discover_t awh::Server::getMaximumTransmissionUnitDiscover() con
 	// Если идентификатор сервера установлен
 	if(this->_id.eid > 0)
 		// Получаем режим обнаружения максимального размера пакета (MTU) для сервера
-		return (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.getMaximumTransmissionUnitDiscover(this->_id.eid) : this->_unit->server.getMaximumTransmissionUnitDiscover(this->_id.eid));
+		return (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.getMaximumTransmissionUnitDiscover(this->_id.eid) : this->_unit->server.getMaximumTransmissionUnitDiscover(this->_id.eid));
 	// Если идентификатор сервера не установлен
 	else {
 		/**
@@ -3321,7 +3329,7 @@ bool awh::Server::setMaximumTransmissionUnitDiscover(const event::mtu_discover_t
 	// Если идентификатор сервера установлен
 	if(this->_id.eid > 0)
 		// Устанавливаем режим обнаружения максимального размера пакета (MTU) для сервера
-		return (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.setMaximumTransmissionUnitDiscover(this->_id.eid, mode) : this->_unit->server.setMaximumTransmissionUnitDiscover(this->_id.eid, mode));
+		return (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.setMaximumTransmissionUnitDiscover(this->_id.eid, mode) : this->_unit->server.setMaximumTransmissionUnitDiscover(this->_id.eid, mode));
 	// Если идентификатор сервера не установлен
 	else {
 		/**
@@ -3357,7 +3365,7 @@ bool awh::Server::membership(const event::mode_t mode, string_view group, string
 		// Если идентификатор сервера установлен
 		if(this->_id.eid > 0)
 			// Устанавливаем активацию/деактивацию мультикаст группы для сервера
-			return (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.membership(this->_id.eid, mode, group, source, port) : this->_unit->server.membership(this->_id.eid, mode, group, source, port));
+			return (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.membership(this->_id.eid, mode, group, source, port) : this->_unit->server.membership(this->_id.eid, mode, group, source, port));
 		// Если идентификатор сервера не установлен
 		else {
 			/**
@@ -3394,7 +3402,7 @@ bool awh::Server::membership(const event::mode_t mode, const net::addr_t * group
 		// Если идентификатор сервера установлен
 		if(this->_id.eid > 0)
 			// Устанавливаем активацию/деактивацию мультикаст группы для сервера
-			return (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.membership(this->_id.eid, mode, group, source, port) : this->_unit->server.membership(this->_id.eid, mode, group, source, port));
+			return (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.membership(this->_id.eid, mode, group, source, port) : this->_unit->server.membership(this->_id.eid, mode, group, source, port));
 		// Если идентификатор сервера не установлен
 		else {
 			/**
@@ -3440,9 +3448,9 @@ awh::event::id_t awh::Server::init(const event::family_t family, const event::ty
 			// Выдаём новый идентификатор DNS-резолвера для клиента
 			this->_dns.id = this->_dns.client->issue();
 		// Запоминаем протокол транспорта сервера
-		this->_protocol = protocol;
+		this->_params.protocol = protocol;
 		// Запоминаем тип сокета транспорта сервера (для QUIC соединения работают поверх дейтаграммного сокета)
-		this->_type = ((protocol == event::protocol_t::QUIC) ? event::type_t::DATAGRAM : type);
+		this->_params.type = ((protocol == event::protocol_t::QUIC) ? event::type_t::DATAGRAM : type);
 		/**
 		 * Для транспорта QUIC событие создаётся на выделенном юните сервера QUIC:
 		 * ему же переносится шаблон контекста безопасности, а слой записей
@@ -3484,7 +3492,7 @@ awh::event::id_t awh::Server::init(const event::family_t family, const event::ty
  */
 void awh::Server::clusterName(string_view name) noexcept {
 	// Устанавливаем название кластера на активном юните транспорта
-	(this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.clusterName(name) : this->_unit->server.clusterName(name));
+	(this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.clusterName(name) : this->_unit->server.clusterName(name));
 }
 /**
  * @brief Метод получения семейства кластера
@@ -3494,7 +3502,7 @@ void awh::Server::clusterName(string_view name) noexcept {
  */
 awh::unit::cluster_t::family_t awh::Server::clusterFamily() const noexcept {
 	// Получаем семейство кластера с активного юнита транспорта
-	return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.clusterFamily() : this->_unit->server.clusterFamily());
+	return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.clusterFamily() : this->_unit->server.clusterFamily());
 }
 /**
  * @brief Метод получения режима активации кластера
@@ -3504,7 +3512,7 @@ awh::unit::cluster_t::family_t awh::Server::clusterFamily() const noexcept {
  */
 awh::event::mode_t awh::Server::clusterMode() const noexcept {
 	// Получаем режим активации кластера с активного юнита транспорта
-	return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.clusterMode() : this->_unit->server.clusterMode());
+	return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.clusterMode() : this->_unit->server.clusterMode());
 }
 /**
  * @brief Метод установки количества процессов кластера
@@ -3515,7 +3523,7 @@ awh::event::mode_t awh::Server::clusterMode() const noexcept {
  */
 void awh::Server::clusterMode(const event::mode_t mode) noexcept {
 	// Устанавливаем режим активации кластера на активном юните транспорта
-	(this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.clusterMode(mode) : this->_unit->server.clusterMode(mode));
+	(this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.clusterMode(mode) : this->_unit->server.clusterMode(mode));
 }
 /**
  * @brief Метод получения максимального количества процессов
@@ -3525,7 +3533,7 @@ void awh::Server::clusterMode(const event::mode_t mode) noexcept {
  */
 uint16_t awh::Server::clusterCount() const noexcept {
 	// Получаем максимальное количество процессов для кластера с активного юнита транспорта
-	return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.clusterCount() : this->_unit->server.clusterCount());
+	return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.clusterCount() : this->_unit->server.clusterCount());
 }
 /**
  * @brief Метод установки максимального количества процессов
@@ -3535,7 +3543,7 @@ uint16_t awh::Server::clusterCount() const noexcept {
  */
 void awh::Server::clusterCount(const uint16_t count) noexcept {
 	// Устанавливаем максимальное количество процессов для кластера на активном юните транспорта
-	(this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.clusterCount(count) : this->_unit->server.clusterCount(count));
+	(this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.clusterCount(count) : this->_unit->server.clusterCount(count));
 }
 /**
  * @brief Метод получения списка дочерних процессов
@@ -3545,7 +3553,7 @@ void awh::Server::clusterCount(const uint16_t count) noexcept {
  */
 unordered_set <pid_t> awh::Server::clusterWorkers() const noexcept {
 	// Получаем список дочерних процессов для кластера с активного юнита транспорта
-	return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.clusterWorkers() : this->_unit->server.clusterWorkers());
+	return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.clusterWorkers() : this->_unit->server.clusterWorkers());
 }
 /**
  * @brief Метод установки диапазона портов для выделения дочерним процессам кластера
@@ -3559,7 +3567,7 @@ void awh::Server::clusterRange(const uint16_t begin, const uint16_t end) noexcep
 	 * Диапазон портов применяется только к транспорту QUIC: у остальных транспортов
 	 * дочерние процессы наследуют общий сокет прослушивания родительского процесса
 	 */
-	if(this->_protocol == event::protocol_t::QUIC)
+	if(this->_params.protocol == event::protocol_t::QUIC)
 		// Устанавливаем диапазон портов для выделения дочерним процессам на юните QUIC
 		this->_unit->quic.clusterRange(begin, end);
 	// Устанавливаем единственный порт прослушивания, так-как не поддерживается диапазон портов
@@ -3576,7 +3584,7 @@ unordered_set <pid_t> awh::Server::clusterIdle() const noexcept {
 	 * Список работающих в холостую дочерних процессов ведётся только для транспорта
 	 * QUIC: у остальных транспортов дочерние процессы наследуют общий сокет
 	 */
-	if(this->_protocol == event::protocol_t::QUIC)
+	if(this->_params.protocol == event::protocol_t::QUIC)
 		// Возвращаем список дочерних процессов, не получивших порт прослушивания
 		return this->_unit->quic.clusterIdle();
 	// Возвращаем значение по умолчанию
@@ -3596,7 +3604,7 @@ bool awh::Server::clusterAssign(const pid_t pid, const uint16_t port) noexcept {
 	 * QUIC: у остальных транспортов сокет прослушивания наследуется от родительского
 	 * процесса, поэтому отдельная раздача портов не требуется
 	 */
-	if(this->_protocol == event::protocol_t::QUIC)
+	if(this->_params.protocol == event::protocol_t::QUIC)
 		// Отправляем порт прослушивания дочернему процессу на юните QUIC
 		return this->_unit->quic.clusterAssign(pid, port);
 	// Возвращаем значение по умолчанию
@@ -3614,7 +3622,7 @@ size_t awh::Server::clusterSend(const void * buffer, const size_t size) noexcept
 	// Если DNS-резолвер или сервер находятся в рабочем состоянии
 	if(this->active())
 		// Отправляем сообщение родительскому процессу через активный юнит транспорта
-		return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.clusterSend(buffer, size) : this->_unit->server.clusterSend(buffer, size));
+		return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.clusterSend(buffer, size) : this->_unit->server.clusterSend(buffer, size));
 	// Если DNS-резолвер или сервер находятся в нерабочем состоянии
 	else {
 		/**
@@ -3647,7 +3655,7 @@ size_t awh::Server::clusterSend(const pid_t pid, const void * buffer, const size
 	// Если DNS-резолвер или сервер находятся в рабочем состоянии
 	if(this->active())
 		// Отправляем сообщение дочернему процессу через активный юнит транспорта
-		return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.clusterSend(pid, buffer, size) : this->_unit->server.clusterSend(pid, buffer, size));
+		return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.clusterSend(pid, buffer, size) : this->_unit->server.clusterSend(pid, buffer, size));
 	// Если DNS-резолвер или сервер находятся в нерабочем состоянии
 	else {
 		/**
@@ -3679,7 +3687,7 @@ size_t awh::Server::clusterBroadcast(const void * buffer, const size_t size) noe
 	// Если DNS-резолвер или сервер находятся в рабочем состоянии
 	if(this->active())
 		// Отправляем сообщение всем дочерним процессам через активный юнит транспорта
-		return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.clusterBroadcast(buffer, size) : this->_unit->server.clusterBroadcast(buffer, size));
+		return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.clusterBroadcast(buffer, size) : this->_unit->server.clusterBroadcast(buffer, size));
 	// Если DNS-резолвер или сервер находятся в нерабочем состоянии
 	else {
 		/**
@@ -3707,7 +3715,7 @@ size_t awh::Server::clusterBroadcast(const void * buffer, const size_t size) noe
  */
 void awh::Server::clusterRebirth(const bool mode) noexcept {
 	// Устанавливаем флаг автоматического возрождения процессов для кластера на активном юните транспорта
-	(this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.clusterRebirth(mode) : this->_unit->server.clusterRebirth(mode));
+	(this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.clusterRebirth(mode) : this->_unit->server.clusterRebirth(mode));
 }
 /**
  * @brief Метод установки параметров защиты от цикла перезапусков процессов кластера
@@ -3718,7 +3726,7 @@ void awh::Server::clusterRebirth(const bool mode) noexcept {
  */
 void awh::Server::clusterRebirthLimit(const uint16_t limit, const uint64_t window) noexcept {
 	// Устанавливаем параметры защиты от цикла перезапусков процессов кластера на активном юните транспорта
-	(this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.clusterRebirthLimit(limit, window) : this->_unit->server.clusterRebirthLimit(limit, window));
+	(this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.clusterRebirthLimit(limit, window) : this->_unit->server.clusterRebirthLimit(limit, window));
 }
 /**
  * @brief Метод получения типа протокола передачи данных между воркерами
@@ -3728,7 +3736,7 @@ void awh::Server::clusterRebirthLimit(const uint16_t limit, const uint64_t windo
  */
 awh::event::type_t awh::Server::clusterGetTypeEventMessage() const noexcept {
 	// Выполняем получение типа протокола передачи данных между воркерами с активного юнита транспорта
-	return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.clusterGetTypeEventMessage() : this->_unit->server.clusterGetTypeEventMessage());
+	return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.clusterGetTypeEventMessage() : this->_unit->server.clusterGetTypeEventMessage());
 }
 /**
  * @brief Метод установки типа протокола передачи данных между воркерами
@@ -3738,7 +3746,7 @@ awh::event::type_t awh::Server::clusterGetTypeEventMessage() const noexcept {
  */
 void awh::Server::clusterSetTypeEventMessage(const event::type_t type) noexcept {
 	// Выполняем установку типа протокола передачи данных между воркерами на активном юните транспорта
-	(this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.clusterSetTypeEventMessage(type) : this->_unit->server.clusterSetTypeEventMessage(type));
+	(this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.clusterSetTypeEventMessage(type) : this->_unit->server.clusterSetTypeEventMessage(type));
 }
 /**
  * @brief Метод получения размера буфера события
@@ -3750,7 +3758,7 @@ void awh::Server::clusterSetTypeEventMessage(const event::type_t type) noexcept 
  */
 size_t awh::Server::clusterGetBufferSize(const pid_t pid, const event::action_t action) const noexcept {
 	// Получаем размер буфера события с активного юнита транспорта
-	return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.clusterGetBufferSize(pid, action) : this->_unit->server.clusterGetBufferSize(pid, action));
+	return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.clusterGetBufferSize(pid, action) : this->_unit->server.clusterGetBufferSize(pid, action));
 }
 /**
  * @brief Метод установки размера буфера события
@@ -3763,7 +3771,7 @@ size_t awh::Server::clusterGetBufferSize(const pid_t pid, const event::action_t 
  */
 bool awh::Server::clusterSetBufferSize(const pid_t pid, const event::action_t action, const size_t size) noexcept {
 	// Устанавливаем размер буфера события на активном юните транспорта
-	return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.clusterSetBufferSize(pid, action, size) : this->_unit->server.clusterSetBufferSize(pid, action, size));
+	return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.clusterSetBufferSize(pid, action, size) : this->_unit->server.clusterSetBufferSize(pid, action, size));
 }
 /**
  * @brief Конструктор
@@ -3773,7 +3781,7 @@ bool awh::Server::clusterSetBufferSize(const pid_t pid, const event::action_t ac
  *
  */
 awh::Server::Server(const fmk_t * fmk, const log_t * log) noexcept :
- _host{""}, _callback(fmk, log), _unit(nullptr), _protocol(event::protocol_t::NONE), _type(event::type_t::NONE), _fmk(fmk), _log(log) {
+ _host{""}, _callback(fmk, log), _unit(nullptr), _fmk(fmk), _log(log) {
 	// Создаём объект юнита сервера
 	this->_unit = make_unique <unit_t> (fmk, log);
 	// Устанавливаем функцию обратного вызова на событие изменения статуса сервера
@@ -3850,7 +3858,7 @@ awh::Server::Server(const fmk_t * fmk, const log_t * log) noexcept :
  *
  */
 awh::Server::Server(unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept :
- _host{""}, _callback(fmk, log), _unit(nullptr), _protocol(event::protocol_t::NONE), _type(event::type_t::NONE), _fmk(fmk), _log(log) {
+ _host{""}, _callback(fmk, log), _unit(nullptr), _fmk(fmk), _log(log) {
 	// Создаём объект юнита сервера
 	this->_unit = make_unique <unit_t> (fmk, log);
 	// Устанавливаем функцию обратного вызова на событие изменения статуса сервера
@@ -3951,7 +3959,7 @@ awh::Server::Server(unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noe
  *
  */
 awh::Server::Server(const tls::coder_t::id_t cts, tls::coder_t * coder, const fmk_t * fmk, const log_t * log) noexcept :
- _host{""}, _callback(fmk, log), _unit(nullptr), _protocol(event::protocol_t::NONE), _type(event::type_t::NONE), _fmk(fmk), _log(log) {
+ _host{""}, _callback(fmk, log), _unit(nullptr), _fmk(fmk), _log(log) {
 	// Устанавливаем идентификатор шаблона контекста безопасности
 	this->_id.cts = cts;
 	// Устанавливаем объект транспортного уровня безопасности для сервера
@@ -4052,7 +4060,7 @@ awh::Server::Server(const tls::coder_t::id_t cts, tls::coder_t * coder, const fm
  *
  */
 awh::Server::Server(const tls::coder_t::id_t cts, tls::coder_t * coder, unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept :
- _host{""}, _callback(fmk, log), _unit(nullptr), _protocol(event::protocol_t::NONE), _type(event::type_t::NONE), _fmk(fmk), _log(log) {
+ _host{""}, _callback(fmk, log), _unit(nullptr), _fmk(fmk), _log(log) {
 	// Устанавливаем идентификатор шаблона контекста безопасности
 	this->_id.cts = cts;
 	// Устанавливаем объект транспортного уровня безопасности для сервера

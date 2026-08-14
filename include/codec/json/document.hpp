@@ -207,6 +207,25 @@ namespace awh {
 						bool modified;
 						/**
 						 * \~russian
+						 * Признак того, что узел является полем объекта
+						 *
+						 * @note Признак этот необходим: длина имени поля обращается в ноль у
+						 * поля с пустым именем, а такое имя стандартом дозволено. Без признака
+						 * поле `""` было бы неотличимо от значения массива, и перезапись
+						 * документа теряла бы охватывающий его объект
+						 *
+						 * \~english
+						 * Flag that the node is a field of an object
+						 * @note This flag is necessary: the length of the name of a field turns into zero for
+						 * a field with an empty name, while such a name is allowed by the standard. Without the flag
+						 * a field `""` would be indistinguishable from a value of an array, and the rewriting
+						 * of the document would lose the object enclosing it
+						 *
+						 * \~
+						 */
+						bool keyed;
+						/**
+						 * \~russian
 						 * Количество детей вместилища либо длина содержимого в байтах
 						 *
 						 * \~english
@@ -232,7 +251,7 @@ namespace awh {
 						uint32_t extent;
 						// Смещение содержимого либо имени поля в хранилище знаков
 						uint32_t offset;
-						// Длина имени поля объекта в байтах, ноль - имени нет
+						// Длина имени поля объекта в байтах
 						uint32_t named;
 						/**
 						 * \~russian
@@ -245,7 +264,7 @@ namespace awh {
 						 * \~
 						 */
 						Node() noexcept :
-						 kind(kind_t::NONE), modified(false),
+						 kind(kind_t::NONE), modified(false), keyed(false),
 						 length(0), extent(1), offset(0), named(0) {}
 					} node_t;
 				public:
@@ -684,6 +703,9 @@ namespace awh {
 				private:
 					// Длина имени поля объекта, ожидающего своего значения
 					uint32_t _named;
+				private:
+					// Признак того, что имя поля объекта разобрано, а значение его - ещё нет
+					bool _keyed;
 				private:
 					/**
 					 * \~russian

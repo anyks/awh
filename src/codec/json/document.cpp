@@ -60,7 +60,7 @@ namespace {
  * @brief Конструктор
  *
  */
-awh::codec::json::Document::Document() noexcept : _error(error_t::NONE), _named(0) {}
+awh::codec::json::Document::Document() noexcept : _error(error_t::NONE), _named(0), _keyed(false) {}
 /**
  * @brief Метод проверки действительности ссылки
  *
@@ -131,9 +131,9 @@ string_view awh::codec::json::Document::Value::name() const noexcept {
 	// Получаем узел, на какой указывает ссылка
 	const node_t & node = this->_doc->_nodes[this->_index];
 	/**
-	 * Если узел имени поля объекта не несёт
+	 * Если узел полем объекта не является
 	 */
-	if(node.named == 0)
+	if(!node.keyed)
 		// Выводим отсутствие имени поля объекта
 		return string_view();
 	// Выводим имя поля объекта, лежащее вплотную перед содержимым
@@ -618,6 +618,8 @@ bool awh::codec::json::Document::consume(reader_t & reader, const callback_t & c
 			}
 			// Запоминаем длину имени поля объекта
 			this->_named = static_cast <uint32_t> (value.text.size());
+			// Устанавливаем признак разбора имени поля объекта
+			this->_keyed = true;
 			// Добавляем имя поля объекта в хранилище знаков
 			this->_storage.append(value.text.data(), value.text.size());
 			// Выполняем переход к следующему событию разбора
@@ -638,10 +640,14 @@ bool awh::codec::json::Document::consume(reader_t & reader, const callback_t & c
 		node_t node;
 		// Устанавливаем длину имени поля объекта
 		node.named = this->_named;
+		// Устанавливаем признак принадлежности узла объекту
+		node.keyed = this->_keyed;
 		// Устанавливаем смещение содержимого узла в хранилище знаков
 		node.offset = static_cast <uint32_t> (this->_storage.size());
 		// Сбрасываем длину имени поля объекта
 		this->_named = 0;
+		// Снимаем признак разбора имени поля объекта
+		this->_keyed = false;
 		/**
 		 * Определяем вид очередного события разбора
 		 */
@@ -912,6 +918,8 @@ void awh::codec::json::Document::clear() noexcept {
 	this->_nesting.clear();
 	// Сбрасываем длину имени поля объекта, ожидающего своего значения
 	this->_named = 0;
+	// Снимаем признак разбора имени поля объекта
+	this->_keyed = false;
 	// Сбрасываем положение отказа разбора в исходном тексте
 	this->_position = location_t();
 }
@@ -1060,6 +1068,15 @@ string awh::codec::json::Document::dump(const format_t format) const noexcept {
 	writer_t::settings_t settings = this->_settings.writer;
 	// Устанавливаем затребованный вид оформления собираемого текста
 	settings.format = format;
+	/**
+	 * Дозволяем записи NaN и бесконечности, коль скоро разбор их принимает
+	 *
+	 * @note Дозволение это выводится из настроек разбора намеренно: числа такие
+	 *       попадают в дерево лишь с его дозволения, а запрет на записи их у
+	 *       сборщика молча выбросил бы значение из перезаписанного текста.
+	 *       Обнаружено обкаткой искажёнными текстами
+	 */
+	settings.allowInfinityAndNan = (settings.allowInfinityAndNan || this->_settings.reader.allowInfinityAndNan);
 	// Выполняем установку настроек записи текста
 	writer.settings(settings);
 	/**
@@ -1086,9 +1103,9 @@ string awh::codec::json::Document::dump(const format_t format) const noexcept {
 		// Получаем очередной узел документа
 		const node_t & node = this->_nodes[index];
 		/**
-		 * Если узел несёт имя поля объекта
+		 * Если узел является полем объекта
 		 */
-		if(node.named > 0)
+		if(node.keyed)
 			// Выполняем запись имени поля объекта
 			writer.key(string(this->_storage.data() + (node.offset - node.named), node.named));
 		/**
