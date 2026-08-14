@@ -1,19 +1,22 @@
 /**
- * @file: assembly.cpp
- * @date: 2026-08-02
- * @license: LicenseRef-AWH-1.0
+ * @file assembly.cpp
+ * @date 2026-08-02
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Автоматические тесты исполняемой памяти кодогенерации — передача управления
  *        порождённому машинному коду, соблюдение раздельности записи и исполнения
  *        и передача владения участком памяти при перемещении
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

@@ -1,19 +1,22 @@
 /**
- * @file: uri.cpp
- * @date: 2026-03-28
- * @license: LicenseRef-AWH-1.0
+ * @file uri.cpp
+ * @date 2026-03-28
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Реализация модуля работы с универсальными идентификаторами ресурсов — разбор, сборка,
  *        нормализация и процентное кодирование URI, работа с параметрами запроса,
  *        пользовательскими данными и относительными ссылками
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

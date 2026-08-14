@@ -1,13 +1,16 @@
 /**
- * @file: http.hpp
- * @date: 2026-07-19
- * @license: LicenseRef-AWH-1.0
+ * @file http.hpp
+ * @date 2026-07-19
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * \~russian
  * @brief Заголовочный файл парсера сессии HTTP/2 — класс Parser_HTTP2, управляющий состояниями потоков,
@@ -21,7 +24,7 @@
  *
  * \~
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

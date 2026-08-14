@@ -1,18 +1,21 @@
 /**
- * @file: mediator.cpp
- * @date: 2026-03-23
- * @license: LicenseRef-AWH-1.0
+ * @file mediator.cpp
+ * @date 2026-03-23
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Реализация модуля посредника — связывание двух независимых узлов в двунаправленный канал и проксирование
  *        трафика между ними с контролем встречного давления
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

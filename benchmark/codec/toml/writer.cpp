@@ -1,19 +1,22 @@
 /**
- * @file: writer.cpp
- * @date: 2026-08-12
- * @license: LicenseRef-AWH-1.0
+ * @file writer.cpp
+ * @date 2026-08-12
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Бенчмарки записи текста настроек TOML — сборка текста из пар со значениями
  *        всех простых типов, запись строк, требующих ограждения, и расход выделений
  *        памяти на собранный файл настроек
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

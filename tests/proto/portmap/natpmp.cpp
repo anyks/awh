@@ -1,18 +1,21 @@
 /**
- * @file: natpmp.cpp
- * @date: 2026-08-02
- * @license: LicenseRef-AWH-1.0
+ * @file natpmp.cpp
+ * @date 2026-08-02
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Проверка кодека договора NAT-PMP — сборка запросов, разбор ответов маршрутизатора,
  *        отклонение испорченных сообщений и расчёт срока ожидания повторных попыток
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

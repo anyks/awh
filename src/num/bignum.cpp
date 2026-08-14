@@ -1,13 +1,16 @@
 /**
- * @file: bignum.cpp
- * @date: 2026-07-26
- * @license: LicenseRef-AWH-1.0
+ * @file bignum.cpp
+ * @date 2026-07-26
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Исходный файл модуля длинных чисел — реализация вычислительного движка длинной арифметики
  *        и шаблонного класса BigNum, выполняющего знаковые, беззнаковые и вещественные операции
@@ -19,7 +22,7 @@
  *       записи, разбора приставок nan и inf, направленного округления, предусловия divmod
  *       или школьного умножения следует прочитать основание в этом файле.
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

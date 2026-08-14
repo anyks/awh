@@ -1,19 +1,22 @@
 /**
- * @file: automaton.cpp
- * @date: 2026-07-31
- * @license: LicenseRef-AWH-1.0
+ * @file automaton.cpp
+ * @date 2026-07-31
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Автоматические тесты детерминированного исполнения регулярных выражений — сличение
  *        вердикта наличия совпадения с эталонной реализацией PCRE2 и с исполнением без возврата,
  *        а также проверка сохранения вердикта при сбросе кэша состояний автомата
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

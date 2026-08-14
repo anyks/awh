@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-@file: normalize.py
-@date: 2026-08-03
-@license: LicenseRef-AWH-1.0
+@file normalize.py
+@date 2026-08-03
+@license{LicenseRef-AWH-1.0}
 
 @brief Стенд сверки нормализации текста со сторонним эталоном — набором таблиц
        Юникода в составе Python. Стенд дополняет стенд normalize.cpp: эталонная
@@ -13,7 +13,7 @@
        Набор сверки выгружается стендом normalize.cpp в режиме «--dump».
        Символы, изданию стандарта эталона неизвестные, из сверки исключаются.
 
-@copyright: Copyright © 2026
+@copyright Copyright © 2026
 """
 
 import sys

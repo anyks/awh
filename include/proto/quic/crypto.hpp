@@ -1,13 +1,16 @@
 /**
- * @file: crypto.hpp
- * @date: 2026-07-21
- * @license: LicenseRef-AWH-1.0
+ * @file crypto.hpp
+ * @date 2026-07-21
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * \~russian
  * @brief Заголовочный файл криптографического слоя QUIC (RFC 9001) — вывод начальных секретов,
@@ -21,7 +24,7 @@
  *
  * \~
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

@@ -1,14 +1,14 @@
 /**
- * @file: transcode.cpp
- * @date: 2026-08-03
- * @license: LicenseRef-AWH-1.0
+ * @file transcode.cpp
+ * @date 2026-08-03
+ * @license{LicenseRef-AWH-1.0}
  *
  * @brief Стенд сверки перекодировки текста с эталонной реализацией GNU libiconv.
  *        Сверяются оба направления перекодировки: разбор каждого байта каждой
  *        заданной кодировки и запись каждого кодового значения, кодировке
  *        представимого, обратно в её байт.
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  */
 
 #include <cstdio>

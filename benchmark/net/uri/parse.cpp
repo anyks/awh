@@ -1,18 +1,21 @@
 /**
- * @file: parse.cpp
- * @date: 2026-07-29
- * @license: LicenseRef-AWH-1.0
+ * @file parse.cpp
+ * @date 2026-07-29
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Сценарии измерения разбора строки URI — происхождение, полный адрес запроса,
  *        адрес с IPv6-хостом, адрес с параметрами пользователя и адрес с процент-кодированием
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

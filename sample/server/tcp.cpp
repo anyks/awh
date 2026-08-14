@@ -1,18 +1,21 @@
 /**
- * @file: tcp.cpp
- * @date: 2026-05-19
- * @license: LicenseRef-AWH-1.0
+ * @file tcp.cpp
+ * @date 2026-05-19
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Пример сервера TCP — демонстрация приёма потоковых подключений через фасад сервера,
  *        подписки на события и обмена данными с клиентами
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

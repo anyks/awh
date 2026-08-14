@@ -1,19 +1,22 @@
 /**
- * @file: buffer.cpp
- * @date: 2025-10-26
- * @license: LicenseRef-AWH-1.0
+ * @file buffer.cpp
+ * @date 2025-10-26
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Реализация бинарного смарт-буфера — учёт диапазонов записей,
  *        транзакционная запись с откатом при отсутствии фиксации,
  *        обход итераторами и предоставление невладеющих обёрток доступа к данным
  *
- * @copyright: Copyright © 2025
+ * @copyright Copyright © 2025
  *
  */
 

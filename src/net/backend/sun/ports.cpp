@@ -1,13 +1,16 @@
 /**
- * @file: ports.cpp
- * @date: 2026-08-11
- * @license: LicenseRef-AWH-1.0
+ * @file ports.cpp
+ * @date 2026-08-11
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Реализация асинхронного движка ввода-вывода —
  *        цикл событий поверх очереди оповещений Sun Solaris и illumos (Event Ports),
@@ -50,7 +53,7 @@
  *       Сорок семь присвоений, какие движок делал у BSD, сняты намеренно; восстановить
  *       их разбором «чего не хватает против kqueue» нельзя - собираться перестанет
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 /**

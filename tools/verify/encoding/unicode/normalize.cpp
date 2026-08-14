@@ -1,14 +1,14 @@
 /**
- * @file: normalize.cpp
- * @date: 2026-08-03
- * @license: LicenseRef-AWH-1.0
+ * @file normalize.cpp
+ * @date 2026-08-03
+ * @license{LicenseRef-AWH-1.0}
  *
  * @brief Стенд сверки нормализации текста с эталонной реализацией GNU libunistring.
  *        Сверяются все четыре нормальных представления для каждого кодового значения
  *        Юникода по отдельности и для пар «символ со знаком», на которых проверяются
  *        каноническое упорядочение и сочетание.
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  */
 
 #include <cstdio>

@@ -1,20 +1,23 @@
 /**
- * @file: common.cpp
- * @date: 2026-08-11
- * @license: LicenseRef-AWH-1.0
+ * @file common.cpp
+ * @date 2026-08-11
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Автоматические тесты общих средств кодека разметки XML — описание кодов
  *        ошибок, названия кодировок, сличение имён с учётом пространства имён,
  *        проверка знаков на допустимость и пробельность, а также выдача сведений
  *        о разобранном тексте, доступная через чтение
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

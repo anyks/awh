@@ -1,19 +1,22 @@
 /**
- * @file: common.hpp
- * @date: 2026-08-02
- * @license: LicenseRef-AWH-1.0
+ * @file common.hpp
+ * @date 2026-08-02
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Общее окружение эталонных стендов сравнения контейнера XML —
  *        эталонные тексты разметки, параметры нагрузки, учёт выделений памяти,
  *        разбор параметров запуска и вывод результатов
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

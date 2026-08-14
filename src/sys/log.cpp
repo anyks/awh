@@ -1,19 +1,22 @@
 /**
- * @file: log.cpp
- * @date: 2025-10-25
- * @license: LicenseRef-AWH-1.0
+ * @file log.cpp
+ * @date 2025-10-25
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Реализация модуля логирования — форматирование сообщений по уровням важности,
  *        асинхронная доставка в приёмники вывода (консоль, файл, SysLog, функция обратного вызова),
  *        ротация файлов и удаление устаревших архивов
  *
- * @copyright: Copyright © 2025
+ * @copyright Copyright © 2025
  *
  */
 

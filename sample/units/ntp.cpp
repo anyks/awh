@@ -1,18 +1,21 @@
 /**
- * @file: ntp.cpp
- * @date: 2026-03-06
- * @license: LicenseRef-AWH-1.0
+ * @file ntp.cpp
+ * @date 2026-03-06
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Пример работы с NTP-клиентом —
  *        демонстрация синхронизации времени с пулом NTP-серверов и расчёта смещения относительно локальных часов
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

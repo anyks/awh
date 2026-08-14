@@ -12,17 +12,20 @@ INC = ROOT / "include/float"
 SRC = ROOT / "src/float"
 
 BANNER = """/**
- * @file: {filename}
- * @date: 2026-07-22
- * @license: LicenseRef-AWH-1.0
+ * @file {filename}
+ * @date 2026-07-22
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
  *
- * @copyright: Copyright © 2026
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
+ * @copyright Copyright © 2026
  *
  * Адаптировано из fast_float (https://github.com/fastfloat/fast_float)
  * Copyright 2021 The fast_float authors — MIT License.

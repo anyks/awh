@@ -1,19 +1,22 @@
 /**
- * @file: oneshot.cpp
- * @date: 2026-07-31
- * @license: LicenseRef-AWH-1.0
+ * @file oneshot.cpp
+ * @date 2026-07-31
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Сценарии измерения одноразового хэширования — стоимость операции на размерах данных,
  *        покрывающих все ветви обработки, пропускная способность на крупных буферах
  *        и учёт выделений памяти
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

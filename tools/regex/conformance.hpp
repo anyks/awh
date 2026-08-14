@@ -1,13 +1,16 @@
 /**
- * @file: conformance.hpp
- * @date: 2026-08-02
- * @license: LicenseRef-AWH-1.0
+ * @file conformance.hpp
+ * @date 2026-08-02
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Записанный образец сличения переносимого стенда — описание блоков порождаемых
  *        образцов вместе с суммами по итогам их сопоставления
@@ -17,7 +20,7 @@
  *          лишь при намеренном изменении поведения модуля либо набора порождаемых
  *          образцов, и всякий раз - на платформе, где эталонная реализация доступна.
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

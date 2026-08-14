@@ -1,13 +1,16 @@
 /**
- * @file: grok.cpp
- * @date: 2026-08-04
- * @license: LicenseRef-AWH-1.0
+ * @file grok.cpp
+ * @date 2026-08-04
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Проба записи собранных шаблонов Grok — замер расхода сборки шаблонов
  *        из текста против расхода восстановления их из записи и сличение
@@ -22,7 +25,7 @@
  * @warning Числа снимать надлежит со сборки в режиме выпуска: сборка отладочная
  *          со сбором покрытия занижает показатели восьмикратно.
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

@@ -1,13 +1,16 @@
 /**
- * @file: scenarios.hpp
- * @date: 2026-07-27
- * @license: LicenseRef-AWH-1.0
+ * @file scenarios.hpp
+ * @date 2026-07-27
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Общий набор сценариев эталонных стендов сравнения протокола HTTP/3 —
  *        порядок прогона, вычисление характеристик и вход в стенд
@@ -18,7 +21,7 @@
  *          совпадать у всех сравниваемых реализаций, а повторение этой
  *          логики в каждом стенде рано или поздно даёт расхождение
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

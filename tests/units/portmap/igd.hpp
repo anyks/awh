@@ -1,18 +1,21 @@
 /**
- * @file: igd.hpp
- * @date: 2026-08-05
- * @license: LicenseRef-AWH-1.0
+ * @file igd.hpp
+ * @date 2026-08-05
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Заголовочный файл поддельного устройства доступа в сеть с поддержкой UPnP —
  *        ответ на рассылку обнаружения, выдача описания устройства и приём вызова действия службы
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

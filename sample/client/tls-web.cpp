@@ -1,18 +1,21 @@
 /**
- * @file: tls-web.cpp
- * @date: 2026-04-06
- * @license: LicenseRef-AWH-1.0
+ * @file tls-web.cpp
+ * @date 2026-04-06
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Пример клиента TLS для работы с публичным веб-сервером — демонстрация подключения к порту 443,
  *        выполнения защищённого рукопожатия и отправки HTTP-запроса с получением ответа
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

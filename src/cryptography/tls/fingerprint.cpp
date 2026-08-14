@@ -1,19 +1,22 @@
 /**
- * @file: fingerprint.cpp
- * @date: 2026-04-28
- * @license: LicenseRef-AWH-1.0
+ * @file fingerprint.cpp
+ * @date 2026-04-28
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Реализация модуля цифровых отпечатков TLS — формирование и разбор расширений ClientHello (SNI, ALPN,
  *        supported_groups, GREASE, Channel ID, OCSP,
  *        SCT и других) для эмуляции отпечатка клиента и анализа входящих рукопожатий
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

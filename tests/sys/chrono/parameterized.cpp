@@ -1,19 +1,22 @@
 /**
- * @file: parameterized.cpp
- * @date: 2025-12-10
- * @license: LicenseRef-AWH-1.0
+ * @file parameterized.cpp
+ * @date 2025-12-10
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Параметризованные тесты модуля работы с датой и временем —
  *        прогон подготовленных наборов входных данных через методы модуля с проверкой разбора и форматирования дат,
  *        конвертации единиц времени и работы с временными зонами
  *
- * @copyright: Copyright © 2025
+ * @copyright Copyright © 2025
  *
  */
 

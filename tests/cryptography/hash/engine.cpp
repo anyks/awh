@@ -1,19 +1,22 @@
 /**
- * @file: engine.cpp
- * @date: 2026-07-31
- * @license: LicenseRef-AWH-1.0
+ * @file engine.cpp
+ * @date 2026-07-31
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Тесты вычислительного движка хэширования — проверка функций смешивания и перемешивания чисел,
  *        формирования результата произвольной длины, приведения вещественного результата к конечному
  *        значению и записи результата в типы данных разной природы
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

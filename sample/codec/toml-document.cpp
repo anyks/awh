@@ -1,19 +1,22 @@
 /**
- * @file: toml-document.cpp
- * @date: 2026-08-12
- * @license: LicenseRef-AWH-1.0
+ * @file toml-document.cpp
+ * @date 2026-08-12
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Пример работы с деревом настроек TOML — чтение значений по составному имени,
  *        обход таблиц и наборов таблиц, правка записей на месте и обратная запись дерева
  *        с сохранением примечаний и порядка записей
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

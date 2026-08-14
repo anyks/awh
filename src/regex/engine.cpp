@@ -1,19 +1,22 @@
 /**
- * @file: engine.cpp
- * @date: 2026-07-31
- * @license: LicenseRef-AWH-1.0
+ * @file engine.cpp
+ * @date 2026-07-31
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Реализация движка регулярных выражений — сборка прямой и развёрнутой программ,
  *        выбор способа сопоставления по свойствам выражения и длине участка текста,
  *        поиск позиции начала совпадения проходом в обратном направлении
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

@@ -1,18 +1,21 @@
 /**
- * @file: version.cpp
- * @date: 2026-01-26
- * @license: LicenseRef-AWH-1.0
+ * @file version.cpp
+ * @date 2026-01-26
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Реализация модуля работы с версиями — разбор строкового представления версии,
  *        сравнение версий и обратное преобразование в текстовый и числовой вид
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

@@ -1,19 +1,22 @@
 /**
- * @file: packet.cpp
- * @date: 2026-07-21
- * @license: LicenseRef-AWH-1.0
+ * @file packet.cpp
+ * @date 2026-07-21
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Реализация слоя пакетов QUIC (RFC 9000 §17) — разбор и сборка заголовков длинной и короткой формы,
  *        включая Initial, Handshake, 0-RTT, Retry и Version Negotiation,
  *        и извлечение номера пакета после снятия защиты
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

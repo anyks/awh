@@ -1,18 +1,21 @@
 /**
- * @file: icmp.cpp
- * @date: 2026-03-06
- * @license: LicenseRef-AWH-1.0
+ * @file icmp.cpp
+ * @date 2026-03-06
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Реализация модуля ICMP-клиента — формирование и отправка эхо-запросов, приём и разбор ответов,
  *        измерение времени отклика, контроль TTL, номеров последовательности и количества повторов
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

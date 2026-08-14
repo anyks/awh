@@ -1,19 +1,22 @@
 /**
- * @file: pike.cpp
- * @date: 2026-07-31
- * @license: LicenseRef-AWH-1.0
+ * @file pike.cpp
+ * @date 2026-07-31
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Реализация исполнения регулярных выражений без возврата — одновременная симуляция
  *        состояний недетерминированного конечного автомата с сохранением порядка приоритета
  *        ветвей, проверкой привязок к позиции в тексте и извлечением границ захваченных групп
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

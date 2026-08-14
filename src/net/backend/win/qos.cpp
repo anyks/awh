@@ -1,20 +1,23 @@
 /**
- * @file: qos.cpp
- * @date: 2026-08-08
- * @license: LicenseRef-AWH-1.0
+ * @file qos.cpp
+ * @date 2026-08-08
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Реализация модуля отметки исходящих пакетов классом обслуживания
  *
  * @details Разбор устройства подсистемы и доводы к принятым решениям вынесены в
  *          заголовочный файл модуля, здесь же остаётся одно исполнение
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

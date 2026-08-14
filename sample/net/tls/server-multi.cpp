@@ -1,18 +1,21 @@
 /**
- * @file: server.cpp
- * @date: 2025-10-25
- * @license: LicenseRef-AWH-1.0
+ * @file server.cpp
+ * @date 2025-10-25
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Пример сервера TLS с несколькими сертификатами — демонстрация выбора сертификата по имени,
  *        запрошенному клиентом в расширении SNI, и обслуживания защищённых подключений
  *
- * @copyright: Copyright © 2025
+ * @copyright Copyright © 2025
  *
  */
 

@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
 """
-@file: generate.py
-@date: 2026-08-03
-@license: LicenseRef-AWH-1.0
+@file generate.py
+@date 2026-08-03
 
-@telegram: @forman
-@author: Yuriy Lobarev
-@phone: +7 (910) 983-95-90
-@email: forman@anyks.com
-@site: https://anyks.com
+@license{LicenseRef-AWH-1.0}
+
+@author Yuriy Lobarev
+
+@telegram{forman}
+@phone{+7 (910) 983-95-90}
+
+@email forman@anyks.com
+@site https://anyks.com
 
 @brief Порождение таблиц соответствия однобайтовых кодировок Юникоду по файлам
        отображений эталонной реализации GNU libiconv. Порождаются прямые таблицы
@@ -16,7 +19,7 @@
        соответствия кодовых значений байтам и таблица имён, которыми кодировки
        обозначаются в заголовках сетевых протоколов.
 
-@copyright: Copyright © 2026
+@copyright Copyright © 2026
 """
 
 import os
@@ -166,15 +169,18 @@ def header():
 	"""Заголовок порождаемого файла таблиц"""
 	lines = []
 	lines.append('/**')
-	lines.append(' * @file: table.cpp')
-	lines.append(' * @date: 2026-08-03')
-	lines.append(' * @license: LicenseRef-AWH-1.0')
+	lines.append(' * @file table.cpp')
+	lines.append(' * @date 2026-08-03')
 	lines.append(' *')
-	lines.append(' * @telegram: @forman')
-	lines.append(' * @author: Yuriy Lobarev')
-	lines.append(' * @phone: +7 (910) 983-95-90')
-	lines.append(' * @email: forman@anyks.com')
-	lines.append(' * @site: https://anyks.com')
+	lines.append(' * @license{LicenseRef-AWH-1.0}')
+	lines.append(' *')
+	lines.append(' * @author Yuriy Lobarev')
+	lines.append(' *')
+	lines.append(' * @telegram{forman}')
+	lines.append(' * @phone{+7 (910) 983-95-90}')
+	lines.append(' *')
+	lines.append(' * @email forman@anyks.com')
+	lines.append(' * @site https://anyks.com')
 	lines.append(' *')
 	lines.append(' * @brief Таблицы соответствия однобайтовых кодировок Юникоду')
 	lines.append(' *')
@@ -182,7 +188,7 @@ def header():
 	lines.append(' *          отображений эталонной реализации GNU libiconv. Правки, внесённые')
 	lines.append(' *          в файл вручную, теряются при очередном порождении.')
 	lines.append(' *')
-	lines.append(' * @copyright: Copyright © 2026')
+	lines.append(' * @copyright Copyright © 2026')
 	lines.append(' *')
 	lines.append(' */')
 	lines.append('')

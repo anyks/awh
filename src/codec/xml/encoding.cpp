@@ -1,18 +1,21 @@
 /**
- * @file: encoding.cpp
- * @date: 2026-08-01
- * @license: LicenseRef-AWH-1.0
+ * @file encoding.cpp
+ * @date 2026-08-01
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Реализация разрядов знаков и кодировок контейнера XML — проверки допустимости знаков разметки,
  *        чтение и запись кодовых значений Юникода и приведение исходного текста к кодировке UTF-8
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

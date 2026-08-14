@@ -1,19 +1,22 @@
 /**
- * @file: static.cpp
- * @date: 2025-12-14
- * @license: LicenseRef-AWH-1.0
+ * @file static.cpp
+ * @date 2025-12-14
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Статические тесты модуля работы с сетевым уровнем Ethernet — проверка создания и сброса объекта модуля,
  *        а также корректности перечисления интерфейсов, получения адресов и маршрутов,
  *        настройки сокетов и проброса портов
  *
- * @copyright: Copyright © 2025
+ * @copyright Copyright © 2025
  *
  */
 

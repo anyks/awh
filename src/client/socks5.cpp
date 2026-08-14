@@ -1,19 +1,22 @@
 /**
- * @file: socks5.cpp
- * @date: 2026-05-26
- * @license: LicenseRef-AWH-1.0
+ * @file socks5.cpp
+ * @date 2026-05-26
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Реализация клиента SOCKS5-прокси — согласование методов авторизации с прокси-сервером,
  *        выполнение команд CONNECT, BIND и UDP ASSOCIATE,
  *        установка туннеля и прозрачное проксирование прикладного трафика поверх базового клиента
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

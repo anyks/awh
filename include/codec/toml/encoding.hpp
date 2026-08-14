@@ -1,13 +1,16 @@
 /**
- * @file: encoding.hpp
- * @date: 2026-08-12
- * @license: LicenseRef-AWH-1.0
+ * @file encoding.hpp
+ * @date 2026-08-12
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * \~russian
  * @brief Заголовочный файл приведения исходного текста настроек TOML к кодировке UTF-8 —
@@ -21,7 +24,7 @@
  *
  * \~
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

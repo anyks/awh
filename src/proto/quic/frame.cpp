@@ -1,18 +1,21 @@
 /**
- * @file: frame.cpp
- * @date: 2026-07-21
- * @license: LicenseRef-AWH-1.0
+ * @file frame.cpp
+ * @date 2026-07-21
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Реализация слоя фреймов QUIC (RFC 9000 §19) — разбор и сборка фреймов ACK, STREAM, CRYPTO, RESET_STREAM,
  *        STOP_SENDING, NEW_CONNECTION_ID, CONNECTION_CLOSE и остальных типов над байтовым буфером
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

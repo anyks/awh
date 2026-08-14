@@ -1,14 +1,14 @@
 /**
- * @file: joining.cpp
- * @date: 2026-08-03
- * @license: LicenseRef-AWH-1.0
+ * @file joining.cpp
+ * @date 2026-08-03
+ * @license{LicenseRef-AWH-1.0}
  *
  * @brief Выгрузка свойства вида соединения символов из состава эталонной реализации
  *        GNU libunistring в файл «tools/encoding/idna/joining.txt». Свойство требуется правилами
  *        сочетания CONTEXTJ приведения доменных имён, а отдельным файлом базы данных
  *        символов Юникода в составе подмодулей не поставляется.
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  */
 
 #include <cstdio>

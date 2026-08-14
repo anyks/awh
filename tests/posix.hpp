@@ -1,13 +1,16 @@
 /**
- * @file: posix.hpp
- * @date: 2026-08-06
- * @license: LicenseRef-AWH-1.0
+ * @file posix.hpp
+ * @date 2026-08-06
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Восполнение средств POSIX, отсутствующих у MS Windows, для тестового окружения
  *
@@ -24,7 +27,7 @@
  *          они этим пользуются. Полными заменами средств POSIX эти определения не
  *          являются и таковыми считаться не должны
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

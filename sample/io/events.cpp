@@ -1,18 +1,21 @@
 /**
- * @file: event.cpp
- * @date: 2025-11-20
- * @license: LicenseRef-AWH-1.0
+ * @file event.cpp
+ * @date 2025-11-20
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Пример работы с событиями движка ввода-вывода — демонстрация регистрации событий, управления подписками,
  *        обработки действий чтения и записи и корректной остановки цикла событий
  *
- * @copyright: Copyright © 2025
+ * @copyright Copyright © 2025
  *
  */
 

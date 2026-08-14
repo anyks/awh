@@ -1,18 +1,21 @@
 /**
- * @file: static.cpp
- * @date: 2026-02-07
- * @license: LicenseRef-AWH-1.0
+ * @file static.cpp
+ * @date 2026-02-07
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Статические тесты сетевой очереди — проверка создания и сброса объекта модуля,
  *        а также корректности буферизации данных, контроля ёмкости и корректности порядка извлечения записей
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

@@ -1,13 +1,16 @@
 /**
- * @file: addr.hpp
- * @date: 2025-10-31
- * @license: LicenseRef-AWH-1.0
+ * @file addr.hpp
+ * @date 2025-10-31
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * \~russian
  * @brief Заголовочный файл модуля работы с сетевыми адресами — класс Network_Address для разбора, нормализации,
@@ -21,7 +24,7 @@
  *
  * \~
  *
- * @copyright: Copyright © 2025
+ * @copyright Copyright © 2025
  *
  */
 

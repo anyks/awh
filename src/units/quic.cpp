@@ -1,19 +1,22 @@
 /**
- * @file: quic.cpp
- * @date: 2026-07-22
- * @license: LicenseRef-AWH-1.0
+ * @file quic.cpp
+ * @date 2026-07-22
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Реализация модулей QUIC — связывание конечного автомата соединения QUIC с движком ввода-вывода:
  *        приём и отправка датаграмм, управление сессиями, миграция клиентского адреса,
  *        кластеризация сервера и возобновление сессии по 0-RTT
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

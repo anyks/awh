@@ -1,19 +1,22 @@
 /**
- * @file: portmap.cpp
- * @date: 2026-08-06
- * @license: LicenseRef-AWH-1.0
+ * @file portmap.cpp
+ * @date 2026-08-06
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Сценарии измерения кодеков перенаправления портов — сборка и разбор просьб
  *        договоров PCP и NAT-PMP, обнаружение устройств по договору SSDP, вызов служб
  *        по договору SOAP и чтение описания устройства
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

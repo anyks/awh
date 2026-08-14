@@ -1,19 +1,22 @@
 /**
- * @file: common.cpp
- * @date: 2026-08-12
- * @license: LicenseRef-AWH-1.0
+ * @file common.cpp
+ * @date 2026-08-12
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Реализация общих определений контейнера TOML — описания кодов ошибок разбора,
  *        названия кодировок исходного текста и типов значений, знаки конца строки и
  *        признак знака, допустимого в имени ключа без кавычек
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

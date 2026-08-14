@@ -1,19 +1,22 @@
 /**
- * @file: fs.cpp
- * @date: 2026-01-23
- * @license: LicenseRef-AWH-1.0
+ * @file fs.cpp
+ * @date 2026-01-23
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Реализация модуля работы с файловой системой — чтение и запись файлов, обход каталогов, получение атрибутов,
  *        создание и удаление объектов ФС с нативной поддержкой macOS, Windows, Linux, FreeBSD, NetBSD, OpenBSD,
  *        Solaris и OpenIndiana
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

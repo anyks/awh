@@ -1,13 +1,16 @@
 /**
- * @file: scenarios.hpp
- * @date: 2026-07-31
- * @license: LicenseRef-AWH-1.0
+ * @file scenarios.hpp
+ * @date 2026-07-31
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Общие данные стендов сравнения модуля регулярных выражений
  *
@@ -16,7 +19,7 @@
  *          заводящий их у себя, рано или поздно разойдётся с соседним - и
  *          сравнение начнёт мерить разницу образцов, а не реализаций
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

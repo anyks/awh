@@ -1,18 +1,21 @@
 /**
- * @file: natpmp.cpp
- * @date: 2026-08-03
- * @license: LicenseRef-AWH-1.0
+ * @file natpmp.cpp
+ * @date 2026-08-03
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Проверка опознавания ответов договора NAT-PMP —
  *        принятие ответа на свою просьбу и отбрасывание ответа на чужую
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

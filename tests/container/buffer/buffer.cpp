@@ -1,18 +1,21 @@
 /**
- * @file: buffer.cpp
- * @date: 2025-12-13
- * @license: LicenseRef-AWH-1.0
+ * @file buffer.cpp
+ * @date 2025-12-13
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Реализация тестовой фикстуры бинарного смарт-буфера —
  *        создание объектов тестового окружения перед каждым тестом и их освобождение после его завершения
  *
- * @copyright: Copyright © 2025
+ * @copyright Copyright © 2025
  *
  */
 

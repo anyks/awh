@@ -1,14 +1,14 @@
 /**
- * @file: conformance.cpp
- * @date: 2026-08-03
- * @license: LicenseRef-AWH-1.0
+ * @file conformance.cpp
+ * @date 2026-08-03
+ * @license{LicenseRef-AWH-1.0}
  *
  * @brief Стенд сверки приведения доменных имён с набором соответствия приложению
  *        по обработке доменных имён стандарта Юникода. Набор поставляется составом
  *        подмодуля эталонной реализации файлом «tests/IdnaTest.txt» и задаёт
  *        ожидаемый исход приведения в обе стороны вместе с кодами ошибок.
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  */
 
 #include <cstdio>

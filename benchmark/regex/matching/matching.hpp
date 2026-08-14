@@ -1,13 +1,16 @@
 /**
- * @file: matching.hpp
- * @date: 2026-08-02
- * @license: LicenseRef-AWH-1.0
+ * @file matching.hpp
+ * @date 2026-08-02
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Заголовочный файл бенчмарков сопоставления регулярных выражений — выражения,
  *        тексты сопоставления и количества повторений сценариев сравнения
@@ -17,7 +20,7 @@
  *          заводящий их у себя, рано или поздно разойдётся с соседним - и
  *          сравнение начнёт мерить разницу образцов, а не реализаций
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

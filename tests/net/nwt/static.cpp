@@ -1,18 +1,21 @@
 /**
- * @file: static.cpp
- * @date: 2025-12-14
- * @license: LicenseRef-AWH-1.0
+ * @file static.cpp
+ * @date 2025-12-14
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Статические тесты модуля определения типов сетевых адресов — проверка создания и сброса объекта модуля,
  *        а также корректности распознавания URL, доменов, IP- и MAC-адресов, e-mail и путей файловой системы
  *
- * @copyright: Copyright © 2025
+ * @copyright Copyright © 2025
  *
  */
 

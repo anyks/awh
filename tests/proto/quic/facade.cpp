@@ -1,13 +1,16 @@
 /**
- * @file: facade.cpp
- * @date: 2026-07-28
- * @license: LicenseRef-AWH-1.0
+ * @file facade.cpp
+ * @date 2026-07-28
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Интеграционные тесты фасадов QUIC клиента и сервера — проверка сквозного
  *        обмена данными поверх реальных UDP-сокетов в одном процессе (loopback).
@@ -19,7 +22,7 @@
  *          одном потоке. Тестовый поток лишь ожидает завершения обмена (future) и по
  *          сторожевому таймауту будит цикл вызовом stop() (кросс-тред безопасно).
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

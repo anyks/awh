@@ -1,19 +1,22 @@
 /**
- * @file: coder.cpp
- * @date: 2025-12-19
- * @license: LicenseRef-AWH-1.0
+ * @file coder.cpp
+ * @date 2025-12-19
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Реализация модуля транспортного уровня безопасности — создание и настройка контекстов TLS и DTLS,
  *        загрузка сертификатов и ключей, выбор наборов шифров и ALPN,
  *        верификация пиров и выполнение защищённого рукопожатия поверх BoringSSL
  *
- * @copyright: Copyright © 2025
+ * @copyright Copyright © 2025
  *
  */
 

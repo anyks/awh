@@ -1,13 +1,16 @@
 /**
- * @file: ngx_config.h
- * @date: 2026-07-26
- * @license: LicenseRef-AWH-1.0
+ * @file ngx_config.h
+ * @date 2026-07-26
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Обвязка окружения парсера nginx — минимальный набор типов, констант и
  *        функций, требуемых модулем `ngx_http_parse.c` для сборки вне дерева сервера
@@ -20,7 +23,7 @@
  *          собранный парсер вёл бы себя иначе, чем в сервере, и сравнивать было бы
  *          нечего. Исходные тексты самого парсера не изменяются ни на символ
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

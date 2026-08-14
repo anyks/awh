@@ -290,7 +290,22 @@ TAB_SIZE               = 4
 # with the commands \{ and \} for these it is advised to use the version @{ and
 # @} or use a double escape (\\{ and \\})
 
-ALIASES                =
+# Метки шапки файлов, которых у Doxygen нет: лицензия и способы связи с автором.
+# Без них каждая такая строка выдаёт предупреждение «Found unknown command» и
+# попадает в вывод сырым текстом, а ник в Телеграме разбирается как ещё одна
+# команда. Подписи здесь английские, русские задаёт Doxyfile.ru поверх этого файла.
+#
+# Скобки нужны только там, где значение употребляется дважды: обозначитель лицензии,
+# ник Телеграма и номер телефона идут и видимым текстом, и внутри ссылки. Почта и сайт
+# обходятся без них — голый адрес Doxygen опознаёт сам, почту заодно прячет от
+# сборщиков адресов. Обозначитель лицензии остаётся в исходниках, а не переезжает
+# сюда, потому что раздел 2.1 самой лицензии требует сохранять извещение в шапке файла.
+
+ALIASES                = "license{1}=\par License^^\ref awh_license \"\1\"" \
+                         "telegram{1}=\par Telegram^^<a href=\"https://t.me/\1\">\1</a>" \
+                         "phone{1}=\par Phone^^\htmlonly<a href=\"tel:\1\">\endhtmlonly\1\htmlonly</a>\endhtmlonly" \
+                         "email=\par E-mail^^" \
+                         "site=\par Website^^"
 
 # Set the OPTIMIZE_OUTPUT_FOR_C tag to YES if your project consists of C sources
 # only. Doxygen will then generate output that is more tailored for C. For
@@ -1026,7 +1041,8 @@ WARN_LOGFILE           =
 # spaces. See also FILE_PATTERNS and EXTENSION_MAPPING
 # Note: If this tag is empty the current directory is searched.
 
-INPUT                  = ./include
+INPUT                  = ./include \
+                         ./sh/license.dox
 
 # This tag can be used to specify the character encoding of the source files
 # that Doxygen parses. Internally Doxygen uses the UTF-8 encoding. Doxygen uses
@@ -1146,7 +1162,13 @@ EXCLUDE_SYMLINKS       = NO
 # Note that the wildcards are matched against the file with absolute path, so to
 # exclude all test directories for example use the pattern */test/*
 
-EXCLUDE_PATTERNS       =
+# Файлы разметки внутри дерева исходников остаются документами для чтения,
+# страницами документации они не становятся: обе сборки собираются из одних
+# и тех же файлов, а текст разметки одноязычный, и в англоязычной сборке
+# он выглядел бы непереведённым разделом.
+
+EXCLUDE_PATTERNS       = *.md \
+                         *.markdown
 
 # The EXCLUDE_SYMBOLS tag can be used to specify one or more symbol names
 # (namespaces, classes, functions, etc.) that should be excluded from the
@@ -1160,7 +1182,9 @@ EXCLUDE_SYMBOLS        =
 # that contain example code fragments that are included (see the \include
 # command).
 
-EXAMPLE_PATH           =
+# Корень дерева: отсюда страница лицензии дословно берёт файл LICENSE
+
+EXAMPLE_PATH           = .
 
 # If the value of the EXAMPLE_PATH tag contains directories, you can use the
 # EXAMPLE_PATTERNS tag to specify one or more wildcard pattern (like *.cpp and

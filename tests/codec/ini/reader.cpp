@@ -1,19 +1,22 @@
 /**
- * @file: reader.cpp
- * @date: 2026-08-09
- * @license: LicenseRef-AWH-1.0
+ * @file reader.cpp
+ * @date 2026-08-09
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Автоматические тесты потокового чтения текста настроек INI — наречия записи,
  *        примечания и их расположение, продолжения строк, управляющие последовательности,
  *        отклонение неправильного построения, пределы разбора и подача текста кусками
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

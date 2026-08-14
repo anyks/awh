@@ -1,19 +1,22 @@
 /**
- * @file: static.cpp
- * @date: 2025-12-15
- * @license: LicenseRef-AWH-1.0
+ * @file static.cpp
+ * @date 2025-12-15
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Статические тесты асинхронного движка ввода-вывода — проверка создания и сброса объекта модуля,
  *        а также корректности регистрации событий, управления подписками,
  *        работы таймеров и корректной остановки цикла событий
  *
- * @copyright: Copyright © 2025
+ * @copyright Copyright © 2025
  *
  */
 

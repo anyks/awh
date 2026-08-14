@@ -1,19 +1,22 @@
 /**
- * @file: encoding.cpp
- * @date: 2026-08-12
- * @license: LicenseRef-AWH-1.0
+ * @file encoding.cpp
+ * @date 2026-08-12
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Проверки приведения исходного текста настроек TOML к кодировке UTF-8 —
  *        допустимость знаков, чтение и запись знаков Юникода, определение кодировки по
  *        метке порядка байтов и независимость выдачи от нарезки текста на куски
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

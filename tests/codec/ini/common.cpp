@@ -1,19 +1,22 @@
 /**
- * @file: common.cpp
- * @date: 2026-08-11
- * @license: LicenseRef-AWH-1.0
+ * @file common.cpp
+ * @date 2026-08-11
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Автоматические тесты общих средств кодека текста настроек INI — описание
  *        кодов ошибок, названия кодировок и их разбор, сличение имён разделов,
  *        разбор значений всех числовых видов и логических значений
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

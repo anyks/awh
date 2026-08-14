@@ -1,19 +1,22 @@
 /**
- * @file: compressor.cpp
- * @date: 2026-01-21
- * @license: LicenseRef-AWH-1.0
+ * @file compressor.cpp
+ * @date 2026-01-21
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Реализация блочной (one-shot) компрессии —
  *        сжатие и распаковка данных целиком за один вызов с управлением контекстами GZip, Zlib, Deflate, Brotli, LZ4,
  *        Zstd, LZma, BZip2, Lzip и других поддерживаемых алгоритмов
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

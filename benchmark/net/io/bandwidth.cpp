@@ -1,19 +1,22 @@
 /**
- * @file: bandwidth.cpp
- * @date: 2026-07-28
- * @license: LicenseRef-AWH-1.0
+ * @file bandwidth.cpp
+ * @date 2026-07-28
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Сценарий измерения ограничения пропускной способности —
  *        точность удержания заданного предела на отправке и на приёме,
  *        и цена самого механизма учёта, когда предел задан, но не достигается
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

@@ -1,13 +1,16 @@
 /**
- * @file: reference.cpp
- * @date: 2026-07-31
- * @license: LicenseRef-AWH-1.0
+ * @file reference.cpp
+ * @date 2026-07-31
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Сверка записи и разбора с системными strftime и strptime как внешним
  *        эталоном по всему представимому промежутку времени
@@ -24,7 +27,7 @@
  *          смещается взаимно простыми множителями, чтобы задеть все часы, минуты и
  *          секунды
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

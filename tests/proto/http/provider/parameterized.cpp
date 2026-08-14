@@ -1,18 +1,21 @@
 /**
- * @file: parameterized.cpp
- * @date: 2026-07-12
- * @license: LicenseRef-AWH-1.0
+ * @file parameterized.cpp
+ * @date 2026-07-12
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Параметризованные тесты провайдеров HTTP-сообщений — прогон подготовленных наборов входных данных через
  *        методы модуля с проверкой формирования и сериализации структуры HTTP-запроса клиента и HTTP-ответа сервера
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

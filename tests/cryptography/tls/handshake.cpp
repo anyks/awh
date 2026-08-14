@@ -1,18 +1,21 @@
 /**
- * @file: handshake.cpp
- * @date: 2026-07-22
- * @license: LicenseRef-AWH-1.0
+ * @file handshake.cpp
+ * @date 2026-07-22
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Тесты защищённого рукопожатия — проверка полного цикла согласования TLS и DTLS между клиентом и сервером,
  *        верификации сертификатов и выбора протокола ALPN
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

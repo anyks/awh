@@ -1,18 +1,21 @@
 /**
- * @file: h2spec-server.cpp
- * @date: 2026-07-27
- * @license: LicenseRef-AWH-1.0
+ * @file h2spec-server.cpp
+ * @date 2026-07-27
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Минимальный сервер HTTP/2 поверх парсера библиотеки для прогона набора проверок h2spec —
  *        нарочно примитивный транспорт с одним блокирующим сокетом и последовательной обработкой соединений
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

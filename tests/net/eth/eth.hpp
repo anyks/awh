@@ -1,18 +1,21 @@
 /**
- * @file: eth.hpp
- * @date: 2025-12-14
- * @license: LicenseRef-AWH-1.0
+ * @file eth.hpp
+ * @date 2025-12-14
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Заголовочный файл тестовой фикстуры модуля работы с сетевым уровнем Ethernet —
  *        объявление класса фикстуры Google Test, подготавливающего и освобождающего тестовое окружение набора тестов
  *
- * @copyright: Copyright © 2025
+ * @copyright Copyright © 2025
  *
  */
  

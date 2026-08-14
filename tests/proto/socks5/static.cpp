@@ -1,18 +1,21 @@
 /**
- * @file: static.cpp
- * @date: 2026-07-20
- * @license: LicenseRef-AWH-1.0
+ * @file static.cpp
+ * @date 2026-07-20
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Статические тесты протокола SOCKS5 — проверка создания и сброса объекта модуля,
  *        а также корректности обмена сообщениями приветствия и авторизации, разбора команд и формирования ответов
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

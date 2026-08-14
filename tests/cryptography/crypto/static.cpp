@@ -1,18 +1,21 @@
 /**
- * @file: static.cpp
- * @date: 2026-01-21
- * @license: LicenseRef-AWH-1.0
+ * @file static.cpp
+ * @date 2026-01-21
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Статические тесты модуля криптографии — проверка создания и сброса объекта модуля,
  *        а также корректности симметричного шифрования и расшифровки данных, вычисления хешей и кодирования в Base64
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

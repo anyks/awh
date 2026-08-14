@@ -1,13 +1,16 @@
 /**
- * @file: config.h
- * @date: 2026-07-31
- * @license: LicenseRef-AWH-1.0
+ * @file config.h
+ * @date 2026-07-31
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Обвязка сборки библиотеки CityHash — заголовочный файл параметров сборки,
  *        подставляемый вместо порождаемого сценарием configure подмодуля
@@ -18,7 +21,7 @@
  *          спрашивает у сборки ровно два свойства - порядок байтов процессора
  *          и наличие подсказки предсказателю переходов
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

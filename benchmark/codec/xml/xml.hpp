@@ -1,18 +1,21 @@
 /**
- * @file: xml.hpp
- * @date: 2026-08-01
- * @license: LicenseRef-AWH-1.0
+ * @file xml.hpp
+ * @date 2026-08-01
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Заголовочный файл бенчмарков контейнера XML — общее окружение сценариев,
  *        эталонные тексты разметки всех путей разбора и средства проведения замера
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

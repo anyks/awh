@@ -1,19 +1,22 @@
 /**
- * @file: reader.cpp
- * @date: 2026-08-10
- * @license: LicenseRef-AWH-1.0
+ * @file reader.cpp
+ * @date 2026-08-10
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Бенчмарки потокового чтения текста настроек INI — пропускная способность на
  *        файлах разного склада, расход выделений памяти, просадка от подачи кусками
  *        и задержка обработки одного файла настроек
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

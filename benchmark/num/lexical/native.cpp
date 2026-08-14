@@ -1,18 +1,21 @@
 /**
- * @file: native.cpp
- * @date: 2026-07-26
- * @license: LicenseRef-AWH-1.0
+ * @file native.cpp
+ * @date 2026-07-26
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Сценарии сравнения со средствами стандартной библиотеки — разбор одной и той же
  *        записи модулем и функциями strtod и strtoll с измерением кратности превосходства
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

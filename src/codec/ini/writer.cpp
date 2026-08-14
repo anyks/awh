@@ -1,19 +1,22 @@
 /**
- * @file: writer.cpp
- * @date: 2026-08-09
- * @license: LicenseRef-AWH-1.0
+ * @file writer.cpp
+ * @date 2026-08-09
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Реализация записи текста настроек INI — проверка построения имён, ограждение
  *        значений кавычками и управляющими последовательностями, запись разделов,
  *        свойств и примечаний, наборы настроек сложившихся наречий записи
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

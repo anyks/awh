@@ -1,18 +1,21 @@
 /**
- * @file: upnp.cpp
- * @date: 2026-08-02
- * @license: LicenseRef-AWH-1.0
+ * @file upnp.cpp
+ * @date 2026-08-02
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Проверка кодека действий службы перенаправления UPnP — сборка вызовов, разбор
  *        ответов службы, коды ошибок и осмысленность повторной просьбы
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

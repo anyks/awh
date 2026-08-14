@@ -1,13 +1,16 @@
 /**
- * @file: http1.cpp
- * @date: 2026-07-28
- * @license: LicenseRef-AWH-1.0
+ * @file http1.cpp
+ * @date 2026-07-28
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Нагрузочная проверка парсера HTTP/1.x на больших объёмах данных
  *
@@ -17,7 +20,7 @@
  *          одной стороне: оно порождается и сверяется позиционной функцией, иначе
  *          измерялось бы потребление памяти самой проверкой
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

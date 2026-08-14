@@ -1,18 +1,21 @@
 /**
- * @file: beast.cpp
- * @date: 2026-07-26
- * @license: LicenseRef-AWH-1.0
+ * @file beast.cpp
+ * @date 2026-07-26
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Эталонный стенд сравнения парсера протокола HTTP/1.x с парсером Boost.Beast —
  *        потоковым разборщиком, складывающим разобранное сообщение в собственный контейнер
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

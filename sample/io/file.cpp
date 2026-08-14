@@ -1,18 +1,21 @@
 /**
- * @file: file.cpp
- * @date: 2025-11-24
- * @license: LicenseRef-AWH-1.0
+ * @file file.cpp
+ * @date 2025-11-24
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Пример наблюдения за файлом средствами движка ввода-вывода —
  *        демонстрация подписки на события изменения содержимого, атрибутов и удаления отдельного файла
  *
- * @copyright: Copyright © 2025
+ * @copyright Copyright © 2025
  *
  */
 

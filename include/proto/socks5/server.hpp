@@ -1,13 +1,16 @@
 /**
- * @file: server.hpp
- * @date: 2026-05-24
- * @license: LicenseRef-AWH-1.0
+ * @file server.hpp
+ * @date 2026-05-24
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * \~russian
  * @brief Заголовочный файл серверной стороны протокола SOCKS5 — класс Server_Socks5, разбирающий запросы клиента,
@@ -19,7 +22,7 @@
  *
  * \~
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

@@ -1,13 +1,16 @@
 /**
- * @file: engine.hpp
- * @date: 2025-11-06
- * @license: LicenseRef-AWH-1.0
+ * @file engine.hpp
+ * @date 2025-11-06
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * \~russian
  * @brief Заголовочный файл базового класса асинхронного сетевого движка — класс Engine,
@@ -21,7 +24,7 @@
  *
  * \~
  *
- * @copyright: Copyright © 2025
+ * @copyright Copyright © 2025
  *
  */
 

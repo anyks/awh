@@ -1,13 +1,16 @@
 /**
- * @file: socks5.hpp
- * @date: 2026-05-26
- * @license: LicenseRef-AWH-1.0
+ * @file socks5.hpp
+ * @date 2026-05-26
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * \~russian
  * @brief Заголовочный файл клиента SOCKS5-прокси — публичный API класса client::Socks5,
@@ -21,7 +24,7 @@
  *
  * \~
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

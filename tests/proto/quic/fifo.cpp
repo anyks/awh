@@ -1,20 +1,23 @@
 /**
- * @file: fifo.cpp
- * @date: 2026-07-29
- * @license: LicenseRef-AWH-1.0
+ * @file fifo.cpp
+ * @date 2026-07-29
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Тесты сегментированного FIFO-буфера собранных данных потока
  *        (awh::quic::chunked_fifo_t) — дозапись через границы блоков, слив и
  *        отбрасывание с возвратом блоков в пул, переиспользование блоков между
  *        буферами и сверка содержимого с эталонной непрерывной строкой
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

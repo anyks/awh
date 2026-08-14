@@ -1,13 +1,16 @@
 /**
- * @file: addr.cpp
- * @date: 2026-08-08
- * @license: LicenseRef-AWH-1.0
+ * @file addr.cpp
+ * @date 2026-08-08
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Реализация бэкенда определения собственных адресов машины для MS Windows —
  *        подбор устройства, его адреса и аппаратного адреса под задачу обмена
@@ -35,7 +38,7 @@
  *      перечня устройств и таблицы путей, а событий машина заводит помногу: без
  *      запоминания работа эта повторялась бы на каждое из них
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

@@ -1,18 +1,21 @@
 /**
- * @file: connection.cpp
- * @date: 2026-07-21
- * @license: LicenseRef-AWH-1.0
+ * @file connection.cpp
+ * @date 2026-07-21
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Тесты конечного автомата соединения QUIC — проверка смены состояний, работы потоков приложения,
  *        контроля перегрузки и потока, обнаружения потерь и завершения соединения
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

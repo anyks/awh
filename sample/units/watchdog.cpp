@@ -1,13 +1,16 @@
 /**
- * @file: watchdog.cpp
- * @date: 2026-08-09
- * @license: LicenseRef-AWH-1.0
+ * @file watchdog.cpp
+ * @date 2026-08-09
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Пример присмотра за перенаправлением порта —
  *        обнаружение утраты состояния маршрутизатором, приём рассылаемых им объявлений
@@ -65,7 +68,7 @@
  * меньшим. Первое объявление сверять не с чем - оно лишь запоминается, - а откат отсчёта
  * во втором и означает утрату.
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

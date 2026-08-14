@@ -1,18 +1,21 @@
 /**
- * @file: http3.cpp
- * @date: 2026-07-27
- * @license: LicenseRef-AWH-1.0
+ * @file http3.cpp
+ * @date 2026-07-27
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Инструмент фаззинга парсера протокола HTTP/3 — генерация случайных и полуструктурированных потоков QUIC
  *        с произвольным чередованием и подача их разборщику сессии для поиска аварийных завершений и выходов за границы буфера
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

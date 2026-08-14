@@ -1,18 +1,21 @@
 /**
- * @file: nghttp3-session.cpp
- * @date: 2026-07-27
- * @license: LicenseRef-AWH-1.0
+ * @file nghttp3-session.cpp
+ * @date 2026-07-27
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Пробник сверки парсера сессии HTTP/3 с эталонной реализацией nghttp3 — обе роли
  *        эндпоинта проверяются против чужой сессии на полном обмене сообщениями
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

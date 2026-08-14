@@ -1,13 +1,16 @@
 /**
- * @file: socket.cpp
- * @date: 2026-08-07
- * @license: LicenseRef-AWH-1.0
+ * @file socket.cpp
+ * @date 2026-08-07
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Реализация бэкенда низкоуровневой работы с сокетами для MS Windows —
  *        сроки ожидания, размеры накопителей, поддержание связи, число переходов,
@@ -23,7 +26,7 @@
  *       метода: скрывать их за общим видом нельзя, вызывающая сторона вправе знать,
  *       чего система не умеет вовсе
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

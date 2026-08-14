@@ -1,18 +1,21 @@
 /**
- * @file: ssdp.cpp
- * @date: 2026-08-02
- * @license: LicenseRef-AWH-1.0
+ * @file ssdp.cpp
+ * @date 2026-08-02
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Реализация кодека договора SSDP (UPnP Device Architecture) — сборка запросов
  *        обнаружения устройств, разбор ответов и оповещений, описания кодов причины отказа
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

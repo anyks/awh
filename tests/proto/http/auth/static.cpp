@@ -1,19 +1,22 @@
 /**
- * @file: static.cpp
- * @date: 2026-07-14
- * @license: LicenseRef-AWH-1.0
+ * @file static.cpp
+ * @date 2026-07-14
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Статические тесты модуля HTTP-авторизации — проверка создания и сброса объекта модуля,
  *        а также корректности формирования и проверки заголовков схем Basic, Bearer,
  *        Digest и HMAC на стороне клиента и сервера
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

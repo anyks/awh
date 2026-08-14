@@ -1,13 +1,16 @@
 /**
- * @file: readpath.c
- * @date: 2026-08-11
- * @license: LicenseRef-AWH-1.0
+ * @file readpath.c
+ * @date 2026-08-11
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Стенд сличения путей приёма данных - чтение до EAGAIN против запроса
  *        доступного объёма через ioctl(FIONREAD)
@@ -23,7 +26,7 @@
  *       обращения не делает, но всегда доплачивает одним холостым чтением, а на
  *       сообщениях крупнее буфера - ещё и несколькими полными
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 #include <stdio.h>

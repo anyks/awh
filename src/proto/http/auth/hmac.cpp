@@ -1,19 +1,22 @@
 /**
- * @file: hmac.cpp
- * @date: 2026-07-14
- * @license: LicenseRef-AWH-1.0
+ * @file hmac.cpp
+ * @date 2026-07-14
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Реализация схемы HMAC-авторизации HTTP-сообщений —
  *        сборка канонической базы подписи из покрываемых компонентов запроса,
  *        расчёт и проверка подписи и формирование заголовков Signature и Signature-Input
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

@@ -1,19 +1,22 @@
 /**
- * @file: client.cpp
- * @date: 2026-04-05
- * @license: LicenseRef-AWH-1.0
+ * @file client.cpp
+ * @date 2026-04-05
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Реализация фасада клиента — сборка транспорта, TLS и DNS-резолвера в единый объект подключения,
  *        маршрутизация событий движка ввода-вывода в пользовательские функции обратного вызова и управление жизненным
  *        циклом клиентских соединений TCP, UDP, SCTP, UDS, DTLS и QUIC
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

@@ -1,18 +1,21 @@
 /**
- * @file: socks5-udp.cpp
- * @date: 2026-05-28
- * @license: LicenseRef-AWH-1.0
+ * @file socks5-udp.cpp
+ * @date 2026-05-28
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Пример клиента, работающего через SOCKS5-прокси по UDP — демонстрация выполнения команды UDP ASSOCIATE,
  *        инкапсуляции датаграмм в заголовок SOCKS5 и обмена данными с удалённым узлом
  *
- * @copyright: Copyright © 2026
+ * @copyright Copyright © 2026
  *
  */
 

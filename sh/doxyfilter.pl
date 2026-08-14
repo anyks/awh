@@ -15,14 +15,19 @@
 # сохраняется, а нумерация строк в предупреждениях Doxygen продолжает совпадать
 # с исходником.
 #
-# @date: 2026-08-13
-# @license: LicenseRef-AWH-1.0
+# @date 2026-08-13
 #
-# @author: Yuriy Lobarev
-# @email: forman@anyks.com
-# @site: https://anyks.com
+# @license{LicenseRef-AWH-1.0}
 #
-# @copyright: Copyright © 2026
+# @author Yuriy Lobarev
+#
+# @telegram{forman}
+# @phone{+7 (910) 983-95-90}
+#
+# @email forman@anyks.com
+# @site https://anyks.com
+#
+# @copyright Copyright © 2026
 #
 
 use strict;

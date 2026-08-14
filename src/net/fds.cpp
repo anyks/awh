@@ -1,18 +1,21 @@
 /**
- * @file: fds.cpp
- * @date: 2025-10-27
- * @license: LicenseRef-AWH-1.0
+ * @file fds.cpp
+ * @date 2025-10-27
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Реализация модуля партнёрских сокетов — создание связанных пар файловых дескрипторов и передача дескрипторов
  *        между процессами через управляющие сообщения
  *
- * @copyright: Copyright © 2025
+ * @copyright Copyright © 2025
  *
  */
 

@@ -1,18 +1,21 @@
 /**
- * @file: ip.cpp
- * @date: 2025-10-31
- * @license: LicenseRef-AWH-1.0
+ * @file ip.cpp
+ * @date 2025-10-31
  *
- * @telegram: @forman
- * @author: Yuriy Lobarev
- * @phone: +7 (910) 983-95-90
- * @email: forman@anyks.com
- * @site: https://anyks.com
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
  *
  * @brief Пример работы с сетевым уровнем Ethernet — демонстрация перечисления сетевых интерфейсов машины,
  *        получения их адресов и параметров, определения шлюза по умолчанию и проброса портов на маршрутизаторе
  *
- * @copyright: Copyright © 2025
+ * @copyright Copyright © 2025
  *
  */
 
