@@ -9,8 +9,15 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * \~russian
  * @brief Заголовочный файл контейнера CSV — единая точка подключения потокового чтения
  *        текста, записи его и таблицы, удерживаемой целиком
+ *
+ * \~english
+ * @brief Header file of the CSV container — the single point of the inclusion of the streaming reading
+ *        of a text, of the writing of it and of the table held in full
+ *
+ * \~
  *
  * @copyright: Copyright © 2026
  *

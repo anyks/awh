@@ -9,8 +9,15 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * \~russian
  * @brief Заголовочный файл контейнера TOML — единая точка подключения потокового чтения
  *        текста настроек, записи его и дерева настроек
+ *
+ * \~english
+ * @brief Header file of the TOML container — the single point of the inclusion of the streaming reading
+ *        of a settings text, of the writing of it and of the settings tree
+ *
+ * \~
  *
  * @copyright: Copyright © 2026
  *

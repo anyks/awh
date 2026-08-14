@@ -9,8 +9,15 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * \~russian
  * @brief Заголовочный файл контейнера XML — единая точка подключения потокового чтения,
  *        дерева разметки и записи текста разметки
+ *
+ * \~english
+ * @brief Header file of the XML container — the single point of the inclusion of the streaming reading,
+ *        of the markup tree and of the writing of a markup text
+ *
+ * \~
  *
  * @copyright: Copyright © 2026
  *

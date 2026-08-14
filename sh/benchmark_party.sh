@@ -87,6 +87,14 @@ $ROOT/submodule.sh add simpleini https://github.com/brofield/simpleini.git
 $ROOT/submodule.sh remove mINI
 $ROOT/submodule.sh add mINI https://github.com/metayeti/mINI.git
 
+# Выполняем пересборку сабмодуля boost
+$ROOT/submodule.sh remove boost
+$ROOT/submodule.sh add boost https://github.com/boostorg/boost.git
+
+# Выполняем пересборку сабмодуля seastar
+$ROOT/submodule.sh remove seastar
+$ROOT/submodule.sh add seastar https://github.com/scylladb/seastar.git
+
 # Выполняем пересборку сабмодуля csv2
 $ROOT/submodule.sh remove csv2
 $ROOT/submodule.sh add csv2 https://github.com/p-ranav/csv2.git

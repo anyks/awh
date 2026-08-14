@@ -9,9 +9,17 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * \~russian
  * @brief Заголовочный файл общих типов HTTP-протокола — перечисления направления обмена, версий протокола,
  *        поддерживаемых прикладных протоколов и методов запроса, общие для парсеров HTTP/1.x,
  *        HTTP/2 и провайдеров сообщений
+ *
+ * \~english
+ * @brief Header file of the common types of the HTTP protocol — the enumerations of the direction of the exchange, of the versions of the protocol,
+ *        of the supported application protocols and of the request methods, common to the parsers of HTTP/1.x,
+ *        of HTTP/2 and to the providers of the messages
+ *
+ * \~
  *
  * @copyright: Copyright © 2026
  *
@@ -32,8 +40,14 @@
 #include "../../sys/macro_push.hpp"
 
 /**
+ * \~russian
  * @brief основное пространство имён
  *
+ *
+ * \~english
+ * @brief main namespace
+ *
+ * \~
  */
 namespace awh {
 	/**
@@ -42,13 +56,24 @@ namespace awh {
 	using namespace std;
 
 	/**
+	 * \~russian
 	 * @brief Пространство имён HTTP-протокола
 	 *
+	 *
+	 * \~english
+	 * @brief HTTP protocol namespace
+	 *
+	 * \~
 	 */
 	namespace http {
 		/**
+		 * \~russian
 		 * @brief Направление трафика (запрос/ответ)
 		 *
+		 * \~english
+		 * @brief Direction of the traffic (request/response)
+		 *
+		 * \~
 		 */
 		enum class direct_t : uint8_t {
 			NONE     = 0x00, // Нет направления (не определено)
@@ -57,8 +82,13 @@ namespace awh {
 		};
 
 		/**
+		 * \~russian
 		 * @brief Версии HTTP-протоколов
 		 *
+		 * \~english
+		 * @brief Versions of the HTTP protocols
+		 *
+		 * \~
 		 */
 		enum class version_t : uint8_t {
 			NONE    = 0x00, // Версия протокола не определена
@@ -71,8 +101,13 @@ namespace awh {
 		};
 
 		/**
+		 * \~russian
 		 * @brief Версии HTTP-протоколов соответствия
 		 *
+		 * \~english
+		 * @brief Versions of the HTTP protocols of the correspondence
+		 *
+		 * \~
 		 */
 		enum class proto_t : uint8_t {
 			NONE       = 0x00, // Протокол не установлен
@@ -89,6 +124,7 @@ namespace awh {
 		};
 
 		/**
+		 * \~russian
 		 * @brief Распознанный HTTP-метод
 		 *
 		 * @details Помимо основных методов HTTP/1.1 распознаются методы WebDAV (RFC 4918)
@@ -97,6 +133,15 @@ namespace awh {
 		 *          написание метода сохраняется в поле request_t::methodName (прозрачное
 		 *          проксирование экзотических методов).
 		 *
+		 * \~english
+		 * @brief Recognized HTTP method
+		 * @details Besides the main methods of HTTP/1.1 the WebDAV methods (RFC 4918)
+		 *          and a number of the extensions (RFC 5789, UPnP, ICAL and others) are recognized. Any unrecognized but
+		 *          syntactically correct method gives UNKNOWN, while the original
+		 *          spelling of the method is preserved in the request_t::methodName field (a transparent
+		 *          proxying of the exotic methods).
+		 *
+		 * \~
 		 */
 		enum class method_t : uint8_t {
 			// Метод не установлен

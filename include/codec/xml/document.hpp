@@ -9,8 +9,15 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * \~russian
  * @brief Заголовочный файл дерева разметки XML — класс Document, размещающий узлы разобранного текста
  *        в арене и связывающий их индексами, и класс Node, дающий доступ к отдельному узлу дерева
+ *
+ * \~english
+ * @brief Header file of the XML markup tree — the Document class, which places the nodes of the parsed text
+ *        in an arena and links them by the indexes, and the Node class, which gives access to a separate node of the tree
+ *
+ * \~
  *
  * @copyright: Copyright © 2026
  *
@@ -43,8 +50,14 @@
 #include "../../sys/macro_push.hpp"
 
 /**
+ * \~russian
  * @brief Основное пространство имён
  *
+ *
+ * \~english
+ * @brief Main namespace
+ *
+ * \~
  */
 namespace awh {
 	/**
@@ -53,28 +66,51 @@ namespace awh {
 	using namespace std;
 
 	/**
+	 * \~russian
 	 * @brief Пространство имён контейнеров данных
 	 *
+	 *
+	 * \~english
+	 * @brief Data containers namespace
+	 *
+	 * \~
 	 */
 	namespace codec {
 		/**
+		 * \~russian
 		 * @brief Пространство имён контейнера XML
 		 *
+		 *
+		 * \~english
+		 * @brief XML container namespace
+		 *
+		 * \~
 		 */
 		namespace xml {
 			/**
+			 * \~russian
 			 * @brief Индекс узла дерева разметки в арене
 			 *
+			 * \~english
+			 * @brief Index of a node of a markup tree in the arena
+			 *
+			 * \~
 			 */
 			using node_id_t = uint32_t;
 
 			/**
+			 * \~russian
 			 * @brief Значение индекса отсутствующего узла дерева разметки
 			 *
+			 * \~english
+			 * @brief Value of the index of an absent node of a markup tree
+			 *
+			 * \~
 			 */
 			constexpr node_id_t INVALID_NODE = static_cast <node_id_t> (~0u);
 
 			/**
+			 * \~russian
 			 * @brief Виды узлов дерева разметки
 			 *
 			 * @details Вид SPACE появляется в дереве лишь при включённой настройке
@@ -85,6 +121,16 @@ namespace awh {
 			 * зависят: пробельное содержимое собирается и записывается наравне с
 			 * текстовым, а отбирать его следует видом узла
 			 *
+			 * \~english
+			 * @brief Kinds of the nodes of a markup tree
+			 * @details The SPACE kind appears in a tree only when the separateSpaces setting of the
+			 * parsing is enabled; without it a whitespace content is indistinguishable from a
+			 * text one and is put as a node of the TEXT kind
+			 * @note The content of a markup node and its writing do not depend on this
+			 * separation: a whitespace content is assembled and written on a par with a
+			 * text one, while it should be selected by the kind of the node
+			 *
+			 * \~
 			 */
 			enum class kind_t : uint8_t {
 				NONE       = 0x00, // Вид узла не определён
@@ -99,12 +145,18 @@ namespace awh {
 			};
 
 			/**
+			 * \~russian
 			 * @brief Предварительное объявление класса дерева разметки
 			 *
+			 * \~english
+			 * @brief Forward declaration of the class of the markup tree
+			 *
+			 * \~
 			 */
 			class __AWH_SHARED_EXPORT__ Document;
 
 			/**
+			 * \~russian
 			 * @brief Класс узла дерева разметки
 			 *
 			 * @details Узел не владеет содержимым, а лишь указывает на запись в арене
@@ -114,6 +166,15 @@ namespace awh {
 			 * @warning Узел остаётся пригодным, пока живо дерево и пока его строение не
 			 * изменено. Изменение строения дерева обесценивает все ранее полученные узлы
 			 *
+			 * \~english
+			 * @brief Class of a node of a markup tree
+			 * @details A node does not own the content but only points to a record in the arena
+			 * of the tree. The tree should be traversed by the nodes rather than by the indexes: a node checks
+			 * its own validity and does not require keeping the tree at hand
+			 * @warning A node remains valid while the tree is alive and while its construction has not been
+			 * changed. A change of the construction of the tree invalidates all the previously obtained nodes
+			 *
+			 * \~
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Node {
 				private:
@@ -124,20 +185,33 @@ namespace awh {
 					node_id_t _id;
 				public:
 					/**
+					 * \~russian
 					 * @brief Метод получения вида узла
 					 *
 					 * @return вид узла дерева разметки
 					 *
+					 * \~english
+					 * @brief Method of getting the kind of a node
+					 * @return kind of the node of the markup tree
+					 *
+					 * \~
 					 */
 					kind_t kind() const noexcept;
 					/**
+					 * \~russian
 					 * @brief Метод получения имени узла
 					 *
 					 * @return имя узла с учётом пространства имён
 					 *
+					 * \~english
+					 * @brief Method of getting the name of a node
+					 * @return name of the node with regard to the namespace
+					 *
+					 * \~
 					 */
 					name_t name() const noexcept;
 					/**
+					 * \~russian
 					 * @brief Метод получения содержимого узла
 					 *
 					 * @details Для текстового содержимого, дословного раздела, примечания и
@@ -146,53 +220,98 @@ namespace awh {
 					 *
 					 * @return содержимое узла
 					 *
+					 * \~english
+					 * @brief Method of getting the content of a node
+					 * @details For a text content, a literal section, a comment and a
+					 * processing instruction — their own content. For a markup node —
+					 * the content of all the text nodes nested into it in a row
+					 * @return content of the node
+					 *
+					 * \~
 					 */
 					string text() const noexcept;
 					/**
+					 * \~russian
 					 * @brief Метод получения места узла в исходном тексте
 					 *
 					 * @return положение начала узла в исходном тексте
 					 *
+					 * \~english
+					 * @brief Method of getting the place of a node in the source text
+					 * @return position of the beginning of the node in the source text
+					 *
+					 * \~
 					 */
 					location_t location() const noexcept;
 				public:
 					/**
+					 * \~russian
 					 * @brief Метод получения родительского узла
 					 *
 					 * @return родительский узел дерева разметки
 					 *
+					 * \~english
+					 * @brief Method of getting the parent node
+					 * @return parent node of the markup tree
+					 *
+					 * \~
 					 */
 					Node parent() const noexcept;
 					/**
+					 * \~russian
 					 * @brief Метод получения первого вложенного узла
 					 *
 					 * @return первый вложенный узел дерева разметки
 					 *
+					 * \~english
+					 * @brief Method of getting the first nested node
+					 * @return first nested node of the markup tree
+					 *
+					 * \~
 					 */
 					Node first() const noexcept;
 					/**
+					 * \~russian
 					 * @brief Метод получения последнего вложенного узла
 					 *
 					 * @return последний вложенный узел дерева разметки
 					 *
+					 * \~english
+					 * @brief Method of getting the last nested node
+					 * @return last nested node of the markup tree
+					 *
+					 * \~
 					 */
 					Node last() const noexcept;
 					/**
+					 * \~russian
 					 * @brief Метод получения следующего узла того же уровня
 					 *
 					 * @return следующий узел того же уровня вложенности
 					 *
+					 * \~english
+					 * @brief Method of getting the next node of the same level
+					 * @return next node of the same level of the nesting
+					 *
+					 * \~
 					 */
 					Node next() const noexcept;
 					/**
+					 * \~russian
 					 * @brief Метод получения предыдущего узла того же уровня
 					 *
 					 * @return предыдущий узел того же уровня вложенности
 					 *
+					 * \~english
+					 * @brief Method of getting the previous node of the same level
+					 * @return previous node of the same level of the nesting
+					 *
+					 * \~
 					 */
 					Node prev() const noexcept;
 				public:
 					/**
+					 * \~russian
 					 * @brief Метод поиска вложенного узла разметки по имени
 					 *
 					 * @details Поиск ведётся среди непосредственно вложенных узлов, вглубь
@@ -208,9 +327,24 @@ namespace awh {
 					 * @param uri   обозначение пространства имён искомого узла
 					 * @return      найденный узел дерева разметки
 					 *
+					 * \~english
+					 * @brief Method of searching for a nested markup node by a name
+					 * @details The search is conducted among the directly nested nodes without descending
+					 * into the depth. The comparison of the names is conducted by the pair of the designation of the
+					 * namespace and the local name
+					 * @warning An empty designation of a namespace means a node not belonging to a
+					 * namespace rather than «any namespace». A parsing with regard to the
+					 * namespaces binds the nodes of a declared document to their designations,
+					 * and a search by the local name alone will find nothing there
+					 * @param local local name of the node being sought
+					 * @param uri   designation of the namespace of the node being sought
+					 * @return      found node of the markup tree
+					 *
+					 * \~
 					 */
 					Node child(const string_view local, const string_view uri = "") const noexcept;
 					/**
+					 * \~russian
 					 * @brief Метод получения перечня вложенных узлов разметки по имени
 					 *
 					 * @warning Пустое обозначение пространства имён означает узел, пространству
@@ -222,9 +356,21 @@ namespace awh {
 					 * @param uri   обозначение пространства имён искомых узлов
 					 * @return      перечень найденных узлов дерева разметки
 					 *
+					 * \~english
+					 * @brief Method of getting the list of the nested markup nodes by a name
+					 * @warning An empty designation of a namespace means a node not belonging to a
+					 * namespace rather than «any namespace». A parsing with regard to the
+					 * namespaces binds the nodes of a declared document to their designations,
+					 * and a search by the local name alone will find nothing there
+					 * @param local local name of the nodes being sought
+					 * @param uri   designation of the namespace of the nodes being sought
+					 * @return      list of the found nodes of the markup tree
+					 *
+					 * \~
 					 */
 					vector <Node> children(const string_view local, const string_view uri = "") const noexcept;
 					/**
+					 * \~russian
 					 * @brief Метод поиска узла разметки вглубь дерева по имени
 					 *
 					 * @details Поиск обходит всё поддерево узла в порядке следования в
@@ -239,17 +385,37 @@ namespace awh {
 					 * @param uri   обозначение пространства имён искомого узла
 					 * @return      найденный узел дерева разметки
 					 *
+					 * \~english
+					 * @brief Method of searching for a markup node into the depth of the tree by a name
+					 * @details The search traverses the whole subtree of the node in the order of the succession in the
+					 * source text and issues the first coincidence
+					 * @warning An empty designation of a namespace means a node not belonging to a
+					 * namespace rather than «any namespace». A parsing with regard to the
+					 * namespaces binds the nodes of a declared document to their designations,
+					 * and a search by the local name alone will find nothing there
+					 * @param local local name of the node being sought
+					 * @param uri   designation of the namespace of the node being sought
+					 * @return      found node of the markup tree
+					 *
+					 * \~
 					 */
 					Node find(const string_view local, const string_view uri = "") const noexcept;
 				public:
 					/**
+					 * \~russian
 					 * @brief Метод получения перечня атрибутов узла
 					 *
 					 * @return перечень атрибутов узла разметки
 					 *
+					 * \~english
+					 * @brief Method of getting the list of the attributes of a node
+					 * @return list of the attributes of the markup node
+					 *
+					 * \~
 					 */
 					vector <attribute_t> attributes() const noexcept;
 					/**
+					 * \~russian
 					 * @brief Метод получения перечня объявлений пространств имён узла
 					 *
 					 * @details Выдаются объявления, записанные при самом узле, а не действующие в нём:
@@ -260,35 +426,69 @@ namespace awh {
 					 *
 					 * @return перечень связываний префиксов, объявленных узлом
 					 *
+					 * \~english
+					 * @brief Method of getting the list of the declarations of the namespaces of a node
+					 * @details The declarations written at the node itself are issued rather than the ones effective in it:
+					 * what has been declared by the parent acts here as well but belongs to the parent. The meaning of the names does not depend on the
+					 * declarations — it has already been resolved and is issued as the designation of the namespace —
+					 * while they are needed there where it is required to return the text in the source notation: the XML signature
+					 * protocol compares the documents character by character, and a prefix reassigned at the writing breaks the signature
+					 * @return list of the bindings of the prefixes declared by the node
+					 *
+					 * \~
 					 */
 					vector <binding_t> bindings() const noexcept;
 					/**
+					 * \~russian
 					 * @brief Метод получения значения атрибута узла
 					 *
 					 * @param local местное имя искомого атрибута
 					 * @param uri   обозначение пространства имён искомого атрибута
 					 * @return      значение найденного атрибута либо пустая последовательность
 					 *
+					 * \~english
+					 * @brief Method of getting the value of an attribute of a node
+					 * @param local local name of the attribute being sought
+					 * @param uri   designation of the namespace of the attribute being sought
+					 * @return      value of the found attribute or an empty sequence
+					 *
+					 * \~
 					 */
 					string_view attribute(const string_view local, const string_view uri = "") const noexcept;
 					/**
+					 * \~russian
 					 * @brief Метод проверки наличия атрибута у узла
 					 *
 					 * @param local местное имя искомого атрибута
 					 * @param uri   обозначение пространства имён искомого атрибута
 					 * @return      результат проверки
 					 *
+					 * \~english
+					 * @brief Method of checking the presence of an attribute at a node
+					 * @param local local name of the attribute being sought
+					 * @param uri   designation of the namespace of the attribute being sought
+					 * @return      result of the check
+					 *
+					 * \~
 					 */
 					bool has(const string_view local, const string_view uri = "") const noexcept;
 				public:
 					/**
+					 * \~russian
 					 * @brief Шаблон типа числа результата разбора
 					 *
 					 * @tparam T тип числа результата разбора
 					 *
+					 *
+					 * \~english
+					 * @brief Template of the number type of the parsing result
+					 * @tparam T number type of the parsing result
+					 *
+					 * \~
 					 */
 					template <typename T>
 					/**
+					 * \~russian
 					 * @brief Метод получения содержимого узла числом
 					 *
 					 * @details Разбор ведётся по правилам местности «C» с отбрасыванием
@@ -301,19 +501,38 @@ namespace awh {
 					 * @param result ссылка на результат разбора
 					 * @return       признак успешного разбора
 					 *
+					 * \~english
+					 * @brief Method of getting the content of a node as a number
+					 * @details The parsing is conducted by the rules of the «C» locale with the discarding of the
+					 * whitespace padding and with a check of going beyond the limits of the requested type.
+					 * A content that is not a number in full is rejected
+					 * @note The issued value serves as the sign of the success rather than the parsed
+					 * number: without this the content «abc» would not differ from «0»
+					 * @param result reference to the result of the parsing
+					 * @return       flag of a successful parsing
+					 *
+					 * \~
 					 */
 					bool value(T & result) const noexcept {
 						// Выполняем разбор содержимого узла числом
 						return numeric(this->text(), result);
 					}
 					/**
+					 * \~russian
 					 * @brief Шаблон типа числа результата разбора
 					 *
 					 * @tparam T тип числа результата разбора
 					 *
+					 *
+					 * \~english
+					 * @brief Template of the number type of the parsing result
+					 * @tparam T number type of the parsing result
+					 *
+					 * \~
 					 */
 					template <typename T>
 					/**
+					 * \~russian
 					 * @brief Метод получения значения атрибута узла числом
 					 *
 					 * @param result ссылка на результат разбора
@@ -321,19 +540,35 @@ namespace awh {
 					 * @param uri    обозначение пространства имён искомого атрибута
 					 * @return       признак успешного разбора
 					 *
+					 * \~english
+					 * @brief Method of getting the value of an attribute of a node as a number
+					 * @param result reference to the result of the parsing
+					 * @param local  local name of the attribute being sought
+					 * @param uri    designation of the namespace of the attribute being sought
+					 * @return       flag of a successful parsing
+					 *
+					 * \~
 					 */
 					bool value(T & result, const string_view local, const string_view uri = "") const noexcept {
 						// Выполняем разбор значения атрибута узла числом
 						return numeric(this->attribute(local, uri), result);
 					}
 					/**
+					 * \~russian
 					 * @brief Шаблон типа числа результата разбора
 					 *
 					 * @tparam T тип числа результата разбора
 					 *
+					 *
+					 * \~english
+					 * @brief Template of the number type of the parsing result
+					 * @tparam T number type of the parsing result
+					 *
+					 * \~
 					 */
 					template <typename T>
 					/**
+					 * \~russian
 					 * @brief Метод получения содержимого узла числом со значением по умолчанию
 					 *
 					 * @details Значение по умолчанию выдаётся и тогда, когда узел непригоден,
@@ -343,6 +578,15 @@ namespace awh {
 					 * @param fallback значение, выдаваемое при неудачном разборе
 					 * @return         разобранное число либо значение по умолчанию
 					 *
+					 * \~english
+					 * @brief Method of getting the content of a node as a number with a default value
+					 * @details The default value is issued both when the node is invalid
+					 * and when its content is not a number. The method is intended
+					 * for the optional fields where the absence of a value is the default
+					 * @param fallback value issued at an unsuccessful parsing
+					 * @return         parsed number or the default value
+					 *
+					 * \~
 					 */
 					T number(const T fallback) const noexcept {
 						// Результат разбора содержимого узла
@@ -353,13 +597,21 @@ namespace awh {
 						return (this->value(result) ? result : fallback);
 					}
 					/**
+					 * \~russian
 					 * @brief Шаблон типа числа результата разбора
 					 *
 					 * @tparam T тип числа результата разбора
 					 *
+					 *
+					 * \~english
+					 * @brief Template of the number type of the parsing result
+					 * @tparam T number type of the parsing result
+					 *
+					 * \~
 					 */
 					template <typename T>
 					/**
+					 * \~russian
 					 * @brief Метод получения значения атрибута узла числом со значением по умолчанию
 					 *
 					 * @param local    местное имя искомого атрибута
@@ -367,6 +619,14 @@ namespace awh {
 					 * @param uri      обозначение пространства имён искомого атрибута
 					 * @return         разобранное число либо значение по умолчанию
 					 *
+					 * \~english
+					 * @brief Method of getting the value of an attribute of a node as a number with a default value
+					 * @param local    local name of the attribute being sought
+					 * @param fallback value issued at an unsuccessful parsing
+					 * @param uri      designation of the namespace of the attribute being sought
+					 * @return         parsed number or the default value
+					 *
+					 * \~
 					 */
 					T number(const string_view local, const T fallback, const string_view uri = "") const noexcept {
 						// Результат разбора значения атрибута узла
@@ -378,52 +638,92 @@ namespace awh {
 					}
 				public:
 					/**
+					 * \~russian
 					 * @brief Метод проверки узла на пригодность
 					 *
 					 * @return результат проверки
 					 *
+					 * \~english
+					 * @brief Method of checking a node for its validity
+					 * @return result of the check
+					 *
+					 * \~
 					 */
 					bool valid() const noexcept;
 					/**
+					 * \~russian
 					 * @brief Оператор приведения к логическому типу
 					 *
 					 * @return результат проверки узла на пригодность
 					 *
+					 * \~english
+					 * @brief Conversion operator to the logical type
+					 * @return result of the check of the node for its validity
+					 *
+					 * \~
 					 */
 					explicit operator bool () const noexcept;
 					/**
+					 * \~russian
 					 * @brief Оператор сравнения
 					 *
 					 * @param node узел для сравнения
 					 * @return     результат сравнения
 					 *
+					 * \~english
+					 * @brief Comparison operator
+					 * @param node node for the comparison
+					 * @return     result of the comparison
+					 *
+					 * \~
 					 */
 					bool operator == (const Node & node) const noexcept;
 					/**
+					 * \~russian
 					 * @brief Оператор сравнения
 					 *
 					 * @param node узел для сравнения
 					 * @return     результат сравнения
 					 *
+					 * \~english
+					 * @brief Comparison operator
+					 * @param node node for the comparison
+					 * @return     result of the comparison
+					 *
+					 * \~
 					 */
 					bool operator != (const Node & node) const noexcept;
 				public:
 					/**
+					 * \~russian
 					 * @brief Конструктор
 					 *
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
 					 */
 					Node() noexcept : _document(nullptr), _id(INVALID_NODE) {}
 					/**
+					 * \~russian
 					 * @brief Конструктор
 					 *
 					 * @param document дерево разметки, которому принадлежит узел
 					 * @param id       индекс узла в арене дерева разметки
 					 *
+					 * \~english
+					 * @brief Constructor
+					 * @param document markup tree to which the node belongs
+					 * @param id       index of the node in the arena of the markup tree
+					 *
+					 * \~
 					 */
 					Node(const Document * document, const node_id_t id) noexcept : _document(document), _id(id) {}
 			} node_t;
 
 			/**
+			 * \~russian
 			 * @brief Класс дерева разметки
 			 *
 			 * @details Дерево собирается из событий потокового чтения и размещает узлы в
@@ -435,6 +735,17 @@ namespace awh {
 			 * содержимого важнее расхода памяти. Для разбора текста по мере его поступления
 			 * из сети предназначено потоковое чтение
 			 *
+			 * \~english
+			 * @brief Class of a markup tree
+			 * @details The tree is assembled from the events of the streaming reading and places the nodes in
+			 * a common arena, linking them by the indexes rather than by the pointers. The content of the nodes
+			 * is stored in a common storage of the characters: one allocation of the memory for many nodes
+			 * instead of an allocation for each one
+			 * @note The tree holds the parsed text in full and is justified there where a traversal of the
+			 * content is more important than the expenditure of the memory. For the parsing of a text as it arrives
+			 * from the network the streaming reading is intended
+			 *
+			 * \~
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Document {
 				/**
@@ -443,8 +754,13 @@ namespace awh {
 				friend class Node;
 				private:
 					/**
+					 * \~russian
 					 * @brief Запись имени в арене дерева разметки
 					 *
+					 * \~english
+					 * @brief Record of a name in the arena of a markup tree
+					 *
+					 * \~
 					 */
 					typedef struct Title {
 						// Префикс пространства имён
@@ -454,14 +770,25 @@ namespace awh {
 						// Обозначение связанного пространства имён
 						span_t uri;
 						/**
+						 * \~russian
 						 * @brief Конструктор
 						 *
+						 *
+						 * \~english
+						 * @brief Constructor
+						 *
+						 * \~
 						 */
 						Title() noexcept {}
 					} title_t;
 					/**
+					 * \~russian
 					 * @brief Запись атрибута в арене дерева разметки
 					 *
+					 * \~english
+					 * @brief Record of an attribute in the arena of a markup tree
+					 *
+					 * \~
 					 */
 					typedef struct Property {
 						// Имя атрибута с учётом пространства имён
@@ -473,18 +800,32 @@ namespace awh {
 						// Признак того, что значение взято из объявления по умолчанию
 						bool defaulted;
 						/**
+						 * \~russian
 						 * @brief Конструктор
 						 *
+						 *
+						 * \~english
+						 * @brief Constructor
+						 *
+						 * \~
 						 */
 						Property() noexcept : defaulted(false) {}
 					} property_t;
 					/**
+					 * \~russian
 					 * @brief Запись связывания префикса в арене дерева разметки
 					 *
 					 * @details Объявления пространств имён хранятся отдельно от узлов и привязываются
 					 * к ним отдельным перечнем: объявляет их считанное число узлов, а место в записи
 					 * узла заняли бы все
 					 *
+					 * \~english
+					 * @brief Record of a binding of a prefix in the arena of a markup tree
+					 * @details The declarations of the namespaces are stored separately from the nodes and are bound
+					 * to them by a separate list: a mere few nodes declare them, while the place in the record
+					 * of a node would be occupied by all of them
+					 *
+					 * \~
 					 */
 					typedef struct Scope {
 						// Префикс без разделителя, пустой для объявления по умолчанию
@@ -492,14 +833,25 @@ namespace awh {
 						// Обозначение объявляемого пространства имён
 						span_t uri;
 						/**
+						 * \~russian
 						 * @brief Конструктор
 						 *
+						 *
+						 * \~english
+						 * @brief Constructor
+						 *
+						 * \~
 						 */
 						Scope() noexcept {}
 					} scope_t;
 					/**
+					 * \~russian
 					 * @brief Запись узла в арене дерева разметки
 					 *
+					 * \~english
+					 * @brief Record of a node in the arena of a markup tree
+					 *
+					 * \~
 					 */
 					typedef struct Record {
 						// Вид узла дерева разметки
@@ -525,8 +877,14 @@ namespace awh {
 						// Положение начала узла в исходном тексте
 						location_t location;
 						/**
+						 * \~russian
 						 * @brief Конструктор
 						 *
+						 *
+						 * \~english
+						 * @brief Constructor
+						 *
+						 * \~
 						 */
 						Record() noexcept;
 					} record_t;
@@ -547,12 +905,20 @@ namespace awh {
 					vector <scope_t> _scopes;
 				private:
 					/**
+					 * \~russian
 					 * Отрезки хранилища связываний, объявленных узлами дерева
 					 *
 					 * @note Объявляет пространства имён считанное число узлов - обыкновенно один
 					 * корневой, - и отводить место под отрезок в записи каждого узла незачем:
 					 * отрезок отыскивается по узлу лишь тогда, когда объявления запрошены
 					 *
+					 * \~english
+					 * Segments of the storage of the bindings declared by the nodes of the tree
+					 * @note A mere few nodes declare the namespaces — ordinarily one
+					 * root node — and there is no point in allotting a place for a segment in the record of every node:
+					 * the segment is found by a node only when the declarations have been requested
+					 *
+					 * \~
 					 */
 					unordered_map <node_id_t, span_t> _scoped;
 				private:
@@ -560,6 +926,7 @@ namespace awh {
 					string _storage;
 				private:
 					/**
+					 * \~russian
 					 * Таблица размещённых имён для сведения повторов
 					 *
 					 * @details Обозначение пространства имён повторяется у каждого узла области
@@ -574,27 +941,56 @@ namespace awh {
 					 * лишь по случаю. Замер на ответе по договору SOAP показал, что сведение имён
 					 * узлов сверх того берёт шестую часть скорости разбора за двадцатую часть памяти
 					 *
+					 * \~english
+					 * Table of the placed names for the reduction of the repetitions
+					 * @details The designation of a namespace is repeated at every node of the scope,
+					 * while the storage of the characters would place every occurrence of it separately.
+					 * In an answer over the SOAP protocol the designation is longer than the name of a node itself and than its
+					 * content, and on a thousand nodes it takes up more space than everything else together.
+					 * The table reduces the repetitions to a single placement
+					 * @note The designations of the namespaces are reduced rather than the names of the nodes and the content:
+					 * a designation is not a record of a node of its own and is repeated at all the nodes
+					 * of the scope by the arrangement of the markup, while the name of a node and the content are repeated
+					 * only by chance. A measurement on an answer over the SOAP protocol showed that a reduction of the names
+					 * of the nodes on top of that takes a sixth of the speed of the parsing for a twentieth of the memory
+					 *
+					 * \~
 					 */
 					unordered_map <string, span_t> _interned;
 				private:
 					/**
+					 * \~russian
 					 * @brief Метод получения последовательности знаков по отрезку хранилища
 					 *
 					 * @param span отрезок общего хранилища знаков
 					 * @return     последовательность знаков указанного отрезка
 					 *
+					 * \~english
+					 * @brief Method of getting a sequence of characters by a segment of the storage
+					 * @param span segment of the common storage of the characters
+					 * @return     sequence of characters of the specified segment
+					 *
+					 * \~
 					 */
 					string_view get(const span_t & span) const noexcept;
 					/**
+					 * \~russian
 					 * @brief Метод сборки имени по записи арены
 					 *
 					 * @param title запись имени в арене дерева разметки
 					 * @return      имя с учётом пространства имён
 					 *
+					 * \~english
+					 * @brief Method of assembling a name by a record of the arena
+					 * @param title record of the name in the arena of the markup tree
+					 * @return      name with regard to the namespace
+					 *
+					 * \~
 					 */
 					name_t get(const title_t & title) const noexcept;
 				public:
 					/**
+					 * \~russian
 					 * @brief Метод разбора текста разметки
 					 *
 					 * @details Собирает дерево из переданного текста целиком, отбрасывая
@@ -605,25 +1001,50 @@ namespace awh {
 					 * @param settings настройки разбора текста разметки
 					 * @return         результат выполнения операции
 					 *
+					 * \~english
+					 * @brief Method of parsing a markup text
+					 * @details Assembles the tree from the passed text in full, discarding
+					 * what has been parsed before. A negative result leaves the tree empty, while
+					 * the reason of the refusal is reported by the error code
+					 * @param text     source markup text in full
+					 * @param settings settings of the parsing of a markup text
+					 * @return         result of performing the operation
+					 *
+					 * \~
 					 */
 					bool parse(const string_view text, const reader_t::settings_t & settings = reader_t::settings_t()) noexcept;
 				public:
 					/**
+					 * \~russian
 					 * @brief Метод получения кода ошибки разбора
 					 *
 					 * @return код ошибки последней операции разбора
 					 *
+					 *
+					 * \~english
+					 * @brief Method of getting the error code of the parsing
+					 * @return error code of the last operation of the parsing
+					 *
+					 * \~
 					 */
 					error_t error() const noexcept;
 					/**
+					 * \~russian
 					 * @brief Метод получения места обнаружения ошибки
 					 *
 					 * @return положение обнаруженной ошибки в исходном тексте
 					 *
+					 *
+					 * \~english
+					 * @brief Method of getting the place of the detection of an error
+					 * @return position of the detected error in the source text
+					 *
+					 * \~
 					 */
 					const location_t & errorLocation() const noexcept;
 				public:
 					/**
+					 * \~russian
 					 * @brief Метод получения корня дерева
 					 *
 					 * @details Корень дерева вмещает содержимое текста целиком, включая
@@ -631,44 +1052,86 @@ namespace awh {
 					 *
 					 * @return корневой узел дерева разметки
 					 *
+					 * \~english
+					 * @brief Method of getting the root of the tree
+					 * @details The root of the tree accommodates the content of the text in full, including
+					 * the comments and the processing instructions outside the root markup node
+					 * @return root node of the markup tree
+					 *
+					 * \~
 					 */
 					node_t root() const noexcept;
 					/**
+					 * \~russian
 					 * @brief Метод получения корневого узла разметки
 					 *
 					 * @return единственный узел разметки верхнего уровня
 					 *
+					 * \~english
+					 * @brief Method of getting the root markup node
+					 * @return single markup node of the top level
+					 *
+					 * \~
 					 */
 					node_t element() const noexcept;
 				public:
 					/**
+					 * \~russian
 					 * @brief Метод получения количества узлов дерева
 					 *
 					 * @return количество узлов в арене дерева разметки
 					 *
+					 * \~english
+					 * @brief Method of getting the number of the nodes of the tree
+					 * @return number of the nodes in the arena of the markup tree
+					 *
+					 * \~
 					 */
 					size_t size() const noexcept;
 					/**
+					 * \~russian
 					 * @brief Метод проверки дерева на пустоту
 					 *
 					 * @return результат проверки
 					 *
+					 * \~english
+					 * @brief Method of checking the tree for emptiness
+					 * @return result of the check
+					 *
+					 * \~
 					 */
 					bool empty() const noexcept;
 					/**
+					 * \~russian
 					 * @brief Метод очистки дерева разметки
 					 *
+					 * \~english
+					 * @brief Method of clearing the markup tree
+					 *
+					 * \~
 					 */
 					void clear() noexcept;
 				public:
 					/**
+					 * \~russian
 					 * @brief Конструктор
 					 *
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
 					 */
 					Document() noexcept;
 					/**
+					 * \~russian
 					 * @brief Деструктор
 					 *
+					 *
+					 * \~english
+					 * @brief Destructor
+					 *
+					 * \~
 					 */
 					~Document() noexcept;
 			} document_t;

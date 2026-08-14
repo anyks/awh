@@ -9,9 +9,17 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * \~russian
  * @brief Заголовочный файл транспортных параметров QUIC (RFC 9000 §18) —
  *        структура параметров соединения с значениями по умолчанию,
  *        предпочтительный адрес сервера и функции их разбора и сборки с контролем ролевых ограничений
+ *
+ * \~english
+ * @brief Header file of the QUIC transport parameters (RFC 9000 §18) —
+ *        the structure of the parameters of a connection with the default values,
+ *        the preferred address of the server and the functions of their parsing and assembly with a control of the role restrictions
+ *
+ * \~
  *
  * @copyright: Copyright © 2026
  *
@@ -33,8 +41,14 @@
 #include "../../sys/global.hpp"
 
 /**
+ * \~russian
  * @brief основное пространство имён
  *
+ *
+ * \~english
+ * @brief main namespace
+ *
+ * \~
  */
 namespace awh {
 	/**
@@ -43,11 +57,18 @@ namespace awh {
 	using namespace std;
 
 	/**
+	 * \~russian
 	 * @brief Пространство имён транспортного протокола QUIC
 	 *
+	 *
+	 * \~english
+	 * @brief QUIC transport protocol namespace
+	 *
+	 * \~
 	 */
 	namespace quic {
 		/**
+		 * \~russian
 		 * @brief Пространство имён кодека параметров транспорта QUIC (RFC 9000 §18)
 		 *
 		 * @details Параметры транспорта передаются в TLS-расширении quic_transport_parameters
@@ -56,11 +77,25 @@ namespace awh {
 		 *          нарушение ролевых ограничений - TRANSPORT_PARAMETER_ERROR (RFC 9000 §7.4).
 		 *          Слой не хранит состояния соединения - это чистые функции над байтами.
 		 *
+		 * \~english
+		 * @brief Namespace of the codec of the QUIC transport parameters (RFC 9000 §18)
+		 * @details The transport parameters are transmitted in the quic_transport_parameters TLS extension
+		 *          (RFC 9001 §8.2) as a sequence of the records (identifier, length, value)
+		 *          without a common header. The unknown parameters are ignored, the duplicates and
+		 *          a violation of the role restrictions — TRANSPORT_PARAMETER_ERROR (RFC 9000 §7.4).
+		 *          The layer does not store the state of a connection — these are pure functions over the bytes.
+		 *
+		 * \~
 		 */
 		namespace params {
 			/**
+			 * \~russian
 			 * @brief Идентификаторы параметров транспорта (RFC 9000 §18.2)
 			 *
+			 * \~english
+			 * @brief Identifiers of the transport parameters (RFC 9000 §18.2)
+			 *
+			 * \~
 			 */
 			enum class id_t : uint64_t {
 				ORIGINAL_DESTINATION_CONNECTION_ID  = 0x00, // Исходный DCID первого пакета Initial клиента (только сервер)
@@ -84,8 +119,13 @@ namespace awh {
 			};
 
 			/**
+			 * \~russian
 			 * @brief Структура предпочтительного адреса сервера (RFC 9000 §18.2)
 			 *
+			 * \~english
+			 * @brief Structure of the preferred address of the server (RFC 9000 §18.2)
+			 *
+			 * \~
 			 */
 			typedef struct __AWH_SHARED_EXPORT__ Preferred_Address {
 				// Порт IPv4-адреса сервера
@@ -101,18 +141,31 @@ namespace awh {
 				// Токен сброса без сохранения состояния для идентификатора
 				uint8_t resetToken[proto::RESET_TOKEN_SIZE];
 				/**
+				 * \~russian
 				 * @brief Конструктор
 				 *
+				 *
+				 * \~english
+				 * @brief Constructor
+				 *
+				 * \~
 				 */
 				explicit Preferred_Address() noexcept;
 			} preferred_address_t;
 
 			/**
+			 * \~russian
 			 * @brief Структура параметров транспорта QUIC (RFC 9000 §18.2)
 			 *
 			 * @details Скалярные поля инициализируются значениями по умолчанию из RFC 9000 §18.2.
 			 *          Наличие параметров без значений по умолчанию отражают флаги has*
 			 *
+			 * \~english
+			 * @brief Structure of the QUIC transport parameters (RFC 9000 §18.2)
+			 * @details The scalar fields are initialized with the default values from RFC 9000 §18.2.
+			 *          The presence of the parameters without the default values is reflected by the has* flags
+			 *
+			 * \~
 			 */
 			typedef struct __AWH_SHARED_EXPORT__ Params {
 				// Флаг наличия исходного DCID первого пакета Initial клиента
@@ -166,18 +219,30 @@ namespace awh {
 				// Предпочтительный адрес сервера (только сервер)
 				preferred_address_t preferredAddress;
 				/**
+				 * \~russian
 				 * @brief Конструктор
 				 *
+				 *
+				 * \~english
+				 * @brief Constructor
+				 *
+				 * \~
 				 */
 				explicit Params() noexcept;
 			} params_t;
 
 			/**
+			 * \~russian
 			 * @brief Пространство имён функций разбора параметров транспорта (RFC 9000 §18)
 			 *
+			 * \~english
+			 * @brief Namespace of the functions of the parsing of the transport parameters (RFC 9000 §18)
+			 *
+			 * \~
 			 */
 			namespace parser {
 				/**
+				 * \~russian
 				 * @brief Функция разбора параметров транспорта из TLS-расширения
 				 *
 				 * @note Параметр sender задаёт роль эндпоинта, закодировавшего параметры:
@@ -190,16 +255,34 @@ namespace awh {
 				 * @param error  код ошибки транспорта
 				 * @return       результат разбора (OK/ERROR)
 				 *
+				 * \~english
+				 * @brief Function of parsing the transport parameters from a TLS extension
+				 * @note The sender parameter gives the role of the endpoint that has encoded the parameters:
+				 *       the server-only parameters in the parameters of a client — TRANSPORT_PARAMETER_ERROR
+				 * @param data   buffer of the value of the quic_transport_parameters TLS extension
+				 * @param size   bytes available
+				 * @param sender role of the endpoint that has encoded the parameters
+				 * @param output parsed transport parameters
+				 * @param error  transport error code
+				 * @return       result of the parsing (OK/ERROR)
+				 *
+				 * \~
 				 */
 				__AWH_SHARED_EXPORT__ status_t decode(const uint8_t * data, const size_t size, const endpoint_t sender, params_t & output, error_t & error) noexcept;
 			};
 
 			/**
+			 * \~russian
 			 * @brief Пространство имён функций сборки параметров транспорта (RFC 9000 §18)
 			 *
+			 * \~english
+			 * @brief Namespace of the functions of the assembly of the transport parameters (RFC 9000 §18)
+			 *
+			 * \~
 			 */
 			namespace serialize {
 				/**
+				 * \~russian
 				 * @brief Функция сборки параметров транспорта для TLS-расширения
 				 *
 				 * @note Скалярные параметры со значениями по умолчанию не кодируются.
@@ -210,9 +293,20 @@ namespace awh {
 				 * @param sender роль эндпоинта, кодирующего параметры
 				 * @return       результат сборки (false - некорректные параметры)
 				 *
+				 * \~english
+				 * @brief Function of assembling the transport parameters for a TLS extension
+				 * @note The scalar parameters with the default values are not encoded.
+				 *       The server-only parameters at a client — an error of the assembly
+				 * @param output output buffer of the value of the TLS extension
+				 * @param params transport parameters
+				 * @param sender role of the endpoint encoding the parameters
+				 * @return       result of the assembly (false — the parameters are incorrect)
+				 *
+				 * \~
 				 */
 				__AWH_SHARED_EXPORT__ bool encode(string & output, const params_t & params, const endpoint_t sender) noexcept;
 				/**
+				 * \~russian
 				 * @brief Функция сборки контекста ранних данных из параметров транспорта (RFC 9001 §4.6.1)
 				 *
 				 * @note Кодируются только параметры, которые клиент запоминает вместе
@@ -225,6 +319,18 @@ namespace awh {
 				 * @param params параметры транспорта
 				 * @return       результат сборки (false - некорректные параметры)
 				 *
+				 * \~english
+				 * @brief Function of assembling the context of the early data from the transport parameters (RFC 9001 §4.6.1)
+				 * @note Only the parameters which the client remembers together with
+				 *       the resumption ticket and under whose limits it sends the early
+				 *       data are encoded. A full representation of the parameters is inapplicable here:
+				 *       the connection identifiers and the reset token are unique for every
+				 *       connection, and a coincidence of the contexts would become impossible
+				 * @param output output buffer of the context of the early data
+				 * @param params transport parameters
+				 * @return       result of the assembly (false — the parameters are incorrect)
+				 *
+				 * \~
 				 */
 				__AWH_SHARED_EXPORT__ bool early(string & output, const params_t & params) noexcept;
 			};

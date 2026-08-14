@@ -46,15 +46,28 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 /**
- * Заголовочный файл запроса параметров ядра
+ * Признак наличия запроса параметров ядра
  *
- * @note Вызов этот принадлежит BSD. Linux его объявлял, но признал устаревшим и
- *       убрал вовсе - параметры ядра читаются там через `/proc` и netlink, - и
- *       заголовка у него нет. Перехватывать на Linux оттого нечего, а безусловное
- *       подключение стоило бы сборке отказа ещё до первой строки самого счётчика
+ * @note Вызов этот принадлежит BSD и достался macOS по родословной. Linux его
+ *       объявлял, но признал устаревшим и убрал вовсе - параметры ядра читаются
+ *       там через `/proc` и netlink. Solaris и illumos его не имели никогда -
+ *       ядро опрашивается там через `kstat` и `mib2`, - и заголовка у них нет
+ *
+ * @warning Признак задаётся перечислением систем, где вызов есть, а не отрицанием
+ *          Linux: отрицание молча ломало сборку у всякой прочей системы без этого
+ *          вызова, и на стендах Solaris и OpenIndiana счётчик не собирался вовсе
  *
  */
-#if !__linux__
+#if __APPLE__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__ || __DragonFly__
+	#define AWH_SYSCOUNT_HAS_SYSCTL 1
+#else
+	#define AWH_SYSCOUNT_HAS_SYSCTL 0
+#endif
+
+/**
+ * Если запрос параметров ядра системой предоставляется
+ */
+#if AWH_SYSCOUNT_HAS_SYSCTL
 	#include <sys/sysctl.h>
 #endif
 
@@ -506,9 +519,10 @@ AWH_SYSCOUNT_BIND(socket)
 /**
  * Перехват запроса параметров ядра
  *
- * @note Вызова этого у Linux нет вовсе - перехватывать там нечего
+ * @note Вызова этого нет ни у Linux, ни у Solaris с illumos - перехватывать там
+ *       нечего
  */
-#if !__linux__
+#if AWH_SYSCOUNT_HAS_SYSCTL
 /**
  * @brief Подменяющая функция запроса параметров ядра
  *
@@ -556,7 +570,7 @@ int32_t AWH_SYSCOUNT_HOOK(sysctl)(int32_t * name, u_int length, void * output, s
 	return result;
 }
 AWH_SYSCOUNT_BIND(sysctl)
-#endif // !__linux__
+#endif // AWH_SYSCOUNT_HAS_SYSCTL
 
 /**
  * @brief Подменяющая функция приёма данных из сокета
@@ -797,6 +811,23 @@ int32_t AWH_SYSCOUNT_HOOK(fcntl)(int32_t fd, int32_t command, ...){
 AWH_SYSCOUNT_BIND(fcntl)
 
 /**
+ * @brief Тип параметра запроса управления устройством
+ *
+ * @details Тип этот у библиотек языка Си разнится: glibc и системы BSD объявляют
+ *          запрос беззнаковым длинным целым, а musl - обыкновенным целым
+ *
+ * @warning Подмена обязана повторять объявление своей библиотеки знак в знак:
+ *          иначе собиратель отвергает её как несовместимое повторное объявление, и
+ *          на стенде Alpine счётчик не собирался вовсе
+ *
+ */
+#if __linux__ && !defined(__GLIBC__)
+	typedef int32_t awh_ioctl_request_t;
+#else
+	typedef unsigned long awh_ioctl_request_t;
+#endif
+
+/**
  * @brief Подменяющая функция управления устройством
  *
  * @param fd      файловый дескриптор
@@ -804,8 +835,8 @@ AWH_SYSCOUNT_BIND(fcntl)
  * @return        результат выполнения запроса
  *
  */
-AWH_SYSCOUNT_DECLARE(int32_t, ioctl, (int32_t fd, unsigned long request, ...))
-int32_t AWH_SYSCOUNT_HOOK(ioctl)(int32_t fd, unsigned long request, ...){
+AWH_SYSCOUNT_DECLARE(int32_t, ioctl, (int32_t fd, awh_ioctl_request_t request, ...))
+int32_t AWH_SYSCOUNT_HOOK(ioctl)(int32_t fd, awh_ioctl_request_t request, ...){
 	// Разыскиваем подлинную функцию, если конструктор ещё не отработал
 	AWH_SYSCOUNT_ENSURE(ioctl)
 	// Список параметров переменной длины

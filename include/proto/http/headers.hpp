@@ -57,8 +57,14 @@
 #include "../../sys/log.hpp"
 
 /**
+ * \~russian
  * @brief основное пространство имён
  *
+ *
+ * \~english
+ * @brief main namespace
+ *
+ * \~
  */
 namespace awh {
 	/**
@@ -67,8 +73,14 @@ namespace awh {
 	using namespace std;
 
 	/**
+	 * \~russian
 	 * @brief Пространство имён HTTP-протокола
 	 *
+	 *
+	 * \~english
+	 * @brief HTTP protocol namespace
+	 *
+	 * \~
 	 */
 	namespace http {
 		/**
@@ -121,8 +133,14 @@ namespace awh {
 						bool operator == (const Header & other) const noexcept;
 					public:
 						/**
+						 * \~russian
 						 * @brief Конструктор
 						 *
+						 *
+						 * \~english
+						 * @brief Constructor
+						 *
+						 * \~
 						 */
 						explicit Header() noexcept = default;
 				} header_t;
@@ -517,8 +535,14 @@ namespace awh {
 					// Версия модуля приложения
 					string version;
 					/**
+					 * \~russian
 					 * @brief Конструктор
 					 *
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
 					 */
 					explicit Ident() noexcept;
 				} ident_t;
@@ -532,8 +556,14 @@ namespace awh {
 					// Максимальное количество добавляемых записей
 					size_t records;
 					/**
+					 * \~russian
 					 * @brief Конструктор
 					 *
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
 					 */
 					explicit Max() noexcept;
 				} max_t;
@@ -1615,11 +1645,19 @@ namespace awh {
 				explicit Headers(const proto_t proto, unique_ptr <provider_t> && provider, initializer_list <header_t> headers) noexcept;
 			public:
 				/**
+				 * \~russian
 				 * @brief Конструктор
 				 *
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 *
+				 *
+				 * \~english
+				 * @brief Constructor
+				 * @param fmk framework object
+				 * @param log object for working with logs
+				 *
+				 * \~
 				 */
 				explicit Headers(const fmk_t * fmk, const log_t * log) noexcept;
 				/**
@@ -1895,8 +1933,14 @@ namespace awh {
 				explicit Headers(const proto_t proto, unique_ptr <provider_t> && provider, initializer_list <header_t> headers, const fmk_t * fmk, const log_t * log) noexcept;
 			public:
 				/**
+				 * \~russian
 				 * @brief Деструктор
 				 *
+				 *
+				 * \~english
+				 * @brief Destructor
+				 *
+				 * \~
 				 */
 				~Headers() noexcept;
 		} headers_t;

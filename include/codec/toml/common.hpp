@@ -9,9 +9,17 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * \~russian
  * @brief Заголовочный файл общих определений контейнера TOML — коды ошибок разбора, виды
  *        событий чтения, типы значений, записи строк и чисел, кодировки исходного текста,
  *        пределы разбора, структуры имени ключа, значения, примечания и положения в тексте
+ *
+ * \~english
+ * @brief Header file of the common definitions of the TOML container — the error codes of the parsing, the kinds
+ *        of the events of the reading, the types of the values, the notations of the strings and of the numbers, the encodings of the source text,
+ *        the limits of the parsing, the structures of the name of a key, of a value, of a comment and of a position in the text
+ *
+ * \~
  *
  * @copyright: Copyright © 2026
  *
@@ -41,8 +49,14 @@
 #include "../../sys/macro_push.hpp"
 
 /**
+ * \~russian
  * @brief Основное пространство имён
  *
+ *
+ * \~english
+ * @brief Main namespace
+ *
+ * \~
  */
 namespace awh {
 	/**
@@ -51,11 +65,18 @@ namespace awh {
 	using namespace std;
 
 	/**
+	 * \~russian
 	 * @brief Пространство имён контейнеров данных
 	 *
+	 *
+	 * \~english
+	 * @brief Data containers namespace
+	 *
+	 * \~
 	 */
 	namespace codec {
 		/**
+		 * \~russian
 		 * @brief Пространство имён контейнера TOML
 		 *
 		 * @details Разбор и запись текста настроек в записи TOML версии 1.0.0 - таблиц в
@@ -112,28 +133,90 @@ namespace awh {
 		 * типы, свои таблицы и свои правила ограждения: принимать записи INI значило бы
 		 * принимать неоднозначное. Разбор их выдаёт отказом, а место им в модуле INI
 		 *
+		 * \~english
+		 * @brief TOML container namespace
+		 * @details The parsing and the writing of a settings text in the TOML notation of the version 1.0.0 — of the tables in
+		 * square brackets, of the arrays of tables in double brackets, of the pairs «key = value» with
+		 * an inferred type of the value, of the arrays, of the inline tables and of the comments
+		 * @par Deliberate decisions
+		 * What is listed below is not a gap of the implementation: these are the outlined boundaries of the
+		 * task, and each of the decisions is fixed by a verifying test
+		 * @li **The specification of the notation is a single one, and there are no dialects here.** Unlike INI,
+		 * TOML has a specification (toml.io, version 1.0.0), and the parsing is conducted by it rather than by
+		 * the settings of a dialect. The settings give the limits of the parsing, the form of the assembled text and
+		 * the permitted relaxations — but not the arrangement of the notation
+		 * @li **The type of a value is inferred by the parsing rather than by a request of the consumer.** This is
+		 * the opposite of the decision taken for INI, and that difference is laid down by the notations
+		 * themselves: for INI a value is always a sequence of characters and a guessing of the type would
+		 * give birth to discrepancies, while for TOML the type is given by the specification — «1.10» there is a number, «011»
+		 * is an erroneous record, and «true» is a logical value, and to issue them as strings would mean
+		 * to parse the notation incorrectly
+		 * @li **The floating-point numbers are stored as a binary representation of a double
+		 * precision.** The specification allots exactly it to them, and a width beyond it the notation does not
+		 * survive. A written number is issued as the shortest record giving back the same
+		 * value: otherwise «0.1» would go into the file as «0.10000000000000001»
+		 * @li **The integers are stored as a signed number of sixty-four bits.**
+		 * The specification requires accepting that whole range of the values and permits rejecting
+		 * what goes beyond it; a going beyond the range is rejected by a refusal rather than by a silent
+		 * wrap-around conversion
+		 * @li **The timestamps are stored parsed by the fields rather than as a string.** The specification
+		 * allots four kinds to them — with an offset, a local timestamp, a local date and a local
+		 * time — and they can be distinguished only by a parsing. A bringing to a single form would take
+		 * away from a local timestamp its locality
+		 * @li **The digits of a fraction of a second beyond nine are discarded.** The specification permits this
+		 * treatment directly, while the storing of the fraction is conducted in nanoseconds: to accept more digits
+		 * would mean to require an integer of an unlimited length for the sake of the digits
+		 * which not a single source of the time issues
+		 * @li **The order of the records is preserved.** The settings tree stores the records in the order of
+		 * their appearance in the source text together with the comments and the empty lines:
+		 * a rewriting is obliged to return a file recognizable by its owner. The specification does not require
+		 * the order, but a settings file is written by a human
+		 * @li **External files are not included.** The notation has no inclusion directives
+		 * at all, and the parsing will not introduce them by an extension of its own: the parsing performs neither calls to
+		 * the file system nor to the network
+		 * @li **The parsing does not accept the INI notation.** Outwardly the notations are similar, but TOML has its own
+		 * types, its own tables and its own rules of the fencing: to accept the INI notation would mean
+		 * to accept the ambiguous. The parsing issues them as a refusal, while their place is in the INI module
+		 *
+		 * \~
 		 */
 		namespace toml {
 			/**
+			 * \~russian
 			 * @brief Наибольшая допустимая длина логической строки в байтах
 			 *
 			 * @details Предел считается на строку целиком - вместе со всеми строками
 			 * многострочного значения, - иначе многострочная запись давала бы обход
 			 * предела
 			 *
+			 * \~english
+			 * @brief Largest admissible length of a logical line in bytes
+			 * @details The limit is counted over the line as a whole — together with all the lines of
+			 * a multiline value — otherwise a multiline record would give a bypass of
+			 * the limit
+			 *
+			 * \~
 			 */
 			constexpr uint32_t MAX_LINE = 0x10000;
 
 			/**
+			 * \~russian
 			 * @brief Наибольшая допустимая длина имени ключа в байтах
 			 *
 			 * @details Предел считается на составную часть имени, а не на составное имя
 			 * целиком: у составного имени своя мера - глубина вложенности
 			 *
+			 * \~english
+			 * @brief Largest admissible length of the name of a key in bytes
+			 * @details The limit is counted over a component part of a name rather than over a compound name
+			 * as a whole: a compound name has its own measure — the depth of the nesting
+			 *
+			 * \~
 			 */
 			constexpr uint32_t MAX_KEY = 0x1000;
 
 			/**
+			 * \~russian
 			 * @brief Наибольшая допустимая глубина вложенности значений
 			 *
 			 * @details Меряется вложенностью перечней и встроенных таблиц друг в друга.
@@ -141,42 +224,82 @@ namespace awh {
 			 * текст в несколько килобайт из одних открывающих скобок исчерпывает память
 			 * узла, если глубину не ограничить
 			 *
+			 * \~english
+			 * @brief Largest admissible depth of the nesting of the values
+			 * @details Measured by the nesting of the arrays and of the inline tables into one another.
+			 * This limit is not an adornment: the parsing of the nesting is conducted by a stack of the states, and
+			 * a text of several kilobytes made of opening brackets alone exhausts the memory of
+			 * a node if the depth is not limited
+			 *
+			 * \~
 			 */
 			constexpr uint32_t MAX_DEPTH = 0x40;
 
 			/**
+			 * \~russian
 			 * @brief Наибольшее допустимое количество составных частей имени ключа
 			 *
+			 * \~english
+			 * @brief Largest admissible number of the component parts of the name of a key
+			 *
+			 * \~
 			 */
 			constexpr uint32_t MAX_PARTS = 0x20;
 
 			/**
+			 * \~russian
 			 * @brief Наибольшее количество разрядов доли секунды, принимаемое разбором
 			 *
 			 * @note Доля секунды хранится наносекундами, и разрядов сверх девяти
 			 *       хранилище не вмещает. Описание отбрасывание лишних разрядов дозволяет
+			 *
+			 * \~english
+			 * @brief Largest number of the digits of a fraction of a second accepted by the parsing
+			 * @note The fraction of a second is stored in nanoseconds, and the storage does not accommodate
+			 *       more than nine digits. The specification permits the discarding of the superfluous digits
+			 *
+			 * \~
 			 */
 			constexpr uint32_t MAX_FRACTION = 9;
 
 			/**
+			 * \~russian
 			 * @brief Обозначение неизвестного смещения от начала текста
 			 *
+			 * \~english
+			 * @brief Designation of an unknown offset from the beginning of the text
+			 *
+			 * \~
 			 */
 			constexpr uint64_t NO_OFFSET = static_cast <uint64_t> (-1);
 
 			/**
+			 * \~russian
 			 * @brief Обозначение неизвестного смещения местного времени
 			 *
 			 * @note Смещение отсутствует у местной отметки времени и у местного времени:
 			 *       значение это отличает их от отметки со смещением, равным нулю, -
 			 *       смещение в ноль означает часовой пояс UTC и местной отметкой не
 			 *       является
+			 *
+			 * \~english
+			 * @brief Designation of an unknown offset of a local time
+			 * @note The offset is absent in a local timestamp and in a local time:
+			 *       this value distinguishes them from a timestamp with an offset equal to zero —
+			 *       an offset of zero means the UTC time zone and is not a local timestamp
+			 *
+			 * \~
 			 */
 			constexpr int32_t NO_TIMEZONE = static_cast <int32_t> (0x7FFFFFFF);
 
 			/**
+			 * \~russian
 			 * @brief Коды ошибок разбора и записи текста настроек
 			 *
+			 * \~english
+			 * @brief Error codes of the parsing and of the writing of a settings text
+			 *
+			 * \~
 			 */
 			enum class error_t : uint8_t {
 				NONE                  = 0x00, // Ошибок не обнаружено
@@ -214,6 +337,7 @@ namespace awh {
 			};
 
 			/**
+			 * \~russian
 			 * @brief Виды событий чтения текста настроек
 			 *
 			 * @details Чтение выдаёт события по мере разбора текста, не удерживая его
@@ -221,6 +345,14 @@ namespace awh {
 			 * перечня либо встроенной таблицы, содержимое, закрытие. Так вложенность
 			 * достаётся потребителю потоком, а не собранным заранее деревом
 			 *
+			 * \~english
+			 * @brief Kinds of the events of the reading of a settings text
+			 * @details The reading issues the events as the text is parsed without holding it
+			 * in full. A compound value is issued not by a single event but by a series of them: the opening
+			 * of an array or of an inline table, the content, the closing. That way the nesting goes
+			 * to the consumer as a stream rather than as a tree assembled beforehand
+			 *
+			 * \~
 			 */
 			enum class event_t : uint8_t {
 				NONE         = 0x00, // Событие не определено
@@ -238,11 +370,18 @@ namespace awh {
 			};
 
 			/**
+			 * \~russian
 			 * @brief Типы значений текста настроек
 			 *
 			 * @details Отметка времени представлена четырьмя видами намеренно: описание
 			 * отводит каждому свой смысл, и различить их можно лишь разбором
 			 *
+			 * \~english
+			 * @brief Types of the values of a settings text
+			 * @details A timestamp is represented by four kinds deliberately: the specification
+			 * allots its own meaning to each of them, and they can be distinguished only by a parsing
+			 *
+			 * \~
 			 */
 			enum class type_t : uint8_t {
 				NONE            = 0x00, // Тип значения не определён
@@ -259,6 +398,7 @@ namespace awh {
 			};
 
 			/**
+			 * \~russian
 			 * @brief Записи строковых значений
 			 *
 			 * @details Запись у строкового значения четыре, и различаются они не только
@@ -266,6 +406,14 @@ namespace awh {
 			 * выдаёт содержимое как записано. Признак этот сохраняется деревом настроек,
 			 * чтобы перезапись возвращала запись, выбранную человеком
 			 *
+			 * \~english
+			 * @brief Notations of the string values
+			 * @details A string value has four notations, and they differ not only in the
+			 * form: the basic one parses the escape sequences, while the literal one
+			 * issues the content as it has been written. This attribute is preserved by the settings tree
+			 * so that a rewriting returns the notation chosen by the human
+			 *
+			 * \~
 			 */
 			enum class string_t : uint8_t {
 				BASIC             = 0x00, // Основная строка в двойных кавычках
@@ -275,8 +423,13 @@ namespace awh {
 			};
 
 			/**
+			 * \~russian
 			 * @brief Записи имени ключа
 			 *
+			 * \~english
+			 * @brief Notations of the name of a key
+			 *
+			 * \~
 			 */
 			enum class naming_t : uint8_t {
 				BARE    = 0x00, // Имя записано без кавычек
@@ -285,10 +438,18 @@ namespace awh {
 			};
 
 			/**
+			 * \~russian
 			 * @brief Системы счисления записи целого числа
 			 *
 			 * @note Признак сохраняется деревом настроек: число, записанное человеком
 			 *       шестнадцатеричным, при перезаписи обязано остаться шестнадцатеричным
+			 *
+			 * \~english
+			 * @brief Numeral systems of the notation of an integer
+			 * @note The attribute is preserved by the settings tree: a number written by a human
+			 *       as a hexadecimal one is obliged to remain a hexadecimal one at a rewriting
+			 *
+			 * \~
 			 */
 			enum class radix_t : uint8_t {
 				DECIMAL = 0x00, // Десятичная запись числа
@@ -298,8 +459,13 @@ namespace awh {
 			};
 
 			/**
+			 * \~russian
 			 * @brief Виды знака конца строки собираемого текста
 			 *
+			 * \~english
+			 * @brief Kinds of the line ending character of the text being assembled
+			 *
+			 * \~
 			 */
 			enum class newline_t : uint8_t {
 				LF   = 0x00, // Перевод строки, принятый в системах семейства UNIX
@@ -307,8 +473,13 @@ namespace awh {
 			};
 
 			/**
+			 * \~russian
 			 * @brief Состояния разбора текста настроек
 			 *
+			 * \~english
+			 * @brief States of the parsing of a settings text
+			 *
+			 * \~
 			 */
 			enum class state_t : uint8_t {
 				READY    = 0x00, // Разбор готов принимать текст
@@ -318,6 +489,7 @@ namespace awh {
 			};
 
 			/**
+			 * \~russian
 			 * @brief Кодировки исходного текста настроек
 			 *
 			 * @details Описание отводит тексту TOML единственную кодировку - UTF-8, - и
@@ -326,6 +498,15 @@ namespace awh {
 			 * бывает записан иначе, и отвергать его целиком значило бы оставлять
 			 * потребителя без всякого способа его прочесть
 			 *
+			 * \~english
+			 * @brief Encodings of the source settings text
+			 * @details The specification allots a single encoding to a TOML text — UTF-8 — and
+			 * it is taken by default. The other encodings are accepted only when imposed from the outside
+			 * or recognized by the byte order mark: a file received from a foreign toolchain
+			 * happens to be written otherwise, and to reject it entirely would mean to leave
+			 * the consumer without any means of reading it
+			 *
+			 * \~
 			 */
 			enum class encoding_t : uint8_t {
 				NONE    = 0x00, // Кодировка не определена
@@ -335,23 +516,40 @@ namespace awh {
 			};
 
 			/**
+			 * \~russian
 			 * @brief Наибольшее кодовое значение знака Юникода
 			 *
+			 * \~english
+			 * @brief Largest code value of a Unicode character
+			 *
+			 * \~
 			 */
 			constexpr uint32_t MAX_CODEPOINT = 0x10FFFF;
 
 			/**
+			 * \~russian
 			 * @brief Обозначение ошибочного кодового значения знака
 			 *
+			 * \~english
+			 * @brief Designation of an erroneous code value of a character
+			 *
+			 * \~
 			 */
 			constexpr uint32_t INVALID_CODEPOINT = static_cast <uint32_t> (-1);
 
 			/**
+			 * \~russian
 			 * @brief Положение в исходном тексте настроек
 			 *
 			 * @details Строка и знак считаются с единицы и меряются знаками приведённого
 			 * текста, а смещение - в байтах исходного текста до приведения
 			 *
+			 * \~english
+			 * @brief Position in the source settings text
+			 * @details The line and the character are counted from one and are measured in the characters of the converted
+			 * text, while the offset — in the bytes of the source text before the conversion
+			 *
+			 * \~
 			 */
 			typedef struct __AWH_SHARED_EXPORT__ Location {
 				// Смещение от начала текста в байтах
@@ -361,15 +559,26 @@ namespace awh {
 				// Положение в строке, считая с единицы
 				uint32_t column;
 				/**
+				 * \~russian
 				 * @brief Конструктор
 				 *
+				 *
+				 * \~english
+				 * @brief Constructor
+				 *
+				 * \~
 				 */
 				Location() noexcept : offset(NO_OFFSET), line(0), column(0) {}
 			} location_t;
 
 			/**
+			 * \~russian
 			 * @brief Дата без времени
 			 *
+			 * \~english
+			 * @brief Date without a time
+			 *
+			 * \~
 			 */
 			typedef struct __AWH_SHARED_EXPORT__ Date {
 				// Год, считая от нашей эры
@@ -379,15 +588,26 @@ namespace awh {
 				// День месяца, считая с единицы
 				uint8_t day;
 				/**
+				 * \~russian
 				 * @brief Конструктор
 				 *
+				 *
+				 * \~english
+				 * @brief Constructor
+				 *
+				 * \~
 				 */
 				Date() noexcept : year(0), month(0), day(0) {}
 			} date_t;
 
 			/**
+			 * \~russian
 			 * @brief Время без даты
 			 *
+			 * \~english
+			 * @brief Time without a date
+			 *
+			 * \~
 			 */
 			typedef struct __AWH_SHARED_EXPORT__ Time {
 				// Доля секунды в наносекундах
@@ -397,33 +617,63 @@ namespace awh {
 				// Минута часа
 				uint8_t minute;
 				/**
+				 * \~russian
 				 * Секунда минуты
 				 *
 				 * @note Значение в шестьдесят принимается намеренно: описание дозволяет
 				 *       им записывать добавочную секунду координации
+				 *
+				 * \~english
+				 * Second of the minute
+				 * @note The value of sixty is accepted deliberately: the specification permits
+				 *       writing a leap second with it
+				 *
+				 * \~
 				 */
 				uint8_t second;
 				/**
+				 * \~russian
 				 * Количество записанных разрядов доли секунды
 				 *
 				 * @note Разряды эти значащи при перезаписи: «01:02:03.100» и
 				 *       «01:02:03.1» задают одно и то же время, но человек выбрал запись
 				 *       сам, и подменять её не следует
+				 *
+				 * \~english
+				 * Number of the written digits of the fraction of a second
+				 * @note These digits are significant at a rewriting: «01:02:03.100» and
+				 *       «01:02:03.1» give one and the same time, but the human has chosen the notation
+				 *       himself, and it should not be substituted
+				 *
+				 * \~
 				 */
 				uint8_t digits;
 				/**
+				 * \~russian
 				 * @brief Конструктор
 				 *
+				 *
+				 * \~english
+				 * @brief Constructor
+				 *
+				 * \~
 				 */
 				Time() noexcept : nanosecond(0), hour(0), minute(0), second(0), digits(0) {}
 			} time_t;
 
 			/**
+			 * \~russian
 			 * @brief Отметка времени
 			 *
 			 * @details Вид отметки задаётся типом значения: наличие даты, времени и
 			 * смещения часового пояса у каждого вида своё
 			 *
+			 * \~english
+			 * @brief Timestamp
+			 * @details The kind of a timestamp is given by the type of the value: the presence of a date, of a time and of an
+			 * offset of a time zone is its own for every kind
+			 *
+			 * \~
 			 */
 			typedef struct __AWH_SHARED_EXPORT__ Stamp {
 				// Дата отметки времени
@@ -431,47 +681,93 @@ namespace awh {
 				// Время отметки
 				time_t time;
 				/**
+				 * \~russian
 				 * Смещение часового пояса в минутах
 				 *
 				 * @note Значение NO_TIMEZONE означает отсутствие смещения. Ноль им не
 				 *       является: он означает часовой пояс UTC, записываемый знаком «Z»
+				 *
+				 * \~english
+				 * Offset of the time zone in minutes
+				 * @note The NO_TIMEZONE value means the absence of an offset. Zero is not
+				 *       it: it means the UTC time zone written with the «Z» character
+				 *
+				 * \~
 				 */
 				int32_t offset;
 				/**
+				 * \~russian
 				 * Признак записи часового пояса UTC знаком «Z»
 				 *
 				 * @note Запись «Z» и запись «+00:00» задают одно смещение, но человек
 				 *       выбрал её сам
+				 *
+				 * \~english
+				 * Flag of the writing of the UTC time zone with the «Z» character
+				 * @note The record «Z» and the record «+00:00» give one and the same offset, but the human
+				 *       has chosen it himself
+				 *
+				 * \~
 				 */
 				bool zulu;
 				/**
+				 * \~russian
 				 * Признак записи нулевого смещения знаком «минус»
 				 *
 				 * @note Описание отводит записи «-00:00» смысл, от «+00:00» отличный:
 				 *       первою обозначено смещение неизвестное, второю - смещение,
 				 *       заведомо нулевое. Смешивать их нельзя, и знак этот держится
 				 *       отдельно от самого смещения: нуль знака не несёт
+				 *
+				 * \~english
+				 * Flag of the writing of a zero offset with the «minus» character
+				 * @note The specification allots to the record «-00:00» a meaning different from «+00:00»:
+				 *       by the first an unknown offset is designated, by the second — an offset
+				 *       that is knowingly zero. They must not be mixed, and this sign is kept
+				 *       separately from the offset itself: zero carries no sign
+				 *
+				 * \~
 				 */
 				bool negative;
 				/**
+				 * \~russian
 				 * Признак разделения даты и времени пробелом вместо знака «T»
 				 *
 				 * @note Описание дозволяет оба разделителя
+				 *
+				 * \~english
+				 * Flag of the separation of the date and the time by a space instead of the «T» character
+				 * @note The specification permits both separators
+				 *
+				 * \~
 				 */
 				bool spaced;
 				/**
+				 * \~russian
 				 * @brief Конструктор
 				 *
+				 *
+				 * \~english
+				 * @brief Constructor
+				 *
+				 * \~
 				 */
 				Stamp() noexcept : offset(NO_TIMEZONE), zulu(false), negative(false), spaced(false) {}
 			} stamp_t;
 
 			/**
+			 * \~russian
 			 * @brief Составная часть имени ключа
 			 *
 			 * @note Поле имени ссылается на память, принадлежащую разбираемому тексту
 			 *       либо хранилищу имён, и живёт не дольше их
 			 *
+			 * \~english
+			 * @brief Component part of the name of a key
+			 * @note The field of the name refers to the memory belonging to the text being parsed
+			 *       or to the storage of the names, and it lives no longer than they do
+			 *
+			 * \~
 			 */
 			typedef struct __AWH_SHARED_EXPORT__ Part {
 				// Имя части, приведённое к окончательному виду
@@ -479,19 +775,33 @@ namespace awh {
 				// Запись имени части в исходном тексте
 				naming_t naming;
 				/**
+				 * \~russian
 				 * @brief Конструктор
 				 *
+				 *
+				 * \~english
+				 * @brief Constructor
+				 *
+				 * \~
 				 */
 				Part() noexcept : naming(naming_t::BARE) {}
 			} part_t;
 
 			/**
+			 * \~russian
 			 * @brief Значение пары либо перечня
 			 *
 			 * @details Выдаётся событием VALUE и несёт разобранное значение вместе с
 			 * признаками его записи. Поле, отвечающее типу значения, значаще лишь для
 			 * своего типа: прочие поля при этом обнулены
 			 *
+			 * \~english
+			 * @brief Value of a pair or of an array
+			 * @details Issued by the VALUE event and carries the parsed value together with
+			 * the attributes of its notation. The field corresponding to the type of the value is significant only for
+			 * its own type: the other fields are thereby zeroed
+			 *
+			 * \~
 			 */
 			typedef struct __AWH_SHARED_EXPORT__ Value {
 				// Тип значения
@@ -513,8 +823,14 @@ namespace awh {
 				// Положение значения в исходном тексте
 				location_t location;
 				/**
+				 * \~russian
 				 * @brief Конструктор
 				 *
+				 *
+				 * \~english
+				 * @brief Constructor
+				 *
+				 * \~
 				 */
 				Value() noexcept :
 				 type(type_t::NONE), quoting(string_t::BASIC), radix(radix_t::DECIMAL),
@@ -522,15 +838,24 @@ namespace awh {
 			} value_t;
 
 			/**
+			 * \~russian
 			 * @brief Примечание текста настроек
 			 *
 			 * @details Примечания в тексте настроек пишет человек, и при перезаписи файла
 			 * их надлежит сохранять: файл настроек без примечаний своему хозяину
 			 * непонятен
 			 *
+			 * \~english
+			 * @brief Comment of a settings text
+			 * @details The comments in a settings text are written by a human, and at a rewriting of the file
+			 * they ought to be preserved: a settings file without the comments is incomprehensible to its
+			 * owner
+			 *
+			 * \~
 			 */
 			typedef struct __AWH_SHARED_EXPORT__ Comment {
 				/**
+				 * \~russian
 				 * Содержимое примечания без начального знака и без пробелов перед ним
 				 *
 				 * @note Пробелы, стоящие за знаком начала примечания, отбрасываются, а
@@ -539,6 +864,17 @@ namespace awh {
 				 *       ведущие пробелы, сохранённые тут, наращивались бы при каждом
 				 *       обороте «чтение - запись», а хвостовые пробелы человек написал
 				 *       сам, и отбрасывать их значило бы править файл без спросу
+				 *
+				 * \~english
+				 * Content of the comment without the initial character and without the spaces before it
+				 * @note The spaces standing after the character of the beginning of a comment are discarded, while the ones
+				 *       standing at its end remain the content. The difference is deliberate:
+				 *       the writing puts its own space between the character of the beginning and the content, and
+				 *       the leading spaces preserved here would accumulate at every
+				 *       «reading — writing» turn, while the trailing spaces have been written by the human
+				 *       himself, and to discard them would mean to edit the file without asking
+				 *
+				 * \~
 				 */
 				string_view text;
 				// Признак того, что примечание дописано к готовой строке
@@ -546,53 +882,95 @@ namespace awh {
 				// Положение примечания в исходном тексте
 				location_t location;
 				/**
+				 * \~russian
 				 * @brief Конструктор
 				 *
+				 *
+				 * \~english
+				 * @brief Constructor
+				 *
+				 * \~
 				 */
 				Comment() noexcept : trailing(false) {}
 			} comment_t;
 
 			/**
+			 * \~russian
 			 * @brief Метод получения описания кода ошибки
 			 *
 			 * @param error код ошибки разбора или записи
 			 * @return      описание кода ошибки
 			 *
+			 * \~english
+			 * @brief Method of getting the description of an error code
+			 * @param error error code of the parsing or of the writing
+			 * @return      description of the error code
+			 *
+			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ const char * message(const error_t error) noexcept;
 			/**
+			 * \~russian
 			 * @brief Метод получения названия кодировки
 			 *
 			 * @param encoding кодировка исходного текста
 			 * @return         название кодировки
 			 *
+			 * \~english
+			 * @brief Method of getting the name of an encoding
+			 * @param encoding encoding of the source text
+			 * @return         name of the encoding
+			 *
+			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ const char * name(const encoding_t encoding) noexcept;
 			/**
+			 * \~russian
 			 * @brief Метод получения названия типа значения
 			 *
 			 * @param type тип значения текста настроек
 			 * @return     название типа значения
 			 *
+			 * \~english
+			 * @brief Method of getting the name of a type of a value
+			 * @param type type of a value of a settings text
+			 * @return     name of the type of the value
+			 *
+			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ const char * name(const type_t type) noexcept;
 			/**
+			 * \~russian
 			 * @brief Метод получения последовательности знаков конца строки
 			 *
 			 * @param newline вид знака конца строки
 			 * @return        последовательность знаков конца строки
 			 *
+			 * \~english
+			 * @brief Method of getting the sequence of the line ending characters
+			 * @param newline kind of the line ending character
+			 * @return        sequence of the line ending characters
+			 *
+			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ string_view newline(const newline_t newline) noexcept;
 			/**
+			 * \~russian
 			 * @brief Метод проверки знака на допустимость в имени ключа без кавычек
 			 *
 			 * @param letter проверяемый знак имени
 			 * @return       результат проверки
 			 *
+			 * \~english
+			 * @brief Method of checking a character for admissibility in the name of a key without quotes
+			 * @param letter character of the name being checked
+			 * @return       result of the check
+			 *
+			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ bool bare(const char letter) noexcept;
 			/**
+			 * \~russian
 			 * @brief Метод проверки знака Юникода на допустимость в имени ключа без кавычек
 			 *
 			 * @details Набор знаков задан черновиком следующей версии описания: буквы,
@@ -602,9 +980,19 @@ namespace awh {
 			 * @param code проверяемый знак имени
 			 * @return     результат проверки
 			 *
+			 * \~english
+			 * @brief Method of checking a Unicode character for admissibility in the name of a key without quotes
+			 * @details The set of the characters is given by the draft of the next version of the specification: the letters,
+			 * the digits and the characters of the writing systems of the world, but not the punctuation marks and not the
+			 * formatting characters. They are recognized only by the setting permitting Unicode in a name
+			 * @param code character of the name being checked
+			 * @return     result of the check
+			 *
+			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ bool named(const uint32_t code) noexcept;
 			/**
+			 * \~russian
 			 * @brief Метод проверки даты на существование её в календаре
 			 *
 			 * @details Проверяются и пределы полей, и длина месяца вместе с високосным
@@ -619,9 +1007,23 @@ namespace awh {
 			 * @param day   проверяемый день месяца
 			 * @return      результат проверки
 			 *
+			 * \~english
+			 * @brief Method of checking a date for its existence in the calendar
+			 * @details Both the limits of the fields and the length of the month together with a leap
+			 * year are checked: «2026-02-31» is not a record of a date, and to accept it would mean
+			 * to issue the consumer a day that does not exist
+			 * @note The check is common to the parsing, to the writing and to the editing of the tree: were they to diverge,
+			 * an editing would assemble a text which its own parsing rejects
+			 * @param year  year being checked
+			 * @param month month being checked
+			 * @param day   day of the month being checked
+			 * @return      result of the check
+			 *
+			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ bool calendar(const uint16_t year, const uint8_t month, const uint8_t day) noexcept;
 			/**
+			 * \~russian
 			 * @brief Метод получения очередного знака Юникода последовательности UTF-8
 			 *
 			 * @param text   последовательность знаков, из которой ведётся чтение
@@ -629,6 +1031,14 @@ namespace awh {
 			 * @param code   получаемый знак Юникода
 			 * @return       количество байт знака, ноль - знак битый либо оборванный
 			 *
+			 * \~english
+			 * @brief Method of getting the next Unicode character of a UTF-8 sequence
+			 * @param text   sequence of characters from which the reading is conducted
+			 * @param offset position of the beginning of the character in the sequence
+			 * @param code   Unicode character being obtained
+			 * @return       number of the bytes of the character, zero — the character is broken or cut off
+			 *
+			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ size_t decode(const string_view text, const size_t offset, uint32_t & code) noexcept;
 		};

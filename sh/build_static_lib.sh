@@ -23,7 +23,11 @@ BUILD_DIR="$ROOT/../third_party/.static"
 # Получаем версию OS
 OS=$(uname -a | awk '{print $1}')
 
-if [[ $OS =~ "MINGW64" ]]; then
+# Опознаём MS Windows по любому из окружений MSYS2, а не по одному лишь MINGW64:
+# оболочка ARM64 зовётся CLANGARM64, а вызванная напрямую по ssh - MSYS_NT, и на
+# ней слияние искало библиотеку зависимостей с расширением Unix и валилось отказом
+# «cannot stat libdependence.a». Проверено на стенде Windows ARM64 (14.08.2026)
+if [[ $OS =~ "MINGW" ]] || [[ $OS =~ "MSYS" ]] || [[ $OS =~ "CLANG" ]] || [[ $OS =~ "UCRT" ]] || [[ $OS =~ "CYGWIN" ]]; then
 	OS="Windows"
 fi
 

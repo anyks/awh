@@ -62,6 +62,26 @@ if (${CMAKE_BUILD_${BENCHMARK_NAME}_BENCHMARKS})
         message(STATUS "Build benchmarks INI submodule: No\n")
     endif (${CMAKE_BUILD_${BENCHMARK_NAME}_INI_BENCHMARK})
 
+    # Указываем что нужно собрать бенчмарки для контейнера CSV
+    option(CMAKE_BUILD_${BENCHMARK_NAME}_CSV_BENCHMARK "Build CSV benchmark for ${BENCHMARK_NAME}" ON)
+
+    # Если нужно собрать бенчмарки для контейнера CSV
+    if (${CMAKE_BUILD_${BENCHMARK_NAME}_CSV_BENCHMARK})
+        # Выводим сообщение о сборке бенчмарков для контейнера CSV
+        message(STATUS "Build benchmarks CSV submodule: Yes\n")
+        # Дополняем список источников бенчмарками для контейнера CSV
+        list(APPEND ${PROJECT_NAME}_BENCHMARK_SOURCES
+            csv/csv.cpp
+            csv/reader.cpp
+            csv/writer.cpp
+            csv/document.cpp
+        )
+    # Если не нужно собрать бенчмарки для контейнера CSV
+    else()
+        # Выводим сообщение о сборке бенчмарков для контейнера CSV
+        message(STATUS "Build benchmarks CSV submodule: No\n")
+    endif (${CMAKE_BUILD_${BENCHMARK_NAME}_CSV_BENCHMARK})
+
     # Указываем что нужно собрать бенчмарки для контейнера TOML
     option(CMAKE_BUILD_${BENCHMARK_NAME}_TOML_BENCHMARK "Build TOML benchmark for ${BENCHMARK_NAME}" ON)
 

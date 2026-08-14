@@ -9,9 +9,17 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * \~russian
  * @brief Заголовочный файл записи текста разметки XML — класс Writer, собирающий правильно построенный
  *        текст разметки последовательными указаниями, с экранированием содержимого,
  *        объявлением пространств имён и необязательным отступом
+ *
+ * \~english
+ * @brief Header file of the writing of an XML markup text — the Writer class, which assembles a well-formed
+ *        markup text by successive directives, with an escaping of the content,
+ *        with a declaration of the namespaces and with an optional indent
+ *
+ * \~
  *
  * @copyright: Copyright © 2026
  *
@@ -37,8 +45,14 @@
 #include "document.hpp"
 
 /**
+ * \~russian
  * @brief Основное пространство имён
  *
+ *
+ * \~english
+ * @brief Main namespace
+ *
+ * \~
  */
 namespace awh {
 	/**
@@ -47,16 +61,29 @@ namespace awh {
 	using namespace std;
 
 	/**
+	 * \~russian
 	 * @brief Пространство имён контейнеров данных
 	 *
+	 *
+	 * \~english
+	 * @brief Data containers namespace
+	 *
+	 * \~
 	 */
 	namespace codec {
 		/**
+		 * \~russian
 		 * @brief Пространство имён контейнера XML
 		 *
+		 *
+		 * \~english
+		 * @brief XML container namespace
+		 *
+		 * \~
 		 */
 		namespace xml {
 			/**
+			 * \~russian
 			 * @brief Класс записи текста разметки
 			 *
 			 * @details Собирает текст разметки последовательными указаниями об открытии и
@@ -65,6 +92,21 @@ namespace awh {
 			 * строение, отвергается, а не записывается
 			 *
 			 * @par Порядок работы
+			 *
+			 * @note Записывается текст в кодировке UTF-8. Прочие кодировки при записи не
+			 * применяются намеренно: они лишь сужают круг тех, кто сможет текст прочесть
+			 *
+			 * \~english
+			 * @brief Class of the writing of a markup text
+			 * @details Assembles a markup text by successive directives about the opening and
+			 * the closing of the nodes. The writing itself watches over the pairing of the tags, escapes the content
+			 * and does not allow assembling a text that is not well-formed: a directive violating
+			 * the construction is rejected rather than written
+			 * @par Order of the work
+			 * @note The text is written in the UTF-8 encoding. The other encodings are not applied at the writing
+			 * deliberately: they only narrow the circle of those who will be able to read the text
+			 *
+			 * \~
 			 *
 			 * @code{.cpp}
 			 * writer_t writer;
@@ -79,15 +121,18 @@ namespace awh {
 			 * const string & result = writer.text();
 			 * @endcode
 			 *
-			 * @note Записывается текст в кодировке UTF-8. Прочие кодировки при записи не
-			 * применяются намеренно: они лишь сужают круг тех, кто сможет текст прочесть
 			 *
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Writer {
 				public:
 					/**
+					 * \~russian
 					 * @brief Настройки записи текста разметки
 					 *
+					 * \~english
+					 * @brief Settings of the writing of a markup text
+					 *
+					 * \~
 					 */
 					typedef struct __AWH_SHARED_EXPORT__ Settings {
 						// Вид записи собираемого текста разметки
@@ -101,6 +146,7 @@ namespace awh {
 						// Знак, которым ставится отступ нарядной записи
 						separator_t separator;
 						/**
+						 * \~russian
 						 * Наибольшая допустимая глубина вложенности узлов, ноль - без предела
 						 *
 						 * @details Предела по умолчанию нет: обход дерева ведётся собственным
@@ -111,18 +157,41 @@ namespace awh {
 						 * @note Предел нужен лишь тому, кто открывает узлы сам, не имея дерева:
 						 * ошибка в его собственном ходе иначе растит стек открытых узлов, пока
 						 * не исчерпается память. Превышение отвечает отказом `DEPTH_EXCEEDED`
+						 *
+						 * \~english
+						 * Largest admissible depth of the nesting of the nodes, zero — without a limit
+						 * @details There is no limit by default: the traversal of the tree is conducted by an own
+						 * stack rather than by a recursion, and the depth of the writing does not threaten the stack of the task. Were the
+						 * writing to keep the limit of the parsing, a tree parsed with a raised `maxDepth`
+						 * would not be written back — while what has been parsed is obliged to be writable
+						 * @note The limit is needed only by the one who opens the nodes himself, having no tree:
+						 * an error in his own course would otherwise grow the stack of the open nodes until
+						 * the memory is exhausted. An excess answers with a `DEPTH_EXCEEDED` refusal
+						 *
+						 * \~
 						 */
 						uint32_t maxDepth;
 						/**
+						 * \~russian
 						 * @brief Конструктор
 						 *
+						 *
+						 * \~english
+						 * @brief Constructor
+						 *
+						 * \~
 						 */
 						Settings() noexcept;
 					} settings_t;
 				private:
 					/**
+					 * \~russian
 					 * @brief Запись открытого узла разметки
 					 *
+					 * \~english
+					 * @brief Record of an open markup node
+					 *
+					 * \~
 					 */
 					typedef struct Opened {
 						// Имя узла в записи, принятой в исходном тексте
@@ -134,11 +203,20 @@ namespace awh {
 						// Признак того, что узел содержит вложенные узлы разметки
 						bool elements;
 						/**
+						 * \~russian
 						 * Признак записи содержимого узла в одну строку без отступов
 						 *
 						 * @note Взводится узлам со смешанным содержимым и узлам, требующим
 						 * сохранения пробельного содержимого: отступ внутри них - не украшение
 						 * записи, а перемена самого содержимого
+						 *
+						 * \~english
+						 * Flag of the writing of the content of a node in a single line without the indents
+						 * @note Raised for the nodes with a mixed content and for the nodes requiring
+						 * a preservation of the whitespace content: an indent inside them is not an adornment
+						 * of the writing but a change of the content itself
+						 *
+						 * \~
 						 */
 						bool oneline;
 						// Количество связываний префиксов, объявленных узлом
@@ -152,14 +230,25 @@ namespace awh {
 						 */
 						vector <string> names;
 						/**
+						 * \~russian
 						 * @brief Конструктор
 						 *
+						 *
+						 * \~english
+						 * @brief Constructor
+						 *
+						 * \~
 						 */
 						Opened() noexcept : pending(false), filled(false), elements(false), oneline(false), bindings(0) {}
 					} opened_t;
 					/**
+					 * \~russian
 					 * @brief Связывание префикса с пространством имён при записи
 					 *
+					 * \~english
+					 * @brief Binding of a prefix to a namespace at the writing
+					 *
+					 * \~
 					 */
 					typedef struct Scope {
 						// Префикс без разделителя
@@ -167,8 +256,14 @@ namespace awh {
 						// Обозначение связанного пространства имён
 						string uri;
 						/**
+						 * \~russian
 						 * @brief Конструктор
 						 *
+						 *
+						 * \~english
+						 * @brief Constructor
+						 *
+						 * \~
 						 */
 						Scope() noexcept {}
 					} scope_t;
@@ -186,6 +281,7 @@ namespace awh {
 					string _text;
 				private:
 					/**
+					 * \~russian
 					 * Глубина стека открытых узлов разметки
 					 *
 					 * @details Записи открытых узлов со стека не снимаются, а
@@ -201,6 +297,23 @@ namespace awh {
 					 * @warning Обращаться к вершине стека следует по этой глубине, а не
 					 *          методом `back` хранилища: тот выдал бы запись давно
 					 *          закрытого узла
+					 *
+					 * \~english
+					 * Depth of the stack of the open markup nodes
+					 * @details The records of the open nodes are not popped off the stack but are
+					 *          reused: the depth is stored separately, and everything that
+					 *          lies in `_opened` beyond its limit is the records of the previously
+					 *          closed nodes preserved for the sake of their own capacity. A popping of a
+					 *          record would destroy the list of the written names of the attributes
+					 *          together with the memory occupied by it, and the next node would create
+					 *          it anew: a measurement showed two memory allocations per
+					 *          every written node against seventeen for the reading of a
+					 *          document in full
+					 * @warning The top of the stack should be addressed by this depth rather than
+					 *          by the `back` method of the storage: that one would issue the record of a long
+					 *          since closed node
+					 *
+					 * \~
 					 */
 					size_t _depth;
 					// Хранилище записей открытых узлов разметки
@@ -209,6 +322,7 @@ namespace awh {
 					// Действующие связывания префиксов с пространствами имён
 					vector <scope_t> _scopes;
 					/**
+					 * \~russian
 					 * Число действующих связываний префиксов
 					 *
 					 * @note Держится отдельно от размера хранилища намеренно: снятое
@@ -216,29 +330,58 @@ namespace awh {
 					 * действующим - память, отведённая под его строки, остаётся и
 					 * достаётся следующему связыванию. Устройство то же, что у стека
 					 * открытых узлов, и по тому же доводу
+					 *
+					 * \~english
+					 * Number of the effective bindings of the prefixes
+					 * @note It is kept separately from the size of the storage deliberately: a removed
+					 * binding is not deleted from the storage but only ceases to be considered
+					 * an effective one — the memory allotted for its strings remains and
+					 * goes to the next binding. The arrangement is the same as that of the stack
+					 * of the open nodes, and by the same argument
+					 *
+					 * \~
 					 */
 					size_t _bindings;
 				private:
 					/**
+					 * \~russian
 					 * @brief Метод завершения незакрытой метки узла
 					 *
+					 * \~english
+					 * @brief Method of completing an unclosed tag of a node
+					 *
+					 * \~
 					 */
 					void flush() noexcept;
 					/**
+					 * \~russian
 					 * @brief Метод записи отступа перед содержимым
 					 *
+					 * \~english
+					 * @brief Method of writing an indent before the content
+					 *
+					 * \~
 					 */
 					void indent() noexcept;
 					/**
+					 * \~russian
 					 * @brief Метод записи последовательности знаков с экранированием
 					 *
 					 * @param text      записываемая последовательность знаков
 					 * @param attribute признак записи значения атрибута
 					 * @return          результат выполнения операции
 					 *
+					 * \~english
+					 * @brief Method of writing a sequence of characters with an escaping
+					 * @param text      sequence of characters being written
+					 * @param attribute flag of the writing of the value of an attribute
+					 * @return          result of performing the operation
+					 *
+					 * \~
 					 */
 					bool escape(const string_view text, const bool attribute) noexcept;
 					/**
+					 * \~russian
 					 * @brief Метод проверки допустимости знаков дословно записываемой последовательности
 					 *
 					 * @details Содержимое примечания, дословного раздела и указания обработчику
@@ -250,9 +393,21 @@ namespace awh {
 					 * @param text проверяемая последовательность знаков
 					 * @return     результат выполнения операции
 					 *
+					 * \~english
+					 * @brief Method of checking the admissibility of the characters of a sequence being written literally
+					 * @details The content of a comment, of a literal section and of a processing instruction
+					 * gets into the text without an escaping, and the check of the characters by the escaping there
+					 * is not performed. It is all the same necessary to check them: a character inadmissible in a
+					 * markup or an erroneous sequence of the encoding make the
+					 * assembled text unreadable
+					 * @param text sequence of characters being checked
+					 * @return     result of performing the operation
+					 *
+					 * \~
 					 */
 					bool verify(const string_view text) noexcept;
 					/**
+					 * \~russian
 					 * @brief Метод получения префикса для пространства имён
 					 *
 					 * @details Обозначение, ещё не связанное ни с одним префиксом,
@@ -263,9 +418,20 @@ namespace awh {
 					 * @param result    найденный либо назначенный префикс
 					 * @return          результат выполнения операции
 					 *
+					 * \~english
+					 * @brief Method of getting the prefix for a namespace
+					 * @details A designation not yet bound to any prefix
+					 * is declared at the node being written with an independently assigned prefix
+					 * @param uri       designation of the namespace
+					 * @param attribute flag of the search of a prefix for the name of an attribute
+					 * @param result    found or assigned prefix
+					 * @return          result of performing the operation
+					 *
+					 * \~
 					 */
 					bool prefix(const string_view uri, const bool attribute, string & result) noexcept;
 					/**
+					 * \~russian
 					 * @brief Метод занятия имени атрибута открытым узлом
 					 *
 					 * @details Договор не допускает повторного имени атрибута у одного узла,
@@ -276,9 +442,20 @@ namespace awh {
 					 * @param name имя атрибута в том виде, в каком оно попадает в текст
 					 * @return     результат выполнения операции
 					 *
+					 * \~english
+					 * @brief Method of occupying the name of an attribute by an open node
+					 * @details The protocol does not admit a repeated name of an attribute at a single node,
+					 * while a declaration of a namespace is the same kind of attribute. Without an accounting
+					 * of what has been written the writing would assemble a text which its own reading cannot
+					 * accept
+					 * @param name name of the attribute in the form in which it gets into the text
+					 * @return     result of performing the operation
+					 *
+					 * \~
 					 */
 					bool occupy(const string_view name) noexcept;
 					/**
+					 * \~russian
 					 * @brief Метод открытия узла разметки с заданными объявлениями
 					 *
 					 * @details Объявления записываются узлу прежде подбора префикса, отчего подбор
@@ -295,9 +472,26 @@ namespace awh {
 					 * @param oneline   признак записи содержимого узла в одну строку
 					 * @return          результат выполнения операции
 					 *
+					 * \~english
+					 * @brief Method of opening a markup node with the given declarations
+					 * @details The declarations are written to the node before the selection of a prefix, from which the selection
+					 * finds the given prefix already bound and does not assign its own. The order here is
+					 * important: the name of the node is written first, while the declarations stand in the tag after it — and
+					 * it is required to learn by which prefix to write the name before the declarations
+					 * get into the text
+					 * @param local    local name of the node being opened
+					 * @param uri      designation of the namespace of the node being opened
+					 * @param declares  declarations of the namespaces being written to the node
+					 * @param preferred prefix by which the name of the node is written in the source text
+					 * @param verbatim  flag of the writing of the names of the node literally, without the namespaces
+					 * @param oneline   flag of the writing of the content of the node in a single line
+					 * @return          result of performing the operation
+					 *
+					 * \~
 					 */
 					bool open(const string_view local, const string_view uri, const vector <binding_t> * declares, const string_view * preferred, const bool verbatim, const bool oneline) noexcept;
 					/**
+					 * \~russian
 					 * @brief Метод записи узла дерева разметки с наследуемым обращением с пробелами
 					 *
 					 * @param node     записываемый узел дерева разметки
@@ -305,9 +499,18 @@ namespace awh {
 					 *                 от объемлющих узлов
 					 * @return         результат выполнения операции
 					 *
+					 * \~english
+					 * @brief Method of writing a node of a markup tree with an inherited treatment of the spaces
+					 * @param node     node of the markup tree being written
+					 * @param preserve flag of the preservation of the whitespace content inherited
+					 *                 from the enclosing nodes
+					 * @return         result of performing the operation
+					 *
+					 * \~
 					 */
 					bool element(const node_t & node, const bool preserve) noexcept;
 					/**
+					 * \~russian
 					 * @brief Метод записи атрибута при открытом узле с дословной записью имени
 					 *
 					 * @details Дословная запись предназначена дереву, разобранному без
@@ -327,6 +530,24 @@ namespace awh {
 					 * @param verbatim признак дословной записи имени атрибута
 					 * @return         результат выполнения операции
 					 *
+					 * \~english
+					 * @brief Method of writing an attribute at an open node with a literal writing of the name
+					 * @details The literal writing is intended for a tree parsed without the
+					 * namespaces: the names lie there in full, together with the separator of the
+					 * prefix, while the declarations of the namespaces are considered ordinary attributes.
+					 * There is nothing to conduct a selection of a prefix for such a name by, while there is nothing for the accounting of the bindings
+					 * to account — there are no declarations in such a tree
+					 * @warning A literal writing of a declaration bypassing the accounting of the effective bindings
+					 * is admissible only because it is given not by the caller but by the writing of a tree:
+					 * a parsing with the namespaces extracts the declarations from the list of the attributes, and
+					 * there is nowhere to mix both kinds of the writing in a single text
+					 * @param local    name of the attribute written as it is
+					 * @param value    value of the attribute
+					 * @param uri      designation of the namespace of the attribute
+					 * @param verbatim flag of the literal writing of the name of the attribute
+					 * @return         result of performing the operation
+					 *
+					 * \~
 					 */
 					bool attribute(const string_view local, const string_view value, const string_view uri, const bool verbatim) noexcept;
 				private:
@@ -334,21 +555,34 @@ namespace awh {
 					uint32_t _counter;
 				public:
 					/**
+					 * \~russian
 					 * @brief Метод получения текущих настроек записи
 					 *
 					 * @return текущие настройки записи текста разметки
 					 *
+					 * \~english
+					 * @brief Method of getting the current settings of the writing
+					 * @return current settings of the writing of a markup text
+					 *
+					 * \~
 					 */
 					const settings_t & settings() const noexcept;
 					/**
+					 * \~russian
 					 * @brief Метод установки настроек записи
 					 *
 					 * @param settings настройки записи текста разметки
 					 *
+					 * \~english
+					 * @brief Method of setting the settings of the writing
+					 * @param settings settings of the writing of a markup text
+					 *
+					 * \~
 					 */
 					void settings(const settings_t & settings) noexcept;
 				public:
 					/**
+					 * \~russian
 					 * @brief Метод записи объявления разметки
 					 *
 					 * @details Записывается первым указанием, до всякого содержимого
@@ -356,10 +590,18 @@ namespace awh {
 					 * @param standalone признак самодостаточности текста разметки
 					 * @return           результат выполнения операции
 					 *
+					 * \~english
+					 * @brief Method of writing the markup declaration
+					 * @details Written as the first directive, before any content
+					 * @param standalone flag of the standaloneness of the markup text
+					 * @return           result of performing the operation
+					 *
+					 * \~
 					 */
 					bool declaration(const standalone_t standalone = standalone_t::NONE) noexcept;
 				public:
 					/**
+					 * \~russian
 					 * @brief Метод открытия узла разметки
 					 *
 					 * @details Непустое обозначение пространства имён объявляется при узле,
@@ -369,17 +611,33 @@ namespace awh {
 					 * @param uri   обозначение пространства имён открываемого узла
 					 * @return      результат выполнения операции
 					 *
+					 * \~english
+					 * @brief Method of opening a markup node
+					 * @details A non-empty designation of a namespace is declared at the node
+					 * if it has not yet been declared higher up the stack of the open nodes
+					 * @param local local name of the node being opened
+					 * @param uri   designation of the namespace of the node being opened
+					 * @return      result of performing the operation
+					 *
+					 * \~
 					 */
 					bool open(const string_view local, const string_view uri = "") noexcept;
 					/**
+					 * \~russian
 					 * @brief Метод закрытия последнего открытого узла
 					 *
 					 * @return результат выполнения операции
 					 *
+					 * \~english
+					 * @brief Method of closing the last open node
+					 * @return result of performing the operation
+					 *
+					 * \~
 					 */
 					bool close() noexcept;
 				public:
 					/**
+					 * \~russian
 					 * @brief Метод записи атрибута открытого узла
 					 *
 					 * @warning Записывается только сразу после открытия узла, до его
@@ -391,19 +649,38 @@ namespace awh {
 					 * @param uri   обозначение пространства имён атрибута
 					 * @return      результат выполнения операции
 					 *
+					 * \~english
+					 * @brief Method of writing an attribute of an open node
+					 * @warning Written only right after the opening of a node, before its
+					 * content: an attribute cannot be appended to a node which already has a content
+					 * @param local local name of the attribute
+					 * @param value value of the attribute
+					 * @param uri   designation of the namespace of the attribute
+					 * @return      result of performing the operation
+					 *
+					 * \~
 					 */
 					bool attribute(const string_view local, const string_view value, const string_view uri = "") noexcept;
 					/**
+					 * \~russian
 					 * @brief Метод объявления пространства имён при открытом узле
 					 *
 					 * @param prefix префикс без разделителя, пустой для объявления по умолчанию
 					 * @param uri    обозначение объявляемого пространства имён
 					 * @return       результат выполнения операции
 					 *
+					 * \~english
+					 * @brief Method of declaring a namespace at an open node
+					 * @param prefix prefix without the separator, empty for a default declaration
+					 * @param uri    designation of the namespace being declared
+					 * @return       result of performing the operation
+					 *
+					 * \~
 					 */
 					bool binding(const string_view prefix, const string_view uri) noexcept;
 				public:
 					/**
+					 * \~russian
 					 * @brief Метод записи текстового содержимого
 					 *
 					 * @details Знаки, имеющие в разметке особый смысл, экранируются
@@ -411,9 +688,17 @@ namespace awh {
 					 * @param text записываемое текстовое содержимое
 					 * @return     результат выполнения операции
 					 *
+					 * \~english
+					 * @brief Method of writing a text content
+					 * @details The characters having a special meaning in a markup are escaped
+					 * @param text text content being written
+					 * @return     result of performing the operation
+					 *
+					 * \~
 					 */
 					bool text(const string_view text) noexcept;
 					/**
+					 * \~russian
 					 * @brief Метод записи раздела дословного текста
 					 *
 					 * @warning Содержимое записывается без экранирования, и завершающая
@@ -423,27 +708,52 @@ namespace awh {
 					 * @param text записываемое дословное содержимое
 					 * @return     результат выполнения операции
 					 *
+					 * \~english
+					 * @brief Method of writing a literal text section
+					 * @warning The content is written without an escaping, and the sequence terminating
+					 * the section is inadmissible inside it. Such a content
+					 * is rejected rather than being cut into several sections
+					 * @param text literal content being written
+					 * @return     result of performing the operation
+					 *
+					 * \~
 					 */
 					bool cdata(const string_view text) noexcept;
 					/**
+					 * \~russian
 					 * @brief Метод записи примечания
 					 *
 					 * @param text содержимое примечания
 					 * @return     результат выполнения операции
 					 *
+					 * \~english
+					 * @brief Method of writing a comment
+					 * @param text content of the comment
+					 * @return     result of performing the operation
+					 *
+					 * \~
 					 */
 					bool comment(const string_view text) noexcept;
 					/**
+					 * \~russian
 					 * @brief Метод записи указания обработчику
 					 *
 					 * @param target цель указания обработчику
 					 * @param text   данные указания обработчику
 					 * @return       результат выполнения операции
 					 *
+					 * \~english
+					 * @brief Method of writing a processing instruction
+					 * @param target target of the processing instruction
+					 * @param text   data of the processing instruction
+					 * @return       result of performing the operation
+					 *
+					 * \~
 					 */
 					bool processing(const string_view target, const string_view text) noexcept;
 				public:
 					/**
+					 * \~russian
 					 * @brief Метод записи узла с текстовым содержимым
 					 *
 					 * @details Равнозначен открытию узла, записи содержимого и закрытию:
@@ -454,9 +764,20 @@ namespace awh {
 					 * @param uri   обозначение пространства имён записываемого узла
 					 * @return      результат выполнения операции
 					 *
+					 * \~english
+					 * @brief Method of writing a node with a text content
+					 * @details Equivalent to an opening of a node, a writing of the content and a closing:
+					 * such a combination is met in a markup more often than the rest
+					 * @param local local name of the node being written
+					 * @param value text content of the node being written
+					 * @param uri   designation of the namespace of the node being written
+					 * @return      result of performing the operation
+					 *
+					 * \~
 					 */
 					bool element(const string_view local, const string_view value, const string_view uri = "") noexcept;
 					/**
+					 * \~russian
 					 * @brief Метод записи дерева разметки
 					 *
 					 * @warning Описание типа документа пропускается: записывать его модуль
@@ -483,17 +804,47 @@ namespace awh {
 					 * @param node записываемый узел дерева разметки вместе с вложенными
 					 * @return     результат выполнения операции
 					 *
+					 * \~english
+					 * @brief Method of writing a markup tree
+					 * @warning The document type definition is skipped: the module does not know how to write it
+					 * at all, and the reverse transition tree→text loses it together with
+					 * the entities and the default values of the attributes declared in it. A tree
+					 * read with such a definition comes out written without it
+					 * @note The bindings of the namespaces are not taken over from the tree: the prefixes
+					 * are assigned anew, and the written text is equivalent to the source one in
+					 * the meaning but not in the spelling of the names
+					 * @note The traversal of the tree is conducted by an own stack rather than by a recursion: the depth
+					 * of the tree being written is not limited by anything, and it does not threaten the stack of the task.
+					 * Every parsed tree is written back, with whatever depth it
+					 * may have been parsed
+					 * @note The adorned writing is repeatable: the indents put by its previous
+					 * pass the tree accepts as a whitespace content, and they are rewritten
+					 * not on a par with the rest but are arranged anew. The writing does not thereby change
+					 * the content: the nodes with a mixed content, the nodes under the allotted
+					 * `xml:space` attribute and the nodes with a literal text section
+					 * are written in a single line without the indents at all
+					 * @param node node of the markup tree being written together with the nested ones
+					 * @return     result of performing the operation
+					 *
+					 * \~
 					 */
 					bool element(const node_t & node) noexcept;
 				public:
 					/**
+					 * \~russian
 					 * @brief Метод получения кода ошибки записи
 					 *
 					 * @return код ошибки последней операции записи
 					 *
+					 * \~english
+					 * @brief Method of getting the error code of the writing
+					 * @return error code of the last operation of the writing
+					 *
+					 * \~
 					 */
 					error_t error() const noexcept;
 					/**
+					 * \~russian
 					 * @brief Метод проверки завершённости собранного текста
 					 *
 					 * @details Текст завершён, когда записан корневой узел и все открытые
@@ -501,10 +852,18 @@ namespace awh {
 					 *
 					 * @return результат проверки
 					 *
+					 * \~english
+					 * @brief Method of checking the completeness of the assembled text
+					 * @details The text is complete when the root node has been written and all the open
+					 * nodes have been closed. An incomplete text must not be issued outside
+					 * @return result of the check
+					 *
+					 * \~
 					 */
 					bool complete() const noexcept;
 				public:
 					/**
+					 * \~russian
 					 * @brief Метод получения собранного текста разметки
 					 *
 					 * @note Запись, прекращённая ошибкой, выдаёт пустой текст: собранное к
@@ -513,9 +872,18 @@ namespace awh {
 					 *
 					 * @return собранный текст разметки в кодировке UTF-8
 					 *
+					 * \~english
+					 * @brief Method of getting the assembled markup text
+					 * @note A writing terminated by an error issues an empty text: what has been assembled by
+					 * that moment is cut off in the middle of the tag of a node, and it must not be issued outside.
+					 * The reason of the refusal is taken from @c error()
+					 * @return assembled markup text in the UTF-8 encoding
+					 *
+					 * \~
 					 */
 					const string & text() const noexcept;
 					/**
+					 * \~russian
 					 * @brief Метод отведения места под собираемый текст разметки
 					 *
 					 * @details Отводится место наперёд, чтобы рост накопителя по ходу записи
@@ -524,6 +892,25 @@ namespace awh {
 					 * догадка изнутри была бы одинаково неверна и для узла ответа SOAP, и
 					 * для описания устройства UPnP
 					 *
+					 * @note Вызов необязателен: без него накопитель растёт сам, удваивая
+					 * своё место, отчего перекладывание обходится в удвоенный объём итога.
+					 * Заниженный размер отказом не является - недостающее доводится ростом
+					 * @param size ожидаемый размер собираемого текста разметки в байтах
+					 *
+					 * \~english
+					 * @brief Method of allotting the space for the markup text being assembled
+					 * @details The space is allotted in advance so that the growth of the accumulator in the course of the writing
+					 * does not move what has been assembled from place to place. The size is given from the outside
+					 * deliberately: the expected volume is known to the one who assembles the markup, while
+					 * a guess from the inside would be equally wrong both for a node of a SOAP answer and
+					 * for a description of a UPnP device
+					 * @note The call is optional: without it the accumulator grows by itself, doubling
+					 * its own space, from which the moving costs a doubled volume of the result.
+					 * An underestimated size is not a refusal — what is missing is added by a growth
+					 * @param size expected size of the markup text being assembled in bytes
+					 *
+					 * \~
+					 *
 					 * @code{.cpp}
 					 * writer_t writer;
 					 *
@@ -531,35 +918,54 @@ namespace awh {
 					 * writer.declaration();
 					 * @endcode
 					 *
-					 * @note Вызов необязателен: без него накопитель растёт сам, удваивая
-					 * своё место, отчего перекладывание обходится в удвоенный объём итога.
-					 * Заниженный размер отказом не является - недостающее доводится ростом
 					 *
-					 * @param size ожидаемый размер собираемого текста разметки в байтах
 					 *
 					 */
 					void reserve(const size_t size) noexcept;
 					/**
+					 * \~russian
 					 * @brief Метод очистки собранного текста разметки
 					 *
+					 * \~english
+					 * @brief Method of clearing the assembled markup text
+					 *
+					 * \~
 					 */
 					void clear() noexcept;
 				public:
 					/**
+					 * \~russian
 					 * @brief Конструктор
 					 *
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
 					 */
 					Writer() noexcept;
 					/**
+					 * \~russian
 					 * @brief Конструктор
 					 *
 					 * @param settings настройки записи текста разметки
 					 *
+					 * \~english
+					 * @brief Constructor
+					 * @param settings settings of the writing of a markup text
+					 *
+					 * \~
 					 */
 					explicit Writer(const settings_t & settings) noexcept;
 					/**
+					 * \~russian
 					 * @brief Деструктор
 					 *
+					 *
+					 * \~english
+					 * @brief Destructor
+					 *
+					 * \~
 					 */
 					~Writer() noexcept;
 			} writer_t;

@@ -9,8 +9,15 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * \~russian
  * @brief Заголовочный файл потокового чтения текста CSV — класс Reader, принимающий текст
  *        кусками произвольного размера и выдающий события разбора
+ *
+ * \~english
+ * @brief Header file of the streaming reading of a CSV text — the Reader class, which accepts the text
+ *        by chunks of an arbitrary size and issues the parsing events
+ *
+ * \~
  *
  * @copyright: Copyright © 2026
  *
@@ -25,7 +32,6 @@
 /**
  * Стандартные заголовочные файлы
  */
-#include <deque>
 #include <string>
 #include <vector>
 #include <cstdint>
@@ -45,8 +51,14 @@
 #include "../../sys/macro_push.hpp"
 
 /**
+ * \~russian
  * @brief Основное пространство имён
  *
+ *
+ * \~english
+ * @brief Main namespace
+ *
+ * \~
  */
 namespace awh {
 	/**
@@ -55,22 +67,60 @@ namespace awh {
 	using namespace std;
 
 	/**
+	 * \~russian
 	 * @brief Пространство имён контейнеров данных
 	 *
+	 *
+	 * \~english
+	 * @brief Data containers namespace
+	 *
+	 * \~
 	 */
 	namespace codec {
 		/**
+		 * \~russian
 		 * @brief Пространство имён контейнера CSV
 		 *
+		 *
+		 * \~english
+		 * @brief CSV container namespace
+		 *
+		 * \~
 		 */
 		namespace csv {
 			/**
+			 * \~russian
 			 * @brief Класс потокового чтения текста CSV
 			 *
 			 * @details Текст принимается кусками произвольного размера, а выдача ведётся
 			 * событиями по мере разбора: удерживать текст целиком чтению не требуется
 			 *
 			 * @par Порядок работы
+			 *
+			 * @warning Выдача разбора не зависит от того, как исходный текст нарезан на
+			 * куски: одна и та же последовательность событий с одними и теми же местами
+			 * получается при всякой нарезке. Договор этот проверяется дифференциальной
+			 * сверкой подачи и нарушается легче, чем кажется - всякий знак, требующий
+			 * взгляда на следующий за ним, нарушает его при нарезке ровно между ними
+			 * @note Поле выдаётся своим событием, а запись - отдельным событием конца.
+			 * Собирать запись целиком чтению не нужно, и запись из тысячи полей проходит
+			 * через него, не оседая в памяти
+			 *
+			 * \~english
+			 * @brief Class of the streaming reading of a CSV text
+			 * @details The text is accepted by chunks of an arbitrary size, while the issuance is conducted
+			 * by events as the parsing goes on: the reading is not required to hold the text in full
+			 * @par Order of the work
+			 * @warning The output of the parsing does not depend on how the source text is cut into
+			 * chunks: one and the same sequence of the events with one and the same places
+			 * is obtained at any cutting. This contract is checked by a differential
+			 * comparison of the feeding and is violated more easily than it seems — every character requiring
+			 * a look at the one following it violates it at a cutting exactly between them
+			 * @note A field is issued by its own event, while a record — by a separate event of the end.
+			 * The reading does not need to assemble a record in full, and a record of a thousand fields passes
+			 * through it without settling in the memory
+			 *
+			 * \~
 			 *
 			 * @code{.cpp}
 			 * reader_t reader;
@@ -86,39 +136,53 @@ namespace awh {
 			 * }
 			 * @endcode
 			 *
-			 * @warning Выдача разбора не зависит от того, как исходный текст нарезан на
-			 * куски: одна и та же последовательность событий с одними и теми же местами
-			 * получается при всякой нарезке. Договор этот проверяется дифференциальной
-			 * сверкой подачи и нарушается легче, чем кажется - всякий знак, требующий
-			 * взгляда на следующий за ним, нарушает его при нарезке ровно между ними
 			 *
-			 * @note Поле выдаётся своим событием, а запись - отдельным событием конца.
-			 * Собирать запись целиком чтению не нужно, и запись из тысячи полей проходит
-			 * через него, не оседая в памяти
 			 *
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Reader {
 				public:
 					/**
+					 * \~russian
 					 * @brief Настройки разбора текста
 					 *
+					 * \~english
+					 * @brief Settings of the parsing of a text
+					 *
+					 * \~
 					 */
 					typedef struct __AWH_SHARED_EXPORT__ Settings {
 						/**
+						 * \~russian
 						 * Знак-разделитель полей, ноль - определять по содержимому
 						 *
 						 * @note Умолчанием берётся запятая, названная договором. Ноль
 						 * включает определение по содержимому: разбор откладывает выдачу
 						 * до тех пор, пока разделитель не определится
+						 *
+						 * \~english
+						 * Separator character of the fields, zero — determine by the content
+						 * @note By default the comma named by the protocol is taken. Zero
+						 * enables the determination by the content: the parsing postpones the issuance
+						 * until the separator is determined
+						 *
+						 * \~
 						 */
 						char separator;
 						// Знак кавычек, обрамляющих поле
 						char quote;
 						/**
+						 * \~russian
 						 * Знак, начинающий строку примечания, ноль - примечаний нет
 						 *
 						 * @note Договор примечаний не описывает вовсе, потому умолчанием
 						 * их нет: строка, начинающаяся с решётки, обыкновенная запись
+						 *
+						 * \~english
+						 * Character beginning a comment line, zero — there are no comments
+						 * @note The protocol does not describe the comments at all, therefore by default
+						 * there are none: a line beginning with a hash is an ordinary record
+						 *
+						 * \~
 						 */
 						char comment;
 						// Способ записи кавычки внутри поля, заключённого в кавычки
@@ -132,12 +196,22 @@ namespace awh {
 						// Кодировка, навязанная извне вопреки метке порядка байтов
 						encoding_t encoding;
 						/**
+						 * \~russian
 						 * Признак строгого следования RFC 4180
 						 *
 						 * @note Строгий разбор отвечает отказом на одиночную кавычку
 						 * внутри поля без кавычек, на знаки за закрывающей кавычкой и на
 						 * одиночный перевод строки в качестве конца записи. Обиход этого
 						 * не соблюдает, потому умолчанием разбор нестрогий
+						 *
+						 * \~english
+						 * Flag of the strict following of RFC 4180
+						 * @note The strict parsing answers with a refusal to a single quote
+						 * inside a field without quotes, to the characters after a closing quote and to
+						 * a single line feed as the end of a record. The custom does not
+						 * observe this, therefore by default the parsing is a non-strict one
+						 *
+						 * \~
 						 */
 						bool strict;
 						// Признак выдачи событий пустых строк
@@ -145,10 +219,18 @@ namespace awh {
 						// Признак выдачи событий примечаний
 						bool emitComments;
 						/**
+						 * \~russian
 						 * Признак проверки повторного объявления имён полей в заголовке
 						 *
 						 * @note Проверка стоит памяти - разбор удерживает имена, - и
 						 * отключают её там, где заголовок заведомо свой
+						 *
+						 * \~english
+						 * Flag of the check of a repeated declaration of the names of the fields in the header
+						 * @note The check costs memory — the parsing holds the names — and
+						 * it is disabled where the header is known to be one's own
+						 *
+						 * \~
 						 */
 						bool duplicates;
 						// Наибольшая допустимая длина поля в байтах, ноль - без предела
@@ -160,13 +242,20 @@ namespace awh {
 						// Количество первых записей, по которым определяется разделитель
 						uint32_t detect;
 						/**
+						 * \~russian
 						 * @brief Конструктор
 						 *
+						 *
+						 * \~english
+						 * @brief Constructor
+						 *
+						 * \~
 						 */
 						Settings() noexcept;
 					} settings_t;
 				private:
 					/**
+					 * \~russian
 					 * @brief Состояние разбора текста
 					 *
 					 * @details Состояние хранит и то, что обыкновенно достаётся взглядом на
@@ -174,6 +263,14 @@ namespace awh {
 					 * переводит разбор в отдельное состояние. Иначе нарезка текста ровно
 					 * между такими знаками меняла бы выдачу
 					 *
+					 * \~english
+					 * @brief State of the parsing of a text
+					 * @details The state stores also what is ordinarily obtained by a look at the
+					 * next character: a character whose meaning depends on the one following it merely
+					 * moves the parsing into a separate state. Otherwise a cutting of the text exactly
+					 * between such characters would change the output
+					 *
+					 * \~
 					 */
 					enum class state_t : uint8_t {
 						RECORD_START   = 0x00, // Начало записи, поле ещё не начато
@@ -187,8 +284,13 @@ namespace awh {
 						FAILED         = 0x08  // Разбор прекращён ошибкой
 					};
 					/**
+					 * \~russian
 					 * @brief Событие разбора, собранное для выдачи
 					 *
+					 * \~english
+					 * @brief Parsing event assembled for the issuance
+					 *
+					 * \~
 					 */
 					typedef struct Item {
 						// Вид собранного события
@@ -204,8 +306,14 @@ namespace awh {
 						// Признак того, что содержимое поля было изменено разбором
 						bool modified;
 						/**
+						 * \~russian
 						 * @brief Конструктор
 						 *
+						 *
+						 * \~english
+						 * @brief Constructor
+						 *
+						 * \~
 						 */
 						Item() noexcept :
 						 event(event_t::NONE), quoted(false), modified(false) {}
@@ -225,11 +333,20 @@ namespace awh {
 					char _separator;
 				private:
 					/**
+					 * \~russian
 					 * Количество полей, каким надлежит обладать всякой записи
 					 *
 					 * @note Заводится лишь при сверке количества полей и без заголовка:
 					 *       назначает его первая запись, а ноль означает, что записей
 					 *       ещё не было и назначать количество нечему
+					 *
+					 * \~english
+					 * Number of the fields which every record ought to possess
+					 * @note Established only at the check of the number of the fields and without a header:
+					 *       it is assigned by the first record, while zero means that there have been
+					 *       no records yet and there is nothing to assign the number by
+					 *
+					 * \~
 					 */
 					uint32_t _expected;
 				private:
@@ -264,7 +381,44 @@ namespace awh {
 					unordered_set <string> _unique;
 				private:
 					// Очередь собранных событий разбора
-					deque <item_t> _items;
+					/**
+					 * \~russian
+					 * Очередь собранных событий разбора
+					 *
+					 * @note Очередь заведена перечнем с указанием на голову, а не двусторонней
+					 *       очередью: последняя заводит по блоку памяти на каждые несколько
+					 *       десятков событий и освобождает его по опустошении, отчего разбор
+					 *       крупной таблицы стоил двадцати шести тысяч выделений памяти.
+					 *       Перечень же выделенное удерживает и переиспользует: после первой
+					 *       таблицы выделений не бывает вовсе
+					 *
+					 * \~english
+					 * Queue of the assembled parsing events
+					 * @note The queue has been made a list with a pointer to the head rather than a deque:
+					 *       the latter creates a block of memory per every few
+					 *       dozen events and releases it upon the emptying, from which the parsing
+					 *       of a large table cost twenty-six thousand memory allocations.
+					 *       A list, however, holds and reuses what has been allocated: after the first
+					 *       table there are no allocations at all
+					 *
+					 * \~
+					 */
+					vector <item_t> _items;
+					/**
+					 * \~russian
+					 * Указание на первое невыданное событие в очереди
+					 *
+					 * @note По выдаче последнего события очередь очищается целиком, а
+					 *       выделенное под неё остаётся: тем и достигается переиспользование
+					 *
+					 * \~english
+					 * Pointer to the first unissued event in the queue
+					 * @note Upon the issuance of the last event the queue is cleared in full, while
+					 *       what has been allocated for it remains: that is how the reuse is achieved
+					 *
+					 * \~
+					 */
+					size_t _head;
 					// Событие разбора, выданное последним
 					item_t _current;
 				private:
@@ -291,6 +445,7 @@ namespace awh {
 					bool _detected;
 				private:
 					/**
+					 * \~russian
 					 * Разметка знаков, разбор поля без кавычек прерывающих
 					 *
 					 * @details Разметка эта служит быстрому проходу по знакам, состояния
@@ -301,17 +456,35 @@ namespace awh {
 					 * @note Разметка перестраивается при всякой смене настроек и по
 					 *       определении разделителя: знаки, разбор прерывающие, зависят и
 					 *       от разделителя, и от знака кавычек, и от способа отмены
+					 *
+					 * \~english
+					 * Map of the characters interrupting the parsing of a field without quotes
+					 * @details This map serves the fast pass over the characters not changing the states
+					 * of the parsing: a character not marked in it is the content of the field
+					 * itself, and therefore whole chunks of such content are transferred into
+					 * the storage at once, bypassing the switching of the states
+					 * @note The map is rebuilt at every change of the settings and upon the
+					 *       determination of the separator: the characters interrupting the parsing depend both
+					 *       on the separator, and on the quote character, and on the way of the escaping
+					 *
+					 * \~
 					 */
 					bool _breakUnquoted[256];
 					// Разметка знаков, разбор поля в кавычках прерывающих
 					bool _breakQuoted[256];
 				private:
 					/**
+					 * \~russian
 					 * @brief Метод перестроения разметки знаков, разбор прерывающих
 					 *
+					 * \~english
+					 * @brief Method of rebuilding the map of the characters interrupting the parsing
+					 *
+					 * \~
 					 */
 					void marking() noexcept;
 					/**
+					 * \~russian
 					 * @brief Метод быстрого прохода по знакам, состояния не меняющим
 					 *
 					 * @details Проходятся знаки, содержимым поля являющиеся: переносятся они
@@ -324,25 +497,52 @@ namespace awh {
 					 * @param size   размер буфера проходимых знаков текста
 					 * @return       количество пройденных знаков
 					 *
+					 * \~english
+					 * @brief Method of the fast pass over the characters not changing the state
+					 * @details The characters being the content of a field are passed: they are transferred
+					 * into the storage at once, while the accounting of the position is conducted by an addition. The contract about
+					 * the independence of the output from the cutting of the text is not affected by this pass:
+					 * the characters whose meaning depends on the one following them are marked in the map
+					 * and are not taken by the pass
+					 * @param buffer buffer of the characters of the text being passed
+					 * @param size   size of the buffer of the characters of the text being passed
+					 * @return       number of the passed characters
+					 *
+					 * \~
 					 */
 					size_t bulk(const char * buffer, const size_t size) noexcept;
 					/**
+					 * \~russian
 					 * @brief Метод разбора приведённого куска текста
 					 *
 					 * @param text разбираемый приведённый кусок текста
 					 * @return     признак продолжения разбора
 					 *
+					 * \~english
+					 * @brief Method of parsing a converted chunk of a text
+					 * @param text converted chunk of the text being parsed
+					 * @return     flag of the continuation of the parsing
+					 *
+					 * \~
 					 */
 					bool process(const string & text) noexcept;
 					/**
+					 * \~russian
 					 * @brief Метод разбора очередного знака текста
 					 *
 					 * @param letter разбираемый знак
 					 * @return       признак продолжения разбора
 					 *
+					 * \~english
+					 * @brief Method of parsing the next character of a text
+					 * @param letter character being parsed
+					 * @return       flag of the continuation of the parsing
+					 *
+					 * \~
 					 */
 					bool parse(const char letter) noexcept;
 					/**
+					 * \~russian
 					 * @brief Метод разбора знака состоянием разбора
 					 *
 					 * @details Знак, сменивший состояние, разбирается заново уже новым
@@ -353,19 +553,38 @@ namespace awh {
 					 * @param letter разбираемый знак
 					 * @return       признак продолжения разбора
 					 *
+					 * \~english
+					 * @brief Method of parsing a character by the state of the parsing
+					 * @details A character that has changed the state is parsed anew already by the new
+					 * state, and therefore the parsing calls itself again with the same character. The accounting of the
+					 * limits is taken outside exactly for this reason: counted here, it would grow at
+					 * every entry
+					 * @param letter character being parsed
+					 * @return       flag of the continuation of the parsing
+					 *
+					 * \~
 					 */
 					bool step(const char letter) noexcept;
 					/**
+					 * \~russian
 					 * @brief Метод завершения разбора текста
 					 *
 					 * @details Вызывается по окончании текста и доводит до конца то, что
 					 * осталось незавершённым: последнее поле без знака конца строки,
 					 * последнюю запись и отложенное состояние возврата каретки
 					 *
+					 * \~english
+					 * @brief Method of completing the parsing of a text
+					 * @details Called upon the end of the text and brings to the end what has
+					 * remained unfinished: the last field without a line ending character,
+					 * the last record and the postponed state of a carriage return
+					 *
+					 * \~
 					 */
 					void finish() noexcept;
 				private:
 					/**
+					 * \~russian
 					 * @brief Метод определения разделителя по отложенному тексту
 					 *
 					 * @details Разделитель определяется постоянством количества полей в
@@ -374,60 +593,110 @@ namespace awh {
 					 *
 					 * @return признак успешного определения
 					 *
+					 * \~english
+					 * @brief Method of determining the separator by the postponed text
+					 * @details The separator is determined by the constancy of the number of the fields in the
+					 * records rather than by the frequency of a character: the frequency is deceived by a text where
+					 * there are more commas in the values than separators
+					 * @return flag of a successful determination
+					 *
+					 * \~
 					 */
 					bool detect() noexcept;
 					/**
+					 * \~russian
 					 * @brief Метод подсчёта полей при заданном разделителе
 					 *
 					 * @param separator знак-разделитель для проверки
 					 * @param counts    количество полей по записям
 					 * @return          признак пригодности разделителя
 					 *
+					 * \~english
+					 * @brief Method of counting the fields at a given separator
+					 * @param separator separator character to be checked
+					 * @param counts    number of the fields by the records
+					 * @return          flag of the suitability of the separator
+					 *
+					 * \~
 					 */
 					bool count(const char separator, vector <uint32_t> & counts) const noexcept;
 				private:
 					/**
+					 * \~russian
 					 * @brief Метод завершения текущего поля
 					 *
 					 * @return признак продолжения разбора
 					 *
+					 * \~english
+					 * @brief Method of completing the current field
+					 * @return flag of the continuation of the parsing
+					 *
+					 * \~
 					 */
 					bool complete() noexcept;
 					/**
+					 * \~russian
 					 * @brief Метод завершения текущей записи
 					 *
 					 * @return признак продолжения разбора
 					 *
+					 * \~english
+					 * @brief Method of completing the current record
+					 * @return flag of the continuation of the parsing
+					 *
+					 * \~
 					 */
 					bool commit() noexcept;
 					/**
+					 * \~russian
 					 * @brief Метод занесения ошибки разбора
 					 *
 					 * @param error код ошибки разбора
 					 * @return      признак продолжения разбора, всегда ложь
 					 *
+					 * \~english
+					 * @brief Method of recording a parsing error
+					 * @param error error code of the parsing
+					 * @return      flag of the continuation of the parsing, always false
+					 *
+					 * \~
 					 */
 					bool fail(const error_t error) noexcept;
 				private:
 					/**
+					 * \~russian
 					 * @brief Метод снятия обвязки с накопленного содержимого поля
 					 *
 					 * @param offset смещение начала содержимого в хранилище записи
 					 * @return       отрезок содержимого без обвязки
 					 *
+					 * \~english
+					 * @brief Method of removing the padding from the accumulated content of a field
+					 * @param offset offset of the beginning of the content in the storage of the record
+					 * @return       segment of the content without the padding
+					 *
+					 * \~
 					 */
 					span_t trim(const uint32_t offset) noexcept;
 				public:
 					/**
+					 * \~russian
 					 * @brief Метод сброса состояния разбора
 					 *
 					 * @details Настройки разбора сохраняются: сбрасывается лишь состояние,
 					 * накопленное разбором поданного текста
 					 *
+					 * \~english
+					 * @brief Method of resetting the state of the parsing
+					 * @details The settings of the parsing are preserved: only the state accumulated
+					 * by the parsing of the fed text is reset
+					 *
+					 * \~
 					 */
 					void reset() noexcept;
 				public:
 					/**
+					 * \~russian
 					 * @brief Метод подачи очередного куска текста
 					 *
 					 * @param buffer буфер с куском текста
@@ -435,33 +704,62 @@ namespace awh {
 					 * @param last   признак того, что кусок является последним
 					 * @return       признак успешного разбора поданного куска
 					 *
+					 * \~english
+					 * @brief Method of feeding the next chunk of a text
+					 * @param buffer buffer with the chunk of the text
+					 * @param size   size of the chunk of the text in bytes
+					 * @param last   flag of the chunk being the last one
+					 * @return       flag of the successful parsing of the fed chunk
+					 *
+					 * \~
 					 */
 					bool feed(const char * buffer, const size_t size, const bool last = false) noexcept;
 					/**
+					 * \~russian
 					 * @brief Метод подачи текста целиком
 					 *
 					 * @param text текст для разбора
 					 * @return     признак успешного разбора
 					 *
+					 * \~english
+					 * @brief Method of feeding a text in full
+					 * @param text text to be parsed
+					 * @return     flag of a successful parsing
+					 *
+					 * \~
 					 */
 					bool feed(const string_view text) noexcept;
 				public:
 					/**
+					 * \~russian
 					 * @brief Метод перехода к следующему событию разбора
 					 *
 					 * @return признак наличия события
 					 *
+					 * \~english
+					 * @brief Method of moving to the next parsing event
+					 * @return flag of the presence of an event
+					 *
+					 * \~
 					 */
 					bool next() noexcept;
 				public:
 					/**
+					 * \~russian
 					 * @brief Метод получения вида текущего события разбора
 					 *
 					 * @return вид текущего события разбора
 					 *
+					 *
+					 * \~english
+					 * @brief Method of getting the kind of the current parsing event
+					 * @return kind of the current parsing event
+					 *
+					 * \~
 					 */
 					event_t event() const noexcept;
 					/**
+					 * \~russian
 					 * @brief Метод получения поля текущего события разбора
 					 *
 					 * @details Ссылки поля живут до следующего обращения к next: хранилище
@@ -469,31 +767,57 @@ namespace awh {
 					 *
 					 * @return поле текущего события разбора
 					 *
+					 * \~english
+					 * @brief Method of getting the field of the current parsing event
+					 * @details The references of a field live until the next call to next: the storage
+					 * of the record is appended to in the course of the parsing and at a growth it is moved
+					 * @return field of the current parsing event
+					 *
+					 * \~
 					 */
 					field_t field() const noexcept;
 					/**
+					 * \~russian
 					 * @brief Метод получения положения текущего события разбора
 					 *
 					 * @return положение текущего события в исходном тексте
 					 *
+					 * \~english
+					 * @brief Method of getting the position of the current parsing event
+					 * @return position of the current event in the source text
+					 *
+					 * \~
 					 */
 					const location_t & location() const noexcept;
 				public:
 					/**
+					 * \~russian
 					 * @brief Метод получения кода ошибки разбора
 					 *
 					 * @return код ошибки разбора
 					 *
+					 * \~english
+					 * @brief Method of getting the error code of the parsing
+					 * @return error code of the parsing
+					 *
+					 * \~
 					 */
 					error_t error() const noexcept;
 					/**
+					 * \~russian
 					 * @brief Метод получения кодировки исходного текста
 					 *
 					 * @return кодировка, определённая по метке порядка байтов
 					 *
+					 * \~english
+					 * @brief Method of getting the encoding of the source text
+					 * @return encoding determined by the byte order mark
+					 *
+					 * \~
 					 */
 					encoding_t encoding() const noexcept;
 					/**
+					 * \~russian
 					 * @brief Метод получения знака-разделителя полей
 					 *
 					 * @details Разделитель, определённый по содержимому, известен лишь
@@ -501,10 +825,18 @@ namespace awh {
 					 *
 					 * @return знак-разделитель полей
 					 *
+					 * \~english
+					 * @brief Method of getting the separator character of the fields
+					 * @details A separator determined by the content is known only
+					 * after the determination has taken place: until then zero is output
+					 * @return separator character of the fields
+					 *
+					 * \~
 					 */
 					char separator() const noexcept;
 				public:
 					/**
+					 * \~russian
 					 * @brief Метод получения имён полей заголовка
 					 *
 					 * @details Имена доступны лишь при включённом признаке заголовка и
@@ -512,39 +844,76 @@ namespace awh {
 					 *
 					 * @return имена полей заголовка в порядке объявления
 					 *
+					 * \~english
+					 * @brief Method of getting the names of the fields of the header
+					 * @details The names are available only when the flag of the header is enabled and
+					 * only after the header has been parsed
+					 * @return names of the fields of the header in the order of the declaration
+					 *
+					 * \~
 					 */
 					vector <string_view> header() const noexcept;
 				public:
 					/**
+					 * \~russian
 					 * @brief Метод получения настроек разбора текста
 					 *
 					 * @return настройки разбора текста
 					 *
+					 * \~english
+					 * @brief Method of getting the settings of the parsing of a text
+					 * @return settings of the parsing of a text
+					 *
+					 * \~
 					 */
 					const settings_t & settings() const noexcept;
 					/**
+					 * \~russian
 					 * @brief Метод установки настроек разбора текста
 					 *
 					 * @param settings настройки разбора текста
 					 *
+					 * \~english
+					 * @brief Method of setting the settings of the parsing of a text
+					 * @param settings settings of the parsing of a text
+					 *
+					 * \~
 					 */
 					void settings(const settings_t & settings) noexcept;
 				public:
 					/**
+					 * \~russian
 					 * @brief Конструктор
 					 *
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
 					 */
 					Reader() noexcept;
 					/**
+					 * \~russian
 					 * @brief Конструктор
 					 *
 					 * @param settings настройки разбора текста
 					 *
+					 * \~english
+					 * @brief Constructor
+					 * @param settings settings of the parsing of a text
+					 *
+					 * \~
 					 */
 					Reader(const settings_t & settings) noexcept;
 					/**
+					 * \~russian
 					 * @brief Деструктор
 					 *
+					 *
+					 * \~english
+					 * @brief Destructor
+					 *
+					 * \~
 					 */
 					~Reader() noexcept {}
 			} reader_t;

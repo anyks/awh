@@ -82,6 +82,12 @@
 [submodule "submodules/mINI"]
 	path = submodules/mINI
 	url = https://github.com/metayeti/mINI.git
+[submodule "submodules/boost"]
+	path = submodules/boost
+	url = https://github.com/boostorg/boost.git
+[submodule "submodules/seastar"]
+	path = submodules/seastar
+	url = https://github.com/scylladb/seastar.git
 [submodule "submodules/csv2"]
 	path = submodules/csv2
 	url = https://github.com/p-ranav/csv2.git

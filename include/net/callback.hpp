@@ -259,6 +259,40 @@ namespace awh {
 			using inject_t = function <bool (const event::id_t, const uint8_t *, const size_t)>;
 			/**
 			 * \~russian
+			 * @brief Функция обратного вызова источника данных для вытягивающей модели отправки
+			 *
+			 * @details Разновидность отправки, обратная методу send(): не приложение кладёт данные
+			 *          в очередь события, а движок сам просит их у источника ровно тогда, когда
+			 *          сокет готов к записи и в очереди есть свободное место. Приложению не нужно
+			 *          держать в памяти всё тело - оно выдаёт данные по мере их ухода в сеть
+			 *
+			 * @note Источник пишет данные ПРЯМО в переданный участок очереди, промежуточного
+			 *       копирования нет. Записать больше size байт нельзя
+			 *
+			 * @note Возврат `true` при НУЛЕ записанных байт означает «данных пока нет»:
+			 *       движок перестаёт спрашивать источник и ждёт, пока приложение заведёт
+			 *       отправку заново вызовом `send(id, nullptr, 0)`. Без этого состояния
+			 *       движок крутил бы пустые запросы на каждой готовности сокета
+			 *
+			 * @param id     идентификатор события
+			 * @param buffer участок для заполнения данными
+			 * @param size   на входе - ёмкость участка в байтах, на выходе - количество записанных байт
+			 * @return       требуется ли продолжать вытягивание (false - отдавать больше нечего)
+			 *
+			 * \~english
+			 * @brief Callback function of the source of the data for the pull model of the sending
+			 * @note The source writes the data DIRECTLY into the given region of the queue, there is no
+			 *       intermediate copying. It is not possible to write more than size bytes
+			 * @param id     identifier of the event
+			 * @param buffer region to fill with the data
+			 * @param size   at the input — capacity of the region in the bytes, at the output — amount of the written bytes
+			 * @return       whether it is required to continue the pulling (false — there is nothing more to give)
+			 *
+			 * \~
+			 */
+			using source_t = function <bool (const event::id_t, uint8_t *, size_t &)>;
+			/**
+			 * \~russian
 			 * @brief Функция обратного вызова срабатывающая при ошибке события
 			 *
 			 * @param id    идентификатор события

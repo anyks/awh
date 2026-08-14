@@ -9,8 +9,15 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * \~russian
  * @brief Заголовочный файл общих типов протокола QUIC (RFC 9000) — перечисления типов пакетов, уровней шифрования,
  *        типов фреймов, кодов ошибок и статусов, структура идентификатора соединения и константы протокола
+ *
+ * \~english
+ * @brief Header file of the common types of the QUIC protocol (RFC 9000) — the enumerations of the types of the packets, of the encryption levels,
+ *        of the types of the frames, of the error codes and of the statuses, the structure of a connection identifier and the constants of the protocol
+ *
+ * \~
  *
  * @copyright: Copyright © 2026
  *
@@ -39,8 +46,14 @@
 #include "../../sys/macro_push.hpp"
 
 /**
+ * \~russian
  * @brief основное пространство имён
  *
+ *
+ * \~english
+ * @brief main namespace
+ *
+ * \~
  */
 namespace awh {
 	/**
@@ -49,6 +62,7 @@ namespace awh {
 	using namespace std;
 
 	/**
+	 * \~russian
 	 * @brief Пространство имён транспортного протокола QUIC (RFC 9000/9001)
 	 *
 	 * @details Содержит базовые типы и константы протокола, общие для слоя целых чисел
@@ -56,68 +70,136 @@ namespace awh {
 	 *          (frame.hpp). Логики здесь нет — только перечисления, константы протокола
 	 *          и объявления функций человекочитаемых названий.
 	 *
+	 * \~english
+	 * @brief Namespace of the QUIC transport protocol (RFC 9000/9001)
+	 * @details Contains the base types and the constants of the protocol, common to the layer of the variable-length
+	 *          integers (varint.hpp), to the layer of the packets (packet.hpp) and to the layer of the frames
+	 *          (frame.hpp). There is no logic here — only the enumerations, the constants of the protocol
+	 *          and the declarations of the functions of the human-readable names.
+	 *
+	 * \~
 	 */
 	namespace quic {
 		/**
+		 * \~russian
 		 * @brief Пространство имён констант протокола (RFC 9000)
 		 *
+		 * \~english
+		 * @brief Namespace of the constants of the protocol (RFC 9000)
+		 *
+		 * \~
 		 */
 		namespace proto {
 			/**
+			 * \~russian
 			 * @brief Номер версии QUIC v1 (RFC 9000)
 			 *
+			 * \~english
+			 * @brief Version number of QUIC v1 (RFC 9000)
+			 *
+			 * \~
 			 */
 			static constexpr uint32_t VERSION_1 = 0x00000001;
 			/**
+			 * \~russian
 			 * @brief Номер версии пакета Version Negotiation (RFC 9000 §17.2.1)
 			 *
+			 * \~english
+			 * @brief Version number of a Version Negotiation packet (RFC 9000 §17.2.1)
+			 *
+			 * \~
 			 */
 			static constexpr uint32_t VERSION_NEGOTIATION = 0x00000000;
 			/**
+			 * \~russian
 			 * @brief Максимальная длина идентификатора соединения в QUIC v1 (RFC 9000 §17.2)
 			 *
+			 * \~english
+			 * @brief Maximum length of a connection identifier in QUIC v1 (RFC 9000 §17.2)
+			 *
+			 * \~
 			 */
 			static constexpr size_t MAX_CID_SIZE = 20;
 			/**
+			 * \~russian
 			 * @brief Размер тега целостности пакета Retry (RFC 9001 §5.8)
 			 *
+			 * \~english
+			 * @brief Size of the integrity tag of a Retry packet (RFC 9001 §5.8)
+			 *
+			 * \~
 			 */
 			static constexpr size_t RETRY_TAG_SIZE = 16;
 			/**
+			 * \~russian
 			 * @brief Размер данных фреймов PATH_CHALLENGE/PATH_RESPONSE (RFC 9000 §19.17/§19.18)
 			 *
+			 * \~english
+			 * @brief Size of the data of the PATH_CHALLENGE/PATH_RESPONSE frames (RFC 9000 §19.17/§19.18)
+			 *
+			 * \~
 			 */
 			static constexpr size_t PATH_DATA_SIZE = 8;
 			/**
+			 * \~russian
 			 * @brief Размер токена сброса без сохранения состояния (RFC 9000 §10.3)
 			 *
+			 * \~english
+			 * @brief Size of a stateless reset token (RFC 9000 §10.3)
+			 *
+			 * \~
 			 */
 			static constexpr size_t RESET_TOKEN_SIZE = 16;
 			/**
+			 * \~russian
 			 * @brief Минимальный размер UDP-датаграммы с пакетом Initial клиента (RFC 9000 §14.1)
 			 *
+			 * \~english
+			 * @brief Minimum size of a UDP datagram with an Initial packet of a client (RFC 9000 §14.1)
+			 *
+			 * \~
 			 */
 			static constexpr size_t MIN_INITIAL_SIZE = 1200;
 			/**
+			 * \~russian
 			 * @brief Максимальный размер номера пакета в закодированном виде (RFC 9000 §17.1)
 			 *
+			 * \~english
+			 * @brief Maximum size of a packet number in the encoded form (RFC 9000 §17.1)
+			 *
+			 * \~
 			 */
 			static constexpr size_t MAX_PKT_NUM_SIZE = 4;
 			/**
+			 * \~russian
 			 * @brief Максимальное значение целого числа переменной длины (2^62 - 1) (RFC 9000 §16)
 			 *
+			 * \~english
+			 * @brief Maximum value of a variable-length integer (2^62 - 1) (RFC 9000 §16)
+			 *
+			 * \~
 			 */
 			static constexpr uint64_t VARINT_MAX = 0x3FFFFFFFFFFFFFFF;
 			/**
+			 * \~russian
 			 * @brief Максимальное значение номера пакета (2^62 - 1) (RFC 9000 §17.1)
 			 *
+			 * \~english
+			 * @brief Maximum value of a packet number (2^62 - 1) (RFC 9000 §17.1)
+			 *
+			 * \~
 			 */
 			static constexpr uint64_t MAX_PKT_NUM = 0x3FFFFFFFFFFFFFFF;
 		};
 
 		/**
+		 * \~russian
 		 * @brief Роль локального эндпоинта на соединении
 		 *
+		 * \~english
+		 * @brief Role of the local endpoint on a connection
+		 *
+		 * \~
 		 */
 		enum class endpoint_t : uint8_t {
 			CLIENT = 0x00, // Инициатор соединения
@@ -125,8 +207,13 @@ namespace awh {
 		};
 
 		/**
+		 * \~russian
 		 * @brief Результат пошаговой обработки/разбора
 		 *
+		 * \~english
+		 * @brief Result of the step-by-step processing/parsing
+		 *
+		 * \~
 		 */
 		enum class status_t : uint8_t {
 			OK         = 0x00, // Успешно, можно продолжать
@@ -135,8 +222,13 @@ namespace awh {
 		};
 
 		/**
+		 * \~russian
 		 * @brief Тип пакета QUIC (RFC 9000 §17)
 		 *
+		 * \~english
+		 * @brief Type of a QUIC packet (RFC 9000 §17)
+		 *
+		 * \~
 		 */
 		enum class packet_t : uint8_t {
 			INITIAL             = 0x00, // Установка соединения, содержит начальный CRYPTO-хендшейк (RFC 9000 §17.2.2)
@@ -149,8 +241,13 @@ namespace awh {
 		};
 
 		/**
+		 * \~russian
 		 * @brief Уровень шифрования пакета (RFC 9001 §4)
 		 *
+		 * \~english
+		 * @brief Encryption level of a packet (RFC 9001 §4)
+		 *
+		 * \~
 		 */
 		enum class level_t : uint8_t {
 			INITIAL     = 0x00, // Ключи Initial, выводятся из Destination CID клиента
@@ -160,11 +257,18 @@ namespace awh {
 		};
 
 		/**
+		 * \~russian
 		 * @brief Тип фрейма QUIC (RFC 9000 §12.4) — значение целого числа переменной длины
 		 *
 		 * @details Фреймы STREAM занимают диапазон 0x08-0x0F: три младших бита типа
 		 *          кодируют наличие полей Offset (0x04), Length (0x02) и флага FIN (0x01)
 		 *
+		 * \~english
+		 * @brief Type of a QUIC frame (RFC 9000 §12.4) — a value of a variable-length integer
+		 * @details The STREAM frames occupy the range 0x08-0x0F: the three low bits of the type
+		 *          encode the presence of the Offset (0x04) and Length (0x02) fields and of the FIN flag (0x01)
+		 *
+		 * \~
 		 */
 		enum class frame_t : uint64_t {
 			PADDING             = 0x00, // Заполнение без полезной нагрузки (RFC 9000 §19.1)
@@ -196,8 +300,13 @@ namespace awh {
 		};
 
 		/**
+		 * \~russian
 		 * @brief Коды ошибок транспорта QUIC (RFC 9000 §20.1) — используются в CONNECTION_CLOSE
 		 *
+		 * \~english
+		 * @brief Codes of the QUIC transport errors (RFC 9000 §20.1) — used in CONNECTION_CLOSE
+		 *
+		 * \~
 		 */
 		enum class error_t : uint64_t {
 			NO_ERROR                  = 0x00, // Штатное завершение
@@ -222,8 +331,13 @@ namespace awh {
 		};
 
 		/**
+		 * \~russian
 		 * @brief Структура идентификатора соединения (RFC 9000 §5.1)
 		 *
+		 * \~english
+		 * @brief Structure of a connection identifier (RFC 9000 §5.1)
+		 *
+		 * \~
 		 */
 		typedef struct __AWH_SHARED_EXPORT__ Cid {
 			// Длина идентификатора соединения в октетах
@@ -231,23 +345,38 @@ namespace awh {
 			// Данные идентификатора соединения
 			uint8_t data[proto::MAX_CID_SIZE];
 			/**
+			 * \~russian
 			 * @brief Конструктор
 			 *
+			 *
+			 * \~english
+			 * @brief Constructor
+			 *
+			 * \~
 			 */
 			explicit Cid() noexcept;
 		} cid_t;
 
 		/**
+		 * \~russian
 		 * @brief Оператор сравнения идентификаторов соединения
 		 *
 		 * @param a первый идентификатор соединения
 		 * @param b второй идентификатор соединения
 		 * @return  результат сравнения
 		 *
+		 * \~english
+		 * @brief Comparison operator of the connection identifiers
+		 * @param a first connection identifier
+		 * @param b second connection identifier
+		 * @return  result of the comparison
+		 *
+		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ bool operator == (const cid_t & a, const cid_t & b) noexcept;
 
 		/**
+		 * \~russian
 		 * @brief Функция извлечения идентификатора соединения получателя из датаграммы (RFC 9000 §17.2)
 		 *
 		 * @note Идентификатор соединения намеренно оставлен открытым, чтобы датаграмму
@@ -261,10 +390,24 @@ namespace awh {
 		 * @param key    извлечённый идентификатор соединения получателя
 		 * @return       результат извлечения (false - датаграмма не является пакетом QUIC)
 		 *
+		 * \~english
+		 * @brief Function of extracting the connection identifier of the recipient from a datagram (RFC 9000 §17.2)
+		 * @note The connection identifier is deliberately left open so that a datagram
+		 *       can be assigned to a connection without decrypting it. The packets with a long
+		 *       header carry the length of the identifier explicitly, the short ones do not, therefore
+		 *       for them it is taken from the local policy of the issuance of the identifiers
+		 * @param data   data of the datagram
+		 * @param size   size of the datagram
+		 * @param length length of the identifiers issued by the local endpoint
+		 * @param key    extracted connection identifier of the recipient
+		 * @return       result of the extraction (false — the datagram is not a QUIC packet)
+		 *
+		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ bool route(const uint8_t * data, const size_t size, const uint8_t length, net::origin_key_t & key) noexcept;
 
 		/**
+		 * \~russian
 		 * @brief Функция вывода токена сброса без сохранения состояния (RFC 9000 §10.3.2)
 		 *
 		 * @note Токен выводится из идентификатора соединения и общего ключа, поэтому
@@ -276,10 +419,22 @@ namespace awh {
 		 * @param token выведенный токен сброса без сохранения состояния
 		 * @return      результат вывода (false - пустой ключ либо ошибка кода аутентичности)
 		 *
+		 * \~english
+		 * @brief Function of the derivation of a stateless reset token (RFC 9000 §10.3.2)
+		 * @note The token is derived from the connection identifier and from the common key, therefore
+		 *       it is reproduced without storing the state — including for a connection
+		 *       about which the local endpoint no longer remembers anything
+		 * @param key   common key of the derivation of the reset tokens
+		 * @param cid   connection identifier of the local endpoint
+		 * @param token derived stateless reset token
+		 * @return      result of the derivation (false — an empty key or an error of the authentication code)
+		 *
+		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ bool resetToken(string_view key, const cid_t & cid, uint8_t token[proto::RESET_TOKEN_SIZE]) noexcept;
 
 		/**
+		 * \~russian
 		 * @brief Функция генерации общего ключа вывода токенов сброса (RFC 9000 §10.3.2)
 		 *
 		 * @note Ключ живёт столько же, сколько выданные на нём токены: чтобы сброс
@@ -289,10 +444,20 @@ namespace awh {
 		 * @param output сгенерированный общий ключ вывода токенов сброса
 		 * @return       результат генерации (false - ошибка генератора случайных чисел)
 		 *
+		 * \~english
+		 * @brief Function of the generation of the common key of the derivation of the reset tokens (RFC 9000 §10.3.2)
+		 * @note The key lives as long as the tokens issued on it: so that the reset
+		 *       works after a restart of the application as well, the key should be preserved
+		 *       and restored rather than generated anew
+		 * @param output generated common key of the derivation of the reset tokens
+		 * @return       result of the generation (false — an error of the random number generator)
+		 *
+		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ bool resetKey(string & output) noexcept;
 
 		/**
+		 * \~russian
 		 * @brief Функция сборки пакета сброса без сохранения состояния (RFC 9000 §10.3)
 		 *
 		 * @note Пакет неотличим от пакета 1-RTT со случайным содержимым и завершается
@@ -306,33 +471,67 @@ namespace awh {
 		 * @param trigger размер вызвавшей сброс датаграммы
 		 * @return        результат сборки (false - датаграмма слишком мала либо ошибка вывода токена)
 		 *
+		 * \~english
+		 * @brief Function of assembling a stateless reset packet (RFC 9000 §10.3)
+		 * @note The packet is indistinguishable from a 1-RTT packet with a random content and ends
+		 *       with the reset token. The size is chosen smaller than the size of the datagram that has caused it:
+		 *       otherwise two endpoints that have lost their state would answer one another
+		 *       with the resets indefinitely long (RFC 9000 §10.3.3)
+		 * @param output  output buffer of the reset packet
+		 * @param key     common key of the derivation of the reset tokens
+		 * @param cid     connection identifier of the recipient from the datagram that has caused it
+		 * @param trigger size of the datagram that has caused the reset
+		 * @return        result of the assembly (false — the datagram is too small or an error of the derivation of the token)
+		 *
+		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ bool reset(string & output, string_view key, const cid_t & cid, const size_t trigger) noexcept;
 
 		/**
+		 * \~russian
 		 * @brief Функция получения человекочитаемого названия типа пакета
 		 *
 		 * @param type тип пакета
 		 * @return     название типа пакета
 		 *
+		 * \~english
+		 * @brief Function of getting the human-readable name of a type of a packet
+		 * @param type type of the packet
+		 * @return     name of the type of the packet
+		 *
+		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ string_view packetName(const packet_t type) noexcept;
 
 		/**
+		 * \~russian
 		 * @brief Функция получения человекочитаемого названия типа фрейма
 		 *
 		 * @param type тип фрейма
 		 * @return     название типа фрейма
 		 *
+		 * \~english
+		 * @brief Function of getting the human-readable name of a type of a frame
+		 * @param type type of the frame
+		 * @return     name of the type of the frame
+		 *
+		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ string_view frameName(const frame_t type) noexcept;
 
 		/**
+		 * \~russian
 		 * @brief Функция получения человекочитаемого названия кода ошибки транспорта
 		 *
 		 * @param code код ошибки транспорта
 		 * @return     название кода ошибки
 		 *
+		 * \~english
+		 * @brief Function of getting the human-readable name of a transport error code
+		 * @param code transport error code
+		 * @return     name of the error code
+		 *
+		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ string_view errorName(const error_t code) noexcept;
 	};

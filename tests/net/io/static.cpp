@@ -19684,3 +19684,181 @@ TEST_F(IoFixture, IoTCPSplicePairTest){
 	// Уничтожаем все события
 	ASSERT_TRUE(this->_io->deinitialize());
 }
+
+/**
+ * @brief Тест вытягивающей модели отправки: движок сам запрашивает данные у источника
+ *
+ * @details Отправка идёт не методом send(), а источником данных: приложение не держит в
+ *          памяти всё тело, а выдаёт его по частям ровно тогда, когда движок просит.
+ *          Проверка закрепляет три свойства такой отправки:
+ *          1. Тело доходит до приёмника ЦЕЛИКОМ и в неизменном порядке, хотя источник
+ *             отдаёт его частями, а размер части выбирает не он, а движок.
+ *          2. Тело крупнее очереди отправки: без вытягивания оно не поместилось бы за
+ *             один заход, и именно многократный запрос к источнику доводит его до конца.
+ *          3. По достижении конца тела источник снимается САМ - повторных обращений к
+ *             нему после eof не происходит, иначе отправка не завершилась бы никогда.
+ *
+ * @note Тело собрано из повторяющегося образца, а не из случайных октетов: искажение
+ *       порядка частей тогда видно сличением, а не только несовпадением размера
+ *
+ */
+TEST_F(IoFixture, IoDataSourcePullTest){
+	// Признак завершения проверки
+	bool stop = false;
+	// Признак превышения времени ожидания
+	bool expired = false;
+	// Количество обращений движка к источнику данных
+	uint32_t requests = 0;
+	// Количество обращений к источнику после достижения конца тела
+	uint32_t overruns = 0;
+	// Признак того, что источник уже сообщил о конце тела
+	bool finished = false;
+	// Смещение, с которого источник отдаёт следующую часть тела
+	size_t offset = 0;
+	// Тело для отправки, заведомо крупнее очереди отправки движка
+	std::string body;
+	// Наполняем тело повторяющимся образцом
+	while(body.size() < (256 * 1024))
+		// Дописываем очередной образец в тело
+		body.append("0123456789ABCDEF");
+	// Принятое приёмником тело
+	std::string received;
+	// Путь к файлу UNIX-доменного сокета
+	const std::string socketPath = "/tmp/awh-datasource-pull.sock";
+	// Удаляем файл сокета, оставшийся от предыдущего запуска
+	::unlink(socketPath.c_str());
+	// Добавляем событие сервера
+	const awh::event::id_t sid = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::UDS, awh::event::type_t::STREAM);
+	// Добавляем событие клиента
+	const awh::event::id_t cid = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::UDS, awh::event::type_t::STREAM);
+	// Добавляем событие ограничения времени работы проверки
+	const awh::event::id_t guard = this->_io->event(awh::event::node_t::TIMEOUT, awh::event::family_t::TIMER);
+	// Проверяем идентификаторы созданных событий
+	ASSERT_GT(sid, 0u);
+	ASSERT_GT(cid, 0u);
+	ASSERT_GT(guard, 0u);
+	// Устанавливаем предельное время работы проверки
+	this->_io->setTimeout(guard, awh::event::action_t::NONE, 15000);
+	// Инициализируем асинхронный движок ввода-вывода
+	ASSERT_TRUE(this->_io->initialize());
+	// Устанавливаем функцию обратного вызова на превышение времени ожидания
+	this->_io->on(guard, [&stop, &expired]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+		// Если время ожидания истекло
+		if(status == awh::event::status_t::SUCCESS){
+			// Запоминаем превышение времени ожидания
+			expired = true;
+			// Останавливаем проверку
+			stop = true;
+		}
+	});
+	// Выполняем фиксацию настроек ограничителя времени
+	ASSERT_TRUE(this->_io->commit(guard));
+	// Запускаем ограничитель времени
+	ASSERT_TRUE(this->_io->launch(guard));
+	/**
+	 * Событие сервера
+	 */
+	{
+		// Устанавливаем настройки события сервера
+		ASSERT_TRUE(this->_io->setOptions(sid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
+		// Устанавливаем адрес UNIX-доменного сокета сервера
+		ASSERT_TRUE(this->_io->setAddress(sid, awh::event::address_t::UDS, socketPath));
+		// Устанавливаем функцию обратного вызова на принятие подключения
+		this->_io->on(sid, static_cast <awh::engine::callback::accept_t> ([this, &received, &body, &stop]([[maybe_unused]] const awh::event::id_t sid, const awh::event::id_t pid) noexcept -> void {
+			// Устанавливаем функцию обратного вызова на чтение данных принятого клиента
+			this->_io->on(pid, [&received, &body, &stop]([[maybe_unused]] const awh::event::id_t eid, const uint8_t * buffer, const size_t size) noexcept -> void {
+				// Дописываем принятое к уже полученному телу
+				received.append(reinterpret_cast <const char *> (buffer), size);
+				// Если тело принято целиком
+				if(received.size() >= body.size())
+					// Останавливаем проверку
+					stop = true;
+			});
+		}));
+		// Выполняем фиксацию настроек события сервера
+		ASSERT_TRUE(this->_io->commit(sid));
+		// Выполняем прослушивание UNIX-доменного сокета
+		ASSERT_TRUE(this->_io->listen(sid, 10));
+		// Запускаем событие сервера
+		ASSERT_TRUE(this->_io->launch(sid));
+	}
+	/**
+	 * Событие клиента
+	 */
+	{
+		// Устанавливаем настройки события клиента
+		ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
+		// Устанавливаем адрес UNIX-доменного сокета сервера
+		ASSERT_TRUE(this->_io->setTarget(cid, socketPath));
+		// Устанавливаем таймаут события на подключение
+		this->_io->setTimeout(cid, awh::event::action_t::CONNECT, 5000);
+		// Выполняем фиксацию настроек события клиента
+		ASSERT_TRUE(this->_io->commit(cid));
+		/**
+		 * Устанавливаем функцию обратного вызова на подключение
+		 *
+		 * @note Вытягивание заводится ИМЕННО отсюда, а не сразу после запуска события:
+		 *       до завершения подключения слать нечего и некуда
+		 */
+		this->_io->on(cid, static_cast <awh::engine::callback::connect_t> ([this](const awh::event::id_t eid, const bool mode) noexcept -> void {
+			// Если подключение установлено
+			if(mode)
+				// Заводим отправку вытягивающей моделью
+				this->_io->send(eid, nullptr, 0);
+		}));
+		// Выполняем подключение к серверу
+		ASSERT_TRUE(this->_io->connect(cid));
+		// Запускаем событие клиента
+		ASSERT_TRUE(this->_io->launch(cid));
+		// Устанавливаем источник данных для вытягивающей модели отправки
+		this->_io->on(cid, static_cast <awh::engine::callback::source_t> (
+			[&body, &offset, &requests, &overruns, &finished]([[maybe_unused]] const awh::event::id_t eid, uint8_t * buffer, size_t & size) noexcept -> bool {
+				// Учитываем обращение движка к источнику данных
+				requests++;
+				// Если источник уже сообщил, что отдавать больше нечего
+				if(finished)
+					// Учитываем лишнее обращение к исчерпанному источнику
+					overruns++;
+				// Определяем сколько тела осталось отдать
+				const size_t rest = (body.size() - offset);
+				// Определяем размер отдаваемой части по отданной движком ёмкости
+				const size_t part = ((rest < size) ? rest : size);
+				// Если есть что отдавать
+				if(part > 0)
+					// Копируем часть тела в переданный движком участок
+					::memcpy(buffer, (body.data() + offset), part);
+				// Сдвигаем смещение отданного тела
+				offset += part;
+				// Сообщаем движку размер отданной части тела
+				size = part;
+				// Если тело отдано целиком
+				if(offset >= body.size()){
+					// Запоминаем, что источник исчерпан
+					finished = true;
+					// Сообщаем движку, что отдавать больше нечего
+					return false;
+				}
+				// Сообщаем движку, что вытягивание нужно продолжать
+				return true;
+			}
+		));
+	}
+	/**
+	 * Запускаем опрос событий
+	 */
+	while(!stop && this->_io->poll(10000));
+	// Уничтожаем все события
+	ASSERT_TRUE(this->_io->deinitialize());
+	// Удаляем файл сокета
+	::unlink(socketPath.c_str());
+	// Проверяем что проверка завершилась не по превышению времени ожидания
+	ASSERT_FALSE(expired) << "превышено время ожидания, принято " << received.size() << " из " << body.size() << " байт, обращений к источнику " << requests;
+	// Проверяем что движок обращался к источнику данных
+	ASSERT_GT(requests, 0u) << "движок ни разу не запросил данные у источника";
+	// Проверяем что тело потребовало нескольких обращений к источнику
+	ASSERT_GT(requests, 1u) << "тело ушло за одно обращение, вытягивание по частям не проверено";
+	// Проверяем что к исчерпанному источнику движок больше не обращался
+	ASSERT_EQ(overruns, 0u) << "движок обращался к источнику после конца тела";
+	// Проверяем что тело дошло до приёмника целиком и без искажений
+	ASSERT_EQ(body, received);
+}

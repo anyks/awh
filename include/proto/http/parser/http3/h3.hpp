@@ -9,8 +9,15 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * \~russian
  * @brief Заголовочный файл констант протокола HTTP/3 (RFC 9114) — перечисления типов кадров, типов однонаправленных
  *        потоков, параметров SETTINGS, состояний потоков и кодов ошибок, общие для слоя кадров, QPACK-кодека и парсера сессии
+ *
+ * \~english
+ * @brief Header file of the constants of the HTTP/3 protocol (RFC 9114) — the enumerations of the types of the frames, of the types of the unidirectional
+ *        streams, of the parameters of SETTINGS, of the states of the streams and of the error codes, common for the layer of the frames, the QPACK codec and the parser of the session
+ *
+ * \~
  *
  * @copyright: Copyright © 2026
  *
@@ -38,8 +45,14 @@
 #include "../../../../sys/macro_push.hpp"
 
 /**
+ * \~russian
  * @brief основное пространство имён
  *
+ *
+ * \~english
+ * @brief main namespace
+ *
+ * \~
  */
 namespace awh {
 	/**
@@ -48,11 +61,18 @@ namespace awh {
 	using namespace std;
 
 	/**
+	 * \~russian
 	 * @brief Пространство имён HTTP-протокола
 	 *
+	 *
+	 * \~english
+	 * @brief HTTP protocol namespace
+	 *
+	 * \~
 	 */
 	namespace http {
 		/**
+		 * \~russian
 		 * @brief Пространство имён внутренних слоёв протокола HTTP/3 (RFC 9114) и QPACK (RFC 9204)
 		 *
 		 * @details Содержит базовые типы и константы протокола, общие для слоя кадров (frame.hpp),
@@ -63,80 +83,155 @@ namespace awh {
 		 *       коды ошибок) закодированы как целые переменной длины QUIC (RFC 9000 §16),
 		 *       поэтому их область значений - 62 бита, а не 8 или 16 бит, как в HTTP/2
 		 *
+		 * \~english
+		 * @brief Namespace of the internal layers of the HTTP/3 protocol (RFC 9114) and of QPACK (RFC 9204)
+		 * @details Contains the base types and the constants of the protocol, common for the layer of the frames (frame.hpp),
+		 *          the QPACK codec (qpack.hpp) and the parser of the session (http.hpp). There is no logic here —
+		 *          only the enumerations, the constants of the protocol and the POD structures.
+		 * @note All the identifiers of the protocol (the types of the frames, the types of the streams, the parameters of SETTINGS,
+		 *       the error codes) are encoded as the integers of a variable length of QUIC (RFC 9000 §16),
+		 *       therefore their range of the values is 62 bits rather than 8 or 16 bits as in HTTP/2
+		 *
+		 * \~
 		 */
 		namespace h3 {
 			/**
+			 * \~russian
 			 * @brief Пространство имён констант протокола (RFC 9114)
 			 *
+			 * \~english
+			 * @brief Namespace of the constants of the protocol (RFC 9114)
+			 *
+			 * \~
 			 */
 			namespace proto {
 				/**
+				 * \~russian
 				 * @brief Идентификатор ALPN для HTTP/3
 				 *
 				 * @note Открытого варианта у HTTP/3 нет: протокол определён только поверх QUIC,
 				 *       а QUIC обязателен к использованию с TLS 1.3 (RFC 9001)
 				 *
+				 * \~english
+				 * @brief Identifier of ALPN for HTTP/3
+				 * @note HTTP/3 has no open variety: the protocol is determined only over QUIC,
+				 *       while QUIC is obligatory for the use with TLS 1.3 (RFC 9001)
+				 *
+				 * \~
 				 */
 				static constexpr string_view ALPN = "h3";
 				/**
+				 * \~russian
 				 * @brief Максимальное значение целого переменной длины QUIC (2^62-1)
 				 *
 				 * @details Верхняя граница для любого идентификатора протокола: типа кадра,
 				 *          типа потока, параметра SETTINGS, идентификатора потока и push
 				 *
+				 * \~english
+				 * @brief Largest value of an integer of a variable length of QUIC (2^62-1)
+				 * @details The upper boundary for any identifier of the protocol: of a type of a frame,
+				 *          of a type of a stream, of a parameter of SETTINGS, of an identifier of a stream and of a push
+				 *
+				 * \~
 				 */
 				static constexpr uint64_t MAX_VARINT = 0x3FFFFFFFFFFFFFFFULL;
 				/**
+				 * \~russian
 				 * @brief Шаг последовательности зарезервированных идентификаторов (RFC 9114 §7.2.8)
 				 *
 				 * @details Типы кадров и параметры SETTINGS вида (0x1F * N + 0x21) зарезервированы
 				 *          намеренно и обязаны игнорироваться: ими проверяется, что реализация
 				 *          не считает набор идентификаторов закрытым
 				 *
+				 * \~english
+				 * @brief Step of the sequence of the reserved identifiers (RFC 9114 §7.2.8)
+				 * @details The types of the frames and the parameters of SETTINGS of the form (0x1F * N + 0x21) are reserved
+				 *          deliberately and are obliged to be ignored: by them it is checked that an implementation
+				 *          does not consider the collection of the identifiers closed
+				 *
+				 * \~
 				 */
 				static constexpr uint64_t GREASE_STEP = 0x1F;
 				/**
+				 * \~russian
 				 * @brief Смещение последовательности зарезервированных идентификаторов (RFC 9114 §7.2.8)
 				 *
+				 * \~english
+				 * @brief Displacement of the sequence of the reserved identifiers (RFC 9114 §7.2.8)
+				 *
+				 * \~
 				 */
 				static constexpr uint64_t GREASE_BASE = 0x21;
 				/**
+				 * \~russian
 				 * @brief Размер динамической таблицы QPACK по умолчанию (RFC 9204 §5)
 				 *
 				 * @note Ноль означает, что динамическая таблица не используется вовсе: это
 				 *       значение по умолчанию самого протокола, а не выбор реализации
 				 *
+				 * \~english
+				 * @brief Size of the dynamic table of QPACK by default (RFC 9204 §5)
+				 * @note A zero means that the dynamic table is not used at all: this is
+				 *       the value by default of the protocol itself rather than a choice of the implementation
+				 *
+				 * \~
 				 */
 				static constexpr uint64_t DEFAULT_QPACK_TABLE_CAPACITY = 0;
 				/**
+				 * \~russian
 				 * @brief Число потоков, которым разрешено ожидать пополнения таблицы QPACK (RFC 9204 §5)
 				 *
+				 * \~english
+				 * @brief Number of the streams which are allowed to wait for a replenishment of the table of QPACK (RFC 9204 §5)
+				 *
+				 * \~
 				 */
 				static constexpr uint64_t DEFAULT_QPACK_BLOCKED_STREAMS = 0;
 				/**
+				 * \~russian
 				 * @brief Размер динамической таблицы QPACK, анонсируемый нами
 				 *
 				 * @note Совпадает с размером таблицы HPACK по умолчанию: объём тот же,
 				 *       а сравнение сжатия с HTTP/2 при равных таблицах осмысленно
 				 *
+				 * \~english
+				 * @brief Size of the dynamic table of QPACK announced by us
+				 * @note It coincides with the size of the table of HPACK by default: the volume is the same,
+				 *       and a comparison of the compression with HTTP/2 at equal tables is meaningful
+				 *
+				 * \~
 				 */
 				static constexpr uint64_t QPACK_TABLE_CAPACITY = 4096;
 				/**
+				 * \~russian
 				 * @brief Число потоков, которым мы разрешаем ожидать пополнения таблицы QPACK
 				 *
 				 * @note Значение по умолчанию подобрано консервативно: каждый заблокированный
 				 *       поток удерживает разобранный, но не выданный наружу блок заголовков
 				 *
+				 * \~english
+				 * @brief Number of the streams which we allow to wait for a replenishment of the table of QPACK
+				 * @note The value by default is selected conservatively: every blocked
+				 *       stream holds a parsed but not issued outside block of the headers
+				 *
+				 * \~
 				 */
 				static constexpr uint64_t QPACK_BLOCKED_STREAMS = 16;
 				/**
+				 * \~russian
 				 * @brief Максимальный размер секции полей
 				 *
 				 * @note 0 - без лимита в SETTINGS, действует maxHeadersTotal
 				 *
+				 * \~english
+				 * @brief Largest size of a section of the fields
+				 * @note 0 - without a limit in SETTINGS, maxHeadersTotal is in force
+				 *
+				 * \~
 				 */
 				static constexpr uint64_t MAX_FIELD_SECTION_SIZE = 0;
 				/**
+				 * \~russian
 				 * @brief Максимальное число одновременных запросов в соединении
 				 *
 				 * @details В HTTP/3 лимит одновременных потоков задаёт транспорт параметром
@@ -144,23 +239,46 @@ namespace awh {
 				 *          подобного SETTINGS_MAX_CONCURRENT_STREAMS. Значение служит границей
 				 *          карты потоков парсера и подсказкой для настройки транспорта
 				 *
+				 * \~english
+				 * @brief Largest number of the simultaneous requests in a connection
+				 * @details In HTTP/3 the limit of the simultaneous streams is set by the transport by the parameter
+				 *          initial_max_streams_bidi rather than by HTTP itself: the protocol has no parameter
+				 *          similar to SETTINGS_MAX_CONCURRENT_STREAMS. The value serves as the boundary
+				 *          of the map of the streams of the parser and as a hint for the setting of the transport
+				 *
+				 * \~
 				 */
 				static constexpr uint64_t MAX_COUNT_STREAMS = 128;
 				/**
+				 * \~russian
 				 * @brief Срочность потока по умолчанию (RFC 9218 §4.1)
 				 *
+				 * \~english
+				 * @brief Urgency of a stream by default (RFC 9218 §4.1)
+				 *
+				 * \~
 				 */
 				static constexpr uint8_t DEFAULT_URGENCY = 3;
 				/**
+				 * \~russian
 				 * @brief Наименее срочный уровень расширенного приоритета (RFC 9218 §4.1)
 				 *
+				 * \~english
+				 * @brief Least urgent level of the extended priority (RFC 9218 §4.1)
+				 *
+				 * \~
 				 */
 				static constexpr uint8_t MAX_URGENCY = 7;
 			};
 
 			/**
+			 * \~russian
 			 * @brief Роль локального эндпоинта на соединении
 			 *
+			 * \~english
+			 * @brief Role of the local endpoint on a connection
+			 *
+			 * \~
 			 */
 			enum class endpoint_t : uint8_t {
 				CLIENT = 0x00, // Двунаправленные потоки запросов инициируем мы
@@ -168,8 +286,13 @@ namespace awh {
 			};
 
 			/**
+			 * \~russian
 			 * @brief Результат пошаговой обработки/разбора
 			 *
+			 * \~english
+			 * @brief Result of a step-by-step processing/parsing
+			 *
+			 * \~
 			 */
 			enum class status_t : uint8_t {
 				OK         = 0x00, // Успешно, можно продолжать
@@ -179,6 +302,7 @@ namespace awh {
 			};
 
 			/**
+			 * \~russian
 			 * @brief Состояние потока запроса
 			 *
 			 * @details В отличие от HTTP/2 состояние потока в HTTP/3 ведёт транспорт: направления
@@ -187,6 +311,15 @@ namespace awh {
 			 *          Резервирования потока под push здесь нет: PUSH_PROMISE лишь обещает
 			 *          идентификатор, а сам push приходит отдельным однонаправленным потоком
 			 *
+			 * \~english
+			 * @brief State of a stream of a request
+			 * @details Unlike HTTP/2 the state of a stream in HTTP/3 is conducted by the transport: the directions
+			 *          are closed by the flag FIN of a stream of QUIC, while an emergency closing is performed
+			 *          by the frames RESET_STREAM and STOP_SENDING of the transport rather than by a frame of HTTP.
+			 *          There is no reservation of a stream for a push here: PUSH_PROMISE only promises
+			 *          an identifier, while the push itself comes as a separate unidirectional stream
+			 *
+			 * \~
 			 */
 			enum class stream_state_t : uint8_t {
 				IDLE               = 0x00, // Поток ещё не использован
@@ -197,12 +330,20 @@ namespace awh {
 			};
 
 			/**
+			 * \~russian
 			 * @brief Тип однонаправленного потока (RFC 9114 §6.2, RFC 9204 §4.2)
 			 *
 			 * @details Первым целым переменной длины в однонаправленном потоке идёт его тип.
 			 *          Поток неизвестного типа не является ошибкой: его содержимое отбрасывается,
 			 *          а отправителю посылается STOP_SENDING с кодом H3_STREAM_CREATION_ERROR
 			 *
+			 * \~english
+			 * @brief Type of a unidirectional stream (RFC 9114 §6.2, RFC 9204 §4.2)
+			 * @details The first integer of a variable length in a unidirectional stream is its type.
+			 *          A stream of an unknown type is not an error: its content is discarded,
+			 *          while STOP_SENDING with the code H3_STREAM_CREATION_ERROR is sent to the sender
+			 *
+			 * \~
 			 */
 			enum class unistream_t : uint64_t {
 				CONTROL       = 0x00, // Управляющий поток соединения (RFC 9114 §6.2.1)
@@ -212,8 +353,13 @@ namespace awh {
 			};
 
 			/**
+			 * \~russian
 			 * @brief Тип кадра (RFC 9114 §7.2, §11.2.1) — значение поля Type (целое переменной длины)
 			 *
+			 * \~english
+			 * @brief Type of a frame (RFC 9114 §7.2, §11.2.1) — the value of the field Type (an integer of a variable length)
+			 *
+			 * \~
 			 */
 			enum class frame_t : uint64_t {
 				DATA         = 0x00, // Данные тела (RFC 9114 §7.2.1)
@@ -234,8 +380,13 @@ namespace awh {
 			};
 
 			/**
+			 * \~russian
 			 * @brief Идентификаторы параметров SETTINGS (RFC 9114 §7.2.4.1, RFC 9204 §5)
 			 *
+			 * \~english
+			 * @brief Identifiers of the parameters of SETTINGS (RFC 9114 §7.2.4.1, RFC 9204 §5)
+			 *
+			 * \~
 			 */
 			enum class setting_t : uint64_t {
 				QPACK_MAX_TABLE_CAPACITY = 0x01, // Размер динамической таблицы QPACK (по умолчанию 0)
@@ -245,12 +396,20 @@ namespace awh {
 			};
 
 			/**
+			 * \~russian
 			 * @brief Коды ошибок HTTP/3 (RFC 9114 §8.1, RFC 9204 §6)
 			 *
 			 * @details Передаются в кадре CONNECTION_CLOSE транспорта для ошибок уровня соединения
 			 *          и в кадрах RESET_STREAM и STOP_SENDING - для ошибок уровня потока.
 			 *          Собственного кадра для сообщения об ошибке у HTTP/3 нет
 			 *
+			 * \~english
+			 * @brief Error codes of HTTP/3 (RFC 9114 §8.1, RFC 9204 §6)
+			 * @details They are transmitted in the frame CONNECTION_CLOSE of the transport for the errors of the level of the connection
+			 *          and in the frames RESET_STREAM and STOP_SENDING - for the errors of the level of a stream.
+			 *          HTTP/3 has no frame of its own for a report about an error
+			 *
+			 * \~
 			 */
 			enum class error_t : uint64_t {
 				H3_NO_ERROR                = 0x0100, // Штатное завершение
@@ -276,6 +435,7 @@ namespace awh {
 			};
 
 			/**
+			 * \~russian
 			 * @brief Функция проверки принадлежности идентификатора зарезервированной последовательности
 			 *
 			 * @details Идентификаторы вида (0x1F * N + 0x21) зарезервированы RFC 9114 §7.2.8 и обязаны
@@ -285,10 +445,20 @@ namespace awh {
 			 * @param value проверяемый идентификатор типа кадра либо параметра SETTINGS
 			 * @return      признак принадлежности зарезервированной последовательности
 			 *
+			 * \~english
+			 * @brief Function of checking the belonging of an identifier to the reserved sequence
+			 * @details The identifiers of the form (0x1F * N + 0x21) are reserved by RFC 9114 §7.2.8 and are obliged
+			 *          to be ignored. A peer sends them deliberately, checking that an implementation does not
+			 *          break the connection at an unfamiliar identifier
+			 * @param value identifier of a type of a frame or of a parameter of SETTINGS being checked
+			 * @return      flag of the belonging to the reserved sequence
+			 *
+			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ bool reserved(const uint64_t value) noexcept;
 
 			/**
+			 * \~russian
 			 * @brief Функция проверки идентификатора на изъятый из употребления в HTTP/3
 			 *
 			 * @details Типы кадров 0x02, 0x06, 0x08 и 0x09 занимали в HTTP/2 кадры PRIORITY, PING,
@@ -299,10 +469,21 @@ namespace awh {
 			 * @param type проверяемый тип кадра
 			 * @return     признак изъятого из употребления типа кадра
 			 *
+			 * \~english
+			 * @brief Function of checking an identifier for one withdrawn from the use in HTTP/3
+			 * @details The types of the frames 0x02, 0x06, 0x08 and 0x09 were occupied in HTTP/2 by the frames PRIORITY, PING,
+			 *          WINDOW_UPDATE and CONTINUATION. In HTTP/3 they are not reused, and their
+			 *          receipt is obliged to break the connection with H3_FRAME_UNEXPECTED (RFC 9114 §11.2.1) —
+			 *          otherwise a peer erroneously sending the frames of HTTP/2 would remain unnoticed
+			 * @param type type of the frame being checked
+			 * @return     flag of a type of a frame withdrawn from the use
+			 *
+			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ bool retired(const uint64_t type) noexcept;
 
 			/**
+			 * \~russian
 			 * @brief Функция проверки параметра SETTINGS на изъятый из употребления в HTTP/3
 			 *
 			 * @details Параметры 0x02, 0x03, 0x04 и 0x05 занимали в HTTP/2 ENABLE_PUSH,
@@ -312,33 +493,63 @@ namespace awh {
 			 * @param identifier проверяемый идентификатор параметра
 			 * @return           признак изъятого из употребления параметра
 			 *
+			 * \~english
+			 * @brief Function of checking a parameter of SETTINGS for one withdrawn from the use in HTTP/3
+			 * @details The parameters 0x02, 0x03, 0x04 and 0x05 were occupied in HTTP/2 by ENABLE_PUSH,
+			 *          MAX_CONCURRENT_STREAMS, INITIAL_WINDOW_SIZE and MAX_FRAME_SIZE. Their receipt
+			 *          is obliged to break the connection with H3_SETTINGS_ERROR (RFC 9114 §7.2.4.1)
+			 * @param identifier identifier of the parameter being checked
+			 * @return           flag of a parameter withdrawn from the use
+			 *
+			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ bool retiredSetting(const uint64_t identifier) noexcept;
 
 			/**
+			 * \~russian
 			 * @brief Функция получения человекочитаемого названия типа кадра
 			 *
 			 * @param type тип кадра
 			 * @return     название типа кадра
 			 *
+			 * \~english
+			 * @brief Function of getting the human-readable name of a type of a frame
+			 * @param type type of the frame
+			 * @return     name of the type of the frame
+			 *
+			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ string_view frameName(const frame_t type) noexcept;
 
 			/**
+			 * \~russian
 			 * @brief Функция получения человекочитаемого названия типа однонаправленного потока
 			 *
 			 * @param type тип однонаправленного потока
 			 * @return     название типа потока
 			 *
+			 * \~english
+			 * @brief Function of getting the human-readable name of a type of a unidirectional stream
+			 * @param type type of the unidirectional stream
+			 * @return     name of the type of the stream
+			 *
+			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ string_view unistreamName(const unistream_t type) noexcept;
 
 			/**
+			 * \~russian
 			 * @brief Функция получения человекочитаемого названия кода ошибки
 			 *
 			 * @param code код ошибки протокола
 			 * @return     название кода ошибки
 			 *
+			 * \~english
+			 * @brief Function of getting the human-readable name of an error code
+			 * @param code error code of the protocol
+			 * @return     name of the error code
+			 *
+			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ string_view errorName(const error_t code) noexcept;
 		}

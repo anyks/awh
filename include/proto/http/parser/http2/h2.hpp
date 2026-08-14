@@ -9,8 +9,15 @@
  * @email: forman@anyks.com
  * @site: https://anyks.com
  *
+ * \~russian
  * @brief Заголовочный файл констант протокола HTTP/2 (RFC 9113) — перечисления типов фреймов, флагов,
  *        параметров SETTINGS, состояний потоков и кодов ошибок, общие для слоя фреймов, HPACK-кодека и парсера сессии
+ *
+ * \~english
+ * @brief Header file of the constants of the HTTP/2 protocol (RFC 9113) — the enumerations of the types of the frames, of the flags,
+ *        of the parameters of SETTINGS, of the states of the streams and of the error codes, common for the layer of the frames, the HPACK codec and the parser of the session
+ *
+ * \~
  *
  * @copyright: Copyright © 2026
  *
@@ -38,8 +45,14 @@
 #include "../../../../sys/macro_push.hpp"
 
 /**
+ * \~russian
  * @brief основное пространство имён
  *
+ *
+ * \~english
+ * @brief main namespace
+ *
+ * \~
  */
 namespace awh {
 	/**
@@ -48,165 +61,319 @@ namespace awh {
 	using namespace std;
 
 	/**
+	 * \~russian
 	 * @brief Пространство имён HTTP-протокола
 	 *
+	 *
+	 * \~english
+	 * @brief HTTP protocol namespace
+	 *
+	 * \~
 	 */
 	namespace http {
 		/**
+		 * \~russian
 		 * @brief Пространство имён внутренних слоёв протокола HTTP/2 (RFC 9113) и HPACK (RFC 7541)
 		 *
 		 * @details Содержит базовые типы и константы протокола, общие для framing-слоя (frame.hpp),
 		 *          HPACK-кодека (hpack.hpp) и парсера сессии (http.hpp). Логики здесь нет —
 		 *          только перечисления, константы протокола и POD-структуры.
 		 *
+		 * \~english
+		 * @brief Namespace of the internal layers of the HTTP/2 protocol (RFC 9113) and of HPACK (RFC 7541)
+		 * @details Contains the base types and the constants of the protocol, common for the framing layer (frame.hpp),
+		 *          the HPACK codec (hpack.hpp) and the parser of the session (http.hpp). There is no logic here —
+		 *          only the enumerations, the constants of the protocol and the POD structures.
+		 *
+		 * \~
 		 */
 		namespace h2 {
 			/**
+			 * \~russian
 			 * @brief Пространство имён флагов фреймов (RFC 9113 §6)
 			 *
 			 * @details Один и тот же бит означает разное для разных типов фреймов,
 			 *          поэтому это набор констант, а не enum class.
 			 *
+			 * \~english
+			 * @brief Namespace of the flags of the frames (RFC 9113 §6)
+			 * @details One and the same bit means different things for the different types of the frames,
+			 *          therefore this is a collection of the constants rather than an enum class.
+			 *
+			 * \~
 			 */
 			namespace flag {
 				/**
+				 * \~russian
 				 * @brief Флаги не установлены
 				 *
+				 * \~english
+				 * @brief The flags are not set
+				 *
+				 * \~
 				 */
 				static constexpr uint8_t NONE = 0x00;
 				/**
+				 * \~russian
 				 * @brief Подтверждение получения (SETTINGS, PING)
 				 *
+				 * \~english
+				 * @brief Confirmation of the receipt (SETTINGS, PING)
+				 *
+				 * \~
 				 */
 				static constexpr uint8_t ACK = 0x01;
 				/**
+				 * \~russian
 				 * @brief Наличие padding в нагрузке (DATA, HEADERS, PUSH_PROMISE)
 				 *
+				 * \~english
+				 * @brief Presence of a padding in the payload (DATA, HEADERS, PUSH_PROMISE)
+				 *
+				 * \~
 				 */
 				static constexpr uint8_t PADDED = 0x08;
 				/**
+				 * \~russian
 				 * @brief Наличие полей приоритета (HEADERS)
 				 *
+				 * \~english
+				 * @brief Presence of the fields of the priority (HEADERS)
+				 *
+				 * \~
 				 */
 				static constexpr uint8_t PRIORITY = 0x20;
 				/**
+				 * \~russian
 				 * @brief Завершение потока (DATA, HEADERS)
 				 *
+				 * \~english
+				 * @brief Completion of a stream (DATA, HEADERS)
+				 *
+				 * \~
 				 */
 				static constexpr uint8_t END_STREAM = 0x01;
 				/**
+				 * \~russian
 				 * @brief Завершение блока заголовков (HEADERS, PUSH_PROMISE, CONTINUATION)
 				 *
+				 * \~english
+				 * @brief Completion of a block of the headers (HEADERS, PUSH_PROMISE, CONTINUATION)
+				 *
+				 * \~
 				 */
 				static constexpr uint8_t END_HEADERS = 0x04;
 			};
 
 			/**
+			 * \~russian
 			 * @brief Пространство имён констант протокола (RFC 9113)
 			 *
+			 * \~english
+			 * @brief Namespace of the constants of the protocol (RFC 9113)
+			 *
+			 * \~
 			 */
 			namespace proto {
 				/**
+				 * \~russian
 				 * @brief Размер заголовка любого фрейма в октетах (RFC 9113 §4.1)
 				 *
+				 * \~english
+				 * @brief Size of the header of any frame in octets (RFC 9113 §4.1)
+				 *
+				 * \~
 				 */
 				static constexpr size_t FRAME_HEADER_SIZE = 9;
 				/**
+				 * \~russian
 				 * @brief Флаг разрешения server push (SETTINGS_ENABLE_PUSH)
 				 *
 				 * @note Значения по умолчанию подобраны консервативно
 				 *
+				 * \~english
+				 * @brief Flag of the permission of a server push (SETTINGS_ENABLE_PUSH)
+				 * @note The values by default are selected conservatively
+				 *
+				 * \~
 				 */
 				static constexpr uint32_t DEFAULT_ENABLE_PUSH = 1;
 				/**
+				 * \~russian
 				 * @brief Максимальное число одновременных потоков в соединении
 				 *
 				 * @note Значения по умолчанию подобраны консервативно
 				 *
+				 * \~english
+				 * @brief Largest number of the simultaneous streams in a connection
+				 * @note The values by default are selected conservatively
+				 *
+				 * \~
 				 */
 				static constexpr uint32_t MAX_COUNT_STREAMS = 128;
 				/**
+				 * \~russian
 				 * @brief Максимальный размер списка заголовков
 				 *
 				 * @note 0 - без лимита в SETTINGS, действует maxHeadersTotal
 				 *
+				 * \~english
+				 * @brief Largest size of the list of the headers
+				 * @note 0 - without a limit in SETTINGS, maxHeadersTotal is in force
+				 *
+				 * \~
 				 */
 				static constexpr uint64_t MAX_HEADER_LIST_SIZE = 0;
 				/**
+				 * \~russian
 				 * @brief Нижняя граница для SETTINGS_MAX_FRAME_SIZE
 				 *
+				 * \~english
+				 * @brief Lower boundary for SETTINGS_MAX_FRAME_SIZE
+				 *
+				 * \~
 				 */
 				static constexpr uint32_t MIN_MAX_FRAME_SIZE = 16384;
 				/**
+				 * \~russian
 				 * @brief Начальный размер окна управления потоком (RFC 9113 §6.9.2)
 				 *
+				 * \~english
+				 * @brief Initial size of the window of the flow control (RFC 9113 §6.9.2)
+				 *
+				 * \~
 				 */
 				static constexpr int32_t DEFAULT_WINDOW_SIZE = 65535;
 				/**
+				 * \~russian
 				 * @brief Максимально допустимое значение поля Length (24 бита)
 				 *
+				 * \~english
+				 * @brief Largest admissible value of the field Length (24 bits)
+				 *
+				 * \~
 				 */
 				static constexpr uint32_t MAX_FRAME_LENGTH = 0xFFFFFF;
 				/**
+				 * \~russian
 				 * @brief Максимальное значение окна (2^31 - 1)
 				 *
+				 * \~english
+				 * @brief Largest value of the window (2^31 - 1)
+				 *
+				 * \~
 				 */
 				static constexpr int32_t MAX_WINDOW_SIZE = 0x7FFFFFFF;
 				/**
+				 * \~russian
 				 * @brief Маска для извлечения 31-битного идентификатора потока (сброс reserved-бита)
 				 *
+				 * \~english
+				 * @brief Mask for the extraction of the 31-bit identifier of a stream (the reset of the reserved bit)
+				 *
+				 * \~
 				 */
 				static constexpr uint32_t STREAM_ID_MASK = 0x7FFFFFFF;
 				/**
+				 * \~russian
 				 * @brief Верхняя граница для SETTINGS_MAX_FRAME_SIZE
 				 *
+				 * \~english
+				 * @brief Upper boundary for SETTINGS_MAX_FRAME_SIZE
+				 *
+				 * \~
 				 */
 				static constexpr uint32_t MAX_MAX_FRAME_SIZE = 16777215;
 				/**
+				 * \~russian
 				 * @brief Значение SETTINGS_MAX_FRAME_SIZE по умолчанию (16 КиБ)
 				 *
+				 * \~english
+				 * @brief Value of SETTINGS_MAX_FRAME_SIZE by default (16 KiB)
+				 *
+				 * \~
 				 */
 				static constexpr uint32_t DEFAULT_MAX_FRAME_SIZE = 16384;
 				/**
+				 * \~russian
 				 * @brief Размер динамической таблицы HPACK по умолчанию (RFC 7541)
 				 *
+				 * \~english
+				 * @brief Size of the dynamic table of HPACK by default (RFC 7541)
+				 *
+				 * \~
 				 */
 				static constexpr uint32_t DEFAULT_HEADER_TABLE_SIZE = 4096;
 				/**
+				 * \~russian
 				 * @brief Идентификатор ALPN для HTTP/2 поверх TLS
 				 *
+				 * \~english
+				 * @brief Identifier of ALPN for HTTP/2 over TLS
+				 *
+				 * \~
 				 */
 				static constexpr string_view ALPN = "h2";
 				/**
+				 * \~russian
 				 * @brief Идентификатор ALPN для HTTP/2 поверх открытого TCP (h2c)
 				 *
+				 * \~english
+				 * @brief Identifier of ALPN for HTTP/2 over an open TCP (h2c)
+				 *
+				 * \~
 				 */
 				static constexpr string_view ALPN_CLEARTEXT = "h2c";
 				/**
+				 * \~russian
 				 * @brief Срочность потока по умолчанию (RFC 9218 §4.1)
 				 *
+				 * \~english
+				 * @brief Urgency of a stream by default (RFC 9218 §4.1)
+				 *
+				 * \~
 				 */
 				static constexpr uint8_t DEFAULT_URGENCY = 3;
 				/**
+				 * \~russian
 				 * @brief Наименее срочный уровень расширенного приоритета (RFC 9218 §4.1)
 				 *
+				 * \~english
+				 * @brief Least urgent level of the extended priority (RFC 9218 §4.1)
+				 *
+				 * \~
 				 */
 				static constexpr uint8_t MAX_URGENCY = 7;
 				/**
+				 * \~russian
 				 * @brief Идентификатор потока для предупреждающего GOAWAY плавного завершения (RFC 9113 §6.8)
 				 *
+				 * \~english
+				 * @brief Identifier of a stream for the warning GOAWAY of a smooth completion (RFC 9113 §6.8)
+				 *
+				 * \~
 				 */
 				static constexpr uint32_t MAX_STREAM_ID = 0x7FFFFFFF;
 				/**
+				 * \~russian
 				 * @brief Клиентский connection preface (24 октета), отправляется до первого SETTINGS
 				 *
+				 * \~english
+				 * @brief Client connection preface (24 octets), is sent before the first SETTINGS
+				 *
+				 * \~
 				 */
 				static constexpr string_view PREFACE = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n";
 			};
 
 			/**
+			 * \~russian
 			 * @brief Роль локального эндпоинта на соединении
 			 *
+			 * \~english
+			 * @brief Role of the local endpoint on a connection
+			 *
+			 * \~
 			 */
 			enum class endpoint_t : uint8_t {
 				CLIENT = 0x00, // Нечётные stream id инициируем мы
@@ -214,8 +381,13 @@ namespace awh {
 			};
 
 			/**
+			 * \~russian
 			 * @brief Результат пошаговой обработки/разбора
 			 *
+			 * \~english
+			 * @brief Result of a step-by-step processing/parsing
+			 *
+			 * \~
 			 */
 			enum class status_t : uint8_t {
 				OK         = 0x00, // Успешно, можно продолжать
@@ -224,8 +396,13 @@ namespace awh {
 			};
 
 			/**
+			 * \~russian
 			 * @brief Состояния потока (RFC 9113 §5.1)
 			 *
+			 * \~english
+			 * @brief States of a stream (RFC 9113 §5.1)
+			 *
+			 * \~
 			 */
 			enum class stream_state_t : uint8_t {
 				IDLE               = 0x00, // Поток ещё не использован
@@ -238,8 +415,13 @@ namespace awh {
 			};
 
 			/**
+			 * \~russian
 			 * @brief Тип фрейма (RFC 9113 §6) — значение поля Type (8 бит)
 			 *
+			 * \~english
+			 * @brief Type of a frame (RFC 9113 §6) — the value of the field Type (8 bits)
+			 *
+			 * \~
 			 */
 			enum class frame_t : uint8_t {
 				DATA          = 0x00, // Данные тела (RFC 9113 §6.1)
@@ -258,8 +440,13 @@ namespace awh {
 			};
 
 			/**
+			 * \~russian
 			 * @brief Идентификаторы параметров SETTINGS (RFC 9113 §6.5.2)
 			 *
+			 * \~english
+			 * @brief Identifiers of the parameters of SETTINGS (RFC 9113 §6.5.2)
+			 *
+			 * \~
 			 */
 			enum class setting_t : uint16_t {
 				HEADER_TABLE_SIZE      = 0x01, // Размер динамической таблицы HPACK (по умолчанию 4096)
@@ -273,8 +460,13 @@ namespace awh {
 			};
 
 			/**
+			 * \~russian
 			 * @brief Коды ошибок HTTP/2 (RFC 9113 §7) — используются в RST_STREAM и GOAWAY
 			 *
+			 * \~english
+			 * @brief Error codes of HTTP/2 (RFC 9113 §7) — are used in RST_STREAM and GOAWAY
+			 *
+			 * \~
 			 */
 			enum class error_t : uint32_t {
 				NO_ERROR            = 0x00, // Штатное завершение
@@ -294,20 +486,34 @@ namespace awh {
 			};
 
 			/**
+			 * \~russian
 			 * @brief Функция получения человекочитаемого названия типа фрейма
 			 *
 			 * @param type тип фрейма
 			 * @return     название типа фрейма
 			 *
+			 * \~english
+			 * @brief Function of getting the human-readable name of a type of a frame
+			 * @param type type of the frame
+			 * @return     name of the type of the frame
+			 *
+			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ string_view frameName(const frame_t type) noexcept;
 
 			/**
+			 * \~russian
 			 * @brief Функция получения человекочитаемого названия кода ошибки
 			 *
 			 * @param code код ошибки протокола
 			 * @return     название кода ошибки
 			 *
+			 * \~english
+			 * @brief Function of getting the human-readable name of an error code
+			 * @param code error code of the protocol
+			 * @return     name of the error code
+			 *
+			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ string_view errorName(const error_t code) noexcept;
 		}

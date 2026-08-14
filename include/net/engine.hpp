@@ -1890,6 +1890,29 @@ namespace awh {
 			 * \~
 			 */
 			virtual void on(const event::id_t id, engine::callback::available_t cb) noexcept = 0;
+			/**
+			 * \~russian
+			 * @brief Метод установки источника данных для вытягивающей модели отправки
+			 *
+			 * @details Разновидность отправки, обратная методу send(): движок сам просит данные у
+			 *          источника ровно тогда, когда сокет готов к записи и в очереди есть место.
+			 *          Приложению не нужно держать в памяти всё тело - оно выдаёт данные по мере
+			 *          их ухода в сеть. Источник снимается сам по достижении конца тела
+			 *
+			 * @note Источник и метод send() применимы к одному событию одновременно: данные обоих
+			 *       ложатся в одну очередь и уходят в порядке попадания в неё
+			 *
+			 * @param id идентификатор события
+			 * @param cb функция обратного вызова источника данных
+			 *
+			 * \~english
+			 * @brief Method of setting the source of the data for the pull model of the sending
+			 * @param id identifier of the event
+			 * @param cb callback function of the source of the data
+			 *
+			 * \~
+			 */
+			virtual void on(const event::id_t id, engine::callback::source_t cb) noexcept = 0;
 		public:
 			/**
 			 * \~russian

@@ -1431,6 +1431,8 @@ void awh::codec::csv::Reader::reset() noexcept {
 	this->_unique.clear();
 	// Очищаем очередь собранных событий разбора
 	this->_items.clear();
+	// Сбрасываем указание на первое невыданное событие
+	this->_head = 0;
 	// Сбрасываем событие разбора, выданное последним
 	this->_current = item_t();
 	// Сбрасываем положение начала текущего поля
@@ -1491,7 +1493,7 @@ bool awh::codec::csv::Reader::feed(const char * buffer, const size_t size, const
 	 *       ссылаются в него смещениями, и очистка при неопустевшей очереди обесценила
 	 *       бы ссылки уже собранных событий
 	 */
-	if(this->_items.empty() && (this->_begin == static_cast <uint32_t> (this->_storage.size()))){
+	if((this->_head >= this->_items.size()) && (this->_begin == static_cast <uint32_t> (this->_storage.size()))){
 		// Очищаем хранилище знаков текущей записи
 		this->_storage.clear();
 		// Сбрасываем смещение начала текущего поля в хранилище знаков
@@ -1638,7 +1640,7 @@ bool awh::codec::csv::Reader::next() noexcept {
 	/**
 	 * Если очередь собранных событий разбора пуста
 	 */
-	if(this->_items.empty()){
+	if(this->_head >= this->_items.size()){
 		// Сбрасываем событие разбора, выданное последним
 		this->_current = item_t();
 		/**
@@ -1651,9 +1653,21 @@ bool awh::codec::csv::Reader::next() noexcept {
 		return false;
 	}
 	// Получаем очередное событие разбора
-	this->_current = this->_items.front();
+	this->_current = this->_items[this->_head];
 	// Убираем полученное событие из очереди выдачи
-	this->_items.pop_front();
+	this->_head++;
+	/**
+	 * Если выданы все собранные события
+	 *
+	 * @note Очередь очищается целиком, а выделенное под неё остаётся: перечень память
+	 *       не освобождает, и следующая таблица разбирается уже без выделений
+	 */
+	if(this->_head >= this->_items.size()){
+		// Очищаем очередь собранных событий разбора
+		this->_items.clear();
+		// Сбрасываем указание на первое невыданное событие
+		this->_head = 0;
+	}
 	// Выводим признак наличия события
 	return true;
 }
@@ -1809,7 +1823,7 @@ awh::codec::csv::Reader::Reader() noexcept :
  _state(state_t::RECORD_START), _error(error_t::NONE), _encoding(encoding_t::NONE),
  _separator(','), _expected(0), _marked(false), _last(false), _headed(false), _quoted(false),
  _modified(false), _started(false), _offset(0), _line(1), _column(1),
- _record(0), _field(0), _count(0), _length(0), _begin(0), _detected(true) {
+ _record(0), _field(0), _count(0), _length(0), _begin(0), _head(0), _detected(true) {
 	// Выполняем сброс состояния разбора
 	this->reset();
 }
