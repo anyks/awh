@@ -115,5 +115,17 @@ $ROOT/submodule.sh add csv-parser https://github.com/vincentlaucsb/csv-parser.gi
 $ROOT/submodule.sh remove fast-cpp-csv-parser
 $ROOT/submodule.sh add fast-cpp-csv-parser https://github.com/ben-strasser/fast-cpp-csv-parser.git
 
+# Выполняем пересборку сабмодуля nlohmann
+$ROOT/submodule.sh remove nlohmann
+$ROOT/submodule.sh add nlohmann https://github.com/nlohmann/json.git
+
+# Выполняем пересборку сабмодуля yyjson
+$ROOT/submodule.sh remove yyjson
+$ROOT/submodule.sh add yyjson https://github.com/ibireme/yyjson.git
+
+# Выполняем пересборку сабмодуля simdjson
+$ROOT/submodule.sh remove simdjson
+$ROOT/submodule.sh add simdjson https://github.com/simdjson/simdjson.git
+
 # Выводим список добавленных модулей
 cat $ROOT/../.gitmodules

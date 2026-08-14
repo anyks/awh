@@ -269,8 +269,16 @@ namespace awh {
 			 *          сокет готов к записи и в очереди есть свободное место. Приложению не нужно
 			 *          держать в памяти всё тело - оно выдаёт данные по мере их ухода в сеть
 			 *
-			 * @note Источник пишет данные ПРЯМО в переданный участок очереди, промежуточного
-			 *       копирования нет. Записать больше size байт нельзя
+			 * @note Источник НЕ копирует данные никуда: он отдаёт указатель на свой буфер, а
+			 *       движок пишет в сокет прямо оттуда. Отдать больше size байт нельзя
+			 *
+			 * @note Отданные данные обязаны оставаться неизменными до возврата из вызова: движок
+			 *       успевает за это время записать их в сокет, а непринятый сокетом остаток
+			 *       уложить в очередь. Дальше буфер снова принадлежит источнику
+			 *
+			 * @note Отданное принимается ЦЕЛИКОМ: ёмкость запроса движок берёт по свободному
+			 *       месту очереди, поэтому остаток после сокета в неё всегда помещается. Значит
+			 *       источник вправе считать отданное отправленным и сдвинуть свой курсор сразу
 			 *
 			 * @note Вытягивание ведёт ТОЛЬКО возвращаемое значение: `false` означает «отдавать
 			 *       больше нечего», и завести отправку заново сможет лишь приложение вызовом
@@ -282,14 +290,22 @@ namespace awh {
 			 *       вправе отказать в тесном участке, дожидаясь места под неделимую дейтаграмму
 			 *
 			 * @param id     идентификатор события
-			 * @param buffer участок для заполнения данными
-			 * @param size   на входе - ёмкость участка в байтах, на выходе - количество записанных байт
+			 * @param buffer указатель, куда источник помещает адрес своих данных
+			 * @param size   на входе - ёмкость запроса в байтах, на выходе - количество отданных байт
 			 * @return       требуется ли продолжать вытягивание (false - отдавать больше нечего)
 			 *
 			 * \~english
 			 * @brief Callback function of the source of the data for the pull model of the sending
-			 * @note The source writes the data DIRECTLY into the given region of the queue, there is no
-			 *       intermediate copying. It is not possible to write more than size bytes
+			 * @note The source does NOT copy the data anywhere: it gives out a pointer to its own buffer,
+			 *       and the engine writes into the socket directly from there. It is not possible to give
+			 *       out more than size bytes
+			 * @note The given out data are obliged to remain unchanged until the return from the call: the
+			 *       engine manages for this time to write them into the socket, and to place the remainder
+			 *       not accepted by the socket into the queue. Further the buffer belongs to the source again
+			 * @note The given out data are accepted ENTIRELY: the capacity of the request is taken by the
+			 *       engine by the free place of the queue, therefore the remainder after the socket always
+			 *       is placed into it. So the source is entitled to consider the given out as sent and to
+			 *       move its cursor at once
 			 * @note The pulling is driven ONLY by the returned value: `false` means "there is nothing
 			 *       more to give", and only the application is able to start the sending again by the
 			 *       call of `send(id, nullptr, 0)`
@@ -297,13 +313,13 @@ namespace awh {
 			 *       or the given capacity is too small": the engine stops the round of the requests, but
 			 *       does not forget the source and returns to it at the nearest release of the queue
 			 * @param id     identifier of the event
-			 * @param buffer region to fill with the data
-			 * @param size   at the input — capacity of the region in the bytes, at the output — amount of the written bytes
+			 * @param buffer pointer where the source places the address of its data
+			 * @param size   at the input — capacity of the request in the bytes, at the output — amount of the given out bytes
 			 * @return       whether it is required to continue the pulling (false — there is nothing more to give)
 			 *
 			 * \~
 			 */
-			using source_t = function <bool (const event::id_t, uint8_t *, size_t &)>;
+			using source_t = function <bool (const event::id_t, const uint8_t **, size_t &)>;
 			/**
 			 * \~russian
 			 * @brief Функция обратного вызова срабатывающая при ошибке события

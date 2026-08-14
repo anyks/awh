@@ -143,6 +143,33 @@ namespace awh {
 			} __attribute__((packed)) id_t;
 			/**
 			 * \~russian
+			 * @brief Структура параметров клиента
+			 *
+			 * \~english
+			 * @brief Structure of the client parameters
+			 *
+			 * \~
+			 */
+			typedef struct __AWH_SHARED_EXPORT__ Params {
+				// Идентификатор потока по умолчанию для отправки без явного sid (INVALID_STREAM - не открыт)
+				uint64_t stream;
+				// Тип сокета транспорта клиента (STREAM/DATAGRAM/SEQPACKET - определяет доступность датаграмм)
+				event::type_t type;
+				// Протокол транспорта клиента (выбирается при инициализации, определяет обработку данных)
+				event::protocol_t protocol;
+				/**
+				 * \~russian
+				 * @brief Конструктор
+				 *
+				 * \~english
+				 * @brief Constructor
+				 *
+				 * \~
+				 */
+				explicit Params() noexcept;
+			} params_t;
+			/**
+			 * \~russian
 			 * @brief Структура юнита клиента
 			 *
 			 * \~english
@@ -184,6 +211,9 @@ namespace awh {
 			// Адрес хоста целевой машины
 			string _host;
 		protected:
+			// Параметры клиента
+			params_t _params;
+		protected:
 			// Функция обратного вызова для обработки клиента
 			callback_t _callback;
 		protected:
@@ -192,15 +222,6 @@ namespace awh {
 		protected:
 			// Объект транспортного уровня безопасности
 			tls::coder_t * _coder;
-		protected:
-			// Протокол транспорта клиента (выбирается при инициализации, определяет обработку данных)
-			event::protocol_t _protocol;
-		protected:
-			// Тип сокета транспорта клиента (STREAM/DATAGRAM/SEQPACKET - определяет доступность датаграмм)
-			event::type_t _type;
-		protected:
-			// Идентификатор потока по умолчанию для отправки без явного sid (INVALID_STREAM - не открыт)
-			uint64_t _stream;
 		protected:
 			/**
 			 * \~russian
@@ -220,6 +241,28 @@ namespace awh {
 			 * \~
 			 */
 			bool _fin;
+		protected:
+			// Позиция чтения выданного сетевому движку шифротекста TLS
+			size_t _offset;
+			/**
+			 * \~russian
+			 * @brief Буфер шифротекста TLS, ожидающего отправки
+			 *
+			 * @details Шифротекст выдаётся сетевому движку вытягивающей моделью: движок
+			 *          забирает его ровно тогда, когда готов отправить, поэтому при
+			 *          переполнении очереди отправки записи TLS не теряются. Потеря даже
+			 *          одной записи рвёт поток шифрования и обрывает соединение
+			 *
+			 * \~english
+			 * @brief Buffer of the TLS ciphertext awaiting the sending
+			 * @details The ciphertext is given out to the network engine by the pull model: the engine
+			 *          takes it exactly when it is ready to send it, so at an overflow of the queue
+			 *          of the sending the TLS records are not lost. A loss of even a single record
+			 *          breaks the stream of the encryption and terminates the connection
+			 *
+			 * \~
+			 */
+			string _residue;
 		protected:
 			// Объект фреймворка
 			const fmk_t * _fmk;
@@ -614,6 +657,52 @@ namespace awh {
 			 */
 			virtual void resolve(const unit::dns_t::id_t, const event::family_t family, const string & domain, const net::addr_t * addr) noexcept;
 		protected:
+			/**
+			 * \~russian
+			 * @brief Метод выдачи шифротекста TLS сетевому движку
+			 *
+			 * @note Функция-источник вытягивающей модели: движок спрашивает данные ровно
+			 *       тогда, когда готов их отправить, поэтому записи TLS при переполнении
+			 *       очереди отправки не теряются
+			 * @param        идентификатор клиента
+			 * @param buffer адрес указателя на буфер выдаваемых данных
+			 * @param size   ёмкость запроса на входе и размер выданных данных на выходе
+			 * @return       признак продолжения вытягивания данных
+			 *
+			 * \~english
+			 * @brief Method of giving out the TLS ciphertext to the network engine
+			 * @note Source function of the pull model: the engine asks for the data exactly
+			 *       when it is ready to send them, so the TLS records are not lost at an
+			 *       overflow of the queue of the sending
+			 * @param        client identifier
+			 * @param buffer address of the pointer to the buffer of the given out data
+			 * @param size   capacity of the request at the input and size of the given out data at the output
+			 * @return       flag of the continuation of the pulling of the data
+			 *
+			 * \~
+			 */
+			virtual bool source(const event::id_t, const uint8_t ** buffer, size_t & size) noexcept;
+		protected:
+			/**
+			 * \~russian
+			 * @brief Метод постановки шифротекста TLS в очередь на отправку
+			 *
+			 * @note Записи TLS отправляются строго в порядке шифрования, поэтому новая
+			 *       запись становится в хвост буфера, а не идёт в сокет мимо ожидающих
+			 * @param buffer буфер шифротекста
+			 * @param size   размер шифротекста
+			 *
+			 * \~english
+			 * @brief Method of the putting of the TLS ciphertext into the queue for the sending
+			 * @note The TLS records are sent strictly in the order of the encryption, so a new
+			 *       record is put into the tail of the buffer instead of going into the socket
+			 *       past the awaiting ones
+			 * @param buffer buffer of the ciphertext
+			 * @param size   size of the ciphertext
+			 *
+			 * \~
+			 */
+			virtual void residueTLS(const uint8_t * buffer, const size_t size) noexcept;
 			/**
 			 * \~russian
 			 * @brief Метод получения состояния TLS

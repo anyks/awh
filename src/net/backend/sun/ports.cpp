@@ -3016,15 +3016,6 @@ namespace {
 	static uint8_t __awh_buffer__[AWH_EVENT_MAX_BUFFER_SIZE];
 
 	/**
-	 * @brief Глобальный буфер вытягивания данных из источника
-	 *
-	 * @note Буфер заведён отдельно от общего намеренно: общий занят чтением из сокета, и
-	 *       вытягивание, случившееся внутри обработчика чтения, затёрло бы принятое
-	 *
-	 */
-	static uint8_t __awh_source__[AWH_EVENT_MAX_BUFFER_SIZE];
-
-	/**
 	 * @brief Количество опросов подряд, не заполнивших и четверти массива событий
 	 *
 	 * @details Массив, разросшийся под нагрузкой, держит память и после её спада.
@@ -9567,8 +9558,8 @@ namespace io {
 												ipc->callbacks.read(ipc->id, ::__awh_buffer__, static_cast <size_t> (bytes));
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 										} else const_cast <engine::io_t *> (io)->relay(ipc->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
-										// Если дескриптор сокета стал недействительным
-										if(ipc->transfer.fd == net::invalid_socket_t)
+										// Если узел уничтожен из функции обратного вызова
+										if((ipc->state.status == event::status_t::DESTROYED) || (ipc->state.status == event::status_t::GARBAGE))
 											// Формируем отрицательный результат
 											return result;
 									// Если произошёл дисконнект
@@ -9732,8 +9723,8 @@ namespace io {
 										ipc->callbacks.read(ipc->id, ::__awh_buffer__, static_cast <size_t> (bytes));
 								// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 								} else const_cast <engine::io_t *> (io)->relay(ipc->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
-								// Если дескриптор сокета стал недействительным
-								if(ipc->transfer.fd == net::invalid_socket_t)
+								// Если узел уничтожен из функции обратного вызова
+								if((ipc->state.status == event::status_t::DESTROYED) || (ipc->state.status == event::status_t::GARBAGE))
 									// Формируем отрицательный результат
 									return result;
 							// Если произошёл дисконнект
@@ -9868,8 +9859,8 @@ namespace io {
 										ipc->callbacks.read(ipc->id, ::__awh_buffer__, static_cast <size_t> (bytes));
 								// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 								} else const_cast <engine::io_t *> (io)->relay(ipc->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
-								// Если дескриптор сокета стал недействительным
-								if(ipc->transfer.fd == net::invalid_socket_t)
+								// Если узел уничтожен из функции обратного вызова
+								if((ipc->state.status == event::status_t::DESTROYED) || (ipc->state.status == event::status_t::GARBAGE))
 									// Формируем отрицательный результат
 									return result;
 							// Если произошёл дисконнект
@@ -10149,8 +10140,8 @@ namespace io {
 											peer->callbacks.read(peer->id, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
 									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 									} else const_cast <engine::io_t *> (io)->relay(peer->transfer.dest, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
-									// Если дескриптор сокета стал недействительным
-									if(peer->transfer.fd == net::invalid_socket_t)
+									// Если узел уничтожен из функции обратного вызова
+									if((peer->state.status == event::status_t::DESTROYED) || (peer->state.status == event::status_t::GARBAGE))
 										// Формируем отрицательный результат
 										return result;
 									// Если установлено ограничение пропускной способности на чтение данных из сокета
@@ -10354,8 +10345,8 @@ namespace io {
 									peer->callbacks.read(peer->id, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
 							// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 							} else const_cast <engine::io_t *> (io)->relay(peer->transfer.dest, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
-							// Если дескриптор сокета стал недействительным
-							if(peer->transfer.fd == net::invalid_socket_t)
+							// Если узел уничтожен из функции обратного вызова
+							if((peer->state.status == event::status_t::DESTROYED) || (peer->state.status == event::status_t::GARBAGE))
 								// Формируем отрицательный результат
 								return result;
 							// Если установлено ограничение пропускной способности на чтение данных
@@ -10491,8 +10482,8 @@ namespace io {
 											peer->callbacks.read(peer->id, ::__awh_buffer__, static_cast <size_t> (bytes));
 									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 									} else const_cast <engine::io_t *> (io)->relay(peer->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
-									// Если дескриптор сокета стал недействительным
-									if(peer->transfer.fd == net::invalid_socket_t)
+									// Если узел уничтожен из функции обратного вызова
+									if((peer->state.status == event::status_t::DESTROYED) || (peer->state.status == event::status_t::GARBAGE))
 										// Формируем отрицательный результат
 										return result;
 									// Если установлено ограничение пропускной способности на чтение данных из сокета
@@ -10625,8 +10616,8 @@ namespace io {
 										peer->callbacks.read(peer->id, ::__awh_buffer__, static_cast <size_t> (bytes));
 								// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 								} else const_cast <engine::io_t *> (io)->relay(peer->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
-								// Если дескриптор сокета стал недействительным
-								if(peer->transfer.fd == net::invalid_socket_t)
+								// Если узел уничтожен из функции обратного вызова
+								if((peer->state.status == event::status_t::DESTROYED) || (peer->state.status == event::status_t::GARBAGE))
 									// Формируем отрицательный результат
 									return result;
 								// Если установлено ограничение пропускной способности на чтение данных
@@ -12074,8 +12065,8 @@ namespace io {
 											client->callbacks.read(client->id, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
 									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 									} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
-									// Если дескриптор сокета стал недействительным
-									if(client->transfer.fd == net::invalid_socket_t)
+									// Если узел уничтожен из функции обратного вызова
+									if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 										// Формируем отрицательный результат
 										return result;
 									// Если установлено ограничение пропускной способности на чтение данных из сокета
@@ -12279,8 +12270,8 @@ namespace io {
 									client->callbacks.read(client->id, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
 							// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 							} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
-							// Если дескриптор сокета стал недействительным
-							if(client->transfer.fd == net::invalid_socket_t)
+							// Если узел уничтожен из функции обратного вызова
+							if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 								// Формируем отрицательный результат
 								return result;
 							// Если установлено ограничение пропускной способности на чтение данных
@@ -12525,8 +12516,8 @@ namespace io {
 											client->callbacks.read(client->id, ::__awh_buffer__, static_cast <size_t> (bytes));
 									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 									} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
-									// Если дескриптор сокета стал недействительным
-									if(client->transfer.fd == net::invalid_socket_t)
+									// Если узел уничтожен из функции обратного вызова
+									if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 										// Формируем отрицательный результат
 										return result;
 									// Если установлено ограничение пропускной способности на чтение данных из сокета
@@ -12774,8 +12765,8 @@ namespace io {
 										client->callbacks.read(client->id, ::__awh_buffer__, static_cast <size_t> (bytes));
 								// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 								} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
-								// Если дескриптор сокета стал недействительным
-								if(client->transfer.fd == net::invalid_socket_t)
+								// Если узел уничтожен из функции обратного вызова
+								if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 									// Формируем отрицательный результат
 									return result;
 								// Если установлено ограничение пропускной способности на чтение данных
@@ -13028,8 +13019,8 @@ namespace io {
 											client->callbacks.read(client->id, ::__awh_buffer__, static_cast <size_t> (bytes));
 									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 									} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
-									// Если дескриптор сокета стал недействительным
-									if(client->transfer.fd == net::invalid_socket_t)
+									// Если узел уничтожен из функции обратного вызова
+									if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 										// Формируем отрицательный результат
 										return result;
 									// Если установлено ограничение пропускной способности на чтение данных из сокета
@@ -13290,8 +13281,8 @@ namespace io {
 										client->callbacks.read(client->id, ::__awh_buffer__, static_cast <size_t> (bytes));
 								// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 								} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
-								// Если дескриптор сокета стал недействительным
-								if(client->transfer.fd == net::invalid_socket_t)
+								// Если узел уничтожен из функции обратного вызова
+								if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 									// Формируем отрицательный результат
 									return result;
 								// Если установлено ограничение пропускной способности на чтение данных
@@ -13444,8 +13435,8 @@ namespace io {
 											client->callbacks.read(client->id, ::__awh_buffer__, static_cast <size_t> (bytes));
 									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 									} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
-									// Если дескриптор сокета стал недействительным
-									if(client->transfer.fd == net::invalid_socket_t)
+									// Если узел уничтожен из функции обратного вызова
+									if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 										// Формируем отрицательный результат
 										return result;
 									// Если установлено ограничение пропускной способности на чтение данных из сокета
@@ -13596,8 +13587,8 @@ namespace io {
 										client->callbacks.read(client->id, ::__awh_buffer__, static_cast <size_t> (bytes));
 								// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 								} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
-								// Если дескриптор сокета стал недействительным
-								if(client->transfer.fd == net::invalid_socket_t)
+								// Если узел уничтожен из функции обратного вызова
+								if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 									// Формируем отрицательный результат
 									return result;
 								// Если установлено ограничение пропускной способности на чтение данных
@@ -13759,8 +13750,8 @@ namespace io {
 											client->callbacks.read(client->id, ::__awh_buffer__, static_cast <size_t> (bytes));
 									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 									} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
-									// Если дескриптор сокета стал недействительным
-									if(client->transfer.fd == net::invalid_socket_t)
+									// Если узел уничтожен из функции обратного вызова
+									if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 										// Формируем отрицательный результат
 										return result;
 									// Если установлено ограничение пропускной способности на чтение данных из сокета
@@ -13924,8 +13915,8 @@ namespace io {
 										client->callbacks.read(client->id, ::__awh_buffer__, static_cast <size_t> (bytes));
 								// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 								} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
-								// Если дескриптор сокета стал недействительным
-								if(client->transfer.fd == net::invalid_socket_t)
+								// Если узел уничтожен из функции обратного вызова
+								if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 									// Формируем отрицательный результат
 									return result;
 								// Если установлено ограничение пропускной способности на чтение данных
@@ -14810,8 +14801,8 @@ namespace io {
 										if(ipc->callbacks.write != nullptr){
 											// Вызываем функцию обратного вызова для вывода записанных данных
 											ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
-											// Если дескриптор сокета стал недействительным
-											if(ipc->transfer.fd == net::invalid_socket_t)
+											// Если узел уничтожен из функции обратного вызова
+											if((ipc->state.status == event::status_t::DESTROYED) || (ipc->state.status == event::status_t::GARBAGE))
 												// Выводим результат
 												return result;
 										}
@@ -14977,8 +14968,8 @@ namespace io {
 								if(ipc->callbacks.write != nullptr){
 									// Вызываем функцию обратного вызова для вывода записанных данных
 									ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
-									// Если дескриптор сокета стал недействительным
-									if(ipc->transfer.fd == net::invalid_socket_t)
+									// Если узел уничтожен из функции обратного вызова
+									if((ipc->state.status == event::status_t::DESTROYED) || (ipc->state.status == event::status_t::GARBAGE))
 										// Выводим результат
 										return result;
 								}
@@ -15115,8 +15106,8 @@ namespace io {
 								if(ipc->callbacks.write != nullptr){
 									// Вызываем функцию обратного вызова для вывода записанных данных
 									ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
-									// Если дескриптор сокета стал недействительным
-									if(ipc->transfer.fd == net::invalid_socket_t)
+									// Если узел уничтожен из функции обратного вызова
+									if((ipc->state.status == event::status_t::DESTROYED) || (ipc->state.status == event::status_t::GARBAGE))
 										// Выводим результат
 										return result;
 								}
@@ -15549,8 +15540,8 @@ namespace io {
 										if(peer->callbacks.write != nullptr){
 											// Вызываем функцию обратного вызова для вывода записанных данных
 											peer->callbacks.write(peer->id, bytes);
-											// Если дескриптор сокета стал недействительным
-											if(peer->transfer.fd == net::invalid_socket_t)
+											// Если узел уничтожен из функции обратного вызова
+											if((peer->state.status == event::status_t::DESTROYED) || (peer->state.status == event::status_t::GARBAGE))
 												// Выводим результат
 												return result;
 										}
@@ -15661,8 +15652,8 @@ namespace io {
 									if(peer->callbacks.write != nullptr){
 										// Вызываем функцию обратного вызова для вывода записанных данных
 										peer->callbacks.write(peer->id, bytes);
-										// Если дескриптор сокета стал недействительным
-										if(peer->transfer.fd == net::invalid_socket_t)
+										// Если узел уничтожен из функции обратного вызова
+										if((peer->state.status == event::status_t::DESTROYED) || (peer->state.status == event::status_t::GARBAGE))
 											// Выводим результат
 											return result;
 									}
@@ -15933,8 +15924,8 @@ namespace io {
 											if(peer->callbacks.write != nullptr){
 												// Вызываем функцию обратного вызова для вывода записанных данных
 												peer->callbacks.write(peer->id, bytes);
-												// Если дескриптор сокета стал недействительным
-												if(peer->transfer.fd == net::invalid_socket_t)
+												// Если узел уничтожен из функции обратного вызова
+												if((peer->state.status == event::status_t::DESTROYED) || (peer->state.status == event::status_t::GARBAGE))
 													// Выводим результат
 													return result;
 											}
@@ -16045,8 +16036,8 @@ namespace io {
 										if(peer->callbacks.write != nullptr){
 											// Вызываем функцию обратного вызова для вывода записанных данных
 											peer->callbacks.write(peer->id, bytes);
-											// Если дескриптор сокета стал недействительным
-											if(peer->transfer.fd == net::invalid_socket_t)
+											// Если узел уничтожен из функции обратного вызова
+											if((peer->state.status == event::status_t::DESTROYED) || (peer->state.status == event::status_t::GARBAGE))
 												// Выводим результат
 												return result;
 										}
@@ -16386,8 +16377,8 @@ namespace io {
 										if(origin->callbacks.write != nullptr){
 											// Вызываем функцию обратного вызова для вывода записанных данных
 											origin->callbacks.write(origin->id, bytes);
-											// Если дескриптор сокета стал недействительным
-											if(origin->transfer.fd == net::invalid_socket_t)
+											// Если узел уничтожен из функции обратного вызова
+											if((origin->state.status == event::status_t::DESTROYED) || (origin->state.status == event::status_t::GARBAGE))
 												// Выводим результат
 												return result;
 										}
@@ -16493,8 +16484,8 @@ namespace io {
 									if(origin->callbacks.write != nullptr){
 										// Вызываем функцию обратного вызова для вывода записанных данных
 										origin->callbacks.write(origin->id, bytes);
-										// Если дескриптор сокета стал недействительным
-										if(origin->transfer.fd == net::invalid_socket_t)
+										// Если узел уничтожен из функции обратного вызова
+										if((origin->state.status == event::status_t::DESTROYED) || (origin->state.status == event::status_t::GARBAGE))
 											// Выводим результат
 											return result;
 									}
@@ -17047,8 +17038,8 @@ namespace io {
 										if(client->callbacks.write != nullptr){
 											// Вызываем функцию обратного вызова для вывода записанных данных
 											client->callbacks.write(client->id, bytes);
-											// Если дескриптор сокета стал недействительным
-											if(client->transfer.fd == net::invalid_socket_t)
+											// Если узел уничтожен из функции обратного вызова
+											if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 												// Выводим результат
 												return result;
 										}
@@ -17159,8 +17150,8 @@ namespace io {
 									if(client->callbacks.write != nullptr){
 										// Вызываем функцию обратного вызова для вывода записанных данных
 										client->callbacks.write(client->id, bytes);
-										// Если дескриптор сокета стал недействительным
-										if(client->transfer.fd == net::invalid_socket_t)
+										// Если узел уничтожен из функции обратного вызова
+										if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 											// Выводим результат
 											return result;
 									}
@@ -17428,8 +17419,8 @@ namespace io {
 										if(client->callbacks.write != nullptr){
 											// Вызываем функцию обратного вызова для вывода записанных данных
 											client->callbacks.write(client->id, bytes);
-											// Если дескриптор сокета стал недействительным
-											if(client->transfer.fd == net::invalid_socket_t)
+											// Если узел уничтожен из функции обратного вызова
+											if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 												// Выводим результат
 												return result;
 										}
@@ -17540,8 +17531,8 @@ namespace io {
 									if(client->callbacks.write != nullptr){
 										// Вызываем функцию обратного вызова для вывода записанных данных
 										client->callbacks.write(client->id, bytes);
-										// Если дескриптор сокета стал недействительным
-										if(client->transfer.fd == net::invalid_socket_t)
+										// Если узел уничтожен из функции обратного вызова
+										if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 											// Выводим результат
 											return result;
 									}
@@ -17876,8 +17867,8 @@ namespace io {
 										if(client->callbacks.write != nullptr){
 											// Вызываем функцию обратного вызова для вывода записанных данных
 											client->callbacks.write(client->id, bytes);
-											// Если дескриптор сокета стал недействительным
-											if(client->transfer.fd == net::invalid_socket_t)
+											// Если узел уничтожен из функции обратного вызова
+											if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 												// Выводим результат
 												return result;
 										}
@@ -17988,8 +17979,8 @@ namespace io {
 									if(client->callbacks.write != nullptr){
 										// Вызываем функцию обратного вызова для вывода записанных данных
 										client->callbacks.write(client->id, bytes);
-										// Если дескриптор сокета стал недействительным
-										if(client->transfer.fd == net::invalid_socket_t)
+										// Если узел уничтожен из функции обратного вызова
+										if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 											// Выводим результат
 											return result;
 									}
@@ -18211,8 +18202,8 @@ namespace io {
 									if(origin->callbacks.write != nullptr){
 										// Вызываем функцию обратного вызова для вывода записанных данных
 										origin->callbacks.write(origin->id, static_cast <size_t> (bytes));
-										// Если дескриптор сокета стал недействительным
-										if(origin->transfer.fd == net::invalid_socket_t)
+										// Если узел уничтожен из функции обратного вызова
+										if((origin->state.status == event::status_t::DESTROYED) || (origin->state.status == event::status_t::GARBAGE))
 											// Пропускаем итерацию цикла
 											continue;
 									}
@@ -18593,8 +18584,8 @@ namespace io {
 								if(ipc->callbacks.write != nullptr){
 									// Вызываем функцию обратного вызова для вывода записанных данных
 									ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
-									// Если дескриптор сокета стал недействительным
-									if(ipc->transfer.fd == net::invalid_socket_t)
+									// Если узел уничтожен из функции обратного вызова
+									if((ipc->state.status == event::status_t::DESTROYED) || (ipc->state.status == event::status_t::GARBAGE))
 										// Выводим результат
 										return static_cast <size_t> (bytes);
 								}
@@ -18708,8 +18699,8 @@ namespace io {
 							if(ipc->callbacks.write != nullptr){
 								// Вызываем функцию обратного вызова для вывода записанных данных
 								ipc->callbacks.write(ipc->id, 0);
-								// Если дескриптор сокета стал недействительным
-								if(ipc->transfer.fd == net::invalid_socket_t)
+								// Если узел уничтожен из функции обратного вызова
+								if((ipc->state.status == event::status_t::DESTROYED) || (ipc->state.status == event::status_t::GARBAGE))
 									// Выводим результат
 									return result;
 							}
@@ -18819,8 +18810,8 @@ namespace io {
 							if(ipc->callbacks.write != nullptr){
 								// Вызываем функцию обратного вызова для вывода записанных данных
 								ipc->callbacks.write(ipc->id, 0);
-								// Если дескриптор сокета стал недействительным
-								if(ipc->transfer.fd == net::invalid_socket_t)
+								// Если узел уничтожен из функции обратного вызова
+								if((ipc->state.status == event::status_t::DESTROYED) || (ipc->state.status == event::status_t::GARBAGE))
 									// Выводим результат
 									return result;
 							}
@@ -19007,8 +18998,8 @@ namespace io {
 							if(ipc->callbacks.write != nullptr){
 								// Вызываем функцию обратного вызова для вывода записанных данных
 								ipc->callbacks.write(ipc->id, 0);
-								// Если дескриптор сокета стал недействительным
-								if(ipc->transfer.fd == net::invalid_socket_t)
+								// Если узел уничтожен из функции обратного вызова
+								if((ipc->state.status == event::status_t::DESTROYED) || (ipc->state.status == event::status_t::GARBAGE))
 									// Выводим результат
 									return result;
 							}
@@ -19133,8 +19124,8 @@ namespace io {
 							if(ipc->callbacks.write != nullptr){
 								// Вызываем функцию обратного вызова для вывода записанных данных
 								ipc->callbacks.write(ipc->id, 0);
-								// Если дескриптор сокета стал недействительным
-								if(ipc->transfer.fd == net::invalid_socket_t)
+								// Если узел уничтожен из функции обратного вызова
+								if((ipc->state.status == event::status_t::DESTROYED) || (ipc->state.status == event::status_t::GARBAGE))
 									// Выводим результат
 									return result;
 							}
@@ -19539,8 +19530,8 @@ namespace io {
 								if(peer->callbacks.write != nullptr){
 									// Вызываем функцию обратного вызова для вывода записанных данных
 									peer->callbacks.write(peer->id, bytes);
-									// Если дескриптор сокета стал недействительным
-									if(peer->transfer.fd == net::invalid_socket_t)
+									// Если узел уничтожен из функции обратного вызова
+									if((peer->state.status == event::status_t::DESTROYED) || (peer->state.status == event::status_t::GARBAGE))
 										// Выводим результат
 										return bytes;
 								}
@@ -19666,8 +19657,8 @@ namespace io {
 							if(peer->callbacks.write != nullptr){
 								// Вызываем функцию обратного вызова для вывода записанных данных
 								peer->callbacks.write(peer->id, 0);
-								// Если дескриптор сокета стал недействительным
-								if(peer->transfer.fd == net::invalid_socket_t)
+								// Если узел уничтожен из функции обратного вызова
+								if((peer->state.status == event::status_t::DESTROYED) || (peer->state.status == event::status_t::GARBAGE))
 									// Выводим результат
 									return result;
 							}
@@ -19861,8 +19852,8 @@ namespace io {
 										if(peer->callbacks.write != nullptr){
 											// Вызываем функцию обратного вызова для вывода записанных данных
 											peer->callbacks.write(peer->id, bytes);
-											// Если дескриптор сокета стал недействительным
-											if(peer->transfer.fd == net::invalid_socket_t)
+											// Если узел уничтожен из функции обратного вызова
+											if((peer->state.status == event::status_t::DESTROYED) || (peer->state.status == event::status_t::GARBAGE))
 												// Выводим результат
 												return bytes;
 										}
@@ -20333,8 +20324,8 @@ namespace io {
 											if(peer->callbacks.write != nullptr){
 												// Вызываем функцию обратного вызова для вывода записанных данных
 												peer->callbacks.write(peer->id, result);
-												// Если дескриптор сокета стал недействительным
-												if(peer->transfer.fd == net::invalid_socket_t)
+												// Если узел уничтожен из функции обратного вызова
+												if((peer->state.status == event::status_t::DESTROYED) || (peer->state.status == event::status_t::GARBAGE))
 													// Выводим результат
 													return result;
 											}
@@ -20489,8 +20480,8 @@ namespace io {
 								if(peer->callbacks.write != nullptr){
 									// Вызываем функцию обратного вызова для вывода записанных данных
 									peer->callbacks.write(peer->id, 0);
-									// Если дескриптор сокета стал недействительным
-									if(peer->transfer.fd == net::invalid_socket_t)
+									// Если узел уничтожен из функции обратного вызова
+									if((peer->state.status == event::status_t::DESTROYED) || (peer->state.status == event::status_t::GARBAGE))
 										// Выводим результат
 										return result;
 								}
@@ -20685,8 +20676,8 @@ namespace io {
 												if(peer->callbacks.write != nullptr){
 													// Вызываем функцию обратного вызова для вывода записанных данных
 													peer->callbacks.write(peer->id, result);
-													// Если дескриптор сокета стал недействительным
-													if(peer->transfer.fd == net::invalid_socket_t)
+													// Если узел уничтожен из функции обратного вызова
+													if((peer->state.status == event::status_t::DESTROYED) || (peer->state.status == event::status_t::GARBAGE))
 														// Выводим результат
 														return result;
 												}
@@ -20844,8 +20835,8 @@ namespace io {
 								if(peer->callbacks.write != nullptr){
 									// Вызываем функцию обратного вызова для вывода записанных данных
 									peer->callbacks.write(peer->id, 0);
-									// Если дескриптор сокета стал недействительным
-									if(peer->transfer.fd == net::invalid_socket_t)
+									// Если узел уничтожен из функции обратного вызова
+									if((peer->state.status == event::status_t::DESTROYED) || (peer->state.status == event::status_t::GARBAGE))
 										// Выводим результат
 										return result;
 								}
@@ -21226,8 +21217,8 @@ namespace io {
 										if(origin->callbacks.write != nullptr){
 											// Вызываем функцию обратного вызова для вывода записанных данных
 											origin->callbacks.write(origin->id, result);
-											// Если дескриптор сокета стал недействительным
-											if(origin->transfer.fd == net::invalid_socket_t)
+											// Если узел уничтожен из функции обратного вызова
+											if((origin->state.status == event::status_t::DESTROYED) || (origin->state.status == event::status_t::GARBAGE))
 												// Выводим результат
 												return result;
 										}
@@ -21312,8 +21303,8 @@ namespace io {
 							if(origin->callbacks.write != nullptr){
 								// Вызываем функцию обратного вызова для вывода записанных данных
 								origin->callbacks.write(origin->id, 0);
-								// Если дескриптор сокета стал недействительным
-								if(origin->transfer.fd == net::invalid_socket_t)
+								// Если узел уничтожен из функции обратного вызова
+								if((origin->state.status == event::status_t::DESTROYED) || (origin->state.status == event::status_t::GARBAGE))
 									// Выводим результат
 									return result;
 							}
@@ -21532,8 +21523,8 @@ namespace io {
 											if(origin->callbacks.write != nullptr){
 												// Вызываем функцию обратного вызова для вывода записанных данных
 												origin->callbacks.write(origin->id, result);
-												// Если дескриптор сокета стал недействительным
-												if(origin->transfer.fd == net::invalid_socket_t)
+												// Если узел уничтожен из функции обратного вызова
+												if((origin->state.status == event::status_t::DESTROYED) || (origin->state.status == event::status_t::GARBAGE))
 													// Выводим результат
 													return result;
 											}
@@ -21621,8 +21612,8 @@ namespace io {
 							if(origin->callbacks.write != nullptr){
 								// Вызываем функцию обратного вызова для вывода записанных данных
 								origin->callbacks.write(origin->id, 0);
-								// Если дескриптор сокета стал недействительным
-								if(origin->transfer.fd == net::invalid_socket_t)
+								// Если узел уничтожен из функции обратного вызова
+								if((origin->state.status == event::status_t::DESTROYED) || (origin->state.status == event::status_t::GARBAGE))
 									// Выводим результат
 									return result;
 							}
@@ -23156,8 +23147,8 @@ namespace io {
 								if(client->callbacks.write != nullptr){
 									// Вызываем функцию обратного вызова для вывода записанных данных
 									client->callbacks.write(client->id, bytes);
-									// Если дескриптор сокета стал недействительным
-									if(client->transfer.fd == net::invalid_socket_t)
+									// Если узел уничтожен из функции обратного вызова
+									if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 										// Выводим результат
 										return bytes;
 								}
@@ -23283,8 +23274,8 @@ namespace io {
 							if(client->callbacks.write != nullptr){
 								// Вызываем функцию обратного вызова для вывода записанных данных
 								client->callbacks.write(client->id, 0);
-								// Если дескриптор сокета стал недействительным
-								if(client->transfer.fd == net::invalid_socket_t)
+								// Если узел уничтожен из функции обратного вызова
+								if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 									// Выводим результат
 									return result;
 							}
@@ -23478,8 +23469,8 @@ namespace io {
 										if(client->callbacks.write != nullptr){
 											// Вызываем функцию обратного вызова для вывода записанных данных
 											client->callbacks.write(client->id, bytes);
-											// Если дескриптор сокета стал недействительным
-											if(client->transfer.fd == net::invalid_socket_t)
+											// Если узел уничтожен из функции обратного вызова
+											if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 												// Выводим результат
 												return bytes;
 										}
@@ -23936,8 +23927,8 @@ namespace io {
 											if(client->callbacks.write != nullptr){
 												// Вызываем функцию обратного вызова для вывода записанных данных
 												client->callbacks.write(client->id, result);
-												// Если дескриптор сокета стал недействительным
-												if(client->transfer.fd == net::invalid_socket_t)
+												// Если узел уничтожен из функции обратного вызова
+												if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 													// Выводим результат
 													return result;
 											}
@@ -24092,8 +24083,8 @@ namespace io {
 								if(client->callbacks.write != nullptr){
 									// Вызываем функцию обратного вызова для вывода записанных данных
 									client->callbacks.write(client->id, 0);
-									// Если дескриптор сокета стал недействительным
-									if(client->transfer.fd == net::invalid_socket_t)
+									// Если узел уничтожен из функции обратного вызова
+									if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 										// Выводим результат
 										return result;
 								}
@@ -24274,8 +24265,8 @@ namespace io {
 												if(client->callbacks.write != nullptr){
 													// Вызываем функцию обратного вызова для вывода записанных данных
 													client->callbacks.write(client->id, result);
-													// Если дескриптор сокета стал недействительным
-													if(client->transfer.fd == net::invalid_socket_t)
+													// Если узел уничтожен из функции обратного вызова
+													if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 														// Выводим результат
 														return result;
 												}
@@ -24433,8 +24424,8 @@ namespace io {
 								if(client->callbacks.write != nullptr){
 									// Вызываем функцию обратного вызова для вывода записанных данных
 									client->callbacks.write(client->id, 0);
-									// Если дескриптор сокета стал недействительным
-									if(client->transfer.fd == net::invalid_socket_t)
+									// Если узел уничтожен из функции обратного вызова
+									if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 										// Выводим результат
 										return result;
 								}
@@ -24694,8 +24685,8 @@ namespace io {
 											if(client->callbacks.write != nullptr){
 												// Вызываем функцию обратного вызова для вывода записанных данных
 												client->callbacks.write(client->id, result);
-												// Если дескриптор сокета стал недействительным
-												if(client->transfer.fd == net::invalid_socket_t)
+												// Если узел уничтожен из функции обратного вызова
+												if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 													// Выводим результат
 													return result;
 											}
@@ -24850,8 +24841,8 @@ namespace io {
 								if(client->callbacks.write != nullptr){
 									// Вызываем функцию обратного вызова для вывода записанных данных
 									client->callbacks.write(client->id, 0);
-									// Если дескриптор сокета стал недействительным
-									if(client->transfer.fd == net::invalid_socket_t)
+									// Если узел уничтожен из функции обратного вызова
+									if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 										// Выводим результат
 										return result;
 								}
@@ -25032,8 +25023,8 @@ namespace io {
 												if(client->callbacks.write != nullptr){
 													// Вызываем функцию обратного вызова для вывода записанных данных
 													client->callbacks.write(client->id, result);
-													// Если дескриптор сокета стал недействительным
-													if(client->transfer.fd == net::invalid_socket_t)
+													// Если узел уничтожен из функции обратного вызова
+													if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 														// Выводим результат
 														return result;
 												}
@@ -25191,8 +25182,8 @@ namespace io {
 								if(client->callbacks.write != nullptr){
 									// Вызываем функцию обратного вызова для вывода записанных данных
 									client->callbacks.write(client->id, 0);
-									// Если дескриптор сокета стал недействительным
-									if(client->transfer.fd == net::invalid_socket_t)
+									// Если узел уничтожен из функции обратного вызова
+									if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 										// Выводим результат
 										return result;
 								}
@@ -25523,8 +25514,8 @@ namespace io {
 											if(client->callbacks.write != nullptr){
 												// Вызываем функцию обратного вызова для вывода записанных данных
 												client->callbacks.write(client->id, result);
-												// Если дескриптор сокета стал недействительным
-												if(client->transfer.fd == net::invalid_socket_t)
+												// Если узел уничтожен из функции обратного вызова
+												if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 													// Выводим результат
 													return result;
 											}
@@ -25679,8 +25670,8 @@ namespace io {
 								if(client->callbacks.write != nullptr){
 									// Вызываем функцию обратного вызова для вывода записанных данных
 									client->callbacks.write(client->id, 0);
-									// Если дескриптор сокета стал недействительным
-									if(client->transfer.fd == net::invalid_socket_t)
+									// Если узел уничтожен из функции обратного вызова
+									if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 										// Выводим результат
 										return result;
 								}
@@ -25888,8 +25879,8 @@ namespace io {
 												if(client->callbacks.write != nullptr){
 													// Вызываем функцию обратного вызова для вывода записанных данных
 													client->callbacks.write(client->id, result);
-													// Если дескриптор сокета стал недействительным
-													if(client->transfer.fd == net::invalid_socket_t)
+													// Если узел уничтожен из функции обратного вызова
+													if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 														// Выводим результат
 														return result;
 												}
@@ -26047,8 +26038,8 @@ namespace io {
 								if(client->callbacks.write != nullptr){
 									// Вызываем функцию обратного вызова для вывода записанных данных
 									client->callbacks.write(client->id, 0);
-									// Если дескриптор сокета стал недействительным
-									if(client->transfer.fd == net::invalid_socket_t)
+									// Если узел уничтожен из функции обратного вызова
+									if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 										// Выводим результат
 										return result;
 								}
@@ -26362,8 +26353,8 @@ namespace io {
 											if(client->callbacks.write != nullptr){
 												// Вызываем функцию обратного вызова для вывода записанных данных
 												client->callbacks.write(client->id, result);
-												// Если дескриптор сокета стал недействительным
-												if(client->transfer.fd == net::invalid_socket_t)
+												// Если узел уничтожен из функции обратного вызова
+												if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 													// Выводим результат
 													return result;
 											}
@@ -26518,8 +26509,8 @@ namespace io {
 								if(client->callbacks.write != nullptr){
 									// Вызываем функцию обратного вызова для вывода записанных данных
 									client->callbacks.write(client->id, 0);
-									// Если дескриптор сокета стал недействительным
-									if(client->transfer.fd == net::invalid_socket_t)
+									// Если узел уничтожен из функции обратного вызова
+									if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 										// Выводим результат
 										return result;
 								}
@@ -26727,8 +26718,8 @@ namespace io {
 												if(client->callbacks.write != nullptr){
 													// Вызываем функцию обратного вызова для вывода записанных данных
 													client->callbacks.write(client->id, result);
-													// Если дескриптор сокета стал недействительным
-													if(client->transfer.fd == net::invalid_socket_t)
+													// Если узел уничтожен из функции обратного вызова
+													if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 														// Выводим результат
 														return result;
 												}
@@ -26886,8 +26877,8 @@ namespace io {
 								if(client->callbacks.write != nullptr){
 									// Вызываем функцию обратного вызова для вывода записанных данных
 									client->callbacks.write(client->id, 0);
-									// Если дескриптор сокета стал недействительным
-									if(client->transfer.fd == net::invalid_socket_t)
+									// Если узел уничтожен из функции обратного вызова
+									if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 										// Выводим результат
 										return result;
 								}
@@ -27529,21 +27520,23 @@ namespace io {
 				if(capacity == 0)
 					// Выходим из цикла вытягивания
 					break;
-				// Запоминаем ёмкость участка, отданную источнику
+				// Запоминаем ёмкость запроса, отданную источнику
 				const size_t offered = capacity;
-				// Запрашиваем данные у источника прямо в промежуточный буфер
-				const bool proceed = node->callbacks.source(node->id, ::__awh_source__, capacity);
-				// Если источник записал больше отданной ему ёмкости
+				// Указатель на данные источника
+				const uint8_t * chunk = nullptr;
+				// Запрашиваем данные у источника, получая указатель на его собственный буфер
+				const bool proceed = node->callbacks.source(node->id, &chunk, capacity);
+				// Если источник отдал больше отданной ему ёмкости
 				if(!(pulling = (capacity <= offered))){
 					// Записываем ошибку в лог
-					log->print("Data source has written more than the given capacity of the region", log_t::flag_t::WARNING);
+					log->print("Data source has given out more than the given capacity of the request", log_t::flag_t::WARNING);
 					// Выходим из цикла вытягивания
 					break;
 				}
 				// Если источник отдал данные
-				if(capacity > 0){
+				if((capacity > 0) && (chunk != nullptr)){
 					// Отправляем вытянутое обычным путём отправки данных
-					(void) ::io::send(node, ::__awh_source__, capacity, eth, log);
+					(void) ::io::send(node, chunk, capacity, eth, log);
 					/**
 					 * Если узел больше не пригоден к обмену
 					 *

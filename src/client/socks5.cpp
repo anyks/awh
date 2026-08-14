@@ -1260,27 +1260,7 @@ void awh::client::Socks5::processTLS(const tls::coder_t::id_t, const tls::coder_
 							}
 						}
 					// Если клиент для работы с UDP протоколом не инициализирован
-					} else {
-						// Отправляем данные обратно клиенту, которые были зашифрованы TLS
-						if(!this->_unit->client.send(this->_id.eid, reinterpret_cast <const char *> (buffer), size)){
-							// Если функция обратного вызова не установлена
-							if(!this->_callback.is("error")){
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Записываем ошибку в лог
-									this->_log->debug("Data cannot be sent to the server", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (event), buffer, size), log_t::flag_t::WARNING);
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Записываем ошибку в лог
-									this->_log->print("Data cannot be sent to the server", log_t::flag_t::WARNING);
-								#endif
-							}
-						}
-					}
+					} else this->residueTLS(buffer, size);
 				} break;
 				// Если событие дешифрования данных TLS
 				case static_cast <uint8_t> (tls::coder_t::event_t::DECRYPTION):

@@ -358,6 +358,8 @@ void awh::Server::status(const uint8_t index, const event::status_t status) noex
 							for(auto i = this->_tls.safety.begin(); i != this->_tls.safety.end();){
 								// Формируем список идентификаторов TLS для удаления
 								garbage.push_back(i->second);
+								// Удаляем ожидающий отправки шифротекст клиента
+								this->_tls.residue.erase(i->first);
 								// Удаляем сопоставление идентификатора клиента с идентификатором TLS
 								i = this->_tls.safety.erase(i);
 							}
@@ -393,6 +395,12 @@ void awh::Server::accept(const event::id_t eid, const event::id_t cid) noexcept 
 		tls::coder_t::id_t ctl = this->_tls.coder->transport(this->_id.cts);
 		// Добавляем сопоставление идентификатора клиента с идентификатором TLS
 		if(this->_tls.safety.emplace(cid, ctl).second){
+			/**
+			 * Назначаем клиенту источник шифротекста: движок забирает записи TLS
+			 * ровно тогда, когда готов их отправить, поэтому при переполнении
+			 * очереди отправки они не теряются
+			 */
+			this->_unit->server.source(cid, std::bind(&server_t::source, this, _1, _2, _3));
 			/**
 			 * Определяем семейство адресов, с которым работает клиент
 			 */
@@ -644,6 +652,8 @@ void awh::Server::state(const event::id_t eid, const event::status_t status, voi
 					for(auto i = this->_tls.safety.begin(); i != this->_tls.safety.end();){
 						// Формируем список идентификаторов TLS для удаления
 						garbage.push_back(i->second);
+						// Удаляем ожидающий отправки шифротекст клиента
+						this->_tls.residue.erase(i->first);
 						// Удаляем сопоставление идентификатора клиента с идентификатором TLS
 						i = this->_tls.safety.erase(i);
 					}
@@ -667,6 +677,8 @@ void awh::Server::state(const event::id_t eid, const event::status_t status, voi
 					if(i != this->_tls.safety.end()){
 						// Запоминаем идентификатор TLS для удаления
 						const tls::coder_t::id_t ctx = i->second;
+						// Удаляем ожидающий отправки шифротекст клиента
+						this->_tls.residue.erase(i->first);
 						// Удаляем сопоставление идентификатора клиента с идентификатором TLS
 						this->_tls.safety.erase(i);
 						// Уничтожаем объект TLS по найденному идентификатору TLS
@@ -943,9 +955,12 @@ void awh::Server::stateTLS(const tls::coder_t::id_t id, const event::id_t eid, c
 						// Выполняем поиск идентификатора TLS по идентификатору события клиента
 						auto i = this->_tls.safety.find(eid);
 						// Если для данного идентификатора события клиента найден идентификатор TLS
-						if(i != this->_tls.safety.end())
+						if(i != this->_tls.safety.end()){
 							// Удаляем сопоставление идентификатора клиента с идентификатором TLS
 							this->_tls.safety.erase(i);
+							// Удаляем ожидающий отправки шифротекст клиента
+							this->_tls.residue.erase(eid);
+						}
 					}
 					// Уничтожаем подключившегося клиента
 					this->_unit->server.destroy(eid);
@@ -1024,25 +1039,29 @@ void awh::Server::processTLS(const tls::coder_t::id_t id, const event::id_t eid,
 		switch(static_cast <uint8_t> (event)){
 			// Если событие шифрования данных TLS
 			case static_cast <uint8_t> (tls::coder_t::event_t::ENCRYPTION): {
-				// Отправляем данные обратно клиенту, которые были зашифрованы TLS
-				if(!this->_unit->server.send(eid, reinterpret_cast <const char *> (buffer), size)){
-					// Если функция обратного вызова не установлена
-					if(!this->_callback.is("error")){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Записываем ошибку в лог
-							this->_log->debug("Encrypted data cannot be sent to the client", __PRETTY_FUNCTION__, make_tuple(id, eid, static_cast <uint16_t> (event), buffer, size, ctx), log_t::flag_t::WARNING);
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Записываем ошибку в лог
-							this->_log->print("Encrypted data cannot be sent to the client", log_t::flag_t::WARNING);
-						#endif
-					}
+				// Получаем ожидающий отправки шифротекст клиента
+				auto & residue = this->_tls.residue[eid];
+				// Если выданный сетевому движку шифротекст уже отправлен целиком
+				if(residue.offset >= residue.buffer.size()){
+					// Освобождаем буфер шифротекста
+					residue.buffer.clear();
+					// Сбрасываем позицию чтения шифротекста
+					residue.offset = 0;
+				// Иначе освобождаем буфер от уже отправленного шифротекста
+				} else if(residue.offset > 0) {
+					// Удаляем из буфера отправленную часть шифротекста
+					residue.buffer.erase(0, residue.offset);
+					// Сбрасываем позицию чтения шифротекста
+					residue.offset = 0;
 				}
+				/**
+				 * Накапливаем шифротекст в буфере: записи TLS отправляются строго
+				 * в порядке шифрования, поэтому новая запись становится в хвост,
+				 * а не идёт в сокет мимо ожидающих отправки
+				 */
+				residue.buffer.append(reinterpret_cast <const char *> (buffer), size);
+				// Заводим вытягивание шифротекста сетевым движком
+				this->_unit->server.send(eid, nullptr, 0);
 			} break;
 			// Если событие дешифрования данных TLS
 			case static_cast <uint8_t> (tls::coder_t::event_t::DECRYPTION):
@@ -1051,6 +1070,42 @@ void awh::Server::processTLS(const tls::coder_t::id_t id, const event::id_t eid,
 			break;
 		}
 	}
+}
+/**
+ * @brief Метод выдачи шифротекста TLS клиента сетевому движку
+ *
+ * @param eid    идентификатор клиента
+ * @param buffer адрес указателя на буфер выдаваемых данных
+ * @param size   ёмкость запроса на входе и размер выданных данных на выходе
+ * @return       признак продолжения вытягивания данных
+ *
+ */
+bool awh::Server::source(const event::id_t eid, const uint8_t ** buffer, size_t & size) noexcept {
+	// Выполняем поиск ожидающего отправки шифротекста клиента
+	auto i = this->_tls.residue.find(eid);
+	// Если ожидающего отправки шифротекста у клиента больше нет
+	if((i == this->_tls.residue.end()) || (i->second.offset >= i->second.buffer.size())){
+		// Выданных данных нет
+		size = 0;
+		// Выводим отрицательный результат - источник исчерпан
+		return false;
+	}
+	/**
+	 * Выдаём столько шифротекста, сколько движок готов принять: записи TLS идут
+	 * потоком байт, поэтому выдача по частям порядок не нарушает
+	 */
+	const size_t actual = ((size < (i->second.buffer.size() - i->second.offset)) ? size : (i->second.buffer.size() - i->second.offset));
+	// Выдаём буфер ожидающего отправки шифротекста сетевому движку
+	(* buffer) = reinterpret_cast <const uint8_t *> (i->second.buffer.data()) + i->second.offset;
+	// Выдаём размер выдаваемого шифротекста
+	size = actual;
+	/**
+	 * Сдвигаем позицию чтения сразу: выданное движком принимается целиком, а буфер
+	 * до возврата из функции не изменяется, поэтому выданный указатель остаётся годным
+	 */
+	i->second.offset += actual;
+	// Выводим положительный результат - вытягивание продолжается
+	return true;
 }
 /**
  * @brief Метод очистки чёрного списка события
@@ -1171,6 +1226,8 @@ void awh::Server::stop() noexcept {
 						for(auto i = this->_tls.safety.begin(); i != this->_tls.safety.end();){
 							// Формируем список идентификаторов TLS для удаления
 							garbage.push_back(i->second);
+							// Удаляем ожидающий отправки шифротекст клиента
+							this->_tls.residue.erase(i->first);
 							// Удаляем сопоставление идентификатора клиента с идентификатором TLS
 							i = this->_tls.safety.erase(i);
 						}
@@ -1370,6 +1427,8 @@ void awh::Server::destroy(const event::id_t eid) noexcept {
 					if(i != this->_tls.safety.end()){
 						// Запоминаем идентификатор TLS для удаления
 						const tls::coder_t::id_t ctx = i->second;
+						// Удаляем ожидающий отправки шифротекст клиента
+						this->_tls.residue.erase(i->first);
 						// Удаляем сопоставление идентификатора клиента с идентификатором TLS
 						this->_tls.safety.erase(i);
 						// Уничтожаем объект TLS по найденному идентификатору TLS

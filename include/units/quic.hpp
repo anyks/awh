@@ -134,6 +134,15 @@ namespace awh {
 					 */
 					uint64_t tunnel;
 					/**
+					 * Буфер исходящей датаграммы, выданной сетевому движку вытягивающей
+					 * моделью: движок принимает выданное целиком, но указатель обязан
+					 * оставаться действительным до возврата из функции-источника, поэтому
+					 * буфер переиспользуется и очищается только на следующем вызове
+					 */
+					string datagram;
+					// Флаг выдачи буфера исходящей датаграммы сетевому движку
+					bool handed;
+					/**
 					 * \~russian
 					 * @brief Конструктор
 					 *
@@ -469,6 +478,35 @@ namespace awh {
 				 * \~
 				 */
 				bool flush(const event::id_t oid, session_t & session) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод выдачи исходящей датаграммы сессии сетевому движку
+				 *
+				 * @note Функция-источник вытягивающей модели: движок спрашивает данные ровно
+				 *       тогда, когда готов их отправить, поэтому маркировка ECN накладывается
+				 *       здесь же и соответствует выдаваемой датаграмме
+				 * @note Датаграмма отдаётся целиком либо не отдаётся вовсе: если выданной
+				 *       ёмкости не хватает, она удерживается до следующего запроса
+				 * @param oid    идентификатор события сессии
+				 * @param buffer адрес указателя на буфер выдаваемых данных
+				 * @param size   ёмкость запроса на входе и размер выданных данных на выходе
+				 * @return       признак продолжения вытягивания данных
+				 *
+				 * \~english
+				 * @brief Method of giving out an outgoing datagram of a session to the network engine
+				 * @note Source function of the pull model: the engine asks for the data exactly
+				 *       when it is ready to send them, so the ECN marking is imposed here as well
+				 *       and corresponds to the given out datagram
+				 * @note A datagram is given out entirely or not given out at all: if the given
+				 *       capacity is not enough, it is held until the next request
+				 * @param oid    event identifier of the session
+				 * @param buffer address of the pointer to the buffer of the given out data
+				 * @param size   capacity of the request at the input and size of the given out data at the output
+				 * @return       flag of the continuation of the pulling of the data
+				 *
+				 * \~
+				 */
+				bool source(const event::id_t oid, const uint8_t ** buffer, size_t & size) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод отправки объединённых данных в туннельный поток сессии
@@ -2347,6 +2385,16 @@ namespace awh {
 				unique_ptr <quic::connection_t> _connection;
 			private:
 				/**
+				 * Буфер исходящей датаграммы, выданной сетевому движку вытягивающей
+				 * моделью: движок принимает выданное целиком, но указатель обязан
+				 * оставаться действительным до возврата из функции-источника, поэтому
+				 * буфер переиспользуется и очищается только на следующем вызове
+				 */
+				string _datagram;
+				// Флаг выдачи буфера исходящей датаграммы сетевому движку
+				bool _handed;
+			private:
+				/**
 				 * Идентификатор события-приёмника объединения данных (splice): собранные
 				 * данные потоков соединения перенаправляются в это событие вместо выдачи
 				 * приложению (0 - объединение не установлено)
@@ -2473,6 +2521,35 @@ namespace awh {
 				 * \~
 				 */
 				void flush() noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод выдачи исходящей датаграммы соединения сетевому движку
+				 *
+				 * @note Функция-источник вытягивающей модели: движок спрашивает данные ровно
+				 *       тогда, когда готов их отправить, поэтому маркировка ECN накладывается
+				 *       здесь же и соответствует выдаваемой датаграмме
+				 * @note Датаграмма отдаётся целиком либо не отдаётся вовсе: если выданной
+				 *       ёмкости не хватает, она удерживается до следующего запроса
+				 * @param eid    идентификатор события клиента
+				 * @param buffer адрес указателя на буфер выдаваемых данных
+				 * @param size   ёмкость запроса на входе и размер выданных данных на выходе
+				 * @return       признак продолжения вытягивания данных
+				 *
+				 * \~english
+				 * @brief Method of giving out an outgoing datagram of a connection to the network engine
+				 * @note Source function of the pull model: the engine asks for the data exactly
+				 *       when it is ready to send them, so the ECN marking is imposed here as well
+				 *       and corresponds to the given out datagram
+				 * @note A datagram is given out entirely or not given out at all: if the given
+				 *       capacity is not enough, it is held until the next request
+				 * @param eid    event identifier of the client
+				 * @param buffer address of the pointer to the buffer of the given out data
+				 * @param size   capacity of the request at the input and size of the given out data at the output
+				 * @return       flag of the continuation of the pulling of the data
+				 *
+				 * \~
+				 */
+				bool source(const event::id_t eid, const uint8_t ** buffer, size_t & size) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод отправки объединённых данных в туннельный поток соединения

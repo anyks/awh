@@ -56,7 +56,8 @@ namespace {
  *
  */
 awh::unit::QuicServer::Session::Session() noexcept :
- connection(nullptr), connected(false), dest(0), tunnel(quic::connection_t::INVALID_STREAM) {}
+ connection(nullptr), connected(false), dest(0),
+ tunnel(quic::connection_t::INVALID_STREAM), datagram{""}, handed(false) {}
 /**
  * @brief Конструктор параметров кластера
  *
@@ -172,6 +173,13 @@ void awh::unit::QuicServer::accept([[maybe_unused]] const event::id_t eid, const
 	 * сессии с шифрованием на уровне соединения, а не пишутся сырьём в сокет (splice)
 	 */
 	this->_io->on(oid, static_cast <engine::callback::inject_t> (std::bind(&QuicServer::inject, this, _1, _2, _3)));
+	/**
+	 * Устанавливаем функцию обратного вызова источника исходящих датаграмм сессии:
+	 * движок вытягивает датаграммы ровно тогда, когда готов их отправить, поэтому
+	 * при переполнении очереди они не теряются, а маркировка ECN накладывается
+	 * на ту датаграмму, к которой относится
+	 */
+	this->_io->on(oid, static_cast <engine::callback::source_t> (std::bind(&QuicServer::source, this, _1, _2, _3)));
 }
 /**
  * @brief Метод обработки принятой датаграммы сессии
@@ -455,29 +463,83 @@ void awh::unit::QuicServer::process(const event::id_t oid) noexcept {
  *
  */
 bool awh::unit::QuicServer::flush(const event::id_t oid, session_t & session) noexcept {
-	// Флаг отправки хотя бы одной датаграммы
-	bool result = false;
-	// Буфер исходящей датаграммы
-	string datagram = "";
 	/**
-	 * Извлекаем исходящие датаграммы соединения
+	 * Если удерживаемой датаграммы нет - извлекаем первую исходящую датаграмму соединения:
+	 * ею подтверждается, что соединению есть чем ответить, и она же уходит первой при
+	 * вытягивании. Остальные датаграммы движок заберёт сам через функцию-источник
 	 */
-	while(session.connection->write(datagram, this->date())){
-		/**
-		 * Применяем маркировку соединения к сокету: путь соединения мог проверку
-		 * поддержки ECN не пройти, и маркировать его датаграммы далее нельзя,
-		 * тогда как остальным соединениям сокета маркировка сохраняется
-		 */
-		this->mark(session.connection->marking());
-		// Если отправка датаграммы удалённому эндпоинту не выполнена
-		if(this->_io->send(oid, datagram.data(), datagram.size()) == 0)
-			// Записываем ошибку в лог
-			this->_log->print("QUIC datagram is not sent: ID=%u", log_t::flag_t::CRITICAL, oid);
-		// Устанавливаем флаг отправки датаграммы
-		result = true;
+	if(!session.handed && session.datagram.empty()){
+		// Если исходящих датаграмм у соединения нет
+		if(!session.connection->write(session.datagram, this->date()))
+			// Выводим отрицательный результат - отправлять нечего
+			return false;
 	}
-	// Выводим результат отправки исходящих датаграмм
-	return result;
+	// Заводим вытягивание исходящих датаграмм сетевым движком
+	this->_io->send(oid, nullptr, 0);
+	// Выводим положительный результат
+	return true;
+}
+/**
+ * @brief Метод выдачи исходящей датаграммы сессии сетевому движку
+ *
+ * @param oid    идентификатор события сессии
+ * @param buffer адрес указателя на буфер выдаваемых данных
+ * @param size   ёмкость запроса на входе и размер выданных данных на выходе
+ * @return       признак продолжения вытягивания данных
+ *
+ */
+bool awh::unit::QuicServer::source(const event::id_t oid, const uint8_t ** buffer, size_t & size) noexcept {
+	// Выполняем поиск сессии соединения
+	auto i = this->_sessions.find(oid);
+	// Если сессия соединения не найдена либо соединение не создано
+	if((i == this->_sessions.end()) || (i->second.connection == nullptr)){
+		// Выданных данных нет
+		size = 0;
+		// Выводим отрицательный результат - источник исчерпан
+		return false;
+	}
+	// Если предыдущая датаграмма движком уже принята
+	if(i->second.handed){
+		// Освобождаем буфер под следующую датаграмму
+		i->second.datagram.clear();
+		// Снимаем флаг выдачи буфера сетевому движку
+		i->second.handed = false;
+	}
+	// Если удерживаемой датаграммы нет
+	if(i->second.datagram.empty()){
+		// Если исходящих датаграмм у соединения больше нет
+		if(!i->second.connection->write(i->second.datagram, this->date())){
+			// Выданных данных нет
+			size = 0;
+			// Выводим отрицательный результат - источник исчерпан
+			return false;
+		}
+	}
+	/**
+	 * Если выданной ёмкости не хватает под целую датаграмму: датаграмма делению не
+	 * подлежит, поэтому удерживаем её до следующего запроса движка, а вытягивание
+	 * при этом не прекращаем (RFC 9000 §12.2)
+	 */
+	if(i->second.datagram.size() > size){
+		// Выданных данных нет
+		size = 0;
+		// Выводим положительный результат - вытягивание продолжается
+		return true;
+	}
+	/**
+	 * Применяем маркировку соединения к сокету: путь соединения мог проверку
+	 * поддержки ECN не пройти, и маркировать его датаграммы далее нельзя,
+	 * тогда как остальным соединениям сокета маркировка сохраняется
+	 */
+	this->mark(i->second.connection->marking());
+	// Выдаём буфер исходящей датаграммы сетевому движку
+	(* buffer) = reinterpret_cast <const uint8_t *> (i->second.datagram.data());
+	// Выдаём размер исходящей датаграммы
+	size = i->second.datagram.size();
+	// Поднимаем флаг выдачи буфера сетевому движку
+	i->second.handed = true;
+	// Выводим положительный результат - вытягивание продолжается
+	return true;
 }
 /**
  * @brief Метод отправки объединённых данных в туннельный поток сессии
@@ -2652,6 +2714,8 @@ awh::unit::QuicServer::~QuicServer() noexcept {
 	for(auto & item : this->_sessions){
 		// Снимаем функцию обратного вызова на чтение датаграмм сессии
 		this->_io->on(item.first, static_cast <engine::callback::read_t> (nullptr));
+		// Снимаем функцию обратного вызова источника исходящих датаграмм
+		this->_io->on(item.first, static_cast <engine::callback::source_t> (nullptr));
 		// Уничтожаем событие сессии вместе с его ключами маршрутизации
 		this->_io->destroy(item.first);
 	}
@@ -2922,22 +2986,78 @@ void awh::unit::QuicClient::flush() noexcept {
 	if(this->_connection == nullptr)
 		// Выходим из метода
 		return;
-	// Буфер исходящей датаграммы
-	string datagram = "";
 	/**
-	 * Извлекаем исходящие датаграммы соединения
+	 * Если удерживаемой датаграммы нет - извлекаем первую исходящую датаграмму соединения:
+	 * она уходит первой при вытягивании, а остальные датаграммы движок заберёт сам
+	 * через функцию-источник
 	 */
-	while(this->_connection->write(datagram, this->date())){
-		/**
-		 * Применяем маркировку соединения к сокету: путь мог проверку поддержки
-		 * ECN не пройти, и маркировать датаграммы далее нельзя
-		 */
-		this->mark(this->_connection->marking());
-		// Если отправка датаграммы серверу не выполнена
-		if(this->_io->send(this->_eid, datagram.data(), datagram.size()) == 0)
-			// Записываем ошибку в лог
-			this->_log->print("QUIC datagram is not sent: ID=%u", log_t::flag_t::CRITICAL, this->_eid);
+	if(!this->_handed && this->_datagram.empty()){
+		// Если исходящих датаграмм у соединения нет
+		if(!this->_connection->write(this->_datagram, this->date()))
+			// Выходим из метода - отправлять нечего
+			return;
 	}
+	// Заводим вытягивание исходящих датаграмм сетевым движком
+	this->_io->send(this->_eid, nullptr, 0);
+}
+/**
+ * @brief Метод выдачи исходящей датаграммы соединения сетевому движку
+ *
+ * @param eid    идентификатор события клиента
+ * @param buffer адрес указателя на буфер выдаваемых данных
+ * @param size   ёмкость запроса на входе и размер выданных данных на выходе
+ * @return       признак продолжения вытягивания данных
+ *
+ */
+bool awh::unit::QuicClient::source([[maybe_unused]] const event::id_t eid, const uint8_t ** buffer, size_t & size) noexcept {
+	// Если соединение уничтожено приложением реентрантно из функции обратного вызова
+	if(this->_connection == nullptr){
+		// Выданных данных нет
+		size = 0;
+		// Выводим отрицательный результат - источник исчерпан
+		return false;
+	}
+	// Если предыдущая датаграмма движком уже принята
+	if(this->_handed){
+		// Освобождаем буфер под следующую датаграмму
+		this->_datagram.clear();
+		// Снимаем флаг выдачи буфера сетевому движку
+		this->_handed = false;
+	}
+	// Если удерживаемой датаграммы нет
+	if(this->_datagram.empty()){
+		// Если исходящих датаграмм у соединения больше нет
+		if(!this->_connection->write(this->_datagram, this->date())){
+			// Выданных данных нет
+			size = 0;
+			// Выводим отрицательный результат - источник исчерпан
+			return false;
+		}
+	}
+	/**
+	 * Если выданной ёмкости не хватает под целую датаграмму: датаграмма делению не
+	 * подлежит, поэтому удерживаем её до следующего запроса движка, а вытягивание
+	 * при этом не прекращаем (RFC 9000 §12.2)
+	 */
+	if(this->_datagram.size() > size){
+		// Выданных данных нет
+		size = 0;
+		// Выводим положительный результат - вытягивание продолжается
+		return true;
+	}
+	/**
+	 * Применяем маркировку соединения к сокету: путь мог проверку поддержки
+	 * ECN не пройти, и маркировать датаграммы далее нельзя
+	 */
+	this->mark(this->_connection->marking());
+	// Выдаём буфер исходящей датаграммы сетевому движку
+	(* buffer) = reinterpret_cast <const uint8_t *> (this->_datagram.data());
+	// Выдаём размер исходящей датаграммы
+	size = this->_datagram.size();
+	// Поднимаем флаг выдачи буфера сетевому движку
+	this->_handed = true;
+	// Выводим положительный результат - вытягивание продолжается
+	return true;
 }
 /**
  * @brief Метод отправки объединённых данных в туннельный поток соединения
@@ -3102,6 +3222,8 @@ void awh::unit::QuicClient::launch(const event::status_t status) noexcept {
 			if(this->_eid != 0){
 				// Снимаем функцию обратного вызова на чтение датаграмм соединения
 				this->_io->on(this->_eid, static_cast <engine::callback::read_t> (nullptr));
+				// Снимаем функцию обратного вызова источника исходящих датаграмм
+				this->_io->on(this->_eid, static_cast <engine::callback::source_t> (nullptr));
 				// Снимаем функцию обратного вызова на завершение подключения к серверу
 				this->_io->on(this->_eid, static_cast <engine::callback::connect_t> (nullptr));
 				// Уничтожаем событие клиента
@@ -3207,6 +3329,13 @@ awh::event::id_t awh::unit::QuicClient::issue(const event::family_t family, [[ma
 	 * соединения с шифрованием на уровне соединения, а не пишутся сырьём в сокет (splice)
 	 */
 	this->_io->on(this->_eid, static_cast <engine::callback::inject_t> (std::bind(&QuicClient::inject, this, _2, _3)));
+	/**
+	 * Устанавливаем функцию обратного вызова источника исходящих датаграмм соединения:
+	 * движок вытягивает датаграммы ровно тогда, когда готов их отправить, поэтому
+	 * при переполнении очереди они не теряются, а маркировка ECN накладывается
+	 * на ту датаграмму, к которой относится
+	 */
+	this->_io->on(this->_eid, static_cast <engine::callback::source_t> (std::bind(&QuicClient::source, this, _1, _2, _3)));
 	// Устанавливаем функцию обратного вызова на завершение подключения к серверу
 	this->_io->on(this->_eid, static_cast <engine::callback::connect_t> (std::bind(&QuicClient::connected, this, _1, _2)));
 	// Устанавливаем функцию обратного вызова на событие интервала таймеров соединения
@@ -3468,6 +3597,8 @@ void awh::unit::QuicClient::destroy(const event::id_t eid) noexcept {
 	}
 	// Снимаем функцию обратного вызова на чтение датаграмм соединения
 	this->_io->on(this->_eid, static_cast <engine::callback::read_t> (nullptr));
+	// Снимаем функцию обратного вызова источника исходящих датаграмм
+	this->_io->on(this->_eid, static_cast <engine::callback::source_t> (nullptr));
 	// Снимаем функцию обратного вызова на завершение подключения к серверу
 	this->_io->on(this->_eid, static_cast <engine::callback::connect_t> (nullptr));
 	// Уничтожаем событие клиента
@@ -4355,7 +4486,7 @@ awh::unit::QuicClient::QuicClient(const fmk_t * fmk, const log_t * log) noexcept
  unit_t(fmk, log), _eid(0), _tid(0), _connected(false), _notified(false), _ecn(false),
  _family(event::family_t::IPV4), _marking(event::ecn_t::NOT_ECT), _ctx(0), _coder(nullptr),
  _token{""}, _targetPort(0), _target(nullptr), _connection(nullptr),
- _dest(0), _tunnel(quic::connection_t::INVALID_STREAM) {}
+ _datagram{""}, _handed(false), _dest(0), _tunnel(quic::connection_t::INVALID_STREAM) {}
 /**
  * @brief Деструктор
  *
@@ -4369,6 +4500,8 @@ awh::unit::QuicClient::~QuicClient() noexcept {
 	if(this->_eid != 0){
 		// Снимаем функцию обратного вызова на чтение датаграмм соединения
 		this->_io->on(this->_eid, static_cast <engine::callback::read_t> (nullptr));
+		// Снимаем функцию обратного вызова источника исходящих датаграмм
+		this->_io->on(this->_eid, static_cast <engine::callback::source_t> (nullptr));
 		// Уничтожаем событие клиента
 		this->_io->destroy(this->_eid);
 	}

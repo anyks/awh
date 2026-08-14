@@ -51,12 +51,22 @@ awh::Client::Identifier::Identifier() noexcept : eid(0), ctl(0) {}
 /**
  * @brief Конструктор
  *
+ */
+awh::Client::Params::Params() noexcept :
+ stream(quic::connection_t::INVALID_STREAM),
+ type(event::type_t::NONE),
+ protocol(event::protocol_t::NONE) {}
+
+/**
+ * @brief Конструктор
+ *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  *
  */
 awh::Client::Unit::Unit(const fmk_t * fmk, const log_t * log) noexcept :
  addr(fmk, log), client(fmk, log), quic(fmk, log) {}
+
 /**
  * @brief Метод проверки рабочего состояния клиента
  *
@@ -76,7 +86,7 @@ bool awh::Client::active() const noexcept {
 	 * Рабочее состояние проверяется на активном юните транспорта: для транспорта
 	 * QUIC работает выделенный юнит, для остальных транспортов - общий юнит клиента
 	 */
-	return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.working() : this->_unit->client.working());
+	return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.working() : this->_unit->client.working());
 }
 /**
  * @brief Метод фиксации настроек события клиента на активном юните транспорта
@@ -85,7 +95,7 @@ bool awh::Client::active() const noexcept {
  *
  */
 bool awh::Client::commitUnit() noexcept {
-	return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.commit(this->_id.eid) : this->_unit->client.commit(this->_id.eid));
+	return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.commit(this->_id.eid) : this->_unit->client.commit(this->_id.eid));
 }
 /**
  * @brief Метод запуска работы события клиента на активном юните транспорта
@@ -94,7 +104,7 @@ bool awh::Client::commitUnit() noexcept {
  *
  */
 bool awh::Client::launchUnit() noexcept {
-	return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.launch(this->_id.eid) : this->_unit->client.launch(this->_id.eid));
+	return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.launch(this->_id.eid) : this->_unit->client.launch(this->_id.eid));
 }
 /**
  * @brief Метод запуска активного юнита транспорта
@@ -102,7 +112,7 @@ bool awh::Client::launchUnit() noexcept {
  */
 void awh::Client::startUnit() noexcept {
 	// Запускаем активный юнит транспорта
-	if(this->_protocol == event::protocol_t::QUIC)
+	if(this->_params.protocol == event::protocol_t::QUIC)
 		this->_unit->quic.start();
 	else this->_unit->client.start();
 }
@@ -112,7 +122,7 @@ void awh::Client::startUnit() noexcept {
  */
 void awh::Client::stopUnit() noexcept {
 	// Останавливаем активный юнит транспорта
-	if(this->_protocol == event::protocol_t::QUIC)
+	if(this->_params.protocol == event::protocol_t::QUIC)
 		this->_unit->quic.stop();
 	else this->_unit->client.stop();
 }
@@ -122,7 +132,7 @@ void awh::Client::stopUnit() noexcept {
  */
 void awh::Client::destroyUnit() noexcept {
 	// Уничтожаем событие клиента на активном юните транспорта
-	if(this->_protocol == event::protocol_t::QUIC)
+	if(this->_params.protocol == event::protocol_t::QUIC)
 		this->_unit->quic.destroy(this->_id.eid);
 	else this->_unit->client.destroy(this->_id.eid);
 }
@@ -133,7 +143,7 @@ void awh::Client::destroyUnit() noexcept {
  *
  */
 bool awh::Client::pauseUnit() noexcept {
-	return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.pause(this->_id.eid) : this->_unit->client.pause(this->_id.eid));
+	return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.pause(this->_id.eid) : this->_unit->client.pause(this->_id.eid));
 }
 /**
  * @brief Метод возобновления работы события клиента на активном юните транспорта
@@ -142,7 +152,7 @@ bool awh::Client::pauseUnit() noexcept {
  *
  */
 bool awh::Client::resumeUnit() noexcept {
-	return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.resume(this->_id.eid) : this->_unit->client.resume(this->_id.eid));
+	return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.resume(this->_id.eid) : this->_unit->client.resume(this->_id.eid));
 }
 /**
  * @brief Метод подключения события клиента на активном юните транспорта
@@ -159,7 +169,7 @@ bool awh::Client::connectUnit() noexcept {
 	 */
 	const event::id_t eid = this->_id.eid;
 	// Выполняем подключение к удалённому серверу
-	return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.connect(eid) : this->_unit->client.connect(eid));
+	return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.connect(eid) : this->_unit->client.connect(eid));
 }
 /**
  * @brief Метод отключения события клиента на активном юните транспорта
@@ -168,7 +178,7 @@ bool awh::Client::connectUnit() noexcept {
  *
  */
 bool awh::Client::disconnectUnit() noexcept {
-	return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.disconnect(this->_id.eid) : this->_unit->client.disconnect(this->_id.eid));
+	return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.disconnect(this->_id.eid) : this->_unit->client.disconnect(this->_id.eid));
 }
 /**
  * @brief Метод получения данных на активном юните транспорта
@@ -177,7 +187,7 @@ bool awh::Client::disconnectUnit() noexcept {
  *
  */
 bool awh::Client::recvUnit() noexcept {
-	return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.recv(this->_id.eid) : this->_unit->client.recv(this->_id.eid));
+	return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.recv(this->_id.eid) : this->_unit->client.recv(this->_id.eid));
 }
 /**
  * @brief Метод отправки данных на активном юните транспорта
@@ -188,7 +198,7 @@ bool awh::Client::recvUnit() noexcept {
  *
  */
 size_t awh::Client::sendUnit(const void * buffer, const size_t size) noexcept {
-	return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.send(this->_id.eid, buffer, size) : this->_unit->client.send(this->_id.eid, buffer, size));
+	return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.send(this->_id.eid, buffer, size) : this->_unit->client.send(this->_id.eid, buffer, size));
 }
 /**
  * @brief Метод получения семейства адресов события клиента на активном юните транспорта
@@ -197,7 +207,7 @@ size_t awh::Client::sendUnit(const void * buffer, const size_t size) noexcept {
  *
  */
 awh::event::family_t awh::Client::familyUnit() const noexcept {
-	return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.family(this->_id.eid) : this->_unit->client.family(this->_id.eid));
+	return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.family(this->_id.eid) : this->_unit->client.family(this->_id.eid));
 }
 /**
  * @brief Метод получения статуса события клиента на активном юните транспорта
@@ -206,7 +216,7 @@ awh::event::family_t awh::Client::familyUnit() const noexcept {
  *
  */
 awh::event::status_t awh::Client::statusUnit() const noexcept {
-	return ((this->_protocol == event::protocol_t::QUIC) ? awh_cast <const unit::unit_t *> (&this->_unit->quic)->status(this->_id.eid) : awh_cast <const unit::unit_t *> (&this->_unit->client)->status(this->_id.eid));
+	return ((this->_params.protocol == event::protocol_t::QUIC) ? awh_cast <const unit::unit_t *> (&this->_unit->quic)->status(this->_id.eid) : awh_cast <const unit::unit_t *> (&this->_unit->client)->status(this->_id.eid));
 }
 /**
  * @brief Метод получения адреса хоста целевой машины на активном юните транспорта
@@ -215,7 +225,7 @@ awh::event::status_t awh::Client::statusUnit() const noexcept {
  *
  */
 string awh::Client::getTargetUnit() const noexcept {
-	return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.getTarget(this->_id.eid) : this->_unit->client.getTarget(this->_id.eid));
+	return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.getTarget(this->_id.eid) : this->_unit->client.getTarget(this->_id.eid));
 }
 /**
  * @brief Метод получения порта удалённого сервера на активном юните транспорта
@@ -224,7 +234,7 @@ string awh::Client::getTargetUnit() const noexcept {
  *
  */
 uint16_t awh::Client::getTargetPortUnit() const noexcept {
-	return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.getTargetPort(this->_id.eid) : this->_unit->client.getTargetPort(this->_id.eid));
+	return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.getTargetPort(this->_id.eid) : this->_unit->client.getTargetPort(this->_id.eid));
 }
 /**
  * @brief Метод установки адреса хоста целевой машины на активном юните транспорта
@@ -234,7 +244,7 @@ uint16_t awh::Client::getTargetPortUnit() const noexcept {
  *
  */
 bool awh::Client::setTargetUnit(string_view target) noexcept {
-	return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.setTarget(this->_id.eid, target) : this->_unit->client.setTarget(this->_id.eid, target));
+	return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.setTarget(this->_id.eid, target) : this->_unit->client.setTarget(this->_id.eid, target));
 }
 /**
  * @brief Метод установки адреса хоста целевой машины на активном юните транспорта
@@ -244,7 +254,7 @@ bool awh::Client::setTargetUnit(string_view target) noexcept {
  *
  */
 bool awh::Client::setTargetUnit(const net::addr_t * target) noexcept {
-	return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.setTarget(this->_id.eid, target) : this->_unit->client.setTarget(this->_id.eid, target));
+	return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.setTarget(this->_id.eid, target) : this->_unit->client.setTarget(this->_id.eid, target));
 }
 
 /**
@@ -366,10 +376,10 @@ void awh::Client::connect(const event::id_t, const bool ok) noexcept {
 		 * Для транспорта QUIC рукопожатие выполняется самим соединением, а его
 		 * завершение юнит клиента уже транслировал сюда - слой TLS-over-stream обходим
 		 */
-		if(this->_protocol == event::protocol_t::QUIC){
+		if(this->_params.protocol == event::protocol_t::QUIC){
 			// При установлении соединения сбрасываем поток по умолчанию (началась новая сессия)
 			if(ok)
-				this->_stream = quic::connection_t::INVALID_STREAM;
+				this->_params.stream = quic::connection_t::INVALID_STREAM;
 			// Выполняем функцию обратного вызова о подключении к удалённому серверу
 			this->_callback.call <void (const bool)> ("connect", ok);
 			// Выходим из метода
@@ -449,6 +459,10 @@ void awh::Client::state(const event::id_t, const event::status_t status) noexcep
 		if(status == event::status_t::DESTROYED){
 			// Обнуляем идентификатор клиента
 			this->_id.eid = 0;
+			// Сбрасываем позицию чтения шифротекста
+			this->_offset = 0;
+			// Освобождаем буфер ожидающего отправки шифротекста
+			this->_residue.clear();
 			// Если объект DNS-резолвера установлен
 			if(this->_dns.client != nullptr)
 				// Останавливаем событие DNS-резолвера
@@ -646,6 +660,74 @@ void awh::Client::resolve(const unit::dns_t::id_t, const event::family_t family,
 	}
 }
 /**
+ * @brief Метод выдачи шифротекста TLS сетевому движку
+ *
+ * @param        идентификатор клиента
+ * @param buffer адрес указателя на буфер выдаваемых данных
+ * @param size   ёмкость запроса на входе и размер выданных данных на выходе
+ * @return       признак продолжения вытягивания данных
+ *
+ */
+bool awh::Client::source(const event::id_t, const uint8_t ** buffer, size_t & size) noexcept {
+	// Если ожидающего отправки шифротекста больше нет
+	if(this->_offset >= this->_residue.size()){
+		// Выданных данных нет
+		size = 0;
+		// Выводим отрицательный результат - источник исчерпан
+		return false;
+	}
+	/**
+	 * Выдаём столько шифротекста, сколько движок готов принять: записи TLS идут
+	 * потоком байт, поэтому выдача по частям порядок не нарушает
+	 */
+	const size_t actual = ((size < (this->_residue.size() - this->_offset)) ? size : (this->_residue.size() - this->_offset));
+	// Выдаём буфер ожидающего отправки шифротекста сетевому движку
+	(* buffer) = reinterpret_cast <const uint8_t *> (this->_residue.data()) + this->_offset;
+	// Выдаём размер выдаваемого шифротекста
+	size = actual;
+	/**
+	 * Сдвигаем позицию чтения сразу: выданное движком принимается целиком, а буфер
+	 * до возврата из функции не изменяется, поэтому выданный указатель остаётся годным
+	 */
+	this->_offset += actual;
+	// Выводим положительный результат - вытягивание продолжается
+	return true;
+}
+/**
+ * @brief Метод постановки шифротекста TLS в очередь на отправку
+ *
+ * @param buffer буфер шифротекста
+ * @param size   размер шифротекста
+ *
+ */
+void awh::Client::residueTLS(const uint8_t * buffer, const size_t size) noexcept {
+	// Если выданный сетевому движку шифротекст уже отправлен целиком
+	if(this->_offset >= this->_residue.size()){
+		// Сбрасываем позицию чтения шифротекста
+		this->_offset = 0;
+		// Освобождаем буфер шифротекста
+		this->_residue.clear();
+	// Иначе освобождаем буфер от уже отправленного шифротекста
+	} else if(this->_offset > 0) {
+		// Удаляем из буфера отправленную часть шифротекста
+		this->_residue.erase(0, this->_offset);
+		// Сбрасываем позицию чтения шифротекста
+		this->_offset = 0;
+	}
+	/**
+	 * Накапливаем шифротекст в буфере: записи TLS отправляются строго в порядке
+	 * шифрования, поэтому новая запись становится в хвост, а не идёт в сокет
+	 * мимо ожидающих отправки
+	 */
+	this->_residue.append(reinterpret_cast <const char *> (buffer), size);
+	/**
+	 * Заводим вытягивание шифротекста сетевым движком: шифротекст уходит общим
+	 * юнитом клиента - у транспорта QUIC слой записей TLS-over-stream обходится
+	 * соединением самостоятельно (RFC 9001)
+	 */
+	this->_unit->client.send(this->_id.eid, nullptr, 0);
+}
+/**
  * @brief Метод получения состояния TLS
  *
  * @param       идентификатор TLS
@@ -710,27 +792,10 @@ void awh::Client::processTLS(const tls::coder_t::id_t, const tls::coder_t::event
 		 */
 		switch(static_cast <uint8_t> (event)){
 			// Если событие шифрования данных TLS
-			case static_cast <uint8_t> (tls::coder_t::event_t::ENCRYPTION): {
-				// Отправляем данные обратно клиенту, которые были зашифрованы TLS
-				if(!this->sendUnit(reinterpret_cast <const char *> (buffer), size)){
-					// Если функция обратного вызова не установлена
-					if(!this->_callback.is("error")){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Записываем ошибку в лог
-							this->_log->debug("Data cannot be sent to the server", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (event), buffer, size), log_t::flag_t::WARNING);
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Записываем ошибку в лог
-							this->_log->print("Data cannot be sent to the server", log_t::flag_t::WARNING);
-						#endif
-					}
-				}
-			} break;
+			case static_cast <uint8_t> (tls::coder_t::event_t::ENCRYPTION):
+				// Ставим шифротекст в очередь на отправку серверу
+				this->residueTLS(buffer, size);
+			break;
 			// Если событие дешифрования данных TLS
 			case static_cast <uint8_t> (tls::coder_t::event_t::DECRYPTION):
 				// Выполняем функцию обратного вызова
@@ -1087,12 +1152,12 @@ size_t awh::Client::send(const void * buffer, const size_t size) noexcept {
 			 * умолчанию: открываем его лениво при первой отправке и переиспользуем далее
 			 * (для мультиплекса используйте send(sid, buffer, size))
 			 */
-			if(this->_protocol == event::protocol_t::QUIC){
+			if(this->_params.protocol == event::protocol_t::QUIC){
 				// Если поток по умолчанию ещё не открыт - открываем двунаправленный поток
-				if(this->_stream == quic::connection_t::INVALID_STREAM)
-					this->_stream = this->open(false);
+				if(this->_params.stream == quic::connection_t::INVALID_STREAM)
+					this->_params.stream = this->open(false);
 				// Отправляем данные в поток по умолчанию
-				return this->send(this->_stream, buffer, size, false);
+				return this->send(this->_params.stream, buffer, size, false);
 			}
 			// Если идентификатор TLS и объект TLS установлены
 			if((this->_id.ctl > 0) && (this->_coder != nullptr)){
@@ -1253,7 +1318,7 @@ uint64_t awh::Client::open(const bool mode) noexcept {
 	 * Определяем протокол транспорта клиента: открытие потока адресуется общим
 	 * методом, а его смысл зависит от протокола
 	 */
-	switch(static_cast <uint8_t> (this->_protocol)){
+	switch(static_cast <uint8_t> (this->_params.protocol)){
 		// Для транспорта QUIC открываем новый поток приложения соединения
 		case static_cast <uint8_t> (event::protocol_t::QUIC):
 			// Выводим идентификатор открытого потока приложения
@@ -1280,7 +1345,7 @@ size_t awh::Client::send(const uint64_t sid, const void * buffer, const size_t s
 	 * Определяем протокол транспорта клиента: отправка адресуется общим методом,
 	 * а адресация потока зависит от протокола
 	 */
-	switch(static_cast <uint8_t> (this->_protocol)){
+	switch(static_cast <uint8_t> (this->_params.protocol)){
 		// Для транспорта QUIC отправляем данные в указанный поток соединения
 		case static_cast <uint8_t> (event::protocol_t::QUIC): {
 			// Если постановка данных потока в очередь отправки выполнена
@@ -1309,7 +1374,7 @@ size_t awh::Client::send(const uint64_t sid, const void * buffer, const size_t s
  */
 void awh::Client::sendWaterMarks(const size_t high, const size_t low) noexcept {
 	// Определяем протокол транспорта клиента
-	switch(static_cast <uint8_t> (this->_protocol)){
+	switch(static_cast <uint8_t> (this->_params.protocol)){
 		// Для транспорта QUIC устанавливаем водяные метки буфера отправки потоков
 		case static_cast <uint8_t> (event::protocol_t::QUIC):
 			// Устанавливаем водяные метки буфера отправки потоков соединения
@@ -1326,7 +1391,7 @@ void awh::Client::sendWaterMarks(const size_t high, const size_t low) noexcept {
  */
 void awh::Client::dataSource(const uint64_t sid, quic::connection_t::data_source_callback_t source) noexcept {
 	// Определяем протокол транспорта клиента
-	switch(static_cast <uint8_t> (this->_protocol)){
+	switch(static_cast <uint8_t> (this->_params.protocol)){
 		// Для транспорта QUIC назначаем pull-источник данных потока
 		case static_cast <uint8_t> (event::protocol_t::QUIC):
 			// Назначаем pull-источник данных тела потока
@@ -1347,7 +1412,7 @@ bool awh::Client::datagram(const void * buffer, const size_t size) noexcept {
 	 * Определяем протокол транспорта клиента: отправка датаграммы адресуется общим
 	 * методом, а её доставка зависит от протокола
 	 */
-	switch(static_cast <uint8_t> (this->_protocol)){
+	switch(static_cast <uint8_t> (this->_params.protocol)){
 		// Для транспорта QUIC отправляем ненадёжную датаграмму приложения (RFC 9221)
 		case static_cast <uint8_t> (event::protocol_t::QUIC):
 			// Выполняем отправку датаграммы приложения серверу
@@ -1358,7 +1423,7 @@ bool awh::Client::datagram(const void * buffer, const size_t size) noexcept {
 	 * для потоковых транспортов (TCP, SCTP STREAM) отправка датаграмм не поддерживается,
 	 * иначе метод давал бы неоднозначное поведение
 	 */
-	if((this->_type == event::type_t::DATAGRAM) || (this->_type == event::type_t::SEQPACKET))
+	if((this->_params.type == event::type_t::DATAGRAM) || (this->_params.type == event::type_t::SEQPACKET))
 		// Отправляем данные одной датаграммой через общий метод отправки
 		return (this->send(buffer, size) > 0);
 	// Для потоковых транспортов отправка датаграмм не поддерживается
@@ -1375,7 +1440,7 @@ size_t awh::Client::datagrams() const noexcept {
 	 * Определяем протокол транспорта клиента: предельный размер датаграммы
 	 * адресуется общим методом, а его источник зависит от протокола
 	 */
-	switch(static_cast <uint8_t> (this->_protocol)){
+	switch(static_cast <uint8_t> (this->_params.protocol)){
 		// Для транспорта QUIC - предел датаграммы приложения соединения (RFC 9221 §3)
 		case static_cast <uint8_t> (event::protocol_t::QUIC):
 			// Выводим предельный размер данных отправляемой датаграммы QUIC
@@ -1386,7 +1451,7 @@ size_t awh::Client::datagrams() const noexcept {
 	 * для них предел оценивается по MTU сетевого интерфейса за вычетом заголовков
 	 * IP и UDP, что позволяет отправлять датаграммы без фрагментации на пути
 	 */
-	if((this->_type == event::type_t::DATAGRAM) || (this->_type == event::type_t::SEQPACKET)){
+	if((this->_params.type == event::type_t::DATAGRAM) || (this->_params.type == event::type_t::SEQPACKET)){
 		// Извлекаем MTU сетевого интерфейса события клиента
 		const uint32_t mtu = this->_unit->client.getMaximumTransmissionUnit(this->_id.eid);
 		// Накладные расходы заголовков IP и UDP по семейству адресов (IPv4 - 20+8, IPv6 - 40+8)
@@ -1409,7 +1474,7 @@ void awh::Client::close(const uint64_t code, string_view reason) noexcept {
 	 * Определяем протокол транспорта клиента: завершение соединения адресуется общим
 	 * методом, а способ завершения зависит от протокола
 	 */
-	switch(static_cast <uint8_t> (this->_protocol)){
+	switch(static_cast <uint8_t> (this->_params.protocol)){
 		// Для транспорта QUIC отправляем фрейм завершения соединения (RFC 9000 §10.2)
 		case static_cast <uint8_t> (event::protocol_t::QUIC):
 			// Выполняем завершение соединения приложением
@@ -1443,11 +1508,11 @@ bool awh::Client::splice(const event::id_t eid, const event::direct_t direct) no
 			// Если направление объединения данных от клиента к событию
 			case static_cast <uint8_t> (event::direct_t::FORWARD):
 				// Выполняем объединение данных между клиентом и другим событием на активном юните транспорта
-				return (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.splice(this->_id.eid, eid) : this->_unit->client.splice(this->_id.eid, eid));
+				return (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.splice(this->_id.eid, eid) : this->_unit->client.splice(this->_id.eid, eid));
 			// Если направление объединения данных от события к клиенту
 			case static_cast <uint8_t> (event::direct_t::REVERSE):
 				// Выполняем объединение данных между другим событием и клиентом на активном юните транспорта
-				return (this->_protocol == event::protocol_t::QUIC ? this->_unit->quic.splice(eid, this->_id.eid) : this->_unit->client.splice(eid, this->_id.eid));
+				return (this->_params.protocol == event::protocol_t::QUIC ? this->_unit->quic.splice(eid, this->_id.eid) : this->_unit->client.splice(eid, this->_id.eid));
 		}
 	// Если идентификатор клиента не установлен
 	} else {
@@ -1478,7 +1543,7 @@ uint16_t awh::Client::getOptions() const noexcept {
 	// Если идентификатор клиента установлен
 	if(this->_id.eid > 0)
 		// Извлекаем опции клиента
-		return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.getOptions(this->_id.eid) : this->_unit->client.getOptions(this->_id.eid));
+		return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.getOptions(this->_id.eid) : this->_unit->client.getOptions(this->_id.eid));
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -1509,7 +1574,7 @@ bool awh::Client::setOptions(const uint16_t options) noexcept {
 	// Если идентификатор клиента установлен
 	if(this->_id.eid > 0)
 		// Устанавливаем опции клиента
-		return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.setOptions(this->_id.eid, options) : this->_unit->client.setOptions(this->_id.eid, options));
+		return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.setOptions(this->_id.eid, options) : this->_unit->client.setOptions(this->_id.eid, options));
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -1541,7 +1606,7 @@ bool awh::Client::setOption(const uint16_t option, const bool mode) noexcept {
 	// Если идентификатор клиента установлен
 	if(this->_id.eid > 0)
 		// Устанавливаем опцию клиента
-		return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.setOption(this->_id.eid, option, mode) : this->_unit->client.setOption(this->_id.eid, option, mode));
+		return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.setOption(this->_id.eid, option, mode) : this->_unit->client.setOption(this->_id.eid, option, mode));
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -1571,7 +1636,7 @@ awh::net::dgram_info_t awh::Client::getTrafficInfo() const noexcept {
 	// Если идентификатор клиента установлен
 	if(this->_id.eid > 0)
 		// Получаем метаданные последнего принятого дейтаграммного пакета
-		return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.getTrafficInfo(this->_id.eid) : this->_unit->client.getTrafficInfo(this->_id.eid));
+		return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.getTrafficInfo(this->_id.eid) : this->_unit->client.getTrafficInfo(this->_id.eid));
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -1601,7 +1666,7 @@ uint8_t awh::Client::getCountHops() const noexcept {
 	// Если идентификатор клиента установлен
 	if(this->_id.eid > 0)
 		// Получаем количество хопов последнего принятого пакета
-		return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.getCountHops(this->_id.eid) : this->_unit->client.getCountHops(this->_id.eid));
+		return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.getCountHops(this->_id.eid) : this->_unit->client.getCountHops(this->_id.eid));
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -1632,7 +1697,7 @@ bool awh::Client::setCountHops(const uint8_t hops) noexcept {
 	// Если идентификатор клиента установлен
 	if(this->_id.eid > 0)
 		// Устанавливаем количество хопов последнего принятого пакета
-		return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.setCountHops(this->_id.eid, hops) : this->_unit->client.setCountHops(this->_id.eid, hops));
+		return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.setCountHops(this->_id.eid, hops) : this->_unit->client.setCountHops(this->_id.eid, hops));
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -1662,7 +1727,7 @@ awh::event::hops_t awh::Client::getHops() const noexcept {
 	// Если идентификатор клиента установлен
 	if(this->_id.eid > 0)
 		// Получаем максимальное количество хопов
-		return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.getHops(this->_id.eid) : this->_unit->client.getHops(this->_id.eid));
+		return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.getHops(this->_id.eid) : this->_unit->client.getHops(this->_id.eid));
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -1695,7 +1760,7 @@ bool awh::Client::setHops(const event::hops_t hops) noexcept {
 		// Если идентификатор клиента установлен
 		if(this->_id.eid > 0)
 			// Устанавливаем максимальное количество хопов
-			return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.setHops(this->_id.eid, hops) : this->_unit->client.setHops(this->_id.eid, hops));
+			return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.setHops(this->_id.eid, hops) : this->_unit->client.setHops(this->_id.eid, hops));
 		// Если идентификатор клиента не установлен
 		else {
 			/**
@@ -1726,7 +1791,7 @@ string awh::Client::getIface() const noexcept {
 	// Если идентификатор клиента установлен
 	if(this->_id.eid > 0)
 		// Извлекаем сетевой интерфейс клиента
-		return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.getIface(this->_id.eid) : this->_unit->client.getIface(this->_id.eid));
+		return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.getIface(this->_id.eid) : this->_unit->client.getIface(this->_id.eid));
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -1759,7 +1824,7 @@ bool awh::Client::setIface(string_view name) noexcept {
 		// Если идентификатор клиента установлен
 		if(this->_id.eid > 0)
 			// Устанавливаем сетевой интерфейс клиента
-			return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.setIface(this->_id.eid, name) : this->_unit->client.setIface(this->_id.eid, name));
+			return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.setIface(this->_id.eid, name) : this->_unit->client.setIface(this->_id.eid, name));
 		// Если идентификатор клиента не установлен
 		else {
 			/**
@@ -1790,7 +1855,7 @@ uint16_t awh::Client::getSourcePort() const noexcept {
 	// Если идентификатор клиента установлен
 	if(this->_id.eid > 0)
 		// Извлекаем внутренний порт события для клиента
-		return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.getSourcePort(this->_id.eid) : this->_unit->client.getSourcePort(this->_id.eid));
+		return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.getSourcePort(this->_id.eid) : this->_unit->client.getSourcePort(this->_id.eid));
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -1823,7 +1888,7 @@ bool awh::Client::setSourcePort(const uint16_t port) noexcept {
 		// Если идентификатор клиента установлен
 		if(this->_id.eid > 0)
 			// Устанавливаем внутренний порт события для клиента
-			return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.setSourcePort(this->_id.eid, port) : this->_unit->client.setSourcePort(this->_id.eid, port));
+			return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.setSourcePort(this->_id.eid, port) : this->_unit->client.setSourcePort(this->_id.eid, port));
 		// Если идентификатор клиента не установлен
 		else {
 			/**
@@ -1854,7 +1919,7 @@ uint16_t awh::Client::getTargetPort() const noexcept {
 	// Если идентификатор клиента установлен
 	if(this->_id.eid > 0)
 		// Извлекаем порт удаленного сервера для клиента
-		return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.getTargetPort(this->_id.eid) : this->_unit->client.getTargetPort(this->_id.eid));
+		return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.getTargetPort(this->_id.eid) : this->_unit->client.getTargetPort(this->_id.eid));
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -1887,7 +1952,7 @@ bool awh::Client::setTargetPort(const uint16_t port) noexcept {
 		// Если идентификатор клиента установлен
 		if(this->_id.eid > 0)
 			// Устанавливаем порт удаленного сервера для клиента
-			return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.setTargetPort(this->_id.eid, port) : this->_unit->client.setTargetPort(this->_id.eid, port));
+			return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.setTargetPort(this->_id.eid, port) : this->_unit->client.setTargetPort(this->_id.eid, port));
 		// Если идентификатор клиента не установлен
 		else {
 			/**
@@ -2052,7 +2117,7 @@ bool awh::Client::getTarget(unique_ptr <net::addr_t> & target) const noexcept {
 	// Если идентификатор клиента установлен
 	if(this->_id.eid > 0)
 		// Извлекаем адрес хоста целевой машины для клиента
-		return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.getTarget(this->_id.eid, target) : this->_unit->client.getTarget(this->_id.eid, target));
+		return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.getTarget(this->_id.eid, target) : this->_unit->client.getTarget(this->_id.eid, target));
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -2083,7 +2148,7 @@ string awh::Client::getAddress(const event::address_t address) const noexcept {
 	// Если идентификатор клиента установлен
 	if(this->_id.eid > 0)
 		// Извлекаем адрес клиента
-		return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.getAddress(this->_id.eid, address) : this->_unit->client.getAddress(this->_id.eid, address));
+		return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.getAddress(this->_id.eid, address) : this->_unit->client.getAddress(this->_id.eid, address));
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -2117,7 +2182,7 @@ bool awh::Client::setAddress(const event::address_t address, string_view value) 
 		// Если идентификатор клиента установлен
 		if(this->_id.eid > 0)
 			// Устанавливаем адрес клиента
-			return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.setAddress(this->_id.eid, address, value) : this->_unit->client.setAddress(this->_id.eid, address, value));
+			return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.setAddress(this->_id.eid, address, value) : this->_unit->client.setAddress(this->_id.eid, address, value));
 		// Если идентификатор клиента не установлен
 		else {
 			/**
@@ -2152,7 +2217,7 @@ bool awh::Client::setAddress(const event::address_t address, const net::addr_t *
 		// Если идентификатор клиента установлен
 		if(this->_id.eid > 0)
 			// Устанавливаем адрес клиента
-			return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.setAddress(this->_id.eid, address, value) : this->_unit->client.setAddress(this->_id.eid, address, value));
+			return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.setAddress(this->_id.eid, address, value) : this->_unit->client.setAddress(this->_id.eid, address, value));
 		// Если идентификатор клиента не установлен
 		else {
 			/**
@@ -2185,7 +2250,7 @@ bool awh::Client::getAddress(const event::address_t address, unique_ptr <net::ad
 	// Если идентификатор клиента установлен
 	if(this->_id.eid > 0)
 		// Извлекаем адрес клиента
-		return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.getAddress(this->_id.eid, address, value) : this->_unit->client.getAddress(this->_id.eid, address, value));
+		return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.getAddress(this->_id.eid, address, value) : this->_unit->client.getAddress(this->_id.eid, address, value));
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -2215,7 +2280,7 @@ awh::event::delivery_mode_t awh::Client::getDelivery() const noexcept {
 	// Если идентификатор клиента установлен
 	if(this->_id.eid > 0)
 		// Извлекаем режим трансляции пакетов клиента
-		return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.getDelivery(this->_id.eid) : this->_unit->client.getDelivery(this->_id.eid));
+		return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.getDelivery(this->_id.eid) : this->_unit->client.getDelivery(this->_id.eid));
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -2248,7 +2313,7 @@ bool awh::Client::setDelivery(const event::delivery_mode_t delivery) noexcept {
 		// Если идентификатор клиента установлен
 		if(this->_id.eid > 0)
 			// Устанавливаем режим трансляции пакетов клиента
-			return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.setDelivery(this->_id.eid, delivery) : this->_unit->client.setDelivery(this->_id.eid, delivery));
+			return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.setDelivery(this->_id.eid, delivery) : this->_unit->client.setDelivery(this->_id.eid, delivery));
 		// Если идентификатор клиента не установлен
 		else {
 			/**
@@ -2280,7 +2345,7 @@ size_t awh::Client::getBufferSize(const event::action_t action) const noexcept {
 	// Если идентификатор клиента установлен
 	if(this->_id.eid > 0)
 		// Извлекаем размер буфера клиента
-		return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.getBufferSize(this->_id.eid, action) : this->_unit->client.getBufferSize(this->_id.eid, action));
+		return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.getBufferSize(this->_id.eid, action) : this->_unit->client.getBufferSize(this->_id.eid, action));
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -2312,7 +2377,7 @@ bool awh::Client::setBufferSize(const event::action_t action, const size_t size)
 	// Если идентификатор клиента установлен
 	if(this->_id.eid > 0)
 		// Устанавливаем размер буфера клиента
-		return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.setBufferSize(this->_id.eid, action, size) : this->_unit->client.setBufferSize(this->_id.eid, action, size));
+		return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.setBufferSize(this->_id.eid, action, size) : this->_unit->client.setBufferSize(this->_id.eid, action, size));
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -2382,7 +2447,7 @@ awh::event::usage_t awh::Client::getUsageReadTimeout() const noexcept {
 	// Если идентификатор клиента установлен
 	if(this->_id.eid > 0)
 		// Извлекаем режим использования таймаута на чтение события
-		return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.getUsageReadTimeout(this->_id.eid) : this->_unit->client.getUsageReadTimeout(this->_id.eid));
+		return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.getUsageReadTimeout(this->_id.eid) : this->_unit->client.getUsageReadTimeout(this->_id.eid));
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -2412,7 +2477,7 @@ void awh::Client::setUsageReadTimeout(const event::usage_t usage) noexcept {
 	// Если идентификатор клиента установлен
 	if(this->_id.eid > 0)
 		// Устанавливаем режим использования таймаута на чтение события
-		((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.setUsageReadTimeout(this->_id.eid, usage) : this->_unit->client.setUsageReadTimeout(this->_id.eid, usage));
+		((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.setUsageReadTimeout(this->_id.eid, usage) : this->_unit->client.setUsageReadTimeout(this->_id.eid, usage));
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -2441,7 +2506,7 @@ uint32_t awh::Client::getTimeout(const event::action_t action) const noexcept {
 	// Если идентификатор клиента установлен
 	if(this->_id.eid > 0)
 		// Извлекаем таймаут клиента
-		return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.getTimeout(this->_id.eid, action) : this->_unit->client.getTimeout(this->_id.eid, action));
+		return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.getTimeout(this->_id.eid, action) : this->_unit->client.getTimeout(this->_id.eid, action));
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -2472,7 +2537,7 @@ void awh::Client::setTimeout(const event::action_t action, const uint32_t timeou
 	// Если идентификатор клиента установлен
 	if(this->_id.eid > 0)
 		// Устанавливаем таймаут клиента
-		((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.setTimeout(this->_id.eid, action, timeout) : this->_unit->client.setTimeout(this->_id.eid, action, timeout));
+		((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.setTimeout(this->_id.eid, action, timeout) : this->_unit->client.setTimeout(this->_id.eid, action, timeout));
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -2502,7 +2567,7 @@ bool awh::Client::bandwidth(const event::limiting_t limiting, string_view bandwi
 	// Если идентификатор клиента установлен
 	if(this->_id.eid > 0)
 		// Устанавливаем пропускную способность клиента
-		return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.bandwidth(this->_id.eid, limiting, bandwidth) : this->_unit->client.bandwidth(this->_id.eid, limiting, bandwidth));
+		return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.bandwidth(this->_id.eid, limiting, bandwidth) : this->_unit->client.bandwidth(this->_id.eid, limiting, bandwidth));
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -2535,7 +2600,7 @@ bool awh::Client::keepAlive(const int32_t cnt, const int32_t idle, const int32_t
 	// Если идентификатор клиента установлен
 	if(this->_id.eid > 0)
 		// Устанавливаем параметры keep-alive для клиента
-		return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.keepAlive(this->_id.eid, cnt, idle, intvl) : this->_unit->client.keepAlive(this->_id.eid, cnt, idle, intvl));
+		return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.keepAlive(this->_id.eid, cnt, idle, intvl) : this->_unit->client.keepAlive(this->_id.eid, cnt, idle, intvl));
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -2565,7 +2630,7 @@ awh::event::dscp_t awh::Client::getDifferentiatedServicesCodePoint() const noexc
 	// Если идентификатор клиента установлен
 	if(this->_id.eid > 0)
 		// Получаем значение DSCP для клиента
-		return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.getDifferentiatedServicesCodePoint(this->_id.eid) : this->_unit->client.getDifferentiatedServicesCodePoint(this->_id.eid));
+		return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.getDifferentiatedServicesCodePoint(this->_id.eid) : this->_unit->client.getDifferentiatedServicesCodePoint(this->_id.eid));
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -2596,7 +2661,7 @@ bool awh::Client::setDifferentiatedServicesCodePoint(const event::dscp_t dscp) c
 	// Если идентификатор клиента установлен
 	if(this->_id.eid > 0)
 		// Устанавливаем значение DSCP для клиента
-		return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.setDifferentiatedServicesCodePoint(this->_id.eid, dscp) : this->_unit->client.setDifferentiatedServicesCodePoint(this->_id.eid, dscp));
+		return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.setDifferentiatedServicesCodePoint(this->_id.eid, dscp) : this->_unit->client.setDifferentiatedServicesCodePoint(this->_id.eid, dscp));
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -2626,7 +2691,7 @@ awh::event::mtu_discover_t awh::Client::getMaximumTransmissionUnitDiscover() con
 	// Если идентификатор клиента установлен
 	if(this->_id.eid > 0)
 		// Получаем режим обнаружения максимального размера пакета (MTU) для клиента
-		return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.getMaximumTransmissionUnitDiscover(this->_id.eid) : this->_unit->client.getMaximumTransmissionUnitDiscover(this->_id.eid));
+		return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.getMaximumTransmissionUnitDiscover(this->_id.eid) : this->_unit->client.getMaximumTransmissionUnitDiscover(this->_id.eid));
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -2657,7 +2722,7 @@ bool awh::Client::setMaximumTransmissionUnitDiscover(const event::mtu_discover_t
 	// Если идентификатор клиента установлен
 	if(this->_id.eid > 0)
 		// Устанавливаем режим обнаружения максимального размера пакета (MTU) для клиента
-		return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.setMaximumTransmissionUnitDiscover(this->_id.eid, mode) : this->_unit->client.setMaximumTransmissionUnitDiscover(this->_id.eid, mode));
+		return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.setMaximumTransmissionUnitDiscover(this->_id.eid, mode) : this->_unit->client.setMaximumTransmissionUnitDiscover(this->_id.eid, mode));
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -2693,7 +2758,7 @@ bool awh::Client::membership(const event::mode_t mode, string_view group, string
 		// Если идентификатор клиента установлен
 		if(this->_id.eid > 0)
 			// Устанавливаем активацию/деактивацию мультикаст группы для клиента
-			return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.membership(this->_id.eid, mode, group, source, port) : this->_unit->client.membership(this->_id.eid, mode, group, source, port));
+			return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.membership(this->_id.eid, mode, group, source, port) : this->_unit->client.membership(this->_id.eid, mode, group, source, port));
 		// Если идентификатор клиента не установлен
 		else {
 			/**
@@ -2730,7 +2795,7 @@ bool awh::Client::membership(const event::mode_t mode, const net::addr_t * group
 		// Если идентификатор клиента установлен
 		if(this->_id.eid > 0)
 			// Устанавливаем активацию/деактивацию мультикаст группы для клиента
-			return ((this->_protocol == event::protocol_t::QUIC) ? this->_unit->quic.membership(this->_id.eid, mode, group, source, port) : this->_unit->client.membership(this->_id.eid, mode, group, source, port));
+			return ((this->_params.protocol == event::protocol_t::QUIC) ? this->_unit->quic.membership(this->_id.eid, mode, group, source, port) : this->_unit->client.membership(this->_id.eid, mode, group, source, port));
 		// Если идентификатор клиента не установлен
 		else {
 			/**
@@ -2773,11 +2838,11 @@ awh::event::id_t awh::Client::init(const event::family_t family, const event::ty
 		 * записей TLS-over-stream в дальнейшем обходится (RFC 9001)
 		 */
 		// Запоминаем протокол транспорта клиента
-		this->_protocol = protocol;
+		this->_params.protocol = protocol;
 		// Запоминаем тип сокета транспорта клиента (для QUIC соединение работает поверх дейтаграммного сокета)
-		this->_type = ((protocol == event::protocol_t::QUIC) ? event::type_t::DATAGRAM : type);
+		this->_params.type = ((protocol == event::protocol_t::QUIC) ? event::type_t::DATAGRAM : type);
 		// Сбрасываем идентификатор потока по умолчанию
-		this->_stream = quic::connection_t::INVALID_STREAM;
+		this->_params.stream = quic::connection_t::INVALID_STREAM;
 		/**
 		 * Для транспорта QUIC событие создаётся на выделенном юните клиента QUIC:
 		 * ему же переносится шаблон контекста безопасности, а слой записей
@@ -2791,7 +2856,17 @@ awh::event::id_t awh::Client::init(const event::family_t family, const event::ty
 			// Инициализируем новое событие клиента на выделенном юните клиента QUIC
 			this->_id.eid = this->_unit->quic.issue(family, type, protocol);
 		// Инициализируем новое событие клиента на общем юните клиента
-		} else this->_id.eid = this->_unit->client.issue(family, type, protocol);
+		} else {
+			// Инициализируем новое событие клиента на общем юните клиента
+			this->_id.eid = this->_unit->client.issue(family, type, protocol);
+			/**
+			 * Если установлен транспортный уровень безопасности - назначаем источник
+			 * шифротекста: движок забирает записи TLS ровно тогда, когда готов их
+			 * отправить, поэтому при переполнении очереди они не теряются
+			 */
+			if((this->_coder != nullptr) && (this->_id.ctl > 0))
+				this->_unit->client.source(this->_id.eid, std::bind(&client_t::source, this, _1, _2, _3));
+		}
 	// Если идентификатор клиента не установлен
 	} else {
 		/**
@@ -2819,7 +2894,8 @@ awh::event::id_t awh::Client::init(const event::family_t family, const event::ty
  *
  */
 awh::Client::Client(const fmk_t * fmk, const log_t * log) noexcept :
- _host{""}, _callback(fmk, log), _unit(nullptr), _coder(nullptr), _protocol(event::protocol_t::NONE), _type(event::type_t::NONE), _stream(quic::connection_t::INVALID_STREAM), _fin(false), _fmk(fmk), _log(log) {
+ _host{""}, _callback(fmk, log), _unit(nullptr), _coder(nullptr),
+ _fin(false), _offset(0), _residue{""}, _fmk(fmk), _log(log) {
 	// Создаём объект юнита клиента
 	this->_unit = make_unique <unit_t> (fmk, log);
 	// Устанавливаем функцию обратного вызова на событие изменения статуса клиента
@@ -2873,7 +2949,8 @@ awh::Client::Client(const fmk_t * fmk, const log_t * log) noexcept :
  *
  */
 awh::Client::Client(unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept :
- _host{""}, _callback(fmk, log), _unit(nullptr), _coder(nullptr), _protocol(event::protocol_t::NONE), _type(event::type_t::NONE), _stream(quic::connection_t::INVALID_STREAM), _fin(false), _fmk(fmk), _log(log) {
+ _host{""}, _callback(fmk, log), _unit(nullptr), _coder(nullptr),
+ _fin(false), _offset(0), _residue{""}, _fmk(fmk), _log(log) {
 	// Создаём объект юнита клиента
 	this->_unit = make_unique <unit_t> (fmk, log);
 	// Устанавливаем функцию обратного вызова на событие изменения статуса клиента
@@ -2960,7 +3037,8 @@ awh::Client::Client(unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noe
  *
  */
 awh::Client::Client(const tls::coder_t::id_t ctl, tls::coder_t * coder, const fmk_t * fmk, const log_t * log) noexcept :
- _host{""}, _callback(fmk, log), _unit(nullptr), _coder(coder), _protocol(event::protocol_t::NONE), _type(event::type_t::NONE), _stream(quic::connection_t::INVALID_STREAM), _fin(false), _fmk(fmk), _log(log) {
+ _host{""}, _callback(fmk, log), _unit(nullptr), _coder(coder),
+ _fin(false), _offset(0), _residue{""}, _fmk(fmk), _log(log) {
 	/**
 	 * Устанавливаем идентификатор контекста безопасности и подписываемся
 	 * на события транспортного уровня: до запуска клиента менять их некому,
@@ -3049,7 +3127,8 @@ awh::Client::Client(const tls::coder_t::id_t ctl, tls::coder_t * coder, const fm
  *
  */
 awh::Client::Client(const tls::coder_t::id_t ctl, tls::coder_t * coder, unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept :
- _host{""}, _callback(fmk, log), _unit(nullptr), _coder(coder), _protocol(event::protocol_t::NONE), _type(event::type_t::NONE), _stream(quic::connection_t::INVALID_STREAM), _fin(false), _fmk(fmk), _log(log) {
+ _host{""}, _callback(fmk, log), _unit(nullptr), _coder(coder),
+ _fin(false), _offset(0), _residue{""}, _fmk(fmk), _log(log) {
 	/**
 	 * Устанавливаем идентификатор контекста безопасности и подписываемся
 	 * на события транспортного уровня: до запуска клиента менять их некому,

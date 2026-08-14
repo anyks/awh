@@ -1085,6 +1085,19 @@ size_t awh::unit::Server::send(const event::id_t eid, const void * buffer, const
 	return 0;
 }
 /**
+ * @brief Метод назначения источника данных для вытягивающей модели отправки
+ *
+ * @param eid    идентификатор события клиента
+ * @param source функция обратного вызова источника данных
+ *
+ */
+void awh::unit::Server::source(const event::id_t eid, engine::callback::source_t source) noexcept {
+	// Если событие сервера является актуальным
+	if(this->isActual(eid))
+		// Устанавливаем функцию обратного вызова источника данных
+		this->_io->on(eid, source);
+}
+/**
  * @brief Метод объединения данных между сервером и другим событием
  *
  * @param eid  идентификатор события-источника

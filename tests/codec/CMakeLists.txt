@@ -87,6 +87,11 @@ if (${GTest_FOUND})
             toml/reader.cpp
             toml/writer.cpp
             toml/document.cpp
+            json/common.cpp
+            json/encoding.cpp
+            json/reader.cpp
+            json/writer.cpp
+            json/document.cpp
         )
 
         # Библиотеки GTest для линковки

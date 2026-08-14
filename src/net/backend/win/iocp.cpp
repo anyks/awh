@@ -2336,6 +2336,16 @@ namespace io {
 	 *
 	 */
 	typedef struct Transfer {
+		/**
+		 * Признак того, что вытягивание данных из источника ведётся
+		 *
+		 * @note Источник ставится единожды и навсегда, поэтому «спрашивать больше нечего»
+		 *       отмечается признаком, а не снятием источника. Ставит его пуск отправки
+		 *       вызовом send(id, nullptr, 0), а снимают: сам источник, ответив ложью;
+		 *       уничтожение узла; очистка очереди при его пересоздании. Нулевая запись
+		 *       источника признак НЕ снимает - движок вернётся к нему на сливе очереди
+		 */
+		bool pulling;
 		// Файловый дескриптор сервиса
 		net::socket_t fd;
 		// Идентификатор события принимающей стороны
@@ -2352,7 +2362,7 @@ namespace io {
 		 *
 		 */
 		explicit Transfer(const fmk_t * fmk, const log_t * log) noexcept :
-		 fd(net::invalid_socket_t), dest(0),
+		 pulling(false), fd(net::invalid_socket_t), dest(0),
 		 actions(::action::NONE), queue(fmk, log) {}
 	} transfer_t;
 
@@ -2634,11 +2644,19 @@ namespace io {
 		// Функция обратного вызова при доступности очереди
 		engine::callback::available_t available;
 		/**
+		 * Функция обратного вызова источника данных для вытягивающей модели отправки
+		 *
+		 * @note Источник заведён ТОЛЬКО у тех видов узла, что умеют слать данные: держать
+		 *       его в основании значило бы тратить память у таймеров, каталогов, файлов и
+		 *       слушающих серверов, которым вытягивание не положено вовсе
+		 */
+		engine::callback::source_t source;
+		/**
 		 * @brief Конструктор
 		 *
 		 */
 		explicit Tunnel_Callbacks() noexcept :
-		 tuninfo(nullptr), available(nullptr) {}
+		 tuninfo(nullptr), available(nullptr), source(nullptr) {}
 	} tunnel_callbacks_t;
 
 	/**
@@ -2663,6 +2681,14 @@ namespace io {
 		// Функция обратного вызова при доступности очереди
 		engine::callback::available_t available;
 		/**
+		 * Функция обратного вызова источника данных для вытягивающей модели отправки
+		 *
+		 * @note Источник заведён ТОЛЬКО у тех видов узла, что умеют слать данные: держать
+		 *       его в основании значило бы тратить память у таймеров, каталогов, файлов и
+		 *       слушающих серверов, которым вытягивание не положено вовсе
+		 */
+		engine::callback::source_t source;
+		/**
 		 * @brief Конструктор
 		 *
 		 */
@@ -2670,7 +2696,7 @@ namespace io {
 		 read(nullptr), write(nullptr),
 		 event(nullptr), inject(nullptr),
 		 connect(nullptr), timeout(nullptr),
-		 traffic(nullptr), available(nullptr) {}
+		 traffic(nullptr), available(nullptr), source(nullptr) {}
 	} client_callbacks_t;
 
 	/**
@@ -2691,13 +2717,21 @@ namespace io {
 		// Функция обратного вызова при доступности очереди
 		engine::callback::available_t available;
 		/**
+		 * Функция обратного вызова источника данных для вытягивающей модели отправки
+		 *
+		 * @note Источник заведён ТОЛЬКО у тех видов узла, что умеют слать данные: держать
+		 *       его в основании значило бы тратить память у таймеров, каталогов, файлов и
+		 *       слушающих серверов, которым вытягивание не положено вовсе
+		 */
+		engine::callback::source_t source;
+		/**
 		 * @brief Конструктор
 		 *
 		 */
 		explicit Peer_Callbacks() noexcept :
 		 read(nullptr), write(nullptr),
 		 event(nullptr), inject(nullptr),
-		 timeout(nullptr), available(nullptr) {}
+		 timeout(nullptr), available(nullptr), source(nullptr) {}
 	} peer_callbacks_t;
 
 	/**
@@ -2962,6 +2996,16 @@ namespace io {
 		// Флаги активированных событий файла
 		uint16_t actions;
 		// Название сетевого интерфейса
+		/**
+		 * Признак того, что вытягивание данных из источника ведётся
+		 *
+		 * @note Источник ставится единожды и навсегда, поэтому «спрашивать больше нечего»
+		 *       отмечается признаком, а не снятием источника. Ставит его пуск отправки
+		 *       вызовом send(id, nullptr, 0), а снимают: сам источник, ответив ложью;
+		 *       уничтожение узла; очистка очереди при его пересоздании. Нулевая запись
+		 *       источника признак НЕ снимает - движок вернётся к нему на сливе очереди
+		 */
+		bool pulling;
 		string iface;
 		// Очередь отправки данных
 		net_queue_t queue;
@@ -2983,7 +3027,8 @@ namespace io {
 		explicit Tunnel(const fmk_t * fmk, const log_t * log) noexcept :
 		 fd(net::invalid_socket_t),
 		 actions(::action::NONE), iface{""},
-		 queue(fmk, log), source(nullptr), target(nullptr) {}
+		 pulling(false), queue(fmk, log),
+		 source(nullptr), target(nullptr) {}
 	} tun_t;
 
 	/**
@@ -3581,6 +3626,7 @@ namespace {
 	 *
 	 */
 	static uint8_t __awh_buffer__[AWH_EVENT_MAX_BUFFER_SIZE];
+
 
 	/**
 	 * @brief Количество опросов подряд, не заполнивших и четверти массива событий
@@ -11262,6 +11308,34 @@ namespace io {
 	using namespace awh;
 
 	/**
+	 * @brief Шаблон функции вытягивания данных из источника и отправки их в событие
+	 *
+	 * @tparam T тип узла, для которого вытягиваются данные
+	 */
+	template <typename T>
+	/**
+	 * @brief Функция вытягивания данных из источника и отправки их в событие
+	 *
+	 * @details Разновидность отправки, обратная методу send(): движок сам просит данные у
+	 *          источника ровно тогда, когда отправлять больше нечего. Приложению не нужно
+	 *          держать в памяти всё тело - оно выдаёт его по мере ухода в сеть.
+	 *
+	 * @note Отправкой занимается тот же `::io::send()`, что и при обычной отправке: он
+	 *       сам пишет в сокет, а непринятый сокетом остаток кладёт в очередь. Заводить
+	 *       для вытягивания второй путь отправки НЕЛЬЗЯ - мимо него остались бы и
+	 *       ограничение скорости, и оповещение о неудачной отправке, и счётчики
+	 *
+	 * @param node  узел, для которого вытягиваются данные
+	 * @param queue   очередь отправки узла
+	 * @param pulling признак ведения вытягивания данных из источника
+	 * @param fd      дескриптор сокета узла
+	 * @param eth   объект работы с сетевым интерфейсом
+	 * @param log   объект работы с логами
+	 *
+	 */
+	static void pull(T * node, net_queue_t & queue, bool & pulling, const net::socket_t fd, const eth_t * eth, const log_t * log) noexcept;
+
+	/**
 	 * @brief Прототип функции обработки события удаления узла
 	 *
 	 * @param  узел в котором произошло событие
@@ -14962,8 +15036,8 @@ namespace io {
 												ipc->callbacks.read(ipc->id, ::__awh_buffer__, static_cast <size_t> (bytes));
 										// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 										} else const_cast <engine::io_t *> (io)->relay(ipc->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
-										// Если дескриптор сокета стал недействительным
-										if(ipc->transfer.fd == net::invalid_socket_t)
+										// Если узел уничтожен из функции обратного вызова
+										if((ipc->state.status == event::status_t::DESTROYED) || (ipc->state.status == event::status_t::GARBAGE))
 											// Формируем отрицательный результат
 											return result;
 									// Если произошёл дисконнект
@@ -15127,8 +15201,8 @@ namespace io {
 										ipc->callbacks.read(ipc->id, ::__awh_buffer__, static_cast <size_t> (bytes));
 								// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 								} else const_cast <engine::io_t *> (io)->relay(ipc->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
-								// Если дескриптор сокета стал недействительным
-								if(ipc->transfer.fd == net::invalid_socket_t)
+								// Если узел уничтожен из функции обратного вызова
+								if((ipc->state.status == event::status_t::DESTROYED) || (ipc->state.status == event::status_t::GARBAGE))
 									// Формируем отрицательный результат
 									return result;
 							// Если произошёл дисконнект
@@ -15263,8 +15337,8 @@ namespace io {
 										ipc->callbacks.read(ipc->id, ::__awh_buffer__, static_cast <size_t> (bytes));
 								// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 								} else const_cast <engine::io_t *> (io)->relay(ipc->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
-								// Если дескриптор сокета стал недействительным
-								if(ipc->transfer.fd == net::invalid_socket_t)
+								// Если узел уничтожен из функции обратного вызова
+								if((ipc->state.status == event::status_t::DESTROYED) || (ipc->state.status == event::status_t::GARBAGE))
 									// Формируем отрицательный результат
 									return result;
 							// Если произошёл дисконнект
@@ -15497,8 +15571,8 @@ namespace io {
 											peer->callbacks.read(peer->id, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
 									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 									} else const_cast <engine::io_t *> (io)->relay(peer->transfer.dest, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
-									// Если дескриптор сокета стал недействительным
-									if(peer->transfer.fd == net::invalid_socket_t)
+									// Если узел уничтожен из функции обратного вызова
+									if((peer->state.status == event::status_t::DESTROYED) || (peer->state.status == event::status_t::GARBAGE))
 										// Формируем отрицательный результат
 										return result;
 									// Если установлено ограничение пропускной способности на чтение данных из сокета
@@ -15654,8 +15728,8 @@ namespace io {
 									peer->callbacks.read(peer->id, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
 							// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 							} else const_cast <engine::io_t *> (io)->relay(peer->transfer.dest, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
-							// Если дескриптор сокета стал недействительным
-							if(peer->transfer.fd == net::invalid_socket_t)
+							// Если узел уничтожен из функции обратного вызова
+							if((peer->state.status == event::status_t::DESTROYED) || (peer->state.status == event::status_t::GARBAGE))
 								// Формируем отрицательный результат
 								return result;
 							// Если установлено ограничение пропускной способности на чтение данных
@@ -15757,8 +15831,8 @@ namespace io {
 										peer->callbacks.read(peer->id, ::__awh_buffer__, static_cast <size_t> (bytes));
 								// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 								} else const_cast <engine::io_t *> (io)->relay(peer->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
-								// Если дескриптор сокета стал недействительным
-								if(peer->transfer.fd == net::invalid_socket_t)
+								// Если узел уничтожен из функции обратного вызова
+								if((peer->state.status == event::status_t::DESTROYED) || (peer->state.status == event::status_t::GARBAGE))
 									// Формируем отрицательный результат
 									return result;
 								// Если установлено ограничение пропускной способности на чтение данных из сокета
@@ -15861,8 +15935,8 @@ namespace io {
 									peer->callbacks.read(peer->id, ::__awh_buffer__, static_cast <size_t> (bytes));
 							// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 							} else const_cast <engine::io_t *> (io)->relay(peer->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
-							// Если дескриптор сокета стал недействительным
-							if(peer->transfer.fd == net::invalid_socket_t)
+							// Если узел уничтожен из функции обратного вызова
+							if((peer->state.status == event::status_t::DESTROYED) || (peer->state.status == event::status_t::GARBAGE))
 								// Формируем отрицательный результат
 								return result;
 							// Если установлено ограничение пропускной способности на чтение данных
@@ -17262,8 +17336,8 @@ namespace io {
 											client->callbacks.read(client->id, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
 									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 									} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
-									// Если дескриптор сокета стал недействительным
-									if(client->transfer.fd == net::invalid_socket_t)
+									// Если узел уничтожен из функции обратного вызова
+									if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 										// Формируем отрицательный результат
 										return result;
 									// Если установлено ограничение пропускной способности на чтение данных из сокета
@@ -17419,8 +17493,8 @@ namespace io {
 									client->callbacks.read(client->id, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
 							// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 							} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
-							// Если дескриптор сокета стал недействительным
-							if(client->transfer.fd == net::invalid_socket_t)
+							// Если узел уничтожен из функции обратного вызова
+							if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 								// Формируем отрицательный результат
 								return result;
 							// Если установлено ограничение пропускной способности на чтение данных
@@ -17665,8 +17739,8 @@ namespace io {
 											client->callbacks.read(client->id, ::__awh_buffer__, static_cast <size_t> (bytes));
 									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 									} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
-									// Если дескриптор сокета стал недействительным
-									if(client->transfer.fd == net::invalid_socket_t)
+									// Если узел уничтожен из функции обратного вызова
+									if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 										// Формируем отрицательный результат
 										return result;
 									// Если установлено ограничение пропускной способности на чтение данных из сокета
@@ -17914,8 +17988,8 @@ namespace io {
 										client->callbacks.read(client->id, ::__awh_buffer__, static_cast <size_t> (bytes));
 								// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 								} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
-								// Если дескриптор сокета стал недействительным
-								if(client->transfer.fd == net::invalid_socket_t)
+								// Если узел уничтожен из функции обратного вызова
+								if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 									// Формируем отрицательный результат
 									return result;
 								// Если установлено ограничение пропускной способности на чтение данных
@@ -18168,8 +18242,8 @@ namespace io {
 											client->callbacks.read(client->id, ::__awh_buffer__, static_cast <size_t> (bytes));
 									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 									} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
-									// Если дескриптор сокета стал недействительным
-									if(client->transfer.fd == net::invalid_socket_t)
+									// Если узел уничтожен из функции обратного вызова
+									if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 										// Формируем отрицательный результат
 										return result;
 									// Если установлено ограничение пропускной способности на чтение данных из сокета
@@ -18430,8 +18504,8 @@ namespace io {
 										client->callbacks.read(client->id, ::__awh_buffer__, static_cast <size_t> (bytes));
 								// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 								} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
-								// Если дескриптор сокета стал недействительным
-								if(client->transfer.fd == net::invalid_socket_t)
+								// Если узел уничтожен из функции обратного вызова
+								if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 									// Формируем отрицательный результат
 									return result;
 								// Если установлено ограничение пропускной способности на чтение данных
@@ -18536,8 +18610,8 @@ namespace io {
 											client->callbacks.read(client->id, ::__awh_buffer__, static_cast <size_t> (bytes));
 									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 									} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
-									// Если дескриптор сокета стал недействительным
-									if(client->transfer.fd == net::invalid_socket_t)
+									// Если узел уничтожен из функции обратного вызова
+									if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 										// Формируем отрицательный результат
 										return result;
 									// Если установлено ограничение пропускной способности на чтение данных из сокета
@@ -18640,8 +18714,8 @@ namespace io {
 										client->callbacks.read(client->id, ::__awh_buffer__, static_cast <size_t> (bytes));
 								// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 								} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
-								// Если дескриптор сокета стал недействительным
-								if(client->transfer.fd == net::invalid_socket_t)
+								// Если узел уничтожен из функции обратного вызова
+								if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 									// Формируем отрицательный результат
 									return result;
 								// Если установлено ограничение пропускной способности на чтение данных
@@ -18748,8 +18822,8 @@ namespace io {
 											client->callbacks.read(client->id, ::__awh_buffer__, static_cast <size_t> (bytes));
 									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 									} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
-									// Если дескриптор сокета стал недействительным
-									if(client->transfer.fd == net::invalid_socket_t)
+									// Если узел уничтожен из функции обратного вызова
+									if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 										// Формируем отрицательный результат
 										return result;
 									// Если установлено ограничение пропускной способности на чтение данных из сокета
@@ -18858,8 +18932,8 @@ namespace io {
 										client->callbacks.read(client->id, ::__awh_buffer__, static_cast <size_t> (bytes));
 								// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 								} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
-								// Если дескриптор сокета стал недействительным
-								if(client->transfer.fd == net::invalid_socket_t)
+								// Если узел уничтожен из функции обратного вызова
+								if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 									// Формируем отрицательный результат
 									return result;
 								// Если установлено ограничение пропускной способности на чтение данных
@@ -19710,13 +19784,28 @@ namespace io {
 											if(ipc->callbacks.available != nullptr)
 												// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 												ipc->callbacks.available(ipc->id, event::status_t::QUEUE_AVAILABLE, ipc->transfer.queue.available());
+											/**
+											 * Если очередь опустела, а источник данных установлен
+											 *
+											 * @note Вытягивание идёт ИМЕННО здесь, по опустошении очереди: пока в ней что-то
+											 *       есть, отправлять и так есть чего, а остаток очереди движок подаёт ядру
+											 *       сам, разбирая завершение отправки. Спросить источник раньше значило бы
+											 *       копить данные впрок, а весь смысл вытягивания в обратном направлении
+											 *
+											 * @note Довод у прочих движков назван иначе - «событие готовности к записи
+											 *       движок держит взведённым», - и для порта завершений он неверен:
+											 *       готовности здесь нет вовсе, её место занимает поданная отправка
+											 */
+											if(ipc->callbacks.source != nullptr)
+												// Вытягиваем следующую порцию данных из источника и отправляем её
+												::io::pull(ipc, ipc->transfer.queue, ipc->transfer.pulling, ipc->transfer.fd, eth, log);
 										}
 										// Если функция обратного вызова для вывода записанных данных установлена
 										if(ipc->callbacks.write != nullptr){
 											// Вызываем функцию обратного вызова для вывода записанных данных
 											ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
-											// Если дескриптор сокета стал недействительным
-											if(ipc->transfer.fd == net::invalid_socket_t)
+											// Если узел уничтожен из функции обратного вызова
+											if((ipc->state.status == event::status_t::DESTROYED) || (ipc->state.status == event::status_t::GARBAGE))
 												// Выводим результат
 												return result;
 										}
@@ -19866,13 +19955,28 @@ namespace io {
 									if(ipc->callbacks.available != nullptr)
 										// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 										ipc->callbacks.available(ipc->id, event::status_t::QUEUE_AVAILABLE, ipc->transfer.queue.available());
+									/**
+									 * Если очередь опустела, а источник данных установлен
+									 *
+									 * @note Вытягивание идёт ИМЕННО здесь, по опустошении очереди: пока в ней что-то
+									 *       есть, отправлять и так есть чего, а остаток очереди движок подаёт ядру
+									 *       сам, разбирая завершение отправки. Спросить источник раньше значило бы
+									 *       копить данные впрок, а весь смысл вытягивания в обратном направлении
+									 *
+									 * @note Довод у прочих движков назван иначе - «событие готовности к записи
+									 *       движок держит взведённым», - и для порта завершений он неверен:
+									 *       готовности здесь нет вовсе, её место занимает поданная отправка
+									 */
+									if(ipc->callbacks.source != nullptr)
+										// Вытягиваем следующую порцию данных из источника и отправляем её
+										::io::pull(ipc, ipc->transfer.queue, ipc->transfer.pulling, ipc->transfer.fd, eth, log);
 								}
 								// Если функция обратного вызова для вывода записанных данных установлена
 								if(ipc->callbacks.write != nullptr){
 									// Вызываем функцию обратного вызова для вывода записанных данных
 									ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
-									// Если дескриптор сокета стал недействительным
-									if(ipc->transfer.fd == net::invalid_socket_t)
+									// Если узел уничтожен из функции обратного вызова
+									if((ipc->state.status == event::status_t::DESTROYED) || (ipc->state.status == event::status_t::GARBAGE))
 										// Выводим результат
 										return result;
 								}
@@ -19993,13 +20097,28 @@ namespace io {
 									if(ipc->callbacks.available != nullptr)
 										// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 										ipc->callbacks.available(ipc->id, event::status_t::QUEUE_AVAILABLE, ipc->transfer.queue.available());
+									/**
+									 * Если очередь опустела, а источник данных установлен
+									 *
+									 * @note Вытягивание идёт ИМЕННО здесь, по опустошении очереди: пока в ней что-то
+									 *       есть, отправлять и так есть чего, а остаток очереди движок подаёт ядру
+									 *       сам, разбирая завершение отправки. Спросить источник раньше значило бы
+									 *       копить данные впрок, а весь смысл вытягивания в обратном направлении
+									 *
+									 * @note Довод у прочих движков назван иначе - «событие готовности к записи
+									 *       движок держит взведённым», - и для порта завершений он неверен:
+									 *       готовности здесь нет вовсе, её место занимает поданная отправка
+									 */
+									if(ipc->callbacks.source != nullptr)
+										// Вытягиваем следующую порцию данных из источника и отправляем её
+										::io::pull(ipc, ipc->transfer.queue, ipc->transfer.pulling, ipc->transfer.fd, eth, log);
 								}
 								// Если функция обратного вызова для вывода записанных данных установлена
 								if(ipc->callbacks.write != nullptr){
 									// Вызываем функцию обратного вызова для вывода записанных данных
 									ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
-									// Если дескриптор сокета стал недействительным
-									if(ipc->transfer.fd == net::invalid_socket_t)
+									// Если узел уничтожен из функции обратного вызова
+									if((ipc->state.status == event::status_t::DESTROYED) || (ipc->state.status == event::status_t::GARBAGE))
 										// Выводим результат
 										return result;
 								}
@@ -20031,6 +20150,21 @@ namespace io {
 											if(ipc->callbacks.available != nullptr)
 												// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 												ipc->callbacks.available(ipc->id, event::status_t::QUEUE_AVAILABLE, ipc->transfer.queue.available());
+											/**
+											 * Если очередь опустела, а источник данных установлен
+											 *
+											 * @note Вытягивание идёт ИМЕННО здесь, по опустошении очереди: пока в ней что-то
+											 *       есть, отправлять и так есть чего, а остаток очереди движок подаёт ядру
+											 *       сам, разбирая завершение отправки. Спросить источник раньше значило бы
+											 *       копить данные впрок, а весь смысл вытягивания в обратном направлении
+											 *
+											 * @note Довод у прочих движков назван иначе - «событие готовности к записи
+											 *       движок держит взведённым», - и для порта завершений он неверен:
+											 *       готовности здесь нет вовсе, её место занимает поданная отправка
+											 */
+											if(ipc->callbacks.source != nullptr)
+												// Вытягиваем следующую порцию данных из источника и отправляем её
+												::io::pull(ipc, ipc->transfer.queue, ipc->transfer.pulling, ipc->transfer.fd, eth, log);
 										}
 									} break;
 									// Если нам нужно попытаться отправить позже
@@ -20384,13 +20518,28 @@ namespace io {
 											if(peer->callbacks.available != nullptr)
 												// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 												peer->callbacks.available(peer->id, event::status_t::QUEUE_AVAILABLE, peer->transfer.queue.available());
+											/**
+											 * Если очередь опустела, а источник данных установлен
+											 *
+											 * @note Вытягивание идёт ИМЕННО здесь, по опустошении очереди: пока в ней что-то
+											 *       есть, отправлять и так есть чего, а остаток очереди движок подаёт ядру
+											 *       сам, разбирая завершение отправки. Спросить источник раньше значило бы
+											 *       копить данные впрок, а весь смысл вытягивания в обратном направлении
+											 *
+											 * @note Довод у прочих движков назван иначе - «событие готовности к записи
+											 *       движок держит взведённым», - и для порта завершений он неверен:
+											 *       готовности здесь нет вовсе, её место занимает поданная отправка
+											 */
+											if(peer->callbacks.source != nullptr)
+												// Вытягиваем следующую порцию данных из источника и отправляем её
+												::io::pull(peer, peer->transfer.queue, peer->transfer.pulling, peer->transfer.fd, eth, log);
 										}
 										// Если функция обратного вызова для вывода записанных данных установлена
 										if(peer->callbacks.write != nullptr){
 											// Вызываем функцию обратного вызова для вывода записанных данных
 											peer->callbacks.write(peer->id, bytes);
-											// Если дескриптор сокета стал недействительным
-											if(peer->transfer.fd == net::invalid_socket_t)
+											// Если узел уничтожен из функции обратного вызова
+											if((peer->state.status == event::status_t::DESTROYED) || (peer->state.status == event::status_t::GARBAGE))
 												// Выводим результат
 												return result;
 										}
@@ -20485,13 +20634,28 @@ namespace io {
 										if(peer->callbacks.available != nullptr)
 											// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 											peer->callbacks.available(peer->id, event::status_t::QUEUE_AVAILABLE, peer->transfer.queue.available());
+										/**
+										 * Если очередь опустела, а источник данных установлен
+										 *
+										 * @note Вытягивание идёт ИМЕННО здесь, по опустошении очереди: пока в ней что-то
+										 *       есть, отправлять и так есть чего, а остаток очереди движок подаёт ядру
+										 *       сам, разбирая завершение отправки. Спросить источник раньше значило бы
+										 *       копить данные впрок, а весь смысл вытягивания в обратном направлении
+										 *
+										 * @note Довод у прочих движков назван иначе - «событие готовности к записи
+										 *       движок держит взведённым», - и для порта завершений он неверен:
+										 *       готовности здесь нет вовсе, её место занимает поданная отправка
+										 */
+										if(peer->callbacks.source != nullptr)
+											// Вытягиваем следующую порцию данных из источника и отправляем её
+											::io::pull(peer, peer->transfer.queue, peer->transfer.pulling, peer->transfer.fd, eth, log);
 									}
 									// Если функция обратного вызова для вывода записанных данных установлена
 									if(peer->callbacks.write != nullptr){
 										// Вызываем функцию обратного вызова для вывода записанных данных
 										peer->callbacks.write(peer->id, bytes);
-										// Если дескриптор сокета стал недействительным
-										if(peer->transfer.fd == net::invalid_socket_t)
+										// Если узел уничтожен из функции обратного вызова
+										if((peer->state.status == event::status_t::DESTROYED) || (peer->state.status == event::status_t::GARBAGE))
 											// Выводим результат
 											return result;
 									}
@@ -20632,6 +20796,21 @@ namespace io {
 													if(peer->callbacks.available != nullptr)
 														// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 														peer->callbacks.available(peer->id, event::status_t::QUEUE_AVAILABLE, peer->transfer.queue.available());
+													/**
+													 * Если очередь опустела, а источник данных установлен
+													 *
+													 * @note Вытягивание идёт ИМЕННО здесь, по опустошении очереди: пока в ней что-то
+													 *       есть, отправлять и так есть чего, а остаток очереди движок подаёт ядру
+													 *       сам, разбирая завершение отправки. Спросить источник раньше значило бы
+													 *       копить данные впрок, а весь смысл вытягивания в обратном направлении
+													 *
+													 * @note Довод у прочих движков назван иначе - «событие готовности к записи
+													 *       движок держит взведённым», - и для порта завершений он неверен:
+													 *       готовности здесь нет вовсе, её место занимает поданная отправка
+													 */
+													if(peer->callbacks.source != nullptr)
+														// Вытягиваем следующую порцию данных из источника и отправляем её
+														::io::pull(peer, peer->transfer.queue, peer->transfer.pulling, peer->transfer.fd, eth, log);
 												}
 											} break;
 											// Если нам нужно попытаться отправить позже
@@ -20748,13 +20927,28 @@ namespace io {
 											if(peer->callbacks.available != nullptr)
 												// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 												peer->callbacks.available(peer->id, event::status_t::QUEUE_AVAILABLE, peer->transfer.queue.available());
+											/**
+											 * Если очередь опустела, а источник данных установлен
+											 *
+											 * @note Вытягивание идёт ИМЕННО здесь, по опустошении очереди: пока в ней что-то
+											 *       есть, отправлять и так есть чего, а остаток очереди движок подаёт ядру
+											 *       сам, разбирая завершение отправки. Спросить источник раньше значило бы
+											 *       копить данные впрок, а весь смысл вытягивания в обратном направлении
+											 *
+											 * @note Довод у прочих движков назван иначе - «событие готовности к записи
+											 *       движок держит взведённым», - и для порта завершений он неверен:
+											 *       готовности здесь нет вовсе, её место занимает поданная отправка
+											 */
+											if(peer->callbacks.source != nullptr)
+												// Вытягиваем следующую порцию данных из источника и отправляем её
+												::io::pull(peer, peer->transfer.queue, peer->transfer.pulling, peer->transfer.fd, eth, log);
 										}
 										// Если функция обратного вызова для вывода записанных данных установлена
 										if(peer->callbacks.write != nullptr){
 											// Вызываем функцию обратного вызова для вывода записанных данных
 											peer->callbacks.write(peer->id, bytes);
-											// Если дескриптор сокета стал недействительным
-											if(peer->transfer.fd == net::invalid_socket_t)
+											// Если узел уничтожен из функции обратного вызова
+											if((peer->state.status == event::status_t::DESTROYED) || (peer->state.status == event::status_t::GARBAGE))
 												// Выводим результат
 												return result;
 										}
@@ -20849,13 +21043,28 @@ namespace io {
 										if(peer->callbacks.available != nullptr)
 											// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 											peer->callbacks.available(peer->id, event::status_t::QUEUE_AVAILABLE, peer->transfer.queue.available());
+										/**
+										 * Если очередь опустела, а источник данных установлен
+										 *
+										 * @note Вытягивание идёт ИМЕННО здесь, по опустошении очереди: пока в ней что-то
+										 *       есть, отправлять и так есть чего, а остаток очереди движок подаёт ядру
+										 *       сам, разбирая завершение отправки. Спросить источник раньше значило бы
+										 *       копить данные впрок, а весь смысл вытягивания в обратном направлении
+										 *
+										 * @note Довод у прочих движков назван иначе - «событие готовности к записи
+										 *       движок держит взведённым», - и для порта завершений он неверен:
+										 *       готовности здесь нет вовсе, её место занимает поданная отправка
+										 */
+										if(peer->callbacks.source != nullptr)
+											// Вытягиваем следующую порцию данных из источника и отправляем её
+											::io::pull(peer, peer->transfer.queue, peer->transfer.pulling, peer->transfer.fd, eth, log);
 									}
 									// Если функция обратного вызова для вывода записанных данных установлена
 									if(peer->callbacks.write != nullptr){
 										// Вызываем функцию обратного вызова для вывода записанных данных
 										peer->callbacks.write(peer->id, bytes);
-										// Если дескриптор сокета стал недействительным
-										if(peer->transfer.fd == net::invalid_socket_t)
+										// Если узел уничтожен из функции обратного вызова
+										if((peer->state.status == event::status_t::DESTROYED) || (peer->state.status == event::status_t::GARBAGE))
 											// Выводим результат
 											return result;
 									}
@@ -21038,6 +21247,21 @@ namespace io {
 													if(origin->callbacks.available != nullptr)
 														// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 														origin->callbacks.available(origin->id, event::status_t::QUEUE_AVAILABLE, origin->transfer.queue.available());
+													/**
+													 * Если очередь опустела, а источник данных установлен
+													 *
+													 * @note Вытягивание идёт ИМЕННО здесь, по опустошении очереди: пока в ней что-то
+													 *       есть, отправлять и так есть чего, а остаток очереди движок подаёт ядру
+													 *       сам, разбирая завершение отправки. Спросить источник раньше значило бы
+													 *       копить данные впрок, а весь смысл вытягивания в обратном направлении
+													 *
+													 * @note Довод у прочих движков назван иначе - «событие готовности к записи
+													 *       движок держит взведённым», - и для порта завершений он неверен:
+													 *       готовности здесь нет вовсе, её место занимает поданная отправка
+													 */
+													if(origin->callbacks.source != nullptr)
+														// Вытягиваем следующую порцию данных из источника и отправляем её
+														::io::pull(origin, origin->transfer.queue, origin->transfer.pulling, origin->transfer.fd, eth, log);
 												}
 											} break;
 											// Если нам нужно попытаться отправить позже
@@ -21160,13 +21384,28 @@ namespace io {
 											if(origin->callbacks.available != nullptr)
 												// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 												origin->callbacks.available(origin->id, event::status_t::QUEUE_AVAILABLE, origin->transfer.queue.available());
+											/**
+											 * Если очередь опустела, а источник данных установлен
+											 *
+											 * @note Вытягивание идёт ИМЕННО здесь, по опустошении очереди: пока в ней что-то
+											 *       есть, отправлять и так есть чего, а остаток очереди движок подаёт ядру
+											 *       сам, разбирая завершение отправки. Спросить источник раньше значило бы
+											 *       копить данные впрок, а весь смысл вытягивания в обратном направлении
+											 *
+											 * @note Довод у прочих движков назван иначе - «событие готовности к записи
+											 *       движок держит взведённым», - и для порта завершений он неверен:
+											 *       готовности здесь нет вовсе, её место занимает поданная отправка
+											 */
+											if(origin->callbacks.source != nullptr)
+												// Вытягиваем следующую порцию данных из источника и отправляем её
+												::io::pull(origin, origin->transfer.queue, origin->transfer.pulling, origin->transfer.fd, eth, log);
 										}
 										// Если функция обратного вызова для вывода записанных данных установлена
 										if(origin->callbacks.write != nullptr){
 											// Вызываем функцию обратного вызова для вывода записанных данных
 											origin->callbacks.write(origin->id, bytes);
-											// Если дескриптор сокета стал недействительным
-											if(origin->transfer.fd == net::invalid_socket_t)
+											// Если узел уничтожен из функции обратного вызова
+											if((origin->state.status == event::status_t::DESTROYED) || (origin->state.status == event::status_t::GARBAGE))
 												// Выводим результат
 												return result;
 										}
@@ -21256,13 +21495,28 @@ namespace io {
 										if(origin->callbacks.available != nullptr)
 											// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 											origin->callbacks.available(origin->id, event::status_t::QUEUE_AVAILABLE, origin->transfer.queue.available());
+										/**
+										 * Если очередь опустела, а источник данных установлен
+										 *
+										 * @note Вытягивание идёт ИМЕННО здесь, по опустошении очереди: пока в ней что-то
+										 *       есть, отправлять и так есть чего, а остаток очереди движок подаёт ядру
+										 *       сам, разбирая завершение отправки. Спросить источник раньше значило бы
+										 *       копить данные впрок, а весь смысл вытягивания в обратном направлении
+										 *
+										 * @note Довод у прочих движков назван иначе - «событие готовности к записи
+										 *       движок держит взведённым», - и для порта завершений он неверен:
+										 *       готовности здесь нет вовсе, её место занимает поданная отправка
+										 */
+										if(origin->callbacks.source != nullptr)
+											// Вытягиваем следующую порцию данных из источника и отправляем её
+											::io::pull(origin, origin->transfer.queue, origin->transfer.pulling, origin->transfer.fd, eth, log);
 									}
 									// Если функция обратного вызова для вывода записанных данных установлена
 									if(origin->callbacks.write != nullptr){
 										// Вызываем функцию обратного вызова для вывода записанных данных
 										origin->callbacks.write(origin->id, bytes);
-										// Если дескриптор сокета стал недействительным
-										if(origin->transfer.fd == net::invalid_socket_t)
+										// Если узел уничтожен из функции обратного вызова
+										if((origin->state.status == event::status_t::DESTROYED) || (origin->state.status == event::status_t::GARBAGE))
 											// Выводим результат
 											return result;
 									}
@@ -21386,6 +21640,21 @@ namespace io {
 							if(tunnel->callbacks.available != nullptr)
 								// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 								tunnel->callbacks.available(tunnel->id, event::status_t::QUEUE_AVAILABLE, tunnel->queue.available());
+							/**
+							 * Если очередь опустела, а источник данных установлен
+							 *
+							 * @note Вытягивание идёт ИМЕННО здесь, по опустошении очереди: пока в ней что-то
+							 *       есть, отправлять и так есть чего, а остаток очереди движок подаёт ядру
+							 *       сам, разбирая завершение отправки. Спросить источник раньше значило бы
+							 *       копить данные впрок, а весь смысл вытягивания в обратном направлении
+							 *
+							 * @note Довод у прочих движков назван иначе - «событие готовности к записи
+							 *       движок держит взведённым», - и для порта завершений он неверен:
+							 *       готовности здесь нет вовсе, её место занимает поданная отправка
+							 */
+							if(tunnel->callbacks.source != nullptr)
+								// Вытягиваем следующую порцию данных из источника и отправляем её
+								::io::pull(tunnel, tunnel->queue, tunnel->pulling, tunnel->fd, eth, log);
 						}
 						// Если есть данные для отправки в сокет
 						if(!tunnel->queue.empty())
@@ -21415,6 +21684,21 @@ namespace io {
 									if(tunnel->callbacks.available != nullptr)
 										// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 										tunnel->callbacks.available(tunnel->id, event::status_t::QUEUE_AVAILABLE, tunnel->queue.available());
+									/**
+									 * Если очередь опустела, а источник данных установлен
+									 *
+									 * @note Вытягивание идёт ИМЕННО здесь, по опустошении очереди: пока в ней что-то
+									 *       есть, отправлять и так есть чего, а остаток очереди движок подаёт ядру
+									 *       сам, разбирая завершение отправки. Спросить источник раньше значило бы
+									 *       копить данные впрок, а весь смысл вытягивания в обратном направлении
+									 *
+									 * @note Довод у прочих движков назван иначе - «событие готовности к записи
+									 *       движок держит взведённым», - и для порта завершений он неверен:
+									 *       готовности здесь нет вовсе, её место занимает поданная отправка
+									 */
+									if(tunnel->callbacks.source != nullptr)
+										// Вытягиваем следующую порцию данных из источника и отправляем её
+										::io::pull(tunnel, tunnel->queue, tunnel->pulling, tunnel->fd, eth, log);
 								}
 							} break;
 							// Если нам нужно попытаться отправить позже
@@ -21756,13 +22040,28 @@ namespace io {
 											if(client->callbacks.available != nullptr)
 												// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 												client->callbacks.available(client->id, event::status_t::QUEUE_AVAILABLE, client->transfer.queue.available());
+											/**
+											 * Если очередь опустела, а источник данных установлен
+											 *
+											 * @note Вытягивание идёт ИМЕННО здесь, по опустошении очереди: пока в ней что-то
+											 *       есть, отправлять и так есть чего, а остаток очереди движок подаёт ядру
+											 *       сам, разбирая завершение отправки. Спросить источник раньше значило бы
+											 *       копить данные впрок, а весь смысл вытягивания в обратном направлении
+											 *
+											 * @note Довод у прочих движков назван иначе - «событие готовности к записи
+											 *       движок держит взведённым», - и для порта завершений он неверен:
+											 *       готовности здесь нет вовсе, её место занимает поданная отправка
+											 */
+											if(client->callbacks.source != nullptr)
+												// Вытягиваем следующую порцию данных из источника и отправляем её
+												::io::pull(client, client->transfer.queue, client->transfer.pulling, client->transfer.fd, eth, log);
 										}
 										// Если функция обратного вызова для вывода записанных данных установлена
 										if(client->callbacks.write != nullptr){
 											// Вызываем функцию обратного вызова для вывода записанных данных
 											client->callbacks.write(client->id, bytes);
-											// Если дескриптор сокета стал недействительным
-											if(client->transfer.fd == net::invalid_socket_t)
+											// Если узел уничтожен из функции обратного вызова
+											if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 												// Выводим результат
 												return result;
 										}
@@ -21857,13 +22156,28 @@ namespace io {
 										if(client->callbacks.available != nullptr)
 											// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 											client->callbacks.available(client->id, event::status_t::QUEUE_AVAILABLE, client->transfer.queue.available());
+										/**
+										 * Если очередь опустела, а источник данных установлен
+										 *
+										 * @note Вытягивание идёт ИМЕННО здесь, по опустошении очереди: пока в ней что-то
+										 *       есть, отправлять и так есть чего, а остаток очереди движок подаёт ядру
+										 *       сам, разбирая завершение отправки. Спросить источник раньше значило бы
+										 *       копить данные впрок, а весь смысл вытягивания в обратном направлении
+										 *
+										 * @note Довод у прочих движков назван иначе - «событие готовности к записи
+										 *       движок держит взведённым», - и для порта завершений он неверен:
+										 *       готовности здесь нет вовсе, её место занимает поданная отправка
+										 */
+										if(client->callbacks.source != nullptr)
+											// Вытягиваем следующую порцию данных из источника и отправляем её
+											::io::pull(client, client->transfer.queue, client->transfer.pulling, client->transfer.fd, eth, log);
 									}
 									// Если функция обратного вызова для вывода записанных данных установлена
 									if(client->callbacks.write != nullptr){
 										// Вызываем функцию обратного вызова для вывода записанных данных
 										client->callbacks.write(client->id, bytes);
-										// Если дескриптор сокета стал недействительным
-										if(client->transfer.fd == net::invalid_socket_t)
+										// Если узел уничтожен из функции обратного вызова
+										if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 											// Выводим результат
 											return result;
 									}
@@ -22018,6 +22332,21 @@ namespace io {
 													if(client->callbacks.available != nullptr)
 														// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 														client->callbacks.available(client->id, event::status_t::QUEUE_AVAILABLE, client->transfer.queue.available());
+													/**
+													 * Если очередь опустела, а источник данных установлен
+													 *
+													 * @note Вытягивание идёт ИМЕННО здесь, по опустошении очереди: пока в ней что-то
+													 *       есть, отправлять и так есть чего, а остаток очереди движок подаёт ядру
+													 *       сам, разбирая завершение отправки. Спросить источник раньше значило бы
+													 *       копить данные впрок, а весь смысл вытягивания в обратном направлении
+													 *
+													 * @note Довод у прочих движков назван иначе - «событие готовности к записи
+													 *       движок держит взведённым», - и для порта завершений он неверен:
+													 *       готовности здесь нет вовсе, её место занимает поданная отправка
+													 */
+													if(client->callbacks.source != nullptr)
+														// Вытягиваем следующую порцию данных из источника и отправляем её
+														::io::pull(client, client->transfer.queue, client->transfer.pulling, client->transfer.fd, eth, log);
 												}
 											} break;
 											// Если нам нужно попытаться отправить позже
@@ -22134,13 +22463,28 @@ namespace io {
 											if(client->callbacks.available != nullptr)
 												// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 												client->callbacks.available(client->id, event::status_t::QUEUE_AVAILABLE, client->transfer.queue.available());
+											/**
+											 * Если очередь опустела, а источник данных установлен
+											 *
+											 * @note Вытягивание идёт ИМЕННО здесь, по опустошении очереди: пока в ней что-то
+											 *       есть, отправлять и так есть чего, а остаток очереди движок подаёт ядру
+											 *       сам, разбирая завершение отправки. Спросить источник раньше значило бы
+											 *       копить данные впрок, а весь смысл вытягивания в обратном направлении
+											 *
+											 * @note Довод у прочих движков назван иначе - «событие готовности к записи
+											 *       движок держит взведённым», - и для порта завершений он неверен:
+											 *       готовности здесь нет вовсе, её место занимает поданная отправка
+											 */
+											if(client->callbacks.source != nullptr)
+												// Вытягиваем следующую порцию данных из источника и отправляем её
+												::io::pull(client, client->transfer.queue, client->transfer.pulling, client->transfer.fd, eth, log);
 										}
 										// Если функция обратного вызова для вывода записанных данных установлена
 										if(client->callbacks.write != nullptr){
 											// Вызываем функцию обратного вызова для вывода записанных данных
 											client->callbacks.write(client->id, bytes);
-											// Если дескриптор сокета стал недействительным
-											if(client->transfer.fd == net::invalid_socket_t)
+											// Если узел уничтожен из функции обратного вызова
+											if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 												// Выводим результат
 												return result;
 										}
@@ -22235,13 +22579,28 @@ namespace io {
 										if(client->callbacks.available != nullptr)
 											// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 											client->callbacks.available(client->id, event::status_t::QUEUE_AVAILABLE, client->transfer.queue.available());
+										/**
+										 * Если очередь опустела, а источник данных установлен
+										 *
+										 * @note Вытягивание идёт ИМЕННО здесь, по опустошении очереди: пока в ней что-то
+										 *       есть, отправлять и так есть чего, а остаток очереди движок подаёт ядру
+										 *       сам, разбирая завершение отправки. Спросить источник раньше значило бы
+										 *       копить данные впрок, а весь смысл вытягивания в обратном направлении
+										 *
+										 * @note Довод у прочих движков назван иначе - «событие готовности к записи
+										 *       движок держит взведённым», - и для порта завершений он неверен:
+										 *       готовности здесь нет вовсе, её место занимает поданная отправка
+										 */
+										if(client->callbacks.source != nullptr)
+											// Вытягиваем следующую порцию данных из источника и отправляем её
+											::io::pull(client, client->transfer.queue, client->transfer.pulling, client->transfer.fd, eth, log);
 									}
 									// Если функция обратного вызова для вывода записанных данных установлена
 									if(client->callbacks.write != nullptr){
 										// Вызываем функцию обратного вызова для вывода записанных данных
 										client->callbacks.write(client->id, bytes);
-										// Если дескриптор сокета стал недействительным
-										if(client->transfer.fd == net::invalid_socket_t)
+										// Если узел уничтожен из функции обратного вызова
+										if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 											// Выводим результат
 											return result;
 									}
@@ -22365,6 +22724,21 @@ namespace io {
 													if(client->callbacks.available != nullptr)
 														// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 														client->callbacks.available(client->id, event::status_t::QUEUE_AVAILABLE, client->transfer.queue.available());
+													/**
+													 * Если очередь опустела, а источник данных установлен
+													 *
+													 * @note Вытягивание идёт ИМЕННО здесь, по опустошении очереди: пока в ней что-то
+													 *       есть, отправлять и так есть чего, а остаток очереди движок подаёт ядру
+													 *       сам, разбирая завершение отправки. Спросить источник раньше значило бы
+													 *       копить данные впрок, а весь смысл вытягивания в обратном направлении
+													 *
+													 * @note Довод у прочих движков назван иначе - «событие готовности к записи
+													 *       движок держит взведённым», - и для порта завершений он неверен:
+													 *       готовности здесь нет вовсе, её место занимает поданная отправка
+													 */
+													if(client->callbacks.source != nullptr)
+														// Вытягиваем следующую порцию данных из источника и отправляем её
+														::io::pull(client, client->transfer.queue, client->transfer.pulling, client->transfer.fd, eth, log);
 												}
 											} break;
 											// Если нам нужно попытаться отправить позже
@@ -22481,13 +22855,28 @@ namespace io {
 											if(client->callbacks.available != nullptr)
 												// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 												client->callbacks.available(client->id, event::status_t::QUEUE_AVAILABLE, client->transfer.queue.available());
+											/**
+											 * Если очередь опустела, а источник данных установлен
+											 *
+											 * @note Вытягивание идёт ИМЕННО здесь, по опустошении очереди: пока в ней что-то
+											 *       есть, отправлять и так есть чего, а остаток очереди движок подаёт ядру
+											 *       сам, разбирая завершение отправки. Спросить источник раньше значило бы
+											 *       копить данные впрок, а весь смысл вытягивания в обратном направлении
+											 *
+											 * @note Довод у прочих движков назван иначе - «событие готовности к записи
+											 *       движок держит взведённым», - и для порта завершений он неверен:
+											 *       готовности здесь нет вовсе, её место занимает поданная отправка
+											 */
+											if(client->callbacks.source != nullptr)
+												// Вытягиваем следующую порцию данных из источника и отправляем её
+												::io::pull(client, client->transfer.queue, client->transfer.pulling, client->transfer.fd, eth, log);
 										}
 										// Если функция обратного вызова для вывода записанных данных установлена
 										if(client->callbacks.write != nullptr){
 											// Вызываем функцию обратного вызова для вывода записанных данных
 											client->callbacks.write(client->id, bytes);
-											// Если дескриптор сокета стал недействительным
-											if(client->transfer.fd == net::invalid_socket_t)
+											// Если узел уничтожен из функции обратного вызова
+											if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 												// Выводим результат
 												return result;
 										}
@@ -22582,13 +22971,28 @@ namespace io {
 										if(client->callbacks.available != nullptr)
 											// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 											client->callbacks.available(client->id, event::status_t::QUEUE_AVAILABLE, client->transfer.queue.available());
+										/**
+										 * Если очередь опустела, а источник данных установлен
+										 *
+										 * @note Вытягивание идёт ИМЕННО здесь, по опустошении очереди: пока в ней что-то
+										 *       есть, отправлять и так есть чего, а остаток очереди движок подаёт ядру
+										 *       сам, разбирая завершение отправки. Спросить источник раньше значило бы
+										 *       копить данные впрок, а весь смысл вытягивания в обратном направлении
+										 *
+										 * @note Довод у прочих движков назван иначе - «событие готовности к записи
+										 *       движок держит взведённым», - и для порта завершений он неверен:
+										 *       готовности здесь нет вовсе, её место занимает поданная отправка
+										 */
+										if(client->callbacks.source != nullptr)
+											// Вытягиваем следующую порцию данных из источника и отправляем её
+											::io::pull(client, client->transfer.queue, client->transfer.pulling, client->transfer.fd, eth, log);
 									}
 									// Если функция обратного вызова для вывода записанных данных установлена
 									if(client->callbacks.write != nullptr){
 										// Вызываем функцию обратного вызова для вывода записанных данных
 										client->callbacks.write(client->id, bytes);
-										// Если дескриптор сокета стал недействительным
-										if(client->transfer.fd == net::invalid_socket_t)
+										// Если узел уничтожен из функции обратного вызова
+										if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 											// Выводим результат
 											return result;
 									}
@@ -22787,13 +23191,28 @@ namespace io {
 										if(origin->callbacks.available != nullptr)
 											// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 											origin->callbacks.available(origin->id, event::status_t::QUEUE_AVAILABLE, origin->transfer.queue.available());
+										/**
+										 * Если очередь опустела, а источник данных установлен
+										 *
+										 * @note Вытягивание идёт ИМЕННО здесь, по опустошении очереди: пока в ней что-то
+										 *       есть, отправлять и так есть чего, а остаток очереди движок подаёт ядру
+										 *       сам, разбирая завершение отправки. Спросить источник раньше значило бы
+										 *       копить данные впрок, а весь смысл вытягивания в обратном направлении
+										 *
+										 * @note Довод у прочих движков назван иначе - «событие готовности к записи
+										 *       движок держит взведённым», - и для порта завершений он неверен:
+										 *       готовности здесь нет вовсе, её место занимает поданная отправка
+										 */
+										if(origin->callbacks.source != nullptr)
+											// Вытягиваем следующую порцию данных из источника и отправляем её
+											::io::pull(origin, origin->transfer.queue, origin->transfer.pulling, origin->transfer.fd, eth, log);
 									}
 									// Если функция обратного вызова для вывода записанных данных установлена
 									if(origin->callbacks.write != nullptr){
 										// Вызываем функцию обратного вызова для вывода записанных данных
 										origin->callbacks.write(origin->id, static_cast <size_t> (bytes));
-										// Если дескриптор сокета стал недействительным
-										if(origin->transfer.fd == net::invalid_socket_t)
+										// Если узел уничтожен из функции обратного вызова
+										if((origin->state.status == event::status_t::DESTROYED) || (origin->state.status == event::status_t::GARBAGE))
 											// Пропускаем итерацию цикла
 											continue;
 									}
@@ -22871,6 +23290,21 @@ namespace io {
 												if(origin->callbacks.available != nullptr)
 													// Вызываем функцию обратного вызова для вывода доступных данных в очереди событий
 													origin->callbacks.available(origin->id, event::status_t::QUEUE_AVAILABLE, origin->transfer.queue.available());
+												/**
+												 * Если очередь опустела, а источник данных установлен
+												 *
+												 * @note Вытягивание идёт ИМЕННО здесь, по опустошении очереди: пока в ней что-то
+												 *       есть, отправлять и так есть чего, а остаток очереди движок подаёт ядру
+												 *       сам, разбирая завершение отправки. Спросить источник раньше значило бы
+												 *       копить данные впрок, а весь смысл вытягивания в обратном направлении
+												 *
+												 * @note Довод у прочих движков назван иначе - «событие готовности к записи
+												 *       движок держит взведённым», - и для порта завершений он неверен:
+												 *       готовности здесь нет вовсе, её место занимает поданная отправка
+												 */
+												if(origin->callbacks.source != nullptr)
+													// Вытягиваем следующую порцию данных из источника и отправляем её
+													::io::pull(origin, origin->transfer.queue, origin->transfer.pulling, origin->transfer.fd, eth, log);
 											}
 										} break;
 										// Если нам нужно попытаться отправить позже
@@ -23163,8 +23597,8 @@ namespace io {
 								if(ipc->callbacks.write != nullptr){
 									// Вызываем функцию обратного вызова для вывода записанных данных
 									ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
-									// Если дескриптор сокета стал недействительным
-									if(ipc->transfer.fd == net::invalid_socket_t)
+									// Если узел уничтожен из функции обратного вызова
+									if((ipc->state.status == event::status_t::DESTROYED) || (ipc->state.status == event::status_t::GARBAGE))
 										// Выводим результат
 										return static_cast <size_t> (bytes);
 								}
@@ -23278,8 +23712,8 @@ namespace io {
 							if(ipc->callbacks.write != nullptr){
 								// Вызываем функцию обратного вызова для вывода записанных данных
 								ipc->callbacks.write(ipc->id, 0);
-								// Если дескриптор сокета стал недействительным
-								if(ipc->transfer.fd == net::invalid_socket_t)
+								// Если узел уничтожен из функции обратного вызова
+								if((ipc->state.status == event::status_t::DESTROYED) || (ipc->state.status == event::status_t::GARBAGE))
 									// Выводим результат
 									return result;
 							}
@@ -23389,8 +23823,8 @@ namespace io {
 							if(ipc->callbacks.write != nullptr){
 								// Вызываем функцию обратного вызова для вывода записанных данных
 								ipc->callbacks.write(ipc->id, 0);
-								// Если дескриптор сокета стал недействительным
-								if(ipc->transfer.fd == net::invalid_socket_t)
+								// Если узел уничтожен из функции обратного вызова
+								if((ipc->state.status == event::status_t::DESTROYED) || (ipc->state.status == event::status_t::GARBAGE))
 									// Выводим результат
 									return result;
 							}
@@ -23577,8 +24011,8 @@ namespace io {
 							if(ipc->callbacks.write != nullptr){
 								// Вызываем функцию обратного вызова для вывода записанных данных
 								ipc->callbacks.write(ipc->id, 0);
-								// Если дескриптор сокета стал недействительным
-								if(ipc->transfer.fd == net::invalid_socket_t)
+								// Если узел уничтожен из функции обратного вызова
+								if((ipc->state.status == event::status_t::DESTROYED) || (ipc->state.status == event::status_t::GARBAGE))
 									// Выводим результат
 									return result;
 							}
@@ -23703,8 +24137,8 @@ namespace io {
 							if(ipc->callbacks.write != nullptr){
 								// Вызываем функцию обратного вызова для вывода записанных данных
 								ipc->callbacks.write(ipc->id, 0);
-								// Если дескриптор сокета стал недействительным
-								if(ipc->transfer.fd == net::invalid_socket_t)
+								// Если узел уничтожен из функции обратного вызова
+								if((ipc->state.status == event::status_t::DESTROYED) || (ipc->state.status == event::status_t::GARBAGE))
 									// Выводим результат
 									return result;
 							}
@@ -24105,8 +24539,8 @@ namespace io {
 								if(peer->callbacks.write != nullptr){
 									// Вызываем функцию обратного вызова для вывода записанных данных
 									peer->callbacks.write(peer->id, bytes);
-									// Если дескриптор сокета стал недействительным
-									if(peer->transfer.fd == net::invalid_socket_t)
+									// Если узел уничтожен из функции обратного вызова
+									if((peer->state.status == event::status_t::DESTROYED) || (peer->state.status == event::status_t::GARBAGE))
 										// Выводим результат
 										return bytes;
 								}
@@ -24232,8 +24666,8 @@ namespace io {
 							if(peer->callbacks.write != nullptr){
 								// Вызываем функцию обратного вызова для вывода записанных данных
 								peer->callbacks.write(peer->id, 0);
-								// Если дескриптор сокета стал недействительным
-								if(peer->transfer.fd == net::invalid_socket_t)
+								// Если узел уничтожен из функции обратного вызова
+								if((peer->state.status == event::status_t::DESTROYED) || (peer->state.status == event::status_t::GARBAGE))
 									// Выводим результат
 									return result;
 							}
@@ -24454,8 +24888,8 @@ namespace io {
 										if(peer->callbacks.write != nullptr){
 											// Вызываем функцию обратного вызова для вывода записанных данных
 											peer->callbacks.write(peer->id, bytes);
-											// Если дескриптор сокета стал недействительным
-											if(peer->transfer.fd == net::invalid_socket_t)
+											// Если узел уничтожен из функции обратного вызова
+											if((peer->state.status == event::status_t::DESTROYED) || (peer->state.status == event::status_t::GARBAGE))
 												// Выводим результат
 												return bytes;
 										}
@@ -24887,8 +25321,8 @@ namespace io {
 										if(peer->callbacks.write != nullptr){
 											// Вызываем функцию обратного вызова для вывода записанных данных
 											peer->callbacks.write(peer->id, result);
-											// Если дескриптор сокета стал недействительным
-											if(peer->transfer.fd == net::invalid_socket_t)
+											// Если узел уничтожен из функции обратного вызова
+											if((peer->state.status == event::status_t::DESTROYED) || (peer->state.status == event::status_t::GARBAGE))
 												// Выводим результат
 												return result;
 										}
@@ -25043,8 +25477,8 @@ namespace io {
 							if(peer->callbacks.write != nullptr){
 								// Вызываем функцию обратного вызова для вывода записанных данных
 								peer->callbacks.write(peer->id, 0);
-								// Если дескриптор сокета стал недействительным
-								if(peer->transfer.fd == net::invalid_socket_t)
+								// Если узел уничтожен из функции обратного вызова
+								if((peer->state.status == event::status_t::DESTROYED) || (peer->state.status == event::status_t::GARBAGE))
 									// Выводим результат
 									return result;
 							}
@@ -25227,8 +25661,8 @@ namespace io {
 											if(peer->callbacks.write != nullptr){
 												// Вызываем функцию обратного вызова для вывода записанных данных
 												peer->callbacks.write(peer->id, result);
-												// Если дескриптор сокета стал недействительным
-												if(peer->transfer.fd == net::invalid_socket_t)
+												// Если узел уничтожен из функции обратного вызова
+												if((peer->state.status == event::status_t::DESTROYED) || (peer->state.status == event::status_t::GARBAGE))
 													// Выводим результат
 													return result;
 											}
@@ -25386,8 +25820,8 @@ namespace io {
 							if(peer->callbacks.write != nullptr){
 								// Вызываем функцию обратного вызова для вывода записанных данных
 								peer->callbacks.write(peer->id, 0);
-								// Если дескриптор сокета стал недействительным
-								if(peer->transfer.fd == net::invalid_socket_t)
+								// Если узел уничтожен из функции обратного вызова
+								if((peer->state.status == event::status_t::DESTROYED) || (peer->state.status == event::status_t::GARBAGE))
 									// Выводим результат
 									return result;
 							}
@@ -25748,8 +26182,8 @@ namespace io {
 										if(origin->callbacks.write != nullptr){
 											// Вызываем функцию обратного вызова для вывода записанных данных
 											origin->callbacks.write(origin->id, result);
-											// Если дескриптор сокета стал недействительным
-											if(origin->transfer.fd == net::invalid_socket_t)
+											// Если узел уничтожен из функции обратного вызова
+											if((origin->state.status == event::status_t::DESTROYED) || (origin->state.status == event::status_t::GARBAGE))
 												// Выводим результат
 												return result;
 										}
@@ -25834,8 +26268,8 @@ namespace io {
 							if(origin->callbacks.write != nullptr){
 								// Вызываем функцию обратного вызова для вывода записанных данных
 								origin->callbacks.write(origin->id, 0);
-								// Если дескриптор сокета стал недействительным
-								if(origin->transfer.fd == net::invalid_socket_t)
+								// Если узел уничтожен из функции обратного вызова
+								if((origin->state.status == event::status_t::DESTROYED) || (origin->state.status == event::status_t::GARBAGE))
 									// Выводим результат
 									return result;
 							}
@@ -26054,8 +26488,8 @@ namespace io {
 											if(origin->callbacks.write != nullptr){
 												// Вызываем функцию обратного вызова для вывода записанных данных
 												origin->callbacks.write(origin->id, result);
-												// Если дескриптор сокета стал недействительным
-												if(origin->transfer.fd == net::invalid_socket_t)
+												// Если узел уничтожен из функции обратного вызова
+												if((origin->state.status == event::status_t::DESTROYED) || (origin->state.status == event::status_t::GARBAGE))
 													// Выводим результат
 													return result;
 											}
@@ -26143,8 +26577,8 @@ namespace io {
 							if(origin->callbacks.write != nullptr){
 								// Вызываем функцию обратного вызова для вывода записанных данных
 								origin->callbacks.write(origin->id, 0);
-								// Если дескриптор сокета стал недействительным
-								if(origin->transfer.fd == net::invalid_socket_t)
+								// Если узел уничтожен из функции обратного вызова
+								if((origin->state.status == event::status_t::DESTROYED) || (origin->state.status == event::status_t::GARBAGE))
 									// Выводим результат
 									return result;
 							}
@@ -27674,8 +28108,8 @@ namespace io {
 								if(client->callbacks.write != nullptr){
 									// Вызываем функцию обратного вызова для вывода записанных данных
 									client->callbacks.write(client->id, bytes);
-									// Если дескриптор сокета стал недействительным
-									if(client->transfer.fd == net::invalid_socket_t)
+									// Если узел уничтожен из функции обратного вызова
+									if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 										// Выводим результат
 										return bytes;
 								}
@@ -27801,8 +28235,8 @@ namespace io {
 							if(client->callbacks.write != nullptr){
 								// Вызываем функцию обратного вызова для вывода записанных данных
 								client->callbacks.write(client->id, 0);
-								// Если дескриптор сокета стал недействительным
-								if(client->transfer.fd == net::invalid_socket_t)
+								// Если узел уничтожен из функции обратного вызова
+								if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 									// Выводим результат
 									return result;
 							}
@@ -28023,8 +28457,8 @@ namespace io {
 										if(client->callbacks.write != nullptr){
 											// Вызываем функцию обратного вызова для вывода записанных данных
 											client->callbacks.write(client->id, bytes);
-											// Если дескриптор сокета стал недействительным
-											if(client->transfer.fd == net::invalid_socket_t)
+											// Если узел уничтожен из функции обратного вызова
+											if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 												// Выводим результат
 												return bytes;
 										}
@@ -28458,8 +28892,8 @@ namespace io {
 											if(client->callbacks.write != nullptr){
 												// Вызываем функцию обратного вызова для вывода записанных данных
 												client->callbacks.write(client->id, result);
-												// Если дескриптор сокета стал недействительным
-												if(client->transfer.fd == net::invalid_socket_t)
+												// Если узел уничтожен из функции обратного вызова
+												if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 													// Выводим результат
 													return result;
 											}
@@ -28614,8 +29048,8 @@ namespace io {
 								if(client->callbacks.write != nullptr){
 									// Вызываем функцию обратного вызова для вывода записанных данных
 									client->callbacks.write(client->id, 0);
-									// Если дескриптор сокета стал недействительным
-									if(client->transfer.fd == net::invalid_socket_t)
+									// Если узел уничтожен из функции обратного вызова
+									if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 										// Выводим результат
 										return result;
 								}
@@ -28796,8 +29230,8 @@ namespace io {
 												if(client->callbacks.write != nullptr){
 													// Вызываем функцию обратного вызова для вывода записанных данных
 													client->callbacks.write(client->id, result);
-													// Если дескриптор сокета стал недействительным
-													if(client->transfer.fd == net::invalid_socket_t)
+													// Если узел уничтожен из функции обратного вызова
+													if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 														// Выводим результат
 														return result;
 												}
@@ -28955,8 +29389,8 @@ namespace io {
 								if(client->callbacks.write != nullptr){
 									// Вызываем функцию обратного вызова для вывода записанных данных
 									client->callbacks.write(client->id, 0);
-									// Если дескриптор сокета стал недействительным
-									if(client->transfer.fd == net::invalid_socket_t)
+									// Если узел уничтожен из функции обратного вызова
+									if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 										// Выводим результат
 										return result;
 								}
@@ -29216,8 +29650,8 @@ namespace io {
 											if(client->callbacks.write != nullptr){
 												// Вызываем функцию обратного вызова для вывода записанных данных
 												client->callbacks.write(client->id, result);
-												// Если дескриптор сокета стал недействительным
-												if(client->transfer.fd == net::invalid_socket_t)
+												// Если узел уничтожен из функции обратного вызова
+												if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 													// Выводим результат
 													return result;
 											}
@@ -29372,8 +29806,8 @@ namespace io {
 								if(client->callbacks.write != nullptr){
 									// Вызываем функцию обратного вызова для вывода записанных данных
 									client->callbacks.write(client->id, 0);
-									// Если дескриптор сокета стал недействительным
-									if(client->transfer.fd == net::invalid_socket_t)
+									// Если узел уничтожен из функции обратного вызова
+									if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 										// Выводим результат
 										return result;
 								}
@@ -29554,8 +29988,8 @@ namespace io {
 												if(client->callbacks.write != nullptr){
 													// Вызываем функцию обратного вызова для вывода записанных данных
 													client->callbacks.write(client->id, result);
-													// Если дескриптор сокета стал недействительным
-													if(client->transfer.fd == net::invalid_socket_t)
+													// Если узел уничтожен из функции обратного вызова
+													if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 														// Выводим результат
 														return result;
 												}
@@ -29713,8 +30147,8 @@ namespace io {
 								if(client->callbacks.write != nullptr){
 									// Вызываем функцию обратного вызова для вывода записанных данных
 									client->callbacks.write(client->id, 0);
-									// Если дескриптор сокета стал недействительным
-									if(client->transfer.fd == net::invalid_socket_t)
+									// Если узел уничтожен из функции обратного вызова
+									if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 										// Выводим результат
 										return result;
 								}
@@ -30008,8 +30442,8 @@ namespace io {
 											if(client->callbacks.write != nullptr){
 												// Вызываем функцию обратного вызова для вывода записанных данных
 												client->callbacks.write(client->id, result);
-												// Если дескриптор сокета стал недействительным
-												if(client->transfer.fd == net::invalid_socket_t)
+												// Если узел уничтожен из функции обратного вызова
+												if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 													// Выводим результат
 													return result;
 											}
@@ -30164,8 +30598,8 @@ namespace io {
 								if(client->callbacks.write != nullptr){
 									// Вызываем функцию обратного вызова для вывода записанных данных
 									client->callbacks.write(client->id, 0);
-									// Если дескриптор сокета стал недействительным
-									if(client->transfer.fd == net::invalid_socket_t)
+									// Если узел уничтожен из функции обратного вызова
+									if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 										// Выводим результат
 										return result;
 								}
@@ -30348,8 +30782,8 @@ namespace io {
 												if(client->callbacks.write != nullptr){
 													// Вызываем функцию обратного вызова для вывода записанных данных
 													client->callbacks.write(client->id, result);
-													// Если дескриптор сокета стал недействительным
-													if(client->transfer.fd == net::invalid_socket_t)
+													// Если узел уничтожен из функции обратного вызова
+													if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 														// Выводим результат
 														return result;
 												}
@@ -30507,8 +30941,8 @@ namespace io {
 								if(client->callbacks.write != nullptr){
 									// Вызываем функцию обратного вызова для вывода записанных данных
 									client->callbacks.write(client->id, 0);
-									// Если дескриптор сокета стал недействительным
-									if(client->transfer.fd == net::invalid_socket_t)
+									// Если узел уничтожен из функции обратного вызова
+									if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 										// Выводим результат
 										return result;
 								}
@@ -30772,8 +31206,8 @@ namespace io {
 											if(client->callbacks.write != nullptr){
 												// Вызываем функцию обратного вызова для вывода записанных данных
 												client->callbacks.write(client->id, result);
-												// Если дескриптор сокета стал недействительным
-												if(client->transfer.fd == net::invalid_socket_t)
+												// Если узел уничтожен из функции обратного вызова
+												if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 													// Выводим результат
 													return result;
 											}
@@ -30928,8 +31362,8 @@ namespace io {
 								if(client->callbacks.write != nullptr){
 									// Вызываем функцию обратного вызова для вывода записанных данных
 									client->callbacks.write(client->id, 0);
-									// Если дескриптор сокета стал недействительным
-									if(client->transfer.fd == net::invalid_socket_t)
+									// Если узел уничтожен из функции обратного вызова
+									if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 										// Выводим результат
 										return result;
 								}
@@ -31112,8 +31546,8 @@ namespace io {
 												if(client->callbacks.write != nullptr){
 													// Вызываем функцию обратного вызова для вывода записанных данных
 													client->callbacks.write(client->id, result);
-													// Если дескриптор сокета стал недействительным
-													if(client->transfer.fd == net::invalid_socket_t)
+													// Если узел уничтожен из функции обратного вызова
+													if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 														// Выводим результат
 														return result;
 												}
@@ -31271,8 +31705,8 @@ namespace io {
 								if(client->callbacks.write != nullptr){
 									// Вызываем функцию обратного вызова для вывода записанных данных
 									client->callbacks.write(client->id, 0);
-									// Если дескриптор сокета стал недействительным
-									if(client->transfer.fd == net::invalid_socket_t)
+									// Если узел уничтожен из функции обратного вызова
+									if((client->state.status == event::status_t::DESTROYED) || (client->state.status == event::status_t::GARBAGE))
 										// Выводим результат
 										return result;
 								}
@@ -31803,6 +32237,158 @@ namespace io {
 	 * Используем пространство имён AWH
 	 */
 	using namespace awh;
+
+	/**
+	 * @brief Шаблонная функция вытягивания данных из источника и отправки их в событие
+	 *
+	 * @tparam T тип узла события, для которого вытягиваются данные
+	 */
+	template <typename T>
+	/**
+	 * @brief Функция вытягивания данных из источника и отправки их в событие
+	 *
+	 * @param node  узел, для которого вытягиваются данные
+	 * @param queue   очередь отправки узла
+	 * @param pulling признак ведения вытягивания данных из источника
+	 * @param fd      дескриптор сокета узла
+	 * @param eth   объект работы с сетевым интерфейсом
+	 * @param log   объект работы с логами
+	 *
+	 */
+	static void pull(T * node, net_queue_t & queue, bool & pulling, const net::socket_t fd, const eth_t * eth, const log_t * log) noexcept {
+		/**
+		 * Если узел не задан, источник на нём не установлен либо вытягивание не заведено
+		 *
+		 * @note Источник живёт на узле постоянно, поэтому одного его наличия мало: спрашивать
+		 *       позволено лишь пока стоит признак вытягивания. Иначе исчерпанный источник
+		 *       спрашивался бы снова на каждой готовности сокета к записи
+		 */
+		if((node == nullptr) || (node->callbacks.source == nullptr) || !pulling)
+			// Выходим из функции, вытягивать нечем
+			return;
+		// Получаем количество свободного места в очереди
+		size_t available = queue.available();
+		// Если в очереди нет свободного места
+		if(available == 0)
+			// Выходим из функции, вытягивать нечем
+			return;
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			/**
+			 * Получаем вместимость буфера отправки сокета
+			 *
+			 * @note Величина эта служит ТОЛЬКО потолком одной дейтаграммы: сообщение крупнее
+			 *       буфера не уйдёт никогда. Для потока она не нужна вовсе
+			 */
+			const int32_t bufferSize = ((queue.type() == net_queue_t::type_t::UDP) ? eth->socket.getBufferSize(fd, net::socket_event_t::WRITE) : 0);
+			/**
+			 * Вытягиваем данные пока источник отдаёт их и в очереди есть место
+			 */
+			while(node->callbacks.source != nullptr){
+				// Если в очереди нет свободного места
+				if(available == 0)
+					// Выходим из цикла вытягивания
+					break;
+				/**
+				 * Определяем ёмкость запроса к источнику данных
+				 *
+				 * @warning Ёмкостью служит СВОБОДНОЕ МЕСТО ОЧЕРЕДИ и только оно. Прибавлять к
+				 *          нему буфер сокета НЕЛЬЗЯ: `SO_SNDBUF` говорит о вместимости, а не о
+				 *          свободном месте, и забитый сокет не примет ни байта. Свободное место
+				 *          сокета тоже не годится - `SO_NWRITE` у доменных сокетов macOS всегда
+				 *          отвечает нулём даже при забитом буфере (проверено), а Solaris, illumos
+				 *          и MS Windows не сообщают его вовсе. Обещание сверх очереди ничем не
+				 *          обеспечено, а отданное сверх него пропадает молча: копии у источника нет
+				 */
+				size_t capacity = ::min(available, static_cast <size_t> (AWH_EVENT_MAX_BUFFER_SIZE));
+				/**
+				 * Если очередь хранит границы сообщений (дейтаграммы)
+				 *
+				 * @note Дейтаграмма неделима, поэтому ёмкость ограничивается ещё и вместимостью
+				 *       буфера сокета: сообщение крупнее него отвергалось бы целиком
+				 */
+				if((queue.type() == net_queue_t::type_t::UDP) && (bufferSize > 0))
+					// Ограничиваем ёмкость запроса вместимостью буфера отправки сокета
+					capacity = ::min(capacity, static_cast <size_t> (bufferSize));
+				// Если принять данные узел уже не в состоянии
+				if(capacity == 0)
+					// Выходим из цикла вытягивания
+					break;
+				// Запоминаем ёмкость запроса, отданную источнику
+				const size_t offered = capacity;
+				// Указатель на данные источника
+				const uint8_t * chunk = nullptr;
+				// Запрашиваем данные у источника, получая указатель на его собственный буфер
+				const bool proceed = node->callbacks.source(node->id, &chunk, capacity);
+				// Если источник отдал больше отданной ему ёмкости
+				if(!(pulling = (capacity <= offered))){
+					// Записываем ошибку в лог
+					log->print("Data source has given out more than the given capacity of the request", log_t::flag_t::WARNING);
+					// Выходим из цикла вытягивания
+					break;
+				}
+				// Если источник отдал данные
+				if((capacity > 0) && (chunk != nullptr)){
+					// Отправляем вытянутое обычным путём отправки данных
+					(void) ::io::send(node, chunk, capacity, eth, log);
+					/**
+					 * Если узел больше не пригоден к обмену
+					 *
+					 * @note Отправка может уничтожить узел, встретив непоправимую ошибку сокета.
+					 *       Память при этом остаётся годной, освобождение отложено, но отправлять
+					 *       из такого узла уже нельзя, а значит и спрашивать источник незачем:
+					 *       отданное им пропало бы молча, ведь копии у источника нет
+					 */
+					if(!(pulling = ((node->state.status != event::status_t::DESTROYED) && (node->state.status != event::status_t::GARBAGE))))
+						// Выходим из цикла вытягивания
+						break;
+				}
+				/**
+				 * Если источнику больше нечего отдавать
+				 *
+				 * @note Признак вытягивания ведёт ТОЛЬКО возврат источника: ложь означает
+				 *       «всё отдано», и завести вытягивание снова сможет лишь приложение
+				 *       вызовом send(id, nullptr, 0)
+				 */
+				if(!(pulling = proceed))
+					// Выходим из цикла вытягивания
+					break;
+				/**
+				 * Если источник не записал ни байта
+				 *
+				 * @note Данных у него либо пока нет, либо отданная ёмкость мала для очередной
+				 *       неделимой дейтаграммы. Круг прекращаем, но признак вытягивания оставляем:
+				 *       движок вернётся к источнику на ближайшем сливе очереди, когда места станет
+				 *       больше. Гасить признак здесь значило бы замолчать навсегда, оставив данные
+				 *       источника неотправленными
+				 */
+				if(capacity == 0)
+					// Выходим из цикла вытягивания
+					break;
+				// Получаем количество свободного места в очереди
+				available = queue.available();
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const std::exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(fd), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
 
 	/**
 	 * @brief Функция обработки события удаления узла
@@ -41442,8 +42028,14 @@ bool awh::engine::IO::rebuild(const event::id_t id) noexcept {
 				}
 				// Сбрасываем очереди передачи данных обоих узлов
 				ipc->transfer.queue.clear();
+				// Снимаем признак ведения вытягивания данных из источника: очередь очищена,
+				// и возобновлять отправку вправе только приложение вызовом send(id, nullptr, 0)
+				ipc->transfer.pulling = false;
 				// Сбрасываем очередь передачи данных парного узла
 				mate->transfer.queue.clear();
+				// Снимаем признак ведения вытягивания данных из источника: очередь очищена,
+				// и возобновлять отправку вправе только приложение вызовом send(id, nullptr, 0)
+				mate->transfer.pulling = false;
 				// Сбрасываем изменчивые маски действий и статусы обоих узлов
 				ipc->transfer.actions = ::action::NONE;
 				// Сбрасываем маску действий парного узла
@@ -41557,6 +42149,9 @@ bool awh::engine::IO::rebuild(const event::id_t id) noexcept {
 				const bool committed = ((status != event::status_t::NONE) && (status != event::status_t::DESTROYED) && (status != event::status_t::GARBAGE));
 				// Сбрасываем очередь передачи данных туннеля
 				tunnel->queue.clear();
+				// Снимаем признак ведения вытягивания данных из источника: очередь очищена,
+				// и возобновлять отправку вправе только приложение вызовом send(id, nullptr, 0)
+				tunnel->pulling = false;
 				// Если процесс является родительским
 				if(::__awh_pid__ == ::getpid()){
 					// Если туннель создан
@@ -41771,6 +42366,9 @@ bool awh::engine::IO::rebuild(const event::id_t id) noexcept {
 				}
 				// Сбрасываем очередь передачи данных
 				client->transfer.queue.clear();
+				// Снимаем признак ведения вытягивания данных из источника: очередь очищена,
+				// и возобновлять отправку вправе только приложение вызовом send(id, nullptr, 0)
+				client->transfer.pulling = false;
 				// Если действующий дескриптор присутствует
 				if(client->transfer.fd != net::invalid_socket_t){
 					// Закрываем прежний дескриптор
@@ -61199,14 +61797,105 @@ size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const si
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Если данные для отправки переданы
-		if(buffer != nullptr){
-			// Выполняем поиск идентификатора события
-			auto i = ::__awh_nodes__.find(id);
-			// Если идентификатор события найден и событие не подлежит уничтожению
-			if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
-				// Создаём охранника узла события
-				::local::guard_t guard(i->second.get());
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден и событие не подлежит уничтожению
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
+			// Создаём охранника узла события
+			::local::guard_t guard(i->second.get());
+			/**
+			 * Если заводится отправка вытягивающей моделью
+			 *
+			 * @details Пустая отправка служит ПУСКОМ вытягивания: движок спрашивает данные у
+			 *          установленного источника и шлёт их обычным путём. Этим же вызовом
+			 *          отправка заводится заново после того, как источник ответил отказом,
+			 *          вернув ложь, либо после пересоздания узла, где признак вытягивания
+			 *          гасится вместе с очисткой очереди
+			 *
+			 * @note Ради нулевой записи источника заводить отправку заново не нужно: движок
+			 *       спросит его сам на ближайшем сливе очереди, когда места станет больше
+			 *
+			 * @note Отправлять здесь нечего, поэтому возвращается ноль: наружу уходит ровно
+			 *       столько данных, сколько передано вызовом, а передано не было ничего
+			 */
+			if((buffer == nullptr) && (size == 0)){
+				/**
+				 * Определяем чем является текущий узел
+				 */
+				switch(static_cast <uint8_t> (i->second->state.node)){
+					// Если узел является межпроцессным взаимодействием
+					case static_cast <uint8_t> (event::node_t::IPC): {
+						// Получаем текущее значение объекта межпроцессного взаимодействия
+						::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (i->second.get());
+						// Если источник данных установлен
+						if(ipc->callbacks.source != nullptr){
+							// Поднимаем признак ведения вытягивания данных из источника
+							ipc->transfer.pulling = true;
+							// Заводим вытягивание данных из источника
+							::io::pull(ipc, ipc->transfer.queue, ipc->transfer.pulling, ipc->transfer.fd, &this->_eth, this->_log);
+							// Выводим результат: переданных данных не было
+							return result;
+						}
+					} break;
+					// Если узел является одноранговым узлом
+					case static_cast <uint8_t> (event::node_t::PEER): {
+						// Получаем текущее значение объекта однорангового узла
+						::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
+						// Если источник данных установлен
+						if(peer->callbacks.source != nullptr){
+							// Поднимаем признак ведения вытягивания данных из источника
+							peer->transfer.pulling = true;
+							// Заводим вытягивание данных из источника
+							::io::pull(peer, peer->transfer.queue, peer->transfer.pulling, peer->transfer.fd, &this->_eth, this->_log);
+							// Выводим результат: переданных данных не было
+							return result;
+						}
+					} break;
+					// Если узел является одноранговым узлом-источником
+					case static_cast <uint8_t> (event::node_t::ORIGIN): {
+						// Получаем текущее значение объекта однорангового узла-источника
+						::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
+						// Если источник данных установлен
+						if(origin->callbacks.source != nullptr){
+							// Поднимаем признак ведения вытягивания данных из источника
+							origin->transfer.pulling = true;
+							// Заводим вытягивание данных из источника
+							::io::pull(origin, origin->transfer.queue, origin->transfer.pulling, origin->transfer.fd, &this->_eth, this->_log);
+							// Выводим результат: переданных данных не было
+							return result;
+						}
+					} break;
+					// Если узел является туннелем
+					case static_cast <uint8_t> (event::node_t::TUNNEL): {
+						// Получаем объект туннеля
+						::io::tun_t * tunnel = awh_cast <::io::tun_t *> (i->second.get());
+						// Если источник данных установлен
+						if(tunnel->callbacks.source != nullptr){
+							// Поднимаем признак ведения вытягивания данных из источника
+							tunnel->pulling = true;
+							// Заводим вытягивание данных из источника
+							::io::pull(tunnel, tunnel->queue, tunnel->pulling, tunnel->fd, &this->_eth, this->_log);
+							// Выводим результат: переданных данных не было
+							return result;
+						}
+					} break;
+					// Если узел является клиентом
+					case static_cast <uint8_t> (event::node_t::CLIENT): {
+						// Получаем текущее значение объекта клиента
+						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
+						// Если источник данных установлен
+						if(client->callbacks.source != nullptr){
+							// Поднимаем признак ведения вытягивания данных из источника
+							client->transfer.pulling = true;
+							// Заводим вытягивание данных из источника
+							::io::pull(client, client->transfer.queue, client->transfer.pulling, client->transfer.fd, &this->_eth, this->_log);
+							// Выводим результат: переданных данных не было
+							return result;
+						}
+					} break;
+				}
+			// Если данные для отправки переданы
+			} else {
 				/**
 				 * Определяем чем является текущий узел
 				 */
@@ -71588,6 +72277,153 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::timeout_t cb) n
 		#endif
 	}
 }
+/**
+ * @brief Метод установки источника данных для вытягивающей модели отправки
+ *
+ * @param id идентификатор события
+ * @param cb функция обратного вызова источника данных
+ *
+ */
+void awh::engine::IO::on(const event::id_t id, engine::callback::source_t cb) noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден и событие не подлежит уничтожению
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
+			// Создаём охранника узла события
+			::local::guard_t guard(i->second.get());
+			/**
+			 * Определяем чем является текущий узел
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если узел является межпроцессным взаимодействием
+				case static_cast <uint8_t> (event::node_t::IPC): {
+					// Получаем узел события в его настоящем виде
+					auto ipc = awh_cast <::io::ipc_t *> (i->second.get());
+					// Устанавливаем источник данных для вытягивающей модели отправки
+					ipc->callbacks.source = ::move(cb);
+					/**
+					 * Если источник установлен и дескриптор события действителен
+					 *
+					 * @warning Взведение записи здесь обязательно: движок просит данные у источника
+					 *          в обработчике готовности сокета к записи, а взводится та готовность
+					 *          лишь при непустой очереди. Без взведения выходит замкнутый круг -
+					 *          очередь пуста, потому что источник не спрошен, а спросить его негде,
+					 *          потому что очередь пуста
+					 */
+				} break;
+				// Если узел является одноранговым узлом
+				case static_cast <uint8_t> (event::node_t::PEER): {
+					// Получаем узел события в его настоящем виде
+					auto peer = awh_cast <::io::peer_t *> (i->second.get());
+					// Устанавливаем источник данных для вытягивающей модели отправки
+					peer->callbacks.source = ::move(cb);
+					/**
+					 * Если источник установлен и дескриптор события действителен
+					 *
+					 * @warning Взведение записи здесь обязательно: движок просит данные у источника
+					 *          в обработчике готовности сокета к записи, а взводится та готовность
+					 *          лишь при непустой очереди. Без взведения выходит замкнутый круг -
+					 *          очередь пуста, потому что источник не спрошен, а спросить его негде,
+					 *          потому что очередь пуста
+					 */
+				} break;
+				// Если узел является одноранговым узлом-источником
+				case static_cast <uint8_t> (event::node_t::ORIGIN): {
+					// Получаем узел события в его настоящем виде
+					auto origin = awh_cast <::io::origin_t *> (i->second.get());
+					// Устанавливаем источник данных для вытягивающей модели отправки
+					origin->callbacks.source = ::move(cb);
+					/**
+					 * Если источник установлен и дескриптор события действителен
+					 *
+					 * @warning Взведение записи здесь обязательно: движок просит данные у источника
+					 *          в обработчике готовности сокета к записи, а взводится та готовность
+					 *          лишь при непустой очереди. Без взведения выходит замкнутый круг -
+					 *          очередь пуста, потому что источник не спрошен, а спросить его негде,
+					 *          потому что очередь пуста
+					 */
+				} break;
+				// Если узел является туннелем
+				case static_cast <uint8_t> (event::node_t::TUNNEL):
+				{
+					// Получаем узел события в его настоящем виде
+					auto tunnel = awh_cast <::io::tun_t *> (i->second.get());
+					// Устанавливаем источник данных для вытягивающей модели отправки
+					tunnel->callbacks.source = ::move(cb);
+					/**
+					 * Если источник установлен и дескриптор события действителен
+					 *
+					 * @warning Взведение записи здесь обязательно: движок просит данные у источника
+					 *          в обработчике готовности сокета к записи, а взводится та готовность
+					 *          лишь при непустой очереди. Без взведения выходит замкнутый круг -
+					 *          очередь пуста, потому что источник не спрошен, а спросить его негде,
+					 *          потому что очередь пуста
+					 */
+				} break;
+				// Если узел является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT): {
+					// Получаем узел события в его настоящем виде
+					auto client = awh_cast <::io::client_t *> (i->second.get());
+					// Устанавливаем источник данных для вытягивающей модели отправки
+					client->callbacks.source = ::move(cb);
+					/**
+					 * Если источник установлен и дескриптор события действителен
+					 *
+					 * @warning Взведение записи здесь обязательно: движок просит данные у источника
+					 *          в обработчике готовности сокета к записи, а взводится та готовность
+					 *          лишь при непустой очереди. Без взведения выходит замкнутый круг -
+					 *          очередь пуста, потому что источник не спрошен, а спросить его негде,
+					 *          потому что очередь пуста
+					 */
+
+				} break;
+				/**
+				 * Для других типов узлов
+				 *
+				 * @note Сервер сюда намеренно не входит: очереди отправки у слушающего узла
+				 *       нет вовсе, и вытягивать данные ему просто некуда
+				 */
+				default: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Записываем ошибку в лог
+						this->_log->debug("A data source cannot be set for this event type", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем ошибку в лог
+						this->_log->print("A data source cannot be set for this event type", log_t::flag_t::WARNING);
+					#endif
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+
 /**
  * @brief Метод установки функции обратного вызова для обработки доступности очереди события
  *

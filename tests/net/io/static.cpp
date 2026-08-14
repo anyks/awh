@@ -19825,7 +19825,7 @@ TEST_F(IoFixture, IoDataSourcePullTest){
 		ASSERT_TRUE(this->_io->launch(cid));
 		// Устанавливаем источник данных для вытягивающей модели отправки
 		this->_io->on(cid, static_cast <awh::engine::callback::source_t> (
-			[&body, &offset, &requests, &overruns, &finished]([[maybe_unused]] const awh::event::id_t eid, uint8_t * buffer, size_t & size) noexcept -> bool {
+			[&body, &offset, &requests, &overruns, &finished]([[maybe_unused]] const awh::event::id_t eid, const uint8_t ** buffer, size_t & size) noexcept -> bool {
 				// Учитываем обращение движка к источнику данных
 				requests++;
 				// Если источник уже сообщил, что отдавать больше нечего
@@ -19838,8 +19838,8 @@ TEST_F(IoFixture, IoDataSourcePullTest){
 				const size_t part = ((rest < size) ? rest : size);
 				// Если есть что отдавать
 				if(part > 0)
-					// Копируем часть тела в переданный движком участок
-					::memcpy(buffer, (body.data() + offset), part);
+					// Отдаём движку указатель прямо в своё тело, без копирования
+					(* buffer) = reinterpret_cast <const uint8_t *> (body.data() + offset);
 				// Сдвигаем смещение отданного тела
 				offset += part;
 				// Сообщаем движку размер отданной части тела
@@ -19907,18 +19907,53 @@ TEST_F(IoFixture, IoDataSourcePullDatagramTest){
 	const uint16_t expected = 64;
 	// Размер одного сообщения
 	const size_t length = 1200;
+	/**
+	 * Буфер одного сообщения источника
+	 *
+	 * @note Буфер живёт у источника, а не у движка: договор вытягивания отдаёт движку
+	 *       указатель на данные источника, поэтому копирования нет вовсе
+	 */
+	std::vector <uint8_t> message(length, 0);
 	// Номера принятых сообщений в порядке приёма
 	std::vector <uint8_t> received;
 	// Признак искажения принятых сообщений
 	bool corrupted = false;
 	// Путь к файлу UNIX-доменного сокета
 	const std::string socketPath = "/tmp/awh-datasource-dgram.sock";
-	// Удаляем файл сокета, оставшийся от предыдущего запуска
-	::unlink(socketPath.c_str());
+	/**
+	 * Если операционной системой является MS Windows
+	 *
+	 * @note Дейтаграммных доменных сокетов у MS Windows нет вовсе - движок отвечает
+	 *       на них отказом и прямо о том предупреждает. Проверка оттого ведётся по
+	 *       петле UDP: вытягивание от вида сокета не зависит, а без замены она
+	 *       молча не проверяла бы ничего
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		// Вид семейства адресов проверки
+		const awh::event::family_t family = awh::event::family_t::IPV4;
+		// Вид адреса проверки
+		const awh::event::address_t address = awh::event::address_t::IPV4;
+		// Конечная точка обмена
+		const std::string endpoint = "127.0.0.1";
+		// Порт обмена
+		const uint16_t port = 41893;
+	/**
+	 * Если операционной системой является любая другая
+	 */
+	#else
+		// Вид семейства адресов проверки
+		const awh::event::family_t family = awh::event::family_t::UDS;
+		// Вид адреса проверки
+		const awh::event::address_t address = awh::event::address_t::UDS;
+		// Конечная точка обмена
+		const std::string endpoint = socketPath;
+		// Удаляем файл сокета, оставшийся от предыдущего запуска
+		::unlink(socketPath.c_str());
+	#endif
 	// Добавляем событие сервера
-	const awh::event::id_t sid = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::UDS, awh::event::type_t::DATAGRAM);
+	const awh::event::id_t sid = this->_io->event(awh::event::node_t::SERVER, family, awh::event::type_t::DATAGRAM);
 	// Добавляем событие клиента
-	const awh::event::id_t cid = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::UDS, awh::event::type_t::DATAGRAM);
+	const awh::event::id_t cid = this->_io->event(awh::event::node_t::CLIENT, family, awh::event::type_t::DATAGRAM);
 	// Добавляем событие ограничения времени работы проверки
 	const awh::event::id_t guard = this->_io->event(awh::event::node_t::TIMEOUT, awh::event::family_t::TIMER);
 	// Проверяем идентификаторы созданных событий
@@ -19949,8 +19984,15 @@ TEST_F(IoFixture, IoDataSourcePullDatagramTest){
 	{
 		// Устанавливаем настройки события сервера
 		ASSERT_TRUE(this->_io->setOptions(sid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
-		// Устанавливаем адрес UNIX-доменного сокета сервера
-		ASSERT_TRUE(this->_io->setAddress(sid, awh::event::address_t::UDS, socketPath));
+		// Устанавливаем адрес сервера
+		ASSERT_TRUE(this->_io->setAddress(sid, address, endpoint));
+		/**
+		 * Если проверка ведётся по петле UDP - устанавливаем порт сервера
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			// Устанавливаем порт, на котором сервер принимает сообщения
+			ASSERT_TRUE(this->_io->setSourcePort(sid, port));
+		#endif
 		/**
 		 * Устанавливаем функцию обратного вызова на принятие встречной стороны
 		 *
@@ -19989,6 +20031,23 @@ TEST_F(IoFixture, IoDataSourcePullDatagramTest){
 		}));
 		// Выполняем фиксацию настроек события сервера
 		ASSERT_TRUE(this->_io->commit(sid));
+		/**
+		 * Если проверка ведётся по петле UDP - расширяем буфер приёма сервера
+		 *
+		 * @note Доставка по петле UDP, в отличие от доменного сокета, ничем не
+		 *       обеспечена: переполнив буфер приёма, ядро молча отбрасывает
+		 *       дейтаграммы. Здесь их шлют пачкой на 76 800 октет, а буфера по
+		 *       умолчанию хватает на 65 536 - до расширения доходило ровно 55
+		 *       сообщений из 64.
+		 *
+		 * @note Зовётся ПОСЛЕ фиксации настроек намеренно: сокет заводится ею, и
+		 *       до неё расширять нечего - обращение отвечало отказом «объект не
+		 *       является сокетом»
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			// Расширяем буфер приёма сервера под всю пачку сообщений
+			ASSERT_TRUE(this->_io->setBufferSize(sid, awh::event::action_t::READ, 1048576));
+		#endif
 		// Запускаем событие сервера
 		ASSERT_TRUE(this->_io->launch(sid));
 	}
@@ -19998,15 +20057,22 @@ TEST_F(IoFixture, IoDataSourcePullDatagramTest){
 	{
 		// Устанавливаем настройки события клиента
 		ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
-		// Устанавливаем адрес UNIX-доменного сокета сервера
-		ASSERT_TRUE(this->_io->setTarget(cid, socketPath));
+		// Устанавливаем адрес сервера
+		ASSERT_TRUE(this->_io->setTarget(cid, endpoint));
+		/**
+		 * Если проверка ведётся по петле UDP - устанавливаем порт получателя
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			// Устанавливаем порт, на который отправляются сообщения
+			ASSERT_TRUE(this->_io->setTargetPort(cid, port));
+		#endif
 		// Выполняем фиксацию настроек события клиента
 		ASSERT_TRUE(this->_io->commit(cid));
 		// Запускаем событие клиента
 		ASSERT_TRUE(this->_io->launch(cid));
 		// Устанавливаем источник данных для вытягивающей модели отправки
 		this->_io->on(cid, static_cast <awh::engine::callback::source_t> (
-			[&produced, &requests, &overruns, &finished, &expected, &length]([[maybe_unused]] const awh::event::id_t eid, uint8_t * buffer, size_t & size) noexcept -> bool {
+			[&produced, &requests, &overruns, &finished, &expected, &length, &message]([[maybe_unused]] const awh::event::id_t eid, const uint8_t ** buffer, size_t & size) noexcept -> bool {
 				// Учитываем обращение движка к источнику данных
 				requests++;
 				// Если источник уже исчерпан
@@ -20025,8 +20091,10 @@ TEST_F(IoFixture, IoDataSourcePullDatagramTest){
 					// Сообщаем движку, что вытягивание нужно продолжать
 					return true;
 				}
-				// Заполняем сообщение его собственным номером
-				::memset(buffer, static_cast <int32_t> (produced & 0xFF), length);
+				// Заполняем своё сообщение его собственным номером
+				::memset(message.data(), static_cast <int32_t> (produced & 0xFF), length);
+				// Отдаём движку указатель на своё сообщение, без копирования
+				(* buffer) = message.data();
 				// Сообщаем движку размер отданного сообщения
 				size = length;
 				// Учитываем отправленное сообщение

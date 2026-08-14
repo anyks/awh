@@ -162,10 +162,46 @@ namespace awh {
 			 * \~
 			 */
 			typedef struct __AWH_SHARED_EXPORT__ TLS {
+				/**
+				 * \~russian
+				 * @brief Структура ожидающего отправки шифротекста TLS клиента
+				 *
+				 * @details Шифротекст выдаётся сетевому движку вытягивающей моделью: движок
+				 *          забирает его ровно тогда, когда готов отправить, поэтому при
+				 *          переполнении очереди отправки записи TLS не теряются. Потеря даже
+				 *          одной записи рвёт поток шифрования и обрывает соединение
+				 *
+				 * \~english
+				 * @brief Structure of the TLS ciphertext of a client awaiting the sending
+				 * @details The ciphertext is given out to the network engine by the pull model: the engine
+				 *          takes it exactly when it is ready to send it, so at an overflow of the queue
+				 *          of the sending the TLS records are not lost. A loss of even a single record
+				 *          breaks the stream of the encryption and terminates the connection
+				 *
+				 * \~
+				 */
+				typedef struct __AWH_SHARED_EXPORT__ Ciphertext {
+					// Буфер шифротекста, ожидающего отправки
+					string buffer;
+					// Позиция чтения выданного сетевому движку шифротекста
+					size_t offset;
+					/**
+					 * \~russian
+					 * @brief Конструктор
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
+					 */
+					explicit Ciphertext() noexcept : buffer{""}, offset(0) {}
+				} ciphertext_t;
 				// Объект транспортного уровня безопасности
 				tls::coder_t * coder;
 				// Список для сопоставления идентификаторов клиентов с идентификаторами TLS
 				unordered_map <event::id_t, tls::coder_t::id_t> safety;
+				// Список ожидающего отправки шифротекста клиентов
+				unordered_map <event::id_t, ciphertext_t> residue;
 				/**
 				 * \~russian
 				 * @brief Конструктор
@@ -860,6 +896,31 @@ namespace awh {
 			 * \~
 			 */
 			virtual void processTLS(const tls::coder_t::id_t id, const event::id_t eid, const tls::coder_t::event_t event, const uint8_t * buffer, const size_t size, void * ctx) noexcept;
+			/**
+			 * \~russian
+			 * @brief Метод выдачи шифротекста TLS клиента сетевому движку
+			 *
+			 * @note Функция-источник вытягивающей модели: движок спрашивает данные ровно
+			 *       тогда, когда готов их отправить, поэтому записи TLS при переполнении
+			 *       очереди отправки не теряются
+			 * @param eid    идентификатор клиента
+			 * @param buffer адрес указателя на буфер выдаваемых данных
+			 * @param size   ёмкость запроса на входе и размер выданных данных на выходе
+			 * @return       признак продолжения вытягивания данных
+			 *
+			 * \~english
+			 * @brief Method of giving out the TLS ciphertext of a client to the network engine
+			 * @note Source function of the pull model: the engine asks for the data exactly
+			 *       when it is ready to send them, so the TLS records are not lost at an
+			 *       overflow of the queue of the sending
+			 * @param eid    client identifier
+			 * @param buffer address of the pointer to the buffer of the given out data
+			 * @param size   capacity of the request at the input and size of the given out data at the output
+			 * @return       flag of the continuation of the pulling of the data
+			 *
+			 * \~
+			 */
+			virtual bool source(const event::id_t eid, const uint8_t ** buffer, size_t & size) noexcept;
 		public:
 			/**
 			 * \~russian

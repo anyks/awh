@@ -1,0 +1,1928 @@
+/**
+ * @file reader.cpp
+ * @date 2026-08-14
+ *
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
+ * @brief Реализация потокового чтения текста JSON — приём текста кусками произвольного
+ *        размера и выдача событий разбора, не удерживающая документ целиком
+ *
+ * @copyright Copyright © 2026
+ *
+ */
+
+/**
+ * Подключаем заголовочные файлы проекта
+ */
+#include <codec/json/reader.hpp>
+
+/**
+ * Используем стандартное пространство имён
+ */
+using namespace std;
+
+/**
+ * @brief Внутренние служебные объекты
+ *
+ */
+namespace {
+	/**
+	 * @brief Функция проверки знака на принадлежность к пробельным
+	 *
+	 * @details Стандарт числит пробельными ровно четыре знака: пробел, знак табуляции,
+	 *          перевод строки и возврат каретки. Прочие знаки, какие в обиходе зовут
+	 *          пробельными, - вертикальная табуляция, перевод страницы, неразрывный
+	 *          пробел - стандартом пробельными не числятся вовсе
+	 *
+	 * @param letter проверяемый знак
+	 * @return       признак принадлежности знака к пробельным
+	 *
+	 */
+	static inline bool spacing(const char letter) noexcept {
+		// Выводим признак принадлежности знака к пробельным
+		return ((letter == ' ') || (letter == '\t') || (letter == '\n') || (letter == '\r'));
+	}
+	/**
+	 * @brief Функция преобразования шестнадцатеричного знака в его значение
+	 *
+	 * @param letter преобразуемый знак
+	 * @param result переменная, куда помещается значение знака
+	 * @return       признак того, что знак является шестнадцатеричным
+	 *
+	 */
+	static inline bool hexadecimal(const char letter, uint32_t & result) noexcept {
+		/**
+		 * Если знак является десятичной цифрой
+		 */
+		if((letter >= '0') && (letter <= '9')){
+			// Устанавливаем значение знака
+			result = static_cast <uint32_t> (letter - '0');
+			// Выводим признак того, что знак является шестнадцатеричным
+			return true;
+		}
+		/**
+		 * Если знак является строчной буквой шестнадцатеричной цифры
+		 */
+		if((letter >= 'a') && (letter <= 'f')){
+			// Устанавливаем значение знака
+			result = static_cast <uint32_t> (letter - 'a') + 10;
+			// Выводим признак того, что знак является шестнадцатеричным
+			return true;
+		}
+		/**
+		 * Если знак является прописной буквой шестнадцатеричной цифры
+		 */
+		if((letter >= 'A') && (letter <= 'F')){
+			// Устанавливаем значение знака
+			result = static_cast <uint32_t> (letter - 'A') + 10;
+			// Выводим признак того, что знак является шестнадцатеричным
+			return true;
+		}
+		// Выводим признак того, что знак шестнадцатеричным не является
+		return false;
+	}
+	/**
+	 * @brief Функция записи кодового значения знака в кодировке UTF-8
+	 *
+	 * @param code   записываемое кодовое значение знака
+	 * @param result текст, к которому дописывается знак
+	 *
+	 */
+	static void codepoint(const uint32_t code, string & result) noexcept {
+		/**
+		 * Если кодовое значение записывается одним байтом
+		 */
+		if(code < 0x80)
+			// Выполняем добавление знака к тексту
+			result.push_back(static_cast <char> (code));
+		/**
+		 * Если кодовое значение записывается двумя байтами
+		 */
+		else if(code < 0x800) {
+			// Выполняем добавление первого байта знака к тексту
+			result.push_back(static_cast <char> (0xC0 | (code >> 6)));
+			// Выполняем добавление второго байта знака к тексту
+			result.push_back(static_cast <char> (0x80 | (code & 0x3F)));
+		/**
+		 * Если кодовое значение записывается тремя байтами
+		 */
+		} else if(code < 0x10000) {
+			// Выполняем добавление первого байта знака к тексту
+			result.push_back(static_cast <char> (0xE0 | (code >> 12)));
+			// Выполняем добавление второго байта знака к тексту
+			result.push_back(static_cast <char> (0x80 | ((code >> 6) & 0x3F)));
+			// Выполняем добавление третьего байта знака к тексту
+			result.push_back(static_cast <char> (0x80 | (code & 0x3F)));
+		/**
+		 * Если кодовое значение записывается четырьмя байтами
+		 */
+		} else {
+			// Выполняем добавление первого байта знака к тексту
+			result.push_back(static_cast <char> (0xF0 | (code >> 18)));
+			// Выполняем добавление второго байта знака к тексту
+			result.push_back(static_cast <char> (0x80 | ((code >> 12) & 0x3F)));
+			// Выполняем добавление третьего байта знака к тексту
+			result.push_back(static_cast <char> (0x80 | ((code >> 6) & 0x3F)));
+			// Выполняем добавление четвёртого байта знака к тексту
+			result.push_back(static_cast <char> (0x80 | (code & 0x3F)));
+		}
+	}
+}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::json::Reader::Settings::Settings() noexcept :
+ encoding(encoding_t::NONE), strict(false),
+ allowComments(false), allowTrailingCommas(false),
+ allowInfinityAndNan(false), allowSingleQuotes(false),
+ stream(false), emitComments(false),
+ maxString(MAX_STRING), maxNumber(MAX_NUMBER), maxDepth(MAX_DEPTH) {}
+
+/**
+ * @brief Метод заполнения разметки знаков, прерывающих быстрый проход
+ *
+ * @details Отмечаются знаки, чьё значение разбор обязан рассмотреть: кавычки,
+ *          закрывающие строку, знак отмены и управляющие знаки, стандартом внутри
+ *          строки запрещённые. Прочие знаки содержимым строки и являются
+ *
+ */
+void awh::codec::json::Reader::marking() noexcept {
+	/**
+	 * Выполняем перебор всех возможных значений байта
+	 */
+	for(uint16_t i = 0; i < 256; i++)
+		// Снимаем отметку с очередного знака
+		this->_breakString[i] = (i < 0x20);
+	// Отмечаем знак кавычек, закрывающий строку
+	this->_breakString[static_cast <uint8_t> ('"')] = true;
+	// Отмечаем знак отмены, начинающий отменяющую последовательность
+	this->_breakString[static_cast <uint8_t> ('\\')] = true;
+	/**
+	 * Если строки разрешено обрамлять одинарными кавычками
+	 */
+	if(this->_settings.allowSingleQuotes)
+		// Отмечаем знак одинарных кавычек
+		this->_breakString[static_cast <uint8_t> ('\'')] = true;
+}
+/**
+ * @brief Метод быстрого прохода по знакам, состояния не меняющим
+ *
+ * @details Знак, в разметке не отмеченный, содержимым строки и является: такие знаки
+ *          проходятся отрезком и переносятся в хранилище одним действием
+ *
+ * @param buffer буфер разбираемого текста
+ * @param size   размер буфера разбираемого текста
+ * @return       количество пройденных байтов
+ *
+ */
+size_t awh::codec::json::Reader::bulk(const char * buffer, const size_t size) noexcept {
+	/**
+	 * Если разбор находится не внутри строки
+	 */
+	if(this->_state != state_t::STRING)
+		// Выводим количество пройденных байтов
+		return 0;
+	// Количество пройденных байтов
+	size_t length = 0;
+	/**
+	 * Выполняем проход по знакам, разбор не прерывающим
+	 */
+	while((length < size) && !this->_breakString[static_cast <uint8_t> (buffer[length])])
+		// Выполняем переход к следующему знаку
+		length++;
+	/**
+	 * Если пройти не удалось ни одного знака
+	 */
+	if(length == 0)
+		// Выводим количество пройденных байтов
+		return 0;
+	/**
+	 * Если длина строкового значения ограничена настройками
+	 */
+	if(this->_settings.maxString > 0){
+		// Получаем остаток допустимой длины строкового значения
+		const uint32_t room = ((this->_settings.maxString > this->_length) ? (this->_settings.maxString - this->_length) : 0);
+		/**
+		 * Если пройденное не умещается в остаток допустимой длины
+		 */
+		if(length > static_cast <size_t> (room))
+			// Ограничиваем пройденное остатком допустимой длины
+			length = static_cast <size_t> (room);
+		/**
+		 * Если остаток допустимой длины исчерпан
+		 */
+		if(length == 0)
+			// Выводим количество пройденных байтов
+			return 0;
+	}
+	// Выполняем перенос пройденного в хранилище знаков
+	this->_storage.append(buffer, length);
+	// Увеличиваем смещение от начала текста
+	this->_offset += length;
+	// Увеличиваем положение в строке
+	this->_column += static_cast <uint32_t> (length);
+	// Увеличиваем длину собираемого значения
+	this->_length += static_cast <uint32_t> (length);
+	// Выводим количество пройденных байтов
+	return length;
+}
+/**
+ * @brief Метод разбора приведённого к UTF-8 текста
+ *
+ * @param text разбираемый текст
+ * @return     признак успешности разбора
+ *
+ */
+bool awh::codec::json::Reader::process(const string & text) noexcept {
+	// Положение разбираемого знака в тексте
+	size_t index = 0;
+	// Размер разбираемого текста
+	const size_t size = text.size();
+	/**
+	 * Выполняем разбор всего поданного текста
+	 */
+	while(index < size){
+		// Выполняем быстрый проход по знакам, состояния не меняющим
+		const size_t length = this->bulk(text.data() + index, size - index);
+		/**
+		 * Если быстрый проход прошёл хотя бы один знак
+		 */
+		if(length > 0){
+			// Выполняем переход к знаку за пройденным отрезком
+			index += length;
+			// Выполняем переход к следующему кругу разбора
+			continue;
+		}
+		/**
+		 * Если разбор очередного знака завершился отказом
+		 */
+		if(!this->parse(text[index]))
+			// Выводим признак неудачного разбора
+			return false;
+		// Выполняем переход к следующему знаку
+		index++;
+	}
+	// Выводим признак успешного разбора
+	return true;
+}
+/**
+ * @brief Метод подачи куска разбираемого текста
+ *
+ * @param buffer буфер подаваемого текста
+ * @param size   размер буфера подаваемого текста
+ * @param last   признак того, что кусок последний
+ * @return       признак успешности разбора
+ *
+ */
+bool awh::codec::json::Reader::feed(const char * buffer, const size_t size, const bool last) noexcept {
+	/**
+	 * Если разбор уже прекращён отказом
+	 */
+	if(this->_error != error_t::NONE)
+		// Выводим признак неудачного разбора
+		return false;
+	// Запоминаем признак подачи последнего куска текста
+	this->_last = (this->_last || last);
+	/**
+	 * Если очередь собранных событий разбора опустела
+	 *
+	 * @note Хранилище очищается лишь тогда, когда события его уже выданы: события
+	 *       ссылаются в него смещениями, и очистка при неопустевшей очереди обесценила
+	 *       бы ссылки уже собранных событий
+	 */
+	if((this->_head >= this->_items.size()) && (this->_length == 0)){
+		// Очищаем очередь собранных событий разбора
+		this->_items.clear();
+		// Сбрасываем указание на голову очереди собранных событий
+		this->_head = 0;
+		// Очищаем хранилище знаков собираемого значения
+		this->_storage.clear();
+	}
+	// Очищаем хранилище перекодированного текста
+	this->_decoded.clear();
+	/**
+	 * Если кодировка навязана настройками разбора
+	 */
+	if((this->_settings.encoding != encoding_t::NONE) && !this->_decoder.encoding(this->_settings.encoding))
+		// Выводим ошибку неподдерживаемой кодировки
+		return ((this->_error = error_t::UNSUPPORTED_ENCODING) == error_t::NONE);
+	/**
+	 * Если приведение поданного текста к кодировке UTF-8 завершилось отказом
+	 */
+	if(!this->_decoder.convert(buffer, size, this->_last, this->_decoded)){
+		/**
+		 * Выполняем разбор того, что успело быть приведено
+		 *
+		 * @note Разбор ведётся прежде выдачи отказа приведения намеренно: отказ разбора,
+		 *       случившийся раньше в тексте, обязан быть выдан раньше, иначе положение
+		 *       отказа зависело бы от нарезки текста на куски
+		 */
+		this->process(this->_decoded);
+		/**
+		 * Если разбор отказа не выдал
+		 */
+		if(this->_error == error_t::NONE)
+			// Устанавливаем код отказа приведения кодировки
+			this->_error = this->_decoder.error();
+		// Выводим признак неудачного разбора
+		return false;
+	}
+	/**
+	 * Если разбор приведённого текста завершился отказом
+	 */
+	if(!this->process(this->_decoded))
+		// Выводим признак неудачного разбора
+		return false;
+	/**
+	 * Если подан последний кусок текста
+	 */
+	if(this->_last){
+		/**
+		 * Если разбор находится внутри примечания до конца строки
+		 *
+		 * @note Примечание это закрывающего знака не имеет: концом его служит перевод
+		 *       строки либо конец текста. Оттого оно закрывается прежде разбора
+		 *       состояния, а разбор судит уже по тому, к чему примечание вернулось
+		 */
+		if(this->_state == state_t::COMMENT_LINE){
+			/**
+			 * Если закрытие примечания концом текста завершилось отказом
+			 */
+			if(!this->parse('\n'))
+				// Выводим признак неудачного разбора
+				return false;
+		}
+		/**
+		 * Определяем состояние разбора текста
+		 */
+		switch(static_cast <uint8_t> (this->_state)){
+			// Если разбор находится внутри записи числа
+			case static_cast <uint8_t> (state_t::NUMBER_ZERO):
+			case static_cast <uint8_t> (state_t::NUMBER_INTEGER):
+			case static_cast <uint8_t> (state_t::NUMBER_FRACTION):
+			case static_cast <uint8_t> (state_t::NUMBER_POWER):
+				/**
+				 * Завершаем запись числа концом текста
+				 *
+				 * @note Число - единственное значение, у какого нет закрывающего знака:
+				 *       окончанием его служит всякий знак, числу не принадлежащий, либо
+				 *       конец текста
+				 */
+				if(!this->parse(' '))
+					// Выводим признак неудачного разбора
+					return false;
+			break;
+			// Если разбор находится в начале документа
+			case static_cast <uint8_t> (state_t::DOCUMENT_START):
+				// Выводим ошибку пустого текста
+				return this->fail(error_t::EMPTY_TEXT);
+			/**
+			 * Если разбор находится внутри строки
+			 *
+			 * @note Обрыв текста внутри строки описан отдельным кодом отказа: он
+			 *       указывает на незакрытую кавычку прямо, а общий обрыв текста
+			 *       заставил бы разыскивать причину самому
+			 */
+			case static_cast <uint8_t> (state_t::STRING):
+			case static_cast <uint8_t> (state_t::ESCAPE):
+			case static_cast <uint8_t> (state_t::UNICODE_1):
+			case static_cast <uint8_t> (state_t::UNICODE_2):
+			case static_cast <uint8_t> (state_t::UNICODE_3):
+			case static_cast <uint8_t> (state_t::UNICODE_4):
+			case static_cast <uint8_t> (state_t::SURROGATE_SLASH):
+			case static_cast <uint8_t> (state_t::SURROGATE_U):
+			case static_cast <uint8_t> (state_t::SURROGATE_1):
+			case static_cast <uint8_t> (state_t::SURROGATE_2):
+			case static_cast <uint8_t> (state_t::SURROGATE_3):
+			case static_cast <uint8_t> (state_t::SURROGATE_4):
+				// Выводим ошибку незакрытой строки
+				return this->fail(error_t::UNTERMINATED_STRING);
+			// Если разбор находится внутри примечания в скобках
+			case static_cast <uint8_t> (state_t::SLASH):
+			case static_cast <uint8_t> (state_t::COMMENT_BLOCK):
+			case static_cast <uint8_t> (state_t::COMMENT_STAR):
+				// Выводим ошибку незакрытого примечания
+				return this->fail(error_t::UNTERMINATED_COMMENT);
+			// Если разбор окончен
+			case static_cast <uint8_t> (state_t::DOCUMENT_END):
+			// Если разбор прекращён отказом
+			case static_cast <uint8_t> (state_t::FAILED):
+			break;
+			/**
+			 * Если разбор находится посреди значения
+			 */
+			default:
+				// Выводим ошибку обрыва текста
+				return this->fail(error_t::UNEXPECTED_EOF);
+		}
+		/**
+		 * Если разбор окончен посреди вместилища
+		 */
+		if(!this->_nesting.empty())
+			// Выводим ошибку обрыва текста
+			return this->fail(error_t::UNEXPECTED_EOF);
+		/**
+		 * Выполняем выдачу события исчерпания подаваемого текста
+		 *
+		 * @note Событие это отличает исчерпание текста от простого опустения очереди
+		 *       событий: потоковому разбору без него неоткуда узнать, ждать ли ещё
+		 *       документов
+		 */
+		this->emit(event_t::FINISH, 0, 0);
+	}
+	// Выводим признак успешного разбора
+	return true;
+}
+/**
+ * @brief Метод подачи текста целиком
+ *
+ * @param text подаваемый текст
+ * @return     признак успешности разбора
+ *
+ */
+bool awh::codec::json::Reader::feed(const string_view text) noexcept {
+	// Выполняем подачу текста целиком
+	return this->feed(text.data(), text.size(), true);
+}
+/**
+ * @brief Метод сброса состояния разбора
+ *
+ */
+void awh::codec::json::Reader::reset() noexcept {
+	// Сбрасываем состояние разбора текста
+	this->_state = state_t::DOCUMENT_START;
+	// Сбрасываем код отказа разбора
+	this->_error = error_t::NONE;
+	// Сбрасываем признак подачи последнего куска текста
+	this->_last = false;
+	// Сбрасываем признак разбора имени поля объекта
+	this->_keyed = false;
+	// Сбрасываем признак изменения содержимого разбором
+	this->_modified = false;
+	// Устанавливаем признак того, что вместилище ещё не получило значений
+	this->_empty = true;
+	// Сбрасываем признак прочитанной запятой
+	this->_comma = false;
+	// Очищаем хранилище знаков собираемого значения
+	this->_storage.clear();
+	// Очищаем остаток куска, не составивший целого знака
+	this->_pending.clear();
+	// Очищаем хранилище перекодированного текста
+	this->_decoded.clear();
+	// Очищаем стек видов вместилищ
+	this->_nesting.clear();
+	// Очищаем очередь собранных событий разбора
+	this->_items.clear();
+	// Сбрасываем указание на голову очереди собранных событий
+	this->_head = 0;
+	// Сбрасываем текущее выданное событие
+	this->_current = item_t();
+	// Сбрасываем положение текущего события в исходном тексте
+	this->_position = location_t();
+	// Сбрасываем смещение от начала текста
+	this->_offset = 0;
+	// Устанавливаем номер первой строки текста
+	this->_line = 1;
+	// Устанавливаем первое положение в строке
+	this->_column = 1;
+	// Сбрасываем длину собираемого значения
+	this->_length = 0;
+	// Сбрасываем собираемый знак Юникода
+	this->_unicode = 0;
+	// Сбрасываем удержанный старший суррогат
+	this->_surrogate = 0;
+	// Сбрасываем количество разобранных знаков литерала
+	this->_matched = 0;
+	// Сбрасываем разбираемый литерал
+	this->_literal = nullptr;
+	// Выполняем сброс состояния приведения кодировки
+	this->_decoder.reset();
+	// Выполняем заполнение разметки знаков, прерывающих быстрый проход
+	this->marking();
+}
+/**
+ * @brief Метод перехода к следующему собранному событию
+ *
+ * @return признак наличия события
+ *
+ */
+bool awh::codec::json::Reader::next() noexcept {
+	/**
+	 * Если очередь собранных событий разбора исчерпана
+	 */
+	if(this->_head >= this->_items.size()){
+		// Сбрасываем текущее выданное событие
+		this->_current = item_t();
+		// Выводим признак отсутствия события
+		return false;
+	}
+	// Извлекаем очередное событие из очереди собранных
+	this->_current = this->_items[this->_head++];
+	// Устанавливаем положение текущего события в исходном тексте
+	this->_position = this->_current.location;
+	// Выводим признак наличия события
+	return true;
+}
+/**
+ * @brief Метод извлечения вида текущего события
+ *
+ * @return вид текущего события
+ *
+ */
+awh::codec::json::event_t awh::codec::json::Reader::event() const noexcept {
+	// Выводим вид текущего события
+	return this->_current.event;
+}
+/**
+ * @brief Метод извлечения значения текущего события
+ *
+ * @return значение текущего события
+ *
+ */
+awh::codec::json::Reader::value_t awh::codec::json::Reader::value() const noexcept {
+	// Извлекаемое значение текущего события
+	value_t result;
+	// Устанавливаем содержимое значения
+	result.text = string_view(this->_storage.data() + this->_current.content.offset, this->_current.content.length);
+	// Устанавливаем признак изменения содержимого разбором
+	result.modified = this->_current.modified;
+	/**
+	 * Определяем вид текущего события
+	 */
+	switch(static_cast <uint8_t> (this->_current.event)){
+		// Если событие является именем поля объекта либо строкой
+		case static_cast <uint8_t> (event_t::KEY):
+		case static_cast <uint8_t> (event_t::STRING):
+			// Устанавливаем вид значения
+			result.kind = kind_t::STRING;
+		break;
+		// Если событие является пустым значением
+		case static_cast <uint8_t> (event_t::NUL):
+			// Устанавливаем вид значения
+			result.kind = kind_t::NUL;
+		break;
+		// Если событие является логическим значением
+		case static_cast <uint8_t> (event_t::BOOL):
+			// Устанавливаем вид значения
+			result.kind = kind_t::BOOL;
+		break;
+		// Если событие является числом
+		case static_cast <uint8_t> (event_t::NUMBER):
+			// Устанавливаем вид значения
+			result.kind = kind_t::NUMBER;
+		break;
+		// Если событие является началом либо концом массива
+		case static_cast <uint8_t> (event_t::ARRAY_BEGIN):
+		case static_cast <uint8_t> (event_t::ARRAY_END):
+			// Устанавливаем вид значения
+			result.kind = kind_t::ARRAY;
+		break;
+		// Если событие является началом либо концом объекта
+		case static_cast <uint8_t> (event_t::OBJECT_BEGIN):
+		case static_cast <uint8_t> (event_t::OBJECT_END):
+			// Устанавливаем вид значения
+			result.kind = kind_t::OBJECT;
+		break;
+	}
+	// Выводим извлечённое значение текущего события
+	return result;
+}
+/**
+ * @brief Метод извлечения положения текущего события в исходном тексте
+ *
+ * @return положение текущего события в исходном тексте
+ *
+ */
+const awh::codec::json::location_t & awh::codec::json::Reader::location() const noexcept {
+	// Выводим положение текущего события в исходном тексте
+	return this->_position;
+}
+/**
+ * @brief Метод извлечения кода отказа разбора
+ *
+ * @return код отказа разбора
+ *
+ */
+awh::codec::json::error_t awh::codec::json::Reader::error() const noexcept {
+	// Выводим код отказа разбора
+	return this->_error;
+}
+/**
+ * @brief Метод извлечения кодировки исходного текста
+ *
+ * @return кодировка исходного текста
+ *
+ */
+awh::codec::json::encoding_t awh::codec::json::Reader::encoding() const noexcept {
+	// Выводим кодировку исходного текста
+	return this->_decoder.encoding();
+}
+/**
+ * @brief Метод извлечения текущей глубины вложенности
+ *
+ * @return текущая глубина вложенности
+ *
+ */
+uint32_t awh::codec::json::Reader::depth() const noexcept {
+	// Выводим текущую глубину вложенности
+	return static_cast <uint32_t> (this->_nesting.size());
+}
+/**
+ * @brief Метод извлечения настроек разбора текста
+ *
+ * @return настройки разбора текста
+ *
+ */
+const awh::codec::json::Reader::settings_t & awh::codec::json::Reader::settings() const noexcept {
+	// Выводим настройки разбора текста
+	return this->_settings;
+}
+/**
+ * @brief Метод установки настроек разбора текста
+ *
+ * @param settings устанавливаемые настройки разбора текста
+ *
+ */
+void awh::codec::json::Reader::settings(const settings_t & settings) noexcept {
+	// Устанавливаем настройки разбора текста
+	this->_settings = settings;
+	// Выполняем заполнение разметки знаков, прерывающих быстрый проход
+	this->marking();
+}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::json::Reader::Reader() noexcept :
+ _state(state_t::DOCUMENT_START), _error(error_t::NONE),
+ _last(false), _keyed(false), _modified(false), _empty(true), _comma(false),
+ _head(0), _offset(0), _line(1), _column(1), _length(0),
+ _unicode(0), _surrogate(0), _matched(0), _literal(nullptr) {
+	// Выполняем заполнение разметки знаков, прерывающих быстрый проход
+	this->marking();
+}
+/**
+ * @brief Метод прекращения разбора отказом
+ *
+ * @param error код отказа разбора
+ * @return      признак успешности разбора, всегда ложь
+ *
+ */
+bool awh::codec::json::Reader::fail(const error_t error) noexcept {
+	// Устанавливаем код отказа разбора
+	this->_error = error;
+	// Переводим разбор в состояние отказа
+	this->_state = state_t::FAILED;
+	// Устанавливаем смещение отказа от начала текста
+	this->_position.offset = this->_offset;
+	// Устанавливаем номер строки отказа
+	this->_position.line = this->_line;
+	// Устанавливаем положение отказа в строке
+	this->_position.column = this->_column;
+	// Устанавливаем глубину вложенности, на какой произошёл отказ
+	this->_position.depth = static_cast <uint32_t> (this->_nesting.size());
+	// Выводим признак неудачного разбора
+	return false;
+}
+/**
+ * @brief Метод постановки собранного события в очередь выдачи
+ *
+ * @param event  вид собранного события
+ * @param offset смещение содержимого события в хранилище знаков
+ * @param length длина содержимого события в байтах
+ *
+ */
+void awh::codec::json::Reader::emit(const event_t event, const uint32_t offset, const uint32_t length) noexcept {
+	// Собираемое событие разбора
+	item_t item;
+	// Устанавливаем вид собранного события
+	item.event = event;
+	// Устанавливаем указание на содержимое события
+	item.content = span_t(offset, length);
+	// Устанавливаем положение события в исходном тексте
+	item.location = this->_mark;
+	// Устанавливаем признак изменения содержимого разбором
+	item.modified = this->_modified;
+	// Выполняем постановку собранного события в очередь выдачи
+	this->_items.push_back(::std::move(item));
+	// Сбрасываем признак изменения содержимого разбором
+	this->_modified = false;
+}
+/**
+ * @brief Метод перехода к состоянию за окончанием значения
+ *
+ * @details Значение окончено, и дальше разбор ожидает либо запятой с закрывающей
+ *          скобкой - если значение лежало во вместилище, - либо конца документа
+ *
+ * @return признак успешности разбора
+ *
+ */
+bool awh::codec::json::Reader::settle() noexcept {
+	// Сбрасываем длину собираемого значения
+	this->_length = 0;
+	// Сбрасываем признак прочитанной запятой
+	this->_comma = false;
+	// Устанавливаем признак того, что вместилище получило значение
+	this->_empty = false;
+	/**
+	 * Если значение лежало во вместилище
+	 */
+	if(!this->_nesting.empty())
+		// Переводим разбор к ожиданию запятой либо закрывающей скобки
+		this->_state = state_t::AFTER_VALUE;
+	/**
+	 * Если значение является документом целиком
+	 */
+	else {
+		// Устанавливаем положение конца документа
+		this->_mark.offset = this->_offset;
+		// Устанавливаем номер строки конца документа
+		this->_mark.line = this->_line;
+		// Устанавливаем положение конца документа в строке
+		this->_mark.column = this->_column;
+		// Сбрасываем глубину вложенности
+		this->_mark.depth = 0;
+		// Выполняем выдачу события окончания документа
+		this->emit(event_t::DOCUMENT, 0, 0);
+		// Переводим разбор к состоянию окончания документа
+		this->_state = state_t::DOCUMENT_END;
+	}
+	// Выводим признак успешного разбора
+	return true;
+}
+/**
+ * @brief Метод начала разбора значения
+ *
+ * @param letter знак, начинающий значение
+ * @return       признак успешности разбора
+ *
+ */
+bool awh::codec::json::Reader::begins(const char letter) noexcept {
+	// Устанавливаем смещение начала значения от начала текста
+	this->_mark.offset = this->_offset;
+	// Устанавливаем номер строки начала значения
+	this->_mark.line = this->_line;
+	// Устанавливаем положение начала значения в строке
+	this->_mark.column = this->_column;
+	// Устанавливаем глубину вложенности начала значения
+	this->_mark.depth = static_cast <uint32_t> (this->_nesting.size());
+	// Сбрасываем длину собираемого значения
+	this->_length = 0;
+	// Сбрасываем признак изменения содержимого разбором
+	this->_modified = false;
+	/**
+	 * Определяем знак, начинающий значение
+	 */
+	switch(letter){
+		// Если значение является строкой
+		case '"': {
+			// Запоминаем знак кавычек, открывший строку
+			this->_quote = letter;
+			// Сбрасываем признак разбора имени поля объекта
+			this->_keyed = false;
+			// Переводим разбор внутрь строки
+			this->_state = state_t::STRING;
+		} return true;
+		// Если значение является массивом
+		case '[':
+		// Если значение является объектом
+		case '{': {
+			/**
+			 * Если глубина вложенности превышает допустимую
+			 */
+			if((this->_settings.maxDepth > 0) && (this->_nesting.size() >= static_cast <size_t> (this->_settings.maxDepth)))
+				// Выводим ошибку превышения глубины вложенности
+				return this->fail(error_t::DEPTH_EXCEEDED);
+			// Получаем вид открываемого вместилища
+			const kind_t kind = ((letter == '[') ? kind_t::ARRAY : kind_t::OBJECT);
+			// Выполняем выдачу события начала вместилища
+			this->emit(((kind == kind_t::ARRAY) ? event_t::ARRAY_BEGIN : event_t::OBJECT_BEGIN), 0, 0);
+			// Выполняем добавление вида вместилища в стек вложенности
+			this->_nesting.push_back(kind);
+			// Устанавливаем признак того, что вместилище значений ещё не получило
+			this->_empty = true;
+			// Сбрасываем признак прочитанной запятой
+			this->_comma = false;
+			// Переводим разбор к ожиданию имени поля объекта либо значения массива
+			this->_state = ((kind == kind_t::OBJECT) ? state_t::KEY_START : state_t::VALUE_START);
+		} return true;
+		// Если значение является литералом истины
+		case 't': {
+			// Устанавливаем разбираемый литерал
+			this->_literal = "true";
+			// Устанавливаем вид значения литерала
+			this->_outcome = event_t::BOOL;
+		} break;
+		// Если значение является литералом лжи
+		case 'f': {
+			// Устанавливаем разбираемый литерал
+			this->_literal = "false";
+			// Устанавливаем вид значения литерала
+			this->_outcome = event_t::BOOL;
+		} break;
+		// Если значение является пустым значением
+		case 'n': {
+			// Устанавливаем разбираемый литерал
+			this->_literal = "null";
+			// Устанавливаем вид значения литерала
+			this->_outcome = event_t::NUL;
+		} break;
+		// Если значение является нечислом
+		case 'N': {
+			/**
+			 * Если записи нечисла запрещены настройками разбора
+			 */
+			if(!this->_settings.allowInfinityAndNan)
+				// Выводим ошибку недопустимого знака
+				return this->fail(error_t::EXPECTED_VALUE);
+			// Устанавливаем разбираемый литерал
+			this->_literal = "NaN";
+			// Устанавливаем вид значения литерала
+			this->_outcome = event_t::NUMBER;
+		} break;
+		// Если значение является бесконечностью
+		case 'I': {
+			/**
+			 * Если записи бесконечности запрещены настройками разбора
+			 */
+			if(!this->_settings.allowInfinityAndNan)
+				// Выводим ошибку недопустимого знака
+				return this->fail(error_t::EXPECTED_VALUE);
+			// Устанавливаем разбираемый литерал
+			this->_literal = "Infinity";
+			// Устанавливаем вид значения литерала
+			this->_outcome = event_t::NUMBER;
+		} break;
+		/**
+		 * Если значение начинается с иного знака
+		 */
+		default: {
+			/**
+			 * Если строки разрешено обрамлять одинарными кавычками, а знак ими и является
+			 */
+			if(this->_settings.allowSingleQuotes && (letter == '\'')){
+				// Запоминаем знак кавычек, открывший строку
+				this->_quote = letter;
+				// Сбрасываем признак разбора имени поля объекта
+				this->_keyed = false;
+				// Переводим разбор внутрь строки
+				this->_state = state_t::STRING;
+				// Выводим признак успешного разбора
+				return true;
+			}
+			/**
+			 * Если значение является числом
+			 */
+			if((letter == '-') || ((letter >= '0') && (letter <= '9'))){
+				// Запоминаем смещение начала записи числа в хранилище знаков
+				this->_storage.push_back(letter);
+				// Увеличиваем длину собираемого значения
+				this->_length = 1;
+				// Переводим разбор к разбору записи числа
+				this->_state = ((letter == '-') ? state_t::NUMBER_MINUS : ((letter == '0') ? state_t::NUMBER_ZERO : state_t::NUMBER_INTEGER));
+				// Выводим признак успешного разбора
+				return true;
+			}
+			// Выводим ошибку ожидания значения
+			return this->fail(error_t::EXPECTED_VALUE);
+		}
+	}
+	// Устанавливаем количество разобранных знаков литерала
+	this->_matched = 1;
+	// Выполняем добавление первого знака к содержимому литерала
+	this->_storage.push_back(letter);
+	// Устанавливаем длину собираемого значения
+	this->_length = 1;
+	// Переводим разбор к разбору литерала
+	this->_state = state_t::LITERAL;
+	// Выводим признак успешного разбора
+	return true;
+}
+/**
+ * @brief Метод разбора знака записи числа
+ *
+ * @details Число - единственное значение, у какого нет закрывающего знака: окончанием
+ *          его служит всякий знак, числу не принадлежащий. Знак этот разбором не
+ *          съедается, а передаётся состоянию за окончанием значения - оттого выдача и
+ *          не зависит от того, пришёл ли он в этом куске текста либо в следующем
+ *
+ * @param letter разбираемый знак
+ * @return       признак успешности разбора
+ *
+ */
+bool awh::codec::json::Reader::number(const char letter) noexcept {
+	// Признак принадлежности знака записи числа
+	bool belongs = false;
+	/**
+	 * Определяем состояние разбора записи числа
+	 */
+	switch(static_cast <uint8_t> (this->_state)){
+		// Если прочитан знак минуса
+		case static_cast <uint8_t> (state_t::NUMBER_MINUS): {
+			/**
+			 * Если за знаком минуса следует нуль
+			 */
+			if(letter == '0'){
+				// Переводим разбор к состоянию ведущего нуля
+				this->_state = state_t::NUMBER_ZERO;
+				// Устанавливаем признак принадлежности знака записи числа
+				belongs = true;
+			/**
+			 * Если за знаком минуса следует цифра
+			 */
+			} else if((letter >= '1') && (letter <= '9')) {
+				// Переводим разбор к состоянию целой части числа
+				this->_state = state_t::NUMBER_INTEGER;
+				// Устанавливаем признак принадлежности знака записи числа
+				belongs = true;
+			/**
+			 * Если за знаком минуса следует бесконечность
+			 */
+			} else if(this->_settings.allowInfinityAndNan && (letter == 'I')) {
+				// Устанавливаем разбираемый литерал
+				this->_literal = "Infinity";
+				// Устанавливаем вид значения литерала
+				this->_outcome = event_t::NUMBER;
+				// Устанавливаем количество разобранных знаков литерала
+				this->_matched = 1;
+				// Выполняем добавление знака к записи числа
+				this->_storage.push_back(letter);
+				// Увеличиваем длину собираемого значения
+				this->_length++;
+				// Переводим разбор к разбору литерала
+				this->_state = state_t::LITERAL;
+				// Выводим признак успешного разбора
+				return true;
+			/**
+			 * Если за знаком минуса цифры нет
+			 */
+			} else
+				// Выводим ошибку негодной записи числа
+				return this->fail(error_t::INVALID_NUMBER);
+		} break;
+		// Если прочитан ведущий нуль
+		case static_cast <uint8_t> (state_t::NUMBER_ZERO): {
+			/**
+			 * Если за ведущим нулём следует цифра
+			 *
+			 * @note Стандарт этого не допускает: запись `01` числом не является
+			 */
+			if((letter >= '0') && (letter <= '9'))
+				// Выводим ошибку негодной записи числа
+				return this->fail(error_t::INVALID_NUMBER);
+			/**
+			 * Если за целой частью следует точка
+			 */
+			if(letter == '.'){
+				// Переводим разбор к состоянию точки
+				this->_state = state_t::NUMBER_POINT;
+				// Устанавливаем признак принадлежности знака записи числа
+				belongs = true;
+			/**
+			 * Если за целой частью следует буква порядка
+			 */
+			} else if((letter == 'e') || (letter == 'E')) {
+				// Переводим разбор к состоянию порядка
+				this->_state = state_t::NUMBER_EXPONENT;
+				// Устанавливаем признак принадлежности знака записи числа
+				belongs = true;
+			}
+		} break;
+		// Если разбор находится внутри целой части числа
+		case static_cast <uint8_t> (state_t::NUMBER_INTEGER): {
+			/**
+			 * Если знак является цифрой
+			 */
+			if((letter >= '0') && (letter <= '9'))
+				// Устанавливаем признак принадлежности знака записи числа
+				belongs = true;
+			/**
+			 * Если за целой частью следует точка
+			 */
+			else if(letter == '.') {
+				// Переводим разбор к состоянию точки
+				this->_state = state_t::NUMBER_POINT;
+				// Устанавливаем признак принадлежности знака записи числа
+				belongs = true;
+			/**
+			 * Если за целой частью следует буква порядка
+			 */
+			} else if((letter == 'e') || (letter == 'E')) {
+				// Переводим разбор к состоянию порядка
+				this->_state = state_t::NUMBER_EXPONENT;
+				// Устанавливаем признак принадлежности знака записи числа
+				belongs = true;
+			}
+		} break;
+		// Если прочитана точка
+		case static_cast <uint8_t> (state_t::NUMBER_POINT): {
+			/**
+			 * Если за точкой не следует цифра
+			 */
+			if((letter < '0') || (letter > '9'))
+				// Выводим ошибку негодной записи числа
+				return this->fail(error_t::INVALID_NUMBER);
+			// Переводим разбор к состоянию дробной части числа
+			this->_state = state_t::NUMBER_FRACTION;
+			// Устанавливаем признак принадлежности знака записи числа
+			belongs = true;
+		} break;
+		// Если разбор находится внутри дробной части числа
+		case static_cast <uint8_t> (state_t::NUMBER_FRACTION): {
+			/**
+			 * Если знак является цифрой
+			 */
+			if((letter >= '0') && (letter <= '9'))
+				// Устанавливаем признак принадлежности знака записи числа
+				belongs = true;
+			/**
+			 * Если за дробной частью следует буква порядка
+			 */
+			else if((letter == 'e') || (letter == 'E')) {
+				// Переводим разбор к состоянию порядка
+				this->_state = state_t::NUMBER_EXPONENT;
+				// Устанавливаем признак принадлежности знака записи числа
+				belongs = true;
+			}
+		} break;
+		// Если прочитана буква порядка
+		case static_cast <uint8_t> (state_t::NUMBER_EXPONENT): {
+			/**
+			 * Если за буквой порядка следует знак
+			 */
+			if((letter == '+') || (letter == '-')){
+				// Переводим разбор к состоянию знака порядка
+				this->_state = state_t::NUMBER_SIGN;
+				// Устанавливаем признак принадлежности знака записи числа
+				belongs = true;
+			/**
+			 * Если за буквой порядка следует цифра
+			 */
+			} else if((letter >= '0') && (letter <= '9')) {
+				// Переводим разбор к состоянию цифр порядка
+				this->_state = state_t::NUMBER_POWER;
+				// Устанавливаем признак принадлежности знака записи числа
+				belongs = true;
+			/**
+			 * Если за буквой порядка цифры нет
+			 */
+			} else
+				// Выводим ошибку негодной записи числа
+				return this->fail(error_t::INVALID_NUMBER);
+		} break;
+		// Если прочитан знак порядка
+		case static_cast <uint8_t> (state_t::NUMBER_SIGN): {
+			/**
+			 * Если за знаком порядка не следует цифра
+			 */
+			if((letter < '0') || (letter > '9'))
+				// Выводим ошибку негодной записи числа
+				return this->fail(error_t::INVALID_NUMBER);
+			// Переводим разбор к состоянию цифр порядка
+			this->_state = state_t::NUMBER_POWER;
+			// Устанавливаем признак принадлежности знака записи числа
+			belongs = true;
+		} break;
+		// Если разбор находится внутри цифр порядка
+		case static_cast <uint8_t> (state_t::NUMBER_POWER): {
+			/**
+			 * Если знак является цифрой
+			 */
+			if((letter >= '0') && (letter <= '9'))
+				// Устанавливаем признак принадлежности знака записи числа
+				belongs = true;
+		} break;
+	}
+	/**
+	 * Если знак принадлежит записи числа
+	 */
+	if(belongs){
+		/**
+		 * Если длина записи числа превышает допустимую
+		 */
+		if((this->_settings.maxNumber > 0) && (this->_length >= this->_settings.maxNumber))
+			// Выводим ошибку превышения длины записи числа
+			return this->fail(error_t::NUMBER_TOO_LONG);
+		// Выполняем добавление знака к записи числа
+		this->_storage.push_back(letter);
+		// Увеличиваем длину собираемого значения
+		this->_length++;
+		// Выводим признак успешного разбора
+		return true;
+	}
+	// Получаем смещение записи числа в хранилище знаков
+	const uint32_t offset = static_cast <uint32_t> (this->_storage.size()) - this->_length;
+	// Выполняем выдачу события числа
+	this->emit(event_t::NUMBER, offset, this->_length);
+	/**
+	 * Если переход к состоянию за окончанием значения завершился отказом
+	 */
+	if(!this->settle())
+		// Выводим признак неудачного разбора
+		return false;
+	/**
+	 * Выполняем разбор знака, окончившего запись числа
+	 *
+	 * @note Знак этот разбором не съеден: он окончил число, но принадлежит уже
+	 *       следующему за числом - будь то запятая, закрывающая скобка либо пробел
+	 */
+	return this->parse(letter);
+}
+/**
+ * @brief Метод разбора одного знака текста
+ *
+ * @details Разбор ведётся автоматом: всякий знак рассматривается в свете состояния,
+ *          в каком разбор находится, и состояние это хранит всё, что иначе достаётся
+ *          взглядом на следующий знак
+ *
+ * @param letter разбираемый знак
+ * @return       признак успешности разбора
+ *
+ */
+bool awh::codec::json::Reader::parse(const char letter) noexcept {
+	// Признак того, что знак съеден разбором
+	bool consumed = true;
+	/**
+	 * Определяем состояние разбора текста
+	 */
+	switch(static_cast <uint8_t> (this->_state)){
+		// Если разбор прекращён отказом
+		case static_cast <uint8_t> (state_t::FAILED):
+			// Выводим признак неудачного разбора
+			return false;
+		// Если разбор находится в начале документа либо ожидает значения
+		case static_cast <uint8_t> (state_t::DOCUMENT_START):
+		case static_cast <uint8_t> (state_t::VALUE_START):
+		case static_cast <uint8_t> (state_t::AFTER_COMMA): {
+			/**
+			 * Если знак является пробельным
+			 */
+			if(::spacing(letter))
+				// Пропускаем пробельный знак
+				break;
+			/**
+			 * Если знак открывает примечание
+			 */
+			if(letter == '/'){
+				/**
+				 * Если примечания настройками не разрешены
+				 *
+				 * @note Отказ этот назван своим кодом намеренно: знак примечания ничем
+				 *       иным в тексте быть не может, и общий отказ на негодный знак
+				 *       заставил бы разыскивать причину самому
+				 */
+				if(!this->_settings.allowComments)
+					// Выводим ошибку запрещённого примечания
+					return this->fail(error_t::COMMENT_NOT_ALLOWED);
+				// Запоминаем состояние, к какому разбор вернётся по окончании примечания
+				this->_resume = this->_state;
+				// Переводим разбор к определению вида примечания
+				this->_state = state_t::SLASH;
+				// Пропускаем знак примечания
+				break;
+			}
+			/**
+			 * Если знак закрывает массив
+			 */
+			if((letter == ']') && !this->_nesting.empty() && (this->_nesting.back() == kind_t::ARRAY)){
+				/**
+				 * Если массив уже получил значение, а запятая за ним не разрешена
+				 */
+				if(this->_comma && !this->_settings.allowTrailingCommas)
+					// Выводим ошибку запятой перед закрывающей скобкой
+					return this->fail(error_t::TRAILING_COMMA);
+				// Устанавливаем положение конца массива
+				this->_mark.offset = this->_offset;
+				// Устанавливаем номер строки конца массива
+				this->_mark.line = this->_line;
+				// Устанавливаем положение конца массива в строке
+				this->_mark.column = this->_column;
+				// Выполняем снятие вида вместилища со стека вложенности
+				this->_nesting.pop_back();
+				// Устанавливаем глубину вложенности конца массива
+				this->_mark.depth = static_cast <uint32_t> (this->_nesting.size());
+				// Выполняем выдачу события конца массива
+				this->emit(event_t::ARRAY_END, 0, 0);
+				// Выполняем переход к состоянию за окончанием значения
+				return this->settle();
+			}
+			/**
+			 * Если знак начинает значение
+			 */
+			if(!this->begins(letter))
+				// Выводим признак неудачного разбора
+				return false;
+		} break;
+		// Если разбор ожидает имени поля объекта
+		case static_cast <uint8_t> (state_t::KEY_START): {
+			/**
+			 * Если знак является пробельным
+			 */
+			if(::spacing(letter))
+				// Пропускаем пробельный знак
+				break;
+			/**
+			 * Если знак открывает примечание
+			 */
+			if(letter == '/'){
+				/**
+				 * Если примечания настройками не разрешены
+				 *
+				 * @note Отказ этот назван своим кодом намеренно: знак примечания ничем
+				 *       иным в тексте быть не может, и общий отказ на негодный знак
+				 *       заставил бы разыскивать причину самому
+				 */
+				if(!this->_settings.allowComments)
+					// Выводим ошибку запрещённого примечания
+					return this->fail(error_t::COMMENT_NOT_ALLOWED);
+				// Запоминаем состояние, к какому разбор вернётся по окончании примечания
+				this->_resume = this->_state;
+				// Переводим разбор к определению вида примечания
+				this->_state = state_t::SLASH;
+				// Пропускаем знак примечания
+				break;
+			}
+			/**
+			 * Если знак закрывает объект
+			 */
+			if(letter == '}'){
+				/**
+				 * Если объект уже получил поле, а запятая за ним не разрешена
+				 */
+				if(this->_comma && !this->_settings.allowTrailingCommas)
+					// Выводим ошибку запятой перед закрывающей скобкой
+					return this->fail(error_t::TRAILING_COMMA);
+				// Устанавливаем положение конца объекта
+				this->_mark.offset = this->_offset;
+				// Устанавливаем номер строки конца объекта
+				this->_mark.line = this->_line;
+				// Устанавливаем положение конца объекта в строке
+				this->_mark.column = this->_column;
+				// Выполняем снятие вида вместилища со стека вложенности
+				this->_nesting.pop_back();
+				// Устанавливаем глубину вложенности конца объекта
+				this->_mark.depth = static_cast <uint32_t> (this->_nesting.size());
+				// Выполняем выдачу события конца объекта
+				this->emit(event_t::OBJECT_END, 0, 0);
+				// Выполняем переход к состоянию за окончанием значения
+				return this->settle();
+			}
+			/**
+			 * Если знак открывает имя поля объекта
+			 */
+			if((letter == '"') || (this->_settings.allowSingleQuotes && (letter == '\''))){
+				// Устанавливаем смещение начала имени поля от начала текста
+				this->_mark.offset = this->_offset;
+				// Устанавливаем номер строки начала имени поля
+				this->_mark.line = this->_line;
+				// Устанавливаем положение начала имени поля в строке
+				this->_mark.column = this->_column;
+				// Устанавливаем глубину вложенности начала имени поля
+				this->_mark.depth = static_cast <uint32_t> (this->_nesting.size());
+				// Запоминаем знак кавычек, открывший имя поля
+				this->_quote = letter;
+				// Устанавливаем признак разбора имени поля объекта
+				this->_keyed = true;
+				// Сбрасываем длину собираемого значения
+				this->_length = 0;
+				// Сбрасываем признак изменения содержимого разбором
+				this->_modified = false;
+				// Переводим разбор внутрь строки
+				this->_state = state_t::STRING;
+				// Пропускаем знак кавычек
+				break;
+			}
+			// Выводим ошибку ожидания имени поля объекта
+			return this->fail(error_t::EXPECTED_KEY);
+		}
+		// Если разбор ожидает двоеточия за именем поля объекта
+		case static_cast <uint8_t> (state_t::AFTER_KEY): {
+			/**
+			 * Если знак является пробельным
+			 */
+			if(::spacing(letter))
+				// Пропускаем пробельный знак
+				break;
+			/**
+			 * Если знак открывает примечание
+			 */
+			if(letter == '/'){
+				/**
+				 * Если примечания настройками не разрешены
+				 *
+				 * @note Отказ этот назван своим кодом намеренно: знак примечания ничем
+				 *       иным в тексте быть не может, и общий отказ на негодный знак
+				 *       заставил бы разыскивать причину самому
+				 */
+				if(!this->_settings.allowComments)
+					// Выводим ошибку запрещённого примечания
+					return this->fail(error_t::COMMENT_NOT_ALLOWED);
+				// Запоминаем состояние, к какому разбор вернётся по окончании примечания
+				this->_resume = this->_state;
+				// Переводим разбор к определению вида примечания
+				this->_state = state_t::SLASH;
+				// Пропускаем знак примечания
+				break;
+			}
+			/**
+			 * Если знак не является двоеточием
+			 */
+			if(letter != ':')
+				// Выводим ошибку ожидания двоеточия
+				return this->fail(error_t::EXPECTED_COLON);
+			// Переводим разбор к ожиданию значения поля объекта
+			this->_state = state_t::VALUE_START;
+		} break;
+		// Если разбор ожидает запятой либо закрывающей скобки
+		case static_cast <uint8_t> (state_t::AFTER_VALUE): {
+			/**
+			 * Если знак является пробельным
+			 */
+			if(::spacing(letter))
+				// Пропускаем пробельный знак
+				break;
+			/**
+			 * Если знак открывает примечание
+			 */
+			if(letter == '/'){
+				/**
+				 * Если примечания настройками не разрешены
+				 *
+				 * @note Отказ этот назван своим кодом намеренно: знак примечания ничем
+				 *       иным в тексте быть не может, и общий отказ на негодный знак
+				 *       заставил бы разыскивать причину самому
+				 */
+				if(!this->_settings.allowComments)
+					// Выводим ошибку запрещённого примечания
+					return this->fail(error_t::COMMENT_NOT_ALLOWED);
+				// Запоминаем состояние, к какому разбор вернётся по окончании примечания
+				this->_resume = this->_state;
+				// Переводим разбор к определению вида примечания
+				this->_state = state_t::SLASH;
+				// Пропускаем знак примечания
+				break;
+			}
+			/**
+			 * Если разбор находится вне вместилища
+			 */
+			if(this->_nesting.empty())
+				// Выводим ошибку знаков за окончанием документа
+				return this->fail(error_t::TRAILING_CHARACTERS);
+			/**
+			 * Если знак является запятой
+			 */
+			if(letter == ','){
+				// Устанавливаем признак прочитанной запятой
+				this->_comma = true;
+				// Переводим разбор к ожиданию имени поля объекта либо значения массива
+				this->_state = ((this->_nesting.back() == kind_t::OBJECT) ? state_t::KEY_START : state_t::AFTER_COMMA);
+				// Пропускаем знак запятой
+				break;
+			}
+			/**
+			 * Если знак закрывает вместилище
+			 */
+			if(((letter == ']') && (this->_nesting.back() == kind_t::ARRAY)) ||
+			   ((letter == '}') && (this->_nesting.back() == kind_t::OBJECT))){
+				// Получаем вид закрываемого вместилища
+				const kind_t kind = this->_nesting.back();
+				// Устанавливаем положение конца вместилища
+				this->_mark.offset = this->_offset;
+				// Устанавливаем номер строки конца вместилища
+				this->_mark.line = this->_line;
+				// Устанавливаем положение конца вместилища в строке
+				this->_mark.column = this->_column;
+				// Выполняем снятие вида вместилища со стека вложенности
+				this->_nesting.pop_back();
+				// Устанавливаем глубину вложенности конца вместилища
+				this->_mark.depth = static_cast <uint32_t> (this->_nesting.size());
+				// Выполняем выдачу события конца вместилища
+				this->emit(((kind == kind_t::ARRAY) ? event_t::ARRAY_END : event_t::OBJECT_END), 0, 0);
+				// Выполняем переход к состоянию за окончанием значения
+				return this->settle();
+			}
+			// Выводим ошибку ожидания запятой либо закрывающей скобки
+			return this->fail(error_t::EXPECTED_COMMA);
+		}
+		// Если разбор находится внутри строки
+		case static_cast <uint8_t> (state_t::STRING): {
+			/**
+			 * Если знак закрывает строку
+			 */
+			if(letter == this->_quote){
+				// Получаем смещение содержимого строки в хранилище знаков
+				const uint32_t offset = static_cast <uint32_t> (this->_storage.size()) - this->_length;
+				/**
+				 * Если строка является именем поля объекта
+				 */
+				if(this->_keyed){
+					// Выполняем выдачу события имени поля объекта
+					this->emit(event_t::KEY, offset, this->_length);
+					// Сбрасываем длину собираемого значения
+					this->_length = 0;
+					// Сбрасываем признак разбора имени поля объекта
+					this->_keyed = false;
+					// Переводим разбор к ожиданию двоеточия
+					this->_state = state_t::AFTER_KEY;
+					// Пропускаем знак кавычек
+					break;
+				}
+				// Выполняем выдачу события строки
+				this->emit(event_t::STRING, offset, this->_length);
+				// Выполняем переход к состоянию за окончанием значения
+				return this->settle();
+			}
+			/**
+			 * Если знак является управляющим
+			 *
+			 * @note Стандарт управляющие знаки внутри строки запрещает: записываться они
+			 *       обязаны отменяющей последовательностью
+			 */
+			if(static_cast <uint8_t> (letter) < 0x20)
+				// Выводим ошибку управляющего знака внутри строки
+				return this->fail(error_t::CONTROL_IN_STRING);
+			/**
+			 * Если знак начинает отменяющую последовательность
+			 */
+			if(letter == '\\'){
+				// Переводим разбор к разбору отменяющей последовательности
+				this->_state = state_t::ESCAPE;
+				// Устанавливаем признак изменения содержимого разбором
+				this->_modified = true;
+				// Пропускаем знак отмены
+				break;
+			}
+			/**
+			 * Если длина строкового значения превышает допустимую
+			 */
+			if((this->_settings.maxString > 0) && (this->_length >= this->_settings.maxString))
+				// Выводим ошибку превышения длины строкового значения
+				return this->fail(error_t::STRING_TOO_LONG);
+			// Выполняем добавление знака к содержимому строки
+			this->_storage.push_back(letter);
+			// Увеличиваем длину собираемого значения
+			this->_length++;
+		} break;
+		// Если разбор находится внутри отменяющей последовательности
+		case static_cast <uint8_t> (state_t::ESCAPE): {
+			// Знак, каким отменяющая последовательность заменяется
+			char replacement = '\0';
+			/**
+			 * Определяем знак отменяющей последовательности
+			 */
+			switch(letter){
+				// Если последовательность отменяет кавычки
+				case '"': replacement = '"'; break;
+				// Если последовательность отменяет одинарные кавычки
+				case '\'': {
+					/**
+					 * Если строки разрешено обрамлять одинарными кавычками
+					 */
+					if(!this->_settings.allowSingleQuotes)
+						// Выводим ошибку неопознанной отменяющей последовательности
+						return this->fail(error_t::INVALID_ESCAPE);
+					// Устанавливаем знак замены
+					replacement = '\'';
+				} break;
+				// Если последовательность отменяет знак отмены
+				case '\\': replacement = '\\'; break;
+				// Если последовательность отменяет косую черту
+				case '/': replacement = '/'; break;
+				// Если последовательность записывает забой
+				case 'b': replacement = '\b'; break;
+				// Если последовательность записывает перевод страницы
+				case 'f': replacement = '\f'; break;
+				// Если последовательность записывает перевод строки
+				case 'n': replacement = '\n'; break;
+				// Если последовательность записывает возврат каретки
+				case 'r': replacement = '\r'; break;
+				// Если последовательность записывает знак табуляции
+				case 't': replacement = '\t'; break;
+				// Если последовательность записывает кодовое значение знака
+				case 'u': {
+					// Сбрасываем собираемый знак Юникода
+					this->_unicode = 0;
+					// Переводим разбор к разбору кодового значения знака
+					this->_state = state_t::UNICODE_1;
+					// Пропускаем знак кодового значения
+					goto advance;
+				}
+				/**
+				 * Если последовательность не опознана
+				 */
+				default:
+					// Выводим ошибку неопознанной отменяющей последовательности
+					return this->fail(error_t::INVALID_ESCAPE);
+			}
+			/**
+			 * Если длина строкового значения превышает допустимую
+			 */
+			if((this->_settings.maxString > 0) && (this->_length >= this->_settings.maxString))
+				// Выводим ошибку превышения длины строкового значения
+				return this->fail(error_t::STRING_TOO_LONG);
+			// Выполняем добавление знака замены к содержимому строки
+			this->_storage.push_back(replacement);
+			// Увеличиваем длину собираемого значения
+			this->_length++;
+			// Возвращаем разбор внутрь строки
+			this->_state = state_t::STRING;
+		} break;
+		// Если разбор находится внутри кодового значения знака
+		case static_cast <uint8_t> (state_t::UNICODE_1):
+		case static_cast <uint8_t> (state_t::UNICODE_2):
+		case static_cast <uint8_t> (state_t::UNICODE_3):
+		case static_cast <uint8_t> (state_t::UNICODE_4):
+		case static_cast <uint8_t> (state_t::SURROGATE_1):
+		case static_cast <uint8_t> (state_t::SURROGATE_2):
+		case static_cast <uint8_t> (state_t::SURROGATE_3):
+		case static_cast <uint8_t> (state_t::SURROGATE_4): {
+			// Значение шестнадцатеричного знака
+			uint32_t digit = 0;
+			/**
+			 * Если знак шестнадцатеричным не является
+			 */
+			if(!::hexadecimal(letter, digit))
+				// Выводим ошибку негодной записи кодового значения
+				return this->fail(error_t::INVALID_UNICODE);
+			// Выполняем добавление значения знака к собираемому кодовому значению
+			this->_unicode = ((this->_unicode << 4) | digit);
+			/**
+			 * Если прочитан не последний знак кодового значения
+			 */
+			if((this->_state != state_t::UNICODE_4) && (this->_state != state_t::SURROGATE_4)){
+				// Переводим разбор к следующему знаку кодового значения
+				this->_state = static_cast <state_t> (static_cast <uint8_t> (this->_state) + 1);
+				// Пропускаем знак кодового значения
+				break;
+			}
+			/**
+			 * Если прочитан младший суррогат пары
+			 */
+			if(this->_state == state_t::SURROGATE_4){
+				/**
+				 * Если прочитанное значение младшим суррогатом не является
+				 */
+				if((this->_unicode < 0xDC00) || (this->_unicode > 0xDFFF))
+					// Выводим ошибку непарного суррогата
+					return this->fail(error_t::UNPAIRED_SURROGATE);
+				// Выполняем сборку кодового значения знака из суррогатной пары
+				const uint32_t code = (0x10000 + ((this->_surrogate - 0xD800) << 10) + (this->_unicode - 0xDC00));
+				// Запоминаем размер хранилища знаков прежде записи знака
+				const size_t before = this->_storage.size();
+				// Выполняем добавление знака к содержимому строки
+				::codepoint(code, this->_storage);
+				/**
+				 * Увеличиваем длину собираемого значения на число записанных байтов
+				 *
+				 * @note Знак Юникода записывается в кодировке UTF-8 от одного до четырёх
+				 *       байтов, и учитывать их числом знаков записи было бы неверно
+				 */
+				this->_length += static_cast <uint32_t> (this->_storage.size() - before);
+				// Сбрасываем удержанный старший суррогат
+				this->_surrogate = 0;
+				// Возвращаем разбор внутрь строки
+				this->_state = state_t::STRING;
+				// Пропускаем знак кодового значения
+				break;
+			}
+			/**
+			 * Если прочитан старший суррогат пары
+			 */
+			if((this->_unicode >= 0xD800) && (this->_unicode <= 0xDBFF)){
+				// Запоминаем старший суррогат пары
+				this->_surrogate = this->_unicode;
+				// Сбрасываем собираемый знак Юникода
+				this->_unicode = 0;
+				/**
+				 * Переводим разбор к ожиданию младшего суррогата
+				 *
+				 * @note Между суррогатами пары вправе пройти граница куска текста, оттого
+				 *       ожидание это и разложено на состояния: иначе выдача зависела бы от
+				 *       того, как текст нарезан
+				 */
+				this->_state = state_t::SURROGATE_SLASH;
+				// Пропускаем знак кодового значения
+				break;
+			}
+			/**
+			 * Если прочитан младший суррогат без старшего
+			 */
+			if((this->_unicode >= 0xDC00) && (this->_unicode <= 0xDFFF))
+				// Выводим ошибку непарного суррогата
+				return this->fail(error_t::UNPAIRED_SURROGATE);
+			// Запоминаем размер хранилища знаков прежде записи знака
+			const size_t before = this->_storage.size();
+			// Выполняем добавление знака к содержимому строки
+			::codepoint(this->_unicode, this->_storage);
+			// Увеличиваем длину собираемого значения на число записанных байтов
+			this->_length += static_cast <uint32_t> (this->_storage.size() - before);
+			// Возвращаем разбор внутрь строки
+			this->_state = state_t::STRING;
+		} break;
+		// Если разбор ожидает знака отмены младшего суррогата
+		case static_cast <uint8_t> (state_t::SURROGATE_SLASH): {
+			/**
+			 * Если знак отмены не пришёл
+			 */
+			if(letter != '\\')
+				// Выводим ошибку непарного суррогата
+				return this->fail(error_t::UNPAIRED_SURROGATE);
+			// Переводим разбор к ожиданию буквы кодового значения
+			this->_state = state_t::SURROGATE_U;
+		} break;
+		// Если разбор ожидает буквы кодового значения младшего суррогата
+		case static_cast <uint8_t> (state_t::SURROGATE_U): {
+			/**
+			 * Если буква кодового значения не пришла
+			 */
+			if(letter != 'u')
+				// Выводим ошибку непарного суррогата
+				return this->fail(error_t::UNPAIRED_SURROGATE);
+			// Сбрасываем собираемый знак Юникода
+			this->_unicode = 0;
+			// Переводим разбор к разбору кодового значения младшего суррогата
+			this->_state = state_t::SURROGATE_1;
+		} break;
+		// Если разбор находится внутри записи числа
+		case static_cast <uint8_t> (state_t::NUMBER_MINUS):
+		case static_cast <uint8_t> (state_t::NUMBER_ZERO):
+		case static_cast <uint8_t> (state_t::NUMBER_INTEGER):
+		case static_cast <uint8_t> (state_t::NUMBER_POINT):
+		case static_cast <uint8_t> (state_t::NUMBER_FRACTION):
+		case static_cast <uint8_t> (state_t::NUMBER_EXPONENT):
+		case static_cast <uint8_t> (state_t::NUMBER_SIGN):
+		case static_cast <uint8_t> (state_t::NUMBER_POWER): {
+			// Запоминаем смещение от начала текста прежде разбора знака
+			const uint64_t offset = this->_offset;
+			/**
+			 * Если разбор знака записи числа завершился отказом
+			 */
+			if(!this->number(letter))
+				// Выводим признак неудачного разбора
+				return false;
+			/**
+			 * Если знак был передан состоянию за окончанием значения
+			 *
+			 * @note Разбор знака, окончившего число, ведёт учёт положения сам, и учитывать
+			 *       его здесь повторно нельзя
+			 */
+			if(this->_offset != offset)
+				// Выводим признак успешного разбора
+				return true;
+		} break;
+		// Если разбор находится внутри литерала
+		case static_cast <uint8_t> (state_t::LITERAL): {
+			/**
+			 * Если знак расходится с разбираемым литералом
+			 */
+			if(letter != this->_literal[this->_matched])
+				// Выводим ошибку негодного литерала
+				return this->fail(error_t::INVALID_LITERAL);
+			// Выполняем добавление знака к содержимому литерала
+			this->_storage.push_back(letter);
+			// Увеличиваем длину собираемого значения
+			this->_length++;
+			// Увеличиваем количество разобранных знаков литерала
+			this->_matched++;
+			/**
+			 * Если литерал разобран не до конца
+			 */
+			if(this->_literal[this->_matched] != '\0')
+				// Пропускаем знак литерала
+				break;
+			// Получаем смещение содержимого литерала в хранилище знаков
+			const uint32_t offset = static_cast <uint32_t> (this->_storage.size()) - this->_length;
+			// Выполняем выдачу события литерала
+			this->emit(this->_outcome, offset, this->_length);
+			// Увеличиваем смещение от начала текста
+			this->_offset++;
+			// Увеличиваем положение в строке
+			this->_column++;
+			// Выполняем переход к состоянию за окончанием значения
+			return this->settle();
+		}
+		// Если разбор определяет вид примечания
+		case static_cast <uint8_t> (state_t::SLASH): {
+			/**
+			 * Определяем знак, задающий вид примечания
+			 */
+			switch(letter){
+				// Если примечание длится до конца строки
+				case '/': {
+					// Устанавливаем положение начала примечания
+					this->_mark.offset = this->_offset;
+					// Устанавливаем номер строки начала примечания
+					this->_mark.line = this->_line;
+					// Устанавливаем положение начала примечания в строке
+					this->_mark.column = this->_column;
+					// Сбрасываем длину собираемого значения
+					this->_length = 0;
+					// Переводим разбор внутрь примечания до конца строки
+					this->_state = state_t::COMMENT_LINE;
+				} break;
+				// Если примечание закрывается звёздочкой с косой чертой
+				case '*': {
+					// Устанавливаем положение начала примечания
+					this->_mark.offset = this->_offset;
+					// Устанавливаем номер строки начала примечания
+					this->_mark.line = this->_line;
+					// Устанавливаем положение начала примечания в строке
+					this->_mark.column = this->_column;
+					// Сбрасываем длину собираемого значения
+					this->_length = 0;
+					// Переводим разбор внутрь закрываемого примечания
+					this->_state = state_t::COMMENT_BLOCK;
+				} break;
+				/**
+				 * Если за косой чертой стоит иной знак
+				 */
+				default:
+					// Выводим ошибку недопустимого знака
+					return this->fail(error_t::INVALID_CHARACTER);
+			}
+		} break;
+		// Если разбор находится внутри примечания до конца строки
+		case static_cast <uint8_t> (state_t::COMMENT_LINE): {
+			/**
+			 * Если примечание окончено переводом строки
+			 */
+			if(letter == '\n'){
+				/**
+				 * Если события примечаний выдаются настройками разбора
+				 */
+				if(this->_settings.emitComments){
+					// Получаем смещение содержимого примечания в хранилище знаков
+					const uint32_t offset = static_cast <uint32_t> (this->_storage.size()) - this->_length;
+					// Выполняем выдачу события примечания
+					this->emit(event_t::COMMENT, offset, this->_length);
+				}
+				// Сбрасываем длину собираемого значения
+				this->_length = 0;
+				// Возвращаем разбор к состоянию, прерванному примечанием
+				this->_state = this->_resume;
+				// Пропускаем знак перевода строки
+				break;
+			}
+			/**
+			 * Если содержимое примечания удерживается для выдачи
+			 */
+			if(this->_settings.emitComments){
+				// Выполняем добавление знака к содержимому примечания
+				this->_storage.push_back(letter);
+				// Увеличиваем длину собираемого значения
+				this->_length++;
+			}
+		} break;
+		// Если разбор находится внутри закрываемого примечания
+		case static_cast <uint8_t> (state_t::COMMENT_BLOCK): {
+			/**
+			 * Если знак вправе закрывать примечание
+			 */
+			if(letter == '*'){
+				// Переводим разбор к определению закрытия примечания
+				this->_state = state_t::COMMENT_STAR;
+				// Пропускаем знак звёздочки
+				break;
+			}
+			/**
+			 * Если содержимое примечания удерживается для выдачи
+			 */
+			if(this->_settings.emitComments){
+				// Выполняем добавление знака к содержимому примечания
+				this->_storage.push_back(letter);
+				// Увеличиваем длину собираемого значения
+				this->_length++;
+			}
+		} break;
+		// Если разбор определяет закрытие примечания
+		case static_cast <uint8_t> (state_t::COMMENT_STAR): {
+			/**
+			 * Если примечание закрыто
+			 */
+			if(letter == '/'){
+				/**
+				 * Если события примечаний выдаются настройками разбора
+				 */
+				if(this->_settings.emitComments){
+					// Получаем смещение содержимого примечания в хранилище знаков
+					const uint32_t offset = static_cast <uint32_t> (this->_storage.size()) - this->_length;
+					// Выполняем выдачу события примечания
+					this->emit(event_t::COMMENT, offset, this->_length);
+				}
+				// Сбрасываем длину собираемого значения
+				this->_length = 0;
+				// Возвращаем разбор к состоянию, прерванному примечанием
+				this->_state = this->_resume;
+				// Пропускаем знак косой черты
+				break;
+			}
+			/**
+			 * Если содержимое примечания удерживается для выдачи
+			 */
+			if(this->_settings.emitComments){
+				// Выполняем добавление звёздочки к содержимому примечания
+				this->_storage.push_back('*');
+				// Увеличиваем длину собираемого значения
+				this->_length++;
+			}
+			/**
+			 * Если знак вправе закрывать примечание
+			 */
+			if(letter != '*'){
+				/**
+				 * Если содержимое примечания удерживается для выдачи
+				 */
+				if(this->_settings.emitComments){
+					// Выполняем добавление знака к содержимому примечания
+					this->_storage.push_back(letter);
+					// Увеличиваем длину собираемого значения
+					this->_length++;
+				}
+				// Возвращаем разбор внутрь закрываемого примечания
+				this->_state = state_t::COMMENT_BLOCK;
+			}
+		} break;
+		// Если документ разобран до конца
+		case static_cast <uint8_t> (state_t::DOCUMENT_END): {
+			/**
+			 * Если знак является пробельным
+			 */
+			if(::spacing(letter))
+				// Пропускаем пробельный знак
+				break;
+			/**
+			 * Если знак открывает примечание
+			 */
+			if(letter == '/'){
+				/**
+				 * Если примечания настройками не разрешены
+				 *
+				 * @note Отказ этот назван своим кодом намеренно: знак примечания ничем
+				 *       иным в тексте быть не может, и общий отказ на негодный знак
+				 *       заставил бы разыскивать причину самому
+				 */
+				if(!this->_settings.allowComments)
+					// Выводим ошибку запрещённого примечания
+					return this->fail(error_t::COMMENT_NOT_ALLOWED);
+				// Запоминаем состояние, к какому разбор вернётся по окончании примечания
+				this->_resume = this->_state;
+				// Переводим разбор к определению вида примечания
+				this->_state = state_t::SLASH;
+				// Пропускаем знак примечания
+				break;
+			}
+			/**
+			 * Если разбирается поток документов NDJSON
+			 */
+			if(this->_settings.stream){
+				// Устанавливаем признак того, что вместилище значений ещё не получило
+				this->_empty = true;
+				// Сбрасываем признак прочитанной запятой
+				this->_comma = false;
+				/**
+				 * Если начало нового документа завершилось отказом
+				 */
+				if(!this->begins(letter))
+					// Выводим признак неудачного разбора
+					return false;
+				// Пропускаем знак начала документа
+				break;
+			}
+			// Выводим ошибку знаков за окончанием документа
+			return this->fail(error_t::TRAILING_CHARACTERS);
+		}
+	}
+	// Метка пропуска разобранного знака
+	advance:
+	/**
+	 * Если знак съеден разбором
+	 */
+	if(consumed){
+		// Увеличиваем смещение от начала текста
+		this->_offset++;
+		/**
+		 * Если знак является переводом строки
+		 */
+		if(letter == '\n'){
+			// Увеличиваем номер строки
+			this->_line++;
+			// Возвращаем положение к началу строки
+			this->_column = 1;
+		// Если знак переводом строки не является
+		} else
+			// Увеличиваем положение в строке
+			this->_column++;
+	}
+	// Выводим признак успешного разбора
+	return true;
+}

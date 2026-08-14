@@ -1,0 +1,557 @@
+/**
+ * @file writer.hpp
+ * @date 2026-08-14
+ *
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
+ * \~russian
+ * @brief Заголовочный файл записи текста JSON — сборка исходящего текста значение за
+ *        значением с потоковым изъятием собранного
+ *
+ * \~english
+ * @brief Header file of the writing of a JSON text — the assembly of the outgoing text value by
+ *        value with the streaming extraction of what has been assembled
+ *
+ * \~
+ *
+ * @copyright Copyright © 2026
+ *
+ */
+
+/**
+ * Экранируем повторную инициализацию модуля
+ */
+#ifndef __AWH_CODEC_JSON_WRITER__
+#define __AWH_CODEC_JSON_WRITER__
+
+/**
+ * Стандартные заголовочные файлы
+ */
+#include <string>
+#include <vector>
+#include <cstdint>
+#include <string_view>
+
+/**
+ * Подключаем заголовочные файлы модуля
+ */
+#include "common.hpp"
+
+/**
+ * Снимаем на время объявлений макросы, чьи имена заняты
+ * членами перечислений ниже (возвращает их macro_pop.hpp в конце файла)
+ */
+#include "../../sys/macro_push.hpp"
+
+/**
+ * \~russian
+ * @brief Основное пространство имён
+ *
+ * \~english
+ * @brief Main namespace
+ *
+ * \~
+ */
+namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
+
+	/**
+	 * \~russian
+	 * @brief Пространство имён контейнеров данных
+	 *
+	 * \~english
+	 * @brief Data containers namespace
+	 *
+	 * \~
+	 */
+	namespace codec {
+		/**
+		 * \~russian
+		 * @brief Пространство имён контейнера JSON
+		 *
+		 * \~english
+		 * @brief JSON container namespace
+		 *
+		 * \~
+		 */
+		namespace json {
+			/**
+			 * \~russian
+			 * @brief Запись текста JSON
+			 *
+			 * @details Текст собирается значение за значением, а собранное вправе изыматься
+			 * по мере накопления: сборщик отдаёт накопленное и остаётся готовым продолжать.
+			 * Оттого документ, в память не помещающийся, записывается тем же способом, что
+			 * и малый
+			 *
+			 * @note Сборщик стережёт правильность строения: закрытие вместилища, какое не
+			 * открывалось, и значение, поданное там, где ожидается имя поля, отвергаются.
+			 * Собранный текст оттого правилен по строению всегда
+			 *
+			 * \~english
+			 * @brief Writing of a JSON text
+			 * @details The text is assembled value by value, while what has been assembled may be extracted
+			 * as it accumulates: the assembler gives away what has been accumulated and remains ready to continue.
+			 * Whereby a document not fitting into the memory is written by the same means as
+			 * a small one
+			 * @note The assembler guards the correctness of the structure: the closing of a container which has not
+			 * been opened, and a value fed where the name of a field is expected, are rejected.
+			 * The assembled text is thereby always correct by its structure
+			 *
+			 * \~
+			 */
+			typedef class __AWH_SHARED_EXPORT__ Writer {
+				public:
+					/**
+					 * \~russian
+					 * @brief Настройки записи текста
+					 *
+					 * \~english
+					 * @brief Settings of the writing of a text
+					 *
+					 * \~
+					 */
+					typedef struct __AWH_SHARED_EXPORT__ Settings {
+						// Вид оформления собираемого текста
+						format_t format;
+						// Правило экранирования при записи
+						escape_t escape;
+						/**
+						 * \~russian
+						 * Количество пробелов отступа при оформлении с отступами
+						 *
+						 * @note Ноль означает отступ знаком табуляции
+						 *
+						 * \~english
+						 * Number of the spaces of the indentation at the formatting with the indentations
+						 * @note Zero means an indentation by a tabulation character
+						 *
+						 * \~
+						 */
+						uint8_t indent;
+						/**
+						 * \~russian
+						 * Признак записи NaN и бесконечности словами вместо отказа
+						 *
+						 * @note Стандарт таких чисел не знает вовсе, и запись их делает
+						 * текст негодным для строгого разбора
+						 *
+						 * \~english
+						 * Flag of the writing of NaN and of the infinity by the words instead of a refusal
+						 * @note The standard does not know such numbers at all, and the writing of them makes
+						 * the text unsuitable for a strict parsing
+						 *
+						 * \~
+						 */
+						bool allowInfinityAndNan;
+						/**
+						 * \~russian
+						 * Признак разделения документов переводом строки при потоке NDJSON
+						 *
+						 * \~english
+						 * Flag of the separation of the documents by a line feed at an NDJSON stream
+						 *
+						 * \~
+						 */
+						bool stream;
+						/**
+						 * \~russian
+						 * @brief Конструктор
+						 *
+						 *
+						 * \~english
+						 * @brief Constructor
+						 *
+						 * \~
+						 */
+						Settings() noexcept;
+					} settings_t;
+				private:
+					// Настройки записи текста
+					settings_t _settings;
+				private:
+					// Собираемый текст
+					string _result;
+				private:
+					/**
+					 * \~russian
+					 * Стек видов открытых вместилищ
+					 *
+					 * \~english
+					 * Stack of the kinds of the opened containers
+					 *
+					 * \~
+					 */
+					vector <kind_t> _nesting;
+				private:
+					// Признак того, что вместилище ещё не получило ни одного значения
+					bool _empty;
+					// Признак того, что имя поля объекта записано, а значение ещё нет
+					bool _keyed;
+					// Признак того, что хотя бы один документ уже записан
+					bool _started;
+				private:
+					// Количество байтов, изъятых из сборщика за всё время работы
+					uint64_t _taken;
+				private:
+					/**
+					 * \~russian
+					 * @brief Метод записи разделителя перед очередным значением
+					 *
+					 * @details Записывает запятую, перевод строки и отступ - в объёме,
+					 * заданном настройками оформления
+					 *
+					 * @return признак допустимости записи значения в этом месте
+					 *
+					 * \~english
+					 * @brief Method of the writing of a separator before the next value
+					 * @details Writes a comma, a line feed and an indentation — in the volume
+					 * set by the settings of the formatting
+					 * @return sign of the admissibility of the writing of a value in this place
+					 *
+					 * \~
+					 */
+					bool separate() noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод записи строки с экранированием
+					 *
+					 * @param text записываемая строка
+					 *
+					 * \~english
+					 * @brief Method of the writing of a string with an escaping
+					 * @param text string being written
+					 *
+					 * \~
+					 */
+					void quoted(const string & text) noexcept;
+				public:
+					/**
+					 * \~russian
+					 * @brief Метод сброса состояния записи
+					 *
+					 * @details Сброс возвращает сборщик к пустому тексту, а выделенную память
+					 * удерживает
+					 *
+					 * \~english
+					 * @brief Method of the reset of the state of the writing
+					 * @details The reset returns the assembler to an empty text while holding
+					 * the allocated memory
+					 *
+					 * \~
+					 */
+					void reset() noexcept;
+				public:
+					/**
+					 * \~russian
+					 * @brief Метод открытия объекта
+					 *
+					 * @return признак успешности записи
+					 *
+					 * \~english
+					 * @brief Method of the opening of an object
+					 * @return sign of the success of the writing
+					 *
+					 * \~
+					 */
+					bool object() noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод открытия массива
+					 *
+					 * @return признак успешности записи
+					 *
+					 * \~english
+					 * @brief Method of the opening of an array
+					 * @return sign of the success of the writing
+					 *
+					 * \~
+					 */
+					bool array() noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод закрытия открытого вместилища
+					 *
+					 * @return признак успешности записи
+					 *
+					 * \~english
+					 * @brief Method of the closing of an opened container
+					 * @return sign of the success of the writing
+					 *
+					 * \~
+					 */
+					bool close() noexcept;
+				public:
+					/**
+					 * \~russian
+					 * @brief Метод записи имени поля объекта
+					 *
+					 * @param name записываемое имя поля объекта
+					 * @return     признак успешности записи
+					 *
+					 * \~english
+					 * @brief Method of the writing of the name of a field of an object
+					 * @param name name of the field of the object being written
+					 * @return sign of the success of the writing
+					 *
+					 * \~
+					 */
+					bool key(const string & name) noexcept;
+				public:
+					/**
+					 * \~russian
+					 * @brief Метод записи пустого значения
+					 *
+					 * @return признак успешности записи
+					 *
+					 * \~english
+					 * @brief Method of the writing of an empty value
+					 * @return sign of the success of the writing
+					 *
+					 * \~
+					 */
+					bool null() noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод записи логического значения
+					 *
+					 * @param value записываемое логическое значение
+					 * @return      признак успешности записи
+					 *
+					 * \~english
+					 * @brief Method of the writing of a logical value
+					 * @param value logical value being written
+					 * @return sign of the success of the writing
+					 *
+					 * \~
+					 */
+					bool value(const bool value) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод записи строкового значения
+					 *
+					 * @param value записываемое строковое значение
+					 * @return      признак успешности записи
+					 *
+					 * \~english
+					 * @brief Method of the writing of a string value
+					 * @param value string value being written
+					 * @return sign of the success of the writing
+					 *
+					 * \~
+					 */
+					bool value(const string & value) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод записи целого числа
+					 *
+					 * @param value записываемое целое число
+					 * @return      признак успешности записи
+					 *
+					 * \~english
+					 * @brief Method of the writing of an integer
+					 * @param value integer being written
+					 * @return sign of the success of the writing
+					 *
+					 * \~
+					 */
+					bool value(const int64_t value) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод записи беззнакового целого числа
+					 *
+					 * @param value записываемое беззнаковое целое число
+					 * @return      признак успешности записи
+					 *
+					 * \~english
+					 * @brief Method of the writing of an unsigned integer
+					 * @param value unsigned integer being written
+					 * @return sign of the success of the writing
+					 *
+					 * \~
+					 */
+					bool value(const uint64_t value) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод записи числа с плавающей запятой
+					 *
+					 * @details Записывается кратчайшей записью, читающейся обратно тем же
+					 * числом
+					 *
+					 * @param value записываемое число с плавающей запятой
+					 * @return      признак успешности записи
+					 *
+					 * \~english
+					 * @brief Method of the writing of a floating-point number
+					 * @details It is written by the shortest record read back as the same
+					 * number
+					 * @param value floating-point number being written
+					 * @return sign of the success of the writing
+					 *
+					 * \~
+					 */
+					bool value(const double value) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод записи числа его готовой записью
+					 *
+					 * @details Запись переносится в текст как есть, минуя преобразование.
+					 * Служит для переноса чисел, разобранных чтением, без потери точности
+					 *
+					 * @param value записываемая запись числа
+					 * @return      признак успешности записи
+					 *
+					 * \~english
+					 * @brief Method of the writing of a number by its ready record
+					 * @details The record is transferred into the text as it is bypassing the conversion.
+					 * Serves for the transfer of the numbers parsed by the reading without a loss of the precision
+					 * @param value record of the number being written
+					 * @return sign of the success of the writing
+					 *
+					 * \~
+					 */
+					bool raw(const string & value) noexcept;
+				public:
+					/**
+					 * \~russian
+					 * @brief Метод завершения документа при потоке NDJSON
+					 *
+					 * @return признак успешности записи
+					 *
+					 * \~english
+					 * @brief Method of the completion of a document at an NDJSON stream
+					 * @return sign of the success of the writing
+					 *
+					 * \~
+					 */
+					bool finish() noexcept;
+				public:
+					/**
+					 * \~russian
+					 * @brief Метод извлечения собранного текста
+					 *
+					 * @return собранный текст
+					 *
+					 * \~english
+					 * @brief Method of the extraction of the assembled text
+					 * @return assembled text
+					 *
+					 * \~
+					 */
+					const string & text() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод изъятия собранного текста
+					 *
+					 * @details Отдаёт собранное и оставляет сборщик готовым продолжать: строение
+					 * документа при этом сохраняется, а память освобождается
+					 *
+					 * @return изъятый собранный текст
+					 *
+					 * \~english
+					 * @brief Method of the taking away of the assembled text
+					 * @details Gives away what has been assembled and leaves the assembler ready to continue: the structure
+					 * of the document is thereby preserved, while the memory is released
+					 * @return taken away assembled text
+					 *
+					 * \~
+					 */
+					string take() noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод извлечения размера собранного текста
+					 *
+					 * @return размер собранного текста в байтах
+					 *
+					 * \~english
+					 * @brief Method of the extraction of the size of the assembled text
+					 * @return size of the assembled text in bytes
+					 *
+					 * \~
+					 */
+					size_t size() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод извлечения текущей глубины вложенности
+					 *
+					 * @return текущая глубина вложенности
+					 *
+					 * \~english
+					 * @brief Method of the extraction of the current depth of the nesting
+					 * @return current depth of the nesting
+					 *
+					 * \~
+					 */
+					uint32_t depth() const noexcept;
+				public:
+					/**
+					 * \~russian
+					 * @brief Метод извлечения настроек записи текста
+					 *
+					 * @return настройки записи текста
+					 *
+					 * \~english
+					 * @brief Method of the extraction of the settings of the writing of a text
+					 * @return settings of the writing of a text
+					 *
+					 * \~
+					 */
+					const settings_t & settings() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод установки настроек записи текста
+					 *
+					 * @param settings устанавливаемые настройки записи текста
+					 *
+					 * \~english
+					 * @brief Method of the setting of the settings of the writing of a text
+					 * @param settings settings of the writing of a text being set
+					 *
+					 * \~
+					 */
+					void settings(const settings_t & settings) noexcept;
+				public:
+					/**
+					 * \~russian
+					 * @brief Конструктор
+					 *
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
+					 */
+					Writer() noexcept;
+					/**
+					 * \~russian
+					 * @brief Деструктор
+					 *
+					 *
+					 * \~english
+					 * @brief Destructor
+					 *
+					 * \~
+					 */
+					~Writer() noexcept {}
+			} writer_t;
+		};
+	};
+};
+
+/**
+ * Возвращаем снятые ранее макросы
+ */
+#include "../../sys/macro_pop.hpp"
+
+#endif // __AWH_CODEC_JSON_WRITER__

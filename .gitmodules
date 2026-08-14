@@ -103,3 +103,12 @@
 [submodule "submodules/fast-cpp-csv-parser"]
 	path = submodules/fast-cpp-csv-parser
 	url = https://github.com/ben-strasser/fast-cpp-csv-parser.git
+[submodule "submodules/nlohmann"]
+	path = submodules/nlohmann
+	url = https://github.com/nlohmann/json.git
+[submodule "submodules/yyjson"]
+	path = submodules/yyjson
+	url = https://github.com/ibireme/yyjson.git
+[submodule "submodules/simdjson"]
+	path = submodules/simdjson
+	url = https://github.com/simdjson/simdjson.git

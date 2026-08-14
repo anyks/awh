@@ -801,6 +801,29 @@ namespace awh {
 				 * \~
 				 */
 				size_t send(const event::id_t eid, const void * buffer, const size_t size) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод назначения источника данных для вытягивающей модели отправки
+				 *
+				 * @note Движок спрашивает данные у источника ровно тогда, когда готов их
+				 *       отправить, поэтому при переполнении очереди данные не теряются
+				 * @note Отказ источника гасит вытягивание: заводится оно заново пустой
+				 *       отправкой `send(eid, nullptr, 0)`
+				 * @param eid    идентификатор события клиента
+				 * @param source функция обратного вызова источника данных
+				 *
+				 * \~english
+				 * @brief Method of setting the source of the data for the pull model of the sending
+				 * @note The engine asks the source for the data exactly when it is ready to send
+				 *       them, so at an overflow of the queue the data are not lost
+				 * @note A refusal of the source extinguishes the pulling: it is set going again
+				 *       by an empty sending `send(eid, nullptr, 0)`
+				 * @param eid    client event identifier
+				 * @param source callback function of the source of the data
+				 *
+				 * \~
+				 */
+				void source(const event::id_t eid, engine::callback::source_t source) noexcept;
 			public:
 				/**
 				 * \~russian
