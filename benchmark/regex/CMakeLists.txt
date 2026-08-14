@@ -52,7 +52,11 @@ if (${CMAKE_BUILD_${BENCHMARK_NAME}_BENCHMARKS})
     # Если сборка производится под операционную систему Windows
     if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
         # Устанавливаем необходимые зависимости для MS Windows
-        SET(AWH_FLAGS -lstdc++ -lws2_32 -lgdi32 -lcrypt32 -lIphlpapi -lbcrypt -flto=auto)
+        SET(AWH_FLAGS -lws2_32 -lgdi32 -lcrypt32 -lIphlpapi -lbcrypt -flto=auto)
+        # Стандартная библиотека C++ здесь НЕ упоминается намеренно: собиратель C++ подключает её
+        # сам, а упомянутая отдельно она подтягивается ОТДЕЛЬНЫМ файлом и спорит со статической,
+        # какою набор связывается ради работоспособности учёта выделений памяти. См. корневой
+        # CMakeLists.txt
     # Если сборка производится под операционные системы Linux, FreeBSD, NetBSD, OpenBSD, macOS или Solaris
     else()
         # Если сборка производится под операционную систему macOS

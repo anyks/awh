@@ -1598,8 +1598,16 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
      #   crypt32  - хранилище сертификатов системы
      #   bcrypt   - источник случайных чисел системы
      #   gdi32    - требуется зависимостями, самой библиотекой графика не используется
+     #
+     # Стандартная библиотека C++ здесь НЕ упоминается намеренно: собиратель C++ подключает
+     # её сам, а упомянутая отдельно она подтягивается ОТДЕЛЬНЫМ файлом. Цели, связываемые со
+     # стандартной библиотекой статически (наборы замеров - ради работоспособности учёта
+     # выделений памяти), получали тогда обе разом, и связывание валилось сотнями "multiple
+     # definition of std::__throw_logic_error". Упоминание распространялось на всякую цель,
+     # связанную с библиотекой, и отбор его в наборе замеров не спасал. Обнаружено на стенде
+     # MSYS2 MinGW64 (14.08.2026)
      ##
-    SET(AWH_FLAGS -lstdc++ -lws2_32 -lIphlpapi -lpsapi -ldbghelp -lsynchronization -lcrypt32 -lbcrypt -lgdi32 -flto=auto)
+    SET(AWH_FLAGS -lws2_32 -lIphlpapi -lpsapi -ldbghelp -lsynchronization -lcrypt32 -lbcrypt -lgdi32 -flto=auto)
 
     # Устанавливаем иконку для windows под MinGW.
     SET(RES_FILES ${CMAKE_PROJECT_NAME}.rc)

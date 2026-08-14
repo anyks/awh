@@ -427,10 +427,16 @@ namespace {
 			// Выполняем чтение текста разметки
 			return ::read(text);
 		});
-		// Устанавливаем измеренное значение
-		result.value = perDocument(outcome);
 		// Устанавливаем сведения о прогоне
 		result.details = details(outcome);
+		/**
+		 * Если учёт выделений памяти не работает
+		 */
+		if(!counted(outcome, result))
+			// Выводим результат измерения
+			return result;
+		// Устанавливаем измеренное значение
+		result.value = perDocument(outcome);
 		// Выводим результат измерения
 		return result;
 	}

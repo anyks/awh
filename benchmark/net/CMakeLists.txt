@@ -94,7 +94,11 @@ if (${CMAKE_BUILD_${BENCHMARK_NAME}_BENCHMARKS})
     # Если сборка производится под операционную систему Windows
     if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
         # Устанавливаем необходимые зависимости для MS Windows
-        SET(AWH_FLAGS -lstdc++ -lws2_32 -lgdi32 -lcrypt32 -lIphlpapi -lbcrypt -flto=auto)
+        SET(AWH_FLAGS -lws2_32 -lgdi32 -lcrypt32 -lIphlpapi -lbcrypt -flto=auto)
+        # Стандартная библиотека C++ здесь НЕ упоминается намеренно: собиратель C++ подключает её
+        # сам, а упомянутая отдельно она подтягивается ОТДЕЛЬНЫМ файлом и спорит со статической,
+        # какою набор связывается ради работоспособности учёта выделений памяти. См. корневой
+        # CMakeLists.txt
     # Если сборка производится под операционные системы Linux, FreeBSD, NetBSD, OpenBSD, macOS или Solaris
     else()
         # Если сборка производится под операционную систему macOS
@@ -145,7 +149,13 @@ if (${CMAKE_BUILD_${BENCHMARK_NAME}_BENCHMARKS})
     # Оснастка счёта системных вызовов собирается вместе с набором: показатели по
     # количеству обращений к ядру снимаются ею, и расхождение версий между набором
     # и подставной библиотекой обесценило бы их
-    add_dependencies(${PROJECT_NAME}${POSTFIX} awh_BENCHMARK_syscount)
+    #
+    # Зависимость ставится лишь при наличии самой цели: у MS Windows способа подмены
+    # нет и цель не заводится вовсе, а ссылка на незаведённую цель роняет НАСТРОЙКУ
+    # сборки целиком - "Generate step failed"
+    if (TARGET awh_BENCHMARK_syscount)
+        add_dependencies(${PROJECT_NAME}${POSTFIX} awh_BENCHMARK_syscount)
+    endif()
 
     # Если сборка производится под операционную систему MS Windows средствами MinGW
     if (MINGW)
@@ -180,7 +190,7 @@ if (${CMAKE_BUILD_${BENCHMARK_NAME}_BENCHMARKS})
             COMMAND ${CMAKE_COMMAND} -E env
                 DYLD_INSERT_LIBRARIES=${CMAKE_BINARY_DIR}/benchmarks/libsyscount${CMAKE_SHARED_LIBRARY_SUFFIX}
                 ${CMAKE_BINARY_DIR}/benchmarks/${NAME}
-            DEPENDS ${PROJECT_NAME}${POSTFIX} awh_BENCHMARK_syscount
+            DEPENDS ${PROJECT_NAME}${POSTFIX} ${AWH_SYSCOUNT_TARGET}
             WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
             COMMENT "Running ${NAME} benchmarks with system call accounting"
         )
@@ -194,7 +204,7 @@ if (${CMAKE_BUILD_${BENCHMARK_NAME}_BENCHMARKS})
             COMMAND ${CMAKE_COMMAND} -E env
                 LD_PRELOAD=${CMAKE_BINARY_DIR}/benchmarks/libsyscount${CMAKE_SHARED_LIBRARY_SUFFIX}
                 ${CMAKE_BINARY_DIR}/benchmarks/${NAME}
-            DEPENDS ${PROJECT_NAME}${POSTFIX} awh_BENCHMARK_syscount
+            DEPENDS ${PROJECT_NAME}${POSTFIX} ${AWH_SYSCOUNT_TARGET}
             WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
             COMMENT "Running ${NAME} benchmarks with system call accounting"
         )
