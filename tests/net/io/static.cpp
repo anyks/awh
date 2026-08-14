@@ -17862,6 +17862,14 @@ typedef struct Bandwidth_Consumer {
 	size_t returned;
 	// Количество октетов, поставленных в очередь и ещё не записанных
 	size_t backlog;
+	/**
+	 * Смещение внутри блока передачи, с которого продолжается подача
+	 *
+	 * @note Отправка принимает данные ЧАСТИЧНО: сколько влезло в сокет и очередь, столько
+	 *       и принято. Продолжать со следующего блока, потеряв непринятый хвост, нельзя -
+	 *       поток на приёмнике перестанет совпадать с образцом
+	 */
+	size_t offset;
 	// Флаг готовности отправителя к подаче данных
 	bool ready;
 	// Флаг обнаружения расхождения принятых данных с образцом
@@ -17874,7 +17882,7 @@ typedef struct Bandwidth_Consumer {
 	 */
 	explicit Bandwidth_Consumer() noexcept :
 	 egress{""}, ingress{""}, sender(0), receiver(0),
-	 queued(0), received(0), returned(0), backlog(0), ready(false), corrupted(false), rate(0.0) {}
+	 queued(0), received(0), returned(0), backlog(0), offset(0), ready(false), corrupted(false), rate(0.0) {}
 	/**
 	 * @brief Конструктор
 	 *
@@ -17884,7 +17892,7 @@ typedef struct Bandwidth_Consumer {
 	 */
 	explicit Bandwidth_Consumer(const std::string & egress, const std::string & ingress) noexcept :
 	 egress(egress), ingress(ingress), sender(0), receiver(0),
-	 queued(0), received(0), returned(0), backlog(0), ready(false), corrupted(false), rate(0.0) {}
+	 queued(0), received(0), returned(0), backlog(0), offset(0), ready(false), corrupted(false), rate(0.0) {}
 } bandwidth_consumer_t;
 
 /**
@@ -18006,12 +18014,14 @@ static bool bandwidth(awh::engine::io_t * io, std::vector <bandwidth_consumer_t>
 		 * Держим очередь непустой, но не выбираем под неё всю память процесса
 		 */
 		while(consumer.backlog < BANDWIDTH_BACKLOG){
-			// Ставим в очередь очередной блок передачи
-			const size_t accepted = io->send(consumer.sender, chunk.data(), BANDWIDTH_CHUNK);
+			// Ставим в очередь остаток текущего блока передачи
+			const size_t accepted = io->send(consumer.sender, (chunk.data() + consumer.offset), (BANDWIDTH_CHUNK - consumer.offset));
 			// Если блок в очередь не принят
 			if(accepted == 0)
 				// Прекращаем подачу
 				break;
+			// Сдвигаем смещение подачи внутри блока передачи, начиная блок заново по его исчерпании
+			consumer.offset = ((consumer.offset + accepted) % BANDWIDTH_CHUNK);
 			// Накапливаем количество поставленных в очередь октетов
 			consumer.queued += accepted;
 			// Накапливаем объём очереди, ожидающий записи

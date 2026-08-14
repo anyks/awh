@@ -120,8 +120,8 @@ namespace awh {
 	 *  - TCP (поток): bip-buffer (bipartite buffer) - два непрерывных региона A/B без сдвигов памяти
 	 *    (memmove). front() отдаёт непрерывный прогон (потребитель дочитывает остаток следующим вызовом
 	 *    после pop). available() возвращает наибольший непрерывный свободный регион - гарантированный
-	 *    максимум одной записи. push() работает по принципу всё-или-ничего (частичная запись потока
-	 *    создала бы разрыв данных).
+	 *    максимум одной записи. push() помещает СКОЛЬКО ВЛЕЗАЕТ и возвращает принятое: поток делится где
+	 *    угодно, поэтому отказ целиком заставлял бы отправителя терять всю порцию вместо её остатка.
 	 *  - UDP (границы сообщений): линейный буфер с заголовком размера (size_t) перед каждой записью и
 	 *    дефрагментацией compact() при нехватке места в хвосте. Запись неделима (всё-или-ничего).
 	 *
@@ -144,8 +144,8 @@ namespace awh {
 	 *  - TCP (a stream): a bip-buffer (bipartite buffer) — two continuous regions A/B without the shifts of the memory
 	 *    (memmove). front() gives back a continuous run (the consumer reads the remainder by the next call
 	 *    after pop). available() returns the largest continuous free region — the guaranteed
-	 *    maximum of one record. push() works by the all-or-nothing principle (a partial writing of a stream
-	 *    would create a gap of the data).
+	 *    maximum of one record. push() places AS MUCH AS FITS and returns the accepted amount: a stream is divisible
+	 *    anywhere, so a refusal in whole would force the sender to lose the entire portion instead of its remainder.
 	 *  - UDP (the boundaries of the messages): a linear buffer with a header of the size (size_t) before every record and
 	 *    a defragmentation compact() at a shortage of the room in the tail. A record is atomic (all-or-nothing).
 	 * The buffer is allocated lazily from a thread-local pool of the blocks at the first writing and is returned into the pool
