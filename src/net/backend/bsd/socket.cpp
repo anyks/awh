@@ -535,6 +535,41 @@ bool awh::eth::Socket::setTimeout(const net::socket_t sock, const net::socket_ev
 	return result;
 }
 /**
+ * @brief Метод получения свободного места в буфере сокета
+ *
+ * @param sock  сетевой сокет
+ * @param event событие сокета (чтение либо запись)
+ * @return      свободное место в буфере либо -1, если система его не сообщает
+ *
+ */
+int32_t awh::eth::Socket::getBufferAvailable(const net::socket_t sock, const net::socket_event_t event) const noexcept {
+	// Если сокет передан неверно
+	if(sock == net::invalid_socket_t)
+		// Выводим признак того, что свободное место неизвестно
+		return -1;
+	// Количество байт, уже лежащих в буфере сокета
+	int32_t pending = 0;
+	// Получаем размер значения количества байт
+	socklen_t length = sizeof(pending);
+	/**
+	 * Считываем занятое место буфера в зависимости от направления обмена
+	 *
+	 * @note У macOS и BSD занятое место сообщают параметры сокета: SO_NWRITE - для буфера
+	 *       отправки, SO_NREAD - для буфера приёма. Свободное выводится вычитанием
+	 */
+	if(::getsockopt(sock, SOL_SOCKET, ((event == net::socket_event_t::WRITE) ? SO_NWRITE : SO_NREAD), &pending, &length) != 0)
+		// Выводим признак того, что свободное место неизвестно
+		return -1;
+	// Получаем вместимость буфера сокета
+	const int32_t size = this->getBufferSize(sock, event);
+	// Если вместимость буфера получить не удалось
+	if(size <= 0)
+		// Выводим признак того, что свободное место неизвестно
+		return -1;
+	// Выводим свободное место в буфере сокета
+	return ((size > pending) ? (size - pending) : 0);
+}
+/**
  * @brief Метод получения размера буфера
  *
  * @param sock  сетевой сокет

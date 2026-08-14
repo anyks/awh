@@ -217,6 +217,33 @@ namespace awh {
 				int32_t getBufferSize(const net::socket_t sock, const net::socket_event_t event) const noexcept;
 				/**
 				 * \~russian
+				 * @brief Метод получения свободного места в буфере сокета
+				 *
+				 * @details Возвращает СВОБОДНОЕ место, а не вместимость: `SO_SNDBUF` и `SO_RCVBUF`
+				 *          говорят, сколько буфер вмещает всего, тогда как обмен упирается в то,
+				 *          сколько в нём осталось незанятого. Забитый сокет не примет и байта
+				 *          при какой угодно вместимости
+				 *
+				 * @note Для буфера отправки замер безопасно занижен: писатель у сокета один -
+				 *       сам движок, а ядро буфер только выгребает, поэтому свободного места
+				 *       между замером и отправкой может стать лишь больше. Для буфера приёма
+				 *       наоборот: место занимает встречная сторона, и замер стареет мгновенно
+				 *
+				 * @param sock  сетевой сокет
+				 * @param event событие сокета (чтение либо запись)
+				 * @return      свободное место в буфере либо -1, если система его не сообщает
+				 *
+				 * \~english
+				 * @brief Method of getting the free room in a buffer of a socket
+				 * @param sock  network socket
+				 * @param event event of the socket (the reading or the writing)
+				 * @return      free room in the buffer or -1, if the system does not report it
+				 *
+				 * \~
+				 */
+				int32_t getBufferAvailable(const net::socket_t sock, const net::socket_event_t event) const noexcept;
+				/**
+				 * \~russian
 				 * @brief Метод установки размеров буфера
 				 *
 				 * @details Задаёт, сколько данных ядро придержит у себя - порознь на

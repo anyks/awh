@@ -1073,6 +1073,15 @@ namespace io {
 	 *
 	 */
 	typedef struct Transfer {
+		/**
+		 * Признак того, что вытягивание данных из источника ведётся
+		 *
+		 * @note Источник ставится единожды и навсегда, поэтому «спрашивать больше нечего»
+		 *       отмечается признаком, а не снятием источника. Ставит его пуск отправки
+		 *       вызовом send(id, nullptr, 0), а снимает сам источник, ответив ложью либо
+		 *       нулём записанных байт
+		 */
+		bool pulling;
 		// Файловый дескриптор сервиса
 		net::socket_t fd;
 		// Идентификатор события принимающей стороны
@@ -1096,8 +1105,8 @@ namespace io {
 		 *
 		 */
 		explicit Transfer(const fmk_t * fmk, const log_t * log) noexcept :
-		 fd(net::invalid_socket_t), dest(0),
-		 actions(::action::NONE), queue(fmk, log) {}
+		 pulling(false), fd(net::invalid_socket_t),
+		 dest(0), actions(::action::NONE), queue(fmk, log) {}
 	} transfer_t;
 
 	/**
@@ -1430,7 +1439,8 @@ namespace io {
 		 read(nullptr), write(nullptr),
 		 event(nullptr), inject(nullptr),
 		 connect(nullptr), timeout(nullptr),
-		 traffic(nullptr), available(nullptr), source(nullptr) {}
+		 traffic(nullptr), available(nullptr),
+		 source(nullptr) {}
 	} client_callbacks_t;
 
 	/**
@@ -1465,7 +1475,8 @@ namespace io {
 		explicit Peer_Callbacks() noexcept :
 		 read(nullptr), write(nullptr),
 		 event(nullptr), inject(nullptr),
-		 timeout(nullptr), available(nullptr), source(nullptr) {}
+		 timeout(nullptr), available(nullptr),
+		 source(nullptr) {}
 	} peer_callbacks_t;
 
 	/**
@@ -1482,11 +1493,11 @@ namespace io {
 	 *
 	 */
 	typedef struct Deferred_Membership {
-		bool active;           // Признак отложенного вступления
-		uint16_t port;         // Порт группы рассылки
-		event::mode_t mode;    // Режим вступления или выхода
-		string group;          // Адрес группы рассылки
-		string source;         // Адрес сетевого интерфейса подписки
+		bool active;        // Признак отложенного вступления
+		uint16_t port;      // Порт группы рассылки
+		event::mode_t mode; // Режим вступления или выхода
+		string group;       // Адрес группы рассылки
+		string source;      // Адрес сетевого интерфейса подписки
 		/**
 		 * @brief Конструктор
 		 *
@@ -1700,6 +1711,15 @@ namespace io {
 		uint16_t actions;
 		// Название сетевого интерфейса
 		string iface;
+		/**
+		 * Признак того, что вытягивание данных из источника ведётся
+		 *
+		 * @note Источник ставится единожды и навсегда, поэтому «спрашивать больше нечего»
+		 *       отмечается признаком, а не снятием источника. Ставит его пуск отправки
+		 *       вызовом send(id, nullptr, 0), а снимает сам источник, ответив ложью либо
+		 *       нулём записанных байт
+		 */
+		bool pulling;
 		// Очередь отправки данных
 		net_queue_t queue;
 		// Объект параметров конечной точки
@@ -1720,7 +1740,8 @@ namespace io {
 		explicit Tunnel(const fmk_t * fmk, const log_t * log) noexcept :
 		 fd(net::invalid_socket_t),
 		 actions(::action::NONE), iface{""},
-		 queue(fmk, log), source(nullptr), target(nullptr) {}
+		 pulling(false), queue(fmk, log),
+		 source(nullptr), target(nullptr) {}
 	} tun_t;
 
 	/**
@@ -5308,13 +5329,14 @@ namespace io {
 	 *       ограничение скорости, и оповещение о неудачной отправке, и счётчики
 	 *
 	 * @param node  узел, для которого вытягиваются данные
-	 * @param queue очередь отправки узла
-	 * @param fd    дескриптор сокета узла
+	 * @param queue   очередь отправки узла
+	 * @param pulling признак ведения вытягивания данных из источника
+	 * @param fd      дескриптор сокета узла
 	 * @param eth   объект работы с сетевым интерфейсом
 	 * @param log   объект работы с логами
 	 *
 	 */
-	static void pull(T * node, net_queue_t & queue, const net::socket_t fd, const eth_t * eth, const log_t * log) noexcept;
+	static void pull(T * node, net_queue_t & queue, bool & pulling, const net::socket_t fd, const eth_t * eth, const log_t * log) noexcept;
 };
 
 /**
@@ -14312,7 +14334,7 @@ namespace io {
 											 */
 											if(ipc->callbacks.source != nullptr)
 												// Вытягиваем следующую порцию данных из источника и отправляем её
-												::io::pull(ipc, ipc->transfer.queue, ipc->transfer.fd, eth, log);
+												::io::pull(ipc, ipc->transfer.queue, ipc->transfer.pulling, ipc->transfer.fd, eth, log);
 										}
 										// Если функция обратного вызова для вывода записанных данных установлена
 										if(ipc->callbacks.write != nullptr){
@@ -14476,7 +14498,7 @@ namespace io {
 									 */
 									if(ipc->callbacks.source != nullptr)
 										// Вытягиваем следующую порцию данных из источника и отправляем её
-										::io::pull(ipc, ipc->transfer.queue, ipc->transfer.fd, eth, log);
+										::io::pull(ipc, ipc->transfer.queue, ipc->transfer.pulling, ipc->transfer.fd, eth, log);
 								}
 								// Если функция обратного вызова для вывода записанных данных установлена
 								if(ipc->callbacks.write != nullptr){
@@ -14611,7 +14633,7 @@ namespace io {
 									 */
 									if(ipc->callbacks.source != nullptr)
 										// Вытягиваем следующую порцию данных из источника и отправляем её
-										::io::pull(ipc, ipc->transfer.queue, ipc->transfer.fd, eth, log);
+										::io::pull(ipc, ipc->transfer.queue, ipc->transfer.pulling, ipc->transfer.fd, eth, log);
 								}
 								// Если функция обратного вызова для вывода записанных данных установлена
 								if(ipc->callbacks.write != nullptr){
@@ -14660,7 +14682,7 @@ namespace io {
 											 */
 											if(ipc->callbacks.source != nullptr)
 												// Вытягиваем следующую порцию данных из источника и отправляем её
-												::io::pull(ipc, ipc->transfer.queue, ipc->transfer.fd, eth, log);
+												::io::pull(ipc, ipc->transfer.queue, ipc->transfer.pulling, ipc->transfer.fd, eth, log);
 										}
 									} break;
 									// Если нам нужно попытаться отправить позже
@@ -15039,7 +15061,7 @@ namespace io {
 											 */
 											if(peer->callbacks.source != nullptr)
 												// Вытягиваем следующую порцию данных из источника и отправляем её
-												::io::pull(peer, peer->transfer.queue, peer->transfer.fd, eth, log);
+												::io::pull(peer, peer->transfer.queue, peer->transfer.pulling, peer->transfer.fd, eth, log);
 										}
 										// Если функция обратного вызова для вывода записанных данных установлена
 										if(peer->callbacks.write != nullptr){
@@ -15151,7 +15173,7 @@ namespace io {
 										 */
 										if(peer->callbacks.source != nullptr)
 											// Вытягиваем следующую порцию данных из источника и отправляем её
-											::io::pull(peer, peer->transfer.queue, peer->transfer.fd, eth, log);
+											::io::pull(peer, peer->transfer.queue, peer->transfer.pulling, peer->transfer.fd, eth, log);
 									}
 									// Если функция обратного вызова для вывода записанных данных установлена
 									if(peer->callbacks.write != nullptr){
@@ -15296,7 +15318,7 @@ namespace io {
 														 */
 														if(peer->callbacks.source != nullptr)
 															// Вытягиваем следующую порцию данных из источника и отправляем её
-															::io::pull(peer, peer->transfer.queue, peer->transfer.fd, eth, log);
+															::io::pull(peer, peer->transfer.queue, peer->transfer.pulling, peer->transfer.fd, eth, log);
 													}
 												} break;
 												// Если нам нужно попытаться отправить позже
@@ -15420,7 +15442,7 @@ namespace io {
 												 */
 												if(peer->callbacks.source != nullptr)
 													// Вытягиваем следующую порцию данных из источника и отправляем её
-													::io::pull(peer, peer->transfer.queue, peer->transfer.fd, eth, log);
+													::io::pull(peer, peer->transfer.queue, peer->transfer.pulling, peer->transfer.fd, eth, log);
 											}
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(peer->callbacks.write != nullptr){
@@ -15532,7 +15554,7 @@ namespace io {
 											 */
 											if(peer->callbacks.source != nullptr)
 												// Вытягиваем следующую порцию данных из источника и отправляем её
-												::io::pull(peer, peer->transfer.queue, peer->transfer.fd, eth, log);
+												::io::pull(peer, peer->transfer.queue, peer->transfer.pulling, peer->transfer.fd, eth, log);
 										}
 										// Если функция обратного вызова для вывода записанных данных установлена
 										if(peer->callbacks.write != nullptr){
@@ -15740,7 +15762,7 @@ namespace io {
 													 */
 													if(origin->callbacks.source != nullptr)
 														// Вытягиваем следующую порцию данных из источника и отправляем её
-														::io::pull(origin, origin->transfer.queue, origin->transfer.fd, eth, log);
+														::io::pull(origin, origin->transfer.queue, origin->transfer.pulling, origin->transfer.fd, eth, log);
 												}
 											} break;
 											// Если нам нужно попытаться отправить позже
@@ -15870,7 +15892,7 @@ namespace io {
 											 */
 											if(origin->callbacks.source != nullptr)
 												// Вытягиваем следующую порцию данных из источника и отправляем её
-												::io::pull(origin, origin->transfer.queue, origin->transfer.fd, eth, log);
+												::io::pull(origin, origin->transfer.queue, origin->transfer.pulling, origin->transfer.fd, eth, log);
 										}
 										// Если функция обратного вызова для вывода записанных данных установлена
 										if(origin->callbacks.write != nullptr){
@@ -15977,7 +15999,7 @@ namespace io {
 										 */
 										if(origin->callbacks.source != nullptr)
 											// Вытягиваем следующую порцию данных из источника и отправляем её
-											::io::pull(origin, origin->transfer.queue, origin->transfer.fd, eth, log);
+											::io::pull(origin, origin->transfer.queue, origin->transfer.pulling, origin->transfer.fd, eth, log);
 									}
 									// Если функция обратного вызова для вывода записанных данных установлена
 									if(origin->callbacks.write != nullptr){
@@ -16118,7 +16140,7 @@ namespace io {
 							 */
 							if(tunnel->callbacks.source != nullptr)
 								// Вытягиваем следующую порцию данных из источника и отправляем её
-								::io::pull(tunnel, tunnel->queue, tunnel->fd, eth, log);
+								::io::pull(tunnel, tunnel->queue, tunnel->pulling, tunnel->fd, eth, log);
 						}
 						// Если есть данные для отправки в сокет
 						if(!tunnel->queue.empty())
@@ -16158,7 +16180,7 @@ namespace io {
 									 */
 									if(tunnel->callbacks.source != nullptr)
 										// Вытягиваем следующую порцию данных из источника и отправляем её
-										::io::pull(tunnel, tunnel->queue, tunnel->fd, eth, log);
+										::io::pull(tunnel, tunnel->queue, tunnel->pulling, tunnel->fd, eth, log);
 								}
 							} break;
 							// Если нам нужно попытаться отправить позже
@@ -16525,7 +16547,7 @@ namespace io {
 											 */
 											if(client->callbacks.source != nullptr)
 												// Вытягиваем следующую порцию данных из источника и отправляем её
-												::io::pull(client, client->transfer.queue, client->transfer.fd, eth, log);
+												::io::pull(client, client->transfer.queue, client->transfer.pulling, client->transfer.fd, eth, log);
 										}
 										// Если функция обратного вызова для вывода записанных данных установлена
 										if(client->callbacks.write != nullptr){
@@ -16637,7 +16659,7 @@ namespace io {
 										 */
 										if(client->callbacks.source != nullptr)
 											// Вытягиваем следующую порцию данных из источника и отправляем её
-											::io::pull(client, client->transfer.queue, client->transfer.fd, eth, log);
+											::io::pull(client, client->transfer.queue, client->transfer.pulling, client->transfer.fd, eth, log);
 									}
 									// Если функция обратного вызова для вывода записанных данных установлена
 									if(client->callbacks.write != nullptr){
@@ -16779,7 +16801,7 @@ namespace io {
 													 */
 													if(client->callbacks.source != nullptr)
 														// Вытягиваем следующую порцию данных из источника и отправляем её
-														::io::pull(client, client->transfer.queue, client->transfer.fd, eth, log);
+														::io::pull(client, client->transfer.queue, client->transfer.pulling, client->transfer.fd, eth, log);
 												}
 											} break;
 											// Если нам нужно попытаться отправить позже
@@ -16903,7 +16925,7 @@ namespace io {
 											 */
 											if(client->callbacks.source != nullptr)
 												// Вытягиваем следующую порцию данных из источника и отправляем её
-												::io::pull(client, client->transfer.queue, client->transfer.fd, eth, log);
+												::io::pull(client, client->transfer.queue, client->transfer.pulling, client->transfer.fd, eth, log);
 										}
 										// Если функция обратного вызова для вывода записанных данных установлена
 										if(client->callbacks.write != nullptr){
@@ -17015,7 +17037,7 @@ namespace io {
 										 */
 										if(client->callbacks.source != nullptr)
 											// Вытягиваем следующую порцию данных из источника и отправляем её
-											::io::pull(client, client->transfer.queue, client->transfer.fd, eth, log);
+											::io::pull(client, client->transfer.queue, client->transfer.pulling, client->transfer.fd, eth, log);
 									}
 									// Если функция обратного вызова для вывода записанных данных установлена
 									if(client->callbacks.write != nullptr){
@@ -17212,7 +17234,7 @@ namespace io {
 													 */
 													if(client->callbacks.source != nullptr)
 														// Вытягиваем следующую порцию данных из источника и отправляем её
-														::io::pull(client, client->transfer.queue, client->transfer.fd, eth, log);
+														::io::pull(client, client->transfer.queue, client->transfer.pulling, client->transfer.fd, eth, log);
 												}
 											} break;
 											// Если нам нужно попытаться отправить позже
@@ -17336,7 +17358,7 @@ namespace io {
 											 */
 											if(client->callbacks.source != nullptr)
 												// Вытягиваем следующую порцию данных из источника и отправляем её
-												::io::pull(client, client->transfer.queue, client->transfer.fd, eth, log);
+												::io::pull(client, client->transfer.queue, client->transfer.pulling, client->transfer.fd, eth, log);
 										}
 										// Если функция обратного вызова для вывода записанных данных установлена
 										if(client->callbacks.write != nullptr){
@@ -17448,7 +17470,7 @@ namespace io {
 										 */
 										if(client->callbacks.source != nullptr)
 											// Вытягиваем следующую порцию данных из источника и отправляем её
-											::io::pull(client, client->transfer.queue, client->transfer.fd, eth, log);
+											::io::pull(client, client->transfer.queue, client->transfer.pulling, client->transfer.fd, eth, log);
 									}
 									// Если функция обратного вызова для вывода записанных данных установлена
 									if(client->callbacks.write != nullptr){
@@ -17671,7 +17693,7 @@ namespace io {
 										 */
 										if(origin->callbacks.source != nullptr)
 											// Вытягиваем следующую порцию данных из источника и отправляем её
-											::io::pull(origin, origin->transfer.queue, origin->transfer.fd, eth, log);
+											::io::pull(origin, origin->transfer.queue, origin->transfer.pulling, origin->transfer.fd, eth, log);
 									}
 									// Если функция обратного вызова для вывода записанных данных установлена
 									if(origin->callbacks.write != nullptr){
@@ -17766,7 +17788,7 @@ namespace io {
 												 */
 												if(origin->callbacks.source != nullptr)
 													// Вытягиваем следующую порцию данных из источника и отправляем её
-													::io::pull(origin, origin->transfer.queue, origin->transfer.fd, eth, log);
+													::io::pull(origin, origin->transfer.queue, origin->transfer.pulling, origin->transfer.fd, eth, log);
 											}
 										} break;
 										// Если нам нужно попытаться отправить позже
@@ -26829,15 +26851,22 @@ namespace io {
 	 * @brief Функция вытягивания данных из источника и отправки их в событие
 	 *
 	 * @param node  узел, для которого вытягиваются данные
-	 * @param queue очередь отправки узла
-	 * @param fd    дескриптор сокета узла
+	 * @param queue   очередь отправки узла
+	 * @param pulling признак ведения вытягивания данных из источника
+	 * @param fd      дескриптор сокета узла
 	 * @param eth   объект работы с сетевым интерфейсом
 	 * @param log   объект работы с логами
 	 *
 	 */
-	static void pull(T * node, net_queue_t & queue, const net::socket_t fd, const eth_t * eth, const log_t * log) noexcept {
-		// Если узел не задан либо источник данных на нём не установлен
-		if((node == nullptr) || (node->callbacks.source == nullptr))
+	static void pull(T * node, net_queue_t & queue, bool & pulling, const net::socket_t fd, const eth_t * eth, const log_t * log) noexcept {
+		/**
+		 * Если узел не задан, источник на нём не установлен либо вытягивание не заведено
+		 *
+		 * @note Источник живёт на узле постоянно, поэтому одного его наличия мало: спрашивать
+		 *       позволено лишь пока стоит признак вытягивания. Иначе исчерпанный источник
+		 *       спрашивался бы снова на каждой готовности сокета к записи
+		 */
+		if((node == nullptr) || (node->callbacks.source == nullptr) || !pulling)
 			// Выходим из функции, вытягивать нечем
 			return;
 		// Получаем количество свободного места в очереди
@@ -26850,55 +26879,42 @@ namespace io {
 		 * Выполняем перехват ошибок
 		 */
 		try {
-			// Получаем размер буфера сокета на запись
-			int32_t size = eth->socket.getBufferSize(fd, net::socket_event_t::WRITE);
 			/**
-			 * Вытягиваем данные пока источник отдаёт их, а очередь остаётся пустой
+			 * Получаем вместимость буфера отправки сокета
 			 *
-			 * @note Пока сокет забирает всё без остатка, очередь пуста, и спрашивать источник
-			 *       можно дальше. Как только остаток лёг в очередь, вытягивание прекращается:
-			 *       продолжение пойдёт событиями готовности сокета к записи
+			 * @note Величина эта служит ТОЛЬКО потолком одной дейтаграммы: сообщение крупнее
+			 *       буфера не уйдёт никогда. Для потока она не нужна вовсе
+			 */
+			const int32_t bufferSize = ((queue.type() == net_queue_t::type_t::UDP) ? eth->socket.getBufferSize(fd, net::socket_event_t::WRITE) : 0);
+			/**
+			 * Вытягиваем данные пока источник отдаёт их и в очереди есть место
 			 */
 			while(node->callbacks.source != nullptr){
 				// Если в очереди нет свободного места
 				if(available == 0)
 					// Выходим из цикла вытягивания
 					break;
-				// Ёмкость запроса к источнику данных
-				size_t capacity = 0;
 				/**
-				 * Определяем тип очереди события, чтобы корректно определить ёмкость запроса к источнику данных
+				 * Определяем ёмкость запроса к источнику данных
 				 *
-				 * @details Дейтаграмма неделима: отправить сообщение крупнее буфера сокета
-				 *          невозможно, поэтому складывать буфер со свободным местом очереди
-				 *          НЕЛЬЗЯ - источник получил бы ёмкость, которой у него нет, и
-				 *          сообщение отвергалось бы целиком
-				 *
-				 * @note Пока очередь пуста, сообщение уходит прямо в сокет, и ёмкостью служит
-				 *       буфер сокета. Как только очередь перестала быть пустой, сообщения
-				 *       копятся в ней, и ёмкость ограничивается ещё и свободным местом
+				 * @warning Ёмкостью служит СВОБОДНОЕ МЕСТО ОЧЕРЕДИ и только оно. Прибавлять к
+				 *          нему буфер сокета НЕЛЬЗЯ: `SO_SNDBUF` говорит о вместимости, а не о
+				 *          свободном месте, и забитый сокет не примет ни байта. Свободное место
+				 *          сокета тоже не годится - `SO_NWRITE` у доменных сокетов macOS всегда
+				 *          отвечает нулём даже при забитом буфере (проверено), а Solaris, illumos
+				 *          и MS Windows не сообщают его вовсе. Обещание сверх очереди ничем не
+				 *          обеспечено, а отданное сверх него пропадает молча: копии у источника нет
 				 */
-				switch(static_cast <uint8_t> (queue.type())){
-					// Если очередь является очередью UDP
-					case static_cast <uint8_t> (net_queue_t::type_t::UDP): {
-						// Получаем размер буфера сокета на запись
-						size = (size > 0 ? size : 0);
-						// Определяем ёмкость запроса по буферу сокета, а при непустой очереди - и по её свободному месту
-						capacity = (queue.empty() ? size : ::min(available, static_cast <size_t> (size)));
-						// Ограничиваем ёмкость размером промежуточного буфера
-						capacity = ::min(capacity, static_cast <size_t> (AWH_EVENT_MAX_BUFFER_SIZE));
-					} break;
-					// Если очередь является очередью TCP
-					case static_cast <uint8_t> (net_queue_t::type_t::TCP):
-						/**
-						 * Если очередь хранит поток данных
-						 *
-						 * @note Ёмкость складывается из буфера сокета и свободного места в очереди:
-						 *       столько данных узел способен принять за один заход, не отказывая
-						 */
-						capacity = ::min(static_cast <size_t> (size > 0 ? size : 0) + available, static_cast <size_t> (AWH_EVENT_MAX_BUFFER_SIZE));
-					break;
-				}
+				size_t capacity = ::min(available, static_cast <size_t> (AWH_EVENT_MAX_BUFFER_SIZE));
+				/**
+				 * Если очередь хранит границы сообщений (дейтаграммы)
+				 *
+				 * @note Дейтаграмма неделима, поэтому ёмкость ограничивается ещё и вместимостью
+				 *       буфера сокета: сообщение крупнее него отвергалось бы целиком
+				 */
+				if((queue.type() == net_queue_t::type_t::UDP) && (bufferSize > 0))
+					// Ограничиваем ёмкость запроса вместимостью буфера отправки сокета
+					capacity = ::min(capacity, static_cast <size_t> (bufferSize));
 				// Если принять данные узел уже не в состоянии
 				if(capacity == 0)
 					// Выходим из цикла вытягивания
@@ -26908,23 +26924,24 @@ namespace io {
 				// Запрашиваем данные у источника прямо в промежуточный буфер
 				const bool proceed = node->callbacks.source(node->id, ::__awh_source__, capacity);
 				// Если источник записал больше отданной ему ёмкости
-				if(capacity > offered){
+				if(!(pulling = (capacity <= offered))){
 					// Записываем ошибку в лог
 					log->print("Data source has written more than the given capacity of the region", log_t::flag_t::WARNING);
 					// Выходим из цикла вытягивания
 					break;
 				}
 				// Если источник отдал данные
-				if(capacity > 0){
+				if(capacity > 0)
 					// Отправляем вытянутое обычным путём отправки данных
-					const size_t accepted = ::io::send(node, ::__awh_source__, capacity, eth, log);
-					// Если размер буфера сокета на запись существует
-					if(size > 0)
-						// Уменьшаем размер буфера сокета на запись
-						size -= static_cast <int32_t> (::min(accepted, static_cast <size_t> (size)));
-				}
-				// Если источнику больше нечего отдавать
-				if(!proceed || (capacity == 0))
+					(void) ::io::send(node, ::__awh_source__, capacity, eth, log);
+				/**
+				 * Если источнику больше нечего отдавать
+				 *
+				 * @note Ложь означает «всё отдано», ноль записанных байт - «данных пока нет».
+				 *       Обоим случаям отвечает одно: спрашивать прекращаем, а заведёт снова
+				 *       приложение вызовом send(id, nullptr, 0)
+				 */
+				if(!(pulling = (proceed && (capacity > 0))))
 					// Выходим из цикла вытягивания
 					break;
 				// Получаем количество свободного места в очереди
@@ -60296,8 +60313,10 @@ size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const si
 						::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (i->second.get());
 						// Если источник данных установлен
 						if(ipc->callbacks.source != nullptr){
+							// Поднимаем признак ведения вытягивания данных из источника
+							ipc->transfer.pulling = true;
 							// Заводим вытягивание данных из источника
-							::io::pull(ipc, ipc->transfer.queue, ipc->transfer.fd, &this->_eth, this->_log);
+							::io::pull(ipc, ipc->transfer.queue, ipc->transfer.pulling, ipc->transfer.fd, &this->_eth, this->_log);
 							// Выводим результат: переданных данных не было
 							return result;
 						}
@@ -60308,8 +60327,10 @@ size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const si
 						::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
 						// Если источник данных установлен
 						if(peer->callbacks.source != nullptr){
+							// Поднимаем признак ведения вытягивания данных из источника
+							peer->transfer.pulling = true;
 							// Заводим вытягивание данных из источника
-							::io::pull(peer, peer->transfer.queue, peer->transfer.fd, &this->_eth, this->_log);
+							::io::pull(peer, peer->transfer.queue, peer->transfer.pulling, peer->transfer.fd, &this->_eth, this->_log);
 							// Выводим результат: переданных данных не было
 							return result;
 						}
@@ -60320,8 +60341,10 @@ size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const si
 						::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
 						// Если источник данных установлен
 						if(origin->callbacks.source != nullptr){
+							// Поднимаем признак ведения вытягивания данных из источника
+							origin->transfer.pulling = true;
 							// Заводим вытягивание данных из источника
-							::io::pull(origin, origin->transfer.queue, origin->transfer.fd, &this->_eth, this->_log);
+							::io::pull(origin, origin->transfer.queue, origin->transfer.pulling, origin->transfer.fd, &this->_eth, this->_log);
 							// Выводим результат: переданных данных не было
 							return result;
 						}
@@ -60332,8 +60355,10 @@ size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const si
 						::io::tun_t * tunnel = awh_cast <::io::tun_t *> (i->second.get());
 						// Если источник данных установлен
 						if(tunnel->callbacks.source != nullptr){
+							// Поднимаем признак ведения вытягивания данных из источника
+							tunnel->pulling = true;
 							// Заводим вытягивание данных из источника
-							::io::pull(tunnel, tunnel->queue, tunnel->fd, &this->_eth, this->_log);
+							::io::pull(tunnel, tunnel->queue, tunnel->pulling, tunnel->fd, &this->_eth, this->_log);
 							// Выводим результат: переданных данных не было
 							return result;
 						}
@@ -60344,8 +60369,10 @@ size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const si
 						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 						// Если источник данных установлен
 						if(client->callbacks.source != nullptr){
+							// Поднимаем признак ведения вытягивания данных из источника
+							client->transfer.pulling = true;
 							// Заводим вытягивание данных из источника
-							::io::pull(client, client->transfer.queue, client->transfer.fd, &this->_eth, this->_log);
+							::io::pull(client, client->transfer.queue, client->transfer.pulling, client->transfer.fd, &this->_eth, this->_log);
 							// Выводим результат: переданных данных не было
 							return result;
 						}

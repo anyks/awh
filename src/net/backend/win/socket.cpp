@@ -408,6 +408,22 @@ bool awh::eth::Socket::setTimeout(const net::socket_t sock, const net::socket_ev
 }
 
 /**
+ * @brief Метод получения свободного места в буфере сокета
+ *
+ * @note MS Windows занятое место буферов НЕ сообщает: ни параметров вроде SO_NWRITE,
+ *       ни запросов вроде SIOCOUTQ там нет. Потребитель обязан обходиться свободным
+ *       местом собственной очереди
+ *
+ * @param sock  сетевой сокет
+ * @param event событие сокета (чтение либо запись)
+ * @return      признак того, что свободное место неизвестно
+ *
+ */
+int32_t awh::eth::Socket::getBufferAvailable([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const net::socket_event_t event) const noexcept {
+	// Выводим признак того, что свободное место неизвестно
+	return -1;
+}
+/**
  * @brief Метод получения размера накопителя сокета
  *
  * @param sock  сокет для получения размера накопителя
