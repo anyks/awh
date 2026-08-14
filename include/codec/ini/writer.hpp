@@ -120,6 +120,17 @@ namespace awh {
 			 * то, ни другое настройками не разрешено, запись отвечает отказом, а не
 			 * выдаёт текст, читаемый обратно неверно
 			 *
+			 *  @code{.cpp}
+			 *  writer_t writer;
+			 *
+			 *  writer.comment("собрано автоматически");
+			 *  writer.section("server");
+			 *  writer.property("host", "127.0.0.1");
+			 *  writer.property("port", "8080");
+			 *
+			 *  const string & text = writer.text();
+			 *  @endcode
+			 *
 			 * \~english
 			 * @brief Class of the writing of a settings text
 			 * @details Assembles a settings text out of the section declarations, the properties and the
@@ -133,19 +144,16 @@ namespace awh {
 			 * the one nor the other is permitted by the settings, the writing answers with a refusal rather than
 			 * issuing a text read back incorrectly
 			 *
-			 * \~
+			 *  @code{.cpp}
+			 *  writer_t writer;
 			 *
-			 * @code{.cpp}
-			 * writer_t writer;
+			 *  writer.comment("built automatically");
+			 *  writer.section("server");
+			 *  writer.property("host", "127.0.0.1");
+			 *  writer.property("port", "8080");
 			 *
-			 * writer.comment("собрано автоматически");
-			 * writer.section("server");
-			 * writer.property("host", "127.0.0.1");
-			 * writer.property("port", "8080");
-			 *
-			 * const string & text = writer.text();
-			 * @endcode
-			 *
+			 *  const string & text = writer.text();
+			 *  @endcode
 			 *
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Writer {

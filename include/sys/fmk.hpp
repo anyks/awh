@@ -111,6 +111,12 @@ namespace awh {
 	 *          меняют состояние объекта и одновременного обращения не допускают:
 	 *          вызывать их следует до начала работы модулей
 	 *
+	 * @code{.cpp}
+	 * awh::fmk_t fmk;
+	 * awh::log_t log(&fmk);
+	 * fmk.setLogger(&log);
+	 * @endcode
+	 *
 	 * \~english
 	 * @brief Class of the framework
 	 * @details The core of the library: a set of actions over strings, numbers and binary
@@ -129,16 +135,11 @@ namespace awh {
 	 *          change the state of the object and do not allow a simultaneous address:
 	 *          they should be called before the beginning of the work of the modules
 	 *
-	 * \~
-	 *
-	 *          @code{.cpp}
-	 *          awh::fmk_t fmk;
-	 *          awh::log_t log(&fmk);
-	 *          fmk.setLogger(&log);
-	 *          @endcode
-	 *
-	 *
-	 *
+	 * @code{.cpp}
+	 * awh::fmk_t fmk;
+	 * awh::log_t log(&fmk);
+	 * fmk.setLogger(&log);
+	 * @endcode
 	 *
 	 */
 	typedef class __AWH_SHARED_EXPORT__ Framework {
@@ -339,6 +340,13 @@ namespace awh {
 			 * @param map контейнер в котором нужно произвести поиск
 			 * @return    итератор найденного элемента в контейнере
 			 *
+			 * @code{.cpp}
+			 * unordered_map <uint16_t, string> codes = {{200, "OK"}, {404, "Not Found"}};
+			 * auto it = fmk.findInMap(string{"not found"}, codes);
+			 * if(it != codes.end())
+			 *     // Обнаружен код 404: регистр значения роли не играет
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of searching for the specified value in a map container
 			 * @details The search is performed by the value of a record, and not by its key. The values
@@ -354,18 +362,12 @@ namespace awh {
 			 * @param map container the search needs to be performed in
 			 * @return    iterator of the found element in the container
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          unordered_map <uint16_t, string> codes = {{200, "OK"}, {404, "Not Found"}};
-			 *          auto it = fmk.findInMap(string{"not found"}, codes);
-			 *          if(it != codes.end())
-			 *              // Обнаружен код 404: регистр значения роли не играет
-			 *          @endcode
-			 *
-			 *
-			 *
-			 *
+			 * @code{.cpp}
+			 * unordered_map <uint16_t, string> codes = {{200, "OK"}, {404, "Not Found"}};
+			 * auto it = fmk.findInMap(string{"not found"}, codes);
+			 * if(it != codes.end())
+			 *     // The code 404 is found: the case does not play a role
+			 * @endcode
 			 *
 			 */
 			typename A::const_iterator findInMap(const B & val, const A & map) const noexcept {
@@ -511,6 +513,14 @@ namespace awh {
 			 * @param flag флаг проверки
 			 * @return     результат проверки
 			 *
+			 * @code{.cpp}
+			 * fmk.is("12345", awh::fmk_t::check_t::NUMBER);          // истина
+			 * fmk.is("12.45", awh::fmk_t::check_t::DECIMAL);         // истина
+			 * fmk.is("v1.2", awh::fmk_t::check_t::PSEUDO_NUMBER);    // истина
+			 * fmk.is("Привет", awh::fmk_t::check_t::UTF8);           // истина
+			 * fmk.is("https://anyks.com", awh::fmk_t::check_t::URL); // истина
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of checking a text for the correspondence to a flag
 			 * @details The check is performed over the whole text entirely: the result is yielded as
@@ -522,17 +532,13 @@ namespace awh {
 			 * @param flag flag of the check
 			 * @return     result of the check
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          fmk.is("12345", awh::fmk_t::check_t::NUMBER);          // истина
-			 *          fmk.is("12.45", awh::fmk_t::check_t::DECIMAL);         // истина
-			 *          fmk.is("v1.2", awh::fmk_t::check_t::PSEUDO_NUMBER);    // истина
-			 *          fmk.is("Привет", awh::fmk_t::check_t::UTF8);           // истина
-			 *          fmk.is("https://anyks.com", awh::fmk_t::check_t::URL); // истина
-			 *          @endcode
-			 *
-			 *
+			 * @code{.cpp}
+			 * fmk.is("12345", awh::fmk_t::check_t::NUMBER);          // true
+			 * fmk.is("12.45", awh::fmk_t::check_t::DECIMAL);         // true
+			 * fmk.is("v1.2", awh::fmk_t::check_t::PSEUDO_NUMBER);    // true
+			 * fmk.is("Привет", awh::fmk_t::check_t::UTF8);           // true
+			 * fmk.is("https://anyks.com", awh::fmk_t::check_t::URL); // true
+			 * @endcode
 			 *
 			 */
 			bool is(string_view text, const check_t flag) const noexcept;
@@ -570,6 +576,11 @@ namespace awh {
 			 * @param second второе слово
 			 * @return       результат сравнения
 			 *
+			 * @code{.cpp}
+			 * fmk.compare("Content-Type", "content-type");  // истина
+			 * fmk.compare("Привет", "ПРИВЕТ");              // ложь
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of comparing two strings without the case taken into account
 			 * @details The case is brought by the ASCII table, and therefore the matching does not depend
@@ -583,15 +594,10 @@ namespace awh {
 			 * @param second second word
 			 * @return       result of the comparison
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          fmk.compare("Content-Type", "content-type");  // истина
-			 *          fmk.compare("Привет", "ПРИВЕТ");              // ложь
-			 *          @endcode
-			 *
-			 *
-			 *
+			 * @code{.cpp}
+			 * fmk.compare("Content-Type", "content-type");  // true
+			 * fmk.compare("Привет", "ПРИВЕТ");              // false
+			 * @endcode
 			 *
 			 */
 			bool compare(string_view first, string_view second) const noexcept;
@@ -702,6 +708,11 @@ namespace awh {
 			 * @param type тип формируемого штампа времени
 			 * @return     сгенерированный штамп времени
 			 *
+			 * @code{.cpp}
+			 * fmk.timestamp <uint64_t> (awh::fmk_t::chrono_t::MILLISECONDS);
+			 * fmk.timestamp <string> (awh::fmk_t::chrono_t::SECONDS);
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of getting a timestamp in the specified units of the measurement
 			 * @details The timestamp is taken from the system clock. A numeric type receives the time
@@ -720,15 +731,10 @@ namespace awh {
 			 * @param type type of the built timestamp
 			 * @return     the generated timestamp
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          fmk.timestamp <uint64_t> (awh::fmk_t::chrono_t::MILLISECONDS);
-			 *          fmk.timestamp <string> (awh::fmk_t::chrono_t::SECONDS);
-			 *          @endcode
-			 *
-			 *
-			 *
+			 * @code{.cpp}
+			 * fmk.timestamp <uint64_t> (awh::fmk_t::chrono_t::MILLISECONDS);
+			 * fmk.timestamp <string> (awh::fmk_t::chrono_t::SECONDS);
+			 * @endcode
 			 *
 			 */
 			T timestamp(const chrono_t type) const noexcept;
@@ -748,6 +754,17 @@ namespace awh {
 			 * @param replace порядок обращения с символами, кодировке не представимыми
 			 * @return        сконвертированный текст в требуемой кодировке
 			 *
+			 * @code{.cpp}
+			 * // Приведение тела ответа к UTF-8 по заголовку Content-Type
+			 * const auto codepage = fmk.codepage("windows-1251");
+			 * const string body = fmk.transcode(payload, codepage, awh::fmk_t::codepage_t::UTF8);
+			 *
+			 * // Замена символов, кодировке не представимых, знаком вопроса
+			 * fmk.transcode("Привет", awh::fmk_t::codepage_t::UTF8,
+			 *               awh::fmk_t::codepage_t::ISO8859_1,
+			 *               awh::fmk_t::replace_t::REPLACE);           // «??????»
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of converting a text from one encoding into another
 			 * @details A refusal of the conversion is yielded as an empty text and is written
@@ -760,20 +777,16 @@ namespace awh {
 			 * @param replace order of dealing with the characters not representable in the encoding
 			 * @return        the converted text in the required encoding
 			 *
-			 * \~
+			 * @code{.cpp}
+			 * // The conversion of the body of an answer to UTF-8 by the Content-Type header
+			 * const auto codepage = fmk.codepage("windows-1251");
+			 * const string body = fmk.transcode(payload, codepage, awh::fmk_t::codepage_t::UTF8);
 			 *
-			 *          @code{.cpp}
-			 *          // Приведение тела ответа к UTF-8 по заголовку Content-Type
-			 *          const auto codepage = fmk.codepage("windows-1251");
-			 *          const string body = fmk.transcode(payload, codepage, awh::fmk_t::codepage_t::UTF8);
-			 *
-			 *          // Замена символов, кодировке не представимых, знаком вопроса
-			 *          fmk.transcode("Привет", awh::fmk_t::codepage_t::UTF8,
-			 *                        awh::fmk_t::codepage_t::ISO8859_1,
-			 *                        awh::fmk_t::replace_t::REPLACE);           // «??????»
-			 *          @endcode
-			 *
-			 *
+			 * // The replacement of the characters not representable in the encoding by a question mark
+			 * fmk.transcode("Привет", awh::fmk_t::codepage_t::UTF8,
+			 *               awh::fmk_t::codepage_t::ISO8859_1,
+			 *               awh::fmk_t::replace_t::REPLACE);           // «??????»
+			 * @endcode
 			 *
 			 */
 			string transcode(string_view text, const codepage_t from, const codepage_t to, const replace_t replace = replace_t::STRICT) const noexcept;
@@ -792,6 +805,12 @@ namespace awh {
 			 * @param name имя кодировки, заданное заголовком протокола
 			 * @return     обозначение кодировки либо признак нераспознанного имени
 			 *
+			 * @code{.cpp}
+			 * fmk.codepage("windows-1251");  // codepage_t::CP1251
+			 * fmk.codepage(" CP1251 ");      // codepage_t::CP1251
+			 * fmk.codepage("koi8-r");        // codepage_t::KOI8_R
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of parsing the name of an encoding
 			 * @details The name is brought to the normal form: the letters are written in the lower
@@ -803,15 +822,11 @@ namespace awh {
 			 * @param name name of the encoding set by a header of a protocol
 			 * @return     designation of the encoding or a sign of an unrecognized name
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          fmk.codepage("windows-1251");  // codepage_t::CP1251
-			 *          fmk.codepage(" CP1251 ");      // codepage_t::CP1251
-			 *          fmk.codepage("koi8-r");        // codepage_t::KOI8_R
-			 *          @endcode
-			 *
-			 *
+			 * @code{.cpp}
+			 * fmk.codepage("windows-1251");  // codepage_t::CP1251
+			 * fmk.codepage(" CP1251 ");      // codepage_t::CP1251
+			 * fmk.codepage("koi8-r");        // codepage_t::KOI8_R
+			 * @endcode
 			 *
 			 */
 			codepage_t codepage(string_view name) const noexcept;
@@ -845,6 +860,11 @@ namespace awh {
 			 * @param fallback кодировка, предполагаемая для текста, записью UTF-8 не являющегося
 			 * @return         обозначение определённой кодировки текста
 			 *
+			 * @code{.cpp}
+			 * fmk.detect("Привет");                   // codepage_t::UTF8
+			 * fmk.detect("\xCF\xF0\xE8\xE2\xE5\xF2");   // codepage_t::CP1251
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of determining the encoding of a text
 			 * @details The determination is performed by the check of the correctness of the record of the text
@@ -857,14 +877,10 @@ namespace awh {
 			 * @param fallback encoding assumed for a text that is not a UTF-8 record
 			 * @return         designation of the determined encoding of the text
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          fmk.detect("Привет");                   // codepage_t::UTF8
-			 *          fmk.detect("\xCF\xF0\xE8\xE2\xE5\xF2");   // codepage_t::CP1251
-			 *          @endcode
-			 *
-			 *
+			 * @code{.cpp}
+			 * fmk.detect("Привет");                   // codepage_t::UTF8
+			 * fmk.detect("\xCF\xF0\xE8\xE2\xE5\xF2");   // codepage_t::CP1251
+			 * @endcode
 			 *
 			 */
 			codepage_t detect(string_view text, const codepage_t fallback = codepage_t::CP1251) const noexcept;
@@ -916,6 +932,12 @@ namespace awh {
 			 * @param flag флаг трансформации
 			 * @return     трансформированная строка
 			 *
+			 * @code{.cpp}
+			 * string text = "  hello-world  ";
+			 * fmk.transform(text, awh::fmk_t::transform_t::TRIM);        // «hello-world»
+			 * fmk.transform(text, awh::fmk_t::transform_t::SMART_CASE);  // «Hello-World»
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of the transformation of a string
 			 * @details The string is changed in place and is yielded as a reference to itself.
@@ -925,15 +947,11 @@ namespace awh {
 			 * @param flag flag of the transformation
 			 * @return     the transformed string
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          string text = "  hello-world  ";
-			 *          fmk.transform(text, awh::fmk_t::transform_t::TRIM);        // «hello-world»
-			 *          fmk.transform(text, awh::fmk_t::transform_t::SMART_CASE);  // «Hello-World»
-			 *          @endcode
-			 *
-			 *
+			 * @code{.cpp}
+			 * string text = "  hello-world  ";
+			 * fmk.transform(text, awh::fmk_t::transform_t::TRIM);        // «hello-world»
+			 * fmk.transform(text, awh::fmk_t::transform_t::SMART_CASE);  // «Hello-World»
+			 * @endcode
 			 *
 			 */
 			string & transform(string & text, const transform_t flag) const noexcept;
@@ -1038,6 +1056,10 @@ namespace awh {
 			 * @param delim разделитель
 			 * @return      строка полученная после объединения
 			 *
+			 * @code{.cpp}
+			 * fmk.join({"gzip", "deflate", "br"}, ", ");  // «gzip, deflate, br»
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of joining a list of strings into one string
 			 * @details The separator is placed between the records of the list, and before the first
@@ -1048,14 +1070,9 @@ namespace awh {
 			 * @param delim separator
 			 * @return      string obtained after the joining
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          fmk.join({"gzip", "deflate", "br"}, ", ");  // «gzip, deflate, br»
-			 *          @endcode
-			 *
-			 *
-			 *
+			 * @code{.cpp}
+			 * fmk.join({"gzip", "deflate", "br"}, ", ");  // «gzip, deflate, br»
+			 * @endcode
 			 *
 			 */
 			string join(const vector <string> & items, string_view delim) const noexcept;
@@ -1091,6 +1108,11 @@ namespace awh {
 			 * @param delim     разделитель
 			 * @param container результирующий вектор
 			 *
+			 * @code{.cpp}
+			 * vector <string> items;
+			 * fmk.split("gzip, deflate, br", ", ", items);  // {"gzip", "deflate", "br"}
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of splitting strings into tokens
 			 * @details The separator is the whole passed string entirely, and not any of
@@ -1102,15 +1124,10 @@ namespace awh {
 			 * @param delim     separator
 			 * @param container resulting vector
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          vector <string> items;
-			 *          fmk.split("gzip, deflate, br", ", ", items);  // {"gzip", "deflate", "br"}
-			 *          @endcode
-			 *
-			 *
-			 *
+			 * @code{.cpp}
+			 * vector <string> items;
+			 * fmk.split("gzip, deflate, br", ", ", items);  // {"gzip", "deflate", "br"}
+			 * @endcode
 			 *
 			 */
 			vector <string> & split(string_view text, string_view delim, vector <string> & container) const noexcept;
@@ -1149,6 +1166,11 @@ namespace awh {
 			 * @param str строка для конвертирования
 			 * @return    строка в utf-8
 			 *
+			 * @code{.cpp}
+			 * const wstring wide = fmk.convert(string{"Привет"});
+			 * const string text = fmk.convert(wide);
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of converting a string into a utf-8 string
 			 * @details A narrow string is parsed as a record in the UTF-8 encoding and is yielded
@@ -1163,15 +1185,10 @@ namespace awh {
 			 * @param str string to convert
 			 * @return    string in utf-8
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          const wstring wide = fmk.convert(string{"Привет"});
-			 *          const string text = fmk.convert(wide);
-			 *          @endcode
-			 *
-			 *
-			 *
+			 * @code{.cpp}
+			 * const wstring wide = fmk.convert(string{"Привет"});
+			 * const string text = fmk.convert(wide);
+			 * @endcode
 			 *
 			 */
 			wstring convert(string_view str) const noexcept;
@@ -1275,6 +1292,12 @@ namespace awh {
 			 * @param num число для проверки
 			 * @return    фактический размер занимаемым числом байт
 			 *
+			 * @code{.cpp}
+			 * fmk.size <uint64_t> (255);    // 1
+			 * fmk.size <uint64_t> (256);    // 2
+			 * fmk.size <uint64_t> (0);      // 0
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of determining the exact size of how many bytes a number occupies
 			 * @details What is yielded is the number of the bytes a number is written by without a loss of
@@ -1283,14 +1306,11 @@ namespace awh {
 			 * @param num number to check
 			 * @return    actual size of the bytes occupied by the number
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          fmk.size <uint64_t> (255);    // 1
-			 *          fmk.size <uint64_t> (256);    // 2
-			 *          fmk.size <uint64_t> (0);      // 0
-			 *          @endcode
-			 *
+			 * @code{.cpp}
+			 * fmk.size <uint64_t> (255);    // 1
+			 * fmk.size <uint64_t> (256);    // 2
+			 * fmk.size <uint64_t> (0);      // 0
+			 * @endcode
 			 *
 			 */
 			size_t size(const T num) const noexcept;
@@ -1425,6 +1445,12 @@ namespace awh {
 			 * @param radix система счисления
 			 * @return      полученная строка в указанной системе счисления
 			 *
+			 * @code{.cpp}
+			 * fmk.itoa <uint32_t> (255, 16);  // «FF»
+			 * fmk.itoa <uint8_t> (255, 2);    // «11111111»
+			 * fmk.itoa <uint32_t> (255, 2);   // «00000000000000000000000011111111»
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of the conversion of the numbers into the specified numeral system
 			 * @details The digits beyond the ninth are written by the capital letters of the Latin alphabet.
@@ -1440,17 +1466,11 @@ namespace awh {
 			 * @param radix numeral system
 			 * @return      the obtained string in the specified numeral system
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          fmk.itoa <uint32_t> (255, 16);  // «FF»
-			 *          fmk.itoa <uint8_t> (255, 2);    // «11111111»
-			 *          fmk.itoa <uint32_t> (255, 2);   // «00000000000000000000000011111111»
-			 *          @endcode
-			 *
-			 *
-			 *
-			 *
+			 * @code{.cpp}
+			 * fmk.itoa <uint32_t> (255, 16);  // «FF»
+			 * fmk.itoa <uint8_t> (255, 2);    // «11111111»
+			 * fmk.itoa <uint32_t> (255, 2);   // «00000000000000000000000011111111»
+			 * @endcode
 			 *
 			 */
 			string itoa(const T value, const uint8_t radix) const noexcept;
@@ -1503,6 +1523,17 @@ namespace awh {
 			 * @param value строковое представление числа
 			 * @return      числовое значение в десятичной системе счисления
 			 *
+			 * @code{.cpp}
+			 * fmk.atoi <uint32_t> ("12345");     // 12345
+			 * fmk.atoi <double> ("3.14159");     // 3.14159
+			 * fmk.atoi <int32_t> ("-42");        // -42
+			 * fmk.atoi <uint32_t> ("ff", 16);    // 255
+			 * @endcode
+			 *
+			 * @code{.cpp}
+			 * fmk.atoi <uint32_t> (string_view{text.data() + begin, length});
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of the conversion of the string numbers into the decimal numeral system
 			 * @details The parsing is performed by the ASCII table and does not depend on the set locale:
@@ -1516,22 +1547,16 @@ namespace awh {
 			 * @param value string representation of a number
 			 * @return      numeric value in the decimal numeral system
 			 *
-			 * \~
+			 * @code{.cpp}
+			 * fmk.atoi <uint32_t> ("12345");     // 12345
+			 * fmk.atoi <double> ("3.14159");     // 3.14159
+			 * fmk.atoi <int32_t> ("-42");        // -42
+			 * fmk.atoi <uint32_t> ("ff", 16);    // 255
+			 * @endcode
 			 *
-			 *          @code{.cpp}
-			 *          fmk.atoi <uint32_t> ("12345");     // 12345
-			 *          fmk.atoi <double> ("3.14159");     // 3.14159
-			 *          fmk.atoi <int32_t> ("-42");        // -42
-			 *          fmk.atoi <uint32_t> ("ff", 16);    // 255
-			 *          @endcode
-			 *
-			 *
-			 *
-			 *       @code{.cpp}
-			 *       fmk.atoi <uint32_t> (string_view{text.data() + begin, length});
-			 *       @endcode
-			 *
-			 *
+			 * @code{.cpp}
+			 * fmk.atoi <uint32_t> (string_view{text.data() + begin, length});
+			 * @endcode
 			 *
 			 */
 			T atoi(string_view value) const noexcept;
@@ -1681,6 +1706,12 @@ namespace awh {
 			 * @return       число в безэкспоненциальной форме
 			 * @see noexp(const double, const bool)
 			 *
+			 * @code{.cpp}
+			 * fmk.noexp(2986.808299, static_cast <uint8_t> (3));  // «2986.808»
+			 * fmk.noexp(2986.808299, static_cast <uint8_t> (4));  // «2986.8083»
+			 * fmk.noexp(2986., static_cast <uint8_t> (4));        // «2986»
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of converting a number into the non-exponential form
 			 * @details The number of the digits after the decimal point is set by the size of the step, the fractional
@@ -1695,17 +1726,11 @@ namespace awh {
 			 * @return       number in the non-exponential form
 			 * @see noexp(const double, const bool)
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          fmk.noexp(2986.808299, static_cast <uint8_t> (3));  // «2986.808»
-			 *          fmk.noexp(2986.808299, static_cast <uint8_t> (4));  // «2986.8083»
-			 *          fmk.noexp(2986., static_cast <uint8_t> (4));        // «2986»
-			 *          @endcode
-			 *
-			 *
-			 *
-			 *
+			 * @code{.cpp}
+			 * fmk.noexp(2986.808299, static_cast <uint8_t> (3));  // «2986.808»
+			 * fmk.noexp(2986.808299, static_cast <uint8_t> (4));  // «2986.8083»
+			 * fmk.noexp(2986., static_cast <uint8_t> (4));        // «2986»
+			 * @endcode
 			 *
 			 */
 			string noexp(const double number, const uint8_t step) const noexcept;
@@ -1729,6 +1754,14 @@ namespace awh {
 			 * @return        число в безэкспоненциальной форме
 			 * @see noexp(const double, const uint8_t)
 			 *
+			 * @code{.cpp}
+			 * fmk.noexp(1e+19);                 // «10000000000000000000»
+			 * fmk.noexp(1e-5);                  // «0.00001»
+			 * fmk.noexp(1536. / 1024.);         // «1.5»
+			 * fmk.noexp(0.111);                 // «0.111»
+			 * fmk.noexp(-2986.808299);          // «-2986.808299»
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of converting a number into the non-exponential form
 			 * @details The number of the digits after the decimal point is picked the smallest of those at
@@ -1746,20 +1779,13 @@ namespace awh {
 			 * @return        number in the non-exponential form
 			 * @see noexp(const double, const uint8_t)
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          fmk.noexp(1e+19);                 // «10000000000000000000»
-			 *          fmk.noexp(1e-5);                  // «0.00001»
-			 *          fmk.noexp(1536. / 1024.);         // «1.5»
-			 *          fmk.noexp(0.111);                 // «0.111»
-			 *          fmk.noexp(-2986.808299);          // «-2986.808299»
-			 *          @endcode
-			 *
-			 *
-			 *
-			 *
-			 *
+			 * @code{.cpp}
+			 * fmk.noexp(1e+19);                 // «10000000000000000000»
+			 * fmk.noexp(1e-5);                  // «0.00001»
+			 * fmk.noexp(1536. / 1024.);         // «1.5»
+			 * fmk.noexp(0.111);                 // «0.111»
+			 * fmk.noexp(-2986.808299);          // «-2986.808299»
+			 * @endcode
 			 *
 			 */
 			string noexp(const double number, const bool onlyNum = false) const noexcept;
@@ -1789,6 +1815,14 @@ namespace awh {
 			 * @return          запись числа с разделёнными разрядами
 			 * @see noexp(const double, const bool)
 			 *
+			 * @code{.cpp}
+			 * fmk.grouped(10000000000.5, 4);            // «10,000,000,000.5000»
+			 * fmk.grouped(10000000000.5, 4, ' ');       // «10 000 000 000.5000»
+			 * fmk.grouped(1234567.);                    // «1,234,567»
+			 * fmk.grouped(123456789., 0, ',', 4);       // «1,2345,6789»
+			 * fmk.grouped(-9876.5, 1);                  // «-9,876.5»
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of writing a number with the separation of the groups of the digits
 			 * @details The groups of the digits of the integer part are separated by a separator character, and therefore a record
@@ -1811,19 +1845,13 @@ namespace awh {
 			 * @return          record of the number with the separated groups of the digits
 			 * @see noexp(const double, const bool)
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          fmk.grouped(10000000000.5, 4);            // «10,000,000,000.5000»
-			 *          fmk.grouped(10000000000.5, 4, ' ');       // «10 000 000 000.5000»
-			 *          fmk.grouped(1234567.);                    // «1,234,567»
-			 *          fmk.grouped(123456789., 0, ',', 4);       // «1,2345,6789»
-			 *          fmk.grouped(-9876.5, 1);                  // «-9,876.5»
-			 *          @endcode
-			 *
-			 *
-			 *
-			 *
+			 * @code{.cpp}
+			 * fmk.grouped(10000000000.5, 4);            // «10,000,000,000.5000»
+			 * fmk.grouped(10000000000.5, 4, ' ');       // «10 000 000 000.5000»
+			 * fmk.grouped(1234567.);                    // «1,234,567»
+			 * fmk.grouped(123456789., 0, ',', 4);       // «1,2345,6789»
+			 * fmk.grouped(-9876.5, 1);                  // «-9,876.5»
+			 * @endcode
 			 *
 			 */
 			string grouped(const double number, const int32_t precision = -1, const char separator = ',', const uint8_t size = 3) const noexcept;
@@ -1841,6 +1869,11 @@ namespace awh {
 			 * @param size      количество разрядов в одной группе
 			 * @return          запись числа с разделёнными разрядами
 			 *
+			 * @code{.cpp}
+			 * fmk.grouped <uint64_t> (18446744073709551615ULL);  // «18,446,744,073,709,551,615»
+			 * fmk.grouped <int32_t> (-1234567);                  // «-1,234,567»
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of writing an integer number with the separation of the groups of the digits
 			 * @details An integer number is written by its own kind, and not by a cast to a floating
@@ -1852,14 +1885,10 @@ namespace awh {
 			 * @param size      number of the digits in one group
 			 * @return          record of the number with the separated groups of the digits
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          fmk.grouped <uint64_t> (18446744073709551615ULL);  // «18,446,744,073,709,551,615»
-			 *          fmk.grouped <int32_t> (-1234567);                  // «-1,234,567»
-			 *          @endcode
-			 *
-			 *
+			 * @code{.cpp}
+			 * fmk.grouped <uint64_t> (18446744073709551615ULL);  // «18,446,744,073,709,551,615»
+			 * fmk.grouped <int32_t> (-1234567);                  // «-1,234,567»
+			 * @endcode
 			 *
 			 */
 			template <typename T>
@@ -1878,6 +1907,11 @@ namespace awh {
 			 * @param b второе число
 			 * @return  результат расчёта
 			 *
+			 * @code{.cpp}
+			 * fmk.rate(150.f, 100.f);  // 50
+			 * fmk.rate(50.f, 100.f);   // -50
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of checking by how many percent (A > B) or (A < B)
 			 * @details What is yielded is the deviation of the first number from the second one in percent of
@@ -1888,14 +1922,10 @@ namespace awh {
 			 * @param b second number
 			 * @return  result of the computation
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          fmk.rate(150.f, 100.f);  // 50
-			 *          fmk.rate(50.f, 100.f);   // -50
-			 *          @endcode
-			 *
-			 *
+			 * @code{.cpp}
+			 * fmk.rate(150.f, 100.f);  // 50
+			 * fmk.rate(50.f, 100.f);   // -50
+			 * @endcode
 			 *
 			 */
 			float rate(const float a, const float b) const noexcept;
@@ -1912,6 +1942,11 @@ namespace awh {
 			 * @param n количество символов после запятой
 			 * @return  сформированное число
 			 *
+			 * @code{.cpp}
+			 * fmk.floor(3.14159, 2);  // 3.14
+			 * fmk.floor(3.999, 2);    // 3.99
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of bringing the number of the characters after the decimal point to the specified number
 			 * @details The fractional part is cut off, and not rounded: the number is brought
@@ -1922,15 +1957,10 @@ namespace awh {
 			 * @param n number of the characters after the decimal point
 			 * @return  the built number
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          fmk.floor(3.14159, 2);  // 3.14
-			 *          fmk.floor(3.999, 2);    // 3.99
-			 *          @endcode
-			 *
-			 *
-			 *
+			 * @code{.cpp}
+			 * fmk.floor(3.14159, 2);  // 3.14
+			 * fmk.floor(3.999, 2);    // 3.99
+			 * @endcode
 			 *
 			 */
 			double floor(const double x, const uint8_t n) const noexcept;
@@ -1946,6 +1976,11 @@ namespace awh {
 			 * @param word римское число
 			 * @return     арабское число
 			 *
+			 * @code{.cpp}
+			 * fmk.rome2arabic("XIV");   // 14
+			 * fmk.rome2arabic("mcmxc"); // 1990
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of converting the Roman numerals into the Arabic ones
 			 * @details The record is parsed without the case taken into account.
@@ -1954,15 +1989,10 @@ namespace awh {
 			 * @param word Roman number
 			 * @return     Arabic number
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          fmk.rome2arabic("XIV");   // 14
-			 *          fmk.rome2arabic("mcmxc"); // 1990
-			 *          @endcode
-			 *
-			 *
-			 *
+			 * @code{.cpp}
+			 * fmk.rome2arabic("XIV");   // 14
+			 * fmk.rome2arabic("mcmxc"); // 1990
+			 * @endcode
 			 *
 			 */
 			uint16_t rome2arabic(string_view word) const noexcept;
@@ -1994,6 +2024,11 @@ namespace awh {
 			 * @param number арабское число от 1 до 4999
 			 * @return       римское число
 			 *
+			 * @code{.cpp}
+			 * fmk.arabic2rome(14);    // «XIV»
+			 * fmk.arabic2rome(1990);  // «MCMXC»
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of converting the Arabic numbers into the Roman ones
 			 * @details The record is yielded in the capital letters.
@@ -2003,15 +2038,10 @@ namespace awh {
 			 * @param number Arabic number from 1 to 4999
 			 * @return       Roman number
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          fmk.arabic2rome(14);    // «XIV»
-			 *          fmk.arabic2rome(1990);  // «MCMXC»
-			 *          @endcode
-			 *
-			 *
-			 *
+			 * @code{.cpp}
+			 * fmk.arabic2rome(14);    // «XIV»
+			 * fmk.arabic2rome(1990);  // «MCMXC»
+			 * @endcode
 			 *
 			 */
 			wstring arabic2rome(const uint32_t number) const noexcept;
@@ -2056,6 +2086,10 @@ namespace awh {
 			 * @param letter букву которую нужно подсчитать
 			 * @return       результат подсчёта
 			 *
+			 * @code{.cpp}
+			 * fmk.countLetter("example.com", L'.');  // 1
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of counting the number of the specified letter in a word
 			 * @details The counting is performed with the case taken into account.
@@ -2063,12 +2097,9 @@ namespace awh {
 			 * @param letter letter that needs to be counted
 			 * @return       result of the counting
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          fmk.countLetter("example.com", L'.');  // 1
-			 *          @endcode
-			 *
+			 * @code{.cpp}
+			 * fmk.countLetter("example.com", L'.');  // 1
+			 * @endcode
 			 *
 			 */
 			size_t countLetter(string_view word, const wchar_t letter) const noexcept;
@@ -2115,6 +2146,13 @@ namespace awh {
 			 * @param num число в бинарном виде для проверки бита
 			 * @return    результат проверки
 			 *
+			 * @code{.cpp}
+			 * fmk.isBit <uint8_t> (0, 0b00000101);   // истина
+			 * fmk.setBit <uint8_t> (3, 0b00000001);  // 0b00001001
+			 * fmk.resetBit <uint8_t> (0, 0b00000101); // 0b00000100
+			 * fmk.flipBit <uint8_t> (1, 0b00000101);  // 0b00000111
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of checking whether a bit is set at the specified position
 			 * @details The digits are counted from the lowest one, starting from zero.
@@ -2124,16 +2162,12 @@ namespace awh {
 			 * @param num number in the binary form to check the bit of
 			 * @return    result of the check
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          fmk.isBit <uint8_t> (0, 0b00000101);   // истина
-			 *          fmk.setBit <uint8_t> (3, 0b00000001);  // 0b00001001
-			 *          fmk.resetBit <uint8_t> (0, 0b00000101); // 0b00000100
-			 *          fmk.flipBit <uint8_t> (1, 0b00000101);  // 0b00000111
-			 *          @endcode
-			 *
-			 *
+			 * @code{.cpp}
+			 * fmk.isBit <uint8_t> (0, 0b00000101);   // true
+			 * fmk.setBit <uint8_t> (3, 0b00000001);  // 0b00001001
+			 * fmk.resetBit <uint8_t> (0, 0b00000101); // 0b00000100
+			 * fmk.flipBit <uint8_t> (1, 0b00000101);  // 0b00000111
+			 * @endcode
 			 *
 			 */
 			bool isBit(const T pos, const T num) const noexcept;
@@ -2298,6 +2332,10 @@ namespace awh {
 			 * @param args   передаваемые аргументы
 			 * @return       сформированная строка
 			 *
+			 * @code{.cpp}
+			 * fmk.format("%s:%u", "127.0.0.1", 8080);  // «127.0.0.1:8080»
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of the implementation of the function of building a formatted string
 			 * @details The record of the format is set by the standard library and coincides with
@@ -2308,13 +2346,9 @@ namespace awh {
 			 * @param args   passed arguments
 			 * @return       the built string
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          fmk.format("%s:%u", "127.0.0.1", 8080);  // «127.0.0.1:8080»
-			 *          @endcode
-			 *
-			 *
+			 * @code{.cpp}
+			 * fmk.format("%s:%u", "127.0.0.1", 8080);  // «127.0.0.1:8080»
+			 * @endcode
 			 *
 			 */
 			printable_t <char, Args...> format(const char * format, Args... args) const noexcept {
@@ -2374,6 +2408,11 @@ namespace awh {
 			 * @param items  список аргументов строки
 			 * @return       сформированная строка
 			 *
+			 * @code{.cpp}
+			 * fmk.format("$1 -> $2 ($1)", vector <string> {"a", "b"});
+			 * // «a -> b (a)»
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of the implementation of the function of building a formatted string
 			 * @details The places of the substitution are designated by a dollar sign with the number of a record
@@ -2390,15 +2429,10 @@ namespace awh {
 			 * @param items  list of the arguments of the string
 			 * @return       the built string
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          fmk.format("$1 -> $2 ($1)", vector <string> {"a", "b"});
-			 *          // «a -> b (a)»
-			 *          @endcode
-			 *
-			 *
-			 *
+			 * @code{.cpp}
+			 * fmk.format("$1 -> $2 ($1)", vector <string> {"a", "b"});
+			 * // «a -> b (a)»
+			 * @endcode
 			 *
 			 */
 			string format(string_view format, const vector <string> & items) const noexcept;
@@ -2473,6 +2507,12 @@ namespace awh {
 			 * @param alt  слово на которое нужно произвести замену
 			 * @return     результирующий текст
 			 *
+			 * @code{.cpp}
+			 * string text = "a-b-c";
+			 * fmk.replace(text, "-", "/");  // «a/b/c»
+			 * fmk.replace(text, "/");       // «abc», слово опускается
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of replacing a word in a text by another word
 			 * @details All the occurrences of the word are replaced, and not the first one alone. The text
@@ -2483,15 +2523,11 @@ namespace awh {
 			 * @param alt  word the replacement needs to be performed by
 			 * @return     resulting text
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          string text = "a-b-c";
-			 *          fmk.replace(text, "-", "/");  // «a/b/c»
-			 *          fmk.replace(text, "/");       // «abc», слово опускается
-			 *          @endcode
-			 *
-			 *
+			 * @code{.cpp}
+			 * string text = "a-b-c";
+			 * fmk.replace(text, "-", "/");  // «a/b/c»
+			 * fmk.replace(text, "/");       // "abc", the word is omitted
+			 * @endcode
 			 *
 			 */
 			string & replace(string & text, const string & word, const string & alt = "") const noexcept;
@@ -2644,6 +2680,11 @@ namespace awh {
 			 * @param escaping  символы экранирования
 			 * @return          список найденных элементов
 			 *
+			 * @code{.cpp}
+			 * const auto items = fmk.kv("cs1=a cs2=b cs3=", " ");
+			 * // {"cs1": "a", "cs2": "b", "cs3": ""}
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of extracting the keys and the values from a text
 			 * @details The parsing is designed for the records of the logs and for the headers of the protocols, where
@@ -2659,15 +2700,10 @@ namespace awh {
 			 * @param escaping  escaping characters
 			 * @return          list of the found elements
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          const auto items = fmk.kv("cs1=a cs2=b cs3=", " ");
-			 *          // {"cs1": "a", "cs2": "b", "cs3": ""}
-			 *          @endcode
-			 *
-			 *
-			 *
+			 * @code{.cpp}
+			 * const auto items = fmk.kv("cs1=a cs2=b cs3=", " ");
+			 * // {"cs1": "a", "cs2": "b", "cs3": ""}
+			 * @endcode
 			 *
 			 */
 			unordered_multimap <string, string> kv(string_view text, string_view delim, string_view separator = "=", const vector <string> & escaping = escapingText()) const noexcept;
@@ -2709,6 +2745,13 @@ namespace awh {
 			 * @param separator разделитель ключа и значения
 			 * @param escaping  символы экранирования
 			 *
+			 * @code{.cpp}
+			 * fmk.kv(1, "cs1=a cs2=b", " ", [](const uint64_t sid,
+			 *  const string_view key, const string_view value) noexcept {
+			 *     // Записи придут в порядке «cs1=a», затем «cs2=b»
+			 * });
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of the streaming extraction of the keys and the values from a text
 			 * @details The records are yielded to the callback function strictly in the order of their
@@ -2722,15 +2765,12 @@ namespace awh {
 			 * @param separator separator of the key and the value
 			 * @param escaping  escaping characters
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          fmk.kv(1, "cs1=a cs2=b", " ", [](const uint64_t sid,
-			 *           const string_view key, const string_view value) noexcept {
-			 *              // Записи придут в порядке «cs1=a», затем «cs2=b»
-			 *          });
-			 *          @endcode
-			 *
+			 * @code{.cpp}
+			 * fmk.kv(1, "cs1=a cs2=b", " ", [](const uint64_t sid,
+			 *  const string_view key, const string_view value) noexcept {
+			 *     // The records will come in the order "cs1=a", then "cs2=b"
+			 * });
+			 * @endcode
 			 *
 			 */
 			void kv(const uint64_t sid, string_view text, string_view delim, function <void (const uint64_t, const string_view, const string_view)> callback, string_view separator = "=", const vector <string> & escaping = escapingText()) const noexcept;
@@ -2770,6 +2810,11 @@ namespace awh {
 			 *          работы модулей, обращающихся к разбору адресов
 			 * @param zone пользовательская зона
 			 *
+			 * @code{.cpp}
+			 * fmk.domainZone("local");
+			 * fmk.is("http://server.local", awh::fmk_t::check_t::URL);  // истина
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of setting a user zone
 			 * @details The set of the domain zones is applied by the parsing of the addresses: a zone not belonging
@@ -2779,14 +2824,10 @@ namespace awh {
 			 *          the work of the modules addressing the parsing of the addresses
 			 * @param zone user zone
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          fmk.domainZone("local");
-			 *          fmk.is("http://server.local", awh::fmk_t::check_t::URL);  // истина
-			 *          @endcode
-			 *
-			 *
+			 * @code{.cpp}
+			 * fmk.domainZone("local");
+			 * fmk.is("http://server.local", awh::fmk_t::check_t::URL);  // true
+			 * @endcode
 			 *
 			 */
 			void domainZone(const string_view zone) noexcept;
@@ -2862,6 +2903,11 @@ namespace awh {
 			 * @param text текст для извлечения url адресов
 			 * @return     список координат с url адресами
 			 *
+			 * @code{.cpp}
+			 * for(auto & item : fmk.urls("см. https://anyks.com и ftp://a.b"))
+			 *     const string url = text.substr(item.first, item.second - item.first);
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of extracting the coordinates of the url addresses in a string
 			 * @details What is yielded is a set of the «beginning-end» pairs of the placement of every found
@@ -2873,15 +2919,10 @@ namespace awh {
 			 * @param text text to extract the url addresses from
 			 * @return     list of the coordinates with the url addresses
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          for(auto & item : fmk.urls("см. https://anyks.com и ftp://a.b"))
-			 *              const string url = text.substr(item.first, item.second - item.first);
-			 *          @endcode
-			 *
-			 *
-			 *
+			 * @code{.cpp}
+			 * for(auto & item : fmk.urls("see https://anyks.com and ftp://a.b"))
+			 *     const string url = text.substr(item.first, item.second - item.first);
+			 * @endcode
 			 *
 			 */
 			unordered_map <size_t, size_t> urls(string_view text) const noexcept;
@@ -2925,6 +2966,14 @@ namespace awh {
 			 * @param str строка обозначения размерности (b, Kb, Mb, Gb, Tb)
 			 * @return    размер в байтах
 			 *
+			 * @code{.cpp}
+			 * fmk.bytes("1Kb");        // 1024
+			 * fmk.bytes("1 Kb");       // 1024
+			 * fmk.bytes("1.5 Mb");     // 1572864
+			 * fmk.bytes("100 Gb");     // 107374182400
+			 * fmk.bytes("1024 bytes"); // 1024
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of getting the size in bytes from a string
 			 * @details The unit of the measurement is matched without the case taken into account and may be separated
@@ -2938,19 +2987,13 @@ namespace awh {
 			 * @param str string of the designation of the dimension (b, Kb, Mb, Gb, Tb)
 			 * @return    size in bytes
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          fmk.bytes("1Kb");        // 1024
-			 *          fmk.bytes("1 Kb");       // 1024
-			 *          fmk.bytes("1.5 Mb");     // 1572864
-			 *          fmk.bytes("100 Gb");     // 107374182400
-			 *          fmk.bytes("1024 bytes"); // 1024
-			 *          @endcode
-			 *
-			 *
-			 *
-			 *
+			 * @code{.cpp}
+			 * fmk.bytes("1Kb");        // 1024
+			 * fmk.bytes("1 Kb");       // 1024
+			 * fmk.bytes("1.5 Mb");     // 1572864
+			 * fmk.bytes("100 Gb");     // 107374182400
+			 * fmk.bytes("1024 bytes"); // 1024
+			 * @endcode
 			 *
 			 */
 			double bytes(const string_view str) const noexcept;
@@ -2969,6 +3012,13 @@ namespace awh {
 			 * @param onlyNum выводить только числа
 			 * @return        полученная строка
 			 *
+			 * @code{.cpp}
+			 * fmk.bytes(1024.);     // «1 Kb»
+			 * fmk.bytes(1572864.);  // «1.5 Mb»
+			 * fmk.bytes(512.);      // «512 bytes»
+			 * fmk.bytes(0.);        // «0 bytes»
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of the conversion of the bytes into a string
 			 * @details The unit of the measurement is picked the largest of those at which the number
@@ -2981,17 +3031,12 @@ namespace awh {
 			 * @param onlyNum output only the numbers
 			 * @return        the obtained string
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          fmk.bytes(1024.);     // «1 Kb»
-			 *          fmk.bytes(1572864.);  // «1.5 Mb»
-			 *          fmk.bytes(512.);      // «512 bytes»
-			 *          fmk.bytes(0.);        // «0 bytes»
-			 *          @endcode
-			 *
-			 *
-			 *
+			 * @code{.cpp}
+			 * fmk.bytes(1024.);     // «1 Kb»
+			 * fmk.bytes(1572864.);  // «1.5 Mb»
+			 * fmk.bytes(512.);      // «512 bytes»
+			 * fmk.bytes(0.);        // «0 bytes»
+			 * @endcode
 			 *
 			 */
 			string bytes(const double value, const bool onlyNum = false) const noexcept;
@@ -3011,6 +3056,13 @@ namespace awh {
 			 * @param str пропускная способность сети (bps, kbps, Mbps, Gbps)
 			 * @return    количество байт в секунду
 			 *
+			 * @code{.cpp}
+			 * fmk.bpsSize("8bps");     // 1
+			 * fmk.bpsSize("1Kbps");    // 125
+			 * fmk.bpsSize("1.5Mbps");  // 187500
+			 * fmk.bpsSize("100Mbps");  // 12500000
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of getting the number of the bytes per second from a string
 			 * @details The bandwidth of a network is set in bits, and is yielded in bytes:
@@ -3023,17 +3075,12 @@ namespace awh {
 			 * @param str bandwidth of the network (bps, kbps, Mbps, Gbps)
 			 * @return    number of the bytes per second
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          fmk.bpsSize("8bps");     // 1
-			 *          fmk.bpsSize("1Kbps");    // 125
-			 *          fmk.bpsSize("1.5Mbps");  // 187500
-			 *          fmk.bpsSize("100Mbps");  // 12500000
-			 *          @endcode
-			 *
-			 *
-			 *
+			 * @code{.cpp}
+			 * fmk.bpsSize("8bps");     // 1
+			 * fmk.bpsSize("1Kbps");    // 125
+			 * fmk.bpsSize("1.5Mbps");  // 187500
+			 * fmk.bpsSize("100Mbps");  // 12500000
+			 * @endcode
 			 *
 			 */
 			size_t bpsSize(const string_view str) const noexcept;

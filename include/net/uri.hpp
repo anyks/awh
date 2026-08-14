@@ -106,6 +106,26 @@ namespace awh {
 	 * @par Пример: разбор адреса и переход по перенаправлению
 	 * @par Пример: самостоятельный разбор нескольких адресов
 	 *
+	 * @code{.cpp}
+	 * awh::uri_t uri(&fmk, &log);
+	 * // Разбираем исходный адрес
+	 * uri.parse("https://anyks.com/api/v1/users?page=1");
+	 * // Разрешаем перенаправление относительно него: выйдет https://anyks.com/api/v2/users
+	 * uri.parse("../v2/users");
+	 * // Собираем адрес обратно строкой
+	 * const string address = uri.print();
+	 * @endcode
+	 *
+	 * @code{.cpp}
+	 * for(const auto & address : addresses){
+	 *     // Очищаем объект, иначе запись разрешится относительно предыдущей
+	 *     uri.clear();
+	 *     // Разбираем очередной адрес
+	 *     if(uri.parse(address) != awh::uri_t::type_t::NONE)
+	 *         connect(uri.host(), uri.port());
+	 * }
+	 * @endcode
+	 *
 	 * \~english
 	 * @brief Class for working with the uniform resource identifiers
 	 * @details Parses an address of a resource into its constituent parts, assembles it back and
@@ -133,23 +153,21 @@ namespace awh {
 	 * @par Example: the parsing of an address and the following of a redirection
 	 * @par Example: the independent parsing of several addresses
 	 *
-	 * \~
-	 *
 	 * @code{.cpp}
 	 * awh::uri_t uri(&fmk, &log);
-	 * // Разбираем исходный адрес
+	 * // Parsing the original address
 	 * uri.parse("https://anyks.com/api/v1/users?page=1");
-	 * // Разрешаем перенаправление относительно него: выйдет https://anyks.com/api/v2/users
+	 * // Resolving the redirection relative to it: https://anyks.com/api/v2/users will come out
 	 * uri.parse("../v2/users");
-	 * // Собираем адрес обратно строкой
+	 * // Building the address back into a string
 	 * const string address = uri.print();
 	 * @endcode
 	 *
 	 * @code{.cpp}
 	 * for(const auto & address : addresses){
-	 *     // Очищаем объект, иначе запись разрешится относительно предыдущей
+	 *     // Clearing the object, otherwise the record will be resolved relative to the previous one
 	 *     uri.clear();
-	 *     // Разбираем очередной адрес
+	 *     // Parsing the next address
 	 *     if(uri.parse(address) != awh::uri_t::type_t::NONE)
 	 *         connect(uri.host(), uri.port());
 	 * }
@@ -1272,6 +1290,16 @@ namespace awh {
 			 * @param uri строка URI-запроса для разрешения
 			 * @return    признак согласия с записью
 			 *
+			 * @code{.cpp}
+			 * // Разрешаем ссылку заголовка перенаправления относительно адреса запроса
+			 * if(!uri.resolve(location)){
+			 *     // Ссылка негодна, прежний адрес цел - идти по нему нельзя
+			 *     return;
+			 * }
+			 * // Ссылка применена, адрес перехода собран
+			 * connect(uri.host(), uri.port());
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of the resolution of a record relative to a parsed address
 			 * @details Does the same as `parse()`, but gives back the sign of the agreement with
@@ -1287,18 +1315,15 @@ namespace awh {
 			 * @param uri string of the URI query to resolve
 			 * @return    sign of the agreement with the record
 			 *
-			 * \~
-			 *
 			 * @code{.cpp}
-			 * // Разрешаем ссылку заголовка перенаправления относительно адреса запроса
+			 * // Resolving the link of the redirection header relative to the address of the request
 			 * if(!uri.resolve(location)){
-			 *     // Ссылка негодна, прежний адрес цел - идти по нему нельзя
+			 *     // The link is unfit, the previous address is intact — it must not be followed
 			 *     return;
 			 * }
-			 * // Ссылка применена, адрес перехода собран
+			 * // The link is applied, the address of the transition is built
 			 * connect(uri.host(), uri.port());
 			 * @endcode
-			 *
 			 *
 			 */
 			bool resolve(string_view uri) noexcept;

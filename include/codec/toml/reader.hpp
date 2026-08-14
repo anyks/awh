@@ -109,6 +109,20 @@ namespace awh {
 			 * перечня либо встроенной таблицы, содержимое, закрытие. Вложенность потому
 			 * достаётся потребителю потоком, а не собранным заранее деревом
 			 *
+			 *  @code{.cpp}
+			 *  reader_t reader;
+			 *
+			 *  reader.feed(chunk.data(), chunk.size(), last);
+			 *
+			 *  while(reader.next()){
+			 *      switch(static_cast <uint8_t> (reader.event())){
+			 *          case static_cast <uint8_t> (event_t::TABLE): break;
+			 *          case static_cast <uint8_t> (event_t::KEY): break;
+			 *          case static_cast <uint8_t> (event_t::VALUE): break;
+			 *      }
+			 *  }
+			 *  @endcode
+			 *
 			 * \~english
 			 * @brief Class of the streaming reading of a TOML settings text
 			 * @details The text is accepted by chunks of an arbitrary size, while the issuance is conducted
@@ -122,23 +136,19 @@ namespace awh {
 			 * of an array or of an inline table, the content, the closing. The nesting therefore
 			 * goes to the consumer as a stream rather than as a tree assembled beforehand
 			 *
-			 * \~
+			 *  @code{.cpp}
+			 *  reader_t reader;
 			 *
-			 * @code{.cpp}
-			 * reader_t reader;
+			 *  reader.feed(chunk.data(), chunk.size(), last);
 			 *
-			 * reader.feed(chunk.data(), chunk.size(), last);
-			 *
-			 * while(reader.next()){
-			 *     switch(static_cast <uint8_t> (reader.event())){
-			 *         case static_cast <uint8_t> (event_t::TABLE): break;
-			 *         case static_cast <uint8_t> (event_t::KEY): break;
-			 *         case static_cast <uint8_t> (event_t::VALUE): break;
-			 *     }
-			 * }
-			 * @endcode
-			 *
-			 *
+			 *  while(reader.next()){
+			 *      switch(static_cast <uint8_t> (reader.event())){
+			 *          case static_cast <uint8_t> (event_t::TABLE): break;
+			 *          case static_cast <uint8_t> (event_t::KEY): break;
+			 *          case static_cast <uint8_t> (event_t::VALUE): break;
+			 *      }
+			 *  }
+			 *  @endcode
 			 *
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Reader {

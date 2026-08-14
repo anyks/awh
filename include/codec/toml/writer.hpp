@@ -118,6 +118,19 @@ namespace awh {
 			 * записывается оградой, его несущей, либо отвергается: обрезать содержимое
 			 * запись не вправе
 			 *
+			 *  @code{.cpp}
+			 *  writer_t writer;
+			 *
+			 *  writer.comment("собрано автоматически");
+			 *  writer.table("server");
+			 *  writer.key("host");
+			 *  writer.text("127.0.0.1");
+			 *  writer.key("port");
+			 *  writer.integer(8080);
+			 *
+			 *  const string & text = writer.text();
+			 *  @endcode
+			 *
 			 * \~english
 			 * @brief Class of the writing of a settings text
 			 * @details Assembles a settings text out of the table declarations, the pairs «key = value»,
@@ -141,24 +154,18 @@ namespace awh {
 			 * written by a fence that carries it or is rejected: the writing has no right to
 			 * truncate the content
 			 *
-			 * \~
+			 *  @code{.cpp}
+			 *  writer_t writer;
 			 *
-			 * @code{.cpp}
-			 * writer_t writer;
+			 *  writer.comment("built automatically");
+			 *  writer.table("server");
+			 *  writer.key("host");
+			 *  writer.text("127.0.0.1");
+			 *  writer.key("port");
+			 *  writer.integer(8080);
 			 *
-			 * writer.comment("собрано автоматически");
-			 * writer.table("server");
-			 * writer.key("host");
-			 * writer.text("127.0.0.1");
-			 * writer.key("port");
-			 * writer.integer(8080);
-			 *
-			 * const string & text = writer.text();
-			 * @endcode
-			 *
-			 *
-			 *
-			 *
+			 *  const string & text = writer.text();
+			 *  @endcode
 			 *
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Writer {

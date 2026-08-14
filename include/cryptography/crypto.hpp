@@ -1139,6 +1139,16 @@ namespace awh {
 			 * @return       результат финализации
 			 * @see initialize
 			 *
+			 * @code{.cpp}
+			 * std::string encoded;
+			 * crypto.initialize(ch::event_t::ENCODE, ch::hash_t::SHA256, ch::cipher_t::AES256);
+			 * for(auto & chunk : chunks)
+			 *     // Порция заменяет буфер, накапливает вызывающая сторона
+			 *     encoded.append(crypto.encrypt <std::string> (chunk.data(), chunk.size()));
+			 * // Завершение дописывает вектор дополнения и имитовставку
+			 * crypto.finalize(encoded);
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method finalizing the encryption context
 			 *
@@ -1162,20 +1172,15 @@ namespace awh {
 			 *
 			 * @see initialize
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          std::string encoded;
-			 *          crypto.initialize(ch::event_t::ENCODE, ch::hash_t::SHA256, ch::cipher_t::AES256);
-			 *          for(auto & chunk : chunks)
-			 *              // Порция заменяет буфер, накапливает вызывающая сторона
-			 *              encoded.append(crypto.encrypt <std::string> (chunk.data(), chunk.size()));
-			 *          // Завершение дописывает вектор дополнения и имитовставку
-			 *          crypto.finalize(encoded);
-			 *          @endcode
-			 *
-			 *
-			 *
+			 * @code{.cpp}
+			 * std::string encoded;
+			 * crypto.initialize(ch::event_t::ENCODE, ch::hash_t::SHA256, ch::cipher_t::AES256);
+			 * for(auto & chunk : chunks)
+			 *     // A portion replaces the buffer, the calling side accumulates
+			 *     encoded.append(crypto.encrypt <std::string> (chunk.data(), chunk.size()));
+			 * // The completion appends the vector of the padding and the authentication tag
+			 * crypto.finalize(encoded);
+			 * @endcode
 			 *
 			 */
 			bool finalize(T & buffer) noexcept;

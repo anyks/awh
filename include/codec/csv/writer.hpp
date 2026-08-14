@@ -105,6 +105,27 @@ namespace awh {
 			 * так, чтобы разобраться обратно неизменным. Договор этот закреплён
 			 * проверкой кругового прохода
 			 *
+			 *  @code{.cpp}
+			 *  writer_t writer;
+			 *
+			 *  writer.field("имя");
+			 *  writer.field("значение");
+			 *  writer.record();
+			 *
+			 *  const string & text = writer.text();
+			 *  @endcode
+			 *
+			 *  @code{.cpp}
+			 *  while(!done){
+			 *      writer.record(fields);
+			 *
+			 *      if(writer.size() >= 0x10000)
+			 *          send(writer.take());
+			 *  }
+			 *
+			 *  send(writer.take());
+			 *  @endcode
+			 *
 			 * \~english
 			 * @brief Class of the writing of a CSV text
 			 * @details The text is assembled field by field, and it is given away either in full upon
@@ -117,30 +138,26 @@ namespace awh {
 			 * so as to be parsed back unchanged. This contract is fixed by
 			 * a round-trip test
 			 *
-			 * \~
+			 *  @code{.cpp}
+			 *  writer_t writer;
 			 *
-			 * @code{.cpp}
-			 * writer_t writer;
+			 *  writer.field("name");
+			 *  writer.field("value");
+			 *  writer.record();
 			 *
-			 * writer.field("имя");
-			 * writer.field("значение");
-			 * writer.record();
+			 *  const string & text = writer.text();
+			 *  @endcode
 			 *
-			 * const string & text = writer.text();
-			 * @endcode
+			 *  @code{.cpp}
+			 *  while(!done){
+			 *      writer.record(fields);
 			 *
+			 *      if(writer.size() >= 0x10000)
+			 *          send(writer.take());
+			 *  }
 			 *
-			 * @code{.cpp}
-			 * while(!done){
-			 *     writer.record(fields);
-			 *
-			 *     if(writer.size() >= 0x10000)
-			 *         send(writer.take());
-			 * }
-			 *
-			 * send(writer.take());
-			 * @endcode
-			 *
+			 *  send(writer.take());
+			 *  @endcode
 			 *
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Writer {

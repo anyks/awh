@@ -397,9 +397,9 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Callback function on the receipt of an event of setting or removing a function
-			 * @param флаг типа события
-			 * @param идентификатор функции
-			 * @param функция обратного вызова в чистом виде
+			 * @param the flag of the kind of the event
+			 * @param the identifier of the function
+			 * @param the callback function in its pure kind
 			 *
 			 * \~
 			 */

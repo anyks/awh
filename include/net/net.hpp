@@ -307,6 +307,20 @@ namespace awh {
 		 *
 		 * @par Пример: разбор адреса по виду
 		 *
+		 * @code{.cpp}
+		 * // Определяем вид пришедшего адреса по его длине
+		 * switch(addr->size){
+		 *     // Шесть байт - аппаратный адрес
+		 *     case 6: use(awh_cast <const net::addr_mac_t *> (addr)->address); break;
+		 *     // Четыре байта - адрес IPv4
+		 *     case 4: use(awh_cast <const net::addr_net_ipv4_t *> (addr)->address); break;
+		 *     // Шестнадцать байт - адрес IPv6
+		 *     case 16: use(awh_cast <const net::addr_net_ipv6_t *> (addr)->address); break;
+		 *     // Нулевая длина - путь файловой системы
+		 *     case 0: use(awh_cast <const net::addr_fs_t *> (addr)->address); break;
+		 * }
+		 * @endcode
+		 *
 		 * \~english
 		 * @brief Structure of an address
 		 * @details The common base for all the kinds of an address. By itself it carries
@@ -334,18 +348,16 @@ namespace awh {
 		 *       a non-null one
 		 * @par Example: the resolution of an address by the kind
 		 *
-		 * \~
-		 *
 		 * @code{.cpp}
-		 * // Определяем вид пришедшего адреса по его длине
+		 * // Determining the kind of the address that came by its length
 		 * switch(addr->size){
-		 *     // Шесть байт - аппаратный адрес
+		 *     // Six bytes — a hardware address
 		 *     case 6: use(awh_cast <const net::addr_mac_t *> (addr)->address); break;
-		 *     // Четыре байта - адрес IPv4
+		 *     // Four bytes — an IPv4 address
 		 *     case 4: use(awh_cast <const net::addr_net_ipv4_t *> (addr)->address); break;
-		 *     // Шестнадцать байт - адрес IPv6
+		 *     // Sixteen bytes — an IPv6 address
 		 *     case 16: use(awh_cast <const net::addr_net_ipv6_t *> (addr)->address); break;
-		 *     // Нулевая длина - путь файловой системы
+		 *     // A zero length — a path of the file system
 		 *     case 0: use(awh_cast <const net::addr_fs_t *> (addr)->address); break;
 		 * }
 		 * @endcode

@@ -131,6 +131,25 @@ namespace awh {
 			 * оно устроено поверх этого же чтения и удобнее там, где обход содержимого
 			 * важнее расхода памяти
 			 *
+			 *  @code{.cpp}
+			 *  reader_t reader;
+			 *
+			 *  while(reader.feed(chunk, size, last)){
+			 *    while(reader.next()){
+			 *      switch(static_cast <uint8_t> (reader.event())){
+			 *        case static_cast <uint8_t> (event_t::ELEMENT_OPEN):
+			 *          // Обработка начала узла: reader.name(), reader.attributes()
+			 *        break;
+			 *        case static_cast <uint8_t> (event_t::TEXT):
+			 *          // Обработка содержимого узла: reader.text()
+			 *        break;
+			 *      }
+			 *    }
+			 *    if(reader.state() == state_t::FAILED)
+			 *      break;
+			 *  }
+			 *  @endcode
+			 *
 			 * \~english
 			 * @brief Class of the streaming reading of a markup text
 			 * @details The parsing is conducted by the chunks of the source text and issues the events as
@@ -148,28 +167,24 @@ namespace awh {
 			 * it is built on top of this same reading and is more convenient there where a traversal of the content
 			 * is more important than the expenditure of the memory
 			 *
-			 * \~
+			 *  @code{.cpp}
+			 *  reader_t reader;
 			 *
-			 * @code{.cpp}
-			 * reader_t reader;
-			 *
-			 * while(reader.feed(chunk, size, last)){
-			 *   while(reader.next()){
-			 *     switch(static_cast <uint8_t> (reader.event())){
-			 *       case static_cast <uint8_t> (event_t::ELEMENT_OPEN):
-			 *         // Обработка начала узла: reader.name(), reader.attributes()
-			 *       break;
-			 *       case static_cast <uint8_t> (event_t::TEXT):
-			 *         // Обработка содержимого узла: reader.text()
-			 *       break;
-			 *     }
-			 *   }
-			 *   if(reader.state() == state_t::FAILED)
-			 *     break;
-			 * }
-			 * @endcode
-			 *
-			 *
+			 *  while(reader.feed(chunk, size, last)){
+			 *    while(reader.next()){
+			 *      switch(static_cast <uint8_t> (reader.event())){
+			 *        case static_cast <uint8_t> (event_t::ELEMENT_OPEN):
+			 *          // The handling of the beginning of a node: reader.name(), reader.attributes()
+			 *        break;
+			 *        case static_cast <uint8_t> (event_t::TEXT):
+			 *          // The handling of the content of a node: reader.text()
+			 *        break;
+			 *      }
+			 *    }
+			 *    if(reader.state() == state_t::FAILED)
+			 *      break;
+			 *  }
+			 *  @endcode
 			 *
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Reader {

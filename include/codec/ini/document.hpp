@@ -157,6 +157,16 @@ namespace awh {
 			 * ссылаются указатели поиска. Надгробие обходится дешевле перестроения и
 			 * при записи в выдачу не идёт
 			 *
+			 *  @code{.cpp}
+			 *  document_t document;
+			 *
+			 *  if(document.parse(text)){
+			 *    const string_view host = document.get("host", "server");
+			 *    document.set("port", "9090", "server");
+			 *    const string result = document.text();
+			 *  }
+			 *  @endcode
+			 *
 			 * \~english
 			 * @brief Class of the settings tree
 			 * @details Stores the parsed settings text in full — together with the comments,
@@ -197,23 +207,15 @@ namespace awh {
 			 * refer to them. A tombstone comes cheaper than a rebuilding and
 			 * does not go into the output at the writing
 			 *
-			 * \~
+			 *  @code{.cpp}
+			 *  document_t document;
 			 *
-			 * @code{.cpp}
-			 * document_t document;
-			 *
-			 * if(document.parse(text)){
-			 *   const string_view host = document.get("host", "server");
-			 *   document.set("port", "9090", "server");
-			 *   const string result = document.text();
-			 * }
-			 * @endcode
-			 *
-			 *
-			 *
-			 *
-			 *
-			 *
+			 *  if(document.parse(text)){
+			 *    const string_view host = document.get("host", "server");
+			 *    document.set("port", "9090", "server");
+			 *    const string result = document.text();
+			 *  }
+			 *  @endcode
 			 *
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Document {

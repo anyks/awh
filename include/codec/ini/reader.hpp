@@ -131,6 +131,25 @@ namespace awh {
 			 * стоять ниже по тексту. Работа эта возложена на дерево настроек, где текст
 			 * собран целиком
 			 *
+			 *  @code{.cpp}
+			 *  reader_t reader(reader_t::settings_t::git());
+			 *
+			 *  while(reader.feed(chunk, size, last)){
+			 *    while(reader.next()){
+			 *      switch(static_cast <uint8_t> (reader.event())){
+			 *        case static_cast <uint8_t> (event_t::SECTION):
+			 *          // Обработка объявления раздела: reader.section()
+			 *        break;
+			 *        case static_cast <uint8_t> (event_t::PROPERTY):
+			 *          // Обработка свойства: reader.key(), reader.text()
+			 *        break;
+			 *      }
+			 *    }
+			 *    if(reader.state() == state_t::FAILED)
+			 *      break;
+			 *  }
+			 *  @endcode
+			 *
 			 * \~english
 			 * @brief Class of the streaming reading of a settings text
 			 * @details The parsing is conducted by the chunks of the source text and issues the events as
@@ -149,28 +168,24 @@ namespace awh {
 			 * to stand lower in the text. That work is laid upon the settings tree, where the text
 			 * is assembled in full
 			 *
-			 * \~
+			 *  @code{.cpp}
+			 *  reader_t reader(reader_t::settings_t::git());
 			 *
-			 * @code{.cpp}
-			 * reader_t reader(reader_t::settings_t::git());
-			 *
-			 * while(reader.feed(chunk, size, last)){
-			 *   while(reader.next()){
-			 *     switch(static_cast <uint8_t> (reader.event())){
-			 *       case static_cast <uint8_t> (event_t::SECTION):
-			 *         // Обработка объявления раздела: reader.section()
-			 *       break;
-			 *       case static_cast <uint8_t> (event_t::PROPERTY):
-			 *         // Обработка свойства: reader.key(), reader.text()
-			 *       break;
-			 *     }
-			 *   }
-			 *   if(reader.state() == state_t::FAILED)
-			 *     break;
-			 * }
-			 * @endcode
-			 *
-			 *
+			 *  while(reader.feed(chunk, size, last)){
+			 *    while(reader.next()){
+			 *      switch(static_cast <uint8_t> (reader.event())){
+			 *        case static_cast <uint8_t> (event_t::SECTION):
+			 *          // The handling of the declaration of a section: reader.section()
+			 *        break;
+			 *        case static_cast <uint8_t> (event_t::PROPERTY):
+			 *          // The handling of a property: reader.key(), reader.text()
+			 *        break;
+			 *      }
+			 *    }
+			 *    if(reader.state() == state_t::FAILED)
+			 *      break;
+			 *  }
+			 *  @endcode
 			 *
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Reader {

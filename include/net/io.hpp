@@ -130,6 +130,34 @@ namespace awh {
 			 *
 			 * @par Пример: SCTP-клиент с несколькими потоками в ассоциации
 			 *
+			 * @code{.cpp}
+			 * #if __linux__ || __FreeBSD__ || __sun
+			 *     awh::engine::io_t io(&fmk, &log);
+			 *     awh::engine::sctp_t sctp(&fmk, &log);
+			 *     // Заводим событие SCTP-сокета обычным порядком движка
+			 *     const awh::event::id_t client = io.event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::SCTP);
+			 *     io.setTargetPort(client, 9899);
+			 *     io.setTarget(client, "127.0.0.1");
+			 *     // Задаём параметры ассоциации: по четыре потока в каждую сторону
+			 *     awh::net::sctp::initmsg_t initmsg;
+			 *     initmsg.outputStreams = 4;
+			 *     initmsg.inputStreams = 4;
+			 *     sctp.initMessages(client, initmsg);
+			 *     // Продлеваем таймер контрольных сообщений протокола до тридцати секунд
+			 *     sctp.setTimeout(client, awh::net::sctp::timeout_t::HEARTBEAT, 30000);
+			 *     // Подписываемся на метаданные принятых сообщений
+			 *     sctp.on(client, static_cast <awh::engine::callback::sctp::minfo_t> ([](const awh::event::id_t id, const awh::net::sctp::minfo_t & info) noexcept -> void {
+			 *         // Здесь известно, каким потоком ассоциации пришло сообщение
+			 *     }));
+			 *     io.initialize();
+			 *     io.commit(client);
+			 *     io.connect(client);
+			 *     io.launch(client);
+			 *     while(io.poll(100));
+			 *     io.deinitialize();
+			 * #endif
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Class of the management of the transmission protocol with the flow control
 			 * @details A companion of the engine, serving what only SCTP has and what does not
@@ -181,26 +209,24 @@ namespace awh {
 			 *          and acts by them itself
 			 * @par Example: an SCTP client with several streams in an association
 			 *
-			 * \~
-			 *
 			 * @code{.cpp}
 			 * #if __linux__ || __FreeBSD__ || __sun
 			 *     awh::engine::io_t io(&fmk, &log);
 			 *     awh::engine::sctp_t sctp(&fmk, &log);
-			 *     // Заводим событие SCTP-сокета обычным порядком движка
+			 *     // Starting an event of an SCTP socket in the usual order of the engine
 			 *     const awh::event::id_t client = io.event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::SCTP);
 			 *     io.setTargetPort(client, 9899);
 			 *     io.setTarget(client, "127.0.0.1");
-			 *     // Задаём параметры ассоциации: по четыре потока в каждую сторону
+			 *     // Setting the parameters of the association: four streams in each direction
 			 *     awh::net::sctp::initmsg_t initmsg;
 			 *     initmsg.outputStreams = 4;
 			 *     initmsg.inputStreams = 4;
 			 *     sctp.initMessages(client, initmsg);
-			 *     // Продлеваем таймер контрольных сообщений протокола до тридцати секунд
+			 *     // Extending the timer of the control messages of the protocol up to thirty seconds
 			 *     sctp.setTimeout(client, awh::net::sctp::timeout_t::HEARTBEAT, 30000);
-			 *     // Подписываемся на метаданные принятых сообщений
+			 *     // Subscribing to the metadata of the received messages
 			 *     sctp.on(client, static_cast <awh::engine::callback::sctp::minfo_t> ([](const awh::event::id_t id, const awh::net::sctp::minfo_t & info) noexcept -> void {
-			 *         // Здесь известно, каким потоком ассоциации пришло сообщение
+			 *         // Here it is known by which stream of the association the message came
 			 *     }));
 			 *     io.initialize();
 			 *     io.commit(client);
@@ -565,6 +591,52 @@ namespace awh {
 		 * @par Пример: клиент
 		 * @par Пример: сервер
 		 *
+		 * @code{.cpp}
+		 * awh::engine::io_t io(&fmk, &log);
+		 * // Заводим событие клиента и настраиваем его
+		 * const awh::event::id_t client = io.event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+		 * io.setTargetPort(client, 80);
+		 * io.setTarget(client, "93.184.216.34");
+		 * io.setTimeout(client, awh::event::action_t::CONNECT, 5000);
+		 * // Подписываемся на завершение подключения и на приём данных
+		 * io.on(client, static_cast <awh::engine::callback::connect_t> ([](const awh::event::id_t id, const bool ok) noexcept -> void {
+		 *     // Здесь известно, состоялось подключение или нет
+		 * }));
+		 * io.on(client, static_cast <awh::engine::callback::read_t> ([](const awh::event::id_t id, const uint8_t * buffer, const size_t size) noexcept -> void {
+		 *     // Принятые данные лежат в буфере и действительны только до выхода отсюда
+		 * }));
+		 * // Инициализируем движок, закрепляем настройки и запускаем событие
+		 * io.initialize();
+		 * io.commit(client);
+		 * io.connect(client);
+		 * io.launch(client);
+		 * // Крутим цикл событий, пока он выполняется без ошибок
+		 * while(io.poll(100));
+		 * io.deinitialize();
+		 * @endcode
+		 *
+		 * @code{.cpp}
+		 * awh::engine::io_t io(&fmk, &log);
+		 * // Заводим событие сервера и настраиваем его
+		 * const awh::event::id_t server = io.event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+		 * io.setSourcePort(server, 8080);
+		 * io.setAddress(server, awh::event::address_t::IPV4, "0.0.0.0");
+		 * // Принятое подключение приходит готовым событием, отдельной настройки не требует
+		 * io.on(server, static_cast <awh::engine::callback::accept_t> ([&io](const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
+		 *     // Подписываемся на приём данных уже принятого подключения
+		 *     io.on(cid, static_cast <awh::engine::callback::read_t> ([&io](const awh::event::id_t id, const uint8_t * buffer, const size_t size) noexcept -> void {
+		 *         // Возвращаем принятое отправителю
+		 *         io.send(id, buffer, size);
+		 *     }));
+		 * }));
+		 * io.initialize();
+		 * io.commit(server);
+		 * io.listen(server, 1024);
+		 * io.launch(server);
+		 * while(io.poll(100));
+		 * io.deinitialize();
+		 * @endcode
+		 *
 		 * \~english
 		 * @brief Type of the asynchronous input-output engine
 		 * @details The engine serves the sockets, the files, the directories, the interprocess
@@ -614,43 +686,41 @@ namespace awh {
 		 * @par Example: a client
 		 * @par Example: a server
 		 *
-		 * \~
-		 *
 		 * @code{.cpp}
 		 * awh::engine::io_t io(&fmk, &log);
-		 * // Заводим событие клиента и настраиваем его
+		 * // Starting an event of a client and setting it up
 		 * const awh::event::id_t client = io.event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
 		 * io.setTargetPort(client, 80);
 		 * io.setTarget(client, "93.184.216.34");
 		 * io.setTimeout(client, awh::event::action_t::CONNECT, 5000);
-		 * // Подписываемся на завершение подключения и на приём данных
+		 * // Subscribing to the completion of the connection and to the receiving of the data
 		 * io.on(client, static_cast <awh::engine::callback::connect_t> ([](const awh::event::id_t id, const bool ok) noexcept -> void {
-		 *     // Здесь известно, состоялось подключение или нет
+		 *     // Here it is known whether the connection took place or not
 		 * }));
 		 * io.on(client, static_cast <awh::engine::callback::read_t> ([](const awh::event::id_t id, const uint8_t * buffer, const size_t size) noexcept -> void {
-		 *     // Принятые данные лежат в буфере и действительны только до выхода отсюда
+		 *     // The received data lie in the buffer and are valid only until the exit from here
 		 * }));
-		 * // Инициализируем движок, закрепляем настройки и запускаем событие
+		 * // Initializing the engine, committing the settings and starting the event
 		 * io.initialize();
 		 * io.commit(client);
 		 * io.connect(client);
 		 * io.launch(client);
-		 * // Крутим цикл событий, пока он выполняется без ошибок
+		 * // Spinning the event loop while it runs without errors
 		 * while(io.poll(100));
 		 * io.deinitialize();
 		 * @endcode
 		 *
 		 * @code{.cpp}
 		 * awh::engine::io_t io(&fmk, &log);
-		 * // Заводим событие сервера и настраиваем его
+		 * // Starting an event of a server and setting it up
 		 * const awh::event::id_t server = io.event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
 		 * io.setSourcePort(server, 8080);
 		 * io.setAddress(server, awh::event::address_t::IPV4, "0.0.0.0");
-		 * // Принятое подключение приходит готовым событием, отдельной настройки не требует
+		 * // An accepted connection comes as a ready event and does not require a separate setting up
 		 * io.on(server, static_cast <awh::engine::callback::accept_t> ([&io](const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
-		 *     // Подписываемся на приём данных уже принятого подключения
+		 *     // Subscribing to the receiving of the data of the already accepted connection
 		 *     io.on(cid, static_cast <awh::engine::callback::read_t> ([&io](const awh::event::id_t id, const uint8_t * buffer, const size_t size) noexcept -> void {
-		 *         // Возвращаем принятое отправителю
+		 *         // Returning what was received back to the sender
 		 *         io.send(id, buffer, size);
 		 *     }));
 		 * }));
@@ -1533,6 +1603,15 @@ namespace awh {
 				 * @param id идентификатор события
 				 * @return   результат выполнения удаления
 				 *
+				 * @code{.cpp}
+				 * io.on(client, static_cast <awh::engine::callback::read_t> ([&io](const awh::event::id_t id, const uint8_t * buffer, const size_t size) noexcept -> void {
+				 *     // Если разбор принятых данных не удался, закрываем соединение
+				 *     if(!parse(buffer, size))
+				 *         // Освобождение отложится на два оборота цикла и выполнится безопасно
+				 *         io.destroy(id);
+				 * }));
+				 * @endcode
+				 *
 				 * \~english
 				 * @brief Method of removing an event
 				 * @details Releases an event from any state: from a set up one, from
@@ -1561,17 +1640,14 @@ namespace awh {
 				 * @param id identifier of the event
 				 * @return   result of the performance of the removal
 				 *
-				 * \~
-				 *
 				 * @code{.cpp}
 				 * io.on(client, static_cast <awh::engine::callback::read_t> ([&io](const awh::event::id_t id, const uint8_t * buffer, const size_t size) noexcept -> void {
-				 *     // Если разбор принятых данных не удался, закрываем соединение
+				 *     // If the parsing of the received data failed, closing the connection
 				 *     if(!parse(buffer, size))
-				 *         // Освобождение отложится на два оборота цикла и выполнится безопасно
+				 *         // The release will be deferred by two turns of the loop and will be performed safely
 				 *         io.destroy(id);
 				 * }));
 				 * @endcode
-				 *
 				 *
 				 */
 				bool destroy(const event::id_t id) noexcept;
@@ -1637,6 +1713,14 @@ namespace awh {
 				 * @param protocol протокол сокета
 				 * @return         идентификатор созданного события, нулевой при отказе
 				 *
+				 * @code{.cpp}
+				 * // Заводим событие таймера и задаём ему задержку в две секунды
+				 * const awh::event::id_t timer = io.event(awh::event::node_t::TIMEOUT, awh::event::family_t::TIMER);
+				 * io.setTimeout(timer, awh::event::action_t::NONE, 2000);
+				 * io.commit(timer);
+				 * io.launch(timer);
+				 * @endcode
+				 *
 				 * \~english
 				 * @brief Method of creating a new event
 				 * @details The first step of the work with an event. Starts a node of an event,
@@ -1670,16 +1754,13 @@ namespace awh {
 				 * @param protocol protocol of the socket
 				 * @return         identifier of the created event, a zero one at a refusal
 				 *
-				 * \~
-				 *
 				 * @code{.cpp}
-				 * // Заводим событие таймера и задаём ему задержку в две секунды
+				 * // Starting an event of a timer and setting it a delay of two seconds
 				 * const awh::event::id_t timer = io.event(awh::event::node_t::TIMEOUT, awh::event::family_t::TIMER);
 				 * io.setTimeout(timer, awh::event::action_t::NONE, 2000);
 				 * io.commit(timer);
 				 * io.launch(timer);
 				 * @endcode
-				 *
 				 *
 				 */
 				event::id_t event(const event::node_t node, const event::family_t family, const event::type_t type = event::type_t::NONE, const event::protocol_t protocol = event::protocol_t::NONE) noexcept;
@@ -1942,6 +2023,17 @@ namespace awh {
 				 * @param ids список идентификаторов событий для подключения
 				 * @return    результат выполнения подключения
 				 *
+				 * @code{.cpp}
+				 * io.on(client, static_cast <awh::engine::callback::connect_t> ([&io](const awh::event::id_t id, const bool ok) noexcept -> void {
+				 *     // Отправлять можно только отсюда: раньше соединения ещё нет
+				 *     if(ok)
+				 *         io.send(id, request.data(), request.size());
+				 * }));
+				 * io.setTimeout(client, awh::event::action_t::CONNECT, 5000);
+				 * if(io.commit(client) && io.connect(client) && io.launch(client))
+				 *     while(io.poll(100));
+				 * @endcode
+				 *
 				 * \~english
 				 * @brief Method of the multi-connection of an event to the remote hosts
 				 * @details Begins a connection and **returns at once**, without waiting for its
@@ -1961,11 +2053,9 @@ namespace awh {
 				 * @param ids list of the identifiers of the events to connect
 				 * @return    result of the performance of the connection
 				 *
-				 * \~
-				 *
 				 * @code{.cpp}
 				 * io.on(client, static_cast <awh::engine::callback::connect_t> ([&io](const awh::event::id_t id, const bool ok) noexcept -> void {
-				 *     // Отправлять можно только отсюда: раньше соединения ещё нет
+				 *     // Sending is possible only from here: earlier the connection does not exist yet
 				 *     if(ok)
 				 *         io.send(id, request.data(), request.size());
 				 * }));
@@ -1973,7 +2063,6 @@ namespace awh {
 				 * if(io.commit(client) && io.connect(client) && io.launch(client))
 				 *     while(io.poll(100));
 				 * @endcode
-				 *
 				 *
 				 */
 				bool connect(const vector <event::id_t> & ids) noexcept;
@@ -1998,6 +2087,16 @@ namespace awh {
 				 * @param max максимальное количество входящих соединений
 				 * @return    результат выполнения перевода в режим прослушивания
 				 *
+				 * @code{.cpp}
+				 * const awh::event::id_t server = io.event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+				 * io.setSourcePort(server, 8080);
+				 * io.setAddress(server, awh::event::address_t::IPV4, "0.0.0.0");
+				 * io.on(server, static_cast <awh::engine::callback::accept_t> (onAccept));
+				 * // Фиксация, очередь входящих, запуск - именно в этом порядке
+				 * if(io.commit(server) && io.listen(server, 1024) && io.launch(server))
+				 *     while(io.poll(100));
+				 * @endcode
+				 *
 				 * \~english
 				 * @brief Method of putting an event into the mode of the listening for the incoming connections
 				 * @details Opens the queue of the incoming connections: from this moment the kernel
@@ -2013,18 +2112,15 @@ namespace awh {
 				 * @param max maximum number of the incoming connections
 				 * @return    result of the performance of the putting into the mode of the listening
 				 *
-				 * \~
-				 *
 				 * @code{.cpp}
 				 * const awh::event::id_t server = io.event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
 				 * io.setSourcePort(server, 8080);
 				 * io.setAddress(server, awh::event::address_t::IPV4, "0.0.0.0");
 				 * io.on(server, static_cast <awh::engine::callback::accept_t> (onAccept));
-				 * // Фиксация, очередь входящих, запуск - именно в этом порядке
+				 * // The commit, the queue of the incoming ones, the start — exactly in this order
 				 * if(io.commit(server) && io.listen(server, 1024) && io.launch(server))
 				 *     while(io.poll(100));
 				 * @endcode
-				 *
 				 *
 				 */
 				bool listen(const event::id_t id, const uint32_t max) noexcept;
@@ -2457,6 +2553,17 @@ namespace awh {
 				 * @param action  тип действия события
 				 * @param timeout значение таймаута в миллисекундах
 				 *
+				 * @code{.cpp}
+				 * // Интервал, срабатывающий каждые пять секунд
+				 * const awh::event::id_t timer = io.event(awh::event::node_t::INTERVAL, awh::event::family_t::TIMER);
+				 * io.setTimeout(timer, awh::event::action_t::NONE, 5000);
+				 * // Клиенту - пять секунд на подключение и тридцать на молчание
+				 * io.setTimeout(client, awh::event::action_t::CONNECT, 5000);
+				 * io.setTimeout(client, awh::event::action_t::READ, 30000);
+				 * // Передумали: снимаем предел простоя, оставив предел подключения
+				 * io.setTimeout(client, awh::event::action_t::READ, 0);
+				 * @endcode
+				 *
 				 * \~english
 				 * @brief Method of setting the timeout of an event
 				 * @details One method serves two cases different in the meaning, and tells
@@ -2495,19 +2602,16 @@ namespace awh {
 				 * @param action  type of the action of the event
 				 * @param timeout value of the timeout in milliseconds
 				 *
-				 * \~
-				 *
 				 * @code{.cpp}
-				 * // Интервал, срабатывающий каждые пять секунд
+				 * // An interval firing every five seconds
 				 * const awh::event::id_t timer = io.event(awh::event::node_t::INTERVAL, awh::event::family_t::TIMER);
 				 * io.setTimeout(timer, awh::event::action_t::NONE, 5000);
-				 * // Клиенту - пять секунд на подключение и тридцать на молчание
+				 * // The client gets five seconds for the connection and thirty for the silence
 				 * io.setTimeout(client, awh::event::action_t::CONNECT, 5000);
 				 * io.setTimeout(client, awh::event::action_t::READ, 30000);
-				 * // Передумали: снимаем предел простоя, оставив предел подключения
+				 * // Changed the mind: removing the limit of the idling and leaving the limit of the connection
 				 * io.setTimeout(client, awh::event::action_t::READ, 0);
 				 * @endcode
-				 *
 				 *
 				 */
 				void setTimeout(const event::id_t id, const event::action_t action, const uint32_t timeout) noexcept;
@@ -2553,6 +2657,16 @@ namespace awh {
 				 * @param delay  задержка в миллисекундах, либо ноль для продолжения с остатка
 				 * @return       результат продолжения ожидания
 				 *
+				 * @code{.cpp}
+				 * // Разбираем пришедший ответ
+				 * if(header.id != this->_awaiting){
+				 *     // Ответ не на наш вопрос - продолжаем ожидание с прерванного места
+				 *     io.rearmTimeout(id, awh::event::action_t::READ);
+				 *     // Ответ чужой, разбирать его нечего
+				 *     return;
+				 * }
+				 * @endcode
+				 *
 				 * \~english
 				 * @brief Method of the continuation of an interrupted waiting
 				 * @details A single-use term of the waiting for the reading (`usage_t::DISPOSABLE`) is removed
@@ -2587,18 +2701,15 @@ namespace awh {
 				 * @param delay  delay in milliseconds, or zero for the continuation from the remainder
 				 * @return       result of the continuation of the waiting
 				 *
-				 * \~
-				 *
 				 * @code{.cpp}
-				 * // Разбираем пришедший ответ
+				 * // Parsing the answer that came
 				 * if(header.id != this->_awaiting){
-				 *     // Ответ не на наш вопрос - продолжаем ожидание с прерванного места
+				 *     // The answer is not to our question — continuing the waiting from the interrupted place
 				 *     io.rearmTimeout(id, awh::event::action_t::READ);
-				 *     // Ответ чужой, разбирать его нечего
+				 *     // The answer is a foreign one, there is nothing to parse in it
 				 *     return;
 				 * }
 				 * @endcode
-				 *
 				 *
 				 */
 				bool rearmTimeout(const event::id_t id, const event::action_t action, const uint32_t delay = 0) noexcept;
@@ -2869,6 +2980,13 @@ namespace awh {
 				 * @par Пример: включить структуру для большого числа сроков
 				 * @param timer тип таймера для событий сетевого движка
 				 *
+				 * @code{.cpp}
+				 * awh::engine::io_t io(&fmk, &log);
+				 * // Переключаем до заведения событий и до initialize()
+				 * io.setInternalTimer(awh::event::timer_t::DIFFICULT);
+				 * io.initialize();
+				 * @endcode
+				 *
 				 * \~english
 				 * @brief Method of setting the type of the internal timers
 				 * @details Chooses the structure in which the engine holds the terms of the events.
@@ -2887,15 +3005,12 @@ namespace awh {
 				 * @par Example: switching on the structure for a large number of the terms
 				 * @param timer type of the timer for the events of the network engine
 				 *
-				 * \~
-				 *
 				 * @code{.cpp}
 				 * awh::engine::io_t io(&fmk, &log);
-				 * // Переключаем до заведения событий и до initialize()
+				 * // Switching before the starting of the events and before initialize()
 				 * io.setInternalTimer(awh::event::timer_t::DIFFICULT);
 				 * io.initialize();
 				 * @endcode
-				 *
 				 *
 				 */
 				void setInternalTimer(const event::timer_t timer) noexcept;
@@ -3045,6 +3160,18 @@ namespace awh {
 				 *                предела, нулевой - без ожидания
 				 * @return        результат выполнения опроса
 				 *
+				 * @code{.cpp}
+				 * while(io.poll(100));
+				 * @endcode
+				 *
+				 * @code{.cpp}
+				 * // Опрос без ожидания: управление возвращается сразу
+				 * while(running){
+				 *     io.poll(0);
+				 *     foreignLoopIteration();
+				 * }
+				 * @endcode
+				 *
 				 * \~english
 				 * @brief Method of the polling of the events
 				 * @details Performs **one turn** of the loop of the events and returns
@@ -3079,26 +3206,17 @@ namespace awh {
 				 *                a limit, a zero one — without a waiting
 				 * @return        result of the performance of the polling
 				 *
-				 * \~
-				 *
-				 *          @code{.cpp}
-				 *          while(io.poll(100));
-				 *          @endcode
-				 *
-				 *
-				 *
-				 *
-				 *
-				 *
+				 * @code{.cpp}
+				 * while(io.poll(100));
+				 * @endcode
 				 *
 				 * @code{.cpp}
-				 * // Опрос без ожидания: управление возвращается сразу
+				 * // A poll without waiting: the control returns at once
 				 * while(running){
 				 *     io.poll(0);
 				 *     foreignLoopIteration();
 				 * }
 				 * @endcode
-				 *
 				 *
 				 */
 				bool poll(const int32_t timeout = -1) noexcept;
@@ -3407,6 +3525,18 @@ namespace awh {
 				 * @param id идентификатор события
 				 * @param cb функция обратного вызова
 				 *
+				 * @code{.cpp}
+				 * const awh::event::id_t timer = io.event(awh::event::node_t::INTERVAL, awh::event::family_t::TIMER);
+				 * io.setTimeout(timer, awh::event::action_t::NONE, 5000);
+				 * io.on(timer, static_cast <awh::engine::callback::status_t> ([](const awh::event::id_t id, const awh::event::status_t status) noexcept -> void {
+				 *     // Интервал сработал, и сработает снова через те же пять секунд
+				 *     if(status == awh::event::status_t::SUCCESS)
+				 *         tick();
+				 * }));
+				 * io.commit(timer);
+				 * io.launch(timer);
+				 * @endcode
+				 *
 				 * \~english
 				 * @brief Method of setting the callback function for the update of the status of an event
 				 * @details Reports the change of the state of an event — connected, disconnected,
@@ -3423,21 +3553,17 @@ namespace awh {
 				 * @param id identifier of the event
 				 * @param cb callback function
 				 *
-				 * \~
-				 *
 				 * @code{.cpp}
 				 * const awh::event::id_t timer = io.event(awh::event::node_t::INTERVAL, awh::event::family_t::TIMER);
 				 * io.setTimeout(timer, awh::event::action_t::NONE, 5000);
 				 * io.on(timer, static_cast <awh::engine::callback::status_t> ([](const awh::event::id_t id, const awh::event::status_t status) noexcept -> void {
-				 *     // Интервал сработал, и сработает снова через те же пять секунд
+				 *     // The interval has fired and will fire again in the same five seconds
 				 *     if(status == awh::event::status_t::SUCCESS)
 				 *         tick();
 				 * }));
 				 * io.commit(timer);
 				 * io.launch(timer);
 				 * @endcode
-				 *
-				 *
 				 *
 				 */
 				void on(const event::id_t id, engine::callback::status_t cb) noexcept;
@@ -3618,6 +3744,18 @@ namespace awh {
 				 * @param id идентификатор события
 				 * @param cb функция обратного вызова
 				 *
+				 * @code{.cpp}
+				 * io.setTimeout(client, awh::event::action_t::READ, 30000);
+				 * io.setTimeout(client, awh::event::action_t::RECONNECT, 5000);
+				 * io.on(client, static_cast <awh::engine::callback::timeout_t> ([&attempts](const awh::event::id_t id, const awh::event::action_t action, const uint32_t delay) noexcept -> bool {
+				 *     // Переподключение: положительный ответ означает «пробовать снова»
+				 *     if(action == awh::event::action_t::RECONNECT)
+				 *         return (attempts++ < 3);
+				 *     // Простой: положительный ответ означает «рвать соединение»
+				 *     return true;
+				 * }));
+				 * @endcode
+				 *
 				 * \~english
 				 * @brief Method of setting the callback function for the handling of the timeout of an event
 				 * @details Triggers when the term set through `setTimeout()` has expired:
@@ -3643,21 +3781,17 @@ namespace awh {
 				 * @param id identifier of the event
 				 * @param cb callback function
 				 *
-				 * \~
-				 *
 				 * @code{.cpp}
 				 * io.setTimeout(client, awh::event::action_t::READ, 30000);
 				 * io.setTimeout(client, awh::event::action_t::RECONNECT, 5000);
 				 * io.on(client, static_cast <awh::engine::callback::timeout_t> ([&attempts](const awh::event::id_t id, const awh::event::action_t action, const uint32_t delay) noexcept -> bool {
-				 *     // Переподключение: положительный ответ означает «пробовать снова»
+				 *     // The reconnection: a positive answer means "to try again"
 				 *     if(action == awh::event::action_t::RECONNECT)
 				 *         return (attempts++ < 3);
-				 *     // Простой: положительный ответ означает «рвать соединение»
+				 *     // The idling: a positive answer means "to tear the connection"
 				 *     return true;
 				 * }));
 				 * @endcode
-				 *
-				 *
 				 *
 				 */
 				void on(const event::id_t id, engine::callback::timeout_t cb) noexcept;

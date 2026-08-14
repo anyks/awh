@@ -82,6 +82,16 @@ namespace awh {
 	 *
 	 * @par Пример: подъём предела на старте приложения
 	 *
+	 * @code{.cpp}
+	 * awh::fds_t fds(&log);
+	 * // Узнаём, что имеем: мягкий предел и жёсткий потолок
+	 * const auto limits = fds.limit();
+	 * // Поднимаем мягкий предел до жёсткого потолка
+	 * if(!fds.limit(limits.second))
+	 *     // Не вышло - выводим в лог, что и почему следует поправить в системе
+	 *     fds.help(limits.first, limits.second);
+	 * @endcode
+	 *
 	 * \~english
 	 * @brief Class of the partner sockets
 	 * @details Is in charge of the limit of the simultaneously open file descriptors — the very
@@ -97,15 +107,13 @@ namespace awh {
 	 *       the allowed one — into the system-wide limit, into the memory, into the settings of the kernel
 	 * @par Example: raising the limit at the startup of an application
 	 *
-	 * \~
-	 *
 	 * @code{.cpp}
 	 * awh::fds_t fds(&log);
-	 * // Узнаём, что имеем: мягкий предел и жёсткий потолок
+	 * // Finding out what we have: the soft limit and the hard ceiling
 	 * const auto limits = fds.limit();
-	 * // Поднимаем мягкий предел до жёсткого потолка
+	 * // Raising the soft limit up to the hard ceiling
 	 * if(!fds.limit(limits.second))
-	 *     // Не вышло - выводим в лог, что и почему следует поправить в системе
+	 *     // It did not work out — writing to the log what should be corrected in the system and why
 	 *     fds.help(limits.first, limits.second);
 	 * @endcode
 	 *

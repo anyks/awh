@@ -96,6 +96,17 @@ namespace awh {
 	 *
 	 * @par Пример: определение вида записи
 	 *
+	 * @code{.cpp}
+	 * awh::nwt_t nwt(&log);
+	 * // Добавляем собственную доменную зону, иначе она останется неизвестной
+	 * nwt.zone("local");
+	 * const awh::nwt_t::url_t url = nwt.parse("https://user:pass@anyks.com:443/path?query=1#anchor");
+	 * // Здесь url.type равен URL, url.host - "anyks.com", url.port - 443,
+	 * // url.domain - "com", а url.schema - "https"
+	 * if(url.type == awh::nwt_t::types_t::URL)
+	 *     connect(url.host, url.port);
+	 * @endcode
+	 *
 	 * \~english
 	 * @brief Structure of the list of the parameters of a URL
 	 * @details Answers the question «what is this», and not «parse this for me».
@@ -113,15 +124,13 @@ namespace awh {
 	 *       of the kind `host.local` will not be recognized as a domain
 	 * @par Example: the determination of the kind of a record
 	 *
-	 * \~
-	 *
 	 * @code{.cpp}
 	 * awh::nwt_t nwt(&log);
-	 * // Добавляем собственную доменную зону, иначе она останется неизвестной
+	 * // Adding an own domain zone, otherwise it will remain unknown
 	 * nwt.zone("local");
 	 * const awh::nwt_t::url_t url = nwt.parse("https://user:pass@anyks.com:443/path?query=1#anchor");
-	 * // Здесь url.type равен URL, url.host - "anyks.com", url.port - 443,
-	 * // url.domain - "com", а url.schema - "https"
+	 * // Here url.type equals URL, url.host — "anyks.com", url.port — 443,
+	 * // url.domain — "com", and url.schema — "https"
 	 * if(url.type == awh::nwt_t::types_t::URL)
 	 *     connect(url.host, url.port);
 	 * @endcode

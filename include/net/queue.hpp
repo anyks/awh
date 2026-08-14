@@ -137,6 +137,25 @@ namespace awh {
 	 * Латентность push() под фрагментацией, 500 000 итераций (наносекунды):
 	 * Воспроизведение бенчмарков:
 	 *
+	 * @code
+	 *   sizeof(Network_Queue):             128 байт (буфер вынесен в кучу)
+	 *   100 000 пустых очередей:           +13.0 МБ  (буферы не выделены)
+	 *   5 000 активных буферов:            +79.4 МБ
+	 *   Эквивалент старой реализации:    6250.0 МБ  (inline 64 КБ x N)
+	 *   Экономия:                            ~68x
+	 * @endcode
+	 *
+	 * @code
+	 *                 p50    p90    p99   p99.9    mean
+	 *   TCP (bip):     41     42     42      84    28.8   (плоский хвост, без memmove)
+	 *   UDP (linear):  41    500    583     709   103.9   (хвост от compact/memmove)
+	 * @endcode
+	 *
+	 * @code
+	 *   ./unit-tests/net --gtest_also_run_disabled_tests --gtest_filter='*RssFootprintBenchmark*'
+	 *   ./unit-tests/net --gtest_also_run_disabled_tests --gtest_filter='*LatencyBenchmark*'
+	 * @endcode
+	 *
 	 * \~english
 	 * @brief Class for working with the network queues (buffer of the outgoing data of a connection)
 	 * @details
@@ -159,20 +178,20 @@ namespace awh {
 	 * The latency of push() under the fragmentation, 500 000 iterations (nanoseconds):
 	 * The reproduction of the benchmarks:
 	 *
-	 * \~
+	 * @code
+	 *   sizeof(Network_Queue):             128 bytes (the buffer is taken out to the heap)
+	 *   100 000 empty queues:              +13.0 MB  (the buffers are not allocated)
+	 *   5 000 active buffers:              +79.4 MB
+	 *   The equivalent of the old implementation: 6250.0 MB  (inline 64 KB x N)
+	 *   The saving:                          ~68x
+	 * @endcode
 	 *
 	 * @code
-	 *   sizeof(Network_Queue):             128 байт (буфер вынесен в кучу)
-	 *   100 000 пустых очередей:           +13.0 МБ  (буферы не выделены)
-	 *   5 000 активных буферов:            +79.4 МБ
-	 *   Эквивалент старой реализации:    6250.0 МБ  (inline 64 КБ x N)
-	 *   Экономия:                            ~68x
-	 * @endcode
-	 * @code
 	 *                 p50    p90    p99   p99.9    mean
-	 *   TCP (bip):     41     42     42      84    28.8   (плоский хвост, без memmove)
-	 *   UDP (linear):  41    500    583     709   103.9   (хвост от compact/memmove)
+	 *   TCP (bip):     41     42     42      84    28.8   (a flat tail, without memmove)
+	 *   UDP (linear):  41    500    583     709   103.9   (the tail from compact/memmove)
 	 * @endcode
+	 *
 	 * @code
 	 *   ./unit-tests/net --gtest_also_run_disabled_tests --gtest_filter='*RssFootprintBenchmark*'
 	 *   ./unit-tests/net --gtest_also_run_disabled_tests --gtest_filter='*LatencyBenchmark*'

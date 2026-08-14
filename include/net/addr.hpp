@@ -103,6 +103,20 @@ namespace awh {
 	 *
 	 * @par Пример: разбор адреса и проверка принадлежности сети
 	 *
+	 * @code{.cpp}
+	 * awh::net_addr_t addr(&fmk, &log);
+	 * // Разбираем адрес, вид записи определяется сам
+	 * if(addr.parse("192.168.1.42")){
+	 *     // Узнаём, откуда адрес: из локальной сети, из внешней или зарезервирован
+	 *     if(addr.own() == awh::net_addr_t::own_t::LAN)
+	 *         allow(addr.print());
+	 *     // Заводим отдельный объект под сеть: impose меняет тот объект, к которому применён
+	 *     awh::net_addr_t network(addr);
+	 *     // Обнуляем хостовую часть и получаем сеть 192.168.1.0
+	 *     network.impose(24, awh::net_addr_t::addr_t::NETWORK);
+	 * }
+	 * @endcode
+	 *
 	 * \~english
 	 * @brief Class for working with the network addresses
 	 * @details Holds **one** address and is able to do everything with it: to parse it from a string,
@@ -133,18 +147,16 @@ namespace awh {
 	 *          its settings must not be knocked down by a foreign content
 	 * @par Example: the parsing of an address and the check of the belonging to a network
 	 *
-	 * \~
-	 *
 	 * @code{.cpp}
 	 * awh::net_addr_t addr(&fmk, &log);
-	 * // Разбираем адрес, вид записи определяется сам
+	 * // Parsing the address, the kind of the record is determined by itself
 	 * if(addr.parse("192.168.1.42")){
-	 *     // Узнаём, откуда адрес: из локальной сети, из внешней или зарезервирован
+	 *     // Finding out where the address is from: from the local network, from an external one or reserved
 	 *     if(addr.own() == awh::net_addr_t::own_t::LAN)
 	 *         allow(addr.print());
-	 *     // Заводим отдельный объект под сеть: impose меняет тот объект, к которому применён
+	 *     // Starting a separate object for the network: impose changes the object it is applied to
 	 *     awh::net_addr_t network(addr);
-	 *     // Обнуляем хостовую часть и получаем сеть 192.168.1.0
+	 *     // Zeroing the host part and getting the network 192.168.1.0
 	 *     network.impose(24, awh::net_addr_t::addr_t::NETWORK);
 	 * }
 	 * @endcode

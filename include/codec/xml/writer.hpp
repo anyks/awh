@@ -99,6 +99,19 @@ namespace awh {
 			 * @note Записывается текст в кодировке UTF-8. Прочие кодировки при записи не
 			 * применяются намеренно: они лишь сужают круг тех, кто сможет текст прочесть
 			 *
+			 *  @code{.cpp}
+			 *  writer_t writer;
+			 *
+			 *  writer.declaration();
+			 *  writer.open("Envelope", "http://schemas.xmlsoap.org/soap/envelope/");
+			 *  writer.attribute("encodingStyle", "http://schemas.xmlsoap.org/soap/encoding/");
+			 *  writer.open("Body");
+			 *  writer.close();
+			 *  writer.close();
+			 *
+			 *  const string & result = writer.text();
+			 *  @endcode
+			 *
 			 * \~english
 			 * @brief Class of the writing of a markup text
 			 * @details Assembles a markup text by successive directives about the opening and
@@ -109,21 +122,18 @@ namespace awh {
 			 * @note The text is written in the UTF-8 encoding. The other encodings are not applied at the writing
 			 * deliberately: they only narrow the circle of those who will be able to read the text
 			 *
-			 * \~
+			 *  @code{.cpp}
+			 *  writer_t writer;
 			 *
-			 * @code{.cpp}
-			 * writer_t writer;
+			 *  writer.declaration();
+			 *  writer.open("Envelope", "http://schemas.xmlsoap.org/soap/envelope/");
+			 *  writer.attribute("encodingStyle", "http://schemas.xmlsoap.org/soap/encoding/");
+			 *  writer.open("Body");
+			 *  writer.close();
+			 *  writer.close();
 			 *
-			 * writer.declaration();
-			 * writer.open("Envelope", "http://schemas.xmlsoap.org/soap/envelope/");
-			 * writer.attribute("encodingStyle", "http://schemas.xmlsoap.org/soap/encoding/");
-			 * writer.open("Body");
-			 * writer.close();
-			 * writer.close();
-			 *
-			 * const string & result = writer.text();
-			 * @endcode
-			 *
+			 *  const string & result = writer.text();
+			 *  @endcode
 			 *
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Writer {
@@ -900,6 +910,13 @@ namespace awh {
 					 * Заниженный размер отказом не является - недостающее доводится ростом
 					 * @param size ожидаемый размер собираемого текста разметки в байтах
 					 *
+					 *  @code{.cpp}
+					 *  writer_t writer;
+					 *
+					 *  writer.reserve(source.size() + (source.size() / 5));
+					 *  writer.declaration();
+					 *  @endcode
+					 *
 					 * \~english
 					 * @brief Method of allotting the space for the markup text being assembled
 					 * @details The space is allotted in advance so that the growth of the accumulator in the course of the writing
@@ -912,16 +929,12 @@ namespace awh {
 					 * An underestimated size is not a refusal — what is missing is added by a growth
 					 * @param size expected size of the markup text being assembled in bytes
 					 *
-					 * \~
+					 *  @code{.cpp}
+					 *  writer_t writer;
 					 *
-					 * @code{.cpp}
-					 * writer_t writer;
-					 *
-					 * writer.reserve(source.size() + (source.size() / 5));
-					 * writer.declaration();
-					 * @endcode
-					 *
-					 *
+					 *  writer.reserve(source.size() + (source.size() / 5));
+					 *  writer.declaration();
+					 *  @endcode
 					 *
 					 */
 					void reserve(const size_t size) noexcept;

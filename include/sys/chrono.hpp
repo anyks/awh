@@ -789,6 +789,28 @@ namespace awh {
 	 * @see parse
 	 * @see format
 	 *
+	 * @code{.cpp}
+	 * // RFC 3164, устаревший системный журнал: Apr  6 12:37:01
+	 * "%b %e %H:%M:%S"
+	 * // RFC 5424 и RFC 3339: 2025-04-06T12:37:01.520Z
+	 * "%Y-%m-%dT%H:%M:%S.%s%i"
+	 * // RFC 5322, заголовок Date: Sun, 06 Apr 2025 12:37:01 +0000
+	 * "%a, %d %b %Y %H:%M:%S %z"
+	 * // Журнал веб-сервера в общем формате: 06/Apr/2025:12:37:01 +0000
+	 * "%d/%b/%Y:%H:%M:%S %z"
+	 * @endcode
+	 *
+	 * @code{.cpp}
+	 * awh::chrono_t chrono(&fmk, &log);
+	 * // Разбираем запись журнала веб-сервера в штамп времени
+	 * const uint64_t date = chrono.parse("06/Apr/2025:12:37:01 +0000", "%d/%b/%Y:%H:%M:%S %z");
+	 * // Формируем ту же дату записью действующего стандарта журнала
+	 * chrono.format(date, "%Y-%m-%dT%H:%M:%S.%s%i");          // 2025-04-06T12:37:01.000Z
+	 * // Получаем начало суток и номер дня недели
+	 * chrono.begin(date, awh::chrono_t::type_t::DAY);           // 1743897600000
+	 * chrono.get <uint8_t> (date, awh::chrono_t::unit_t::DAY);  // 7
+	 * @endcode
+	 *
 	 * \~english
 	 * @brief Structure of the Chrono module
 	 * @details The class unites four independent tasks: the parsing of a record of a date by
@@ -861,31 +883,27 @@ namespace awh {
 	 * @see parse
 	 * @see format
 	 *
-	 * \~
+	 * @code{.cpp}
+	 * // RFC 3164, the obsolete system log: Apr  6 12:37:01
+	 * "%b %e %H:%M:%S"
+	 * // RFC 5424 and RFC 3339: 2025-04-06T12:37:01.520Z
+	 * "%Y-%m-%dT%H:%M:%S.%s%i"
+	 * // RFC 5322, the Date header: Sun, 06 Apr 2025 12:37:01 +0000
+	 * "%a, %d %b %Y %H:%M:%S %z"
+	 * // The log of a web server in the common format: 06/Apr/2025:12:37:01 +0000
+	 * "%d/%b/%Y:%H:%M:%S %z"
+	 * @endcode
 	 *
-	 *          @code{.cpp}
-	 *          // RFC 3164, устаревший системный журнал: Apr  6 12:37:01
-	 *          "%b %e %H:%M:%S"
-	 *          // RFC 5424 и RFC 3339: 2025-04-06T12:37:01.520Z
-	 *          "%Y-%m-%dT%H:%M:%S.%s%i"
-	 *          // RFC 5322, заголовок Date: Sun, 06 Apr 2025 12:37:01 +0000
-	 *          "%a, %d %b %Y %H:%M:%S %z"
-	 *          // Журнал веб-сервера в общем формате: 06/Apr/2025:12:37:01 +0000
-	 *          "%d/%b/%Y:%H:%M:%S %z"
-	 *          @endcode
-	 *
-	 *          @code{.cpp}
-	 *          awh::chrono_t chrono(&fmk, &log);
-	 *          // Разбираем запись журнала веб-сервера в штамп времени
-	 *          const uint64_t date = chrono.parse("06/Apr/2025:12:37:01 +0000", "%d/%b/%Y:%H:%M:%S %z");
-	 *          // Формируем ту же дату записью действующего стандарта журнала
-	 *          chrono.format(date, "%Y-%m-%dT%H:%M:%S.%s%i");          // 2025-04-06T12:37:01.000Z
-	 *          // Получаем начало суток и номер дня недели
-	 *          chrono.begin(date, awh::chrono_t::type_t::DAY);           // 1743897600000
-	 *          chrono.get <uint8_t> (date, awh::chrono_t::unit_t::DAY);  // 7
-	 *          @endcode
-	 *
-	 *
+	 * @code{.cpp}
+	 * awh::chrono_t chrono(&fmk, &log);
+	 * // Parsing a record of the log of a web server into a timestamp
+	 * const uint64_t date = chrono.parse("06/Apr/2025:12:37:01 +0000", "%d/%b/%Y:%H:%M:%S %z");
+	 * // Building the same date in the record of the standard of the log in force
+	 * chrono.format(date, "%Y-%m-%dT%H:%M:%S.%s%i");          // 2025-04-06T12:37:01.000Z
+	 * // Getting the beginning of the day and the number of the day of the week
+	 * chrono.begin(date, awh::chrono_t::type_t::DAY);           // 1743897600000
+	 * chrono.get <uint8_t> (date, awh::chrono_t::unit_t::DAY);  // 7
+	 * @endcode
 	 *
 	 */
 	typedef class __AWH_SHARED_EXPORT__ Chrono {
@@ -1155,6 +1173,15 @@ namespace awh {
 			 *       изменяет: согласование доступа при работе из нескольких потоков лежит
 			 *       на том, кто объектом пользуется
 			 *
+			 * @code{.cpp}
+			 * // Собираем дату по частям во внутреннем объекте
+			 * chrono.timestamp(1743943021520, awh::chrono_t::type_t::MILLISECONDS);
+			 * chrono.set <uint16_t> (2030, awh::chrono_t::unit_t::YEAR);
+			 * chrono.format("%Y-%m-%d", awh::chrono_t::storage_t::LOCAL);  // 2030-04-06
+			 * // Системные часы внутренним объектом не затронуты
+			 * chrono.format("%Y-%m-%d", awh::chrono_t::storage_t::GLOBAL);
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Type of the stored date
 			 * @details Where the methods without an argument of a date take the moment of time from. GLOBAL means
@@ -1167,17 +1194,14 @@ namespace awh {
 			 *       them: the synchronization of the access when working from several threads lies
 			 *       on the one who uses the object
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          // Собираем дату по частям во внутреннем объекте
-			 *          chrono.timestamp(1743943021520, awh::chrono_t::type_t::MILLISECONDS);
-			 *          chrono.set <uint16_t> (2030, awh::chrono_t::unit_t::YEAR);
-			 *          chrono.format("%Y-%m-%d", awh::chrono_t::storage_t::LOCAL);  // 2030-04-06
-			 *          // Системные часы внутренним объектом не затронуты
-			 *          chrono.format("%Y-%m-%d", awh::chrono_t::storage_t::GLOBAL);
-			 *          @endcode
-			 *
+			 * @code{.cpp}
+			 * // Building the date by parts in the internal object
+			 * chrono.timestamp(1743943021520, awh::chrono_t::type_t::MILLISECONDS);
+			 * chrono.set <uint16_t> (2030, awh::chrono_t::unit_t::YEAR);
+			 * chrono.format("%Y-%m-%d", awh::chrono_t::storage_t::LOCAL);  // 2030-04-06
+			 * // The system clock is not touched by the internal object
+			 * chrono.format("%Y-%m-%d", awh::chrono_t::storage_t::GLOBAL);
+			 * @endcode
 			 *
 			 */
 			enum class storage_t : uint8_t {
@@ -1243,6 +1267,13 @@ namespace awh {
 			 * @see get
 			 * @see set
 			 *
+			 * @code{.cpp}
+			 * chrono.get <uint8_t> (date, awh::chrono_t::unit_t::MONTH);      // 4
+			 * chrono.get <std::string> (date, awh::chrono_t::unit_t::MONTH);  // April
+			 * chrono.get <uint8_t> (date, awh::chrono_t::unit_t::DAY);        // 7
+			 * chrono.get <std::string> (date, awh::chrono_t::unit_t::DAY);    // Sunday
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Type of the elements of a date
 			 * @details A separate part of a date for the get and set methods. Unlike
@@ -1253,15 +1284,12 @@ namespace awh {
 			 * @see get
 			 * @see set
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          chrono.get <uint8_t> (date, awh::chrono_t::unit_t::MONTH);      // 4
-			 *          chrono.get <std::string> (date, awh::chrono_t::unit_t::MONTH);  // April
-			 *          chrono.get <uint8_t> (date, awh::chrono_t::unit_t::DAY);        // 7
-			 *          chrono.get <std::string> (date, awh::chrono_t::unit_t::DAY);    // Sunday
-			 *          @endcode
-			 *
+			 * @code{.cpp}
+			 * chrono.get <uint8_t> (date, awh::chrono_t::unit_t::MONTH);      // 4
+			 * chrono.get <std::string> (date, awh::chrono_t::unit_t::MONTH);  // April
+			 * chrono.get <uint8_t> (date, awh::chrono_t::unit_t::DAY);        // 7
+			 * chrono.get <std::string> (date, awh::chrono_t::unit_t::DAY);    // Sunday
+			 * @endcode
 			 *
 			 */
 			enum class unit_t : uint8_t {
@@ -1674,6 +1702,15 @@ namespace awh {
 			 * @param seconds допуск отката года в секундах, ноль отключает откат
 			 * @see parse
 			 *
+			 * @code{.cpp}
+			 * // Один датацентр в одной временной зоне: разброса зон нет
+			 * chrono.yearRollback(3600);
+			 * // Хосты по всему свету, с запасом на разъехавшиеся часы
+			 * chrono.yearRollback(30 * 3600);
+			 * // Год приходит из другого источника, откат не нужен
+			 * chrono.yearRollback(0);
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of setting the tolerance of the rollback of the year
 			 * @details Sets how far forward a record that does not contain a year may stand
@@ -1699,20 +1736,14 @@ namespace awh {
 			 * @param seconds tolerance of the rollback of the year in seconds, zero switches off the rollback
 			 * @see parse
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          // Один датацентр в одной временной зоне: разброса зон нет
-			 *          chrono.yearRollback(3600);
-			 *          // Хосты по всему свету, с запасом на разъехавшиеся часы
-			 *          chrono.yearRollback(30 * 3600);
-			 *          // Год приходит из другого источника, откат не нужен
-			 *          chrono.yearRollback(0);
-			 *          @endcode
-			 *
-			 *
-			 *
-			 *
+			 * @code{.cpp}
+			 * // One data centre in one time zone: there is no spread of the zones
+			 * chrono.yearRollback(3600);
+			 * // The hosts are all over the world, with a reserve for the clocks that have drifted apart
+			 * chrono.yearRollback(30 * 3600);
+			 * // The year comes from another source, the fallback is not needed
+			 * chrono.yearRollback(0);
+			 * @endcode
 			 *
 			 */
 			void yearRollback(const uint32_t seconds) noexcept;
@@ -1769,6 +1800,11 @@ namespace awh {
 			 * @see parse
 			 * @see yearRollback
 			 *
+			 * @code{.cpp}
+			 * chrono.parse("06-Nov-94 08:49:37", "%d-%b-%y %H:%M:%S");  // 1994 год
+			 * chrono.parse("06-Nov-70 08:49:37", "%d-%b-%y %H:%M:%S");  // 2070 год
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of setting the window of a two-digit year
 			 * @details Sets how far forward a record the year in which is written with two
@@ -1796,18 +1832,10 @@ namespace awh {
 			 * @see parse
 			 * @see yearRollback
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          chrono.parse("06-Nov-94 08:49:37", "%d-%b-%y %H:%M:%S");  // 1994 год
-			 *          chrono.parse("06-Nov-70 08:49:37", "%d-%b-%y %H:%M:%S");  // 2070 год
-			 *          @endcode
-			 *
-			 *
-			 *
-			 *
-			 *
-			 *
+			 * @code{.cpp}
+			 * chrono.parse("06-Nov-94 08:49:37", "%d-%b-%y %H:%M:%S");  // the year 1994
+			 * chrono.parse("06-Nov-70 08:49:37", "%d-%b-%y %H:%M:%S");  // the year 2070
+			 * @endcode
 			 *
 			 */
 			void yearWindow(const uint8_t years) noexcept;
@@ -1859,6 +1887,16 @@ namespace awh {
 			 * @see yearWindow
 			 * @see parse
 			 *
+			 * @code{.cpp}
+			 * using ch = awh::chrono_t;
+			 * // Скользящее окно при текущем 2026 годе относит «70» к 2070 году
+			 * chrono.century(ch::century_t::WINDOW);
+			 * chrono.parse("06-Nov-70 08:49:37", "%d-%b-%y %H:%M:%S");  // 2070 год
+			 * // Неподвижный рубеж POSIX относит «70» к 1970 году
+			 * chrono.century(ch::century_t::POSIX);
+			 * chrono.parse("06-Nov-70 08:49:37", "%d-%b-%y %H:%M:%S");  // 1970 год
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of setting the rule of the expansion of a two-digit year
 			 * @details Sets which century a year written with two digits should be attributed to.
@@ -1885,21 +1923,15 @@ namespace awh {
 			 * @see yearWindow
 			 * @see parse
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          using ch = awh::chrono_t;
-			 *          // Скользящее окно при текущем 2026 годе относит «70» к 2070 году
-			 *          chrono.century(ch::century_t::WINDOW);
-			 *          chrono.parse("06-Nov-70 08:49:37", "%d-%b-%y %H:%M:%S");  // 2070 год
-			 *          // Неподвижный рубеж POSIX относит «70» к 1970 году
-			 *          chrono.century(ch::century_t::POSIX);
-			 *          chrono.parse("06-Nov-70 08:49:37", "%d-%b-%y %H:%M:%S");  // 1970 год
-			 *          @endcode
-			 *
-			 *
-			 *
-			 *
+			 * @code{.cpp}
+			 * using ch = awh::chrono_t;
+			 * // The sliding window at the current year 2026 refers "70" to the year 2070
+			 * chrono.century(ch::century_t::WINDOW);
+			 * chrono.parse("06-Nov-70 08:49:37", "%d-%b-%y %H:%M:%S");  // the year 2070
+			 * // The immovable boundary of POSIX refers "70" to the year 1970
+			 * chrono.century(ch::century_t::POSIX);
+			 * chrono.parse("06-Nov-70 08:49:37", "%d-%b-%y %H:%M:%S");  // the year 1970
+			 * @endcode
 			 *
 			 */
 			void century(const century_t mode) noexcept;
@@ -1935,6 +1967,12 @@ namespace awh {
 			 * @param mode признак приёма секунды координации
 			 * @see validate
 			 *
+			 * @code{.cpp}
+			 * chrono.validate("2016-12-31T23:59:60Z", "%Y-%m-%dT%H:%M:%S%i");  // true
+			 * chrono.leapSecond(false);
+			 * chrono.validate("2016-12-31T23:59:60Z", "%Y-%m-%dT%H:%M:%S%i");  // false
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of setting the sign of the acceptance of the leap second
 			 * @details Sets whether a record where the second equals sixty should be considered fit.
@@ -1947,16 +1985,11 @@ namespace awh {
 			 * @param mode sign of the acceptance of the leap second
 			 * @see validate
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          chrono.validate("2016-12-31T23:59:60Z", "%Y-%m-%dT%H:%M:%S%i");  // true
-			 *          chrono.leapSecond(false);
-			 *          chrono.validate("2016-12-31T23:59:60Z", "%Y-%m-%dT%H:%M:%S%i");  // false
-			 *          @endcode
-			 *
-			 *
-			 *
+			 * @code{.cpp}
+			 * chrono.validate("2016-12-31T23:59:60Z", "%Y-%m-%dT%H:%M:%S%i");  // true
+			 * chrono.leapSecond(false);
+			 * chrono.validate("2016-12-31T23:59:60Z", "%Y-%m-%dT%H:%M:%S%i");  // false
+			 * @endcode
 			 *
 			 */
 			void leapSecond(const bool mode) noexcept;
@@ -2415,6 +2448,14 @@ namespace awh {
 			 * @param date дата в UnixTimestamp
 			 * @return     сформированная аббревиатура даты
 			 *
+			 * @code{.cpp}
+			 * chrono.abbreviation(500);          // MILLISECONDS, 500.0
+			 * chrono.abbreviation(5000);         // SECONDS, 5.0
+			 * chrono.abbreviation(7200000);      // HOUR, 2.0
+			 * chrono.abbreviation(1209600000);   // WEEK, 2.0
+			 * chrono.abbreviation(5184000000);   // MONTH, 2.142857
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of converting a time into an abbreviation
 			 * @details Picks the largest unit of the measurement in which the duration
@@ -2432,18 +2473,13 @@ namespace awh {
 			 * @param date date as a UnixTimestamp
 			 * @return     the built abbreviation of the date
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          chrono.abbreviation(500);          // MILLISECONDS, 500.0
-			 *          chrono.abbreviation(5000);         // SECONDS, 5.0
-			 *          chrono.abbreviation(7200000);      // HOUR, 2.0
-			 *          chrono.abbreviation(1209600000);   // WEEK, 2.0
-			 *          chrono.abbreviation(5184000000);   // MONTH, 2.142857
-			 *          @endcode
-			 *
-			 *
-			 *
+			 * @code{.cpp}
+			 * chrono.abbreviation(500);          // MILLISECONDS, 500.0
+			 * chrono.abbreviation(5000);         // SECONDS, 5.0
+			 * chrono.abbreviation(7200000);      // HOUR, 2.0
+			 * chrono.abbreviation(1209600000);   // WEEK, 2.0
+			 * chrono.abbreviation(5184000000);   // MONTH, 2.142857
+			 * @endcode
 			 *
 			 */
 			std::pair <type_t, double> abbreviation(const uint64_t date) const noexcept;
@@ -2465,6 +2501,16 @@ namespace awh {
 			 * @return     конец указанной даты в формате UnixTimestamp
 			 * @see begin
 			 *
+			 * @code{.cpp}
+			 * // 2025-04-06T12:37:01.520Z, воскресенье
+			 * const uint64_t date = 1743943021520;
+			 * chrono.begin(date, awh::chrono_t::type_t::DAY);   // 2025-04-06T00:00:00
+			 * chrono.end(date, awh::chrono_t::type_t::DAY);     // 2025-04-07T00:00:00
+			 * chrono.end(date, awh::chrono_t::type_t::WEEK);    // 2025-04-07T00:00:00
+			 * chrono.end(date, awh::chrono_t::type_t::MONTH);   // 2025-05-01T00:00:00
+			 * chrono.end(date, awh::chrono_t::type_t::YEAR);    // 2026-01-01T00:00:00
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of getting the end of the position of the specified date
 			 * @details Yields the boundary of the calendar interval the date falls into.
@@ -2479,20 +2525,15 @@ namespace awh {
 			 * @return     end of the specified date in the UnixTimestamp format
 			 * @see begin
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          // 2025-04-06T12:37:01.520Z, воскресенье
-			 *          const uint64_t date = 1743943021520;
-			 *          chrono.begin(date, awh::chrono_t::type_t::DAY);   // 2025-04-06T00:00:00
-			 *          chrono.end(date, awh::chrono_t::type_t::DAY);     // 2025-04-07T00:00:00
-			 *          chrono.end(date, awh::chrono_t::type_t::WEEK);    // 2025-04-07T00:00:00
-			 *          chrono.end(date, awh::chrono_t::type_t::MONTH);   // 2025-05-01T00:00:00
-			 *          chrono.end(date, awh::chrono_t::type_t::YEAR);    // 2026-01-01T00:00:00
-			 *          @endcode
-			 *
-			 *
-			 *
+			 * @code{.cpp}
+			 * // 2025-04-06T12:37:01.520Z, a Sunday
+			 * const uint64_t date = 1743943021520;
+			 * chrono.begin(date, awh::chrono_t::type_t::DAY);   // 2025-04-06T00:00:00
+			 * chrono.end(date, awh::chrono_t::type_t::DAY);     // 2025-04-07T00:00:00
+			 * chrono.end(date, awh::chrono_t::type_t::WEEK);    // 2025-04-07T00:00:00
+			 * chrono.end(date, awh::chrono_t::type_t::MONTH);   // 2025-05-01T00:00:00
+			 * chrono.end(date, awh::chrono_t::type_t::YEAR);    // 2026-01-01T00:00:00
+			 * @endcode
 			 *
 			 */
 			uint64_t end(const uint64_t date, const type_t type) const noexcept;
@@ -2538,6 +2579,11 @@ namespace awh {
 			 * @return     начало указанной даты в формате UnixTimestamp
 			 * @see end
 			 *
+			 * @code{.cpp}
+			 * // Начало суток нужной даты - частая основа группировки записей журнала
+			 * const uint64_t day = chrono.begin(date, awh::chrono_t::type_t::DAY);
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of getting the beginning of the position of the specified date
 			 * @details Yields the beginning of the calendar interval the date falls into. The boundary is
@@ -2548,14 +2594,10 @@ namespace awh {
 			 * @return     beginning of the specified date in the UnixTimestamp format
 			 * @see end
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          // Начало суток нужной даты - частая основа группировки записей журнала
-			 *          const uint64_t day = chrono.begin(date, awh::chrono_t::type_t::DAY);
-			 *          @endcode
-			 *
-			 *
+			 * @code{.cpp}
+			 * // The beginning of the day of the needed date is a frequent basis of the grouping of the records of a log
+			 * const uint64_t day = chrono.begin(date, awh::chrono_t::type_t::DAY);
+			 * @endcode
 			 *
 			 */
 			uint64_t begin(const uint64_t date, const type_t type) const noexcept;
@@ -2608,6 +2650,15 @@ namespace awh {
 			 * @param actual направление актуализации
 			 * @return       результат вычисления
 			 *
+			 * @code{.cpp}
+			 * using ch = awh::chrono_t;
+			 * // 2025-04-06, 96-й день года
+			 * chrono.actual(date, ch::type_t::DAY, ch::type_t::YEAR, ch::actual_t::LEFT);    // 269
+			 * chrono.actual(date, ch::type_t::DAY, ch::type_t::YEAR, ch::actual_t::PASSED);  // 95
+			 * chrono.actual(date, ch::type_t::HOUR, ch::type_t::DAY, ch::actual_t::LEFT);    // 11
+			 * chrono.actual(date, ch::type_t::MONTH, ch::type_t::YEAR, ch::actual_t::LEFT);  // 8
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of the actualization of the elapsed and of the remaining time
 			 * @details Counts how many units of value have remained until the end of the interval of type or
@@ -2625,19 +2676,14 @@ namespace awh {
 			 * @param actual direction of the actualization
 			 * @return       result of the computation
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          using ch = awh::chrono_t;
-			 *          // 2025-04-06, 96-й день года
-			 *          chrono.actual(date, ch::type_t::DAY, ch::type_t::YEAR, ch::actual_t::LEFT);    // 269
-			 *          chrono.actual(date, ch::type_t::DAY, ch::type_t::YEAR, ch::actual_t::PASSED);  // 95
-			 *          chrono.actual(date, ch::type_t::HOUR, ch::type_t::DAY, ch::actual_t::LEFT);    // 11
-			 *          chrono.actual(date, ch::type_t::MONTH, ch::type_t::YEAR, ch::actual_t::LEFT);  // 8
-			 *          @endcode
-			 *
-			 *
-			 *
+			 * @code{.cpp}
+			 * using ch = awh::chrono_t;
+			 * // 2025-04-06, the 96th day of the year
+			 * chrono.actual(date, ch::type_t::DAY, ch::type_t::YEAR, ch::actual_t::LEFT);    // 269
+			 * chrono.actual(date, ch::type_t::DAY, ch::type_t::YEAR, ch::actual_t::PASSED);  // 95
+			 * chrono.actual(date, ch::type_t::HOUR, ch::type_t::DAY, ch::actual_t::LEFT);    // 11
+			 * chrono.actual(date, ch::type_t::MONTH, ch::type_t::YEAR, ch::actual_t::LEFT);  // 8
+			 * @endcode
 			 *
 			 */
 			uint64_t actual(const uint64_t date, const type_t value, const type_t type, const actual_t actual) const noexcept;
@@ -2688,6 +2734,22 @@ namespace awh {
 			 * @return       результат вычисления в формате UnixTimestamp, в миллисекундах
 			 *               для всех единиц крупнее микросекунды
 			 *
+			 * @code{.cpp}
+			 * using ch = awh::chrono_t;
+			 * const uint64_t jan31 = chrono.parse("2025-01-31", "%Y-%m-%d");
+			 * // Число месяца ограничивается последним днём конечного месяца
+			 * chrono.offset(jan31, 1, ch::type_t::MONTH, ch::offset_t::INCREMENT);   // 2025-02-28
+			 * chrono.offset(jan31, 13, ch::type_t::MONTH, ch::offset_t::INCREMENT);  // 2026-02-28
+			 * chrono.offset(date, 90, ch::type_t::DAY, ch::offset_t::INCREMENT);     // 2025-07-05
+			 * @endcode
+			 *
+			 * @code{.cpp}
+			 * chrono.offset(1743943021000, 1, ch::type_t::SECONDS, ch::offset_t::INCREMENT);
+			 * // 1743943022000, миллисекунды
+			 * chrono.offset(1743943021000, 1, ch::type_t::MICROSECONDS, ch::offset_t::INCREMENT);
+			 * // 1743943021000001, микросекунды
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of the offset by the specified number of the units of time
 			 * @details Moves a date by the given number of the units forward or backward.
@@ -2710,25 +2772,21 @@ namespace awh {
 			 * @return       result of the computation in the UnixTimestamp format, in milliseconds
 			 *               for all the units coarser than a microsecond
 			 *
-			 * \~
+			 * @code{.cpp}
+			 * using ch = awh::chrono_t;
+			 * const uint64_t jan31 = chrono.parse("2025-01-31", "%Y-%m-%d");
+			 * // The day of the month is limited by the last day of the resulting month
+			 * chrono.offset(jan31, 1, ch::type_t::MONTH, ch::offset_t::INCREMENT);   // 2025-02-28
+			 * chrono.offset(jan31, 13, ch::type_t::MONTH, ch::offset_t::INCREMENT);  // 2026-02-28
+			 * chrono.offset(date, 90, ch::type_t::DAY, ch::offset_t::INCREMENT);     // 2025-07-05
+			 * @endcode
 			 *
-			 *          @code{.cpp}
-			 *          using ch = awh::chrono_t;
-			 *          const uint64_t jan31 = chrono.parse("2025-01-31", "%Y-%m-%d");
-			 *          // Число месяца ограничивается последним днём конечного месяца
-			 *          chrono.offset(jan31, 1, ch::type_t::MONTH, ch::offset_t::INCREMENT);   // 2025-02-28
-			 *          chrono.offset(jan31, 13, ch::type_t::MONTH, ch::offset_t::INCREMENT);  // 2026-02-28
-			 *          chrono.offset(date, 90, ch::type_t::DAY, ch::offset_t::INCREMENT);     // 2025-07-05
-			 *          @endcode
-			 *
-			 *
-			 *       @code{.cpp}
-			 *       chrono.offset(1743943021000, 1, ch::type_t::SECONDS, ch::offset_t::INCREMENT);
-			 *       // 1743943022000, миллисекунды
-			 *       chrono.offset(1743943021000, 1, ch::type_t::MICROSECONDS, ch::offset_t::INCREMENT);
-			 *       // 1743943021000001, микросекунды
-			 *       @endcode
-			 *
+			 * @code{.cpp}
+			 * chrono.offset(1743943021000, 1, ch::type_t::SECONDS, ch::offset_t::INCREMENT);
+			 * // 1743943022000, milliseconds
+			 * chrono.offset(1743943021000, 1, ch::type_t::MICROSECONDS, ch::offset_t::INCREMENT);
+			 * // 1743943021000001, microseconds
+			 * @endcode
 			 *
 			 */
 			uint64_t offset(const uint64_t date, const uint64_t value, const type_t type, const offset_t offset) const noexcept;
@@ -2772,6 +2830,21 @@ namespace awh {
 			 * @param seconds количество секунд для конвертации
 			 * @return        обозначение времени с указанием размерности
 			 *
+			 * @code{.cpp}
+			 * chrono.seconds(45.0);       // 45s
+			 * chrono.seconds(2592000.0);  // 4.29w
+			 * chrono.seconds(90.0);       // 1.5m
+			 * chrono.seconds(5400.0);     // 1.5h
+			 * chrono.seconds(86400.0);    // 1d
+			 * chrono.seconds(604800.0);   // 1w
+			 * chrono.seconds(31536000.0); // 1y
+			 * @endcode
+			 *
+			 * @code{.cpp}
+			 * chrono.seconds(-7200.0);   // -2h
+			 * chrono.seconds(-2592000.0); // -4.29w
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of getting the text value of a time
 			 * @details Writes a duration by the largest unit in which it
@@ -2787,24 +2860,20 @@ namespace awh {
 			 * @param seconds number of the seconds to convert
 			 * @return        designation of the time with the dimension specified
 			 *
-			 * \~
+			 * @code{.cpp}
+			 * chrono.seconds(45.0);       // 45s
+			 * chrono.seconds(2592000.0);  // 4.29w
+			 * chrono.seconds(90.0);       // 1.5m
+			 * chrono.seconds(5400.0);     // 1.5h
+			 * chrono.seconds(86400.0);    // 1d
+			 * chrono.seconds(604800.0);   // 1w
+			 * chrono.seconds(31536000.0); // 1y
+			 * @endcode
 			 *
-			 *          @code{.cpp}
-			 *          chrono.seconds(45.0);       // 45s
-			 *          chrono.seconds(2592000.0);  // 4.29w
-			 *          chrono.seconds(90.0);       // 1.5m
-			 *          chrono.seconds(5400.0);     // 1.5h
-			 *          chrono.seconds(86400.0);    // 1d
-			 *          chrono.seconds(604800.0);   // 1w
-			 *          chrono.seconds(31536000.0); // 1y
-			 *          @endcode
-			 *
-			 *
-			 *       @code{.cpp}
-			 *       chrono.seconds(-7200.0);   // -2h
-			 *       chrono.seconds(-2592000.0); // -4.29w
-			 *       @endcode
-			 *
+			 * @code{.cpp}
+			 * chrono.seconds(-7200.0);   // -2h
+			 * chrono.seconds(-2592000.0); // -4.29w
+			 * @endcode
 			 *
 			 */
 			string seconds(const double seconds) const noexcept;
@@ -2828,6 +2897,16 @@ namespace awh {
 			 * @param value строка обозначения размерности (s, m, h, d, w, M, y)
 			 * @return      размер в секундах
 			 *
+			 * @code{.cpp}
+			 * chrono.seconds("45s");   // 45
+			 * chrono.seconds("90m");   // 5400
+			 * chrono.seconds("1.5h");  // 5400
+			 * chrono.seconds("2d");    // 172800
+			 * chrono.seconds("1w");    // 604800
+			 * chrono.seconds("3M");    // 7889238, месяц равен 30.436875 суток
+			 * chrono.seconds("1y");    // 31536000
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of getting the size in seconds from a string
 			 * @details Converts a designation of a duration into seconds. It is convenient to set with it
@@ -2845,20 +2924,15 @@ namespace awh {
 			 * @param value string of the designation of the dimension (s, m, h, d, w, M, y)
 			 * @return      size in seconds
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          chrono.seconds("45s");   // 45
-			 *          chrono.seconds("90m");   // 5400
-			 *          chrono.seconds("1.5h");  // 5400
-			 *          chrono.seconds("2d");    // 172800
-			 *          chrono.seconds("1w");    // 604800
-			 *          chrono.seconds("3M");    // 7889238, месяц равен 30.436875 суток
-			 *          chrono.seconds("1y");    // 31536000
-			 *          @endcode
-			 *
-			 *
-			 *
+			 * @code{.cpp}
+			 * chrono.seconds("45s");   // 45
+			 * chrono.seconds("90m");   // 5400
+			 * chrono.seconds("1.5h");  // 5400
+			 * chrono.seconds("2d");    // 172800
+			 * chrono.seconds("1w");    // 604800
+			 * chrono.seconds("3M");    // 7889238, a month equals 30.436875 days
+			 * chrono.seconds("1y");    // 31536000
+			 * @endcode
 			 *
 			 */
 			double seconds(string_view value) const noexcept;
@@ -3052,6 +3126,12 @@ namespace awh {
 			 * @param date дата для проверки
 			 * @return     результат проверки
 			 *
+			 * @code{.cpp}
+			 * chrono.leap(2024);                              // не собирается
+			 * chrono.leap(static_cast <uint16_t> (2024));     // проверка номера года
+			 * chrono.leap(static_cast <uint64_t> (date));     // проверка года даты
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of checking whether a year is a leap one
 			 * @details Checks the year the date belongs to. Differs from the overload of the same name
@@ -3062,14 +3142,11 @@ namespace awh {
 			 * @param date date to check
 			 * @return     result of the check
 			 *
-			 * \~
-			 *
-			 *       @code{.cpp}
-			 *       chrono.leap(2024);                              // не собирается
-			 *       chrono.leap(static_cast <uint16_t> (2024));     // проверка номера года
-			 *       chrono.leap(static_cast <uint64_t> (date));     // проверка года даты
-			 *       @endcode
-			 *
+			 * @code{.cpp}
+			 * chrono.leap(2024);                              // does not build
+			 * chrono.leap(static_cast <uint16_t> (2024));     // the check of the number of the year
+			 * chrono.leap(static_cast <uint64_t> (date));     // the check of the year of the date
+			 * @endcode
 			 *
 			 */
 			bool leap(const uint64_t date) const noexcept;
@@ -3118,6 +3195,17 @@ namespace awh {
 			 * @see timestamp
 			 * @see clear
 			 *
+			 * @code{.cpp}
+			 * using ch = awh::chrono_t;
+			 * // Кладём разобранную дату во внутренний объект
+			 * chrono.timestamp(1743943021520, ch::type_t::MILLISECONDS);
+			 * // Правим отдельные её составляющие
+			 * chrono.set <uint16_t> (2030, ch::unit_t::YEAR);
+			 * chrono.set <std::string> ("Dec", ch::unit_t::MONTH);
+			 * // Читаем получившееся из локального хранилища
+			 * chrono.format("%Y-%m-%d", ch::storage_t::LOCAL);  // 2030-12-06
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of setting the data of a date and a time
 			 * @details Changes a separate part of the internal date object — of the storage_t::LOCAL
@@ -3131,21 +3219,16 @@ namespace awh {
 			 * @see timestamp
 			 * @see clear
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          using ch = awh::chrono_t;
-			 *          // Кладём разобранную дату во внутренний объект
-			 *          chrono.timestamp(1743943021520, ch::type_t::MILLISECONDS);
-			 *          // Правим отдельные её составляющие
-			 *          chrono.set <uint16_t> (2030, ch::unit_t::YEAR);
-			 *          chrono.set <std::string> ("Dec", ch::unit_t::MONTH);
-			 *          // Читаем получившееся из локального хранилища
-			 *          chrono.format("%Y-%m-%d", ch::storage_t::LOCAL);  // 2030-12-06
-			 *          @endcode
-			 *
-			 *
-			 *
+			 * @code{.cpp}
+			 * using ch = awh::chrono_t;
+			 * // Putting the parsed date into the internal object
+			 * chrono.timestamp(1743943021520, ch::type_t::MILLISECONDS);
+			 * // Correcting its separate constituents
+			 * chrono.set <uint16_t> (2030, ch::unit_t::YEAR);
+			 * chrono.set <std::string> ("Dec", ch::unit_t::MONTH);
+			 * // Reading what came out from the local storage
+			 * chrono.format("%Y-%m-%d", ch::storage_t::LOCAL);  // 2030-12-06
+			 * @endcode
 			 *
 			 */
 			void set(const T date, const unit_t unit) noexcept;
@@ -3203,6 +3286,20 @@ namespace awh {
 			 * @param unit элементы данных для извлечения
 			 * @return     значение данных даты и времени
 			 *
+			 * @code{.cpp}
+			 * using ch = awh::chrono_t;
+			 * // 2025-04-06T12:37:01.520Z, воскресенье
+			 * chrono.get <uint16_t> (date, ch::unit_t::YEAR);         // 2025
+			 * chrono.get <uint8_t> (date, ch::unit_t::MONTH);         // 4
+			 * chrono.get <std::string> (date, ch::unit_t::MONTH);     // April
+			 * chrono.get <uint8_t> (date, ch::unit_t::DATE);          // 6
+			 * chrono.get <uint8_t> (date, ch::unit_t::DAY);           // 7
+			 * chrono.get <std::string> (date, ch::unit_t::DAY);       // Sunday
+			 * chrono.get <uint16_t> (date, ch::unit_t::DAYS);         // 95
+			 * chrono.get <uint8_t> (date, ch::unit_t::WEEKS);         // 14
+			 * chrono.get <uint32_t> (date, ch::unit_t::MILLISECONDS); // 520
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of extracting the data of a date and a time
 			 * @details Extracts a separate part of the calendar decomposition of a date.
@@ -3220,24 +3317,19 @@ namespace awh {
 			 * @param unit elements of the data to extract
 			 * @return     value of the data of the date and the time
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          using ch = awh::chrono_t;
-			 *          // 2025-04-06T12:37:01.520Z, воскресенье
-			 *          chrono.get <uint16_t> (date, ch::unit_t::YEAR);         // 2025
-			 *          chrono.get <uint8_t> (date, ch::unit_t::MONTH);         // 4
-			 *          chrono.get <std::string> (date, ch::unit_t::MONTH);     // April
-			 *          chrono.get <uint8_t> (date, ch::unit_t::DATE);          // 6
-			 *          chrono.get <uint8_t> (date, ch::unit_t::DAY);           // 7
-			 *          chrono.get <std::string> (date, ch::unit_t::DAY);       // Sunday
-			 *          chrono.get <uint16_t> (date, ch::unit_t::DAYS);         // 95
-			 *          chrono.get <uint8_t> (date, ch::unit_t::WEEKS);         // 14
-			 *          chrono.get <uint32_t> (date, ch::unit_t::MILLISECONDS); // 520
-			 *          @endcode
-			 *
-			 *
-			 *
+			 * @code{.cpp}
+			 * using ch = awh::chrono_t;
+			 * // 2025-04-06T12:37:01.520Z, a Sunday
+			 * chrono.get <uint16_t> (date, ch::unit_t::YEAR);         // 2025
+			 * chrono.get <uint8_t> (date, ch::unit_t::MONTH);         // 4
+			 * chrono.get <std::string> (date, ch::unit_t::MONTH);     // April
+			 * chrono.get <uint8_t> (date, ch::unit_t::DATE);          // 6
+			 * chrono.get <uint8_t> (date, ch::unit_t::DAY);           // 7
+			 * chrono.get <std::string> (date, ch::unit_t::DAY);       // Sunday
+			 * chrono.get <uint16_t> (date, ch::unit_t::DAYS);         // 95
+			 * chrono.get <uint8_t> (date, ch::unit_t::WEEKS);         // 14
+			 * chrono.get <uint32_t> (date, ch::unit_t::MILLISECONDS); // 520
+			 * @endcode
 			 *
 			 */
 			T get(const uint64_t date, const unit_t unit) const noexcept;
@@ -3386,6 +3478,13 @@ namespace awh {
 			 * @param zone временная зона для установки
 			 * @see getTimeZone
 			 *
+			 * @code{.cpp}
+			 * chrono.setTimeZone("MSK");      // +3:00
+			 * chrono.setTimeZone("+05:30");   // +5:30
+			 * chrono.setTimeZone("GMT+0530"); // +5:30, название задаёт основание
+			 * chrono.setTimeZone("3");        // +3:00, число означает часы
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of setting the time zone
 			 * @details A designation sets the time zone entirely, and not a correction to
@@ -3400,18 +3499,12 @@ namespace awh {
 			 * @param zone time zone to set
 			 * @see getTimeZone
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          chrono.setTimeZone("MSK");      // +3:00
-			 *          chrono.setTimeZone("+05:30");   // +5:30
-			 *          chrono.setTimeZone("GMT+0530"); // +5:30, название задаёт основание
-			 *          chrono.setTimeZone("3");        // +3:00, число означает часы
-			 *          @endcode
-			 *
-			 *
-			 *
-			 *
+			 * @code{.cpp}
+			 * chrono.setTimeZone("MSK");      // +3:00
+			 * chrono.setTimeZone("+05:30");   // +5:30
+			 * chrono.setTimeZone("GMT+0530"); // +5:30, the name sets the basis
+			 * chrono.setTimeZone("3");        // +3:00, the number means hours
+			 * @endcode
 			 *
 			 */
 			void setTimeZone(string_view zone) noexcept;
@@ -3430,6 +3523,12 @@ namespace awh {
 			 * @return     определённая временная зона
 			 * @see getTimeZone
 			 *
+			 * @code{.cpp}
+			 * chrono.matchTimeZone("MSK");   // zone_t::MSK
+			 * chrono.matchTimeZone("msk");   // zone_t::MSK
+			 * chrono.matchTimeZone("XXXX");  // zone_t::NONE
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of performing the matching of a time zone
 			 * @details Converts a text designation of a zone into an element of the enumeration. The search
@@ -3441,16 +3540,11 @@ namespace awh {
 			 * @return     the determined time zone
 			 * @see getTimeZone
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          chrono.matchTimeZone("MSK");   // zone_t::MSK
-			 *          chrono.matchTimeZone("msk");   // zone_t::MSK
-			 *          chrono.matchTimeZone("XXXX");  // zone_t::NONE
-			 *          @endcode
-			 *
-			 *
-			 *
+			 * @code{.cpp}
+			 * chrono.matchTimeZone("MSK");   // zone_t::MSK
+			 * chrono.matchTimeZone("msk");   // zone_t::MSK
+			 * chrono.matchTimeZone("XXXX");  // zone_t::NONE
+			 * @endcode
 			 *
 			 */
 			zone_t matchTimeZone(string_view zone) const noexcept;
@@ -3524,6 +3618,14 @@ namespace awh {
 			 * @param date штамп времени в миллисекундах
 			 * @return     смещение временной зоны в секундах
 			 *
+			 * @code{.cpp}
+			 * using ch = awh::chrono_t;
+			 * // Момент 15 января 2025 года даёт -18000 (EST)
+			 * chrono.getTimeZone(ch::zone_t::ET, 1736942400000);
+			 * // Момент 15 июля 2025 года даёт -14400 (EDT)
+			 * chrono.getTimeZone(ch::zone_t::ET, 1752580800000);
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of converting a time zone into an offset at the specified moment of time
 			 * @details The composite zones of North America — zone_t::AT, zone_t::CT, zone_t::ET,
@@ -3537,17 +3639,13 @@ namespace awh {
 			 * @param date timestamp in milliseconds
 			 * @return     offset of the time zone in seconds
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          using ch = awh::chrono_t;
-			 *          // Момент 15 января 2025 года даёт -18000 (EST)
-			 *          chrono.getTimeZone(ch::zone_t::ET, 1736942400000);
-			 *          // Момент 15 июля 2025 года даёт -14400 (EDT)
-			 *          chrono.getTimeZone(ch::zone_t::ET, 1752580800000);
-			 *          @endcode
-			 *
-			 *
+			 * @code{.cpp}
+			 * using ch = awh::chrono_t;
+			 * // The moment of the 15th of January 2025 gives -18000 (EST)
+			 * chrono.getTimeZone(ch::zone_t::ET, 1736942400000);
+			 * // The moment of the 15th of July 2025 gives -14400 (EDT)
+			 * chrono.getTimeZone(ch::zone_t::ET, 1752580800000);
+			 * @endcode
 			 *
 			 */
 			int32_t getTimeZone(const zone_t zone, const uint64_t date) const noexcept;
@@ -3570,6 +3668,16 @@ namespace awh {
 			 * @return     смещение временной зоны в секундах
 			 * @see matchTimeZone
 			 *
+			 * @code{.cpp}
+			 * chrono.getTimeZone("MSK");       // 10800
+			 * chrono.getTimeZone("+05:30");    // 19800
+			 * chrono.getTimeZone("+0530");     // 19800
+			 * chrono.getTimeZone("+530");      // 19800
+			 * chrono.getTimeZone("GMT+0530");  // 19800
+			 * chrono.getTimeZone("MSK+1");     // 14400
+			 * chrono.getTimeZone("XXXX");      // смещение зоны объекта: не распознано
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of converting a time zone into an offset
 			 * @details Parses a text designation of a zone. The acceptance is deliberately broad: a zone
@@ -3586,20 +3694,15 @@ namespace awh {
 			 * @return     offset of the time zone in seconds
 			 * @see matchTimeZone
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          chrono.getTimeZone("MSK");       // 10800
-			 *          chrono.getTimeZone("+05:30");    // 19800
-			 *          chrono.getTimeZone("+0530");     // 19800
-			 *          chrono.getTimeZone("+530");      // 19800
-			 *          chrono.getTimeZone("GMT+0530");  // 19800
-			 *          chrono.getTimeZone("MSK+1");     // 14400
-			 *          chrono.getTimeZone("XXXX");      // смещение зоны объекта: не распознано
-			 *          @endcode
-			 *
-			 *
-			 *
+			 * @code{.cpp}
+			 * chrono.getTimeZone("MSK");       // 10800
+			 * chrono.getTimeZone("+05:30");    // 19800
+			 * chrono.getTimeZone("+0530");     // 19800
+			 * chrono.getTimeZone("+530");      // 19800
+			 * chrono.getTimeZone("GMT+0530");  // 19800
+			 * chrono.getTimeZone("MSK+1");     // 14400
+			 * chrono.getTimeZone("XXXX");      // the offset of the zone of the object: not recognized
+			 * @endcode
 			 *
 			 */
 			int32_t getTimeZone(string_view zone) const noexcept;
@@ -3621,6 +3724,12 @@ namespace awh {
 			 * @return    смещение временной зоны в секундах
 			 * @see dst
 			 *
+			 * @code{.cpp}
+			 * using ch = awh::chrono_t;
+			 * // Летом даёт -14400 (EDT), зимой -18000 (EST)
+			 * chrono.getTimeZone(ch::zone_t::EST, ch::zone_t::EDT);
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of determining the current time zone relative to the daylight saving time
 			 * @details Chooses between the standard and the daylight saving time of a zone by the current date.
@@ -3635,17 +3744,11 @@ namespace awh {
 			 * @return    offset of the time zone in seconds
 			 * @see dst
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          using ch = awh::chrono_t;
-			 *          // Летом даёт -14400 (EDT), зимой -18000 (EST)
-			 *          chrono.getTimeZone(ch::zone_t::EST, ch::zone_t::EDT);
-			 *          @endcode
-			 *
-			 *
-			 *
-			 *
+			 * @code{.cpp}
+			 * using ch = awh::chrono_t;
+			 * // In the summer it gives -14400 (EDT), in the winter -18000 (EST)
+			 * chrono.getTimeZone(ch::zone_t::EST, ch::zone_t::EDT);
+			 * @endcode
 			 *
 			 */
 			int32_t getTimeZone(const zone_t std, const zone_t sum) const noexcept;
@@ -3663,6 +3766,12 @@ namespace awh {
 			 * @return        смещение временной зоны в секундах
 			 * @see setTimeZone
 			 *
+			 * @code{.cpp}
+			 * chrono.setTimeZone("+05:30");
+			 * chrono.getTimeZone(awh::chrono_t::storage_t::LOCAL);  // 19800
+			 * chrono.getTimeZone();                                 // зона системы
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of getting the set time zone
 			 * @details The storage sets whose zone is yielded, and these values are different:
@@ -3673,15 +3782,11 @@ namespace awh {
 			 * @return        offset of the time zone in seconds
 			 * @see setTimeZone
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          chrono.setTimeZone("+05:30");
-			 *          chrono.getTimeZone(awh::chrono_t::storage_t::LOCAL);  // 19800
-			 *          chrono.getTimeZone();                                 // зона системы
-			 *          @endcode
-			 *
-			 *
+			 * @code{.cpp}
+			 * chrono.setTimeZone("+05:30");
+			 * chrono.getTimeZone(awh::chrono_t::storage_t::LOCAL);  // 19800
+			 * chrono.getTimeZone();                                 // the zone of the system
+			 * @endcode
 			 *
 			 */
 			int32_t getTimeZone(const storage_t storage = storage_t::GLOBAL) const noexcept;
@@ -3713,6 +3818,11 @@ namespace awh {
 			 * @see setTimeZones
 			 * @see clearTimeZones
 			 *
+			 * @code{.cpp}
+			 * chrono.addTimeZone("ANYKS", 12345);
+			 * chrono.getTimeZone("ANYKS");  // 12345
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of adding one's own time zone
 			 * @details Supplements the registry of the zones with one's own designation. An added designation
@@ -3727,15 +3837,10 @@ namespace awh {
 			 * @see setTimeZones
 			 * @see clearTimeZones
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          chrono.addTimeZone("ANYKS", 12345);
-			 *          chrono.getTimeZone("ANYKS");  // 12345
-			 *          @endcode
-			 *
-			 *
-			 *
+			 * @code{.cpp}
+			 * chrono.addTimeZone("ANYKS", 12345);
+			 * chrono.getTimeZone("ANYKS");  // 12345
+			 * @endcode
 			 *
 			 */
 			void addTimeZone(string_view name, const int32_t offset) noexcept;
@@ -3768,6 +3873,13 @@ namespace awh {
 			 * @see set
 			 * @see clear
 			 *
+			 * @code{.cpp}
+			 * using ch = awh::chrono_t;
+			 * // Оба вызова кладут во внутренний объект один и тот же момент
+			 * chrono.timestamp(1743943021520, ch::type_t::MILLISECONDS);
+			 * chrono.timestamp(1743943021, ch::type_t::SECONDS);
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of setting a timestamp in the specified units of the measurement
 			 * @details Puts the specified moment of time into the internal date object — the storage_t::LOCAL
@@ -3780,17 +3892,12 @@ namespace awh {
 			 * @see set
 			 * @see clear
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          using ch = awh::chrono_t;
-			 *          // Оба вызова кладут во внутренний объект один и тот же момент
-			 *          chrono.timestamp(1743943021520, ch::type_t::MILLISECONDS);
-			 *          chrono.timestamp(1743943021, ch::type_t::SECONDS);
-			 *          @endcode
-			 *
-			 *
-			 *
+			 * @code{.cpp}
+			 * using ch = awh::chrono_t;
+			 * // Both calls put one and the same moment into the internal object
+			 * chrono.timestamp(1743943021520, ch::type_t::MILLISECONDS);
+			 * chrono.timestamp(1743943021, ch::type_t::SECONDS);
+			 * @endcode
 			 *
 			 */
 			void timestamp(const uint64_t date, const type_t type) noexcept;
@@ -3810,6 +3917,13 @@ namespace awh {
 			 * @param storage хранение значение времени
 			 * @return        штамп времени в указанных единицах измерения
 			 *
+			 * @code{.cpp}
+			 * using ch = awh::chrono_t;
+			 * chrono.timestamp(ch::type_t::SECONDS);       // 1785332104
+			 * chrono.timestamp(ch::type_t::MILLISECONDS);  // 1785332104852
+			 * chrono.timestamp(ch::type_t::NANOSECONDS);   // 1785332104852033000
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of getting a timestamp in the specified units of the measurement
 			 * @details Yields the moment of time in the given dimension. The GLOBAL storage takes the
@@ -3823,16 +3937,12 @@ namespace awh {
 			 * @param storage storage of the value of the time
 			 * @return        timestamp in the specified units of the measurement
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          using ch = awh::chrono_t;
-			 *          chrono.timestamp(ch::type_t::SECONDS);       // 1785332104
-			 *          chrono.timestamp(ch::type_t::MILLISECONDS);  // 1785332104852
-			 *          chrono.timestamp(ch::type_t::NANOSECONDS);   // 1785332104852033000
-			 *          @endcode
-			 *
-			 *
+			 * @code{.cpp}
+			 * using ch = awh::chrono_t;
+			 * chrono.timestamp(ch::type_t::SECONDS);       // 1785332104
+			 * chrono.timestamp(ch::type_t::MILLISECONDS);  // 1785332104852
+			 * chrono.timestamp(ch::type_t::NANOSECONDS);   // 1785332104852033000
+			 * @endcode
 			 *
 			 */
 			uint64_t timestamp(const type_t type, const storage_t storage = storage_t::GLOBAL) const noexcept;
@@ -3890,6 +4000,22 @@ namespace awh {
 			 * @param storage хранение значение времени
 			 * @return        дата в UnixTimestamp
 			 *
+			 * @code{.cpp}
+			 * // Записи стандартов
+			 * chrono.parse("2025-04-06T12:37:01.520Z", "%Y-%m-%dT%H:%M:%S.%s%i");
+			 * chrono.parse("Sun, 06 Apr 2025 12:37:01 +0000", "%a, %d %b %Y %H:%M:%S %z");
+			 * chrono.parse("06/Apr/2025:12:37:01 +0000", "%d/%b/%Y:%H:%M:%S %z");
+			 * // Запись устаревшего системного журнала, года не содержащая
+			 * chrono.parse("Apr  6 12:37:01", "%b %e %H:%M:%S");
+			 * @endcode
+			 *
+			 * @code{.cpp}
+			 * chrono.parse("2025", "%Y");                  // 2025-01-01T00:00:00.000
+			 * chrono.parse("2025-04", "%Y-%m");            // 2025-04-01T00:00:00.000
+			 * chrono.parse("2025-04-06", "%Y-%m-%d");      // 2025-04-06T00:00:00.000
+			 * chrono.parse("12:37:01", "%H:%M:%S");        // текущие сутки, 12:37:01.000
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of parsing a string of a date and a time into a UnixTimestamp
 			 * @details Converts a record of a date into a timestamp by a pattern of a format. The parsing goes
@@ -3940,31 +4066,21 @@ namespace awh {
 			 * @param storage storage of the value of the time
 			 * @return        date as a UnixTimestamp
 			 *
-			 * \~
+			 * @code{.cpp}
+			 * // The records of the standards
+			 * chrono.parse("2025-04-06T12:37:01.520Z", "%Y-%m-%dT%H:%M:%S.%s%i");
+			 * chrono.parse("Sun, 06 Apr 2025 12:37:01 +0000", "%a, %d %b %Y %H:%M:%S %z");
+			 * chrono.parse("06/Apr/2025:12:37:01 +0000", "%d/%b/%Y:%H:%M:%S %z");
+			 * // The record of the obsolete system log, not containing the year
+			 * chrono.parse("Apr  6 12:37:01", "%b %e %H:%M:%S");
+			 * @endcode
 			 *
-			 *          @code{.cpp}
-			 *          // Записи стандартов
-			 *          chrono.parse("2025-04-06T12:37:01.520Z", "%Y-%m-%dT%H:%M:%S.%s%i");
-			 *          chrono.parse("Sun, 06 Apr 2025 12:37:01 +0000", "%a, %d %b %Y %H:%M:%S %z");
-			 *          chrono.parse("06/Apr/2025:12:37:01 +0000", "%d/%b/%Y:%H:%M:%S %z");
-			 *          // Запись устаревшего системного журнала, года не содержащая
-			 *          chrono.parse("Apr  6 12:37:01", "%b %e %H:%M:%S");
-			 *          @endcode
-			 *
-			 *
-			 *          @code{.cpp}
-			 *          chrono.parse("2025", "%Y");                  // 2025-01-01T00:00:00.000
-			 *          chrono.parse("2025-04", "%Y-%m");            // 2025-04-01T00:00:00.000
-			 *          chrono.parse("2025-04-06", "%Y-%m-%d");      // 2025-04-06T00:00:00.000
-			 *          chrono.parse("12:37:01", "%H:%M:%S");        // текущие сутки, 12:37:01.000
-			 *          @endcode
-			 *
-			 *
-			 *
-			 *
-			 *
-			 *
-			 *
+			 * @code{.cpp}
+			 * chrono.parse("2025", "%Y");                  // 2025-01-01T00:00:00.000
+			 * chrono.parse("2025-04", "%Y-%m");            // 2025-04-01T00:00:00.000
+			 * chrono.parse("2025-04-06", "%Y-%m-%d");      // 2025-04-06T00:00:00.000
+			 * chrono.parse("12:37:01", "%H:%M:%S");        // the current day, 12:37:01.000
+			 * @endcode
 			 *
 			 */
 			uint64_t parse(string_view date, string_view format, const storage_t storage = storage_t::GLOBAL) noexcept;
@@ -3985,6 +4101,13 @@ namespace awh {
 			 * @see format
 			 * @see validate
 			 *
+			 * @code{.cpp}
+			 * using ch = awh::chrono_t;
+			 * chrono.parse("Sun, 06 Apr 2025 12:37:01 GMT", ch::standard_t::RFC1123);
+			 * chrono.parse("2025-04-06T12:37:01Z", ch::standard_t::RFC3339);
+			 * chrono.parse("20250406T123701Z", ch::standard_t::ISO8601);
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of parsing a record of a date by a standard
 			 * @details Parses a record set by a standard, accepting all the varieties allowed by it:
@@ -3999,16 +4122,12 @@ namespace awh {
 			 * @see format
 			 * @see validate
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          using ch = awh::chrono_t;
-			 *          chrono.parse("Sun, 06 Apr 2025 12:37:01 GMT", ch::standard_t::RFC1123);
-			 *          chrono.parse("2025-04-06T12:37:01Z", ch::standard_t::RFC3339);
-			 *          chrono.parse("20250406T123701Z", ch::standard_t::ISO8601);
-			 *          @endcode
-			 *
-			 *
+			 * @code{.cpp}
+			 * using ch = awh::chrono_t;
+			 * chrono.parse("Sun, 06 Apr 2025 12:37:01 GMT", ch::standard_t::RFC1123);
+			 * chrono.parse("2025-04-06T12:37:01Z", ch::standard_t::RFC3339);
+			 * chrono.parse("20250406T123701Z", ch::standard_t::ISO8601);
+			 * @endcode
 			 *
 			 */
 			uint64_t parse(string_view date, const standard_t standard, const storage_t storage = storage_t::GLOBAL) noexcept;
@@ -4038,6 +4157,25 @@ namespace awh {
 			 * @return       признак пригодности записи для разбора
 			 * @see parse
 			 *
+			 * @code{.cpp}
+			 * chrono.validate("2025-04-06", "%Y-%m-%d");   // true
+			 * chrono.validate("мусор", "%Y-%m-%d");        // false, полей не нашлось
+			 * chrono.validate("2025-13-45", "%Y-%m-%d");   // false, месяц и число вне пределов
+			 * chrono.validate("2025-02-30", "%Y-%m-%d");   // false, в феврале нет 30-го числа
+			 * @endcode
+			 *
+			 * @code{.cpp}
+			 * if(chrono.validate(record, format))
+			 *     // Запись пригодна, разбираем
+			 *     date = chrono.parse(record, format);
+			 * @endcode
+			 *
+			 * @code{.cpp}
+			 * chrono.validate("1969-12-31", "%Y-%m-%d");                  // false
+			 * chrono.validate("2025-04-06T14:30:45+1400", "%Y-%m-%dT%H:%M:%S%z"); // true
+			 * chrono.validate("2025-04-06T14:30:45+1500", "%Y-%m-%dT%H:%M:%S%z"); // false
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of checking the fitness of a record of a date for the parsing
 			 * @details The parsing does not report an error: a record in which not a single
@@ -4059,30 +4197,24 @@ namespace awh {
 			 * @return       sign of the fitness of the record for the parsing
 			 * @see parse
 			 *
-			 * \~
+			 * @code{.cpp}
+			 * chrono.validate("2025-04-06", "%Y-%m-%d");   // true
+			 * chrono.validate("garbage", "%Y-%m-%d");      // false, no fields were found
+			 * chrono.validate("2025-13-45", "%Y-%m-%d");   // false, the month and the day are out of the limits
+			 * chrono.validate("2025-02-30", "%Y-%m-%d");   // false, there is no 30th day in February
+			 * @endcode
 			 *
-			 *          @code{.cpp}
-			 *          chrono.validate("2025-04-06", "%Y-%m-%d");   // true
-			 *          chrono.validate("мусор", "%Y-%m-%d");        // false, полей не нашлось
-			 *          chrono.validate("2025-13-45", "%Y-%m-%d");   // false, месяц и число вне пределов
-			 *          chrono.validate("2025-02-30", "%Y-%m-%d");   // false, в феврале нет 30-го числа
-			 *          @endcode
+			 * @code{.cpp}
+			 * if(chrono.validate(record, format))
+			 *     // The record is fit, parsing it
+			 *     date = chrono.parse(record, format);
+			 * @endcode
 			 *
-			 *          @code{.cpp}
-			 *          if(chrono.validate(record, format))
-			 *              // Запись пригодна, разбираем
-			 *              date = chrono.parse(record, format);
-			 *          @endcode
-			 *
-			 *
-			 *
-			 *       @code{.cpp}
-			 *       chrono.validate("1969-12-31", "%Y-%m-%d");                  // false
-			 *       chrono.validate("2025-04-06T14:30:45+1400", "%Y-%m-%dT%H:%M:%S%z"); // true
-			 *       chrono.validate("2025-04-06T14:30:45+1500", "%Y-%m-%dT%H:%M:%S%z"); // false
-			 *       @endcode
-			 *
-			 *
+			 * @code{.cpp}
+			 * chrono.validate("1969-12-31", "%Y-%m-%d");                  // false
+			 * chrono.validate("2025-04-06T14:30:45+1400", "%Y-%m-%dT%H:%M:%S%z"); // true
+			 * chrono.validate("2025-04-06T14:30:45+1500", "%Y-%m-%dT%H:%M:%S%z"); // false
+			 * @endcode
 			 *
 			 */
 			bool validate(string_view date, string_view format) noexcept;
@@ -4123,6 +4255,13 @@ namespace awh {
 			 * @return     признак пригодности обозначения
 			 * @see getTimeZone
 			 *
+			 * @code{.cpp}
+			 * chrono.validateTimeZone("MSK");      // true
+			 * chrono.validateTimeZone("+05:30");   // true
+			 * chrono.validateTimeZone("GMT+0530"); // true
+			 * chrono.validateTimeZone("XXXX");     // false
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of checking the fitness of a designation of a time zone
 			 * @details The conversion of a designation of a zone does not report an error: an unknown
@@ -4132,16 +4271,12 @@ namespace awh {
 			 * @return     sign of the fitness of the designation
 			 * @see getTimeZone
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          chrono.validateTimeZone("MSK");      // true
-			 *          chrono.validateTimeZone("+05:30");   // true
-			 *          chrono.validateTimeZone("GMT+0530"); // true
-			 *          chrono.validateTimeZone("XXXX");     // false
-			 *          @endcode
-			 *
-			 *
+			 * @code{.cpp}
+			 * chrono.validateTimeZone("MSK");      // true
+			 * chrono.validateTimeZone("+05:30");   // true
+			 * chrono.validateTimeZone("GMT+0530"); // true
+			 * chrono.validateTimeZone("XXXX");     // false
+			 * @endcode
 			 *
 			 */
 			bool validateTimeZone(string_view zone) const noexcept;
@@ -4156,6 +4291,14 @@ namespace awh {
 			 * @return      признак пригодности обозначения
 			 * @see seconds
 			 *
+			 * @code{.cpp}
+			 * chrono.validateSeconds("90m");   // true
+			 * chrono.validateSeconds("1.5h");  // true
+			 * chrono.validateSeconds("42");    // false, единица размерности не указана
+			 * chrono.validateSeconds("1,5h");  // false, дробная часть отделяется точкой
+			 * chrono.validateSeconds("1h30m"); // false, составные записи не предусмотрены
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of checking the fitness of a designation of a dimension of a time
 			 * @details The conversion of a designation of a dimension does not report an error: an unfit
@@ -4164,17 +4307,13 @@ namespace awh {
 			 * @return      sign of the fitness of the designation
 			 * @see seconds
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          chrono.validateSeconds("90m");   // true
-			 *          chrono.validateSeconds("1.5h");  // true
-			 *          chrono.validateSeconds("42");    // false, единица размерности не указана
-			 *          chrono.validateSeconds("1,5h");  // false, дробная часть отделяется точкой
-			 *          chrono.validateSeconds("1h30m"); // false, составные записи не предусмотрены
-			 *          @endcode
-			 *
-			 *
+			 * @code{.cpp}
+			 * chrono.validateSeconds("90m");   // true
+			 * chrono.validateSeconds("1.5h");  // true
+			 * chrono.validateSeconds("42");    // false, the unit of the dimension is not given
+			 * chrono.validateSeconds("1,5h");  // false, the fractional part is separated by a dot
+			 * chrono.validateSeconds("1h30m"); // false, the composite records are not provided for
+			 * @endcode
 			 *
 			 */
 			bool validateSeconds(string_view value) const noexcept;
@@ -4194,6 +4333,13 @@ namespace awh {
 			 * @param zone временная зона (в секундах) в которой нужно получить результат
 			 * @return     строковое обозначение временной зоны
 			 *
+			 * @code{.cpp}
+			 * chrono.format(0);       // UTC
+			 * chrono.format(10800);   // UTC+3
+			 * chrono.format(19800);   // UTC+5:30
+			 * chrono.format(-12600);  // UTC-3:30
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of formatting a time zone
 			 * @details Writes the offset of a zone abbreviated, for reading by a human: the whole hours
@@ -4206,16 +4352,12 @@ namespace awh {
 			 * @param zone time zone (in seconds) the result is needed to be obtained in
 			 * @return     string designation of the time zone
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          chrono.format(0);       // UTC
-			 *          chrono.format(10800);   // UTC+3
-			 *          chrono.format(19800);   // UTC+5:30
-			 *          chrono.format(-12600);  // UTC-3:30
-			 *          @endcode
-			 *
-			 *
+			 * @code{.cpp}
+			 * chrono.format(0);       // UTC
+			 * chrono.format(10800);   // UTC+3
+			 * chrono.format(19800);   // UTC+5:30
+			 * chrono.format(-12600);  // UTC-3:30
+			 * @endcode
 			 *
 			 */
 			string format(const int32_t zone) const noexcept;
@@ -4270,6 +4412,14 @@ namespace awh {
 			 * @param date штамп времени в миллисекундах
 			 * @return     строковое обозначение временной зоны
 			 *
+			 * @code{.cpp}
+			 * using ch = awh::chrono_t;
+			 * // Момент 15 января 2025 года даёт EST
+			 * chrono.format(ch::zone_t::ET, 1736942400000);
+			 * // Момент 15 июля 2025 года даёт EDT
+			 * chrono.format(ch::zone_t::ET, 1752580800000);
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of formatting a time zone at the specified moment of time
 			 * @details Writes the designation of a zone by its commonly accepted abbreviation, choosing
@@ -4282,17 +4432,13 @@ namespace awh {
 			 * @param date timestamp in milliseconds
 			 * @return     string designation of the time zone
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          using ch = awh::chrono_t;
-			 *          // Момент 15 января 2025 года даёт EST
-			 *          chrono.format(ch::zone_t::ET, 1736942400000);
-			 *          // Момент 15 июля 2025 года даёт EDT
-			 *          chrono.format(ch::zone_t::ET, 1752580800000);
-			 *          @endcode
-			 *
-			 *
+			 * @code{.cpp}
+			 * using ch = awh::chrono_t;
+			 * // The moment of the 15th of January 2025 gives EST
+			 * chrono.format(ch::zone_t::ET, 1736942400000);
+			 * // The moment of the 15th of July 2025 gives EDT
+			 * chrono.format(ch::zone_t::ET, 1752580800000);
+			 * @endcode
 			 *
 			 */
 			string format(const zone_t zone, const uint64_t date) const noexcept;
@@ -4346,6 +4492,20 @@ namespace awh {
 			 * @see parse
 			 * @see strip
 			 *
+			 * @code{.cpp}
+			 * const uint64_t date = 1743943021520;
+			 * // Записи ниже приведены для зоны окружения UTC
+			 * chrono.format(date, "%Y-%m-%dT%H:%M:%S.%s%i");   // 2025-04-06T12:37:01.520Z
+			 * chrono.format(date, "%d/%b/%Y:%H:%M:%S %z");     // 06/Apr/2025:12:37:01 +0000
+			 * chrono.format(date, "%b %e %H:%M:%S");           // Apr  6 12:37:01
+			 * chrono.format(date, "Отчёт за %d %B %Y года");     // Отчёт за 06 April 2025 года
+			 * @endcode
+			 *
+			 * @code{.cpp}
+			 * chrono.format(1, "%Y-%m-%d");                        // не дата, а зона +1 секунда
+			 * chrono.format(static_cast <uint64_t> (1), "%Y-%m-%d"); // 1970-01-01
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of building a record of a date in the time zone of the environment
 			 * @details Builds a record of a date by a pattern of a format. The characters of the format that are not
@@ -4373,25 +4533,19 @@ namespace awh {
 			 * @see parse
 			 * @see strip
 			 *
-			 * \~
+			 * @code{.cpp}
+			 * const uint64_t date = 1743943021520;
+			 * // The records below are given for the zone of the environment UTC
+			 * chrono.format(date, "%Y-%m-%dT%H:%M:%S.%s%i");   // 2025-04-06T12:37:01.520Z
+			 * chrono.format(date, "%d/%b/%Y:%H:%M:%S %z");     // 06/Apr/2025:12:37:01 +0000
+			 * chrono.format(date, "%b %e %H:%M:%S");           // Apr  6 12:37:01
+			 * chrono.format(date, "Report for %d %B %Y");        // Report for 06 April 2025
+			 * @endcode
 			 *
-			 *          @code{.cpp}
-			 *          const uint64_t date = 1743943021520;
-			 *          // Записи ниже приведены для зоны окружения UTC
-			 *          chrono.format(date, "%Y-%m-%dT%H:%M:%S.%s%i");   // 2025-04-06T12:37:01.520Z
-			 *          chrono.format(date, "%d/%b/%Y:%H:%M:%S %z");     // 06/Apr/2025:12:37:01 +0000
-			 *          chrono.format(date, "%b %e %H:%M:%S");           // Apr  6 12:37:01
-			 *          chrono.format(date, "Отчёт за %d %B %Y года");     // Отчёт за 06 April 2025 года
-			 *          @endcode
-			 *
-			 *       @code{.cpp}
-			 *       chrono.format(1, "%Y-%m-%d");                        // не дата, а зона +1 секунда
-			 *       chrono.format(static_cast <uint64_t> (1), "%Y-%m-%d"); // 1970-01-01
-			 *       @endcode
-			 *
-			 *
-			 *
-			 *
+			 * @code{.cpp}
+			 * chrono.format(1, "%Y-%m-%d");                        // not a date, but the zone +1 second
+			 * chrono.format(static_cast <uint64_t> (1), "%Y-%m-%d"); // 1970-01-01
+			 * @endcode
 			 *
 			 */
 			string format(const uint64_t date, string_view format) const noexcept;
@@ -4414,6 +4568,14 @@ namespace awh {
 			 * @see parse
 			 * @see validate
 			 *
+			 * @code{.cpp}
+			 * using ch = awh::chrono_t;
+			 * const uint64_t date = 1743943021520;
+			 * chrono.format(date, ch::standard_t::RFC3339);  // 2025-04-06T12:37:01.520Z
+			 * chrono.format(date, ch::standard_t::RFC1123);  // Sun, 06 Apr 2025 12:37:01 GMT
+			 * chrono.format(date, ch::standard_t::CLF);      // 06/Apr/2025:12:37:01 +0000
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of building a record of a date by a standard
 			 * @details Builds a record by the pattern that is set by a standard. The standards
@@ -4429,18 +4591,13 @@ namespace awh {
 			 * @see parse
 			 * @see validate
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          using ch = awh::chrono_t;
-			 *          const uint64_t date = 1743943021520;
-			 *          chrono.format(date, ch::standard_t::RFC3339);  // 2025-04-06T12:37:01.520Z
-			 *          chrono.format(date, ch::standard_t::RFC1123);  // Sun, 06 Apr 2025 12:37:01 GMT
-			 *          chrono.format(date, ch::standard_t::CLF);      // 06/Apr/2025:12:37:01 +0000
-			 *          @endcode
-			 *
-			 *
-			 *
+			 * @code{.cpp}
+			 * using ch = awh::chrono_t;
+			 * const uint64_t date = 1743943021520;
+			 * chrono.format(date, ch::standard_t::RFC3339);  // 2025-04-06T12:37:01.520Z
+			 * chrono.format(date, ch::standard_t::RFC1123);  // Sun, 06 Apr 2025 12:37:01 GMT
+			 * chrono.format(date, ch::standard_t::CLF);      // 06/Apr/2025:12:37:01 +0000
+			 * @endcode
 			 *
 			 */
 			string format(const uint64_t date, const standard_t standard) const noexcept;
@@ -4481,6 +4638,12 @@ namespace awh {
 			 * @param format формат даты
 			 * @return       строка содержащая дату
 			 *
+			 * @code{.cpp}
+			 * const uint64_t date = 1743943021520;  // 2025-04-06T12:37:01.520Z
+			 * chrono.format(date, 10800, "%Y-%m-%dT%H:%M:%S%i");  // 2025-04-06T15:37:01+03:00
+			 * chrono.format(date, 19800, "%Y-%m-%dT%H:%M:%S%i");  // 2025-04-06T18:07:01+05:30
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of building a UnixTimestamp with the time zone taken into account
 			 * @details Builds a record of a date in the specified time zone. The moment of time at
@@ -4491,14 +4654,11 @@ namespace awh {
 			 * @param format format of the date
 			 * @return       string containing the date
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          const uint64_t date = 1743943021520;  // 2025-04-06T12:37:01.520Z
-			 *          chrono.format(date, 10800, "%Y-%m-%dT%H:%M:%S%i");  // 2025-04-06T15:37:01+03:00
-			 *          chrono.format(date, 19800, "%Y-%m-%dT%H:%M:%S%i");  // 2025-04-06T18:07:01+05:30
-			 *          @endcode
-			 *
+			 * @code{.cpp}
+			 * const uint64_t date = 1743943021520;  // 2025-04-06T12:37:01.520Z
+			 * chrono.format(date, 10800, "%Y-%m-%dT%H:%M:%S%i");  // 2025-04-06T15:37:01+03:00
+			 * chrono.format(date, 19800, "%Y-%m-%dT%H:%M:%S%i");  // 2025-04-06T18:07:01+05:30
+			 * @endcode
 			 *
 			 */
 			string format(const uint64_t date, const int32_t zone, string_view format) const noexcept;
@@ -4555,6 +4715,11 @@ namespace awh {
 			 * @see timestamp
 			 * @see set
 			 *
+			 * @code{.cpp}
+			 * // Отметка времени для записи журнала прямо сейчас
+			 * chrono.format("%Y-%m-%dT%H:%M:%S.%s%i");
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of building the current date without the time zone taken into account
 			 * @details Builds a record of the current moment. The GLOBAL storage takes the moment from
@@ -4566,14 +4731,10 @@ namespace awh {
 			 * @see timestamp
 			 * @see set
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          // Отметка времени для записи журнала прямо сейчас
-			 *          chrono.format("%Y-%m-%dT%H:%M:%S.%s%i");
-			 *          @endcode
-			 *
-			 *
+			 * @code{.cpp}
+			 * // A timestamp for a record of a log right now
+			 * chrono.format("%Y-%m-%dT%H:%M:%S.%s%i");
+			 * @endcode
 			 *
 			 */
 			string format(string_view format, const storage_t storage = storage_t::GLOBAL) const noexcept;
@@ -4655,6 +4816,13 @@ namespace awh {
 			 * @see parse
 			 * @see format
 			 *
+			 * @code{.cpp}
+			 * // Запись журнала веб-сервера в запись действующего стандарта журнала
+			 * chrono.strip("06/Apr/2025:12:37:01 +0000",
+			 *              "%d/%b/%Y:%H:%M:%S %z",
+			 *              "%Y-%m-%dT%H:%M:%S%i");  // 2025-04-06T12:37:01Z
+			 * @endcode
+			 *
 			 * \~english
 			 * @brief Method of converting a date from one format into another
 			 * @details Parses a record by one format and immediately builds it by another. Is equivalent to
@@ -4672,18 +4840,12 @@ namespace awh {
 			 * @see parse
 			 * @see format
 			 *
-			 * \~
-			 *
-			 *          @code{.cpp}
-			 *          // Запись журнала веб-сервера в запись действующего стандарта журнала
-			 *          chrono.strip("06/Apr/2025:12:37:01 +0000",
-			 *                       "%d/%b/%Y:%H:%M:%S %z",
-			 *                       "%Y-%m-%dT%H:%M:%S%i");  // 2025-04-06T12:37:01Z
-			 *          @endcode
-			 *
-			 *
-			 *
-			 *
+			 * @code{.cpp}
+			 * // The record of the log of a web server into the record of the standard of the log in force
+			 * chrono.strip("06/Apr/2025:12:37:01 +0000",
+			 *              "%d/%b/%Y:%H:%M:%S %z",
+			 *              "%Y-%m-%dT%H:%M:%S%i");  // 2025-04-06T12:37:01Z
+			 * @endcode
 			 *
 			 */
 			string strip(string_view date, string_view format1, string_view format2, const storage_t storage = storage_t::GLOBAL) noexcept;

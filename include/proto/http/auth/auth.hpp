@@ -117,34 +117,6 @@ namespace awh {
 		 * @par Пример использования (сервер, проверка HMAC, RFC 9421)
 		 * @par Пример использования (клиент, Digest qop=auth-int)
 		 *
-		 * \~english
-		 * @brief Single class of the HTTP authorization (a client/a server)
-		 * @details One class serves both sides of the exchange: the behaviour of the methods
-		 *          parse()/header()/check() is determined by the flag owner_t (CLIENT/SERVER),
-		 *          while the particular scheme (Basic/Digest/Bearer/HMAC) is chosen by the method type()
-		 *          and is implemented by the internal strategy scheme_t.
-		 * @par Life cycle and state
-		 * The method type() at every change of the scheme automatically calls reset() and resets
-		 * the temporary state (the counters of Digest, the tables of the replay, the parsed fields of HMAC).
-		 * The credentials (user/pass/token), the key of the signature (key/keyId), realm, uri, method,
-		 * entity and the callbacks are thereby preserved.
-		 * The method reset() may be called manually between the requests on a single object auth_t,
-		 * if it is required to begin a new cycle of the authorization without a change of the scheme (for example, after
-		 * an error of parse() or at a repeated use of the connection).
-		 * @par Recommendations on the placement of auth_t
-		 * - A client: one auth_t per HTTP session or TCP connection.
-		 * - A server of Basic/Bearer: a single shared auth_t per worker is admissible (the state is not
-		 *   accumulated between the requests).
-		 * - A server of Digest/HMAC: an auth_t per connection or request is recommended, as
-		 *   the schemes store the nonce/opaque, the tables of the replay (lncs, usedNonces) and the issued keys.
-		 * @par Example of the use (a client)
-		 * @par Example of the use (a server)
-		 * @par Example of the use (a client, a signature of a request by HMAC, RFC 9421)
-		 * @par Example of the use (a server, a checking of HMAC, RFC 9421)
-		 * @par Example of the use (a client, Digest qop=auth-int)
-		 *
-		 * \~
-		 *
 		 * @code{.cpp}
 		 * // Создаём модуль авторизации на стороне клиента
 		 * auth_t auth(auth_t::owner_t::CLIENT, fmk, log);
@@ -237,6 +209,127 @@ namespace awh {
 		 * auth.uri("/api/resource");
 		 * auth.parse(wwwAuthenticate); // вызов с qop="auth-int"
 		 * auth.entity(requestBody);    // обязательно: тело запроса для расчёта HA2
+		 * const string & credentials = auth.header();
+		 * @endcode
+		 *
+		 * \~english
+		 * @brief Single class of the HTTP authorization (a client/a server)
+		 * @details One class serves both sides of the exchange: the behaviour of the methods
+		 *          parse()/header()/check() is determined by the flag owner_t (CLIENT/SERVER),
+		 *          while the particular scheme (Basic/Digest/Bearer/HMAC) is chosen by the method type()
+		 *          and is implemented by the internal strategy scheme_t.
+		 * @par Life cycle and state
+		 * The method type() at every change of the scheme automatically calls reset() and resets
+		 * the temporary state (the counters of Digest, the tables of the replay, the parsed fields of HMAC).
+		 * The credentials (user/pass/token), the key of the signature (key/keyId), realm, uri, method,
+		 * entity and the callbacks are thereby preserved.
+		 * The method reset() may be called manually between the requests on a single object auth_t,
+		 * if it is required to begin a new cycle of the authorization without a change of the scheme (for example, after
+		 * an error of parse() or at a repeated use of the connection).
+		 * @par Recommendations on the placement of auth_t
+		 * - A client: one auth_t per HTTP session or TCP connection.
+		 * - A server of Basic/Bearer: a single shared auth_t per worker is admissible (the state is not
+		 *   accumulated between the requests).
+		 * - A server of Digest/HMAC: an auth_t per connection or request is recommended, as
+		 *   the schemes store the nonce/opaque, the tables of the replay (lncs, usedNonces) and the issued keys.
+		 * @par Example of the use (a client)
+		 * @par Example of the use (a server)
+		 * @par Example of the use (a client, a signature of a request by HMAC, RFC 9421)
+		 * @par Example of the use (a server, a checking of HMAC, RFC 9421)
+		 * @par Example of the use (a client, Digest qop=auth-int)
+		 *
+		 * @code{.cpp}
+		 * // Creating the module of the authorization on the side of the client
+		 * auth_t auth(auth_t::owner_t::CLIENT, fmk, log);
+		 * // Choosing the DIGEST scheme with the SHA-256 algorithm
+		 * auth.type(auth_t::type_t::DIGEST, auth_t::hash_t::SHA256);
+		 * // If needed, turning on the session mode of the algorithm (SHA-256-sess)
+		 * auth.session(true);
+		 * // Setting the credentials and the parameters of the request
+		 * auth.user("login");
+		 * auth.pass("secret");
+		 * auth.uri("/api/resource");
+		 * auth.method("GET");
+		 * // Parsing the challenge of the authorization received from the server (the WWW-Authenticate header)
+		 * auth.parse(wwwAuthenticate);
+		 * // Building the header of the credentials for the request (the value of the Authorization header)
+		 * const string & credentials = auth.header();
+		 * @endcode
+		 *
+		 * @code{.cpp}
+		 * // Creating the module of the authorization on the side of the server
+		 * auth_t auth(auth_t::owner_t::SERVER, fmk, log);
+		 * // Choosing the DIGEST scheme with the SHA-256 algorithm
+		 * auth.type(auth_t::type_t::DIGEST, auth_t::hash_t::SHA256);
+		 * // If needed, turning on the session mode of the algorithm (SHA-256-sess)
+		 * auth.session(true);
+		 * // Setting the name of the server (realm) and the HTTP method of the request
+		 * auth.realm("anyks.com");
+		 * auth.method("GET");
+		 * // Registering the function of the extraction of the password of a user by their login
+		 * auth.callbackExtractPass([](const string & user) -> string {
+		 *     return db.password(user);
+		 * });
+		 * // Parsing the credentials of the client (the Authorization header)
+		 * auth.parse(authorization);
+		 * // Checking the credentials, on a failure sending the client a challenge of the authorization
+		 * if(!auth.check())
+		 *     response.header("WWW-Authenticate", auth.header());
+		 * @endcode
+		 *
+		 * @code{.cpp}
+		 * // Creating the module of the authorization on the side of the client
+		 * auth_t auth(auth_t::owner_t::CLIENT, fmk, log);
+		 * // Choosing the HMAC scheme of the signature with the SHA-256 algorithm
+		 * auth.type(auth_t::type_t::HMAC, auth_t::hash_t::SHA256);
+		 * // Setting the secret key and its identifier
+		 * auth.key("secret-shared-key");
+		 * auth.keyId("test-key");
+		 * // Listing the components of the request covered by the signature (the order matters)
+		 * auth.component("@method", "POST");
+		 * auth.component("@authority", "example.com");
+		 * auth.component("@path", "/foo");
+		 * // Optionally: to set the parameters of the signature before the building of the headers
+		 * const uint64_t now = fmk->timestamp <uint64_t> (fmk_t::chrono_t::SECONDS);
+		 * auth.signCreated(now);
+		 * auth.signExpires(now + 300); // the term of the validity is 5 minutes (if it is needed)
+		 * auth.signNonce("unique-request-id"); // a one-time value (optionally)
+		 * // Getting the set of the headers of the signature (Signature-Input and Signature)
+		 * vector <pair <string, string>> headers;
+		 * auth.headers(headers);
+		 * @endcode
+		 *
+		 * @code{.cpp}
+		 * auth_t auth(auth_t::owner_t::SERVER, fmk, log);
+		 * auth.type(auth_t::type_t::HMAC, auth_t::hash_t::SHA256);
+		 * // The tolerance of the divergence of the clocks of the client and of the server (60 s by default)
+		 * auth.mode.clockSkew(120);
+		 * // The maximum age of a signature without expires (is recommended in production if the client
+		 * // does not pass expires; 0 — without a limitation)
+		 * auth.mode.signMaxAge(300);
+		 * // Restoring the values of the components from the received HTTP request
+		 * auth.component("@method", request.method());
+		 * auth.component("@authority", request.authority());
+		 * auth.component("@path", request.path());
+		 * auth.callbackExtractKey([](const string & keyId) -> string {
+		 *     return keystore.secret(keyId);
+		 * });
+		 * // Parsing the headers of the signature of the client
+		 * auth.parse("Signature-Input", request.header("Signature-Input"));
+		 * auth.parse("Signature", request.header("Signature"));
+		 * if(!auth.check())
+		 *     response.status(401);
+		 * @endcode
+		 *
+		 * @code{.cpp}
+		 * auth_t auth(auth_t::owner_t::CLIENT, fmk, log);
+		 * auth.type(auth_t::type_t::DIGEST, auth_t::hash_t::SHA256);
+		 * auth.user("login");
+		 * auth.pass("secret");
+		 * auth.method("POST");
+		 * auth.uri("/api/resource");
+		 * auth.parse(wwwAuthenticate); // a challenge with qop="auth-int"
+		 * auth.entity(requestBody);    // obligatory: the body of the request for the calculation of HA2
 		 * const string & credentials = auth.header();
 		 * @endcode
 		 *

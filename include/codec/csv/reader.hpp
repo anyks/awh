@@ -109,6 +109,20 @@ namespace awh {
 			 * Собирать запись целиком чтению не нужно, и запись из тысячи полей проходит
 			 * через него, не оседая в памяти
 			 *
+			 *  @code{.cpp}
+			 *  reader_t reader;
+			 *
+			 *  reader.feed(chunk.data(), chunk.size(), last);
+			 *
+			 *  while(reader.next()){
+			 *      switch(static_cast <uint8_t> (reader.event())){
+			 *          case static_cast <uint8_t> (event_t::HEADER): break;
+			 *          case static_cast <uint8_t> (event_t::FIELD): break;
+			 *          case static_cast <uint8_t> (event_t::RECORD): break;
+			 *      }
+			 *  }
+			 *  @endcode
+			 *
 			 * \~english
 			 * @brief Class of the streaming reading of a CSV text
 			 * @details The text is accepted by chunks of an arbitrary size, while the issuance is conducted
@@ -123,23 +137,19 @@ namespace awh {
 			 * The reading does not need to assemble a record in full, and a record of a thousand fields passes
 			 * through it without settling in the memory
 			 *
-			 * \~
+			 *  @code{.cpp}
+			 *  reader_t reader;
 			 *
-			 * @code{.cpp}
-			 * reader_t reader;
+			 *  reader.feed(chunk.data(), chunk.size(), last);
 			 *
-			 * reader.feed(chunk.data(), chunk.size(), last);
-			 *
-			 * while(reader.next()){
-			 *     switch(static_cast <uint8_t> (reader.event())){
-			 *         case static_cast <uint8_t> (event_t::HEADER): break;
-			 *         case static_cast <uint8_t> (event_t::FIELD): break;
-			 *         case static_cast <uint8_t> (event_t::RECORD): break;
-			 *     }
-			 * }
-			 * @endcode
-			 *
-			 *
+			 *  while(reader.next()){
+			 *      switch(static_cast <uint8_t> (reader.event())){
+			 *          case static_cast <uint8_t> (event_t::HEADER): break;
+			 *          case static_cast <uint8_t> (event_t::FIELD): break;
+			 *          case static_cast <uint8_t> (event_t::RECORD): break;
+			 *      }
+			 *  }
+			 *  @endcode
 			 *
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Reader {

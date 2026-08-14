@@ -189,6 +189,16 @@ namespace awh {
 			 * уплотнение приходит по накоплении их вровень с живым. Оттого объём дерева гуляет,
 			 * но неограниченным не бывает: узнают его вызовом @c footprint()
 			 *
+			 *  @code{.cpp}
+			 *  document_t document;
+			 *
+			 *  if(document.parse(text)){
+			 *    const string_view host = document.text({"server", "host"});
+			 *    document.set({"server", "port"}, static_cast <int64_t> (9090));
+			 *    const string result = document.text();
+			 *  }
+			 *  @endcode
+			 *
 			 * \~english
 			 * @brief Class of the settings tree
 			 * @details Stores the parsed settings text in full — together with the comments,
@@ -259,31 +269,15 @@ namespace awh {
 			 * the compaction comes upon their accumulation on a par with the live one. Because of that the volume of the tree fluctuates
 			 * but is never unlimited: it is learnt by a call to @c footprint()
 			 *
-			 * \~
+			 *  @code{.cpp}
+			 *  document_t document;
 			 *
-			 * @code{.cpp}
-			 * document_t document;
-			 *
-			 * if(document.parse(text)){
-			 *   const string_view host = document.text({"server", "host"});
-			 *   document.set({"server", "port"}, static_cast <int64_t> (9090));
-			 *   const string result = document.text();
-			 * }
-			 * @endcode
-			 *
-			 *
-			 *
-			 *
-			 *
-			 *
-			 *
-			 *
-			 *
-			 *
-			 *
-			 *
-			 *
-			 *
+			 *  if(document.parse(text)){
+			 *    const string_view host = document.text({"server", "host"});
+			 *    document.set({"server", "port"}, static_cast <int64_t> (9090));
+			 *    const string result = document.text();
+			 *  }
+			 *  @endcode
 			 *
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Document {

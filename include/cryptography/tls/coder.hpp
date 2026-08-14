@@ -990,6 +990,22 @@ namespace awh {
 				 *          Пример использования для сервера:
 				 *          Пример использования для клиента:
 				 *
+				 * @code
+				 * // Шаг 1: настраиваем ECH на сервере
+				 * coder.serverNameIndication(ctx, "example.com");
+				 * coder.setKeysECH(ctx, {}); // {} = автогенерация ключа
+				 *
+				 * // Шаг 2: получаем ECHConfigList для DNS
+				 * vector <uint8_t> echDns = coder.getKeysECH(ctx);
+				 * // Опубликовать echDns через DNS HTTPS-запись
+				 * @endcode
+				 *
+				 * @code
+				 * // ECHConfigList из DNS HTTPS-записи был передан через setKeysECH().
+				 * // getKeysECH() возвращает те же байты, которые были сохранены.
+				 * vector <uint8_t> echDns = coder.getKeysECH(ctx);
+				 * @endcode
+				 *
 				 * \~english
 				 * @brief Method obtaining the serialized ECHConfigList for the publication in DNS
 				 *
@@ -1005,23 +1021,21 @@ namespace awh {
 				 *
 				 *          An example of the usage for the server:
 				 *
-				 * \~
+				 * @code
+				 * // Step 1: setting up ECH on the server
+				 * coder.serverNameIndication(ctx, "example.com");
+				 * coder.setKeysECH(ctx, {}); // {} = the automatic generation of the key
 				 *
-				 *          @code
-				 *          // Шаг 1: настраиваем ECH на сервере
-				 *          coder.serverNameIndication(ctx, "example.com");
-				 *          coder.setKeysECH(ctx, {}); // {} = автогенерация ключа
+				 * // Step 2: getting the ECHConfigList for DNS
+				 * vector <uint8_t> echDns = coder.getKeysECH(ctx);
+				 * // To publish echDns through a DNS HTTPS record
+				 * @endcode
 				 *
-				 *          // Шаг 2: получаем ECHConfigList для DNS
-				 *          vector <uint8_t> echDns = coder.getKeysECH(ctx);
-				 *          // Опубликовать echDns через DNS HTTPS-запись
-				 *          @endcode
-				 *
-				 *          @code
-				 *          // ECHConfigList из DNS HTTPS-записи был передан через setKeysECH().
-				 *          // getKeysECH() возвращает те же байты, которые были сохранены.
-				 *          vector <uint8_t> echDns = coder.getKeysECH(ctx);
-				 *          @endcode
+				 * @code
+				 * // The ECHConfigList from the DNS HTTPS record was passed through setKeysECH().
+				 * // getKeysECH() returns the same bytes that were saved.
+				 * vector <uint8_t> echDns = coder.getKeysECH(ctx);
+				 * @endcode
 				 *
 				 */
 				vector <uint8_t> getKeysECH(const id_t id) const noexcept;
@@ -1050,6 +1064,21 @@ namespace awh {
 				 *          Пример для клиента:
 				 *          Пример для сервера:
 				 *
+				 * @code
+				 * // ECHConfigList из DNS HTTPS-записи (поле eckparam)
+				 * vector <uint8_t> echFromDns = fetchEchFromDns("example.com");
+				 * coder.setKeysECH(ctx, echFromDns); // ctx = CTS клиента
+				 * // Теперь каждый transport(ctx) будет шифровать ClientHello
+				 * @endcode
+				 *
+				 * @code
+				 * // {} = автогенерация ключа; либо передать 32-байтовый X25519 приватный ключ
+				 * coder.serverNameIndication(ctx, "example.com");
+				 * coder.setKeysECH(ctx, {}); // ctx = CTS сервера
+				 * // Получить ECHConfigList для DNS:
+				 * vector <uint8_t> forDns = coder.getKeysECH(ctx);
+				 * @endcode
+				 *
 				 * \~english
 				 * @brief Method setting the EncryptedClientHello (ECH) keys
 				 *
@@ -1073,22 +1102,20 @@ namespace awh {
 				 *
 				 *          An example for the client:
 				 *
-				 * \~
+				 * @code
+				 * // The ECHConfigList from the DNS HTTPS record (the eckparam field)
+				 * vector <uint8_t> echFromDns = fetchEchFromDns("example.com");
+				 * coder.setKeysECH(ctx, echFromDns); // ctx = the CTS of the client
+				 * // Now every transport(ctx) will encrypt the ClientHello
+				 * @endcode
 				 *
-				 *          @code
-				 *          // ECHConfigList из DNS HTTPS-записи (поле eckparam)
-				 *          vector <uint8_t> echFromDns = fetchEchFromDns("example.com");
-				 *          coder.setKeysECH(ctx, echFromDns); // ctx = CTS клиента
-				 *          // Теперь каждый transport(ctx) будет шифровать ClientHello
-				 *          @endcode
-				 *
-				 *          @code
-				 *          // {} = автогенерация ключа; либо передать 32-байтовый X25519 приватный ключ
-				 *          coder.serverNameIndication(ctx, "example.com");
-				 *          coder.setKeysECH(ctx, {}); // ctx = CTS сервера
-				 *          // Получить ECHConfigList для DNS:
-				 *          vector <uint8_t> forDns = coder.getKeysECH(ctx);
-				 *          @endcode
+				 * @code
+				 * // {} = the automatic generation of the key; or to pass a 32-byte X25519 private key
+				 * coder.serverNameIndication(ctx, "example.com");
+				 * coder.setKeysECH(ctx, {}); // ctx = the CTS of the server
+				 * // To get the ECHConfigList for DNS:
+				 * vector <uint8_t> forDns = coder.getKeysECH(ctx);
+				 * @endcode
 				 *
 				 */
 				bool setKeysECH(const id_t id, const vector <uint8_t> & keys) noexcept;

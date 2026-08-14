@@ -107,6 +107,17 @@ namespace awh {
 			 * таблица на миллион полей иначе стоила бы миллиона отдельных строк со всеми
 			 * их заголовками и выделениями памяти
 			 *
+			 *  @code{.cpp}
+			 *  document_t document;
+			 *
+			 *  document.parse(text);
+			 *
+			 *  for(size_t i = 0; i < document.rows(); i++)
+			 *      const string_view value = document.get(i, "имя");
+			 *
+			 *  const string result = document.text();
+			 *  @endcode
+			 *
 			 * \~english
 			 * @brief Class of the CSV container
 			 * @details Holds the table in full and gives access to the fields by the number of a record
@@ -117,19 +128,16 @@ namespace awh {
 			 * a table of a million fields would otherwise cost a million separate strings with all
 			 * their headers and memory allocations
 			 *
-			 * \~
+			 *  @code{.cpp}
+			 *  document_t document;
 			 *
-			 * @code{.cpp}
-			 * document_t document;
+			 *  document.parse(text);
 			 *
-			 * document.parse(text);
+			 *  for(size_t i = 0; i < document.rows(); i++)
+			 *      const string_view value = document.get(i, "name");
 			 *
-			 * for(size_t i = 0; i < document.rows(); i++)
-			 *     const string_view value = document.get(i, "имя");
-			 *
-			 * const string result = document.text();
-			 * @endcode
-			 *
+			 *  const string result = document.text();
+			 *  @endcode
 			 *
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Document {
