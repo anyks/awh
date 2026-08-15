@@ -396,6 +396,33 @@ namespace awh {
 					 * \~
 					 */
 					string _storage;
+				private:
+					/**
+					 * \~russian
+					 * Количество байтов, выброшенных из хранилища знаков за всё время разбора
+					 *
+					 * @details Хранилище очищается всякий раз, когда очередь событий выдана,
+					 * и смещения в нём начинаются заново. Счёт выброшенного делает смещения
+					 * сквозными: положение содержимого события в потоке разобранных знаков
+					 * есть сумма счёта и смещения события в хранилище
+					 *
+					 * @note Счёт этот заведён ради потребителя, дерево собирающего: без
+					 * сквозного положения ему пришлось бы переносить знаки всякого значения
+					 * к себе по одному, а с ним хранилище переносится целыми кусками
+					 *
+					 * \~english
+					 * Number of the bytes discarded from the storage of the characters over the whole time of the parsing
+					 * @details The storage is cleared every time the queue of the events is issued,
+					 * and the offsets in it begin anew. The counting of the discarded makes the offsets
+					 * through-going: the position of the content of an event in the stream of the parsed characters
+					 * is the sum of the counting and of the offset of the event in the storage
+					 * @note This counting is created for the sake of the consumer assembling a tree: without
+					 * a through-going position it would have to transfer the characters of every value
+					 * to itself one by one, while with it the storage is transferred by whole blocks
+					 *
+					 * \~
+					 */
+					uint64_t _origin;
 					// Остаток куска, не составивший целого знака кодировки
 					string _pending;
 					// Текст куска, приведённый к UTF-8
@@ -719,6 +746,54 @@ namespace awh {
 					 * \~
 					 */
 					value_t value() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод извлечения указания на содержимое текущего события
+					 *
+					 * @details Указание отдаётся смещением и длиной в хранилище знаков разбора,
+					 * а не готовым содержимым: потребителю, собирающему дерево, оно позволяет
+					 * переносить хранилище целыми кусками вместо переноса всякого значения
+					 * по одному
+					 *
+					 * @return указание на содержимое текущего события
+					 *
+					 * \~english
+					 * @brief Method of the extraction of the pointer to the content of the current event
+					 * @details The pointer is given away by an offset and a length in the storage of the characters of the parsing
+					 * rather than by a ready content: for the consumer assembling a tree it allows
+					 * transferring the storage by whole blocks instead of the transfer of every value
+					 * one by one
+					 * @return pointer to the content of the current event
+					 *
+					 * \~
+					 */
+					span_t content() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод извлечения хранилища знаков разбора
+					 *
+					 * @return хранилище знаков разбора
+					 *
+					 * \~english
+					 * @brief Method of the extraction of the storage of the characters of the parsing
+					 * @return storage of the characters of the parsing
+					 *
+					 * \~
+					 */
+					const string & storage() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод извлечения количества байтов, выброшенных из хранилища знаков
+					 *
+					 * @return количество байтов, выброшенных из хранилища знаков
+					 *
+					 * \~english
+					 * @brief Method of the extraction of the number of the bytes discarded from the storage of the characters
+					 * @return number of the bytes discarded from the storage of the characters
+					 *
+					 * \~
+					 */
+					uint64_t origin() const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод извлечения положения текущего события в исходном тексте

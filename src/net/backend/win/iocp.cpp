@@ -2559,6 +2559,21 @@ namespace io {
 		 * @brief Конструктор
 		 *
 		 */
+		/**
+		 * @brief Метод снятия всех функций обратного вызова
+		 *
+		 * @note Зовётся при сворачивании движка: отклик, оставшийся у снесённого узла,
+		 *       ушёл бы в объект, поля которого уже разрушены
+		 *
+		 */
+		virtual void reset() noexcept {
+			// Снимаем функцию обратного вызова
+			this->spool = nullptr;
+			// Снимаем функцию обратного вызова
+			this->error = nullptr;
+			// Снимаем функцию обратного вызова
+			this->status = nullptr;
+		}
 		explicit Callbacks() noexcept :
 		 spool(nullptr), error(nullptr), status(nullptr) {}
 		/**
@@ -2585,6 +2600,22 @@ namespace io {
 		 * @brief Конструктор
 		 *
 		 */
+		/**
+		 * @brief Метод снятия всех функций обратного вызова
+		 *
+		 */
+		void reset() noexcept override {
+			// Снимаем общие функции обратного вызова
+			callbacks_t::reset();
+			// Снимаем функцию обратного вызова
+			this->read = nullptr;
+			// Снимаем функцию обратного вызова
+			this->write = nullptr;
+			// Снимаем функцию обратного вызова
+			this->event = nullptr;
+			// Снимаем функцию обратного вызова
+			this->vnode = nullptr;
+		}
 		explicit Filesystem_Callbacks() noexcept :
 		 read(nullptr), write(nullptr),
 		 event(nullptr), vnode(nullptr) {}
@@ -2605,6 +2636,20 @@ namespace io {
 		 * @brief Конструктор
 		 *
 		 */
+		/**
+		 * @brief Метод снятия всех функций обратного вызова
+		 *
+		 */
+		void reset() noexcept override {
+			// Снимаем общие функции обратного вызова
+			callbacks_t::reset();
+			// Снимаем функцию обратного вызова
+			this->read = nullptr;
+			// Снимаем функцию обратного вызова
+			this->event = nullptr;
+			// Снимаем функцию обратного вызова
+			this->inject = nullptr;
+		}
 		explicit Mediator_Callbacks() noexcept :
 		 read(nullptr), event(nullptr), inject(nullptr) {}
 	} mediator_callbacks_t;
@@ -2628,6 +2673,24 @@ namespace io {
 		 * @brief Конструктор
 		 *
 		 */
+		/**
+		 * @brief Метод снятия всех функций обратного вызова
+		 *
+		 */
+		void reset() noexcept override {
+			// Снимаем общие функции обратного вызова
+			callbacks_t::reset();
+			// Снимаем функцию обратного вызова
+			this->write = nullptr;
+			// Снимаем функцию обратного вызова
+			this->event = nullptr;
+			// Снимаем функцию обратного вызова
+			this->accept = nullptr;
+			// Снимаем функцию обратного вызова
+			this->origin = nullptr;
+			// Снимаем функцию обратного вызова
+			this->traffic = nullptr;
+		}
 		explicit Server_Callbacks() noexcept :
 		 write(nullptr), event(nullptr),
 		 accept(nullptr), origin(nullptr),
@@ -2655,6 +2718,20 @@ namespace io {
 		 * @brief Конструктор
 		 *
 		 */
+		/**
+		 * @brief Метод снятия всех функций обратного вызова
+		 *
+		 */
+		void reset() noexcept override {
+			// Снимаем общие функции обратного вызова
+			callbacks_t::reset();
+			// Снимаем функцию обратного вызова
+			this->tuninfo = nullptr;
+			// Снимаем функцию обратного вызова
+			this->available = nullptr;
+			// Снимаем функцию обратного вызова
+			this->source = nullptr;
+		}
 		explicit Tunnel_Callbacks() noexcept :
 		 tuninfo(nullptr), available(nullptr), source(nullptr) {}
 	} tunnel_callbacks_t;
@@ -2692,6 +2769,32 @@ namespace io {
 		 * @brief Конструктор
 		 *
 		 */
+		/**
+		 * @brief Метод снятия всех функций обратного вызова
+		 *
+		 */
+		void reset() noexcept override {
+			// Снимаем общие функции обратного вызова
+			callbacks_t::reset();
+			// Снимаем функцию обратного вызова
+			this->read = nullptr;
+			// Снимаем функцию обратного вызова
+			this->write = nullptr;
+			// Снимаем функцию обратного вызова
+			this->event = nullptr;
+			// Снимаем функцию обратного вызова
+			this->inject = nullptr;
+			// Снимаем функцию обратного вызова
+			this->connect = nullptr;
+			// Снимаем функцию обратного вызова
+			this->timeout = nullptr;
+			// Снимаем функцию обратного вызова
+			this->traffic = nullptr;
+			// Снимаем функцию обратного вызова
+			this->available = nullptr;
+			// Снимаем функцию обратного вызова
+			this->source = nullptr;
+		}
 		explicit Client_Callbacks() noexcept :
 		 read(nullptr), write(nullptr),
 		 event(nullptr), inject(nullptr),
@@ -2728,6 +2831,28 @@ namespace io {
 		 * @brief Конструктор
 		 *
 		 */
+		/**
+		 * @brief Метод снятия всех функций обратного вызова
+		 *
+		 */
+		void reset() noexcept override {
+			// Снимаем общие функции обратного вызова
+			callbacks_t::reset();
+			// Снимаем функцию обратного вызова
+			this->read = nullptr;
+			// Снимаем функцию обратного вызова
+			this->write = nullptr;
+			// Снимаем функцию обратного вызова
+			this->event = nullptr;
+			// Снимаем функцию обратного вызова
+			this->inject = nullptr;
+			// Снимаем функцию обратного вызова
+			this->timeout = nullptr;
+			// Снимаем функцию обратного вызова
+			this->available = nullptr;
+			// Снимаем функцию обратного вызова
+			this->source = nullptr;
+		}
 		explicit Peer_Callbacks() noexcept :
 		 read(nullptr), write(nullptr),
 		 event(nullptr), inject(nullptr),
@@ -2806,6 +2931,19 @@ namespace io {
 		 * @brief Конструктор
 		 *
 		 */
+		/**
+		 * @brief Метод доступа к функциям обратного вызова узла
+		 *
+		 * @note Отклики у каждой разновидности узла свои, а снимать их приходится разом
+		 *       при сворачивании движка - отсюда общий доступ к их основе
+		 *
+		 * @return функции обратного вызова узла либо nullptr, если их у узла нет
+		 *
+		 */
+		virtual callbacks_t * hooks() noexcept {
+			// Выводим отсутствие функций обратного вызова
+			return nullptr;
+		}
 		explicit Node() noexcept : id(0), refs(0) {
 			// Заносим узел в учёт живых
 			::io::living.emplace(this);
@@ -2852,6 +2990,16 @@ namespace io {
 		 * @brief Конструктор
 		 *
 		 */
+		/**
+		 * @brief Метод доступа к функциям обратного вызова узла
+		 *
+		 * @return функции обратного вызова узла
+		 *
+		 */
+		callbacks_t * hooks() noexcept override {
+			// Выводим функции обратного вызова узла
+			return &this->callbacks;
+		}
 		explicit Timer() noexcept : timeout(USER_TIMEOUT_ID) {}
 		/**
 		 * @brief Деструктор
@@ -2885,6 +3033,16 @@ namespace io {
 		 * @param log объект работы с логами
 		 *
 		 */
+		/**
+		 * @brief Метод доступа к функциям обратного вызова узла
+		 *
+		 * @return функции обратного вызова узла
+		 *
+		 */
+		callbacks_t * hooks() noexcept override {
+			// Выводим функции обратного вызова узла
+			return &this->callbacks;
+		}
 		explicit User(const fmk_t * fmk, const log_t * log) noexcept :
 		 dest(0), events(fmk, log) {}
 	} user_t;
@@ -2902,6 +3060,16 @@ namespace io {
 		 * @brief Конструктор
 		 *
 		 */
+		/**
+		 * @brief Метод доступа к функциям обратного вызова узла
+		 *
+		 * @return функции обратного вызова узла
+		 *
+		 */
+		callbacks_t * hooks() noexcept override {
+			// Выводим функции обратного вызова узла
+			return &this->callbacks;
+		}
 		explicit Filesystem() noexcept : path(nullptr) {}
 		/**
 		 * @brief Деструктор
@@ -2982,6 +3150,16 @@ namespace io {
 		 * @param log объект работы с логами
 		 *
 		 */
+		/**
+		 * @brief Метод доступа к функциям обратного вызова узла
+		 *
+		 * @return функции обратного вызова узла
+		 *
+		 */
+		callbacks_t * hooks() noexcept override {
+			// Выводим функции обратного вызова узла
+			return &this->callbacks;
+		}
 		explicit Inter_Process_Communication(const fmk_t * fmk, const log_t * log) noexcept :
 		 transfer(fmk, log), partner(0) {}
 	} ipc_t;
@@ -3024,6 +3202,16 @@ namespace io {
 		 * @param log объект работы с логами
 		 *
 		 */
+		/**
+		 * @brief Метод доступа к функциям обратного вызова узла
+		 *
+		 * @return функции обратного вызова узла
+		 *
+		 */
+		callbacks_t * hooks() noexcept override {
+			// Выводим функции обратного вызова узла
+			return &this->callbacks;
+		}
 		explicit Tunnel(const fmk_t * fmk, const log_t * log) noexcept :
 		 fd(net::invalid_socket_t),
 		 actions(::action::NONE), iface{""},
@@ -3046,6 +3234,16 @@ namespace io {
 		 * @brief Конструктор
 		 *
 		 */
+		/**
+		 * @brief Метод доступа к функциям обратного вызова узла
+		 *
+		 * @return функции обратного вызова узла
+		 *
+		 */
+		callbacks_t * hooks() noexcept override {
+			// Выводим функции обратного вызова узла
+			return &this->callbacks;
+		}
 		explicit Mediator() noexcept : dest(0), host(nullptr) {}
 	} mediator_t;
 
@@ -3064,6 +3262,16 @@ namespace io {
 		 * @brief Конструктор
 		 *
 		 */
+		/**
+		 * @brief Метод доступа к функциям обратного вызова узла
+		 *
+		 * @return функции обратного вызова узла
+		 *
+		 */
+		callbacks_t * hooks() noexcept override {
+			// Выводим функции обратного вызова узла
+			return &this->callbacks;
+		}
 		explicit Remote() noexcept : remote(nullptr) {}
 		/**
 		 * @brief Деструктор
@@ -3306,6 +3514,16 @@ namespace io {
 		 * @param log объект работы с логами
 		 *
 		 */
+		/**
+		 * @brief Метод доступа к функциям обратного вызова узла
+		 *
+		 * @return функции обратного вызова узла
+		 *
+		 */
+		callbacks_t * hooks() noexcept override {
+			// Выводим функции обратного вызова узла
+			return &this->callbacks;
+		}
 		explicit Client(const fmk_t * fmk, const log_t * log) noexcept :
 		 activity(::activity::NONE),
 		 transfer(fmk, log),
@@ -3348,6 +3566,16 @@ namespace io {
 		 * @param log объект работы с логами
 		 *
 		 */
+		/**
+		 * @brief Метод доступа к функциям обратного вызова узла
+		 *
+		 * @return функции обратного вызова узла
+		 *
+		 */
+		callbacks_t * hooks() noexcept override {
+			// Выводим функции обратного вызова узла
+			return &this->callbacks;
+		}
 		explicit Server(const fmk_t * fmk, const log_t * log) noexcept :
 		 fd(net::invalid_socket_t),
 		 actions(::action::NONE),
@@ -9335,8 +9563,20 @@ namespace kernel {
 		auto i = ::kernel::accepted.find(sock);
 		// Если принятых подключений по дескриптору нет
 		if((i == ::kernel::accepted.end()) || i->second.empty()){
-			// Отмечаем отсутствие ожидающих подключений
-			errno = EWOULDBLOCK;
+			/**
+			 * Отмечаем отсутствие ожидающих подключений
+			 *
+			 * @warning Именно `EAGAIN`, а не `EWOULDBLOCK`: у MinGW имена эти означают
+			 *          РАЗНЫЕ числа - 11 против 140, - а разбор движка сличает исход с
+			 *          `EAGAIN`. Довод тот же, что и у переводчика кодов Winsock
+			 *
+			 * @note Ветвь эта на замере не берётся ни разу: ни набором проверок, ни
+			 *       наплывом двухсот подключений на предел в четыре. Выдача подключения
+			 *       идёт из очереди принятых, а готовность выдаётся движком лишь тогда,
+			 *       когда очередь пополнена завершением. Правка оттого предупредительная,
+			 *       а не починка наблюдавшегося отказа
+			 */
+			errno = EAGAIN;
 			// Выводим отсутствие принятого подключения
 			return net::invalid_socket_t;
 		}
@@ -69348,6 +69588,25 @@ bool awh::engine::IO::reinitialize() noexcept {
 bool awh::engine::IO::deinitialize() noexcept {
 	// Результат работы функции
 	bool result = false;
+	/**
+	 * Снимаем отклики у всех узлов, пока ничего не прокручено
+	 *
+	 * @details Сворачивание движка идёт из деструктора юнита, а тот - из деструктора
+	 *          наследника, поля которого к этому времени уже разрушены. Отложенный
+	 *          снос узла доводится до конца ниже, и охранник узла позвал бы отклик
+	 *          состояния обратно в наследника - в разрушенную память. Оповещать здесь
+	 *          всё равно некого: движок сворачивается вместе с последним юнитом, а
+	 *          значит и все владельцы откликов уже уходят
+	 *
+	 */
+	for(const auto & item : ::__awh_nodes__){
+		// Получаем функции обратного вызова узла
+		::io::callbacks_t * callbacks = item.second->hooks();
+		// Если функции обратного вызова у узла есть
+		if(callbacks != nullptr)
+			// Снимаем все функции обратного вызова узла
+			callbacks->reset();
+	}
 	// Если очередь опроса заведена
 	if(::__awh_ep__ != net::invalid_socket_t){
 		/**

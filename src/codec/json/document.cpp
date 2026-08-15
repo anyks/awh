@@ -60,7 +60,7 @@ namespace {
  * @brief Конструктор
  *
  */
-awh::codec::json::Document::Document() noexcept : _error(error_t::NONE), _named(0), _keyed(false) {}
+awh::codec::json::Document::Document() noexcept : _error(error_t::NONE), _named(0), _keyed(false), _pointer(0), _base(0) {}
 /**
  * @brief Метод проверки действительности ссылки
  *
@@ -557,6 +557,32 @@ awh::codec::json::Document::Value awh::codec::json::Document::Value::begin() con
  */
 bool awh::codec::json::Document::consume(reader_t & reader, const callback_t & callback) noexcept {
 	/**
+	 * @brief Метод переноса знаков разбора в хранилище документа
+	 *
+	 * @details Знаки переносятся целым куском по исчерпании событий, а не по одному
+	 * значению: смещения узлов сквозные, и содержимое их приходит на своё место само
+	 *
+	 * @note Перенос по одному значению стоил половины всего времени сборки дерева
+	 *
+	 */
+	const auto transfer = [this, &reader]() noexcept -> void {
+		// Получаем количество байтов, выброшенных из хранилища знаков разбора
+		const uint64_t origin = reader.origin();
+		// Получаем хранилище знаков разбора
+		const string & storage = reader.storage();
+		/**
+		 * Если хранилище документа отстаёт от хранилища разбора
+		 */
+		if((this->_base + this->_storage.size()) < (origin + storage.size())){
+			// Получаем количество уже перенесённых знаков хранилища разбора
+			const size_t taken = static_cast <size_t> ((this->_base + this->_storage.size()) - origin);
+			// Выполняем перенос оставшихся знаков хранилища разбора
+			this->_storage.append(storage.data() + taken, storage.size() - taken);
+		}
+	};
+	// Получаем количество байтов, выброшенных из хранилища знаков разбора
+	const uint64_t origin = reader.origin();
+	/**
 	 * Выполняем перебор всех собранных событий разбора
 	 */
 	while(reader.next()){
@@ -582,6 +608,8 @@ bool awh::codec::json::Document::consume(reader_t & reader, const callback_t & c
 			 * Если выдача значений ведётся потоком
 			 */
 			if(callback != nullptr){
+				// Выполняем перенос знаков разбора в хранилище документа
+				transfer();
 				/**
 				 * Если обработчик потребовал прекращения разбора
 				 */
@@ -590,6 +618,8 @@ bool awh::codec::json::Document::consume(reader_t & reader, const callback_t & c
 					return false;
 				// Выполняем очистку перечня узлов документа
 				this->_nodes.clear();
+				// Сдвигаем сквозное положение первого знака хранилища документа
+				this->_base += static_cast <uint64_t> (this->_storage.size());
 				// Выполняем очистку хранилища знаков документа
 				this->_storage.clear();
 				// Выполняем очистку отображения имён полей в номера узлов
@@ -598,30 +628,41 @@ bool awh::codec::json::Document::consume(reader_t & reader, const callback_t & c
 			// Выполняем переход к следующему событию разбора
 			continue;
 		}
-		// Получаем значение очередного события разбора
-		const reader_t::value_t value = reader.value();
+		/**
+		 * Получаем сквозное положение содержимого события в потоке разобранных знаков
+		 *
+		 * @details Знаки события уже лежат в хранилище разбора готовыми, и переносить
+		 * их к себе по одному значению незачем: сквозное положение позволяет заводить
+		 * узел сразу, а хранилище перенести целым куском по исчерпании событий
+		 *
+		 * @note Перенос по одному значению стоил половины всего времени сборки дерева.
+		 * Обнаружено разложением стоимости по частям
+		 */
+		const span_t span = reader.content();
+		// Получаем сквозное положение содержимого события
+		const uint64_t position = (origin + static_cast <uint64_t> (span.offset));
+		/**
+		 * Если сквозное положение содержимого выходит за предел хранилища знаков
+		 *
+		 * @note Хранилище знаков ограничено четырьмя гигабайтами: смещение в нём
+		 *       занимает четыре байта, и содержимое за этой границей указать нечем
+		 */
+		if(((position - this->_base) + static_cast <uint64_t> (span.length)) > NO_OFFSET){
+			// Запоминаем код отказа разбора
+			this->_error = error_t::OVERFLOW_LIMIT;
+			// Выводим признак неудачной сборки
+			return false;
+		}
 		/**
 		 * Если событие является именем поля объекта
 		 */
 		if(event == event_t::KEY){
-			/**
-			 * Если длина имени поля объекта превышает допустимую
-			 *
-			 * @note Хранилище знаков ограничено четырьмя гигабайтами: смещение в нём
-			 *       занимает четыре байта, и имя за этой границей указать нечем
-			 */
-			if((this->_storage.size() + value.text.size()) > NO_OFFSET){
-				// Запоминаем код отказа разбора
-				this->_error = error_t::OVERFLOW_LIMIT;
-				// Выводим признак неудачной сборки
-				return false;
-			}
 			// Запоминаем длину имени поля объекта
-			this->_named = static_cast <uint32_t> (value.text.size());
+			this->_named = span.length;
+			// Запоминаем сквозное положение конца имени поля объекта
+			this->_pointer = (position + static_cast <uint64_t> (span.length));
 			// Устанавливаем признак разбора имени поля объекта
 			this->_keyed = true;
-			// Добавляем имя поля объекта в хранилище знаков
-			this->_storage.append(value.text.data(), value.text.size());
 			// Выполняем переход к следующему событию разбора
 			continue;
 		}
@@ -642,10 +683,17 @@ bool awh::codec::json::Document::consume(reader_t & reader, const callback_t & c
 		node.named = this->_named;
 		// Устанавливаем признак принадлежности узла объекту
 		node.keyed = this->_keyed;
-		// Устанавливаем смещение содержимого узла в хранилище знаков
-		node.offset = static_cast <uint32_t> (this->_storage.size());
+		/**
+		 * Устанавливаем смещение содержимого узла в хранилище знаков
+		 *
+		 * @note У вместилища своего содержимого нет, и указание события пусто: смещением
+		 *       ему служит конец имени поля, за каким содержимому и лежать бы
+		 */
+		node.offset = static_cast <uint32_t> ((((event == event_t::OBJECT_BEGIN) || (event == event_t::ARRAY_BEGIN)) ? this->_pointer : position) - this->_base);
 		// Сбрасываем длину имени поля объекта
 		this->_named = 0;
+		// Сбрасываем сквозное положение конца имени поля объекта
+		this->_pointer = 0;
 		// Снимаем признак разбора имени поля объекта
 		this->_keyed = false;
 		/**
@@ -689,7 +737,7 @@ bool awh::codec::json::Document::consume(reader_t & reader, const callback_t & c
 					/**
 					 * Если разбор повторяющихся имён полей объекта завершился отказом
 					 */
-					if(!this->deduplicate(parent))
+					if(!this->deduplicate(parent, reader))
 						// Выводим признак неудачной сборки
 						return false;
 				}
@@ -721,14 +769,16 @@ bool awh::codec::json::Document::consume(reader_t & reader, const callback_t & c
 				 * Если преобразование числа затребовано настройками
 				 */
 				if(this->_settings.numbers != number_t::LAZY){
+					// Получаем запись разбираемого числа
+					const string_view text(reader.storage().data() + span.offset, span.length);
 					// Значение разбираемого числа
 					double result = 0.;
 					// Выполняем разбор записи числа
-					const lexical_t::result_t <char> res = lexical_t::fromChars(value.text.data(), value.text.data() + value.text.size(), result);
+					const lexical_t::result_t <char> res = lexical_t::fromChars(text.data(), text.data() + text.size(), result);
 					/**
 					 * Если запись числа разобрать не удалось
 					 */
-					if(!static_cast <bool> (res) || (res.ptr != (value.text.data() + value.text.size()))){
+					if(!static_cast <bool> (res) || (res.ptr != (text.data() + text.size()))){
 						/**
 						 * Запоминаем код отказа разбора
 						 *
@@ -737,7 +787,7 @@ bool awh::codec::json::Document::consume(reader_t & reader, const callback_t & c
 						 *       записи. Сличение здесь повторяется лишь затем, чтобы отказ
 						 *       назывался своим именем и в случае, о каком мы не подумали
 						 */
-						this->_error = (numeric(string(value.text)) ? error_t::NUMBER_OUT_OF_RANGE : error_t::INVALID_NUMBER);
+						this->_error = (numeric(string(text)) ? error_t::NUMBER_OUT_OF_RANGE : error_t::INVALID_NUMBER);
 						// Запоминаем положение отказа разбора в исходном тексте
 						this->_position = reader.location();
 						// Выводим признак неудачной сборки
@@ -770,21 +820,10 @@ bool awh::codec::json::Document::consume(reader_t & reader, const callback_t & c
 		 * Если узел вместилищем не является
 		 */
 		if((node.kind != kind_t::ARRAY) && (node.kind != kind_t::OBJECT)){
-			/**
-			 * Если содержимое узла в хранилище знаков не помещается
-			 */
-			if((this->_storage.size() + value.text.size()) > NO_OFFSET){
-				// Запоминаем код отказа разбора
-				this->_error = error_t::OVERFLOW_LIMIT;
-				// Выводим признак неудачной сборки
-				return false;
-			}
 			// Устанавливаем длину содержимого узла
-			node.length = static_cast <uint32_t> (value.text.size());
+			node.length = span.length;
 			// Устанавливаем признак изменения содержимого разбором
-			node.modified = value.modified;
-			// Добавляем содержимое узла в хранилище знаков
-			this->_storage.append(value.text.data(), value.text.size());
+			node.modified = reader.value().modified;
 		}
 		/**
 		 * Если узел заводится внутри вместилища
@@ -811,6 +850,8 @@ bool awh::codec::json::Document::consume(reader_t & reader, const callback_t & c
 			this->_nesting.push_back(index);
 		}
 	}
+	// Выполняем перенос знаков разбора в хранилище документа
+	transfer();
 	// Выводим признак успешной сборки
 	return true;
 }
@@ -828,11 +869,62 @@ bool awh::codec::json::Document::consume(reader_t & reader, const callback_t & c
  * @return       признак успешности разбора
  *
  */
-bool awh::codec::json::Document::deduplicate(const uint32_t parent) noexcept {
+bool awh::codec::json::Document::deduplicate(const uint32_t parent, const reader_t & reader) noexcept {
+	/**
+	 * @brief Метод извлечения имени поля объекта, где бы знаки его ни лежали
+	 *
+	 * @details Разбор повторов ведётся при закрытии объекта, а знаки к тому времени
+	 * ещё лежат в хранилище разбора: переносятся они целым куском по исчерпании
+	 * событий. Оттого имя разыскивается по сквозному положению в том из двух хранилищ,
+	 * какое им уже владеет
+	 *
+	 * @param node узел, имя поля какого извлекается
+	 * @return     имя поля объекта
+	 *
+	 */
+	const auto naming = [this, &reader](const node_t & node) noexcept -> string_view {
+		// Получаем сквозное положение имени поля объекта
+		const uint64_t position = ((this->_base + static_cast <uint64_t> (node.offset)) - static_cast <uint64_t> (node.named));
+		/**
+		 * Если знаки имени поля объекта в хранилище документа ещё не перенесены
+		 */
+		if(position >= (this->_base + static_cast <uint64_t> (this->_storage.size())))
+			// Выводим имя поля объекта из хранилища разбора
+			return string_view(reader.storage().data() + (position - reader.origin()), node.named);
+		// Выводим имя поля объекта из хранилища документа
+		return string_view(this->_storage.data() + (position - this->_base), node.named);
+	};
+	// Получаем количество полей разбираемого объекта
+	const uint32_t count = this->_nodes[parent].length;
+	/**
+	 * Если объект полей не имеет вовсе
+	 *
+	 * @note Проверка эта стоит впереди намеренно: объектов без полей и об одном поле
+	 *       в обиходе много, а повториться в них нечему
+	 */
+	if(count < 2)
+		// Выводим признак успешного разбора
+		return true;
 	// Получаем номер узла за последним узлом объекта
 	const uint32_t bound = (parent + this->_nodes[parent].extent);
-	// Отображение имён полей объекта в номера узлов
-	unordered_map <string_view, uint32_t> index;
+	// Перечень имён полей объекта вместе с номерами их узлов
+	this->_naming.clear();
+	// Выполняем выделение памяти под перечень имён полей объекта
+	this->_naming.reserve(static_cast <size_t> (count));
+	/**
+	 * Если количество полей объекта превышает порог заведения отображения
+	 *
+	 * @details Мелкие объекты сличаются перебором пар, а крупные - отображением имён.
+	 * Заведение отображения обходится дороже сличения немногих пар, а объектов о
+	 * немногих полях в обиходе подавляющее большинство: сличение всякого объекта
+	 * отображением стоило бы трети всего времени сборки дерева
+	 *
+	 * @note Порог тот же, каким заводится отображение имён для обращения по имени:
+	 *       и там, и здесь речь об одном и том же выборе
+	 */
+	if(count > INDEX_THRESHOLD)
+		// Выполняем очистку отображения имён полей объекта
+		this->_lookup.clear();
 	// Перечень номеров узлов сносимых полей объекта
 	vector <uint32_t> removed;
 	/**
@@ -842,13 +934,53 @@ bool awh::codec::json::Document::deduplicate(const uint32_t parent) noexcept {
 		// Получаем узел очередного поля объекта
 		const node_t & node = this->_nodes[child];
 		// Получаем имя очередного поля объекта
-		const string_view name(this->_storage.data() + (node.offset - node.named), node.named);
-		// Выполняем добавление имени поля объекта в отображение
-		const auto result = index.emplace(name, child);
+		const string_view name = naming(node);
+		// Номер узла поля объекта, имя какого уже занято
+		size_t place = this->_naming.size();
+		/**
+		 * Если количество полей объекта превышает порог заведения отображения
+		 */
+		if(count > INDEX_THRESHOLD){
+			// Выполняем добавление имени поля объекта в отображение
+			const auto found = this->_lookup.emplace(name, place);
+			/**
+			 * Если имя поля объекта уже занято
+			 */
+			if(!found.second)
+				// Запоминаем место прежнего поля объекта в перечне имён
+				place = found.first->second;
+		/**
+		 * Если объект сличается перебором пар
+		 */
+		} else {
+			/**
+			 * Выполняем перебор всех уже собранных имён полей объекта
+			 */
+			for(size_t i = 0; i < this->_naming.size(); i++){
+				/**
+				 * Если имя поля объекта совпадает с уже собранным
+				 */
+				if(this->_naming[i].first == name){
+					// Запоминаем место прежнего поля объекта в перечне имён
+					place = i;
+					// Прекращаем перебор собранных имён полей объекта
+					break;
+				}
+			}
+		}
+		/**
+		 * Если имя поля объекта ещё не занято
+		 */
+		if(place == this->_naming.size()){
+			// Выполняем добавление имени поля объекта к собранным
+			this->_naming.emplace_back(name, child);
+			// Выполняем переход к следующему полю объекта
+			continue;
+		}
 		/**
 		 * Если имя поля объекта уже занято
 		 */
-		if(!result.second){
+		{
 			/**
 			 * Определяем правило обращения с повторяющимся именем поля объекта
 			 */
@@ -868,9 +1000,9 @@ bool awh::codec::json::Document::deduplicate(const uint32_t parent) noexcept {
 				// Если удерживается последнее поле объекта
 				case static_cast <uint8_t> (duplicate_t::LAST):
 					// Добавляем номер узла прежнего поля объекта к сносимым
-					removed.push_back(result.first->second);
+					removed.push_back(this->_naming[place].second);
 					// Запоминаем номер узла последнего поля объекта
-					result.first->second = child;
+					this->_naming[place].second = child;
 				break;
 			}
 		}
@@ -920,6 +1052,10 @@ void awh::codec::json::Document::clear() noexcept {
 	this->_named = 0;
 	// Снимаем признак разбора имени поля объекта
 	this->_keyed = false;
+	// Сбрасываем сквозное положение конца имени поля объекта
+	this->_pointer = 0;
+	// Сбрасываем сквозное положение первого знака хранилища документа
+	this->_base = 0;
 	// Сбрасываем положение отказа разбора в исходном тексте
 	this->_position = location_t();
 }
@@ -945,20 +1081,51 @@ bool awh::codec::json::Document::parse(const string & text) noexcept {
 bool awh::codec::json::Document::parse(const string & text, const callback_t & callback) noexcept {
 	// Выполняем очистку документа
 	this->clear();
-	// Чтение текста документа
-	reader_t reader;
+	// Выполняем сброс состояния чтения текста документа
+	this->_reader.reset();
+	// Получаем чтение текста документа
+	reader_t & reader = this->_reader;
 	// Выполняем установку настроек разбора текста
 	reader.settings(this->_settings.reader);
-	// Выполняем подачу текста документа чтению
-	const bool result = reader.feed(string_view(text));
+	// Признак успешности разбора текста документа
+	bool result = true;
 	/**
-	 * Если сборка дерева по событиям разбора завершилась отказом
+	 * Выполняем подачу текста документа чтению кусками
+	 *
+	 * @details Текст подаётся кусками, а не целиком, ради очереди собранных событий:
+	 * она копится до тех пор, пока события её не выданы, и на тексте в шестнадцать
+	 * мегабайт разрослась бы до двухсот. Куском же она удерживается в размере,
+	 * укладывающемся в кэш процессора
+	 *
+	 * @note Выдача от нарезки текста на куски не зависит вовсе - тем и позволительно
+	 *       резать его здесь по своему усмотрению
 	 */
-	if(!this->consume(reader, callback)){
-		// Запоминаем положение отказа разбора в исходном тексте
-		this->_position = reader.location();
-		// Выводим признак неудачного разбора
-		return false;
+	for(size_t offset = 0; offset <= text.size(); offset += ::CHUNK){
+		// Получаем размер очередного подаваемого куска
+		const size_t length = (((offset + ::CHUNK) < text.size()) ? ::CHUNK : (text.size() - offset));
+		// Выполняем подачу очередного куска текста документа чтению
+		result = reader.feed(text.data() + offset, length, ((offset + length) >= text.size()));
+		/**
+		 * Если сборка дерева по событиям разбора завершилась отказом
+		 */
+		if(!this->consume(reader, callback)){
+			// Запоминаем положение отказа разбора в исходном тексте
+			this->_position = reader.location();
+			// Выводим признак неудачного разбора
+			return false;
+		}
+		/**
+		 * Если разбор куска текста документа завершился отказом
+		 */
+		if(!result)
+			// Прекращаем подачу текста документа
+			break;
+		/**
+		 * Если текст документа исчерпан
+		 */
+		if((offset + length) >= text.size())
+			// Прекращаем подачу текста документа
+			break;
 	}
 	/**
 	 * Если разбор текста документа завершился отказом
@@ -1000,8 +1167,10 @@ bool awh::codec::json::Document::load(const string & filename) noexcept {
 		// Выводим признак неудачного разбора
 		return false;
 	}
-	// Чтение текста документа
-	reader_t reader;
+	// Выполняем сброс состояния чтения текста документа
+	this->_reader.reset();
+	// Получаем чтение текста документа
+	reader_t & reader = this->_reader;
 	// Выполняем установку настроек разбора текста
 	reader.settings(this->_settings.reader);
 	// Буфер очередного куска файла документа

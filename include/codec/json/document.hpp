@@ -640,6 +640,26 @@ namespace awh {
 					// Настройки документа
 					settings_t _settings;
 				private:
+					/**
+					 * \~russian
+					 * Чтение текста документа
+					 *
+					 * @note Чтение принадлежит документу, а не разбору: заведение его на всякий
+					 * разбор стоило бы выделения памяти под очередь событий, хранилище знаков и
+					 * стек вложенности - а на малых документах, каких у служб большинство,
+					 * стоимость эта и составляет почти всё время разбора
+					 *
+					 * \~english
+					 * Reading of the text of the document
+					 * @note The reading belongs to the document rather than to the parsing: its creation
+					 * for every parsing would cost an allocation of the memory for the queue of the events, the storage of the characters and
+					 * the stack of the nesting — and for the small documents, of which there are the majority at the services,
+					 * this cost constitutes almost all of the time of the parsing
+					 *
+					 * \~
+					 */
+					reader_t _reader;
+				private:
 					// Код отказа разбора
 					error_t _error;
 				private:
@@ -680,6 +700,27 @@ namespace awh {
 					 */
 					mutable unordered_map <uint32_t, unordered_map <string_view, uint32_t>> _index;
 				private:
+					/**
+					 * \~russian
+					 * Перечень имён полей разбираемого объекта вместе с номерами их узлов
+					 *
+					 * @note Перечень принадлежит документу, а не разбору повторов: заведение
+					 * его на всяком закрываемом объекте стоило бы выделения памяти на всякий
+					 * объект документа
+					 *
+					 * \~english
+					 * List of the names of the fields of the object being analyzed together with the indices of their nodes
+					 * @note The list belongs to the document rather than to the analysis of the repetitions: its creation
+					 * at every object being closed would cost an allocation of the memory for every
+					 * object of the document
+					 *
+					 * \~
+					 */
+					vector <pair <string_view, uint32_t>> _naming;
+				private:
+					// Отображение имён полей крупного объекта в места их в перечне имён
+					unordered_map <string_view, size_t> _lookup;
+				private:
 					// Положение отказа разбора в исходном тексте
 					location_t _position;
 				private:
@@ -709,6 +750,44 @@ namespace awh {
 				private:
 					/**
 					 * \~russian
+					 * Сквозное положение конца имени поля объекта, ожидающего своего значения
+					 *
+					 * @details Узел несёт одно смещение на имя и на содержимое разом: имя лежит
+					 * вплотную перед содержимым. У вместилища же своего содержимого нет, и
+					 * смещению его взяться неоткуда - оттого конец имени запоминается отдельно
+					 *
+					 * \~english
+					 * Through-going position of the end of the name of the field of an object awaiting its value
+					 * @details A node carries one offset for the name and for the content at once: the name lies
+					 * right before the content. A container has no content of its own, and
+					 * its offset has nowhere to come from — whereby the end of the name is remembered separately
+					 *
+					 * \~
+					 */
+					uint64_t _pointer;
+				private:
+					/**
+					 * \~russian
+					 * Сквозное положение первого знака хранилища документа в потоке разобранных знаков
+					 *
+					 * @details Разбор ведёт смещения сквозными по всему потоку, а хранилище
+					 * документа при потоковой выдаче значений очищается на всяком документе.
+					 * Вычитание этого положения переводит сквозное положение в смещение
+					 * внутри хранилища документа
+					 *
+					 * \~english
+					 * Through-going position of the first character of the storage of the document in the stream of the parsed characters
+					 * @details The parsing keeps the offsets through-going over the whole stream, while the storage
+					 * of the document at the streaming issuance of the values is cleared at every document.
+					 * The subtraction of this position converts a through-going position into an offset
+					 * inside the storage of the document
+					 *
+					 * \~
+					 */
+					uint64_t _base;
+				private:
+					/**
+					 * \~russian
 					 * @brief Метод сборки дерева по событиям разбора
 					 *
 					 * @param reader   объект потокового чтения текста
@@ -733,6 +812,7 @@ namespace awh {
 					 * можно лишь у собранного объекта
 					 *
 					 * @param parent номер узла разбираемого объекта
+					 * @param reader объект потокового чтения текста
 					 * @return       признак успешности разбора
 					 *
 					 * \~english
@@ -741,11 +821,12 @@ namespace awh {
 					 * assembled: the parsing of the events does not hold the names at all, and they
 					 * can be compared only at an assembled object
 					 * @param parent index of the node of the object being analyzed
+					 * @param reader object of the streaming reading of a text
 					 * @return sign of the success of the analysis
 					 *
 					 * \~
 					 */
-					bool deduplicate(const uint32_t parent) noexcept;
+					bool deduplicate(const uint32_t parent, const reader_t & reader) noexcept;
 				public:
 					/**
 					 * \~russian

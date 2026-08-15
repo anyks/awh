@@ -61,7 +61,7 @@ TEST_F(PortmapUnitFixture, PortmapUpnpMapping) {
 	// Создаём поддельный шлюз с поддержкой UPnP
 	FakeIGD igd;
 	// Если гнёзда поддельного шлюза завести не удалось, испытание не проводится
-	if(!igd.ready()) GTEST_SKIP() << "SSDP port is occupied or the host has no local network address";
+	if(!igd.ready()) GTEST_SKIP() << "SSDP port is occupied, the host has no local network address, or the loopback interface does not deliver multicast";
 	// Выполняем запуск поддельного шлюза
 	igd.start();
 	// Создаём объект модуля перенаправления портов
@@ -98,7 +98,7 @@ TEST_F(PortmapUnitFixture, PortmapUpnpExternal) {
 	// Создаём поддельный шлюз с поддержкой UPnP
 	FakeIGD igd;
 	// Если гнёзда поддельного шлюза завести не удалось, испытание не проводится
-	if(!igd.ready()) GTEST_SKIP() << "SSDP port is occupied or the host has no local network address";
+	if(!igd.ready()) GTEST_SKIP() << "SSDP port is occupied, the host has no local network address, or the loopback interface does not deliver multicast";
 	// Выполняем запуск поддельного шлюза
 	igd.start();
 	// Создаём объект модуля перенаправления портов
@@ -168,7 +168,7 @@ TEST_F(PortmapUnitFixture, PortmapUpnpFailures) {
 		// Создаём поддельный шлюз с поддержкой UPnP
 		FakeIGD igd;
 		// Если гнёзда поддельного шлюза завести не удалось, испытание не проводится
-		if(!igd.ready()) GTEST_SKIP() << "SSDP port is occupied or the host has no local network address";
+		if(!igd.ready()) GTEST_SKIP() << "SSDP port is occupied, the host has no local network address, or the loopback interface does not deliver multicast";
 		// Устанавливаем вид отказа, вносимого поддельным шлюзом
 		igd.mode = pair.mode;
 		// Устанавливаем признак ответа на рассылку обнаружения
@@ -210,7 +210,7 @@ TEST_F(PortmapUnitFixture, PortmapUpnpCloseAndRenew) {
 		// Создаём поддельный шлюз с поддержкой UPnP
 		FakeIGD igd;
 		// Если гнёзда поддельного шлюза завести не удалось, испытание не проводится
-		if(!igd.ready()) GTEST_SKIP() << "SSDP port is occupied or the host has no local network address";
+		if(!igd.ready()) GTEST_SKIP() << "SSDP port is occupied, the host has no local network address, or the loopback interface does not deliver multicast";
 		// Выполняем запуск поддельного шлюза
 		igd.start();
 		// Создаём объект модуля перенаправления портов
@@ -251,7 +251,7 @@ TEST_F(PortmapUnitFixture, PortmapUpnpList) {
 		// Создаём поддельный шлюз с поддержкой UPnP
 		FakeIGD igd;
 		// Если гнёзда поддельного шлюза завести не удалось, испытание не проводится
-		if(!igd.ready()) GTEST_SKIP() << "SSDP port is occupied or the host has no local network address";
+		if(!igd.ready()) GTEST_SKIP() << "SSDP port is occupied, the host has no local network address, or the loopback interface does not deliver multicast";
 		// Устанавливаем количество перенаправлений в выдаваемом перечне
 		igd.entries = entries;
 		// Выполняем запуск поддельного шлюза
@@ -321,7 +321,7 @@ TEST_F(PortmapUnitFixture, PortmapUpnpRefusal) {
 		// Создаём поддельный шлюз с поддержкой UPnP
 		FakeIGD igd;
 		// Если гнёзда поддельного шлюза завести не удалось, испытание не проводится
-		if(!igd.ready()) GTEST_SKIP() << "SSDP port is occupied or the host has no local network address";
+		if(!igd.ready()) GTEST_SKIP() << "SSDP port is occupied, the host has no local network address, or the loopback interface does not deliver multicast";
 		// Устанавливаем выдачу отказа службы
 		igd.mode = FakeIGD::Mode::FAULT;
 		// Устанавливаем код отказа, выдаваемый службой
@@ -361,7 +361,7 @@ TEST_F(PortmapUnitFixture, PortmapUpnpRepeat) {
 	// Создаём поддельный шлюз с поддержкой UPnP
 	FakeIGD igd;
 	// Если гнёзда поддельного шлюза завести не удалось, испытание не проводится
-	if(!igd.ready()) GTEST_SKIP() << "SSDP port is occupied or the host has no local network address";
+	if(!igd.ready()) GTEST_SKIP() << "SSDP port is occupied, the host has no local network address, or the loopback interface does not deliver multicast";
 	// Устанавливаем оставление вызова действия без ответа
 	igd.mode = FakeIGD::Mode::STALL;
 	// Выполняем запуск поддельного шлюза

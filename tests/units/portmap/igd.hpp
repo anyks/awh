@@ -270,7 +270,107 @@ class FakeIGD {
 			return result;
 		}
 	public:
-		bool ready() const noexcept { return ((this->_udp >= 0) && (this->_tcp >= 0) && !this->_address.empty()); }
+		/**
+		 * @brief Метод проверки доставки групповой рассылки через устройство петли
+		 *
+		 * @details Поддельное устройство слушает рассылку обнаружения на устройстве петли,
+		 *          и рассылка модуля уходит им же. Система вправе такую рассылку не
+		 *          доставлять вовсе, принимая при этом все настройки гнезда без единого
+		 *          отказа - тогда проверять по ней нечего
+		 *
+		 * @note Проверено опытом 15.08.2026: у OpenIndiana рассылка через петлю не
+		 *       доходит, тогда как у Solaris 11.4 и macOS доходит. Устройство петли
+		 *       несёт там признак групповой рассылки, вступление в группу принимается,
+		 *       настройка устройства рассылки принимается, отправка проходит - а
+		 *       дейтаграмма пропадает. Отличить это от дефекта модуля можно лишь
+		 *       отдельным опытом, потому он здесь и стоит
+		 *
+		 * @return признак доставки групповой рассылки через устройство петли
+		 *
+		 */
+		static bool delivers() noexcept {
+			// Итог опыта, снимаемый единожды за прогон
+			static const bool result = []() noexcept -> bool {
+				// Гнездо приёма рассылки
+				const int rx = ::socket(AF_INET, SOCK_DGRAM, 0);
+				// Если гнездо приёма завести не удалось, доставку признаём невозможной
+				if(rx < 0) return false;
+				// Гнездо отправки рассылки
+				const int tx = ::socket(AF_INET, SOCK_DGRAM, 0);
+				/**
+				 * Если гнездо отправки завести не удалось
+				 */
+				if(tx < 0){
+					// Выполняем закрытие гнезда приёма
+					::closesocket(rx);
+					// Доставку признаём невозможной
+					return false;
+				}
+				// Признак доставки рассылки
+				bool delivered = false;
+				// Разрешаем разделение порта между гнёздами
+				int yes = 1;
+				::setsockopt(rx, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast <const char *> (&yes), sizeof(yes));
+				/**
+				 * Опыт ведётся временным портом, а не портом обнаружения устройств
+				 *
+				 * @note Порт обнаружения занят самим поддельным устройством, и опыт по
+				 *       нему сличал бы не доставку рассылки, а занятость порта
+				 */
+				struct sockaddr_in bound; ::memset(&bound, 0, sizeof(bound));
+				bound.sin_family = AF_INET;
+				bound.sin_port = 0;
+				bound.sin_addr.s_addr = htonl(INADDR_ANY);
+				/**
+				 * Если привязка гнезда приёма удалась
+				 */
+				if(::bind(rx, reinterpret_cast <struct sockaddr *> (&bound), sizeof(bound)) == 0){
+					// Получаем отведённый гнезду приёма порт
+					socklen_t length = sizeof(bound);
+					::getsockname(rx, reinterpret_cast <struct sockaddr *> (&bound), &length);
+					// Вступаем в группу рассылки через устройство петли
+					struct ip_mreq group; ::memset(&group, 0, sizeof(group));
+					group.imr_multiaddr.s_addr = ::inet_addr("239.255.255.250");
+					group.imr_interface.s_addr = ::inet_addr("127.0.0.1");
+					/**
+					 * Если вступление в группу рассылки удалось
+					 */
+					if(::setsockopt(rx, IPPROTO_IP, IP_ADD_MEMBERSHIP, reinterpret_cast <const char *> (&group), sizeof(group)) == 0){
+						// Устанавливаем устройство петли устройством рассылки
+						struct in_addr iface; iface.s_addr = ::inet_addr("127.0.0.1");
+						::setsockopt(tx, IPPROTO_IP, IP_MULTICAST_IF, reinterpret_cast <const char *> (&iface), sizeof(iface));
+						// Разрешаем возврат рассылки на свою же машину
+						const unsigned char loop = 1;
+						::setsockopt(tx, IPPROTO_IP, IP_MULTICAST_LOOP, reinterpret_cast <const char *> (&loop), sizeof(loop));
+						// Выполняем отправку пробной рассылки
+						struct sockaddr_in target; ::memset(&target, 0, sizeof(target));
+						target.sin_family = AF_INET;
+						target.sin_port = bound.sin_port;
+						target.sin_addr.s_addr = ::inet_addr("239.255.255.250");
+						// Устанавливаем предел ожидания приёма
+						::setReceiveTimeout(rx, 500);
+						/**
+						 * Если отправка пробной рассылки удалась
+						 */
+						if(::sendto(tx, "PROBE", 5, 0, reinterpret_cast <struct sockaddr *> (&target), sizeof(target)) > 0){
+							// Хранилище принятой рассылки
+							char buffer[16];
+							// Признак доставки рассылки устанавливаем по принятому
+							delivered = (::recv(rx, buffer, sizeof(buffer), 0) > 0);
+						}
+					}
+				}
+				// Выполняем закрытие гнезда отправки
+				::closesocket(tx);
+				// Выполняем закрытие гнезда приёма
+				::closesocket(rx);
+				// Выводим итог опыта
+				return delivered;
+			}();
+			// Выводим итог опыта
+			return result;
+		}
+		bool ready() const noexcept { return ((this->_udp >= 0) && (this->_tcp >= 0) && !this->_address.empty() && delivers()); }
 		// Признак готовности поддельного шлюза к обмену сетью IPv6
 		bool ready6() const noexcept { return (this->ready() && (this->_udp6 >= 0) && !this->_address6.empty()); }
 		int calls() const noexcept { return this->_calls.load(); }

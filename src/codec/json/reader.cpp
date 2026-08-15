@@ -177,8 +177,18 @@ void awh::codec::json::Reader::marking() noexcept {
 /**
  * @brief Метод быстрого прохода по знакам, состояния не меняющим
  *
- * @details Знак, в разметке не отмеченный, содержимым строки и является: такие знаки
- *          проходятся отрезком и переносятся в хранилище одним действием
+ * @details Проход берёт два вида отрезков. Внутри строки это знаки, в разметке не
+ *          отмеченные: они содержимым строки и являются. Внутри записи числа это
+ *          цифры, стоящие там, где цифра состояния не меняет - в целой части, в
+ *          дробной и в порядке
+ *
+ * @details Отрезок переносится в хранилище одним действием, а учёт положения ведётся
+ *          сложением: без такого прохода всякий знак содержимого шёл бы через
+ *          переключатель на тридцать три состояния
+ *
+ * @note Договор о независимости выдачи от нарезки текста проход этот не задевает:
+ *       знаки, чьё значение зависит от следующего за ними, отрезком не берутся, а
+ *       обрыв отрезка границей куска состояния не меняет вовсе
  *
  * @param buffer буфер разбираемого текста
  * @param size   размер буфера разбираемого текста
@@ -186,20 +196,76 @@ void awh::codec::json::Reader::marking() noexcept {
  *
  */
 size_t awh::codec::json::Reader::bulk(const char * buffer, const size_t size) noexcept {
-	/**
-	 * Если разбор находится не внутри строки
-	 */
-	if(this->_state != state_t::STRING)
-		// Выводим количество пройденных байтов
-		return 0;
 	// Количество пройденных байтов
 	size_t length = 0;
 	/**
-	 * Выполняем проход по знакам, разбор не прерывающим
+	 * Определяем состояние разбора текста
 	 */
-	while((length < size) && !this->_breakString[static_cast <uint8_t> (buffer[length])])
-		// Выполняем переход к следующему знаку
-		length++;
+	switch(static_cast <uint8_t> (this->_state)){
+		/**
+		 * Если разбор находится внутри строки
+		 */
+		case static_cast <uint8_t> (state_t::STRING): {
+			/**
+			 * Выполняем проход по знакам, разбор не прерывающим
+			 */
+			while((length < size) && !this->_breakString[static_cast <uint8_t> (buffer[length])])
+				// Выполняем переход к следующему знаку
+				length++;
+		} break;
+		/**
+		 * Если разбор находится внутри записи числа там, где цифра состояния не меняет
+		 */
+		case static_cast <uint8_t> (state_t::NUMBER_INTEGER):
+		case static_cast <uint8_t> (state_t::NUMBER_FRACTION):
+		case static_cast <uint8_t> (state_t::NUMBER_POWER): {
+			/**
+			 * Выполняем проход по цифрам записи числа
+			 */
+			while((length < size) && (buffer[length] >= '0') && (buffer[length] <= '9'))
+				// Выполняем переход к следующему знаку
+				length++;
+			/**
+			 * Если пройти не удалось ни одной цифры
+			 */
+			if(length == 0)
+				// Выводим количество пройденных байтов
+				return 0;
+			/**
+			 * Если длина записи числа ограничена настройками
+			 */
+			if(this->_settings.maxNumber > 0){
+				// Получаем остаток допустимой длины записи числа
+				const uint32_t room = ((this->_settings.maxNumber > this->_length) ? (this->_settings.maxNumber - this->_length) : 0);
+				/**
+				 * Если пройденное не умещается в остаток допустимой длины
+				 */
+				if(length > static_cast <size_t> (room))
+					// Ограничиваем пройденное остатком допустимой длины
+					length = static_cast <size_t> (room);
+				/**
+				 * Если остаток допустимой длины исчерпан
+				 */
+				if(length == 0)
+					// Выводим количество пройденных байтов
+					return 0;
+			}
+			// Выполняем перенос пройденного в хранилище знаков
+			this->_storage.append(buffer, length);
+			// Увеличиваем смещение от начала текста
+			this->_offset += length;
+			// Увеличиваем положение в строке
+			this->_column += static_cast <uint32_t> (length);
+			// Увеличиваем длину записи числа
+			this->_length += static_cast <uint32_t> (length);
+			// Выводим количество пройденных байтов
+			return length;
+		}
+		/**
+		 * Если разбор находится в состоянии, отрезком не проходимом
+		 */
+		default: return 0;
+	}
 	/**
 	 * Если пройти не удалось ни одного знака
 	 */
@@ -305,6 +371,8 @@ bool awh::codec::json::Reader::feed(const char * buffer, const size_t size, cons
 		this->_items.clear();
 		// Сбрасываем указание на голову очереди собранных событий
 		this->_head = 0;
+		// Увеличиваем счёт байтов, выброшенных из хранилища знаков
+		this->_origin += static_cast <uint64_t> (this->_storage.size());
 		// Очищаем хранилище знаков собираемого значения
 		this->_storage.clear();
 	}
@@ -473,6 +541,8 @@ void awh::codec::json::Reader::reset() noexcept {
 	this->_empty = true;
 	// Сбрасываем признак прочитанной запятой
 	this->_comma = false;
+	// Сбрасываем счёт байтов, выброшенных из хранилища знаков
+	this->_origin = 0;
 	// Очищаем хранилище знаков собираемого значения
 	this->_storage.clear();
 	// Очищаем остаток куска, не составивший целого знака
@@ -598,6 +668,36 @@ awh::codec::json::Reader::value_t awh::codec::json::Reader::value() const noexce
 	return result;
 }
 /**
+ * @brief Метод извлечения указания на содержимое текущего события
+ *
+ * @return указание на содержимое текущего события
+ *
+ */
+awh::codec::json::span_t awh::codec::json::Reader::content() const noexcept {
+	// Выводим указание на содержимое текущего события
+	return this->_current.content;
+}
+/**
+ * @brief Метод извлечения хранилища знаков разбора
+ *
+ * @return хранилище знаков разбора
+ *
+ */
+const string & awh::codec::json::Reader::storage() const noexcept {
+	// Выводим хранилище знаков разбора
+	return this->_storage;
+}
+/**
+ * @brief Метод извлечения количества байтов, выброшенных из хранилища знаков
+ *
+ * @return количество байтов, выброшенных из хранилища знаков
+ *
+ */
+uint64_t awh::codec::json::Reader::origin() const noexcept {
+	// Выводим количество байтов, выброшенных из хранилища знаков
+	return this->_origin;
+}
+/**
  * @brief Метод извлечения положения текущего события в исходном тексте
  *
  * @return положение текущего события в исходном тексте
@@ -666,7 +766,7 @@ void awh::codec::json::Reader::settings(const settings_t & settings) noexcept {
 awh::codec::json::Reader::Reader() noexcept :
  _state(state_t::DOCUMENT_START), _error(error_t::NONE),
  _last(false), _keyed(false), _modified(false), _empty(true), _comma(false),
- _head(0), _offset(0), _line(1), _column(1), _length(0),
+ _origin(0), _head(0), _offset(0), _line(1), _column(1), _length(0),
  _unicode(0), _surrogate(0), _matched(0), _literal(nullptr) {
 	// Выполняем заполнение разметки знаков, прерывающих быстрый проход
 	this->marking();
