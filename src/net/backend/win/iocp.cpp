@@ -1842,6 +1842,106 @@ static inline ssize_t recvfrom(const SOCKET sock, void * buffer, const size_t si
 }
 
 /**
+ * @brief Функция опознания описателя именованного канала
+ *
+ * @details Спрашивается это у самой системы, а не берётся у узла события: подача
+ *          операций узла не знает вовсе, а вид описателя решает здесь всё - каналу
+ *          обмен ведётся своими обращениями, сокетные ему отвечают отказом 10038
+ *
+ * @note Опознаётся канал отказом сокетного запроса вида описателя: `GetFileType`
+ *       для этого непригоден вовсе - сокеты MS Windows он числит теми же каналами,
+ *       отвечая обоим `FILE_TYPE_PIPE`
+ *
+ * @param sock описатель, вид которого выясняется
+ * @return     признак того, что описатель является именованным каналом
+ *
+ */
+static bool __awh_pipe__(const SOCKET sock) noexcept {
+	// Вид описателя в понимании средств работы с сокетами
+	int32_t type = 0;
+	// Размер значения вида описателя
+	int32_t length = static_cast <int32_t> (sizeof(type));
+	// Если запрос вида описателя отвергнут - сокетом описатель не является
+	return ((::__awh_getsockopt__(sock, SOL_SOCKET, SO_TYPE, &type, &length) != 0) && (::WSAGetLastError() == WSAENOTSOCK));
+}
+
+/**
+ * @brief Функция обмена данными с именованным каналом
+ *
+ * @details Описатель канала заведён наложенным, и обращение без описания обмена
+ *          система ему отвергает. Обмен оттого ведётся описанием на стеке, а
+ *          завершения его порту не достаются: описатели каналов помечены при
+ *          привязке признаком, снимающим завершение у обращений, отработавших сразу
+ *
+ * @note Незавершённость здесь равнозначна исчерпанию: чтение зовётся лишь по
+ *       готовности, когда сообщение уже пришло, а запись - когда место в канале
+ *       есть. Оставшееся незавершённым обращение снимается, и вызывающей стороне
+ *       отвечается отсутствием данных, как ответил бы неблокирующий сокет
+ *
+ * @note Снятое обращение вправе оставить завершение порту, но разбор его отбросит:
+ *       записи учёта за описанием со стека нет, а завершения без записи разбор
+ *       числит пробуждением и пропускает
+ *
+ * @param sock   описатель именованного канала
+ * @param buffer буфер обмена
+ * @param size   размер буфера обмена
+ * @param write  признак того, что ведётся запись, а не чтение
+ * @return       число переданных октетов, либо -1 при отказе
+ *
+ */
+static ssize_t __awh_pipe_transfer__(const SOCKET sock, void * buffer, const size_t size, const bool write) noexcept {
+	// Получаем описатель канала в понимании системы
+	HANDLE handle = reinterpret_cast <HANDLE> (static_cast <uintptr_t> (sock));
+	// Описание наложенного обмена
+	OVERLAPPED overlapped{};
+	// Количество переданных октетов
+	DWORD bytes = 0;
+	// Выполняем обмен данными с каналом
+	const BOOL done = (write ?
+	 ::WriteFile(handle, buffer, static_cast <DWORD> (size), &bytes, &overlapped) :
+	 ::ReadFile(handle, buffer, static_cast <DWORD> (size), &bytes, &overlapped));
+	// Если обмен выполнен сразу
+	if(done)
+		// Выводим число переданных октетов
+		return static_cast <ssize_t> (bytes);
+	// Получаем код отказа обмена
+	const DWORD error = ::GetLastError();
+	// Если обмен принят системой, но не завершён
+	if(error == ERROR_IO_PENDING){
+		// Снимаем незавершённое обращение
+		::CancelIoEx(handle, &overlapped);
+		// Дожидаемся снятия обращения, чтобы описание на стеке пережило его
+		::GetOverlappedResult(handle, &overlapped, &bytes, TRUE);
+		// Отмечаем отсутствие данных
+		errno = EAGAIN;
+		// Выводим признак отсутствия данных
+		return -1;
+	}
+	/**
+	 * Определяем код отказа обмена
+	 */
+	switch(static_cast <uint32_t> (error)){
+		// Если встречный конец канала закрыт
+		case static_cast <uint32_t> (ERROR_BROKEN_PIPE):
+		// Если канал ещё не открыт встречной стороной
+		case static_cast <uint32_t> (ERROR_PIPE_NOT_CONNECTED):
+			// Отмечаем обрыв соединения
+			errno = ECONNRESET;
+		break;
+		// Если сообщение в буфер не поместилось целиком
+		case static_cast <uint32_t> (ERROR_MORE_DATA):
+			// Выводим число принятых октетов: остаток дочитается следующим заходом
+			return static_cast <ssize_t> (bytes);
+		// Для остальных отказов
+		default:
+			// Отмечаем отказ обмена
+			errno = EIO;
+	}
+	// Выводим признак отказа обмена
+	return -1;
+}
+
+/**
  * @brief Функция приёма данных набором буферов
  *
  * @param sock  сокет либо дескриптор, из которого ведётся приём
@@ -3263,6 +3363,18 @@ namespace io {
 	typedef struct Inter_Process_Communication : public node_t {
 		// Идентификатор парного узла пары socketpair/pipe (для перестройки пары целиком, см. rebuild())
 		event::id_t partner;
+		/**
+		 * Имя канала обмена
+		 *
+		 * @details Заводится оно у семейства PIPE и нужно тому, кто порождает процесс:
+		 *          описатель по наследству не передаётся, а имя переносимо и доходит до
+		 *          порождённого процесса окружением либо доводом запуска - свой конец
+		 *          тот открывает по нему сам. Спрашивается имя обычным путём, `getTarget`,
+		 *          тем же самым, каким у семейства UDS спрашивается путь сокета
+		 *
+		 * @note У прочих семейств имя пустое: связанная пара у них безымянна
+		 */
+		string name;
 		// Объект передачи данных
 		transfer_t transfer;
 		// Обратные вызовы события
@@ -6040,6 +6152,23 @@ namespace port {
 			// Выводим результат работы функции
 			return false;
 		}
+		/**
+		 * Снимаем завершение у обращений, отработавших сразу
+		 *
+		 * @details Обмен с именованным каналом ведётся описанием на стеке, и завершение
+		 *          такого обращения порту не нужно вовсе: данные уже переданы, а записи
+		 *          учёта за описанием со стека нет. Без этой пометки порт получал бы
+		 *          завершение на каждое чтение и на каждую запись канала
+		 *
+		 * @note Пометка ставится только каналам: у сокетов обмен ведётся подачей с
+		 *       записью учёта, и завершения их разбору нужны
+		 *
+		 * @note Отказ пометки не отменяет привязки: лишние завершения разбор отбросит
+		 *       как пробуждения, и работа от этого не встанет
+		 */
+		if(::__awh_pipe__(static_cast <SOCKET> (sock)))
+			// Помечаем описатель канала снятием завершения у обращений, отработавших сразу
+			::SetFileCompletionNotificationModes(reinterpret_cast <HANDLE> (static_cast <uintptr_t> (sock)), FILE_SKIP_COMPLETION_PORT_ON_SUCCESS);
 		// Выводим результат работы функции
 		return true;
 	}
@@ -7291,7 +7420,77 @@ namespace post {
 		// Размер значения вида дескриптора
 		int32_t length = static_cast <int32_t> (sizeof(type));
 		// Выполняем получение вида дескриптора
-		const bool datagram = ((::__awh_getsockopt__(static_cast <SOCKET> (sock), SOL_SOCKET, SO_TYPE, &type, &length) == 0) && (type == SOCK_DGRAM));
+		const bool socket = (::__awh_getsockopt__(static_cast <SOCKET> (sock), SOL_SOCKET, SO_TYPE, &type, &length) == 0);
+		// Выполняем определение дейтаграммного дескриптора
+		const bool datagram = (socket && (type == SOCK_DGRAM));
+		/**
+		 * Если дескриптор является именованным каналом
+		 *
+		 * @details Готовность у канала изображается иначе, чем у сокета, и сокетные
+		 *          обращения ему отвечают отказом 10038. Готовность к отправке
+		 *          выдаётся сразу: канал принимает записанное, покуда есть место в его
+		 *          буфере, а исчерпание места разбирает сама запись. Готовность же к
+		 *          приёму подаётся чтением НУЛЕВОЙ длины: канал заведён строем
+		 *          сообщений, и такое чтение ждёт прихода сообщения, а дождавшись,
+		 *          отвечает `ERROR_MORE_DATA`, оставляя само сообщение в канале
+		 *
+		 * @note Отказ `ERROR_MORE_DATA` здесь и есть успех: он означает, что сообщение
+		 *       пришло и в нулевой буфер не поместилось - ровно то, чего мы ждали
+		 *
+		 */
+		if(!socket && ::__awh_pipe__(static_cast <SOCKET> (sock))){
+			// Если ожидается готовность к отправке данных
+			if((mask & static_cast <uint32_t> (EPOLLOUT)) != 0){
+				// Выполняем выдачу готовности к отправке своим завершением
+				accepted = static_cast <bool> (::PostQueuedCompletionStatus(::port::handle, 0, 0, &slot->overlapped));
+				// Выводим результат выдачи готовности к отправке
+				return ::post::submitted(accepted, static_cast <DWORD> (::GetLastError()), result, "write readiness");
+			}
+			// Получаем описатель канала в понимании системы
+			HANDLE handle = reinterpret_cast <HANDLE> (static_cast <uintptr_t> (sock));
+			/**
+			 * Прежде приёма выясняем, не ждёт ли конец канала подключения встречной стороны
+			 *
+			 * @details Конец, заведённый именем, вправе оказаться свободным: встречный
+			 *          конец либо ещё не открыт, либо уже закрыт - так и выходит у того,
+			 *          кто назвал канал и порождает процесс, которому предстоит по этому
+			 *          имени подключиться. Ожидание подключения и есть здесь ожидание
+			 *          готовности: раньше подключения данным взяться неоткуда
+			 *
+			 * @note Спрашивается это самим обращением, а не отдельной проверкой: у конца,
+			 *       открытого по имени, обращение отвечает `ERROR_INVALID_FUNCTION`, у
+			 *       подключённого - `ERROR_PIPE_CONNECTED`, и оба ответа означают, что
+			 *       ждать нечего и надо принимать
+			 *
+			 * @note Ответ `ERROR_NO_DATA` означает, что встречная сторона отключилась:
+			 *       конец разрывается и возвращается к ожиданию нового подключения
+			 */
+			if(::ConnectNamedPipe(handle, &slot->overlapped) == 0){
+				// Получаем код ответа обращения
+				DWORD code = ::GetLastError();
+				// Если встречная сторона отключилась
+				if(code == ERROR_NO_DATA){
+					// Разрываем прежнее подключение конца канала
+					::DisconnectNamedPipe(handle);
+					// Выполняем повторное ожидание подключения встречной стороны
+					if(::ConnectNamedPipe(handle, &slot->overlapped) == 0)
+						// Получаем код ответа повторного обращения
+						code = ::GetLastError();
+					// Отмечаем ожидание подключения принятым системой
+					else code = ERROR_IO_PENDING;
+				}
+				// Если ожидание подключения принято системой
+				if(code == ERROR_IO_PENDING)
+					// Выводим результат подачи ожидания подключения встречной стороны
+					return ::post::submitted(true, code, result, "pipe connection");
+			}
+			// Выполняем подачу чтения нулевой длины
+			accepted = static_cast <bool> (::ReadFile(handle, buffer.buf, 0, &bytes, &slot->overlapped));
+			// Получаем код отказа подачи чтения
+			const DWORD error = (accepted ? ERROR_SUCCESS : ::GetLastError());
+			// Выводим результат подачи ожидания готовности к приёму
+			return ::post::submitted((accepted || (error == ERROR_MORE_DATA)), error, result, "read readiness");
+		}
 		// Если ожидается готовность к отправке данных
 		if((mask & static_cast <uint32_t> (EPOLLOUT)) != 0){
 			/**
@@ -15256,7 +15455,7 @@ namespace io {
 									 */
 									errno = 0;
 									// Выполняем чтение данных из PIPE-сокета
-									bytes = ::read(ipc->transfer.fd, ::__awh_buffer__, 0x1000);
+									bytes = ::__awh_pipe_transfer__(ipc->transfer.fd, ::__awh_buffer__, 0x1000, false);
 									// Учитываем полученное в объявленном ядром объёме
 									watchdog.consume(bytes);
 									// Если мы получили ошибку
@@ -15325,7 +15524,7 @@ namespace io {
 							// Если событие является блокирующим
 							} else {
 								// Выполняем чтение данных из PIPE-сокета
-								const ssize_t bytes = ::read(ipc->transfer.fd, ::__awh_buffer__, 0x1000);
+								const ssize_t bytes = ::__awh_pipe_transfer__(ipc->transfer.fd, ::__awh_buffer__, 0x1000, false);
 								// Если мы получили ошибку
 								if(bytes < 0){
 									// Если установлена функция обратного вызова
@@ -20045,7 +20244,7 @@ namespace io {
 									 */
 									errno = 0;
 									// Выполняем отправку данных в PIPE-сокет
-									const ssize_t bytes = ::write(ipc->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size);
+									const ssize_t bytes = ::__awh_pipe_transfer__(ipc->transfer.fd, const_cast <void *> (buffer), size, true);
 									// Если данные отправлены успешно
 									if((result = (bytes > 0))){
 										// Удаляем данные из очереди
@@ -23860,7 +24059,7 @@ namespace io {
 							// Для семейства межпроцессных соединений
 							if(ipc->state.family == event::family_t::PIPE)
 								// Выполняем отправку данных в PIPE-сокет
-								bytes = ::write(ipc->transfer.fd, buffer, size);
+								bytes = ::__awh_pipe_transfer__(ipc->transfer.fd, const_cast <void *> (buffer), size, true);
 							// Выполняем отправку данных в TCP/IP сокет
 							else bytes = ::__awh_send__(ipc->transfer.fd, buffer, size, MSG_NOSIGNAL);
 							// Если данные отправлены успешно
@@ -24018,7 +24217,7 @@ namespace io {
 								// Для семейства межпроцессных соединений
 								if(ipc->state.family == event::family_t::PIPE)
 									// Выполняем отправку данных в PIPE-сокет
-									bytes = ::write(ipc->transfer.fd, buffer, size);
+									bytes = ::__awh_pipe_transfer__(ipc->transfer.fd, const_cast <void *> (buffer), size, true);
 								// Выполняем отправку данных в TCP/IP сокет
 								else bytes = ::__awh_send__(ipc->transfer.fd, buffer, size, MSG_NOSIGNAL);
 								// Если данные отправлены успешно
@@ -24125,7 +24324,7 @@ namespace io {
 						// Для семейства межпроцессных соединений
 						if(ipc->state.family == event::family_t::PIPE)
 							// Выполняем отправку данных в PIPE-сокет
-							bytes = ::write(ipc->transfer.fd, buffer, size);
+							bytes = ::__awh_pipe_transfer__(ipc->transfer.fd, const_cast <void *> (buffer), size, true);
 						// Выполняем отправку данных в TCP/IP сокет
 						else bytes = ::__awh_send__(ipc->transfer.fd, buffer, size, MSG_NOSIGNAL);
 						// Если данные отправлены успешно
@@ -32773,6 +32972,33 @@ namespace io {
 						::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (node);
 						// Сбрасываем очередь передачи данных события
 						ipc->transfer.queue.clear();
+						/**
+						 * Возвращаем оставшийся конец канала к ожиданию подключения
+						 *
+						 * @details Пара каналов заводится связанной: назвавшая сторона открывает и
+						 *          встречный конец сама. Снос одного конца оставляет второй занятым -
+						 *          подключиться к нему по имени становится нельзя, система отвечает
+						 *          отказом 231 (все экземпляры канала заняты). Разрыв возвращает конец
+						 *          к ожиданию, и порождённый процесс подключается к нему по имени
+						 *
+						 * @note Делается это здесь, а не при подписке на приём: порождённый процесс
+						 *       стучится в канал сразу, едва запустившись, а подписка случается позже -
+						 *       и стук приходился бы на ещё занятый конец
+						 *
+						 */
+						if(ipc->state.family == event::family_t::PIPE){
+							// Выполняем поиск парного узла пары
+							auto p = ::__awh_nodes__.find(ipc->partner);
+							// Если парный узел найден
+							if((ipc->partner != 0) && (p != ::__awh_nodes__.end())){
+								// Получаем объект парного узла
+								::io::ipc_t * mate = awh_cast <::io::ipc_t *> (p->second.get());
+								// Если описатель парного узла заведён
+								if(mate->transfer.fd != net::invalid_socket_t)
+									// Разрываем подключение оставшегося конца канала
+									::DisconnectNamedPipe(reinterpret_cast <HANDLE> (static_cast <uintptr_t> (mate->transfer.fd)));
+							}
+						}
 						// Если дескриптор сокета инициализирован
 						if(ipc->transfer.fd != net::invalid_socket_t){
 							// Если процесс является родительским
@@ -38881,6 +39107,20 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 						::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (i->second.get());
 						// Устанавливаем статус события в состояние инициализировано
 						ipc->state.status = event::status_t::INITIAL;
+						/**
+						 * Открываем свой конец канала по его имени
+						 *
+						 * @details Узел, заведённый в одиночку, описателя ещё не имеет: заводится он
+						 *          у пары, а одиночному узлу достаётся одно лишь имя канала. Открывается
+						 *          канал здесь по тому же доводу, по какому здесь же заводится и всякий
+						 *          сокет - настройки уходят ядру при создании описателя
+						 *
+						 * @note Узел пары сюда приходит с описателем уже заведённым, и открывать ему нечего
+						 *
+						 */
+						if((ipc->transfer.fd == net::invalid_socket_t) && (ipc->state.family == event::family_t::PIPE) && !ipc->name.empty())
+							// Выполняем открытие своего конца канала обмена
+							ipc->transfer.fd = this->_eth.socket.channel(ipc->name);
 						// Если файловый дескриптор межпроцессного взаимодействия существует
 						if((result = (ipc->transfer.fd != net::invalid_socket_t))){
 							/**
@@ -44176,6 +44416,19 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 			 * Определяем чем является текущий узел
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
+				/**
+				 * Если узел является межпроцессным соединением
+				 *
+				 * @details У семейства PIPE целью узла служит имя канала обмена - тем же
+				 *          порядком, каким у семейства UDS целью служит путь сокета.
+				 *          Спрашивают его затем, чтобы передать порождаемому процессу:
+				 *          описатель по наследству не переходит, а имя переносимо
+				 *
+				 * @note У прочих семейств имя пустое: связанная пара у них безымянна
+				 */
+				case static_cast <uint8_t> (event::node_t::IPC):
+					// Возвращаем имя канала обмена
+					return awh_cast <::io::ipc_t *> (i->second.get())->name;
 				// Если узел является директорией
 				case static_cast <uint8_t> (event::node_t::DIR): {
 					// Получаем текущее значение объекта директории
@@ -44838,6 +45091,24 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 				 * Определяем чем является текущий узел
 				 */
 				switch(static_cast <uint8_t> (i->second->state.node)){
+					/**
+					 * Если узел является межпроцессным соединением
+					 *
+					 * @details Целью узла у семейства PIPE служит имя канала обмена, и
+					 *          задают его перед фиксацией настроек - открывается канал
+					 *          по нему при фиксации, ровно так же, как заводится при ней
+					 *          и всякий сокет
+					 */
+					case static_cast <uint8_t> (event::node_t::IPC): {
+						// Если семейство узла каналом не является
+						if(i->second->state.family != event::family_t::PIPE)
+							// Прерываем выполнение
+							break;
+						// Устанавливаем имя канала обмена
+						awh_cast <::io::ipc_t *> (i->second.get())->name = static_cast <string> (target);
+						// Выводим результат установки имени канала обмена
+						return true;
+					}
 					// Если узел является директорией
 					case static_cast <uint8_t> (event::node_t::DIR): {
 						// Если типы адресов соответствуют
@@ -55656,8 +55927,10 @@ array <event::id_t, 2> awh::engine::IO::events(const event::family_t family, con
 	 * Выполняем перехват ошибок
 	 */
 	try {
+		// Имя заведённого канала обмена
+		string name;
 		// Создаём пару сокетов
-		const auto & fds = this->_eth.socket.ipc(family, type, protocol);
+		const auto & fds = this->_eth.socket.ipc(family, type, protocol, name);
 		// Если пара сокетов создана удачно
 		if((fds[0] != net::invalid_socket_t) && (fds[1] != net::invalid_socket_t)){
 			/**
@@ -55829,6 +56102,15 @@ array <event::id_t, 2> awh::engine::IO::events(const event::family_t family, con
 					awh_cast <::io::ipc_t *> (n0->second.get())->partner = result[1];
 					// Связываем второй узел пары с первым
 					awh_cast <::io::ipc_t *> (n1->second.get())->partner = result[0];
+					/**
+					 * Запоминаем имя канала обмена у обоих концов пары
+					 *
+					 * @details Спрашивают его обычным путём, `getTarget`, и спросить вправе
+					 *          у любого конца: имя у канала одно на оба
+					 */
+					awh_cast <::io::ipc_t *> (n0->second.get())->name = name;
+					// Запоминаем имя канала обмена у второго конца пары
+					awh_cast <::io::ipc_t *> (n1->second.get())->name = name;
 				}
 			}
 		}
@@ -56031,6 +56313,55 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 				}
 			} break;
 			// Если узел является пользовательским событием
+			/**
+			 * Если узел является межпроцессным соединением
+			 *
+			 * @details Заводится он в одиночку, без пары, и открывает свой конец уже
+			 *          заведённого канала по его имени. Нужен такой узел порождённому
+			 *          процессу: описатель по наследству ему не переходит - он проходит
+			 *          точку входа заново, как запущенный отдельно, - и достаётся ему
+			 *          одно лишь имя канала
+			 *
+			 * @note У систем POSIX пути этого нет вовсе, и заводить его там незачем:
+			 *       дочерний процесс получается ветвлением и наследует описатель пары
+			 *       вместе со всей памятью. Ветвления MS Windows не имеет
+			 *
+			 * @note Имя канала задаётся узлу обычным путём, `setTarget`, - тем же самым,
+			 *       каким у семейства UDS задаётся путь сокета, - а открывается канал
+			 *       при фиксации настроек, как заводится при ней и всякий сокет
+			 */
+			case static_cast <uint8_t> (event::node_t::IPC): {
+				// Если семейство узла каналом не является
+				if(family != event::family_t::PIPE)
+					// Выводим пустой идентификатор события
+					return 0;
+				// Выполняем создание события
+				auto ret = ::__awh_nodes__.emplace(::local::identifier(), make_unique <::io::ipc_t> (this->_fmk, this->_log));
+				// Если добавить узел события в хранилище не удалось
+				if(!ret.second)
+					// Выводим пустой идентификатор события
+					return 0;
+				// Устанавливаем идентификатор события
+				ret.first->second->id = ret.first->first;
+				// Устанавливаем тип узла события
+				ret.first->second->state.node = node;
+				// Устанавливаем флаг типа сокета
+				ret.first->second->state.type = type;
+				// Устанавливаем флаг семейства сокета
+				ret.first->second->state.family = family;
+				// Устанавливаем флаг протокола сокета
+				ret.first->second->state.protocol = protocol;
+				// Получаем объект межпроцессного соединения
+				::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (ret.first->second.get());
+				// Если событие принадлежит к типу STREAM
+				if((type == event::type_t::NONE) || (type == event::type_t::STREAM))
+					// Устанавливаем тип очереди обмена
+					ipc->transfer.queue.type(net_queue_t::type_t::TCP);
+				// Устанавливаем тип очереди обмена
+				else ipc->transfer.queue.type(net_queue_t::type_t::UDP);
+				// Возвращаем идентификатор созданного события
+				return ret.first->first;
+			}
 			case static_cast <uint8_t> (event::node_t::NOTIFY): {
 				/**
 				 * Определяем семейство адресов
@@ -60474,6 +60805,29 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 						 * Определяем чем является текущий узел
 						 */
 						switch(static_cast <uint8_t> (i->second->state.node)){
+							/**
+							 * Если узел является межпроцессным соединением
+							 *
+							 * @details Подключаться каналу не к чему: свой конец открыт при фиксации
+							 *          настроек, и открытие это и есть подключение - встречная сторона
+							 *          канала уже заведена тем, кто его назвал
+							 *
+							 * @note Отвечать отказом здесь было бы неверно: зовущая сторона проходит общим
+							 *       путём - фиксация, подключение, запуск, - и отказ на достигнутом остановил
+							 *       бы её на ровном месте
+							 *
+							 */
+							case static_cast <uint8_t> (event::node_t::IPC): {
+								/**
+								 * Состояние узла при этом не меняется намеренно
+								 *
+								 * @note Запуск работы события ждёт узла именно в исходном состоянии, а
+								 *       зовущая сторона проходит общим путём - фиксация, подключение,
+								 *       запуск. Отметь мы здесь подключение, запуск счёл бы узел уже
+								 *       работающим и не сделал бы ничего
+								 */
+								result = true;
+							} break;
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
 								// Получаем текущее значение объекта клиента

@@ -36,6 +36,7 @@ if (${CMAKE_BUILD_${BENCHMARK_NAME}_BENCHMARKS})
             lexical/real.cpp
             lexical/formats.cpp
             lexical/native.cpp
+            lexical/writer.cpp
         )
     # Если не нужно собрать бенчмарки для подмодуля разбора чисел
     else()

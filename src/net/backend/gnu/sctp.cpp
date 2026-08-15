@@ -1283,6 +1283,14 @@ ssize_t awh::eth::Stream_Control_Transmission_Protocol::receive(const net::socke
 	// Выполняем сброс флагов полученного сообщения
 	info.flags.clear();
 	/**
+	 * Выполняем сброс флагов сообщения в системном виде
+	 *
+	 * @note Довод этот у обоих способов чтения входной И выходной: не обнулив его,
+	 *       мы подали бы ядру флаги прошлого приёма как просьбу, а прежний признак
+	 *       границы записи пережил бы чтение, у которого её нет
+	 */
+	flags = 0;
+	/**
 	 * Если система несёт современный набор вызовов
 	 */
 	#if defined(SCTP_RECVRCVINFO) && defined(SCTP_RECVV_RCVINFO)
@@ -1425,68 +1433,12 @@ ssize_t awh::eth::Stream_Control_Transmission_Protocol::receive(const net::socke
  * @param size     размер буфера отправляемых данных
  * @param addr     адрес удалённого узла
  * @param length   размер адреса удалённого узла
- * @param info     информационные метаданные сообщения
+ * @param info     информационные метаданные сообщения в системном виде
  * @param complete признак завершения сообщения на этом куске
  * @return         количество отправленных октетов либо -1 при отказе
  *
  */
-ssize_t awh::eth::Stream_Control_Transmission_Protocol::send(const net::socket_t sock, const void * buffer, const size_t size, const struct sockaddr * addr, const socklen_t length, const net::sctp::minfo_t & info, const bool complete) const noexcept {
-	// Флаги отправки сообщения
-	uint32_t sndflags = 0;
-	/**
-	 * Если сообщение доставляется без учёта порядка в потоке
-	 */
-	#if defined(SCTP_UNORDERED)
-		// Если сообщение доставляется без учёта порядка в потоке
-		if(info.flags.find(net::sctp::info_t::DELIVERY_UNORDERED) != info.flags.end())
-			// Устанавливаем флаг доставки без учёта порядка
-			sndflags |= SCTP_UNORDERED;
-	#endif
-	/**
-	 * Если сообщение отправляется всем ассоциациям
-	 */
-	#if defined(SCTP_SENDALL)
-		// Если сообщение отправляется всем ассоциациям
-		if(info.flags.find(net::sctp::info_t::SEND_ALL) != info.flags.end())
-			// Устанавливаем флаг отправки всем ассоциациям
-			sndflags |= SCTP_SENDALL;
-	#endif
-	/**
-	 * Если адрес удалённого узла берётся вопреки подключению
-	 */
-	#if defined(SCTP_ADDR_OVER)
-		// Если адрес удалённого узла берётся вопреки подключению
-		if(info.flags.find(net::sctp::info_t::ADDR_OVER) != info.flags.end())
-			// Устанавливаем флаг использования переданного адреса
-			sndflags |= SCTP_ADDR_OVER;
-	#endif
-	/**
-	 * Если сообщение несёт признак грациозного завершения
-	 */
-	#if defined(SCTP_EOF)
-		// Если сообщение несёт признак грациозного завершения
-		if(info.flags.find(net::sctp::info_t::STATUS_EOF) != info.flags.end())
-			// Устанавливаем флаг грациозного завершения
-			sndflags |= SCTP_EOF;
-	#endif
-	/**
-	 * Если сообщение несёт признак аварийного завершения
-	 */
-	#if defined(SCTP_ABORT)
-		// Если сообщение несёт признак аварийного завершения
-		if(info.flags.find(net::sctp::info_t::STATUS_ABORT) != info.flags.end())
-			// Устанавливаем флаг аварийного завершения
-			sndflags |= SCTP_ABORT;
-	#endif
-	/**
-	 * Если требуется мгновенное подтверждение приёма
-	 */
-	#if defined(SCTP_SACK_IMMEDIATELY)
-		// Если требуется мгновенное подтверждение приёма
-		if(info.flags.find(net::sctp::info_t::SACK_IMMEDIATELY) != info.flags.end())
-			// Устанавливаем флаг мгновенного подтверждения приёма
-			sndflags |= SCTP_SACK_IMMEDIATELY;
-	#endif
+ssize_t awh::eth::Stream_Control_Transmission_Protocol::send(const net::socket_t sock, const void * buffer, const size_t size, const struct sockaddr * addr, const socklen_t length, const struct sctp_sndrcvinfo & info, const bool complete) const noexcept {
 	/**
 	 * Если система несёт современный набор вызовов
 	 */
@@ -1502,60 +1454,36 @@ ssize_t awh::eth::Stream_Control_Transmission_Protocol::send(const net::socket_t
 		// Устанавливаем признак заполненности параметров отправки
 		spa.sendv_flags = SCTP_SEND_SNDINFO_VALID;
 		// Устанавливаем номер потока
-		spa.sendv_sndinfo.snd_sid = info.num;
-		// Устанавливаем флаги отправки сообщения
-		spa.sendv_sndinfo.snd_flags = static_cast <uint16_t> (sndflags);
+		spa.sendv_sndinfo.snd_sid = info.sinfo_stream;
 		// Устанавливаем идентификатор полезной нагрузки
-		spa.sendv_sndinfo.snd_ppid = static_cast <uint32_t> (info.ppid);
+		spa.sendv_sndinfo.snd_ppid = info.sinfo_ppid;
 		// Устанавливаем контекст для уведомлений об ошибках
-		spa.sendv_sndinfo.snd_context = info.ctx;
+		spa.sendv_sndinfo.snd_context = info.sinfo_context;
+		// Устанавливаем флаги отправки сообщения
+		spa.sendv_sndinfo.snd_flags = static_cast <uint16_t> (info.sinfo_flags);
 		/**
-		 * Если сообщение отправляется с политикой частичной надёжности
+		 * Если система несёт политики частичной надёжности
 		 */
-		#if defined(SCTP_SEND_PRINFO_VALID)
-			// Политика частичной надёжности сообщения
-			uint16_t policy = 0;
+		#if defined(SCTP_SEND_PRINFO_VALID) && defined(SCTP_PR_SCTP_MASK)
 			/**
-			 * Если сообщение имеет ограничение по времени жизни
-			 */
-			#if defined(SCTP_PR_SCTP_TTL)
-				// Если сообщение имеет ограничение по времени жизни
-				if(info.flags.find(net::sctp::info_t::PR_TTL) != info.flags.end())
-					// Устанавливаем политику ограничения по времени жизни
-					policy = SCTP_PR_SCTP_TTL;
-			#endif
-			/**
-			 * Если сообщение имеет ограничение по количеству повторных попыток
-			 */
-			#if defined(SCTP_PR_SCTP_RTX)
-				// Если сообщение имеет ограничение по количеству повторных попыток
-				if(info.flags.find(net::sctp::info_t::PR_RTX) != info.flags.end())
-					// Устанавливаем политику ограничения по количеству повторных попыток
-					policy = SCTP_PR_SCTP_RTX;
-			#endif
-			/**
-			 * Если сообщение имеет приоритет
-			 */
-			#if defined(SCTP_PR_SCTP_PRIO)
-				// Если сообщение имеет приоритет
-				if(info.flags.find(net::sctp::info_t::PR_PRIO) != info.flags.end())
-					// Устанавливаем политику приоритета сообщения
-					policy = SCTP_PR_SCTP_PRIO;
-			#endif
-			/**
-			 * Если политика частичной надёжности установлена
+			 * Политика частичной надёжности сообщения
 			 *
-			 * @note Значение политики берётся из времени жизни сообщения: у ограничения
-			 *       по времени это миллисекунды, у прочих политик - число попыток либо
-			 *       приоритет, и поле это у них общее
+			 * @note У прежнего набора вызовов политика едет не отдельным полем, а
+			 *       младшими разрядами тех же флагов отправки. Современный набор
+			 *       разнёс их порознь, и разряды эти из флагов надлежит убрать -
+			 *       иначе политика уедет дважды, вторым разом как чужой флаг
 			 */
+			const uint16_t policy = static_cast <uint16_t> (info.sinfo_flags & SCTP_PR_SCTP_MASK);
+			// Если политика частичной надёжности установлена
 			if(policy != 0){
+				// Убираем разряды политики из флагов отправки сообщения
+				spa.sendv_sndinfo.snd_flags = static_cast <uint16_t> (info.sinfo_flags & ~SCTP_PR_SCTP_MASK);
 				// Устанавливаем признак заполненности политики частичной надёжности
 				spa.sendv_flags |= SCTP_SEND_PRINFO_VALID;
 				// Устанавливаем политику частичной надёжности
 				spa.sendv_prinfo.pr_policy = policy;
 				// Устанавливаем значение политики частичной надёжности
-				spa.sendv_prinfo.pr_value = info.ttl;
+				spa.sendv_prinfo.pr_value = info.sinfo_timetolive;
 			}
 		#endif
 		// Флаги отправки сообщения
@@ -1587,6 +1515,6 @@ ssize_t awh::eth::Stream_Control_Transmission_Protocol::send(const net::socket_t
 			// Выводим сообщение об ошибке
 			this->_log->print("SCTP partial message sending is not supported by the operating system", log_t::flag_t::WARNING);
 		// Выполняем отправку сообщения прежним способом
-		return ::sctp_sendmsg(sock, buffer, size, const_cast <struct sockaddr *> (addr), length, static_cast <uint32_t> (info.ppid), sndflags, info.num, info.ttl, info.ctx);
+		return ::sctp_sendmsg(sock, buffer, size, const_cast <struct sockaddr *> (addr), length, info.sinfo_ppid, info.sinfo_flags, info.sinfo_stream, info.sinfo_timetolive, info.sinfo_context);
 	#endif
 }

@@ -444,7 +444,49 @@ namespace awh {
 			 * \~
 			 */
 			size_t push(const void * data, const size_t size) noexcept;
-		public:
+			/**
+			 * \~russian
+			 * @brief Метод добавления данных в очередь одной записью из двух частей
+			 *
+			 * @details Голова и данные ложатся в очередь **одной** записью, но копируются
+			 *          порознь - собирать их во временный буфер незачем. Нужно это тем
+			 *          потребителям, кто переносит очередью не одни данные, но и настройки
+			 *          их отправки: держать настройки рядом с очередью нельзя, ибо пишет
+			 *          в неё не один лишь отправитель
+			 *
+			 * @param head   голова записи
+			 * @param length размер головы записи
+			 * @param data   данные для добавления в очередь
+			 * @param size   размер данных для добавления в очередь
+			 * @return       количество ДАННЫХ, успешно добавленных в очередь, без учёта головы
+			 *
+			 * @warning Запись кладётся целиком либо не кладётся вовсе: голова, оторванная
+			 *          от своих данных, заставила бы потребителя прочесть настройки одного
+			 *          сообщения вместе с данными другого. Оттого у потоковой очереди
+			 *          правило «сколько влезет» здесь не действует, и вызывающий обязан
+			 *          спросить свободное место заранее, уложившись в него вместе с головой
+			 *
+			 * \~english
+			 * @brief Method of adding the data into the queue by one record of two parts
+			 * @details The head and the data lie into the queue by **one** record, but are copied
+			 *          separately — there is no need to assemble them into a temporary buffer. This is needed by those
+			 *          consumers who carry by the queue not only the data, but also the settings
+			 *          of their sending: keeping the settings beside the queue is impossible, for
+			 *          not only the sender writes into it
+			 * @param head   head of the record
+			 * @param length size of the head of the record
+			 * @param data   data to add into the queue
+			 * @param size   size of the data to add into the queue
+			 * @return       amount of the DATA successfully added into the queue, without the account of the head
+			 * @warning The record is laid entirely or is not laid at all: a head torn away
+			 *          from its data would make the consumer read the settings of one message
+			 *          together with the data of another. Therefore at a stream queue the rule
+			 *          «as much as fits» does not act here, and the caller is obliged to ask
+			 *          for the free space beforehand, fitting into it together with the head
+			 *
+			 * \~
+			 */
+			size_t push(const void * head, const size_t length, const void * data, const size_t size) noexcept;
 		public:
 			/**
 			 * \~russian

@@ -49,6 +49,7 @@
 #include "parser.hpp"
 #include "decimal.hpp"
 #include "digits.hpp"
+#include "writer.hpp"
 
 /**
  * \~russian
@@ -827,6 +828,190 @@ namespace awh {
 		inline result_t <UC> fromChars(const UC * first, const UC * const last, T & value, const int32_t base = 10) noexcept {
 			// Выполняем разбор целого числа
 			return fromCharsInt(first, last, value, options_t <UC> (format_t::GENERAL, UC('.'), base));
+		}
+
+		/**
+		 * \~russian
+		 * @brief Шаблон типа записываемого целого и типа символа записываемой строки
+		 *
+		 * @tparam T  тип целого числа
+		 * @tparam UC тип символа записываемой строки
+		 *
+		 *
+		 * \~english
+		 * @brief Template of the written integer type and of the character type of the written string
+		 * @tparam T  integer type
+		 * @tparam UC character type of the written string
+		 *
+		 * \~
+		 */
+		template <typename T, typename UC = char, enableIf_t <is_supported_integer <T>::value> = 0>
+		/**
+		 * \~russian
+		 * @brief Метод записи целого числа в строку
+		 *
+		 * @details Метод не выделяет память и не выбрасывает исключений. Завершающий
+		 *          нулевой символ не записывается: конец записи задан выводимым указателем.
+		 *
+		 * @param first начало отведённого под запись места
+		 * @param last  конец отведённого под запись места
+		 * @param value записываемое число
+		 * @param base  основание системы счисления в диапазоне от 2 до 36
+		 * @return      результат записи числовой строки
+		 *
+		 * \~english
+		 * @brief Method of writing an integer into a string
+		 * @details The method allocates no memory and throws no exceptions. The terminating
+		 *          null character is not written: the end of the record is set by the returned pointer.
+		 * @param first beginning of the place allotted for the record
+		 * @param last  end of the place allotted for the record
+		 * @param value written number
+		 * @param base  base of the numeral system in the range from 2 to 36
+		 * @return      result of writing the number string
+		 *
+		 * \~
+		 */
+		inline output_t <UC> toChars(UC * first, UC * const last, const T value, const int32_t base = 10) noexcept {
+			/**
+			 * Если основание системы счисления выходит за допустимые пределы
+			 */
+			if((base < 2) || (base > 36))
+				// Выводим результат неуспешной записи
+				return output_t <UC> (last, errc::invalid_argument, error_t::INVALID_BASE);
+			/**
+			 * Если записываемое число является логическим значением
+			 */
+			if(is_same <T, bool>::value)
+				// Выполняем запись логического значения цифрой
+				return writeUnsigned <UC> (first, last, static_cast <uint64_t> (value ? 1 : 0), base);
+			// Модуль записываемого числа
+			uint64_t magnitude = 0;
+			// Указатель на текущую позицию записи
+			UC * position = first;
+			/**
+			 * Если записываемое число является отрицательным
+			 */
+			if(value < 0){
+				// Если отведённого под запись места недостаточно
+				if(position == last)
+					// Выводим результат неуспешной записи
+					return output_t <UC> (last, errc::value_too_large, error_t::INSUFFICIENT_BUFFER);
+				// Записываем знак числа
+				*(position++) = static_cast <UC> ('-');
+				/**
+				 * Определяем модуль записываемого числа
+				 *
+				 * @note Смена знака выполняется в шестидесятичетырёхразрядном беззнаковом
+				 *       типе, а не в типе числа: у наименьшего представимого значения модуль
+				 *       в знаковый тип не помещается, а у типов уже разряда языковое
+				 *       продвижение подняло бы вычитание до знакового int и дало бы
+				 *       отрицательное значение
+				 */
+				magnitude = (~static_cast <uint64_t> (value) + 1ull);
+			/**
+			 * Если записываемое число является неотрицательным
+			 */
+			} else {
+				// Создаём тип беззнакового целого равной разрядности
+				using uint_t = typename make_unsigned <typename conditional <is_same <T, bool>::value, uint8_t, T>::type>::type;
+				// Определяем модуль записываемого числа
+				magnitude = static_cast <uint64_t> (static_cast <uint_t> (value));
+			}
+			// Выполняем запись модуля числа
+			return writeUnsigned <UC> (position, last, magnitude, base);
+		}
+
+		/**
+		 * \~russian
+		 * @brief Шаблон типа записываемого числа и типа символа записываемой строки
+		 *
+		 * @tparam T  тип числа с плавающей точкой
+		 * @tparam UC тип символа записываемой строки
+		 *
+		 *
+		 * \~english
+		 * @brief Template of the written number type and of the character type of the written string
+		 * @tparam T  floating-point type
+		 * @tparam UC character type of the written string
+		 *
+		 * \~
+		 */
+		template <typename T, typename UC = char, enableIf_t <is_supported_float <T>::value> = 0>
+		/**
+		 * \~russian
+		 * @brief Метод записи числа с плавающей точкой в строку
+		 *
+		 * @details Запись содержит наименьшее количество значащих цифр, при котором она
+		 *          читается обратно тем же самым числом методом fromChars, а равно и
+		 *          любым иным разбором, соблюдающим округление к ближайшему. Подбор
+		 *          точности при этом не ведётся: количество цифр вычисляется сразу.
+		 *          Метод не выделяет память и не выбрасывает исключений.
+		 *
+		 * @param first  начало отведённого под запись места
+		 * @param last   конец отведённого под запись места
+		 * @param value  записываемое число
+		 * @param format требуемый вид записи числа
+		 * @return       результат записи числовой строки
+		 *
+		 * \~english
+		 * @brief Method of writing a floating-point number into a string
+		 * @details The record contains the least number of significant digits at which it
+		 *          is read back as the very same number by the fromChars method, and equally by
+		 *          any other parsing which observes the rounding to the nearest. No selection
+		 *          of the precision is conducted at that: the number of the digits is computed at once.
+		 *          The method allocates no memory and throws no exceptions.
+		 * @param first  beginning of the place allotted for the record
+		 * @param last   end of the place allotted for the record
+		 * @param value  written number
+		 * @param format required form of the number record
+		 * @return       result of writing the number string
+		 *
+		 * \~
+		 */
+		inline output_t <UC> toChars(UC * first, UC * const last, const T value, const format_t format = format_t::GENERAL) noexcept {
+			// Выполняем запись числа с плавающей точкой
+			return toCharsFloat <T, UC> (first, last, value, options_t <UC> (format));
+		}
+
+		/**
+		 * \~russian
+		 * @brief Шаблон типа записываемого числа и типа символа записываемой строки
+		 *
+		 * @tparam T  тип числа с плавающей точкой
+		 * @tparam UC тип символа записываемой строки
+		 *
+		 *
+		 * \~english
+		 * @brief Template of the written number type and of the character type of the written string
+		 * @tparam T  floating-point type
+		 * @tparam UC character type of the written string
+		 *
+		 * \~
+		 */
+		template <typename T, typename UC = char, enableIf_t <is_supported_float <T>::value> = 0>
+		/**
+		 * \~russian
+		 * @brief Метод записи числа с плавающей точкой в строку с расширенными опциями
+		 *
+		 * @param first   начало отведённого под запись места
+		 * @param last    конец отведённого под запись места
+		 * @param value   записываемое число
+		 * @param options опции записи числовой строки
+		 * @return        результат записи числовой строки
+		 *
+		 * \~english
+		 * @brief Method of writing a floating-point number into a string with extended options
+		 * @param first   beginning of the place allotted for the record
+		 * @param last    end of the place allotted for the record
+		 * @param value   written number
+		 * @param options writing options of the number string
+		 * @return        result of writing the number string
+		 *
+		 * \~
+		 */
+		inline output_t <UC> toCharsAdvanced(UC * first, UC * const last, const T value, const options_t <UC> options) noexcept {
+			// Выполняем запись числа с плавающей точкой
+			return toCharsFloat <T, UC> (first, last, value, options);
 		}
 
 		/**

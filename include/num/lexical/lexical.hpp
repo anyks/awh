@@ -303,6 +303,114 @@ namespace awh {
 				// Выполняем разбор числа с плавающей точкой
 				return lexical::fromChars(first, last, value, format);
 			}
+		public:
+			/**
+			 * \~russian
+			 * @brief Шаблон типа символа записываемой строки
+			 *
+			 * @tparam UC тип символа записываемой строки
+			 *
+			 * \~english
+			 * @brief Template of the character type of the written string
+			 * @tparam UC character type of the written string
+			 *
+			 * \~
+			 */
+			template <typename UC>
+			/**
+			 * \~russian
+			 * @brief Создаём тип данных результата записи числовой строки
+			 *
+			 * \~english
+			 * @brief Create the data type of the result of writing a number string
+			 *
+			 * \~
+			 */
+			using output_t = lexical::output_t <UC>;
+		public:
+			/**
+			 * \~russian
+			 * @brief Шаблон типа записываемого числа и типа символа записываемой строки
+			 *
+			 * @tparam T  тип целого числа
+			 * @tparam UC тип символа записываемой строки
+			 *
+			 * \~english
+			 * @brief Template of the written number type and of the character type of the written string
+			 * @tparam T  integer type
+			 * @tparam UC character type of the written string
+			 *
+			 * \~
+			 */
+			template <typename T, typename UC = char, lexical::enableIf_t <lexical::is_supported_integer <T>::value> = 0>
+			/**
+			 * \~russian
+			 * @brief Метод записи целого числа в строку
+			 *
+			 * @param first начало отведённого под запись места
+			 * @param last  конец отведённого под запись места
+			 * @param value записываемое число
+			 * @param base  основание системы счисления в диапазоне от 2 до 36
+			 * @return      результат записи числовой строки
+			 *
+			 * \~english
+			 * @brief Method of writing an integer into a string
+			 * @param first beginning of the place allotted for the record
+			 * @param last  end of the place allotted for the record
+			 * @param value written number
+			 * @param base  base of the numeral system in the range from 2 to 36
+			 * @return      result of writing the number string
+			 *
+			 * \~
+			 */
+			static lexical::output_t <UC> toChars(UC * first, UC * last, const T value, const int32_t base = 10) noexcept {
+				// Выполняем запись целого числа
+				return lexical::toChars(first, last, value, base);
+			}
+			/**
+			 * \~russian
+			 * @brief Шаблон типа записываемого числа и типа символа записываемой строки
+			 *
+			 * @tparam T  тип числа с плавающей точкой
+			 * @tparam UC тип символа записываемой строки
+			 *
+			 * \~english
+			 * @brief Template of the written number type and of the character type of the written string
+			 * @tparam T  floating-point type
+			 * @tparam UC character type of the written string
+			 *
+			 * \~
+			 */
+			template <typename T, typename UC = char, lexical::enableIf_t <lexical::is_supported_float <T>::value> = 0>
+			/**
+			 * \~russian
+			 * @brief Метод записи числа с плавающей точкой в строку
+			 *
+			 * @details Запись содержит наименьшее количество значащих цифр, при котором
+			 *          она читается обратно тем же самым числом методом fromChars.
+			 *
+			 * @param first  начало отведённого под запись места
+			 * @param last   конец отведённого под запись места
+			 * @param value  записываемое число
+			 * @param format требуемый вид записи числа
+			 * @return       результат записи числовой строки
+			 *
+			 * \~english
+			 * @brief Method of writing a floating-point number into a string
+			 * @details The record contains the least number of significant digits at which
+			 *          it is read back as the very same number by the fromChars method.
+			 * @param first  beginning of the place allotted for the record
+			 * @param last   end of the place allotted for the record
+			 * @param value  written number
+			 * @param format required form of the number record
+			 * @return       result of writing the number string
+			 *
+			 * \~
+			 */
+			static lexical::output_t <UC> toChars(UC * first, UC * last, const T value, const lexical::format_t format = lexical::format_t::GENERAL) noexcept {
+				// Выполняем запись числа с плавающей точкой
+				return lexical::toChars(first, last, value, format);
+			}
 	} lexical_t;
 };
 

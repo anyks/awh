@@ -1152,6 +1152,99 @@ uint16_t awh::eth::Socket::inborn(const uint16_t options) const noexcept {
  *
  */
 array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family, const event::type_t type, const event::protocol_t proto) const noexcept {
+	// Имя заведённого канала, вызывающей стороне не нужное
+	string name;
+	// Выводим пару связанных концов обмена
+	return this->ipc(family, type, proto, name);
+}
+/**
+ * @brief Метод создания пары связанных концов обмена с выдачей имени канала
+ *
+ * @param family семейство адресов
+ * @param type   тип сокета
+ * @param proto  протокол сокета
+ * @param name   имя заведённого канала
+ * @return       пара связанных концов обмена
+ *
+ */
+awh::net::socket_t awh::eth::Socket::channel(const string & name) const noexcept {
+	// Если имя канала не передано
+	if(name.empty()){
+		// Заносим отсутствие имени канала в журнал
+		this->_log->print("%s: named pipe cannot be opened without a name", log_t::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__);
+		// Выводим незаведённый описатель
+		return net::invalid_socket_t;
+	}
+	// Получаем имя канала в понимании системы
+	const std::wstring pipe = this->_fmk->convert(name);
+	/**
+	 * Срок ожидания освобождения экземпляра канала в миллисекундах
+	 *
+	 * @details Ждать приходится оттого, что стороны выходят на канал не по порядку:
+	 *          назвавшая сторона освобождает свой экземпляр не мгновенно, а дойдя до
+	 *          подписки на приём, тогда как порождённый процесс стучится сразу, едва
+	 *          запустившись. Отказ в такой миг означает не занятость чужим, а лишь
+	 *          то, что встречная сторона ещё не готова
+	 */
+	static constexpr uint32_t TIMEOUT = 5000;
+	// Описатель открытого конца канала
+	HANDLE result = INVALID_HANDLE_VALUE;
+	/**
+	 * Открываем свой конец канала наложенным
+	 *
+	 * @note Наложение обязательно: обмен ведётся портом завершений, а у описателя без
+	 *       наложения система выстраивает обращения в очередь, и запись из одного
+	 *       потока дожидается чтения из другого
+	 */
+	while((result = ::CreateFileW(pipe.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, nullptr)) == INVALID_HANDLE_VALUE){
+		// Если отказ вызван не занятостью всех экземпляров канала - открывать нечего
+		if(::GetLastError() != ERROR_PIPE_BUSY)
+			// Прерываем ожидание освобождения экземпляра канала
+			break;
+		// Если экземпляр канала за отведённый срок не освободился
+		if(!::WaitNamedPipeW(pipe.c_str(), static_cast <DWORD> (TIMEOUT))){
+			// Заносим истечение срока ожидания в журнал
+			this->_log->print("%s: named pipe [%s] is busy, error %lu", log_t::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, name.c_str(), ::GetLastError());
+			// Выводим незаведённый описатель
+			return net::invalid_socket_t;
+		}
+	}
+	// Если открыть свой конец канала не удалось
+	if(result == INVALID_HANDLE_VALUE){
+		// Заносим отказ открытия канала в журнал
+		this->_log->print("%s: named pipe [%s] could not be opened, error %lu", log_t::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, name.c_str(), ::GetLastError());
+		// Выводим незаведённый описатель
+		return net::invalid_socket_t;
+	}
+	// Строй чтения открытого конца канала
+	DWORD mode = PIPE_READMODE_MESSAGE;
+	/**
+	 * Переводим открытый конец канала в строй сообщений
+	 *
+	 * @note Строй этот обязан совпадать со строем заведённой стороны: подача готовности
+	 *       к приёму держится именно на нём - чтение нулевой длины ждёт прихода
+	 *       сообщения лишь у канала, работающего сообщениями, а у канала, работающего
+	 *       потоком октетов, оно отвечает сразу и обращается в холостой оборот
+	 */
+	if(!::SetNamedPipeHandleState(result, &mode, nullptr, nullptr))
+		// Заносим отказ перевода канала в строй сообщений в журнал
+		this->_log->print("%s: named pipe [%s] could not be switched to the message mode, error %lu", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, name.c_str(), ::GetLastError());
+	// Выводим описатель открытого конца канала
+	return reinterpret_cast <net::socket_t> (result);
+}
+/**
+ * @brief Метод создания пары связанных концов обмена с выдачей имени канала
+ *
+ * @param family семейство адресов
+ * @param type   тип сокета
+ * @param proto  протокол сокета
+ * @param name   имя заведённого канала
+ * @return       пара связанных концов обмена
+ *
+ */
+array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family, const event::type_t type, const event::protocol_t proto, string & name) const noexcept {
+	// Выполняем сброс имени заведённого канала
+	name.clear();
 	// Переменная результата
 	array <net::socket_t, 2> result = {
 		net::invalid_socket_t,
@@ -1238,8 +1331,29 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 			 */
 			// Порядковый номер заводимой пары
 			static std::atomic_uint64_t counter{0};
-			// Составляем имя именованного канала
-			const std::wstring name = (L"\\\\.\\pipe\\awh-ipc-" + std::to_wstring(static_cast <uint32_t> (::GetCurrentProcessId())) + L"-" + std::to_wstring(++counter));
+			// Показания высокоточного счётчика системы
+			LARGE_INTEGER ticks{};
+			// Выполняем снятие показаний высокоточного счётчика
+			::QueryPerformanceCounter(&ticks);
+			/**
+			 * Составляем однозначное имя именованного канала
+			 *
+			 * @details Пространство имён каналов общее на всю систему, и однозначность
+			 *          имени здесь не удобство, а условие работы. Складывается оно из
+			 *          номера процесса, порядкового номера пары внутри него и показаний
+			 *          высокоточного счётчика: первое разводит приложения, второе - пары
+			 *          внутри приложения, третье - приложения, запущенные разом
+			 *
+			 * @note Обычных часов для последнего мало: ход их у MS Windows зернист -
+			 *       шагом в 15.6 мс, - и два приложения, запущенные в один шаг, получили
+			 *       бы совпадающее значение
+			 */
+			const std::wstring pipe = (
+				L"\\\\.\\pipe\\awh-ipc-" +
+				std::to_wstring(static_cast <uint32_t> (::GetCurrentProcessId())) + L"-" +
+				std::to_wstring(++counter) + L"-" +
+				std::to_wstring(static_cast <uint64_t> (ticks.QuadPart))
+			);
 			/**
 			 * Заводим сторону канала, ожидающую подключения
 			 *
@@ -1249,8 +1363,16 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 			 *
 			 */
 			HANDLE server = ::CreateNamedPipeW(
-				name.c_str(),
-				PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
+				pipe.c_str(),
+				/**
+				 * Признак первого экземпляра здесь обязателен
+				 *
+				 * @note Без него заведение канала с уже занятым именем НЕ отвергается:
+				 *       система заводит ещё один экземпляр того же канала, и чужой
+				 *       работник вправе подключиться к нашему концу. С признаком
+				 *       занятость имени оборачивается честным отказом
+				 */
+				PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED | FILE_FLAG_FIRST_PIPE_INSTANCE,
 				PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT,
 				2, 65536, 65536, 0, nullptr
 			);
@@ -1262,7 +1384,7 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 				return result;
 			}
 			// Открываем встречный конец канала
-			HANDLE client = ::CreateFileW(name.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, nullptr);
+			HANDLE client = ::CreateFileW(pipe.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, nullptr);
 			// Если встречный конец канала открыть не удалось
 			if(client == INVALID_HANDLE_VALUE){
 				// Записываем ошибку в лог
@@ -1276,6 +1398,8 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 			DWORD mode = PIPE_READMODE_MESSAGE;
 			// Переводим встречный конец канала в строй сообщений
 			::SetNamedPipeHandleState(client, &mode, nullptr, nullptr);
+			// Выдаём имя заведённого канала вызывающей стороне
+			name = this->_fmk->convert(pipe);
 			// Запоминаем сторону канала, ожидающую подключения
 			result[0] = reinterpret_cast <net::socket_t> (server);
 			// Запоминаем встречный конец канала
@@ -1879,6 +2003,46 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 	if(sock == net::invalid_socket_t)
 		// Выводим отрицательный результат переключения
 		return false;
+	/**
+	 * Если настройка запрошена у именованного канала
+	 *
+	 * @details Описатель канала сокетом не является, и сокетные обращения отвечают ему
+	 *          отказом 10038 (WSAENOTSOCK). Настройки, какие каналу вообще осмысленны,
+	 *          задаются при заведении описателя и позже не меняются: наложенный обмен
+	 *          ставится признаком FILE_FLAG_OVERLAPPED, а наследование - оснасткой
+	 *          прав описателя. Отвечать отказом на достигнутое было бы неверно, а
+	 *          выполнять сокетное обращение - вредно
+	 *
+	 * @note Изъян обнаружен щупом живого запуска кластера: пара каналов заводилась,
+	 *       а настройка узла валилась отказом 10038 на неблокирующем обмене
+	 *
+	 */
+	if(family == event::family_t::PIPE){
+		/**
+		 * Определяем переключаемую настройку
+		 */
+		switch(option){
+			// Если переключается неблокирующий обмен
+			case event::options::NO_IO_BLOCK:
+			// Если переключается блокирующий обмен
+			case event::options::SM_IO_BLOCK:
+			// Если переключается закрытие описателя при замещении образа
+			case event::options::CLOSE_ON_EXEC:
+			// Если переключается заглушение сигнала неверного действия
+			case event::options::NO_SIGILL:
+			// Если переключается заглушение сигнала обрыва канала
+			case event::options::NO_SIGPIPE:
+				// Выводим положительный результат: состояние это стоит с заведения
+				return true;
+			// Для остальных настроек
+			default: {
+				// Выводим в журнал сообщение об отсутствии соответствия
+				this->_log->print("%s: socket option %u has no counterpart for a named pipe", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, static_cast <uint16_t> (option));
+				// Выводим отрицательный результат переключения
+				return false;
+			}
+		}
+	}
 	// Устанавливаемое значение настройки
 	const int32_t value = (mode == net::socket_mode_t::ENABLED ? 1 : 0);
 	// Уровень настройки и её название

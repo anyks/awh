@@ -354,6 +354,32 @@ namespace awh {
 					bool value(const string & value) noexcept;
 					/**
 					 * \~russian
+					 * @brief Метод записи строкового значения, поданного строкой языка Си
+					 *
+					 * @details Способ этот обязателен, а не удобства ради: без него запись
+					 * строкового литерала уходила бы в запись ЛОГИЧЕСКОГО значения. Приведение
+					 * `const char *` к `bool` язык числит стандартным, а к `std::string` -
+					 * определяемым пользователем, и первое побеждает при выборе способа. Отказ
+					 * при этом не выдаётся вовсе: `writer.value("да")` молча записывает `true`
+					 *
+					 * @param value записываемое строковое значение, ноль - пустое значение
+					 * @return      признак успешности записи
+					 *
+					 * \~english
+					 * @brief Method of the writing of a string value passed as a C string
+					 * @details This method is obligatory rather than a convenience: without it the writing
+					 * of a string literal would go into the writing of a LOGICAL value. The conversion
+					 * of `const char *` to `bool` is counted by the language as a standard one, and to `std::string` —
+					 * as a user-defined one, and the first one wins at the choice of the method. No failure
+					 * is issued at that: `writer.value("yes")` silently writes `true`
+					 * @param value string value being written, zero — empty value
+					 * @return      sign of the success of the writing
+					 *
+					 * \~
+					 */
+					bool value(const char * value) noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод записи целого числа
 					 *
 					 * @param value записываемое целое число

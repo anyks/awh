@@ -545,6 +545,26 @@ bool awh::codec::json::Writer::value(const bool value) noexcept {
 	return true;
 }
 /**
+ * @brief Метод записи строкового значения, поданного строкой языка Си
+ *
+ * @param value записываемое строковое значение, ноль - пустое значение
+ * @return      признак успешности записи
+ *
+ */
+bool awh::codec::json::Writer::value(const char * value) noexcept {
+	/**
+	 * Если строковое значение не передано
+	 *
+	 * @note Пустое указание записывается пустым значением, а не пустой строкой: строки
+	 *       в языке Си пустого указания не имеют, и означает оно отсутствие значения
+	 */
+	if(value == nullptr)
+		// Выполняем запись пустого значения
+		return this->null();
+	// Выполняем запись строкового значения
+	return this->value(string(value));
+}
+/**
  * @brief Метод записи строкового значения
  *
  * @param value записываемое строковое значение
@@ -578,13 +598,15 @@ bool awh::codec::json::Writer::value(const int64_t value) noexcept {
 	// Хранилище записи целого числа
 	char buffer[32];
 	// Выполняем запись целого числа
-	const int32_t length = ::snprintf(buffer, sizeof(buffer), "%lld", static_cast <long long> (value));
+	const awh::lexical::output_t <char> output = awh::lexical_t::toChars(buffer, buffer + sizeof(buffer), value);
 	/**
 	 * Если запись целого числа выполнить не удалось
 	 */
-	if((length <= 0) || (static_cast <size_t> (length) >= sizeof(buffer)))
+	if(!static_cast <bool> (output))
 		// Выводим признак неуспешности записи
 		return false;
+	// Определяем длину записи целого числа
+	const int32_t length = static_cast <int32_t> (output.ptr - buffer);
 	// Выполняем запись числа его готовой записью
 	return this->raw(string(buffer, static_cast <size_t> (length)));
 }
@@ -599,23 +621,25 @@ bool awh::codec::json::Writer::value(const uint64_t value) noexcept {
 	// Хранилище записи беззнакового целого числа
 	char buffer[32];
 	// Выполняем запись беззнакового целого числа
-	const int32_t length = ::snprintf(buffer, sizeof(buffer), "%llu", static_cast <unsigned long long> (value));
+	const awh::lexical::output_t <char> output = awh::lexical_t::toChars(buffer, buffer + sizeof(buffer), value);
 	/**
-	 * Если запись беззнакового целого числа выполнить не удалось
+	 * Если запись целого числа выполнить не удалось
 	 */
-	if((length <= 0) || (static_cast <size_t> (length) >= sizeof(buffer)))
+	if(!static_cast <bool> (output))
 		// Выводим признак неуспешности записи
 		return false;
+	// Определяем длину записи целого числа
+	const int32_t length = static_cast <int32_t> (output.ptr - buffer);
 	// Выполняем запись числа его готовой записью
 	return this->raw(string(buffer, static_cast <size_t> (length)));
 }
 /**
  * @brief Метод записи числа с плавающей запятой
  *
- * @details Записывается кратчайшей записью, читающейся обратно тем же числом:
- * точность наращивается от единицы до наибольшей, какую тип несёт, и берётся
- * первая запись, оборот переживающая. Запись наибольшей точностью оборот
- * переживает тоже, но выдаёт «0.1» как «0.10000000000000001»
+ * @details Записывается кратчайшей записью, читающейся обратно тем же числом.
+ * Количество значащих цифр вычисляется модулем разбора чисел сразу, без подбора
+ * точности с обратным чтением проб: запись «0.1» выходит как «0.1», а не как
+ * «0.10000000000000001», какую дала бы запись наибольшей точностью
  *
  * @note Число записывается по правилам местности «C» и от установленной в
  * приложении местности не зависит: разделитель дробной части местности сделал бы
@@ -655,50 +679,35 @@ bool awh::codec::json::Writer::value(const double value) noexcept {
 		return true;
 	}
 	// Хранилище записи числа с плавающей запятой
-	char buffer[64];
-	// Длина записи числа с плавающей запятой
-	int32_t length = 0;
+	char buffer[awh::lexical::maxRecordLength <double> ()];
 	/**
-	 * Выполняем подбор кратчайшей записи числа с плавающей запятой
+	 * Выполняем запись числа кратчайшим обратимым представлением
+	 *
+	 * @details Подбор точности с обратным чтением каждой пробы более не нужен:
+	 * модуль разбора чисел вычисляет количество значащих цифр сразу, отчего запись
+	 * числа обходится одним проходом вместо семнадцати записей и семнадцати разборов
 	 */
-	for(int32_t digits = 1; digits <= static_cast <int32_t> (numeric_limits <double>::max_digits10); digits++){
-		// Выполняем запись числа с плавающей запятой очередной точностью
-		length = ::snprintf(buffer, sizeof(buffer), "%.*g", digits, value);
-		/**
-		 * Если запись числа с плавающей запятой выполнить не удалось
-		 */
-		if((length <= 0) || (static_cast <size_t> (length) >= sizeof(buffer)))
-			// Выполняем прекращение подбора точности записи
-			break;
-		// Прочитанное обратно значение записанного числа
-		double back = 0.;
-		// Выполняем разбор записанного числа с плавающей запятой
-		const lexical_t::result_t <char> res = lexical_t::fromChars(buffer, buffer + static_cast <size_t> (length), back);
-		/**
-		 * Если запись читается обратно тем же самым числом
-		 */
-		if(static_cast <bool> (res) && (res.ptr == (buffer + static_cast <size_t> (length))) && (back == value))
-			// Выполняем прекращение подбора точности записи
-			break;
-	}
+	awh::lexical::output_t <char> output = awh::lexical_t::toChars(buffer, buffer + sizeof(buffer), value);
 	/**
 	 * Если запись числа с плавающей запятой выполнить не удалось
 	 */
-	if((length <= 0) || (static_cast <size_t> (length) >= sizeof(buffer)))
+	if(!static_cast <bool> (output))
 		// Выводим признак неуспешности записи
 		return false;
+	// Определяем длину записи числа с плавающей запятой
+	int32_t length = static_cast <int32_t> (output.ptr - buffer);
 	/**
 	 * Выполняем поиск буквы порядка в записи числа
 	 *
-	 * @details Подбор выше идёт по точности, а не по виду записи, и на числе 100
-	 * останавливается на «1e+02»: запись эта читается обратно тем же числом уже при
-	 * одной значащей цифре. Целому же числу приличествует запись целым - и когда она
-	 * короче записи с порядком, как «100», и когда длиннее, как «1000000» против
-	 * «1e+06»: запись целого порядком отвечает стандарту, но обманывает ожидание
-	 * читающего и ломает тех, кто разбирает целые числа по виду записи
+	 * @details Выбор вида записи идёт по её длине и на числе 100 даёт «1e+02»:
+	 * запись эта короче записи целым. Целому же числу приличествует запись целым -
+	 * и когда она короче записи с порядком, как «100», и когда длиннее, как
+	 * «1000000» против «1e+06»: запись целого порядком отвечает стандарту, но
+	 * обманывает ожидание читающего и ломает тех, кто разбирает целые числа по виду
+	 * записи
 	 *
 	 * @note Проверка эта дешева и делается лишь при наличии буквы порядка: у записей
-	 *       без неё вида «-3.5» подбор по точности кратчайшую и даёт
+	 *       без неё вида «-3.5» выбор вида кратчайшую и даёт
 	 */
 	const char * power = static_cast <const char *> (::memchr(buffer, 'e', static_cast <size_t> (length)));
 	/**
@@ -708,35 +717,23 @@ bool awh::codec::json::Writer::value(const double value) noexcept {
 		// Получаем значение порядка записи числа
 		const int32_t exponent = ::atoi(power + 1);
 		/**
-		 * Если запись числа без порядка уместится в подобранное хранилище
+		 * Если запись числа без порядка значащих цифр не выдумает
 		 *
 		 * @note Предел взят по числу значащих цифр вида с плавающей запятой: за ним
 		 *       запись без порядка состояла бы из значащих цифр вперемешку с нулями,
 		 *       каких в самом числе нет, и вводила бы читающего в заблуждение о точности
 		 */
 		if((exponent >= 0) && (exponent < static_cast <int32_t> (numeric_limits <double>::max_digits10))){
-			// Хранилище записи числа без порядка
-			char plain[64];
-			// Выполняем запись числа точностью, какой хватит на запись без порядка
-			const int32_t size = ::snprintf(plain, sizeof(plain), "%.*g", (exponent + 1), value);
+			// Выполняем запись числа без порядка
+			output = awh::lexical_t::toChars(
+				buffer, buffer + sizeof(buffer), value, awh::lexical::format_t::FIXED
+			);
 			/**
-			 * Если запись без порядка выполнена
+			 * Если запись числа без порядка выполнена
 			 */
-			if((size > 0) && (static_cast <size_t> (size) < sizeof(plain))){
-				// Прочитанное обратно значение записанного числа
-				double back = 0.;
-				// Выполняем разбор записанного числа без порядка
-				const lexical_t::result_t <char> res = lexical_t::fromChars(plain, plain + static_cast <size_t> (size), back);
-				/**
-				 * Если запись без порядка читается обратно тем же самым числом
-				 */
-				if(static_cast <bool> (res) && (res.ptr == (plain + static_cast <size_t> (size))) && (back == value)){
-					// Выполняем перенос записи без порядка в хранилище записи числа
-					::memcpy(buffer, plain, static_cast <size_t> (size));
-					// Запоминаем длину записи числа без порядка
-					length = size;
-				}
-			}
+			if(static_cast <bool> (output))
+				// Запоминаем длину записи числа без порядка
+				length = static_cast <int32_t> (output.ptr - buffer);
 		}
 	}
 	// Получаем полученную запись числа с плавающей запятой

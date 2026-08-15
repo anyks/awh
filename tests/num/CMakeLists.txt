@@ -77,6 +77,7 @@ if (${GTest_FOUND})
             list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
                 lexical/lexical.cpp
                 lexical/static.cpp
+                lexical/writer.cpp
                 lexical/parameterized.cpp
             )
         # Если не нужно собрать тесты для модуля разбора чисел

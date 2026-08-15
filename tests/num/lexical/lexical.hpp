@@ -47,6 +47,8 @@
 #include "../../../include/num/lexical/common.hpp"
 #include "../../../include/num/lexical/decimal.hpp"
 #include "../../../include/num/lexical/digits.hpp"
+#include "../../../include/num/lexical/writer.hpp"
+#include "../../../include/num/lexical/shortest.hpp"
 
 /**
  * @brief Тестовый класс модуля lexical

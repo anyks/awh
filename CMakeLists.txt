@@ -1431,6 +1431,15 @@ if (${CMAKE_BUILD_SAMPLES})
     # Указываем что нужно собрать приложение работы с контейнером TOML
     option(CMAKE_BUILD_CODEC_TOML_APP_SAMPLE "Build TOML codec app sample" ON)
 
+    # Устанавливаем имя приложения потокового чтения текста документа JSON
+    SET(CODEC_APP_JSON_READER_NAME codec-json-reader)
+    # Устанавливаем имя приложения работы с деревом документа JSON
+    SET(CODEC_APP_JSON_DOCUMENT_NAME codec-json-document)
+    # Устанавливаем имя приложения записи текста документа JSON
+    SET(CODEC_APP_JSON_WRITER_NAME codec-json-writer)
+    # Указываем что нужно собрать приложение работы с контейнером JSON
+    option(CMAKE_BUILD_CODEC_JSON_APP_SAMPLE "Build JSON codec app sample" ON)
+
     # Устанавливаем имя приложения блочной компрессии данных
     SET(COMPRESSOR_APP_BLOCK_NAME compressor-block)
     # Устанавливаем имя приложения потоковой компрессии данных
@@ -2101,6 +2110,22 @@ if (${CMAKE_BUILD_SAMPLES})
         # Выводим сообщение о сборке семпла
         message(STATUS "Build sample INI Codec: No\n")
     endif (${CMAKE_BUILD_CODEC_INI_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с контейнером JSON
+    if (${CMAKE_BUILD_CODEC_JSON_APP_SAMPLE})
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample JSON Codec: Yes\n")
+        # Выполняем создание приложения потокового чтения текста документа
+        add_sample(${CODEC_APP_JSON_READER_NAME} sample/codec/json-reader.cpp codec)
+        # Выполняем создание приложения работы с деревом документа
+        add_sample(${CODEC_APP_JSON_DOCUMENT_NAME} sample/codec/json-document.cpp codec)
+        # Выполняем создание приложения записи текста документа
+        add_sample(${CODEC_APP_JSON_WRITER_NAME} sample/codec/json-writer.cpp codec)
+    # Если не нужно собирать семплы для работы с контейнером JSON
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample JSON Codec: No\n")
+    endif (${CMAKE_BUILD_CODEC_JSON_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с контейнером TOML
     if (${CMAKE_BUILD_CODEC_TOML_APP_SAMPLE})

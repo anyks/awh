@@ -390,3 +390,57 @@ TEST_F(LexicalFixture, WriteInsufficientBufferTest){
 		ASSERT_TRUE(static_cast <bool> (result)) << "value = " << value;
 	}
 }
+
+/**
+ * @brief Тест записи целых чисел всех разрядностей
+ *
+ * @details Проверка ведётся по всем целым типам языка, включая типы уже машинного
+ *          разряда: смена знака у них подвержена языковому продвижению до int, и
+ *          выполненная не в шестидесятичетырёхразрядном типе дала бы отрицательное
+ *          значение модуля вместо положительного.
+ *
+ */
+TEST_F(LexicalFixture, WriteIntegerWidthsTest){
+	// Хранилище записи числа
+	char buffer[64];
+	/**
+	 * @brief Шаблон типа записываемого целого числа
+	 *
+	 * @tparam T тип записываемого целого числа
+	 *
+	 */
+	auto probe = [&](auto value) noexcept {
+		// Создаём тип записываемого целого числа
+		using type_t = decltype(value);
+		// Выполняем запись целого числа
+		const lexical_t::output_t <char> result = lexical_t::toChars(buffer, buffer + sizeof(buffer), value);
+
+		// Проверяем что запись числа выполнена
+		ASSERT_TRUE(static_cast <bool> (result));
+		// Разобранное обратно значение числа
+		type_t back = static_cast <type_t> (0);
+		// Выполняем разбор записи числа
+		lexical_t::fromChars(buffer, result.ptr, back);
+		// Проверяем что запись читается обратно тем же самым числом
+		ASSERT_EQ(back, value) << "text = " << string(buffer, static_cast <size_t> (result.ptr - buffer));
+	};
+	/**
+	 * Выполняем перебор предельных значений всех целых типов
+	 */
+	probe(numeric_limits <signed char>::min());
+	probe(numeric_limits <signed char>::max());
+	probe(numeric_limits <unsigned char>::max());
+	probe(numeric_limits <short>::min());
+	probe(numeric_limits <short>::max());
+	probe(numeric_limits <unsigned short>::max());
+	probe(numeric_limits <int>::min());
+	probe(numeric_limits <int>::max());
+	probe(numeric_limits <unsigned>::max());
+	probe(numeric_limits <long long>::min());
+	probe(numeric_limits <long long>::max());
+	probe(numeric_limits <unsigned long long>::max());
+	// Проверяем запись небольших отрицательных значений узких типов
+	probe(static_cast <signed char> (-5));
+	// Проверяем запись небольших отрицательных значений узких типов
+	probe(static_cast <short> (-300));
+}

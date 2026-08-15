@@ -809,6 +809,69 @@ namespace awh {
 				 * \~
 				 */
 				array <net::socket_t, 2> ipc(const event::family_t family, const event::type_t type, const event::protocol_t proto) const noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод создания пары связанных концов обмена с выдачей имени канала
+				 *
+				 * @details Отличается от обычного создания пары одним: у семейства PIPE он
+				 *          отдаёт имя заведённого именованного канала. Имя это нужно тому,
+				 *          кто порождает процесс: описатель по наследству не передаётся, а
+				 *          имя переносимо и доходит до порождённого процесса окружением либо
+				 *          доводом запуска, и свой конец тот открывает по нему сам
+				 *
+				 * @note Заводится имя однозначным: номер процесса, порядковый номер пары и
+				 *       показания высокоточного счётчика. Занятость имени отвергается самой
+				 *       системой - канал заводится признаком первого экземпляра, - и
+				 *       совпадение оборачивается отказом, а не молчаливым разделением канала
+				 *       с чужим приложением
+				 *
+				 * @note Прочим семействам имя не выдаётся: связанная пара у них безымянна
+				 *
+				 * @param family   семейство адресов
+				 * @param type     тип сокета
+				 * @param proto    протокол сокета
+				 * @param name     имя заведённого канала
+				 * @return         пара связанных концов обмена
+				 *
+				 * \~english
+				 * @brief Method of the creation of a pair of the connected ends of the exchange with the issuing of the name of the channel
+				 *
+				 * @param family family of the addresses
+				 * @param type   type of the socket
+				 * @param proto  protocol of the socket
+				 * @param name   name of the created channel
+				 * @return       pair of the connected ends of the exchange
+				 *
+				 * \~
+				 */
+				#if defined(_WIN32) || defined(_WIN64)
+					array <net::socket_t, 2> ipc(const event::family_t family, const event::type_t type, const event::protocol_t proto, string & name) const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод открытия своего конца именованного канала по его имени
+					 *
+					 * @details Порождённому процессу описатель канала по наследству не
+					 *          переходит: он проходит точку входа заново, как запущенный
+					 *          отдельно. Достаётся ему одно лишь имя канала, и свой конец
+					 *          он открывает по нему сам - тем же порядком, каким у систем
+					 *          POSIX сторона подключается к сокету по его пути
+					 *
+					 * @note Открывается конец наложенным: обмен ведётся портом завершений,
+					 *       а описатель без наложения выстраивал бы обращения в очередь
+					 *
+					 * @param name имя открываемого канала
+					 * @return     описатель открытого конца канала
+					 *
+					 * \~english
+					 * @brief Method of the opening of one's own end of a named channel by its name
+					 *
+					 * @param name name of the channel to be opened
+					 * @return     descriptor of the opened end of the channel
+					 *
+					 * \~
+					 */
+					net::socket_t channel(const string & name) const noexcept;
+				#endif
 			public:
 				/**
 				 * \~russian

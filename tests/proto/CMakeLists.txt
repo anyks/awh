@@ -84,6 +84,8 @@ if (${GTest_FOUND})
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_QUIC_TEST "Build unit QUIC protocol test for ${UNIT_TEST_NAME}" ON)
         # Указываем что нужно собрать тесты фасадов клиента и сервера поверх TLS
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_TLS_TEST "Build unit TLS facade test for ${UNIT_TEST_NAME}" ON)
+        # Указываем что нужно собрать тесты сквозного обмена по протоколу SCTP
+        option(CMAKE_BUILD_${UNIT_TEST_NAME}_SCTP_TEST "Build unit SCTP exchange test for ${UNIT_TEST_NAME}" ON)
 
         # Если нужно собрать тесты для подмодуля провайдера HTTP-запроса/ответа
         if (${CMAKE_BUILD_${UNIT_TEST_NAME}_HTTP_PROVIDER_TEST})
@@ -256,6 +258,20 @@ if (${GTest_FOUND})
             # Выводим сообщение о сборке тестов фасадов клиента и сервера поверх TLS
             message(STATUS "Build tests TLS facade: No\n")
         endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_TLS_TEST})
+
+        # Если нужно собрать тесты сквозного обмена по протоколу SCTP
+        if (${CMAKE_BUILD_${UNIT_TEST_NAME}_SCTP_TEST})
+            # Выводим сообщение о сборке тестов сквозного обмена по протоколу SCTP
+            message(STATUS "Build tests SCTP exchange: Yes\n")
+            # Дополняем список источников тестами сквозного обмена по протоколу SCTP
+            list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
+                sctp/facade.cpp
+            )
+        # Если не нужно собрать тесты сквозного обмена по протоколу SCTP
+        else()
+            # Выводим сообщение о сборке тестов сквозного обмена по протоколу SCTP
+            message(STATUS "Build tests SCTP exchange: No\n")
+        endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_SCTP_TEST})
 
         # Библиотеки GTest для линковки
         SET(${PROJECT_NAME}_GTEST_LIBS

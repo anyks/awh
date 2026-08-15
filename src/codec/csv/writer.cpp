@@ -29,6 +29,7 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
+#include <num/lexical/lexical.hpp>
 #include <codec/csv/writer.hpp>
 
 /**
@@ -242,31 +243,24 @@ void awh::codec::csv::Writer::number(const T value) noexcept {
 	 */
 	} else if constexpr(is_floating_point <T>::value) {
 		/**
-		 * Выполняем подбор кратчайшей записи числа с плавающей точкой
+		 * Выполняем запись числа с плавающей точкой кратчайшим обратимым представлением
 		 *
-		 * @note Точность наращивается от единицы до наибольшей, какую тип несёт, и
-		 *       берётся первая запись, читающаяся обратно тем же числом. Запись
-		 *       наибольшей точностью оборот переживает, но выдаёт «0.1» как
-		 *       «0.10000000000000001», а такому в таблице не место
+		 * @note Подбор точности с обратным чтением каждой пробы более не нужен: модуль
+		 *       разбора чисел вычисляет количество значащих цифр сразу, отчего запись
+		 *       «0.1» выходит как «0.1», а не как «0.10000000000000001»
 		 */
-		for(int32_t digits = 1; digits <= static_cast <int32_t> (numeric_limits <T>::max_digits10); digits++){
-			// Выполняем запись числа с плавающей точкой очередной точностью
-			length = ::snprintf(buffer, sizeof(buffer), "%.*g", digits, static_cast <double> (value));
+		const awh::lexical::output_t <char> output = awh::lexical_t::toChars(
+			buffer, buffer + sizeof(buffer),
 			/**
-			 * Если запись числового значения выполнить не удалось
+			 * Запись ведётся числом его собственного типа: кратчайшая запись
+			 * зависит от разрядности мантиссы, и приведение float к double дало бы
+			 * «0.10000000149011612» вместо «0.1». Тип long double модулем не
+			 * поддержан и приводится к double, как это делалось и прежде
 			 */
-			if((length <= 0) || (static_cast <size_t> (length) >= sizeof(buffer)))
-				// Выполняем прекращение подбора точности записи
-				break;
-			// Прочитанное обратно значение записанного числа
-			double back = 0.;
-			/**
-			 * Если запись читается обратно тем же самым числом
-			 */
-			if(real(string_view(buffer, static_cast <size_t> (length)), back) && (back == static_cast <double> (value)))
-				// Выполняем прекращение подбора точности записи
-				break;
-		}
+			static_cast <typename conditional <is_same <T, float>::value, float, double>::type> (value)
+		);
+		// Определяем длину записи числа с плавающей точкой
+		length = (static_cast <bool> (output) ? static_cast <int32_t> (output.ptr - buffer) : 0);
 	/**
 	 * Если записывается целое число со знаком
 	 */
