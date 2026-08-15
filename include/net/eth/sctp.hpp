@@ -497,7 +497,7 @@ namespace awh {
 				 * @param size     размер буфера отправляемых данных
 				 * @param addr     адрес удалённого узла
 				 * @param length   размер адреса удалённого узла
-				 * @param info     информационные метаданные сообщения
+				 * @param info     информационные метаданные сообщения в системном виде
 				 * @param complete признак завершения сообщения на этом куске
 				 * @return         количество отправленных октетов либо -1 при отказе
 				 *
@@ -521,7 +521,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				ssize_t send(const net::socket_t sock, const void * buffer, const size_t size, const struct sockaddr * addr, const socklen_t length, const net::sctp::minfo_t & info, const bool complete = true) const noexcept;
+				ssize_t send(const net::socket_t sock, const void * buffer, const size_t size, const struct sockaddr * addr, const socklen_t length, const struct sctp_sndrcvinfo & info, const bool complete = true) const noexcept;
 			public:
 				/**
 				 * \~russian

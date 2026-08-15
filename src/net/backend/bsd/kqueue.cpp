@@ -894,6 +894,11 @@ namespace io {
 			int32_t flags;
 			// Информация о SCTP-событиях
 			struct sctp_sndrcvinfo info;
+			// Метаданные полученного сообщения SCTP
+			//
+			// @note Заполняются при всяком приёме, но содержимым наполняются лишь
+			//       при выданной подписке: без неё ядру сообщать нечего
+			net::sctp::rinfo_t rinfo;
 			// Список типов SCTP-событий для подписки
 			net::sctp::event_types_t events;
 			// Объект функций обратного вызова SCTP
@@ -9067,6 +9072,38 @@ namespace sctp {
 		 */
 		static size_t events(::io::node_t * node, const uint8_t * buffer, const size_t size, const log_t * log) noexcept;
 	#endif
+	/**
+	 * @brief Функция выдачи полученных данных потребителю
+	 *
+	 * @details Установлен отклик чтения с метаданными - данные и метаданные уходят
+	 *          одним вызовом; не установлен - всё идёт прежним общим откликом.
+	 *          Ветвление стоит на выдаче намеренно: путь чтения обязан быть один,
+	 *          иначе два разбора приёма начнут расходиться с первой же правки
+	 *
+	 * @param node   узел события
+	 * @param buffer буфер прочитанных данных
+	 * @param size   размер прочитанных данных
+	 *
+	 */
+	template <class T>
+	static void deliver(T * node, const uint8_t * buffer, const size_t size) noexcept {
+		/**
+		 * Если операционной системой является FreeBSD
+		 */
+		#if __FreeBSD__
+			// Если отклик чтения данных вместе с метаданными установлен
+			if(node->transfer.sctp.endpoint().callbacks.message != nullptr){
+				// Выполняем выдачу данных вместе с метаданными
+				node->transfer.sctp.endpoint().callbacks.message(node->id, buffer, size, node->transfer.sctp.endpoint().rinfo);
+				// Выходим из функции
+				return;
+			}
+		#endif
+		// Если функция обратного вызова для вывода прочитанных данных установлена
+		if(node->callbacks.read != nullptr)
+			// Вызываем функцию обратного вызова для вывода полученных данных
+			node->callbacks.read(node->id, buffer, size);
+	}
 };
 
 /**
@@ -9818,12 +9855,13 @@ namespace io {
 									// Если протокол интернета установлен как SCTP
 									if(peer->state.protocol == event::protocol_t::SCTP)
 										// Выполняем чтение данных из SCTP-сокета
-										bytes = ::sctp_recvmsg(
+										bytes = eth->sctp.receive(
 											peer->transfer.fd,
 											::__awh_buffer__, size,
 											nullptr, nullptr,
-											&peer->transfer.sctp.use().info,
-											&peer->transfer.sctp.use().flags
+											peer->transfer.sctp.use().rinfo,
+											peer->transfer.sctp.use().info,
+											peer->transfer.sctp.use().flags
 										);
 									// Выполняем чтение данных из TCP/IP сокета
 									else bytes = ::recv(peer->transfer.fd, ::__awh_buffer__, size, MSG_NOSIGNAL);
@@ -9914,10 +9952,8 @@ namespace io {
 										peer->callbacks.event(peer->id, event::action_t::READ);
 									// Если идентификатор события для передачи данных не установлен
 									if(peer->transfer.dest == 0){
-										// Если функция обратного вызова для вывода прочитанных данных установлена
-										if(peer->callbacks.read != nullptr)
-											// Вызываем функцию обратного вызова для вывода полученных данных
-											peer->callbacks.read(peer->id, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
+										// Выполняем выдачу полученных данных потребителю
+										::sctp::deliver(peer, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
 									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 									} else const_cast <engine::io_t *> (io)->relay(peer->transfer.dest, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
 									// Если узел уничтожен из функции обратного вызова
@@ -10034,13 +10070,14 @@ namespace io {
 							// Если протокол интернета установлен как SCTP
 							if(peer->state.protocol == event::protocol_t::SCTP)
 								// Выполняем чтение данных из SCTP-сокета
-								bytes = ::sctp_recvmsg(
+								bytes = eth->sctp.receive(
 									peer->transfer.fd,
 									::__awh_buffer__,
 									AWH_EVENT_MAX_BUFFER_SIZE,
 									nullptr, nullptr,
-									&peer->transfer.sctp.use().info,
-									&peer->transfer.sctp.use().flags
+									peer->transfer.sctp.use().rinfo,
+									peer->transfer.sctp.use().info,
+									peer->transfer.sctp.use().flags
 								);
 							// Выполняем чтение данных из TCP/IP сокета
 							else bytes = ::recv(peer->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
@@ -10119,10 +10156,8 @@ namespace io {
 								peer->callbacks.event(peer->id, event::action_t::READ);
 							// Если идентификатор события для передачи данных не установлен
 							if(peer->transfer.dest == 0){
-								// Если функция обратного вызова для вывода прочитанных данных установлена
-								if(peer->callbacks.read != nullptr)
-									// Вызываем функцию обратного вызова для вывода полученных данных
-									peer->callbacks.read(peer->id, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
+								// Выполняем выдачу полученных данных потребителю
+								::sctp::deliver(peer, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
 							// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 							} else const_cast <engine::io_t *> (io)->relay(peer->transfer.dest, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
 							// Если узел уничтожен из функции обратного вызова
@@ -10173,13 +10208,14 @@ namespace io {
 								// Если протокол интернета установлен как SCTP
 								if(peer->state.protocol == event::protocol_t::SCTP)
 									// Выполняем чтение данных из SCTP-сокета
-									bytes = ::sctp_recvmsg(
+									bytes = eth->sctp.receive(
 										peer->transfer.fd,
 										::__awh_buffer__,
 										AWH_EVENT_MAX_BUFFER_SIZE,
 										nullptr, nullptr,
-										&peer->transfer.sctp.use().info,
-										&peer->transfer.sctp.use().flags
+										peer->transfer.sctp.use().rinfo,
+										peer->transfer.sctp.use().info,
+										peer->transfer.sctp.use().flags
 									);
 								// Выполняем чтение данных из TCP/IP сокета
 								else bytes = ::recv(peer->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
@@ -10256,10 +10292,8 @@ namespace io {
 										peer->callbacks.event(peer->id, event::action_t::READ);
 									// Если идентификатор события для передачи данных не установлен
 									if(peer->transfer.dest == 0){
-										// Если функция обратного вызова для вывода прочитанных данных установлена
-										if(peer->callbacks.read != nullptr)
-											// Вызываем функцию обратного вызова для вывода полученных данных
-											peer->callbacks.read(peer->id, ::__awh_buffer__, static_cast <size_t> (bytes));
+										// Выполняем выдачу полученных данных потребителю
+										::sctp::deliver(peer, ::__awh_buffer__, static_cast <size_t> (bytes));
 									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 									} else const_cast <engine::io_t *> (io)->relay(peer->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
 									// Если узел уничтожен из функции обратного вызова
@@ -10321,13 +10355,14 @@ namespace io {
 							// Если протокол интернета установлен как SCTP
 							if(peer->state.protocol == event::protocol_t::SCTP)
 								// Выполняем чтение данных из SCTP-сокета
-								bytes = ::sctp_recvmsg(
+								bytes = eth->sctp.receive(
 									peer->transfer.fd,
 									::__awh_buffer__,
 									AWH_EVENT_MAX_BUFFER_SIZE,
 									nullptr, nullptr,
-									&peer->transfer.sctp.use().info,
-									&peer->transfer.sctp.use().flags
+									peer->transfer.sctp.use().rinfo,
+									peer->transfer.sctp.use().info,
+									peer->transfer.sctp.use().flags
 								);
 							// Выполняем чтение данных из TCP/IP сокета
 							else bytes = ::recv(peer->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
@@ -10390,10 +10425,8 @@ namespace io {
 									peer->callbacks.event(peer->id, event::action_t::READ);
 								// Если идентификатор события для передачи данных не установлен
 								if(peer->transfer.dest == 0){
-									// Если функция обратного вызова для вывода прочитанных данных установлена
-									if(peer->callbacks.read != nullptr)
-										// Вызываем функцию обратного вызова для вывода полученных данных
-										peer->callbacks.read(peer->id, ::__awh_buffer__, static_cast <size_t> (bytes));
+									// Выполняем выдачу полученных данных потребителю
+									::sctp::deliver(peer, ::__awh_buffer__, static_cast <size_t> (bytes));
 								// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 								} else const_cast <engine::io_t *> (io)->relay(peer->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
 								// Если узел уничтожен из функции обратного вызова
@@ -11743,12 +11776,13 @@ namespace io {
 									// Если протокол интернета установлен как SCTP
 									if(client->state.protocol == event::protocol_t::SCTP)
 										// Выполняем чтение данных из SCTP-сокета
-										bytes = ::sctp_recvmsg(
+										bytes = eth->sctp.receive(
 											client->transfer.fd,
 											::__awh_buffer__, size,
 											nullptr, nullptr,
-											&client->transfer.sctp.use().info,
-											&client->transfer.sctp.use().flags
+											client->transfer.sctp.use().rinfo,
+											client->transfer.sctp.use().info,
+											client->transfer.sctp.use().flags
 										);
 									// Выполняем чтение данных из TCP/IP сокета
 									else bytes = ::recv(client->transfer.fd, ::__awh_buffer__, size, MSG_NOSIGNAL);
@@ -11839,10 +11873,8 @@ namespace io {
 										client->callbacks.event(client->id, event::action_t::READ);
 									// Если идентификатор события для передачи данных не установлен
 									if(client->transfer.dest == 0){
-										// Если функция обратного вызова для вывода прочитанных данных установлена
-										if(client->callbacks.read != nullptr)
-											// Вызываем функцию обратного вызова для вывода полученных данных
-											client->callbacks.read(client->id, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
+										// Выполняем выдачу полученных данных потребителю
+										::sctp::deliver(client, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
 									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 									} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
 									// Если узел уничтожен из функции обратного вызова
@@ -11959,13 +11991,14 @@ namespace io {
 							// Если протокол интернета установлен как SCTP
 							if(client->state.protocol == event::protocol_t::SCTP)
 								// Выполняем чтение данных из SCTP-сокета
-								bytes = ::sctp_recvmsg(
+								bytes = eth->sctp.receive(
 									client->transfer.fd,
 									::__awh_buffer__,
 									AWH_EVENT_MAX_BUFFER_SIZE,
 									nullptr, nullptr,
-									&client->transfer.sctp.use().info,
-									&client->transfer.sctp.use().flags
+									client->transfer.sctp.use().rinfo,
+									client->transfer.sctp.use().info,
+									client->transfer.sctp.use().flags
 								);
 							// Выполняем чтение данных из TCP/IP сокета
 							else bytes = ::recv(client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
@@ -12044,10 +12077,8 @@ namespace io {
 								client->callbacks.event(client->id, event::action_t::READ);
 							// Если идентификатор события для передачи данных не установлен
 							if(client->transfer.dest == 0){
-								// Если функция обратного вызова для вывода прочитанных данных установлена
-								if(client->callbacks.read != nullptr)
-									// Вызываем функцию обратного вызова для вывода полученных данных
-									client->callbacks.read(client->id, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
+								// Выполняем выдачу полученных данных потребителю
+								::sctp::deliver(client, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
 							// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 							} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
 							// Если узел уничтожен из функции обратного вызова
@@ -13112,13 +13143,14 @@ namespace io {
 									// Если протокол интернета установлен как SCTP
 									if(client->state.protocol == event::protocol_t::SCTP)
 										// Выполняем чтение данных из SCTP-сокета
-										bytes = ::sctp_recvmsg(
+										bytes = eth->sctp.receive(
 											client->transfer.fd,
 											::__awh_buffer__,
 											AWH_EVENT_MAX_BUFFER_SIZE,
 											nullptr, nullptr,
-											&client->transfer.sctp.use().info,
-											&client->transfer.sctp.use().flags
+											client->transfer.sctp.use().rinfo,
+											client->transfer.sctp.use().info,
+											client->transfer.sctp.use().flags
 										);
 									// Выполняем чтение данных из TCP/IP сокета
 									else bytes = ::recv(client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
@@ -13209,10 +13241,8 @@ namespace io {
 										client->callbacks.event(client->id, event::action_t::READ);
 									// Если идентификатор события для передачи данных не установлен
 									if(client->transfer.dest == 0){
-										// Если функция обратного вызова для вывода прочитанных данных установлена
-										if(client->callbacks.read != nullptr)
-											// Вызываем функцию обратного вызова для вывода полученных данных
-											client->callbacks.read(client->id, ::__awh_buffer__, static_cast <size_t> (bytes));
+										// Выполняем выдачу полученных данных потребителю
+										::sctp::deliver(client, ::__awh_buffer__, static_cast <size_t> (bytes));
 									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 									} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
 									// Если узел уничтожен из функции обратного вызова
@@ -13278,13 +13308,14 @@ namespace io {
 								// Если протокол интернета установлен как SCTP
 								if(client->state.protocol == event::protocol_t::SCTP)
 									// Выполняем чтение данных из SCTP-сокета
-									bytes = ::sctp_recvmsg(
+									bytes = eth->sctp.receive(
 										client->transfer.fd,
 										::__awh_buffer__,
 										AWH_EVENT_MAX_BUFFER_SIZE,
 										nullptr, nullptr,
-										&client->transfer.sctp.use().info,
-										&client->transfer.sctp.use().flags
+										client->transfer.sctp.use().rinfo,
+										client->transfer.sctp.use().info,
+										client->transfer.sctp.use().flags
 									);
 								// Выполняем чтение данных из TCP/IP сокета
 								else bytes = ::recv(client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
@@ -13361,10 +13392,8 @@ namespace io {
 									client->callbacks.event(client->id, event::action_t::READ);
 								// Если идентификатор события для передачи данных не установлен
 								if(client->transfer.dest == 0){
-									// Если функция обратного вызова для вывода прочитанных данных установлена
-									if(client->callbacks.read != nullptr)
-										// Вызываем функцию обратного вызова для вывода полученных данных
-										client->callbacks.read(client->id, ::__awh_buffer__, static_cast <size_t> (bytes));
+									// Выполняем выдачу полученных данных потребителю
+									::sctp::deliver(client, ::__awh_buffer__, static_cast <size_t> (bytes));
 								// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 								} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
 								// Если узел уничтожен из функции обратного вызова
@@ -13414,14 +13443,15 @@ namespace io {
 									// Если протокол интернета установлен как SCTP
 									if(client->state.protocol == event::protocol_t::SCTP)
 										// Выполняем чтение данных из SCTP-сокета
-										bytes = ::sctp_recvmsg(
+										bytes = eth->sctp.receive(
 											client->transfer.fd,
 											::__awh_buffer__,
 											AWH_EVENT_MAX_BUFFER_SIZE,
 											&::trust_cast <struct sockaddr> (client->endpoint.server),
 											&client->endpoint.size,
-											&client->transfer.sctp.use().info,
-											&client->transfer.sctp.use().flags
+											client->transfer.sctp.use().rinfo,
+											client->transfer.sctp.use().info,
+											client->transfer.sctp.use().flags
 										);
 									// Выполняем чтение данных из UDP-сокета
 									else bytes = ::recvfrom(
@@ -13524,10 +13554,8 @@ namespace io {
 										client->callbacks.event(client->id, event::action_t::READ);
 									// Если идентификатор события для передачи данных не установлен
 									if(client->transfer.dest == 0){
-										// Если функция обратного вызова для вывода прочитанных данных установлена
-										if(client->callbacks.read != nullptr)
-											// Вызываем функцию обратного вызова для вывода полученных данных
-											client->callbacks.read(client->id, ::__awh_buffer__, static_cast <size_t> (bytes));
+										// Выполняем выдачу полученных данных потребителю
+										::sctp::deliver(client, ::__awh_buffer__, static_cast <size_t> (bytes));
 									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 									} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
 									// Если узел уничтожен из функции обратного вызова
@@ -13593,14 +13621,15 @@ namespace io {
 								// Если протокол интернета установлен как SCTP
 								if(client->state.protocol == event::protocol_t::SCTP)
 									// Выполняем чтение данных из SCTP-сокета
-									bytes = ::sctp_recvmsg(
+									bytes = eth->sctp.receive(
 										client->transfer.fd,
 										::__awh_buffer__,
 										AWH_EVENT_MAX_BUFFER_SIZE,
 										&::trust_cast <struct sockaddr> (client->endpoint.server),
 										&client->endpoint.size,
-										&client->transfer.sctp.use().info,
-										&client->transfer.sctp.use().flags
+										client->transfer.sctp.use().rinfo,
+										client->transfer.sctp.use().info,
+										client->transfer.sctp.use().flags
 									);
 								// Выполняем чтение данных из UDP-сокета
 								else bytes = ::recvfrom(
@@ -13689,10 +13718,8 @@ namespace io {
 									client->callbacks.event(client->id, event::action_t::READ);
 								// Если идентификатор события для передачи данных не установлен
 								if(client->transfer.dest == 0){
-									// Если функция обратного вызова для вывода прочитанных данных установлена
-									if(client->callbacks.read != nullptr)
-										// Вызываем функцию обратного вызова для вывода полученных данных
-										client->callbacks.read(client->id, ::__awh_buffer__, static_cast <size_t> (bytes));
+									// Выполняем выдачу полученных данных потребителю
+									::sctp::deliver(client, ::__awh_buffer__, static_cast <size_t> (bytes));
 								// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 								} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
 								// Если узел уничтожен из функции обратного вызова
@@ -15100,15 +15127,11 @@ namespace io {
 										// Если протокол интернета установлен как SCTP
 										if(peer->state.protocol == event::protocol_t::SCTP)
 											// Выполняем отправку данных в TCP/IP сокет
-											bytes = ::sctp_sendmsg(
+											bytes = eth->sctp.send(
 												peer->transfer.fd,
 												reinterpret_cast <const uint8_t *> (buffer),
 												size, nullptr, 0,
-												peer->transfer.sctp.use().info.sinfo_ppid,
-												peer->transfer.sctp.use().info.sinfo_flags,
-												peer->transfer.sctp.use().info.sinfo_stream,
-												peer->transfer.sctp.use().info.sinfo_timetolive,
-												peer->transfer.sctp.use().info.sinfo_context
+												peer->transfer.sctp.use().info
 											);
 										// Выполняем отправку данных в TCP/IP сокет
 										else bytes = ::send(peer->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
@@ -15503,15 +15526,11 @@ namespace io {
 										// Если протокол интернета установлен как SCTP
 										if(peer->state.protocol == event::protocol_t::SCTP)
 											// Выполняем отправку данных в SCTP-сокет
-											bytes = ::sctp_sendmsg(
+											bytes = eth->sctp.send(
 												peer->transfer.fd,
 												reinterpret_cast <const uint8_t *> (buffer),
 												size, nullptr, 0,
-												peer->transfer.sctp.use().info.sinfo_ppid,
-												peer->transfer.sctp.use().info.sinfo_flags,
-												peer->transfer.sctp.use().info.sinfo_stream,
-												peer->transfer.sctp.use().info.sinfo_timetolive,
-												peer->transfer.sctp.use().info.sinfo_context
+												peer->transfer.sctp.use().info
 											);
 										// Выполняем отправку данных в UDP-сокет
 										else bytes = ::send(peer->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
@@ -16600,15 +16619,11 @@ namespace io {
 										// Если протокол интернета установлен как SCTP
 										if(client->state.protocol == event::protocol_t::SCTP)
 											// Выполняем отправку данных в TCP/IP сокет
-											bytes = ::sctp_sendmsg(
+											bytes = eth->sctp.send(
 												client->transfer.fd,
 												reinterpret_cast <const uint8_t *> (buffer),
 												size, nullptr, 0,
-												client->transfer.sctp.use().info.sinfo_ppid,
-												client->transfer.sctp.use().info.sinfo_flags,
-												client->transfer.sctp.use().info.sinfo_stream,
-												client->transfer.sctp.use().info.sinfo_timetolive,
-												client->transfer.sctp.use().info.sinfo_context
+												client->transfer.sctp.use().info
 											);
 										// Выполняем отправку данных в TCP/IP сокет
 										else bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
@@ -17384,16 +17399,12 @@ namespace io {
 											// Если протокол интернета установлен как SCTP
 											if(client->state.protocol == event::protocol_t::SCTP)
 												// Выполняем отправку данных в TCP/IP сокет
-												bytes = ::sctp_sendmsg(
+												bytes = eth->sctp.send(
 													client->transfer.fd,
 													reinterpret_cast <const uint8_t *> (buffer), size,
 													&::trust_cast <struct sockaddr> (client->endpoint.server),
 													client->endpoint.size,
-													client->transfer.sctp.use().info.sinfo_ppid,
-													client->transfer.sctp.use().info.sinfo_flags,
-													client->transfer.sctp.use().info.sinfo_stream,
-													client->transfer.sctp.use().info.sinfo_timetolive,
-													client->transfer.sctp.use().info.sinfo_context
+													client->transfer.sctp.use().info
 												);
 											// Выполняем отправку данных в TCP/IP сокет
 											else bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
@@ -17417,16 +17428,12 @@ namespace io {
 											// Если протокол интернета установлен как SCTP
 											if(client->state.protocol == event::protocol_t::SCTP)
 												// Выполняем отправку данных в SCTP-сокет
-												bytes = ::sctp_sendmsg(
+												bytes = eth->sctp.send(
 													client->transfer.fd,
 													reinterpret_cast <const uint8_t *> (buffer), size,
 													&::trust_cast <struct sockaddr> (client->endpoint.server),
 													client->endpoint.size,
-													client->transfer.sctp.use().info.sinfo_ppid,
-													client->transfer.sctp.use().info.sinfo_flags,
-													client->transfer.sctp.use().info.sinfo_stream,
-													client->transfer.sctp.use().info.sinfo_timetolive,
-													client->transfer.sctp.use().info.sinfo_context
+													client->transfer.sctp.use().info
 												);
 											// Выполняем отправку данных в UDP-сокет
 											else bytes = eth->socket.datagram(
@@ -19084,14 +19091,10 @@ namespace io {
 										// Если протокол интернета установлен как SCTP
 										if(peer->state.protocol == event::protocol_t::SCTP)
 											// Выполняем отправку данных в сокет
-											bytes = ::sctp_sendmsg(
+											bytes = eth->sctp.send(
 												peer->transfer.fd,
 												buffer, size, nullptr, 0,
-												peer->transfer.sctp.use().info.sinfo_ppid,
-												peer->transfer.sctp.use().info.sinfo_flags,
-												peer->transfer.sctp.use().info.sinfo_stream,
-												peer->transfer.sctp.use().info.sinfo_timetolive,
-												peer->transfer.sctp.use().info.sinfo_context
+												peer->transfer.sctp.use().info
 											);
 										// Выполняем отправку данных в TCP/IP сокет
 										else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
@@ -19492,14 +19495,10 @@ namespace io {
 										// Если протокол интернета установлен как SCTP
 										if(peer->state.protocol == event::protocol_t::SCTP)
 											// Выполняем отправку данных в сокет
-											bytes = ::sctp_sendmsg(
+											bytes = eth->sctp.send(
 												peer->transfer.fd,
 												buffer, size, nullptr, 0,
-												peer->transfer.sctp.use().info.sinfo_ppid,
-												peer->transfer.sctp.use().info.sinfo_flags,
-												peer->transfer.sctp.use().info.sinfo_stream,
-												peer->transfer.sctp.use().info.sinfo_timetolive,
-												peer->transfer.sctp.use().info.sinfo_context
+												peer->transfer.sctp.use().info
 											);
 										// Выполняем отправку данных в сокет
 										else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
@@ -19858,14 +19857,10 @@ namespace io {
 							// Если протокол интернета установлен как SCTP
 							if(peer->state.protocol == event::protocol_t::SCTP)
 								// Выполняем отправку данных в TCP/IP сокет
-								bytes = ::sctp_sendmsg(
+								bytes = eth->sctp.send(
 									peer->transfer.fd,
 									buffer, size, nullptr, 0,
-									peer->transfer.sctp.use().info.sinfo_ppid,
-									peer->transfer.sctp.use().info.sinfo_flags,
-									peer->transfer.sctp.use().info.sinfo_stream,
-									peer->transfer.sctp.use().info.sinfo_timetolive,
-									peer->transfer.sctp.use().info.sinfo_context
+									peer->transfer.sctp.use().info
 								);
 							// Выполняем отправку данных в TCP/IP сокет
 							else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
@@ -19964,14 +19959,10 @@ namespace io {
 										// Если протокол интернета установлен как SCTP
 										if(peer->state.protocol == event::protocol_t::SCTP)
 											// Выполняем отправку данных в TCP/IP сокет
-											bytes = ::sctp_sendmsg(
+											bytes = eth->sctp.send(
 												peer->transfer.fd,
 												buffer, size, nullptr, 0,
-												peer->transfer.sctp.use().info.sinfo_ppid,
-												peer->transfer.sctp.use().info.sinfo_flags,
-												peer->transfer.sctp.use().info.sinfo_stream,
-												peer->transfer.sctp.use().info.sinfo_timetolive,
-												peer->transfer.sctp.use().info.sinfo_context
+												peer->transfer.sctp.use().info
 											);
 										// Выполняем отправку данных в TCP/IP сокет
 										else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
@@ -20309,14 +20300,10 @@ namespace io {
 											// Если протокол интернета установлен как SCTP
 											if(peer->state.protocol == event::protocol_t::SCTP)
 												// Выполняем отправку данных в TCP/IP сокет
-												bytes = ::sctp_sendmsg(
+												bytes = eth->sctp.send(
 													peer->transfer.fd,
 													buffer, size, nullptr, 0,
-													peer->transfer.sctp.use().info.sinfo_ppid,
-													peer->transfer.sctp.use().info.sinfo_flags,
-													peer->transfer.sctp.use().info.sinfo_stream,
-													peer->transfer.sctp.use().info.sinfo_timetolive,
-													peer->transfer.sctp.use().info.sinfo_context
+													peer->transfer.sctp.use().info
 												);
 											// Выполняем отправку данных в TCP/IP сокет
 											else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
@@ -20641,14 +20628,10 @@ namespace io {
 							// Если протокол интернета установлен как SCTP
 							if(peer->state.protocol == event::protocol_t::SCTP)
 								// Выполняем отправку данных в TCP/IP сокет
-								bytes = ::sctp_sendmsg(
+								bytes = eth->sctp.send(
 									peer->transfer.fd,
 									buffer, size, nullptr, 0,
-									peer->transfer.sctp.use().info.sinfo_ppid,
-									peer->transfer.sctp.use().info.sinfo_flags,
-									peer->transfer.sctp.use().info.sinfo_stream,
-									peer->transfer.sctp.use().info.sinfo_timetolive,
-									peer->transfer.sctp.use().info.sinfo_context
+									peer->transfer.sctp.use().info
 								);
 							// Выполняем отправку данных в TCP/IP сокет
 							else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
@@ -22701,14 +22684,10 @@ namespace io {
 										// Если протокол интернета установлен как SCTP
 										if(client->state.protocol == event::protocol_t::SCTP)
 											// Выполняем отправку данных в сокет
-											bytes = ::sctp_sendmsg(
+											bytes = eth->sctp.send(
 												client->transfer.fd,
 												buffer, size, nullptr, 0,
-												client->transfer.sctp.use().info.sinfo_ppid,
-												client->transfer.sctp.use().info.sinfo_flags,
-												client->transfer.sctp.use().info.sinfo_stream,
-												client->transfer.sctp.use().info.sinfo_timetolive,
-												client->transfer.sctp.use().info.sinfo_context
+												client->transfer.sctp.use().info
 											);
 										// Выполняем отправку данных в TCP/IP сокет
 										else bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
@@ -23109,14 +23088,10 @@ namespace io {
 										// Если протокол интернета установлен как SCTP
 										if(client->state.protocol == event::protocol_t::SCTP)
 											// Выполняем отправку данных в сокет
-											bytes = ::sctp_sendmsg(
+											bytes = eth->sctp.send(
 												client->transfer.fd,
 												buffer, size, nullptr, 0,
-												client->transfer.sctp.use().info.sinfo_ppid,
-												client->transfer.sctp.use().info.sinfo_flags,
-												client->transfer.sctp.use().info.sinfo_stream,
-												client->transfer.sctp.use().info.sinfo_timetolive,
-												client->transfer.sctp.use().info.sinfo_context
+												client->transfer.sctp.use().info
 											);
 										// Выполняем отправку данных в сокет
 										else bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
@@ -23475,14 +23450,10 @@ namespace io {
 							// Если протокол интернета установлен как SCTP
 							if(client->state.protocol == event::protocol_t::SCTP)
 								// Выполняем отправку данных в TCP/IP сокет
-								bytes = ::sctp_sendmsg(
+								bytes = eth->sctp.send(
 									client->transfer.fd,
 									buffer, size, nullptr, 0,
-									client->transfer.sctp.use().info.sinfo_ppid,
-									client->transfer.sctp.use().info.sinfo_flags,
-									client->transfer.sctp.use().info.sinfo_stream,
-									client->transfer.sctp.use().info.sinfo_timetolive,
-									client->transfer.sctp.use().info.sinfo_context
+									client->transfer.sctp.use().info
 								);
 							// Выполняем отправку данных в TCP/IP сокет
 							else bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
@@ -25133,16 +25104,12 @@ namespace io {
 											// Если протокол интернета установлен как SCTP
 											if(client->state.protocol == event::protocol_t::SCTP)
 												// Выполняем отправку данных в сокет
-												bytes = ::sctp_sendmsg(
+												bytes = eth->sctp.send(
 													client->transfer.fd,
 													buffer, size,
 													&::trust_cast <struct sockaddr> (client->endpoint.server),
 													client->endpoint.size,
-													client->transfer.sctp.use().info.sinfo_ppid,
-													client->transfer.sctp.use().info.sinfo_flags,
-													client->transfer.sctp.use().info.sinfo_stream,
-													client->transfer.sctp.use().info.sinfo_timetolive,
-													client->transfer.sctp.use().info.sinfo_context
+													client->transfer.sctp.use().info
 												);
 											// Выполняем отправку данных в сокет
 											else bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
@@ -25491,16 +25458,12 @@ namespace io {
 												// Если протокол интернета установлен как SCTP
 												if(client->state.protocol == event::protocol_t::SCTP)
 													// Выполняем отправку данных в сокет
-													bytes = ::sctp_sendmsg(
+													bytes = eth->sctp.send(
 														client->transfer.fd,
 														buffer, size,
 														&::trust_cast <struct sockaddr> (client->endpoint.server),
 														client->endpoint.size,
-														client->transfer.sctp.use().info.sinfo_ppid,
-														client->transfer.sctp.use().info.sinfo_flags,
-														client->transfer.sctp.use().info.sinfo_stream,
-														client->transfer.sctp.use().info.sinfo_timetolive,
-														client->transfer.sctp.use().info.sinfo_context
+														client->transfer.sctp.use().info
 													);
 												// Выполняем отправку данных в сокет
 												else bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
@@ -25836,16 +25799,12 @@ namespace io {
 								// Если протокол интернета установлен как SCTP
 								if(client->state.protocol == event::protocol_t::SCTP)
 									// Выполняем отправку данных в сокет
-									bytes = ::sctp_sendmsg(
+									bytes = eth->sctp.send(
 										client->transfer.fd,
 										buffer, size,
 										&::trust_cast <struct sockaddr> (client->endpoint.server),
 										client->endpoint.size,
-										client->transfer.sctp.use().info.sinfo_ppid,
-										client->transfer.sctp.use().info.sinfo_flags,
-										client->transfer.sctp.use().info.sinfo_stream,
-										client->transfer.sctp.use().info.sinfo_timetolive,
-										client->transfer.sctp.use().info.sinfo_context
+										client->transfer.sctp.use().info
 									);
 								// Выполняем отправку данных в сокет
 								else bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
@@ -25972,16 +25931,12 @@ namespace io {
 											// Если протокол интернета установлен как SCTP
 											if(client->state.protocol == event::protocol_t::SCTP)
 												// Выполняем отправку данных в SCTP-сокет
-												bytes = ::sctp_sendmsg(
+												bytes = eth->sctp.send(
 													client->transfer.fd,
 													buffer, size,
 													&::trust_cast <struct sockaddr> (client->endpoint.server),
 													client->endpoint.size,
-													client->transfer.sctp.use().info.sinfo_ppid,
-													client->transfer.sctp.use().info.sinfo_flags,
-													client->transfer.sctp.use().info.sinfo_stream,
-													client->transfer.sctp.use().info.sinfo_timetolive,
-													client->transfer.sctp.use().info.sinfo_context
+													client->transfer.sctp.use().info
 												);
 											// Выполняем отправку данных в UDP-сокет
 											else bytes = eth->socket.datagram(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size, client->state.family, client->state.traffic);
@@ -26330,16 +26285,12 @@ namespace io {
 												// Если протокол интернета установлен как SCTP
 												if(client->state.protocol == event::protocol_t::SCTP)
 													// Выполняем отправку данных в SCTP-сокет
-													bytes = ::sctp_sendmsg(
+													bytes = eth->sctp.send(
 														client->transfer.fd,
 														buffer, size,
 														&::trust_cast <struct sockaddr> (client->endpoint.server),
 														client->endpoint.size,
-														client->transfer.sctp.use().info.sinfo_ppid,
-														client->transfer.sctp.use().info.sinfo_flags,
-														client->transfer.sctp.use().info.sinfo_stream,
-														client->transfer.sctp.use().info.sinfo_timetolive,
-														client->transfer.sctp.use().info.sinfo_context
+														client->transfer.sctp.use().info
 													);
 												// Выполняем отправку данных в UDP-сокет
 												else bytes = eth->socket.datagram(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size, client->state.family, client->state.traffic);
@@ -26675,16 +26626,12 @@ namespace io {
 								// Если протокол интернета установлен как SCTP
 								if(client->state.protocol == event::protocol_t::SCTP)
 									// Выполняем отправку данных в SCTP-сокет
-									bytes = ::sctp_sendmsg(
+									bytes = eth->sctp.send(
 										client->transfer.fd,
 										buffer, size,
 										&::trust_cast <struct sockaddr> (client->endpoint.server),
 										client->endpoint.size,
-										client->transfer.sctp.use().info.sinfo_ppid,
-										client->transfer.sctp.use().info.sinfo_flags,
-										client->transfer.sctp.use().info.sinfo_stream,
-										client->transfer.sctp.use().info.sinfo_timetolive,
-										client->transfer.sctp.use().info.sinfo_context
+										client->transfer.sctp.use().info
 									);
 								// Выполняем отправку данных в UDP-сокет
 								else bytes = eth->socket.datagram(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size, client->state.family, client->state.traffic);
@@ -30257,14 +30204,15 @@ namespace io {
 										// Если событие принадлежит к типу SEQPACKET
 										case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 											// Выполняем чтение данных из SCTP-сокета
-											bytes = ::sctp_recvmsg(
+											bytes = eth->sctp.receive(
 												server->fd,
 												::__awh_buffer__,
 												AWH_EVENT_MAX_BUFFER_SIZE,
 												&::trust_cast <struct sockaddr> (server->endpoint.client),
 												&server->endpoint.size,
-												&server->sctp.info,
-												&server->sctp.flags
+												server->sctp.rinfo,
+												server->sctp.info,
+												server->sctp.flags
 											);
 											// Если мы получили уведомления SCTP
 											if((bytes <= 0) || (server->sctp.flags & MSG_NOTIFICATION)){
@@ -30578,6 +30526,10 @@ namespace io {
 									if(peer->state.protocol == event::protocol_t::SCTP)
 										// Выполняем активацию событий SCTP
 										eth->sctp.eventsSubscribe(peer->transfer.fd, peer->transfer.sctp.use().events);
+										// Если отклик чтения данных вместе с метаданными установлен
+										if(peer->transfer.sctp.endpoint().callbacks.message != nullptr)
+											// Выполняем подписку на метаданные принимаемых сообщений
+											eth->sctp.receiveInfo(peer->transfer.fd, true);
 								#endif
 							} break;
 							// Для семейства IPv6
@@ -30770,6 +30722,10 @@ namespace io {
 									if(peer->state.protocol == event::protocol_t::SCTP)
 										// Выполняем активацию событий SCTP
 										eth->sctp.eventsSubscribe(peer->transfer.fd, peer->transfer.sctp.use().events);
+										// Если отклик чтения данных вместе с метаданными установлен
+										if(peer->transfer.sctp.endpoint().callbacks.message != nullptr)
+											// Выполняем подписку на метаданные принимаемых сообщений
+											eth->sctp.receiveInfo(peer->transfer.fd, true);
 								#endif
 							} break;
 						}
@@ -30828,12 +30784,9 @@ namespace io {
 							 */
 							#if __FreeBSD__
 								// Если мы получили данные из SCTP-сокета
-								if(bytes > 0){
-									// Если установлена функция обратного вызова
-									if(peer->callbacks.read != nullptr)
-										// Вызываем функцию обратного вызова для вывода полученных данных
-										peer->callbacks.read(peer->id, ::__awh_buffer__, static_cast <size_t> (bytes));
-								}
+								if(bytes > 0)
+									// Выполняем выдачу полученных данных потребителю
+									::sctp::deliver(peer, ::__awh_buffer__, static_cast <size_t> (bytes));
 							#endif
 							// Если узел не помечен как мусорный
 							if(!guard.garbage()){
@@ -36070,15 +36023,39 @@ namespace sctp {
 					 */
 					switch(static_cast <uint8_t> (i->second->state.node)){
 						// Если узел является одноранговым узлом
-						case static_cast <uint8_t> (event::node_t::PEER):
+						case static_cast <uint8_t> (event::node_t::PEER): {
+							// Получаем текущее значение узла события
+							::io::peer_t * node = awh_cast <::io::peer_t *> (i->second.get());
 							// Устанавливаем функцию обратного вызова для чтения данных вместе с метаданными
-							awh_cast <::io::peer_t *> (i->second.get())->transfer.sctp.use().callbacks.message = ::move(cb);
-						break;
+							node->transfer.sctp.use().callbacks.message = ::move(cb);
+							/**
+							 * Если сокет узла уже заведён - выдаём подписку на метаданные немедленно
+							 *
+							 * @note Отклик ставят и до заведения сокета: у клиента это обычный
+							 *       порядок. Подписка тогда выдаётся при заведении сокета, где
+							 *       установленность отклика и проверяется
+							 */
+							if(node->transfer.fd != net::invalid_socket_t)
+								// Выполняем подписку на метаданные принимаемых сообщений
+								this->_eth.sctp.receiveInfo(node->transfer.fd, true);
+						} break;
 						// Если узел является клиентом
-						case static_cast <uint8_t> (event::node_t::CLIENT):
+						case static_cast <uint8_t> (event::node_t::CLIENT): {
+							// Получаем текущее значение узла события
+							::io::client_t * node = awh_cast <::io::client_t *> (i->second.get());
 							// Устанавливаем функцию обратного вызова для чтения данных вместе с метаданными
-							awh_cast <::io::client_t *> (i->second.get())->transfer.sctp.use().callbacks.message = ::move(cb);
-						break;
+							node->transfer.sctp.use().callbacks.message = ::move(cb);
+							/**
+							 * Если сокет узла уже заведён - выдаём подписку на метаданные немедленно
+							 *
+							 * @note Отклик ставят и до заведения сокета: у клиента это обычный
+							 *       порядок. Подписка тогда выдаётся при заведении сокета, где
+							 *       установленность отклика и проверяется
+							 */
+							if(node->transfer.fd != net::invalid_socket_t)
+								// Выполняем подписку на метаданные принимаемых сообщений
+								this->_eth.sctp.receiveInfo(node->transfer.fd, true);
+						} break;
 						// Для других типов узлов
 						default: {
 							/**
@@ -38139,6 +38116,10 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															case static_cast <uint8_t> (event::type_t::SEQPACKET):
 																// Выполняем активацию событий SCTP
 																this->_eth.sctp.eventsSubscribe(client->transfer.fd, client->transfer.sctp.use().events);
+																// Если отклик чтения данных вместе с метаданными установлен
+																if(client->transfer.sctp.endpoint().callbacks.message != nullptr)
+																	// Выполняем подписку на метаданные принимаемых сообщений
+																	this->_eth.sctp.receiveInfo(client->transfer.fd, true);
 															break;
 														}
 													}
@@ -38724,6 +38705,10 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															case static_cast <uint8_t> (event::type_t::SEQPACKET):
 																// Выполняем активацию событий SCTP
 																this->_eth.sctp.eventsSubscribe(client->transfer.fd, client->transfer.sctp.use().events);
+																// Если отклик чтения данных вместе с метаданными установлен
+																if(client->transfer.sctp.endpoint().callbacks.message != nullptr)
+																	// Выполняем подписку на метаданные принимаемых сообщений
+																	this->_eth.sctp.receiveInfo(client->transfer.fd, true);
 															break;
 														}
 													}
