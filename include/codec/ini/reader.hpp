@@ -38,6 +38,7 @@
  * Стандартные заголовочные файлы
  */
 #include <string>
+#include <vector>
 #include <cstdint>
 #include <string_view>
 #include <unordered_set>
@@ -626,6 +627,89 @@ namespace awh {
 				private:
 					/**
 					 * \~russian
+					 * @brief Отрезок собранной логической строки, взятый из исходного текста
+					 *
+					 * @details Отрезки записываются при сборке логической строки и служат
+					 * обратному отображению: место знака собранной строки восстанавливается
+					 * по ним в место того же знака в исходном тексте
+					 *
+					 * @note Отображение это записывается при сборке, а не выводится
+					 * повторным разбором правил склейки: два списка правил разошлись бы при
+					 * первой же правке одного из них
+					 *
+					 * \~english
+					 * @brief Segment of the assembled logical line taken from the source text
+					 * @details The segments are recorded at the assembly of the logical line and serve the
+					 * reverse mapping: the place of a character of the assembled line is restored by them
+					 * into the place of the same character in the source text
+					 * @note This mapping is recorded at the assembly rather than derived by a repeated parsing
+					 * of the gluing rules: two lists of the rules would diverge at the first editing of one of them
+					 *
+					 * \~
+					 */
+					typedef struct Piece {
+						/**
+						 * \~russian
+						 * Положение начала отрезка в собранной логической строке
+						 * \~english
+						 * Position of the beginning of the segment in the assembled logical line
+						 * \~
+						 */
+						size_t logical;
+						/**
+						 * \~russian
+						 * Положение начала отрезка в приведённом исходном тексте
+						 * \~english
+						 * Position of the beginning of the segment in the converted source text
+						 * \~
+						 */
+						size_t source;
+						/**
+						 * \~russian
+						 * Длина отрезка в байтах
+						 * \~english
+						 * Length of the segment in bytes
+						 * \~
+						 */
+						size_t length;
+						/**
+						 * \~russian
+						 * @brief Конструктор
+						 *
+						 * @param logical положение начала отрезка в собранной логической строке
+						 * @param source  положение начала отрезка в приведённом исходном тексте
+						 * @param length  длина отрезка в байтах
+						 *
+						 * \~english
+						 * @brief Constructor
+						 * @param logical position of the beginning of the segment in the assembled logical line
+						 * @param source  position of the beginning of the segment in the converted source text
+						 * @param length  length of the segment in bytes
+						 *
+						 * \~
+						 */
+						Piece(const size_t logical, const size_t source, const size_t length) noexcept :
+						 logical(logical), source(source), length(length) {}
+					} piece_t;
+				private:
+					/**
+					 * \~russian
+					 * Отрезки собранной логической строки в исходном тексте
+					 *
+					 * @note Перечень пуст у строки без продолжений: такая строка лежит в
+					 * исходном тексте непрерывным отрезком, и отображение ей тождественно
+					 *
+					 * \~english
+					 * Segments of the assembled logical line in the source text
+					 * @note The list is empty for a line without the continuations: such a line lies in the
+					 * source text as a continuous segment, and the mapping is an identity for it
+					 *
+					 * \~
+					 */
+					vector <piece_t> _pieces;
+				private:
+					/**
+					 * \~russian
 					 * Собранная логическая строка для разбора
 					 *
 					 * @details Ссылается либо на приведённый текст напрямую, либо на
@@ -781,28 +865,35 @@ namespace awh {
 					bool join(const size_t begin, const size_t length) noexcept;
 					/**
 					 * \~russian
-					 * @brief Метод получения положения знака в строке
+					 * @brief Метод получения места знака в исходном тексте
 					 *
-					 * @details Положение считается в знаках Юникода, а не в байтах: строка
-					 * настроек вправе нести имена и значения на любом языке, и указание
+					 * @details Положение в строке считается в знаках Юникода, а не в байтах:
+					 * строка настроек вправе нести имена и значения на любом языке, и указание
 					 * места ошибки в байтах читающему ничего не сообщает
 					 *
-					 * @param begin  положение начала строки в приведённом тексте
+					 * @note Строка и столбец считаются вместе, а не порознь: логическая строка
+					 * вправе собираться из нескольких физических, и столбец, посчитанный от её
+					 * начала сквозь переносы, указывал бы на место, которого в строке нет вовсе
+					 *
 					 * @param offset положение знака в приведённом тексте
-					 * @return       положение знака в строке, считая с единицы
+					 * @param line   номер строки, на которой знак записан
+					 * @param column положение знака в строке, считая с единицы
 					 *
 					 * \~english
-					 * @brief Method of getting the position of a character in a line
-					 * @details The position is counted in Unicode characters rather than in bytes: a settings
-					 * line has the right to carry the names and the values in any language, and an indication of the
-					 * place of an error in bytes tells the reader nothing
-					 * @param begin  position of the beginning of the line in the converted text
+					 * @brief Method of getting the place of a character in the source text
+					 * @details The position in a line is counted in Unicode characters rather than in bytes: a
+					 * settings line has the right to carry the names and the values in any language, and an
+					 * indication of the place of an error in bytes tells the reader nothing
+					 * @note The line and the column are counted together rather than separately: a logical line
+					 * has the right to be assembled out of several physical ones, and a column counted from its
+					 * beginning through the line breaks would point at a place that does not exist in the line
 					 * @param offset position of the character in the converted text
-					 * @return       position of the character in the line, counting from one
+					 * @param line   number of the line the character is written on
+					 * @param column position of the character in the line, counting from one
 					 *
 					 * \~
 					 */
-					uint32_t column(const size_t begin, const size_t offset) const noexcept;
+					void place(const size_t offset, uint32_t & line, uint32_t & column) const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод разбора объявления раздела

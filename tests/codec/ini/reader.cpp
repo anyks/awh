@@ -1022,3 +1022,93 @@ TEST(CodecIniReader, HeaderCommentLocation) {
 	// Выполняем проверку того, что место указывает на знак примечания
 	ASSERT_EQ(reader.location().column, static_cast <uint32_t> (7));
 }
+
+/**
+ * @brief Проверка места события внутри склеенной логической строки
+ *
+ * @details Логическая строка вправе собираться из нескольких физических - продолжением
+ * обратной косой чертой либо отступом. Столбец при этом считался от начала логической
+ * строки сквозь переносы, а строкой выдавалась первая из них: примечание, приписанное
+ * ко второй физической строке, получало столбец больше длины первой - место, которого
+ * в тексте нет вовсе
+ *
+ * @note Место незакрытой кавычки указывает на саму кавычку, а не на начало значения:
+ *       искать её читающему следует там, где она стоит
+ *
+ */
+TEST(CodecIniReader, ContinuationLocation) {
+	// Настройки разбора текста настроек
+	ini::reader_t::settings_t settings;
+	// Признаём примечание в конце строки
+	settings.inlineComments = true;
+	// Признаём склеивание строк обратной косой чертой
+	settings.continuations = true;
+	// Признаём управляющие последовательности значения
+	settings.escapes = true;
+	{
+		// Объект потокового чтения текста настроек
+		ini::reader_t reader(settings);
+		// Выполняем передачу текста настроек целиком
+		reader.feed(string_view("k = начало \\\nпродолжение ; заметка\n"));
+		// Выполняем переход к свойству со значением
+		ASSERT_TRUE(reader.next());
+		// Выполняем проверку вида полученного события
+		ASSERT_EQ(reader.event(), ini::event_t::PROPERTY);
+		// Выполняем переход к примечанию за значением свойства
+		ASSERT_TRUE(reader.next());
+		// Выполняем проверку вида полученного события
+		ASSERT_EQ(reader.event(), ini::event_t::COMMENT);
+		// Выполняем проверку того, что примечание отнесено ко второй физической строке
+		ASSERT_EQ(reader.location().line, static_cast <uint32_t> (2));
+		// Выполняем проверку того, что столбец отсчитан от начала своей строки
+		ASSERT_EQ(reader.location().column, static_cast <uint32_t> (13));
+	}
+	{
+		// Объект потокового чтения текста настроек
+		ini::reader_t reader(settings);
+		// Выполняем передачу текста настроек целиком
+		reader.feed(string_view("k = начало \\\nхвост \\q\n"));
+		// Выполняем проверку того, что разбор отвергнут негодной последовательностью
+		ASSERT_FALSE(reader.next());
+		// Выполняем проверку кода ошибки разбора
+		ASSERT_EQ(reader.error(), ini::error_t::INVALID_ESCAPE);
+		// Выполняем проверку того, что отказ отнесён ко второй физической строке
+		ASSERT_EQ(reader.errorLocation().line, static_cast <uint32_t> (2));
+		// Выполняем проверку того, что столбец указывает на обратную косую черту
+		ASSERT_EQ(reader.errorLocation().column, static_cast <uint32_t> (7));
+	}
+	{
+		// Объект потокового чтения текста настроек
+		ini::reader_t reader(settings);
+		// Выполняем передачу текста настроек целиком
+		reader.feed(string_view("k = начало \\\nхвост \"открыта\n"));
+		// Выполняем проверку того, что разбор отвергнут незакрытой кавычкой
+		ASSERT_FALSE(reader.next());
+		// Выполняем проверку кода ошибки разбора
+		ASSERT_EQ(reader.error(), ini::error_t::UNTERMINATED_QUOTE);
+		// Выполняем проверку того, что отказ отнесён ко второй физической строке
+		ASSERT_EQ(reader.errorLocation().line, static_cast <uint32_t> (2));
+		// Выполняем проверку того, что столбец указывает на саму кавычку
+		ASSERT_EQ(reader.errorLocation().column, static_cast <uint32_t> (7));
+	}
+	{
+		// Настройки разбора с продолжением значения отступом
+		ini::reader_t::settings_t indented = settings;
+		// Признаём продолжение значения отступом
+		indented.indents = true;
+		// Объект потокового чтения текста настроек
+		ini::reader_t reader(indented);
+		// Выполняем передачу текста настроек целиком
+		reader.feed(string_view("k = начало\n\tпродолжение ; заметка\n"));
+		// Выполняем переход к свойству со значением
+		ASSERT_TRUE(reader.next());
+		// Выполняем проверку вида полученного события
+		ASSERT_EQ(reader.event(), ini::event_t::PROPERTY);
+		// Выполняем переход к примечанию за значением свойства
+		ASSERT_TRUE(reader.next());
+		// Выполняем проверку того, что примечание отнесено ко второй физической строке
+		ASSERT_EQ(reader.location().line, static_cast <uint32_t> (2));
+		// Выполняем проверку того, что отступ учтён в столбце примечания
+		ASSERT_EQ(reader.location().column, static_cast <uint32_t> (14));
+	}
+}

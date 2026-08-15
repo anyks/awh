@@ -611,20 +611,92 @@ bool awh::codec::ini::Reader::fail(const error_t error, const size_t offset, con
 	return false;
 }
 /**
- * @brief Метод получения положения знака в строке
+ * @brief Метод получения места знака в исходном тексте
  *
- * @param begin  положение начала строки в приведённом тексте
  * @param offset положение знака в приведённом тексте
- * @return       положение знака в строке, считая с единицы
+ * @param line   номер строки, на которой знак записан
+ * @param column положение знака в строке, считая с единицы
  *
  */
-uint32_t awh::codec::ini::Reader::column(const size_t begin, const size_t offset) const noexcept {
-	// Положение знака в строке, считая с единицы
-	uint32_t result = 1;
+void awh::codec::ini::Reader::place(const size_t offset, uint32_t & line, uint32_t & column) const noexcept {
+	// Запоминаем номер строки, с которой начата разбираемая логическая строка
+	line = this->_line;
+	// Запоминаем положение знака в строке, считая с единицы
+	column = 1;
 	/**
-	 * Выполняем перебор знаков строки до искомого положения
+	 * Получаем положение искомого знака в исходном тексте
+	 *
+	 * @details Место запрашивается по собранной логической строке, а та у строки с
+	 *          продолжениями лежит в отдельном хранилище: знаки её собраны из кусков
+	 *          исходного текста, и положения их в нём непрерывными не являются.
+	 *          Отрезки, записанные при сборке, дают обратное отображение
 	 */
-	for(size_t i = begin; (i < offset) && (i < this->_buffer.length()); i++){
+	size_t target = offset;
+	/**
+	 * Если разбираемая логическая строка собрана из строк продолжения
+	 */
+	if(!this->_pieces.empty()){
+		// Получаем положение искомого знака в собранной логической строке
+		const size_t index = (offset > this->_start ? (offset - this->_start) : 0);
+		// Запоминаем положение начала собранной логической строки в исходном тексте
+		target = this->_pieces.front().source;
+		/**
+		 * Выполняем перебор всех отрезков собранной логической строки
+		 */
+		for(const piece_t & piece : this->_pieces){
+			/**
+			 * Если искомый знак лежит до начала очередного отрезка
+			 */
+			if(index < piece.logical)
+				// Выполняем прекращение поиска отрезка
+				break;
+			/**
+			 * Если искомый знак лежит внутри очередного отрезка
+			 */
+			if(index < (piece.logical + piece.length)){
+				// Запоминаем положение искомого знака в исходном тексте
+				target = (piece.source + (index - piece.logical));
+				// Выполняем прекращение поиска отрезка
+				break;
+			}
+			// Запоминаем положение конца очередного отрезка в исходном тексте
+			target = (piece.source + piece.length);
+		}
+	}
+	/**
+	 * Выполняем перебор знаков разбираемой логической строки до искомого положения
+	 */
+	for(size_t i = this->_start; (i < target) && (i < this->_buffer.length()); i++){
+		/**
+		 * Если знаком является перевод строки
+		 *
+		 * @details Логическая строка вправе собираться из нескольких физических -
+		 *          продолжением обратной косой чертой либо отступом, - и знак за
+		 *          переносом лежит уже на следующей строке. Столбец, посчитанный от
+		 *          начала логической строки сквозь переносы, указывал бы на место,
+		 *          которого в строке нет вовсе: примечание, приписанное ко второй
+		 *          физической строке, выдавалось строкой первой со столбцом больше
+		 *          её длины
+		 */
+		if(this->_buffer[i] == '\n'){
+			// Выполняем переход к следующей строке исходного текста
+			line++;
+			// Выполняем сброс положения знака в строке
+			column = 1;
+			// Выполняем переход к следующему знаку
+			continue;
+		}
+		/**
+		 * Если знаком является одиночный возврат каретки
+		 */
+		if((this->_buffer[i] == '\r') && (((i + 1) >= this->_buffer.length()) || (this->_buffer[i + 1] != '\n'))){
+			// Выполняем переход к следующей строке исходного текста
+			line++;
+			// Выполняем сброс положения знака в строке
+			column = 1;
+			// Выполняем переход к следующему знаку
+			continue;
+		}
 		/**
 		 * Если знак продолжающим байтом последовательности не является
 		 *
@@ -633,10 +705,8 @@ uint32_t awh::codec::ini::Reader::column(const size_t begin, const size_t offset
 		 */
 		if((static_cast <uint8_t> (this->_buffer[i]) & 0xC0) != 0x80)
 			// Выполняем увеличение положения знака в строке
-			result++;
+			column++;
 	}
-	// Выводим положение знака в строке
-	return result;
 }
 /**
  * @brief Метод поиска конца логической строки
@@ -769,6 +839,13 @@ bool awh::codec::ini::Reader::join(const size_t begin, const size_t length) noex
 	// Выполняем очистку собранной логической строки
 	this->_logical.clear();
 	/**
+	 * Выполняем очистку отрезков собранной логической строки
+	 *
+	 * @note Перечень остаётся пустым у строки без продолжений: такая строка лежит в
+	 *       исходном тексте непрерывным отрезком, и отображение ей тождественно
+	 */
+	this->_pieces.clear();
+	/**
 	 * Если длина логической строки предел настроек превышает
 	 */
 	if((this->_settings.maxLine > 0) && (static_cast <uint64_t> (length) > static_cast <uint64_t> (this->_settings.maxLine)))
@@ -828,8 +905,12 @@ bool awh::codec::ini::Reader::join(const size_t begin, const size_t length) noex
 		 * Если очередная физическая строка является последней
 		 */
 		if(after >= (begin + length)){
+			// Получаем содержимое строки, к логической строке добавляемое
+			const string_view content = (stripped ? ::trim(line) : line);
+			// Выполняем запоминание отрезка собранной логической строки
+			this->_pieces.emplace_back(this->_logical.size(), static_cast <size_t> (content.data() - this->_buffer.data()), content.length());
 			// Выполняем добавление содержимого строки к логической строке
-			this->_logical.append(stripped ? ::trim(line) : line);
+			this->_logical.append(content);
 			// Выполняем прекращение сборки логической строки
 			break;
 		}
@@ -850,7 +931,11 @@ bool awh::codec::ini::Reader::join(const size_t begin, const size_t length) noex
 			 *       склеиваются встык, а отступ следующей строки остаётся частью
 			 *       значения - таково обращение описания служб systemd
 			 */
-			this->_logical.append(stripped ? ::trim(line.substr(0, line.length() - 1)) : line.substr(0, line.length() - 1));
+			const string_view content = (stripped ? ::trim(line.substr(0, line.length() - 1)) : line.substr(0, line.length() - 1));
+			// Выполняем запоминание отрезка собранной логической строки
+			this->_pieces.emplace_back(this->_logical.size(), static_cast <size_t> (content.data() - this->_buffer.data()), content.length());
+			// Выполняем добавление содержимого строки без обратной косой черты
+			this->_logical.append(content);
 			// Снимаем признак продолжения предыдущей строки отступом
 			stripped = false;
 		/**
@@ -859,6 +944,10 @@ bool awh::codec::ini::Reader::join(const size_t begin, const size_t length) noex
 		} else {
 			// Запоминаем признак продолжения предыдущей строки отступом
 			stripped = true;
+			// Получаем содержимое строки без пробельной обвязки
+			const string_view content = ::trim(line);
+			// Выполняем запоминание отрезка собранной логической строки
+			this->_pieces.emplace_back(this->_logical.size(), static_cast <size_t> (content.data() - this->_buffer.data()), content.length());
 			/**
 			 * Выполняем добавление содержимого строки без пробельной обвязки
 			 *
@@ -866,14 +955,20 @@ bool awh::codec::ini::Reader::join(const size_t begin, const size_t length) noex
 			 *       он служит лишь признаком продолжения, и разбор языка Python его
 			 *       отбрасывает вместе с обвязкой в конце строки
 			 */
-			this->_logical.append(::trim(line));
+			this->_logical.append(content);
 			/**
 			 * Выполняем добавление знака конца строки к логической строке
 			 *
 			 * @note Продолжение отступом знак конца строки сохраняет: значение,
 			 *       записанное таким образом, многострочным и задумано, и разбор
 			 *       языка Python склеивает его именно так
+			 *
+			 * @note Знак этот отображается на сам перенос исходного текста: своего
+			 *       знака в исходном тексте он не имеет, а место его - это место
+			 *       конца той строки, за которой он добавлен
 			 */
+			this->_pieces.emplace_back(this->_logical.size(), (offset + size), 1);
+			// Выполняем добавление знака конца строки к логической строке
 			this->_logical.push_back('\n');
 		}
 		// Выполняем переход к следующей физической строке
@@ -996,10 +1091,8 @@ bool awh::codec::ini::Reader::header(const string_view line, const size_t offset
 			const size_t placement = static_cast <size_t> (tail.data() - line.data());
 			// Запоминаем смещение удержанного примечания в исходном тексте
 			this->_tail.location.offset = (this->_base + offset + placement);
-			// Запоминаем номер строки удержанного примечания
-			this->_tail.location.line = this->_line;
-			// Запоминаем положение удержанного примечания в строке
-			this->_tail.location.column = this->column(this->_start, offset + placement);
+			// Выполняем получение места удержанного примечания в исходном тексте
+			this->place(offset + placement, this->_tail.location.line, this->_tail.location.column);
 			// Запоминаем признак того, что примечание ждёт своей выдачи
 			this->_pending = true;
 		}
@@ -1276,6 +1369,14 @@ bool awh::codec::ini::Reader::extract(const string_view text, const size_t posit
 	// Знак кавычки, которой значение открыто
 	char quote = 0;
 	/**
+	 * Положение кавычки, которой значение открыто
+	 *
+	 * @note Местом незакрытой кавычки служит она сама, а не начало значения: искать
+	 *       незакрытую кавычку читающему следует там, где она стоит, - тем более что
+	 *       значение вправе собираться из нескольких строк продолжения
+	 */
+	size_t opening = 0;
+	/**
 	 * Длина значения без пробельной обвязки в конце
 	 *
 	 * @note Обвязка отбрасывается лишь у части значения, записанной вне кавычек:
@@ -1308,9 +1409,16 @@ bool awh::codec::ini::Reader::extract(const string_view text, const size_t posit
 				/**
 				 * Если разбор управляющей последовательности выполнить не удалось
 				 */
-				if(!::unescape(value, i, length, this->_value, hexed))
+				if(!::unescape(value, i, length, this->_value, hexed)){
+					// Номер строки, на которой обнаружена ошибка
+					uint32_t line = 0;
+					// Положение ошибки в строке исходного текста
+					uint32_t column = 0;
+					// Выполняем получение места обнаруженной ошибки
+					this->place(offset + i, line, column);
 					// Выводим сообщение об ошибке разбора
-					return this->fail(error_t::INVALID_ESCAPE, offset + i, this->_line, this->column(this->_start, offset + i));
+					return this->fail(error_t::INVALID_ESCAPE, offset + i, line, column);
+				}
 				// Выполняем переход к знаку за управляющей последовательностью
 				i += (length - 1);
 				// Запоминаем длину значения без пробельной обвязки в конце
@@ -1333,6 +1441,8 @@ bool awh::codec::ini::Reader::extract(const string_view text, const size_t posit
 			quoted = true;
 			// Запоминаем знак кавычки, которой значение открыто
 			quote = value[i];
+			// Запоминаем положение кавычки, которой значение открыто
+			opening = i;
 			// Запоминаем признак того, что значение было заключено в кавычки
 			this->_property.quoted = true;
 			/**
@@ -1354,9 +1464,16 @@ bool awh::codec::ini::Reader::extract(const string_view text, const size_t posit
 			/**
 			 * Если разбор управляющей последовательности выполнить не удалось
 			 */
-			if(!::unescape(value, i, length, this->_value, hexed))
+			if(!::unescape(value, i, length, this->_value, hexed)){
+				// Номер строки, на которой обнаружена ошибка
+				uint32_t line = 0;
+				// Положение ошибки в строке исходного текста
+				uint32_t column = 0;
+				// Выполняем получение места обнаруженной ошибки
+				this->place(offset + i, line, column);
 				// Выводим сообщение об ошибке разбора
-				return this->fail(error_t::INVALID_ESCAPE, offset + i, this->_line, this->column(this->_start, offset + i));
+				return this->fail(error_t::INVALID_ESCAPE, offset + i, line, column);
+			}
 			// Выполняем переход к знаку за управляющей последовательностью
 			i += (length - 1);
 			// Запоминаем длину значения без пробельной обвязки в конце
@@ -1394,10 +1511,8 @@ bool awh::codec::ini::Reader::extract(const string_view text, const size_t posit
 				this->_tail.placement = placement_t::TAIL;
 				// Запоминаем смещение удержанного примечания в исходном тексте
 				this->_tail.location.offset = (this->_base + offset + i);
-				// Запоминаем номер строки удержанного примечания
-				this->_tail.location.line = this->_line;
-				// Запоминаем положение удержанного примечания в строке
-				this->_tail.location.column = this->column(this->_start, offset + i);
+				// Выполняем получение места удержанного примечания в исходном тексте
+				this->place(offset + i, this->_tail.location.line, this->_tail.location.column);
 				// Запоминаем признак того, что примечание ждёт своей выдачи
 				this->_pending = true;
 			}
@@ -1440,9 +1555,16 @@ bool awh::codec::ini::Reader::extract(const string_view text, const size_t posit
 	/**
 	 * Если кавычка значения не закрыта до конца строки
 	 */
-	if(quoted)
+	if(quoted){
+		// Номер строки, на которой обнаружена ошибка
+		uint32_t line = 0;
+		// Положение ошибки в строке исходного текста
+		uint32_t column = 0;
+		// Выполняем получение места незакрытой кавычки значения
+		this->place(offset + opening, line, column);
 		// Выводим сообщение об ошибке разбора
-		return this->fail(error_t::UNTERMINATED_QUOTE, offset, this->_line, this->column(this->_start, offset));
+		return this->fail(error_t::UNTERMINATED_QUOTE, (offset + opening), line, column);
+	}
 	/**
 	 * Если отбрасывание пробельной обвязки значения настройками разрешено
 	 */
@@ -1471,9 +1593,16 @@ bool awh::codec::ini::Reader::extract(const string_view text, const size_t posit
 			/**
 			 * Если последовательность знака построена ошибочно
 			 */
-			if((code == INVALID_CODEPOINT) || (length == 0))
+			if((code == INVALID_CODEPOINT) || (length == 0)){
+				// Номер строки, на которой обнаружена ошибка
+				uint32_t line = 0;
+				// Положение ошибки в строке исходного текста
+				uint32_t column = 0;
+				// Выполняем получение места обнаруженной ошибки
+				this->place(offset, line, column);
 				// Выводим сообщение об ошибке разбора
-				return this->fail(error_t::INVALID_ENCODING, offset, this->_line, this->column(this->_start, offset));
+				return this->fail(error_t::INVALID_ENCODING, offset, line, column);
+			}
 			// Выполняем переход к следующему знаку собранного значения
 			position += length;
 		}
@@ -1561,10 +1690,8 @@ bool awh::codec::ini::Reader::assign(const string_view line, const size_t offset
 			this->_tail.placement = placement_t::TAIL;
 			// Запоминаем смещение удержанного примечания в исходном тексте
 			this->_tail.location.offset = (this->_base + offset + note);
-			// Запоминаем номер строки удержанного примечания
-			this->_tail.location.line = this->_line;
-			// Запоминаем положение удержанного примечания в строке
-			this->_tail.location.column = this->column(this->_start, offset + note);
+			// Выполняем получение места удержанного примечания в исходном тексте
+			this->place(offset + note, this->_tail.location.line, this->_tail.location.column);
 			// Запоминаем признак того, что примечание ждёт своей выдачи
 			this->_pending = true;
 		}
@@ -1636,9 +1763,16 @@ bool awh::codec::ini::Reader::assign(const string_view line, const size_t offset
 		 *       первые начинают объявление раздела, а второй означает, что имя
 		 *       собралось из строк продолжения, чего запись не допускает
 		 */
-		if((key[i] == '[') || (key[i] == ']') || (key[i] == '\n') || (key[i] == '\r'))
+		if((key[i] == '[') || (key[i] == ']') || (key[i] == '\n') || (key[i] == '\r')){
+			// Номер строки, на которой обнаружена ошибка
+			uint32_t line = 0;
+			// Положение ошибки в строке исходного текста
+			uint32_t column = 0;
+			// Выполняем получение места обнаруженной ошибки
+			this->place(offset + placement + i, line, column);
 			// Выводим сообщение об ошибке разбора
-			return this->fail(error_t::INVALID_KEY, (offset + placement + i), this->_line, this->column(this->_start, offset + placement + i));
+			return this->fail(error_t::INVALID_KEY, (offset + placement + i), line, column);
+		}
 	}
 	/**
 	 * Если повторное объявление свойства признано ошибкой
@@ -1761,6 +1895,8 @@ void awh::codec::ini::Reader::reset() noexcept {
 	this->_logical.clear();
 	// Выполняем сброс ссылки на логическую строку
 	this->_current = string_view();
+	// Выполняем очистку отрезков собранной логической строки
+	this->_pieces.clear();
 	// Выполняем сброс признака удержанного примечания
 	this->_pending = false;
 	// Выполняем сброс удержанного примечания конца строки
