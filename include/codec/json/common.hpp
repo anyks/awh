@@ -51,6 +51,48 @@
 
 /**
  * \~russian
+ * @brief Принудительная подстановка горячих обращений кодека
+ *
+ * @details Обход дерева и снятие событий разбора - самые горячие пути кодека:
+ *          `valid()`, `kind()`, `next()`, `begin()`, `origin()` и `storage()` зовутся
+ *          на всякий узел либо на всякое событие, а работы в них - одна арифметика.
+ *          Оставленные в переводимом наборе кодека, они обращаются в вызовы через
+ *          границу единиц трансляции и стоят дороже самой работы
+ *
+ * @note Приём этот - принятое в AWH исключение из правила о чистых заголовочных файлах:
+ *       реализация живёт в `.cpp`, а для встраивания заводятся посредники с
+ *       `always_inline`. Смотри `include/encoding/ascii.hpp`
+ *
+ * \~english
+ * @brief Forced inlining of the hot accessors of the codec
+ * @details The traversal of the tree and the taking of the parsing events are the hottest paths of the codec:
+ * `valid()`, `kind()`, `next()`, `begin()`, `origin()` and `storage()` are called on every node
+ * or on every event, while the work in them is mere arithmetic. Left in the translation unit
+ * of the codec, they turn into calls across the boundary of the translation units and cost
+ * more than the work itself
+ * @note This device is an accepted exception in AWH from the rule about clean header files:
+ * the implementation lives in `.cpp`, while for the inlining mediators with
+ * `always_inline` are made. See `include/encoding/ascii.hpp`
+ *
+ * \~
+ */
+#if defined(_MSC_VER)
+	/**
+	 * Принудительная подстановка средствами Visual Studio
+	 */
+	#define AWH_JSON_INLINE __forceinline
+/**
+ * Если компилятор принадлежит к семейству GCC или Clang
+ */
+#else
+	/**
+	 * Принудительная подстановка средствами GCC и Clang
+	 */
+	#define AWH_JSON_INLINE inline __attribute__((always_inline))
+#endif
+
+/**
+ * \~russian
  * @brief Основное пространство имён
  *
  * \~english

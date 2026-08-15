@@ -55,45 +55,6 @@
  */
 #include "../../sys/macro_push.hpp"
 
-/**
- * \~russian
- * @brief Принудительная подстановка обхода дерева
- *
- * @details Обход дерева - самый горячий путь потребителя: `valid()`, `kind()`, `next()`
- *          и `begin()` зовутся на всякий узел, а работы в них - одна арифметика по
- *          перечню узлов. Оставленные в переводимом наборе кодека, они обращаются в
- *          вызовы через границу единиц трансляции и стоят дороже самой работы
- *
- * @note Приём этот - принятое в AWH исключение из правила о чистых заголовочных файлах:
- *       реализация живёт в `.cpp`, а для встраивания заводятся посредники с
- *       `always_inline`. Смотри `include/encoding/ascii.hpp`
- *
- * \~english
- * @brief Forced inlining of the traversal of the tree
- * @details The traversal of the tree is the hottest path of the consumer: `valid()`, `kind()`, `next()`
- * and `begin()` are called on every node, while the work in them is mere arithmetic over
- * the list of the nodes. Left in the translation unit of the codec, they turn into
- * calls across the boundary of the translation units and cost more than the work itself
- * @note This device is an accepted exception in AWH from the rule about clean header files:
- * the implementation lives in `.cpp`, while for the inlining mediators with
- * `always_inline` are made. See `include/encoding/ascii.hpp`
- *
- * \~
- */
-#if defined(_MSC_VER)
-	/**
-	 * Принудительная подстановка средствами Visual Studio
-	 */
-	#define AWH_JSON_INLINE __forceinline
-/**
- * Если компилятор принадлежит к семейству GCC или Clang
- */
-#else
-	/**
-	 * Принудительная подстановка средствами GCC и Clang
-	 */
-	#define AWH_JSON_INLINE inline __attribute__((always_inline))
-#endif
 
 /**
  * \~russian

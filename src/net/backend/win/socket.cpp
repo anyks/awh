@@ -1588,6 +1588,172 @@ awh::event::ecn_t awh::eth::Socket::getExplicitCongestionNotification(const net:
 	return static_cast <event::ecn_t> (value & 0x03);
 }
 /**
+ * @brief Функция получения расширенного вызова отправки сообщения с управляющими данными
+ *
+ * @details Вызов этот у MS Windows не объявлен наперёд: адрес его берётся у самого
+ *          сокета управляющим запросом - тем же порядком, каким берутся `AcceptEx`,
+ *          `ConnectEx` и `WSARecvMsg`. Берётся он однажды и запоминается: адрес общий
+ *          для всех сокетов библиотеки, а спрашивать его на каждую датаграмму значило
+ *          бы платить обращением к ядру за каждую отправку
+ *
+ * @param sock сокет, у которого спрашивается вызов
+ * @return     адрес расширенного вызова, либо пустое значение
+ *
+ */
+static LPFN_WSASENDMSG __awh_wsa_sendmsg__(const SOCKET sock) noexcept {
+	// Запомненный адрес расширенного вызова
+	static LPFN_WSASENDMSG result = nullptr;
+	// Если адрес уже взят
+	if(result != nullptr)
+		// Выводим запомненный адрес
+		return result;
+	// Опознаватель расширенного вызова отправки сообщения
+	GUID guid = WSAID_WSASENDMSG;
+	// Размер отданного адреса
+	DWORD size = 0;
+	// Если взять адрес расширенного вызова не удалось
+	if(::WSAIoctl(sock, SIO_GET_EXTENSION_FUNCTION_POINTER, &guid, sizeof(guid), &result, sizeof(result), &size, nullptr, nullptr) != 0)
+		// Сбрасываем адрес расширенного вызова
+		result = nullptr;
+	// Выводим адрес расширенного вызова
+	return result;
+}
+/**
+ * @brief Метод отправки датаграммы с меткой перегрузки в управляющих данных
+ *
+ * @details Метка едет вместе со своей датаграммой, а не ставится настройкой сокета: у
+ *          датаграммных серверов сокет один на все соединения, и датаграмма, полежавшая
+ *          в очереди отправки, ушла бы под меткой, выставленной уже другим соединением
+ *
+ * @note У MS Windows метка кладётся настройкой `IP_ECN` / `IPV6_ECN`, а не `IP_TOS` /
+ *       `IPV6_TCLASS`, как то заведено у систем POSIX. Настройки эти несут ТОЛЬКО два
+ *       разряда самой метки и класса обслуживания при себе не имеют - оттого в
+ *       управляющие данные и кладётся `traffic & 0x03`, а не весь октет. Класс
+ *       обслуживания задаётся здесь отдельным средством подсистемы качества
+ *       обслуживания (`win::qos`), настройкой сокета он не выставляется вовсе
+ *
+ * @note Отправка эта СИНХРОННА: расширенный вызов зовётся без наложения (`OVERLAPPED`
+ *       не подаётся), и к его возврату система с управляющими данными уже разобралась.
+ *       Оттого держать их на стеке здесь можно - требование пережить завершение
+ *       операции относится лишь к подаче с перекрытием
+ *
+ * @param sock    сетевой сокет
+ * @param buffer  буфер отправляемых данных
+ * @param size    размер буфера отправляемых данных
+ * @param flags   признаки отправки
+ * @param addr    адрес удалённого узла
+ * @param length  размер адреса удалённого узла
+ * @param family  семейство протоколов (IPv4 или IPv6)
+ * @param traffic значение поля класса обслуживания вместе с меткой перегрузки
+ * @return        количество отправленных октетов либо -1 при отказе
+ *
+ */
+ssize_t awh::eth::Socket::datagram(const net::socket_t sock, const void * buffer, const size_t size, const int32_t flags, const struct sockaddr * addr, const socklen_t length, const event::family_t family, const uint8_t traffic) const noexcept {
+	/**
+	 * Если метить датаграмму не требуется - отправляем обычным обращением
+	 *
+	 * @note Нулевое значение означает и нулевой класс обслуживания, и отсутствие метки
+	 *       перегрузки - строить ради него управляющие данные незачем
+	 */
+	if(traffic == 0)
+		// Выполняем отправку датаграммы обычным обращением
+		return static_cast <ssize_t> (::sendto(sock, reinterpret_cast <const char *> (buffer), static_cast <int32_t> (size), flags, addr, static_cast <int32_t> (length)));
+	/**
+	 * Если метка означает состоявшуюся перегрузку - отправляем датаграмму без неё
+	 *
+	 * @note Метку эту MS Windows отправителю ставить не даёт: управляющие данные с нею
+	 *       отвергаются отказом 10022 (WSAEINVAL) - проверено щупом на обоих семействах
+	 *       адресов. Право её ставить система оставляет за узлами пути, каким перегрузка
+	 *       и встретилась, а отправителю оставляет лишь заявить о своей готовности её
+	 *       принять. Отказывать в отправке из-за этого было бы неверно: датаграмма
+	 *       пропала бы вовсе, а расхождение прячется в свойствах системы, не в данных.
+	 *       Тем же порядком обходится у BSD и отсутствие метки IPv4 у NetBSD
+	 */
+	if((traffic & 0x03) == 0x03)
+		// Выполняем отправку датаграммы обычным обращением
+		return static_cast <ssize_t> (::sendto(sock, reinterpret_cast <const char *> (buffer), static_cast <int32_t> (size), flags, addr, static_cast <int32_t> (length)));
+	// Уровень управляющих данных и их название
+	int32_t level = IPPROTO_IP, option = IP_ECN;
+	/**
+	 * Определяем семейство протоколов события
+	 */
+	switch(static_cast <uint8_t> (family)){
+		// Для семейства IPv6
+		case static_cast <uint8_t> (event::family_t::IPV6): {
+			// Устанавливаем уровень управляющих данных
+			level = IPPROTO_IPV6;
+			// Устанавливаем название управляющих данных
+			option = IPV6_ECN;
+		} break;
+		// Для семейства IPv4 остаются взятые по умолчанию значения
+		case static_cast <uint8_t> (event::family_t::IPV4):
+		break;
+		// Для остальных семейств метить датаграмму нечем
+		default:
+			// Выполняем отправку датаграммы обычным обращением
+			return static_cast <ssize_t> (::sendto(sock, reinterpret_cast <const char *> (buffer), static_cast <int32_t> (size), flags, addr, static_cast <int32_t> (length)));
+	}
+	// Получаем расширенный вызов отправки сообщения
+	LPFN_WSASENDMSG send = ::__awh_wsa_sendmsg__(sock);
+	// Если расширенный вызов получить не удалось
+	if(send == nullptr)
+		// Выполняем отправку датаграммы обычным обращением
+		return static_cast <ssize_t> (::sendto(sock, reinterpret_cast <const char *> (buffer), static_cast <int32_t> (size), flags, addr, static_cast <int32_t> (length)));
+	// Буфер отправляемых данных
+	WSABUF data{};
+	// Устанавливаем размер буфера отправляемых данных
+	data.len = static_cast <ULONG> (size);
+	// Устанавливаем буфер отправляемых данных
+	data.buf = const_cast <CHAR *> (reinterpret_cast <const CHAR *> (buffer));
+	// Буфер управляющих данных отправки
+	uint8_t control[WSA_CMSG_SPACE(sizeof(INT))]{0};
+	// Устройство отправляемого сообщения
+	WSAMSG message{};
+	// Устанавливаем адрес удалённого узла
+	message.name = const_cast <LPSOCKADDR> (addr);
+	// Устанавливаем размер адреса удалённого узла
+	message.namelen = static_cast <INT> (length);
+	// Устанавливаем буфер отправляемых данных
+	message.lpBuffers = &data;
+	// Устанавливаем количество буферов отправляемых данных
+	message.dwBufferCount = 1;
+	// Устанавливаем буфер управляющих данных
+	message.Control.buf = reinterpret_cast <CHAR *> (control);
+	// Устанавливаем размер буфера управляющих данных
+	message.Control.len = static_cast <ULONG> (sizeof(control));
+	// Получаем заголовок управляющих данных
+	LPWSACMSGHDR cmsg = WSA_CMSG_FIRSTHDR(&message);
+	// Если заголовок управляющих данных получить не удалось
+	if(cmsg == nullptr)
+		// Выполняем отправку датаграммы обычным обращением
+		return static_cast <ssize_t> (::sendto(sock, reinterpret_cast <const char *> (buffer), static_cast <int32_t> (size), flags, addr, static_cast <int32_t> (length)));
+	/**
+	 * Значение метки перегрузки
+	 *
+	 * @note Кладутся лишь два младших разряда: настройка эта класса обслуживания при
+	 *       себе не несёт, и весь октет она приняла бы за метку целиком
+	 */
+	const INT value = static_cast <INT> (traffic & 0x03);
+	// Устанавливаем уровень управляющих данных
+	cmsg->cmsg_level = level;
+	// Устанавливаем тип управляющих данных
+	cmsg->cmsg_type = option;
+	// Устанавливаем размер управляющих данных
+	cmsg->cmsg_len = WSA_CMSG_LEN(sizeof(value));
+	// Устанавливаем значение метки перегрузки
+	::memcpy(WSA_CMSG_DATA(cmsg), &value, sizeof(value));
+	// Устанавливаем размер занятого буфера управляющих данных
+	message.Control.len = static_cast <ULONG> (WSA_CMSG_SPACE(sizeof(value)));
+	// Количество отправленных октетов
+	DWORD bytes = 0;
+	// Если отправить датаграмму с меткой перегрузки не удалось
+	if(send(sock, &message, static_cast <DWORD> (flags), &bytes, nullptr, nullptr) != 0)
+		// Выводим признак отказа отправки
+		return -1;
+	// Выводим количество отправленных октетов
+	return static_cast <ssize_t> (bytes);
+}
+/**
  * @brief Метод установки признака перегрузки в заголовке IP-пакета
  *
  * @param sock   сетевой сокет

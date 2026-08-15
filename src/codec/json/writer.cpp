@@ -687,6 +687,51 @@ bool awh::codec::json::Writer::value(const double value) noexcept {
 	if((length <= 0) || (static_cast <size_t> (length) >= sizeof(buffer)))
 		// Выводим признак неуспешности записи
 		return false;
+	/**
+	 * Выполняем поиск буквы порядка в записи числа
+	 *
+	 * @details Подбор выше идёт по точности, а не по длине записи, и на числе 100
+	 * останавливается на «1e+02»: запись эта читается обратно тем же числом уже при
+	 * одной значащей цифре. Запись же «100» и короче, и привычнее
+	 *
+	 * @note Проверка эта дешева и делается лишь при наличии буквы порядка: у записей
+	 *       без неё вида «-3.5» подбор по точности кратчайшую и даёт
+	 */
+	const char * power = static_cast <const char *> (::memchr(buffer, 'e', static_cast <size_t> (length)));
+	/**
+	 * Если запись числа содержит букву порядка
+	 */
+	if(power != nullptr){
+		// Получаем значение порядка записи числа
+		const int32_t exponent = ::atoi(power + 1);
+		/**
+		 * Если запись числа без порядка уместится в подобранное хранилище
+		 */
+		if((exponent >= 0) && (exponent < static_cast <int32_t> (numeric_limits <double>::max_digits10))){
+			// Хранилище записи числа без порядка
+			char plain[64];
+			// Выполняем запись числа точностью, какой хватит на запись без порядка
+			const int32_t size = ::snprintf(plain, sizeof(plain), "%.*g", (exponent + 1), value);
+			/**
+			 * Если запись без порядка вышла короче подобранной
+			 */
+			if((size > 0) && (size < length)){
+				// Прочитанное обратно значение записанного числа
+				double back = 0.;
+				// Выполняем разбор записанного числа без порядка
+				const lexical_t::result_t <char> res = lexical_t::fromChars(plain, plain + static_cast <size_t> (size), back);
+				/**
+				 * Если запись без порядка читается обратно тем же самым числом
+				 */
+				if(static_cast <bool> (res) && (res.ptr == (plain + static_cast <size_t> (size))) && (back == value)){
+					// Выполняем перенос записи без порядка в хранилище записи числа
+					::memcpy(buffer, plain, static_cast <size_t> (size));
+					// Запоминаем длину записи числа без порядка
+					length = size;
+				}
+			}
+		}
+	}
 	// Получаем полученную запись числа с плавающей запятой
 	string result(buffer, static_cast <size_t> (length));
 	/**

@@ -127,5 +127,9 @@ $ROOT/submodule.sh add yyjson https://github.com/ibireme/yyjson.git
 $ROOT/submodule.sh remove simdjson
 $ROOT/submodule.sh add simdjson https://github.com/simdjson/simdjson.git
 
+# Выполняем пересборку сабмодуля rapidjson
+$ROOT/submodule.sh remove rapidjson
+$ROOT/submodule.sh add rapidjson https://github.com/Tencent/rapidjson.git
+
 # Выводим список добавленных модулей
 cat $ROOT/../.gitmodules

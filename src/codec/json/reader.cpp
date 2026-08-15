@@ -701,16 +701,6 @@ bool awh::codec::json::Reader::next() noexcept {
 	return true;
 }
 /**
- * @brief Метод извлечения вида текущего события
- *
- * @return вид текущего события
- *
- */
-awh::codec::json::event_t awh::codec::json::Reader::event() const noexcept {
-	// Выводим вид текущего события
-	return this->_current.event;
-}
-/**
  * @brief Метод извлечения значения текущего события
  *
  * @return значение текущего события
@@ -765,26 +755,6 @@ awh::codec::json::Reader::value_t awh::codec::json::Reader::value() const noexce
 	return result;
 }
 /**
- * @brief Метод извлечения указания на содержимое текущего события
- *
- * @return указание на содержимое текущего события
- *
- */
-awh::codec::json::span_t awh::codec::json::Reader::content() const noexcept {
-	// Выводим указание на содержимое текущего события
-	return this->_current.content;
-}
-/**
- * @brief Метод извлечения хранилища знаков разбора
- *
- * @return хранилище знаков разбора
- *
- */
-const string & awh::codec::json::Reader::storage() const noexcept {
-	// Выводим хранилище знаков разбора
-	return this->_storage;
-}
-/**
  * @brief Метод установки удержания хранилища знаков
  *
  * @param mode устанавливаемый признак удержания хранилища знаков
@@ -807,16 +777,6 @@ void awh::codec::json::Reader::release(string & storage) noexcept {
 	storage = ::std::move(this->_storage);
 	// Выполняем очистку хранилища знаков разбора
 	this->_storage.clear();
-}
-/**
- * @brief Метод извлечения количества байтов, выброшенных из хранилища знаков
- *
- * @return количество байтов, выброшенных из хранилища знаков
- *
- */
-uint64_t awh::codec::json::Reader::origin() const noexcept {
-	// Выводим количество байтов, выброшенных из хранилища знаков
-	return this->_origin;
 }
 /**
  * @brief Метод извлечения положения текущего события в исходном тексте

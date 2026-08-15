@@ -837,7 +837,10 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					event_t event() const noexcept;
+					AWH_JSON_INLINE event_t event() const noexcept {
+						// Выводим вид текущего события
+						return this->_current.event;
+					}
 					/**
 					 * \~russian
 					 * @brief Метод извлечения значения текущего события
@@ -872,7 +875,10 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					span_t content() const noexcept;
+					AWH_JSON_INLINE span_t content() const noexcept {
+						// Выводим указание на содержимое текущего события
+						return this->_current.content;
+					}
 					/**
 					 * \~russian
 					 * @brief Метод извлечения хранилища знаков разбора
@@ -885,7 +891,10 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					const string & storage() const noexcept;
+					AWH_JSON_INLINE const string & storage() const noexcept {
+						// Выводим хранилище знаков разбора
+						return this->_storage;
+					}
 					/**
 					 * \~russian
 					 * @brief Метод установки удержания хранилища знаков
@@ -950,7 +959,10 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					uint64_t origin() const noexcept;
+					AWH_JSON_INLINE uint64_t origin() const noexcept {
+						// Выводим количество байтов, выброшенных из хранилища знаков
+						return this->_origin;
+					}
 					/**
 					 * \~russian
 					 * @brief Метод извлечения положения текущего события в исходном тексте
