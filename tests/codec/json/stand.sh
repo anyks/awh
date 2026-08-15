@@ -1,0 +1,71 @@
+#!/bin/sh
+#
+# @file stand.sh
+# @date 2026-08-15
+#
+# @license{LicenseRef-AWH-1.0}
+#
+# @author Yuriy Lobarev
+#
+# @brief Отдельный стенд проверок кодека JSON — сборка набора проверок без библиотеки
+#        целиком, ради прогона на отладочных стендах
+#
+# @details Кодек JSON опирается лишь на заголовочные файлы разбора чисел, и собрать его
+#          проверки можно шестью вызовами собирателя. Полная сборка библиотеки на стендах
+#          занимает десятки минут и тянет за собою третью сторону, тогда как проверить
+#          требуется один кодек
+#
+# @note Из тела библиотеки нужен один-единственный файл — таблица степеней пятёрки
+#       модуля разбора чисел: она лежит в теле, а не в заголовке
+#
+# @copyright Copyright © 2026
+#
+# Вызов:
+#   tests/codec/json/stand.sh [корень дерева] [каталог сборки]
+#
+# Переменные окружения:
+#   CXX        — собиратель, по умолчанию «c++»
+#   GTEST_ROOT — корень набора GoogleTest, по умолчанию «/usr»
+#   FLAGS      — добавочные ключи сборки
+#
+
+# Прекращаем работу при первом же отказе
+set -e
+
+# Получаем корень дерева исходных текстов
+ROOT="${1:-$(cd "$(dirname "$0")/../../.." && pwd)}"
+
+# Получаем каталог собранного стенда
+OUTPUT="${2:-/tmp/awh-json-stand}"
+
+# Получаем корень набора GoogleTest
+GTEST="${GTEST_ROOT:-/usr}"
+
+# Получаем собиратель
+COMPILER="${CXX:-c++}"
+
+# Собираем ключи сборки стенда
+OPTIONS="-O2 -std=c++17 -I$ROOT/include -I$GTEST/include $FLAGS"
+
+# Выполняем заведение каталога собранного стенда
+mkdir -p "$OUTPUT"
+
+# Выводим сообщение о начале сборки стенда
+echo "Собираем стенд проверок JSON: $COMPILER"
+
+# Выполняем сборку таблицы степеней пятёрки модуля разбора чисел
+$COMPILER $OPTIONS -c "$ROOT/src/num/lexical/table.cpp" -o "$OUTPUT/lexical-table.o"
+
+# Выполняем перебор всех частей кодека JSON
+for PART in common encoding reader writer document; do
+	# Выполняем сборку очередной части кодека JSON
+	$COMPILER $OPTIONS -c "$ROOT/src/codec/json/$PART.cpp" -o "$OUTPUT/codec-$PART.o"
+	# Выполняем сборку проверок очередной части кодека JSON
+	$COMPILER $OPTIONS -c "$ROOT/tests/codec/json/$PART.cpp" -o "$OUTPUT/test-$PART.o"
+done
+
+# Выполняем связывание стенда проверок
+$COMPILER $OPTIONS "$OUTPUT"/*.o -L"$GTEST/lib" -lgtest -lgtest_main -pthread -o "$OUTPUT/json-tests"
+
+# Выводим сообщение об окончании сборки стенда
+echo "Стенд собран: $OUTPUT/json-tests"
