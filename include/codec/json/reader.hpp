@@ -554,17 +554,19 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод разбора приведённого к UTF-8 текста
 					 *
-					 * @param text разбираемый текст
+					 * @param text буфер разбираемого текста
+					 * @param size размер буфера разбираемого текста
 					 * @return     признак успешности разбора
 					 *
 					 * \~english
 					 * @brief Method of the parsing of a text brought to UTF-8
-					 * @param text text being parsed
+					 * @param text buffer of the text being parsed
+					 * @param size size of the buffer of the text being parsed
 					 * @return sign of the success of the parsing
 					 *
 					 * \~
 					 */
-					bool process(const string & text) noexcept;
+					bool process(const char * text, const size_t size) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод разбора одного знака текста

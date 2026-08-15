@@ -209,6 +209,51 @@ namespace awh {
 			 * \~
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Decoder {
+				public:
+					/**
+					 * \~russian
+					 * @brief Кусок текста, проверенного на месте
+					 *
+					 * @details Проверка на месте текста, уже отвечающего кодировке UTF-8, ничего
+					 * никуда не переносит, а лишь указывает на проверенное. Кусок состоит из двух
+					 * частей: доведённой последовательности знака, разорванного границей
+					 * предыдущего куска, и отрезка внутри поданного буфера
+					 *
+					 * @warning Указания живут лишь до следующего вызова проверки, а отрезок тела -
+					 * лишь пока жив поданный буфер
+					 *
+					 * \~english
+					 * @brief Chunk of a text verified in place
+					 * @details The verification in place of a text already conforming to the UTF-8 encoding moves
+					 * nothing anywhere, but merely points at what has been verified. The chunk consists of two
+					 * parts: the completed sequence of a character torn by the boundary of the
+					 * previous chunk, and a segment inside the passed buffer
+					 * @warning The pointers live only until the next call of the verification, and the segment of the body -
+					 * only while the passed buffer is alive
+					 *
+					 * \~
+					 */
+					typedef struct Chunk {
+						// Буфер доведённой последовательности знака
+						const char * head;
+						// Размер доведённой последовательности знака
+						size_t count;
+						// Буфер отрезка проверенного текста
+						const char * body;
+						// Размер отрезка проверенного текста
+						size_t length;
+						/**
+						 * \~russian
+						 * @brief Конструктор
+						 *
+						 *
+						 * \~english
+						 * @brief Constructor
+						 *
+						 * \~
+						 */
+						Chunk() noexcept : head(nullptr), count(0), body(nullptr), length(0) {}
+					} chunk_t;
 				private:
 					// Определённая кодировка исходного текста
 					encoding_t _encoding;
@@ -236,6 +281,16 @@ namespace awh {
 				private:
 					// Удержанные байты незавершённой последовательности знака
 					char _pending[4];
+				private:
+					/**
+					 * Байты последовательности знака, доведённой очередным куском
+					 *
+					 * @note Буфер этот отдельный от удержанных байтов намеренно: доведённая
+					 *       последовательность выдаётся указанием наружу, а проверка остатка
+					 *       того же куска успевает удержать в буфере удержанных байтов новый
+					 *       разорванный знак
+					 */
+					char _complete[4];
 				private:
 					// Удержанная старшая половина суррогатной пары
 					uint32_t _surrogate;
@@ -279,6 +334,35 @@ namespace awh {
 					 * \~
 					 */
 					bool process(const char * buffer, const size_t size, const bool end, string & result) noexcept;
+				private:
+					/**
+					 * \~russian
+					 * @brief Метод проверки правильности построения знаков кодировки UTF-8
+					 *
+					 * @details Ничего никуда не переносит: продвигает положение по проверенному
+					 * тексту. Последовательность знака, разорванная границей куска, удерживается
+					 * до следующего куска, а положение остаётся концом проверенного
+					 *
+					 * @param buffer буфер проверяемых байтов исходного текста
+					 * @param size   размер буфера проверяемых байтов исходного текста
+					 * @param offset положение разбираемого байта в переданном буфере
+					 * @param end    признак того, что проверяемые байты являются последними
+					 * @return       результат выполнения операции
+					 *
+					 * \~english
+					 * @brief Method of the verification of the correctness of the construction of the characters of the UTF-8 encoding
+					 * @details Moves nothing anywhere: advances the position over the verified
+					 * text. A sequence of a character torn by the boundary of a chunk is held
+					 * until the next chunk, and the position remains the end of what has been verified
+					 * @param buffer buffer of the bytes of the source text being verified
+					 * @param size   size of the buffer of the bytes of the source text being verified
+					 * @param offset position of the byte being parsed in the passed buffer
+					 * @param end    flag of the bytes being verified being the last ones
+					 * @return       result of performing the operation
+					 *
+					 * \~
+					 */
+					bool scan(const char * buffer, const size_t size, size_t & offset, const bool end) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -362,6 +446,64 @@ namespace awh {
 					 * \~
 					 */
 					bool convert(const void * buffer, const size_t size, const bool end, string & result) noexcept;
+				public:
+					/**
+					 * \~russian
+					 * @brief Метод получения признака возможности проверки текста на месте
+					 *
+					 * @details Проверять текст на месте можно тогда, когда кодировка его уже
+					 * определена и оказалась UTF-8: приводить в таком случае нечего, и остаётся
+					 * лишь удостовериться в правильности построения знаков
+					 *
+					 * @return признак возможности проверки текста на месте
+					 *
+					 * \~english
+					 * @brief Method of getting the flag of the possibility of the verification of the text in place
+					 * @details The text can be verified in place when its encoding has already been
+					 * determined and turned out to be UTF-8: there is nothing to convert in such a case, and there
+					 * remains only to make sure of the correctness of the construction of the characters
+					 * @return flag of the possibility of the verification of the text in place
+					 *
+					 * \~
+					 */
+					bool direct() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод проверки куска исходного текста на месте
+					 *
+					 * @details Ничего никуда не переносит: проверяет правильность построения знаков
+					 * и указывает на проверенное внутри поданного буфера. Последовательность знака,
+					 * разорванная границей куска, удерживается до следующего куска, как и при приведении
+					 *
+					 * @warning Вызывается лишь тогда, когда проверка на месте возможна
+					 *
+					 * @note Кусок заполняется и при отказе: проверенное прежде места отказа обязано
+					 * быть разобрано, иначе положение отказа зависело бы от нарезки текста на куски
+					 *
+					 * @param buffer буфер очередного куска исходного текста
+					 * @param size   размер буфера очередного куска исходного текста
+					 * @param end    признак того, что кусок является последним
+					 * @param chunk  кусок, заполняемый указаниями на проверенное
+					 * @return       результат выполнения операции
+					 *
+					 * \~english
+					 * @brief Method of the verification of a chunk of the source text in place
+					 * @details Moves nothing anywhere: verifies the correctness of the construction of the characters
+					 * and points at what has been verified inside the passed buffer. A sequence of a character
+					 * torn by the boundary of a chunk is held until the next chunk, as with the conversion
+					 * @warning It is called only when the verification in place is possible
+					 * @note The chunk is filled in on a failure as well: what has been verified before the place of the
+					 * failure must be parsed, otherwise the position of the failure would depend on the cutting of the
+					 * text into chunks
+					 * @param buffer buffer of the next chunk of the source text
+					 * @param size   size of the buffer of the next chunk of the source text
+					 * @param end    flag of the chunk being the last one
+					 * @param chunk  chunk filled in with the pointers at what has been verified
+					 * @return       result of performing the operation
+					 *
+					 * \~
+					 */
+					bool verify(const void * buffer, const size_t size, const bool end, chunk_t & chunk) noexcept;
 				public:
 					/**
 					 * \~russian

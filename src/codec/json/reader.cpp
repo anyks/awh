@@ -305,21 +305,20 @@ size_t awh::codec::json::Reader::bulk(const char * buffer, const size_t size) no
 /**
  * @brief Метод разбора приведённого к UTF-8 текста
  *
- * @param text разбираемый текст
+ * @param text буфер разбираемого текста
+ * @param size размер буфера разбираемого текста
  * @return     признак успешности разбора
  *
  */
-bool awh::codec::json::Reader::process(const string & text) noexcept {
+bool awh::codec::json::Reader::process(const char * text, const size_t size) noexcept {
 	// Положение разбираемого знака в тексте
 	size_t index = 0;
-	// Размер разбираемого текста
-	const size_t size = text.size();
 	/**
 	 * Выполняем разбор всего поданного текста
 	 */
 	while(index < size){
 		// Выполняем быстрый проход по знакам, состояния не меняющим
-		const size_t length = this->bulk(text.data() + index, size - index);
+		const size_t length = this->bulk(text + index, size - index);
 		/**
 		 * Если быстрый проход прошёл хотя бы один знак
 		 */
@@ -379,38 +378,94 @@ bool awh::codec::json::Reader::feed(const char * buffer, const size_t size, cons
 	// Очищаем хранилище перекодированного текста
 	this->_decoded.clear();
 	/**
-	 * Если кодировка навязана настройками разбора
+	 * Если кодировка навязана настройками разбора и приведению ещё не сообщена
+	 *
+	 * @note Кодировка навязывается лишь однажды: сменить её посреди текста нельзя,
+	 *       и повторное указание той же кодировки отвергалось бы отказом, обращая
+	 *       подачу текста кусками в ошибку неподдерживаемой кодировки
 	 */
-	if((this->_settings.encoding != encoding_t::NONE) && !this->_decoder.encoding(this->_settings.encoding))
+	if((this->_settings.encoding != encoding_t::NONE) && (this->_decoder.encoding() != this->_settings.encoding) &&
+	   !this->_decoder.encoding(this->_settings.encoding))
 		// Выводим ошибку неподдерживаемой кодировки
 		return ((this->_error = error_t::UNSUPPORTED_ENCODING) == error_t::NONE);
 	/**
-	 * Если приведение поданного текста к кодировке UTF-8 завершилось отказом
+	 * Если поданный текст уже отвечает кодировке UTF-8
+	 *
+	 * @note Приводить в таком случае нечего: текст проверяется на месте и разбирается
+	 *       прямо из поданного буфера, не перенося ни байта в отдельное хранилище
 	 */
-	if(!this->_decoder.convert(buffer, size, this->_last, this->_decoded)){
+	if(this->_decoder.direct()){
+		// Кусок текста, проверенного на месте
+		decoder_t::chunk_t chunk;
+		// Выполняем проверку поданного текста на месте
+		const bool result = this->_decoder.verify(buffer, size, this->_last, chunk);
 		/**
-		 * Выполняем разбор того, что успело быть приведено
+		 * Если последовательность знака, разорванная границей предыдущего куска, доведена
+		 */
+		if((chunk.head != nullptr) && (chunk.count > 0)){
+			/**
+			 * Если разбор доведённого знака завершился отказом
+			 */
+			if(!this->process(chunk.head, chunk.count))
+				// Выводим признак неудачного разбора
+				return false;
+		}
+		/**
+		 * Если проверенный отрезок текста получен
 		 *
-		 * @note Разбор ведётся прежде выдачи отказа приведения намеренно: отказ разбора,
+		 * @note Разбор ведётся прежде выдачи отказа проверки намеренно: отказ разбора,
 		 *       случившийся раньше в тексте, обязан быть выдан раньше, иначе положение
 		 *       отказа зависело бы от нарезки текста на куски
 		 */
-		this->process(this->_decoded);
+		if((chunk.body != nullptr) && (chunk.length > 0)){
+			/**
+			 * Если разбор проверенного отрезка текста завершился отказом
+			 */
+			if(!this->process(chunk.body, chunk.length))
+				// Выводим признак неудачного разбора
+				return false;
+		}
 		/**
-		 * Если разбор отказа не выдал
+		 * Если проверка поданного текста завершилась отказом
 		 */
-		if(this->_error == error_t::NONE)
-			// Устанавливаем код отказа приведения кодировки
+		if(!result){
+			// Устанавливаем код отказа проверки кодировки
 			this->_error = this->_decoder.error();
-		// Выводим признак неудачного разбора
-		return false;
-	}
+			// Выводим признак неудачного разбора
+			return false;
+		}
 	/**
-	 * Если разбор приведённого текста завершился отказом
+	 * Если поданный текст требует приведения к кодировке UTF-8
 	 */
-	if(!this->process(this->_decoded))
-		// Выводим признак неудачного разбора
-		return false;
+	} else {
+		/**
+		 * Если приведение поданного текста к кодировке UTF-8 завершилось отказом
+		 */
+		if(!this->_decoder.convert(buffer, size, this->_last, this->_decoded)){
+			/**
+			 * Выполняем разбор того, что успело быть приведено
+			 *
+			 * @note Разбор ведётся прежде выдачи отказа приведения намеренно: отказ разбора,
+			 *       случившийся раньше в тексте, обязан быть выдан раньше, иначе положение
+			 *       отказа зависело бы от нарезки текста на куски
+			 */
+			this->process(this->_decoded.data(), this->_decoded.size());
+			/**
+			 * Если разбор отказа не выдал
+			 */
+			if(this->_error == error_t::NONE)
+				// Устанавливаем код отказа приведения кодировки
+				this->_error = this->_decoder.error();
+			// Выводим признак неудачного разбора
+			return false;
+		}
+		/**
+		 * Если разбор приведённого текста завершился отказом
+		 */
+		if(!this->process(this->_decoded.data(), this->_decoded.size()))
+			// Выводим признак неудачного разбора
+			return false;
+	}
 	/**
 	 * Если подан последний кусок текста
 	 */
