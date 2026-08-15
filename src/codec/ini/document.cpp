@@ -751,8 +751,15 @@ bool awh::codec::ini::Document::expand(const string_view value, const uint32_t s
 		const uint32_t source = ((this->_settings.reader.duplicates == duplicate_t::LAST) ? j->second.back() : j->second.front());
 		/**
 		 * Если разрешение значения, к которому обращено, выполнить не удалось
+		 *
+		 * @note Берётся значение записанное, а не разрешённое прежде, - по тому же
+		 *       доводу, по какому его берёт и сама подстановка. Разрешение разрешённого
+		 *       подставляет дважды: свойство «b = $${x}» разрешается в запись «${x}»,
+		 *       и обращение «a = ${b}», прочитав разрешённое, приняло бы её за
+		 *       обращение к «x» - удвоение знака, служащее записи его самого,
+		 *       переставало бы служить при первом же пересчёте после правки дерева
 		 */
-		if(!this->expand(this->get(this->_records.at(source).value), target, stack, budget, result))
+		if(!this->expand(this->get(this->_records.at(source).raw), target, stack, budget, result))
 			// Выводим отрицательный результат выполнения операции
 			return false;
 		// Выполняем изъятие свойства из перечня разрешаемых
