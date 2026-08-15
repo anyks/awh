@@ -1802,7 +1802,7 @@ namespace {
 	 * @param chunked перечень событий подачи кусками
 	 *
 	 */
-	void truncate(vector <Event> & whole, vector <Event> & chunked) noexcept {
+	void clip(vector <Event> & whole, vector <Event> & chunked) noexcept {
 		/**
 		 * @brief Метод проверки события на принадлежность к содержимому
 		 *
@@ -2017,7 +2017,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 			 */
 			if(!options.mergeText && (reached == xml::state_t::FAILED))
 				// Выполняем усечение содержимого, выданного до обнаружения отказа
-				::truncate(whole, chunked);
+				::clip(whole, chunked);
 			// Если перечни выданных разбором событий разошлись
 			if(!::compare(whole, chunked, chunk, text, options))
 				// Выходим из приложения с кодом ошибки
@@ -2120,7 +2120,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 						 */
 						if(arrived == xml::state_t::FAILED)
 							// Выполняем усечение содержимого, выданного до обнаружения отказа
-							::truncate(narrow, broad);
+							::clip(narrow, broad);
 					}
 					// Если перечни выданных разбором событий разошлись
 					if(!::compare(narrow, broad, chunk, text, relaxed)){
