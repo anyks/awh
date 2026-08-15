@@ -1010,9 +1010,22 @@ static bool __awh_pool_receive__(const SOCKET sock, void * buffer, const size_t 
  * @return       размер принятых данных
  *
  */
+/**
+ * @brief Функция опознания описателя именованного канала
+ *
+ * @note Объявлена наперёд: посредники приёма и передачи спрашивают её отсюда, а
+ *       описана она ниже - рядом с прочими посредниками обращений к сокетам
+ *
+ * @param sock описатель, вид которого выясняется
+ * @return     признак того, что описатель является именованным каналом
+ *
+ */
+static bool __awh_pipe__(const SOCKET sock) noexcept;
 static int32_t __awh_recv__(const SOCKET sock, void * buffer, const size_t size, const int32_t flags) noexcept {
 	// Размер принятых данных, добытый родным приёмом
 	ssize_t fetched = 0;
+	// ВРЕМЕННЫЙ ЩУП: обращение приёмом сокета к описателю канала
+	if((::getenv("AWH_PIPE_PROBE") != nullptr) && ::__awh_pipe__(sock)) ::fprintf(stderr, "PIPEMISS recv fd=%llu\n", (unsigned long long) sock);
 	/**
 	 * Если приём обслужен родным путём - к системе не обращаемся вовсе
 	 *
@@ -1066,6 +1079,8 @@ static int32_t __awh_recv__(const SOCKET sock, void * buffer, const size_t size,
  *
  */
 static int32_t __awh_send__(const SOCKET sock, const void * buffer, const size_t size, const int32_t flags) noexcept {
+	// ВРЕМЕННЫЙ ЩУП: обращение отправкой сокета к описателю канала
+	if((::getenv("AWH_PIPE_PROBE") != nullptr) && ::__awh_pipe__(sock)) ::fprintf(stderr, "PIPEMISS send fd=%llu\n", (unsigned long long) sock);
 	// Выводим размер переданных данных
 	return ::__awh_socket_result__(::send(sock, reinterpret_cast <const char *> (buffer), static_cast <int32_t> (size), flags));
 }
@@ -1906,6 +1921,9 @@ static ssize_t __awh_pipe_transfer__(const SOCKET sock, void * buffer, const siz
 		return static_cast <ssize_t> (bytes);
 	// Получаем код отказа обмена
 	const DWORD error = ::GetLastError();
+	// ВРЕМЕННЫЙ ЩУП: печать настоящего кода отказа обмена
+	if(::getenv("AWH_PIPE_PROBE") != nullptr)
+		::fprintf(stderr, "PIPEPROBE %s error=%lu\n", (write ? "write" : "read"), static_cast <unsigned long> (error));
 	// Если обмен принят системой, но не завершён
 	if(error == ERROR_IO_PENDING){
 		// Снимаем незавершённое обращение
@@ -15429,9 +15447,21 @@ namespace io {
 		 */
 		try {
 			/**
-			 * Определяем тип сокета
+			 * Разбор ведётся по типу сокета, но у канала решает семейство
+			 *
+			 * @details Ветвь обмена с именованным каналом лежит под неопределённым типом, а
+			 *          заводят канал и потоковым, и дейтаграммным - тип этот у пары задаёт
+			 *          зовущая сторона. Разбор по типу уводил тогда работу к обращениям
+			 *          сокета, а описатель канала сокетом не является: приём отвечал отказом
+			 *          10038, обращаемым в EBADF, и обмен не шёл вовсе
+			 *
+			 * @note Тип у канала ни на что не влияет: сообщения он несёт при любом, а строй
+			 *       сообщений задаётся при заведении описателя, не типом узла
+			 *
 			 */
-			switch(static_cast <uint8_t> (ipc->state.type)){
+			const uint8_t kind = ((ipc->state.family == event::family_t::PIPE) ?
+			 static_cast <uint8_t> (event::type_t::NONE) : static_cast <uint8_t> (ipc->state.type));
+			switch(kind){
 				// Если событие принадлежит к типу PIPE
 				case static_cast <uint8_t> (event::type_t::NONE): {
 					/**
@@ -20222,9 +20252,21 @@ namespace io {
 			// Если есть данные для отправки в сокет
 			if(!ipc->transfer.queue.empty()){
 				/**
-				 * Определяем тип сокета
+				 * Разбор ведётся по типу сокета, но у канала решает семейство
+				 *
+				 * @details Ветвь обмена с именованным каналом лежит под неопределённым типом, а
+				 *          заводят канал и потоковым, и дейтаграммным - тип этот у пары задаёт
+				 *          зовущая сторона. Разбор по типу уводил тогда работу к обращениям
+				 *          сокета, а описатель канала сокетом не является: приём отвечал отказом
+				 *          10038, обращаемым в EBADF, и обмен не шёл вовсе
+				 *
+				 * @note Тип у канала ни на что не влияет: сообщения он несёт при любом, а строй
+				 *       сообщений задаётся при заведении описателя, не типом узла
+				 *
 				 */
-				switch(static_cast <uint8_t> (ipc->state.type)){
+				const uint8_t kind = ((ipc->state.family == event::family_t::PIPE) ?
+				 static_cast <uint8_t> (event::type_t::NONE) : static_cast <uint8_t> (ipc->state.type));
+				switch(kind){
 					// Если событие принадлежит к типу PIPE
 					case static_cast <uint8_t> (event::type_t::NONE): {
 						/**
@@ -33003,8 +33045,15 @@ namespace io {
 						if(ipc->transfer.fd != net::invalid_socket_t){
 							// Если процесс является родительским
 							if(::__awh_pid__ == ::getpid()){
-								// Если в сокете нет ошибок
-								if(eth->socket.getError(ipc->transfer.fd) == 0){
+								/**
+								 * Если в сокете нет ошибок
+								 *
+								 * @note У именованного канала ошибку не спрашивают вовсе: описатель его сокетом
+								 *       не является, и запрос отвечает отказом 10038, обращаемым в EBADF. Отказ
+								 *       этот не только сорил бы в журнал, но и уводил бы работу мимо снятия
+								 *       подписки - условие ниже не выполнялось бы никогда
+								 */
+								if((ipc->state.family == event::family_t::PIPE) || (eth->socket.getError(ipc->transfer.fd) == 0)){
 									// Если очередь опроса заведена
 									if(::__awh_ep__ != net::invalid_socket_t){
 										// Создаём запись списка изменений
@@ -68929,8 +68978,15 @@ void awh::engine::IO::clear() noexcept {
 						if(ipc->transfer.fd != net::invalid_socket_t){
 							// Если процесс является родительским
 							if(::__awh_pid__ == ::getpid()){
-								// Если в сокете нет ошибок
-								if(this->_eth.socket.getError(ipc->transfer.fd) == 0){
+								/**
+								 * Если в сокете нет ошибок
+								 *
+								 * @note У именованного канала ошибку не спрашивают вовсе: описатель его сокетом
+								 *       не является, и запрос отвечает отказом 10038, обращаемым в EBADF. Отказ
+								 *       этот не только сорил бы в журнал, но и уводил бы работу мимо снятия
+								 *       подписки - условие ниже не выполнялось бы никогда
+								 */
+								if((ipc->state.family == event::family_t::PIPE) || (this->_eth.socket.getError(ipc->transfer.fd) == 0)){
 									// Создаём запись списка изменений
 									::change::record_t event{};
 									// Деактивируем событие на чтение данных из сокета

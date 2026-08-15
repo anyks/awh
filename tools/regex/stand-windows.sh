@@ -15,6 +15,20 @@
 
 set -e
 
+# Служебные метки файловой системы macOS в передаваемые наборы не кладутся:
+# распаковщики прочих систем на них жалуются отказом «Extended header record
+# length is out of range», и виден он лишь на стенде, а не на рабочей машине
+COPYFILE_DISABLE=1
+export COPYFILE_DISABLE
+
+# Набор пишется видом ustar, а не видом pax
+#
+# Каталоги дерева несут метки файловой системы macOS - значки и ярлыки, -
+# и вид pax выносит их в расширенные заголовки. Распаковщик OpenBSD такие
+# заголовки разбирает неверно и валит распаковку отказом «Extended header
+# record length is out of range», а на рабочей машине изъян не виден вовсе.
+# Вид ustar расширенных заголовков не имеет; длины путей набора ему отвечают.
+
 TARGET="$1"
 TOOLSET="${2:-x64}"
 PORT="${3:-22}"
@@ -85,7 +99,7 @@ fi
 # Передача ведётся через ввод tar, а не средством scp: подсистема sftp на
 # стенде отключена, и scp обрывает связь
 # shellcheck disable=SC2086
-tar czf - -C "$ROOT" \
+tar --format ustar -czf - -C "$ROOT" \
 	$STAND_HEADERS $STAND_SOURCES $STAND_TOOLS \
 	tools/regex/sources.list tools/regex/stand.bat $EXTRA \
 	| ssh -p "$PORT" "$TARGET" "

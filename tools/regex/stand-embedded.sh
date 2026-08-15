@@ -36,6 +36,14 @@ set -e
 COPYFILE_DISABLE=1
 export COPYFILE_DISABLE
 
+# Набор пишется видом ustar, а не видом pax
+#
+# Каталоги дерева несут метки файловой системы macOS - значки и ярлыки, -
+# и вид pax выносит их в расширенные заголовки. Распаковщик OpenBSD такие
+# заголовки разбирает неверно и валит распаковку отказом «Extended header
+# record length is out of range», а на рабочей машине изъян не виден вовсе.
+# Вид ustar расширенных заголовков не имеет; длины путей набора ему отвечают.
+
 TARGET="$1"
 PORT="${2:-22}"
 
@@ -103,7 +111,7 @@ fi
 if [ -n "$CROSS_HOST" ]; then
 	echo "Ведём встречную сборку на узле $CROSS_HOST"
 	# shellcheck disable=SC2086
-	tar czf - -C "$ROOT" $BUNDLE | ssh -p "$CROSS_PORT" "$CROSS_HOST" "
+	tar --format ustar -czf - -C "$ROOT" $BUNDLE | ssh -p "$CROSS_PORT" "$CROSS_HOST" "
 		set -e
 		rm -rf /tmp/awh-regex-cross
 		mkdir -p /tmp/awh-regex-cross
@@ -145,12 +153,12 @@ echo "Раскладываем проверку на стенд $TARGET"
 # Передача ведётся через ввод tar, а не средством scp: подсистема sftp на
 # встроенных машинах отключена чаще, чем включена
 if [ -n "$RECORD" ] ; then
-	tar cf - -C "$WORK" embedded record.bin | ssh -p "$PORT" "$TARGET" '
+	tar --format ustar -cf - -C "$WORK" embedded record.bin | ssh -p "$PORT" "$TARGET" '
 		rm -rf /tmp/awh-regex-stand && mkdir -p /tmp/awh-regex-stand
 		cd /tmp/awh-regex-stand && tar xf -
 	'
 else
-	tar cf - -C "$WORK" embedded | ssh -p "$PORT" "$TARGET" '
+	tar --format ustar -cf - -C "$WORK" embedded | ssh -p "$PORT" "$TARGET" '
 		rm -rf /tmp/awh-regex-stand && mkdir -p /tmp/awh-regex-stand
 		cd /tmp/awh-regex-stand && tar xf -
 	'

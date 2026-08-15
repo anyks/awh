@@ -1075,22 +1075,48 @@ namespace io {
 		 *
 		 */
 		typedef struct SCTP_Endpoint {
+			/**
+			 * Признак включённого режима явной границы записи
+			 *
+			 * @note Режим включается один раз на узел и остаётся включённым: выключать
+			 *       его между сообщениями незачем, а лишний вызов ядру не бесплатен
+			 *
+			 */
+			bool partial;
+			/**
+			 * Признак завершения сообщения на текущем куске
+			 *
+			 * @note Держится на узле лишь для переноса между постановкой в очередь и
+			 *       сливом: в самой записи он едет разрядом флагов головы
+			 *
+			 */
+			bool complete;
 			// Идентификатор SCTP-события
 			sctp_assoc_t id;
 			// Флаги SCTP-событий
 			int32_t flags;
-			// Информация о SCTP-событиях
-			struct sctp_sndrcvinfo info;
-			// Список типов SCTP-событий для подписки
-			net::sctp::event_types_t events;
+			// Остаток полезной нагрузки текущей записи очереди
+			size_t remaining;
 			// Объект функций обратного вызова SCTP
 			sctp_callback_t callbacks;
+			// Информация о SCTP-событиях
+			struct sctp_sndrcvinfo info;
+			/**
+			 * Метаданные полученного сообщения SCTP
+			 *
+			 * @note Заполняются при всяком приёме, но содержимым наполняются лишь
+			 *       при выданной подписке: без неё ядру сообщать нечего
+			 *
+			 */
+			net::sctp::rinfo_t rinfo;
+			// Список типов SCTP-событий для подписки
+			net::sctp::event_types_t events;
 			/**
 			 * @brief Конструктор
 			 *
 			 */
 			explicit SCTP_Endpoint() noexcept :
-			 id(0), flags(0), info{0} {}
+			 partial(false), complete(true), id(0), flags(0), remaining(0), info{0} {}
 		} sctp_endpoint_t;
 
 		// Общий пустой набор параметров SCTP, отдаётся у узлов, где набор не заводился
@@ -3066,105 +3092,6 @@ namespace {
 			sinfo->sinfo_assoc_id = assoc;
 			// Выполняем отправку данных по заведённой связи
 			return ::sendmsg(sock, &message, 0);
-		}
-
-		/**
-		 * @brief Функция чтения сообщения из сокета SCTP
-		 *
-		 * @details Повторяет договор sctp_recvmsg, но обходится без него
-		 *
-		 * @warning Приём sctp_recvmsg из libsctp на сокете упорядоченных сообщений
-		 *          отвечает отказом «Operation not supported on transport endpoint» -
-		 *          проверено пробой на обеих системах 12.08.2026. Обычный же recvmsg
-		 *          на том же сокете читает и данные, и оповещения, потому чтение и
-		 *          идёт им, а сведения о сообщении разбираются из служебных сообщений
-		 *
-		 * @note Сведения приходят служебным сообщением SCTP_SNDRCV, а признак того,
-		 *       что прочитано оповещение, а не данные - разрядом MSG_NOTIFICATION в
-		 *       признаках сообщения. Оба выдаются наружу ровно так же, как их выдавал
-		 *       бы sctp_recvmsg
-		 *
-		 * @param sock    дескриптор сокета чтения
-		 * @param buffer  буфер для принимаемых данных
-		 * @param size    размер буфера для принимаемых данных
-		 * @param address адрес отправителя, может быть пустым
-		 * @param length  размер адреса отправителя, может быть пустым
-		 * @param info    сведения о принятом сообщении
-		 * @param flags   признаки принятого сообщения
-		 * @return        количество принятых октетов
-		 *
-		 */
-		static ssize_t recv(const awh::net::socket_t sock, void * buffer, const size_t size, struct sockaddr * address, socklen_t * length, struct sctp_sndrcvinfo * info, int32_t * flags) noexcept {
-			// Описание принимаемого сообщения
-			struct msghdr message;
-			// Описание блока принимаемых данных
-			struct iovec iov;
-			// Буфер служебных сообщений приёма
-			uint8_t control[512];
-			/**
-			 * Собственный буфер адреса отправителя на случай, если его не спросили
-			 *
-			 * @warning Буфер адреса здесь ОБЯЗАТЕЛЕН, даже когда сам адрес вызывающему
-			 *          не нужен. Чтение с пустым msg_name на сокете упорядоченных
-			 *          сообщений отвергается отказом «Operation not supported on
-			 *          transport endpoint» - проверено пробой на обеих системах
-			 *          12.08.2026, причём проверено дважды: с буфером то же самое
-			 *          чтение проходит. В руководстве sctp(4P) это следует из того, что
-			 *          связи такого сокета опознаются именно адресом
-			 */
-			struct sockaddr_storage storage;
-			// Зануляем описание принимаемого сообщения
-			::memset(&message, 0, sizeof(message));
-			// Зануляем собственный буфер адреса отправителя
-			::memset(&storage, 0, sizeof(storage));
-			// Устанавливаем буфер принимаемых данных
-			iov.iov_base = buffer;
-			// Устанавливаем размер буфера принимаемых данных
-			iov.iov_len = size;
-			// Устанавливаем блок принимаемых данных
-			message.msg_iov = &iov;
-			// Устанавливаем количество блоков принимаемых данных
-			message.msg_iovlen = 1;
-			// Устанавливаем буфер адреса отправителя, а не спрошенный - собственный
-			message.msg_name = ((address != nullptr) ? reinterpret_cast <void *> (address) : reinterpret_cast <void *> (&storage));
-			// Устанавливаем размер буфера адреса отправителя
-			message.msg_namelen = (((address != nullptr) && (length != nullptr)) ? (* length) : sizeof(storage));
-			// Устанавливаем буфер служебных сообщений
-			message.msg_control = control;
-			// Устанавливаем размер буфера служебных сообщений
-			message.msg_controllen = sizeof(control);
-			// Выполняем чтение сообщения из сокета
-			const ssize_t bytes = ::recvmsg(sock, &message, 0);
-			// Если чтение не удалось, разбирать нечего
-			if(bytes < 0)
-				// Выводим результат чтения
-				return bytes;
-			// Если размер адреса отправителя запрошен, выдаём его
-			if((address != nullptr) && (length != nullptr))
-				// Выдаём размер адреса отправителя
-				(* length) = message.msg_namelen;
-			// Если признаки сообщения запрошены, выдаём их
-			if(flags != nullptr)
-				// Выдаём признаки принятого сообщения
-				(* flags) = message.msg_flags;
-			// Если сведения о сообщении не запрошены, разбирать служебные сообщения незачем
-			if(info == nullptr)
-				// Выводим результат чтения
-				return bytes;
-			/**
-			 * Перебираем все служебные сообщения принятого сообщения
-			 */
-			for(struct cmsghdr * cmsg = CMSG_FIRSTHDR(&message); cmsg != nullptr; cmsg = CMSG_NXTHDR(&message, cmsg)){
-				// Если служебное сообщение несёт сведения о сообщении SCTP
-				if((cmsg->cmsg_level == IPPROTO_SCTP) && (cmsg->cmsg_type == SCTP_SNDRCV)){
-					// Переносим сведения о принятом сообщении
-					::memcpy(info, CMSG_DATA(cmsg), sizeof(struct sctp_sndrcvinfo));
-					// Выходим из цикла
-					break;
-				}
-			}
-			// Выводим результат чтения
-			return bytes;
 		}
 
 		/**
@@ -9530,6 +9457,420 @@ namespace sctp {
 		 */
 		static size_t events(::io::node_t * node, const uint8_t * buffer, const size_t size, const log_t * log) noexcept;
 	#endif
+	/**
+	 * Размер головы настроек отправки, кладущейся перед данными записи очереди
+	 *
+	 * @note Настройки едут внутри записи, а не рядом с очередью: в ту же очередь
+	 *       пишет и вытягивающая модель, минуя отправку, и всякая череда настроек
+	 *       рядом с ней разъехалась бы молча
+	 */
+	static constexpr size_t HEAD_SIZE = 24;
+	/**
+	 * Разряд признака незавершённости сообщения во флагах головы
+	 *
+	 */
+	static constexpr uint16_t HEAD_PARTIAL = 0x8000;
+
+	/**
+	 * @brief Функция записи головы настроек отправки
+	 *
+	 * @param buffer буфер головы записи
+	 * @param info   настройки отправки сообщения
+	 * @param end    признак завершения сообщения на этом куске
+	 *
+	 */
+	static void encode(uint8_t * buffer, const struct sctp_sndrcvinfo & info, const bool end, const size_t length) noexcept {
+		// Флаги отправки сообщения
+		uint16_t flags = static_cast <uint16_t> (info.sinfo_flags);
+		// Если сообщение на этом куске не завершается
+		if(!end)
+			// Устанавливаем разряд признака незавершённости
+			flags |= HEAD_PARTIAL;
+		/**
+		 * Записываем длину полезной нагрузки записи
+		 *
+		 * @note Длину несёт сама голова, а не очередь: у потоковой очереди границ записей
+		 *       нет вовсе, и отличить голову от полезной нагрузки без длины нечем
+		 */
+		::memcpy(buffer, &length, sizeof(length));
+		// Записываем номер потока
+		::memcpy(buffer + 8, &info.sinfo_stream, sizeof(info.sinfo_stream));
+		// Записываем флаги отправки сообщения
+		::memcpy(buffer + 10, &flags, sizeof(flags));
+		// Записываем идентификатор полезной нагрузки
+		::memcpy(buffer + 12, &info.sinfo_ppid, sizeof(info.sinfo_ppid));
+		// Записываем время жизни сообщения
+		::memcpy(buffer + 16, &info.sinfo_timetolive, sizeof(info.sinfo_timetolive));
+		// Записываем контекст для уведомлений об ошибках
+		::memcpy(buffer + 20, &info.sinfo_context, sizeof(info.sinfo_context));
+	}
+	/**
+	 * @brief Функция чтения головы настроек отправки
+	 *
+	 * @param buffer буфер головы записи
+	 * @param info   настройки отправки сообщения
+	 * @param end    признак завершения сообщения на этом куске
+	 *
+	 */
+	static void decode(const uint8_t * buffer, struct sctp_sndrcvinfo & info, bool & end, size_t & length) noexcept {
+		// Флаги отправки сообщения
+		uint16_t flags = 0;
+		// Читаем длину полезной нагрузки записи
+		::memcpy(&length, buffer, sizeof(length));
+		// Читаем номер потока
+		::memcpy(&info.sinfo_stream, buffer + 8, sizeof(info.sinfo_stream));
+		// Читаем флаги отправки сообщения
+		::memcpy(&flags, buffer + 10, sizeof(flags));
+		// Читаем идентификатор полезной нагрузки
+		::memcpy(&info.sinfo_ppid, buffer + 12, sizeof(info.sinfo_ppid));
+		// Читаем время жизни сообщения
+		::memcpy(&info.sinfo_timetolive, buffer + 16, sizeof(info.sinfo_timetolive));
+		// Читаем контекст для уведомлений об ошибках
+		::memcpy(&info.sinfo_context, buffer + 20, sizeof(info.sinfo_context));
+		// Устанавливаем признак завершения сообщения на этом куске
+		end = !(flags & HEAD_PARTIAL);
+		// Устанавливаем флаги отправки сообщения без своего разряда
+		info.sinfo_flags = static_cast <uint16_t> (flags & ~HEAD_PARTIAL);
+	}
+	/**
+	 * @brief Шаблон функции проверки, стоит ли повторить отправку позже
+	 *
+	 * @tparam T тип узла события
+	 */
+	template <class T>
+	/**
+	 * @brief Функция проверки, стоит ли повторить отправку позже
+	 *
+	 * @details У потокового события SCTP ядро отвечает EMSGSIZE, когда за одно
+	 *          обращение столько не берёт. Отказом это не является: остаток надлежит
+	 *          положить в очередь и досылать по мере освобождения места. Считать
+	 *          такой ответ поломкой сокета значило бы рвать подключение на всяком
+	 *          крупном обмене - установлено опытом на отправке четырёх мегабайт
+	 *
+	 * @param node узел события
+	 * @return     результат проверки
+	 *
+	 */
+	static bool retriable(T * node) noexcept {
+		/**
+		 * Определяем возникшую ошибку
+		 */
+		switch(errno){
+			// Если ошибки нет либо отправку стоит повторить позже
+			case 0:
+			case EINTR:
+			case ENOMEM:
+			case EAGAIN:
+			case ENOBUFS:
+				// Выводим положительный результат
+				return true;
+		}
+		// Если потоковое событие SCTP за одно обращение столько не берёт
+		if((errno == EMSGSIZE) && (node->state.protocol == event::protocol_t::SCTP) && (node->state.type == event::type_t::STREAM))
+			// Выводим положительный результат
+			return true;
+		// Выводим отрицательный результат
+		return false;
+	}
+	/**
+	 * @brief Функция получения свободного места очереди с поправкой на голову настроек
+	 *
+	 * @details Запись события SCTP несёт голову настроек отправки, и место под неё
+	 *          принадлежит очереди, а не отправителю. Вытягивающей модели поправка эта
+	 *          необходима: отданное источником назад не вернуть - копии у него нет, и
+	 *          обещав ёмкость без поправки, движок потерял бы хвост молча
+	 *
+	 * @param node  узел события
+	 * @param queue очередь отправки узла
+	 * @return      свободное место очереди за вычетом головы настроек
+	 *
+	 */
+	template <class T>
+	static size_t vacancy(T * node, net_queue_t & queue) noexcept {
+		// Получаем количество свободного места в очереди
+		const size_t result = queue.available();
+		// Если событие работает по протоколу SCTP
+		if(node->state.protocol == event::protocol_t::SCTP)
+			// Выводим свободное место за вычетом головы настроек отправки
+			return ((result > HEAD_SIZE) ? (result - HEAD_SIZE) : 0);
+		// Выводим количество свободного места в очереди
+		return result;
+	}
+	/**
+	 * @brief Функция сброса обрамления записи очереди
+	 *
+	 * @details Зовётся там, где очередь опустошается насильно: остаток записи и признак
+	 *          завершения описывают содержимое очереди, и пережив её очистку, они заставили
+	 *          бы слив принять голову следующей записи за полезную нагрузку
+	 *
+	 * @param node узел события
+	 *
+	 */
+	template <class T>
+	static void forget(T * node) noexcept {
+		// Если набор параметров SCTP у узла заводился
+		if(node->transfer.sctp.has()){
+			// Сбрасываем остаток полезной нагрузки записи
+			node->transfer.sctp.use().remaining = 0;
+			// Сбрасываем признак завершения сообщения
+			node->transfer.sctp.use().complete = true;
+		}
+	}
+	/**
+	 * @brief Шаблон функции постановки данных в очередь узла
+	 *
+	 * @tparam T тип узла события
+	 */
+	template <class T>
+	/**
+	 * @brief Функция постановки данных в очередь узла
+	 *
+	 * @details У события SCTP запись несёт голову настроек отправки, у прочих
+	 *          событий данные ложатся в очередь как есть
+	 *
+	 * @param node   узел события
+	 * @param buffer буфер отправляемых данных
+	 * @param size   размер буфера отправляемых данных
+	 * @return       количество принятых к отправке октетов, без учёта головы
+	 *
+	 */
+	static size_t push(T * node, const void * buffer, const size_t size) noexcept {
+		// Если событие работает по протоколу SCTP
+		if(node->state.protocol == event::protocol_t::SCTP){
+			// Размер укладываемой полезной нагрузки
+			size_t length = size;
+			/**
+			 * Если очередь заведена потоковой
+			 *
+			 * @details Потоковая очередь кладёт сколько влезет, а голова обязана лечь
+			 *          вместе со своим куском целиком и непрерывно - иначе слив не
+			 *          отличит её от полезной нагрузки. Поэтому размер куска считается
+			 *          заранее: свободное непрерывное место за вычетом головы
+			 */
+			if(node->state.type == event::type_t::STREAM){
+				// Получаем наибольший непрерывный свободный участок очереди
+				const size_t room = node->transfer.queue.available();
+				// Если места не хватает даже на голову
+				if(room <= HEAD_SIZE)
+					// Выводим результат: положить нечего
+					return 0;
+				// Ограничиваем размер укладываемой полезной нагрузки свободным местом
+				length = ((size < (room - HEAD_SIZE)) ? size : (room - HEAD_SIZE));
+			}
+			// Буфер головы настроек отправки
+			uint8_t head[HEAD_SIZE]{0};
+			// Выполняем запись головы настроек отправки
+			::sctp::encode(head, node->transfer.sctp.use().info, node->transfer.sctp.use().complete, length);
+			// Выполняем постановку данных в очередь одной записью вместе с головой
+			return node->transfer.queue.push(head, HEAD_SIZE, buffer, length);
+		}
+		// Выполняем постановку данных в очередь узла
+		return node->transfer.queue.push(buffer, size);
+	}
+	/**
+	 * @brief Шаблон функции снятия головы настроек отправки с записи очереди
+	 *
+	 * @tparam T тип узла события
+	 */
+	template <class T>
+	/**
+	 * @brief Функция снятия головы настроек отправки с записи очереди
+	 *
+	 * @details У события SCTP настройки уходят из головы в набор параметров узла,
+	 *          откуда их и возьмёт отправка, а буфер со размером сдвигаются на
+	 *          длину головы. У прочих событий не делается ничего
+	 *
+	 * @param node   узел события
+	 * @param buffer буфер данных записи очереди
+	 * @param size   размер данных записи очереди
+	 *
+	 */
+	static void head(T * node, const void ** buffer, size_t & size) noexcept {
+		// Если событие работает не по протоколу SCTP
+		if(node->state.protocol != event::protocol_t::SCTP)
+			// Выходим из функции
+			return;
+		/**
+		 * Если очередь заведена с сохранением границ сообщений
+		 *
+		 * @note Там запись неделима и снимается целиком, поэтому голова лишь
+		 *       пропускается сдвигом указателя: счёт остатка ей не нужен
+		 */
+		if(node->state.type != event::type_t::STREAM){
+			// Если голова в записи не умещается
+			if(size < HEAD_SIZE)
+				// Выходим из функции
+				return;
+			// Признак завершения сообщения на этой записи
+			bool end = true;
+			// Длина полезной нагрузки записи
+			size_t length = 0;
+			// Выполняем чтение головы настроек отправки
+			::sctp::decode(reinterpret_cast <const uint8_t *> (* buffer), node->transfer.sctp.use().info, end, length);
+			// Запоминаем признак завершения сообщения на этой записи
+			node->transfer.sctp.use().complete = end;
+			// Сдвигаем буфер данных на длину головы
+			(* buffer) = (reinterpret_cast <const uint8_t *> (* buffer) + HEAD_SIZE);
+			// Уменьшаем размер данных на длину головы
+			size -= HEAD_SIZE;
+			// Выходим из функции
+			return;
+		}
+		/**
+		 * Если остаток текущей записи не исчерпан
+		 *
+		 * @note Пока остаток не исчерпан, всё выданное очередью - полезная нагрузка
+		 *       текущей записи. Исчерпан - следующие октеты суть новая голова
+		 */
+		if(node->transfer.sctp.use().remaining > 0){
+			// Ограничиваем выдачу остатком текущей записи
+			size = ((size < node->transfer.sctp.use().remaining) ? size : node->transfer.sctp.use().remaining);
+			// Выходим из функции
+			return;
+		}
+		/**
+		 * Если голова в выданном очередью не умещается
+		 *
+		 * @note Случиться этого не должно: голова кладётся в непрерывный участок
+		 *       целиком и никогда не переносится через край буфера. Отдать же
+		 *       голову сокету как данные значило бы испортить обмен молча,
+		 *       поэтому здесь ничего не выдаётся вовсе
+		 */
+		if(size < HEAD_SIZE){
+			// Обнуляем размер выдаваемых данных
+			size = 0;
+			// Выходим из функции
+			return;
+		}
+		// Признак завершения сообщения на этой записи
+		bool end = true;
+		// Длина полезной нагрузки записи
+		size_t length = 0;
+		// Выполняем чтение головы настроек отправки
+		::sctp::decode(reinterpret_cast <const uint8_t *> (* buffer), node->transfer.sctp.use().info, end, length);
+		// Запоминаем признак завершения сообщения на этой записи
+		node->transfer.sctp.use().complete = end;
+		// Запоминаем остаток полезной нагрузки записи
+		node->transfer.sctp.use().remaining = length;
+		// Снимаем голову с очереди, чтобы слив её сокету не отдал
+		node->transfer.queue.pop(HEAD_SIZE);
+		// Выполняем повторное извлечение данных из очереди уже без головы
+		if(!node->transfer.queue.front(buffer, size)){
+			// Сбрасываем остаток полезной нагрузки записи
+			node->transfer.sctp.use().remaining = 0;
+			// Обнуляем размер выдаваемых данных
+			size = 0;
+			// Выходим из функции
+			return;
+		}
+		// Ограничиваем выдачу остатком текущей записи
+		size = ((size < node->transfer.sctp.use().remaining) ? size : node->transfer.sctp.use().remaining);
+	}
+	/**
+	 * @brief Шаблон функции учёта ушедших октетов записи очереди
+	 *
+	 * @tparam T тип узла события
+	 */
+	template <class T>
+	/**
+	 * @brief Функция учёта ушедших октетов записи очереди
+	 *
+	 * @details Остаток записи ведётся счётчиком, а не выводится из размера очереди:
+	 *          в ту же очередь пишет и отправка, и вытягивание, отчего размер её
+	 *          растёт между сливами, и разность размеров о ходе слива не говорит
+	 *
+	 * @param node  узел события
+	 * @param bytes количество ушедших октетов
+	 *
+	 */
+	static void drain(T * node, const size_t bytes) noexcept {
+		// Если событие работает по протоколу SCTP
+		if(node->state.protocol == event::protocol_t::SCTP)
+			// Уменьшаем остаток полезной нагрузки записи на ушедшие октеты
+			node->transfer.sctp.use().remaining -= ((bytes < node->transfer.sctp.use().remaining) ? bytes : node->transfer.sctp.use().remaining);
+	}
+	/**
+	 * @brief Шаблон функции включения режима явной границы записи
+	 *
+	 * @tparam T тип узла события
+	 */
+	template <class T>
+	/**
+	 * @brief Функция включения режима явной границы записи
+	 *
+	 * @details Режим включается ТОЛЬКО при отправке сообщения по частям, и это не
+	 *          упущение, а вывод из опыта. Установлено щупом на FreeBSD:
+	 *
+	 *          - режим выключен: отправка закрывает запись сама, получатель видит
+	 *            границу - обычное поведение;
+	 *          - режим включён, сообщение уходит НЕСКОЛЬКИМИ обращениями, граница на
+	 *            последнем: получатель собирает одну запись целиком - то, ради чего
+	 *            режим и заводился;
+	 *          - режим включён, сообщение уходит ОДНИМ обращением с границей: запись
+	 *            НЕ закрывается вовсе, и получателю не выдаётся ничего. Проверено на
+	 *            размерах 1000, 4095 и 4096 октетов, при обычных и сжатых буферах
+	 *            сокета, при включении режима до и после установки подключения, и
+	 *            тремя способами отправки - sctp_sendv, sendmsg с настройками в
+	 *            управляющих данных и sendmsg без них. Итог всюду один
+	 *
+	 *          Отсюда и правило: включать режим для целого сообщения НЕЛЬЗЯ - оно
+	 *          повисло бы неотправленным. Пробовал, набор проверок это и показал
+	 *
+	 * @note Режим включается один раз на узел и остаётся включённым. Границу записи
+	 *       при этом безопасно передавать на каждом куске: ядро ставит её лишь по
+	 *       уходе всего буфера, и недоприём записи не рвёт - проверено тем же щупом
+	 *
+	 * @param node узел события
+	 * @param end  признак завершения сообщения на этом куске
+	 * @param eth  объект работы с сетью
+	 * @return     результат работы функции
+	 *
+	 */
+	static bool partial(T * node, const bool end, const eth_t * eth) noexcept {
+		// Если сообщение отправляется по частям, а режим ещё не включён
+		if(!end && !node->transfer.sctp.use().partial){
+			// Если включить режим явной границы записи не удалось
+			if(!eth->sctp.explicitEndOfRecord(node->transfer.fd, true))
+				// Выводим отрицательный результат: отправка по частям без режима невозможна
+				return false;
+			// Запоминаем, что режим явной границы записи включён
+			node->transfer.sctp.use().partial = true;
+		}
+		// Выводим положительный результат
+		return true;
+	}
+	/**
+	 * @brief Шаблон функции выдачи полученных данных потребителю
+	 *
+	 * @tparam T тип узла события
+	 */
+	template <class T>
+	/**
+	 * @brief Функция выдачи полученных данных потребителю
+	 *
+	 * @details Установлен отклик чтения с метаданными - данные и метаданные уходят
+	 *          одним вызовом; не установлен - всё идёт прежним общим откликом.
+	 *          Ветвление стоит на выдаче намеренно: путь чтения обязан быть один,
+	 *          иначе два разбора приёма начнут расходиться с первой же правки
+	 *
+	 * @param node   узел события
+	 * @param buffer буфер прочитанных данных
+	 * @param size   размер прочитанных данных
+	 *
+	 */
+	static void deliver(T * node, const uint8_t * buffer, const size_t size) noexcept {
+		// Если отклик чтения данных вместе с метаданными установлен
+		if(node->transfer.sctp.endpoint().callbacks.message != nullptr){
+			// Выполняем выдачу данных вместе с метаданными
+			node->transfer.sctp.endpoint().callbacks.message(node->id, buffer, size, node->transfer.sctp.endpoint().rinfo);
+			// Выходим из функции
+			return;
+		}
+		// Если функция обратного вызова для вывода прочитанных данных установлена
+		if(node->callbacks.read != nullptr)
+			// Вызываем функцию обратного вызова для вывода полученных данных
+			node->callbacks.read(node->id, buffer, size);
+	}
 };
 
 /**
@@ -10281,12 +10622,13 @@ namespace io {
 									// Если протокол интернета установлен как SCTP
 									if(peer->state.protocol == event::protocol_t::SCTP)
 										// Выполняем чтение данных из SCTP-сокета
-										bytes = ::ports::recv(
+										bytes = eth->sctp.receive(
 											peer->transfer.fd,
 											::__awh_buffer__, size,
 											nullptr, nullptr,
-											&peer->transfer.sctp.use().info,
-											&peer->transfer.sctp.use().flags
+											peer->transfer.sctp.use().rinfo,
+											peer->transfer.sctp.use().info,
+											peer->transfer.sctp.use().flags
 										);
 									// Выполняем чтение данных из TCP/IP сокета
 									else bytes = ::recv(peer->transfer.fd, ::__awh_buffer__, size, MSG_NOSIGNAL);
@@ -10377,10 +10719,8 @@ namespace io {
 										peer->callbacks.event(peer->id, event::action_t::READ);
 									// Если идентификатор события для передачи данных не установлен
 									if(peer->transfer.dest == 0){
-										// Если функция обратного вызова для вывода прочитанных данных установлена
-										if(peer->callbacks.read != nullptr)
-											// Вызываем функцию обратного вызова для вывода полученных данных
-											peer->callbacks.read(peer->id, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
+										// Выполняем выдачу полученных данных потребителю
+										::sctp::deliver(peer, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
 									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 									} else const_cast <engine::io_t *> (io)->relay(peer->transfer.dest, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
 									// Если узел уничтожен из функции обратного вызова
@@ -10497,13 +10837,14 @@ namespace io {
 							// Если протокол интернета установлен как SCTP
 							if(peer->state.protocol == event::protocol_t::SCTP)
 								// Выполняем чтение данных из SCTP-сокета
-								bytes = ::ports::recv(
+								bytes = eth->sctp.receive(
 									peer->transfer.fd,
 									::__awh_buffer__,
 									AWH_EVENT_MAX_BUFFER_SIZE,
 									nullptr, nullptr,
-									&peer->transfer.sctp.use().info,
-									&peer->transfer.sctp.use().flags
+									peer->transfer.sctp.use().rinfo,
+									peer->transfer.sctp.use().info,
+									peer->transfer.sctp.use().flags
 								);
 							// Выполняем чтение данных из TCP/IP сокета
 							else bytes = ::recv(peer->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
@@ -10582,10 +10923,8 @@ namespace io {
 								peer->callbacks.event(peer->id, event::action_t::READ);
 							// Если идентификатор события для передачи данных не установлен
 							if(peer->transfer.dest == 0){
-								// Если функция обратного вызова для вывода прочитанных данных установлена
-								if(peer->callbacks.read != nullptr)
-									// Вызываем функцию обратного вызова для вывода полученных данных
-									peer->callbacks.read(peer->id, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
+								// Выполняем выдачу полученных данных потребителю
+								::sctp::deliver(peer, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
 							// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 							} else const_cast <engine::io_t *> (io)->relay(peer->transfer.dest, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
 							// Если узел уничтожен из функции обратного вызова
@@ -10636,13 +10975,14 @@ namespace io {
 								// Если протокол интернета установлен как SCTP
 								if(peer->state.protocol == event::protocol_t::SCTP)
 									// Выполняем чтение данных из SCTP-сокета
-									bytes = ::ports::recv(
+									bytes = eth->sctp.receive(
 										peer->transfer.fd,
 										::__awh_buffer__,
 										AWH_EVENT_MAX_BUFFER_SIZE,
 										nullptr, nullptr,
-										&peer->transfer.sctp.use().info,
-										&peer->transfer.sctp.use().flags
+										peer->transfer.sctp.use().rinfo,
+										peer->transfer.sctp.use().info,
+										peer->transfer.sctp.use().flags
 									);
 								// Выполняем чтение данных из TCP/IP сокета
 								else bytes = ::recv(peer->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
@@ -10719,10 +11059,8 @@ namespace io {
 										peer->callbacks.event(peer->id, event::action_t::READ);
 									// Если идентификатор события для передачи данных не установлен
 									if(peer->transfer.dest == 0){
-										// Если функция обратного вызова для вывода прочитанных данных установлена
-										if(peer->callbacks.read != nullptr)
-											// Вызываем функцию обратного вызова для вывода полученных данных
-											peer->callbacks.read(peer->id, ::__awh_buffer__, static_cast <size_t> (bytes));
+										// Выполняем выдачу полученных данных потребителю
+										::sctp::deliver(peer, ::__awh_buffer__, static_cast <size_t> (bytes));
 									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 									} else const_cast <engine::io_t *> (io)->relay(peer->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
 									// Если узел уничтожен из функции обратного вызова
@@ -10784,13 +11122,14 @@ namespace io {
 							// Если протокол интернета установлен как SCTP
 							if(peer->state.protocol == event::protocol_t::SCTP)
 								// Выполняем чтение данных из SCTP-сокета
-								bytes = ::ports::recv(
+								bytes = eth->sctp.receive(
 									peer->transfer.fd,
 									::__awh_buffer__,
 									AWH_EVENT_MAX_BUFFER_SIZE,
 									nullptr, nullptr,
-									&peer->transfer.sctp.use().info,
-									&peer->transfer.sctp.use().flags
+									peer->transfer.sctp.use().rinfo,
+									peer->transfer.sctp.use().info,
+									peer->transfer.sctp.use().flags
 								);
 							// Выполняем чтение данных из TCP/IP сокета
 							else bytes = ::recv(peer->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
@@ -10853,10 +11192,8 @@ namespace io {
 									peer->callbacks.event(peer->id, event::action_t::READ);
 								// Если идентификатор события для передачи данных не установлен
 								if(peer->transfer.dest == 0){
-									// Если функция обратного вызова для вывода прочитанных данных установлена
-									if(peer->callbacks.read != nullptr)
-										// Вызываем функцию обратного вызова для вывода полученных данных
-										peer->callbacks.read(peer->id, ::__awh_buffer__, static_cast <size_t> (bytes));
+									// Выполняем выдачу полученных данных потребителю
+									::sctp::deliver(peer, ::__awh_buffer__, static_cast <size_t> (bytes));
 								// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 								} else const_cast <engine::io_t *> (io)->relay(peer->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
 								// Если узел уничтожен из функции обратного вызова
@@ -12206,12 +12543,13 @@ namespace io {
 									// Если протокол интернета установлен как SCTP
 									if(client->state.protocol == event::protocol_t::SCTP)
 										// Выполняем чтение данных из SCTP-сокета
-										bytes = ::ports::recv(
+										bytes = eth->sctp.receive(
 											client->transfer.fd,
 											::__awh_buffer__, size,
 											nullptr, nullptr,
-											&client->transfer.sctp.use().info,
-											&client->transfer.sctp.use().flags
+											client->transfer.sctp.use().rinfo,
+											client->transfer.sctp.use().info,
+											client->transfer.sctp.use().flags
 										);
 									// Выполняем чтение данных из TCP/IP сокета
 									else bytes = ::recv(client->transfer.fd, ::__awh_buffer__, size, MSG_NOSIGNAL);
@@ -12302,10 +12640,8 @@ namespace io {
 										client->callbacks.event(client->id, event::action_t::READ);
 									// Если идентификатор события для передачи данных не установлен
 									if(client->transfer.dest == 0){
-										// Если функция обратного вызова для вывода прочитанных данных установлена
-										if(client->callbacks.read != nullptr)
-											// Вызываем функцию обратного вызова для вывода полученных данных
-											client->callbacks.read(client->id, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
+										// Выполняем выдачу полученных данных потребителю
+										::sctp::deliver(client, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
 									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 									} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
 									// Если узел уничтожен из функции обратного вызова
@@ -12422,13 +12758,14 @@ namespace io {
 							// Если протокол интернета установлен как SCTP
 							if(client->state.protocol == event::protocol_t::SCTP)
 								// Выполняем чтение данных из SCTP-сокета
-								bytes = ::ports::recv(
+								bytes = eth->sctp.receive(
 									client->transfer.fd,
 									::__awh_buffer__,
 									AWH_EVENT_MAX_BUFFER_SIZE,
 									nullptr, nullptr,
-									&client->transfer.sctp.use().info,
-									&client->transfer.sctp.use().flags
+									client->transfer.sctp.use().rinfo,
+									client->transfer.sctp.use().info,
+									client->transfer.sctp.use().flags
 								);
 							// Выполняем чтение данных из TCP/IP сокета
 							else bytes = ::recv(client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
@@ -12507,10 +12844,8 @@ namespace io {
 								client->callbacks.event(client->id, event::action_t::READ);
 							// Если идентификатор события для передачи данных не установлен
 							if(client->transfer.dest == 0){
-								// Если функция обратного вызова для вывода прочитанных данных установлена
-								if(client->callbacks.read != nullptr)
-									// Вызываем функцию обратного вызова для вывода полученных данных
-									client->callbacks.read(client->id, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
+								// Выполняем выдачу полученных данных потребителю
+								::sctp::deliver(client, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
 							// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 							} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_buffer__ + offset, static_cast <size_t> (bytes - offset));
 							// Если узел уничтожен из функции обратного вызова
@@ -13575,13 +13910,14 @@ namespace io {
 									// Если протокол интернета установлен как SCTP
 									if(client->state.protocol == event::protocol_t::SCTP)
 										// Выполняем чтение данных из SCTP-сокета
-										bytes = ::ports::recv(
+										bytes = eth->sctp.receive(
 											client->transfer.fd,
 											::__awh_buffer__,
 											AWH_EVENT_MAX_BUFFER_SIZE,
 											nullptr, nullptr,
-											&client->transfer.sctp.use().info,
-											&client->transfer.sctp.use().flags
+											client->transfer.sctp.use().rinfo,
+											client->transfer.sctp.use().info,
+											client->transfer.sctp.use().flags
 										);
 									// Выполняем чтение данных из TCP/IP сокета
 									else bytes = ::recv(client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
@@ -13672,10 +14008,8 @@ namespace io {
 										client->callbacks.event(client->id, event::action_t::READ);
 									// Если идентификатор события для передачи данных не установлен
 									if(client->transfer.dest == 0){
-										// Если функция обратного вызова для вывода прочитанных данных установлена
-										if(client->callbacks.read != nullptr)
-											// Вызываем функцию обратного вызова для вывода полученных данных
-											client->callbacks.read(client->id, ::__awh_buffer__, static_cast <size_t> (bytes));
+										// Выполняем выдачу полученных данных потребителю
+										::sctp::deliver(client, ::__awh_buffer__, static_cast <size_t> (bytes));
 									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 									} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
 									// Если узел уничтожен из функции обратного вызова
@@ -13741,13 +14075,14 @@ namespace io {
 								// Если протокол интернета установлен как SCTP
 								if(client->state.protocol == event::protocol_t::SCTP)
 									// Выполняем чтение данных из SCTP-сокета
-									bytes = ::ports::recv(
+									bytes = eth->sctp.receive(
 										client->transfer.fd,
 										::__awh_buffer__,
 										AWH_EVENT_MAX_BUFFER_SIZE,
 										nullptr, nullptr,
-										&client->transfer.sctp.use().info,
-										&client->transfer.sctp.use().flags
+										client->transfer.sctp.use().rinfo,
+										client->transfer.sctp.use().info,
+										client->transfer.sctp.use().flags
 									);
 								// Выполняем чтение данных из TCP/IP сокета
 								else bytes = ::recv(client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
@@ -13824,10 +14159,8 @@ namespace io {
 									client->callbacks.event(client->id, event::action_t::READ);
 								// Если идентификатор события для передачи данных не установлен
 								if(client->transfer.dest == 0){
-									// Если функция обратного вызова для вывода прочитанных данных установлена
-									if(client->callbacks.read != nullptr)
-										// Вызываем функцию обратного вызова для вывода полученных данных
-										client->callbacks.read(client->id, ::__awh_buffer__, static_cast <size_t> (bytes));
+									// Выполняем выдачу полученных данных потребителю
+									::sctp::deliver(client, ::__awh_buffer__, static_cast <size_t> (bytes));
 								// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 								} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
 								// Если узел уничтожен из функции обратного вызова
@@ -13877,14 +14210,15 @@ namespace io {
 									// Если протокол интернета установлен как SCTP
 									if(client->state.protocol == event::protocol_t::SCTP)
 										// Выполняем чтение данных из SCTP-сокета
-										bytes = ::ports::recv(
+										bytes = eth->sctp.receive(
 											client->transfer.fd,
 											::__awh_buffer__,
 											AWH_EVENT_MAX_BUFFER_SIZE,
 											&::trust_cast <struct sockaddr> (client->endpoint.server),
 											&client->endpoint.size,
-											&client->transfer.sctp.use().info,
-											&client->transfer.sctp.use().flags
+											client->transfer.sctp.use().rinfo,
+											client->transfer.sctp.use().info,
+											client->transfer.sctp.use().flags
 										);
 									// Выполняем чтение данных из UDP-сокета
 									else bytes = ::recvfrom(
@@ -13987,10 +14321,8 @@ namespace io {
 										client->callbacks.event(client->id, event::action_t::READ);
 									// Если идентификатор события для передачи данных не установлен
 									if(client->transfer.dest == 0){
-										// Если функция обратного вызова для вывода прочитанных данных установлена
-										if(client->callbacks.read != nullptr)
-											// Вызываем функцию обратного вызова для вывода полученных данных
-											client->callbacks.read(client->id, ::__awh_buffer__, static_cast <size_t> (bytes));
+										// Выполняем выдачу полученных данных потребителю
+										::sctp::deliver(client, ::__awh_buffer__, static_cast <size_t> (bytes));
 									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 									} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
 									// Если узел уничтожен из функции обратного вызова
@@ -14056,14 +14388,15 @@ namespace io {
 								// Если протокол интернета установлен как SCTP
 								if(client->state.protocol == event::protocol_t::SCTP)
 									// Выполняем чтение данных из SCTP-сокета
-									bytes = ::ports::recv(
+									bytes = eth->sctp.receive(
 										client->transfer.fd,
 										::__awh_buffer__,
 										AWH_EVENT_MAX_BUFFER_SIZE,
 										&::trust_cast <struct sockaddr> (client->endpoint.server),
 										&client->endpoint.size,
-										&client->transfer.sctp.use().info,
-										&client->transfer.sctp.use().flags
+										client->transfer.sctp.use().rinfo,
+										client->transfer.sctp.use().info,
+										client->transfer.sctp.use().flags
 									);
 								// Выполняем чтение данных из UDP-сокета
 								else bytes = ::recvfrom(
@@ -14152,10 +14485,8 @@ namespace io {
 									client->callbacks.event(client->id, event::action_t::READ);
 								// Если идентификатор события для передачи данных не установлен
 								if(client->transfer.dest == 0){
-									// Если функция обратного вызова для вывода прочитанных данных установлена
-									if(client->callbacks.read != nullptr)
-										// Вызываем функцию обратного вызова для вывода полученных данных
-										client->callbacks.read(client->id, ::__awh_buffer__, static_cast <size_t> (bytes));
+									// Выполняем выдачу полученных данных потребителю
+									::sctp::deliver(client, ::__awh_buffer__, static_cast <size_t> (bytes));
 								// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 								} else const_cast <engine::io_t *> (io)->relay(client->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
 								// Если узел уничтожен из функции обратного вызова
@@ -15535,6 +15866,8 @@ namespace io {
 						const void * buffer = nullptr;
 						// Извлекаем данные из очереди для записи в сокет
 						if(peer->transfer.queue.front(&buffer, size)){
+							// Выполняем снятие головы настроек отправки с записи очереди
+							::sctp::head(peer, &buffer, size);
 							/**
 							 * @brief Функция для отправки данных в сокет
 							 *
@@ -15563,15 +15896,12 @@ namespace io {
 										// Если протокол интернета установлен как SCTP
 										if(peer->state.protocol == event::protocol_t::SCTP)
 											// Выполняем отправку данных в TCP/IP сокет
-											bytes = ::sctp_sendmsg(
+											bytes = eth->sctp.send(
 												peer->transfer.fd,
 												reinterpret_cast <const uint8_t *> (buffer),
 												size, nullptr, 0,
-												peer->transfer.sctp.use().info.sinfo_ppid,
-												peer->transfer.sctp.use().info.sinfo_flags,
-												peer->transfer.sctp.use().info.sinfo_stream,
-												peer->transfer.sctp.use().info.sinfo_timetolive,
-												peer->transfer.sctp.use().info.sinfo_context
+												peer->transfer.sctp.use().info,
+												peer->transfer.sctp.use().complete
 											);
 										// Выполняем отправку данных в TCP/IP сокет
 										else bytes = ::send(peer->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
@@ -15681,6 +16011,8 @@ namespace io {
 												while(!peer->transfer.queue.empty()){
 													// Извлекаем данные из очереди для записи в сокет
 													if(peer->transfer.queue.front(&buffer, size)){
+														// Выполняем снятие головы настроек отправки с записи очереди
+														::sctp::head(peer, &buffer, size);
 														// Если функция обратного вызова для возврата данных при неудачной отправке установлена
 														if(peer->callbacks.spool != nullptr)
 															// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
@@ -15688,6 +16020,8 @@ namespace io {
 													}
 													// Удаляем запись из очереди
 													peer->transfer.queue.pop(size);
+													// Выполняем учёт ушедших октетов записи очереди
+													::sctp::drain(peer, static_cast <size_t> (size));
 												}
 												// Выполняем удаление узла
 												::io::destroy(peer, eth, log);
@@ -15759,6 +16093,8 @@ namespace io {
 									if((result = (bytes > 0))){
 										// Удаляем данные из очереди
 										if(peer->transfer.queue.pop(bytes)){
+											// Выполняем учёт ушедших октетов записи очереди
+											::sctp::drain(peer, static_cast <size_t> (bytes));
 											// Если установлена функция обратного вызова
 											if(peer->callbacks.status != nullptr)
 												// Вызываем функцию обратного вызова об освобождении очереди
@@ -15871,6 +16207,8 @@ namespace io {
 								if((result = (bytes > 0))){
 									// Удаляем данные из очереди
 									if(peer->transfer.queue.pop(bytes)){
+										// Выполняем учёт ушедших октетов записи очереди
+										::sctp::drain(peer, static_cast <size_t> (bytes));
 										// Если установлена функция обратного вызова
 										if(peer->callbacks.status != nullptr)
 											// Вызываем функцию обратного вызова об освобождении очереди
@@ -15944,6 +16282,8 @@ namespace io {
 							const void * buffer = nullptr;
 							// Извлекаем данные из очереди для записи в сокет
 							if(peer->transfer.queue.front(&buffer, size)){
+								// Выполняем снятие головы настроек отправки с записи очереди
+								::sctp::head(peer, &buffer, size);
 								/**
 								 * @brief Функция для отправки данных в сокет
 								 *
@@ -15966,15 +16306,12 @@ namespace io {
 										// Если протокол интернета установлен как SCTP
 										if(peer->state.protocol == event::protocol_t::SCTP)
 											// Выполняем отправку данных в SCTP-сокет
-											bytes = ::sctp_sendmsg(
+											bytes = eth->sctp.send(
 												peer->transfer.fd,
 												reinterpret_cast <const uint8_t *> (buffer),
 												size, nullptr, 0,
-												peer->transfer.sctp.use().info.sinfo_ppid,
-												peer->transfer.sctp.use().info.sinfo_flags,
-												peer->transfer.sctp.use().info.sinfo_stream,
-												peer->transfer.sctp.use().info.sinfo_timetolive,
-												peer->transfer.sctp.use().info.sinfo_context
+												peer->transfer.sctp.use().info,
+												peer->transfer.sctp.use().complete
 											);
 										// Выполняем отправку данных в UDP-сокет
 										else bytes = ::send(peer->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
@@ -16097,6 +16434,8 @@ namespace io {
 													while(!peer->transfer.queue.empty()){
 														// Извлекаем данные из очереди для записи в сокет
 														if(peer->transfer.queue.front(&buffer, size)){
+															// Выполняем снятие головы настроек отправки с записи очереди
+															::sctp::head(peer, &buffer, size);
 															// Если функция обратного вызова для возврата данных при неудачной отправке установлена
 															if(peer->callbacks.spool != nullptr)
 																// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
@@ -17035,6 +17374,8 @@ namespace io {
 						const void * buffer = nullptr;
 						// Извлекаем данные из очереди для записи в сокет
 						if(client->transfer.queue.front(&buffer, size)){
+							// Выполняем снятие головы настроек отправки с записи очереди
+							::sctp::head(client, &buffer, size);
 							/**
 							 * @brief Функция для отправки данных в сокет
 							 *
@@ -17063,15 +17404,12 @@ namespace io {
 										// Если протокол интернета установлен как SCTP
 										if(client->state.protocol == event::protocol_t::SCTP)
 											// Выполняем отправку данных в TCP/IP сокет
-											bytes = ::sctp_sendmsg(
+											bytes = eth->sctp.send(
 												client->transfer.fd,
 												reinterpret_cast <const uint8_t *> (buffer),
 												size, nullptr, 0,
-												client->transfer.sctp.use().info.sinfo_ppid,
-												client->transfer.sctp.use().info.sinfo_flags,
-												client->transfer.sctp.use().info.sinfo_stream,
-												client->transfer.sctp.use().info.sinfo_timetolive,
-												client->transfer.sctp.use().info.sinfo_context
+												client->transfer.sctp.use().info,
+												client->transfer.sctp.use().complete
 											);
 										// Выполняем отправку данных в TCP/IP сокет
 										else bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
@@ -17181,6 +17519,8 @@ namespace io {
 												while(!client->transfer.queue.empty()){
 													// Извлекаем данные из очереди для записи в сокет
 													if(client->transfer.queue.front(&buffer, size)){
+														// Выполняем снятие головы настроек отправки с записи очереди
+														::sctp::head(client, &buffer, size);
 														// Если функция обратного вызова для возврата данных при неудачной отправке установлена
 														if(client->callbacks.spool != nullptr)
 															// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
@@ -17188,6 +17528,8 @@ namespace io {
 													}
 													// Удаляем запись из очереди
 													client->transfer.queue.pop(size);
+													// Выполняем учёт ушедших октетов записи очереди
+													::sctp::drain(client, static_cast <size_t> (size));
 												}
 												// Выполняем удаление узла
 												::io::destroy(client, eth, log);
@@ -17259,6 +17601,8 @@ namespace io {
 									if((result = (bytes > 0))){
 										// Удаляем данные из очереди
 										if(client->transfer.queue.pop(bytes)){
+											// Выполняем учёт ушедших октетов записи очереди
+											::sctp::drain(client, static_cast <size_t> (bytes));
 											// Если установлена функция обратного вызова
 											if(client->callbacks.status != nullptr)
 												// Вызываем функцию обратного вызова об освобождении очереди
@@ -17371,6 +17715,8 @@ namespace io {
 								if((result = (bytes > 0))){
 									// Удаляем данные из очереди
 									if(client->transfer.queue.pop(bytes)){
+										// Выполняем учёт ушедших октетов записи очереди
+										::sctp::drain(client, static_cast <size_t> (bytes));
 										// Если установлена функция обратного вызова
 										if(client->callbacks.status != nullptr)
 											// Вызываем функцию обратного вызова об освобождении очереди
@@ -17442,6 +17788,8 @@ namespace io {
 						const void * buffer = nullptr;
 						// Извлекаем данные из очереди для записи в сокет
 						if(client->transfer.queue.front(&buffer, size)){
+							// Выполняем снятие головы настроек отправки с записи очереди
+							::sctp::head(client, &buffer, size);
 							/**
 							 * @brief Функция для отправки данных в сокет
 							 *
@@ -17596,6 +17944,8 @@ namespace io {
 												while(!client->transfer.queue.empty()){
 													// Извлекаем данные из очереди для записи в сокет
 													if(client->transfer.queue.front(&buffer, size)){
+														// Выполняем снятие головы настроек отправки с записи очереди
+														::sctp::head(client, &buffer, size);
 														// Если функция обратного вызова для возврата данных при неудачной отправке установлена
 														if(client->callbacks.spool != nullptr)
 															// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
@@ -17823,6 +18173,8 @@ namespace io {
 						const void * buffer = nullptr;
 						// Извлекаем данные из очереди для записи в сокет
 						if(client->transfer.queue.front(&buffer, size)){
+							// Выполняем снятие головы настроек отправки с записи очереди
+							::sctp::head(client, &buffer, size);
 							/**
 							 * @brief Функция для отправки данных в сокет
 							 *
@@ -17892,16 +18244,13 @@ namespace io {
 											// Если протокол интернета установлен как SCTP
 											if(client->state.protocol == event::protocol_t::SCTP)
 												// Выполняем отправку данных в SCTP-сокет
-												bytes = ::sctp_sendmsg(
+												bytes = eth->sctp.send(
 													client->transfer.fd,
 													reinterpret_cast <const uint8_t *> (buffer), size,
 													&::trust_cast <struct sockaddr> (client->endpoint.server),
 													client->endpoint.size,
-													client->transfer.sctp.use().info.sinfo_ppid,
-													client->transfer.sctp.use().info.sinfo_flags,
-													client->transfer.sctp.use().info.sinfo_stream,
-													client->transfer.sctp.use().info.sinfo_timetolive,
-													client->transfer.sctp.use().info.sinfo_context
+													client->transfer.sctp.use().info,
+													client->transfer.sctp.use().complete
 												);
 											// Выполняем отправку данных в UDP-сокет
 											else bytes = eth->socket.datagram(
@@ -18048,6 +18397,8 @@ namespace io {
 												while(!client->transfer.queue.empty()){
 													// Извлекаем данные из очереди для записи в сокет
 													if(client->transfer.queue.front(&buffer, size)){
+														// Выполняем снятие головы настроек отправки с записи очереди
+														::sctp::head(client, &buffer, size);
 														// Если функция обратного вызова для возврата данных при неудачной отправке установлена
 														if(client->callbacks.spool != nullptr)
 															// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
@@ -19559,14 +19910,11 @@ namespace io {
 										// Если протокол интернета установлен как SCTP
 										if(peer->state.protocol == event::protocol_t::SCTP)
 											// Выполняем отправку данных в сокет
-											bytes = ::sctp_sendmsg(
+											bytes = eth->sctp.send(
 												peer->transfer.fd,
 												buffer, size, nullptr, 0,
-												peer->transfer.sctp.use().info.sinfo_ppid,
-												peer->transfer.sctp.use().info.sinfo_flags,
-												peer->transfer.sctp.use().info.sinfo_stream,
-												peer->transfer.sctp.use().info.sinfo_timetolive,
-												peer->transfer.sctp.use().info.sinfo_context
+												peer->transfer.sctp.use().info,
+												peer->transfer.sctp.use().complete
 											);
 										// Выполняем отправку данных в TCP/IP сокет
 										else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
@@ -19620,6 +19968,20 @@ namespace io {
 												case ENOBUFS:
 												case ENOMEM:
 												case EAGAIN: break;
+												/**
+												 * Если потоковое событие SCTP за одно обращение столько не берёт
+												 *
+												 * @note Отказом это не является: остаток ложится в очередь и
+												 *       досылается по мере освобождения места
+												 */
+												case EMSGSIZE:
+													// Если отправку стоит повторить позже
+													if(::sctp::retriable(peer))
+														// Прерываем разбор, ошибкой это не считается
+														break;
+													// Устанавливаем идентификатор полученной ошибки
+													error = event::error_t::INVALID_SOCKET;
+												break;
 												// Если мы получили другую непонятную ошибку
 												default:
 													// Устанавливаем идентификатор полученной ошибки
@@ -19718,7 +20080,7 @@ namespace io {
 								// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности отсутствуют
 								else {
 									// Если данные не добавлены в очередь событий
-									if((result = peer->transfer.queue.push(buffer, size)) == 0){
+									if((result = ::sctp::push(peer, buffer, size)) == 0){
 										// Если функция обратного вызова для вывода записанных данных установлена
 										if(peer->callbacks.write != nullptr)
 											// Вызываем функцию обратного вызова для вывода записанных данных
@@ -19791,7 +20153,7 @@ namespace io {
 								// Если данные отправлены не полностью
 								if(bytes < size){
 									// Сохраняем оставшиеся данные для последующей отправки
-									if((result = peer->transfer.queue.push(reinterpret_cast <const uint8_t *> (buffer) + bytes, size - bytes)) == 0){
+									if((result = ::sctp::push(peer, reinterpret_cast <const uint8_t *> (buffer) + bytes, size - bytes)) == 0){
 										// Если установлена функция обратного вызова
 										if(peer->callbacks.status != nullptr)
 											// Вызываем функцию обратного вызова об переполнении очереди
@@ -19869,9 +20231,9 @@ namespace io {
 										::io::postpone(peer, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 								}
 							// Если данные не отправлены и нужно подождать
-							} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
+							} else if(::sctp::retriable(peer)) {
 								// Сохраняем оставшиеся данные для последующей отправки
-								if((result = peer->transfer.queue.push(buffer, size)) == 0){
+								if((result = ::sctp::push(peer, buffer, size)) == 0){
 									// Если установлена функция обратного вызова
 									if(peer->callbacks.status != nullptr)
 										// Вызываем функцию обратного вызова об переполнении очереди
@@ -19916,7 +20278,7 @@ namespace io {
 									return result;
 							}
 							// Если данные не добавлены в очередь событий
-							if((result = peer->transfer.queue.push(buffer, size)) == 0){
+							if((result = ::sctp::push(peer, buffer, size)) == 0){
 								// Если функция обратного вызова для вывода записанных данных установлена
 								if(peer->callbacks.write != nullptr)
 									// Вызываем функцию обратного вызова для вывода записанных данных
@@ -19967,14 +20329,11 @@ namespace io {
 										// Если протокол интернета установлен как SCTP
 										if(peer->state.protocol == event::protocol_t::SCTP)
 											// Выполняем отправку данных в сокет
-											bytes = ::sctp_sendmsg(
+											bytes = eth->sctp.send(
 												peer->transfer.fd,
 												buffer, size, nullptr, 0,
-												peer->transfer.sctp.use().info.sinfo_ppid,
-												peer->transfer.sctp.use().info.sinfo_flags,
-												peer->transfer.sctp.use().info.sinfo_stream,
-												peer->transfer.sctp.use().info.sinfo_timetolive,
-												peer->transfer.sctp.use().info.sinfo_context
+												peer->transfer.sctp.use().info,
+												peer->transfer.sctp.use().complete
 											);
 										// Выполняем отправку данных в сокет
 										else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
@@ -20113,7 +20472,7 @@ namespace io {
 										// Если данные отправлены не полностью
 										if(bytes < size){
 											// Сохраняем оставшиеся данные для последующей отправки
-											if((result = peer->transfer.queue.push(reinterpret_cast <const uint8_t *> (buffer) + bytes, size - bytes)) == 0){
+											if((result = ::sctp::push(peer, reinterpret_cast <const uint8_t *> (buffer) + bytes, size - bytes)) == 0){
 												// Если установлена функция обратного вызова
 												if(peer->callbacks.status != nullptr)
 													// Вызываем функцию обратного вызова об переполнении очереди
@@ -20175,7 +20534,7 @@ namespace io {
 									// Если данные не отправлены и нужно подождать
 									} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 										// Сохраняем оставшиеся данные для последующей отправки
-										if((result = peer->transfer.queue.push(buffer, size)) == 0){
+										if((result = ::sctp::push(peer, buffer, size)) == 0){
 											// Если установлена функция обратного вызова
 											if(peer->callbacks.status != nullptr)
 												// Вызываем функцию обратного вызова об переполнении очереди
@@ -20211,7 +20570,7 @@ namespace io {
 								// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности отсутствуют
 								} else {
 									// Если данные не добавлены в очередь событий
-									if((result = peer->transfer.queue.push(buffer, size)) == 0){
+									if((result = ::sctp::push(peer, buffer, size)) == 0){
 										// Если функция обратного вызова для вывода записанных данных установлена
 										if(peer->callbacks.write != nullptr)
 											// Вызываем функцию обратного вызова для вывода записанных данных
@@ -20283,7 +20642,7 @@ namespace io {
 								// Если данные не отправлены и нужно подождать
 								} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 									// Сохраняем оставшиеся данные для последующей отправки
-									if((result = peer->transfer.queue.push(buffer, size)) == 0){
+									if((result = ::sctp::push(peer, buffer, size)) == 0){
 										// Если установлена функция обратного вызова
 										if(peer->callbacks.status != nullptr)
 											// Вызываем функцию обратного вызова об переполнении очереди
@@ -20333,14 +20692,11 @@ namespace io {
 							// Если протокол интернета установлен как SCTP
 							if(peer->state.protocol == event::protocol_t::SCTP)
 								// Выполняем отправку данных в TCP/IP сокет
-								bytes = ::sctp_sendmsg(
+								bytes = eth->sctp.send(
 									peer->transfer.fd,
 									buffer, size, nullptr, 0,
-									peer->transfer.sctp.use().info.sinfo_ppid,
-									peer->transfer.sctp.use().info.sinfo_flags,
-									peer->transfer.sctp.use().info.sinfo_stream,
-									peer->transfer.sctp.use().info.sinfo_timetolive,
-									peer->transfer.sctp.use().info.sinfo_context
+									peer->transfer.sctp.use().info,
+									peer->transfer.sctp.use().complete
 								);
 							// Выполняем отправку данных в TCP/IP сокет
 							else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
@@ -20439,14 +20795,11 @@ namespace io {
 										// Если протокол интернета установлен как SCTP
 										if(peer->state.protocol == event::protocol_t::SCTP)
 											// Выполняем отправку данных в TCP/IP сокет
-											bytes = ::sctp_sendmsg(
+											bytes = eth->sctp.send(
 												peer->transfer.fd,
 												buffer, size, nullptr, 0,
-												peer->transfer.sctp.use().info.sinfo_ppid,
-												peer->transfer.sctp.use().info.sinfo_flags,
-												peer->transfer.sctp.use().info.sinfo_stream,
-												peer->transfer.sctp.use().info.sinfo_timetolive,
-												peer->transfer.sctp.use().info.sinfo_context
+												peer->transfer.sctp.use().info,
+												peer->transfer.sctp.use().complete
 											);
 										// Выполняем отправку данных в TCP/IP сокет
 										else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
@@ -20489,6 +20842,10 @@ namespace io {
 												case EAGAIN: break;
 												// Если мы получили ошибку отправки слишком большого пакета
 												case EMSGSIZE:
+													// Если отправку стоит повторить позже
+													if(::sctp::retriable(peer))
+														// Прерываем разбор, ошибкой это не считается
+														break;
 													// Устанавливаем идентификатор полученной ошибки
 													error = event::error_t::PACKET_TOO_BIG;
 												break;
@@ -20587,7 +20944,7 @@ namespace io {
 										// Если данные не отправлены и нужно подождать
 										} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 											// Сохраняем оставшиеся данные для последующей отправки
-											if((result = peer->transfer.queue.push(buffer, size)) == 0){
+											if((result = ::sctp::push(peer, buffer, size)) == 0){
 												// Если установлена функция обратного вызова
 												if(peer->callbacks.status != nullptr)
 													// Вызываем функцию обратного вызова об переполнении очереди
@@ -20623,7 +20980,7 @@ namespace io {
 									// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности отсутствуют
 									} else {
 										// Если данные не добавлены в очередь событий
-										if((result = peer->transfer.queue.push(buffer, size)) == 0){
+										if((result = ::sctp::push(peer, buffer, size)) == 0){
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(peer->callbacks.write != nullptr)
 												// Вызываем функцию обратного вызова для вывода записанных данных
@@ -20693,7 +21050,7 @@ namespace io {
 									// Если данные не отправлены и нужно подождать
 									} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 										// Сохраняем оставшиеся данные для последующей отправки
-										if((result = peer->transfer.queue.push(buffer, size)) == 0){
+										if((result = ::sctp::push(peer, buffer, size)) == 0){
 											// Если установлена функция обратного вызова
 											if(peer->callbacks.status != nullptr)
 												// Вызываем функцию обратного вызова об переполнении очереди
@@ -20739,7 +21096,7 @@ namespace io {
 										return result;
 								}
 								// Если данные не добавлены в очередь событий
-								if((result = peer->transfer.queue.push(buffer, size)) == 0){
+								if((result = ::sctp::push(peer, buffer, size)) == 0){
 									// Если установлена функция обратного вызова
 									if(peer->callbacks.status != nullptr)
 										// Вызываем функцию обратного вызова об переполнении очереди
@@ -20784,14 +21141,11 @@ namespace io {
 											// Если протокол интернета установлен как SCTP
 											if(peer->state.protocol == event::protocol_t::SCTP)
 												// Выполняем отправку данных в TCP/IP сокет
-												bytes = ::sctp_sendmsg(
+												bytes = eth->sctp.send(
 													peer->transfer.fd,
 													buffer, size, nullptr, 0,
-													peer->transfer.sctp.use().info.sinfo_ppid,
-													peer->transfer.sctp.use().info.sinfo_flags,
-													peer->transfer.sctp.use().info.sinfo_stream,
-													peer->transfer.sctp.use().info.sinfo_timetolive,
-													peer->transfer.sctp.use().info.sinfo_context
+													peer->transfer.sctp.use().info,
+													peer->transfer.sctp.use().complete
 												);
 											// Выполняем отправку данных в TCP/IP сокет
 											else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
@@ -20939,7 +21293,7 @@ namespace io {
 											// Если данные не отправлены и нужно подождать
 											} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 												// Сохраняем оставшиеся данные для последующей отправки
-												if((result = peer->transfer.queue.push(buffer, size)) == 0){
+												if((result = ::sctp::push(peer, buffer, size)) == 0){
 													// Если установлена функция обратного вызова
 													if(peer->callbacks.status != nullptr)
 														// Вызываем функцию обратного вызова об переполнении очереди
@@ -20975,7 +21329,7 @@ namespace io {
 										// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности отсутствуют
 										} else {
 											// Если данные не добавлены в очередь событий
-											if((result = peer->transfer.queue.push(buffer, size)) == 0){
+											if((result = ::sctp::push(peer, buffer, size)) == 0){
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(peer->callbacks.write != nullptr)
 													// Вызываем функцию обратного вызова для вывода записанных данных
@@ -21047,7 +21401,7 @@ namespace io {
 										// Если данные не отправлены и нужно подождать
 										} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 											// Сохраняем оставшиеся данные для последующей отправки
-											if((result = peer->transfer.queue.push(buffer, size)) == 0){
+											if((result = ::sctp::push(peer, buffer, size)) == 0){
 												// Если установлена функция обратного вызова
 												if(peer->callbacks.status != nullptr)
 													// Вызываем функцию обратного вызова об переполнении очереди
@@ -21094,7 +21448,7 @@ namespace io {
 										return result;
 								}
 								// Если данные не добавлены в очередь событий
-								if((result = peer->transfer.queue.push(buffer, size)) == 0){
+								if((result = ::sctp::push(peer, buffer, size)) == 0){
 									// Если установлена функция обратного вызова
 									if(peer->callbacks.status != nullptr)
 										// Вызываем функцию обратного вызова об переполнении очереди
@@ -21116,14 +21470,11 @@ namespace io {
 							// Если протокол интернета установлен как SCTP
 							if(peer->state.protocol == event::protocol_t::SCTP)
 								// Выполняем отправку данных в TCP/IP сокет
-								bytes = ::sctp_sendmsg(
+								bytes = eth->sctp.send(
 									peer->transfer.fd,
 									buffer, size, nullptr, 0,
-									peer->transfer.sctp.use().info.sinfo_ppid,
-									peer->transfer.sctp.use().info.sinfo_flags,
-									peer->transfer.sctp.use().info.sinfo_stream,
-									peer->transfer.sctp.use().info.sinfo_timetolive,
-									peer->transfer.sctp.use().info.sinfo_context
+									peer->transfer.sctp.use().info,
+									peer->transfer.sctp.use().complete
 								);
 							// Выполняем отправку данных в TCP/IP сокет
 							else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
@@ -23176,14 +23527,11 @@ namespace io {
 										// Если протокол интернета установлен как SCTP
 										if(client->state.protocol == event::protocol_t::SCTP)
 											// Выполняем отправку данных в сокет
-											bytes = ::sctp_sendmsg(
+											bytes = eth->sctp.send(
 												client->transfer.fd,
 												buffer, size, nullptr, 0,
-												client->transfer.sctp.use().info.sinfo_ppid,
-												client->transfer.sctp.use().info.sinfo_flags,
-												client->transfer.sctp.use().info.sinfo_stream,
-												client->transfer.sctp.use().info.sinfo_timetolive,
-												client->transfer.sctp.use().info.sinfo_context
+												client->transfer.sctp.use().info,
+												client->transfer.sctp.use().complete
 											);
 										// Выполняем отправку данных в TCP/IP сокет
 										else bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
@@ -23237,6 +23585,20 @@ namespace io {
 												case ENOBUFS:
 												case ENOMEM:
 												case EAGAIN: break;
+												/**
+												 * Если потоковое событие SCTP за одно обращение столько не берёт
+												 *
+												 * @note Отказом это не является: остаток ложится в очередь и
+												 *       досылается по мере освобождения места
+												 */
+												case EMSGSIZE:
+													// Если отправку стоит повторить позже
+													if(::sctp::retriable(client))
+														// Прерываем разбор, ошибкой это не считается
+														break;
+													// Устанавливаем идентификатор полученной ошибки
+													error = event::error_t::INVALID_SOCKET;
+												break;
 												// Если мы получили другую непонятную ошибку
 												default:
 													// Устанавливаем идентификатор полученной ошибки
@@ -23335,7 +23697,7 @@ namespace io {
 								// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности отсутствуют
 								else {
 									// Если данные не добавлены в очередь событий
-									if((result = client->transfer.queue.push(buffer, size)) == 0){
+									if((result = ::sctp::push(client, buffer, size)) == 0){
 										// Если функция обратного вызова для вывода записанных данных установлена
 										if(client->callbacks.write != nullptr)
 											// Вызываем функцию обратного вызова для вывода записанных данных
@@ -23408,7 +23770,7 @@ namespace io {
 								// Если данные отправлены не полностью
 								if(bytes < size){
 									// Сохраняем оставшиеся данные для последующей отправки
-									if((result = client->transfer.queue.push(reinterpret_cast <const uint8_t *> (buffer) + bytes, size - bytes)) == 0){
+									if((result = ::sctp::push(client, reinterpret_cast <const uint8_t *> (buffer) + bytes, size - bytes)) == 0){
 										// Если установлена функция обратного вызова
 										if(client->callbacks.status != nullptr)
 											// Вызываем функцию обратного вызова об переполнении очереди
@@ -23486,9 +23848,9 @@ namespace io {
 										::io::postpone(client, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, bytes, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 								}
 							// Если данные не отправлены и нужно подождать
-							} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
+							} else if(::sctp::retriable(client)) {
 								// Сохраняем оставшиеся данные для последующей отправки
-								if((result = client->transfer.queue.push(buffer, size)) == 0){
+								if((result = ::sctp::push(client, buffer, size)) == 0){
 									// Если установлена функция обратного вызова
 									if(client->callbacks.status != nullptr)
 										// Вызываем функцию обратного вызова об переполнении очереди
@@ -23533,7 +23895,7 @@ namespace io {
 									return result;
 							}
 							// Если данные не добавлены в очередь событий
-							if((result = client->transfer.queue.push(buffer, size)) == 0){
+							if((result = ::sctp::push(client, buffer, size)) == 0){
 								// Если функция обратного вызова для вывода записанных данных установлена
 								if(client->callbacks.write != nullptr)
 									// Вызываем функцию обратного вызова для вывода записанных данных
@@ -23584,14 +23946,11 @@ namespace io {
 										// Если протокол интернета установлен как SCTP
 										if(client->state.protocol == event::protocol_t::SCTP)
 											// Выполняем отправку данных в сокет
-											bytes = ::sctp_sendmsg(
+											bytes = eth->sctp.send(
 												client->transfer.fd,
 												buffer, size, nullptr, 0,
-												client->transfer.sctp.use().info.sinfo_ppid,
-												client->transfer.sctp.use().info.sinfo_flags,
-												client->transfer.sctp.use().info.sinfo_stream,
-												client->transfer.sctp.use().info.sinfo_timetolive,
-												client->transfer.sctp.use().info.sinfo_context
+												client->transfer.sctp.use().info,
+												client->transfer.sctp.use().complete
 											);
 										// Выполняем отправку данных в сокет
 										else bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
@@ -23730,7 +24089,7 @@ namespace io {
 										// Если данные отправлены не полностью
 										if(bytes < size){
 											// Сохраняем оставшиеся данные для последующей отправки
-											if((result = client->transfer.queue.push(reinterpret_cast <const uint8_t *> (buffer) + bytes, size - bytes)) == 0){
+											if((result = ::sctp::push(client, reinterpret_cast <const uint8_t *> (buffer) + bytes, size - bytes)) == 0){
 												// Если установлена функция обратного вызова
 												if(client->callbacks.status != nullptr)
 													// Вызываем функцию обратного вызова об переполнении очереди
@@ -23792,7 +24151,7 @@ namespace io {
 									// Если данные не отправлены и нужно подождать
 									} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 										// Сохраняем оставшиеся данные для последующей отправки
-										if((result = client->transfer.queue.push(buffer, size)) == 0){
+										if((result = ::sctp::push(client, buffer, size)) == 0){
 											// Если установлена функция обратного вызова
 											if(client->callbacks.status != nullptr)
 												// Вызываем функцию обратного вызова об переполнении очереди
@@ -23828,7 +24187,7 @@ namespace io {
 								// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности отсутствуют
 								} else {
 									// Если данные не добавлены в очередь событий
-									if((result = client->transfer.queue.push(buffer, size)) == 0){
+									if((result = ::sctp::push(client, buffer, size)) == 0){
 										// Если функция обратного вызова для вывода записанных данных установлена
 										if(client->callbacks.write != nullptr)
 											// Вызываем функцию обратного вызова для вывода записанных данных
@@ -23900,7 +24259,7 @@ namespace io {
 								// Если данные не отправлены и нужно подождать
 								} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 									// Сохраняем оставшиеся данные для последующей отправки
-									if((result = client->transfer.queue.push(buffer, size)) == 0){
+									if((result = ::sctp::push(client, buffer, size)) == 0){
 										// Если установлена функция обратного вызова
 										if(client->callbacks.status != nullptr)
 											// Вызываем функцию обратного вызова об переполнении очереди
@@ -23950,14 +24309,11 @@ namespace io {
 							// Если протокол интернета установлен как SCTP
 							if(client->state.protocol == event::protocol_t::SCTP)
 								// Выполняем отправку данных в TCP/IP сокет
-								bytes = ::sctp_sendmsg(
+								bytes = eth->sctp.send(
 									client->transfer.fd,
 									buffer, size, nullptr, 0,
-									client->transfer.sctp.use().info.sinfo_ppid,
-									client->transfer.sctp.use().info.sinfo_flags,
-									client->transfer.sctp.use().info.sinfo_stream,
-									client->transfer.sctp.use().info.sinfo_timetolive,
-									client->transfer.sctp.use().info.sinfo_context
+									client->transfer.sctp.use().info,
+									client->transfer.sctp.use().complete
 								);
 							// Выполняем отправку данных в TCP/IP сокет
 							else bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
@@ -24092,6 +24448,10 @@ namespace io {
 												case EAGAIN: break;
 												// Если мы получили ошибку отправки слишком большого пакета
 												case EMSGSIZE:
+													// Если отправку стоит повторить позже
+													if(::sctp::retriable(client))
+														// Прерываем разбор, ошибкой это не считается
+														break;
 													// Устанавливаем идентификатор полученной ошибки
 													error = event::error_t::PACKET_TOO_BIG;
 												break;
@@ -24190,7 +24550,7 @@ namespace io {
 										// Если данные не отправлены и нужно подождать
 										} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 											// Сохраняем оставшиеся данные для последующей отправки
-											if((result = client->transfer.queue.push(buffer, size)) == 0){
+											if((result = ::sctp::push(client, buffer, size)) == 0){
 												// Если установлена функция обратного вызова
 												if(client->callbacks.status != nullptr)
 													// Вызываем функцию обратного вызова об переполнении очереди
@@ -24226,7 +24586,7 @@ namespace io {
 									// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности отсутствуют
 									} else {
 										// Если данные не добавлены в очередь событий
-										if((result = client->transfer.queue.push(buffer, size)) == 0){
+										if((result = ::sctp::push(client, buffer, size)) == 0){
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(client->callbacks.write != nullptr)
 												// Вызываем функцию обратного вызова для вывода записанных данных
@@ -24296,7 +24656,7 @@ namespace io {
 									// Если данные не отправлены и нужно подождать
 									} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 										// Сохраняем оставшиеся данные для последующей отправки
-										if((result = client->transfer.queue.push(buffer, size)) == 0){
+										if((result = ::sctp::push(client, buffer, size)) == 0){
 											// Если установлена функция обратного вызова
 											if(client->callbacks.status != nullptr)
 												// Вызываем функцию обратного вызова об переполнении очереди
@@ -24342,7 +24702,7 @@ namespace io {
 										return result;
 								}
 								// Если данные не добавлены в очередь событий
-								if((result = client->transfer.queue.push(buffer, size)) == 0){
+								if((result = ::sctp::push(client, buffer, size)) == 0){
 									// Если установлена функция обратного вызова
 									if(client->callbacks.status != nullptr)
 										// Вызываем функцию обратного вызова об переполнении очереди
@@ -24528,7 +24888,7 @@ namespace io {
 											// Если данные не отправлены и нужно подождать
 											} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 												// Сохраняем оставшиеся данные для последующей отправки
-												if((result = client->transfer.queue.push(buffer, size)) == 0){
+												if((result = ::sctp::push(client, buffer, size)) == 0){
 													// Если установлена функция обратного вызова
 													if(client->callbacks.status != nullptr)
 														// Вызываем функцию обратного вызова об переполнении очереди
@@ -24564,7 +24924,7 @@ namespace io {
 										// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности отсутствуют
 										} else {
 											// Если данные не добавлены в очередь событий
-											if((result = client->transfer.queue.push(buffer, size)) == 0){
+											if((result = ::sctp::push(client, buffer, size)) == 0){
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(client->callbacks.write != nullptr)
 													// Вызываем функцию обратного вызова для вывода записанных данных
@@ -24636,7 +24996,7 @@ namespace io {
 										// Если данные не отправлены и нужно подождать
 										} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 											// Сохраняем оставшиеся данные для последующей отправки
-											if((result = client->transfer.queue.push(buffer, size)) == 0){
+											if((result = ::sctp::push(client, buffer, size)) == 0){
 												// Если установлена функция обратного вызова
 												if(client->callbacks.status != nullptr)
 													// Вызываем функцию обратного вызова об переполнении очереди
@@ -24683,7 +25043,7 @@ namespace io {
 										return result;
 								}
 								// Если данные не добавлены в очередь событий
-								if((result = client->transfer.queue.push(buffer, size)) == 0){
+								if((result = ::sctp::push(client, buffer, size)) == 0){
 									// Если установлена функция обратного вызова
 									if(client->callbacks.status != nullptr)
 										// Вызываем функцию обратного вызова об переполнении очереди
@@ -24850,6 +25210,10 @@ namespace io {
 												case EAGAIN: break;
 												// Если мы получили ошибку отправки слишком большого пакета
 												case EMSGSIZE:
+													// Если отправку стоит повторить позже
+													if(::sctp::retriable(client))
+														// Прерываем разбор, ошибкой это не считается
+														break;
 													// Устанавливаем идентификатор полученной ошибки
 													error = event::error_t::PACKET_TOO_BIG;
 												break;
@@ -24948,7 +25312,7 @@ namespace io {
 										// Если данные не отправлены и нужно подождать
 										} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 											// Сохраняем оставшиеся данные для последующей отправки
-											if((result = client->transfer.queue.push(buffer, size)) == 0){
+											if((result = ::sctp::push(client, buffer, size)) == 0){
 												// Если установлена функция обратного вызова
 												if(client->callbacks.status != nullptr)
 													// Вызываем функцию обратного вызова об переполнении очереди
@@ -24984,7 +25348,7 @@ namespace io {
 									// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности отсутствуют
 									} else {
 										// Если данные не добавлены в очередь событий
-										if((result = client->transfer.queue.push(buffer, size)) == 0){
+										if((result = ::sctp::push(client, buffer, size)) == 0){
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(client->callbacks.write != nullptr)
 												// Вызываем функцию обратного вызова для вывода записанных данных
@@ -25054,7 +25418,7 @@ namespace io {
 									// Если данные не отправлены и нужно подождать
 									} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 										// Сохраняем оставшиеся данные для последующей отправки
-										if((result = client->transfer.queue.push(buffer, size)) == 0){
+										if((result = ::sctp::push(client, buffer, size)) == 0){
 											// Если установлена функция обратного вызова
 											if(client->callbacks.status != nullptr)
 												// Вызываем функцию обратного вызова об переполнении очереди
@@ -25100,7 +25464,7 @@ namespace io {
 										return result;
 								}
 								// Если данные не добавлены в очередь событий
-								if((result = client->transfer.queue.push(buffer, size)) == 0){
+								if((result = ::sctp::push(client, buffer, size)) == 0){
 									// Если установлена функция обратного вызова
 									if(client->callbacks.status != nullptr)
 										// Вызываем функцию обратного вызова об переполнении очереди
@@ -25286,7 +25650,7 @@ namespace io {
 											// Если данные не отправлены и нужно подождать
 											} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 												// Сохраняем оставшиеся данные для последующей отправки
-												if((result = client->transfer.queue.push(buffer, size)) == 0){
+												if((result = ::sctp::push(client, buffer, size)) == 0){
 													// Если установлена функция обратного вызова
 													if(client->callbacks.status != nullptr)
 														// Вызываем функцию обратного вызова об переполнении очереди
@@ -25322,7 +25686,7 @@ namespace io {
 										// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности отсутствуют
 										} else {
 											// Если данные не добавлены в очередь событий
-											if((result = client->transfer.queue.push(buffer, size)) == 0){
+											if((result = ::sctp::push(client, buffer, size)) == 0){
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(client->callbacks.write != nullptr)
 													// Вызываем функцию обратного вызова для вывода записанных данных
@@ -25394,7 +25758,7 @@ namespace io {
 										// Если данные не отправлены и нужно подождать
 										} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 											// Сохраняем оставшиеся данные для последующей отправки
-											if((result = client->transfer.queue.push(buffer, size)) == 0){
+											if((result = ::sctp::push(client, buffer, size)) == 0){
 												// Если установлена функция обратного вызова
 												if(client->callbacks.status != nullptr)
 													// Вызываем функцию обратного вызова об переполнении очереди
@@ -25441,7 +25805,7 @@ namespace io {
 										return result;
 								}
 								// Если данные не добавлены в очередь событий
-								if((result = client->transfer.queue.push(buffer, size)) == 0){
+								if((result = ::sctp::push(client, buffer, size)) == 0){
 									// Если установлена функция обратного вызова
 									if(client->callbacks.status != nullptr)
 										// Вызываем функцию обратного вызова об переполнении очереди
@@ -25679,6 +26043,10 @@ namespace io {
 												case EAGAIN: break;
 												// Если мы получили ошибку отправки слишком большого пакета
 												case EMSGSIZE:
+													// Если отправку стоит повторить позже
+													if(::sctp::retriable(client))
+														// Прерываем разбор, ошибкой это не считается
+														break;
 													// Устанавливаем идентификатор полученной ошибки
 													error = event::error_t::PACKET_TOO_BIG;
 												break;
@@ -25777,7 +26145,7 @@ namespace io {
 										// Если данные не отправлены и нужно подождать
 										} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 											// Сохраняем оставшиеся данные для последующей отправки
-											if((result = client->transfer.queue.push(buffer, size)) == 0){
+											if((result = ::sctp::push(client, buffer, size)) == 0){
 												// Если установлена функция обратного вызова
 												if(client->callbacks.status != nullptr)
 													// Вызываем функцию обратного вызова об переполнении очереди
@@ -25813,7 +26181,7 @@ namespace io {
 									// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности отсутствуют
 									} else {
 										// Если данные не добавлены в очередь событий
-										if((result = client->transfer.queue.push(buffer, size)) == 0){
+										if((result = ::sctp::push(client, buffer, size)) == 0){
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(client->callbacks.write != nullptr)
 												// Вызываем функцию обратного вызова для вывода записанных данных
@@ -25883,7 +26251,7 @@ namespace io {
 									// Если данные не отправлены и нужно подождать
 									} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 										// Сохраняем оставшиеся данные для последующей отправки
-										if((result = client->transfer.queue.push(buffer, size)) == 0){
+										if((result = ::sctp::push(client, buffer, size)) == 0){
 											// Если установлена функция обратного вызова
 											if(client->callbacks.status != nullptr)
 												// Вызываем функцию обратного вызова об переполнении очереди
@@ -25929,7 +26297,7 @@ namespace io {
 										return result;
 								}
 								// Если данные не добавлены в очередь событий
-								if((result = client->transfer.queue.push(buffer, size)) == 0){
+								if((result = ::sctp::push(client, buffer, size)) == 0){
 									// Если установлена функция обратного вызова
 									if(client->callbacks.status != nullptr)
 										// Вызываем функцию обратного вызова об переполнении очереди
@@ -25978,16 +26346,13 @@ namespace io {
 												// Если протокол интернета установлен как SCTP
 												if(client->state.protocol == event::protocol_t::SCTP)
 													// Выполняем отправку данных в сокет
-													bytes = ::sctp_sendmsg(
+													bytes = eth->sctp.send(
 														client->transfer.fd,
 														buffer, size,
 														&::trust_cast <struct sockaddr> (client->endpoint.server),
 														client->endpoint.size,
-														client->transfer.sctp.use().info.sinfo_ppid,
-														client->transfer.sctp.use().info.sinfo_flags,
-														client->transfer.sctp.use().info.sinfo_stream,
-														client->transfer.sctp.use().info.sinfo_timetolive,
-														client->transfer.sctp.use().info.sinfo_context
+														client->transfer.sctp.use().info,
+														client->transfer.sctp.use().complete
 													);
 												// Выполняем отправку данных в сокет
 												else bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
@@ -26142,7 +26507,7 @@ namespace io {
 											// Если данные не отправлены и нужно подождать
 											} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 												// Сохраняем оставшиеся данные для последующей отправки
-												if((result = client->transfer.queue.push(buffer, size)) == 0){
+												if((result = ::sctp::push(client, buffer, size)) == 0){
 													// Если установлена функция обратного вызова
 													if(client->callbacks.status != nullptr)
 														// Вызываем функцию обратного вызова об переполнении очереди
@@ -26178,7 +26543,7 @@ namespace io {
 										// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности отсутствуют
 										} else {
 											// Если данные не добавлены в очередь событий
-											if((result = client->transfer.queue.push(buffer, size)) == 0){
+											if((result = ::sctp::push(client, buffer, size)) == 0){
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(client->callbacks.write != nullptr)
 													// Вызываем функцию обратного вызова для вывода записанных данных
@@ -26250,7 +26615,7 @@ namespace io {
 										// Если данные не отправлены и нужно подождать
 										} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 											// Сохраняем оставшиеся данные для последующей отправки
-											if((result = client->transfer.queue.push(buffer, size)) == 0){
+											if((result = ::sctp::push(client, buffer, size)) == 0){
 												// Если установлена функция обратного вызова
 												if(client->callbacks.status != nullptr)
 													// Вызываем функцию обратного вызова об переполнении очереди
@@ -26297,7 +26662,7 @@ namespace io {
 										return result;
 								}
 								// Если данные не добавлены в очередь событий
-								if((result = client->transfer.queue.push(buffer, size)) == 0){
+								if((result = ::sctp::push(client, buffer, size)) == 0){
 									// Если установлена функция обратного вызова
 									if(client->callbacks.status != nullptr)
 										// Вызываем функцию обратного вызова об переполнении очереди
@@ -26323,16 +26688,13 @@ namespace io {
 								// Если протокол интернета установлен как SCTP
 								if(client->state.protocol == event::protocol_t::SCTP)
 									// Выполняем отправку данных в сокет
-									bytes = ::sctp_sendmsg(
+									bytes = eth->sctp.send(
 										client->transfer.fd,
 										buffer, size,
 										&::trust_cast <struct sockaddr> (client->endpoint.server),
 										client->endpoint.size,
-										client->transfer.sctp.use().info.sinfo_ppid,
-										client->transfer.sctp.use().info.sinfo_flags,
-										client->transfer.sctp.use().info.sinfo_stream,
-										client->transfer.sctp.use().info.sinfo_timetolive,
-										client->transfer.sctp.use().info.sinfo_context
+										client->transfer.sctp.use().info,
+										client->transfer.sctp.use().complete
 									);
 								// Выполняем отправку данных в сокет
 								else bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
@@ -26459,16 +26821,13 @@ namespace io {
 											// Если протокол интернета установлен как SCTP
 											if(client->state.protocol == event::protocol_t::SCTP)
 												// Выполняем отправку данных в SCTP-сокет
-												bytes = ::sctp_sendmsg(
+												bytes = eth->sctp.send(
 													client->transfer.fd,
 													buffer, size,
 													&::trust_cast <struct sockaddr> (client->endpoint.server),
 													client->endpoint.size,
-													client->transfer.sctp.use().info.sinfo_ppid,
-													client->transfer.sctp.use().info.sinfo_flags,
-													client->transfer.sctp.use().info.sinfo_stream,
-													client->transfer.sctp.use().info.sinfo_timetolive,
-													client->transfer.sctp.use().info.sinfo_context
+													client->transfer.sctp.use().info,
+													client->transfer.sctp.use().complete
 												);
 											// Выполняем отправку данных в UDP-сокет
 											else bytes = eth->socket.datagram(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size, client->state.family, client->state.traffic);
@@ -26518,6 +26877,10 @@ namespace io {
 												case EAGAIN: break;
 												// Если мы получили ошибку отправки слишком большого пакета
 												case EMSGSIZE:
+													// Если отправку стоит повторить позже
+													if(::sctp::retriable(client))
+														// Прерываем разбор, ошибкой это не считается
+														break;
 													// Устанавливаем идентификатор полученной ошибки
 													error = event::error_t::PACKET_TOO_BIG;
 												break;
@@ -26616,7 +26979,7 @@ namespace io {
 										// Если данные не отправлены и нужно подождать
 										} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 											// Сохраняем оставшиеся данные для последующей отправки
-											if((result = client->transfer.queue.push(buffer, size)) == 0){
+											if((result = ::sctp::push(client, buffer, size)) == 0){
 												// Если установлена функция обратного вызова
 												if(client->callbacks.status != nullptr)
 													// Вызываем функцию обратного вызова об переполнении очереди
@@ -26652,7 +27015,7 @@ namespace io {
 									// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности отсутствуют
 									} else {
 										// Если данные не добавлены в очередь событий
-										if((result = client->transfer.queue.push(buffer, size)) == 0){
+										if((result = ::sctp::push(client, buffer, size)) == 0){
 											// Если функция обратного вызова для вывода записанных данных установлена
 											if(client->callbacks.write != nullptr)
 												// Вызываем функцию обратного вызова для вывода записанных данных
@@ -26722,7 +27085,7 @@ namespace io {
 									// Если данные не отправлены и нужно подождать
 									} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 										// Сохраняем оставшиеся данные для последующей отправки
-										if((result = client->transfer.queue.push(buffer, size)) == 0){
+										if((result = ::sctp::push(client, buffer, size)) == 0){
 											// Если установлена функция обратного вызова
 											if(client->callbacks.status != nullptr)
 												// Вызываем функцию обратного вызова об переполнении очереди
@@ -26768,7 +27131,7 @@ namespace io {
 										return result;
 								}
 								// Если данные не добавлены в очередь событий
-								if((result = client->transfer.queue.push(buffer, size)) == 0){
+								if((result = ::sctp::push(client, buffer, size)) == 0){
 									// Если установлена функция обратного вызова
 									if(client->callbacks.status != nullptr)
 										// Вызываем функцию обратного вызова об переполнении очереди
@@ -26817,16 +27180,13 @@ namespace io {
 												// Если протокол интернета установлен как SCTP
 												if(client->state.protocol == event::protocol_t::SCTP)
 													// Выполняем отправку данных в SCTP-сокет
-													bytes = ::sctp_sendmsg(
+													bytes = eth->sctp.send(
 														client->transfer.fd,
 														buffer, size,
 														&::trust_cast <struct sockaddr> (client->endpoint.server),
 														client->endpoint.size,
-														client->transfer.sctp.use().info.sinfo_ppid,
-														client->transfer.sctp.use().info.sinfo_flags,
-														client->transfer.sctp.use().info.sinfo_stream,
-														client->transfer.sctp.use().info.sinfo_timetolive,
-														client->transfer.sctp.use().info.sinfo_context
+														client->transfer.sctp.use().info,
+														client->transfer.sctp.use().complete
 													);
 												// Выполняем отправку данных в UDP-сокет
 												else bytes = eth->socket.datagram(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size, client->state.family, client->state.traffic);
@@ -26981,7 +27341,7 @@ namespace io {
 											// Если данные не отправлены и нужно подождать
 											} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 												// Сохраняем оставшиеся данные для последующей отправки
-												if((result = client->transfer.queue.push(buffer, size)) == 0){
+												if((result = ::sctp::push(client, buffer, size)) == 0){
 													// Если установлена функция обратного вызова
 													if(client->callbacks.status != nullptr)
 														// Вызываем функцию обратного вызова об переполнении очереди
@@ -27017,7 +27377,7 @@ namespace io {
 										// Если токены для отправки данных в сокет с учётом установленного ограничения пропускной способности отсутствуют
 										} else {
 											// Если данные не добавлены в очередь событий
-											if((result = client->transfer.queue.push(buffer, size)) == 0){
+											if((result = ::sctp::push(client, buffer, size)) == 0){
 												// Если функция обратного вызова для вывода записанных данных установлена
 												if(client->callbacks.write != nullptr)
 													// Вызываем функцию обратного вызова для вывода записанных данных
@@ -27089,7 +27449,7 @@ namespace io {
 										// Если данные не отправлены и нужно подождать
 										} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
 											// Сохраняем оставшиеся данные для последующей отправки
-											if((result = client->transfer.queue.push(buffer, size)) == 0){
+											if((result = ::sctp::push(client, buffer, size)) == 0){
 												// Если установлена функция обратного вызова
 												if(client->callbacks.status != nullptr)
 													// Вызываем функцию обратного вызова об переполнении очереди
@@ -27136,7 +27496,7 @@ namespace io {
 										return result;
 								}
 								// Если данные не добавлены в очередь событий
-								if((result = client->transfer.queue.push(buffer, size)) == 0){
+								if((result = ::sctp::push(client, buffer, size)) == 0){
 									// Если установлена функция обратного вызова
 									if(client->callbacks.status != nullptr)
 										// Вызываем функцию обратного вызова об переполнении очереди
@@ -27162,16 +27522,13 @@ namespace io {
 								// Если протокол интернета установлен как SCTP
 								if(client->state.protocol == event::protocol_t::SCTP)
 									// Выполняем отправку данных в SCTP-сокет
-									bytes = ::sctp_sendmsg(
+									bytes = eth->sctp.send(
 										client->transfer.fd,
 										buffer, size,
 										&::trust_cast <struct sockaddr> (client->endpoint.server),
 										client->endpoint.size,
-										client->transfer.sctp.use().info.sinfo_ppid,
-										client->transfer.sctp.use().info.sinfo_flags,
-										client->transfer.sctp.use().info.sinfo_stream,
-										client->transfer.sctp.use().info.sinfo_timetolive,
-										client->transfer.sctp.use().info.sinfo_context
+										client->transfer.sctp.use().info,
+										client->transfer.sctp.use().complete
 									);
 								// Выполняем отправку данных в UDP-сокет
 								else bytes = eth->socket.datagram(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size, client->state.family, client->state.traffic);
@@ -27724,7 +28081,7 @@ namespace io {
 			// Выходим из функции, вытягивать нечем
 			return;
 		// Получаем количество свободного места в очереди
-		size_t available = queue.available();
+		size_t available = ::sctp::vacancy(node, queue);
 		// Если в очереди нет свободного места
 		if(available == 0)
 			// Выходим из функции, вытягивать нечем
@@ -27825,7 +28182,7 @@ namespace io {
 					// Выходим из цикла вытягивания
 					break;
 				// Получаем количество свободного места в очереди
-				available = queue.available();
+				available = ::sctp::vacancy(node, queue);
 			}
 		/**
 		 * Если возникает ошибка
@@ -27988,6 +28345,8 @@ namespace io {
 						::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
 						// Сбрасываем очередь передачи данных события
 						peer->transfer.queue.clear();
+						// Выполняем сброс обрамления записи очереди
+						::sctp::forget(peer);
 						/**
 						 * Определяем тип таймера для событий сетевого движка
 						 */
@@ -28165,6 +28524,8 @@ namespace io {
 						::io::client_t * client = awh_cast <::io::client_t *> (node);
 						// Сбрасываем очередь передачи данных события
 						client->transfer.queue.clear();
+						// Выполняем сброс обрамления записи очереди
+						::sctp::forget(client);
 						/**
 						 * Если операционной системой является FreeBSD
 						 */
@@ -30715,14 +31076,15 @@ namespace io {
 										// Если событие принадлежит к типу SEQPACKET
 										case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 											// Выполняем чтение данных из SCTP-сокета
-											bytes = ::ports::recv(
+											bytes = eth->sctp.receive(
 												server->fd,
 												::__awh_buffer__,
 												AWH_EVENT_MAX_BUFFER_SIZE,
 												&::trust_cast <struct sockaddr> (server->endpoint.client),
 												&server->endpoint.size,
-												&server->sctp.info,
-												&server->sctp.flags
+												server->sctp.rinfo,
+												server->sctp.info,
+												server->sctp.flags
 											);
 											// Если мы получили уведомления SCTP
 											if((bytes <= 0) || (server->sctp.flags & MSG_NOTIFICATION)){
@@ -31036,6 +31398,16 @@ namespace io {
 									if(peer->state.protocol == event::protocol_t::SCTP)
 										// Выполняем активацию событий SCTP
 										eth->sctp.eventsSubscribe(peer->transfer.fd, peer->transfer.sctp.use().events);
+										/**
+										 * Если установлен любой из откликов, которым нужны метаданные
+										 *
+										 * @note Подписка нужна не только новому отклику: у современного набора
+										 *       вызовов метаданные приходят ТОЛЬКО по ней, и без подписки
+										 *       прежний отклик сведений получал бы вчерашнее содержимое
+										 */
+										if((peer->transfer.sctp.endpoint().callbacks.message != nullptr) || (peer->transfer.sctp.endpoint().callbacks.info != nullptr))
+											// Выполняем подписку на метаданные принимаемых сообщений
+											eth->sctp.receiveInfo(peer->transfer.fd, true);
 								#endif
 							} break;
 							// Для семейства IPv6
@@ -31228,6 +31600,16 @@ namespace io {
 									if(peer->state.protocol == event::protocol_t::SCTP)
 										// Выполняем активацию событий SCTP
 										eth->sctp.eventsSubscribe(peer->transfer.fd, peer->transfer.sctp.use().events);
+										/**
+										 * Если установлен любой из откликов, которым нужны метаданные
+										 *
+										 * @note Подписка нужна не только новому отклику: у современного набора
+										 *       вызовов метаданные приходят ТОЛЬКО по ней, и без подписки
+										 *       прежний отклик сведений получал бы вчерашнее содержимое
+										 */
+										if((peer->transfer.sctp.endpoint().callbacks.message != nullptr) || (peer->transfer.sctp.endpoint().callbacks.info != nullptr))
+											// Выполняем подписку на метаданные принимаемых сообщений
+											eth->sctp.receiveInfo(peer->transfer.fd, true);
 								#endif
 							} break;
 						}
@@ -31287,10 +31669,8 @@ namespace io {
 							#if __FreeBSD__ || defined(__sun)
 								// Если мы получили данные из SCTP-сокета
 								if(bytes > 0){
-									// Если установлена функция обратного вызова
-									if(peer->callbacks.read != nullptr)
-										// Вызываем функцию обратного вызова для вывода полученных данных
-										peer->callbacks.read(peer->id, ::__awh_buffer__, static_cast <size_t> (bytes));
+									// Выполняем выдачу полученных данных потребителю
+									::sctp::deliver(peer, ::__awh_buffer__, static_cast <size_t> (bytes));
 								}
 							#endif
 							// Если узел не помечен как мусорный
@@ -36686,6 +37066,194 @@ namespace sctp {
 		return result;
 	}
 	/**
+	 * @brief Метод проверки поддержки отправки сообщения по частям
+	 *
+	 * @details Отправка сообщения по частям требует от системы явного режима
+	 *          границы записи, и есть он не всюду: FreeBSD и Solaris его имеют,
+	 *          Linux не имеет вовсе. Проверять поддержку следует до отправки,
+	 *          а не по отказу
+	 *
+	 * @param id идентификатор события
+	 * @return   результат проверки поддержки
+	 *
+	 */
+	bool awh::engine::Stream_Control_Transmission_Protocol::partialSupported(const event::id_t id) const noexcept {
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Выполняем поиск идентификатора события
+			auto i = ::__awh_nodes__.find(id);
+			// Если идентификатор события найден и событие не подлежит уничтожению
+			if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
+				// Если событие работает по протоколу SCTP
+				if(i->second->state.protocol == event::protocol_t::SCTP)
+					// Выводим результат проверки поддержки системой
+					return this->_eth.sctp.partial();
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+		// Выводим отрицательный результат
+		return false;
+	}
+	/**
+	 * @brief Метод отправки сообщения SCTP вместе с метаданными
+	 *
+	 * @details Отправка идёт той же очередью события, что и общая, и потому
+	 *          порядок сообщений сохраняется, даже если приложение мешает
+	 *          оба способа отправки
+	 *
+	 * @warning Сообщение, отправляемое по частям, обязано уйти подряд: пока
+	 *          признак завершения не выставлен, отправка иных сообщений тем
+	 *          же потоком нарушит его границы
+	 *
+	 * @param id     идентификатор события
+	 * @param buffer буфер отправляемых данных
+	 * @param size   размер буфера отправляемых данных
+	 * @param info   информационные метаданные SCTP сообщения
+	 * @param end    признак завершения сообщения на этом куске
+	 * @return       количество принятых к отправке октетов
+	 *
+	 */
+	size_t awh::engine::Stream_Control_Transmission_Protocol::send(const event::id_t id, const void * buffer, const size_t size, const net::sctp::minfo_t & info, const bool end) noexcept {
+		// Результат работы функции
+		size_t result = 0;
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Выполняем поиск идентификатора события
+			auto i = ::__awh_nodes__.find(id);
+			// Если идентификатор события найден и событие не подлежит уничтожению
+			if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
+				// Если событие работает не по протоколу SCTP
+				if(i->second->state.protocol != event::protocol_t::SCTP){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Записываем ошибку в лог
+						this->_log->debug("An SCTP message cannot be sent to this event type", __PRETTY_FUNCTION__, make_tuple(id, size, end), log_t::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем ошибку в лог
+						this->_log->print("An SCTP message cannot be sent to this event type", log_t::flag_t::WARNING);
+					#endif
+					// Выводим результат
+					return result;
+				}
+				// Если сообщение отправляется по частям, а система того не позволяет
+				if(!end && !this->_eth.sctp.partial()){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Записываем ошибку в лог
+						this->_log->debug("SCTP partial message sending is not supported by the operating system", __PRETTY_FUNCTION__, make_tuple(id, size, end), log_t::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем ошибку в лог
+						this->_log->print("SCTP partial message sending is not supported by the operating system", log_t::flag_t::WARNING);
+					#endif
+					// Выводим результат: отправлять по частям нечем
+					return result;
+				}
+				// Выполняем установку информационных метаданных отправляемого сообщения
+				this->messageInfo(id, info);
+				/**
+				 * Определяем чем является текущий узел
+				 */
+				switch(static_cast <uint8_t> (i->second->state.node)){
+					// Если узел является одноранговым узлом
+					case static_cast <uint8_t> (event::node_t::PEER): {
+						// Получаем текущее значение объекта однорангового узла
+						::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
+						// Запоминаем признак завершения сообщения на этом куске
+						peer->transfer.sctp.use().complete = end;
+						// Выполняем включение режима явной границы записи
+						if(!::sctp::partial(peer, end, &this->_eth))
+							// Выводим результат: границу записи выставить нечем
+							return result;
+						// Создаём охранника узла события
+						::local::guard_t guard(peer);
+						// Выполняем отправку сообщения общей очередью узла
+						result = ::io::send(peer, buffer, size, &this->_eth, this->_log);
+					} break;
+					// Если узел является клиентом
+					case static_cast <uint8_t> (event::node_t::CLIENT): {
+						// Получаем текущее значение объекта клиента
+						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
+						// Запоминаем признак завершения сообщения на этом куске
+						client->transfer.sctp.use().complete = end;
+						// Выполняем включение режима явной границы записи
+						if(!::sctp::partial(client, end, &this->_eth))
+							// Выводим результат: границу записи выставить нечем
+							return result;
+						// Создаём охранника узла события
+						::local::guard_t guard(client);
+						// Выполняем отправку сообщения общей очередью узла
+						result = ::io::send(client, buffer, size, &this->_eth, this->_log);
+					} break;
+					// Для других типов узлов
+					default: {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Записываем ошибку в лог
+							this->_log->debug("An SCTP message cannot be sent to this event type", __PRETTY_FUNCTION__, make_tuple(id, size, end), log_t::flag_t::WARNING);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем ошибку в лог
+							this->_log->print("An SCTP message cannot be sent to this event type", log_t::flag_t::WARNING);
+						#endif
+					}
+				}
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, size, end), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+		// Выводим результат
+		return result;
+	}
+	/**
 	 * @brief Метод установки функции обратного вызова для получения метаданных SCTP-сообщения
 	 *
 	 * @param id идентификатор события
@@ -36701,44 +37269,63 @@ namespace sctp {
 			auto i = ::__awh_nodes__.find(id);
 			// Если идентификатор события найден и событие не подлежит уничтожению
 			if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
+				// Создаём охранника узла события
+				::local::guard_t guard(i->second.get());
 				/**
-				 * Если операционной системой является FreeBSD
+				 * Определяем чем является текущий узел
 				 */
-				#if __FreeBSD__ || defined(__sun)
-					// Создаём охранника узла события
-					::local::guard_t guard(i->second.get());
-					/**
-					 * Определяем чем является текущий узел
-					 */
-					switch(static_cast <uint8_t> (i->second->state.node)){
-						// Если узел является одноранговым узлом
-						case static_cast <uint8_t> (event::node_t::PEER):
-							// Устанавливаем функцию обратного вызова для получения метаданных SCTP-сообщения
-							awh_cast <::io::peer_t *> (i->second.get())->transfer.sctp.use().callbacks.info = ::move(cb);
-						break;
-						// Если узел является клиентом
-						case static_cast <uint8_t> (event::node_t::CLIENT):
-							// Устанавливаем функцию обратного вызова для получения метаданных SCTP-сообщения
-							awh_cast <::io::client_t *> (i->second.get())->transfer.sctp.use().callbacks.info = ::move(cb);
-						break;
-						// Для других типов узлов
-						default: {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Записываем ошибку в лог
-								this->_log->debug("A SCTP info message callback cannot be set for this event type", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Записываем ошибку в лог
-								this->_log->print("A SCTP info message callback cannot be set for this event type", log_t::flag_t::WARNING);
-							#endif
-						}
+				switch(static_cast <uint8_t> (i->second->state.node)){
+					// Если узел является одноранговым узлом
+					case static_cast <uint8_t> (event::node_t::PEER): {
+						// Получаем текущее значение узла события
+						::io::peer_t * node = awh_cast <::io::peer_t *> (i->second.get());
+						// Устанавливаем функцию обратного вызова для получения метаданных SCTP-сообщения
+						node->transfer.sctp.use().callbacks.info = ::move(cb);
+						/**
+						 * Если сокет узла уже заведён - выдаём подписку на метаданные немедленно
+						 *
+						 * @note У современного набора вызовов метаданные приходят ТОЛЬКО по подписке,
+						 *       и без неё отклик получал бы вчерашнее содержимое
+						 */
+						if(node->transfer.fd != net::invalid_socket_t)
+							// Выполняем подписку на метаданные принимаемых сообщений
+							this->_eth.sctp.receiveInfo(node->transfer.fd, true);
+					} break;
+
+					// Если узел является клиентом
+					case static_cast <uint8_t> (event::node_t::CLIENT): {
+						// Получаем текущее значение узла события
+						::io::client_t * node = awh_cast <::io::client_t *> (i->second.get());
+						// Устанавливаем функцию обратного вызова для получения метаданных SCTP-сообщения
+						node->transfer.sctp.use().callbacks.info = ::move(cb);
+						/**
+						 * Если сокет узла уже заведён - выдаём подписку на метаданные немедленно
+						 *
+						 * @note У современного набора вызовов метаданные приходят ТОЛЬКО по подписке,
+						 *       и без неё отклик получал бы вчерашнее содержимое
+						 */
+						if(node->transfer.fd != net::invalid_socket_t)
+							// Выполняем подписку на метаданные принимаемых сообщений
+							this->_eth.sctp.receiveInfo(node->transfer.fd, true);
+					} break;
+
+					// Для других типов узлов
+					default: {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Записываем ошибку в лог
+							this->_log->debug("A SCTP info message callback cannot be set for this event type", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем ошибку в лог
+							this->_log->print("A SCTP info message callback cannot be set for this event type", log_t::flag_t::WARNING);
+						#endif
 					}
-				#endif
+				}
 			}
 		/**
 		 * Если возникает ошибка
@@ -36833,7 +37420,7 @@ namespace sctp {
 			#endif
 		}
 	}
-/**
+	/**
 	 * @brief Метод установки функции обратного вызова для чтения данных вместе с метаданными
 	 *
 	 * @param id идентификатор события
@@ -36849,44 +37436,63 @@ namespace sctp {
 			auto i = ::__awh_nodes__.find(id);
 			// Если идентификатор события найден и событие не подлежит уничтожению
 			if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
+				// Создаём охранника узла события
+				::local::guard_t guard(i->second.get());
 				/**
-				 * Если операционной системой является FreeBSD
+				 * Определяем чем является текущий узел
 				 */
-				#if __FreeBSD__ || defined(__sun)
-					// Создаём охранника узла события
-					::local::guard_t guard(i->second.get());
-					/**
-					 * Определяем чем является текущий узел
-					 */
-					switch(static_cast <uint8_t> (i->second->state.node)){
-						// Если узел является одноранговым узлом
-						case static_cast <uint8_t> (event::node_t::PEER):
-							// Устанавливаем функцию обратного вызова для чтения данных вместе с метаданными
-							awh_cast <::io::peer_t *> (i->second.get())->transfer.sctp.use().callbacks.message = ::move(cb);
-						break;
-						// Если узел является клиентом
-						case static_cast <uint8_t> (event::node_t::CLIENT):
-							// Устанавливаем функцию обратного вызова для чтения данных вместе с метаданными
-							awh_cast <::io::client_t *> (i->second.get())->transfer.sctp.use().callbacks.message = ::move(cb);
-						break;
-						// Для других типов узлов
-						default: {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Записываем ошибку в лог
-								this->_log->debug("A SCTP message callback cannot be set for this event type", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Записываем ошибку в лог
-								this->_log->print("A SCTP message callback cannot be set for this event type", log_t::flag_t::WARNING);
-							#endif
-						}
+				switch(static_cast <uint8_t> (i->second->state.node)){
+					// Если узел является одноранговым узлом
+					case static_cast <uint8_t> (event::node_t::PEER): {
+						// Получаем текущее значение узла события
+						::io::peer_t * node = awh_cast <::io::peer_t *> (i->second.get());
+						// Устанавливаем функцию обратного вызова для чтения данных вместе с метаданными
+						node->transfer.sctp.use().callbacks.message = ::move(cb);
+						/**
+						 * Если сокет узла уже заведён - выдаём подписку на метаданные немедленно
+						 *
+						 * @note Отклик ставят и до заведения сокета: у клиента это обычный
+						 *       порядок. Подписка тогда выдаётся при заведении сокета, где
+						 *       установленность отклика и проверяется
+						 */
+						if(node->transfer.fd != net::invalid_socket_t)
+							// Выполняем подписку на метаданные принимаемых сообщений
+							this->_eth.sctp.receiveInfo(node->transfer.fd, true);
+					} break;
+					// Если узел является клиентом
+					case static_cast <uint8_t> (event::node_t::CLIENT): {
+						// Получаем текущее значение узла события
+						::io::client_t * node = awh_cast <::io::client_t *> (i->second.get());
+						// Устанавливаем функцию обратного вызова для чтения данных вместе с метаданными
+						node->transfer.sctp.use().callbacks.message = ::move(cb);
+						/**
+						 * Если сокет узла уже заведён - выдаём подписку на метаданные немедленно
+						 *
+						 * @note Отклик ставят и до заведения сокета: у клиента это обычный
+						 *       порядок. Подписка тогда выдаётся при заведении сокета, где
+						 *       установленность отклика и проверяется
+						 */
+						if(node->transfer.fd != net::invalid_socket_t)
+							// Выполняем подписку на метаданные принимаемых сообщений
+							this->_eth.sctp.receiveInfo(node->transfer.fd, true);
+					} break;
+					// Для других типов узлов
+					default: {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Записываем ошибку в лог
+							this->_log->debug("A SCTP message callback cannot be set for this event type", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем ошибку в лог
+							this->_log->print("A SCTP message callback cannot be set for this event type", log_t::flag_t::WARNING);
+						#endif
 					}
-				#endif
+				}
 			}
 		/**
 		 * Если возникает ошибка
@@ -38957,6 +39563,16 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															case static_cast <uint8_t> (event::type_t::SEQPACKET):
 																// Выполняем активацию событий SCTP
 																this->_eth.sctp.eventsSubscribe(client->transfer.fd, client->transfer.sctp.use().events);
+																/**
+																 * Если установлен любой из откликов, которым нужны метаданные
+																 *
+																 * @note Подписка нужна не только новому отклику: у современного набора
+																 *       вызовов метаданные приходят ТОЛЬКО по ней, и без подписки
+																 *       прежний отклик сведений получал бы вчерашнее содержимое
+																 */
+																if((client->transfer.sctp.endpoint().callbacks.message != nullptr) || (client->transfer.sctp.endpoint().callbacks.info != nullptr))
+																	// Выполняем подписку на метаданные принимаемых сообщений
+																	this->_eth.sctp.receiveInfo(client->transfer.fd, true);
 															break;
 														}
 													}
@@ -39561,6 +40177,16 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															case static_cast <uint8_t> (event::type_t::SEQPACKET):
 																// Выполняем активацию событий SCTP
 																this->_eth.sctp.eventsSubscribe(client->transfer.fd, client->transfer.sctp.use().events);
+																/**
+																 * Если установлен любой из откликов, которым нужны метаданные
+																 *
+																 * @note Подписка нужна не только новому отклику: у современного набора
+																 *       вызовов метаданные приходят ТОЛЬКО по ней, и без подписки
+																 *       прежний отклик сведений получал бы вчерашнее содержимое
+																 */
+																if((client->transfer.sctp.endpoint().callbacks.message != nullptr) || (client->transfer.sctp.endpoint().callbacks.info != nullptr))
+																	// Выполняем подписку на метаданные принимаемых сообщений
+																	this->_eth.sctp.receiveInfo(client->transfer.fd, true);
 															break;
 														}
 													}
@@ -41997,6 +42623,8 @@ bool awh::engine::IO::rebuild(const event::id_t id) noexcept {
 				}
 				// Сбрасываем очередь передачи данных
 				client->transfer.queue.clear();
+				// Выполняем сброс обрамления записи очереди
+				::sctp::forget(client);
 				// Если действующий дескриптор присутствует
 				if(client->transfer.fd != net::invalid_socket_t){
 					// Закрываем прежний дескриптор
@@ -68208,6 +68836,8 @@ void awh::engine::IO::clear() noexcept {
 						::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
 						// Сбрасываем очередь передачи данных события
 						peer->transfer.queue.clear();
+						// Выполняем сброс обрамления записи очереди
+						::sctp::forget(peer);
 						/**
 						 * Определяем тип таймера для событий сетевого движка
 						 */
@@ -68381,6 +69011,8 @@ void awh::engine::IO::clear() noexcept {
 						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 						// Сбрасываем очередь передачи данных события
 						client->transfer.queue.clear();
+						// Выполняем сброс обрамления записи очереди
+						::sctp::forget(client);
 						/**
 						 * Если операционной системой является FreeBSD
 						 */
@@ -69955,17 +70587,43 @@ size_t awh::engine::IO::available(const event::id_t id) const noexcept {
 					// Извлекаем количество байт, доступных для записи в очередь события
 					return awh_cast <::io::ipc_t *> (i->second.get())->transfer.queue.available();
 				// Если узел является одноранговым узлом
-				case static_cast <uint8_t> (event::node_t::PEER):
+				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Извлекаем количество байт, доступных для записи в очередь события
-					return awh_cast <::io::peer_t *> (i->second.get())->transfer.queue.available();
+					const size_t result = awh_cast <::io::peer_t *> (i->second.get())->transfer.queue.available();
+					/**
+					 * Если событие работает по протоколу SCTP
+					 *
+					 * @note Запись такого события несёт голову настроек отправки, и место под
+					 *       неё принадлежит очереди, а не отправителю. Не вычти мы её здесь -
+					 *       отправка отказала бы там, где приложение уверено в наличии места
+					 */
+					if(i->second->state.protocol == event::protocol_t::SCTP)
+						// Выводим доступное место за вычетом головы настроек отправки
+						return ((result > ::sctp::HEAD_SIZE) ? (result - ::sctp::HEAD_SIZE) : 0);
+					// Выводим количество байт, доступных для записи в очередь события
+					return result;
+				}
 				// Если узел является одноранговым узлом-источником
 				case static_cast <uint8_t> (event::node_t::ORIGIN):
 					// Извлекаем количество байт, доступных для записи в очередь события
 					return awh_cast <::io::origin_t *> (i->second.get())->transfer.queue.available();
 				// Если узел является клиентом
-				case static_cast <uint8_t> (event::node_t::CLIENT):
+				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Извлекаем количество байт, доступных для записи в очередь события
-					return awh_cast <::io::client_t *> (i->second.get())->transfer.queue.available();
+					const size_t result = awh_cast <::io::client_t *> (i->second.get())->transfer.queue.available();
+					/**
+					 * Если событие работает по протоколу SCTP
+					 *
+					 * @note Запись такого события несёт голову настроек отправки, и место под
+					 *       неё принадлежит очереди, а не отправителю. Не вычти мы её здесь -
+					 *       отправка отказала бы там, где приложение уверено в наличии места
+					 */
+					if(i->second->state.protocol == event::protocol_t::SCTP)
+						// Выводим доступное место за вычетом головы настроек отправки
+						return ((result > ::sctp::HEAD_SIZE) ? (result - ::sctp::HEAD_SIZE) : 0);
+					// Выводим количество байт, доступных для записи в очередь события
+					return result;
+				}
 				// Для других типов узлов
 				default: {
 					/**

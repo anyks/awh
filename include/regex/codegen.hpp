@@ -460,6 +460,24 @@ namespace awh {
 
 		/**
 		 * \~russian
+		 * @brief Наибольшее допустимое количество атомарных групп в порождаемом коде
+		 *
+		 * @details Отказ сопоставления, действовавший при входе в атомарную группу,
+		 *          занимает место в кадре вызова, а кадр размещается при входе
+		 *          в сопоставитель, поэтому количество групп ограничивается.
+		 *
+		 * \~english
+		 * @brief Largest admissible number of atomic groups in the generated code
+		 * @details The failure in effect at the entry into an atomic group occupies a place
+		 *          in the call frame, and the frame is allocated at the entry into the matcher,
+		 *          therefore the number of groups is bounded.
+		 *
+		 * \~
+		 */
+		constexpr size_t MAX_ATOMICS = 0x20;
+
+		/**
+		 * \~russian
 		 * @brief Класс преобразования программы регулярного выражения в машинный код
 		 *
 		 * @details Класс порождает сопоставитель для программы, исполнимой проходом

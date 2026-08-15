@@ -881,31 +881,35 @@ bool awh::eth::Stream_Control_Transmission_Protocol::partial() const noexcept {
  * @return     результат работы функции
  *
  */
-bool awh::eth::Stream_Control_Transmission_Protocol::receiveInfo(const net::socket_t sock, const bool mode) const noexcept {
+bool awh::eth::Stream_Control_Transmission_Protocol::receiveInfo([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const bool mode) const noexcept {
 	/**
-	 * Если система несёт подписку на метаданные принимаемых сообщений
+	 * Подписки эти у Sun Solaris и illumos ВЗАИМНО ИСКЛЮЧАЮТ друг друга
+	 *
+	 * @details Замерено на Solaris 11.4: какой из двух приёмов подписки поставлен на
+	 *          сокете первым, тот и остаётся, а второй отвергается отказом «Invalid
+	 *          argument». Проверено обоими порядками на одном и том же сокете:
+	 *
+	 *          - сперва SCTP_RECVRCVINFO, следом SCTP_EVENTS - отказ у второго;
+	 *          - сперва SCTP_EVENTS, следом SCTP_RECVRCVINFO - отказ у второго.
+	 *
+	 *          Выбор между ними не вкусовой. Оповещение о входящих сообщениях из
+	 *          SCTP_EVENTS кладёт сведения служебным сообщением SCTP_SNDRCV, откуда
+	 *          их и берёт чтение, и оно же наполняет опознаватель связи - без него
+	 *          отделение связи отвергается, и сервер не принимает подключений вовсе.
+	 *          SCTP_RECVRCVINFO же не даёт ни того, ни другого: он нужен лишь чтению
+	 *          через sctp_recvv, каким эти системы всё равно не читают
+	 *
+	 * @warning Оттого метод НИЧЕГО не делает и отвечает согласием: тронув здесь
+	 *          SCTP_RECVRCVINFO, мы отключили бы оповещения и положили бы приём
+	 *          подключений. Согласие здесь не обман - метаданные подписаны, просто
+	 *          другим приёмом, и приходят они при всяком чтении
+	 *
+	 * @param sock сетевой сокет
+	 * @param mode режим подписки на метаданные
+	 * @return     результат работы функции
+	 *
 	 */
-	#if defined(SCTP_RECVRCVINFO)
-		// Значение режима подписки на метаданные
-		const int32_t value = static_cast <int32_t> (mode);
-		// Выполняем установку режима подписки на метаданные
-		if(::setsockopt(sock, IPPROTO_SCTP, SCTP_RECVRCVINFO, reinterpret_cast <const char *> (&value), sizeof(value)) != 0){
-			// Выводим сообщение об ошибке
-			this->_log->print("SCTP receive info: %s", log_t::flag_t::WARNING, ::strerror(errno));
-			// Выводим отрицательный результат
-			return false;
-		}
-		// Выводим положительный результат
-		return true;
-	/**
-	 * Если подписки на метаданные система не несёт
-	 */
-	#else
-		// Выводим сообщение об ошибке
-		this->_log->print("SCTP receive info is not supported by the operating system", log_t::flag_t::WARNING);
-		// Выводим отрицательный результат
-		return false;
-	#endif
+	return true;
 }
 /**
  * @brief Метод управления режимом явной границы записи
@@ -969,111 +973,111 @@ ssize_t awh::eth::Stream_Control_Transmission_Protocol::receive(const net::socke
 	 */
 	flags = 0;
 	/**
-	 * Если система несёт современный набор вызовов
+	 * Чтение идёт обычным recvmsg - и на Solaris тоже, а не только на illumos
+	 *
+	 * @details Современное чтение sctp_recvv у Sun Solaris есть, но метаданные оно
+	 *          берёт из подписки SCTP_RECVRCVINFO, а та ВЗАИМНО ИСКЛЮЧАЕТ подписку
+	 *          SCTP_EVENTS - замерено на Solaris 11.4, см. receiveInfo(). Выбрать
+	 *          sctp_recvv значило бы остаться без оповещения о входящих сообщениях,
+	 *          а без него опознаватель связи приходит нулевым и сервер не принимает
+	 *          подключений вовсе. Оттого обе системы читают одним способом
+	 *
+	 * @warning Приём sctp_recvmsg из libsctp на сокете упорядоченных сообщений
+	 *          отвечает отказом «Operation not supported on transport endpoint» -
+	 *          проверено пробой на обеих системах 12.08.2026. Обычный же recvmsg
+	 *          на том же сокете читает и данные, и оповещения, потому чтение и
+	 *          идёт им, а сведения о сообщении разбираются из служебных сообщений
+	 *
+	 * @note Сведения приходят служебным сообщением SCTP_SNDRCV, а признак того,
+	 *       что прочитано оповещение, а не данные - разрядом MSG_NOTIFICATION в
+	 *       признаках сообщения
 	 */
-	#if defined(SCTP_RECVRCVINFO) && defined(SCTP_RECVV_RCVINFO)
-		// Буфер принимаемых данных
-		struct iovec iov{};
-		// Устанавливаем буфер принимаемых данных
-		iov.iov_base = buffer;
-		// Устанавливаем размер буфера принимаемых данных
-		iov.iov_len = size;
-		// Метаданные полученного сообщения
-		struct sctp_rcvinfo rcvinfo{};
-		// Размер метаданных полученного сообщения
-		socklen_t bytes = sizeof(rcvinfo);
-		// Вид полученных метаданных
-		uint32_t type = 0;
-		// Выполняем чтение сообщения вместе с метаданными
-		result = ::sctp_recvv(sock, &iov, 1, addr, length, &rcvinfo, &bytes, &type, &flags);
-		/**
-		 * Если метаданные сообщения получены
-		 *
-		 * @note Метаданные приходят лишь при выданной подписке: без неё ядру сообщать
-		 *       нечего, вид метаданных выводится пустым, и структура остаётся прежней
-		 */
-		if((result >= 0) && (type == SCTP_RECVV_RCVINFO)){
-			// Устанавливаем идентификатор полезной нагрузки
-			info.ppid = rcvinfo.rcv_ppid;
-			// Устанавливаем номер потока
-			info.num = rcvinfo.rcv_sid;
-			// Устанавливаем порядковый номер сообщения в потоке
-			info.ssn = rcvinfo.rcv_ssn;
-			// Устанавливаем номер передачи сообщения
-			info.tsn = rcvinfo.rcv_tsn;
-			// Устанавливаем накопленный номер передачи
-			info.cumtsn = rcvinfo.rcv_cumtsn;
-			// Устанавливаем контекст для уведомлений об ошибках
-			info.ctx = rcvinfo.rcv_context;
-			// Устанавливаем идентификатор ассоциации
-			info.id = static_cast <uint32_t> (rcvinfo.rcv_assoc_id);
-			/**
-			 * Заполняем метаданные прежнего вида
-			 *
-			 * @note Заполняются они и при современном наборе вызовов: тем же набором
-			 *       пользуются места, метаданных не запрашивавшие, и расхождение
-			 *       способов чтения не должно им ничего менять
-			 */
-			legacy.sinfo_stream = rcvinfo.rcv_sid;
-			// Устанавливаем порядковый номер сообщения в потоке
-			legacy.sinfo_ssn = rcvinfo.rcv_ssn;
-			// Устанавливаем флаги сообщения
-			legacy.sinfo_flags = rcvinfo.rcv_flags;
-			// Устанавливаем идентификатор полезной нагрузки
-			legacy.sinfo_ppid = rcvinfo.rcv_ppid;
-			// Устанавливаем контекст для уведомлений об ошибках
-			legacy.sinfo_context = rcvinfo.rcv_context;
-			// Устанавливаем номер передачи сообщения
-			legacy.sinfo_tsn = rcvinfo.rcv_tsn;
-			// Устанавливаем накопленный номер передачи
-			legacy.sinfo_cumtsn = rcvinfo.rcv_cumtsn;
-			// Устанавливаем идентификатор ассоциации
-			legacy.sinfo_assoc_id = rcvinfo.rcv_assoc_id;
-			/**
-			 * Если сообщение доставлено без учёта порядка в потоке
-			 */
-			#if defined(SCTP_UNORDERED)
-				// Если сообщение доставлено без учёта порядка в потоке
-				if(rcvinfo.rcv_flags & SCTP_UNORDERED)
-					// Устанавливаем флаг доставки без учёта порядка
-					info.flags.emplace(net::sctp::receipt_t::DELIVERY_UNORDERED);
-			#endif
-		}
+	// Описание принимаемого сообщения
+	struct msghdr message;
+	// Описание блока принимаемых данных
+	struct iovec iov;
+	// Буфер служебных сообщений приёма
+	uint8_t control[512];
 	/**
-	 * Если современного набора вызовов система не несёт
+	 * Собственный буфер адреса отправителя на случай, если его не спросили
+	 *
+	 * @warning Буфер адреса здесь ОБЯЗАТЕЛЕН, даже когда сам адрес вызывающему
+	 *          не нужен. Чтение с пустым msg_name на сокете упорядоченных
+	 *          сообщений отвергается отказом «Operation not supported on
+	 *          transport endpoint» - проверено пробой на обеих системах
+	 *          12.08.2026, причём проверено дважды: с буфером то же самое
+	 *          чтение проходит. В руководстве sctp(4P) это следует из того, что
+	 *          связи такого сокета опознаются именно адресом
 	 */
-	#else
-		// Выполняем чтение сообщения прежним способом
-		result = ::sctp_recvmsg(sock, buffer, size, addr, length, &legacy, &flags);
+	struct sockaddr_storage storage;
+	// Зануляем описание принимаемого сообщения
+	::memset(&message, 0, sizeof(message));
+	// Зануляем собственный буфер адреса отправителя
+	::memset(&storage, 0, sizeof(storage));
+	// Устанавливаем буфер принимаемых данных
+	iov.iov_base = buffer;
+	// Устанавливаем размер буфера принимаемых данных
+	iov.iov_len = size;
+	// Устанавливаем блок принимаемых данных
+	message.msg_iov = &iov;
+	// Устанавливаем количество блоков принимаемых данных
+	message.msg_iovlen = 1;
+	// Устанавливаем буфер адреса отправителя, а не спрошенный - собственный
+	message.msg_name = ((addr != nullptr) ? reinterpret_cast <void *> (addr) : reinterpret_cast <void *> (&storage));
+	// Устанавливаем размер буфера адреса отправителя
+	message.msg_namelen = (((addr != nullptr) && (length != nullptr)) ? (* length) : sizeof(storage));
+	// Устанавливаем буфер служебных сообщений
+	message.msg_control = control;
+	// Устанавливаем размер буфера служебных сообщений
+	message.msg_controllen = sizeof(control);
+	// Выполняем чтение сообщения из сокета
+	result = ::recvmsg(sock, &message, 0);
+	/**
+	 * Если сообщение получено
+	 *
+	 * @note Прежний способ несёт не все метаданные: номера передачи система
+	 *       здесь не выдаёт, и поля эти остаются пустыми. Скрывать разницу
+	 *       подстановкой было бы хуже - приложение вправе о ней знать
+	 */
+	if(result >= 0){
+		// Выдаём признаки принятого сообщения
+		flags = message.msg_flags;
+		// Если размер адреса отправителя запрошен, выдаём его
+		if((addr != nullptr) && (length != nullptr))
+			// Выдаём размер адреса отправителя
+			(* length) = message.msg_namelen;
 		/**
-		 * Если сообщение получено
-		 *
-		 * @note Прежний способ несёт не все метаданные: номера передачи система
-		 *       здесь не выдаёт, и поля эти остаются пустыми. Скрывать разницу
-		 *       подстановкой было бы хуже - приложение вправе о ней знать
+		 * Перебираем все служебные сообщения принятого сообщения
 		 */
-		if(result >= 0){
-			// Устанавливаем идентификатор полезной нагрузки
-			info.ppid = legacy.sinfo_ppid;
-			// Устанавливаем номер потока
-			info.num = legacy.sinfo_stream;
-			// Устанавливаем порядковый номер сообщения в потоке
-			info.ssn = legacy.sinfo_ssn;
-			// Устанавливаем контекст для уведомлений об ошибках
-			info.ctx = legacy.sinfo_context;
-			// Устанавливаем идентификатор ассоциации
-			info.id = static_cast <uint32_t> (legacy.sinfo_assoc_id);
-			/**
-			 * Если сообщение доставлено без учёта порядка в потоке
-			 */
-			#if defined(SCTP_UNORDERED)
-				// Если сообщение доставлено без учёта порядка в потоке
-				if(legacy.sinfo_flags & SCTP_UNORDERED)
-					// Устанавливаем флаг доставки без учёта порядка
-					info.flags.emplace(net::sctp::receipt_t::DELIVERY_UNORDERED);
-			#endif
+		for(struct cmsghdr * cmsg = CMSG_FIRSTHDR(&message); cmsg != nullptr; cmsg = CMSG_NXTHDR(&message, cmsg)){
+			// Если служебное сообщение несёт сведения о сообщении SCTP
+			if((cmsg->cmsg_level == IPPROTO_SCTP) && (cmsg->cmsg_type == SCTP_SNDRCV)){
+				// Переносим сведения о принятом сообщении
+				::memcpy(&legacy, CMSG_DATA(cmsg), sizeof(legacy));
+				// Выходим из цикла
+				break;
+			}
 		}
-	#endif
+		// Устанавливаем идентификатор полезной нагрузки
+		info.ppid = legacy.sinfo_ppid;
+		// Устанавливаем номер потока
+		info.num = legacy.sinfo_stream;
+		// Устанавливаем порядковый номер сообщения в потоке
+		info.ssn = legacy.sinfo_ssn;
+		// Устанавливаем контекст для уведомлений об ошибках
+		info.ctx = legacy.sinfo_context;
+		// Устанавливаем идентификатор ассоциации
+		info.id = static_cast <uint32_t> (legacy.sinfo_assoc_id);
+		/**
+		 * Если сообщение доставлено без учёта порядка в потоке
+		 */
+		#if defined(SCTP_UNORDERED)
+			// Если сообщение доставлено без учёта порядка в потоке
+			if(legacy.sinfo_flags & SCTP_UNORDERED)
+				// Устанавливаем флаг доставки без учёта порядка
+				info.flags.emplace(net::sctp::receipt_t::DELIVERY_UNORDERED);
+		#endif
+	}
 	/**
 	 * Если сообщение получено
 	 */

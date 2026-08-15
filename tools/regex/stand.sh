@@ -8,6 +8,20 @@
 
 set -e
 
+# Служебные метки файловой системы macOS в передаваемые наборы не кладутся:
+# распаковщики прочих систем на них жалуются отказом «Extended header record
+# length is out of range», и виден он лишь на стенде, а не на рабочей машине
+COPYFILE_DISABLE=1
+export COPYFILE_DISABLE
+
+# Набор пишется видом ustar, а не видом pax
+#
+# Каталоги дерева несут метки файловой системы macOS - значки и ярлыки, -
+# и вид pax выносит их в расширенные заголовки. Распаковщик OpenBSD такие
+# заголовки разбирает неверно и валит распаковку отказом «Extended header
+# record length is out of range», а на рабочей машине изъян не виден вовсе.
+# Вид ustar расширенных заголовков не имеет; длины путей набора ему отвечают.
+
 TARGET="$1"
 PORT="${2:-22}"
 
@@ -61,13 +75,13 @@ echo "Собираем набор исходных текстов модуля"
 if [ -n "$RECORD" ] ; then
 	cp "$RECORD" "$ROOT/tools/regex/record.bin"
 	# shellcheck disable=SC2086
-	tar czf "$BUNDLE" -C "$ROOT" \
+	tar --format ustar -czf "$BUNDLE" -C "$ROOT" \
 		$STAND_HEADERS $STAND_SOURCES $STAND_TOOLS \
 		tools/regex/sources.list tools/regex/record.bin
 	rm -f "$ROOT/tools/regex/record.bin"
 else
 	# shellcheck disable=SC2086
-	tar czf "$BUNDLE" -C "$ROOT" $STAND_HEADERS $STAND_SOURCES $STAND_TOOLS \
+	tar --format ustar -czf "$BUNDLE" -C "$ROOT" $STAND_HEADERS $STAND_SOURCES $STAND_TOOLS \
 		tools/regex/sources.list
 fi
 rm -f "$ROOT/tools/regex/sources.list"
