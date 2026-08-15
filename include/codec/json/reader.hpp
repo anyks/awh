@@ -361,6 +361,33 @@ namespace awh {
 						 */
 						Item() noexcept : event(event_t::NONE), modified(false) {}
 					} item_t;
+				public:
+					/**
+					 * \~russian
+					 * @brief Обработчик прямой выдачи событий разбора
+					 *
+					 * @details Вызывается на всяком собранном событии, минуя очередь выдачи.
+					 * Вид события, указание на содержимое его и признак изменения содержимого
+					 * передаются доводами, а не снимаются с чтения: снятие их обошлось бы
+					 * вызовами через границу единиц трансляции на всякое событие
+					 *
+					 * @warning Обработчик подаёт события посреди разбора куска текста: подавать
+					 * из него текст тому же чтению нельзя. Прекращение разбора требуется
+					 * запрашивать вызовом `abort()`
+					 *
+					 * \~english
+					 * @brief Handler of the direct issuance of the parsing events
+					 * @details It is called on every assembled event, bypassing the queue of the issuance.
+					 * The kind of the event, the pointer at its content and the flag of the modification of the content
+					 * are passed as arguments rather than taken from the reader: taking them would cost
+					 * calls across the boundary of the translation units on every event
+					 * @warning The handler delivers the events in the middle of the parsing of a chunk of a text: feeding
+					 * a text to the same reader from it is not allowed. The termination of the parsing is required
+					 * to be requested by a call of `abort()`
+					 *
+					 * \~
+					 */
+					typedef void (* handler_t) (void * context, Reader & reader, const event_t event, const span_t content, const bool modified);
 				private:
 					// Настройки разбора текста
 					settings_t _settings;
@@ -467,6 +494,33 @@ namespace awh {
 					size_t _head;
 					// Текущее выданное событие
 					item_t _current;
+				private:
+					/**
+					 * Обработчик прямой выдачи событий разбора
+					 *
+					 * @note Очередь выдачи стоит на пути события к потребителю и обходится
+					 *       обработчиком: событие ложится в очередь лишь тогда, когда
+					 *       обработчик не установлен
+					 */
+					handler_t _handler;
+					// Указание, передаваемое обработчику прямой выдачи событий
+					void * _context;
+					/**
+					 * Признак прекращения разбора по требованию потребителя
+					 *
+					 * @note Признак этот отдельный от состояния разбора намеренно: событие
+					 *       выдаётся посреди разбора знака, и состояние по возвращении из
+					 *       обработчика переписывается разбором того же знака
+					 */
+					bool _stopped;
+					/**
+					 * Признак удержания хранилища знаков
+					 *
+					 * @note Удержание затребует тот, кто забирает знаки себе целиком: очистка
+					 *       хранилища по исчерпании событий заставляла бы его переносить знаки
+					 *       копией на всяком куске
+					 */
+					bool _keeping;
 				private:
 					// Положение текущего события в исходном тексте
 					location_t _position;
@@ -724,6 +778,55 @@ namespace awh {
 					bool next() noexcept;
 					/**
 					 * \~russian
+					 * @brief Метод установки обработчика прямой выдачи событий разбора
+					 *
+					 * @details Событие подаётся обработчику прямо из разбора, минуя очередь
+					 * выдачи. Потоковое чтение событиями очередью при этом сохраняется:
+					 * обработчик - дело добровольное, и без него разбор ведёт себя по-прежнему
+					 *
+					 * @note Очередь стоила трети всего времени сборки дерева: событие ложится
+					 * в неё, а потом снимается с неё же копией
+					 *
+					 * @param callback устанавливаемый обработчик, ноль - снятие обработчика
+					 * @param context  указание, передаваемое обработчику
+					 *
+					 * \~english
+					 * @brief Method of setting the handler of the direct issuance of the parsing events
+					 * @details The event is delivered to the handler straight from the parsing, bypassing the queue
+					 * of the issuance. The streaming reading by the events through the queue is thereby preserved:
+					 * the handler is a voluntary matter, and without it the parsing behaves as before
+					 * @note The queue cost a third of the whole time of the assembly of the tree: the event is put
+					 * into it, and then is taken from it by a copy
+					 * @param callback handler being set, zero — removal of the handler
+					 * @param context  pointer passed to the handler
+					 *
+					 * \~
+					 */
+					void handler(handler_t callback, void * context) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод прекращения разбора по требованию потребителя
+					 *
+					 * @details Прекращает разбор прямо посреди куска текста. Применяется
+					 * обработчиком прямой выдачи событий: вернуть отказ из него нечем, а подача
+					 * текста обязана прекратиться немедля
+					 *
+					 * @note Кода отказа не устанавливает: причина прекращения известна тому,
+					 * кто его затребовал, и своей причины у разбора здесь нет
+					 *
+					 * \~english
+					 * @brief Method of the termination of the parsing at the demand of the consumer
+					 * @details It terminates the parsing right in the middle of a chunk of a text. It is applied
+					 * by the handler of the direct issuance of the events: there is nothing to return a failure by from it, and the feeding
+					 * of the text must stop immediately
+					 * @note It sets no error code: the reason of the termination is known to the one
+					 * who demanded it, and the parsing has no reason of its own here
+					 *
+					 * \~
+					 */
+					void abort() noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод извлечения вида текущего события
 					 *
 					 * @return вид текущего события
@@ -783,6 +886,58 @@ namespace awh {
 					 * \~
 					 */
 					const string & storage() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод установки удержания хранилища знаков
+					 *
+					 * @details Хранилище знаков очищается по исчерпании выданных событий: без
+					 * того оно росло бы во весь разбираемый текст. Потребителю, забирающему
+					 * знаки себе целиком, очистка эта не нужна вовсе - она лишь заставляет его
+					 * переносить знаки копией на всяком куске
+					 *
+					 * @warning Удержание растит хранилище во весь разбираемый текст: потоковому
+					 * разбору, разбирающему текст без конца, оно не годится
+					 *
+					 * @param mode устанавливаемый признак удержания хранилища знаков
+					 *
+					 * \~english
+					 * @brief Method of setting the retention of the storage of the characters
+					 * @details The storage of the characters is cleared upon the exhaustion of the issued events: without
+					 * that it would grow to the whole text being parsed. To a consumer taking the characters
+					 * for itself as a whole that clearing is not needed at all — it merely forces it
+					 * to transfer the characters by a copy on every chunk
+					 * @warning The retention grows the storage to the whole text being parsed: to a streaming
+					 * parsing, parsing a text without an end, it is not suitable
+					 * @param mode flag of the retention of the storage of the characters being set
+					 *
+					 * \~
+					 */
+					void keep(const bool mode) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод выдачи хранилища знаков наружу
+					 *
+					 * @details Хранилище переносится потребителю целиком, без копии. Применяется
+					 * по окончании разбора тем, кто удержание затребовал: копия хранилища во весь
+					 * разбираемый текст - самая дорогая из статей сборки дерева
+					 *
+					 * @warning Хранилище разбора после выдачи пусто, а выданные события ссылаются
+					 * в него смещениями: звать его посреди разбора нельзя
+					 *
+					 * @param storage хранилище, куда переносятся знаки разбора
+					 *
+					 * \~english
+					 * @brief Method of the issuance of the storage of the characters outwards
+					 * @details The storage is transferred to the consumer as a whole, without a copy. It is applied
+					 * upon the end of the parsing by the one who demanded the retention: a copy of the storage of the whole
+					 * text being parsed is the most expensive of the items of the assembly of the tree
+					 * @warning The storage of the parsing after the issuance is empty, while the issued events refer
+					 * into it by the offsets: calling it in the middle of the parsing is not allowed
+					 * @param storage storage into which the characters of the parsing are transferred
+					 *
+					 * \~
+					 */
+					void release(string & storage) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод извлечения количества байтов, выброшенных из хранилища знаков

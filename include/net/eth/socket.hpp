@@ -423,6 +423,58 @@ namespace awh {
 			public:
 				/**
 				 * \~russian
+				 * @brief Метод отправки датаграммы с меткой перегрузки в управляющих данных
+				 *
+				 * @details Метка едет вместе с датаграммой, а не выставляется опцией сокета:
+				 *          датаграмма вправе полежать в очереди отправки, и опция к моменту
+				 *          её ухода принадлежала бы уже другому соединению - сокет у датаграммных
+				 *          серверов один на все соединения
+				 *
+				 * @note Нулевая метка означает «не метить»: управляющие данные не строятся вовсе,
+				 *       и отправка идёт обычным обращением, как и прежде
+				 * @note Ширина значения метки для IPv4 у систем разная, и молчанием расхождение
+				 *       не проявляется: FreeBSD берёт октет и отвергает целое, macOS берёт целое,
+				 *       а на октет отвечает успехом, теряя метку. NetBSD не принимает метку на
+				 *       IPv4 вовсе - там отправка идёт без неё
+				 *
+				 * @param sock   сетевой сокет
+				 * @param buffer буфер отправляемых данных
+				 * @param size   размер буфера отправляемых данных
+				 * @param flags  флаги отправки
+				 * @param addr   адрес удалённого узла
+				 * @param length размер адреса удалённого узла
+				 * @param family семейство протоколов (IPv4 или IPv6)
+				 * @param traffic значение поля класса обслуживания вместе с меткой перегрузки
+				 * @return       количество отправленных октетов либо -1 при отказе
+				 *
+				 * \~english
+				 * @brief Method of sending a datagram with the marking of the congestion in the control data
+				 * @details The marking travels together with the datagram instead of being set by an option
+				 *          of the socket: a datagram is entitled to lie in the queue of the sending, and by
+				 *          the moment of its departure the option would belong to another connection already -
+				 *          the socket of the datagram servers is one for all the connections
+				 * @note A zero marking means "do not mark": the control data are not built at all,
+				 *       and the sending goes by the ordinary call, as before
+				 * @note The width of the value of the marking for IPv4 differs between the systems, and the
+				 *       divergence does not show itself by a silence: FreeBSD takes an octet and rejects an
+				 *       integer, macOS takes an integer and answers a success to an octet, losing the marking.
+				 *       NetBSD does not take the marking on IPv4 at all - there the sending goes without it
+				 * @param sock   network socket
+				 * @param buffer buffer of the data to be sent
+				 * @param size   size of the buffer of the data to be sent
+				 * @param flags  flags of the sending
+				 * @param addr   address of the remote node
+				 * @param length size of the address of the remote node
+				 * @param family family of the protocols (IPv4 or IPv6)
+				 * @param traffic value of the field of the class of the service together with the marking of the congestion
+				 * @return       number of the sent octets or -1 at a refusal
+				 *
+				 * \~
+				 */
+				ssize_t datagram(const net::socket_t sock, const void * buffer, const size_t size, const int32_t flags, const struct sockaddr * addr, const socklen_t length, const event::family_t family, const uint8_t traffic) const noexcept;
+			public:
+				/**
+				 * \~russian
 				 * @brief Метод активации/деактивации генерации информации о трафике
 				 *
 				 * @param sock   сетевой сокет

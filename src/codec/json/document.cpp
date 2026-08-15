@@ -54,91 +54,14 @@ namespace {
 	 * Размер куска, каким читается файл документа
 	 */
 	static constexpr size_t CHUNK = 0x10000;
+
 }
 
 /**
  * @brief Конструктор
  *
  */
-awh::codec::json::Document::Document() noexcept : _error(error_t::NONE), _named(0), _keyed(false), _pointer(0), _base(0) {}
-/**
- * @brief Метод проверки действительности ссылки
- *
- * @return признак действительности ссылки
- *
- */
-bool awh::codec::json::Document::Value::valid() const noexcept {
-	// Выводим признак действительности ссылки
-	return ((this->_doc != nullptr) && (this->_index < this->_doc->_nodes.size()));
-}
-/**
- * @brief Метод извлечения вида узла
- *
- * @return вид узла документа
- *
- */
-awh::codec::json::kind_t awh::codec::json::Document::Value::kind() const noexcept {
-	// Выводим вид узла документа, если ссылка действительна
-	return (this->valid() ? this->_doc->_nodes[this->_index].kind : kind_t::NONE);
-}
-/**
- * @brief Метод извлечения количества детей вместилища
- *
- * @return количество детей вместилища
- *
- */
-size_t awh::codec::json::Document::Value::size() const noexcept {
-	/**
-	 * Если ссылка недействительна
-	 */
-	if(!this->valid())
-		// Выводим отсутствие детей у вместилища
-		return 0;
-	// Получаем узел, на какой указывает ссылка
-	const node_t & node = this->_doc->_nodes[this->_index];
-	/**
-	 * Выводим количество детей вместилища, а у прочих узлов - отсутствие детей
-	 *
-	 * @note Поле длины у вместилища и у прочих узлов занято разным, и выдавать
-	 *       длину строки количеством детей означало бы завести обход по числу
-	 *       байтов её содержимого
-	 */
-	return (((node.kind == kind_t::ARRAY) || (node.kind == kind_t::OBJECT)) ? static_cast <size_t> (node.length) : 0);
-}
-/**
- * @brief Метод проверки вместилища на пустоту
- *
- * @return признак отсутствия детей у вместилища
- *
- */
-bool awh::codec::json::Document::Value::empty() const noexcept {
-	// Выводим признак отсутствия детей у вместилища
-	return (this->size() == 0);
-}
-/**
- * @brief Метод извлечения имени поля объекта
- *
- * @return имя поля объекта, пусто у прочих узлов
- *
- */
-string_view awh::codec::json::Document::Value::name() const noexcept {
-	/**
-	 * Если ссылка недействительна
-	 */
-	if(!this->valid())
-		// Выводим отсутствие имени поля объекта
-		return string_view();
-	// Получаем узел, на какой указывает ссылка
-	const node_t & node = this->_doc->_nodes[this->_index];
-	/**
-	 * Если узел полем объекта не является
-	 */
-	if(!node.keyed)
-		// Выводим отсутствие имени поля объекта
-		return string_view();
-	// Выводим имя поля объекта, лежащее вплотную перед содержимым
-	return string_view(this->_doc->_storage.data() + (node.offset - node.named), node.named);
-}
+awh::codec::json::Document::Document() noexcept : _error(error_t::NONE), _named(0), _keyed(false), _pointer(0), _base(0), _callback(nullptr) {}
 /**
  * @brief Метод проверки наличия поля объекта с указанным именем
  *
@@ -437,6 +360,15 @@ bool awh::codec::json::Document::Value::value(uint64_t & result) const noexcept 
  *
  */
 bool awh::codec::json::Document::Value::value(double & result) const noexcept {
+	/**
+	 * Если документ хранит значение числа вместо записи его
+	 */
+	if((this->kind() == kind_t::NUMBER) && (this->_doc->_settings.numbers != number_t::LAZY)){
+		// Выводим значение числа, преобразованное при разборе
+		result = this->_doc->_numbers[this->_doc->_nodes[this->_index].length];
+		// Выводим признак успешного извлечения
+		return true;
+	}
 	// Получаем запись числа как она есть
 	const string_view text = this->raw();
 	/**
@@ -472,24 +404,6 @@ bool awh::codec::json::Document::Value::value(string & result) const noexcept {
 	return true;
 }
 /**
- * @brief Метод извлечения записи числа как она есть
- *
- * @return запись числа, пусто у прочих узлов
- *
- */
-string_view awh::codec::json::Document::Value::raw() const noexcept {
-	/**
-	 * Если узел числом не является
-	 */
-	if(this->kind() != kind_t::NUMBER)
-		// Выводим отсутствие записи числа
-		return string_view();
-	// Получаем узел, на какой указывает ссылка
-	const node_t & node = this->_doc->_nodes[this->_index];
-	// Выводим запись числа как она есть
-	return string_view(this->_doc->_storage.data() + node.offset, node.length);
-}
-/**
  * @brief Метод извлечения строкового значения без копирования
  *
  * @return строковое значение, пусто у прочих узлов
@@ -508,350 +422,342 @@ string_view awh::codec::json::Document::Value::text() const noexcept {
 	return string_view(this->_doc->_storage.data() + node.offset, node.length);
 }
 /**
- * @brief Метод перехода к следующему значению вместилища
+ * @brief Метод переноса знаков разбора в хранилище документа
  *
- * @return ссылка на следующее значение вместилища
- *
- */
-awh::codec::json::Document::Value awh::codec::json::Document::Value::next() const noexcept {
-	/**
-	 * Если ссылка недействительна
-	 */
-	if(!this->valid())
-		// Выводим недействительную ссылку
-		return Value();
-	// Получаем номер следующего значения вместилища
-	const uint32_t index = (this->_index + this->_doc->_nodes[this->_index].extent);
-	// Выводим ссылку на следующее значение вместилища, если оно не вышло за границу
-	return ((index < this->_bound) ? Value(this->_doc, index, this->_bound) : Value());
-}
-/**
- * @brief Метод извлечения первого значения вместилища
- *
- * @return ссылка на первое значение вместилища
+ * @param reader объект потокового чтения текста
  *
  */
-awh::codec::json::Document::Value awh::codec::json::Document::Value::begin() const noexcept {
+void awh::codec::json::Document::transfer(const reader_t & reader) noexcept {
+	// Получаем количество байтов, выброшенных из хранилища знаков разбора
+	const uint64_t origin = reader.origin();
+	// Получаем хранилище знаков разбора
+	const string & storage = reader.storage();
 	/**
-	 * Если вместилище пусто
+	 * Если хранилище документа отстаёт от хранилища разбора
 	 */
-	if(this->empty())
-		// Выводим недействительную ссылку
-		return Value();
-	// Получаем узел, на какой указывает ссылка
-	const node_t & node = this->_doc->_nodes[this->_index];
-	// Выводим ссылку на первое значение вместилища
-	return Value(this->_doc, (this->_index + 1), (this->_index + node.extent));
+	if((this->_base + this->_storage.size()) < (origin + storage.size())){
+		// Получаем количество уже перенесённых знаков хранилища разбора
+		const size_t taken = static_cast <size_t> ((this->_base + this->_storage.size()) - origin);
+		// Выполняем перенос оставшихся знаков хранилища разбора
+		this->_storage.append(storage.data() + taken, storage.size() - taken);
+	}
 }
 /**
- * @brief Метод сборки дерева по событиям разбора
+ * @brief Метод приёма события разбора, выданного прямо из чтения
+ *
+ * @param context указание на документ, собирающий дерево
+ * @param reader  объект потокового чтения текста
+ *
+ */
+void awh::codec::json::Document::handler(void * context, reader_t & reader, const event_t event, const span_t content, const bool modified) noexcept {
+	// Получаем документ, собирающий дерево
+	Document * self = reinterpret_cast <Document *> (context);
+	/**
+	 * Если сборка дерева по очередному событию разбора завершилась отказом
+	 */
+	if(!self->digest(reader, event, content, modified))
+		/**
+		 * Выполняем прекращение разбора
+		 *
+		 * @note Возвращать отказ обработчику некуда, а подача текста обязана
+		 *       прекратиться немедля: причина отказа уже записана документом
+		 */
+		reader.abort();
+}
+/**
+ * @brief Метод сборки дерева по очередному событию разбора
  *
  * @details Дерево собирается сплошным перечнем узлов: очередной узел ложится в
  * конец перечня, отчего дети оказываются сразу за родителем сами собою. Размер
  * поддерева проставляется вместилищу при закрытии его, когда все дети уже легли
  *
- * @param reader   объект потокового чтения текста
- * @param callback обработчик потоковой выдачи значений
- * @return         признак успешности сборки
+ * @param reader объект потокового чтения текста
+ * @return       признак успешности сборки
  *
  */
-bool awh::codec::json::Document::consume(reader_t & reader, const callback_t & callback) noexcept {
+bool awh::codec::json::Document::digest(reader_t & reader, const event_t event, const span_t content, const bool modified) noexcept {
 	/**
-	 * @brief Метод переноса знаков разбора в хранилище документа
-	 *
-	 * @details Знаки переносятся целым куском по исчерпании событий, а не по одному
-	 * значению: смещения узлов сквозные, и содержимое их приходит на своё место само
-	 *
-	 * @note Перенос по одному значению стоил половины всего времени сборки дерева
-	 *
+	 * Если событие является примечанием
 	 */
-	const auto transfer = [this, &reader]() noexcept -> void {
-		// Получаем количество байтов, выброшенных из хранилища знаков разбора
-		const uint64_t origin = reader.origin();
-		// Получаем хранилище знаков разбора
-		const string & storage = reader.storage();
-		/**
-		 * Если хранилище документа отстаёт от хранилища разбора
-		 */
-		if((this->_base + this->_storage.size()) < (origin + storage.size())){
-			// Получаем количество уже перенесённых знаков хранилища разбора
-			const size_t taken = static_cast <size_t> ((this->_base + this->_storage.size()) - origin);
-			// Выполняем перенос оставшихся знаков хранилища разбора
-			this->_storage.append(storage.data() + taken, storage.size() - taken);
-		}
-	};
-	// Получаем количество байтов, выброшенных из хранилища знаков разбора
-	const uint64_t origin = reader.origin();
+	if(event == event_t::COMMENT)
+		// Выводим признак успешной сборки
+		return true;
 	/**
-	 * Выполняем перебор всех собранных событий разбора
+	 * Если событие является исчерпанием подаваемого текста
 	 */
-	while(reader.next()){
-		// Получаем вид очередного события разбора
-		const event_t event = reader.event();
+	if(event == event_t::FINISH)
+		// Выводим признак успешной сборки
+		return true;
+	/**
+	 * Если событие является окончанием документа
+	 */
+	if(event == event_t::DOCUMENT){
 		/**
-		 * Если событие является примечанием
+		 * Если выдача значений ведётся потоком
 		 */
-		if(event == event_t::COMMENT)
-			// Выполняем переход к следующему событию разбора
-			continue;
-		/**
-		 * Если событие является исчерпанием подаваемого текста
-		 */
-		if(event == event_t::FINISH)
-			// Выполняем переход к следующему событию разбора
-			continue;
-		/**
-		 * Если событие является окончанием документа
-		 */
-		if(event == event_t::DOCUMENT){
+		if((this->_callback != nullptr) && (* this->_callback)){
+			// Выполняем перенос знаков разбора в хранилище документа
+			this->transfer(reader);
 			/**
-			 * Если выдача значений ведётся потоком
+			 * Если обработчик потребовал прекращения разбора
 			 */
-			if(callback != nullptr){
-				// Выполняем перенос знаков разбора в хранилище документа
-				transfer();
-				/**
-				 * Если обработчик потребовал прекращения разбора
-				 */
-				if(!callback(this->root()))
-					// Выводим признак неудачной сборки
-					return false;
-				// Выполняем очистку перечня узлов документа
-				this->_nodes.clear();
-				// Сдвигаем сквозное положение первого знака хранилища документа
-				this->_base += static_cast <uint64_t> (this->_storage.size());
-				// Выполняем очистку хранилища знаков документа
-				this->_storage.clear();
-				// Выполняем очистку отображения имён полей в номера узлов
-				this->_index.clear();
-			}
-			// Выполняем переход к следующему событию разбора
-			continue;
+			if(!(* this->_callback)(this->root()))
+				// Выводим признак неудачной сборки
+				return false;
+			// Выполняем очистку перечня узлов документа
+			this->_nodes.clear();
+			// Сдвигаем сквозное положение первого знака хранилища документа
+			this->_base += static_cast <uint64_t> (this->_storage.size());
+			// Выполняем очистку хранилища знаков документа
+			this->_storage.clear();
+			// Выполняем очистку отображения имён полей в номера узлов
+			this->_index.clear();
 		}
+		// Выводим признак успешной сборки
+		return true;
+	}
+	/**
+	 * Получаем сквозное положение содержимого события в потоке разобранных знаков
+	 *
+	 * @details Знаки события уже лежат в хранилище разбора готовыми, и переносить
+	 * их к себе по одному значению незачем: сквозное положение позволяет заводить
+	 * узел сразу, а хранилище перенести целым куском по исчерпании событий
+	 *
+	 * @note Перенос по одному значению стоил половины всего времени сборки дерева.
+	 * Обнаружено разложением стоимости по частям
+	 */
+	const uint64_t position = (reader.origin() + static_cast <uint64_t> (content.offset));
+	/**
+	 * Если сквозное положение содержимого выходит за предел хранилища знаков
+	 *
+	 * @note Хранилище знаков ограничено четырьмя гигабайтами: смещение в нём
+	 *       занимает четыре байта, и содержимое за этой границей указать нечем
+	 */
+	if(((position - this->_base) + static_cast <uint64_t> (content.length)) > NO_OFFSET){
+		// Запоминаем код отказа разбора
+		this->_error = error_t::OVERFLOW_LIMIT;
+		// Выводим признак неудачной сборки
+		return false;
+	}
+	/**
+	 * Если событие является именем поля объекта
+	 */
+	if(event == event_t::KEY){
+		// Запоминаем длину имени поля объекта
+		this->_named = content.length;
+		// Запоминаем сквозное положение конца имени поля объекта
+		this->_pointer = (position + static_cast <uint64_t> (content.length));
+		// Устанавливаем признак разбора имени поля объекта
+		this->_keyed = true;
+		// Выводим признак успешной сборки
+		return true;
+	}
+	/**
+	 * Если количество узлов документа превышает допустимое
+	 */
+	if(this->_nodes.size() >= MAX_NODES){
+		// Запоминаем код отказа разбора
+		this->_error = error_t::TOO_MANY_NODES;
+		// Выводим признак неудачной сборки
+		return false;
+	}
+	// Получаем номер заводимого узла документа
+	const uint32_t index = static_cast <uint32_t> (this->_nodes.size());
+	// Заводимый узел документа
+	node_t node;
+	// Устанавливаем длину имени поля объекта
+	node.named = this->_named;
+	// Устанавливаем признак принадлежности узла объекту
+	node.keyed = this->_keyed;
+	/**
+	 * Устанавливаем смещение содержимого узла в хранилище знаков
+	 *
+	 * @note У вместилища своего содержимого нет, и указание события пусто: смещением
+	 *       ему служит конец имени поля, за каким содержимому и лежать бы
+	 */
+	node.offset = static_cast <uint32_t> ((((event == event_t::OBJECT_BEGIN) || (event == event_t::ARRAY_BEGIN)) ? this->_pointer : position) - this->_base);
+	// Сбрасываем длину имени поля объекта
+	this->_named = 0;
+	// Сбрасываем сквозное положение конца имени поля объекта
+	this->_pointer = 0;
+	// Снимаем признак разбора имени поля объекта
+	this->_keyed = false;
+	/**
+	 * Определяем вид очередного события разбора
+	 */
+	switch(static_cast <uint8_t> (event)){
+		// Если событие является открытием объекта
+		case static_cast <uint8_t> (event_t::OBJECT_BEGIN):
+			// Устанавливаем вид заводимого узла документа
+			node.kind = kind_t::OBJECT;
+		break;
+		// Если событие является открытием массива
+		case static_cast <uint8_t> (event_t::ARRAY_BEGIN):
+			// Устанавливаем вид заводимого узла документа
+			node.kind = kind_t::ARRAY;
+		break;
 		/**
-		 * Получаем сквозное положение содержимого события в потоке разобранных знаков
-		 *
-		 * @details Знаки события уже лежат в хранилище разбора готовыми, и переносить
-		 * их к себе по одному значению незачем: сквозное положение позволяет заводить
-		 * узел сразу, а хранилище перенести целым куском по исчерпании событий
-		 *
-		 * @note Перенос по одному значению стоил половины всего времени сборки дерева.
-		 * Обнаружено разложением стоимости по частям
+		 * Если событие является закрытием вместилища
 		 */
-		const span_t span = reader.content();
-		// Получаем сквозное положение содержимого события
-		const uint64_t position = (origin + static_cast <uint64_t> (span.offset));
-		/**
-		 * Если сквозное положение содержимого выходит за предел хранилища знаков
-		 *
-		 * @note Хранилище знаков ограничено четырьмя гигабайтами: смещение в нём
-		 *       занимает четыре байта, и содержимое за этой границей указать нечем
-		 */
-		if(((position - this->_base) + static_cast <uint64_t> (span.length)) > NO_OFFSET){
-			// Запоминаем код отказа разбора
-			this->_error = error_t::OVERFLOW_LIMIT;
-			// Выводим признак неудачной сборки
-			return false;
-		}
-		/**
-		 * Если событие является именем поля объекта
-		 */
-		if(event == event_t::KEY){
-			// Запоминаем длину имени поля объекта
-			this->_named = span.length;
-			// Запоминаем сквозное положение конца имени поля объекта
-			this->_pointer = (position + static_cast <uint64_t> (span.length));
-			// Устанавливаем признак разбора имени поля объекта
-			this->_keyed = true;
-			// Выполняем переход к следующему событию разбора
-			continue;
-		}
-		/**
-		 * Если количество узлов документа превышает допустимое
-		 */
-		if(this->_nodes.size() >= MAX_NODES){
-			// Запоминаем код отказа разбора
-			this->_error = error_t::TOO_MANY_NODES;
-			// Выводим признак неудачной сборки
-			return false;
-		}
-		// Получаем номер заводимого узла документа
-		const uint32_t index = static_cast <uint32_t> (this->_nodes.size());
-		// Заводимый узел документа
-		node_t node;
-		// Устанавливаем длину имени поля объекта
-		node.named = this->_named;
-		// Устанавливаем признак принадлежности узла объекту
-		node.keyed = this->_keyed;
-		/**
-		 * Устанавливаем смещение содержимого узла в хранилище знаков
-		 *
-		 * @note У вместилища своего содержимого нет, и указание события пусто: смещением
-		 *       ему служит конец имени поля, за каким содержимому и лежать бы
-		 */
-		node.offset = static_cast <uint32_t> ((((event == event_t::OBJECT_BEGIN) || (event == event_t::ARRAY_BEGIN)) ? this->_pointer : position) - this->_base);
-		// Сбрасываем длину имени поля объекта
-		this->_named = 0;
-		// Сбрасываем сквозное положение конца имени поля объекта
-		this->_pointer = 0;
-		// Снимаем признак разбора имени поля объекта
-		this->_keyed = false;
-		/**
-		 * Определяем вид очередного события разбора
-		 */
-		switch(static_cast <uint8_t> (event)){
-			// Если событие является открытием объекта
-			case static_cast <uint8_t> (event_t::OBJECT_BEGIN):
-				// Устанавливаем вид заводимого узла документа
-				node.kind = kind_t::OBJECT;
-			break;
-			// Если событие является открытием массива
-			case static_cast <uint8_t> (event_t::ARRAY_BEGIN):
-				// Устанавливаем вид заводимого узла документа
-				node.kind = kind_t::ARRAY;
-			break;
+		case static_cast <uint8_t> (event_t::OBJECT_END):
+		case static_cast <uint8_t> (event_t::ARRAY_END): {
 			/**
-			 * Если событие является закрытием вместилища
+			 * Если закрывается вместилище, какое не открывалось
 			 */
-			case static_cast <uint8_t> (event_t::OBJECT_END):
-			case static_cast <uint8_t> (event_t::ARRAY_END): {
-				/**
-				 * Если закрывается вместилище, какое не открывалось
-				 */
-				if(this->_nesting.empty()){
-					// Запоминаем код отказа разбора
-					this->_error = error_t::INTERNAL;
-					// Выводим признак неудачной сборки
-					return false;
-				}
-				// Получаем номер закрываемого вместилища
-				const uint32_t parent = this->_nesting.back();
-				// Удаляем номер закрываемого вместилища из стека
-				this->_nesting.pop_back();
-				// Устанавливаем размер поддерева закрываемого вместилища
-				this->_nodes[parent].extent = (index - parent);
-				/**
-				 * Если закрывается объект, а повторяющиеся имена полей затребовано разбирать
-				 */
-				if((event == event_t::OBJECT_END) && (this->_settings.duplicates != duplicate_t::KEEP)){
-					/**
-					 * Если разбор повторяющихся имён полей объекта завершился отказом
-					 */
-					if(!this->deduplicate(parent, reader))
-						// Выводим признак неудачной сборки
-						return false;
-				}
-				// Выполняем переход к следующему событию разбора
-				continue;
-			}
-			// Если событие является пустым значением
-			case static_cast <uint8_t> (event_t::NUL):
-				// Устанавливаем вид заводимого узла документа
-				node.kind = kind_t::NUL;
-			break;
-			// Если событие является логическим значением
-			case static_cast <uint8_t> (event_t::BOOL):
-				// Устанавливаем вид заводимого узла документа
-				node.kind = kind_t::BOOL;
-			break;
-			// Если событие является строковым значением
-			case static_cast <uint8_t> (event_t::STRING):
-				// Устанавливаем вид заводимого узла документа
-				node.kind = kind_t::STRING;
-			break;
-			/**
-			 * Если событие является числом
-			 */
-			case static_cast <uint8_t> (event_t::NUMBER): {
-				// Устанавливаем вид заводимого узла документа
-				node.kind = kind_t::NUMBER;
-				/**
-				 * Если преобразование числа затребовано настройками
-				 */
-				if(this->_settings.numbers != number_t::LAZY){
-					// Получаем запись разбираемого числа
-					const string_view text(reader.storage().data() + span.offset, span.length);
-					// Значение разбираемого числа
-					double result = 0.;
-					// Выполняем разбор записи числа
-					const lexical_t::result_t <char> res = lexical_t::fromChars(text.data(), text.data() + text.size(), result);
-					/**
-					 * Если запись числа разобрать не удалось
-					 */
-					if(!static_cast <bool> (res) || (res.ptr != (text.data() + text.size()))){
-						/**
-						 * Запоминаем код отказа разбора
-						 *
-						 * @note Запись числа разбор уже сличил со стандартом, оттого отказ
-						 *       преобразования означает непредставимость числа, а не негодность
-						 *       записи. Сличение здесь повторяется лишь затем, чтобы отказ
-						 *       назывался своим именем и в случае, о каком мы не подумали
-						 */
-						this->_error = (numeric(string(text)) ? error_t::NUMBER_OUT_OF_RANGE : error_t::INVALID_NUMBER);
-						// Запоминаем положение отказа разбора в исходном тексте
-						this->_position = reader.location();
-						// Выводим признак неудачной сборки
-						return false;
-					}
-					/**
-					 * Если преобразование числа затребовано с проверкой представимости
-					 */
-					if((this->_settings.numbers == number_t::CHECK) && ::isinf(result)){
-						// Запоминаем код отказа разбора
-						this->_error = error_t::NUMBER_OUT_OF_RANGE;
-						// Запоминаем положение отказа разбора в исходном тексте
-						this->_position = reader.location();
-						// Выводим признак неудачной сборки
-						return false;
-					}
-				}
-			} break;
-			/**
-			 * Если событие не опознано
-			 */
-			default: {
+			if(this->_nesting.empty()){
 				// Запоминаем код отказа разбора
 				this->_error = error_t::INTERNAL;
 				// Выводим признак неудачной сборки
 				return false;
 			}
-		}
-		/**
-		 * Если узел вместилищем не является
-		 */
-		if((node.kind != kind_t::ARRAY) && (node.kind != kind_t::OBJECT)){
-			// Устанавливаем длину содержимого узла
-			node.length = span.length;
-			// Устанавливаем признак изменения содержимого разбором
-			node.modified = reader.value().modified;
-		}
-		/**
-		 * Если узел заводится внутри вместилища
-		 */
-		if(!this->_nesting.empty())
-			// Увеличиваем количество детей вместилища
-			this->_nodes[this->_nesting.back()].length++;
-		// Добавляем заводимый узел в перечень узлов документа
-		this->_nodes.push_back(node);
-		/**
-		 * Если узел вместилищем является
-		 */
-		if((node.kind == kind_t::ARRAY) || (node.kind == kind_t::OBJECT)){
+			// Получаем номер закрываемого вместилища
+			const uint32_t parent = this->_nesting.back();
+			// Удаляем номер закрываемого вместилища из стека
+			this->_nesting.pop_back();
+			// Устанавливаем размер поддерева закрываемого вместилища
+			this->_nodes[parent].extent = (index - parent);
 			/**
-			 * Если глубина вложенности превышает допустимую
+			 * Если закрывается объект, а повторяющиеся имена полей затребовано разбирать
 			 */
-			if(this->_nesting.size() >= MAX_DEPTH){
-				// Запоминаем код отказа разбора
-				this->_error = error_t::DEPTH_EXCEEDED;
-				// Выводим признак неудачной сборки
-				return false;
+			if((event == event_t::OBJECT_END) && (this->_settings.duplicates != duplicate_t::KEEP)){
+				/**
+				 * Если разбор повторяющихся имён полей объекта завершился отказом
+				 */
+				if(!this->deduplicate(parent, reader))
+					// Выводим признак неудачной сборки
+					return false;
 			}
-			// Добавляем номер открытого вместилища в стек
-			this->_nesting.push_back(index);
+			// Выводим признак успешной сборки
+			return true;
+		}
+		// Если событие является пустым значением
+		case static_cast <uint8_t> (event_t::NUL):
+			// Устанавливаем вид заводимого узла документа
+			node.kind = kind_t::NUL;
+		break;
+		// Если событие является логическим значением
+		case static_cast <uint8_t> (event_t::BOOL):
+			// Устанавливаем вид заводимого узла документа
+			node.kind = kind_t::BOOL;
+		break;
+		// Если событие является строковым значением
+		case static_cast <uint8_t> (event_t::STRING):
+			// Устанавливаем вид заводимого узла документа
+			node.kind = kind_t::STRING;
+		break;
+		/**
+		 * Если событие является числом
+		 */
+		case static_cast <uint8_t> (event_t::NUMBER): {
+			// Устанавливаем вид заводимого узла документа
+			node.kind = kind_t::NUMBER;
+			/**
+			 * Если преобразование числа затребовано настройками
+			 */
+			if(this->_settings.numbers != number_t::LAZY){
+				// Получаем запись разбираемого числа
+				const string_view text(reader.storage().data() + content.offset, content.length);
+				// Значение разбираемого числа
+				double result = 0.;
+				// Выполняем разбор записи числа
+				const lexical_t::result_t <char> res = lexical_t::fromChars(text.data(), text.data() + text.size(), result);
+				/**
+				 * Если запись числа разобрать не удалось
+				 */
+				if(!static_cast <bool> (res) || (res.ptr != (text.data() + text.size()))){
+					/**
+					 * Запоминаем код отказа разбора
+					 *
+					 * @note Запись числа разбор уже сличил со стандартом, оттого отказ
+					 *       преобразования означает непредставимость числа, а не негодность
+					 *       записи. Сличение здесь повторяется лишь затем, чтобы отказ
+					 *       назывался своим именем и в случае, о каком мы не подумали
+					 */
+					this->_error = (numeric(string(text)) ? error_t::NUMBER_OUT_OF_RANGE : error_t::INVALID_NUMBER);
+					// Запоминаем положение отказа разбора в исходном тексте
+					this->_position = reader.location();
+					// Выводим признак неудачной сборки
+					return false;
+				}
+				/**
+				 * Если преобразование числа затребовано с проверкой представимости
+				 */
+				if((this->_settings.numbers == number_t::CHECK) && ::isinf(result)){
+					// Запоминаем код отказа разбора
+					this->_error = error_t::NUMBER_OUT_OF_RANGE;
+					// Запоминаем положение отказа разбора в исходном тексте
+					this->_position = reader.location();
+					// Выводим признак неудачной сборки
+					return false;
+				}
+				/**
+				 * Если количество преобразованных чисел превышает допустимое
+				 */
+				if(this->_numbers.size() >= NO_OFFSET){
+					// Запоминаем код отказа разбора
+					this->_error = error_t::OVERFLOW_LIMIT;
+					// Выводим признак неудачной сборки
+					return false;
+				}
+				/**
+				 * Запоминаем место значения числа в перечне преобразованных
+				 *
+				 * @details Преобразование при всяком обращении стоило трёх четвертей всего
+				 * обхода дерева на документе из одних чисел: настройка велит преобразовать
+				 * число единожды, а значит и хранить его следует значением
+				 *
+				 * @note Длина записи числа узлу больше не нужна: записи её документ не
+				 *       хранит вовсе, коль скоро хранит значение
+				 */
+				node.length = static_cast <uint32_t> (this->_numbers.size());
+				// Выполняем добавление значения числа к преобразованным
+				this->_numbers.push_back(result);
+			}
+		} break;
+		/**
+		 * Если событие не опознано
+		 */
+		default: {
+			// Запоминаем код отказа разбора
+			this->_error = error_t::INTERNAL;
+			// Выводим признак неудачной сборки
+			return false;
 		}
 	}
-	// Выполняем перенос знаков разбора в хранилище документа
-	transfer();
+	/**
+	 * Если узел вместилищем не является
+	 */
+	if((node.kind != kind_t::ARRAY) && (node.kind != kind_t::OBJECT) &&
+	   ((node.kind != kind_t::NUMBER) || (this->_settings.numbers == number_t::LAZY))){
+		// Устанавливаем длину содержимого узла
+		node.length = content.length;
+		// Устанавливаем признак изменения содержимого разбором
+		node.modified = modified;
+	}
+	/**
+	 * Если узел заводится внутри вместилища
+	 */
+	if(!this->_nesting.empty())
+		// Увеличиваем количество детей вместилища
+		this->_nodes[this->_nesting.back()].length++;
+	// Добавляем заводимый узел в перечень узлов документа
+	this->_nodes.push_back(node);
+	/**
+	 * Если узел вместилищем является
+	 */
+	if((node.kind == kind_t::ARRAY) || (node.kind == kind_t::OBJECT)){
+		/**
+		 * Если глубина вложенности превышает допустимую
+		 */
+		if(this->_nesting.size() >= MAX_DEPTH){
+			// Запоминаем код отказа разбора
+			this->_error = error_t::DEPTH_EXCEEDED;
+			// Выводим признак неудачной сборки
+			return false;
+		}
+		// Добавляем номер открытого вместилища в стек
+		this->_nesting.push_back(index);
+	}
 	// Выводим признак успешной сборки
 	return true;
 }
@@ -1044,6 +950,8 @@ void awh::codec::json::Document::clear() noexcept {
 	this->_nodes.clear();
 	// Выполняем очистку хранилища знаков документа
 	this->_storage.clear();
+	// Выполняем очистку значений чисел, преобразованных при разборе
+	this->_numbers.clear();
 	// Выполняем очистку отображения имён полей в номера узлов
 	this->_index.clear();
 	// Выполняем очистку стека номеров узлов открытых вместилищ
@@ -1087,15 +995,41 @@ bool awh::codec::json::Document::parse(const string & text, const callback_t & c
 	reader_t & reader = this->_reader;
 	// Выполняем установку настроек разбора текста
 	reader.settings(this->_settings.reader);
+	// Запоминаем обработчик потоковой выдачи значений
+	this->_callback = & callback;
+	// Получаем признак потоковой выдачи значений
+	const bool streaming = static_cast <bool> (callback);
+	/**
+	 * Выполняем установку удержания хранилища знаков разбора
+	 *
+	 * @details Знаки значений копировались дважды: из поданного текста в хранилище
+	 * разбора и оттуда в хранилище документа. Вторая копия не нужна вовсе, когда
+	 * документ забирает знаки себе целиком: разбор удерживает их у себя, а по
+	 * окончании они переносятся без копии
+	 *
+	 * @note Потоковой выдаче удержание не годится: хранилище росло бы во весь
+	 *       разбираемый поток, а он у неё без конца
+	 */
+	reader.keep(!streaming);
+	/**
+	 * Выполняем установку обработчика прямой выдачи событий разбора
+	 *
+	 * @details События приходят прямо в сборку дерева, минуя очередь выдачи чтения:
+	 * событие ложилось в неё, а потом снималось с неё же копией
+	 *
+	 * @note Очередь стоила трети всего времени сборки дерева. Обнаружено разложением
+	 *       стоимости по частям
+	 */
+	reader.handler(& Document::handler, this);
 	// Признак успешности разбора текста документа
 	bool result = true;
 	/**
 	 * Выполняем подачу текста документа чтению кусками
 	 *
-	 * @details Текст подаётся кусками, а не целиком, ради очереди собранных событий:
-	 * она копится до тех пор, пока события её не выданы, и на тексте в шестнадцать
-	 * мегабайт разрослась бы до двухсот. Куском же она удерживается в размере,
-	 * укладывающемся в кэш процессора
+	 * @details Текст подаётся кусками, а не целиком, ради хранилища знаков разбора:
+	 * оно копится до исчерпания поданного куска, и на тексте в шестнадцать мегабайт
+	 * держало бы весь текст разом вторым его подобием. Куском же оно удерживается в
+	 * размере, укладывающемся в кэш процессора
 	 *
 	 * @note Выдача от нарезки текста на куски не зависит вовсе - тем и позволительно
 	 *       резать его здесь по своему усмотрению
@@ -1106,14 +1040,11 @@ bool awh::codec::json::Document::parse(const string & text, const callback_t & c
 		// Выполняем подачу очередного куска текста документа чтению
 		result = reader.feed(text.data() + offset, length, ((offset + length) >= text.size()));
 		/**
-		 * Если сборка дерева по событиям разбора завершилась отказом
+		 * Если знаки разбора удержанию не подлежат
 		 */
-		if(!this->consume(reader, callback)){
-			// Запоминаем положение отказа разбора в исходном тексте
-			this->_position = reader.location();
-			// Выводим признак неудачного разбора
-			return false;
-		}
+		if(streaming)
+			// Выполняем перенос знаков разбора в хранилище документа
+			this->transfer(reader);
 		/**
 		 * Если разбор куска текста документа завершился отказом
 		 */
@@ -1127,12 +1058,29 @@ bool awh::codec::json::Document::parse(const string & text, const callback_t & c
 			// Прекращаем подачу текста документа
 			break;
 	}
+	// Выполняем снятие обработчика прямой выдачи событий разбора
+	reader.handler(nullptr, nullptr);
+	// Сбрасываем обработчик потоковой выдачи значений
+	this->_callback = nullptr;
+	/**
+	 * Если знаки разбора удерживались
+	 */
+	if(!streaming)
+		// Выполняем перенос знаков разбора в хранилище документа целиком, без копии
+		reader.release(this->_storage);
 	/**
 	 * Если разбор текста документа завершился отказом
 	 */
 	if(!result){
-		// Запоминаем код отказа разбора
-		this->_error = reader.error();
+		/**
+		 * Если своего отказа сборка дерева не выдала
+		 *
+		 * @note Сборка дерева прекращает разбор, отказа ему не сообщая: причина
+		 *       отказа у неё своя, и затирать её отказом чтения нельзя
+		 */
+		if(this->_error == error_t::NONE)
+			// Запоминаем код отказа разбора
+			this->_error = reader.error();
 		// Запоминаем положение отказа разбора в исходном тексте
 		this->_position = reader.location();
 		// Выполняем очистку перечня узлов документа
@@ -1173,6 +1121,19 @@ bool awh::codec::json::Document::load(const string & filename) noexcept {
 	reader_t & reader = this->_reader;
 	// Выполняем установку настроек разбора текста
 	reader.settings(this->_settings.reader);
+	/**
+	 * Выполняем установку обработчика прямой выдачи событий разбора
+	 *
+	 * @details События приходят прямо в сборку дерева, минуя очередь выдачи чтения
+	 */
+	reader.handler(& Document::handler, this);
+	/**
+	 * Выполняем установку удержания хранилища знаков разбора
+	 *
+	 * @note Потоковой выдачи значений разбор файла не ведёт, и знаки переносятся
+	 *       документу по окончании целиком, без копии
+	 */
+	reader.keep(true);
 	// Буфер очередного куска файла документа
 	string buffer(::CHUNK, '\0');
 	// Признак успешности разбора текста документа
@@ -1188,27 +1149,26 @@ bool awh::codec::json::Document::load(const string & filename) noexcept {
 		// Выполняем подачу куска файла документа чтению
 		result = reader.feed(buffer.data(), size, !static_cast <bool> (file));
 		/**
-		 * Если сборка дерева по событиям разбора завершилась отказом
-		 */
-		if(!this->consume(reader, nullptr)){
-			// Запоминаем положение отказа разбора в исходном тексте
-			this->_position = reader.location();
-			// Выводим признак неудачного разбора
-			return false;
-		}
-		/**
 		 * Если подача куска чтению не удалась
 		 */
 		if(!result)
 			// Прекращаем чтение файла документа
 			break;
 	}
+	// Выполняем снятие обработчика прямой выдачи событий разбора
+	reader.handler(nullptr, nullptr);
+	// Выполняем перенос знаков разбора в хранилище документа целиком, без копии
+	reader.release(this->_storage);
 	/**
 	 * Если разбор текста документа завершился отказом
 	 */
 	if(!result){
-		// Запоминаем код отказа разбора
-		this->_error = reader.error();
+		/**
+		 * Если своего отказа сборка дерева не выдала
+		 */
+		if(this->_error == error_t::NONE)
+			// Запоминаем код отказа разбора
+			this->_error = reader.error();
 		// Запоминаем положение отказа разбора в исходном тексте
 		this->_position = reader.location();
 		// Выполняем очистку перечня узлов документа
@@ -1292,10 +1252,19 @@ string awh::codec::json::Document::dump(const format_t format) const noexcept {
 				writer.value(node.length == 4);
 			break;
 			// Если узел является числом
-			case static_cast <uint8_t> (kind_t::NUMBER):
-				// Выполняем запись числа его готовой записью
-				writer.raw(string(this->_storage.data() + node.offset, node.length));
-			break;
+			/**
+			 * Если узел является числом
+			 */
+			case static_cast <uint8_t> (kind_t::NUMBER): {
+				/**
+				 * Если документ хранит значение числа вместо записи его
+				 */
+				if(this->_settings.numbers != number_t::LAZY)
+					// Выполняем запись значения числа
+					writer.value(this->_numbers[node.length]);
+				// Если документ хранит запись числа
+				else writer.raw(string(this->_storage.data() + node.offset, node.length));
+			} break;
 			// Если узел является строкой
 			case static_cast <uint8_t> (kind_t::STRING):
 				// Выполняем запись строкового значения

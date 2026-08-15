@@ -317,6 +317,15 @@ bool awh::codec::json::Reader::process(const char * text, const size_t size) noe
 	 * Выполняем разбор всего поданного текста
 	 */
 	while(index < size){
+		/**
+		 * Если разбор прекращён по требованию потребителя
+		 *
+		 * @note Прекращение запрашивается обработчиком прямой выдачи событий прямо
+		 *       посреди куска текста, и разбор обязан остановиться немедля
+		 */
+		if(this->_stopped)
+			// Выводим признак неудачного разбора
+			return false;
 		// Выполняем быстрый проход по знакам, состояния не меняющим
 		const size_t length = this->bulk(text + index, size - index);
 		/**
@@ -337,8 +346,14 @@ bool awh::codec::json::Reader::process(const char * text, const size_t size) noe
 		// Выполняем переход к следующему знаку
 		index++;
 	}
-	// Выводим признак успешного разбора
-	return true;
+	/**
+	 * Выводим признак успешного разбора
+	 *
+	 * @note Успех судится состоянием, а не исчерпанием текста: прекращение разбора
+	 *       по требованию потребителя случается и на последнем знаке куска, а тогда
+	 *       перебор оканчивается сам собою и проверки в начале круга не доходит
+	 */
+	return !this->_stopped;
 }
 /**
  * @brief Метод подачи куска разбираемого текста
@@ -356,6 +371,15 @@ bool awh::codec::json::Reader::feed(const char * buffer, const size_t size, cons
 	if(this->_error != error_t::NONE)
 		// Выводим признак неудачного разбора
 		return false;
+	/**
+	 * Если разбор прекращён по требованию потребителя
+	 *
+	 * @note Прекращение кода отказа не устанавливает, и одной проверки кода отказа
+	 *       для отсева продолжения разбора недостаточно
+	 */
+	if(this->_stopped)
+		// Выводим признак неудачного разбора
+		return false;
 	// Запоминаем признак подачи последнего куска текста
 	this->_last = (this->_last || last);
 	/**
@@ -365,7 +389,7 @@ bool awh::codec::json::Reader::feed(const char * buffer, const size_t size, cons
 	 *       ссылаются в него смещениями, и очистка при неопустевшей очереди обесценила
 	 *       бы ссылки уже собранных событий
 	 */
-	if((this->_head >= this->_items.size()) && (this->_length == 0)){
+	if(!this->_keeping && (this->_head >= this->_items.size()) && (this->_length == 0)){
 		// Очищаем очередь собранных событий разбора
 		this->_items.clear();
 		// Сбрасываем указание на голову очереди собранных событий
@@ -467,6 +491,16 @@ bool awh::codec::json::Reader::feed(const char * buffer, const size_t size, cons
 			return false;
 	}
 	/**
+	 * Если разбор прекращён по требованию потребителя
+	 *
+	 * @note Проверка эта стоит прежде разбора конца текста намеренно: прекращение
+	 *       случается и на последнем знаке куска, а тогда разбор конца текста выдал
+	 *       бы свой отказ поверх чужой причины прекращения
+	 */
+	if(this->_stopped)
+		// Выводим признак неудачного разбора
+		return false;
+	/**
 	 * Если подан последний кусок текста
 	 */
 	if(this->_last){
@@ -481,7 +515,7 @@ bool awh::codec::json::Reader::feed(const char * buffer, const size_t size, cons
 			/**
 			 * Если закрытие примечания концом текста завершилось отказом
 			 */
-			if(!this->parse('\n'))
+			if(!this->parse('\n') || this->_stopped)
 				// Выводим признак неудачного разбора
 				return false;
 		}
@@ -501,7 +535,7 @@ bool awh::codec::json::Reader::feed(const char * buffer, const size_t size, cons
 				 *       окончанием его служит всякий знак, числу не принадлежащий, либо
 				 *       конец текста
 				 */
-				if(!this->parse(' '))
+				if(!this->parse(' ') || this->_stopped)
 					// Выводим признак неудачного разбора
 					return false;
 			break;
@@ -563,8 +597,14 @@ bool awh::codec::json::Reader::feed(const char * buffer, const size_t size, cons
 		 */
 		this->emit(event_t::FINISH, 0, 0);
 	}
-	// Выводим признак успешного разбора
-	return true;
+	/**
+	 * Выводим признак успешного разбора
+	 *
+	 * @note Успех судится признаком прекращения, а не исчерпанием текста: разбор
+	 *       конца текста сам выдаёт события - завершение числа, окончание документа
+	 *       и исчерпание подаваемого текста, - и прекращение случается на любом из них
+	 */
+	return !this->_stopped;
 }
 /**
  * @brief Метод подачи текста целиком
@@ -584,6 +624,8 @@ bool awh::codec::json::Reader::feed(const string_view text) noexcept {
 void awh::codec::json::Reader::reset() noexcept {
 	// Сбрасываем состояние разбора текста
 	this->_state = state_t::DOCUMENT_START;
+	// Снимаем признак прекращения разбора по требованию потребителя
+	this->_stopped = false;
 	// Сбрасываем код отказа разбора
 	this->_error = error_t::NONE;
 	// Сбрасываем признак подачи последнего куска текста
@@ -743,6 +785,30 @@ const string & awh::codec::json::Reader::storage() const noexcept {
 	return this->_storage;
 }
 /**
+ * @brief Метод установки удержания хранилища знаков
+ *
+ * @param mode устанавливаемый признак удержания хранилища знаков
+ *
+ */
+void awh::codec::json::Reader::keep(const bool mode) noexcept {
+	// Устанавливаем признак удержания хранилища знаков
+	this->_keeping = mode;
+}
+/**
+ * @brief Метод выдачи хранилища знаков наружу
+ *
+ * @param storage хранилище, куда переносятся знаки разбора
+ *
+ */
+void awh::codec::json::Reader::release(string & storage) noexcept {
+	// Увеличиваем счёт байтов, выброшенных из хранилища знаков
+	this->_origin += static_cast <uint64_t> (this->_storage.size());
+	// Выполняем перенос знаков разбора потребителю целиком, без копии
+	storage = ::std::move(this->_storage);
+	// Выполняем очистку хранилища знаков разбора
+	this->_storage.clear();
+}
+/**
  * @brief Метод извлечения количества байтов, выброшенных из хранилища знаков
  *
  * @return количество байтов, выброшенных из хранилища знаков
@@ -822,9 +888,45 @@ awh::codec::json::Reader::Reader() noexcept :
  _state(state_t::DOCUMENT_START), _error(error_t::NONE),
  _last(false), _keyed(false), _modified(false), _empty(true), _comma(false),
  _origin(0), _head(0), _offset(0), _line(1), _column(1), _length(0),
- _unicode(0), _surrogate(0), _matched(0), _literal(nullptr) {
+ _unicode(0), _surrogate(0), _matched(0), _literal(nullptr), _handler(nullptr), _context(nullptr), _stopped(false), _keeping(false) {
 	// Выполняем заполнение разметки знаков, прерывающих быстрый проход
 	this->marking();
+}
+/**
+ * @brief Метод установки обработчика прямой выдачи событий разбора
+ *
+ * @param callback устанавливаемый обработчик, ноль - снятие обработчика
+ * @param context  указание, передаваемое обработчику
+ *
+ */
+void awh::codec::json::Reader::handler(handler_t callback, void * context) noexcept {
+	// Устанавливаем обработчик прямой выдачи событий разбора
+	this->_handler = callback;
+	// Устанавливаем указание, передаваемое обработчику
+	this->_context = context;
+}
+/**
+ * @brief Метод прекращения разбора по требованию потребителя
+ *
+ */
+void awh::codec::json::Reader::abort() noexcept {
+	/**
+	 * Устанавливаем признак прекращения разбора по требованию потребителя
+	 *
+	 * @note Кода отказа не устанавливаем намеренно: причина прекращения известна тому,
+	 *       кто его затребовал, и своей причины у разбора здесь нет. Состоянием разбора
+	 *       прекращение отмечать нельзя: событие выдаётся посреди разбора знака, и
+	 *       состояние по возвращении из обработчика переписывается разбором того же знака
+	 */
+	this->_stopped = true;
+	// Устанавливаем смещение прекращения от начала текста
+	this->_position.offset = this->_offset;
+	// Устанавливаем номер строки прекращения
+	this->_position.line = this->_line;
+	// Устанавливаем положение прекращения в строке
+	this->_position.column = this->_column;
+	// Устанавливаем глубину вложенности, на какой разбор прекращён
+	this->_position.depth = static_cast <uint32_t> (this->_nesting.size());
 }
 /**
  * @brief Метод прекращения разбора отказом
@@ -858,6 +960,34 @@ bool awh::codec::json::Reader::fail(const error_t error) noexcept {
  *
  */
 void awh::codec::json::Reader::emit(const event_t event, const uint32_t offset, const uint32_t length) noexcept {
+	/**
+	 * Если обработчик прямой выдачи событий установлен
+	 *
+	 * @details Очередь выдачи стоит на пути события к потребителю: событие ложится в
+	 * неё, а потом снимается с неё же копией. Обработчик получает событие прямо из
+	 * разбора, минуя очередь вовсе
+	 *
+	 * @note Очередь стоила трети всего времени сборки дерева. Обнаружено разложением
+	 *       стоимости по частям
+	 */
+	if(this->_handler != nullptr){
+		// Получаем признак изменения содержимого разбором
+		const bool modified = this->_modified;
+		// Устанавливаем положение текущего события в исходном тексте
+		this->_position = this->_mark;
+		// Сбрасываем признак изменения содержимого разбором
+		this->_modified = false;
+		/**
+		 * Выполняем выдачу собранного события обработчику
+		 *
+		 * @note Содержимое события передаётся доводами, а не полем текущего события:
+		 *       снятие его обошлось бы вызовами через границу единиц трансляции на
+		 *       всякое событие, а их у события три
+		 */
+		(* this->_handler)(this->_context, * this, event, span_t(offset, length), modified);
+		// Выходим из метода
+		return;
+	}
 	// Собираемое событие разбора
 	item_t item;
 	// Устанавливаем вид собранного события

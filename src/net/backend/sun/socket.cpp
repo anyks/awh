@@ -1388,6 +1388,100 @@ awh::event::ecn_t awh::eth::Socket::getExplicitCongestionNotification(const net:
 	return result;
 }
 /**
+ * @brief Метод отправки датаграммы с меткой перегрузки в управляющих данных
+ *
+ * @param sock    сетевой сокет
+ * @param buffer  буфер отправляемых данных
+ * @param size    размер буфера отправляемых данных
+ * @param flags   флаги отправки
+ * @param addr    адрес удалённого узла
+ * @param length  размер адреса удалённого узла
+ * @param family  семейство протоколов (IPv4 или IPv6)
+ * @param traffic значение поля класса обслуживания вместе с меткой перегрузки
+ * @return        количество отправленных октетов либо -1 при отказе
+ *
+ */
+ssize_t awh::eth::Socket::datagram(const net::socket_t sock, const void * buffer, const size_t size, const int32_t flags, const struct sockaddr * addr, const socklen_t length, const event::family_t family, const uint8_t traffic) const noexcept {
+	/**
+	 * Если метить датаграмму не требуется - отправляем обычным обращением
+	 *
+	 * @note Нулевое значение означает и нулевой класс обслуживания, и отсутствие метки
+	 *       перегрузки - строить ради него управляющие данные незачем
+	 */
+	if(traffic == 0)
+		// Выполняем отправку датаграммы обычным обращением
+		return ::sendto(sock, reinterpret_cast <const char *> (buffer), size, flags, addr, length);
+	// Буфер отправляемых данных
+	struct iovec iov{};
+	// Устанавливаем буфер отправляемых данных
+	iov.iov_base = const_cast <void *> (buffer);
+	// Устанавливаем размер буфера отправляемых данных
+	iov.iov_len = size;
+	// Буфер управляющих данных отправки
+	uint8_t control[CMSG_SPACE(sizeof(int32_t))]{0};
+	// Устройство отправляемого сообщения
+	struct msghdr message{};
+	// Устанавливаем адрес удалённого узла
+	message.msg_name = const_cast <struct sockaddr *> (addr);
+	// Устанавливаем размер адреса удалённого узла
+	message.msg_namelen = length;
+	// Устанавливаем буфер отправляемых данных
+	message.msg_iov = &iov;
+	// Устанавливаем количество буферов отправляемых данных
+	message.msg_iovlen = 1;
+	// Устанавливаем буфер управляющих данных
+	message.msg_control = control;
+	// Устанавливаем размер буфера управляющих данных
+	message.msg_controllen = sizeof(control);
+	// Получаем заголовок управляющих данных
+	struct cmsghdr * cmsg = CMSG_FIRSTHDR(&message);
+	// Если заголовок управляющих данных получить не удалось
+	if(cmsg == nullptr)
+		// Выполняем отправку датаграммы обычным обращением
+		return ::sendto(sock, reinterpret_cast <const char *> (buffer), size, flags, addr, length);
+	/**
+	 * Определяем семейство протоколов события
+	 */
+	switch(static_cast <uint8_t> (family)){
+		// Для семейства IPv6
+		case static_cast <uint8_t> (event::family_t::IPV6): {
+			// Значение поля Traffic Class (TC) заголовка IPv6-пакета
+			const int32_t value = static_cast <int32_t> (traffic);
+			// Устанавливаем уровень управляющих данных
+			cmsg->cmsg_level = IPPROTO_IPV6;
+			// Устанавливаем тип управляющих данных
+			cmsg->cmsg_type = IPV6_TCLASS;
+			// Устанавливаем размер управляющих данных
+			cmsg->cmsg_len = CMSG_LEN(sizeof(value));
+			// Устанавливаем значение поля Traffic Class (TC)
+			::memcpy(CMSG_DATA(cmsg), &value, sizeof(value));
+			// Устанавливаем размер занятого буфера управляющих данных
+			message.msg_controllen = CMSG_SPACE(sizeof(value));
+		} break;
+		// Для семейства IPv4
+		case static_cast <uint8_t> (event::family_t::IPV4): {
+			// Значение поля Type of Service (TOS) заголовка IPv4-пакета
+			const int32_t value = static_cast <int32_t> (traffic);
+			// Устанавливаем уровень управляющих данных
+			cmsg->cmsg_level = IPPROTO_IP;
+			// Устанавливаем тип управляющих данных
+			cmsg->cmsg_type = IP_TOS;
+			// Устанавливаем размер управляющих данных
+			cmsg->cmsg_len = CMSG_LEN(sizeof(value));
+			// Устанавливаем значение поля Type of Service (TOS)
+			::memcpy(CMSG_DATA(cmsg), &value, sizeof(value));
+			// Устанавливаем размер занятого буфера управляющих данных
+			message.msg_controllen = CMSG_SPACE(sizeof(value));
+		} break;
+		// Для остальных семейств метить датаграмму нечем
+		default:
+			// Выполняем отправку датаграммы обычным обращением
+			return ::sendto(sock, reinterpret_cast <const char *> (buffer), size, flags, addr, length);
+	}
+	// Выполняем отправку датаграммы вместе с меткой перегрузки
+	return ::sendmsg(sock, &message, flags);
+}
+/**
  * @brief Метод установки значения поля Explicit Congestion Notification (ECN) в заголовке IP-пакета
  *
  * @note Класс обслуживания (DSCP) сохраняется: оба поля занимают один

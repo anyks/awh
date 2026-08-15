@@ -143,6 +143,15 @@ namespace awh {
 					// Флаг выдачи буфера исходящей датаграммы сетевому движку
 					bool handed;
 					/**
+					 * Маркировка исходящих датаграмм соединения (RFC 9000 §13.4)
+					 *
+					 * @details Маркировка держится у соединения, а не у сокета: сокет
+					 *          сервера один на все соединения, и путь одного из них
+					 *          мог проверку поддержки ECN не пройти, тогда как
+					 *          остальным маркировка сохраняется
+					 */
+					event::ecn_t marking;
+					/**
 					 * \~russian
 					 * @brief Конструктор
 					 *
@@ -222,13 +231,6 @@ namespace awh {
 				bool _ecn;
 				// Семейство адресов события сервера
 				event::family_t _family;
-				/**
-				 * Маркировка, установленная на сокете события сервера. Маркировка
-				 * накладывается на сокет целиком, а проверку пути соединения ведут
-				 * порознь: значение кешируется, чтобы менять его только при
-				 * расхождении с требуемым, а не перед каждой датаграммой
-				 */
-				event::ecn_t _marking;
 			private:
 				/**
 				 * Общий ключ вывода токенов сброса без сохранения состояния. Генерируется
@@ -452,17 +454,27 @@ namespace awh {
 				void process(const event::id_t oid) noexcept;
 				/**
 				 * \~russian
-				 * @brief Метод применения маркировки соединения к сокету события сервера
+				 * @brief Метод применения маркировки к исходящим датаграммам соединения
 				 *
+				 * @note Маркировка ставится событию соединения, а не сокету сервера: сокет
+				 *       у датаграммного сервера один на все соединения, и метка сокета
+				 *       помечала бы датаграммы всех соединений разом
+				 * @param oid     идентификатор события сессии
+				 * @param session сессия соединения
 				 * @param marking требуемая маркировка исходящих датаграмм
 				 *
 				 * \~english
-				 * @brief Method of applying the marking of a connection to the socket of the server event
+				 * @brief Method of applying the marking to the outgoing datagrams of a connection
+				 * @note The marking is set to the event of the connection instead of the socket of the
+				 *       server: the socket of a datagram server is one for all the connections, and a
+				 *       marking of the socket would mark the datagrams of all the connections at once
+				 * @param oid     event identifier of the session
+				 * @param session session of the connection
 				 * @param marking required marking of the outgoing datagrams
 				 *
 				 * \~
 				 */
-				void mark(const event::ecn_t marking) noexcept;
+				void mark(const event::id_t oid, session_t & session, const event::ecn_t marking) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод отправки готовых исходящих датаграмм соединения

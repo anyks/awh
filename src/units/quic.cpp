@@ -57,7 +57,8 @@ namespace {
  */
 awh::unit::QuicServer::Session::Session() noexcept :
  connection(nullptr), connected(false), dest(0),
- tunnel(quic::connection_t::INVALID_STREAM), datagram{""}, handed(false) {}
+ tunnel(quic::connection_t::INVALID_STREAM), datagram{""},
+ handed(false), marking(event::ecn_t::NOT_ECT) {}
 /**
  * @brief Конструктор параметров кластера
  *
@@ -180,6 +181,14 @@ void awh::unit::QuicServer::accept([[maybe_unused]] const event::id_t eid, const
 	 * на ту датаграмму, к которой относится
 	 */
 	this->_io->on(oid, static_cast <engine::callback::source_t> (std::bind(&QuicServer::source, this, _1, _2, _3)));
+	/**
+	 * Помечаем исходящие датаграммы соединения поддержкой ECN (RFC 9000 §13.4.1)
+	 *
+	 * @note Метка ставится соединению, а не сокету сервера: сокет один на все
+	 *       соединения, и путь одного из них вправе проверку поддержки не пройти,
+	 *       тогда как остальным маркировка сохраняется
+	 */
+	this->mark(oid, session, event::ecn_t::ECT0);
 }
 /**
  * @brief Метод обработки принятой датаграммы сессии
@@ -527,11 +536,11 @@ bool awh::unit::QuicServer::source(const event::id_t oid, const uint8_t ** buffe
 		return true;
 	}
 	/**
-	 * Применяем маркировку соединения к сокету: путь соединения мог проверку
-	 * поддержки ECN не пройти, и маркировать его датаграммы далее нельзя,
-	 * тогда как остальным соединениям сокета маркировка сохраняется
+	 * Применяем маркировку соединения: путь соединения мог проверку поддержки ECN
+	 * не пройти, и маркировать его датаграммы далее нельзя, тогда как остальным
+	 * соединениям сервера маркировка сохраняется
 	 */
-	this->mark(i->second.connection->marking());
+	this->mark(oid, i->second, i->second.connection->marking());
 	// Выдаём буфер исходящей датаграммы сетевому движку
 	(* buffer) = reinterpret_cast <const uint8_t *> (i->second.datagram.data());
 	// Выдаём размер исходящей датаграммы
@@ -643,20 +652,26 @@ bool awh::unit::QuicServer::drop(const event::id_t oid, const uint8_t * data, co
  * @param marking требуемая маркировка исходящих датаграмм
  *
  */
-void awh::unit::QuicServer::mark(const event::ecn_t marking) noexcept {
+void awh::unit::QuicServer::mark(const event::id_t oid, session_t & session, const event::ecn_t marking) noexcept {
 	// Если уведомление о перегрузке пути отключено либо маркировка уже установлена
-	if(!this->_ecn || (marking == this->_marking))
+	if(!this->_ecn || (marking == session.marking))
 		// Выходим из метода - смена маркировки не требуется
 		return;
-	// Если смена маркировки исходящих датаграмм не выполнена
-	if(!this->_io->setExplicitCongestionNotification(this->_eid, this->_family, marking)){
+	/**
+	 * Если смена маркировки исходящих датаграмм соединения не выполнена
+	 *
+	 * @note Маркировка ставится событию соединения: движок кладёт её в управляющие
+	 *       данные отправки, и она едет вместе со своей датаграммой. Метка сокета
+	 *       здесь не годится - сокет один на все соединения сервера
+	 */
+	if(!this->_io->setExplicitCongestionNotification(oid, this->_family, marking)){
 		// Записываем предупреждение в лог
-		this->_log->print("QUIC outgoing datagrams marking is not applied", log_t::flag_t::WARNING);
-		// Выходим из метода - установленная на сокете маркировка неизвестна
+		this->_log->print("QUIC outgoing datagrams marking is not applied: ID=%u", log_t::flag_t::WARNING, oid);
+		// Выходим из метода - установленная маркировка неизвестна
 		return;
 	}
-	// Запоминаем установленную на сокете маркировку
-	this->_marking = marking;
+	// Запоминаем установленную маркировку соединения
+	session.marking = marking;
 }
 /**
  * @brief Метод завершения сессии соединения
@@ -986,10 +1001,10 @@ bool awh::unit::QuicServer::launch(const event::id_t eid) noexcept {
 	if(!this->_io->launch(this->_eid) || !this->_io->launch(this->_tid))
 		// Возвращаем значение по умолчанию
 		return false;
-	// Если уведомление о перегрузке пути включено
-	if(this->_ecn)
-		// Помечаем исходящие датаграммы поддержкой ECN (RFC 9000 §13.4.1)
-		this->mark(event::ecn_t::ECT0);
+	/**
+	 * Маркировать здесь нечего: метка принадлежит соединению, а не сокету сервера,
+	 * и ставится каждому соединению при заведении его сессии (RFC 9000 §13.4.1)
+	 */
 	// Возвращаем положительный результат
 	return true;
 }
@@ -2700,7 +2715,7 @@ bool awh::unit::QuicServer::clusterSetBufferSize(const pid_t pid, const event::a
  */
 awh::unit::QuicServer::QuicServer(const fmk_t * fmk, const log_t * log) noexcept :
  unit_t(fmk, log), _eid(0), _tid(0), _inheritedEid(0), _retry(false), _ecn(false), _family(event::family_t::IPV4),
- _marking(event::ecn_t::NOT_ECT), _resetKey{""}, _ctx(0), _coder(nullptr), _cluster(nullptr),
+ _resetKey{""}, _ctx(0), _coder(nullptr), _cluster(nullptr),
  _listenType(event::address_t::IPV4), _awaitingPort(false), _backlog(0), _listenPort(0),
  _portBegin(0), _portEnd(0), _listenHost{""} {}
 /**

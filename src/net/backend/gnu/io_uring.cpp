@@ -1100,6 +1100,16 @@ namespace io {
 		event::protocol_t protocol;      // Флаг протокола события
 		event::delivery_mode_t delivery; // Флаг режима доставки события
 		/**
+		 * Класс обслуживания вместе с меткой перегрузки (ECN) исходящих датаграмм
+		 *
+		 * @details Метка держится на узле, а не на сокете: у датаграммных серверов сокет
+		 *          один на все соединения, и датаграмма, полежавшая в очереди, ушла бы
+		 *          под меткой, выставленной уже другим соединением. Отсюда же и нулевое
+		 *          значение как признак «не метить»: нулевой класс обслуживания вместе
+		 *          с отсутствием метки ровно это и означают
+		 */
+		uint8_t traffic;
+		/**
 		 * @brief Конструктор
 		 *
 		 */
@@ -1113,7 +1123,7 @@ namespace io {
 		 family(event::family_t::NONE),
 		 address(event::address_t::NONE),
 		 protocol(event::protocol_t::NONE),
-		 delivery(event::delivery_mode_t::UNICAST) {}
+		 delivery(event::delivery_mode_t::UNICAST), traffic(0) {}
 	} state_t;
 
 	/**
@@ -20267,12 +20277,14 @@ namespace io {
 									 */
 									errno = 0;
 									// Выполняем отправку данных в UDP-сокет
-									bytes = ::sendto(
+									bytes = eth->socket.datagram(
 										origin->transfer.fd,
 										reinterpret_cast <const uint8_t *> (buffer),
 										size, MSG_NOSIGNAL,
 										&::trust_cast <struct sockaddr> (origin->endpoint.client),
-										origin->endpoint.size
+										origin->endpoint.size,
+										origin->state.family,
+										origin->state.traffic
 									);
 									// Если данные отправлены успешно
 									if(bytes > 0){
@@ -21324,12 +21336,14 @@ namespace io {
 									// Если клиент находится в запущенном состоянии
 									else if(client->state.status == event::status_t::LAUNCHED)
 										// Выполняем отправку данных в UDP-сокет
-										bytes = ::sendto(
+										bytes = eth->socket.datagram(
 											client->transfer.fd,
 											reinterpret_cast <const uint8_t *> (buffer),
 											size, MSG_NOSIGNAL,
 											&::trust_cast <struct sockaddr> (client->endpoint.server),
-											client->endpoint.size
+											client->endpoint.size,
+											client->state.family,
+											client->state.traffic
 										);
 									// Если данные отправлены успешно
 									if(bytes > 0){
@@ -21731,12 +21745,14 @@ namespace io {
 												client->transfer.sctp.use().info.sinfo_context
 											);
 										// Выполняем отправку данных в UDP-сокет
-										else bytes = ::sendto(
+										else bytes = eth->socket.datagram(
 											client->transfer.fd,
 											reinterpret_cast <const uint8_t *> (buffer),
 											size, MSG_NOSIGNAL,
 											&::trust_cast <struct sockaddr> (client->endpoint.server),
-											client->endpoint.size
+											client->endpoint.size,
+											client->state.family,
+											client->state.traffic
 										);
 									}
 									// Если данные отправлены успешно
@@ -22168,12 +22184,14 @@ namespace io {
 									// Если событие принадлежит к типу DATAGRAM
 									case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 										// Выполняем отправку данных в UDP-сокет
-										bytes = ::sendto(
+										bytes = eth->socket.datagram(
 											origin->transfer.fd,
 											reinterpret_cast <const uint8_t *> (buffer),
 											size, MSG_NOSIGNAL,
 											&::trust_cast <struct sockaddr> (origin->endpoint.client),
-											origin->endpoint.size
+											origin->endpoint.size,
+											origin->state.family,
+											origin->state.traffic
 										);
 									} break;
 									// Для остальных типов сокетов
@@ -25125,7 +25143,7 @@ namespace io {
 									 */
 									errno = 0;
 									// Выполняем отправку данных в UDP-сокет
-									const ssize_t bytes = ::sendto(origin->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
+									const ssize_t bytes = eth->socket.datagram(origin->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size, origin->state.family, origin->state.traffic);
 									// Снимаем код ошибки сразу после вызова ядра, пока его никто не перебил
 									code = errno;
 									// Если данные отправлены успешно
@@ -25429,7 +25447,7 @@ namespace io {
 										 */
 										errno = 0;
 										// Выполняем отправку данных в UDP-сокет
-										const ssize_t bytes = ::sendto(origin->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
+										const ssize_t bytes = eth->socket.datagram(origin->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size, origin->state.family, origin->state.traffic);
 										// Если данные отправлены успешно
 										if(bytes > 0){
 											// Возвращаем количество байт данных, отправленных событием
@@ -25715,7 +25733,7 @@ namespace io {
 						 */
 						errno = 0;
 						// Выполняем отправку данных в UDP-сокет
-						const ssize_t bytes = ::sendto(origin->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
+						const ssize_t bytes = eth->socket.datagram(origin->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size, origin->state.family, origin->state.traffic);
 						// Если данные отправлены успешно
 						if(bytes > 0){
 							// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -28673,7 +28691,7 @@ namespace io {
 										 */
 										errno = 0;
 										// Выполняем отправку данных в UDP-сокет
-										const ssize_t bytes = ::sendto(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
+										const ssize_t bytes = eth->socket.datagram(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size, client->state.family, client->state.traffic);
 										// Если данные отправлены успешно
 										if(bytes > 0){
 											// Возвращаем количество байт данных, отправленных событием
@@ -29004,7 +29022,7 @@ namespace io {
 											 */
 											errno = 0;
 											// Выполняем отправку данных в UDP-сокет
-											const ssize_t bytes = ::sendto(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
+											const ssize_t bytes = eth->socket.datagram(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size, client->state.family, client->state.traffic);
 											// Если данные отправлены успешно
 											if(bytes > 0){
 												// Возвращаем количество байт данных, отправленных событием
@@ -29322,7 +29340,7 @@ namespace io {
 							 */
 							errno = 0;
 							// Выполняем отправку данных в UDP-сокет
-							const ssize_t bytes = ::sendto(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
+							const ssize_t bytes = eth->socket.datagram(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size, client->state.family, client->state.traffic);
 							// Если данные отправлены успешно
 							if(bytes > 0){
 								// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -30285,7 +30303,7 @@ namespace io {
 												client->transfer.sctp.use().info.sinfo_context
 											);
 										// Выполняем отправку данных в UDP-сокет
-										else bytes = ::sendto(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
+										else bytes = eth->socket.datagram(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size, client->state.family, client->state.traffic);
 										// Если данные отправлены успешно
 										if(bytes > 0){
 											// Возвращаем количество байт данных, отправленных событием
@@ -30632,7 +30650,7 @@ namespace io {
 													client->transfer.sctp.use().info.sinfo_context
 												);
 											// Выполняем отправку данных в UDP-сокет
-											else bytes = ::sendto(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
+											else bytes = eth->socket.datagram(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size, client->state.family, client->state.traffic);
 											// Если данные отправлены успешно
 											if(bytes > 0){
 												// Возвращаем количество байт данных, отправленных событием
@@ -30966,7 +30984,7 @@ namespace io {
 									client->transfer.sctp.use().info.sinfo_context
 								);
 							// Выполняем отправку данных в UDP-сокет
-							else bytes = ::sendto(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
+							else bytes = eth->socket.datagram(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size, client->state.family, client->state.traffic);
 							// Если данные отправлены успешно
 							if(bytes > 0){
 								// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -31134,7 +31152,7 @@ namespace io {
 						 */
 						errno = 0;
 						// Выполняем отправку данных в UDP-сокет
-						const ssize_t bytes = ::sendto(server->fd, buffer, size, MSG_NOSIGNAL, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
+						const ssize_t bytes = eth->socket.datagram(server->fd, buffer, size, MSG_NOSIGNAL, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size, server->state.family, server->state.traffic);
 						// Если данные отправлены успешно
 						if(bytes > 0){
 							// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -31230,7 +31248,7 @@ namespace io {
 							 */
 							errno = 0;
 							// Выполняем отправку данных в UDP-сокет
-							const ssize_t bytes = ::sendto(server->fd, buffer, size, MSG_NOSIGNAL, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
+							const ssize_t bytes = eth->socket.datagram(server->fd, buffer, size, MSG_NOSIGNAL, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size, server->state.family, server->state.traffic);
 							// Если данные отправлены успешно
 							if(bytes > 0){
 								// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -31325,7 +31343,7 @@ namespace io {
 						 */
 						errno = 0;
 						// Выполняем отправку данных в UDP-сокет
-						const ssize_t bytes = ::sendto(server->fd, buffer, size, MSG_NOSIGNAL, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size);
+						const ssize_t bytes = eth->socket.datagram(server->fd, buffer, size, MSG_NOSIGNAL, reinterpret_cast <struct sockaddr *> (&server->endpoint.server), server->endpoint.size, server->state.family, server->state.traffic);
 						// Если данные отправлены успешно
 						if(bytes > 0){
 							// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -56358,13 +56376,44 @@ awh::event::ecn_t awh::engine::IO::getExplicitCongestionNotification(const event
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем текущее значение объекта клиента
 					::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
+					/**
+					 * Если узел работает датаграммами - метка держится на узле
+					 *
+					 * @note Спрашивать её у сокета нельзя: у датаграмм она туда и не
+					 *       ставится вовсе, а едет управляющими данными отправки
+					 */
+					if(client->state.type == event::type_t::DATAGRAM)
+						// Извлекаем метку перегрузки из класса обслуживания узла
+						return static_cast <event::ecn_t> (client->state.traffic & 0x03);
 					// Извлекаем значение поля Explicit Congestion Notification (ECN) клиента
 					return this->_eth.socket.getExplicitCongestionNotification(client->transfer.fd, family);
+				}
+				// Если узел является одноранговым узлом
+				case static_cast <uint8_t> (event::node_t::PEER): {
+					// Получаем текущее значение объекта однорангового узла
+					::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
+					// Если узел работает датаграммами - метка держится на узле
+					if(peer->state.type == event::type_t::DATAGRAM)
+						// Извлекаем метку перегрузки из класса обслуживания узла
+						return static_cast <event::ecn_t> (peer->state.traffic & 0x03);
+					// Извлекаем значение поля Explicit Congestion Notification (ECN) однорангового узла
+					return this->_eth.socket.getExplicitCongestionNotification(peer->transfer.fd, family);
+				}
+				// Если узел является одноранговым узлом-источником
+				case static_cast <uint8_t> (event::node_t::ORIGIN): {
+					// Получаем текущее значение объекта однорангового узла-источника
+					::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
+					// Извлекаем метку перегрузки из класса обслуживания узла
+					return static_cast <event::ecn_t> (origin->state.traffic & 0x03);
 				}
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Получаем текущее значение объекта сервера
 					::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
+					// Если узел работает датаграммами - метка держится на узле
+					if(server->state.type == event::type_t::DATAGRAM)
+						// Извлекаем метку перегрузки из класса обслуживания узла
+						return static_cast <event::ecn_t> (server->state.traffic & 0x03);
 					// Извлекаем значение поля Explicit Congestion Notification (ECN) сервера
 					return this->_eth.socket.getExplicitCongestionNotification(server->fd, family);
 				}
@@ -56437,15 +56486,61 @@ bool awh::engine::IO::setExplicitCongestionNotification(const event::id_t id, co
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем текущее значение объекта клиента
 					::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
-					// Устанавливаем значение поля Explicit Congestion Notification (ECN) клиента
-					return this->_eth.socket.setExplicitCongestionNotification(client->transfer.fd, family, ecn);
+					// Запоминаем класс обслуживания вместе с меткой перегрузки на узле
+					client->state.traffic = static_cast <uint8_t> ((static_cast <int32_t> (this->_eth.socket.getDifferentiatedServicesCodePoint(client->transfer.fd, family)) << 2) | static_cast <int32_t> (ecn));
+					/**
+					 * Если узел работает не датаграммами - метка живёт опцией сокета
+					 *
+					 * @note У потоковой отправки управляющих данных нет, и метку класть
+					 *       некуда; сокет там принадлежит единственному соединению,
+					 *       поэтому опция ничего чужого не задевает
+					 */
+					if(client->state.type != event::type_t::DATAGRAM)
+						// Устанавливаем значение поля Explicit Congestion Notification (ECN) клиента
+						return this->_eth.socket.setExplicitCongestionNotification(client->transfer.fd, family, ecn);
+					// Выводим положительный результат: метка уедет вместе с датаграммой
+					return true;
+				}
+				// Если узел является одноранговым узлом
+				case static_cast <uint8_t> (event::node_t::PEER): {
+					// Получаем текущее значение объекта однорангового узла
+					::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
+					// Запоминаем класс обслуживания вместе с меткой перегрузки на узле
+					peer->state.traffic = static_cast <uint8_t> ((static_cast <int32_t> (this->_eth.socket.getDifferentiatedServicesCodePoint(peer->transfer.fd, family)) << 2) | static_cast <int32_t> (ecn));
+					// Если узел работает не датаграммами - метка живёт опцией сокета
+					if(peer->state.type != event::type_t::DATAGRAM)
+						// Устанавливаем значение поля Explicit Congestion Notification (ECN) однорангового узла
+						return this->_eth.socket.setExplicitCongestionNotification(peer->transfer.fd, family, ecn);
+					// Выводим положительный результат: метка уедет вместе с датаграммой
+					return true;
+				}
+				/**
+				 * Если узел является одноранговым узлом-источником
+				 *
+				 * @note Ради него всё и затевалось: сокет у датаграммного сервера один на
+				 *       все соединения, и опция сокета метила бы датаграммы всех соединений
+				 *       разом. На узле метка принадлежит своему соединению
+				 */
+				case static_cast <uint8_t> (event::node_t::ORIGIN): {
+					// Получаем текущее значение объекта однорангового узла-источника
+					::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
+					// Запоминаем класс обслуживания вместе с меткой перегрузки на узле
+					origin->state.traffic = static_cast <uint8_t> ((static_cast <int32_t> (this->_eth.socket.getDifferentiatedServicesCodePoint(origin->transfer.fd, family)) << 2) | static_cast <int32_t> (ecn));
+					// Выводим положительный результат: метка уедет вместе с датаграммой
+					return true;
 				}
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Получаем текущее значение объекта сервера
 					::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
-					// Устанавливаем значение поля Explicit Congestion Notification (ECN) сервера
-					return this->_eth.socket.setExplicitCongestionNotification(server->fd, family, ecn);
+					// Запоминаем класс обслуживания вместе с меткой перегрузки на узле
+					server->state.traffic = static_cast <uint8_t> ((static_cast <int32_t> (this->_eth.socket.getDifferentiatedServicesCodePoint(server->fd, family)) << 2) | static_cast <int32_t> (ecn));
+					// Если узел работает не датаграммами - метка живёт опцией сокета
+					if(server->state.type != event::type_t::DATAGRAM)
+						// Устанавливаем значение поля Explicit Congestion Notification (ECN) сервера
+						return this->_eth.socket.setExplicitCongestionNotification(server->fd, family, ecn);
+					// Выводим положительный результат: метка уедет вместе с датаграммой
+					return true;
 				}
 			}
 		}

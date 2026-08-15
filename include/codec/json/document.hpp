@@ -57,6 +57,46 @@
 
 /**
  * \~russian
+ * @brief Принудительная подстановка обхода дерева
+ *
+ * @details Обход дерева - самый горячий путь потребителя: `valid()`, `kind()`, `next()`
+ *          и `begin()` зовутся на всякий узел, а работы в них - одна арифметика по
+ *          перечню узлов. Оставленные в переводимом наборе кодека, они обращаются в
+ *          вызовы через границу единиц трансляции и стоят дороже самой работы
+ *
+ * @note Приём этот - принятое в AWH исключение из правила о чистых заголовочных файлах:
+ *       реализация живёт в `.cpp`, а для встраивания заводятся посредники с
+ *       `always_inline`. Смотри `include/encoding/ascii.hpp`
+ *
+ * \~english
+ * @brief Forced inlining of the traversal of the tree
+ * @details The traversal of the tree is the hottest path of the consumer: `valid()`, `kind()`, `next()`
+ * and `begin()` are called on every node, while the work in them is mere arithmetic over
+ * the list of the nodes. Left in the translation unit of the codec, they turn into
+ * calls across the boundary of the translation units and cost more than the work itself
+ * @note This device is an accepted exception in AWH from the rule about clean header files:
+ * the implementation lives in `.cpp`, while for the inlining mediators with
+ * `always_inline` are made. See `include/encoding/ascii.hpp`
+ *
+ * \~
+ */
+#if defined(_MSC_VER)
+	/**
+	 * Принудительная подстановка средствами Visual Studio
+	 */
+	#define AWH_JSON_INLINE __forceinline
+/**
+ * Если компилятор принадлежит к семейству GCC или Clang
+ */
+#else
+	/**
+	 * Принудительная подстановка средствами GCC и Clang
+	 */
+	#define AWH_JSON_INLINE inline __attribute__((always_inline))
+#endif
+
+/**
+ * \~russian
  * @brief Основное пространство имён
  *
  * \~english
@@ -322,7 +362,10 @@ namespace awh {
 							 *
 							 * \~
 							 */
-							bool valid() const noexcept;
+							AWH_JSON_INLINE bool valid() const noexcept {
+								// Выводим признак действительности ссылки
+								return ((this->_doc != nullptr) && (this->_index < this->_doc->_nodes.size()));
+							}
 							/**
 							 * \~russian
 							 * @brief Метод извлечения вида узла
@@ -335,7 +378,10 @@ namespace awh {
 							 *
 							 * \~
 							 */
-							kind_t kind() const noexcept;
+							AWH_JSON_INLINE kind_t kind() const noexcept {
+								// Выводим вид узла документа, если ссылка действительна
+								return (this->valid() ? this->_doc->_nodes[this->_index].kind : kind_t::NONE);
+							}
 							/**
 							 * \~russian
 							 * @brief Метод извлечения количества детей вместилища
@@ -348,7 +394,24 @@ namespace awh {
 							 *
 							 * \~
 							 */
-							size_t size() const noexcept;
+							AWH_JSON_INLINE size_t size() const noexcept {
+								/**
+								 * Если ссылка недействительна
+								 */
+								if(!this->valid())
+									// Выводим отсутствие детей у вместилища
+									return 0;
+								// Получаем узел, на какой указывает ссылка
+								const Node & node = this->_doc->_nodes[this->_index];
+								/**
+								 * Выводим количество детей вместилища, а у прочих узлов - отсутствие детей
+								 *
+								 * @note Поле длины у вместилища и у прочих узлов занято разным, и выдавать
+								 *       длину строки количеством детей означало бы завести обход по числу
+								 *       байтов её содержимого
+								 */
+								return (((node.kind == kind_t::OBJECT) || (node.kind == kind_t::ARRAY)) ? static_cast <size_t> (node.length) : 0);
+							}
 							/**
 							 * \~russian
 							 * @brief Метод проверки вместилища на пустоту
@@ -361,7 +424,10 @@ namespace awh {
 							 *
 							 * \~
 							 */
-							bool empty() const noexcept;
+							AWH_JSON_INLINE bool empty() const noexcept {
+								// Выводим признак отсутствия детей у вместилища
+								return (this->size() == 0);
+							}
 							/**
 							 * \~russian
 							 * @brief Метод извлечения имени поля объекта
@@ -374,7 +440,24 @@ namespace awh {
 							 *
 							 * \~
 							 */
-							string_view name() const noexcept;
+							AWH_JSON_INLINE string_view name() const noexcept {
+								/**
+								 * Если ссылка недействительна
+								 */
+								if(!this->valid())
+									// Выводим отсутствие имени поля объекта
+									return string_view();
+								// Получаем узел, на какой указывает ссылка
+								const Node & node = this->_doc->_nodes[this->_index];
+								/**
+								 * Если узел полем объекта не является
+								 */
+								if(!node.keyed)
+									// Выводим отсутствие имени поля объекта
+									return string_view();
+								// Выводим имя поля объекта, лежащее вплотную перед содержимым
+								return string_view(this->_doc->_storage.data() + (node.offset - node.named), node.named);
+							}
 						public:
 							/**
 							 * \~russian
@@ -545,7 +628,18 @@ namespace awh {
 							 *
 							 * \~
 							 */
-							string_view raw() const noexcept;
+							AWH_JSON_INLINE string_view raw() const noexcept {
+								/**
+								 * Если узел числом не является либо документ хранит значение вместо записи
+								 */
+								if((this->kind() != kind_t::NUMBER) || (this->_doc->_settings.numbers != number_t::LAZY))
+									// Выводим отсутствие записи числа
+									return string_view();
+								// Получаем узел, на какой указывает ссылка
+								const Node & node = this->_doc->_nodes[this->_index];
+								// Выводим запись числа как она есть
+								return string_view(this->_doc->_storage.data() + node.offset, node.length);
+							}
 							/**
 							 * \~russian
 							 * @brief Метод извлечения строкового значения без копирования
@@ -577,7 +671,18 @@ namespace awh {
 							 *
 							 * \~
 							 */
-							Value next() const noexcept;
+							AWH_JSON_INLINE Value next() const noexcept {
+								/**
+								 * Если ссылка недействительна
+								 */
+								if(!this->valid())
+									// Выводим недействительную ссылку
+									return Value();
+								// Получаем номер следующего значения вместилища
+								const uint32_t index = (this->_index + this->_doc->_nodes[this->_index].extent);
+								// Выводим ссылку на следующее значение вместилища, если оно не вышло за границу
+								return ((index < this->_bound) ? Value(this->_doc, index, this->_bound) : Value());
+							}
 							/**
 							 * \~russian
 							 * @brief Метод извлечения первого значения вместилища
@@ -590,7 +695,18 @@ namespace awh {
 							 *
 							 * \~
 							 */
-							Value begin() const noexcept;
+							AWH_JSON_INLINE Value begin() const noexcept {
+								/**
+								 * Если вместилище пусто
+								 */
+								if(this->empty())
+									// Выводим недействительную ссылку
+									return Value();
+								// Получаем узел, на какой указывает ссылка
+								const Node & node = this->_doc->_nodes[this->_index];
+								// Выводим ссылку на первое значение вместилища
+								return Value(this->_doc, (this->_index + 1), (this->_index + node.extent));
+							}
 						public:
 							/**
 							 * \~russian
@@ -787,22 +903,110 @@ namespace awh {
 					uint64_t _base;
 				private:
 					/**
+					 * Обработчик потоковой выдачи значений, действующий на время разбора
+					 *
+					 * @note Обработчик хранится указанием, а не копией: событие приходит из
+					 *       чтения прямо в сборку дерева, а передать его туда доводом неоткуда
+					 */
+					const callback_t * _callback;
+				private:
+					/**
 					 * \~russian
-					 * @brief Метод сборки дерева по событиям разбора
+					 * Значения чисел, преобразованные при разборе
+					 *
+					 * @details Заполняется лишь при преобразовании чисел, затребованном
+					 * настройками: узел числа хранит тогда не запись его, а место значения в
+					 * этом перечне. Преобразование при всяком обращении стоило трёх четвертей
+					 * всего обхода дерева на документе из одних чисел
+					 *
+					 * @note Перечень отдельный, а не поле узла: значение занимает восемь байтов,
+					 * и место под него во всяком узле выросло бы в двадцати байтах узла до
+					 * тридцати двух выравниванием
+					 *
+					 * \~english
+					 * Values of the numbers converted at the parsing
+					 * @details It is filled in only at the conversion of the numbers demanded by
+					 * the settings: the node of a number then holds not its record, but the place of the value in
+					 * this list. The conversion at every access cost three quarters
+					 * of the whole traversal of the tree on a document of numbers alone
+					 * @note The list is separate rather than a field of the node: a value occupies eight bytes,
+					 * and the room for it in every node would grow the twenty bytes of the node to
+					 * thirty two by the alignment
+					 *
+					 * \~
+					 */
+					vector <double> _numbers;
+				private:
+					/**
+					 * \~russian
+					 * @brief Метод сборки дерева по очередному событию разбора
 					 *
 					 * @param reader   объект потокового чтения текста
-					 * @param callback обработчик потоковой выдачи значений
+					 * @param event    вид очередного события разбора
+					 * @param content  указание на содержимое события в хранилище знаков разбора
+					 * @param modified признак изменения содержимого разбором
 					 * @return         признак успешности сборки
 					 *
 					 * \~english
-					 * @brief Method of the assembly of the tree by the events of the parsing
-					 * @param reader object of the streaming reading of a text
-					 * @param callback handler of the streaming issuance of the values
+					 * @brief Method of the assembly of the tree by the next event of the parsing
+					 * @param reader   object of the streaming reading of a text
+					 * @param event    kind of the next event of the parsing
+					 * @param content  pointer at the content of the event in the storage of the characters of the parsing
+					 * @param modified flag of the modification of the content by the parsing
 					 * @return sign of the success of the assembly
 					 *
 					 * \~
 					 */
-					bool consume(reader_t & reader, const callback_t & callback) noexcept;
+					bool digest(reader_t & reader, const event_t event, const span_t content, const bool modified) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод переноса знаков разбора в хранилище документа
+					 *
+					 * @details Знаки переносятся целым куском по исчерпании поданного текста, а
+					 * не по одному значению: смещения узлов сквозные, и содержимое их приходит
+					 * на своё место само
+					 *
+					 * @note Перенос по одному значению стоил половины всего времени сборки дерева
+					 *
+					 * @param reader объект потокового чтения текста
+					 *
+					 * \~english
+					 * @brief Method of the transfer of the characters of the parsing into the storage of the document
+					 * @details The characters are transferred as a whole piece upon the exhaustion of the fed text, and
+					 * not one value at a time: the offsets of the nodes are through-going, and their content arrives
+					 * at its place by itself
+					 * @note The transfer one value at a time cost half of the whole time of the assembly of the tree
+					 * @param reader object of the streaming reading of a text
+					 *
+					 * \~
+					 */
+					void transfer(const reader_t & reader) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод приёма события разбора, выданного прямо из чтения
+					 *
+					 * @details Стоит посредником между обработчиком чтения, какому возвращать
+					 * нечего, и сборкой дерева: отказ сборки прекращает разбор вызовом `abort()`
+					 *
+					 * @param context  указание на документ, собирающий дерево
+					 * @param reader   объект потокового чтения текста
+					 * @param event    вид очередного события разбора
+					 * @param content  указание на содержимое события в хранилище знаков разбора
+					 * @param modified признак изменения содержимого разбором
+					 *
+					 * \~english
+					 * @brief Method of the reception of a parsing event issued straight from the reading
+					 * @details It stands as an intermediary between the handler of the reading, which has nothing
+					 * to return, and the assembly of the tree: a failure of the assembly terminates the parsing by a call of `abort()`
+					 * @param context  pointer at the document assembling the tree
+					 * @param reader   object of the streaming reading of a text
+					 * @param event    kind of the next event of the parsing
+					 * @param content  pointer at the content of the event in the storage of the characters of the parsing
+					 * @param modified flag of the modification of the content by the parsing
+					 *
+					 * \~
+					 */
+					static void handler(void * context, reader_t & reader, const event_t event, const span_t content, const bool modified) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод разбора повторяющихся имён полей объекта

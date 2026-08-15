@@ -716,6 +716,59 @@ namespace awh {
 				private:
 					/**
 					 * \~russian
+					 * Признак того, что часть текущего раздела дословного текста уже выдана
+					 *
+					 * @note Раздел, разорванный границами кусков, выдаётся частями, и последняя
+					 * из них оказывается пустой всякий раз, когда граница легла прямо перед
+					 * завершением раздела. Пустое событие узлу ничего не добавляет, а дерево
+					 * получает от него пустой узел содержимого, из-за которого запись перестаёт
+					 * складываться самозакрывающейся меткой. Пустой хвост потому пропускается -
+					 * но лишь у раздела, часть которого уже выдана: раздел, пустой сам по себе,
+					 * своё единственное событие выдаёт наравне с прочими
+					 *
+					 * \~english
+					 * Flag of a part of the current literal text section having already been issued
+					 * @note A section broken by the boundaries of the chunks is issued by parts, and the last
+					 * of them turns out empty every time the boundary has fallen right before
+					 * the termination of the section. An empty event adds nothing to a node, while the tree
+					 * receives from it an empty content node, because of which the writing ceases
+					 * to fold into a self-closing tag. An empty tail is therefore skipped —
+					 * but only for a section a part of which has already been issued: a section empty
+					 * in itself issues its single event on a par with the rest
+					 *
+					 * \~
+					 */
+					bool _partial;
+				private:
+					/**
+					 * \~russian
+					 * Признак того, что начало содержимого перенесено с пропущенного шага
+					 *
+					 * @note Содержимое, целиком составленное ссылками на пустые сущности,
+					 * события не выдаёт, а место разбора проходит вперёд. Начало содержимого
+					 * потому переносится на следующий шаг: иначе место события зависело бы
+					 * от того, где легла граница куска, - содержимое, пришедшее целиком,
+					 * дало бы местом начало всего содержимого, а разорванное границей -
+					 * начало своей непустой части
+					 *
+					 * \~english
+					 * Flag of the beginning of a content having been carried over from a skipped step
+					 * @note A content composed entirely of the references to empty entities
+					 * issues no event, while the place of the parsing moves forward. The beginning of the content
+					 * is therefore carried over to the next step: otherwise the place of an event would depend
+					 * on where the boundary of a chunk has fallen — a content that arrived in full
+					 * would give as the place the beginning of the whole content, while one broken by a boundary —
+					 * the beginning of its non-empty part
+					 *
+					 * \~
+					 */
+					bool _carried;
+				private:
+					// Перенесённое с пропущенного шага место начала содержимого
+					location_t _resumed;
+				private:
+					/**
+					 * \~russian
 					 * Место начала раздела дословного текста в исходном тексте
 					 *
 					 * @note Место события считается по ходу разбора и вперёд, а начало раздела
@@ -918,6 +971,34 @@ namespace awh {
 					 * \~
 					 */
 					step_t fail(const error_t error, const size_t offset) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод прекращения разбора ошибкой с заданным местом
+					 *
+					 * @details Место отказа считается по ходу разбора и только вперёд, а
+					 * построение, растянутое по кускам исходного текста, к мигу отказа
+					 * начало своё уже миновало: досчитать место назад нечем. Такому отказу
+					 * место передаётся снятым при входе в построение - иначе оно зависело бы
+					 * от того, где легла граница куска
+					 *
+					 * @param error    код ошибки разбора
+					 * @param location место обнаруженной ошибки в исходном тексте
+					 * @return         итог шага разбора, всегда отрицательный
+					 *
+					 * \~english
+					 * @brief Method of terminating the parsing with an error at a given place
+					 * @details The place of a refusal is counted in the course of the parsing and only forwards, while
+					 * a construct stretched over the chunks of the source text by the moment of the refusal
+					 * has already passed its own beginning: there is nothing to count the place backwards with. To such a refusal
+					 * the place taken at the entry into the construct is passed — otherwise it would depend
+					 * on where the boundary of a chunk has fallen
+					 * @param error    error code of the parsing
+					 * @param location place of the detected error in the source text
+					 * @return         result of the step of the parsing, always a negative one
+					 *
+					 * \~
+					 */
+					step_t fail(const error_t error, const location_t & location) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод получения положения в исходном тексте
