@@ -1058,12 +1058,17 @@ namespace io {
 			engine::callback::sctp::minfo_t info;
 			// Функция обратного вызова для получения событий SCTP-протокола
 			engine::callback::sctp::events_t events;
+			// Функция обратного вызова для чтения данных SCTP вместе с метаданными
+			//
+			// @note Отклик необязателен и заменяет собой общий отклик чтения: пока он не
+			//       установлен, подписка на метаданные ядру не выдаётся вовсе
+			engine::callback::sctp::message_t message;
 			/**
 			 * @brief Конструктор
 			 *
 			 */
 			explicit SCTP_Callback() noexcept :
-			 info(nullptr), events(nullptr) {}
+			 info(nullptr), events(nullptr), message(nullptr) {}
 		} sctp_callback_t;
 		/**
 		 * @brief Структура событий SCTP-протокола
@@ -36804,6 +36809,80 @@ namespace sctp {
 							#else
 								// Записываем ошибку в лог
 								this->_log->print("A SCTP events callback cannot be set for this event type", log_t::flag_t::WARNING);
+							#endif
+						}
+					}
+				#endif
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
+/**
+	 * @brief Метод установки функции обратного вызова для чтения данных вместе с метаданными
+	 *
+	 * @param id идентификатор события
+	 * @param cb функция обратного вызова
+	 *
+	 */
+	void awh::engine::Stream_Control_Transmission_Protocol::on(const event::id_t id, engine::callback::sctp::message_t cb) noexcept {
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Выполняем поиск идентификатора события
+			auto i = ::__awh_nodes__.find(id);
+			// Если идентификатор события найден и событие не подлежит уничтожению
+			if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
+				/**
+				 * Если операционной системой является FreeBSD
+				 */
+				#if __FreeBSD__ || defined(__sun)
+					// Создаём охранника узла события
+					::local::guard_t guard(i->second.get());
+					/**
+					 * Определяем чем является текущий узел
+					 */
+					switch(static_cast <uint8_t> (i->second->state.node)){
+						// Если узел является одноранговым узлом
+						case static_cast <uint8_t> (event::node_t::PEER):
+							// Устанавливаем функцию обратного вызова для чтения данных вместе с метаданными
+							awh_cast <::io::peer_t *> (i->second.get())->transfer.sctp.use().callbacks.message = ::move(cb);
+						break;
+						// Если узел является клиентом
+						case static_cast <uint8_t> (event::node_t::CLIENT):
+							// Устанавливаем функцию обратного вызова для чтения данных вместе с метаданными
+							awh_cast <::io::client_t *> (i->second.get())->transfer.sctp.use().callbacks.message = ::move(cb);
+						break;
+						// Для других типов узлов
+						default: {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Записываем ошибку в лог
+								this->_log->debug("A SCTP message callback cannot be set for this event type", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Записываем ошибку в лог
+								this->_log->print("A SCTP message callback cannot be set for this event type", log_t::flag_t::WARNING);
 							#endif
 						}
 					}

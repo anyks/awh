@@ -474,6 +474,71 @@ namespace awh {
 				public:
 					/**
 					 * \~russian
+					 * @brief Метод проверки поддержки отправки сообщения по частям
+					 *
+					 * @details Отправка сообщения по частям требует от системы явного режима
+					 *          границы записи, и есть он не всюду: FreeBSD и Solaris его имеют,
+					 *          Linux не имеет вовсе. Проверять поддержку следует до отправки,
+					 *          а не по отказу
+					 *
+					 * @param id идентификатор события
+					 * @return   результат проверки поддержки
+					 *
+					 * \~english
+					 * @brief Method of the check of the support of the sending of a message in parts
+					 * @details The sending of a message in parts requires from the system an explicit mode
+					 *          of the boundary of a record, and it is not everywhere: FreeBSD and Solaris have it,
+					 *          Linux does not have it at all. Checking the support follows before a sending,
+					 *          and not by a refusal
+					 * @param id identifier of the event
+					 * @return   result of the check of the support
+					 *
+					 * \~
+					 */
+					bool partialSupported(const event::id_t id) const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод отправки сообщения SCTP вместе с метаданными
+					 *
+					 * @details Отправка идёт той же очередью события, что и общая, и потому
+					 *          порядок сообщений сохраняется, даже если приложение мешает
+					 *          оба способа отправки
+					 *
+					 * @param id     идентификатор события
+					 * @param buffer буфер отправляемых данных
+					 * @param size   размер буфера отправляемых данных
+					 * @param info   информационные метаданные SCTP сообщения
+					 * @param end    признак завершения сообщения на этом куске
+					 * @return       количество принятых к отправке октетов
+					 *
+					 * @warning Сообщение, отправляемое по частям, обязано уйти подряд: пока
+					 *          признак завершения не выставлен, отправка иных сообщений тем
+					 *          же потоком нарушит его границы.
+					 *
+					 * \~english
+					 * @brief Method of the sending of an SCTP message together with the metadata
+					 *
+					 * @details The sending goes by the same queue of an event as the common one, and therefore
+					 *          the order of the messages is preserved, even if an application mixes
+					 *          both ways of the sending
+					 *
+					 * @param id     identifier of the event
+					 * @param buffer buffer of the sent data
+					 * @param size   size of the buffer of the sent data
+					 * @param info   informational metadata of the SCTP message
+					 * @param end    sign of the completion of the message on this piece
+					 * @return       number of the octets accepted for the sending
+					 *
+					 * @warning A message sent in parts is due to go in a row: while
+					 *          the sign of the completion is not set, the sending of other messages by the same
+					 *          stream will break its boundaries.
+					 *
+					 * \~
+					 */
+					size_t send(const event::id_t id, const void * buffer, const size_t size, const net::sctp::minfo_t & info, const bool end = true) noexcept;
+				public:
+					/**
+					 * \~russian
 					 * @brief Метод установки функции обратного вызова для получения метаданных SCTP-сообщения
 					 *
 					 * @param id идентификатор события
@@ -502,6 +567,30 @@ namespace awh {
 					 * \~
 					 */
 					void on(const event::id_t id, engine::callback::sctp::events_t cb) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод установки функции обратного вызова для чтения данных вместе с метаданными
+					 *
+					 * @details Отклик этот необязателен: задачам, которым метаданные протокола
+					 *          не нужны, проще пользоваться общим откликом чтения. Установка
+					 *          же его переводит чтение события на выдачу данных вместе с
+					 *          метаданными и включает подписку на них у ядра
+					 *
+					 * @param id идентификатор события
+					 * @param cb функция обратного вызова
+					 *
+					 * \~english
+					 * @brief Method of setting the callback function for the reading of the data together with the metadata
+					 * @details This callback is optional: for the tasks that do not need the metadata of the protocol
+					 *          it is simpler to use the common callback of the reading. Setting
+					 *          it, though, moves the reading of an event to the giving out of the data together with
+					 *          the metadata and switches on the subscription to them at the kernel
+					 * @param id identifier of the event
+					 * @param cb callback function
+					 *
+					 * \~
+					 */
+					void on(const event::id_t id, engine::callback::sctp::message_t cb) noexcept;
 				public:
 					/**
 					 * \~russian

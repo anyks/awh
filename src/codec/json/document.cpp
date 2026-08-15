@@ -360,15 +360,6 @@ bool awh::codec::json::Document::Value::value(uint64_t & result) const noexcept 
  *
  */
 bool awh::codec::json::Document::Value::value(double & result) const noexcept {
-	/**
-	 * Если документ хранит значение числа вместо записи его
-	 */
-	if((this->kind() == kind_t::NUMBER) && (this->_doc->_settings.numbers != number_t::LAZY)){
-		// Выводим значение числа, преобразованное при разборе
-		result = this->_doc->_numbers[this->_doc->_nodes[this->_index].length];
-		// Выводим признак успешного извлечения
-		return true;
-	}
 	// Получаем запись числа как она есть
 	const string_view text = this->raw();
 	/**
@@ -690,28 +681,6 @@ bool awh::codec::json::Document::digest(reader_t & reader, const event_t event, 
 					// Выводим признак неудачной сборки
 					return false;
 				}
-				/**
-				 * Если количество преобразованных чисел превышает допустимое
-				 */
-				if(this->_numbers.size() >= NO_OFFSET){
-					// Запоминаем код отказа разбора
-					this->_error = error_t::OVERFLOW_LIMIT;
-					// Выводим признак неудачной сборки
-					return false;
-				}
-				/**
-				 * Запоминаем место значения числа в перечне преобразованных
-				 *
-				 * @details Преобразование при всяком обращении стоило трёх четвертей всего
-				 * обхода дерева на документе из одних чисел: настройка велит преобразовать
-				 * число единожды, а значит и хранить его следует значением
-				 *
-				 * @note Длина записи числа узлу больше не нужна: записи её документ не
-				 *       хранит вовсе, коль скоро хранит значение
-				 */
-				node.length = static_cast <uint32_t> (this->_numbers.size());
-				// Выполняем добавление значения числа к преобразованным
-				this->_numbers.push_back(result);
 			}
 		} break;
 		/**
@@ -727,8 +696,7 @@ bool awh::codec::json::Document::digest(reader_t & reader, const event_t event, 
 	/**
 	 * Если узел вместилищем не является
 	 */
-	if((node.kind != kind_t::ARRAY) && (node.kind != kind_t::OBJECT) &&
-	   ((node.kind != kind_t::NUMBER) || (this->_settings.numbers == number_t::LAZY))){
+	if((node.kind != kind_t::ARRAY) && (node.kind != kind_t::OBJECT)){
 		// Устанавливаем длину содержимого узла
 		node.length = content.length;
 		// Устанавливаем признак изменения содержимого разбором
@@ -956,8 +924,6 @@ void awh::codec::json::Document::clear() noexcept {
 	this->_nodes.clear();
 	// Выполняем очистку хранилища знаков документа
 	this->_storage.clear();
-	// Выполняем очистку значений чисел, преобразованных при разборе
-	this->_numbers.clear();
 	// Выполняем очистку отображения имён полей в номера узлов
 	this->_index.clear();
 	// Выполняем очистку стека номеров узлов открытых вместилищ
@@ -1258,19 +1224,11 @@ string awh::codec::json::Document::dump(const format_t format) const noexcept {
 				writer.value(node.length == 4);
 			break;
 			// Если узел является числом
-			/**
-			 * Если узел является числом
-			 */
-			case static_cast <uint8_t> (kind_t::NUMBER): {
-				/**
-				 * Если документ хранит значение числа вместо записи его
-				 */
-				if(this->_settings.numbers != number_t::LAZY)
-					// Выполняем запись значения числа
-					writer.value(this->_numbers[node.length]);
-				// Если документ хранит запись числа
-				else writer.raw(string(this->_storage.data() + node.offset, node.length));
-			} break;
+			// Если узел является числом
+			case static_cast <uint8_t> (kind_t::NUMBER):
+				// Выполняем запись числа его готовой записью
+				writer.raw(string(this->_storage.data() + node.offset, node.length));
+			break;
 			// Если узел является строкой
 			case static_cast <uint8_t> (kind_t::STRING):
 				// Выполняем запись строкового значения

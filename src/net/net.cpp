@@ -207,6 +207,14 @@ awh::net::Interface::Interface() noexcept : name{""}, mtu(0), flags{} {}
 	 * @brief Конструктор
 	 *
 	 */
+	awh::net::sctp::Received_Message_Info::Received_Message_Info() noexcept :
+	 id(0), num(0), ssn(0), tsn(0),
+	 ctx(0), ppid(0), cumtsn(0) {}
+
+	/**
+	 * @brief Конструктор
+	 *
+	 */
 	awh::net::sctp::Initialization_Message::Initialization_Message() noexcept :
 	 timeout(0), attempts(4),
 	 ostreams(5), istreams(5) {}

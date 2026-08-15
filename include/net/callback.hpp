@@ -125,6 +125,37 @@ namespace awh {
 					 * \~
 					 */
 					using events_t = function <void (const event::id_t, unique_ptr <net::sctp::event_t>)>;
+					/**
+					 * \~russian
+					 * @brief Функция обратного вызова срабатывающая при чтении данных SCTP вместе с метаданными
+					 *
+					 * @details Отклик этот необязателен и заменяет собой общий отклик чтения:
+					 *          установивший его получает данные и метаданные сообщения одним
+					 *          вызовом, а не двумя, и потому не сшивает их по порядку прихода
+					 *
+					 * @note Пока отклик не установлен, подписка на метаданные ядру не выдаётся
+					 *       вовсе, и приём метаданных ничего не стоит
+					 *
+					 * @param id     идентификатор события
+					 * @param buffer буфер прочитанных данных
+					 * @param size   размер прочитанных данных
+					 * @param info   метаданные полученного сообщения SCTP
+					 *
+					 * \~english
+					 * @brief Callback function triggered at the reading of the data of SCTP together with the metadata
+					 * @details This callback is optional and replaces the common callback of the reading:
+					 *          the one who has set it gets the data and the metadata of a message by one
+					 *          call, and not by two, and therefore does not sew them by the order of the arrival
+					 * @note While the callback is not set, the subscription to the metadata is not given out to the kernel
+					 *       at all, and the reception of the metadata costs nothing
+					 * @param id     identifier of the event
+					 * @param buffer buffer of the read data
+					 * @param size   size of the read data
+					 * @param info   metadata of the received message of SCTP
+					 *
+					 * \~
+					 */
+					using message_t = function <void (const event::id_t, const uint8_t *, const size_t, const net::sctp::rinfo_t &)>;
 				};
 			#endif
 			/**

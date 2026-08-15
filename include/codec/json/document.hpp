@@ -591,9 +591,9 @@ namespace awh {
 							 */
 							AWH_JSON_INLINE string_view raw() const noexcept {
 								/**
-								 * Если узел числом не является либо документ хранит значение вместо записи
+								 * Если узел числом не является
 								 */
-								if((this->kind() != kind_t::NUMBER) || (this->_doc->_settings.numbers != number_t::LAZY))
+								if(this->kind() != kind_t::NUMBER)
 									// Выводим отсутствие записи числа
 									return string_view();
 								// Получаем узел, на какой указывает ссылка
@@ -870,33 +870,6 @@ namespace awh {
 					 *       чтения прямо в сборку дерева, а передать его туда доводом неоткуда
 					 */
 					const callback_t * _callback;
-				private:
-					/**
-					 * \~russian
-					 * Значения чисел, преобразованные при разборе
-					 *
-					 * @details Заполняется лишь при преобразовании чисел, затребованном
-					 * настройками: узел числа хранит тогда не запись его, а место значения в
-					 * этом перечне. Преобразование при всяком обращении стоило трёх четвертей
-					 * всего обхода дерева на документе из одних чисел
-					 *
-					 * @note Перечень отдельный, а не поле узла: значение занимает восемь байтов,
-					 * и место под него во всяком узле выросло бы в двадцати байтах узла до
-					 * тридцати двух выравниванием
-					 *
-					 * \~english
-					 * Values of the numbers converted at the parsing
-					 * @details It is filled in only at the conversion of the numbers demanded by
-					 * the settings: the node of a number then holds not its record, but the place of the value in
-					 * this list. The conversion at every access cost three quarters
-					 * of the whole traversal of the tree on a document of numbers alone
-					 * @note The list is separate rather than a field of the node: a value occupies eight bytes,
-					 * and the room for it in every node would grow the twenty bytes of the node to
-					 * thirty two by the alignment
-					 *
-					 * \~
-					 */
-					vector <double> _numbers;
 				private:
 					/**
 					 * \~russian

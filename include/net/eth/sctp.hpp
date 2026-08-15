@@ -43,6 +43,26 @@
 
 /**
  * \~russian
+ * @brief Предварительное объявление структуры метаданных сообщения SCTP
+ *
+ * @note Системный заголовок протокола здесь не подключается намеренно: заголовкам
+ *       проекта положено быть чистыми, а ссылка на неполный тип объявления
+ *       не требует. Объявление стоит в глобальном пространстве имён, ибо
+ *       внутри пространства имён проекта родился бы иной, свой тип
+ *
+ * \~english
+ * @brief Preliminary declaration of the structure of the metadata of an SCTP message
+ * @note The system header of the protocol is not included here deliberately: the headers of
+ *       the project are due to be clean, and a reference to an incomplete type does not require
+ *       a declaration. The declaration stands in the global namespace, for
+ *       inside the namespace of the project a different, its own type would be born
+ *
+ * \~
+ */
+struct sctp_sndrcvinfo;
+
+/**
+ * \~russian
  * @brief Основное пространство имён
  *
  *
@@ -341,6 +361,167 @@ namespace awh {
 				 * \~
 				 */
 				bool timeout(const net::socket_t sock, const uint32_t id, const net::sctp::timeout_t type, const uint32_t timeout, void * ctx = nullptr) const noexcept;
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод проверки поддержки системой современного набора вызовов SCTP
+				 *
+				 * @details Набор этот (RFC 6458) выдаёт метаданные сообщения отдельной
+				 *          структурой и позволяет задавать отправку политиками частичной
+				 *          надёжности. Он есть у FreeBSD, Solaris и Linux, но его нет
+				 *          вовсе у illumos, где остаётся лишь прежний способ
+				 *
+				 * @return результат проверки поддержки
+				 *
+				 * \~english
+				 * @brief Method of the check of the support by the system of the modern set of the calls of SCTP
+				 * @details This set (RFC 6458) gives out the metadata of a message by a separate
+				 *          structure and allows setting the sending by the policies of the partial
+				 *          reliability. FreeBSD, Solaris and Linux have it, but illumos does not have it
+				 *          at all, where only the former way remains
+				 * @return result of the check of the support
+				 *
+				 * \~
+				 */
+				bool modern() const noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод проверки поддержки системой явной границы записи
+				 *
+				 * @details Режим этот нужен для отправки сообщения по частям: без него
+				 *          система ставит границу записи на каждую отправку сама. Он есть
+				 *          у FreeBSD и Solaris, но его нет у Linux
+				 *
+				 * @return результат проверки поддержки
+				 *
+				 * \~english
+				 * @brief Method of the check of the support by the system of the explicit boundary of a record
+				 * @details This mode is needed for the sending of a message in parts: without it
+				 *          the system puts the boundary of a record on each sending itself. FreeBSD
+				 *          and Solaris have it, but Linux does not
+				 * @return result of the check of the support
+				 *
+				 * \~
+				 */
+				bool partial() const noexcept;
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод управления подпиской на метаданные принимаемых сообщений
+				 *
+				 * @details Пока подписка не выдана, ядро метаданных не присылает вовсе, и
+				 *          приём их ничего не стоит. Выдавать её следует лишь тем событиям,
+				 *          у которых установлен отклик чтения с метаданными
+				 *
+				 * @param sock сетевой сокет
+				 * @param mode режим подписки на метаданные
+				 * @return     результат работы функции
+				 *
+				 * \~english
+				 * @brief Method of the control of the subscription to the metadata of the received messages
+				 * @details While the subscription is not given out, the kernel does not send the metadata at all, and
+				 *          their reception costs nothing. Giving it out follows only to those events
+				 *          that have the callback of the reading with the metadata set
+				 * @param sock network socket
+				 * @param mode mode of the subscription to the metadata
+				 * @return     result of the work of the function
+				 *
+				 * \~
+				 */
+				bool receiveInfo(const net::socket_t sock, const bool mode) const noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод управления режимом явной границы записи
+				 *
+				 * @param sock сетевой сокет
+				 * @param mode режим явной границы записи
+				 * @return     результат работы функции
+				 *
+				 * \~english
+				 * @brief Method of the control of the mode of the explicit boundary of a record
+				 * @param sock network socket
+				 * @param mode mode of the explicit boundary of a record
+				 * @return     result of the work of the function
+				 *
+				 * \~
+				 */
+				bool explicitEndOfRecord(const net::socket_t sock, const bool mode) const noexcept;
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод чтения сообщения SCTP вместе с метаданными
+				 *
+				 * @details Способ чтения выбирается по поддержке системой современного
+				 *          набора вызовов, а не по надобности вызывающего: путь чтения
+				 *          обязан быть один, иначе движки разойдутся между собой
+				 *
+				 * @param sock   сетевой сокет
+				 * @param buffer буфер принимаемых данных
+				 * @param size   размер буфера принимаемых данных
+				 * @param addr   адрес удалённого узла
+				 * @param length размер адреса удалённого узла
+				 * @param info   метаданные полученного сообщения
+				 * @param legacy метаданные полученного сообщения прежнего вида
+				 * @param flags  флаги полученного сообщения в системном виде
+				 * @return       количество принятых октетов либо -1 при отказе
+				 *
+				 * @note Метаданные заполняются лишь при выданной подписке: без неё ядру
+				 *       сообщать нечего, и структура остаётся пустой
+				 *
+				 * \~english
+				 * @brief Method of the reading of an SCTP message together with the metadata
+				 * @details The way of the reading is chosen by the support by the system of the modern
+				 *          set of the calls, and not by the need of the caller: the path of the reading
+				 *          is due to be one, otherwise the engines will diverge among themselves
+				 * @param sock   network socket
+				 * @param buffer buffer of the received data
+				 * @param size   size of the buffer of the received data
+				 * @param addr   address of the remote node
+				 * @param length size of the address of the remote node
+				 * @param info   metadata of the received message
+				 * @param legacy metadata of the received message of the former kind
+				 * @param flags  flags of the received message in the system kind
+				 * @return       number of the received octets or -1 at a refusal
+				 * @note The metadata are filled only at a given out subscription: without it the kernel
+				 *       has nothing to report, and the structure remains empty
+				 *
+				 * \~
+				 */
+				ssize_t receive(const net::socket_t sock, void * buffer, const size_t size, struct sockaddr * addr, socklen_t * length, net::sctp::rinfo_t & info, struct sctp_sndrcvinfo & legacy, int32_t & flags) const noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод отправки сообщения SCTP вместе с метаданными
+				 *
+				 * @param sock     сетевой сокет
+				 * @param buffer   буфер отправляемых данных
+				 * @param size     размер буфера отправляемых данных
+				 * @param addr     адрес удалённого узла
+				 * @param length   размер адреса удалённого узла
+				 * @param info     информационные метаданные сообщения
+				 * @param complete признак завершения сообщения на этом куске
+				 * @return         количество отправленных октетов либо -1 при отказе
+				 *
+				 * @warning Признак незавершённости требует включённого режима явной границы
+				 *          записи: без него система закроет запись сама, и сообщение
+				 *          разобьётся на несколько
+				 *
+				 * \~english
+				 * @brief Method of the sending of an SCTP message together with the metadata
+				 * @param sock     network socket
+				 * @param buffer   buffer of the sent data
+				 * @param size     size of the buffer of the sent data
+				 * @param addr     address of the remote node
+				 * @param length   size of the address of the remote node
+				 * @param info     informational metadata of the message
+				 * @param complete sign of the completion of the message on this piece
+				 * @return         number of the sent octets or -1 at a refusal
+				 * @warning The sign of the incompleteness requires the switched on mode of the explicit boundary
+				 *          of a record: without it the system will close the record itself, and the message
+				 *          will break into several
+				 *
+				 * \~
+				 */
+				ssize_t send(const net::socket_t sock, const void * buffer, const size_t size, const struct sockaddr * addr, const socklen_t length, const net::sctp::minfo_t & info, const bool complete = true) const noexcept;
 			public:
 				/**
 				 * \~russian

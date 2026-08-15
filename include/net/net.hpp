@@ -1585,6 +1585,42 @@ namespace awh {
 
 				/**
 				 * \~russian
+				 * @brief Флаги полученного сообщения SCTP
+				 *
+				 * @details Описывают не содержимое сообщения, а обстоятельства его
+				 *          получения: закончилось ли сообщение на этом куске, пришли ли
+				 *          вместо данных известия протокола, соблюдался ли порядок в
+				 *          потоке и не оказались ли данные усечены нехваткой буфера
+				 *
+				 * @warning Отсутствие признака конца сообщения означает, что сообщение
+				 *          продолжается: следующий кусок принадлежит ему же, и склеивать
+				 *          его надлежит до признака, а не по размеру буфера. Границы
+				 *          сообщений протокол блюдёт, но узнать их можно только отсюда
+				 *
+				 * \~english
+				 * @brief Flags of a received SCTP message
+				 * @details They describe not the content of a message, but the circumstances of its
+				 *          reception: whether the message has ended on this piece, whether instead of
+				 *          the data the notices of the protocol have come, whether the order in
+				 *          the stream has been observed and whether the data have turned out truncated by the lack of a buffer
+				 * @warning The absence of the sign of the end of a message means that the message
+				 *          continues: the next piece belongs to it as well, and glueing
+				 *          it is due up to the sign, and not by the size of the buffer. The boundaries
+				 *          of the messages the protocol keeps, but learning them is possible only from here
+				 *
+				 * \~
+				 */
+				enum class receipt_t : uint8_t {
+					NONE               = 0x00, // Флаг отсутствует
+					END_OF_RECORD      = 0x01, // Сообщение получено целиком, границей записи
+					NOTIFICATION       = 0x02, // Вместо данных получено известие протокола
+					DATA_TRUNCATED     = 0x03, // Данные сообщения усечены нехваткой буфера
+					INFO_TRUNCATED     = 0x04, // Метаданные сообщения усечены нехваткой буфера
+					DELIVERY_UNORDERED = 0x05  // Сообщение доставлено без учёта порядка в потоке
+				};
+
+				/**
+				 * \~russian
 				 * @brief Множество типов событий SCTP
 				 *
 				 * \~english
@@ -1647,6 +1683,69 @@ namespace awh {
 					 */
 					explicit Message_Info() noexcept;
 				} minfo_t;
+
+				/**
+				 * \~russian
+				 * @brief Структура метаданных полученного сообщения SCTP
+				 *
+				 * @details Описывает пришедшее сообщение: каким потоком оно пришло, каким
+				 *          по счёту в этом потоке, под какой пометкой полезной нагрузки и
+				 *          при каких обстоятельствах получено
+				 *
+				 * @par Намеренные решения
+				 *
+				 *      **Структура отделена от `minfo_t`.** Прежде одна структура служила
+				 *      обеим сторонам: ею же задавали отправку. Поля сторон, однако, не
+				 *      совпадают - у отправки нет ни порядкового номера, ни номера
+				 *      передачи, ни признака конца записи, а у приёма нет ни времени
+				 *      жизни, ни политик частичной надёжности. Общая структура заставляла
+				 *      бы каждую сторону обходить чужие поля, гадая, заполнены ли они
+				 *
+				 *      **Пометка полезной нагрузки хранится числом, а не `ppid_t`.**
+				 *      Значения её закреплены за назначениями сообща, и прийти может
+				 *      любое из них, а не только известные движку. Приводить пришедшее
+				 *      к перечислению значило бы терять неизвестные пометки
+				 *
+				 * \~english
+				 * @brief Structure of the metadata of a received SCTP message
+				 * @details Describes an arrived message: by which stream it has come, which
+				 *          by the count in that stream, under which mark of the payload and
+				 *          under which circumstances it is received
+				 * @par Deliberate decisions
+				 *      **The structure is separated from `minfo_t`.** Formerly one structure served
+				 *      both sides: by it the sending was set as well. The fields of the sides, however, do not
+				 *      coincide — the sending has neither an ordinal number, nor a number
+				 *      of the transmission, nor a sign of the end of a record, and the reception has neither a lifetime,
+				 *      nor the policies of the partial reliability. A common structure would force
+				 *      each side to walk around the foreign fields, guessing whether they are filled
+				 *      **The mark of the payload is stored by a number, and not by `ppid_t`.**
+				 *      Its values are fastened to the purposes jointly, and any of them may
+				 *      come, and not only those known to the engine. Bringing an arrived one
+				 *      to the enumeration would mean losing the unknown marks
+				 *
+				 * \~
+				 */
+				typedef struct __AWH_SHARED_EXPORT__ Received_Message_Info {
+					uint32_t id;                     // Идентификатор ассоциации
+					uint16_t num;                    // Номер потока
+					uint16_t ssn;                    // Порядковый номер сообщения в потоке
+					uint32_t tsn;                    // Номер передачи сообщения
+					uint32_t ctx;                    // Контекст для уведомлений об ошибках
+					uint32_t ppid;                   // Идентификатор полезной нагрузки
+					uint32_t cumtsn;                 // Накопленный номер передачи
+					unordered_set <receipt_t> flags; // Флаги полученного сообщения
+					/**
+					 * \~russian
+					 * @brief Конструктор
+					 *
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
+					 */
+					explicit Received_Message_Info() noexcept;
+				} rinfo_t;
 
 				/**
 				 * \~russian

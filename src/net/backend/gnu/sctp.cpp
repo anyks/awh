@@ -30,6 +30,7 @@
  * Системные заголовочные файлы
  */
 #include <sys/socket.h>
+#include <sys/uio.h>
 #include <netinet/sctp.h>
 
 /**
@@ -1150,4 +1151,442 @@ bool awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::socket_t
 	}
 	// Возвращаем результат
 	return result;
+}
+
+/**
+ * @brief Метод проверки поддержки системой современного набора вызовов SCTP
+ *
+ * @return результат проверки поддержки
+ *
+ */
+bool awh::eth::Stream_Control_Transmission_Protocol::modern() const noexcept {
+	/**
+	 * Если система несёт современный набор вызовов
+	 */
+	#if defined(SCTP_RECVRCVINFO) && defined(SCTP_SENDV_SNDINFO)
+		// Выводим положительный результат
+		return true;
+	/**
+	 * Если современного набора вызовов система не несёт
+	 */
+	#else
+		// Выводим отрицательный результат
+		return false;
+	#endif
+}
+/**
+ * @brief Метод проверки поддержки системой явной границы записи
+ *
+ * @return результат проверки поддержки
+ *
+ */
+bool awh::eth::Stream_Control_Transmission_Protocol::partial() const noexcept {
+	/**
+	 * Если система несёт режим явной границы записи
+	 */
+	#if defined(SCTP_EXPLICIT_EOR)
+		// Выводим положительный результат
+		return true;
+	/**
+	 * Если режима явной границы записи система не несёт
+	 */
+	#else
+		// Выводим отрицательный результат
+		return false;
+	#endif
+}
+/**
+ * @brief Метод управления подпиской на метаданные принимаемых сообщений
+ *
+ * @param sock сетевой сокет
+ * @param mode режим подписки на метаданные
+ * @return     результат работы функции
+ *
+ */
+bool awh::eth::Stream_Control_Transmission_Protocol::receiveInfo(const net::socket_t sock, const bool mode) const noexcept {
+	/**
+	 * Если система несёт подписку на метаданные принимаемых сообщений
+	 */
+	#if defined(SCTP_RECVRCVINFO)
+		// Значение режима подписки на метаданные
+		const int32_t value = static_cast <int32_t> (mode);
+		// Выполняем установку режима подписки на метаданные
+		if(::setsockopt(sock, IPPROTO_SCTP, SCTP_RECVRCVINFO, reinterpret_cast <const char *> (&value), sizeof(value)) != 0){
+			// Выводим сообщение об ошибке
+			this->_log->print("SCTP receive info: %s", log_t::flag_t::WARNING, ::strerror(errno));
+			// Выводим отрицательный результат
+			return false;
+		}
+		// Выводим положительный результат
+		return true;
+	/**
+	 * Если подписки на метаданные система не несёт
+	 */
+	#else
+		// Выводим сообщение об ошибке
+		this->_log->print("SCTP receive info is not supported by the operating system", log_t::flag_t::WARNING);
+		// Выводим отрицательный результат
+		return false;
+	#endif
+}
+/**
+ * @brief Метод управления режимом явной границы записи
+ *
+ * @param sock сетевой сокет
+ * @param mode режим явной границы записи
+ * @return     результат работы функции
+ *
+ */
+bool awh::eth::Stream_Control_Transmission_Protocol::explicitEndOfRecord(const net::socket_t sock, const bool mode) const noexcept {
+	/**
+	 * Если система несёт режим явной границы записи
+	 */
+	#if defined(SCTP_EXPLICIT_EOR)
+		// Значение режима явной границы записи
+		const int32_t value = static_cast <int32_t> (mode);
+		// Выполняем установку режима явной границы записи
+		if(::setsockopt(sock, IPPROTO_SCTP, SCTP_EXPLICIT_EOR, reinterpret_cast <const char *> (&value), sizeof(value)) != 0){
+			// Выводим сообщение об ошибке
+			this->_log->print("SCTP explicit end of record: %s", log_t::flag_t::WARNING, ::strerror(errno));
+			// Выводим отрицательный результат
+			return false;
+		}
+		// Выводим положительный результат
+		return true;
+	/**
+	 * Если режима явной границы записи система не несёт
+	 */
+	#else
+		// Выводим сообщение об ошибке
+		this->_log->print("SCTP explicit end of record is not supported by the operating system", log_t::flag_t::WARNING);
+		// Выводим отрицательный результат
+		return false;
+	#endif
+}
+/**
+ * @brief Метод чтения сообщения SCTP вместе с метаданными
+ *
+ * @param sock   сетевой сокет
+ * @param buffer буфер принимаемых данных
+ * @param size   размер буфера принимаемых данных
+ * @param addr   адрес удалённого узла
+ * @param length размер адреса удалённого узла
+ * @param info   метаданные полученного сообщения
+ * @param legacy метаданные полученного сообщения прежнего вида
+ * @param flags  флаги полученного сообщения в системном виде
+ * @return       количество принятых октетов либо -1 при отказе
+ *
+ */
+ssize_t awh::eth::Stream_Control_Transmission_Protocol::receive(const net::socket_t sock, void * buffer, const size_t size, struct sockaddr * addr, socklen_t * length, net::sctp::rinfo_t & info, struct sctp_sndrcvinfo & legacy, int32_t & flags) const noexcept {
+	// Количество принятых октетов
+	ssize_t result = -1;
+	// Выполняем сброс флагов полученного сообщения
+	info.flags.clear();
+	/**
+	 * Если система несёт современный набор вызовов
+	 */
+	#if defined(SCTP_RECVRCVINFO) && defined(SCTP_RECVV_RCVINFO)
+		// Буфер принимаемых данных
+		struct iovec iov{};
+		// Устанавливаем буфер принимаемых данных
+		iov.iov_base = buffer;
+		// Устанавливаем размер буфера принимаемых данных
+		iov.iov_len = size;
+		// Метаданные полученного сообщения
+		struct sctp_rcvinfo rcvinfo{};
+		// Размер метаданных полученного сообщения
+		socklen_t bytes = sizeof(rcvinfo);
+		// Вид полученных метаданных
+		uint32_t type = 0;
+		// Выполняем чтение сообщения вместе с метаданными
+		result = ::sctp_recvv(sock, &iov, 1, addr, length, &rcvinfo, &bytes, &type, &flags);
+		/**
+		 * Если метаданные сообщения получены
+		 *
+		 * @note Метаданные приходят лишь при выданной подписке: без неё ядру сообщать
+		 *       нечего, вид метаданных выводится пустым, и структура остаётся прежней
+		 */
+		if((result >= 0) && (type == SCTP_RECVV_RCVINFO)){
+			// Устанавливаем идентификатор полезной нагрузки
+			info.ppid = rcvinfo.rcv_ppid;
+			// Устанавливаем номер потока
+			info.num = rcvinfo.rcv_sid;
+			// Устанавливаем порядковый номер сообщения в потоке
+			info.ssn = rcvinfo.rcv_ssn;
+			// Устанавливаем номер передачи сообщения
+			info.tsn = rcvinfo.rcv_tsn;
+			// Устанавливаем накопленный номер передачи
+			info.cumtsn = rcvinfo.rcv_cumtsn;
+			// Устанавливаем контекст для уведомлений об ошибках
+			info.ctx = rcvinfo.rcv_context;
+			// Устанавливаем идентификатор ассоциации
+			info.id = static_cast <uint32_t> (rcvinfo.rcv_assoc_id);
+			/**
+			 * Заполняем метаданные прежнего вида
+			 *
+			 * @note Заполняются они и при современном наборе вызовов: тем же набором
+			 *       пользуются места, метаданных не запрашивавшие, и расхождение
+			 *       способов чтения не должно им ничего менять
+			 */
+			legacy.sinfo_stream = rcvinfo.rcv_sid;
+			// Устанавливаем порядковый номер сообщения в потоке
+			legacy.sinfo_ssn = rcvinfo.rcv_ssn;
+			// Устанавливаем флаги сообщения
+			legacy.sinfo_flags = rcvinfo.rcv_flags;
+			// Устанавливаем идентификатор полезной нагрузки
+			legacy.sinfo_ppid = rcvinfo.rcv_ppid;
+			// Устанавливаем контекст для уведомлений об ошибках
+			legacy.sinfo_context = rcvinfo.rcv_context;
+			// Устанавливаем номер передачи сообщения
+			legacy.sinfo_tsn = rcvinfo.rcv_tsn;
+			// Устанавливаем накопленный номер передачи
+			legacy.sinfo_cumtsn = rcvinfo.rcv_cumtsn;
+			// Устанавливаем идентификатор ассоциации
+			legacy.sinfo_assoc_id = rcvinfo.rcv_assoc_id;
+			/**
+			 * Если сообщение доставлено без учёта порядка в потоке
+			 */
+			#if defined(SCTP_UNORDERED)
+				// Если сообщение доставлено без учёта порядка в потоке
+				if(rcvinfo.rcv_flags & SCTP_UNORDERED)
+					// Устанавливаем флаг доставки без учёта порядка
+					info.flags.emplace(net::sctp::receipt_t::DELIVERY_UNORDERED);
+			#endif
+		}
+	/**
+	 * Если современного набора вызовов система не несёт
+	 */
+	#else
+		// Выполняем чтение сообщения прежним способом
+		result = ::sctp_recvmsg(sock, buffer, size, addr, length, &legacy, &flags);
+		/**
+		 * Если сообщение получено
+		 *
+		 * @note Прежний способ несёт не все метаданные: номера передачи система
+		 *       здесь не выдаёт, и поля эти остаются пустыми. Скрывать разницу
+		 *       подстановкой было бы хуже - приложение вправе о ней знать
+		 */
+		if(result >= 0){
+			// Устанавливаем идентификатор полезной нагрузки
+			info.ppid = legacy.sinfo_ppid;
+			// Устанавливаем номер потока
+			info.num = legacy.sinfo_stream;
+			// Устанавливаем порядковый номер сообщения в потоке
+			info.ssn = legacy.sinfo_ssn;
+			// Устанавливаем контекст для уведомлений об ошибках
+			info.ctx = legacy.sinfo_context;
+			// Устанавливаем идентификатор ассоциации
+			info.id = static_cast <uint32_t> (legacy.sinfo_assoc_id);
+			/**
+			 * Если сообщение доставлено без учёта порядка в потоке
+			 */
+			#if defined(SCTP_UNORDERED)
+				// Если сообщение доставлено без учёта порядка в потоке
+				if(legacy.sinfo_flags & SCTP_UNORDERED)
+					// Устанавливаем флаг доставки без учёта порядка
+					info.flags.emplace(net::sctp::receipt_t::DELIVERY_UNORDERED);
+			#endif
+		}
+	#endif
+	/**
+	 * Если сообщение получено
+	 */
+	if(result >= 0){
+		// Если сообщение получено целиком
+		if(flags & MSG_EOR)
+			// Устанавливаем флаг границы записи
+			info.flags.emplace(net::sctp::receipt_t::END_OF_RECORD);
+		/**
+		 * Если система несёт признак известия протокола
+		 */
+		#if defined(MSG_NOTIFICATION)
+			// Если вместо данных получено известие протокола
+			if(flags & MSG_NOTIFICATION)
+				// Устанавливаем флаг известия протокола
+				info.flags.emplace(net::sctp::receipt_t::NOTIFICATION);
+		#endif
+		// Если данные сообщения усечены нехваткой буфера
+		if(flags & MSG_TRUNC)
+			// Устанавливаем флаг усечения данных
+			info.flags.emplace(net::sctp::receipt_t::DATA_TRUNCATED);
+		// Если метаданные сообщения усечены нехваткой буфера
+		if(flags & MSG_CTRUNC)
+			// Устанавливаем флаг усечения метаданных
+			info.flags.emplace(net::sctp::receipt_t::INFO_TRUNCATED);
+	}
+	// Выводим количество принятых октетов
+	return result;
+}
+/**
+ * @brief Метод отправки сообщения SCTP вместе с метаданными
+ *
+ * @param sock     сетевой сокет
+ * @param buffer   буфер отправляемых данных
+ * @param size     размер буфера отправляемых данных
+ * @param addr     адрес удалённого узла
+ * @param length   размер адреса удалённого узла
+ * @param info     информационные метаданные сообщения
+ * @param complete признак завершения сообщения на этом куске
+ * @return         количество отправленных октетов либо -1 при отказе
+ *
+ */
+ssize_t awh::eth::Stream_Control_Transmission_Protocol::send(const net::socket_t sock, const void * buffer, const size_t size, const struct sockaddr * addr, const socklen_t length, const net::sctp::minfo_t & info, const bool complete) const noexcept {
+	// Флаги отправки сообщения
+	uint32_t sndflags = 0;
+	/**
+	 * Если сообщение доставляется без учёта порядка в потоке
+	 */
+	#if defined(SCTP_UNORDERED)
+		// Если сообщение доставляется без учёта порядка в потоке
+		if(info.flags.find(net::sctp::info_t::DELIVERY_UNORDERED) != info.flags.end())
+			// Устанавливаем флаг доставки без учёта порядка
+			sndflags |= SCTP_UNORDERED;
+	#endif
+	/**
+	 * Если сообщение отправляется всем ассоциациям
+	 */
+	#if defined(SCTP_SENDALL)
+		// Если сообщение отправляется всем ассоциациям
+		if(info.flags.find(net::sctp::info_t::SEND_ALL) != info.flags.end())
+			// Устанавливаем флаг отправки всем ассоциациям
+			sndflags |= SCTP_SENDALL;
+	#endif
+	/**
+	 * Если адрес удалённого узла берётся вопреки подключению
+	 */
+	#if defined(SCTP_ADDR_OVER)
+		// Если адрес удалённого узла берётся вопреки подключению
+		if(info.flags.find(net::sctp::info_t::ADDR_OVER) != info.flags.end())
+			// Устанавливаем флаг использования переданного адреса
+			sndflags |= SCTP_ADDR_OVER;
+	#endif
+	/**
+	 * Если сообщение несёт признак грациозного завершения
+	 */
+	#if defined(SCTP_EOF)
+		// Если сообщение несёт признак грациозного завершения
+		if(info.flags.find(net::sctp::info_t::STATUS_EOF) != info.flags.end())
+			// Устанавливаем флаг грациозного завершения
+			sndflags |= SCTP_EOF;
+	#endif
+	/**
+	 * Если сообщение несёт признак аварийного завершения
+	 */
+	#if defined(SCTP_ABORT)
+		// Если сообщение несёт признак аварийного завершения
+		if(info.flags.find(net::sctp::info_t::STATUS_ABORT) != info.flags.end())
+			// Устанавливаем флаг аварийного завершения
+			sndflags |= SCTP_ABORT;
+	#endif
+	/**
+	 * Если требуется мгновенное подтверждение приёма
+	 */
+	#if defined(SCTP_SACK_IMMEDIATELY)
+		// Если требуется мгновенное подтверждение приёма
+		if(info.flags.find(net::sctp::info_t::SACK_IMMEDIATELY) != info.flags.end())
+			// Устанавливаем флаг мгновенного подтверждения приёма
+			sndflags |= SCTP_SACK_IMMEDIATELY;
+	#endif
+	/**
+	 * Если система несёт современный набор вызовов
+	 */
+	#if defined(SCTP_SENDV_SNDINFO) && defined(SCTP_SENDV_SPA)
+		// Буфер отправляемых данных
+		struct iovec iov{};
+		// Устанавливаем буфер отправляемых данных
+		iov.iov_base = const_cast <void *> (buffer);
+		// Устанавливаем размер буфера отправляемых данных
+		iov.iov_len = size;
+		// Набор параметров отправки сообщения
+		struct sctp_sendv_spa spa{};
+		// Устанавливаем признак заполненности параметров отправки
+		spa.sendv_flags = SCTP_SEND_SNDINFO_VALID;
+		// Устанавливаем номер потока
+		spa.sendv_sndinfo.snd_sid = info.num;
+		// Устанавливаем флаги отправки сообщения
+		spa.sendv_sndinfo.snd_flags = static_cast <uint16_t> (sndflags);
+		// Устанавливаем идентификатор полезной нагрузки
+		spa.sendv_sndinfo.snd_ppid = static_cast <uint32_t> (info.ppid);
+		// Устанавливаем контекст для уведомлений об ошибках
+		spa.sendv_sndinfo.snd_context = info.ctx;
+		/**
+		 * Если сообщение отправляется с политикой частичной надёжности
+		 */
+		#if defined(SCTP_SEND_PRINFO_VALID)
+			// Политика частичной надёжности сообщения
+			uint16_t policy = 0;
+			/**
+			 * Если сообщение имеет ограничение по времени жизни
+			 */
+			#if defined(SCTP_PR_SCTP_TTL)
+				// Если сообщение имеет ограничение по времени жизни
+				if(info.flags.find(net::sctp::info_t::PR_TTL) != info.flags.end())
+					// Устанавливаем политику ограничения по времени жизни
+					policy = SCTP_PR_SCTP_TTL;
+			#endif
+			/**
+			 * Если сообщение имеет ограничение по количеству повторных попыток
+			 */
+			#if defined(SCTP_PR_SCTP_RTX)
+				// Если сообщение имеет ограничение по количеству повторных попыток
+				if(info.flags.find(net::sctp::info_t::PR_RTX) != info.flags.end())
+					// Устанавливаем политику ограничения по количеству повторных попыток
+					policy = SCTP_PR_SCTP_RTX;
+			#endif
+			/**
+			 * Если сообщение имеет приоритет
+			 */
+			#if defined(SCTP_PR_SCTP_PRIO)
+				// Если сообщение имеет приоритет
+				if(info.flags.find(net::sctp::info_t::PR_PRIO) != info.flags.end())
+					// Устанавливаем политику приоритета сообщения
+					policy = SCTP_PR_SCTP_PRIO;
+			#endif
+			/**
+			 * Если политика частичной надёжности установлена
+			 *
+			 * @note Значение политики берётся из времени жизни сообщения: у ограничения
+			 *       по времени это миллисекунды, у прочих политик - число попыток либо
+			 *       приоритет, и поле это у них общее
+			 */
+			if(policy != 0){
+				// Устанавливаем признак заполненности политики частичной надёжности
+				spa.sendv_flags |= SCTP_SEND_PRINFO_VALID;
+				// Устанавливаем политику частичной надёжности
+				spa.sendv_prinfo.pr_policy = policy;
+				// Устанавливаем значение политики частичной надёжности
+				spa.sendv_prinfo.pr_value = info.ttl;
+			}
+		#endif
+		// Флаги отправки сообщения
+		int32_t flags = 0;
+		/**
+		 * Если сообщение завершается на этом куске
+		 *
+		 * @note Граница записи ставится в явном виде лишь тогда, когда включён режим
+		 *       явной границы: без него система закрывает запись на каждой отправке
+		 *       сама, и флаг этот ей ничего не меняет
+		 */
+		if(complete)
+			// Устанавливаем флаг границы записи
+			flags |= MSG_EOR;
+		// Выполняем отправку сообщения вместе с метаданными
+		return ::sctp_sendv(sock, &iov, 1, const_cast <struct sockaddr *> (addr), ((addr != nullptr) ? 1 : 0), &spa, sizeof(spa), SCTP_SENDV_SPA, flags);
+	/**
+	 * Если современного набора вызовов система не несёт
+	 */
+	#else
+		/**
+		 * Если сообщение отправляется по частям
+		 *
+		 * @note Прежний способ отправки границу записи в явном виде задать не даёт:
+		 *       флагов у него нет вовсе. Отправка по частям потому здесь невозможна,
+		 *       и умалчивать об этом нельзя - сообщение разбилось бы на несколько
+		 */
+		if(!complete)
+			// Выводим сообщение об ошибке
+			this->_log->print("SCTP partial message sending is not supported by the operating system", log_t::flag_t::WARNING);
+		// Выполняем отправку сообщения прежним способом
+		return ::sctp_sendmsg(sock, buffer, size, const_cast <struct sockaddr *> (addr), length, static_cast <uint32_t> (info.ppid), sndflags, info.num, info.ttl, info.ctx);
+	#endif
 }
