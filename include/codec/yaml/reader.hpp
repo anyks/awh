@@ -37,6 +37,8 @@
  */
 #include <deque>
 #include <vector>
+#include <unordered_map>
+#include <unordered_set>
 
 /**
  * Подключаем заголовочные файлы модуля
@@ -122,6 +124,22 @@ namespace awh {
 				style_t style;
 				// Содержимое значения, приведённое к окончательному виду
 				string_view text;
+				/**
+				 * Имя метки, значению предпосланной, пусто при отсутствии её
+				 *
+				 * @note Событие ссылки несёт имя её полем содержимого, а не полем этим: ссылка
+				 *       сама значением не является, и содержимое её есть имя метки, на которую
+				 *       она указывает
+				 */
+				string_view anchor;
+				/**
+				 * Метка типа, значению предпосланная, приведённая к полному виду
+				 *
+				 * @note Сокращение раскрывается объявлением своим: `!!str` выдаётся записью
+				 *       `tag:yaml.org,2002:str`, а `!свой` - записью `!свой`. Потребителю
+				 *       незачем знать, каким сокращением метка записана была
+				 */
+				string_view tag;
 				// Положение значения в исходном тексте
 				location_t location;
 				/**
@@ -146,9 +164,15 @@ namespace awh {
 			 * выдача не зависит от того, как текст нарезан на куски при подаче
 			 *
 			 * @warning Заводится чтение по частям, и построения, ещё не заведённые -
-			 *          поточные скобки, блочные значения, метки, ссылки и метки типов, -
-			 *          отвечают отказом, а не молчаливым разбором наугад: молчаливый разбор
-			 *          выдал бы дерево, исходному тексту не отвечающее
+			 *          многострочные простые значения и поточные построения, растянутые
+			 *          на многие строки, - отвечают отказом, а не молчаливым разбором
+			 *          наугад: молчаливый разбор выдал бы дерево, исходному тексту не
+			 *          отвечающее
+			 *
+			 * @note Ссылки чтением не раскрываются: событие ссылки выдаётся как есть, а
+			 *       раскрытие её есть забота держащего документ целиком. Потоковое чтение
+			 *       памяти под дерево не отводит вовсе, и раскрывать ему нечего, а предел
+			 *       раскрытия `MAX_EXPANSION` оттого стережёт не здесь, а там
 			 *
 			 * \~english
 			 * @brief Streaming reading of a YAML text
@@ -156,9 +180,11 @@ namespace awh {
 			 * only when a line is read in full and can no longer grow. Whereby the issuance
 			 * does not depend on how the text is cut into the chunks at the feeding
 			 * @warning The reading is being created by the parts, and the constructions not yet created —
-			 *          the flow brackets, the block scalars, the anchors, the aliases and the tags —
+			 *          the multiline plain scalars and the flow constructions stretched over many lines —
 			 *          answer with a refusal rather than with a silent parsing at random: a silent parsing
 			 *          would issue a tree not corresponding to the source text
+			 * @note The aliases are not expanded by the reading: an event of an alias is issued as it is,
+			 *       and the expansion of it is the concern of the one holding a document in full
 			 *
 			 * \~
 			 */
@@ -266,6 +292,32 @@ namespace awh {
 					 *
 					 * \~
 					 */
+					typedef struct Piece {
+						// Смещение куска в хранилище знаков
+						size_t offset;
+						// Длина куска в хранилище знаков
+						size_t length;
+						/**
+						 * \~russian
+						 * @brief Конструктор
+						 *
+						 *
+						 * \~english
+						 * @brief Constructor
+						 *
+						 * \~
+						 */
+						Piece() noexcept : offset(0), length(0) {}
+					} piece_t;
+					/**
+					 * \~russian
+					 * @brief Событие разбора, собранное для выдачи
+					 *
+					 * \~english
+					 * @brief Event of the parsing assembled for the issuance
+					 *
+					 * \~
+					 */
 					typedef struct Item {
 						// Вид собранного события
 						event_t event;
@@ -277,6 +329,10 @@ namespace awh {
 						size_t offset;
 						// Длина содержимого события в хранилище знаков
 						size_t length;
+						// Имя метки, событию предпосланной, в хранилище знаков
+						piece_t anchor;
+						// Метка типа, событию предпосланная, в хранилище знаков
+						piece_t tag;
 						// Положение события в исходном тексте
 						location_t location;
 						/**
@@ -361,6 +417,27 @@ namespace awh {
 					bool _expected;
 					// Отступ, на котором ожидается значение пары
 					uint32_t _pending;
+					/**
+					 * Схема разрешения видов, действующая над разбираемым документом
+					 *
+					 * @note Схема эта берётся из настроек разбора, а директива `%YAML 1.1`
+					 *       правит её на схему наречия 1.1 - но лишь тогда, когда потребитель
+					 *       схему свою не назначил: назначенное потребителем прямо текст
+					 *       перебивать не вправе
+					 */
+					schema_t _schema;
+					// Имя метки, узлу предпосланной, ожидающее узла своего
+					string _anchor;
+					// Метка типа, узлу предпосланная, ожидающая узла своего
+					string _tag;
+					// Имена меток, объявленных разбираемым документом
+					unordered_set <string> _anchors;
+					// Сокращения меток типов, объявленные директивами документа
+					unordered_map <string, string> _handles;
+					// Признак того, что документу предпосланы директивы
+					bool _directed;
+					// Признак того, что наречие документа объявлено директивой
+					bool _versioned;
 				private:
 					/**
 					 * \~russian
@@ -570,6 +647,110 @@ namespace awh {
 					 * \~
 					 */
 					bool record(const string_view line) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод переноса накопленных свойств узла в собранное событие
+					 *
+					 * @details Метка и метка типа стоят прежде узла своего и ожидают его - быть
+					 * может, и не в той строке, где записаны. Событие узла забирает их себе, и
+					 * ожидание тем прекращается
+					 *
+					 * @param item событие, свойства узла принимающее
+					 *
+					 * \~english
+					 * @brief Method of the transfer of the accumulated properties of a node into an assembled event
+					 * @details An anchor and a tag stand before their node and await it — perhaps
+					 * not even in the line where they are written. An event of a node takes them to itself,
+					 * and the awaiting is thereby terminated
+					 * @param item event accepting the properties of a node
+					 *
+					 * \~
+					 */
+					void attach(item_t & item) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод разрешения вида скалярного значения
+					 *
+					 * @details Метка типа перебивает разрешение схемою: `!!str 12` есть строка,
+					 * а не число, ибо метка сказана прямо, а схема лишь угадывает по записи
+					 *
+					 * @param text   содержимое скалярного значения
+					 * @param style  вид записи значения в исходном тексте
+					 * @param column положение значения в разбираемой строке
+					 * @param type   разрешённый вид скалярного значения
+					 * @return       признак успешного разрешения вида
+					 *
+					 * \~english
+					 * @brief Method of the resolution of the kind of a scalar value
+					 * @details A tag overrides the resolution by the schema: `!!str 12` is a string
+					 * rather than a number, for the tag is said directly while the schema only guesses by the notation
+					 * @param text content of the scalar value
+					 * @param style kind of the notation of the value in the source text
+					 * @param column position of the value in the line being parsed
+					 * @param type resolved kind of the scalar value
+					 * @return sign of the successful resolution of the kind
+					 *
+					 * \~
+					 */
+					bool typing(const string_view text, const style_t style, const size_t column, type_t & type) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод разбора свойств узла, стоящих прежде него
+					 *
+					 * @param line   разбираемая строка
+					 * @param offset смещение начала свойств в строке, по выходе - смещение за ними
+					 * @return       признак успешного разбора свойств узла
+					 *
+					 * \~english
+					 * @brief Method of the parsing of the properties of a node standing before it
+					 * @param line line being parsed
+					 * @param offset offset of the beginning of the properties in the line, at the exit — the offset after them
+					 * @return sign of the successful parsing of the properties of a node
+					 *
+					 * \~
+					 */
+					bool property(const string_view line, size_t & offset) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод разбора ссылки на объявленную метку
+					 *
+					 * @param line   разбираемая строка
+					 * @param offset смещение начала ссылки в строке, по выходе - смещение за нею
+					 * @return       признак успешного разбора ссылки
+					 *
+					 * \~english
+					 * @brief Method of the parsing of an alias to a declared anchor
+					 * @param line line being parsed
+					 * @param offset offset of the beginning of the alias in the line, at the exit — the offset after it
+					 * @return sign of the successful parsing of the alias
+					 *
+					 * \~
+					 */
+					bool referred(const string_view line, size_t & offset) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод разбора директивы, документу предпосланной
+					 *
+					 * @details Директивы, чьё имя не опознано, описанием велено пропускать без
+					 * отказа: наречия последующие вправе завести свои, и текст, ими писанный,
+					 * читающему прежнему понятен остаётся
+					 *
+					 * @param line   разбираемая строка
+					 * @param offset смещение начала директивы в строке
+					 * @return       признак успешного разбора директивы
+					 *
+					 * \~english
+					 * @brief Method of the parsing of a directive placed before a document
+					 * @details The directives whose name is not recognised are ordered by the specification to be skipped
+					 * without a refusal: the subsequent versions are entitled to introduce their own, and a text
+					 * written by them remains understandable to a previous reader
+					 * @param line line being parsed
+					 * @param offset offset of the beginning of the directive in the line
+					 * @return sign of the successful parsing of the directive
+					 *
+					 * \~
+					 */
+					bool directive(const string_view line, const size_t offset) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод разбора заголовка блочного значения

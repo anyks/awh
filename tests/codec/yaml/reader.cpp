@@ -77,9 +77,22 @@ namespace {
 				/**
 				 * Если событие несёт скалярное значение либо примечание
 				 */
-				if((reader.event() == yaml::event_t::SCALAR) || (reader.event() == yaml::event_t::COMMENT))
+				if((reader.event() == yaml::event_t::SCALAR) || (reader.event() == yaml::event_t::COMMENT) ||
+				   (reader.event() == yaml::event_t::ALIAS))
 					// Выполняем запись содержимого события
 					result.append(" «").append(reader.value().text).append("»");
+				/**
+				 * Если событию предпослана метка
+				 */
+				if(!reader.value().anchor.empty())
+					// Выполняем запись имени метки события
+					result.append(" &").append(reader.value().anchor);
+				/**
+				 * Если событию предпослана метка типа
+				 */
+				if(!reader.value().tag.empty())
+					// Выполняем запись метки типа события
+					result.append(" <").append(reader.value().tag).append(">");
 				// Выполняем запись разделителя событий
 				result.append("\n");
 			}
@@ -429,7 +442,6 @@ TEST(CodecYamlReader, Refusals) {
 		 * Построения, заводимые следующими этапами работ
 		 */
 		const vector <string> pending = {
-			"a: &метка 1\n", "a: *метка\n", "a: !!str 1\n", "%YAML 1.2\n---\na: 1\n",
 			"? составное\n: значение\n"
 		};
 		/**
@@ -489,7 +501,19 @@ TEST(CodecYamlReader, Chunking) {
 		"text: |+\n  одна\n\n",
 		"text: |2\n    два пробела\n",
 		"- |\n  одна\n- две\n",
-		"a: [1, 2\n"
+		"a: [1, 2\n",
+		"a: &я 1\nb: *я\n",
+		"a: &я\n  x: 1\nb: *я\n",
+		"- &я один\n- *я\n",
+		"a: !!str 12\nb: !!int 7\n",
+		"a: !<tag:x,2000:mine> 12\n",
+		"%YAML 1.1\n---\na: yes\n",
+		"%TAG !e! tag:example.com,2000:\n---\na: !e!mine 1\n",
+		"a: *нет\n",
+		"a: !!int строка\n",
+		"a: !e!mine 1\n",
+		"%YAML 2.0\n---\na: 1\n",
+		"%YAML 1.2\na: 1\n"
 	};
 	/**
 	 * Выполняем перебор всех образцов текстов
@@ -732,4 +756,285 @@ TEST(CodecYamlReader, BlockScalars) {
 		// Выполняем проверку кода ошибки разбора
 		ASSERT_EQ(reader.error(), yaml::error_t::INVALID_BLOCK_HEADER);
 	}
+}
+/**
+ * @brief Проверка разбора меток и ссылок на них
+ *
+ * @note Ссылки чтением не раскрываются: событие ссылки выдаётся как есть, а раскрытие
+ *       её есть забота держащего документ целиком
+ *
+ */
+TEST(CodecYamlReader, Anchors) {
+	// Выполняем проверку метки над скалярным значением и ссылки на неё
+	ASSERT_EQ(events("a: &я 1\nb: *я\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\n"
+		"SCALAR «a»\nSCALAR «1» &я\nSCALAR «b»\nALIAS «я»\n"
+		"MAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
+	/**
+	 * Выполняем проверку метки над построением
+	 *
+	 * @note Метка стоит строкою выше построения своего, и дожидается она его: событие
+	 *       открытия отображения забирает её себе
+	 */
+	ASSERT_EQ(events("a: &я\n  x: 1\nb: *я\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\n"
+		"SCALAR «a»\nMAPPING_START &я\nSCALAR «x»\nSCALAR «1»\nMAPPING_END\n"
+		"SCALAR «b»\nALIAS «я»\n"
+		"MAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
+	// Выполняем проверку метки над значением перечня
+	ASSERT_EQ(events("- &я один\n- *я\n"),
+		"STREAM_START\nDOCUMENT_START\nSEQUENCE_START\n"
+		"SCALAR «один» &я\nALIAS «я»\n"
+		"SEQUENCE_END\nDOCUMENT_END\nSTREAM_END\n");
+	/**
+	 * Выполняем проверку имени метки со знаками, ей дозволенными
+	 *
+	 * @note Описание запрещает имени метки лишь пробельные знаки да знаки, поточные
+	 *       построения размечающие: восклицательный знак ему дозволен, и `&я!!str` есть
+	 *       имя целиком, а не метка со слитою меткой типа
+	 */
+	ASSERT_EQ(events("a: &я!!str 1\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\n"
+		"SCALAR «a»\nSCALAR «1» &я!!str\n"
+		"MAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
+	/**
+	 * Выполняем проверку отказа ссылки на метку, ещё не объявленную
+	 */
+	{
+		// Объект потокового чтения текста
+		yaml::reader_t reader;
+		// Выполняем проверку отказа разбора ссылки вперёд объявления
+		ASSERT_FALSE(reader.feed("a: *нет\n"));
+		// Выполняем проверку кода ошибки разбора
+		ASSERT_EQ(reader.error(), yaml::error_t::UNKNOWN_ALIAS);
+	}
+	/**
+	 * Выполняем проверку отказа ссылки на метку другого документа
+	 *
+	 * @note Метка живёт ровно столько, сколько живёт документ, её объявивший: ссылка из
+	 *       второго документа на метку первого описанием запрещена
+	 */
+	{
+		// Объект потокового чтения текста
+		yaml::reader_t reader;
+		// Выполняем проверку отказа разбора ссылки через границу документа
+		ASSERT_FALSE(reader.feed("---\na: &я 1\n---\nb: *я\n"));
+		// Выполняем проверку кода ошибки разбора
+		ASSERT_EQ(reader.error(), yaml::error_t::UNKNOWN_ALIAS);
+	}
+	/**
+	 * Выполняем проверку отказа свойства узла над ссылкой
+	 */
+	{
+		// Объект потокового чтения текста
+		yaml::reader_t reader;
+		// Выполняем проверку отказа разбора свойства над ссылкой
+		ASSERT_FALSE(reader.feed("a: &я 1\nb: &б *я\n"));
+		// Выполняем проверку кода ошибки разбора
+		ASSERT_EQ(reader.error(), yaml::error_t::INVALID_CHARACTER);
+	}
+}
+/**
+ * @brief Проверка разбора меток типов
+ *
+ */
+TEST(CodecYamlReader, Tags) {
+	/**
+	 * Выполняем проверку метки типа описания
+	 *
+	 * @note Сокращение `!!` раскрывается началом, описанием заданным, и наружу выдаётся
+	 *       уже раскрытым: потребителю незачем знать, каким сокращением метка писана
+	 */
+	ASSERT_EQ(events("a: !!str 12\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\n"
+		"SCALAR «a»\nSCALAR «12» <tag:yaml.org,2002:str>\n"
+		"MAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
+	// Выполняем проверку метки типа местной
+	ASSERT_EQ(events("a: !mine 12\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\n"
+		"SCALAR «a»\nSCALAR «12» <!mine>\n"
+		"MAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
+	// Выполняем проверку метки типа, записанной указателем дословно
+	ASSERT_EQ(events("a: !<tag:x,2000:mine> 12\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\n"
+		"SCALAR «a»\nSCALAR «12» <tag:x,2000:mine>\n"
+		"MAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
+	// Выполняем проверку метки типа вместе с меткой узла
+	ASSERT_EQ(events("a: &я !!str 12\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\n"
+		"SCALAR «a»\nSCALAR «12» &я <tag:yaml.org,2002:str>\n"
+		"MAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
+	/**
+	 * Выполняем проверку перебивания схемы меткой типа
+	 *
+	 * @note Схема разрешает вид по записи значения и оттого лишь угадывает, а метка типа
+	 *       сказывает вид прямо: `!!str 12` есть строка, схеме вопреки
+	 */
+	{
+		// Объект потокового чтения текста
+		yaml::reader_t reader;
+		// Выполняем проверку разбора значения с меткой типа строки
+		ASSERT_TRUE(reader.feed("a: !!str 12\n"));
+		/**
+		 * Выполняем перебор событий разбора до значения пары
+		 */
+		while(reader.next() && (reader.value().text.compare("12") != 0));
+		// Выполняем проверку вида значения, меткой типа заданного
+		ASSERT_EQ(reader.value().type, yaml::type_t::STRING);
+	}
+	/**
+	 * Выполняем проверку отказа содержимого, метке типа не отвечающего
+	 */
+	{
+		// Объект потокового чтения текста
+		yaml::reader_t reader;
+		// Выполняем проверку отказа разбора строки под меткой целого
+		ASSERT_FALSE(reader.feed("a: !!int строка\n"));
+		// Выполняем проверку кода ошибки разбора
+		ASSERT_EQ(reader.error(), yaml::error_t::TAG_MISMATCH);
+	}
+	/**
+	 * Выполняем проверку отказа скалярной метки типа над построением
+	 */
+	{
+		// Объект потокового чтения текста
+		yaml::reader_t reader;
+		// Выполняем проверку отказа разбора отображения под меткой строки
+		ASSERT_FALSE(reader.feed("a: !!str\n  x: 1\n"));
+		// Выполняем проверку кода ошибки разбора
+		ASSERT_EQ(reader.error(), yaml::error_t::TAG_MISMATCH);
+	}
+	/**
+	 * Выполняем проверку отказа необъявленного сокращения метки типа
+	 */
+	{
+		// Объект потокового чтения текста
+		yaml::reader_t reader;
+		// Выполняем проверку отказа разбора необъявленного сокращения
+		ASSERT_FALSE(reader.feed("a: !e!mine 1\n"));
+		// Выполняем проверку кода ошибки разбора
+		ASSERT_EQ(reader.error(), yaml::error_t::UNKNOWN_TAG_HANDLE);
+	}
+	/**
+	 * Выполняем проверку отказа знака, записи метки типа не принадлежащего
+	 */
+	{
+		// Объект потокового чтения текста
+		yaml::reader_t reader;
+		// Выполняем проверку отказа разбора метки типа с письмом иным
+		ASSERT_FALSE(reader.feed("a: !своё 1\n"));
+		// Выполняем проверку кода ошибки разбора
+		ASSERT_EQ(reader.error(), yaml::error_t::INVALID_TAG);
+	}
+}
+/**
+ * @brief Проверка разбора директив, документу предпосланных
+ *
+ */
+TEST(CodecYamlReader, Directives) {
+	// Выполняем проверку директивы наречия текста
+	ASSERT_EQ(events("%YAML 1.2\n---\na: 1\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\n"
+		"SCALAR «a»\nSCALAR «1»\n"
+		"MAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
+	// Выполняем проверку раскрытия сокращения, директивой объявленного
+	ASSERT_EQ(events("%TAG !e! tag:example.com,2000:\n---\na: !e!mine 1\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\n"
+		"SCALAR «a»\nSCALAR «1» <tag:example.com,2000:mine>\n"
+		"MAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
+	/**
+	 * Выполняем проверку правки схемы разрешения директивой наречия
+	 *
+	 * @details Наречие 1.1 разрешает виды иначе: `yes` там есть истина. Объявив наречие,
+	 * текст сказал об этом прямо, и читать его схемою ядровой значило бы прочесть не то,
+	 * что писано
+	 */
+	{
+		// Объект потокового чтения текста
+		yaml::reader_t reader;
+		// Выполняем проверку разбора текста наречия 1.1
+		ASSERT_TRUE(reader.feed("%YAML 1.1\n---\na: yes\n"));
+		/**
+		 * Выполняем перебор событий разбора до значения пары
+		 */
+		while(reader.next() && (reader.value().text.compare("yes") != 0));
+		// Выполняем проверку вида значения, схемою наречия 1.1 разрешённого
+		ASSERT_EQ(reader.value().type, yaml::type_t::BOOL);
+	}
+	/**
+	 * Выполняем проверку возврата схемы разрешения по закрытии документа
+	 *
+	 * @note Наречие объявляется документом и живёт ровно столько, сколько живёт он сам:
+	 *       второй документ читается схемою, настройками назначенной
+	 */
+	{
+		// Объект потокового чтения текста
+		yaml::reader_t reader;
+		// Выполняем проверку разбора двух документов с разными наречиями
+		ASSERT_TRUE(reader.feed("%YAML 1.1\n---\na: yes\n---\nb: yes\n"));
+		/**
+		 * Выполняем перебор событий разбора до значения второго документа
+		 */
+		while(reader.next() && (reader.value().text.compare("b") != 0));
+		// Выполняем переход к значению второй пары
+		ASSERT_TRUE(reader.next());
+		// Выполняем проверку вида значения, схемою ядровой разрешённого
+		ASSERT_EQ(reader.value().type, yaml::type_t::STRING);
+	}
+	/**
+	 * Выполняем проверку отказа неподдерживаемого наречия текста
+	 */
+	{
+		// Объект потокового чтения текста
+		yaml::reader_t reader;
+		// Выполняем проверку отказа разбора неподдерживаемого наречия
+		ASSERT_FALSE(reader.feed("%YAML 2.0\n---\na: 1\n"));
+		// Выполняем проверку кода ошибки разбора
+		ASSERT_EQ(reader.error(), yaml::error_t::UNSUPPORTED_VERSION);
+	}
+	/**
+	 * Выполняем проверку отказа документа с директивами, чертою не открытого
+	 *
+	 * @note Без черты неведомо, где кончаются директивы и начинается содержимое
+	 */
+	{
+		// Объект потокового чтения текста
+		yaml::reader_t reader;
+		// Выполняем проверку отказа разбора директивы без черты за нею
+		ASSERT_FALSE(reader.feed("%YAML 1.2\na: 1\n"));
+		// Выполняем проверку кода ошибки разбора
+		ASSERT_EQ(reader.error(), yaml::error_t::INVALID_DIRECTIVE);
+	}
+	/**
+	 * Выполняем проверку отказа директивы посреди документа
+	 */
+	{
+		// Объект потокового чтения текста
+		yaml::reader_t reader;
+		// Выполняем проверку отказа разбора директивы посреди документа
+		ASSERT_FALSE(reader.feed("a: 1\n%YAML 1.2\n"));
+		// Выполняем проверку кода ошибки разбора
+		ASSERT_EQ(reader.error(), yaml::error_t::INVALID_DIRECTIVE);
+	}
+	/**
+	 * Выполняем проверку отказа повторного объявления сокращения
+	 */
+	{
+		// Объект потокового чтения текста
+		yaml::reader_t reader;
+		// Выполняем проверку отказа разбора повторного объявления сокращения
+		ASSERT_FALSE(reader.feed("%TAG !e! tag:a\n%TAG !e! tag:b\n---\na: 1\n"));
+		// Выполняем проверку кода ошибки разбора
+		ASSERT_EQ(reader.error(), yaml::error_t::INVALID_DIRECTIVE);
+	}
+	/**
+	 * Выполняем проверку пропуска директивы, чьё имя не опознано
+	 *
+	 * @note Описание велит пропускать такие без отказа: наречия последующие вправе завести
+	 *       свои, и текст, ими писанный, читающему прежнему понятен остаётся
+	 */
+	ASSERT_EQ(events("%НЕВЕДОМО что\n---\na: 1\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\n"
+		"SCALAR «a»\nSCALAR «1»\n"
+		"MAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
 }
