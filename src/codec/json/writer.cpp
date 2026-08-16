@@ -605,10 +605,7 @@ bool awh::codec::json::Writer::value(const int64_t value) noexcept {
 	if(!static_cast <bool> (output))
 		// Выводим признак неуспешности записи
 		return false;
-	// Определяем длину записи целого числа
-	const int32_t length = static_cast <int32_t> (output.ptr - buffer);
-	// Выполняем запись числа его готовой записью
-	return this->raw(string(buffer, static_cast <size_t> (length)));
+	return this->raw(string(buffer, static_cast <size_t> (output.ptr - buffer)));
 }
 /**
  * @brief Метод записи беззнакового целого числа
@@ -628,10 +625,7 @@ bool awh::codec::json::Writer::value(const uint64_t value) noexcept {
 	if(!static_cast <bool> (output))
 		// Выводим признак неуспешности записи
 		return false;
-	// Определяем длину записи целого числа
-	const int32_t length = static_cast <int32_t> (output.ptr - buffer);
-	// Выполняем запись числа его готовой записью
-	return this->raw(string(buffer, static_cast <size_t> (length)));
+	return this->raw(string(buffer, static_cast <size_t> (output.ptr - buffer)));
 }
 /**
  * @brief Метод записи числа с плавающей запятой
@@ -736,30 +730,23 @@ bool awh::codec::json::Writer::value(const double value) noexcept {
 				length = static_cast <int32_t> (output.ptr - buffer);
 		}
 	}
-	// Получаем полученную запись числа с плавающей запятой
-	string result(buffer, static_cast <size_t> (length));
 	/**
-	 * Если запись числа целой части не содержит
+	 * Если запись числа начинается с разделителя дробной части
 	 *
 	 * @note Запись вида «1e+30» стандарту отвечает, а вот выданная некоторыми
-	 *       библиотеками «.5» - уже нет, и целую часть ей приходится дописывать
+	 *       библиотеками «.5» - уже нет, и целую часть ей приходится дописывать.
+	 *       Сличения со стандартом здесь не требуется: недостача целой части видна
+	 *       по первому знаку записи, а иных отступлений преобразование не делает
 	 */
-	if(!numeric(result)){
-		/**
-		 * Если запись начинается с разделителя дробной части
-		 */
-		if(!result.empty() && (result.front() == '.'))
-			// Дописываем записи ведущий ноль целой части
-			result.insert(result.begin(), '0');
-		/**
-		 * Если запись начинается со знака минуса и разделителя дробной части
-		 */
-		else if((result.size() > 1) && (result[0] == '-') && (result[1] == '.'))
-			// Дописываем записи ведущий ноль целой части
-			result.insert(result.begin() + 1, '0');
+	if((length > 0) && ((buffer[0] == '.') || ((length > 1) && (buffer[0] == '-') && (buffer[1] == '.')))){
+		// Собираемая запись числа с плавающей запятой
+		string result(buffer, static_cast <size_t> (length));
+		// Дописываем записи ведущий ноль целой части
+		result.insert(result.begin() + ((result.front() == '-') ? 1 : 0), '0');
+		// Выполняем перенос собранной записи числа в текст документа
+		return this->produced(result.data(), result.size());
 	}
-	// Выполняем запись числа его готовой записью
-	return this->raw(result);
+	return this->raw(string(buffer, static_cast <size_t> (length)));
 }
 /**
  * @brief Метод записи числа его готовой записью
@@ -774,6 +761,46 @@ bool awh::codec::json::Writer::value(const double value) noexcept {
  * @param value записываемая запись числа
  * @return      признак успешности записи
  *
+ */
+/**
+ * @brief Метод переноса готовой записи числа в текст документа
+ *
+ * @details Запись переносится без сличения со стандартом: сюда попадает лишь то, что
+ * писатель произвёл сам, а произвести негодную запись преобразование числа не может.
+ * Сличается только запись, пришедшая извне, - для неё есть отдельный способ `raw()`
+ *
+ * @note Путь этот заведён замером: перезапись документа сличала со стандартом всякое
+ *       собственное число, то есть разбирала заново запись, только что ею собранную
+ *
+ * @param value переносимая запись числа
+ * @param size  длина переносимой записи числа
+ * @return      признак успешности записи
+ *
+ */
+bool awh::codec::json::Writer::produced(const char * value, const size_t size) noexcept {
+	/**
+	 * Если длина записи числа превышает допустимую
+	 */
+	if(size > MAX_NUMBER)
+		// Выводим признак неуспешности записи
+		return false;
+	/**
+	 * Если запись значения в этом месте недопустима
+	 */
+	if(!this->separate())
+		// Выводим признак неуспешности записи
+		return false;
+	// Записываем запись числа как есть
+	this->_result.append(value, size);
+	// Устанавливаем признак наличия значений у вместилища
+	this->_empty = false;
+	// Снимаем признак записи имени поля объекта
+	this->_keyed = false;
+	// Выводим признак успешности записи
+	return true;
+}
+/**
+ * @brief Метод записи числа его готовой записью
  */
 bool awh::codec::json::Writer::raw(const string & value) noexcept {
 	/**

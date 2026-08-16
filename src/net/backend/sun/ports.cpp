@@ -9455,7 +9455,7 @@ namespace sctp {
 		 * @return       количество обработанных байт
 		 *
 		 */
-		static size_t events(::io::node_t * node, const uint8_t * buffer, const size_t size, const log_t * log) noexcept;
+		static size_t events(::io::node_t * node, const uint8_t * buffer, const size_t size, const log_t * log, bool * finish = nullptr) noexcept;
 	#endif
 	/**
 	 * Размер головы настроек отправки, кладущейся перед данными записи очереди
@@ -9566,6 +9566,22 @@ namespace sctp {
 				return true;
 		}
 		// Если потоковое событие SCTP за одно обращение столько не берёт
+		/**
+		 * Если связь у сокета упорядоченных сообщений ещё заводится
+		 *
+		 * @details Адрес получателя годится лишь первой посылке - той, что связь и
+		 *          заводит. Вторая, данная прежде её подъёма, получает этот отказ, а
+		 *          опознаватель связи, которым отправка идёт дальше, приходит известием
+		 *          и приходит позже. Отказ этот временный по сути: посылку следует
+		 *          повторить, а не ронять обмен
+		 *
+		 * @warning Замерено на Sun Solaris и illumos: повтор с адресом отвергается и
+		 *          после подъёма связи, а по опознавателю проходит. FreeBSD и Linux
+		 *          повтор с адресом принимают, и этой ветви там не видно вовсе
+		 */
+		if((errno == EADDRINUSE) && (node->state.protocol == event::protocol_t::SCTP) && (node->state.type == event::type_t::SEQPACKET))
+			// Выводим положительный результат
+			return true;
 		if((errno == EMSGSIZE) && (node->state.protocol == event::protocol_t::SCTP) && (node->state.type == event::type_t::STREAM))
 			// Выводим положительный результат
 			return true;
@@ -9820,20 +9836,35 @@ namespace sctp {
 	 *       при этом безопасно передавать на каждом куске: ядро ставит её лишь по
 	 *       уходе всего буфера, и недоприём записи не рвёт - проверено тем же щупом
 	 *
+	 * @warning Систему, режима не несущую, отказом это не считает. Замерено: режим
+	 *          есть лишь у FreeBSD (обозначение 27) и Sun Solaris (обозначение 33),
+	 *          а у ВСЕХ ядер Linux от 6.1 до 6.19 и у illumos его нет ни в
+	 *          заголовках, ни в самом ядре. Отправка кусками там возможна и без
+	 *          него - она просто придёт несколькими записями вместо одной, - и
+	 *          рвать из-за этого обмен незачем. Оттого отправка идёт своим ходом,
+	 *          а о понижении сообщается предупреждением, одним на узел
+	 *
 	 * @param node узел события
 	 * @param end  признак завершения сообщения на этом куске
 	 * @param eth  объект работы с сетью
+	 * @param log  объект работы с логами
 	 * @return     результат работы функции
 	 *
 	 */
-	static bool partial(T * node, const bool end, const eth_t * eth) noexcept {
-		// Если сообщение отправляется по частям, а режим ещё не включён
+	static bool partial(T * node, const bool end, const eth_t * eth, const log_t * log) noexcept {
+		/**
+		 * Если сообщение отправляется по частям, а вопрос о режиме ещё не улаживался
+		 *
+		 * @note Признак ставится независимо от исхода: он означает не «режим включён»,
+		 *       а «решение принято». Повторно тревожить ядро незачем ни при успехе,
+		 *       ни при отказе, да и предупреждение тогда выйдет одно, а не на каждый кусок
+		 */
 		if(!end && !node->transfer.sctp.use().partial){
 			// Если включить режим явной границы записи не удалось
 			if(!eth->sctp.explicitEndOfRecord(node->transfer.fd, true))
-				// Выводим отрицательный результат: отправка по частям без режима невозможна
-				return false;
-			// Запоминаем, что режим явной границы записи включён
+				// Выводим предупреждение о понижении: сообщение придёт несколькими записями
+				log->print("SCTP explicit end of record is not supported: the message will arrive as several records", log_t::flag_t::WARNING);
+			// Запоминаем, что вопрос о режиме явной границы записи улажен
 			node->transfer.sctp.use().partial = true;
 		}
 		// Выводим положительный результат
@@ -11048,7 +11079,23 @@ namespace io {
 										// Если мы получили уведомления SCTP
 										if(peer->transfer.sctp.use().flags & MSG_NOTIFICATION){
 											// Обрабатываем события SCTP
-											::sctp::events(peer, ::__awh_buffer__, bytes, log);
+											// Признак завершения связи, выставляемый разбором известия
+											bool finish = false;
+											::sctp::events(peer, ::__awh_buffer__, bytes, log, &finish);
+											/**
+											 * Если связь завершена известием
+											 *
+											 * @warning Иного признака конца у сокета упорядоченных сообщений нет: узел
+											 *          заведён отделением связи вызовом sctp_peeloff, и по её завершении
+											 *          чтение отвечает лишь EAGAIN. Без закрытия отсюда узел висел бы
+											 *          вечно, а потребитель не получил бы ни отключения, ни итога
+											 */
+											if(finish){
+												// Выполняем удаление узла
+												::io::destroy(peer, eth, log);
+												// Формируем результат работы функции
+												return result;
+											}
 											// Пропускаем дальнейшую обработку
 											continue;
 										}
@@ -11181,7 +11228,23 @@ namespace io {
 									// Если мы получили уведомления SCTP
 									if(peer->transfer.sctp.use().flags & MSG_NOTIFICATION){
 										// Обрабатываем события SCTP
-										::sctp::events(peer, ::__awh_buffer__, bytes, log);
+										// Признак завершения связи, выставляемый разбором известия
+										bool finish = false;
+										::sctp::events(peer, ::__awh_buffer__, bytes, log, &finish);
+										/**
+										 * Если связь завершена известием
+										 *
+										 * @warning Иного признака конца у сокета упорядоченных сообщений нет: узел
+										 *          заведён отделением связи вызовом sctp_peeloff, и по её завершении
+										 *          чтение отвечает лишь EAGAIN. Без закрытия отсюда узел висел бы
+										 *          вечно, а потребитель не получил бы ни отключения, ни итога
+										 */
+										if(finish){
+											// Выполняем удаление узла
+											::io::destroy(peer, eth, log);
+											// Формируем результат работы функции
+											return result;
+										}
 										// Формируем положительный результат
 										return result;
 									}
@@ -13996,7 +14059,23 @@ namespace io {
 											// Если мы получили уведомления SCTP
 											if(client->transfer.sctp.use().flags & MSG_NOTIFICATION){
 												// Обрабатываем события SCTP
-												::sctp::events(client, ::__awh_buffer__, bytes, log);
+												// Признак завершения связи, выставляемый разбором известия
+												bool finish = false;
+												::sctp::events(client, ::__awh_buffer__, bytes, log, &finish);
+												/**
+												 * Если связь завершена известием
+												 *
+												 * @warning Иного признака конца у сокета упорядоченных сообщений нет: узел
+												 *          заведён отделением связи вызовом sctp_peeloff, и по её завершении
+												 *          чтение отвечает лишь EAGAIN. Без закрытия отсюда узел висел бы
+												 *          вечно, а потребитель не получил бы ни отключения, ни итога
+												 */
+												if(finish){
+													// Выполняем удаление узла
+													::io::destroy(client, eth, log);
+													// Формируем результат работы функции
+													return result;
+												}
 												// Пропускаем дальнейшую обработку
 												continue;
 											}
@@ -14147,7 +14226,23 @@ namespace io {
 										// Если мы получили уведомления SCTP
 										if(client->transfer.sctp.use().flags & MSG_NOTIFICATION){
 											// Обрабатываем события SCTP
-											::sctp::events(client, ::__awh_buffer__, bytes, log);
+											// Признак завершения связи, выставляемый разбором известия
+											bool finish = false;
+											::sctp::events(client, ::__awh_buffer__, bytes, log, &finish);
+											/**
+											 * Если связь завершена известием
+											 *
+											 * @warning Иного признака конца у сокета упорядоченных сообщений нет: узел
+											 *          заведён отделением связи вызовом sctp_peeloff, и по её завершении
+											 *          чтение отвечает лишь EAGAIN. Без закрытия отсюда узел висел бы
+											 *          вечно, а потребитель не получил бы ни отключения, ни итога
+											 */
+											if(finish){
+												// Выполняем удаление узла
+												::io::destroy(client, eth, log);
+												// Формируем результат работы функции
+												return result;
+											}
 											// Формируем положительный результат
 											return result;
 										}
@@ -14309,7 +14404,23 @@ namespace io {
 											// Если мы получили уведомления SCTP
 											if(client->transfer.sctp.use().flags & MSG_NOTIFICATION){
 												// Обрабатываем события SCTP
-												::sctp::events(client, ::__awh_buffer__, bytes, log);
+												// Признак завершения связи, выставляемый разбором известия
+												bool finish = false;
+												::sctp::events(client, ::__awh_buffer__, bytes, log, &finish);
+												/**
+												 * Если связь завершена известием
+												 *
+												 * @warning Иного признака конца у сокета упорядоченных сообщений нет: узел
+												 *          заведён отделением связи вызовом sctp_peeloff, и по её завершении
+												 *          чтение отвечает лишь EAGAIN. Без закрытия отсюда узел висел бы
+												 *          вечно, а потребитель не получил бы ни отключения, ни итога
+												 */
+												if(finish){
+													// Выполняем удаление узла
+													::io::destroy(client, eth, log);
+													// Формируем результат работы функции
+													return result;
+												}
 												// Пропускаем дальнейшую обработку
 												continue;
 											}
@@ -14473,7 +14584,23 @@ namespace io {
 										// Если мы получили уведомления SCTP
 										if(client->transfer.sctp.use().flags & MSG_NOTIFICATION){
 											// Обрабатываем события SCTP
-											::sctp::events(client, ::__awh_buffer__, bytes, log);
+											// Признак завершения связи, выставляемый разбором известия
+											bool finish = false;
+											::sctp::events(client, ::__awh_buffer__, bytes, log, &finish);
+											/**
+											 * Если связь завершена известием
+											 *
+											 * @warning Иного признака конца у сокета упорядоченных сообщений нет: узел
+											 *          заведён отделением связи вызовом sctp_peeloff, и по её завершении
+											 *          чтение отвечает лишь EAGAIN. Без закрытия отсюда узел висел бы
+											 *          вечно, а потребитель не получил бы ни отключения, ни итога
+											 */
+											if(finish){
+												// Выполняем удаление узла
+												::io::destroy(client, eth, log);
+												// Формируем результат работы функции
+												return result;
+											}
 											// Формируем положительный результат
 											return result;
 										}
@@ -18247,8 +18374,10 @@ namespace io {
 												bytes = eth->sctp.send(
 													client->transfer.fd,
 													reinterpret_cast <const uint8_t *> (buffer), size,
-													&::trust_cast <struct sockaddr> (client->endpoint.server),
-													client->endpoint.size,
+													// Адрес получателя даётся, лишь пока связь не заведена
+													((client->transfer.sctp.use().info.sinfo_assoc_id == 0) ?
+														&::trust_cast <struct sockaddr> (client->endpoint.server) : nullptr),
+													((client->transfer.sctp.use().info.sinfo_assoc_id == 0) ? client->endpoint.size : 0),
 													client->transfer.sctp.use().info,
 													client->transfer.sctp.use().complete
 												);
@@ -26349,8 +26478,10 @@ namespace io {
 													bytes = eth->sctp.send(
 														client->transfer.fd,
 														buffer, size,
-														&::trust_cast <struct sockaddr> (client->endpoint.server),
-														client->endpoint.size,
+														// Адрес получателя даётся, лишь пока связь не заведена
+														((client->transfer.sctp.use().info.sinfo_assoc_id == 0) ?
+															&::trust_cast <struct sockaddr> (client->endpoint.server) : nullptr),
+														((client->transfer.sctp.use().info.sinfo_assoc_id == 0) ? client->endpoint.size : 0),
 														client->transfer.sctp.use().info,
 														client->transfer.sctp.use().complete
 													);
@@ -26691,8 +26822,10 @@ namespace io {
 									bytes = eth->sctp.send(
 										client->transfer.fd,
 										buffer, size,
-										&::trust_cast <struct sockaddr> (client->endpoint.server),
-										client->endpoint.size,
+										// Адрес получателя даётся, лишь пока связь не заведена
+										((client->transfer.sctp.use().info.sinfo_assoc_id == 0) ?
+											&::trust_cast <struct sockaddr> (client->endpoint.server) : nullptr),
+										((client->transfer.sctp.use().info.sinfo_assoc_id == 0) ? client->endpoint.size : 0),
 										client->transfer.sctp.use().info,
 										client->transfer.sctp.use().complete
 									);
@@ -26824,8 +26957,10 @@ namespace io {
 												bytes = eth->sctp.send(
 													client->transfer.fd,
 													buffer, size,
-													&::trust_cast <struct sockaddr> (client->endpoint.server),
-													client->endpoint.size,
+													// Адрес получателя даётся, лишь пока связь не заведена
+													((client->transfer.sctp.use().info.sinfo_assoc_id == 0) ?
+														&::trust_cast <struct sockaddr> (client->endpoint.server) : nullptr),
+													((client->transfer.sctp.use().info.sinfo_assoc_id == 0) ? client->endpoint.size : 0),
 													client->transfer.sctp.use().info,
 													client->transfer.sctp.use().complete
 												);
@@ -27183,8 +27318,10 @@ namespace io {
 													bytes = eth->sctp.send(
 														client->transfer.fd,
 														buffer, size,
-														&::trust_cast <struct sockaddr> (client->endpoint.server),
-														client->endpoint.size,
+														// Адрес получателя даётся, лишь пока связь не заведена
+														((client->transfer.sctp.use().info.sinfo_assoc_id == 0) ?
+															&::trust_cast <struct sockaddr> (client->endpoint.server) : nullptr),
+														((client->transfer.sctp.use().info.sinfo_assoc_id == 0) ? client->endpoint.size : 0),
 														client->transfer.sctp.use().info,
 														client->transfer.sctp.use().complete
 													);
@@ -27525,8 +27662,10 @@ namespace io {
 									bytes = eth->sctp.send(
 										client->transfer.fd,
 										buffer, size,
-										&::trust_cast <struct sockaddr> (client->endpoint.server),
-										client->endpoint.size,
+										// Адрес получателя даётся, лишь пока связь не заведена
+										((client->transfer.sctp.use().info.sinfo_assoc_id == 0) ?
+											&::trust_cast <struct sockaddr> (client->endpoint.server) : nullptr),
+										((client->transfer.sctp.use().info.sinfo_assoc_id == 0) ? client->endpoint.size : 0),
 										client->transfer.sctp.use().info,
 										client->transfer.sctp.use().complete
 									);
@@ -31667,8 +31806,27 @@ namespace io {
 							 * Если операционной системой является FreeBSD
 							 */
 							#if __FreeBSD__ || defined(__sun)
-								// Если мы получили данные из SCTP-сокета
+								/**
+								 * Если мы получили данные из SCTP-сокета
+								 *
+								 * @note Первое сообщение связи читается здесь, в самом принятии
+								 *       подключения: без него не добыть опознавателя связи, а без
+								 *       опознавателя не отделить её в свой сокет. Оттого и выдаётся
+								 *       оно отсюда, а не общим путём чтения
+								 */
 								if(bytes > 0){
+									/**
+									 * Переносим метаданные первого сообщения на принятый узел
+									 *
+									 * @warning Прочитаны они были узлом СЕРВЕРА, а выдаются от имени
+									 *          принятого узла, и без переноса потребитель получил бы
+									 *          первое сообщение с пустыми метаданными: ни границы
+									 *          записи, ни номера потока. Наружу это выходило тем, что
+									 *          записей насчитывалось ровно на одну меньше отправленных
+									 */
+									peer->transfer.sctp.use().rinfo = server->sctp.rinfo;
+									// Переносим сведения о первом сообщении на принятый узел
+									peer->transfer.sctp.use().info = server->sctp.info;
 									// Выполняем выдачу полученных данных потребителю
 									::sctp::deliver(peer, ::__awh_buffer__, static_cast <size_t> (bytes));
 								}
@@ -33537,7 +33695,7 @@ namespace sctp {
 		 * @return       количество обработанных байт
 		 *
 		 */
-		static size_t events(::io::node_t * node, const uint8_t * buffer, const size_t size, const log_t * log) noexcept {
+		static size_t events(::io::node_t * node, const uint8_t * buffer, const size_t size, const log_t * log, bool * finish) noexcept {
 			// Результат работы функции
 			size_t result = 0;
 			// Если буфер данных события корректен и его размер достаточен для обработки
@@ -33600,6 +33758,16 @@ namespace sctp {
 						/**
 						 * Обрабатываем состояние ассоциации SCTP
 						 */
+						/**
+						 * Признак завершения связи по состоянию ассоциации
+						 *
+						 * @warning Состояния завершения для сокета упорядоченных сообщений и ЕСТЬ конец
+						 *          связи: принятый узел заведён отделением связи вызовом sctp_peeloff, и
+						 *          после её завершения чтение отвечает лишь EAGAIN - ни нуля, ни отказа.
+						 *          Не сообщив о них вызывающему, узел оставили бы висеть навсегда:
+						 *          потребитель не получил бы ни отключения, ни итога
+						 */
+						bool finished = false;
 						switch(sac->sac_state){
 							// Если связь установлена
 							case SCTP_COMM_UP:
@@ -33613,16 +33781,22 @@ namespace sctp {
 							break;
 							// Если связь потеряна
 							case SCTP_COMM_LOST:
+								// Запоминаем завершение связи
+								finished = true;
 								// Устанавливаем идентификатор ассоциации SCTP
 								association->state = net::sctp::assoc_state_t::COMM_LOST;
 							break;
 							// Если завершение работы выполнено
 							case SCTP_SHUTDOWN_COMP:
+								// Запоминаем завершение связи
+								finished = true;
 								// Устанавливаем идентификатор ассоциации SCTP
 								association->state = net::sctp::assoc_state_t::SHUTDOWN_COMP;
 							break;
 							// Если не удалось запустить связь
 							case SCTP_CANT_STR_ASSOC:
+								// Запоминаем завершение связи
+								finished = true;
 								// Устанавливаем идентификатор ассоциации SCTP
 								association->state = net::sctp::assoc_state_t::CANT_START;
 							break;
@@ -33707,6 +33881,10 @@ namespace sctp {
 								if(peer->transfer.sctp.endpoint().callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
 									peer->transfer.sctp.endpoint().callbacks.events(peer->id, ::move(event));
+								// Если связь завершена, сообщаем об этом вызывающему
+								if(finished && (finish != nullptr))
+									// Выставляем признак завершения связи
+									(* finish) = true;
 							} break;
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -33718,6 +33896,19 @@ namespace sctp {
 								if(client->transfer.sctp.endpoint().callbacks.events != nullptr)
 									// Вызываем функцию обратного вызова для получения событий
 									client->transfer.sctp.endpoint().callbacks.events(client->id, ::move(event));
+								/**
+								 * Запоминаем опознаватель связи на узле клиента
+								 *
+								 * @warning Отправка по нему заменяет отправку по адресу получателя, и
+								 *          иначе его взять неоткуда: адрес годится лишь первой посылке,
+								 *          которой связь и заводится. Системы Sun отвечают на вторую
+								 *          посылку с адресом отказом, и обмен встаёт на втором же куске
+								 */
+								client->transfer.sctp.use().info.sinfo_assoc_id = sac->sac_assoc_id;
+								// Если связь завершена, сообщаем об этом вызывающему
+								if(finished && (finish != nullptr))
+									// Выставляем признак завершения связи
+									(* finish) = true;
 							} break;
 						}
 						/**
@@ -37160,24 +37351,16 @@ namespace sctp {
 					// Выводим результат
 					return result;
 				}
-				// Если сообщение отправляется по частям, а система того не позволяет
-				if(!end && !this->_eth.sctp.partial()){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Записываем ошибку в лог
-						this->_log->debug("SCTP partial message sending is not supported by the operating system", __PRETTY_FUNCTION__, make_tuple(id, size, end), log_t::flag_t::WARNING);
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Записываем ошибку в лог
-						this->_log->print("SCTP partial message sending is not supported by the operating system", log_t::flag_t::WARNING);
-					#endif
-					// Выводим результат: отправлять по частям нечем
-					return result;
-				}
+				/**
+				 * Отсутствие режима явной границы записи отправку НЕ отменяет
+				 *
+				 * @details Прежде здесь стоял отказ, и это было неверно: без режима отправка
+				 *          кусками возможна, она лишь придёт несколькими записями вместо
+				 *          одной. Рвать из-за этого обмен незачем - тем более что режима нет
+				 *          у всех ядер Linux и у illumos, то есть у большинства целевых
+				 *          систем. Предупреждение о понижении выдаётся при заведении режима,
+				 *          одно на узел, а спросить о нём заранее можно partialSupported()
+				 */
 				// Выполняем установку информационных метаданных отправляемого сообщения
 				this->messageInfo(id, info);
 				/**
@@ -37190,10 +37373,8 @@ namespace sctp {
 						::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
 						// Запоминаем признак завершения сообщения на этом куске
 						peer->transfer.sctp.use().complete = end;
-						// Выполняем включение режима явной границы записи
-						if(!::sctp::partial(peer, end, &this->_eth))
-							// Выводим результат: границу записи выставить нечем
-							return result;
+						// Выполняем заведение режима явной границы записи
+						::sctp::partial(peer, end, &this->_eth, this->_log);
 						// Создаём охранника узла события
 						::local::guard_t guard(peer);
 						// Выполняем отправку сообщения общей очередью узла
@@ -37205,10 +37386,8 @@ namespace sctp {
 						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 						// Запоминаем признак завершения сообщения на этом куске
 						client->transfer.sctp.use().complete = end;
-						// Выполняем включение режима явной границы записи
-						if(!::sctp::partial(client, end, &this->_eth))
-							// Выводим результат: границу записи выставить нечем
-							return result;
+						// Выполняем заведение режима явной границы записи
+						::sctp::partial(client, end, &this->_eth, this->_log);
 						// Создаём охранника узла события
 						::local::guard_t guard(client);
 						// Выполняем отправку сообщения общей очередью узла
@@ -39562,7 +39741,19 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															// Если событие принадлежит к типу SEQPACKET
 															case static_cast <uint8_t> (event::type_t::SEQPACKET):
 																// Выполняем активацию событий SCTP
-																this->_eth.sctp.eventsSubscribe(client->transfer.fd, client->transfer.sctp.use().events);
+																/**
+																 * Выполняем активацию событий SCTP
+																 *
+																 * @note Смена состояния связи добавляется к перечню потребителя всегда:
+																 *       опознаватель связи приходит только этим известием, а нужен он
+																 *       самому движку - отправкой по нему заменяется отправка по адресу
+																 *       получателя, годная лишь первой посылке
+																 */
+																net::sctp::event_types_t events = client->transfer.sctp.use().events;
+																// Добавляем известие о смене состояния связи
+																events.emplace(net::sctp::event_type_t::ASSOC_CHANGE);
+																// Выполняем подписку на известия SCTP
+																this->_eth.sctp.eventsSubscribe(client->transfer.fd, events);
 																/**
 																 * Если установлен любой из откликов, которым нужны метаданные
 																 *
@@ -40176,7 +40367,19 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															// Если событие принадлежит к типу SEQPACKET
 															case static_cast <uint8_t> (event::type_t::SEQPACKET):
 																// Выполняем активацию событий SCTP
-																this->_eth.sctp.eventsSubscribe(client->transfer.fd, client->transfer.sctp.use().events);
+																/**
+																 * Выполняем активацию событий SCTP
+																 *
+																 * @note Смена состояния связи добавляется к перечню потребителя всегда:
+																 *       опознаватель связи приходит только этим известием, а нужен он
+																 *       самому движку - отправкой по нему заменяется отправка по адресу
+																 *       получателя, годная лишь первой посылке
+																 */
+																net::sctp::event_types_t events = client->transfer.sctp.use().events;
+																// Добавляем известие о смене состояния связи
+																events.emplace(net::sctp::event_type_t::ASSOC_CHANGE);
+																// Выполняем подписку на известия SCTP
+																this->_eth.sctp.eventsSubscribe(client->transfer.fd, events);
 																/**
 																 * Если установлен любой из откликов, которым нужны метаданные
 																 *
@@ -41397,10 +41600,47 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 														switch(static_cast <uint8_t> (server->state.type)){
 															// Если событие принадлежит к типу STREAM
 															case static_cast <uint8_t> (event::type_t::STREAM):
+																// Выполняем активацию событий SCTP
+																this->_eth.sctp.eventsSubscribe(server->fd, server->sctp.events);
+															break;
 															// Если событие принадлежит к типу SEQPACKET
 															case static_cast <uint8_t> (event::type_t::SEQPACKET):
 																// Выполняем активацию событий SCTP
 																this->_eth.sctp.eventsSubscribe(server->fd, server->sctp.events);
+																/**
+																 * Подписка на метаданные у сокета упорядоченных сообщений ОБЯЗАТЕЛЬНА
+																 *
+																 * @details Подключение здесь принимается не вызовом accept, а чтением сообщения
+																 *          с прослушивающего сокета и отделением связи вызовом sctp_peeloff по
+																 *          её опознавателю. Опознаватель же приходит только метаданными: без
+																 *          подписки он остаётся нулевым, и отделение отвергается отказом.
+																 *          Наружу это выходит тем, что сервер не принимает подключений ВОВСЕ
+																 *
+																 * @warning Оттого подписка здесь безусловна и не зависит от установленных
+																 *          откликов: она нужна самому движку, а не потребителю. Замерено щупом
+																 *          на FreeBSD, Debian и Sun Solaris - всюду одинаково: без подписки
+																 *          опознаватель нулевой и sctp_peeloff отвечает отказом, с подпиской
+																 *          опознаватель приходит и отделение проходит
+																 *
+																 * @note У систем Sun метод отвечает согласием, ничего не делая: там опознаватель
+																 *       приносит подписка на события выше, а трогать SCTP_RECVRCVINFO нельзя -
+																 *       она отключила бы её
+																 */
+																/**
+																 * Если приём идёт современным набором вызовов
+																 *
+																 * @warning Условие здесь обязано в точности совпадать с условием ветви приёма
+																 *          в eth::sctp::receive. Подписка эта не добавляет метаданные, а
+																 *          ПЕРЕКЛЮЧАЕТ их вид: включив её, ядро Linux перестаёт слать сведения
+																 *          прежнего вида SCTP_SNDRCV, которыми старая ветвь приёма только и
+																 *          живёт. Выдав её там, где приём идёт по старой ветви, мы отнимаем у
+																 *          него опознаватель связи: он приходит нулевым, sctp_peeloff отвечает
+																 *          отказом, и сервер не принимает подключений вовсе. Проверено на Debian
+																 */
+																#if defined(SCTP_RECVRCVINFO) && defined(SCTP_RECVV_RCVINFO)
+																	// Выполняем подписку на метаданные принимаемых сообщений
+																	this->_eth.sctp.receiveInfo(server->fd, true);
+																#endif
 															break;
 														}
 													}
@@ -41568,10 +41808,47 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 														switch(static_cast <uint8_t> (server->state.type)){
 															// Если событие принадлежит к типу STREAM
 															case static_cast <uint8_t> (event::type_t::STREAM):
+																// Выполняем активацию событий SCTP
+																this->_eth.sctp.eventsSubscribe(server->fd, server->sctp.events);
+															break;
 															// Если событие принадлежит к типу SEQPACKET
 															case static_cast <uint8_t> (event::type_t::SEQPACKET):
 																// Выполняем активацию событий SCTP
 																this->_eth.sctp.eventsSubscribe(server->fd, server->sctp.events);
+																/**
+																 * Подписка на метаданные у сокета упорядоченных сообщений ОБЯЗАТЕЛЬНА
+																 *
+																 * @details Подключение здесь принимается не вызовом accept, а чтением сообщения
+																 *          с прослушивающего сокета и отделением связи вызовом sctp_peeloff по
+																 *          её опознавателю. Опознаватель же приходит только метаданными: без
+																 *          подписки он остаётся нулевым, и отделение отвергается отказом.
+																 *          Наружу это выходит тем, что сервер не принимает подключений ВОВСЕ
+																 *
+																 * @warning Оттого подписка здесь безусловна и не зависит от установленных
+																 *          откликов: она нужна самому движку, а не потребителю. Замерено щупом
+																 *          на FreeBSD, Debian и Sun Solaris - всюду одинаково: без подписки
+																 *          опознаватель нулевой и sctp_peeloff отвечает отказом, с подпиской
+																 *          опознаватель приходит и отделение проходит
+																 *
+																 * @note У систем Sun метод отвечает согласием, ничего не делая: там опознаватель
+																 *       приносит подписка на события выше, а трогать SCTP_RECVRCVINFO нельзя -
+																 *       она отключила бы её
+																 */
+																/**
+																 * Если приём идёт современным набором вызовов
+																 *
+																 * @warning Условие здесь обязано в точности совпадать с условием ветви приёма
+																 *          в eth::sctp::receive. Подписка эта не добавляет метаданные, а
+																 *          ПЕРЕКЛЮЧАЕТ их вид: включив её, ядро Linux перестаёт слать сведения
+																 *          прежнего вида SCTP_SNDRCV, которыми старая ветвь приёма только и
+																 *          живёт. Выдав её там, где приём идёт по старой ветви, мы отнимаем у
+																 *          него опознаватель связи: он приходит нулевым, sctp_peeloff отвечает
+																 *          отказом, и сервер не принимает подключений вовсе. Проверено на Debian
+																 */
+																#if defined(SCTP_RECVRCVINFO) && defined(SCTP_RECVV_RCVINFO)
+																	// Выполняем подписку на метаданные принимаемых сообщений
+																	this->_eth.sctp.receiveInfo(server->fd, true);
+																#endif
 															break;
 														}
 													}
@@ -60122,6 +60399,9 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 							case static_cast <uint8_t> (event::type_t::DATAGRAM):
 							// Если событие принадлежит к типу SEQPACKET
 							case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+								/**
+								 * Если система несёт вызов заведения связи SCTP
+								 */
 								// Устанавливаем статус события в состояние ожидания
 								client->state.status = event::status_t::PENDING;
 								// Отмечаем активность записи данных

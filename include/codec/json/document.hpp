@@ -38,6 +38,7 @@
 #include <string>
 #include <vector>
 #include <cstdint>
+#include <cstring>
 #include <functional>
 #include <string_view>
 #include <unordered_map>
@@ -111,6 +112,13 @@ namespace awh {
 			 * @note Ссылка на узел живёт, пока документ не изменён: правка вправе
 			 * перестроить перечень узлов, и ссылки после неё недействительны
 			 *
+			 * @note **Разбирающему много документов подряд** надлежит держать один объект
+			 * документа, а не заводить его на всякий текст: вместилища дерева и хранилище
+			 * знаков переживают разбор и памяти своей не отдают. На мелких документах, каких
+			 * у служб большинство, переиспользование объекта даёт до полутора раз скорости -
+			 * заведение вместилищ с нуля на документ длиною в сотню байтов стоит дороже
+			 * самого разбора его
+			 *
 			 * \~english
 			 * @brief JSON document held in full
 			 * @details The tree is held by a **continuous list of the nodes** rather than by a scattering of the objects
@@ -175,7 +183,7 @@ namespace awh {
 						 * \~
 						 */
 						Settings() noexcept :
-						 duplicates(duplicate_t::ERROR), numbers(number_t::LAZY) {}
+						 duplicates(duplicate_t::ERROR), numbers(number_t::NATIVE) {}
 					} settings_t;
 				private:
 					/**
@@ -202,8 +210,8 @@ namespace awh {
 					 * \~
 					 */
 					typedef struct Node {
-						// Вид узла документа
-						kind_t kind;
+						// Вид значения узла документа
+						type_t type;
 						// Признак того, что содержимое было изменено разбором
 						bool modified;
 						/**
@@ -234,26 +242,203 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						uint32_t length;
-						/**
-						 * \~russian
-						 * Количество узлов поддерева, включая сам узел
-						 *
-						 * @note Служит для пропуска вложенного вместилища целиком за одно
-						 * сложение
-						 *
-						 * \~english
-						 * Number of the nodes of the subtree including the node itself
-						 * @note Serves for the skipping of a nested container as a whole by one
-						 * addition
-						 *
-						 * \~
-						 */
-						uint32_t extent;
 						// Смещение содержимого либо имени поля в хранилище знаков
 						uint32_t offset;
 						// Длина имени поля объекта в байтах
 						uint32_t named;
+						/**
+						 * \~russian
+						 * Содержимое узла шириною в восемь байтов
+						 *
+						 * @details Восемь этих байтов служат узлу по-разному, смотря по виду
+						 * значения его. У вместилища это пара чисел: количество детей и размах
+						 * поддерева. У строки - длина содержимого. У числа родного вида - само
+						 * число, готовое к выдаче. У числа вида `EXTENDED` - длина записи его
+						 *
+						 * @note Число кладётся сюда переносом байтов, а не отдельным полем на
+						 * восемь байтов: поле такое потребовало бы выравнивания по восьми
+						 * байтам, а с ним узел вырос бы с двадцати байтов до двадцати четырёх.
+						 * На дереве в два миллиона узлов это семь мегабайтов впустую
+						 *
+						 * \~english
+						 * Content of the node eight bytes wide
+						 * @details These eight bytes serve the node differently, depending on the kind
+						 * of its value. For a container it is a pair of numbers: the number of the children and the extent
+						 * of the subtree. For a string it is the length of the content. For a number of a native kind it is
+						 * the number itself ready for the issuance. For a number of the kind `EXTENDED` it is the length of its record
+						 * @note A number is placed here by a transfer of the bytes rather than by a separate field of
+						 * eight bytes: such a field would demand an alignment by eight
+						 * bytes, and with it the node would grow from twenty bytes to twenty four.
+						 * On a tree of two million nodes that is seven megabytes wasted
+						 *
+						 * \~
+						 */
+						uint32_t content[2];
+						/**
+						 * \~russian
+						 * @brief Метод получения количества детей вместилища либо длины содержимого
+						 *
+						 * @return количество детей вместилища либо длина содержимого в байтах
+						 *
+						 * \~english
+						 * @brief Method of the obtaining of the number of the children of a container or of the length of the content
+						 * @return number of the children of a container or the length of the content in bytes
+						 *
+						 * \~
+						 */
+						AWH_JSON_INLINE uint32_t length() const noexcept {
+							// Выводим количество детей вместилища либо длину содержимого
+							return this->content[0];
+						}
+						/**
+						 * \~russian
+						 * @brief Метод получения количества узлов поддерева, включая сам узел
+						 *
+						 * @details Размах хранится лишь у вместилища: у всякого прочего узла он
+						 * равен единице всегда, и место под него занято самим значением
+						 *
+						 * @return количество узлов поддерева, включая сам узел
+						 *
+						 * \~english
+						 * @brief Method of the obtaining of the number of the nodes of the subtree including the node itself
+						 * @details The extent is stored only for a container: for every other node it is
+						 * always equal to one, and the place for it is occupied by the value itself
+						 * @return number of the nodes of the subtree including the node itself
+						 *
+						 * \~
+						 */
+						AWH_JSON_INLINE uint32_t extent() const noexcept {
+							// Выводим размах поддерева вместилища либо единицу у прочих узлов
+							return (this->nested() ? this->content[1] : 1);
+						}
+						/**
+						 * \~russian
+						 * @brief Метод установки количества детей вместилища либо длины содержимого
+						 *
+						 * @param value устанавливаемое количество детей либо длина содержимого
+						 *
+						 * \~english
+						 * @brief Method of the setting of the number of the children of a container or of the length of the content
+						 * @param value number of the children or length of the content being set
+						 *
+						 * \~
+						 */
+						AWH_JSON_INLINE void length(const uint32_t value) noexcept {
+							// Устанавливаем количество детей вместилища либо длину содержимого
+							this->content[0] = value;
+						}
+						/**
+						 * \~russian
+						 * @brief Метод установки количества узлов поддерева, включая сам узел
+						 *
+						 * @note Размах устанавливается лишь вместилищу: у прочих узлов место
+						 *       это занято значением, и запись в него значение бы и погубила
+						 *
+						 * @param value устанавливаемое количество узлов поддерева
+						 *
+						 * \~english
+						 * @brief Method of the setting of the number of the nodes of the subtree including the node itself
+						 * @note The extent is set only for a container: for the other nodes this place
+						 *       is occupied by the value, and a writing into it would ruin the value itself
+						 * @param value number of the nodes of the subtree being set
+						 *
+						 * \~
+						 */
+						AWH_JSON_INLINE void extent(const uint32_t value) noexcept {
+							/**
+							 * Если узел является вместилищем
+							 */
+							if(this->nested())
+								// Устанавливаем количество узлов поддерева вместилища
+								this->content[1] = value;
+						}
+						/**
+						 * \~russian
+						 * @brief Метод проверки числа на хранение самим узлом
+						 *
+						 * @details Число родного вида лежит в самом узле готовым, а число вида
+						 * `EXTENDED` - записью своей в хранилище знаков. Место в узле у них
+						 * занято разным, и путать эти два случая нельзя
+						 *
+						 * @return признак того, что число хранится самим узлом
+						 *
+						 * \~english
+						 * @brief Method of the checking of a number for being stored by the node itself
+						 * @details A number of a native kind lies in the node itself ready, while a number of the kind
+						 * `EXTENDED` lies as its record in the storage of the characters. The place in the node is
+						 * occupied by different things for them, and these two cases must not be confused
+						 * @return flag that the number is stored by the node itself
+						 *
+						 * \~
+						 */
+						AWH_JSON_INLINE bool native() const noexcept {
+							// Получаем разряды вида значения узла
+							const uint16_t mask = static_cast <uint16_t> (this->type);
+							// Выводим признак того, что число хранится самим узлом
+							return (((mask & static_cast <uint16_t> (type_t::NUMBER)) != 0) && (this->type != type_t::EXTENDED));
+						}
+						/**
+						 * \~russian
+						 * @brief Метод проверки узла на принадлежность к вместилищам
+						 *
+						 * @return признак того, что узел является массивом либо объектом
+						 *
+						 * \~english
+						 * @brief Method of the checking of a node for the belonging to the containers
+						 * @return flag that the node is an array or an object
+						 *
+						 * \~
+						 */
+						AWH_JSON_INLINE bool nested() const noexcept {
+							// Выводим признак принадлежности узла к вместилищам
+							return ((static_cast <uint16_t> (this->type) & (static_cast <uint16_t> (type_t::ARRAY) | static_cast <uint16_t> (type_t::OBJECT))) != 0);
+						}
+						/**
+						 * \~russian
+						 * @brief Шаблонный метод получения числа, хранимого узлом
+						 *
+						 * @tparam T вид хранимого узлом числа
+						 * @return   число, хранимое узлом
+						 *
+						 * \~english
+						 * @brief Template method of the obtaining of the number stored by the node
+						 * @tparam T kind of the number stored by the node
+						 * @return number stored by the node
+						 *
+						 * \~
+						 */
+						template <typename T>
+						AWH_JSON_INLINE T number() const noexcept {
+							// Извлекаемое из узла число
+							T result;
+							// Выполняем перенос байтов числа из содержимого узла
+							::memcpy(&result, this->content, sizeof(T));
+							// Выводим извлечённое из узла число
+							return result;
+						}
+						/**
+						 * \~russian
+						 * @brief Шаблонный метод установки числа, хранимого узлом
+						 *
+						 * @tparam T     вид хранимого узлом числа
+						 * @param  value устанавливаемое число
+						 *
+						 * \~english
+						 * @brief Template method of the setting of the number stored by the node
+						 * @tparam T kind of the number stored by the node
+						 * @param value number being set
+						 *
+						 * \~
+						 */
+						template <typename T>
+						AWH_JSON_INLINE void number(const T value) noexcept {
+							// Выполняем обнуление содержимого узла
+							this->content[0] = 0;
+							// Выполняем обнуление старшей половины содержимого узла
+							this->content[1] = 0;
+							// Выполняем перенос байтов числа в содержимое узла
+							::memcpy(this->content, &value, sizeof(T));
+						}
 						/**
 						 * \~russian
 						 * @brief Конструктор
@@ -265,8 +450,8 @@ namespace awh {
 						 * \~
 						 */
 						Node() noexcept :
-						 kind(kind_t::NONE), modified(false), keyed(false),
-						 length(0), extent(1), offset(0), named(0) {}
+						 type(type_t::UNDEFINED), modified(false), keyed(false),
+						 offset(0), named(0), content{0, 0} {}
 					} node_t;
 				public:
 					/**
@@ -341,7 +526,69 @@ namespace awh {
 							 */
 							AWH_JSON_INLINE kind_t kind() const noexcept {
 								// Выводим вид узла документа, если ссылка действительна
-								return (this->valid() ? this->_doc->_nodes[this->_index].kind : kind_t::NONE);
+								return (this->valid() ? json::kind(this->_doc->_nodes[this->_index].type) : kind_t::NONE);
+							}
+							/**
+							 * \~russian
+							 * @brief Метод извлечения вида значения
+							 *
+							 * @details Вид этот точен: число выдаёт тот самый вид, каким оно
+							 * хранится, - от `INT8` до `DOUBLE`
+							 *
+							 * @return вид значения документа
+							 *
+							 * \~english
+							 * @brief Method of the extraction of the kind of the value
+							 * @details This kind is exact: a number issues that very kind by which it
+							 * is stored — from `INT8` to `DOUBLE`
+							 * @return kind of the value of the document
+							 *
+							 * \~
+							 */
+							AWH_JSON_INLINE type_t type() const noexcept {
+								// Выводим вид значения документа, если ссылка действительна
+								return (this->valid() ? this->_doc->_nodes[this->_index].type : type_t::UNDEFINED);
+							}
+							/**
+							 * \~russian
+							 * @brief Метод проверки значения на принадлежность к виду
+							 *
+							 * @details Проверка идёт наложением разрядов, оттого точный вопрос
+							 * `is(type_t::INT32)` и сборный `is(type_t::NUMBER)` стоят одинаково
+							 *
+							 * @note Вопрос о нескольких видах разом задаётся сборным видом, а не
+							 *       несколькими вызовами: `is(type_t::REAL)` истинен и у `FLOAT`,
+							 *       и у `DOUBLE`
+							 *
+							 * @param type вид либо набор видов, на принадлежность к какому
+							 *             проверяется значение
+							 * @return     признак принадлежности значения к виду
+							 *
+							 * \~english
+							 * @brief Method of the checking of a value for the belonging to a kind
+							 * @details The checking goes by an overlaying of the bits, whereby an exact question
+							 * `is(type_t::INT32)` and a composite one `is(type_t::NUMBER)` cost the same
+							 * @note A question about several kinds at once is asked by a composite kind rather than by
+							 *       several calls: `is(type_t::REAL)` is true both for `FLOAT`
+							 *       and for `DOUBLE`
+							 * @param type kind or set of the kinds for the belonging to which
+							 *             the value is checked
+							 * @return flag of the belonging of the value to the kind
+							 *
+							 * \~
+							 */
+							AWH_JSON_INLINE bool is(const type_t type) const noexcept {
+								/**
+								 * Если спрошено об отсутствии значения
+								 *
+								 * @note Отсутствие значения разряда своего не имеет вовсе - оно есть
+								 *       пустота разрядов, и наложением проверено быть не может
+								 */
+								if(type == type_t::UNDEFINED)
+									// Выводим признак отсутствия значения
+									return (this->type() == type_t::UNDEFINED);
+								// Выводим признак принадлежности значения к виду
+								return ((static_cast <uint16_t> (this->type()) & static_cast <uint16_t> (type)) != 0);
 							}
 							/**
 							 * \~russian
@@ -371,7 +618,7 @@ namespace awh {
 								 *       длину строки количеством детей означало бы завести обход по числу
 								 *       байтов её содержимого
 								 */
-								return (((node.kind == kind_t::OBJECT) || (node.kind == kind_t::ARRAY)) ? static_cast <size_t> (node.length) : 0);
+								return (node.nested() ? static_cast <size_t> (node.length()) : 0);
 							}
 							/**
 							 * \~russian
@@ -503,21 +750,113 @@ namespace awh {
 							 *
 							 * \~
 							 */
+						private:
+							/**
+							 * \~russian
+							 * @brief Шаблонный метод извлечения числа затребованным видом
+							 *
+							 * @details Извлечение сличает само значение с пределами затребованного
+							 * вида, а не вид хранения с видом затребованным
+							 *
+							 * @tparam T      затребованный вид числа
+							 * @param  result переменная, куда помещается извлечённое значение
+							 * @return        признак успешности извлечения
+							 *
+							 * \~english
+							 * @brief Template method of the extraction of a number by the demanded kind
+							 * @details The extraction compares the value itself with the limits of the demanded
+							 * kind rather than the kind of the storage with the demanded kind
+							 * @tparam T demanded kind of the number
+							 * @param result variable where the extracted value is placed
+							 * @return sign of the success of the extraction
+							 *
+							 * \~
+							 */
+							template <typename T>
+							bool extract(T & result) const noexcept;
+						public:
 							bool value(bool & result) const noexcept;
 							/**
 							 * \~russian
-							 * @brief Метод извлечения целого числа
+							 * @brief Метод извлечения числа
 							 *
-							 * @details Отказом завершается и тогда, когда число целым не
-							 * представимо: `1e400` и `1.5` целым не выдаются
+							 * @details Отказом извлечение завершается лишь тогда, когда узел
+							 * числом не является вовсе. Вид хранения извлечению не указ: узел,
+							 * хранящий `INT8`, извлекается и как `double`, и как `uint64_t`
+							 *
+							 * @details Сужение выполняется обычным приведением языка: дробная
+							 * часть отбрасывается усечением к нулю, а целое, не вмещающееся в
+							 * затребованный вид, переносится младшими разрядами - ровно так, как
+							 * это делает `static_cast`
+							 *
+							 * @note Единственное отступление от `static_cast` касается дробного,
+							 *       чья целая часть лежит за пределами затребованного вида, - вроде
+							 *       `1e300` в `int32_t`. Стандарт зовёт это неопределённым
+							 *       поведением, а мы выдаём предел затребованного вида: неопределённого
+							 *       поведения в кодеке не будет
 							 *
 							 * @param result переменная, куда помещается извлечённое значение
 							 * @return       признак успешности извлечения
 							 *
 							 * \~english
-							 * @brief Method of the extraction of an integer
-							 * @details It ends with a refusal also when the number is not representable
-							 * as an integer: `1e400` and `1.5` are not issued as an integer
+							 * @brief Method of the extraction of a number
+							 * @details The extraction ends with a refusal only when the node
+							 * is not a number at all. The kind of the storage is not a directive to the extraction: a node
+							 * storing an `INT8` is extracted both as a `double` and as a `uint64_t`
+							 * @details The narrowing is performed by the usual conversion of the language: the fractional
+							 * part is discarded by a truncation towards zero, while an integer not fitting into
+							 * the demanded kind is transferred by the lower bits — exactly as
+							 * `static_cast` does it
+							 * @note The only deviation from `static_cast` concerns a fractional number
+							 *       whose integer part lies beyond the limits of the demanded kind — like
+							 *       `1e300` into an `int32_t`. The standard calls this an undefined
+							 *       behaviour, while we issue the limit of the demanded kind: there will be no undefined
+							 *       behaviour in the codec
+							 * @param result variable where the extracted value is placed
+							 * @return sign of the success of the extraction
+							 *
+							 * \~
+							 */
+							bool value(int8_t & result) const noexcept;
+							/**
+							 * \~russian
+							 * @brief Метод извлечения числа видом `int16_t`
+							 *
+							 * @param result переменная, куда помещается извлечённое значение
+							 * @return       признак успешности извлечения
+							 *
+							 * \~english
+							 * @brief Method of the extraction of a number by the kind `int16_t`
+							 * @param result variable where the extracted value is placed
+							 * @return sign of the success of the extraction
+							 *
+							 * \~
+							 */
+							bool value(int16_t & result) const noexcept;
+							/**
+							 * \~russian
+							 * @brief Метод извлечения числа видом `int32_t`
+							 *
+							 * @param result переменная, куда помещается извлечённое значение
+							 * @return       признак успешности извлечения
+							 *
+							 * \~english
+							 * @brief Method of the extraction of a number by the kind `int32_t`
+							 * @param result variable where the extracted value is placed
+							 * @return sign of the success of the extraction
+							 *
+							 * \~
+							 */
+							bool value(int32_t & result) const noexcept;
+							/**
+							 * \~russian
+							 * @brief Метод извлечения числа видом `int64_t`
+							 *
+							 * @param result переменная, куда помещается извлечённое значение
+							 * @return       признак успешности извлечения
+							 *
+							 * \~english
+							 * @brief Method of the extraction of a number by the kind `int64_t`
 							 * @param result variable where the extracted value is placed
 							 * @return sign of the success of the extraction
 							 *
@@ -526,13 +865,58 @@ namespace awh {
 							bool value(int64_t & result) const noexcept;
 							/**
 							 * \~russian
-							 * @brief Метод извлечения беззнакового целого числа
+							 * @brief Метод извлечения числа видом `uint8_t`
 							 *
 							 * @param result переменная, куда помещается извлечённое значение
 							 * @return       признак успешности извлечения
 							 *
 							 * \~english
-							 * @brief Method of the extraction of an unsigned integer
+							 * @brief Method of the extraction of a number by the kind `uint8_t`
+							 * @param result variable where the extracted value is placed
+							 * @return sign of the success of the extraction
+							 *
+							 * \~
+							 */
+							bool value(uint8_t & result) const noexcept;
+							/**
+							 * \~russian
+							 * @brief Метод извлечения числа видом `uint16_t`
+							 *
+							 * @param result переменная, куда помещается извлечённое значение
+							 * @return       признак успешности извлечения
+							 *
+							 * \~english
+							 * @brief Method of the extraction of a number by the kind `uint16_t`
+							 * @param result variable where the extracted value is placed
+							 * @return sign of the success of the extraction
+							 *
+							 * \~
+							 */
+							bool value(uint16_t & result) const noexcept;
+							/**
+							 * \~russian
+							 * @brief Метод извлечения числа видом `uint32_t`
+							 *
+							 * @param result переменная, куда помещается извлечённое значение
+							 * @return       признак успешности извлечения
+							 *
+							 * \~english
+							 * @brief Method of the extraction of a number by the kind `uint32_t`
+							 * @param result variable where the extracted value is placed
+							 * @return sign of the success of the extraction
+							 *
+							 * \~
+							 */
+							bool value(uint32_t & result) const noexcept;
+							/**
+							 * \~russian
+							 * @brief Метод извлечения числа видом `uint64_t`
+							 *
+							 * @param result переменная, куда помещается извлечённое значение
+							 * @return       признак успешности извлечения
+							 *
+							 * \~english
+							 * @brief Method of the extraction of a number by the kind `uint64_t`
 							 * @param result variable where the extracted value is placed
 							 * @return sign of the success of the extraction
 							 *
@@ -541,13 +925,28 @@ namespace awh {
 							bool value(uint64_t & result) const noexcept;
 							/**
 							 * \~russian
-							 * @brief Метод извлечения числа с плавающей запятой
+							 * @brief Метод извлечения числа видом `float`
 							 *
 							 * @param result переменная, куда помещается извлечённое значение
 							 * @return       признак успешности извлечения
 							 *
 							 * \~english
-							 * @brief Method of the extraction of a floating-point number
+							 * @brief Method of the extraction of a number by the kind `float`
+							 * @param result variable where the extracted value is placed
+							 * @return sign of the success of the extraction
+							 *
+							 * \~
+							 */
+							bool value(float & result) const noexcept;
+							/**
+							 * \~russian
+							 * @brief Метод извлечения числа видом `double`
+							 *
+							 * @param result переменная, куда помещается извлечённое значение
+							 * @return       признак успешности извлечения
+							 *
+							 * \~english
+							 * @brief Method of the extraction of a number by the kind `double`
 							 * @param result variable where the extracted value is placed
 							 * @return sign of the success of the extraction
 							 *
@@ -572,35 +971,31 @@ namespace awh {
 						public:
 							/**
 							 * \~russian
-							 * @brief Метод извлечения записи числа как она есть
+							 * @brief Метод извлечения записи числа
 							 *
-							 * @details Запись выдаётся без преобразования: она годится и для
-							 * переноса числа в другой документ без потери точности, и для
-							 * разбора видом, какого у контейнера нет
+							 * @details Запись собирается из хранимого узлом числа кратчайшей
+							 * записью, читающейся обратно тем же самым числом. Число вида
+							 * `EXTENDED` выдаёт запись свою дословно, как она стояла в тексте
+							 *
+							 * @note Дословного совпадения с исходным текстом запись не обещает:
+							 *       разбор хранит число, а не знаки его, и `1.50` выдаётся как
+							 *       `1.5`, а `1e2` - как `100`. Значение при этом то же самое
 							 *
 							 * @return запись числа, пусто у прочих узлов
 							 *
 							 * \~english
-							 * @brief Method of the extraction of the record of a number as it is
-							 * @details The record is issued without a conversion: it is suitable both for
-							 * the transfer of the number into another document without a loss of the precision and for
-							 * a parsing by a kind which the container does not have
+							 * @brief Method of the extraction of the record of a number
+							 * @details The record is assembled from the number stored by the node by the shortest
+							 * record which is read back as the very same number. A number of the kind
+							 * `EXTENDED` issues its record verbatim, as it stood in the text
+							 * @note The record does not promise a verbatim coincidence with the source text:
+							 *       the parsing stores the number rather than its characters, and `1.50` is issued as
+							 *       `1.5`, while `1e2` as `100`. The value at that is the very same
 							 * @return record of the number, empty for the other nodes
 							 *
 							 * \~
 							 */
-							AWH_JSON_INLINE string_view raw() const noexcept {
-								/**
-								 * Если узел числом не является
-								 */
-								if(this->kind() != kind_t::NUMBER)
-									// Выводим отсутствие записи числа
-									return string_view();
-								// Получаем узел, на какой указывает ссылка
-								const Node & node = this->_doc->_nodes[this->_index];
-								// Выводим запись числа как она есть
-								return string_view(this->_doc->_storage.data() + node.offset, node.length);
-							}
+							string raw() const noexcept;
 							/**
 							 * \~russian
 							 * @brief Метод извлечения строкового значения без копирования
@@ -640,7 +1035,7 @@ namespace awh {
 									// Выводим недействительную ссылку
 									return Value();
 								// Получаем номер следующего значения вместилища
-								const uint32_t index = (this->_index + this->_doc->_nodes[this->_index].extent);
+								const uint32_t index = (this->_index + this->_doc->_nodes[this->_index].extent());
 								// Выводим ссылку на следующее значение вместилища, если оно не вышло за границу
 								return ((index < this->_bound) ? Value(this->_doc, index, this->_bound) : Value());
 							}
@@ -666,7 +1061,7 @@ namespace awh {
 								// Получаем узел, на какой указывает ссылка
 								const Node & node = this->_doc->_nodes[this->_index];
 								// Выводим ссылку на первое значение вместилища
-								return Value(this->_doc, (this->_index + 1), (this->_index + node.extent));
+								return Value(this->_doc, (this->_index + 1), (this->_index + node.extent()));
 							}
 						public:
 							/**
@@ -965,6 +1360,53 @@ namespace awh {
 					 * \~
 					 */
 					bool deduplicate(const uint32_t parent, const reader_t & reader) noexcept;
+				private:
+					/**
+					 * \~russian
+					 * @brief Метод определения вида числа вместе с преобразованием его
+					 *
+					 * @details Вид выбирается самый узкий из вмещающих: число `1` получает вид
+					 * `UINT8`, а `-1` - вид `INT8`. Знаковость решается знаком записи, а не
+					 * величиной: запись без минуса есть число без знака
+					 *
+					 * @param text разбираемая запись числа
+					 * @param node узел документа, куда помещается разобранное число
+					 * @return     признак того, что число вместилось в родной вид
+					 *
+					 * \~english
+					 * @brief Method of the determination of the kind of a number together with its conversion
+					 * @details The kind is chosen as the narrowest of the containing ones: the number `1` receives the kind
+					 * `UINT8`, while `-1` the kind `INT8`. The signedness is decided by the sign of the record rather than by
+					 * the magnitude: a record without a minus is a number without a sign
+					 * @param text record of the number being parsed
+					 * @param node node of the document where the parsed number is placed
+					 * @return flag that the number fitted into a native kind
+					 *
+					 * \~
+					 */
+					static bool classify(const string_view text, node_t & node) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод записи числа, хранимого узлом
+					 *
+					 * @details Метод этот один на перезапись документа и на выдачу записи
+					 * числа: две отдельные записи одного и того же числа неминуемо разошлись
+					 * бы видом
+					 *
+					 * @param writer объект записи текста документа
+					 * @param node   узел, число какого записывается
+					 *
+					 * \~english
+					 * @brief Method of the writing of the number stored by a node
+					 * @details This method is one for the rewriting of a document and for the issuance of the record
+					 * of a number: two separate writings of one and the same number would inevitably diverge
+					 * in their appearance
+					 * @param writer object of the writing of a text of a document
+					 * @param node node the number of which is being written
+					 *
+					 * \~
+					 */
+					void compose(writer_t & writer, const node_t & node) const noexcept;
 				public:
 					/**
 					 * \~russian

@@ -258,14 +258,14 @@ bool awh::regex::Engine::test(const expression_t & expression, string_view text,
 	/**
 	 * Если выражение сопоставляется одним литералом
 	 *
-	 * @details Поиск последовательности в тексте выполняется набором команд
-	 *          процессора над несколькими байтами сразу и проходит текст
+	 * @details Поиск последовательности в тексте ведётся по якорному байту,
+	 *          пробой текста признанному редчайшим, и проходит текст
 	 *          многократно быстрее любого исполнения программы.
 	 *
 	 */
 	if(expression.forward.plain)
 		// Выводим результат поиска последовательности выражения в тексте
-		return (text.find(expression.forward.text, start) != string_view::npos);
+		return (seek(text, expression.forward.text, start) != string_view::npos);
 	/**
 	 * Если обязательный литерал совпадения в тексте отсутствует
 	 */
@@ -354,14 +354,14 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
 	/**
 	 * Если выражение сопоставляется одним литералом
 	 *
-	 * @details Поиск последовательности в тексте выполняется набором команд
-	 *          процессора над несколькими байтами сразу и проходит текст
+	 * @details Поиск последовательности в тексте ведётся по якорному байту,
+	 *          пробой текста признанному редчайшим, и проходит текст
 	 *          многократно быстрее любого исполнения программы.
 	 *
 	 */
 	if(expression.forward.plain) {
 		// Выполняем поиск последовательности выражения в тексте
-		const size_t position = text.find(expression.forward.text, start);
+		const size_t position = seek(text, expression.forward.text, start);
 		/**
 		 * Если последовательность выражения в тексте не найдена
 		 */

@@ -331,6 +331,75 @@ namespace awh {
 
 			/**
 			 * \~russian
+			 * @brief Виды значений документа
+			 *
+			 * @details Вид узла отвечает на вопрос стандарта - шесть видов и не более того,
+			 * тогда как вид значения отвечает на вопрос потребителя: каким именно числом
+			 * значение хранится. Разбор определяет самый узкий вмещающий вид сразу, и
+			 * повторного разбора записи не требуется вовсе
+			 *
+			 * @details Виды заданы разрядами, а сборные виды - объединением разрядов. Оттого
+			 * точный вопрос (`INT32`) и сборный (`SIGNED`, `NUMBER`) стоят ровно одинаково -
+			 * одно наложение разрядов
+			 *
+			 * @note Вид хранения извлечению не указ: `INT8` извлекается и как `double`, и как
+			 * `uint64_t`. Извлечение сличает само значение с пределами затребованного вида,
+			 * а не вид хранения с видом затребованным
+			 *
+			 * @note Число, не вместимое ни в один родной вид - целое свыше `2^64` либо запись
+			 * с точностью выше `double` - получает вид `EXTENDED` и хранится записью. Точность
+			 * такого числа сохраняется полностью, а извлечение его разбирает запись
+			 *
+			 * \~english
+			 * @brief Kinds of the values of a document
+			 * @details The kind of a node answers the question of the standard — six kinds and no more,
+			 * whereas the kind of a value answers the question of the consumer: by which number exactly
+			 * the value is stored. The parsing determines the narrowest containing kind at once, and
+			 * a repeated parsing of the record is not required at all
+			 * @details The kinds are set by the bits, and the composite kinds by a union of the bits. Whereby
+			 * an exact question (`INT32`) and a composite one (`SIGNED`, `NUMBER`) cost exactly the same —
+			 * one overlaying of the bits
+			 * @note The kind of the storage is not a directive to the extraction: `INT8` is extracted both as a `double` and as
+			 * a `uint64_t`. The extraction compares the value itself with the limits of the demanded kind
+			 * rather than the kind of the storage with the demanded kind
+			 * @note A number not containable in any native kind — an integer above `2^64` or a record
+			 * with a precision higher than `double` — receives the kind `EXTENDED` and is stored as a record. The precision
+			 * of such a number is preserved completely, and its extraction parses the record
+			 *
+			 * \~
+			 */
+			enum class type_t : uint16_t {
+				UNDEFINED = 0x0000, // Значения нет вовсе: ссылка недействительна
+				NUL       = 0x0001, // Пустое значение null
+				BOOL      = 0x0002, // Логическое значение true либо false
+				STRING    = 0x0004, // Строка
+				ARRAY     = 0x0008, // Массив
+				OBJECT    = 0x0010, // Объект
+				INT8      = 0x0020, // Целое со знаком шириною в один байт
+				INT16     = 0x0040, // Целое со знаком шириною в два байта
+				INT32     = 0x0080, // Целое со знаком шириною в четыре байта
+				INT64     = 0x0100, // Целое со знаком шириною в восемь байтов
+				UINT8     = 0x0200, // Целое без знака шириною в один байт
+				UINT16    = 0x0400, // Целое без знака шириною в два байта
+				UINT32    = 0x0800, // Целое без знака шириною в четыре байта
+				UINT64    = 0x1000, // Целое без знака шириною в восемь байтов
+				FLOAT     = 0x2000, // Дробное, точно представимое одинарной точностью
+				DOUBLE    = 0x4000, // Дробное двойной точности
+				EXTENDED  = 0x8000, // Число, не вместимое ни в один родной вид
+				// Целое со знаком любой ширины
+				SIGNED    = (INT8 | INT16 | INT32 | INT64),
+				// Целое без знака любой ширины
+				UNSIGNED  = (UINT8 | UINT16 | UINT32 | UINT64),
+				// Целое любой ширины и любой знаковости
+				INT       = (SIGNED | UNSIGNED),
+				// Дробное любой точности
+				REAL      = (FLOAT | DOUBLE),
+				// Число любого вида
+				NUMBER    = (INT | REAL | EXTENDED)
+			};
+
+			/**
+			 * \~russian
 			 * @brief Коды ошибок разбора текста
 			 *
 			 * @details Разбор не выбрасывает исключений: признаком отказа служит код ошибки
@@ -476,20 +545,23 @@ namespace awh {
 			 * \~russian
 			 * @brief Правила преобразования чисел при разборе
 			 *
-			 * @details Разбор запоминает запись числа всегда; правило это задаёт лишь то,
-			 * выполняется ли преобразование заранее либо по требованию
+			 * @details Разбор определяет вид числа и преобразует его всегда: повторного
+			 * разбора записи не бывает вовсе. Правило это задаёт лишь то, как поступать с
+			 * числом, не вместимым ни в один родной вид, - целым свыше `2^64` либо записью
+			 * точнее `double`
 			 *
 			 * \~english
 			 * @brief Rules of the conversion of the numbers at the parsing
-			 * @details The parsing always remembers the record of a number; this rule sets only whether
-			 * the conversion is performed in advance or on demand
+			 * @details The parsing determines the kind of a number and converts it always: a repeated
+			 * parsing of the record does not happen at all. This rule sets only how to handle a
+			 * number not containable in any native kind — an integer above `2^64` or a record
+			 * more precise than a `double`
 			 *
 			 * \~
 			 */
 			enum class number_t : uint8_t {
-				LAZY  = 0x00, // Преобразование выполняется по требованию, правило по умолчанию
-				EAGER = 0x01, // Преобразование выполняется при разборе, запись числа отбрасывается
-				CHECK = 0x02  // Запись лишь проверяется на правильность, преобразование не выполняется вовсе
+				NATIVE = 0x00, // Число, не вместимое ни в один родной вид, хранится записью
+				CHECK  = 0x01  // Число, не вместимое ни в один родной вид, есть отказ разбора
 			};
 
 			/**
@@ -641,6 +713,46 @@ namespace awh {
 			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ const char * name(const kind_t kind) noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция получения названия вида значения
+			 *
+			 * @note Название выдаётся точному виду, а не сборному: сборный вид назван быть не
+			 *       может, ибо он есть множество видов, а не вид
+			 *
+			 * @param type вид значения документа
+			 * @return     название вида значения
+			 *
+			 * \~english
+			 * @brief Function of the obtaining of the name of a kind of a value
+			 * @note The name is issued for an exact kind rather than for a composite one: a composite kind cannot be
+			 *       named, for it is a set of the kinds rather than a kind
+			 * @param type kind of a value of a document
+			 * @return name of the kind of the value
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ const char * name(const type_t type) noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция получения вида узла по виду значения
+			 *
+			 * @details Вид узла есть огрубление вида значения до словаря самого стандарта:
+			 * всякое число, каким бы видом оно ни хранилось, есть узел вида `NUMBER`
+			 *
+			 * @param type вид значения документа
+			 * @return     вид узла документа
+			 *
+			 * \~english
+			 * @brief Function of the obtaining of the kind of a node by the kind of a value
+			 * @details The kind of a node is a coarsening of the kind of a value down to the vocabulary of the standard itself:
+			 * every number, by whichever kind it is stored, is a node of the kind `NUMBER`
+			 * @param type kind of a value of a document
+			 * @return kind of a node of a document
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ kind_t kind(const type_t type) noexcept;
 			/**
 			 * \~russian
 			 * @brief Функция проверки записи числа на соответствие стандарту

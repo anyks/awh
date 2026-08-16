@@ -1424,6 +1424,16 @@ ssize_t awh::eth::Stream_Control_Transmission_Protocol::send(const net::socket_t
 		// Устанавливаем признак заполненности параметров отправки
 		spa.sendv_flags = SCTP_SEND_SNDINFO_VALID;
 		// Устанавливаем номер потока
+		/**
+		 * Устанавливаем опознаватель связи
+		 *
+		 * @warning Без него посылка, идущая без адреса получателя, опознаётся системой
+		 *          как заявка на НОВУЮ связь. Sun Solaris и illumos отвечают на это
+		 *          отказом EADDRINUSE - связь по этому адресу уже заведена, - и до
+		 *          получателя доходит ровно первый кусок. Опознаватель приходит
+		 *          известием о смене состояния связи и хранится в метаданных узла
+		 */
+		spa.sendv_sndinfo.snd_assoc_id = info.sinfo_assoc_id;
 		spa.sendv_sndinfo.snd_sid = info.sinfo_stream;
 		// Устанавливаем идентификатор полезной нагрузки
 		spa.sendv_sndinfo.snd_ppid = info.sinfo_ppid;
@@ -1475,15 +1485,17 @@ ssize_t awh::eth::Stream_Control_Transmission_Protocol::send(const net::socket_t
 	 */
 	#else
 		/**
-		 * Если сообщение отправляется по частям
+		 * Отправка по частям здесь невозможна, но отказом это не считается
 		 *
-		 * @note Прежний способ отправки границу записи в явном виде задать не даёт:
-		 *       флагов у него нет вовсе. Отправка по частям потому здесь невозможна,
-		 *       и умалчивать об этом нельзя - сообщение разбилось бы на несколько
+		 * @details Прежний способ отправки границу записи в явном виде задать не даёт:
+		 *          флагов у него нет вовсе, и сообщение придёт несколькими записями
+		 *          вместо одной. Обмен это не рвёт, и отменять отправку незачем
+		 *
+		 * @warning Предупреждать отсюда НЕЛЬЗЯ: метод зовётся на всякий кусок, и на
+		 *          четырёх мегабайтах вышло бы больше тысячи одинаковых строк в
+		 *          журнале. О понижении сообщает движок - один раз на узел, при
+		 *          заведении режима явной границы записи
 		 */
-		if(!complete)
-			// Выводим сообщение об ошибке
-			this->_log->print("SCTP partial message sending is not supported by the operating system", log_t::flag_t::WARNING);
 		// Выполняем отправку сообщения прежним способом
 		return ::sctp_sendmsg(sock, buffer, size, const_cast <struct sockaddr *> (addr), length, info.sinfo_ppid, info.sinfo_flags, info.sinfo_stream, info.sinfo_timetolive, info.sinfo_context);
 	#endif

@@ -35,9 +35,28 @@
 #define __AWH_REGEX_PREFILTER__
 
 /**
+ * Если компилятор является Visual Studio
+ */
+#if defined(_MSC_VER)
+	/**
+	 * Принудительная подстановка средствами Visual Studio
+	 */
+	#define AWH_REGEX_INLINE inline __forceinline
+/**
+ * Если компилятор принадлежит к семейству GCC или Clang
+ */
+#else
+	/**
+	 * Принудительная подстановка средствами GCC и Clang
+	 */
+	#define AWH_REGEX_INLINE inline __attribute__((always_inline))
+#endif
+
+/**
  * Стандартные заголовочные файлы
  */
 #include <string>
+#include <cstring>
 #include <cstdint>
 #include <string_view>
 
@@ -72,6 +91,123 @@ namespace awh {
 	 * \~
 	 */
 	namespace regex {
+		/**
+		 * \~russian
+		 * @brief Наименьший остаток текста, при каком проба окупается
+		 *
+		 * @details Проба обходится в десятки наносекунд, а проход текста поиском
+		 *          обычным идёт на 8,6 ГБ/с - оттого проба окупается уже
+		 *          на двух-трёх сотнях байтов остатка. Порог взят с запасом
+		 *          на порядок: тексты короче проходят прежним путём в точности,
+		 *          отчего сценарии коротких текстов правкой этой не затронуты вовсе.
+		 *
+		 * \~english
+		 * @brief Smallest remainder of the text at which the probe pays off
+		 * @details The probe costs tens of nanoseconds, whereas walking the text
+		 *          with the ordinary search goes at 8.6 GB/s — which is why the probe pays off already
+		 *          at two or three hundred bytes of the remainder. The threshold is taken with
+		 *          an order of magnitude to spare: shorter texts go the former way exactly,
+		 *          which is why the scenarios of short texts are not affected by this change at all.
+		 *
+		 * \~
+		 */
+		constexpr size_t PAYOFF = 4096;
+
+		/**
+		 * \~russian
+		 * @brief Функция поиска последовательности в тексте по паре байтов
+		 *
+		 * @details Функция отделена от поиска общего и вынесена в отдельный файл
+		 *          намеренно. Поиск общий стоит на пути горячем - он зовётся
+		 *          и на текстах коротких, где проба не окупается вовсе, - и телом
+		 *          своим обязан быть таким, чтобы встраивание его было
+		 *          безоговорочным, тогда как тело поиска по паре крупно и несёт
+		 *          команды над вектором, каким в заголовочном файле не место:
+		 *          заголовок этот подключается всюду, а команды те нужны одному
+		 *          лишь поиску.
+		 *
+		 * @param text текст сопоставления
+		 * @param what искомая последовательность
+		 * @param pos  позиция начала поиска
+		 * @return     позиция найденной последовательности либо признак отсутствия
+		 *
+		 * \~english
+		 * @brief Function of searching for a sequence in the text by a pair of bytes
+		 * @details The function is separated from the general search and moved into a separate file
+		 *          deliberately. The general search stands on the hot path — it is called
+		 *          on short texts too, where the probe does not pay off at all — and its body
+		 *          is obliged to be such that its inlining is
+		 *          unconditional, whereas the body of the search by a pair is large and carries
+		 *          vector instructions, which have no place in a header file:
+		 *          that header is included everywhere, while those instructions are needed by the search
+		 *          alone.
+		 * @param text text to match
+		 * @param what sought sequence
+		 * @param pos  position to start the search from
+		 * @return     position of the found sequence or the indication of its absence
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ size_t anchored(const string_view text, const string_view what, const size_t pos) noexcept;
+
+		/**
+		 * \~russian
+		 * @brief Функция поиска последовательности в тексте
+		 *
+		 * @details Поиск последовательности стандартными средствами отыскивает
+		 *          первый байт искомого, а затем сличает остаток. Байт первый
+		 *          разборчивостью не отличается: в связном тексте он встречается
+		 *          на каждом десятке байтов, отчего поиск обрывается непрестанно
+		 *          и идёт со скоростью 8,6 ГБ/с при пределе набора команд
+		 *          в шесть-восемь раз выше.
+		 *
+		 *          Разборчивость даёт пара байтов, в тексте редкая, - см. «anchored».
+		 *          Здесь же остаётся отсев случаев, пробы не стоящих: искомое
+		 *          пустое, искомое об одном байте, отыскиваемое поиском байта,
+		 *          и остаток текста, пробы не окупающий.
+		 *
+		 * @param text текст сопоставления
+		 * @param what искомая последовательность
+		 * @param pos  позиция начала поиска
+		 * @return     позиция найденной последовательности либо признак отсутствия
+		 *
+		 * \~english
+		 * @brief Function of searching for a sequence in the text
+		 * @details Searching for a sequence by the standard means locates
+		 *          the first byte of the sought sequence and then compares the remainder. The first byte
+		 *          is not distinctive: in connected text it occurs
+		 *          at every ten bytes, which is why the search breaks off incessantly
+		 *          and goes at a speed of 8.6 GB/s while the limit of the instruction set
+		 *          is six to eight times higher.
+		 *
+		 *          Distinctiveness is given by a pair of bytes that is rare in the text — see «anchored».
+		 *          What remains here is the sifting out of the cases not worth a probe: an empty
+		 *          sought sequence, a sought sequence of one byte located by a byte search,
+		 *          and a remainder of the text that does not pay the probe off.
+		 * @param text text to match
+		 * @param what sought sequence
+		 * @param pos  position to start the search from
+		 * @return     position of the found sequence or the indication of its absence
+		 *
+		 * \~
+		 */
+		AWH_REGEX_INLINE static size_t seek(string_view text, string_view what, const size_t pos) noexcept {
+			/**
+			 * Если проба текста не окупается
+			 *
+			 * @details Искомое пустое отыскивается в самой позиции поиска, искомое
+			 *          об одном байте - поиском байта, набором команд процессора
+			 *          выполняемым, а на остатке коротком проба дороже прохода.
+			 *
+			 */
+			if((what.size() < 2) || (pos > text.size()) || ((text.size() - pos) < PAYOFF))
+				// Выводим результат поиска последовательности средствами обычными
+				return text.find(what, pos);
+			// Выводим результат поиска последовательности по якорному байту
+			return anchored(text, what, pos);
+		}
+
+
 		/**
 		 * \~russian
 		 * @brief Предварительный отбор позиций сопоставления
@@ -255,7 +391,7 @@ namespace awh {
 					// Выводим результат проверки возможности совпадения
 					return true;
 				// Выводим результат поиска обязательного литерала в тексте
-				return (text.find(this->literal, pos) != string_view::npos);
+				return (seek(text, this->literal, pos) != string_view::npos);
 			}
 			/**
 			 * \~russian
@@ -305,7 +441,7 @@ namespace awh {
 				 */
 				if(this->leading.size() > 1) {
 					// Выполняем поиск ведущего литерала совпадения в тексте
-					const size_t result = text.find(this->leading, pos);
+					const size_t result = seek(text, this->leading, pos);
 					// Выводим позицию найденного литерала либо конец текста
 					return ((result == string_view::npos) ? size : result);
 				}

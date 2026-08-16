@@ -24,7 +24,8 @@ make benchmark-regex
 | поиск последовательности | `literal-*` |
 | детерминированное исполнение | `digits-*`, `alternate-*`, `boundary-long` |
 | исполнение без возврата с захватом | `captures-*` |
-| исполнение с возвратом | `*-heavy` |
+| проверки окружения и атомарные группы | `lookahead-heavy`, `lookbehind-heavy`, `atomic-heavy` |
+| исполнение с возвратом | `backref-heavy`, `recurse-heavy` |
 | привязка к началу текста | `anchored-*`, `request-*`, `address-*` |
 
 Сценарии с отсутствующим совпадением (`*-absent`) отделены намеренно: проход

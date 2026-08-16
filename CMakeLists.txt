@@ -403,6 +403,29 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
     endif()
     # Добавляем расширения Sun Solaris
     add_compile_definitions(__EXTENSIONS__)
+    ##
+     # Выполняем проверку наличия вызова заведения связи SCTP
+     #
+     # Вызов этот отдаёт опознаватель связи сразу, при её заведении, и только им
+     # можно слать по сокету упорядоченных сообщений: прежний вызов отправки
+     # опознавателя среди доводов не несёт вовсе, а выбирать связь по адресу
+     # получателя эти системы позволяют лишь первой посылке
+     #
+     # Системы Sun здесь расходятся: Solaris 11.4 вызов несёт, а illumos не несёт
+     # ни в заголовках, ни в самой библиотеке - проверено на обоих стендах. Оттого
+     # наличие его выясняется сборкой, а не признаком системы: под обеими __sun
+     # объявлен одинаково
+     ##
+    INCLUDE(CheckCXXSymbolExists)
+    SET(CMAKE_REQUIRED_LIBRARIES sctp)
+    CHECK_CXX_SYMBOL_EXISTS(sctp_connectx "netinet/sctp.h" AWH_HAVE_SCTP_CONNECTX)
+    UNSET(CMAKE_REQUIRED_LIBRARIES)
+
+    # Если вызов заведения связи SCTP системой поддерживается
+    if (AWH_HAVE_SCTP_CONNECTX)
+        # Выполняем объявление признака наличия вызова заведения связи SCTP
+        ADD_DEFINITIONS(-DAWH_HAVE_SCTP_CONNECTX)
+    endif()
 # Если сборка производится под операционную систему macOS
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
     if (NOT OS_VERSION)
@@ -967,6 +990,7 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/encoding/idna/punycode.cpp"
     "${CMAKE_SOURCE_DIR}/src/encoding/idna/context.cpp"
     "${CMAKE_SOURCE_DIR}/src/encoding/idna/idna.cpp"
+    "${CMAKE_SOURCE_DIR}/src/regex/prefilter.cpp"
     "${CMAKE_SOURCE_DIR}/src/regex/text.cpp"
     "${CMAKE_SOURCE_DIR}/src/regex/parser.cpp"
     "${CMAKE_SOURCE_DIR}/src/regex/compiler.cpp"
@@ -1589,6 +1613,10 @@ if (${CMAKE_BUILD_SAMPLES})
         SET(CLIENT_APP_NET_SCTP_SEQPACKET_NAME net-sctp-seqpacket-client)
         # Устанавливаем имя серверного приложения работы с SCTP - пакетный режим
         SET(SERVER_APP_NET_SCTP_SEQPACKET_NAME net-sctp-seqpacket-server)
+        # Устанавливаем имя приложения переноса файла по SCTP - клиент
+        SET(CLIENT_APP_NET_SCTP_TRANSFER_NAME net-sctp-transfer-client)
+        # Устанавливаем имя приложения переноса файла по SCTP - сервер
+        SET(SERVER_APP_NET_SCTP_TRANSFER_NAME net-sctp-transfer-server)
         # Указываем что нужно собрать приложение работы с SCTP (клиент и сервер)
         option(CMAKE_BUILD_NET_SCTP_APP_SAMPLE "Build NET SCTP app sample" ON)
     endif()
@@ -2451,6 +2479,10 @@ if (${CMAKE_BUILD_SAMPLES})
             add_sample(${CLIENT_APP_NET_SCTP_SEQPACKET_NAME} sample/net/sctp/client-seqpacket.cpp net/sctp)
             # Выполняем создание приложения работы с SCTP сервер - SEQPACKET
             add_sample(${SERVER_APP_NET_SCTP_SEQPACKET_NAME} sample/net/sctp/server-seqpacket.cpp net/sctp)
+            # Выполняем создание приложения переноса файла по SCTP - клиент
+            add_sample(${CLIENT_APP_NET_SCTP_TRANSFER_NAME} sample/net/sctp/transfer-client.cpp net/sctp)
+            # Выполняем создание приложения переноса файла по SCTP - сервер
+            add_sample(${SERVER_APP_NET_SCTP_TRANSFER_NAME} sample/net/sctp/transfer-server.cpp net/sctp)
         # Если не нужно собирать семплы для работы с SCTP (клиент и сервер)
         else()
             # Выводим сообщение о сборке семпла
@@ -3133,6 +3165,31 @@ if (CMAKE_SHARED_BUILD_LIB)
             )
         endif (${CMAKE_BUILD_CODEC_TOML_APP_SAMPLE})
 
+        # Если нужно собрать семплы для работы с контейнером JSON
+        if (${CMAKE_BUILD_CODEC_JSON_APP_SAMPLE})
+            # Выполняем сборку приложения потокового чтения текста документа
+            target_link_libraries(
+                ${CODEC_APP_JSON_READER_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+            # Выполняем сборку приложения работы с деревом документа
+            target_link_libraries(
+                ${CODEC_APP_JSON_DOCUMENT_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+            # Выполняем сборку приложения записи текста документа
+            target_link_libraries(
+                ${CODEC_APP_JSON_WRITER_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_CODEC_JSON_APP_SAMPLE})
+
         # Если нужно собрать семплы для работы с компрессией данных
         if (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})
             # Выполняем сборку приложения компрессии данных
@@ -3556,6 +3613,20 @@ if (CMAKE_SHARED_BUILD_LIB)
                 # Выполняем сборку приложения сервера работы с SCTP - SEQPACKET
                 target_link_libraries(
                     ${SERVER_APP_NET_SCTP_SEQPACKET_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения клиента переноса файла по SCTP
+                target_link_libraries(
+                    ${CLIENT_APP_NET_SCTP_TRANSFER_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения сервера переноса файла по SCTP
+                target_link_libraries(
+                    ${SERVER_APP_NET_SCTP_TRANSFER_NAME}
                     ${AWH_LIB_NAME}
                     ${TCMALLOC_LIBRARIES}
                 )
@@ -4291,6 +4362,34 @@ else (CMAKE_SHARED_BUILD_LIB)
             )
         endif (${CMAKE_BUILD_CODEC_TOML_APP_SAMPLE})
 
+        # Если нужно собрать семплы для работы с контейнером JSON
+        if (${CMAKE_BUILD_CODEC_JSON_APP_SAMPLE})
+            # Выполняем сборку приложения потокового чтения текста документа
+            target_link_libraries(
+                ${CODEC_APP_JSON_READER_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+            # Выполняем сборку приложения работы с деревом документа
+            target_link_libraries(
+                ${CODEC_APP_JSON_DOCUMENT_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+            # Выполняем сборку приложения записи текста документа
+            target_link_libraries(
+                ${CODEC_APP_JSON_WRITER_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_CODEC_JSON_APP_SAMPLE})
+
         # Если нужно собрать семплы для работы с компрессией данных
         if (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})
             # Выполняем сборку приложения компрессии данных
@@ -4761,6 +4860,22 @@ else (CMAKE_SHARED_BUILD_LIB)
                 # Выполняем сборку приложения сервера работы с SCTP - SEQPACKET
                 target_link_libraries(
                     ${SERVER_APP_NET_SCTP_SEQPACKET_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения клиента переноса файла по SCTP
+                target_link_libraries(
+                    ${CLIENT_APP_NET_SCTP_TRANSFER_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                )
+
+                # Выполняем сборку приложения сервера переноса файла по SCTP
+                target_link_libraries(
+                    ${SERVER_APP_NET_SCTP_TRANSFER_NAME}
                     ${AWH_LIB_NAME}
                     ${DEPEND_LIBRARY}
                     ${TCMALLOC_LIBRARIES}

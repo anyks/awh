@@ -73,6 +73,56 @@ namespace {
 	 * Запас памяти под перечень имён полей разбираемого объекта
 	 */
 	static constexpr size_t NAMING = 16;
+	/**
+	 * @brief Шаблонная функция приведения дробного числа к затребованному виду
+	 *
+	 * @details Приведение отвечает языку: дробная часть отбрасывается усечением к нулю.
+	 * Разница с `static_cast` одна - дробное, чья целая часть лежит за пределами
+	 * затребованного целого вида, выдаётся пределом этого вида
+	 *
+	 * @note Стандарт зовёт такое приведение неопределённым поведением, а неопределённого
+	 *       поведения в кодеке не будет: значение `1e300`, затребованное видом `int32_t`,
+	 *       обязано выдать хоть что-нибудь, а не разрушить работу приложения
+	 *
+	 * @tparam T     затребованный вид числа
+	 * @param  value приводимое дробное число
+	 * @return       приведённое число
+	 *
+	 */
+	template <typename T>
+	static T convert(const double value) noexcept {
+		/**
+		 * Если затребован дробный вид
+		 */
+		if(std::is_floating_point <T>::value)
+			// Выводим приведённое число как оно есть
+			return static_cast <T> (value);
+		/**
+		 * Если число не является числом вовсе
+		 *
+		 * @note Приведение `NaN` к целому есть неопределённое поведение при любом пределе
+		 */
+		if(::isnan(value))
+			// Выводим нулевое число
+			return static_cast <T> (0);
+		/**
+		 * Если целая часть числа лежит ниже предела затребованного вида
+		 *
+		 * @note Пределы сличаются дробным видом, а не целым: предел `int64_t` целым видом
+		 *       точно не представим дробным, и сличение целых дало бы промах на единицу
+		 */
+		if(value <= static_cast <double> (std::numeric_limits <T>::lowest()))
+			// Выводим нижний предел затребованного вида
+			return std::numeric_limits <T>::lowest();
+		/**
+		 * Если целая часть числа лежит выше предела затребованного вида
+		 */
+		if(value >= static_cast <double> (std::numeric_limits <T>::max()))
+			// Выводим верхний предел затребованного вида
+			return std::numeric_limits <T>::max();
+		// Выводим приведённое число
+		return static_cast <T> (value);
+	}
 
 }
 
@@ -124,17 +174,17 @@ awh::codec::json::Document::Value awh::codec::json::Document::Value::operator []
 	/**
 	 * Если ссылка недействительна либо узел объектом не является
 	 */
-	if(!this->valid() || (this->_doc->_nodes[this->_index].kind != kind_t::OBJECT))
+	if(!this->valid() || (this->_doc->_nodes[this->_index].type != type_t::OBJECT))
 		// Выводим недействительную ссылку
 		return Value();
 	// Получаем узел, на какой указывает ссылка
 	const node_t & node = this->_doc->_nodes[this->_index];
 	// Получаем номер узла за последним узлом объекта
-	const uint32_t bound = (this->_index + node.extent);
+	const uint32_t bound = (this->_index + node.extent());
 	/**
 	 * Если количество полей объекта превышает порог заведения отображения
 	 */
-	if(node.length > INDEX_THRESHOLD){
+	if(node.length() > INDEX_THRESHOLD){
 		// Выполняем поиск отображения имён полей объекта
 		auto i = this->_doc->_index.find(this->_index);
 		/**
@@ -144,11 +194,11 @@ awh::codec::json::Document::Value awh::codec::json::Document::Value::operator []
 			// Заводимое отображение имён полей объекта
 			unordered_map <string_view, uint32_t> index;
 			// Выполняем выделение памяти под отображение имён полей объекта
-			index.reserve(static_cast <size_t> (node.length));
+			index.reserve(static_cast <size_t> (node.length()));
 			/**
 			 * Выполняем перебор всех полей объекта
 			 */
-			for(uint32_t child = (this->_index + 1); child < bound; child += this->_doc->_nodes[child].extent){
+			for(uint32_t child = (this->_index + 1); child < bound; child += this->_doc->_nodes[child].extent()){
 				// Получаем узел очередного поля объекта
 				const node_t & item = this->_doc->_nodes[child];
 				// Добавляем имя поля объекта в отображение, если оно ещё не занято
@@ -165,7 +215,7 @@ awh::codec::json::Document::Value awh::codec::json::Document::Value::operator []
 	/**
 	 * Выполняем перебор всех полей объекта
 	 */
-	for(uint32_t child = (this->_index + 1); child < bound; child += this->_doc->_nodes[child].extent){
+	for(uint32_t child = (this->_index + 1); child < bound; child += this->_doc->_nodes[child].extent()){
 		// Получаем узел очередного поля объекта
 		const node_t & item = this->_doc->_nodes[child];
 		/**
@@ -197,11 +247,11 @@ awh::codec::json::Document::Value awh::codec::json::Document::Value::operator []
 	/**
 	 * Если узел вместилищем не является либо значения с таким номером у него нет
 	 */
-	if(((node.kind != kind_t::ARRAY) && (node.kind != kind_t::OBJECT)) || (index >= static_cast <size_t> (node.length)))
+	if((!node.nested()) || (index >= static_cast <size_t> (node.length())))
 		// Выводим недействительную ссылку
 		return Value();
 	// Получаем номер узла за последним узлом вместилища
-	const uint32_t bound = (this->_index + node.extent);
+	const uint32_t bound = (this->_index + node.extent());
 	// Номер разыскиваемого узла вместилища
 	uint32_t child = (this->_index + 1);
 	/**
@@ -212,7 +262,7 @@ awh::codec::json::Document::Value awh::codec::json::Document::Value::operator []
 	 */
 	for(size_t i = 0; i < index; i++)
 		// Выполняем переход к следующему значению вместилища
-		child += this->_doc->_nodes[child].extent;
+		child += this->_doc->_nodes[child].extent();
 	// Выводим ссылку на узел значения вместилища
 	return Value(this->_doc, child, bound);
 }
@@ -342,80 +392,296 @@ bool awh::codec::json::Document::Value::value(bool & result) const noexcept {
 		// Выводим признак неудачного извлечения
 		return false;
 	// Устанавливаем извлечённое логическое значение
-	result = (this->_doc->_nodes[this->_index].length == 4);
+	result = (this->_doc->_nodes[this->_index].length() == 4);
 	// Выводим признак успешного извлечения
 	return true;
 }
 /**
- * @brief Метод извлечения целого числа
+ * @brief Шаблонный метод извлечения числа затребованным видом
+ *
+ * @details Извлечение сличает само значение с пределами затребованного вида, а не вид
+ * хранения с видом затребованным: узел, хранящий `INT8`, извлекается и как `double`, и
+ * как `uint64_t`. Отказом извлечение завершается лишь тогда, когда узел числом не
+ * является вовсе
+ *
+ * @note Дробное, чья целая часть лежит за пределами затребованного целого вида, выдаётся
+ *       пределом этого вида: стандарт зовёт такое приведение неопределённым поведением,
+ *       а неопределённого поведения в кодеке не будет
+ *
+ * @tparam T      затребованный вид числа
+ * @param  result переменная, куда помещается извлечённое значение
+ * @return        признак успешности извлечения
+ *
+ */
+template <typename T>
+bool awh::codec::json::Document::Value::extract(T & result) const noexcept {
+	/**
+	 * Если ссылка недействительна
+	 */
+	if(!this->valid())
+		// Выводим признак неудачного извлечения
+		return false;
+	// Получаем узел, на какой указывает ссылка
+	const node_t & node = this->_doc->_nodes[this->_index];
+	/**
+	 * Определяем вид значения узла документа
+	 */
+	switch(static_cast <uint16_t> (node.type)){
+		// Если значение является целым со знаком шириною в один байт
+		case static_cast <uint16_t> (type_t::INT8):
+		// Если значение является целым со знаком шириною в два байта
+		case static_cast <uint16_t> (type_t::INT16):
+		// Если значение является целым со знаком шириною в четыре байта
+		case static_cast <uint16_t> (type_t::INT32):
+		// Если значение является целым со знаком шириною в восемь байтов
+		case static_cast <uint16_t> (type_t::INT64):
+			// Устанавливаем извлечённое значение приведением языка
+			result = static_cast <T> (node.number <int64_t> ());
+		break;
+		// Если значение является целым без знака шириною в один байт
+		case static_cast <uint16_t> (type_t::UINT8):
+		// Если значение является целым без знака шириною в два байта
+		case static_cast <uint16_t> (type_t::UINT16):
+		// Если значение является целым без знака шириною в четыре байта
+		case static_cast <uint16_t> (type_t::UINT32):
+		// Если значение является целым без знака шириною в восемь байтов
+		case static_cast <uint16_t> (type_t::UINT64):
+			// Устанавливаем извлечённое значение приведением языка
+			result = static_cast <T> (node.number <uint64_t> ());
+		break;
+		// Если значение является дробным одинарной точности
+		case static_cast <uint16_t> (type_t::FLOAT):
+			// Устанавливаем извлечённое значение приведением дробного
+			result = ::convert <T> (static_cast <double> (node.number <float> ()));
+		break;
+		// Если значение является дробным двойной точности
+		case static_cast <uint16_t> (type_t::DOUBLE):
+			// Устанавливаем извлечённое значение приведением дробного
+			result = ::convert <T> (node.number <double> ());
+		break;
+		/**
+		 * Если значение является числом, не вместимым ни в один родной вид
+		 */
+		case static_cast <uint16_t> (type_t::EXTENDED): {
+			// Получаем запись числа, хранимую узлом
+			const string_view text(this->_doc->_storage.data() + node.offset, node.length());
+			// Разбираемое дробное число
+			double number = 0.;
+			/**
+			 * Выполняем разбор записи числа
+			 *
+			 * @note Разбор здесь неизбежен: число это в родной вид не вместилось, оттого
+			 *       и хранится записью. Таких чисел на документ приходятся единицы
+			 */
+			lexical_t::fromChars(text.data(), (text.data() + text.size()), number);
+			// Устанавливаем извлечённое значение приведением дробного
+			result = ::convert <T> (number);
+		} break;
+		/**
+		 * Если значение числом не является вовсе
+		 */
+		default:
+			// Выводим признак неудачного извлечения
+			return false;
+	}
+	// Выводим признак успешного извлечения
+	return true;
+}
+/**
+ * @brief Метод извлечения числа видом `int8_t`
+ *
+ * @param result переменная, куда помещается извлечённое значение
+ * @return       признак успешности извлечения
+ *
+ */
+bool awh::codec::json::Document::Value::value(int8_t & result) const noexcept {
+	// Выводим признак успешности извлечения числа
+	return this->extract(result);
+}
+/**
+ * @brief Метод извлечения числа видом `int16_t`
+ *
+ * @param result переменная, куда помещается извлечённое значение
+ * @return       признак успешности извлечения
+ *
+ */
+bool awh::codec::json::Document::Value::value(int16_t & result) const noexcept {
+	// Выводим признак успешности извлечения числа
+	return this->extract(result);
+}
+/**
+ * @brief Метод извлечения числа видом `int32_t`
+ *
+ * @param result переменная, куда помещается извлечённое значение
+ * @return       признак успешности извлечения
+ *
+ */
+bool awh::codec::json::Document::Value::value(int32_t & result) const noexcept {
+	// Выводим признак успешности извлечения числа
+	return this->extract(result);
+}
+/**
+ * @brief Метод извлечения числа видом `int64_t`
  *
  * @param result переменная, куда помещается извлечённое значение
  * @return       признак успешности извлечения
  *
  */
 bool awh::codec::json::Document::Value::value(int64_t & result) const noexcept {
-	// Получаем запись числа как она есть
-	const string_view text = this->raw();
-	/**
-	 * Если узел числом не является
-	 */
-	if(text.empty())
-		// Выводим признак неудачного извлечения
-		return false;
-	// Выполняем разбор записи числа
-	const lexical_t::result_t <char> res = lexical_t::fromChars(text.data(), text.data() + text.size(), result);
-	// Выводим признак успешного извлечения, если запись разобрана целиком
-	return (static_cast <bool> (res) && (res.ptr == (text.data() + text.size())));
+	// Выводим признак успешности извлечения числа
+	return this->extract(result);
 }
 /**
- * @brief Метод извлечения беззнакового целого числа
+ * @brief Метод извлечения числа видом `uint8_t`
+ *
+ * @param result переменная, куда помещается извлечённое значение
+ * @return       признак успешности извлечения
+ *
+ */
+bool awh::codec::json::Document::Value::value(uint8_t & result) const noexcept {
+	// Выводим признак успешности извлечения числа
+	return this->extract(result);
+}
+/**
+ * @brief Метод извлечения числа видом `uint16_t`
+ *
+ * @param result переменная, куда помещается извлечённое значение
+ * @return       признак успешности извлечения
+ *
+ */
+bool awh::codec::json::Document::Value::value(uint16_t & result) const noexcept {
+	// Выводим признак успешности извлечения числа
+	return this->extract(result);
+}
+/**
+ * @brief Метод извлечения числа видом `uint32_t`
+ *
+ * @param result переменная, куда помещается извлечённое значение
+ * @return       признак успешности извлечения
+ *
+ */
+bool awh::codec::json::Document::Value::value(uint32_t & result) const noexcept {
+	// Выводим признак успешности извлечения числа
+	return this->extract(result);
+}
+/**
+ * @brief Метод извлечения числа видом `uint64_t`
  *
  * @param result переменная, куда помещается извлечённое значение
  * @return       признак успешности извлечения
  *
  */
 bool awh::codec::json::Document::Value::value(uint64_t & result) const noexcept {
-	// Получаем запись числа как она есть
-	const string_view text = this->raw();
-	/**
-	 * Если узел числом не является либо число записано со знаком минуса
-	 */
-	if(text.empty() || (text.front() == '-'))
-		// Выводим признак неудачного извлечения
-		return false;
-	// Выполняем разбор записи числа
-	const lexical_t::result_t <char> res = lexical_t::fromChars(text.data(), text.data() + text.size(), result);
-	// Выводим признак успешного извлечения, если запись разобрана целиком
-	return (static_cast <bool> (res) && (res.ptr == (text.data() + text.size())));
+	// Выводим признак успешности извлечения числа
+	return this->extract(result);
 }
 /**
- * @brief Метод извлечения числа с плавающей запятой
+ * @brief Метод извлечения числа видом `float`
+ *
+ * @param result переменная, куда помещается извлечённое значение
+ * @return       признак успешности извлечения
+ *
+ */
+bool awh::codec::json::Document::Value::value(float & result) const noexcept {
+	// Выводим признак успешности извлечения числа
+	return this->extract(result);
+}
+/**
+ * @brief Метод извлечения числа видом `double`
  *
  * @param result переменная, куда помещается извлечённое значение
  * @return       признак успешности извлечения
  *
  */
 bool awh::codec::json::Document::Value::value(double & result) const noexcept {
-	// Получаем запись числа как она есть
-	const string_view text = this->raw();
+	// Выводим признак успешности извлечения числа
+	return this->extract(result);
+}
+/**
+ * @brief Метод извлечения записи числа
+ *
+ * @return запись числа, пусто у прочих узлов
+ *
+ */
+string awh::codec::json::Document::Value::raw() const noexcept {
+	/**
+	 * Если ссылка недействительна
+	 */
+	if(!this->valid())
+		// Выводим отсутствие записи числа
+		return string();
+	// Получаем узел, на какой указывает ссылка
+	const node_t & node = this->_doc->_nodes[this->_index];
+	/**
+	 * Если число хранится записью своей
+	 */
+	if(node.type == type_t::EXTENDED)
+		// Выводим запись числа, как она стояла в тексте
+		return string(this->_doc->_storage.data() + node.offset, node.length());
 	/**
 	 * Если узел числом не является
 	 */
-	if(text.empty())
-		// Выводим признак неудачного извлечения
-		return false;
-	// Выполняем разбор записи числа
-	const lexical_t::result_t <char> res = lexical_t::fromChars(text.data(), text.data() + text.size(), result);
-	// Выводим признак успешного извлечения, если запись разобрана целиком
-	return (static_cast <bool> (res) && (res.ptr == (text.data() + text.size())));
+	if(!this->is(type_t::NUMBER))
+		// Выводим отсутствие записи числа
+		return string();
+	// Объект записи текста документа
+	writer_t writer;
+	// Выполняем запись числа, хранимого узлом
+	this->_doc->compose(writer, node);
+	// Выводим собранную запись числа
+	return writer.take();
 }
 /**
- * @brief Метод извлечения строкового значения
+ * @brief Метод записи числа, хранимого узлом
  *
- * @param result переменная, куда помещается извлечённое значение
- * @return       признак успешности извлечения
+ * @details Запись собирается кратчайшей записью, читающейся обратно тем же самым
+ * числом. Метод этот один на перезапись документа и на выдачу записи числа: две
+ * отдельные записи одного и того же числа неминуемо разошлись бы видом
+ *
+ * @param writer объект записи текста документа
+ * @param node   узел, число какого записывается
  *
  */
+void awh::codec::json::Document::compose(writer_t & writer, const node_t & node) const noexcept {
+	/**
+	 * Определяем вид значения узла документа
+	 */
+	switch(static_cast <uint16_t> (node.type)){
+		// Если значение является целым со знаком любой ширины
+		case static_cast <uint16_t> (type_t::INT8):
+		case static_cast <uint16_t> (type_t::INT16):
+		case static_cast <uint16_t> (type_t::INT32):
+		case static_cast <uint16_t> (type_t::INT64):
+			// Выполняем запись целого числа со знаком
+			writer.value(node.number <int64_t> ());
+		break;
+		// Если значение является целым без знака любой ширины
+		case static_cast <uint16_t> (type_t::UINT8):
+		case static_cast <uint16_t> (type_t::UINT16):
+		case static_cast <uint16_t> (type_t::UINT32):
+		case static_cast <uint16_t> (type_t::UINT64):
+			// Выполняем запись целого числа без знака
+			writer.value(node.number <uint64_t> ());
+		break;
+		// Если значение является дробным одинарной точности
+		case static_cast <uint16_t> (type_t::FLOAT):
+			// Выполняем запись дробного числа одинарной точности
+			writer.value(static_cast <double> (node.number <float> ()));
+		break;
+		// Если значение является дробным двойной точности
+		case static_cast <uint16_t> (type_t::DOUBLE):
+			// Выполняем запись дробного числа двойной точности
+			writer.value(node.number <double> ());
+		break;
+		/**
+		 * Если значение является числом, не вместимым ни в один родной вид
+		 */
+		case static_cast <uint16_t> (type_t::EXTENDED):
+			// Выполняем запись числа его записью, как она стояла в тексте
+			writer.raw(string(this->_storage.data() + node.offset, node.length()));
+		break;
+	}
+}
 bool awh::codec::json::Document::Value::value(string & result) const noexcept {
 	/**
 	 * Если узел строкой не является
@@ -446,7 +712,7 @@ string_view awh::codec::json::Document::Value::text() const noexcept {
 	// Получаем узел, на какой указывает ссылка
 	const node_t & node = this->_doc->_nodes[this->_index];
 	// Выводим строковое значение узла
-	return string_view(this->_doc->_storage.data() + node.offset, node.length);
+	return string_view(this->_doc->_storage.data() + node.offset, node.length());
 }
 /**
  * @brief Метод переноса знаков разбора в хранилище документа
@@ -501,6 +767,139 @@ void awh::codec::json::Document::handler(void * context, reader_t & reader, cons
  * @param reader объект потокового чтения текста
  * @return       признак успешности сборки
  *
+ */
+/**
+ * @brief Метод определения вида числа вместе с преобразованием его
+ *
+ * @details Вид выбирается самый узкий из вмещающих: число `1` получает вид `UINT8`, а
+ * `-1` - вид `INT8`. Знаковость решается знаком записи, а не величиной: запись без
+ * минуса есть число без знака, и потребитель, спросивший `is(type_t::UNSIGNED)`,
+ * получает ответ по записи, какую видел сам
+ *
+ * @note Дробное получает вид `FLOAT` тогда, и только тогда, когда одинарной точности
+ *       довольно для точного его представления. Проверяется это обращением туда и
+ *       обратно, а не количеством знаков записи: `0.5` представимо точно, а `0.1` - нет
+ *
+ * @param text разбираемая запись числа
+ * @param node узел документа, куда помещается разобранное число
+ * @return     признак того, что число вместилось в родной вид
+ *
+ */
+bool awh::codec::json::Document::classify(const string_view text, node_t & node) noexcept {
+	// Получаем указатель на конец записи числа
+	const char * end = (text.data() + text.size());
+	/**
+	 * Выполняем поиск знаков, отличающих дробное число от целого
+	 *
+	 * @note Поиск идёт по записи целиком, а не по одной лишь точке: число `1e3` точки
+	 *       не имеет вовсе, а целым тем не менее не является
+	 */
+	bool real = false;
+	/**
+	 * Выполняем перебор всех знаков записи числа
+	 */
+	for(const char letter : text){
+		/**
+		 * Если знак отличает дробное число от целого
+		 */
+		if((letter == '.') || (letter == 'e') || (letter == 'E')){
+			// Запоминаем принадлежность числа к дробным
+			real = true;
+			// Прекращаем перебор знаков записи числа
+			break;
+		}
+	}
+	/**
+	 * Если число является целым
+	 */
+	if(!real){
+		/**
+		 * Если число записано со знаком минуса
+		 */
+		if(!text.empty() && (text.front() == '-')){
+			// Разбираемое целое число со знаком
+			int64_t result = 0;
+			// Выполняем разбор записи числа
+			const lexical_t::result_t <char> res = lexical_t::fromChars(text.data(), end, result);
+			/**
+			 * Если запись числа целым со знаком не разбирается
+			 */
+			if(!static_cast <bool> (res) || (res.ptr != end))
+				// Выводим признак того, что число в родной вид не вместилось
+				return false;
+			// Выполняем установку разобранного числа
+			node.number(result);
+			/**
+			 * Устанавливаем самый узкий из вмещающих видов числа
+			 */
+			node.type = (
+				((result >= INT8_MIN) && (result <= INT8_MAX)) ? type_t::INT8 : (
+					((result >= INT16_MIN) && (result <= INT16_MAX)) ? type_t::INT16 : (
+						((result >= INT32_MIN) && (result <= INT32_MAX)) ? type_t::INT32 : type_t::INT64
+					)
+				)
+			);
+			// Выводим признак того, что число вместилось в родной вид
+			return true;
+		}
+		// Разбираемое целое число без знака
+		uint64_t result = 0;
+		// Выполняем разбор записи числа
+		const lexical_t::result_t <char> res = lexical_t::fromChars(text.data(), end, result);
+		/**
+		 * Если запись числа целым без знака не разбирается
+		 */
+		if(!static_cast <bool> (res) || (res.ptr != end))
+			// Выводим признак того, что число в родной вид не вместилось
+			return false;
+		// Выполняем установку разобранного числа
+		node.number(result);
+		/**
+		 * Устанавливаем самый узкий из вмещающих видов числа
+		 */
+		node.type = (
+			(result <= UINT8_MAX) ? type_t::UINT8 : (
+				(result <= UINT16_MAX) ? type_t::UINT16 : (
+					(result <= UINT32_MAX) ? type_t::UINT32 : type_t::UINT64
+				)
+			)
+		);
+		// Выводим признак того, что число вместилось в родной вид
+		return true;
+	}
+	// Разбираемое дробное число
+	double result = 0.;
+	// Выполняем разбор записи числа
+	const lexical_t::result_t <char> res = lexical_t::fromChars(text.data(), end, result);
+	/**
+	 * Если запись числа дробным не разбирается либо число вышло за предел двойной точности
+	 *
+	 * @note Бесконечность родным видом не является: записать её обратно нельзя вовсе,
+	 *       ибо стандарт бесконечности не знает. Такое число хранится записью своей
+	 */
+	if(!static_cast <bool> (res) || (res.ptr != end) || ::isinf(result))
+		// Выводим признак того, что число в родной вид не вместилось
+		return false;
+	/**
+	 * Если одинарной точности довольно для точного представления числа
+	 */
+	if(static_cast <double> (static_cast <float> (result)) == result){
+		// Выполняем установку разобранного числа одинарной точностью
+		node.number(static_cast <float> (result));
+		// Устанавливаем вид числа одинарной точности
+		node.type = type_t::FLOAT;
+		// Выводим признак того, что число вместилось в родной вид
+		return true;
+	}
+	// Выполняем установку разобранного числа
+	node.number(result);
+	// Устанавливаем вид числа двойной точности
+	node.type = type_t::DOUBLE;
+	// Выводим признак того, что число вместилось в родной вид
+	return true;
+}
+/**
+ * @brief Метод сборки дерева документа из события разбора
  */
 bool awh::codec::json::Document::digest(reader_t & reader, const event_t event, const span_t content, const bool modified) noexcept {
 	/**
@@ -616,12 +1015,12 @@ bool awh::codec::json::Document::digest(reader_t & reader, const event_t event, 
 		// Если событие является открытием объекта
 		case static_cast <uint8_t> (event_t::OBJECT_BEGIN):
 			// Устанавливаем вид заводимого узла документа
-			node.kind = kind_t::OBJECT;
+			node.type = type_t::OBJECT;
 		break;
 		// Если событие является открытием массива
 		case static_cast <uint8_t> (event_t::ARRAY_BEGIN):
 			// Устанавливаем вид заводимого узла документа
-			node.kind = kind_t::ARRAY;
+			node.type = type_t::ARRAY;
 		break;
 		/**
 		 * Если событие является закрытием вместилища
@@ -642,7 +1041,7 @@ bool awh::codec::json::Document::digest(reader_t & reader, const event_t event, 
 			// Удаляем номер закрываемого вместилища из стека
 			this->_nesting.pop_back();
 			// Устанавливаем размер поддерева закрываемого вместилища
-			this->_nodes[parent].extent = (index - parent);
+			this->_nodes[parent].extent(index - parent);
 			/**
 			 * Если закрывается объект, а повторяющиеся имена полей затребовано разбирать
 			 */
@@ -660,56 +1059,36 @@ bool awh::codec::json::Document::digest(reader_t & reader, const event_t event, 
 		// Если событие является пустым значением
 		case static_cast <uint8_t> (event_t::NUL):
 			// Устанавливаем вид заводимого узла документа
-			node.kind = kind_t::NUL;
+			node.type = type_t::NUL;
 		break;
 		// Если событие является логическим значением
 		case static_cast <uint8_t> (event_t::BOOL):
 			// Устанавливаем вид заводимого узла документа
-			node.kind = kind_t::BOOL;
+			node.type = type_t::BOOL;
 		break;
 		// Если событие является строковым значением
 		case static_cast <uint8_t> (event_t::STRING):
 			// Устанавливаем вид заводимого узла документа
-			node.kind = kind_t::STRING;
+			node.type = type_t::STRING;
 		break;
 		/**
 		 * Если событие является числом
 		 */
 		case static_cast <uint8_t> (event_t::NUMBER): {
-			// Устанавливаем вид заводимого узла документа
-			node.kind = kind_t::NUMBER;
+			// Получаем запись разбираемого числа
+			const string_view text(reader.storage().data() + content.offset, content.length);
 			/**
-			 * Если преобразование числа затребовано настройками
+			 * Выполняем определение вида числа вместе с преобразованием его
+			 *
+			 * @note Число кладётся в узел готовым: повторного разбора записи при извлечении
+			 *       не бывает вовсе. Запись его при этом остаётся в хранилище знаков -
+			 *       переносится хранилище целым куском, а не по одному значению
 			 */
-			if(this->_settings.numbers != number_t::LAZY){
-				// Получаем запись разбираемого числа
-				const string_view text(reader.storage().data() + content.offset, content.length);
-				// Значение разбираемого числа
-				double result = 0.;
-				// Выполняем разбор записи числа
-				const lexical_t::result_t <char> res = lexical_t::fromChars(text.data(), text.data() + text.size(), result);
+			if(!Document::classify(text, node)){
 				/**
-				 * Если запись числа разобрать не удалось
+				 * Если число не вместимо ни в один родной вид, а такие затребовано отвергать
 				 */
-				if(!static_cast <bool> (res) || (res.ptr != (text.data() + text.size()))){
-					/**
-					 * Запоминаем код отказа разбора
-					 *
-					 * @note Запись числа разбор уже сличил со стандартом, оттого отказ
-					 *       преобразования означает непредставимость числа, а не негодность
-					 *       записи. Сличение здесь повторяется лишь затем, чтобы отказ
-					 *       назывался своим именем и в случае, о каком мы не подумали
-					 */
-					this->_error = (numeric(string(text)) ? error_t::NUMBER_OUT_OF_RANGE : error_t::INVALID_NUMBER);
-					// Запоминаем положение отказа разбора в исходном тексте
-					this->_position = reader.location();
-					// Выводим признак неудачной сборки
-					return false;
-				}
-				/**
-				 * Если преобразование числа затребовано с проверкой представимости
-				 */
-				if((this->_settings.numbers == number_t::CHECK) && ::isinf(result)){
+				if(this->_settings.numbers == number_t::CHECK){
 					// Запоминаем код отказа разбора
 					this->_error = error_t::NUMBER_OUT_OF_RANGE;
 					// Запоминаем положение отказа разбора в исходном тексте
@@ -717,6 +1096,13 @@ bool awh::codec::json::Document::digest(reader_t & reader, const event_t event, 
 					// Выводим признак неудачной сборки
 					return false;
 				}
+				/**
+				 * Устанавливаем вид числа, хранимого записью своей
+				 *
+				 * @note Запись такого числа остаётся в хранилище знаков нетронутой, и
+				 *       точность его не теряется вовсе
+				 */
+				node.type = type_t::EXTENDED;
 			}
 		} break;
 		/**
@@ -730,11 +1116,15 @@ bool awh::codec::json::Document::digest(reader_t & reader, const event_t event, 
 		}
 	}
 	/**
-	 * Если узел вместилищем не является
+	 * Если узел ни вместилищем, ни числом родного вида не является
+	 *
+	 * @note Число родного вида хранит в этом самом месте себя, и запись длины его
+	 *       записи погубила бы само число. Длина нужна лишь тому, чьё содержимое
+	 *       лежит в хранилище знаков: строке да числу вида `EXTENDED`
 	 */
-	if((node.kind != kind_t::ARRAY) && (node.kind != kind_t::OBJECT)){
+	if(!node.nested() && !node.native()){
 		// Устанавливаем длину содержимого узла
-		node.length = content.length;
+		node.length(content.length);
 		// Устанавливаем признак изменения содержимого разбором
 		node.modified = modified;
 	}
@@ -743,7 +1133,7 @@ bool awh::codec::json::Document::digest(reader_t & reader, const event_t event, 
 	 */
 	if(!this->_nesting.empty())
 		// Увеличиваем количество детей вместилища
-		this->_nodes[this->_nesting.back()].length++;
+		this->_nodes[this->_nesting.back()].length(this->_nodes[this->_nesting.back()].length() + 1);
 	/**
 	 * Добавляем заводимый узел в перечень узлов документа
 	 *
@@ -755,7 +1145,7 @@ bool awh::codec::json::Document::digest(reader_t & reader, const event_t event, 
 	/**
 	 * Если узел вместилищем является
 	 */
-	if((node.kind == kind_t::ARRAY) || (node.kind == kind_t::OBJECT)){
+	if(node.nested()){
 		/**
 		 * Если глубина вложенности превышает допустимую
 		 */
@@ -811,7 +1201,7 @@ bool awh::codec::json::Document::deduplicate(const uint32_t parent, const reader
 		return string_view(this->_storage.data() + (position - this->_base), node.named);
 	};
 	// Получаем количество полей разбираемого объекта
-	const uint32_t count = this->_nodes[parent].length;
+	const uint32_t count = this->_nodes[parent].length();
 	/**
 	 * Если объект полей не имеет вовсе
 	 *
@@ -822,7 +1212,7 @@ bool awh::codec::json::Document::deduplicate(const uint32_t parent, const reader
 		// Выводим признак успешного разбора
 		return true;
 	// Получаем номер узла за последним узлом объекта
-	const uint32_t bound = (parent + this->_nodes[parent].extent);
+	const uint32_t bound = (parent + this->_nodes[parent].extent());
 	// Перечень имён полей объекта вместе с номерами их узлов
 	this->_naming.clear();
 	// Выполняем выделение памяти под перечень имён полей объекта
@@ -846,7 +1236,7 @@ bool awh::codec::json::Document::deduplicate(const uint32_t parent, const reader
 	/**
 	 * Выполняем перебор всех полей объекта
 	 */
-	for(uint32_t child = (parent + 1); child < bound; child += this->_nodes[child].extent){
+	for(uint32_t child = (parent + 1); child < bound; child += this->_nodes[child].extent()){
 		// Получаем узел очередного поля объекта
 		const node_t & node = this->_nodes[child];
 		// Получаем имя очередного поля объекта
@@ -938,13 +1328,13 @@ bool awh::codec::json::Document::deduplicate(const uint32_t parent, const reader
 		// Получаем номер узла сносимого поля объекта
 		const uint32_t child = removed[i - 1];
 		// Получаем размер поддерева сносимого поля объекта
-		const uint32_t extent = this->_nodes[child].extent;
+		const uint32_t extent = this->_nodes[child].extent();
 		// Выполняем снос поддерева поля объекта из перечня узлов документа
 		this->_nodes.erase(this->_nodes.begin() + child, this->_nodes.begin() + child + extent);
 		// Уменьшаем размер поддерева объекта на размер снесённого поддерева
-		this->_nodes[parent].extent -= extent;
+		this->_nodes[parent].extent(this->_nodes[parent].extent() - extent);
 		// Уменьшаем количество полей объекта
-		this->_nodes[parent].length--;
+		this->_nodes[parent].length(this->_nodes[parent].length() - 1);
 	}
 	// Выводим признак успешного разбора
 	return true;
@@ -1248,7 +1638,7 @@ string awh::codec::json::Document::dump(const format_t format) const noexcept {
 		/**
 		 * Определяем вид очередного узла документа
 		 */
-		switch(static_cast <uint8_t> (node.kind)){
+		switch(static_cast <uint8_t> (json::kind(node.type))){
 			// Если узел является пустым значением
 			case static_cast <uint8_t> (kind_t::NUL):
 				// Выполняем запись пустого значения
@@ -1257,32 +1647,36 @@ string awh::codec::json::Document::dump(const format_t format) const noexcept {
 			// Если узел является логическим значением
 			case static_cast <uint8_t> (kind_t::BOOL):
 				// Выполняем запись логического значения
-				writer.value(node.length == 4);
+				writer.value(node.length() == 4);
 			break;
-			// Если узел является числом
-			// Если узел является числом
+			/**
+			 * Если узел является числом
+			 *
+			 * @note Число пишется прямо в общий объект записи: сборка записи его отдельным
+			 *       объектом стоила бы заведения такого объекта на всякое число документа
+			 */
 			case static_cast <uint8_t> (kind_t::NUMBER):
-				// Выполняем запись числа его готовой записью
-				writer.raw(string(this->_storage.data() + node.offset, node.length));
+				// Выполняем запись числа, хранимого узлом
+				this->compose(writer, node);
 			break;
 			// Если узел является строкой
 			case static_cast <uint8_t> (kind_t::STRING):
 				// Выполняем запись строкового значения
-				writer.value(string(this->_storage.data() + node.offset, node.length));
+				writer.value(string(this->_storage.data() + node.offset, node.length()));
 			break;
 			// Если узел является массивом
 			case static_cast <uint8_t> (kind_t::ARRAY): {
 				// Выполняем открытие массива
 				writer.array();
 				// Добавляем номер узла за последним узлом массива в стек
-				nesting.push_back(index + node.extent);
+				nesting.push_back(index + node.extent());
 			} break;
 			// Если узел является объектом
 			case static_cast <uint8_t> (kind_t::OBJECT): {
 				// Выполняем открытие объекта
 				writer.object();
 				// Добавляем номер узла за последним узлом объекта в стек
-				nesting.push_back(index + node.extent);
+				nesting.push_back(index + node.extent());
 			} break;
 		}
 	}

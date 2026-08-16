@@ -182,6 +182,115 @@ const char * awh::codec::json::name(const kind_t kind) noexcept {
 	return "unknown";
 }
 /**
+ * @brief Функция получения названия вида значения
+ *
+ * @param type вид значения документа
+ * @return     название вида значения
+ *
+ */
+const char * awh::codec::json::name(const type_t type) noexcept {
+	/**
+	 * Определяем вид значения документа
+	 */
+	switch(static_cast <uint16_t> (type)){
+		// Если значения нет вовсе
+		case static_cast <uint16_t> (type_t::UNDEFINED):
+			return "undefined";
+		// Если значение является пустым
+		case static_cast <uint16_t> (type_t::NUL):
+			return "null";
+		// Если значение является логическим
+		case static_cast <uint16_t> (type_t::BOOL):
+			return "boolean";
+		// Если значение является строкой
+		case static_cast <uint16_t> (type_t::STRING):
+			return "string";
+		// Если значение является массивом
+		case static_cast <uint16_t> (type_t::ARRAY):
+			return "array";
+		// Если значение является объектом
+		case static_cast <uint16_t> (type_t::OBJECT):
+			return "object";
+		// Если значение является целым со знаком шириною в один байт
+		case static_cast <uint16_t> (type_t::INT8):
+			return "int8";
+		// Если значение является целым со знаком шириною в два байта
+		case static_cast <uint16_t> (type_t::INT16):
+			return "int16";
+		// Если значение является целым со знаком шириною в четыре байта
+		case static_cast <uint16_t> (type_t::INT32):
+			return "int32";
+		// Если значение является целым со знаком шириною в восемь байтов
+		case static_cast <uint16_t> (type_t::INT64):
+			return "int64";
+		// Если значение является целым без знака шириною в один байт
+		case static_cast <uint16_t> (type_t::UINT8):
+			return "uint8";
+		// Если значение является целым без знака шириною в два байта
+		case static_cast <uint16_t> (type_t::UINT16):
+			return "uint16";
+		// Если значение является целым без знака шириною в четыре байта
+		case static_cast <uint16_t> (type_t::UINT32):
+			return "uint32";
+		// Если значение является целым без знака шириною в восемь байтов
+		case static_cast <uint16_t> (type_t::UINT64):
+			return "uint64";
+		// Если значение является дробным одинарной точности
+		case static_cast <uint16_t> (type_t::FLOAT):
+			return "float";
+		// Если значение является дробным двойной точности
+		case static_cast <uint16_t> (type_t::DOUBLE):
+			return "double";
+		// Если значение является числом, не вместимым ни в один родной вид
+		case static_cast <uint16_t> (type_t::EXTENDED):
+			return "extended";
+	}
+	// Выводим название неизвестного вида значения
+	return "unknown";
+}
+/**
+ * @brief Функция получения вида узла по виду значения
+ *
+ * @param type вид значения документа
+ * @return     вид узла документа
+ *
+ */
+awh::codec::json::kind_t awh::codec::json::kind(const type_t type) noexcept {
+	// Получаем разряды вида значения
+	const uint16_t mask = static_cast <uint16_t> (type);
+	/**
+	 * Если значение является числом любого вида
+	 *
+	 * @note Число проверяется первым: чисел видов больше всех прочих вместе взятых,
+	 *       и разбор их - самая частая работа документа
+	 */
+	if(mask & static_cast <uint16_t> (type_t::NUMBER))
+		// Выводим вид узла числа
+		return kind_t::NUMBER;
+	/**
+	 * Определяем вид значения документа
+	 */
+	switch(mask){
+		// Если значение является пустым
+		case static_cast <uint16_t> (type_t::NUL):
+			return kind_t::NUL;
+		// Если значение является логическим
+		case static_cast <uint16_t> (type_t::BOOL):
+			return kind_t::BOOL;
+		// Если значение является строкой
+		case static_cast <uint16_t> (type_t::STRING):
+			return kind_t::STRING;
+		// Если значение является массивом
+		case static_cast <uint16_t> (type_t::ARRAY):
+			return kind_t::ARRAY;
+		// Если значение является объектом
+		case static_cast <uint16_t> (type_t::OBJECT):
+			return kind_t::OBJECT;
+	}
+	// Выводим отсутствие вида узла
+	return kind_t::NONE;
+}
+/**
  * @brief Функция проверки записи числа на соответствие стандарту
  *
  * @details Проверка ведётся тем же порядком, каким её ведёт разбор, и намеренно

@@ -236,6 +236,31 @@ namespace awh {
 					 * \~
 					 */
 					void quoted(const string & text) noexcept;
+				private:
+					/**
+					 * \~russian
+					 * @brief Метод переноса готовой записи числа в текст документа
+					 *
+					 * @details Запись переносится без сличения со стандартом: сюда попадает лишь
+					 * то, что писатель произвёл сам, а произвести негодную запись преобразование
+					 * числа не может. Сличается только запись, пришедшая извне
+					 *
+					 * @param value переносимая запись числа
+					 * @param size  длина переносимой записи числа
+					 * @return      признак успешности записи
+					 *
+					 * \~english
+					 * @brief Method of the transfer of a ready record of a number into the text of a document
+					 * @details The record is transferred without a comparison with the standard: only that which
+					 * the writer produced itself gets here, and the conversion of a number cannot produce
+					 * an unfit record. Only a record which came from the outside is compared
+					 * @param value record of the number being transferred
+					 * @param size length of the record of the number being transferred
+					 * @return sign of the success of the writing
+					 *
+					 * \~
+					 */
+					bool produced(const char * value, const size_t size) noexcept;
 				public:
 					/**
 					 * \~russian
