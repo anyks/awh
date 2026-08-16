@@ -112,6 +112,3 @@
 [submodule "submodules/yyjson"]
 	path = submodules/yyjson
 	url = https://github.com/ibireme/yyjson.git
-[submodule "submodules/simdjson"]
-	path = submodules/simdjson
-	url = https://github.com/simdjson/simdjson.git
