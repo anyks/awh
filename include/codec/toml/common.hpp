@@ -542,6 +542,27 @@ namespace awh {
 
 			/**
 			 * \~russian
+			 * @brief Исход разбора последовательности UTF-8
+			 *
+			 * @details Оборванная последовательность отделена от битой намеренно: при
+			 * чтении по кускам первая означает, что знак придёт следующим куском, а
+			 * вторая - что он не придёт никогда
+			 *
+			 * \~english
+			 * @brief Outcome of the parsing of a UTF-8 sequence
+			 * @details A cut off sequence is deliberately separated from a broken one: when reading in chunks
+			 * the former means that the character will come with the next chunk, while the latter — that it will never come
+			 *
+			 * \~
+			 */
+			enum class utf8_t : uint8_t {
+				VALID     = 0x01, // Последовательность прочитана целиком и правила соблюдает
+				BROKEN    = 0x02, // Последовательность построена ошибочно
+				TRUNCATED = 0x03  // Последовательности не хватает байт до конца текста
+			};
+
+			/**
+			 * \~russian
 			 * @brief Положение в исходном тексте настроек
 			 *
 			 * @details Строка и знак считаются с единицы и меряются знаками приведённого
@@ -1044,6 +1065,49 @@ namespace awh {
 			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ size_t decode(const string_view text, const size_t offset, uint32_t & code) noexcept;
+			/**
+			 * \~russian
+			 * @brief Метод получения длины последовательности UTF-8 по её ведущему байту
+			 *
+			 * @param leading ведущий байт последовательности знака
+			 * @return        количество байт последовательности, ноль - байт ведущим не является
+			 *
+			 * \~english
+			 * @brief Method of getting the length of a UTF-8 sequence by its leading byte
+			 * @param leading leading byte of the character sequence
+			 * @return        number of the bytes of the sequence, zero — the byte is not a leading one
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ size_t sequence(const uint8_t leading) noexcept;
+			/**
+			 * \~russian
+			 * @brief Метод разбора очередной последовательности UTF-8
+			 *
+			 * @details Свод правил разбора последовательности собран здесь единственным
+			 * телом: чтение целым текстом и чтение по кускам расходятся лишь тем, как
+			 * они докладывают исход, но не тем, какую последовательность признают
+			 *
+			 * @param text   последовательность знаков, из которой ведётся чтение
+			 * @param offset положение начала знака в последовательности
+			 * @param code   получаемый знак Юникода, при неудачном разборе не выставляется
+			 * @param length количество байт, разбором пройденных, при нехватке байт нулевое
+			 * @return       исход разбора последовательности
+			 *
+			 * \~english
+			 * @brief Method of the parsing of the next UTF-8 sequence
+			 * @details The set of the rules of the parsing of a sequence is gathered here as a single
+			 * body: the reading by a whole text and the reading in chunks differ only in how
+			 * they report the outcome, but not in which sequence they accept
+			 * @param text   sequence of characters from which the reading is conducted
+			 * @param offset position of the beginning of the character in the sequence
+			 * @param code   Unicode character being obtained, is not set when the parsing fails
+			 * @param length number of the bytes passed by the parsing, is zero when the bytes are not enough
+			 * @return       outcome of the parsing of the sequence
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ utf8_t inspect(const string_view text, const size_t offset, uint32_t & code, size_t & length) noexcept;
 		};
 	};
 };

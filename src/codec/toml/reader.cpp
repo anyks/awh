@@ -1527,8 +1527,10 @@ bool awh::codec::toml::Reader::name(const bool end, uint32_t & count) noexcept {
 					break;
 				// Очередной знак Юникода составной части имени
 				uint32_t code = 0;
-				// Получаем количество байт очередного знака Юникода
-				const size_t length = toml::decode(this->_buffer, position, code);
+				// Количество байт очередного знака Юникода
+				size_t length = 0;
+				// Выполняем разбор очередного знака Юникода
+				const toml::utf8_t outcome = toml::inspect(this->_buffer, position, code, length);
 				/**
 				 * Если знак Юникода имени оборван концом накопленного текста
 				 *
@@ -1536,7 +1538,7 @@ bool awh::codec::toml::Reader::name(const bool end, uint32_t & count) noexcept {
 				 *       судить о нём по накопленному тексту нельзя, покуда текст не
 				 *       поступил целиком
 				 */
-				if((length == 0) && !end && ((position + 4) > this->_buffer.length())){
+				if((outcome == toml::utf8_t::TRUNCATED) && !end){
 					// Запоминаем нужду в продолжении текста
 					this->_hungry = true;
 					// Выводим признак неудачного разбора
@@ -1545,7 +1547,7 @@ bool awh::codec::toml::Reader::name(const bool end, uint32_t & count) noexcept {
 				/**
 				 * Если знак Юникода имени без кавычек не дозволен
 				 */
-				if((length == 0) || !toml::named(code))
+				if((outcome != toml::utf8_t::VALID) || !toml::named(code))
 					// Выходим из перебора знаков составной части имени
 					break;
 				// Выполняем переход к следующему знаку имени
