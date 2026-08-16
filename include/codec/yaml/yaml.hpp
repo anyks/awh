@@ -41,5 +41,6 @@
  * Подключаем заголовочные файлы модуля
  */
 #include "common.hpp"
+#include "encoding.hpp"
 
 #endif // __AWH_CODEC_YAML__

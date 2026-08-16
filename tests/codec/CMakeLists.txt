@@ -93,6 +93,7 @@ if (${GTest_FOUND})
             json/writer.cpp
             json/document.cpp
             yaml/common.cpp
+            yaml/encoding.cpp
         )
 
         # Библиотеки GTest для линковки
