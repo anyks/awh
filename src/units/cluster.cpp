@@ -951,11 +951,6 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 		 *
 		 */
 		const string & pipe = this->_io->getTarget(events[1]);
-		// ВРЕМЕННЫЙ ЩУП: имя канала, передаваемое порождаемому процессу
-		if(::getenv("AWH_PIPE_TRACE") != nullptr){
-			::fprintf(stderr, "PIPE master eid=%llu/%llu name=%s\n", static_cast <uint64_t> (events[0]), static_cast <uint64_t> (events[1]), pipe.c_str());
-			::fflush(stderr);
-		}
 		// Если имя канала обмена сообщениями получено
 		if(!pipe.empty()){
 			// Передаём имя канала порождаемому процессу через окружение
@@ -1244,11 +1239,6 @@ bool awh::unit::Cluster::attach() noexcept {
 		this->_log->print("Cluster worker event could not be created", log_t::flag_t::CRITICAL);
 		// Сообщаем, что канал обмена сообщениями не открыт
 		return false;
-	}
-	// ВРЕМЕННЫЙ ЩУП: имя канала, доставшееся работнику
-	if(::getenv("AWH_PIPE_TRACE") != nullptr){
-		::fprintf(stderr, "PIPE worker=%u name=%s\n", static_cast <uint32_t> (::getpid()), this->_fmk->convert(wstring(buffer)).c_str());
-		::fflush(stderr);
 	}
 	// Устанавливаем имя канала обмена сообщениями событию
 	this->_io->setTarget(eid, this->_fmk->convert(wstring(buffer)));

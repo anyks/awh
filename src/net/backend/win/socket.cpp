@@ -1229,11 +1229,6 @@ awh::net::socket_t awh::eth::Socket::channel(const string & name) const noexcept
 	if(!::SetNamedPipeHandleState(result, &mode, nullptr, nullptr))
 		// Заносим отказ перевода канала в строй сообщений в журнал
 		this->_log->print("%s: named pipe [%s] could not be switched to the message mode, error %lu", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, name.c_str(), ::GetLastError());
-	// ВРЕМЕННЫЙ ЩУП: исход открытия своего конца канала по имени
-	if(::getenv("AWH_PIPE_TRACE") != nullptr){
-		::fprintf(stderr, "PIPE open pid=%u handle=%u name=%s\n", static_cast <uint32_t> (::GetCurrentProcessId()), static_cast <uint32_t> (reinterpret_cast <uintptr_t> (result)), name.c_str());
-		::fflush(stderr);
-	}
 	// Выводим описатель открытого конца канала
 	return reinterpret_cast <net::socket_t> (result);
 }
@@ -1405,11 +1400,6 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 			::SetNamedPipeHandleState(client, &mode, nullptr, nullptr);
 			// Выдаём имя заведённого канала вызывающей стороне
 			name = this->_fmk->convert(pipe);
-			// ВРЕМЕННЫЙ ЩУП: концы заведённой пары и имя канала
-			if(::getenv("AWH_PIPE_TRACE") != nullptr){
-				::fprintf(stderr, "PIPE pair server=%u client=%u name=%s\n", static_cast <uint32_t> (reinterpret_cast <uintptr_t> (server)), static_cast <uint32_t> (reinterpret_cast <uintptr_t> (client)), name.c_str());
-				::fflush(stderr);
-			}
 			// Запоминаем сторону канала, ожидающую подключения
 			result[0] = reinterpret_cast <net::socket_t> (server);
 			// Запоминаем встречный конец канала

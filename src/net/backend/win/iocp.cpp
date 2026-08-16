@@ -1022,54 +1022,9 @@ static bool __awh_pool_receive__(const SOCKET sock, void * buffer, const size_t 
  */
 static bool __awh_pipe__(const SOCKET sock) noexcept;
 
-/**
- * @brief ВРЕМЕННЫЙ ЩУП: след хода работы в памяти
- *
- * @details Печать меняет ход времени и прячет расхождения, зависящие от него.
- *          Здесь же след копится в памяти одним разрядом на событие и печатается
- *          по завершении работы
- *
- * @warning Щуп ВРЕМЕННЫЙ, снимается по окончании работ
- *
- */
-struct __awh_trace_item_t {
-	char mark;
-	uint32_t sock;
-};
-static __awh_trace_item_t __awh_trace_data__[4096]{};
-static std::atomic_uint32_t __awh_trace_index__{0};
-static inline void __awh_trace__(const char mark, const SOCKET sock = 0) noexcept {
-	// Получаем место под очередную метку следа
-	const uint32_t index = __awh_trace_index__++;
-	// Если место под метку следа ещё есть
-	if(index < (sizeof(__awh_trace_data__) / sizeof(__awh_trace_data__[0]))){
-		// Запоминаем метку следа
-		__awh_trace_data__[index].mark = mark;
-		// Запоминаем описатель, к которому метка относится
-		__awh_trace_data__[index].sock = static_cast <uint32_t> (sock);
-	}
-}
-static struct __awh_trace_dumper_t {
-	~__awh_trace_dumper_t() noexcept {
-		// Если печать следа не заказана - молчим
-		if(::getenv("AWH_PIPE_TRACE") == nullptr) return;
-		// Получаем количество накопленных меток следа
-		const uint32_t count = __awh_trace_index__.load();
-		// Печатаем заголовок накопленного следа
-		::fprintf(stderr, "\nTRACE[%u]:", (unsigned) count);
-		// Печатаем накопленный след
-		for(uint32_t i = 0; i < count; i++)
-			// Печатаем очередную метку следа вместе с её описателем
-			::fprintf(stderr, " %c%u", __awh_trace_data__[i].mark, (unsigned) __awh_trace_data__[i].sock);
-		// Завершаем печать следа
-		::fprintf(stderr, "\n");
-	}
-} __awh_trace_dumper__;
 static int32_t __awh_recv__(const SOCKET sock, void * buffer, const size_t size, const int32_t flags) noexcept {
 	// Размер принятых данных, добытый родным приёмом
 	ssize_t fetched = 0;
-	// ВРЕМЕННЫЙ ЩУП: обращение приёмом сокета к описателю канала
-	if(::__awh_pipe__(sock)) ::__awh_trace__('M', sock);
 	/**
 	 * Если приём обслужен родным путём - к системе не обращаемся вовсе
 	 *
@@ -1123,8 +1078,6 @@ static int32_t __awh_recv__(const SOCKET sock, void * buffer, const size_t size,
  *
  */
 static int32_t __awh_send__(const SOCKET sock, const void * buffer, const size_t size, const int32_t flags) noexcept {
-	// ВРЕМЕННЫЙ ЩУП: обращение отправкой сокета к описателю канала
-	if(::__awh_pipe__(sock)) ::__awh_trace__('m', sock);
 	// Выводим размер переданных данных
 	return ::__awh_socket_result__(::send(sock, reinterpret_cast <const char *> (buffer), static_cast <int32_t> (size), flags));
 }
@@ -1937,9 +1890,17 @@ static bool __awh_pipe__(const SOCKET sock) noexcept {
  *       есть. Оставшееся незавершённым обращение снимается, и вызывающей стороне
  *       отвечается отсутствием данных, как ответил бы неблокирующий сокет
  *
- * @note Снятое обращение вправе оставить завершение порту, но разбор его отбросит:
- *       записи учёта за описанием со стека нет, а завершения без записи разбор
- *       числит пробуждением и пропускает
+ * @note Обмен ведётся со своим событием, и признак его помечен младшим разрядом:
+ *       пометка эта запрещает системе класть завершение в порт. Иначе завершение
+ *       обращения, ведённого описанием со стека, доставалось бы разбору, которому
+ *       владельца у него не найти
+ *
+ * @warning Своё событие здесь обязательно, и не ради порядка: ожидание исхода
+ *          наложенного обмена без него ждёт готовности САМОГО описателя, а описатель,
+ *          привязанный к порту завершений, система готовым не отмечает вовсе.
+ *          Ожидание тогда не кончается никогда - цикл событий вставал намертво прямо
+ *          в нём, и обмен замирал после первого же сообщения. Установлено следом в
+ *          памяти: последняя метка следа - подача обмена, и дальше тишина навсегда
  *
  * @param sock   описатель именованного канала
  * @param buffer буфер обмена
@@ -1961,12 +1922,9 @@ static ssize_t __awh_pipe_transfer__(const SOCKET sock, void * buffer, const siz
 		 * @note Довод тот же, что и у сокетов: данные приняты системой заранее, в наш
 		 *       же буфер, и лежат готовыми
 		 */
-		if(::__awh_pool_receive__(sock, buffer, size, fetched)){
-			// ВРЕМЕННЫЙ ЩУП: принятое выдано пулом
-			::__awh_trace__('D', sock);
+		if(::__awh_pool_receive__(sock, buffer, size, fetched))
 			// Выводим размер принятых данных
 			return fetched;
-		}
 		/**
 		 * Если по описателю заведён родной приём - обращение к системе запрещено
 		 *
@@ -1980,8 +1938,29 @@ static ssize_t __awh_pipe_transfer__(const SOCKET sock, void * buffer, const siz
 			return -1;
 		}
 	}
+	/**
+	 * Событие, которым обмен сообщает о своём исходе
+	 *
+	 * @details Заводится оно по одному на поток и живёт до конца его работы: обмен с
+	 *          каналом идёт горячим путём, и заводить событие на каждое обращение
+	 *          значило бы платить за него дважды - заведением и снятием
+	 *
+	 * @note Событие ручного сброса: сбрасывается оно подачей обмена, а взводит его
+	 *       система по его завершении
+	 */
+	static thread_local HANDLE signal = ::CreateEventW(nullptr, TRUE, FALSE, nullptr);
 	// Описание наложенного обмена
 	OVERLAPPED overlapped{};
+	/**
+	 * Ставим обмену своё событие с пометкой в младшем разряде
+	 *
+	 * @note Пометка запрещает системе класть завершение обмена в порт: разбору
+	 *       завершение это не нужно вовсе - владельца у него нет, - а порт оно
+	 *       занимало бы на каждом обращении к каналу
+	 */
+	overlapped.hEvent = reinterpret_cast <HANDLE> (reinterpret_cast <uintptr_t> (signal) | static_cast <uintptr_t> (1));
+	// Сбрасываем событие прежде подачи обмена
+	::ResetEvent(signal);
 	// Количество переданных октетов
 	DWORD bytes = 0;
 	// Выполняем обмен данными с каналом
@@ -1994,8 +1973,6 @@ static ssize_t __awh_pipe_transfer__(const SOCKET sock, void * buffer, const siz
 		return static_cast <ssize_t> (bytes);
 	// Получаем код отказа обмена
 	const DWORD error = ::GetLastError();
-	// ВРЕМЕННЫЙ ЩУП: исход обмена по каналу
-	::__awh_trace__(write ? 'w' : (error == ERROR_IO_PENDING ? 'p' : 'e'), sock);
 	// Если обмен принят системой, но не завершён
 	if(error == ERROR_IO_PENDING){
 		// Снимаем незавершённое обращение
@@ -2009,7 +1986,16 @@ static ssize_t __awh_pipe_transfer__(const SOCKET sock, void * buffer, const siz
 		 *       принятое сообщение. Проявлялось это зависимостью от хода времени:
 		 *       под задержкой щупа обмен шёл, без неё сообщение пропадало
 		 */
-		if(::GetOverlappedResult(handle, &overlapped, &bytes, TRUE) && (bytes > 0))
+		/**
+		 * Дожидаемся своего события, а не готовности описателя
+		 *
+		 * @note Ожидание ведётся событием, а исход снимается уже без ожидания: описатель,
+		 *       привязанный к порту завершений, готовым система не отмечает, и ожидание
+		 *       его не кончилось бы никогда
+		 */
+		::WaitForSingleObject(signal, INFINITE);
+		// Если снятое обращение всё же успело отработать
+		if(::GetOverlappedResult(handle, &overlapped, &bytes, FALSE) && (bytes > 0))
 			// Выводим число переданных октетов
 			return static_cast <ssize_t> (bytes);
 		// Отмечаем отсутствие данных
@@ -6419,14 +6405,9 @@ namespace port {
 			 * @note Отбрасывается оно здесь же: самим своим приходом опрос уже
 			 *       разбужен, и разбирать в нём больше нечего
 			 */
-			if(slot == nullptr){
-				// ВРЕМЕННЫЙ ЩУП: завершение, за которым записи учёта нет
-				::__awh_trace__('u', 0);
+			if(slot == nullptr)
 				// Переходим к записи следующей
 				continue;
-			}
-			// ВРЕМЕННЫЙ ЩУП: приход завершения из порта по описателю канала
-			if(::__awh_pipe__(static_cast <SOCKET> (slot->sock))) ::__awh_trace__('k', static_cast <SOCKET> (slot->sock));
 			// Получаем текущую запись общего вида
 			completion_t & completion = ::port::completions[::port::count];
 			// Устанавливаем метку поданной операции
@@ -7594,8 +7575,6 @@ namespace post {
 			 * @note Ответ `ERROR_NO_DATA` означает, что встречная сторона отключилась:
 			 *       конец разрывается и возвращается к ожиданию нового подключения
 			 */
-			// ВРЕМЕННЫЙ ЩУП: подача ожидания готовности каналу
-			::__awh_trace__('A', sock);
 			if(::ConnectNamedPipe(handle, &slot->overlapped) == 0){
 				// Получаем код ответа обращения
 				DWORD code = ::GetLastError();
@@ -7610,14 +7589,11 @@ namespace post {
 					// Отмечаем ожидание подключения принятым системой
 					else code = ERROR_IO_PENDING;
 				}
-				// ВРЕМЕННЫЙ ЩУП: исход ожидания подключения встречной стороны
-				::__awh_trace__('g', static_cast <SOCKET> (code));
 				// Если ожидание подключения принято системой
 				if(code == ERROR_IO_PENDING)
 					// Выводим результат подачи ожидания подключения встречной стороны
 					return ::post::submitted(true, code, result, "pipe connection");
-			// ВРЕМЕННЫЙ ЩУП: ожидание подключения отработало немедленно
-			} else ::__awh_trace__('G', sock);
+			}
 			/**
 			 * Если данные в канале уже лежат - выдаём готовность своим завершением
 			 *
@@ -7642,8 +7618,6 @@ namespace post {
 			accepted = static_cast <bool> (::ReadFile(handle, buffer.buf, 0, &bytes, &slot->overlapped));
 			// Получаем код отказа подачи чтения
 			const DWORD error = (accepted ? ERROR_SUCCESS : ::GetLastError());
-			// ВРЕМЕННЫЙ ЩУП: исход подачи чтения нулевой длины
-			::__awh_trace__('Z', static_cast <SOCKET> (error));
 			// Выводим результат подачи ожидания готовности к приёму
 			return ::post::submitted((accepted || (error == ERROR_MORE_DATA)), error, result, "read readiness");
 		}
@@ -7842,8 +7816,6 @@ namespace post {
 		 *       родной приём каналу тогда не подавался ни разу, а работа уходила к
 		 *       подделке готовности со всей её гонкой
 		 */
-		// ВРЕМЕННЫЙ ЩУП: исход подачи родного приёма каналу
-		if(pipe) ::__awh_trace__((accepted || (::GetLastError() == ERROR_IO_PENDING)) ? 'F' : 'f', sock);
 		const uint64_t token = ::post::submitted(accepted, (pipe ? ::GetLastError() : static_cast <DWORD> (::WSAGetLastError())), result, "receive");
 		// Если подать родной приём не удалось - освобождаем занятый буфер
 		if(token == ::inflight::INVALID)
@@ -10100,8 +10072,6 @@ namespace kernel {
 		return signal.first;
 	}
 	static bool reconcile(registry_t & state, const log_t * log) noexcept {
-		// ВРЕМЕННЫЙ ЩУП: вход в согласование по описателю канала
-		if(::__awh_pipe__(static_cast <SOCKET> (state.sock))) ::__awh_trace__('C', static_cast <SOCKET> (state.sock));
 		// Снимаем отметку расхождения: согласование выполняется прямо сейчас
 		state.pending = false;
 		/**
@@ -10198,8 +10168,6 @@ namespace kernel {
 		 *       ядру неизвестная вовсе
 		 *
 		 */
-		// ВРЕМЕННЫЙ ЩУП: отсечка повторной подачи
-		if(::__awh_pipe__(static_cast <SOCKET> (state.sock)) && state.registered && (state.applied == events) && (state.token != ::inflight::INVALID)) ::__awh_trace__('S', static_cast <SOCKET> (state.sock));
 		if(state.registered && (state.applied == events) && (state.token != ::inflight::INVALID))
 			// Выводим успешный результат: ядро и без того ожидает того же самого
 			return true;
@@ -15631,8 +15599,6 @@ namespace io {
 	static bool read(::io::ipc_t * ipc, const int64_t volume, const engine::io_t * io, const eth_t * eth, const log_t * log) noexcept {
 		// Результат работы функции
 		bool result = false;
-		// ВРЕМЕННЫЙ ЩУП: вход в чтение узла межпроцессного соединения
-		::__awh_trace__('R', static_cast <SOCKET> (ipc->transfer.fd));
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -71483,8 +71449,6 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					 *       номер буфера в ней к тому мигу вправе быть уже чужим
 					 */
 					const uint16_t bidOf = slot->bid;
-					// ВРЕМЕННЫЙ ЩУП: приход завершения по описателю канала
-					if(::__awh_pipe__(static_cast <SOCKET> (sockOf))) ::__awh_trace__(cancelled ? 'x' : 'K', static_cast <SOCKET> (sockOf));
 					// Если завершений по операции больше не будет
 					if(!more)
 						// Освобождаем запись учёта операции
@@ -71652,8 +71616,6 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 							state->registered = false;
 							// Снимаем набор признаков, поданный ядру последним
 							state->applied = 0;
-							// ВРЕМЕННЫЙ ЩУП: судьба подписки после завершения ожидания
-							if(::__awh_pipe__(static_cast <SOCKET> (state->sock))) ::__awh_trace__((state->enabled != 0) ? (state->pending ? 'q' : 'Q') : 'z', static_cast <SOCKET> (state->sock));
 							// Если включённые подписки на дескрипторе остались и учёт согласия не ждёт
 							if((state->enabled != 0) && !state->pending){
 								// Отмечаем учёт разошедшимся с ядром
