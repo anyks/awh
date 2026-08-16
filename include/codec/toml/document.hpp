@@ -648,6 +648,130 @@ namespace awh {
 				private:
 					/**
 					 * \~russian
+					 * Состояние обхода записей, удерживаемое между перестроениями указателей
+					 *
+					 * @details Перестроение обходит всё дерево, и правка, зовущая его на всякую
+					 * заводимую запись, обращает сборку дерева правками в квадратичную: восемь
+					 * тысяч правок стоили три секунды, и цена одной правки удваивалась с каждым
+					 * удвоением их числа. Запись, встающая в конец перечня, порядковых номеров
+					 * прежних записей не сдвигает, и указатели ей достаточно нарастить - для
+					 * чего и держится состояние, с каким обход дошёл до конца дерева
+					 *
+					 * @note Разбор записи ведётся одним и тем же телом и при полном перестроении,
+					 * и при доборном наращивании: два списка правил разошлись бы при первой же
+					 * правке одного из них
+					 *
+					 * \~english
+					 * State of the traversal of the records kept between the rebuildings of the indexes
+					 * @details A rebuilding traverses the whole tree, and an editing calling it for every
+					 * created record turns the assembly of a tree by the editings into a quadratic one: eight
+					 * thousand editings used to cost three seconds, and the price of one editing doubled with
+					 * every doubling of their number. A record placed at the end of the list does not shift the
+					 * ordinal numbers of the previous records, and it is enough to grow the indexes for it —
+					 * which is what the state the traversal reached the end of the tree with is kept for
+					 * @note The parsing of a record is conducted by one and the same body both at a full
+					 * rebuilding and at an incremental growing: two lists of the rules would diverge at the
+					 * first editing of one of them
+					 *
+					 * \~
+					 */
+					typedef struct Traversal {
+						/**
+						 * \~russian
+						 * Ключ указателя таблицы, которой принадлежат разбираемые записи
+						 * \~english
+						 * Key of the index of the table the records being parsed belong to
+						 * \~
+						 */
+						string table;
+						/**
+						 * \~russian
+						 * Количество таблиц, объявленных каждым набором таблиц
+						 * \~english
+						 * Number of the tables declared by every array of tables
+						 * \~
+						 */
+						unordered_map <string, uint32_t> ordinals;
+						/**
+						 * \~russian
+						 * Объявленные дочерние имена по каждому объемлющему имени
+						 *
+						 * @note Перечень дочерних имён держится порядком объявления, и сличать
+						 * добавляемое имя перебором его значило бы обращать перестроение в
+						 * квадратичное: текст из одних объявлений таблиц собирался вдевятеро
+						 * медленнее текста с парами, и замер это показал сразу
+						 *
+						 * \~english
+						 * Declared child names for every enclosing name
+						 * @note The list of the child names is kept in the order of the declaration, and
+						 * comparing an added name by a traversal of it would turn the rebuilding into a
+						 * quadratic one: a text made of the declarations of the tables alone used to be
+						 * assembled nine times slower than a text with the pairs, and a measurement showed it at once
+						 *
+						 * \~
+						 */
+						unordered_map <string, unordered_set <string>> declared;
+						/**
+						 * \~russian
+						 * Подсказки места вставки записи по порядковому номеру таблицы
+						 *
+						 * @details Заведение пары ищет место за последней парой её таблицы обходом
+						 * области таблицы, а область эта растёт с каждой заведённой парой: обход
+						 * выходил квадратичным - шестнадцать тысяч правок стоили сто двадцать
+						 * восемь миллионов шагов. Подсказка хранит место, найденное прошлым
+						 * заведением, и обход продолжается от него, проходя лишь записи, с тех
+						 * пор добавленные
+						 *
+						 * @note Подсказка есть подсказка, а не истина: правило поиска места
+						 * остаётся одно и то же, и обход от подсказки даёт тот же итог, что и
+						 * обход с начала области. Всякая правка, сдвигающая порядковые номера
+						 * записей, подсказки отменяет вместе с перестроением указателей
+						 *
+						 * \~english
+						 * Hints of the place of the insertion of a record by the ordinal number of a table
+						 * @details The creation of a pair looks for a place after the last pair of its table by a
+						 * traversal of the area of the table, and that area grows with every created pair: the
+						 * traversal used to be quadratic — sixteen thousand editings cost one hundred twenty eight
+						 * million steps. A hint keeps the place found by the previous creation, and the traversal
+						 * continues from it, passing only the records added since then
+						 * @note A hint is a hint rather than a truth: the rule of the search for a place remains one
+						 * and the same, and a traversal from a hint gives the same result as a traversal from the
+						 * beginning of the area. Every editing that shifts the ordinal numbers of the records
+						 * cancels the hints together with the rebuilding of the indexes
+						 *
+						 * \~
+						 */
+						unordered_map <uint32_t, size_t> hints;
+						/**
+						 * \~russian
+						 * @brief Метод сброса состояния обхода записей
+						 * \~english
+						 * @brief Method of the reset of the state of the traversal of the records
+						 * \~
+						 */
+						void reset() noexcept {
+							// Выполняем очистку ключа указателя таблицы
+							this->table.clear();
+							// Выполняем очистку количества таблиц наборов
+							this->ordinals.clear();
+							// Выполняем очистку объявленных дочерних имён
+							this->declared.clear();
+							// Выполняем очистку подсказок места вставки записи
+							this->hints.clear();
+						}
+					} traversal_t;
+				private:
+					/**
+					 * \~russian
+					 * Состояние обхода, с каким перестроение дошло до конца дерева
+					 * \~english
+					 * State of the traversal the rebuilding reached the end of the tree with
+					 * \~
+					 */
+					traversal_t _traversal;
+				private:
+					/**
+					 * \~russian
 					 * Количество записей и узлов, правкой в мусор обращённых
 					 *
 					 * @note Считается приблизительно: узел замещённого значения идёт за один,
@@ -815,6 +939,46 @@ namespace awh {
 					 * \~
 					 */
 					void reindex() noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод внесения записи дерева в указатели поиска
+					 *
+					 * @note Тело это общее у полного перестроения и у доборного наращивания:
+					 * порядок разбора записи задаётся в одном месте
+					 *
+					 * @param index порядковый номер вносимой записи дерева настроек
+					 *
+					 * \~english
+					 * @brief Method of entering a record of the tree into the indexes of the search
+					 * @note This body is common to the full rebuilding and to the incremental growing:
+					 * the order of the parsing of a record is set in one place
+					 * @param index ordinal number of the record of the tree of the settings being entered
+					 *
+					 * \~
+					 */
+					void absorb(const uint32_t index) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод наращивания указателей записью, вставшей в конец перечня
+					 *
+					 * @details Запись, встающая в конец, порядковых номеров прежних записей не
+					 * сдвигает: перестраивать указатели целиком незачем
+					 *
+					 * @note Уплотнение дерева при этом не исполняется: оно сдвигает номера всех
+					 * записей и требует полного перестроения, а зовётся оно по накоплении мусора,
+					 * которого заведение записи не создаёт
+					 *
+					 * \~english
+					 * @brief Method of growing the indexes by a record placed at the end of the list
+					 * @details A record placed at the end does not shift the ordinal numbers of the previous
+					 * records: there is no point in rebuilding the indexes entirely
+					 * @note The compaction of the tree is not performed at that: it shifts the numbers of all
+					 * the records and requires a full rebuilding, while it is called upon the accumulation of
+					 * the garbage, which the creation of a record does not produce
+					 *
+					 * \~
+					 */
+					void grow() noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод уплотнения дерева настроек
