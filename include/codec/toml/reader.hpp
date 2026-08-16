@@ -958,6 +958,32 @@ namespace awh {
 					bool array(const bool end, const uint32_t depth) noexcept;
 					/**
 					 * \~russian
+					 * @brief Метод пропуска пробельной обвязки и примечаний внутри перечня
+					 *
+					 * @details Перечень описание дозволяет записывать в несколько строк вместе
+					 * с примечаниями внутри, и пропуск этот приходится вести дважды - перед
+					 * очередным значением и за ним. Тело у обоих пропусков одно: два свода
+					 * правил разошлись бы при первой же правке одного из них
+					 *
+					 * @param end     признак того, что текст поступил целиком
+					 * @param opening положение открытия перечня в накопленном тексте
+					 * @return        признак успешного разбора
+					 *
+					 * \~english
+					 * @brief Method of skipping the whitespace framing and the comments inside an array
+					 * @details The specification allows an array to be written in several lines together
+					 * with comments inside, and this skipping has to be conducted twice — before
+					 * the next value and after it. The body of both skippings is one: two sets
+					 * of the rules would diverge at the very first edit of one of them
+					 * @param end     flag of the text having arrived in full
+					 * @param opening position of the opening of the array in the accumulated text
+					 * @return        flag of a successful parsing
+					 *
+					 * \~
+					 */
+					bool interlude(const bool end, const size_t opening) noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод разбора встроенной таблицы
 					 *
 					 * @param end    признак того, что текст поступил целиком

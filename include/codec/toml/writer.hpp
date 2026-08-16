@@ -1182,7 +1182,10 @@ namespace awh {
 					 *
 					 * @details Текст выдаётся собранным лишь целиком: незакрытый перечень
 					 * либо имя ключа без значения оставляют его недописанным, и выдача
-					 * такого текста ответила бы отказом
+					 * такого текста ответила бы отказом. Отказом отвечает и текст, чья
+					 * последняя строка знаком конца строки не завершена: отказ, случившийся
+					 * после того, как операция уже дописала начало своё, оставляет строку
+					 * оборванной
 					 *
 					 * @return собранный текст настроек
 					 *
@@ -1190,7 +1193,10 @@ namespace awh {
 					 * @brief Method of getting the assembled settings text
 					 * @details The text is issued as assembled only in full: an unclosed array
 					 * or the name of a key without a value leave it unfinished, and the issuance
-					 * of such a text would answer with a refusal
+					 * of such a text would answer with a refusal. A text whose last line is not
+					 * terminated by an end-of-line character answers with a refusal as well: a failure
+					 * that occurred after the operation had already appended its beginning leaves
+					 * the line cut off
 					 * @return assembled settings text
 					 *
 					 * \~
