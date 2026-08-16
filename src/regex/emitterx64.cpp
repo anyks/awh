@@ -109,6 +109,19 @@ namespace {
 	#endif
 
 	/**
+	 * @brief Придача кадру, указатель стека к границе возвращающая
+	 *
+	 * @details Вызов сместил указатель стека на восемь байтов от границы
+	 *          шестнадцати, а сохранений регистров входом размещается чётное
+	 *          число, отчего границу возвращает придача восьми байтов к кадру.
+	 *          Соглашение требует выравнивания указателя на границу шестнадцати
+	 *          в самый миг вызова подпрограммы, и нарушение его валит работу
+	 *          на первом же обращении к вектору внутри вызываемой подпрограммы.
+	 *
+	 */
+	constexpr uint32_t ALIGN = 8;
+
+	/**
 	 * @brief Наибольшее смещение перехода в байтах
 	 *
 	 */
@@ -261,10 +274,10 @@ void awh::regex::Emitter::prologue(const uint32_t frame) noexcept {
 		 * Выполняем сохранение регистров, вызываемой стороне доверенных
 		 *
 		 * @details Windows числит оберегаемыми вызываемым сверх прочего rsi
-		 *          и rdi, отчего сохраняются пять регистров: rbx, rsi, rdi,
-		 *          r12 и r13. Число сохранений нечётно намеренно - вызов
-		 *          сместил указатель стека на восемь байтов от границы
-		 *          шестнадцати, и пять сохранений возвращают его к ней.
+		 *          и rdi, отчего сохраняются шесть регистров: rbx, rsi, rdi,
+		 *          r12, r13 и r14. Последнему отведён адрес записи кадра.
+		 *          Указатель стека к границе шестнадцати возвращает придача
+		 *          восьми байтов к кадру - см. «ALIGN».
 		 *
 		 */
 		emit8(this->_code, 0x53);
@@ -274,6 +287,8 @@ void awh::regex::Emitter::prologue(const uint32_t frame) noexcept {
 		emit8(this->_code, 0x54);
 		emit8(this->_code, 0x41);
 		emit8(this->_code, 0x55);
+		emit8(this->_code, 0x41);
+		emit8(this->_code, 0x56);
 		/**
 		 * Выполняем чтение адреса таблицы обстановки из кадра вызывающего
 		 *
@@ -281,11 +296,11 @@ void awh::regex::Emitter::prologue(const uint32_t frame) noexcept {
 		 *          регистром: он лежит за адресом возврата и участком
 		 *          в тридцать два байта, вызывающим отведённым, то есть
 		 *          по смещению сорока байтов от указателя стека на входе.
-		 *          Пять сохранений сместили указатель ещё на сорок байтов,
-		 *          отчего смещение чтения - восемьдесят.
+		 *          Шесть сохранений сместили указатель ещё на сорок восемь
+		 *          байтов, отчего смещение чтения - восемьдесят восемь.
 		 *
 		 */
-		memory(this->_code, 0x8B, static_cast <uint32_t> (reg_t::CONTEXT), static_cast <uint32_t> (reg_t::STACK), 80);
+		memory(this->_code, 0x8B, static_cast <uint32_t> (reg_t::CONTEXT), static_cast <uint32_t> (reg_t::STACK), 88);
 		/**
 		 * Выполняем отведение кадра вызова порождаемого сопоставителя
 		 *
@@ -295,16 +310,15 @@ void awh::regex::Emitter::prologue(const uint32_t frame) noexcept {
 		 *          кадра самого сопоставителя размещаются уже за ним.
 		 *
 		 */
-		this->sub(reg_t::STACK, reg_t::STACK, (frame + SHADOW));
+		this->sub(reg_t::STACK, reg_t::STACK, (frame + SHADOW + ALIGN));
 	#else
 		/**
 		 * Выполняем сохранение регистров, вызываемой стороне доверенных
 		 *
-		 * @details Сохраняются регистры rbx, r12 и r13, каким отведены второе
-		 *          промежуточное значение, значение сохраняемое и адрес возврата.
-		 *          Число сохранений нечётно намеренно: вызов сместил указатель
-		 *          стека на восемь байтов от границы шестнадцати, и три сохранения
-		 *          возвращают его к ней.
+		 * @details Сохраняются регистры rbx, r12, r13 и r14, каким отведены второе
+		 *          промежуточное значение, значение сохраняемое, адрес возврата
+		 *          и адрес записи кадра. Указатель стека к границе шестнадцати
+		 *          возвращает придача восьми байтов к кадру - см. «ALIGN».
 		 *
 		 */
 		emit8(this->_code, 0x53);
@@ -312,12 +326,10 @@ void awh::regex::Emitter::prologue(const uint32_t frame) noexcept {
 		emit8(this->_code, 0x54);
 		emit8(this->_code, 0x41);
 		emit8(this->_code, 0x55);
-		/**
-		 * Если кадр вызова порождаемому сопоставителю требуется
-		 */
-		if(frame > 0)
-			// Выполняем отведение кадра вызова порождаемого сопоставителя
-			this->sub(reg_t::STACK, reg_t::STACK, frame);
+		emit8(this->_code, 0x41);
+		emit8(this->_code, 0x56);
+		// Выполняем отведение кадра вызова порождаемого сопоставителя
+		this->sub(reg_t::STACK, reg_t::STACK, (frame + ALIGN));
 	#endif
 }
 /**
@@ -329,10 +341,12 @@ void awh::regex::Emitter::prologue(const uint32_t frame) noexcept {
 void awh::regex::Emitter::epilogue(const uint32_t frame) noexcept {
 	#if defined(_WIN32)
 		// Выполняем освобождение кадра вызова вместе с участком доводов
-		this->add(reg_t::STACK, reg_t::STACK, (frame + SHADOW));
+		this->add(reg_t::STACK, reg_t::STACK, (frame + SHADOW + ALIGN));
 		/**
 		 * Выполняем восстановление регистров, входом сохранённых
 		 */
+		emit8(this->_code, 0x41);
+		emit8(this->_code, 0x5E);
 		emit8(this->_code, 0x41);
 		emit8(this->_code, 0x5D);
 		emit8(this->_code, 0x41);
@@ -341,21 +355,39 @@ void awh::regex::Emitter::epilogue(const uint32_t frame) noexcept {
 		emit8(this->_code, 0x5E);
 		emit8(this->_code, 0x5B);
 	#else
-		/**
-		 * Если кадр вызова порождаемому сопоставителю отводился
-		 */
-		if(frame > 0)
-			// Выполняем освобождение кадра вызова порождаемого сопоставителя
-			this->add(reg_t::STACK, reg_t::STACK, frame);
+		// Выполняем освобождение кадра вызова порождаемого сопоставителя
+		this->add(reg_t::STACK, reg_t::STACK, (frame + ALIGN));
 		/**
 		 * Выполняем восстановление регистров, входом сохранённых
 		 */
+		emit8(this->_code, 0x41);
+		emit8(this->_code, 0x5E);
 		emit8(this->_code, 0x41);
 		emit8(this->_code, 0x5D);
 		emit8(this->_code, 0x41);
 		emit8(this->_code, 0x5C);
 		emit8(this->_code, 0x5B);
 	#endif
+}
+/**
+ * @brief Метод отведения записи вложенного уровня
+ *
+ * @param frame размер отводимой записи в байтах
+ *
+ */
+void awh::regex::Emitter::enter(const uint32_t frame) noexcept {
+	// Выполняем переход к записи уровня вложенного
+	this->add(reg_t::RECORD, reg_t::RECORD, frame);
+}
+/**
+ * @brief Метод снятия записи вложенного уровня
+ *
+ * @param frame размер снимаемой записи в байтах
+ *
+ */
+void awh::regex::Emitter::leave(const uint32_t frame) noexcept {
+	// Выполняем возврат к записи уровня вызывающего
+	this->sub(reg_t::RECORD, reg_t::RECORD, frame);
 }
 /**
  * @brief Метод размещения перехода к метке

@@ -42,6 +42,26 @@ if (${CMAKE_BUILD_${BENCHMARK_NAME}_BENCHMARKS})
         message(STATUS "Build benchmarks XML submodule: No\n")
     endif (${CMAKE_BUILD_${BENCHMARK_NAME}_XML_BENCHMARK})
 
+    # Указываем что нужно собрать бенчмарки для контейнера JSON
+    option(CMAKE_BUILD_${BENCHMARK_NAME}_JSON_BENCHMARK "Build JSON benchmark for ${BENCHMARK_NAME}" ON)
+
+    # Если нужно собрать бенчмарки для контейнера JSON
+    if (${CMAKE_BUILD_${BENCHMARK_NAME}_JSON_BENCHMARK})
+        # Выводим сообщение о сборке бенчмарков для контейнера JSON
+        message(STATUS "Build benchmarks JSON submodule: Yes\n")
+        # Дополняем список источников бенчмарками для контейнера JSON
+        list(APPEND ${PROJECT_NAME}_BENCHMARK_SOURCES
+            json/json.cpp
+            json/reader.cpp
+            json/writer.cpp
+            json/document.cpp
+        )
+    # Если не нужно собрать бенчмарки для контейнера JSON
+    else()
+        # Выводим сообщение о сборке бенчмарков для контейнера JSON
+        message(STATUS "Build benchmarks JSON submodule: No\n")
+    endif (${CMAKE_BUILD_${BENCHMARK_NAME}_JSON_BENCHMARK})
+
     # Указываем что нужно собрать бенчмарки для контейнера INI
     option(CMAKE_BUILD_${BENCHMARK_NAME}_INI_BENCHMARK "Build INI benchmark for ${BENCHMARK_NAME}" ON)
 

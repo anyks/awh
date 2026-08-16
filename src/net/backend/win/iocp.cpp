@@ -7451,8 +7451,19 @@ namespace post {
 		const net::socket_t sock = ((slot != nullptr) ? slot->sock : net::invalid_socket_t);
 		// Освобождаем запись учёта: завершения по операции не будет
 		::inflight::release(token);
-		// Если объект для работы с логами задан
-		if(::post::log != nullptr)
+		/**
+		 * Незанятый конец канала отказом не считается
+		 *
+		 * @details Конец, заведённый именем, свободен до тех пор, пока встречная сторона
+		 *          по нему не подключилась, и обмен ему в эту пору система отвергает
+		 *          кодом 233. Это обычное течение работы, а не отказ: движок отступает к
+		 *          ожиданию подключения и подаёт приём заново, когда сторона придёт
+		 *
+		 * @note Прежде отказ этот писался уровнем «критично» на каждый заведённый канал,
+		 *       и запись сбивала разбор с толку - выглядела она поломкой обмена, каковой
+		 *       не было
+		 */
+		if((error != ERROR_PIPE_NOT_CONNECTED) && (::post::log != nullptr))
 			// Записываем ошибку в лог
 			::post::log->print("%s: cannot submit %s on descriptor %llu: %s", log_t::flag_t::CRITICAL, ::__AWH_IO_BACKEND__, name, static_cast <uint64_t> (sock), ::kernel::message(error).c_str());
 		// Выводим отсутствие метки завершения
@@ -33876,6 +33887,15 @@ namespace io {
 			case AF_INET6:
 				// Выводим признак привязанности дескриптора к порту
 				return (::trust_cast <struct sockaddr_in6> (endpoint).sin6_port != 0);
+			/**
+			 * Для семейства UNIX-доменных сокетов
+			 *
+			 * @note Привязанность здесь меряется путём, а не портом: непривязанный
+			 *       UNIX-доменный сокет отвечает пустым путём
+			 */
+			case AF_UNIX:
+				// Выводим признак привязанности дескриптора к пути
+				return (::trust_cast <struct sockaddr_un> (endpoint).sun_path[0] != '\0');
 		}
 		// Выводим отсутствие привязки дескриптора
 		return false;
@@ -33912,6 +33932,18 @@ namespace io {
 			case static_cast <uint8_t> (event::node_t::SERVER):
 				// Выводим дескриптор сокета сервера
 				return awh_cast <const ::io::server_t *> (node)->fd;
+			// Если узел является принятым подключением
+			case static_cast <uint8_t> (event::node_t::PEER):
+				// Выводим дескриптор сокета принятого подключения
+				return awh_cast <const ::io::peer_t *> (node)->transfer.fd;
+			// Если узел является межпроцессным соединением
+			case static_cast <uint8_t> (event::node_t::IPC):
+				// Выводим дескриптор сокета межпроцессного соединения
+				return awh_cast <const ::io::ipc_t *> (node)->transfer.fd;
+			// Если узел является исходящим узлом
+			case static_cast <uint8_t> (event::node_t::ORIGIN):
+				// Выводим дескриптор сокета исходящего узла
+				return awh_cast <const ::io::origin_t *> (node)->transfer.fd;
 		}
 		// Выводим недействительный дескриптор сокета
 		return net::invalid_socket_t;
@@ -33978,6 +34010,140 @@ namespace io {
 			#endif
 		}
 		// Возвращаем значение по умолчанию
+		return false;
+	}
+	/**
+	 * @brief Функция сверки устройства узла с устройством принятого снимка
+	 *
+	 * @details Семейство, тип и протокол узла задаются при его заведении, и снимок
+	 *          обязан отвечать им в точности. Расхождение означает, что снимок пришёл
+	 *          не от того события: приняв его, движок отдал бы потребителю событие,
+	 *          работающее не тем, чем он его заводил
+	 *
+	 * @note Протокол сверяется лишь тогда, когда узлу он задан явно: у узла, заведённого
+	 *       без протокола, система выбирает его сама по семейству и виду, и сверять
+	 *       выбранное не с чем
+	 *
+	 * @param node   узел события
+	 * @param family семейство адресов, снятое в снимок
+	 * @param type   вид устройства обмена, снятый в снимок
+	 * @param proto  протокол, снятый в снимок
+	 * @return       признак совпадения устройства узла со снимком
+	 *
+	 */
+	static bool coherence(const ::io::node_t * node, const int32_t family, const int32_t type, const int32_t proto) noexcept {
+		/**
+		 * Определяем семейство адресов узла
+		 */
+		switch(static_cast <uint8_t> (node->state.family)){
+			// Если семейство адресов является IPv4
+			case static_cast <uint8_t> (event::family_t::IPV4): if(family != AF_INET) return false; break;
+			// Если семейство адресов является IPv6
+			case static_cast <uint8_t> (event::family_t::IPV6): if(family != AF_INET6) return false; break;
+			// Если семейство адресов является UNIX-доменным
+			case static_cast <uint8_t> (event::family_t::UDS): if(family != AF_UNIX) return false; break;
+			// Для прочих семейств адресов сверять нечего: дескриптора они не держат
+			default: return false;
+		}
+		/**
+		 * Определяем вид устройства обмена узла
+		 */
+		switch(static_cast <uint8_t> (node->state.type)){
+			// Если устройство обмена является потоковым
+			case static_cast <uint8_t> (event::type_t::STREAM): if(type != SOCK_STREAM) return false; break;
+			// Если устройство обмена является дейтаграммным
+			case static_cast <uint8_t> (event::type_t::DATAGRAM): if(type != SOCK_DGRAM) return false; break;
+			// Если устройство обмена является сырым
+			case static_cast <uint8_t> (event::type_t::RAW): if(type != SOCK_RAW) return false; break;
+			// Для прочих видов устройства обмена: у этой системы их нет вовсе
+			default: return false;
+		}
+		/**
+		 * Определяем протокол узла
+		 */
+		switch(static_cast <uint8_t> (node->state.protocol)){
+			// Если протоколом является TCP
+			case static_cast <uint8_t> (event::protocol_t::TCP): return (proto == IPPROTO_TCP);
+			// Если протоколом является UDP
+			case static_cast <uint8_t> (event::protocol_t::UDP): return (proto == IPPROTO_UDP);
+		}
+		// Выводим совпадение устройства: протокол узлу явно не задан
+		return true;
+	}
+	/**
+	 * @brief Функция передачи узлу готового дескриптора сокета
+	 *
+	 * @details Обратна функции заведения сокета: та заводит дескриптор сама, а эта
+	 *          принимает готовый - поднятый из снимка, снятого чужим процессом.
+	 *          Дальше узел идёт тем же путём, что и узел с заведённым сокетом:
+	 *          различие кончается здесь
+	 *
+	 * @note Разновидности узлов те же, что и у заведения: дескриптор держат лишь те
+	 *       узлы, которым сокет заводит фиксация настроек
+	 *
+	 * @param node узел события
+	 * @param sock передаваемый узлу дескриптор сокета
+	 * @param log  объект работы с логами
+	 * @return     результат передачи дескриптора узлу
+	 *
+	 */
+	static bool adopt(::io::node_t * node, const net::socket_t sock, const log_t * log) noexcept {
+		/**
+		 * Определяем чем является текущий узел
+		 */
+		switch(static_cast <uint8_t> (node->state.node)){
+			// Если узел является клиентом
+			case static_cast <uint8_t> (event::node_t::CLIENT): {
+				// Передаём узлу клиента готовый дескриптор сокета
+				awh_cast <::io::client_t *> (node)->transfer.fd = sock;
+				// Выводим успешный результат
+				return true;
+			}
+			// Если узел является сервером
+			case static_cast <uint8_t> (event::node_t::SERVER): {
+				// Передаём узлу сервера готовый дескриптор сокета
+				awh_cast <::io::server_t *> (node)->fd = sock;
+				// Выводим успешный результат
+				return true;
+			}
+			/**
+			 * Если узел является принятым подключением
+			 *
+			 * @note Принятое подключение переезжает наравне с прочими: поле описателя у
+			 *       него то же самое. Отказывать ему значило бы держать перекос - везти
+			 *       описатель оно годилось, а переехать само не могло
+			 */
+			case static_cast <uint8_t> (event::node_t::PEER): {
+				// Передаём узлу принятого подключения готовый дескриптор сокета
+				awh_cast <::io::peer_t *> (node)->transfer.fd = sock;
+				// Выводим успешный результат
+				return true;
+			}
+			// Если узел является исходящим узлом
+			case static_cast <uint8_t> (event::node_t::ORIGIN): {
+				// Передаём узлу исходящего узла готовый дескриптор сокета
+				awh_cast <::io::origin_t *> (node)->transfer.fd = sock;
+				// Выводим успешный результат
+				return true;
+			}
+		}
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			log->debug(
+				"Socket handover is not possible for the specified node type",
+				__PRETTY_FUNCTION__, make_tuple(node, node->id), log_t::flag_t::CRITICAL
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log->print("Socket handover is not possible for the specified node type", log_t::flag_t::CRITICAL);
+		#endif
+		// Выводим результат отказа
 		return false;
 	}
 	/**
@@ -41764,7 +41930,15 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																// Получаем размер объекта сокета
 																const socklen_t size = (offsetof(struct sockaddr_un, sun_path) + ::strlen(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path));
 																// Выполняем бинд сокета сервера на адрес целевой машины
-																if(!(result = (::__awh_bind__(server->fd, &::trust_cast <struct sockaddr> (server->endpoint.server), size) == 0))){
+/**
+																 * Привязка пропускается у дескриптора, пришедшего снимком
+																 *
+																 * @note Такой дескриптор приходит уже привязанным, а у слушающего -
+																 *       ещё и слушающим: повторная привязка отвечала бы отказом.
+																 *       Спрашивается это у самого дескриптора, а не по тому, каким
+																 *       путём он появился, - так путь заведения остаётся единственным
+																 */
+																if(!(result = (::io::bound(server->fd) || (::__awh_bind__(server->fd, &::trust_cast <struct sockaddr> (server->endpoint.server), size) == 0)))){
 																	// Если установлена функция обратного вызова
 																	if(server->callbacks.status != nullptr)
 																		// Вызываем функцию обратного вызова об ошибке отказа
@@ -41817,7 +41991,15 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																// Получаем размер объекта сокета
 																const socklen_t size = (offsetof(struct sockaddr_un, sun_path) + ::strlen(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path));
 																// Выполняем бинд сокета сервера на адрес целевой машины
-																if(!(result = (::__awh_bind__(server->fd, &::trust_cast <struct sockaddr> (server->endpoint.server), size) == 0))){
+/**
+																 * Привязка пропускается у дескриптора, пришедшего снимком
+																 *
+																 * @note Такой дескриптор приходит уже привязанным, а у слушающего -
+																 *       ещё и слушающим: повторная привязка отвечала бы отказом.
+																 *       Спрашивается это у самого дескриптора, а не по тому, каким
+																 *       путём он появился, - так путь заведения остаётся единственным
+																 */
+																if(!(result = (::io::bound(server->fd) || (::__awh_bind__(server->fd, &::trust_cast <struct sockaddr> (server->endpoint.server), size) == 0)))){
 																	// Если установлена функция обратного вызова
 																	if(server->callbacks.status != nullptr)
 																		// Вызываем функцию обратного вызова об ошибке отказа
@@ -41990,7 +42172,15 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 														// Обнуляем серверную структуру
 														::memset(&(::trust_cast  <struct sockaddr_in> (server->endpoint.server).sin_zero), 0, sizeof(::trust_cast  <struct sockaddr_in> (server->endpoint.server).sin_zero));
 														// Выполняем бинд сокета сервера на адрес целевой машины
-														if(!(result = (::__awh_bind__(server->fd, &::trust_cast <struct sockaddr> (server->endpoint.server), server->endpoint.size) == 0))){
+/**
+																 * Привязка пропускается у дескриптора, пришедшего снимком
+																 *
+																 * @note Такой дескриптор приходит уже привязанным, а у слушающего -
+																 *       ещё и слушающим: повторная привязка отвечала бы отказом.
+																 *       Спрашивается это у самого дескриптора, а не по тому, каким
+																 *       путём он появился, - так путь заведения остаётся единственным
+																 */
+														if(!(result = (::io::bound(server->fd) || (::__awh_bind__(server->fd, &::trust_cast <struct sockaddr> (server->endpoint.server), server->endpoint.size) == 0)))){
 															// Если установлена функция обратного вызова
 															if(server->callbacks.status != nullptr)
 																// Вызываем функцию обратного вызова об ошибке отказа
@@ -42138,7 +42328,15 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 														 */
 														::trust_cast <struct sockaddr_in6> (server->endpoint.server).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (host->ip.get())->zone;
 														// Выполняем бинд события
-														if(!(result = (::__awh_bind__(server->fd, &::trust_cast <struct sockaddr> (server->endpoint.server), server->endpoint.size) == 0))){
+/**
+																 * Привязка пропускается у дескриптора, пришедшего снимком
+																 *
+																 * @note Такой дескриптор приходит уже привязанным, а у слушающего -
+																 *       ещё и слушающим: повторная привязка отвечала бы отказом.
+																 *       Спрашивается это у самого дескриптора, а не по тому, каким
+																 *       путём он появился, - так путь заведения остаётся единственным
+																 */
+														if(!(result = (::io::bound(server->fd) || (::__awh_bind__(server->fd, &::trust_cast <struct sockaddr> (server->endpoint.server), server->endpoint.size) == 0)))){
 															// Если установлена функция обратного вызова
 															if(server->callbacks.status != nullptr)
 																// Вызываем функцию обратного вызова об ошибке отказа
@@ -60396,6 +60594,247 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 	}
 	// Возвращаем значение по умолчанию
 	return false;
+}
+/**
+ * @brief Метод снятия переносимого снимка события для чужого процесса
+ *
+ * @details У этой системы снимок везёт САМО описание устройства: система выдаёт его
+ *          октетами (`WSAPROTOCOL_INFOW`), и служебных данных, какими описатель
+ *          передаётся у POSIX, здесь нет вовсе. Оттого узел `dest` нужен лишь затем,
+ *          чтобы опознать процесс-получателя: описание готовится в его контексте и
+ *          годно ему одному
+ *
+ * @note Годным переносчиком у этой системы служит лишь именованный канал: только по
+ *       нему система называет процесс на встречном конце. Узел домена UNIX негоден -
+ *       служебных данных эта система не знает, и описателей по ним не передаёт
+ *
+ * @param id       идентификатор передаваемого события
+ * @param dest     идентификатор события, ведущего к процессу-получателю
+ * @param snapshot буфер, куда складывается снятый снимок
+ * @return         результат снятия снимка события
+ *
+ */
+bool awh::engine::IO::snapshot(const event::id_t id, const event::id_t dest, vector <uint8_t> & snapshot) noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Очищаем буфер снимка от того, что оставил прежний вызов
+	snapshot.clear();
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора передаваемого события
+		auto i = ::__awh_nodes__.find(id);
+		// Выполняем поиск идентификатора события, ведущего к получателю
+		auto j = ::__awh_nodes__.find(dest);
+		// Если хотя бы одно из событий не найдено
+		if((i == ::__awh_nodes__.end()) || (j == ::__awh_nodes__.end())){
+			// Записываем ошибку в лог
+			this->_log->print("%s: snapshot is not possible, event is not found", log_t::flag_t::CRITICAL, ::__AWH_IO_BACKEND__);
+			// Выводим результат
+			return result;
+		}
+		// Получаем дескриптор передаваемого события
+		const net::socket_t sock = ::io::descriptor(i->second.get());
+		// Если у передаваемого события дескриптора нет вовсе
+		if(sock == net::invalid_socket_t){
+			// Записываем ошибку в лог
+			this->_log->print("%s: snapshot is not possible, event %llu has no descriptor", log_t::flag_t::CRITICAL, ::__AWH_IO_BACKEND__, static_cast <uint64_t> (id));
+			// Выводим результат
+			return result;
+		}
+		/**
+		 * Если событие-переносчик не является межпроцессным соединением по каналу
+		 *
+		 * @note Отказ здесь честный и с причиной: годность переносчика решает система,
+		 *       и молчаливая пустышка увела бы разбор в сторону
+		 */
+		if((j->second->state.node != event::node_t::IPC) || (j->second->state.family != event::family_t::PIPE)){
+			// Записываем ошибку в лог
+			this->_log->print("%s: snapshot is not possible, event %llu cannot carry a descriptor on this system", log_t::flag_t::CRITICAL, ::__AWH_IO_BACKEND__, static_cast <uint64_t> (dest));
+			// Выводим результат
+			return result;
+		}
+		// Получаем описатель канала, ведущего к процессу-получателю
+		const HANDLE handle = reinterpret_cast <HANDLE> (static_cast <uintptr_t> (awh_cast <::io::ipc_t *> (j->second.get())->transfer.fd));
+		// Номер процесса, которому предназначается снимок
+		ULONG pid = 0;
+		/**
+		 * Спрашиваем у системы процесс на встречном конце канала
+		 *
+		 * @details Спрашивается он двумя обращениями, и оба законны: у конца, назвавшего
+		 *          канал, встречным будет подключившийся, у конца, открытого по имени, -
+		 *          назвавший. Который из двух концов достался нам, узел не помнит, да и
+		 *          помнить незачем - система отвечает сама
+		 *
+		 * @note До подключения встречной стороны спрашивать некого, и оба обращения
+		 *       отвечают отказом: снимок снимается лишь по подключённому каналу
+		 */
+		if(!::GetNamedPipeClientProcessId(handle, &pid) && !::GetNamedPipeServerProcessId(handle, &pid)){
+			// Записываем ошибку в лог
+			this->_log->print("%s: cannot resolve the recipient process of event %llu: %s", log_t::flag_t::CRITICAL, ::__AWH_IO_BACKEND__, static_cast <uint64_t> (dest), ::kernel::message(::GetLastError()).c_str());
+			// Выводим результат
+			return result;
+		}
+		// Описание устройства обмена, годное процессу-получателю
+		WSAPROTOCOL_INFOW info{};
+		// Выполняем снятие описания устройства обмена для процесса-получателя
+		if(::WSADuplicateSocketW(static_cast <SOCKET> (sock), static_cast <DWORD> (pid), &info) != 0){
+			// Записываем ошибку в лог
+			this->_log->print("%s: cannot take a snapshot of event %llu: %s", log_t::flag_t::CRITICAL, ::__AWH_IO_BACKEND__, static_cast <uint64_t> (id), ::kernel::message(static_cast <DWORD> (::WSAGetLastError())).c_str());
+			// Выводим результат
+			return result;
+		}
+		// Складываем снятое описание в буфер снимка
+		snapshot.assign(reinterpret_cast <const uint8_t *> (&info), reinterpret_cast <const uint8_t *> (&info) + sizeof(info));
+		// Формируем положительный результат
+		result = true;
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, dest), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Возвращаем результат
+	return result;
+}
+/**
+ * @brief Метод подъёма события из снимка, снятого чужим процессом
+ *
+ * @details Заменяет собой фиксацию настроек: та завела бы событию свой дескриптор, а
+ *          здесь он поднимается из описания, снятого чужим процессом. Всё остальное
+ *          событие проходит тем же путём - фиксация зовётся отсюда же и, застав
+ *          дескриптор заведённым, к его созданию не идёт вовсе
+ *
+ * @note Привязка к адресу поднятому дескриптору не нужна: он приходит привязанным, а
+ *       у слушающего - ещё и слушающим. Фиксация это учитывает сама, спрашивая
+ *       привязанность дескриптора, а не полагаясь на то, каким путём он появился
+ *
+ * @param id       идентификатор заведённого события, которому достаётся снимок
+ * @param snapshot снимок события, снятый чужим процессом
+ * @param size     размер снимка события
+ * @return         результат подъёма события из снимка
+ *
+ */
+bool awh::engine::IO::restore(const event::id_t id, const void * snapshot, const size_t size) noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Если снимок не передан либо размер его не отвечает описанию устройства обмена
+		if((snapshot == nullptr) || (size != sizeof(WSAPROTOCOL_INFOW))){
+			// Записываем ошибку в лог
+			this->_log->print("%s: snapshot of event %llu is malformed", log_t::flag_t::CRITICAL, ::__AWH_IO_BACKEND__, static_cast <uint64_t> (id));
+			// Выводим результат
+			return result;
+		}
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если событие не найдено
+		if(i == ::__awh_nodes__.end()){
+			// Записываем ошибку в лог
+			this->_log->print("%s: restore is not possible, event %llu is not found", log_t::flag_t::CRITICAL, ::__AWH_IO_BACKEND__, static_cast <uint64_t> (id));
+			// Выводим результат
+			return result;
+		}
+		/**
+		 * Если событию дескриптор уже заведён
+		 *
+		 * @note Снимок достаётся событию заведённому, но ещё не зафиксированному:
+		 *       подмена уже работающего дескриптора оставила бы прежний висеть
+		 */
+		if(::io::descriptor(i->second.get()) != net::invalid_socket_t){
+			// Записываем ошибку в лог
+			this->_log->print("%s: restore is not possible, event %llu already has a descriptor", log_t::flag_t::CRITICAL, ::__AWH_IO_BACKEND__, static_cast <uint64_t> (id));
+			// Выводим результат
+			return result;
+		}
+		// Получаем описание устройства обмена из снимка
+		WSAPROTOCOL_INFOW info{};
+		// Переносим описание устройства обмена из снимка
+		::memcpy(&info, snapshot, sizeof(info));
+		/**
+		 * Сверяем устройство события с устройством, снятым в снимок
+		 *
+		 * @details Семейство, тип и протокол события задаются при его заведении, и
+		 *          расхождение с содержимым снимка означает, что снимок пришёл не от
+		 *          того события. Приняв такой снимок, движок отдал бы потребителю
+		 *          событие, работающее не тем, чем он его заводил
+		 */
+		if(!::io::coherence(i->second.get(), info.iAddressFamily, info.iSocketType, info.iProtocol)){
+			// Записываем ошибку в лог
+			this->_log->print("%s: snapshot does not match the layout of event %llu", log_t::flag_t::CRITICAL, ::__AWH_IO_BACKEND__, static_cast <uint64_t> (id));
+			// Выводим результат
+			return result;
+		}
+		/**
+		 * Поднимаем свой дескриптор из описания устройства обмена
+		 *
+		 * @warning Признак наложенного обмена здесь обязателен: без него дескриптор
+		 *          порту завершений не годится вовсе, а отказ приходит много позже и
+		 *          не на месте - подачей операции, которую порт уже не подхватит
+		 */
+		const SOCKET sock = ::WSASocketW(FROM_PROTOCOL_INFO, FROM_PROTOCOL_INFO, FROM_PROTOCOL_INFO, &info, 0, WSA_FLAG_OVERLAPPED);
+		// Если дескриптор поднять не удалось
+		if(static_cast <net::socket_t> (sock) == ::AWH_INVALID_SOCKET){
+			// Записываем ошибку в лог
+			this->_log->print("%s: cannot restore event %llu from the snapshot: %s", log_t::flag_t::CRITICAL, ::__AWH_IO_BACKEND__, static_cast <uint64_t> (id), ::kernel::message(static_cast <DWORD> (::WSAGetLastError())).c_str());
+			// Выводим результат
+			return result;
+		}
+		// Передаём поднятый дескриптор событию
+		if(!::io::adopt(i->second.get(), static_cast <net::socket_t> (sock), this->_log)){
+			// Закрываем поднятый дескриптор: событию он не достался
+			::closesocket(sock);
+			// Выводим результат
+			return result;
+		}
+		/**
+		 * Проводим событие обычной фиксацией настроек
+		 *
+		 * @note Путь заведения обязан оставаться единственным: заведи мы событие здесь
+		 *       своими руками, два пути разошлись бы на первой же правке фиксации
+		 */
+		if(!(result = this->commit(id))){
+			// Записываем ошибку в лог
+			this->_log->print("%s: event %llu restored from the snapshot cannot be committed", log_t::flag_t::CRITICAL, ::__AWH_IO_BACKEND__, static_cast <uint64_t> (id));
+			// Выводим результат
+			return result;
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, size), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Возвращаем результат
+	return result;
 }
 /**
  * @brief Метод запуска события

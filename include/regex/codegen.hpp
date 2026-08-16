@@ -236,6 +236,21 @@
  *          к исполнению программы от 12,6 на чередовании ветвей до 21,1
  *          на выражении адреса сети.
  *
+ *          <b>Кадр вызова разделён надвое: область сохранения регистров
+ *          адресуется указателем стека, а места самого кадра - отдельным
+ *          регистром записи.</b> Разделение это заведено заделом под вложенность:
+ *          вызов рекурсивный и проход повторения над областью требуют записи
+ *          своей на каждый уровень, а число уровней при порождении не известно.
+ *          Смена адреса записи оставляет смещения мест прежними, отчего ни одно
+ *          из обращений порождения при заведении вложенности не меняется.
+ *
+ *          Область сохранения при этом остаётся общей и на указателе стека
+ *          намеренно, и довод тому не один. Первый - замкнутый круг: сам регистр
+ *          записи вызовом подпрограммы затирается, и брать его назад из области,
+ *          им же адресуемой, было бы нечем. Второй - область эта жива лишь
+ *          на время вызова подпрограммы и отступления не переживает, отчего
+ *          отдельной на каждую запись быть не должна.
+ *
  *          <b>Цепочка ветвей, различаемых первым байтом, порождается разбором
  *          по нему, а не перебором ветвей.</b> Байт текста называет единственную
  *          ветвь, способную сойтись, а отказ её отказом всей цепочки и является.
@@ -606,6 +621,26 @@ namespace awh {
 
 		/**
 		 * \~russian
+		 * @brief Наибольшая допустимая длина тела повторения без записи кадра
+		 *
+		 * @details Отдача прохода такого повторения есть вычитание длины тела
+		 *          из позиции сопоставления, а вычитание порождается значением
+		 *          непосредственным, разрядность какого у наборов команд
+		 *          ограничена. Тело длиннее получает записи кадра на проход.
+		 *
+		 * \~english
+		 * @brief Largest admissible length of a repetition body without a frame record
+		 * @details Giving back a pass of such a repetition is a subtraction of the body length
+		 *          from the matching position, and the subtraction is emitted with an immediate
+		 *          value, whose width is bounded in the instruction sets. A longer body
+		 *          receives frame records per pass.
+		 *
+		 * \~
+		 */
+		constexpr size_t MAX_STRETCH = 0x400;
+
+		/**
+		 * \~russian
 		 * @brief Наибольшее допустимое количество атомарных групп в порождаемом коде
 		 *
 		 * @details Отказ сопоставления, действовавший при входе в атомарную группу,
@@ -766,6 +801,38 @@ namespace awh {
 				// Количество захватывающих групп выражения порождённого сопоставителя
 				uint32_t _captures;
 			private:
+				/**
+				 * \~russian
+				 * Размер записи кадра порождённого сопоставителя в байтах
+				 *
+				 * @details Область записей отводится вызовом сопоставления,
+				 *          а не кадром вызова: проходы повторения над областью
+				 *          и вызовы рекурсивные требуют записи своей на каждый
+				 *          уровень, и число уровней доходит до длины текста.
+				 *          Отведение их на стеке машины снесло бы его.
+				 *
+				 * \~english
+				 * Size of the record of the frame of the generated matcher in bytes
+				 *
+				 * \~
+				 */
+				uint32_t _frame;
+			private:
+				/**
+				 * \~russian
+				 * Наибольшее количество записей кадра порождённого сопоставителя
+				 *
+				 * @details Исчерпание их отказом сопоставления не является:
+				 *          сопоставитель отвечает «не берусь», и выражение
+				 *          доигрывает исполнение программы.
+				 *
+				 * \~english
+				 * Largest number of records of the frame of the generated matcher
+				 *
+				 * \~
+				 */
+				uint32_t _levels;
+			private:
 				// Опознание программы, для какой порождён сопоставитель
 				uint64_t _identity;
 			private:
@@ -789,6 +856,29 @@ namespace awh {
 				 * \~
 				 */
 				size_t table(const instruction_t & instruction, const program_t & program) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод заведения таблицы объединения байтов сопоставления
+				 *
+				 * @details Таблица несёт байты, какие принимает хотя бы одна
+				 *          из указанных сопоставляющих инструкций. Она даёт
+				 *          отбор прохода повторения над областью: байт, ни одной
+				 *          инструкции не подошедший, отвергает тело целиком,
+				 *          и проход отменяется прежде отведения записи кадра.
+				 *
+				 * @param leaders набор адресов сопоставляющих инструкций
+				 * @param program программа регулярного выражения
+				 * @return        номер заведённой таблицы в обстановке исполнения
+				 *
+				 * \~english
+				 * @brief Method of introducing a union byte belonging table of a match
+				 * @param leaders set of addresses of the matching instructions
+				 * @param program program of the regular expression
+				 * @return        number of the introduced table in the execution context
+				 *
+				 * \~
+				 */
+				size_t masking(const std::vector <address_t> & leaders, const program_t & program) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод заведения приметы привязки к позиции в тексте
@@ -974,6 +1064,35 @@ namespace awh {
 				 * \~
 				 */
 				bool exec(string_view text, const size_t start, vector <pair <size_t, size_t>> & captures) const noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод поиска совпадения порождённым сопоставителем
+				 *
+				 * @param text     текст поиска совпадения
+				 * @param start    позиция начала поиска совпадения
+				 * @param captures набор границ совпадения и захваченных групп
+				 * @param refused  признак отказа сопоставителя от сопоставления
+				 * @return         результат поиска совпадения
+				 *
+				 * @details Отказ означает исчерпание области записей кадра
+				 *          повторением над областью, а не отсутствие совпадения:
+				 *          выражение надлежит доиграть исполнением программы.
+				 *          Вердикт «нет совпадения» при отказе разошёлся бы
+				 *          с исполнением программы.
+				 *
+				 * \~english
+				 * @brief Method of searching for a match by the generated matcher
+				 * @param text     text of the search for a match
+				 * @param start    position of the start of the search for a match
+				 * @param captures set of the bounds of the match and the captured groups
+				 * @param refused  indication of the refusal of the matcher to match
+				 * @return         result of the search for a match
+				 * @details The refusal means the exhaustion of the area of the records of the frame
+				 *          by a repetition over a region rather than the absence of a match.
+				 *
+				 * \~
+				 */
+				bool exec(string_view text, const size_t start, vector <pair <size_t, size_t>> & captures, bool & refused) const noexcept;
 			public:
 				/**
 				 * \~russian

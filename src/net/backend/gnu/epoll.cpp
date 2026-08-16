@@ -6315,6 +6315,377 @@ namespace io {
 };
 
 /**
+ * @brief Инкапсулируем статические функции в пространство имён передачи описателей
+ *
+ * @details Описатель у систем POSIX переходит границу процесса единственным способом -
+ *          служебными данными SCM_RIGHTS вместе с обычным сообщением по сокету домена
+ *          UNIX. Своего сообщения движок при этом не шлёт: разметка обмена принадлежит
+ *          вызывающей стороне, и вкладывать в неё что-либо движок не вправе. Оттого
+ *          снятие снимка лишь ОТМЕЧАЕТ передачу, а уносит описатель ближайшее
+ *          исходящее сообщение узла-переносчика
+ *
+ * @note Щуп пройден 16.08.2026 на восьми системах: macOS, FreeBSD, NetBSD, OpenBSD,
+ *       Debian, Alpine, Solaris, OpenIndiana
+ *
+ */
+namespace handoff {
+	/**
+	 * Используем пространство имён AWH
+	 */
+	using namespace awh;
+
+	/**
+	 * @brief Предельное число описателей, уезжающих одним сообщением
+	 *
+	 * @note Предел этот есть у всякой системы, и сообщение сверх него отвергается
+	 *       целиком. Число взято с запасом вниз: переносов помногу разом не бывает
+	 *
+	 */
+	static constexpr size_t MAX_DESCRIPTORS = 8;
+
+	/**
+	 * @brief Отложенная передача описателя
+	 *
+	 */
+	typedef struct Pending {
+		// Метка передачи, выданная снятием снимка
+		uint64_t label;
+		// Передаваемый описатель
+		net::socket_t fd;
+	} pending_t;
+
+	/**
+	 * @brief Очереди отложенной передачи описателей по узлам-переносчикам
+	 *
+	 * @warning Это переменные ПРОЦЕССА, а не поля движка - движок задуман единственным
+	 *          на процесс. Чистятся они при уничтожении узла и при закрытии очереди
+	 *          оповещений, иначе достались бы следующему движку того же процесса
+	 *
+	 */
+	static unordered_map <event::id_t, vector <pending_t>> __awh_outgoing__;
+
+	/**
+	 * @brief Счётчик отложенных передач описателей
+	 *
+	 * @note Держится ради общего пути отправки: сравнение с нулём отсекает поиск по
+	 *       таблице там, где переносить нечего вовсе, а это подавляющее большинство
+	 *       отправок за всё время работы движка
+	 *
+	 */
+	static size_t __awh_deferred__ = 0;
+
+	/**
+	 * @brief Принятый описатель, ожидающий подъёма
+	 *
+	 */
+	typedef struct Arrived {
+		// Идентификатор узла, которым описатель приехал
+		event::id_t carrier;
+		// Приехавший описатель
+		net::socket_t fd;
+	} arrived_t;
+
+	/**
+	 * @brief Принятые описатели, ожидающие подъёма
+	 *
+	 * @details Соответствие метке даёт ПОРЯДОК ПРИБЫТИЯ, а не сама метка: служебные
+	 *          данные метки не несут - в них ходят одни описатели, - и связать снимок
+	 *          с описателем иначе нечем. Ядро блюдёт порядок сообщений у каждого
+	 *          сокета, потому по одному переносчику соответствие строгое: n-й
+	 *          приехавший отвечает n-му снятому снимку
+	 *
+	 * @warning Между РАЗНЫМИ переносчиками порядок ничем не задан, и очередь эта общая
+	 *          на процесс. Ведя два переноса по двум переносчикам вперемешку,
+	 *          вызывающая сторона обязана развести их сама - дождаться подъёма одного
+	 *          прежде снятия другого. Опознаватель переносчика хранится здесь ради
+	 *          записи в журнал: разбор такой путаницы иначе слеп
+	 *
+	 * @note НАМЕРЕННОЕ РЕШЕНИЕ: сличать приехавшее по переносчику подъём не может, хотя
+	 *       опознаватель и хранится рядом. Подъём принимает лишь событие и снимок, а
+	 *       переносчик ему не назван ничем: в снимке его нет (там метка, и та выдана
+	 *       ЧУЖИМ процессом, где опознаватели свои), а доводом он не передаётся. Сличение
+	 *       это потребовало бы третьего довода у restore, то есть правки объявления
+	 *       движка, - и вопрос это не движка, а API
+	 *
+	 * @note Метка при этом остаётся именной: она стережёт от повторного подъёма
+	 *
+	 */
+	static vector <arrived_t> __awh_incoming__;
+
+	/**
+	 * @brief Метки, по которым подъём уже произведён
+	 *
+	 */
+	static unordered_set <uint64_t> __awh_raised__;
+
+	/**
+	 * @brief Функция выдачи очередной метки передачи
+	 *
+	 * @note Метка обязана быть неповторимой в пределах ПАРЫ процессов: совпадение
+	 *       развело бы два переноса. Номер процесса разводит стороны, счётчик - переносы
+	 *
+	 * @return выданная метка передачи
+	 *
+	 */
+	static uint64_t label() noexcept {
+		// Счётчик выданных меток передачи
+		static uint64_t counter = 0;
+		// Выводим метку передачи, собранную из номера процесса и счётчика
+		return ((static_cast <uint64_t> (::getpid()) << 32) | (++counter));
+	}
+	/**
+	 * @brief Функция отметки отложенной передачи описателя
+	 *
+	 * @param id    идентификатор узла-переносчика
+	 * @param fd    передаваемый описатель
+	 * @param label метка передачи
+	 *
+	 */
+	static void defer(const event::id_t id, const net::socket_t fd, const uint64_t label) noexcept {
+		// Отмечаем отложенную передачу описателя у узла-переносчика
+		::handoff::__awh_outgoing__[id].push_back(::handoff::pending_t{label, fd});
+		// Увеличиваем счётчик отложенных передач
+		::handoff::__awh_deferred__++;
+	}
+	/**
+	 * @brief Функция снятия отметок отложенной передачи узла
+	 *
+	 * @note Зовётся при уничтожении узла: описатели здесь ЧУЖИЕ - они принадлежат
+	 *       событиям, снимок с которых снимали, - и закрывать их нельзя
+	 *
+	 * @param id идентификатор узла-переносчика
+	 *
+	 */
+	static void forget(const event::id_t id) noexcept {
+		// Выполняем поиск отметок отложенной передачи узла
+		auto i = ::handoff::__awh_outgoing__.find(id);
+		// Если отметок у узла нет, снимать нечего
+		if(i == ::handoff::__awh_outgoing__.end())
+			// Выходим из функции
+			return;
+		// Уменьшаем счётчик отложенных передач на снимаемые отметки
+		::handoff::__awh_deferred__ -= i->second.size();
+		// Снимаем отметки отложенной передачи у узла
+		::handoff::__awh_outgoing__.erase(i);
+	}
+	/**
+	 * @brief Функция отправки данных с прицепленными описателями
+	 *
+	 * @details Замещает собой обычную отправку у узлов домена UNIX. Отметок нет - шлёт
+	 *          ровно то же, что и ::send, и стоит ровно столько же. Отметки есть -
+	 *          уходит sendmsg со служебными данными, и описатели уезжают вместе с этим
+	 *          сообщением
+	 *
+	 * @warning Предел числа описателей в одном сообщении есть у всякой системы, и
+	 *          сообщение сверх него отвергается целиком. Оттого за раз уходит не более
+	 *          закреплённого числа, а остальные ждут следующего сообщения
+	 *
+	 * @param id     идентификатор узла-переносчика
+	 * @param fd     дескриптор сокета узла-переносчика
+	 * @param buffer буфер данных для отправки
+	 * @param size   размер данных для отправки
+	 * @param log    объект работы с логами
+	 * @return       количество отправленных октетов
+	 *
+	 */
+	template <class T>
+	static ssize_t send(const T * node, const net::socket_t fd, const void * buffer, const size_t size, const log_t * log) noexcept {
+		/**
+		 * Если отложенных передач нет вовсе либо узел не ведёт обмен в домене UNIX
+		 *
+		 * @note Обход этот стоит одного сравнения и стоит здесь намеренно: путь этот
+		 *       общий для всякой отправки, а служебные данные живут лишь в домене UNIX.
+		 *       Счётчик отсекает поиск по таблице там, где переносить нечего вовсе
+		 */
+		if((::handoff::__awh_deferred__ == 0) || (node->state.family != event::family_t::UDS))
+			// Выполняем отправку данных обычным способом
+			return ::send(fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
+		// Выполняем поиск отметок отложенной передачи узла
+		auto i = ::handoff::__awh_outgoing__.find(node->id);
+		// Если отметок нет, отправка идёт обычным путём
+		if((i == ::handoff::__awh_outgoing__.end()) || i->second.empty())
+			// Выполняем отправку данных обычным способом
+			return ::send(fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
+		// Количество описателей, уходящих этим сообщением
+		const size_t count = ((i->second.size() < ::handoff::MAX_DESCRIPTORS) ? i->second.size() : ::handoff::MAX_DESCRIPTORS);
+		// Буфер служебных данных сообщения
+		uint8_t control[CMSG_SPACE(sizeof(int32_t) * ::handoff::MAX_DESCRIPTORS)];
+		// Заполняем буфер служебных данных нулями
+		::memset(control, 0, sizeof(control));
+		// Объект отправляемого сообщения
+		struct msghdr message;
+		// Заполняем объект отправляемого сообщения нулями
+		::memset(&message, 0, sizeof(message));
+		// Объект блока данных сообщения
+		struct iovec iov;
+		// Устанавливаем буфер данных сообщения
+		iov.iov_base = const_cast <void *> (buffer);
+		// Устанавливаем размер данных сообщения
+		iov.iov_len = size;
+		// Устанавливаем блок данных сообщения
+		message.msg_iov = &iov;
+		// Устанавливаем количество блоков данных сообщения
+		message.msg_iovlen = 1;
+		// Устанавливаем буфер служебных данных сообщения
+		message.msg_control = control;
+		// Устанавливаем размер служебных данных сообщения
+		message.msg_controllen = CMSG_SPACE(sizeof(int32_t) * count);
+		// Получаем заголовок служебных данных сообщения
+		struct cmsghdr * cmsg = CMSG_FIRSTHDR(&message);
+		// Устанавливаем уровень служебного сообщения
+		cmsg->cmsg_level = SOL_SOCKET;
+		// Устанавливаем тип служебного сообщения
+		cmsg->cmsg_type = SCM_RIGHTS;
+		// Устанавливаем размер служебного сообщения
+		cmsg->cmsg_len = CMSG_LEN(sizeof(int32_t) * count);
+		// Получаем место под передаваемые описатели
+		int32_t * target = reinterpret_cast <int32_t *> (CMSG_DATA(cmsg));
+		/**
+		 * Переносим передаваемые описатели в служебные данные
+		 */
+		for(size_t index = 0; index < count; index++)
+			// Переносим очередной передаваемый описатель
+			target[index] = static_cast <int32_t> (i->second.at(index).fd);
+		/**
+		 * Сбрасываем значение errno перед отправкой данных в сокет
+		 */
+		errno = 0;
+		// Выполняем отправку данных вместе с описателями
+		const ssize_t bytes = ::sendmsg(fd, &message, MSG_NOSIGNAL);
+		// Если сообщение ушло, снимаем отметки об уехавших описателях
+		if(bytes > 0){
+			/**
+			 * Снимаем отметки об уехавших описателях
+			 */
+			i->second.erase(i->second.begin(), i->second.begin() + static_cast <ssize_t> (count));
+			// Уменьшаем счётчик отложенных передач на уехавшие описатели
+			::handoff::__awh_deferred__ -= count;
+			// Если отметок больше не осталось
+			if(i->second.empty())
+				// Снимаем очередь отметок узла
+				::handoff::__awh_outgoing__.erase(i);
+		// Если сообщение не ушло
+		} else if(bytes < 0)
+			// Записываем ошибку в лог
+			log->print("descriptor handover failed: %s", log_t::flag_t::WARNING, ::strerror(errno));
+		// Выводим количество отправленных октетов
+		return bytes;
+	}
+	/**
+	 * @brief Функция приёма данных вместе с приехавшими описателями
+	 *
+	 * @details Замещает собой обычный приём у узлов домена UNIX. Место под служебные
+	 *          данные отводится ВСЕГДА, а не только когда описателя ждут: не отвести
+	 *          его - значит потерять приехавший описатель молча, и вскроется потеря
+	 *          много позже места, где случилась
+	 *
+	 * @param fd     дескриптор сокета узла-переносчика
+	 * @param buffer буфер для принимаемых данных
+	 * @param size   размер буфера для принимаемых данных
+	 * @param log    объект работы с логами
+	 * @return       количество принятых октетов
+	 *
+	 */
+	template <class T>
+	static ssize_t recv(const T * node, const net::socket_t fd, void * buffer, const size_t size, const log_t * log) noexcept {
+		/**
+		 * Если узел не ведёт обмен в домене UNIX, разбирать нечего
+		 *
+		 * @note Служебные данные ходят лишь в домене UNIX, а приём с их разбором стоит
+		 *       дороже обычного. Прочим узлам он не нужен вовсе
+		 */
+		if(node->state.family != event::family_t::UDS)
+			// Выполняем приём данных обычным способом
+			return ::recv(fd, reinterpret_cast <uint8_t *> (buffer), size, MSG_NOSIGNAL);
+		// Буфер служебных данных сообщения
+		uint8_t control[CMSG_SPACE(sizeof(int32_t) * ::handoff::MAX_DESCRIPTORS)];
+		// Заполняем буфер служебных данных нулями
+		::memset(control, 0, sizeof(control));
+		// Объект принимаемого сообщения
+		struct msghdr message;
+		// Заполняем объект принимаемого сообщения нулями
+		::memset(&message, 0, sizeof(message));
+		// Объект блока данных сообщения
+		struct iovec iov;
+		// Устанавливаем буфер данных сообщения
+		iov.iov_base = buffer;
+		// Устанавливаем размер данных сообщения
+		iov.iov_len = size;
+		// Устанавливаем блок данных сообщения
+		message.msg_iov = &iov;
+		// Устанавливаем количество блоков данных сообщения
+		message.msg_iovlen = 1;
+		// Устанавливаем буфер служебных данных сообщения
+		message.msg_control = control;
+		// Устанавливаем размер служебных данных сообщения
+		message.msg_controllen = sizeof(control);
+		/**
+		 * Сбрасываем значение errno перед приёмом данных из сокета
+		 */
+		errno = 0;
+		// Выполняем приём данных вместе с описателями
+		const ssize_t bytes = ::recvmsg(fd, &message, 0);
+		// Если данные приняты
+		if(bytes >= 0){
+			/**
+			 * Если служебные данные были отброшены ядром
+			 *
+			 * @warning Потеря эта молчалива: сообщение приходит целым, а описатель
+			 *          пропадает. Без записи в журнал вскрылась бы она подъёмом,
+			 *          отказавшим без видимой причины
+			 */
+			if(message.msg_flags & MSG_CTRUNC)
+				// Записываем ошибку в лог
+				log->print("descriptor handover: control data was truncated by the kernel", log_t::flag_t::CRITICAL);
+			/**
+			 * Перебираем все служебные данные принятого сообщения
+			 */
+			for(struct cmsghdr * cmsg = CMSG_FIRSTHDR(&message); cmsg != nullptr; cmsg = CMSG_NXTHDR(&message, cmsg)){
+				// Если служебные данные несут описатели
+				if((cmsg->cmsg_level == SOL_SOCKET) && (cmsg->cmsg_type == SCM_RIGHTS)){
+					// Вычисляем количество приехавших описателей
+					const size_t count = ((cmsg->cmsg_len - CMSG_LEN(0)) / sizeof(int32_t));
+					// Получаем приехавшие описатели
+					const int32_t * source = reinterpret_cast <const int32_t *> (CMSG_DATA(cmsg));
+					/**
+					 * Складываем приехавшие описатели в порядке их прибытия
+					 */
+					for(size_t index = 0; index < count; index++)
+						// Складываем очередной приехавший описатель вместе с переносчиком
+						::handoff::__awh_incoming__.push_back(::handoff::arrived_t{node->id, static_cast <net::socket_t> (source[index])});
+				}
+			}
+		}
+		// Выводим количество принятых октетов
+		return bytes;
+	}
+	/**
+	 * @brief Функция снятия придержанных описателей
+	 *
+	 * @details Зовётся при закрытии очереди оповещений. Описатели здесь СВОИ - они
+	 *          приехали открытыми и никому не достались, - и закрыть их обязаны мы,
+	 *          иначе они текут
+	 *
+	 */
+	static void disband() noexcept {
+		/**
+		 * Перебираем все придержанные описатели
+		 */
+		for(auto & arrived : ::handoff::__awh_incoming__)
+			// Закрываем очередной придержанный описатель
+			::close(arrived.fd);
+		// Снимаем список придержанных описателей
+		::handoff::__awh_incoming__.clear();
+		// Снимаем отметки отложенной передачи
+		::handoff::__awh_outgoing__.clear();
+		// Сбрасываем счётчик отложенных передач
+		::handoff::__awh_deferred__ = 0;
+		// Снимаем метки произведённых подъёмов
+		::handoff::__awh_raised__.clear();
+	}
+};
+
+/**
  * @brief Инкапсулируем статические функции в пространство имён таймера
  *
  */
@@ -10437,7 +10808,7 @@ namespace io {
 							 */
 							errno = 0;
 							// Выполняем чтение данных из IPC-сокета
-							bytes = ::recv(ipc->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
+							bytes = ::handoff::recv(ipc, ipc->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, log);
 							// Учитываем полученное в объявленном ядром объёме
 							watchdog.consume(bytes, AWH_EVENT_MAX_BUFFER_SIZE);
 							// Если мы получили ошибку
@@ -10506,7 +10877,7 @@ namespace io {
 					// Если событие является блокирующим
 					} else {
 						// Выполняем чтение данных из IPC-сокета
-						const ssize_t bytes = ::recv(ipc->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
+						const ssize_t bytes = ::handoff::recv(ipc, ipc->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, log);
 						// Если мы получили ошибку
 						if(bytes < 0){
 							// Если установлена функция обратного вызова
@@ -10573,7 +10944,7 @@ namespace io {
 							 */
 							errno = 0;
 							// Выполняем чтение данных из IPC-сокета
-							bytes = ::recv(ipc->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
+							bytes = ::handoff::recv(ipc, ipc->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, log);
 							// Учитываем полученное в объявленном ядром объёме
 							watchdog.consume(bytes, AWH_EVENT_MAX_BUFFER_SIZE);
 							// Если мы получили ошибку
@@ -10642,7 +11013,7 @@ namespace io {
 					// Если событие является блокирующим
 					} else {
 						// Выполняем чтение данных из IPC-сокета
-						const ssize_t bytes = ::recv(ipc->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
+						const ssize_t bytes = ::handoff::recv(ipc, ipc->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, log);
 						// Если мы получили ошибку
 						if(bytes < 0){
 							// Если установлена функция обратного вызова
@@ -10811,7 +11182,7 @@ namespace io {
 										peer->transfer.sctp.use().flags
 									);
 								// Выполняем чтение данных из TCP/IP сокета
-								else bytes = ::recv(peer->transfer.fd, ::__awh_buffer__, size, MSG_NOSIGNAL);
+								else bytes = ::handoff::recv(peer, peer->transfer.fd, ::__awh_buffer__, size, log);
 								// Учитываем полученное в объявленном ядром объёме
 								watchdog.consume(bytes, ((peer->state.protocol == event::protocol_t::SCTP) ? 0 : size));
 								// Если мы получили ошибку
@@ -11011,7 +11382,7 @@ namespace io {
 								peer->transfer.sctp.use().flags
 							);
 						// Выполняем чтение данных из TCP/IP сокета
-						else bytes = ::recv(peer->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
+						else bytes = ::handoff::recv(peer, peer->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, log);
 						// Если мы получили ошибку
 						if(bytes < 0){
 							// Если установлена функция обратного вызова
@@ -11133,7 +11504,7 @@ namespace io {
 									peer->transfer.sctp.use().flags
 								);
 							// Выполняем чтение данных из TCP/IP сокета
-							else bytes = ::recv(peer->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
+							else bytes = ::handoff::recv(peer, peer->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, log);
 							// Учитываем полученное в объявленном ядром объёме
 							watchdog.consume(bytes, ((peer->state.protocol == event::protocol_t::SCTP) ? 0 : AWH_EVENT_MAX_BUFFER_SIZE));
 							// Если мы получили ошибку
@@ -11296,7 +11667,7 @@ namespace io {
 								peer->transfer.sctp.use().flags
 							);
 						// Выполняем чтение данных из TCP/IP сокета
-						else bytes = ::recv(peer->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
+						else bytes = ::handoff::recv(peer, peer->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, log);
 						// Если мы получили ошибку
 						if(bytes < 0){
 							// Если установлена функция обратного вызова
@@ -12727,7 +13098,7 @@ namespace io {
 										client->transfer.sctp.use().flags
 									);
 								// Выполняем чтение данных из TCP/IP сокета
-								else bytes = ::recv(client->transfer.fd, ::__awh_buffer__, size, MSG_NOSIGNAL);
+								else bytes = ::handoff::recv(client, client->transfer.fd, ::__awh_buffer__, size, log);
 								// Учитываем полученное в объявленном ядром объёме
 								watchdog.consume(bytes, ((client->state.protocol == event::protocol_t::SCTP) ? 0 : size));
 								// Если мы получили ошибку
@@ -12927,7 +13298,7 @@ namespace io {
 								client->transfer.sctp.use().flags
 							);
 						// Выполняем чтение данных из TCP/IP сокета
-						else bytes = ::recv(client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
+						else bytes = ::handoff::recv(client, client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, log);
 						// Если мы получили ошибку
 						if(bytes < 0){
 							// Если установлена функция обратного вызова
@@ -13180,7 +13551,7 @@ namespace io {
 										// Вызываем функцию обратного вызова для обработки информационных метаданных о дейтаграммных пакетах
 										client->callbacks.traffic(client->id, client->raw.info);
 								// Выполняем чтение данных из сокета в обычном режиме, если не активирован режим получения информационных метаданных для дейтаграммных пакетов
-								} else bytes = ::recv(client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
+								} else bytes = ::handoff::recv(client, client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, log);
 								// Учитываем полученное в объявленном ядром объёме
 								watchdog.consume(bytes, AWH_EVENT_MAX_BUFFER_SIZE);
 								// Если мы получили ошибку
@@ -13443,7 +13814,7 @@ namespace io {
 									// Вызываем функцию обратного вызова для обработки информационных метаданных о дейтаграммных пакетах
 									client->callbacks.traffic(client->id, client->raw.info);
 							// Выполняем чтение данных из сокета в обычном режиме, если не активирован режим получения информационных метаданных для дейтаграммных пакетов
-							} else bytes = ::recv(client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
+							} else bytes = ::handoff::recv(client, client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, log);
 							// Если мы получили ошибку
 							if(bytes < 0){
 								// Если установлена функция обратного вызова
@@ -14063,7 +14434,7 @@ namespace io {
 										client->transfer.sctp.use().flags
 									);
 								// Выполняем чтение данных из TCP/IP сокета
-								else bytes = ::recv(client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
+								else bytes = ::handoff::recv(client, client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, log);
 								// Учитываем полученное в объявленном ядром объёме
 								watchdog.consume(bytes, ((client->state.protocol == event::protocol_t::SCTP) ? 0 : AWH_EVENT_MAX_BUFFER_SIZE));
 								// Если мы получили ошибку
@@ -14228,7 +14599,7 @@ namespace io {
 									client->transfer.sctp.use().flags
 								);
 							// Выполняем чтение данных из TCP/IP сокета
-							else bytes = ::recv(client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
+							else bytes = ::handoff::recv(client, client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, log);
 							// Если мы получили ошибку
 							if(bytes < 0){
 								// Если установлена функция обратного вызова
@@ -15630,7 +16001,7 @@ namespace io {
 							 */
 							errno = 0;
 							// Выполняем отправку данных в TCP/IP сокет
-							const ssize_t bytes = ::send(ipc->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
+							const ssize_t bytes = ::handoff::send(ipc, ipc->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, log);
 							// Если данные отправлены успешно
 							if((result = (bytes > 0))){
 								// Удаляем данные из очереди
@@ -15768,7 +16139,7 @@ namespace io {
 							 */
 							errno = 0;
 							// Выполняем отправку данных в UDP-сокет
-							const ssize_t bytes = ::send(ipc->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
+							const ssize_t bytes = ::handoff::send(ipc, ipc->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, log);
 							// Если данные отправлены успешно
 							if((result = (bytes > 0))){
 								// Удаляем запись из очереди
@@ -16017,7 +16388,7 @@ namespace io {
 											peer->transfer.sctp.use().complete
 										);
 									// Выполняем отправку данных в TCP/IP сокет
-									else bytes = ::send(peer->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
+									else bytes = ::handoff::send(peer, peer->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, log);
 									// Если данные отправлены успешно
 									if(bytes > 0){
 										// Возвращаем количество байт данных, отправленных событием
@@ -16416,7 +16787,7 @@ namespace io {
 											peer->transfer.sctp.use().complete
 										);
 									// Выполняем отправку данных в UDP-сокет
-									else bytes = ::send(peer->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
+									else bytes = ::handoff::send(peer, peer->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, log);
 									// Если данные отправлены успешно
 									if(bytes > 0){
 										// Возвращаем количество байт данных, отправленных событием
@@ -17502,7 +17873,7 @@ namespace io {
 											client->transfer.sctp.use().complete
 										);
 									// Выполняем отправку данных в TCP/IP сокет
-									else bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
+									else bytes = ::handoff::send(client, client->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, log);
 									// Если данные отправлены успешно
 									if(bytes > 0){
 										// Возвращаем количество байт данных, отправленных событием
@@ -17895,7 +18266,7 @@ namespace io {
 									// Если клиент находится в состоянии подключено
 									if(client->state.status == event::status_t::CONNECTED)
 										// Выполняем отправку данных в TCP/IP сокет
-										bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
+										bytes = ::handoff::send(client, client->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, log);
 									// Если клиент находится в запущенном состоянии
 									else if(client->state.status == event::status_t::LAUNCHED)
 										// Выполняем отправку данных в UDP-сокет
@@ -18287,7 +18658,7 @@ namespace io {
 												client->transfer.sctp.use().complete
 											);
 										// Выполняем отправку данных в TCP/IP сокет
-										else bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
+										else bytes = ::handoff::send(client, client->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, log);
 									// Если клиент не уничтожается: состояние различает СПОСОБ обмена, а не дозволяет его
 									} else if((client->state.status != event::status_t::DESTROYED) && (client->state.status != event::status_t::GARBAGE)) {
 										/**
@@ -19210,7 +19581,7 @@ namespace io {
 								// Выполняем отправку данных в PIPE-сокет
 								bytes = ::write(ipc->transfer.fd, buffer, size);
 							// Выполняем отправку данных в TCP/IP сокет
-							else bytes = ::send(ipc->transfer.fd, buffer, size, MSG_NOSIGNAL);
+							else bytes = ::handoff::send(ipc, ipc->transfer.fd, buffer, size, log);
 							// Если данные отправлены успешно
 							if(bytes > 0){
 								// Устанавливаем количество байт данных, отправленных и добавленных в очередь, так-как в будущем они будут отправлены
@@ -19368,7 +19739,7 @@ namespace io {
 									// Выполняем отправку данных в PIPE-сокет
 									bytes = ::write(ipc->transfer.fd, buffer, size);
 								// Выполняем отправку данных в TCP/IP сокет
-								else bytes = ::send(ipc->transfer.fd, buffer, size, MSG_NOSIGNAL);
+								else bytes = ::handoff::send(ipc, ipc->transfer.fd, buffer, size, log);
 								// Если данные отправлены успешно
 								if(bytes > 0){
 									// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -19475,7 +19846,7 @@ namespace io {
 							// Выполняем отправку данных в PIPE-сокет
 							bytes = ::write(ipc->transfer.fd, buffer, size);
 						// Выполняем отправку данных в TCP/IP сокет
-						else bytes = ::send(ipc->transfer.fd, buffer, size, MSG_NOSIGNAL);
+						else bytes = ::handoff::send(ipc, ipc->transfer.fd, buffer, size, log);
 						// Если данные отправлены успешно
 						if(bytes > 0){
 							// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -19536,7 +19907,7 @@ namespace io {
 							 */
 							errno = 0;
 							// Выполняем отправку данных в UDP-сокет
-							const ssize_t bytes = ::send(ipc->transfer.fd, buffer, size, MSG_NOSIGNAL);
+							const ssize_t bytes = ::handoff::send(ipc, ipc->transfer.fd, buffer, size, log);
 							// Если данные отправлены успешно
 							if(bytes > 0){
 								// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -19657,7 +20028,7 @@ namespace io {
 							// Переводим сокет в блокирующий режим
 							if(eth->socket.switchOption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 								// Выполняем отправку данных в UDP-сокет
-								const ssize_t bytes = ::send(ipc->transfer.fd, buffer, size, MSG_NOSIGNAL);
+								const ssize_t bytes = ::handoff::send(ipc, ipc->transfer.fd, buffer, size, log);
 								// Если данные отправлены успешно
 								if(bytes > 0){
 									// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -19779,7 +20150,7 @@ namespace io {
 					// Если событие является блокирующим
 					} else {
 						// Выполняем отправку данных в UDP-сокет
-						const ssize_t bytes = ::send(ipc->transfer.fd, buffer, size, MSG_NOSIGNAL);
+						const ssize_t bytes = ::handoff::send(ipc, ipc->transfer.fd, buffer, size, log);
 						// Если данные отправлены успешно
 						if(bytes > 0){
 							// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -19944,7 +20315,7 @@ namespace io {
 											peer->transfer.sctp.use().complete
 										);
 									// Выполняем отправку данных в TCP/IP сокет
-									else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
+									else bytes = ::handoff::send(peer, peer->transfer.fd, buffer, size, log);
 									// Если данные отправлены успешно
 									if(bytes > 0){
 										// Возвращаем количество байт данных, отправленных событием
@@ -20352,7 +20723,7 @@ namespace io {
 											peer->transfer.sctp.use().complete
 										);
 									// Выполняем отправку данных в сокет
-									else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
+									else bytes = ::handoff::send(peer, peer->transfer.fd, buffer, size, log);
 									// Если данные отправлены успешно
 									if(bytes > 0){
 										// Возвращаем количество байт данных, отправленных событием
@@ -20704,7 +21075,7 @@ namespace io {
 								peer->transfer.sctp.use().complete
 							);
 						// Выполняем отправку данных в TCP/IP сокет
-						else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
+						else bytes = ::handoff::send(peer, peer->transfer.fd, buffer, size, log);
 						// Если данные отправлены успешно
 						if(bytes > 0){
 							// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -20796,7 +21167,7 @@ namespace io {
 											peer->transfer.sctp.use().complete
 										);
 									// Выполняем отправку данных в TCP/IP сокет
-									else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
+									else bytes = ::handoff::send(peer, peer->transfer.fd, buffer, size, log);
 									// Если данные отправлены успешно
 									if(bytes > 0){
 										// Возвращаем количество байт данных, отправленных событием
@@ -21142,7 +21513,7 @@ namespace io {
 												peer->transfer.sctp.use().complete
 											);
 										// Выполняем отправку данных в TCP/IP сокет
-										else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
+										else bytes = ::handoff::send(peer, peer->transfer.fd, buffer, size, log);
 										// Если данные отправлены успешно
 										if(bytes > 0){
 											// Возвращаем количество байт данных, отправленных событием
@@ -21471,7 +21842,7 @@ namespace io {
 								peer->transfer.sctp.use().complete
 							);
 						// Выполняем отправку данных в TCP/IP сокет
-						else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
+						else bytes = ::handoff::send(peer, peer->transfer.fd, buffer, size, log);
 						// Если данные отправлены успешно
 						if(bytes > 0){
 							// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -23516,7 +23887,7 @@ namespace io {
 											client->transfer.sctp.use().complete
 										);
 									// Выполняем отправку данных в TCP/IP сокет
-									else bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
+									else bytes = ::handoff::send(client, client->transfer.fd, buffer, size, log);
 									// Если данные отправлены успешно
 									if(bytes > 0){
 										// Возвращаем количество байт данных, отправленных событием
@@ -23924,7 +24295,7 @@ namespace io {
 											client->transfer.sctp.use().complete
 										);
 									// Выполняем отправку данных в сокет
-									else bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
+									else bytes = ::handoff::send(client, client->transfer.fd, buffer, size, log);
 									// Если данные отправлены успешно
 									if(bytes > 0){
 										// Возвращаем количество байт данных, отправленных событием
@@ -24276,7 +24647,7 @@ namespace io {
 								client->transfer.sctp.use().complete
 							);
 						// Выполняем отправку данных в TCP/IP сокет
-						else bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
+						else bytes = ::handoff::send(client, client->transfer.fd, buffer, size, log);
 						// Если данные отправлены успешно
 						if(bytes > 0){
 							// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -24361,7 +24732,7 @@ namespace io {
 										 */
 										errno = 0;
 										// Отправляем данные в UDP сокет
-										const ssize_t bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
+										const ssize_t bytes = ::handoff::send(client, client->transfer.fd, buffer, size, log);
 										// Если данные отправлены успешно
 										if(bytes > 0){
 											// Возвращаем количество байт данных, отправленных событием
@@ -24696,7 +25067,7 @@ namespace io {
 											 */
 											errno = 0;
 											// Отправляем данные в UDP сокет
-											const ssize_t bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
+											const ssize_t bytes = ::handoff::send(client, client->transfer.fd, buffer, size, log);
 											// Если данные отправлены успешно
 											if(bytes > 0){
 												// Возвращаем количество байт данных, отправленных событием
@@ -25014,7 +25385,7 @@ namespace io {
 							 */
 							errno = 0;
 							// Отправляем данные в UDP сокет
-							const ssize_t bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
+							const ssize_t bytes = ::handoff::send(client, client->transfer.fd, buffer, size, log);
 							// Если данные отправлены успешно
 							if(bytes > 0){
 								// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -25930,7 +26301,7 @@ namespace io {
 												client->transfer.sctp.use().complete
 											);
 										// Выполняем отправку данных в сокет
-										else bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
+										else bytes = ::handoff::send(client, client->transfer.fd, buffer, size, log);
 										// Если данные отправлены успешно
 										if(bytes > 0){
 											// Возвращаем количество байт данных, отправленных событием
@@ -26278,7 +26649,7 @@ namespace io {
 													client->transfer.sctp.use().complete
 												);
 											// Выполняем отправку данных в сокет
-											else bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
+											else bytes = ::handoff::send(client, client->transfer.fd, buffer, size, log);
 											// Если данные отправлены успешно
 											if(bytes > 0){
 												// Возвращаем количество байт данных, отправленных событием
@@ -26609,7 +26980,7 @@ namespace io {
 									client->transfer.sctp.use().complete
 								);
 							// Выполняем отправку данных в сокет
-							else bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
+							else bytes = ::handoff::send(client, client->transfer.fd, buffer, size, log);
 							// Если данные отправлены успешно
 							if(bytes > 0){
 								// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -28091,6 +28462,14 @@ namespace io {
 				// Создаём охранника узла события
 				::local::guard_t guard(node);
 				/**
+				 * Снимаем отметки отложенной передачи описателей у сносимого узла
+				 *
+				 * @note Описатели здесь ЧУЖИЕ - они принадлежат событиям, снимок с
+				 *       которых снимали, - и закрывать их нельзя. Уходит одна отметка:
+				 *       переносчика не стало, и уносить описатель больше нечему
+				 */
+				::handoff::forget(node->id);
+				/**
 				 * Определяем чем является текущий узел
 				 */
 				switch(static_cast <uint8_t> (node->state.node)){
@@ -28811,6 +29190,158 @@ namespace io {
 		return false;
 	}
 	/**
+	 * @brief Функция сверки устройства узла с устройством поднятого дескриптора
+	 *
+	 * @details Семейство, вид и протокол события задаются при его заведении, и
+	 *          расхождение с тем, чем оказался поднятый дескриптор, означает, что
+	 *          снимок пришёл не от того события. Приняв такой снимок, движок отдал бы
+	 *          потребителю событие, работающее не тем, чем он его заводил
+	 *
+	 * @note Устройство спрашивается у самого дескриптора: снимок у систем POSIX несёт
+	 *       одну лишь метку получения, и сверять с ним нечего. Семейство даёт своё имя
+	 *       сокета, вид - настройка сокета, протокол - там, где система его сообщает
+	 *
+	 * @param node узел события
+	 * @param sock поднятый дескриптор сокета
+	 * @param log  объект работы с логами
+	 * @return     результат сверки устройства
+	 *
+	 */
+	static bool coherence(const ::io::node_t * node, const net::socket_t sock, const log_t * log) noexcept {
+		// Объект хранения имени сокета
+		struct sockaddr_storage name;
+		// Заполняем объект хранения имени сокета нулями
+		::memset(&name, 0, sizeof(name));
+		// Размер объекта хранения имени сокета
+		socklen_t length = sizeof(name);
+		// Если имя сокета получить не удалось
+		if(::getsockname(sock, reinterpret_cast <struct sockaddr *> (&name), &length) != 0){
+			// Записываем ошибку в лог
+			log->print("descriptor handover: cannot resolve the layout of the raised descriptor: %s", log_t::flag_t::CRITICAL, ::strerror(errno));
+			// Выводим результат отказа
+			return false;
+		}
+		/**
+		 * Определяем семейство адресов узла
+		 */
+		switch(static_cast <uint8_t> (node->state.family)){
+			// Если семейство адресов является IPv4
+			case static_cast <uint8_t> (event::family_t::IPV4): if(name.ss_family != AF_INET) return false; break;
+			// Если семейство адресов является IPv6
+			case static_cast <uint8_t> (event::family_t::IPV6): if(name.ss_family != AF_INET6) return false; break;
+			// Если семейство адресов является UNIX-доменным
+			case static_cast <uint8_t> (event::family_t::UDS): if(name.ss_family != AF_UNIX) return false; break;
+			// Для прочих семейств адресов сверять нечего: дескриптора они не держат
+			default: return false;
+		}
+		// Вид устройства обмена поднятого дескриптора
+		int32_t type = 0;
+		// Размер вида устройства обмена
+		socklen_t size = sizeof(type);
+		// Если вид устройства обмена получить не удалось
+		if(::getsockopt(sock, SOL_SOCKET, SO_TYPE, reinterpret_cast <char *> (&type), &size) != 0){
+			// Записываем ошибку в лог
+			log->print("descriptor handover: cannot resolve the type of the raised descriptor: %s", log_t::flag_t::CRITICAL, ::strerror(errno));
+			// Выводим результат отказа
+			return false;
+		}
+		/**
+		 * Определяем вид устройства обмена узла
+		 */
+		switch(static_cast <uint8_t> (node->state.type)){
+			// Если устройство обмена является потоковым
+			case static_cast <uint8_t> (event::type_t::STREAM): return (type == SOCK_STREAM);
+			// Если устройство обмена является дейтаграммным
+			case static_cast <uint8_t> (event::type_t::DATAGRAM): return (type == SOCK_DGRAM);
+			// Если устройство обмена является сырым
+			case static_cast <uint8_t> (event::type_t::RAW): return (type == SOCK_RAW);
+			/**
+			 * Если устройство обмена является упорядоченными сообщениями
+			 *
+			 * @note Есть не у всякой системы: у macOS и OpenBSD в домене UNIX его нет
+			 *       вовсе, и сверять там нечего - до сюда дело не дойдёт
+			 */
+			#if defined(SOCK_SEQPACKET)
+				case static_cast <uint8_t> (event::type_t::SEQPACKET): return (type == SOCK_SEQPACKET);
+			#endif
+		}
+		// Выводим совпадение устройства: вид узлу явно не задан
+		return true;
+	}
+	/**
+	 * @brief Функция передачи узлу готового дескриптора сокета
+	 *
+	 * @details Обратна функции заведения сокета: та заводит дескриптор сама, а эта
+	 *          принимает готовый - приехавший от чужого процесса служебными данными.
+	 *          Дальше узел идёт тем же путём, что и узел с заведённым сокетом:
+	 *          различие кончается здесь
+	 *
+	 * @param node узел события
+	 * @param sock передаваемый узлу дескриптор сокета
+	 * @param log  объект работы с логами
+	 * @return     результат передачи дескриптора узлу
+	 *
+	 */
+	static bool adopt(::io::node_t * node, const net::socket_t sock, const log_t * log) noexcept {
+		/**
+		 * Определяем чем является текущий узел
+		 */
+		switch(static_cast <uint8_t> (node->state.node)){
+			// Если узел является клиентом
+			case static_cast <uint8_t> (event::node_t::CLIENT): {
+				// Передаём узлу клиента готовый дескриптор сокета
+				awh_cast <::io::client_t *> (node)->transfer.fd = sock;
+				// Выводим успешный результат
+				return true;
+			}
+			// Если узел является сервером
+			case static_cast <uint8_t> (event::node_t::SERVER): {
+				// Передаём узлу сервера готовый дескриптор сокета
+				awh_cast <::io::server_t *> (node)->fd = sock;
+				// Выводим успешный результат
+				return true;
+			}
+			/**
+			 * Если узел является принятым подключением
+			 *
+			 * @note Принятое подключение переезжает наравне с прочими: поле описателя у
+			 *       него то же самое. Отказывать ему значило бы держать перекос - везти
+			 *       описатель оно годилось, а переехать само не могло
+			 */
+			case static_cast <uint8_t> (event::node_t::PEER): {
+				// Передаём узлу принятого подключения готовый дескриптор сокета
+				awh_cast <::io::peer_t *> (node)->transfer.fd = sock;
+				// Выводим успешный результат
+				return true;
+			}
+			// Если узел является исходящим узлом
+			case static_cast <uint8_t> (event::node_t::ORIGIN): {
+				// Передаём узлу исходящего узла готовый дескриптор сокета
+				awh_cast <::io::origin_t *> (node)->transfer.fd = sock;
+				// Выводим успешный результат
+				return true;
+			}
+		}
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			log->debug(
+				"Socket handover is not possible for the specified node type",
+				__PRETTY_FUNCTION__, make_tuple(node, node->id), log_t::flag_t::CRITICAL
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log->print("Socket handover is not possible for the specified node type", log_t::flag_t::CRITICAL);
+		#endif
+		// Выводим результат отказа
+		return false;
+	}
+	/**
 	 * @brief Функция создания сокета события
 	 *
 	 * @param node узел для которого создаётся сокет
@@ -28842,6 +29373,18 @@ namespace io {
 			case static_cast <uint8_t> (event::node_t::SERVER):
 				// Выводим дескриптор сокета сервера
 				return awh_cast <const ::io::server_t *> (node)->fd;
+			// Если узел является принятым подключением
+			case static_cast <uint8_t> (event::node_t::PEER):
+				// Выводим дескриптор сокета принятого подключения
+				return awh_cast <const ::io::peer_t *> (node)->transfer.fd;
+			// Если узел является межпроцессным соединением
+			case static_cast <uint8_t> (event::node_t::IPC):
+				// Выводим дескриптор сокета межпроцессного соединения
+				return awh_cast <const ::io::ipc_t *> (node)->transfer.fd;
+			// Если узел является исходящим узлом
+			case static_cast <uint8_t> (event::node_t::ORIGIN):
+				// Выводим дескриптор сокета исходящего узла
+				return awh_cast <const ::io::origin_t *> (node)->transfer.fd;
 		}
 		// Выводим недействительный дескриптор сокета
 		return net::invalid_socket_t;
@@ -59085,6 +59628,257 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 	return false;
 }
 /**
+ * @brief Метод снятия переносимого снимка события для чужого процесса
+ *
+ * @details У систем POSIX снимок устройства обмена не несёт: описатель ходит здесь
+ *          единственным способом - служебными данными SCM_RIGHTS вместе с обычным
+ *          сообщением по сокету домена UNIX, - и снимок вырождается в краткую метку
+ *          получения. Своего сообщения движок при этом не шлёт: разметка обмена
+ *          принадлежит вызывающей стороне, и вкладывать в неё что-либо движок не
+ *          вправе. Оттого снятие лишь ОТМЕЧАЕТ передачу, а уносит описатель ближайшее
+ *          исходящее сообщение узла-переносчика
+ *
+ * @note Годными переносчиками служат события домена UNIX: пара обмена, подключение и
+ *       принятое подключение. Узлы IP негодны - служебные данные живут только в
+ *       домене UNIX
+ *
+ * @note Отметок есть, а сообщений нет - передача не происходит вовсе, и это верно:
+ *       получатель узнаёт о снимке из того же сообщения, которым его и известили
+ *
+ * @param id       идентификатор передаваемого события
+ * @param dest     идентификатор события, ведущего к процессу-получателю
+ * @param snapshot буфер, куда складывается снятый снимок
+ * @return         результат снятия снимка события
+ *
+ */
+bool awh::engine::IO::snapshot(const event::id_t id, const event::id_t dest, vector <uint8_t> & snapshot) noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Очищаем буфер снимка от того, что оставил прежний вызов
+	snapshot.clear();
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора передаваемого события
+		auto i = ::__awh_nodes__.find(id);
+		// Выполняем поиск идентификатора события, ведущего к получателю
+		auto j = ::__awh_nodes__.find(dest);
+		// Если хотя бы одно из событий не найдено
+		if((i == ::__awh_nodes__.end()) || (j == ::__awh_nodes__.end())){
+			// Записываем ошибку в лог
+			this->_log->print("%s: snapshot is not possible, event is not found", log_t::flag_t::CRITICAL, ::__AWH_IO_BACKEND__);
+			// Выводим результат
+			return result;
+		}
+		// Получаем дескриптор передаваемого события
+		const net::socket_t sock = ::io::descriptor(i->second.get());
+		// Если у передаваемого события дескриптора нет вовсе
+		if(sock == net::invalid_socket_t){
+			// Записываем ошибку в лог
+			this->_log->print("%s: snapshot is not possible, event %llu has no descriptor", log_t::flag_t::CRITICAL, ::__AWH_IO_BACKEND__, static_cast <uint64_t> (id));
+			// Выводим результат
+			return result;
+		}
+		/**
+		 * Признак годности события-переносчика
+		 *
+		 * @details Годность решают разновидность узла и семейство адресов, а не наличие
+		 *          описателя: описатель у переносчика добывается тем же обращением, что
+		 *          и у передаваемого события. Годны пара обмена, подключение и принятое
+		 *          подключение домена UNIX - служебные данные живут только там
+		 */
+		const bool suitable = (
+			(j->second->state.node == event::node_t::IPC) ||
+			(((j->second->state.node == event::node_t::CLIENT) || (j->second->state.node == event::node_t::PEER)) &&
+			 (j->second->state.family == event::family_t::UDS))
+		);
+		// Получаем дескриптор события, ведущего к процессу-получателю
+		const net::socket_t carrier = (suitable ? ::io::descriptor(j->second.get()) : net::invalid_socket_t);
+		/**
+		 * Если событие-переносчик для переноса описателя негодно
+		 *
+		 * @note Отказ здесь честный и с причиной: годность переносчика решает система,
+		 *       и молчаливая пустышка увела бы разбор в сторону
+		 */
+		if(carrier == net::invalid_socket_t){
+			// Записываем ошибку в лог
+			this->_log->print("%s: snapshot is not possible, event %llu cannot carry a descriptor on this system", log_t::flag_t::CRITICAL, ::__AWH_IO_BACKEND__, static_cast <uint64_t> (dest));
+			// Выводим результат
+			return result;
+		}
+		// Выдаём метку передачи
+		const uint64_t label = ::handoff::label();
+		// Отмечаем отложенную передачу описателя у события-переносчика
+		::handoff::defer(dest, sock, label);
+		// Складываем метку передачи в буфер снимка
+		snapshot.assign(reinterpret_cast <const uint8_t *> (&label), reinterpret_cast <const uint8_t *> (&label) + sizeof(label));
+		// Формируем положительный результат
+		result = true;
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, dest), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Возвращаем результат
+	return result;
+}
+/**
+ * @brief Метод подъёма события из снимка, снятого чужим процессом
+ *
+ * @details Заменяет собой фиксацию настроек: та завела бы событию свой дескриптор, а
+ *          здесь он берётся готовым - приехавшим служебными данными. Всё остальное
+ *          событие проходит тем же путём: фиксация зовётся отсюда же и, застав
+ *          дескриптор заведённым, к его созданию не идёт вовсе
+ *
+ * @note Соответствие метки описателю даёт СТРОГИЙ ПОРЯДОК: служебные данные метки не
+ *       несут, в них ходят одни описатели. Очередь передачи у узла одна, порядок в ней
+ *       сохраняется, значит n-й приехавший описатель отвечает n-му снятому снимку.
+ *       Метка при этом остаётся именной - она стережёт от повторного подъёма
+ *
+ * @param id       идентификатор заведённого события, которому достаётся снимок
+ * @param snapshot снимок события, снятый чужим процессом
+ * @param size     размер снимка события
+ * @return         результат подъёма события из снимка
+ *
+ */
+bool awh::engine::IO::restore(const event::id_t id, const void * snapshot, const size_t size) noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Если снимок не передан либо размер его не отвечает метке передачи
+		if((snapshot == nullptr) || (size != sizeof(uint64_t))){
+			// Записываем ошибку в лог
+			this->_log->print("%s: snapshot of event %llu is malformed", log_t::flag_t::CRITICAL, ::__AWH_IO_BACKEND__, static_cast <uint64_t> (id));
+			// Выводим результат
+			return result;
+		}
+		// Метка передачи, разобранная из снимка
+		uint64_t label = 0;
+		// Разбираем метку передачи из снимка
+		::memcpy(&label, snapshot, sizeof(label));
+		/**
+		 * Если подъём по этой метке уже произведён
+		 *
+		 * @note Снимок годен ОДНОМУ подъёму: второй достался бы уже поднятому событию
+		 *       и увёл бы два события на один описатель
+		 */
+		if(::handoff::__awh_raised__.count(label) > 0){
+			// Записываем ошибку в лог
+			this->_log->print("%s: snapshot of event %llu has already been raised", log_t::flag_t::CRITICAL, ::__AWH_IO_BACKEND__, static_cast <uint64_t> (id));
+			// Выводим результат
+			return result;
+		}
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если событие не найдено
+		if(i == ::__awh_nodes__.end()){
+			// Записываем ошибку в лог
+			this->_log->print("%s: restore is not possible, event %llu is not found", log_t::flag_t::CRITICAL, ::__AWH_IO_BACKEND__, static_cast <uint64_t> (id));
+			// Выводим результат
+			return result;
+		}
+		/**
+		 * Если событию дескриптор уже заведён
+		 *
+		 * @note Снимок достаётся событию заведённому, но ещё не зафиксированному:
+		 *       подмена уже работающего дескриптора оставила бы прежний висеть
+		 */
+		if(::io::descriptor(i->second.get()) != net::invalid_socket_t){
+			// Записываем ошибку в лог
+			this->_log->print("%s: restore is not possible, event %llu already has a descriptor", log_t::flag_t::CRITICAL, ::__AWH_IO_BACKEND__, static_cast <uint64_t> (id));
+			// Выводим результат
+			return result;
+		}
+		/**
+		 * Если приехавших описателей нет вовсе
+		 *
+		 * @note Сообщение, которым описатель едет, ещё не пришло. Отказ здесь верный:
+		 *       подъём повторяют по приходе известия, а не ждут внутри движка
+		 */
+		if(::handoff::__awh_incoming__.empty()){
+			// Записываем ошибку в лог
+			this->_log->print("%s: restore is not possible, no descriptor has arrived for event %llu", log_t::flag_t::CRITICAL, ::__AWH_IO_BACKEND__, static_cast <uint64_t> (id));
+			// Выводим результат
+			return result;
+		}
+		// Получаем первый приехавший описатель
+		const net::socket_t sock = ::handoff::__awh_incoming__.front().fd;
+		// Снимаем полученный описатель с очереди приехавших
+		::handoff::__awh_incoming__.erase(::handoff::__awh_incoming__.begin());
+		/**
+		 * Сверяем устройство события с устройством поднятого описателя
+		 *
+		 * @warning Описатель приехал ОТКРЫТЫМ: не достанься он событию, закрыть его
+		 *          обязаны мы, иначе он течёт. Особенно на этом пути отказа
+		 */
+		if(!::io::coherence(i->second.get(), sock, this->_log)){
+			// Закрываем приехавший описатель: событию он не достался
+			::close(sock);
+			// Записываем ошибку в лог
+			this->_log->print("%s: snapshot does not match the layout of event %llu", log_t::flag_t::CRITICAL, ::__AWH_IO_BACKEND__, static_cast <uint64_t> (id));
+			// Выводим результат
+			return result;
+		}
+		// Передаём поднятый дескриптор событию
+		if(!::io::adopt(i->second.get(), sock, this->_log)){
+			// Закрываем приехавший описатель: событию он не достался
+			::close(sock);
+			// Выводим результат
+			return result;
+		}
+		// Отмечаем метку передачи как поднятую
+		::handoff::__awh_raised__.emplace(label);
+		/**
+		 * Проводим событие обычной фиксацией настроек
+		 *
+		 * @note Путь заведения обязан оставаться единственным: заведи мы событие здесь
+		 *       своими руками, два пути разошлись бы на первой же правке фиксации
+		 */
+		if(!(result = this->commit(id))){
+			// Записываем ошибку в лог
+			this->_log->print("%s: event %llu restored from the snapshot cannot be committed", log_t::flag_t::CRITICAL, ::__AWH_IO_BACKEND__, static_cast <uint64_t> (id));
+			// Выводим результат
+			return result;
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, size), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Возвращаем результат
+	return result;
+}
+/**
  * @brief Метод запуска события
  *
  * @param id идентификатор события
@@ -68548,6 +69342,13 @@ bool awh::engine::IO::reinitialize() noexcept {
 		// Выполняем снятие очереди опроса вместе со всем учётом подписок
 		::kernel::destroy();
 		/**
+		 * Снимаем придержанные описатели, никому не доставшиеся
+		 *
+		 * @warning Описатели здесь СВОИ: они приехали открытыми и подъёма не дождались.
+		 *          Закрыть их обязаны мы, иначе они текут - и течь будут молча
+		 */
+		::handoff::disband();
+		/**
 		 * Снимаем отметку о взведённом таймере ядра. Прежняя очередь закрыта вместе со
 		 * всем, что было в ней взведено, а дедлайны в структуре остаются - взводить их
 		 * в новой очереди придётся заново
@@ -71899,6 +72700,13 @@ awh::engine::IO::~IO() noexcept {
 	if(::__awh_ep__ != net::invalid_socket_t){
 		// Выполняем снятие очереди опроса вместе со всем учётом подписок
 		::kernel::destroy();
+		/**
+		 * Снимаем придержанные описатели, никому не доставшиеся
+		 *
+		 * @warning Описатели здесь СВОИ: они приехали открытыми и подъёма не дождались.
+		 *          Закрыть их обязаны мы, иначе они текут - и течь будут молча
+		 */
+		::handoff::disband();
 		// Очищаем временный список подготовленных событий
 		::local::change.clear();
 		// Очищаем список узлов, ожидающих окончательного уничтожения

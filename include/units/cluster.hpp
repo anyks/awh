@@ -1047,6 +1047,54 @@ namespace awh {
 			public:
 				/**
 				 * \~russian
+				 * @brief Метод получения события обмена с процессом кластера
+				 *
+				 * @details Событие это и есть путь к названному процессу: им называется
+				 *          получатель там, где одного номера процесса мало, - прежде
+				 *          всего при передаче событий между процессами (`snapshot`).
+				 *          Родительский процесс спрашивает событие обмена с дочерним по
+				 *          его номеру, дочерний - своё, назвав собственный номер
+				 *
+				 * @note Событие живёт ровно столько же, сколько и сам процесс кластера:
+				 *       у завершившегося процесса его нет, и метод отвечает нулём
+				 *
+				 * @param pid идентификатор процесса кластера
+				 * @return    идентификатор события обмена с процессом кластера
+				 *
+				 * \~english
+				 * @brief Method of the getting of the exchange event with a process of the cluster
+				 * @param pid identifier of the process of the cluster
+				 * @return    identifier of the exchange event with the process of the cluster
+				 *
+				 * \~
+				 */
+				event::id_t channel(const pid_t pid) const noexcept;
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод определения роли процесса до запуска кластера
+				 *
+				 * @details Отвечает на вопрос «запущен ли этот процесс работником» ещё
+				 *          до того, как кластер начал работу. Нужен он там, где порядок
+				 *          подготовки у мастера и у работника расходится: мастер обязан
+				 *          подготовиться ПРЕЖДЕ порождения работников, а работник -
+				 *          ПОСЛЕ того, как связался с мастером
+				 *
+				 * @note Роль здесь лишь спрашивается и не перенимается: перенимает её
+				 *       запуск кластера, и метку роли снимает тоже он
+				 *
+				 * @return признак того, что процесс запущен работником кластера
+				 *
+				 * \~english
+				 * @brief Method of the determination of the role of the process before the start of the cluster
+				 * @return flag that the process is started as a worker of the cluster
+				 *
+				 * \~
+				 */
+				bool worker() const noexcept;
+			public:
+				/**
+				 * \~russian
 				 * @brief Метод отправки сообщения всем дочерним процессам
 				 *
 				 * @param buffer бинарный буфер для отправки сообщения

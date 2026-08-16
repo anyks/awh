@@ -220,8 +220,67 @@ void awh::unit::Server::launch(const event::status_t status) noexcept {
 			 * Для операционной системы MS Windows
 			 */
 			#if _WIN32 || _WIN64
-				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const event::status_t)> ("server_status", status);
+				/**
+				 * Проверяем требуется ли активировать кластер
+				 */
+				switch(static_cast <uint8_t> (this->_clusterParams.mode)){
+					// Если необходимо активировать кластер
+					case static_cast <uint8_t> (event::mode_t::ENABLED): {
+						// Если кластер не инициализирован
+						if(this->_cluster == nullptr){
+							// Создаём объект кластера для управления процессами сервера
+							this->_cluster = make_unique <cluster_t> (this->_fmk, this->_log);
+							// Если имя кластера установлено
+							if(!this->_clusterParams.name.empty())
+								// Устанавливаем название кластера
+								this->_cluster->name(this->_clusterParams.name);
+							// Устанавливаем максимальное количество процессов кластера
+							this->_cluster->count(this->_clusterParams.count);
+							// Устанавливаем флаг автоматического возрождения процессов
+							this->_cluster->rebirth(this->_clusterParams.rebirth);
+							// Устанавливаем параметры защиты от цикла перезапусков процессов
+							this->_cluster->rebirthLimit(this->_clusterParams.restartLimit, this->_clusterParams.restartWindow);
+						}
+						// Устанавливаем функцию обратного вызова на событие получения сигнала
+						this->_cluster->on <void (const pid_t, const int32_t)> ("exit", &server_t::exit, this, _1, _2);
+						// Устанавливаем функцию обратного вызова на событие пересоздания процесса
+						this->_cluster->on <void (const pid_t, const pid_t)> ("rebase", &server_t::rebase, this, _1, _2);
+						// Устанавливаем функцию обратного вызова на событие отправки сообщений
+						this->_cluster->on <void (const pid_t, const size_t)> ("sending", &server_t::sending, this, _1, _2);
+						// Устанавливаем функцию обратного вызова на получение событий кластера
+						this->_cluster->on <void (const pid_t, const unit::cluster_t::event_t)> ("events", &server_t::cluster, this, _1, _2);
+						// Устанавливаем функцию обратного вызова на событие получения сообщений
+						this->_cluster->on <void (const pid_t, const uint8_t *, const size_t)> ("message", &server_t::message, this, _1, _2, _3);
+						// Устанавливаем функцию обратного вызова на событие изменения статуса кластера
+						this->_cluster->on <void (const pid_t, const event::status_t)> ("state", static_cast <void (server_t::*)(const pid_t, const event::status_t)> (&server_t::status), this, _1, _2);
+						// Устанавливаем функцию обратного вызова на событие получения ошибок кластера
+						this->_cluster->on <void (const pid_t, const event::error_t, const string &)> ("error", static_cast <void (server_t::*)(const pid_t, const event::error_t, const string &)> (&server_t::error), this, _1, _2, _3);
+						// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных кластера
+						this->_cluster->on <void (const pid_t, const event::status_t, const size_t)> ("available", static_cast <void (server_t::*)(const pid_t, const event::status_t, const size_t)> (&server_t::available), this, _1, _2, _3);
+						/**
+						 * Мастер поднимает свои слушающие события ПРЕЖДЕ порождения работников
+						 *
+						 * @details Ветвления у этой системы нет, и работник слушающего сокета
+						 *          не наследует: он получает его снимком от мастера. Значит
+						 *          к мигу порождения сокет обязан уже существовать - оттого
+						 *          отклик потребителя и зовётся здесь, до запуска кластера
+						 *
+						 * @note У работника порядок обратный: его отклик зовётся ПОСЛЕ того,
+						 *       как он связался с мастером, - иначе прослушивание не с чем
+						 *       было бы отложить. Зовётся он приходом события запуска
+						 */
+						if(!this->_cluster->worker())
+							// Выполняем функцию обратного вызова
+							this->_callback.call <void (const event::status_t)> ("server_status", status);
+						// Запускаем работу кластера
+						this->_cluster->start();
+					} break;
+					// Если активировать кластер не требуется
+					case static_cast <uint8_t> (event::mode_t::DISABLED):
+						// Выполняем функцию обратного вызова
+						this->_callback.call <void (const event::status_t)> ("server_status", status);
+					break;
+				}
 			/**
 			 * Для систем, где ядро само разводит подключения между процессами кластера
 			 */
@@ -474,9 +533,50 @@ void awh::unit::Server::cluster(const pid_t pid, const unit::cluster_t::event_t 
 		// Если событие представляет из себя запуск процесса
 		case static_cast <uint8_t> (unit::cluster_t::event_t::START): {
 			/**
+			 * Для операционной системы MS Windows
+			 */
+			#if _WIN32 || _WIN64
+				/**
+				 * Если процесс является родительским
+				 *
+				 * @note Событие запуска приходит мастеру ОДНО на весь кластер и несёт его
+				 *       собственный номер процесса, а не номер работника: работники к
+				 *       этому мигу порождены все, и передача идёт каждому из них
+				 */
+				if(this->_cluster->master()){
+					/**
+					 * Мастер здесь не делает ничего
+					 *
+					 * @note Передача слушающих событий идёт не отсюда: порождение работника
+					 *       ещё не значит, что канал с ним связан, а отдать снимок в
+					 *       несвязанный канал нельзя. Отдаётся он по просьбе самого
+					 *       работника - она и служит признаком связанности
+					 */
+				// Если процесс является дочерним
+				} else {
+					/**
+					 * Работник просит передачу событий сам
+					 *
+					 * @details Просьба эта и задаёт порядок: к мигу её отправки канал
+					 *          заведомо связан - работник только что по нему написал, -
+					 *          тогда как мастер о связанности канала узнать не может
+					 *          вовсе. Порождение работника связи ещё не означает
+					 *
+					 * @warning Просьба уходит ПЕРВЫМ сообщением работника, а передача
+					 *          приходит ПЕРВЫМ сообщением мастера, и оба конца этот
+					 *          порядок знают. Потребитель к своим сообщениям приступает
+					 *          лишь из отклика ниже - опередить их он не может
+					 */
+					const uint8_t request = server_t::HANDOVER_REQUEST;
+					// Отправляем мастеру просьбу о передаче слушающих событий
+					this->_cluster->send(&request, sizeof(request));
+					// Выполняем функцию обратного вызова
+					this->_callback.call <void (const event::status_t)> ("server_status", event::status_t::LAUNCHED);
+				}
+			/**
 			 * Для систем, где ядро само разводит подключения между процессами кластера
 			 */
-			#if __AWH_CLUSTER_BALANCE__
+			#elif __AWH_CLUSTER_BALANCE__
 				// Если работа юнита ещё не запущена
 				if(!this->working()){
 					// Выполняем получение идентификатора функции обратного вызова
@@ -525,9 +625,209 @@ void awh::unit::Server::cluster(const pid_t pid, const unit::cluster_t::event_t 
  *
  */
 void awh::unit::Server::message(const pid_t pid, const uint8_t * data, const size_t size) noexcept {
+	/**
+	 * Для операционной системы MS Windows
+	 *
+	 * @note Первым сообщением работник получает передачу слушающих событий, и наружу
+	 *       она не отдаётся: это разговор движка с движком, а не сообщение потребителя
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		// Если кластер в работе
+		if(this->_cluster != nullptr){
+			/**
+			 * Если мастер получил просьбу работника о передаче слушающих событий
+			 *
+			 * @note Просьба эта потребителю не предназначалась: это разговор движка с
+			 *       движком, и наружу он не выходит
+			 */
+			if(this->_cluster->master()){
+				// Если сообщение оказалось просьбой о передаче слушающих событий
+				if((size == sizeof(uint8_t)) && (data[0] == server_t::HANDOVER_REQUEST)){
+					// Передаём работнику свои слушающие события
+					this->handover(pid);
+					// Прерываем выполнение: сообщение потребителю не предназначалось
+					return;
+				}
+			// Если работник ждёт передачи слушающих событий и сообщение ею и оказалось
+			} else if(!this->_handover.empty() && this->handover(data, size))
+				// Прерываем выполнение: сообщение потребителю не предназначалось
+				return;
+		}
+	#endif
 	// Выполняем функцию обратного вызова
 	this->_callback.call <void (const pid_t, const uint8_t *, const size_t)> ("cluster_message", pid, data, size);
 }
+/**
+ * Для операционной системы MS Windows
+ */
+#if defined(_WIN32) || defined(_WIN64)
+	/**
+	 * @brief Устройство записи передачи слушающего события
+	 *
+	 * @details Складывается из устройства события и снимка его сокета. Устройство
+	 *          нужно работнику затем, чтобы опознать, которому из своих событий
+	 *          достаётся снимок: событий у сервера бывает несколько, и опознание по
+	 *          порядку следования было бы хрупким
+	 *
+	 * @note Адрес узла в записи не едет: работник задал его сам, тем же кодом, каким
+	 *       задавал мастер, - у обоих процессов он один и тот же. Едет лишь порт,
+	 *       и едет он опознавателем, а не настройкой
+	 *
+	 */
+	typedef struct Handover {
+		// Семейство адресов слушающего события
+		uint8_t family;
+		// Вид устройства обмена слушающего события
+		uint8_t type;
+		// Протокол слушающего события
+		uint8_t protocol;
+		// Порт слушающего события
+		uint16_t port;
+		// Размер снимка слушающего события
+		uint32_t size;
+	} __attribute__((packed)) handover_t;
+	/**
+	 * @brief Метод передачи слушающих событий работнику кластера
+	 *
+	 * @param pid идентификатор процесса работника
+	 *
+	 */
+	void awh::unit::Server::handover(const pid_t pid) noexcept {
+		// Если слушающих событий у сервера нет вовсе - передавать нечего
+		if(this->_events.empty() || (this->_cluster == nullptr))
+			// Выходим из функции
+			return;
+		// Получаем событие обмена, ведущее к работнику
+		const event::id_t dest = this->_cluster->channel(pid);
+		// Если события обмена с работником нет
+		if(dest == 0){
+			// Записываем ошибку в лог
+			this->_log->print("Cluster worker process [%d] handover channel is not found", log_t::flag_t::CRITICAL, pid);
+			// Выходим из функции
+			return;
+		}
+		// Буфер сообщения передачи слушающих событий
+		vector <uint8_t> message;
+		// Буфер снимка очередного слушающего события
+		vector <uint8_t> snapshot;
+		// Количество передаваемых слушающих событий
+		uint16_t count = 0;
+		// Оставляем в начале сообщения место под количество передаваемых событий
+		message.resize(sizeof(count), 0);
+		/**
+		 * Выполняем перебор всех слушающих событий сервера
+		 */
+		for(const auto & event : this->_events){
+			// Выполняем снятие снимка слушающего события для процесса работника
+			if(!this->_io->snapshot(event.first, dest, snapshot)){
+				// Записываем ошибку в лог
+				this->_log->print("Server event [%llu] cannot be handed over to the worker process [%d]", log_t::flag_t::CRITICAL, static_cast <uint64_t> (event.first), pid);
+				// Переходим к событию следующему
+				continue;
+			}
+			// Устройство передаваемого слушающего события
+			handover_t record{};
+			// Запоминаем семейство адресов слушающего события
+			record.family = static_cast <uint8_t> (this->_io->family(event.first));
+			// Запоминаем вид устройства обмена слушающего события
+			record.type = static_cast <uint8_t> (this->_io->type(event.first));
+			// Запоминаем протокол слушающего события
+			record.protocol = static_cast <uint8_t> (this->_io->protocol(event.first));
+			// Запоминаем порт слушающего события
+			record.port = this->getPort(event.first);
+			// Запоминаем размер снимка слушающего события
+			record.size = static_cast <uint32_t> (snapshot.size());
+			// Добавляем в сообщение устройство передаваемого события
+			message.insert(message.end(), reinterpret_cast <const uint8_t *> (&record), reinterpret_cast <const uint8_t *> (&record) + sizeof(record));
+			// Добавляем в сообщение снимок передаваемого события
+			message.insert(message.end(), snapshot.begin(), snapshot.end());
+			// Увеличиваем количество передаваемых событий
+			count++;
+		}
+		// Записываем в начало сообщения количество передаваемых событий
+		::memcpy(message.data(), &count, sizeof(count));
+		// Выполняем отправку передачи слушающих событий работнику
+		if(this->_cluster->send(pid, message.data(), message.size()) == 0)
+			// Записываем ошибку в лог
+			this->_log->print("Server events cannot be sent to the worker process [%d]", log_t::flag_t::CRITICAL, pid);
+	}
+	/**
+	 * @brief Метод подъёма слушающих событий из снимков, присланных мастером
+	 *
+	 * @param data данные полученного сообщения
+	 * @param size размер данных полученного сообщения
+	 * @return     признак того, что сообщение было передачей событий
+	 *
+	 */
+	bool awh::unit::Server::handover(const uint8_t * data, const size_t size) noexcept {
+		// Если сообщение короче количества передаваемых событий - передачей оно не является
+		if((data == nullptr) || (size < sizeof(uint16_t)))
+			// Выводим результат
+			return false;
+		// Количество переданных слушающих событий
+		uint16_t count = 0;
+		// Извлекаем количество переданных слушающих событий
+		::memcpy(&count, data, sizeof(count));
+		// Смещение разбора сообщения
+		size_t offset = sizeof(count);
+		/**
+		 * Выполняем перебор всех переданных слушающих событий
+		 */
+		for(uint16_t i = 0; i < count; i++){
+			// Если остатка сообщения не хватает даже на устройство события
+			if((size - offset) < sizeof(handover_t))
+				// Выводим результат
+				return (i > 0);
+			// Устройство переданного слушающего события
+			handover_t record{};
+			// Извлекаем устройство переданного слушающего события
+			::memcpy(&record, data + offset, sizeof(record));
+			// Смещаемся на снимок переданного события
+			offset += sizeof(record);
+			// Если остатка сообщения не хватает на снимок события
+			if((size - offset) < static_cast <size_t> (record.size))
+				// Выводим результат
+				return (i > 0);
+			/**
+			 * Выполняем поиск своего события, которому предназначается снимок
+			 */
+			for(auto j = this->_handover.begin(); j != this->_handover.end(); ++j){
+				// Если устройство своего события совпадает с устройством переданного
+				if((static_cast <uint8_t> (this->_io->family(j->first)) == record.family) &&
+				 (static_cast <uint8_t> (this->_io->type(j->first)) == record.type) &&
+				 (static_cast <uint8_t> (this->_io->protocol(j->first)) == record.protocol) &&
+				 (this->getPort(j->first) == record.port)){
+					// Запоминаем число подключений в очереди, отложенное прослушиванием
+					const uint32_t max = j->second;
+					// Запоминаем событие, которому достаётся снимок
+					const event::id_t eid = j->first;
+					// Убираем своё событие из списка ждущих передачи
+					this->_handover.erase(j);
+					/**
+					 * Выполняем подъём своего события из присланного снимка
+					 *
+					 * @note Событие убрано из списка ждущих ПРЕЖДЕ подъёма намеренно:
+					 *       прослушивание зовётся обычным путём, а тот у работника
+					 *       откладывал бы его снова, застав событие в этом списке
+					 */
+					if(this->_io->restore(eid, data + offset, static_cast <size_t> (record.size))){
+						// Выполняем прослушивание поднятого события обычным путём
+						if(!this->listen(eid, max))
+							// Записываем ошибку в лог
+							this->_log->print("Server event [%llu] restored from the master cannot be launched", log_t::flag_t::CRITICAL, static_cast <uint64_t> (eid));
+					// Если поднять своё событие из присланного снимка не удалось
+					} else this->_log->print("Server event [%llu] cannot be restored from the master snapshot", log_t::flag_t::CRITICAL, static_cast <uint64_t> (eid));
+					// Прерываем поиск своего события
+					break;
+				}
+			}
+			// Смещаемся на событие следующее
+			offset += static_cast <size_t> (record.size);
+		}
+		// Выводим признак того, что сообщение было передачей слушающих событий
+		return true;
+	}
+#endif
 /**
  * @brief Метод обработки событий получения данных сервером
  *
@@ -792,6 +1092,27 @@ bool awh::unit::Server::commit(const event::id_t eid) noexcept {
 						this->_io->setOption(eid, event::options::REUSE_PORT, true);
 				}
 			#endif
+			/**
+			 * Для операционной системы MS Windows
+			 *
+			 * @details Работник кластера своего сокета не заводит вовсе - он получает
+			 *          его снимком от мастера, - оттого фиксация у него откладывается
+			 *          целиком. Отложить её позже, у прослушивания, нельзя: к тому мигу
+			 *          сокет уже был бы заведён и привязан, и снимку достался бы узел с
+			 *          чужим описателем
+			 *
+			 * @note Отложенная фиксация отвечает успехом: событие заведено и принято к
+			 *       работе, а поднимет его приход снимка - обычной же фиксацией
+			 */
+			#if defined(_WIN32) || defined(_WIN64)
+				// Если процесс является работником кластера
+				if((this->_cluster != nullptr) && !this->_cluster->master()){
+					// Запоминаем событие как ждущее передачи от мастера
+					this->_handover.emplace(eid, 0);
+					// Выводим успешный результат: фиксация отложена
+					return true;
+				}
+			#endif
 			// Выполняем фиксацию параметров события
 			if(!(result = this->_io->commit(eid))){
 				// Удаляем событие сервера
@@ -1003,6 +1324,33 @@ bool awh::unit::Server::listen(const event::id_t eid, const uint32_t max) noexce
 	try {
 		// Если событие сервера является актуальным
 		if(this->isActual(eid)){
+			/**
+			 * Для операционной системы MS Windows
+			 *
+			 * @details Работник кластера своего слушающего сокета не заводит вовсе: у
+			 *          этой системы нет ни `SO_REUSEPORT`, ни годного `SO_REUSEADDR`, и
+			 *          привязка работника к тому же порту была бы не разделением работы,
+			 *          а перехватом. Сокет приходит снимком от мастера, оттого
+			 *          прослушивание здесь откладывается до его прихода
+			 *
+			 * @note Отложенное прослушивание отвечает успехом: событие заведено и
+			 *       принято к работе, а о готовности его потребитель узнаёт обычным
+			 *       путём - откликом о запуске
+			 */
+			#if defined(_WIN32) || defined(_WIN64)
+				// Если процесс является работником кластера и событие ждёт передачи
+				if((this->_cluster != nullptr) && !this->_cluster->master()){
+					// Выполняем поиск события в списке ждущих передачи от мастера
+					auto i = this->_handover.find(eid);
+					// Если событие передачи от мастера действительно ждёт
+					if(i != this->_handover.end()){
+						// Запоминаем число подключений в очереди до прихода снимка
+						i->second = max;
+						// Выводим успешный результат: прослушивание отложено
+						return true;
+					}
+				}
+			#endif
 			// Выполняем прослушивание порта сервера для получения входящих подключений
 			if(!(result = this->_io->listen(eid, max))){
 				// Удаляем событие сервера
@@ -1687,6 +2035,10 @@ void awh::unit::Server::stop() noexcept {
 		 * Для операционной системы MS Windows
 		 */
 		#if _WIN32 || _WIN64
+			// Если кластер в работе и процесс является родительским
+			if((this->_cluster != nullptr) && this->_cluster->master())
+				// Останавливаем работу кластера: работники уходят вместе с мастером
+				this->_cluster->stop();
 			// Выполняем остановку работы основного юнита
 			unit_t::stop();
 		/**

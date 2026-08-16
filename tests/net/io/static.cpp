@@ -20138,3 +20138,91 @@ TEST_F(IoFixture, IoDataSourcePullDatagramTest){
 		// Проверяем что номер принятого сообщения совпадает с порядковым
 		ASSERT_EQ(received[i], static_cast <uint8_t> (i & 0xFF)) << "порядок сообщений нарушен на позиции " << i;
 }
+
+/**
+ * @brief Тест отказов снятия и подъёма снимка события
+ *
+ * @details Проверяет пункт договора о честном отказе: снимок именной, годность
+ *          переносчика решает система, а расхождение размера снимка молчаливой
+ *          подменой не считается. Всякий отказ обязан дать ложь, а не пустышку
+ *
+ * @note Положительный ход проверки этой не касается: он требует второго процесса,
+ *       и живёт отдельной проверкой
+ *
+ */
+TEST_F(IoFixture, IoSnapshotRefusalTest){
+	// Выполняем инициализацию сетевого движка
+	ASSERT_TRUE(this->_io->initialize());
+	// Создаём пару обмена, годную переносчиком
+	auto pair = this->_io->events(awh::event::family_t::UDS, awh::event::type_t::STREAM, awh::event::protocol_t::NONE);
+	// Проверяем, что оба идентификатора пары созданы
+	ASSERT_GT(pair[0], 0);
+	ASSERT_GT(pair[1], 0);
+	// Создаём серверное событие, снимок с которого будем снимать
+	awh::event::id_t server = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+	// Проверяем, что идентификатор события создан
+	ASSERT_GT(server, 0);
+	// Устанавливаем адрес привязки
+	ASSERT_TRUE(this->_io->setAddress(server, awh::event::address_t::IPV4, "127.0.0.1"));
+	// Устанавливаем порт привязки
+	ASSERT_TRUE(this->_io->setSourcePort(server, port()));
+	// Буфер снятого снимка
+	std::vector <uint8_t> snapshot;
+	/**
+	 * Снятие снимка с события без дескриптора
+	 *
+	 * @note Событие заведено, но не зафиксировано: переносить ещё нечего
+	 */
+	ASSERT_FALSE(this->_io->snapshot(server, pair[0], snapshot));
+	// Проверяем, что буфер снимка остался пустым
+	ASSERT_TRUE(snapshot.empty());
+	// Выполняем фиксацию настроек события сервера
+	ASSERT_TRUE(this->_io->commit(server));
+	/**
+	 * Снятие снимка с несуществующим событием-переносчиком
+	 */
+	ASSERT_FALSE(this->_io->snapshot(server, static_cast <awh::event::id_t> (0xFFFFFFF), snapshot));
+	// Проверяем, что буфер снимка остался пустым
+	ASSERT_TRUE(snapshot.empty());
+	/**
+	 * Снятие снимка с негодным событием-переносчиком
+	 *
+	 * @note Узел IP переносчиком не годен нигде: у POSIX описатели ходят лишь
+	 *       служебными данными домена UNIX, у MS Windows - лишь именованным каналом
+	 */
+	ASSERT_FALSE(this->_io->snapshot(server, server, snapshot));
+	// Проверяем, что буфер снимка остался пустым
+	ASSERT_TRUE(snapshot.empty());
+	// Создаём событие, которому снимок предназначался бы
+	awh::event::id_t target = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+	// Проверяем, что идентификатор события создан
+	ASSERT_GT(target, 0);
+	// Метка, которой никакой передачи не отвечает
+	const uint64_t label = 0x5A5A5A5A5A5A5A5AULL;
+	/**
+	 * Подъём из снимка неверного размера
+	 */
+	ASSERT_FALSE(this->_io->restore(target, &label, sizeof(label) - 1));
+	/**
+	 * Подъём из пустого снимка
+	 */
+	ASSERT_FALSE(this->_io->restore(target, nullptr, sizeof(label)));
+	/**
+	 * Подъём по чужой метке
+	 *
+	 * @note У POSIX описатель не приезжал вовсе, у MS Windows описание устройства
+	 *       обмена метке не отвечает. Отказ обязан быть в обоих случаях
+	 */
+	ASSERT_FALSE(this->_io->restore(target, &label, sizeof(label)));
+	/**
+	 * Подъём событием, у которого дескриптор уже заведён
+	 *
+	 * @note Подмена работающего дескриптора оставила бы прежний висеть
+	 */
+	ASSERT_FALSE(this->_io->restore(server, &label, sizeof(label)));
+	// Уничтожаем заведённые события
+	this->_io->destroy(target);
+	this->_io->destroy(server);
+	this->_io->destroy(pair[0]);
+	this->_io->destroy(pair[1]);
+}

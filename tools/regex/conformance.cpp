@@ -207,10 +207,11 @@
 			"  pushq %rdi\n"
 			"  pushq %r12\n"
 			"  pushq %r13\n"
-			"  subq $48, %rsp\n"
+			"  pushq %r14\n"
+			"  subq $56, %rsp\n"
 			"  movq %rcx, %r10\n"
-			"  movq 128(%rsp), %r11\n"
-			"  movq 136(%rsp), %rax\n"
+			"  movq 144(%rsp), %r11\n"
+			"  movq 152(%rsp), %rax\n"
 			"  movq %rax, 32(%rsp)\n"
 			"  movq %rdx, %rcx\n"
 			"  movq %r8, %rdx\n"
@@ -221,13 +222,16 @@
 			"  movabsq $0x0F1E2D3C4B5A6978, %r13\n"
 			"  movabsq $0x2468ACE013579BDF, %rsi\n"
 			"  movabsq $0x76543210FEDCBA98, %rdi\n"
+			"  movabsq $0x0123456789ABCDEF, %r14\n"
 			"  callq *%r10\n"
 			"  movq %rbx, %rax\n"
 			"  xorq %r12, %rax\n"
 			"  xorq %r13, %rax\n"
 			"  xorq %rsi, %rax\n"
 			"  xorq %rdi, %rax\n"
-			"  addq $48, %rsp\n"
+			"  xorq %r14, %rax\n"
+			"  addq $56, %rsp\n"
+			"  popq %r14\n"
 			"  popq %r13\n"
 			"  popq %r12\n"
 			"  popq %rdi\n"
@@ -247,7 +251,8 @@
 			"  pushq %r12\n"
 			"  pushq %r13\n"
 			"  pushq %r14\n"
-			"  movq %rdi, %r14\n"
+			"  pushq %r15\n"
+			"  movq %rdi, %r15\n"
 			"  movq %rsi, %rdi\n"
 			"  movq %rdx, %rsi\n"
 			"  movq %rcx, %rdx\n"
@@ -256,10 +261,13 @@
 			"  movabsq $0x1122334455667788, %rbx\n"
 			"  movabsq $0x99AABBCCDDEEFF00, %r12\n"
 			"  movabsq $0x0F1E2D3C4B5A6978, %r13\n"
-			"  callq *%r14\n"
+			"  movabsq $0x2468ACE013579BDF, %r14\n"
+			"  callq *%r15\n"
 			"  movq %rbx, %rax\n"
 			"  xorq %r12, %rax\n"
 			"  xorq %r13, %rax\n"
+			"  xorq %r14, %rax\n"
+			"  popq %r15\n"
 			"  popq %r14\n"
 			"  popq %r13\n"
 			"  popq %r12\n"
@@ -412,6 +420,19 @@ namespace {
 			branches.append(fourth);
 			// Выполняем завершение выбора одной из ветвей
 			branches.append(")");
+			/**
+			 * Если выбор ветвей получает квантор повторения
+			 *
+			 * @details Повторение над областью инструкций - устройство, отдельное
+			 *          от повторения одиночного символа: тело его проходится
+			 *          целиком, а отступление ведёт внутрь прохода прежнего.
+			 *          Без квантора здесь выборка таких выражений не порождала
+			 *          бы вовсе, и сличение их ничего бы не проверяло.
+			 *
+			 */
+			if((gen() % 2) == 0)
+				// Выполняем добавление квантора повторения выбора ветвей
+				branches.append(REPEATS[gen() % 9]);
 			// Выполняем добавление накопленного выражения
 			branches.append(result);
 			// Выполняем предварение выражения выбором одной из ветвей
@@ -851,6 +872,17 @@ namespace {
 			#if defined(__x86_64__) || defined(_M_X64)
 				emitter.move(reg_t::LINK, static_cast <uint64_t> (0xC3C3C3C3C3C3C3C3ull));
 			#endif
+			/**
+			 * Выполняем занятие регистра адреса записи кадра
+			 *
+			 * @details Набор x86-64 отводит адресу записи регистр, оберегаемый
+			 *          вызываемым, отчего вход обязан его сохранить, а выход -
+			 *          вернуть. Без занятия его заглушкой сохранение это ничем
+			 *          не проверялось бы: порождение сопоставителя пишет в него
+			 *          сразу за входом, и затирание осталось бы незамеченным.
+			 *
+			 */
+			emitter.move(reg_t::RECORD, static_cast <uint64_t> (0xD4D4D4D4D4D4D4D4ull));
 			// Выполняем размещение выхода из порождаемого сопоставителя
 			emitter.epilogue(0);
 			// Выполняем установку итога исполнения порождённого кода
@@ -886,11 +918,16 @@ namespace {
 			/**
 			 * Получаем сумму примет, в оберегаемые регистры укладываемых
 			 */
-			#if defined(_WIN32) || defined(__aarch64__) || defined(_M_ARM64)
+			#if defined(_WIN32)
+				const uint64_t expected = (0x1122334455667788ull ^ 0x99AABBCCDDEEFF00ull ^
+				 0x0F1E2D3C4B5A6978ull ^ 0x2468ACE013579BDFull ^ 0x76543210FEDCBA98ull ^
+				 0x0123456789ABCDEFull);
+			#elif defined(__aarch64__) || defined(_M_ARM64)
 				const uint64_t expected = (0x1122334455667788ull ^ 0x99AABBCCDDEEFF00ull ^
 				 0x0F1E2D3C4B5A6978ull ^ 0x2468ACE013579BDFull ^ 0x76543210FEDCBA98ull);
 			#else
-				const uint64_t expected = (0x1122334455667788ull ^ 0x99AABBCCDDEEFF00ull ^ 0x0F1E2D3C4B5A6978ull);
+				const uint64_t expected = (0x1122334455667788ull ^ 0x99AABBCCDDEEFF00ull ^
+				 0x0F1E2D3C4B5A6978ull ^ 0x2468ACE013579BDFull);
 			#endif
 			/**
 			 * Если сумма примет оберегаемых регистров не совпала
@@ -1264,6 +1301,206 @@ static bool indexing() noexcept {
 	// Выполняем вывод итога проверки обращения к памяти
 	::printf("  обращение по регистру  %zu проверок, расхождений %zu\n", checks, divergences);
 	// Выводим результат проверки обращения к памяти
+	return (divergences == 0);
+}
+
+/**
+ * @brief Функция выдачи значения, доводом переданного
+ *
+ * @details Подпрограмма эта зовётся образцом записей вложенных уровней с уровня
+ *          самого глубокого: вызов затирает регистры, и образец обязан пережить
+ *          его, записи свои не потеряв.
+ *
+ * @param text  адрес начала текста сопоставления
+ * @param size  размер текста сопоставления в байтах
+ * @param pos   позиция, подпрограмме переданная
+ * @param value адрес значения, подпрограмме переданного
+ * @return      значение, доводом переданное
+ *
+ */
+static size_t deepest(const char * text, const size_t size, const size_t pos, const void * value) noexcept {
+	// Выполняем пропуск доводов, подпрограмме не нужных
+	(void) text; (void) size; (void) pos;
+	// Выводим значение, доводом переданное
+	return (* reinterpret_cast <const size_t *> (value));
+}
+
+/**
+ * @brief Функция сличения записей вложенных уровней
+ *
+ * @details Места кадра адресуются регистром записи, отчего продвижение его
+ *          на размер кадра обязано давать обращениям, порождением размещённым,
+ *          свежий набор тех же самых мест. Свойство это - основание повторения
+ *          над областью и рекурсии: без него два вложенных входа в один и тот же
+ *          участок порождённого кода затирали бы положения отступления друг друга.
+ *
+ *          Образец отводит три записи одну в другой, пишет в место нулевое каждой
+ *          значение своё, зовёт с уровня самого глубокого подпрограмму обстановки -
+ *          вызов затирает регистры, и регистр записи сопоставитель откладывает
+ *          в область сохранения ровно так же, как это делает порождение, - а затем
+ *          снимает записи одну за другой, вычитывая на каждом уровне место нулевое.
+ *          Значения обязаны выйти теми же и в том же порядке.
+ *
+ * @return результат сличения записей вложенных уровней
+ *
+ */
+static bool nesting() noexcept {
+	/**
+	 * Если порождение машинного кода не поддерживается
+	 */
+	if(!awh::regex::emitter_t::available() || !awh::regex::assembly_t::available()) {
+		// Выполняем вывод пропуска проверки записей вложенных уровней
+		::printf("  записи вложенных уровней порождение не поддерживается\n");
+		// Выводим результат сличения записей вложенных уровней
+		return true;
+	}
+	// Подписываемся на перечисление регистров соглашения о вызове
+	using reg_t = awh::regex::emitter_t::reg_t;
+	/**
+	 * @brief Вид порождаемого образца записей вложенных уровней
+	 *
+	 */
+	typedef bool (* probe_t) (const char *, size_t, size_t, size_t *, const void *);
+	// Размер записи кадра образца в местах
+	constexpr uint32_t PLACES = 8;
+	// Размер записи кадра образца в байтах
+	constexpr uint32_t FRAME = (PLACES * 8);
+	// Создаём объект порождения машинного кода
+	awh::regex::emitter_t emitter;
+	// Выполняем размещение входа в порождаемый образец
+	emitter.prologue(FRAME);
+	/**
+	 * Выполняем заведение регистра записи адресом области, доводом переданной
+	 *
+	 * @details Область записей передаётся местом набора границ, за границами
+	 *          размещённым, - ровно так же, как это делает вызов сопоставления.
+	 *
+	 */
+	emitter.fetch(reg_t::RECORD, reg_t::BOUNDS, static_cast <uint32_t> (4));
+	// Выполняем запись значения уровня внешнего в место нулевое
+	emitter.store(reg_t::START, reg_t::RECORD, static_cast <uint32_t> (0));
+	// Выполняем отведение записи уровня первого вложенного
+	emitter.enter(FRAME);
+	// Выполняем запись значения уровня первого в место нулевое
+	emitter.store(reg_t::SIZE, reg_t::RECORD, static_cast <uint32_t> (0));
+	// Выполняем отведение записи уровня второго вложенного
+	emitter.enter(FRAME);
+	/**
+	 * Выполняем сохранение затираемых вызовом регистров в кадре вызова
+	 *
+	 * @details Область сохранения адресуется указателем стека, а не регистром
+	 *          записи: сам этот регистр вызовом затирается, и брать его назад
+	 *          из области, им же адресуемой, было бы кругом замкнутым.
+	 *
+	 */
+	emitter.store(reg_t::BOUNDS, reg_t::STACK, static_cast <uint32_t> (0));
+	emitter.store(reg_t::CONTEXT, reg_t::STACK, static_cast <uint32_t> (1));
+	emitter.store(reg_t::LINK, reg_t::STACK, static_cast <uint32_t> (2));
+	emitter.store(reg_t::RECORD, reg_t::STACK, static_cast <uint32_t> (3));
+	// Выполняем чтение адреса вызываемой подпрограммы из обстановки
+	emitter.context(reg_t::SCRATCH, static_cast <uint32_t> (0));
+	// Выполняем передачу адреса значения обстановки четвёртым доводом
+	emitter.context(reg_t::BOUNDS, static_cast <uint32_t> (1));
+	// Выполняем размещение вызова подпрограммы обстановки
+	emitter.call(reg_t::SCRATCH);
+	// Выполняем перенос итога вызова в регистр промежуточного значения
+	emitter.move(reg_t::SPARE, reg_t::RESULT);
+	/**
+	 * Выполняем восстановление затёртых вызовом регистров из кадра вызова
+	 */
+	emitter.fetch(reg_t::BOUNDS, reg_t::STACK, static_cast <uint32_t> (0));
+	emitter.fetch(reg_t::CONTEXT, reg_t::STACK, static_cast <uint32_t> (1));
+	emitter.fetch(reg_t::LINK, reg_t::STACK, static_cast <uint32_t> (2));
+	emitter.fetch(reg_t::RECORD, reg_t::STACK, static_cast <uint32_t> (3));
+	// Выполняем запись итога подпрограммы в место нулевое уровня второго
+	emitter.store(reg_t::SPARE, reg_t::RECORD, static_cast <uint32_t> (0));
+	// Выполняем чтение значения уровня второго из места нулевого
+	emitter.fetch(reg_t::SPARE, reg_t::RECORD, static_cast <uint32_t> (0));
+	// Выполняем снятие записи уровня второго вложенного
+	emitter.leave(FRAME);
+	// Выполняем чтение значения уровня первого из места нулевого
+	emitter.fetch(reg_t::SCRATCH, reg_t::RECORD, static_cast <uint32_t> (0));
+	// Выполняем снятие записи уровня первого вложенного
+	emitter.leave(FRAME);
+	// Выполняем чтение значения уровня внешнего из места нулевого
+	emitter.fetch(reg_t::LETTER, reg_t::RECORD, static_cast <uint32_t> (0));
+	// Выполняем выдачу значения уровня внешнего
+	emitter.store(reg_t::LETTER, reg_t::BOUNDS, static_cast <uint32_t> (0));
+	// Выполняем выдачу значения уровня первого
+	emitter.store(reg_t::SCRATCH, reg_t::BOUNDS, static_cast <uint32_t> (1));
+	// Выполняем выдачу значения уровня второго
+	emitter.store(reg_t::SPARE, reg_t::BOUNDS, static_cast <uint32_t> (2));
+	// Выполняем размещение выхода из порождаемого образца
+	emitter.epilogue(FRAME);
+	// Выполняем размещение возврата из порождаемого образца
+	emitter.ret();
+	/**
+	 * Если порождение образца не выполнено
+	 */
+	if(!emitter.resolve() || emitter.failed()) {
+		// Выполняем вывод отказа порождения образца
+		::printf("  записи вложенных уровней ОБРАЗЕЦ НЕ ПОРОЖДЁН\n");
+		// Выводим результат сличения записей вложенных уровней
+		return false;
+	}
+	// Создаём объект размещения исполняемой памяти
+	awh::regex::assembly_t assembly;
+	/**
+	 * Если размещение порождённого образца не выполнено
+	 */
+	if(!assembly.allocate(emitter.length()) || !assembly.fill(emitter.code().data(), emitter.length()) || !assembly.commit()) {
+		// Выполняем вывод отказа размещения образца
+		::printf("  записи вложенных уровней ОБРАЗЕЦ НЕ РАЗМЕЩЁН\n");
+		// Выводим результат сличения записей вложенных уровней
+		return false;
+	}
+	// Получаем вызов порождённого образца записей вложенных уровней
+	const probe_t probe = reinterpret_cast <probe_t> (const_cast <void *> (assembly.entry()));
+	// Количество выполненных проверок записей
+	size_t checks = 0;
+	// Количество обнаруженных расхождений записей
+	size_t divergences = 0;
+	/**
+	 * Выполняем перебор значений уровня внешнего
+	 */
+	for(size_t outer = 1; outer <= 16; outer++) {
+		/**
+		 * Выполняем перебор значений уровня первого
+		 */
+		for(size_t inner = 1; inner <= 16; inner++) {
+			// Значение, подпрограмме обстановки передаваемое
+			const size_t deep = ((outer * 1000) + inner);
+			// Создаём таблицу обстановки исполнения образца
+			const void * context[2] = {reinterpret_cast <const void *> (&deepest), reinterpret_cast <const void *> (&deep)};
+			// Создаём область записей кадра образца на три уровня
+			std::vector <size_t> records((PLACES * 3), 0);
+			// Создаём набор мест выдачи значений уровней
+			std::vector <size_t> cells(8, 0);
+			// Выполняем передачу адреса области записей образцу
+			cells.at(4) = reinterpret_cast <size_t> (records.data());
+			// Выполняем вызов порождённого образца записей вложенных уровней
+			probe(nullptr, inner, outer, cells.data(), reinterpret_cast <const void *> (context));
+			// Увеличиваем количество выполненных проверок записей
+			checks++;
+			/**
+			 * Если значения уровней ожидаемым не отвечают
+			 */
+			if((cells.at(0) != outer) || (cells.at(1) != inner) || (cells.at(2) != deep)) {
+				// Увеличиваем количество обнаруженных расхождений записей
+				divergences++;
+				/**
+				 * Если расхождение подлежит выводу
+				 */
+				if(divergences <= 5)
+					// Выполняем вывод обнаруженного расхождения записей
+					::printf("  РАСХОЖДЕНИЕ записей вложенных уровней: получено %zu/%zu/%zu, ожидалось %zu/%zu/%zu\n",
+					 cells.at(0), cells.at(1), cells.at(2), outer, inner, deep);
+			}
+		}
+	}
+	// Выполняем вывод итога сличения записей вложенных уровней
+	::printf("  записи вложенных уровней %zu проверок, расхождений %zu\n", checks, divergences);
+	// Выводим результат сличения записей вложенных уровней
 	return (divergences == 0);
 }
 
@@ -1744,6 +1981,12 @@ int main(int argc, char ** argv) {
 	 * Если проверка обращения к памяти по адресу в регистре не пройдена
 	 */
 	if(!indexing())
+		// Выполняем сброс флага успешного прохождения стенда
+		passed = false;
+	/**
+	 * Если сличение записей вложенных вызовов не пройдено
+	 */
+	if(!nesting())
 		// Выполняем сброс флага успешного прохождения стенда
 		passed = false;
 	/**

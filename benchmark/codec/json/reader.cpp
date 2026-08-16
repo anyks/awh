@@ -1,0 +1,411 @@
+/**
+ * @file reader.cpp
+ * @date 2026-08-16
+ *
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
+ * @brief Сценарии измерения потокового чтения текста JSON — ответы служб, крупные
+ *        выгрузки, преобладание чисел и строк, глубокая вложенность и подача кусками
+ *
+ * @copyright Copyright © 2026
+ *
+ */
+
+/**
+ * Подключаем заголовочный файл модуля
+ */
+#include "json.hpp"
+
+/**
+ * Используем стандартное пространство имён
+ */
+using namespace std;
+
+/**
+ * Подписываемся на пространство имён бенчмарков контейнера JSON
+ */
+using namespace awh::benchmark::notation;
+
+/**
+ * @brief Внутренние параметры и сценарии бенчмарков потокового чтения
+ *
+ */
+namespace {
+	/**
+	 * @brief Количество разбираемых мелких документов
+	 */
+	static constexpr size_t SMALL_ROUNDS = 20000;
+	/**
+	 * @brief Количество разбираемых крупных документов
+	 */
+	static constexpr size_t LARGE_ROUNDS = 8;
+	/**
+	 * @brief Количество разбираемых документов с преобладанием одного вида содержимого
+	 */
+	static constexpr size_t FOCUSED_ROUNDS = 20;
+	/**
+	 * @brief Размер куска при подаче текста по частям
+	 *
+	 * @note Размер взят нарочито неудобным: он рвёт и записи чисел, и знаки кодировки,
+	 *       и отменяющие последовательности
+	 */
+	static constexpr size_t CHUNK_SIZE = 7;
+
+	/**
+	 * @brief Пороги пропускной способности потокового чтения в мегабайтах в секунду
+	 *
+	 * @details Пороги назначены по наименьшему из показателей, снятых на отладочных
+	 *          стендах, с двукратным запасом: время на занятой машине расходится между
+	 *          прогонами на десятки процентов, и порог, заданный впритык, поднимал бы
+	 *          ложную тревогу чаще, чем ловил бы настоящую регрессию
+	 *
+	 * @warning Калибровать пороги по рабочей машине нельзя: между нею и самым медленным
+	 *          из стендов разница пятикратная
+	 *
+	 */
+	static constexpr double READ_RESPONSE_THRESHOLD = 12.0;
+	/**
+	 * @brief Порог пропускной способности чтения описания настроек
+	 */
+	static constexpr double READ_CONFIG_THRESHOLD = 40.0;
+	/**
+	 * @brief Порог пропускной способности чтения крупного документа
+	 */
+	static constexpr double READ_LARGE_THRESHOLD = 40.0;
+	/**
+	 * @brief Порог пропускной способности чтения документа с преобладанием чисел
+	 */
+	static constexpr double READ_NUMBERS_THRESHOLD = 30.0;
+	/**
+	 * @brief Порог пропускной способности чтения документа с преобладанием строк
+	 */
+	static constexpr double READ_STRINGS_THRESHOLD = 60.0;
+	/**
+	 * @brief Порог пропускной способности чтения глубоко вложенного документа
+	 */
+	static constexpr double READ_NESTED_THRESHOLD = 20.0;
+	/**
+	 * @brief Порог просадки от подачи текста кусками
+	 *
+	 * @details Сценарий этот стережёт главное обещание чтения: выдача от нарезки текста
+	 *          не зависит, а стоимость её зависеть почти не должна. Подача кусками по
+	 *          семь байтов рвёт всякое значение, и всплеск просадки означал бы, что
+	 *          разбор на границе куска делает работу заново
+	 *
+	 */
+	static constexpr double READ_CHUNKED_THRESHOLD = 3.0;
+	/**
+	 * @brief Порог расхода выделений памяти на чтение одного документа
+	 *
+	 * @details Чтение удерживает хранилище знаков и очередь событий между документами, и
+	 *          расход на документ обязан оставаться постоянным: рост его означал бы, что
+	 *          вместилища заводятся заново на всякий разбор
+	 *
+	 */
+	static constexpr double READ_ALLOCATIONS_THRESHOLD = 8.0;
+	/**
+	 * @brief Порог задержки чтения ответа службы в микросекундах
+	 */
+	static constexpr double READ_RESPONSE_LATENCY_THRESHOLD = 6.0;
+
+	/**
+	 * @brief Функция потокового чтения текста документа
+	 *
+	 * @param text   разбираемый текст документа
+	 * @param reader объект потокового чтения текста документа
+	 * @param chunk  размер подаваемого куска, ноль означает подачу целиком
+	 * @return       количество выданных событий разбора
+	 *
+	 */
+	static uint64_t read(const string & text, awh::codec::json::reader_t & reader, const size_t chunk = 0) noexcept {
+		// Количество выданных событий разбора
+		uint64_t result = 0;
+		// Выполняем сброс состояния чтения текста документа
+		reader.reset();
+		// Получаем размер подаваемого куска текста документа
+		const size_t size = ((chunk > 0) ? chunk : text.size());
+		/**
+		 * Выполняем подачу текста документа кусками
+		 */
+		for(size_t offset = 0; offset <= text.size(); offset += size){
+			// Получаем размер очередного подаваемого куска
+			const size_t length = (((offset + size) < text.size()) ? size : (text.size() - offset));
+			/**
+			 * Если подача очередного куска текста документа завершилась отказом
+			 */
+			if(!reader.feed(text.data() + offset, length, ((offset + length) >= text.size())))
+				// Выводим количество выданных событий разбора
+				return result;
+			/**
+			 * Выполняем изъятие всех собранных событий разбора
+			 */
+			while(reader.next())
+				// Выполняем учёт очередного события разбора
+				result += static_cast <uint64_t> (reader.event());
+			/**
+			 * Если текст документа исчерпан
+			 */
+			if((offset + length) >= text.size())
+				// Прекращаем подачу текста документа
+				break;
+		}
+		// Выводим количество выданных событий разбора
+		return result;
+	}
+	/**
+	 * @brief Функция прогона сценария чтения текста документа
+	 *
+	 * @param text   разбираемый текст документа
+	 * @param rounds количество разбираемых документов
+	 * @return       результат измерения
+	 *
+	 */
+	static awh::benchmark::result_t reading(const string & text, const size_t rounds) noexcept {
+		// Результат измерения
+		awh::benchmark::result_t result;
+		// Объект потокового чтения текста документа
+		awh::codec::json::reader_t reader;
+		// Выполняем прогон измеряемой операции
+		const outcome_t outcome = measure(text.size(), rounds, [&text, &reader]() noexcept {
+			// Выполняем потоковое чтение текста документа
+			return ::read(text, reader);
+		});
+		// Устанавливаем измеренное значение
+		result.value = perSecond(outcome);
+		// Устанавливаем сведения о прогоне
+		result.details = details(outcome);
+		// Выводим результат измерения
+		return result;
+	}
+	/**
+	 * @brief Функция прогона сценария чтения ответа службы
+	 *
+	 * @return результат измерения
+	 *
+	 */
+	static awh::benchmark::result_t readResponse() noexcept {
+		// Выводим результат измерения
+		return ::reading(response(), SMALL_ROUNDS);
+	}
+	/**
+	 * @brief Функция прогона сценария чтения описания настроек
+	 *
+	 * @return результат измерения
+	 *
+	 */
+	static awh::benchmark::result_t readConfig() noexcept {
+		// Выводим результат измерения
+		return ::reading(config(), SMALL_ROUNDS);
+	}
+	/**
+	 * @brief Функция прогона сценария чтения крупного документа
+	 *
+	 * @return результат измерения
+	 *
+	 */
+	static awh::benchmark::result_t readLarge() noexcept {
+		// Выводим результат измерения
+		return ::reading(large(), LARGE_ROUNDS);
+	}
+	/**
+	 * @brief Функция прогона сценария чтения документа с преобладанием чисел
+	 *
+	 * @return результат измерения
+	 *
+	 */
+	static awh::benchmark::result_t readNumbers() noexcept {
+		// Выводим результат измерения
+		return ::reading(numbers(), FOCUSED_ROUNDS);
+	}
+	/**
+	 * @brief Функция прогона сценария чтения документа с преобладанием строк
+	 *
+	 * @return результат измерения
+	 *
+	 */
+	static awh::benchmark::result_t readStrings() noexcept {
+		// Выводим результат измерения
+		return ::reading(strings(), FOCUSED_ROUNDS);
+	}
+	/**
+	 * @brief Функция прогона сценария чтения глубоко вложенного документа
+	 *
+	 * @return результат измерения
+	 *
+	 */
+	static awh::benchmark::result_t readNested() noexcept {
+		// Выводим результат измерения
+		return ::reading(nested(), FOCUSED_ROUNDS);
+	}
+	/**
+	 * @brief Функция прогона сценария просадки от подачи текста кусками
+	 *
+	 * @return результат измерения
+	 *
+	 */
+	static awh::benchmark::result_t readChunked() noexcept {
+		// Результат измерения
+		awh::benchmark::result_t result;
+		// Получаем разбираемый текст документа
+		const string & text = config();
+		// Объект потокового чтения текста документа
+		awh::codec::json::reader_t reader;
+		// Выполняем прогон чтения текста, поданного целиком
+		const outcome_t whole = measure(text.size(), SMALL_ROUNDS, [&text, &reader]() noexcept {
+			// Выполняем потоковое чтение текста документа целиком
+			return ::read(text, reader);
+		});
+		// Выполняем прогон чтения текста, поданного кусками
+		const outcome_t parts = measure(text.size(), SMALL_ROUNDS, [&text, &reader]() noexcept {
+			// Выполняем потоковое чтение текста документа кусками
+			return ::read(text, reader, CHUNK_SIZE);
+		});
+		// Получаем пропускную способность чтения текста, поданного кусками
+		const double chunked = perSecond(parts);
+		/**
+		 * Если чтение текста, поданного кусками, не состоялось
+		 */
+		if(chunked <= 0.0){
+			// Устанавливаем признак негодности измерения
+			result.invalid = true;
+			// Устанавливаем причину негодности измерения
+			result.reason = "чтение текста, поданного кусками, не состоялось";
+			// Выводим результат измерения
+			return result;
+		}
+		// Устанавливаем измеренную просадку от подачи текста кусками
+		result.value = (perSecond(whole) / chunked);
+		// Устанавливаем сведения о прогоне
+		result.details = details(parts);
+		// Выводим результат измерения
+		return result;
+	}
+	/**
+	 * @brief Функция прогона сценария расхода выделений памяти на чтение
+	 *
+	 * @return результат измерения
+	 *
+	 */
+	static awh::benchmark::result_t readAllocations() noexcept {
+		// Результат измерения
+		awh::benchmark::result_t result;
+		// Получаем разбираемый текст документа
+		const string & text = config();
+		// Объект потокового чтения текста документа
+		awh::codec::json::reader_t reader;
+		// Выполняем прогон измеряемой операции
+		const outcome_t outcome = measure(text.size(), SMALL_ROUNDS, [&text, &reader]() noexcept {
+			// Выполняем потоковое чтение текста документа
+			return ::read(text, reader);
+		});
+		/**
+		 * Если учёт выделений памяти неработоспособен
+		 */
+		if(!counted(outcome, result))
+			// Выводим результат измерения
+			return result;
+		// Устанавливаем измеренный расход выделений памяти
+		result.value = perDocument(outcome);
+		// Устанавливаем сведения о прогоне
+		result.details = details(outcome);
+		// Выводим результат измерения
+		return result;
+	}
+	/**
+	 * @brief Функция прогона сценария задержки чтения ответа службы
+	 *
+	 * @return результат измерения
+	 *
+	 */
+	static awh::benchmark::result_t latencyResponse() noexcept {
+		// Результат измерения
+		awh::benchmark::result_t result;
+		// Получаем разбираемый текст документа
+		const string & text = response();
+		// Объект потокового чтения текста документа
+		awh::codec::json::reader_t reader;
+		// Выполняем прогон измеряемой операции
+		const outcome_t outcome = measure(text.size(), SMALL_ROUNDS, [&text, &reader]() noexcept {
+			// Выполняем потоковое чтение текста документа
+			return ::read(text, reader);
+		});
+		// Устанавливаем измеренную задержку чтения документа
+		result.value = perLatency(outcome);
+		// Устанавливаем сведения о прогоне
+		result.details = details(outcome);
+		// Выводим результат измерения
+		return result;
+	}
+
+	/**
+	 * Выполняем регистрацию сценария чтения ответа службы
+	 */
+	static const bool RESPONSE_REGISTERED = awh::benchmark::add(
+		"codec/json: чтение ответа службы", "МБ/с", READ_RESPONSE_THRESHOLD,
+		awh::benchmark::bound_t::MINIMUM, readResponse
+	);
+	/**
+	 * Выполняем регистрацию сценария чтения описания настроек
+	 */
+	static const bool CONFIG_REGISTERED = awh::benchmark::add(
+		"codec/json: чтение описания настроек", "МБ/с", READ_CONFIG_THRESHOLD,
+		awh::benchmark::bound_t::MINIMUM, readConfig
+	);
+	/**
+	 * Выполняем регистрацию сценария чтения крупного документа
+	 */
+	static const bool LARGE_REGISTERED = awh::benchmark::add(
+		"codec/json: чтение крупного документа", "МБ/с", READ_LARGE_THRESHOLD,
+		awh::benchmark::bound_t::MINIMUM, readLarge
+	);
+	/**
+	 * Выполняем регистрацию сценария чтения документа с преобладанием чисел
+	 */
+	static const bool NUMBERS_REGISTERED = awh::benchmark::add(
+		"codec/json: чтение чисел", "МБ/с", READ_NUMBERS_THRESHOLD,
+		awh::benchmark::bound_t::MINIMUM, readNumbers
+	);
+	/**
+	 * Выполняем регистрацию сценария чтения документа с преобладанием строк
+	 */
+	static const bool STRINGS_REGISTERED = awh::benchmark::add(
+		"codec/json: чтение строк", "МБ/с", READ_STRINGS_THRESHOLD,
+		awh::benchmark::bound_t::MINIMUM, readStrings
+	);
+	/**
+	 * Выполняем регистрацию сценария чтения глубоко вложенного документа
+	 */
+	static const bool NESTED_REGISTERED = awh::benchmark::add(
+		"codec/json: чтение вложенности", "МБ/с", READ_NESTED_THRESHOLD,
+		awh::benchmark::bound_t::MINIMUM, readNested
+	);
+	/**
+	 * Выполняем регистрацию сценария просадки от подачи текста кусками
+	 */
+	static const bool CHUNKED_REGISTERED = awh::benchmark::add(
+		"codec/json: просадка от подачи кусками", "раз", READ_CHUNKED_THRESHOLD,
+		awh::benchmark::bound_t::MAXIMUM, readChunked
+	);
+	/**
+	 * Выполняем регистрацию сценария расхода выделений памяти на чтение
+	 */
+	static const bool ALLOCATIONS_REGISTERED = awh::benchmark::add(
+		"codec/json: выделения на чтение", "выд./док.", READ_ALLOCATIONS_THRESHOLD,
+		awh::benchmark::bound_t::MAXIMUM, readAllocations
+	);
+	/**
+	 * Выполняем регистрацию сценария задержки чтения ответа службы
+	 */
+	static const bool RESPONSE_LATENCY_REGISTERED = awh::benchmark::add(
+		"codec/json: задержка чтения ответа службы", "мкс/док.", READ_RESPONSE_LATENCY_THRESHOLD,
+		awh::benchmark::bound_t::MAXIMUM, latencyResponse
+	);
+};

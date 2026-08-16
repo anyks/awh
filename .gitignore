@@ -35,14 +35,14 @@
 *.app
 
 .cache/
-/bin
-/build
-/build-release
-/build-ngtcp2
-/build-nghttp2
-/build-nghttp3
-/third_party
-/submodules/libev/
+bin/
+build/
+build-release/
+build-ngtcp2/
+build-nghttp2/
+build-nghttp3/
+third_party/
+submodules/libev/
 submodules/libiconv/
 submodules/libidn2/
 experience/nat/build/

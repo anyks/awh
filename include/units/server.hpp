@@ -138,6 +138,32 @@ namespace awh {
 			private:
 				// Список идентификаторов событий сервера
 				unordered_map <event::id_t, event::id_t> _events;
+			/**
+			 * Для операционной системы MS Windows
+			 */
+			#if defined(_WIN32) || defined(_WIN64)
+				private:
+					/**
+					 * Признак просьбы работника о передаче слушающих событий
+					 *
+					 * @details Работник просит передачу сам, и просьба эта служит мастеру
+					 *          признаком связанности канала: порождение работника связи
+					 *          ещё не означает, а написанное работником - означает
+					 *
+					 * @note Значение выбрано непечатным намеренно: просьба уходит первым
+					 *       сообщением работника и с полезной нагрузкой не смешивается
+					 */
+					static constexpr uint8_t HANDOVER_REQUEST = 0x01;
+					/**
+					 * Список слушающих событий работника, ждущих передачи от мастера
+					 *
+					 * @details Работник кластера своего слушающего сокета не заводит: он
+					 *          получает его снимком от мастера. Прослушивание оттого
+					 *          откладывается - событие с числом подключений в очереди
+					 *          запоминается здесь и поднимается по приходу снимка
+					 */
+					unordered_map <event::id_t, uint32_t> _handover;
+			#endif
 			private:
 				// Список клиентов по идентификатору серверного события
 				unordered_map <event::id_t, list <event::id_t>> _serverClients;
@@ -364,6 +390,58 @@ namespace awh {
 				 * \~
 				 */
 				void cluster(const pid_t pid, const unit::cluster_t::event_t event) noexcept;
+			/**
+			 * Для операционной системы MS Windows
+			 */
+			#if defined(_WIN32) || defined(_WIN64)
+				private:
+					/**
+					 * \~russian
+					 * @brief Метод передачи слушающих событий работнику кластера
+					 *
+					 * @details Ветвления у этой системы нет, и по наследству слушающее
+					 *          событие работнику не достаётся: мастер снимает с каждого
+					 *          своего слушающего события переносимый снимок и отдаёт его
+					 *          работнику первым же сообщением
+					 *
+					 * @warning Порядок здесь несущий: снимки уходят ПРЕЖДЕ отклика
+					 *          потребителя о запуске работника, оттого опередить их
+					 *          потребитель не может, и первым сообщением работника всегда
+					 *          оказывается передача событий
+					 *
+					 * @param pid идентификатор процесса работника
+					 *
+					 * \~english
+					 * @brief Method of the handover of the listening events to a worker of the cluster
+					 * @param pid identifier of the process of the worker
+					 *
+					 * \~
+					 */
+					void handover(const pid_t pid) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод подъёма слушающих событий из снимков, присланных мастером
+					 *
+					 * @details Разбирает первое сообщение канала обмена и поднимает по нему
+					 *          свои слушающие события: своего сокета работник не заводит
+					 *          вовсе - у этой системы нет ни `SO_REUSEPORT`, ни годного
+					 *          `SO_REUSEADDR`, и привязка работника к тому же порту была
+					 *          бы не разделением работы, а перехватом
+					 *
+					 * @param data данные полученного сообщения
+					 * @param size размер данных полученного сообщения
+					 * @return     признак того, что сообщение было передачей событий
+					 *
+					 * \~english
+					 * @brief Method of the raising of the listening events from the snapshots sent by the master
+					 * @param data data of the received message
+					 * @param size data size of the received message
+					 * @return     flag that the message was a handover of the events
+					 *
+					 * \~
+					 */
+					bool handover(const uint8_t * data, const size_t size) noexcept;
+			#endif
 			private:
 				/**
 				 * \~russian

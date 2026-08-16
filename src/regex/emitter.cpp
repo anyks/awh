@@ -468,6 +468,26 @@ void awh::regex::Emitter::epilogue(const uint32_t frame) noexcept {
 		this->add(reg_t::STACK, reg_t::STACK, frame);
 }
 /**
+ * @brief Метод отведения записи вложенного уровня
+ *
+ * @param frame размер отводимой записи в байтах
+ *
+ */
+void awh::regex::Emitter::enter(const uint32_t frame) noexcept {
+	// Выполняем переход к записи уровня вложенного
+	this->add(reg_t::RECORD, reg_t::RECORD, frame);
+}
+/**
+ * @brief Метод снятия записи вложенного уровня
+ *
+ * @param frame размер снимаемой записи в байтах
+ *
+ */
+void awh::regex::Emitter::leave(const uint32_t frame) noexcept {
+	// Выполняем возврат к записи уровня вызывающего
+	this->sub(reg_t::RECORD, reg_t::RECORD, frame);
+}
+/**
  * @brief Метод размещения перехода к метке
  *
  * @param label номер метки, к какой выполняется переход

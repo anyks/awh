@@ -1945,24 +1945,6 @@ namespace awh {
 			public:
 				/**
 				 * \~russian
-				 * @brief Метод объединения данных между событиями
-				 *
-				 * @param eid  идентификатор события-источника
-				 * @param dest идентификатор события-приёмника
-				 * @return     результат выполнения объединения
-				 *
-				 * \~english
-				 * @brief Method of the joining of the data between the events
-				 * @param eid  identifier of the source event
-				 * @param dest identifier of the receiver event
-				 * @return     result of the performance of the joining
-				 *
-				 * \~
-				 */
-				bool splice(const event::id_t eid, const event::id_t dest) noexcept;
-			public:
-				/**
-				 * \~russian
 				 * @brief Метод запуска события
 				 *
 				 * @details Последний шаг подготовки: с него событие начинает участвовать в
@@ -2293,6 +2275,89 @@ namespace awh {
 				 * \~
 				 */
 				size_t relay(const event::id_t id, const void * buffer, const size_t size) noexcept;
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод объединения данных между событиями
+				 *
+				 * @param eid  идентификатор события-источника
+				 * @param dest идентификатор события-приёмника
+				 * @return     результат выполнения объединения
+				 *
+				 * \~english
+				 * @brief Method of the joining of the data between the events
+				 * @param eid  identifier of the source event
+				 * @param dest identifier of the receiver event
+				 * @return     result of the performance of the joining
+				 *
+				 * \~
+				 */
+				bool splice(const event::id_t eid, const event::id_t dest) noexcept;
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод подъёма события из снимка, снятого чужим процессом
+				 *
+				 * @details Заменяет собой `commit` у события, заведённого обычным путём:
+				 *          `commit` завёл бы событию своё устройство, а здесь оно берётся
+				 *          готовым - тем самым, какое передал чужой процесс
+				 *
+				 * @note Устройство события обязано совпадать с тем, какое было снято:
+				 *       семейство, тип и протокол задаются при заведении события, и
+				 *       расхождение с содержимым снимка движок отвергает отказом
+				 *
+				 * @warning Снимок годен ОДНОМУ подъёму и ОДНОМУ процессу - тому, который
+				 *          был назван при снятии
+				 *
+				 * @param id       идентификатор заведённого события, которому достаётся снимок
+				 * @param snapshot снимок события, снятый чужим процессом
+				 * @param size     размер снимка события
+				 * @return         результат подъёма события из снимка
+				 *
+				 * \~english
+				 * @brief Method of the raising of an event from a snapshot taken by a foreign process
+				 * @param id       identifier of the created event which receives the snapshot
+				 * @param snapshot snapshot of the event taken by a foreign process
+				 * @param size     size of the snapshot of the event
+				 * @return         result of the raising of the event from the snapshot
+				 *
+				 * \~
+				 */
+				bool restore(const event::id_t id, const void * snapshot, const size_t size) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод снятия переносимого снимка события для чужого процесса
+				 *
+				 * @details Снимок позволяет отдать УЖЕ ЗАВЕДЁННОЕ событие другому процессу:
+				 *          тот поднимает у себя событие того же самого устройства методом
+				 *          `restore`, минуя `commit`. Процесс-получатель называется не
+				 *          номером, а событием `dest`, ведущим к нему: парой обмена,
+				 *          подключением домена UNIX, принятым подключением - всяким
+				 *          событием, у которого встречный конец находится в чужом процессе
+				 *
+				 * @note Содержимое снимка непрозрачно: движок волен вложить в него как
+				 *       само описание события, так и одну лишь метку получения, отправив
+				 *       событие обочиной по событию `dest`. Довозит снимок до получателя
+				 *       вызывающая сторона - своим уговором и своей разметкой
+				 *
+				 * @note Снимок снимается лишь тогда, когда встречный конец события `dest`
+				 *       уже подключён: до подключения получателя нет, и называть некого
+				 *
+				 * @param id       идентификатор передаваемого события
+				 * @param dest     идентификатор события, ведущего к процессу-получателю
+				 * @param snapshot буфер, куда складывается снятый снимок
+				 * @return         результат снятия снимка события
+				 *
+				 * \~english
+				 * @brief Method of the taking of a transferable snapshot of an event for a foreign process
+				 * @param id       identifier of the transferred event
+				 * @param dest     identifier of the event leading to the recipient process
+				 * @param snapshot buffer where the taken snapshot is put
+				 * @return         result of the taking of the snapshot of the event
+				 *
+				 * \~
+				 */
+				bool snapshot(const event::id_t id, const event::id_t dest, vector <uint8_t> & snapshot) noexcept;
 			public:
 				/**
 				 * \~russian

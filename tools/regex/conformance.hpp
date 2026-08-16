@@ -57,12 +57,12 @@ typedef struct Block {
  *
  */
 static const block_t BLOCKS[] = {
-	{"короткие тексты",      1,  20000,   24, false, 0x3f9055af4d5700e5ull},
-	{"длинные тексты",       7,   5000,  400, false, 0x75b46b23f5459608ull},
-	{"сетевые сообщения",   99,   2000, 4000, false, 0xe1d193fc39913518ull},
-	{"UTF-8 короткие",      11,  20000,   24, true,  0x58b4dcf0f12d097cull},
-	{"UTF-8 длинные",       77,   5000,  300, true,  0xa4c3d67d050a46beull},
-	{"UTF-8 сообщения",    404,   1000, 3000, true,  0x99bcc089764d6adaull}
+	{"короткие тексты",      1,  20000,   24, false, 0xb53e7d11c10e6411ull},
+	{"длинные тексты",       7,   5000,  400, false, 0xa22039c9d2a6673eull},
+	{"сетевые сообщения",   99,   2000, 4000, false, 0x7ae7f228ef9927b3ull},
+	{"UTF-8 короткие",      11,  20000,   24, true,  0x17c342e3bf7f097eull},
+	{"UTF-8 длинные",       77,   5000,  300, true,  0x5f338e431692b460ull},
+	{"UTF-8 сообщения",    404,   1000, 3000, true,  0xf0af2d77f26d770dull}
 };
 
 #endif // __AWH_TOOLS_REGEX_CONFORMANCE__
