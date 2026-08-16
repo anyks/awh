@@ -590,6 +590,28 @@ namespace awh {
 					bool refuse(const error_t error) noexcept;
 					/**
 					 * \~russian
+					 * @brief Метод проверки возможности открыть составное значение
+					 *
+					 * @details Проверяет и окружение записи, и глубину вложенности: перечень и
+					 * встроенная таблица открываются по одним и тем же правилам, и держать их
+					 * двумя телами значило бы развести своды правил при первой же правке
+					 * одного из них
+					 *
+					 * @return результат выполнения операции
+					 *
+					 * \~english
+					 * @brief Method of the checking of the possibility to open a compound value
+					 * @details Checks both the context of the writing and the depth of the nesting: an array
+					 * and an inline table are opened by one and the same rules, and keeping them
+					 * as two bodies would mean parting the sets of the rules at the very first edit
+					 * of one of them
+					 * @return result of the performing of the operation
+					 *
+					 * \~
+					 */
+					bool nestable() noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод проверки пригодности примечания внутри перечня значений
 					 *
 					 * @details Проверяет и место записи, и содержимое примечания: записывать

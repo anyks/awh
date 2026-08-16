@@ -632,6 +632,34 @@ namespace awh {
 					bool escape(const string_view value) noexcept;
 					/**
 					 * \~russian
+					 * @brief Метод записи свойства со значением
+					 *
+					 * @details Запись свойства обычного и запись добавления к перечню значений
+					 * разнятся лишь двумя местами - проверкой признания перечней читающим да
+					 * скобками за именем, - а прочее у них общее. Держать их двумя телами значило
+					 * бы развести своды правил при первой же правке одного из них
+					 *
+					 * @param key   имя записываемого свойства
+					 * @param value значение записываемого свойства
+					 * @param array признак записи добавления к перечню значений
+					 * @return      результат выполнения операции
+					 *
+					 * \~english
+					 * @brief Method of the writing of a property with a value
+					 * @details The writing of an ordinary property and the writing of an appending to an array
+					 * of the values differ only in two places — the check of the recognition of the arrays by
+					 * the reader and the brackets after the name — while the rest is common to them. Keeping
+					 * them as two bodies would mean parting the sets of the rules at the very first edit of one of them
+					 * @param key   name of the property being written
+					 * @param value value of the property being written
+					 * @param array flag of the writing of an appending to an array of the values
+					 * @return      result of the performing of the operation
+					 *
+					 * \~
+					 */
+					bool emit(const string_view key, const string_view value, const bool array) noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод записи знака конца строки
 					 *
 					 * \~english
