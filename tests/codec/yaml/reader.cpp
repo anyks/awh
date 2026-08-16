@@ -429,8 +429,8 @@ TEST(CodecYamlReader, Refusals) {
 		 * Построения, заводимые следующими этапами работ
 		 */
 		const vector <string> pending = {
-			"a: [1, 2]\n", "a: {b: 1}\n", "a: |\n  текст\n", "a: >\n  текст\n",
-			"a: &метка 1\n", "a: *метка\n", "a: !!str 1\n", "%YAML 1.2\n---\na: 1\n"
+			"a: &метка 1\n", "a: *метка\n", "a: !!str 1\n", "%YAML 1.2\n---\na: 1\n",
+			"? составное\n: значение\n"
 		};
 		/**
 		 * Выполняем перебор всех ещё не заведённых построений
@@ -479,7 +479,17 @@ TEST(CodecYamlReader, Chunking) {
 		"текст без перевода строки в конце",
 		"a:\n\tb: 1\n",
 		"a: 'не закрыта\n",
-		"a: [1, 2]\n"
+		"a: [1, 2, три]\n",
+		"a: {x: 1, y: два}\n",
+		"a: [[1, 2], {k: v}]\n",
+		"a: []\nb: {}\n",
+		"text: |\n  первая\n  вторая\nnext: 1\n",
+		"text: >\n  первая\n  вторая\n\n  третья\n",
+		"text: |-\n  одна\n\nnext: 1\n",
+		"text: |+\n  одна\n\n",
+		"text: |2\n    два пробела\n",
+		"- |\n  одна\n- две\n",
+		"a: [1, 2\n"
 	};
 	/**
 	 * Выполняем перебор всех образцов текстов
@@ -551,4 +561,175 @@ TEST(CodecYamlReader, Cleared) {
 		"MAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
 	// Выполняем проверку состояния окончания разбора
 	ASSERT_EQ(reader.state(), yaml::state_t::FINISHED);
+}
+/**
+ * @brief Проверка разбора поточных построений
+ *
+ * @details Поточные построения записываются скобками, как в JSON, и правила окончания
+ * значений внутри них иные, нежели в блочных: значение оканчивается запятой либо
+ * закрывающей скобкой, а не одним лишь концом строки
+ *
+ */
+TEST(CodecYamlReader, Flow) {
+	// Выполняем проверку разбора поточного перечня
+	ASSERT_EQ(events("a: [1, 2, три]\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\nSCALAR «a»\n"
+		"SEQUENCE_START\nSCALAR «1»\nSCALAR «2»\nSCALAR «три»\nSEQUENCE_END\n"
+		"MAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
+	// Выполняем проверку разбора поточного отображения
+	ASSERT_EQ(events("a: {x: 1, y: два}\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\nSCALAR «a»\n"
+		"MAPPING_START\nSCALAR «x»\nSCALAR «1»\nSCALAR «y»\nSCALAR «два»\nMAPPING_END\n"
+		"MAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
+	// Выполняем проверку разбора вложенных поточных построений
+	ASSERT_EQ(events("a: [[1, 2], {k: v}]\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\nSCALAR «a»\n"
+		"SEQUENCE_START\nSEQUENCE_START\nSCALAR «1»\nSCALAR «2»\nSEQUENCE_END\n"
+		"MAPPING_START\nSCALAR «k»\nSCALAR «v»\nMAPPING_END\nSEQUENCE_END\n"
+		"MAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
+	// Выполняем проверку разбора пустых поточных построений
+	ASSERT_EQ(events("a: []\nb: {}\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\n"
+		"SCALAR «a»\nSEQUENCE_START\nSEQUENCE_END\n"
+		"SCALAR «b»\nMAPPING_START\nMAPPING_END\n"
+		"MAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
+	/**
+	 * Выполняем проверку имени пары поточного отображения без значения
+	 *
+	 * @note Отображение `{a, b}` описанием дозволено: значения пар пусты, и выдать их
+	 *       надлежит пустыми значениями, ибо пара без значения есть пара
+	 */
+	ASSERT_EQ(events("a: {x, y}\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\nSCALAR «a»\n"
+		"MAPPING_START\nSCALAR «x»\nSCALAR «»\nSCALAR «y»\nSCALAR «»\nMAPPING_END\n"
+		"MAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
+	// Выполняем проверку ограды внутри поточного построения
+	ASSERT_EQ(events("a: ['1', \"два, три\"]\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\nSCALAR «a»\n"
+		"SEQUENCE_START\nSCALAR «1»\nSCALAR «два, три»\nSEQUENCE_END\n"
+		"MAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
+	/**
+	 * Выполняем проверку незакрытого поточного построения
+	 *
+	 * @note Построение, на многие строки растянутое, заводится следующим этапом работ:
+	 *       пока скобка обязана закрыться в той же строке, где открылась
+	 */
+	{
+		// Объект потокового чтения текста
+		yaml::reader_t reader;
+		// Выполняем проверку отказа разбора незакрытого построения
+		ASSERT_FALSE(reader.feed("a: [1, 2\n"));
+		// Выполняем проверку кода ошибки разбора
+		ASSERT_EQ(reader.error(), yaml::error_t::UNCLOSED_FLOW);
+	}
+	/**
+	 * Выполняем проверку закрытия построения скобкой чужого вида
+	 *
+	 * @note Скобка чужого вида, стоя за значением, отвергается ожиданием запятой либо
+	 *       своей закрывающей скобки: так место отказа названо точнее, нежели одним лишь
+	 *       незакрытым построением
+	 */
+	{
+		// Объект потокового чтения текста
+		yaml::reader_t reader;
+		// Выполняем проверку отказа разбора построения, закрытого чужой скобкой
+		ASSERT_FALSE(reader.feed("a: [1, 2}\n"));
+		// Выполняем проверку кода ошибки разбора
+		ASSERT_EQ(reader.error(), yaml::error_t::EXPECTED_COMMA);
+	}
+}
+/**
+ * @brief Проверка разбора блочных значений
+ *
+ * @details Блочное значение собирается многими строками, и завершает его строка,
+ * отступом не глубже заголовка. Оттого событие его выдаётся не там, где заголовок
+ * прочитан, а там, где содержимое окончилось
+ *
+ */
+TEST(CodecYamlReader, BlockScalars) {
+	// Выполняем проверку дословного блочного значения
+	ASSERT_EQ(events("text: |\n  первая\n  вторая\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\nSCALAR «text»\n"
+		"SCALAR «первая\nвторая\n»\n"
+		"MAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
+	/**
+	 * Выполняем проверку блочного значения со свёрткой строк
+	 *
+	 * @note Свёртка складывает строки пробелом, а пустая строка даёт перевод: `первая`
+	 *       и `вторая` складываются в одну, а `третья` отделяется переводом
+	 */
+	ASSERT_EQ(events("text: >\n  первая\n  вторая\n\n  третья\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\nSCALAR «text»\n"
+		"SCALAR «первая вторая\n\nтретья\n»\n"
+		"MAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
+	// Выполняем проверку усечения переводов строк
+	ASSERT_EQ(events("text: |-\n  одна\n\nnext: 1\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\nSCALAR «text»\n"
+		"SCALAR «одна»\nSCALAR «next»\nSCALAR «1»\n"
+		"MAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
+	// Выполняем проверку сохранения переводов строк
+	ASSERT_EQ(events("text: |+\n  одна\n\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\nSCALAR «text»\n"
+		"SCALAR «одна\n\n»\n"
+		"MAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
+	/**
+	 * Выполняем проверку указателя отступа содержимого
+	 *
+	 * @note Указатель отсчитывается от отступа строки, заголовок несущей: при указателе
+	 *       в два пробела содержимое `    два пробела` несёт два пробела своих
+	 */
+	ASSERT_EQ(events("text: |2\n    два пробела\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\nSCALAR «text»\n"
+		"SCALAR «  два пробела\n»\n"
+		"MAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
+	// Выполняем проверку блочного значения внутри перечня
+	ASSERT_EQ(events("- |\n  одна\n- две\n"),
+		"STREAM_START\nDOCUMENT_START\nSEQUENCE_START\n"
+		"SCALAR «одна\n»\nSCALAR «две»\n"
+		"SEQUENCE_END\nDOCUMENT_END\nSTREAM_END\n");
+	/**
+	 * Выполняем проверку того, что блочное значение выдаётся строкой всегда
+	 *
+	 * @note Содержимое `12`, записанное блочным значением, есть строка: ограду ему
+	 *       заменяет сам вид записи
+	 */
+	{
+		// Объект потокового чтения текста
+		yaml::reader_t reader;
+		// Выполняем подачу текста с блочным значением из одних цифр
+		ASSERT_TRUE(reader.feed("text: |\n  12\n"));
+		// Вид значения, разрешённый разбором
+		yaml::type_t type = yaml::type_t::UNDEFINED;
+		// Вид записи значения в исходном тексте
+		yaml::style_t style = yaml::style_t::PLAIN;
+		/**
+		 * Выполняем перебор всех событий разбора
+		 */
+		while(reader.next()){
+			/**
+			 * Если событие несёт скалярное значение с содержимым числа
+			 */
+			if((reader.event() == yaml::event_t::SCALAR) && (reader.value().text.compare("12\n") == 0)){
+				// Запоминаем вид разрешённого значения
+				type = reader.value().type;
+				// Запоминаем вид записи значения
+				style = reader.value().style;
+			}
+		}
+		// Выполняем проверку того, что значение выдано строкой
+		ASSERT_EQ(type, yaml::type_t::STRING);
+		// Выполняем проверку того, что вид записи сохранён
+		ASSERT_EQ(style, yaml::style_t::LITERAL);
+	}
+	/**
+	 * Выполняем проверку ошибочного построения заголовка блочного значения
+	 */
+	{
+		// Объект потокового чтения текста
+		yaml::reader_t reader;
+		// Выполняем проверку отказа разбора заголовка с двумя правилами усечения
+		ASSERT_FALSE(reader.feed("text: |-+\n  одна\n"));
+		// Выполняем проверку кода ошибки разбора
+		ASSERT_EQ(reader.error(), yaml::error_t::INVALID_BLOCK_HEADER);
+	}
 }

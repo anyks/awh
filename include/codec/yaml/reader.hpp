@@ -337,6 +337,26 @@ namespace awh {
 					bool _opened;
 					// Признак того, что открытый документ уже нёс содержимое
 					bool _filled;
+					// Признак того, что собирается блочное значение
+					bool _blocking;
+					// Вид собираемого блочного значения
+					style_t _block;
+					// Правило усечения переводов строк собираемого блочного значения
+					chomp_t _chomp;
+					// Отступ, заданный заголовком блочного значения, ноль - отступ по первой строке
+					uint8_t _marked;
+					// Отступ строки, заголовок блочного значения несущей
+					uint32_t _outer;
+					// Отступ разбираемой строки
+					uint32_t _margin;
+					// Отступ содержимого собираемого блочного значения
+					uint32_t _inner;
+					// Положение заголовка блочного значения в строке
+					size_t _opening;
+					// Собираемое содержимое блочного значения
+					string _block_text;
+					// Количество пустых строк, содержимого ещё не дождавшихся
+					size_t _breaks;
 					// Признак того, что ожидается значение пары, объявленной прежде
 					bool _expected;
 					// Отступ, на котором ожидается значение пары
@@ -550,6 +570,111 @@ namespace awh {
 					 * \~
 					 */
 					bool record(const string_view line) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод разбора заголовка блочного значения
+					 *
+					 * @param line   разбираемая строка
+					 * @param offset смещение заголовка блочного значения в строке
+					 * @param indent отступ строки, заголовок несущей
+					 * @return       признак успешного разбора заголовка
+					 *
+					 * \~english
+					 * @brief Method of the parsing of the header of a block scalar
+					 * @param line line being parsed
+					 * @param offset offset of the header of the block scalar in the line
+					 * @param indent indentation of the line carrying the header
+					 * @return sign of the successful parsing of the header
+					 *
+					 * \~
+					 */
+					bool opening(const string_view line, const size_t offset, const uint32_t indent) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод присоединения очередной строки к блочному значению
+					 *
+					 * @details Строка присоединяется, покуда отступ её глубже отступа заголовка;
+					 * строка мельче отступом блочное значение завершает и разбирается затем
+					 * обычным порядком
+					 *
+					 * @param line     присоединяемая строка
+					 * @param attached признак присоединения строки к блочному значению
+					 * @return         признак успешного присоединения строки
+					 *
+					 * \~english
+					 * @brief Method of the attaching of the next line to a block scalar
+					 * @details A line is attached as long as its indentation is deeper than the indentation of the header;
+					 * a line with a smaller indentation terminates the block scalar and is then parsed
+					 * by the usual order
+					 * @param line line being attached
+					 * @param attached sign of the attaching of the line to the block scalar
+					 * @return sign of the successful attaching of the line
+					 *
+					 * \~
+					 */
+					bool blocking(const string_view line, bool & attached) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод завершения собираемого блочного значения
+					 *
+					 * @param column положение завершения в разбираемой строке
+					 * @return       признак успешного завершения блочного значения
+					 *
+					 * \~english
+					 * @brief Method of the termination of a block scalar being assembled
+					 * @param column position of the termination in the line being parsed
+					 * @return sign of the successful termination of the block scalar
+					 *
+					 * \~
+					 */
+					bool closing(const size_t column) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод разбора поточного построения
+					 *
+					 * @details Поточные построения записываются скобками, как в JSON, и правила
+					 * окончания значений внутри них иные, нежели в блочных: значение
+					 * оканчивается запятой либо закрывающей скобкой, а не одним лишь концом
+					 * строки
+					 *
+					 * @param line   разбираемая строка
+					 * @param offset смещение начала построения в строке, по выходе - смещение за ним
+					 * @param depth  глубина вложенности поточных построений
+					 * @return       признак успешного разбора построения
+					 *
+					 * \~english
+					 * @brief Method of the parsing of a flow construction
+					 * @details The flow constructions are written by the brackets as in JSON, and the rules
+					 * of the termination of the values inside them are other than in the block ones: a value
+					 * ends by a comma or by a closing bracket rather than by the end of the line
+					 * alone
+					 * @param line line being parsed
+					 * @param offset offset of the beginning of the construction in the line, at the exit — the offset after it
+					 * @param depth depth of the nesting of the flow constructions
+					 * @return sign of the successful parsing of the construction
+					 *
+					 * \~
+					 */
+					bool flowing(const string_view line, size_t & offset, const uint32_t depth) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод разбора значения внутри поточного построения
+					 *
+					 * @param line   разбираемая строка
+					 * @param offset смещение начала значения в строке, по выходе - смещение за ним
+					 * @param depth  глубина вложенности поточных построений
+					 * @return       признак успешного разбора значения
+					 *
+					 * \~english
+					 * @brief Method of the parsing of a value inside a flow construction
+					 * @param line line being parsed
+					 * @param offset offset of the beginning of the value in the line, at the exit — the offset after it
+					 * @param depth depth of the nesting of the flow constructions
+					 * @return sign of the successful parsing of the value
+					 *
+					 * \~
+					 */
+					bool flowed(const string_view line, size_t & offset, const uint32_t depth) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод разбора содержимого строки за отступом
