@@ -385,6 +385,32 @@ namespace {
 		// Выводим собранную команду «str xsource, [xbase, #(index * 8)]»
 		return (0xF9000000u | (index << 10) | (base << 5) | source);
 	}
+	/**
+	 * @brief Функция сборки команды чтения восьмибайтового значения по регистру
+	 *
+	 * @param target номер регистра прочитанного значения
+	 * @param base   номер регистра адреса начала области чтения
+	 * @param offset номер регистра смещения читаемого значения
+	 * @return       собранная команда процессора
+	 *
+	 */
+	inline uint32_t gather(const uint32_t target, const uint32_t base, const uint32_t offset) noexcept {
+		// Выводим собранную команду «ldr xtarget, [xbase, xoffset, lsl #3]»
+		return (0xF8607800u | (offset << 16) | (base << 5) | target);
+	}
+	/**
+	 * @brief Функция сборки команды записи восьмибайтового значения по регистру
+	 *
+	 * @param source номер регистра записываемого значения
+	 * @param base   номер регистра адреса начала области записи
+	 * @param offset номер регистра смещения записываемого значения
+	 * @return       собранная команда процессора
+	 *
+	 */
+	inline uint32_t scatter(const uint32_t source, const uint32_t base, const uint32_t offset) noexcept {
+		// Выводим собранную команду «str xsource, [xbase, xoffset, lsl #3]»
+		return (0xF8207800u | (offset << 16) | (base << 5) | source);
+	}
 };
 
 /**
@@ -704,6 +730,30 @@ void awh::regex::Emitter::store(const reg_t source, const reg_t base, const uint
 	}
 	// Выполняем размещение команды записи значения регистра в память
 	::emit(this->_code, ::store(static_cast <uint32_t> (source), static_cast <uint32_t> (base), index));
+}
+/**
+ * @brief Метод размещения чтения значения из памяти по адресу в регистре
+ *
+ * @param target регистр прочитанного значения
+ * @param base   регистр адреса начала области чтения
+ * @param offset регистр номера читаемого значения в области
+ *
+ */
+void awh::regex::Emitter::fetch(const reg_t target, const reg_t base, const reg_t offset) noexcept {
+	// Выполняем размещение команды чтения значения по адресу в регистре
+	::emit(this->_code, ::gather(static_cast <uint32_t> (target), static_cast <uint32_t> (base), static_cast <uint32_t> (offset)));
+}
+/**
+ * @brief Метод размещения записи значения регистра в память по адресу в регистре
+ *
+ * @param source регистр записываемого значения
+ * @param base   регистр адреса начала области записи
+ * @param offset регистр номера записываемого значения в области
+ *
+ */
+void awh::regex::Emitter::store(const reg_t source, const reg_t base, const reg_t offset) noexcept {
+	// Выполняем размещение команды записи значения по адресу в регистре
+	::emit(this->_code, ::scatter(static_cast <uint32_t> (source), static_cast <uint32_t> (base), static_cast <uint32_t> (offset)));
 }
 /**
  * @brief Метод размещения вызова подпрограммы по адресу в регистре

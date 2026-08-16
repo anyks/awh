@@ -752,6 +752,57 @@ namespace awh {
 				 * \~
 				 */
 				void store(const reg_t source, const reg_t base, const uint32_t index) noexcept;
+
+				/**
+				 * \~russian
+				 * @brief Метод размещения чтения значения из памяти по адресу в регистре
+				 *
+				 * @details Смещение задаётся регистром, а не полем команды, отчего
+				 *          читаемое место известно лишь при исполнении. Нужно это
+				 *          набору, глубина какого зависит от данных.
+				 *
+				 * @note Порождением сопоставителя обращение это пока не звучит:
+				 *       заведено оно заделом под рекурсию и оставлено намеренно.
+				 *       Непроверенным кодом оно, однако, не остаётся - сличение
+				 *       ведёт переносимый стенд, порождающий образец записи
+				 *       по одному смещению и чтения по другому и прогоняющий его
+				 *       по всем их сочетаниям
+				 *
+				 * @param target регистр прочитанного значения
+				 * @param base   регистр адреса начала области чтения
+				 * @param offset регистр номера читаемого значения в области
+				 *
+				 * \~english
+				 * @brief Method of placing a read of a value from memory by an address in a register
+				 * @details The offset is given by a register rather than by a field of the instruction,
+				 *          which is why the place being read is known only at execution time. This is needed by
+				 *          a set whose depth depends on the data: by the return stack
+				 *          of recursive calls.
+				 * @param target register of the read value
+				 * @param base   register of the address of the beginning of the read area
+				 * @param offset register of the number of the read value in the area
+				 *
+				 * \~
+				 */
+				void fetch(const reg_t target, const reg_t base, const reg_t offset) noexcept;
+
+				/**
+				 * \~russian
+				 * @brief Метод размещения записи значения регистра в память по адресу в регистре
+				 *
+				 * @param source регистр записываемого значения
+				 * @param base   регистр адреса начала области записи
+				 * @param offset регистр номера записываемого значения в области
+				 *
+				 * \~english
+				 * @brief Method of placing a write of a register value into memory by an address in a register
+				 * @param source register of the written value
+				 * @param base   register of the address of the beginning of the write area
+				 * @param offset register of the number of the written value in the area
+				 *
+				 * \~
+				 */
+				void store(const reg_t source, const reg_t base, const reg_t offset) noexcept;
 			public:
 				/**
 				 * \~russian

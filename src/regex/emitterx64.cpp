@@ -719,6 +719,68 @@ void awh::regex::Emitter::store(const reg_t source, const reg_t base, const uint
 	 ((index * 8) + ((base == reg_t::STACK) ? SHADOW : 0)));
 }
 /**
+ * @brief Метод размещения чтения значения из памяти по адресу в регистре
+ *
+ * @param target регистр прочитанного значения
+ * @param base   регистр адреса начала области чтения
+ * @param offset регистр номера читаемого значения в области
+ *
+ */
+void awh::regex::Emitter::fetch(const reg_t target, const reg_t base, const reg_t offset) noexcept {
+	// Получаем номер регистра прочитанного значения
+	const uint32_t result = static_cast <uint32_t> (target);
+	// Получаем номера регистров основания и смещения обращения
+	const uint32_t origin = static_cast <uint32_t> (base), shift = static_cast <uint32_t> (offset);
+	// Выполняем размещение байта расширения набора регистров
+	emit8(this->_code, rex(true, result, shift, origin));
+	// Выполняем размещение кода команды чтения восьмибайтового значения
+	emit8(this->_code, 0x8B);
+	/**
+	 * Выполняем размещение байта указания способа обращения
+	 *
+	 * @details Обращение задаётся суммою двух регистров, а таковое требует
+	 *          байта уточнения. Смещение размещается одним байтом и равно нулю:
+	 *          без него основание, равное указателю кадра, было бы прочитано
+	 *          как обращение по смещению от счётчика команд.
+	 *
+	 */
+	emit8(this->_code, modrm(0x01, result, STACK_POINTER));
+	/**
+	 * Выполняем размещение байта уточнения обращения к памяти
+	 *
+	 * @details Множитель смещения равен восьми: набор ведётся значениями
+	 *          восьмибайтовыми, а смещение задаётся номером значения в нём.
+	 *
+	 */
+	emit8(this->_code, sib(0x03, shift, origin));
+	// Выполняем размещение смещения обращения
+	emit8(this->_code, 0x00);
+}
+/**
+ * @brief Метод размещения записи значения регистра в память по адресу в регистре
+ *
+ * @param source регистр записываемого значения
+ * @param base   регистр адреса начала области записи
+ * @param offset регистр номера записываемого значения в области
+ *
+ */
+void awh::regex::Emitter::store(const reg_t source, const reg_t base, const reg_t offset) noexcept {
+	// Получаем номер регистра записываемого значения
+	const uint32_t result = static_cast <uint32_t> (source);
+	// Получаем номера регистров основания и смещения обращения
+	const uint32_t origin = static_cast <uint32_t> (base), shift = static_cast <uint32_t> (offset);
+	// Выполняем размещение байта расширения набора регистров
+	emit8(this->_code, rex(true, result, shift, origin));
+	// Выполняем размещение кода команды записи восьмибайтового значения
+	emit8(this->_code, 0x89);
+	// Выполняем размещение байта указания способа обращения
+	emit8(this->_code, modrm(0x01, result, STACK_POINTER));
+	// Выполняем размещение байта уточнения обращения к памяти
+	emit8(this->_code, sib(0x03, shift, origin));
+	// Выполняем размещение смещения обращения
+	emit8(this->_code, 0x00);
+}
+/**
  * @brief Метод размещения вызова подпрограммы по адресу регистра
  *
  * @param reg регистр адреса вызываемой подпрограммы

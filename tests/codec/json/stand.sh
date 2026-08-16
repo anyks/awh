@@ -56,6 +56,9 @@ mkdir -p "$OUTPUT"
 #       и прогон отчитывается успехом по коду, какого в нём уже нет
 rm -f "$OUTPUT/json-tests" "$OUTPUT/json-tests.exe"
 
+# Собираем перечень объектных файлов стенда
+OBJECTS="$OUTPUT/lexical-table.o"
+
 # Выводим сообщение о начале сборки стенда
 echo "Собираем стенд проверок JSON: $COMPILER"
 
@@ -68,10 +71,16 @@ for PART in common encoding reader writer document; do
 	$COMPILER $OPTIONS -c "$ROOT/src/codec/json/$PART.cpp" -o "$OUTPUT/codec-$PART.o"
 	# Выполняем сборку проверок очередной части кодека JSON
 	$COMPILER $OPTIONS -c "$ROOT/tests/codec/json/$PART.cpp" -o "$OUTPUT/test-$PART.o"
+	# Добавляем собранное к перечню объектных файлов стенда
+	OBJECTS="$OBJECTS $OUTPUT/codec-$PART.o $OUTPUT/test-$PART.o"
 done
 
 # Выполняем связывание стенда проверок
-$COMPILER $OPTIONS "$OUTPUT"/*.o -L"$GTEST/lib" -lgtest -lgtest_main -pthread -o "$OUTPUT/json-tests"
+#
+# @note Объектные файлы перечисляются поимённо, а не маскою: посторонний объектный файл,
+#       оставленный в каталоге сборки кем угодно, попадал бы в связывание и валил его
+#       повтором имён
+$COMPILER $OPTIONS $OBJECTS -L"$GTEST/lib" -lgtest -lgtest_main -pthread -o "$OUTPUT/json-tests"
 
 # Выводим сообщение об окончании сборки стенда
 echo "Стенд собран: $OUTPUT/json-tests"

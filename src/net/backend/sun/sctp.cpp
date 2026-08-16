@@ -209,6 +209,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::initMessages(const net::soc
  */
 bool awh::eth::Stream_Control_Transmission_Protocol::eventsSubscribe(const net::socket_t sock, const net::sctp::event_types_t & events) const noexcept {
 	// Если список событий для подписки пустой
+	::fprintf(stderr, "SHUPF: подписка, сокет=%d событий=%zu\n", (int) sock, events.size());
 	if(events.empty()){
 		/**
 		 * Если включён режим отладки

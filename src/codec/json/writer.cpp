@@ -605,7 +605,8 @@ bool awh::codec::json::Writer::value(const int64_t value) noexcept {
 	if(!static_cast <bool> (output))
 		// Выводим признак неуспешности записи
 		return false;
-	return this->raw(string(buffer, static_cast <size_t> (output.ptr - buffer)));
+	// Выполняем перенос собранной записи числа в текст документа
+	return this->produced(buffer, static_cast <size_t> (output.ptr - buffer));
 }
 /**
  * @brief Метод записи беззнакового целого числа
@@ -625,7 +626,8 @@ bool awh::codec::json::Writer::value(const uint64_t value) noexcept {
 	if(!static_cast <bool> (output))
 		// Выводим признак неуспешности записи
 		return false;
-	return this->raw(string(buffer, static_cast <size_t> (output.ptr - buffer)));
+	// Выполняем перенос собранной записи числа в текст документа
+	return this->produced(buffer, static_cast <size_t> (output.ptr - buffer));
 }
 /**
  * @brief Метод записи числа с плавающей запятой
@@ -746,7 +748,8 @@ bool awh::codec::json::Writer::value(const double value) noexcept {
 		// Выполняем перенос собранной записи числа в текст документа
 		return this->produced(result.data(), result.size());
 	}
-	return this->raw(string(buffer, static_cast <size_t> (length)));
+	// Выполняем перенос собранной записи числа в текст документа
+	return this->produced(buffer, static_cast <size_t> (length));
 }
 /**
  * @brief Метод записи числа его готовой записью

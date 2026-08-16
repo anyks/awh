@@ -697,7 +697,7 @@ namespace {
 	 * @return        результат проверки применимости кодогенерации
 	 *
 	 */
-	bool walk(const awh::regex::program_t & program, size_t & runs, size_t & chains, size_t & recorded, size_t & atomics, size_t & looks, bool & entangled) noexcept {
+	bool walk(const awh::regex::program_t & program, size_t & runs, size_t & chains, size_t & recorded, size_t & atomics, size_t & looks, bool & entangled, bool & referring) noexcept {
 		// Выполняем сброс количества рядов повторения
 		runs = 0;
 		// Выполняем сброс количества цепочек ветвей выбора
@@ -710,6 +710,8 @@ namespace {
 		looks = 0;
 		// Выполняем сброс признака размещения ряда повторения внутри проверки
 		entangled = false;
+		// Выполняем сброс признака наличия ссылок на захваченный текст
+		referring = false;
 		/**
 		 * Получаем признак сборки в режиме разбора UTF-8
 		 *
@@ -959,6 +961,41 @@ namespace {
 					watching--;
 					// Переходим к продолжению сопоставления за проверкой окружения
 					pc = target;
+				} break;
+				/**
+				 * Если инструкция сопоставляет текст, захваченный группой
+				 *
+				 * @details Ссылка сличает текст в позиции сопоставления с текстом,
+				 *          группою захваченным, и длина сличаемого известна лишь
+				 *          при исполнении. Набора точек возврата это не требует:
+				 *          ссылка либо сходится целиком, либо отказывает, а отступать
+				 *          внутрь неё некуда - отступление ведёт ряд повторения,
+				 *          ссылке предшествующий, и он же сличение повторяет заново.
+				 *
+				 */
+				case static_cast <uint8_t> (awh::regex::opcode_t::BACKREF): {
+					/**
+					 * Если сопоставление ведётся без учёта регистра символов
+					 *
+					 * @details Приведение регистра изменяет длину символа в байтах,
+					 *          отчего захваченный текст и текст в позиции сопоставления
+					 *          проходятся посимвольно и независимо друг от друга.
+					 *          Порождаемый код сличает байты и такого хода не имеет.
+					 *
+					 */
+					if(awh::regex::hasFlag(instruction.flags, awh::regex::flag_t::CASELESS))
+						// Выводим неприменимость кодогенерации к программе
+						return false;
+					/**
+					 * Если ячейки захвата группы за пределы набора границ выходят
+					 */
+					if(((static_cast <size_t> (instruction.backref.number) * 2) + 1) >= ((program.captures + 1) * 2))
+						// Выводим неприменимость кодогенерации к программе
+						return false;
+					// Выполняем установку признака наличия ссылок на захваченный текст
+					referring = true;
+					// Переходим к следующей инструкции программы
+					pc++;
 				} break;
 				case static_cast <uint8_t> (awh::regex::opcode_t::ANCHOR): {
 					/**
@@ -1246,8 +1283,10 @@ bool awh::regex::Codegen::applicable(const program_t & program) noexcept {
 	size_t looks = 0;
 	// Признак размещения ряда повторения внутри проверки окружения
 	bool entangled = false;
+	// Признак наличия ссылок на захваченный группой текст
+	bool referring = false;
 	// Выводим результат проверки применимости кодогенерации
-	return walk(program, runs, chains, recorded, atomics, looks, entangled);
+	return walk(program, runs, chains, recorded, atomics, looks, entangled, referring);
 }
 /**
  * @brief Метод порождения сопоставителя программы
@@ -1271,6 +1310,8 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	size_t looks = 0;
 	// Признак размещения ряда повторения внутри проверки окружения
 	bool entangled = false;
+	// Признак наличия ссылок на захваченный группой текст
+	bool referring = false;
 	/**
 	 * Если кодогенерация сборкой не поддерживается
 	 */
@@ -1280,7 +1321,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	/**
 	 * Если кодогенерация к программе неприменима
 	 */
-	if(!walk(program, runs, chains, recorded, atomics, looks, entangled))
+	if(!walk(program, runs, chains, recorded, atomics, looks, entangled, referring))
 		// Выводим результат порождения сопоставителя
 		return false;
 	// Подписываемся на перечисление регистров соглашения о вызове
@@ -1394,8 +1435,18 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	 *
 	 */
 	const size_t sights = (guards + atomics);
+	/**
+	 * Получаем номер места кадра, конец захваченного отрезка несущего
+	 *
+	 * @details Место отводится одно на весь сопоставитель: сличение с захваченным
+	 *          текстом идёт прямым ходом и вложенным быть не может, отчего конец
+	 *          отрезка живёт лишь внутри сличения и мест на каждую ссылку
+	 *          не требует.
+	 *
+	 */
+	const size_t mirror = (sights + (looks * SIGHTS));
 	// Получаем номер места кадра, действующий отказ сопоставления несущего
-	const size_t cell = (sights + (looks * SIGHTS));
+	const size_t cell = (mirror + 1);
 	// Получаем номер места кадра, несущего позицию начала поиска совпадения
 	const size_t origin = (cell + 1);
 	// Получаем номер места кадра, несущего положение конца первого ряда повторения
@@ -1429,7 +1480,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	 *          ведётся именно положением конца первого ряда.
 	 *
 	 */
-	const bool skipping = (!program.anchored && (chains == 0) && !entangled && (runs > 0));
+	const bool skipping = (!program.anchored && (chains == 0) && !entangled && !referring && (runs > 0));
 	/**
 	 * Получаем размер кадра вызова порождаемого сопоставителя
 	 *
@@ -2039,6 +2090,88 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			emitter.jump(found);
 			// Выводим результат порождения области инструкций
 			return true;
+		}
+		/**
+		 * Если инструкция сопоставляет текст, захваченный группой
+		 *
+		 * @details Сличение ведётся двумя ходячими положениями - по тексту
+		 *          захваченному и по тексту в позиции сопоставления, - отчего
+		 *          вычитания положений, набором команд не выражаемого, оно
+		 *          не требует. Конец захваченного отрезка лежит местом кадра
+		 *          и вычитывается на каждом ходе: держать его регистром нечем,
+		 *          а лишнее чтение из кадра дешевле нехватки регистра.
+		 *
+		 *          Отступать внутрь сличения сопоставление не вправе, и того
+		 *          не требуется: сличение либо сходится целиком, либо отказывает.
+		 *          Отступление же ведёт ряд повторения, ссылке предшествующий,
+		 *          и он повторяет сличение заново с концом захвата иным.
+		 *
+		 */
+		if(instruction.type == opcode_t::BACKREF) {
+			// Получаем номер ячейки начала захвата группы
+			const uint32_t slot = (instruction.backref.number * 2);
+			// Заводим метку хода сличения с захваченным текстом
+			const size_t stepping = emitter.label();
+			// Заводим метку завершения сличения с захваченным текстом
+			const size_t settled = emitter.label();
+			// Выполняем чтение позиции начала захваченного текста
+			emitter.fetch(reg_t::SPARE, reg_t::BOUNDS, slot);
+			// Выполняем чтение позиции завершения захваченного текста
+			emitter.fetch(reg_t::SCRATCH, reg_t::BOUNDS, (slot + 1));
+			/**
+			 * Выполняем проверку выполнения захвата группой
+			 *
+			 * @details Ячейка захвата, группою не заполненная, несёт предельное
+			 *          значение, размер текста заведомо превышающее. Ссылка
+			 *          на группу, не выполнившую захвата, не сопоставляется
+			 *          ни с каким текстом, включая текст нулевой длины.
+			 *
+			 */
+			emitter.compare(reg_t::SPARE, reg_t::SIZE);
+			// Выполняем переход к отказу при незаполненной ячейке начала
+			emitter.branch(cond_t::GREATER, failure);
+			// Выполняем сравнение позиции завершения захвата с размером текста
+			emitter.compare(reg_t::SCRATCH, reg_t::SIZE);
+			// Выполняем переход к отказу при незаполненной ячейке завершения
+			emitter.branch(cond_t::GREATER, failure);
+			// Выполняем сравнение позиции начала захвата с позицией завершения
+			emitter.compare(reg_t::SPARE, reg_t::SCRATCH);
+			// Выполняем переход к отказу при завершении захвата прежде начала
+			emitter.branch(cond_t::GREATER, failure);
+			// Выполняем сохранение конца захваченного отрезка в кадре вызова
+			emitter.store(reg_t::SCRATCH, reg_t::STACK, static_cast <uint32_t> (mirror));
+			// Выполняем расстановку метки хода сличения с захваченным текстом
+			emitter.place(stepping);
+			// Выполняем чтение конца захваченного отрезка из кадра вызова
+			emitter.fetch(reg_t::SCRATCH, reg_t::STACK, static_cast <uint32_t> (mirror));
+			// Выполняем сравнение положения сличения с концом отрезка
+			emitter.compare(reg_t::SPARE, reg_t::SCRATCH);
+			// Выполняем переход к завершению сличения по исчерпании отрезка
+			emitter.branch(cond_t::ABOVE, settled);
+			// Выполняем сравнение позиции сопоставления с размером текста
+			emitter.compare(reg_t::CURSOR, reg_t::SIZE);
+			// Выполняем переход к отказу при достижении конца текста
+			emitter.branch(cond_t::ABOVE, failure);
+			// Выполняем чтение байта текста в позиции сопоставления
+			emitter.load(reg_t::LETTER, reg_t::TEXT, reg_t::CURSOR);
+			// Выполняем чтение байта захваченного группой текста
+			emitter.load(reg_t::SCRATCH, reg_t::TEXT, reg_t::SPARE);
+			// Выполняем сравнение байтов сличаемых участков текста
+			emitter.compare(reg_t::LETTER, reg_t::SCRATCH);
+			// Выполняем переход к отказу при несовпадении байтов
+			emitter.branch(cond_t::NOTEQUAL, failure);
+			// Переходим к следующей позиции текста сопоставления
+			emitter.add(reg_t::CURSOR, reg_t::CURSOR, 1);
+			// Переходим к следующей позиции захваченного группой текста
+			emitter.add(reg_t::SPARE, reg_t::SPARE, 1);
+			// Выполняем переход к очередному ходу сличения
+			emitter.jump(stepping);
+			// Выполняем расстановку метки завершения сличения
+			emitter.place(settled);
+			// Переходим к следующей инструкции программы
+			pc++;
+			// Продолжаем обход инструкций области программы
+			continue;
 		}
 		/**
 		 * Если инструкция проверяет окружение позиции сопоставления

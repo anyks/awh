@@ -333,10 +333,6 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 
-/**
- * Если операционной системой является FreeBSD
- */
-#if __FreeBSD__ || defined(__sun)
 	/**
 	 * Заголовочный файл для работы с протоколом SCTP
 	 */
@@ -389,35 +385,11 @@
 		#define SCTP_PR_SCTP_TTL MSG_PR_SCTP
 	#endif
 
-	#if defined(__sun)
 		#define AWH_SCTP_TAIL_OFFSET(type, field) sizeof(struct type)
 		#define AWH_SCTP_TAIL(ptr, type, field) (reinterpret_cast <const uint8_t *> (ptr) + sizeof(struct type))
-	#else
-		#define AWH_SCTP_TAIL_OFFSET(type, field) offsetof(struct type, field)
-		#define AWH_SCTP_TAIL(ptr, type, field) ((ptr)->field)
-	#endif
 /**
  * Если операционной системой является NetBSD либо OpenBSD
  */
-#elif __NetBSD__ || __OpenBSD__
-	/**
-	 * Заголовочные файлы для числового указателя настроек UDP
-	 *
-	 * @note Порядок обязателен: заголовок настроек UDP объявляет поле типа struct
-	 *       ipovly, а сам этот тип описан в заголовке настроек IP. Подключённый в
-	 *       одиночку, заголовок UDP не собирается
-	 *
-	 * @note Заголовок `netinet/udp.h` здесь ОБЯЗАТЕЛЕН, хотя ни одного имени из
-	 *       него движок напрямую не употребляет: `udp_var.h` объявляет поле типа
-	 *       struct udphdr, а описан этот тип именно там. Проверено прогоном -
-	 *       без него NetBSD и OpenBSD отвечают «field has incomplete type», тогда
-	 *       как macOS и Linux собираются молча. Разбирая лишние заголовки, этот
-	 *       не удалять: судить по прямому употреблению имён здесь нельзя
-	 */
-	#include <netinet/ip_var.h>
-	#include <netinet/udp.h>
-	#include <netinet/udp_var.h>
-#endif
 
 /**
  * @brief Тип служебного сообщения, которым система выдаёт класс обслуживания принятого пакета
@@ -1045,10 +1017,6 @@ namespace io {
 	 */
 	using namespace awh;
 
-	/**
-	 * Если операционной системой является FreeBSD
-	 */
-	#if __FreeBSD__ || defined(__sun)
 		/**
 		 * @brief Структура функций обратного вызова SCTP-протокола
 		 *
@@ -1249,7 +1217,6 @@ namespace io {
 			// Возвращаем собственный набор, а при его отсутствии - общий пустой
 			return ((this->_sctp != nullptr) ? (* this->_sctp) : __awh_sctp_none__);
 		}
-	#endif
 
 	/**
 	 * @brief Структура конечного подключения
@@ -1314,13 +1281,8 @@ namespace io {
 		uint16_t actions;
 		// Очередь отправки данных
 		net_queue_t queue;
-		/**
-		 * Если операционной системой является FreeBSD
-		 */
-		#if __FreeBSD__ || defined(__sun)
 			// Набор параметров SCTP-протокола
 			sctp_transfer_t sctp;
-		#endif
 		/**
 		 * @brief Конструктор
 		 *
@@ -2497,13 +2459,8 @@ namespace io {
 		endpoint_t endpoint;
 		// Активные таймауты события
 		timeouts_t timeouts;
-		/**
-		 * Если операционной системой является FreeBSD
-		 */
-		#if __FreeBSD__ || defined(__sun)
 			// Объект SCTP-событий
 			sctp_endpoint_t sctp;
-		#endif
 		// Обратные вызовы события
 		server_callbacks_t callbacks;
 		// Параметры хоста сервера
@@ -2611,6 +2568,7 @@ namespace {
 		 *
 		 */
 		static bool associate(const net::socket_t fd, const int32_t events, void * user, const awh::log_t * log) noexcept {
+			::fprintf(stderr, "SHUPI: взвод дескриптор=%d разряды=0x%x\n", (int) fd, (unsigned) events);
 			// Если очередь оповещений не заведена
 			if(::__awh_port__ == net::invalid_socket_t){
 				// Записываем ошибку в лог
@@ -2641,6 +2599,7 @@ namespace {
 		 *
 		 */
 		static bool dissociate(const net::socket_t fd, const awh::log_t * log) noexcept {
+			::fprintf(stderr, "SHUPJ: снятие дескриптор=%d\n", (int) fd);
 			// Если очередь оповещений не заведена, снимать нечего
 			if(::__awh_port__ == net::invalid_socket_t)
 				// Выводим результат
@@ -4386,13 +4345,6 @@ namespace {
 						 * Определяем тип сокета
 						 */
 						switch(static_cast <uint8_t> (client->state.type)){
-							/**
-							 * Для операционной системы macOS, NetBSD, OpenBSD
-							 */
-							#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
-								// Если событие принадлежит к типу SEQPACKET
-								case static_cast <uint8_t> (event::type_t::SEQPACKET):
-							#endif
 							// Если событие принадлежит к типу DATAGRAM
 							case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 								// Извлекаем файл сокета клиента
@@ -4669,17 +4621,6 @@ namespace local {
 	 */
 	static uint64_t nanostamp() noexcept {
 		/**
-		 * Если операционной системой является macOS
-		 *
-		 * @note Источник времени тот же самый - CLOCK_MONOTONIC, - но берётся
-		 *       функцией, отдающей наносекунды числом. Это дешевле вдвое (12.7
-		 *       наносекунды против 21.1) и вдобавок избавляет от умножения и
-		 *       сложения, которыми наносекунды собираются из структуры
-		 */
-		#if __APPLE__
-			// Возвращаем текущее время монотонных часов в наносекундах
-			return ::clock_gettime_nsec_np(CLOCK_MONOTONIC);
-		/**
 		 * Если операционной системой является Sun Solaris либо illumos
 		 *
 		 * @note Источник времени тот же самый - монотонные часы, - но берётся родной
@@ -4697,20 +4638,8 @@ namespace local {
 		 *          там - лишь другое имя для CLOCK_MONOTONIC. Выбирать между точностью и
 		 *          ценой здесь не из чего, и искать такую настройку не следует
 		 */
-		#elif defined(__sun)
 			// Возвращаем текущее время монотонных часов в наносекундах
 			return static_cast <uint64_t> (::gethrtime());
-		/**
-		 * Если это другая операционная система
-		 */
-		#else
-			// Объект структуры для хранения времени
-			struct timespec ts{0};
-			// Получаем текущее время в формате CLOCK_MONOTONIC
-			::clock_gettime(CLOCK_MONOTONIC, &ts);
-			// Возвращаем текущее время в наносекундах
-			return ((static_cast <uint64_t> (ts.tv_sec) * 1000000000ULL) + static_cast <uint64_t> (ts.tv_nsec));
-		#endif
 	}
 	/**
 	 * @brief Прототип функции получения минимального значения из трёх аргументов
@@ -4781,7 +4710,6 @@ namespace local {
 			 *       с ними, если система когда-нибудь переменит источник времени
 			 *
 			 */
-			#if defined(__sun)
 				// Дробность часов, по которым заводятся таймеры очереди
 				struct timespec resolution;
 				// Зануляем дробность часов
@@ -4792,20 +4720,6 @@ namespace local {
 					const double step = (static_cast <double> (resolution.tv_sec) + (static_cast <double> (resolution.tv_nsec) / 1000000000.));
 					// Порог пробуждения по таймеру равен двум шагам часов
 					const double threshold = (2. * step);
-			#else
-				// Параметры тика ядра
-				struct clockinfo clock;
-				// Зануляем параметры тика ядра
-				::memset(&clock, 0, sizeof(clock));
-				// Получаем размер параметров тика ядра
-				size_t length = sizeof(clock);
-				// Идентификатор параметра частоты тика ядра
-				int32_t mib[2] = {CTL_KERN, KERN_CLOCKRATE};
-				// Если частота тика ядра прочитана и она положительна
-				if((::sysctl(mib, 2, &clock, &length, nullptr, 0) == 0) && (clock.hz > 0)){
-					// Порог пробуждения по таймеру равен двум тикам ядра
-					const double threshold = (2. / static_cast <double> (clock.hz));
-			#endif
 				// Выводим большее из порога пробуждения и заданного окна
 				if(threshold > AWH_BANDWIDTH_BURST_WINDOW)
 					// Выводим порог пробуждения как окно всплеска
@@ -6091,10 +6005,6 @@ namespace timer {
 	// Время последней очистки пула аллокатора памяти
 	static uint64_t lastShrink = 0;
 
-	/**
-	 * Если операционной системой является FreeBSD
-	 */
-	#if __FreeBSD__ || defined(__sun)
 		/**
 		 * @brief Функция выбора источника монотонного времени
 		 *
@@ -6118,7 +6028,6 @@ namespace timer {
 		}
 
 		static const clockid_t clockSource = monotonic();
-	#endif
 
 	/**
 	 * @brief Функция получения текущего штампа времени в миллисекундах
@@ -6128,58 +6037,6 @@ namespace timer {
 	 */
 	static uint64_t timestamp() noexcept {
 		/**
-		 * Если операционной системой является macOS
-		 *
-		 * @note Время берётся функцией, отдающей наносекунды числом, а не через
-		 *       структуру: 13.0 наносекунды против 15.5 у `clock_gettime`, и
-		 *       вдобавок без сборки наносекунд из полей структуры
-		 *
-		 * @note У macOS, как и у FreeBSD, помимо точных монотонных часов есть
-		 *       дешёвые: они не опрашивают счётчик тактов, а отдают значение,
-		 *       обновляемое ядром. Разница почти четырёхкратная - 3.7 наносекунды
-		 *       против 13.0, - и для операции с таймером, которая вся целиком
-		 *       стоит три десятка наносекунд, это заметная доля
-		 *
-		 * @note Отсчёт у дешёвых часов тот же: `CLOCK_MONOTONIC_RAW_APPROX`, как и
-		 *       `CLOCK_MONOTONIC`, считает время сна машины, тогда как семейство
-		 *       `CLOCK_UPTIME_RAW` его отбрасывает. От точных часов дешёвые
-		 *       отстают на постоянную величину, а дедлайн вычисляется сложением
-		 *       текущего времени с задержкой и сравнивается с текущим же временем,
-		 *       поэтому постоянное смещение сокращается и на сроки не влияет
-		 *
-		 * @note Платой служит зернистость: дешёвые часы меняют значение раз в 68
-		 *       микросекунд. Функция и без того отдаёт миллисекунды и отбрасывает
-		 *       всё, что мельче, поэтому платы здесь нет вовсе
-		 */
-		#if __APPLE__
-			/**
-			 * Если дешёвые монотонные часы доступны
-			 */
-			#if CLOCK_MONOTONIC_RAW_APPROX
-				// Возвращаем текущее время дешёвых монотонных часов в миллисекундах
-				return (::clock_gettime_nsec_np(CLOCK_MONOTONIC_RAW_APPROX) / 1000000ULL);
-			/**
-			 * Если дешёвых монотонных часов нет
-			 */
-			#else
-				// Возвращаем текущее время монотонных часов в миллисекундах
-				return (::clock_gettime_nsec_np(CLOCK_MONOTONIC) / 1000000ULL);
-			#endif
-		/**
-		 * Если операционной системой является FreeBSD
-		 *
-		 * @note Источник времени выбирается один раз при запуске: там, где
-		 *       зернистость дешёвых часов не превышает отдаваемой функцией
-		 *       миллисекунды, берутся они
-		 */
-		#elif __FreeBSD__
-			// Объект структуры для хранения времени
-			struct timespec ts{0};
-			// Получаем текущее время монотонных часов
-			::clock_gettime(::timer::clockSource, &ts);
-			// Возвращаем текущее время в миллисекундах
-			return ((static_cast <uint64_t> (ts.tv_sec) * 1000ULL) + (static_cast <uint64_t> (ts.tv_nsec) / 1000000ULL));
-		/**
 		 * Если операционной системой является Sun Solaris либо illumos
 		 *
 		 * @note Огрублённых часов здесь нет, зато есть источник дешевле точных:
@@ -6188,20 +6045,8 @@ namespace timer {
 		 *       наносекунды против 28.2 и 28.6 у clock_gettime, и вдобавок без
 		 *       сборки наносекунд из полей структуры
 		 */
-		#elif defined(__sun)
 			// Возвращаем текущее время монотонных часов в миллисекундах
 			return (static_cast <uint64_t> (::gethrtime()) / 1000000ULL);
-		/**
-		 * Если это другая операционная система
-		 */
-		#else
-			// Объект структуры для хранения времени
-			struct timespec ts{0};
-			// Получаем текущее время в формате CLOCK_MONOTONIC
-			::clock_gettime(CLOCK_MONOTONIC, &ts);
-			// Возвращаем текущее время в миллисекундах
-			return ((static_cast <uint64_t> (ts.tv_sec) * 1000ULL) + (static_cast <uint64_t> (ts.tv_nsec) / 1000000ULL));
-		#endif
 	}
 
 	// Слепок времени, снятый на текущем обороте цикла событий, нулевой вне оборота
@@ -9433,10 +9278,6 @@ namespace sctp {
 	 */
 	using namespace awh;
 
-	/**
-	 * Если операционной системой является FreeBSD
-	 */
-	#if __FreeBSD__ || defined(__sun)
 		/**
 		 * @brief Функция преобразования структуры информации SCTP в внутреннюю структуру
 		 *
@@ -9456,7 +9297,6 @@ namespace sctp {
 		 *
 		 */
 		static size_t events(::io::node_t * node, const uint8_t * buffer, const size_t size, const log_t * log, bool * finish = nullptr) noexcept;
-	#endif
 	/**
 	 * Размер головы настроек отправки, кладущейся перед данными записи очереди
 	 *
@@ -10646,10 +10486,6 @@ namespace io {
 								errno = 0;
 								// Обнуляем смещение
 								offset = 0;
-								/**
-								 * Если операционной системой является FreeBSD
-								 */
-								#if __FreeBSD__ || defined(__sun)
 									// Если протокол интернета установлен как SCTP
 									if(peer->state.protocol == event::protocol_t::SCTP)
 										// Выполняем чтение данных из SCTP-сокета
@@ -10663,13 +10499,6 @@ namespace io {
 										);
 									// Выполняем чтение данных из TCP/IP сокета
 									else bytes = ::recv(peer->transfer.fd, ::__awh_buffer__, size, MSG_NOSIGNAL);
-								/**
-								 * Если это другая операционная система
-								 */
-								#else
-									// Выполняем чтение данных из TCP/IP сокета
-									bytes = ::recv(peer->transfer.fd, ::__awh_buffer__, size, MSG_NOSIGNAL);
-								#endif
 								// Учитываем полученное в объявленном ядром объёме
 								watchdog.consume(bytes);
 								// Если мы получили ошибку
@@ -10718,10 +10547,6 @@ namespace io {
 									}
 								// Если мы получили данные из сокета
 								} else if((result = (bytes > 0))) {
-									/**
-									 * Если операционной системой является FreeBSD
-									 */
-									#if __FreeBSD__ || defined(__sun)
 										// Если протокол интернета установлен как SCTP
 										if(peer->state.protocol == event::protocol_t::SCTP){
 											// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
@@ -10743,7 +10568,6 @@ namespace io {
 													continue;
 											}
 										}
-									#endif
 									// Если функция обратного вызова для вывода события установлена
 									if(peer->callbacks.event != nullptr)
 										// Вызываем функцию обратного вызова с установленным флагом события
@@ -10859,10 +10683,6 @@ namespace io {
 						 * Сбрасываем значение errno перед чтением
 						 */
 						errno = 0;
-						/**
-						 * Если операционной системой является FreeBSD
-						 */
-						#if __FreeBSD__ || defined(__sun)
 							// Количество прочитанных байт
 							ssize_t bytes = 0;
 							// Если протокол интернета установлен как SCTP
@@ -10879,13 +10699,6 @@ namespace io {
 								);
 							// Выполняем чтение данных из TCP/IP сокета
 							else bytes = ::recv(peer->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
-						/**
-						 * Если это другая операционная система
-						 */
-						#else
-							// Выполняем чтение данных из TCP/IP сокета
-							const ssize_t bytes = ::recv(peer->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
-						#endif
 						// Если мы получили ошибку
 						if(bytes < 0){
 							// Если установлена функция обратного вызова
@@ -10922,10 +10735,6 @@ namespace io {
 						} else if((result = (bytes > 0))) {
 							// Количество обработанных байт
 							size_t offset = 0;
-							/**
-							 * Если операционной системой является FreeBSD
-							 */
-							#if __FreeBSD__ || defined(__sun)
 								// Если протокол интернета установлен как SCTP
 								if(peer->state.protocol == event::protocol_t::SCTP){
 									// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
@@ -10947,7 +10756,6 @@ namespace io {
 											return result;
 									}
 								}
-							#endif
 							// Если функция обратного вызова для вывода события установлена
 							if(peer->callbacks.event != nullptr)
 								// Вызываем функцию обратного вызова с установленным флагом события
@@ -10986,7 +10794,6 @@ namespace io {
 				/**
 				 * Для операционной системы FreeBSD
 				 */
-				#if __FreeBSD__ || defined(__sun)
 					// Если событие принадлежит к типу SEQPACKET
 					case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 						// Если событие является неблокирующим
@@ -11284,7 +11091,6 @@ namespace io {
 							}
 						}
 					} break;
-				#endif
 			}
 			// Если установлен таймаут на получение данных
 			if(peer->timeouts.read.delay > 0){
@@ -12599,10 +12405,6 @@ namespace io {
 								errno = 0;
 								// Обнуляем смещение
 								offset = 0;
-								/**
-								 * Если операционной системой является FreeBSD
-								 */
-								#if __FreeBSD__ || defined(__sun)
 									// Если протокол интернета установлен как SCTP
 									if(client->state.protocol == event::protocol_t::SCTP)
 										// Выполняем чтение данных из SCTP-сокета
@@ -12616,13 +12418,6 @@ namespace io {
 										);
 									// Выполняем чтение данных из TCP/IP сокета
 									else bytes = ::recv(client->transfer.fd, ::__awh_buffer__, size, MSG_NOSIGNAL);
-								/**
-								 * Если это другая операционная система
-								 */
-								#else
-									// Выполняем чтение данных из TCP/IP сокета
-									bytes = ::recv(client->transfer.fd, ::__awh_buffer__, size, MSG_NOSIGNAL);
-								#endif
 								// Учитываем полученное в объявленном ядром объёме
 								watchdog.consume(bytes);
 								// Если мы получили ошибку
@@ -12671,10 +12466,6 @@ namespace io {
 									}
 								// Если мы получили данные из сокета
 								} else if((result = (bytes > 0))) {
-									/**
-									 * Если операционной системой является FreeBSD
-									 */
-									#if __FreeBSD__ || defined(__sun)
 										// Если протокол интернета установлен как SCTP
 										if(client->state.protocol == event::protocol_t::SCTP){
 											// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
@@ -12696,7 +12487,6 @@ namespace io {
 													continue;
 											}
 										}
-									#endif
 									// Если функция обратного вызова для вывода события установлена
 									if(client->callbacks.event != nullptr)
 										// Вызываем функцию обратного вызова с установленным флагом события
@@ -12812,10 +12602,6 @@ namespace io {
 						 * Сбрасываем значение errno перед чтением
 						 */
 						errno = 0;
-						/**
-						 * Если операционной системой является FreeBSD
-						 */
-						#if __FreeBSD__ || defined(__sun)
 							// Количество прочитанных байт
 							ssize_t bytes = 0;
 							// Если протокол интернета установлен как SCTP
@@ -12832,13 +12618,6 @@ namespace io {
 								);
 							// Выполняем чтение данных из TCP/IP сокета
 							else bytes = ::recv(client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
-						/**
-						 * Если это другая операционная система
-						 */
-						#else
-							// Выполняем чтение данных из TCP/IP сокета
-							const ssize_t bytes = ::recv(client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
-						#endif
 						// Если мы получили ошибку
 						if(bytes < 0){
 							// Если установлена функция обратного вызова
@@ -12875,10 +12654,6 @@ namespace io {
 						} else if((result = (bytes > 0))) {
 							// Количество обработанных байт
 							size_t offset = 0;
-							/**
-							 * Если операционной системой является FreeBSD
-							 */
-							#if __FreeBSD__ || defined(__sun)
 								// Если протокол интернета установлен как SCTP
 								if(client->state.protocol == event::protocol_t::SCTP){
 									// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
@@ -12900,7 +12675,6 @@ namespace io {
 											return result;
 									}
 								}
-							#endif
 							// Если функция обратного вызова для вывода события установлена
 							if(client->callbacks.event != nullptr)
 								// Вызываем функцию обратного вызова с установленным флагом события
@@ -13950,6 +13724,7 @@ namespace io {
 				} break;
 				// Если событие принадлежит к типу SEQPACKET
 				case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+					::fprintf(stderr, "SHUPE: чтение клиента, состояние=%u протокол=%u\n", (unsigned) client->state.status, (unsigned) client->state.protocol);
 					// Если клиент находится в состоянии подключено
 					if(client->state.status == event::status_t::CONNECTED){
 						// Если событие является неблокирующим
@@ -13966,10 +13741,6 @@ namespace io {
 								 * Сбрасываем значение errno перед чтением
 								 */
 								errno = 0;
-								/**
-								 * Если операционной системой является FreeBSD
-								 */
-								#if __FreeBSD__ || defined(__sun)
 									// Если протокол интернета установлен как SCTP
 									if(client->state.protocol == event::protocol_t::SCTP)
 										// Выполняем чтение данных из SCTP-сокета
@@ -13984,13 +13755,6 @@ namespace io {
 										);
 									// Выполняем чтение данных из TCP/IP сокета
 									else bytes = ::recv(client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
-								/**
-								 * Если это другая операционная система
-								 */
-								#else
-									// Выполняем чтение данных из TCP/IP сокета
-									bytes = ::recv(client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
-								#endif
 								// Учитываем полученное в объявленном ядром объёме
 								watchdog.consume(bytes);
 								// Если мы получили ошибку
@@ -14039,10 +13803,6 @@ namespace io {
 									}
 								// Если мы получили данные из сокета
 								} else if((result = (bytes > 0))) {
-									/**
-									 * Если операционной системой является FreeBSD
-									 */
-									#if __FreeBSD__ || defined(__sun)
 										// Если протокол интернета установлен как SCTP
 										if(client->state.protocol == event::protocol_t::SCTP){
 											// Запоминаем идентификатор ассоциации SCTP
@@ -14080,7 +13840,6 @@ namespace io {
 												continue;
 											}
 										}
-									#endif
 									// Если функция обратного вызова для вывода события установлена
 									if(client->callbacks.event != nullptr)
 										// Вызываем функцию обратного вызова с установленным флагом события
@@ -14145,10 +13904,6 @@ namespace io {
 							 * Сбрасываем значение errno перед чтением
 							 */
 							errno = 0;
-							/**
-							 * Если операционной системой является FreeBSD
-							 */
-							#if __FreeBSD__ || defined(__sun)
 								// Количество прочитанных байт
 								ssize_t bytes = 0;
 								// Если протокол интернета установлен как SCTP
@@ -14165,13 +13920,6 @@ namespace io {
 									);
 								// Выполняем чтение данных из TCP/IP сокета
 								else bytes = ::recv(client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
-							/**
-							 * Если это другая операционная система
-							 */
-							#else
-								// Выполняем чтение данных из TCP/IP сокета
-								const ssize_t bytes = ::recv(client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
-							#endif
 							// Если мы получили ошибку
 							if(bytes < 0){
 								// Если установлена функция обратного вызова
@@ -14206,10 +13954,6 @@ namespace io {
 								return result;
 							// Если мы получили данные из сокета
 							} else if((result = (bytes > 0))) {
-								/**
-								 * Если операционной системой является FreeBSD
-								 */
-								#if __FreeBSD__ || defined(__sun)
 									// Если протокол интернета установлен как SCTP
 									if(client->state.protocol == event::protocol_t::SCTP){
 										// Запоминаем идентификатор ассоциации SCTP
@@ -14247,7 +13991,6 @@ namespace io {
 											return result;
 										}
 									}
-								#endif
 								// Если функция обратного вызова для вывода события установлена
 								if(client->callbacks.event != nullptr)
 									// Вызываем функцию обратного вызова с установленным флагом события
@@ -14298,10 +14041,6 @@ namespace io {
 								 * Сбрасываем значение errno перед чтением
 								 */
 								errno = 0;
-								/**
-								 * Если операционной системой является FreeBSD
-								 */
-								#if __FreeBSD__ || defined(__sun)
 									// Если протокол интернета установлен как SCTP
 									if(client->state.protocol == event::protocol_t::SCTP)
 										// Выполняем чтение данных из SCTP-сокета
@@ -14323,19 +14062,6 @@ namespace io {
 										&::trust_cast <struct sockaddr> (client->endpoint.server),
 										&client->endpoint.size
 									);
-								/**
-								 * Если это другая операционная система
-								 */
-								#else
-									// Выполняем чтение данных из UDP-сокета
-									bytes = ::recvfrom(
-										client->transfer.fd,
-										::__awh_buffer__,
-										AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL,
-										&::trust_cast <struct sockaddr> (client->endpoint.server),
-										&client->endpoint.size
-									);
-								#endif
 								// Учитываем полученное в объявленном ядром объёме
 								watchdog.consume(bytes);
 								// Если мы получили ошибку
@@ -14384,10 +14110,6 @@ namespace io {
 									}
 								// Если мы получили данные из сокета
 								} else if((result = (bytes > 0))) {
-									/**
-									 * Если операционной системой является FreeBSD
-									 */
-									#if __FreeBSD__ || defined(__sun)
 										// Если протокол интернета установлен как SCTP
 										if(client->state.protocol == event::protocol_t::SCTP){
 											// Запоминаем идентификатор ассоциации SCTP
@@ -14425,7 +14147,6 @@ namespace io {
 												continue;
 											}
 										}
-									#endif
 									// Если функция обратного вызова для вывода события установлена
 									if(client->callbacks.event != nullptr)
 										// Вызываем функцию обратного вызова с установленным флагом события
@@ -14490,10 +14211,6 @@ namespace io {
 							 * Сбрасываем значение errno перед чтением
 							 */
 							errno = 0;
-							/**
-							 * Если операционной системой является FreeBSD
-							 */
-							#if __FreeBSD__ || defined(__sun)
 								// Количество прочитанных байт
 								ssize_t bytes = 0;
 								// Если протокол интернета установлен как SCTP
@@ -14517,19 +14234,6 @@ namespace io {
 									&::trust_cast <struct sockaddr> (client->endpoint.server),
 									&client->endpoint.size
 								);
-							/**
-							 * Если это другая операционная система
-							 */
-							#else
-								// Выполняем чтение данных из UDP-сокета
-								const ssize_t bytes = ::recvfrom(
-									client->transfer.fd,
-									::__awh_buffer__,
-									AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL,
-									&::trust_cast <struct sockaddr> (client->endpoint.server),
-									&client->endpoint.size
-								);
-							#endif
 							// Если мы получили ошибку
 							if(bytes < 0){
 								// Если установлена функция обратного вызова
@@ -14564,10 +14268,6 @@ namespace io {
 								return result;
 							// Если мы получили данные из сокета
 							} else if((result = (bytes > 0))) {
-								/**
-								 * Если операционной системой является FreeBSD
-								 */
-								#if __FreeBSD__ || defined(__sun)
 									// Если протокол интернета установлен как SCTP
 									if(client->state.protocol == event::protocol_t::SCTP){
 										// Запоминаем идентификатор ассоциации SCTP
@@ -14605,7 +14305,6 @@ namespace io {
 											return result;
 										}
 									}
-								#endif
 								// Если функция обратного вызова для вывода события установлена
 								if(client->callbacks.event != nullptr)
 									// Вызываем функцию обратного вызова с установленным флагом события
@@ -14771,13 +14470,6 @@ namespace io {
 			switch(static_cast <uint8_t> (server->state.type)){
 				// Если событие принадлежит к типу RAW
 				case static_cast <uint8_t> (event::type_t::RAW):
-				/**
-				 * Для операционной системы macOS, NetBSD, OpenBSD
-				 */
-				#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
-					// Если событие принадлежит к типу SEQPACKET
-					case static_cast <uint8_t> (event::type_t::SEQPACKET):
-				#endif
 				// Если событие принадлежит к типу DATAGRAM
 				case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 					// Если событие чтения разрешено
@@ -15365,18 +15057,10 @@ namespace io {
 						// Вызываем функцию обратного вызова об ошибке отказа
 						server->callbacks.status(server->id, event::status_t::FAILURE);
 					/**
-					 * Для операционной системы macOS, NetBSD, OpenBSD
-					 */
-					#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
-						// Устанавливаем текст ошибки
-						const string error = "Only RAW and DATAGRAM or SEQPACKET socket types are supported for server nodes";
-					/**
 					 * Для остальных операционных систем
 					 */
-					#else
 						// Устанавливаем текст ошибки
 						const string error = "Only RAW and DATAGRAM socket types are supported for server nodes";
-					#endif
 					// Если установлена функция обратного вызова
 					if(server->callbacks.error != nullptr)
 						// Вызываем функцию обратного вызова ошибки события
@@ -16014,10 +15698,6 @@ namespace io {
 									 * Сбрасываем значение errno перед отправкой данных в сокет
 									 */
 									errno = 0;
-									/**
-									 * Если операционной системой является FreeBSD
-									 */
-									#if __FreeBSD__ || defined(__sun)
 										// Количество прочитанных байт
 										ssize_t bytes = 0;
 										// Если протокол интернета установлен как SCTP
@@ -16032,13 +15712,6 @@ namespace io {
 											);
 										// Выполняем отправку данных в TCP/IP сокет
 										else bytes = ::send(peer->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
-									/**
-									 * Если это другая операционная система
-									 */
-									#else
-										// Выполняем отправку данных в TCP/IP сокет
-										const ssize_t bytes = ::send(peer->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
-									#endif
 									// Если данные отправлены успешно
 									if(bytes > 0){
 										// Возвращаем количество байт данных, отправленных событием
@@ -16398,7 +16071,6 @@ namespace io {
 					/**
 					 * Для операционной системы FreeBSD
 					 */
-					#if __FreeBSD__ || defined(__sun)
 						// Если событие принадлежит к типу SEQPACKET
 						case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 							// Размер данных для извлечения из очереди
@@ -16780,7 +16452,6 @@ namespace io {
 								}
 							}
 						} break;
-					#endif
 				}
 			}
 		/**
@@ -16847,13 +16518,6 @@ namespace io {
 				switch(static_cast <uint8_t> (origin->state.type)){
 					// Если событие принадлежит к типу RAW
 					case static_cast <uint8_t> (event::type_t::RAW):
-					/**
-					 * Для операционной системы macOS, NetBSD, OpenBSD
-					 */
-					#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
-						// Если событие принадлежит к типу SEQPACKET
-						case static_cast <uint8_t> (event::type_t::SEQPACKET):
-					#endif
 					// Если событие принадлежит к типу DATAGRAM
 					case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 						// Размер данных для извлечения из очереди
@@ -17522,10 +17186,6 @@ namespace io {
 									 * Сбрасываем значение errno перед отправкой данных в сокет
 									 */
 									errno = 0;
-									/**
-									 * Если операционной системой является FreeBSD
-									 */
-									#if __FreeBSD__ || defined(__sun)
 										// Количество прочитанных байт
 										ssize_t bytes = 0;
 										// Если протокол интернета установлен как SCTP
@@ -17540,13 +17200,6 @@ namespace io {
 											);
 										// Выполняем отправку данных в TCP/IP сокет
 										else bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
-									/**
-									 * Если это другая операционная система
-									 */
-									#else
-										// Выполняем отправку данных в TCP/IP сокет
-										const ssize_t bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
-									#endif
 									// Если данные отправлены успешно
 									if(bytes > 0){
 										// Возвращаем количество байт данных, отправленных событием
@@ -18319,10 +17972,6 @@ namespace io {
 								try {
 									// Если клиент находится в состоянии подключено
 									if(client->state.status == event::status_t::CONNECTED){
-										/**
-										 * Если операционной системой является FreeBSD
-										 */
-										#if __FreeBSD__ || defined(__sun)
 											/**
 											 * Отправка по УЖЕ ЗАВЕДЁННОЙ связи идёт БЕЗ адреса получателя
 											 *
@@ -18351,23 +18000,12 @@ namespace io {
 												);
 											// Выполняем отправку данных в TCP/IP сокет
 											else bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
-										/**
-										 * Если это другая операционная система
-										 */
-										#else
-											// Выполняем отправку данных в TCP/IP сокет
-											bytes = ::send(client->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
-										#endif
 									// Если клиент не уничтожается: состояние различает СПОСОБ обмена, а не дозволяет его
 									} else if((client->state.status != event::status_t::DESTROYED) && (client->state.status != event::status_t::GARBAGE)) {
 										/**
 										 * Сбрасываем значение errno перед отправкой данных в сокет
 										 */
 										errno = 0;
-										/**
-										 * Если операционной системой является FreeBSD
-										 */
-										#if __FreeBSD__ || defined(__sun)
 											// Если протокол интернета установлен как SCTP
 											if(client->state.protocol == event::protocol_t::SCTP)
 												// Выполняем отправку данных в SCTP-сокет
@@ -18391,21 +18029,6 @@ namespace io {
 												client->state.family,
 												client->state.traffic
 											);
-										/**
-										 * Если это другая операционная система
-										 */
-										#else
-											// Выполняем отправку данных в UDP-сокет
-											bytes = eth->socket.datagram(
-												client->transfer.fd,
-												reinterpret_cast <const uint8_t *> (buffer),
-												size, MSG_NOSIGNAL,
-												&::trust_cast <struct sockaddr> (client->endpoint.server),
-												client->endpoint.size,
-												client->state.family,
-												client->state.traffic
-											);
-										#endif
 									}
 									// Если данные отправлены успешно
 									if(bytes > 0){
@@ -18835,13 +18458,6 @@ namespace io {
 								switch(static_cast <uint8_t> (session.second->state.type)){
 									// Если событие принадлежит к типу RAW
 									case static_cast <uint8_t> (event::type_t::RAW):
-									/**
-									 * Для операционной системы macOS, NetBSD, OpenBSD
-									 */
-									#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
-										// Если событие принадлежит к типу SEQPACKET
-										case static_cast <uint8_t> (event::type_t::SEQPACKET):
-									#endif
 									// Если событие принадлежит к типу DATAGRAM
 									case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 										// Выполняем отправку данных в UDP-сокет
@@ -20030,10 +19646,6 @@ namespace io {
 									 * Сбрасываем значение errno перед отправкой данных в сокет
 									 */
 									errno = 0;
-									/**
-									 * Если операционной системой является FreeBSD
-									 */
-									#if __FreeBSD__ || defined(__sun)
 										// Количество прочитанных байт
 										ssize_t bytes = 0;
 										// Если протокол интернета установлен как SCTP
@@ -20047,13 +19659,6 @@ namespace io {
 											);
 										// Выполняем отправку данных в TCP/IP сокет
 										else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
-									/**
-									 * Если это другая операционная система
-									 */
-									#else
-										// Выполняем отправку данных в TCP/IP сокет
-										const ssize_t bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
-									#endif
 									// Если данные отправлены успешно
 									if(bytes > 0){
 										// Возвращаем количество байт данных, отправленных событием
@@ -20103,6 +19708,15 @@ namespace io {
 												 * @note Отказом это не является: остаток ложится в очередь и
 												 *       досылается по мере освобождения места
 												 */
+												/**
+												 * Если связь у сокета упорядоченных сообщений ещё не названа
+												 *
+												 * @note Отказом это не является: связь называется опознавателем, а тот
+												 *       приходит известием - позже, чем отправитель успевает дать второй
+												 *       кусок. Посылка откладывается, и к следующему повороту цикла
+												 *       известие прочитано, опознаватель есть, и очередь уходит сама
+												 */
+												case EADDRINUSE:
 												case EMSGSIZE:
 													// Если отправку стоит повторить позже
 													if(::sctp::retriable(peer))
@@ -20449,10 +20063,6 @@ namespace io {
 									 * Сбрасываем значение errno перед отправкой данных в сокет
 									 */
 									errno = 0;
-									/**
-									 * Если операционной системой является FreeBSD
-									 */
-									#if __FreeBSD__ || defined(__sun)
 										// Количество прочитанных байт
 										ssize_t bytes = 0;
 										// Если протокол интернета установлен как SCTP
@@ -20466,13 +20076,6 @@ namespace io {
 											);
 										// Выполняем отправку данных в сокет
 										else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
-									/**
-									 * Если это другая операционная система
-									 */
-									#else
-										// Выполняем отправку данных в сокет
-										const ssize_t bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
-									#endif
 									// Если данные отправлены успешно
 									if(bytes > 0){
 										// Возвращаем количество байт данных, отправленных событием
@@ -20812,10 +20415,6 @@ namespace io {
 						 * Сбрасываем значение errno перед отправкой данных в сокет
 						 */
 						errno = 0;
-						/**
-						 * Если операционной системой является FreeBSD
-						 */
-						#if __FreeBSD__ || defined(__sun)
 							// Количество прочитанных байт
 							ssize_t bytes = 0;
 							// Если протокол интернета установлен как SCTP
@@ -20829,13 +20428,6 @@ namespace io {
 								);
 							// Выполняем отправку данных в TCP/IP сокет
 							else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
-						/**
-						 * Если это другая операционная система
-						 */
-						#else
-							// Выполняем отправку данных в TCP/IP сокет
-							const ssize_t bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
-						#endif
 						// Если данные отправлены успешно
 						if(bytes > 0){
 							// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -20893,7 +20485,6 @@ namespace io {
 				/**
 				 * Для операционной системы FreeBSD
 				 */
-				#if __FreeBSD__ || defined(__sun)
 					// Если событие принадлежит к типу SEQPACKET
 					case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 						// Если событие является неблокирующим
@@ -20970,6 +20561,15 @@ namespace io {
 												case ENOMEM:
 												case EAGAIN: break;
 												// Если мы получили ошибку отправки слишком большого пакета
+												/**
+												 * Если связь у сокета упорядоченных сообщений ещё не названа
+												 *
+												 * @note Отказом это не является: связь называется опознавателем, а тот
+												 *       приходит известием - позже, чем отправитель успевает дать второй
+												 *       кусок. Посылка откладывается, и к следующему повороту цикла
+												 *       известие прочитано, опознаватель есть, и очередь уходит сама
+												 */
+												case EADDRINUSE:
 												case EMSGSIZE:
 													// Если отправку стоит повторить позже
 													if(::sctp::retriable(peer))
@@ -21690,7 +21290,6 @@ namespace io {
 							}
 						}
 					} break;
-				#endif
 			}
 		/**
 		 * Если возникает ошибка
@@ -21737,13 +21336,6 @@ namespace io {
 			switch(static_cast <uint8_t> (origin->state.type)){
 				// Если событие принадлежит к типу RAW
 				case static_cast <uint8_t> (event::type_t::RAW):
-				/**
-				 * Для операционной системы macOS, NetBSD, OpenBSD
-				 */
-				#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
-					// Если событие принадлежит к типу SEQPACKET
-					case static_cast <uint8_t> (event::type_t::SEQPACKET):
-				#endif
 				// Если событие принадлежит к типу DATAGRAM
 				case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 					// Если событие является неблокирующим
@@ -23647,30 +23239,44 @@ namespace io {
 									 * Сбрасываем значение errno перед отправкой данных в сокет
 									 */
 									errno = 0;
-									/**
-									 * Если операционной системой является FreeBSD
-									 */
-									#if __FreeBSD__ || defined(__sun)
 										// Количество прочитанных байт
 										ssize_t bytes = 0;
 										// Если протокол интернета установлен как SCTP
-										if(client->state.protocol == event::protocol_t::SCTP)
-											// Выполняем отправку данных в сокет
-											bytes = eth->sctp.send(
+										if(client->state.protocol == event::protocol_t::SCTP){
+											/**
+											 * Отправка по сокету упорядоченных сообщений идёт своим посредником
+											 *
+											 * @details У такого сокета связей много, и всякая отправка обязана называть,
+											 *          по какой из них идти: пока связь не заведена - адресом получателя,
+											 *          которым она и заводится, а дальше опознавателем связи. Общий слой
+											 *          отправки здесь не передавал ни того, ни другого, и назвать связь
+											 *          было нечем
+											 *
+											 * @warning Этим путём идут посылки при ПУСТОЙ очереди, а слив очереди шёл
+											 *          посредником и прежде. Оттого первый кусок доходил - очередью, заводя
+											 *          связь, - а следующие уходили отсюда и получали отказ EADDRINUSE.
+											 *          Наружу это выходило тем, что многозаписевая передача вставала на
+											 *          втором куске, и доходил ровно первый
+											 */
+											if(client->state.type == event::type_t::SEQPACKET)
+												// Выполняем отправку данных по заведённой связи
+												bytes = ::ports::send(
+													client->transfer.fd,
+													buffer, size,
+													client->transfer.sctp.use().info,
+													client->transfer.sctp.use().id,
+													&::trust_cast <struct sockaddr> (client->endpoint.server),
+													client->endpoint.size
+												);
+											// Выполняем отправку данных в потоковый сокет SCTP
+											else bytes = eth->sctp.send(
 												client->transfer.fd,
 												buffer, size, nullptr, 0,
 												client->transfer.sctp.use().info,
 												client->transfer.sctp.use().complete
 											);
 										// Выполняем отправку данных в TCP/IP сокет
-										else bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
-									/**
-									 * Если это другая операционная система
-									 */
-									#else
-										// Выполняем отправку данных в TCP/IP сокет
-										const ssize_t bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
-									#endif
+										} else bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
 									// Если данные отправлены успешно
 									if(bytes > 0){
 										// Возвращаем количество байт данных, отправленных событием
@@ -23720,6 +23326,15 @@ namespace io {
 												 * @note Отказом это не является: остаток ложится в очередь и
 												 *       досылается по мере освобождения места
 												 */
+												/**
+												 * Если связь у сокета упорядоченных сообщений ещё не названа
+												 *
+												 * @note Отказом это не является: связь называется опознавателем, а тот
+												 *       приходит известием - позже, чем отправитель успевает дать второй
+												 *       кусок. Посылка откладывается, и к следующему повороту цикла
+												 *       известие прочитано, опознаватель есть, и очередь уходит сама
+												 */
+												case EADDRINUSE:
 												case EMSGSIZE:
 													// Если отправку стоит повторить позже
 													if(::sctp::retriable(client))
@@ -24066,10 +23681,6 @@ namespace io {
 									 * Сбрасываем значение errno перед отправкой данных в сокет
 									 */
 									errno = 0;
-									/**
-									 * Если операционной системой является FreeBSD
-									 */
-									#if __FreeBSD__ || defined(__sun)
 										// Количество прочитанных байт
 										ssize_t bytes = 0;
 										// Если протокол интернета установлен как SCTP
@@ -24083,13 +23694,6 @@ namespace io {
 											);
 										// Выполняем отправку данных в сокет
 										else bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
-									/**
-									 * Если это другая операционная система
-									 */
-									#else
-										// Выполняем отправку данных в сокет
-										const ssize_t bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
-									#endif
 									// Если данные отправлены успешно
 									if(bytes > 0){
 										// Возвращаем количество байт данных, отправленных событием
@@ -24429,10 +24033,6 @@ namespace io {
 						 * Сбрасываем значение errno перед отправкой данных в сокет
 						 */
 						errno = 0;
-						/**
-						 * Если операционной системой является FreeBSD
-						 */
-						#if __FreeBSD__ || defined(__sun)
 							// Количество прочитанных байт
 							ssize_t bytes = 0;
 							// Если протокол интернета установлен как SCTP
@@ -24446,13 +24046,6 @@ namespace io {
 								);
 							// Выполняем отправку данных в TCP/IP сокет
 							else bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
-						/**
-						 * Если это другая операционная система
-						 */
-						#else
-							// Выполняем отправку данных в TCP/IP сокет
-							const ssize_t bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
-						#endif
 						// Если данные отправлены успешно
 						if(bytes > 0){
 							// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -24576,6 +24169,15 @@ namespace io {
 												case ENOMEM:
 												case EAGAIN: break;
 												// Если мы получили ошибку отправки слишком большого пакета
+												/**
+												 * Если связь у сокета упорядоченных сообщений ещё не названа
+												 *
+												 * @note Отказом это не является: связь называется опознавателем, а тот
+												 *       приходит известием - позже, чем отправитель успевает дать второй
+												 *       кусок. Посылка откладывается, и к следующему повороту цикла
+												 *       известие прочитано, опознаватель есть, и очередь уходит сама
+												 */
+												case EADDRINUSE:
 												case EMSGSIZE:
 													// Если отправку стоит повторить позже
 													if(::sctp::retriable(client))
@@ -25338,6 +24940,15 @@ namespace io {
 												case ENOMEM:
 												case EAGAIN: break;
 												// Если мы получили ошибку отправки слишком большого пакета
+												/**
+												 * Если связь у сокета упорядоченных сообщений ещё не названа
+												 *
+												 * @note Отказом это не является: связь называется опознавателем, а тот
+												 *       приходит известием - позже, чем отправитель успевает дать второй
+												 *       кусок. Посылка откладывается, и к следующему повороту цикла
+												 *       известие прочитано, опознаватель есть, и очередь уходит сама
+												 */
+												case EADDRINUSE:
 												case EMSGSIZE:
 													// Если отправку стоит повторить позже
 													if(::sctp::retriable(client))
@@ -26092,10 +25703,6 @@ namespace io {
 										 * Сбрасываем значение errno перед отправкой данных в сокет
 										 */
 										errno = 0;
-										/**
-										 * Если операционной системой является FreeBSD
-										 */
-										#if __FreeBSD__ || defined(__sun)
 											// Количество прочитанных байт
 											ssize_t bytes = 0;
 											/**
@@ -26126,13 +25733,6 @@ namespace io {
 												);
 											// Выполняем отправку данных в сокет
 											else bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
-										/**
-										 * Если это другая операционная система
-										 */
-										#else
-											// Выполняем отправку данных в сокет
-											const ssize_t bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
-										#endif
 										// Если данные отправлены успешно
 										if(bytes > 0){
 											// Возвращаем количество байт данных, отправленных событием
@@ -26171,6 +25771,15 @@ namespace io {
 												case ENOMEM:
 												case EAGAIN: break;
 												// Если мы получили ошибку отправки слишком большого пакета
+												/**
+												 * Если связь у сокета упорядоченных сообщений ещё не названа
+												 *
+												 * @note Отказом это не является: связь называется опознавателем, а тот
+												 *       приходит известием - позже, чем отправитель успевает дать второй
+												 *       кусок. Посылка откладывается, и к следующему повороту цикла
+												 *       известие прочитано, опознаватель есть, и очередь уходит сама
+												 */
+												case EADDRINUSE:
 												case EMSGSIZE:
 													// Если отправку стоит повторить позже
 													if(::sctp::retriable(client))
@@ -26466,10 +26075,6 @@ namespace io {
 											 * Сбрасываем значение errno перед отправкой данных в сокет
 											 */
 											errno = 0;
-											/**
-											 * Если операционной системой является FreeBSD
-											 */
-											#if __FreeBSD__ || defined(__sun)
 												// Количество прочитанных байт
 												ssize_t bytes = 0;
 												// Если протокол интернета установлен как SCTP
@@ -26487,13 +26092,6 @@ namespace io {
 													);
 												// Выполняем отправку данных в сокет
 												else bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
-											/**
-											 * Если это другая операционная система
-											 */
-											#else
-												// Выполняем отправку данных в сокет
-												const ssize_t bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
-											#endif
 											// Если данные отправлены успешно
 											if(bytes > 0){
 												// Возвращаем количество байт данных, отправленных событием
@@ -26810,10 +26408,6 @@ namespace io {
 							 * Сбрасываем значение errno перед отправкой данных в сокет
 							 */
 							errno = 0;
-							/**
-							 * Если операционной системой является FreeBSD
-							 */
-							#if __FreeBSD__ || defined(__sun)
 								// Количество прочитанных байт
 								ssize_t bytes = 0;
 								// Если протокол интернета установлен как SCTP
@@ -26831,13 +26425,6 @@ namespace io {
 									);
 								// Выполняем отправку данных в сокет
 								else bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
-							/**
-							 * Если это другая операционная система
-							 */
-							#else
-								// Выполняем отправку данных в сокет
-								const ssize_t bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
-							#endif
 							// Если данные отправлены успешно
 							if(bytes > 0){
 								// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -26945,10 +26532,6 @@ namespace io {
 										 * Сбрасываем значение errno перед отправкой данных в сокет
 										 */
 										errno = 0;
-										/**
-										 * Если операционной системой является FreeBSD
-										 */
-										#if __FreeBSD__ || defined(__sun)
 											// Количество прочитанных байт
 											ssize_t bytes = 0;
 											// Если протокол интернета установлен как SCTP
@@ -26966,13 +26549,6 @@ namespace io {
 												);
 											// Выполняем отправку данных в UDP-сокет
 											else bytes = eth->socket.datagram(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size, client->state.family, client->state.traffic);
-										/**
-										 * Если это другая операционная система
-										 */
-										#else
-											// Выполняем отправку данных в UDP-сокет
-											const ssize_t bytes = eth->socket.datagram(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size, client->state.family, client->state.traffic);
-										#endif
 										// Если данные отправлены успешно
 										if(bytes > 0){
 											// Возвращаем количество байт данных, отправленных событием
@@ -27011,6 +26587,15 @@ namespace io {
 												case ENOMEM:
 												case EAGAIN: break;
 												// Если мы получили ошибку отправки слишком большого пакета
+												/**
+												 * Если связь у сокета упорядоченных сообщений ещё не названа
+												 *
+												 * @note Отказом это не является: связь называется опознавателем, а тот
+												 *       приходит известием - позже, чем отправитель успевает дать второй
+												 *       кусок. Посылка откладывается, и к следующему повороту цикла
+												 *       известие прочитано, опознаватель есть, и очередь уходит сама
+												 */
+												case EADDRINUSE:
 												case EMSGSIZE:
 													// Если отправку стоит повторить позже
 													if(::sctp::retriable(client))
@@ -27306,10 +26891,6 @@ namespace io {
 											 * Сбрасываем значение errno перед отправкой данных в сокет
 											 */
 											errno = 0;
-											/**
-											 * Если операционной системой является FreeBSD
-											 */
-											#if __FreeBSD__ || defined(__sun)
 												// Количество прочитанных байт
 												ssize_t bytes = 0;
 												// Если протокол интернета установлен как SCTP
@@ -27327,13 +26908,6 @@ namespace io {
 													);
 												// Выполняем отправку данных в UDP-сокет
 												else bytes = eth->socket.datagram(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size, client->state.family, client->state.traffic);
-											/**
-											 * Если это другая операционная система
-											 */
-											#else
-												// Выполняем отправку данных в UDP-сокет
-												const ssize_t bytes = eth->socket.datagram(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size, client->state.family, client->state.traffic);
-											#endif
 											// Если данные отправлены успешно
 											if(bytes > 0){
 												// Возвращаем количество байт данных, отправленных событием
@@ -27650,10 +27224,6 @@ namespace io {
 							 * Сбрасываем значение errno перед отправкой данных в сокет
 							 */
 							errno = 0;
-							/**
-							 * Если операционной системой является FreeBSD
-							 */
-							#if __FreeBSD__ || defined(__sun)
 								// Количество прочитанных байт
 								ssize_t bytes = 0;
 								// Если протокол интернета установлен как SCTP
@@ -27671,13 +27241,6 @@ namespace io {
 									);
 								// Выполняем отправку данных в UDP-сокет
 								else bytes = eth->socket.datagram(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size, client->state.family, client->state.traffic);
-							/**
-							 * Если это другая операционная система
-							 */
-							#else
-								// Выполняем отправку данных в UDP-сокет
-								const ssize_t bytes = eth->socket.datagram(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size, client->state.family, client->state.traffic);
-							#endif
 							// Если данные отправлены успешно
 							if(bytes > 0){
 								// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -27836,13 +27399,6 @@ namespace io {
 			switch(static_cast <uint8_t> (server->state.type)){
 				// Если событие принадлежит к типу RAW
 				case static_cast <uint8_t> (event::type_t::RAW):
-				/**
-				 * Для операционной системы macOS, NetBSD, OpenBSD
-				 */
-				#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
-					// Если событие принадлежит к типу SEQPACKET
-					case static_cast <uint8_t> (event::type_t::SEQPACKET):
-				#endif
 				// Если событие принадлежит к типу DATAGRAM
 				case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 					// Если событие является неблокирующим
@@ -28610,12 +28166,6 @@ namespace io {
 							/**
 							 * Для операционной системы FreeBSD
 							 */
-							#if __FreeBSD__
-								// Если туннель создан
-								if(!tunnel->iface.empty())
-									// Выполняем удаление сетевого интерфейса туннеля
-									eth->iface.destroy(tunnel->iface);
-							#endif
 						}
 						// Если дескриптор сокета инициализирован
 						if(tunnel->fd != net::invalid_socket_t){
@@ -28665,13 +28215,8 @@ namespace io {
 						client->transfer.queue.clear();
 						// Выполняем сброс обрамления записи очереди
 						::sctp::forget(client);
-						/**
-						 * Если операционной системой является FreeBSD
-						 */
-						#if __FreeBSD__ || defined(__sun)
 							// Сбрасываем числовые параметры SCTP, сохраняя обратные связи
 							client->transfer.sctp.reset();
-						#endif
 						/**
 						 * Определяем тип сокета
 						 */
@@ -28903,10 +28448,6 @@ namespace io {
 								}
 							}
 						}
-						/**
-						 * Если операционной системой является FreeBSD
-						 */
-						#if __FreeBSD__ || defined(__sun)
 							{
 								// Сохраняем объект функции обратного вызова SCTP
 								auto callbacks = ::move(server->sctp.callbacks);
@@ -28921,7 +28462,6 @@ namespace io {
 								// Восстанавливаем объект функции обратного вызова SCTP
 								server->sctp.callbacks = ::move(callbacks);
 							}
-						#endif
 						// Если событие закрытия разрешено
 						if(server->actions & ::action::CLOSE){
 							// Если установлена функция обратного вызова
@@ -30033,7 +29573,6 @@ namespace io {
 						/**
 						 * Для операционной системы FreeBSD
 						 */
-						#if __FreeBSD__ || defined(__sun)
 							// Если событие принадлежит к типу SEQPACKET
 							case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 								/**
@@ -30162,7 +29701,6 @@ namespace io {
 									} break;
 								}
 							} break;
-						#endif
 					}
 				} break;
 				// Если узел является одноранговым узлом-источником
@@ -30175,13 +29713,6 @@ namespace io {
 					switch(static_cast <uint8_t> (origin->state.type)){
 						// Если событие принадлежит к типу RAW
 						case static_cast <uint8_t> (event::type_t::RAW):
-						/**
-						 * Для операционной системы macOS, NetBSD, OpenBSD
-						 */
-						#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
-							// Если событие принадлежит к типу SEQPACKET
-							case static_cast <uint8_t> (event::type_t::SEQPACKET):
-						#endif
 						// Если событие принадлежит к типу DATAGRAM
 						case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 							/**
@@ -30528,13 +30059,6 @@ namespace io {
 					 * Определяем тип сокета
 					 */
 					switch(static_cast <uint8_t> (server->state.type)){
-						/**
-						 * Для операционной системы macOS, NetBSD, OpenBSD
-						 */
-						#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
-							// Если событие принадлежит к типу SEQPACKET
-							case static_cast <uint8_t> (event::type_t::SEQPACKET):
-						#endif
 						// Если событие принадлежит к типу DATAGRAM
 						case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 							/**
@@ -30997,6 +30521,7 @@ namespace io {
 	 *
 	 */
 	static bool connected(::io::client_t * client, const engine::io_t * io, const eth_t * eth, const log_t * log) noexcept {
+		::fprintf(stderr, "SHUPG: клиент подключён, тип=%u протокол=%u\n", (unsigned) client->state.type, (unsigned) client->state.protocol);
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -31141,13 +30666,8 @@ namespace io {
 				 * Определяем тип сокета
 				 */
 				switch(static_cast <uint8_t> (server->state.type)){
-					/**
-					 * Если операционной системой является FreeBSD
-					 */
-					#if __FreeBSD__ || defined(__sun)
 						// Если событие принадлежит к типу SEQPACKET
 						case static_cast <uint8_t> (event::type_t::SEQPACKET):
-					#endif
 					// Если событие принадлежит к типу STREAM
 					case static_cast <uint8_t> (event::type_t::STREAM): {
 						/**
@@ -31182,10 +30702,6 @@ namespace io {
 								::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_family = AF_INET6;
 							} break;
 						}
-						/**
-						 * Если операционной системой является FreeBSD
-						 */
-						#if __FreeBSD__ || defined(__sun)
 							// Количество прочитанных байт
 							ssize_t bytes = 0;
 							// Объявляем дескриптор сокета
@@ -31238,13 +30754,6 @@ namespace io {
 									}
 								} break;
 							}
-						/**
-						 * Если это другая операционная система
-						 */
-						#else
-							// Определяем разрешено ли подключение к прокси серверу
-							const net::socket_t sock = ::accept(server->fd, &::trust_cast <struct sockaddr> (server->endpoint.client), &server->endpoint.size);
-						#endif
 						// Если сокет не создан тогда выходим
 						if(sock == net::invalid_socket_t){
 							// Если процесс является родительским
@@ -31529,10 +31038,6 @@ namespace io {
 										return false;
 									}
 								}
-								/**
-								 * Если операционной системой является FreeBSD
-								 */
-								#if __FreeBSD__ || defined(__sun)
 									// Если протокол интернета установлен как SCTP
 									if(peer->state.protocol == event::protocol_t::SCTP)
 										// Выполняем активацию событий SCTP
@@ -31547,7 +31052,6 @@ namespace io {
 										if((peer->transfer.sctp.endpoint().callbacks.message != nullptr) || (peer->transfer.sctp.endpoint().callbacks.info != nullptr))
 											// Выполняем подписку на метаданные принимаемых сообщений
 											eth->sctp.receiveInfo(peer->transfer.fd, true);
-								#endif
 							} break;
 							// Для семейства IPv6
 							case static_cast <uint8_t> (event::family_t::IPV6): {
@@ -31731,10 +31235,6 @@ namespace io {
 										return false;
 									}
 								}
-								/**
-								 * Если операционной системой является FreeBSD
-								 */
-								#if __FreeBSD__ || defined(__sun)
 									// Если протокол интернета установлен как SCTP
 									if(peer->state.protocol == event::protocol_t::SCTP)
 										// Выполняем активацию событий SCTP
@@ -31749,7 +31249,6 @@ namespace io {
 										if((peer->transfer.sctp.endpoint().callbacks.message != nullptr) || (peer->transfer.sctp.endpoint().callbacks.info != nullptr))
 											// Выполняем подписку на метаданные принимаемых сообщений
 											eth->sctp.receiveInfo(peer->transfer.fd, true);
-								#endif
 							} break;
 						}
 						// Извлекаем параметры таймаутов для нового подключения
@@ -31802,10 +31301,6 @@ namespace io {
 							if(server->callbacks.accept != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
 								server->callbacks.accept(server->id, peer->id);
-							/**
-							 * Если операционной системой является FreeBSD
-							 */
-							#if __FreeBSD__ || defined(__sun)
 								/**
 								 * Если мы получили данные из SCTP-сокета
 								 *
@@ -31830,7 +31325,6 @@ namespace io {
 									// Выполняем выдачу полученных данных потребителю
 									::sctp::deliver(peer, ::__awh_buffer__, static_cast <size_t> (bytes));
 								}
-							#endif
 							// Если узел не помечен как мусорный
 							if(!guard.garbage()){
 								// Устанавливаем статус события в состояние успешного подключения
@@ -31996,6 +31490,7 @@ namespace io {
 							if(client->state.status == event::status_t::PENDING){
 								// Устанавливаем статус события в состояние подключено
 								client->state.status = event::status_t::CONNECTED;
+								::fprintf(stderr, "SHUPH: переход в подключено\n");
 								// Выполняем обработку события подключения клиента
 								return ::io::connected(client, io, eth, log);
 							}
@@ -32129,10 +31624,8 @@ namespace io {
 							/**
 							 * Для операционной системы FreeBSD
 							 */
-							#if __FreeBSD__ || defined(__sun)
 								// Если событие принадлежит к типу SEQPACKET
 								case static_cast <uint8_t> (event::type_t::SEQPACKET):
-							#endif
 							// Если событие принадлежит к типу STREAM
 							case static_cast <uint8_t> (event::type_t::STREAM): {
 								// Если событие чтения разрешено
@@ -32149,16 +31642,11 @@ namespace io {
 								/**
 								 * Для операционной системы FreeBSD
 								 */
-								#if __FreeBSD__ || defined(__sun)
 									// Устанавливаем текст ошибки
 									const string error = "Only STREAM and SEQPACKET socket types are supported for server nodes";
 								/**
 								 * Для остальных операционных систем
 								 */
-								#else
-									// Устанавливаем текст ошибки
-									const string error = "Only STREAM socket types are supported for server nodes";
-								#endif
 								// Если установлена функция обратного вызова
 								if(server->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -32297,13 +31785,6 @@ namespace io {
 		 *          неизменность нельзя
 		 *
 		 */
-		#if __NetBSD__ || __OpenBSD__
-			// Числовой указатель настройки размера буфера отправки дейтаграмм
-			int32_t mib[4] = {CTL_NET, PF_INET, IPPROTO_UDP, UDPCTL_SENDSPACE};
-			// Выполняем чтение предельного размера дейтаграммы из настроек ядра
-			if(::sysctl(mib, 4, &result, &length, nullptr, 0) != 0)
-				// Возвращаем значение по умолчанию
-				return 0x2400;
 		/**
 		 * Если операционной системой является Sun Solaris либо illumos
 		 *
@@ -32322,20 +31803,10 @@ namespace io {
 		 *          Выводить предел из буфера, как это делается у BSD, здесь неверно
 		 *
 		 */
-		#elif defined(__sun)
 			// Отбрасываем неиспользуемые здесь переменные чтения настроек
 			(void) length;
 			// Возвращаем протокольный предел одной дейтаграммы
 			return 65507;
-		/**
-		 * Если операционной системой является macOS либо FreeBSD
-		 */
-		#else
-			// Выполняем чтение предельного размера дейтаграммы из настроек ядра
-			if(::sysctlbyname("net.inet.udp.maxdgram", &result, &length, nullptr, 0) != 0)
-				// Возвращаем значение по умолчанию
-				return 0x2400;
-		#endif
 		// Возвращаем полученный предельный размер дейтаграммы
 		return static_cast <size_t> (result);
 	}
@@ -32428,42 +31899,6 @@ namespace io {
 							}
 						// Если мы детектировали событие переименования директории
 						} else if(ev.portev_events & NOTE_RENAME) {
-							/**
-							 * Для операционной системы macOS
-							 */
-							#if __APPLE__ || __MACH__
-								// Получаем актуальный путь директории
-								if(::fcntl(dir->fd, F_GETPATH, ::__awh_buffer__) == 0){
-									// Множество уже прочитанных записей каталога
-									unordered_map <string, event::vnode_t> entries;
-									/**
-									 * Проходим по всем записям в директории
-									 */
-									for(auto i = dir->entries.begin(); i != dir->entries.end();){
-										// Добавляем запись в список содержимого директории с новым путём
-										entries.emplace(fmk->format("%s%s", ::__awh_buffer__, i->first.substr(awh_cast <net::addr_fs_t *> (dir->path.get())->address.length()).c_str()), i->second);
-										// Удаляем старую запись из списка содержимого директории
-										i = dir->entries.erase(i);
-									}
-									// Заменяем старый список записей в дирректории на новый
-									dir->entries = ::move(entries);
-									// Устанавливаем новый путь директории
-									awh_cast <net::addr_fs_t *> (dir->path.get())->address = reinterpret_cast <char *> (::__awh_buffer__);
-									// Если событие переименования директории разрешено
-									if(dir->actions & ::action::RENAME){
-										// Если установлена функция обратного вызова
-										if(dir->callbacks.event != nullptr)
-											// Вызываем функцию обратного вызова с установленным флагом события
-											dir->callbacks.event(dir->id, event::action_t::RENAME);
-										// Если функция обратного вызова для сигнализации переименования адреса каталога установлена
-										if(dir->callbacks.vnode != nullptr)
-											// Вызываем функцию обратного вызова
-											dir->callbacks.vnode(dir->id, event::action_t::RENAME, event::vnode_t::DIR, awh_cast <net::addr_fs_t *> (dir->path.get())->address);
-									}
-									// Формируем положительный результат
-									return true;
-								}
-							#endif
 							// Если событие удаления директории разрешено
 							if(dir->actions & ::action::DELETE){
 								// Если установлена функция обратного вызова
@@ -32573,29 +32008,6 @@ namespace io {
 							}
 						// Если мы детектировали событие переименования файла
 						} else if(ev.portev_events & NOTE_RENAME) {
-							/**
-							 * Для операционной системы macOS
-							 */
-							#if __APPLE__ || __MACH__
-								// Получаем актуальный путь файла
-								if(::fcntl(fs->fd, F_GETPATH, ::__awh_buffer__) == 0){
-									// Устанавливаем новый путь файла
-									awh_cast <net::addr_fs_t *> (fs->path.get())->address = reinterpret_cast <char *> (::__awh_buffer__);
-									// Если событие переименования файла разрешено
-									if(fs->actions & ::action::RENAME){
-										// Если установлена функция обратного вызова
-										if(fs->callbacks.event != nullptr)
-											// Вызываем функцию обратного вызова с установленным флагом события
-											fs->callbacks.event(fs->id, event::action_t::RENAME);
-										// Если функция обратного вызова для сигнализации переименования адреса файла установлена
-										if(fs->callbacks.vnode != nullptr)
-											// Вызываем функцию обратного вызова
-											fs->callbacks.vnode(fs->id, event::action_t::RENAME, event::vnode_t::FILE, awh_cast <net::addr_fs_t *> (fs->path.get())->address);
-									}
-									// Формируем положительный результат
-									return true;
-								}
-							#endif
 							// Если событие удаления файла разрешено
 							if(fs->actions & ::action::DELETE){
 								// Если установлена функция обратного вызова
@@ -33602,10 +33014,6 @@ namespace sctp {
 	 */
 	using namespace awh;
 
-	/**
-	 * Если операционной системой является FreeBSD
-	 */
-	#if __FreeBSD__ || defined(__sun)
 		/**
 		 * @brief Функция преобразования структуры информации SCTP в внутреннюю структуру
 		 *
@@ -33728,7 +33136,6 @@ namespace sctp {
 						 *          указание читается как вторая связь с тем же узлом. Так
 						 *          прямо и сказано в руководстве sctp(4P)
 						 */
-						#if defined(__sun)
 							/**
 							 * Определяем чем является текущий узел
 							 */
@@ -33744,7 +33151,6 @@ namespace sctp {
 									awh_cast <::io::client_t *> (node)->transfer.sctp.use().id = sac->sac_assoc_id;
 								break;
 							}
-						#endif
 						// Устанавливаем тип ассоциации SCTP
 						association->type = net::sctp::event_type_t::ASSOC_CHANGE;
 						// Устанавливаем код ошибки ассоциации SCTP
@@ -35030,20 +34436,8 @@ namespace sctp {
 			// Выводим результат
 			return result;
 		}
-	#endif
 };
 
-/**
- * Если операционной системой является FreeBSD, Sun Solaris либо illumos
- *
- * @note Из BSD протокол SCTP несёт одна только FreeBSD, оттого условие и было
- *       написано её именем. Sun Solaris с illumos протокол несут тоже, и раздел
- *       этот обязан собираться и у них: без него не разрешаются ссылки на методы
- *       класса, а собирается движок при этом молча - отказ всплывает лишь сборкой
- *       набора проверок
- *
- */
-#if __FreeBSD__ || defined(__sun)
 	/**
 	 * @brief Метод получения информационных метаданных SCTP сообщения
 	 *
@@ -37541,10 +36935,6 @@ namespace sctp {
 			auto i = ::__awh_nodes__.find(id);
 			// Если идентификатор события найден и событие не подлежит уничтожению
 			if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
-				/**
-				 * Если операционной системой является FreeBSD
-				 */
-				#if __FreeBSD__ || defined(__sun)
 					// Создаём охранника узла события
 					::local::guard_t guard(i->second.get());
 					/**
@@ -37578,7 +36968,6 @@ namespace sctp {
 							#endif
 						}
 					}
-				#endif
 			}
 		/**
 		 * Если возникает ошибка
@@ -37706,7 +37095,6 @@ namespace sctp {
 	 *
 	 */
 	awh::engine::Stream_Control_Transmission_Protocol::~Stream_Control_Transmission_Protocol() noexcept {}
-#endif
 
 /**
  * @brief Метод очистки контрольного списка события
@@ -39411,10 +38799,8 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															/**
 															 * Для операционной системы FreeBSD
 															 */
-															#if __FreeBSD__ || defined(__sun)
 																// Если событие принадлежит к типу SEQPACKET
 																case static_cast <uint8_t> (event::type_t::SEQPACKET):
-															#endif
 															// Если событие принадлежит к типу STREAM
 															case static_cast <uint8_t> (event::type_t::STREAM): {
 																// Устанавливаем семейство IP-адресов
@@ -39424,13 +38810,6 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																// Копируем установленный адрес сервера
 																::strncpy(::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path, unixsocket.c_str(), ::min(sizeof(::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path), unixsocket.length()));
 															} break;
-															/**
-															 * Для операционной системы macOS, NetBSD, OpenBSD
-															 */
-															#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
-																// Если событие принадлежит к типу SEQPACKET
-																case static_cast <uint8_t> (event::type_t::SEQPACKET):
-															#endif
 															// Если событие принадлежит к типу DATAGRAM
 															case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 																// Устанавливаем семейство IP-адресов для клиента
@@ -39726,10 +39105,6 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 										case static_cast <uint8_t> (event::family_t::IPV4): {
 											// Если адрес целевой машины указан
 											if((result = (client->target != nullptr))){
-												/**
-												 * Если операционной системой является FreeBSD
-												 */
-												#if __FreeBSD__ || defined(__sun)
 													// Если протокол интернета установлен как SCTP
 													if(client->state.protocol == event::protocol_t::SCTP){
 														/**
@@ -39767,7 +39142,6 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															break;
 														}
 													}
-												#endif
 												/**
 												 * Определяем тип сокета
 												 */
@@ -40352,10 +39726,6 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 										case static_cast <uint8_t> (event::family_t::IPV6): {
 											// Если адрес целевой машины указан
 											if((result = (client->target != nullptr))){
-												/**
-												 * Если операционной системой является FreeBSD
-												 */
-												#if __FreeBSD__ || defined(__sun)
 													// Если протокол интернета установлен как SCTP
 													if(client->state.protocol == event::protocol_t::SCTP){
 														/**
@@ -40393,7 +39763,6 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															break;
 														}
 													}
-												#endif
 												/**
 												 * Определяем тип сокета
 												 */
@@ -41353,10 +40722,8 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															/**
 															 * Для операционной системы FreeBSD
 															 */
-															#if __FreeBSD__ || defined(__sun)
 																// Если событие принадлежит к типу SEQPACKET
 																case static_cast <uint8_t> (event::type_t::SEQPACKET):
-															#endif
 															// Если событие принадлежит к типу STREAM
 															case static_cast <uint8_t> (event::type_t::STREAM): {
 																// Структура статистики файла
@@ -41406,13 +40773,6 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	return result;
 																}
 															} break;
-															/**
-															 * Для операционной системы macOS, NetBSD, OpenBSD
-															 */
-															#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
-																// Если событие принадлежит к типу SEQPACKET
-																case static_cast <uint8_t> (event::type_t::SEQPACKET):
-															#endif
 															// Если событие принадлежит к типу DATAGRAM
 															case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 																// Устанавливаем семейство IP-адресов для клиента
@@ -41588,10 +40948,6 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 										case static_cast <uint8_t> (event::family_t::IPV4): {
 											// Если адрес целевой машины указан
 											if((result = (server->host != nullptr))){
-												/**
-												 * Если операционной системой является FreeBSD
-												 */
-												#if __FreeBSD__ || defined(__sun)
 													// Если протокол интернета установлен как SCTP
 													if(server->state.protocol == event::protocol_t::SCTP){
 														/**
@@ -41644,7 +41000,6 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															break;
 														}
 													}
-												#endif
 												/**
 												 * Определяем тип сокета
 												 */
@@ -41796,10 +41151,6 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 										case static_cast <uint8_t> (event::family_t::IPV6): {
 											// Если адрес целевой машины указан
 											if((result = (server->host != nullptr))){
-												/**
-												 * Если операционной системой является FreeBSD
-												 */
-												#if __FreeBSD__ || defined(__sun)
 													// Если протокол интернета установлен как SCTP
 													if(server->state.protocol == event::protocol_t::SCTP){
 														/**
@@ -41852,7 +41203,6 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															break;
 														}
 													}
-												#endif
 												/**
 												 * Определяем тип сокета
 												 */
@@ -42686,12 +42036,6 @@ bool awh::engine::IO::rebuild(const event::id_t id) noexcept {
 					/**
 					 * Для операционной системы FreeBSD
 					 */
-					#if __FreeBSD__
-						// Если туннель создан
-						if(!tunnel->iface.empty())
-							// Выполняем удаление сетевого интерфейса туннеля
-							this->_eth.iface.destroy(tunnel->iface);
-					#endif
 				}
 				// Если действующий дескриптор присутствует
 				if(tunnel->fd != net::invalid_socket_t){
@@ -43944,13 +43288,6 @@ uint16_t awh::engine::IO::getSourcePort(const event::id_t id) const noexcept {
 									 * Определяем тип сокета
 									 */
 									switch(static_cast <uint8_t> (server->state.type)){
-										/**
-										 * Для операционной системы macOS, NetBSD, OpenBSD
-										 */
-										#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
-											// Если событие принадлежит к типу SEQPACKET
-											case static_cast <uint8_t> (event::type_t::SEQPACKET):
-										#endif
 										// Если событие принадлежит к типу DATAGRAM
 										case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 											// Объект структуры адреса IPv4
@@ -43975,13 +43312,6 @@ uint16_t awh::engine::IO::getSourcePort(const event::id_t id) const noexcept {
 									 * Определяем тип сокета
 									 */
 									switch(static_cast <uint8_t> (server->state.type)){
-										/**
-										 * Для операционной системы macOS, NetBSD, OpenBSD
-										 */
-										#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
-											// Если событие принадлежит к типу SEQPACKET
-											case static_cast <uint8_t> (event::type_t::SEQPACKET):
-										#endif
 										// Если событие принадлежит к типу DATAGRAM
 										case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 											// Объект структуры адреса IPv6
@@ -47580,13 +46910,6 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 									 * Определяем тип сокета
 									 */
 									switch(static_cast <uint8_t> (server->state.type)){
-										/**
-										 * Для операционной системы macOS, NetBSD, OpenBSD
-										 */
-										#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
-											// Если событие принадлежит к типу SEQPACKET
-											case static_cast <uint8_t> (event::type_t::SEQPACKET):
-										#endif
 										// Если событие принадлежит к типу DATAGRAM
 										case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 											// Если подключение к серверу предположительно подготовлено
@@ -47716,13 +47039,6 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 									 * Определяем тип сокета
 									 */
 									switch(static_cast <uint8_t> (server->state.type)){
-										/**
-										 * Для операционной системы macOS, NetBSD, OpenBSD
-										 */
-										#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
-											// Если событие принадлежит к типу SEQPACKET
-											case static_cast <uint8_t> (event::type_t::SEQPACKET):
-										#endif
 										// Если событие принадлежит к типу DATAGRAM
 										case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 											// Если подключение к серверу предположительно подготовлено
@@ -48045,13 +47361,6 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 										 * Определяем тип сокета
 										 */
 										switch(static_cast <uint8_t> (server->state.type)){
-											/**
-											 * Для операционной системы macOS, NetBSD, OpenBSD
-											 */
-											#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
-												// Если событие принадлежит к типу SEQPACKET
-												case static_cast <uint8_t> (event::type_t::SEQPACKET):
-											#endif
 											// Если событие принадлежит к типу DATAGRAM
 											case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 												// Если подключение к серверу предположительно подготовлено
@@ -48184,13 +47493,6 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 										 * Определяем тип сокета
 										 */
 										switch(static_cast <uint8_t> (server->state.type)){
-											/**
-											 * Для операционной системы macOS, NetBSD, OpenBSD
-											 */
-											#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
-												// Если событие принадлежит к типу SEQPACKET
-												case static_cast <uint8_t> (event::type_t::SEQPACKET):
-											#endif
 											// Если событие принадлежит к типу DATAGRAM
 											case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 												// Если подключение к серверу предположительно подготовлено
@@ -51286,13 +50588,6 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 									 * Определяем тип сокета
 									 */
 									switch(static_cast <uint8_t> (server->state.type)){
-										/**
-										 * Для операционной системы macOS, NetBSD, OpenBSD
-										 */
-										#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
-											// Если событие принадлежит к типу SEQPACKET
-											case static_cast <uint8_t> (event::type_t::SEQPACKET):
-										#endif
 										// Если событие принадлежит к типу DATAGRAM
 										case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 											// Если подключение к серверу предположительно подготовлено
@@ -51418,13 +50713,6 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 									 * Определяем тип сокета
 									 */
 									switch(static_cast <uint8_t> (server->state.type)){
-										/**
-										 * Для операционной системы macOS, NetBSD, OpenBSD
-										 */
-										#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
-											// Если событие принадлежит к типу SEQPACKET
-											case static_cast <uint8_t> (event::type_t::SEQPACKET):
-										#endif
 										// Если событие принадлежит к типу DATAGRAM
 										case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 											// Если подключение к серверу предположительно подготовлено
@@ -51782,13 +51070,6 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 										 * Определяем тип сокета
 										 */
 										switch(static_cast <uint8_t> (server->state.type)){
-											/**
-											 * Для операционной системы macOS, NetBSD, OpenBSD
-											 */
-											#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
-												// Если событие принадлежит к типу SEQPACKET
-												case static_cast <uint8_t> (event::type_t::SEQPACKET):
-											#endif
 											// Если событие принадлежит к типу DATAGRAM
 											case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 												// Если подключение к серверу предположительно подготовлено
@@ -51932,13 +51213,6 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 										 * Определяем тип сокета
 										 */
 										switch(static_cast <uint8_t> (server->state.type)){
-											/**
-											 * Для операционной системы macOS, NetBSD, OpenBSD
-											 */
-											#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
-												// Если событие принадлежит к типу SEQPACKET
-												case static_cast <uint8_t> (event::type_t::SEQPACKET):
-											#endif
 											// Если событие принадлежит к типу DATAGRAM
 											case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 												// Если подключение к серверу предположительно подготовлено
@@ -58042,13 +57316,6 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 									}
 								}
 							} break;
-							/**
-							 * Для операционной системы macOS, NetBSD, OpenBSD
-							 */
-							#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
-								// Если событие принадлежит к типу SEQPACKET
-								case static_cast <uint8_t> (event::type_t::SEQPACKET):
-							#endif
 							// Если событие принадлежит к типу DATAGRAM
 							case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 								// Если событие принадлежит к типу DATAGRAM
@@ -58125,7 +57392,6 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 							/**
 							 * Для операционной системы FreeBSD
 							 */
-							#if __FreeBSD__ || defined(__sun)
 								// Если событие принадлежит к типу SEQPACKET
 								case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 									// Если протокол интернета установлен не как SCTP
@@ -58133,7 +57399,6 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 										/**
 										 * Для операционной системы FreeBSD
 										 */
-										#if __FreeBSD__ || defined(__sun)
 											// Если опция передана как TCP_CORKING
 											if(event::options::TCP_CORKING & options){
 												// Активируем алгоритм TCP/CORK
@@ -58156,7 +57421,6 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 											if(!isSetup)
 												// Устанавливаем результат работы функции как ложь
 												result = isSetup;
-										#endif
 										// Если опция передана как TCP_NODELAY
 										if(event::options::TCP_NO_DELAY & options){
 											// Устанавливаем режим отключения алгоритма Нейгла
@@ -58181,7 +57445,6 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 											result = isSetup;
 									}
 								} break;
-							#endif
 						}
 					}
 				}
@@ -59000,7 +58263,6 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 												/**
 												 * Для операционной системы FreeBSD
 												 */
-												#if __FreeBSD__ || defined(__sun)
 													// Если событие принадлежит к типу SEQPACKET
 													case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 														// Устанавливаем или снимаем режим алгоритма TCP/CORK
@@ -59013,7 +58275,6 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 															else i->second->state.options ^= event::options::TCP_CORKING;
 														}
 													} break;
-												#endif
 											}
 										} break;
 									}
@@ -59064,7 +58325,6 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 											/**
 											 * Для операционной системы FreeBSD
 											 */
-											#if __FreeBSD__ || defined(__sun)
 												// Если событие принадлежит к типу SEQPACKET
 												case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 													// Устанавливаем или снимаем алгоритм Нейгла для TCP сокета
@@ -59077,7 +58337,6 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 														else i->second->state.options ^= event::options::TCP_NO_DELAY;
 													}
 												} break;
-											#endif
 										}
 									} break;
 								}
@@ -60861,13 +60120,6 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 												case static_cast <uint8_t> (event::type_t::RAW):
 												// Если событие принадлежит к типу STREAM
 												case static_cast <uint8_t> (event::type_t::STREAM):
-												/**
-												 * Для операционной системы macOS, NetBSD, OpenBSD
-												 */
-												#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
-													// Если событие принадлежит к типу SEQPACKET
-													case static_cast <uint8_t> (event::type_t::SEQPACKET):
-												#endif
 												// Если событие принадлежит к типу DATAGRAM
 												case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 													// Если событие является UNIX-сокетом
@@ -60919,10 +60171,6 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 												} break;
 											}
 										} break;
-										/**
-										 * Если операционной системой является FreeBSD
-										 */
-										#if __FreeBSD__ || defined(__sun)
 											// Если протокол интернета установлен как SCTP
 											case static_cast <uint8_t> (event::protocol_t::SCTP): {
 												/**
@@ -60995,7 +60243,6 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 														 *          сервер сообщает сам, ответом на установление связи.
 														 *          Теряется единственно наше предпочтение среди них
 														 */
-														#if defined(__sun)
 															// Признак заведённой связи с удалённым сервером
 															bool established = false;
 															/**
@@ -61054,13 +60301,6 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 															}
 															// Если подключение к удаленному серверу не выполнено
 															if(!(result = established)){
-														/**
-														 * Если операционной системой является FreeBSD
-														 */
-														#else
-															// Если подключение к удаленному серверу не выполнено
-															if(!(result = (::sctp_connectx(client->transfer.fd, &addrs[0], addrs.size(), &client->transfer.sctp.use().id) == 0))){
-														#endif
 															// Если ошибка не является ошибкой в процессе подключения
 															if(!(result = (errno == EINPROGRESS))){
 																// Если установлена функция обратного вызова
@@ -61100,7 +60340,6 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 												// Выводим результат
 												return result;
 											}
-										#endif
 									}
 								}
 							} break;
@@ -61876,7 +61115,6 @@ bool awh::engine::IO::listen(const event::id_t id, const uint32_t max) noexcept 
 								/**
 								 * Для операционной системы FreeBSD
 								 */
-								#if __FreeBSD__ || defined(__sun)
 									// Если событие принадлежит к типу SEQPACKET
 									case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 										// Если протокол интернета установлен как SCTP
@@ -61942,7 +61180,6 @@ bool awh::engine::IO::listen(const event::id_t id, const uint32_t max) noexcept 
 											server->state.status = event::status_t::INITIAL;
 										}
 									} break;
-								#endif
 								// Для других типов сокетов
 								default: {
 									// Если установлена функция обратного вызова
@@ -69235,12 +68472,6 @@ void awh::engine::IO::clear() noexcept {
 							/**
 							 * Для операционной системы FreeBSD
 							 */
-							#if __FreeBSD__
-								// Если туннель создан
-								if(!tunnel->iface.empty())
-									// Выполняем удаление сетевого интерфейса туннеля
-									this->_eth.iface.destroy(tunnel->iface);
-							#endif
 						}
 						// Если дескриптор сокета действительный
 						if(tunnel->fd != net::invalid_socket_t){
@@ -69293,13 +68524,8 @@ void awh::engine::IO::clear() noexcept {
 						client->transfer.queue.clear();
 						// Выполняем сброс обрамления записи очереди
 						::sctp::forget(client);
-						/**
-						 * Если операционной системой является FreeBSD
-						 */
-						#if __FreeBSD__ || defined(__sun)
 							// Сбрасываем числовые параметры SCTP, сохраняя обратные связи
 							client->transfer.sctp.reset();
-						#endif
 						/**
 						 * Определяем тип таймера для событий сетевого движка
 						 */
@@ -69378,13 +68604,6 @@ void awh::engine::IO::clear() noexcept {
 								 * Определяем тип сокета
 								 */
 								switch(static_cast <uint8_t> (client->state.type)){
-									/**
-									 * Для операционной системы macOS, NetBSD, OpenBSD
-									 */
-									#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
-										// Если событие принадлежит к типу SEQPACKET
-										case static_cast <uint8_t> (event::type_t::SEQPACKET):
-									#endif
 									// Если событие принадлежит к типу DATAGRAM
 									case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 										// Извлекаем файл сокета клиента
@@ -69473,10 +68692,6 @@ void awh::engine::IO::clear() noexcept {
 									::unlink(address.c_str());
 							}
 						}
-						/**
-						 * Если операционной системой является FreeBSD
-						 */
-						#if __FreeBSD__ || defined(__sun)
 							{
 								// Сохраняем объект функции обратного вызова SCTP
 								auto callbacks = ::move(server->sctp.callbacks);
@@ -69491,7 +68706,6 @@ void awh::engine::IO::clear() noexcept {
 								// Восстанавливаем объект функции обратного вызова SCTP
 								server->sctp.callbacks = ::move(callbacks);
 							}
-						#endif
 						// Производим удаление узла
 						i = ::__awh_nodes__.erase(i);
 					} break;
@@ -70460,12 +69674,6 @@ bool awh::engine::IO::deinitialize() noexcept {
 						/**
 						 * Для операционной системы FreeBSD
 						 */
-						#if __FreeBSD__
-							// Если имя сетевого интерфейса туннеля установлена
-							if(!tunnel->iface.empty())
-								// Удаляем сетевой интерфейс туннеля
-								this->_eth.iface.destroy(tunnel->iface);
-						#endif
 					}
 					// Если дескриптор сокета инициализирован
 					if(tunnel->fd != net::invalid_socket_t){
@@ -70513,13 +69721,6 @@ bool awh::engine::IO::deinitialize() noexcept {
 						 * Определяем тип сокета
 						 */
 						switch(static_cast <uint8_t> (client->state.type)){
-							/**
-							 * Для операционной системы macOS, NetBSD, OpenBSD
-							 */
-							#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
-								// Если событие принадлежит к типу SEQPACKET
-								case static_cast <uint8_t> (event::type_t::SEQPACKET):
-							#endif
 							// Если событие принадлежит к типу DATAGRAM
 							case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 								// Извлекаем файл сокета клиента
@@ -71443,6 +70644,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 						break;
 						// Если оповещение пришло по дескриптору
 						case PORT_SOURCE_FD: {
+							::fprintf(stderr, "SHUPK: оповещение дескриптор=%d разряды=0x%x\n", (int) ev.portev_object, (unsigned) ev.portev_events);
 							/**
 							 * Одно оповещение несёт И чтение, И запись сразу
 							 *
@@ -73144,12 +72346,6 @@ awh::engine::IO::~IO() noexcept {
 						/**
 						 * Для операционной системы FreeBSD
 						 */
-						#if __FreeBSD__
-							// Если имя сетевого интерфейса туннеля установлена
-							if(!tunnel->iface.empty())
-								// Удаляем сетевой интерфейс туннеля
-								this->_eth.iface.destroy(tunnel->iface);
-						#endif
 					}
 					// Если дескриптор сокета инициализирован
 					if(tunnel->fd != net::invalid_socket_t){
@@ -73178,13 +72374,6 @@ awh::engine::IO::~IO() noexcept {
 						 * Определяем тип сокета
 						 */
 						switch(static_cast <uint8_t> (client->state.type)){
-							/**
-							 * Для операционной системы macOS, NetBSD, OpenBSD
-							 */
-							#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
-								// Если событие принадлежит к типу SEQPACKET
-								case static_cast <uint8_t> (event::type_t::SEQPACKET):
-							#endif
 							// Если событие принадлежит к типу DATAGRAM
 							case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 								// Извлекаем файл сокета клиента
