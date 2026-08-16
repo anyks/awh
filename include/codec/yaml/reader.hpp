@@ -1,0 +1,771 @@
+/**
+ * @file reader.hpp
+ * @date 2026-08-17
+ *
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
+ * \~russian
+ * @brief Заголовочный файл потокового чтения текста YAML — разбор блочных построений
+ *        стопою отступов с выдачей событий по мере чтения
+ *
+ * \~english
+ * @brief Header file of the streaming reading of a YAML text — the parsing of the block constructions
+ *        by a stack of the indentations with the issuance of the events as the reading goes on
+ *
+ * \~
+ *
+ * @copyright Copyright © 2026
+ *
+ */
+
+/**
+ * Экранируем повторную инициализацию модуля
+ */
+#ifndef __AWH_CODEC_YAML_READER__
+#define __AWH_CODEC_YAML_READER__
+
+/**
+ * Стандартные заголовочные файлы
+ */
+#include <deque>
+#include <vector>
+
+/**
+ * Подключаем заголовочные файлы модуля
+ */
+#include "common.hpp"
+#include "encoding.hpp"
+
+/**
+ * Снимаем на время объявлений макросы, чьи имена заняты
+ * членами перечислений ниже (возвращает их macro_pop.hpp в конце файла)
+ */
+#include "../../sys/macro_push.hpp"
+
+/**
+ * \~russian
+ * @brief Основное пространство имён
+ *
+ * \~english
+ * @brief Main namespace
+ *
+ * \~
+ */
+namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
+
+	/**
+	 * \~russian
+	 * @brief Пространство имён контейнеров данных
+	 *
+	 * \~english
+	 * @brief Data containers namespace
+	 *
+	 * \~
+	 */
+	namespace codec {
+		/**
+		 * \~russian
+		 * @brief Пространство имён контейнера YAML
+		 *
+		 * \~english
+		 * @brief YAML container namespace
+		 *
+		 * \~
+		 */
+		namespace yaml {
+			/**
+			 * \~russian
+			 * @brief Состояния потокового чтения текста
+			 *
+			 * \~english
+			 * @brief States of the streaming reading of a text
+			 *
+			 * \~
+			 */
+			enum class state_t : uint8_t {
+				READY    = 0x00, // Чтение заведено, текст ещё не подавался
+				PARSING  = 0x01, // Текст разбирается, продолжения ожидается
+				FINISHED = 0x02, // Текст разобран до конца
+				FAILED   = 0x03  // Разбор прекращён отказом
+			};
+
+			/**
+			 * \~russian
+			 * @brief Значение, выданное событием чтения
+			 *
+			 * @details Поле содержимого ссылается на память, принадлежащую хранилищу
+			 * чтения, и живёт до получения следующего события
+			 *
+			 * \~english
+			 * @brief Value issued by an event of the reading
+			 * @details The field of the content refers to the memory belonging to the storage
+			 * of the reading and lives until the obtaining of the next event
+			 *
+			 * \~
+			 */
+			typedef struct __AWH_SHARED_EXPORT__ Content {
+				// Вид значения, разрешённый действующей схемой
+				type_t type;
+				// Вид записи значения в исходном тексте
+				style_t style;
+				// Содержимое значения, приведённое к окончательному виду
+				string_view text;
+				// Положение значения в исходном тексте
+				location_t location;
+				/**
+				 * \~russian
+				 * @brief Конструктор
+				 *
+				 *
+				 * \~english
+				 * @brief Constructor
+				 *
+				 * \~
+				 */
+				Content() noexcept : type(type_t::UNDEFINED), style(style_t::PLAIN) {}
+			} content_t;
+
+			/**
+			 * \~russian
+			 * @brief Потоковое чтение текста YAML
+			 *
+			 * @details Текст подаётся кусками и разбирается построчно: событие выдаётся
+			 * лишь тогда, когда строка прочитана целиком и прирасти уже не может. Оттого
+			 * выдача не зависит от того, как текст нарезан на куски при подаче
+			 *
+			 * @warning Заводится чтение по частям, и построения, ещё не заведённые -
+			 *          поточные скобки, блочные значения, метки, ссылки и метки типов, -
+			 *          отвечают отказом, а не молчаливым разбором наугад: молчаливый разбор
+			 *          выдал бы дерево, исходному тексту не отвечающее
+			 *
+			 * \~english
+			 * @brief Streaming reading of a YAML text
+			 * @details A text is fed by the chunks and is parsed line by line: an event is issued
+			 * only when a line is read in full and can no longer grow. Whereby the issuance
+			 * does not depend on how the text is cut into the chunks at the feeding
+			 * @warning The reading is being created by the parts, and the constructions not yet created —
+			 *          the flow brackets, the block scalars, the anchors, the aliases and the tags —
+			 *          answer with a refusal rather than with a silent parsing at random: a silent parsing
+			 *          would issue a tree not corresponding to the source text
+			 *
+			 * \~
+			 */
+			typedef class __AWH_SHARED_EXPORT__ Reader {
+				public:
+					/**
+					 * \~russian
+					 * @brief Настройки разбора текста
+					 *
+					 * \~english
+					 * @brief Settings of the parsing of a text
+					 *
+					 * \~
+					 */
+					typedef struct __AWH_SHARED_EXPORT__ Settings {
+						// Схема разрешения видов скалярных значений
+						schema_t schema;
+						// Кодировка, навязанная извне вопреки метке порядка байтов
+						encoding_t encoding;
+						// Правило обращения с повторяющимся именем пары отображения
+						duplicate_t duplicates;
+						// Признак выдачи примечаний отдельным событием
+						bool emitComments;
+						// Признак выдачи пустых строк отдельным событием
+						bool emitBlanks;
+						// Наибольшая допустимая глубина вложенности, ноль - предел по умолчанию
+						uint32_t depth;
+						// Наибольшая допустимая длина скалярного значения, ноль - предел по умолчанию
+						uint32_t scalar;
+						/**
+						 * \~russian
+						 * @brief Конструктор
+						 *
+						 *
+						 * \~english
+						 * @brief Constructor
+						 *
+						 * \~
+						 */
+						Settings() noexcept :
+						 schema(schema_t::CORE), encoding(encoding_t::NONE), duplicates(duplicate_t::ERROR),
+						 emitComments(false), emitBlanks(false), depth(0), scalar(0) {}
+					} settings_t;
+				private:
+					/**
+					 * \~russian
+					 * @brief Виды открытых уровней вложенности
+					 *
+					 * \~english
+					 * @brief Kinds of the opened levels of the nesting
+					 *
+					 * \~
+					 */
+					enum class nesting_t : uint8_t {
+						MAPPING  = 0x00, // Уровень отображения пар
+						SEQUENCE = 0x01  // Уровень перечня значений
+					};
+					/**
+					 * \~russian
+					 * @brief Открытый уровень вложенности
+					 *
+					 * \~english
+					 * @brief Opened level of the nesting
+					 *
+					 * \~
+					 */
+					typedef struct Level {
+						// Вид открытого уровня вложенности
+						nesting_t kind;
+						// Отступ, на котором уровень открыт
+						uint32_t indent;
+						/**
+						 * Признак того, что уровень открыт значением пары, стоящим на отступе имени её
+						 *
+						 * @note Перечень, стоящий на отступе имени своей пары, описанием дозволен, и
+						 *       закрытием по отступу он не снимается: снимает его следующая пара того
+						 *       же отображения. Уровень же, на том отступе открытый сам по себе, есть
+						 *       смешение перечня с отображением, и его надлежит отвергнуть
+						 */
+						bool implied;
+						/**
+						 * \~russian
+						 * @brief Конструктор
+						 *
+						 * @param kind    вид открытого уровня вложенности
+						 * @param indent  отступ, на котором уровень открыт
+						 * @param implied признак открытия уровня значением пары на отступе имени её
+						 *
+						 * \~english
+						 * @brief Constructor
+						 * @param kind kind of the opened level of the nesting
+						 * @param indent indentation at which the level is opened
+						 *
+						 * \~
+						 */
+						Level(const nesting_t kind, const uint32_t indent, const bool implied) noexcept :
+						 kind(kind), indent(indent), implied(implied) {}
+					} level_t;
+					/**
+					 * \~russian
+					 * @brief Событие разбора, собранное для выдачи
+					 *
+					 * \~english
+					 * @brief Event of the parsing assembled for the issuance
+					 *
+					 * \~
+					 */
+					typedef struct Item {
+						// Вид собранного события
+						event_t event;
+						// Вид значения, разрешённый действующей схемой
+						type_t type;
+						// Вид записи значения в исходном тексте
+						style_t style;
+						// Смещение содержимого события в хранилище знаков
+						size_t offset;
+						// Длина содержимого события в хранилище знаков
+						size_t length;
+						// Положение события в исходном тексте
+						location_t location;
+						/**
+						 * \~russian
+						 * @brief Конструктор
+						 *
+						 *
+						 * \~english
+						 * @brief Constructor
+						 *
+						 * \~
+						 */
+						Item() noexcept :
+						 event(event_t::NONE), type(type_t::UNDEFINED), style(style_t::PLAIN),
+						 offset(0), length(0) {}
+					} item_t;
+				private:
+					// Настройки разбора текста
+					settings_t _settings;
+					// Объект приведения кодировки исходного текста
+					decoder_t _decoder;
+					// Состояние потокового чтения текста
+					state_t _state;
+					// Код ошибки разбора текста
+					error_t _error;
+					// Положение отказа разбора в исходном тексте
+					location_t _location;
+					// Накопитель поданного текста, приведённого к UTF-8
+					string _buffer;
+					// Смещение начала неразобранного текста в накопителе
+					size_t _offset;
+					// Хранилище содержимого собранных событий
+					string _storage;
+					// Очередь собранных событий разбора, готовых к выдаче
+					deque <item_t> _events;
+					/**
+					 * События разбираемой строки, выдачи ещё не ожидающие
+					 *
+					 * @note Строка собирается целиком и лишь затем переносится в очередь выдачи:
+					 *       отказ посреди строки не вправе оставить потребителя с началом
+					 *       построения без конца его, а исход разбора не вправе зависеть от того,
+					 *       на каком куске отказ случился
+					 */
+					deque <item_t> _staged;
+					// Событие, выданное последним
+					item_t _current;
+					// Значение, выданное последним событием
+					content_t _content;
+					// Стопа открытых уровней вложенности
+					vector <level_t> _levels;
+					// Номер разбираемой строки, считая с единицы
+					uint32_t _line;
+					// Смещение от начала текста в байтах
+					uint64_t _position;
+					// Признак того, что начало потока уже выдано
+					bool _started;
+					// Признак того, что документ открыт
+					bool _opened;
+					// Признак того, что открытый документ уже нёс содержимое
+					bool _filled;
+					// Признак того, что ожидается значение пары, объявленной прежде
+					bool _expected;
+					// Отступ, на котором ожидается значение пары
+					uint32_t _pending;
+				private:
+					/**
+					 * \~russian
+					 * @brief Метод объявления отказа разбора
+					 *
+					 * @param error  код ошибки разбора
+					 * @param column положение отказа в разбираемой строке
+					 * @return       признак прекращения разбора
+					 *
+					 * \~english
+					 * @brief Method of the declaration of a refusal of the parsing
+					 * @param error error code of the parsing
+					 * @param column position of the refusal in the line being parsed
+					 * @return sign of the termination of the parsing
+					 *
+					 * \~
+					 */
+					bool fail(const error_t error, const size_t column) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод переноса собранных событий строки в очередь выдачи
+					 *
+					 * \~english
+					 * @brief Method of the transfer of the assembled events of a line into the queue of the issuance
+					 *
+					 * \~
+					 */
+					void commit() noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод постановки события примечания
+					 *
+					 * @details Содержимое примечания выдаётся без пробельной обвязки с обеих
+					 * сторон - тем же порядком, каким выдаёт его контейнер TOML: расхождение
+					 * между кодеками в столь мелком вопросе всплыло бы у потребителя, читающего
+					 * оба
+					 *
+					 * @param line     разбираемая строка
+					 * @param position положение знака примечания в строке
+					 *
+					 * \~english
+					 * @brief Method of the placing of an event of a comment
+					 * @details The content of a comment is issued without the whitespace framing on both
+					 * sides — by the same order by which the TOML container issues it: a divergence
+					 * between the codecs in such a small question would surface at a consumer reading
+					 * both of them
+					 * @param line line being parsed
+					 * @param position position of the comment character in the line
+					 *
+					 * \~
+					 */
+					void remark(const string_view line, const size_t position) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод постановки собранного события в очередь выдачи
+					 *
+					 * @param event  вид собранного события
+					 * @param column положение события в разбираемой строке
+					 * @return       ссылка на поставленное событие
+					 *
+					 * \~english
+					 * @brief Method of the placing of an assembled event into the queue of the issuance
+					 * @param event kind of the assembled event
+					 * @param column position of the event in the line being parsed
+					 * @return reference to the placed event
+					 *
+					 * \~
+					 */
+					item_t & emit(const event_t event, const size_t column) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод постановки события скалярного значения
+					 *
+					 * @param text   содержимое скалярного значения
+					 * @param style  вид записи значения в исходном тексте
+					 * @param column положение значения в разбираемой строке
+					 * @return       признак успешной постановки события
+					 *
+					 * \~english
+					 * @brief Method of the placing of an event of a scalar value
+					 * @param text content of the scalar value
+					 * @param style kind of the notation of the value in the source text
+					 * @param column position of the value in the line being parsed
+					 * @return sign of the successful placing of the event
+					 *
+					 * \~
+					 */
+					bool scalar(const string & text, const style_t style, const size_t column) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод закрытия открытых уровней глубже заданного отступа
+					 *
+					 * @param indent отступ, до которого закрываются уровни
+					 * @param column положение закрытия в разбираемой строке
+					 * @return       признак успешного закрытия уровней
+					 *
+					 * \~english
+					 * @brief Method of the closing of the opened levels deeper than a given indentation
+					 * @param indent indentation down to which the levels are closed
+					 * @param column position of the closing in the line being parsed
+					 * @return sign of the successful closing of the levels
+					 *
+					 * \~
+					 */
+					bool collapse(const uint32_t indent, const size_t column) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод открытия уровня вложенности заданного вида
+					 *
+					 * @param kind    вид открываемого уровня вложенности
+					 * @param indent  отступ, на котором уровень открывается
+					 * @param implied признак открытия уровня значением пары на отступе имени её
+					 * @param column  положение открытия в разбираемой строке
+					 * @return       признак успешного открытия уровня
+					 *
+					 * \~english
+					 * @brief Method of the opening of a level of the nesting of a given kind
+					 * @param kind kind of the level of the nesting being opened
+					 * @param indent indentation at which the level is opened
+					 * @param column position of the opening in the line being parsed
+					 * @return sign of the successful opening of the level
+					 *
+					 * \~
+					 */
+					bool expand(const nesting_t kind, const uint32_t indent, const bool implied, const size_t column) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод закрытия открытого документа
+					 *
+					 * @param column положение закрытия в разбираемой строке
+					 * @return       признак успешного закрытия документа
+					 *
+					 * \~english
+					 * @brief Method of the closing of an opened document
+					 * @param column position of the closing in the line being parsed
+					 * @return sign of the successful closing of the document
+					 *
+					 * \~
+					 */
+					bool finish(const size_t column) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод снятия ограды со скалярного значения
+					 *
+					 * @details Ограда снимается вместе с отменяющими последовательностями
+					 * двойной ограды и удвоением кавычки одинарной
+					 *
+					 * @param text   разбираемая запись значения вместе с оградою
+					 * @param style  вид ограды разбираемого значения
+					 * @param column положение значения в разбираемой строке
+					 * @param result строка, куда помещается содержимое значения
+					 * @return       признак успешного снятия ограды
+					 *
+					 * \~english
+					 * @brief Method of the removal of the quoting from a scalar value
+					 * @details The quoting is removed together with the escape sequences of a double
+					 * quoting and the doubling of the quote of a single one
+					 * @param text record of the value being parsed together with the quoting
+					 * @param style kind of the quoting of the value being parsed
+					 * @param column position of the value in the line being parsed
+					 * @param result string into which the content of the value is placed
+					 * @return sign of the successful removal of the quoting
+					 *
+					 * \~
+					 */
+					bool unquote(const string_view text, const style_t style, const size_t column, string & result) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод поиска конца скалярного значения в разбираемой строке
+					 *
+					 * @details Правила окончания сведены в одно тело: простое значение
+					 * оканчивается разделителем пары, знаком примечания за пробельным знаком
+					 * либо концом строки, а обнесённое оградою - закрывающей оградой
+					 *
+					 * @param line   разбираемая строка
+					 * @param offset смещение начала значения в строке
+					 * @param style  вид записи значения, определяемый первым знаком
+					 * @param length длина записи значения вместе с оградою
+					 * @return       признак того, что значение прочитано целиком
+					 *
+					 * \~english
+					 * @brief Method of the search for the end of a scalar value in the line being parsed
+					 * @details The rules of the termination are gathered into one body: a plain value
+					 * ends by the separator of a pair, by the comment character after a whitespace character
+					 * or by the end of the line, while a quoted one — by the closing quoting
+					 * @param line line being parsed
+					 * @param offset offset of the beginning of the value in the line
+					 * @param style kind of the notation of the value determined by the first character
+					 * @param length length of the record of the value together with the quoting
+					 * @return sign of the fact that the value is read in full
+					 *
+					 * \~
+					 */
+					bool bounds(const string_view line, const size_t offset, style_t & style, size_t & length) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод разбора одной логической строки текста
+					 *
+					 * @param line разбираемая строка без знака конца строки
+					 * @return     признак успешного разбора строки
+					 *
+					 * \~english
+					 * @brief Method of the parsing of one logical line of a text
+					 * @param line line being parsed without the line break character
+					 * @return sign of the successful parsing of the line
+					 *
+					 * \~
+					 */
+					bool record(const string_view line) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод разбора содержимого строки за отступом
+					 *
+					 * @param line   разбираемая строка без знака конца строки
+					 * @param offset смещение начала содержимого в строке
+					 * @param indent отступ, на котором содержимое стоит
+					 * @return       признак успешного разбора содержимого
+					 *
+					 * \~english
+					 * @brief Method of the parsing of the content of a line after the indentation
+					 * @param line line being parsed without the line break character
+					 * @param offset offset of the beginning of the content in the line
+					 * @param indent indentation at which the content stands
+					 * @return sign of the successful parsing of the content
+					 *
+					 * \~
+					 */
+					bool content(const string_view line, const size_t offset, const uint32_t indent) noexcept;
+				public:
+					/**
+					 * \~russian
+					 * @brief Метод получения настроек разбора текста
+					 *
+					 * @return настройки разбора текста
+					 *
+					 * \~english
+					 * @brief Method of the obtaining of the settings of the parsing of a text
+					 * @return settings of the parsing of a text
+					 *
+					 * \~
+					 */
+					const settings_t & settings() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод установки настроек разбора текста
+					 *
+					 * @param settings устанавливаемые настройки разбора
+					 * @return         признак принятия настроек разбора
+					 *
+					 * \~english
+					 * @brief Method of the setting of the settings of the parsing of a text
+					 * @param settings settings of the parsing being set
+					 * @return sign of the acceptance of the settings of the parsing
+					 *
+					 * \~
+					 */
+					bool settings(const settings_t & settings) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод подачи очередного куска исходного текста
+					 *
+					 * @param buffer подаваемый кусок исходного текста
+					 * @param size   размер подаваемого куска
+					 * @param end    признак того, что текст окончен
+					 * @return       признак успешного разбора поданного куска
+					 *
+					 * \~english
+					 * @brief Method of the feeding of the next chunk of the source text
+					 * @param buffer chunk of the source text being fed
+					 * @param size size of the chunk being fed
+					 * @param end sign of the fact that the text is ended
+					 * @return sign of the successful parsing of the fed chunk
+					 *
+					 * \~
+					 */
+					bool feed(const void * buffer, const size_t size, const bool end) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод подачи исходного текста целиком
+					 *
+					 * @param text подаваемый исходный текст
+					 * @return     признак успешного разбора поданного текста
+					 *
+					 * \~english
+					 * @brief Method of the feeding of the source text in full
+					 * @param text source text being fed
+					 * @return sign of the successful parsing of the fed text
+					 *
+					 * \~
+					 */
+					bool feed(const string_view text) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод получения очередного события разбора
+					 *
+					 * @return признак того, что событие получено
+					 *
+					 * \~english
+					 * @brief Method of the obtaining of the next event of the parsing
+					 * @return sign of the fact that an event is obtained
+					 *
+					 * \~
+					 */
+					bool next() noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод получения вида последнего события разбора
+					 *
+					 * @return вид последнего события разбора
+					 *
+					 * \~english
+					 * @brief Method of the obtaining of the kind of the last event of the parsing
+					 * @return kind of the last event of the parsing
+					 *
+					 * \~
+					 */
+					event_t event() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод получения значения последнего события разбора
+					 *
+					 * @return значение последнего события разбора
+					 *
+					 * \~english
+					 * @brief Method of the obtaining of the value of the last event of the parsing
+					 * @return value of the last event of the parsing
+					 *
+					 * \~
+					 */
+					const content_t & value() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод получения состояния потокового чтения
+					 *
+					 * @return состояние потокового чтения текста
+					 *
+					 * \~english
+					 * @brief Method of the obtaining of the state of the streaming reading
+					 * @return state of the streaming reading of a text
+					 *
+					 * \~
+					 */
+					state_t state() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод получения кода ошибки разбора текста
+					 *
+					 * @return код ошибки разбора текста
+					 *
+					 * \~english
+					 * @brief Method of the obtaining of the error code of the parsing of a text
+					 * @return error code of the parsing of a text
+					 *
+					 * \~
+					 */
+					error_t error() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод получения положения отказа в исходном тексте
+					 *
+					 * @return положение отказа разбора в исходном тексте
+					 *
+					 * \~english
+					 * @brief Method of the obtaining of the position of a refusal in the source text
+					 * @return position of the refusal of the parsing in the source text
+					 *
+					 * \~
+					 */
+					const location_t & location() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод получения опознанной кодировки исходного текста
+					 *
+					 * @return опознанная кодировка исходного текста
+					 *
+					 * \~english
+					 * @brief Method of the obtaining of the recognised encoding of the source text
+					 * @return recognised encoding of the source text
+					 *
+					 * \~
+					 */
+					encoding_t encoding() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод сброса состояния потокового чтения
+					 *
+					 * \~english
+					 * @brief Method of the reset of the state of the streaming reading
+					 *
+					 * \~
+					 */
+					void clear() noexcept;
+				public:
+					/**
+					 * \~russian
+					 * @brief Конструктор
+					 *
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
+					 */
+					Reader() noexcept;
+					/**
+					 * \~russian
+					 * @brief Конструктор
+					 *
+					 * @param settings настройки разбора текста
+					 *
+					 * \~english
+					 * @brief Constructor
+					 * @param settings settings of the parsing of a text
+					 *
+					 * \~
+					 */
+					explicit Reader(const settings_t & settings) noexcept;
+			} reader_t;
+		};
+	};
+};
+
+/**
+ * Возвращаем снятые ранее макросы
+ */
+#include "../../sys/macro_pop.hpp"
+
+#endif // __AWH_CODEC_YAML_READER__
