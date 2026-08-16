@@ -91,6 +91,35 @@ awh::codec::toml::Writer::Settings::Settings() noexcept :
  newline(newline_t::LF) {}
 
 /**
+ * @brief Метод запоминания отказа записи вместе с кодом ошибки
+ *
+ * @details Отказ, случившийся после того, как операция уже дописала начало своё,
+ * оставляет строку оборванной, и выдавать собранный текст после него нельзя: свой
+ * же разбор целым его не признает. Судится это здесь единственным телом - перечень
+ * мест, где отказ приходит после дописывания, разошёлся бы с кодом при первой же
+ * правке любого из них
+ *
+ * @note Признак рваности липкий: строку, оборванную отказом, вправе завершить
+ *       знаком конца строки следующая удачная операция, и по одному лишь виду
+ *       собранного текста рваность эта после того неразличима
+ *
+ * @param error код ошибки записи
+ * @return      признак отказа для выхода из записи
+ *
+ */
+bool awh::codec::toml::Writer::refuse(const error_t error) noexcept {
+	// Запоминаем код ошибки записи
+	this->_error = error;
+	/**
+	 * Если отказ застал строку незавершённой
+	 */
+	if(this->_length != 0)
+		// Запоминаем признак текста, отказом оборванного
+		this->_torn = true;
+	// Выводим признак отказа для выхода из записи
+	return false;
+}
+/**
  * @brief Метод записи знака конца строки
  *
  * @return результат выполнения операции
@@ -101,10 +130,8 @@ bool awh::codec::toml::Writer::newline() noexcept {
 	 * Если длина собранной логической строки превышает допустимую
 	 */
 	if((this->_settings.maxLine > 0) && (this->_length > static_cast <size_t> (this->_settings.maxLine))){
-		// Запоминаем код ошибки записи
-		this->_error = error_t::LINE_TOO_LONG;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выводим отказ записи вместе с кодом ошибки
+		return this->refuse(error_t::LINE_TOO_LONG);
 	}
 	// Выполняем запись знака конца строки
 	this->_text.append(toml::newline(this->_settings.newline));
@@ -190,10 +217,8 @@ bool awh::codec::toml::Writer::remarkable(const string_view text) noexcept {
 	 * Если запись ведётся вне перечня значений
 	 */
 	if(this->context() != context_t::ARRAY){
-		// Запоминаем код ошибки записи
-		this->_error = error_t::UNEXPECTED_CONTENT;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выводим отказ записи вместе с кодом ошибки
+		return this->refuse(error_t::UNEXPECTED_CONTENT);
 	}
 	/**
 	 * Если перечень собирается одной строкой
@@ -202,10 +227,8 @@ bool awh::codec::toml::Writer::remarkable(const string_view text) noexcept {
 	 *       строкой не собрать: закрывающая скобка досталась бы содержимому
 	 */
 	if(!this->_levels.back().multiline){
-		// Запоминаем код ошибки записи
-		this->_error = error_t::UNEXPECTED_CONTENT;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выводим отказ записи вместе с кодом ошибки
+		return this->refuse(error_t::UNEXPECTED_CONTENT);
 	}
 	/**
 	 * Выполняем перебор всех знаков содержимого примечания
@@ -219,10 +242,8 @@ bool awh::codec::toml::Writer::remarkable(const string_view text) noexcept {
 		 *       достался бы перечню содержимым
 		 */
 		if((text[i] == '\n') || controlled(text[i])){
-			// Запоминаем код ошибки записи
-			this->_error = error_t::INVALID_CHARACTER;
-			// Выводим отрицательный результат выполнения операции
-			return false;
+			// Выводим отказ записи вместе с кодом ошибки
+			return this->refuse(error_t::INVALID_CHARACTER);
 		}
 	}
 	// Выводим положительный результат выполнения операции
@@ -333,10 +354,8 @@ bool awh::codec::toml::Writer::complete() noexcept {
 		// Выводим положительный результат выполнения операции
 		return true;
 	}
-	// Запоминаем код ошибки записи
-	this->_error = error_t::INTERNAL;
-	// Выводим отрицательный результат выполнения операции
-	return false;
+	// Выводим отказ записи вместе с кодом ошибки
+	return this->refuse(error_t::INTERNAL);
 }
 /**
  * @brief Метод записи составной части имени ключа
@@ -350,10 +369,8 @@ bool awh::codec::toml::Writer::naming(const part_t & part) noexcept {
 	 * Если длина составной части имени превышает допустимую
 	 */
 	if((this->_settings.maxKey > 0) && (part.name.length() > static_cast <size_t> (this->_settings.maxKey))){
-		// Запоминаем код ошибки записи
-		this->_error = error_t::KEY_TOO_LONG;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выводим отказ записи вместе с кодом ошибки
+		return this->refuse(error_t::KEY_TOO_LONG);
 	}
 	// Получаем запись, которой записывается составная часть имени
 	naming_t naming = part.naming;
@@ -412,10 +429,8 @@ bool awh::codec::toml::Writer::naming(const part_t & part) noexcept {
 			 * Если смена ограды имени настройками не дозволена
 			 */
 			if(!this->_settings.promote){
-				// Запоминаем код ошибки записи
-				this->_error = (part.name.empty() ? error_t::EMPTY_KEY : error_t::INVALID_KEY);
-				// Выводим отрицательный результат выполнения операции
-				return false;
+				// Выводим отказ записи вместе с кодом ошибки
+				return this->refuse((part.name.empty() ? error_t::EMPTY_KEY : error_t::INVALID_KEY));
 			}
 			// Выполняем смену ограды имени на основную строку
 			naming = naming_t::BASIC;
@@ -452,19 +467,15 @@ bool awh::codec::toml::Writer::naming(const part_t * parts, const size_t count) 
 	 * Если составное имя ключа пусто
 	 */
 	if((parts == nullptr) || (count == 0)){
-		// Запоминаем код ошибки записи
-		this->_error = error_t::EMPTY_KEY;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выводим отказ записи вместе с кодом ошибки
+		return this->refuse(error_t::EMPTY_KEY);
 	}
 	/**
 	 * Если количество составных частей имени превышает допустимое
 	 */
 	if((this->_settings.maxParts > 0) && (count > static_cast <size_t> (this->_settings.maxParts))){
-		// Запоминаем код ошибки записи
-		this->_error = error_t::PARTS_EXCEEDED;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выводим отказ записи вместе с кодом ошибки
+		return this->refuse(error_t::PARTS_EXCEEDED);
 	}
 	/**
 	 * Выполняем перебор всех составных частей имени ключа
@@ -583,10 +594,8 @@ bool awh::codec::toml::Writer::quoted(const string_view text, const string_t quo
 		 * Если смена ограды строки настройками не дозволена
 		 */
 		if(!this->_settings.promote){
-			// Запоминаем код ошибки записи
-			this->_error = error_t::INVALID_VALUE;
-			// Выводим отрицательный результат выполнения операции
-			return false;
+			// Выводим отказ записи вместе с кодом ошибки
+			return this->refuse(error_t::INVALID_VALUE);
 		}
 		/**
 		 * Выполняем смену ограды строки на ближайшую, содержимое несущую
@@ -734,10 +743,8 @@ bool awh::codec::toml::Writer::quoted(const string_view text, const string_t quo
 			 * Если запись управляющей последовательности выполнить не удалось
 			 */
 			if(length <= 0){
-				// Запоминаем код ошибки записи
-				this->_error = error_t::INTERNAL;
-				// Выводим отрицательный результат выполнения операции
-				return false;
+				// Выводим отказ записи вместе с кодом ошибки
+				return this->refuse(error_t::INTERNAL);
 			}
 			// Выполняем запись управляющей последовательности знака
 			this->append(string_view(buffer, static_cast <size_t> (length)));
@@ -779,10 +786,8 @@ bool awh::codec::toml::Writer::stamped(const stamp_t & stamp, const type_t type)
 		 *       текст, который читающий отвергнет
 		 */
 		if((stamp.date.year > 9999) || !toml::calendar(stamp.date.year, stamp.date.month, stamp.date.day)){
-			// Запоминаем код ошибки записи
-			this->_error = error_t::INVALID_DATETIME;
-			// Выводим отрицательный результат выполнения операции
-			return false;
+			// Выводим отказ записи вместе с кодом ошибки
+			return this->refuse(error_t::INVALID_DATETIME);
 		}
 		// Выполняем запись даты отметки времени
 		const int32_t length = ::snprintf(buffer, sizeof(buffer), "%04u-%02u-%02u",
@@ -791,10 +796,8 @@ bool awh::codec::toml::Writer::stamped(const stamp_t & stamp, const type_t type)
 		 * Если запись даты отметки времени выполнить не удалось
 		 */
 		if(length <= 0){
-			// Запоминаем код ошибки записи
-			this->_error = error_t::INTERNAL;
-			// Выводим отрицательный результат выполнения операции
-			return false;
+			// Выводим отказ записи вместе с кодом ошибки
+			return this->refuse(error_t::INTERNAL);
 		}
 		// Выполняем запись даты отметки времени
 		this->append(string_view(buffer, static_cast <size_t> (length)));
@@ -817,10 +820,8 @@ bool awh::codec::toml::Writer::stamped(const stamp_t & stamp, const type_t type)
 		 */
 		if((stamp.time.hour > 23) || (stamp.time.minute > 59) || (stamp.time.second > 60) ||
 		   (stamp.time.digits > MAX_FRACTION) || (stamp.time.nanosecond > 999999999)){
-			// Запоминаем код ошибки записи
-			this->_error = error_t::INVALID_DATETIME;
-			// Выводим отрицательный результат выполнения операции
-			return false;
+			// Выводим отказ записи вместе с кодом ошибки
+			return this->refuse(error_t::INVALID_DATETIME);
 		}
 		// Выполняем запись времени отметки
 		int32_t length = ::snprintf(buffer, sizeof(buffer), "%02u:%02u:%02u",
@@ -829,10 +830,8 @@ bool awh::codec::toml::Writer::stamped(const stamp_t & stamp, const type_t type)
 		 * Если запись времени отметки выполнить не удалось
 		 */
 		if(length <= 0){
-			// Запоминаем код ошибки записи
-			this->_error = error_t::INTERNAL;
-			// Выводим отрицательный результат выполнения операции
-			return false;
+			// Выводим отказ записи вместе с кодом ошибки
+			return this->refuse(error_t::INTERNAL);
 		}
 		// Выполняем запись времени отметки
 		this->append(string_view(buffer, static_cast <size_t> (length)));
@@ -848,10 +847,8 @@ bool awh::codec::toml::Writer::stamped(const stamp_t & stamp, const type_t type)
 			 * Если запись доли секунды выполнить не удалось
 			 */
 			if(length != static_cast <int32_t> (MAX_FRACTION)){
-				// Запоминаем код ошибки записи
-				this->_error = error_t::INTERNAL;
-				// Выводим отрицательный результат выполнения операции
-				return false;
+				// Выводим отказ записи вместе с кодом ошибки
+				return this->refuse(error_t::INTERNAL);
 			}
 			// Выполняем запись разделителя доли секунды
 			this->append(".");
@@ -872,10 +869,8 @@ bool awh::codec::toml::Writer::stamped(const stamp_t & stamp, const type_t type)
 		 * Если смещение часового пояса отсутствует
 		 */
 		if(stamp.offset == NO_TIMEZONE){
-			// Запоминаем код ошибки записи
-			this->_error = error_t::INVALID_DATETIME;
-			// Выводим отрицательный результат выполнения операции
-			return false;
+			// Выводим отказ записи вместе с кодом ошибки
+			return this->refuse(error_t::INVALID_DATETIME);
 		}
 		/**
 		 * Если часовой пояс записывается знаком «Z»
@@ -890,10 +885,8 @@ bool awh::codec::toml::Writer::stamped(const stamp_t & stamp, const type_t type)
 		 * Если смещение часового пояса выходит за отведённый ему отрезок значений
 		 */
 		if((stamp.offset < -(23 * 60 + 59)) || (stamp.offset > (23 * 60 + 59))){
-			// Запоминаем код ошибки записи
-			this->_error = error_t::INVALID_DATETIME;
-			// Выводим отрицательный результат выполнения операции
-			return false;
+			// Выводим отказ записи вместе с кодом ошибки
+			return this->refuse(error_t::INVALID_DATETIME);
 		}
 		// Получаем величину смещения часового пояса в минутах
 		const uint32_t value = static_cast <uint32_t> (stamp.offset < 0 ? -stamp.offset : stamp.offset);
@@ -911,10 +904,8 @@ bool awh::codec::toml::Writer::stamped(const stamp_t & stamp, const type_t type)
 		 * Если запись смещения часового пояса выполнить не удалось
 		 */
 		if(length <= 0){
-			// Запоминаем код ошибки записи
-			this->_error = error_t::INTERNAL;
-			// Выводим отрицательный результат выполнения операции
-			return false;
+			// Выводим отказ записи вместе с кодом ошибки
+			return this->refuse(error_t::INTERNAL);
 		}
 		// Выполняем запись смещения часового пояса
 		this->append(string_view(buffer, static_cast <size_t> (length)));
@@ -1089,9 +1080,7 @@ bool awh::codec::toml::Writer::keyed(const part_t * parts, const size_t count) n
 			 * @note Имени ключа посреди перечня места нет: значения перечня имён не
 			 *       имеют, а незаписанное значение пары означает пропущенный вызов
 			 */
-			this->_error = ((this->context() == context_t::KEYED) ? error_t::MISSING_VALUE : error_t::INVALID_KEY);
-			// Выводим отрицательный результат выполнения операции
-			return false;
+			return this->refuse((this->context() == context_t::KEYED) ? error_t::MISSING_VALUE : error_t::INVALID_KEY);
 		}
 	}
 	/**
@@ -1178,14 +1167,12 @@ bool awh::codec::toml::Writer::value(const value_t & value) noexcept {
 			return this->stamp(value.stamp, value.type);
 	}
 	/**
-	 * Запоминаем код ошибки записи
+	 * Выводим отказ записи вместе с кодом ошибки
 	 *
 	 * @note Перечень и таблица значениями не записываются: составное значение
 	 *       собирается парой вызовов открытия и закрытия
 	 */
-	this->_error = error_t::INVALID_VALUE;
-	// Выводим отрицательный результат выполнения операции
-	return false;
+	return this->refuse(error_t::INVALID_VALUE);
 }
 /**
  * @brief Метод записи строкового значения
@@ -1208,10 +1195,8 @@ bool awh::codec::toml::Writer::text(const string_view text, const string_t quoti
 			return false;
 	// Если запись значения ведётся вне пары и вне перечня
 	} else if(this->context() != context_t::KEYED) {
-		// Запоминаем код ошибки записи
-		this->_error = error_t::UNEXPECTED_CONTENT;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выводим отказ записи вместе с кодом ошибки
+		return this->refuse(error_t::UNEXPECTED_CONTENT);
 	}
 	/**
 	 * Если записать строковое значение не удалось
@@ -1242,10 +1227,8 @@ bool awh::codec::toml::Writer::boolean(const bool value) noexcept {
 			return false;
 	// Если запись значения ведётся вне пары и вне перечня
 	} else if(this->context() != context_t::KEYED) {
-		// Запоминаем код ошибки записи
-		this->_error = error_t::UNEXPECTED_CONTENT;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выводим отказ записи вместе с кодом ошибки
+		return this->refuse(error_t::UNEXPECTED_CONTENT);
 	}
 	// Выполняем запись логического значения
 	this->append(value ? "true" : "false");
@@ -1273,10 +1256,8 @@ bool awh::codec::toml::Writer::integer(const int64_t value, const radix_t radix)
 			return false;
 	// Если запись значения ведётся вне пары и вне перечня
 	} else if(this->context() != context_t::KEYED) {
-		// Запоминаем код ошибки записи
-		this->_error = error_t::UNEXPECTED_CONTENT;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выводим отказ записи вместе с кодом ошибки
+		return this->refuse(error_t::UNEXPECTED_CONTENT);
 	}
 	/**
 	 * Если число записывается не десятичной системой счисления и оно отрицательно
@@ -1286,10 +1267,8 @@ bool awh::codec::toml::Writer::integer(const int64_t value, const radix_t radix)
 	 *       счисления запись не вправе - человек выбрал её сам
 	 */
 	if((radix != radix_t::DECIMAL) && (value < 0)){
-		// Запоминаем код ошибки записи
-		this->_error = error_t::INVALID_NUMBER;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выводим отказ записи вместе с кодом ошибки
+		return this->refuse(error_t::INVALID_NUMBER);
 	}
 	// Хранилище записи целого числа
 	char buffer[80];
@@ -1350,10 +1329,8 @@ bool awh::codec::toml::Writer::integer(const int64_t value, const radix_t radix)
 	 * Если запись целого числа выполнить не удалось
 	 */
 	if((length <= 0) || (static_cast <size_t> (length) >= sizeof(buffer))){
-		// Запоминаем код ошибки записи
-		this->_error = error_t::INTERNAL;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выводим отказ записи вместе с кодом ошибки
+		return this->refuse(error_t::INTERNAL);
 	}
 	// Выполняем запись целого числа
 	this->append(string_view(buffer, static_cast <size_t> (length)));
@@ -1380,10 +1357,8 @@ bool awh::codec::toml::Writer::real(const double value) noexcept {
 			return false;
 	// Если запись значения ведётся вне пары и вне перечня
 	} else if(this->context() != context_t::KEYED) {
-		// Запоминаем код ошибки записи
-		this->_error = error_t::UNEXPECTED_CONTENT;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выводим отказ записи вместе с кодом ошибки
+		return this->refuse(error_t::UNEXPECTED_CONTENT);
 	}
 	/**
 	 * Если записываемое число не является числом
@@ -1429,10 +1404,8 @@ bool awh::codec::toml::Writer::real(const double value) noexcept {
 	 * Если запись числа выполнить не удалось
 	 */
 	if((length <= 0) || (static_cast <size_t> (length) >= sizeof(buffer))){
-		// Запоминаем код ошибки записи
-		this->_error = error_t::INTERNAL;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выводим отказ записи вместе с кодом ошибки
+		return this->refuse(error_t::INTERNAL);
 	}
 	// Выполняем запись числа с плавающей точкой
 	this->append(string_view(buffer, static_cast <size_t> (length)));
@@ -1471,20 +1444,16 @@ bool awh::codec::toml::Writer::stamp(const stamp_t & stamp, const type_t type) n
 			return false;
 	// Если запись значения ведётся вне пары и вне перечня
 	} else if(this->context() != context_t::KEYED) {
-		// Запоминаем код ошибки записи
-		this->_error = error_t::UNEXPECTED_CONTENT;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выводим отказ записи вместе с кодом ошибки
+		return this->refuse(error_t::UNEXPECTED_CONTENT);
 	}
 	/**
 	 * Если записываемый тип отметкой времени не является
 	 */
 	if((type != type_t::OFFSET_DATETIME) && (type != type_t::LOCAL_DATETIME) &&
 	   (type != type_t::LOCAL_DATE) && (type != type_t::LOCAL_TIME)){
-		// Запоминаем код ошибки записи
-		this->_error = error_t::INVALID_DATETIME;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выводим отказ записи вместе с кодом ошибки
+		return this->refuse(error_t::INVALID_DATETIME);
 	}
 	/**
 	 * Если записать отметку времени не удалось
@@ -1515,10 +1484,8 @@ bool awh::codec::toml::Writer::arrayOpen(const bool multiline) noexcept {
 			return false;
 	// Если запись значения ведётся вне пары и вне перечня
 	} else if(this->context() != context_t::KEYED) {
-		// Запоминаем код ошибки записи
-		this->_error = error_t::UNEXPECTED_CONTENT;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выводим отказ записи вместе с кодом ошибки
+		return this->refuse(error_t::UNEXPECTED_CONTENT);
 	}
 	// Глубина вложенности записываемого значения
 	size_t depth = 0;
@@ -1545,10 +1512,8 @@ bool awh::codec::toml::Writer::arrayOpen(const bool multiline) noexcept {
 	 *       который читающий с теми же настройками отвергнет
 	 */
 	if(depth >= static_cast <size_t> (this->_settings.maxDepth)){
-		// Запоминаем код ошибки записи
-		this->_error = error_t::DEPTH_EXCEEDED;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выводим отказ записи вместе с кодом ошибки
+		return this->refuse(error_t::DEPTH_EXCEEDED);
 	}
 	// Выполняем запись открывающей скобки перечня значений
 	this->append("[");
@@ -1568,10 +1533,8 @@ bool awh::codec::toml::Writer::arrayClose() noexcept {
 	 * Если запись ведётся вне перечня значений
 	 */
 	if(this->context() != context_t::ARRAY){
-		// Запоминаем код ошибки записи
-		this->_error = error_t::UNCLOSED_ARRAY;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выводим отказ записи вместе с кодом ошибки
+		return this->refuse(error_t::UNCLOSED_ARRAY);
 	}
 	/**
 	 * Если перечень записан несколькими строками и значения в нём записаны
@@ -1622,10 +1585,8 @@ bool awh::codec::toml::Writer::inlineOpen() noexcept {
 			return false;
 	// Если запись значения ведётся вне пары и вне перечня
 	} else if(this->context() != context_t::KEYED) {
-		// Запоминаем код ошибки записи
-		this->_error = error_t::UNEXPECTED_CONTENT;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выводим отказ записи вместе с кодом ошибки
+		return this->refuse(error_t::UNEXPECTED_CONTENT);
 	}
 	// Глубина вложенности записываемого значения
 	size_t depth = 0;
@@ -1652,10 +1613,8 @@ bool awh::codec::toml::Writer::inlineOpen() noexcept {
 	 *       который читающий с теми же настройками отвергнет
 	 */
 	if(depth >= static_cast <size_t> (this->_settings.maxDepth)){
-		// Запоминаем код ошибки записи
-		this->_error = error_t::DEPTH_EXCEEDED;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выводим отказ записи вместе с кодом ошибки
+		return this->refuse(error_t::DEPTH_EXCEEDED);
 	}
 	// Выполняем запись открывающей скобки встроенной таблицы
 	this->append("{");
@@ -1680,10 +1639,8 @@ bool awh::codec::toml::Writer::inlineClose() noexcept {
 	 * Если запись ведётся вне встроенной таблицы
 	 */
 	if(this->context() != context_t::INLINE){
-		// Запоминаем код ошибки записи
-		this->_error = error_t::UNCLOSED_INLINE_TABLE;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выводим отказ записи вместе с кодом ошибки
+		return this->refuse(error_t::UNCLOSED_INLINE_TABLE);
 	}
 	/**
 	 * Если во встроенной таблице записаны пары
@@ -1746,10 +1703,8 @@ bool awh::codec::toml::Writer::comment(const string_view text) noexcept {
 			 *       запись не вправе
 			 */
 			if(controlled(line[i])){
-				// Запоминаем код ошибки записи
-				this->_error = error_t::INVALID_CHARACTER;
-				// Выводим отрицательный результат выполнения операции
-				return false;
+				// Выводим отказ записи вместе с кодом ошибки
+				return this->refuse(error_t::INVALID_CHARACTER);
 			}
 		}
 		// Выполняем запись знака начала примечания
@@ -1800,10 +1755,8 @@ bool awh::codec::toml::Writer::trailing(const string_view text) noexcept {
 	 * Если к последней записанной строке примечание дописать нельзя
 	 */
 	if(!this->_trailable || this->_text.empty()){
-		// Запоминаем код ошибки записи
-		this->_error = error_t::UNEXPECTED_CONTENT;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выводим отказ записи вместе с кодом ошибки
+		return this->refuse(error_t::UNEXPECTED_CONTENT);
 	}
 	/**
 	 * Выполняем перебор всех знаков дописываемого примечания
@@ -1817,10 +1770,8 @@ bool awh::codec::toml::Writer::trailing(const string_view text) noexcept {
 		 *       хвост достался бы тексту настроек содержимым
 		 */
 		if((text[i] == '\n') || controlled(text[i])){
-			// Запоминаем код ошибки записи
-			this->_error = error_t::INVALID_CHARACTER;
-			// Выводим отрицательный результат выполнения операции
-			return false;
+			// Выводим отказ записи вместе с кодом ошибки
+			return this->refuse(error_t::INVALID_CHARACTER);
 		}
 	}
 	// Получаем последовательность знаков конца строки собираемого текста
@@ -1994,19 +1945,12 @@ const string & awh::codec::toml::Writer::text() noexcept {
 	// Пустой результат выдачи собранного текста настроек
 	static const string result;
 	/**
-	 * Если последняя строка собранного текста знаком конца строки не завершена
+	 * Если собранный текст оборван отказом
 	 *
-	 * @details Отказ, случившийся после того, как операция уже дописала начало своё,
-	 * оставляет строку оборванной: имя таблицы, отвергнутое длиной, оставляет за собою
-	 * открывающую скобку, за которой имени уже не будет. Выдать такой текст значило бы
-	 * выдать текст, который собственный разбор целым не признаёт
-	 *
-	 * @note Судится здесь сама рваность, а не признак ошибки: отказ, ничего дописать
-	 *       не успевший, текста не портит, и запись после него вправе продолжаться.
-	 *       Перечень же мест, где отказ приходит после дописывания, разошёлся бы с
-	 *       кодом при первой правке любого из них
+	 * @note Судится сама рваность, а не признак ошибки: отказ, ничего дописать не
+	 *       успевший, текста не портит, и запись после него вправе продолжаться
 	 */
-	if(this->_length != 0)
+	if(this->_torn)
 		// Выводим пустой результат выдачи собранного текста настроек
 		return result;
 	/**
@@ -2029,6 +1973,8 @@ void awh::codec::toml::Writer::clear() noexcept {
 	this->_tabled = false;
 	// Выполняем сброс признака возможности дописать примечание
 	this->_trailable = false;
+	// Выполняем сброс признака текста, отказом оборванного
+	this->_torn = false;
 	// Выполняем сброс длины собираемой логической строки
 	this->_length = 0;
 	// Выполняем сброс длины записи, знаком конца строки завершённой
@@ -2043,7 +1989,7 @@ void awh::codec::toml::Writer::clear() noexcept {
  *
  */
 awh::codec::toml::Writer::Writer() noexcept :
- _error(error_t::NONE), _tabled(false), _trailable(false), _length(0), _restore(0) {}
+ _error(error_t::NONE), _tabled(false), _trailable(false), _torn(false), _length(0), _restore(0) {}
 /**
  * @brief Конструктор
  *
@@ -2051,7 +1997,7 @@ awh::codec::toml::Writer::Writer() noexcept :
  *
  */
 awh::codec::toml::Writer::Writer(const settings_t & settings) noexcept :
- _error(error_t::NONE), _tabled(false), _trailable(false), _length(0), _restore(0), _settings(settings) {}
+ _error(error_t::NONE), _tabled(false), _trailable(false), _torn(false), _length(0), _restore(0), _settings(settings) {}
 /**
  * @brief Деструктор
  *
@@ -2112,10 +2058,8 @@ bool awh::codec::toml::Writer::number(const string_view key, const T value) noex
 		 *       отрицательное значение
 		 */
 		if(static_cast <uint64_t> (value) > static_cast <uint64_t> (numeric_limits <int64_t>::max())){
-			// Запоминаем код ошибки записи
-			this->_error = error_t::NUMBER_OVERFLOW;
-			// Выводим отрицательный результат выполнения операции
-			return false;
+			// Выводим отказ записи вместе с кодом ошибки
+			return this->refuse(error_t::NUMBER_OVERFLOW);
 		}
 		// Выполняем запись целого числа без знака
 		return this->integer(static_cast <int64_t> (value));

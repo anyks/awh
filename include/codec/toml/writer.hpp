@@ -109,6 +109,15 @@ namespace awh {
 			 * где ограждение настройками не дозволено, запись выдаёт отказ. Единственное
 			 * послабление задаётся настройкой @c promote и касается лишь выбора записи
 			 * строки, содержимого её не меняя
+			 * @li **Учёт повторов имён запись не ведёт.** Реестра объявленных имён у неё
+			 * нет вовсе: повтор ловит дерево настроек, а завести реестр здесь значило бы
+			 * держать второй свод правил рядом с тем, что уже ведёт разбор. Потребитель,
+			 * зовущий запись напрямую, за неповторимость имён отвечает сам
+			 * @li **Текст, оборванный отказом, не выдаётся вовсе.** Отказ, случившийся
+			 * после того, как операция уже дописала начало своё, оставляет строку
+			 * оборванной, и признак этот липкий: строку вправе завершить знаком конца
+			 * строки следующая удачная операция, и по одному лишь виду собранного текста
+			 * рваность после того неразличима. Снимается признак лишь сбросом записи
 			 * @li **Перечень пишется в одну строку, пока не велено иначе.** Многострочная
 			 * запись перечня заводится указанием при его открытии: собранному
 			 * потребителем перечню многострочность не нужна, а перезаписи прочитанного она
@@ -420,6 +429,26 @@ namespace awh {
 					 * \~
 					 */
 					bool _trailable;
+					/**
+					 * \~russian
+					 * Признак текста, отказом оборванного
+					 * @details Отказ, случившийся после того, как операция уже дописала начало
+					 * своё, оставляет строку оборванной, и выдавать собранный текст после него
+					 * нельзя. Признак липкий: строку эту вправе завершить знаком конца строки
+					 * следующая удачная операция, и по одному лишь виду собранного текста
+					 * рваность после того неразличима
+					 *
+					 * \~english
+					 * Flag of a text cut off by a refusal
+					 * @details A refusal that occurred after the operation had already appended its own
+					 * beginning leaves the line cut off, and the assembled text must not be issued after
+					 * it. The flag is sticky: that line may be terminated with an end-of-line character
+					 * by the next successful operation, and after that the tornness is indistinguishable
+					 * by the appearance of the assembled text alone
+					 *
+					 * \~
+					 */
+					bool _torn;
 				private:
 					// Собираемый текст настроек
 					string _text;
@@ -533,6 +562,32 @@ namespace awh {
 					 * \~
 					 */
 					bool ready() noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод запоминания отказа записи вместе с кодом ошибки
+					 *
+					 * @details Отказ, случившийся после того, как операция уже дописала начало
+					 * своё, оставляет строку оборванной, и выдавать собранный текст после него
+					 * нельзя: свой же разбор целым его не признает. Судится это здесь
+					 * единственным телом - перечень мест, где отказ приходит после дописывания,
+					 * разошёлся бы с кодом при первой же правке любого из них
+					 *
+					 * @param error код ошибки записи
+					 * @return      признак отказа для выхода из записи
+					 *
+					 * \~english
+					 * @brief Method of remembering a refusal of the writing together with the error code
+					 * @details A refusal that occurred after the operation had already appended its own
+					 * beginning leaves the line cut off, and the assembled text must not be issued after
+					 * it: its own parsing will not recognize it as whole. This is judged here by a single
+					 * body — a list of the places where a refusal arrives after an appending would
+					 * diverge from the code at the very first edit of any of them
+					 * @param error error code of the writing
+					 * @return      flag of a refusal for the exit from the writing
+					 *
+					 * \~
+					 */
+					bool refuse(const error_t error) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод проверки пригодности примечания внутри перечня значений
