@@ -1070,6 +1070,7 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/codec/yaml/common.cpp"
     "${CMAKE_SOURCE_DIR}/src/codec/yaml/encoding.cpp"
     "${CMAKE_SOURCE_DIR}/src/codec/yaml/reader.cpp"
+    "${CMAKE_SOURCE_DIR}/src/codec/yaml/writer.cpp"
     "${CMAKE_SOURCE_DIR}/src/codec/toml/common.cpp"
     "${CMAKE_SOURCE_DIR}/src/codec/toml/encoding.cpp"
     "${CMAKE_SOURCE_DIR}/src/codec/toml/reader.cpp"

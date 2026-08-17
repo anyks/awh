@@ -43,5 +43,6 @@
 #include "common.hpp"
 #include "encoding.hpp"
 #include "reader.hpp"
+#include "writer.hpp"
 
 #endif // __AWH_CODEC_YAML__
