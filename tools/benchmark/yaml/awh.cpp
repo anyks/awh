@@ -1,0 +1,123 @@
+/**
+ * @file awh.cpp
+ * @date 2026-08-17
+ *
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
+ * @brief Эталонный стенд сравнения — потоковое чтение текста настроек контейнером AWH
+ *
+ * @copyright Copyright © 2026
+ *
+ */
+
+/**
+ * Подключаем заголовочные файлы проекта
+ */
+#include <codec/yaml/reader.hpp>
+
+/**
+ * Подключаем общее окружение эталонных стендов
+ */
+#include "common.hpp"
+
+/**
+ * @brief Функция получения настроек разбора текста настроек
+ *
+ * @details Выдача примечаний и пустых строк отключена намеренно: сличаемые
+ * реализации ни примечаний, ни пустых строк не выдают вовсе, и оставлять их
+ * включёнными значило бы сравнивать разный объём работы. Чего стоят примечания
+ * событиями, показывает набор `benchmark/codec/yaml` - там они включены
+ *
+ * @return настройки разбора текста настроек
+ *
+ */
+static const awh::codec::yaml::reader_t::settings_t & settings() noexcept {
+	// Настройки разбора текста настроек
+	static const awh::codec::yaml::reader_t::settings_t result = []() noexcept -> awh::codec::yaml::reader_t::settings_t {
+		// Собираемые настройки разбора текста настроек
+		awh::codec::yaml::reader_t::settings_t result;
+		// Снимаем выдачу примечаний отдельным событием
+		result.emitComments = false;
+		// Снимаем выдачу пустых строк отдельным событием
+		result.emitBlanks = false;
+		// Выводим собранные настройки разбора
+		return result;
+	}();
+	// Выводим настройки разбора текста настроек
+	return result;
+}
+/**
+ * @brief Функция разбора одного файла настроек
+ *
+ * @details Скалярные значения учитываются содержимым, а ссылки - лишь количеством:
+ * потоковое чтение ссылок не раскрывает ни у одной из сличаемых реализаций, и
+ * содержимого у события ссылки нет вовсе
+ *
+ * @param text разбираемый текст настроек
+ * @return     признак успешного разбора
+ *
+ */
+static bool parse(const std::string & text) noexcept {
+	// Объект потокового чтения текста настроек
+	awh::codec::yaml::reader_t reader(settings());
+	/**
+	 * Если передать текст настроек не удалось
+	 */
+	if(!reader.feed(text.data(), text.size(), true))
+		// Выводим признак неудачного разбора
+		return false;
+	/**
+	 * Выполняем перебор всех событий разбора
+	 */
+	while(reader.next()){
+		/**
+		 * Если получено скалярное значение
+		 */
+		if(reader.event() == awh::codec::yaml::event_t::SCALAR){
+			// Получаем полученное значение разбора
+			const awh::codec::yaml::content_t & content = reader.value();
+			// Выполняем учёт обработанного скалярного значения
+			rival::entry();
+			// Выполняем учёт содержимого скалярного значения
+			rival::consume(content.text.data(), content.text.size());
+		}
+	}
+	// Выводим признак успешного разбора
+	return (reader.state() == awh::codec::yaml::state_t::FINISHED);
+}
+
+/**
+ * @brief Перечень сценариев стенда
+ *
+ */
+static const rival::scenario_t SCENARIOS[] = {
+	{"service",   rival::SMALL_ROUNDS,   rival::service,   parse},
+	{"large",     rival::LARGE_ROUNDS,   rival::large,     parse},
+	{"strings",   rival::FOCUSED_ROUNDS, rival::strings,   parse},
+	{"numbers",   rival::FOCUSED_ROUNDS, rival::numbers,   parse},
+	{"arrays",    rival::FOCUSED_ROUNDS, rival::arrays,    parse},
+	{"blocks",    rival::FOCUSED_ROUNDS, rival::blocks,    parse},
+	{"anchors",   rival::FOCUSED_ROUNDS, rival::anchors,   parse},
+	{"decorated", rival::FOCUSED_ROUNDS, rival::decorated, parse}
+};
+
+/**
+ * @brief Главная функция стенда
+ *
+ * @param argc длина массива параметров
+ * @param argv массив параметров
+ * @return     код выхода из стенда
+ *
+ */
+int32_t main(int32_t argc, char * argv[]){
+	// Выполняем прогон всех сценариев стенда
+	return rival::run(argc, argv, SCENARIOS, (sizeof(SCENARIOS) / sizeof(SCENARIOS[0])));
+}

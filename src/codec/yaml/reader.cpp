@@ -229,7 +229,7 @@ awh::codec::yaml::Reader::Reader() noexcept :
  _state(state_t::READY), _error(error_t::NONE), _reading(0), _offset(0), _line(0), _position(0),
  _started(false), _opened(false), _filled(false), _blocking(false), _block(style_t::LITERAL),
  _chomp(chomp_t::CLIP), _marked(NO_INDENT), _outer(0), _margin(0), _inner(0), _opening(0),
- _breaks(0), _expected(false), _entered(false), _pending(0), _schema(schema_t::CORE), _plaining(false),
+ _breaks(0), _deepened(false), _expected(false), _entered(false), _pending(0), _schema(schema_t::CORE), _plaining(false),
  _folds(0), _required(0), _phase(flow_t::ENTRY), _directed(false), _versioned(false) {}
 /**
  * @brief Конструктор
@@ -241,7 +241,7 @@ awh::codec::yaml::Reader::Reader(const settings_t & settings) noexcept :
  _settings(settings), _state(state_t::READY), _error(error_t::NONE), _reading(0), _offset(0),
  _line(0), _position(0), _started(false), _opened(false), _filled(false),
  _blocking(false), _block(style_t::LITERAL), _chomp(chomp_t::CLIP), _marked(NO_INDENT),
- _outer(0), _margin(0), _inner(0), _opening(0), _breaks(0), _expected(false), _entered(false), _pending(0),
+ _outer(0), _margin(0), _inner(0), _opening(0), _breaks(0), _deepened(false), _expected(false), _entered(false), _pending(0),
  _schema(settings.schema), _plaining(false), _folds(0), _required(0),
  _phase(flow_t::ENTRY), _directed(false), _versioned(false) {
 	/**
@@ -332,6 +332,8 @@ void awh::codec::yaml::Reader::clear() noexcept {
 	this->_block_text.clear();
 	// Выполняем сброс количества пустых строк блочного значения
 	this->_breaks = 0;
+	// Выполняем сброс признака строки, глубже отступа содержимого стоявшей
+	this->_deepened = false;
 	// Выполняем сброс отступа содержимого блочного значения
 	this->_inner = 0;
 	// Выполняем сброс признака ожидания значения пары
@@ -2253,6 +2255,8 @@ bool awh::codec::yaml::Reader::opening(const string_view line, const size_t offs
 	this->_block_text.clear();
 	// Выполняем сброс количества пустых строк, содержимого не дождавшихся
 	this->_breaks = 0;
+	// Выполняем сброс признака строки, глубже отступа содержимого стоявшей
+	this->_deepened = false;
 	// Выполняем сброс признака ожидания значения пары
 	this->_expected = false;
 	// Выводим признак успешного разбора заголовка
@@ -2316,31 +2320,70 @@ bool awh::codec::yaml::Reader::blocking(const string_view line, bool & attached)
 	 */
 	if(indent < this->_inner)
 		return this->fail(error_t::INVALID_INDENTATION, offset);
+	// Получаем признак того, что присоединяемая строка стоит глубже отступа содержимого
+	const bool deepened = (indent > this->_inner);
 	/**
 	 * Если содержимое блочного значения уже собрано хотя бы одной строкой
 	 */
 	if(!this->_block_text.empty()){
 		/**
-		 * Если вид блочного значения велит хранить переводы строк
+		 * Количество переводов строк, разделяющих присоединяемую строку с прежней
 		 *
-		 * @note Свёртка складывает строки пробелом, а пустая строка даёт перевод: оттого
-		 *       пустых строк дописывается на одну меньше, а последний перевод заменяет
-		 *       собою пробел свёртки
+		 * @note Пустых строк накоплено на один перевод меньше: перевод, самою прежнею
+		 *       строкой завершаемый, счётом пустых строк не учитывается
 		 */
-		if((this->_block == style_t::LITERAL) || (this->_breaks > 0) || (indent > this->_inner))
+		const size_t breaks = (this->_breaks + 1);
+		/**
+		 * Если свёртка строк применению не подлежит
+		 *
+		 * @details Свёртка складывает строки пробелом, а пустых строк даёт на один
+		 * перевод меньше. Применяется она лишь тогда, когда обе строки, переводом
+		 * разделяемые, стоят ровно на отступе содержимого: строка, стоящая глубже,
+		 * свёртке не подлежит ни собою, ни соседкой своей, и переводы вокруг неё
+		 * сохраняются все до единого
+		 *
+		 * @note Правило это взято стандартом, а не догадкой: оно сличено с выдачею
+		 *       эталонных реализаций libyaml и libfyaml на шести случаях свёртки, и
+		 *       расхождение с ними было изъяном разбора, а не разностью прочтения
+		 */
+		if((this->_block == style_t::LITERAL) || this->_deepened || deepened){
+			/**
+			 * Выполняем запись всех переводов строк, строки разделяющих
+			 */
+			for(size_t i = 0; i < breaks; i++)
+				// Выполняем запись перевода строки в содержимое блочного значения
+				this->_block_text.push_back('\n');
+		/**
+		 * Если переводов строк накоплено более одного
+		 */
+		} else if(breaks > 1) {
+			/**
+			 * Выполняем запись переводов строк, свёрткою уменьшенных на один
+			 */
+			for(size_t i = 1; i < breaks; i++)
+				// Выполняем запись перевода строки в содержимое блочного значения
+				this->_block_text.push_back('\n');
+		// Выполняем запись пробела свёртки в содержимое блочного значения
+		} else this->_block_text.push_back(' ');
+	/**
+	 * Если содержимое ещё не собрано, а пустые строки уже накоплены
+	 *
+	 * @note Пустые строки, содержимому предпосланные, свёртке не подлежат ни при
+	 *       каком виде блочного значения: складывать их пробелом не с чем, и они
+	 *       сохраняются переводами как есть
+	 */
+	} else {
+		/**
+		 * Выполняем запись всех пустых строк, содержимого дождавшихся
+		 */
+		for(size_t i = 0; i < this->_breaks; i++)
 			// Выполняем запись перевода строки в содержимое блочного значения
 			this->_block_text.push_back('\n');
-		// Выполняем запись пробела свёртки в содержимое блочного значения
-		else this->_block_text.push_back(' ');
 	}
-	/**
-	 * Выполняем запись пустых строк, содержимого дождавшихся
-	 */
-	for(size_t i = 0; i < this->_breaks; i++)
-		// Выполняем запись перевода строки в содержимое блочного значения
-		this->_block_text.push_back('\n');
 	// Выполняем сброс количества пустых строк
 	this->_breaks = 0;
+	// Запоминаем признак того, что присоединяемая строка стоит глубже отступа содержимого
+	this->_deepened = deepened;
 	// Выполняем запись содержимого строки без отступа блочного значения
 	this->_block_text.append(line.substr(this->_inner));
 	// Запоминаем признак присоединения строки

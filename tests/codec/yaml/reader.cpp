@@ -738,12 +738,14 @@ TEST(CodecYamlReader, BlockScalars) {
 	/**
 	 * Выполняем проверку блочного значения со свёрткой строк
 	 *
-	 * @note Свёртка складывает строки пробелом, а пустая строка даёт перевод: `первая`
-	 *       и `вторая` складываются в одну, а `третья` отделяется переводом
+	 * @note Свёртка складывает строки пробелом, а последовательность переводов
+	 *       уменьшает на один: `первая` и `вторая` складываются в одну, а два
+	 *       перевода перед `третья` обращаются в один. Полностью правило это
+	 *       закреплено проверкой `FoldedBreaks`
 	 */
 	ASSERT_EQ(events("text: >\n  первая\n  вторая\n\n  третья\n"),
 		"STREAM_START\nDOCUMENT_START\nMAPPING_START\nSCALAR «text»\n"
-		"SCALAR «первая вторая\n\nтретья\n»\n"
+		"SCALAR «первая вторая\nтретья\n»\n"
 		"MAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
 	// Выполняем проверку усечения переводов строк
 	ASSERT_EQ(events("text: |-\n  одна\n\nnext: 1\n"),
@@ -1423,6 +1425,50 @@ TEST(CodecYamlReader, BlockOuterIndent) {
 		"STREAM_START\nDOCUMENT_START\nSEQUENCE_START\nMAPPING_START\n"
 		"SCALAR «b»\nSCALAR «   99\n»\n"
 		"MAPPING_END\nSEQUENCE_END\nDOCUMENT_END\nSTREAM_END\n");
+}
+/**
+ * @brief Проверка свёртки переводов строк блочного значения
+ *
+ * @details Свёртка складывает строки пробелом, а последовательность переводов
+ *          уменьшает на один. Применяется она лишь тогда, когда обе строки,
+ *          переводом разделяемые, стоят ровно на отступе содержимого: строка,
+ *          стоящая глубже, свёртке не подлежит ни собою, ни соседкой своей, и
+ *          переводы вокруг неё сохраняются все до единого
+ *
+ * @note Нашлось это сличением со стендами соперников: выдача расходилась с libyaml
+ *       и libfyaml, а те между собою сходились. Расхождение оказалось изъяном
+ *       разбора - пустая строка давала два перевода вместо одного, а перевод за
+ *       строкой, глубже стоящей, сворачивался пробелом, - и все шесть случаев,
+ *       здесь закреплённых, сличены с выдачею обеих эталонных реализаций
+ *
+ */
+TEST(CodecYamlReader, FoldedBreaks) {
+	// Выполняем проверку свёртки одной пустой строки в один перевод
+	ASSERT_EQ(events(">\n  a\n  b\n\n  c\n"),
+		"STREAM_START\nDOCUMENT_START\nSCALAR «a b\nc\n»\nDOCUMENT_END\nSTREAM_END\n");
+	// Выполняем проверку сохранения переводов вокруг строки, глубже стоящей
+	ASSERT_EQ(events(">\n  a\n   b\n  c\n"),
+		"STREAM_START\nDOCUMENT_START\nSCALAR «a\n b\nc\n»\nDOCUMENT_END\nSTREAM_END\n");
+	// Выполняем проверку свёртки двух пустых строк в два перевода
+	ASSERT_EQ(events(">\n  a\n\n\n  b\n"),
+		"STREAM_START\nDOCUMENT_START\nSCALAR «a\n\nb\n»\nDOCUMENT_END\nSTREAM_END\n");
+	// Выполняем проверку сохранения пустой строки между строками, глубже стоящими
+	ASSERT_EQ(events(">\n  a\n   b\n\n   c\n"),
+		"STREAM_START\nDOCUMENT_START\nSCALAR «a\n b\n\n c\n»\nDOCUMENT_END\nSTREAM_END\n");
+	// Выполняем проверку свёртки при усечении переводов, содержимое завершающих
+	ASSERT_EQ(events(">-\n  a\n\n  b\n"),
+		"STREAM_START\nDOCUMENT_START\nSCALAR «a\nb»\nDOCUMENT_END\nSTREAM_END\n");
+	// Выполняем проверку сохранения пустых строк, содержимому предпосланных
+	ASSERT_EQ(events(">\n\n  a\n"),
+		"STREAM_START\nDOCUMENT_START\nSCALAR «\na\n»\nDOCUMENT_END\nSTREAM_END\n");
+	/**
+	 * Выполняем проверку сохранения переводов у значения, переводы хранящего
+	 *
+	 * @note Свёртка вида этого не касается вовсе: переводы сохраняются все, и правка
+	 *       свёртки обязана оставить их нетронутыми
+	 */
+	ASSERT_EQ(events("|\n  a\n\n  b\n"),
+		"STREAM_START\nDOCUMENT_START\nSCALAR «a\n\nb\n»\nDOCUMENT_END\nSTREAM_END\n");
 }
 /**
  * @brief Проверка сличения метки типа с видом поточного построения

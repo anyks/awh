@@ -8,7 +8,9 @@
 библиотеки. Стенды сравнения кодеков: [csv/](csv/README.md) — контейнер CSV
 против libcsv, csv-parser, csv2, fast-cpp-csv-parser и rapidcsv,
 [xml/](xml/README.md) — контейнер XML, [ini/](ini/README.md) — контейнер INI,
-[toml/](toml/README.md) — контейнер TOML против toml++, toml11, cpptoml и tomlc99.
+[toml/](toml/README.md) — контейнер TOML против toml++, toml11, cpptoml и tomlc99,
+[yaml/](yaml/README.md) — контейнер YAML против libyaml, libfyaml, rapidyaml,
+yaml-cpp и fkYAML.
 Отчёты по прогонам лежат рядом с наборами замеров: `benchmark/codec/*/COMPARISON.md`.
 
 Три программы, повторяющие сценарии бенчмарков `benchmark/net/io` средствами
