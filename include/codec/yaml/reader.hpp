@@ -244,6 +244,55 @@ namespace awh {
 					};
 					/**
 					 * \~russian
+					 * @brief Состояния разбора поточного построения
+					 *
+					 * \~english
+					 * @brief States of the parsing of a flow construction
+					 *
+					 * \~
+					 */
+					enum class flow_t : uint8_t {
+						ENTRY = 0x00, // Ожидается очередное значение либо закрывающая скобка
+						AFTER = 0x01  // Ожидается запятая, двоеточие либо закрывающая скобка
+					};
+					/**
+					 * \~russian
+					 * @brief Открытое поточное построение
+					 *
+					 * \~english
+					 * @brief Opened flow construction
+					 *
+					 * \~
+					 */
+					typedef struct Bracket {
+						// Вид открытого поточного построения
+						nesting_t kind;
+						// Признак того, что построение уже несёт значения
+						bool filled;
+						/**
+						 * Признак того, что разбирается значение пары, а не имя её
+						 *
+						 * @note Отображение `{a, b}` описанием дозволено: значения пар пусты. Отличить
+						 *       имя без значения от значения можно лишь признаком этим - двоеточие,
+						 *       имя от значения отделяющее, стоит уже позади
+						 */
+						bool valued;
+						/**
+						 * \~russian
+						 * @brief Конструктор
+						 *
+						 * @param kind вид открытого поточного построения
+						 *
+						 * \~english
+						 * @brief Constructor
+						 * @param kind kind of the opened flow construction
+						 *
+						 * \~
+						 */
+						Bracket(const nesting_t kind) noexcept : kind(kind), filled(false), valued(false) {}
+					} bracket_t;
+					/**
+					 * \~russian
 					 * @brief Открытый уровень вложенности
 					 *
 					 * \~english
@@ -434,6 +483,10 @@ namespace awh {
 					unordered_set <string> _anchors;
 					// Сокращения меток типов, объявленные директивами документа
 					unordered_map <string, string> _handles;
+					// Стопа открытых поточных построений
+					vector <bracket_t> _flow;
+					// Состояние разбора поточного построения
+					flow_t _phase;
 					// Признак того, что документу предпосланы директивы
 					bool _directed;
 					// Признак того, что наречие документа объявлено директивой
@@ -818,9 +871,13 @@ namespace awh {
 					 * оканчивается запятой либо закрывающей скобкой, а не одним лишь концом
 					 * строки
 					 *
+					 * @details Стопа открытых скобок держится полем, а не возвратностью вызовов:
+					 * построение вправе растянуться на многие строки, и разбор его обязан
+					 * прерваться концом строки и продолжиться со следующей ровно с того места,
+					 * где прервался
+					 *
 					 * @param line   разбираемая строка
-					 * @param offset смещение начала построения в строке, по выходе - смещение за ним
-					 * @param depth  глубина вложенности поточных построений
+					 * @param offset смещение начала разбора в строке, по выходе - смещение за ним
 					 * @return       признак успешного разбора построения
 					 *
 					 * \~english
@@ -830,32 +887,29 @@ namespace awh {
 					 * ends by a comma or by a closing bracket rather than by the end of the line
 					 * alone
 					 * @param line line being parsed
-					 * @param offset offset of the beginning of the construction in the line, at the exit — the offset after it
-					 * @param depth depth of the nesting of the flow constructions
+					 * @param offset offset of the beginning of the parsing in the line, at the exit — the offset after it
 					 * @return sign of the successful parsing of the construction
 					 *
 					 * \~
 					 */
-					bool flowing(const string_view line, size_t & offset, const uint32_t depth) noexcept;
+					bool flowing(const string_view line, size_t & offset) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод разбора значения внутри поточного построения
 					 *
 					 * @param line   разбираемая строка
 					 * @param offset смещение начала значения в строке, по выходе - смещение за ним
-					 * @param depth  глубина вложенности поточных построений
 					 * @return       признак успешного разбора значения
 					 *
 					 * \~english
 					 * @brief Method of the parsing of a value inside a flow construction
 					 * @param line line being parsed
 					 * @param offset offset of the beginning of the value in the line, at the exit — the offset after it
-					 * @param depth depth of the nesting of the flow constructions
 					 * @return sign of the successful parsing of the value
 					 *
 					 * \~
 					 */
-					bool flowed(const string_view line, size_t & offset, const uint32_t depth) noexcept;
+					bool flowed(const string_view line, size_t & offset) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод разбора содержимого строки за отступом

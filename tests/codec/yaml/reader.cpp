@@ -502,6 +502,12 @@ TEST(CodecYamlReader, Chunking) {
 		"text: |2\n    два пробела\n",
 		"- |\n  одна\n- две\n",
 		"a: [1, 2\n",
+		"a: [\n  1,\n  2\n]\n",
+		"a: {\n  x: 1,\n  y: два\n}\nb: 3\n",
+		"a: [\n  [1,\n   2],\n  {k: v}\n]\n",
+		"a: [ # сбоку\n  1, # ещё\n  2\n]\n",
+		"a: [&я 1, *я]\n",
+		"a: [\n  1,\n  2\n",
 		"a: &я 1\nb: *я\n",
 		"a: &я\n  x: 1\nb: *я\n",
 		"- &я один\n- *я\n",
@@ -1036,5 +1042,98 @@ TEST(CodecYamlReader, Directives) {
 	ASSERT_EQ(events("%НЕВЕДОМО что\n---\na: 1\n"),
 		"STREAM_START\nDOCUMENT_START\nMAPPING_START\n"
 		"SCALAR «a»\nSCALAR «1»\n"
+		"MAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
+}
+/**
+ * @brief Проверка разбора поточных построений, на многие строки растянутых
+ *
+ * @details Внутри скобок отступ не значит ничего, и строка, построению принадлежащая,
+ * разбирается целиком им, а не отступом своим. Стопа открытых скобок держится полем
+ * разбора, а не возвратностью вызовов: иначе прервать разбор концом строки и продолжить
+ * его со следующей было бы нечем
+ *
+ */
+TEST(CodecYamlReader, FlowLines) {
+	// Выполняем проверку разбора перечня, на многие строки растянутого
+	ASSERT_EQ(events("a: [\n  1,\n  2\n]\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\n"
+		"SCALAR «a»\nSEQUENCE_START\nSCALAR «1»\nSCALAR «2»\nSEQUENCE_END\n"
+		"MAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
+	/**
+	 * Выполняем проверку разбора отображения, на многие строки растянутого
+	 *
+	 * @note Строка за закрывающей скобкой разбирается вновь обычным порядком, и пара `b`
+	 *       принадлежит тому же отображению, что и пара `a`
+	 */
+	ASSERT_EQ(events("a: {\n  x: 1,\n  y: два\n}\nb: 3\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\n"
+		"SCALAR «a»\nMAPPING_START\nSCALAR «x»\nSCALAR «1»\nSCALAR «y»\nSCALAR «два»\nMAPPING_END\n"
+		"SCALAR «b»\nSCALAR «3»\n"
+		"MAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
+	// Выполняем проверку разбора вложенных построений, на многие строки растянутых
+	ASSERT_EQ(events("a: [\n  [1,\n   2],\n  {k: v}\n]\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\n"
+		"SCALAR «a»\nSEQUENCE_START\n"
+		"SEQUENCE_START\nSCALAR «1»\nSCALAR «2»\nSEQUENCE_END\n"
+		"MAPPING_START\nSCALAR «k»\nSCALAR «v»\nMAPPING_END\n"
+		"SEQUENCE_END\nMAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
+	/**
+	 * Выполняем проверку примечаний внутри поточного построения
+	 *
+	 * @note Примечание внутри скобок дозволено, и оканчивается им строка: остаток её
+	 *       содержимым построения не является
+	 */
+	{
+		// Настройки разбора текста
+		yaml::reader_t::settings_t settings;
+		// Устанавливаем признак выдачи примечаний отдельным событием
+		settings.emitComments = true;
+		// Объект потокового чтения текста
+		yaml::reader_t reader(settings);
+		// Выполняем проверку разбора построения с примечаниями внутри
+		ASSERT_TRUE(reader.feed("a: [ # сбоку\n  1\n]\n"));
+		// Собираемый ряд названий событий разбора
+		string result;
+		/**
+		 * Выполняем перебор всех собранных событий разбора
+		 */
+		while(reader.next()){
+			// Выполняем запись названия очередного события
+			result.append(yaml::name(reader.event()));
+			/**
+			 * Если событие несёт примечание
+			 */
+			if(reader.event() == yaml::event_t::COMMENT)
+				// Выполняем запись содержимого примечания
+				result.append(" «").append(reader.value().text).append("»");
+			// Выполняем запись разделителя событий
+			result.append("\n");
+		}
+		// Выполняем проверку выдачи примечания внутри построения
+		ASSERT_NE(result.find("COMMENT «сбоку»"), string::npos) << result;
+	}
+	/**
+	 * Выполняем проверку отказа построения, скобкой так и не закрытого
+	 *
+	 * @note Отказ объявляется концом текста, а не закрытием документа: закрытие выдало бы
+	 *       события закрытия построений, которых текст не содержит
+	 */
+	{
+		// Объект потокового чтения текста
+		yaml::reader_t reader;
+		// Выполняем проверку отказа разбора незакрытого построения
+		ASSERT_FALSE(reader.feed("a: [\n  1,\n  2\n"));
+		// Выполняем проверку кода ошибки разбора
+		ASSERT_EQ(reader.error(), yaml::error_t::UNCLOSED_FLOW);
+	}
+	// Выполняем проверку метки и ссылки внутри поточного построения
+	ASSERT_EQ(events("a: [&я 1, *я]\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\n"
+		"SCALAR «a»\nSEQUENCE_START\nSCALAR «1» &я\nALIAS «я»\nSEQUENCE_END\n"
+		"MAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
+	// Выполняем проверку метки типа внутри поточного построения
+	ASSERT_EQ(events("a: [!!str 1]\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\n"
+		"SCALAR «a»\nSEQUENCE_START\nSCALAR «1» <tag:yaml.org,2002:str>\nSEQUENCE_END\n"
 		"MAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
 }
