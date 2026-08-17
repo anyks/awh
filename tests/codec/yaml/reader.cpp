@@ -1427,6 +1427,128 @@ TEST(CodecYamlReader, BlockOuterIndent) {
 		"MAPPING_END\nSEQUENCE_END\nDOCUMENT_END\nSTREAM_END\n");
 }
 /**
+ * @brief Проверка отказа записи перечня в строке имени пары
+ *
+ * @details Перечень блочного построения строки имени своей пары не занимает: записи
+ *          его отделяются переводом строки и стоят отступом своим
+ *
+ * @note Нашёл это ворошитель правкой дерева, а сличение подтвердило: libyaml отвечает
+ *       отказом «block sequence entries are not allowed in this context», а чтение
+ *       выдавало перечень, отступ какого исходному тексту не отвечает
+ *
+ */
+TEST(CodecYamlReader, SequenceOnKeyLine) {
+	// Выполняем проверку отказа черты записи перечня за именем пары
+	ASSERT_EQ(events("key: - a\n"),
+		"STREAM_START\n"
+		"ОТКАЗ перечень и отображение смешаны на одном уровне строка 1 знак 6\n");
+	// Выполняем проверку отказа одинокой черты за именем пары
+	ASSERT_EQ(events("key: -\n"),
+		"STREAM_START\n"
+		"ОТКАЗ перечень и отображение смешаны на одном уровне строка 1 знак 6\n");
+	/**
+	 * Выполняем проверку принятия перечня строкою ниже имени пары
+	 *
+	 * @note Написание это описанием дозволено: перечень стоит на отступе имени своей
+	 *       пары, и отказ обязан отделять его от черты в строке имени
+	 */
+	ASSERT_EQ(events("key:\n- a\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\nSCALAR «key»\nSEQUENCE_START\nSCALAR «a»\n"
+		"SEQUENCE_END\nMAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
+	/**
+	 * Выполняем проверку принятия отрицательного числа значением пары
+	 *
+	 * @note Черта записи перечня отделяется пробелом, а черта числа - нет: отказ обязан
+	 *       различать их, иначе всякое отрицательное число стало бы отказом
+	 */
+	ASSERT_EQ(events("key: -5\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\nSCALAR «key»\nSCALAR «-5»\n"
+		"MAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
+	/**
+	 * Выполняем проверку принятия поточного перечня в строке имени пары
+	 *
+	 * @note Поточное построение строку имени занимать вправе: скобки отступом не ведают
+	 */
+	ASSERT_EQ(events("key: [1]\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\nSCALAR «key»\nSEQUENCE_START\nSCALAR «1»\n"
+		"SEQUENCE_END\nMAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
+	/**
+	 * Выполняем проверку принятия сжатого написания записи перечня
+	 *
+	 * @note Черта за чертою дозволена: перечень внутри перечня строку делить вправе,
+	 *       и запрет касается лишь строки имени пары
+	 */
+	ASSERT_EQ(events("- - a\n"),
+		"STREAM_START\nDOCUMENT_START\nSEQUENCE_START\nSEQUENCE_START\nSCALAR «a»\n"
+		"SEQUENCE_END\nSEQUENCE_END\nDOCUMENT_END\nSTREAM_END\n");
+}
+/**
+ * @brief Проверка отказа значения на отступе открытого перечня
+ *
+ * @details Перечень несёт одни записи свои, чертою объявленные: значение, на отступе
+ *          его стоящее и чертою не объявленное, ни записью перечня не является, ни
+ *          объемлющему построению не принадлежит — отступ у него не тот
+ *
+ * @note Нашёл это ворошитель правкой дерева, а сличение подтвердило: libyaml отвечает
+ *       отказом «could not find expected ':'», libfyaml — «invalid scalar at the end
+ *       of block sequence», а чтение выдавало значение записью перечня молча
+ *
+ */
+TEST(CodecYamlReader, SequenceScalar) {
+	// Выполняем проверку отказа значения, чертою записи не объявленного
+	ASSERT_EQ(events("a:\n  - x\n  y\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\nSCALAR «a»\nSEQUENCE_START\nSCALAR «x»\n"
+		"ОТКАЗ отступ не отвечает ни одному из открытых уровней строка 3 знак 3\n");
+	/**
+	 * Выполняем проверку отказа значения, чертою открывающегося
+	 *
+	 * @note Черта, пробелом не отделённая, записи перечня не объявляет: `-e` есть
+	 *       значение простое, и отказ обязан прийти ему наравне с прочими
+	 */
+	ASSERT_EQ(events("a:\n  - x\n  -e\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\nSCALAR «a»\nSEQUENCE_START\nSCALAR «x»\n"
+		"ОТКАЗ отступ не отвечает ни одному из открытых уровней строка 3 знак 3\n");
+	/**
+	 * Выполняем проверку отказа значения глубже отступа перечня
+	 *
+	 * @note Отступ, ни одному уровню не отвечающий, libyaml отвергает отказом «did not
+	 *       find expected '-' indicator»: значение глубже перечня есть либо значение
+	 *       записи его, либо продолжение простого значения, а тут ни то, ни другое
+	 */
+	ASSERT_EQ(events("-\n  -\n 9\n"),
+		"STREAM_START\nDOCUMENT_START\nSEQUENCE_START\nSEQUENCE_START\n"
+		"ОТКАЗ отступ не отвечает ни одному из открытых уровней строка 3 знак 2\n");
+	/**
+	 * Выполняем проверку принятия значения записи перечня строкою ниже черты
+	 *
+	 * @note Значение это стоит глубже отступа перечня по праву: черта его объявила, и
+	 *       отказ обязан отделять его от значения, чертою не объявленного
+	 */
+	ASSERT_EQ(events("-\n  x\n"),
+		"STREAM_START\nDOCUMENT_START\nSEQUENCE_START\nSCALAR «x»\n"
+		"SEQUENCE_END\nDOCUMENT_END\nSTREAM_END\n");
+	/**
+	 * Выполняем проверку принятия продолжения простого значения
+	 *
+	 * @note Простое значение вправе продолжиться строкою ниже, и отступ продолжения
+	 *       глубже отступа перечня: отказ обязан отделять продолжение от значения,
+	 *       чертою не объявленного
+	 */
+	ASSERT_EQ(events("a:\n  - x\n    y\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\nSCALAR «a»\nSEQUENCE_START\nSCALAR «x y»\n"
+		"SEQUENCE_END\nMAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
+	/**
+	 * Выполняем проверку принятия пары с пустым именем внутри записи перечня
+	 *
+	 * @note Эталонные реализации тут расходятся: libfyaml запись принимает, libyaml
+	 *       отвечает отказом «did not find expected key». Описание наречия 1.2 пару с
+	 *       пустым именем дозволяет, и принимается она вслед за libfyaml
+	 */
+	ASSERT_EQ(events("a:\n  - :\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\nSCALAR «a»\nSEQUENCE_START\nMAPPING_START\n"
+		"SCALAR «»\nSCALAR «»\nMAPPING_END\nSEQUENCE_END\nMAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
+}
+/**
  * @brief Проверка отказа записи, глубже завершённой пары стоящей
  *
  * @details Отображение глубже открытого построения заводится лишь значением пары,
