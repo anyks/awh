@@ -35,21 +35,33 @@
 #define __AWH_REGEX_PREFILTER__
 
 /**
- * Если компилятор является Visual Studio
+ * Если принудительная подстановка ещё не определена
+ *
+ * @details Определение ограждается потому, что заголовочные файлы модуля
+ *          подключаются в разном порядке, а определение это несут два из них.
+ *          Visual Studio на повторное определение отвечает предупреждением
+ *          C4005, и виден он лишь у него: GCC и Clang повторное определение
+ *          тождественное пропускают молча.
+ *
  */
-#if defined(_MSC_VER)
+#ifndef AWH_REGEX_INLINE
 	/**
-	 * Принудительная подстановка средствами Visual Studio
+	 * Если компилятор является Visual Studio
 	 */
-	#define AWH_REGEX_INLINE inline __forceinline
-/**
- * Если компилятор принадлежит к семейству GCC или Clang
- */
-#else
+	#if defined(_MSC_VER)
+		/**
+		 * Принудительная подстановка средствами Visual Studio
+		 */
+		#define AWH_REGEX_INLINE inline __forceinline
 	/**
-	 * Принудительная подстановка средствами GCC и Clang
+	 * Если компилятор принадлежит к семейству GCC или Clang
 	 */
-	#define AWH_REGEX_INLINE inline __attribute__((always_inline))
+	#else
+		/**
+		 * Принудительная подстановка средствами GCC и Clang
+		 */
+		#define AWH_REGEX_INLINE inline __attribute__((always_inline))
+	#endif
 #endif
 
 /**
@@ -95,23 +107,77 @@ namespace awh {
 		 * \~russian
 		 * @brief Наименьший остаток текста, при каком проба окупается
 		 *
-		 * @details Проба обходится в десятки наносекунд, а проход текста поиском
-		 *          обычным идёт на 8,6 ГБ/с - оттого проба окупается уже
-		 *          на двух-трёх сотнях байтов остатка. Порог взят с запасом
-		 *          на порядок: тексты короче проходят прежним путём в точности,
-		 *          отчего сценарии коротких текстов правкой этой не затронуты вовсе.
+		 * @details Проба обходится в две сотни наносекунд - выбор пары байтов
+		 *          перебирает пары искомого счётом по пробе текста, - тогда как
+		 *          проход текста поиском обычным идёт на 8,6 ГБ/с. Тексты короче
+		 *          порога проходят прежним путём в точности, отчего сценарии
+		 *          коротких текстов правкой этой не затронуты вовсе.
+		 *
+		 *          Довод прежний называл пробу платой в десятки наносекунд
+		 *          и окупаемость её - двумя-тремя сотнями байтов остатка. Замер
+		 *          довод этот отверг: выбор пары стоит 190 наносекунд, а
+		 *          окупаемость решает не длина текста, а **расстояние
+		 *          до совпадения**. Литерал, лежащий на сороковом байте, обычный
+		 *          поиск находит за 4,6 наносекунды при любой длине текста,
+		 *          и проба там дороже в сорок раз. Оттого длина остатка порогом
+		 *          осталась лишь для отсечения текстов коротких, а расстояние
+		 *          до совпадения выясняется окном - см. WINDOW ниже.
 		 *
 		 * \~english
 		 * @brief Smallest remainder of the text at which the probe pays off
-		 * @details The probe costs tens of nanoseconds, whereas walking the text
-		 *          with the ordinary search goes at 8.6 GB/s — which is why the probe pays off already
-		 *          at two or three hundred bytes of the remainder. The threshold is taken with
-		 *          an order of magnitude to spare: shorter texts go the former way exactly,
-		 *          which is why the scenarios of short texts are not affected by this change at all.
+		 * @details The probe costs two hundred nanoseconds — the selection of a byte pair
+		 *          enumerates the pairs of the sought sequence by counting them over a probe of the text —
+		 *          whereas walking the text with the ordinary search goes at 8.6 GB/s. Texts shorter
+		 *          than the threshold go the former way exactly, which is why the scenarios
+		 *          of short texts are not affected by this change at all.
+		 *
+		 *          The former reasoning called the probe a cost of tens of nanoseconds and its
+		 *          payoff two or three hundred bytes of the remainder. Measurement rejected that
+		 *          reasoning: selecting a pair costs 190 nanoseconds, and the payoff is decided
+		 *          not by the length of the text but by the **distance to the match**.
+		 *          A literal lying at the fortieth byte is found by the ordinary search
+		 *          in 4.6 nanoseconds at any length of the text, and the probe is forty times
+		 *          dearer there. Hence the length of the remainder remained a threshold only
+		 *          for cutting off short texts, while the distance to the match is found out
+		 *          by a window — see WINDOW below.
 		 *
 		 * \~
 		 */
 		constexpr size_t PAYOFF = 4096;
+
+		/**
+		 * \~russian
+		 * @brief Окно обычного поиска, якорному поиску предшествующее
+		 *
+		 * @details Окно решает, окупится ли выбор пары байтов: совпадение, в окне
+		 *          лежащее, обычный поиск находит дешевле всякой пробы, а
+		 *          совпадение за окном оправдывает и пробу, и якорный поиск
+		 *          по остатку. Размер окна взят так, чтобы проход его целиком
+		 *          не превышал платы за выбор пары: 1024 байта на 8,6 ГБ/с
+		 *          обходятся в 120 наносекунд против 190 у выбора.
+		 *
+		 *          Совпадение, границу окна пересекающее, не теряется: окно
+		 *          просматривается с придачей длины искомого без одного байта,
+		 *          а якорный поиск начинается ровно за окном, отчего всякое
+		 *          положение начала совпадения просматривается единожды.
+		 *
+		 * \~english
+		 * @brief Window of the ordinary search preceding the anchored search
+		 * @details The window decides whether selecting a byte pair pays off: a match lying
+		 *          within the window is found by the ordinary search more cheaply than any probe,
+		 *          while a match beyond the window justifies both the probe and the anchored
+		 *          search over the remainder. The size of the window is taken so that walking it
+		 *          entirely does not exceed the cost of selecting a pair: 1024 bytes at 8.6 GB/s
+		 *          cost 120 nanoseconds against the 190 of the selection.
+		 *
+		 *          A match crossing the boundary of the window is not lost: the window is examined
+		 *          with the length of the sought sequence less one byte added to it, while
+		 *          the anchored search begins exactly past the window, which is why every
+		 *          position where a match begins is examined once.
+		 *
+		 * \~
+		 */
+		constexpr size_t WINDOW = 1024;
 
 		/**
 		 * \~russian
@@ -203,8 +269,16 @@ namespace awh {
 			if((what.size() < 2) || (pos > text.size()) || ((text.size() - pos) < PAYOFF))
 				// Выводим результат поиска последовательности средствами обычными
 				return text.find(what, pos);
-			// Выводим результат поиска последовательности по якорному байту
-			return anchored(text, what, pos);
+			// Выполняем поиск последовательности в окне средствами обычными
+			const size_t found = text.substr(pos, (WINDOW + what.size() - 1)).find(what);
+			/**
+			 * Если последовательность обнаружена в окне поиска
+			 */
+			if(found != string_view::npos)
+				// Выводим положение обнаруженной последовательности
+				return (pos + found);
+			// Выводим результат поиска последовательности по якорному байту за окном
+			return anchored(text, what, (pos + WINDOW));
 		}
 
 

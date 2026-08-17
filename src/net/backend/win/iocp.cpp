@@ -10368,9 +10368,12 @@ namespace kernel {
 		// Признак поданного родного приёма
 		bool fetching = false;
 		// Если дескриптор слушающий - подаём приём подключения
-		if(::kernel::listening(state.sock))
+		if(::kernel::listening(state.sock)){
 			// Выполняем подачу приёма подключения
 			state.token = ::kernel::accepting(state.sock, &state, log);
+			// ВРЕМЕННЫЙ ЩУП: подача приёма подключения
+			log->print("ЩУП движок [%d]: подан приём на дескрипторе %llu, метка=%llu", log_t::flag_t::INFO, static_cast <int32_t> (::GetCurrentProcessId()), static_cast <uint64_t> (state.sock), static_cast <uint64_t> (state.token));
+		}
 		// Если дескриптор не слушающий
 		else {
 			// Выполняем подачу родного приёма, если подписка ему годна

@@ -284,6 +284,32 @@ namespace awh {
 					bool sniff(const char * buffer, const size_t size, const bool end) noexcept;
 					/**
 					 * \~russian
+					 * @brief Метод проверки знака на дозволенность его в тексте
+					 *
+					 * @details Описание дозволяет тексту одни лишь печатные знаки, и знак иной
+					 * есть отказ приведения, а не содержимое: пропустив его, приведение выдало
+					 * бы разбору знак, которого в тексте YAML быть не может вовсе
+					 *
+					 * @note Проверка эта стоит именно здесь, а не в разборе: приведение есть
+					 *       единственное место, через которое проходит всякий знак текста любой
+					 *       кодировки, и стеречь в одном месте вернее, чем в четырёх
+					 *
+					 * @param code проверяемый знак Юникода
+					 * @return     признак дозволенности знака в тексте
+					 *
+					 * \~english
+					 * @brief Method of the checking of a character for the permissibility of it in a text
+					 * @details The specification permits in a text only the printable characters, and another
+					 * character is a refusal of the conversion rather than a content: having let it through, the conversion
+					 * would issue to the parsing a character which cannot be in a YAML text at all
+					 * @param code character of the Unicode being checked
+					 * @return sign of the permissibility of the character in a text
+					 *
+					 * \~
+					 */
+					bool allowed(const uint32_t code) noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод приведения куска текста, записанного парами байтов
 					 *
 					 * @param buffer приводимый кусок исходного текста

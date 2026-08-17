@@ -135,10 +135,24 @@ namespace awh {
 					/**
 					 * Пороговая пропускная способность сценария в совпадениях за секунду
 					 *
-					 * @details Порог откалиброван по достигнутому показателю с четырёхкратным
-					 *          запасом: он ловит утрату способа исполнения целиком, а не
-					 *          колебания окружения. Способ исполнения у каждого сценария свой,
-					 *          поэтому и порог у каждого свой
+					 * @details Порог ловит утрату способа исполнения целиком, а не колебания
+					 *          окружения. Способ исполнения у каждого сценария свой, поэтому
+					 *          и порог у каждого свой.
+					 *
+					 *          Калибруется порог **по самому медленному стенду**, а не по
+					 *          рабочей машине, с запасом в полтора раза. Прежде он брался
+					 *          от рабочей машины с запасом вчетверо, и правило это оказалось
+					 *          негодным: стенды идут медленнее неравномерно - от 1.26 раза
+					 *          у сценария одного до 14 раз у другого, - отчего единая доля
+					 *          от рабочей машины давала одним сценариям запас излишний,
+					 *          а другим не давала никакого. Набор, на стенде запущенный,
+					 *          отчитывался отказом по половине сценариев, и отказ этот был
+					 *          ложным: медленнее была машина, а не код.
+					 *
+					 *          Снято 17.08.2026 щупом, собираемым теми же исходными текстами,
+					 *          что и переносимая проверка, на трёх стендах x86-64:
+					 *          FreeBSD, OpenBSD и NetBSD. Пороги 26 сценариев прежних
+					 *          пересчитаны тем же правилом заодно с шестью новыми
 					 *
 					 */
 					double threshold;
@@ -156,33 +170,51 @@ namespace awh {
 				 */
 				static const std::vector <scenario_t> SCENARIOS = {
 					// Отбор позиций сопоставления по обязательному литералу
-					{"literal-short",      "Content-Length",                          kind_t::SHORT, true, 41000000.0},
-					{"literal-long",       "needle-in-haystack",                      kind_t::LONG,  true, 7300.0},
-					{"literal-absent",     "no-such-sequence-here",                   kind_t::LONG,  false, 7300.0},
+					{"literal-short",      "Content-Length",                          kind_t::SHORT, true, 8200000.0},
+					{"literal-long",       "needle-in-haystack",                      kind_t::LONG,  true, 3900.0},
+					{"literal-absent",     "no-such-sequence-here",                   kind_t::LONG,  false, 3900.0},
 					// Классы символов и кванторы повторения
-					{"digits-short",       "[0-9]{3,5}",                              kind_t::SHORT, true, 2300000.0},
-					{"digits-long",        "[0-9]{3,5}",                              kind_t::LONG,  true, 3000000.0},
-					{"word-long",          "\\w+@\\w+\\.\\w+",                        kind_t::LONG,  true, 280.0},
-					{"dotstar-long",       ".*needle",                                kind_t::LONG,  true, 3400.0},
+					{"digits-short",       "[0-9]{3,5}",                              kind_t::SHORT, true, 1300000.0},
+					{"digits-long",        "[0-9]{3,5}",                              kind_t::LONG,  true, 1800000.0},
+					{"word-long",          "\\w+@\\w+\\.\\w+",                        kind_t::LONG,  true, 240.0},
+					{"dotstar-long",       ".*needle",                                kind_t::LONG,  true, 2800.0},
 					// Выбор одной из ветвей
-					{"alternate-short",    "GET|POST|PUT|DELETE|HEAD|OPTIONS",        kind_t::SHORT, true, 6200000.0},
+					{"alternate-short",    "GET|POST|PUT|DELETE|HEAD|OPTIONS",        kind_t::SHORT, true, 3000000.0},
 					{"alternate-long",     "alpha|bravo|charlie|delta|echo|foxtrot",  kind_t::LONG,  true, 290.0},
 					// Привязки к позиции в тексте
-					{"anchored-short",     "(?m)^[A-Za-z0-9-]+: .+$",                 kind_t::SHORT, true, 510000.0},
-					{"anchored-absent",    "^[A-Za-z0-9-]+: .+$",                     kind_t::SHORT, false, 15000000.0},
-					{"boundary-long",      "\\bneedle\\b",                            kind_t::LONG,  true, 3700.0},
+					{"anchored-short",     "(?m)^[A-Za-z0-9-]+: .+$",                 kind_t::SHORT, true, 250000.0},
+					{"anchored-absent",    "^[A-Za-z0-9-]+: .+$",                     kind_t::SHORT, false, 6300000.0},
+					{"boundary-long",      "\\bneedle\\b",                            kind_t::LONG,  true, 6600.0},
 					// Захват групп
-					{"captures-short",     "([A-Za-z0-9-]+): (.+)",                   kind_t::SHORT, true, 330000.0},
-					{"captures-long",      "(\\w+)@(\\w+)\\.(\\w+)",                  kind_t::LONG,  true, 290.0},
+					{"captures-short",     "([A-Za-z0-9-]+): (.+)",                   kind_t::SHORT, true, 160000.0},
+					{"captures-long",      "(\\w+)@(\\w+)\\.(\\w+)",                  kind_t::LONG,  true, 240.0},
 					// Разбор, встречающийся при работе с протоколами
-					{"request-short",      "(?m)^(GET|POST) (\\S+) HTTP/(\\d)\\.(\\d)\\r?$", kind_t::SHORT, true, 1600000.0},
-					{"request-absent",     "^(GET|POST) (\\S+) HTTP/(\\d)\\.(\\d)$",  kind_t::SHORT, false, 5300000.0},
-					{"address-short",      "(?m)^Host: (\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\r?$", kind_t::SHORT, true, 1800000.0},
-					{"address-absent",     "^(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})$", kind_t::SHORT, false, 9300000.0},
+					{"request-short",      "(?m)^(GET|POST) (\\S+) HTTP/(\\d)\\.(\\d)\\r?$", kind_t::SHORT, true, 980000.0},
+					{"request-absent",     "^(GET|POST) (\\S+) HTTP/(\\d)\\.(\\d)$",  kind_t::SHORT, false, 3400000.0},
+					{"address-short",      "(?m)^Host: (\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\r?$", kind_t::SHORT, true, 950000.0},
+					{"address-absent",     "^(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})$", kind_t::SHORT, false, 5900000.0},
 					// Ленивые повторения
-					{"lazy-short",         "\\w+?@\\w+?\\.",                        kind_t::SHORT, true, 75000.0},
-					{"lazy-long",          "\\w+?@\\w+?\\.",                        kind_t::LONG,  true, 270.0},
-					{"lazy-dotstar",       ".*?needle",                               kind_t::LONG,  true, 80.0},
+					{"lazy-short",         "\\w+?@\\w+?\\.",                        kind_t::SHORT, true, 44000.0},
+					{"lazy-long",          "\\w+?@\\w+?\\.",                        kind_t::LONG,  true, 240.0},
+					{"lazy-dotstar",       ".*?needle",                               kind_t::LONG,  true, 70.0},
+					/**
+					 * Повторение над областью инструкций
+					 *
+					 * @details Повторение над областью ведётся двумя способами, и сценарии
+					 *          покрывают оба: тело постоянной длины без записи границ групп
+					 *          обходится местами кадра, тогда как тело переменной длины
+					 *          либо границы пишущее получает запись кадра на каждый проход.
+					 *          Отделён намеренно сценарий без совпадения: повторение,
+					 *          отказывающее быстро, платит за подготовку прохода, ничего
+					 *          ею не выигрывая, и остаётся местом самым слабым.
+					 *
+					 */
+					{"region-fixed-short", "(?:HT|TP)+/",                             kind_t::SHORT, true, 1300000.0},
+					{"region-absent-short","(?:ab|cd)+z",                             kind_t::SHORT, false, 6600000.0},
+					{"region-fixed-long",  "(?:\\w\\w)+ 4096",                        kind_t::LONG,  true, 290.0},
+					{"region-varied-long", "(?:[a-z]+ )+dog",                         kind_t::LONG,  true, 100000.0},
+					{"region-nested-heavy","\\((?:[^()]|\\([^()]*\\))*\\)",             kind_t::HEAVY, true, 420000.0},
+					{"region-capture-heavy","(?:(\\w+) )+forman",                     kind_t::HEAVY, true, 1300.0},
 					/**
 					 * Устройства, порождению машинного кода поддавшиеся не сразу
 					 *
@@ -192,11 +224,11 @@ namespace awh {
 					 *          исполняются разбором программы с возвратом.
 					 *
 					 */
-					{"backref-heavy",      "(\\w+) \\1",                              kind_t::HEAVY, true, 100000.0},
-					{"lookahead-heavy",    "\\w+(?=@)",                               kind_t::HEAVY, true, 44000.0},
-					{"lookbehind-heavy",   "(?<=@)\\w+",                              kind_t::HEAVY, true, 110000.0},
-					{"atomic-heavy",       "(?>\\w+)@\\w+",                           kind_t::HEAVY, true, 44000.0},
-					{"recurse-heavy",      "\\((?:[^()]|(?R))*\\)",                   kind_t::HEAVY, true, 480000.0}
+					{"backref-heavy",      "(\\w+) \\1",                              kind_t::HEAVY, true, 56000.0},
+					{"lookahead-heavy",    "\\w+(?=@)",                               kind_t::HEAVY, true, 24000.0},
+					{"lookbehind-heavy",   "(?<=@)\\w+",                              kind_t::HEAVY, true, 61000.0},
+					{"atomic-heavy",       "(?>\\w+)@\\w+",                           kind_t::HEAVY, true, 18000.0},
+					{"recurse-heavy",      "\\((?:[^()]|(?R))*\\)",                   kind_t::HEAVY, true, 280000.0}
 				};
 
 				/**

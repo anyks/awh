@@ -663,7 +663,14 @@ else()
      #       сборка Release валилась на «gperftools/malloc_extension.h: No such file»,
      #       тогда как отладочная проходила - оттого пробел и не вскрывался
      ##
-    if ((NOT ${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD") AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "DragonFly") AND (NOT CMAKE_BUILD_SANITIZE))
+    ##
+     # @note MS Windows набора команд ARM64 исключена по той же статье, что и обе BSD
+     #       выше: подмена функций выделения памяти идёт там через PreamblePatcher,
+     #       а тот разбирает машинный код разбирателем ia32_* - только Intel. На ARM64
+     #       он отвечает отказом, и проверка внутри самого gperftools валит прогон ещё до
+     #       первой строки вывода. Подробности - в комментарии к TCMALLOC_LIBRARIES
+     ##
+    if ((NOT ${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD") AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "DragonFly") AND (NOT (WIN32 AND ${ARCHITECTURE} MATCHES "aarch64")) AND (NOT CMAKE_BUILD_SANITIZE))
         # Активируем использование TcMalloc
         add_compile_definitions(__AWH_USE_TCMALLOC__)
     endif()
@@ -737,6 +744,40 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "DragonFly")
     SET(TCMALLOC_LIBRARIES "")
     # Выводим сообщение об использовании системного распределителя памяти
     message(STATUS "TcMalloc is not available on DragonFly BSD: using the system allocator")
+##
+ # У MS Windows набора команд ARM64 библиотека собирается, но работать не может
+ #
+ # Виноват не набор команд сам по себе, а его пересечение с Windows: способ подмены
+ # распределителя у gperftools разнится от системы к системе.
+ #
+ # У Unix подмена идёт именами при связывании: форматы ELF и Mach-O позволяют
+ # определить свои malloc, free и operator new и заслонить ими библиотечные. Машинный
+ # код при этом не трогают вовсе, и набор команд к делу не относится - оттого на
+ # macOS ARM64 и Linux ARM64 распределитель работает наравне с x86-64.
+ #
+ # У Windows такого нет: формат PE подмены имён не даёт, и библиотека идёт путём иным
+ # - переписывает начало уже загруженной функции переходом на себя
+ # (src/windows/patch_functions.cc). Начало это требуется сперва разобрать - перезапись
+ # возможна только по границе команды, - и разбиратель у неё один-единственный,
+ # ia32_opcode_map.cc вместе с ia32_modrm_map.cc, то есть Intel и только Intel.
+ # На Windows x86-64 всё сходится и распределитель встаёт на место; на ARM64
+ # PreamblePatcher отвечает отказом, а CHECK_EQ внутри самой gperftools валит прогон
+ # при заведении процесса - до первой строки вывода.
+ #
+ # Обойти это нечем: нужен разбиратель ARM64, какого в библиотеке нет. Условие потому
+ # и стоит на пересечении WIN32 и aarch64 - ни прочих ARM64, ни Windows x86-64 оно
+ # не касается.
+ #
+ # Проверено опытом на стенде Windows 11 ARM64 (17.08.2026) - набор проверок sys
+ # валился сообщением «patch_functions.cc:567 Check failed: sidestep::SIDESTEP_SUCCESS
+ # == PreamblePatcher::Patch(...)», прочие наборы уцелели лишь потому, что тела
+ # распределителя к ним не привязывались вовсе
+ ##
+elseif (WIN32 AND ${ARCHITECTURE} MATCHES "aarch64")
+    # Оставляем набор библиотек TcMalloc пустым
+    SET(TCMALLOC_LIBRARIES "")
+    # Выводим сообщение об использовании системного распределителя памяти
+    message(STATUS "TcMalloc is not available on Windows ARM64: using the system allocator")
 # Если распределитель памяти TcMalloc системой поддерживается
 else()
     # Выполняем поиск библиотеки TcMalloc

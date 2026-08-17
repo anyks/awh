@@ -47,8 +47,13 @@ using namespace std;
  *       образцов, что и пути векторные, - сборкой стенда с этим ключом:
  *
  *           c++ -std=c++17 -O2 -Iinclude -Itools/regex -DAWH_REGEX_SCALAR \
- *             tools/regex/conformance.cpp src/regex/*.cpp \
- *             src/encoding/unicode/*.cpp -o conformance && ./conformance
+ *             tools/regex/conformance.cpp -o conformance \
+ *             $(find src/regex src/encoding/unicode -maxdepth 1 -name '*.cpp') \
+ *             && ./conformance
+ *
+ *       Состав исходных текстов берётся поиском, а не образцом с косой чертой:
+ *       образец такой внутри примечания блочного открывал бы примечание
+ *       вложенное, и компилятор отвечает на это предупреждением.
  *
  */
 #if defined(AWH_REGEX_SCALAR)

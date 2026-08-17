@@ -131,5 +131,25 @@ $ROOT/submodule.sh add simdjson https://github.com/simdjson/simdjson.git
 $ROOT/submodule.sh remove rapidjson
 $ROOT/submodule.sh add rapidjson https://github.com/Tencent/rapidjson.git
 
+# Выполняем пересборку сабмодуля libyaml
+$ROOT/submodule.sh remove libyaml
+$ROOT/submodule.sh add libyaml https://github.com/yaml/libyaml.git
+
+# Выполняем пересборку сабмодуля libfyaml
+$ROOT/submodule.sh remove libfyaml
+$ROOT/submodule.sh add libfyaml https://github.com/pantoniou/libfyaml.git
+
+# Выполняем пересборку сабмодуля rapidyaml
+$ROOT/submodule.sh remove rapidyaml
+$ROOT/submodule.sh add rapidyaml https://github.com/biojppm/rapidyaml.git
+
+# Выполняем пересборку сабмодуля yaml-cpp
+$ROOT/submodule.sh remove yaml-cpp
+$ROOT/submodule.sh add yaml-cpp https://github.com/jbeder/yaml-cpp.git
+
+# Выполняем пересборку сабмодуля fkYAML
+$ROOT/submodule.sh remove fkYAML
+$ROOT/submodule.sh add fkYAML https://github.com/fktn-k/fkYAML.git
+
 # Выводим список добавленных модулей
 cat $ROOT/../.gitmodules

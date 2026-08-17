@@ -529,6 +529,31 @@ bool awh::codec::yaml::Decoder::sniff(const char * buffer, const size_t size, co
 	return true;
 }
 /**
+ * @brief Метод проверки знака на дозволенность его в тексте
+ *
+ * @param code проверяемый знак Юникода
+ * @return     признак дозволенности знака в тексте
+ *
+ */
+bool awh::codec::yaml::Decoder::allowed(const uint32_t code) noexcept {
+	/**
+	 * Если знак к печатным принадлежит
+	 */
+	if(printable(code))
+		// Выводим признак дозволенности знака в тексте
+		return true;
+	/**
+	 * Запоминаем код ошибки приведения кодировки
+	 *
+	 * @note Отказом этим объявляется именно недопустимость знака, а не битая запись его:
+	 *       байты прочитаны верно, и ошибка не в них, а в том, что знак этот тексту YAML
+	 *       не принадлежит
+	 */
+	this->_error = error_t::INVALID_CHARACTER;
+	// Выводим признак недозволенности знака в тексте
+	return false;
+}
+/**
  * @brief Метод приведения куска текста, записанного парами байтов
  *
  * @param buffer приводимый кусок исходного текста
@@ -572,7 +597,7 @@ bool awh::codec::yaml::Decoder::doubled(const char * buffer, const size_t size, 
 			/**
 			 * Если записать собранный из пары знак не удалось
 			 */
-			if(!encode(paired(this->_surrogate, unit), result)){
+			if(!this->allowed(paired(this->_surrogate, unit)) || !encode(paired(this->_surrogate, unit), result)){
 				// Запоминаем код ошибки приведения кодировки
 				this->_error = error_t::INVALID_ENCODING;
 				// Выводим признак неудачного приведения куска
@@ -604,7 +629,7 @@ bool awh::codec::yaml::Decoder::doubled(const char * buffer, const size_t size, 
 		/**
 		 * Если записать очередной знак не удалось
 		 */
-		if(!encode(unit, result)){
+		if(!this->allowed(unit) || !encode(unit, result)){
 			// Запоминаем код ошибки приведения кодировки
 			this->_error = error_t::INVALID_ENCODING;
 			// Выводим признак неудачного приведения куска
@@ -676,7 +701,7 @@ bool awh::codec::yaml::Decoder::quadrupled(const char * buffer, const size_t siz
 		/**
 		 * Если записать очередной знак не удалось
 		 */
-		if(!encode(code, result)){
+		if(!this->allowed(code) || !encode(code, result)){
 			// Запоминаем код ошибки приведения кодировки
 			this->_error = error_t::INVALID_ENCODING;
 			// Выводим признак неудачного приведения куска
@@ -848,6 +873,12 @@ bool awh::codec::yaml::Decoder::convert(const void * buffer, const size_t size, 
 					// Выводим признак неудачного приведения куска
 					return false;
 				}
+				/**
+				 * Если знак в тексте недозволен
+				 */
+				if(!this->allowed(code))
+					// Выводим признак неудачного приведения куска
+					return false;
 				// Выполняем перенос разобранной последовательности как она есть
 				result.append(text.data() + position, count);
 				// Выполняем переход к следующей последовательности

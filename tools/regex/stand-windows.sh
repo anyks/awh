@@ -96,10 +96,18 @@ else
 	EXTRA=""
 fi
 
+# Значки каталогов, средствами macOS заведённые, в набор не кладутся
+#
+# Имя такого файла - «Icon» с возвратом каретки на конце, и Windows файла
+# с этим знаком в имени не создаёт вовсе: распаковка валится отказом
+# «Invalid argument», а виден он лишь на стенде. Прочие системы знак этот
+# в имени сносят, отчего изъян и не показывался нигде, кроме Windows.
+ICON="Icon$(printf '\r')"
+
 # Передача ведётся через ввод tar, а не средством scp: подсистема sftp на
 # стенде отключена, и scp обрывает связь
 # shellcheck disable=SC2086
-tar --format ustar -czf - -C "$ROOT" \
+tar --format ustar -czf - -C "$ROOT" --exclude "$ICON" \
 	$STAND_HEADERS $STAND_SOURCES $STAND_TOOLS \
 	tools/regex/sources.list tools/regex/stand.bat $EXTRA \
 	| ssh -p "$PORT" "$TARGET" "

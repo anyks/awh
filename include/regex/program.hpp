@@ -705,7 +705,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				if(__builtin_expect(static_cast <size_t> (index) >= this->classes.size(), 0))
+				if(AWH_REGEX_UNLIKELY(static_cast <size_t> (index) >= this->classes.size()))
 					// Выводим обзор класса символов программы
 					return result;
 				// Получаем ссылку на класс символов программы

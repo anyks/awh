@@ -357,6 +357,43 @@
  *          вердикт ссылки зависит от содержимого захвата, то есть от начала
  *          попытки, а не от одной лишь позиции.
  *
+ *          <b>Повторение над областью инструкций ведётся двумя способами,
+ *          и выбор между ними определяет устройство всего сопоставителя.</b>
+ *          Тело постоянной длины, границ групп захвата не пишущее, обходится
+ *          тремя местами кадра на всё повторение: положением начала повторения,
+ *          концом его, продолжению переданным, и отказом, повторению
+ *          предшествовавшим. Проходы совершаются подряд, пока тело сходится,
+ *          а отдача прохода есть вычитание длины тела из запомненного конца,
+ *          идущее вспять, пока позиция не вернётся к началу повторения.
+ *          Числа проходов знать при этом не нужно вовсе.
+ *
+ *          Отдача считается от конца запомненного, а не от позиции нынешней,
+ *          именно потому, что продолжение позицию подвигает: вычитание
+ *          из позиции нынешней возвращало бы сопоставление туда, где
+ *          продолжение поглотит символ снова, и повторение уходило бы
+ *          в круг бесконечный.
+ *
+ *          Тело же длины переменной либо границы групп пишущее получает запись
+ *          кадра на каждый проход: отступление внутрь прохода прежнего требует
+ *          положений его и границ, а число проходов доходит до длины текста,
+ *          отчего записи живут в области, отводимой вне кадра вызова. Такое
+ *          повторение вводит ведение действующего отказа ячейкой кадра, а
+ *          ведение это обходится переходом по адресу из памяти на всяком отказе
+ *          сопоставителя, где бы тот ни случился. Замер показал плату в четверть
+ *          на выражении без повторения вовсе, а выделка записи на проход - плату
+ *          втрое; оттого тело постоянной длины и выведено из-под записей, а не
+ *          оставлено единому устройству ради простоты его.
+ *
+ *          Отдача прохода порождается вычитанием значения непосредственного,
+ *          разрядность какого у наборов команд ограничена, отчего тело длиннее
+ *          предела получает записи кадра наравне с телом переменной длины.
+ *
+ *          <b>Проход повторения жадного отвергается по первому байту тела.</b>
+ *          Байт текста, ни одной инструкции начала тела не подошедший, отказывает
+ *          телу заведомо, и проход отменяется прежде всякой подготовки своей.
+ *          Повторение ленивое отбора этого не получает: продолжение пробуется
+ *          у него первым, и подготовка прохода нужна прежде сопоставления тела.
+ *
  *          <b>Отказ порождения изъяном не является.</b> Кодогенерация принимает
  *          подмножество программ, а не всякую программу: принятое исполняется
  *          быстрее, непринятое - как прежде. Расширение подмножества - работа
@@ -523,6 +560,42 @@
  *          Measurement on texts carrying Cyrillic characters showed a ratio
  *          to executing the program from 12.6 on an alternation of branches to 21.1
  *          on a network address expression.
+ *          <b>A repetition over a region of instructions is driven in two ways,
+ *          and the choice between them determines the arrangement of the whole matcher.</b>
+ *          A body of constant length that writes no capture group bounds makes do with
+ *          three frame places for the whole repetition: the position where the repetition
+ *          begins, its end handed to the continuation, and the refusal that preceded
+ *          the repetition. Passes are performed one after another while the body matches,
+ *          and giving a pass back is a subtraction of the body length from the remembered
+ *          end, going backwards until the position returns to the beginning
+ *          of the repetition. The number of passes need not be known at all.
+ *
+ *          Giving back is counted from the remembered end rather than from the current
+ *          position precisely because the continuation advances the position: subtracting
+ *          from the current position would return the matching to where the continuation
+ *          consumes a character again, and the repetition would go into an endless circle.
+ *
+ *          A body of variable length, or one writing group bounds, receives a frame record
+ *          per pass: retreating into a previous pass requires its positions and bounds,
+ *          while the number of passes reaches the length of the text, which is why
+ *          the records live in an area allocated outside the call frame. Such a repetition
+ *          introduces driving the active refusal by a frame cell, and that driving costs
+ *          a jump to an address taken from memory on every refusal of the matcher, wherever
+ *          it occurs. Measurement showed a quarter of a cost on an expression with no
+ *          repetition at all, while the record-per-pass machinery costs threefold; hence
+ *          a body of constant length is taken out from under the records rather than
+ *          left to a single arrangement for the sake of its simplicity.
+ *
+ *          Giving a pass back is emitted with a subtraction of an immediate value, whose
+ *          width is bounded in the instruction sets, which is why a body longer than
+ *          the limit receives frame records on a par with a body of variable length.
+ *
+ *          <b>A pass of a greedy repetition is rejected by the first byte of the body.</b>
+ *          A byte of the text that suits none of the instructions beginning the body
+ *          refuses the body for certain, and the pass is cancelled before any preparation
+ *          of it. A lazy repetition receives no such selection: the continuation is tried
+ *          first there, and the preparation of a pass is needed before matching the body.
+ *
  *          <b>A refusal to generate is not a defect.</b> Code generation accepts
  *          a subset of programs rather than every program: what is accepted is executed
  *          faster, what is not accepted as before. Extending the subset is subsequent

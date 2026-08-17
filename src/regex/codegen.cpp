@@ -1499,7 +1499,7 @@ namespace {
 								// Увеличиваем количество мест запоминания границ групп
 								recorded += written.size();
 							// Увеличиваем количество мест хранения положений повторения
-							} else recorded += 2;
+							} else recorded += 3;
 							/**
 							 * Если обход области тела повторения не выполнен
 							 */
@@ -3204,7 +3204,6 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				 *          и отказ ячейкой кадра не ведётся.
 				 *
 				 */
-				::fprintf(stderr, "LOOP pc=%u eager=%d keep=%zu stretch=%d len=%zu\n", (unsigned) pc, (int) eager, keepers.size(), (int) stretching(program, opening, closing, length), length);
 				if(eager && keepers.empty() && stretching(program, opening, closing, length) && (length <= MAX_STRETCH)) {
 					// Заводим метку входа в очередной проход повторения
 					const size_t entering = emitter.label();
@@ -3214,18 +3213,66 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 					const size_t giving = emitter.label();
 					// Заводим метку продолжения сопоставления за повторением
 					const size_t resuming = emitter.label();
+					/**
+					 * Получаем метку отказа, повторению предшествовавшего
+					 *
+					 * @details Исчерпание отдаваемых проходов означает отказ
+					 *          повторения целиком, и уходит он тому, кто
+					 *          повторению предшествовал. Метка эта берётся
+					 *          прежде порождения тела: тело действующий отказ
+					 *          подменяет собою.
+					 *
+					 */
+					const size_t escaping = failure;
+					// Заводим метку исчерпания отдаваемых проходов повторения
+					const size_t exhausting = emitter.label();
 					// Получаем смещение мест хранения положений повторения
 					const size_t holding = (records + recording);
 					// Увеличиваем смещение первого свободного места кадра
-					recording += 2;
+					recording += 3;
+					/**
+					 * Если действующий отказ ведётся ячейкой кадра
+					 *
+					 * @details Тело повторения ячейку подменяет собою - так ведут
+					 *          себя цепочки ветвей выбора внутри него, - и отказ,
+					 *          повторению предшествовавший, запоминается прежде
+					 *          прохода первого. Продолжению же ячейка ставится
+					 *          на отдачу прохода, а исчерпание отдач ячейку
+					 *          возвращает. Без возврата этого продолжение
+					 *          отказывало бы по адресу внутрь тела, оставшемуся
+					 *          от прохода последнего, и сопоставление уходило бы
+					 *          в проходы бесконечные.
+					 *
+					 */
+					if(cellular) {
+						// Выполняем чтение действующего отказа сопоставления
+						emitter.fetch(reg_t::SPARE, reg_t::RECORD, static_cast <uint32_t> (cell));
+						// Выполняем запоминание отказа, повторению предшествовавшего
+						emitter.store(reg_t::SPARE, reg_t::RECORD, static_cast <uint32_t> (holding + 2));
+					}
 					// Выполняем сохранение положения начала повторения в кадре
 					emitter.store(reg_t::CURSOR, reg_t::RECORD, static_cast <uint32_t> (holding));
 					// Выполняем расстановку метки входа в очередной проход повторения
 					emitter.place(entering);
 					// Выполняем сохранение положения начала прохода в кадре
 					emitter.store(reg_t::CURSOR, reg_t::RECORD, static_cast <uint32_t> (holding + 1));
+					/**
+					 * Если действующий отказ ведётся ячейкой кадра
+					 *
+					 * @details Отказ тела идёт через ячейку, а не через метку,
+					 *          отчего исчерпание проходов и ставится ячейкой
+					 *          прежде порождения тела: метка сама по себе телу
+					 *          не передаётся вовсе.
+					 *
+					 */
+					if(cellular) {
+						// Выполняем получение адреса исчерпания проходов повторения
+						emitter.address(reg_t::SCRATCH, drained);
+						// Выполняем установку действующего отказа сопоставления
+						emitter.store(reg_t::SCRATCH, reg_t::RECORD, static_cast <uint32_t> (cell));
+					}
 					// Выполняем установку метки отказа сопоставления тела прохода
-					failure = drained;
+					failure = (cellular ? miss : drained);
 					/**
 					 * Если порождение области тела повторения не выполнено
 					 */
@@ -3243,10 +3290,33 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 					 *
 					 */
 					emitter.place(drained);
+					// Выполняем размещение метки цели перехода по адресу в регистре
+					emitter.landing();
 					// Выполняем восстановление положения начала прохода
 					emitter.fetch(reg_t::CURSOR, reg_t::RECORD, static_cast <uint32_t> (holding + 1));
 					// Выполняем переход к продолжению сопоставления за повторением
 					emitter.jump(resuming);
+					/**
+					 * Выполняем расстановку метки исчерпания отдаваемых проходов
+					 *
+					 * @details Отдачи исчерпаны, когда позиция вернулась к началу
+					 *          повторения: проходов не осталось, и отказ уходит
+					 *          тому, кто повторению предшествовал, вместе
+					 *          с ячейкой, при входе в повторение запомненной.
+					 *
+					 */
+					emitter.place(exhausting);
+					/**
+					 * Если действующий отказ ведётся ячейкой кадра
+					 */
+					if(cellular) {
+						// Выполняем чтение отказа, повторению предшествовавшего
+						emitter.fetch(reg_t::SPARE, reg_t::RECORD, static_cast <uint32_t> (holding + 2));
+						// Выполняем восстановление действующего отказа сопоставления
+						emitter.store(reg_t::SPARE, reg_t::RECORD, static_cast <uint32_t> (cell));
+					}
+					// Выполняем переход по отказу, повторению предшествовавшему
+					emitter.jump(escaping);
 					/**
 					 * Выполняем расстановку метки отдачи прохода повторения
 					 *
@@ -3257,18 +3327,44 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 					 *
 					 */
 					emitter.place(giving);
+					// Выполняем размещение метки цели перехода по адресу в регистре
+					emitter.landing();
+					/**
+					 * Выполняем восстановление конца повторения, продолжению переданного
+					 *
+					 * @details Продолжение позицию сопоставления подвигает, и отдача,
+					 *          вычитающая длину тела из позиции нынешней, вернула бы
+					 *          не то положение: продолжение, поглотившее хоть символ,
+					 *          получало бы его снова и снова, а сопоставление
+					 *          не подвигалось бы вовсе. Оттого конец повторения
+					 *          и запоминается в кадре при всякой передаче
+					 *          продолжению.
+					 *
+					 */
+					emitter.fetch(reg_t::CURSOR, reg_t::RECORD, static_cast <uint32_t> (holding + 1));
 					// Выполняем чтение положения начала повторения из кадра
 					emitter.fetch(reg_t::SCRATCH, reg_t::RECORD, static_cast <uint32_t> (holding));
 					// Выполняем сравнение позиции сопоставления с началом повторения
 					emitter.compare(reg_t::CURSOR, reg_t::SCRATCH);
-					// Выполняем переход к отказу при исчерпании отдаваемых проходов
-					emitter.branch(cond_t::LESS, miss);
+					// Выполняем переход к исчерпанию отдаваемых проходов повторения
+					emitter.branch(cond_t::LESS, exhausting);
 					// Выполняем возврат позиции сопоставления на длину тела назад
 					emitter.sub(reg_t::CURSOR, reg_t::CURSOR, static_cast <uint32_t> (length));
 					// Выполняем расстановку метки продолжения сопоставления
 					emitter.place(resuming);
+					// Выполняем запоминание конца повторения, продолжению передаваемого
+					emitter.store(reg_t::CURSOR, reg_t::RECORD, static_cast <uint32_t> (holding + 1));
+					/**
+					 * Если действующий отказ ведётся ячейкой кадра
+					 */
+					if(cellular) {
+						// Выполняем получение адреса отдачи прохода повторения
+						emitter.address(reg_t::SCRATCH, giving);
+						// Выполняем установку действующего отказа сопоставления
+						emitter.store(reg_t::SCRATCH, reg_t::RECORD, static_cast <uint32_t> (cell));
+					}
 					// Выполняем установку метки отказа сопоставления вслед за повторением
-					failure = giving;
+					failure = (cellular ? miss : giving);
 					// Переходим к продолжению сопоставления за повторением
 					pc = leaving;
 					// Продолжаем обход инструкций области программы

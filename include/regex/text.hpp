@@ -88,21 +88,30 @@
 #include "common.hpp"
 
 /**
- * Если используется компилятор Microsoft Visual C++
+ * Если принудительная подстановка ещё не определена
+ *
+ * @details Ограждение и довод к нему - см. prefilter.hpp: определение это
+ *          несут два заголовочных файла, подключаемых в разном порядке.
+ *
  */
-#if defined(_MSC_VER)
+#ifndef AWH_REGEX_INLINE
 	/**
-	 * Принудительная подстановка средствами Microsoft Visual C++
+	 * Если используется компилятор Microsoft Visual C++
 	 */
-	#define AWH_REGEX_INLINE __forceinline
-/**
- * Если компилятор принадлежит к семейству GCC или Clang
- */
-#else
+	#if defined(_MSC_VER)
+		/**
+		 * Принудительная подстановка средствами Microsoft Visual C++
+		 */
+		#define AWH_REGEX_INLINE inline __forceinline
 	/**
-	 * Принудительная подстановка средствами GCC и Clang
+	 * Если компилятор принадлежит к семейству GCC или Clang
 	 */
-	#define AWH_REGEX_INLINE inline __attribute__((always_inline))
+	#else
+		/**
+		 * Принудительная подстановка средствами GCC и Clang
+		 */
+		#define AWH_REGEX_INLINE inline __attribute__((always_inline))
+	#endif
 #endif
 
 /**

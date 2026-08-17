@@ -1061,6 +1061,18 @@ namespace io {
 			bool complete;
 			// Идентификатор SCTP-события
 			sctp_assoc_t id;
+			/**
+			 * Признак заведённой связи у сокета упорядоченных сообщений
+			 *
+			 * @details Отличает два разных нуля опознавателя: связь ЕЩЁ НЕ ЗАВОДИЛАСЬ -
+			 *          и первая посылка обязана уйти с адресом получателя, - против
+			 *          связи ЗАВЕДЁННОЙ, но не названной, где посылка ждёт известия с
+			 *          опознавателем и взводить готовность к записи бессмысленно
+			 *
+			 * @note Ставится удавшейся первой посылкой, снимается вместе с узлом
+			 *
+			 */
+			bool established;
 			// Флаги SCTP-событий
 			int32_t flags;
 			// Остаток полезной нагрузки текущей записи очереди
@@ -1084,7 +1096,7 @@ namespace io {
 			 *
 			 */
 			explicit SCTP_Endpoint() noexcept :
-			 partial(false), complete(true), id(0), flags(0), remaining(0), info{0} {}
+			 partial(false), complete(true), id(0), established(false), flags(0), remaining(0), info{0} {}
 		} sctp_endpoint_t;
 
 		// Общий пустой набор параметров SCTP, отдаётся у узлов, где набор не заводился
@@ -5317,25 +5329,93 @@ namespace events {
 	 *
 	 * @param sock  дескриптор, связь которого перевзводится
 	 * @param udata пользовательские данные оповещения
+	 * @param fired разряды, по которым оповещение пришло
 	 * @param log   объект работы с логами
 	 * @return      результат перевзвода связи
 	 *
 	 */
-	static bool rearm(const awh::net::socket_t sock, void * udata, const awh::log_t * log) noexcept {
+	static bool rearm(const awh::net::socket_t sock, void * udata, const int32_t fired, const awh::log_t * log) noexcept {
 		// Получаем желаемый набор событий дескриптора
 		auto i = ::events::__awh_wanted__.find(sock);
 		// Если желаемого набора нет, дескриптор снят с учёта и перевзводить нечего
 		if(i == ::events::__awh_wanted__.end())
 			// Выводим результат
 			return true;
+		// Получаем пользовательские данные записи желаемого набора
+		void * owner = ((i->second.udata != nullptr) ? i->second.udata : udata);
+		// Получаем узел, которому принадлежит дескриптор
+		::io::node_t * node = reinterpret_cast <::io::node_t *> (owner);
 		/**
-		 * Заводим связь дескриптора с очередью по всему желаемому набору
+		 * Если узел подлежит уничтожению, связь не заводится вовсе
+		 *
+		 * @warning Сторож этот повторяет сторож заведения подписки, и повторяет
+		 *          намеренно: перевзвод - ВТОРОЙ вход в заведение связи, идущий мимо
+		 *          него напрямую. Без него оповещения по снесённому узлу приходят и
+		 *          заводятся заново без конца, разбор отбрасывает их молча, и выходит
+		 *          холостая прокрутка - ни записи в журнал, ни обращения к сети.
+		 *          Замерено на переносе файла: 62 оповещения на оборот при полной
+		 *          тишине в трассировке сети
+		 *
+		 * @note Желаемый набор при этом снимается: держать его для снесённого узла
+		 *       незачем, а номер описателя система успевает выдать другому объекту
+		 */
+		if((node != nullptr) && (owner != ::local::internal) &&
+		   ((node->state.status == event::status_t::DESTROYED) || (node->state.status == event::status_t::GARBAGE))){
+			// Снимаем желаемый набор событий дескриптора
+			::events::__awh_wanted__.erase(i);
+			// Выводим результат: перевзводить нечего
+			return true;
+		}
+		// Набор событий, которым связь перевзводится
+		int32_t events = i->second.events;
+		/**
+		 * Готовность к записи перевзводу НЕ подлежит: событие это однократное
+		 *
+		 * @details У kqueue подписка на запись заводится признаком EV_ONESHOT, и ядро
+		 *          снимает её сразу по выдаче оповещения. Взводится она заново только
+		 *          тогда, когда в очереди отправки осталось неотправленное - это и есть
+		 *          устройство записи во всём движке. port_associate точно так же
+		 *          однократен, но желаемый набор ЗДЕСЬ хранит разряды между оповещениями
+		 *          и восстанавливал бы подписку, которую kqueue бы снял
+		 *
+		 * @warning Без этого пустая очередь давала бесконечное кручение: ядро сообщает о
+		 *          готовности к записи немедленно, разбор отправлять не находит нечего,
+		 *          перевзвод просит готовность снова. Замерено на переносе файла по SCTP:
+		 *          1 271 992 оповещения о готовности к записи за двадцать секунд при
+		 *          пустой очереди, стенд уходил в полку по загрузке
+		 *
+		 * @note Снимается разряд и из СОХРАНЁННОЙ записи, а не только из набора
+		 *       перевзвода: иначе он оставался бы там навсегда, и всякое следующее
+		 *       заведение связи тащило бы его за собой
+		 *
+		 * @warning Снимается он лишь по СРАБОТАВШЕЙ готовности, а не всякий раз:
+		 *          разбор чтения вправе взвести запись прямо посреди оповещения -
+		 *          известие о подъёме связи приносит опознаватель и даёт ход
+		 *          очереди, - и безусловное снятие погасило бы только что взведённый
+		 *          разряд. Замерено на переносе файла: очередь в 61 800 октетов
+		 *          получала ход, а посылок не уходило ни одной
+		 */
+		if((events & POLLOUT) && (fired & POLLOUT)){
+			// Снимаем разряд готовности к записи из набора перевзвода
+			events &= ~POLLOUT;
+			// Снимаем разряд готовности к записи из сохранённой записи желаемого набора
+			i->second.events &= ~POLLOUT;
+			// Если желаемых событий у дескриптора не осталось вовсе
+			if(events == 0){
+				// Снимаем запись о желаемом наборе событий дескриптора
+				::events::__awh_wanted__.erase(i);
+				// Снимаем связь дескриптора с очередью оповещений
+				return ::ports::dissociate(sock, log);
+			}
+		}
+		/**
+		 * Заводим связь дескриптора с очередью по набору перевзвода
 		 *
 		 * @note Пользовательские данные берутся из СОХРАНЁННОЙ записи, а не из
 		 *       оповещения: разбор события вправе сменить узел дескриптора, и
 		 *       указатель из оповещения к этому мгновению уже устарел бы
 		 */
-		return ::ports::associate(sock, i->second.events, ((i->second.udata != nullptr) ? i->second.udata : udata), log);
+		return ::ports::associate(sock, events, owner, log);
 	}
 
 
@@ -5705,6 +5785,49 @@ namespace events {
 	static bool write(const net::socket_t sock, ::io::node_t * node, const event::mode_t mode, const log_t * log) noexcept {
 		// Результат работы функции
 		bool result = false;
+		/**
+		 * Если у сокета упорядоченных сообщений связь ещё не названа, запись не взводится
+		 *
+		 * @details Ждать тут нечего: место в буфере есть с самого начала, и готовность к
+		 *          записи приходит немедленно и без конца. Отправка же отвергается не
+		 *          из-за места, а из-за отсутствия опознавателя связи - его приносит
+		 *          известие, и ждать надлежит ЧТЕНИЯ. Замерено на переносе файла:
+		 *          851 613 оповещений о готовности к записи за двенадцать секунд против
+		 *          одной готовности к чтению, утонувшей в этом потоке
+		 *
+		 * @note Опознаватель появляется разбором известия о подъёме связи, и там же
+		 *       очереди даётся ход - взводить запись отсюда незачем
+		 */
+		if((mode == event::mode_t::ENABLED) && (node != nullptr) &&
+		   (node->state.protocol == event::protocol_t::SCTP) && (node->state.type == event::type_t::SEQPACKET)){
+			// Опознаватель связи узла
+			sctp_assoc_t assoc = 0;
+			// Признак заведённой связи узла
+			bool established = false;
+			/**
+			 * Определяем чем является текущий узел
+			 */
+			switch(static_cast <uint8_t> (node->state.node)){
+				// Если узел является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT):
+					// Получаем опознаватель связи клиента
+					assoc = awh_cast <::io::client_t *> (node)->transfer.sctp.use().id;
+					// Получаем признак заведённой связи клиента
+					established = awh_cast <::io::client_t *> (node)->transfer.sctp.use().established;
+				break;
+				// Если узел является принятым подключением
+				case static_cast <uint8_t> (event::node_t::PEER):
+					// Получаем опознаватель связи принятого подключения
+					assoc = awh_cast <::io::peer_t *> (node)->transfer.sctp.use().id;
+					// Получаем признак заведённой связи принятого подключения
+					established = awh_cast <::io::peer_t *> (node)->transfer.sctp.use().established;
+				break;
+			}
+			// Если связь заведена, но ещё не названа, взводить запись бессмысленно
+			if((assoc == 0) && established)
+				// Выводим успешный результат: ждать надлежит чтения
+				return true;
+		}
 		// Если дескриптор сокета действительный
 		if(sock != net::invalid_socket_t){
 			/**
@@ -9862,6 +9985,31 @@ namespace sctp {
 	 * @return     результат проверки
 	 *
 	 */
+	static bool unnamed(T * node) noexcept {
+		/**
+		 * Проверка ведётся по состоянию узла, а НЕ по errno
+		 *
+		 * @warning К месту сохранения остатка errno уже затёрт: между отказом отправки и
+		 *          этой проверкой успевают отработать отклики потребителя и запись в
+		 *          журнал. Замерено щупом: посылка не сохранялась, очередь к приходу
+		 *          известия оказывалась пуста, и доходил ровно первый кусок
+		 *
+		 * @note Связь заведена удавшейся первой посылкой, а опознавателя ещё нет - это и
+		 *       есть состояние ожидания имени
+		 */
+		return (
+			(node->state.protocol == event::protocol_t::SCTP) &&
+			(node->state.type == event::type_t::SEQPACKET) &&
+			node->transfer.sctp.use().established &&
+			(node->transfer.sctp.use().id == 0)
+		);
+	}
+	/**
+	 * @brief Шаблон функции проверки, дождалась ли очередь отправки опознавателя связи
+	 *
+	 * @tparam T тип узла события
+	 */
+	template <class T>
 	static bool awaited(T * node) noexcept {
 		// Выводим результат проверки
 		return (
@@ -17733,7 +17881,7 @@ namespace io {
 										// Количество прочитанных байт
 										ssize_t bytes = 0;
 										// Если протокол интернета установлен как SCTP
-										if(client->state.protocol == event::protocol_t::SCTP)
+										if(client->state.protocol == event::protocol_t::SCTP){
 											// Выполняем отправку данных в TCP/IP сокет
 											bytes = eth->sctp.send(
 												client->transfer.fd,
@@ -17742,8 +17890,18 @@ namespace io {
 												client->transfer.sctp.use().info,
 												client->transfer.sctp.use().complete
 											);
+											/**
+											 * Отмечаем связь заведённой удавшейся посылкой
+											 *
+											 * @note Отсюда и дальше готовность к записи взводить бессмысленно: посылка
+											 *       ждёт известия с опознавателем связи, а не места в буфере. Замерено
+											 *       щупом: признак не ставился вовсе, оттого сторож и не срабатывал
+											 */
+											if((bytes > 0) && (client->state.type == event::type_t::SEQPACKET))
+												// Отмечаем связь заведённой
+												client->transfer.sctp.use().established = true;
 										// Выполняем отправку данных в TCP/IP сокет
-										else bytes = ::handoff::send(client, client->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, log);
+										} else bytes = ::handoff::send(client, client->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, log);
 									// Если данные отправлены успешно
 									if(bytes > 0){
 										// Возвращаем количество байт данных, отправленных событием
@@ -18221,6 +18379,31 @@ namespace io {
 													::events::write(client->transfer.fd, client, event::mode_t::ENABLED, log);
 												}
 											} break;
+											/**
+											 * Если связь у сокета упорядоченных сообщений уже заведена
+											 *
+											 * @details Отказ этот не про поломку сокета: адрес получателя занят нашей
+											 *          же связью, и дальше отправка обязана идти по её опознавателю.
+											 *          Опознаватель приходит известием о подъёме связи - позже, чем
+											 *          отправитель успевает дать второй кусок, - потому посылка
+											 *          ложится в очередь и ждёт его там
+											 *
+											 * @warning Готовность к записи здесь НЕ взводится: место в буфере есть, и
+											 *          оповещение приходило бы немедленно и без конца. Ход очереди
+											 *          даёт разбор известия, и он же взводит запись
+											 *
+											 * @note Замерено щупом на переносе файла: без этой ветви отказ падал в
+											 *       разбор непонятных ошибок, объявлялся поломкой сокета, и
+											 *       пятнадцать записей из шестнадцати терялись молча
+											 */
+											case EADDRINUSE: {
+												// Если отправка ждёт опознавателя связи
+												if(::sctp::pending(client))
+													// Прерываем разбор: отказом это не является
+													break;
+												// Устанавливаем идентификатор полученной ошибки
+												error = event::error_t::INVALID_SOCKET;
+											} break;
 											// Если мы получили другую непонятную ошибку
 											default:
 												// Устанавливаем идентификатор полученной ошибки
@@ -18532,7 +18715,7 @@ namespace io {
 											 *       заведение связи
 											 */
 											// Если протокол интернета установлен как SCTP
-											if(client->state.protocol == event::protocol_t::SCTP)
+											if(client->state.protocol == event::protocol_t::SCTP){
 												// Выполняем отправку данных в TCP/IP сокет
 												bytes = ::ports::send(
 													client->transfer.fd,
@@ -18542,8 +18725,18 @@ namespace io {
 													&::trust_cast <struct sockaddr> (client->endpoint.server),
 													client->endpoint.size
 												);
+											/**
+											 * Отмечаем связь заведённой удавшейся посылкой
+											 *
+											 * @note Отсюда и дальше адрес получателя больше не годится, а
+											 *       готовность к записи взводить бессмысленно: посылка ждёт
+											 *       известия с опознавателем связи, а не места в буфере
+											 */
+											if(bytes > 0)
+												// Отмечаем связь заведённой
+												client->transfer.sctp.use().established = true;
 											// Выполняем отправку данных в TCP/IP сокет
-											else bytes = ::handoff::send(client, client->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, log);
+											} else bytes = ::handoff::send(client, client->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, log);
 									// Если клиент не уничтожается: состояние различает СПОСОБ обмена, а не дозволяет его
 									} else if((client->state.status != event::status_t::DESTROYED) && (client->state.status != event::status_t::GARBAGE)) {
 										/**
@@ -18551,7 +18744,7 @@ namespace io {
 										 */
 										errno = 0;
 											// Если протокол интернета установлен как SCTP
-											if(client->state.protocol == event::protocol_t::SCTP)
+											if(client->state.protocol == event::protocol_t::SCTP){
 												// Выполняем отправку данных в SCTP-сокет
 												bytes = eth->sctp.send(
 													client->transfer.fd,
@@ -18563,8 +18756,18 @@ namespace io {
 													client->transfer.sctp.use().info,
 													client->transfer.sctp.use().complete
 												);
+												/**
+												 * Отмечаем связь заведённой удавшейся посылкой
+												 *
+												 * @note Отсюда и дальше готовность к записи взводить бессмысленно: посылка
+												 *       ждёт известия с опознавателем связи, а не места в буфере. Замерено
+												 *       щупом: признак не ставился вовсе, оттого сторож и не срабатывал
+												 */
+												if((bytes > 0) && (client->state.type == event::type_t::SEQPACKET))
+													// Отмечаем связь заведённой
+													client->transfer.sctp.use().established = true;
 											// Выполняем отправку данных в UDP-сокет
-											else bytes = eth->socket.datagram(
+											} else bytes = eth->socket.datagram(
 												client->transfer.fd,
 												reinterpret_cast <const uint8_t *> (buffer),
 												size, MSG_NOSIGNAL,
@@ -18645,6 +18848,31 @@ namespace io {
 													// Активируем событие на запись данных в сокет
 													::events::write(client->transfer.fd, client, event::mode_t::ENABLED, log);
 												}
+											} break;
+											/**
+											 * Если связь у сокета упорядоченных сообщений уже заведена
+											 *
+											 * @details Отказ этот не про поломку сокета: адрес получателя занят нашей
+											 *          же связью, и дальше отправка обязана идти по её опознавателю.
+											 *          Опознаватель приходит известием о подъёме связи - позже, чем
+											 *          отправитель успевает дать второй кусок, - потому посылка
+											 *          ложится в очередь и ждёт его там
+											 *
+											 * @warning Готовность к записи здесь НЕ взводится: место в буфере есть, и
+											 *          оповещение приходило бы немедленно и без конца. Ход очереди
+											 *          даёт разбор известия, и он же взводит запись
+											 *
+											 * @note Замерено щупом на переносе файла: без этой ветви отказ падал в
+											 *       разбор непонятных ошибок, объявлялся поломкой сокета, и
+											 *       пятнадцать записей из шестнадцати терялись молча
+											 */
+											case EADDRINUSE: {
+												// Если отправка ждёт опознавателя связи
+												if(::sctp::pending(client))
+													// Прерываем разбор: отказом это не является
+													break;
+												// Устанавливаем идентификатор полученной ошибки
+												error = event::error_t::INVALID_SOCKET;
 											} break;
 											// Если мы получили другую непонятную ошибку
 											default:
@@ -20815,7 +21043,7 @@ namespace io {
 											}
 										}
 									// Если данные не отправлены и нужно подождать
-									} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
+									} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM) || ::sctp::unnamed(peer)) {
 										// Сохраняем оставшиеся данные для последующей отправки
 										if((result = ::sctp::push(peer, buffer, size)) == 0){
 											// Если установлена функция обратного вызова
@@ -20923,7 +21151,7 @@ namespace io {
 										// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
 										::io::postpone(peer, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, result, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 								// Если данные не отправлены и нужно подождать
-								} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
+								} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM) || ::sctp::unnamed(peer)) {
 									// Сохраняем оставшиеся данные для последующей отправки
 									if((result = ::sctp::push(peer, buffer, size)) == 0){
 										// Если установлена функция обратного вызова
@@ -21229,7 +21457,16 @@ namespace io {
 											// Уменьшаем количество используемых токенов
 											peer->bandwidthUse().write.tokens -= static_cast <double> (result);
 										// Если данные не отправлены и нужно подождать
-										} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
+										/**
+										 * Если данные не отправлены и нужно подождать
+										 *
+										 * @note Отказ по уже заведённой, но ещё не названной связи стоит здесь
+										 *       наравне с нехваткой места: посылка не потеряна, а отложена. Ждёт
+										 *       она известия с опознавателем связи, а не места в буфере, и ход ей
+										 *       даёт разбор известия. Сохранять её обязано ЭТО место - разбор
+										 *       отказов лишь решает, ошибка это или нет, а копии у отправителя нет
+										 */
+										} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM) || ::sctp::unnamed(peer)) {
 											// Сохраняем оставшиеся данные для последующей отправки
 											if((result = ::sctp::push(peer, buffer, size)) == 0){
 												// Если установлена функция обратного вызова
@@ -21335,7 +21572,7 @@ namespace io {
 											// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
 											::io::postpone(peer, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, result, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 									// Если данные не отправлены и нужно подождать
-									} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
+									} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM) || ::sctp::unnamed(peer)) {
 										// Сохраняем оставшиеся данные для последующей отправки
 										if((result = ::sctp::push(peer, buffer, size)) == 0){
 											// Если установлена функция обратного вызова
@@ -21578,7 +21815,7 @@ namespace io {
 												// Уменьшаем количество используемых токенов
 												peer->bandwidthUse().write.tokens -= static_cast <double> (result);
 											// Если данные не отправлены и нужно подождать
-											} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
+											} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM) || ::sctp::unnamed(peer)) {
 												// Сохраняем оставшиеся данные для последующей отправки
 												if((result = ::sctp::push(peer, buffer, size)) == 0){
 													// Если установлена функция обратного вызова
@@ -21686,7 +21923,16 @@ namespace io {
 												// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
 												::io::postpone(peer, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, result, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 										// Если данные не отправлены и нужно подождать
-										} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
+										/**
+										 * Если данные не отправлены и нужно подождать
+										 *
+										 * @note Отказ по уже заведённой, но ещё не названной связи стоит здесь
+										 *       наравне с нехваткой места: посылка не потеряна, а отложена. Ждёт
+										 *       она известия с опознавателем связи, а не места в буфере, и ход ей
+										 *       даёт разбор известия. Сохранять её обязано ЭТО место - разбор
+										 *       отказов лишь решает, ошибка это или нет, а копии у отправителя нет
+										 */
+										} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM) || ::sctp::unnamed(peer)) {
 											// Сохраняем оставшиеся данные для последующей отправки
 											if((result = ::sctp::push(peer, buffer, size)) == 0){
 												// Если установлена функция обратного вызова
@@ -23816,7 +24062,7 @@ namespace io {
 											 *          Наружу это выходило тем, что многозаписевая передача вставала на
 											 *          втором куске, и доходил ровно первый
 											 */
-											if(client->state.type == event::type_t::SEQPACKET)
+											if(client->state.type == event::type_t::SEQPACKET){
 												// Выполняем отправку данных по заведённой связи
 												bytes = ::ports::send(
 													client->transfer.fd,
@@ -23826,6 +24072,17 @@ namespace io {
 													&::trust_cast <struct sockaddr> (client->endpoint.server),
 													client->endpoint.size
 												);
+												/**
+												 * Отмечаем связь заведённой удавшейся посылкой
+												 *
+												 * @note Отсюда и дальше адрес получателя больше не годится, а
+												 *       готовность к записи взводить бессмысленно: посылка ждёт
+												 *       известия с опознавателем связи, а не места в буфере
+												 */
+												if(bytes > 0)
+													// Отмечаем связь заведённой
+													client->transfer.sctp.use().established = true;
+											}
 											// Выполняем отправку данных в потоковый сокет SCTP
 											else bytes = eth->sctp.send(
 												client->transfer.fd,
@@ -24249,7 +24506,7 @@ namespace io {
 										// Количество прочитанных байт
 										ssize_t bytes = 0;
 										// Если протокол интернета установлен как SCTP
-										if(client->state.protocol == event::protocol_t::SCTP)
+										if(client->state.protocol == event::protocol_t::SCTP){
 											// Выполняем отправку данных в сокет
 											bytes = eth->sctp.send(
 												client->transfer.fd,
@@ -24257,8 +24514,18 @@ namespace io {
 												client->transfer.sctp.use().info,
 												client->transfer.sctp.use().complete
 											);
+											/**
+											 * Отмечаем связь заведённой удавшейся посылкой
+											 *
+											 * @note Отсюда и дальше готовность к записи взводить бессмысленно: посылка
+											 *       ждёт известия с опознавателем связи, а не места в буфере. Замерено
+											 *       щупом: признак не ставился вовсе, оттого сторож и не срабатывал
+											 */
+											if((bytes > 0) && (client->state.type == event::type_t::SEQPACKET))
+												// Отмечаем связь заведённой
+												client->transfer.sctp.use().established = true;
 										// Выполняем отправку данных в сокет
-										else bytes = ::handoff::send(client, client->transfer.fd, buffer, size, log);
+										} else bytes = ::handoff::send(client, client->transfer.fd, buffer, size, log);
 									// Если данные отправлены успешно
 									if(bytes > 0){
 										// Возвращаем количество байт данных, отправленных событием
@@ -24447,7 +24714,7 @@ namespace io {
 											}
 										}
 									// Если данные не отправлены и нужно подождать
-									} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
+									} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM) || ::sctp::unnamed(client)) {
 										// Сохраняем оставшиеся данные для последующей отправки
 										if((result = ::sctp::push(client, buffer, size)) == 0){
 											// Если установлена функция обратного вызова
@@ -24555,7 +24822,7 @@ namespace io {
 										// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
 										::io::postpone(client, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, result, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 								// Если данные не отправлены и нужно подождать
-								} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
+								} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM) || ::sctp::unnamed(client)) {
 									// Сохраняем оставшиеся данные для последующей отправки
 									if((result = ::sctp::push(client, buffer, size)) == 0){
 										// Если установлена функция обратного вызова
@@ -24601,7 +24868,7 @@ namespace io {
 							// Количество прочитанных байт
 							ssize_t bytes = 0;
 							// Если протокол интернета установлен как SCTP
-							if(client->state.protocol == event::protocol_t::SCTP)
+							if(client->state.protocol == event::protocol_t::SCTP){
 								// Выполняем отправку данных в TCP/IP сокет
 								bytes = eth->sctp.send(
 									client->transfer.fd,
@@ -24609,8 +24876,18 @@ namespace io {
 									client->transfer.sctp.use().info,
 									client->transfer.sctp.use().complete
 								);
+								/**
+								 * Отмечаем связь заведённой удавшейся посылкой
+								 *
+								 * @note Отсюда и дальше готовность к записи взводить бессмысленно: посылка
+								 *       ждёт известия с опознавателем связи, а не места в буфере. Замерено
+								 *       щупом: признак не ставился вовсе, оттого сторож и не срабатывал
+								 */
+								if((bytes > 0) && (client->state.type == event::type_t::SEQPACKET))
+									// Отмечаем связь заведённой
+									client->transfer.sctp.use().established = true;
 							// Выполняем отправку данных в TCP/IP сокет
-							else bytes = ::handoff::send(client, client->transfer.fd, buffer, size, log);
+							} else bytes = ::handoff::send(client, client->transfer.fd, buffer, size, log);
 						// Если данные отправлены успешно
 						if(bytes > 0){
 							// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -24851,7 +25128,16 @@ namespace io {
 											// Уменьшаем количество используемых токенов
 											client->bandwidthUse().write.tokens -= static_cast <double> (result);
 										// Если данные не отправлены и нужно подождать
-										} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
+										/**
+										 * Если данные не отправлены и нужно подождать
+										 *
+										 * @note Отказ по уже заведённой, но ещё не названной связи стоит здесь
+										 *       наравне с нехваткой места: посылка не потеряна, а отложена. Ждёт
+										 *       она известия с опознавателем связи, а не места в буфере, и ход ей
+										 *       даёт разбор известия. Сохранять её обязано ЭТО место - разбор
+										 *       отказов лишь решает, ошибка это или нет, а копии у отправителя нет
+										 */
+										} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM) || ::sctp::unnamed(client)) {
 											// Сохраняем оставшиеся данные для последующей отправки
 											if((result = ::sctp::push(client, buffer, size)) == 0){
 												// Если установлена функция обратного вызова
@@ -24957,7 +25243,7 @@ namespace io {
 											// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
 											::io::postpone(client, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, result, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 									// Если данные не отправлены и нужно подождать
-									} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
+									} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM) || ::sctp::unnamed(client)) {
 										// Сохраняем оставшиеся данные для последующей отправки
 										if((result = ::sctp::push(client, buffer, size)) == 0){
 											// Если установлена функция обратного вызова
@@ -25189,7 +25475,7 @@ namespace io {
 												// Уменьшаем количество используемых токенов
 												client->bandwidthUse().write.tokens -= static_cast <double> (result);
 											// Если данные не отправлены и нужно подождать
-											} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
+											} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM) || ::sctp::unnamed(client)) {
 												// Сохраняем оставшиеся данные для последующей отправки
 												if((result = ::sctp::push(client, buffer, size)) == 0){
 													// Если установлена функция обратного вызова
@@ -25297,7 +25583,16 @@ namespace io {
 												// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
 												::io::postpone(client, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, result, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 										// Если данные не отправлены и нужно подождать
-										} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
+										/**
+										 * Если данные не отправлены и нужно подождать
+										 *
+										 * @note Отказ по уже заведённой, но ещё не названной связи стоит здесь
+										 *       наравне с нехваткой места: посылка не потеряна, а отложена. Ждёт
+										 *       она известия с опознавателем связи, а не места в буфере, и ход ей
+										 *       даёт разбор известия. Сохранять её обязано ЭТО место - разбор
+										 *       отказов лишь решает, ошибка это или нет, а копии у отправителя нет
+										 */
+										} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM) || ::sctp::unnamed(client)) {
 											// Сохраняем оставшиеся данные для последующей отправки
 											if((result = ::sctp::push(client, buffer, size)) == 0){
 												// Если установлена функция обратного вызова
@@ -25629,7 +25924,16 @@ namespace io {
 											// Уменьшаем количество используемых токенов
 											client->bandwidthUse().write.tokens -= static_cast <double> (result);
 										// Если данные не отправлены и нужно подождать
-										} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
+										/**
+										 * Если данные не отправлены и нужно подождать
+										 *
+										 * @note Отказ по уже заведённой, но ещё не названной связи стоит здесь
+										 *       наравне с нехваткой места: посылка не потеряна, а отложена. Ждёт
+										 *       она известия с опознавателем связи, а не места в буфере, и ход ей
+										 *       даёт разбор известия. Сохранять её обязано ЭТО место - разбор
+										 *       отказов лишь решает, ошибка это или нет, а копии у отправителя нет
+										 */
+										} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM) || ::sctp::unnamed(client)) {
 											// Сохраняем оставшиеся данные для последующей отправки
 											if((result = ::sctp::push(client, buffer, size)) == 0){
 												// Если установлена функция обратного вызова
@@ -25735,7 +26039,7 @@ namespace io {
 											// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
 											::io::postpone(client, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, result, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 									// Если данные не отправлены и нужно подождать
-									} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
+									} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM) || ::sctp::unnamed(client)) {
 										// Сохраняем оставшиеся данные для последующей отправки
 										if((result = ::sctp::push(client, buffer, size)) == 0){
 											// Если установлена функция обратного вызова
@@ -25967,7 +26271,7 @@ namespace io {
 												// Уменьшаем количество используемых токенов
 												client->bandwidthUse().write.tokens -= static_cast <double> (result);
 											// Если данные не отправлены и нужно подождать
-											} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
+											} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM) || ::sctp::unnamed(client)) {
 												// Сохраняем оставшиеся данные для последующей отправки
 												if((result = ::sctp::push(client, buffer, size)) == 0){
 													// Если установлена функция обратного вызова
@@ -26075,7 +26379,16 @@ namespace io {
 												// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
 												::io::postpone(client, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, result, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 										// Если данные не отправлены и нужно подождать
-										} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
+										/**
+										 * Если данные не отправлены и нужно подождать
+										 *
+										 * @note Отказ по уже заведённой, но ещё не названной связи стоит здесь
+										 *       наравне с нехваткой места: посылка не потеряна, а отложена. Ждёт
+										 *       она известия с опознавателем связи, а не места в буфере, и ход ей
+										 *       даёт разбор известия. Сохранять её обязано ЭТО место - разбор
+										 *       отказов лишь решает, ошибка это или нет, а копии у отправителя нет
+										 */
+										} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM) || ::sctp::unnamed(client)) {
 											// Сохраняем оставшиеся данные для последующей отправки
 											if((result = ::sctp::push(client, buffer, size)) == 0){
 												// Если установлена функция обратного вызова
@@ -26300,7 +26613,7 @@ namespace io {
 											 *       заведение связи
 											 */
 											// Если протокол интернета установлен как SCTP
-											if(client->state.protocol == event::protocol_t::SCTP)
+											if(client->state.protocol == event::protocol_t::SCTP){
 												// Выполняем отправку данных в сокет
 												bytes = ::ports::send(
 													client->transfer.fd,
@@ -26310,6 +26623,17 @@ namespace io {
 													&::trust_cast <struct sockaddr> (client->endpoint.server),
 													client->endpoint.size
 												);
+												/**
+												 * Отмечаем связь заведённой удавшейся посылкой
+												 *
+												 * @note Отсюда и дальше адрес получателя больше не годится: он
+												 *       означает заявку на НОВУЮ связь, а связь уже есть. Дальше
+												 *       отправка идёт по опознавателю, и приносит его известие
+												 */
+												if((bytes > 0) && (client->state.type == event::type_t::SEQPACKET))
+													// Отмечаем связь заведённой
+													client->transfer.sctp.use().established = true;
+											}
 											// Выполняем отправку данных в сокет
 											else bytes = ::handoff::send(client, client->transfer.fd, buffer, size, log);
 										// Если данные отправлены успешно
@@ -26467,7 +26791,16 @@ namespace io {
 											// Уменьшаем количество используемых токенов
 											client->bandwidthUse().write.tokens -= static_cast <double> (result);
 										// Если данные не отправлены и нужно подождать
-										} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
+										/**
+										 * Если данные не отправлены и нужно подождать
+										 *
+										 * @note Отказ по уже заведённой, но ещё не названной связи стоит здесь
+										 *       наравне с нехваткой места: посылка не потеряна, а отложена. Ждёт
+										 *       она известия с опознавателем связи, а не места в буфере, и ход ей
+										 *       даёт разбор известия. Сохранять её обязано ЭТО место - разбор
+										 *       отказов лишь решает, ошибка это или нет, а копии у отправителя нет
+										 */
+										} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM) || ::sctp::unnamed(client)) {
 											// Сохраняем оставшиеся данные для последующей отправки
 											if((result = ::sctp::push(client, buffer, size)) == 0){
 												// Если установлена функция обратного вызова
@@ -26573,7 +26906,7 @@ namespace io {
 											// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
 											::io::postpone(client, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, result, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 									// Если данные не отправлены и нужно подождать
-									} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
+									} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM) || ::sctp::unnamed(client)) {
 										// Сохраняем оставшиеся данные для последующей отправки
 										if((result = ::sctp::push(client, buffer, size)) == 0){
 											// Если установлена функция обратного вызова
@@ -26664,7 +26997,7 @@ namespace io {
 												// Количество прочитанных байт
 												ssize_t bytes = 0;
 												// Если протокол интернета установлен как SCTP
-												if(client->state.protocol == event::protocol_t::SCTP)
+												if(client->state.protocol == event::protocol_t::SCTP){
 													// Выполняем отправку данных в сокет
 													bytes = eth->sctp.send(
 														client->transfer.fd,
@@ -26676,8 +27009,18 @@ namespace io {
 														client->transfer.sctp.use().info,
 														client->transfer.sctp.use().complete
 													);
+													/**
+													 * Отмечаем связь заведённой удавшейся посылкой
+													 *
+													 * @note Отсюда и дальше готовность к записи взводить бессмысленно: посылка
+													 *       ждёт известия с опознавателем связи, а не места в буфере. Замерено
+													 *       щупом: признак не ставился вовсе, оттого сторож и не срабатывал
+													 */
+													if((bytes > 0) && (client->state.type == event::type_t::SEQPACKET))
+														// Отмечаем связь заведённой
+														client->transfer.sctp.use().established = true;
 												// Выполняем отправку данных в сокет
-												else bytes = ::handoff::send(client, client->transfer.fd, buffer, size, log);
+												} else bytes = ::handoff::send(client, client->transfer.fd, buffer, size, log);
 											// Если данные отправлены успешно
 											if(bytes > 0){
 												// Возвращаем количество байт данных, отправленных событием
@@ -26820,7 +27163,7 @@ namespace io {
 												// Уменьшаем количество используемых токенов
 												client->bandwidthUse().write.tokens -= static_cast <double> (result);
 											// Если данные не отправлены и нужно подождать
-											} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
+											} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM) || ::sctp::unnamed(client)) {
 												// Сохраняем оставшиеся данные для последующей отправки
 												if((result = ::sctp::push(client, buffer, size)) == 0){
 													// Если установлена функция обратного вызова
@@ -26928,7 +27271,16 @@ namespace io {
 												// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
 												::io::postpone(client, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, result, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 										// Если данные не отправлены и нужно подождать
-										} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
+										/**
+										 * Если данные не отправлены и нужно подождать
+										 *
+										 * @note Отказ по уже заведённой, но ещё не названной связи стоит здесь
+										 *       наравне с нехваткой места: посылка не потеряна, а отложена. Ждёт
+										 *       она известия с опознавателем связи, а не места в буфере, и ход ей
+										 *       даёт разбор известия. Сохранять её обязано ЭТО место - разбор
+										 *       отказов лишь решает, ошибка это или нет, а копии у отправителя нет
+										 */
+										} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM) || ::sctp::unnamed(client)) {
 											// Сохраняем оставшиеся данные для последующей отправки
 											if((result = ::sctp::push(client, buffer, size)) == 0){
 												// Если установлена функция обратного вызова
@@ -26997,7 +27349,7 @@ namespace io {
 								// Количество прочитанных байт
 								ssize_t bytes = 0;
 								// Если протокол интернета установлен как SCTP
-								if(client->state.protocol == event::protocol_t::SCTP)
+								if(client->state.protocol == event::protocol_t::SCTP){
 									// Выполняем отправку данных в сокет
 									bytes = eth->sctp.send(
 										client->transfer.fd,
@@ -27009,8 +27361,18 @@ namespace io {
 										client->transfer.sctp.use().info,
 										client->transfer.sctp.use().complete
 									);
+									/**
+									 * Отмечаем связь заведённой удавшейся посылкой
+									 *
+									 * @note Отсюда и дальше готовность к записи взводить бессмысленно: посылка
+									 *       ждёт известия с опознавателем связи, а не места в буфере. Замерено
+									 *       щупом: признак не ставился вовсе, оттого сторож и не срабатывал
+									 */
+									if((bytes > 0) && (client->state.type == event::type_t::SEQPACKET))
+										// Отмечаем связь заведённой
+										client->transfer.sctp.use().established = true;
 								// Выполняем отправку данных в сокет
-								else bytes = ::handoff::send(client, client->transfer.fd, buffer, size, log);
+								} else bytes = ::handoff::send(client, client->transfer.fd, buffer, size, log);
 							// Если данные отправлены успешно
 							if(bytes > 0){
 								// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -27121,7 +27483,7 @@ namespace io {
 											// Количество прочитанных байт
 											ssize_t bytes = 0;
 											// Если протокол интернета установлен как SCTP
-											if(client->state.protocol == event::protocol_t::SCTP)
+											if(client->state.protocol == event::protocol_t::SCTP){
 												// Выполняем отправку данных в SCTP-сокет
 												bytes = eth->sctp.send(
 													client->transfer.fd,
@@ -27133,8 +27495,18 @@ namespace io {
 													client->transfer.sctp.use().info,
 													client->transfer.sctp.use().complete
 												);
+												/**
+												 * Отмечаем связь заведённой удавшейся посылкой
+												 *
+												 * @note Отсюда и дальше готовность к записи взводить бессмысленно: посылка
+												 *       ждёт известия с опознавателем связи, а не места в буфере. Замерено
+												 *       щупом: признак не ставился вовсе, оттого сторож и не срабатывал
+												 */
+												if((bytes > 0) && (client->state.type == event::type_t::SEQPACKET))
+													// Отмечаем связь заведённой
+													client->transfer.sctp.use().established = true;
 											// Выполняем отправку данных в UDP-сокет
-											else bytes = eth->socket.datagram(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size, client->state.family, client->state.traffic);
+											} else bytes = eth->socket.datagram(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size, client->state.family, client->state.traffic);
 										// Если данные отправлены успешно
 										if(bytes > 0){
 											// Возвращаем количество байт данных, отправленных событием
@@ -27290,7 +27662,16 @@ namespace io {
 											// Уменьшаем количество используемых токенов
 											client->bandwidthUse().write.tokens -= static_cast <double> (result);
 										// Если данные не отправлены и нужно подождать
-										} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
+										/**
+										 * Если данные не отправлены и нужно подождать
+										 *
+										 * @note Отказ по уже заведённой, но ещё не названной связи стоит здесь
+										 *       наравне с нехваткой места: посылка не потеряна, а отложена. Ждёт
+										 *       она известия с опознавателем связи, а не места в буфере, и ход ей
+										 *       даёт разбор известия. Сохранять её обязано ЭТО место - разбор
+										 *       отказов лишь решает, ошибка это или нет, а копии у отправителя нет
+										 */
+										} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM) || ::sctp::unnamed(client)) {
 											// Сохраняем оставшиеся данные для последующей отправки
 											if((result = ::sctp::push(client, buffer, size)) == 0){
 												// Если установлена функция обратного вызова
@@ -27396,7 +27777,7 @@ namespace io {
 											// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
 											::io::postpone(client, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, result, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 									// Если данные не отправлены и нужно подождать
-									} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
+									} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM) || ::sctp::unnamed(client)) {
 										// Сохраняем оставшиеся данные для последующей отправки
 										if((result = ::sctp::push(client, buffer, size)) == 0){
 											// Если установлена функция обратного вызова
@@ -27487,7 +27868,7 @@ namespace io {
 												// Количество прочитанных байт
 												ssize_t bytes = 0;
 												// Если протокол интернета установлен как SCTP
-												if(client->state.protocol == event::protocol_t::SCTP)
+												if(client->state.protocol == event::protocol_t::SCTP){
 													// Выполняем отправку данных в SCTP-сокет
 													bytes = eth->sctp.send(
 														client->transfer.fd,
@@ -27499,8 +27880,18 @@ namespace io {
 														client->transfer.sctp.use().info,
 														client->transfer.sctp.use().complete
 													);
+													/**
+													 * Отмечаем связь заведённой удавшейся посылкой
+													 *
+													 * @note Отсюда и дальше готовность к записи взводить бессмысленно: посылка
+													 *       ждёт известия с опознавателем связи, а не места в буфере. Замерено
+													 *       щупом: признак не ставился вовсе, оттого сторож и не срабатывал
+													 */
+													if((bytes > 0) && (client->state.type == event::type_t::SEQPACKET))
+														// Отмечаем связь заведённой
+														client->transfer.sctp.use().established = true;
 												// Выполняем отправку данных в UDP-сокет
-												else bytes = eth->socket.datagram(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size, client->state.family, client->state.traffic);
+												} else bytes = eth->socket.datagram(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size, client->state.family, client->state.traffic);
 											// Если данные отправлены успешно
 											if(bytes > 0){
 												// Возвращаем количество байт данных, отправленных событием
@@ -27643,7 +28034,7 @@ namespace io {
 												// Уменьшаем количество используемых токенов
 												client->bandwidthUse().write.tokens -= static_cast <double> (result);
 											// Если данные не отправлены и нужно подождать
-											} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
+											} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM) || ::sctp::unnamed(client)) {
 												// Сохраняем оставшиеся данные для последующей отправки
 												if((result = ::sctp::push(client, buffer, size)) == 0){
 													// Если установлена функция обратного вызова
@@ -27751,7 +28142,16 @@ namespace io {
 												// Списываем объём отправки данных из общего ведра токенов, откладывая узел на время отдачи долга
 												::io::postpone(client, event::limiting_t::EGRESS, ::local::budget(event::limiting_t::EGRESS, result, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), log);
 										// Если данные не отправлены и нужно подождать
-										} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM)) {
+										/**
+										 * Если данные не отправлены и нужно подождать
+										 *
+										 * @note Отказ по уже заведённой, но ещё не названной связи стоит здесь
+										 *       наравне с нехваткой места: посылка не потеряна, а отложена. Ждёт
+										 *       она известия с опознавателем связи, а не места в буфере, и ход ей
+										 *       даёт разбор известия. Сохранять её обязано ЭТО место - разбор
+										 *       отказов лишь решает, ошибка это или нет, а копии у отправителя нет
+										 */
+										} else if((errno == EAGAIN) || (errno == EINTR) || (errno == ENOBUFS) || (errno == ENOMEM) || ::sctp::unnamed(client)) {
 											// Сохраняем оставшиеся данные для последующей отправки
 											if((result = ::sctp::push(client, buffer, size)) == 0){
 												// Если установлена функция обратного вызова
@@ -27820,7 +28220,7 @@ namespace io {
 								// Количество прочитанных байт
 								ssize_t bytes = 0;
 								// Если протокол интернета установлен как SCTP
-								if(client->state.protocol == event::protocol_t::SCTP)
+								if(client->state.protocol == event::protocol_t::SCTP){
 									// Выполняем отправку данных в SCTP-сокет
 									bytes = eth->sctp.send(
 										client->transfer.fd,
@@ -27832,8 +28232,18 @@ namespace io {
 										client->transfer.sctp.use().info,
 										client->transfer.sctp.use().complete
 									);
+									/**
+									 * Отмечаем связь заведённой удавшейся посылкой
+									 *
+									 * @note Отсюда и дальше готовность к записи взводить бессмысленно: посылка
+									 *       ждёт известия с опознавателем связи, а не места в буфере. Замерено
+									 *       щупом: признак не ставился вовсе, оттого сторож и не срабатывал
+									 */
+									if((bytes > 0) && (client->state.type == event::type_t::SEQPACKET))
+										// Отмечаем связь заведённой
+										client->transfer.sctp.use().established = true;
 								// Выполняем отправку данных в UDP-сокет
-								else bytes = eth->socket.datagram(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size, client->state.family, client->state.traffic);
+								} else bytes = eth->socket.datagram(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size, client->state.family, client->state.traffic);
 							// Если данные отправлены успешно
 							if(bytes > 0){
 								// Устанавливаем количество байт данных, отправленных событием, в качестве результата работы функции
@@ -69414,17 +69824,21 @@ void awh::engine::IO::clear() noexcept {
 						}
 						// Если дескриптор сокета действительный
 						if(peer->transfer.fd != net::invalid_socket_t){
-							// Если в сокете нет ошибок
-							if(this->_eth.socket.getError(peer->transfer.fd) == 0){
-								/**
-								 * Снимаем дескриптор с учёта очереди целиком
-								 *
-								 * @note У BSD здесь снимались подписки по фильтру - отдельно чтение,
-								 *       отдельно запись. Связь с дескриптором тут одна, и разбирать
-								 *       по видам подписки незачем
-								 */
-								::events::forget(peer->transfer.fd, this->_log);
-							}
+							/**
+							 * Снимаем дескриптор с учёта очереди целиком
+							 *
+							 * @note У BSD здесь снимались подписки по фильтру - отдельно чтение,
+							 *       отдельно запись. Связь с дескриптором тут одна, и разбирать
+							 *       по видам подписки незачем
+							 *
+							 * @warning Снятие идёт БЕЗУСЛОВНО, а не под условием отсутствия ошибки:
+							 *          дескриптор закрывается ниже В ЛЮБОМ случае, и запись о нём,
+							 *          пережившая закрытие, достанется следующему сокету с тем же
+							 *          номером - вместе с указателем на уничтоженный узел. Снятие
+							 *          связи у ядра на битом сокете вправе отказать, и это
+							 *          безвредно, а вот СВОЙ учёт обязан уйти всегда
+							 */
+							::events::forget(peer->transfer.fd, this->_log);
 							// Закрываем дескриптор сокета
 							::close(peer->transfer.fd);
 							// Сбрасываем значение дескриптора сокета
@@ -69593,17 +70007,21 @@ void awh::engine::IO::clear() noexcept {
 						}
 						// Если дескриптор сокета действительный
 						if(client->transfer.fd != net::invalid_socket_t){
-							// Если в сокете нет ошибок
-							if(this->_eth.socket.getError(client->transfer.fd) == 0){
-								/**
-								 * Снимаем дескриптор с учёта очереди целиком
-								 *
-								 * @note У BSD здесь снимались подписки по фильтру - отдельно чтение,
-								 *       отдельно запись. Связь с дескриптором тут одна, и разбирать
-								 *       по видам подписки незачем
-								 */
-								::events::forget(client->transfer.fd, this->_log);
-							}
+							/**
+							 * Снимаем дескриптор с учёта очереди целиком
+							 *
+							 * @note У BSD здесь снимались подписки по фильтру - отдельно чтение,
+							 *       отдельно запись. Связь с дескриптором тут одна, и разбирать
+							 *       по видам подписки незачем
+							 *
+							 * @warning Снятие идёт БЕЗУСЛОВНО, а не под условием отсутствия ошибки:
+							 *          дескриптор закрывается ниже В ЛЮБОМ случае, и запись о нём,
+							 *          пережившая закрытие, достанется следующему сокету с тем же
+							 *          номером - вместе с указателем на уничтоженный узел. Снятие
+							 *          связи у ядра на битом сокете вправе отказать, и это
+							 *          безвредно, а вот СВОЙ учёт обязан уйти всегда
+							 */
+							::events::forget(client->transfer.fd, this->_log);
 							// Закрываем дескриптор сокета
 							::close(client->transfer.fd);
 							// Сбрасываем значение дескриптора сокета
@@ -71673,20 +72091,6 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 						// Если оповещение пришло по дескриптору
 						case PORT_SOURCE_FD: {
 							/**
-							 * ЩУП: кому принадлежат оповещения и в каком состоянии узел
-							 */
-							{
-								static FILE * probe = ::fopen("/tmp/probe.log", "w");
-								if(probe != nullptr){
-									::io::node_t * const target = reinterpret_cast <::io::node_t *> (ev.portev_user);
-									::fprintf(probe, "ЩУП дескриптор=%d разряды=0x%x узел=%p вид=%u состояние=%u\n",
-										(int) ev.portev_object, (unsigned) ev.portev_events, (void *) target,
-										((target != nullptr) ? (unsigned) target->state.node : 0xFFu),
-										((target != nullptr) ? (unsigned) target->state.status : 0xFFu));
-									::fflush(probe);
-								}
-							}
-							/**
 							 * Одно оповещение несёт И чтение, И запись сразу
 							 *
 							 * @note Разбор устроен на одну разновидность за раз, потому зовём
@@ -71711,7 +72115,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 							 *          в журнал, просто тишина. Перевзвод идёт по СОХРАНЁННОМУ
 							 *          желаемому набору, а не по разрядам пришедшего оповещения
 							 */
-							::events::rearm(static_cast <net::socket_t> (ev.portev_object), ev.portev_user, this->_log);
+							::events::rearm(static_cast <net::socket_t> (ev.portev_object), ev.portev_user, static_cast <int32_t> (ev.portev_events), this->_log);
 						} break;
 					}
 				}
