@@ -164,10 +164,10 @@ namespace awh {
 			 * выдача не зависит от того, как текст нарезан на куски при подаче
 			 *
 			 * @warning Заводится чтение по частям, и построения, ещё не заведённые -
-			 *          многострочные простые значения и поточные построения, растянутые
-			 *          на многие строки, - отвечают отказом, а не молчаливым разбором
+			 *          составные имена пар, - отвечают отказом, а не молчаливым разбором
 			 *          наугад: молчаливый разбор выдал бы дерево, исходному тексту не
-			 *          отвечающее
+			 *          отвечающее. Имя, само построением являющееся, нуждается в дереве, и
+			 *          заводится оно вместе с держащим документ целиком
 			 *
 			 * @note Ссылки чтением не раскрываются: событие ссылки выдаётся как есть, а
 			 *       раскрытие её есть забота держащего документ целиком. Потоковое чтение
@@ -180,9 +180,8 @@ namespace awh {
 			 * only when a line is read in full and can no longer grow. Whereby the issuance
 			 * does not depend on how the text is cut into the chunks at the feeding
 			 * @warning The reading is being created by the parts, and the constructions not yet created —
-			 *          the multiline plain scalars and the flow constructions stretched over many lines —
-			 *          answer with a refusal rather than with a silent parsing at random: a silent parsing
-			 *          would issue a tree not corresponding to the source text
+			 *          the complex keys of the pairs — answer with a refusal rather than with a silent parsing
+			 *          at random: a silent parsing would issue a tree not corresponding to the source text
 			 * @note The aliases are not expanded by the reading: an event of an alias is issued as it is,
 			 *       and the expansion of it is the concern of the one holding a document in full
 			 *
@@ -483,6 +482,22 @@ namespace awh {
 					unordered_set <string> _anchors;
 					// Сокращения меток типов, объявленные директивами документа
 					unordered_map <string, string> _handles;
+					/**
+					 * Признак того, что собирается простое значение, могущее прирасти
+					 *
+					 * @note Простое значение, добежавшее до конца строки, вправе продолжиться
+					 *       строкою ниже, и оттого выдача его откладывается до строки той:
+					 *       выдать его сразу значило бы выдать половину значения
+					 */
+					bool _plaining;
+					// Собираемое содержимое простого значения
+					string _plain;
+					// Количество пустых строк, содержимого ещё не дождавшихся
+					size_t _folds;
+					// Отступ, который обязано превышать продолжение простого значения
+					uint32_t _required;
+					// Положение начала простого значения в исходном тексте
+					location_t _origin;
 					// Стопа открытых поточных построений
 					vector <bracket_t> _flow;
 					// Состояние разбора поточного построения
@@ -893,6 +908,67 @@ namespace awh {
 					 * \~
 					 */
 					bool flowing(const string_view line, size_t & offset) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод откладывания выдачи простого значения
+					 *
+					 * @details Простое значение, добежавшее до конца строки, вправе
+					 * продолжиться строкою ниже, и знать о том сейчас нечем: узнаётся это лишь
+					 * отступом строки следующей. Выдача оттого откладывается до неё
+					 *
+					 * @param text   содержимое простого значения
+					 * @param column положение значения в разбираемой строке
+					 * @return       признак успешного откладывания выдачи
+					 *
+					 * \~english
+					 * @brief Method of the postponement of the issuance of a plain scalar
+					 * @details A plain scalar which has run to the end of a line is entitled to
+					 * continue on the line below, and there is nothing to know it by now: it is learned
+					 * only by the indentation of the next line. The issuance is therefore postponed until it
+					 * @param text content of the plain scalar
+					 * @param column position of the value in the line being parsed
+					 * @return sign of the successful postponement of the issuance
+					 *
+					 * \~
+					 */
+					bool deferred(const string & text, const size_t column) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод выдачи собранного простого значения
+					 *
+					 * @return признак успешной выдачи значения
+					 *
+					 * \~english
+					 * @brief Method of the issuance of an assembled plain scalar
+					 * @return sign of the successful issuance of the value
+					 *
+					 * \~
+					 */
+					bool settle() noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод присоединения очередной строки к простому значению
+					 *
+					 * @details Строка присоединяется, покуда отступ её глубже отступа
+					 * построения, значение объемлющего; строка мельче отступом значение
+					 * завершает и разбирается затем обычным порядком
+					 *
+					 * @param line     присоединяемая строка
+					 * @param attached признак присоединения строки к простому значению
+					 * @return         признак успешного присоединения строки
+					 *
+					 * \~english
+					 * @brief Method of the attaching of the next line to a plain scalar
+					 * @details A line is attached as long as its indentation is deeper than the indentation
+					 * of the construction enclosing the value; a line with a smaller indentation terminates the value
+					 * and is then parsed by the usual order
+					 * @param line line being attached
+					 * @param attached sign of the attaching of the line to the plain scalar
+					 * @return sign of the successful attaching of the line
+					 *
+					 * \~
+					 */
+					bool plaining(const string_view line, bool & attached) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод разбора значения внутри поточного построения

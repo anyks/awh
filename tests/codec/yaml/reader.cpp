@@ -508,6 +508,16 @@ TEST(CodecYamlReader, Chunking) {
 		"a: [ # сбоку\n  1, # ещё\n  2\n]\n",
 		"a: [&я 1, *я]\n",
 		"a: [\n  1,\n  2\n",
+		"key: длинное\n  продолжение\nnext: 1\n",
+		"key:\n  первая\n  вторая\n",
+		"key: первая\n\n  вторая\n",
+		"- один\n  продолжение\n- два\n",
+		"a:\n  - один\n    продолжение\n  - два\n",
+		"key: первая\n  вторая # сбоку\nnext: 1\n",
+		"просто строка\n  продолжение\n",
+		"key: одна\n\n\nnext: 1\n",
+		"key: первая\n  вторая: 1\n",
+		"key: первая\n  - один\n",
 		"a: &я 1\nb: *я\n",
 		"a: &я\n  x: 1\nb: *я\n",
 		"- &я один\n- *я\n",
@@ -1136,4 +1146,146 @@ TEST(CodecYamlReader, FlowLines) {
 		"STREAM_START\nDOCUMENT_START\nMAPPING_START\n"
 		"SCALAR «a»\nSEQUENCE_START\nSCALAR «1» <tag:yaml.org,2002:str>\nSEQUENCE_END\n"
 		"MAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
+}
+/**
+ * @brief Проверка разбора простых значений, на многие строки растянутых
+ *
+ * @details Простое значение, добежавшее до конца строки, вправе продолжиться строкою
+ * ниже, и знать о том по самой строке нечем: узнаётся это лишь отступом строки
+ * следующей. Оттого выдача всякого такого значения откладывается до неё
+ *
+ * @note Отступ, продолжение задающий, берётся у построения, значение объемлющего, а не
+ *       у строки, в которой значение началось: запись `ключ:` со значением строкою ниже
+ *       ставит продолжение на тот же отступ, что и начало
+ *
+ */
+TEST(CodecYamlReader, PlainLines) {
+	// Выполняем проверку значения, продолженного строкою ниже
+	ASSERT_EQ(events("key: длинное\n  продолжение\nnext: 1\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\n"
+		"SCALAR «key»\nSCALAR «длинное продолжение»\nSCALAR «next»\nSCALAR «1»\n"
+		"MAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
+	// Выполняем проверку значения, целиком стоящего под именем своей пары
+	ASSERT_EQ(events("key:\n  первая\n  вторая\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\n"
+		"SCALAR «key»\nSCALAR «первая вторая»\n"
+		"MAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
+	/**
+	 * Выполняем проверку пустой строки внутри значения
+	 *
+	 * @note Свёртка описанием задана так: перевод строки один обращается пробелом, а
+	 *       каждый следующий остаётся переводом
+	 */
+	ASSERT_EQ(events("key: первая\n\n  вторая\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\n"
+		"SCALAR «key»\nSCALAR «первая\nвторая»\n"
+		"MAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
+	/**
+	 * Выполняем проверку хвостовых пустых строк значения
+	 *
+	 * @note Пустые строки, содержимого так и не дождавшиеся, пропадают: перевод строки
+	 *       обращается содержимым лишь приходом содержимого за ним
+	 */
+	ASSERT_EQ(events("key: одна\n\n\nnext: 1\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\n"
+		"SCALAR «key»\nSCALAR «одна»\nSCALAR «next»\nSCALAR «1»\n"
+		"MAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
+	// Выполняем проверку значения перечня, продолженного строкою ниже
+	ASSERT_EQ(events("- один\n  продолжение\n- два\n"),
+		"STREAM_START\nDOCUMENT_START\nSEQUENCE_START\n"
+		"SCALAR «один продолжение»\nSCALAR «два»\n"
+		"SEQUENCE_END\nDOCUMENT_END\nSTREAM_END\n");
+	// Выполняем проверку значения вложенного перечня, продолженного строкою ниже
+	ASSERT_EQ(events("a:\n  - один\n    продолжение\n  - два\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\n"
+		"SCALAR «a»\nSEQUENCE_START\nSCALAR «один продолжение»\nSCALAR «два»\nSEQUENCE_END\n"
+		"MAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
+	// Выполняем проверку содержимого документа, продолженного строкою ниже
+	ASSERT_EQ(events("просто строка\n  продолжение\n"),
+		"STREAM_START\nDOCUMENT_START\n"
+		"SCALAR «просто строка продолжение»\n"
+		"DOCUMENT_END\nSTREAM_END\n");
+	/**
+	 * Выполняем проверку примечания, значение завершающего
+	 *
+	 * @note Примечание значение завершает: описание примечаний внутри значения не знает
+	 *       вовсе. Выдаётся оно за значением, которым завершено
+	 */
+	{
+		// Настройки разбора текста
+		yaml::reader_t::settings_t settings;
+		// Устанавливаем признак выдачи примечаний отдельным событием
+		settings.emitComments = true;
+		// Объект потокового чтения текста
+		yaml::reader_t reader(settings);
+		// Выполняем проверку разбора значения, примечанием завершённого
+		ASSERT_TRUE(reader.feed("key: первая\n  вторая # сбоку\nnext: 1\n"));
+		// Собираемый ряд названий событий разбора
+		string result;
+		/**
+		 * Выполняем перебор всех собранных событий разбора
+		 */
+		while(reader.next()){
+			// Выполняем запись названия очередного события
+			result.append(yaml::name(reader.event()));
+			/**
+			 * Если событие несёт скалярное значение либо примечание
+			 */
+			if((reader.event() == yaml::event_t::SCALAR) || (reader.event() == yaml::event_t::COMMENT))
+				// Выполняем запись содержимого события
+				result.append(" «").append(reader.value().text).append("»");
+			// Выполняем запись разделителя событий
+			result.append("\n");
+		}
+		// Выполняем проверку выдачи значения прежде примечания, его завершившего
+		ASSERT_EQ(result,
+			"STREAM_START\nDOCUMENT_START\nMAPPING_START\n"
+			"SCALAR «key»\nSCALAR «первая вторая»\nCOMMENT «сбоку»\nSCALAR «next»\nSCALAR «1»\n"
+			"MAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
+	}
+	/**
+	 * Выполняем проверку положения значения, на многие строки растянутого
+	 *
+	 * @note Событие ставится там, где значение окончилось, а стоит оно там, где началось:
+	 *       потребителю указывать надлежит на начало записи, а не на конец её
+	 */
+	{
+		// Объект потокового чтения текста
+		yaml::reader_t reader;
+		// Выполняем проверку разбора значения, на две строки растянутого
+		ASSERT_TRUE(reader.feed("key: длинное\n  продолжение\n"));
+		/**
+		 * Выполняем перебор событий разбора до значения пары
+		 */
+		while(reader.next() && (reader.value().text.compare("длинное продолжение") != 0));
+		// Выполняем проверку строки, где значение началось
+		ASSERT_EQ(reader.value().location.line, 1u);
+		// Выполняем проверку положения начала значения в строке
+		ASSERT_EQ(reader.value().location.column, 6u);
+	}
+	/**
+	 * Выполняем проверку отказа пары внутри простого значения
+	 *
+	 * @note Простое значение разделителя имени пары нести не вправе вовсе: неведомо, пара
+	 *       ли это внутри значения либо значение с двоеточием
+	 */
+	{
+		// Объект потокового чтения текста
+		yaml::reader_t reader;
+		// Выполняем проверку отказа разбора пары внутри значения
+		ASSERT_FALSE(reader.feed("key: первая\n  вторая: 1\n"));
+		// Выполняем проверку кода ошибки разбора
+		ASSERT_EQ(reader.error(), yaml::error_t::INVALID_CHARACTER);
+	}
+	/**
+	 * Выполняем проверку отказа перечня внутри простого значения
+	 */
+	{
+		// Объект потокового чтения текста
+		yaml::reader_t reader;
+		// Выполняем проверку отказа разбора перечня внутри значения
+		ASSERT_FALSE(reader.feed("key: первая\n  - один\n"));
+		// Выполняем проверку кода ошибки разбора
+		ASSERT_EQ(reader.error(), yaml::error_t::INVALID_CHARACTER);
+	}
 }
