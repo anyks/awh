@@ -1002,6 +1002,33 @@ namespace awh {
 				size_t masking(const std::vector <address_t> & leaders, const program_t & program) noexcept;
 				/**
 				 * \~russian
+				 * @brief Метод заведения таблицы соответствия байта номеру ветви выбора
+				 *
+				 * @details Таблица несёт номер ветви, значением байта называемой,
+				 *          единицей начинаемый; нуль означает непринадлежность
+				 *          байта всякой ветви. Она даёт разбор цепочки ветвей,
+				 *          класса́ми символов начинаемых: байт текста называет
+				 *          ветвь единственную, отчего перебор ветвей не порождается
+				 *          вовсе, а сопоставитель остаётся на метках отказа.
+				 *
+				 * @param routes таблица соответствия байта номеру ветви выбора
+				 * @return       номер заведённой таблицы в обстановке исполнения
+				 *
+				 * \~english
+				 * @brief Method of introducing a table mapping a byte to the number of an alternation branch
+				 * @details The table holds the number of the branch named by the value of the byte,
+				 *          starting from one; zero means the byte belongs to no branch at all. It
+				 *          provides the dispatch of a chain of branches led by character classes:
+				 *          the byte of the text names a single branch, which is why no enumeration
+				 *          of the branches is generated at all, and the matcher stays on failure labels.
+				 * @param routes table mapping a byte to the number of an alternation branch
+				 * @return       number of the introduced table in the execution context
+				 *
+				 * \~
+				 */
+				size_t routing(const std::vector <uint8_t> & routes) noexcept;
+				/**
+				 * \~russian
 				 * @brief Метод заведения приметы привязки к позиции в тексте
 				 *
 				 * @details Примета несёт тип привязки и набор режимов компиляции

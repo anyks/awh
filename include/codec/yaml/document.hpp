@@ -243,6 +243,16 @@ namespace awh {
 						 * ссылки, и записи в тексте за ним не стоит
 						 */
 						uint32_t origin;
+						/**
+						 * Смещение за концом записи узла в удержанном исходном тексте
+						 *
+						 * @details Границею служит начало записи следующего узла обхода: всякий
+						 * байт текста принадлежит ровно одному узлу, и примечания, между соседями
+						 * стоящие, достаются тому, над кем они стоят. Держится граница полем, а не
+						 * считается по соседу: снятие узла соседа сдвинуло бы, и байты снятого
+						 * достались бы тому, кто стоял над ним
+						 */
+						uint32_t edge;
 						// Смещение имени пары в хранилище знаков
 						uint32_t offset;
 						// Длина имени пары в байтах
@@ -380,7 +390,7 @@ namespace awh {
 						 */
 						Node() noexcept :
 						 type(type_t::UNDEFINED), style(style_t::PLAIN), keyed(false), touched(false),
-						 origin(NO_ORIGIN), offset(0), named(0), props(0), content{0, 1}, number{0, 0} {}
+						 origin(NO_ORIGIN), edge(NO_ORIGIN), offset(0), named(0), props(0), content{0, 1}, number{0, 0} {}
 					} node_t;
 				public:
 					/**
@@ -1081,6 +1091,132 @@ namespace awh {
 					void spread() noexcept;
 					/**
 					 * \~russian
+					 * @brief Метод пометки узла и предков его правлеными
+					 *
+					 * @param index номер помечаемого узла
+					 *
+					 * \~english
+					 * @brief Method of the marking of a node and of its ancestors as edited
+					 * @param index index of the node being marked
+					 *
+					 * \~
+					 */
+					void mark(const uint32_t index) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод записи имени и значения узла в хранилище знаков
+					 *
+					 * @details Вид значения решается тем же телом, каким решает его разбор: запись
+					 * кладётся в хранилище, а разрешение да сужение числа зовутся над нею.
+					 * Иначе два свода правил разошлись бы, и число, правкой поставленное, читалось
+					 * бы иначе, нежели то же число, текстом прочитанное
+					 *
+					 * @param index номер записываемого узла
+					 * @param name  имя пары, пусто у значения перечня
+					 * @param text  запись значения, исходным текстом данная
+					 * @param style ограда, какою обносится значение
+					 *
+					 * \~english
+					 * @brief Method of the writing of the name and of the value of a node into the storage of the characters
+					 * @param index index of the node being written
+					 * @param name name of the pair, empty for a value of a sequence
+					 * @param text record of the value as given by the source text
+					 * @param style quoting by which the value is enclosed
+					 *
+					 * \~
+					 */
+					void inscribe(const uint32_t index, const string_view name, const string_view text, const style_t style) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод заведения узла последним ребёнком вместилища
+					 *
+					 * @param owner номер вместилища, ребёнок какого заводится
+					 * @return      номер заведённого узла
+					 *
+					 * \~english
+					 * @brief Method of the creation of a node as the last child of a container
+					 * @param owner index of the container whose child is being created
+					 * @return index of the created node
+					 *
+					 * \~
+					 */
+					uint32_t implant(const uint32_t owner) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод снятия узла вместе с поддеревом его
+					 *
+					 * @param index номер снимаемого узла
+					 * @return      признак успешного снятия узла
+					 *
+					 * \~english
+					 * @brief Method of the removal of a node together with its subtree
+					 * @param index index of the node being removed
+					 * @return sign of the successful removal of the node
+					 *
+					 * \~
+					 */
+					bool extract(const uint32_t index) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод розыска узла по пути к нему с заведением недостающего
+					 *
+					 * @param path   путь к разыскиваемому узлу
+					 * @param index  номер найденного либо заведённого узла
+					 * @param create признак заведения узла, розыском не найденного
+					 * @return       признак успешного розыска узла
+					 *
+					 * \~english
+					 * @brief Method of the search of a node by the path to it with the creation of a missing one
+					 * @param path path to the node being sought
+					 * @param index index of the found or created node
+					 * @param create sign of the creation of a node not found by the search
+					 * @return sign of the successful search of the node
+					 *
+					 * \~
+					 */
+					bool place(const string & path, uint32_t & index, const bool create) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод установки значения узла записью его без ограды
+					 *
+					 * @note Ограда не решается содержимым, а не ставится вовсе: запись числа,
+					 *       логического значения да пустоты обязана вернуться обратным чтением тем
+					 *       же видом, а ограда обратила бы её в строку
+					 *
+					 * @param path путь к устанавливаемому узлу
+					 * @param text устанавливаемая запись значения
+					 * @return     признак успешной установки значения
+					 *
+					 * \~english
+					 * @brief Method of the setting of a value of a node by its record without the quoting
+					 * @param path path to the node being set
+					 * @param text record of the value being set
+					 * @return sign of the successful setting of the value
+					 *
+					 * \~
+					 */
+					bool settle(const string & path, const string_view text) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод установки значения узла заданною оградою
+					 *
+					 * @param index номер устанавливаемого узла
+					 * @param text  устанавливаемая запись значения
+					 * @param style ограда, какою обносится значение
+					 * @return      признак успешной установки значения
+					 *
+					 * \~english
+					 * @brief Method of the setting of a value of a node by a given quoting
+					 * @param index index of the node being set
+					 * @param text record of the value being set
+					 * @param style quoting by which the value is enclosed
+					 * @return sign of the successful setting of the value
+					 *
+					 * \~
+					 */
+					bool assign(const uint32_t index, const string_view text, const style_t style) noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод записи узла вместе с примечаниями, ему предпосланными
 					 *
 					 * @details Узел, правкой тронутый, собирается заново, а примечания над ним
@@ -1166,6 +1302,125 @@ namespace awh {
 					 * \~
 					 */
 					bool touch(const value_t & value) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод установки строкового значения по пути к нему
+					 *
+					 * @details Ограда выбирается содержимым, коли не задана прямо: запись `12`,
+					 * значением строковым поставленная, ограду получает - иначе обратное чтение
+					 * вернуло бы её числом. Путь ведётся от корня первого документа, части его
+					 * делятся косою чертой, а часть внутри перечня есть номер значения
+					 *
+					 * @note Узла по пути может и не быть: недостающая пара отображения заводится
+					 *       последнею, а значение перечня добавляется концом его. Части пути,
+					 *       кроме последней, обязаны быть налицо - вместилищ по пути не заводится
+					 *
+					 * @param path  путь к устанавливаемому узлу
+					 * @param value устанавливаемое строковое значение
+					 * @param style ограда, какою обносится значение
+					 * @return      признак успешной установки значения
+					 *
+					 * \~english
+					 * @brief Method of the setting of a string value by the path to it
+					 * @param path path to the node being set
+					 * @param value string value being set
+					 * @param style quoting by which the value is enclosed
+					 * @return sign of the successful setting of the value
+					 *
+					 * \~
+					 */
+					bool set(const string & path, const string_view value, const style_t style = style_t::PLAIN) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод установки логического значения по пути к нему
+					 *
+					 * @param path  путь к устанавливаемому узлу
+					 * @param value устанавливаемое логическое значение
+					 * @return      признак успешной установки значения
+					 *
+					 * \~english
+					 * @brief Method of the setting of a boolean value by the path to it
+					 * @param path path to the node being set
+					 * @param value boolean value being set
+					 * @return sign of the successful setting of the value
+					 *
+					 * \~
+					 */
+					bool set(const string & path, const bool value) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод установки целого значения по пути к нему
+					 *
+					 * @param path  путь к устанавливаемому узлу
+					 * @param value устанавливаемое целое значение
+					 * @return      признак успешной установки значения
+					 *
+					 * \~english
+					 * @brief Method of the setting of an integer value by the path to it
+					 * @param path path to the node being set
+					 * @param value integer value being set
+					 * @return sign of the successful setting of the value
+					 *
+					 * \~
+					 */
+					bool set(const string & path, const int64_t value) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод установки дробного значения по пути к нему
+					 *
+					 * @note Записывается оно семнадцатью значащими разрядами - столько нужно,
+					 *       чтобы всякое число двойной точности вернулось обратным чтением тем же
+					 *
+					 * @param path  путь к устанавливаемому узлу
+					 * @param value устанавливаемое дробное значение
+					 * @return      признак успешной установки значения
+					 *
+					 * \~english
+					 * @brief Method of the setting of a floating point value by the path to it
+					 * @param path path to the node being set
+					 * @param value floating point value being set
+					 * @return sign of the successful setting of the value
+					 *
+					 * \~
+					 */
+					bool set(const string & path, const double value) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод установки пустого значения по пути к нему
+					 *
+					 * @note Пустое значение от снятия узла отлично: пара остаётся налицо, а
+					 *       значения при ней нет
+					 *
+					 * @param path путь к устанавливаемому узлу
+					 * @return     признак успешной установки значения
+					 *
+					 * \~english
+					 * @brief Method of the setting of an empty value by the path to it
+					 * @param path path to the node being set
+					 * @return sign of the successful setting of the value
+					 *
+					 * \~
+					 */
+					bool reset(const string & path) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод снятия узла вместе с поддеревом его
+					 *
+					 * @details Снимается узел целиком - вместе с именем пары, значением её и всем
+					 * поддеревом. Записи его в исходном тексте достаются небытию: перезапись их не
+					 * переносит, а примечания, над узлом стоявшие, уходят вместе с ним
+					 *
+					 * @param path путь к снимаемому узлу
+					 * @return     признак успешного снятия узла
+					 *
+					 * \~english
+					 * @brief Method of the removal of a node together with its subtree
+					 * @param path path to the node being removed
+					 * @return sign of the successful removal of the node
+					 *
+					 * \~
+					 */
+					bool erase(const string & path) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод сборки текста по дереву документа заданными настройками

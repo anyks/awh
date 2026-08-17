@@ -876,6 +876,27 @@ namespace awh {
 				string _iface;
 				/**
 				 * \~russian
+				 * Предел числа переходов, каким рассылается просьба обнаружения
+				 *
+				 * @note Умолчанием стоит своя сеть: устройство доступа лежит на ней же,
+				 * а разослать просьбу шире значило бы беспокоить чужие. Настройка нужна
+				 * тем, кто держит устройство на самой машине - поддельному шлюзу
+				 * проверок, к примеру: предел LOOPBACK не выпускает просьбу наружу вовсе,
+				 * и обмен идёт по любому устройству машины, не только по петле
+				 *
+				 * \~english
+				 * Limit of the number of the hops with which the request of the discovery is multicast
+				 * @note The default is its own network: the device of the access lies on it,
+				 * and to multicast the request wider would mean disturbing the strangers. The setting is needed
+				 * by those who keep the device on the machine itself — by the fake gateway of the tests,
+				 * for example: the limit LOOPBACK does not release the request outside at all,
+				 * and the exchange goes by any device of the machine, not only by the loopback
+				 *
+				 * \~
+				 */
+				event::hops_t _hops;
+				/**
+				 * \~russian
 				 * Сетевое устройство, взятое из маршрута до внешней сети
 				 *
 				 * @note Держится отдельно от заданного настройкой затем, что настройка
@@ -1785,6 +1806,37 @@ namespace awh {
 				 * \~
 				 */
 				void setIface(string_view iface) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод установки предела числа переходов рассылки обнаружения
+				 *
+				 * @details Умолчанием просьба обнаружения рассылается пределом NETWORK -
+				 * своей сетью: устройство доступа лежит на ней же, а рассылать шире
+				 * значило бы беспокоить чужие сети
+				 *
+				 * @note Предел LOOPBACK не выпускает просьбу за пределы машины вовсе,
+				 * оставляя её доступной всякому устройству этой же машины. Годится тому,
+				 * кто держит устройство доступа на самой машине - проверкам с поддельным
+				 * шлюзом, к примеру, - и снимает у них нужду вести обмен непременно
+				 * петлёй: рассылку через петлю доставляют не все системы
+				 *
+				 * @param hops предел числа переходов для установки
+				 *
+				 * \~english
+				 * @brief Method of setting the limit of the number of the hops of the multicast of the discovery
+				 * @details By default the request of the discovery is multicast with the limit NETWORK —
+				 * with its own network: the device of the access lies on it, and to multicast wider
+				 * would mean disturbing the strange networks
+				 * @note The limit LOOPBACK does not release the request outside the machine at all,
+				 * leaving it available to every device of this same machine. It suits the one who
+				 * keeps the device of the access on the machine itself — the tests with a fake
+				 * gateway, for example — and relieves them of the need to conduct the exchange necessarily
+				 * by the loopback: the multicast through the loopback is not delivered by all the systems
+				 * @param hops limit of the number of the hops to be set
+				 *
+				 * \~
+				 */
+				void setHops(const event::hops_t hops) noexcept;
 			public:
 				/**
 				 * \~russian

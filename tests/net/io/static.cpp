@@ -20226,3 +20226,162 @@ TEST_F(IoFixture, IoSnapshotRefusalTest){
 	this->_io->destroy(pair[0]);
 	this->_io->destroy(pair[1]);
 }
+
+/**
+ * @brief Проверка передачи слушающего события чужому процессу
+ *
+ * @details Снимок снимается с УЖЕ ЗАФИКСИРОВАННОГО слушающего события и уезжает
+ *          переносчиком в дочерний процесс. Тот поднимает из снимка своё событие,
+ *          минуя фиксацию, и обязан принять подключение - то самое, ради чего
+ *          передача и заведена: работник получает готовый слушающий описатель,
+ *          а не заводит второй на том же порту
+ *
+ * @note Проверка идёт ИМЕННО принятием подключения, а не успехом самого подъёма:
+ *       поднятое событие с негодным описателем отчиталось бы успехом молча
+ *
+ */
+TEST_F(IoFixture, IoSnapshotHandoffTest){
+	// Выполняем инициализацию сетевого движка
+	ASSERT_TRUE(this->_io->initialize());
+	// Создаём пару обмена, которой поедет описатель
+	auto pair = this->_io->events(awh::event::family_t::UDS, awh::event::type_t::STREAM, awh::event::protocol_t::NONE);
+	// Проверяем, что оба идентификатора пары созданы
+	ASSERT_GT(pair[0], 0);
+	ASSERT_GT(pair[1], 0);
+	// Получаем порт, на котором слушает передаваемое событие
+	const uint16_t bind = port();
+	// Создаём слушающее событие, снимок с которого поедет работнику
+	awh::event::id_t server = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+	// Проверяем, что идентификатор события создан
+	ASSERT_GT(server, 0);
+	// Устанавливаем опции слушающего события
+	ASSERT_TRUE(this->_io->setOptions(server, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK));
+	// Устанавливаем адрес привязки
+	ASSERT_TRUE(this->_io->setAddress(server, awh::event::address_t::IPV4, "127.0.0.1"));
+	// Устанавливаем порт привязки
+	ASSERT_TRUE(this->_io->setSourcePort(server, bind));
+	// Выполняем фиксацию настроек слушающего события
+	ASSERT_TRUE(this->_io->commit(server));
+	// Устанавливаем идентификатор процесса
+	pid_t pid = -1;
+	/**
+	 * Определяем тип процесса
+	 */
+	switch((pid = ::fork())){
+		// Если процесс создать не удалось
+		case -1:
+			// Прерываем проверку: без второго процесса передавать некому
+			FAIL() << "Дочерний процесс создать не удалось";
+		break;
+		// Если процесс является дочерним
+		case 0: {
+			// Признак принятого подключения
+			bool accepted = false;
+			// Признак удавшегося подъёма события из снимка
+			bool restored = false;
+			/**
+			 * Ставим работнику предел по времени
+			 *
+			 * @note Опрос событий ждёт их без срока, и не пришедшее подключение
+			 *       обернулось бы вечным ожиданием вместо отказа проверки
+			 */
+			::alarm(15);
+			// Выполняем переинициализацию сетевого движка
+			this->_io->reinitialize();
+			// Уничтожаем отправляющий конец пары: работнику нужен лишь приёмный
+			this->_io->destroy(pair[1]);
+			// Создаём событие, которое примет снимок
+			const awh::event::id_t target = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+			// Устанавливаем функцию обратного вызова на получение статуса поднятого события
+			this->_io->on(target, [&accepted](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+				// Если подключение принято, отмечаем это
+				if(status == awh::event::status_t::ACCEPTED)
+					// Отмечаем принятое подключение
+					accepted = true;
+			});
+			// Устанавливаем функцию обратного вызова на получение снимка от переносчика
+			this->_io->on(pair[0], [&restored, target, this](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+				/**
+				 * Поднимаем событие из снимка
+				 *
+				 * @note Фиксация здесь НЕ зовётся намеренно: описатель уже заведён чужим
+				 *       процессом, и заводить второй означало бы занимать порт повторно
+				 */
+				restored = this->_io->restore(target, data, size);
+				/**
+				 * Запускаем поднятое событие
+				 *
+				 * @note Подъём заменяет собой фиксацию, но НЕ запуск: принимать подключения
+				 *       событие начинает тем же обращением, что и заведённое своими руками
+				 */
+				if(restored)
+					// Выполняем запуск поднятого события
+					restored = this->_io->launch(target);
+			});
+			// Выполняем фиксацию настроек приёмного конца пары
+			this->_io->commit(pair[0]);
+			// Выполняем запуск приёмного конца пары
+			this->_io->launch(pair[0]);
+			/**
+			 * Выполняем опрос событий, пока подключение не принято
+			 */
+			while(!accepted && this->_io->poll());
+			// Выходим из процесса с итогом проверки: принятое подключение и есть итог
+			::_exit((restored && accepted) ? EXIT_SUCCESS : EXIT_FAILURE);
+		} break;
+		// Если процесс является родительским
+		default: {
+			// Буфер снятого снимка
+			std::vector <uint8_t> snapshot;
+			// Уничтожаем приёмный конец пары: он принадлежит работнику
+			ASSERT_TRUE(this->_io->destroy(pair[0]));
+			// Выполняем фиксацию настроек отправляющего конца пары
+			ASSERT_TRUE(this->_io->commit(pair[1]));
+			// Снимаем снимок слушающего события для передачи работнику
+			ASSERT_TRUE(this->_io->snapshot(server, pair[1], snapshot));
+			// Проверяем, что снимок не пуст
+			ASSERT_FALSE(snapshot.empty());
+			// Отправляем снимок работнику его же переносчиком
+			ASSERT_TRUE(this->_io->send(pair[1], reinterpret_cast <const char *> (snapshot.data()), snapshot.size()));
+			/**
+			 * Заводим клиента, который постучится в переданный работнику порт
+			 *
+			 * @note Стучаться надлежит ИМЕННО отсюда: слушающий описатель у работника
+			 *       тот же самый, и принятое им подключение доказывает, что описатель
+			 *       доехал живым, а не просто опознался
+			 */
+			const awh::event::id_t client = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+			// Проверяем, что идентификатор клиента создан
+			ASSERT_GT(client, 0);
+			// Устанавливаем опции клиента
+			ASSERT_TRUE(this->_io->setOptions(client, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+			// Устанавливаем адрес сервера назначения
+			ASSERT_TRUE(this->_io->setTarget(client, "127.0.0.1"));
+			// Устанавливаем порт сервера назначения
+			ASSERT_TRUE(this->_io->setTargetPort(client, bind));
+			// Выполняем фиксацию настроек клиента
+			ASSERT_TRUE(this->_io->commit(client));
+			// Выполняем запуск клиента
+			ASSERT_TRUE(this->_io->launch(client));
+			// Состояние ожидания работника
+			int32_t state = 0;
+			/**
+			 * Ожидаем завершения работника
+			 *
+			 * @note Опрос событий здесь НЕ нужен: рукопожатие по петле ядро доводит
+			 *       само, и подключение ложится в очередь слушающего описателя, каким
+			 *       бы процессом тот ни опрашивался
+			 */
+			ASSERT_EQ(pid, ::waitpid(pid, &state, 0));
+			// Уничтожаем клиента: подключение своё дело сделало
+			this->_io->destroy(client);
+			// Проверяем, что работник завершился сам, а не по сигналу
+			ASSERT_TRUE(WIFEXITED(state));
+			// Проверяем, что работник принял подключение поднятым событием
+			ASSERT_EQ(EXIT_SUCCESS, WEXITSTATUS(state));
+			// Уничтожаем заведённые события
+			this->_io->destroy(server);
+			this->_io->destroy(pair[1]);
+		} break;
+	}
+}

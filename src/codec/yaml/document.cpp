@@ -397,6 +397,17 @@ bool awh::codec::yaml::Document::digest(reader_t & reader) noexcept {
 	 */
 	const auto heading = [&]() noexcept -> void {
 		/**
+		 * Если событие собрано внутри поточного построения
+		 *
+		 * @note Записи поточного построения строкою не отделены: их стоит на строке сколько
+		 *       угодно, и привязать узел к отрезку строк нельзя. Дословный перенос такого
+		 *       узла вырезал бы строку целиком - вместе со скобками соседей. Нашёл это
+		 *       ворошитель правкой дерева
+		 */
+		if(reader.value().flow)
+			// Выходим из запоминания начала записи
+			return;
+		/**
 		 * Если начало записи следующего узла ещё не запомнено
 		 */
 		if(origin == NO_ORIGIN)
@@ -428,8 +439,9 @@ bool awh::codec::yaml::Document::digest(reader_t & reader) noexcept {
 		 *       написание `имя:` со значением строкою ниже есть одна запись, и делить её
 		 *       надвое нельзя
 		 */
-		node.origin = ((!levels.empty() && levels.back().mapping &&
-		 (levels.back().origin != NO_ORIGIN)) ? levels.back().origin : origin);
+		node.origin = (reader.value().flow ? NO_ORIGIN :
+		 ((!levels.empty() && levels.back().mapping &&
+		 (levels.back().origin != NO_ORIGIN)) ? levels.back().origin : origin));
 		// Выполняем сброс начала записи следующего узла
 		origin = NO_ORIGIN;
 		/**
@@ -660,7 +672,8 @@ bool awh::codec::yaml::Document::digest(reader_t & reader) noexcept {
 					// Выполняем сброс ожидания имени пары
 					levels.back().awaited = false;
 					// Запоминаем начало записи имени пары в удержанном исходном тексте
-					levels.back().origin = ((origin != NO_ORIGIN) ? origin : opening());
+					levels.back().origin = (reader.value().flow ? NO_ORIGIN :
+					 ((origin != NO_ORIGIN) ? origin : opening()));
 					// Выполняем сброс начала записи следующего узла
 					origin = NO_ORIGIN;
 					/**
@@ -1023,26 +1036,8 @@ uint32_t awh::codec::yaml::Document::bound(const uint32_t index) const noexcept 
 	if(index >= this->_nodes.size())
 		// Выводим смещение, записи в исходном тексте не имеющее
 		return NO_ORIGIN;
-	// Получаем номер узла, за поддеревом заданного следующего
-	uint32_t next = (index + this->_nodes.at(index).extent());
-	/**
-	 * Выполняем розыск следующего узла, запись в исходном тексте имеющего
-	 *
-	 * @note Узлы, раскрытием ссылки взятые, записи за собою не имеют, и границею служить
-	 *       не могут: розыск идёт до первого, у какого начало записи ведомо
-	 */
-	while(next < this->_nodes.size()){
-		/**
-		 * Если начало записи следующего узла ведомо
-		 */
-		if(this->_nodes.at(next).origin != NO_ORIGIN)
-			// Выводим начало записи следующего узла границею
-			return this->_nodes.at(next).origin;
-		// Выполняем переход к следующему узлу обхода
-		next++;
-	}
-	// Выводим конец удержанного текста границею
-	return static_cast <uint32_t> (this->_source.size());
+	// Выводим границу записи узла, разбором проставленную
+	return this->_nodes.at(index).edge;
 }
 /**
  * @brief Метод дословной записи пролёта соседних узлов исходными байтами
@@ -1157,6 +1152,8 @@ void awh::codec::yaml::Document::spread() noexcept {
 		return;
 	// Начало записи узла, прежде разобранного
 	uint32_t previous = 0;
+	// Конец удержанного исходного текста
+	const uint32_t ending = static_cast <uint32_t> (this->_source.size());
 	// Признак того, что узел, прежде разобранный, несёт блочное значение
 	bool blocked = false;
 	/**
@@ -1233,6 +1230,30 @@ void awh::codec::yaml::Document::spread() noexcept {
 		// Запоминаем признак того, что узел несёт блочное значение
 		blocked = ((node.style == style_t::LITERAL) || (node.style == style_t::FOLDED));
 	}
+	/**
+	 * Начала записей, с каждого места обхода вперёд ближайшие
+	 *
+	 * @note Узлы, раскрытием ссылки взятые, записи за собою не имеют и границею служить
+	 *       не могут: перечень этот отдаёт для всякого места ближайшее начало записи за
+	 *       ним, и розыск его сводится к одному обращению
+	 */
+	vector <uint32_t> nearest((this->_nodes.size() + 1), ending);
+	/**
+	 * Выполняем перебор всех узлов дерева документа с конца
+	 */
+	for(size_t i = this->_nodes.size(); i > 0; i--)
+		// Запоминаем ближайшее начало записи за очередным местом обхода
+		nearest.at(i - 1) = ((this->_nodes.at(i - 1).origin != NO_ORIGIN) ?
+		 this->_nodes.at(i - 1).origin : nearest.at(i));
+	/**
+	 * Выполняем перебор всех узлов дерева документа
+	 *
+	 * @note Границею записи узла служит начало записи узла, за поддеревом его стоящего:
+	 *       запись вместилища кончается там, где кончается запись последнего ребёнка его
+	 */
+	for(size_t i = 0; i < this->_nodes.size(); i++)
+		// Запоминаем границу записи очередного узла
+		this->_nodes.at(i).edge = nearest.at(i + this->_nodes.at(i).extent());
 }
 /**
  * @brief Метод получения начала собственной строки узла
@@ -1570,6 +1591,586 @@ string awh::codec::yaml::Document::dump(const writer_t::settings_t & settings) c
  *
  */
 /**
+ * @brief Метод пометки узла и предков его правлеными
+ *
+ * @param index номер помечаемого узла
+ *
+ */
+void awh::codec::yaml::Document::mark(const uint32_t index) noexcept {
+	/**
+	 * Выполняем перебор всех узлов, помечаемому предшествующих
+	 *
+	 * @note Указаний на родителя узел не несёт, и предки разыскиваются размахом поддерева:
+	 *       узел, чьё поддерево помечаемый накрывает, предком ему и является
+	 */
+	for(uint32_t i = 0; i <= index; i++){
+		/**
+		 * Если поддерево очередного узла помечаемый накрывает
+		 */
+		if((i + this->_nodes.at(i).extent()) > index)
+			// Запоминаем признак правки очередного узла
+			this->_nodes.at(i).touched = true;
+	}
+}
+/**
+ * @brief Метод записи имени и значения узла в хранилище знаков
+ *
+ * @param index номер записываемого узла
+ * @param name  имя пары, пусто у значения перечня
+ * @param text  запись значения, исходным текстом данная
+ * @param style ограда, какою обносится значение
+ *
+ */
+void awh::codec::yaml::Document::inscribe(const uint32_t index, const string_view name, const string_view text, const style_t style) noexcept {
+	// Получаем записываемый узел дерева документа
+	node_t & node = this->_nodes.at(index);
+	// Запоминаем смещение имени пары в хранилище знаков
+	node.offset = this->deposit(name);
+	// Запоминаем длину имени пары
+	node.named = static_cast <uint32_t> (name.size());
+	// Выполняем перенос записи значения в хранилище знаков
+	this->deposit(text);
+	// Запоминаем длину записи значения
+	node.length(static_cast <uint32_t> (text.size()));
+	// Запоминаем вид записи значения
+	node.style = style;
+	// Выполняем сброс разобранного числа значения
+	node.number_of(static_cast <int64_t> (0));
+	/**
+	 * Если значение обнесено оградою
+	 *
+	 * @note Ограда отменяет разрешение схемы: запись `12` в ограде есть строка, а не
+	 *       число, и разрешать её заново незачем
+	 */
+	if(style != style_t::PLAIN){
+		// Запоминаем вид строкового значения
+		node.type = type_t::STRING;
+		// Выходим из записи значения узла
+		return;
+	}
+	// Получаем вид значения, схемою разрешённый
+	type_t type = resolve(text, this->_settings.schema);
+	// Разобранное число значения
+	numeric_t number;
+	/**
+	 * Если значение является числом сборного вида
+	 */
+	if(static_cast <uint32_t> (type) & static_cast <uint32_t> (type_t::NUMBER)){
+		// Выполняем разбор записи числа к самому узкому вмещающему виду
+		const type_t narrowed = narrow(text, this->_settings.schema, number);
+		/**
+		 * Если разобрать запись числа удалось
+		 */
+		if(narrowed != type_t::UNDEFINED)
+			// Запоминаем вид разобранного числа
+			type = narrowed;
+	}
+	// Запоминаем вид значения узла
+	node.type = type;
+	/**
+	 * Если значение является числом родного вида
+	 */
+	if(static_cast <uint32_t> (type) & static_cast <uint32_t> (type_t::INT))
+		// Запоминаем разобранное число целым видом
+		node.number_of(number.integer);
+	/**
+	 * Если значение является числом дробного вида
+	 */
+	else if(static_cast <uint32_t> (type) & static_cast <uint32_t> (type_t::REAL))
+		// Запоминаем разобранное число дробным видом
+		node.number_of(number.real);
+	/**
+	 * Если значение является логическим
+	 */
+	else if(type == type_t::BOOL){
+		// Признак истинности логического значения
+		const bool truth = (!text.empty() && ((text.front() == 't') || (text.front() == 'T') ||
+		 (text.front() == 'y') || (text.front() == 'Y') || (text.compare("on") == 0) ||
+		 (text.compare("On") == 0) || (text.compare("ON") == 0)));
+		// Запоминаем разобранное логическое значение
+		node.number_of(static_cast <int64_t> (truth ? 1 : 0));
+	}
+}
+/**
+ * @brief Метод заведения узла последним ребёнком вместилища
+ *
+ * @param owner номер вместилища, ребёнок какого заводится
+ * @return      номер заведённого узла
+ *
+ */
+uint32_t awh::codec::yaml::Document::implant(const uint32_t owner) noexcept {
+	// Получаем место, куда становится заводимый узел
+	const uint32_t place = (owner + this->_nodes.at(owner).extent());
+	/**
+	 * Выполняем перебор всех узлов, вместилищу предшествующих
+	 *
+	 * @note Размах поддерева растёт у вместилища и у всех предков его: узел заводится
+	 *       внутри каждого из них
+	 */
+	for(uint32_t i = 0; i <= owner; i++){
+		/**
+		 * Если поддерево очередного узла вместилище накрывает
+		 */
+		if((i + this->_nodes.at(i).extent()) > owner)
+			// Запоминаем возросший размах поддерева очередного узла
+			this->_nodes.at(i).extent(this->_nodes.at(i).extent() + 1);
+	}
+	// Запоминаем возросшее количество детей вместилища
+	this->_nodes.at(owner).length(this->_nodes.at(owner).length() + 1);
+	/**
+	 * Выполняем перебор всех корней документов текста
+	 */
+	for(size_t i = 0; i < this->_roots.size(); i++){
+		/**
+		 * Если корень стоит за местом заводимого узла
+		 */
+		if(this->_roots.at(i) >= place)
+			// Запоминаем сдвинутый номер корня документа
+			this->_roots.at(i)++;
+	}
+	// Выполняем заведение узла на своём месте
+	this->_nodes.emplace(this->_nodes.begin() + place);
+	// Выводим номер заведённого узла
+	return place;
+}
+/**
+ * @brief Метод снятия узла вместе с поддеревом его
+ *
+ * @param index номер снимаемого узла
+ * @return      признак успешного снятия узла
+ *
+ */
+bool awh::codec::yaml::Document::extract(const uint32_t index) noexcept {
+	/**
+	 * Если узла с таким номером дерево не несёт
+	 */
+	if(index >= this->_nodes.size())
+		// Выводим признак неудачного снятия узла
+		return false;
+	// Получаем размах поддерева снимаемого узла
+	const uint32_t extent = this->_nodes.at(index).extent();
+	/**
+	 * Выполняем перебор всех узлов снимаемого поддерева
+	 */
+	for(uint32_t i = index; i < (index + extent); i++){
+		/**
+		 * Если узлу предпослана метка
+		 */
+		if((this->_nodes.at(i).props > 0) && (this->_props.at(this->_nodes.at(i).props - 1).anchored > 0)){
+			/**
+			 * Выполняем перебор всех узлов дерева документа
+			 *
+			 * @details Метка, снятием уходящая, оставила бы ссылки на себя без объявления, а
+			 *          ссылки эти держатся дословным переносом исходных байтов - раскрытие их
+			 *          дерево помнит, а запись `*метка` вернулась бы в перезапись как есть.
+			 *          Оттого дерево целиком объявляется правленым: раскрытия соберутся заново
+			 *          значениями своими, и ссылок в тексте не останется вовсе. Нашёл это
+			 *          ворошитель правкой дерева
+			 */
+			for(size_t j = 0; j < this->_nodes.size(); j++)
+				// Запоминаем признак правки очередного узла дерева
+				this->_nodes.at(j).touched = true;
+			// Выходим из перебора узлов снимаемого поддерева
+			break;
+		}
+	}
+	// Номер вместилища, снимаемому узлу принадлежащего
+	uint32_t owner = NO_ORIGIN;
+	/**
+	 * Выполняем перебор всех узлов, снимаемому предшествующих
+	 */
+	for(uint32_t i = 0; i < index; i++){
+		/**
+		 * Если поддерево очередного узла снимаемый накрывает
+		 */
+		if((i + this->_nodes.at(i).extent()) > index){
+			// Запоминаем убывший размах поддерева очередного узла
+			this->_nodes.at(i).extent(this->_nodes.at(i).extent() - extent);
+			// Запоминаем номер вместилища, снимаемому узлу принадлежащего
+			owner = i;
+		}
+	}
+	/**
+	 * Если вместилище, снимаемому узлу принадлежащее, найдено
+	 */
+	if(owner != NO_ORIGIN){
+		// Запоминаем убывшее количество детей вместилища
+		this->_nodes.at(owner).length(this->_nodes.at(owner).length() - 1);
+		// Выполняем пометку вместилища и предков его правлеными
+		this->mark(owner);
+	}
+	// Выполняем снятие поддерева узла из перечня узлов
+	this->_nodes.erase((this->_nodes.begin() + index), (this->_nodes.begin() + index + extent));
+	// Номер разбираемого корня документа
+	size_t root = 0;
+	/**
+	 * Выполняем перебор всех корней документов текста
+	 */
+	while(root < this->_roots.size()){
+		/**
+		 * Если корень снимаемым узлом и является
+		 *
+		 * @note Документ, корня лишившийся, из потока уходит целиком: пустого места в
+		 *       потоке нет, и держать его перечнем корней было бы неправдой
+		 */
+		if(this->_roots.at(root) == index){
+			// Выполняем снятие корня документа из перечня корней
+			this->_roots.erase(this->_roots.begin() + root);
+			// Выполняем снятие начала документа из перечня начал
+			this->_starts.erase(this->_starts.begin() + root);
+			// Выполняем переход к следующему корню документа
+			continue;
+		}
+		/**
+		 * Если корень стоит за снятым узлом
+		 */
+		if(this->_roots.at(root) > index)
+			// Запоминаем сдвинутый номер корня документа
+			this->_roots.at(root) -= extent;
+		// Выполняем переход к следующему корню документа
+		root++;
+	}
+	// Выводим признак успешного снятия узла
+	return true;
+}
+/**
+ * @brief Метод розыска узла по пути к нему с заведением недостающего
+ *
+ * @param path   путь к разыскиваемому узлу
+ * @param index  номер найденного либо заведённого узла
+ * @param create признак заведения узла, розыском не найденного
+ * @return       признак успешного розыска узла
+ *
+ */
+bool awh::codec::yaml::Document::place(const string & path, uint32_t & index, const bool create) noexcept {
+	/**
+	 * Если дерево документа пусто
+	 */
+	if(this->_roots.empty())
+		// Выводим признак неудачного розыска узла
+		return false;
+	// Получаем путь к узлу без ведущего разделителя частей
+	const string route((!path.empty() && (path.front() == '/')) ? path.substr(1) : path);
+	/**
+	 * Если путь к узлу пуст вовсе
+	 *
+	 * @note Путь пустой указывает на корень первого документа: правится он сам, а не
+	 *       ребёнок его
+	 */
+	if(route.empty()){
+		// Запоминаем номер корня первого документа
+		index = this->_roots.front();
+		// Выводим признак успешного розыска узла
+		return true;
+	}
+	// Разыскиваем разделитель последней части пути
+	const size_t separator = route.rfind('/');
+	// Получаем путь к вместилищу, узел держащему
+	const string head((separator == string::npos) ? string() : route.substr(0, separator));
+	// Получаем имя либо номер разыскиваемого узла
+	const string tail((separator == string::npos) ? route : route.substr(separator + 1));
+	// Получаем ссылку на вместилище, узел держащее
+	const value_t owner = this->root().at(head);
+	/**
+	 * Если вместилища по пути не оказалось
+	 */
+	if(!owner.valid())
+		// Выводим признак неудачного розыска узла
+		return false;
+	// Получаем ссылку на разыскиваемый узел
+	value_t value;
+	/**
+	 * Если вместилище является перечнем значений
+	 */
+	if(owner.kind() == kind_t::SEQUENCE){
+		/**
+		 * Если имя разыскиваемого узла числом не является
+		 */
+		if(tail.empty() || (tail.find_first_not_of("0123456789") != string::npos))
+			// Выводим признак неудачного розыска узла
+			return false;
+		// Получаем ссылку на значение перечня по номеру его
+		value = owner[static_cast <size_t> (::strtoull(tail.c_str(), nullptr, 10))];
+	/**
+	 * Если вместилище является отображением пар
+	 */
+	} else if(owner.kind() == kind_t::MAPPING)
+		// Получаем ссылку на пару отображения по имени её
+		value = owner[tail];
+	/**
+	 * Если вместилище вместилищем не является вовсе
+	 */
+	else return false;
+	/**
+	 * Если разыскиваемый узел найден
+	 */
+	if(value.valid()){
+		// Запоминаем номер найденного узла
+		index = value._index;
+		// Выводим признак успешного розыска узла
+		return true;
+	}
+	/**
+	 * Если заведение узла, розыском не найденного, не затребовано
+	 */
+	if(!create)
+		// Выводим признак неудачного розыска узла
+		return false;
+	/**
+	 * Если вместилище является перечнем значений
+	 *
+	 * @note Значение добавляется концом перечня, и номер его обязан отвечать длине его:
+	 *       дыр в перечне не бывает, и завести десятое значение при трёх наличных нельзя
+	 */
+	if(owner.kind() == kind_t::SEQUENCE){
+		/**
+		 * Если номер заводимого значения длине перечня не отвечает
+		 */
+		if(static_cast <size_t> (::strtoull(tail.c_str(), nullptr, 10)) != owner.size())
+			// Выводим признак неудачного розыска узла
+			return false;
+	}
+	// Выполняем заведение узла последним ребёнком вместилища
+	index = this->implant(owner._index);
+	/**
+	 * Если вместилище является отображением пар
+	 */
+	if(owner.kind() == kind_t::MAPPING){
+		// Запоминаем признак того, что узел является парой отображения
+		this->_nodes.at(index).keyed = true;
+		/**
+		 * Выполняем перенос имени заводимой пары в хранилище знаков
+		 *
+		 * @note Имя переносится тотчас, а не установкою значения: установка берёт имя у
+		 *       узла, и заводимая пара осталась бы без имени вовсе
+		 */
+		this->_nodes.at(index).offset = this->deposit(tail);
+		// Запоминаем длину имени заводимой пары
+		this->_nodes.at(index).named = static_cast <uint32_t> (tail.size());
+	}
+	// Выводим признак успешного розыска узла
+	return true;
+}
+/**
+ * @brief Метод установки значения узла записью его без ограды
+ *
+ * @param path путь к устанавливаемому узлу
+ * @param text устанавливаемая запись значения
+ * @return     признак успешной установки значения
+ *
+ */
+bool awh::codec::yaml::Document::settle(const string & path, const string_view text) noexcept {
+	// Номер устанавливаемого узла дерева
+	uint32_t index = 0;
+	/**
+	 * Если разыскать узел по пути не удалось
+	 */
+	if(!this->place(path, index, true))
+		// Выводим признак неудачной установки значения
+		return false;
+	// Выполняем установку значения узла записью без ограды
+	return this->assign(index, text, style_t::PLAIN);
+}
+/**
+ * @brief Метод установки значения узла заданною оградою
+ *
+ * @param index номер устанавливаемого узла
+ * @param text  устанавливаемая запись значения
+ * @param style ограда, какою обносится значение
+ * @return      признак успешной установки значения
+ *
+ */
+bool awh::codec::yaml::Document::assign(const uint32_t index, const string_view text, const style_t style) noexcept {
+	// Получаем размах поддерева устанавливаемого узла
+	const uint32_t extent = this->_nodes.at(index).extent();
+	/**
+	 * Если узел нёс поддерево своё
+	 *
+	 * @note Вместилище, скалярным значением заменяемое, детей своих лишается: держать их
+	 *       некуда, и записаны они уже не будут
+	 */
+	if(extent > 1){
+		/**
+		 * Выполняем перебор всех узлов, устанавливаемому предшествующих
+		 */
+		for(uint32_t i = 0; i <= index; i++){
+			/**
+			 * Если поддерево очередного узла устанавливаемый накрывает
+			 */
+			if((i + this->_nodes.at(i).extent()) > index)
+				// Запоминаем убывший размах поддерева очередного узла
+				this->_nodes.at(i).extent(this->_nodes.at(i).extent() - (extent - 1));
+		}
+		// Выполняем снятие детей узла из перечня узлов
+		this->_nodes.erase((this->_nodes.begin() + index + 1), (this->_nodes.begin() + index + extent));
+		/**
+		 * Выполняем перебор всех корней документов текста
+		 */
+		for(size_t i = 0; i < this->_roots.size(); i++){
+			/**
+			 * Если корень стоит за снятыми детьми узла
+			 */
+			if(this->_roots.at(i) > index)
+				// Запоминаем сдвинутый номер корня документа
+				this->_roots.at(i) -= (extent - 1);
+		}
+	}
+	// Получаем имя пары, узлом несомое
+	const string name(this->_storage, this->_nodes.at(index).offset, this->_nodes.at(index).named);
+	// Выполняем запись имени и значения узла в хранилище знаков
+	this->inscribe(index, name, text, style);
+	// Выполняем пометку узла и предков его правлеными
+	this->mark(index);
+	// Выводим признак успешной установки значения
+	return true;
+}
+/**
+ * @brief Метод установки строкового значения по пути к нему
+ *
+ * @param path  путь к устанавливаемому узлу
+ * @param value устанавливаемое строковое значение
+ * @param style ограда, какою обносится значение
+ * @return      признак успешной установки значения
+ *
+ */
+bool awh::codec::yaml::Document::set(const string & path, const string_view value, const style_t style) noexcept {
+	// Номер устанавливаемого узла дерева
+	uint32_t index = 0;
+	/**
+	 * Если разыскать узел по пути не удалось
+	 */
+	if(!this->place(path, index, true))
+		// Выводим признак неудачной установки значения
+		return false;
+	/**
+	 * Получаем ограду, какою обносится значение
+	 *
+	 * @note Ограда решается содержимым, коли не задана прямо: запись `12`, значением
+	 *       строковым поставленная, ограду получает - иначе обратное чтение вернуло бы её
+	 *       числом. Решает это то же тело `quoting()`, каким решает и запись текста
+	 */
+	const style_t quoted = ((style == style_t::PLAIN) ?
+	 quoting(value, this->_settings.schema, false) : style);
+	// Выполняем установку значения узла собранною оградою
+	return this->assign(index, value, quoted);
+}
+/**
+ * @brief Метод установки логического значения по пути к нему
+ *
+ * @param path  путь к устанавливаемому узлу
+ * @param value устанавливаемое логическое значение
+ * @return      признак успешной установки значения
+ *
+ */
+bool awh::codec::yaml::Document::set(const string & path, const bool value) noexcept {
+	// Выполняем установку логического значения записью описания
+	return this->settle(path, string_view(value ? "true" : "false"));
+}
+/**
+ * @brief Метод установки целого значения по пути к нему
+ *
+ * @param path  путь к устанавливаемому узлу
+ * @param value устанавливаемое целое значение
+ * @return      признак успешной установки значения
+ *
+ */
+bool awh::codec::yaml::Document::set(const string & path, const int64_t value) noexcept {
+	// Собираемая запись целого значения
+	char buffer[32];
+	// Выполняем сборку записи целого значения
+	const int length = ::snprintf(buffer, sizeof(buffer), "%lld", static_cast <long long> (value));
+	/**
+	 * Если собрать запись целого значения не удалось
+	 */
+	if(length <= 0)
+		// Выводим признак неудачной установки значения
+		return false;
+	// Выполняем установку целого значения собранною записью
+	return this->settle(path, string_view(buffer, static_cast <size_t> (length)));
+}
+/**
+ * @brief Метод установки дробного значения по пути к нему
+ *
+ * @param path  путь к устанавливаемому узлу
+ * @param value устанавливаемое дробное значение
+ * @return      признак успешной установки значения
+ *
+ */
+bool awh::codec::yaml::Document::set(const string & path, const double value) noexcept {
+	// Собираемая запись дробного значения
+	char buffer[64];
+	// Длина собранной записи дробного значения
+	int length = 0;
+	/**
+	 * Если число числом не является вовсе
+	 */
+	if(::isnan(value))
+		// Выполняем сборку записи неопределённого числа
+		length = ::snprintf(buffer, sizeof(buffer), ".nan");
+	/**
+	 * Если число является бесконечностью
+	 */
+	else if(::isinf(value))
+		// Выполняем сборку записи бесконечности
+		length = ::snprintf(buffer, sizeof(buffer), "%s.inf", ((value < 0) ? "-" : ""));
+	/**
+	 * Если число является обыкновенным
+	 *
+	 * @note Записывается оно семнадцатью значащими разрядами - столько нужно, чтобы
+	 *       всякое число двойной точности вернулось обратным чтением тем же
+	 */
+	else length = ::snprintf(buffer, sizeof(buffer), "%.17g", value);
+	/**
+	 * Если собрать запись дробного значения не удалось
+	 */
+	if(length <= 0)
+		// Выводим признак неудачной установки значения
+		return false;
+	// Получаем собранную запись дробного значения
+	string record(buffer, static_cast <size_t> (length));
+	/**
+	 * Если запись дробного числа дробной части не несёт
+	 *
+	 * @note Запись `12` схемою разрешается целым числом, и обратное чтение вернуло бы
+	 *       целое вместо дробного: точка с нулём разрешение то отменяет
+	 */
+	if(record.find_first_of(".eEn") == string::npos)
+		// Выполняем добавление дробной части записи числа
+		record.append(".0");
+	// Выполняем установку дробного значения собранною записью
+	return this->settle(path, string_view(record));
+}
+/**
+ * @brief Метод установки пустого значения по пути к нему
+ *
+ * @param path путь к устанавливаемому узлу
+ * @return     признак успешной установки значения
+ *
+ */
+bool awh::codec::yaml::Document::reset(const string & path) noexcept {
+	// Выполняем установку пустого значения пустою записью
+	return this->settle(path, string_view());
+}
+/**
+ * @brief Метод снятия узла вместе с поддеревом его
+ *
+ * @param path путь к снимаемому узлу
+ * @return     признак успешного снятия узла
+ *
+ */
+bool awh::codec::yaml::Document::erase(const string & path) noexcept {
+	// Номер снимаемого узла дерева
+	uint32_t index = 0;
+	/**
+	 * Если разыскать узел по пути не удалось
+	 */
+	if(!this->place(path, index, false))
+		// Выводим признак неудачного снятия узла
+		return false;
+	// Выполняем снятие узла вместе с поддеревом его
+	return this->extract(index);
+}
+/**
  * @brief Метод пометки узла правленым
  *
  * @param value ссылка на помечаемый узел
@@ -1583,24 +2184,8 @@ bool awh::codec::yaml::Document::touch(const value_t & value) noexcept {
 	if(!value.valid() || (value._doc != this) || (value._index >= this->_nodes.size()))
 		// Выводим признак неудачной пометки узла
 		return false;
-	// Получаем номер помечаемого узла
-	const uint32_t index = value._index;
-	/**
-	 * Выполняем перебор всех узлов, помечаемому предшествующих
-	 *
-	 * @note Указаний на родителя узел не несёт, и предки разыскиваются размахом поддерева:
-	 *       узел, чьё поддерево помечаемый накрывает, предком ему и является. Перебор идёт
-	 *       по всему дереву, и стоит того: правка узла случается единицами, а поле
-	 *       родителя удорожило бы всякий узел
-	 */
-	for(uint32_t i = 0; i <= index; i++){
-		/**
-		 * Если поддерево очередного узла помечаемый накрывает
-		 */
-		if((i + this->_nodes.at(i).extent()) > index)
-			// Запоминаем признак правки очередного узла
-			this->_nodes.at(i).touched = true;
-	}
+	// Выполняем пометку узла и предков его правлеными
+	this->mark(value._index);
 	// Выводим признак успешной пометки узла
 	return true;
 }

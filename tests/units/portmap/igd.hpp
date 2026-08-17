@@ -179,9 +179,20 @@ class FakeIGD {
 		bool pinholes = true;           // Признак того, что пробои заслона IPv6 дозволены
 		uint32_t unique = 4242;         // Опознаватель, выдаваемый проделанному пробою
 		bool answerSearch = true;       // Отвечать ли на рассылку обнаружения
-		std::string iface = "127.0.0.1";
-		std::string device = LOOPBACK_IFACE;
-	private:
+		/**
+		 * Устройство, каким поддельный шлюз принимает рассылку обнаружения
+		 *
+		 * @note Прежде здесь стояла петля, и проверки шли ею одной. Опыт на стендах
+		 *       показал, что доставку рассылки через петлю дают не все системы - у
+		 *       illumos она молча пропадает, - и семь проверок UPnP там отчитывались
+		 *       пропуском, ничего не проверив. Обмен ведётся потому устройством местной
+		 *       сети, а от беспокойства чужих приборов оберегает нулевой предел числа
+		 *       переходов, выставляемый модулю проверкой: такая рассылка машину не
+		 *       покидает вовсе. Петля остаётся запасным путём машины без местной сети
+		 */
+		std::string iface = (address().empty() ? std::string("127.0.0.1") : address());
+		std::string device = (deviceName().empty() ? std::string(LOOPBACK_IFACE) : deviceName());
+	public:
 		/**
 		 * @brief Метод получения адреса машины в местной сети
 		 *
@@ -194,6 +205,51 @@ class FakeIGD {
 		 * @return адрес машины в местной сети, пустой при его отсутствии
 		 *
 		 */
+		/**
+		 * @brief Метод получения названия устройства машины в местной сети
+		 *
+		 * @details Отбор ведётся тем же правилом, каким выбирается и адрес: устройство
+		 *          должно быть поднято, петлёй не быть и нести адрес, отведённый
+		 *          договором местным сетям. Название нужно проверке, чтобы указать его
+		 *          модулю: без указания рассылка ушла бы маршрутом до внешней сети
+		 *
+		 * @return название устройства машины в местной сети, пустое при его отсутствии
+		 *
+		 */
+		static std::string deviceName() noexcept {
+			// Перечень сетевых устройств машины
+			struct ifaddrs * list = nullptr;
+			// Если перечень сетевых устройств получить не удалось, выводим пустое название
+			if(::getifaddrs(&list) != 0) return std::string();
+			// Собираемое название устройства машины в местной сети
+			std::string result;
+			/**
+			 * Выполняем перебор всех сетевых устройств машины
+			 */
+			for(struct ifaddrs * item = list; item != nullptr; item = item->ifa_next){
+				// Если устройство не поднято либо адреса сети IPv4 не имеет, пропускаем его
+				if((item->ifa_addr == nullptr) || (item->ifa_addr->sa_family != AF_INET)) continue;
+				// Если устройство является петлёй, пропускаем его
+				if((item->ifa_flags & IFF_LOOPBACK) || !(item->ifa_flags & IFF_UP)) continue;
+				// Если название устройства не задано, пропускаем его
+				if(item->ifa_name == nullptr) continue;
+				// Получаем адрес очередного сетевого устройства
+				const uint32_t value = ntohl(reinterpret_cast <struct sockaddr_in *> (item->ifa_addr)->sin_addr.s_addr);
+				// Если адрес принадлежит сети связи, пропускаем его
+				if((value >> 16) == 0xA9FE) continue;
+				// Если адрес местной сетью не является, пропускаем его
+				if(!(((value >> 24) == 10) || (((value >> 20) & 0xFFF) == 0xAC1) || ((value >> 16) == 0xC0A8))) continue;
+				// Запоминаем название устройства машины в местной сети
+				result.assign(item->ifa_name);
+				// Выходим из перебора сетевых устройств
+				break;
+			}
+			// Выполняем освобождение перечня сетевых устройств
+			::freeifaddrs(list);
+			// Выводим собранное название устройства машины в местной сети
+			return result;
+		}
+	private:
 		static std::string address() noexcept {
 			// Перечень сетевых устройств машины
 			struct ifaddrs * list = nullptr;
@@ -330,18 +386,35 @@ class FakeIGD {
 					::getsockname(rx, reinterpret_cast <struct sockaddr *> (&bound), &length);
 					// Вступаем в группу рассылки через устройство петли
 					struct ip_mreq group; ::memset(&group, 0, sizeof(group));
+					/**
+					 * Опыт ведётся тем же устройством, каким пойдёт и обмен проверок
+					 *
+					 * @note Сличать доставку иным устройством бестолку: у петли и у
+					 *       устройства местной сети она разная - illumos доставляет
+					 *       рассылку одним и молча теряет другим
+					 */
+					const std::string local = (address().empty() ? std::string("127.0.0.1") : address());
 					group.imr_multiaddr.s_addr = ::inet_addr("239.255.255.250");
-					group.imr_interface.s_addr = ::inet_addr("127.0.0.1");
+					group.imr_interface.s_addr = ::inet_addr(local.c_str());
 					/**
 					 * Если вступление в группу рассылки удалось
 					 */
 					if(::setsockopt(rx, IPPROTO_IP, IP_ADD_MEMBERSHIP, reinterpret_cast <const char *> (&group), sizeof(group)) == 0){
-						// Устанавливаем устройство петли устройством рассылки
-						struct in_addr iface; iface.s_addr = ::inet_addr("127.0.0.1");
+						// Устанавливаем устройство местной сети устройством рассылки
+						struct in_addr iface; iface.s_addr = ::inet_addr(local.c_str());
 						::setsockopt(tx, IPPROTO_IP, IP_MULTICAST_IF, reinterpret_cast <const char *> (&iface), sizeof(iface));
 						// Разрешаем возврат рассылки на свою же машину
 						const unsigned char loop = 1;
 						::setsockopt(tx, IPPROTO_IP, IP_MULTICAST_LOOP, reinterpret_cast <const char *> (&loop), sizeof(loop));
+						/**
+						 * Запрещаем рассылке покидать машину
+						 *
+						 * @note Тот же предел выставляется модулю самой проверкой: опыт
+						 *       обязан сличать в точности тот путь, каким пойдёт обмен,
+						 *       иначе он оправдает проверку, какая после отвалится
+						 */
+						const unsigned char hops = 0;
+						::setsockopt(tx, IPPROTO_IP, IP_MULTICAST_TTL, reinterpret_cast <const char *> (&hops), sizeof(hops));
 						// Выполняем отправку пробной рассылки
 						struct sockaddr_in target; ::memset(&target, 0, sizeof(target));
 						target.sin_family = AF_INET;

@@ -215,6 +215,10 @@ namespace awh {
 					{"region-varied-long", "(?:[a-z]+ )+dog",                         kind_t::LONG,  true, 100000.0},
 					{"region-nested-heavy","\\((?:[^()]|\\([^()]*\\))*\\)",             kind_t::HEAVY, true, 420000.0},
 					{"region-capture-heavy","(?:(\\w+) )+forman",                     kind_t::HEAVY, true, 1300.0},
+					{"probe-1-run",        "\\([^()]*\\)",                           kind_t::HEAVY, true, 1.0},
+					{"probe-2-region",     "\\((?:[^()])*\\)",                       kind_t::HEAVY, true, 1.0},
+					{"probe-3-chain",      "\\((?:[^()]|[^()])*\\)",                 kind_t::HEAVY, true, 1.0},
+					{"probe-4-records",    "\\((?:[^()]|\\([^()]*\\))*\\)",        kind_t::HEAVY, true, 1.0},
 					/**
 					 * Устройства, порождению машинного кода поддавшиеся не сразу
 					 *

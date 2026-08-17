@@ -1162,9 +1162,12 @@ bool awh::unit::Portmap::search(string_view group) noexcept {
 		 * Если предел числа переходов рассылки установить не удалось
 		 *
 		 * @note Рассылка обнаружения дальше своей сети не уходит: устройство доступа в
-		 *       сеть лежит на ней же, а разослать просьбу шире значило бы беспокоить чужие
+		 *       сеть лежит на ней же, а разослать просьбу шире значило бы беспокоить чужие.
+		 *       Предел этот берётся настройкой (setHops), потому что держащему устройство
+		 *       доступа на самой машине нужен предел иной - LOOPBACK, не выпускающий
+		 *       просьбу наружу вовсе
 		 */
-		if(!this->_io->setHops(this->_exchangeUPNP.eid, event::hops_t::NETWORK)){
+		if(!this->_io->setHops(this->_exchangeUPNP.eid, this->_hops)){
 			// Выполняем удаление события рассылки
 			this->_io->destroy(this->_exchangeUPNP.eid);
 			// Сбрасываем идентификатор события рассылки
@@ -3343,6 +3346,16 @@ void awh::unit::Portmap::setIface(string_view iface) noexcept {
 	this->_iface.assign(iface.begin(), iface.end());
 }
 /**
+ * @brief Метод установки предела числа переходов рассылки обнаружения
+ *
+ * @param hops предел числа переходов для установки
+ *
+ */
+void awh::unit::Portmap::setHops(const event::hops_t hops) noexcept {
+	// Устанавливаем предел числа переходов рассылки обнаружения
+	this->_hops = hops;
+}
+/**
  * @brief Метод получения внешнего адреса маршрутизатора
  *
  * @return результат отправки просьбы
@@ -3486,7 +3499,7 @@ awh::unit::Portmap::Portmap(const fmk_t * fmk, const log_t * log) noexcept :
  _attempts(::DEFAULT_ATTEMPTS), _delay(::DEFAULT_DELAY), _announcer(0),
  _index(0), _probe(false), _stage(stage_t::NONE), _stream(0), _location{""}, _control{""}, _service{""},
  _parser(http::direct_t::RESPONSE, fmk, log), _request{""}, _payload{""}, _complete(false), _connected(false), _uri(fmk, log), _router{""},
- _iface{""}, _address(nullptr), _addr(fmk, log), _ifaces(fmk, log), _gateway(fmk, log), _pcp(fmk, log),
+ _iface{""}, _hops(event::hops_t::NETWORK), _address(nullptr), _addr(fmk, log), _ifaces(fmk, log), _gateway(fmk, log), _pcp(fmk, log),
  _ssdp(fmk, log), _soap(fmk, log), _upnp(fmk, log), _device(fmk, log), _natpmp(fmk, log) {}
 /**
  * @brief Деструктор

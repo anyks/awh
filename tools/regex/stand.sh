@@ -137,6 +137,16 @@ ssh -p "$PORT" "$TARGET" '
 		exit 3
 	fi
 	"$CXX" --version | head -1
+	# Цель собирателя печатается отдельно от вида его: у MSYS2 вид один и тот же
+	# у собирателя с целью «x86_64-w64-mingw32» и у собирателя с целью
+	# «x86_64-pc-cygwin», отчего по виду не отличить, под какую систему стенд
+	# собран. Молчание это уже скрыло однажды сборку целью Cygwin, называемую
+	# сборкой под Windows
+	#
+	# Вывод оформляется printf, а не sed: тело вызова ssh закавычено одинарно,
+	# и кавычки образца sed его бы разорвали
+	TRIPLE=$("$CXX" -dumpmachine 2>/dev/null || echo "не сообщается")
+	printf "  цель собирателя        %s\n" "$TRIPLE"
 	for STD in c++2b c++20 c++17 ; do
 		if "$CXX" -std=$STD -O2 -Iinclude -Itools/regex \
 			tools/regex/conformance.cpp $(cat tools/regex/sources.list) -o conformance 2>compile.log ; then

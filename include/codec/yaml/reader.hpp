@@ -143,6 +143,15 @@ namespace awh {
 				// Положение значения в исходном тексте
 				location_t location;
 				/**
+				 * Признак того, что значение собрано внутри поточного построения
+				 *
+				 * @note Записи поточного построения строкою не отделены: их стоит на строке
+				 *       сколько угодно, и привязать значение к отрезку строк нельзя. Держащему
+				 *       документ целиком признак этот велит не переносить такое значение
+				 *       дословно, а собирать заново
+				 */
+				bool flow;
+				/**
 				 * \~russian
 				 * @brief Конструктор
 				 *
@@ -152,7 +161,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				Content() noexcept : type(type_t::UNDEFINED), style(style_t::PLAIN) {}
+				Content() noexcept : type(type_t::UNDEFINED), style(style_t::PLAIN), flow(false) {}
 			} content_t;
 
 			/**
@@ -383,6 +392,8 @@ namespace awh {
 						piece_t tag;
 						// Положение события в исходном тексте
 						location_t location;
+						// Признак того, что событие собрано внутри поточного построения
+						bool flow;
 						/**
 						 * \~russian
 						 * @brief Конструктор
@@ -395,7 +406,7 @@ namespace awh {
 						 */
 						Item() noexcept :
 						 event(event_t::NONE), type(type_t::UNDEFINED), style(style_t::PLAIN),
-						 offset(0), length(0) {}
+						 offset(0), length(0), flow(false) {}
 					} item_t;
 				private:
 					// Настройки разбора текста

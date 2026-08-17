@@ -952,6 +952,8 @@ void awh::unit::Server::message(const pid_t pid, const uint8_t * data, const siz
 		this->_log->print("ЩУП работник [%d]: поднято подключение [%llu] у события [%llu]", log_t::flag_t::INFO, ::getpid(), static_cast <uint64_t> (cid), static_cast <uint64_t> (eid));
 		// Отдаём подключение потребителю обычным путём принятого подключения
 		this->accept(eid, cid);
+		// ВРЕМЕННЫЙ ЩУП: запуск поднятого подключения
+		this->_log->print("ЩУП работник [%d]: запуск подключения [%llu]", log_t::flag_t::INFO, ::getpid(), static_cast <uint64_t> (cid));
 		// Выполняем запуск работы подключения
 		if(!this->_io->launch(cid)){
 			// Удаляем заведённое событие подключения
@@ -959,6 +961,8 @@ void awh::unit::Server::message(const pid_t pid, const uint8_t * data, const siz
 			// Записываем ошибку в лог
 			this->_log->print("Cluster worker process [%d] cannot start the connection received from the master", log_t::flag_t::CRITICAL, ::getpid());
 		}
+		// ВРЕМЕННЫЙ ЩУП: подъём подключения окончен
+		this->_log->print("ЩУП работник [%d]: подъём подключения [%llu] окончен", log_t::flag_t::INFO, ::getpid(), static_cast <uint64_t> (cid));
 		// Выводим признак того, что сообщение было передачей подключения
 		return true;
 	}

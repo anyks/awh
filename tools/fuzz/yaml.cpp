@@ -73,12 +73,14 @@ namespace {
 		uint64_t trees;
 		// Количество деревьев, исходный текст удержавших
 		uint64_t kept;
+		// Количество деревьев, правку принявших
+		uint64_t edited;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
 		Statistic() noexcept :
-		 texts(0), corrupted(0), survived(0), events(0), chunked(0), transcoded(0), trees(0), kept(0) {}
+		 texts(0), corrupted(0), survived(0), events(0), chunked(0), transcoded(0), trees(0), kept(0), edited(0) {}
 	} totals;
 
 	/**
@@ -130,6 +132,59 @@ namespace {
 		}
 	};
 
+	/**
+	 * @brief Метод набора путей ко всем узлам дерева документа
+	 *
+	 * @details Пути набираются для правки: правится узел по пути к нему, и путей этих
+	 * надобен весь перечень, чтобы правка приходилась куда попало, а не в один корень
+	 *
+	 * @param value  ссылка на узел, от какого путь отсчитан
+	 * @param path   путь к узлу, ссылкою данному
+	 * @param result перечень набранных путей
+	 *
+	 */
+	void collect(const yaml::document_t::value_t & value, const string & path, vector <string> & result) noexcept {
+		/**
+		 * Если путь к узлу не пуст
+		 */
+		if(!path.empty())
+			// Выполняем добавление пути к узлу в перечень путей
+			result.push_back(path);
+		/**
+		 * Если узел вместилищем не является
+		 */
+		if((value.kind() != yaml::kind_t::MAPPING) && (value.kind() != yaml::kind_t::SEQUENCE))
+			// Выходим из набора путей
+			return;
+		// Номер очередного разбираемого ребёнка вместилища
+		size_t index = 0;
+		/**
+		 * Выполняем перебор всех детей вместилища
+		 */
+		for(yaml::document_t::value_t child = value.begin(); child.valid(); child = child.next()){
+			/**
+			 * Если вместилище является отображением пар
+			 */
+			if(value.kind() == yaml::kind_t::MAPPING){
+				// Получаем имя очередной пары отображения
+				const string name(child.name());
+				/**
+				 * Если имя пары разделитель частей пути несёт
+				 *
+				 * @note Путь к такому узлу не выразить вовсе: разделитель разбил бы имя надвое,
+				 *       и розыск ушёл бы не туда. Правка его оттого не пробуется
+				 */
+				if(name.find('/') == string::npos)
+					// Выполняем набор путей к поддереву очередной пары
+					collect(child, (path + "/" + name), result);
+			/**
+			 * Если вместилище является перечнем значений
+			 */
+			} else collect(child, (path + "/" + to_string(index)), result);
+			// Выполняем переход к следующему ребёнку вместилища
+			index++;
+		}
+	}
 	/**
 	 * @brief Метод вывода разбираемого текста в шестнадцатеричном виде
 	 *
@@ -1280,6 +1335,87 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 				}
 			}
 			/**
+			 * Выполняем проверку правки дерева документа
+			 *
+			 * @details Правка обязана давать текст, обратным чтением принимаемый: узел
+			 *          собирается заново, соседи его переносятся дословно, и стык двух этих
+			 *          кусков есть место, где отступ разъезжается легче всего
+			 */
+			{
+				// Настройки разбора дерева с удержанием исходного текста
+				yaml::document_t::settings_t held = tree;
+				// Устанавливаем удержание исходного текста
+				held.retain = true;
+				// Снимаем предел глубины вложенности, ссылками раскрываемый
+				held.depth = 0;
+				// Снимаем предел длины скалярного значения
+				held.scalar = 0;
+				// Объект дерева документа, правке подлежащего
+				yaml::document_t edited(held);
+				/**
+				 * Если разобрать текст в дерево документа удалось
+				 */
+				if(edited.parse(text) && (edited.encoding() == yaml::encoding_t::UTF8)){
+					// Перечень путей ко всем узлам дерева документа
+					vector <string> paths;
+					/**
+					 * Выполняем перебор всех документов текста
+					 */
+					for(size_t i = 0; i < edited.documents(); i++)
+						// Выполняем набор путей ко всем узлам очередного документа
+						collect(edited.root(i), string(), paths);
+					/**
+					 * Если пути к узлам дерева набраны
+					 */
+					if(!paths.empty()){
+						// Получаем путь к правимому узлу дерева
+						const string & path = paths.at(engine() % paths.size());
+						// Признак успешной правки дерева документа
+						bool changed = false;
+						/**
+						 * Определяем вид совершаемой правки
+						 */
+						switch(engine() % 6){
+							// Если правкой ставится строковое значение
+							case 0: changed = edited.set(path, string_view("правка")); break;
+							// Если правкой ставится значение, числом читаемое
+							case 1: changed = edited.set(path, string_view("12")); break;
+							// Если правкой ставится целое значение
+							case 2: changed = edited.set(path, static_cast <int64_t> (-1250)); break;
+							// Если правкой ставится дробное значение
+							case 3: changed = edited.set(path, 3.14159); break;
+							// Если правкой ставится пустое значение
+							case 4: changed = edited.reset(path); break;
+							// Если правкой снимается узел
+							case 5: changed = edited.erase(path); break;
+						}
+						/**
+						 * Если правка дерева удалась
+						 */
+						if(changed){
+							// Выполняем учёт правленого дерева документа
+							totals.edited++;
+							// Объект дерева правленого документа
+							yaml::document_t back(held);
+							/**
+							 * Если разобрать правленый текст не удалось
+							 */
+							if(!back.parse(edited.dump())){
+								// Выводим сообщение об отказе чтения правленого текста
+								::fprintf(stderr, "yaml fuzz: edited rewrite refused %s at «%s», settings %s\n",
+									yaml::message(back.error()), path.c_str(), described(settings).c_str());
+								// Выводим разбираемый текст
+								dump(text);
+								// Выводим правленый текст
+								dump(edited.dump());
+								// Выходим из приложения с ошибкой
+								return EXIT_FAILURE;
+							}
+						}
+					}
+				}
+			}
+			/**
 			 * Выполняем проверку дословной перезаписи при удержании исходного текста
 			 *
 			 * @details Удержание обязано давать перезапись, исходному тексту побайтово
@@ -1373,11 +1509,12 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		}
 	}
 	// Выводим итог работы генератора
-	::fprintf(stderr, "yaml fuzz: %llu texts (%llu corrupted, %llu survived), %llu events, %llu chunked, %llu transcoded, %llu trees, %llu kept\n",
+	::fprintf(stderr, "yaml fuzz: %llu texts (%llu corrupted, %llu survived), %llu events, %llu chunked, %llu transcoded, %llu trees, %llu kept, %llu edited\n",
 		static_cast <unsigned long long> (totals.texts), static_cast <unsigned long long> (totals.corrupted),
 		static_cast <unsigned long long> (totals.survived), static_cast <unsigned long long> (totals.events),
 		static_cast <unsigned long long> (totals.chunked), static_cast <unsigned long long> (totals.transcoded),
-		static_cast <unsigned long long> (totals.trees), static_cast <unsigned long long> (totals.kept));
+		static_cast <unsigned long long> (totals.trees), static_cast <unsigned long long> (totals.kept),
+		static_cast <unsigned long long> (totals.edited));
 	// Выводим код успешного выхода из приложения
 	return EXIT_SUCCESS;
 }

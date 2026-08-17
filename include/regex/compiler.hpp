@@ -572,18 +572,34 @@ namespace awh {
 				 * \~russian
 				 * @brief Метод проверки обязательного продвижения узла по тексту
 				 *
-				 * @details Метод подтверждает продвижение лишь для узлов, сопоставляющих
-				 *          по одному символу, и о прочих узлах умалчивает: пустое
-				 *          сопоставление их выводится ненадёжно.
+				 * @details Метод подтверждает продвижение по строению узла: цепочка
+				 *          продвигается, если продвигается хоть один узел её, выбор
+				 *          ветвей - если продвигается всякая ветвь его, группа - по
+				 *          содержимому своему, а повторение - если обязательно хотя бы
+				 *          однажды. Об узлах, пустое сопоставление каких определяется
+				 *          составом конструкций вне регулярного подмножества, метод
+				 *          умалчивает: вывод там ненадёжен.
+				 *
+				 *          Умолчание безопасно, а ошибочное подтверждение - нет: оно
+				 *          сняло бы сторожа продвижения, и повторение на пустом теле
+				 *          не прекращалось бы вовсе.
 				 *
 				 * @param id индекс проверяемого узла в арене узлов
 				 * @return   результат проверки обязательного продвижения узла по тексту
 				 *
 				 * \~english
 				 * @brief Method of checking the mandatory advance of a node through the text
-				 * @details The method confirms the advance only for the nodes matching
-				 *          one character each, and says nothing about the other nodes: their empty
-				 *          match is inferred unreliably.
+				 * @details The method confirms the advance by the structure of the node:
+				 *          a concatenation advances if at least one of its nodes advances,
+				 *          an alternation - if every one of its branches advances, a group -
+				 *          by its own content, and a repetition - if it is mandatory at least
+				 *          once. The method says nothing about the nodes whose empty match
+				 *          is determined by constructs outside the regular subset: the
+				 *          inference there is unreliable.
+				 *
+				 *          Saying nothing is safe, whereas confirming wrongly is not: it
+				 *          would remove the guard of the advance, and the repetition would
+				 *          not terminate on an empty body at all.
 				 * @param id index of the checked node in the node arena
 				 * @return   result of checking the mandatory advance of the node through the text
 				 *
