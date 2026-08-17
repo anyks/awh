@@ -72,6 +72,28 @@
  *          0,65 без просеивания и 2,99 с ним, а выражения с набором байтов узким
  *          выиграли заодно: «[0-9]{3,5}» - с 3,64 до 4,83.
  *
+ *          <b>Набор допустимых начальных байтов узкий отыскивается вызовом
+ *          подпрограммы, а просеивание на месте ведётся окном, а не по всему
+ *          тексту.</b> Просеивание на месте читает память дважды на позицию,
+ *          тогда как подпрограмма сличает шестнадцать байтов текста со всеми
+ *          значениями набора за один оборот - но плату за сохранение регистров
+ *          вносит на каждый вызов. Оттого просеивание проходит окном
+ *          в SIFTING позиций, кодом развёрнутым, и лишь по исчерпании окна
+ *          зовёт подпрограмму: пропуск короткий обходится без вызова вовсе,
+ *          а пропуск длинный делит плату на весь свой размер. Разворот окна
+ *          вынужден - свободного регистра под счётчик хода в кадре нет.
+ *
+ *          Предел ширины набора - SPARSE в prefilter.hpp - назначен по замеру,
+ *          а первое его назначение замером отвергнуто. Назначен он был по числу
+ *          значений в наборе, и ось эта неверна: «GET|POST|PUT|HEAD|DELETE»
+ *          с пятью байтами редкими выиграла вчетверо, а
+ *          «alpha|bravo|charlie|delta|echo|foxtrot» с шестью байтами, в связном
+ *          тексте частыми, проиграла втрое. Окупаемость решает не количество
+ *          значений, а частота их в тексте, то есть длина пропуска, - её же при
+ *          порождении не знать, и потому она выясняется окном при исполнении,
+ *          а предел ширины остаётся лишь границей применимости набора команд
+ *          процессора.
+ *
  *          <b>Границы захватывающих групп запоминаются лишь на цепочках ветвей
  *          выбора, а при отступлении ряда - нет.</b> Отступление возвращает
  *          исполнение к сопоставлению вслед за рядом, отчего сохранения,
@@ -449,6 +471,32 @@
  *          of sixty-four kilobytes showed a ratio to executing the program
  *          of 0.65 without the sifting and 2.99 with it, and the expressions with a narrow set of bytes
  *          gained as well: «[0-9]{3,5}» — from 3.64 to 4.83.
+ *
+ *          <b>A narrow set of permitted starting bytes is sought by a call to
+ *          a subroutine, and the sifting in place is carried out by a window,
+ *          not over the whole text.</b> The sifting in place reads memory twice
+ *          per position, whereas the subroutine compares sixteen bytes of the
+ *          text against all the values of the set in a single turn — but pays
+ *          for saving the registers on every call. That is why the sifting goes
+ *          over a window of SIFTING positions, by unrolled code, and calls the
+ *          subroutine only once the window is exhausted: a short skip does
+ *          without a call at all, while a long skip divides the payment over
+ *          its whole size. Unrolling the window is forced — there is no free
+ *          register in the frame for a counter of the turn.
+ *
+ *          The limit on the width of the set — SPARSE in prefilter.hpp — is
+ *          appointed by measurement, and its first appointment was rejected by
+ *          measurement. It had been appointed by the count of values in the set,
+ *          and that axis is wrong: «GET|POST|PUT|HEAD|DELETE», with five rare
+ *          bytes, gained fourfold, while
+ *          «alpha|bravo|charlie|delta|echo|foxtrot», with six bytes frequent in
+ *          connected text, lost threefold. The payoff is decided not by the
+ *          count of values but by their frequency in the text, that is by the
+ *          length of the skip — which is not known at generation time, and so it
+ *          is found out by the window at execution time, while the limit on the
+ *          width remains merely the boundary of applicability of the processor
+ *          instruction set.
+ *
  *          <b>The boundaries of the capturing groups are remembered only on the chains of alternation
  *          branches, and not on the retreat of a run.</b> The retreat returns
  *          the execution to the matching following the run, which is why the saves
@@ -1004,6 +1052,30 @@ namespace awh {
 				 * \~
 				 */
 				size_t sieve() noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод заведения набора допустимых начальных байтов совпадения
+				 *
+				 * @details Набор укладывается перечислением значений, а не таблицей
+				 *          принадлежности: перечисление размножается по вектору,
+				 *          а таблица требовала бы обращения к памяти на всякий
+				 *          байт текста. Заводится он лишь для набора узкого -
+				 *          см. SPARSE в prefilter.hpp.
+				 *
+				 * @return номер заведённого набора в обстановке исполнения
+				 *
+				 * \~english
+				 * @brief Method of introducing a set of admissible starting bytes of a match
+				 * @details The set is laid out as an enumeration of the values rather than
+				 *          as a belonging table: the enumeration is spread over a vector,
+				 *          whereas a table would require an access to memory for every byte
+				 *          of the text. It is introduced only for a narrow set —
+				 *          see SPARSE in prefilter.hpp.
+				 * @return number of the introduced set in the execution context
+				 *
+				 * \~
+				 */
+				size_t spreader() noexcept;
 			public:
 				/**
 				 * \~russian

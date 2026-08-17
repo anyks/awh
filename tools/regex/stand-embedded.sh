@@ -21,8 +21,13 @@
 # на стенде Fedora:
 #
 #   CROSS_HOST=forman@10.100.1.249 \
-#   CROSS_CXX=~/openwrt/openwrt-sdk-25.12.4-x86-64_gcc-14.3.0_musl.Linux-x86_64/staging_dir/toolchain-x86_64_gcc-14.3.0_musl/bin/x86_64-openwrt-linux-g++ \
+#   CROSS_CXX=/home/forman/openwrt/openwrt-sdk-25.12.4-x86-64_gcc-14.3.0_musl.Linux-x86_64/staging_dir/toolchain-x86_64_gcc-14.3.0_musl/bin/x86_64-openwrt-linux-g++ \
 #   sh tools/regex/stand-embedded.sh root@10.100.1.246 2222
+#
+# Путь встречного компилятора задаётся полным, а не от домашнего каталога:
+# команда передаётся узлу сборки в кавычках, и тильда в ней знаком остаётся,
+# отчего сборка отвечает «No such file or directory» на путь, существующий
+# в действительности.
 #
 # Чего проверка эта не покажет: сборка ведётся не тем компилятором, что стоял
 # бы на машине, поэтому расхождения самого компилятора она не выявит. Выявит

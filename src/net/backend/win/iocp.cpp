@@ -5871,8 +5871,22 @@ namespace inflight {
 		if(overlapped == nullptr)
 			// Выводим отсутствие записи учёта
 			return nullptr;
-		// Выводим запись учёта, какой описатель принадлежит
-		return reinterpret_cast <slot_t *> (reinterpret_cast <uint8_t *> (overlapped) - offsetof(slot_t, overlapped));
+		// Получаем запись учёта, какой описатель принадлежит
+		slot_t * result = reinterpret_cast <slot_t *> (reinterpret_cast <uint8_t *> (overlapped) - offsetof(slot_t, overlapped));
+		/**
+		 * Выполняем перебор всех заведённых страниц учёта
+		 */
+		for(auto & page : ::inflight::slots){
+			// Если запись учёта лежит внутри страницы
+			if((result >= page.get()) && (result < (page.get() + ::inflight::PAGE)))
+				// Выводим запись учёта
+				return result;
+		}
+		// ВРЕМЕННЫЙ ЩУП: описатель, ни одной странице учёта не принадлежащий
+		::fprintf(stderr, "ЩУП движок: чужой описатель %p у процесса %u\n", static_cast <void *> (overlapped), static_cast <uint32_t> (::GetCurrentProcessId()));
+		::fflush(stderr);
+		// Выводим отсутствие записи учёта
+		return nullptr;
 	}
 	/**
 	 * @brief Функция занятия записи учёта под новую операцию
@@ -56325,6 +56339,8 @@ bool awh::engine::IO::setMaxConnections(const event::id_t id, const uint32_t max
  *
  */
 bool awh::engine::IO::destroy(const event::id_t id) noexcept {
+	// ВРЕМЕННЫЙ ЩУП: уничтожение события движком
+	this->_log->print("ЩУП движок [%u]: уничтожение события [%llu]", log_t::flag_t::INFO, static_cast <uint32_t> (::GetCurrentProcessId()), static_cast <uint64_t> (id));
 	/**
 	 * Выполняем перехват ошибок
 	 */

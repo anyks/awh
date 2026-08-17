@@ -218,6 +218,75 @@ namespace awh {
 
 		/**
 		 * \~russian
+		 * @brief Наибольший набор начальных байтов, поиском отбираемый
+		 *
+		 * @details Отбор позиций начала попытки по набору допустимых байтов
+		 *          ведётся двумя способами. Набор широкий просеивается
+		 *          по позиции: обращение к таблице на каждой позиции дешевле
+		 *          всякого поиска, а пропускает такой набор немногое. Набор
+		 *          узкий, напротив, пропускает почти весь текст, и там
+		 *          окупается поиск байтов набором команд процессора над
+		 *          несколькими байтами сразу.
+		 *
+		 *          Предел взят по числу сравнений, какое вектор несёт за один
+		 *          оборот: четыре байта дают четыре сравнения на шестнадцать
+		 *          байтов текста против шестнадцати обращений к памяти
+		 *          у просеивания. Наборы шире просеиваются, как и прежде.
+		 *
+		 * \~english
+		 * @brief Largest set of starting bytes selected by a search
+		 * @details The selection of the positions where an attempt begins by the set
+		 *          of admissible bytes is driven in two ways. A wide set is sifted
+		 *          position by position: an access to the table at every position is cheaper
+		 *          than any search, and such a set skips little. A narrow set, on the contrary,
+		 *          skips almost the whole text, and there a search of the bytes by the
+		 *          instruction set of the processor over several bytes at once pays off.
+		 *
+		 *          The limit is taken by the number of comparisons a vector carries per
+		 *          iteration: four bytes give four comparisons per sixteen bytes of the text
+		 *          against the sixteen memory accesses of the sifting. Wider sets are sifted
+		 *          as before.
+		 *
+		 * \~
+		 */
+		constexpr size_t SPARSE = 8;
+
+		/**
+		 * \~russian
+		 * @brief Функция поиска первого байта из набора в тексте
+		 *
+		 * @details Функция отыскивает позицию первого байта текста,
+		 *          набору принадлежащего, и служит отбору позиций начала
+		 *          попытки при наборе узком. Набор задаётся перечислением
+		 *          значений, а не таблицей: перечисление размножается
+		 *          по вектору, тогда как таблица обращения к памяти требует.
+		 *
+		 * @param text  текст сопоставления
+		 * @param bytes набор искомых значений байта
+		 * @param count количество искомых значений байта
+		 * @param pos   позиция начала поиска
+		 * @return      позиция найденного байта либо размер текста
+		 *
+		 * \~english
+		 * @brief Function of searching for the first byte of a set in the text
+		 * @details The function finds the position of the first byte of the text belonging
+		 *          to the set and serves the selection of the positions where an attempt
+		 *          begins when the set is narrow. The set is given by an enumeration
+		 *          of the values rather than by a table: the enumeration is spread over
+		 *          a vector, whereas a table requires accesses to memory.
+		 * @param text  text to match
+		 * @param bytes set of the sought byte values
+		 * @param count number of the sought byte values
+		 * @param pos   position to start the search from
+		 * @return      position of the found byte or the size of the text
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ size_t scattered(const string_view text, const uint8_t * bytes,
+		 const size_t count, const size_t pos) noexcept;
+
+		/**
+		 * \~russian
 		 * @brief Функция поиска последовательности в тексте
 		 *
 		 * @details Поиск последовательности стандартными средствами отыскивает

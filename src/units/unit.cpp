@@ -392,6 +392,8 @@ size_t awh::unit::Unit::events() const noexcept {
  *
  */
 void awh::unit::Unit::stop() noexcept {
+	// ВРЕМЕННЫЙ ЩУП: кто и откуда останавливает цикл
+	this->_log->print("ЩУП [%d]: остановка цикла, состояние=%u", log_t::flag_t::INFO, static_cast <int32_t> (::getpid()), static_cast <uint32_t> (this->_status));
 	/**
 	 * Выполняем перехват ошибок
 	 */

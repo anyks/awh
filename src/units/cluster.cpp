@@ -473,6 +473,7 @@ void awh::unit::Cluster::create() noexcept {
 						this->_log->print("Cluster worker process [%d] event could not be launched", log_t::flag_t::CRITICAL, pid);
 					#endif
 					// Выходим из приложения
+					this->_log->print("ЩУП [%d]: уход строкой 476", log_t::flag_t::INFO, static_cast <int32_t> (::getpid()));
 					::_exit(EXIT_FAILURE);
 				}
 			}
@@ -725,6 +726,7 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 					this->_log->print("Child process could not be created", log_t::flag_t::CRITICAL);
 				#endif
 				// Выходим из приложения
+				this->_log->print("ЩУП [%d]: уход строкой 728", log_t::flag_t::INFO, static_cast <int32_t> (::getpid()));
 				::_exit(EXIT_FAILURE);
 			} break;
 			// Если процесс является дочерним
@@ -835,6 +837,7 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 							this->_log->print("Cluster worker process [%d] event could not be launched", log_t::flag_t::CRITICAL, ret.first->first);
 						#endif
 						// Выходим из приложения
+						this->_log->print("ЩУП [%d]: уход строкой 838", log_t::flag_t::INFO, static_cast <int32_t> (::getpid()));
 						::_exit(EXIT_FAILURE);
 					}
 				// Если родительский процесс умер
@@ -853,6 +856,7 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 						this->_log->print("Process [%d] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
 					#endif
 					// Выходим из приложения
+					this->_log->print("ЩУП [%d]: уход строкой 856", log_t::flag_t::INFO, static_cast <int32_t> (::getpid()));
 					::_exit(EXIT_FAILURE);
 				}
 				// Возвращаем признак дочернего процесса (создание следующих воркеров должно быть прекращено)
@@ -912,6 +916,7 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 							this->_log->print("Cluster worker process [%d] event could not be launched", log_t::flag_t::CRITICAL, replaced);
 						#endif
 						// Выходим из приложения
+						this->_log->print("ЩУП [%d]: уход строкой 915", log_t::flag_t::INFO, static_cast <int32_t> (::getpid()));
 						::_exit(EXIT_FAILURE);
 					}
 					// Выполняем функцию обратного вызова
@@ -1001,6 +1006,7 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 				// Записываем ошибку в лог запуска события
 				this->_log->print("Cluster worker process [%d] event could not be launched", log_t::flag_t::CRITICAL, pid);
 				// Выходим из приложения
+				this->_log->print("ЩУП [%d]: уход строкой 1004", log_t::flag_t::INFO, static_cast <int32_t> (::getpid()));
 				::_exit(EXIT_FAILURE);
 			}
 			// Если процесс размещается взамен упавшего
@@ -1298,6 +1304,7 @@ void awh::unit::Cluster::process(const pid_t pid, const int32_t status) noexcept
 				// Освобождаем ресурсы всех воркеров и очищаем список активных воркеров
 				this->clear(shutdown_t::NONE);
 				// Выходим из приложения с кодом сигнала ручной остановки
+				this->_log->print("ЩУП [%d]: уход строкой 1301", log_t::flag_t::INFO, static_cast <int32_t> (::getpid()));
 				::_exit(SIGINT);
 			}
 			// Определяем, упал ли процесс в пределах временного окна жизни (признак быстрого/раннего падения)
@@ -1325,6 +1332,7 @@ void awh::unit::Cluster::process(const pid_t pid, const int32_t status) noexcept
 					// Освобождаем ресурсы оставшихся воркеров и очищаем список активных воркеров
 					this->clear(shutdown_t::NONE);
 					// Выходим из приложения с кодом завершения дочернего процесса
+					this->_log->print("ЩУП [%d]: уход строкой 1328", log_t::flag_t::INFO, static_cast <int32_t> (::getpid()));
 					::_exit(cluster_t::exitcode(status));
 				}
 				// Выполняем создание нового процесса взамен упавшего
@@ -1537,6 +1545,7 @@ void awh::unit::Cluster::write(const event::id_t eid, const size_t size) noexcep
 					this->_log->print("Process [%d] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
 				#endif
 				// Выходим из приложения
+				this->_log->print("ЩУП [%d]: уход строкой 1540", log_t::flag_t::INFO, static_cast <int32_t> (::getpid()));
 				::_exit(EXIT_FAILURE);
 			}
 		}
@@ -1585,6 +1594,7 @@ void awh::unit::Cluster::read(const event::id_t eid, const uint8_t * data, const
 					this->_log->print("Process [%d] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
 				#endif
 				// Выходим из приложения
+				this->_log->print("ЩУП [%d]: уход строкой 1588", log_t::flag_t::INFO, static_cast <int32_t> (::getpid()));
 				::_exit(EXIT_FAILURE);
 			}
 		}
@@ -1604,6 +1614,8 @@ void awh::unit::Cluster::state(const event::id_t eid, const event::status_t stat
 	switch(static_cast <uint8_t> (status)){
 		// Если статус уничтожения
 		case static_cast <uint8_t> (event::status_t::DESTROYED): {
+			// ВРЕМЕННЫЙ ЩУП: уничтожение события у процесса кластера
+			this->_log->print("ЩУП [%d]: уничтожено событие [%llu], мастер=%u", log_t::flag_t::INFO, static_cast <int32_t> (::getpid()), static_cast <uint64_t> (eid), static_cast <uint32_t> (this->master()));
 			// Если процесс является дочерним
 			if(!this->master()){
 				// Если родительский процесс живой
@@ -1621,6 +1633,7 @@ void awh::unit::Cluster::state(const event::id_t eid, const event::status_t stat
 							// Удаляем завершившийся процесс из списка активных воркеров
 							this->_workers.erase(i);
 							// Завершаем работу процесса
+							this->_log->print("ЩУП [%d]: уход строкой 1624", log_t::flag_t::INFO, static_cast <int32_t> (::getpid()));
 							::_exit(EXIT_SUCCESS);
 						}
 					}
@@ -1640,6 +1653,7 @@ void awh::unit::Cluster::state(const event::id_t eid, const event::status_t stat
 						this->_log->print("Process [%d] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
 					#endif
 					// Выходим из приложения
+					this->_log->print("ЩУП [%d]: уход строкой 1643", log_t::flag_t::INFO, static_cast <int32_t> (::getpid()));
 					::_exit(EXIT_FAILURE);
 				}
 			}
@@ -1680,6 +1694,7 @@ void awh::unit::Cluster::state(const event::id_t eid, const event::status_t stat
 							this->_log->print("Process [%d] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
 						#endif
 						// Выходим из приложения
+						this->_log->print("ЩУП [%d]: уход строкой 1683", log_t::flag_t::INFO, static_cast <int32_t> (::getpid()));
 						::_exit(EXIT_FAILURE);
 					}
 				}
@@ -1730,6 +1745,7 @@ void awh::unit::Cluster::error(const event::id_t eid, const event::error_t error
 					this->_log->print("Process [%d] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
 				#endif
 				// Выходим из приложения
+				this->_log->print("ЩУП [%d]: уход строкой 1733", log_t::flag_t::INFO, static_cast <int32_t> (::getpid()));
 				::_exit(EXIT_FAILURE);
 			}
 		}
@@ -1778,6 +1794,7 @@ void awh::unit::Cluster::available(const event::id_t eid, const event::status_t 
 					this->_log->print("Process [%d] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
 				#endif
 				// Выходим из приложения
+				this->_log->print("ЩУП [%d]: уход строкой 1781", log_t::flag_t::INFO, static_cast <int32_t> (::getpid()));
 				::_exit(EXIT_FAILURE);
 			}
 		}
@@ -2307,6 +2324,7 @@ size_t awh::unit::Cluster::send(const void * buffer, const size_t size) noexcept
 					this->_log->print("Process [%d] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
 				#endif
 				// Выходим из приложения
+				this->_log->print("ЩУП [%d]: уход строкой 2310", log_t::flag_t::INFO, static_cast <int32_t> (::getpid()));
 				::_exit(EXIT_FAILURE);
 			}
 		// Если процесс является родительским
