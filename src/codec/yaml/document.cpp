@@ -1048,7 +1048,7 @@ uint32_t awh::codec::yaml::Document::bound(const uint32_t index) const noexcept 
  * @return       признак успешной дословной записи пролёта
  *
  */
-bool awh::codec::yaml::Document::verbatim(writer_t & writer, const uint32_t first, const uint32_t last) const noexcept {
+bool awh::codec::yaml::Document::verbatim(writer_t & writer, const uint32_t first, const uint32_t last, const bool entry) const noexcept {
 	/**
 	 * Если исходный текст не удержан
 	 */
@@ -1082,6 +1082,17 @@ bool awh::codec::yaml::Document::verbatim(writer_t & writer, const uint32_t firs
 	while((position < edge) && (this->_source.at(position) == ' '))
 		// Выполняем переход к следующему знаку строки
 		position++;
+	/**
+	 * Если пролёт переписывается записями перечня, а черты в строке его нет
+	 *
+	 * @details Написание `-` со значением строкою ниже кладёт черту в строку свою, а узел
+	 *          значения начинается строкою следующей: перенос его дословно черту потерял
+	 *          бы, и записи перечня слились бы с объемлющим построением. Отказ отсылает
+	 *          такой пролёт сборке заново. Нашёл это ворошитель правкой дерева
+	 */
+	if(entry && ((position >= edge) || (this->_source.at(position) != '-')))
+		// Выводим признак неудачной дословной записи пролёта
+		return false;
 	// Выводим признак дословной записи пролёта исходными байтами
 	return writer.verbatim(string_view(this->_source).substr(origin, (edge - origin)),
 	 static_cast <uint32_t> (position - started));
@@ -1126,7 +1137,7 @@ void awh::codec::yaml::Document::children(writer_t & writer, const uint32_t inde
 			/**
 			 * Если переписать пролёт дословно удалось
 			 */
-			if(this->verbatim(writer, child, last)){
+			if(this->verbatim(writer, child, last, (kind(this->_nodes.at(index).type) == kind_t::SEQUENCE))){
 				// Выполняем переход за переписанный пролёт
 				child = next;
 				// Выполняем переход к следующему ребёнку вместилища
@@ -1254,6 +1265,30 @@ void awh::codec::yaml::Document::spread() noexcept {
 	for(size_t i = 0; i < this->_nodes.size(); i++)
 		// Запоминаем границу записи очередного узла
 		this->_nodes.at(i).edge = nearest.at(i + this->_nodes.at(i).extent());
+	/**
+	 * Выполняем перебор всех документов текста
+	 *
+	 * @note Граница записи узла за конец документа своего не заходит: черта `---`
+	 *       принадлежит документу следующему, и дословный перенос последнего узла
+	 *       прежнего вернул бы её вторым разом - записью её ведает сборка потока
+	 */
+	for(size_t i = 0; i < this->_roots.size(); i++){
+		// Получаем номер корневого узла очередного документа
+		const uint32_t root = this->_roots.at(i);
+		// Получаем конец очередного документа в удержанном тексте
+		const uint32_t closing = (((i + 1) < this->_starts.size()) ? this->_starts.at(i + 1) : ending);
+		/**
+		 * Выполняем перебор всех узлов очередного документа
+		 */
+		for(uint32_t j = root; j < (root + this->_nodes.at(root).extent()); j++){
+			/**
+			 * Если граница записи узла за конец документа заходит
+			 */
+			if((this->_nodes.at(j).edge != NO_ORIGIN) && (this->_nodes.at(j).edge > closing))
+				// Запоминаем конец документа границею записи узла
+				this->_nodes.at(j).edge = closing;
+		}
+	}
 }
 /**
  * @brief Метод получения начала собственной строки узла

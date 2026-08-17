@@ -1022,6 +1022,7 @@ namespace awh {
 					 * @param writer сборка текста
 					 * @param first  номер первого узла переписываемого пролёта
 					 * @param last   номер последнего узла переписываемого пролёта
+					 * @param entry  признак того, что пролёт переписывается записями перечня
 					 * @return       признак успешной дословной записи пролёта
 					 *
 					 * \~english
@@ -1033,7 +1034,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool verbatim(writer_t & writer, const uint32_t first, const uint32_t last) const noexcept;
+					bool verbatim(writer_t & writer, const uint32_t first, const uint32_t last, const bool entry) const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод сборки детей вместилища пролётами нетронутых
