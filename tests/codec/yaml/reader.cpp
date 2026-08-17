@@ -1427,6 +1427,52 @@ TEST(CodecYamlReader, BlockOuterIndent) {
 		"MAPPING_END\nSEQUENCE_END\nDOCUMENT_END\nSTREAM_END\n");
 }
 /**
+ * @brief Проверка отказа записи, глубже завершённой пары стоящей
+ *
+ * @details Отображение глубже открытого построения заводится лишь значением пары,
+ *          объявленной прежде: написание `имя:` со значением строкою ниже того и
+ *          требует. Пара же, стоящая глубже уже завершённой пары, значением быть
+ *          некому, и описание такое написание запрещает
+ *
+ * @note Нашёл это ворошитель правкой дерева, а сличение подтвердило: libyaml и
+ *       libfyaml отвечают отказом «did not find expected key», а чтение выдумывало
+ *       вложенное отображение молча - дерево выходило исходному тексту не отвечающим
+ *
+ */
+TEST(CodecYamlReader, DeeperEntry) {
+	// Выполняем проверку отказа пары глубже завершённой пары с поточным значением
+	ASSERT_EQ(events("a:\n  b: {x: 1}\n      c: 2\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\nSCALAR «a»\nMAPPING_START\nSCALAR «b»\n"
+		"MAPPING_START\nSCALAR «x»\nSCALAR «1»\nMAPPING_END\n"
+		"ОТКАЗ отступ не отвечает ни одному из открытых уровней строка 3 знак 7\n");
+	// Выполняем проверку отказа пары глубже завершённой пары через пустую строку
+	ASSERT_EQ(events("a:\n  b: {x: 1}\n\n      c: 2\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\nSCALAR «a»\nMAPPING_START\nSCALAR «b»\n"
+		"MAPPING_START\nSCALAR «x»\nSCALAR «1»\nMAPPING_END\n"
+		"ОТКАЗ отступ не отвечает ни одному из открытых уровней строка 4 знак 7\n");
+	// Выполняем проверку отказа пары глубже завершённой пары с перечнем значением
+	ASSERT_EQ(events("a:\n  b: [1]\n    c: 2\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\nSCALAR «a»\nMAPPING_START\nSCALAR «b»\n"
+		"SEQUENCE_START\nSCALAR «1»\nSEQUENCE_END\n"
+		"ОТКАЗ отступ не отвечает ни одному из открытых уровней строка 3 знак 5\n");
+	/**
+	 * Выполняем проверку принятия вложенности в четыре уровня
+	 *
+	 * @note Отказ обязан отделять написание запрещённое от вложенности обыкновенной:
+	 *       всякий уровень её стоит глубже прежнего, и запрет без этого разбора съел
+	 *       бы вложенность целиком
+	 */
+	ASSERT_EQ(events("a:\n  b:\n    c: 1\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\nSCALAR «a»\nMAPPING_START\nSCALAR «b»\n"
+		"MAPPING_START\nSCALAR «c»\nSCALAR «1»\n"
+		"MAPPING_END\nMAPPING_END\nMAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
+	// Выполняем проверку принятия пары внутри записи перечня
+	ASSERT_EQ(events("- a: 1\n  b: 2\n"),
+		"STREAM_START\nDOCUMENT_START\nSEQUENCE_START\nMAPPING_START\n"
+		"SCALAR «a»\nSCALAR «1»\nSCALAR «b»\nSCALAR «2»\n"
+		"MAPPING_END\nSEQUENCE_END\nDOCUMENT_END\nSTREAM_END\n");
+}
+/**
  * @brief Проверка свёртки переводов строк блочного значения
  *
  * @details Свёртка складывает строки пробелом, а последовательность переводов

@@ -229,7 +229,7 @@ awh::codec::yaml::Reader::Reader() noexcept :
  _state(state_t::READY), _error(error_t::NONE), _reading(0), _offset(0), _line(0), _position(0),
  _started(false), _opened(false), _filled(false), _blocking(false), _block(style_t::LITERAL),
  _chomp(chomp_t::CLIP), _marked(NO_INDENT), _outer(0), _margin(0), _inner(0), _opening(0),
- _breaks(0), _deepened(false), _expected(false), _entered(false), _pending(0), _schema(schema_t::CORE), _plaining(false),
+ _breaks(0), _deepened(false), _expected(false), _awaited(false), _entered(false), _pending(0), _schema(schema_t::CORE), _plaining(false),
  _folds(0), _required(0), _phase(flow_t::ENTRY), _directed(false), _versioned(false) {}
 /**
  * @brief Конструктор
@@ -241,7 +241,7 @@ awh::codec::yaml::Reader::Reader(const settings_t & settings) noexcept :
  _settings(settings), _state(state_t::READY), _error(error_t::NONE), _reading(0), _offset(0),
  _line(0), _position(0), _started(false), _opened(false), _filled(false),
  _blocking(false), _block(style_t::LITERAL), _chomp(chomp_t::CLIP), _marked(NO_INDENT),
- _outer(0), _margin(0), _inner(0), _opening(0), _breaks(0), _deepened(false), _expected(false), _entered(false), _pending(0),
+ _outer(0), _margin(0), _inner(0), _opening(0), _breaks(0), _deepened(false), _expected(false), _awaited(false), _entered(false), _pending(0),
  _schema(settings.schema), _plaining(false), _folds(0), _required(0),
  _phase(flow_t::ENTRY), _directed(false), _versioned(false) {
 	/**
@@ -338,6 +338,8 @@ void awh::codec::yaml::Reader::clear() noexcept {
 	this->_inner = 0;
 	// Выполняем сброс признака ожидания значения пары
 	this->_expected = false;
+	// Выполняем сброс признака подачи значения пары, объявленной прежде
+	this->_awaited = false;
 	// Выполняем сброс признака принадлежности ожидаемого значения записи перечня
 	this->_entered = false;
 	// Выполняем сброс отступа, на котором ожидается значение пары
@@ -1992,6 +1994,22 @@ bool awh::codec::yaml::Reader::content(const string_view line, const size_t offs
 		if(this->_levels.empty() || (this->_levels.back().indent < indent) ||
 		   (this->_levels.back().kind != nesting_t::MAPPING)){
 			/**
+			 * Если пара стоит глубже открытого построения, значения его не будучи
+			 *
+			 * @details Отображение глубже открытого построения заводится лишь значением
+			 * пары, объявленной прежде: пара `имя:` со значением строкою ниже того и
+			 * требует. Пара же, стоящая глубже уже завершённой пары, значением быть
+			 * некому - описание такое написание запрещает, а разбор его наугад выдал бы
+			 * дерево, исходному тексту не отвечающее
+			 *
+			 * @note Нашёл это ворошитель правкой дерева, а сличение с libyaml и libfyaml
+			 *       подтвердило: обе отвечают отказом «did not find expected key», а
+			 *       чтение выдумывало вложенное отображение молча
+			 */
+			if(!this->_expected && !this->_awaited && !this->_levels.empty() && (this->_levels.back().indent < indent))
+				// Выводим отказ построения, стоящего глубже открытого
+				return this->fail(error_t::INVALID_INDENTATION, offset);
+			/**
 			 * Если на этом отступе открыт уровень перечня
 			 */
 			if(!this->_levels.empty() && (this->_levels.back().indent == indent) &&
@@ -3359,12 +3377,17 @@ bool awh::codec::yaml::Reader::record(const string_view line) noexcept {
 	} else if(this->_filled && this->_levels.empty() && !this->_expected)
 		// Выводим отказ содержимого за завершённой записью
 		return this->fail(error_t::TRAILING_CHARACTERS, offset);
+	// Выполняем сброс признака подачи значения пары, объявленной прежде
+	this->_awaited = false;
 	/**
 	 * Если ожидалось значение пары, а отступ строки глубже отступа имени её
 	 */
-	if(this->_expected && (indent > this->_pending))
+	if(this->_expected && (indent > this->_pending)){
 		// Выполняем сброс признака ожидания значения пары
 		this->_expected = false;
+		// Запоминаем признак подачи значения пары, объявленной прежде
+		this->_awaited = true;
+	}
 	/**
 	 * Признак того, что строка объявляет очередное значение перечня
 	 *

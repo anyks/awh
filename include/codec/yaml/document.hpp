@@ -1144,6 +1144,31 @@ namespace awh {
 					uint32_t implant(const uint32_t owner) noexcept;
 					/**
 					 * \~russian
+					 * @brief Метод объявления дерева правленым при уходе метки
+					 *
+					 * @details Метка, правкой уходящая, оставила бы ссылки на себя без
+					 * объявления, а ссылки эти держатся дословным переносом исходных байтов:
+					 * раскрытие их дерево помнит, а запись `*метка` вернулась бы в перезапись
+					 * как есть. Оттого дерево целиком объявляется правленым - раскрытия
+					 * соберутся заново значениями своими, и ссылок в тексте не останется
+					 *
+					 * @note Правило это едино для снятия узла и для замены его скалярным
+					 *       значением: уходит поддерево и там, и там, а разойдись оно
+					 *       телами - один из путей потерял бы его молча
+					 *
+					 * @param index  номер первого узла уходящего поддерева
+					 * @param extent размах уходящего поддерева в узлах
+					 *
+					 * \~english
+					 * @brief Method of the declaring of a tree as edited at the leaving of an anchor
+					 * @param index index of the first node of the leaving subtree
+					 * @param extent extent of the leaving subtree in the nodes
+					 *
+					 * \~
+					 */
+					void disown(const uint32_t index, const uint32_t extent) noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод снятия узла вместе с поддеревом его
 					 *
 					 * @param index номер снимаемого узла
