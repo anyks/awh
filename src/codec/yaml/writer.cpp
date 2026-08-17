@@ -97,13 +97,14 @@ namespace {
  */
 awh::codec::yaml::Writer::Settings::Settings() noexcept :
  schema(schema_t::CORE), layout(layout_t::BLOCK), quoting(style_t::PLAIN), indent(2),
- sequenceIndent(false), explicitStart(false), explicitEnd(false), version(false) {}
+ sequenceIndent(false), explicitStart(false), explicitEnd(false), version(false),
+ malformed(malformed_t::REPLACE) {}
 /**
  * @brief Конструктор
  *
  */
 awh::codec::yaml::Writer::Writer() noexcept :
- _margin(0), _keyed(false), _hanging(false), _verbatim(false), _transferred(false), _opened(false), _taken(0) {}
+ _refused(false), _margin(0), _keyed(false), _hanging(false), _verbatim(false), _transferred(false), _opened(false), _taken(0) {}
 /**
  * @brief Конструктор
  *
@@ -111,7 +112,7 @@ awh::codec::yaml::Writer::Writer() noexcept :
  *
  */
 awh::codec::yaml::Writer::Writer(const settings_t & settings) noexcept :
- _margin(0), _keyed(false), _hanging(false), _verbatim(false), _transferred(false), _opened(false), _taken(0) {
+ _refused(false), _margin(0), _keyed(false), _hanging(false), _verbatim(false), _transferred(false), _opened(false), _taken(0) {
 	// Выполняем установку настроек записи текста
 	this->settings(settings);
 }
@@ -152,6 +153,8 @@ void awh::codec::yaml::Writer::settings(const settings_t & settings) noexcept {
 void awh::codec::yaml::Writer::clear() noexcept {
 	// Выполняем сброс собранного текста
 	this->_result.clear();
+	// Выполняем сброс признака отказа по негодной кодировке
+	this->_refused = false;
 	// Выполняем сброс стопы открытых вместилищ
 	this->_levels.clear();
 	// Выполняем сброс имени метки, узла своего ожидающей
@@ -190,6 +193,21 @@ const string & awh::codec::yaml::Writer::text() const noexcept {
  *
  */
 string awh::codec::yaml::Writer::take() noexcept {
+	/**
+	 * Если запись отвергнута негодной кодировкой
+	 *
+	 * @details Текст, оборванный отказом на половине, негоден вовсе: разобрать его
+	 *          нельзя, а отличить от целого глазом трудно. Изъятие отдаёт пустоту и
+	 *          сбрасывает собранное
+	 *
+	 * @note Правило это решено одинаковым у всех кодеков
+	 */
+	if(this->_refused){
+		// Выполняем сброс собранного текста
+		this->clear();
+		// Выводим пустой текст
+		return string();
+	}
 	// Выполняем учёт изъятых из сборщика байтов
 	this->_taken += static_cast <uint64_t> (this->_result.size());
 	// Изымаемый из сборщика текст
@@ -637,6 +655,108 @@ bool awh::codec::yaml::Writer::enter() noexcept {
  * @param style ограда, какою обносится значение
  *
  */
+/**
+ * @brief Метод приведения записи к годной кодировке UTF-8
+ *
+ * @param text   приводимая запись
+ * @param result переменная, куда помещается приведённая запись
+ * @return       признак пригодности записи к записи
+ *
+ */
+bool awh::codec::yaml::Writer::sanitize(const string & text, string & result) noexcept {
+	/**
+	 * Если байты пропускаются как есть
+	 *
+	 * @note Правило это оставлено потребителю, кому кодировка безразлична вовсе: разбор
+	 *       такой записи отвечает отказом, и потребитель, правило выбравший, о том знает
+	 */
+	if(this->_settings.malformed == malformed_t::PASS){
+		// Выполняем перенос записи как она есть
+		result.assign(text);
+		// Выводим признак пригодности записи
+		return true;
+	}
+	// Положение очередного знака записи
+	size_t position = 0;
+	// Признак того, что запись негодную последовательность несёт
+	bool malformed = false;
+	/**
+	 * Выполняем разбор записи знак за знаком
+	 *
+	 * @note Разбор ведётся тем же телом, каким его ведёт чтение: второе такое тело
+	 *       разошлось бы с первым, и запись выдавала бы то, чего чтение не принимает
+	 */
+	while(position < text.size()){
+		// Разобранный знак Юникода
+		uint32_t code = 0;
+		// Количество байт, разбором пройденных
+		size_t length = 0;
+		// Выполняем разбор очередной последовательности записи
+		const utf8_t outcome = inspect(text, position, code, length);
+		/**
+		 * Если последовательность прочитана целиком и правила соблюдает
+		 */
+		if(outcome == utf8_t::VALID){
+			/**
+			 * Если запись негодных последовательностей ещё не несла
+			 *
+			 * @note Годная запись не копируется вовсе до первой негодной последовательности:
+			 *       записи такие составляют подавляющее большинство, и лишний обход их
+			 *       лёг бы платою на всякую запись ради редкого случая
+			 */
+			if(malformed)
+				// Выполняем перенос годной последовательности
+				result.append(text, position, length);
+			// Выполняем переход к следующей последовательности записи
+			position += length;
+			// Выполняем переход к следующей последовательности записи
+			continue;
+		}
+		/**
+		 * Если запись отвергается вовсе
+		 *
+		 * @note Отвергается она **ничего не записав**: отказ посреди записи оставил бы в
+		 *       тексте имя поля без значения, а это хуже негодного байта
+		 */
+		if(this->_settings.malformed == malformed_t::REFUSE){
+			/**
+			 * Запоминаем, что запись отвергнута негодной кодировкой
+			 *
+			 * @note Без того изъятие отдало бы текст, оборванный на половине: разобрать его
+			 *       нельзя, а отличить от целого глазом трудно
+			 */
+			this->_refused = true;
+			// Выводим признак непригодности записи
+			return false;
+		}
+		/**
+		 * Если запись негодных последовательностей ещё не несла
+		 */
+		if(!malformed){
+			// Запоминаем, что запись негодную последовательность несёт
+			malformed = true;
+			// Выполняем перенос годной части записи, прежде разобранной
+			result.append(text, 0, position);
+		}
+		// Выполняем запись знака замены негодной последовательности
+		result.append("\uFFFD");
+		/**
+		 * Выполняем переход через негодную последовательность
+		 *
+		 * @note Нехватка байт до конца записи даёт длину нулевую, и переход обязан
+		 *       двинуться хотя бы на байт: иначе обход записи встал бы на месте навсегда
+		 */
+		position += ((length > 0) ? length : 1);
+	}
+	/**
+	 * Если запись негодных последовательностей не несла вовсе
+	 */
+	if(!malformed)
+		// Выполняем перенос записи как она есть
+		result.assign(text);
+	// Выводим признак пригодности записи
+	return true;
+}
 void awh::codec::yaml::Writer::quoted(const string & text, const style_t style) noexcept {
 	/**
 	 * Определяем ограду записываемого значения
@@ -978,6 +1098,14 @@ bool awh::codec::yaml::Writer::close() noexcept {
  *
  */
 bool awh::codec::yaml::Writer::key(const string & name) noexcept {
+	// Запись, к годной кодировке приведённая
+	string record;
+	/**
+	 * Если запись к годной кодировке UTF-8 привести не удалось
+	 */
+	if(!this->sanitize(name, record))
+		// Выводим признак неудачной записи имени пары
+		return false;
 	/**
 	 * Если ни одно вместилище не открыто либо открыт перечень значений
 	 */
@@ -1005,9 +1133,9 @@ bool awh::codec::yaml::Writer::key(const string & name) noexcept {
 	 *       разделило бы пару надвое, а разбор прочёл бы половину имени именем
 	 */
 	const style_t style = ((this->_settings.quoting == style_t::PLAIN) ?
-	 quoting(name, this->_settings.schema, true) : this->_settings.quoting);
+	 quoting(record, this->_settings.schema, true) : this->_settings.quoting);
 	// Выполняем запись имени пары выбранной оградою
-	this->quoted(name, style);
+	this->quoted(record, style);
 	// Выполняем добавление разделителя имени пары
 	this->_result.push_back(':');
 	// Запоминаем признак записанного имени пары
@@ -1025,14 +1153,22 @@ bool awh::codec::yaml::Writer::key(const string & name) noexcept {
  *
  */
 bool awh::codec::yaml::Writer::anchor(const string & name) noexcept {
+	// Запись, к годной кодировке приведённая
+	string record;
+	/**
+	 * Если запись к годной кодировке UTF-8 привести не удалось
+	 */
+	if(!this->sanitize(name, record))
+		// Выводим признак неудачной записи якоря
+		return false;
 	/**
 	 * Если имя метки построено ошибочно
 	 */
-	if(name.empty() || !anchored(name))
+	if(record.empty() || !anchored(record))
 		// Выводим признак неудачной записи метки
 		return false;
 	// Запоминаем имя метки, узла своего ожидающей
-	this->_anchor.assign(name);
+	this->_anchor.assign(record);
 	// Выводим признак успешной записи метки
 	return true;
 }
@@ -1044,36 +1180,44 @@ bool awh::codec::yaml::Writer::anchor(const string & name) noexcept {
  *
  */
 bool awh::codec::yaml::Writer::tag(const string & name) noexcept {
+	// Запись, к годной кодировке приведённая
+	string record;
+	/**
+	 * Если запись к годной кодировке UTF-8 привести не удалось
+	 */
+	if(!this->sanitize(name, record))
+		// Выводим признак неудачной записи метки
+		return false;
 	/**
 	 * Если метка типа пуста
 	 */
-	if(name.empty())
+	if(record.empty())
 		// Выводим признак неудачной записи метки типа
 		return false;
 	/**
 	 * Если метка типа передана сокращением своим
 	 */
-	if(name.front() == '!'){
+	if(record.front() == '!'){
 		// Запоминаем метку типа, узла своего ожидающую
-		this->_tag.assign(name);
+		this->_tag.assign(record);
 		// Выводим признак успешной записи метки типа
 		return true;
 	}
 	/**
 	 * Если метка типа описанием задана
 	 */
-	if(name.compare(0, STANDARD_TAG.size(), STANDARD_TAG) == 0){
+	if(record.compare(0, STANDARD_TAG.size(), STANDARD_TAG) == 0){
 		// Запоминаем сокращение метки типа, описанием закреплённое
 		this->_tag.assign("!!");
 		// Выполняем добавление окончания метки типа
-		this->_tag.append(name, STANDARD_TAG.size(), string::npos);
+		this->_tag.append(record, STANDARD_TAG.size(), string::npos);
 		// Выводим признак успешной записи метки типа
 		return true;
 	}
 	// Запоминаем метку типа записью указателя дословно
 	this->_tag.assign("!<");
 	// Выполняем добавление записи указателя метки типа
-	this->_tag.append(name);
+	this->_tag.append(record);
 	// Выполняем добавление окончания дословной записи
 	this->_tag.push_back('>');
 	// Выводим признак успешной записи метки типа
@@ -1087,10 +1231,18 @@ bool awh::codec::yaml::Writer::tag(const string & name) noexcept {
  *
  */
 bool awh::codec::yaml::Writer::alias(const string & name) noexcept {
+	// Запись, к годной кодировке приведённая
+	string record;
+	/**
+	 * Если запись к годной кодировке UTF-8 привести не удалось
+	 */
+	if(!this->sanitize(name, record))
+		// Выводим признак неудачной записи ссылки
+		return false;
 	/**
 	 * Если имя метки построено ошибочно
 	 */
-	if(name.empty() || !anchored(name))
+	if(record.empty() || !anchored(record))
 		// Выводим признак неудачной записи ссылки
 		return false;
 	/**
@@ -1113,7 +1265,7 @@ bool awh::codec::yaml::Writer::alias(const string & name) noexcept {
 	// Выполняем добавление знака ссылки
 	this->_result.push_back('*');
 	// Выполняем добавление имени метки, ссылкою указанной
-	this->_result.append(name);
+	this->_result.append(record);
 	/**
 	 * Если ссылка записана блочным построением
 	 */
@@ -1201,6 +1353,14 @@ bool awh::codec::yaml::Writer::value(const bool value) noexcept {
  *
  */
 bool awh::codec::yaml::Writer::value(const string & value, const style_t style) noexcept {
+	// Запись, к годной кодировке приведённая
+	string record;
+	/**
+	 * Если запись к годной кодировке UTF-8 привести не удалось
+	 */
+	if(!this->sanitize(value, record))
+		// Выводим признак неудачной записи значения
+		return false;
 	/**
 	 * Если поставить запись на своё место не удалось
 	 */
@@ -1215,11 +1375,11 @@ bool awh::codec::yaml::Writer::value(const string & value, const style_t style) 
 	 * @note Пустое значение без ограды пишется пустотою же, и разделитель перед нею
 	 *       оставил бы в конце строки пробел, ничего не значащий
 	 */
-	if(!value.empty() || (style != style_t::PLAIN))
+	if(!record.empty() || (style != style_t::PLAIN))
 		// Выполняем добавление разделителя записей перед значением
 		this->spaced();
 	// Выполняем запись значения выбранной оградою
-	this->quoted(value, style);
+	this->quoted(record, style);
 	/**
 	 * Если значение записано блочным построением
 	 */
@@ -1241,6 +1401,14 @@ bool awh::codec::yaml::Writer::value(const string & value, const style_t style) 
  *
  */
 bool awh::codec::yaml::Writer::value(const string & value) noexcept {
+	// Запись, к годной кодировке приведённая
+	string record;
+	/**
+	 * Если запись к годной кодировке UTF-8 привести не удалось
+	 */
+	if(!this->sanitize(value, record))
+		// Выводим признак неудачной записи значения
+		return false;
 	/**
 	 * Получаем ограду, какою обносится записываемое значение
 	 *
@@ -1249,9 +1417,9 @@ bool awh::codec::yaml::Writer::value(const string & value) noexcept {
 	 *       кодек - то же самое, которым решает и разбор
 	 */
 	const style_t style = ((this->_settings.quoting == style_t::PLAIN) ?
-	 quoting(value, this->_settings.schema, false) : this->_settings.quoting);
+	 quoting(record, this->_settings.schema, false) : this->_settings.quoting);
 	// Выполняем запись строкового значения выбранной оградою
-	return this->value(value, style);
+	return this->value(record, style);
 }
 /**
  * @brief Метод записи строкового значения
@@ -1346,6 +1514,14 @@ bool awh::codec::yaml::Writer::value(const double value) noexcept {
  *
  */
 bool awh::codec::yaml::Writer::block(const string & text, const style_t style, const chomp_t chomp) noexcept {
+	// Запись, к годной кодировке приведённая
+	string record;
+	/**
+	 * Если запись к годной кодировке UTF-8 привести не удалось
+	 */
+	if(!this->sanitize(text, record))
+		// Выводим признак неудачной записи значения
+		return false;
 	/**
 	 * Если блочное значение записывается поточным построением
 	 *
@@ -1370,13 +1546,13 @@ bool awh::codec::yaml::Writer::block(const string & text, const style_t style, c
 	 *          ограде двойной, где знак передаётся отменяющей последовательностью. Нашёл
 	 *          это ворошитель на тексте с окончаниями строк `CR LF`
 	 */
-	if(text.find('\r') != string::npos)
+	if(record.find('\r') != string::npos)
 		// Выводим признак неудачной записи значения
 		return false;
 	// Вид блочного значения, к записи назначенный
 	style_t chosen = style;
 	// Содержимое значения, к виду записи приведённое
-	string content = text;
+	string content = record;
 	/**
 	 * Если блочное значение записывается свёрткою строк
 	 *
@@ -1605,6 +1781,14 @@ bool awh::codec::yaml::Writer::block(const string & text, const style_t style, c
  *
  */
 bool awh::codec::yaml::Writer::comment(const string & text) noexcept {
+	// Запись, к годной кодировке приведённая
+	string record;
+	/**
+	 * Если запись к годной кодировке UTF-8 привести не удалось
+	 */
+	if(!this->sanitize(text, record))
+		// Выводим признак неудачной записи замечания
+		return false;
 	/**
 	 * Если примечание записывается поточным построением
 	 *
@@ -1627,11 +1811,11 @@ bool awh::codec::yaml::Writer::comment(const string & text) noexcept {
 	/**
 	 * Если содержимое примечания не пусто
 	 */
-	if(!text.empty()){
+	if(!record.empty()){
 		// Выполняем добавление разделителя знака примечания и содержимого
 		this->_result.push_back(' ');
 		// Выполняем добавление содержимого примечания
-		this->_result.append(text);
+		this->_result.append(record);
 	}
 	// Выполняем закрытие строки записанного примечания
 	this->_result.push_back('\n');
@@ -1646,6 +1830,14 @@ bool awh::codec::yaml::Writer::comment(const string & text) noexcept {
  *
  */
 bool awh::codec::yaml::Writer::trailing(const string & text) noexcept {
+	// Запись, к годной кодировке приведённая
+	string record;
+	/**
+	 * Если запись к годной кодировке UTF-8 привести не удалось
+	 */
+	if(!this->sanitize(text, record))
+		// Выводим признак неудачной записи замечания
+		return false;
 	/**
 	 * Если записывать примечание не за чем
 	 *
@@ -1664,11 +1856,11 @@ bool awh::codec::yaml::Writer::trailing(const string & text) noexcept {
 	/**
 	 * Если содержимое примечания не пусто
 	 */
-	if(!text.empty()){
+	if(!record.empty()){
 		// Выполняем добавление разделителя знака примечания и содержимого
 		this->_result.push_back(' ');
 		// Выполняем добавление содержимого примечания
-		this->_result.append(text);
+		this->_result.append(record);
 	}
 	// Выполняем закрытие строки записанного примечания
 	this->_result.push_back('\n');

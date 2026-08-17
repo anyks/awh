@@ -969,3 +969,149 @@ TEST(CodecYamlWriter, Unprintable) {
 	// Выполняем проверку выбора двойной ограды по непечатному знаку
 	ASSERT_EQ(yaml::quoting(string("a\xC2\x81") + "b", yaml::schema_t::CORE, false), yaml::style_t::DOUBLE);
 }
+/**
+ * @brief Проверка обращения с негодной последовательностью UTF-8
+ *
+ * @details Чтение байты, кодировке не отвечающие, отвергает, а запись их пропускала:
+ *          кодек выдавал текст, какой сам же прочитать не мог. Проверка эта закрепляет
+ *          три правила обращения и то, что перезапись негодного значения читается
+ *          обратно всяким оформлением
+ *
+ * @note Дефект принесён ведущим кодека JSON, куда он пришёл от ведущего Grok: значения,
+ *       из журналов и сетевых сообщений взятые, битые байты несут обычным делом
+ *
+ */
+TEST(CodecYamlWriter, Malformed) {
+	// Записи негодных последовательностей, проверкою сличаемые
+	const vector <string> records = {
+		string("\xFF\xFE", 2), string("\xC3", 1), string("\xED\xA0\x80", 3),
+		string("\xC0\x80", 2), string("\xC3\x28", 2), string("\xE2\x82", 2)
+	};
+	// Оформления записи, какими значение записывается
+	const vector <yaml::style_t> styles = {
+		yaml::style_t::PLAIN, yaml::style_t::SINGLE,
+		yaml::style_t::DOUBLE, yaml::style_t::LITERAL
+	};
+	/**
+	 * Выполняем перебор оформлений записи значения
+	 */
+	for(auto & style : styles){
+		/**
+		 * Выполняем перебор записей негодных последовательностей
+		 */
+		for(auto & record : records){
+			// Поток записи текста
+			yaml::writer_t writer;
+			// Выполняем открытие записываемого документа
+			ASSERT_TRUE(writer.document());
+			// Выполняем открытие отображения пар
+			ASSERT_TRUE(writer.mapping());
+			// Выполняем запись имени поля отображения
+			ASSERT_TRUE(writer.key("field"));
+			// Выполняем проверку успешности записи негодного значения
+			ASSERT_TRUE(writer.value(record, style));
+			// Выполняем закрытие отображения пар
+			ASSERT_TRUE(writer.close());
+			// Выполняем завершение записи документа
+			ASSERT_TRUE(writer.finish());
+			// Дерево документа, записанный текст читающее
+			yaml::document_t doc;
+			// Выполняем проверку того, что записанное читается обратно
+			ASSERT_TRUE(doc.parse(writer.take()))
+			 << "оформление " << static_cast <uint16_t> (style)
+			 << ", отказ " << yaml::message(doc.error());
+		}
+	}
+	// Поток записи текста правилом отказа
+	yaml::writer_t refusing;
+	// Настройки записи текста правилом отказа
+	yaml::writer_t::settings_t settings;
+	// Выполняем установку правила отказа записи
+	settings.malformed = yaml::malformed_t::REFUSE;
+	// Выполняем установку настроек записи текста
+	refusing.settings(settings);
+	// Выполняем открытие записываемого документа
+	ASSERT_TRUE(refusing.document());
+	// Выполняем открытие отображения пар
+	ASSERT_TRUE(refusing.mapping());
+	// Выполняем запись имени поля отображения
+	ASSERT_TRUE(refusing.key("field"));
+	// Выполняем проверку отказа записи негодного значения
+	ASSERT_FALSE(refusing.value(string("\xFF", 1), yaml::style_t::PLAIN));
+	// Получаем текст, отказом записи оставленный
+	const string left = refusing.take();
+	/**
+	 * Выполняем проверку того, что отказ ничего не записал
+	 *
+	 * @note Отвергается запись **ничего не записав**: отказ посреди записи оставил бы в
+	 *       тексте имя поля без значения, а это хуже негодного байта. Оставленный текст
+	 *       ни негодного байта нести не должен, ни знака замены
+	 */
+	ASSERT_EQ(left.find('\xFF'), string::npos);
+	// Выполняем проверку того, что знака замены отказ не записал
+	ASSERT_EQ(left.find("\uFFFD"), string::npos);
+	// Поток записи текста правилом пропуска
+	yaml::writer_t passing;
+	// Настройки записи текста правилом пропуска
+	yaml::writer_t::settings_t through;
+	// Выполняем установку правила пропуска байтов
+	through.malformed = yaml::malformed_t::PASS;
+	// Выполняем установку настроек записи текста
+	passing.settings(through);
+	// Выполняем открытие записываемого документа
+	ASSERT_TRUE(passing.document());
+	// Выполняем запись негодного значения корнем
+	ASSERT_TRUE(passing.value(string("\xFF\xFE", 2), yaml::style_t::PLAIN));
+	// Выполняем завершение записи документа
+	ASSERT_TRUE(passing.finish());
+	// Получаем записанный текст
+	const string text = passing.take();
+	// Выполняем проверку того, что байты пропущены как есть
+	ASSERT_NE(text.find(string("\xFF\xFE", 2)), string::npos);
+	// Дерево документа, записанный текст читающее
+	yaml::document_t doc;
+	// Выполняем проверку того, что пропущенные байты чтением отвергаются
+	ASSERT_FALSE(doc.parse(text));
+}
+/**
+ * @brief Проверка приведения кодировки у имени поля, якоря и метки
+ *
+ * @details Мест, куда потребитель подаёт свой текст, у наречия больше одного: значение,
+ *          имя поля, якорь, метка и замечание. Пропусти хоть одно - и текст выйдет
+ *          нечитаемым тем же порядком
+ *
+ */
+TEST(CodecYamlWriter, MalformedNames) {
+	// Негодная последовательность, записью подаваемая
+	const string broken("\xED\xA0\x80", 3);
+	// Поток записи текста
+	yaml::writer_t writer;
+	// Выполняем открытие записываемого документа
+	ASSERT_TRUE(writer.document());
+	// Выполняем открытие отображения пар
+	ASSERT_TRUE(writer.mapping());
+	// Выполняем запись негодного имени поля отображения
+	ASSERT_TRUE(writer.key(broken));
+	// Выполняем запись якоря, значению предпосылаемого
+	ASSERT_TRUE(writer.anchor(string("a") + broken));
+	// Выполняем запись значения поля отображения
+	ASSERT_TRUE(writer.value("значение"));
+	// Выполняем запись имени поля отображения
+	ASSERT_TRUE(writer.key("second"));
+	// Выполняем запись замечания, значению предпосылаемого
+	ASSERT_TRUE(writer.comment(broken));
+	// Выполняем запись значения поля отображения
+	ASSERT_TRUE(writer.value("иное"));
+	// Выполняем закрытие отображения пар
+	ASSERT_TRUE(writer.close());
+	// Выполняем завершение записи документа
+	ASSERT_TRUE(writer.finish());
+	// Получаем записанный текст
+	const string text = writer.take();
+	// Выполняем проверку того, что негодных байтов текст не несёт
+	ASSERT_EQ(text.find('\xED'), string::npos);
+	// Дерево документа, записанный текст читающее
+	yaml::document_t doc;
+	// Выполняем проверку того, что записанное читается обратно
+	ASSERT_TRUE(doc.parse(text)) << yaml::message(doc.error());
+}

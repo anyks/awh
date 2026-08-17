@@ -714,3 +714,49 @@ TEST(CodecYamlValue, Consistency) {
 		ASSERT_EQ(narrow, shrunk) << "запись " << records.at(i);
 	}
 }
+/**
+ * @brief Проверка отказа перезаписи по негодной кодировке
+ *
+ * @details Текст, оборванный отказом на половине, негоден вовсе: разобрать его нельзя,
+ *          а отличить от целого глазом трудно. Перезапись отдаёт пустоту
+ *
+ * @note Правило это решено одинаковым у всех кодеков
+ *
+ */
+TEST(CodecYamlValue, Refused) {
+	// Собираемое значение
+	yaml::value_t value;
+	// Выполняем занесение годного поля
+	value["good"] = yaml::value_t("годное");
+	// Выполняем занесение поля, негодную последовательность несущего
+	value["bad"] = yaml::value_t(string("\xFF\xFE", 2), yaml::style_t::PLAIN);
+	// Выполняем занесение годного поля
+	value["tail"] = yaml::value_t("хвост");
+	// Настройки записи текста правилом замены
+	yaml::writer_t::settings_t replacing;
+	// Выполняем установку правила замены негодной последовательности
+	replacing.malformed = yaml::malformed_t::REPLACE;
+	// Получаем текст, правилом замены записанный
+	const string replaced = value.dump(replacing);
+	// Выполняем проверку того, что текст записан
+	ASSERT_FALSE(replaced.empty());
+	// Прочитанное обратно значение
+	yaml::value_t parsed;
+	// Выполняем проверку того, что записанное читается обратно
+	ASSERT_TRUE(parsed.parse(replaced));
+	// Выполняем проверку сохранности годных полей
+	ASSERT_EQ(parsed["tail"].text(), "хвост");
+	// Настройки записи текста правилом отказа
+	yaml::writer_t::settings_t refusing;
+	// Выполняем установку правила отказа записи
+	refusing.malformed = yaml::malformed_t::REFUSE;
+	// Получаем текст, правилом отказа записанный
+	const string refused = value.dump(refusing);
+	/**
+	 * Выполняем проверку того, что отказ отдал пустоту, а не усечённый текст
+	 *
+	 * @note Усечённый текст нёс бы годное поле и половину негодного: разобрать его
+	 *       нельзя, а на глаз он выглядит целым документом
+	 */
+	ASSERT_TRUE(refused.empty());
+}

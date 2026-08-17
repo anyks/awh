@@ -148,6 +148,23 @@ namespace awh {
 						bool version;
 						/**
 						 * \~russian
+						 * Правило обращения с негодной последовательностью UTF-8
+						 *
+						 * @details Правило это касается лишь записи содержимого, потребителем
+						 * поданного: значения, имени поля, якоря, метки и замечания. Записи,
+						 * потоком собираемые самостоятельно, битых байтов нести не могут вовсе
+						 *
+						 * \~english
+						 * Rule of the treatment of a malformed UTF-8 sequence
+						 * @details This rule concerns only the writing of the content supplied by the consumer:
+						 * a value, a name of a field, an anchor, a tag and a comment. The records assembled
+						 * by the stream itself cannot carry the broken bytes at all
+						 *
+						 * \~
+						 */
+						malformed_t malformed;
+						/**
+						 * \~russian
 						 * @brief Конструктор
 						 *
 						 *
@@ -210,6 +227,31 @@ namespace awh {
 					// Настройки записи текста
 					settings_t _settings;
 					// Собираемый текст
+					/**
+					 * \~russian
+					 * Признак того, что запись отвергнута негодной кодировкой
+					 *
+					 * @details Признак этот заводится ради изъятия: текст, оборванный на
+					 * половине из-за отказа, негоден **вовсе**, и выдавать его молча поток
+					 * не вправе. Изъятие такого текста отдаёт пустоту
+					 *
+					 * @note Ставится он лишь отказом по кодировке, а не всяким отказом:
+					 * отказы прочие потребитель разбирает сам, и запись блочного значения
+					 * внутри скобок, к примеру, законно отступает к иному оформлению
+					 *
+					 * \~english
+					 * Sign that the writing is refused because of a malformed encoding
+					 * @details This sign is created for the sake of the withdrawal: a text cut off in the
+					 * middle because of a refusal is **entirely** unsuitable, and the stream has no right to give it away
+					 * silently. A withdrawal of such a text gives away emptiness
+					 * @note It is set only by a refusal by the encoding rather than by every refusal:
+					 * the other refusals are handled by the consumer itself, and the writing of a block value
+					 * inside the brackets, for instance, lawfully retreats to another formatting
+					 *
+					 * \~
+					 */
+					bool _refused;
+				private:
 					string _result;
 					// Стопа открытых вместилищ записи
 					vector <level_t> _levels;
@@ -315,6 +357,30 @@ namespace awh {
 					 * \~
 					 */
 					void quoted(const string & text, const style_t style) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод приведения записи к годной кодировке UTF-8
+					 *
+					 * @details Приведение ведётся тем же телом разбора, каким его ведёт чтение:
+					 * второе такое тело разошлось бы с первым, и запись выдавала бы то, чего
+					 * чтение не принимает
+					 *
+					 * @param text     приводимая запись
+					 * @param result   переменная, куда помещается приведённая запись
+					 * @return         признак пригодности записи к записи
+					 *
+					 * \~english
+					 * @brief Method of the bringing of a record to a valid UTF-8 encoding
+					 * @details The bringing is conducted by the same parsing body by which the reading conducts it:
+					 * a second such body would diverge from the first one, and the writing would give away what
+					 * the reading does not accept
+					 * @param text record being brought
+					 * @param result variable where the brought record is placed
+					 * @return sign of the suitability of the record for the writing
+					 *
+					 * \~
+					 */
+					bool sanitize(const string & text, string & result) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод открытия вместилища заданного вида

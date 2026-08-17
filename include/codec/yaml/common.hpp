@@ -728,6 +728,42 @@ namespace awh {
 
 			/**
 			 * \~russian
+			 * @brief Правила обращения с негодной последовательностью UTF-8 при записи
+			 *
+			 * @details Чтение байты, кодировке не отвечающие, отвергает - того требует
+			 * описание. Запись же их пропускала, и кодек выдавал текст, какой сам же
+			 * прочитать не мог. Случай этот не выдуманный: значения, взятые из журналов и
+			 * сетевых сообщений, битые байты несут обычным делом
+			 *
+			 * @details Правилом по умолчанию взята замена, а не отказ. Отказ записи
+			 * обрывает **весь** текст, а не одно значение, и один битый байт в одном
+			 * сообщении обнулил бы целый документ. Знак замены же предписан самим
+			 * Юникодом и в выданном тексте виден глазом, а не проглатывается молча
+			 *
+			 * @note Правило это решено владельцем одинаковым у всех кодеков
+			 *
+			 * \~english
+			 * @brief Rules of the treatment of a malformed UTF-8 sequence at the writing
+			 * @details The reading rejects the bytes not corresponding to the encoding — the specification
+			 * requires that. The writing, however, passed them through, and the codec gave away a text which it itself
+			 * could not read. This case is not invented: the values taken from the logs and
+			 * the network messages carry the broken bytes as a usual matter
+			 * @details The replacement rather than the refusal is taken as the default rule. A refusal of the writing
+			 * cuts off the **whole** text rather than a single value, and one broken byte in one
+			 * message would nullify an entire document. The replacement character, on the other hand, is prescribed by Unicode itself
+			 * and is visible to the eye in the given text rather than being swallowed silently
+			 * @note This rule is decided by the owner to be identical for all the codecs
+			 *
+			 * \~
+			 */
+			enum class malformed_t : uint8_t {
+				REPLACE = 0x00, // Негодная последовательность заменяется знаком U+FFFD
+				REFUSE  = 0x01, // Запись отвергается, ничего не записав
+				PASS    = 0x02  // Байты пропускаются как есть
+			};
+
+			/**
+			 * \~russian
 			 * @brief Отрезок в хранилище знаков
 			 *
 			 * @details Отрезок хранит смещение и длину, а не указатель: хранилище растёт
