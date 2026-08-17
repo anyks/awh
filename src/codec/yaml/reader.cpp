@@ -230,7 +230,7 @@ awh::codec::yaml::Reader::Reader() noexcept :
  _started(false), _opened(false), _filled(false), _blocking(false), _block(style_t::LITERAL),
  _chomp(chomp_t::CLIP), _marked(NO_INDENT), _outer(0), _margin(0), _inner(0), _opening(0),
  _breaks(0), _deepened(false), _expected(false), _awaited(false), _entered(false), _pending(0), _schema(schema_t::CORE), _plaining(false),
- _folds(0), _required(0), _phase(flow_t::ENTRY), _directed(false), _versioned(false) {}
+ _folds(0), _required(0), _phase(flow_t::ENTRY), _directed(false), _versioned(false), _declared(false), _dialect(schema_t::CORE) {}
 /**
  * @brief Конструктор
  *
@@ -243,7 +243,7 @@ awh::codec::yaml::Reader::Reader(const settings_t & settings) noexcept :
  _blocking(false), _block(style_t::LITERAL), _chomp(chomp_t::CLIP), _marked(NO_INDENT),
  _outer(0), _margin(0), _inner(0), _opening(0), _breaks(0), _deepened(false), _expected(false), _awaited(false), _entered(false), _pending(0),
  _schema(settings.schema), _plaining(false), _folds(0), _required(0),
- _phase(flow_t::ENTRY), _directed(false), _versioned(false) {
+ _phase(flow_t::ENTRY), _directed(false), _versioned(false), _declared(false), _dialect(settings.schema) {
 	/**
 	 * Если кодировка исходного текста навязана извне
 	 */
@@ -370,6 +370,10 @@ void awh::codec::yaml::Reader::clear() noexcept {
 	this->_directed = false;
 	// Выполняем сброс признака объявленного директивой наречия
 	this->_versioned = false;
+	// Выполняем сброс признака объявленного директивой наречия за весь текст
+	this->_declared = false;
+	// Выполняем сброс схемы, директивой наречия назначенной
+	this->_dialect = this->_settings.schema;
 	// Выполняем сброс состояния приведения кодировки
 	this->_decoder.reset();
 }
@@ -402,6 +406,26 @@ error_t awh::codec::yaml::Reader::error() const noexcept {
 const location_t & awh::codec::yaml::Reader::location() const noexcept {
 	// Выводим положение отказа разбора в исходном тексте
 	return this->_location;
+}
+/**
+ * @brief Метод извлечения схемы, над разбором действующей
+ *
+ * @return схема, над разбором действующая
+ *
+ */
+schema_t awh::codec::yaml::Reader::dialect() const noexcept {
+	// Выводим схему, директивой наречия назначенную
+	return this->_dialect;
+}
+/**
+ * @brief Метод проверки объявления наречия директивой
+ *
+ * @return признак объявления наречия директивой
+ *
+ */
+bool awh::codec::yaml::Reader::declared() const noexcept {
+	// Выводим признак объявления наречия директивой хоть раз за текст
+	return this->_declared;
 }
 /**
  * @brief Метод получения опознанной кодировки исходного текста
@@ -1634,6 +1658,8 @@ bool awh::codec::yaml::Reader::directive(const string_view line, const size_t of
 			return this->fail(error_t::UNSUPPORTED_VERSION, offset);
 		// Запоминаем признак объявленного директивой наречия
 		this->_versioned = true;
+		// Запоминаем признак объявленного директивой наречия за весь текст
+		this->_declared = true;
 		/**
 		 * Если текст объявлен наречием 1.1, а схема разрешения потребителем не назначена
 		 *
@@ -1646,6 +1672,8 @@ bool awh::codec::yaml::Reader::directive(const string_view line, const size_t of
 		if((minor.compare("1") == 0) && (this->_settings.schema == schema_t::CORE))
 			// Запоминаем схему наречия 1.1 действующей над документом
 			this->_schema = schema_t::LEGACY;
+		// Запоминаем схему, директивой наречия назначенную
+		this->_dialect = this->_schema;
 		// Выводим признак успешного разбора директивы
 		return true;
 	}

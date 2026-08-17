@@ -524,6 +524,28 @@ namespace awh {
 							style_t style() const noexcept;
 							/**
 							 * \~russian
+							 * @brief Метод извлечения схемы, над разбором действовавшей
+							 *
+							 * @details Схема эта настройками задана не всегда: директива
+							 * `%YAML 1.1` переводит разбор на схему наречия 1.1. Знать её надобно
+							 * тому, кто значение с дерева снимает: запись `on` логическою является
+							 * лишь под нею, и перезапись иною схемою переменила бы смысл
+							 *
+							 * @return схема, над разбором действовавшая
+							 *
+							 * \~english
+							 * @brief Method of the extraction of the schema which was acting over the parsing
+							 * @details This schema is not always set by the settings: the `%YAML 1.1` directive
+							 * switches the parsing to the schema of the 1.1 dialect. It is needed by whoever
+							 * takes a value off the tree: the record `on` is a logical one only under it,
+							 * and a rewriting by another schema would change the meaning
+							 * @return schema which was acting over the parsing
+							 *
+							 * \~
+							 */
+							schema_t schema() const noexcept;
+							/**
+							 * \~russian
 							 * @brief Метод извлечения количества детей вместилища
 							 *
 							 * @return количество детей вместилища
@@ -931,6 +953,27 @@ namespace awh {
 					uint32_t _prologue;
 					// Кодировка, какою текст прочитан
 					encoding_t _encoding;
+				private:
+					/**
+					 * \~russian
+					 * Признак того, что наречие текста объявлено директивой
+					 *
+					 * @details Признак этот нужен перезаписи: директива `%YAML 1.1` переводит
+					 * разбор на схему наречия 1.1, и перезапись без неё переменила бы смысл
+					 * документа - запись `on`, логическая под 1.1, вернулась бы строкою
+					 *
+					 * \~english
+					 * Sign that the dialect of the text is declared by a directive
+					 * @details This sign is needed by the rewriting: the `%YAML 1.1` directive switches
+					 * the parsing to the schema of the 1.1 dialect, and a rewriting without it would change the meaning
+					 * of the document — the record `on`, logical under 1.1, would return as a string
+					 *
+					 * \~
+					 */
+					bool _versioned;
+				private:
+					// Схема, над разбором действовавшая
+					schema_t _schema;
 					// Номера корневых узлов документов текста
 					vector <uint32_t> _roots;
 					/**

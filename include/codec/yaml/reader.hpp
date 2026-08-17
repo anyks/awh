@@ -556,6 +556,27 @@ namespace awh {
 				private:
 					/**
 					 * \~russian
+					 * Признак того, что наречие объявлялось директивой хоть раз за текст
+					 *
+					 * @details Признак `_versioned` сбрасывается закрытием всякого документа, и
+					 * после разбора он всегда ложен. Перезаписи же знать надобно, стояла ли
+					 * директива в тексте вообще, - оттого признак этот и заведён отдельно
+					 *
+					 * \~english
+					 * Sign that the dialect was declared by a directive at least once over the text
+					 * @details The `_versioned` sign is reset by the closing of every document, and
+					 * after the parsing it is always false. The rewriting, however, needs to know whether
+					 * a directive stood in the text at all — that is why this sign is created separately
+					 *
+					 * \~
+					 */
+					bool _declared;
+				private:
+					// Схема, директивой наречия назначенная
+					schema_t _dialect;
+				private:
+					/**
+					 * \~russian
 					 * @brief Метод объявления отказа разбора
 					 *
 					 * @param error  код ошибки разбора
@@ -1227,6 +1248,39 @@ namespace awh {
 					 * \~
 					 */
 					encoding_t encoding() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод извлечения схемы, над разбором действующей
+					 *
+					 * @details Схема эта настройками задана не всегда: директива `%YAML 1.1`
+					 * переводит разбор на схему наречия 1.1, и записи вроде `on` становятся
+					 * логическими. Перезапись такого текста обязана директиву сохранить -
+					 * иначе `on` вернётся строкою, и круговой ход переменит смысл
+					 *
+					 * \~english
+					 * @brief Method of the extraction of the schema acting over the parsing
+					 * @details This schema is not always set by the settings: the `%YAML 1.1` directive
+					 * switches the parsing to the schema of the 1.1 dialect, and the records like `on` become
+					 * logical ones. A rewriting of such a text must preserve the directive —
+					 * otherwise `on` will return as a string, and the round trip will change the meaning
+					 *
+					 * \~
+					 * @return схема, над разбором действующая
+					 */
+					schema_t dialect() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод проверки объявления наречия директивой
+					 *
+					 * @return признак объявления наречия директивой
+					 *
+					 * \~english
+					 * @brief Method of the check of the declaration of the dialect by a directive
+					 * @return sign of the declaration of the dialect by a directive
+					 *
+					 * \~
+					 */
+					bool declared() const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод сброса состояния потокового чтения

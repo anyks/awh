@@ -130,7 +130,8 @@ awh::codec::yaml::Document::Settings::Settings() noexcept :
  * @brief Конструктор
  *
  */
-awh::codec::yaml::Document::Document() noexcept : _prologue(0), _encoding(encoding_t::NONE), _error(error_t::NONE) {}
+awh::codec::yaml::Document::Document() noexcept :
+ _prologue(0), _encoding(encoding_t::NONE), _versioned(false), _schema(schema_t::CORE), _error(error_t::NONE) {}
 /**
  * @brief Конструктор
  *
@@ -138,7 +139,8 @@ awh::codec::yaml::Document::Document() noexcept : _prologue(0), _encoding(encodi
  *
  */
 awh::codec::yaml::Document::Document(const settings_t & settings) noexcept :
- _settings(settings), _prologue(0), _encoding(encoding_t::NONE), _error(error_t::NONE) {}
+ _settings(settings), _prologue(0), _encoding(encoding_t::NONE), _versioned(false), _schema(settings.schema),
+ _error(error_t::NONE) {}
 /**
  * @brief Метод получения настроек разбора документа
  *
@@ -730,7 +732,14 @@ bool awh::codec::yaml::Document::digest(reader_t & reader) noexcept {
 				 */
 				if(static_cast <uint32_t> (type) & static_cast <uint32_t> (type_t::NUMBER)){
 					// Выполняем разбор записи числа к самому узкому вмещающему виду
-					const type_t narrowed = narrow(reader.value().text, this->_settings.schema, number);
+					/**
+					 * @note Схема берётся действовавшая, а не настройками заданная: директива
+					 *       `%YAML 1.1` переводит разбор на схему наречия 1.1, и запись `0777`
+					 *       под нею восьмеричная. Прежде здесь стояла схема настроечная, и вид
+					 *       значения чтение опознавало по одной схеме, а число дерево разбирало
+					 *       по другой: `on` выходило логическим, а `0777` давало 777 вместо 511
+					 */
+					const type_t narrowed = narrow(reader.value().text, this->_schema, number);
 					/**
 					 * Если разобрать запись числа удалось
 					 */
@@ -975,6 +984,19 @@ bool awh::codec::yaml::Document::parse(const string & text) noexcept {
 	const auto retained = [this](const reader_t & reader) noexcept -> void {
 		// Запоминаем кодировку, какою текст прочитан
 		this->_encoding = reader.encoding();
+		/**
+		 * Запоминаем признак объявленного директивой наречия
+		 *
+		 * @details Директива `%YAML 1.1` переводит разбор на схему наречия 1.1, и записи
+		 *          вроде `on` становятся логическими. Перезапись обязана директиву
+		 *          сохранить: без неё `on` вернулось бы строкою, и круговой ход переменил бы
+		 *          смысл документа, а не только вид его
+		 *
+		 * @note Нашёл это ворошитель круговым ходом снятого значения
+		 */
+		this->_versioned = reader.declared();
+		// Запоминаем схему, директивой наречия назначенную
+		this->_schema = reader.dialect();
 		/**
 		 * Если кодировка исходного текста от UTF-8 отлична
 		 */
@@ -2033,7 +2055,7 @@ void awh::codec::yaml::Document::inscribe(const uint32_t index, const string_vie
 		return;
 	}
 	// Получаем вид значения, схемою разрешённый
-	type_t type = resolve(text, this->_settings.schema);
+	type_t type = resolve(text, this->_schema);
 	// Разобранное число значения
 	numeric_t number;
 	/**
@@ -2041,7 +2063,7 @@ void awh::codec::yaml::Document::inscribe(const uint32_t index, const string_vie
 	 */
 	if(static_cast <uint32_t> (type) & static_cast <uint32_t> (type_t::NUMBER)){
 		// Выполняем разбор записи числа к самому узкому вмещающему виду
-		const type_t narrowed = narrow(text, this->_settings.schema, number);
+		const type_t narrowed = narrow(text, this->_schema, number);
 		/**
 		 * Если разобрать запись числа удалось
 		 */
@@ -2482,7 +2504,7 @@ bool awh::codec::yaml::Document::set(const string & path, const string_view valu
 	 *       числом. Решает это то же тело `quoting()`, каким решает и запись текста
 	 */
 	const style_t quoted = ((style == style_t::PLAIN) ?
-	 quoting(value, this->_settings.schema, false) : style);
+	 quoting(value, this->_schema, false) : style);
 	// Выполняем установку значения узла собранною оградою
 	return this->assign(index, value, quoted);
 }
@@ -2624,8 +2646,40 @@ bool awh::codec::yaml::Document::touch(const value_t & value) noexcept {
 string awh::codec::yaml::Document::dump() const noexcept {
 	// Настройки записи собираемого текста
 	writer_t::settings_t settings;
-	// Устанавливаем схему разрешения видов скалярных значений
-	settings.schema = this->_settings.schema;
+	/**
+	 * Устанавливаем схему разрешения видов скалярных значений
+	 *
+	 * @note Берётся схема действовавшая, а не настройками заданная: директива `%YAML 1.1`
+	 *       переводит разбор на схему наречия 1.1, и запись обязана решать ограду тою же
+	 *       схемою, какою решало чтение
+	 */
+	settings.schema = this->_schema;
+	/**
+	 * Устанавливаем запись директивы наречия
+	 *
+	 * @details Директива записывается лишь тогда, когда она в исходном тексте стояла:
+	 *          навязывать её тексту, её не имевшему, значило бы менять написание там, где
+	 *          потребитель ничего не менял
+	 */
+	/**
+	 * @note Директива записывается лишь тексту об одном документе. Директива есть
+	 *       принадлежность документа, а не потока, и стоять она обязана перед каждою
+	 *       чертою начала. Потоку из нескольких документов, где директива стояла лишь у
+	 *       иных, перезапись её не восстанавливает: узнать, у каких именно, нынешнее
+	 *       чтение не даёт - признак сбрасывается закрытием документа, а событием
+	 *       директива не выдаётся вовсе. Изъян этот вынесен владельцу и здесь помечен
+	 *       намеренно, дабы не выдавать половину дела за целое
+	 */
+	settings.version = (this->_versioned && (this->_roots.size() == 1));
+	/**
+	 * Если директива не записывается, а схема наречия действовала
+	 *
+	 * @note Схема тогда возвращается настроечной: решать ограду схемою 1.1, директивы не
+	 *       записав, значило бы выдать текст, читаемый иначе, чем он записан
+	 */
+	if(!settings.version)
+		// Возвращаем схему разрешения видов к настроечной
+		settings.schema = this->_settings.schema;
 	// Выводим собранный текст документа
 	return this->dump(settings);
 }
@@ -2704,6 +2758,22 @@ type_t awh::codec::yaml::Document::Value::type() const noexcept {
 bool awh::codec::yaml::Document::Value::is(const type_t type) const noexcept {
 	// Выводим признак соответствия вида значения узла
 	return ((static_cast <uint32_t> (this->type()) & static_cast <uint32_t> (type)) != 0);
+}
+/**
+ * @brief Метод извлечения схемы, над разбором действовавшей
+ *
+ * @return схема, над разбором действовавшая
+ *
+ */
+schema_t awh::codec::yaml::Document::Value::schema() const noexcept {
+	/**
+	 * Если ссылка недействительна
+	 */
+	if(this->_doc == nullptr)
+		// Выводим схему ядровую
+		return schema_t::CORE;
+	// Выводим схему, над разбором действовавшую
+	return this->_doc->_schema;
 }
 /**
  * @brief Метод извлечения вида записи значения
@@ -3085,7 +3155,7 @@ bool awh::codec::yaml::Document::Value::extract(T & result) const noexcept {
 		 * @note Разбор здесь неизбежен: число это в родной вид не вместилось, оттого и
 		 *       хранится записью. Таких чисел на документ приходятся единицы
 		 */
-		narrow(text, this->_doc->_settings.schema, number);
+		narrow(text, this->_doc->_schema, number);
 		// Устанавливаем извлечённое значение приведением дробного
 		result = ::convert <T> (number.real);
 		// Выводим признак успешного извлечения

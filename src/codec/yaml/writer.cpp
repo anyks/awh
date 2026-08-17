@@ -552,7 +552,7 @@ bool awh::codec::yaml::Writer::enter() noexcept {
 		 */
 		if(this->_settings.version)
 			// Выполняем добавление директивы наречия текста
-			this->_result.append("%YAML 1.2\n");
+			this->_result.append((this->_settings.schema == schema_t::LEGACY) ? "%YAML 1.1\n" : "%YAML 1.2\n");
 		/**
 		 * Если документ открывается чертою
 		 *
@@ -1929,9 +1929,17 @@ bool awh::codec::yaml::Writer::document() noexcept {
 	/**
 	 * Если директива наречия текста затребована
 	 */
+	/**
+	 * Если директива наречия записывается
+	 *
+	 * @note Наречие берётся схемою: схема 1.1 обязана объявляться директивой `%YAML 1.1`,
+	 *       иначе чтение вернётся к схеме ядровой и записи вроде `on` вернутся строками.
+	 *       Прежде здесь стояло `1.2` неизменно, и место это разошлось с таким же местом
+	 *       открытия первого документа
+	 */
 	if(this->_settings.version)
 		// Выполняем добавление директивы наречия текста
-		this->_result.append("%YAML 1.2\n");
+		this->_result.append((this->_settings.schema == schema_t::LEGACY) ? "%YAML 1.1\n" : "%YAML 1.2\n");
 	// Выполняем добавление черты начала документа
 	this->_result.append("---\n");
 	// Запоминаем признак открытого документа
