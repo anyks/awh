@@ -766,6 +766,8 @@ class FakeIGD {
 					::setsockopt(this->_udp, SOL_SOCKET, SO_REUSEPORT, reinterpret_cast <const char *> (&yes), sizeof(yes));
 				#endif
 								::setReceiveTimeout(this->_udp, 100);
+				// Отключаем отчёт о недоступности получателя, теряющий дейтаграммы
+				::disableConnectionReset(this->_udp);
 				struct sockaddr_in address; ::memset(&address, 0, sizeof(address));
 				address.sin_family = AF_INET; address.sin_port = htons(1900);
 				address.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -799,6 +801,8 @@ class FakeIGD {
 				#endif
 				::setsockopt(this->_udp6, IPPROTO_IPV6, IPV6_V6ONLY, reinterpret_cast <const char *> (&yes), sizeof(yes));
 								::setReceiveTimeout(this->_udp6, 100);
+				// Отключаем отчёт о недоступности получателя, теряющий дейтаграммы
+				::disableConnectionReset(this->_udp6);
 				struct sockaddr_in6 address; ::memset(&address, 0, sizeof(address));
 				address.sin6_family = AF_INET6; address.sin6_port = htons(1900); address.sin6_addr = in6addr_any;
 				if(::bind(this->_udp6, reinterpret_cast <struct sockaddr *> (&address), sizeof(address)) != 0){

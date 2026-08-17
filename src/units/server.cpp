@@ -1644,9 +1644,31 @@ uint16_t awh::unit::Server::getOptions(const event::id_t eid) const noexcept {
  */
 bool awh::unit::Server::setOptions(const event::id_t eid, const uint16_t options) noexcept {
 	// Если событие сервера является актуальным
-	if(this->isActual(eid))
+	if(this->isActual(eid)){
+		/**
+		 * Методы только операционной системы MS Windows
+		 *
+		 * @details Работник кластера поднимает переданное мастером подключение узлом
+		 *          клиента: одноранговый узел заводит себе приём подключения сам, и
+		 *          завести его снаружи нечем. Настройка переподключения, какую
+		 *          одноранговый узел молча обходит, у клиента настоящая - и
+		 *          подключение, полученное готовым, принялось бы устанавливать связь
+		 *          заново, с временным портом отправителя
+		 *
+		 * @note Снимается она только у работника и только у этой системы: там
+		 *       расхождение видов узла и создаёт разницу в поведении, а во всех
+		 *       прочих случаях настройка доходит до движка нетронутой - решать за
+		 *       потребителя, чего ему хотеть, не наше дело
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			// Если процесс является работником кластера
+			if((this->_cluster != nullptr) && this->_cluster->worker())
+				// Выполняем установку опций события, сняв переподключение
+				return this->_io->setOptions(eid, static_cast <uint16_t> (options & ~event::options::AUTO_RECONNECT));
+		#endif
 		// Выполняем установку опций для события сервера
 		return this->_io->setOptions(eid, options);
+	}
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -1661,9 +1683,23 @@ bool awh::unit::Server::setOptions(const event::id_t eid, const uint16_t options
  */
 bool awh::unit::Server::setOption(const event::id_t eid, const uint16_t option, const bool mode) noexcept {
 	// Если событие сервера является актуальным
-	if(this->isActual(eid))
+	if(this->isActual(eid)){
+		/**
+		 * Методы только операционной системы MS Windows
+		 *
+		 * @note Довод тот же, что и у установки набора настроек: у работника кластера
+		 *       переданное подключение поднято узлом клиента, и переподключение ему
+		 *       не к чему - связь пришла к нему готовой
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			// Если задаётся переподключение, а процесс является работником кластера
+			if((option == event::options::AUTO_RECONNECT) && (this->_cluster != nullptr) && this->_cluster->worker())
+				// Выводим успешный результат: переподключение переданному подключению не свойственно
+				return true;
+		#endif
 		// Выполняем установку опции для события сервера
 		return this->_io->setOption(eid, option, mode);
+	}
 	// Возвращаем значение по умолчанию
 	return false;
 }
