@@ -412,7 +412,7 @@ TEST(CodecYamlValue, Building) {
 	// Выполняем закрытие отображения пар
 	ASSERT_TRUE(builder.close());
 	// Получаем собранное значение
-	const yaml::value_t value = builder.take();
+	const yaml::value_t value = builder.finish();
 	// Выполняем проверку опустошения сборки изъятием
 	ASSERT_EQ(builder.depth(), 0u);
 	// Выполняем проверку вида собранного значения
@@ -462,7 +462,7 @@ TEST(CodecYamlValue, Duplicates) {
 	// Выполняем запись целого числа
 	ASSERT_TRUE(builder.value(static_cast <int64_t> (3)));
 	// Получаем собранное значение
-	const yaml::value_t value = builder.take();
+	const yaml::value_t value = builder.finish();
 	// Выполняем проверку количества полей собранного значения
 	ASSERT_EQ(value.size(), 2u);
 	// Выполняем проверку того, что место поля взято от первого
@@ -490,7 +490,7 @@ TEST(CodecYamlValue, Solitary) {
 	// Выполняем проверку отказа записи после завершения сборки
 	ASSERT_FALSE(builder.value("два"));
 	// Получаем собранное значение
-	const yaml::value_t value = builder.take();
+	const yaml::value_t value = builder.finish();
 	// Выполняем проверку вида собранного значения
 	ASSERT_EQ(value.kind(), yaml::kind_t::STRING);
 	// Выполняем проверку записи собранного значения
@@ -517,4 +517,105 @@ TEST(CodecYamlValue, Storing) {
 	ASSERT_TRUE(loaded == value);
 	// Выполняем снятие записанного файла
 	::remove("./value.yaml");
+}
+/**
+ * @brief Проверка отказов потоковой сборки
+ *
+ * @details Отказы эти обнаруживают промах потребителя там, где молчаливая подстановка
+ *          спрятала бы его: поле отображения без имени и имя, назначенное дважды
+ *
+ */
+TEST(CodecYamlValue, Refusals) {
+	// Потоковая сборка значения
+	yaml::builder_t builder;
+	// Выполняем открытие отображения пар
+	ASSERT_TRUE(builder.mapping());
+	// Выполняем проверку отказа записи значения без имени поля
+	ASSERT_FALSE(builder.value("без имени"));
+	// Выполняем проверку отказа открытия вместилища без имени поля
+	ASSERT_FALSE(builder.sequence());
+	// Выполняем назначение имени поля отображения
+	ASSERT_TRUE(builder.key("name"));
+	// Выполняем проверку отказа повторного назначения имени поля
+	ASSERT_FALSE(builder.key("other"));
+	// Выполняем запись строкового значения
+	ASSERT_TRUE(builder.value("значение"));
+	// Получаем собранное значение
+	const yaml::value_t value = builder.finish();
+	// Выполняем проверку количества полей собранного значения
+	ASSERT_EQ(value.size(), 1u);
+	// Выполняем проверку имени занесённого поля
+	ASSERT_EQ(value.key(0), "name");
+	// Потоковая сборка перечня значений
+	yaml::builder_t list;
+	// Выполняем открытие перечня значений
+	ASSERT_TRUE(list.sequence());
+	// Выполняем проверку того, что перечню имя поля не требуется
+	ASSERT_TRUE(list.value("значение"));
+	// Выполняем проверку количества значений собранного перечня
+	ASSERT_EQ(list.finish().size(), 1u);
+}
+/**
+ * @brief Проверка сличения отображений без учёта порядка полей
+ *
+ * @details Описание порядка полей отображения не предписывает вовсе, и два текста,
+ *          одни и те же поля разным порядком записавшие, суть один документ
+ *
+ */
+TEST(CodecYamlValue, Ordering) {
+	// Значение, поля прямым порядком несущее
+	yaml::value_t direct;
+	// Выполняем разбор текста во владеющее значение
+	ASSERT_TRUE(direct.parse("a: 1\nb: 2\n"));
+	// Значение, поля обратным порядком несущее
+	yaml::value_t reverse;
+	// Выполняем разбор текста во владеющее значение
+	ASSERT_TRUE(reverse.parse("b: 2\na: 1\n"));
+	// Выполняем проверку совпадения отображений разного порядка
+	ASSERT_TRUE(direct == reverse);
+	// Выполняем проверку сохранения порядка записи полей
+	ASSERT_EQ(direct.key(0), "a");
+	// Выполняем проверку сохранения порядка записи полей
+	ASSERT_EQ(reverse.key(0), "b");
+	// Значение, поля с иным содержимым несущее
+	yaml::value_t other;
+	// Выполняем разбор текста во владеющее значение
+	ASSERT_TRUE(other.parse("b: 3\na: 1\n"));
+	// Выполняем проверку несовпадения отображений разного содержимого
+	ASSERT_TRUE(direct != other);
+	// Перечень значений прямого порядка
+	yaml::value_t forward;
+	// Выполняем разбор текста во владеющее значение
+	ASSERT_TRUE(forward.parse("- 1\n- 2\n"));
+	// Перечень значений обратного порядка
+	yaml::value_t backward;
+	// Выполняем разбор текста во владеющее значение
+	ASSERT_TRUE(backward.parse("- 2\n- 1\n"));
+	// Выполняем проверку того, что порядок значений перечня сличению подлежит
+	ASSERT_TRUE(forward != backward);
+}
+/**
+ * @brief Проверка заведения значения строковым литералом
+ *
+ * @details Без своего конструктора строковый литерал ушёл бы конструктором логического
+ *          значения: приведение указателя к `bool` языку ближе приведения к строке
+ *
+ */
+TEST(CodecYamlValue, Literals) {
+	// Значение, литералом заведённое
+	const yaml::value_t value("текст");
+	// Выполняем проверку вида заведённого значения
+	ASSERT_EQ(value.kind(), yaml::kind_t::STRING);
+	// Выполняем проверку записи заведённого значения
+	ASSERT_EQ(value.text(), "текст");
+	// Значение, указателем пустым заведённое
+	const yaml::value_t empty(static_cast <const char *> (nullptr));
+	// Выполняем проверку вида заведённого значения
+	ASSERT_EQ(empty.kind(), yaml::kind_t::STRING);
+	// Выполняем проверку пустоты записи заведённого значения
+	ASSERT_TRUE(empty.text().empty());
+	// Значение логическое, заведённое видом своим
+	const yaml::value_t flag(true);
+	// Выполняем проверку вида заведённого значения
+	ASSERT_EQ(flag.kind(), yaml::kind_t::BOOL);
 }

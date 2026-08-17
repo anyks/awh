@@ -1448,14 +1448,14 @@ namespace awh {
 					size_t depth() const noexcept;
 					/**
 					 * \~russian
-					 * @brief Метод очистки сборки
+					 * @brief Метод сброса сборки
 					 *
 					 * \~english
-					 * @brief Method of the clearing of the assembly
+					 * @brief Method of the reset of the assembly
 					 *
 					 * \~
 					 */
-					void clear() noexcept;
+					void reset() noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод изъятия собранного значения
@@ -1475,7 +1475,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Value take() noexcept;
+					Value finish() noexcept;
 				public:
 					/**
 					 * \~russian
