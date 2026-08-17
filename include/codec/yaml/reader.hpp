@@ -463,7 +463,15 @@ namespace awh {
 					size_t _breaks;
 					// Признак того, что ожидается значение пары, объявленной прежде
 					bool _expected;
-					// Отступ, на котором ожидается значение пары
+					/**
+					 * Признак того, что ожидаемое значение принадлежит записи перечня, а не паре
+					 *
+					 * @note Различие это в одном: черта на отступе ожидания есть для пары
+					 *       значение её, а для записи перечня - запись следующая, и пустоту
+					 *       прежней записи надлежит выдать прежде неё
+					 */
+					bool _entered;
+					// Отступ, на котором ожидается значение пары либо записи перечня
 					uint32_t _pending;
 					/**
 					 * Схема разрешения видов, действующая над разбираемым документом
@@ -631,6 +639,27 @@ namespace awh {
 					 * \~
 					 */
 					bool expand(const nesting_t kind, const uint32_t indent, const bool implied, const size_t column) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод сличения метки типа с видом открываемого построения
+					 *
+					 * @details Сличение это едино для построений блочных и поточных: метка `!!seq`
+					 * над отображением есть расхождение объявленного с записанным где угодно, и
+					 * два свода правил разошлись бы у потребителя, читающего оба написания
+					 *
+					 * @param kind   вид открываемого построения
+					 * @param column положение открытия в разбираемой строке
+					 * @return       признак соответствия метки типа виду построения
+					 *
+					 * \~english
+					 * @brief Method of the matching of a tag against a kind of a construction being opened
+					 * @param kind kind of the construction being opened
+					 * @param column position of the opening in the line being parsed
+					 * @return sign of the correspondence of the tag to the kind of the construction
+					 *
+					 * \~
+					 */
+					bool matched(const nesting_t kind, const size_t column) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод закрытия открытого документа

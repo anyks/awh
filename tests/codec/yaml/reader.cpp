@@ -248,6 +248,49 @@ TEST(CodecYamlReader, ImpliedSequence) {
 		"ОТКАЗ перечень и отображение смешаны на одном уровне строка 2 знак 1\n");
 }
 /**
+ * @brief Проверка выдачи пустоты на месте значения записи перечня
+ *
+ * @details Черта без содержимого за нею есть запись перечня с пустым значением, и выдать
+ *          её надлежит именно так. Ожидание значения записи от ожидания значения пары
+ *          отличается одним: черта на отступе ожидания есть для пары значение её, а для
+ *          записи - запись следующая, и пустоту прежней надлежит выдать прежде неё
+ *
+ * @note Нашёл это ворошитель сличением перезаписи: пустая запись пропадала из выдачи
+ *       вовсе, и дерево документа теряло её вместе с местом её в перечне
+ *
+ */
+TEST(CodecYamlReader, EmptyEntries) {
+	// Выполняем проверку выдачи пустоты первой записью перечня
+	ASSERT_EQ(events("- \n- beta\n"),
+		"STREAM_START\nDOCUMENT_START\nSEQUENCE_START\nSCALAR «»\nSCALAR «beta»\n"
+		"SEQUENCE_END\nDOCUMENT_END\nSTREAM_END\n");
+	// Выполняем проверку выдачи пустоты по черте без пробела за нею
+	ASSERT_EQ(events("-\n- beta\n"),
+		"STREAM_START\nDOCUMENT_START\nSEQUENCE_START\nSCALAR «»\nSCALAR «beta»\n"
+		"SEQUENCE_END\nDOCUMENT_END\nSTREAM_END\n");
+	// Выполняем проверку выдачи пустоты последней записью перечня
+	ASSERT_EQ(events("- alpha\n- \n"),
+		"STREAM_START\nDOCUMENT_START\nSEQUENCE_START\nSCALAR «alpha»\nSCALAR «»\n"
+		"SEQUENCE_END\nDOCUMENT_END\nSTREAM_END\n");
+	/**
+	 * Выполняем проверку того, что содержимое строкою ниже пустотою не является
+	 *
+	 * @note Отступ глубже черты знаменует значение записи, а не пустоту вместо него
+	 */
+	ASSERT_EQ(events("- \n  alpha\n"),
+		"STREAM_START\nDOCUMENT_START\nSEQUENCE_START\nSCALAR «alpha»\n"
+		"SEQUENCE_END\nDOCUMENT_END\nSTREAM_END\n");
+	// Выполняем проверку выдачи пустоты внутри вложенного перечня
+	ASSERT_EQ(events("- \n  - \n  - beta\n"),
+		"STREAM_START\nDOCUMENT_START\nSEQUENCE_START\nSEQUENCE_START\n"
+		"SCALAR «»\nSCALAR «beta»\nSEQUENCE_END\nSEQUENCE_END\nDOCUMENT_END\nSTREAM_END\n");
+	// Выполняем проверку того, что пустота записи закрывается следующей парой отображения
+	ASSERT_EQ(events("hosts:\n- \nport: 80\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\nSCALAR «hosts»\n"
+		"SEQUENCE_START\nSCALAR «»\nSEQUENCE_END\nSCALAR «port»\nSCALAR «80»\n"
+		"MAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
+}
+/**
  * @brief Проверка снятия ограды со скалярных значений
  *
  */
@@ -1345,4 +1388,67 @@ TEST(CodecYamlReader, BrokenEncoding) {
 	bool piece = false;
 	// Выполняем проверку того, что нарезка исход разбора не изменила
 	ASSERT_EQ(events(text, 1, piece), events(text, text.size(), piece));
+}
+/**
+ * @brief Проверка отсчёта отступа блочного значения от объемлющего построения
+ *
+ * @details Содержимое блочного значения обязано стоять глубже объемлющего построения, а
+ *          не глубже начала строки: написание `- имя: |` кладёт отображение на отступ два,
+ *          строку же открывает черта на отступе ноль. Отсчёт от строки брал бы содержимым
+ *          и следующую пару того же отображения. Указатель отступа заголовка отсчитывается
+ *          оттуда же
+ *
+ * @note Нашёл это ворошитель сличением перезаписи: пара, за пустым блочным значением
+ *       стоящая, уходила содержимым его, а указатель отступа съезжал круг от круга
+ *
+ */
+TEST(CodecYamlReader, BlockOuterIndent) {
+	// Выполняем проверку окончания пустого блочного значения парой того же отображения
+	ASSERT_EQ(events("- b: |+\n  port: 1\n"),
+		"STREAM_START\nDOCUMENT_START\nSEQUENCE_START\nMAPPING_START\n"
+		"SCALAR «b»\nSCALAR «»\nSCALAR «port»\nSCALAR «1»\n"
+		"MAPPING_END\nSEQUENCE_END\nDOCUMENT_END\nSTREAM_END\n");
+	// Выполняем проверку окончания непустого блочного значения парой того же отображения
+	ASSERT_EQ(events("- b: |\n    x\n  port: 1\n"),
+		"STREAM_START\nDOCUMENT_START\nSEQUENCE_START\nMAPPING_START\n"
+		"SCALAR «b»\nSCALAR «x\n»\nSCALAR «port»\nSCALAR «1»\n"
+		"MAPPING_END\nSEQUENCE_END\nDOCUMENT_END\nSTREAM_END\n");
+	/**
+	 * Выполняем проверку отсчёта указателя отступа от объемлющего построения
+	 *
+	 * @note Отображение стоит на отступе два, указатель задаёт ещё два, и содержимое
+	 *       начинается с отступа четыре: три пробела перед записью суть содержимое её
+	 */
+	ASSERT_EQ(events("- b: |2\n       99\n"),
+		"STREAM_START\nDOCUMENT_START\nSEQUENCE_START\nMAPPING_START\n"
+		"SCALAR «b»\nSCALAR «   99\n»\n"
+		"MAPPING_END\nSEQUENCE_END\nDOCUMENT_END\nSTREAM_END\n");
+}
+/**
+ * @brief Проверка сличения метки типа с видом поточного построения
+ *
+ * @details Сличение это едино для построений блочных и поточных: метка `!!str` над
+ *          перечнем есть расхождение объявленного с записанным где угодно
+ *
+ * @note Нашёл это ворошитель сличением перезаписи: поточное построение метку не сличало
+ *       вовсе, и текст, чтением принятый, перезаписью отвергался
+ *
+ */
+TEST(CodecYamlReader, FlowTags) {
+	// Выполняем проверку отказа метки скалярного значения над поточным перечнем
+	ASSERT_EQ(events("- !!str [ 1 ]\n"),
+		"STREAM_START\n"
+		"ОТКАЗ содержимое не отвечает виду, заданному меткой типа строка 1 знак 9\n");
+	// Выполняем проверку отказа метки перечня над поточным отображением
+	ASSERT_EQ(events("- !!seq { a: 1 }\n"),
+		"STREAM_START\n"
+		"ОТКАЗ содержимое не отвечает виду, заданному меткой типа строка 1 знак 9\n");
+	// Выполняем проверку принятия метки перечня над поточным перечнем
+	ASSERT_EQ(events("- !!seq [ 1 ]\n"),
+		"STREAM_START\nDOCUMENT_START\nSEQUENCE_START\nSEQUENCE_START <tag:yaml.org,2002:seq>\nSCALAR «1»\n"
+		"SEQUENCE_END\nSEQUENCE_END\nDOCUMENT_END\nSTREAM_END\n");
+	// Выполняем проверку отказа метки скалярного значения над вложенным поточным перечнем
+	ASSERT_EQ(events("- [ !!str [ 1 ] ]\n"),
+		"STREAM_START\n"
+		"ОТКАЗ содержимое не отвечает виду, заданному меткой типа строка 1 знак 11\n");
 }

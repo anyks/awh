@@ -229,7 +229,7 @@ awh::codec::yaml::Reader::Reader() noexcept :
  _state(state_t::READY), _error(error_t::NONE), _offset(0), _line(0), _position(0),
  _started(false), _opened(false), _filled(false), _blocking(false), _block(style_t::LITERAL),
  _chomp(chomp_t::CLIP), _marked(NO_INDENT), _outer(0), _margin(0), _inner(0), _opening(0),
- _breaks(0), _expected(false), _pending(0), _schema(schema_t::CORE), _plaining(false),
+ _breaks(0), _expected(false), _entered(false), _pending(0), _schema(schema_t::CORE), _plaining(false),
  _folds(0), _required(0), _phase(flow_t::ENTRY), _directed(false), _versioned(false) {}
 /**
  * @brief Конструктор
@@ -241,7 +241,7 @@ awh::codec::yaml::Reader::Reader(const settings_t & settings) noexcept :
  _settings(settings), _state(state_t::READY), _error(error_t::NONE), _offset(0),
  _line(0), _position(0), _started(false), _opened(false), _filled(false),
  _blocking(false), _block(style_t::LITERAL), _chomp(chomp_t::CLIP), _marked(NO_INDENT),
- _outer(0), _margin(0), _inner(0), _opening(0), _breaks(0), _expected(false), _pending(0),
+ _outer(0), _margin(0), _inner(0), _opening(0), _breaks(0), _expected(false), _entered(false), _pending(0),
  _schema(settings.schema), _plaining(false), _folds(0), _required(0),
  _phase(flow_t::ENTRY), _directed(false), _versioned(false) {
 	/**
@@ -334,6 +334,8 @@ void awh::codec::yaml::Reader::clear() noexcept {
 	this->_inner = 0;
 	// Выполняем сброс признака ожидания значения пары
 	this->_expected = false;
+	// Выполняем сброс признака принадлежности ожидаемого значения записи перечня
+	this->_entered = false;
 	// Выполняем сброс отступа, на котором ожидается значение пары
 	this->_pending = 0;
 	// Выполняем возврат схемы разрешения видов к назначенной настройками
@@ -596,6 +598,50 @@ bool awh::codec::yaml::Reader::collapse(const uint32_t indent, const size_t colu
 	return true;
 }
 /**
+ * @brief Метод сличения метки типа с видом открываемого построения
+ *
+ * @param kind   вид открываемого построения
+ * @param column положение открытия в разбираемой строке
+ * @return       признак соответствия метки типа виду построения
+ *
+ */
+bool awh::codec::yaml::Reader::matched(const nesting_t kind, const size_t column) noexcept {
+	/**
+	 * Если открываемому построению метка типа не предпослана
+	 */
+	if(this->_tag.empty())
+		// Выводим признак соответствия метки типа виду построения
+		return true;
+	// Получаем окончание метки типа, вид её задающее
+	const string_view suffix = ((this->_tag.compare(0, STANDARD_TAG.size(), STANDARD_TAG) == 0) ?
+	 string_view(this->_tag).substr(STANDARD_TAG.size()) : string_view());
+	/**
+	 * Если метка типа задаёт построение, открываемому противное
+	 *
+	 * @note Метка `!!seq` над отображением есть не мелкая небрежность записи, а
+	 *       расхождение объявленного с записанным: держащий документ построил бы по
+	 *       метке одно, а по содержимому иное
+	 */
+	if((suffix == "seq") && (kind != nesting_t::SEQUENCE))
+		// Выводим отказ несоответствия содержимого метке типа
+		return this->fail(error_t::TAG_MISMATCH, column);
+	/**
+	 * Если метка типа задаёт отображение, открываемому построению противное
+	 */
+	else if((suffix == "map") && (kind != nesting_t::MAPPING))
+		// Выводим отказ несоответствия содержимого метке типа
+		return this->fail(error_t::TAG_MISMATCH, column);
+	/**
+	 * Если метка типа задаёт скалярное значение
+	 */
+	else if((suffix == "str") || (suffix == "int") || (suffix == "float") ||
+	        (suffix == "bool") || (suffix == "null") || (suffix == "binary") || (suffix == "timestamp"))
+		// Выводим отказ несоответствия содержимого метке типа
+		return this->fail(error_t::TAG_MISMATCH, column);
+	// Выводим признак соответствия метки типа виду построения
+	return true;
+}
+/**
  * @brief Метод открытия уровня вложенности заданного вида
  *
  * @param kind    вид открываемого уровня вложенности
@@ -615,36 +661,11 @@ bool awh::codec::yaml::Reader::expand(const nesting_t kind, const uint32_t inden
 		// Выводим отказ превышения глубины вложенности
 		return this->fail(error_t::DEPTH_EXCEEDED, column);
 	/**
-	 * Если открываемому уровню предпослана метка типа
+	 * Если метка типа, уровню предпосланная, виду его противна
 	 */
-	if(!this->_tag.empty()){
-		// Получаем окончание метки типа, вид её задающее
-		const string_view suffix = ((this->_tag.compare(0, STANDARD_TAG.size(), STANDARD_TAG) == 0) ?
-		 string_view(this->_tag).substr(STANDARD_TAG.size()) : string_view());
-		/**
-		 * Если метка типа задаёт построение, открываемому уровню противное
-		 *
-		 * @note Метка `!!seq` над отображением есть не мелкая небрежность записи, а
-		 *       расхождение объявленного с записанным: держащий документ построил бы по
-		 *       метке одно, а по содержимому иное
-		 */
-		if((suffix == "seq") && (kind != nesting_t::SEQUENCE))
-			// Выводим отказ несоответствия содержимого метке типа
-			return this->fail(error_t::TAG_MISMATCH, column);
-		/**
-		 * Если метка типа задаёт отображение, открываемому уровню противное
-		 */
-		else if((suffix == "map") && (kind != nesting_t::MAPPING))
-			// Выводим отказ несоответствия содержимого метке типа
-			return this->fail(error_t::TAG_MISMATCH, column);
-		/**
-		 * Если метка типа задаёт скалярное значение
-		 */
-		else if((suffix == "str") || (suffix == "int") || (suffix == "float") ||
-		        (suffix == "bool") || (suffix == "null") || (suffix == "binary") || (suffix == "timestamp"))
-			// Выводим отказ несоответствия содержимого метке типа
-			return this->fail(error_t::TAG_MISMATCH, column);
-	}
+	if(!this->matched(kind, column))
+		// Выводим признак неудачного открытия уровня
+		return false;
 	// Выполняем постановку события открытия уровня
 	item_t & item = this->emit(((kind == nesting_t::MAPPING) ? event_t::MAPPING_START : event_t::SEQUENCE_START), column);
 	// Выполняем перенос накопленных свойств узла в собранное событие
@@ -1783,6 +1804,12 @@ bool awh::codec::yaml::Reader::content(const string_view line, const size_t offs
 		if(this->_levels.size() >= limit)
 			// Выводим отказ превышения глубины вложенности
 			return this->fail(error_t::DEPTH_EXCEEDED, offset);
+		/**
+		 * Если метка типа, построению предпосланная, виду его противна
+		 */
+		if(!this->matched(((leading == '[') ? nesting_t::SEQUENCE : nesting_t::MAPPING), offset))
+			// Выводим признак неудачного разбора содержимого
+			return false;
 		// Выполняем постановку события открытия поточного построения
 		item_t & item = this->emit(((leading == '[') ? event_t::SEQUENCE_START : event_t::MAPPING_START), offset);
 		// Выполняем перенос накопленных свойств узла в собранное событие
@@ -1876,6 +1903,20 @@ bool awh::codec::yaml::Reader::content(const string_view line, const size_t offs
 		while((position < line.size()) && spacing(line[position]))
 			// Выполняем переход к следующему знаку строки
 			position++;
+		/**
+		 * Запоминаем признак ожидания значения записи перечня
+		 *
+		 * @details Признак ставится прежде разбора остатка строки, ровно как у имени пары:
+		 *          остаток вправе не нести значения вовсе либо нести одни свойства узла, и
+		 *          значение придёт лишь строкою ниже. Снимают признак этот сами разборы
+		 *          значений, каждый у себя. Нашёл это ворошитель на перезаписи: без него
+		 *          запись `- ` пустоты своей не выдавала вовсе, и запись перечня пропадала
+		 */
+		this->_expected = true;
+		// Запоминаем признак принадлежности ожидаемого значения записи перечня
+		this->_entered = true;
+		// Запоминаем отступ, на котором ожидается значение записи перечня
+		this->_pending = indent;
 		// Выполняем разбор содержимого за объявлением значения перечня
 		return this->content(line, position, static_cast <uint32_t> (position));
 	}
@@ -1979,6 +2020,8 @@ bool awh::codec::yaml::Reader::content(const string_view line, const size_t offs
 		 *          запись `имя: &метка` со значением ниже читалась смешением построений
 		 */
 		this->_expected = true;
+		// Выполняем сброс признака принадлежности ожидаемого значения записи перечня
+		this->_entered = false;
 		// Запоминаем отступ, на котором ожидается значение пары
 		this->_pending = indent;
 		/**
@@ -2154,18 +2197,27 @@ bool awh::codec::yaml::Reader::opening(const string_view line, const size_t offs
 		return this->fail(error_t::TRAILING_CHARACTERS, position);
 	// Запоминаем признак сборки блочного значения
 	this->_blocking = true;
-	// Запоминаем отступ строки, заголовок несущей
-	this->_outer = indent;
+	/**
+	 * Запоминаем отступ, глубже которого обязано стоять содержимое блочного значения
+	 *
+	 * @details Отсчёт ведётся не от начала строки, а от отступа объемлющего построения:
+	 *          написание `- имя: |` кладёт отображение на отступ два, строку же открывает
+	 *          черта на отступе ноль. Отсчёт от строки брал бы содержимым и следующую пару
+	 *          того же отображения. Нашёл это ворошитель сличением перезаписи
+	 */
+	this->_outer = ((this->_levels.empty() || (this->_levels.back().indent < indent)) ?
+	 indent : this->_levels.back().indent);
 	// Запоминаем положение заголовка блочного значения в строке
 	this->_opening = offset;
 	/**
 	 * Запоминаем отступ содержимого блочного значения
 	 *
-	 * @note Отступ, заголовком заданный, отсчитывается от отступа строки заголовка;
-	 *       отступ же, заголовком не заданный, берётся по первой непустой строке
+	 * @note Отступ, заголовком заданный, отсчитывается от отступа объемлющего построения -
+	 *       того же самого, глубже которого содержимое обязано стоять, - а не от начала
+	 *       строки; отступ же, заголовком не заданный, берётся по первой непустой строке
 	 *       содержимого и здесь ещё неизвестен
 	 */
-	this->_inner = ((this->_marked != NO_INDENT) ? (indent + this->_marked) : 0);
+	this->_inner = ((this->_marked != NO_INDENT) ? (this->_outer + this->_marked) : 0);
 	// Выполняем сброс собираемого содержимого блочного значения
 	this->_block_text.clear();
 	// Выполняем сброс количества пустых строк, содержимого не дождавшихся
@@ -2587,6 +2639,24 @@ bool awh::codec::yaml::Reader::flowing(const string_view line, size_t & offset) 
 				continue;
 			}
 			/**
+			 * Если значение открывается свойствами узла
+			 *
+			 * @details Свойства снимаются здесь, а не разбором значения: за ними вправе
+			 *          стоять вложенное построение, а разбор значения построений не знает и
+			 *          прочёл бы скобку началом записи без ограды. Снятые свойства ждут узла
+			 *          своего и достаются ему, скаляр то будет либо построение
+			 */
+			if((letter == '&') || (letter == '!')){
+				/**
+				 * Если разобрать свойства узла не удалось
+				 */
+				if(!this->property(line, offset))
+					// Выводим признак неудачного разбора построения
+					return false;
+				// Выполняем переход к разбору следующего знака строки
+				continue;
+			}
+			/**
 			 * Если значение является вложенным поточным построением
 			 */
 			if((letter == '[') || (letter == '{')){
@@ -2596,6 +2666,12 @@ bool awh::codec::yaml::Reader::flowing(const string_view line, size_t & offset) 
 				if((this->_levels.size() + this->_flow.size()) >= limit)
 					// Выводим отказ превышения глубины вложенности
 					return this->fail(error_t::DEPTH_EXCEEDED, offset);
+				/**
+				 * Если метка типа, построению предпосланная, виду его противна
+				 */
+				if(!this->matched(((letter == '[') ? nesting_t::SEQUENCE : nesting_t::MAPPING), offset))
+					// Выводим признак неудачного разбора построения
+					return false;
 				// Запоминаем признак наполнения открытого построения
 				bracket.filled = true;
 				// Выполняем постановку события открытия вложенного построения
@@ -3214,12 +3290,6 @@ bool awh::codec::yaml::Reader::record(const string_view line) noexcept {
 		// Выполняем сброс признака ожидания значения пары
 		this->_expected = false;
 	/**
-	 * Если закрыть уровни глубже отступа строки не удалось
-	 */
-	if(!this->collapse(indent, offset))
-		// Выводим признак неудачного разбора строки
-		return false;
-	/**
 	 * Признак того, что строка объявляет очередное значение перечня
 	 *
 	 * @note Знать это надлежит прежде выдачи пустого значения пары: перечень, стоящий на
@@ -3227,9 +3297,25 @@ bool awh::codec::yaml::Reader::record(const string_view line) noexcept {
 	 */
 	const bool entry = ((line[offset] == '-') && (((offset + 1) >= line.size()) || spacing(line[offset + 1])));
 	/**
-	 * Если ожидалось значение пары, а строка стоит на отступе имени её, перечнем не являясь
+	 * Признак того, что перечень строки есть значение пары, объявленной прежде
+	 *
+	 * @note Значением её он является лишь на отступе имени её самой: черта, стоящая
+	 *       отступом мельче, к паре отношения не имеет вовсе, и пустоту значения её
+	 *       надлежит выдать прежде закрытия уровней
 	 */
-	if(this->_expected && !entry && (indent <= this->_pending)){
+	const bool implied = (entry && !this->_entered && (indent == this->_pending));
+	/**
+	 * Если ожидалось значение пары, а строка стоит на отступе имени её, перечнем не являясь
+	 *
+	 * @details Выдаётся оно прежде закрытия уровней, а не за ним: значение принадлежит
+	 *          отображению, имя своё несущему, и выданное за концом его легло бы именем
+	 *          пары уровня объемлющего. Нашёл это ворошитель сличением перезаписи: запись
+	 *          `''` становилась именем следующей пары, а значение её - значением пустоты
+	 *
+	 * @note Ожидание записи перечня чертою не снимается: черта на отступе ожидания есть
+	 *       запись следующая, и пустоту прежней записи надлежит выдать прежде неё
+	 */
+	if(this->_expected && !implied && (indent <= this->_pending)){
 		// Выполняем сброс признака ожидания значения пары
 		this->_expected = false;
 		/**
@@ -3241,6 +3327,12 @@ bool awh::codec::yaml::Reader::record(const string_view line) noexcept {
 		// Устанавливаем вид пустого значения последнему событию
 		this->_staged.back().type = type_t::NUL;
 	}
+	/**
+	 * Если закрыть уровни глубже отступа строки не удалось
+	 */
+	if(!this->collapse(indent, offset))
+		// Выводим признак неудачного разбора строки
+		return false;
 	/**
 	 * Если разобрать содержимое строки за отступом не удалось
 	 */

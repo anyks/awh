@@ -1225,8 +1225,21 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 			if(document.parse(text)){
 				// Выполняем учёт собранного дерева документа
 				totals.trees++;
+				/**
+				 * Настройки разбора перезаписанного документа
+				 *
+				 * @details Пределы глубины и длины значения перезаписи не ставятся: ссылки
+				 *          деревом раскрываются, и перезапись раскрытого дерева законно глубже
+				 *          исходного текста. Отказ по пределу означал бы вину ворошителя, а не
+				 *          записи, и находкою считаться не вправе
+				 */
+				yaml::document_t::settings_t limitless = tree;
+				// Выполняем снятие предела глубины вложенности
+				limitless.depth = 0;
+				// Выполняем снятие предела длины скалярного значения
+				limitless.scalar = 0;
 				// Объект дерева перезаписанного документа
-				yaml::document_t rewritten(tree);
+				yaml::document_t rewritten(limitless);
 				/**
 				 * Если разобрать перезаписанный текст не удалось
 				 *
@@ -1254,6 +1267,8 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 				if(rewritten.dump() != document.dump()){
 					// Выводим сообщение о расхождении перезаписей
 					::fprintf(stderr, "yaml fuzz: rewrite unstable, settings %s\n", described(settings).c_str());
+					// Выводим разбираемый текст
+					dump(text);
 					// Выводим перезапись первого дерева
 					dump(document.dump());
 					// Выводим перезапись второго дерева
