@@ -223,8 +223,15 @@ void awh::codec::yaml::Value::clear() noexcept {
 	this->_type = type_t::UNDEFINED;
 	// Выполняем сброс оформления записи значения
 	this->_style = style_t::PLAIN;
-	// Выполняем сброс правила усечения переводов строк
-	this->_chomp = chomp_t::CLIP;
+	/**
+	 * Выполняем сброс правила усечения переводов строк
+	 *
+	 * @note Сохраняющее правило взято умолчанием намеренно: у значения владеющего запись
+	 *       есть само содержимое, и правило это единственное, при каком содержимое
+	 *       возвращается тем же, сколько бы переводов строк ни стояло в конце. Дерево
+	 *       документа перезаписывает блочные значения тем же правилом и по той же причине
+	 */
+	this->_chomp = chomp_t::KEEP;
 	// Выполняем сброс построения вместилища
 	this->_layout = layout_t::BLOCK;
 	// Выполняем сброс разобранного числа
@@ -991,6 +998,15 @@ void awh::codec::yaml::Value::absorb(const Document::value_t & value) noexcept {
 	this->_style = value.style();
 	// Выполняем снятие содержимого значения
 	this->_text.assign(value.text());
+	/**
+	 * Выполняем назначение правила усечения переводов строк по содержимому
+	 *
+	 * @details Правило берётся тем, при каком содержимое возвращается тем же: сохраняющее,
+	 *          коль скоро содержимое переводом строки оканчивается, и отсекающее, коль
+	 *          скоро не оканчивается. Записи `|-` перевода строки в конце не имеют вовсе, и
+	 *          правило сохраняющее приписало бы им лишний
+	 */
+	this->_chomp = ((!this->_text.empty() && (this->_text.back() == '\n')) ? chomp_t::KEEP : chomp_t::STRIP);
 	// Выполняем снятие якоря значения
 	this->_anchor.assign(value.anchor());
 	// Выполняем снятие метки значения
@@ -1022,12 +1038,32 @@ void awh::codec::yaml::Value::absorb(const Document::value_t & value) noexcept {
 	/**
 	 * Если значение числом является
 	 *
-	 * @note Число разбирается заново, а не снимается с узла: узел хранит его полем
-	 *       закрытым, а запись его известна и разбор её дёшев
+	 * @details Число **снимается с узла**, а не разбирается заново из записи его. Разбор
+	 *          заново шёл бы схемою своей, а узел разобран схемою документа, и записи
+	 *          вроде `0777` расходились бы: наречие 1.1 читает её восьмеричной, давая 511,
+	 *          а схема ядровая - десятичной, давая 777
+	 *
+	 * @note Нашёл это ворошитель сличением извлечения с деревом. Прежде здесь стоял разбор
+	 *       записи, и довод при нём стоял такой: «узел хранит число полем закрытым, а
+	 *       запись известна и разбор её дёшев». Довод был верен ценою, но неверен по сути -
+	 *       дёшев путь, ведущий не туда
 	 */
-	if(this->_kind == kind_t::NUMBER)
-		// Выполняем опознание числа по записи его
-		this->recognize();
+	if(this->_kind == kind_t::NUMBER){
+		/**
+		 * Если число целым со знаком является
+		 */
+		if(this->is(type_t::SIGNED))
+			// Выполняем снятие целого числа со знаком
+			value.value(this->_number.integer);
+		/**
+		 * Если число целым без знака является
+		 */
+		else if(this->is(type_t::UNSIGNED))
+			// Выполняем снятие целого числа без знака
+			value.value(this->_number.natural);
+		// Выполняем снятие дробного числа
+		else value.value(this->_number.real);
+	}
 	/**
 	 * Если значение логическим является
 	 */
@@ -1119,13 +1155,36 @@ void awh::codec::yaml::Value::compose(writer_t & writer) const noexcept {
 		 */
 		case static_cast <uint8_t> (kind_t::NUL): {
 			/**
-			 * Если запись пустоты исходным текстом дана
+			 * Если запись пустоты дана самим значением
 			 */
-			if(!this->_text.empty())
+			if(!this->_text.empty()){
 				// Выполняем запись пустоты записью её
 				writer.raw(this->_text);
-			// Выполняем запись пустого значения записью описания
-			else writer.null();
+				// Выходим из записи значения
+				return;
+			}
+			/**
+			 * Если пустота стоит корнем документа, свойств не неся
+			 *
+			 * @details Пустота записывается пустотою же: строка `- ` есть запись перечня с
+			 *          пустым значением, а `value: !` - пара с пустым значением, меткою
+			 *          помеченным. Записью описания её выражать нельзя - метка, значению
+			 *          предпосланная, отменяет разрешение схемы, и `! null` вернулось бы
+			 *          строкою `null` вместо пустоты
+			 *
+			 * @note Записью описания пустота выражается лишь корнем без свойств: документ,
+			 *       ничего не записавший, пропал бы из потока вовсе. Правило это взято у
+			 *       дерева документа дословно - разойдись они, и перезапись снятого
+			 *       значения разошлась бы с перезаписью дерева, из какого оно снято
+			 *
+			 * @note Нашёл это ворошитель круговым ходом снятого значения на записи
+			 *       `value: !`
+			 */
+			if((writer.depth() == 0) && this->_anchor.empty() && this->_tag.empty())
+				// Выполняем запись пустого значения записью описания
+				writer.null();
+			// Выполняем запись пустого значения пустотою же
+			else writer.raw(string());
 		} break;
 		/**
 		 * Если значение строкою является
@@ -1174,10 +1233,22 @@ void awh::codec::yaml::Value::compose(writer_t & writer) const noexcept {
  *
  */
 bool awh::codec::yaml::Value::parse(const string & text) noexcept {
+	// Выводим признак успешности разбора настройками обычными
+	return this->parse(text, document_t::settings_t());
+}
+/**
+ * @brief Метод разбора текста YAML указанными настройками
+ *
+ * @param text     разбираемый текст YAML
+ * @param settings настройки разбора текста
+ * @return         признак успешности разбора
+ *
+ */
+bool awh::codec::yaml::Value::parse(const string & text, const Document::settings_t & settings) noexcept {
 	// Выполняем очистку прежнего значения
 	this->clear();
 	// Выполняем заведение дерева документа
-	document_t document;
+	document_t document(settings);
 	/**
 	 * Если разобрать текст документа не удалось
 	 */
@@ -1197,10 +1268,22 @@ bool awh::codec::yaml::Value::parse(const string & text) noexcept {
  *
  */
 bool awh::codec::yaml::Value::load(const string & filename) noexcept {
+	// Выводим признак успешности разбора настройками обычными
+	return this->load(filename, document_t::settings_t());
+}
+/**
+ * @brief Метод разбора текста YAML из файла указанными настройками
+ *
+ * @param filename адрес разбираемого файла
+ * @param settings настройки разбора текста
+ * @return         признак успешности разбора
+ *
+ */
+bool awh::codec::yaml::Value::load(const string & filename, const Document::settings_t & settings) noexcept {
 	// Выполняем очистку прежнего значения
 	this->clear();
 	// Выполняем заведение дерева документа
-	document_t document;
+	document_t document(settings);
 	/**
 	 * Если разобрать текст документа из файла не удалось
 	 */
@@ -1523,7 +1606,7 @@ awh::codec::yaml::Value & awh::codec::yaml::Value::operator = (Value && value) n
  */
 awh::codec::yaml::Value::Value() noexcept :
  _kind(kind_t::NONE), _type(type_t::UNDEFINED), _schema(schema_t::CORE),
- _style(style_t::PLAIN), _chomp(chomp_t::CLIP), _layout(layout_t::BLOCK) {}
+ _style(style_t::PLAIN), _chomp(chomp_t::KEEP), _layout(layout_t::BLOCK) {}
 /**
  * @brief Конструктор вместилища указанного вида
  *
@@ -1667,6 +1750,8 @@ awh::codec::yaml::Value::Value(const string & value, const style_t style) noexce
 	this->_style = style;
 	// Выполняем установку записи заводимого значения
 	this->_text.assign(value);
+	// Выполняем назначение правила усечения переводов строк по содержимому
+	this->_chomp = ((!this->_text.empty() && (this->_text.back() == '\n')) ? chomp_t::KEEP : chomp_t::STRIP);
 }
 /**
  * @brief Конструктор строкового значения

@@ -167,7 +167,28 @@ namespace awh {
 					// Оформление записи значения
 					style_t _style;
 				private:
-					// Правило усечения переводов строк блочного значения
+					/**
+					 * \~russian
+					 * Правило усечения переводов строк блочного значения
+					 *
+					 * @details Умолчанием взято правило сохраняющее, а не отсекающее: у
+					 * значения владеющего запись есть само содержимое, и правило это
+					 * единственное, при каком содержимое возвращается тем же, сколько бы
+					 * переводов строк ни стояло в конце
+					 *
+					 * @note Потребитель волен назначить иное, и назначает он его знаючи:
+					 * правила `CLIP` и `STRIP` переводы строк в конце содержимого теряют
+					 *
+					 * \~english
+					 * Rule of the chomping of the line breaks of a block value
+					 * @details The keeping rather than the clipping rule is taken as the default: for an owning
+					 * value the record is the content itself, and this rule is the only one under which
+					 * the content returns the same, however many line breaks stand at the end
+					 * @note The consumer is free to assign another one, and assigns it knowingly:
+					 * the `CLIP` and `STRIP` rules lose the line breaks at the end of the content
+					 *
+					 * \~
+					 */
 					chomp_t _chomp;
 				private:
 					// Построение вместилища
@@ -835,6 +856,35 @@ namespace awh {
 					bool parse(const string & text) noexcept;
 					/**
 					 * \~russian
+					 * @brief Метод разбора текста YAML указанными настройками
+					 *
+					 * @details Настройки нужны прежде всего схемою: запись `0777` наречием 1.1
+					 * читается восьмеричной, давая 511, а схемою ядровой - десятичной, давая
+					 * 777. Значение, снятое с документа одной схемы, обратно читается той же
+					 *
+					 * @note Частность эта наречию YAML своя: у кодеков, схем не имеющих,
+					 * разбор настроек не требует вовсе
+					 *
+					 * @param text     разбираемый текст YAML
+					 * @param settings настройки разбора текста
+					 * @return         признак успешности разбора
+					 *
+					 * \~english
+					 * @brief Method of the parsing of a YAML text with the indicated settings
+					 * @details The settings are needed first of all for the schema: the record `0777` is read
+					 * by the 1.1 dialect as an octal one, giving 511, while by the core schema — as a decimal one, giving
+					 * 777. A value taken from a document of one schema is read back by the same one
+					 * @note This particularity is peculiar to the YAML dialect: for the codecs having no schemas,
+					 * the parsing does not require the settings at all
+					 * @param text YAML text being parsed
+					 * @param settings settings of the parsing of the text
+					 * @return sign of the success of the parsing
+					 *
+					 * \~
+					 */
+					bool parse(const string & text, const Document::settings_t & settings) noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод разбора текста YAML из файла
 					 *
 					 * @param filename адрес разбираемого файла
@@ -848,6 +898,23 @@ namespace awh {
 					 * \~
 					 */
 					bool load(const string & filename) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод разбора текста YAML из файла указанными настройками
+					 *
+					 * @param filename адрес разбираемого файла
+					 * @param settings настройки разбора текста
+					 * @return         признак успешности разбора
+					 *
+					 * \~english
+					 * @brief Method of the parsing of a YAML text from a file with the indicated settings
+					 * @param filename address of the file being parsed
+					 * @param settings settings of the parsing of the text
+					 * @return sign of the success of the parsing
+					 *
+					 * \~
+					 */
+					bool load(const string & filename, const Document::settings_t & settings) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод перезаписи значения в текст YAML
