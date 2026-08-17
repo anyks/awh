@@ -1574,7 +1574,19 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 					 *       значение то же самое: оформления оно не удерживает, и всё, что
 					 *       переживает круг, есть суть значения
 					 */
-					if(!circled.parse(taken.dump(), tree) || !(circled == taken)){
+					// Настройки разбора перезаписи снятого значения
+					yaml::document_t::settings_t unbound = tree;
+					/**
+					 * Выполняем снятие предела глубины вложенности
+					 *
+					 * @note Пределы перезаписи не ставятся: ссылки деревом раскрываются, и
+					 *       перезапись раскрытого дерева законно глубже исходного текста.
+					 *       Отказ по пределу означал бы вину ворошителя, а не записи
+					 */
+					unbound.depth = 0;
+					// Выполняем снятие предела длины скалярного значения
+					unbound.scalar = 0;
+					if(!circled.parse(taken.dump(), unbound) || !(circled == taken)){
 						// Выводим сообщение о нарушении кругового хода
 						::fprintf(stderr, "yaml fuzz: taken value round trip broken, settings %s\n",
 							described(settings).c_str());

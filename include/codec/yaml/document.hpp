@@ -244,6 +244,29 @@ namespace awh {
 						 */
 						uint32_t origin;
 						/**
+						 * \~russian
+						 * Смещение начала собственной строки узла в удержанном тексте
+						 *
+						 * @details Начало записи узла вправе стоять выше собственной строки его:
+						 * примечания да пустые строки, над узлом стоящие, уходят вместе с ним, а
+						 * черта записи перечня и вовсе переносится к узлу отдельным проходом.
+						 * Собственная же строка есть та, где стоит само содержимое, и запоминать
+						 * её приходится при постановке узла: после переноса черты по началу
+						 * записи её уже не вычислить
+						 *
+						 * \~english
+						 * Offset of the beginning of the own line of the node in the retained text
+						 * @details The beginning of the record of a node may stand above its own line:
+						 * the comments and the blank lines standing above the node leave together with it, while
+						 * the dash of an entry of a sequence is moved to the node by a separate pass altogether.
+						 * The own line, however, is the one where the content itself stands, and it has to be remembered
+						 * at the placement of the node: after the moving of the dash it can no longer be computed
+						 * from the beginning of the record
+						 *
+						 * \~
+						 */
+						uint32_t dwelling;
+						/**
 						 * Смещение за концом записи узла в удержанном исходном тексте
 						 *
 						 * @details Границею служит начало записи следующего узла обхода: всякий
@@ -390,7 +413,7 @@ namespace awh {
 						 */
 						Node() noexcept :
 						 type(type_t::UNDEFINED), style(style_t::PLAIN), keyed(false), touched(false),
-						 origin(NO_ORIGIN), edge(NO_ORIGIN), offset(0), named(0), props(0), content{0, 1}, number{0, 0} {}
+						 origin(NO_ORIGIN), dwelling(NO_ORIGIN), edge(NO_ORIGIN), offset(0), named(0), props(0), content{0, 1}, number{0, 0} {}
 					} node_t;
 				public:
 					/**
