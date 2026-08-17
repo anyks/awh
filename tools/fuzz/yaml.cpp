@@ -859,10 +859,12 @@ namespace {
 	 * @param settings настройки разбора текста
 	 * @param chunk    размер куска подачи, ноль - подача целиком
 	 * @param events   перечень выданных разбором событий
-	 * @return         состояние потокового чтения по окончании подачи
+	 * @param failure    код ошибки разбора по окончании подачи
+	 * @param recognised опознанная кодировка исходного текста
+	 * @return           состояние потокового чтения по окончании подачи
 	 *
 	 */
-	yaml::state_t consume(const string & text, const yaml::reader_t::settings_t & settings, const size_t chunk, vector <Event> & events) noexcept {
+	yaml::state_t consume(const string & text, const yaml::reader_t::settings_t & settings, const size_t chunk, vector <Event> & events, yaml::error_t * failure = nullptr, yaml::encoding_t * recognised = nullptr) noexcept {
 		// Создаём объект потокового чтения текста
 		yaml::reader_t reader(settings);
 		// Размер куска подачи текста
@@ -920,6 +922,18 @@ namespace {
 				break;
 		// Выполняем подачу до исчерпания текста
 		} while(offset < text.length());
+		/**
+		 * Если код ошибки разбора затребован
+		 */
+		if(failure != nullptr)
+			// Запоминаем код ошибки разбора по окончании подачи
+			(* failure) = reader.error();
+		/**
+		 * Если опознанная кодировка затребована
+		 */
+		if(recognised != nullptr)
+			// Запоминаем опознанную кодировку исходного текста
+			(* recognised) = reader.encoding();
 		// Выводим состояние потокового чтения по окончании подачи
 		return reader.state();
 	}
@@ -1107,8 +1121,10 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		}
 		// Перечень событий подачи текста целиком
 		vector <Event> whole;
+		// Код ошибки разбора текста, поданного целиком
+		yaml::error_t failure = yaml::error_t::NONE;
 		// Выполняем подачу текста целиком
-		const yaml::state_t state = consume(text, settings, 0, whole);
+		const yaml::state_t state = consume(text, settings, 0, whole, &failure);
 		/**
 		 * Если текст разобран до конца
 		 */
@@ -1127,10 +1143,30 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 			const size_t chunk = ((attempt == 0) ? 1 : (1 + (engine() % 24)));
 			// Перечень событий подачи текста кусками
 			vector <Event> chunked;
+			// Код ошибки разбора текста, поданного кусками
+			yaml::error_t reached = yaml::error_t::NONE;
 			// Выполняем подачу текста кусками
-			consume(text, settings, chunk, chunked);
+			const yaml::state_t outcome = consume(text, settings, chunk, chunked, &reached);
 			// Выполняем учёт сличения подачи кусками
 			totals.chunked++;
+			/**
+			 * Если исход разбора нарезкою переменился
+			 *
+			 * @note Сличается не одна лишь выдача событий, но и состояние с кодом отказа:
+			 *       разбор, отказавший целиком и прошедший кусками, событиями разошёлся бы
+			 *       не всегда, а исход его переменился бы всё равно
+			 */
+			if((outcome != state) || (reached != failure)){
+				// Выводим сообщение о расхождении исхода разбора
+				::fprintf(stderr, "yaml fuzz: chunk=%zu outcome %u/%u error %u/%u, settings %s\n",
+					chunk, static_cast <unsigned> (state), static_cast <unsigned> (outcome),
+					static_cast <unsigned> (failure), static_cast <unsigned> (reached),
+					described(settings).c_str());
+				// Выводим разбираемый текст
+				dump(text);
+				// Выходим из приложения с ошибкой
+				return EXIT_FAILURE;
+			}
 			/**
 			 * Если перечни выданных разбором событий разошлись
 			 */
@@ -1153,10 +1189,36 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 			source.erase(0, 3);
 		// Перечень событий подачи текста в кодировке UTF-8 без метки
 		vector <Event> native;
+		// Опознанная кодировка текста, поданного без метки
+		yaml::encoding_t recognised = yaml::encoding_t::NONE;
 		// Выполняем подачу текста в кодировке UTF-8 без метки
-		consume(source, settings, 0, native);
+		consume(source, settings, 0, native, nullptr, &recognised);
 		// Выполняем сброс смещений начала событий
 		detach(native);
+		/**
+		 * Если текст без метки порядка байтов опознан не как UTF-8
+		 *
+		 * @details Опознание описанием задано прямо: пара байтов `xx 00` в начале текста
+		 *          без метки есть UTF-16LE. Испорченный текст, пустой байт вторым знаком
+		 *          несущий, под правило это и попадает - и текстом UTF-8 он уже не читается.
+		 *          Сличать его с приведением к UTF-16 нечестно: это два разных текста, и
+		 *          расхождение их будет виною ворошителя, а не разбора
+		 */
+		if(recognised != yaml::encoding_t::UTF8)
+			// Выполняем переход к следующему проходу генератора
+			continue;
+		/**
+		 * Если текст несёт пустой байт
+		 *
+		 * @details Приведение пустого знака к UTF-16 даёт `00 00` следом за меткой порядка
+		 *          байтов, а `FF FE 00 00` есть метка UTF-32LE - и текст, приведённый к
+		 *          UTF-16, опознаётся как UTF-32. Двусмысленность эта заложена в самом
+		 *          описании, и разбор тут ни при чём: пустой знак тексту YAML не принадлежит
+		 *          вовсе, и приводить его к иной кодировке незачем
+		 */
+		if(source.find('\0') != string::npos)
+			// Выполняем переход к следующему проходу генератора
+			continue;
 		/**
 		 * Выполняем перебор обоих порядков байтов кодировки UTF-16
 		 */

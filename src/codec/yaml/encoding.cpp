@@ -597,7 +597,13 @@ bool awh::codec::yaml::Decoder::doubled(const char * buffer, const size_t size, 
 			/**
 			 * Если записать собранный из пары знак не удалось
 			 */
-			if(!this->allowed(paired(this->_surrogate, unit)) || !encode(paired(this->_surrogate, unit), result)){
+			if(!this->allowed(paired(this->_surrogate, unit)))
+				// Выводим признак неудачного приведения куска
+				return false;
+			/**
+			 * Если записать собранный из пары суррогатов знак не удалось
+			 */
+			if(!encode(paired(this->_surrogate, unit), result)){
 				// Запоминаем код ошибки приведения кодировки
 				this->_error = error_t::INVALID_ENCODING;
 				// Выводим признак неудачного приведения куска
@@ -629,7 +635,13 @@ bool awh::codec::yaml::Decoder::doubled(const char * buffer, const size_t size, 
 		/**
 		 * Если записать очередной знак не удалось
 		 */
-		if(!this->allowed(unit) || !encode(unit, result)){
+		if(!this->allowed(unit))
+			// Выводим признак неудачного приведения куска
+			return false;
+		/**
+		 * Если записать очередной знак не удалось
+		 */
+		if(!encode(unit, result)){
 			// Запоминаем код ошибки приведения кодировки
 			this->_error = error_t::INVALID_ENCODING;
 			// Выводим признак неудачного приведения куска
@@ -701,7 +713,13 @@ bool awh::codec::yaml::Decoder::quadrupled(const char * buffer, const size_t siz
 		/**
 		 * Если записать очередной знак не удалось
 		 */
-		if(!this->allowed(code) || !encode(code, result)){
+		if(!this->allowed(code))
+			// Выводим признак неудачного приведения куска
+			return false;
+		/**
+		 * Если записать очередной знак не удалось
+		 */
+		if(!encode(code, result)){
 			// Запоминаем код ошибки приведения кодировки
 			this->_error = error_t::INVALID_ENCODING;
 			// Выводим признак неудачного приведения куска
