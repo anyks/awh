@@ -1923,16 +1923,6 @@ static ssize_t __awh_pipe_transfer__(const SOCKET sock, void * buffer, const siz
 		 *       же буфер, и лежат готовыми
 		 */
 		if(::__awh_pool_receive__(sock, buffer, size, fetched)){
-			// ВРЕМЕННЫЙ ЩУП: выдача родного приёма по каналу
-			if(fetched <= 0){
-				// Буфер строки щупа: пишется одним обращением
-				char probe[192];
-				// Собираем строку щупа
-				const int32_t length = ::snprintf(probe, sizeof(probe), "ЩУП [%u]: родной приём канала отдал %lld октетов, errno=%d\n", static_cast <uint32_t> (::GetCurrentProcessId()), static_cast <int64_t> (fetched), errno);
-				// Выводим строку щупа одним обращением
-				::fwrite(probe, 1, static_cast <size_t> (length), stderr);
-				::fflush(stderr);
-			}
 			// Выводим размер принятых данных
 			return fetched;
 		}
@@ -1980,16 +1970,6 @@ static ssize_t __awh_pipe_transfer__(const SOCKET sock, void * buffer, const siz
 	 ::ReadFile(handle, buffer, static_cast <DWORD> (size), &bytes, &overlapped));
 	// Если обмен выполнен сразу
 	if(done){
-		// ВРЕМЕННЫЙ ЩУП: обмен с каналом, завершившийся сразу пустотой
-		if(!write && (bytes == 0)){
-			// Буфер строки щупа: пишется одним обращением
-			char probe[192];
-			// Собираем строку щупа
-			const int32_t length = ::snprintf(probe, sizeof(probe), "ЩУП [%u]: чтение канала завершилось сразу пустотой\n", static_cast <uint32_t> (::GetCurrentProcessId()));
-			// Выводим строку щупа одним обращением
-			::fwrite(probe, 1, static_cast <size_t> (length), stderr);
-			::fflush(stderr);
-		}
 		// Выводим число переданных октетов
 		return static_cast <ssize_t> (bytes);
 	}
@@ -5364,9 +5344,6 @@ namespace {
 					if(ipc->callbacks.status != nullptr)
 						// Вызываем функцию обратного вызова при уничтожении события
 						{
-							// ВРЕМЕННЫЙ ЩУП: оповещение об уничтожении канала охранником узла
-							::fprintf(stderr, "ЩУП движок [%u]: охранник объявляет канал [%llu] уничтоженным\n", static_cast <uint32_t> (::GetCurrentProcessId()), static_cast <uint64_t> (ipc->id));
-							::fflush(stderr);
 							ipc->callbacks.status(ipc->id, event::status_t::DESTROYED);
 						}
 				} break;
@@ -5923,9 +5900,6 @@ namespace inflight {
 				// Выводим запись учёта
 				return result;
 		}
-		// ВРЕМЕННЫЙ ЩУП: описатель, ни одной странице учёта не принадлежащий
-		::fprintf(stderr, "ЩУП движок: чужой описатель %p у процесса %u\n", static_cast <void *> (overlapped), static_cast <uint32_t> (::GetCurrentProcessId()));
-		::fflush(stderr);
 		// Выводим отсутствие записи учёта
 		return nullptr;
 	}
@@ -9822,13 +9796,6 @@ namespace kernel {
 	 *
 	 */
 	static bool descriptor(const ::change::record_t & rec, const log_t * log) noexcept {
-		{
-			// ВРЕМЕННЫЙ ЩУП: применение записи подписки
-			char probe[192];
-			const int32_t length = ::snprintf(probe, sizeof(probe), "ЩУП [%u]: запись подписки описателя %llu, вид=%u, признаки=%u\n", static_cast <uint32_t> (::GetCurrentProcessId()), static_cast <uint64_t> (rec.ident), static_cast <uint32_t> (rec.filter), static_cast <uint32_t> (rec.flags));
-			::fwrite(probe, 1, static_cast <size_t> (length), stderr);
-			::fflush(stderr);
-		}
 		// Разряд признака ожидания, отвечающий разновидности подписки
 		const uint32_t bit = ((rec.filter == ::change::filter_t::READ) ? EPOLLIN : EPOLLOUT);
 		// Получаем дескриптор, к которому запись относится
@@ -10527,8 +10494,6 @@ namespace kernel {
 		if(::kernel::listening(state.sock)){
 			// Выполняем подачу приёма подключения
 			state.token = ::kernel::accepting(state.sock, &state, log);
-			// ВРЕМЕННЫЙ ЩУП: подача приёма подключения
-			log->print("ЩУП движок [%d]: подан приём на дескрипторе %llu, метка=%llu", log_t::flag_t::INFO, static_cast <int32_t> (::GetCurrentProcessId()), static_cast <uint64_t> (state.sock), static_cast <uint64_t> (state.token));
 		}
 		// Если дескриптор не слушающий
 		else {
@@ -10541,13 +10506,6 @@ namespace kernel {
 			 *       `recvfrom`, а не `recv`
 			 */
 			state.token = (suitable ? ::post::fetch(state.sock, &state, (datagram || raw), metadata) : ::inflight::INVALID);
-			{
-				// ВРЕМЕННЫЙ ЩУП: подача приёма по неслушающему описателю
-				char probe[192];
-				const int32_t length = ::snprintf(probe, sizeof(probe), "ЩУП [%u]: подписка описателя %llu, вид=%u, родной приём=%u, метка=%llu\n", static_cast <uint32_t> (::GetCurrentProcessId()), static_cast <uint64_t> (state.sock), static_cast <uint32_t> ((node != nullptr) ? static_cast <uint8_t> (node->state.node) : 0xFF), static_cast <uint32_t> (suitable), static_cast <uint64_t> (state.token));
-				::fwrite(probe, 1, static_cast <size_t> (length), stderr);
-				::fflush(stderr);
-			}
 			// Запоминаем поданность родного приёма
 			fetching = (state.token != ::inflight::INVALID);
 			// Если родной приём не подавался либо подать его не удалось
@@ -33273,20 +33231,6 @@ namespace io {
 	 *
 	 */
 	static bool destroy(::io::node_t * node, const eth_t * eth, const log_t * log) noexcept {
-		// ВРЕМЕННЫЙ ЩУП: снос узла канала с адресом места вызова
-		if(node->state.node == event::node_t::IPC){
-			// Буфер строки щупа: пишется одним обращением, иначе строки процессов перемешиваются
-			char probe[256];
-			// Собираем строку щупа с адресом места вызова и основанием образа
-			const int32_t length = ::snprintf(
-				probe, sizeof(probe), "ЩУП [%u]: снос канала [%llu], состояние=%u, откуда=%llu\n",
-				static_cast <uint32_t> (::GetCurrentProcessId()), static_cast <uint64_t> (node->id), static_cast <uint32_t> (node->state.status),
-				static_cast <uint64_t> (reinterpret_cast <uintptr_t> (__builtin_return_address(0)) - reinterpret_cast <uintptr_t> (::GetModuleHandleW(nullptr)))
-			);
-			// Выводим строку щупа одним обращением
-			::fwrite(probe, 1, static_cast <size_t> (length), stderr);
-			::fflush(stderr);
-		}
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -37771,16 +37715,11 @@ namespace io {
 			case ::change::filter_t::READ: {
 				// Если мы детектировали наличие ошибки
 				if(ev.flags & ::change::ERROR){
-					// ВРЕМЕННЫЙ ЩУП: отказ чтения у узла
-					log->print("ЩУП движок [%u]: отказ чтения у узла [%llu], вид=%u, данные=%lld", log_t::flag_t::INFO, static_cast <uint32_t> (::GetCurrentProcessId()), static_cast <uint64_t> (node->id), static_cast <uint32_t> (node->state.node), static_cast <int64_t> (ev.data));
 					// Выполняем обработку ошибки
 					::io::error(node, ev.data, log);
 					// Выполняем удаление узла
 					return !::io::destroy(node, eth, log);
 				}
-				// ВРЕМЕННЫЙ ЩУП: признак обрыва у узла
-				if(ev.flags & ::change::HANGUP)
-					log->print("ЩУП движок [%u]: обрыв у узла [%llu], вид=%u, данные=%lld, осталось=%u", log_t::flag_t::INFO, static_cast <uint32_t> (::GetCurrentProcessId()), static_cast <uint64_t> (node->id), static_cast <uint32_t> (node->state.node), static_cast <int64_t> (ev.data), static_cast <uint32_t> (::io::pending(node, ev.data)));
 				// Если удалённая сторона закрыла соединение и в буфере сокета не осталось непрочитанных данных
 				if((ev.flags & ::change::HANGUP) && !::io::pending(node, ev.data))
 					// Выполняем удаление узла без попытки чтения из закрытого сокета
@@ -56552,8 +56491,6 @@ bool awh::engine::IO::setMaxConnections(const event::id_t id, const uint32_t max
  *
  */
 bool awh::engine::IO::destroy(const event::id_t id) noexcept {
-	// ВРЕМЕННЫЙ ЩУП: уничтожение события движком
-	this->_log->print("ЩУП движок [%u]: уничтожение события [%llu]", log_t::flag_t::INFO, static_cast <uint32_t> (::GetCurrentProcessId()), static_cast <uint64_t> (id));
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -61334,13 +61271,6 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 								client->activity |= ::activity::READ;
 								// Активируем событие на чтение данных из сокета
 								::events::read(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
-								{
-									// ВРЕМЕННЫЙ ЩУП: взвод подписки у клиента при запуске
-									char probe[192];
-									const int32_t length = ::snprintf(probe, sizeof(probe), "ЩУП [%u]: взвод чтения у клиента [%llu], описатель %llu\n", static_cast <uint32_t> (::GetCurrentProcessId()), static_cast <uint64_t> (client->id), static_cast <uint64_t> (client->transfer.fd));
-									::fwrite(probe, 1, static_cast <size_t> (length), stderr);
-									::fflush(stderr);
-								}
 								// Если необходимо активировать таймаут на чтение для клиента
 								if(client->timeouts.read.delay > 0){
 									// Если событие является неблокирующим
@@ -62732,8 +62662,14 @@ bool awh::engine::IO::listen(const event::id_t id, const uint32_t max) noexcept 
 						if(server->actions & ::action::ACCEPT){
 							// Устанавливаем статус события в состояние успешного прослушивания
 							server->state.status = event::status_t::SUCCESS;
-							// Устанавливаем максимальное количество входящих соединений
-							server->backlog.max = max;
+							// Если максимальное количество входящих соединений передано
+							if(max > 0)
+								// Устанавливаем максимальное количество входящих соединений
+								server->backlog.max = max;
+							// Если максимальное количество входящих соединений не передано
+							else if(server->backlog.max == 0)
+								// Устанавливаем максимальное количество входящих соединений по умолчанию
+								server->backlog.max = 100;
 							/**
 							 * Определяем тип сокета
 							 */
@@ -69825,8 +69761,6 @@ bool awh::engine::IO::isAlive(const event::id_t id) const noexcept {
  *
  */
 void awh::engine::IO::clear() noexcept {
-	// ВРЕМЕННЫЙ ЩУП: полная очистка движка
-	this->_log->print("ЩУП движок [%u]: очистка всех событий", log_t::flag_t::INFO, static_cast <uint32_t> (::GetCurrentProcessId()));
 	// Если очередь опроса заведена
 	if(::__awh_ep__ != net::invalid_socket_t){
 		/**
@@ -69998,11 +69932,7 @@ void awh::engine::IO::clear() noexcept {
 							// Если установлена функция обратного вызова
 							if(ipc->callbacks.status != nullptr)
 								// Вызываем функцию обратного вызова при уничтожении события
-								{
-									// ВРЕМЕННЫЙ ЩУП: оповещение об уничтожении канала разбором хозяйства
-									this->_log->print("ЩУП движок [%u]: разбор хозяйства объявляет канал [%llu] уничтоженным", log_t::flag_t::INFO, static_cast <uint32_t> (::GetCurrentProcessId()), static_cast <uint64_t> (i->first));
-									ipc->callbacks.status(i->first, event::status_t::DESTROYED);
-								}
+								ipc->callbacks.status(i->first, event::status_t::DESTROYED);
 						}
 						// Производим удаление узла
 						i = ::__awh_nodes__.erase(i);
@@ -71118,8 +71048,6 @@ bool awh::engine::IO::reinitialize() noexcept {
  *
  */
 bool awh::engine::IO::deinitialize() noexcept {
-	// ВРЕМЕННЫЙ ЩУП: остановка движка
-	this->_log->print("ЩУП движок [%u]: остановка движка", log_t::flag_t::INFO, static_cast <uint32_t> (::GetCurrentProcessId()));
 	// Результат работы функции
 	bool result = false;
 	/**

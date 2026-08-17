@@ -55,6 +55,12 @@
 	#include <arpa/inet.h>
 	#include <netinet/in.h>
 	#include <sys/socket.h>
+	/**
+	 * @note Ожидание дочернего процесса и разбор его состояния нужны проверке передачи
+	 *       события чужому процессу. У macOS заголовок этот подтягивается чужой цепочкой,
+	 *       а у FreeBSD нет: там сборка валилась на `waitpid` и `WIFEXITED`
+	 */
+	#include <sys/wait.h>
 #endif
 
 /**

@@ -927,11 +927,7 @@ void awh::unit::Server::message(const pid_t pid, const uint8_t * data, const siz
 		 *       отвечает отказом. Подключение при этом уже связано, и к установке
 		 *       связи адрес отношения не имеет - он лишь описывает встречную сторону
 		 */
-		// ВРЕМЕННЫЙ ЩУП: установка адреса встречной стороны
-		const bool portSet = this->_io->setTargetPort(cid, record.port);
-		const bool targetSet = this->_io->setTarget(cid, target);
-		this->_log->print("ЩУП работник [%d]: цель [%s]:%u, семейство=%u, порт=%u, адрес=%u", log_t::flag_t::INFO, ::getpid(), target.c_str(), static_cast <uint32_t> (record.port), static_cast <uint32_t> (record.family), static_cast <uint32_t> (portSet), static_cast <uint32_t> (targetSet));
-		if(!portSet || !targetSet){
+		if(!this->_io->setTargetPort(cid, record.port) || !this->_io->setTarget(cid, target)){
 			// Удаляем заведённое событие подключения
 			this->_io->destroy(cid);
 			// Записываем ошибку в лог
@@ -948,12 +944,8 @@ void awh::unit::Server::message(const pid_t pid, const uint8_t * data, const siz
 			// Выводим признак того, что сообщение было передачей подключения
 			return true;
 		}
-		// ВРЕМЕННЫЙ ЩУП: поднятое подключение
-		this->_log->print("ЩУП работник [%d]: поднято подключение [%llu] у события [%llu]", log_t::flag_t::INFO, ::getpid(), static_cast <uint64_t> (cid), static_cast <uint64_t> (eid));
 		// Отдаём подключение потребителю обычным путём принятого подключения
 		this->accept(eid, cid);
-		// ВРЕМЕННЫЙ ЩУП: запуск поднятого подключения
-		this->_log->print("ЩУП работник [%d]: запуск подключения [%llu]", log_t::flag_t::INFO, ::getpid(), static_cast <uint64_t> (cid));
 		// Выполняем запуск работы подключения
 		if(!this->_io->launch(cid)){
 			// Удаляем заведённое событие подключения
@@ -961,8 +953,6 @@ void awh::unit::Server::message(const pid_t pid, const uint8_t * data, const siz
 			// Записываем ошибку в лог
 			this->_log->print("Cluster worker process [%d] cannot start the connection received from the master", log_t::flag_t::CRITICAL, ::getpid());
 		}
-		// ВРЕМЕННЫЙ ЩУП: подъём подключения окончен
-		this->_log->print("ЩУП работник [%d]: подъём подключения [%llu] окончен", log_t::flag_t::INFO, ::getpid(), static_cast <uint64_t> (cid));
 		// Выводим признак того, что сообщение было передачей подключения
 		return true;
 	}

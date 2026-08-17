@@ -100,8 +100,6 @@ bool awh::Server::active() const noexcept {
  *
  */
 bool awh::Server::commitUnit() noexcept {
-	// ВРЕМЕННЫЙ ЩУП: вход в фиксацию настроек события сервера
-	this->_log->print("ЩУП [%d]: фиксация настроек события", log_t::flag_t::INFO, ::getpid());
 	/**
 	 * Для систем, где ядро само разводит подключения между процессами кластера
 	 */
@@ -298,8 +296,6 @@ void awh::Server::status(const uint8_t index, const event::status_t status) noex
 						case static_cast <uint8_t> (net_addr_t::type_t::IPV4): {
 							// Устанавливаем адрес хоста текущей машины
 							if(this->setAddressUnit(event::address_t::IPV4, this->_host)){
-								// ВРЕМЕННЫЙ ЩУП: состояние события перед фиксацией
-								this->_log->print("ЩУП [%d]: состояние события=%u", log_t::flag_t::INFO, ::getpid(), static_cast <uint32_t> (this->statusUnit()));
 								// Если событие сервера не запущено, запускаем его
 								if(this->statusUnit() == event::status_t::NONE){
 									// Выполняем фиксацию параметров сервера

@@ -62744,8 +62744,14 @@ bool awh::engine::IO::listen(const event::id_t id, const uint32_t max) noexcept 
 						if(server->actions & ::action::ACCEPT){
 							// Устанавливаем статус события в состояние успешного прослушивания
 							server->state.status = event::status_t::SUCCESS;
-							// Устанавливаем максимальное количество входящих соединений
-							server->backlog.max = max;
+							// Если максимальное количество входящих соединений передано
+							if(max > 0)
+								// Устанавливаем максимальное количество входящих соединений
+								server->backlog.max = max;
+							// Если максимальное количество входящих соединений не передано
+							else if(server->backlog.max == 0)
+								// Устанавливаем максимальное количество входящих соединений по умолчанию
+								server->backlog.max = 100;
 							/**
 							 * Определяем тип сокета
 							 */
