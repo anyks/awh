@@ -1115,3 +1115,136 @@ TEST(CodecYamlWriter, MalformedNames) {
 	// Выполняем проверку того, что записанное читается обратно
 	ASSERT_TRUE(doc.parse(text)) << yaml::message(doc.error());
 }
+/**
+ * @brief Проверка приведения кодировки перебором всех входов записи
+ *
+ * @details Мест, куда потребитель подаёт свой текст, у наречия девять. Пропусти хоть
+ *          одно - и оно станет тем самым местом, какое всплывёт у потребителя через
+ *          полгода. Оттого входы перебираются все и всеми разновидностями негодного, а
+ *          годность выданного доказывается разбором его кодировки, а не рассуждением
+ *
+ * @note Совет проверять входы перебором пришёл от ведущего кодека JSON, где входов два
+ *
+ */
+TEST(CodecYamlWriter, MalformedEntries) {
+	// Записи негодных последовательностей, проверкою перебираемые
+	const vector <string> records = {
+		string("\xFF\xFE", 2), string("\xC3", 1), string("\xED\xA0\x80", 3),
+		string("\xC0\x80", 2), string("\xC3\x28", 2), string("\xE1\x80", 2)
+	};
+	/**
+	 * @brief Функция проверки текста на годность кодировки
+	 *
+	 * @param text проверяемый текст
+	 * @return     признак годности кодировки текста
+	 *
+	 */
+	const auto correct = [](const string & text) noexcept -> bool {
+		// Положение очередного знака текста
+		size_t position = 0;
+		/**
+		 * Выполняем разбор текста знак за знаком
+		 */
+		while(position < text.size()){
+			// Разобранный знак Юникода
+			uint32_t code = 0;
+			// Количество байт, разбором пройденных
+			size_t length = 0;
+			/**
+			 * Если последовательность правил не соблюдает
+			 */
+			if(yaml::inspect(text, position, code, length) != yaml::utf8_t::VALID)
+				// Выводим признак негодности кодировки текста
+				return false;
+			// Выполняем переход к следующей последовательности текста
+			position += length;
+		}
+		// Выводим признак годности кодировки текста
+		return true;
+	};
+	/**
+	 * Выполняем перебор записей негодных последовательностей
+	 */
+	for(auto & record : records){
+		// Имена входов записи, проверкою перебираемых
+		const vector <string> entries = {
+			"value(PLAIN)", "value(SINGLE)", "value(DOUBLE)", "value(LITERAL)",
+			"value", "block(LITERAL)", "block(FOLDED)", "key", "anchor", "tag",
+			"alias", "comment", "trailing"
+		};
+		/**
+		 * Выполняем перебор входов записи текста
+		 */
+		for(size_t entry = 0; entry < entries.size(); entry++){
+			// Поток записи текста
+			yaml::writer_t writer;
+			// Выполняем открытие записываемого документа
+			ASSERT_TRUE(writer.document());
+			// Выполняем открытие отображения пар
+			ASSERT_TRUE(writer.mapping());
+			/**
+			 * Если проверяется вход записи имени поля отображения
+			 */
+			if(entries.at(entry).compare("key") == 0)
+				// Выполняем запись негодного имени поля отображения
+				ASSERT_TRUE(writer.key(record));
+			// Выполняем запись имени поля отображения
+			else ASSERT_TRUE(writer.key("field"));
+			/**
+			 * Определяем проверяемый вход записи текста
+			 */
+			if(entries.at(entry).compare("value(PLAIN)") == 0)
+				// Выполняем запись негодного значения оградою указанной
+				ASSERT_TRUE(writer.value(record, yaml::style_t::PLAIN));
+			else if(entries.at(entry).compare("value(SINGLE)") == 0)
+				// Выполняем запись негодного значения оградою указанной
+				ASSERT_TRUE(writer.value(record, yaml::style_t::SINGLE));
+			else if(entries.at(entry).compare("value(DOUBLE)") == 0)
+				// Выполняем запись негодного значения оградою указанной
+				ASSERT_TRUE(writer.value(record, yaml::style_t::DOUBLE));
+			else if(entries.at(entry).compare("value(LITERAL)") == 0)
+				// Выполняем запись негодного значения оградою указанной
+				ASSERT_TRUE(writer.value(record, yaml::style_t::LITERAL));
+			else if(entries.at(entry).compare("value") == 0)
+				// Выполняем запись негодного значения оградою решаемой
+				ASSERT_TRUE(writer.value(record));
+			else if(entries.at(entry).compare("block(LITERAL)") == 0)
+				// Выполняем запись негодного блочного значения
+				ASSERT_TRUE(writer.block(record, yaml::style_t::LITERAL, yaml::chomp_t::CLIP));
+			else if(entries.at(entry).compare("block(FOLDED)") == 0)
+				// Выполняем запись негодного блочного значения
+				ASSERT_TRUE(writer.block(record, yaml::style_t::FOLDED, yaml::chomp_t::CLIP));
+			else if(entries.at(entry).compare("anchor") == 0){
+				// Выполняем запись негодного якоря значения
+				ASSERT_TRUE(writer.anchor(record));
+				// Выполняем запись значения поля отображения
+				ASSERT_TRUE(writer.value("значение"));
+			} else if(entries.at(entry).compare("tag") == 0){
+				// Выполняем запись негодной метки значения
+				ASSERT_TRUE(writer.tag(record));
+				// Выполняем запись значения поля отображения
+				ASSERT_TRUE(writer.value("значение"));
+			} else if(entries.at(entry).compare("alias") == 0)
+				// Выполняем запись негодной ссылки на якорь
+				ASSERT_TRUE(writer.alias(record));
+			else if(entries.at(entry).compare("comment") == 0){
+				// Выполняем запись негодного замечания
+				ASSERT_TRUE(writer.comment(record));
+				// Выполняем запись значения поля отображения
+				ASSERT_TRUE(writer.value("значение"));
+			} else if(entries.at(entry).compare("trailing") == 0){
+				// Выполняем запись значения поля отображения
+				ASSERT_TRUE(writer.value("значение"));
+				// Выполняем запись негодного хвостового замечания
+				ASSERT_TRUE(writer.trailing(record));
+			// Выполняем запись значения поля отображения
+			} else ASSERT_TRUE(writer.value("значение"));
+			// Выполняем закрытие отображения пар
+			ASSERT_TRUE(writer.close());
+			// Выполняем завершение записи документа
+			ASSERT_TRUE(writer.finish());
+			// Выполняем проверку годности кодировки выданного текста
+			ASSERT_TRUE(correct(writer.take())) << "вход " << entries.at(entry);
+		}
+	}
+}

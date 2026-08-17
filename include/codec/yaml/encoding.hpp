@@ -143,7 +143,7 @@ namespace awh {
 			 * @param text   последовательность знаков, из которой ведётся чтение
 			 * @param offset положение начала знака в последовательности
 			 * @param code   получаемый знак Юникода, при неудачном разборе не выставляется
-			 * @param length количество байт, разбором пройденных, при нехватке байт нулевое
+			 * @param length количество байт, разбором пройденных, при нехватке байт - число байт налицо
 			 * @return       исход разбора последовательности
 			 *
 			 * \~english
@@ -154,7 +154,7 @@ namespace awh {
 			 * @param text sequence of the characters from which the reading is conducted
 			 * @param offset position of the beginning of the character in the sequence
 			 * @param code obtained Unicode character, at an unsuccessful parsing it is not set
-			 * @param length number of the bytes passed by the parsing, at a shortage of the bytes it is zero
+			 * @param length number of the bytes passed by the parsing, at a shortage of the bytes — the number of the bytes at hand
 			 * @return outcome of the parsing of the sequence
 			 *
 			 * \~
