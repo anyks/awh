@@ -96,6 +96,7 @@ if (${GTest_FOUND})
             yaml/encoding.cpp
             yaml/reader.cpp
             yaml/writer.cpp
+            yaml/document.cpp
         )
 
         # Библиотеки GTest для линковки

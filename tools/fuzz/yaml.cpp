@@ -69,12 +69,14 @@ namespace {
 		uint64_t chunked;
 		// Количество сличений кодировок
 		uint64_t transcoded;
+		// Количество собранных деревьев документов
+		uint64_t trees;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
 		Statistic() noexcept :
-		 texts(0), corrupted(0), survived(0), events(0), chunked(0), transcoded(0) {}
+		 texts(0), corrupted(0), survived(0), events(0), chunked(0), transcoded(0), trees(0) {}
 	} totals;
 
 	/**
@@ -1196,6 +1198,72 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		// Выполняем сброс смещений начала событий
 		detach(native);
 		/**
+		 * Выполняем постройку дерева документа по разобранному тексту
+		 *
+		 * @details Дерево строится и на текстах испорченных: разбор их прекращается
+		 *          отказом, а дерево собирается настолько, насколько текст прочитан - путь
+		 *          этот проходится чаще всякого иного, и оставить его без пробы нельзя
+		 */
+		{
+			// Настройки разбора дерева документа
+			yaml::document_t::settings_t tree;
+			// Устанавливаем схему разрешения видов скалярных значений
+			tree.schema = settings.schema;
+			// Устанавливаем правило обращения с повторяющимся именем пары
+			tree.duplicates = settings.duplicates;
+			// Устанавливаем наибольшую допустимую глубину вложенности
+			tree.depth = settings.depth;
+			// Устанавливаем наибольшую допустимую длину скалярного значения
+			tree.scalar = settings.scalar;
+			// Устанавливаем наибольшее допустимое количество узлов раскрытия ссылок
+			tree.expansion = 4096;
+			// Объект дерева документа
+			yaml::document_t document(tree);
+			/**
+			 * Если разобрать текст в дерево документа удалось
+			 */
+			if(document.parse(text)){
+				// Выполняем учёт собранного дерева документа
+				totals.trees++;
+				// Объект дерева перезаписанного документа
+				yaml::document_t rewritten(tree);
+				/**
+				 * Если разобрать перезаписанный текст не удалось
+				 *
+				 * @note Перезапись обязана читаться обратно всегда: текст, деревом собранный
+				 *       и разбором отвергнутый, есть дефект записи, а не разбора
+				 */
+				if(!rewritten.parse(document.dump())){
+					// Выводим сообщение об отказе чтения перезаписанного текста
+					::fprintf(stderr, "yaml fuzz: rewrite refused %s, settings %s\n",
+						yaml::message(rewritten.error()), described(settings).c_str());
+					// Выводим перезаписанный текст
+					dump(document.dump());
+					// Выводим разбираемый текст
+					dump(text);
+					// Выходим из приложения с ошибкой
+					return EXIT_FAILURE;
+				}
+				/**
+				 * Если перезапись перезаписанного с первою разошлась
+				 *
+				 * @note Перезапись обязана быть устойчивой: второй проход её менять уже
+				 *       нечему, и расхождение означает, что дерево первого разбора и дерево
+				 *       второго - разные деревья
+				 */
+				if(rewritten.dump() != document.dump()){
+					// Выводим сообщение о расхождении перезаписей
+					::fprintf(stderr, "yaml fuzz: rewrite unstable, settings %s\n", described(settings).c_str());
+					// Выводим перезапись первого дерева
+					dump(document.dump());
+					// Выводим перезапись второго дерева
+					dump(rewritten.dump());
+					// Выходим из приложения с ошибкой
+					return EXIT_FAILURE;
+				}
+			}
+		}
+		/**
 		 * Если текст без метки порядка байтов опознан не как UTF-8
 		 *
 		 * @details Опознание описанием задано прямо: пара байтов `xx 00` в начале текста
@@ -1248,10 +1316,11 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		}
 	}
 	// Выводим итог работы генератора
-	::fprintf(stderr, "yaml fuzz: %llu texts (%llu corrupted, %llu survived), %llu events, %llu chunked, %llu transcoded\n",
+	::fprintf(stderr, "yaml fuzz: %llu texts (%llu corrupted, %llu survived), %llu events, %llu chunked, %llu transcoded, %llu trees\n",
 		static_cast <unsigned long long> (totals.texts), static_cast <unsigned long long> (totals.corrupted),
 		static_cast <unsigned long long> (totals.survived), static_cast <unsigned long long> (totals.events),
-		static_cast <unsigned long long> (totals.chunked), static_cast <unsigned long long> (totals.transcoded));
+		static_cast <unsigned long long> (totals.chunked), static_cast <unsigned long long> (totals.transcoded),
+		static_cast <unsigned long long> (totals.trees));
 	// Выводим код успешного выхода из приложения
 	return EXIT_SUCCESS;
 }

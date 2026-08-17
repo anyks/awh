@@ -1,0 +1,1566 @@
+/**
+ * @file document.cpp
+ * @date 2026-08-17
+ *
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
+ * @brief Документ YAML — дерево, удерживаемое целиком, с обходом узлов и извлечением
+ *        значений затребованным видом
+ *
+ * @copyright Copyright © 2026
+ *
+ */
+
+/**
+ * Стандартные заголовочные файлы
+ */
+#include <cmath>
+#include <cstdio>
+#include <limits>
+#include <fstream>
+#include <type_traits>
+#include <unordered_map>
+
+/**
+ * Подключаем заголовочные файлы модуля
+ */
+#include <codec/yaml/document.hpp>
+
+/**
+ * Используем стандартное пространство имён
+ */
+using namespace std;
+
+/**
+ * Используем пространство имён контейнера YAML
+ */
+using namespace awh::codec::yaml;
+
+/**
+ * @brief Внутренние помощники дерева документа
+ *
+ */
+namespace {
+	/**
+	 * @brief Шаблонная функция приведения дробного числа к затребованному виду
+	 *
+	 * @details Приведение это перенято у контейнера JSON дословно: расхождение двух
+	 *          кодеков в столь мелком вопросе всплыло бы у потребителя, читающего оба, и
+	 *          всплыло бы не сразу
+	 *
+	 * @tparam T     вид, к какому приводится число
+	 * @param  value приводимое дробное число
+	 * @return       приведённое число
+	 *
+	 */
+	template <typename T>
+	static T convert(const double value) noexcept {
+		/**
+		 * Если затребован дробный вид
+		 */
+		if(std::is_floating_point <T>::value)
+			// Выводим приведённое число как оно есть
+			return static_cast <T> (value);
+		/**
+		 * Если число не является числом вовсе
+		 *
+		 * @note Приведение `NaN` к целому есть неопределённое поведение при любом пределе:
+		 *       x86-64 выдаёт наименьшее целое, ARM64 - ноль. Выдаётся ноль, и выдаётся он
+		 *       успехом, а не отказом: `.nan` есть число по описанию, и отвергать его
+		 *       извлечением значило бы разойтись с контейнером JSON, где решено так же
+		 */
+		if(::isnan(value))
+			// Выводим нулевое число
+			return static_cast <T> (0);
+		/**
+		 * Если целая часть числа лежит ниже предела затребованного вида
+		 *
+		 * @note Пределы сличаются дробным видом, а не целым: предел `int64_t` целым видом
+		 *       точно не представим дробным, и сличение целых дало бы промах на единицу
+		 */
+		if(value <= static_cast <double> (std::numeric_limits <T>::lowest()))
+			// Выводим нижний предел затребованного вида
+			return std::numeric_limits <T>::lowest();
+		/**
+		 * Если целая часть числа лежит выше предела затребованного вида
+		 */
+		if(value >= static_cast <double> (std::numeric_limits <T>::max()))
+			// Выводим верхний предел затребованного вида
+			return std::numeric_limits <T>::max();
+		// Выводим приведённое число
+		return static_cast <T> (value);
+	}
+}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::yaml::Document::Settings::Settings() noexcept :
+ schema(schema_t::CORE), encoding(encoding_t::NONE), duplicates(duplicate_t::ERROR),
+ depth(0), scalar(0), expansion(0) {}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::yaml::Document::Document() noexcept : _error(error_t::NONE) {}
+/**
+ * @brief Конструктор
+ *
+ * @param settings настройки разбора документа
+ *
+ */
+awh::codec::yaml::Document::Document(const settings_t & settings) noexcept :
+ _settings(settings), _error(error_t::NONE) {}
+/**
+ * @brief Метод получения настроек разбора документа
+ *
+ * @return настройки разбора документа
+ *
+ */
+const awh::codec::yaml::Document::settings_t & awh::codec::yaml::Document::settings() const noexcept {
+	// Выводим настройки разбора документа
+	return this->_settings;
+}
+/**
+ * @brief Метод установки настроек разбора документа
+ *
+ * @param settings устанавливаемые настройки разбора
+ *
+ */
+void awh::codec::yaml::Document::settings(const settings_t & settings) noexcept {
+	// Запоминаем настройки разбора документа
+	this->_settings = settings;
+}
+/**
+ * @brief Метод сброса дерева документа
+ *
+ */
+void awh::codec::yaml::Document::clear() noexcept {
+	// Выполняем сброс перечня узлов дерева
+	this->_nodes.clear();
+	// Выполняем сброс перечня свойств узлов
+	this->_props.clear();
+	// Выполняем сброс хранилища имён и записей значений
+	this->_storage.clear();
+	// Выполняем сброс номеров корневых узлов документов
+	this->_roots.clear();
+	// Выполняем сброс кода ошибки разбора текста
+	this->_error = error_t::NONE;
+	// Выполняем сброс положения отказа разбора
+	this->_location = location_t();
+}
+/**
+ * @brief Метод получения количества узлов дерева документа
+ *
+ * @return количество узлов дерева
+ *
+ */
+size_t awh::codec::yaml::Document::size() const noexcept {
+	// Выводим количество узлов дерева документа
+	return this->_nodes.size();
+}
+/**
+ * @brief Метод проверки дерева документа на пустоту
+ *
+ * @return признак пустоты дерева документа
+ *
+ */
+bool awh::codec::yaml::Document::empty() const noexcept {
+	// Выводим признак пустоты дерева документа
+	return this->_nodes.empty();
+}
+/**
+ * @brief Метод получения кода ошибки разбора текста
+ *
+ * @return код ошибки разбора текста
+ *
+ */
+error_t awh::codec::yaml::Document::error() const noexcept {
+	// Выводим код ошибки разбора текста
+	return this->_error;
+}
+/**
+ * @brief Метод получения положения отказа в исходном тексте
+ *
+ * @return положение отказа разбора в исходном тексте
+ *
+ */
+const location_t & awh::codec::yaml::Document::location() const noexcept {
+	// Выводим положение отказа разбора в исходном тексте
+	return this->_location;
+}
+/**
+ * @brief Метод получения количества документов текста
+ *
+ * @return количество документов, текстом несомых
+ *
+ */
+size_t awh::codec::yaml::Document::documents() const noexcept {
+	// Выводим количество документов текста
+	return this->_roots.size();
+}
+/**
+ * @brief Метод получения ссылки на корень документа по номеру его
+ *
+ * @param index номер документа в потоке текста
+ * @return      ссылка на корень документа
+ *
+ */
+awh::codec::yaml::Document::value_t awh::codec::yaml::Document::root(const size_t index) const noexcept {
+	/**
+	 * Если документа с таким номером текст не несёт
+	 */
+	if(index >= this->_roots.size())
+		// Выводим недействительную ссылку на узел
+		return value_t();
+	// Получаем номер корневого узла затребованного документа
+	const uint32_t node = this->_roots.at(index);
+	// Выводим ссылку на корень затребованного документа
+	return value_t(this, node, (node + this->_nodes.at(node).extent()));
+}
+/**
+ * @brief Метод получения ссылки на корень первого документа текста
+ *
+ * @return ссылка на корень документа
+ *
+ */
+awh::codec::yaml::Document::value_t awh::codec::yaml::Document::root() const noexcept {
+	// Выводим ссылку на корень первого документа текста
+	return this->root(0);
+}
+/**
+ * @brief Метод переноса записи в хранилище знаков
+ *
+ * @param text переносимая запись
+ * @return     смещение перенесённой записи в хранилище
+ *
+ */
+uint32_t awh::codec::yaml::Document::deposit(const string_view text) noexcept {
+	// Получаем смещение переносимой записи в хранилище
+	const uint32_t result = static_cast <uint32_t> (this->_storage.size());
+	// Выполняем перенос записи в хранилище знаков
+	this->_storage.append(text);
+	// Выводим смещение перенесённой записи в хранилище
+	return result;
+}
+/**
+ * @brief Метод постройки дерева по выданным чтением событиям
+ *
+ * @param reader чтение, события выдающее
+ * @return       признак успешной постройки дерева
+ *
+ */
+bool awh::codec::yaml::Document::digest(reader_t & reader) noexcept {
+	/**
+	 * @brief Открытое вместилище постройки дерева
+	 *
+	 */
+	struct Level {
+		// Номер узла вместилища в перечне узлов
+		uint32_t index;
+		// Признак того, что вместилище является отображением пар
+		bool mapping;
+		// Признак того, что ожидается имя пары отображения
+		bool awaited;
+		// Собранное имя пары, значения своего ожидающее
+		string name;
+		/**
+		 * @brief Конструктор
+		 *
+		 * @param index   номер узла вместилища в перечне узлов
+		 * @param mapping признак того, что вместилище является отображением пар
+		 *
+		 */
+		Level(const uint32_t index, const bool mapping) noexcept :
+		 index(index), mapping(mapping), awaited(mapping) {}
+	};
+	// Стопа открытых вместилищ постройки дерева
+	vector <Level> levels;
+	// Количество корней, собранных прежде открытия очередного документа
+	size_t opened = 0;
+	// Имена меток, документом объявленные, вместе с номерами узлов их
+	unordered_map <string, uint32_t> anchors;
+	// Свойства узла, событием предпосланные ему
+	props_t properties;
+	// Признак того, что узлу предпосланы свойства
+	bool propertied = false;
+	// Получаем предел количества узлов раскрытия ссылок
+	const size_t limit = ((this->_settings.expansion > 0) ? this->_settings.expansion : MAX_EXPANSION);
+	/**
+	 * @brief Функция постановки узла на своё место в дереве
+	 *
+	 * @param type вид значения ставимого узла
+	 * @return     номер поставленного узла в перечне узлов
+	 *
+	 */
+	const auto attach = [&](const type_t type) noexcept -> uint32_t {
+		// Получаем номер ставимого узла в перечне узлов
+		const uint32_t result = static_cast <uint32_t> (this->_nodes.size());
+		// Выполняем постановку узла в перечень узлов дерева
+		this->_nodes.emplace_back();
+		// Получаем поставленный узел дерева
+		node_t & node = this->_nodes.back();
+		// Запоминаем вид значения поставленного узла
+		node.type = type;
+		/**
+		 * Запоминаем смещение имени пары в хранилище знаков
+		 *
+		 * @details Смещение это проставляется всякому узлу, а не одной лишь паре: запись
+		 *          значения кладётся сразу за именем, и смещение её есть смещение имени
+		 *          вместе с длиною его. У значения перечня имя пусто, а смещение всё равно
+		 *          нужно - без него запись читалась бы от начала хранилища
+		 */
+		node.offset = static_cast <uint32_t> (this->_storage.size());
+		/**
+		 * Если хоть одно вместилище открыто
+		 */
+		if(!levels.empty()){
+			// Получаем открытое вместилище постройки дерева
+			Level & level = levels.back();
+			/**
+			 * Если вместилище является отображением пар
+			 */
+			if(level.mapping){
+				// Запоминаем признак того, что узел является парой отображения
+				node.keyed = true;
+				// Выполняем перенос имени пары в хранилище знаков
+				this->deposit(level.name);
+				// Запоминаем длину имени пары
+				node.named = static_cast <uint32_t> (level.name.size());
+				// Выполняем сброс собранного имени пары
+				level.name.clear();
+				// Запоминаем ожидание имени следующей пары
+				level.awaited = true;
+			}
+			// Выполняем учёт поставленного узла вместилищем
+			this->_nodes.at(level.index).length(this->_nodes.at(level.index).length() + 1);
+		/**
+		 * Если узел ставится корнем очередного документа
+		 */
+		} else this->_roots.push_back(result);
+		/**
+		 * Если узлу предпосланы свойства
+		 */
+		if(propertied){
+			// Запоминаем номер свойств узла в перечне свойств
+			this->_nodes.at(result).props = static_cast <uint32_t> (this->_props.size() + 1);
+			// Выполняем постановку свойств узла в перечень свойств
+			this->_props.push_back(properties);
+			// Выполняем сброс признака предпосланных свойств
+			propertied = false;
+			// Выполняем сброс свойств узла
+			properties = props_t();
+		}
+		// Выводим номер поставленного узла в перечне узлов
+		return result;
+	};
+	/**
+	 * Выполняем перебор всех событий, чтением выданных
+	 */
+	while(reader.next()){
+		/**
+		 * Определяем вид полученного события разбора
+		 */
+		switch(static_cast <uint8_t> (reader.event())){
+			/**
+			 * Если событие несёт свойства узла
+			 */
+			case static_cast <uint8_t> (event_t::MAPPING_START):
+			case static_cast <uint8_t> (event_t::SEQUENCE_START):
+			case static_cast <uint8_t> (event_t::SCALAR): {
+				/**
+				 * Если событию предпослана метка либо метка типа
+				 */
+				if(!reader.value().anchor.empty() || !reader.value().tag.empty()){
+					/**
+					 * Если событию предпослана метка
+					 */
+					if(!reader.value().anchor.empty()){
+						// Запоминаем смещение имени метки в хранилище знаков
+						properties.anchor = this->deposit(reader.value().anchor);
+						// Запоминаем длину имени метки
+						properties.anchored = static_cast <uint32_t> (reader.value().anchor.size());
+					}
+					/**
+					 * Если событию предпослана метка типа
+					 */
+					if(!reader.value().tag.empty()){
+						// Запоминаем смещение метки типа в хранилище знаков
+						properties.tag = this->deposit(reader.value().tag);
+						// Запоминаем длину метки типа
+						properties.tagged = static_cast <uint32_t> (reader.value().tag.size());
+					}
+					// Запоминаем признак предпосланных узлу свойств
+					propertied = true;
+				}
+			} break;
+		}
+		/**
+		 * Определяем вид полученного события разбора
+		 */
+		switch(static_cast <uint8_t> (reader.event())){
+			/**
+			 * Если событие открывает очередной документ текста
+			 */
+			case static_cast <uint8_t> (event_t::DOCUMENT_START):
+				// Запоминаем количество корней, прежде документа собранных
+				opened = this->_roots.size();
+			break;
+			/**
+			 * Если событие закрывает очередной документ текста
+			 */
+			case static_cast <uint8_t> (event_t::DOCUMENT_END): {
+				/**
+				 * Если документ содержимого не нёс вовсе
+				 *
+				 * @details Документ пустой описанием дозволен, и корень ему положен всё
+				 *          равно: без него счёт документов разошёлся бы с числом их в тексте,
+				 *          и `root(1)` отдавал бы содержимое третьего документа вместо второго
+				 */
+				if(this->_roots.size() == opened)
+					// Выполняем постановку узла пустого значения корнем документа
+					attach(type_t::NUL);
+			} break;
+			/**
+			 * Если событие открывает отображение пар либо перечень значений
+			 */
+			case static_cast <uint8_t> (event_t::MAPPING_START):
+			case static_cast <uint8_t> (event_t::SEQUENCE_START): {
+				// Признак того, что открывается отображение пар
+				const bool mapping = (reader.event() == event_t::MAPPING_START);
+				/**
+				 * Если имя метки, вместилищу предпосланной, объявлено
+				 *
+				 * @note Метка запоминается прежде постройки поддерева её: ссылка на метку
+				 *       вправе стоять внутри помеченного ею вместилища, и без запоминания
+				 *       наперёд она осталась бы неразрешённой
+				 */
+				const uint32_t index = attach(mapping ? type_t::MAPPING : type_t::SEQUENCE);
+				/**
+				 * Если вместилищу предпослана метка
+				 */
+				if(this->_nodes.at(index).props > 0){
+					// Получаем свойства открываемого вместилища
+					const props_t & props = this->_props.at(this->_nodes.at(index).props - 1);
+					/**
+					 * Если свойства несут имя метки
+					 */
+					if(props.anchored > 0)
+						// Запоминаем метку вместилища среди объявленных документом
+						anchors[string(this->_storage, props.anchor, props.anchored)] = index;
+				}
+				// Выполняем открытие вместилища постройки дерева
+				levels.emplace_back(index, mapping);
+			} break;
+			/**
+			 * Если событие закрывает отображение пар либо перечень значений
+			 */
+			case static_cast <uint8_t> (event_t::MAPPING_END):
+			case static_cast <uint8_t> (event_t::SEQUENCE_END): {
+				/**
+				 * Если закрывать нечего
+				 */
+				if(levels.empty())
+					// Выполняем переход к следующему событию разбора
+					break;
+				// Получаем номер узла закрываемого вместилища
+				const uint32_t index = levels.back().index;
+				// Выполняем снятие закрытого вместилища со стопы
+				levels.pop_back();
+				// Запоминаем размах поддерева закрытого вместилища
+				this->_nodes.at(index).extent(static_cast <uint32_t> (this->_nodes.size()) - index);
+			} break;
+			/**
+			 * Если событие несёт скалярное значение
+			 */
+			case static_cast <uint8_t> (event_t::SCALAR): {
+				/**
+				 * Если ожидается имя пары отображения
+				 */
+				if(!levels.empty() && levels.back().mapping && levels.back().awaited){
+					// Запоминаем собранное имя пары отображения
+					levels.back().name.assign(reader.value().text);
+					// Выполняем сброс ожидания имени пары
+					levels.back().awaited = false;
+					/**
+					 * Если имени пары предпосланы свойства
+					 *
+					 * @note Свойства эти относятся к имени, а не к значению его, и класть их
+					 *       значению было бы неправдой: держать же их дереву негде - узла у
+					 *       имени нет. Оттого они отбрасываются, и отбрасываются нарочно
+					 */
+					if(propertied){
+						// Выполняем сброс признака предпосланных свойств
+						propertied = false;
+						// Выполняем сброс свойств узла
+						properties = props_t();
+					}
+					// Выполняем переход к следующему событию разбора
+					break;
+				}
+				// Получаем вид значения, чтением разрешённый
+				type_t type = reader.value().type;
+				// Разобранное число значения
+				numeric_t number;
+				/**
+				 * Если значение является числом сборного вида
+				 *
+				 * @note Потоковое чтение число не разбирает вовсе, и разбирает его дерево:
+				 *       здесь число уже удерживается, и разобрать его нужно однажды
+				 */
+				if(static_cast <uint32_t> (type) & static_cast <uint32_t> (type_t::NUMBER)){
+					// Выполняем разбор записи числа к самому узкому вмещающему виду
+					const type_t narrowed = narrow(reader.value().text, this->_settings.schema, number);
+					/**
+					 * Если разобрать запись числа удалось
+					 */
+					if(narrowed != type_t::UNDEFINED)
+						// Запоминаем вид разобранного числа
+						type = narrowed;
+				}
+				// Выполняем постановку узла скалярного значения
+				const uint32_t index = attach(type);
+				// Получаем поставленный узел дерева
+				node_t & node = this->_nodes.at(index);
+				// Запоминаем вид записи значения в исходном тексте
+				node.style = reader.value().style;
+				// Запоминаем длину записи значения
+				node.length(static_cast <uint32_t> (reader.value().text.size()));
+				/**
+				 * Выполняем перенос записи значения в хранилище знаков
+				 *
+				 * @note Запись кладётся сразу за именем пары, и смещение её есть смещение
+				 *       имени вместе с длиною его: двух смещений узел не держит
+				 */
+				this->deposit(reader.value().text);
+				/**
+				 * Если значение является числом родного вида
+				 */
+				if(static_cast <uint32_t> (type) & static_cast <uint32_t> (type_t::INT))
+					// Запоминаем разобранное число целым видом
+					node.number_of(number.integer);
+				/**
+				 * Если значение является числом дробного вида
+				 */
+				else if(static_cast <uint32_t> (type) & static_cast <uint32_t> (type_t::REAL))
+					// Запоминаем разобранное число дробным видом
+					node.number_of(number.real);
+				/**
+				 * Если значение является логическим
+				 */
+				else if(type == type_t::BOOL){
+					// Получаем запись логического значения
+					const string_view text = reader.value().text;
+					// Признак истинности логического значения
+					const bool truth = (!text.empty() && ((text.front() == 't') || (text.front() == 'T') ||
+					 (text.front() == 'y') || (text.front() == 'Y') || (text.compare("on") == 0) ||
+					 (text.compare("On") == 0) || (text.compare("ON") == 0)));
+					// Запоминаем разобранное логическое значение
+					node.number_of(static_cast <int64_t> (truth ? 1 : 0));
+				}
+				/**
+				 * Если имя метки, значению предпосланной, объявлено
+				 */
+				if(node.props > 0){
+					// Получаем свойства поставленного узла
+					const props_t & props = this->_props.at(node.props - 1);
+					/**
+					 * Если свойства несут имя метки
+					 */
+					if(props.anchored > 0)
+						// Запоминаем метку значения среди объявленных документом
+						anchors[string(this->_storage, props.anchor, props.anchored)] = index;
+				}
+			} break;
+			/**
+			 * Если событие несёт ссылку на объявленную метку
+			 */
+			case static_cast <uint8_t> (event_t::ALIAS): {
+				/**
+				 * Если ссылка стоит именем пары отображения
+				 *
+				 * @note Потоковое чтение такую запись отвергает, и сюда она не дойдёт: ветвь
+				 *       эта стоит на случай, когда составные имена будут заведены
+				 */
+				if(!levels.empty() && levels.back().mapping && levels.back().awaited)
+					// Выполняем переход к следующему событию разбора
+					break;
+				// Разыскиваем метку, ссылкою указанную
+				const auto i = anchors.find(string(reader.value().text));
+				/**
+				 * Если метка, ссылкою указанная, документом не объявлена
+				 */
+				if(i == anchors.end()){
+					// Запоминаем код ошибки разбора текста
+					this->_error = error_t::UNKNOWN_ALIAS;
+					// Запоминаем положение отказа разбора
+					this->_location = reader.value().location;
+					// Выводим признак неудачной постройки дерева
+					return false;
+				}
+				// Получаем номер узла, ссылкою указанного
+				const uint32_t source = i->second;
+				// Получаем размах поддерева, ссылкою указанного
+				const uint32_t extent = this->_nodes.at(source).extent();
+				/**
+				 * Если раскрытие ссылки предел количества узлов превышает
+				 *
+				 * @details Предел этот стережёт от беды, известной под именем миллиарда
+				 *          смешков: девять меток, каждая из которых десятикратно повторяет
+				 *          предыдущую, раскрываются в миллиард узлов из текста в двести байт
+				 */
+				if((this->_nodes.size() + extent) > limit){
+					// Запоминаем код ошибки разбора текста
+					this->_error = error_t::EXPANSION_EXCEEDED;
+					// Запоминаем положение отказа разбора
+					this->_location = reader.value().location;
+					// Выводим признак неудачной постройки дерева
+					return false;
+				}
+				/**
+				 * Выполняем постановку узла раскрытия ссылки
+				 *
+				 * @note Вид его берётся у узла, ссылкою указанного, а имя пары и свойства -
+				 *       свои: ссылка стоит на своём месте дерева, а не на месте метки
+				 */
+				const uint32_t index = attach(this->_nodes.at(source).type);
+				/**
+				 * Выполняем перенос содержимого узла, ссылкою указанного
+				 *
+				 * @note Хранилище знаков у них общее, и смещения его переносятся как есть:
+				 *       запись значения одна на метку и на все ссылки её
+				 */
+				this->_nodes.at(index).style = this->_nodes.at(source).style;
+				// Выполняем перенос длины записи значения либо количества детей
+				this->_nodes.at(index).length(this->_nodes.at(source).length());
+				/**
+				 * Если узел, ссылкою указанный, скалярным значением является
+				 *
+				 * @details Запись значения кладётся сразу за именем пары, и смещение её есть
+				 *          смещение имени вместе с длиною его. У раскрытия имя своё, а не то,
+				 *          каким помечена метка, и запись метки по смещению его не лежит:
+				 *          переносится она копией. Копий этих на документ приходятся единицы,
+				 *          а без них раскрытие читало бы что придётся за своим именем
+				 */
+				if(this->_nodes.at(source).extent() == 1)
+					// Выполняем перенос записи значения в хранилище знаков
+					this->deposit(string(this->_storage, (this->_nodes.at(source).offset +
+					 this->_nodes.at(source).named), this->_nodes.at(source).length()));
+				// Выполняем перенос разобранного числа значения
+				this->_nodes.at(index).number[0] = this->_nodes.at(source).number[0];
+				// Выполняем перенос старшей половины разобранного числа
+				this->_nodes.at(index).number[1] = this->_nodes.at(source).number[1];
+				/**
+				 * Если узел, ссылкою указанный, скалярным значением не является
+				 */
+				if(extent > 1){
+					/**
+					 * Выполняем перенос всего поддерева, ссылкою указанного
+					 *
+					 * @note Перенос идёт копированием узлов как они есть: размах поддерева
+					 *       считается числом узлов, а не их местами, и копия его от подлинника
+					 *       не отличается ничем
+					 */
+					for(uint32_t offset = 1; offset < extent; offset++)
+						// Выполняем перенос очередного узла поддерева
+						this->_nodes.push_back(this->_nodes.at(source + offset));
+					/**
+					 * Выполняем правку смещения имени первого узла поддерева
+					 *
+					 * @note Имя пары у раскрытия своё, а не то, каким помечена метка: смещение
+					 *       его проставлено постановкой узла, и трогать его нельзя
+					 */
+					this->_nodes.at(index).extent(extent);
+				}
+			} break;
+		}
+	}
+	/**
+	 * Если чтение прекращено отказом
+	 */
+	if(reader.state() == state_t::FAILED){
+		// Запоминаем код ошибки разбора текста
+		this->_error = reader.error();
+		// Запоминаем положение отказа разбора
+		this->_location = reader.location();
+		// Выводим признак неудачной постройки дерева
+		return false;
+	}
+	// Выводим признак успешной постройки дерева
+	return true;
+}
+/**
+ * @brief Метод разбора текста в дерево документа
+ *
+ * @param text разбираемый текст
+ * @return     признак успешного разбора текста
+ *
+ */
+bool awh::codec::yaml::Document::parse(const string & text) noexcept {
+	// Выполняем сброс дерева документа
+	this->clear();
+	// Собираемые настройки потокового чтения текста
+	reader_t::settings_t settings;
+	// Устанавливаем схему разрешения видов скалярных значений
+	settings.schema = this->_settings.schema;
+	// Устанавливаем кодировку, навязанную извне
+	settings.encoding = this->_settings.encoding;
+	// Устанавливаем правило обращения с повторяющимся именем пары
+	settings.duplicates = this->_settings.duplicates;
+	// Устанавливаем наибольшую допустимую глубину вложенности
+	settings.depth = this->_settings.depth;
+	// Устанавливаем наибольшую допустимую длину скалярного значения
+	settings.scalar = this->_settings.scalar;
+	// Объект потокового чтения текста
+	reader_t reader(settings);
+	/**
+	 * Если подать текст чтению не удалось
+	 *
+	 * @note События, до отказа собранные, вычитываются всё равно: положение отказа
+	 *       снимается с чтения тотчас, а дерево строится настолько, насколько текст
+	 *       прочитан - потребителю оно скажет больше, чем пустота
+	 */
+	if(!reader.feed(text)){
+		// Запоминаем код ошибки разбора текста
+		this->_error = reader.error();
+		// Запоминаем положение отказа разбора
+		this->_location = reader.location();
+		// Выполняем постройку дерева по событиям, до отказа собранным
+		this->digest(reader);
+		// Выводим признак неудачного разбора текста
+		return false;
+	}
+	// Выводим признак успешного разбора текста
+	return this->digest(reader);
+}
+/**
+ * @brief Метод чтения текста из файла в дерево документа
+ *
+ * @param filename путь к читаемому файлу
+ * @return         признак успешного чтения текста
+ *
+ */
+bool awh::codec::yaml::Document::load(const string & filename) noexcept {
+	// Выполняем открытие читаемого файла
+	ifstream file(filename, ios::binary);
+	/**
+	 * Если открыть читаемый файл не удалось
+	 */
+	if(!file.is_open()){
+		// Выполняем сброс дерева документа
+		this->clear();
+		// Запоминаем код ошибки разбора текста
+		this->_error = error_t::EMPTY_TEXT;
+		// Выводим признак неудачного чтения текста
+		return false;
+	}
+	// Собираемое содержимое читаемого файла
+	string text((istreambuf_iterator <char> (file)), istreambuf_iterator <char> ());
+	// Выводим признак успешного чтения текста
+	return this->parse(text);
+}
+/**
+ * @brief Метод сборки текста по поддереву узла
+ *
+ * @param writer сборка текста
+ * @param index  номер узла, поддерево какого собирается
+ *
+ */
+void awh::codec::yaml::Document::compose(writer_t & writer, const uint32_t index) const noexcept {
+	// Получаем узел, поддерево какого собирается
+	const node_t & node = this->_nodes.at(index);
+	/**
+	 * Если узел является парой отображения
+	 */
+	if(node.keyed)
+		// Выполняем запись имени пары отображения
+		writer.key(string(this->_storage, node.offset, node.named));
+	/**
+	 * Если узлу предпосланы свойства
+	 */
+	if(node.props > 0){
+		// Получаем свойства собираемого узла
+		const props_t & props = this->_props.at(node.props - 1);
+		/**
+		 * Если свойства несут имя метки
+		 */
+		if(props.anchored > 0)
+			// Выполняем запись метки, узлу предпосылаемой
+			writer.anchor(string(this->_storage, props.anchor, props.anchored));
+		/**
+		 * Если свойства несут метку типа
+		 */
+		if(props.tagged > 0)
+			// Выполняем запись метки типа, узлу предпосылаемой
+			writer.tag(string(this->_storage, props.tag, props.tagged));
+	}
+	/**
+	 * Определяем вид значения собираемого узла
+	 */
+	switch(static_cast <uint8_t> (kind(node.type))){
+		/**
+		 * Если узел является отображением пар
+		 */
+		case static_cast <uint8_t> (kind_t::MAPPING):
+		/**
+		 * Если узел является перечнем значений
+		 */
+		case static_cast <uint8_t> (kind_t::SEQUENCE): {
+			// Признак того, что узел является отображением пар
+			const bool mapping = (kind(node.type) == kind_t::MAPPING);
+			/**
+			 * Если открыть вместилище не удалось
+			 */
+			if(!(mapping ? writer.mapping() : writer.sequence()))
+				// Выходим из сборки поддерева узла
+				return;
+			// Получаем номер первого ребёнка вместилища
+			uint32_t child = (index + 1);
+			// Получаем номер узла за последним узлом вместилища
+			const uint32_t bound = (index + node.extent());
+			/**
+			 * Выполняем перебор всех детей вместилища
+			 */
+			while(child < bound){
+				// Выполняем сборку поддерева очередного ребёнка
+				this->compose(writer, child);
+				// Выполняем переход к следующему ребёнку вместилища
+				child += this->_nodes.at(child).extent();
+			}
+			// Выполняем закрытие собранного вместилища
+			writer.close();
+		} break;
+		/**
+		 * Если узел является пустым значением
+		 */
+		case static_cast <uint8_t> (kind_t::NUL): {
+			/**
+			 * Если пустое значение записано пустотою внутри перечня
+			 *
+			 * @details Пустота на месте значения перечня записью не выражается вовсе:
+			 *          строка `- ` содержимого не несёт, и обратное чтение значения того не
+			 *          увидит. Записью описания пустота выражается прямо, и круговой ход тем
+			 *          цел остаётся
+			 */
+			if((node.length() == 0) && !node.keyed){
+				// Выполняем запись пустого значения записью описания
+				writer.null();
+				// Выходим из сборки поддерева узла
+				break;
+			}
+			// Выполняем запись пустого значения записью его, исходным текстом данной
+			writer.raw(string(this->_storage, (node.offset + node.named), node.length()));
+		} break;
+		/**
+		 * Если узел является строкою
+		 */
+		case static_cast <uint8_t> (kind_t::STRING): {
+			// Получаем запись значения, исходным текстом данную
+			const string text(this->_storage, (node.offset + node.named), node.length());
+			/**
+			 * Если значение записано блочным
+			 *
+			 * @details Блочным оно и записывается обратно: ограда двойная передала бы
+			 *          многострочный текст отменяющими последовательностями, и читающий
+			 *          человек в записи той ничего бы не разобрал. Правило усечения берётся
+			 *          сохраняющим - оно единственное, при котором содержимое возвращается
+			 *          тем же, каким было, сколько бы переводов строк ни стояло в конце
+			 */
+			if((node.style == style_t::LITERAL) || (node.style == style_t::FOLDED)){
+				/**
+				 * Если записать блочное значение удалось
+				 */
+				if(writer.block(text, node.style, chomp_t::KEEP))
+					// Выходим из сборки поддерева узла
+					break;
+			}
+			/**
+			 * Если значение записано без ограды
+			 *
+			 * @details Ограда решается наново, а не берётся исходным текстом: строка `12`,
+			 *          схемою защитной прочитанная без ограды, схемою ядровой прочлась бы
+			 *          числом, и перезапись без ограды переменила бы вид значения. Решает
+			 *          это то же тело quoting(), которым решает и разбор
+			 */
+			if(node.style == style_t::PLAIN)
+				// Выполняем запись строкового значения оградою, содержимым решаемой
+				writer.value(text);
+			// Выполняем запись строкового значения оградою, исходным текстом данной
+			else writer.value(text, (((node.style == style_t::LITERAL) || (node.style == style_t::FOLDED)) ?
+			 style_t::DOUBLE : node.style));
+		} break;
+		/**
+		 * Если узел является значением иного вида
+		 *
+		 * @details Записывается запись значения, исходным текстом данная, а не число,
+		 *          из неё разобранное: `0x1F` обязано вернуться записью `0x1F`, а не
+		 *          числом 31. Тем сохранение оформления и держится на самом простом уровне
+		 */
+		default:
+			// Выполняем запись значения дословно, как оно исходным текстом дано
+			writer.raw(string(this->_storage, (node.offset + node.named), node.length()));
+	}
+}
+/**
+ * @brief Метод сборки текста по дереву документа заданными настройками
+ *
+ * @param settings настройки записи собираемого текста
+ * @return         собранный текст документа
+ *
+ */
+string awh::codec::yaml::Document::dump(const writer_t::settings_t & settings) const noexcept {
+	// Объект записи текста документа
+	writer_t writer(settings);
+	/**
+	 * Выполняем перебор всех документов текста
+	 */
+	for(size_t i = 0; i < this->_roots.size(); i++){
+		/**
+		 * Если документ является не первым
+		 */
+		if(i > 0)
+			// Выполняем открытие очередного документа потока
+			writer.document();
+		// Выполняем сборку поддерева корня очередного документа
+		this->compose(writer, this->_roots.at(i));
+	}
+	// Выполняем завершение записи текста
+	writer.finish();
+	// Выводим собранный текст документа
+	return writer.take();
+}
+/**
+ * @brief Метод сборки текста по дереву документа
+ *
+ * @return собранный текст документа
+ *
+ */
+string awh::codec::yaml::Document::dump() const noexcept {
+	// Настройки записи собираемого текста
+	writer_t::settings_t settings;
+	// Устанавливаем схему разрешения видов скалярных значений
+	settings.schema = this->_settings.schema;
+	// Выводим собранный текст документа
+	return this->dump(settings);
+}
+/**
+ * @brief Метод записи текста документа в файл
+ *
+ * @param filename путь к записываемому файлу
+ * @return         признак успешной записи текста
+ *
+ */
+bool awh::codec::yaml::Document::save(const string & filename) const noexcept {
+	// Выполняем открытие записываемого файла
+	ofstream file(filename, ios::binary | ios::trunc);
+	/**
+	 * Если открыть записываемый файл не удалось
+	 */
+	if(!file.is_open())
+		// Выводим признак неудачной записи текста
+		return false;
+	// Получаем собранный текст документа
+	const string text = this->dump();
+	// Выполняем запись собранного текста в файл
+	file.write(text.data(), static_cast <streamsize> (text.size()));
+	// Выводим признак успешной записи текста
+	return file.good();
+}
+/**
+ * @brief Метод проверки действительности ссылки
+ *
+ * @return признак действительности ссылки
+ *
+ */
+bool awh::codec::yaml::Document::Value::valid() const noexcept {
+	// Выводим признак действительности ссылки
+	return ((this->_doc != nullptr) && (this->_index < this->_doc->_nodes.size()));
+}
+/**
+ * @brief Метод извлечения вида узла
+ *
+ * @return вид узла документа
+ *
+ */
+kind_t awh::codec::yaml::Document::Value::kind() const noexcept {
+	/**
+	 * Если ссылка недействительна
+	 */
+	if(!this->valid())
+		// Выводим признак того, что узла нет вовсе
+		return kind_t::NONE;
+	// Выводим вид узла документа
+	return awh::codec::yaml::kind(this->_doc->_nodes.at(this->_index).type);
+}
+/**
+ * @brief Метод извлечения вида значения узла
+ *
+ * @return вид значения узла документа
+ *
+ */
+type_t awh::codec::yaml::Document::Value::type() const noexcept {
+	/**
+	 * Если ссылка недействительна
+	 */
+	if(!this->valid())
+		// Выводим признак того, что значения нет вовсе
+		return type_t::UNDEFINED;
+	// Выводим вид значения узла документа
+	return this->_doc->_nodes.at(this->_index).type;
+}
+/**
+ * @brief Метод проверки вида значения узла
+ *
+ * @param type проверяемый вид значения
+ * @return     признак соответствия вида значения
+ *
+ */
+bool awh::codec::yaml::Document::Value::is(const type_t type) const noexcept {
+	// Выводим признак соответствия вида значения узла
+	return ((static_cast <uint32_t> (this->type()) & static_cast <uint32_t> (type)) != 0);
+}
+/**
+ * @brief Метод извлечения вида записи значения
+ *
+ * @return вид записи значения в исходном тексте
+ *
+ */
+style_t awh::codec::yaml::Document::Value::style() const noexcept {
+	/**
+	 * Если ссылка недействительна
+	 */
+	if(!this->valid())
+		// Выводим вид записи без ограды
+		return style_t::PLAIN;
+	// Выводим вид записи значения в исходном тексте
+	return this->_doc->_nodes.at(this->_index).style;
+}
+/**
+ * @brief Метод извлечения количества детей вместилища
+ *
+ * @return количество детей вместилища
+ *
+ */
+size_t awh::codec::yaml::Document::Value::size() const noexcept {
+	/**
+	 * Если ссылка недействительна
+	 */
+	if(!this->valid())
+		// Выводим нулевое количество детей
+		return 0;
+	// Получаем узел, на какой указывает ссылка
+	const node_t & node = this->_doc->_nodes.at(this->_index);
+	/**
+	 * Если узел вместилищем не является
+	 */
+	if((node.type != type_t::MAPPING) && (node.type != type_t::SEQUENCE))
+		// Выводим нулевое количество детей
+		return 0;
+	// Выводим количество детей вместилища
+	return node.length();
+}
+/**
+ * @brief Метод проверки вместилища на пустоту
+ *
+ * @return признак пустоты вместилища
+ *
+ */
+bool awh::codec::yaml::Document::Value::empty() const noexcept {
+	// Выводим признак пустоты вместилища
+	return (this->size() == 0);
+}
+/**
+ * @brief Метод извлечения имени пары отображения
+ *
+ * @return имя пары отображения, пусто у значения перечня
+ *
+ */
+string_view awh::codec::yaml::Document::Value::name() const noexcept {
+	/**
+	 * Если ссылка недействительна
+	 */
+	if(!this->valid())
+		// Выводим пустое имя пары отображения
+		return string_view();
+	// Получаем узел, на какой указывает ссылка
+	const node_t & node = this->_doc->_nodes.at(this->_index);
+	/**
+	 * Если узел парою отображения не является
+	 */
+	if(!node.keyed)
+		// Выводим пустое имя пары отображения
+		return string_view();
+	// Выводим имя пары отображения
+	return string_view((this->_doc->_storage.data() + node.offset), node.named);
+}
+/**
+ * @brief Метод извлечения записи значения, исходным текстом данной
+ *
+ * @return запись значения узла
+ *
+ */
+string_view awh::codec::yaml::Document::Value::text() const noexcept {
+	/**
+	 * Если ссылка недействительна
+	 */
+	if(!this->valid())
+		// Выводим пустую запись значения
+		return string_view();
+	// Получаем узел, на какой указывает ссылка
+	const node_t & node = this->_doc->_nodes.at(this->_index);
+	/**
+	 * Если узел является вместилищем
+	 */
+	if((node.type == type_t::MAPPING) || (node.type == type_t::SEQUENCE))
+		// Выводим пустую запись значения
+		return string_view();
+	// Выводим запись значения узла
+	return string_view((this->_doc->_storage.data() + node.offset + node.named), node.length());
+}
+/**
+ * @brief Метод извлечения имени метки, узлу предпосланной
+ *
+ * @return имя метки узла, пусто при отсутствии её
+ *
+ */
+string_view awh::codec::yaml::Document::Value::anchor() const noexcept {
+	/**
+	 * Если ссылка недействительна
+	 */
+	if(!this->valid())
+		// Выводим пустое имя метки
+		return string_view();
+	// Получаем узел, на какой указывает ссылка
+	const node_t & node = this->_doc->_nodes.at(this->_index);
+	/**
+	 * Если узлу свойства не предпосланы
+	 */
+	if(node.props == 0)
+		// Выводим пустое имя метки
+		return string_view();
+	// Получаем свойства узла, на какой указывает ссылка
+	const props_t & props = this->_doc->_props.at(node.props - 1);
+	// Выводим имя метки узла
+	return string_view((this->_doc->_storage.data() + props.anchor), props.anchored);
+}
+/**
+ * @brief Метод извлечения метки типа, узлу предпосланной
+ *
+ * @return метка типа узла, пусто при отсутствии её
+ *
+ */
+string_view awh::codec::yaml::Document::Value::tag() const noexcept {
+	/**
+	 * Если ссылка недействительна
+	 */
+	if(!this->valid())
+		// Выводим пустую метку типа
+		return string_view();
+	// Получаем узел, на какой указывает ссылка
+	const node_t & node = this->_doc->_nodes.at(this->_index);
+	/**
+	 * Если узлу свойства не предпосланы
+	 */
+	if(node.props == 0)
+		// Выводим пустую метку типа
+		return string_view();
+	// Получаем свойства узла, на какой указывает ссылка
+	const props_t & props = this->_doc->_props.at(node.props - 1);
+	// Выводим метку типа узла
+	return string_view((this->_doc->_storage.data() + props.tag), props.tagged);
+}
+/**
+ * @brief Метод получения ссылки на первого ребёнка вместилища
+ *
+ * @return ссылка на первого ребёнка, недействительная у пустого вместилища
+ *
+ */
+awh::codec::yaml::Document::value_t awh::codec::yaml::Document::Value::begin() const noexcept {
+	/**
+	 * Если вместилище пусто либо вместилищем не является
+	 */
+	if(this->size() == 0)
+		// Выводим недействительную ссылку на узел
+		return value_t();
+	// Получаем узел, на какой указывает ссылка
+	const node_t & node = this->_doc->_nodes.at(this->_index);
+	// Выводим ссылку на первого ребёнка вместилища
+	return value_t(this->_doc, (this->_index + 1), (this->_index + node.extent()));
+}
+/**
+ * @brief Метод получения ссылки на соседний узел вместилища
+ *
+ * @return ссылка на соседний узел, недействительная за границей вместилища
+ *
+ */
+awh::codec::yaml::Document::value_t awh::codec::yaml::Document::Value::next() const noexcept {
+	/**
+	 * Если ссылка недействительна
+	 */
+	if(!this->valid())
+		// Выводим недействительную ссылку на узел
+		return value_t();
+	// Получаем номер соседнего узла вместилища
+	const uint32_t index = (this->_index + this->_doc->_nodes.at(this->_index).extent());
+	/**
+	 * Если сосед за границу вместилища вышел
+	 *
+	 * @note Указаний на родителя узел не несёт, а без границы обход перечня продолжился
+	 *       бы соседом родителя - и потребитель получил бы чужих детей своими
+	 */
+	if(index >= this->_bound)
+		// Выводим недействительную ссылку на узел
+		return value_t();
+	// Выводим ссылку на соседний узел вместилища
+	return value_t(this->_doc, index, this->_bound);
+}
+/**
+ * @brief Метод получения ссылки на пару отображения по имени её
+ *
+ * @param name имя разыскиваемой пары отображения
+ * @return     ссылка на найденную пару, недействительная при отсутствии
+ *
+ */
+awh::codec::yaml::Document::value_t awh::codec::yaml::Document::Value::operator [] (const string & name) const noexcept {
+	/**
+	 * Выполняем перебор всех детей вместилища
+	 */
+	for(value_t child = this->begin(); child.valid(); child = child.next()){
+		/**
+		 * Если имя очередного ребёнка разыскиваемому отвечает
+		 */
+		if(child.name().compare(name) == 0)
+			// Выводим ссылку на найденную пару отображения
+			return child;
+	}
+	// Выводим недействительную ссылку на узел
+	return value_t();
+}
+/**
+ * @brief Метод получения ссылки на значение перечня по номеру его
+ *
+ * @param index номер разыскиваемого значения перечня
+ * @return      ссылка на найденное значение, недействительная при отсутствии
+ *
+ */
+awh::codec::yaml::Document::value_t awh::codec::yaml::Document::Value::operator [] (const size_t index) const noexcept {
+	// Номер очередного разбираемого ребёнка вместилища
+	size_t position = 0;
+	/**
+	 * Выполняем перебор всех детей вместилища
+	 */
+	for(value_t child = this->begin(); child.valid(); child = child.next()){
+		/**
+		 * Если номер очередного ребёнка разыскиваемому отвечает
+		 */
+		if(position++ == index)
+			// Выводим ссылку на найденное значение перечня
+			return child;
+	}
+	// Выводим недействительную ссылку на узел
+	return value_t();
+}
+/**
+ * @brief Метод получения ссылки на узел по пути к нему
+ *
+ * @param path путь к разыскиваемому узлу
+ * @return     ссылка на найденный узел, недействительная при отсутствии
+ *
+ */
+awh::codec::yaml::Document::value_t awh::codec::yaml::Document::Value::at(const string & path) const noexcept {
+	// Ссылка на разыскиваемый узел дерева
+	value_t result = (* this);
+	// Смещение начала очередной части пути
+	size_t offset = 0;
+	/**
+	 * Если путь открывается разделителем частей
+	 */
+	if(!path.empty() && (path.front() == '/'))
+		// Выполняем переход за разделитель частей пути
+		offset = 1;
+	/**
+	 * Если путь пуст вовсе
+	 */
+	if(offset >= path.size())
+		// Выводим ссылку на узел, от какого путь отсчитан
+		return result;
+	/**
+	 * Выполняем перебор всех частей пути к узлу
+	 */
+	while(offset <= path.size()){
+		// Разыскиваем разделитель очередной части пути
+		const size_t separator = path.find('/', offset);
+		// Получаем очередную часть пути к узлу
+		const string part(path, offset, (((separator == string::npos) ? path.size() : separator) - offset));
+		/**
+		 * Если узел, от какого путь отсчитан, является перечнем значений
+		 *
+		 * @note Часть пути внутри перечня есть номер значения, а не имя его: имён у
+		 *       значений перечня нет вовсе
+		 */
+		if(result.kind() == kind_t::SEQUENCE){
+			/**
+			 * Если часть пути числом не является
+			 */
+			if(part.empty() || (part.find_first_not_of("0123456789") != string::npos))
+				// Выводим недействительную ссылку на узел
+				return value_t();
+			// Выполняем переход к значению перечня по номеру его
+			result = result[static_cast <size_t> (::strtoull(part.c_str(), nullptr, 10))];
+		// Выполняем переход к паре отображения по имени её
+		} else result = result[part];
+		/**
+		 * Если узел по части пути не найден
+		 */
+		if(!result.valid())
+			// Выводим недействительную ссылку на узел
+			return value_t();
+		/**
+		 * Если разделителей в пути больше нет
+		 */
+		if(separator == string::npos)
+			// Выходим из перебора частей пути
+			break;
+		// Выполняем переход к следующей части пути
+		offset = (separator + 1);
+	}
+	// Выводим ссылку на найденный узел дерева
+	return result;
+}
+/**
+ * @brief Шаблонный метод извлечения числа затребованным видом
+ *
+ * @tparam T      вид извлекаемого числа
+ * @param  result извлечённое число
+ * @return        признак успешного извлечения числа
+ *
+ */
+template <typename T>
+bool awh::codec::yaml::Document::Value::extract(T & result) const noexcept {
+	/**
+	 * Если ссылка недействительна
+	 */
+	if(!this->valid())
+		// Выводим признак неудачного извлечения
+		return false;
+	// Получаем узел, на какой указывает ссылка
+	const node_t & node = this->_doc->_nodes.at(this->_index);
+	/**
+	 * Если значение является целым числом
+	 *
+	 * @note Ширина хранения указанием не является: число, в один байт вместившееся,
+	 *       извлекается и восемью байтами, и дробным видом. Сужение идёт приведением
+	 *       языка - тем же порядком, каким это сделано у контейнера JSON
+	 */
+	if(static_cast <uint32_t> (node.type) & static_cast <uint32_t> (type_t::INT)){
+		// Устанавливаем извлечённое значение приведением языка
+		result = static_cast <T> (node.number_of <int64_t> ());
+		// Выводим признак успешного извлечения
+		return true;
+	}
+	/**
+	 * Если значение является дробным числом
+	 */
+	if(static_cast <uint32_t> (node.type) & static_cast <uint32_t> (type_t::REAL)){
+		// Устанавливаем извлечённое значение приведением дробного
+		result = ::convert <T> (node.number_of <double> ());
+		// Выводим признак успешного извлечения
+		return true;
+	}
+	/**
+	 * Если значение является числом, ни в один родной вид не вместимым
+	 */
+	if(node.type == type_t::EXTENDED){
+		// Получаем запись числа, узлом хранимую
+		const string text(this->_doc->_storage, (node.offset + node.named), node.length());
+		// Разбираемое дробное число
+		numeric_t number;
+		/**
+		 * Выполняем разбор записи числа
+		 *
+		 * @note Разбор здесь неизбежен: число это в родной вид не вместилось, оттого и
+		 *       хранится записью. Таких чисел на документ приходятся единицы
+		 */
+		narrow(text, this->_doc->_settings.schema, number);
+		// Устанавливаем извлечённое значение приведением дробного
+		result = ::convert <T> (number.real);
+		// Выводим признак успешного извлечения
+		return true;
+	}
+	// Выводим признак неудачного извлечения
+	return false;
+}
+/**
+ * @brief Метод извлечения логического значения
+ *
+ * @param result извлечённое логическое значение
+ * @return       признак успешного извлечения значения
+ *
+ */
+bool awh::codec::yaml::Document::Value::value(bool & result) const noexcept {
+	/**
+	 * Если узел логическим значением не является
+	 */
+	if(this->type() != type_t::BOOL)
+		// Выводим признак неудачного извлечения
+		return false;
+	// Устанавливаем извлечённое логическое значение
+	result = (this->_doc->_nodes.at(this->_index).number_of <int64_t> () != 0);
+	// Выводим признак успешного извлечения
+	return true;
+}
+/**
+ * @brief Метод извлечения целого числа со знаком шириною в один байт
+ *
+ * @param result извлечённое число
+ * @return       признак успешного извлечения числа
+ *
+ */
+bool awh::codec::yaml::Document::Value::value(int8_t & result) const noexcept {
+	// Выводим признак успешности извлечения числа
+	return this->extract(result);
+}
+/**
+ * @brief Метод извлечения целого числа со знаком шириною в два байта
+ *
+ * @param result извлечённое число
+ * @return       признак успешного извлечения числа
+ *
+ */
+bool awh::codec::yaml::Document::Value::value(int16_t & result) const noexcept {
+	// Выводим признак успешности извлечения числа
+	return this->extract(result);
+}
+/**
+ * @brief Метод извлечения целого числа со знаком шириною в четыре байта
+ *
+ * @param result извлечённое число
+ * @return       признак успешного извлечения числа
+ *
+ */
+bool awh::codec::yaml::Document::Value::value(int32_t & result) const noexcept {
+	// Выводим признак успешности извлечения числа
+	return this->extract(result);
+}
+/**
+ * @brief Метод извлечения целого числа со знаком шириною в восемь байтов
+ *
+ * @param result извлечённое число
+ * @return       признак успешного извлечения числа
+ *
+ */
+bool awh::codec::yaml::Document::Value::value(int64_t & result) const noexcept {
+	// Выводим признак успешности извлечения числа
+	return this->extract(result);
+}
+/**
+ * @brief Метод извлечения целого числа без знака шириною в один байт
+ *
+ * @param result извлечённое число
+ * @return       признак успешного извлечения числа
+ *
+ */
+bool awh::codec::yaml::Document::Value::value(uint8_t & result) const noexcept {
+	// Выводим признак успешности извлечения числа
+	return this->extract(result);
+}
+/**
+ * @brief Метод извлечения целого числа без знака шириною в два байта
+ *
+ * @param result извлечённое число
+ * @return       признак успешного извлечения числа
+ *
+ */
+bool awh::codec::yaml::Document::Value::value(uint16_t & result) const noexcept {
+	// Выводим признак успешности извлечения числа
+	return this->extract(result);
+}
+/**
+ * @brief Метод извлечения целого числа без знака шириною в четыре байта
+ *
+ * @param result извлечённое число
+ * @return       признак успешного извлечения числа
+ *
+ */
+bool awh::codec::yaml::Document::Value::value(uint32_t & result) const noexcept {
+	// Выводим признак успешности извлечения числа
+	return this->extract(result);
+}
+/**
+ * @brief Метод извлечения целого числа без знака шириною в восемь байтов
+ *
+ * @param result извлечённое число
+ * @return       признак успешного извлечения числа
+ *
+ */
+bool awh::codec::yaml::Document::Value::value(uint64_t & result) const noexcept {
+	// Выводим признак успешности извлечения числа
+	return this->extract(result);
+}
+/**
+ * @brief Метод извлечения дробного числа одинарной точности
+ *
+ * @param result извлечённое число
+ * @return       признак успешного извлечения числа
+ *
+ */
+bool awh::codec::yaml::Document::Value::value(float & result) const noexcept {
+	// Выводим признак успешности извлечения числа
+	return this->extract(result);
+}
+/**
+ * @brief Метод извлечения дробного числа двойной точности
+ *
+ * @param result извлечённое число
+ * @return       признак успешного извлечения числа
+ *
+ */
+bool awh::codec::yaml::Document::Value::value(double & result) const noexcept {
+	// Выводим признак успешности извлечения числа
+	return this->extract(result);
+}
+/**
+ * @brief Метод извлечения строкового значения
+ *
+ * @param result извлечённое строковое значение
+ * @return       признак успешного извлечения значения
+ *
+ */
+bool awh::codec::yaml::Document::Value::value(string & result) const noexcept {
+	/**
+	 * Если ссылка недействительна
+	 */
+	if(!this->valid())
+		// Выводим признак неудачного извлечения
+		return false;
+	// Получаем узел, на какой указывает ссылка
+	const node_t & node = this->_doc->_nodes.at(this->_index);
+	/**
+	 * Если узел является вместилищем
+	 *
+	 * @note Вместилище строкою не выдаётся: выдавать его пришлось бы сборкой текста, а
+	 *       сборка есть иная работа, и зовётся она иначе
+	 */
+	if((node.type == type_t::MAPPING) || (node.type == type_t::SEQUENCE))
+		// Выводим признак неудачного извлечения
+		return false;
+	/**
+	 * Устанавливаем извлечённое строковое значение
+	 *
+	 * @note Выдаётся запись значения, исходным текстом данная: число `0x1F` выдаётся
+	 *       записью своей, а не числом 31. Потребитель, взявший строку, просил именно
+	 *       запись - число он взял бы числом
+	 */
+	result.assign(this->_doc->_storage, (node.offset + node.named), node.length());
+	// Выводим признак успешного извлечения
+	return true;
+}
