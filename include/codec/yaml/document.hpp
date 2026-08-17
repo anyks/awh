@@ -140,6 +140,27 @@ namespace awh {
 						 */
 						uint32_t expansion;
 						/**
+						 * Признак удержания исходного текста ради дословной перезаписи
+						 *
+						 * @details Настройки YAML правятся и человеком, и приложением, и перезапись
+						 * обязана сохранять всё, чего правка не касалась: примечания, пустые строки,
+						 * ограду значений и ширину отступов. Собрать это заново дерево не может -
+						 * примечаний оно не держит вовсе, - и оттого исходный текст удерживается
+						 * целиком, а поддеревья нетронутые переписываются дословно
+						 *
+						 * @note Удержание стоит памяти в размер текста, и оттого спрашивается
+						 *       прямо: читающему настройки на один раз оно ни к чему
+						 *
+						 * \~english
+						 * @brief Sign of the retention of the source text for the sake of the verbatim rewriting
+						 * @details The YAML settings are edited both by a human and by an application, and the rewriting
+						 * must preserve everything the editing did not touch
+						 * @note The retention costs the memory in the size of the text and is therefore asked for directly
+						 *
+						 * \~
+						 */
+						bool retain;
+						/**
 						 * \~russian
 						 * @brief Конструктор
 						 *
@@ -212,6 +233,16 @@ namespace awh {
 						bool keyed;
 						// Признак того, что содержимое узла правлено после разбора
 						bool touched;
+						/**
+						 * Смещение начала записи узла в удержанном исходном тексте
+						 *
+						 * @details Считается оно от начала строки, узел открывающей, вместе с
+						 * примечаниями да пустыми строками, ей предшествующими: примечание стоит над
+						 * тем, к чему относится, и уходить обязано вместе с ним. Значение
+						 * `NO_ORIGIN` знаменует, что текст не удержан либо узел взят раскрытием
+						 * ссылки, и записи в тексте за ним не стоит
+						 */
+						uint32_t origin;
 						// Смещение имени пары в хранилище знаков
 						uint32_t offset;
 						// Длина имени пары в байтах
@@ -349,7 +380,7 @@ namespace awh {
 						 */
 						Node() noexcept :
 						 type(type_t::UNDEFINED), style(style_t::PLAIN), keyed(false), touched(false),
-						 offset(0), named(0), props(0), content{0, 1}, number{0, 0} {}
+						 origin(NO_ORIGIN), offset(0), named(0), props(0), content{0, 1}, number{0, 0} {}
 					} node_t;
 				public:
 					/**
@@ -372,6 +403,15 @@ namespace awh {
 					 * \~
 					 */
 					typedef class __AWH_SHARED_EXPORT__ Value {
+						private:
+							/**
+							 * Документ, дерево какого правится, ссылке доверяется
+							 *
+							 * @note Правка ведётся документом, а не ссылкою: ссылка на узел смотрит,
+							 *       а правит держащий дерево целиком - ему одному ведомы предки узла,
+							 *       кои правкой тоже тронуты
+							 */
+							friend class Document;
 						private:
 							// Документ, которому принадлежит узел
 							const Document * _doc;
@@ -863,8 +903,35 @@ namespace awh {
 					vector <props_t> _props;
 					// Хранилище имён и записей значений
 					string _storage;
+					/**
+					 * Удержанный исходный текст, настройкою затребованный
+					 *
+					 * @note Держится он в кодировке подачи своей: смещения событий чтение
+					 *       считает по тексту исходному, до приведения к UTF-8, и дословная
+					 *       перезапись обязана вырезать из него же
+					 */
+					string _source;
+					/**
+					 * Длина метки порядка байтов в начале удержанного текста
+					 *
+					 * @note Смещения событий чтение считает по тексту, метки той лишённому, а
+					 *       удержан текст поданным целиком: разница эта и есть длина метки, и
+					 *       прибавляется она ко всякому смещению
+					 */
+					uint32_t _prologue;
+					// Кодировка, какою текст прочитан
+					encoding_t _encoding;
 					// Номера корневых узлов документов текста
 					vector <uint32_t> _roots;
+					/**
+					 * Смещения начала документов в удержанном исходном тексте
+					 *
+					 * @details Перечень этот идёт об руку с перечнем корней: смещение отвечает
+					 * началу строки, документ открывающей, - черте `---` либо первой строке
+					 * содержимого его. Документ первый начинается всегда с нуля: директивы,
+					 * черте предпосланные, принадлежат ему
+					 */
+					vector <uint32_t> _starts;
 					// Код ошибки разбора текста
 					error_t _error;
 					// Положение отказа разбора в исходном тексте
@@ -915,6 +982,122 @@ namespace awh {
 					 * \~
 					 */
 					void compose(writer_t & writer, const uint32_t index) const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод получения границы записи узла в удержанном исходном тексте
+					 *
+					 * @details Границею служит начало записи следующего узла обхода: всякий байт
+					 * текста принадлежит ровно одному узлу, и примечания, между соседями стоящие,
+					 * достаются тому, над кем они стоят
+					 *
+					 * @param index номер узла, границы записи какого получаются
+					 * @return      смещение за концом записи узла, `NO_ORIGIN` - записи нет
+					 *
+					 * \~english
+					 * @brief Method of the obtaining of the boundary of the record of a node in the retained source text
+					 * @param index index of the node whose boundary of the record is being obtained
+					 * @return offset past the end of the record of the node
+					 *
+					 * \~
+					 */
+					uint32_t bound(const uint32_t index) const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод дословной записи пролёта соседних узлов исходными байтами
+					 *
+					 * @details Пролёт переписывается дословно лишь тогда, когда ни один узел его
+					 * правкой не тронут и отступ записи совпадает с отступом исходным: иначе
+					 * перенесённые байты легли бы не на своё место
+					 *
+					 * @param writer сборка текста
+					 * @param first  номер первого узла переписываемого пролёта
+					 * @param last   номер последнего узла переписываемого пролёта
+					 * @return       признак успешной дословной записи пролёта
+					 *
+					 * \~english
+					 * @brief Method of the verbatim writing of a run of the neighbouring nodes by the source bytes
+					 * @param writer assembling of the text
+					 * @param first index of the first node of the run being rewritten
+					 * @param last index of the last node of the run being rewritten
+					 * @return sign of the successful verbatim writing of the run
+					 *
+					 * \~
+					 */
+					bool verbatim(writer_t & writer, const uint32_t first, const uint32_t last) const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод сборки детей вместилища пролётами нетронутых
+					 *
+					 * @param writer сборка текста
+					 * @param index  номер узла вместилища, дети какого собираются
+					 *
+					 * \~english
+					 * @brief Method of the assembling of the children of a container by the runs of the untouched ones
+					 * @param writer assembling of the text
+					 * @param index index of the node of the container whose children are being assembled
+					 *
+					 * \~
+					 */
+					void children(writer_t & writer, const uint32_t index) const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод получения начала собственной строки узла
+					 *
+					 * @details Начало записи узла считается вместе с примечаниями да пустыми
+					 * строками, ему предшествующими, а строка собственная стоит за ними: розыск
+					 * её пропускает строки пустые и несущие одно примечание
+					 *
+					 * @param index номер узла, собственная строка какого разыскивается
+					 * @return      смещение начала собственной строки, `NO_ORIGIN` - записи нет
+					 *
+					 * \~english
+					 * @brief Method of the obtaining of the beginning of the own line of a node
+					 * @param index index of the node whose own line is being sought
+					 * @return offset of the beginning of the own line of the node
+					 *
+					 * \~
+					 */
+					uint32_t leading(const uint32_t index) const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод отнесения пустых строк к узлам, под ними стоящим
+					 *
+					 * @details Пустая строка, узлу предшествующая, отделяет его от соседа сверху и
+					 * уходить обязана вместе с ним. Чтение о таких строках не извещает - простое
+					 * значение, выдачи ожидающее, считает их складками своими, - и разыскиваются
+					 * они по удержанному тексту прямо
+					 *
+					 * @note Розыск не заходит за узел, блочное значение несущий: пустые строки в
+					 *       конце его суть содержимое, правилом усечения сохранённое, а вовсе не
+					 *       отступ перед соседом
+					 *
+					 * \~english
+					 * @brief Method of the attribution of the empty lines to the nodes standing under them
+					 * @details An empty line preceding a node separates it from the neighbour above and must leave together with it
+					 * @note The search does not go past a node carrying a block scalar
+					 *
+					 * \~
+					 */
+					void spread() noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод записи узла вместе с примечаниями, ему предпосланными
+					 *
+					 * @details Узел, правкой тронутый, собирается заново, а примечания над ним
+					 * стоящие переносятся дословно: правка значения примечания над ним не
+					 * касается, и терять его было бы неправдой
+					 *
+					 * @param writer сборка текста
+					 * @param index  номер записываемого узла
+					 *
+					 * \~english
+					 * @brief Method of the writing of a node together with the comments placed before it
+					 * @param writer assembling of the text
+					 * @param index index of the node being written
+					 *
+					 * \~
+					 */
+					void produce(writer_t & writer, const uint32_t index) const noexcept;
 				public:
 					/**
 					 * \~russian
@@ -961,6 +1144,30 @@ namespace awh {
 					string dump() const noexcept;
 					/**
 					 * \~russian
+					 * @brief Метод пометки узла правленым
+					 *
+					 * @details Помечается им не один узел, а весь путь до корня документа: запись
+					 * узла лежит внутри записи родителя его, и дословно переписать родителя после
+					 * правки ребёнка уже нельзя. Узел помеченный собирается заново, а соседи его,
+					 * правкой не тронутые, переписываются дословными исходными байтами
+					 *
+					 * @note Пометка нужна лишь при удержании исходного текста: без него собирается
+					 *       заново весь документ, и различать тронутое от нетронутого не для чего
+					 *
+					 * @param value ссылка на помечаемый узел
+					 * @return      признак успешной пометки узла
+					 *
+					 * \~english
+					 * @brief Method of the marking of a node as edited
+					 * @details It marks not one node but the whole path up to the root of the document
+					 * @param value reference to the node being marked
+					 * @return sign of the successful marking of the node
+					 *
+					 * \~
+					 */
+					bool touch(const value_t & value) noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод сборки текста по дереву документа заданными настройками
 					 *
 					 * @param settings настройки записи собираемого текста
@@ -1003,6 +1210,27 @@ namespace awh {
 					 * \~
 					 */
 					size_t documents() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод получения кодировки, какою текст прочитан
+					 *
+					 * @details Опознаётся она по метке порядка байтов, а при отсутствии её - по
+					 * расположению нулевых байтов в первых четырёх октетах, либо навязывается
+					 * настройками прямо
+					 *
+					 * @note Удержание исходного текста работает лишь у кодировки UTF-8: смещения
+					 *       событий чтение считает по тексту, к ней приведённому, и дословный
+					 *       перенос из текста иной кодировки лёг бы вперемешку
+					 *
+					 * @return кодировка, какою текст прочитан
+					 *
+					 * \~english
+					 * @brief Method of the obtaining of the encoding by which the text has been read
+					 * @return encoding by which the text has been read
+					 *
+					 * \~
+					 */
+					encoding_t encoding() const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод получения ссылки на корень первого документа текста

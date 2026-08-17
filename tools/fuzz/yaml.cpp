@@ -71,12 +71,14 @@ namespace {
 		uint64_t transcoded;
 		// Количество собранных деревьев документов
 		uint64_t trees;
+		// Количество деревьев, исходный текст удержавших
+		uint64_t kept;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
 		Statistic() noexcept :
-		 texts(0), corrupted(0), survived(0), events(0), chunked(0), transcoded(0), trees(0) {}
+		 texts(0), corrupted(0), survived(0), events(0), chunked(0), transcoded(0), trees(0), kept(0) {}
 	} totals;
 
 	/**
@@ -1277,6 +1279,46 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 					return EXIT_FAILURE;
 				}
 			}
+			/**
+			 * Выполняем проверку дословной перезаписи при удержании исходного текста
+			 *
+			 * @details Удержание обязано давать перезапись, исходному тексту побайтово
+			 *          равную: правки не было, и собирать заново нечего. Проверка эта сильнее
+			 *          всех прочих - расходится она на всяком примечании, всякой пустой строке
+			 *          и всякой ширине отступа, дереву неведомых
+			 *
+			 * @note Проверяется она лишь у текста в кодировке UTF-8: удержание работает
+			 *       только там, а текст иной кодировки перезаписью приводится к UTF-8, и
+			 *       равенства байтов с ним быть не может по устройству
+			 */
+			{
+				// Настройки разбора дерева с удержанием исходного текста
+				yaml::document_t::settings_t held = tree;
+				// Устанавливаем удержание исходного текста
+				held.retain = true;
+				// Объект дерева документа, текст удерживающего
+				yaml::document_t kept(held);
+				/**
+				 * Если разобрать текст в дерево документа удалось
+				 */
+				if(kept.parse(text) && (kept.encoding() == yaml::encoding_t::UTF8)){
+					// Выполняем учёт собранного дерева с удержанием
+					totals.kept++;
+					/**
+					 * Если перезапись с исходным текстом побайтово разошлась
+					 */
+					if(kept.dump() != text){
+						// Выводим сообщение о расхождении дословной перезаписи
+						::fprintf(stderr, "yaml fuzz: retained rewrite differs, settings %s\n", described(settings).c_str());
+						// Выводим разбираемый текст
+						dump(text);
+						// Выводим перезапись удержанного дерева
+						dump(kept.dump());
+						// Выходим из приложения с ошибкой
+						return EXIT_FAILURE;
+					}
+				}
+			}
 		}
 		/**
 		 * Если текст без метки порядка байтов опознан не как UTF-8
@@ -1331,11 +1373,11 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		}
 	}
 	// Выводим итог работы генератора
-	::fprintf(stderr, "yaml fuzz: %llu texts (%llu corrupted, %llu survived), %llu events, %llu chunked, %llu transcoded, %llu trees\n",
+	::fprintf(stderr, "yaml fuzz: %llu texts (%llu corrupted, %llu survived), %llu events, %llu chunked, %llu transcoded, %llu trees, %llu kept\n",
 		static_cast <unsigned long long> (totals.texts), static_cast <unsigned long long> (totals.corrupted),
 		static_cast <unsigned long long> (totals.survived), static_cast <unsigned long long> (totals.events),
 		static_cast <unsigned long long> (totals.chunked), static_cast <unsigned long long> (totals.transcoded),
-		static_cast <unsigned long long> (totals.trees));
+		static_cast <unsigned long long> (totals.trees), static_cast <unsigned long long> (totals.kept));
 	// Выводим код успешного выхода из приложения
 	return EXIT_SUCCESS;
 }

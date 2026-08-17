@@ -219,6 +219,8 @@ namespace awh {
 					string _tag;
 					// Признак того, что имя пары записано, а значение её ещё нет
 					bool _keyed;
+					// Отступ, следующему вместилищу назначенный, ноль - по ширине настроек
+					uint32_t _margin;
 					// Признак того, что записанное строку не закрыло
 					bool _hanging;
 					/**
@@ -229,6 +231,15 @@ namespace awh {
 					 *       суть содержимое само, и снимать в них нечего
 					 */
 					bool _verbatim;
+					/**
+					 * Признак того, что открытая строка перенесена дословно
+					 *
+					 * @note Строка эта усечению не подлежит: перенесена она исходными байтами, и
+					 *       пробелы в конце её суть те же байты. Признак снимается закрытием
+					 *       строки - в отличие от признака блочного значения, живущего всю запись
+					 *       содержимого его
+					 */
+					bool _transferred;
 					// Признак того, что документ уже открыт
 					bool _opened;
 					// Количество байтов, изъятых из сборщика за всё время работы
@@ -753,6 +764,77 @@ namespace awh {
 					 * \~
 					 */
 					uint32_t depth() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод получения отступа, на каком ложится следующая запись
+					 *
+					 * @return отступ содержимого открытого вместилища в пробелах
+					 *
+					 * \~english
+					 * @brief Method of the obtaining of the indentation at which the next record is laid
+					 * @return indentation of the content of the opened container in the spaces
+					 *
+					 * \~
+					 */
+					uint32_t indent() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод назначения отступа следующему вместилищу
+					 *
+					 * @details Отступ этот отменяет ширину, настройками заданную, для одного лишь
+					 * вместилища, открываемого следующим - ровно как метка да метка типа ждут
+					 * своего узла. Служит это перезаписи с удержанием исходного текста: вместилище,
+					 * правкой тронутое, собирается заново, а дети его нетронутые переносятся
+					 * дословно, и отступ им надобен тот же, на каком они стояли
+					 *
+					 * @note Значение нулевое отменяет назначение и возвращает ширину настроек
+					 *
+					 * @param indent назначаемый отступ содержимого вместилища
+					 *
+					 * \~english
+					 * @brief Method of the appointment of an indentation to the next container
+					 * @details This indentation overrides the width set by the settings for the one container
+					 * being opened next
+					 * @note A zero value cancels the appointment and returns the width of the settings
+					 * @param indent indentation of the content of the container being appointed
+					 *
+					 * \~
+					 */
+					void margin(const uint32_t indent) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод дословной записи готовых строк текста
+					 *
+					 * @details Строки переносятся в собираемый текст как есть, без ограды и разбора:
+					 * переносящий сам отвечает за то, что они лягут на своё место. Служит это
+					 * дословной перезаписи поддеревьев, правкой не тронутых, - и тем сохраняет
+					 * примечания, пустые строки да ограду значений, дереву неведомые
+					 *
+					 * @details Отступ переносится целиком, а не построчно: разность между отступом
+					 * исходным и отступом записи прибавляется ко всякой строке, и вложенность строк
+					 * между собою тем сохраняется. Разность нулевая - а таков случай перезаписи
+					 * без правки - оставляет байты нетронутыми вовсе
+					 *
+					 * @warning Запись отвергается там, где дословные строки лечь не могут: внутри
+					 *          поточного построения, за именем пары, ожидающим значения, и первою
+					 *          записью вместилища, строку объемлющей записи продолжающего
+					 *
+					 * @param text   переносимые строки текста
+					 * @param indent отступ, на каком строки стояли в исходном тексте
+					 * @return       признак успешного переноса строк
+					 *
+					 * \~english
+					 * @brief Method of the verbatim writing of the ready lines of a text
+					 * @details The lines are transferred into the assembled text as they are, without the quoting, the indentation
+					 * and the parsing: the one transferring is himself responsible for them falling into their place
+					 * @warning The writing is refused where the verbatim lines cannot fall
+					 * @param text lines of the text being transferred
+					 * @param indent indentation at which the lines stood in the source text
+					 * @return sign of the successful transfer of the lines
+					 *
+					 * \~
+					 */
+					bool verbatim(const string_view text, const uint32_t indent) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод сброса состояния записи текста

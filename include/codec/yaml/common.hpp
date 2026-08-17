@@ -336,6 +336,20 @@ namespace awh {
 
 			/**
 			 * \~russian
+			 * @brief Смещение, записи в исходном тексте не имеющее
+			 *
+			 * @note Знаменует оно узел, за которым записи в тексте не стоит: текст не
+			 *       удержан настройкою либо узел взят раскрытием ссылки
+			 *
+			 * \~english
+			 * @brief Offset having no record in the source text
+			 *
+			 * \~
+			 */
+			constexpr uint32_t NO_ORIGIN = static_cast <uint32_t> (~0u);
+
+			/**
+			 * \~russian
 			 * @brief Обозначение отсутствующего номера узла
 			 *
 			 * \~english
@@ -769,14 +783,17 @@ namespace awh {
 			 * тексту
 			 *
 			 * @note Номер строки и положение в строке считаются в знаках Юникода, а смещение -
-			 *       в байтах исходного текста до перекодирования
+			 *       в байтах текста, к UTF-8 приведённого и метки порядка байтов лишённого.
+			 *       Для текста UTF-8 без метки смещение это есть смещение в поданных байтах;
+			 *       текст с меткою мельче поданного на длину её, а текст UTF-16 либо UTF-32 -
+			 *       на всю разницу двух кодировок
 			 *
 			 * \~english
 			 * @brief Position in the source text
 			 * @details Serves for indicating the place of a refusal and for binding the values to the source
 			 * text
 			 * @note The line number and the position in the line are counted in Unicode characters, while the offset —
-			 *       in the bytes of the source text before the transcoding
+			 *       in the bytes of the text brought to UTF-8 and deprived of the byte order mark
 			 *
 			 * \~
 			 */
