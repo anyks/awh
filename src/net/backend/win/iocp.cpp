@@ -845,6 +845,87 @@ static int32_t __awh_socket_errno__(const int32_t code) noexcept {
 	return EIO;
 }
 /**
+ * @brief Функция получения описания кода отказа
+ *
+ * @details Обращение `strerror` у MinGW знает лишь коды, доставшиеся ему от MS-DOS -
+ *          числа меньше сорока с небольшим. Всё, что относится к сети, лежит выше:
+ *          `ECONNRESET` равен 108, `ETIMEDOUT` - 138, `EWOULDBLOCK` - 140, и на всякий
+ *          такой код обращение отвечает «Unknown error». Установлено щупом на стенде
+ *          17.08.2026: из двадцати кодов, какими движок пользуется, обращение узнало
+ *          четыре
+ *
+ * @details Оттого коды эти описываются здесь, а к обращению система движок отступает
+ *          лишь на тех кодах, какие оно знает. Описания взяты у POSIX дословно: журнал
+ *          движка читают и сличают между системами, и расхождение в словах помешало бы
+ *
+ * @note Заводится посредником поимённо, как и прочие обращения POSIX у этого движка:
+ *       общая замена определением переписала бы заодно и свои имена движка
+ *
+ * @param code код отказа обращения
+ * @return     описание кода отказа
+ *
+ */
+static const char * __awh_strerror__(const int32_t code) noexcept {
+	/**
+	 * Определяем код отказа обращения
+	 */
+	switch(code){
+		// Если соединение сброшено встречной стороной
+		case ECONNRESET: return "Connection reset by peer";
+		// Если соединение прервано
+		case ECONNABORTED: return "Software caused connection abort";
+		// Если в соединении отказано
+		case ECONNREFUSED: return "Connection refused";
+		// Если истёк срок ожидания
+		case ETIMEDOUT: return "Operation timed out";
+		// Если сокет не подключён
+		case ENOTCONN: return "Socket is not connected";
+		// Если сокет уже подключён
+		case EISCONN: return "Socket is already connected";
+		// Если обращение снято
+		case ECANCELED: return "Operation canceled";
+		// Если обращение выполнить сейчас нельзя
+		case EWOULDBLOCK: return "Operation would block";
+		// Если обращение начато и продолжается
+		case EINPROGRESS: return "Operation now in progress";
+		// Если обращение уже выполняется
+		case EALREADY: return "Operation already in progress";
+		// Если адрес уже занят
+		case EADDRINUSE: return "Address already in use";
+		// Если адрес назначить нельзя
+		case EADDRNOTAVAIL: return "Cannot assign requested address";
+		// Если узел недостижим
+		case EHOSTUNREACH: return "No route to host";
+		// Если сеть недостижима
+		case ENETUNREACH: return "Network is unreachable";
+		// Если сеть оборвалась
+		case ENETDOWN: return "Network is down";
+		// Если соединение сброшено сетью
+		case ENETRESET: return "Network dropped connection on reset";
+		// Если сообщение слишком велико
+		case EMSGSIZE: return "Message too long";
+		// Если буферов не осталось
+		case ENOBUFS: return "No buffer space available";
+		// Если описатель сокетом не является
+		case ENOTSOCK: return "Socket operation on non-socket";
+		// Если семейство адресов не поддерживается
+		case EAFNOSUPPORT: return "Address family not supported by protocol";
+		// Если протокол не поддерживается
+		case EPROTONOSUPPORT: return "Protocol not supported";
+		// Если вид сокета не поддерживается
+		case EOPNOTSUPP: return "Operation not supported on socket";
+		// Если адрес получателя не назначен
+		case EDESTADDRREQ: return "Destination address required";
+	}
+	/**
+	 * Отступаем к описанию системы
+	 *
+	 * @note Коды, доставшиеся MinGW от MS-DOS, обращение знает, и описывать их своими
+	 *       словами значило бы разойтись с системой на ровном месте
+	 */
+	return ::strerror(code);
+}
+/**
  * @brief Функция переноса кода отказа обращения к сокету в errno
  *
  * @param result результат обращения к сокету
@@ -6367,8 +6448,20 @@ namespace port {
 			// Ключ привязки, отдаваемый вместе с завершением
 			PVOID key;
 		} completion{};
-		// Состояние обращения, обращению обязательное
-		uint8_t state[sizeof(void *) * 2]{};
+		/**
+		 * @brief Состояние обращения, обращению обязательное
+		 *
+		 * @note Заводится записью, а не массивом октет, ради выравнивания: система ждёт
+		 *       здесь запись из указателя и числа, а массив октет выровнен по единице.
+		 *       У x86-64 это сходит с рук, у ARM64 - нет
+		 *
+		 */
+		struct state_t {
+			// Состояние завершившегося обращения
+			PVOID status;
+			// Сведения, отданные обращением
+			ULONG_PTR information;
+		} state{};
 		/**
 		 * Выполняем замену привязки пустым портом
 		 *
@@ -6376,7 +6469,23 @@ namespace port {
 		 *       класса сведений в перечне системы. Заголовки её этого класса не
 		 *       объявляют, оттого он и задан числом
 		 */
-		const LONG status = setter(handle, state, &completion, static_cast <ULONG> (sizeof(completion)), 61);
+		const LONG status = setter(handle, &state, &completion, static_cast <ULONG> (sizeof(completion)), 61);
+		/**
+		 * Непривязанный описатель отказом не считается
+		 *
+		 * @details Состояние 0xC000000D (`STATUS_INVALID_PARAMETER`) система отдаёт на
+		 *          описатель, порту завершений не принадлежащий: отвязывать у него
+		 *          нечего. Установлено щупом на стенде 17.08.2026 - первая отвязка
+		 *          привязанного описателя отвечает успехом, а повторная, как и отвязка
+		 *          заведомо непривязанного, отвечает этим состоянием
+		 *
+		 * @note Итог у обоих исходов один: описатель порту не принадлежит, и потребитель
+		 *       вправе привязать его заново. Проверено тем же щупом - привязка после
+		 *       отвязки удаётся
+		 */
+		if(status == static_cast <LONG> (0xC000000D))
+			// Выводим успешный результат: описатель порту и не принадлежал
+			return true;
 		// Если отвязать описатель от порта завершений не удалось
 		if(status < 0){
 			// Записываем ошибку в лог
@@ -7586,7 +7695,17 @@ namespace post {
 		 *       и запись сбивала разбор с толку - выглядела она поломкой обмена, каковой
 		 *       не было
 		 */
-		if((error != ERROR_PIPE_NOT_CONNECTED) && (::post::log != nullptr))
+		/**
+		 * Закрытый встречной стороной канал отказом не считается тоже
+		 *
+		 * @details Код 109 (`ERROR_BROKEN_PIPE`) означает, что сторона свой конец закрыла:
+		 *          обмену конец, и подавать по нему нечего. Это обычное завершение работы -
+		 *          так кончается всякий работник кластера, - и уровня «критично» оно не
+		 *          заслуживает. Разбор дальше идёт своим чередом: подача отвечает
+		 *          отсутствием метки, и узел закрывается тем же путём, каким закрылся бы
+		 *          при чтении нуля октет
+		 */
+		if((error != ERROR_PIPE_NOT_CONNECTED) && (error != ERROR_BROKEN_PIPE) && (::post::log != nullptr))
 			// Записываем ошибку в лог
 			::post::log->print("%s: cannot submit %s on descriptor %llu: %s", log_t::flag_t::CRITICAL, ::__AWH_IO_BACKEND__, name, static_cast <uint64_t> (sock), ::kernel::message(error).c_str());
 		// Выводим отсутствие метки завершения
@@ -7913,7 +8032,7 @@ namespace post {
 			// Выполняем подачу приёма сообщения со служебными метаданными
 			accepted = (receive(static_cast <SOCKET> (sock), &slot->wsamsg, &bytes, &slot->overlapped, nullptr) == 0);
 		// Если дескриптор дейтаграммный - принимаем вместе с адресом отправителя
-		} else if(datagram){
+		} else if(datagram) {
 			// Устанавливаем длину адреса отправителя
 			slot->length = sizeof(struct sockaddr_storage);
 			// Выполняем зануление адреса отправителя
@@ -11520,64 +11639,6 @@ namespace local {
 };
 
 /**
- * @brief Инкапсулируем статические функции в пространство имён Ethernet
- *
- */
-namespace eth {
-	/**
-	 * @brief Генерация случайного порта в диапазоне 49152-65535
-	 *
-	 * @return случайный порт
-	 *
-	 */
-	static uint16_t port() noexcept {
-		/**
-		 * Инициализация генератора случайных чисел
-		 */
-		::srand(static_cast <uint32_t> (::time(nullptr) ^ ::getpid()));
-		/**
-		 * Возвращаем случайный порт из диапазона 49152-65535
-		 */
-		return (49152 + (::rand() % (65535 - 49152 + 1)));
-	}
-	/**
-	 * @brief Функция вычисления контрольной суммы
-	 *
-	 * @param data   указатель на данные
-	 * @param length длина данных
-	 * @return       вычисленная контрольная сумма
-	 *
-	 */
-	static uint16_t checksum(const void * data, size_t length) noexcept {
-		// Получаем нужного вида буфер входящих данных
-		const uint16_t * buffer = reinterpret_cast <const uint16_t *> (data);
-		// Инициализируем сумму
-		uint32_t sum = 0;
-		/**
-		 * Пока есть данные для обработки
-		 */
-		while(length > 1){
-			// Добавляем к сумме очередные два байта данных
-			sum += (* buffer++);
-			// Уменьшаем длину данных на два байта
-			length -= 2;
-		}
-		// Если остался один байт данных
-		if(length == 1)
-			// Добавляем к сумме последний байт данных
-			sum += (* reinterpret_cast <const uint8_t *> (buffer));
-		/**
-		 * Складываем старшие 16 бит суммы с младшими 16 битами суммы
-		 */
-		while(sum >> 16)
-			// Складываем старшие 16 бит суммы с младшими 16 битами суммы
-			sum = ((sum & 0xFFFF) + (sum >> 16));
-		// Возвращаем инвертированную сумму
-		return static_cast <uint16_t> (~sum);
-	}
-};
-
-/**
  * @brief Инкапсулируем статические функции в пространство имён событий
  *
  */
@@ -11925,13 +11986,13 @@ namespace events {
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock, node->id), log_t::flag_t::WARNING, ::strerror(errno));
+								log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock, node->id), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+								log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 							#endif
 						}
 					} break;
@@ -12030,13 +12091,13 @@ namespace events {
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock, node->id), log_t::flag_t::WARNING, ::strerror(errno));
+								log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock, node->id), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+								log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 							#endif
 						}
 					} break;
@@ -15645,7 +15706,7 @@ namespace io {
 								// Если установлена функция обратного вызова
 								if(fs->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
-									fs->callbacks.error(fs->id, event::error_t::EVENT_FAIL, ::strerror(errno));
+									fs->callbacks.error(fs->id, event::error_t::EVENT_FAIL, ::__awh_strerror__(errno));
 								// Если функция обратного вызова вывода ошибки не установлена
 								else {
 									/**
@@ -15653,13 +15714,13 @@ namespace io {
 									 */
 									#if DEBUG_MODE
 										// Записываем ошибку в лог
-										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(fs, fs->id), log_t::flag_t::CRITICAL, ::strerror(errno));
+										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(fs, fs->id), log_t::flag_t::CRITICAL, ::__awh_strerror__(errno));
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
 										// Записываем ошибку в лог
-										log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+										log->print("%s", log_t::flag_t::CRITICAL, ::__awh_strerror__(errno));
 									#endif
 								}
 								// Выходим из цикла
@@ -15684,7 +15745,7 @@ namespace io {
 						// Если установлена функция обратного вызова
 						if(fs->callbacks.error != nullptr)
 							// Вызываем функцию обратного вызова ошибки события
-							fs->callbacks.error(fs->id, event::error_t::EVENT_FAIL, ::strerror(errno));
+							fs->callbacks.error(fs->id, event::error_t::EVENT_FAIL, ::__awh_strerror__(errno));
 						// Если функция обратного вызова вывода ошибки не установлена
 						else {
 							/**
@@ -15692,13 +15753,13 @@ namespace io {
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								log->debug("%s", __PRETTY_FUNCTION__, make_tuple(fs, fs->id), log_t::flag_t::CRITICAL, ::strerror(errno));
+								log->debug("%s", __PRETTY_FUNCTION__, make_tuple(fs, fs->id), log_t::flag_t::CRITICAL, ::__awh_strerror__(errno));
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+								log->print("%s", log_t::flag_t::CRITICAL, ::__awh_strerror__(errno));
 							#endif
 						}
 						// Формируем отрицательный результат
@@ -15827,7 +15888,7 @@ namespace io {
 										// Если установлена функция обратного вызова
 										if(ipc->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
-											ipc->callbacks.error(ipc->id, event::error_t::INVALID_SOCKET, ::strerror(errno));
+											ipc->callbacks.error(ipc->id, event::error_t::INVALID_SOCKET, ::__awh_strerror__(errno));
 										// Если функция обратного вызова для вывода события не установлена
 										else {
 											/**
@@ -15835,13 +15896,13 @@ namespace io {
 											 */
 											#if DEBUG_MODE
 												// Записываем ошибку в лог
-												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ipc, ipc->id), log_t::flag_t::WARNING, ::strerror(errno));
+												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ipc, ipc->id), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
 												// Записываем ошибку в лог
-												log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+												log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 											#endif
 										}
 										// Выполняем удаление узла
@@ -15942,7 +16003,7 @@ namespace io {
 									// Если установлена функция обратного вызова
 									if(ipc->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
-										ipc->callbacks.error(ipc->id, event::error_t::INVALID_SOCKET, ::strerror(errno));
+										ipc->callbacks.error(ipc->id, event::error_t::INVALID_SOCKET, ::__awh_strerror__(errno));
 									// Если функция обратного вызова для вывода события не установлена
 									else {
 										/**
@@ -15950,13 +16011,13 @@ namespace io {
 										 */
 										#if DEBUG_MODE
 											// Записываем ошибку в лог
-											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ipc, ipc->id), log_t::flag_t::WARNING, ::strerror(errno));
+											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ipc, ipc->id), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
 											// Записываем ошибку в лог
-											log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+											log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 										#endif
 									}
 									// Выполняем удаление узла
@@ -16010,7 +16071,7 @@ namespace io {
 							// Если установлена функция обратного вызова
 							if(ipc->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
-								ipc->callbacks.error(ipc->id, event::error_t::INVALID_SOCKET, ::strerror(errno));
+								ipc->callbacks.error(ipc->id, event::error_t::INVALID_SOCKET, ::__awh_strerror__(errno));
 							// Если функция обратного вызова для вывода события не установлена
 							else {
 								/**
@@ -16018,13 +16079,13 @@ namespace io {
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ipc, ipc->id), log_t::flag_t::WARNING, ::strerror(errno));
+									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ipc, ipc->id), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+									log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 								#endif
 							}
 						// Если мы получили данные из сокета
@@ -16085,7 +16146,7 @@ namespace io {
 									// Если установлена функция обратного вызова
 									if(ipc->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
-										ipc->callbacks.error(ipc->id, event::error_t::INVALID_SOCKET, ::strerror(errno));
+										ipc->callbacks.error(ipc->id, event::error_t::INVALID_SOCKET, ::__awh_strerror__(errno));
 									// Если функция обратного вызова для вывода события не установлена
 									else {
 										/**
@@ -16093,13 +16154,13 @@ namespace io {
 										 */
 										#if DEBUG_MODE
 											// Записываем ошибку в лог
-											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ipc, ipc->id), log_t::flag_t::WARNING, ::strerror(errno));
+											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ipc, ipc->id), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
 											// Записываем ошибку в лог
-											log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+											log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 										#endif
 									}
 									// Выполняем удаление узла
@@ -16153,7 +16214,7 @@ namespace io {
 							// Если установлена функция обратного вызова
 							if(ipc->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
-								ipc->callbacks.error(ipc->id, event::error_t::INVALID_SOCKET, ::strerror(errno));
+								ipc->callbacks.error(ipc->id, event::error_t::INVALID_SOCKET, ::__awh_strerror__(errno));
 							// Если функция обратного вызова для вывода события не установлена
 							else {
 								/**
@@ -16161,13 +16222,13 @@ namespace io {
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ipc, ipc->id), log_t::flag_t::WARNING, ::strerror(errno));
+									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ipc, ipc->id), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+									log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 								#endif
 							}
 						// Если мы получили данные из сокета
@@ -16326,7 +16387,7 @@ namespace io {
 										// Если установлена функция обратного вызова
 										if(peer->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
-											peer->callbacks.error(peer->id, event::error_t::INVALID_SOCKET, ::strerror(errno));
+											peer->callbacks.error(peer->id, event::error_t::INVALID_SOCKET, ::__awh_strerror__(errno));
 										// Если функция обратного вызова для вывода события не установлена
 										else {
 											/**
@@ -16334,13 +16395,13 @@ namespace io {
 											 */
 											#if DEBUG_MODE
 												// Записываем ошибку в лог
-												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(peer, peer->id), log_t::flag_t::WARNING, ::strerror(errno));
+												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(peer, peer->id), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
 												// Записываем ошибку в лог
-												log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+												log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 											#endif
 										}
 										// Выполняем удаление узла
@@ -16480,7 +16541,7 @@ namespace io {
 							// Если установлена функция обратного вызова
 							if(peer->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
-								peer->callbacks.error(peer->id, event::error_t::INVALID_SOCKET, ::strerror(errno));
+								peer->callbacks.error(peer->id, event::error_t::INVALID_SOCKET, ::__awh_strerror__(errno));
 							// Если функция обратного вызова для вывода события не установлена
 							else {
 								/**
@@ -16488,13 +16549,13 @@ namespace io {
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(peer, peer->id), log_t::flag_t::WARNING, ::strerror(errno));
+									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(peer, peer->id), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+									log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 								#endif
 							}
 							// Если сокет повреждён
@@ -16586,7 +16647,7 @@ namespace io {
 									// Если установлена функция обратного вызова
 									if(peer->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
-										peer->callbacks.error(peer->id, event::error_t::INVALID_SOCKET, ::strerror(errno));
+										peer->callbacks.error(peer->id, event::error_t::INVALID_SOCKET, ::__awh_strerror__(errno));
 									// Если функция обратного вызова для вывода события не установлена
 									else {
 										/**
@@ -16594,13 +16655,13 @@ namespace io {
 										 */
 										#if DEBUG_MODE
 											// Записываем ошибку в лог
-											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(peer, peer->id), log_t::flag_t::WARNING, ::strerror(errno));
+											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(peer, peer->id), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
 											// Записываем ошибку в лог
-											log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+											log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 										#endif
 									}
 									// Выполняем удаление узла
@@ -16689,7 +16750,7 @@ namespace io {
 							// Если установлена функция обратного вызова
 							if(peer->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
-								peer->callbacks.error(peer->id, event::error_t::INVALID_SOCKET, ::strerror(errno));
+								peer->callbacks.error(peer->id, event::error_t::INVALID_SOCKET, ::__awh_strerror__(errno));
 							// Если функция обратного вызова для вывода события не установлена
 							else {
 								/**
@@ -16697,13 +16758,13 @@ namespace io {
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(peer, peer->id), log_t::flag_t::WARNING, ::strerror(errno));
+									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(peer, peer->id), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+									log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 								#endif
 							}
 							// Если сокет повреждён
@@ -16900,7 +16961,7 @@ namespace io {
 							// Если установлена функция обратного вызова
 							if(tunnel->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
-								tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, ::strerror(errno));
+								tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, ::__awh_strerror__(errno));
 							// Если функция обратного вызова для вывода события не установлена
 							else {
 								/**
@@ -16908,13 +16969,13 @@ namespace io {
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(tunnel, tunnel->id), log_t::flag_t::WARNING, ::strerror(errno));
+									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(tunnel, tunnel->id), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+									log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 								#endif
 							}
 							// Выполняем удаление узла
@@ -17398,7 +17459,7 @@ namespace io {
 							// Если установлена функция обратного вызова
 							if(tunnel->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
-								tunnel->callbacks.error(tunnel->id, error, ::strerror(errno));
+								tunnel->callbacks.error(tunnel->id, error, ::__awh_strerror__(errno));
 							// Если функция обратного вызова для вывода события не установлена
 							else {
 								/**
@@ -17406,13 +17467,13 @@ namespace io {
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(tunnel, tunnel->id), log_t::flag_t::WARNING, ::strerror(errno));
+									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(tunnel, tunnel->id), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+									log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 								#endif
 							}
 							// Если сокет повреждён
@@ -17438,7 +17499,7 @@ namespace io {
 					// Если установлена функция обратного вызова
 					if(tunnel->callbacks.error != nullptr)
 						// Вызываем функцию обратного вызова ошибки события
-						tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, ::strerror(errno));
+						tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, ::__awh_strerror__(errno));
 					// Если функция обратного вызова для вывода события не установлена
 					else {
 						/**
@@ -17446,13 +17507,13 @@ namespace io {
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(tunnel, tunnel->id), log_t::flag_t::WARNING, ::strerror(errno));
+							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(tunnel, tunnel->id), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+							log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 						#endif
 					}
 					// Выполняем удаление узла
@@ -17933,7 +17994,7 @@ namespace io {
 						// Если установлена функция обратного вызова
 						if(tunnel->callbacks.error != nullptr)
 							// Вызываем функцию обратного вызова ошибки события
-							tunnel->callbacks.error(tunnel->id, error, ::strerror(errno));
+							tunnel->callbacks.error(tunnel->id, error, ::__awh_strerror__(errno));
 						// Если функция обратного вызова для вывода события не установлена
 						else {
 							/**
@@ -17941,13 +18002,13 @@ namespace io {
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								log->debug("%s", __PRETTY_FUNCTION__, make_tuple(tunnel, tunnel->id), log_t::flag_t::WARNING, ::strerror(errno));
+								log->debug("%s", __PRETTY_FUNCTION__, make_tuple(tunnel, tunnel->id), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+								log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 							#endif
 						}
 						// Если сокет повреждён
@@ -18091,7 +18152,7 @@ namespace io {
 										// Если установлена функция обратного вызова
 										if(client->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
-											client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, ::strerror(errno));
+											client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, ::__awh_strerror__(errno));
 										// Если функция обратного вызова для вывода события не установлена
 										else {
 											/**
@@ -18099,13 +18160,13 @@ namespace io {
 											 */
 											#if DEBUG_MODE
 												// Записываем ошибку в лог
-												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::WARNING, ::strerror(errno));
+												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
 												// Записываем ошибку в лог
-												log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+												log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 											#endif
 										}
 										// Выполняем удаление узла
@@ -18245,7 +18306,7 @@ namespace io {
 							// Если установлена функция обратного вызова
 							if(client->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
-								client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, ::strerror(errno));
+								client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, ::__awh_strerror__(errno));
 							// Если функция обратного вызова для вывода события не установлена
 							else {
 								/**
@@ -18253,13 +18314,13 @@ namespace io {
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::WARNING, ::strerror(errno));
+									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+									log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 								#endif
 							}
 							// Если сокет повреждён
@@ -18494,7 +18555,7 @@ namespace io {
 										// Если установлена функция обратного вызова
 										if(client->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
-											client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, ::strerror(errno));
+											client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, ::__awh_strerror__(errno));
 										// Если функция обратного вызова для вывода события не установлена
 										else {
 											/**
@@ -18502,13 +18563,13 @@ namespace io {
 											 */
 											#if DEBUG_MODE
 												// Записываем ошибку в лог
-												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::WARNING, ::strerror(errno));
+												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
 												// Записываем ошибку в лог
-												log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+												log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 											#endif
 										}
 										// Выполняем удаление узла
@@ -18742,7 +18803,7 @@ namespace io {
 								// Если установлена функция обратного вызова
 								if(client->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
-									client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, ::strerror(errno));
+									client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, ::__awh_strerror__(errno));
 								// Если функция обратного вызова для вывода события не установлена
 								else {
 									/**
@@ -18750,13 +18811,13 @@ namespace io {
 									 */
 									#if DEBUG_MODE
 										// Записываем ошибку в лог
-										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::WARNING, ::strerror(errno));
+										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
 										// Записываем ошибку в лог
-										log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+										log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 									#endif
 								}
 								// Если сокет повреждён
@@ -18997,7 +19058,7 @@ namespace io {
 										// Если установлена функция обратного вызова
 										if(client->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
-											client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, ::strerror(errno));
+											client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, ::__awh_strerror__(errno));
 										// Если функция обратного вызова для вывода события не установлена
 										else {
 											/**
@@ -19005,13 +19066,13 @@ namespace io {
 											 */
 											#if DEBUG_MODE
 												// Записываем ошибку в лог
-												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::WARNING, ::strerror(errno));
+												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
 												// Записываем ошибку в лог
-												log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+												log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 											#endif
 										}
 										// Выполняем удаление узла
@@ -19258,7 +19319,7 @@ namespace io {
 								// Если установлена функция обратного вызова
 								if(client->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
-									client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, ::strerror(errno));
+									client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, ::__awh_strerror__(errno));
 								// Если функция обратного вызова для вывода события не установлена
 								else {
 									/**
@@ -19266,13 +19327,13 @@ namespace io {
 									 */
 									#if DEBUG_MODE
 										// Записываем ошибку в лог
-										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::WARNING, ::strerror(errno));
+										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
 										// Записываем ошибку в лог
-										log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+										log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 									#endif
 								}
 								// Если сокет повреждён
@@ -19365,7 +19426,7 @@ namespace io {
 										// Если установлена функция обратного вызова
 										if(client->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
-											client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, ::strerror(errno));
+											client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, ::__awh_strerror__(errno));
 										// Если функция обратного вызова для вывода события не установлена
 										else {
 											/**
@@ -19373,13 +19434,13 @@ namespace io {
 											 */
 											#if DEBUG_MODE
 												// Записываем ошибку в лог
-												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::WARNING, ::strerror(errno));
+												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
 												// Записываем ошибку в лог
-												log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+												log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 											#endif
 										}
 										// Выполняем удаление узла
@@ -19468,7 +19529,7 @@ namespace io {
 								// Если установлена функция обратного вызова
 								if(client->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
-									client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, ::strerror(errno));
+									client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, ::__awh_strerror__(errno));
 								// Если функция обратного вызова для вывода события не установлена
 								else {
 									/**
@@ -19476,13 +19537,13 @@ namespace io {
 									 */
 									#if DEBUG_MODE
 										// Записываем ошибку в лог
-										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::WARNING, ::strerror(errno));
+										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
 										// Записываем ошибку в лог
-										log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+										log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 									#endif
 								}
 								// Если сокет повреждён
@@ -19577,7 +19638,7 @@ namespace io {
 										// Если установлена функция обратного вызова
 										if(client->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
-											client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, ::strerror(errno));
+											client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, ::__awh_strerror__(errno));
 										// Если функция обратного вызова для вывода события не установлена
 										else {
 											/**
@@ -19585,13 +19646,13 @@ namespace io {
 											 */
 											#if DEBUG_MODE
 												// Записываем ошибку в лог
-												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::WARNING, ::strerror(errno));
+												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
 												// Записываем ошибку в лог
-												log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+												log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 											#endif
 										}
 										// Выполняем удаление узла
@@ -19686,7 +19747,7 @@ namespace io {
 								// Если установлена функция обратного вызова
 								if(client->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
-									client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, ::strerror(errno));
+									client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, ::__awh_strerror__(errno));
 								// Если функция обратного вызова для вывода события не установлена
 								else {
 									/**
@@ -19694,13 +19755,13 @@ namespace io {
 									 */
 									#if DEBUG_MODE
 										// Записываем ошибку в лог
-										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::WARNING, ::strerror(errno));
+										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
 										// Записываем ошибку в лог
-										log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+										log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 									#endif
 								}
 								// Если сокет повреждён
@@ -20075,7 +20136,7 @@ namespace io {
 										// Если установлена функция обратного вызова
 										if(server->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
-											server->callbacks.error(server->id, event::error_t::INVALID_SOCKET, ::strerror(errno));
+											server->callbacks.error(server->id, event::error_t::INVALID_SOCKET, ::__awh_strerror__(errno));
 										// Если функция обратного вызова для вывода события не установлена
 										else {
 											/**
@@ -20083,13 +20144,13 @@ namespace io {
 											 */
 											#if DEBUG_MODE
 												// Записываем ошибку в лог
-												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::WARNING, ::strerror(errno));
+												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
 												// Записываем ошибку в лог
-												log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+												log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 											#endif
 										}
 									}
@@ -20174,7 +20235,7 @@ namespace io {
 										// Если установлена функция обратного вызова
 										if(server->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
-											server->callbacks.error(server->id, error, ::strerror(errno));
+											server->callbacks.error(server->id, error, ::__awh_strerror__(errno));
 										// Если функция обратного вызова для вывода события не установлена
 										else {
 											/**
@@ -20182,13 +20243,13 @@ namespace io {
 											 */
 											#if DEBUG_MODE
 												// Записываем ошибку в лог
-												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::WARNING, ::strerror(errno));
+												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
 												// Записываем ошибку в лог
-												log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+												log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 											#endif
 										}
 										// Если сокет повреждён
@@ -20366,7 +20427,7 @@ namespace io {
 								// Если установлена функция обратного вызова
 								if(server->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
-									server->callbacks.error(server->id, event::error_t::INVALID_SOCKET, ::strerror(errno));
+									server->callbacks.error(server->id, event::error_t::INVALID_SOCKET, ::__awh_strerror__(errno));
 								// Если функция обратного вызова для вывода события не установлена
 								else {
 									/**
@@ -20374,13 +20435,13 @@ namespace io {
 									 */
 									#if DEBUG_MODE
 										// Записываем ошибку в лог
-										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::WARNING, ::strerror(errno));
+										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
 										// Записываем ошибку в лог
-										log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+										log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 									#endif
 								}
 							// Если мы получили данные из сокета
@@ -20432,7 +20493,7 @@ namespace io {
 									// Если установлена функция обратного вызова
 									if(server->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
-										server->callbacks.error(server->id, error, ::strerror(errno));
+										server->callbacks.error(server->id, error, ::__awh_strerror__(errno));
 									// Если функция обратного вызова для вывода события не установлена
 									else {
 										/**
@@ -20440,13 +20501,13 @@ namespace io {
 										 */
 										#if DEBUG_MODE
 											// Записываем ошибку в лог
-											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::WARNING, ::strerror(errno));
+											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
 											// Записываем ошибку в лог
-											log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+											log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 										#endif
 									}
 									// Если сокет повреждён
@@ -20661,7 +20722,7 @@ namespace io {
 											// Если установлена функция обратного вызова
 											if(ipc->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
-												ipc->callbacks.error(ipc->id, error, ::strerror(errno));
+												ipc->callbacks.error(ipc->id, error, ::__awh_strerror__(errno));
 											// Если функция обратного вызова для вывода события не установлена
 											else {
 												/**
@@ -20669,13 +20730,13 @@ namespace io {
 												 */
 												#if DEBUG_MODE
 													// Записываем ошибку в лог
-													log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ipc, ipc->id), log_t::flag_t::WARNING, ::strerror(errno));
+													log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ipc, ipc->id), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
 													// Записываем ошибку в лог
-													log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+													log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 												#endif
 											}
 											// Если сокет повреждён
@@ -20839,7 +20900,7 @@ namespace io {
 									// Если установлена функция обратного вызова
 									if(ipc->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
-										ipc->callbacks.error(ipc->id, error, ::strerror(errno));
+										ipc->callbacks.error(ipc->id, error, ::__awh_strerror__(errno));
 									// Если функция обратного вызова для вывода события не установлена
 									else {
 										/**
@@ -20847,13 +20908,13 @@ namespace io {
 										 */
 										#if DEBUG_MODE
 											// Записываем ошибку в лог
-											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ipc, ipc->id), log_t::flag_t::WARNING, ::strerror(errno));
+											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ipc, ipc->id), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
 											// Записываем ошибку в лог
-											log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+											log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 										#endif
 									}
 									// Если сокет повреждён
@@ -21012,7 +21073,7 @@ namespace io {
 									// Если установлена функция обратного вызова
 									if(ipc->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
-										ipc->callbacks.error(ipc->id, error, ::strerror(errno));
+										ipc->callbacks.error(ipc->id, error, ::__awh_strerror__(errno));
 									// Если функция обратного вызова для вывода события не установлена
 									else {
 										/**
@@ -21020,13 +21081,13 @@ namespace io {
 										 */
 										#if DEBUG_MODE
 											// Записываем ошибку в лог
-											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ipc, ipc->id), log_t::flag_t::WARNING, ::strerror(errno));
+											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ipc, ipc->id), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
 											// Записываем ошибку в лог
-											log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+											log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 										#endif
 									}
 									// Если сокет повреждён
@@ -21220,7 +21281,7 @@ namespace io {
 											// Если установлена функция обратного вызова
 											if(peer->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
-												peer->callbacks.error(peer->id, error, ::strerror(errno));
+												peer->callbacks.error(peer->id, error, ::__awh_strerror__(errno));
 											// Если функция обратного вызова для вывода события не установлена
 											else {
 												/**
@@ -21228,13 +21289,13 @@ namespace io {
 												 */
 												#if DEBUG_MODE
 													// Записываем ошибку в лог
-													log->debug("%s", __PRETTY_FUNCTION__, make_tuple(peer, peer->id), log_t::flag_t::WARNING, ::strerror(errno));
+													log->debug("%s", __PRETTY_FUNCTION__, make_tuple(peer, peer->id), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
 													// Записываем ошибку в лог
-													log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+													log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 												#endif
 											}
 											// Если сокет повреждён
@@ -21661,7 +21722,7 @@ namespace io {
 											// Если установлена функция обратного вызова
 											if(peer->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
-												peer->callbacks.error(peer->id, error, ::strerror(errno));
+												peer->callbacks.error(peer->id, error, ::__awh_strerror__(errno));
 											// Если функция обратного вызова для вывода события не установлена
 											else {
 												/**
@@ -21669,13 +21730,13 @@ namespace io {
 												 */
 												#if DEBUG_MODE
 													// Записываем ошибку в лог
-													log->debug("%s", __PRETTY_FUNCTION__, make_tuple(peer, peer->id), log_t::flag_t::WARNING, ::strerror(errno));
+													log->debug("%s", __PRETTY_FUNCTION__, make_tuple(peer, peer->id), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
 													// Записываем ошибку в лог
-													log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+													log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 												#endif
 											}
 											// Если сокет повреждён
@@ -22118,7 +22179,7 @@ namespace io {
 											// Если установлена функция обратного вызова
 											if(origin->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
-												origin->callbacks.error(origin->id, error, ::strerror(errno));
+												origin->callbacks.error(origin->id, error, ::__awh_strerror__(errno));
 											// Если функция обратного вызова для вывода события не установлена
 											else {
 												/**
@@ -22126,13 +22187,13 @@ namespace io {
 												 */
 												#if DEBUG_MODE
 													// Записываем ошибку в лог
-													log->debug("%s", __PRETTY_FUNCTION__, make_tuple(origin, origin->id), log_t::flag_t::WARNING, ::strerror(errno));
+													log->debug("%s", __PRETTY_FUNCTION__, make_tuple(origin, origin->id), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
 													// Записываем ошибку в лог
-													log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+													log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 												#endif
 											}
 											// Если сокет повреждён
@@ -22551,7 +22612,7 @@ namespace io {
 							// Если установлена функция обратного вызова
 							if(tunnel->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
-								tunnel->callbacks.error(tunnel->id, error, ::strerror(errno));
+								tunnel->callbacks.error(tunnel->id, error, ::__awh_strerror__(errno));
 							// Если функция обратного вызова для вывода события не установлена
 							else {
 								/**
@@ -22559,13 +22620,13 @@ namespace io {
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(tunnel, tunnel->id), log_t::flag_t::WARNING, ::strerror(errno));
+									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(tunnel, tunnel->id), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+									log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 								#endif
 							}
 							// Если сокет повреждён
@@ -22742,7 +22803,7 @@ namespace io {
 											// Если установлена функция обратного вызова
 											if(client->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
-												client->callbacks.error(client->id, error, ::strerror(errno));
+												client->callbacks.error(client->id, error, ::__awh_strerror__(errno));
 											// Если функция обратного вызова для вывода события не установлена
 											else {
 												/**
@@ -22750,13 +22811,13 @@ namespace io {
 												 */
 												#if DEBUG_MODE
 													// Записываем ошибку в лог
-													log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::WARNING, ::strerror(errno));
+													log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
 													// Записываем ошибку в лог
-													log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+													log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 												#endif
 											}
 											// Если сокет повреждён
@@ -23197,7 +23258,7 @@ namespace io {
 											// Если установлена функция обратного вызова
 											if(client->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
-												client->callbacks.error(client->id, error, ::strerror(errno));
+												client->callbacks.error(client->id, error, ::__awh_strerror__(errno));
 											// Если функция обратного вызова для вывода события не установлена
 											else {
 												/**
@@ -23205,13 +23266,13 @@ namespace io {
 												 */
 												#if DEBUG_MODE
 													// Записываем ошибку в лог
-													log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::WARNING, ::strerror(errno));
+													log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
 													// Записываем ошибку в лог
-													log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+													log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 												#endif
 											}
 											// Если сокет повреждён
@@ -23589,7 +23650,7 @@ namespace io {
 											// Если установлена функция обратного вызова
 											if(client->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
-												client->callbacks.error(client->id, error, ::strerror(errno));
+												client->callbacks.error(client->id, error, ::__awh_strerror__(errno));
 											// Если функция обратного вызова для вывода события не установлена
 											else {
 												/**
@@ -23597,13 +23658,13 @@ namespace io {
 												 */
 												#if DEBUG_MODE
 													// Записываем ошибку в лог
-													log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::WARNING, ::strerror(errno));
+													log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
 													// Записываем ошибку в лог
-													log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+													log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 												#endif
 											}
 											// Если сокет повреждён
@@ -24163,7 +24224,7 @@ namespace io {
 										// Если установлена функция обратного вызова
 										if(origin->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
-											origin->callbacks.error(origin->id, error, ::strerror(errno));
+											origin->callbacks.error(origin->id, error, ::__awh_strerror__(errno));
 										// Если функция обратного вызова для вывода события не установлена
 										else {
 											/**
@@ -24171,13 +24232,13 @@ namespace io {
 											 */
 											#if DEBUG_MODE
 												// Записываем ошибку в лог
-												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::WARNING, ::strerror(errno));
+												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
 												// Записываем ошибку в лог
-												log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+												log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 											#endif
 										}
 										// Если сокет повреждён
@@ -24294,7 +24355,7 @@ namespace io {
 				// Если установлена функция обратного вызова
 				if(fs->callbacks.error != nullptr)
 					// Вызываем функцию обратного вызова ошибки события
-					fs->callbacks.error(fs->id, event::error_t::EVENT_FAIL, ::strerror(errno));
+					fs->callbacks.error(fs->id, event::error_t::EVENT_FAIL, ::__awh_strerror__(errno));
 				// Если функция обратного вызова вывода ошибки не установлена
 				else {
 					/**
@@ -24302,13 +24363,13 @@ namespace io {
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, ::strerror(errno));
+						log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, ::__awh_strerror__(errno));
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+						log->print("%s", log_t::flag_t::CRITICAL, ::__awh_strerror__(errno));
 					#endif
 				}
 				// Выходим из функции с ошибкой
@@ -24495,7 +24556,7 @@ namespace io {
 									// Если установлена функция обратного вызова
 									if(ipc->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
-										ipc->callbacks.error(ipc->id, error, ::strerror(errno));
+										ipc->callbacks.error(ipc->id, error, ::__awh_strerror__(errno));
 									// Если функция обратного вызова для вывода события не установлена
 									else {
 										/**
@@ -24503,13 +24564,13 @@ namespace io {
 										 */
 										#if DEBUG_MODE
 											// Записываем ошибку в лог
-											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
 											// Записываем ошибку в лог
-											log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+											log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 										#endif
 									}
 									// Если сокет повреждён
@@ -24585,7 +24646,7 @@ namespace io {
 									// Если установлена функция обратного вызова
 									if(ipc->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
-										ipc->callbacks.error(ipc->id, event::error_t::INVALID_SOCKET, ::strerror(errno));
+										ipc->callbacks.error(ipc->id, event::error_t::INVALID_SOCKET, ::__awh_strerror__(errno));
 									// Если функция обратного вызова для вывода события не установлена
 									else {
 										/**
@@ -24593,13 +24654,13 @@ namespace io {
 										 */
 										#if DEBUG_MODE
 											// Записываем ошибку в лог
-											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
 											// Записываем ошибку в лог
-											log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+											log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 										#endif
 									}
 									// Если данные не отправлены и нужно подождать
@@ -24692,7 +24753,7 @@ namespace io {
 							// Если установлена функция обратного вызова
 							if(ipc->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
-								ipc->callbacks.error(ipc->id, event::error_t::INVALID_SOCKET, ::strerror(errno));
+								ipc->callbacks.error(ipc->id, event::error_t::INVALID_SOCKET, ::__awh_strerror__(errno));
 							// Если функция обратного вызова для вывода события не установлена
 							else {
 								/**
@@ -24700,13 +24761,13 @@ namespace io {
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+									log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 								#endif
 							}
 							// Если функция обратного вызова для возврата данных при неудачной отправке установлена
@@ -24801,7 +24862,7 @@ namespace io {
 									// Если установлена функция обратного вызова
 									if(ipc->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
-										ipc->callbacks.error(ipc->id, error, ::strerror(errno));
+										ipc->callbacks.error(ipc->id, error, ::__awh_strerror__(errno));
 									// Если функция обратного вызова для вывода события не установлена
 									else {
 										/**
@@ -24809,13 +24870,13 @@ namespace io {
 										 */
 										#if DEBUG_MODE
 											// Записываем ошибку в лог
-											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
 											// Записываем ошибку в лог
-											log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+											log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 										#endif
 									}
 									// Если сокет повреждён
@@ -24929,7 +24990,7 @@ namespace io {
 										// Если установлена функция обратного вызова
 										if(ipc->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
-											ipc->callbacks.error(ipc->id, error, ::strerror(errno));
+											ipc->callbacks.error(ipc->id, error, ::__awh_strerror__(errno));
 										// Если функция обратного вызова для вывода события не установлена
 										else {
 											/**
@@ -24937,13 +24998,13 @@ namespace io {
 											 */
 											#if DEBUG_MODE
 												// Записываем ошибку в лог
-												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
 												// Записываем ошибку в лог
-												log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+												log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 											#endif
 										}
 										// Если сокет повреждён
@@ -25045,7 +25106,7 @@ namespace io {
 								// Если установлена функция обратного вызова
 								if(ipc->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
-									ipc->callbacks.error(ipc->id, error, ::strerror(errno));
+									ipc->callbacks.error(ipc->id, error, ::__awh_strerror__(errno));
 								// Если функция обратного вызова для вывода события не установлена
 								else {
 									/**
@@ -25053,13 +25114,13 @@ namespace io {
 									 */
 									#if DEBUG_MODE
 										// Записываем ошибку в лог
-										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
 										// Записываем ошибку в лог
-										log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+										log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 									#endif
 								}
 								// Если сокет повреждён
@@ -25233,7 +25294,7 @@ namespace io {
 											// Если установлена функция обратного вызова
 											if(peer->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
-												peer->callbacks.error(peer->id, error, ::strerror(errno));
+												peer->callbacks.error(peer->id, error, ::__awh_strerror__(errno));
 											// Если функция обратного вызова для вывода события не установлена
 											else {
 												/**
@@ -25241,13 +25302,13 @@ namespace io {
 												 */
 												#if DEBUG_MODE
 													// Записываем ошибку в лог
-													log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+													log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
 													// Записываем ошибку в лог
-													log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+													log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 												#endif
 											}
 											// Если сокет повреждён
@@ -25641,7 +25702,7 @@ namespace io {
 										// Если установлена функция обратного вызова
 										if(peer->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
-											peer->callbacks.error(peer->id, event::error_t::INVALID_SOCKET, ::strerror(errno));
+											peer->callbacks.error(peer->id, event::error_t::INVALID_SOCKET, ::__awh_strerror__(errno));
 										// Если функция обратного вызова для вывода события не установлена
 										else {
 											/**
@@ -25649,13 +25710,13 @@ namespace io {
 											 */
 											#if DEBUG_MODE
 												// Записываем ошибку в лог
-												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
 												// Записываем ошибку в лог
-												log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+												log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 											#endif
 										}
 										// Если сокет повреждён
@@ -25974,7 +26035,7 @@ namespace io {
 							// Если установлена функция обратного вызова
 							if(peer->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
-								peer->callbacks.error(peer->id, event::error_t::INVALID_SOCKET, ::strerror(errno));
+								peer->callbacks.error(peer->id, event::error_t::INVALID_SOCKET, ::__awh_strerror__(errno));
 							// Если функция обратного вызова для вывода события не установлена
 							else {
 								/**
@@ -25982,13 +26043,13 @@ namespace io {
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+									log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 								#endif
 							}
 							// Если сокет повреждён
@@ -26092,7 +26153,7 @@ namespace io {
 											// Если установлена функция обратного вызова
 											if(peer->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
-												peer->callbacks.error(peer->id, error, ::strerror(errno));
+												peer->callbacks.error(peer->id, error, ::__awh_strerror__(errno));
 											// Если функция обратного вызова для вывода события не установлена
 											else {
 												/**
@@ -26100,13 +26161,13 @@ namespace io {
 												 */
 												#if DEBUG_MODE
 													// Записываем ошибку в лог
-													log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+													log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
 													// Записываем ошибку в лог
-													log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+													log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 												#endif
 											}
 											// Если сокет повреждён
@@ -26428,7 +26489,7 @@ namespace io {
 												// Если установлена функция обратного вызова
 												if(peer->callbacks.error != nullptr)
 													// Вызываем функцию обратного вызова ошибки события
-													peer->callbacks.error(peer->id, error, ::strerror(errno));
+													peer->callbacks.error(peer->id, error, ::__awh_strerror__(errno));
 												// Если функция обратного вызова для вывода события не установлена
 												else {
 													/**
@@ -26436,13 +26497,13 @@ namespace io {
 													 */
 													#if DEBUG_MODE
 														// Записываем ошибку в лог
-														log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+														log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 													/**
 													 * Если режим отладки не включён
 													 */
 													#else
 														// Записываем ошибку в лог
-														log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+														log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 													#endif
 												}
 												// Если сокет повреждён
@@ -26738,7 +26799,7 @@ namespace io {
 								// Если установлена функция обратного вызова
 								if(peer->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
-									peer->callbacks.error(peer->id, error, ::strerror(errno));
+									peer->callbacks.error(peer->id, error, ::__awh_strerror__(errno));
 								// Если функция обратного вызова для вывода события не установлена
 								else {
 									/**
@@ -26746,13 +26807,13 @@ namespace io {
 									 */
 									#if DEBUG_MODE
 										// Записываем ошибку в лог
-										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
 										// Записываем ошибку в лог
-										log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+										log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 									#endif
 								}
 								// Если сокет повреждён
@@ -26953,7 +27014,7 @@ namespace io {
 											// Если установлена функция обратного вызова
 											if(origin->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
-												origin->callbacks.error(origin->id, error, ::strerror(errno));
+												origin->callbacks.error(origin->id, error, ::__awh_strerror__(errno));
 											// Если функция обратного вызова для вывода события не установлена
 											else {
 												/**
@@ -26961,13 +27022,13 @@ namespace io {
 												 */
 												#if DEBUG_MODE
 													// Записываем ошибку в лог
-													log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+													log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
 													// Записываем ошибку в лог
-													log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+													log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 												#endif
 											}
 											// Если сокет повреждён
@@ -27255,7 +27316,7 @@ namespace io {
 												// Если установлена функция обратного вызова
 												if(origin->callbacks.error != nullptr)
 													// Вызываем функцию обратного вызова ошибки события
-													origin->callbacks.error(origin->id, error, ::strerror(errno));
+													origin->callbacks.error(origin->id, error, ::__awh_strerror__(errno));
 												// Если функция обратного вызова для вывода события не установлена
 												else {
 													/**
@@ -27263,13 +27324,13 @@ namespace io {
 													 */
 													#if DEBUG_MODE
 														// Записываем ошибку в лог
-														log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+														log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 													/**
 													 * Если режим отладки не включён
 													 */
 													#else
 														// Записываем ошибку в лог
-														log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+														log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 													#endif
 												}
 												// Если сокет повреждён
@@ -27494,7 +27555,7 @@ namespace io {
 								// Если установлена функция обратного вызова
 								if(origin->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
-									origin->callbacks.error(origin->id, error, ::strerror(errno));
+									origin->callbacks.error(origin->id, error, ::__awh_strerror__(errno));
 								// Если функция обратного вызова для вывода события не установлена
 								else {
 									/**
@@ -27502,13 +27563,13 @@ namespace io {
 									 */
 									#if DEBUG_MODE
 										// Записываем ошибку в лог
-										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
 										// Записываем ошибку в лог
-										log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+										log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 									#endif
 								}
 								// Если сокет повреждён
@@ -27691,7 +27752,7 @@ namespace io {
 							// Если установлена функция обратного вызова
 							if(tunnel->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
-								tunnel->callbacks.error(tunnel->id, error, ::strerror(errno));
+								tunnel->callbacks.error(tunnel->id, error, ::__awh_strerror__(errno));
 							// Если функция обратного вызова для вывода события не установлена
 							else {
 								/**
@@ -27699,13 +27760,13 @@ namespace io {
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+									log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 								#endif
 							}
 							// Если сокет повреждён
@@ -28027,7 +28088,7 @@ namespace io {
 							// Если установлена функция обратного вызова
 							if(tunnel->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
-								tunnel->callbacks.error(tunnel->id, error, ::strerror(errno));
+								tunnel->callbacks.error(tunnel->id, error, ::__awh_strerror__(errno));
 							// Если функция обратного вызова для вывода события не установлена
 							else {
 								/**
@@ -28035,13 +28096,13 @@ namespace io {
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+									log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 								#endif
 							}
 							// Если сокет повреждён
@@ -28353,7 +28414,7 @@ namespace io {
 						// Если установлена функция обратного вызова
 						if(tunnel->callbacks.error != nullptr)
 							// Вызываем функцию обратного вызова ошибки события
-							tunnel->callbacks.error(tunnel->id, error, ::strerror(errno));
+							tunnel->callbacks.error(tunnel->id, error, ::__awh_strerror__(errno));
 						// Если функция обратного вызова для вывода события не установлена
 						else {
 							/**
@@ -28361,13 +28422,13 @@ namespace io {
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+								log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+								log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 							#endif
 						}
 						// Если сокет повреждён
@@ -28802,7 +28863,7 @@ namespace io {
 											// Если установлена функция обратного вызова
 											if(client->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
-												client->callbacks.error(client->id, error, ::strerror(errno));
+												client->callbacks.error(client->id, error, ::__awh_strerror__(errno));
 											// Если функция обратного вызова для вывода события не установлена
 											else {
 												/**
@@ -28810,13 +28871,13 @@ namespace io {
 												 */
 												#if DEBUG_MODE
 													// Записываем ошибку в лог
-													log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+													log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
 													// Записываем ошибку в лог
-													log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+													log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 												#endif
 											}
 											// Если сокет повреждён
@@ -29210,7 +29271,7 @@ namespace io {
 										// Если установлена функция обратного вызова
 										if(client->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
-											client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, ::strerror(errno));
+											client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, ::__awh_strerror__(errno));
 										// Если функция обратного вызова для вывода события не установлена
 										else {
 											/**
@@ -29218,13 +29279,13 @@ namespace io {
 											 */
 											#if DEBUG_MODE
 												// Записываем ошибку в лог
-												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
 												// Записываем ошибку в лог
-												log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+												log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 											#endif
 										}
 										// Если сокет повреждён
@@ -29543,7 +29604,7 @@ namespace io {
 							// Если установлена функция обратного вызова
 							if(client->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
-								client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, ::strerror(errno));
+								client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, ::__awh_strerror__(errno));
 							// Если функция обратного вызова для вывода события не установлена
 							else {
 								/**
@@ -29551,13 +29612,13 @@ namespace io {
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+									log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 								#endif
 							}
 							// Если сокет повреждён
@@ -29663,7 +29724,7 @@ namespace io {
 												// Если установлена функция обратного вызова
 												if(client->callbacks.error != nullptr)
 													// Вызываем функцию обратного вызова ошибки события
-													client->callbacks.error(client->id, error, ::strerror(errno));
+													client->callbacks.error(client->id, error, ::__awh_strerror__(errno));
 												// Если функция обратного вызова для вывода события не установлена
 												else {
 													/**
@@ -29671,13 +29732,13 @@ namespace io {
 													 */
 													#if DEBUG_MODE
 														// Записываем ошибку в лог
-														log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+														log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 													/**
 													 * Если режим отладки не включён
 													 */
 													#else
 														// Записываем ошибку в лог
-														log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+														log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 													#endif
 												}
 												// Если сокет повреждён
@@ -29997,7 +30058,7 @@ namespace io {
 													// Если установлена функция обратного вызова
 													if(client->callbacks.error != nullptr)
 														// Вызываем функцию обратного вызова ошибки события
-														client->callbacks.error(client->id, error, ::strerror(errno));
+														client->callbacks.error(client->id, error, ::__awh_strerror__(errno));
 													// Если функция обратного вызова для вывода события не установлена
 													else {
 														/**
@@ -30005,13 +30066,13 @@ namespace io {
 														 */
 														#if DEBUG_MODE
 															// Записываем ошибку в лог
-															log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+															log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 														/**
 														 * Если режим отладки не включён
 														 */
 														#else
 															// Записываем ошибку в лог
-															log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+															log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 														#endif
 													}
 													// Если сокет повреждён
@@ -30305,7 +30366,7 @@ namespace io {
 									// Если установлена функция обратного вызова
 									if(client->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
-										client->callbacks.error(client->id, error, ::strerror(errno));
+										client->callbacks.error(client->id, error, ::__awh_strerror__(errno));
 									// Если функция обратного вызова для вывода события не установлена
 									else {
 										/**
@@ -30313,13 +30374,13 @@ namespace io {
 										 */
 										#if DEBUG_MODE
 											// Записываем ошибку в лог
-											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
 											// Записываем ошибку в лог
-											log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+											log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 										#endif
 									}
 									// Если сокет повреждён
@@ -30421,7 +30482,7 @@ namespace io {
 												// Если установлена функция обратного вызова
 												if(client->callbacks.error != nullptr)
 													// Вызываем функцию обратного вызова ошибки события
-													client->callbacks.error(client->id, error, ::strerror(errno));
+													client->callbacks.error(client->id, error, ::__awh_strerror__(errno));
 												// Если функция обратного вызова для вывода события не установлена
 												else {
 													/**
@@ -30429,13 +30490,13 @@ namespace io {
 													 */
 													#if DEBUG_MODE
 														// Записываем ошибку в лог
-														log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+														log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 													/**
 													 * Если режим отладки не включён
 													 */
 													#else
 														// Записываем ошибку в лог
-														log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+														log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 													#endif
 												}
 												// Если сокет повреждён
@@ -30755,7 +30816,7 @@ namespace io {
 													// Если установлена функция обратного вызова
 													if(client->callbacks.error != nullptr)
 														// Вызываем функцию обратного вызова ошибки события
-														client->callbacks.error(client->id, error, ::strerror(errno));
+														client->callbacks.error(client->id, error, ::__awh_strerror__(errno));
 													// Если функция обратного вызова для вывода события не установлена
 													else {
 														/**
@@ -30763,13 +30824,13 @@ namespace io {
 														 */
 														#if DEBUG_MODE
 															// Записываем ошибку в лог
-															log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+															log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 														/**
 														 * Если режим отладки не включён
 														 */
 														#else
 															// Записываем ошибку в лог
-															log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+															log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 														#endif
 													}
 													// Если сокет повреждён
@@ -31063,7 +31124,7 @@ namespace io {
 									// Если установлена функция обратного вызова
 									if(client->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
-										client->callbacks.error(client->id, error, ::strerror(errno));
+										client->callbacks.error(client->id, error, ::__awh_strerror__(errno));
 									// Если функция обратного вызова для вывода события не установлена
 									else {
 										/**
@@ -31071,13 +31132,13 @@ namespace io {
 										 */
 										#if DEBUG_MODE
 											// Записываем ошибку в лог
-											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
 											// Записываем ошибку в лог
-											log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+											log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 										#endif
 									}
 									// Если сокет повреждён
@@ -31213,7 +31274,7 @@ namespace io {
 												// Если установлена функция обратного вызова
 												if(client->callbacks.error != nullptr)
 													// Вызываем функцию обратного вызова ошибки события
-													client->callbacks.error(client->id, error, ::strerror(errno));
+													client->callbacks.error(client->id, error, ::__awh_strerror__(errno));
 												// Если функция обратного вызова для вывода события не установлена
 												else {
 													/**
@@ -31221,13 +31282,13 @@ namespace io {
 													 */
 													#if DEBUG_MODE
 														// Записываем ошибку в лог
-														log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+														log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 													/**
 													 * Если режим отладки не включён
 													 */
 													#else
 														// Записываем ошибку в лог
-														log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+														log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 													#endif
 												}
 												// Если сокет повреждён
@@ -31549,7 +31610,7 @@ namespace io {
 													// Если установлена функция обратного вызова
 													if(client->callbacks.error != nullptr)
 														// Вызываем функцию обратного вызова ошибки события
-														client->callbacks.error(client->id, error, ::strerror(errno));
+														client->callbacks.error(client->id, error, ::__awh_strerror__(errno));
 													// Если функция обратного вызова для вывода события не установлена
 													else {
 														/**
@@ -31557,13 +31618,13 @@ namespace io {
 														 */
 														#if DEBUG_MODE
 															// Записываем ошибку в лог
-															log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+															log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 														/**
 														 * Если режим отладки не включён
 														 */
 														#else
 															// Записываем ошибку в лог
-															log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+															log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 														#endif
 													}
 													// Если сокет повреждён
@@ -31859,7 +31920,7 @@ namespace io {
 									// Если установлена функция обратного вызова
 									if(client->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
-										client->callbacks.error(client->id, error, ::strerror(errno));
+										client->callbacks.error(client->id, error, ::__awh_strerror__(errno));
 									// Если функция обратного вызова для вывода события не установлена
 									else {
 										/**
@@ -31867,13 +31928,13 @@ namespace io {
 										 */
 										#if DEBUG_MODE
 											// Записываем ошибку в лог
-											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
 											// Записываем ошибку в лог
-											log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+											log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 										#endif
 									}
 									// Если сокет повреждён
@@ -31977,7 +32038,7 @@ namespace io {
 												// Если установлена функция обратного вызова
 												if(client->callbacks.error != nullptr)
 													// Вызываем функцию обратного вызова ошибки события
-													client->callbacks.error(client->id, error, ::strerror(errno));
+													client->callbacks.error(client->id, error, ::__awh_strerror__(errno));
 												// Если функция обратного вызова для вывода события не установлена
 												else {
 													/**
@@ -31985,13 +32046,13 @@ namespace io {
 													 */
 													#if DEBUG_MODE
 														// Записываем ошибку в лог
-														log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+														log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 													/**
 													 * Если режим отладки не включён
 													 */
 													#else
 														// Записываем ошибку в лог
-														log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+														log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 													#endif
 												}
 												// Если сокет повреждён
@@ -32313,7 +32374,7 @@ namespace io {
 													// Если установлена функция обратного вызова
 													if(client->callbacks.error != nullptr)
 														// Вызываем функцию обратного вызова ошибки события
-														client->callbacks.error(client->id, error, ::strerror(errno));
+														client->callbacks.error(client->id, error, ::__awh_strerror__(errno));
 													// Если функция обратного вызова для вывода события не установлена
 													else {
 														/**
@@ -32321,13 +32382,13 @@ namespace io {
 														 */
 														#if DEBUG_MODE
 															// Записываем ошибку в лог
-															log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+															log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 														/**
 														 * Если режим отладки не включён
 														 */
 														#else
 															// Записываем ошибку в лог
-															log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+															log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 														#endif
 													}
 													// Если сокет повреждён
@@ -32623,7 +32684,7 @@ namespace io {
 									// Если установлена функция обратного вызова
 									if(client->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
-										client->callbacks.error(client->id, error, ::strerror(errno));
+										client->callbacks.error(client->id, error, ::__awh_strerror__(errno));
 									// Если функция обратного вызова для вывода события не установлена
 									else {
 										/**
@@ -32631,13 +32692,13 @@ namespace io {
 										 */
 										#if DEBUG_MODE
 											// Записываем ошибку в лог
-											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
 											// Записываем ошибку в лог
-											log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+											log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 										#endif
 									}
 									// Если сокет повреждён
@@ -32792,7 +32853,7 @@ namespace io {
 								// Если установлена функция обратного вызова
 								if(server->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
-									server->callbacks.error(server->id, error, ::strerror(errno));
+									server->callbacks.error(server->id, error, ::__awh_strerror__(errno));
 								// Если функция обратного вызова для вывода события не установлена
 								else {
 									/**
@@ -32800,13 +32861,13 @@ namespace io {
 									 */
 									#if DEBUG_MODE
 										// Записываем ошибку в лог
-										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
 										// Записываем ошибку в лог
-										log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+										log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 									#endif
 								}
 								// Если сокет повреждён
@@ -32888,7 +32949,7 @@ namespace io {
 									// Если установлена функция обратного вызова
 									if(server->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
-										server->callbacks.error(server->id, error, ::strerror(errno));
+										server->callbacks.error(server->id, error, ::__awh_strerror__(errno));
 									// Если функция обратного вызова для вывода события не установлена
 									else {
 										/**
@@ -32896,13 +32957,13 @@ namespace io {
 										 */
 										#if DEBUG_MODE
 											// Записываем ошибку в лог
-											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
 											// Записываем ошибку в лог
-											log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+											log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 										#endif
 									}
 									// Если сокет повреждён
@@ -32983,7 +33044,7 @@ namespace io {
 								// Если установлена функция обратного вызова
 								if(server->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
-									server->callbacks.error(server->id, error, ::strerror(errno));
+									server->callbacks.error(server->id, error, ::__awh_strerror__(errno));
 								// Если функция обратного вызова для вывода события не установлена
 								else {
 									/**
@@ -32991,13 +33052,13 @@ namespace io {
 									 */
 									#if DEBUG_MODE
 										// Записываем ошибку в лог
-										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
 										// Записываем ошибку в лог
-										log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+										log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 									#endif
 								}
 								// Если сокет повреждён
@@ -34309,7 +34370,7 @@ namespace io {
 					// Если установлена функция обратного вызова
 					if(user->callbacks.error != nullptr)
 						// Вызываем функцию обратного вызова ошибки события
-						user->callbacks.error(user->id, event::error_t::EVENT_FAIL, ::strerror(code));
+						user->callbacks.error(user->id, event::error_t::EVENT_FAIL, ::__awh_strerror__(code));
 					// Если функция обратного вызова вывода ошибки не установлена
 					else {
 						/**
@@ -34317,13 +34378,13 @@ namespace io {
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, code), log_t::flag_t::CRITICAL, ::strerror(code));
+							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, code), log_t::flag_t::CRITICAL, ::__awh_strerror__(code));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							log->print("%s", log_t::flag_t::CRITICAL, ::strerror(code));
+							log->print("%s", log_t::flag_t::CRITICAL, ::__awh_strerror__(code));
 						#endif
 					}
 					// Формируем положительный результат
@@ -34344,7 +34405,7 @@ namespace io {
 					// Если установлена функция обратного вызова
 					if(timer->callbacks.error != nullptr)
 						// Вызываем функцию обратного вызова ошибки события
-						timer->callbacks.error(timer->id, event::error_t::EVENT_FAIL, ::strerror(code));
+						timer->callbacks.error(timer->id, event::error_t::EVENT_FAIL, ::__awh_strerror__(code));
 					// Если функция обратного вызова вывода ошибки не установлена
 					else {
 						/**
@@ -34352,13 +34413,13 @@ namespace io {
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::strerror(code));
+							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::__awh_strerror__(code));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							log->print("%s", log_t::flag_t::CRITICAL, ::strerror(code));
+							log->print("%s", log_t::flag_t::CRITICAL, ::__awh_strerror__(code));
 						#endif
 					}
 					// Формируем положительный результат
@@ -34377,7 +34438,7 @@ namespace io {
 					// Если установлена функция обратного вызова
 					if(dir->callbacks.error != nullptr)
 						// Вызываем функцию обратного вызова ошибки события
-						dir->callbacks.error(dir->id, event::error_t::EVENT_FAIL, ::strerror(code));
+						dir->callbacks.error(dir->id, event::error_t::EVENT_FAIL, ::__awh_strerror__(code));
 					// Если функция обратного вызова вывода ошибки не установлена
 					else {
 						/**
@@ -34385,13 +34446,13 @@ namespace io {
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::strerror(code));
+							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::__awh_strerror__(code));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							log->print("%s", log_t::flag_t::CRITICAL, ::strerror(code));
+							log->print("%s", log_t::flag_t::CRITICAL, ::__awh_strerror__(code));
 						#endif
 					}
 					// Формируем положительный результат
@@ -34410,7 +34471,7 @@ namespace io {
 					// Если установлена функция обратного вызова
 					if(fs->callbacks.error != nullptr)
 						// Вызываем функцию обратного вызова ошибки события
-						fs->callbacks.error(fs->id, event::error_t::EVENT_FAIL, ::strerror(code));
+						fs->callbacks.error(fs->id, event::error_t::EVENT_FAIL, ::__awh_strerror__(code));
 					// Если функция обратного вызова вывода ошибки не установлена
 					else {
 						/**
@@ -34418,13 +34479,13 @@ namespace io {
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::strerror(code));
+							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::__awh_strerror__(code));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							log->print("%s", log_t::flag_t::CRITICAL, ::strerror(code));
+							log->print("%s", log_t::flag_t::CRITICAL, ::__awh_strerror__(code));
 						#endif
 					}
 					// Формируем положительный результат
@@ -34443,7 +34504,7 @@ namespace io {
 					// Если установлена функция обратного вызова
 					if(ipc->callbacks.error != nullptr)
 						// Вызываем функцию обратного вызова ошибки события
-						ipc->callbacks.error(ipc->id, event::error_t::EVENT_FAIL, ::strerror(code));
+						ipc->callbacks.error(ipc->id, event::error_t::EVENT_FAIL, ::__awh_strerror__(code));
 					// Если функция обратного вызова вывода ошибки не установлена
 					else {
 						/**
@@ -34451,13 +34512,13 @@ namespace io {
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::strerror(code));
+							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::__awh_strerror__(code));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							log->print("%s", log_t::flag_t::CRITICAL, ::strerror(code));
+							log->print("%s", log_t::flag_t::CRITICAL, ::__awh_strerror__(code));
 						#endif
 					}
 					// Формируем положительный результат
@@ -34476,7 +34537,7 @@ namespace io {
 					// Если установлена функция обратного вызова
 					if(peer->callbacks.error != nullptr)
 						// Вызываем функцию обратного вызова ошибки события
-						peer->callbacks.error(peer->id, event::error_t::EVENT_FAIL, ::strerror(code));
+						peer->callbacks.error(peer->id, event::error_t::EVENT_FAIL, ::__awh_strerror__(code));
 					// Если функция обратного вызова вывода ошибки не установлена
 					else {
 						/**
@@ -34484,13 +34545,13 @@ namespace io {
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::strerror(code));
+							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::__awh_strerror__(code));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							log->print("%s", log_t::flag_t::CRITICAL, ::strerror(code));
+							log->print("%s", log_t::flag_t::CRITICAL, ::__awh_strerror__(code));
 						#endif
 					}
 					// Формируем положительный результат
@@ -34509,7 +34570,7 @@ namespace io {
 					// Если установлена функция обратного вызова
 					if(origin->callbacks.error != nullptr)
 						// Вызываем функцию обратного вызова ошибки события
-						origin->callbacks.error(origin->id, event::error_t::EVENT_FAIL, ::strerror(code));
+						origin->callbacks.error(origin->id, event::error_t::EVENT_FAIL, ::__awh_strerror__(code));
 					// Если функция обратного вызова вывода ошибки не установлена
 					else {
 						/**
@@ -34517,13 +34578,13 @@ namespace io {
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::strerror(code));
+							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::__awh_strerror__(code));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							log->print("%s", log_t::flag_t::CRITICAL, ::strerror(code));
+							log->print("%s", log_t::flag_t::CRITICAL, ::__awh_strerror__(code));
 						#endif
 					}
 					// Формируем положительный результат
@@ -34542,7 +34603,7 @@ namespace io {
 					// Если установлена функция обратного вызова
 					if(tunnel->callbacks.error != nullptr)
 						// Вызываем функцию обратного вызова ошибки события
-						tunnel->callbacks.error(tunnel->id, event::error_t::CONNECTION_FAIL, ::strerror(code));
+						tunnel->callbacks.error(tunnel->id, event::error_t::CONNECTION_FAIL, ::__awh_strerror__(code));
 					// Если функция обратного вызова вывода ошибки не установлена
 					else {
 						/**
@@ -34550,13 +34611,13 @@ namespace io {
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::strerror(code));
+							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::__awh_strerror__(code));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							log->print("%s", log_t::flag_t::CRITICAL, ::strerror(code));
+							log->print("%s", log_t::flag_t::CRITICAL, ::__awh_strerror__(code));
 						#endif
 					}
 					// Формируем положительный результат
@@ -34575,7 +34636,7 @@ namespace io {
 					// Если установлена функция обратного вызова
 					if(mediator->callbacks.error != nullptr)
 						// Вызываем функцию обратного вызова ошибки события
-						mediator->callbacks.error(mediator->id, event::error_t::CONNECTION_FAIL, ::strerror(code));
+						mediator->callbacks.error(mediator->id, event::error_t::CONNECTION_FAIL, ::__awh_strerror__(code));
 					// Если функция обратного вызова вывода ошибки не установлена
 					else {
 						/**
@@ -34583,13 +34644,13 @@ namespace io {
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::strerror(code));
+							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::__awh_strerror__(code));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							log->print("%s", log_t::flag_t::CRITICAL, ::strerror(code));
+							log->print("%s", log_t::flag_t::CRITICAL, ::__awh_strerror__(code));
 						#endif
 					}
 					// Формируем положительный результат
@@ -34608,7 +34669,7 @@ namespace io {
 					// Если установлена функция обратного вызова
 					if(client->callbacks.error != nullptr)
 						// Вызываем функцию обратного вызова ошибки события
-						client->callbacks.error(client->id, event::error_t::CONNECTION_FAIL, ::strerror(code));
+						client->callbacks.error(client->id, event::error_t::CONNECTION_FAIL, ::__awh_strerror__(code));
 					// Если функция обратного вызова вывода ошибки не установлена
 					else {
 						/**
@@ -34616,13 +34677,13 @@ namespace io {
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::strerror(code));
+							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::__awh_strerror__(code));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							log->print("%s", log_t::flag_t::CRITICAL, ::strerror(code));
+							log->print("%s", log_t::flag_t::CRITICAL, ::__awh_strerror__(code));
 						#endif
 					}
 					// Формируем положительный результат
@@ -34641,7 +34702,7 @@ namespace io {
 					// Если установлена функция обратного вызова
 					if(server->callbacks.error != nullptr)
 						// Вызываем функцию обратного вызова ошибки события
-						server->callbacks.error(server->id, event::error_t::EVENT_FAIL, ::strerror(code));
+						server->callbacks.error(server->id, event::error_t::EVENT_FAIL, ::__awh_strerror__(code));
 					// Если функция обратного вызова вывода ошибки не установлена
 					else {
 						/**
@@ -34649,13 +34710,13 @@ namespace io {
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::strerror(code));
+							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::__awh_strerror__(code));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							log->print("%s", log_t::flag_t::CRITICAL, ::strerror(code));
+							log->print("%s", log_t::flag_t::CRITICAL, ::__awh_strerror__(code));
 						#endif
 					}
 					// Формируем положительный результат
@@ -36401,7 +36462,7 @@ namespace io {
 								// Если установлена функция обратного вызова
 								if(server->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
-									server->callbacks.error(server->id, event::error_t::EVENT_FAIL, ::strerror(errno));
+									server->callbacks.error(server->id, event::error_t::EVENT_FAIL, ::__awh_strerror__(errno));
 								// Если сокет не создан
 								else {
 									/**
@@ -36409,13 +36470,13 @@ namespace io {
 									 */
 									#if DEBUG_MODE
 										// Записываем ошибку в лог
-										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::CRITICAL, ::strerror(errno));
+										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::CRITICAL, ::__awh_strerror__(errno));
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
 										// Записываем ошибку в лог
-										log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+										log->print("%s", log_t::flag_t::CRITICAL, ::__awh_strerror__(errno));
 									#endif
 								}
 							}
@@ -39429,7 +39490,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 										// Если установлена функция обратного вызова
 										if(dir->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
-											dir->callbacks.error(dir->id, event::error_t::EVENT_FAIL, ::strerror(errno));
+											dir->callbacks.error(dir->id, event::error_t::EVENT_FAIL, ::__awh_strerror__(errno));
 										// Если функция обратного вызова вывода ошибки не установлена
 										else {
 											/**
@@ -39437,13 +39498,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 											 */
 											#if DEBUG_MODE
 												// Записываем ошибку в лог
-												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, dir->fd, path), log_t::flag_t::WARNING, ::strerror(errno));
+												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, dir->fd, path), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
 												// Записываем ошибку в лог
-												this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+												this->_log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 											#endif
 										}
 										// Закрываем файловый дескриптор каталога
@@ -40441,7 +40502,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		// Если установлена функция обратного вызова
 																		if(client->callbacks.error != nullptr)
 																			// Вызываем функцию обратного вызова ошибки события
-																			client->callbacks.error(client->id, event::error_t::EVENT_FAIL, ::strerror(errno));
+																			client->callbacks.error(client->id, event::error_t::EVENT_FAIL, ::__awh_strerror__(errno));
 																		// Если функция обратного вызова вывода ошибки не установлена
 																		else {
 																			/**
@@ -40449,13 +40510,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																			 */
 																			#if DEBUG_MODE
 																				// Записываем ошибку в лог
-																				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client->transfer.fd, unixsocket, filename), log_t::flag_t::WARNING, ::strerror(errno));
+																				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client->transfer.fd, unixsocket, filename), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 																			/**
 																			 * Если режим отладки не включён
 																			 */
 																			#else
 																				// Записываем ошибку в лог
-																				this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+																				this->_log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 																			#endif
 																		}
 																		// Если ошибка не связана с уже существующим файлом (его мог создать другой клиент)
@@ -40652,7 +40713,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															// Если установлена функция обратного вызова
 															if(client->callbacks.error != nullptr)
 																// Вызываем функцию обратного вызова ошибки события
-																client->callbacks.error(client->id, event::error_t::EVENT_FAIL, ::strerror(errno));
+																client->callbacks.error(client->id, event::error_t::EVENT_FAIL, ::__awh_strerror__(errno));
 															// Если функция обратного вызова для вывода события не установлена
 															else {
 																/**
@@ -40662,13 +40723,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	// Устанавливаем полученный IP-адрес
 																	this->_addr.v4(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
 																	// Записываем ошибку в лог
-																	this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
+																	this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::__awh_strerror__(errno));
 																/**
 																 * Если режим отладки не включён
 																 */
 																#else
 																	// Записываем ошибку в лог
-																	this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+																	this->_log->print("%s", log_t::flag_t::CRITICAL, ::__awh_strerror__(errno));
 																#endif
 															}
 															// Снимаем флаг ожидания подключения
@@ -40874,7 +40935,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																			// Если установлена функция обратного вызова
 																			if(client->callbacks.error != nullptr)
 																				// Вызываем функцию обратного вызова ошибки события
-																				client->callbacks.error(client->id, event::error_t::EVENT_FAIL, ::strerror(errno));
+																				client->callbacks.error(client->id, event::error_t::EVENT_FAIL, ::__awh_strerror__(errno));
 																			// Если функция обратного вызова для вывода события не установлена
 																			else {
 																				/**
@@ -40884,13 +40945,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																					// Устанавливаем полученный IP-адрес
 																					this->_addr.v4(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
 																					// Записываем ошибку в лог
-																					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
+																					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::__awh_strerror__(errno));
 																				/**
 																				 * Если режим отладки не включён
 																				 */
 																				#else
 																					// Записываем ошибку в лог
-																					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+																					this->_log->print("%s", log_t::flag_t::CRITICAL, ::__awh_strerror__(errno));
 																				#endif
 																			}
 																			// Снимаем флаг ожидания подключения
@@ -40993,7 +41054,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	// Если установлена функция обратного вызова
 																	if(client->callbacks.error != nullptr)
 																		// Вызываем функцию обратного вызова ошибки события
-																		client->callbacks.error(client->id, event::error_t::EVENT_FAIL, ::strerror(errno));
+																		client->callbacks.error(client->id, event::error_t::EVENT_FAIL, ::__awh_strerror__(errno));
 																	// Если функция обратного вызова для вывода события не установлена
 																	else {
 																		/**
@@ -41003,13 +41064,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																			// Устанавливаем полученный IP-адрес
 																			this->_addr.v4(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
 																			// Записываем ошибку в лог
-																			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
+																			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::__awh_strerror__(errno));
 																		/**
 																		 * Если режим отладки не включён
 																		 */
 																		#else
 																			// Записываем ошибку в лог
-																			this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+																			this->_log->print("%s", log_t::flag_t::CRITICAL, ::__awh_strerror__(errno));
 																		#endif
 																	}
 																	// Снимаем флаг ожидания подключения
@@ -41205,7 +41266,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															// Если установлена функция обратного вызова
 															if(client->callbacks.error != nullptr)
 																// Вызываем функцию обратного вызова ошибки события
-																client->callbacks.error(client->id, event::error_t::EVENT_FAIL, ::strerror(errno));
+																client->callbacks.error(client->id, event::error_t::EVENT_FAIL, ::__awh_strerror__(errno));
 															// Если функция обратного вызова для вывода события не установлена
 															else {
 																/**
@@ -41215,13 +41276,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	// Устанавливаем полученный IP-адрес
 																	this->_addr.source(target->ip.get(), net_addr_t::endian_t::LITTLE);
 																	// Записываем ошибку в лог
-																	this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
+																	this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::__awh_strerror__(errno));
 																/**
 																 * Если режим отладки не включён
 																 */
 																#else
 																	// Записываем ошибку в лог
-																	this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+																	this->_log->print("%s", log_t::flag_t::CRITICAL, ::__awh_strerror__(errno));
 																#endif
 															}
 															// Снимаем флаг ожидания подключения
@@ -41449,7 +41510,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																			// Если установлена функция обратного вызова
 																			if(client->callbacks.error != nullptr)
 																				// Вызываем функцию обратного вызова ошибки события
-																				client->callbacks.error(client->id, event::error_t::EVENT_FAIL, ::strerror(errno));
+																				client->callbacks.error(client->id, event::error_t::EVENT_FAIL, ::__awh_strerror__(errno));
 																			// Если функция обратного вызова для вывода события не установлена
 																			else {
 																				/**
@@ -41459,13 +41520,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																					// Устанавливаем полученный IP-адрес
 																					this->_addr.source(target->ip.get(), net_addr_t::endian_t::LITTLE);
 																					// Записываем ошибку в лог
-																					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
+																					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::__awh_strerror__(errno));
 																				/**
 																				 * Если режим отладки не включён
 																				 */
 																				#else
 																					// Записываем ошибку в лог
-																					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+																					this->_log->print("%s", log_t::flag_t::CRITICAL, ::__awh_strerror__(errno));
 																				#endif
 																			}
 																			// Снимаем флаг ожидания подключения
@@ -41577,7 +41638,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	// Если установлена функция обратного вызова
 																	if(client->callbacks.error != nullptr)
 																		// Вызываем функцию обратного вызова ошибки события
-																		client->callbacks.error(client->id, event::error_t::EVENT_FAIL, ::strerror(errno));
+																		client->callbacks.error(client->id, event::error_t::EVENT_FAIL, ::__awh_strerror__(errno));
 																	// Если функция обратного вызова для вывода события не установлена
 																	else {
 																		/**
@@ -41587,13 +41648,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																			// Устанавливаем полученный IP-адрес
 																			this->_addr.source(target->ip.get(), net_addr_t::endian_t::LITTLE);
 																			// Записываем ошибку в лог
-																			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
+																			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::__awh_strerror__(errno));
 																		/**
 																		 * Если режим отладки не включён
 																		 */
 																		#else
 																			// Записываем ошибку в лог
-																			this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+																			this->_log->print("%s", log_t::flag_t::CRITICAL, ::__awh_strerror__(errno));
 																		#endif
 																	}
 																	// Снимаем флаг ожидания подключения
@@ -42122,7 +42183,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	// Если установлена функция обратного вызова
 																	if(server->callbacks.error != nullptr)
 																		// Вызываем функцию обратного вызова ошибки события
-																		server->callbacks.error(server->id, event::error_t::EVENT_FAIL, ::strerror(errno));
+																		server->callbacks.error(server->id, event::error_t::EVENT_FAIL, ::__awh_strerror__(errno));
 																	// Если функция обратного вызова для вывода события не установлена
 																	else {
 																		/**
@@ -42130,13 +42191,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		 */
 																		#if DEBUG_MODE
 																			// Записываем ошибку в лог
-																			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server->fd, unixsocket), log_t::flag_t::CRITICAL, ::strerror(errno));
+																			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server->fd, unixsocket), log_t::flag_t::CRITICAL, ::__awh_strerror__(errno));
 																		/**
 																		 * Если режим отладки не включён
 																		 */
 																		#else
 																			// Записываем ошибку в лог
-																			this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+																			this->_log->print("%s", log_t::flag_t::CRITICAL, ::__awh_strerror__(errno));
 																		#endif
 																	}
 																	// Выводим результат
@@ -42183,7 +42244,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	// Если установлена функция обратного вызова
 																	if(server->callbacks.error != nullptr)
 																		// Вызываем функцию обратного вызова ошибки события
-																		server->callbacks.error(server->id, event::error_t::EVENT_FAIL, ::strerror(errno));
+																		server->callbacks.error(server->id, event::error_t::EVENT_FAIL, ::__awh_strerror__(errno));
 																	// Если функция обратного вызова для вывода события не установлена
 																	else {
 																		/**
@@ -42191,13 +42252,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		 */
 																		#if DEBUG_MODE
 																			// Записываем ошибку в лог
-																			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server->fd, unixsocket, unixsocket), log_t::flag_t::CRITICAL, ::strerror(errno));
+																			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server->fd, unixsocket, unixsocket), log_t::flag_t::CRITICAL, ::__awh_strerror__(errno));
 																		/**
 																		 * Если режим отладки не включён
 																		 */
 																		#else
 																			// Записываем ошибку в лог
-																			this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+																			this->_log->print("%s", log_t::flag_t::CRITICAL, ::__awh_strerror__(errno));
 																		#endif
 																	}
 																	// Выводим результат
@@ -42364,7 +42425,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															// Если установлена функция обратного вызова
 															if(server->callbacks.error != nullptr)
 																// Вызываем функцию обратного вызова ошибки события
-																server->callbacks.error(server->id, event::error_t::EVENT_FAIL, ::strerror(errno));
+																server->callbacks.error(server->id, event::error_t::EVENT_FAIL, ::__awh_strerror__(errno));
 															// Если функция обратного вызова для вывода события не установлена
 															else {
 																/**
@@ -42374,13 +42435,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	// Устанавливаем полученный IP-адрес
 																	this->_addr.v4(::trust_cast  <struct sockaddr_in> (server->endpoint.server).sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
 																	// Записываем ошибку в лог
-																	this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server->fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
+																	this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server->fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::__awh_strerror__(errno));
 																/**
 																 * Если режим отладки не включён
 																 */
 																#else
 																	// Записываем ошибку в лог
-																	this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+																	this->_log->print("%s", log_t::flag_t::CRITICAL, ::__awh_strerror__(errno));
 																#endif
 															}
 															// Выводим результат
@@ -42520,7 +42581,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															// Если установлена функция обратного вызова
 															if(server->callbacks.error != nullptr)
 																// Вызываем функцию обратного вызова ошибки события
-																server->callbacks.error(server->id, event::error_t::EVENT_FAIL, ::strerror(errno));
+																server->callbacks.error(server->id, event::error_t::EVENT_FAIL, ::__awh_strerror__(errno));
 															// Если функция обратного вызова для вывода события не установлена
 															else {
 																/**
@@ -42530,13 +42591,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	// Устанавливаем полученный IP-адрес
 																	this->_addr.source(host->ip.get(), net_addr_t::endian_t::LITTLE);
 																	// Записываем ошибку в лог
-																	this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server->fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
+																	this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server->fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::__awh_strerror__(errno));
 																/**
 																 * Если режим отладки не включён
 																 */
 																#else
 																	// Записываем ошибку в лог
-																	this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+																	this->_log->print("%s", log_t::flag_t::CRITICAL, ::__awh_strerror__(errno));
 																#endif
 															}
 															// Выводим результат
@@ -55230,7 +55291,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 											// Если установлена функция обратного вызова
 											if(client->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
-												client->callbacks.error(client->id, event::error_t::EVENT_FAIL, ::strerror(errno));
+												client->callbacks.error(client->id, event::error_t::EVENT_FAIL, ::__awh_strerror__(errno));
 											// Если функция обратного вызова для вывода события не установлена
 											else {
 												/**
@@ -55240,13 +55301,13 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 													// Устанавливаем полученный IP-адрес
 													this->_addr.v4(endpoint.sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
 													// Записываем ошибку в лог
-													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
+													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::__awh_strerror__(errno));
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
 													// Записываем ошибку в лог
-													this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+													this->_log->print("%s", log_t::flag_t::CRITICAL, ::__awh_strerror__(errno));
 												#endif
 											}
 											// Выходим из функции с ошибкой
@@ -55357,7 +55418,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 											// Если установлена функция обратного вызова
 											if(client->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
-												client->callbacks.error(client->id, event::error_t::EVENT_FAIL, ::strerror(errno));
+												client->callbacks.error(client->id, event::error_t::EVENT_FAIL, ::__awh_strerror__(errno));
 											// Если функция обратного вызова для вывода события не установлена
 											else {
 												/**
@@ -55367,13 +55428,13 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 													// Устанавливаем полученный IP-адрес
 													this->_addr.source(source.get(), net_addr_t::endian_t::LITTLE);
 													// Записываем ошибку в лог
-													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
+													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::__awh_strerror__(errno));
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
 													// Записываем ошибку в лог
-													this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+													this->_log->print("%s", log_t::flag_t::CRITICAL, ::__awh_strerror__(errno));
 												#endif
 											}
 											// Выходим из функции с ошибкой
@@ -55496,7 +55557,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 											// Если установлена функция обратного вызова
 											if(server->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
-												server->callbacks.error(server->id, event::error_t::EVENT_FAIL, ::strerror(errno));
+												server->callbacks.error(server->id, event::error_t::EVENT_FAIL, ::__awh_strerror__(errno));
 											// Если функция обратного вызова для вывода события не установлена
 											else {
 												/**
@@ -55506,13 +55567,13 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 													// Устанавливаем полученный IP-адрес
 													this->_addr.v4(endpoint.sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
 													// Записываем ошибку в лог
-													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server->fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
+													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server->fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::__awh_strerror__(errno));
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
 													// Записываем ошибку в лог
-													this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+													this->_log->print("%s", log_t::flag_t::CRITICAL, ::__awh_strerror__(errno));
 												#endif
 											}
 											// Выходим из функции с ошибкой
@@ -55629,7 +55690,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 											// Если установлена функция обратного вызова
 											if(server->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
-												server->callbacks.error(server->id, event::error_t::EVENT_FAIL, ::strerror(errno));
+												server->callbacks.error(server->id, event::error_t::EVENT_FAIL, ::__awh_strerror__(errno));
 											// Если функция обратного вызова для вывода события не установлена
 											else {
 												/**
@@ -55639,13 +55700,13 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 													// Устанавливаем полученный IP-адрес
 													this->_addr.source(source.get(), net_addr_t::endian_t::LITTLE);
 													// Записываем ошибку в лог
-													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server->fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
+													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server->fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::__awh_strerror__(errno));
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
 													// Записываем ошибку в лог
-													this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+													this->_log->print("%s", log_t::flag_t::CRITICAL, ::__awh_strerror__(errno));
 												#endif
 											}
 											// Выходим из функции с ошибкой
@@ -55892,7 +55953,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 									// Если установлена функция обратного вызова
 									if(client->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
-										client->callbacks.error(client->id, event::error_t::EVENT_FAIL, ::strerror(errno));
+										client->callbacks.error(client->id, event::error_t::EVENT_FAIL, ::__awh_strerror__(errno));
 									// Если функция обратного вызова для вывода события не установлена
 									else {
 										/**
@@ -55902,13 +55963,13 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 											// Устанавливаем полученный IP-адрес
 											this->_addr.v4(endpoint.sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
 											// Записываем ошибку в лог
-											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::__awh_strerror__(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
 											// Записываем ошибку в лог
-											this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+											this->_log->print("%s", log_t::flag_t::CRITICAL, ::__awh_strerror__(errno));
 										#endif
 									}
 									// Выходим из функции с ошибкой
@@ -55953,7 +56014,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 									// Если установлена функция обратного вызова
 									if(client->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
-										client->callbacks.error(client->id, event::error_t::EVENT_FAIL, ::strerror(errno));
+										client->callbacks.error(client->id, event::error_t::EVENT_FAIL, ::__awh_strerror__(errno));
 									// Если функция обратного вызова для вывода события не установлена
 									else {
 										/**
@@ -55963,13 +56024,13 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 											// Устанавливаем полученный IP-адрес
 											this->_addr.source(source, net_addr_t::endian_t::LITTLE);
 											// Записываем ошибку в лог
-											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::__awh_strerror__(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
 											// Записываем ошибку в лог
-											this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+											this->_log->print("%s", log_t::flag_t::CRITICAL, ::__awh_strerror__(errno));
 										#endif
 									}
 									// Выходим из функции с ошибкой
@@ -56026,7 +56087,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 									// Если установлена функция обратного вызова
 									if(server->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
-										server->callbacks.error(server->id, event::error_t::EVENT_FAIL, ::strerror(errno));
+										server->callbacks.error(server->id, event::error_t::EVENT_FAIL, ::__awh_strerror__(errno));
 									// Если функция обратного вызова для вывода события не установлена
 									else {
 										/**
@@ -56036,13 +56097,13 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 											// Устанавливаем полученный IP-адрес
 											this->_addr.v4(endpoint.sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
 											// Записываем ошибку в лог
-											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server->fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server->fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::__awh_strerror__(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
 											// Записываем ошибку в лог
-											this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+											this->_log->print("%s", log_t::flag_t::CRITICAL, ::__awh_strerror__(errno));
 										#endif
 									}
 									// Выходим из функции с ошибкой
@@ -56093,7 +56154,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 									// Если установлена функция обратного вызова
 									if(server->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
-										server->callbacks.error(server->id, event::error_t::EVENT_FAIL, ::strerror(errno));
+										server->callbacks.error(server->id, event::error_t::EVENT_FAIL, ::__awh_strerror__(errno));
 									// Если функция обратного вызова для вывода события не установлена
 									else {
 										/**
@@ -56103,13 +56164,13 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 											// Устанавливаем полученный IP-адрес
 											this->_addr.source(source, net_addr_t::endian_t::LITTLE);
 											// Записываем ошибку в лог
-											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server->fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server->fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::__awh_strerror__(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
 											// Записываем ошибку в лог
-											this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+											this->_log->print("%s", log_t::flag_t::CRITICAL, ::__awh_strerror__(errno));
 										#endif
 									}
 									// Выходим из функции с ошибкой
@@ -61900,7 +61961,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 															// Если установлена функция обратного вызова
 															if(client->callbacks.error != nullptr)
 																// Вызываем функцию обратного вызова ошибки события
-																client->callbacks.error(client->id, event::error_t::EVENT_FAIL, ::strerror(errno));
+																client->callbacks.error(client->id, event::error_t::EVENT_FAIL, ::__awh_strerror__(errno));
 															// Если функция обратного вызова для вывода события не установлена
 															else {
 																/**
@@ -61908,13 +61969,13 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 																 */
 																#if DEBUG_MODE
 																	// Записываем ошибку в лог
-																	this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client->id, ids.size()), log_t::flag_t::WARNING, ::strerror(errno));
+																	this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client->id, ids.size()), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 																/**
 																 * Если режим отладки не включён
 																 */
 																#else
 																	// Записываем ошибку в лог
-																	this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+																	this->_log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 																#endif
 															}
 															// Устанавливаем флаг инициализации события
@@ -62687,7 +62748,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint32_t max) noexcept 
 										// Если установлена функция обратного вызова
 										if(server->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события
-											server->callbacks.error(server->id, event::error_t::EVENT_FAIL, ::strerror(errno));
+											server->callbacks.error(server->id, event::error_t::EVENT_FAIL, ::__awh_strerror__(errno));
 										// Если функция обратного вызова для вывода события не установлена
 										else {
 											/**
@@ -62695,13 +62756,13 @@ bool awh::engine::IO::listen(const event::id_t id, const uint32_t max) noexcept 
 											 */
 											#if DEBUG_MODE
 												// Записываем ошибку в лог
-												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, max), log_t::flag_t::WARNING, ::strerror(errno));
+												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, max), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
 												// Записываем ошибку в лог
-												this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+												this->_log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 											#endif
 										}
 										// Снимаем флаг ожидания подключения
@@ -63630,13 +63691,13 @@ size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const si
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, buffer, size), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+									this->_log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 								#endif
 								// Если функция обратного вызова для вывода записанных данных установлена
 								if(user->callbacks.write != nullptr)
@@ -63911,13 +63972,13 @@ size_t awh::engine::IO::relay(const event::id_t id, const void * buffer, const s
 									 */
 									#if DEBUG_MODE
 										// Записываем ошибку в лог
-										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, buffer, size), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
 										// Записываем ошибку в лог
-										this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+										this->_log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 									#endif
 									// Если функция обратного вызова для вывода записанных данных установлена
 									if(user->callbacks.write != nullptr)
@@ -70337,13 +70398,13 @@ bool awh::engine::IO::kick() noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, ::strerror(errno));
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+				this->_log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 			#endif
 		}
 	}
@@ -70428,13 +70489,13 @@ bool awh::engine::IO::initialize() noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, ::strerror(errno));
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+				this->_log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 			#endif
 		}
 		/**
@@ -72598,6 +72659,43 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 							 *       «Unknown error» - установлено прогоном
 							 */
 							volume = static_cast <int64_t> (::__awh_socket_errno__(code));
+						/**
+						 * Описателю, сокетом не являющемуся, код отдаёт само завершение
+						 *
+						 * @details Настройка `SO_ERROR` есть у сокета и только у него: у именованного
+						 *          канала обращение это отвечает отказом, а код оставался нулевым.
+						 *          Разбор переводил такой нуль обращением `strerror` и писал в журнал
+						 *          «No error» - сообщение, каким ошибку ни назвать, ни найти.
+						 *          Установлено прогоном проверки передачи события: закрытие канала
+						 *          работником печаталось именно так
+						 *
+						 * @note Код завершения переводится в понятия POSIX тем же порядком, что и у
+						 *       чтения канала: закрытый встречной стороной конец разбирается обрывом
+						 *       соединения
+						 */
+						else if(completion.res < 0){
+							/**
+							 * Определяем код отказа, отданный завершением
+							 */
+							switch(static_cast <uint32_t> (-completion.res)){
+								// Если встречный конец канала закрыт
+								case static_cast <uint32_t> (ERROR_BROKEN_PIPE):
+								// Если канал ещё не открыт встречной стороной
+								case static_cast <uint32_t> (ERROR_PIPE_NOT_CONNECTED):
+									// Отмечаем обрыв соединения
+									volume = static_cast <int64_t> (ECONNRESET);
+								break;
+								// Если обращение было снято
+								case static_cast <uint32_t> (ERROR_OPERATION_ABORTED):
+									// Отмечаем снятое обращение
+									volume = static_cast <int64_t> (ECANCELED);
+								break;
+								// Для остальных отказов
+								default:
+									// Отмечаем отказ обмена
+									volume = static_cast <int64_t> (EIO);
+							}
+						}
 					}
 					// Если сокет готов к чтению
 					if(readable){
@@ -72608,8 +72706,16 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					}
 					// Если сокет готов к записи и место в пачке разбора осталось
 					if(writable && (static_cast <size_t> (events) < (::__awh_events_size__ * 2))){
-						// Собираем запись готовности к записи
-						::__awh_events__[events++] = ::change::make(static_cast <uintptr_t> (entry->sock), ::change::filter_t::WRITE, flags, 0, 0, entry->udata);
+						/**
+						 * Собираем запись готовности к записи
+						 *
+						 * @note Числовая нагрузка при ошибке несёт её код - тот же, что и у
+						 *       записи чтения. Прежде здесь стоял нуль, и разбор ошибки по
+						 *       записи записи переводил его обращением `strerror`, отчего в
+						 *       журнал уходило «No error»: сообщение, каким ошибку ни назвать,
+						 *       ни найти. Готовность же к записи нагрузки не несёт вовсе
+						 */
+						::__awh_events__[events++] = ::change::make(static_cast <uintptr_t> (entry->sock), ::change::filter_t::WRITE, flags, 0, ((flags & ::change::ERROR) ? volume : 0), entry->udata);
 						// Снимаем подписку на запись, если она однократная
 						::kernel::consume(* entry, EPOLLOUT);
 					}
@@ -72657,13 +72763,13 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(timeout), log_t::flag_t::WARNING, ::strerror(errno));
+						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(timeout), log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+						this->_log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 					#endif
 				}
 			// Если есть события для обработки

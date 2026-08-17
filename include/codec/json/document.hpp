@@ -94,6 +94,24 @@ namespace awh {
 		namespace json {
 			/**
 			 * \~russian
+			 * @brief Предварительное объявление владеющего значения
+			 *
+			 * @details Объявление это заведено ради прививки: документ прививаемое значение
+			 * принимает, а определение его лежит в заголовке, какой сам подключает документ.
+			 * Полное объявление есть в `value.hpp`
+			 *
+			 * \~english
+			 * @brief Forward declaration of the owning value
+			 * @details This declaration is made for the sake of the grafting: a document accepts a value
+			 * being grafted, while its definition lies in a header which itself includes the document.
+			 * The full declaration is in `value.hpp`
+			 *
+			 * \~
+			 */
+			class Value;
+
+			/**
+			 * \~russian
 			 * @brief Документ JSON, удерживаемый целиком
 			 *
 			 * @details Дерево хранится **сплошным перечнем узлов**, а не россыпью объектов,
@@ -1363,6 +1381,35 @@ namespace awh {
 				private:
 					/**
 					 * \~russian
+					 * @brief Метод переноса владеющего значения в перечень узлов дерева
+					 *
+					 * @details Узлы ложатся тем же порядком, каким их кладёт разбор: сперва
+					 * сам узел, за ним дети его подряд. Содержимое дописывается в конец
+					 * хранилища знаков документа, а имя поля ложится вплотную перед
+					 * содержимым - одного смещения хватает обоим
+					 *
+					 * @param value переносимое владеющее значение
+					 * @param name  имя поля объекта, ноль - узел полем объекта не является
+					 * @param nodes перечень узлов, куда ложится перенесённое значение
+					 * @return      количество узлов перенесённого поддерева
+					 *
+					 * \~english
+					 * @brief Method of the transfer of an owning value into the list of the nodes of the tree
+					 * @details The nodes are placed in the same order in which the parsing places them: first
+					 * the node itself, then its children in a row. The content is appended to the end of
+					 * the storage of the characters of the document, while the name of a field is placed right before
+					 * the content — one offset suffices for both
+					 * @param value owning value being transferred
+					 * @param name name of the field of an object, a zero — the node is not a field of an object
+					 * @param nodes list of the nodes where the transferred value is placed
+					 * @return number of the nodes of the transferred subtree
+					 *
+					 * \~
+					 */
+					uint32_t transplant(const json::Value & value, const string * name, vector <node_t> & nodes) noexcept;
+				private:
+					/**
+					 * \~russian
 					 * @brief Метод определения вида числа вместе с преобразованием его
 					 *
 					 * @details Вид выбирается самый узкий из вмещающих: число `1` получает вид
@@ -1506,6 +1553,57 @@ namespace awh {
 					 * \~
 					 */
 					bool save(const string & filename, const format_t format = format_t::COMPACT) const noexcept;
+				public:
+					/**
+					 * \~russian
+					 * @brief Метод прививки владеющего значения в дерево документа
+					 *
+					 * @details Метод этот - обратный мост к тому, каким владеющее значение
+					 * снимается с документа: снятое, изменённое и собранное заново значение
+					 * возвращается на своё место в дереве, а прочее дерево остаётся
+					 * нетронутым. Имя поля объекта при том сохраняется: прививается значение,
+					 * а не поле
+					 *
+					 * @details Указатель записывается по RFC 6901, ровно как у метода `at`.
+					 * Пустой указатель прививает значение корнем документа, а указатель,
+					 * ведущий к отсутствующему пути, отвечает отказом: заведение
+					 * недостающего принадлежит владеющему значению, а не документу
+					 *
+					 * @note Дерево документа лежит плоским перечнем узлов, и прививка вправе
+					 *       стоить перемещения хвоста его: содержимое привитого значения
+					 *       дописывается в конец хранилища знаков, а прежнее содержимое
+					 *       заменённого поддерева остаётся в нём мёртвым грузом. Прививка -
+					 *       действие нечастое, и платить за неё сжатием хранилища на всякий
+					 *       раз было бы дороже
+					 *
+					 * @param pointer указатель на прививаемое место по RFC 6901
+					 * @param value   прививаемое владеющее значение
+					 * @return        признак успешности прививки
+					 *
+					 * \~english
+					 * @brief Method of the grafting of an owning value into the tree of the document
+					 * @details This method is the bridge reverse to the one by which an owning value
+					 * is taken off a document: a value taken, changed and assembled anew
+					 * is returned to its place in the tree, while the rest of the tree remains
+					 * untouched. The name of a field of an object is thereby preserved: a value is grafted
+					 * rather than a field
+					 * @details The pointer is written by RFC 6901, exactly as for the method `at`.
+					 * An empty pointer grafts the value as the root of the document, while a pointer
+					 * leading to an absent path responds with a refusal: the creation
+					 * of the missing belongs to an owning value rather than to a document
+					 * @note The tree of a document lies as a flat list of the nodes, and the grafting is entitled
+					 *       to cost a relocation of its tail: the content of the grafted value
+					 *       is appended to the end of the storage of the characters, while the former content
+					 *       of the replaced subtree remains in it as a dead weight. The grafting is
+					 *       an infrequent action, and to pay for it by a compaction of the storage every
+					 *       time would be more expensive
+					 * @param pointer pointer to the place being grafted by RFC 6901
+					 * @param value owning value being grafted
+					 * @return sign of the success of the grafting
+					 *
+					 * \~
+					 */
+					bool graft(const string & pointer, const json::Value & value) noexcept;
 				public:
 					/**
 					 * \~russian

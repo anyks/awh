@@ -101,14 +101,35 @@
  *
  */
 static uint16_t port() noexcept {
+	// Нижняя и верхняя границы разряда портов, отведённого под временные
+	constexpr uint16_t BEGIN = 49152, END = 65535;
 	/**
-	 * Инициализация генератора случайных чисел
+	 * Начало отсчёта выбирается случайным ОДИН раз за процесс
+	 *
+	 * @details Случайность нужна лишь между прогонами: порт, занятый прошлым прогоном,
+	 *          система отпускает не сразу, и постоянное начало отсчёта сталкивало бы
+	 *          соседние прогоны лбами
+	 *
+	 * @warning Внутри же прогона порты обязаны РАЗЛИЧАТЬСЯ ДОСТОВЕРНО, а не с большой
+	 *          вероятностью, оттого дальше идёт счётчик, а не новая случайная величина.
+	 *          Прежде здесь стоял `srandom(time(nullptr) ^ getpid())` при КАЖДОМ вызове:
+	 *          зерно в пределах секунды не менялось, и все проверки получали ОДИН И ТОТ
+	 *          ЖЕ порт. Вторая из них не могла зафиксировать своё событие, и виден этот
+	 *          изъян был лишь у illumos - там порт отпускается неспешно, а повторного
+	 *          использования порта нет вовсе
 	 */
-	::srandom(::time(nullptr) ^ ::getpid());
+	static const uint16_t begin = [](void) noexcept -> uint16_t {
+		// Задаём начальное значение генератора случайных чисел
+		::srandom(static_cast <uint32_t> (::time(nullptr) ^ ::getpid()));
+		// Выводим случайное начало отсчёта из отведённого разряда
+		return static_cast <uint16_t> (BEGIN + (::random() % (END - BEGIN + 1)));
+	}();
+	// Счётчик выданных портов
+	static uint32_t offset = 0;
 	/**
-	 * Возвращаем случайный порт из диапазона 49152-65535
+	 * Выводим очередной порт, обходя разряд по кругу
 	 */
-	return (49152 + (::random() % (65535 - 49152 + 1)));
+	return static_cast <uint16_t> (BEGIN + ((static_cast <uint32_t> (begin - BEGIN) + offset++) % (END - BEGIN + 1)));
 }
 
 /**
@@ -20242,6 +20263,118 @@ TEST_F(IoFixture, IoSnapshotRefusalTest){
 }
 
 /**
+ * Для операционных систем с поддержкой SCTP: Linux, FreeBSD, Solaris и illumos
+ */
+#if __linux__ || __FreeBSD__ || __sun
+
+/**
+ * @brief Проверка неоднородного списка подключения
+ *
+ * @details Список у `connect()` заведён ради многодомности SCTP, где он сливается в одну
+ *          заявку. Оттого неоднородность в нём неразрешима иначе, чем по образцу: образцом
+ *          берётся ПЕРВЫЙ узел списка, а всякое событие чужого протокола, чужого семейства
+ *          адресов и всякий не клиентский узел отбрасываются предупреждением
+ *
+ * @note Проверка идёт числом отчётов, а не успехом вызова: связь обязана выйти ОДНА, и
+ *       ровно один `connect_t` о ней отчитаться. Отбрасывание же обязано быть громким -
+ *       молча потерянное событие вызывающая сторона считала бы подключённым
+ *
+ */
+TEST_F(IoFixture, IoConnectHeterogeneousListTest){
+	// Получаем порт, на котором слушает сервер
+	const uint16_t bind = port();
+	// Выполняем инициализацию сетевого движка
+	ASSERT_TRUE(this->_io->initialize());
+	// Создаём событие сервера SCTP
+	const awh::event::id_t server = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::SCTP);
+	// Проверяем, что идентификатор события сервера создан
+	ASSERT_GT(server, 0);
+	// Устанавливаем опции события сервера
+	ASSERT_TRUE(this->_io->setOptions(server, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK));
+	// Устанавливаем адрес привязки события сервера
+	ASSERT_TRUE(this->_io->setAddress(server, awh::event::address_t::IPV4, "127.0.0.1"));
+	// Устанавливаем порт привязки события сервера
+	ASSERT_TRUE(this->_io->setSourcePort(server, bind));
+	// Счётчик принятых подключений
+	uint32_t accepted = 0;
+	// Устанавливаем функцию обратного вызова на приём подключений
+	this->_io->on(server, static_cast <awh::engine::callback::accept_t> ([&accepted](const awh::event::id_t, const awh::event::id_t) noexcept -> void {
+		// Считаем принятое подключение
+		accepted++;
+	}));
+	// Выполняем фиксацию настроек события сервера
+	ASSERT_TRUE(this->_io->commit(server));
+	// Переводим событие сервера в прослушивание
+	ASSERT_TRUE(this->_io->listen(server, 16));
+	// Включаем приём подключений
+	ASSERT_TRUE(this->_io->launch(server));
+	/**
+	 * @brief Функция создания события клиента
+	 *
+	 * @param family   семейство адресов события
+	 * @param protocol протокол интернета события
+	 * @param target   адрес удалённого узла
+	 * @return         идентификатор созданного события
+	 *
+	 */
+	auto make = [this, bind](const awh::event::family_t family, const awh::event::protocol_t protocol, const char * target) noexcept -> awh::event::id_t {
+		// Создаём событие клиента
+		const awh::event::id_t result = this->_io->event(awh::event::node_t::CLIENT, family, awh::event::type_t::STREAM, protocol);
+		// Устанавливаем опции события клиента
+		this->_io->setOptions(result, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK);
+		// Устанавливаем адрес сетевого интерфейса события клиента
+		this->_io->setAddress(result, ((family == awh::event::family_t::IPV6) ? awh::event::address_t::IPV6 : awh::event::address_t::IPV4), ((family == awh::event::family_t::IPV6) ? "::" : "0.0.0.0"));
+		// Устанавливаем порт удалённого узла
+		this->_io->setTargetPort(result, bind);
+		// Устанавливаем адрес удалённого узла
+		this->_io->setTarget(result, target);
+		// Выполняем фиксацию настроек события клиента
+		this->_io->commit(result);
+		// Выводим идентификатор созданного события
+		return result;
+	};
+	// Создаём событие клиента, которое и станет образцом списка
+	const awh::event::id_t client = make(awh::event::family_t::IPV4, awh::event::protocol_t::SCTP, "127.0.0.1");
+	// Проверяем, что идентификатор события клиента создан
+	ASSERT_GT(client, 0);
+	// Счётчик отчётов о подключении
+	uint32_t connects = 0;
+	// Устанавливаем функцию обратного вызова на подключение к удалённому узлу
+	this->_io->on(client, static_cast <awh::engine::callback::connect_t> ([&connects](const awh::event::id_t, const bool) noexcept -> void {
+		// Считаем пришедший отчёт о подключении
+		connects++;
+	}));
+	// Создаём событие чужого протокола
+	const awh::event::id_t alien = make(awh::event::family_t::IPV4, awh::event::protocol_t::TCP, "127.0.0.1");
+	// Создаём событие чужого семейства адресов
+	const awh::event::id_t foreign = make(awh::event::family_t::IPV6, awh::event::protocol_t::SCTP, "::1");
+	// Создаём узел сервера, которому подключение не положено вовсе
+	const awh::event::id_t stranger = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::SCTP);
+	// Выполняем подключение списком, где годен лишь первый узел
+	ASSERT_TRUE(this->_io->connect({client, alien, foreign, stranger}));
+	// Выполняем запуск события клиента
+	ASSERT_TRUE(this->_io->launch(client));
+	/**
+	 * Выполняем опрос событий, пока подключение не принято
+	 */
+	for(uint32_t i = 0; (accepted == 0) && (i < 5000) && this->_io->poll(100); i += 100);
+	// Даём циклу довертеться: отчёты отброшенных событий приходили бы следом
+	for(uint32_t i = 0; (i < 1000) && this->_io->poll(100); i += 100);
+	// Проверяем, что связь установлена ровно одна
+	ASSERT_EQ(1u, accepted);
+	// Проверяем, что отчёт о подключении пришёл ровно один
+	ASSERT_EQ(1u, connects);
+	// Уничтожаем заведённые события
+	this->_io->destroy(client);
+	this->_io->destroy(alien);
+	this->_io->destroy(foreign);
+	this->_io->destroy(stranger);
+	this->_io->destroy(server);
+}
+
+#endif
+
+/**
  * Проверка передачи заведена лишь для систем POSIX
  *
  * @note Работник здесь заводится через `fork`, которого у MS Windows нет вовсе, а
@@ -20439,6 +20572,480 @@ TEST_F(IoFixture, IoSnapshotHandoffTest){
 			this->_io->destroy(pair[1]);
 		} break;
 	}
+}
+
+/**
+ * @brief Проверка молчания прежнего движка после снятия снимка
+ *
+ * @details Снимок обязан отдавать объект чистым: перед выдачей метки движок снимает
+ *          незавершённые обращения по описателю и отвязывает его от себя. Проверяется
+ *          именно следствие этого - что ПОСЛЕ снимка ни одно завершение по переданному
+ *          описателю в прежний движок больше не приходит
+ *
+ * @note Проверка идёт двумя стуками подряд по одному и тому же слушающему описателю:
+ *       первый обязан быть принят, второй - нет. Без первого стука молчание после
+ *       снимка ничего не значило бы: точно так же молчал бы движок, у которого приём
+ *       подключений не был заведён вовсе
+ *
+ * @note Пригодна всякому движку, где отвязка описателя возможна. У IOCP её нет
+ *       устройством системы, и проверка туда не попадает вместе со всем разделом POSIX
+ *
+ */
+TEST_F(IoFixture, IoSnapshotSilenceTest){
+	// Выполняем инициализацию сетевого движка
+	ASSERT_TRUE(this->_io->initialize());
+	// Создаём пару обмена, которой поедет описатель
+	auto pair = this->_io->events(awh::event::family_t::UDS, awh::event::type_t::STREAM, awh::event::protocol_t::NONE);
+	// Проверяем, что оба идентификатора пары созданы
+	ASSERT_GT(pair[0], 0);
+	ASSERT_GT(pair[1], 0);
+	// Получаем порт, на котором слушает передаваемое событие
+	const uint16_t bind = port();
+	// Создаём слушающее событие, снимок с которого снимается посреди проверки
+	awh::event::id_t server = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+	// Проверяем, что идентификатор события создан
+	ASSERT_GT(server, 0);
+	// Устанавливаем опции слушающего события
+	ASSERT_TRUE(this->_io->setOptions(server, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK));
+	// Устанавливаем адрес привязки
+	ASSERT_TRUE(this->_io->setAddress(server, awh::event::address_t::IPV4, "127.0.0.1"));
+	// Устанавливаем порт привязки
+	ASSERT_TRUE(this->_io->setSourcePort(server, bind));
+	// Счётчик принятых подключений
+	uint32_t accepted = 0;
+	// Устанавливаем функцию обратного вызова на приём подключений
+	this->_io->on(server, static_cast <awh::engine::callback::accept_t> ([&accepted](const awh::event::id_t, const awh::event::id_t) noexcept -> void {
+		// Считаем принятое подключение
+		accepted++;
+	}));
+	// Выполняем фиксацию настроек слушающего события
+	ASSERT_TRUE(this->_io->commit(server));
+	// Переводим событие в прослушивание
+	ASSERT_TRUE(this->_io->listen(server, 16));
+	/**
+	 * Включаем приём подключений
+	 *
+	 * @note У потокового сервера прослушивание и приём разведены: `listen` открывает
+	 *       очередь ядру, а до движка подключения доходят лишь после запуска
+	 */
+	ASSERT_TRUE(this->_io->launch(server));
+	// Устанавливаем идентификатор процесса
+	pid_t pid = -1;
+	/**
+	 * Определяем тип процесса
+	 */
+	switch((pid = ::fork())){
+		// Если процесс создать не удалось
+		case -1:
+			// Прерываем проверку: снимок требует получателя в чужом процессе
+			FAIL() << "Дочерний процесс создать не удалось";
+		break;
+		// Если процесс является дочерним
+		case 0: {
+			/**
+			 * Ставим работнику предел по времени
+			 *
+			 * @note Работник здесь ничего не делает: он нужен лишь тем, что держит
+			 *       встречный конец переносчика. Без предела он пережил бы родителя
+			 */
+			::alarm(15);
+			// Выполняем переинициализацию сетевого движка
+			this->_io->reinitialize();
+			// Уничтожаем отправляющий конец пары: работнику нужен лишь приёмный
+			this->_io->destroy(pair[1]);
+			// Выполняем фиксацию настроек приёмного конца пары
+			this->_io->commit(pair[0]);
+			// Выполняем запуск приёмного конца пары
+			this->_io->launch(pair[0]);
+			// Выходим из процесса: своё дело работник сделал самим своим существованием
+			::_exit(EXIT_SUCCESS);
+		} break;
+		// Если процесс является родительским
+		default: {
+			// Буфер снятого снимка
+			std::vector <uint8_t> snapshot;
+			// Уничтожаем приёмный конец пары: он принадлежит работнику
+			ASSERT_TRUE(this->_io->destroy(pair[0]));
+			// Выполняем фиксацию настроек отправляющего конца пары
+			ASSERT_TRUE(this->_io->commit(pair[1]));
+			/**
+			 * @brief Функция стука по слушающему описателю обычным сокетом
+			 *
+			 * @return описатель сокета, которым выполнен стук
+			 *
+			 */
+			auto knock = [bind]() noexcept -> int32_t {
+				// Создаём сокет для стука
+				const int32_t sock = ::socket(AF_INET, SOCK_STREAM, 0);
+				// Если сокет создать не удалось, стучать нечем
+				if(sock < 0)
+					// Выводим отрицательный описатель
+					return -1;
+				// Адрес, по которому идёт стук
+				struct sockaddr_in endpoint{};
+				// Устанавливаем семейство адреса
+				endpoint.sin_family = AF_INET;
+				// Устанавливаем порт слушающего события
+				endpoint.sin_port = htons(bind);
+				// Устанавливаем адрес петли
+				endpoint.sin_addr.s_addr = ::inet_addr("127.0.0.1");
+				// Выполняем подключение к слушающему событию
+				if(::connect(sock, reinterpret_cast <struct sockaddr *> (&endpoint), sizeof(endpoint)) != 0){
+					// Закрываем сокет стука: подключиться им не удалось
+					::close(sock);
+					// Выводим отрицательный описатель
+					return -1;
+				}
+				// Выводим описатель сокета, которым выполнен стук
+				return sock;
+			};
+			/**
+			 * ПЕРВЫЙ СТУК: движок обязан принять подключение
+			 *
+			 * @note Он и делает молчание после снимка доказательным: без него нечем
+			 *       отличить снятую подписку от неё же, никогда не заведённой
+			 */
+			const int32_t first = knock();
+			// Проверяем, что первый стук выполнен
+			ASSERT_GT(first, 0);
+			/**
+			 * Выполняем опрос событий, пока подключение не принято
+			 */
+			for(uint32_t i = 0; (accepted == 0) && (i < 3000) && this->_io->poll(100); i += 100);
+			// Проверяем, что первое подключение принято
+			ASSERT_EQ(1u, accepted);
+			// Снимаем снимок слушающего события для работника
+			ASSERT_TRUE(this->_io->snapshot(server, pair[1], snapshot));
+			// Проверяем, что снимок не пуст
+			ASSERT_FALSE(snapshot.empty());
+			/**
+			 * ВТОРОЙ СТУК: движок обязан промолчать
+			 *
+			 * @note Описатель после снимка ещё жив и ядром обслуживается, подключение
+			 *       ложится в его очередь. Дойти оно не должно именно до движка
+			 */
+			const int32_t second = knock();
+			// Проверяем, что второй стук выполнен
+			ASSERT_GT(second, 0);
+			/**
+			 * Выполняем опрос событий, давая прежнему движку возможность отчитаться
+			 */
+			for(uint32_t i = 0; (i < 2000) && this->_io->poll(100); i += 100);
+			// Проверяем, что после снимка ни одно завершение по описателю не пришло
+			ASSERT_EQ(1u, accepted);
+			// Состояние ожидания работника
+			int32_t state = 0;
+			// Ожидаем завершения работника
+			ASSERT_EQ(pid, ::waitpid(pid, &state, 0));
+			// Закрываем сокеты стука: своё дело они сделали
+			::close(first);
+			::close(second);
+			// Уничтожаем заведённые события
+			this->_io->destroy(server);
+			this->_io->destroy(pair[1]);
+		} break;
+	}
+}
+
+#endif
+
+/**
+ * Проверка передачи заведена и для MS Windows, но своя
+ *
+ * @note Работник здесь порождается заново через `CreateProcess`: наследования у этой
+ *       системы нет, и работник проходит `main` с начала. Переносчиком годится лишь
+ *       именованный канал: описатель едет описанием устройства обмена, снятым
+ *       `WSADuplicateSocket` под номер процесса получателя
+ */
+#if defined(_WIN32) || defined(_WIN64)
+
+/**
+ * @brief Работник проверки передачи слушающего события чужому процессу
+ *
+ * @details Проверкой не является и в общем прогоне не участвует - оттого и отключена
+ *          именем. Заводится она отдельным процессом, которому родитель называет
+ *          канал обмена через окружение: своего `main` у набора нет, и порождать
+ *          работник может только сам себя с указанием проверки
+ *
+ * @note Итог работник отдаёт кодом выхода, а не утверждениями: разбирать его будет
+ *       родитель, и утверждения чужого процесса до него не доходят
+ *
+ */
+TEST_F(IoFixture, DISABLED_IoSnapshotHandoffWorkerTest){
+	// Буфер под имя канала обмена, названного родителем
+	wchar_t buffer[256]{0};
+	// Получаем имя канала обмена из окружения
+	const DWORD length = ::GetEnvironmentVariableW(L"AWH_IO_SNAPSHOT_PIPE", buffer, static_cast <DWORD> (sizeof(buffer) / sizeof(buffer[0])));
+	// Если имени канала в окружении нет, работать нечем
+	if((length == 0) || (length >= (sizeof(buffer) / sizeof(buffer[0]))))
+		// Выходим отказом: без переносчика снимку приехать неоткуда
+		::_exit(EXIT_FAILURE);
+	/**
+	 * Ставим работнику предел по времени
+	 *
+	 * @note Обращения `alarm` у MS Windows нет вовсе, а опрос событий ждёт их без
+	 *       срока: не пришедший снимок обернулся бы вечным ожиданием вместо отказа
+	 */
+	std::thread([]() noexcept -> void {
+		// Ждём предельный срок работы
+		std::this_thread::sleep_for(std::chrono::seconds(20));
+		// Выходим отказом: за отведённый срок подключение принято не было
+		::_exit(EXIT_FAILURE);
+	}).detach();
+	// Выполняем инициализацию сетевого движка
+	ASSERT_TRUE(this->_io->initialize());
+	// Заводим событие канала обмена, которым приедет снимок
+	const awh::event::id_t channel = this->_io->event(awh::event::node_t::IPC, awh::event::family_t::PIPE, awh::event::type_t::SEQPACKET);
+	// Проверяем, что идентификатор события канала создан
+	ASSERT_GT(channel, 0);
+	// Устанавливаем имя канала обмена, названное родителем
+	ASSERT_TRUE(this->_io->setTarget(channel, this->_fmk->convert(std::wstring(buffer))));
+	// Создаём событие, которое примет снимок
+	const awh::event::id_t target = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+	// Проверяем, что идентификатор события создан
+	ASSERT_GT(target, 0);
+	// Признак принятого подключения
+	bool accepted = false;
+	// Признак удавшегося подъёма события из снимка
+	bool restored = false;
+	// Устанавливаем функцию обратного вызова на получение снимка от переносчика
+	this->_io->on(channel, [&restored, &accepted, target, this](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+		/**
+		 * Поднимаем событие из снимка
+		 *
+		 * @note Фиксация здесь НЕ зовётся намеренно: описатель уже заведён чужим
+		 *       процессом, и заводить второй означало бы занимать порт повторно
+		 */
+		restored = this->_io->restore(target, data, size);
+		// Если событие из снимка поднято
+		if(restored){
+			// Устанавливаем функцию обратного вызова на получение статуса поднятого события
+			this->_io->on(target, [&accepted](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+				// Если подключение принято, отмечаем это
+				if(status == awh::event::status_t::ACCEPTED)
+					// Отмечаем принятое подключение
+					accepted = true;
+			});
+		}
+	});
+	// Выполняем фиксацию настроек канала обмена
+	ASSERT_TRUE(this->_io->commit(channel));
+	// Выполняем подключение канала обмена к родителю
+	ASSERT_TRUE(this->_io->connect({channel}));
+	// Выполняем запуск канала обмена
+	ASSERT_TRUE(this->_io->launch(channel));
+	/**
+	 * Докладываем родителю о готовности принять снимок
+	 *
+	 * @details Родителю мало открытого своего конца: снять снимок он вправе лишь тогда,
+	 *          когда встречный конец подключён - номер процесса получателя спрашивается
+	 *          у самого канала. Сообщение это и есть признак подключения, и тем же
+	 *          порядком работает кластер
+	 */
+	ASSERT_TRUE(this->_io->send(channel, "R", 1));
+	// Признак запущенного поднятого события
+	bool started = false;
+	/**
+	 * Выполняем опрос событий, пока подключение не принято
+	 *
+	 * @note Приём подключений включается ИМЕННО здесь, а не в отклике на приход
+	 *       снимка: отклик работает посреди разбора событий, а правка подписок
+	 *       принадлежит самому циклу опроса
+	 */
+	while(!accepted && this->_io->poll(100)){
+		/**
+		 * Если событие поднято, но приём подключений ещё не включён
+		 *
+		 * @note Порядок у потокового сервера обязателен: прослушивание переводит
+		 *       событие в состояние успеха, а приём подключений включает уже запуск
+		 */
+		if(restored && !started)
+			// Переводим поднятое событие в прослушивание и включаем приём подключений
+			started = (this->_io->listen(target, 16) && this->_io->launch(target));
+	}
+	// Выходим из процесса с итогом проверки: принятое подключение и есть итог
+	::_exit((restored && started && accepted) ? EXIT_SUCCESS : EXIT_FAILURE);
+}
+
+/**
+ * @brief Проверка передачи слушающего события чужому процессу
+ *
+ * @details Снимок снимается с УЖЕ ЗАФИКСИРОВАННОГО слушающего события и уезжает
+ *          именованным каналом порождённому процессу. Тот поднимает из снимка своё
+ *          событие, минуя фиксацию, и обязан принять подключение - то самое, ради
+ *          чего передача и заведена
+ *
+ * @note Отвязку сокета от порта завершений, какую снятие снимка делает у MS Windows,
+ *       проверка эта НЕ закрепляет: прогон со снятой отвязкой проходит точно так же.
+ *       Отвязка держится договором о холодном узле, а не этой проверкой, и закрепить
+ *       её обязана своя - на состоянии события у отдающей стороны
+ *
+ * @note Проверка идёт ИМЕННО принятием подключения, а не успехом самого подъёма:
+ *       поднятое событие с негодным описателем отчиталось бы успехом молча
+ *
+ */
+TEST_F(IoFixture, IoSnapshotHandoffTest){
+	// Выполняем инициализацию сетевого движка
+	ASSERT_TRUE(this->_io->initialize());
+	// Создаём пару обмена именованным каналом, которой поедет снимок
+	const auto & channels = this->_io->events(awh::event::family_t::PIPE, awh::event::type_t::SEQPACKET);
+	// Проверяем, что оба идентификатора пары созданы
+	ASSERT_GT(channels[0], 0);
+	ASSERT_GT(channels[1], 0);
+	/**
+	 * Снимаем имя канала обмена прежде уничтожения встречного конца
+	 *
+	 * @note Порождённый процесс описателя по наследству не получает - он проходит
+	 *       main заново, - зато имя канала переносимо и доходит до него окружением.
+	 *       Уничтоженное событие имени уже не отдаст
+	 */
+	const std::string pipe = this->_io->getTarget(channels[1]);
+	// Проверяем, что имя канала обмена получено
+	ASSERT_FALSE(pipe.empty());
+	// Уничтожаем встречный конец пары: работник открывает свой конец сам, по имени
+	ASSERT_TRUE(this->_io->destroy(channels[1]));
+	// Получаем порт, на котором слушает передаваемое событие
+	const uint16_t bind = port();
+	// Создаём слушающее событие, снимок с которого поедет работнику
+	const awh::event::id_t server = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+	// Проверяем, что идентификатор события создан
+	ASSERT_GT(server, 0);
+	// Устанавливаем опции слушающего события
+	ASSERT_TRUE(this->_io->setOptions(server, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK));
+	// Устанавливаем адрес привязки
+	ASSERT_TRUE(this->_io->setAddress(server, awh::event::address_t::IPV4, "127.0.0.1"));
+	// Устанавливаем порт привязки
+	ASSERT_TRUE(this->_io->setSourcePort(server, bind));
+	// Выполняем фиксацию настроек слушающего события
+	ASSERT_TRUE(this->_io->commit(server));
+	/**
+	 * Переводим событие в прослушивание
+	 *
+	 * @note Потоковый сервер заводится фиксацией И прослушиванием: у него запуск идёт
+	 *       не через launch, тот заведён под RAW, DATAGRAM и SEQPACKET
+	 */
+	ASSERT_TRUE(this->_io->listen(server, 16));
+	// Признак доложившегося о готовности работника
+	bool ready = false;
+	// Устанавливаем функцию обратного вызова на получение доклада работника
+	this->_io->on(channels[0], [&ready](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+		// Отмечаем доложившегося работника: содержимое доклада значения не имеет
+		ready = true;
+	});
+	// Выполняем фиксацию настроек своего конца канала обмена
+	ASSERT_TRUE(this->_io->commit(channels[0]));
+	// Выполняем запуск своего конца канала обмена
+	ASSERT_TRUE(this->_io->launch(channels[0]));
+	// Буфер под путь к своему двоичному файлу
+	wchar_t executable[MAX_PATH]{0};
+	// Получаем путь к своему двоичному файлу: работник это тот же файл
+	ASSERT_GT(::GetModuleFileNameW(nullptr, executable, static_cast <DWORD> (sizeof(executable) / sizeof(executable[0]))), 0);
+	// Передаём имя канала обмена порождаемому процессу через окружение
+	ASSERT_TRUE(::SetEnvironmentVariableW(L"AWH_IO_SNAPSHOT_PIPE", this->_fmk->convert(pipe).c_str()));
+	// Собираем строку запуска работника: своя проверка отключена именем и зовётся особо
+	std::wstring command = L"\"" + std::wstring(executable) + L"\" --gtest_also_run_disabled_tests --gtest_filter=IoFixture.DISABLED_IoSnapshotHandoffWorkerTest";
+	// Описание порождаемого процесса
+	STARTUPINFOW startup{};
+	// Устанавливаем размер описания порождаемого процесса
+	startup.cb = sizeof(startup);
+	// Сведения о порождённом процессе
+	PROCESS_INFORMATION process{};
+	// Выполняем порождение работника
+	const BOOL spawned = ::CreateProcessW(executable, command.data(), nullptr, nullptr, FALSE, 0, nullptr, nullptr, &startup, &process);
+	// Снимаем имя канала из окружения: своим процессам его передавать незачем
+	::SetEnvironmentVariableW(L"AWH_IO_SNAPSHOT_PIPE", nullptr);
+	// Проверяем, что работник порождён
+	ASSERT_TRUE(spawned) << "Дочерний процесс создать не удалось";
+	// Признак переданного работнику снимка
+	bool handed = false;
+	// Код выхода работника
+	DWORD state = STILL_ACTIVE;
+	// Сокет, которым идёт стук в переданный работнику порт
+	SOCKET knock = INVALID_SOCKET;
+	/**
+	 * Выполняем опрос событий, пока работник не завершится
+	 *
+	 * @note Опрос здесь обязателен, в отличие от систем POSIX: обмен по именованному
+	 *       каналу наложенный, и отправка снимка уходит порту завершений, а не ядру
+	 *       напрямую
+	 */
+	while(this->_io->poll(100)){
+		// Если работник доложился о готовности, а снимок ему ещё не отправлен
+		if(ready && !handed){
+			// Буфер снятого снимка
+			std::vector <uint8_t> snapshot;
+			// Снимаем снимок слушающего события для передачи работнику
+			ASSERT_TRUE(this->_io->snapshot(server, channels[0], snapshot));
+			// Проверяем, что снимок не пуст
+			ASSERT_FALSE(snapshot.empty());
+			// Отправляем снимок работнику его же переносчиком
+			ASSERT_TRUE(this->_io->send(channels[0], reinterpret_cast <const char *> (snapshot.data()), snapshot.size()));
+			/**
+			 * Проверяем, что снятие снимка охладило событие у отдающей стороны
+			 *
+			 * @details С мига снятия сокет принадлежит двум процессам, и живая подписка
+			 *          у отдающего означала бы перехват данных, предназначенных не ему.
+			 *          Оттого событие теряет подписки и переходит в состояние NONE, а
+			 *          дальнейшая работа с ним требует повторной фиксации и запуска
+			 */
+			ASSERT_EQ(awh::event::status_t::NONE, this->_io->status(server)) << "снятие снимка событие не охладило";
+			// Проверяем, что охлаждённое событие запуску не поддаётся
+			ASSERT_FALSE(this->_io->launch(server)) << "охлаждённое событие запустилось без повторной фиксации";
+			/**
+			 * Закрываем свой слушающий описатель
+			 *
+			 * @note Держи его открытым обе стороны - подключение доставалось бы тому, кто
+			 *       спросит первым, и проверка стала бы гаданием вместо доказательства
+			 */
+			ASSERT_TRUE(this->_io->destroy(server));
+			// Отмечаем переданный работнику снимок
+			handed = true;
+		}
+		// Если снимок работнику передан, а стук ещё не сделан
+		if(handed && (knock == INVALID_SOCKET)){
+			/**
+			 * Стучимся в переданный работнику порт обычным сокетом
+			 *
+			 * @note Клиент фасада здесь не нужен: рукопожатие по петле ядро доводит само,
+			 *       и подключение ложится в очередь переданного описателя, каким бы
+			 *       процессом тот ни опрашивался
+			 */
+			knock = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+			// Проверяем, что сокет для стука создан
+			ASSERT_NE(knock, INVALID_SOCKET);
+			// Адрес, по которому идёт стук
+			struct sockaddr_in endpoint{};
+			// Устанавливаем семейство адреса
+			endpoint.sin_family = AF_INET;
+			// Устанавливаем порт, переданный работнику
+			endpoint.sin_port = htons(bind);
+			// Устанавливаем адрес петли
+			endpoint.sin_addr.s_addr = ::inet_addr("127.0.0.1");
+			// Выполняем подключение к переданному работнику порту
+			ASSERT_EQ(0, ::connect(knock, reinterpret_cast <struct sockaddr *> (&endpoint), sizeof(endpoint)));
+		}
+		// Спрашиваем состояние работника, не дожидаясь его
+		ASSERT_TRUE(::GetExitCodeProcess(process.hProcess, &state));
+		// Если работник завершился, опрос прекращаем
+		if(state != STILL_ACTIVE)
+			// Выходим из цикла опроса событий
+			break;
+	}
+	// Дожидаемся завершения работника отведённым сроком
+	ASSERT_EQ(WAIT_OBJECT_0, ::WaitForSingleObject(process.hProcess, 25000)) << "Дочерний процесс за отведённый срок не завершился";
+	// Спрашиваем код выхода завершившегося работника
+	ASSERT_TRUE(::GetExitCodeProcess(process.hProcess, &state));
+	// Если сокет стука заведён, закрываем его: своё дело он сделал
+	if(knock != INVALID_SOCKET)
+		// Закрываем сокет стука
+		::closesocket(knock);
+	// Закрываем описатели порождённого процесса
+	::CloseHandle(process.hThread);
+	::CloseHandle(process.hProcess);
+	// Проверяем, что работник принял подключение поднятым событием
+	ASSERT_EQ(static_cast <DWORD> (EXIT_SUCCESS), state);
+	// Уничтожаем заведённые события
+	this->_io->destroy(channels[0]);
 }
 
 #endif

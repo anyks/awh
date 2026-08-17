@@ -129,6 +129,23 @@ namespace awh {
 						escape_t escape;
 						/**
 						 * \~russian
+						 * Правило обращения с последовательностью, кодировке UTF-8 не отвечающей
+						 *
+						 * @note Умолчанием стоит замена знаком U+FFFD: текст обязан остаться
+						 * годным для разбора при любом содержимом строки, а знак замены
+						 * предписан самой кодировкой и в тексте виден глазом
+						 *
+						 * \~english
+						 * Rule of the handling of a sequence not conforming to the UTF-8 encoding
+						 * @note The replacement by the character U+FFFD stands as the default: a text must remain
+						 * suitable for the parsing at any content of a string, while the replacement character
+						 * is prescribed by the encoding itself and is visible to the eye in the text
+						 *
+						 * \~
+						 */
+						malformed_t malformed;
+						/**
+						 * \~russian
 						 * Количество пробелов отступа при оформлении с отступами
 						 *
 						 * @note Ноль означает отступ знаком табуляции

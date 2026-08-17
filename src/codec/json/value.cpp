@@ -1,0 +1,2446 @@
+/**
+ * @file value.cpp
+ * @date 2026-08-17
+ *
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
+ * \~russian
+ * @brief Реализация владеющего значения JSON — заведение дерева из значений языка,
+ *        снятие его с документа, правка, извлечение значений и перезапись в текст
+ *
+ * \~english
+ * @brief Implementation of an owning value of JSON — the creation of a tree from the values of the language,
+ *        the taking of it off a document, the editing, the extraction of the values and the rewriting into a text
+ *
+ * \~
+ *
+ * @copyright Copyright © 2026
+ *
+ */
+
+/**
+ * Стандартные заголовочные файлы
+ */
+#include <cmath>
+#include <limits>
+#include <fstream>
+#include <type_traits>
+
+/**
+ * Подключаем заголовочные файлы проекта
+ */
+#include <num/lexical/lexical.hpp>
+#include <codec/json/value.hpp>
+
+/**
+ * Используем стандартное пространство имён
+ */
+using namespace std;
+
+/**
+ * @brief Безымянное пространство имён вспомогательных объявлений значения
+ *
+ */
+namespace {
+	/**
+	 * @brief Шаблонная функция приведения дробного числа к затребованному виду
+	 *
+	 * @details Приведение отвечает языку: дробная часть отбрасывается усечением к нулю.
+	 * Разница с `static_cast` одна - дробное, чья целая часть лежит за пределами
+	 * затребованного целого вида, выдаётся пределом этого вида
+	 *
+	 * @note Тело это повторяет тело такой же функции документа знак в знак, и расходиться
+	 *       им нельзя: извлечение из владеющего значения обязано давать ровно то же, что
+	 *       извлечение из узла документа, откуда значение снято. Расхождение закреплено
+	 *       проверкой сличением обоих путей извлечения
+	 *
+	 * @tparam T     затребованный вид числа
+	 * @param  value приводимое дробное число
+	 * @return       приведённое число
+	 *
+	 */
+	template <typename T>
+	static T convert(const double value) noexcept {
+		/**
+		 * Если затребован дробный вид
+		 */
+		if(std::is_floating_point <T>::value)
+			// Выводим приведённое число как оно есть
+			return static_cast <T> (value);
+		/**
+		 * Если число не является числом вовсе
+		 *
+		 * @note Приведение `NaN` к целому есть неопределённое поведение при любом пределе
+		 */
+		if(::isnan(value))
+			// Выводим нулевое число
+			return static_cast <T> (0);
+		/**
+		 * Если целая часть числа лежит ниже предела затребованного вида
+		 *
+		 * @note Пределы сличаются дробным видом, а не целым: предел `int64_t` целым видом
+		 *       точно не представим дробным, и сличение целых дало бы промах на единицу
+		 */
+		if(value <= static_cast <double> (std::numeric_limits <T>::lowest()))
+			// Выводим нижний предел затребованного вида
+			return std::numeric_limits <T>::lowest();
+		/**
+		 * Если целая часть числа лежит выше предела затребованного вида
+		 */
+		if(value >= static_cast <double> (std::numeric_limits <T>::max()))
+			// Выводим верхний предел затребованного вида
+			return std::numeric_limits <T>::max();
+		// Выводим приведённое число
+		return static_cast <T> (value);
+	}
+	/**
+	 * @brief Функция извлечения пустой строки
+	 *
+	 * @details Строка эта одна на все отказы выдачи содержимого: метод обязан выдать
+	 * ссылку, а ссылки на несуществующее не бывает
+	 *
+	 * @return пустая строка
+	 *
+	 */
+	static const string & empty() noexcept {
+		// Пустая строка, выдаваемая при отсутствии содержимого
+		static const string result;
+		// Выводим пустую строку
+		return result;
+	}
+	/**
+	 * @brief Функция разбора указателя JSON Pointer на звенья
+	 *
+	 * @details Указатель разбирается по RFC 6901: `/response/users/0/id`. Отменяющие
+	 * записи `~1` и `~0` снимаются, а пустой указатель отдаёт пустой перечень звеньев
+	 *
+	 * @note Порядок снятия отменяющих записей предписан стандартом: снятие `~0` прежде
+	 *       `~1` обратило бы записанное `~01` в косую черту вместо `~1`
+	 *
+	 * @param pointer разбираемый указатель на значение
+	 * @param result  перечень, куда помещаются разобранные звенья указателя
+	 * @return        признак успешности разбора
+	 *
+	 */
+	static bool tokens(const string & pointer, vector <string> & result) noexcept {
+		// Выполняем очистку перечня звеньев указателя
+		result.clear();
+		/**
+		 * Если указатель пуст
+		 */
+		if(pointer.empty())
+			// Выводим признак успешного разбора
+			return true;
+		/**
+		 * Если указатель не начинается с косой черты
+		 */
+		if(pointer.front() != '/')
+			// Выводим признак неудачного разбора
+			return false;
+		// Положение разбираемого знака указателя
+		size_t offset = 1;
+		/**
+		 * Выполняем разбор указателя звено за звеном
+		 */
+		while(offset <= pointer.size()){
+			// Выполняем поиск конца очередного звена указателя
+			const size_t end = pointer.find('/', offset);
+			// Получаем содержимое очередного звена указателя
+			string token = pointer.substr(offset, ((end == string::npos) ? string::npos : (end - offset)));
+			// Выполняем переход к следующему звену указателя
+			offset = ((end == string::npos) ? (pointer.size() + 1) : (end + 1));
+			/**
+			 * Выполняем снятие отменяющих записей звена указателя
+			 */
+			for(size_t i = token.find('~'); i != string::npos; i = token.find('~', i + 1)){
+				/**
+				 * Если за знаком отмены не осталось знаков
+				 */
+				if((i + 1) >= token.size())
+					// Выводим признак неудачного разбора
+					return false;
+				/**
+				 * Определяем отменяющую запись звена указателя
+				 */
+				switch(token[i + 1]){
+					// Если записана косая черта
+					case '1':
+						// Выполняем подмену отменяющей записи косой чертой
+						token.replace(i, 2, "/");
+					break;
+					// Если записан сам знак отмены
+					case '0':
+						// Выполняем подмену отменяющей записи знаком отмены
+						token.replace(i, 2, "~");
+					break;
+					// Если отменяющая запись не опознана
+					default:
+						// Выводим признак неудачного разбора
+						return false;
+				}
+			}
+			// Добавляем разобранное звено в перечень звеньев указателя
+			result.push_back(::std::move(token));
+		}
+		// Выводим признак успешного разбора
+		return true;
+	}
+	/**
+	 * @brief Функция разбора звена указателя номером значения массива
+	 *
+	 * @param token  разбираемое звено указателя
+	 * @param result переменная, куда помещается разобранный номер значения
+	 * @return       признак того, что звено является номером значения
+	 *
+	 */
+	static bool numbered(const string & token, size_t & result) noexcept {
+		/**
+		 * Если содержимое звена номером значения не является
+		 *
+		 * @note Запись номера с ведущим нулём стандартом запрещена: номер `01` номером
+		 *       не является вовсе, а является именем поля
+		 */
+		if(token.empty() || ((token.size() > 1) && (token.front() == '0')))
+			// Выводим признак того, что звено номером значения не является
+			return false;
+		// Выполняем сброс разбираемого номера значения
+		result = 0;
+		/**
+		 * Выполняем перебор всех знаков звена указателя
+		 */
+		for(const char letter : token){
+			/**
+			 * Если знак цифрой не является
+			 */
+			if((letter < '0') || (letter > '9'))
+				// Выводим признак того, что звено номером значения не является
+				return false;
+			// Добавляем разряд к номеру значения массива
+			result = ((result * 10) + static_cast <size_t> (letter - '0'));
+		}
+		// Выводим признак того, что звено является номером значения
+		return true;
+	}
+}
+
+/**
+ * @brief Метод проверки определённости значения
+ *
+ * @return признак определённости значения
+ *
+ */
+bool awh::codec::json::Value::valid() const noexcept {
+	// Выводим признак определённости значения
+	return (this->_kind != kind_t::NONE);
+}
+/**
+ * @brief Метод извлечения вида значения
+ *
+ * @return вид хранимого значения
+ *
+ */
+awh::codec::json::kind_t awh::codec::json::Value::kind() const noexcept {
+	// Выводим вид хранимого значения
+	return this->_kind;
+}
+/**
+ * @brief Метод извлечения вида хранения значения
+ *
+ * @return вид хранения значения
+ *
+ */
+awh::codec::json::type_t awh::codec::json::Value::type() const noexcept {
+	// Выводим вид хранения значения
+	return this->_type;
+}
+/**
+ * @brief Метод проверки значения на принадлежность к виду
+ *
+ * @param type вид либо набор видов, на принадлежность к какому проверяется значение
+ * @return     признак принадлежности значения к виду
+ *
+ */
+bool awh::codec::json::Value::is(const type_t type) const noexcept {
+	/**
+	 * Если спрошено об отсутствии значения
+	 *
+	 * @note Отсутствие значения разряда своего не имеет вовсе - оно есть пустота
+	 *       разрядов, и наложением проверено быть не может
+	 */
+	if(type == type_t::UNDEFINED)
+		// Выводим признак отсутствия значения
+		return (this->_type == type_t::UNDEFINED);
+	// Выводим признак принадлежности значения к виду
+	return ((static_cast <uint16_t> (this->_type) & static_cast <uint16_t> (type)) != 0);
+}
+/**
+ * @brief Метод извлечения количества значений вместилища
+ *
+ * @return количество значений вместилища, у значения простого - ноль
+ *
+ */
+size_t awh::codec::json::Value::size() const noexcept {
+	// Выводим количество значений вместилища
+	return this->_items.size();
+}
+/**
+ * @brief Метод проверки вместилища на пустоту
+ *
+ * @return признак пустоты вместилища
+ *
+ */
+bool awh::codec::json::Value::empty() const noexcept {
+	// Выводим признак пустоты вместилища
+	return this->_items.empty();
+}
+/**
+ * @brief Метод очистки значения
+ *
+ */
+void awh::codec::json::Value::clear() noexcept {
+	// Выполняем сброс вида хранимого значения
+	this->_kind = kind_t::NONE;
+	// Выполняем сброс вида хранения значения
+	this->_type = type_t::UNDEFINED;
+	// Выполняем сброс хранимого числа
+	this->_number.natural = 0;
+	// Выполняем очистку содержимого значения
+	this->_text.clear();
+	// Выполняем очистку имён полей объекта
+	this->_names.clear();
+	// Выполняем очистку значений вместилища
+	this->_items.clear();
+}
+/**
+ * @brief Метод извлечения строкового содержимого значения
+ *
+ * @return строковое содержимое значения, пусто у прочих значений
+ *
+ */
+const string & awh::codec::json::Value::text() const noexcept {
+	// Выводим строковое содержимое значения, если значение строкой является
+	return ((this->_kind == kind_t::STRING) ? this->_text : ::empty());
+}
+/**
+ * @brief Метод извлечения записи числа
+ *
+ * @return запись числа, пусто у прочих значений
+ *
+ */
+string awh::codec::json::Value::raw() const noexcept {
+	/**
+	 * Если число хранится записью своей
+	 */
+	if(this->_type == type_t::EXTENDED)
+		// Выводим запись числа, как она стояла в тексте
+		return this->_text;
+	/**
+	 * Если значение числом не является
+	 */
+	if(this->_kind != kind_t::NUMBER)
+		// Выводим отсутствие записи числа
+		return string();
+	// Объект записи текста документа
+	writer_t writer;
+	// Выполняем запись числа, хранимого значением
+	this->compose(writer);
+	// Выводим собранную запись числа
+	return writer.take();
+}
+/**
+ * @brief Метод извлечения имени поля объекта по номеру
+ *
+ * @param index номер поля объекта
+ * @return      имя поля объекта, пустое - поля с таким номером нет
+ *
+ */
+const string & awh::codec::json::Value::key(const size_t index) const noexcept {
+	// Выводим имя поля объекта, если поле с таким номером заведено
+	return ((index < this->_names.size()) ? this->_names.at(index) : ::empty());
+}
+/**
+ * @brief Метод проверки наличия поля объекта с указанным именем
+ *
+ * @param name разыскиваемое имя поля объекта
+ * @return     признак наличия поля объекта
+ *
+ */
+bool awh::codec::json::Value::contains(const string & name) const noexcept {
+	/**
+	 * Выполняем перебор всех имён полей объекта
+	 */
+	for(auto & item : this->_names){
+		/**
+		 * Если имя поля объекта совпадает с разыскиваемым
+		 */
+		if(item.compare(name) == 0)
+			// Выводим признак наличия поля объекта
+			return true;
+	}
+	// Выводим отсутствие поля объекта
+	return false;
+}
+/**
+ * @brief Метод извлечения значения неопределённого
+ *
+ * @details Значение это одно на все отказы обращения только для чтения: метод обязан
+ * выдать ссылку, а ссылки на несуществующее не бывает
+ *
+ * @return значение неопределённое
+ *
+ */
+const awh::codec::json::Value & awh::codec::json::Value::undefined() noexcept {
+	// Значение неопределённое, выдаваемое при неудачном обращении
+	static const Value result;
+	// Выводим значение неопределённое
+	return result;
+}
+/**
+ * @brief Метод извлечения значения мусорного
+ *
+ * @details Значение это принимает на себя запись при неудачном обращении изменяемом:
+ * выдать ссылку метод обязан, а завести значение по неверному пути не вправе. Записанное
+ * в него пропадает при следующем же неудачном обращении, и полагаться на него нельзя
+ *
+ * @note Значение это своё у всякого потока: одно на приложение оно обратило бы отказ
+ *       обращения в состязание за общую память
+ *
+ * @return значение мусорное
+ *
+ */
+awh::codec::json::Value & awh::codec::json::Value::scrap() noexcept {
+	// Значение мусорное, принимающее на себя запись при неудачном обращении
+	static thread_local Value result;
+	// Выполняем очистку значения мусорного от записанного прежде
+	result.clear();
+	// Выводим значение мусорное
+	return result;
+}
+/**
+ * @brief Метод обращения к значению по пути
+ *
+ * @param path путь к разыскиваемому значению
+ * @return     ссылка на разысканное значение
+ *
+ */
+const awh::codec::json::Value & awh::codec::json::Value::at(const string & path) const noexcept {
+	// Перечень звеньев пути к разыскиваемому значению
+	vector <string> parts;
+	/**
+	 * Если разбор пути на звенья завершился отказом
+	 */
+	if(!::tokens(path, parts))
+		// Выводим значение неопределённое
+		return Value::undefined();
+	// Ссылка на разыскиваемое значение
+	const Value * result = this;
+	/**
+	 * Выполняем разбор пути звено за звеном
+	 */
+	for(auto & token : parts){
+		/**
+		 * Определяем вид значения, к какому обращается очередное звено пути
+		 */
+		switch(static_cast <uint8_t> (result->_kind)){
+			// Если звено пути обращается к значению массива
+			case static_cast <uint8_t> (kind_t::ARRAY): {
+				// Номер значения массива, разыскиваемый звеном пути
+				size_t index = 0;
+				/**
+				 * Если содержимое звена номером значения не является либо
+				 * значения с таким номером у массива нет
+				 */
+				if(!::numbered(token, index) || (index >= result->_items.size()))
+					// Выводим значение неопределённое
+					return Value::undefined();
+				// Выполняем переход к значению массива
+				result = &result->_items.at(index);
+			} break;
+			// Если звено пути обращается к полю объекта
+			case static_cast <uint8_t> (kind_t::OBJECT): {
+				// Номер разыскиваемого поля объекта
+				size_t index = result->_names.size();
+				/**
+				 * Выполняем перебор всех имён полей объекта
+				 */
+				for(size_t i = 0; i < result->_names.size(); i++){
+					/**
+					 * Если имя поля объекта совпадает с разыскиваемым
+					 */
+					if(result->_names.at(i).compare(token) == 0){
+						// Запоминаем номер разысканного поля объекта
+						index = i;
+						// Прекращаем перебор имён полей объекта
+						break;
+					}
+				}
+				/**
+				 * Если поле объекта с таким именем не разыскано
+				 */
+				if(index >= result->_names.size())
+					// Выводим значение неопределённое
+					return Value::undefined();
+				// Выполняем переход к значению поля объекта
+				result = &result->_items.at(index);
+			} break;
+			/**
+			 * Если значение вместилищем не является вовсе
+			 */
+			default:
+				// Выводим значение неопределённое
+				return Value::undefined();
+		}
+	}
+	// Выводим ссылку на разысканное значение
+	return (* result);
+}
+/**
+ * @brief Метод обращения к значению по пути с заведением недостающего
+ *
+ * @param path путь к разыскиваемому значению
+ * @return     ссылка на разысканное либо заведённое значение
+ *
+ */
+awh::codec::json::Value & awh::codec::json::Value::place(const string & path) noexcept {
+	// Перечень звеньев пути к разыскиваемому значению
+	vector <string> parts;
+	/**
+	 * Если разбор пути на звенья завершился отказом
+	 */
+	if(!::tokens(path, parts))
+		// Выводим значение мусорное
+		return Value::scrap();
+	// Ссылка на разыскиваемое значение
+	Value * result = this;
+	/**
+	 * Выполняем разбор пути звено за звеном
+	 */
+	for(auto & token : parts){
+		// Номер значения массива, разыскиваемый звеном пути
+		size_t index = 0;
+		// Получаем признак того, что звено пути является номером значения массива
+		const bool numbered = ::numbered(token, index);
+		/**
+		 * Если значение вместилищем затребованного вида не является
+		 *
+		 * @note Значение простое, встреченное на пути вместо вместилища, перерождается
+		 *       вместилищем: путь заведения ведёт до конца своего, и останавливать его
+		 *       на полдороге означало бы заводить половину пути
+		 */
+		if(result->_kind != (numbered ? kind_t::ARRAY : kind_t::OBJECT)){
+			// Выполняем очистку прежнего содержимого значения
+			result->clear();
+			// Устанавливаем вид вместилища, затребованный звеном пути
+			result->_kind = (numbered ? kind_t::ARRAY : kind_t::OBJECT);
+			// Устанавливаем вид хранения вместилища
+			result->_type = (numbered ? type_t::ARRAY : type_t::OBJECT);
+		}
+		/**
+		 * Если звено пути обращается к значению массива
+		 */
+		if(numbered){
+			/**
+			 * Выполняем рост массива до затребованного номера значениями неопределёнными
+			 */
+			while(result->_items.size() <= index)
+				// Добавляем в массив значение неопределённое
+				result->_items.push_back(Value());
+			// Выполняем переход к значению массива
+			result = &result->_items.at(index);
+		/**
+		 * Если звено пути обращается к полю объекта
+		 */
+		} else {
+			// Номер разыскиваемого поля объекта
+			size_t offset = result->_names.size();
+			/**
+			 * Выполняем перебор всех имён полей объекта
+			 */
+			for(size_t i = 0; i < result->_names.size(); i++){
+				/**
+				 * Если имя поля объекта совпадает с разыскиваемым
+				 */
+				if(result->_names.at(i).compare(token) == 0){
+					// Запоминаем номер разысканного поля объекта
+					offset = i;
+					// Прекращаем перебор имён полей объекта
+					break;
+				}
+			}
+			/**
+			 * Если поле объекта с таким именем ещё не заведено
+			 */
+			if(offset >= result->_names.size()){
+				// Добавляем имя поля объекта в перечень имён
+				result->_names.push_back(token);
+				// Добавляем в объект значение неопределённое
+				result->_items.push_back(Value());
+			}
+			// Выполняем переход к значению поля объекта
+			result = &result->_items.at(offset);
+		}
+	}
+	// Выводим ссылку на разысканное либо заведённое значение
+	return (* result);
+}
+/**
+ * @brief Метод обращения к полю объекта по имени
+ *
+ * @param name имя поля объекта
+ * @return     ссылка на значение поля объекта
+ *
+ */
+const awh::codec::json::Value & awh::codec::json::Value::operator [] (const string & name) const noexcept {
+	/**
+	 * Если значение объектом не является
+	 */
+	if(this->_kind != kind_t::OBJECT)
+		// Выводим значение неопределённое
+		return Value::undefined();
+	/**
+	 * Выполняем перебор всех имён полей объекта
+	 */
+	for(size_t i = 0; i < this->_names.size(); i++){
+		/**
+		 * Если имя поля объекта совпадает с разыскиваемым
+		 */
+		if(this->_names.at(i).compare(name) == 0)
+			// Выводим ссылку на значение поля объекта
+			return this->_items.at(i);
+	}
+	// Выводим значение неопределённое
+	return Value::undefined();
+}
+/**
+ * @brief Метод обращения к полю объекта по имени с заведением недостающего
+ *
+ * @param name имя поля объекта
+ * @return     ссылка на значение поля объекта
+ *
+ */
+awh::codec::json::Value & awh::codec::json::Value::operator [] (const string & name) noexcept {
+	/**
+	 * Если значение ещё не определено
+	 *
+	 * @note Перерождению подлежит лишь значение неопределённое: обращение по имени к
+	 *       числу либо к строке есть промах потребителя, и молча сносить его значение
+	 *       обращение не вправе
+	 */
+	if(this->_kind == kind_t::NONE){
+		// Устанавливаем вид значения объектом
+		this->_kind = kind_t::OBJECT;
+		// Устанавливаем вид хранения значения объектом
+		this->_type = type_t::OBJECT;
+	}
+	/**
+	 * Если значение объектом не является
+	 */
+	if(this->_kind != kind_t::OBJECT)
+		// Выводим значение мусорное
+		return Value::scrap();
+	/**
+	 * Выполняем перебор всех имён полей объекта
+	 */
+	for(size_t i = 0; i < this->_names.size(); i++){
+		/**
+		 * Если имя поля объекта совпадает с разыскиваемым
+		 */
+		if(this->_names.at(i).compare(name) == 0)
+			// Выводим ссылку на значение поля объекта
+			return this->_items.at(i);
+	}
+	// Добавляем имя поля объекта в перечень имён
+	this->_names.push_back(name);
+	// Добавляем в объект значение неопределённое
+	this->_items.push_back(Value());
+	// Выводим ссылку на заведённое значение поля объекта
+	return this->_items.back();
+}
+/**
+ * @brief Метод обращения к значению вместилища по номеру
+ *
+ * @param index номер значения во вместилище
+ * @return      ссылка на значение вместилища
+ *
+ */
+const awh::codec::json::Value & awh::codec::json::Value::operator [] (const size_t index) const noexcept {
+	// Выводим ссылку на значение вместилища, если значение с таким номером заведено
+	return ((index < this->_items.size()) ? this->_items.at(index) : Value::undefined());
+}
+/**
+ * @brief Метод обращения к значению вместилища по номеру с заведением недостающего
+ *
+ * @param index номер значения во вместилище
+ * @return      ссылка на значение вместилища
+ *
+ */
+awh::codec::json::Value & awh::codec::json::Value::operator [] (const size_t index) noexcept {
+	/**
+	 * Если значение ещё не определено
+	 */
+	if(this->_kind == kind_t::NONE){
+		// Устанавливаем вид значения массивом
+		this->_kind = kind_t::ARRAY;
+		// Устанавливаем вид хранения значения массивом
+		this->_type = type_t::ARRAY;
+	}
+	/**
+	 * Если значение с таким номером уже заведено
+	 */
+	if(index < this->_items.size())
+		// Выводим ссылку на значение вместилища
+		return this->_items.at(index);
+	/**
+	 * Если значение массивом не является
+	 *
+	 * @note Рост объекта обращением по номеру невозможен: имени у заводимого поля
+	 *       взять неоткуда
+	 */
+	if(this->_kind != kind_t::ARRAY)
+		// Выводим значение мусорное
+		return Value::scrap();
+	/**
+	 * Выполняем рост массива до затребованного номера значениями неопределёнными
+	 */
+	while(this->_items.size() <= index)
+		// Добавляем в массив значение неопределённое
+		this->_items.push_back(Value());
+	// Выводим ссылку на значение массива
+	return this->_items.at(index);
+}
+/**
+ * @brief Метод добавления значения в конец массива
+ *
+ * @param value добавляемое значение
+ * @return      признак успешности добавления
+ *
+ */
+bool awh::codec::json::Value::push(const Value & value) noexcept {
+	/**
+	 * Если значение ещё не определено
+	 */
+	if(this->_kind == kind_t::NONE){
+		// Устанавливаем вид значения массивом
+		this->_kind = kind_t::ARRAY;
+		// Устанавливаем вид хранения значения массивом
+		this->_type = type_t::ARRAY;
+	}
+	/**
+	 * Если значение массивом не является
+	 */
+	if(this->_kind != kind_t::ARRAY)
+		// Выводим признак неудачного добавления
+		return false;
+	// Добавляем значение в конец массива
+	this->_items.push_back(value);
+	// Выводим признак успешного добавления
+	return true;
+}
+/**
+ * @brief Метод установки поля объекта
+ *
+ * @param name  имя поля объекта
+ * @param value устанавливаемое значение поля
+ * @return      признак успешности установки
+ *
+ */
+bool awh::codec::json::Value::insert(const string & name, const Value & value) noexcept {
+	/**
+	 * Если значение ещё не определено
+	 */
+	if(this->_kind == kind_t::NONE){
+		// Устанавливаем вид значения объектом
+		this->_kind = kind_t::OBJECT;
+		// Устанавливаем вид хранения значения объектом
+		this->_type = type_t::OBJECT;
+	}
+	/**
+	 * Если значение объектом не является
+	 */
+	if(this->_kind != kind_t::OBJECT)
+		// Выводим признак неудачной установки
+		return false;
+	/**
+	 * Выполняем перебор всех имён полей объекта
+	 */
+	for(size_t i = 0; i < this->_names.size(); i++){
+		/**
+		 * Если имя поля объекта совпадает с устанавливаемым
+		 */
+		if(this->_names.at(i).compare(name) == 0){
+			// Выполняем перезапись значения поля объекта на своём месте
+			this->_items.at(i) = value;
+			// Выводим признак успешной установки
+			return true;
+		}
+	}
+	// Добавляем имя поля объекта в перечень имён
+	this->_names.push_back(name);
+	// Добавляем значение поля в объект
+	this->_items.push_back(value);
+	// Выводим признак успешной установки
+	return true;
+}
+/**
+ * @brief Метод снятия поля объекта по имени
+ *
+ * @param name имя снимаемого поля объекта
+ * @return     признак успешности снятия
+ *
+ */
+bool awh::codec::json::Value::erase(const string & name) noexcept {
+	/**
+	 * Если значение объектом не является
+	 */
+	if(this->_kind != kind_t::OBJECT)
+		// Выводим признак неудачного снятия
+		return false;
+	/**
+	 * Выполняем перебор всех имён полей объекта
+	 */
+	for(size_t i = 0; i < this->_names.size(); i++){
+		/**
+		 * Если имя поля объекта совпадает со снимаемым
+		 */
+		if(this->_names.at(i).compare(name) == 0){
+			// Выполняем снятие имени поля объекта
+			this->_names.erase(this->_names.begin() + static_cast <ptrdiff_t> (i));
+			// Выполняем снятие значения поля объекта
+			this->_items.erase(this->_items.begin() + static_cast <ptrdiff_t> (i));
+			// Выводим признак успешного снятия
+			return true;
+		}
+	}
+	// Выводим признак неудачного снятия
+	return false;
+}
+/**
+ * @brief Метод снятия значения вместилища по номеру
+ *
+ * @param index номер снимаемого значения вместилища
+ * @return      признак успешности снятия
+ *
+ */
+bool awh::codec::json::Value::erase(const size_t index) noexcept {
+	/**
+	 * Если значения с таким номером у вместилища нет
+	 */
+	if(index >= this->_items.size())
+		// Выводим признак неудачного снятия
+		return false;
+	/**
+	 * Если значение является объектом
+	 */
+	if(this->_kind == kind_t::OBJECT)
+		// Выполняем снятие имени поля объекта
+		this->_names.erase(this->_names.begin() + static_cast <ptrdiff_t> (index));
+	// Выполняем снятие значения вместилища
+	this->_items.erase(this->_items.begin() + static_cast <ptrdiff_t> (index));
+	// Выводим признак успешного снятия
+	return true;
+}
+/**
+ * @brief Метод извлечения логического значения
+ *
+ * @param result переменная, куда помещается извлечённое значение
+ * @return       признак успешности извлечения
+ *
+ */
+bool awh::codec::json::Value::value(bool & result) const noexcept {
+	/**
+	 * Если значение логическим не является
+	 */
+	if(this->_kind != kind_t::BOOL)
+		// Выводим признак неудачного извлечения
+		return false;
+	// Устанавливаем извлечённое логическое значение
+	result = this->_number.flag;
+	// Выводим признак успешного извлечения
+	return true;
+}
+/**
+ * @brief Шаблонный метод извлечения числа затребованным видом
+ *
+ * @details Извлечение сличает само значение с пределами затребованного вида, а не вид
+ * хранения с видом затребованным: значение, хранящее `INT8`, извлекается и как `double`,
+ * и как `uint64_t`. Отказом извлечение завершается лишь тогда, когда значение числом не
+ * является вовсе
+ *
+ * @tparam T      затребованный вид числа
+ * @param  result переменная, куда помещается извлечённое значение
+ * @return        признак успешности извлечения
+ *
+ */
+template <typename T>
+bool awh::codec::json::Value::extract(T & result) const noexcept {
+	/**
+	 * Определяем вид хранения значения
+	 */
+	switch(static_cast <uint16_t> (this->_type)){
+		// Если значение является целым со знаком любой ширины
+		case static_cast <uint16_t> (type_t::INT8):
+		case static_cast <uint16_t> (type_t::INT16):
+		case static_cast <uint16_t> (type_t::INT32):
+		case static_cast <uint16_t> (type_t::INT64):
+			// Устанавливаем извлечённое значение приведением языка
+			result = static_cast <T> (this->_number.integer);
+		break;
+		// Если значение является целым без знака любой ширины
+		case static_cast <uint16_t> (type_t::UINT8):
+		case static_cast <uint16_t> (type_t::UINT16):
+		case static_cast <uint16_t> (type_t::UINT32):
+		case static_cast <uint16_t> (type_t::UINT64):
+			// Устанавливаем извлечённое значение приведением языка
+			result = static_cast <T> (this->_number.natural);
+		break;
+		// Если значение является дробным одинарной точности
+		case static_cast <uint16_t> (type_t::FLOAT):
+		// Если значение является дробным двойной точности
+		case static_cast <uint16_t> (type_t::DOUBLE):
+			// Устанавливаем извлечённое значение приведением дробного
+			result = ::convert <T> (this->_number.real);
+		break;
+		/**
+		 * Если значение является числом, не вместимым ни в один родной вид
+		 */
+		case static_cast <uint16_t> (type_t::EXTENDED): {
+			// Разбираемое дробное число
+			double number = 0.;
+			/**
+			 * Выполняем разбор записи числа
+			 *
+			 * @note Разбор здесь неизбежен: число это в родной вид не вместилось, оттого
+			 *       и хранится записью. Таких чисел на документ приходятся единицы
+			 */
+			lexical_t::fromChars(this->_text.data(), (this->_text.data() + this->_text.size()), number);
+			// Устанавливаем извлечённое значение приведением дробного
+			result = ::convert <T> (number);
+		} break;
+		/**
+		 * Если значение числом не является вовсе
+		 */
+		default:
+			// Выводим признак неудачного извлечения
+			return false;
+	}
+	// Выводим признак успешного извлечения
+	return true;
+}
+/**
+ * @brief Метод извлечения числа видом `int8_t`
+ *
+ * @param result переменная, куда помещается извлечённое значение
+ * @return       признак успешности извлечения
+ *
+ */
+bool awh::codec::json::Value::value(int8_t & result) const noexcept {
+	// Выводим признак успешности извлечения числа
+	return this->extract(result);
+}
+/**
+ * @brief Метод извлечения числа видом `int16_t`
+ *
+ * @param result переменная, куда помещается извлечённое значение
+ * @return       признак успешности извлечения
+ *
+ */
+bool awh::codec::json::Value::value(int16_t & result) const noexcept {
+	// Выводим признак успешности извлечения числа
+	return this->extract(result);
+}
+/**
+ * @brief Метод извлечения числа видом `int32_t`
+ *
+ * @param result переменная, куда помещается извлечённое значение
+ * @return       признак успешности извлечения
+ *
+ */
+bool awh::codec::json::Value::value(int32_t & result) const noexcept {
+	// Выводим признак успешности извлечения числа
+	return this->extract(result);
+}
+/**
+ * @brief Метод извлечения числа видом `int64_t`
+ *
+ * @param result переменная, куда помещается извлечённое значение
+ * @return       признак успешности извлечения
+ *
+ */
+bool awh::codec::json::Value::value(int64_t & result) const noexcept {
+	// Выводим признак успешности извлечения числа
+	return this->extract(result);
+}
+/**
+ * @brief Метод извлечения числа видом `uint8_t`
+ *
+ * @param result переменная, куда помещается извлечённое значение
+ * @return       признак успешности извлечения
+ *
+ */
+bool awh::codec::json::Value::value(uint8_t & result) const noexcept {
+	// Выводим признак успешности извлечения числа
+	return this->extract(result);
+}
+/**
+ * @brief Метод извлечения числа видом `uint16_t`
+ *
+ * @param result переменная, куда помещается извлечённое значение
+ * @return       признак успешности извлечения
+ *
+ */
+bool awh::codec::json::Value::value(uint16_t & result) const noexcept {
+	// Выводим признак успешности извлечения числа
+	return this->extract(result);
+}
+/**
+ * @brief Метод извлечения числа видом `uint32_t`
+ *
+ * @param result переменная, куда помещается извлечённое значение
+ * @return       признак успешности извлечения
+ *
+ */
+bool awh::codec::json::Value::value(uint32_t & result) const noexcept {
+	// Выводим признак успешности извлечения числа
+	return this->extract(result);
+}
+/**
+ * @brief Метод извлечения числа видом `uint64_t`
+ *
+ * @param result переменная, куда помещается извлечённое значение
+ * @return       признак успешности извлечения
+ *
+ */
+bool awh::codec::json::Value::value(uint64_t & result) const noexcept {
+	// Выводим признак успешности извлечения числа
+	return this->extract(result);
+}
+/**
+ * @brief Метод извлечения числа видом `float`
+ *
+ * @param result переменная, куда помещается извлечённое значение
+ * @return       признак успешности извлечения
+ *
+ */
+bool awh::codec::json::Value::value(float & result) const noexcept {
+	// Выводим признак успешности извлечения числа
+	return this->extract(result);
+}
+/**
+ * @brief Метод извлечения числа видом `double`
+ *
+ * @param result переменная, куда помещается извлечённое значение
+ * @return       признак успешности извлечения
+ *
+ */
+bool awh::codec::json::Value::value(double & result) const noexcept {
+	// Выводим признак успешности извлечения числа
+	return this->extract(result);
+}
+/**
+ * @brief Метод извлечения строкового значения
+ *
+ * @param result переменная, куда помещается извлечённое значение
+ * @return       признак успешности извлечения
+ *
+ */
+bool awh::codec::json::Value::value(string & result) const noexcept {
+	/**
+	 * Если значение строкой не является
+	 */
+	if(this->_kind != kind_t::STRING)
+		// Выводим признак неудачного извлечения
+		return false;
+	// Устанавливаем извлечённое строковое значение
+	result.assign(this->_text);
+	// Выводим признак успешного извлечения
+	return true;
+}
+/**
+ * @brief Метод записи значения в поток записи
+ *
+ * @param writer поток записи, куда ложится значение
+ * @return       признак успешности записи
+ *
+ */
+bool awh::codec::json::Value::compose(writer_t & writer) const noexcept {
+	/**
+	 * Определяем вид хранимого значения
+	 */
+	switch(static_cast <uint8_t> (this->_kind)){
+		/**
+		 * Если значение ещё не определено
+		 *
+		 * @note Значения неопределённого стандарт не знает вовсе, и записывается оно
+		 *       пустым значением: иного вида, годного ему, в стандарте нет
+		 */
+		case static_cast <uint8_t> (kind_t::NONE):
+		// Если значение является пустым
+		case static_cast <uint8_t> (kind_t::NUL):
+			// Выводим признак успешности записи пустого значения
+			return writer.null();
+		// Если значение является логическим
+		case static_cast <uint8_t> (kind_t::BOOL):
+			// Выводим признак успешности записи логического значения
+			return writer.value(this->_number.flag);
+		/**
+		 * Если значение является числом
+		 */
+		case static_cast <uint8_t> (kind_t::NUMBER): {
+			/**
+			 * Определяем вид хранения числа
+			 */
+			switch(static_cast <uint16_t> (this->_type)){
+				// Если число является целым со знаком любой ширины
+				case static_cast <uint16_t> (type_t::INT8):
+				case static_cast <uint16_t> (type_t::INT16):
+				case static_cast <uint16_t> (type_t::INT32):
+				case static_cast <uint16_t> (type_t::INT64):
+					// Выводим признак успешности записи целого числа со знаком
+					return writer.value(this->_number.integer);
+				// Если число является целым без знака любой ширины
+				case static_cast <uint16_t> (type_t::UINT8):
+				case static_cast <uint16_t> (type_t::UINT16):
+				case static_cast <uint16_t> (type_t::UINT32):
+				case static_cast <uint16_t> (type_t::UINT64):
+					// Выводим признак успешности записи целого числа без знака
+					return writer.value(this->_number.natural);
+				/**
+				 * Если число является дробным любой точности
+				 *
+				 * @note Число одинарной точности хранится дробным двойной точности, а
+				 *       вид его - лишь памятью о записи, какою оно пришло: сужение до
+				 *       `float` и обратно точного значения не меняет вовсе
+				 */
+				case static_cast <uint16_t> (type_t::FLOAT):
+				case static_cast <uint16_t> (type_t::DOUBLE):
+					// Выводим признак успешности записи дробного числа
+					return writer.value(this->_number.real);
+				// Если число в родной вид не вместилось
+				case static_cast <uint16_t> (type_t::EXTENDED):
+					// Выводим признак успешности записи числа его записью
+					return writer.raw(this->_text);
+			}
+			// Выводим признак неуспешности записи числа неопознанного вида хранения
+			return false;
+		}
+		// Если значение является строкой
+		case static_cast <uint8_t> (kind_t::STRING):
+			// Выводим признак успешности записи строкового значения
+			return writer.value(this->_text);
+		/**
+		 * Если значение является массивом
+		 */
+		case static_cast <uint8_t> (kind_t::ARRAY): {
+			/**
+			 * Если открытие массива завершилось отказом
+			 */
+			if(!writer.array())
+				// Выводим признак неуспешности записи
+				return false;
+			/**
+			 * Выполняем перебор всех значений массива
+			 */
+			for(auto & item : this->_items){
+				/**
+				 * Если запись очередного значения массива завершилась отказом
+				 */
+				if(!item.compose(writer))
+					// Выводим признак неуспешности записи
+					return false;
+			}
+			// Выводим признак успешности закрытия массива
+			return writer.close();
+		}
+		/**
+		 * Если значение является объектом
+		 */
+		case static_cast <uint8_t> (kind_t::OBJECT): {
+			/**
+			 * Если открытие объекта завершилось отказом
+			 */
+			if(!writer.object())
+				// Выводим признак неуспешности записи
+				return false;
+			/**
+			 * Выполняем перебор всех полей объекта
+			 */
+			for(size_t i = 0; i < this->_items.size(); i++){
+				/**
+				 * Если запись имени поля объекта завершилась отказом
+				 */
+				if(!writer.key(this->_names.at(i)))
+					// Выводим признак неуспешности записи
+					return false;
+				/**
+				 * Если запись значения поля объекта завершилась отказом
+				 */
+				if(!this->_items.at(i).compose(writer))
+					// Выводим признак неуспешности записи
+					return false;
+			}
+			// Выводим признак успешности закрытия объекта
+			return writer.close();
+		}
+	}
+	// Выводим признак неуспешности записи значения неопознанного вида
+	return false;
+}
+/**
+ * @brief Метод снятия значения со ссылки на узел документа
+ *
+ * @param value ссылка на узел документа
+ *
+ */
+void awh::codec::json::Value::absorb(const Document::value_t & value) noexcept {
+	// Выполняем очистку прежнего содержимого значения
+	this->clear();
+	/**
+	 * Если ссылка на узел документа недействительна
+	 */
+	if(!value.valid())
+		// Выходим из метода, оставляя значение неопределённым
+		return;
+	// Устанавливаем вид хранимого значения
+	this->_kind = value.kind();
+	// Устанавливаем вид хранения значения
+	this->_type = value.type();
+	/**
+	 * Определяем вид хранимого значения
+	 */
+	switch(static_cast <uint8_t> (this->_kind)){
+		// Если значение является логическим
+		case static_cast <uint8_t> (kind_t::BOOL):
+			// Выполняем извлечение логического значения
+			value.value(this->_number.flag);
+		break;
+		/**
+		 * Если значение является числом
+		 */
+		case static_cast <uint8_t> (kind_t::NUMBER): {
+			/**
+			 * Определяем вид хранения числа
+			 */
+			switch(static_cast <uint16_t> (this->_type)){
+				// Если число является целым со знаком любой ширины
+				case static_cast <uint16_t> (type_t::INT8):
+				case static_cast <uint16_t> (type_t::INT16):
+				case static_cast <uint16_t> (type_t::INT32):
+				case static_cast <uint16_t> (type_t::INT64):
+					// Выполняем извлечение целого числа со знаком
+					value.value(this->_number.integer);
+				break;
+				// Если число является целым без знака любой ширины
+				case static_cast <uint16_t> (type_t::UINT8):
+				case static_cast <uint16_t> (type_t::UINT16):
+				case static_cast <uint16_t> (type_t::UINT32):
+				case static_cast <uint16_t> (type_t::UINT64):
+					// Выполняем извлечение целого числа без знака
+					value.value(this->_number.natural);
+				break;
+				// Если число является дробным любой точности
+				case static_cast <uint16_t> (type_t::FLOAT):
+				case static_cast <uint16_t> (type_t::DOUBLE):
+					// Выполняем извлечение дробного числа
+					value.value(this->_number.real);
+				break;
+				/**
+				 * Если число в родной вид не вместилось
+				 *
+				 * @note Число такое снимается записью своей: разобрать его не во что,
+				 *       а записать обратно обязано ровно тем, чем оно пришло
+				 */
+				case static_cast <uint16_t> (type_t::EXTENDED):
+					// Выполняем снятие записи числа
+					this->_text = value.raw();
+				break;
+			}
+		} break;
+		// Если значение является строкой
+		case static_cast <uint8_t> (kind_t::STRING): {
+			// Получаем строковое содержимое узла документа
+			const string_view text = value.text();
+			// Выполняем снятие строкового содержимого собственной памятью
+			this->_text.assign(text.data(), text.size());
+		} break;
+		/**
+		 * Если значение является массивом либо объектом
+		 */
+		case static_cast <uint8_t> (kind_t::ARRAY):
+		case static_cast <uint8_t> (kind_t::OBJECT): {
+			// Выполняем выделение памяти под значения вместилища
+			this->_items.reserve(value.size());
+			/**
+			 * Если значение является объектом
+			 */
+			if(this->_kind == kind_t::OBJECT)
+				// Выполняем выделение памяти под имена полей объекта
+				this->_names.reserve(value.size());
+			/**
+			 * Выполняем перебор всех значений вместилища
+			 */
+			for(Document::value_t item = value.begin(); item.valid(); item = item.next()){
+				/**
+				 * Если значение является объектом
+				 */
+				if(this->_kind == kind_t::OBJECT){
+					// Получаем имя очередного поля объекта
+					const string_view name = item.name();
+					// Выполняем снятие имени поля объекта собственной памятью
+					this->_names.push_back(string(name.data(), name.size()));
+				}
+				// Добавляем во вместилище значение неопределённое
+				this->_items.push_back(Value());
+				// Выполняем снятие очередного значения вместилища
+				this->_items.back().absorb(item);
+			}
+		} break;
+	}
+}
+/**
+ * @brief Метод разбора текста JSON во владеющее значение
+ *
+ * @param text разбираемый текст JSON
+ * @return     признак успешности разбора
+ *
+ */
+bool awh::codec::json::Value::parse(const string & text) noexcept {
+	// Документ, разбирающий поданный текст
+	document_t document;
+	/**
+	 * Если разбор текста завершился отказом
+	 */
+	if(!document.parse(text)){
+		// Выполняем очистку прежнего содержимого значения
+		this->clear();
+		// Выводим признак неудачного разбора
+		return false;
+	}
+	// Выполняем снятие разобранного дерева собственной памятью
+	this->absorb(document.root());
+	// Выводим признак успешного разбора
+	return true;
+}
+/**
+ * @brief Метод разбора текста JSON из файла
+ *
+ * @param filename адрес разбираемого файла
+ * @return         признак успешности разбора
+ *
+ */
+bool awh::codec::json::Value::load(const string & filename) noexcept {
+	// Документ, разбирающий текст файла
+	document_t document;
+	/**
+	 * Если разбор текста файла завершился отказом
+	 */
+	if(!document.load(filename)){
+		// Выполняем очистку прежнего содержимого значения
+		this->clear();
+		// Выводим признак неудачного разбора
+		return false;
+	}
+	// Выполняем снятие разобранного дерева собственной памятью
+	this->absorb(document.root());
+	// Выводим признак успешного разбора
+	return true;
+}
+/**
+ * @brief Метод перезаписи значения в текст JSON
+ *
+ * @param format вид оформления собираемого текста
+ * @return       текст JSON
+ *
+ */
+string awh::codec::json::Value::dump(const format_t format) const noexcept {
+	// Настройки записи текста
+	writer_t::settings_t settings;
+	// Устанавливаем затребованный вид оформления собираемого текста
+	settings.format = format;
+	// Выводим собранный текст значения
+	return this->dump(settings);
+}
+/**
+ * @brief Метод перезаписи значения в текст JSON с указанными настройками
+ *
+ * @details Отказ записи хотя бы одного значения отдаёт текст пустым: текст усечённый,
+ * с именем поля без значения его, негоден вовсе, а выдавать негодное молча кодек не
+ * вправе. Случай этот один - число, стандарту неведомое, при запрете записи таких
+ * чисел настройками
+ *
+ * @param settings настройки записи текста
+ * @return         текст JSON, пустой - записать значение не удалось
+ *
+ */
+string awh::codec::json::Value::dump(const writer_t::settings_t & settings) const noexcept {
+	// Поток записи текста значения
+	writer_t writer;
+	// Выполняем установку настроек записи текста
+	writer.settings(settings);
+	/**
+	 * Если запись значения в поток записи завершилась отказом
+	 */
+	if(!this->compose(writer))
+		// Выводим пустой текст значения
+		return string();
+	// Выводим собранный текст значения
+	return writer.take();
+}
+/**
+ * @brief Метод записи значения в файл
+ *
+ * @param filename адрес записываемого файла
+ * @param format   вид оформления собираемого текста
+ * @return         признак успешности записи
+ *
+ */
+bool awh::codec::json::Value::save(const string & filename, const format_t format) const noexcept {
+	// Открываем файл значения для записи
+	ofstream file(filename, ios::binary | ios::trunc);
+	/**
+	 * Если файл значения открыть не удалось
+	 */
+	if(!file.is_open())
+		// Выводим признак неудачной записи
+		return false;
+	// Получаем собранный текст значения
+	const string text = this->dump(format);
+	// Выполняем запись текста значения в файл
+	file.write(text.data(), static_cast <streamsize> (text.size()));
+	// Выводим признак успешности записи
+	return static_cast <bool> (file);
+}
+/**
+ * @brief Метод сличения значений
+ *
+ * @details Числа сличаются величиной своей, а не видом хранения, объекты - по именам
+ * полей и значениям их, а порядок полей сличению не подлежит: стандарт порядка полей
+ * не предписывает вовсе, и два объекта, разнящиеся лишь порядком, одинаковы по сути
+ *
+ * @param value сличаемое значение
+ * @return      признак совпадения значений
+ *
+ */
+bool awh::codec::json::Value::operator == (const Value & value) const noexcept {
+	/**
+	 * Если виды сличаемых значений разнятся
+	 */
+	if(this->_kind != value._kind)
+		// Выводим признак несовпадения значений
+		return false;
+	/**
+	 * Определяем вид сличаемых значений
+	 */
+	switch(static_cast <uint8_t> (this->_kind)){
+		// Если значения не определены либо являются пустыми
+		case static_cast <uint8_t> (kind_t::NONE):
+		case static_cast <uint8_t> (kind_t::NUL):
+			// Выводим признак совпадения значений
+			return true;
+		// Если значения являются логическими
+		case static_cast <uint8_t> (kind_t::BOOL):
+			// Выводим признак совпадения логических значений
+			return (this->_number.flag == value._number.flag);
+		// Если значения являются строками
+		case static_cast <uint8_t> (kind_t::STRING):
+			// Выводим признак совпадения строковых значений
+			return (this->_text.compare(value._text) == 0);
+		/**
+		 * Если значения являются числами
+		 */
+		case static_cast <uint8_t> (kind_t::NUMBER): {
+			/**
+			 * Если оба числа являются целыми со знаком
+			 */
+			if(this->is(type_t::SIGNED) && value.is(type_t::SIGNED))
+				// Выводим признак совпадения целых чисел со знаком
+				return (this->_number.integer == value._number.integer);
+			/**
+			 * Если оба числа являются целыми без знака
+			 */
+			if(this->is(type_t::UNSIGNED) && value.is(type_t::UNSIGNED))
+				// Выводим признак совпадения целых чисел без знака
+				return (this->_number.natural == value._number.natural);
+			/**
+			 * Если одно число является целым со знаком, а другое - без знака
+			 *
+			 * @note Сличение таких чисел дробным видом дало бы промах у величин,
+			 *       дробным видом точно не представимых, оттого знак сличается отдельно
+			 */
+			if(this->is(type_t::INT) && value.is(type_t::INT)){
+				// Получаем число со знаком из сличаемых чисел
+				const int64_t integer = (this->is(type_t::SIGNED) ? this->_number.integer : value._number.integer);
+				// Получаем число без знака из сличаемых чисел
+				const uint64_t natural = (this->is(type_t::SIGNED) ? value._number.natural : this->_number.natural);
+				// Выводим признак совпадения целых чисел разной знаковости
+				return ((integer >= 0) && (static_cast <uint64_t> (integer) == natural));
+			}
+			// Извлекаемое дробное значение текущего числа
+			double first = 0.;
+			// Извлекаемое дробное значение сличаемого числа
+			double second = 0.;
+			// Выполняем извлечение дробного значения текущего числа
+			this->value(first);
+			// Выполняем извлечение дробного значения сличаемого числа
+			value.value(second);
+			/**
+			 * Если оба числа числами не являются
+			 *
+			 * @note Сличать такие числа равенством нельзя: `NaN` не равно самому себе по
+			 *       устройству дробного вида, и значение, сличённое само с собою, вышло бы
+			 *       себе не равным. Сличаются они признаком, а не величиной
+			 */
+			if(::isnan(first) && ::isnan(second))
+				// Выводим признак совпадения чисел, числами не являющихся
+				return true;
+			// Выводим признак совпадения дробных чисел
+			return (first == second);
+		}
+		/**
+		 * Если значения являются массивами
+		 */
+		case static_cast <uint8_t> (kind_t::ARRAY): {
+			/**
+			 * Если количество значений массивов разнится
+			 */
+			if(this->_items.size() != value._items.size())
+				// Выводим признак несовпадения значений
+				return false;
+			/**
+			 * Выполняем перебор всех значений массива
+			 */
+			for(size_t i = 0; i < this->_items.size(); i++){
+				/**
+				 * Если очередные значения массивов разнятся
+				 */
+				if(this->_items.at(i) != value._items.at(i))
+					// Выводим признак несовпадения значений
+					return false;
+			}
+			// Выводим признак совпадения значений
+			return true;
+		}
+		/**
+		 * Если значения являются объектами
+		 */
+		case static_cast <uint8_t> (kind_t::OBJECT): {
+			/**
+			 * Если количество полей объектов разнится
+			 */
+			if(this->_items.size() != value._items.size())
+				// Выводим признак несовпадения значений
+				return false;
+			/**
+			 * Признаки полей сличаемого объекта, уже нашедших себе пару
+			 *
+			 * @details Перечень этот нужен ради имён повторяющихся: правило `duplicate_t::KEEP`
+			 * оставляет в дереве оба поля, и сличение поиском по имени сличало бы оба
+			 * поля текущего объекта с одним и тем же первым полем сличаемого
+			 *
+			 * @note Без него `{"a":1,"a":2}` не равнялось бы даже самому себе
+			 */
+			vector <bool> taken(value._items.size(), false);
+			/**
+			 * Выполняем перебор всех полей объекта
+			 */
+			for(size_t i = 0; i < this->_names.size(); i++){
+				// Признак того, что поле нашло себе пару у сличаемого объекта
+				bool found = false;
+				/**
+				 * Выполняем перебор всех полей сличаемого объекта
+				 */
+				for(size_t j = 0; j < value._names.size(); j++){
+					/**
+					 * Если поле сличаемого объекта уже нашло себе пару
+					 */
+					if(taken.at(j))
+						// Выполняем переход к следующему полю сличаемого объекта
+						continue;
+					/**
+					 * Если имена полей объектов разнятся
+					 */
+					if(value._names.at(j).compare(this->_names.at(i)) != 0)
+						// Выполняем переход к следующему полю сличаемого объекта
+						continue;
+					/**
+					 * Если значения полей объектов разнятся
+					 */
+					if(this->_items.at(i) != value._items.at(j))
+						// Выполняем переход к следующему полю сличаемого объекта
+						continue;
+					// Отмечаем поле сличаемого объекта нашедшим себе пару
+					taken.at(j) = true;
+					// Запоминаем, что поле нашло себе пару
+					found = true;
+					// Прекращаем перебор полей сличаемого объекта
+					break;
+				}
+				/**
+				 * Если поле пары себе не нашло
+				 */
+				if(!found)
+					// Выводим признак несовпадения значений
+					return false;
+			}
+			// Выводим признак совпадения значений
+			return true;
+		}
+	}
+	// Выводим признак несовпадения значений
+	return false;
+}
+/**
+ * @brief Метод сличения значений на несовпадение
+ *
+ * @param value сличаемое значение
+ * @return      признак несовпадения значений
+ *
+ */
+bool awh::codec::json::Value::operator != (const Value & value) const noexcept {
+	// Выводим признак несовпадения значений
+	return !((* this) == value);
+}
+/**
+ * @brief Оператор присваивания копированием
+ *
+ * @param value присваиваемое значение
+ * @return      ссылка на текущее значение
+ *
+ */
+awh::codec::json::Value & awh::codec::json::Value::operator = (const Value & value) noexcept {
+	/**
+	 * Если значение присваивается само себе
+	 */
+	if(&value == this)
+		// Выводим ссылку на текущее значение
+		return (* this);
+	// Выполняем копирование вида хранимого значения
+	this->_kind = value._kind;
+	// Выполняем копирование вида хранения значения
+	this->_type = value._type;
+	// Выполняем копирование хранимого числа
+	this->_number = value._number;
+	// Выполняем копирование содержимого значения
+	this->_text = value._text;
+	// Выполняем копирование имён полей объекта
+	this->_names = value._names;
+	// Выполняем копирование значений вместилища
+	this->_items = value._items;
+	// Выводим ссылку на текущее значение
+	return (* this);
+}
+/**
+ * @brief Оператор присваивания переносом
+ *
+ * @param value переносимое значение
+ * @return      ссылка на текущее значение
+ *
+ */
+awh::codec::json::Value & awh::codec::json::Value::operator = (Value && value) noexcept {
+	/**
+	 * Если значение присваивается само себе
+	 */
+	if(&value == this)
+		// Выводим ссылку на текущее значение
+		return (* this);
+	// Выполняем перенос вида хранимого значения
+	this->_kind = value._kind;
+	// Выполняем перенос вида хранения значения
+	this->_type = value._type;
+	// Выполняем перенос хранимого числа
+	this->_number = value._number;
+	// Выполняем перенос содержимого значения
+	this->_text = ::std::move(value._text);
+	// Выполняем перенос имён полей объекта
+	this->_names = ::std::move(value._names);
+	// Выполняем перенос значений вместилища
+	this->_items = ::std::move(value._items);
+	// Выполняем очистку значения, у какого содержимое отобрано
+	value.clear();
+	// Выводим ссылку на текущее значение
+	return (* this);
+}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::json::Value::Value() noexcept : _kind(kind_t::NONE), _type(type_t::UNDEFINED) {
+	// Выполняем сброс хранимого числа
+	this->_number.natural = 0;
+}
+/**
+ * @brief Конструктор значения указанного вида
+ *
+ * @param kind вид заводимого значения
+ *
+ */
+awh::codec::json::Value::Value(const kind_t kind) noexcept : _kind(kind), _type(type_t::UNDEFINED) {
+	// Выполняем сброс хранимого числа
+	this->_number.natural = 0;
+	/**
+	 * Определяем вид заводимого значения
+	 */
+	switch(static_cast <uint8_t> (kind)){
+		// Если значение является пустым
+		case static_cast <uint8_t> (kind_t::NUL):
+			// Устанавливаем вид хранения пустого значения
+			this->_type = type_t::NUL;
+		break;
+		// Если значение является логическим
+		case static_cast <uint8_t> (kind_t::BOOL):
+			// Устанавливаем вид хранения логического значения
+			this->_type = type_t::BOOL;
+		break;
+		// Если значение является строкой
+		case static_cast <uint8_t> (kind_t::STRING):
+			// Устанавливаем вид хранения строкового значения
+			this->_type = type_t::STRING;
+		break;
+		// Если значение является массивом
+		case static_cast <uint8_t> (kind_t::ARRAY):
+			// Устанавливаем вид хранения массива
+			this->_type = type_t::ARRAY;
+		break;
+		// Если значение является объектом
+		case static_cast <uint8_t> (kind_t::OBJECT):
+			// Устанавливаем вид хранения объекта
+			this->_type = type_t::OBJECT;
+		break;
+		/**
+		 * Если заведено значение вида числового
+		 *
+		 * @note Вид числа в отдельности видом своего хранения не обладает: заводится
+		 *       такое значение целым без знака, а точный вид его определяется числом,
+		 *       какое в него положат
+		 */
+		case static_cast <uint8_t> (kind_t::NUMBER):
+			// Устанавливаем вид хранения числа наиболее узким
+			this->_type = type_t::UINT8;
+		break;
+	}
+}
+/**
+ * @brief Конструктор логического значения
+ *
+ * @param value заводимое значение
+ *
+ */
+awh::codec::json::Value::Value(const bool value) noexcept : _kind(kind_t::BOOL), _type(type_t::BOOL) {
+	// Выполняем сброс хранимого числа
+	this->_number.natural = 0;
+	// Устанавливаем заводимое логическое значение
+	this->_number.flag = value;
+}
+/**
+ * @brief Конструктор целого значения со знаком
+ *
+ * @details Вид хранения выбирается самый узкий из вмещающих, ровно как его выбирает
+ * разбор текста: число `1` со знаком получает вид `INT8`
+ *
+ * @param value заводимое значение
+ *
+ */
+awh::codec::json::Value::Value(const int64_t value) noexcept : _kind(kind_t::NUMBER), _type(type_t::INT64) {
+	// Выполняем сброс хранимого числа
+	this->_number.natural = 0;
+	// Устанавливаем заводимое целое число со знаком
+	this->_number.integer = value;
+	/**
+	 * Устанавливаем самый узкий из вмещающих видов числа
+	 */
+	this->_type = (
+		((value >= INT8_MIN) && (value <= INT8_MAX)) ? type_t::INT8 : (
+			((value >= INT16_MIN) && (value <= INT16_MAX)) ? type_t::INT16 : (
+				((value >= INT32_MIN) && (value <= INT32_MAX)) ? type_t::INT32 : type_t::INT64
+			)
+		)
+	);
+}
+/**
+ * @brief Конструктор целого значения без знака
+ *
+ * @param value заводимое значение
+ *
+ */
+awh::codec::json::Value::Value(const uint64_t value) noexcept : _kind(kind_t::NUMBER), _type(type_t::UINT64) {
+	// Выполняем сброс хранимого числа
+	this->_number.natural = 0;
+	// Устанавливаем заводимое целое число без знака
+	this->_number.natural = value;
+	/**
+	 * Устанавливаем самый узкий из вмещающих видов числа
+	 */
+	this->_type = (
+		(value <= UINT8_MAX) ? type_t::UINT8 : (
+			(value <= UINT16_MAX) ? type_t::UINT16 : (
+				(value <= UINT32_MAX) ? type_t::UINT32 : type_t::UINT64
+			)
+		)
+	);
+}
+/**
+ * @brief Конструктор дробного значения
+ *
+ * @details Вид `FLOAT` число получает тогда, и только тогда, когда одинарной точности
+ * довольно для точного его представления. Проверяется это обращением туда и обратно, а
+ * не количеством знаков записи: `0.5` представимо точно, а `0.1` - нет
+ *
+ * @param value заводимое значение
+ *
+ */
+awh::codec::json::Value::Value(const double value) noexcept : _kind(kind_t::NUMBER), _type(type_t::DOUBLE) {
+	// Выполняем сброс хранимого числа
+	this->_number.natural = 0;
+	// Устанавливаем заводимое дробное число
+	this->_number.real = value;
+	/**
+	 * Если одинарной точности довольно для точного представления числа
+	 */
+	if(static_cast <double> (static_cast <float> (value)) == value)
+		// Устанавливаем вид числа одинарной точности
+		this->_type = type_t::FLOAT;
+}
+/**
+ * @brief Конструктор строкового значения
+ *
+ * @param value заводимое значение
+ *
+ */
+awh::codec::json::Value::Value(const string & value) noexcept : _kind(kind_t::STRING), _type(type_t::STRING), _text(value) {
+	// Выполняем сброс хранимого числа
+	this->_number.natural = 0;
+}
+/**
+ * @brief Конструктор строкового значения, поданного строкой языка Си
+ *
+ * @param value заводимое значение, ноль - значение пустое
+ *
+ */
+awh::codec::json::Value::Value(const char * value) noexcept : _kind(kind_t::STRING), _type(type_t::STRING) {
+	// Выполняем сброс хранимого числа
+	this->_number.natural = 0;
+	/**
+	 * Если строковое значение подано
+	 */
+	if(value != nullptr)
+		// Устанавливаем заводимое строковое значение
+		this->_text.assign(value);
+}
+/**
+ * @brief Конструктор снятия значения со ссылки на узел документа
+ *
+ * @param value ссылка на узел документа
+ *
+ */
+awh::codec::json::Value::Value(const Document::value_t & value) noexcept : _kind(kind_t::NONE), _type(type_t::UNDEFINED) {
+	// Выполняем сброс хранимого числа
+	this->_number.natural = 0;
+	// Выполняем снятие значения со ссылки на узел документа
+	this->absorb(value);
+}
+/**
+ * @brief Конструктор копирования
+ *
+ * @param value копируемое значение
+ *
+ */
+awh::codec::json::Value::Value(const Value & value) noexcept :
+ _kind(value._kind), _type(value._type), _number(value._number),
+ _text(value._text), _names(value._names), _items(value._items) {}
+/**
+ * @brief Конструктор переноса
+ *
+ * @param value переносимое значение
+ *
+ */
+awh::codec::json::Value::Value(Value && value) noexcept :
+ _kind(value._kind), _type(value._type), _number(value._number),
+ _text(::std::move(value._text)), _names(::std::move(value._names)), _items(::std::move(value._items)) {
+	// Выполняем очистку значения, у какого содержимое отобрано
+	value.clear();
+}
+/**
+ * @brief Метод помещения собранного значения на своё место
+ *
+ * @param value помещаемое значение
+ * @return      указание на помещённое значение, ноль - помещение не удалось
+ *
+ */
+awh::codec::json::value_t * awh::codec::json::Builder::attach(const value_t & value) noexcept {
+	/**
+	 * Если ни одного вместилища ещё не открыто
+	 */
+	if(this->_nesting.empty()){
+		/**
+		 * Если корневое значение уже собрано
+		 *
+		 * @note Двух значений на корне не бывает: стандарт знает один документ - одно
+		 *       значение, а поток из многих документов собирается сборщиком заново
+		 */
+		if(this->_result.valid())
+			// Выводим признак неудачного помещения
+			return nullptr;
+		// Выполняем помещение значения корнем собираемого дерева
+		this->_result = value;
+		// Выводим указание на помещённое значение
+		return &this->_result;
+	}
+	// Получаем вместилище, открытое последним
+	value_t * parent = this->_nesting.back();
+	/**
+	 * Если открытое вместилище является объектом
+	 */
+	if(parent->kind() == kind_t::OBJECT){
+		/**
+		 * Если имя поля объекта перед значением не записано
+		 */
+		if(!this->_keyed)
+			// Выводим признак неудачного помещения
+			return nullptr;
+		// Снимаем признак записанного имени поля объекта
+		this->_keyed = false;
+		/**
+		 * Если установка поля объекта завершилась отказом
+		 */
+		if(!parent->insert(this->_name, value))
+			// Выводим признак неудачного помещения
+			return nullptr;
+		// Выводим указание на помещённое значение поля объекта
+		return &(* parent)[this->_name];
+	}
+	/**
+	 * Если добавление значения в массив завершилось отказом
+	 */
+	if(!parent->push(value))
+		// Выводим признак неудачного помещения
+		return nullptr;
+	// Выводим указание на помещённое значение массива
+	return &(* parent)[parent->size() - 1];
+}
+/**
+ * @brief Метод открытия объекта
+ *
+ * @return признак успешности открытия
+ *
+ */
+bool awh::codec::json::Builder::object() noexcept {
+	// Выполняем помещение объекта на своё место
+	value_t * result = this->attach(value_t(kind_t::OBJECT));
+	/**
+	 * Если помещение объекта завершилось отказом
+	 */
+	if(result == nullptr)
+		// Выводим признак неудачного открытия
+		return false;
+	// Добавляем открытый объект в стек открытых вместилищ
+	this->_nesting.push_back(result);
+	// Выводим признак успешного открытия
+	return true;
+}
+/**
+ * @brief Метод открытия массива
+ *
+ * @return признак успешности открытия
+ *
+ */
+bool awh::codec::json::Builder::array() noexcept {
+	// Выполняем помещение массива на своё место
+	value_t * result = this->attach(value_t(kind_t::ARRAY));
+	/**
+	 * Если помещение массива завершилось отказом
+	 */
+	if(result == nullptr)
+		// Выводим признак неудачного открытия
+		return false;
+	// Добавляем открытый массив в стек открытых вместилищ
+	this->_nesting.push_back(result);
+	// Выводим признак успешного открытия
+	return true;
+}
+/**
+ * @brief Метод закрытия открытого вместилища
+ *
+ * @return признак успешности закрытия
+ *
+ */
+bool awh::codec::json::Builder::close() noexcept {
+	/**
+	 * Если ни одного вместилища не открыто
+	 */
+	if(this->_nesting.empty())
+		// Выводим признак неудачного закрытия
+		return false;
+	// Снимаем признак записанного имени поля объекта
+	this->_keyed = false;
+	// Выполняем снятие вместилища со стека открытых вместилищ
+	this->_nesting.pop_back();
+	// Выводим признак успешного закрытия
+	return true;
+}
+/**
+ * @brief Метод записи имени поля объекта
+ *
+ * @param name записываемое имя поля объекта
+ * @return     признак успешности записи
+ *
+ */
+bool awh::codec::json::Builder::key(const string & name) noexcept {
+	/**
+	 * Если ни одного вместилища не открыто либо открытое вместилище объектом не является
+	 */
+	if(this->_nesting.empty() || (this->_nesting.back()->kind() != kind_t::OBJECT))
+		// Выводим признак неудачной записи
+		return false;
+	/**
+	 * Если имя поля объекта уже записано
+	 */
+	if(this->_keyed)
+		// Выводим признак неудачной записи
+		return false;
+	// Выполняем запоминание имени поля объекта
+	this->_name = name;
+	// Устанавливаем признак записанного имени поля объекта
+	this->_keyed = true;
+	// Выводим признак успешной записи
+	return true;
+}
+/**
+ * @brief Метод записи пустого значения
+ *
+ * @return признак успешности записи
+ *
+ */
+bool awh::codec::json::Builder::null() noexcept {
+	// Выводим признак успешности записи пустого значения
+	return (this->attach(value_t(kind_t::NUL)) != nullptr);
+}
+/**
+ * @brief Метод записи логического значения
+ *
+ * @param value записываемое значение
+ * @return      признак успешности записи
+ *
+ */
+bool awh::codec::json::Builder::value(const bool value) noexcept {
+	// Выводим признак успешности записи логического значения
+	return (this->attach(value_t(value)) != nullptr);
+}
+/**
+ * @brief Метод записи целого числа со знаком
+ *
+ * @param value записываемое значение
+ * @return      признак успешности записи
+ *
+ */
+bool awh::codec::json::Builder::value(const int64_t value) noexcept {
+	// Выводим признак успешности записи целого числа со знаком
+	return (this->attach(value_t(value)) != nullptr);
+}
+/**
+ * @brief Метод записи целого числа без знака
+ *
+ * @param value записываемое значение
+ * @return      признак успешности записи
+ *
+ */
+bool awh::codec::json::Builder::value(const uint64_t value) noexcept {
+	// Выводим признак успешности записи целого числа без знака
+	return (this->attach(value_t(value)) != nullptr);
+}
+/**
+ * @brief Метод записи дробного числа
+ *
+ * @param value записываемое значение
+ * @return      признак успешности записи
+ *
+ */
+bool awh::codec::json::Builder::value(const double value) noexcept {
+	// Выводим признак успешности записи дробного числа
+	return (this->attach(value_t(value)) != nullptr);
+}
+/**
+ * @brief Метод записи строкового значения
+ *
+ * @param value записываемое значение
+ * @return      признак успешности записи
+ *
+ */
+bool awh::codec::json::Builder::value(const string & value) noexcept {
+	// Выводим признак успешности записи строкового значения
+	return (this->attach(value_t(value)) != nullptr);
+}
+/**
+ * @brief Метод записи строкового значения, поданного строкой языка Си
+ *
+ * @param value записываемое значение, ноль - значение пустое
+ * @return      признак успешности записи
+ *
+ */
+bool awh::codec::json::Builder::value(const char * value) noexcept {
+	// Выводим признак успешности записи строкового значения
+	return (this->attach(value_t(value)) != nullptr);
+}
+/**
+ * @brief Метод записи готового значения
+ *
+ * @param value записываемое значение
+ * @return      признак успешности записи
+ *
+ */
+bool awh::codec::json::Builder::value(const value_t & value) noexcept {
+	// Выводим признак успешности записи готового значения
+	return (this->attach(value) != nullptr);
+}
+/**
+ * @brief Метод извлечения текущей глубины вложенности
+ *
+ * @return количество открытых и ещё не закрытых вместилищ
+ *
+ */
+size_t awh::codec::json::Builder::depth() const noexcept {
+	// Выводим количество открытых и ещё не закрытых вместилищ
+	return this->_nesting.size();
+}
+/**
+ * @brief Метод сброса состояния сборки
+ *
+ */
+void awh::codec::json::Builder::reset() noexcept {
+	// Выполняем очистку собираемого значения
+	this->_result.clear();
+	// Выполняем очистку стека открытых вместилищ
+	this->_nesting.clear();
+	// Выполняем очистку имени поля объекта
+	this->_name.clear();
+	// Снимаем признак записанного имени поля объекта
+	this->_keyed = false;
+}
+/**
+ * @brief Метод завершения сборки и изъятия собранного значения
+ *
+ * @return собранное значение
+ *
+ */
+awh::codec::json::value_t awh::codec::json::Builder::finish() noexcept {
+	// Изымаем собранное значение
+	value_t result = ::std::move(this->_result);
+	// Выполняем сброс состояния сборки
+	this->reset();
+	// Выводим собранное значение
+	return result;
+}
+/**
+ * @brief Метод переноса владеющего значения в перечень узлов дерева
+ *
+ * @param value переносимое владеющее значение
+ * @param name  имя поля объекта, ноль - узел полем объекта не является
+ * @param nodes перечень узлов, куда ложится перенесённое значение
+ * @return      количество узлов перенесённого поддерева
+ *
+ */
+uint32_t awh::codec::json::Document::transplant(const json::Value & value, const string * name, vector <node_t> & nodes) noexcept {
+	// Заводим узел под переносимое значение
+	nodes.emplace_back();
+	// Получаем номер заведённого узла
+	const size_t index = (nodes.size() - 1);
+	/**
+	 * Если узел является полем объекта
+	 */
+	if(name != nullptr){
+		// Выполняем перенос имени поля объекта в хранилище знаков документа
+		this->_storage.append(* name);
+		// Устанавливаем признак того, что узел является полем объекта
+		nodes.at(index).keyed = true;
+		// Устанавливаем длину имени поля объекта
+		nodes.at(index).named = static_cast <uint32_t> (name->size());
+	}
+	/**
+	 * Устанавливаем смещение содержимого узла
+	 *
+	 * @note Смещение это стоит сразу за именем поля намеренно: имя разыскивается по
+	 *       нему же, отступя назад на свою длину
+	 */
+	nodes.at(index).offset = static_cast <uint32_t> (this->_storage.size());
+	// Устанавливаем вид хранения значения
+	nodes.at(index).type = value.type();
+	/**
+	 * Определяем вид переносимого значения
+	 */
+	switch(static_cast <uint8_t> (value.kind())){
+		/**
+		 * Если значение ещё не определено
+		 *
+		 * @note Значения неопределённого стандарт не знает вовсе, и ложится оно в дерево
+		 *       пустым значением: иного вида, годного ему, в стандарте нет
+		 */
+		case static_cast <uint8_t> (kind_t::NONE):
+			// Устанавливаем вид хранения пустого значения
+			nodes.at(index).type = type_t::NUL;
+		break;
+		/**
+		 * Если значение является логическим
+		 *
+		 * @note Логическое значение хранится длиною записи своей: `true` длиною в четыре
+		 *       знака, `false` - в пять. Ровно так его кладёт и разбор
+		 */
+		case static_cast <uint8_t> (kind_t::BOOL): {
+			// Извлекаемое логическое значение
+			bool flag = false;
+			// Выполняем извлечение логического значения
+			value.value(flag);
+			// Устанавливаем длину записи логического значения
+			nodes.at(index).length(flag ? 4 : 5);
+		} break;
+		/**
+		 * Если значение является строкой
+		 */
+		case static_cast <uint8_t> (kind_t::STRING): {
+			// Выполняем перенос содержимого строки в хранилище знаков документа
+			this->_storage.append(value.text());
+			// Устанавливаем длину содержимого строки
+			nodes.at(index).length(static_cast <uint32_t> (value.text().size()));
+		} break;
+		/**
+		 * Если значение является числом
+		 */
+		case static_cast <uint8_t> (kind_t::NUMBER): {
+			/**
+			 * Если число хранится записью своей
+			 */
+			if(value.type() == type_t::EXTENDED){
+				// Получаем запись числа
+				const string record = value.raw();
+				// Выполняем перенос записи числа в хранилище знаков документа
+				this->_storage.append(record);
+				// Устанавливаем длину записи числа
+				nodes.at(index).length(static_cast <uint32_t> (record.size()));
+			/**
+			 * Если число является целым со знаком любой ширины
+			 */
+			} else if(value.is(type_t::SIGNED)) {
+				// Извлекаемое целое число со знаком
+				int64_t number = 0;
+				// Выполняем извлечение целого числа со знаком
+				value.value(number);
+				// Устанавливаем извлечённое число узлу дерева
+				nodes.at(index).number(number);
+			/**
+			 * Если число является целым без знака любой ширины
+			 */
+			} else if(value.is(type_t::UNSIGNED)) {
+				// Извлекаемое целое число без знака
+				uint64_t number = 0;
+				// Выполняем извлечение целого числа без знака
+				value.value(number);
+				// Устанавливаем извлечённое число узлу дерева
+				nodes.at(index).number(number);
+			/**
+			 * Если число является дробным одинарной точности
+			 *
+			 * @note Число это хранится узлом видом `float`, а владеющим значением - видом
+			 *       `double`: сужение точного значения не меняет, а вид узла оттого и
+			 *       совпадает с видом, каким его кладёт разбор
+			 */
+			} else if(value.type() == type_t::FLOAT) {
+				// Извлекаемое дробное число одинарной точности
+				float number = 0.f;
+				// Выполняем извлечение дробного числа одинарной точности
+				value.value(number);
+				// Устанавливаем извлечённое число узлу дерева
+				nodes.at(index).number(number);
+			/**
+			 * Если число является дробным двойной точности
+			 */
+			} else {
+				// Извлекаемое дробное число двойной точности
+				double number = 0.;
+				// Выполняем извлечение дробного числа двойной точности
+				value.value(number);
+				// Устанавливаем извлечённое число узлу дерева
+				nodes.at(index).number(number);
+			}
+		} break;
+		/**
+		 * Если значение является массивом либо объектом
+		 */
+		case static_cast <uint8_t> (kind_t::ARRAY):
+		case static_cast <uint8_t> (kind_t::OBJECT): {
+			// Устанавливаем количество детей вместилища
+			nodes.at(index).length(static_cast <uint32_t> (value.size()));
+			// Количество узлов поддерева вместилища, считая само вместилище
+			uint32_t extent = 1;
+			// Получаем признак того, что вместилище является объектом
+			const bool keyed = (value.kind() == kind_t::OBJECT);
+			/**
+			 * Выполняем перебор всех значений вместилища
+			 */
+			for(size_t i = 0; i < value.size(); i++)
+				// Выполняем перенос очередного значения вместилища
+				extent += this->transplant(value[i], (keyed ? &value.key(i) : nullptr), nodes);
+			// Устанавливаем количество узлов поддерева вместилища
+			nodes.at(index).extent(extent);
+			// Выводим количество узлов перенесённого поддерева
+			return extent;
+		}
+	}
+	// Выводим количество узлов перенесённого поддерева
+	return 1;
+}
+/**
+ * @brief Метод прививки владеющего значения в дерево документа
+ *
+ * @param pointer указатель на прививаемое место по RFC 6901
+ * @param value   прививаемое владеющее значение
+ * @return        признак успешности прививки
+ *
+ */
+bool awh::codec::json::Document::graft(const string & pointer, const json::Value & value) noexcept {
+	// Перечень звеньев указателя на прививаемое место
+	vector <string> parts;
+	/**
+	 * Если разбор указателя на звенья завершился отказом
+	 */
+	if(!::tokens(pointer, parts))
+		// Выводим признак неудачной прививки
+		return false;
+	/**
+	 * Если дерево документа пусто, а указатель ведёт вглубь
+	 */
+	if(this->_nodes.empty() && !parts.empty())
+		// Выводим признак неудачной прививки
+		return false;
+	// Номер узла, куда прививается значение
+	uint32_t target = 0;
+	// Перечень номеров узлов-предков прививаемого места
+	vector <uint32_t> ancestors;
+	/**
+	 * Выполняем разбор указателя звено за звеном
+	 */
+	for(auto & token : parts){
+		// Получаем узел, к какому обращается очередное звено указателя
+		const node_t & node = this->_nodes.at(target);
+		/**
+		 * Если узел вместилищем не является вовсе
+		 */
+		if(!node.nested())
+			// Выводим признак неудачной прививки
+			return false;
+		// Получаем номер узла за последним узлом вместилища
+		const uint32_t bound = (target + node.extent());
+		// Номер разыскиваемого узла вместилища
+		uint32_t found = bound;
+		/**
+		 * Если звено указателя обращается к значению массива
+		 */
+		if(json::kind(node.type) == kind_t::ARRAY){
+			// Номер значения массива, разыскиваемый звеном указателя
+			size_t number = 0;
+			/**
+			 * Если содержимое звена номером значения не является
+			 */
+			if(!::numbered(token, number) || (number >= static_cast <size_t> (node.length())))
+				// Выводим признак неудачной прививки
+				return false;
+			// Устанавливаем номер первого узла массива
+			found = (target + 1);
+			/**
+			 * Выполняем пропуск значений массива до разыскиваемого
+			 */
+			for(size_t i = 0; i < number; i++)
+				// Выполняем переход к следующему значению массива
+				found += this->_nodes.at(found).extent();
+		/**
+		 * Если звено указателя обращается к полю объекта
+		 */
+		} else {
+			/**
+			 * Выполняем перебор всех полей объекта
+			 */
+			for(uint32_t child = (target + 1); child < bound; child += this->_nodes.at(child).extent()){
+				// Получаем узел очередного поля объекта
+				const node_t & item = this->_nodes.at(child);
+				/**
+				 * Если имя поля объекта совпадает с разыскиваемым
+				 */
+				if(string_view(this->_storage.data() + (item.offset - item.named), item.named) == string_view(token)){
+					// Запоминаем номер разысканного поля объекта
+					found = child;
+					// Прекращаем перебор полей объекта
+					break;
+				}
+			}
+			/**
+			 * Если поле объекта с таким именем не разыскано
+			 */
+			if(found >= bound)
+				// Выводим признак неудачной прививки
+				return false;
+		}
+		// Добавляем номер узла-предка в перечень предков
+		ancestors.push_back(target);
+		// Выполняем переход к разысканному узлу вместилища
+		target = found;
+	}
+	// Имя поля объекта, каким прививаемое место числится у родителя своего
+	string name;
+	// Признак того, что прививаемое место является полем объекта
+	bool keyed = false;
+	/**
+	 * Если дерево документа не пусто
+	 */
+	if(!this->_nodes.empty()){
+		// Получаем узел, куда прививается значение
+		const node_t & node = this->_nodes.at(target);
+		// Запоминаем признак того, что прививаемое место является полем объекта
+		keyed = node.keyed;
+		/**
+		 * Если прививаемое место является полем объекта
+		 *
+		 * @note Имя поля снимается копией намеренно: перенос значения дописывает
+		 *       хранилище знаков, а дописывание вправе переселить его в памяти целиком
+		 */
+		if(keyed)
+			// Выполняем снятие имени поля объекта копией
+			name.assign(this->_storage.data() + (node.offset - node.named), node.named);
+	}
+	// Перечень узлов прививаемого поддерева
+	vector <node_t> nodes;
+	// Выполняем перенос прививаемого значения в перечень узлов
+	this->transplant(value, (keyed ? &name : nullptr), nodes);
+	// Получаем количество узлов заменяемого поддерева
+	const uint32_t extent = (this->_nodes.empty() ? 0 : this->_nodes.at(target).extent());
+	/**
+	 * Выполняем замену прежнего поддерева привитым
+	 */
+	this->_nodes.erase(
+		(this->_nodes.begin() + static_cast <ptrdiff_t> (target)),
+		(this->_nodes.begin() + static_cast <ptrdiff_t> (target + extent))
+	);
+	// Выполняем вставку узлов привитого поддерева на место прежнего
+	this->_nodes.insert((this->_nodes.begin() + static_cast <ptrdiff_t> (target)), nodes.begin(), nodes.end());
+	/**
+	 * Выполняем правку размаха всех предков прививаемого места
+	 *
+	 * @note Количество детей у предков не меняется вовсе: поддерево заменено поддеревом,
+	 *       а не добавлено к ним
+	 */
+	for(auto & ancestor : ancestors)
+		// Выполняем правку размаха предка на разницу размахов поддеревьев
+		this->_nodes.at(ancestor).extent((this->_nodes.at(ancestor).extent() - extent) + static_cast <uint32_t> (nodes.size()));
+	/**
+	 * Выполняем сброс отображения имён полей объектов
+	 *
+	 * @note Отображение это хранит имена полей ссылками на хранилище знаков и номерами
+	 *       узлов: прививка сдвигает и то и другое, оттого отображение и негодно
+	 */
+	this->_index.clear();
+	// Выводим признак успешной прививки
+	return true;
+}

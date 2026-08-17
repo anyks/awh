@@ -595,6 +595,37 @@ namespace awh {
 
 			/**
 			 * \~russian
+			 * @brief Правила обращения с последовательностью, кодировке не отвечающей
+			 *
+			 * @details Стандарт предписывает тексту кодировку UTF-8, и разбор наш байты,
+			 * ей не отвечающие, отвергает. Запись их насквозь выдала бы текст, какой
+			 * кодек прочитать не сможет сам, оттого правило обращения с ними и заведено
+			 *
+			 * @note Негодными считаются: ведущий байт, ведущим не являющийся; недостача
+			 *       продолжающих байтов; продолжающий байт вне отведённого ведущему
+			 *       предела; запись кодовой точки длиннее необходимого; суррогат;
+			 *       кодовая точка свыше U+10FFFF
+			 *
+			 * \~english
+			 * @brief Rules of the handling of a sequence not conforming to the encoding
+			 * @details The standard prescribes the UTF-8 encoding for a text, and our parsing rejects
+			 * the bytes not conforming to it. The writing of them through would give away a text which
+			 * the codec itself will not be able to read, whereby the rule of the handling of them is made
+			 * @note The following are considered malformed: a leading byte which is not a leading one; a shortage
+			 *       of the continuing bytes; a continuing byte outside the limit allotted to the leading one;
+			 *       a record of a code point longer than necessary; a surrogate;
+			 *       a code point above U+10FFFF
+			 *
+			 * \~
+			 */
+			enum class malformed_t : uint8_t {
+				REPLACE = 0x00, // Негодная последовательность заменяется знаком U+FFFD
+				REFUSE  = 0x01, // Запись отвергается, ничего не записав
+				PASS    = 0x02  // Байты пропускаются как есть
+			};
+
+			/**
+			 * \~russian
 			 * @brief Отрезок в хранилище знаков
 			 *
 			 * @details Отрезок хранит смещение и длину, а не указатель: хранилище растёт

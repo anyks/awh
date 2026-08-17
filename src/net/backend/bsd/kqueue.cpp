@@ -59775,57 +59775,110 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 													case static_cast <uint8_t> (event::type_t::STREAM):
 													// Если событие принадлежит к типу SEQPACKET
 													case static_cast <uint8_t> (event::type_t::SEQPACKET): {
-														// Список адресов для подключения
-														vector <struct sockaddr> addrs(ids.size());
-														// Добавляем адреса в список для подключения
-														addrs.front() = ::trust_cast <struct sockaddr> (client->endpoint.server);
+														// Количество уложенных адресов
+														size_t count = 0;
+														/**
+														 * Список адресов для подключения, уложенный ПЛОТНО
+														 *
+														 * @details sctp_connectx ждёт адреса, уложенные вплотную друг за другом, каждый своей
+														 *          длины, и шагает по ним, разбирая семейство каждого. Массив с постоянным
+														 *          шагом ему негоден
+														 *
+														 * @warning Прежде здесь стоял vector <struct sockaddr>, и это было неверно дважды:
+														 *          адрес IPv6 занимает 28 октетов против 16 у sockaddr и усекался при
+														 *          копировании, а шаг массива оставался равен 16 и уводил разбор на середину
+														 *          следующего адреса
+														 */
+														vector <uint8_t> addrs;
+														/**
+														 * @brief Функция укладки очередного адреса в список для подключения
+														 *
+														 * @param address адрес удалённого узла
+														 * @param size    длина адреса удалённого узла
+														 *
+														 */
+														auto append = [&addrs, &count](const auto & address, const socklen_t size) noexcept -> void {
+															// Если длина адреса не задана, укладывать нечего
+															if(size == 0)
+																// Выходим из функции
+																return;
+															// Получаем начало адреса удалённого узла
+															const uint8_t * begin = reinterpret_cast <const uint8_t *> (&address);
+															// Укладываем адрес целиком, своей длиной
+															addrs.insert(addrs.end(), begin, begin + size);
+															// Увеличиваем количество уложенных адресов
+															count++;
+														};
+														// Укладываем адрес своей точки первым
+														append(client->endpoint.server, client->endpoint.size);
 														/**
 														 * Проходим по всем идентификаторам событий для подключения
+														 *
+														 * @details Список неоднороден по устройству: в него попадают события чужого протокола,
+														 *          чужого семейства адресов и вовсе не клиентские узлы. Заявка же одна, и
+														 *          неоднозначность разрешается единственным способом - образцом берётся ПЕРВЫЙ
+														 *          узел списка, а всякий не подошедший к нему отбрасывается предупреждением
+														 *
+														 * @warning Молчаливое отбрасывание здесь недопустимо: событие осталось бы незаведённым
+														 *          и без единого отчёта о себе, а вызывающая сторона считала бы его подключённым
 														 */
 														for(size_t j = 1; j < ids.size(); j++){
 															// Выполняем поиск идентификатора события
 															auto i = ::__awh_nodes__.find(* (ids.begin() + j));
-															// Если идентификатор события найден
-															if(i != ::__awh_nodes__.end()){
+															// Если идентификатор события не найден, укладывать нечего
+															if(i == ::__awh_nodes__.end())
+																// Продолжаем обход списка
+																continue;
+															// Создаём охранника узла события
+															::local::guard_t guard(i->second.get());
+															// Причина отбрасывания адреса события
+															const char * reason = nullptr;
+															// Если узел не является клиентом
+															if(i->second->state.node != event::node_t::CLIENT)
+																// Устанавливаем причину отбрасывания адреса события
+																reason = "Connection is only allowed from client node";
+															// Если протокол события расходится с протоколом связи
+															else if(i->second->state.protocol != client->state.protocol)
+																// Устанавливаем причину отбрасывания адреса события
+																reason = "Protocol of the event does not match the protocol of the association";
+															// Если семейство адресов события расходится с семейством связи
+															else if(i->second->state.family != client->state.family)
+																// Устанавливаем причину отбрасывания адреса события
+																reason = "Address family of the event does not match the family of the association";
+															// Если разновидность сокета события для связи не годится
+															else if(!((i->second->state.type == event::type_t::STREAM) || (i->second->state.type == event::type_t::SEQPACKET)))
+																// Устанавливаем причину отбрасывания адреса события
+																reason = "Socket type of the event is not allowed for the association";
+															// Если причин отбрасывания адреса события не нашлось
+															else {
+																// Получаем текущее значение объекта клиента
+																::io::client_t * target = awh_cast <::io::client_t *> (i->second.get());
+																// Если событие подключение к серверу разрешено
+																if(target->transfer.actions & ::action::CONNECT)
+																	// Укладываем адрес события в список для подключения
+																	append(target->endpoint.server, target->endpoint.size);
+																// Если подключение событию не разрешено
+																else reason = "Connection is not allowed to the event";
+															}
+															// Если адрес события отброшен, об этом надо сказать
+															if(reason != nullptr){
 																/**
-																 * Определяем тип сокета
+																 * Если включён режим отладки
 																 */
-																switch(static_cast <uint8_t> (i->second->state.type)){
-																	// Если событие принадлежит к типу STREAM
-																	case static_cast <uint8_t> (event::type_t::STREAM):
-																	// Если событие принадлежит к типу SEQPACKET
-																	case static_cast <uint8_t> (event::type_t::SEQPACKET): {
-																		// Создаём охранника узла события
-																		::local::guard_t guard(i->second.get());
-																		/**
-																		 * Определяем чем является текущий узел
-																		 */
-																		switch(static_cast <uint8_t> (i->second->state.node)){
-																			// Если узел является клиентом
-																			case static_cast <uint8_t> (event::node_t::CLIENT): {
-																				// Получаем текущее значение объекта клиента
-																				::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
-																				// Если событие подключение к серверу разрешено
-																				if(client->transfer.actions & ::action::CONNECT)
-																					// Добавляем адреса в список для подключения
-																					addrs[j] = ::trust_cast <struct sockaddr> (client->endpoint.server);
-																			} break;
-																			// Если узел является сервером
-																			case static_cast <uint8_t> (event::node_t::SERVER): {
-																				// Получаем текущее значение объекта сервера
-																				::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
-																				// Если событие принятие подключений разрешено
-																				if(server->actions & ::action::ACCEPT)
-																					// Добавляем адреса в список для подключения
-																					addrs[j] = ::trust_cast <struct sockaddr> (server->endpoint.server);
-																			} break;
-																		}
-																	} break;
-																}
+																#if DEBUG_MODE
+																	// Записываем предупреждение в лог
+																	this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(* (ids.begin() + j), ids.size()), log_t::flag_t::WARNING, reason);
+																/**
+																 * Если режим отладки не включён
+																 */
+																#else
+																	// Записываем предупреждение в лог
+																	this->_log->print("%s", log_t::flag_t::WARNING, reason);
+																#endif
 															}
 														}
 														// Если подключение к удаленному серверу не выполнено
-														if(!(result = (::sctp_connectx(client->transfer.fd, &addrs[0], addrs.size(), &client->transfer.sctp.use().id) == 0))){
+														if(!(result = (::sctp_connectx(client->transfer.fd, reinterpret_cast <struct sockaddr *> (addrs.data()), static_cast <int32_t> (count), &client->transfer.sctp.use().id) == 0))){
 															// Если ошибка не является ошибкой в процессе подключения
 															if(!(result = (errno == EINPROGRESS))){
 																// Если установлена функция обратного вызова

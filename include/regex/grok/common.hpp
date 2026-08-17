@@ -46,6 +46,7 @@
  * Подключаем заголовочные файлы проекта
  */
 #include "../regex.hpp"
+#include "../../codec/json/json.hpp"
 
 /**
  * Снимаем на время объявлений макросы, чьи имена заняты
@@ -199,6 +200,33 @@ namespace awh {
 			 */
 			Value() noexcept : kind(kind_t::TEXT) {}
 		} value_t;
+
+		/**
+		 * \~russian
+		 * @brief Значение кодека JSON, извлечёнными полями наполняемое
+		 *
+		 * @details Псевдоним заведён затем, что в этом пространстве имён
+		 *          «value_t» уже занято значением поля Grok, а имя «json»
+		 *          заняли бы методы вывода. Суффикс же отвечает виду имён,
+		 *          во фреймворке принятому.
+		 *
+		 *          Вывод записи JSON собственноручный из Grok снят: кодек
+		 *          ведёт и экранирование, и запись чисел родным их видом,
+		 *          и настройки вида записи. Собственный вывод давал запись
+		 *          неправильную на краях - ведущие нули, «3.», «.5», «nan»,
+		 *          «inf» и байты, кодировке UTF-8 не отвечающие, - что
+		 *          и обнаружилось разбором её этим самым кодеком.
+		 *
+		 * \~english
+		 * @brief Value of the JSON codec filled with the extracted fields
+		 * @details The alias is introduced because «value_t» in this namespace is
+		 *          already taken by the value of a Grok field, while the name «json»
+		 *          would be taken by the methods of the output. The suffix matches
+		 *          the style of the names adopted throughout the framework.
+		 *
+		 * \~
+		 */
+		typedef awh::codec::json::value_t json_t;
 
 		/**
 		 * \~russian

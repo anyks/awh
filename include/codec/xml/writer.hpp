@@ -637,6 +637,43 @@ namespace awh {
 					bool open(const string_view local, const string_view uri = "") noexcept;
 					/**
 					 * \~russian
+					 * @brief Метод открытия узла разметки с его объявлениями и желаемым префиксом
+					 *
+					 * @details Объявления и префикс подаются вместе с именем намеренно: метка
+					 * узла собирается разом, и объявить связывание после открытия значит
+					 * опоздать - префикс имени к тому времени уже выбран
+					 *
+					 * @details Метод этот нужен всякому, кто записывает узел, у какого
+					 * объявления свои: без него поток записи назначает префикс сам, а
+					 * поданное следом объявление ложится в метку вторым, и запись выходит с
+					 * двумя объявлениями одного и того же пространства имён
+					 *
+					 * @param local    местное имя открываемого узла
+					 * @param uri      обозначение пространства имён открываемого узла
+					 * @param declares связывания префиксов, объявляемые самим узлом
+					 * @param prefix   желаемый префикс имени узла, пустой - на выбор потока
+					 * @return         результат выполнения операции
+					 *
+					 * \~english
+					 * @brief Method of opening a markup node with its declarations and a desired prefix
+					 * @details The declarations and the prefix are passed together with the name deliberately: the tag
+					 * of a node is assembled at once, and to declare a binding after the opening means
+					 * to be late — the prefix of the name has been chosen by that time
+					 * @details This method is needed by everyone who writes a node having its own
+					 * declarations: without it the writing stream assigns the prefix itself, while
+					 * a declaration passed afterwards is placed into the tag as the second one, and the record comes out with
+					 * two declarations of one and the same namespace
+					 * @param local    local name of the node being opened
+					 * @param uri      designation of the namespace of the node being opened
+					 * @param declares bindings of the prefixes declared by the node itself
+					 * @param prefix   desired prefix of the name of the node, an empty one — at the choice of the stream
+					 * @return         result of performing the operation
+					 *
+					 * \~
+					 */
+					bool open(const string_view local, const string_view uri, const vector <binding_t> & declares, const string_view prefix = "") noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод закрытия последнего открытого узла
 					 *
 					 * @return результат выполнения операции

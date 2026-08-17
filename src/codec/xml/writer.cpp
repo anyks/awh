@@ -636,6 +636,20 @@ bool awh::codec::xml::Writer::open(const string_view local, const string_view ur
 	return this->open(local, uri, nullptr, nullptr, false, false);
 }
 /**
+ * @brief Метод открытия узла разметки с его объявлениями и желаемым префиксом
+ *
+ * @param local    местное имя открываемого узла
+ * @param uri      обозначение пространства имён открываемого узла
+ * @param declares связывания префиксов, объявляемые самим узлом
+ * @param prefix   желаемый префикс имени узла, пустой - на выбор потока
+ * @return         результат выполнения операции
+ *
+ */
+bool awh::codec::xml::Writer::open(const string_view local, const string_view uri, const vector <binding_t> & declares, const string_view prefix) noexcept {
+	// Выводим результат открытия узла разметки с его объявлениями и желаемым префиксом
+	return this->open(local, uri, (declares.empty() ? nullptr : &declares), (prefix.empty() ? nullptr : &prefix), false, false);
+}
+/**
  * @brief Метод открытия узла разметки с заданными объявлениями
  *
  * @param local    местное имя открываемого узла

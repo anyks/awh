@@ -72,6 +72,7 @@ if (${GTest_FOUND})
             xml/reader.cpp
             xml/document.cpp
             xml/writer.cpp
+            xml/value.cpp
             ini/common.cpp
             ini/encoding.cpp
             ini/reader.cpp
@@ -92,6 +93,7 @@ if (${GTest_FOUND})
             json/reader.cpp
             json/writer.cpp
             json/document.cpp
+            json/value.cpp
             yaml/common.cpp
             yaml/encoding.cpp
             yaml/reader.cpp

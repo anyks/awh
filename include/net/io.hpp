@@ -2079,9 +2079,33 @@ namespace awh {
 				 *          то, что попытка начата успешно. Об исходе сообщает подписка
 				 *          `connect_t`, и до её вызова отправлять данные некуда.
 				 *
-				 *          Список идентификаторов позволяет начать несколько подключений
-				 *          одним вызовом - они пойдут одновременно, а не по очереди, и
-				 *          каждое сообщит о себе своим вызовом `connect_t`.
+				 *          Список идентификаторов заведён ради **многодомности SCTP**: адреса
+				 *          всех перечисленных событий укладываются в одну заявку `sctp_connectx`,
+				 *          и получается ОДНА связь с узлом, у которого несколько адресов. Отчёт
+				 *          придёт единственный - по первому событию списка; остальные события
+				 *          служат лишь носителями адресов, своих подключений и своих вызовов
+				 *          `connect_t` у них не будет.
+				 *
+				 *          Для прочих протоколов многодомности не существует, и список
+				 *          обходится **по очереди**: каждое событие подключается само за себя
+				 *          и отчитывается своим вызовом `connect_t`. Список принимается ими
+				 *          только ради того, чтобы возможность не была мёртвой. Датаграммы идут
+				 *          здесь наравне с потоком: подключения у них нет, но движок его
+				 *          изображает, закрепляя получателя, и отчёт приходит такой же. Порядок
+				 *          отчётов при этом задаётся готовностью соединений, а не порядком
+				 *          в списке, и полагаться на него нельзя.
+				 *
+				 *          Подключаются **только узлы клиента**; всякий иной узел в списке
+				 *          отбрасывается предупреждением. У SCTP, где список сливается в одну
+				 *          заявку, образцом берётся ПЕРВЫЙ узел: события чужого протокола и
+				 *          чужого семейства адресов отбрасываются предупреждением, потому что
+				 *          связь одна и разрешить неоднозначность иначе нечем. У прочих
+				 *          протоколов ни то, ни другое помехой не является - у каждого события
+				 *          своя точка назначения и своё подключение.
+				 *
+				 * @warning Одновременности здесь нет ни у одного протокола: подключения идут
+				 *          последовательно в одном потоке. Параллельность достижима только
+				 *          потоками и этим методом не даётся
 				 *
 				 * @note Ставится **между** `commit()` и `launch()`: до фиксации адрес ещё не
 				 *       применён, а запуск ожидает событие уже подключающимся
@@ -2112,9 +2136,32 @@ namespace awh {
 				 *          several turns of the loop. A positive result means only
 				 *          that the attempt is begun successfully. About the outcome the `connect_t`
 				 *          subscription reports, and before its call there is nowhere to send the data.
-				 *          The list of the identifiers allows several connections to be begun
-				 *          by one call — they will go simultaneously, and not in turn, and
-				 *          each will report about itself by its own call of `connect_t`.
+				 *
+				 *          The list of the identifiers is made for the sake of the **multihoming of
+				 *          SCTP**: the addresses of all the listed events are packed into one request
+				 *          `sctp_connectx`, and ONE association with a host having several addresses
+				 *          is obtained. The report will come single — by the first event of the list;
+				 *          the rest of the events serve only as the carriers of the addresses, they
+				 *          will have neither their own connections nor their own calls of `connect_t`.
+				 *
+				 *          For the other protocols no multihoming exists, and the list is passed
+				 *          **in turn**: every event connects for itself and reports by its own call
+				 *          of `connect_t`. The list is accepted by them only for the sake of the
+				 *          possibility not being dead. The datagrams go here on a par with the
+				 *          stream: they have no connection, but the engine imitates it, fixing the
+				 *          receiver, and the report comes the same. The order of the reports is set by
+				 *          the readiness of the connections, and not by the order in the list, and
+				 *          it is impossible to rely upon it.
+				 *          Only the client nodes are connected; every other node in the list is
+				 *          dropped with a warning. At SCTP, where the list merges into one request,
+				 *          the FIRST node is taken as the pattern: the events of a foreign protocol
+				 *          and of a foreign address family are dropped with a warning, because the
+				 *          association is one and there is nothing else to resolve the ambiguity by.
+				 *          At the other protocols neither of the two is a hindrance — every event
+				 *          has its own destination and its own connection.
+				 * @warning There is no simultaneity here at any protocol: the connections go
+				 *          sequentially in one thread. The parallelism is achievable only by the
+				 *          threads and is not given by this method
 				 * @note Is placed **between** `commit()` and `launch()`: before the fixation the address is not yet
 				 *       applied, and the launch expects the event to be already connecting
 				 * @note The limit of the time for the establishment of a connection is set through
