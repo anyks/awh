@@ -756,6 +756,17 @@ bool awh::codec::yaml::Reader::finish(const size_t column) noexcept {
 			return false;
 		// Устанавливаем вид пустого значения последнему событию
 		this->_staged.back().type = type_t::NUL;
+		/**
+		 * Устанавливаем место пустого значения там, где оно ожидалось
+		 *
+		 * @note Закрытие документа - тот же обрыв ожидания, лишь концом текста, а не
+		 *       строкою следующей: место значения и здесь есть место ожидания его
+		 */
+		this->_staged.back().location.offset = this->_awaiting.offset;
+		// Устанавливаем строку пустого значения там, где оно ожидалось
+		this->_staged.back().location.line = this->_awaiting.line;
+		// Устанавливаем столбец пустого значения там, где оно ожидалось
+		this->_staged.back().location.column = this->_awaiting.column;
 	}
 	/**
 	 * Если закрыть открытые уровни вложенности не удалось
@@ -1981,6 +1992,12 @@ bool awh::codec::yaml::Reader::content(const string_view line, const size_t offs
 		this->_entered = true;
 		// Запоминаем отступ, на котором ожидается значение записи перечня
 		this->_pending = indent;
+		// Запоминаем смещение, на котором ожидается значение записи перечня
+		this->_awaiting.offset = (this->_position + position);
+		// Запоминаем строку, на которой ожидается значение записи перечня
+		this->_awaiting.line = this->_line;
+		// Запоминаем столбец, на котором ожидается значение записи перечня
+		this->_awaiting.column = static_cast <uint32_t> (position + 1);
 		// Выполняем разбор содержимого за объявлением значения перечня
 		return this->content(line, position, static_cast <uint32_t> (position));
 	}
@@ -2104,6 +2121,12 @@ bool awh::codec::yaml::Reader::content(const string_view line, const size_t offs
 		this->_entered = false;
 		// Запоминаем отступ, на котором ожидается значение пары
 		this->_pending = indent;
+		// Запоминаем смещение, на котором ожидается значение пары
+		this->_awaiting.offset = (this->_position + position);
+		// Запоминаем строку, на которой ожидается значение пары
+		this->_awaiting.line = this->_line;
+		// Запоминаем столбец, на котором ожидается значение пары
+		this->_awaiting.column = static_cast <uint32_t> (position + 1);
 		/**
 		 * Если содержимое строки исчерпано либо за ним стоит одно примечание
 		 */
@@ -3508,6 +3531,22 @@ bool awh::codec::yaml::Reader::record(const string_view line) noexcept {
 			return false;
 		// Устанавливаем вид пустого значения последнему событию
 		this->_staged.back().type = type_t::NUL;
+		/**
+		 * Устанавливаем место пустого значения там, где оно ожидалось
+		 *
+		 * @details Выдаётся пустота не там, где ожидалась, а там, где ожидание оборвалось -
+		 *          строкою ниже, чертою следующей записи. Место события есть место
+		 *          значения, и без поправки пустота записи `-` получала бы место соседа
+		 *
+		 * @note Наружу это торчит удержанием исходного текста: начала записей узлов
+		 *       сдвигались на строку, и перезапись правки теряла запись перечня. Нашёл это
+		 *       ворошитель правкой дерева на перечне из трёх пустых записей
+		 */
+		this->_staged.back().location.offset = this->_awaiting.offset;
+		// Устанавливаем строку пустого значения там, где оно ожидалось
+		this->_staged.back().location.line = this->_awaiting.line;
+		// Устанавливаем столбец пустого значения там, где оно ожидалось
+		this->_staged.back().location.column = this->_awaiting.column;
 	}
 	/**
 	 * Если закрыть уровни глубже отступа строки не удалось

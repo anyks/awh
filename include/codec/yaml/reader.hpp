@@ -474,6 +474,31 @@ namespace awh {
 					uint32_t _outer;
 					// Отступ разбираемой строки
 					uint32_t _margin;
+				private:
+					/**
+					 * \~russian
+					 * Положение, на котором ожидается значение записи либо пары
+					 *
+					 * @details Пустое значение выдаётся не там, где оно ожидалось, а там, где
+					 * ожидание оборвалось - строкою ниже, чертою следующей записи. Место
+					 * события есть место значения, и без этого положения пустота записи `-`
+					 * получала бы место соседа
+					 *
+					 * @note Наружу это торчит удержанием исходного текста: начала записей
+					 * узлов сдвигались на строку, и перезапись правки теряла запись перечня
+					 *
+					 * \~english
+					 * Position at which a value of an entry or of a pair is expected
+					 * @details An empty value is issued not where it was expected but where
+					 * the expectation broke off — a line below, at the dash of the next entry. The place
+					 * of the event is the place of the value, and without this position the emptiness of the entry `-`
+					 * would receive the place of its neighbour
+					 * @note Outwards this sticks out through the retention of the source text: the beginnings of the records
+					 * of the nodes shifted by a line, and a rewriting of an edit lost an entry of the sequence
+					 *
+					 * \~
+					 */
+					location_t _awaiting;
 					// Отступ содержимого собираемого блочного значения
 					uint32_t _inner;
 					// Положение заголовка блочного значения в строке
