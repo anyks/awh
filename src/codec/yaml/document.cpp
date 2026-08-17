@@ -1389,9 +1389,17 @@ void awh::codec::yaml::Document::spread() noexcept {
 			 *       за чертою стоящими
 			 */
 			const size_t ending = this->_source.rfind('\n', (origin - 1));
-			// Получаем начало строки, записи ребёнка предшествующей
-			const size_t start = ((ending == string::npos) ? 0 :
+			/**
+			 * Получаем начало строки, записи ребёнка предшествующей
+			 *
+			 * @note Начало это берётся за меткою порядка байтов: метка принадлежит тексту
+			 *       целиком, а не узлу его, и без поправки строка первая начиналась бы
+			 *       нулём, границы записи не достигая - перенос черты не состоялся бы вовсе
+			 */
+			const size_t opened = ((ending == string::npos) ? 0 :
 			 (((ending == 0) ? 0 : (this->_source.rfind('\n', (ending - 1)) + 1))));
+			// Получаем начало строки черты, меткою порядка байтов ограниченное
+			const size_t start = ((opened < this->_prologue) ? this->_prologue : opened);
 			/**
 			 * Если строка черты за границею записи ребёнка не умещается
 			 */
@@ -1436,14 +1444,12 @@ void awh::codec::yaml::Document::spread() noexcept {
 			 * Если строка черту записи перечня несёт, а промежуток до неё пуст
 			 */
 			if(solely && (letter < origin) && (this->_source.at(letter) == '-')){
-				// Получаем начало строки черты, меткою порядка байтов ограниченное
-				const size_t opening = ((start < this->_prologue) ? this->_prologue : start);
 				/**
 				 * Если начало строки черты запись ребёнка не сокращает
 				 */
-				if(opening >= boundary)
+				if(start >= boundary)
 					// Запоминаем начало строки черты началом записи ребёнка
-					this->_nodes.at(child).origin = static_cast <uint32_t> (opening);
+					this->_nodes.at(child).origin = static_cast <uint32_t> (start);
 			}
 			/**
 			 * Если граница записи ребёнка известна
