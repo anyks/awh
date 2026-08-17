@@ -122,6 +122,26 @@ if (${CMAKE_BUILD_${BENCHMARK_NAME}_BENCHMARKS})
         message(STATUS "Build benchmarks TOML submodule: No\n")
     endif (${CMAKE_BUILD_${BENCHMARK_NAME}_TOML_BENCHMARK})
 
+    # Указываем что нужно собрать бенчмарки для контейнера YAML
+    option(CMAKE_BUILD_${BENCHMARK_NAME}_YAML_BENCHMARK "Build YAML benchmark for ${BENCHMARK_NAME}" ON)
+
+    # Если нужно собрать бенчмарки для контейнера YAML
+    if (${CMAKE_BUILD_${BENCHMARK_NAME}_YAML_BENCHMARK})
+        # Выводим сообщение о сборке бенчмарков для контейнера YAML
+        message(STATUS "Build benchmarks YAML submodule: Yes\n")
+        # Дополняем список источников бенчмарками для контейнера YAML
+        list(APPEND ${PROJECT_NAME}_BENCHMARK_SOURCES
+            yaml/yaml.cpp
+            yaml/reader.cpp
+            yaml/writer.cpp
+            yaml/document.cpp
+        )
+    # Если не нужно собрать бенчмарки для контейнера YAML
+    else()
+        # Выводим сообщение о сборке бенчмарков для контейнера YAML
+        message(STATUS "Build benchmarks YAML submodule: No\n")
+    endif (${CMAKE_BUILD_${BENCHMARK_NAME}_YAML_BENCHMARK})
+
     # Указывает каталог для ВСЕХ исполняемых файлов
     SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/benchmarks)
 

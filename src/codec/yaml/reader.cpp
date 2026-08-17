@@ -226,7 +226,7 @@ namespace {
  *
  */
 awh::codec::yaml::Reader::Reader() noexcept :
- _state(state_t::READY), _error(error_t::NONE), _offset(0), _line(0), _position(0),
+ _state(state_t::READY), _error(error_t::NONE), _reading(0), _offset(0), _line(0), _position(0),
  _started(false), _opened(false), _filled(false), _blocking(false), _block(style_t::LITERAL),
  _chomp(chomp_t::CLIP), _marked(NO_INDENT), _outer(0), _margin(0), _inner(0), _opening(0),
  _breaks(0), _expected(false), _entered(false), _pending(0), _schema(schema_t::CORE), _plaining(false),
@@ -238,7 +238,7 @@ awh::codec::yaml::Reader::Reader() noexcept :
  *
  */
 awh::codec::yaml::Reader::Reader(const settings_t & settings) noexcept :
- _settings(settings), _state(state_t::READY), _error(error_t::NONE), _offset(0),
+ _settings(settings), _state(state_t::READY), _error(error_t::NONE), _reading(0), _offset(0),
  _line(0), _position(0), _started(false), _opened(false), _filled(false),
  _blocking(false), _block(style_t::LITERAL), _chomp(chomp_t::CLIP), _marked(NO_INDENT),
  _outer(0), _margin(0), _inner(0), _opening(0), _breaks(0), _expected(false), _entered(false), _pending(0),
@@ -306,6 +306,8 @@ void awh::codec::yaml::Reader::clear() noexcept {
 	this->_storage.clear();
 	// Выполняем сброс очереди собранных событий
 	this->_events.clear();
+	// Выполняем сброс номера очередного события очереди
+	this->_reading = 0;
 	// Выполняем сброс событий разбираемой строки
 	this->_staged.clear();
 	// Выполняем сброс события, выданного последним
@@ -496,12 +498,24 @@ void awh::codec::yaml::Reader::commit() noexcept {
 	/**
 	 * Выполняем перенос всех собранных событий строки в очередь выдачи
 	 */
-	while(!this->_staged.empty()){
+	for(size_t i = 0; i < this->_staged.size(); i++){
+		/**
+		 * Если все события очереди уже выданы
+		 *
+		 * @note Перечень сбрасывается лишь тогда, когда выдавать из него нечего: память
+		 *       его тем переиспользуется, а выданные события уходят разом, а не по одному
+		 */
+		if(this->_reading >= this->_events.size()){
+			// Выполняем сброс очереди выданных событий
+			this->_events.clear();
+			// Выполняем сброс номера очередного события очереди
+			this->_reading = 0;
+		}
 		// Выполняем перенос очередного собранного события
-		this->_events.emplace_back(this->_staged.front());
-		// Выполняем снятие перенесённого события с накопителя строки
-		this->_staged.pop_front();
+		this->_events.emplace_back(this->_staged.at(i));
 	}
+	// Выполняем сброс накопителя событий разобранной строки
+	this->_staged.clear();
 }
 /**
  * @brief Метод постановки события примечания
@@ -3552,7 +3566,7 @@ bool awh::codec::yaml::Reader::next() noexcept {
 	/**
 	 * Если очередь собранных событий пуста
 	 */
-	if(this->_events.empty()){
+	if(this->_reading >= this->_events.size()){
 		// Выполняем сброс события, выданного последним
 		this->_current = item_t();
 		// Выполняем сброс значения, выданного последним событием
@@ -3567,9 +3581,9 @@ bool awh::codec::yaml::Reader::next() noexcept {
 		return false;
 	}
 	// Получаем очередное событие разбора
-	this->_current = this->_events.front();
+	this->_current = this->_events.at(this->_reading);
 	// Выполняем снятие полученного события с очереди
-	this->_events.pop_front();
+	this->_reading++;
 	// Устанавливаем вид значения полученного события
 	this->_content.type = this->_current.type;
 	// Устанавливаем вид записи значения полученного события
