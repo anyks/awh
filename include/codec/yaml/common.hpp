@@ -977,6 +977,72 @@ namespace awh {
 			__AWH_SHARED_EXPORT__ type_t resolve(const string_view text, const schema_t schema) noexcept;
 			/**
 			 * \~russian
+			 * @brief Число, разобранное из записи своей
+			 *
+			 * @details Разобранное кладётся во все три поля разом, а какое из них взято -
+			 * сказывает вид числа: целое со знаком лежит в первом, целое без знака во втором,
+			 * дробное в третьем
+			 *
+			 * \~english
+			 * @brief Number parsed from its record
+			 * @details What is parsed is placed into all the three fields at once, and which of them is taken
+			 * is told by the kind of the number
+			 *
+			 * \~
+			 */
+			typedef struct __AWH_SHARED_EXPORT__ Numeric {
+				// Целое число со знаком
+				int64_t integer;
+				// Целое число без знака
+				uint64_t natural;
+				// Дробное число двойной точности
+				double real;
+				/**
+				 * \~russian
+				 * @brief Конструктор
+				 *
+				 *
+				 * \~english
+				 * @brief Constructor
+				 *
+				 * \~
+				 */
+				Numeric() noexcept : integer(0), natural(0), real(0.) {}
+			} numeric_t;
+			/**
+			 * \~russian
+			 * @brief Функция разбора записи числа к самому узкому вмещающему виду
+			 *
+			 * @details Разбор ведётся действующей схемой: `0777` есть 511 по наречию 1.1 и
+			 * строка по наречию 1.2, а `12:30` есть 750 там же. Знак подчёркивания между
+			 * разрядами наречие 1.1 дозволяет, и он снимается прежде разбора
+			 *
+			 * @note Потоковое чтение число не разбирает вовсе и выдаёт сборный вид `NUMBER`:
+			 *       разбирать всякое число, никем не затребованное, значило бы платить за то,
+			 *       чего потребитель не просил. Разбирает его дерево при постройке своей -
+			 *       там число уже удерживается, и разобрать его нужно однажды
+			 *
+			 * @param text   разбираемая запись числа
+			 * @param schema действующая схема разрешения
+			 * @param result разобранное число
+			 * @return       вид разобранного числа, `UNDEFINED` - запись числом не является
+			 *
+			 * \~english
+			 * @brief Function of the parsing of a record of a number to the narrowest containing kind
+			 * @details The parsing is conducted by the acting schema: `0777` is 511 by the 1.1 dialect and
+			 * a string by the 1.2 dialect, while `12:30` is 750 there as well
+			 * @note The streaming reading does not parse a number at all and issues the composite kind `NUMBER`:
+			 *       to parse every number not demanded by anyone would mean to pay for what the consumer did not ask for
+			 * @param text record of a number being parsed
+			 * @param schema acting schema of the resolution
+			 * @param result parsed number
+			 * @return kind of the parsed number, `UNDEFINED` — the record is not a number
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ type_t narrow(const string_view text, const schema_t schema, numeric_t & result) noexcept;
+			/**
+			 * \~russian
 			 * @brief Функция проверки записи имени метки либо ссылки
 			 *
 			 * @details Имя метки не вправе нести пробельных знаков и знаков, открывающих

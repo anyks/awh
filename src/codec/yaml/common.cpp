@@ -20,6 +20,13 @@
  */
 
 /**
+ * Стандартные заголовочные файлы
+ */
+#include <cerrno>
+#include <cstdlib>
+#include <limits>
+
+/**
  * Подключаем заголовочные файлы модуля
  */
 #include <codec/yaml/common.hpp>
@@ -275,6 +282,84 @@ namespace {
 			return false;
 		// Выводим признак того, что запись отвечает дробному числу
 		return (point || power);
+	}
+	/**
+	 * @brief Функция выбора самого узкого вида, целое число вмещающего
+	 *
+	 * @param negative  признак записи числа со знаком минус
+	 * @param collected разобранное целое число без знака
+	 * @param result    разобранное число всеми видами его
+	 * @return          самый узкий вид, число вмещающий
+	 *
+	 */
+	static type_t fitted(const bool negative, const uint64_t collected, numeric_t & result) noexcept {
+		/**
+		 * Если запись несёт знак минус
+		 */
+		if(negative){
+			/**
+			 * Если число за предел целого со знаком вышло
+			 */
+			if(collected > (static_cast <uint64_t> (numeric_limits <int64_t>::max()) + 1ull)){
+				// Запоминаем разобранное число дробным приближением его
+				result.real = -static_cast <double> (collected);
+				// Выводим вид числа, ни в один родной вид не вместимого
+				return type_t::EXTENDED;
+			}
+			// Запоминаем разобранное число целым со знаком
+			result.integer = ((collected == (static_cast <uint64_t> (numeric_limits <int64_t>::max()) + 1ull)) ?
+			 numeric_limits <int64_t>::min() : -static_cast <int64_t> (collected));
+			// Запоминаем разобранное число дробным видом
+			result.real = static_cast <double> (result.integer);
+			// Запоминаем разобранное число целым без знака
+			result.natural = static_cast <uint64_t> (result.integer);
+			/**
+			 * Если число вмещается в один байт со знаком
+			 */
+			if(result.integer >= numeric_limits <int8_t>::lowest())
+				// Выводим вид целого числа одного байта
+				return type_t::INT8;
+			/**
+			 * Если число вмещается в два байта со знаком
+			 */
+			if(result.integer >= numeric_limits <int16_t>::lowest())
+				// Выводим вид целого числа двух байтов
+				return type_t::INT16;
+			/**
+			 * Если число вмещается в четыре байта со знаком
+			 */
+			if(result.integer >= numeric_limits <int32_t>::lowest())
+				// Выводим вид целого числа четырёх байтов
+				return type_t::INT32;
+			// Выводим вид целого числа восьми байтов
+			return type_t::INT64;
+		}
+		// Запоминаем разобранное число целым без знака
+		result.natural = collected;
+		// Запоминаем разобранное число целым со знаком
+		result.integer = static_cast <int64_t> (collected);
+		// Запоминаем разобранное число дробным видом
+		result.real = static_cast <double> (collected);
+		/**
+		 * Если число вмещается в один байт без знака
+		 */
+		if(collected <= numeric_limits <uint8_t>::max())
+			// Выводим вид целого числа одного байта
+			return type_t::UINT8;
+		/**
+		 * Если число вмещается в два байта без знака
+		 */
+		if(collected <= numeric_limits <uint16_t>::max())
+			// Выводим вид целого числа двух байтов
+			return type_t::UINT16;
+		/**
+		 * Если число вмещается в четыре байта без знака
+		 */
+		if(collected <= numeric_limits <uint32_t>::max())
+			// Выводим вид целого числа четырёх байтов
+			return type_t::UINT32;
+		// Выводим вид целого числа восьми байтов
+		return type_t::UINT64;
 	}
 	/**
 	 * @brief Функция проверки записи числа в шестидесятиричной записи наречия 1.1
@@ -998,4 +1083,201 @@ style_t awh::codec::yaml::quoting(const string_view text, const schema_t schema,
 	}
 	// Выводим вид записи без ограды
 	return style_t::PLAIN;
+}
+/**
+ * @brief Функция разбора записи числа к самому узкому вмещающему виду
+ *
+ * @param text   разбираемая запись числа
+ * @param schema действующая схема разрешения
+ * @param result разобранное число
+ * @return       вид разобранного числа, `UNDEFINED` - запись числом не является
+ *
+ */
+type_t awh::codec::yaml::narrow(const string_view text, const schema_t schema, numeric_t & result) noexcept {
+	/**
+	 * Если запись числом не является вовсе
+	 *
+	 * @note Разрешение стоит прежде разбора нарочно: своды правил у них разойтись не
+	 *       вправе, и разбор берётся лишь за то, что разрешение числом признало
+	 */
+	if(!(static_cast <uint32_t> (resolve(text, schema)) & static_cast <uint32_t> (type_t::NUMBER)))
+		// Выводим признак того, что запись числом не является
+		return type_t::UNDEFINED;
+	// Признак записи числа со знаком минус
+	const bool negative = (!text.empty() && (text.front() == '-'));
+	// Получаем запись числа без знака
+	const string_view number = ((!text.empty() && ((text.front() == '-') || (text.front() == '+'))) ? text.substr(1) : text);
+	/**
+	 * Перечень написаний бесконечности
+	 */
+	static const char * const INFINITIES[] = {".inf", ".Inf", ".INF", nullptr};
+	/**
+	 * Если запись является бесконечностью
+	 */
+	if(matches(number, INFINITIES)){
+		// Запоминаем разобранную бесконечность
+		result.real = (negative ? -numeric_limits <double>::infinity() : numeric_limits <double>::infinity());
+		// Выводим вид дробного числа двойной точности
+		return type_t::DOUBLE;
+	}
+	/**
+	 * Перечень написаний нечисловой величины
+	 */
+	static const char * const NOT_NUMBERS[] = {".nan", ".NaN", ".NAN", nullptr};
+	/**
+	 * Если запись является нечисловой величиной
+	 */
+	if(matches(text, NOT_NUMBERS)){
+		// Запоминаем разобранную нечисловую величину
+		result.real = numeric_limits <double>::quiet_NaN();
+		// Выводим вид дробного числа двойной точности
+		return type_t::DOUBLE;
+	}
+	// Собираемая запись числа без знаков подчёркивания
+	string plain;
+	// Выполняем упреждающее выделение памяти под собираемую запись
+	plain.reserve(number.size());
+	/**
+	 * Выполняем перебор всех знаков записи числа
+	 */
+	for(const char letter : number){
+		/**
+		 * Если знак является знаком подчёркивания
+		 *
+		 * @note Знак этот наречие 1.1 дозволяет между разрядами для удобочитаемости, и
+		 *       числом он не является: снимается он прежде разбора
+		 */
+		if(letter != '_')
+			// Выполняем добавление знака к собираемой записи
+			plain.push_back(letter);
+	}
+	// Основание системы счисления записи числа
+	uint8_t radix = 10;
+	// Смещение начала разрядов записи числа
+	size_t offset = 0;
+	/**
+	 * Если запись открывается указателем системы счисления
+	 */
+	if((plain.size() > 2) && (plain.at(0) == '0')){
+		/**
+		 * Определяем указатель системы счисления записи
+		 */
+		switch(plain.at(1)){
+			// Если запись является шестнадцатеричной
+			case 'x':
+			case 'X': radix = 16; offset = 2; break;
+			// Если запись является восьмеричной наречия 1.2
+			case 'o': radix = 8; offset = 2; break;
+			/**
+			 * Если запись является двоичной
+			 *
+			 * @note Двоичную запись знает лишь наречие 1.1, и разрешение до разбора её
+			 *       не допустит, коли действует иная схема
+			 */
+			case 'b':
+			case 'B': radix = 2; offset = 2; break;
+		}
+	}
+	/**
+	 * Если запись является восьмеричной наречия 1.1
+	 *
+	 * @note Ведущий нуль знаменует здесь восьмеричную запись, и `0777` есть 511. Наречие
+	 *       1.2 такую запись числом не признаёт вовсе, и разрешение сюда не пропустит
+	 */
+	if((radix == 10) && (schema == schema_t::LEGACY) && (plain.size() > 1) && (plain.at(0) == '0') &&
+	   (plain.find_first_not_of("01234567", 1) == string::npos)){
+		// Запоминаем восьмеричное основание системы счисления
+		radix = 8;
+		// Запоминаем смещение начала разрядов записи
+		offset = 1;
+	}
+	/**
+	 * Если запись является шестидесятиричной
+	 *
+	 * @details Запись эту знает лишь наречие 1.1: `12:30` есть 750, а `1:00:00` есть
+	 *          3600. Собирается число по разрядам, ибо разбор языка её не знает вовсе
+	 */
+	if((radix == 10) && (schema == schema_t::LEGACY) && (plain.find(':') != string::npos)){
+		// Собираемое число шестидесятиричной записи
+		double collected = 0.;
+		// Признак того, что запись несёт дробную часть
+		bool fractional = false;
+		// Смещение начала очередного разряда записи
+		size_t position = 0;
+		/**
+		 * Выполняем перебор всех разрядов шестидесятиричной записи
+		 */
+		while(position <= plain.size()){
+			// Разыскиваем разделитель очередного разряда записи
+			const size_t separator = plain.find(':', position);
+			// Получаем очередной разряд шестидесятиричной записи
+			const string part(plain, position, (((separator == string::npos) ? plain.size() : separator) - position));
+			/**
+			 * Если разряд несёт дробную часть
+			 */
+			if(part.find('.') != string::npos)
+				// Запоминаем признак дробной части записи
+				fractional = true;
+			// Выполняем накопление числа очередным разрядом
+			collected = ((collected * 60.) + ::strtod(part.c_str(), nullptr));
+			/**
+			 * Если разделителей в записи больше нет
+			 */
+			if(separator == string::npos)
+				// Выходим из перебора разрядов записи
+				break;
+			// Выполняем переход к следующему разряду записи
+			position = (separator + 1);
+		}
+		// Запоминаем разобранное число дробным видом
+		result.real = (negative ? -collected : collected);
+		/**
+		 * Если запись дробной части не несёт
+		 */
+		if(!fractional)
+			// Выводим самый узкий вид, собранное число вмещающий
+			return fitted(negative, static_cast <uint64_t> (collected), result);
+		// Выводим вид дробного числа двойной точности
+		return type_t::DOUBLE;
+	}
+	/**
+	 * Если запись является дробной
+	 */
+	if((radix == 10) && (plain.find_first_of(".eE") != string::npos)){
+		// Запоминаем разобранное дробное число
+		result.real = ::strtod(plain.c_str(), nullptr);
+		/**
+		 * Если запись несёт знак минус
+		 */
+		if(negative)
+			// Выполняем смену знака разобранного числа
+			result.real = -result.real;
+		// Выводим вид дробного числа двойной точности
+		return type_t::DOUBLE;
+	}
+	// Выполняем сброс признака ошибки разбора записи
+	errno = 0;
+	// Выполняем разбор записи целого числа без знака
+	const uint64_t collected = ::strtoull((plain.c_str() + offset), nullptr, radix);
+	/**
+	 * Если число за предел целого вида вышло
+	 *
+	 * @note Число, ни в один родной вид не вместившееся, хранится записью своей и
+	 *       выдаётся дробным приближением: отбросить его значило бы потерять содержимое,
+	 *       записанное текстом верно
+	 */
+	if(errno == ERANGE){
+		// Запоминаем разобранное число дробным приближением его
+		result.real = ::strtod(plain.c_str() + offset, nullptr);
+		/**
+		 * Если запись несёт знак минус
+		 */
+		if(negative)
+			// Выполняем смену знака разобранного числа
+			result.real = -result.real;
+		// Выводим вид числа, ни в один родной вид не вместимого
+		return type_t::EXTENDED;
+	}
+	// Выводим самый узкий вид, разобранное число вмещающий
+	return fitted(negative, collected, result);
 }
