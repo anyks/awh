@@ -1072,6 +1072,7 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/codec/yaml/reader.cpp"
     "${CMAKE_SOURCE_DIR}/src/codec/yaml/writer.cpp"
     "${CMAKE_SOURCE_DIR}/src/codec/yaml/document.cpp"
+    "${CMAKE_SOURCE_DIR}/src/codec/yaml/value.cpp"
     "${CMAKE_SOURCE_DIR}/src/codec/toml/common.cpp"
     "${CMAKE_SOURCE_DIR}/src/codec/toml/encoding.cpp"
     "${CMAKE_SOURCE_DIR}/src/codec/toml/reader.cpp"
@@ -1663,6 +1664,8 @@ if (${CMAKE_BUILD_SAMPLES})
         SET(CLIENT_APP_NET_SCTP_TRANSFER_NAME net-sctp-transfer-client)
         # Устанавливаем имя приложения переноса файла по SCTP - сервер
         SET(SERVER_APP_NET_SCTP_TRANSFER_NAME net-sctp-transfer-server)
+        # Устанавливаем имя приложения проверки многодомности SCTP
+        SET(APP_NET_SCTP_MULTIHOME_NAME net-sctp-multihome)
         # Указываем что нужно собрать приложение работы с SCTP (клиент и сервер)
         option(CMAKE_BUILD_NET_SCTP_APP_SAMPLE "Build NET SCTP app sample" ON)
     endif()
@@ -2529,6 +2532,8 @@ if (${CMAKE_BUILD_SAMPLES})
             add_sample(${CLIENT_APP_NET_SCTP_TRANSFER_NAME} sample/net/sctp/transfer-client.cpp net/sctp)
             # Выполняем создание приложения переноса файла по SCTP - сервер
             add_sample(${SERVER_APP_NET_SCTP_TRANSFER_NAME} sample/net/sctp/transfer-server.cpp net/sctp)
+            # Выполняем создание приложения проверки многодомности SCTP
+            add_sample(${APP_NET_SCTP_MULTIHOME_NAME} sample/net/sctp/multihome.cpp net/sctp)
         # Если не нужно собирать семплы для работы с SCTP (клиент и сервер)
         else()
             # Выводим сообщение о сборке семпла
