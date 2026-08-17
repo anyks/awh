@@ -1169,6 +1169,28 @@ namespace awh {
 					void disown(const uint32_t index, const uint32_t extent) noexcept;
 					/**
 					 * \~russian
+					 * @brief Метод получения конца последней строки записи поддерева
+					 *
+					 * @details Границы записей узлов к этому времени ещё не сочтены: считаются
+					 * они по началам записей, а начала эти правятся переносом черты. Оттого
+					 * нижний предел переноса берётся не границею прежней записи, а концом
+					 * последней строки её - тем, что известно и до счёта границ
+					 *
+					 * @param index    номер узла, поддерево какого обходится
+					 * @param boundary предел, ниже какого опускаться нельзя
+					 * @return         смещение за концом последней строки записи
+					 *
+					 * \~english
+					 * @brief Method of the obtaining of the end of the last line of the record of a subtree
+					 * @param index index of the node whose subtree is being traversed
+					 * @param boundary limit below which it is not allowed to descend
+					 * @return offset past the end of the last line of the record
+					 *
+					 * \~
+					 */
+					uint32_t closing(const uint32_t index, const uint32_t boundary) const noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод снятия узла вместе с поддеревом его
 					 *
 					 * @param index номер снимаемого узла
