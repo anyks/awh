@@ -665,13 +665,6 @@ bool awh::codec::yaml::Writer::enter() noexcept {
 	return true;
 }
 /**
- * @brief Метод записи скалярного значения выбранной оградою
- *
- * @param text  записываемое содержимое значения
- * @param style ограда, какою обносится значение
- *
- */
-/**
  * @brief Метод приведения записи к годной кодировке UTF-8
  *
  * @param text   приводимая запись
@@ -774,6 +767,13 @@ bool awh::codec::yaml::Writer::sanitize(const string & text, string & result) no
 	// Выводим признак пригодности записи
 	return true;
 }
+/**
+ * @brief Метод записи скалярного значения выбранной оградою
+ *
+ * @param text  записываемое содержимое значения
+ * @param style ограда, какою обносится значение
+ *
+ */
 void awh::codec::yaml::Writer::quoted(const string & text, const style_t style) noexcept {
 	/**
 	 * Определяем ограду, какою обносится записываемое значение

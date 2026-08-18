@@ -2329,12 +2329,6 @@ string awh::codec::yaml::Document::dump(const writer_t::settings_t & settings) c
 	return writer.take();
 }
 /**
- * @brief Метод сборки текста по дереву документа
- *
- * @return собранный текст документа
- *
- */
-/**
  * @brief Метод пометки узла и предков его правлеными
  *
  * @param index номер помечаемого узла
@@ -3133,6 +3127,12 @@ bool awh::codec::yaml::Document::touch(const value_t & value) noexcept {
 	// Выводим признак успешной пометки узла
 	return true;
 }
+/**
+ * @brief Метод сборки текста по дереву документа
+ *
+ * @return собранный текст документа
+ *
+ */
 string awh::codec::yaml::Document::dump() const noexcept {
 	// Настройки записи собираемого текста
 	writer_t::settings_t settings;
