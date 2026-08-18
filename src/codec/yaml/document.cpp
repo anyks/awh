@@ -315,14 +315,23 @@ bool awh::codec::yaml::Document::digest(reader_t & reader) noexcept {
 		// Смещение начала записи имени пары в удержанном исходном тексте
 		uint32_t origin;
 		/**
+		 * Признак того, что вместилище записано поточным построением
+		 *
+		 * @note Признак этот берётся скобкой в исходном тексте, а не признаком события:
+		 *       событие открытия поточного построения приходит прежде скобки его, а
+		 *       событие закрытия - за нею, и признак поточности снят у обоих
+		 */
+		bool flow;
+		/**
 		 * @brief Конструктор
 		 *
 		 * @param index   номер узла вместилища в перечне узлов
 		 * @param mapping признак того, что вместилище является отображением пар
+		 * @param flow    признак того, что вместилище записано поточным построением
 		 *
 		 */
-		Level(const uint32_t index, const bool mapping) noexcept :
-		 index(index), mapping(mapping), awaited(mapping), origin(NO_ORIGIN) {}
+		Level(const uint32_t index, const bool mapping, const bool flow) noexcept :
+		 index(index), mapping(mapping), awaited(mapping), origin(NO_ORIGIN), flow(flow) {}
 	};
 	// Стопа открытых вместилищ постройки дерева
 	vector <Level> levels;
@@ -447,6 +456,40 @@ bool awh::codec::yaml::Document::digest(reader_t & reader) noexcept {
 		}
 		// Выводим признак того, что строку события ничего чужого не занимает
 		return true;
+	};
+	/**
+	 * @brief Функция проверки того, что вместилище скобкою в тексте открыто
+	 *
+	 * @details Поточное построение опознаётся скобкой его в удержанном тексте, а не
+	 *          признаком поточности события: событие открытия построения приходит прежде
+	 *          скобки, а событие закрытия - за нею, и признак у обоих снят
+	 *
+	 * @return признак того, что вместилище записано поточным построением
+	 *
+	 */
+	const auto bracketed = [&]() noexcept -> bool {
+		/**
+		 * Если исходный текст не удержан либо смещение события неведомо
+		 */
+		if(this->_source.empty() || (reader.value().location.offset == NO_OFFSET))
+			// Выводим признак того, что вместилище скобкою не открыто
+			return false;
+		// Получаем смещение события в удержанном исходном тексте
+		size_t offset = (static_cast <size_t> (reader.value().location.offset) + this->_prologue);
+		/**
+		 * Выполняем пропуск пробельных знаков перед скобкою построения
+		 */
+		while((offset < this->_source.size()) && ::blanking(this->_source.at(offset)))
+			// Выполняем переход к следующему знаку строки
+			offset++;
+		/**
+		 * Если знаков за смещением события нет вовсе
+		 */
+		if(offset >= this->_source.size())
+			// Выводим признак того, что вместилище скобкою не открыто
+			return false;
+		// Выводим признак того, что вместилище скобкою открыто
+		return ((this->_source.at(offset) == '{') || (this->_source.at(offset) == '['));
 	};
 	/**
 	 * @brief Функция проверки того, что событие строку свою открывает
@@ -786,7 +829,7 @@ bool awh::codec::yaml::Document::digest(reader_t & reader) noexcept {
 						anchors[string(this->_storage, props.anchor, props.anchored)] = index;
 				}
 				// Выполняем открытие вместилища постройки дерева
-				levels.emplace_back(index, mapping);
+				levels.emplace_back(index, mapping, bracketed());
 			} break;
 			/**
 			 * Если событие закрывает отображение пар либо перечень значений
@@ -801,10 +844,40 @@ bool awh::codec::yaml::Document::digest(reader_t & reader) noexcept {
 					break;
 				// Получаем номер узла закрываемого вместилища
 				const uint32_t index = levels.back().index;
+				// Получаем признак того, что вместилище записано поточным построением
+				const bool flowing = levels.back().flow;
 				// Выполняем снятие закрытого вместилища со стопы
 				levels.pop_back();
 				// Запоминаем размах поддерева закрытого вместилища
 				this->_nodes.at(index).extent(static_cast <uint32_t> (this->_nodes.size()) - index);
+				/**
+				 * Если вместилище поточным построением записано, а текст удержан
+				 *
+				 * @details Поточное построение тянется на строки ниже, а конец его отступом
+				 *          не измерить: скобка закрывающая вправе стоять и с начала строки.
+				 *          Записи же его дети не имеют вовсе, и счёт границ кончал запись
+				 *          строкою выше скобки - сосед забирал её себе, а перенос черты
+				 *          принимал содержимое построения за черту записи своей
+				 *
+				 * @note Конец этот кладётся границею записи узла: значение это поле несёт и
+				 *       так, а проставляется оно проходом позже - до него поле свободно.
+				 *       Нашёл это ворошитель правкой дерева
+				 */
+				if(flowing && !this->_source.empty() &&
+				   (reader.value().location.offset != NO_OFFSET)){
+					// Получаем смещение события в удержанном исходном тексте
+					const size_t offset = (static_cast <size_t> (reader.value().location.offset) + this->_prologue);
+					/**
+					 * Если смещение события за пределы удержанного текста не выходит
+					 */
+					if(offset <= this->_source.size()){
+						// Разыскиваем конец строки, скобкою закрывающей занятой
+						const size_t position = this->_source.find('\n', offset);
+						// Запоминаем конец строки границею записи поточного построения
+						this->_nodes.at(index).edge = static_cast <uint32_t> ((position == string::npos) ?
+						 this->_source.size() : (position + 1));
+					}
+				}
 			} break;
 			/**
 			 * Если событие несёт скалярное значение
@@ -2327,6 +2400,8 @@ void awh::codec::yaml::Document::disown(const uint32_t index, const uint32_t ext
 uint32_t awh::codec::yaml::Document::closing(const uint32_t index, const uint32_t boundary) const noexcept {
 	// Наибольшее из начал записей обходимого поддерева
 	uint32_t latest = boundary;
+	// Наибольший из концов записей, узлами наперёд ведомых
+	uint32_t terminus = boundary;
 	/**
 	 * Выполняем перебор всех узлов обходимого поддерева
 	 */
@@ -2353,6 +2428,17 @@ uint32_t awh::codec::yaml::Document::closing(const uint32_t index, const uint32_
 		if((this->_nodes.at(i).dwelling != NO_ORIGIN) && (this->_nodes.at(i).dwelling > latest))
 			// Запоминаем собственную строку узла наибольшею
 			latest = this->_nodes.at(i).dwelling;
+		/**
+		 * Если узел конец записи своей за собою несёт
+		 *
+		 * @details Поточное построение конец записи своей знает наперёд - он проставлен
+		 *          закрывающей скобкой его, - а отступом его не измерить: скобка вправе
+		 *          стоять и с начала строки. Конец этот берётся тогда полом: ниже него
+		 *          запись кончиться не может
+		 */
+		if((this->_nodes.at(i).edge != NO_ORIGIN) && (this->_nodes.at(i).edge > terminus))
+			// Запоминаем конец записи узла наибольшим
+			terminus = this->_nodes.at(i).edge;
 	}
 	/**
 	 * Если наибольшее начало записи за пределы удержанного текста выходит
@@ -2360,6 +2446,7 @@ uint32_t awh::codec::yaml::Document::closing(const uint32_t index, const uint32_
 	if(latest >= this->_source.size())
 		// Выводим предел, ниже какого опускаться нельзя
 		return static_cast <uint32_t> (this->_source.size());
+
 	// Разыскиваем начало строки, наибольшим началом записи занятой
 	const size_t opened = ((latest == 0) ? 0 : (this->_source.rfind('\n', (latest - 1)) + 1));
 	// Смещение первого непробельного знака строки
@@ -2374,6 +2461,18 @@ uint32_t awh::codec::yaml::Document::closing(const uint32_t index, const uint32_
 	const size_t indent = (letter - opened);
 	// Разыскиваем конец строки, наибольшим началом записи занятой
 	size_t position = this->_source.find('\n', latest);
+	/**
+	 * Если конец записи, узлом наперёд ведомый, строки той ниже стоит
+	 *
+	 * @details Отступ берётся строкою начала записи, а розыск ведётся от конца её:
+	 *          скобка, поточное построение закрывающая, вправе стоять и с начала строки,
+	 *          и отступ её записи не отвечает вовсе. Считай отступ по ней - и добор
+	 *          строк забрал бы весь текст ниже
+	 */
+	if((terminus > 0) && ((position == string::npos) || ((terminus - 1) > position)))
+		// Запоминаем конец записи, узлом ведомый, началом добора строк
+		position = (((terminus - 1) < this->_source.size()) &&
+		 (this->_source.at(terminus - 1) == '\n') ? (terminus - 1) : string::npos);
 	/**
 	 * Выполняем добор строк, записи узла принадлежащих
 	 *
