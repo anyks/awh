@@ -1252,35 +1252,6 @@ namespace {
 	 */
 	static bool assemble(const yaml::value_t & value, yaml::builder_t & builder) noexcept {
 		/**
-		 * Если значение является отображением пар
-		 *
-		 * @details Отображение, повторное имя несущее, потоковой сборкой не собирается по
-		 *          устройству: занесение по занятому имени перезаписывает поле на прежнем
-		 *          месте, и два поля одного имени слились бы в одно. Дерево такое законно -
-		 *          его даёт правило `duplicate_t::KEEP`, - но воспроизвести его сборка не
-		 *          может, и находкою это считаться не вправе
-		 *
-		 * @note Нашёл это сам ворошитель. Расхождение договоров вынесено владельцу
-		 */
-		if(value.kind() == yaml::kind_t::MAPPING){
-			/**
-			 * Выполняем перебор имён полей отображения
-			 */
-			for(size_t i = 1; i < value.size(); i++){
-				/**
-				 * Выполняем розыск имени поля среди прежде занесённых
-				 */
-				for(size_t j = 0; j < i; j++){
-					/**
-					 * Если имя поля отображения повторяется
-					 */
-					if(value.key(i).compare(value.key(j)) == 0)
-						// Выводим признак невозможности сборки
-						return false;
-				}
-			}
-		}
-		/**
 		 * Определяем вид собираемого значения
 		 */
 		switch(static_cast <uint8_t> (value.kind())){
@@ -1300,8 +1271,13 @@ namespace {
 				for(size_t i = 0; i < value.size(); i++){
 					/**
 					 * Если назначить имя поля отображения не удалось
+					 *
+					 * @note Имя назначается добавлением, а не установкой: отображение вправе
+					 *       нести повторяющиеся имена - их даёт правило `duplicate_t::KEEP`, -
+					 *       и установка слила бы два поля одного имени в одно. Первому
+					 *       вхождению добавление не вредит: отображение к тому мигу пусто
 					 */
-					if(!builder.key(value.key(i)))
+					if(!builder.append(value.key(i)))
 						// Выводим признак неудачной сборки
 						return false;
 					/**
@@ -1850,12 +1826,13 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		}
 	}
 	// Выводим итог работы генератора
-	::fprintf(stderr, "yaml fuzz: %llu texts (%llu corrupted, %llu survived), %llu events, %llu chunked, %llu transcoded, %llu trees, %llu kept, %llu edited\n",
+	::fprintf(stderr, "yaml fuzz: %llu texts (%llu corrupted, %llu survived), %llu events, %llu chunked, %llu transcoded, %llu trees, %llu kept, %llu edited, %llu taken, %llu assembled\n",
 		static_cast <unsigned long long> (totals.texts), static_cast <unsigned long long> (totals.corrupted),
 		static_cast <unsigned long long> (totals.survived), static_cast <unsigned long long> (totals.events),
 		static_cast <unsigned long long> (totals.chunked), static_cast <unsigned long long> (totals.transcoded),
 		static_cast <unsigned long long> (totals.trees), static_cast <unsigned long long> (totals.kept),
-		static_cast <unsigned long long> (totals.edited));
+		static_cast <unsigned long long> (totals.edited), static_cast <unsigned long long> (totals.taken),
+		static_cast <unsigned long long> (totals.assembled));
 	// Выводим код успешного выхода из приложения
 	return EXIT_SUCCESS;
 }

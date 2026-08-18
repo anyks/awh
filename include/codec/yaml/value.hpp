@@ -712,6 +712,33 @@ namespace awh {
 					bool insert(const string & name, const Value & value) noexcept;
 					/**
 					 * \~russian
+					 * @brief Метод добавления поля отображения рядом с одноимённым
+					 *
+					 * @details Поле кладётся рядом, а не поверх: разбор с настройкой
+					 * `duplicate_t::KEEP` удерживает все вхождения повторяющегося имени, и
+					 * воспроизвести такое отображение установкой поля нельзя - она перезаписала
+					 * бы одноимённое на его месте
+					 *
+					 * @note Розыска по имени метод не ведёт вовсе: имя кладётся сразу за
+					 *       последним полем отображения
+					 *
+					 * @param name  имя поля отображения
+					 * @param value добавляемое значение поля
+					 * @return      признак успешности добавления
+					 *
+					 * \~english
+					 * @brief Method of the addition of a field of a mapping next to a field of the same name
+					 * @details The field is laid next to rather than over: the parsing with the setting
+					 * `duplicate_t::KEEP` retains all the occurrences of a repeating name
+					 * @param name name of the field of the mapping
+					 * @param value value of the field being added
+					 * @return sign of the success of the addition
+					 *
+					 * \~
+					 */
+					bool append(const string & name, const Value & value) noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод снятия поля отображения по имени
 					 *
 					 * @param name имя снимаемого поля отображения
@@ -1245,6 +1272,14 @@ namespace awh {
 					bool _keyed;
 				private:
 					/**
+					 * Признак того, что поле кладётся рядом с одноимённым
+					 *
+					 * @note Признак принадлежит имени, а не сборке: всякое назначение имени
+					 *       обычным способом его снимает
+					 */
+					bool _appended;
+				private:
+					/**
 					 * \~russian
 					 * Признак того, что сборка завершена
 					 *
@@ -1376,6 +1411,32 @@ namespace awh {
 					 * \~
 					 */
 					bool key(const string & name) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод назначения имени поля, рядом с одноимённым кладомого
+					 *
+					 * @details Действует как назначение имени, с одной разницей: значение, следом
+					 * записанное, кладётся рядом с полем того же имени, а не поверх него. Тем
+					 * сборка повторяет отображение, разбором с настройкой `duplicate_t::KEEP`
+					 * собранное
+					 *
+					 * @note Признак добавления принадлежит имени, а не сборке: всякое назначение
+					 *       имени обычным способом его снимает. Иначе одно добавление сделало бы
+					 *       добавлениями все поля до конца сборки
+					 *
+					 * @param name имя назначаемого поля отображения
+					 * @return     признак успешности назначения
+					 *
+					 * \~english
+					 * @brief Method of the assignment of the name of a field laid next to a field of the same name
+					 * @details It acts as the assignment of a name, with one difference: the value written next
+					 * is laid next to a field of the same name rather than over it
+					 * @param name name of the field of the mapping being assigned
+					 * @return sign of the success of the assignment
+					 *
+					 * \~
+					 */
+					bool append(const string & name) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод назначения якоря, значению предпосылаемого
