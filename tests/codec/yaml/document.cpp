@@ -1366,7 +1366,7 @@ TEST(CodecYamlDocument, NestingDepthGuard) {
 	// Выполняем проверку отказа разбора глубины избыточной
 	ASSERT_FALSE(doc.parse(text));
 	// Выполняем проверку причины отказа разбора
-	ASSERT_EQ(doc.error().type, yaml::error_t::DEPTH_EXCEEDED);
+	ASSERT_EQ(doc.error(), yaml::error_t::DEPTH_EXCEEDED);
 	/**
 	 * Выполняем проверку прохождения глубины предельной
 	 *
