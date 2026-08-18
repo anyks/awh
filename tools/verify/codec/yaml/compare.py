@@ -77,6 +77,8 @@ for label, case in cases:
         continue
     want = case.get('tree')
     if want is None: skipped += 1; continue
+    # Знаки набора стоят и в эталонном дереве: пробел в конце записи иначе не разглядеть
+    want = want.replace('␣', ' ').replace('—', '').replace('»', '\t').replace('∎', '').replace('↵', '')
     if got.strip() == want.strip(): ok += 1
     else: bad += 1; diffs.append((label, 'РАСХОЖДЕНИЕ', want, got))
 
