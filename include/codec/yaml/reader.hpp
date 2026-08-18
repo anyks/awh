@@ -498,6 +498,33 @@ namespace awh {
 					uint32_t _outer;
 					// Отступ разбираемой строки
 					uint32_t _margin;
+					/**
+					 * \~russian
+					 * Количество строк, к разбираемой присоединённых склейкой
+					 *
+					 * @details Значение огранённое вправе стоять в несколько строк, и строки те
+					 * сводятся в одну логическую прежде разбора. Счёт строк ведётся по строкам
+					 * телесным, а не логическим, оттого присоединённые и учитываются отдельно
+					 *
+					 * @note Место события, за таким значением стоящего, называет строкою ту, в
+					 *       какой значение началось: логическая строка одна, и столбец в ней
+					 *       считается от начала её
+					 *
+					 * \~english
+					 * Number of the lines joined to the one being parsed
+					 * @details A quoted value is entitled to stand in several lines, and those lines are
+					 * brought into a single logical one before the parsing. The count of the lines is conducted over
+					 * the physical lines rather than over the logical ones, hence the joined ones are counted separately
+					 * @note The place of an event standing after such a value names the line in which the value
+					 *       began: the logical line is one, and the column in it is counted from its beginning
+					 *
+					 * \~
+					 */
+					uint32_t _joined;
+					// Признак того, что логическая строка несёт огранённое значение в несколько строк
+					bool _stretched;
+					// Наименьший отступ строк, склейкой присоединённых
+					uint32_t _shallow;
 				private:
 					/**
 					 * \~russian
