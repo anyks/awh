@@ -216,25 +216,29 @@ namespace awh {
 			 * @details Предел считается по значению уже со снятой оградой и выполненной
 			 * свёрткой строк
 			 *
+			 * @note Записи чисел предел этот стережёт наравне с прочими: своего предела длине
+			 *       числа здесь нет намеренно. Описание YAML длину записи числа не ограничивает
+			 *       вовсе, и запись в тысячу разрядов законна - удерживается она дословно видом
+			 *       EXTENDED. Предел, отдельно числу отведённый, отверг бы законный текст, а
+			 *       отвергнув его лишь при записи, а не при чтении, ещё и потерял бы значение
+			 *       при дословной перезаписи. Кодек JSON такой предел держит, и держит верно:
+			 *       там длина записи числа ограничена самим описанием
+			 *
 			 * \~english
 			 * @brief Largest admissible length of a scalar value in bytes
 			 * @details The limit is counted over the value already with the quoting removed and the folding
 			 * of the lines performed
+			 * @note This limit guards the records of the numbers on a par with the others: a limit of its own for
+			 *       the length of a number is absent here deliberately. The description of the YAML does not limit
+			 *       the length of the record of a number at all, and a record of a thousand digits is lawful — it is
+			 *       held verbatim by the EXTENDED kind. A limit allotted to a number separately would refuse a lawful
+			 *       text, and having refused it only at the writing rather than at the reading, it would also lose
+			 *       the value at the verbatim rewriting. The JSON codec holds such a limit, and holds it rightly:
+			 *       there the length of the record of a number is limited by the description itself
 			 *
 			 * \~
 			 */
 			constexpr uint32_t MAX_SCALAR = 0x1000000;
-
-			/**
-			 * \~russian
-			 * @brief Наибольшая допустимая длина записи числа в байтах
-			 *
-			 * \~english
-			 * @brief Largest admissible length of the record of a number in bytes
-			 *
-			 * \~
-			 */
-			constexpr uint32_t MAX_NUMBER = 0x400;
 
 			/**
 			 * \~russian
