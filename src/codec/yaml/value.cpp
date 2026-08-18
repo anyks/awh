@@ -785,9 +785,9 @@ bool awh::codec::yaml::Value::erase(const string & name) noexcept {
 		 */
 		if(this->_names.at(i).compare(name) == 0){
 			// Выполняем снятие имени поля отображения
-			this->_names.erase(std::next(this->_names.begin(), static_cast <ssize_t> (i)));
+			this->_names.erase(std::next(this->_names.begin(), static_cast <ptrdiff_t> (i)));
 			// Выполняем снятие значения поля отображения
-			this->_items.erase(std::next(this->_items.begin(), static_cast <ssize_t> (i)));
+			this->_items.erase(std::next(this->_items.begin(), static_cast <ptrdiff_t> (i)));
 			// Выводим признак успешного снятия
 			return true;
 		}
@@ -814,9 +814,9 @@ bool awh::codec::yaml::Value::erase(const size_t index) noexcept {
 	 */
 	if(this->_kind == kind_t::MAPPING)
 		// Выполняем снятие имени поля отображения
-		this->_names.erase(std::next(this->_names.begin(), static_cast <ssize_t> (index)));
+		this->_names.erase(std::next(this->_names.begin(), static_cast <ptrdiff_t> (index)));
 	// Выполняем снятие значения вместилища
-	this->_items.erase(std::next(this->_items.begin(), static_cast <ssize_t> (index)));
+	this->_items.erase(std::next(this->_items.begin(), static_cast <ptrdiff_t> (index)));
 	// Выводим признак успешного снятия
 	return true;
 }
