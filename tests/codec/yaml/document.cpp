@@ -1121,7 +1121,7 @@ TEST(CodecYamlDocument, FlowClosing) {
 		"поле:\n"
 		"  -\n"
 		"  - {\n"
-		"}\n"
+		"    }\n"
 		"  -\n"
 		"   -\n"
 		"  -\n";

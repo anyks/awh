@@ -1110,7 +1110,7 @@ TEST(CodecYamlReader, Directives) {
  */
 TEST(CodecYamlReader, FlowLines) {
 	// Выполняем проверку разбора перечня, на многие строки растянутого
-	ASSERT_EQ(events("a: [\n  1,\n  2\n]\n"),
+	ASSERT_EQ(events("a: [\n  1,\n  2\n  ]\n"),
 		"STREAM_START\nDOCUMENT_START\nMAPPING_START\n"
 		"SCALAR «a»\nSEQUENCE_START\nSCALAR «1»\nSCALAR «2»\nSEQUENCE_END\n"
 		"MAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
@@ -1120,13 +1120,13 @@ TEST(CodecYamlReader, FlowLines) {
 	 * @note Строка за закрывающей скобкой разбирается вновь обычным порядком, и пара `b`
 	 *       принадлежит тому же отображению, что и пара `a`
 	 */
-	ASSERT_EQ(events("a: {\n  x: 1,\n  y: два\n}\nb: 3\n"),
+	ASSERT_EQ(events("a: {\n  x: 1,\n  y: два\n  }\nb: 3\n"),
 		"STREAM_START\nDOCUMENT_START\nMAPPING_START\n"
 		"SCALAR «a»\nMAPPING_START\nSCALAR «x»\nSCALAR «1»\nSCALAR «y»\nSCALAR «два»\nMAPPING_END\n"
 		"SCALAR «b»\nSCALAR «3»\n"
 		"MAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
 	// Выполняем проверку разбора вложенных построений, на многие строки растянутых
-	ASSERT_EQ(events("a: [\n  [1,\n   2],\n  {k: v}\n]\n"),
+	ASSERT_EQ(events("a: [\n  [1,\n   2],\n  {k: v}\n  ]\n"),
 		"STREAM_START\nDOCUMENT_START\nMAPPING_START\n"
 		"SCALAR «a»\nSEQUENCE_START\n"
 		"SEQUENCE_START\nSCALAR «1»\nSCALAR «2»\nSEQUENCE_END\n"
@@ -1146,7 +1146,7 @@ TEST(CodecYamlReader, FlowLines) {
 		// Объект потокового чтения текста
 		yaml::reader_t reader(settings);
 		// Выполняем проверку разбора построения с примечаниями внутри
-		ASSERT_TRUE(reader.feed("a: [ # сбоку\n  1\n]\n"));
+		ASSERT_TRUE(reader.feed("a: [ # сбоку\n  1\n  ]\n"));
 		// Собираемый ряд названий событий разбора
 		string result;
 		/**
@@ -1749,4 +1749,59 @@ TEST(CodecYamlReader, Strictness) {
 	ASSERT_TRUE(doc.parse("this is#not: a comment\n"));
 	// Выполняем проверку собранного значения с знаком примечания внутри
 	ASSERT_EQ(doc.root().at("/this is#not").text(), "a comment");
+}
+/**
+ * @brief Проверка строгости поточных построений и директив
+ *
+ * @details Случаи взяты из набора yaml-test-suite и сверены с rapidyaml: тексты
+ *          негодные, какие чтение принимало молча
+ *
+ */
+TEST(CodecYamlReader, FlowStrictness) {
+	// Объект дерева документа
+	yaml::document_t doc;
+	/**
+	 * Выполняем проверку отказа пустой записи построения
+	 *
+	 * @note Разделитель отделяет записи друг от друга, и двум разделителям подряд
+	 *       отделять нечего. Запятая перед скобкою закрывающей дозволена - она записи
+	 *       не открывает, а закрывает последнюю
+	 */
+	ASSERT_FALSE(doc.parse("[ a, b, c, , ]\n"));
+	// Выполняем проверку отказа построения об одной запятой
+	ASSERT_FALSE(doc.parse("[ , ]\n"));
+	// Выполняем проверку отказа пустой записи отображения
+	ASSERT_FALSE(doc.parse("{ a: 1, , }\n"));
+	// Выполняем проверку того, что запятая перед скобкою дозволена
+	ASSERT_TRUE(doc.parse("[ a, b, c, ]\n"));
+	// Выполняем проверку количества записей построения
+	ASSERT_EQ(doc.root().size(), 3);
+	/**
+	 * Выполняем проверку отказа продолжения построения на отступе объемлющего
+	 *
+	 * @note Содержимое построения обязано стоять глубже построения блочного, его
+	 *       объемлющего: иначе строка читалась бы и продолжением, и парою нового
+	 *       отображения. Отвечает rapidyaml отказом «bad indentation»
+	 */
+	ASSERT_FALSE(doc.parse("flow: [a,\nb,\nc]\n"));
+	// Выполняем проверку того, что продолжение глубже отступа дозволено
+	ASSERT_TRUE(doc.parse("flow: [a,\n  b,\n  c]\n"));
+	// Выполняем проверку количества записей построения
+	ASSERT_EQ(doc.root().at("/flow").size(), 3);
+	/**
+	 * Выполняем проверку отказа черты документа внутри построения
+	 *
+	 * @note Черты эти внутри скобок содержимым не являются и построения не закрывают
+	 */
+	ASSERT_FALSE(doc.parse("[\n--- ,\n...\n]\n"));
+	/**
+	 * Выполняем проверку отказа директив без документа за ними
+	 *
+	 * @note Описание велит документу с директивами открываться чертою прямо
+	 */
+	ASSERT_FALSE(doc.parse("%YAML 1.2\n"));
+	// Выполняем проверку отказа директивы с одною чертою конца за нею
+	ASSERT_FALSE(doc.parse("%YAML 1.2\n...\n"));
+	// Выполняем проверку того, что директива с чертою начала дозволена
+	ASSERT_TRUE(doc.parse("%YAML 1.2\n---\n"));
 }
