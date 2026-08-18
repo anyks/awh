@@ -229,7 +229,7 @@ awh::codec::yaml::Reader::Reader() noexcept :
  _state(state_t::READY), _error(error_t::NONE), _reading(0), _offset(0), _line(0), _position(0),
  _started(false), _opened(false), _filled(false), _blocking(false), _block(style_t::LITERAL),
  _chomp(chomp_t::CLIP), _marked(NO_INDENT), _outer(0), _margin(0), _inner(0), _opening(0),
- _breaks(0), _deepened(false), _expected(false), _awaited(false), _valued(false), _entered(false), _pending(0), _schema(schema_t::CORE), _plaining(false),
+ _breaks(0), _padding(0), _deepened(false), _expected(false), _awaited(false), _valued(false), _entered(false), _pending(0), _schema(schema_t::CORE), _plaining(false),
  _folds(0), _required(0), _phase(flow_t::ENTRY), _directed(false), _versioned(false), _declared(false), _dialect(schema_t::CORE) {}
 /**
  * @brief Конструктор
@@ -241,7 +241,7 @@ awh::codec::yaml::Reader::Reader(const settings_t & settings) noexcept :
  _settings(settings), _state(state_t::READY), _error(error_t::NONE), _reading(0), _offset(0),
  _line(0), _position(0), _started(false), _opened(false), _filled(false),
  _blocking(false), _block(style_t::LITERAL), _chomp(chomp_t::CLIP), _marked(NO_INDENT),
- _outer(0), _margin(0), _inner(0), _opening(0), _breaks(0), _deepened(false), _expected(false), _awaited(false), _valued(false), _entered(false), _pending(0),
+ _outer(0), _margin(0), _inner(0), _opening(0), _breaks(0), _padding(0), _deepened(false), _expected(false), _awaited(false), _valued(false), _entered(false), _pending(0),
  _schema(settings.schema), _plaining(false), _folds(0), _required(0),
  _phase(flow_t::ENTRY), _directed(false), _versioned(false), _declared(false), _dialect(settings.schema) {
 	/**
@@ -332,6 +332,8 @@ void awh::codec::yaml::Reader::clear() noexcept {
 	this->_block_text.clear();
 	// Выполняем сброс количества пустых строк блочного значения
 	this->_breaks = 0;
+	// Выполняем сброс наибольшего отступа пустых строк, содержимому предпосланных
+	this->_padding = 0;
 	// Выполняем сброс признака строки, глубже отступа содержимого стоявшей
 	this->_deepened = false;
 	// Выполняем сброс отступа содержимого блочного значения
@@ -2452,6 +2454,8 @@ bool awh::codec::yaml::Reader::opening(const string_view line, const size_t offs
 	this->_block_text.clear();
 	// Выполняем сброс количества пустых строк, содержимого не дождавшихся
 	this->_breaks = 0;
+	// Выполняем сброс наибольшего отступа пустых строк, содержимому предпосланных
+	this->_padding = 0;
 	// Выполняем сброс признака строки, глубже отступа содержимого стоявшей
 	this->_deepened = false;
 	// Выполняем сброс признака ожидания значения пары
@@ -2486,6 +2490,16 @@ bool awh::codec::yaml::Reader::blocking(const string_view line, bool & attached)
 	 *       и дописывается лишь тогда, когда содержимое продолжилось
 	 */
 	if(offset >= line.size()){
+		/**
+		 * Если отступ содержимого ещё не определён
+		 *
+		 * @note Отступ пустых строк, содержимому предпосланных, запоминается наибольшим:
+		 *       сличить его с отступом содержимого возможно лишь тогда, когда содержимое
+		 *       первою непустою строкой своей этот отступ и задаст
+		 */
+		if((this->_inner == 0) && (offset > this->_padding))
+			// Запоминаем наибольший отступ пустых строк, содержимому предпосланных
+			this->_padding = static_cast <uint32_t> (offset);
 		// Выполняем учёт пустой строки блочного значения
 		this->_breaks++;
 		// Запоминаем признак присоединения строки
@@ -2506,9 +2520,19 @@ bool awh::codec::yaml::Reader::blocking(const string_view line, bool & attached)
 	/**
 	 * Если отступ содержимого ещё не определён
 	 */
-	if(this->_inner == 0)
+	if(this->_inner == 0){
+		/**
+		 * Если пустая строка, содержимому предпосланная, стоит глубже первой непустой строки
+		 *
+		 * @note Отступ содержимого задаётся первою непустою строкой, и строка пустая,
+		 *       её глубже стоящая, оказалась бы содержимым с отступом, ни заголовком
+		 *       не заданным, ни строкою этой не подтверждённым: стандарт такое запрещает
+		 */
+		if(this->_padding > indent)
+			return this->fail(error_t::INVALID_INDENTATION, offset);
 		// Запоминаем отступ содержимого по первой непустой строке его
 		this->_inner = indent;
+	}
 	/**
 	 * Если отступ строки мельче отступа содержимого
 	 *
