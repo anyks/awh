@@ -468,7 +468,7 @@ bool awh::codec::yaml::Decoder::direct() const noexcept {
  * @return код ошибки приведения кодировки
  *
  */
-error_t awh::codec::yaml::Decoder::error() const noexcept {
+awh::codec::yaml::error_t awh::codec::yaml::Decoder::error() const noexcept {
 	// Выводим код ошибки приведения кодировки
 	return this->_error;
 }

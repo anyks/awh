@@ -215,7 +215,7 @@ bool awh::codec::yaml::Document::empty() const noexcept {
  * @return код ошибки разбора текста
  *
  */
-error_t awh::codec::yaml::Document::error() const noexcept {
+awh::codec::yaml::error_t awh::codec::yaml::Document::error() const noexcept {
 	// Выводим код ошибки разбора текста
 	return this->_error;
 }

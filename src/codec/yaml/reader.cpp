@@ -393,7 +393,7 @@ state_t awh::codec::yaml::Reader::state() const noexcept {
  * @return код ошибки разбора текста
  *
  */
-error_t awh::codec::yaml::Reader::error() const noexcept {
+awh::codec::yaml::error_t awh::codec::yaml::Reader::error() const noexcept {
 	// Выводим код ошибки разбора текста
 	return this->_error;
 }
