@@ -35,6 +35,7 @@
 /**
  * Стандартные заголовочные файлы
  */
+#include <cstring>
 #include <vector>
 #include <unordered_map>
 

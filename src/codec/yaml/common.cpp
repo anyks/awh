@@ -22,6 +22,7 @@
 /**
  * Стандартные заголовочные файлы
  */
+#include <cmath>
 #include <cerrno>
 #include <cstdlib>
 #include <limits>
