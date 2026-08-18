@@ -986,15 +986,58 @@ static int32_t __awh_close__(const SOCKET sock) noexcept {
 	if(::closesocket(sock) == 0)
 		// Выводим успешный результат закрытия
 		return 0;
-	// Если дескриптор сокетом не является - закрываем его как описатель файла
-	if(::WSAGetLastError() == WSAENOTSOCK)
-		// Выводим результат закрытия описателя файла
-		return ::close(static_cast <int32_t> (sock));
+	// Если дескриптор сокетом не является
+	if(::WSAGetLastError() == WSAENOTSOCK){
+		/**
+		 * Закрываем дескриптор времени выполнения
+		 *
+		 * @note Файлы и каталоги наблюдения заводятся через `_open_osfhandle`, и
+		 *       описатель системы у них спрашивается обратным обращением. Ответ его
+		 *       и разводит два вида: у дескриптора времени выполнения он есть, у
+		 *       описателя системы - нет
+		 */
+		if(::_get_osfhandle(static_cast <int32_t> (sock)) != -1)
+			// Выводим результат закрытия дескриптора времени выполнения
+			return ::close(static_cast <int32_t> (sock));
+		/**
+		 * Закрываем описатель системы
+		 *
+		 * @warning Именованный канал дескриптором времени выполнения не является
+		 *          вовсе: заводится он `CreateNamedPipe`, а число его - это описатель
+		 *          системы. Обращение `close` такому числу отвечает отказом и НЕ
+		 *          ЗАКРЫВАЕТ НИЧЕГО - канал остаётся жив до конца процесса, а
+		 *          встречная сторона о закрытии не узнаёт вовсе. Установлено щупом на
+		 *          стенде 18.08.2026: после `closesocket` и `close` описатель жив, и
+		 *          закрывает его лишь `CloseHandle`
+		 *
+		 * @note Отсюда же и цена вопроса: плавная остановка работника кластера стоит
+		 *       на закрытии конца канала, и не закройся он - работник ждал бы вечно
+		 */
+		if(::CloseHandle(reinterpret_cast <HANDLE> (static_cast <uintptr_t> (sock))))
+			// Выводим успешный результат закрытия описателя системы
+			return 0;
+		// Переносим код отказа закрытия описателя системы в errno
+		errno = EBADF;
+		// Выводим признак отказа закрытия
+		return -1;
+	}
 	// Переносим код отказа закрытия в errno
 	errno = ::__awh_socket_errno__(::WSAGetLastError());
 	// Выводим признак отказа закрытия
 	return -1;
 }
+/**
+ * @brief Посредник привязки сокета к адресу
+ *
+ * @details Отказ переносится в `errno` тем же порядком, что и у прочих посредников:
+ *          разбор движка писан на понятиях POSIX и кода из пространства `WSA` не знает
+ *
+ * @param sock дескриптор привязываемого сокета
+ * @param addr адрес, к которому привязывается сокет
+ * @param size размер адреса привязки
+ * @return     результат привязки сокета
+ *
+ */
 static int32_t __awh_bind__(const SOCKET sock, const struct sockaddr * addr, const int32_t size) noexcept {
 	// Выводим результат привязки сокета
 	return ::__awh_socket_result__(::bind(sock, addr, size));
@@ -1082,16 +1125,6 @@ static int32_t __awh_connect__(const SOCKET sock, const struct sockaddr * addr, 
  */
 static bool __awh_pool_receive__(const SOCKET sock, void * buffer, const size_t size, ssize_t & result, struct sockaddr * addr = nullptr, int32_t * length = nullptr) noexcept;
 /**
- * @brief Функция приёма данных из сокета
- *
- * @param sock   дескриптор сокета
- * @param buffer буфер принимаемых данных
- * @param size   размер буфера принимаемых данных
- * @param flags  признаки приёма данных
- * @return       размер принятых данных
- *
- */
-/**
  * @brief Функция опознания описателя именованного канала
  *
  * @note Объявлена наперёд: посредники приёма и передачи спрашивают её отсюда, а
@@ -1103,6 +1136,16 @@ static bool __awh_pool_receive__(const SOCKET sock, void * buffer, const size_t 
  */
 static bool __awh_pipe__(const SOCKET sock) noexcept;
 
+/**
+ * @brief Функция приёма данных из сокета
+ *
+ * @param sock   дескриптор сокета
+ * @param buffer буфер принимаемых данных
+ * @param size   размер буфера принимаемых данных
+ * @param flags  признаки приёма данных
+ * @return       размер принятых данных
+ *
+ */
 static int32_t __awh_recv__(const SOCKET sock, void * buffer, const size_t size, const int32_t flags) noexcept {
 	// Размер принятых данных, добытый родным приёмом
 	ssize_t fetched = 0;
@@ -34054,15 +34097,6 @@ namespace io {
 		return false;
 	}
 	/**
-	 * @brief Функция создания сокета события
-	 *
-	 * @param node узел для которого создаётся сокет
-	 * @param eth  объект работы с сетевыми интерфейсами
-	 * @param log  объект работы с логами
-	 * @return     результат создания сокета
-	 *
-	 */
-	/**
 	 * @brief Функция получения дескриптора сокета узла события
 	 *
 	 * @details Отвечает дескриптором для тех узлов, у которых сокет заводится
@@ -34101,6 +34135,15 @@ namespace io {
 		// Выводим недействительный дескриптор сокета
 		return net::invalid_socket_t;
 	}
+	/**
+	 * @brief Функция создания сокета события
+	 *
+	 * @param node узел для которого создаётся сокет
+	 * @param eth  объект работы с сетевыми интерфейсами
+	 * @param log  объект работы с логами
+	 * @return     результат создания сокета
+	 *
+	 */
 	static bool socket(::io::node_t * node, const eth_t * eth, const log_t * log) noexcept {
 		/**
 		 * Выполняем перехват ошибок
@@ -36121,6 +36164,20 @@ namespace io {
 		// Выводим результат работы функции
 		return false;
 	}
+	/**
+	 * @brief Функция разбора изменений в наблюдаемом каталоге
+	 *
+	 * @details Состав каталога снимается заново и сличается с прежним: система сообщает
+	 *          лишь о самом изменении, а что именно появилось, пропало либо сменилось,
+	 *          выясняет сличение
+	 *
+	 * @param dir каталог, изменения в котором разбираются
+	 * @param io  объект асинхронного движка ввода-вывода
+	 * @param fmk объект фреймворка
+	 * @param log объект работы с логами
+	 * @return    результат разбора изменений
+	 *
+	 */
 	static bool change(::io::dir_t * dir, const engine::io_t * io, const fmk_t * fmk, const log_t * log) noexcept {
 		/**
 		 * Выполняем перехват ошибок
@@ -61915,17 +61972,38 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 													 *       начатостью, - и разбор ниже остаётся прежним
 													 */
 													if((client->state.type == event::type_t::STREAM) && (client->state.family != event::family_t::UDS)){
-														// Выполняем привязку дескриптора к порту завершений
-														::port::attach(client->transfer.fd, this->_log);
-														// Выполняем подачу наложенного подключения к удалённому серверу
-														const uint64_t token = ::kernel::connecting(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.server), static_cast <int32_t> (client->endpoint.size), nullptr, this->_log);
+														/**
+														 * Выполняем привязку дескриптора к порту завершений
+														 *
+														 * @warning Итог привязки обязан разбираться: не привяжись дескриптор, о
+														 *          завершении наложенного подключения сообщить будет нечем, и узел
+														 *          остался бы ждать вечно - без отказа, без записи в журнале и без
+														 *          единого события. Молчаливое ожидание хуже честного отказа
+														 */
+														const bool attached = ::port::attach(client->transfer.fd, this->_log);
+														/**
+														 * Выполняем подачу наложенного подключения к удалённому серверу
+														 *
+														 * @note Не привяжись дескриптор - подача не делается вовсе: ждать
+														 *       завершения будет нечем, и подача лишь добавила бы к молчанию
+														 *       занятую запись учёта
+														 */
+														const uint64_t token = (attached ? ::kernel::connecting(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.server), static_cast <int32_t> (client->endpoint.size), nullptr, this->_log) : ::inflight::INVALID);
 														// Если подача наложенного подключения принята системой
 														if(token != ::inflight::INVALID){
 															// Отмечаем дескриптор подключающимся
 															::kernel::connections.emplace(client->transfer.fd);
 															// Отмечаем подключение начатым
 															errno = EINPROGRESS;
-														// Если подачу наложенного подключения система не приняла
+														/**
+														 * Если подачу наложенного подключения система не приняла
+														 *
+														 * @warning Сюда же приходит и непривязанный к порту дескриптор. Прежде
+														 *          итог привязки не разбирался вовсе, и не привяжись он -
+														 *          о завершении подключения сообщить было бы нечем: узел ждал бы
+														 *          вечно, без отказа, без записи в журнале и без единого события.
+														 *          Молчаливое ожидание хуже честного отказа
+														 */
 														} else errno = ECONNREFUSED;
 														// Отмечаем подключение несостоявшимся: наложенное сразу не завершается
 														result = false;

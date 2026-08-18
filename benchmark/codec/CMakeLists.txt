@@ -55,6 +55,7 @@ if (${CMAKE_BUILD_${BENCHMARK_NAME}_BENCHMARKS})
             json/reader.cpp
             json/writer.cpp
             json/document.cpp
+            json/value.cpp
         )
     # Если не нужно собрать бенчмарки для контейнера JSON
     else()

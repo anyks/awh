@@ -102,6 +102,15 @@ namespace awh {
 			 * вид опознаётся при заведении значения и переживает передачу наружу, отчего
 			 * число, заведённое `uint64_t`, числом со знаком не станет
 			 *
+			 * @warning **Снимать надлежит поддерево, а не документ целиком.** Владение
+			 * стоит памяти: документ хранится сплошным перечнем узлов и одним хранилищем
+			 * знаков, обходясь одним выделением памяти, тогда как значение держит у
+			 * всякого узла свою строку и свои вместилища. Замер: снятие ответа службы в
+			 * две сотни октетов берёт пять выделений и полтора килобайта, а снятие
+			 * выгрузки в шестнадцать мегабайтов - полмиллиона выделений и сто тридцать
+			 * мегабайтов, вчетверо больше самого текста. Плата эта берётся за право
+			 * пережить документ, и брать её за поддерево, какое наружу не уходит, незачем
+			 *
 			 * @note Облик этого типа общий у всех кодеков рамки: имена действий и правила
 			 *       их поведения одинаковы у JSON, XML, YAML, TOML и INI, а частности
 			 *       наречий прибавляются полями сверху
@@ -122,6 +131,14 @@ namespace awh {
 			 * @details The particularity of the JSON dialect preserved by the value is the kind of a number: the narrow
 			 * kind is recognized at the creation of the value and outlives the passing outwards, whereby
 			 * a number created as `uint64_t` will not become a signed number
+			 * @warning **A subtree should be taken rather than a whole document.** The ownership
+			 * costs memory: a document is stored by a continuous list of the nodes and one storage
+			 * of the characters, managing with one allocation of the memory, whereas a value holds
+			 * its own string and its own containers for every node. A measurement: the taking of a service
+			 * response of two hundred octets costs five allocations and a kilobyte and a half, while the taking
+			 * of a dump of sixteen megabytes — half a million allocations and one hundred and thirty
+			 * megabytes, four times more than the text itself. This payment is taken for the right
+			 * to outlive the document, and there is no point in taking it for a subtree which does not go outwards
 			 * @note The shape of this type is common for all the codecs of the framework: the names of the actions and the rules
 			 *       of their behaviour are identical for JSON, XML, YAML, TOML and INI, while the particularities
 			 *       of the dialects are added by the fields on top

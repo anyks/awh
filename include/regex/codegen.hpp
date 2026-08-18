@@ -32,6 +32,18 @@
  *          но отняло бы у порождённого кода перемещаемость: значение символа
  *          пришлось бы размещать в самой команде.
  *
+ *          <b>Байт, разбором цепочки прочитанный, отдаётся ведущей проверке ветви
+ *          готовым, а годен ровно на одну инструкцию.</b> Разбор цепочки ветвей
+ *          по первому байту сличает позицию сопоставления с концом текста и читает
+ *          байт в ней, после чего передаёт сопоставление в ветвь, байтом названную;
+ *          ведущая инструкция ветви делала и то и другое заново. Довесок этот
+ *          постоянен на проход и от длины тела ветви не зависит, отчего он тем
+ *          заметнее, чем тело короче. Признак годности снимается при получении
+ *          всякой инструкции, а выставляется лишь перед самым порождением ветви:
+ *          держать его дольше нельзя, ибо сопоставление подвигает позицию и байт
+ *          прочитанный отвечает уже не ей. Отвечает за годность выставляющий,
+ *          а не потребитель - проверить её по месту потребления неоткуда.
+ *
  *          <b>Ряд повторения одиночного символа проходится целиком, а отступление
  *          выполняется по одной позиции.</b> Такой порядок отвечает жадному
  *          повторению в точности и не требует набора точек возврата: положение
@@ -437,6 +449,18 @@
  *          only on a single character — one comparison instead of a reference to the table —
  *          but would take relocatability away from the generated code: the value of the character
  *          would have to be placed in the instruction itself.
+ *          <b>The byte read by the chain dispatch is handed to the leading check of the branch
+ *          ready, and is valid for exactly one instruction.</b> Dispatch of a chain of branches
+ *          by the first byte compares the match position against the end of the text and reads
+ *          the byte at it, after which it passes the match into the branch named by that byte;
+ *          the leading instruction of the branch used to do both again. This surcharge is
+ *          constant per pass and does not depend on the length of the branch body, which is why
+ *          it is the more noticeable the shorter the body. The validity flag is cleared upon
+ *          fetching every instruction and is set only immediately before generating a branch:
+ *          keeping it longer is impossible, for a match advances the position and the byte read
+ *          then answers a different one. Responsibility for validity lies with the setter,
+ *          not with the consumer — there is nowhere to check it at the point of consumption.
+ *
  *          <b>A run of a repetition of a single character is walked as a whole, while the retreat
  *          is performed one position at a time.</b> Such an order corresponds to a greedy
  *          repetition exactly and requires no set of backtracking points: the retreat position

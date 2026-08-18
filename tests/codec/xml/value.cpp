@@ -638,3 +638,160 @@ TEST(CodecXmlValue, Differential) {
 		ASSERT_TRUE(xml::value_t(twin.element()) == taken) << taken.dump();
 	}
 }
+
+/**
+ * @brief Проверка прививки владеющего значения в дерево разметки
+ *
+ */
+TEST(CodecXmlValue, Graft) {
+	// Дерево разметки, принимающее прививку
+	xml::document_t document;
+	// Выполняем разбор текста разметки
+	ASSERT_TRUE(document.parse("<a><b><c/></b><d>текст</d></a>"));
+	// Дерево разметки, с какого снимается прививаемое значение
+	xml::document_t source;
+	// Выполняем разбор текста разметки прививаемого значения
+	ASSERT_TRUE(source.parse("<x k=\"v\"><y/>содержимое</x>"));
+	// Снятое с дерева прививаемое значение
+	const xml::value_t value(source.element());
+	// Выполняем прививку значения в дерево разметки
+	ASSERT_TRUE(document.graft("/a/b", value));
+	// Поток записи текста разметки
+	xml::writer_t writer;
+	// Выполняем запись дерева разметки
+	ASSERT_TRUE(writer.element(document.element()));
+	// Выполняем завершение записи текста разметки
+	ASSERT_TRUE(writer.complete());
+	// Выполняем проверку того, что привитое значение стало на место указанного узла
+	ASSERT_EQ(writer.text(), "<a><x k=\"v\"><y/>содержимое</x><d>текст</d></a>");
+}
+
+/**
+ * @brief Проверка прививки владеющего значения по номеру вложенного узла
+ *
+ */
+TEST(CodecXmlValue, GraftIndexed) {
+	// Дерево разметки, принимающее прививку
+	xml::document_t document;
+	// Выполняем разбор текста разметки
+	ASSERT_TRUE(document.parse("<a><b/><c/></a>"));
+	// Прививаемое значение
+	const xml::value_t value(string("z"));
+	// Выполняем прививку значения на место второго вложенного узла
+	ASSERT_TRUE(document.graft("/a/1", value));
+	// Поток записи текста разметки
+	xml::writer_t writer;
+	// Выполняем запись дерева разметки
+	ASSERT_TRUE(writer.element(document.element()));
+	// Выполняем завершение записи текста разметки
+	ASSERT_TRUE(writer.complete());
+	// Выполняем проверку того, что привитое значение стало на место второго узла
+	ASSERT_EQ(writer.text(), "<a><b/><z/></a>");
+}
+
+/**
+ * @brief Проверка отказов прививки владеющего значения
+ *
+ */
+TEST(CodecXmlValue, GraftFailure) {
+	// Дерево разметки, принимающее прививку
+	xml::document_t document;
+	// Выполняем разбор текста разметки
+	ASSERT_TRUE(document.parse("<a><b/></a>"));
+	// Прививаемое значение
+	const xml::value_t value(string("z"));
+	/**
+	 * Выполняем проверку отказа прививки на пустом пути
+	 *
+	 * @note Корень дерева узлом разметки не является вовсе, и стать им прививаемому
+	 *       значению неоткуда
+	 */
+	ASSERT_FALSE(document.graft("", value));
+	// Выполняем проверку отказа прививки на отсутствующем узле разметки
+	ASSERT_FALSE(document.graft("/a/нет", value));
+	// Выполняем проверку отказа прививки на отсутствующем узле верхнего уровня
+	ASSERT_FALSE(document.graft("/нет", value));
+	// Выполняем проверку отказа прививки на отсутствующем номере вложенного узла
+	ASSERT_FALSE(document.graft("/a/7", value));
+	// Выполняем проверку отказа прививки значения недействительного
+	ASSERT_FALSE(document.graft("/a/b", xml::value_t()));
+}
+
+/**
+ * @brief Проверка кругового хода прививки владеющего значения
+ *
+ */
+TEST(CodecXmlValue, GraftRoundtrip) {
+	// Дерево разметки, принимающее прививку
+	xml::document_t document;
+	// Выполняем разбор текста разметки
+	ASSERT_TRUE(document.parse("<a><b/></a>"));
+	// Дерево разметки, с какого снимается прививаемое значение
+	xml::document_t source;
+	// Выполняем разбор текста разметки прививаемого значения
+	ASSERT_TRUE(source.parse("<ns:p xmlns:ns=\"urn:t\" ns:k=\"v\"><ns:q/>содержимое</ns:p>"));
+	// Снятое с дерева прививаемое значение
+	const xml::value_t value(source.element());
+	// Выполняем прививку значения в дерево разметки
+	ASSERT_TRUE(document.graft("/a/b", value));
+	// Поток записи текста разметки
+	xml::writer_t writer;
+	// Выполняем запись дерева разметки
+	ASSERT_TRUE(writer.element(document.element()));
+	// Выполняем завершение записи текста разметки
+	ASSERT_TRUE(writer.complete());
+	// Дерево разметки, разбирающее запись привитого дерева
+	xml::document_t twin;
+	// Выполняем разбор записи привитого дерева
+	ASSERT_TRUE(twin.parse(writer.text())) << writer.text();
+	/**
+	 * Выполняем проверку совпадения снятого с записи значения с привитым
+	 *
+	 * @note Пространства имён, объявленные прививаемым значением, обязаны пережить
+	 *       прививку: объявления лежат хранилищем отдельным от узлов, и перенос их
+	 *       есть отдельное действие переноса
+	 */
+	ASSERT_TRUE(xml::value_t(twin.element().first()) == value) << writer.text();
+}
+
+/**
+ * @brief Проверка сохранности дерева разметки после прививки
+ *
+ */
+TEST(CodecXmlValue, GraftIntegrity) {
+	// Дерево разметки, принимающее прививку
+	xml::document_t document;
+	// Выполняем разбор текста разметки
+	ASSERT_TRUE(document.parse("<a><b/><c/><d/></a>"));
+	// Прививаемое значение
+	const xml::value_t value(string("z"));
+	// Выполняем прививку значения на место среднего вложенного узла
+	ASSERT_TRUE(document.graft("/a/c", value));
+	// Получаем корневой узел разметки
+	const xml::node_t element = document.element();
+	// Собираемый перечень имён вложенных узлов
+	string names;
+	/**
+	 * Выполняем перебор всех вложенных узлов движением вперёд
+	 */
+	for(xml::node_t child = element.first(); child.valid(); child = child.next())
+		// Выполняем добавление местного имени вложенного узла к перечню
+		names.append(child.name().local);
+	// Выполняем проверку порядка вложенных узлов движением вперёд
+	ASSERT_EQ(names, "bzd");
+	// Выполняем очистку собираемого перечня имён вложенных узлов
+	names.clear();
+	/**
+	 * Выполняем перебор всех вложенных узлов движением назад
+	 *
+	 * @note Связность проверяется в обе стороны намеренно: прививка правит ссылки
+	 *       соседей по отдельности, и односторонний обход разрыва не заметил бы
+	 */
+	for(xml::node_t child = element.last(); child.valid(); child = child.prev())
+		// Выполняем добавление местного имени вложенного узла к перечню
+		names.append(child.name().local);
+	// Выполняем проверку порядка вложенных узлов движением назад
+	ASSERT_EQ(names, "dzb");
+	// Выполняем проверку того, что привитый узел числит своим родителем корневой
+	ASSERT_TRUE(element.first().next().parent() == element);
+}

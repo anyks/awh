@@ -74,13 +74,20 @@ namespace {
 		uint64_t streams;
 		// Количество чисел, прошедших круговой ход записи
 		uint64_t numbers;
+		// Количество снятых владеющих значений
+		uint64_t values;
+		// Количество значений, пересобранных потоковым сборщиком
+		uint64_t builds;
+		// Количество значений, привитых обратно в дерево документа
+		uint64_t grafts;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
 		Statistic() noexcept :
 		 texts(0), corrupted(0), survived(0), events(0),
-		 documents(0), rewrites(0), streams(0), numbers(0) {}
+		 documents(0), rewrites(0), streams(0), numbers(0),
+		 values(0), builds(0), grafts(0) {}
 	};
 	/**
 	 * @brief Собранное событие разбора
@@ -1032,6 +1039,332 @@ namespace {
 		return true;
 	}
 	/**
+	 * @brief Метод поиска повторяющихся имён полей объекта
+	 *
+	 * @details Удержание повторов дозволено настройкою `duplicate_t::KEEP`, и владеющее
+	 *          значение их переносит, а потоковый сборщик воспроизвести не в силах:
+	 *          подача имени, уже заведённого, переписывает поле на месте
+	 *
+	 * @param value осматриваемое владеющее значение
+	 * @return      признак наличия повторяющихся имён полей объекта
+	 *
+	 */
+	bool repeated(const json::value_t & value) noexcept {
+		/**
+		 * Если значение является объектом
+		 */
+		if(value.kind() == json::kind_t::OBJECT){
+			// Перечень уже встреченных имён полей объекта
+			vector <string> names;
+			/**
+			 * Выполняем перебор полей объекта
+			 */
+			for(size_t i = 0; i < value.size(); i++){
+				/**
+				 * Выполняем перебор уже встреченных имён полей объекта
+				 */
+				for(auto & name : names){
+					/**
+					 * Если имя поля объекта уже встречалось
+					 */
+					if(name.compare(value.key(i)) == 0)
+						// Выводим признак наличия повторяющихся имён
+						return true;
+				}
+				// Добавляем имя поля объекта в перечень встреченных
+				names.push_back(value.key(i));
+			}
+		}
+		/**
+		 * Выполняем перебор вложенных значений
+		 */
+		for(size_t i = 0; i < value.size(); i++){
+			/**
+			 * Если вложенное значение содержит повторяющиеся имена
+			 */
+			if(::repeated(value[i]))
+				// Выводим признак наличия повторяющихся имён
+				return true;
+		}
+		// Выводим признак отсутствия повторяющихся имён
+		return false;
+	}
+	/**
+	 * @brief Метод пересборки владеющего значения потоковым сборщиком
+	 *
+	 * @details Значение обходится узел за узлом, и всякий узел подаётся сборщику тем же
+	 *          самым порядком, каким он был бы записан в текст: собранное сборщиком
+	 *          обязано совпасть с обходимым
+	 *
+	 * @param value   пересобираемое владеющее значение
+	 * @param builder потоковый сборщик владеющего значения
+	 * @return        признак успешности пересборки
+	 *
+	 */
+	bool rebuild(const json::value_t & value, json::builder_t & builder) noexcept {
+		/**
+		 * Определяем вид пересобираемого значения
+		 */
+		switch(static_cast <uint8_t> (value.kind())){
+			// Если значение является объектом
+			case static_cast <uint8_t> (json::kind_t::OBJECT): {
+				/**
+				 * Если открытие объекта завершилось отказом
+				 */
+				if(!builder.object())
+					// Выводим признак неудачной пересборки
+					return false;
+				/**
+				 * Выполняем перебор полей объекта
+				 */
+				for(size_t i = 0; i < value.size(); i++){
+					/**
+					 * Если подача имени поля объекта завершилась отказом
+					 */
+					if(!builder.key(value.key(i)))
+						// Выводим признак неудачной пересборки
+						return false;
+					/**
+					 * Если пересборка значения поля объекта завершилась отказом
+					 */
+					if(!::rebuild(value[i], builder))
+						// Выводим признак неудачной пересборки
+						return false;
+				}
+				// Выводим итог закрытия объекта
+				return builder.close();
+			}
+			// Если значение является массивом
+			case static_cast <uint8_t> (json::kind_t::ARRAY): {
+				/**
+				 * Если открытие массива завершилось отказом
+				 */
+				if(!builder.array())
+					// Выводим признак неудачной пересборки
+					return false;
+				/**
+				 * Выполняем перебор элементов массива
+				 */
+				for(size_t i = 0; i < value.size(); i++){
+					/**
+					 * Если пересборка элемента массива завершилась отказом
+					 */
+					if(!::rebuild(value[i], builder))
+						// Выводим признак неудачной пересборки
+						return false;
+				}
+				// Выводим итог закрытия массива
+				return builder.close();
+			}
+			// Если значение является пустым
+			case static_cast <uint8_t> (json::kind_t::NUL):
+				// Выводим итог подачи пустого значения
+				return builder.null();
+			// Если значение является логическим
+			case static_cast <uint8_t> (json::kind_t::BOOL): {
+				// Извлекаемое логическое значение
+				bool result = false;
+				/**
+				 * Если извлечение логического значения завершилось отказом
+				 */
+				if(!value.value(result))
+					// Выводим признак неудачной пересборки
+					return false;
+				// Выводим итог подачи логического значения
+				return builder.value(result);
+			}
+			// Если значение является строкой
+			case static_cast <uint8_t> (json::kind_t::STRING):
+				// Выводим итог подачи строкового значения
+				return builder.value(value.text());
+			// Если значение является числом
+			case static_cast <uint8_t> (json::kind_t::NUMBER): {
+				/**
+				 * Если число со знаком
+				 */
+				if(value.is(json::type_t::SIGNED)){
+					// Извлекаемое число со знаком
+					int64_t result = 0;
+					/**
+					 * Если извлечение числа со знаком завершилось отказом
+					 */
+					if(!value.value(result))
+						// Выводим признак неудачной пересборки
+						return false;
+					// Выводим итог подачи числа со знаком
+					return builder.value(result);
+				/**
+				 * Если число без знака
+				 */
+				} else if(value.is(json::type_t::UNSIGNED)) {
+					// Извлекаемое число без знака
+					uint64_t result = 0;
+					/**
+					 * Если извлечение числа без знака завершилось отказом
+					 */
+					if(!value.value(result))
+						// Выводим признак неудачной пересборки
+						return false;
+					// Выводим итог подачи числа без знака
+					return builder.value(result);
+				/**
+				 * Если число дробное
+				 */
+				} else if(value.is(json::type_t::REAL)) {
+					// Извлекаемое дробное число
+					double result = 0.;
+					/**
+					 * Если извлечение дробного числа завершилось отказом
+					 */
+					if(!value.value(result))
+						// Выводим признак неудачной пересборки
+						return false;
+					// Выводим итог подачи дробного числа
+					return builder.value(result);
+				}
+				/**
+				 * Выводим итог подачи значения целиком
+				 *
+				 * @note Число, ни в один родной вид не вместимое, хранится записью, и
+				 *       подавать его надлежит значением целиком: всякое извлечение его
+				 *       в родной вид потеряло бы точность записи
+				 */
+				return builder.value(value);
+			}
+		}
+		// Выводим признак неудачной пересборки
+		return false;
+	}
+	/**
+	 * @brief Метод проверки кругового хода владеющего значения
+	 *
+	 * @details Значение снимается с дерева документа и проверяется тремя ходами:
+	 *          пересборкою потоковым сборщиком, прививкою обратно в дерево и записью
+	 *          в текст с последующим разбором
+	 *
+	 * @param document дерево документа, с какого снимается значение
+	 * @param settings настройки разбора текста документа
+	 * @param totals   учёт проделанной работы
+	 * @return         признак сохранности кругового хода
+	 *
+	 */
+	bool owning(json::document_t & document, const json::document_t::settings_t & settings, Statistic & totals) noexcept {
+		// Выполняем снятие владеющего значения с дерева документа
+		const json::value_t value(document.root());
+		// Увеличиваем счёт снятых владеющих значений
+		totals.values++;
+		/**
+		 * Если снятое значение недействительно
+		 */
+		if(!value.valid())
+			// Выводим признак сохранности кругового хода
+			return true;
+		/**
+		 * Если повторяющихся имён полей объекта в значении нет
+		 *
+		 * @note Значение с повторами пересборке не подлежит: сборщик воспроизвести их
+		 *       не в силах, и расхождение здесь было бы известным изъяном договора, а
+		 *       не находкой ворошителя
+		 */
+		if(!::repeated(value)){
+			// Объект потокового сборщика владеющего значения
+			json::builder_t builder;
+			/**
+			 * Если пересборка значения потоковым сборщиком завершилась отказом
+			 */
+			if(!::rebuild(value, builder)){
+				// Выводим сообщение об отказе пересборки значения
+				::fprintf(stderr, "ЗНАЧЕНИЕ НЕ ПЕРЕСОБИРАЕТСЯ: «%s»\n", document.dump().c_str());
+				// Выводим признак нарушения кругового хода
+				return false;
+			}
+			// Увеличиваем счёт пересобранных значений
+			totals.builds++;
+			/**
+			 * Если пересобранное значение разошлось со снятым
+			 */
+			if(!(builder.finish() == value)){
+				// Выводим сообщение о расхождении пересобранного значения со снятым
+				::fprintf(stderr, "РАСХОЖДЕНИЕ ПЕРЕСБОРКИ: «%s»\n", document.dump().c_str());
+				// Выводим признак нарушения кругового хода
+				return false;
+			}
+		}
+		/**
+		 * Объект дерева документа, принимающего прививку
+		 *
+		 * @note Прививаемое место обязано существовать: прививка заменяет поддерево,
+		 *       а не заводит новое поле, — оттого поле в принимающем дереве и заведено
+		 */
+		json::document_t host;
+		/**
+		 * Если заведение принимающего прививку дерева завершилось успехом
+		 */
+		if(host.parse("{\"graft\":null}")){
+			/**
+			 * Если прививка значения в дерево документа завершилась отказом
+			 */
+			if(!host.graft("/graft", value)){
+				// Выводим сообщение об отказе прививки значения
+				::fprintf(stderr, "ЗНАЧЕНИЕ НЕ ПРИВИВАЕТСЯ: «%s»\n", document.dump().c_str());
+				// Выводим признак нарушения кругового хода
+				return false;
+			}
+			// Увеличиваем счёт привитых значений
+			totals.grafts++;
+			/**
+			 * Если снятое с привитого места значение разошлось с привитым
+			 */
+			if(!(json::value_t(host.at("/graft")) == value)){
+				// Выводим сообщение о расхождении привитого значения с исходным
+				::fprintf(stderr, "РАСХОЖДЕНИЕ ПРИВИВКИ: «%s»\n", document.dump().c_str());
+				// Выводим признак нарушения кругового хода
+				return false;
+			}
+		}
+		// Выполняем запись владеющего значения в текст
+		const string text = value.dump();
+		/**
+		 * Если запись значения в текст завершилась отказом
+		 *
+		 * @note Отказ этот законен: поток записи отвергает нечисло и бесконечность,
+		 *       разбором дозволенные, и пустой итог означает здесь отказ, а не усечение
+		 */
+		if(text.empty())
+			// Выводим признак сохранности кругового хода
+			return true;
+		// Объект дерева документа, записанного значением
+		json::document_t written;
+		// Получаем настройки разбора записанного значением документа
+		json::document_t::settings_t rules = written.settings();
+		// Устанавливаем разрешение записей нечисла и бесконечности
+		rules.reader.allowInfinityAndNan = settings.reader.allowInfinityAndNan;
+		// Устанавливаем удержание повторяющихся имён полей объекта
+		rules.duplicates = json::duplicate_t::KEEP;
+		// Выполняем установку настроек разбора записанного значением документа
+		written.settings(rules);
+		/**
+		 * Если разбор записанного значением документа завершился отказом
+		 */
+		if(!written.parse(text)){
+			// Выводим сообщение об отказе разбора записанного значением документа
+			::fprintf(stderr, "ЗАПИСЬ ЗНАЧЕНИЯ НЕ ЧИТАЕТСЯ: «%s» — %s\n", text.c_str(), json::message(written.error()));
+			// Выводим признак нарушения кругового хода
+			return false;
+		}
+		/**
+		 * Если снятое с записи значение разошлось с исходным
+		 */
+		if(!(json::value_t(written.root()) == value)){
+			// Выводим сообщение о расхождении снятого с записи значения с исходным
+			::fprintf(stderr, "РАСХОЖДЕНИЕ ЗАПИСИ ЗНАЧЕНИЯ: «%s»\n", text.c_str());
+			// Выводим признак нарушения кругового хода
+			return false;
+		}
+		// Выводим признак сохранности кругового хода
+		return true;
+	}
+	/**
 	 * @brief Метод проверки потоковой выдачи документов
 	 *
 	 * @details Выдача обработчику обязана давать те же документы, что и сборка целиком:
@@ -1220,6 +1553,17 @@ int main(int argc, char * argv[]) noexcept {
 				// Выходим из приложения с кодом ошибки
 				return EXIT_FAILURE;
 			}
+			/**
+			 * Если круговой ход владеющего значения нарушен
+			 */
+			if(!::owning(document, settings, totals)){
+				// Выводим настройки разбора текста документа
+				::dump(settings);
+				// Выводим разбираемый текст документа
+				::dump("текст документа", text);
+				// Выходим из приложения с кодом ошибки
+				return EXIT_FAILURE;
+			}
 		}
 		/**
 		 * Если потоковая выдача документов разошлась со сборкой целиком
@@ -1241,12 +1585,14 @@ int main(int argc, char * argv[]) noexcept {
 	}
 	// Выводим итог работы генератора
 	::fprintf(stderr, "json fuzz: %llu passes, %llu texts (%llu corrupted), %llu survived, "
-		"%llu events, %llu documents, %llu rewrites, %llu streams, %llu numbers\n",
+		"%llu events, %llu documents, %llu rewrites, %llu streams, %llu numbers, "
+		"%llu values, %llu builds, %llu grafts\n",
 		static_cast <unsigned long long> (count), static_cast <unsigned long long> (totals.texts),
 		static_cast <unsigned long long> (totals.corrupted), static_cast <unsigned long long> (totals.survived),
 		static_cast <unsigned long long> (totals.events), static_cast <unsigned long long> (totals.documents),
 		static_cast <unsigned long long> (totals.rewrites), static_cast <unsigned long long> (totals.streams),
-		static_cast <unsigned long long> (totals.numbers));
+		static_cast <unsigned long long> (totals.numbers), static_cast <unsigned long long> (totals.values),
+		static_cast <unsigned long long> (totals.builds), static_cast <unsigned long long> (totals.grafts));
 	// Выходим из приложения
 	return EXIT_SUCCESS;
 }

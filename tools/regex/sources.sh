@@ -25,7 +25,11 @@ STAND_HEADERS="include"
 #
 # Перечисляются каталоги, а не файлы: состав каталога стенд разбирает у себя
 # поиском, поэтому добавление файла в модуль перечня не касается
-STAND_SOURCES="src/regex src/encoding/unicode"
+# Кодек JSON и разбор чисел перечислены оттого, что надстройка Grok выдаёт
+# извлечённые поля значением кодека, а не текстом, собранным вручную: договор
+# на выдачу общий у пяти кодеков, и своя запись JSON у Grok была бы шестым.
+# Разбор чисел нужен уже кодеку JSON, а не Grok
+STAND_SOURCES="src/regex src/encoding/unicode src/codec/json src/num/lexical"
 
 # Исходные тексты переносимой проверки
 STAND_TOOLS="tools/regex/conformance.cpp tools/regex/conformance.hpp"

@@ -99,6 +99,11 @@ namespace awh {
 			 * прибавлены сверху, а не втиснуты в общее ядро: имя с пространством имён,
 			 * свойства узла, связывания префиксов и девять видов узла против шести у JSON
 			 *
+			 * @details Мост обратный - `Document::graft`: значение, наружу отданное и правке
+			 * подвергнутое, становится обратно на место узла дерева. Арена дерева при том
+			 * лишь дописывается, а узлы заменённого поддерева остаются в ней недостижимыми:
+			 * перенумерование их обесценило бы всякую ссылку, выданную наружу прежде
+			 *
 			 * @note Оформления исходного текста значение не удерживает: расстановка
 			 * пробелов принадлежит дереву, и правка чужого текста с сохранением его
 			 * неприкосновенности остаётся за деревом. Это два разных употребления
@@ -116,6 +121,10 @@ namespace awh {
 			 * of their behaviour are identical for JSON, XML, YAML, TOML and INI. The peculiarities of the markup
 			 * are added on top rather than squeezed into the common core: a name with a namespace,
 			 * the properties of a node, the bindings of the prefixes and nine kinds of a node against six for JSON
+			 * @details The reverse bridge is `Document::graft`: a value given away outwards and subjected
+			 * to editing takes its place back at a node of the tree. The arena of the tree is thereby
+			 * only appended to, while the nodes of the replaced subtree remain in it unreachable:
+			 * a renumbering of them would invalidate every reference given away outwards before
 			 * @note The value does not retain the formatting of the source text: the placement
 			 * of the spaces belongs to the tree, and the editing of a foreign text with the preservation of its
 			 * intactness remains with the tree. These are two different usages

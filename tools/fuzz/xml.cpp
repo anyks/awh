@@ -74,13 +74,20 @@ namespace {
 		uint64_t intact;
 		// Количество заведомо правильных текстов, разобранных чтением до конца
 		uint64_t accepted;
+		// Количество снятых владеющих значений
+		uint64_t values;
+		// Количество значений, пересобранных потоковым сборщиком
+		uint64_t builds;
+		// Количество значений, привитых обратно в дерево разметки
+		uint64_t grafts;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
 		Statistic() noexcept :
 		 texts(0), corrupted(0), survived(0),
-		 events(0), trees(0), rewrites(0), intact(0), accepted(0) {}
+		 events(0), trees(0), rewrites(0), intact(0), accepted(0),
+		 values(0), builds(0), grafts(0) {}
 	/**
 	 * Учёт проделанной работы
 	 *
@@ -1332,6 +1339,129 @@ namespace {
 	}
 
 	/**
+	 * @brief Метод поиска соседствующего текстового содержимого
+	 *
+	 * @details Два соседних узла текстового либо пробельного содержимого запись сливает
+	 *          воедино: разделявший их узел, чтением опущенный, - примечание либо
+	 *          указание обработчику, - в тексте не появляется вовсе, и разбор записи
+	 *          даёт один узел вместо двух. Различие это - свойство самого написания
+	 *          разметки, а не изъян кодека
+	 *
+	 * @param value осматриваемое владеющее значение
+	 * @return      признак наличия соседствующего текстового содержимого
+	 *
+	 */
+	bool adjacent(const xml::value_t & value) noexcept {
+		// Признак того, что предыдущий узел был текстовым либо пробельным
+		bool previous = false;
+		/**
+		 * Выполняем перебор всего вложенного содержимого значения
+		 */
+		for(size_t i = 0; i < value.size(); i++){
+			// Получаем признак того, что узел является текстовым либо пробельным
+			const bool current = ((value[i].kind() == xml::kind_t::TEXT) || (value[i].kind() == xml::kind_t::SPACE));
+			// Если текстовое содержимое соседствует с текстовым, выводим признак находки
+			if(current && previous) return true;
+			// Запоминаем признак текстового содержимого для следующего узла
+			previous = current;
+			/**
+			 * Если вложенное содержимое несёт соседствующее текстовое содержимое
+			 */
+			if(::adjacent(value[i]))
+				// Выводим признак наличия соседствующего текстового содержимого
+				return true;
+		}
+		// Выводим признак отсутствия соседствующего текстового содержимого
+		return false;
+	}
+	/**
+	 * @brief Метод пересборки владеющего значения потоковым сборщиком
+	 *
+	 * @details Значение обходится узел за узлом, и всякий узел подаётся сборщику тем же
+	 *          самым порядком, каким он был бы записан в текст: собранное сборщиком
+	 *          обязано совпасть с обходимым
+	 *
+	 * @param value   пересобираемое владеющее значение
+	 * @param builder потоковый сборщик владеющего значения
+	 * @return        признак успешности пересборки
+	 *
+	 */
+	bool rebuild(const xml::value_t & value, xml::builder_t & builder) noexcept {
+		/**
+		 * Определяем вид пересобираемого значения
+		 */
+		switch(static_cast <uint8_t> (value.kind())){
+			// Если значение является узлом разметки
+			case static_cast <uint8_t> (xml::kind_t::ELEMENT): {
+				/**
+				 * Если открытие узла разметки не удалось
+				 */
+				if(!builder.open(value.local(), value.uri(), value.prefix()))
+					// Выводим признак неудачной пересборки
+					return false;
+				/**
+				 * Выполняем перебор всех привязок пространств имён узла разметки
+				 */
+				for(auto & item : value.bindings()){
+					/**
+					 * Если заведение привязки пространства имён не удалось
+					 */
+					if(!builder.binding(item.prefix, item.uri))
+						// Выводим признак неудачной пересборки
+						return false;
+				}
+				/**
+				 * Выполняем перебор всех атрибутов узла разметки
+				 */
+				for(auto & item : value.attributes()){
+					/**
+					 * Если заведение атрибута узла разметки не удалось
+					 */
+					if(!builder.attribute(item.local, item.value, item.uri, item.prefix))
+						// Выводим признак неудачной пересборки
+						return false;
+				}
+				/**
+				 * Выполняем перебор всего вложенного содержимого узла разметки
+				 */
+				for(size_t i = 0; i < value.size(); i++){
+					/**
+					 * Если пересборка вложенного содержимого не удалась
+					 */
+					if(!::rebuild(value[i], builder))
+						// Выводим признак неудачной пересборки
+						return false;
+				}
+				// Выводим итог закрытия узла разметки
+				return builder.close();
+			}
+			// Если значение является текстовым содержимым
+			case static_cast <uint8_t> (xml::kind_t::TEXT):
+				// Выводим итог подачи текстового содержимого
+				return builder.text(value.text());
+			// Если значение является разделом дословного текста
+			case static_cast <uint8_t> (xml::kind_t::CDATA):
+				// Выводим итог подачи раздела дословного текста
+				return builder.cdata(value.text());
+			// Если значение является примечанием
+			case static_cast <uint8_t> (xml::kind_t::COMMENT):
+				// Выводим итог подачи примечания
+				return builder.comment(value.text());
+			// Если значение является указанием обработчику
+			case static_cast <uint8_t> (xml::kind_t::PROCESSING):
+				// Выводим итог подачи указания обработчику
+				return builder.processing(value.local(), value.text());
+		}
+		/**
+		 * Выводим итог подачи значения целиком
+		 *
+		 * @note Вид, потоковой подаче не подлежащий, - описание типа документа либо
+		 *       пробельное содержимое, - подаётся значением целиком: сборщик своего
+		 *       вызова для них не держит вовсе
+		 */
+		return builder.value(value);
+	}
+	/**
 	 * @brief Метод проверки дерева разметки на построенном тексте
 	 *
 	 * @param text    разбираемый текст разметки
@@ -1619,6 +1749,153 @@ namespace {
 					dump(writer.text());
 					// Выводим результат проверки дерева разметки
 					return false;
+				}
+			}
+			/**
+			 * Выполняем сличение владеющего значения с исходным узлом
+			 *
+			 * @details Значение снимается с того же узла и гоняется двумя ходами:
+			 *          пересобирается потоковым сборщиком узел за узлом и записывается
+			 *          в текст с последующим разбором. Всякий раз итог сличается со
+			 *          снятым значением сравнением самих значений, а не записей их
+			 */
+			{
+				// Выполняем снятие владеющего значения с узла дерева разметки
+				const xml::value_t value(node);
+				// Выполняем учёт снятого владеющего значения
+				totals.values++;
+				// Объект потокового сборщика владеющего значения
+				xml::builder_t builder;
+				/**
+				 * Если пересборка значения потоковым сборщиком не удалась
+				 */
+				if(!::rebuild(value, builder)){
+					// Выводим сообщение об отказе пересборки значения
+					::fprintf(stderr, "xml fuzz: value rebuild refused\n");
+					// Выводим исходный текст разметки
+					dump(text);
+					// Выводим результат проверки дерева разметки
+					return false;
+				}
+				// Выполняем учёт пересобранного владеющего значения
+				totals.builds++;
+				/**
+				 * Если пересобранное значение разошлось со снятым
+				 */
+				if(!(builder.finish() == value)){
+					// Выводим сообщение о расхождении пересобранного значения со снятым
+					::fprintf(stderr, "xml fuzz: value rebuild differs\n  запись [%s]\n", value.dump().c_str());
+					// Выводим исходный текст разметки
+					dump(text);
+					// Выводим результат проверки дерева разметки
+					return false;
+				}
+				/**
+				 * Выполняем сличение прививки владеющего значения с исходным узлом
+				 *
+				 * @note Прививаемое место обязано существовать: прививка заменяет
+				 *       поддерево, а не заводит новое, - оттого узел в принимающем
+				 *       дереве и заведён
+				 */
+				{
+					// Дерево разметки, принимающее прививку
+					xml::document_t host;
+					/**
+					 * Если заведение принимающего прививку дерева удалось
+					 */
+					if(host.parse("<host><graft/></host>", relaxed)){
+						/**
+						 * Если прививка значения в дерево разметки не удалась
+						 */
+						if(!host.graft("/host/graft", value)){
+							// Выводим сообщение об отказе прививки значения
+							::fprintf(stderr, "xml fuzz: value graft refused\n  запись [%s]\n", value.dump().c_str());
+							// Выводим исходный текст разметки
+							dump(text);
+							// Выводим результат проверки дерева разметки
+							return false;
+						}
+						// Выполняем учёт привитого владеющего значения
+						totals.grafts++;
+						/**
+						 * Если снятое с привитого места значение разошлось с привитым
+						 */
+						if(!(xml::value_t(host.element().first()) == value)){
+							// Выводим сообщение о расхождении привитого значения с исходным
+							::fprintf(stderr, "xml fuzz: value graft differs\n  запись [%s]\n", value.dump().c_str());
+							// Выводим исходный текст разметки
+							dump(text);
+							// Выводим результат проверки дерева разметки
+							return false;
+						}
+					}
+				}
+				// Выполняем запись владеющего значения в текст
+				const string record = value.dump();
+				/**
+				 * Если запись владеющего значения в текст удалась
+				 *
+				 * @note Пустой итог означает отказ записи, а не усечение: узел, записи
+				 *       не подлежащий, отвергается потоком записи целиком
+				 *
+				 * @note Значение с соседствующим текстовым содержимым из сличения изъято:
+				 *       запись сливает соседей воедино, и разбор её даёт один узел вместо
+				 *       двух
+				 */
+				if(!record.empty() && !::adjacent(value)){
+					// Создаём дерево разметки для разбора записанного значения
+					xml::document_t reparsed;
+					/**
+					 * Если разбор записанного значения не удался
+					 */
+					if(!reparsed.parse(record, relaxed)){
+						// Выводим сообщение об отказе разбора записанного значения
+						::fprintf(stderr, "xml fuzz: value reparse failed, error=%u\n", static_cast <uint32_t> (reparsed.error()));
+						// Выводим исходный текст разметки
+						dump(text);
+						// Выводим записанное значение
+						dump(record);
+						// Выводим результат проверки дерева разметки
+						return false;
+					}
+					// Разыскиваемый узел разметки записанного значения
+					xml::node_t found = reparsed.root().first();
+					/**
+					 * Выполняем поиск узла разметки среди содержимого корня
+					 */
+					while(found.valid() && (found.kind() != xml::kind_t::ELEMENT))
+						// Выполняем переход к следующему узлу содержимого корня
+						found = found.next();
+					/**
+					 * Если снятое с записи значение разошлось с исходным
+					 */
+					if(!found.valid() || !(xml::value_t(found) == value)){
+						// Выводим сообщение о расхождении снятого с записи значения с исходным
+						::fprintf(stderr, "xml fuzz: value differs after rewrite\n  запись [%s]\n", record.c_str());
+						/**
+						 * Выполняем перебор всего содержимого снятого значения
+						 */
+						for(size_t i = 0; i < value.size(); i++)
+							// Выводим вид и содержимое очередного узла снятого значения
+							::fprintf(stderr, "  снято  %zu: вид=%u имя=[%s] текст=[%s]\n", i, static_cast <uint32_t> (value[i].kind()), value[i].local().c_str(), value[i].text().c_str());
+						/**
+						 * Если узел разметки записанного значения разыскан
+						 */
+						if(found.valid()){
+							// Снимаем владеющее значение с разысканного узла разметки
+							const xml::value_t written(found);
+							/**
+							 * Выполняем перебор всего содержимого снятого с записи значения
+							 */
+							for(size_t i = 0; i < written.size(); i++)
+								// Выводим вид и содержимое очередного узла снятого с записи значения
+								::fprintf(stderr, "  прочтено %zu: вид=%u имя=[%s] текст=[%s]\n", i, static_cast <uint32_t> (written[i].kind()), written[i].local().c_str(), written[i].text().c_str());
+						}
+						// Выводим исходный текст разметки
+						dump(text);
+						// Выводим результат проверки дерева разметки
+						return false;
+					}
 				}
 			}
 		}
@@ -2154,7 +2431,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	// Выводим статистику работы генератора
 	::fprintf(
 		stdout,
-		"xml fuzz: seed=%u, %llu texts (%llu corrupted), %llu events, %llu parsed to the end, %llu trees, %llu rewrites, %llu of %llu intact texts accepted\n",
+		"xml fuzz: seed=%u, %llu texts (%llu corrupted), %llu events, %llu parsed to the end, %llu trees, %llu rewrites, %llu of %llu intact texts accepted, %llu values, %llu builds, %llu grafts\n",
 		seed,
 		static_cast <unsigned long long> (totals.texts),
 		static_cast <unsigned long long> (totals.corrupted),
@@ -2163,7 +2440,10 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		static_cast <unsigned long long> (totals.trees),
 		static_cast <unsigned long long> (totals.rewrites),
 		static_cast <unsigned long long> (totals.accepted),
-		static_cast <unsigned long long> (totals.intact)
+		static_cast <unsigned long long> (totals.intact),
+		static_cast <unsigned long long> (totals.values),
+		static_cast <unsigned long long> (totals.builds),
+		static_cast <unsigned long long> (totals.grafts)
 	);
 	// Выходим из приложения
 	return EXIT_SUCCESS;

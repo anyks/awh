@@ -160,6 +160,22 @@ namespace awh {
 
 			/**
 			 * \~russian
+			 * @brief Предварительное объявление владеющего значения
+			 *
+			 * @details Объявление это заведено ради прививки: дерево прививаемое значение
+			 * принимает, но устройства его не знает вовсе - оно лежит отдельным заголовком
+			 *
+			 * \~english
+			 * @brief Forward declaration of the owning value
+			 * @details This declaration is made for the sake of the grafting: a tree accepts a value
+			 * being grafted, yet knows nothing of its arrangement — it lies in a separate header
+			 *
+			 * \~
+			 */
+			class __AWH_SHARED_EXPORT__ Value;
+
+			/**
+			 * \~russian
 			 * @brief Класс узла дерева разметки
 			 *
 			 * @details Узел не владеет содержимым, а лишь указывает на запись в арене
@@ -991,6 +1007,38 @@ namespace awh {
 					 * \~
 					 */
 					name_t get(const title_t & title) const noexcept;
+				private:
+					/**
+					 * \~russian
+					 * @brief Метод переноса владеющего значения в арену дерева
+					 *
+					 * @details Значение переносится узел за узлом: запись узла дописывается к
+					 * арене, знаки имени и содержимого - к хранилищу знаков, атрибуты и
+					 * связывания префиксов - к своим хранилищам отрезком подряд
+					 *
+					 * @note Атрибуты и связывания размещаются прежде обхода вложенного
+					 * содержимого намеренно: отрезок их задан началом и количеством, и
+					 * содержимое, размещённое посреди, разорвало бы отрезок надвое
+					 *
+					 * @param value  переносимое владеющее значение
+					 * @param parent индекс родительского узла переносимого значения
+					 * @return       индекс заведённого узла либо признак недействительности
+					 *
+					 * \~english
+					 * @brief Method of the transfer of an owning value into the arena of the tree
+					 * @details The value is transferred node by node: the record of a node is appended to
+					 * the arena, the characters of the name and of the content — to the storage of the characters,
+					 * the attributes and the bindings of the prefixes — to their storages as a contiguous segment
+					 * @note The attributes and the bindings are placed before the traversal of the nested
+					 * content deliberately: their segment is given by a beginning and a count, and
+					 * a content placed in the middle would tear the segment in two
+					 * @param value  owning value being transferred
+					 * @param parent index of the parent node of the value being transferred
+					 * @return       index of the created node or the sign of the invalidity
+					 *
+					 * \~
+					 */
+					node_id_t transplant(const xml::Value & value, const node_id_t parent) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -1077,6 +1125,47 @@ namespace awh {
 					 * \~
 					 */
 					node_t element() const noexcept;
+				public:
+					/**
+					 * \~russian
+					 * @brief Метод прививки владеющего значения в дерево разметки
+					 *
+					 * @details Метод этот - обратный мост к тому, каким владеющее значение
+					 * снимается с узла дерева: значение переносится в арену и становится на
+					 * место указанного узла со всем его содержимым
+					 *
+					 * @details Путь записывается частями, разделёнными косой чертой, ровно как
+					 * у метода `at` владеющего значения: `/Envelope/Body/0`. Прививаемое место
+					 * обязано существовать - прививка заменяет поддерево, а не заводит его
+					 *
+					 * @note Арена дерева лишь дописывается: узлы заменённого поддерева остаются
+					 * в ней недостижимыми и место своё возвращают только с очисткою дерева либо
+					 * с новым разбором. Устройство это намеренное - перенумерование узлов
+					 * обесценило бы всякую ссылку на дерево, выданную наружу прежде
+					 *
+					 * @param path  путь к прививаемому месту
+					 * @param value прививаемое владеющее значение
+					 * @return      признак успешности прививки
+					 *
+					 * \~english
+					 * @brief Method of the grafting of an owning value into the markup tree
+					 * @details This method is the bridge reverse to the one by which an owning value
+					 * is taken from a node of a tree: the value is transferred into the arena and takes
+					 * the place of the specified node with all of its content
+					 * @details The path is written by the parts separated by a slash, exactly as
+					 * for the method `at` of an owning value: `/Envelope/Body/0`. The place being grafted
+					 * must exist — the grafting replaces a subtree rather than creates it
+					 * @note The arena of the tree is only appended to: the nodes of the replaced subtree remain
+					 * in it unreachable and give their place back only with the clearing of the tree or
+					 * with a new parsing. This arrangement is deliberate — a renumbering of the nodes
+					 * would invalidate every reference to the tree given away outside before
+					 * @param path  path to the place being grafted
+					 * @param value owning value being grafted
+					 * @return      sign of the success of the grafting
+					 *
+					 * \~
+					 */
+					bool graft(const string & path, const xml::Value & value) noexcept;
 				public:
 					/**
 					 * \~russian

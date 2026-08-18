@@ -2170,3 +2170,284 @@ awh::codec::xml::value_t awh::codec::xml::Builder::finish() noexcept {
 	// Выводим собранное значение
 	return result;
 }
+/**
+ * @brief Метод переноса владеющего значения в арену дерева
+ *
+ * @param value  переносимое владеющее значение
+ * @param parent индекс родительского узла переносимого значения
+ * @return       индекс заведённого узла либо признак недействительности
+ *
+ */
+awh::codec::xml::node_id_t awh::codec::xml::Document::transplant(const xml::Value & value, const node_id_t parent) noexcept {
+	/**
+	 * @brief Метод размещения последовательности знаков в хранилище дерева
+	 *
+	 * @param text размещаемая последовательность знаков
+	 * @return     отрезок общего хранилища знаков
+	 *
+	 */
+	auto store = [this](const string & text) noexcept -> span_t {
+		// Собираемый отрезок общего хранилища знаков
+		const span_t result(static_cast <uint32_t> (this->_storage.size()), static_cast <uint32_t> (text.length()));
+		// Выполняем размещение последовательности знаков в хранилище
+		this->_storage.append(text);
+		// Выводим собранный отрезок общего хранилища знаков
+		return result;
+	};
+	/**
+	 * Если размещение выведет хранилище знаков за предел
+	 *
+	 * @note Отрезок хранилища задан положением в четыре байта, и выход за предел усёк бы
+	 *       положение молча, оставив дерево с отрезками, указывающими не туда
+	 */
+	if((this->_storage.size() + value.local().length() + value.uri().length() +
+	   value.prefix().length() + value.text().length()) > 0xFFFFFFFF)
+		// Выводим признак недействительности заведённого узла
+		return INVALID_NODE;
+	// Получаем индекс заводимого узла дерева разметки
+	const node_id_t result = static_cast <node_id_t> (this->_nodes.size());
+	/**
+	 * Если арена узлов дерева вышла за отведённый ей предел
+	 */
+	if(static_cast <size_t> (result) >= static_cast <size_t> (INVALID_NODE))
+		// Выводим признак недействительности заведённого узла
+		return INVALID_NODE;
+	// Выполняем заведение записи узла в арене дерева разметки
+	this->_nodes.emplace_back();
+	// Устанавливаем вид заводимого узла дерева разметки
+	this->_nodes.at(result).kind = value.kind();
+	// Устанавливаем индекс родительского узла
+	this->_nodes.at(result).parent = parent;
+	// Выполняем размещение префикса имени узла
+	this->_nodes.at(result).name.prefix = store(value.prefix());
+	// Выполняем размещение местного имени узла
+	this->_nodes.at(result).name.local = store(value.local());
+	// Выполняем размещение обозначения пространства имён узла
+	this->_nodes.at(result).name.uri = store(value.uri());
+	/**
+	 * Если узел разметки содержимого не несёт
+	 *
+	 * @note Содержимое узла разметки лежит вложенными узлами, а собственное содержимое
+	 *       есть у текстовых узлов, примечаний и указаний обработчику
+	 */
+	if(value.kind() != kind_t::ELEMENT)
+		// Выполняем размещение содержимого узла
+		this->_nodes.at(result).value = store(value.text());
+	/**
+	 * Выполняем размещение атрибутов узла отрезком подряд
+	 *
+	 * @note Размещаются они прежде обхода вложенного содержимого намеренно: отрезок задан
+	 *       началом и количеством, и атрибуты вложенных узлов, размещённые посреди,
+	 *       разорвали бы отрезок надвое
+	 */
+	{
+		// Устанавливаем индекс первого атрибута узла в хранилище атрибутов
+		this->_nodes.at(result).attribute = static_cast <uint32_t> (this->_attributes.size());
+		/**
+		 * Выполняем перебор всех атрибутов переносимого значения
+		 */
+		for(auto & item : value.attributes()){
+			// Выполняем заведение записи атрибута в хранилище атрибутов
+			this->_attributes.emplace_back();
+			// Выполняем размещение префикса имени атрибута
+			this->_attributes.back().name.prefix = store(item.prefix);
+			// Выполняем размещение местного имени атрибута
+			this->_attributes.back().name.local = store(item.local);
+			// Выполняем размещение обозначения пространства имён атрибута
+			this->_attributes.back().name.uri = store(item.uri);
+			// Выполняем размещение значения атрибута
+			this->_attributes.back().value = store(item.value);
+		}
+		// Устанавливаем количество атрибутов узла
+		this->_nodes.at(result).attributes = static_cast <uint32_t> (this->_attributes.size() - this->_nodes.at(result).attribute);
+	}
+	/**
+	 * Если переносимое значение объявляет пространства имён
+	 */
+	if(!value.bindings().empty()){
+		// Получаем индекс первого связывания префикса в хранилище связываний
+		const uint32_t offset = static_cast <uint32_t> (this->_scopes.size());
+		/**
+		 * Выполняем перебор всех связываний префиксов переносимого значения
+		 */
+		for(auto & item : value.bindings()){
+			// Выполняем заведение записи связывания префикса в хранилище связываний
+			this->_scopes.emplace_back();
+			// Выполняем размещение префикса связывания
+			this->_scopes.back().prefix = store(item.prefix);
+			// Выполняем размещение обозначения объявляемого пространства имён
+			this->_scopes.back().uri = store(item.uri);
+		}
+		// Выполняем привязку отрезка связываний к заведённому узлу
+		this->_scoped.emplace(result, span_t(offset, static_cast <uint32_t> (this->_scopes.size() - offset)));
+	}
+	/**
+	 * Выполняем перебор всего вложенного содержимого переносимого значения
+	 */
+	for(size_t i = 0; i < value.size(); i++){
+		// Выполняем перенос вложенного содержимого в арену дерева разметки
+		const node_id_t child = this->transplant(value[i], result);
+		/**
+		 * Если перенос вложенного содержимого завершился отказом
+		 */
+		if(child == INVALID_NODE)
+			// Выводим признак недействительности заведённого узла
+			return INVALID_NODE;
+		/**
+		 * Если вложенное содержимое у узла первое
+		 */
+		if(this->_nodes.at(result).first == INVALID_NODE)
+			// Устанавливаем индекс первого вложенного узла
+			this->_nodes.at(result).first = child;
+		/**
+		 * Если вложенное содержимое у узла не первое
+		 */
+		else {
+			// Устанавливаем индекс следующего узла того же уровня у предыдущего соседа
+			this->_nodes.at(this->_nodes.at(result).last).next = child;
+			// Устанавливаем индекс предыдущего узла того же уровня у заведённого узла
+			this->_nodes.at(child).prev = this->_nodes.at(result).last;
+		}
+		// Устанавливаем индекс последнего вложенного узла
+		this->_nodes.at(result).last = child;
+	}
+	// Выводим индекс заведённого узла дерева разметки
+	return result;
+}
+/**
+ * @brief Метод прививки владеющего значения в дерево разметки
+ *
+ * @param path  путь к прививаемому месту
+ * @param value прививаемое владеющее значение
+ * @return      признак успешности прививки
+ *
+ */
+bool awh::codec::xml::Document::graft(const string & path, const xml::Value & value) noexcept {
+	// Перечень звеньев пути к прививаемому месту
+	vector <string> parts;
+	/**
+	 * Если разбор пути на звенья завершился отказом
+	 */
+	if(!::tokens(path, parts))
+		// Выводим признак неудачной прививки
+		return false;
+	/**
+	 * Если прививаемое значение недействительно либо дерево разметки пусто
+	 */
+	if(!value.valid() || this->_nodes.empty())
+		// Выводим признак неудачной прививки
+		return false;
+	/**
+	 * Если путь к прививаемому месту пуст
+	 *
+	 * @note Корень дерева узлом разметки не является вовсе, и стать им прививаемому
+	 *       значению неоткуда: заменить его значило бы отбросить дерево целиком
+	 */
+	if(parts.empty())
+		// Выводим признак неудачной прививки
+		return false;
+	// Индекс узла, куда прививается значение
+	node_id_t target = 0;
+	/**
+	 * Выполняем разбор пути звено за звеном
+	 */
+	for(auto & token : parts){
+		// Номер вложенного узла, разыскиваемый звеном пути
+		size_t index = 0;
+		// Индекс разыскиваемого узла дерева разметки
+		node_id_t found = INVALID_NODE;
+		/**
+		 * Если звено пути обращается к вложенному узлу по номеру
+		 */
+		if(::numbered(token, index)){
+			// Устанавливаем индекс первого вложенного узла
+			found = this->_nodes.at(target).first;
+			/**
+			 * Выполняем пропуск вложенных узлов до разыскиваемого
+			 */
+			for(size_t i = 0; ((i < index) && (found != INVALID_NODE)); i++)
+				// Выполняем переход к следующему вложенному узлу
+				found = this->_nodes.at(found).next;
+		/**
+		 * Если звено пути обращается к узлу разметки по местному имени
+		 */
+		} else {
+			/**
+			 * Выполняем перебор всех вложенных узлов
+			 */
+			for(node_id_t child = this->_nodes.at(target).first; child != INVALID_NODE; child = this->_nodes.at(child).next){
+				/**
+				 * Если вложенный узел является узлом разметки с разыскиваемым именем
+				 */
+				if((this->_nodes.at(child).kind == kind_t::ELEMENT) &&
+				   (this->get(this->_nodes.at(child).name.local).compare(token) == 0)){
+					// Запоминаем индекс разысканного узла разметки
+					found = child;
+					// Прекращаем перебор вложенных узлов
+					break;
+				}
+			}
+		}
+		/**
+		 * Если узел, звеном пути разыскиваемый, не разыскан
+		 */
+		if(found == INVALID_NODE)
+			// Выводим признак неудачной прививки
+			return false;
+		// Выполняем переход к разысканному узлу
+		target = found;
+	}
+	// Получаем индекс родительского узла прививаемого места
+	const node_id_t parent = this->_nodes.at(target).parent;
+	/**
+	 * Если прививаемое место родителя не имеет вовсе
+	 *
+	 * @note Родителя не имеет один лишь корень дерева, а его прививка отвергнута выше
+	 */
+	if(parent == INVALID_NODE)
+		// Выводим признак неудачной прививки
+		return false;
+	// Выполняем перенос прививаемого значения в арену дерева разметки
+	const node_id_t graft = this->transplant(value, parent);
+	/**
+	 * Если перенос прививаемого значения завершился отказом
+	 */
+	if(graft == INVALID_NODE)
+		// Выводим признак неудачной прививки
+		return false;
+	// Получаем индексы соседей заменяемого узла
+	const node_id_t prev = this->_nodes.at(target).prev, next = this->_nodes.at(target).next;
+	// Устанавливаем индекс предыдущего узла того же уровня
+	this->_nodes.at(graft).prev = prev;
+	// Устанавливаем индекс следующего узла того же уровня
+	this->_nodes.at(graft).next = next;
+	/**
+	 * Если предыдущий сосед у заменяемого узла есть
+	 */
+	if(prev != INVALID_NODE)
+		// Устанавливаем индекс следующего узла того же уровня у предыдущего соседа
+		this->_nodes.at(prev).next = graft;
+	// Если предыдущего соседа у заменяемого узла нет, привитый узел становится первым
+	else this->_nodes.at(parent).first = graft;
+	/**
+	 * Если следующий сосед у заменяемого узла есть
+	 */
+	if(next != INVALID_NODE)
+		// Устанавливаем индекс предыдущего узла того же уровня у следующего соседа
+		this->_nodes.at(next).prev = graft;
+	// Если следующего соседа у заменяемого узла нет, привитый узел становится последним
+	else this->_nodes.at(parent).last = graft;
+	/**
+	 * Выполняем отвязку заменённого узла от дерева
+	 *
+	 * @note Узлы заменённого поддерева остаются в арене недостижимыми: перенумерование
+	 *       их обесценило бы всякую ссылку на дерево, выданную наружу прежде
+	 */
+	this->_nodes.at(target).parent = INVALID_NODE;
+	// Устанавливаем отсутствие предыдущего узла того же уровня у заменённого узла
+	this->_nodes.at(target).prev = INVALID_NODE;
+	// Устанавливаем отсутствие следующего узла того же уровня у заменённого узла
+	this->_nodes.at(target).next = INVALID_NODE;
+	// Выводим признак успешной прививки
+	return true;
+}
