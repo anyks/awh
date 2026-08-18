@@ -235,7 +235,7 @@ awh::codec::yaml::Reader::Reader() noexcept :
  _state(state_t::READY), _error(error_t::NONE), _reading(0), _offset(0), _line(0), _position(0),
  _started(false), _opened(false), _filled(false), _blocking(false), _block(style_t::LITERAL),
  _chomp(chomp_t::CLIP), _marked(NO_INDENT), _outer(0), _margin(0), _inner(0), _opening(0),
- _breaks(0), _padding(0), _deepened(false), _expected(false), _awaited(false), _valued(false), _headed(false), _propped(false), _tabbed(false), _entered(false), _pending(0), _schema(schema_t::CORE), _plaining(false),
+ _breaks(0), _padding(0), _deepened(false), _expected(false), _awaited(false), _valued(false), _headed(false), _propped(false), _tabbed(false), _rooted(false), _detected(false), _entered(false), _pending(0), _schema(schema_t::CORE), _plaining(false),
  _folds(0), _required(0), _phase(flow_t::ENTRY), _directed(false), _versioned(false), _declared(false), _dialect(schema_t::CORE) {}
 /**
  * @brief Конструктор
@@ -247,7 +247,7 @@ awh::codec::yaml::Reader::Reader(const settings_t & settings) noexcept :
  _settings(settings), _state(state_t::READY), _error(error_t::NONE), _reading(0), _offset(0),
  _line(0), _position(0), _started(false), _opened(false), _filled(false),
  _blocking(false), _block(style_t::LITERAL), _chomp(chomp_t::CLIP), _marked(NO_INDENT),
- _outer(0), _margin(0), _inner(0), _opening(0), _breaks(0), _padding(0), _deepened(false), _expected(false), _awaited(false), _valued(false), _headed(false), _propped(false), _tabbed(false), _entered(false), _pending(0),
+ _outer(0), _margin(0), _inner(0), _opening(0), _breaks(0), _padding(0), _deepened(false), _expected(false), _awaited(false), _valued(false), _headed(false), _propped(false), _tabbed(false), _rooted(false), _detected(false), _entered(false), _pending(0),
  _schema(settings.schema), _plaining(false), _folds(0), _required(0),
  _phase(flow_t::ENTRY), _directed(false), _versioned(false), _declared(false), _dialect(settings.schema) {
 	/**
@@ -2610,6 +2610,16 @@ bool awh::codec::yaml::Reader::opening(const string_view line, const size_t offs
 	 *       содержимого и здесь ещё неизвестен
 	 */
 	this->_inner = ((this->_marked != NO_INDENT) ? (this->_outer + this->_marked) : 0);
+	/**
+	 * Запоминаем признак того, что блочное значение стоит содержимым документа целиком
+	 *
+	 * @note Построений над ним нет вовсе, и описание берёт правилом `s-l+block-node`
+	 *       отступ мельче нулевого: содержимое такого значения вправе стоять с начала
+	 *       строки. Прежде написание `--- >` со строками с начала строки отказ получало
+	 */
+	this->_rooted = this->_levels.empty();
+	// Запоминаем признак того, что отступ содержимого заголовком задан
+	this->_detected = (this->_marked != NO_INDENT);
 	// Выполняем сброс собираемого содержимого блочного значения
 	this->_block_text.clear();
 	// Выполняем сброс количества пустых строк, содержимого не дождавшихся
@@ -2657,7 +2667,7 @@ bool awh::codec::yaml::Reader::blocking(const string_view line, bool & attached)
 		 *       сличить его с отступом содержимого возможно лишь тогда, когда содержимое
 		 *       первою непустою строкой своей этот отступ и задаст
 		 */
-		if((this->_inner == 0) && (offset > this->_padding))
+		if(!this->_detected && (offset > this->_padding))
 			// Запоминаем наибольший отступ пустых строк, содержимому предпосланных
 			this->_padding = static_cast <uint32_t> (offset);
 		// Выполняем учёт пустой строки блочного значения
@@ -2674,7 +2684,18 @@ bool awh::codec::yaml::Reader::blocking(const string_view line, bool & attached)
 	 *
 	 * @note Строка эта содержимому не принадлежит, и блочное значение ею завершается
 	 */
-	if(indent <= this->_outer){
+	/**
+	 * Если значение стоит содержимым документа целиком, а строка чертою открывается
+	 *
+	 * @details Содержимое такого значения вправе стоять с начала строки, и завершить его
+	 *          отступом нечем: завершают его лишь черты начала да конца документа.
+	 *          Описание запрещает их внутри содержимого правилом `c-forbidden` прямо
+	 */
+	if(this->_rooted && (indent == 0) && ((line.compare(0, 3, "---") == 0) || (line.compare(0, 3, "...") == 0)) &&
+	   ((line.size() == 3) || spacing(line[3])))
+		// Выводим признак успешного присоединения строки
+		return true;
+	if((indent <= this->_outer) && !this->_rooted){
 		/**
 		 * Если строка знаком горизонтальной подачи открывается, содержимого же ещё не было
 		 *
@@ -2697,7 +2718,7 @@ bool awh::codec::yaml::Reader::blocking(const string_view line, bool & attached)
 	/**
 	 * Если отступ содержимого ещё не определён
 	 */
-	if(this->_inner == 0){
+	if(!this->_detected){
 		/**
 		 * Если пустая строка, содержимому предпосланная, стоит глубже первой непустой строки
 		 *
@@ -2709,6 +2730,8 @@ bool awh::codec::yaml::Reader::blocking(const string_view line, bool & attached)
 			return this->fail(error_t::INVALID_INDENTATION, offset);
 		// Запоминаем отступ содержимого по первой непустой строке его
 		this->_inner = indent;
+		// Запоминаем признак того, что отступ содержимого определён
+		this->_detected = true;
 	}
 	/**
 	 * Если отступ строки мельче отступа содержимого
@@ -3430,8 +3453,30 @@ bool awh::codec::yaml::Reader::plaining(const string_view line, bool & attached)
 	}
 	/**
 	 * Если отступ строки отступа объемлющего построения не превышает
+	 *
+	 * @note Значение, стоящее содержимым документа целиком, под правило это не подпадает:
+	 *       построений над ним нет вовсе, и описание дозволяет продолжению его стоять с
+	 *       начала строки - правило `s-l+block-node` берёт там отступ мельче нулевого.
+	 *       Прежде написание `a` со строкою `b` ниже отказ получало. Нашло это сличение с
+	 *       набором yaml-test-suite
 	 */
-	if(static_cast <uint32_t> (offset) <= this->_required)
+	/**
+	 * Если строка чертою начала либо конца документа открывается
+	 *
+	 * @details Черты эти содержимым значения не являются: описание запрещает их внутри
+	 *          него правилом `c-forbidden` прямо. Прежде правило это исполнялось отступом
+	 *          - продолжение обязано было стоять глубже построения, а черты стоят с начала
+	 *          строки, - и с дозволением значению корневому продолжаться с начала строки
+	 *          оно исполняться перестало: значение проглатывало черту вместе с документом
+	 *          за нею
+	 *
+	 * @note Нашёл это ворошитель
+	 */
+	if((offset == 0) && ((line.compare(0, 3, "---") == 0) || (line.compare(0, 3, "...") == 0)) &&
+	   ((line.size() == 3) || spacing(line[3])))
+		// Выводим признак успешного присоединения строки
+		return true;
+	if(!this->_levels.empty() && (static_cast <uint32_t> (offset) <= this->_required))
 		// Выводим признак успешного присоединения строки
 		return true;
 	/**
