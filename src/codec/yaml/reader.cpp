@@ -235,7 +235,7 @@ awh::codec::yaml::Reader::Reader() noexcept :
  _state(state_t::READY), _error(error_t::NONE), _reading(0), _offset(0), _line(0), _position(0),
  _started(false), _opened(false), _filled(false), _blocking(false), _block(style_t::LITERAL),
  _chomp(chomp_t::CLIP), _marked(NO_INDENT), _outer(0), _margin(0), _inner(0), _opening(0),
- _breaks(0), _padding(0), _deepened(false), _expected(false), _awaited(false), _valued(false), _headed(false), _propped(false), _entered(false), _pending(0), _schema(schema_t::CORE), _plaining(false),
+ _breaks(0), _padding(0), _deepened(false), _expected(false), _awaited(false), _valued(false), _headed(false), _propped(false), _tabbed(false), _entered(false), _pending(0), _schema(schema_t::CORE), _plaining(false),
  _folds(0), _required(0), _phase(flow_t::ENTRY), _directed(false), _versioned(false), _declared(false), _dialect(schema_t::CORE) {}
 /**
  * @brief Конструктор
@@ -247,7 +247,7 @@ awh::codec::yaml::Reader::Reader(const settings_t & settings) noexcept :
  _settings(settings), _state(state_t::READY), _error(error_t::NONE), _reading(0), _offset(0),
  _line(0), _position(0), _started(false), _opened(false), _filled(false),
  _blocking(false), _block(style_t::LITERAL), _chomp(chomp_t::CLIP), _marked(NO_INDENT),
- _outer(0), _margin(0), _inner(0), _opening(0), _breaks(0), _padding(0), _deepened(false), _expected(false), _awaited(false), _valued(false), _headed(false), _propped(false), _entered(false), _pending(0),
+ _outer(0), _margin(0), _inner(0), _opening(0), _breaks(0), _padding(0), _deepened(false), _expected(false), _awaited(false), _valued(false), _headed(false), _propped(false), _tabbed(false), _entered(false), _pending(0),
  _schema(settings.schema), _plaining(false), _folds(0), _required(0),
  _phase(flow_t::ENTRY), _directed(false), _versioned(false), _declared(false), _dialect(settings.schema) {
 	/**
@@ -1985,6 +1985,12 @@ bool awh::codec::yaml::Reader::content(const string_view line, const size_t offs
 			// Выводим отказ недопустимого знака в этом месте текста
 			return this->fail(error_t::INVALID_CHARACTER, offset);
 		/**
+		 * Если черте записи предпослана подача в отступе вложенного построения
+		 */
+		if(this->_tabbed)
+			// Выводим отказ знака горизонтальной подачи в отступе
+			return this->fail(error_t::TAB_IN_INDENTATION, offset);
+		/**
 		 * Если черте записи предпосланы свойства узла в той же строке
 		 *
 		 * @details Свойства блочного построения отделяются от него переводом строки:
@@ -2068,9 +2074,26 @@ bool awh::codec::yaml::Reader::content(const string_view line, const size_t offs
 		/**
 		 * Выполняем пропуск пробельных знаков за объявлением значения перечня
 		 */
-		while((position < line.size()) && spacing(line[position]))
+		while((position < line.size()) && spacing(line[position])){
+			/**
+			 * Если пробельный знак есть знак горизонтальной подачи
+			 *
+			 * @details Построение вложенное, чертою записи открытое, отступ свой берёт
+			 *          правилом `s-indent` описания, а тот задан одними пробелами: подача
+			 *          отступом не является, и написания `-<подача>-` да `-<подача>имя:`
+			 *          отступа вложенному построению не дают вовсе. Скаляру же подача
+			 *          дозволена - отступа он не задаёт
+			 *
+			 * @note Случай Y79Y набора yaml-test-suite. Rapidyaml отвергает написание
+			 *       `-<пробел><подача>-`, а `-<подача>-` принимает, чем себе же и
+			 *       противоречит: правило описания порядка знаков не различает
+			 */
+			if(line[position] == '\t')
+				// Запоминаем признак подачи в отступе вложенного построения
+				this->_tabbed = true;
 			// Выполняем переход к следующему знаку строки
 			position++;
+		}
 		/**
 		 * Запоминаем признак ожидания значения записи перечня
 		 *
@@ -2149,6 +2172,12 @@ bool awh::codec::yaml::Reader::content(const string_view line, const size_t offs
 		if(this->_headed)
 			// Выводим отказ недопустимого знака в этом месте текста
 			return this->fail(error_t::INVALID_CHARACTER, position);
+		/**
+		 * Если имени пары предпослана подача в отступе вложенного построения
+		 */
+		if(this->_tabbed)
+			// Выводим отказ знака горизонтальной подачи в отступе
+			return this->fail(error_t::TAB_IN_INDENTATION, position);
 		/**
 		 * Если ожидалось значение пары, объявленной прежде
 		 *
@@ -2593,9 +2622,26 @@ bool awh::codec::yaml::Reader::blocking(const string_view line, bool & attached)
 	 *
 	 * @note Строка эта содержимому не принадлежит, и блочное значение ею завершается
 	 */
-	if(indent <= this->_outer)
+	if(indent <= this->_outer){
+		/**
+		 * Если строка знаком горизонтальной подачи открывается, содержимого же ещё не было
+		 *
+		 * @details Пустая строка, содержимому предпосланная, отступом своим стоит мельче
+		 *          содержимого, а отступ описанием задан одними пробелами: знак подачи
+		 *          отступом не является и пустою строку эту не делает. Содержимым же ей
+		 *          быть некем - стоит она не глубже заголовка. Написание `foo: |` с одною
+		 *          подачей строкою ниже принималось со значением пустым, подачу теряя
+		 *
+		 * @note Строка та же за содержимым собранным дозволена: блочное значение ею
+		 *       завершается, и она есть строка обыкновенная. Случай Y79Y набора
+		 *       yaml-test-suite, сверено с rapidyaml
+		 */
+		if((line[offset] == '\t') && (this->_inner == 0) && this->_block_text.empty())
+			// Выводим отказ знака горизонтальной подачи в отступе
+			return this->fail(error_t::TAB_IN_INDENTATION, offset);
 		// Выводим признак успешного присоединения строки
 		return true;
+	}
 	/**
 	 * Если отступ содержимого ещё не определён
 	 */
@@ -3439,6 +3485,8 @@ bool awh::codec::yaml::Reader::record(const string_view line) noexcept {
 	this->_line++;
 	// Выполняем сброс признака разбора свойств узла в этой строке
 	this->_propped = false;
+	// Выполняем сброс признака подачи в отступе вложенного построения
+	this->_tabbed = false;
 	/**
 	 * Если разбирается поточное построение, скобками ещё не закрытое
 	 *
@@ -3479,10 +3527,25 @@ bool awh::codec::yaml::Reader::record(const string_view line) noexcept {
 		 *       подпадает - блочных уровней над ним нет. Нашло это сличение с набором
 		 *       yaml-test-suite
 		 */
+		/**
+		 * Отступ строки продолжения, одними пробелами набранный
+		 *
+		 * @note Отступ описанием задан пробелами, и знак горизонтальной подачи в счёт его
+		 *       не идёт: подача отделяет содержимое от отступа, отступом не будучи. Оттого
+		 *       написание `- [` с подачами перед содержимым строкою ниже глубже перечня не
+		 *       стоит вовсе. Случай Y79Y набора yaml-test-suite
+		 */
+		size_t margin = 0;
+		/**
+		 * Выполняем счёт пробелов отступа строки продолжения
+		 */
+		while((margin < line.size()) && (line[margin] == ' '))
+			// Выполняем переход к следующему знаку строки
+			margin++;
 		if(!this->_levels.empty() && (offset < line.size()) &&
-		   (offset <= static_cast <size_t> (this->_levels.back().indent)))
+		   (margin <= static_cast <size_t> (this->_levels.back().indent)))
 			// Выводим отказ отступа, ни одному из открытых уровней не отвечающего
-			return this->fail(error_t::INVALID_INDENTATION, offset);
+			return this->fail(error_t::INVALID_INDENTATION, margin);
 		// Выполняем возврат к началу строки продолжения построения
 		offset = 0;
 		/**
