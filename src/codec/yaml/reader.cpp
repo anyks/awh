@@ -1768,6 +1768,19 @@ bool awh::codec::yaml::Reader::content(const string_view line, const size_t offs
 		// Выводим отказ недопустимого знака в этом месте текста
 		return this->fail(error_t::INVALID_CHARACTER, offset);
 	/**
+	 * Если значение открывается знаком примечания
+	 *
+	 * @details Знак примечания простого значения не открывает: описанием он дозволен лишь
+	 *          внутри значения либо за пробельным знаком. Запись `[ a, b,#invalid ]`
+	 *          принималась значением `#invalid`, а примечанием там оно тоже не является -
+	 *          пробела перед ним нет
+	 *
+	 * @note Нашло это сличение с набором yaml-test-suite
+	 */
+	if(leading == '#')
+		// Выводим отказ недопустимого знака в этом месте текста
+		return this->fail(error_t::INVALID_CHARACTER, offset);
+	/**
 	 * Если содержимое открывается ссылкой на объявленную метку
 	 */
 	if(leading == '*'){
@@ -1908,8 +1921,14 @@ bool awh::codec::yaml::Reader::content(const string_view line, const size_t offs
 			position++;
 		/**
 		 * Если за построением стоит примечание
+		 *
+		 * @note Примечание опознаётся лишь за пробельным знаком: запись `]#invalid`
+		 *       примечания не открывает, а является содержимым за завершённым
+		 *       построением - и отвергается отказом. Нашло это сличение с набором
+		 *       yaml-test-suite
 		 */
-		if((position < line.size()) && (line[position] == '#'))
+		if((position < line.size()) && (line[position] == '#') &&
+		   ((position == 0) || spacing(line[position - 1])))
 			// Выполняем постановку события примечания
 			this->remark(line, position);
 		/**
@@ -2658,6 +2677,16 @@ bool awh::codec::yaml::Reader::flowed(const string_view line, size_t & offset) n
 	if(leading == '?')
 		// Выводим отказ недопустимого знака в этом месте текста
 		return this->fail(error_t::INVALID_CHARACTER, offset);
+	/**
+	 * Если значение построения открывается знаком примечания
+	 *
+	 * @note Знак примечания простого значения не открывает: запись `[ a, b,#invalid ]`
+	 *       принималась значением `#invalid`, а примечанием там оно тоже не является -
+	 *       пробела перед ним нет. Нашло это сличение с набором yaml-test-suite
+	 */
+	if(leading == '#')
+		// Выводим отказ недопустимого знака в этом месте текста
+		return this->fail(error_t::INVALID_CHARACTER, offset);
 	// Вид записи разбираемого значения
 	style_t style = style_t::PLAIN;
 	// Смещение конца записи значения
@@ -3263,8 +3292,14 @@ bool awh::codec::yaml::Reader::record(const string_view line) noexcept {
 				offset++;
 			/**
 			 * Если за построением стоит примечание
+			 *
+			 * @note Примечание опознаётся лишь за пробельным знаком: запись `]#invalid`
+			 *       примечания не открывает, а является содержимым за завершённым
+			 *       построением - и отвергается отказом. Нашло это сличение с набором
+			 *       yaml-test-suite
 			 */
-			if((offset < line.size()) && (line[offset] == '#'))
+			if((offset < line.size()) && (line[offset] == '#') &&
+			   ((offset == 0) || spacing(line[offset - 1])))
 				// Выполняем постановку события примечания
 				this->remark(line, offset);
 			/**

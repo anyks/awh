@@ -51,7 +51,10 @@ for name in sorted(os.listdir(SRC)):
                 key = None; buf = []; indent = None
     if key and cur is not None:
         cur[key] = '\n'.join(buf) + ('\n' if buf else '')
-    base = entries[0] if entries else {}
+    # Наследуются лишь пояснительные поля: указания `fail` и `tree` принадлежат
+    # своей записи, и наследование их приписывало бы негодность всякой записи файла
+    base = {k: v for k, v in (entries[0] if entries else {}).items()
+            if k in ('name', 'from', 'tags', 'note')}
     for i, e in enumerate(entries):
         merged = dict(base); merged.update(e)
         if 'yaml' in merged:
