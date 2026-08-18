@@ -130,6 +130,60 @@ const char * awh::codec::abc::message(const error_t error) noexcept {
 		// Если значений вместимого больше объявленного
 		case static_cast <uint8_t> (error_t::CONTAINER_OVERFLOW):
 			return "there are more values of a container than declared";
+		// Если заголовок не несёт опознавательной записи контейнера
+		case static_cast <uint8_t> (error_t::INVALID_MAGIC):
+			return "header does not carry the identifying record of the container";
+		// Если вид записи контейнера не поддерживается
+		case static_cast <uint8_t> (error_t::INVALID_VERSION):
+			return "kind of the record of the container is not supported";
+		// Если контрольная сумма заголовка не сошлась
+		case static_cast <uint8_t> (error_t::INVALID_CHECKSUM):
+			return "checksum of the header does not agree";
+		// Если заголовок оборван
+		case static_cast <uint8_t> (error_t::TRUNCATED_HEADER):
+			return "header is truncated, its octets are lacking";
+		// Если кадр оборван
+		case static_cast <uint8_t> (error_t::TRUNCATED_CHUNK):
+			return "chunk is truncated, its octets are lacking";
+		// Если заголовок кадра не опознан
+		case static_cast <uint8_t> (error_t::INVALID_CHUNK):
+			return "header of the chunk is not recognised";
+		// Если сжатие либо разжатие кадра отвечено отказом
+		case static_cast <uint8_t> (error_t::COMPRESSION_FAILED):
+			return "compression or decompression of the chunk is refused";
+		// Если шифрование либо расшифровка кадра отвечены отказом
+		case static_cast <uint8_t> (error_t::ENCRYPTION_FAILED):
+			return "encryption or decryption of the chunk is refused";
+		// Если оглавление контейнера не объявлено заголовком
+		case static_cast <uint8_t> (error_t::MISSING_INDEX):
+			return "index of the container is not declared by the header";
+		// Если запись оглавления повреждена либо указывает за тело
+		case static_cast <uint8_t> (error_t::INVALID_INDEX):
+			return "row of the index is corrupted or points beyond the body";
+		// Если работа чтения октетов контейнера отвечена отказом
+		case static_cast <uint8_t> (error_t::UNREADABLE_SOURCE):
+			return "work of the reading of the octets of the container is refused";
+		// Если работа записи октетов контейнера отвечена отказом
+		case static_cast <uint8_t> (error_t::UNWRITABLE_SINK):
+			return "work of the writing of the octets of the container is refused";
+		// Если запись снесена правкой контейнера
+		case static_cast <uint8_t> (error_t::MISSING_RECORD):
+			return "record is erased by an editing of the container";
+		// Если запись подписи оборвана
+		case static_cast <uint8_t> (error_t::TRUNCATED_SIGNATURE):
+			return "record of the signature is truncated, its octets are lacking";
+		// Если запись подписи повреждена
+		case static_cast <uint8_t> (error_t::INVALID_SIGNATURE):
+			return "record of the signature is corrupted";
+		// Если подпись владельца контейнером не объявлена
+		case static_cast <uint8_t> (error_t::UNSIGNED_CONTAINER):
+			return "signature of the owner is not declared by the container";
+		// Если подпись владельца контейнера не сошлась
+		case static_cast <uint8_t> (error_t::REFUSED_SIGNATURE):
+			return "signature of the owner of the container does not agree";
+		// Если выработка подписи владельца отвечена отказом
+		case static_cast <uint8_t> (error_t::SIGNING_FAILED):
+			return "production of the signature of the owner is refused";
 	}
 	// Выводим результат по умолчанию
 	return "unknown error";

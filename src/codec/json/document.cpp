@@ -31,8 +31,10 @@
  */
 #include <cmath>
 #include <vector>
+#include <limits>
 #include <fstream>
 #include <algorithm>
+#include <type_traits>
 
 /**
  * Подключаем заголовочные файлы проекта

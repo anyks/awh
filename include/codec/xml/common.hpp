@@ -195,10 +195,26 @@ namespace awh {
 			 * @details Ограничение защищает от исчерпания стека при разборе текста с
 			 * искусственно наращенной вложенностью
 			 *
+			 * @details Тем же пределом держатся и работы ПО ГОТОВОМУ ДЕРЕВУ, возвратные
+			 * по устройству: размножение владеющего значения, снятие его, запись и перенос
+			 * в арену дерева. Заведение по пути глубже предела оттого отвергается
+			 *
+			 * @warning Предел этот, поднятый настройкою разбора, стек возвратных работ
+			 *          срывает: замер по стендам дал срыв около 9 000 уровней у NetBSD при
+			 *          стеке 4 МБ, около 12 000 у OpenBSD при тех же 4 МБ и около 25 000 у
+			 *          macOS при 8 МБ. Поднимающему предел надлежит знать, зачем он это делает
+			 *
 			 * \~english
 			 * @brief Largest admissible depth of the nesting of the nodes
 			 * @details The restriction protects from an exhaustion of the stack at the parsing of a text with an
 			 * artificially increased nesting
+			 * @details By the very same limit are held the works UPON A READY TREE, recursive by their arrangement:
+			 * the duplication of an owning value, its taking, its writing and its transfer into the arena of a tree.
+			 * A creation by a path deeper than the limit is therefore refused
+			 * @warning This limit, raised by the setting of the parsing, overflows the stack of the recursive works:
+			 *          a measurement across the stands gave an overflow at about 9 000 levels at NetBSD with a stack
+			 *          of 4 MB, at about 12 000 at OpenBSD with the same 4 MB and at about 25 000 at macOS with 8 MB.
+			 *          Whoever raises the limit ought to know why
 			 *
 			 * \~
 			 */

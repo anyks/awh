@@ -140,8 +140,25 @@ TEST_F(EthFixture, GatewayGetDefaultIPv4){
 	route.destination = std::make_unique <awh::net::addr_net_ipv4_t> ();
 	// Получаем маршрут по умолчанию
 	ASSERT_TRUE(this->_eth->gateway.get(route));
-	// Адрес шлюза по умолчанию должен быть ненулевым
-	ASSERT_NE(awh_cast <awh::net::addr_net_ipv4_t *> (route.gateway.get())->address, 0U);
+	// Имя сетевого интерфейса обязано быть определено при любом виде маршрута
+	ASSERT_FALSE(route.ifname.empty());
+	/**
+	 * Проверяем адрес шлюза по умолчанию
+	 *
+	 * @note Шлюз нужен не всякому маршруту, и договор модуля говорит о том прямо:
+	 *       сеть, до которой машина достаёт напрямую, задаётся одним устройством.
+	 *       Маршрут по умолчанию через устройство точка-точка (VPN, туннель) шлюза
+	 *       не имеет вовсе, и нуль здесь - верный ответ системы, а не отказ модуля.
+	 *       Проверка потому спрашивает не «шлюз ненулевой», а «нуль оправдан видом
+	 *       устройства»: на обычной машине шлюз по-прежнему обязан быть
+	 */
+	if(awh_cast <awh::net::addr_net_ipv4_t *> (route.gateway.get())->address == 0U){
+		// Получаем флаги сетевого интерфейса, которым маршрут задан
+		const auto flags = this->_eth->iface.flags(route.ifname);
+		// Нулевой шлюз оправдан только устройством точка-точка
+		ASSERT_TRUE(flags.count(awh::event::eth_flag_t::POINTTOPOINT) > 0)
+		 << "Шлюз маршрута по умолчанию нулевой, а интерфейс " << route.ifname << " не является устройством точка-точка";
+	}
 	// Адрес назначения маршрута по умолчанию должен быть нулевым
 	ASSERT_EQ(awh_cast <awh::net::addr_net_ipv4_t *> (route.destination.get())->address, 0U);
 	// Префикс маршрута по умолчанию должен быть нулевым
@@ -164,8 +181,21 @@ TEST_F(EthFixture, GatewayGetDefaultIPv4NullDestination){
 	ASSERT_TRUE(this->_eth->gateway.get(route));
 	// Объект адреса назначения должен быть создан автоматически
 	ASSERT_NE(route.destination, nullptr);
-	// Адрес шлюза по умолчанию должен быть ненулевым
-	ASSERT_NE(awh_cast <awh::net::addr_net_ipv4_t *> (route.gateway.get())->address, 0U);
+	// Имя сетевого интерфейса обязано быть определено при любом виде маршрута
+	ASSERT_FALSE(route.ifname.empty());
+	/**
+	 * Проверяем адрес шлюза по умолчанию
+	 *
+	 * @note Нулевой шлюз законен у маршрута через устройство точка-точка,
+	 *       см. пояснение у теста GatewayGetDefaultIPv4
+	 */
+	if(awh_cast <awh::net::addr_net_ipv4_t *> (route.gateway.get())->address == 0U){
+		// Получаем флаги сетевого интерфейса, которым маршрут задан
+		const auto flags = this->_eth->iface.flags(route.ifname);
+		// Нулевой шлюз оправдан только устройством точка-точка
+		ASSERT_TRUE(flags.count(awh::event::eth_flag_t::POINTTOPOINT) > 0)
+		 << "Шлюз маршрута по умолчанию нулевой, а интерфейс " << route.ifname << " не является устройством точка-точка";
+	}
 }
 /**
  * @brief Тест поиска маршрута по адресу шлюза IPv4 (без привилегий)

@@ -80,6 +80,24 @@ namespace {
 	static constexpr double ECDSA_VERIFY_THRESHOLD = 7000.0;
 	static constexpr double RSA_SIGN_THRESHOLD = 500.0;
 	static constexpr double RSA_VERIFY_THRESHOLD = 22000.0;
+	/**
+	 * Пороги схемы ГОСТ Р 34.10-2012
+	 *
+	 * @details Схема считается своими силами на общей длинной арифметике, оттого
+	 *          медленнее прочих на два порядка: умножение точки обходится в полтора
+	 *          миллисекунды. Пороги взяты по самому медленному стенду, впятеро ниже
+	 *          замера рабочей машины, как и у прочих сценариев
+	 */
+	/**
+	 * Порог пропускной способности хэш-функции ГОСТ Р 34.11-2012
+	 *
+	 * @details Сценарии подписи её не меряют вовсе - они работают с 32 октетами, и
+	 *          замедление хэша в них не видно. Свод преобразования дал 88 МБ/с против
+	 *          1,9 МБ/с у поразрядного счёта (5б.12), и порог стоит стражем этой правки
+	 */
+	static constexpr double STREEBOG_THRESHOLD = 15.0;
+	static constexpr double GOST_SIGN_THRESHOLD = 130.0;
+	static constexpr double GOST_VERIFY_THRESHOLD = 60.0;
 	static constexpr double FINGERPRINT_THRESHOLD = 290000.0;
 	/**
 	 * @brief Функция получения объекта криптографии со связкой ключей подписи
@@ -102,6 +120,8 @@ namespace {
 			result.generateKey("ecdsa", awh::crypto_t::signature_t::ECDSA);
 			// Выполняем выработку ключа RSA
 			result.generateKey("rsa", awh::crypto_t::signature_t::RSA);
+			// Выполняем выработку ключа ГОСТ Р 34.10-2012
+			result.generateKey("gost", awh::crypto_t::signature_t::GOST);
 			// Выводим признак выполненного заведения
 			return true;
 		}();
@@ -253,6 +273,60 @@ namespace {
 		return result;
 	}
 	/**
+	 * @brief Функция получения итогов прогона хэш-функции ГОСТ Р 34.11-2012
+	 *
+	 * @return итоги прогона сценария
+	 *
+	 */
+	static const outcome_t & hashedGOST() noexcept {
+		// Итоги прогона хэш-функции ГОСТ
+		static const outcome_t result = [&]() noexcept -> outcome_t {
+			// Получаем объект криптографии со связкой ключей подписи
+			awh::crypto_t & crypto = keyring();
+			// Размер подаваемого содержимого
+			static constexpr size_t VOLUME = (1024 * 1024);
+			// Подаваемое содержимое
+			const vector <uint8_t> content(VOLUME, 0x5A);
+			// Буфер подписи
+			vector <uint8_t> signature;
+			// Выполняем прогон измеряемой операции
+			return measure(20, VOLUME, [&]() noexcept {
+				// Выполняем заведение потока выработки подписи
+				crypto.signInitialize("gost", awh::crypto_t::hash_t::NONE);
+				// Выполняем подачу содержимого в поток
+				crypto.signUpdate(content.data(), content.size());
+				// Выполняем завершение потока выработки подписи
+				crypto.signFinalize(signature);
+			});
+		}();
+		// Выводим итоги прогона сценария
+		return result;
+	}
+	/**
+	 * @brief Функция получения итогов прогона выработки подписи ГОСТ Р 34.10-2012
+	 *
+	 * @return итоги прогона сценария
+	 *
+	 */
+	static const outcome_t & signedGOST() noexcept {
+		// Итоги прогона выработки подписи ГОСТ
+		static const outcome_t result = ::signing("gost", awh::crypto_t::hash_t::NONE, SLOW_ROUNDS);
+		// Выводим итоги прогона сценария
+		return result;
+	}
+	/**
+	 * @brief Функция получения итогов прогона проверки подписи ГОСТ Р 34.10-2012
+	 *
+	 * @return итоги прогона сценария
+	 *
+	 */
+	static const outcome_t & verifiedGOST() noexcept {
+		// Итоги прогона проверки подписи ГОСТ
+		static const outcome_t result = ::verifying("gost", awh::crypto_t::hash_t::NONE, SLOW_ROUNDS);
+		// Выводим итоги прогона сценария
+		return result;
+	}
+	/**
 	 * @brief Функция получения итогов прогона выработки подписи RSA
 	 *
 	 * @return итоги прогона сценария
@@ -301,6 +375,12 @@ namespace {
 	AWH_CRYPTO_SCENARIO(SignRSA, ::signedRSA)
 	// Объявляем сценарии проверки подписи RSA
 	AWH_CRYPTO_SCENARIO(VerifyRSA, ::verifiedRSA)
+	// Объявляем сценарии хэш-функции ГОСТ Р 34.11-2012
+	AWH_CRYPTO_SCENARIO(HashGOST, ::hashedGOST)
+	// Объявляем сценарии выработки подписи ГОСТ Р 34.10-2012
+	AWH_CRYPTO_SCENARIO(SignGOST, ::signedGOST)
+	// Объявляем сценарии проверки подписи ГОСТ Р 34.10-2012
+	AWH_CRYPTO_SCENARIO(VerifyGOST, ::verifiedGOST)
 	// Объявляем сценарии выработки отпечатка открытого ключа
 	AWH_CRYPTO_SCENARIO(Print, ::printed)
 
@@ -333,6 +413,21 @@ namespace {
 	static const bool gVerifyRSA = awh::benchmark::add(
 		"crypto/signature/rsa-verify", "проверок/с", RSA_VERIFY_THRESHOLD,
 		awh::benchmark::bound_t::MINIMUM, &::speedVerifyRSA
+	);
+	// Регистрируем сценарий пропускной способности хэш-функции ГОСТ Р 34.11-2012
+	static const bool gHashGost = awh::benchmark::add(
+		"crypto/signature/gost-hash", "МБ/с", STREEBOG_THRESHOLD,
+		awh::benchmark::bound_t::MINIMUM, &::speedHashGOST
+	);
+	// Регистрируем сценарий скорости выработки подписи ГОСТ Р 34.10-2012
+	static const bool gSignGost = awh::benchmark::add(
+		"crypto/signature/gost-sign", "подписей/с", GOST_SIGN_THRESHOLD,
+		awh::benchmark::bound_t::MINIMUM, &::speedSignGOST
+	);
+	// Регистрируем сценарий скорости проверки подписи ГОСТ Р 34.10-2012
+	static const bool gVerifyGost = awh::benchmark::add(
+		"crypto/signature/gost-verify", "проверок/с", GOST_VERIFY_THRESHOLD,
+		awh::benchmark::bound_t::MINIMUM, &::speedVerifyGOST
 	);
 	// Регистрируем сценарий скорости выработки отпечатка открытого ключа
 	static const bool gPrint = awh::benchmark::add(

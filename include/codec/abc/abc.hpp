@@ -34,7 +34,17 @@
  * Подключаем заголовочные файлы модуля
  */
 #include "common.hpp"
+#include "header.hpp"
+#include "chunk.hpp"
 #include "encoding.hpp"
 #include "reader.hpp"
+#include "writer.hpp"
+#include "document.hpp"
+#include "value.hpp"
+#include "index.hpp"
+#include "container.hpp"
+#include "signature.hpp"
+#include "schedule.hpp"
+#include "editor.hpp"
 
 #endif // __AWH_CODEC_ABC__

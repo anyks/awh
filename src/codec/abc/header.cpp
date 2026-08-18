@@ -1,0 +1,298 @@
+/**
+ * @file header.cpp
+ * @date 2026-08-19
+ *
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
+ * \~russian
+ * @brief Файл реализации заголовка опознания бинарного контейнера ABC
+ *
+ * \~english
+ * @brief Implementation file of the identifying header of the ABC binary container
+ *
+ * \~
+ *
+ * @copyright Copyright © 2026
+ *
+ */
+
+/**
+ * Подключаем заголовочный файл модуля
+ */
+#include <codec/abc/header.hpp>
+
+/**
+ * Подключаем заголовочные файлы проекта
+ */
+#include <cryptography/hash.hpp>
+
+/**
+ * Стандартные заголовочные файлы
+ */
+#include <cstring>
+
+/**
+ * Используем стандартное пространство имён
+ */
+using namespace std;
+
+/**
+ * @brief Пространство имён работ, доступных лишь этому файлу
+ *
+ */
+namespace {
+	/**
+	 * @brief Опознавательная запись контейнера
+	 *
+	 */
+	const uint8_t Magic[4] = {'A', 'B', 'C', 0x00};
+	/**
+	 * @brief Зерно свёртки контрольной суммы заголовка
+	 *
+	 * @details Зерно закреплено постоянным: смена его обратила бы прежние контейнеры в
+	 *          негодные, ибо сумма их перестала бы сходиться
+	 *
+	 */
+	constexpr uint64_t Seed = 0x4142433130303031ull;
+	/**
+	 * @brief Смещение контрольной суммы в уложенном заголовке
+	 *
+	 */
+	constexpr size_t Checksum = (awh::codec::abc::HEADER_LENGTH - 8);
+	/**
+	 * @brief Функция укладки целого числа установленной ширины
+	 *
+	 * @param buffer буфер, куда следует уложить запись
+	 * @param value  укладываемое значение
+	 * @param width  ширина записи в октетах
+	 *
+	 */
+	void lay(uint8_t * buffer, const uint64_t value, const uint8_t width) noexcept {
+		/**
+		 * Выполняем перебор всех октетов записи, от младшего к старшему
+		 */
+		for(uint8_t i = 0; i < width; i++)
+			// Выполняем укладку очередного октета записи
+			buffer[i] = static_cast <uint8_t> ((value >> (i * 8)) & 0xFF);
+	}
+	/**
+	 * @brief Функция снятия целого числа установленной ширины
+	 *
+	 * @param buffer буфер поданной записи
+	 * @param width  ширина записи в октетах
+	 * @return       снятое значение
+	 *
+	 */
+	uint64_t take(const uint8_t * buffer, const uint8_t width) noexcept {
+		// Собираемое значение
+		uint64_t result = 0;
+		/**
+		 * Выполняем перебор всех октетов записи, от младшего к старшему
+		 */
+		for(uint8_t i = 0; i < width; i++)
+			// Выполняем сборку значения из очередного октета записи
+			result |= (static_cast <uint64_t> (buffer[i]) << (i * 8));
+		// Выводим собранное значение
+		return result;
+	}
+};
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::abc::Header::Header() noexcept :
+ major(VERSION_MAJOR), minor(VERSION_MINOR), flags(static_cast <uint16_t> (flag_t::NONE)),
+ content(0), length(0), records(0), index(0), signature(0), generation(0) {
+	// Выполняем обнуление признака владельца контейнера
+	::memset(this->owner, 0, OWNER_LENGTH);
+	// Выполняем обнуление отпечатка открытого ключа
+	::memset(this->fingerprint, 0, FINGERPRINT_LENGTH);
+}
+/**
+ * @brief Метод проверки объявленного свойства контейнера
+ *
+ * @param flag проверяемое свойство контейнера
+ * @return     признак объявленности свойства
+ *
+ */
+bool awh::codec::abc::Header::is(const flag_t flag) const noexcept {
+	// Выводим признак объявленности свойства контейнера
+	return ((this->flags & static_cast <uint16_t> (flag)) != 0);
+}
+/**
+ * @brief Метод объявления свойства контейнера
+ *
+ * @param flag  объявляемое свойство контейнера
+ * @param value устанавливаемое значение свойства
+ *
+ */
+void awh::codec::abc::Header::set(const flag_t flag, const bool value) noexcept {
+	// Если свойство контейнера объявляется
+	if(value)
+		// Выполняем объявление свойства контейнера
+		this->flags |= static_cast <uint16_t> (flag);
+	// Выполняем снятие свойства контейнера
+	else this->flags &= static_cast <uint16_t> (~static_cast <uint16_t> (flag));
+}
+/**
+ * @brief Метод укладки заголовка в октеты
+ *
+ * @param result буфер, куда следует уложить заголовок
+ *
+ */
+void awh::codec::abc::Header::pack(vector <uint8_t> & result) const noexcept {
+	// Выполняем получение смещения начала укладываемого заголовка
+	const size_t start = result.size();
+	// Выполняем заведение места под укладываемый заголовок
+	result.resize(start + HEADER_LENGTH, 0);
+	// Выполняем получение указателя на укладываемый заголовок
+	uint8_t * buffer = (result.data() + start);
+	// Выполняем укладку опознавательной записи контейнера
+	::memcpy(buffer, Magic, sizeof(Magic));
+	// Выполняем укладку старшей версии вида записи
+	buffer[4] = this->major;
+	// Выполняем укладку младшей версии вида записи
+	buffer[5] = this->minor;
+	// Выполняем укладку разрядов свойств контейнера
+	lay(buffer + 6, static_cast <uint64_t> (this->flags), 2);
+	// Выполняем укладку признака владельца контейнера
+	::memcpy(buffer + 8, this->owner, OWNER_LENGTH);
+	// Выполняем укладку вида содержимого контейнера
+	lay(buffer + 24, static_cast <uint64_t> (this->content), 4);
+	// Выполняем укладку длины тела контейнера
+	lay(buffer + 32, this->length, 8);
+	// Выполняем укладку количества записей в теле контейнера
+	lay(buffer + 40, this->records, 8);
+	// Выполняем укладку смещения оглавления
+	lay(buffer + 48, this->index, 8);
+	// Выполняем укладку смещения подписи
+	lay(buffer + 56, this->signature, 8);
+	// Выполняем укладку отпечатка открытого ключа
+	::memcpy(buffer + 64, this->fingerprint, FINGERPRINT_LENGTH);
+	// Выполняем укладку поколения записи контейнера
+	lay(buffer + 80, this->generation, 8);
+	/**
+	 * Выполняем укладку контрольной суммы заголовка.
+	 *
+	 * Сумма считается по уже уложенным октетам, а не по полям: считать её по полям
+	 * значило бы стеречь не то, что ляжет на носитель, и всякая правка укладки
+	 * проходила бы мимо суммы незамеченной
+	 */
+	lay(buffer + Checksum, awh::hashing::generate(buffer, Checksum, Seed), 8);
+}
+/**
+ * @brief Метод снятия заголовка с октетов
+ *
+ * @param buffer буфер поданных октетов
+ * @param size   размер поданных октетов
+ * @param error  код отказа, если снять заголовок не удалось
+ * @return       признак успешно снятого заголовка
+ *
+ */
+bool awh::codec::abc::Header::unpack(const void * buffer, const size_t size, error_t & error) noexcept {
+	// Выполняем сброс кода отказа
+	error = error_t::NONE;
+	// Если буфер поданных октетов не существует
+	if(buffer == nullptr){
+		// Выполняем установку кода внутреннего отказа
+		error = error_t::INTERNAL;
+		// Сообщаем, что заголовок не снят
+		return false;
+	}
+	// Если поданных октетов недостаёт на заголовок
+	if(size < HEADER_LENGTH){
+		// Выполняем установку кода отказа обрыва заголовка
+		error = error_t::TRUNCATED_HEADER;
+		// Сообщаем, что заголовок не снят
+		return false;
+	}
+	// Выполняем получение указателя на поданные октеты
+	const uint8_t * octets = reinterpret_cast <const uint8_t *> (buffer);
+	// Если опознавательная запись контейнера не сошлась
+	if(::memcmp(octets, Magic, sizeof(Magic)) != 0){
+		// Выполняем установку кода отказа опознания
+		error = error_t::INVALID_MAGIC;
+		// Сообщаем, что заголовок не снят
+		return false;
+	}
+	/**
+	 * Если контрольная сумма заголовка не сошлась.
+	 *
+	 * Сумма сличается прежде разбора полей: поля повреждённого заголовка толковать
+	 * незачем, а смещения из него увели бы чтение в произвольное место записи
+	 */
+	if(take(octets + Checksum, 8) != awh::hashing::generate(octets, Checksum, Seed)){
+		// Выполняем установку кода отказа контрольной суммы
+		error = error_t::INVALID_CHECKSUM;
+		// Сообщаем, что заголовок не снят
+		return false;
+	}
+	// Выполняем снятие старшей версии вида записи
+	const uint8_t major = octets[4];
+	// Если вид записи контейнера не поддерживается
+	if(major != VERSION_MAJOR){
+		// Выполняем установку кода отказа вида записи
+		error = error_t::INVALID_VERSION;
+		// Сообщаем, что заголовок не снят
+		return false;
+	}
+	// Выполняем установку старшей версии вида записи
+	this->major = major;
+	// Выполняем снятие младшей версии вида записи
+	this->minor = octets[5];
+	// Выполняем снятие разрядов свойств контейнера
+	this->flags = static_cast <uint16_t> (take(octets + 6, 2));
+	// Выполняем снятие признака владельца контейнера
+	::memcpy(this->owner, octets + 8, OWNER_LENGTH);
+	// Выполняем снятие вида содержимого контейнера
+	this->content = static_cast <uint32_t> (take(octets + 24, 4));
+	// Выполняем снятие длины тела контейнера
+	this->length = take(octets + 32, 8);
+	// Выполняем снятие количества записей в теле контейнера
+	this->records = take(octets + 40, 8);
+	// Выполняем снятие смещения оглавления
+	this->index = take(octets + 48, 8);
+	// Выполняем снятие смещения подписи
+	this->signature = take(octets + 56, 8);
+	// Выполняем снятие отпечатка открытого ключа
+	::memcpy(this->fingerprint, octets + 64, FINGERPRINT_LENGTH);
+	// Выполняем снятие поколения записи контейнера
+	this->generation = take(octets + 80, 8);
+	// Сообщаем, что заголовок снят
+	return true;
+}
+/**
+ * @brief Функция быстрой проверки поданных октетов на признак контейнера
+ *
+ * @param buffer буфер поданных октетов
+ * @param size   размер поданных октетов
+ * @return       признак того, что октеты начинают контейнер
+ *
+ */
+bool awh::codec::abc::probe(const void * buffer, const size_t size) noexcept {
+	// Если буфер поданных октетов не существует
+	if(buffer == nullptr)
+		// Сообщаем, что октеты контейнера не начинают
+		return false;
+	// Если поданных октетов недостаёт на заголовок
+	if(size < HEADER_LENGTH)
+		// Сообщаем, что октеты контейнера не начинают
+		return false;
+	// Выполняем получение указателя на поданные октеты
+	const uint8_t * octets = reinterpret_cast <const uint8_t *> (buffer);
+	// Если опознавательная запись контейнера не сошлась
+	if(::memcmp(octets, Magic, sizeof(Magic)) != 0)
+		// Сообщаем, что октеты контейнера не начинают
+		return false;
+	// Выводим признак схождения контрольной суммы заголовка
+	return (take(octets + Checksum, 8) == awh::hashing::generate(octets, Checksum, Seed));
+}

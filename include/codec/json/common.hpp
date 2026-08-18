@@ -230,11 +230,28 @@ namespace awh {
 			 * а память под стек состояний: текст из одних открывающих скобок иначе занял бы
 			 * её всю
 			 *
+			 * @details Разбором предел этот стережёт не стек вызовов, а память под стек
+			 * состояний. Возвратны, однако, работы ПО ГОТОВОМУ ДЕРЕВУ - размножение
+			 * владеющего значения, снятие его и сличение, - и тем же пределом держатся
+			 * они: заведение по пути глубже предела отвергается, а запись глубже него
+			 * отвергается писателем
+			 *
+			 * @warning Предел этот, поднятый настройкою разбора выше десяти тысяч, стек
+			 *          возвратных работ срывает: замер дал срыв размножения около 65 000
+			 *          уровней при стеке 8 МБ и около 30 000 при 4 МБ. Поднимающему предел
+			 *          надлежит знать, зачем он это делает
+			 *
 			 * \~english
 			 * @brief Largest admissible depth of the nesting
 			 * @details This limit guards not the stack of the calls — the parsing is conducted without a recursion —
 			 * but the memory for the stack of the states: a text of opening brackets alone would otherwise occupy
 			 * all of it
+			 * @details Recursive, however, are the works UPON A READY TREE — the duplication of an owning value,
+			 * its taking and its comparison — and they are held by the very same limit: a creation by a path deeper
+			 * than the limit is refused, while a writing deeper than it is refused by the writer
+			 * @warning This limit, raised by the setting of the parsing above ten thousand, overflows the stack of
+			 *          the recursive works: a measurement gave an overflow of the duplication at about 65 000 levels
+			 *          with a stack of 8 MB and at about 30 000 with 4 MB. Whoever raises the limit ought to know why
 			 *
 			 * \~
 			 */

@@ -904,7 +904,17 @@ namespace io {
 			 *
 			 */
 			bool complete;
-			// Идентификатор SCTP-события
+			/**
+			 * Идентификатор SCTP-события
+			 *
+			 * @note У узла-сервера остаётся нулевым намеренно. Ядро сообщает опознаватель
+			 *       связи только оповещением или метаданными сообщения, а всякую связь
+			 *       слушающего сокета мы тут же уносим вызовом sctp_peeloff: с этого мига
+			 *       связь описателю сервера не принадлежит и запрос по её опознавателю у
+			 *       него пуст. Нуль же значит «настройки самой конечной точки» — ровно то,
+			 *       что и требуется читать у слушающего сокета
+			 *
+			 */
 			sctp_assoc_t id;
 			// Флаги SCTP-событий
 			int32_t flags;
@@ -31682,21 +31692,6 @@ namespace io {
 												// Выходим из функции
 												return (bytes > 0);
 											}
-											/**
-											 * Запоминаем опознаватель связи, нулём его не затирая
-											 *
-											 * @details Связей у сокета упорядоченных сообщений много, и запросы свойств
-											 *          связи у узла сервера обязаны называть, по какой именно идти.
-											 *          Здесь и есть единственное место, где сервер опознаватель видит:
-											 *          дальше связь отделяется в свой сокет и достаётся принятому узлу
-											 *
-											 * @warning Прежде поле это не записывалось НИГДЕ ни в одном движке, а
-											 *          читалось пятью местами - временем ожидания, ключом и чанками
-											 *          проверки подлинности: все они получали нуль
-											 */
-											if(server->sctp.info.sinfo_assoc_id != 0)
-												// Запоминаем опознаватель связи узла сервера
-												server->sctp.id = server->sctp.info.sinfo_assoc_id;
 											// Получаем дескриптор сокета из информации о сообщении SCTP
 											sock = ::sctp_peeloff(server->fd, server->sctp.info.sinfo_assoc_id);
 										} break;
@@ -34169,11 +34164,6 @@ namespace sctp {
 							case static_cast <uint8_t> (event::node_t::CLIENT):
 								// Запоминаем опознаватель связи клиента
 								awh_cast <::io::client_t *> (node)->transfer.sctp.use().id = sac->sac_assoc_id;
-							break;
-							// Если узел является сервером
-							case static_cast <uint8_t> (event::node_t::SERVER):
-								// Запоминаем опознаватель связи сервера
-								awh_cast <::io::server_t *> (node)->sctp.id = sac->sac_assoc_id;
 							break;
 						}
 						// Устанавливаем тип ассоциации SCTP
@@ -43576,18 +43566,24 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 								 * настройкой гнезда: привязка его не задаёт, и рассылка без
 								 * неё уходит туда, куда укажет таблица маршрутов
 								 */
-								if(client->state.delivery == event::delivery_mode_t::MULTICAST)
-									// Устанавливаем устройство выхода групповой рассылки
-									{
-										// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
-										if(client->transfer.fd != net::invalid_socket_t)
-											result = this->_eth.socket.setMulticastIface(client->transfer.fd, client->state.family, src.iface);
-										// Запоминаем устройство групповой рассылки до фиксации настроек
-										else {
-											client->iface.assign(src.iface.begin(), src.iface.end());
-											result = true;
-										}
-									}
+								/**
+								 * Запоминаем названное устройство всегда
+								 *
+								 * @warning Прежде имя запоминалось лишь при уже заданном режиме
+								 *          рассылки и лишь до заведения сокета. Назови устройство
+								 *          прежде режима - имя терялось, и режим забирал его у
+								 *          `getIface()`, а тот при неназванном устройстве отвечает
+								 *          интерфейсом маршрута по умолчанию
+								 */
+								client->iface.assign(src.iface.begin(), src.iface.end());
+								// Если событие работает групповой рассылкой
+								if(client->state.delivery == event::delivery_mode_t::MULTICAST){
+									// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
+									if(client->transfer.fd != net::invalid_socket_t)
+										result = this->_eth.socket.setMulticastIface(client->transfer.fd, client->state.family, src.iface);
+									// Устройство запомнено до фиксации настроек
+									else result = true;
+								}
 							// Если IP-адрес не получен
 							} else {
 								// Если установлена функция обратного вызова
@@ -43655,18 +43651,24 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 								 * настройкой гнезда: привязка его не задаёт, и рассылка без
 								 * неё уходит туда, куда укажет таблица маршрутов
 								 */
-								if(client->state.delivery == event::delivery_mode_t::MULTICAST)
-									// Устанавливаем устройство выхода групповой рассылки
-									{
-										// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
-										if(client->transfer.fd != net::invalid_socket_t)
-											result = this->_eth.socket.setMulticastIface(client->transfer.fd, client->state.family, src.iface);
-										// Запоминаем устройство групповой рассылки до фиксации настроек
-										else {
-											client->iface.assign(src.iface.begin(), src.iface.end());
-											result = true;
-										}
-									}
+								/**
+								 * Запоминаем названное устройство всегда
+								 *
+								 * @warning Прежде имя запоминалось лишь при уже заданном режиме
+								 *          рассылки и лишь до заведения сокета. Назови устройство
+								 *          прежде режима - имя терялось, и режим забирал его у
+								 *          `getIface()`, а тот при неназванном устройстве отвечает
+								 *          интерфейсом маршрута по умолчанию
+								 */
+								client->iface.assign(src.iface.begin(), src.iface.end());
+								// Если событие работает групповой рассылкой
+								if(client->state.delivery == event::delivery_mode_t::MULTICAST){
+									// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
+									if(client->transfer.fd != net::invalid_socket_t)
+										result = this->_eth.socket.setMulticastIface(client->transfer.fd, client->state.family, src.iface);
+									// Устройство запомнено до фиксации настроек
+									else result = true;
+								}
 							// Если IP-адрес не получен
 							} else {
 								// Если установлена функция обратного вызова
@@ -64955,9 +64957,17 @@ bool awh::engine::IO::setDelivery(const event::id_t id, const event::delivery_mo
 					 *       установке устройства - когда режим назвали прежде него
 					 *
 					 */
+					/**
+					 * @warning Устройство берётся из НАЗВАННОГО событию, а не из `getIface()`.
+					 *          Тот при неназванном устройстве отвечает интерфейсом маршрута по
+					 *          умолчанию - и рассылка уходила туда, куда пользователь её не
+					 *          посылал: на машине с VPN устройством выхода назначался туннель,
+					 *          а он групповую рассылку не несёт. Договор же обратный: не назвал
+					 *          устройства - решает ядро, и настройка гнезда не ставится вовсе
+					 */
 					if(delivery == event::delivery_mode_t::MULTICAST){
-						// Получаем название устройства, заданного событию
-						const string & iface = this->getIface(id);
+						// Получаем название устройства, названного событию
+						const string iface(client->iface.begin(), client->iface.end());
 						// Если устройство событию задано
 						if(!iface.empty())
 							// Устанавливаем устройство выхода групповой рассылки

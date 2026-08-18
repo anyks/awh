@@ -128,8 +128,12 @@ namespace awh {
 		 * @li **Строки и двоичные данные не перекодируются.** Экранирования в двоичной
 		 * записи нет вовсе, оттого значение при чтении из поданного целиком буфера не
 		 * копируется, а отмечается отрезком в нём
-		 * @li **Вместимое несёт размер своего поддерева.** Пропуск вложенного построения
-		 * целиком стоит сложения, а не разбора, и обход идёт вперёд по памяти
+		 * @li **Узел дерева несёт размах своего поддерева.** Обход собранного дерева идёт
+		 * вперёд по памяти, а пропуск вложенного построения целиком стоит сложения. В самой
+		 * же записи вместимое несёт **количество** значений, а не размах в октетах: пропуск
+		 * по записи оттого стоит обхода. Даётся он вынесенным поддеревом страничного
+		 * хранилища, а не полем длины у всякого вместимого - поле такое платило бы октетами
+		 * на всяком вместимом ради выигрыша, нужного лишь крупным
 		 *
 		 * @details **Намеренные решения.** Перечисленное ниже выбрано осознанно, и
 		 * возвращаться к этим вопросам при разборе кода не следует:
@@ -161,8 +165,12 @@ namespace awh {
 		 * @li **The strings and the binary data are not transcoded.** There is no escaping in a binary
 		 * record at all, whereby a value at the reading from a buffer submitted in full is not
 		 * copied but marked by a segment in it
-		 * @li **A container carries the size of its own subtree.** The skipping of a nested construction
-		 * as a whole costs an addition rather than a parsing, and the traversal goes forward through the memory
+		 * @li **A node of the tree carries the extent of its own subtree.** The traversal of an assembled tree goes
+		 * forward through the memory, and the skipping of a nested construction as a whole costs an addition. In the record
+		 * itself a container carries the **number** of the values rather than the extent in octets: the skipping
+		 * by the record therefore costs a traversal. It is given by an external subtree of the paged
+		 * storage rather than by a length field on every container — such a field would pay by the octets
+		 * on every container for the sake of a gain needed only by the large ones
 		 * @details **Deliberate decisions.** The below is chosen consciously, and one should not
 		 * return to these questions at the reading of the code:
 		 * @li **The name of a field of a mapping is a value of any kind except a container.** The restriction
@@ -489,7 +497,25 @@ namespace awh {
 				UNORDERED_KEY        = 0x16, // Имена полей отображения идут не по возрастанию
 				INDEFINITE_REFUSED   = 0x17, // Неопределённая длина при строгом виде записи
 				UNBALANCED_CONTAINER = 0x18, // Вместимое не закрыто либо закрыто лишний раз
-				CONTAINER_OVERFLOW   = 0x19  // Значений вместимого больше объявленного
+				CONTAINER_OVERFLOW   = 0x19, // Значений вместимого больше объявленного
+				INVALID_MAGIC        = 0x1A, // Заголовок не несёт опознавательной записи контейнера
+				INVALID_VERSION      = 0x1B, // Вид записи контейнера не поддерживается
+				INVALID_CHECKSUM     = 0x1C, // Контрольная сумма заголовка не сошлась
+				TRUNCATED_HEADER     = 0x1D, // Заголовок оборван, октетов его недостаёт
+				TRUNCATED_CHUNK      = 0x1E, // Кадр оборван, октетов его недостаёт
+				INVALID_CHUNK        = 0x1F, // Заголовок кадра не опознан
+				COMPRESSION_FAILED   = 0x20, // Сжатие либо разжатие кадра отвечено отказом
+				ENCRYPTION_FAILED    = 0x21, // Шифрование либо расшифровка кадра отвечены отказом
+				MISSING_INDEX        = 0x22, // Оглавление контейнера не объявлено заголовком
+				INVALID_INDEX        = 0x23, // Запись оглавления повреждена либо указывает за тело
+				UNREADABLE_SOURCE    = 0x24, // Работа чтения октетов контейнера отвечена отказом
+				UNWRITABLE_SINK      = 0x25, // Работа записи октетов контейнера отвечена отказом
+				MISSING_RECORD       = 0x26, // Запись снесена правкой контейнера
+				TRUNCATED_SIGNATURE  = 0x27, // Запись подписи оборвана, октетов её недостаёт
+				INVALID_SIGNATURE    = 0x28, // Запись подписи повреждена
+				UNSIGNED_CONTAINER   = 0x29, // Подпись владельца контейнером не объявлена
+				REFUSED_SIGNATURE    = 0x2A, // Подпись владельца контейнера не сошлась
+				SIGNING_FAILED       = 0x2B  // Выработка подписи владельца отвечена отказом
 			};
 
 			/**

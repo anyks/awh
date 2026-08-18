@@ -60,7 +60,11 @@ TEST(CodecAbcCommon, Messages) {
 		abc::error_t::TRAILING_OCTETS, abc::error_t::EMPTY_RECORD,
 		abc::error_t::OVERFLOW_LIMIT, abc::error_t::INVALID_KEY, abc::error_t::UNORDERED_KEY,
 		abc::error_t::INDEFINITE_REFUSED, abc::error_t::UNBALANCED_CONTAINER,
-		abc::error_t::CONTAINER_OVERFLOW
+		abc::error_t::CONTAINER_OVERFLOW, abc::error_t::INVALID_MAGIC,
+		abc::error_t::INVALID_VERSION, abc::error_t::INVALID_CHECKSUM,
+		abc::error_t::TRUNCATED_HEADER, abc::error_t::TRUNCATED_CHUNK,
+		abc::error_t::INVALID_CHUNK, abc::error_t::COMPRESSION_FAILED,
+		abc::error_t::ENCRYPTION_FAILED
 	};
 	// Набор уже встреченных описаний кодов отказов
 	unordered_set <string> seen;

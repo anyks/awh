@@ -526,6 +526,19 @@ namespace {
 			const string expression = pattern(gen);
 			// Получаем порождённый текст сопоставления
 			const string text = subject(gen, block.length, block.utf);
+			/**
+			 * Если требуется вывод итога сопоставления каждого образца
+			 *
+			 * @details Образец называется прежде сопоставления: порождённый код
+			 *          способен пасть или уйти в бесконечность, и вывод,
+			 *          за сопоставлением следующий, виновника не назовёт вовсе.
+			 *          Поток вывода стенда небуферизован, отчего строка эта
+			 *          доходит до вывода прежде самого сопоставления.
+			 *
+			 */
+			if(verbose)
+				// Выполняем вывод образца, к сопоставлению принимаемого
+				::printf("  %-6zu «%s» текст %zu\n", sample, expression.c_str(), text.size());
 			// Создаём собираемое регулярное выражение
 			regex::expression_t compiled;
 			// Выполняем сборку регулярного выражения
@@ -991,7 +1004,7 @@ namespace {
  * @return результат сличения порождённого машинного кода
  *
  */
-bool matching(const bool utf) noexcept {
+bool matching(const bool utf, const bool verbose) noexcept {
 	/**
 	 * Если порождение машинного кода набором команд не поддерживается
 	 */
@@ -1041,6 +1054,17 @@ bool matching(const bool utf) noexcept {
 		// Получаем очередное регулярное выражение сличения
 		const string expression = ((sample < RECURSIVES) ?
 		 string(RECURSIVE[sample]) : pattern(gen));
+		/**
+		 * Если требуется вывод сличаемого образца
+		 *
+		 * @details Образец называется прежде сборки и сопоставления: порождённый
+		 *          код способен пасть или уйти в бесконечность, и вывод,
+		 *          за сопоставлением следующий, виновника не назовёт вовсе.
+		 *
+		 */
+		if(verbose)
+			// Выполняем вывод образца, к сличению принимаемого
+			::printf("  %-6zu «%s»\n", sample, expression.c_str());
 		// Создаём собираемое регулярное выражение
 		regex::expression_t compiled;
 		/**
@@ -2175,7 +2199,7 @@ int main(int argc, char ** argv) {
 	/**
 	 * Если проверка порождения машинного кода не пройдена
 	 */
-	if(!matching(false))
+	if(!matching(false, ((verbose != nullptr) && (::strcmp(verbose, "сопоставитель") == 0))))
 		// Выполняем сброс флага успешного прохождения стенда
 		passed = false;
 	/**
@@ -2187,7 +2211,7 @@ int main(int argc, char ** argv) {
 	 *          одних лишь символов ASCII последовательности эти ходу не имеют.
 	 *
 	 */
-	if(!matching(true))
+	if(!matching(true, ((verbose != nullptr) && (::strcmp(verbose, "сопоставитель") == 0))))
 		// Выполняем сброс флага успешного прохождения стенда
 		passed = false;
 	/**

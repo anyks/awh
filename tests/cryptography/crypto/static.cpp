@@ -2759,7 +2759,7 @@ TEST_F(CryptoFixture, SignatureKindsCryptoTest){
 	/**
 	 * Выполняем перебор всех заведённых видов подписи
 	 */
-	for(auto & kind : {awh::crypto_t::signature_t::RSA, awh::crypto_t::signature_t::ECDSA, awh::crypto_t::signature_t::ED25519}){
+	for(auto & kind : {awh::crypto_t::signature_t::RSA, awh::crypto_t::signature_t::ECDSA, awh::crypto_t::signature_t::ED25519, awh::crypto_t::signature_t::GOST}){
 		// Выполняем выработку ключа подписи
 		ASSERT_TRUE(this->_crypto->generateKey("owner", kind)) << "kind = " << static_cast <uint16_t> (kind);
 		// Проверяем вид подписи выработанного ключа
@@ -2767,12 +2767,6 @@ TEST_F(CryptoFixture, SignatureKindsCryptoTest){
 	}
 	// Проверяем отсутствие вида подписи у имени, ключа не имеющего
 	EXPECT_EQ(this->_crypto->signature("stranger"), awh::crypto_t::signature_t::NONE);
-	/**
-	 * Вид подписи, работой не заведённый, отвергается: место под ГОСТ Р 34.10 в
-	 * перечислении занято, а схемы за ним нет
-	 */
-	// Проверяем отказ выработки ключа вида, работой не заведённого
-	EXPECT_FALSE(this->_crypto->generateKey("gost", awh::crypto_t::signature_t::GOST));
 	// Проверяем отказ выработки ключа вида, разбору не знакомого
 	EXPECT_FALSE(this->_crypto->generateKey("none", awh::crypto_t::signature_t::NONE));
 }
@@ -3497,4 +3491,275 @@ TEST_F(CryptoFixture, SignatureStrengthNoiseCryptoTest){
 		ASSERT_TRUE(this->_crypto->setKey("imported", keys.at(i), awh::crypto_t::key_type_t::PRIVATE)) << "index = " << i;
 	// Проверяем, что разрядность схем с заданной разрядностью не оглашается
 	EXPECT_EQ(records, static_cast <size_t> (0));
+}
+
+/**
+ * @brief Тест взаимного признания подписи ГОСТ с чужой работой
+ *
+ * @details Закрепляет числа, выработанные сторонней реализацией (gost-engine на
+ *          стенде Debian): открытый ключ, хэш-сумма и подпись взяты у неё, а
+ *          признаются здесь. Проверка эта дороже всех прочих: самосогласованность
+ *          своей реализации ничего не стоит, если подпись не принимает никто другой
+ *
+ */
+TEST_F(CryptoFixture, GostForeignVectorCryptoTest){
+	// Закрытый ключ, выработанный чужой работой
+	static const char * PRIVATE =
+		"-----BEGIN PRIVATE KEY-----\n"
+		"MEYCAQAwHwYIKoUDBwEBAQEwEwYHKoUDAgIjAQYIKoUDBwEBAgIEII7TH1p3P098\n"
+		"4H99bbFdagXUqBDzk3uXh4sQ6zjA45+C\n"
+		"-----END PRIVATE KEY-----\n";
+	// Выполняем ввод закрытого ключа чужой работы
+	ASSERT_TRUE(this->_crypto->setKey("foreign", PRIVATE, awh::crypto_t::key_type_t::PRIVATE));
+	// Проверяем опознание вида подписи введённого ключа
+	EXPECT_EQ(this->_crypto->signature("foreign"), awh::crypto_t::signature_t::GOST);
+	// Подписываемое сообщение
+	static const char * MESSAGE = "проба взаимного признания подписи";
+	// Подпись, выработанная чужой работой
+	static const uint8_t SIGNATURE[64] = {
+		0xd5, 0x28, 0x4f, 0x11, 0x8c, 0x9f, 0xc7, 0x0d, 0xfa, 0xb2, 0xa6, 0x23, 0x6f, 0x79, 0x0c, 0xbd,
+		0x7f, 0xd6, 0x62, 0xdf, 0x3f, 0x17, 0xdb, 0x15, 0x71, 0x19, 0x93, 0x2e, 0x86, 0xae, 0xf4, 0x31,
+		0x73, 0x9d, 0xbc, 0x4f, 0x24, 0xaf, 0x81, 0xc3, 0x96, 0x40, 0x65, 0x0c, 0x90, 0xd7, 0x11, 0xf4,
+		0x49, 0x51, 0xd9, 0x60, 0x3c, 0x1a, 0x8f, 0x4e, 0xca, 0x2c, 0x08, 0xc3, 0xe8, 0x2d, 0xb6, 0xb0
+	};
+	// Набор подписи чужой работы
+	const std::vector <uint8_t> signature(SIGNATURE, SIGNATURE + sizeof(SIGNATURE));
+	// Проверяем принятие подписи чужой работы
+	EXPECT_TRUE(this->_crypto->verify("foreign", reinterpret_cast <const uint8_t *> (MESSAGE), ::strlen(MESSAGE), signature, awh::crypto_t::hash_t::NONE));
+	/**
+	 * Выполняем перебор всех октетов подписи
+	 */
+	for(size_t i = 0; i < signature.size(); i++){
+		// Испорченная на разряд подпись
+		std::vector <uint8_t> broken = signature;
+		// Выполняем порчу очередного октета подписи
+		broken[i] ^= 0x01;
+		// Проверяем отказ испорченной подписи
+		EXPECT_FALSE(this->_crypto->verify("foreign", reinterpret_cast <const uint8_t *> (MESSAGE), ::strlen(MESSAGE), broken, awh::crypto_t::hash_t::NONE)) << "octet = " << i;
+	}
+	// Испорченное на разряд сообщение
+	std::string spoiled(MESSAGE);
+	// Выполняем порчу сообщения
+	spoiled[3] ^= 0x01;
+	// Проверяем отказ испорченного сообщения
+	EXPECT_FALSE(this->_crypto->verify("foreign", reinterpret_cast <const uint8_t *> (spoiled.data()), spoiled.size(), signature, awh::crypto_t::hash_t::NONE));
+}
+
+/**
+ * @brief Тест переносимости отпечатка ключа ГОСТ
+ *
+ * @details Отпечаток обязан считаться от той же канонической записи, что и у прочих
+ *          видов подписи, иначе опознание владельца у ГОСТ вышло бы своим и
+ *          непереносимым. Закрепляется значение, сходящееся с записью, которую
+ *          читает сторонняя реализация
+ *
+ */
+TEST_F(CryptoFixture, GostFingerprintCryptoTest){
+	// Открытый ключ, выработанный чужой работой
+	static const char * PUBLIC =
+		"-----BEGIN PUBLIC KEY-----\n"
+		"MGYwHwYIKoUDBwEBAQEwEwYHKoUDAgIjAQYIKoUDBwEBAgIDQwAEQAXLvVqRmvXA\n"
+		"T3ScADd4NoiatJ94U4wk9+WxLfQ2UDjTW1I7rKPZvfRVmPDwpGemk813CKob/njp\n"
+		"zGLsfMCXZ68=\n"
+		"-----END PUBLIC KEY-----\n";
+	// Выполняем ввод открытого ключа чужой работы
+	ASSERT_TRUE(this->_crypto->setKey("foreign", PUBLIC, awh::crypto_t::key_type_t::PUBLIC));
+	// Получаем отпечаток открытого ключа
+	const std::string fingerprint = this->_crypto->fingerprint <std::string> ("foreign", awh::crypto_t::format_t::HEX);
+	// Проверяем длину отпечатка
+	EXPECT_EQ(fingerprint.size(), static_cast <size_t> (64));
+	/**
+	 * Отпечаток закрепляется числом, взятым у сторонней реализации: она выписывает
+	 * тот же ключ канонической записью и берёт от неё ту же хэш-сумму. Без этого
+	 * закрепления неверная, но самосогласованная запись прошла бы проверку - сличение
+	 * своих отпечатков между собой такой ошибки не ловит вовсе
+	 */
+	// Проверяем совпадение отпечатка со снятым у сторонней реализации
+	EXPECT_EQ(fingerprint, "27fad764d3694ad584c9b23cbfd57bcee84fda9dbefd33b0797f41277046268b");
+	// Проверяем неизменность отпечатка от повторного получения
+	EXPECT_EQ(this->_crypto->fingerprint <std::string> ("foreign", awh::crypto_t::format_t::HEX), fingerprint);
+	// Выполняем повторный ввод того же ключа под иным именем
+	ASSERT_TRUE(this->_crypto->setKey("second", PUBLIC, awh::crypto_t::key_type_t::PUBLIC));
+	// Проверяем совпадение отпечатков одного и того же ключа
+	EXPECT_EQ(this->_crypto->fingerprint <std::string> ("second", awh::crypto_t::format_t::HEX), fingerprint);
+	// Выполняем выработку своего ключа ГОСТ
+	ASSERT_TRUE(this->_crypto->generateKey("own", awh::crypto_t::signature_t::GOST));
+	// Проверяем несовпадение отпечатков разных ключей
+	EXPECT_NE(this->_crypto->fingerprint <std::string> ("own", awh::crypto_t::format_t::HEX), fingerprint);
+}
+
+/**
+ * @brief Тест обмена ключами ГОСТ через записи PEM
+ *
+ * @details Закрепляет, что выписанный ключ читается обратно и даёт тот же отпечаток,
+ *          а закрытая часть даёт ту же открытую. Записи эти читает и сторонняя
+ *          реализация - проверено на стенде, см. DECISIONS 5б.6
+ *
+ */
+TEST_F(CryptoFixture, GostKeyStorageCryptoTest){
+	// Выполняем выработку ключа подписи
+	ASSERT_TRUE(this->_crypto->generateKey("own", awh::crypto_t::signature_t::GOST));
+	// Получаем отпечаток выработанного ключа
+	const std::string fingerprint = this->_crypto->fingerprint <std::string> ("own", awh::crypto_t::format_t::HEX);
+	// Выполняем выписку закрытого ключа
+	const std::string secret = this->_crypto->getKey("own", awh::crypto_t::key_type_t::PRIVATE);
+	// Выполняем выписку открытого ключа
+	const std::string open = this->_crypto->getKey("own", awh::crypto_t::key_type_t::PUBLIC);
+	// Проверяем наличие заголовка записи закрытого ключа
+	EXPECT_NE(secret.find("-----BEGIN PRIVATE KEY-----"), std::string::npos);
+	// Проверяем наличие заголовка записи открытого ключа
+	EXPECT_NE(open.find("-----BEGIN PUBLIC KEY-----"), std::string::npos);
+	// Выполняем ввод выписанного закрытого ключа
+	ASSERT_TRUE(this->_crypto->setKey("restored", secret, awh::crypto_t::key_type_t::PRIVATE));
+	// Проверяем совпадение отпечатка восстановленного ключа
+	EXPECT_EQ(this->_crypto->fingerprint <std::string> ("restored", awh::crypto_t::format_t::HEX), fingerprint);
+	// Выполняем ввод выписанного открытого ключа
+	ASSERT_TRUE(this->_crypto->setKey("opened", open, awh::crypto_t::key_type_t::PUBLIC));
+	// Проверяем совпадение отпечатка открытого ключа
+	EXPECT_EQ(this->_crypto->fingerprint <std::string> ("opened", awh::crypto_t::format_t::HEX), fingerprint);
+	// Подписываемое сообщение
+	static const char * MESSAGE = "содержимое, подписанное восстановленным ключом";
+	// Набор выработанной подписи
+	std::vector <uint8_t> signature;
+	// Выполняем выработку подписи восстановленным ключом
+	ASSERT_TRUE(this->_crypto->sign("restored", reinterpret_cast <const uint8_t *> (MESSAGE), ::strlen(MESSAGE), awh::crypto_t::hash_t::NONE, signature));
+	// Проверяем проверку подписи открытым ключом
+	EXPECT_TRUE(this->_crypto->verify("opened", reinterpret_cast <const uint8_t *> (MESSAGE), ::strlen(MESSAGE), signature, awh::crypto_t::hash_t::NONE));
+	/**
+	 * Ключ без закрытой части подписывать не может, и отказ этот обязан быть явным:
+	 * молчаливая выдача пустой подписи прошла бы у потребителя за подписанное
+	 */
+	// Набор подписи открытым ключом
+	std::vector <uint8_t> refused;
+	// Проверяем отказ выработки подписи ключом без закрытой части
+	EXPECT_FALSE(this->_crypto->sign("opened", reinterpret_cast <const uint8_t *> (MESSAGE), ::strlen(MESSAGE), awh::crypto_t::hash_t::NONE, refused));
+	// Проверяем пустоту буфера подписи после отказа
+	EXPECT_TRUE(refused.empty());
+}
+
+/**
+ * @brief Тест договора хэш-функции у подписи ГОСТ
+ *
+ * @details Схема ГОСТ предписывает себе хэш-функцию сама, оттого поданный тип
+ *          хэш-суммы отвергается: приняв его молча, работа подписала бы предписанным,
+ *          а не поданным, и потребитель считал бы подпись иной, чем она есть
+ *
+ */
+TEST_F(CryptoFixture, GostHashContractCryptoTest){
+	// Выполняем выработку ключа подписи
+	ASSERT_TRUE(this->_crypto->generateKey("own", awh::crypto_t::signature_t::GOST));
+	// Подписываемое сообщение
+	static const char * MESSAGE = "договор хэш-функции";
+	// Набор выработанной подписи
+	std::vector <uint8_t> signature;
+	/**
+	 * Выполняем перебор всех типов хэш-суммы библиотеки криптографии
+	 */
+	for(auto & hash : {awh::crypto_t::hash_t::MD5, awh::crypto_t::hash_t::SHA1, awh::crypto_t::hash_t::SHA256, awh::crypto_t::hash_t::SHA512}){
+		// Проверяем отказ выработки подписи с поданным типом хэш-суммы
+		EXPECT_FALSE(this->_crypto->sign("own", reinterpret_cast <const uint8_t *> (MESSAGE), ::strlen(MESSAGE), hash, signature)) << "hash = " << static_cast <uint16_t> (hash);
+		// Проверяем отказ заведения потока подписи с поданным типом хэш-суммы
+		EXPECT_FALSE(this->_crypto->signInitialize("own", hash)) << "hash = " << static_cast <uint16_t> (hash);
+	}
+	// Проверяем выработку подписи при пустом типе хэш-суммы
+	EXPECT_TRUE(this->_crypto->sign("own", reinterpret_cast <const uint8_t *> (MESSAGE), ::strlen(MESSAGE), awh::crypto_t::hash_t::NONE, signature));
+	// Проверяем постоянство длины подписи
+	EXPECT_EQ(signature.size(), static_cast <size_t> (64));
+	// Проверяем совпадение длины подписи с заявленной
+	EXPECT_EQ(this->_crypto->length("own"), signature.size());
+	// Проверяем совпадение предела длины подписи с заявленной
+	EXPECT_EQ(this->_crypto->limit("own"), signature.size());
+}
+
+/**
+ * @brief Тест независимости поточной подписи ГОСТ от нарезки на куски
+ *
+ * @details Поточная подпись обязана совпадать с разовой при всякой нарезке потока:
+ *          состояние счёта хэш-суммы накапливает неполный блок, и ошибка накопления
+ *          дала бы подпись, зависящую от размера порции, - а порции задаёт вызывающая
+ *          сторона, и воспроизвести такую подпись было бы нечем
+ *
+ */
+TEST_F(CryptoFixture, GostStreamChunkCryptoTest){
+	// Выполняем выработку ключа подписи
+	ASSERT_TRUE(this->_crypto->generateKey("own", awh::crypto_t::signature_t::GOST));
+	// Подписываемое содержимое
+	std::string content;
+	/**
+	 * Выполняем наполнение подписываемого содержимого
+	 */
+	for(size_t i = 0; i < 5000; i++)
+		// Выполняем добавление очередного знака содержимого
+		content.append(1, static_cast <char> ('a' + (i % 26)));
+	/**
+	 * Выполняем перебор всех размеров куска подачи
+	 */
+	for(auto & chunk : {static_cast <size_t> (1), static_cast <size_t> (7), static_cast <size_t> (63), static_cast <size_t> (64), static_cast <size_t> (65), static_cast <size_t> (333), static_cast <size_t> (8192)}){
+		// Выполняем заведение потока выработки подписи
+		ASSERT_TRUE(this->_crypto->signInitialize("own", awh::crypto_t::hash_t::NONE)) << "chunk = " << chunk;
+		/**
+		 * Выполняем подачу содержимого кусками
+		 */
+		for(size_t offset = 0; offset < content.size(); offset += chunk){
+			// Определяем размер очередного куска
+			const size_t size = (((content.size() - offset) < chunk) ? (content.size() - offset) : chunk);
+			// Выполняем подачу очередного куска в поток
+			ASSERT_TRUE(this->_crypto->signUpdate(reinterpret_cast <const uint8_t *> (content.data() + offset), size)) << "chunk = " << chunk;
+		}
+		// Набор выработанной подписи
+		std::vector <uint8_t> signature;
+		// Выполняем завершение потока выработки подписи
+		ASSERT_TRUE(this->_crypto->signFinalize(signature)) << "chunk = " << chunk;
+		/**
+		 * Поточная подпись сличается разовой проверкой, а не с числами другой подписи:
+		 * схема ГОСТ случайна, и две подписи одного содержимого числами не совпадают
+		 */
+		// Проверяем разовую проверку поточной подписи
+		EXPECT_TRUE(this->_crypto->verify("own", reinterpret_cast <const uint8_t *> (content.data()), content.size(), signature, awh::crypto_t::hash_t::NONE)) << "chunk = " << chunk;
+		// Выполняем заведение потока проверки подписи
+		ASSERT_TRUE(this->_crypto->verifyInitialize("own", awh::crypto_t::hash_t::NONE)) << "chunk = " << chunk;
+		/**
+		 * Выполняем подачу содержимого кусками в поток проверки
+		 */
+		for(size_t offset = 0; offset < content.size(); offset += chunk){
+			// Определяем размер очередного куска
+			const size_t size = (((content.size() - offset) < chunk) ? (content.size() - offset) : chunk);
+			// Выполняем подачу очередного куска в поток проверки
+			ASSERT_TRUE(this->_crypto->verifyUpdate(reinterpret_cast <const uint8_t *> (content.data() + offset), size)) << "chunk = " << chunk;
+		}
+		// Проверяем поточную проверку поточной подписи
+		EXPECT_TRUE(this->_crypto->verifyFinalize(signature)) << "chunk = " << chunk;
+	}
+}
+
+/**
+ * @brief Тест поточной работы схемы ГОСТ
+ *
+ * @details Закрепляет справку о поточности и невзаимозаменяемость потоков выработки
+ *          и проверки: подача проверяемого в поток выработки принята была бы молча
+ *
+ */
+TEST_F(CryptoFixture, GostStreamDirectionCryptoTest){
+	// Проверяем справку о поточной работе схемы ГОСТ
+	EXPECT_TRUE(this->_crypto->streamable(awh::crypto_t::signature_t::GOST));
+	// Выполняем выработку ключа подписи
+	ASSERT_TRUE(this->_crypto->generateKey("own", awh::crypto_t::signature_t::GOST));
+	// Подписываемое сообщение
+	static const char * MESSAGE = "направление потока";
+	// Набор выработанной подписи
+	std::vector <uint8_t> signature;
+	// Выполняем заведение потока выработки подписи
+	ASSERT_TRUE(this->_crypto->signInitialize("own", awh::crypto_t::hash_t::NONE));
+	// Выполняем подачу сообщения в поток выработки
+	ASSERT_TRUE(this->_crypto->signUpdate(reinterpret_cast <const uint8_t *> (MESSAGE), ::strlen(MESSAGE)));
+	// Проверяем отказ подачи в поток проверки, заведённый как поток выработки
+	EXPECT_FALSE(this->_crypto->verifyUpdate(reinterpret_cast <const uint8_t *> (MESSAGE), ::strlen(MESSAGE)));
+	// Выполняем завершение потока выработки подписи
+	ASSERT_TRUE(this->_crypto->signFinalize(signature));
+	// Выполняем заведение потока проверки подписи
+	ASSERT_TRUE(this->_crypto->verifyInitialize("own", awh::crypto_t::hash_t::NONE));
+	// Выполняем подачу сообщения в поток проверки
+	ASSERT_TRUE(this->_crypto->verifyUpdate(reinterpret_cast <const uint8_t *> (MESSAGE), ::strlen(MESSAGE)));
+	// Проверяем отказ завершения потока выработки, заведённого как поток проверки
+	EXPECT_FALSE(this->_crypto->signFinalize(signature));
 }

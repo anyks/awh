@@ -167,3 +167,55 @@ TEST(CodecJsonCommon, Escapable) {
 	// Выполняем проверку отсутствия необходимости экранирования пустого содержимого
 	ASSERT_FALSE(json::escapable("", json::escape_t::ASCII));
 }
+/**
+ * @brief Проверка названий видов значения и приведения вида значения к виду узла
+ *
+ * @details Названия эти уходят в сообщения о несовпадении вида, и потребитель судит
+ *          по ним, что именно ему пришло. Карта покрытия показала обе выдачи
+ *          нетронутыми целиком: набор не звал их ни разу, а стало быть, опечатка в
+ *          названии либо разъехавшийся порядок ветвей прошли бы незамеченными
+ *
+ * @note Перечень здесь полон намеренно: проверка нескольких названий из полутора
+ *       десятков доказывает лишь, что выдача отвечает, а не что отвечает верно.
+ *       Добавленный впредь вид значения обязан ронять эту проверку, а не молчать
+ *
+ */
+TEST(CodecJsonCommon, TypeNames) {
+	/**
+	 * @brief Вид значения, его название и отвечающий ему вид узла
+	 *
+	 */
+	const struct {
+		// Проверяемый вид значения документа
+		json::type_t type;
+		// Ожидаемое название вида значения
+		const char * name;
+		// Ожидаемый вид узла документа
+		json::kind_t kind;
+	} items[] = {
+		{json::type_t::UNDEFINED, "undefined", json::kind_t::NONE},
+		{json::type_t::NUL,       "null",      json::kind_t::NUL},
+		{json::type_t::BOOL,      "boolean",   json::kind_t::BOOL},
+		{json::type_t::STRING,    "string",    json::kind_t::STRING},
+		{json::type_t::ARRAY,     "array",     json::kind_t::ARRAY},
+		{json::type_t::OBJECT,    "object",    json::kind_t::OBJECT},
+		{json::type_t::INT8,      "int8",      json::kind_t::NUMBER},
+		{json::type_t::INT16,     "int16",     json::kind_t::NUMBER},
+		{json::type_t::INT32,     "int32",     json::kind_t::NUMBER},
+		{json::type_t::INT64,     "int64",     json::kind_t::NUMBER},
+		{json::type_t::UINT8,     "uint8",     json::kind_t::NUMBER},
+		{json::type_t::UINT16,    "uint16",    json::kind_t::NUMBER},
+		{json::type_t::UINT32,    "uint32",    json::kind_t::NUMBER},
+		{json::type_t::UINT64,    "uint64",    json::kind_t::NUMBER},
+		{json::type_t::FLOAT,     "float",     json::kind_t::NUMBER}
+	};
+	/**
+	 * Выполняем перебор всех проверяемых видов значения
+	 */
+	for(auto & item : items){
+		// Выполняем проверку названия вида значения
+		ASSERT_STREQ(json::name(item.type), item.name);
+		// Выполняем проверку отвечающего виду значения вида узла
+		ASSERT_EQ(json::kind(item.type), item.kind) << item.name;
+	}
+}

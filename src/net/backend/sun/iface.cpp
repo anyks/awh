@@ -212,6 +212,52 @@ namespace iface {
 		buffer[length] = '\0';
 	}
 	/**
+	 * @brief Функция получения MTU средствами канального уровня
+	 *
+	 * @details Запасной путь для связей, у которых уровня IP нет вовсе: `etherstub`
+	 *          и прочие связи без поднятого интерфейса IP перечисляются `getifaddrs`
+	 *          записью канального уровня, но `SIOCGIFMTU` по ним отвечает `ENXIO` -
+	 *          сокет IP такой связи не знает. Размер же у связи есть, и канальный
+	 *          уровень его отдаёт
+	 *
+	 * @param name имя связи канального уровня
+	 * @return     размер MTU либо ноль, если связь канальному уровню неизвестна
+	 *
+	 */
+	static uint32_t datalinkMtu(const string_view name) noexcept {
+		// Объект управления связями канального уровня
+		dladm_handle_t handle = nullptr;
+		// Выполняем открытие управления связями канального уровня
+		if(::dladm_open(&handle) != DLADM_STATUS_OK)
+			// Выводим значение по умолчанию
+			return 0;
+		// Гарантируем закрытие управления связями при любом выходе
+		const unique_ptr <dladm_handle_t, void (*)(dladm_handle_t *)> guard(&handle, [](dladm_handle_t * handle) noexcept -> void {
+			// Выполняем закрытие управления связями канального уровня
+			::dladm_close(* handle);
+		});
+		// Название связи канального уровня
+		const string label(name);
+		// Опознаватель связи канального уровня
+		datalink_id_t link = 0;
+		// Признаки и разновидности связи канального уровня
+		uint32_t flags = 0, media = 0;
+		// Класс связи канального уровня
+		datalink_class_t kind = DATALINK_CLASS_PHYS;
+		// Выполняем поиск связи канального уровня по названию
+		if(::dladm_name2info(handle, label.c_str(), &link, &flags, &kind, &media) != DLADM_STATUS_OK)
+			// Выводим значение по умолчанию
+			return 0;
+		// Свойства связи канального уровня
+		dladm_attr_t attr{};
+		// Выполняем извлечение свойств связи канального уровня
+		if(::dladm_info(handle, link, &attr) != DLADM_STATUS_OK)
+			// Выводим значение по умолчанию
+			return 0;
+		// Выводим размер MTU связи канального уровня
+		return static_cast <uint32_t> (attr.da_max_sdu);
+	}
+	/**
 	 * @brief Функция проверки типа канального уровня на принадлежность туннелю
 	 *
 	 * @param type тип интерфейса канального уровня (sdl_type)
@@ -2001,21 +2047,41 @@ uint32_t awh::eth::Interface::mtu(string_view name) const noexcept {
 			::iface::copyName(ifr.ifr_name, name);
 			// Извлекаем MTU из интерфейса
 			if(::ioctl(sock, SIOCGIFMTU, &ifr) != 0){
+				// Запоминаем причину отказа: закрытие сокета её затрёт
+				const int32_t reason = errno;
+				// Закрываем сокет
+				::close(sock);
+				/**
+				 * Спрашиваем размер у канального уровня
+				 *
+				 * @details Список интерфейсов отдаёт `getifaddrs`, и он перечисляет в том
+				 *          числе связи канального уровня без поднятого интерфейса IP -
+				 *          `etherstub` тому пример. Сокет IP о такой связи не знает и
+				 *          отвечает `ENXIO`, но размер у неё есть, и канальный уровень
+				 *          его отдаёт
+				 *
+				 * @warning Прежде отказ здесь был окончательным, и перечисление расходилось
+				 *          с опросом: имя, названное `available()`, отвечало нулём у `mtu()`.
+				 *          Расхождение это ловилось лишь там, где такая связь заведена
+				 */
+				const uint32_t mtu = ::iface::datalinkMtu(name);
+				// Если канальный уровень размер назвал
+				if(mtu > 0)
+					// Выводим размер MTU связи канального уровня
+					return mtu;
 				/**
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(name), log_t::flag_t::CRITICAL, ::strerror(errno));
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(name), log_t::flag_t::CRITICAL, ::strerror(reason));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(reason));
 				#endif
-				// Закрываем сокет
-				::close(sock);
 				// Возвращаем значение по умолчанию
 				return 0;
 			}

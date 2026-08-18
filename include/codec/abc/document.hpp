@@ -1,0 +1,784 @@
+/**
+ * @file document.hpp
+ * @date 2026-08-18
+ *
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
+ * \~russian
+ * @brief Заголовочный файл дерева документа бинарного контейнера ABC
+ *
+ * \~english
+ * @brief Header file of the tree of a document of the ABC binary container
+ *
+ * \~
+ *
+ * @copyright Copyright © 2026
+ *
+ */
+
+/**
+ * Экранируем повторную инициализацию модуля
+ */
+#ifndef __AWH_CODEC_ABC_DOCUMENT__
+#define __AWH_CODEC_ABC_DOCUMENT__
+
+/**
+ * Стандартные заголовочные файлы
+ */
+#include <vector>
+#include <string>
+#include <cstdint>
+#include <cstddef>
+#include <string_view>
+#include <unordered_map>
+
+/**
+ * Подключаем заголовочные файлы модуля
+ */
+#include "common.hpp"
+#include "encoding.hpp"
+#include "reader.hpp"
+#include "writer.hpp"
+
+/**
+ * Снимаем на время объявлений макросы, чьи имена заняты
+ */
+#include "../../sys/macro_push.hpp"
+
+/**
+ * \~russian
+ * @brief Основное пространство имён
+ *
+ * \~english
+ * @brief Main namespace
+ *
+ * \~
+ */
+namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
+
+	/**
+	 * \~russian
+	 * @brief Пространство имён контейнеров данных
+	 *
+	 * \~english
+	 * @brief Data containers namespace
+	 *
+	 * \~
+	 */
+	namespace codec {
+		/**
+		 * \~russian
+		 * @brief Пространство имён бинарного контейнера ABC
+		 *
+		 * \~english
+		 * @brief ABC binary container namespace
+		 *
+		 * \~
+		 */
+		namespace abc {
+			/**
+			 * \~russian
+			 * @brief Класс дерева документа
+			 *
+			 * @details Дерево лежит одним вместилищем узлов подряд: дети стоят сразу за
+			 * родителем, указаний на них нет вовсе. Переход к следующему соседу стоит
+			 * сложения, и пропуск вложенного построения целиком - тоже, ибо узел-вместимое
+			 * несёт размах своего поддерева
+			 *
+			 * @details Содержимое всех строк, двоичных значений и имён полей лежит в одном
+			 * хранилище: имя не выделяет памяти вовсе, и весь документ обходится двумя
+			 * выделениями вместо выделения на всякий узел
+			 *
+			 * \~english
+			 * @brief Class of the tree of a document
+			 * @details The tree lies as one container of the nodes in a row: the children stand right after
+			 * the parent, there are no pointers to them at all. The transition to the next neighbour costs
+			 * an addition, and the skipping of a nested construction as a whole costs it too, for a node-container
+			 * carries the extent of its own subtree
+			 * @details The content of all the strings, binary values and names of the fields lies in one
+			 * storage: a name does not allocate any memory at all, and the whole document makes do with two
+			 * allocations instead of an allocation for every node
+			 *
+			 * \~
+			 */
+			typedef class __AWH_SHARED_EXPORT__ Document {
+				private:
+					/**
+					 * \~russian
+					 * @brief Узел дерева документа
+					 *
+					 * @details Узел занимает двадцать октетов. Число кладётся в поле
+					 * содержимого переносом октетов, а не отдельным полем шириною в восемь
+					 * октетов: поле такое потребовало бы выравнивания, и узел вырос бы ещё
+					 *
+					 * @details **Имя поля отображения есть отдельный узел, стоящий перед
+					 * значением.** У текстовых кодеков имя лежит полем узла, ибо именем стоит
+					 * лишь строка; здесь же именем вправе стоять значение любого вида, кроме
+					 * вместимого, и полем узла его было бы не уложить. Оттого отображение из
+					 * `N` пар несёт `2N` детей, а признак `keyed` отличает имя от значения
+					 *
+					 * \~english
+					 * @brief Node of the tree of a document
+					 * @details A node occupies twenty octets. A number is placed into the field
+					 * of the content by a transfer of the octets rather than by a separate field eight
+					 * octets wide: such a field would demand an alignment, and the node would grow further
+					 *
+					 * \~
+					 */
+					typedef struct Node {
+						// Вид значения узла документа
+						type_t type;
+						/**
+						 * \~russian
+						 * Признак того, что узел является именем поля отображения
+						 *
+						 * @note Признак этот необходим: имя стоит тем же узлом, что и значение,
+						 * и без него первое значение отображения было бы неотличимо от имени
+						 *
+						 * \~english
+						 * Flag that the node is the name of a field of a mapping
+						 * @note This flag is necessary: a name stands as the same node as a value,
+						 * and without it the first value of a mapping would be indistinguishable from a name
+						 *
+						 * \~
+						 */
+						bool keyed;
+						// Признак того, что величина числа меньше нуля
+						bool negative;
+						/**
+						 * \~russian
+						 * Признак того, что поддерево узла ещё не развёрнуто
+						 *
+						 * @note Задел под отложенный разбор: узел-вместимое вправе хранить
+						 * лишь отрезок записи своего поддерева, а дети его заводятся при
+						 * первом обращении. Обход дерева обязан спрашивать признак этот
+						 * прежде обращения к детям
+						 *
+						 * \~english
+						 * Flag that the subtree of the node is not yet expanded
+						 * @note Groundwork for the deferred parsing: a node-container has the right to hold
+						 * only the segment of the record of its subtree, while its children are created at the
+						 * first access. The traversal of the tree must ask this flag before an access to the children
+						 *
+						 * \~
+						 */
+						bool pending;
+						// Смещение содержимого значения в хранилище октетов
+						uint32_t offset;
+						/**
+						 * \~russian
+						 * Содержимое узла шириною в восемь октетов
+						 *
+						 * @details Восемь этих октетов служат узлу по-разному, смотря по виду
+						 * значения его. У вместимого это пара чисел: количество детей и размах
+						 * поддерева. У строки и у двоичных данных - длина содержимого. У числа
+						 * родного вида - само число, готовое к выдаче. У числа неограниченной
+						 * ширины - длина октетов величины его
+						 *
+						 * \~english
+						 * Content of the node eight octets wide
+						 * @details These eight octets serve the node differently, depending on the kind
+						 * of its value. For a container it is a pair of numbers: the number of the children and the extent
+						 * of the subtree. For a string and for binary data it is the length of the content. For a number
+						 * of a native kind it is the number itself ready for the issuance. For a number of an unlimited
+						 * width it is the length of the octets of its magnitude
+						 *
+						 * \~
+						 */
+						uint32_t content[2];
+						/**
+						 * \~russian
+						 * @brief Метод получения количества детей вместимого либо длины содержимого
+						 *
+						 * @return количество детей вместимого либо длина содержимого в октетах
+						 *
+						 * \~english
+						 * @brief Method of the obtaining of the number of the children of a container or of the length of the content
+						 * @return number of the children of a container or the length of the content in octets
+						 *
+						 * \~
+						 */
+						AWH_ABC_INLINE bool container() const noexcept {
+							// Выводим признак того, что узел является вместимым
+							return ((static_cast <uint32_t> (this->type) & static_cast <uint32_t> (type_t::CONTAINER)) != 0);
+						}
+						/**
+						 * \~russian
+						 * @brief Метод получения количества детей вместимого либо длины содержимого
+						 *
+						 * @return количество детей вместимого либо длина содержимого в октетах
+						 *
+						 * \~english
+						 * @brief Method of the obtaining of the number of the children of a container or of the length of the content
+						 * @return number of the children of a container or the length of the content in octets
+						 *
+						 * \~
+						 */
+						AWH_ABC_INLINE uint32_t length() const noexcept {
+							// Выводим количество детей вместимого либо длину содержимого
+							return this->content[0];
+						}
+						/**
+						 * \~russian
+						 * @brief Метод получения размаха поддерева узла
+						 *
+						 * @return размах поддерева узла в узлах, считая сам узел
+						 *
+						 * \~english
+						 * @brief Method of the obtaining of the extent of the subtree of a node
+						 * @return extent of the subtree of the node in the nodes counting the node itself
+						 *
+						 * \~
+						 */
+						AWH_ABC_INLINE uint32_t extent() const noexcept {
+							/**
+							 * Если узел вместимым не является, размах его равен одному узлу.
+							 *
+							 * Хранить размах у одиночного узла нельзя: поле содержимого занято
+							 * у него самим числом, и запись размаха затёрла бы старшую половину
+							 * его разрядов. Оттого размах одиночного узла подразумевается, а
+							 * не хранится
+							 */
+							if(!this->container())
+								// Выводим размах поддерева одиночного узла
+								return 1;
+							// Выводим размах поддерева вместимого
+							return this->content[1];
+						}
+						/**
+						 * \~russian
+						 * @brief Метод установки количества детей вместимого либо длины содержимого
+						 *
+						 * @param value устанавливаемое значение
+						 *
+						 * \~english
+						 * @brief Method of the setting of the number of the children of a container or of the length of the content
+						 * @param value value being set
+						 *
+						 * \~
+						 */
+						AWH_ABC_INLINE void length(const uint32_t value) noexcept {
+							// Выполняем установку количества детей вместимого либо длины содержимого
+							this->content[0] = value;
+						}
+						/**
+						 * \~russian
+						 * @brief Метод установки размаха поддерева узла
+						 *
+						 * @param value устанавливаемое значение
+						 *
+						 * \~english
+						 * @brief Method of the setting of the extent of the subtree of a node
+						 * @param value value being set
+						 *
+						 * \~
+						 */
+						AWH_ABC_INLINE void extent(const uint32_t value) noexcept {
+							// Выполняем установку размаха поддерева узла
+							this->content[1] = value;
+						}
+						/**
+						 * \~russian
+						 * @brief Метод проверки того, что узел является вместимым
+						 *
+						 * @return признак того, что узел является вместимым
+						 *
+						 * \~english
+						 * @brief Method of the checking that a node is a container
+						 * @return sign that the node is a container
+						 *
+						 * \~
+						 */
+						/**
+						 * \~russian
+						 * @brief Конструктор
+						 *
+						 *
+						 * \~english
+						 * @brief Constructor
+						 *
+						 * \~
+						 */
+						Node() noexcept :
+						 type(type_t::UNDEFINED), keyed(false), negative(false),
+						 pending(false), offset(0), content{0, 0} {}
+					} node_t;
+				public:
+					/**
+					 * \~russian
+					 * @brief Класс ссылки на значение документа
+					 *
+					 * @details Ссылка не владеет ничем и живёт не дольше документа. Извлечение
+					 * сличает само значение с пределами затребованного вида, а не вид хранения
+					 * с видом затребованным
+					 *
+					 * \~english
+					 * @brief Class of a reference to a value of a document
+					 * @details A reference owns nothing and lives no longer than the document. The extraction
+					 * compares the value itself with the limits of the demanded kind rather than the kind of the storage
+					 * with the demanded kind
+					 *
+					 * \~
+					 */
+					typedef class __AWH_SHARED_EXPORT__ Value {
+						private:
+							// Документ, которому значение принадлежит
+							const Document * _doc;
+						private:
+							// Номер узла значения в дереве документа
+							uint32_t _index;
+						public:
+							/**
+							 * \~russian
+							 * @brief Метод проверки действительности ссылки
+							 *
+							 * @return признак действительности ссылки
+							 *
+							 * \~english
+							 * @brief Method of the checking of the validity of a reference
+							 * @return sign of the validity of the reference
+							 *
+							 * \~
+							 */
+							bool valid() const noexcept;
+							/**
+							 * \~russian
+							 * @brief Метод извлечения вида значения
+							 *
+							 * @return вид значения документа
+							 *
+							 * \~english
+							 * @brief Method of the extraction of the kind of a value
+							 * @return kind of the value of the document
+							 *
+							 * \~
+							 */
+							type_t type() const noexcept;
+							/**
+							 * \~russian
+							 * @brief Метод извлечения вида узла
+							 *
+							 * @return вид узла документа
+							 *
+							 * \~english
+							 * @brief Method of the extraction of the kind of a node
+							 * @return kind of the node of the document
+							 *
+							 * \~
+							 */
+							kind_t kind() const noexcept;
+							/**
+							 * \~russian
+							 * @brief Метод проверки принадлежности значения к виду
+							 *
+							 * @param type вид значения, сборный либо точный
+							 * @return     признак принадлежности значения к виду
+							 *
+							 * \~english
+							 * @brief Method of the checking of the belonging of a value to a kind
+							 * @param type kind of the value, composite or exact
+							 * @return sign of the belonging of the value to the kind
+							 *
+							 * \~
+							 */
+							bool is(const type_t type) const noexcept;
+							/**
+							 * \~russian
+							 * @brief Метод извлечения количества значений вместимого
+							 *
+							 * @return количество значений вместимого
+							 *
+							 * \~english
+							 * @brief Method of the extraction of the number of the values of a container
+							 * @return number of the values of the container
+							 *
+							 * \~
+							 */
+							size_t size() const noexcept;
+						public:
+							/**
+							 * \~russian
+							 * @brief Метод извлечения значения вместимого по его номеру
+							 *
+							 * @param index номер значения вместимого
+							 * @return      ссылка на значение вместимого
+							 *
+							 * \~english
+							 * @brief Method of the extraction of a value of a container by its number
+							 * @param index number of the value of the container
+							 * @return reference to the value of the container
+							 *
+							 * \~
+							 */
+							Value at(const size_t index) const noexcept;
+							/**
+							 * \~russian
+							 * @brief Метод извлечения имени поля отображения по его номеру
+							 *
+							 * @details Имя поля выдаётся ссылкою на значение: именем вправе стоять
+							 * не только строка, но и число, и отметка времени, и опознаватель
+							 *
+							 * @param index номер пары отображения
+							 * @return      ссылка на имя поля отображения
+							 *
+							 * \~english
+							 * @brief Method of the extraction of the name of a field of a mapping by its number
+							 * @details The name of a field is issued by a reference to a value: not only a string has the right
+							 * to stand as a name, but also a number, and a time stamp, and an identifier
+							 * @param index number of the pair of the mapping
+							 * @return reference to the name of the field of the mapping
+							 *
+							 * \~
+							 */
+							Value key(const size_t index) const noexcept;
+							/**
+							 * \~russian
+							 * @brief Метод извлечения значения поля отображения по имени
+							 *
+							 * @param name имя поля отображения
+							 * @return     ссылка на значение поля отображения
+							 *
+							 * \~english
+							 * @brief Method of the extraction of a value of a field of a mapping by a name
+							 * @param name name of the field of the mapping
+							 * @return reference to the value of the field of the mapping
+							 *
+							 * \~
+							 */
+							Value get(const string_view name) const noexcept;
+							/**
+							 * \~russian
+							 * @brief Метод проверки наличия поля отображения по имени
+							 *
+							 * @param name имя поля отображения
+							 * @return     признак наличия поля отображения
+							 *
+							 * \~english
+							 * @brief Method of the checking of the presence of a field of a mapping by a name
+							 * @param name name of the field of the mapping
+							 * @return sign of the presence of the field of the mapping
+							 *
+							 * \~
+							 */
+							bool has(const string_view name) const noexcept;
+						public:
+							/**
+							 * \~russian
+							 * @brief Метод извлечения логического значения
+							 *
+							 * @param result извлекаемое значение
+							 * @return       признак успешности извлечения
+							 *
+							 * \~english
+							 * @brief Method of the extraction of a logical value
+							 * @param result value being extracted
+							 * @return sign of the success of the extraction
+							 *
+							 * \~
+							 */
+							bool value(bool & result) const noexcept;
+							/**
+							 * \~russian
+							 * @brief Метод извлечения числа видом целого без знака
+							 *
+							 * @param result извлекаемое значение
+							 * @return       признак успешности извлечения
+							 *
+							 * \~english
+							 * @brief Method of the extraction of a number by the kind of an integer without a sign
+							 * @param result value being extracted
+							 * @return sign of the success of the extraction
+							 *
+							 * \~
+							 */
+							bool value(uint64_t & result) const noexcept;
+							/**
+							 * \~russian
+							 * @brief Метод извлечения числа видом целого со знаком
+							 *
+							 * @param result извлекаемое значение
+							 * @return       признак успешности извлечения
+							 *
+							 * \~english
+							 * @brief Method of the extraction of a number by the kind of an integer with a sign
+							 * @param result value being extracted
+							 * @return sign of the success of the extraction
+							 *
+							 * \~
+							 */
+							bool value(int64_t & result) const noexcept;
+							/**
+							 * \~russian
+							 * @brief Метод извлечения числа видом дробного
+							 *
+							 * @param result извлекаемое значение
+							 * @return       признак успешности извлечения
+							 *
+							 * \~english
+							 * @brief Method of the extraction of a number by the kind of a fractional one
+							 * @param result value being extracted
+							 * @return sign of the success of the extraction
+							 *
+							 * \~
+							 */
+							bool value(double & result) const noexcept;
+							/**
+							 * \~russian
+							 * @brief Метод извлечения содержимого значения
+							 *
+							 * @details Выдаётся содержимое строки, двоичных данных, опознавателя
+							 * либо октеты величины числа неограниченной ширины
+							 *
+							 * @return содержимое значения
+							 *
+							 * \~english
+							 * @brief Method of the extraction of the content of a value
+							 * @details The content of a string, of binary data, of an identifier or
+							 * the octets of the magnitude of a number of an unlimited width is issued
+							 * @return content of the value
+							 *
+							 * \~
+							 */
+							string_view data() const noexcept;
+							/**
+							 * \~russian
+							 * @brief Метод извлечения десятичного порядка величины
+							 *
+							 * @return десятичный порядок величины
+							 *
+							 * \~english
+							 * @brief Method of the extraction of the decimal exponent of a magnitude
+							 * @return decimal exponent of the magnitude
+							 *
+							 * \~
+							 */
+							int64_t exponent() const noexcept;
+							/**
+							 * \~russian
+							 * @brief Метод проверки того, что величина меньше нуля
+							 *
+							 * @return признак того, что величина меньше нуля
+							 *
+							 * \~english
+							 * @brief Method of the checking that a magnitude is less than zero
+							 * @return sign that the magnitude is less than zero
+							 *
+							 * \~
+							 */
+							bool negative() const noexcept;
+						public:
+							/**
+							 * \~russian
+							 * @brief Конструктор
+							 *
+							 *
+							 * \~english
+							 * @brief Constructor
+							 *
+							 * \~
+							 */
+							Value() noexcept : _doc(nullptr), _index(NO_INDEX) {}
+							/**
+							 * \~russian
+							 * @brief Конструктор
+							 *
+							 * @param doc   документ, которому значение принадлежит
+							 * @param index номер узла значения в дереве документа
+							 *
+							 * \~english
+							 * @brief Constructor
+							 * @param doc document the value belongs to
+							 * @param index number of the node of the value in the tree of the document
+							 *
+							 * \~
+							 */
+							Value(const Document * doc, const uint32_t index) noexcept : _doc(doc), _index(index) {}
+					} value_t;
+				private:
+					// Вместилище узлов дерева документа
+					vector <node_t> _nodes;
+				private:
+					// Хранилище содержимого значений и имён полей
+					string _storage;
+				private:
+					// Код отказа разбора записи
+					error_t _error;
+				private:
+					// Указатели имён полей отображений, заводимые по требованию
+					mutable unordered_map <uint32_t, unordered_map <string_view, uint32_t>> _index;
+				private:
+					/**
+					 * \~russian
+					 * @brief Метод заведения указателя имён полей отображения
+					 *
+					 * @param index номер узла отображения в дереве документа
+					 * @return      заведённый указатель имён полей
+					 *
+					 * \~english
+					 * @brief Method of the creation of an index of the names of the fields of a mapping
+					 * @param index number of the node of the mapping in the tree of the document
+					 * @return created index of the names of the fields
+					 *
+					 * \~
+					 */
+					const unordered_map <string_view, uint32_t> & naming(const uint32_t index) const noexcept;
+				public:
+					/**
+					 * \~russian
+					 * @brief Метод сброса состояния документа
+					 *
+					 *
+					 * \~english
+					 * @brief Method of the reset of the state of a document
+					 *
+					 * \~
+					 */
+					void clear() noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод разбора записи в дерево документа
+					 *
+					 * @param buffer   буфер разбираемой записи
+					 * @param size     размер разбираемой записи в октетах
+					 * @param settings настройки разбора записи
+					 * @return         признак успешности разбора
+					 *
+					 * \~english
+					 * @brief Method of the parsing of a record into a tree of a document
+					 * @param buffer buffer of the record being parsed
+					 * @param size size of the record being parsed in octets
+					 * @param settings settings of the parsing of the record
+					 * @return sign of the success of the parsing
+					 *
+					 * \~
+					 */
+					bool parse(const void * buffer, const size_t size, const reader_t::settings_t & settings) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод разбора записи в дерево документа
+					 *
+					 * @param buffer буфер разбираемой записи
+					 * @param size   размер разбираемой записи в октетах
+					 * @return       признак успешности разбора
+					 *
+					 * \~english
+					 * @brief Method of the parsing of a record into a tree of a document
+					 * @param buffer buffer of the record being parsed
+					 * @param size size of the record being parsed in octets
+					 * @return sign of the success of the parsing
+					 *
+					 * \~
+					 */
+					bool parse(const void * buffer, const size_t size) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод сборки записи из дерева документа
+					 *
+					 * @param writer сборщик бинарной записи
+					 * @return       признак успешности сборки
+					 *
+					 * \~english
+					 * @brief Method of the assembling of a record from a tree of a document
+					 * @param writer assembler of a binary record
+					 * @return sign of the success of the assembling
+					 *
+					 * \~
+					 */
+					bool build(writer_t & writer) const noexcept;
+				public:
+					/**
+					 * \~russian
+					 * @brief Метод извлечения корня дерева документа
+					 *
+					 * @return ссылка на корень дерева документа
+					 *
+					 * \~english
+					 * @brief Method of the extraction of the root of the tree of a document
+					 * @return reference to the root of the tree of the document
+					 *
+					 * \~
+					 */
+					value_t root() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод извлечения количества узлов дерева документа
+					 *
+					 * @return количество узлов дерева документа
+					 *
+					 * \~english
+					 * @brief Method of the extraction of the number of the nodes of the tree of a document
+					 * @return number of the nodes of the tree of the document
+					 *
+					 * \~
+					 */
+					size_t nodes() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод извлечения кода отказа разбора записи
+					 *
+					 * @return код отказа разбора записи
+					 *
+					 * \~english
+					 * @brief Method of the extraction of the error code of the parsing of a record
+					 * @return error code of the parsing of the record
+					 *
+					 * \~
+					 */
+					error_t error() const noexcept;
+				public:
+					/**
+					 * \~russian
+					 * @brief Конструктор
+					 *
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
+					 */
+					Document() noexcept : _error(error_t::NONE) {}
+					/**
+					 * \~russian
+					 * @brief Деструктор
+					 *
+					 *
+					 * \~english
+					 * @brief Destructor
+					 *
+					 * \~
+					 */
+					~Document() noexcept {}
+				public:
+					/**
+					 * \~russian
+					 * Ссылка на значение обходит дерево документа напрямую
+					 *
+					 * \~english
+					 * A reference to a value traverses the tree of the document directly
+					 *
+					 * \~
+					 */
+					friend class Value;
+			} document_t;
+		};
+	};
+};
+
+/**
+ * Возвращаем снятые ранее макросы
+ */
+#include "../../sys/macro_pop.hpp"
+
+#endif // __AWH_CODEC_ABC_DOCUMENT__

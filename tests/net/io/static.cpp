@@ -139,6 +139,45 @@ static uint16_t port() noexcept {
 }
 
 /**
+ * @brief Выдача пути к файлу сокета UNIX-домена
+ *
+ * @details MS Windows понимает сокеты UNIX-домена, но путь к их файлу берёт
+ *          СВОЙ, а не путь оболочки MSYS2: «/tmp/awh.sock» там разбирается
+ *          как «C:\tmp\awh.sock», и привязка отвечает WSAENETDOWN (10050),
+ *          когда каталога «C:\tmp» в системе нет. На стенде x86-64 он
+ *          оказался заведён посторонним средством, а на стенде ARM64 его не
+ *          было - оттого три проверки UNIX-домена расходились между стендами
+ *          на одном и том же движке
+ *
+ * @param name имя файла сокета
+ * @return     путь к файлу сокета, годный для нынешней системы
+ *
+ */
+static std::string uds(const std::string & name) noexcept {
+	/**
+	 * Для операционной системы MS Windows
+	 */
+	#if _WIN32 || _WIN64
+		// Буфер для получения пути к каталогу временных файлов
+		char buffer[MAX_PATH + 1];
+		// Выполняем получение пути к каталогу временных файлов
+		const DWORD length = ::GetTempPathA(static_cast <DWORD> (sizeof(buffer)), buffer);
+		// Если путь к каталогу временных файлов получен
+		if((length > 0) && (length < sizeof(buffer)))
+			// Выводим путь к файлу сокета в каталоге временных файлов
+			return (std::string(buffer, static_cast <size_t> (length)) + name);
+		// Выводим путь к файлу сокета рядом с текущим каталогом
+		return name;
+	/**
+	 * Для операционной системы отличной от MS Windows
+	 */
+	#else
+		// Выводим путь к файлу сокета в каталоге временных файлов
+		return ("/tmp/" + name);
+	#endif
+}
+
+/**
  * @brief Тест создания объекта работы со списком параметров URL
  *
  */
@@ -717,7 +756,7 @@ TEST_F(IoFixture, IoSuiteTest){
 			// Устанавливаем порт события
 			ASSERT_FALSE(this->_io->setTargetPort(eid5, 8080));
 			// Устанавливаем UDS-адрес события
-			ASSERT_TRUE(this->_io->setAddress(eid5, awh::event::address_t::UDS, "/tmp/awh.sock"));
+			ASSERT_TRUE(this->_io->setAddress(eid5, awh::event::address_t::UDS, ::uds("awh.sock")));
 			// Проверяем, что название сетевого интерфейса не получено
 			ASSERT_TRUE(this->_io->getIface(eid5).empty());
 			// Проверяем, что IP-адрес не совпадает с извлечённым ранее
@@ -727,7 +766,7 @@ TEST_F(IoFixture, IoSuiteTest){
 			// Проверяем, что адрес назначения получен
 			ASSERT_FALSE(this->_io->getTarget(eid4).empty());
 			// Проверяем, что UDS-адрес установлен и правильный
-			ASSERT_EQ("/tmp/awh.sock", this->_io->getAddress(eid5, awh::event::address_t::UDS));
+			ASSERT_EQ(::uds("awh.sock"), this->_io->getAddress(eid5, awh::event::address_t::UDS));
 			
 			// Добавляем новое событие клиента TCP
 			awh::event::id_t eid6 = this->_io->event(awh::event::node_t::FILE, awh::event::family_t::FSYS);
@@ -794,7 +833,7 @@ TEST_F(IoFixture, IoSuiteTest){
 			// Устанавливаем порт события
 			ASSERT_FALSE(this->_io->setTargetPort(eid8, 8080));
 			// Устанавливаем UDS-адрес назначения для события
-			ASSERT_TRUE(this->_io->setTarget(eid8, "/tmp/awh.sock"));
+			ASSERT_TRUE(this->_io->setTarget(eid8, ::uds("awh.sock")));
 			// Проверяем, что название сетевого интерфейса не получено
 			ASSERT_TRUE(this->_io->getIface(eid8).empty());
 			// Проверяем, что IP-адрес не совпадает с извлечённым ранее
@@ -802,9 +841,9 @@ TEST_F(IoFixture, IoSuiteTest){
 			// Проверяем, что MAC-адрес не совпадает с извлечённым ранее
 			ASSERT_NE(mac, this->_io->getAddress(eid8, awh::event::address_t::MAC));
 			// Проверяем, что адрес назначения получен
-			ASSERT_EQ("/tmp/awh.sock", this->_io->getTarget(eid8));
+			ASSERT_EQ(::uds("awh.sock"), this->_io->getTarget(eid8));
 			// Проверяем, что UDS-адрес установлен и правильный
-			ASSERT_EQ("/tmp/awh.sock", this->_io->getAddress(eid8, awh::event::address_t::UDS));
+			ASSERT_EQ(::uds("awh.sock"), this->_io->getAddress(eid8, awh::event::address_t::UDS));
 		}
 		/**
 		 * IPv6 событие
@@ -1119,7 +1158,7 @@ TEST_F(IoFixture, IoTCPTest){
 			// Записываем в лог сообщение о принятии события
 			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u", awh::log_t::flag_t::INFO, sid, cid);
 			// Устананавливаем опции события
-			ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::AUTO_RECONNECT));
+			EXPECT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::AUTO_RECONNECT));
 			// Записываем в лог сообщение об успешной установке опций события
 			this->_log->print("%s", awh::log_t::flag_t::INFO, "Успешно установлены опции события!");
 			// Устанавливаем функцию обратного вызова на запись в событие
@@ -3136,9 +3175,9 @@ TEST_F(IoFixture, IoUDSTest){
 	ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
 	ASSERT_TRUE(this->_io->setOptions(sid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
 	// Устанавливаем адрес сервера назначения
-	ASSERT_TRUE(this->_io->setTarget(cid, "/tmp/awh.sock"));
+	ASSERT_TRUE(this->_io->setTarget(cid, ::uds("awh.sock")));
 	// Устанавливаем адрес сервера назначения
-	ASSERT_TRUE(this->_io->setAddress(sid, awh::event::address_t::UDS, "/tmp/awh.sock"));
+	ASSERT_TRUE(this->_io->setAddress(sid, awh::event::address_t::UDS, ::uds("awh.sock")));
 	/**
 	 * Серверное событие
 	 */
@@ -3279,7 +3318,7 @@ TEST_F(IoFixture, IoUDSTest){
 			// Записываем в лог сообщение о принятии события
 			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s", awh::log_t::flag_t::INFO, sid, cid, this->_io->getAddress(cid, awh::event::address_t::UDS).c_str());
 			// Устананавливаем опции события
-			ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::AUTO_RECONNECT));
+			EXPECT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::AUTO_RECONNECT));
 			// Записываем в лог сообщение об успешной установке опций события
 			this->_log->print("%s", awh::log_t::flag_t::INFO, "Успешно установлены опции события!");
 			// Устанавливаем функцию обратного вызова на чтение из события
@@ -3731,9 +3770,9 @@ TEST_F(IoFixture, IoUDPUDSTest){
 	ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
 	ASSERT_TRUE(this->_io->setOptions(sid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY));
 	// Устанавливаем адрес сервера назначения
-	ASSERT_TRUE(this->_io->setTarget(cid, "/tmp/awh.sock"));
+	ASSERT_TRUE(this->_io->setTarget(cid, ::uds("awh.sock")));
 	// Устанавливаем адрес сервера назначения
-	ASSERT_TRUE(this->_io->setAddress(sid, awh::event::address_t::UDS, "/tmp/awh.sock"));
+	ASSERT_TRUE(this->_io->setAddress(sid, awh::event::address_t::UDS, ::uds("awh.sock")));
 	/**
 	 * Серверное событие
 	 */
@@ -5805,9 +5844,9 @@ TEST_F(IoFixture, IoUDPSpliceConnectTest){
 			// Если подключение успешно
 			if(ok){
 				// Выполняем фиксацию события файла
-				ASSERT_TRUE(this->_io->commit(fid));
+				EXPECT_TRUE(this->_io->commit(fid));
 				// Устананавливаем опции события
-				ASSERT_TRUE(this->_io->setOptions(fid, awh::event::options::AUTO_FOLLOW));
+				EXPECT_TRUE(this->_io->setOptions(fid, awh::event::options::AUTO_FOLLOW));
 			}
 		}));
 		// Устанавливаем функцию обратного вызова на общее событие
@@ -7028,7 +7067,7 @@ TEST_F(IoFixture, IoUDSMultiAcceptTest){
 	// Количество ожидаемых подключений
 	const uint16_t expected = 5;
 	// Путь к файлу UNIX-доменного сокета
-	const std::string socketPath = "/tmp/awh-multi-accept.sock";
+	const std::string socketPath = ::uds("awh-multi-accept.sock");
 	// Удаляем файл сокета, оставшийся от предыдущего запуска
 	::unlink(socketPath.c_str());
 	// Добавляем событие сервера
@@ -9700,13 +9739,21 @@ TEST_F(IoFixture, IoTLSTest){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на принятие события
-		this->_io->on(events[1], static_cast <awh::engine::callback::accept_t> ([cts, this](const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
+		this->_io->on(events[1], static_cast <awh::engine::callback::accept_t> ([cts, &stop, this](const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
 			// Записываем в лог сообщение о принятии события
 			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u", awh::log_t::flag_t::INFO, sid, cid);
 			// Создаём идентификатор транспортного уровня TLS
 			awh::tls::coder_t::id_t ctl = this->_coder->transport(cts);
 			// Проверяем, что идентификатор транспортного уровня больше нуля
-			ASSERT_GT(ctl, 0);
+			if(ctl == 0){
+				// Сообщаем об ошибке и останавливаем цикл: без опознавателя дальше идти некуда,
+				// а простой возврат из функции обратного вызова оставил бы цикл ждать навсегда
+				ADD_FAILURE() << "Идентификатор транспортного уровня TLS не получен";
+				// Останавливаем тест
+				stop = true;
+				// Выходим из функции обратного вызова
+				return;
+			}
 			// Регистрируем функцию обратного вызова на получение ошибок TLS
 			this->_coder->on(ctl, [this](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::error_t error, const std::string & message) noexcept -> void {
 				// Записываем в лог сообщение о предупреждающей ошибке TLS
@@ -9764,7 +9811,7 @@ TEST_F(IoFixture, IoTLSTest){
 				}
 			});
 			// Устананавливаем опции события
-			ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::AUTO_RECONNECT));
+			EXPECT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::AUTO_RECONNECT));
 			// Записываем в лог сообщение об успешной установке опций события
 			this->_log->print("%s", awh::log_t::flag_t::INFO, "Успешно установлены опции события!");
 			// Устанавливаем клиента TLS для события
@@ -10541,13 +10588,21 @@ TEST_F(IoFixture, IoMultiTLSTest){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на принятие события
-		this->_io->on(events[1], static_cast <awh::engine::callback::accept_t> ([cts1, this](const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
+		this->_io->on(events[1], static_cast <awh::engine::callback::accept_t> ([cts1, &stop, this](const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
 			// Записываем в лог сообщение о принятии события
 			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u", awh::log_t::flag_t::INFO, sid, cid);
 			// Создаём идентификатор транспортного уровня TLS
 			awh::tls::coder_t::id_t ctl = this->_coder->transport(cts1);
 			// Проверяем, что идентификатор транспортного уровня больше нуля
-			ASSERT_GT(ctl, 0);
+			if(ctl == 0){
+				// Сообщаем об ошибке и останавливаем цикл: без опознавателя дальше идти некуда,
+				// а простой возврат из функции обратного вызова оставил бы цикл ждать навсегда
+				ADD_FAILURE() << "Идентификатор транспортного уровня TLS не получен";
+				// Останавливаем тест
+				stop = true;
+				// Выходим из функции обратного вызова
+				return;
+			}
 			// Регистрируем функцию обратного вызова на получение ошибок TLS
 			this->_coder->on(ctl, [this](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::error_t error, const std::string & message) noexcept -> void {
 				// Записываем в лог сообщение о предупреждающей ошибке TLS
@@ -10605,7 +10660,7 @@ TEST_F(IoFixture, IoMultiTLSTest){
 				}
 			});
 			// Устананавливаем опции события
-			ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::AUTO_RECONNECT));
+			EXPECT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::AUTO_RECONNECT));
 			// Записываем в лог сообщение об успешной установке опций события
 			this->_log->print("%s", awh::log_t::flag_t::INFO, "Успешно установлены опции события!");
 			// Устанавливаем клиента TLS для события
@@ -11365,13 +11420,21 @@ TEST_F(IoFixture, IoDTLSTest){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на принятие события
-		this->_io->on(events[1], static_cast <awh::engine::callback::accept_t> ([cts, this](const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
+		this->_io->on(events[1], static_cast <awh::engine::callback::accept_t> ([cts, &stop, this](const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
 			// Записываем в лог сообщение о принятии события
 			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u", awh::log_t::flag_t::INFO, sid, cid);
 			// Создаём идентификатор транспортного уровня TLS
 			awh::tls::coder_t::id_t ctl = this->_coder->transport(cts);
 			// Проверяем, что идентификатор транспортного уровня больше нуля
-			ASSERT_GT(ctl, 0);
+			if(ctl == 0){
+				// Сообщаем об ошибке и останавливаем цикл: без опознавателя дальше идти некуда,
+				// а простой возврат из функции обратного вызова оставил бы цикл ждать навсегда
+				ADD_FAILURE() << "Идентификатор транспортного уровня TLS не получен";
+				// Останавливаем тест
+				stop = true;
+				// Выходим из функции обратного вызова
+				return;
+			}
 			// Регистрируем функцию обратного вызова на получение ошибок TLS
 			this->_coder->on(ctl, [this](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::error_t error, const std::string & message) noexcept -> void {
 				// Записываем в лог сообщение о предупреждающей ошибке TLS
@@ -11410,7 +11473,7 @@ TEST_F(IoFixture, IoDTLSTest){
 						// Записываем в лог информацию о DTLS соединении
 						std::cout << this->_coder->peerInfo(id) << std::endl;
 						// Выполняем повторную передачу данных TLS
-						ASSERT_TRUE(this->_coder->retransmit(id));
+						EXPECT_TRUE(this->_coder->retransmit(id));
 					} break;
 				}
 			});
@@ -12275,7 +12338,7 @@ TEST_F(IoFixture, IoDTLSTest){
 					}
 				});
 				// Устананавливаем опции события
-				ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::AUTO_RECONNECT));
+				EXPECT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::AUTO_RECONNECT));
 				// Записываем в лог сообщение об успешной установке опций события
 				this->_log->print("%s", awh::log_t::flag_t::INFO, "Успешно установлены опции события!");
 				// Устанавливаем функцию обратного вызова на запись в событие
@@ -13089,7 +13152,7 @@ TEST_F(IoFixture, IoDTLSTest){
 					}
 				});
 				// Устананавливаем опции события
-				ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::AUTO_RECONNECT));
+				EXPECT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::AUTO_RECONNECT));
 				// Записываем в лог сообщение об успешной установке опций события
 				this->_log->print("%s", awh::log_t::flag_t::INFO, "Успешно установлены опции события!");
 				// Устанавливаем функцию обратного вызова на запись в событие
@@ -13875,7 +13938,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				// Извлекаем чанки аутентификации SCTP-сокета
 				std::vector <awh::net::sctp::auth_chunk_t> chunks;
 				// Выполняем извлечение чанков аутентификации SCTP-сокета
-				ASSERT_TRUE(this->_sctp->authenticateChunks(cid, awh::event::origin_t::REMOTE, chunks));
+				EXPECT_TRUE(this->_sctp->authenticateChunks(cid, awh::event::origin_t::REMOTE, chunks));
 				/**
 				 * Перебираем все извлечённые чанки
 				 */
@@ -13883,10 +13946,10 @@ TEST_F(IoFixture, IoDTLSTest){
 					// Записываем в лог информацию о чанках аутентификации SCTP-сокета
 					std::cout << " Извлечён чанк аутентификации SCTP-сокета: " << static_cast <uint16_t> (chunk) << std::endl;
 				// Устанавливаем таймаут heartbeat SCTP-сокета
-				ASSERT_TRUE(this->_sctp->setTimeout(cid, awh::net::sctp::timeout_t::HEARTBEAT, 3000));
+				EXPECT_TRUE(this->_sctp->setTimeout(cid, awh::net::sctp::timeout_t::HEARTBEAT, 3000));
 				// Возвращаем heartbeat timeout SCTP-сокета
-				ASSERT_EQ(3000, this->_sctp->getTimeout(cid, awh::net::sctp::timeout_t::HEARTBEAT));
-				ASSERT_EQ(3000, this->_sctp->getTimeout(sid, awh::net::sctp::timeout_t::HEARTBEAT));
+				EXPECT_EQ(3000, this->_sctp->getTimeout(cid, awh::net::sctp::timeout_t::HEARTBEAT));
+				EXPECT_EQ(3000, this->_sctp->getTimeout(sid, awh::net::sctp::timeout_t::HEARTBEAT));
 				// Записываем в лог сообщение о принятии события
 				this->_log->print("Событие принято: ID=%u, Клиентский ID=%u", awh::log_t::flag_t::INFO, sid, cid);
 				// Устанавливаем функцию обратного вызова на информацию о сообщении SCTP-сокета
@@ -13963,7 +14026,7 @@ TEST_F(IoFixture, IoDTLSTest){
 					}
 				});
 				// Устананавливаем опции события
-				ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::AUTO_RECONNECT));
+				EXPECT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::AUTO_RECONNECT));
 				// Записываем в лог сообщение об успешной установке опций события
 				this->_log->print("%s", awh::log_t::flag_t::INFO, "Успешно установлены опции события!");
 				// Устанавливаем функцию обратного вызова на запись в событие
@@ -14256,13 +14319,13 @@ TEST_F(IoFixture, IoDTLSTest){
 						// Записываем в лог сообщение об возрождении события
 						this->_log->print("Событие возрождено: ID=%u", awh::log_t::flag_t::INFO, eid);
 						// Устанавливаем ключ аутентификации SCTP-сокета
-						ASSERT_TRUE(this->_sctp->authenticateKey(eid, 1, "0123456789abcdef0123456789abcdef"));
+						EXPECT_TRUE(this->_sctp->authenticateKey(eid, 1, "0123456789abcdef0123456789abcdef"));
 						// Устанавливаем режим использования ключа аутентификации SCTP-сокета
-						ASSERT_TRUE(this->_sctp->authenticateKey(eid, awh::event::mode_t::ENABLED, 1));
+						EXPECT_TRUE(this->_sctp->authenticateKey(eid, awh::event::mode_t::ENABLED, 1));
 						// Устанавливаем поддерживаемые алгоритмы аутентификации SCTP-сокета
-						ASSERT_TRUE(this->_sctp->authenticateSupportAlgorithms(eid, {awh::net::sctp::auth_type_t::HMAC_SHA1, awh::net::sctp::auth_type_t::HMAC_SHA256}));
+						EXPECT_TRUE(this->_sctp->authenticateSupportAlgorithms(eid, {awh::net::sctp::auth_type_t::HMAC_SHA1, awh::net::sctp::auth_type_t::HMAC_SHA256}));
 						// Устанавливаем чанки аутентификации SCTP-сокета
-						ASSERT_TRUE(this->_sctp->authenticateChunks(eid, {awh::net::sctp::auth_chunk_t::DATA, awh::net::sctp::auth_chunk_t::SHUTDOWN}));
+						EXPECT_TRUE(this->_sctp->authenticateChunks(eid, {awh::net::sctp::auth_chunk_t::DATA, awh::net::sctp::auth_chunk_t::SHUTDOWN}));
 						// Выполняем подписку на SCTP события
 						this->_sctp->eventsSubscribe(eid, {
 							awh::net::sctp::event_type_t::ASSOC_CHANGE,
@@ -14274,7 +14337,7 @@ TEST_F(IoFixture, IoDTLSTest){
 						// Извлекаем чанки аутентификации SCTP-сокета
 						std::vector <awh::net::sctp::auth_chunk_t> chunks;
 						// Выполняем извлечение чанков аутентификации SCTP-сокета
-						ASSERT_TRUE(this->_sctp->authenticateChunks(eid, awh::event::origin_t::LOCAL, chunks));
+						EXPECT_TRUE(this->_sctp->authenticateChunks(eid, awh::event::origin_t::LOCAL, chunks));
 						/**
 						 * Перебираем все извлечённые чанки
 						 */
@@ -14282,7 +14345,7 @@ TEST_F(IoFixture, IoDTLSTest){
 							// Записываем в лог информацию о чанках аутентификации SCTP-сокета
 							std::cout << " Извлечён чанк аутентификации SCTP-сокета: " << static_cast <uint16_t> (chunk) << std::endl;
 						// Устанавливаем таймаут heartbeat SCTP-сокета
-						ASSERT_TRUE(this->_sctp->setTimeout(eid, awh::net::sctp::timeout_t::HEARTBEAT, 3000));
+						EXPECT_TRUE(this->_sctp->setTimeout(eid, awh::net::sctp::timeout_t::HEARTBEAT, 3000));
 					} break;
 				}
 			});
@@ -14390,7 +14453,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				// Извлекаем чанки аутентификации SCTP-сокета
 				std::vector <awh::net::sctp::auth_chunk_t> chunks;
 				// Выполняем извлечение чанков аутентификации SCTP-сокета
-				ASSERT_TRUE(this->_sctp->authenticateChunks(eid, awh::event::origin_t::REMOTE, chunks));
+				EXPECT_TRUE(this->_sctp->authenticateChunks(eid, awh::event::origin_t::REMOTE, chunks));
 				/**
 				 * Перебираем все извлечённые чанки
 				 */
@@ -14398,7 +14461,7 @@ TEST_F(IoFixture, IoDTLSTest){
 					// Записываем в лог информацию о чанках аутентификации SCTP-сокета
 					std::cout << " Извлечён чанк аутентификации SCTP-сокета: " << static_cast <uint16_t> (chunk) << std::endl;
 				// Возвращаем heartbeat timeout SCTP-сокета
-				ASSERT_EQ(3000, this->_sctp->getTimeout(eid, awh::net::sctp::timeout_t::HEARTBEAT));
+				EXPECT_EQ(3000, this->_sctp->getTimeout(eid, awh::net::sctp::timeout_t::HEARTBEAT));
 				// Текст входящего сообщения
 				const std::string message(reinterpret_cast <const char *> (data), size);
 				// Записываем в лог сообщение о переподключении события
@@ -14769,7 +14832,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				}
 			});
 			// Устанавливаем функцию обратного вызова на принятие события
-			this->_io->on(events[1], static_cast <awh::engine::callback::accept_t> ([cts, this](const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
+			this->_io->on(events[1], static_cast <awh::engine::callback::accept_t> ([cts, &stop, this](const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
 				// Получаем информацию о сообщении SCTP-сокета
 				const awh::net::sctp::minfo_t & minfo = this->_sctp->messageInfo(cid);
 				// Записываем в лог информацию о сообщении SCTP-сокета
@@ -14796,7 +14859,15 @@ TEST_F(IoFixture, IoDTLSTest){
 				// Создаём идентификатор транспортного уровня DTLS
 				awh::tls::coder_t::id_t ctl = this->_coder->transport(cts);
 				// Проверяем, что идентификатор транспортного уровня больше нуля
-				ASSERT_GT(ctl, 0);
+				if(ctl == 0){
+					// Сообщаем об ошибке и останавливаем цикл: без опознавателя дальше идти некуда,
+					// а простой возврат из функции обратного вызова оставил бы цикл ждать навсегда
+					ADD_FAILURE() << "Идентификатор транспортного уровня TLS не получен";
+					// Останавливаем тест
+					stop = true;
+					// Выходим из функции обратного вызова
+					return;
+				}
 				// Устанавливаем клиента DTLS для события
 				this->_coder->peer(ctl, this->_io->getAddress(cid, awh::event::address_t::IPV4), this->_io->getSourcePort(cid));
 				// Регистрируем функцию обратного вызова на получение ошибок DTLS
@@ -14857,7 +14928,7 @@ TEST_F(IoFixture, IoDTLSTest){
 							// Записываем в лог информацию о DTLS соединении
 							std::cout << this->_coder->peerInfo(id) << std::endl;
 							// Выполняем повторную передачу данных TLS
-							ASSERT_TRUE(this->_coder->retransmit(id));
+							EXPECT_TRUE(this->_coder->retransmit(id));
 						} break;
 					}
 				});
@@ -14935,7 +15006,7 @@ TEST_F(IoFixture, IoDTLSTest){
 					}
 				});
 				// Устананавливаем опции события
-				ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::AUTO_RECONNECT));
+				EXPECT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::AUTO_RECONNECT));
 				// Регистрируем функцию обратного вызова на чтение данных DTLS
 				this->_coder->on(ctl, [cid, this](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
 					/**
@@ -15827,7 +15898,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				}
 			});
 			// Устанавливаем функцию обратного вызова на принятие события
-			this->_io->on(events[1], static_cast <awh::engine::callback::accept_t> ([cts, this](const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
+			this->_io->on(events[1], static_cast <awh::engine::callback::accept_t> ([cts, &stop, this](const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
 				// Получаем информацию о сообщении SCTP-сокета
 				const awh::net::sctp::minfo_t & minfo = this->_sctp->messageInfo(cid);
 				// Записываем в лог информацию о сообщении SCTP-сокета
@@ -15854,7 +15925,15 @@ TEST_F(IoFixture, IoDTLSTest){
 				// Создаём идентификатор транспортного уровня DTLS
 				awh::tls::coder_t::id_t ctl = this->_coder->transport(cts);
 				// Проверяем, что идентификатор транспортного уровня больше нуля
-				ASSERT_GT(ctl, 0);
+				if(ctl == 0){
+					// Сообщаем об ошибке и останавливаем цикл: без опознавателя дальше идти некуда,
+					// а простой возврат из функции обратного вызова оставил бы цикл ждать навсегда
+					ADD_FAILURE() << "Идентификатор транспортного уровня TLS не получен";
+					// Останавливаем тест
+					stop = true;
+					// Выходим из функции обратного вызова
+					return;
+				}
 				// Устанавливаем клиента DTLS для события
 				this->_coder->peer(ctl, this->_io->getAddress(cid, awh::event::address_t::IPV4), this->_io->getSourcePort(cid));
 				// Регистрируем функцию обратного вызова на получение ошибок DTLS
@@ -15989,7 +16068,7 @@ TEST_F(IoFixture, IoDTLSTest){
 					}
 				});
 				// Устананавливаем опции события
-				ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::AUTO_RECONNECT));
+				EXPECT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::TCP_NO_DELAY | awh::event::options::AUTO_RECONNECT));
 				// Регистрируем функцию обратного вызова на чтение данных DTLS
 				this->_coder->on(ctl, [cid, this](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
 					/**
@@ -19194,7 +19273,7 @@ TEST_F(IoFixture, IoDataSourcePullTest){
 	// Принятое приёмником тело
 	std::string received;
 	// Путь к файлу UNIX-доменного сокета
-	const std::string socketPath = "/tmp/awh-datasource-pull.sock";
+	const std::string socketPath = ::uds("awh-datasource-pull.sock");
 	// Удаляем файл сокета, оставшийся от предыдущего запуска
 	::unlink(socketPath.c_str());
 	// Добавляем событие сервера
@@ -19376,7 +19455,7 @@ TEST_F(IoFixture, IoDataSourcePullDatagramTest){
 	// Признак искажения принятых сообщений
 	bool corrupted = false;
 	// Путь к файлу UNIX-доменного сокета
-	const std::string socketPath = "/tmp/awh-datasource-dgram.sock";
+	const std::string socketPath = ::uds("awh-datasource-dgram.sock");
 	/**
 	 * Если операционной системой является MS Windows
 	 *

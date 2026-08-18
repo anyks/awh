@@ -67,6 +67,7 @@ if (${GTest_FOUND})
         # Источники для сборки юнит-тестов
         SET(${PROJECT_NAME}_UNITTEST_SOURCES
             ../main.cpp
+            contract.cpp
             xml/common.cpp
             xml/encoding.cpp
             xml/reader.cpp
@@ -101,8 +102,18 @@ if (${GTest_FOUND})
             yaml/document.cpp
             yaml/value.cpp
             abc/common.cpp
+            abc/header.cpp
+            abc/chunk.cpp
+            abc/index.cpp
+            abc/container.cpp
+            abc/signature.cpp
+            abc/schedule.cpp
+            abc/editor.cpp
             abc/encoding.cpp
             abc/reader.cpp
+            abc/writer.cpp
+            abc/document.cpp
+            abc/value.cpp
         )
 
         # Библиотеки GTest для линковки
