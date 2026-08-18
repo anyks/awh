@@ -172,6 +172,8 @@ void awh::codec::yaml::Document::clear() noexcept {
 	this->_props.clear();
 	// Выполняем сброс хранилища имён и записей значений
 	this->_storage.clear();
+	// Выполняем сброс указателей имён пар отображений
+	this->_index.clear();
 	// Выполняем сброс удержанного исходного текста
 	this->_source.clear();
 	// Выполняем сброс длины метки порядка байтов
@@ -288,6 +290,15 @@ awh::codec::yaml::Document::value_t awh::codec::yaml::Document::root() const noe
  *
  */
 uint32_t awh::codec::yaml::Document::deposit(const string_view text) noexcept {
+	/**
+	 * Если указатели имён заведены
+	 *
+	 * @note Имена держатся в указателях видами на хранилище, а перенос записи вправе
+	 *       переселить его целиком: виды те обратились бы в висячие
+	 */
+	if(!this->_index.empty())
+		// Выполняем сброс указателей имён пар отображений
+		this->_index.clear();
 	// Получаем смещение переносимой записи в хранилище
 	const uint32_t result = static_cast <uint32_t> (this->_storage.size());
 	// Выполняем перенос записи в хранилище знаков
@@ -2466,6 +2477,15 @@ uint32_t awh::codec::yaml::Document::implant(const uint32_t owner) noexcept {
 			// Запоминаем сдвинутый номер корня документа
 			this->_roots.at(i)++;
 	}
+	/**
+	 * Если указатели имён заведены
+	 *
+	 * @note Вставка узла сдвигает номера всех узлов за ним, а указатели держат именно
+	 *       номера: розыск по ним отдавал бы соседа вместо разыскиваемого
+	 */
+	if(!this->_index.empty())
+		// Выполняем сброс указателей имён пар отображений
+		this->_index.clear();
 	// Выполняем заведение узла на своём месте
 	this->_nodes.emplace(this->_nodes.begin() + place);
 	// Выводим номер заведённого узла
@@ -2735,6 +2755,14 @@ bool awh::codec::yaml::Document::extract(const uint32_t index) noexcept {
 		// Выполняем пометку вместилища и предков его правлеными
 		this->mark(owner);
 	}
+	/**
+	 * Если указатели имён заведены
+	 *
+	 * @note Снос узла сдвигает номера всех узлов за ним, а указатели держат именно номера
+	 */
+	if(!this->_index.empty())
+		// Выполняем сброс указателей имён пар отображений
+		this->_index.clear();
 	// Выполняем снятие поддерева узла из перечня узлов
 	this->_nodes.erase((this->_nodes.begin() + index), (this->_nodes.begin() + index + extent));
 	// Номер разбираемого корня документа
@@ -2939,6 +2967,14 @@ bool awh::codec::yaml::Document::assign(const uint32_t index, const string_view 
 				// Запоминаем убывший размах поддерева очередного узла
 				this->_nodes.at(i).extent(this->_nodes.at(i).extent() - (extent - 1));
 		}
+		/**
+		 * Если указатели имён заведены
+		 *
+		 * @note Снос детей сдвигает номера всех узлов за ними, а указатели держат номера
+		 */
+		if(!this->_index.empty())
+			// Выполняем сброс указателей имён пар отображений
+			this->_index.clear();
 		// Выполняем снятие детей узла из перечня узлов
 		this->_nodes.erase((this->_nodes.begin() + index + 1), (this->_nodes.begin() + index + extent));
 		/**
@@ -3486,6 +3522,55 @@ awh::codec::yaml::Document::value_t awh::codec::yaml::Document::Value::next() co
  *
  */
 awh::codec::yaml::Document::value_t awh::codec::yaml::Document::Value::operator [] (const string & name) const noexcept {
+	/**
+	 * Если пар отображения больше порога заведения указателя имён
+	 *
+	 * @details Ниже порога имя разыскивается перебором, и это дешевле всякого указателя.
+	 *          Выше него перебор обращает обход отображения по именам в квадратичный:
+	 *          замером на восьми тысячах пар обход тот стоил девяти микросекунд на пару
+	 *          против одной на тысяче
+	 *
+	 * @note Указатель заводится по требованию - при первом обращении по имени, а не при
+	 *       разборе: отображение, к какому по имени не обращались, не платит ничего
+	 */
+	if(this->size() > INDEX_THRESHOLD){
+		// Разыскиваем указатель имён пар отображения
+		auto i = this->_doc->_index.find(this->_index);
+		/**
+		 * Если указатель имён пар отображения ещё не заведён
+		 */
+		if(i == this->_doc->_index.end()){
+			// Заводимый указатель имён пар отображения
+			unordered_map <string_view, uint32_t> index;
+			// Выполняем упреждающее выделение памяти под указатель имён
+			index.reserve(this->size());
+			/**
+			 * Выполняем перебор всех детей вместилища
+			 */
+			for(value_t child = this->begin(); child.valid(); child = child.next())
+				/**
+				 * Добавляем имя очередной пары в указатель, если оно ещё не занято
+				 *
+				 * @note Занятое имя не перезаписывается: перебор отдавал бы первую пару из
+				 *       одноимённых, и розыск по указателю обязан отдавать её же
+				 */
+				index.emplace(child.name(), child._index);
+			// Запоминаем заведённый указатель имён пар отображения
+			i = this->_doc->_index.emplace(this->_index, ::std::move(index)).first;
+		}
+		// Разыскиваем имя пары отображения в указателе
+		auto j = i->second.find(string_view(name));
+		/**
+		 * Если имя пары отображения в указателе не разыскано
+		 */
+		if(j == i->second.end())
+			// Выводим недействительную ссылку на узел
+			return value_t();
+		// Получаем номер узла за последним узлом вместилища
+		const uint32_t bound = (this->_index + this->_doc->_nodes.at(this->_index).extent());
+		// Выводим ссылку на найденную пару отображения
+		return value_t(this->_doc, j->second, bound);
+	}
 	/**
 	 * Выполняем перебор всех детей вместилища
 	 */

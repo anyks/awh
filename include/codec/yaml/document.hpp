@@ -960,6 +960,43 @@ namespace awh {
 					// Хранилище имён и записей значений
 					string _storage;
 					/**
+					 * \~russian
+					 * Указатели имён пар отображений, по требованию заведённые
+					 *
+					 * @details Ключом стоит номер узла отображения, значением - имена детей его,
+					 * на номера узлов отображённые. Заводится указатель лишь тем отображениям,
+					 * у каких пар больше `INDEX_THRESHOLD`, и лишь при первом обращении по имени:
+					 * отображение, к какому по имени не обращались, не платит ничего
+					 *
+					 * @warning Имена держатся здесь видами на хранилище, а не своими записями, и
+					 *          всякая правка дерева указатели те обращает в прах: перенос записи
+					 *          в хранилище вправе переселить его целиком, а вставка узла и снос
+					 *          его сдвигают номера. Оттого правка обязана указатели сбрасывать,
+					 *          и сброс тот стоит у самих действий - у переноса записи, у вставки
+					 *          узла и у сноса его, - а не у каждого способа наружного
+					 *
+					 * @warning Заведение идёт по требованию, из способа неизменяющего, оттого поле
+					 *          и объявлено изменчивым: обращение по имени к одному дереву из двух
+					 *          потоков разом требует ограды от потребителя. Дерево, к какому
+					 *          обращаются лишь читая и лишь из одного потока, ограды не требует
+					 *
+					 * \~english
+					 * Indexes of the names of the mappings, created on demand
+					 * @details The key here is the number of the node of a mapping, the value — the names of its children
+					 * mapped onto the numbers of the nodes. An index is created only for those mappings which have
+					 * more pairs than `INDEX_THRESHOLD`, and only at the first access by a name: a mapping
+					 * which has not been accessed by a name pays nothing
+					 * @warning The names are held here as the views onto the storage rather than as their own records, and
+					 *          any editing of the tree turns those indexes into a dust: a transfer of a record into
+					 *          the storage is entitled to relocate it in full, while an insertion of a node and a removal
+					 *          of it shift the numbers. Hence the editing must reset the indexes, and that reset stands
+					 *          at the actions themselves — at the transfer of a record, at the insertion of a node and at
+					 *          the removal of it — rather than at every outward method
+					 *
+					 * \~
+					 */
+					mutable unordered_map <uint32_t, unordered_map <string_view, uint32_t>> _index;
+					/**
 					 * Удержанный исходный текст, настройкою затребованный
 					 *
 					 * @note Держится он в кодировке подачи своей: смещения событий чтение
