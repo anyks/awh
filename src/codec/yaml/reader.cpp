@@ -474,7 +474,7 @@ awh::codec::yaml::Reader::Reader() noexcept :
  _chomp(chomp_t::CLIP), _marked(NO_INDENT), _outer(0), _margin(0), _inner(0), _opening(0),
  _breaks(0), _padding(0), _deepened(false), _expected(false), _awaited(false), _valued(false),
  _headed(false), _propped(false), _tabbed(false), _rooted(false), _detected(false),
- _joined(0), _stretched(false), _shallow(0), _asked(false), _questioned(0), _dashed(false), _entered(false), _pending(0), _schema(schema_t::CORE), _plaining(false), _folds(0),
+ _joined(0), _stretched(false), _shallow(0), _asked(false), _questioned(0), _dashed(false), _flowning(false), _entered(false), _pending(0), _schema(schema_t::CORE), _plaining(false), _folds(0),
  _required(0), _phase(flow_t::ENTRY), _directed(false), _versioned(false), _declared(false),
  _dialect(schema_t::CORE) {}
 /**
@@ -490,7 +490,7 @@ awh::codec::yaml::Reader::Reader(const settings_t & settings) noexcept :
  _outer(0), _margin(0), _inner(0), _opening(0), _breaks(0), _padding(0), _deepened(false),
  _expected(false), _awaited(false), _valued(false), _headed(false), _propped(false),
  _tabbed(false), _rooted(false), _detected(false), _entered(false), _pending(0),
- _joined(0), _stretched(false), _shallow(0), _asked(false), _questioned(0), _dashed(false), _schema(settings.schema), _plaining(false), _folds(0), _required(0),
+ _joined(0), _stretched(false), _shallow(0), _asked(false), _questioned(0), _dashed(false), _flowning(false), _schema(settings.schema), _plaining(false), _folds(0), _required(0),
  _phase(flow_t::ENTRY), _directed(false), _versioned(false), _declared(false), _dialect(settings.schema) {
 	/**
 	 * Если кодировка исходного текста навязана извне
@@ -600,6 +600,10 @@ void awh::codec::yaml::Reader::clear() noexcept {
 	this->_expected = false;
 	// Выполняем сброс признака имени, вопросом объявленного
 	this->_asked = false;
+	// Выполняем сброс признака простого значения, внутри скобок собираемого
+	this->_flowning = false;
+	// Выполняем сброс собираемого содержимого простого значения внутри скобок
+	this->_flown.clear();
 	// Выполняем сброс признака подачи значения пары, объявленной прежде
 	this->_awaited = false;
 	// Выполняем сброс признака разбора значения пары в строке имени её
@@ -3520,6 +3524,79 @@ bool awh::codec::yaml::Reader::flowed(const string_view line, size_t & offset) n
 			position++;
 		}
 	}
+	/**
+	 * Если простое значение оборвано концом строки, разделителя не принёсшим
+	 *
+	 * @details Записи поточного построения строкою не отделены, и простое значение внутри
+	 *          скобок вправе стоять в несколько строк: обрывает его лишь запятая, скобка
+	 *          либо двоеточие. Строка, ни одного из них не принёсшая, значение продолжает,
+	 *          и выдавать его сейчас значило бы разорвать надвое
+	 *
+	 * @note Свёртка переводов идёт тем же правилом `s-flow-folded`, каким свёртываются
+	 *       значения огранённые: собирается запись дословно, а свёртка ложится на неё
+	 *       при выдаче
+	 */
+	if((style == style_t::PLAIN) && (position >= line.size())){
+		/**
+		 * Если простое значение собирается уже
+		 */
+		if(this->_flowning)
+			// Выполняем присоединение перевода строки к собираемому значению
+			this->_flown.push_back('\n');
+		/**
+		 * Если простое значение собирать только начато
+		 */
+		else {
+			// Запоминаем признак сборки простого значения внутри скобок
+			this->_flowning = true;
+			// Выполняем сброс собираемого содержимого простого значения
+			this->_flown.clear();
+			// Запоминаем смещение начала значения от начала текста
+			this->_flowned.offset = (this->_position + offset);
+			// Запоминаем номер строки, где значение началось
+			this->_flowned.line = this->_line;
+			// Запоминаем положение начала значения в строке
+			this->_flowned.column = static_cast <uint32_t> (offset + 1);
+			// Запоминаем глубину вложенности, где значение началось
+			this->_flowned.depth = static_cast <uint32_t> (this->_levels.size());
+		}
+		// Выполняем присоединение записи значения к собираемому содержимому
+		this->_flown.append(trimmed(line.substr(offset, (position - offset))));
+		// Запоминаем смещение за разобранной частью значения
+		offset = position;
+		// Выводим признак успешного разбора значения
+		return true;
+	}
+	/**
+	 * Если простое значение собиралось строками прежними
+	 *
+	 * @note Собранное дожидается разделителя, и разделитель этот пришёл: выдаём значение
+	 *       целиком, свёрткою переводов сложенное
+	 */
+	if(this->_flowning && (style == style_t::PLAIN)){
+		// Выполняем присоединение перевода строки к собираемому значению
+		this->_flown.push_back('\n');
+		// Выполняем присоединение последней записи значения к собираемому содержимому
+		this->_flown.append(trimmed(line.substr(offset, (position - offset))));
+		// Выполняем сброс признака сборки простого значения внутри скобок
+		this->_flowning = false;
+		// Получаем собранное содержимое значения со свёрнутыми переводами строк
+		const string value = folding(this->_flown, style_t::PLAIN);
+		// Выполняем сброс собираемого содержимого простого значения
+		this->_flown.clear();
+		/**
+		 * Если поставить событие значения не удалось
+		 */
+		if(!this->scalar(value, style, offset))
+			// Выводим признак неудачного разбора значения
+			return false;
+		// Устанавливаем положение начала значения поставленному событию
+		this->_staged.back().location = this->_flowned;
+		// Запоминаем смещение за разобранным значением
+		offset = position;
+		// Выводим признак успешного разбора значения
+		return true;
+	}
 	// Получаем запись значения без пробельной обвязки
 	const string_view text = ((style == style_t::PLAIN) ?
 		trimmed(line.substr(offset, (position - offset))) : line.substr(offset, (position - offset)));
@@ -3551,6 +3628,28 @@ bool awh::codec::yaml::Reader::flowed(const string_view line, size_t & offset) n
  *
  */
 bool awh::codec::yaml::Reader::flowing(const string_view line, size_t & offset) noexcept {
+	/**
+	 * Признак того, что разбираемая строка содержимого не несёт вовсе
+	 *
+	 * @details Признак берётся при входе, а не в самом переборе: перебор доходит до конца
+	 *          строки у всякой строки, и содержательной тоже, а перевод строки в собираемое
+	 *          значение вносит одна лишь строка пустая
+	 */
+	bool blank = true;
+	/**
+	 * Выполняем поиск содержимого в разбираемой строке
+	 */
+	for(size_t i = offset; i < line.size(); i++){
+		/**
+		 * Если знак строки пробельным не является
+		 */
+		if(!spacing(line[i])){
+			// Запоминаем признак того, что строка содержимое несёт
+			blank = false;
+			// Выходим из поиска содержимого строки
+			break;
+		}
+	}
 	// Получаем предел глубины вложенности
 	const size_t limit = ((this->_settings.depth > 0) ? this->_settings.depth : MAX_DEPTH);
 	/**
@@ -3570,9 +3669,20 @@ bool awh::codec::yaml::Reader::flowing(const string_view line, size_t & offset) 
 		 *       его прерывается здесь ровно на том месте, где остановился: стопа скобок
 		 *       держится полем, а не возвратностью вызовов
 		 */
-		if(offset >= line.size())
+		if(offset >= line.size()){
+			/**
+			 * Если внутри скобок собирается простое значение
+			 *
+			 * @note Строка пустая содержимого не несёт, а перевод свой несёт: описание велит
+			 *       ей стать переводом строки в собранном значении. Без учёта её запись
+			 *       `[ первая`, пустая строка, `  вторая ]` давала пробел вместо перевода
+			 */
+			if(this->_flowning && blank)
+				// Выполняем присоединение перевода строки к собираемому значению
+				this->_flown.push_back('\n');
 			// Выводим признак успешного разбора построения
 			return true;
+		}
 		/**
 		 * Если стопа открытых построений опустела
 		 *
@@ -3584,6 +3694,55 @@ bool awh::codec::yaml::Reader::flowing(const string_view line, size_t & offset) 
 			return true;
 		// Получаем очередной разбираемый знак строки
 		const char letter = line[offset];
+		/**
+		 * Если простое значение собиралось строками прежними, а знак его обрывает
+		 *
+		 * @details Простое значение внутри скобок обрывает запятая, скобка либо двоеточие.
+		 *          Знак этот разбирается ниже обычным порядком, а собранное значение надлежит
+		 *          выдать прежде него: без выдачи запись `[\n  1,\n  2\n  ]` теряла значение
+		 *          `2` вовсе - скобка закрывала построение, а собранное оставалось в накопителе
+		 *
+		 * @note Выдача идёт здесь, а не в разборе значения: разделитель до разбора значения
+		 *       не доходит вовсе, его разбирает сам перебор знаков построения
+		 */
+		if(this->_flowning && ((letter == ',') || (letter == ']') || (letter == '}') ||
+		   ((letter == ':') && (((offset + 1) >= line.size()) || spacing(line[offset + 1]) ||
+		   (line[offset + 1] == ',') || (line[offset + 1] == ']') || (line[offset + 1] == '}'))))){
+			/**
+			 * Если значение собрано в несколько строк, а обрывается двоеточием
+			 *
+			 * @details Имя это принадлежит отображению об одной паре, а его описание берёт
+			 *          правилом `ns-flow-pair`, где имя стоит правилом `ns-s-implicit-yaml-key`
+			 *          - а тому дозволена одна строка и только одна. Внутри отображения
+			 *          правило иное: `ns-flow-map-yaml-key-entry` отделяет имя от двоеточия
+			 *          правилом `s-separate`, а тому перевод строки дозволен, и написание
+			 *          `{имя` со строкою `: значение` ниже законно
+			 *
+			 * @note Сличаются строки, а не наличие перевода в собранном: запись `[ имя` со
+			 *       строкою `: значение` ниже перевода в собранном не имеет вовсе - имя
+			 *       собрано одною строкой, - а двоеточие стоит уже в строке следующей.
+			 *       Случай DK4H набора yaml-test-suite, а обратные ему - 4MUZ и VJP3
+			 */
+			if((letter == ':') && (this->_flow.back().kind == nesting_t::SEQUENCE) && (this->_flowned.line != this->_line))
+				// Выводим отказ недопустимого знака в этом месте текста
+				return this->fail(error_t::INVALID_CHARACTER, offset);
+			// Выполняем сброс признака сборки простого значения внутри скобок
+			this->_flowning = false;
+			// Получаем собранное содержимое значения со свёрнутыми переводами строк
+			const string value = folding(this->_flown, style_t::PLAIN);
+			// Выполняем сброс собираемого содержимого простого значения
+			this->_flown.clear();
+			/**
+			 * Если поставить событие значения не удалось
+			 */
+			if(!this->scalar(value, style_t::PLAIN, offset))
+				// Выводим признак неудачного разбора построения
+				return false;
+			// Устанавливаем положение начала значения поставленному событию
+			this->_staged.back().location = this->_flowned;
+			// Запоминаем ожидание запятой либо закрывающей скобки
+			this->_phase = flow_t::AFTER;
+		}
 		/**
 		 * Если разбираемый знак открывает примечание
 		 *
@@ -3796,8 +3955,16 @@ bool awh::codec::yaml::Reader::flowing(const string_view line, size_t & offset) 
 				return false;
 			// Запоминаем признак наполнения открытого построения
 			this->_flow.back().filled = true;
-			// Запоминаем ожидание запятой либо закрывающей скобки
-			this->_phase = flow_t::AFTER;
+			/**
+			 * Запоминаем ожидание запятой либо закрывающей скобки
+			 *
+			 * @note Простое значение, концом строки оборванное, разделителя ещё не имеет:
+			 *       ожидание его означало бы, что строка следующая обязана открыться
+			 *       запятой, - а она значение продолжает
+			 */
+			if(!this->_flowning)
+				// Запоминаем ожидание запятой либо закрывающей скобки
+				this->_phase = flow_t::AFTER;
 			// Выполняем переход к разбору следующего знака строки
 			continue;
 		}

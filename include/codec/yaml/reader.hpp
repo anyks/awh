@@ -603,6 +603,27 @@ namespace awh {
 					 * \~
 					 */
 					bool _dashed;
+					/**
+					 * \~russian
+					 * Признак того, что внутри скобок собирается простое значение
+					 *
+					 * @details Записи поточного построения строкою не отделены, и простое значение
+					 * внутри скобок вправе стоять в несколько строк: обрывает его лишь запятая,
+					 * скобка либо двоеточие. Строка, разделителя не принёсшая, значение продолжает
+					 *
+					 * \~english
+					 * Sign that a plain value is being collected inside the brackets
+					 * @details The entries of a flow construction are not separated by the lines, and a plain value
+					 * inside the brackets is entitled to stand in several lines: it is broken only by a comma,
+					 * by a bracket or by a colon. A line which has not brought a separator continues the value
+					 *
+					 * \~
+					 */
+					bool _flowning;
+					// Собираемое содержимое простого значения внутри скобок
+					string _flown;
+					// Положение начала простого значения, внутри скобок собираемого
+					location_t _flowned;
 				private:
 					/**
 					 * \~russian
