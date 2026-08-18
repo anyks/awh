@@ -525,6 +525,32 @@ namespace awh {
 					bool _stretched;
 					// Наименьший отступ строк, склейкой присоединённых
 					uint32_t _shallow;
+					/**
+					 * \~russian
+					 * Признак того, что имя пары объявлено вопросом составного имени
+					 *
+					 * @details Составное имя объявляется вопросом, а значение его - двоеточием
+					 * строкою ниже, на том же отступе. Признак этот и отличает двоеточие
+					 * значения от двоеточия пустого имени: без него написание `: значение`
+					 * читалось бы парою с именем пустым
+					 *
+					 * @note Признак держится до прихода значения либо до строки, ожидание
+					 *       обрывающей: имя без значения своего пустоту получает, ровно как её
+					 *       получает имя, двоеточием объявленное
+					 *
+					 * \~english
+					 * Sign that the name of a pair is declared by the question of an explicit key
+					 * @details An explicit key is declared by a question, and its value — by a colon a line below,
+					 * at the same indentation. This sign distinguishes the colon of a value from the colon of
+					 * an empty name: without it the record `: value` would be read as a pair with an empty name
+					 * @note The sign is held until the arrival of the value or until a line breaking the expectation:
+					 *       a name without its value receives an emptiness, exactly as does a name declared by a colon
+					 *
+					 * \~
+					 */
+					bool _asked;
+					// Отступ, на котором стоит вопрос составного имени
+					uint32_t _questioned;
 				private:
 					/**
 					 * \~russian

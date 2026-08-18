@@ -474,7 +474,7 @@ awh::codec::yaml::Reader::Reader() noexcept :
  _chomp(chomp_t::CLIP), _marked(NO_INDENT), _outer(0), _margin(0), _inner(0), _opening(0),
  _breaks(0), _padding(0), _deepened(false), _expected(false), _awaited(false), _valued(false),
  _headed(false), _propped(false), _tabbed(false), _rooted(false), _detected(false),
- _joined(0), _stretched(false), _shallow(0), _entered(false), _pending(0), _schema(schema_t::CORE), _plaining(false), _folds(0),
+ _joined(0), _stretched(false), _shallow(0), _asked(false), _questioned(0), _entered(false), _pending(0), _schema(schema_t::CORE), _plaining(false), _folds(0),
  _required(0), _phase(flow_t::ENTRY), _directed(false), _versioned(false), _declared(false),
  _dialect(schema_t::CORE) {}
 /**
@@ -490,7 +490,7 @@ awh::codec::yaml::Reader::Reader(const settings_t & settings) noexcept :
  _outer(0), _margin(0), _inner(0), _opening(0), _breaks(0), _padding(0), _deepened(false),
  _expected(false), _awaited(false), _valued(false), _headed(false), _propped(false),
  _tabbed(false), _rooted(false), _detected(false), _entered(false), _pending(0),
- _joined(0), _stretched(false), _shallow(0), _schema(settings.schema), _plaining(false), _folds(0), _required(0),
+ _joined(0), _stretched(false), _shallow(0), _asked(false), _questioned(0), _schema(settings.schema), _plaining(false), _folds(0), _required(0),
  _phase(flow_t::ENTRY), _directed(false), _versioned(false), _declared(false), _dialect(settings.schema) {
 	/**
 	 * Если кодировка исходного текста навязана извне
@@ -598,6 +598,8 @@ void awh::codec::yaml::Reader::clear() noexcept {
 	this->_inner = 0;
 	// Выполняем сброс признака ожидания значения пары
 	this->_expected = false;
+	// Выполняем сброс признака имени, вопросом объявленного
+	this->_asked = false;
 	// Выполняем сброс признака подачи значения пары, объявленной прежде
 	this->_awaited = false;
 	// Выполняем сброс признака разбора значения пары в строке имени её
@@ -2072,14 +2074,191 @@ bool awh::codec::yaml::Reader::content(const string_view line, const size_t offs
 	/**
 	 * Если содержимое открывается вопросом составного имени
 	 *
-	 * @details Составные имена заводятся вместе с держащим документ целиком: имя, само
-	 *          построением являющееся, нуждается в дереве, а потоковому чтению деть его
-	 *          некуда. Отвечать на него молчаливым разбором наугад нельзя: разбор выдал бы
-	 *          дерево, исходному тексту не отвечающее, и потребитель узнал бы о том не сразу
+	 * @details Имя, вопросом объявленное, есть узел наравне со значением своим, и событиями
+	 *          выдаётся оно так же, как имя обычной пары: скалярное значение имени, за ним
+	 *          скалярное значение пары. Двоеточие строкою ниже объявляет значение
+	 *
+	 * @note Имя, самo построением являющееся, дереву деть некуда - узел пары имя своё
+	 *       записью держит, а не поддеревом, - и отвергается оно ниже, при постановке
+	 *       события построения на месте имени
 	 */
-	if(leading == '?')
-		// Выводим отказ недопустимого знака в этом месте текста
-		return this->fail(error_t::INVALID_CHARACTER, offset);
+	if((leading == '?') && (((offset + 1) >= line.size()) || spacing(line[offset + 1]))){
+		/**
+		 * Если уровень отображения на этом отступе ещё не открыт
+		 */
+		if(this->_levels.empty() || (this->_levels.back().indent < indent) ||
+		   (this->_levels.back().kind != nesting_t::MAPPING)){
+			/**
+			 * Если перечень и отображение смешаны на одном уровне
+			 */
+			if(!this->_levels.empty() && (this->_levels.back().indent == indent) &&
+			   (this->_levels.back().kind != nesting_t::MAPPING))
+				// Выводим отказ смешения перечня и отображения на одном уровне
+				return this->fail(error_t::MIXED_COLLECTION, offset);
+			/**
+			 * Если открыть уровень отображения не удалось
+			 */
+			if(!this->expand(nesting_t::MAPPING, indent, false, offset))
+				// Выводим признак неудачного разбора содержимого
+				return false;
+		}
+		// Запоминаем признак имени, вопросом объявленного
+		this->_asked = true;
+		// Запоминаем отступ, на котором стоит вопрос составного имени
+		this->_questioned = indent;
+		// Получаем смещение содержимого за вопросом составного имени
+		size_t position = (offset + 1);
+		/**
+		 * Выполняем пропуск пробельных знаков за вопросом составного имени
+		 */
+		while((position < line.size()) && spacing(line[position])){
+			/**
+			 * Если пробельный знак есть знак горизонтальной подачи
+			 *
+			 * @details Построение вложенное отступ свой берёт правилом `s-indent` описания, а
+			 *          тот задан одними пробелами: подача отступом не является, и написание
+			 *          `?<подача>-` отступа вложенному построению не даёт вовсе
+			 *
+			 * @note Случай Y79Y набора yaml-test-suite
+			 */
+			if(line[position] == '\t')
+				// Запоминаем признак подачи в отступе вложенного построения
+				this->_tabbed = true;
+			// Выполняем переход к следующему знаку строки
+			position++;
+		}
+		/**
+		 * Запоминаем признак ожидания имени пары
+		 *
+		 * @note Признак тот же, каким ожидается значение пары: имя, вопросом объявленное и
+		 *       строкою своей не заполненное, пустоту получает ровно так же
+		 */
+		this->_expected = true;
+		// Выполняем сброс признака принадлежности ожидаемого значения записи перечня
+		this->_entered = false;
+		// Запоминаем отступ, на котором ожидается имя пары
+		this->_pending = indent;
+		// Запоминаем смещение, на котором ожидается имя пары
+		this->_awaiting.offset = (this->_position + position);
+		// Запоминаем строку, на которой ожидается имя пары
+		this->_awaiting.line = this->_line;
+		// Запоминаем столбец, на котором ожидается имя пары
+		this->_awaiting.column = static_cast <uint32_t> (position + 1);
+		/**
+		 * Если содержимое строки исчерпано либо за ним стоит одно примечание
+		 */
+		if((position >= line.size()) || (line[position] == '#')){
+			/**
+			 * Если за вопросом составного имени стоит примечание
+			 */
+			if(position < line.size())
+				// Выполняем постановку события примечания
+				this->remark(line, position);
+			// Выводим признак успешного разбора содержимого
+			return true;
+		}
+		// Выполняем разбор имени пары, за вопросом стоящего
+		return this->content(line, position, static_cast <uint32_t> (position));
+	}
+	/**
+	 * Если содержимое открывается двоеточием значения составного имени
+	 *
+	 * @details Двоеточие это объявляет значение имени, вопросом объявленного прежде, и
+	 *          стоит оно на том же отступе, что и вопрос. Без него имя получает пустоту
+	 *
+	 * @note Двоеточие, вопроса не дождавшееся, объявляет пару с именем пустым: описание
+	 *       того дозволяет, и имя такое выдаётся пустым скалярным значением
+	 */
+	if((leading == ':') && (((offset + 1) >= line.size()) || spacing(line[offset + 1]))){
+		/**
+		 * Если имя вопросом не объявлялось
+		 */
+		if(!this->_asked){
+			/**
+			 * Если уровень отображения на этом отступе ещё не открыт
+			 */
+			if(this->_levels.empty() || (this->_levels.back().indent < indent) ||
+			   (this->_levels.back().kind != nesting_t::MAPPING)){
+				/**
+				 * Если перечень и отображение смешаны на одном уровне
+				 */
+				if(!this->_levels.empty() && (this->_levels.back().indent == indent) &&
+				   (this->_levels.back().kind != nesting_t::MAPPING))
+					// Выводим отказ смешения перечня и отображения на одном уровне
+					return this->fail(error_t::MIXED_COLLECTION, offset);
+				/**
+				 * Если открыть уровень отображения не удалось
+				 */
+				if(!this->expand(nesting_t::MAPPING, indent, false, offset))
+					// Выводим признак неудачного разбора содержимого
+					return false;
+			}
+			/**
+			 * Если поставить событие пустого имени пары не удалось
+			 */
+			if(!this->scalar(string(), style_t::PLAIN, offset))
+				// Выводим признак неудачного разбора содержимого
+				return false;
+			// Устанавливаем вид пустого имени последнему событию
+			this->_staged.back().type = type_t::NUL;
+		}
+		// Выполняем сброс признака имени, вопросом объявленного
+		this->_asked = false;
+		// Получаем смещение содержимого за двоеточием значения
+		size_t position = (offset + 1);
+		/**
+		 * Выполняем пропуск пробельных знаков за двоеточием значения
+		 */
+		while((position < line.size()) && spacing(line[position])){
+			/**
+			 * Если пробельный знак есть знак горизонтальной подачи
+			 *
+			 * @details Построение вложенное отступ свой берёт правилом `s-indent` описания, а
+			 *          тот задан одними пробелами: подача отступом не является, и написание
+			 *          `:<подача>-` отступа вложенному построению не даёт вовсе
+			 *
+			 * @note Случай Y79Y набора yaml-test-suite
+			 */
+			if(line[position] == '\t')
+				// Запоминаем признак подачи в отступе вложенного построения
+				this->_tabbed = true;
+			// Выполняем переход к следующему знаку строки
+			position++;
+		}
+		// Запоминаем признак ожидания значения пары
+		this->_expected = true;
+		// Выполняем сброс признака принадлежности ожидаемого значения записи перечня
+		this->_entered = false;
+		// Запоминаем отступ, на котором ожидается значение пары
+		this->_pending = indent;
+		// Запоминаем смещение, на котором ожидается значение пары
+		this->_awaiting.offset = (this->_position + position);
+		// Запоминаем строку, на которой ожидается значение пары
+		this->_awaiting.line = this->_line;
+		// Запоминаем столбец, на котором ожидается значение пары
+		this->_awaiting.column = static_cast <uint32_t> (position + 1);
+		/**
+		 * Если содержимое строки исчерпано либо за ним стоит одно примечание
+		 */
+		if((position >= line.size()) || (line[position] == '#')){
+			/**
+			 * Если за двоеточием значения стоит примечание
+			 */
+			if(position < line.size())
+				// Выполняем постановку события примечания
+				this->remark(line, position);
+			// Выводим признак успешного разбора содержимого
+			return true;
+		}
+		// Выполняем разбор значения пары, за двоеточием стоящего
+		return this->content(line, position, static_cast <uint32_t> (position));
+	}
+	/**
+	 * Если содержимое открывается вопросом, за каким пробельного знака нет
+	 *
+	 * @note Вопрос составное имя объявляет лишь тогда, когда за ним стоит пробельный знак
+	 *       либо конец строки: запись `?имя` есть простое значение целиком
+	 */
 	/**
 	 * Если значение открывается знаком примечания
 	 *
@@ -4299,6 +4478,15 @@ bool awh::codec::yaml::Reader::record(const string_view line) noexcept {
 	 */
 	const bool implied = (entry && !this->_entered && (indent == this->_pending));
 	/**
+	 * Признак того, что строка объявляет значение имени, вопросом объявленного
+	 *
+	 * @note Знать это надлежит прежде выдачи пустого значения: двоеточие на отступе вопроса
+	 *       есть значение имени его, а не строка, ожидание обрывающая. Без признака этого
+	 *       имя, вопросом объявленное, получало бы пустоту прежде своего значения
+	 */
+	const bool answer = (this->_asked && (line[offset] == ':') &&
+	 (((offset + 1) >= line.size()) || spacing(line[offset + 1])) && (indent == this->_pending));
+	/**
 	 * Если ожидалось значение пары, а строка стоит на отступе имени её, перечнем не являясь
 	 *
 	 * @details Выдаётся оно прежде закрытия уровней, а не за ним: значение принадлежит
@@ -4309,7 +4497,7 @@ bool awh::codec::yaml::Reader::record(const string_view line) noexcept {
 	 * @note Ожидание записи перечня чертою не снимается: черта на отступе ожидания есть
 	 *       запись следующая, и пустоту прежней записи надлежит выдать прежде неё
 	 */
-	if(this->_expected && !implied && (indent <= this->_pending)){
+	if(this->_expected && !implied && !answer && (indent <= this->_pending)){
 		// Выполняем сброс признака ожидания значения пары
 		this->_expected = false;
 		/**
@@ -4362,6 +4550,25 @@ bool awh::codec::yaml::Reader::record(const string_view line) noexcept {
 	if(!this->content(line, offset, indent))
 		// Выводим признак неудачного разбора строки
 		return false;
+	/**
+	 * Если имя, вопросом объявленное, собрано, а значения его ещё нет
+	 *
+	 * @details Признак ожидания у имени и у значения его один и тот же, и разбор имени его
+	 *          снимает. Возвращается он здесь, дабы имя, значения своего не дождавшееся,
+	 *          получило пустоту: написание `? имя` со следующим вопросом строкою ниже
+	 *          читалось прежде одною парою, где второе имя легло значением первого
+	 *
+	 * @note Отступ ожидания берётся у вопроса, а не у имени: имя вправе стоять и строкою
+	 *       ниже, отступом глубже, а двоеточие значения стоит отступом вопроса
+	 */
+	if(this->_asked && !this->_expected){
+		// Запоминаем признак ожидания значения имени, вопросом объявленного
+		this->_expected = true;
+		// Выполняем сброс признака принадлежности ожидаемого значения записи перечня
+		this->_entered = false;
+		// Запоминаем отступ, на котором ожидается значение имени
+		this->_pending = this->_questioned;
+	}
 	// Выполняем перенос собранных событий строки в очередь выдачи
 	this->commit();
 	// Выводим признак успешного разбора строки
