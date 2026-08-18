@@ -45,6 +45,14 @@ int main(int argc, char ** argv){
 	 * построение скобками, а явную черту документа - самой чертой
 	 */
 	const auto marked = [&](const char * pair) noexcept -> std::string {
+		/**
+		 * Построение поточное, скобок своих не имеющее
+		 *
+		 * @note Запись `[ имя: значение ]` описание берёт правилом `ns-flow-pair`: отображение
+		 *       там скобок не имеет вовсе, а набор сверки метит его скобками наравне с прочими.
+		 *       Розыском по тексту его не опознать - место события стоит на имени пары
+		 */
+		if(reader.value().flow) return std::string(" ").append(1, pair[0]).append(1, pair[1]);
 		if(reader.value().location.offset == yaml::NO_OFFSET) return std::string();
 		size_t offset = static_cast <size_t> (reader.value().location.offset);
 		while((offset < text.size()) && ((text.at(offset) == ' ') || (text.at(offset) == '\t'))) offset++;

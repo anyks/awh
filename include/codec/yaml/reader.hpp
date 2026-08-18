@@ -306,6 +306,40 @@ namespace awh {
 						bool valued;
 						/**
 						 * \~russian
+						 * Признак того, что внутри перечня открыто отображение об одной паре
+						 *
+						 * @details Описание берёт запись `[ имя: значение ]` правилом `ns-flow-pair`:
+						 * запись перечня там есть отображение, одну пару несущее. Отображение это
+						 * скобок своих не имеет вовсе, и закрывается оно запятой либо скобкой перечня
+						 *
+						 * \~english
+						 * Sign that a mapping of a single pair is opened inside a sequence
+						 * @details The description takes the record `[ name: value ]` by the `ns-flow-pair` rule:
+						 * an entry of a sequence there is a mapping carrying one pair. That mapping has no brackets
+						 * of its own at all, and it is closed by a comma or by the bracket of the sequence
+						 *
+						 * \~
+						 */
+						bool paired;
+						/**
+						 * \~russian
+						 * Место начала событий очередной записи в накопителе строки
+						 *
+						 * @details Отображение об одной паре опознаётся двоеточием, за именем стоящим, -
+						 * а событие имени к тому времени поставлено уже. Место это и позволяет
+						 * вставить событие открытия отображения перед именем, а не за ним
+						 *
+						 * \~english
+						 * Place of the beginning of the events of the current entry in the accumulator of the line
+						 * @details A mapping of a single pair is recognized by the colon standing after the name — and
+						 * the event of the name is placed by that time already. This place allows the event of the opening
+						 * of the mapping to be inserted before the name rather than after it
+						 *
+						 * \~
+						 */
+						size_t origin;
+						/**
+						 * \~russian
 						 * @brief Конструктор
 						 *
 						 * @param kind вид открытого поточного построения
@@ -316,7 +350,8 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						Bracket(const nesting_t kind) noexcept : kind(kind), filled(false), valued(false) {}
+						Bracket(const nesting_t kind) noexcept :
+						 kind(kind), filled(false), valued(false), paired(false), origin(0) {}
 					} bracket_t;
 					/**
 					 * \~russian
