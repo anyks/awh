@@ -142,6 +142,12 @@ namespace {
 	 */
 	static bool tagging(const char letter) noexcept {
 		/**
+		 * @note Знаки ограды поточных построений записи сокращения не принадлежат вовсе:
+		 *       запятая в поточном построении метку типа завершает, а вне его делает
+		 *       написание `- !!str, xxx` ошибочным. Дословная же запись `!<...>` знаки
+		 *       эти несёт и читается не здесь
+		 */
+		/**
 		 * Если знак есть буква либо цифра
 		 */
 		if(((letter >= 'a') && (letter <= 'z')) || ((letter >= 'A') && (letter <= 'Z')) ||
@@ -154,7 +160,7 @@ namespace {
 		switch(letter){
 			// Если знак дозволен описанием записи указателя
 			case '-': case ';': case '/': case '?': case ':': case '@': case '&':
-			case '=': case '+': case '$': case ',': case '_': case '.': case '~':
+			case '=': case '+': case '$': case '_': case '.': case '~':
 			case '*': case '\'': case '(': case ')': case '%':
 				// Выводим признак пригодности знака записи метки типа
 				return true;
@@ -229,7 +235,7 @@ awh::codec::yaml::Reader::Reader() noexcept :
  _state(state_t::READY), _error(error_t::NONE), _reading(0), _offset(0), _line(0), _position(0),
  _started(false), _opened(false), _filled(false), _blocking(false), _block(style_t::LITERAL),
  _chomp(chomp_t::CLIP), _marked(NO_INDENT), _outer(0), _margin(0), _inner(0), _opening(0),
- _breaks(0), _padding(0), _deepened(false), _expected(false), _awaited(false), _valued(false), _entered(false), _pending(0), _schema(schema_t::CORE), _plaining(false),
+ _breaks(0), _padding(0), _deepened(false), _expected(false), _awaited(false), _valued(false), _headed(false), _entered(false), _pending(0), _schema(schema_t::CORE), _plaining(false),
  _folds(0), _required(0), _phase(flow_t::ENTRY), _directed(false), _versioned(false), _declared(false), _dialect(schema_t::CORE) {}
 /**
  * @brief Конструктор
@@ -241,7 +247,7 @@ awh::codec::yaml::Reader::Reader(const settings_t & settings) noexcept :
  _settings(settings), _state(state_t::READY), _error(error_t::NONE), _reading(0), _offset(0),
  _line(0), _position(0), _started(false), _opened(false), _filled(false),
  _blocking(false), _block(style_t::LITERAL), _chomp(chomp_t::CLIP), _marked(NO_INDENT),
- _outer(0), _margin(0), _inner(0), _opening(0), _breaks(0), _padding(0), _deepened(false), _expected(false), _awaited(false), _valued(false), _entered(false), _pending(0),
+ _outer(0), _margin(0), _inner(0), _opening(0), _breaks(0), _padding(0), _deepened(false), _expected(false), _awaited(false), _valued(false), _headed(false), _entered(false), _pending(0),
  _schema(settings.schema), _plaining(false), _folds(0), _required(0),
  _phase(flow_t::ENTRY), _directed(false), _versioned(false), _declared(false), _dialect(settings.schema) {
 	/**
@@ -344,6 +350,8 @@ void awh::codec::yaml::Reader::clear() noexcept {
 	this->_awaited = false;
 	// Выполняем сброс признака разбора значения пары в строке имени её
 	this->_valued = false;
+	// Выполняем сброс признака разбора содержимого на строке черты начала документа
+	this->_headed = false;
 	// Выполняем сброс признака принадлежности ожидаемого значения записи перечня
 	this->_entered = false;
 	// Выполняем сброс отступа, на котором ожидается значение пары
@@ -1507,9 +1515,21 @@ bool awh::codec::yaml::Reader::property(const string_view line, size_t & offset)
 		 * @note Свойства отделяются пробельными знаками и от узла своего, и друг от друга:
 		 *       запись `&метка!тип` описанию противна, и разбирать её наугад нельзя
 		 */
-		if(!spacing(line[offset]))
+		if(!spacing(line[offset])){
+			/**
+			 * Если знак ограду поточного построения завершает
+			 *
+			 * @note Внутри построения свойство завершается запятой либо скобкой закрывающей,
+			 *       а не одним лишь пробелом: написание `[!!str, xxx]` описанию отвечает.
+			 *       Вне построения знаки эти свойству чужие, и написание `- !!str, xxx`
+			 *       есть ошибка
+			 */
+			if(!this->_flow.empty() && ((line[offset] == ',') || (line[offset] == ']') || (line[offset] == '}')))
+				// Выводим признак успешного разбора свойств узла
+				return true;
 			// Выводим отказ недопустимого знака в этом месте текста
 			return this->fail(error_t::INVALID_CHARACTER, offset);
+		}
 		/**
 		 * Выполняем пропуск пробельных знаков за разобранным свойством
 		 */
@@ -1949,6 +1969,20 @@ bool awh::codec::yaml::Reader::content(const string_view line, const size_t offs
 	 */
 	if((leading == '-') && (((offset + 1) >= line.size()) || spacing(line[offset + 1]))){
 		/**
+		 * Если черта записи стоит на строке черты начала документа
+		 *
+		 * @details Блочное построение строки черты начала документа не занимает: отступ
+		 *          его отсчитывался бы от черты, а не от начала строки, и написание
+		 *          `--- - a` двусмысленно. Скаляр же простой да построение поточное там
+		 *          дозволены - отступа они не задают
+		 *
+		 * @note Отвечает rapidyaml отказом разбора. Нашло это сличение с набором
+		 *       yaml-test-suite
+		 */
+		if(this->_headed)
+			// Выводим отказ недопустимого знака в этом месте текста
+			return this->fail(error_t::INVALID_CHARACTER, offset);
+		/**
 		 * Признак того, что перечень открывается значением пары на отступе имени её
 		 *
 		 * @note Построение это описанием дозволено: пара `ключ:` со значениями перечня
@@ -2068,6 +2102,19 @@ bool awh::codec::yaml::Reader::content(const string_view line, const size_t offs
 		 *       consecutive keys». Нашло это сличение с набором yaml-test-suite
 		 */
 		if(this->_valued)
+			// Выводим отказ недопустимого знака в этом месте текста
+			return this->fail(error_t::INVALID_CHARACTER, position);
+		/**
+		 * Если имя пары стоит на строке черты начала документа
+		 *
+		 * @details Блочное отображение строки черты начала документа не занимает: отступ
+		 *          его отсчитывался бы от черты, а не от начала строки, и продолжение
+		 *          написания `--- key1: value1` строкою ниже читать нечем
+		 *
+		 * @note Отвечает rapidyaml отказом разбора. Нашло это сличение с набором
+		 *       yaml-test-suite
+		 */
+		if(this->_headed)
 			// Выводим отказ недопустимого знака в этом месте текста
 			return this->fail(error_t::INVALID_CHARACTER, position);
 		/**
@@ -2905,6 +2952,32 @@ bool awh::codec::yaml::Reader::flowing(const string_view line, size_t & offset) 
 		 */
 		if(this->_phase == flow_t::ENTRY){
 			/**
+			 * Если запись поточного построения занята одними свойствами узла
+			 *
+			 * @details Написание `[!!str, xxx]` описанию отвечает: первая запись есть
+			 *          значение пустое, меткою типа помеченное. Прежде свойства эти
+			 *          пропадали вместе с записью своей - разбор ждал значения и, не
+			 *          дождавшись, ни события не ставил, ни отказа не давал
+			 *
+			 * @note Нашло это сличение с набором yaml-test-suite
+			 */
+			if(((letter == closer) || (letter == ',')) && (!this->_anchor.empty() || !this->_tag.empty())){
+				/**
+				 * Если поставить событие пустого значения не удалось
+				 */
+				if(!this->scalar(string(), style_t::PLAIN, offset))
+					// Выводим признак неудачного разбора построения
+					return false;
+				// Устанавливаем вид пустого значения последнему событию
+				this->_staged.back().type = type_t::NUL;
+				// Запоминаем признак наполнения открытого построения
+				bracket.filled = true;
+				// Запоминаем ожидание запятой либо закрывающей скобки
+				this->_phase = flow_t::AFTER;
+				// Выполняем переход к разбору того же знака строки
+				continue;
+			}
+			/**
 			 * Если построение закрывается скобкой
 			 */
 			if(letter == closer){
@@ -3578,10 +3651,16 @@ bool awh::codec::yaml::Reader::record(const string_view line) noexcept {
 		while((position < line.size()) && spacing(line[position]))
 			// Выполняем переход к следующему знаку строки
 			position++;
+		// Запоминаем признак разбора содержимого на строке черты начала документа
+		this->_headed = true;
+		// Признак успешного разбора содержимого за объявлением документа
+		const bool parsed = this->content(line, position, static_cast <uint32_t> (position));
+		// Выполняем сброс признака разбора содержимого на строке черты начала документа
+		this->_headed = false;
 		/**
 		 * Если разобрать содержимое за объявлением документа не удалось
 		 */
-		if(!this->content(line, position, static_cast <uint32_t> (position)))
+		if(!parsed)
 			// Выводим признак неудачного разбора строки
 			return false;
 		// Выполняем перенос собранных событий строки в очередь выдачи
