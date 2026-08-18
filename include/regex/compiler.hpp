@@ -608,6 +608,35 @@ namespace awh {
 				bool advancing(const node_id_t id) const noexcept;
 				/**
 				 * \~russian
+				 * @brief Метод проверки обязательного продвижения узла по тексту со следом обхода
+				 *
+				 * @details След несёт узлы, проверка каких ещё не завершена, и служит
+				 *          сторожем кругового обхода: рекурсивный вызов ссылается
+				 *          на выражение, вызов этот содержащее, отчего проверка его
+				 *          пришла бы к себе же. Узел, в следе уже стоящий, продвижения
+				 *          не подтверждает - умолчание безопасно, а подтверждение
+				 *          ошибочное сняло бы сторожа продвижения.
+				 *
+				 * @param id      индекс проверяемого узла в арене узлов
+				 * @param visited след узлов, проверка каких не завершена
+				 * @return        результат проверки обязательного продвижения узла по тексту
+				 *
+				 * \~english
+				 * @brief Method of checking the mandatory advance of a node through the text with a trail of the walk
+				 * @details The trail holds the nodes whose check is not yet finished and serves
+				 *          as a guard of a circular walk: a recursive call refers to the expression
+				 *          containing that very call, which is why checking it would come to itself.
+				 *          A node already standing in the trail confirms no advance - saying nothing
+				 *          is safe, whereas confirming wrongly would remove the guard of the advance.
+				 * @param id      index of the checked node in the node arena
+				 * @param visited trail of the nodes whose check is not finished
+				 * @return        result of checking the mandatory advance of the node through the text
+				 *
+				 * \~
+				 */
+				bool advancing(const node_id_t id, vector <node_id_t> & visited) const noexcept;
+				/**
+				 * \~russian
 				 * @brief Метод распознавания выражения, сопоставляемого литералом
 				 *
 				 * @details Выражение, состоящее из одной последовательности символов,

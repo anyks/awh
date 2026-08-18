@@ -128,6 +128,73 @@ static bool parse(const std::string & text) noexcept {
 }
 
 /**
+ * @brief Функция снятия владеющего поддерева с дерева разметки
+ *
+ * @details Дерево собирается однажды, при прогреве, и замеряется одно лишь снятие
+ *          поддерева глубокой копией. У этой реализации снятие владеющее: `xmlCopyNode`
+ *          переносит и знаки имён с содержимым, а не одни указания на них
+ *
+ * @note Прочие сценарии стенда идут потоковой выдачей SAX2, дерева не заводя вовсе.
+ *       Здесь дерево заводится намеренно: сравнивается снятие поддерева, а его без
+ *       дерева не бывает
+ *
+ * @param text разбираемый текст разметки
+ * @return     признак успешного снятия
+ *
+ */
+static bool copy(const std::string & text) noexcept {
+	// Дерево разметки, с какого снимается поддерево
+	static xmlDocPtr document = nullptr;
+	// Текст разметки, каким дерево собрано
+	static const std::string * source = nullptr;
+	/**
+	 * Если дерево разметки ещё не собрано либо собрано иным текстом
+	 */
+	if(source != &text){
+		/**
+		 * Если дерево разметки уже собрано прежним текстом
+		 */
+		if(document != nullptr)
+			// Выполняем снос прежде собранного дерева разметки
+			::xmlFreeDoc(document);
+		// Выполняем сборку дерева разметки
+		document = ::xmlReadMemory(text.data(), static_cast <int32_t> (text.size()), nullptr, nullptr, 0);
+		/**
+		 * Если сборка дерева разметки не удалась
+		 */
+		if(document == nullptr)
+			// Выводим признак неудачного снятия
+			return false;
+		// Запоминаем текст разметки, каким дерево собрано
+		source = &text;
+	}
+	// Получаем корневой узел разметки собранного дерева
+	xmlNodePtr root = ::xmlDocGetRootElement(document);
+	/**
+	 * Если корневого узла разметки у дерева нет
+	 */
+	if(root == nullptr)
+		// Выводим признак неудачного снятия
+		return false;
+	// Выполняем снятие поддерева глубокой копией
+	xmlNodePtr value = ::xmlCopyNode(root, 1);
+	/**
+	 * Если снятие поддерева не удалось
+	 */
+	if(value == nullptr)
+		// Выводим признак неудачного снятия
+		return false;
+	// Выполняем учёт снятого поддерева
+	rival::node();
+	// Выполняем чтение имени снятого поддерева
+	rival::touch(reinterpret_cast <const char *> (value->name), ::strlen(reinterpret_cast <const char *> (value->name)));
+	// Выполняем снос снятого поддерева
+	::xmlFreeNode(value);
+	// Выводим признак успешного снятия
+	return true;
+}
+
+/**
  * @brief Структура сценария стенда
  *
  */
@@ -156,7 +223,9 @@ static const std::vector <scenario_t> & scenarios() noexcept {
 		{"large",      rival::LARGE_ROUNDS,       rival::large,      parse},
 		{"attributes", rival::FOCUSED_ROUNDS,     rival::attributes, parse},
 		{"content",    rival::FOCUSED_ROUNDS,     rival::content,    parse},
-		{"nested",     rival::SMALL_ROUNDS,       rival::nested,     parse}
+		{"nested",     rival::SMALL_ROUNDS,       rival::nested,     parse},
+		{"copy-soap",  rival::SMALL_ROUNDS,       rival::soap,       copy},
+		{"copy-large", rival::LARGE_ROUNDS,       rival::large,      copy}
 	};
 	// Выводим перечень сценариев стенда
 	return result;
@@ -171,10 +240,26 @@ static const std::vector <scenario_t> & scenarios() noexcept {
  *
  */
 int32_t main(int32_t argc, char * argv[]){
+	/**
+	 * Выполняем установку учётного распределителя памяти
+	 *
+	 * @note Без крючка этого расход памяти отчитывался бы нулём: реализация написана
+	 *       на языке Си и берёт память `malloc`, а не оператором языка
+	 */
+	if(::xmlMemSetup(rival::release, rival::capture, rival::recapture, rival::duplicate) != 0)
+		/**
+		 * Запоминаем, что учёт выделений памяти неработоспособен
+		 *
+		 * @note Отказ этот - свойство сборки libxml2, а не стенда: крючки памяти
+		 *       принимаются лишь до заведения разбора, а собранная в состав системы
+		 *       библиотека заводит его прежде. Расход её отчитывается «не мерено», и
+		 *       нулём его выдавать нельзя - ноль означал бы отсутствие расхода
+		 */
+		rival::counter.available = false;
 	// Получаем отбор сценариев по вхождению в название
 	const char * filter = rival::filter(argc, argv);
 	// Итоги прогона сценария
-	rival::outcome_t outcome{0, 0, 0.0};
+	rival::outcome_t outcome{0, 0, 0.0, 0, 0};
 	/**
 	 * Выполняем перебор всех сценариев стенда
 	 */

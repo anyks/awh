@@ -1,0 +1,494 @@
+/**
+ * @file value.cpp
+ * @date 2026-08-18
+ *
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
+ * @brief Бенчмарки владеющего значения XML — снятие поддерева с дерева разметки,
+ *        потоковая сборка значения, запись его в текст, прививка обратно в дерево
+ *        и расход памяти на всё это
+ *
+ * @details Владеющее значение устроено **россыпью**: у всякого узла своя строка
+ *          содержимого, своё имя с пространством имён, свой перечень свойств и свой
+ *          перечень детей. Дерево же разметки хранит узлы ареной, а знаки - одним
+ *          хранилищем. Разница эта и есть цена владения, и сценарии ниже заведены
+ *          ради того, чтобы цена эта была известна числом, а не выяснялась
+ *          потребителем в работе
+ *
+ * @copyright Copyright © 2026
+ *
+ */
+
+/**
+ * Подключаем заголовочные файлы модуля
+ */
+#include "xml.hpp"
+
+/**
+ * Используем стандартное пространство имён
+ */
+using namespace std;
+
+/**
+ * Подписываемся на пространство имён бенчмарков контейнера XML
+ */
+using namespace awh::benchmark::markup;
+
+/**
+ * @brief Внутренние параметры и сценарии бенчмарков владеющего значения
+ *
+ */
+namespace {
+	/**
+	 * @brief Количество обрабатываемых мелких документов
+	 */
+	static constexpr size_t SMALL_ROUNDS = 20000;
+	/**
+	 * @brief Количество обрабатываемых крупных документов
+	 */
+	static constexpr size_t LARGE_ROUNDS = 8;
+
+	/**
+	 * @brief Порог пропускной способности снятия значения с дерева разметки
+	 *
+	 * @details Пороги назначены от замера в сборке `Release` с делением на десять -
+	 *          ровно так, как назначены пороги прочих сценариев набора: замеры снимаются
+	 *          в `Release`, а деление вмещает разницу стендов, где самый медленный идёт
+	 *          впятеро медленнее рабочей машины
+	 *
+	 */
+	static constexpr double TAKE_LARGE_THRESHOLD = 30.0;
+	/**
+	 * @brief Порог пропускной способности снятия значения ответа SOAP
+	 */
+	static constexpr double TAKE_SOAP_THRESHOLD = 60.0;
+	/**
+	 * @brief Порог пропускной способности потоковой сборки значения
+	 */
+	static constexpr double BUILD_SOAP_THRESHOLD = 30.0;
+	/**
+	 * @brief Порог пропускной способности записи значения в текст
+	 */
+	static constexpr double DUMP_LARGE_THRESHOLD = 18.0;
+	/**
+	 * @brief Порог скорости обхода владеющего значения
+	 *
+	 * @details Обход мерится **узлами в секунду**, а не мегабайтами, намеренно: тем же
+	 *          самым мерится обход дерева, и лишь при одной единице сличение дерева со
+	 *          значением становится замером, а не пересчётом
+	 *
+	 */
+	static constexpr double WALK_LARGE_THRESHOLD = 8000000.0;
+	/**
+	 * @brief Порог пропускной способности прививки значения в дерево разметки
+	 *
+	 * @details Прививка переносит значение в арену дерева узел за узлом, и стоимость
+	 *          её сродни стоимости снятия: то же самое дерево строится в обратную
+	 *          сторону
+	 *
+	 */
+	static constexpr double GRAFT_SOAP_THRESHOLD = 40.0;
+	/**
+	 * @brief Порог расхода выделений памяти на снятие одного значения
+	 *
+	 * @details Порог задан с большим запасом намеренно: короткий запас строки у
+	 *          библиотеки `libc++` прячет выделения, каких стенд на `libstdc++`
+	 *          покажет во много раз больше, и порог, назначенный по рабочей машине,
+	 *          отверг бы там исправный модуль
+	 *
+	 * @details Расход этот **на порядки выше** расхода дерева, и так и должно быть:
+	 *          дерево хранит узлы ареной, а владеющее значение - россыпью, где всякий
+	 *          узел заводит свою память. Порог сторожит не малость расхода, а
+	 *          устройство: рост его сверх числа узлов означал бы, что память заводится
+	 *          не по узлу, а по нескольку раз на узел
+	 *
+	 */
+	static constexpr double TAKE_ALLOCATIONS_THRESHOLD = 200.0;
+
+	/**
+	 * @brief Функция обхода владеющего значения
+	 *
+	 * @param value обходимое значение
+	 * @return      количество обойдённых значений
+	 *
+	 */
+	static uint64_t walk(const awh::codec::xml::value_t & value) noexcept {
+		// Количество обойдённых значений
+		uint64_t result = 1;
+		/**
+		 * Выполняем перебор всего вложенного содержимого значения
+		 */
+		for(size_t i = 0; i < value.size(); i++)
+			// Выполняем обход очередного вложенного содержимого
+			result += ::walk(value[i]);
+		// Выводим количество обойдённых значений
+		return result;
+	}
+	/**
+	 * @brief Функция прогона сценария снятия значения с дерева разметки
+	 *
+	 * @details Дерево собирается однажды до замера: снятие мерится отдельно от разбора,
+	 *          ибо сложенные вместе они скрывают, какая из двух работ подорожала
+	 *
+	 * @param text   разбираемый текст разметки
+	 * @param rounds количество снимаемых значений
+	 * @return       результат измерения
+	 *
+	 */
+	static awh::benchmark::result_t taking(const string & text, const size_t rounds) noexcept {
+		// Результат измерения
+		awh::benchmark::result_t result;
+		// Объект дерева разметки
+		awh::codec::xml::document_t doc;
+		/**
+		 * Если сборка дерева разметки завершилась отказом
+		 */
+		if(!doc.parse(text)){
+			// Устанавливаем признак негодности измерения
+			result.invalid = true;
+			// Устанавливаем причину негодности измерения
+			result.reason = "сборка дерева эталонной разметки завершилась отказом";
+			// Выводим результат измерения
+			return result;
+		}
+		// Выполняем прогон измеряемой операции
+		const outcome_t outcome = measure(text.size(), rounds, [&doc]() noexcept {
+			// Выполняем снятие дерева разметки собственной памятью
+			const awh::codec::xml::value_t value(doc.element());
+			// Выводим количество снятых значений верхнего уровня
+			return static_cast <uint64_t> (value.size());
+		});
+		// Устанавливаем измеренное значение
+		result.value = perSecond(outcome);
+		// Устанавливаем сведения о прогоне
+		result.details = details(outcome);
+		// Выводим результат измерения
+		return result;
+	}
+	/**
+	 * @brief Функция прогона сценария снятия значения с дерева крупного документа
+	 *
+	 * @return результат измерения
+	 *
+	 */
+	static awh::benchmark::result_t takeLarge() noexcept {
+		// Выводим результат измерения
+		return ::taking(large(), LARGE_ROUNDS);
+	}
+	/**
+	 * @brief Функция прогона сценария снятия значения с дерева ответа SOAP
+	 *
+	 * @return результат измерения
+	 *
+	 */
+	static awh::benchmark::result_t takeSoap() noexcept {
+		// Выводим результат измерения
+		return ::taking(soap(), SMALL_ROUNDS);
+	}
+	/**
+	 * @brief Функция прогона сценария потоковой сборки значения
+	 *
+	 * @details Собирается обращение по договору SOAP - тот самый случай, ради которого
+	 *          сборка и заведена: потребитель строит исходящую разметку узел за узлом,
+	 *          дерева не имея вовсе
+	 *
+	 * @return результат измерения
+	 *
+	 */
+	static awh::benchmark::result_t buildSoap() noexcept {
+		// Результат измерения
+		awh::benchmark::result_t result;
+		// Получаем эталонный текст разметки
+		const string & text = soap();
+		// Объект потоковой сборки значения
+		awh::codec::xml::builder_t builder;
+		// Выполняем прогон измеряемой операции
+		const outcome_t outcome = measure(text.size(), SMALL_ROUNDS, [&builder]() noexcept {
+			// Выполняем открытие узла оболочки обращения
+			builder.open("Envelope", "http://schemas.xmlsoap.org/soap/envelope/", "soap");
+			// Выполняем объявление пространства имён оболочки обращения
+			builder.binding("soap", "http://schemas.xmlsoap.org/soap/envelope/");
+			// Выполняем открытие узла тела обращения
+			builder.open("Body", "http://schemas.xmlsoap.org/soap/envelope/", "soap");
+			// Выполняем открытие узла самого обращения
+			builder.open("GetStatus", "urn:service");
+			/**
+			 * Выполняем запись доводов обращения
+			 */
+			for(uint64_t i = 0; i < 4; i++){
+				// Выполняем открытие узла очередного довода обращения
+				builder.open("item", "urn:service");
+				// Выполняем запись свойства узла довода обращения
+				builder.attribute("index", "0");
+				// Выполняем запись содержимого узла довода обращения
+				builder.text("значение");
+				// Выполняем закрытие узла довода обращения
+				builder.close();
+			}
+			// Выполняем закрытие узла самого обращения
+			builder.close();
+			// Выполняем закрытие узла тела обращения
+			builder.close();
+			// Выполняем закрытие узла оболочки обращения
+			builder.close();
+			// Изымаем собранное значение
+			const awh::codec::xml::value_t value = builder.finish();
+			// Выводим количество вложенных узлов собранного значения
+			return static_cast <uint64_t> (value.size());
+		});
+		// Устанавливаем измеренное значение
+		result.value = perSecond(outcome);
+		// Устанавливаем сведения о прогоне
+		result.details = details(outcome);
+		// Выводим результат измерения
+		return result;
+	}
+	/**
+	 * @brief Функция прогона сценария записи значения в текст
+	 *
+	 * @return результат измерения
+	 *
+	 */
+	static awh::benchmark::result_t dumpLarge() noexcept {
+		// Результат измерения
+		awh::benchmark::result_t result;
+		// Получаем эталонный текст разметки
+		const string & text = large();
+		// Объект дерева разметки
+		awh::codec::xml::document_t doc;
+		/**
+		 * Если сборка дерева разметки завершилась отказом
+		 */
+		if(!doc.parse(text)){
+			// Устанавливаем признак негодности измерения
+			result.invalid = true;
+			// Устанавливаем причину негодности измерения
+			result.reason = "сборка дерева эталонной разметки завершилась отказом";
+			// Выводим результат измерения
+			return result;
+		}
+		// Выполняем снятие дерева разметки собственной памятью
+		const awh::codec::xml::value_t value(doc.element());
+		// Выполняем прогон измеряемой операции
+		const outcome_t outcome = measure(text.size(), LARGE_ROUNDS, [&value]() noexcept {
+			// Выполняем запись значения в текст
+			return static_cast <uint64_t> (value.dump().size());
+		});
+		// Устанавливаем измеренное значение
+		result.value = perSecond(outcome);
+		// Устанавливаем сведения о прогоне
+		result.details = details(outcome);
+		// Выводим результат измерения
+		return result;
+	}
+	/**
+	 * @brief Функция прогона сценария обхода владеющего значения
+	 *
+	 * @details Сценарий этот сличается с обходом дерева напрямую: тот же самый
+	 *          документ, та же самая работа - счёт узлов вглубь, - и та же самая
+	 *          единица. Дерево обходится записями арены по указателю, а значение -
+	 *          россыпью вместилищ, и разница между ними есть цена владения при чтении
+	 *
+	 * @note Число узлов берётся обходом самого значения, а не размером дерева: значение
+	 *       снимается с корневого узла разметки, а дерево несёт сверх него содержимое
+	 *       вне корня - примечания и указания обработчику
+	 *
+	 * @return результат измерения
+	 *
+	 */
+	static awh::benchmark::result_t walkLarge() noexcept {
+		// Результат измерения
+		awh::benchmark::result_t result;
+		// Получаем эталонный текст разметки
+		const string & text = large();
+		// Объект дерева разметки
+		awh::codec::xml::document_t doc;
+		/**
+		 * Если сборка дерева разметки завершилась отказом
+		 */
+		if(!doc.parse(text)){
+			// Устанавливаем признак негодности измерения
+			result.invalid = true;
+			// Устанавливаем причину негодности измерения
+			result.reason = "сборка дерева эталонной разметки завершилась отказом";
+			// Выводим результат измерения
+			return result;
+		}
+		// Выполняем снятие дерева разметки собственной памятью
+		const awh::codec::xml::value_t value(doc.element());
+		// Получаем количество узлов снятого значения
+		const uint64_t nodes = ::walk(value);
+		// Выполняем прогон измеряемой операции
+		const outcome_t outcome = measure(text.size(), LARGE_ROUNDS, [&value]() noexcept {
+			// Выполняем обход снятого значения
+			return ::walk(value);
+		});
+		/**
+		 * Если замер не состоялся
+		 */
+		if(outcome.seconds <= 0.0){
+			// Устанавливаем признак того, что измерение не выполнялось
+			result.skipped = true;
+			// Устанавливаем причину, по которой измерение не выполнялось
+			result.reason = "обход значения завершился быстрее разрешения часов";
+			// Выводим результат измерения
+			return result;
+		}
+		// Устанавливаем измеренное значение
+		result.value = ((static_cast <double> (nodes) * outcome.operations) / outcome.seconds);
+		// Устанавливаем сведения о прогоне
+		result.details = details(outcome);
+		// Выводим результат измерения
+		return result;
+	}
+	/**
+	 * @brief Функция прогона сценария прививки значения в дерево разметки
+	 *
+	 * @details Принимающее дерево заводится заново на всяком прогоне намеренно: арена
+	 *          дерева прививкою лишь дописывается, и прививка в одно и то же дерево
+	 *          растила бы его без предела, меряя вдобавок стоимость роста хранилищ
+	 *
+	 * @return результат измерения
+	 *
+	 */
+	static awh::benchmark::result_t graftSoap() noexcept {
+		// Результат измерения
+		awh::benchmark::result_t result;
+		// Получаем эталонный текст разметки
+		const string & text = soap();
+		// Объект дерева разметки
+		awh::codec::xml::document_t doc;
+		/**
+		 * Если сборка дерева разметки завершилась отказом
+		 */
+		if(!doc.parse(text)){
+			// Устанавливаем признак негодности измерения
+			result.invalid = true;
+			// Устанавливаем причину негодности измерения
+			result.reason = "сборка дерева эталонной разметки завершилась отказом";
+			// Выводим результат измерения
+			return result;
+		}
+		// Выполняем снятие дерева разметки собственной памятью
+		const awh::codec::xml::value_t value(doc.element());
+		// Текст разметки дерева, принимающего прививку
+		const string host = "<host><graft/></host>";
+		// Выполняем прогон измеряемой операции
+		const outcome_t outcome = measure(text.size(), SMALL_ROUNDS, [&value, &host]() noexcept {
+			// Объект дерева разметки, принимающего прививку
+			awh::codec::xml::document_t doc;
+			// Выполняем сборку дерева разметки, принимающего прививку
+			doc.parse(host);
+			// Выполняем прививку значения в дерево разметки
+			return static_cast <uint64_t> (doc.graft("/host/graft", value));
+		});
+		// Устанавливаем измеренное значение
+		result.value = perSecond(outcome);
+		// Устанавливаем сведения о прогоне
+		result.details = details(outcome);
+		// Выводим результат измерения
+		return result;
+	}
+	/**
+	 * @brief Функция прогона сценария расхода выделений памяти на снятие значения
+	 *
+	 * @return результат измерения
+	 *
+	 */
+	static awh::benchmark::result_t takeAllocations() noexcept {
+		// Результат измерения
+		awh::benchmark::result_t result;
+		// Получаем эталонный текст разметки
+		const string & text = soap();
+		// Объект дерева разметки
+		awh::codec::xml::document_t doc;
+		/**
+		 * Если сборка дерева разметки завершилась отказом
+		 */
+		if(!doc.parse(text)){
+			// Устанавливаем признак негодности измерения
+			result.invalid = true;
+			// Устанавливаем причину негодности измерения
+			result.reason = "сборка дерева эталонной разметки завершилась отказом";
+			// Выводим результат измерения
+			return result;
+		}
+		// Выполняем прогон измеряемой операции
+		const outcome_t outcome = measure(text.size(), SMALL_ROUNDS, [&doc]() noexcept {
+			// Выполняем снятие дерева разметки собственной памятью
+			const awh::codec::xml::value_t value(doc.element());
+			// Выводим количество снятых значений верхнего уровня
+			return static_cast <uint64_t> (value.size());
+		});
+		/**
+		 * Если учёт выделений памяти не работает
+		 */
+		if(!counted(outcome, result))
+			// Выводим результат измерения
+			return result;
+		// Устанавливаем измеренное значение
+		result.value = perDocument(outcome);
+		// Устанавливаем сведения о прогоне
+		result.details = details(outcome);
+		// Выводим результат измерения
+		return result;
+	}
+
+	/**
+	 * Выполняем регистрацию сценария снятия значения с дерева крупного документа
+	 */
+	static const bool TAKE_LARGE_REGISTERED = awh::benchmark::add(
+		"codec/xml: снятие значения с дерева", "МБ/с", TAKE_LARGE_THRESHOLD,
+		awh::benchmark::bound_t::MINIMUM, takeLarge
+	);
+	/**
+	 * Выполняем регистрацию сценария снятия значения с дерева ответа SOAP
+	 */
+	static const bool TAKE_SOAP_REGISTERED = awh::benchmark::add(
+		"codec/xml: снятие значения ответа SOAP", "МБ/с", TAKE_SOAP_THRESHOLD,
+		awh::benchmark::bound_t::MINIMUM, takeSoap
+	);
+	/**
+	 * Выполняем регистрацию сценария потоковой сборки значения
+	 */
+	static const bool BUILD_REGISTERED = awh::benchmark::add(
+		"codec/xml: потоковая сборка значения", "МБ/с", BUILD_SOAP_THRESHOLD,
+		awh::benchmark::bound_t::MINIMUM, buildSoap
+	);
+	/**
+	 * Выполняем регистрацию сценария записи значения в текст
+	 */
+	static const bool DUMP_REGISTERED = awh::benchmark::add(
+		"codec/xml: запись значения в текст", "МБ/с", DUMP_LARGE_THRESHOLD,
+		awh::benchmark::bound_t::MINIMUM, dumpLarge
+	);
+	/**
+	 * Выполняем регистрацию сценария обхода владеющего значения
+	 */
+	static const bool WALK_REGISTERED = awh::benchmark::add(
+		"codec/xml: обход владеющего значения", "узл./с", WALK_LARGE_THRESHOLD,
+		awh::benchmark::bound_t::MINIMUM, walkLarge
+	);
+	/**
+	 * Выполняем регистрацию сценария прививки значения в дерево разметки
+	 */
+	static const bool GRAFT_REGISTERED = awh::benchmark::add(
+		"codec/xml: прививка значения в дерево", "МБ/с", GRAFT_SOAP_THRESHOLD,
+		awh::benchmark::bound_t::MINIMUM, graftSoap
+	);
+	/**
+	 * Выполняем регистрацию сценария расхода выделений памяти на снятие значения
+	 */
+	static const bool TAKE_ALLOCATIONS_REGISTERED = awh::benchmark::add(
+		"codec/xml: выделения на снятие значения", "выд./док.", TAKE_ALLOCATIONS_THRESHOLD,
+		awh::benchmark::bound_t::MAXIMUM, takeAllocations
+	);
+};

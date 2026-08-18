@@ -1154,6 +1154,94 @@ bool awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::socket_t
 }
 
 /**
+ * @brief Метод опроса возможности протокола SCTP у текущей системы
+ *
+ * @details Таблица опирается на признаки, объявленные системными заголовочными файлами,
+ *          а не на перечень имён систем: возможность появляется у системы с новой её
+ *          выпуском, и признак это отражает, а имя - нет
+ *
+ * @warning Отказ приёма по неумению системы есть её свойство, а не изъян движка. Опрос и
+ *          заведён ради того, чтобы это можно было узнать заранее, а не по отказу вызова:
+ *          отказ по неумению и отказ по негодным доводам с виду одинаковы
+ *
+ * @param feature опрашиваемая возможность протокола
+ * @return        результат опроса возможности
+ *
+ */
+bool awh::eth::Stream_Control_Transmission_Protocol::supported(const net::sctp::feature_t feature) const noexcept {
+	/**
+	 * Определяем опрашиваемую возможность протокола
+	 */
+	switch(static_cast <uint8_t> (feature)){
+		// Если опрашивается проверка подлинности сообщений
+		case static_cast <uint8_t> (net::sctp::feature_t::AUTHENTICATION):
+			#if defined(SCTP_AUTH_KEY) && defined(SCTP_AUTH_ACTIVE_KEY)
+				// Выводим положительный результат
+				return true;
+			#else
+				// Выводим отрицательный результат
+				return false;
+			#endif
+		// Если опрашивается перенастройка потоков связи
+		case static_cast <uint8_t> (net::sctp::feature_t::STREAM_RESET):
+			#if defined(SCTP_RESET_STREAMS)
+				// Выводим положительный результат
+				return true;
+			#else
+				// Выводим отрицательный результат
+				return false;
+			#endif
+		// Если опрашивается перенастройка самой связи
+		case static_cast <uint8_t> (net::sctp::feature_t::ASSOC_RESET):
+			#if defined(SCTP_RESET_ASSOC)
+				// Выводим положительный результат
+				return true;
+			#else
+				// Выводим отрицательный результат
+				return false;
+			#endif
+		// Если опрашивается смена состава потоков связи
+		case static_cast <uint8_t> (net::sctp::feature_t::STREAM_CHANGE):
+			#if defined(SCTP_ADD_STREAMS)
+				// Выводим положительный результат
+				return true;
+			#else
+				// Выводим отрицательный результат
+				return false;
+			#endif
+		// Если опрашивается оповещение об опустевшей очереди отправки
+		case static_cast <uint8_t> (net::sctp::feature_t::SENDER_DRY):
+			#if defined(SCTP_SENDER_DRY_EVENT)
+				// Выводим положительный результат
+				return true;
+			#else
+				// Выводим отрицательный результат
+				return false;
+			#endif
+		// Если опрашивается подключение по нескольким адресам одной заявкой
+		case static_cast <uint8_t> (net::sctp::feature_t::MULTIHOMING):
+			/**
+			 * У illumos многодомного подключения одной заявкой нет
+			 *
+			 * @note Функции `sctp_connectx` там не существует, и связь заводится обычным
+			 *       подключением по ПЕРВОМУ адресу списка - прочие остаются без дела
+			 */
+			#if defined(__illumos__)
+				// Выводим отрицательный результат
+				return false;
+			#else
+				// Выводим положительный результат
+				return true;
+			#endif
+		// Если опрашивается явная граница записи при отправке по частям
+		case static_cast <uint8_t> (net::sctp::feature_t::PARTIAL_MESSAGE):
+			// Выводим результат опроса явной границы записи
+			return this->partial();
+	}
+	// Выводим отрицательный результат: возможность не опознана
+	return false;
+}
+/**
  * @brief Метод проверки поддержки системой современного набора вызовов SCTP
  *
  * @return результат проверки поддержки

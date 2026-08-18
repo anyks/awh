@@ -117,6 +117,72 @@ static bool parse(const std::string & text) noexcept {
 }
 
 /**
+ * @brief Функция снятия владеющего поддерева с дерева разметки
+ *
+ * @details Дерево собирается однажды, при прогреве, и замеряется одно лишь снятие
+ *          поддерева в собственное дерево
+ *
+ * @warning Снятие это владеющим **не является**: `clone_node` переносит указания на
+ *          знаки исходного буфера, а не сами знаки, и снятое поддерево живёт ровно
+ *          столько, сколько живёт разбираемый текст. Равным участником этого
+ *          сценария реализация не является - приведена отметкой потолка
+ *
+ * @param text разбираемый текст разметки
+ * @return     признак успешного снятия
+ *
+ */
+static bool copy(const std::string & text) noexcept {
+	// Дерево разметки, с какого снимается поддерево
+	static rapidxml::xml_document <char> document;
+	// Копия разбираемого текста разметки, дереву принадлежащая
+	static std::vector <char> storage;
+	// Текст разметки, каким дерево собрано
+	static const std::string * source = nullptr;
+	/**
+	 * Если дерево разметки ещё не собрано либо собрано иным текстом
+	 */
+	if(source != &text){
+		// Отводим место под копию разбираемого текста разметки
+		storage.assign(text.begin(), text.end());
+		// Выполняем завершение копии разбираемого текста разметки
+		storage.push_back('\0');
+		/**
+		 * Выполняем разбор текста разметки
+		 */
+		try {
+			// Выполняем разбор текста разметки
+			document.parse <0> (storage.data());
+		/**
+		 * Если разбор текста разметки выбросил исключение
+		 */
+		} catch(const rapidxml::parse_error &) {
+			// Выводим признак неудачного снятия
+			return false;
+		}
+		// Запоминаем текст разметки, каким дерево собрано
+		source = &text;
+	}
+	// Дерево разметки, принимающее снятое поддерево
+	rapidxml::xml_document <char> owned;
+	// Выполняем снятие поддерева в собственное дерево
+	rapidxml::xml_node <char> * value = owned.clone_node(document.first_node());
+	/**
+	 * Если снятие поддерева не удалось
+	 */
+	if(value == nullptr)
+		// Выводим признак неудачного снятия
+		return false;
+	// Выполняем добавление снятого поддерева к принимающему дереву
+	owned.append_node(value);
+	// Выполняем учёт снятого поддерева
+	rival::node();
+	// Выполняем чтение имени снятого поддерева
+	rival::touch(value->name(), value->name_size());
+	// Выводим признак успешного снятия
+	return true;
+}
+
+/**
  * @brief Структура сценария стенда
  *
  */
@@ -145,7 +211,9 @@ static const std::vector <scenario_t> & scenarios() noexcept {
 		{"large",      rival::LARGE_ROUNDS,       rival::large,      parse},
 		{"attributes", rival::FOCUSED_ROUNDS,     rival::attributes, parse},
 		{"content",    rival::FOCUSED_ROUNDS,     rival::content,    parse},
-		{"nested",     rival::SMALL_ROUNDS,       rival::nested,     parse}
+		{"nested",     rival::SMALL_ROUNDS,       rival::nested,     parse},
+		{"copy-soap",  rival::SMALL_ROUNDS,       rival::soap,       copy},
+		{"copy-large", rival::LARGE_ROUNDS,       rival::large,      copy}
 	};
 	// Выводим перечень сценариев стенда
 	return result;
@@ -163,7 +231,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Получаем отбор сценариев по вхождению в название
 	const char * filter = rival::filter(argc, argv);
 	// Итоги прогона сценария
-	rival::outcome_t outcome{0, 0, 0.0};
+	rival::outcome_t outcome{0, 0, 0.0, 0, 0};
 	/**
 	 * Выполняем перебор всех сценариев стенда
 	 */

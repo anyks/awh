@@ -1471,6 +1471,41 @@ namespace awh {
 				 *
 				 * \~
 				 */
+				/**
+				 * \~russian
+				 * @brief Возможности протокола SCTP, разнящиеся от системы к системе
+				 *
+				 * @details Состав возможностей SCTP у систем расходится сильнее, чем у иных
+				 *          протоколов: проверки подлинности (RFC 4895) нет ни у Solaris, ни у
+				 *          illumos, событий перенастройки потока и связи там же нет вовсе, а
+				 *          многодомное подключение одной заявкой несут не все. Спросить об этом
+				 *          заранее вернее, чем узнавать отказом: отказ по неумению системы и
+				 *          отказ по негодным доводам вызова неразличимы
+				 *
+				 * \~english
+				 * @brief Capabilities of the SCTP protocol differing from system to system
+				 * @details The set of the SCTP capabilities differs at the systems stronger than at
+				 *          the other protocols: the authentication (RFC 4895) exists neither at
+				 *          Solaris nor at illumos, the events of the reset of a stream and of an
+				 *          association do not exist there at all, and the multihomed connection by
+				 *          one request is not carried by everyone. To ask about it beforehand is
+				 *          more correct than to learn it by a refusal: a refusal by the inability of
+				 *          the system and a refusal by the unsuitable arguments of a call are
+				 *          indistinguishable
+				 *
+				 * \~
+				 */
+				enum class feature_t : uint8_t {
+					NONE           = 0x00, // Возможность не указана
+					AUTHENTICATION = 0x01, // Проверка подлинности сообщений (RFC 4895)
+					STREAM_RESET   = 0x02, // Перенастройка потоков связи (RFC 6525)
+					ASSOC_RESET    = 0x03, // Перенастройка самой связи (RFC 6525)
+					STREAM_CHANGE  = 0x04, // Смена состава потоков связи (RFC 6525)
+					SENDER_DRY     = 0x05, // Оповещение об опустевшей очереди отправки
+					MULTIHOMING    = 0x06, // Подключение по нескольким адресам одной заявкой
+					PARTIAL_MESSAGE = 0x07 // Явная граница записи при отправке по частям
+				};
+
 				enum class event_type_t : uint8_t {
 					NONE                   = 0x00, // Тип события отсутствует
 					DATA_IO                = 0x01, // Присылать уведомление о каждом входящем DATA-пакете

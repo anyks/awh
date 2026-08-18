@@ -143,7 +143,32 @@ namespace scenarios {
 		{"lookahead-heavy",    "\\w+(?=@)",                               kind_t::HEAVY, true},
 		{"lookbehind-heavy",   "(?<=@)\\w+",                              kind_t::HEAVY, true},
 		{"atomic-heavy",       "(?>\\w+)@\\w+",                           kind_t::HEAVY, true},
-		{"recurse-heavy",      "\\((?:[^()]|(?R))*\\)",                   kind_t::HEAVY, true}
+		{"recurse-heavy",      "\\((?:[^()]|(?R))*\\)",                   kind_t::HEAVY, true},
+		/**
+		 * Повторение над областью инструкций, ленивое и жадное
+		 *
+		 * @details Строки эти набором замеров покрыты, а отдельным стендом
+		 *          не были: он отстал на пятнадцать строк, отчего замеры
+		 *          по стендам шли подмножеством устаревшим. Пороги набора
+		 *          калибруются по стенду самому медленному, и калибровать
+		 *          их без этих строк было нечем.
+		 *
+		 */
+		{"anchored-absent",       "^[A-Za-z0-9-]+: .+$",                         kind_t::SHORT, false},
+		{"request-absent",        "^(GET|POST) (\\S+) HTTP/(\\d)\\.(\\d)$",      kind_t::SHORT, false},
+		{"address-absent",        "^(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})$", kind_t::SHORT, false},
+		{"lazy-short",            "\\w+?@\\w+?\\.",                              kind_t::SHORT, true},
+		{"lazy-long",             "\\w+?@\\w+?\\.",                              kind_t::LONG,  true},
+		{"lazy-dotstar",          ".*?needle",                                   kind_t::LONG,  true},
+		{"region-fixed-short",    "(?:HT|TP)+/",                                 kind_t::SHORT, true},
+		{"region-absent-short",   "(?:ab|cd)+z",                                 kind_t::SHORT, false},
+		{"region-fixed-long",     "(?:\\w\\w)+ 4096",                            kind_t::LONG,  true},
+		{"region-varied-long",    "(?:[a-z]+ )+dog",                             kind_t::LONG,  true},
+		{"region-nested-heavy",   "\\((?:[^()]|\\([^()]*\\))*\\)",               kind_t::HEAVY, true},
+		{"region-capture-heavy",  "(?:(\\w+) )+forman",                          kind_t::HEAVY, true},
+		{"region-lazy-short",     "(?:HT|TP)+?/",                                kind_t::SHORT, true},
+		{"region-lazy-long",      "(?:[a-z]+ )+?dog",                            kind_t::LONG,  true},
+		{"region-lazy-heavy",     "\\((?:[^()]|\\([^()]*\\))*?\\)",              kind_t::HEAVY, true},
 	};
 
 	/**

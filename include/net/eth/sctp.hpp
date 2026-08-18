@@ -197,6 +197,59 @@ namespace awh {
 			public:
 				/**
 				 * \~russian
+				 * @brief Метод опроса возможности протокола SCTP у текущей системы
+				 *
+				 * @details Отвечает, несёт ли система запрошенную возможность. Спросить заранее
+				 *          вернее, чем узнавать отказом: отказ по неумению системы и отказ по
+				 *          негодным доводам вызова с виду одинаковы, и отличить их можно лишь
+				 *          по журналу - то есть глазами человека, а не кодом
+				 *
+				 * @note Ответ не зависит ни от сокета, ни от состояния связи: он определяется
+				 *       единственно системой, под которую собран движок, и потому опрашивается
+				 *       без описателя
+				 *
+				 * @warning Утвердительный ответ означает лишь наличие возможности у системы, а
+				 *          не успех вызова: тот вправе отказать по своим доводам - негодному
+				 *          сокету, неверной длине ключа, неподходящему состоянию связи
+				 *
+				 * @par Пример: выбор пути по возможностям системы
+				 *
+				 * @code{.cpp}
+				 * if(io.sctp.supported(awh::net::sctp::feature_t::AUTHENTICATION))
+				 *     io.sctp.authenticateKey(sock, 1, key);
+				 * @endcode
+				 *
+				 * @param feature опрашиваемая возможность протокола
+				 * @return        результат опроса возможности
+				 *
+				 * \~english
+				 * @brief Method of the inquiry of a capability of the SCTP protocol at the current system
+				 * @details Answers whether the system carries the requested capability. To ask
+				 *          beforehand is more correct than to learn by a refusal: a refusal by the
+				 *          inability of the system and a refusal by the unsuitable arguments of a call
+				 *          look alike, and they can be distinguished only by the log — that is, by the
+				 *          eyes of a human, and not by the code
+				 * @note The answer depends neither on a socket nor on the state of an association: it
+				 *       is determined solely by the system the engine is built for, and therefore it is
+				 *       inquired without a descriptor
+				 * @warning An affirmative answer means only the presence of the capability at the
+				 *          system, and not the success of a call: that one has the right to refuse by
+				 *          its own reasons — an unsuitable socket, a wrong length of a key, an
+				 *          inappropriate state of an association
+				 * @param feature inquired capability of the protocol
+				 * @return        result of the inquiry of the capability
+				 *
+				 * @code{.cpp}
+				 * if(io.sctp.supported(awh::net::sctp::feature_t::AUTHENTICATION))
+				 *     io.sctp.authenticateKey(sock, 1, key);
+				 * @endcode
+				 *
+				 * \~
+				 */
+				bool supported(const net::sctp::feature_t feature) const noexcept;
+			public:
+				/**
+				 * \~russian
 				 * @brief Метод установки поддерживаемых алгоритмов аутентификации SCTP сокета
 				 *
 				 * @param sock  сетевой сокет

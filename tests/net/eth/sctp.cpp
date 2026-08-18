@@ -207,15 +207,45 @@ TEST_F(EthFixture, SctpEventsSubscribeLegacy){
 	if(!sock.valid())
 		// Пропускаем тест
 		GTEST_SKIP() << "SCTP is not supported by the kernel";
-	// Подписка на набор устаревших событий должна завершиться успешно
-	ASSERT_TRUE(this->_eth->sctp.eventsSubscribe(sock.fd, {
-		awh::net::sctp::event_type_t::DATA_IO,
-		awh::net::sctp::event_type_t::ASSOC_CHANGE,
-		awh::net::sctp::event_type_t::SHUTDOWN_EVENT,
-		awh::net::sctp::event_type_t::SEND_FAILED_EVENT,
-		awh::net::sctp::event_type_t::REMOTE_ERROR,
-		awh::net::sctp::event_type_t::STREAM_RESET_EVENT
-	}));
+	/**
+	 * Подписка на набор устаревших событий
+	 *
+	 * @note У систем Sun события перенастройки потока нет вовсе, и подписка на набор,
+	 *       его содержащий, обязана ответить ОТКАЗОМ: часть набора там неисполнима, а
+	 *       молчаливый успех оставил бы вызывающую сторону ждать событий, которых не
+	 *       будет. Проверяется здесь именно это - отказ, а не пропуск проверки
+	 */
+	// Если система несёт перенастройку потоков, подписка на весь набор обязана пройти
+	if(this->_eth->sctp.supported(awh::net::sctp::feature_t::STREAM_RESET)){
+		// Подписка на набор устаревших событий должна завершиться успешно
+		ASSERT_TRUE(this->_eth->sctp.eventsSubscribe(sock.fd, {
+			awh::net::sctp::event_type_t::DATA_IO,
+			awh::net::sctp::event_type_t::ASSOC_CHANGE,
+			awh::net::sctp::event_type_t::SHUTDOWN_EVENT,
+			awh::net::sctp::event_type_t::SEND_FAILED_EVENT,
+			awh::net::sctp::event_type_t::REMOTE_ERROR,
+			awh::net::sctp::event_type_t::STREAM_RESET_EVENT
+		}));
+	// Если не несёт, подписка на тот же набор обязана ответить отказом
+	} else {
+		// Подписка обязана ответить отказом: часть набора неисполнима
+		ASSERT_FALSE(this->_eth->sctp.eventsSubscribe(sock.fd, {
+			awh::net::sctp::event_type_t::DATA_IO,
+			awh::net::sctp::event_type_t::ASSOC_CHANGE,
+			awh::net::sctp::event_type_t::SHUTDOWN_EVENT,
+			awh::net::sctp::event_type_t::SEND_FAILED_EVENT,
+			awh::net::sctp::event_type_t::REMOTE_ERROR,
+			awh::net::sctp::event_type_t::STREAM_RESET_EVENT
+		}));
+		// Подписка на набор без неисполнимого события обязана пройти
+		ASSERT_TRUE(this->_eth->sctp.eventsSubscribe(sock.fd, {
+			awh::net::sctp::event_type_t::DATA_IO,
+			awh::net::sctp::event_type_t::ASSOC_CHANGE,
+			awh::net::sctp::event_type_t::SHUTDOWN_EVENT,
+			awh::net::sctp::event_type_t::SEND_FAILED_EVENT,
+			awh::net::sctp::event_type_t::REMOTE_ERROR
+		}));
+	}
 }
 /**
  * @brief Тест подписки на современные события SCTP через SCTP_EVENT
@@ -231,11 +261,28 @@ TEST_F(EthFixture, SctpEventsSubscribeModern){
 	if(!sock.valid())
 		// Пропускаем тест
 		GTEST_SKIP() << "SCTP is not supported by the kernel";
-	// Подписка на современные события должна завершиться успешно
-	ASSERT_TRUE(this->_eth->sctp.eventsSubscribe(sock.fd, {
-		awh::net::sctp::event_type_t::ASSOC_RESET_EVENT,
-		awh::net::sctp::event_type_t::STREAM_CHANGE_EVENT
-	}));
+	/**
+	 * Подписка на современные события
+	 *
+	 * @note У систем Sun ни перенастройки связи, ни смены состава потоков нет вовсе,
+	 *       и подписка обязана ответить отказом целиком: исполнимого в наборе нет
+	 */
+	// Если система несёт перенастройку связи и смену состава потоков
+	if(this->_eth->sctp.supported(awh::net::sctp::feature_t::ASSOC_RESET) &&
+	   this->_eth->sctp.supported(awh::net::sctp::feature_t::STREAM_CHANGE)){
+		// Подписка на современные события должна завершиться успешно
+		ASSERT_TRUE(this->_eth->sctp.eventsSubscribe(sock.fd, {
+			awh::net::sctp::event_type_t::ASSOC_RESET_EVENT,
+			awh::net::sctp::event_type_t::STREAM_CHANGE_EVENT
+		}));
+	// Если не несёт, подписка обязана ответить отказом
+	} else {
+		// Подписка обязана ответить отказом: исполнимого в наборе нет
+		ASSERT_FALSE(this->_eth->sctp.eventsSubscribe(sock.fd, {
+			awh::net::sctp::event_type_t::ASSOC_RESET_EVENT,
+			awh::net::sctp::event_type_t::STREAM_CHANGE_EVENT
+		}));
+	}
 }
 /**
  * @brief Тест смешанной подписки на устаревшие и современные события SCTP
@@ -248,13 +295,37 @@ TEST_F(EthFixture, SctpEventsSubscribeMixed){
 	if(!sock.valid())
 		// Пропускаем тест
 		GTEST_SKIP() << "SCTP is not supported by the kernel";
-	// Подписка на смешанный набор событий должна завершиться успешно
-	ASSERT_TRUE(this->_eth->sctp.eventsSubscribe(sock.fd, {
-		awh::net::sctp::event_type_t::ASSOC_CHANGE,
-		awh::net::sctp::event_type_t::ASSOC_RESET_EVENT,
-		awh::net::sctp::event_type_t::STREAM_RESET_EVENT,
-		awh::net::sctp::event_type_t::STREAM_CHANGE_EVENT
-	}));
+	/**
+	 * Подписка на смешанный набор событий
+	 *
+	 * @note У систем Sun исполнима здесь лишь смена состояния связи, прочие три события
+	 *       система не несёт, - и подписка обязана ответить отказом, а не выдать частичный
+	 *       успех за полный
+	 */
+	// Признак того, что система несёт все события смешанного набора
+	const bool whole = (
+		this->_eth->sctp.supported(awh::net::sctp::feature_t::ASSOC_RESET) &&
+		this->_eth->sctp.supported(awh::net::sctp::feature_t::STREAM_RESET) &&
+		this->_eth->sctp.supported(awh::net::sctp::feature_t::STREAM_CHANGE)
+	);
+	// Если система несёт весь набор, подписка обязана пройти, иначе - ответить отказом
+	if(whole){
+		// Подписка на смешанный набор событий должна завершиться успешно
+		ASSERT_TRUE(this->_eth->sctp.eventsSubscribe(sock.fd, {
+			awh::net::sctp::event_type_t::ASSOC_CHANGE,
+			awh::net::sctp::event_type_t::ASSOC_RESET_EVENT,
+			awh::net::sctp::event_type_t::STREAM_RESET_EVENT,
+			awh::net::sctp::event_type_t::STREAM_CHANGE_EVENT
+		}));
+	} else {
+		// Подписка обязана ответить отказом: исполнима лишь часть набора
+		ASSERT_FALSE(this->_eth->sctp.eventsSubscribe(sock.fd, {
+			awh::net::sctp::event_type_t::ASSOC_CHANGE,
+			awh::net::sctp::event_type_t::ASSOC_RESET_EVENT,
+			awh::net::sctp::event_type_t::STREAM_RESET_EVENT,
+			awh::net::sctp::event_type_t::STREAM_CHANGE_EVENT
+		}));
+	}
 }
 /**
  * @brief Тест подписки на пустой список событий SCTP
@@ -283,11 +354,28 @@ TEST_F(EthFixture, SctpAuthenticateSupportAlgorithms){
 	if(!sock.valid())
 		// Пропускаем тест
 		GTEST_SKIP() << "SCTP is not supported by the kernel";
-	// Установка поддерживаемых алгоритмов аутентификации должна завершиться успешно
-	ASSERT_TRUE(this->_eth->sctp.authenticateSupportAlgorithms(sock.fd, {
-		awh::net::sctp::auth_type_t::HMAC_SHA1,
-		awh::net::sctp::auth_type_t::HMAC_SHA256
-	}));
+	/**
+	 * Проверка подлинности SCTP (RFC 4895)
+	 *
+	 * @note У систем Sun её нет вовсе - ни у Solaris, ни у illumos, - и фасад обязан
+	 *       ответить ОТКАЗОМ. Проверяется именно отказ: пропуск означал бы молчаливое
+	 *       отключение, и отказ, обернувшийся успехом, прошёл бы незамеченным
+	 */
+	// Если система несёт проверку подлинности сообщений
+	if(this->_eth->sctp.supported(awh::net::sctp::feature_t::AUTHENTICATION)){
+		// Установка поддерживаемых алгоритмов аутентификации должна завершиться успешно
+		ASSERT_TRUE(this->_eth->sctp.authenticateSupportAlgorithms(sock.fd, {
+			awh::net::sctp::auth_type_t::HMAC_SHA1,
+			awh::net::sctp::auth_type_t::HMAC_SHA256
+		}));
+	// Если не несёт, вызовы обязаны отвечать отказом
+	} else {
+		// Установка алгоритмов обязана ответить отказом
+		ASSERT_FALSE(this->_eth->sctp.authenticateSupportAlgorithms(sock.fd, {
+			awh::net::sctp::auth_type_t::HMAC_SHA1,
+			awh::net::sctp::auth_type_t::HMAC_SHA256
+		}));
+	}
 }
 /**
  * @brief Тест установки пустого списка алгоритмов аутентификации SCTP сокета
@@ -314,8 +402,21 @@ TEST_F(EthFixture, SctpAuthenticateKey){
 	if(!sock.valid())
 		// Пропускаем тест
 		GTEST_SKIP() << "SCTP is not supported by the kernel";
-	// Установка ключа аутентификации должна завершиться успешно
-	ASSERT_TRUE(this->_eth->sctp.authenticateKey(sock.fd, 1, "super-secret-sctp-key"));
+	/**
+	 * Проверка подлинности SCTP (RFC 4895)
+	 *
+	 * @note У систем Sun её нет вовсе, и фасад обязан ответить ОТКАЗОМ. Проверяется
+	 *       именно отказ: пропуск означал бы молчаливое отключение проверки
+	 */
+	// Если система несёт проверку подлинности сообщений
+	if(this->_eth->sctp.supported(awh::net::sctp::feature_t::AUTHENTICATION)){
+		// Установка ключа аутентификации должна завершиться успешно
+		ASSERT_TRUE(this->_eth->sctp.authenticateKey(sock.fd, 1, "super-secret-sctp-key"));
+	// Если не несёт, вызовы обязаны отвечать отказом
+	} else {
+		// Установка ключа обязана ответить отказом
+		ASSERT_FALSE(this->_eth->sctp.authenticateKey(sock.fd, 1, "super-secret-sctp-key"));
+	}
 }
 /**
  * @brief Тест установки пустого ключа аутентификации SCTP сокета
@@ -343,9 +444,23 @@ TEST_F(EthFixture, SctpAuthenticateKeyActivateDeactivate){
 		// Пропускаем тест
 		GTEST_SKIP() << "SCTP is not supported by the kernel";
 	// Устанавливаем ключ аутентификации, который будем активировать
-	ASSERT_TRUE(this->_eth->sctp.authenticateKey(sock.fd, 5, "active-key-material"));
-	// Активация ключа аутентификации должна завершиться успешно
-	ASSERT_TRUE(this->_eth->sctp.authenticateKey(sock.fd, awh::net::socket_mode_t::ENABLED, 0, 5));
+	/**
+	 * Проверка подлинности SCTP (RFC 4895)
+	 *
+	 * @note У систем Sun её нет вовсе, и фасад обязан ответить ОТКАЗОМ. Проверяется
+	 *       именно отказ: пропуск означал бы молчаливое отключение проверки
+	 */
+	// Если система несёт проверку подлинности сообщений
+	if(this->_eth->sctp.supported(awh::net::sctp::feature_t::AUTHENTICATION)){
+		ASSERT_TRUE(this->_eth->sctp.authenticateKey(sock.fd, 5, "active-key-material"));
+		// Активация ключа аутентификации должна завершиться успешно
+		ASSERT_TRUE(this->_eth->sctp.authenticateKey(sock.fd, awh::net::socket_mode_t::ENABLED, 0, 5));
+	// Если не несёт, вызовы обязаны отвечать отказом
+	} else {
+		// Установка и включение ключа обязаны ответить отказом
+		ASSERT_FALSE(this->_eth->sctp.authenticateKey(sock.fd, 5, "active-key-material"));
+		ASSERT_FALSE(this->_eth->sctp.authenticateKey(sock.fd, awh::net::socket_mode_t::ENABLED, 0, 5));
+	}
 	// Деактивация (удаление) ранее активного ключа допустима не на всех ядрах, поэтому проверяем лишь отсутствие падения
 	(void) this->_eth->sctp.authenticateKey(sock.fd, awh::net::socket_mode_t::DISABLED, 0, 5);
 }
@@ -360,11 +475,27 @@ TEST_F(EthFixture, SctpAuthenticateChunksSet){
 	if(!sock.valid())
 		// Пропускаем тест
 		GTEST_SKIP() << "SCTP is not supported by the kernel";
-	// Установка чанков аутентификации должна завершиться успешно
-	ASSERT_TRUE(this->_eth->sctp.authenticateChunks(sock.fd, {
-		awh::net::sctp::auth_chunk_t::DATA,
-		awh::net::sctp::auth_chunk_t::COOKIE_ECHO
-	}));
+	/**
+	 * Проверка подлинности SCTP (RFC 4895)
+	 *
+	 * @note У систем Sun её нет вовсе, и фасад обязан ответить ОТКАЗОМ. Проверяется
+	 *       именно отказ: пропуск означал бы молчаливое отключение проверки
+	 */
+	// Если система несёт проверку подлинности сообщений
+	if(this->_eth->sctp.supported(awh::net::sctp::feature_t::AUTHENTICATION)){
+		// Установка чанков аутентификации должна завершиться успешно
+		ASSERT_TRUE(this->_eth->sctp.authenticateChunks(sock.fd, {
+			awh::net::sctp::auth_chunk_t::DATA,
+			awh::net::sctp::auth_chunk_t::COOKIE_ECHO
+		}));
+	// Если не несёт, вызовы обязаны отвечать отказом
+	} else {
+		// Установка кусков обязана ответить отказом
+		ASSERT_FALSE(this->_eth->sctp.authenticateChunks(sock.fd, {
+			awh::net::sctp::auth_chunk_t::DATA,
+			awh::net::sctp::auth_chunk_t::COOKIE_ECHO
+		}));
+	}
 }
 /**
  * @brief Тест установки пустого списка чанков аутентификации SCTP сокета

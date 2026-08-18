@@ -35,6 +35,7 @@ if (${CMAKE_BUILD_${BENCHMARK_NAME}_BENCHMARKS})
             xml/reader.cpp
             xml/writer.cpp
             xml/document.cpp
+            xml/value.cpp
         )
     # Если не нужно собрать бенчмарки для контейнера XML
     else()

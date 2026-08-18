@@ -1,16 +1,16 @@
 #!/bin/sh
 #
 # @file stand.sh
-# @date 2026-08-15
+# @date 2026-08-18
 #
 # @license{LicenseRef-AWH-1.0}
 #
 # @author Yuriy Lobarev
 #
-# @brief Отдельный стенд проверок кодека JSON — сборка набора проверок без библиотеки
+# @brief Отдельный стенд проверок кодека XML — сборка набора проверок без библиотеки
 #        целиком, ради прогона на отладочных стендах
 #
-# @details Кодек JSON опирается лишь на заголовочные файлы разбора чисел, и собрать его
+# @details Кодек XML опирается лишь на заголовочные файлы разбора чисел, и собрать его
 #          проверки можно шестью вызовами собирателя. Полная сборка библиотеки на стендах
 #          занимает десятки минут и тянет за собою третью сторону, тогда как проверить
 #          требуется один кодек
@@ -21,7 +21,7 @@
 # @copyright Copyright © 2026
 #
 # Вызов:
-#   tests/codec/json/stand.sh [корень дерева] [каталог сборки]
+#   tests/codec/xml/stand.sh [корень дерева] [каталог сборки]
 #
 # Переменные окружения:
 #   CXX        — собиратель, по умолчанию «c++»
@@ -36,7 +36,7 @@ set -e
 ROOT="${1:-$(cd "$(dirname "$0")/../../.." && pwd)}"
 
 # Получаем каталог собранного стенда
-OUTPUT="${2:-/tmp/awh-json-stand}"
+OUTPUT="${2:-/tmp/awh-xml-stand}"
 
 # Получаем корень набора GoogleTest
 GTEST="${GTEST_ROOT:-/usr}"
@@ -54,23 +54,23 @@ mkdir -p "$OUTPUT"
 #
 # @note Снос обязателен: при отказе сборки прежний двоичный файл остаётся на месте
 #       и прогон отчитывается успехом по коду, какого в нём уже нет
-rm -f "$OUTPUT/json-tests" "$OUTPUT/json-tests.exe"
+rm -f "$OUTPUT/xml-tests" "$OUTPUT/xml-tests.exe"
 
 # Собираем перечень объектных файлов стенда
 OBJECTS="$OUTPUT/lexical-table.o"
 
 # Выводим сообщение о начале сборки стенда
-echo "Собираем стенд проверок JSON: $COMPILER"
+echo "Собираем стенд проверок XML: $COMPILER"
 
 # Выполняем сборку таблицы степеней пятёрки модуля разбора чисел
 $COMPILER $OPTIONS -c "$ROOT/src/num/lexical/table.cpp" -o "$OUTPUT/lexical-table.o"
 
-# Выполняем перебор всех частей кодека JSON
+# Выполняем перебор всех частей кодека XML
 for PART in common encoding reader writer document value; do
-	# Выполняем сборку очередной части кодека JSON
-	$COMPILER $OPTIONS -c "$ROOT/src/codec/json/$PART.cpp" -o "$OUTPUT/codec-$PART.o"
-	# Выполняем сборку проверок очередной части кодека JSON
-	$COMPILER $OPTIONS -c "$ROOT/tests/codec/json/$PART.cpp" -o "$OUTPUT/test-$PART.o"
+	# Выполняем сборку очередной части кодека XML
+	$COMPILER $OPTIONS -c "$ROOT/src/codec/xml/$PART.cpp" -o "$OUTPUT/codec-$PART.o"
+	# Выполняем сборку проверок очередной части кодека XML
+	$COMPILER $OPTIONS -c "$ROOT/tests/codec/xml/$PART.cpp" -o "$OUTPUT/test-$PART.o"
 	# Добавляем собранное к перечню объектных файлов стенда
 	OBJECTS="$OBJECTS $OUTPUT/codec-$PART.o $OUTPUT/test-$PART.o"
 done
@@ -80,7 +80,7 @@ done
 # @note Объектные файлы перечисляются поимённо, а не маскою: посторонний объектный файл,
 #       оставленный в каталоге сборки кем угодно, попадал бы в связывание и валил его
 #       повтором имён
-$COMPILER $OPTIONS $OBJECTS -L"$GTEST/lib" -lgtest -lgtest_main -pthread -o "$OUTPUT/json-tests"
+$COMPILER $OPTIONS $OBJECTS -L"$GTEST/lib" -lgtest -lgtest_main -pthread -o "$OUTPUT/xml-tests"
 
 # Выводим сообщение об окончании сборки стенда
-echo "Стенд собран: $OUTPUT/json-tests"
+echo "Стенд собран: $OUTPUT/xml-tests"

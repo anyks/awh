@@ -674,6 +674,46 @@ namespace awh {
 					bool insert(const string & name, const Value & value) noexcept;
 					/**
 					 * \~russian
+					 * @brief Метод добавления поля объекта с удержанием повтора
+					 *
+					 * @details Поле кладётся **рядом**, а не поверх: имя, уже заведённое,
+					 * поиском не отыскивается вовсе, и объект получает два поля с одним
+					 * именем. В том и вся разница с методом `insert`
+					 *
+					 * @details Метод этот отвечает настройке разбора `duplicate_t::KEEP`:
+					 * ею дозволено удержание повторяющихся имён, и без добавления снятое с
+					 * такого дерева значение обратно не собиралось бы вовсе - повторы
+					 * схлопывались бы в одно поле
+					 *
+					 * @note Запись такого объекта в текст даёт повторяющиеся имена, а разбор
+					 *       записи вернёт их лишь при той же настройке `duplicate_t::KEEP`:
+					 *       прочие правила повтор отвергнут либо сведут
+					 *
+					 * @param name  имя добавляемого поля объекта
+					 * @param value добавляемое значение поля
+					 * @return      признак успешности добавления
+					 *
+					 * \~english
+					 * @brief Method of the addition of a field of an object with the retention of a repetition
+					 * @details A field is placed **alongside** rather than on top: a name already created
+					 * is not searched for at all, and the object gets two fields with one
+					 * name. Therein lies the whole difference from the method `insert`
+					 * @details This method answers the setting of the parsing `duplicate_t::KEEP`:
+					 * by it the retention of the repeating names is allowed, and without the addition a value taken
+					 * from such a tree would not be assembled back at all — the repetitions
+					 * would collapse into a single field
+					 * @note The writing of such an object into a text gives repeating names, while the parsing
+					 *       of the record will return them only with the same setting `duplicate_t::KEEP`:
+					 *       the other rules will reject or reduce a repetition
+					 * @param name name of the field of the object being added
+					 * @param value value of the field being added
+					 * @return sign of the success of the addition
+					 *
+					 * \~
+					 */
+					bool append(const string & name, const Value & value) noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод снятия поля объекта по имени
 					 *
 					 * @param name имя снимаемого поля объекта
@@ -1194,6 +1234,24 @@ namespace awh {
 				private:
 					/**
 					 * \~russian
+					 * Признак того, что поле объекта кладётся рядом, а не поверх
+					 *
+					 * @note Признак этот принадлежит имени, а не сборщику целиком: он ставится
+					 * методом `append` и снимается всяким последующим `key`, - иначе одно
+					 * добавление сделало бы добавлениями все поля до конца сборки
+					 *
+					 * \~english
+					 * Sign that a field of an object is placed alongside rather than on top
+					 * @note This sign belongs to the name rather than to the builder as a whole: it is set
+					 * by the method `append` and is removed by every subsequent `key` — otherwise a single
+					 * addition would make additions of all the fields until the end of the assembly
+					 *
+					 * \~
+					 */
+					bool _appended;
+				private:
+					/**
+					 * \~russian
 					 * @brief Метод помещения собранного значения на своё место
 					 *
 					 * @param value помещаемое значение
@@ -1262,6 +1320,37 @@ namespace awh {
 					 * \~
 					 */
 					bool key(const string & name) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод записи имени поля объекта с удержанием повтора
+					 *
+					 * @details Действует ровно как `key`, с одною разницей: значение,
+					 * следом записанное, кладётся **рядом** с полем того же имени, а не
+					 * поверх него. Отвечает настройке разбора `duplicate_t::KEEP`, ею
+					 * дозволенной
+					 *
+					 * @note Без этого метода значение, снятое с дерева, разобранного
+					 *       правилом `duplicate_t::KEEP`, сборщиком обратно не собиралось
+					 *       бы вовсе: повторы схлопывались бы в одно поле
+					 *
+					 * @param name записываемое имя поля объекта
+					 * @return     признак успешности записи
+					 *
+					 * \~english
+					 * @brief Method of the writing of a name of a field of an object with the retention of a repetition
+					 * @details It acts exactly as `key`, with one difference: the value
+					 * written next is placed **alongside** a field of the same name rather than
+					 * on top of it. It answers the setting of the parsing `duplicate_t::KEEP`
+					 * allowed by it
+					 * @note Without this method a value taken from a tree parsed
+					 *       by the rule `duplicate_t::KEEP` would not be assembled back by the builder
+					 *       at all: the repetitions would collapse into a single field
+					 * @param name name of the field of the object being written
+					 * @return sign of the success of the writing
+					 *
+					 * \~
+					 */
+					bool append(const string & name) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод записи пустого значения
@@ -1446,7 +1535,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Builder() noexcept : _keyed(false) {}
+					Builder() noexcept : _keyed(false), _appended(false) {}
 					/**
 					 * \~russian
 					 * @brief Деструктор

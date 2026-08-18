@@ -3454,6 +3454,27 @@ bool awh::codec::yaml::Reader::record(const string_view line) noexcept {
 	 * Если строка объявляет конец документа
 	 */
 	if((line.compare(offset, 3, "...") == 0) && (((offset + 3) >= line.size()) || spacing(line[offset + 3]))){
+		// Смещение содержимого за чертою конца документа
+		size_t following = (offset + 3);
+		/**
+		 * Выполняем пропуск пробельных знаков за чертою конца документа
+		 */
+		while((following < line.size()) && spacing(line[following]))
+			// Выполняем переход к следующему знаку строки
+			following++;
+		/**
+		 * Если за чертою конца документа стоит содержимое
+		 *
+		 * @details Черта конца документа занимает строку свою целиком: описанием за нею
+		 *          дозволено одно примечание. Прежде содержимое за нею отбрасывалось
+		 *          молча - запись `... invalid` принималась чертою, а слово `invalid`
+		 *          пропадало из потока бесследно
+		 *
+		 * @note Нашло это сличение с набором yaml-test-suite
+		 */
+		if((following < line.size()) && (line[following] != '#') && (line[following] != '\n'))
+			// Выводим отказ содержимого за завершённой записью
+			return this->fail(error_t::TRAILING_CHARACTERS, following);
 		/**
 		 * Если закрыть открытый документ не удалось
 		 */

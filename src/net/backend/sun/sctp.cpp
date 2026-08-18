@@ -832,6 +832,95 @@ bool awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::socket_t
 }
 
 /**
+ * @brief Метод опроса возможности протокола SCTP у текущей системы
+ *
+ * @details Таблица опирается на признаки, объявленные системными заголовочными файлами,
+ *          а не на перечень имён систем: возможность появляется у системы с новой её
+ *          выпуском, и признак это отражает, а имя - нет
+ *
+ * @warning У систем Sun проверки подлинности нет вовсе - ни у Solaris, ни у illumos, - как
+ *          нет и перенастройки потоков и связи. Отказ этих приёмов есть свойство системы,
+ *          а не изъян движка, и опрос заведён ради того, чтобы это можно было узнать
+ *          заранее, а не по отказу вызова
+ *
+ * @param feature опрашиваемая возможность протокола
+ * @return        результат опроса возможности
+ *
+ */
+bool awh::eth::Stream_Control_Transmission_Protocol::supported(const net::sctp::feature_t feature) const noexcept {
+	/**
+	 * Определяем опрашиваемую возможность протокола
+	 */
+	switch(static_cast <uint8_t> (feature)){
+		// Если опрашивается проверка подлинности сообщений
+		case static_cast <uint8_t> (net::sctp::feature_t::AUTHENTICATION):
+			#if defined(SCTP_AUTH_KEY) && defined(SCTP_AUTH_ACTIVE_KEY)
+				// Выводим положительный результат
+				return true;
+			#else
+				// Выводим отрицательный результат
+				return false;
+			#endif
+		// Если опрашивается перенастройка потоков связи
+		case static_cast <uint8_t> (net::sctp::feature_t::STREAM_RESET):
+			#if defined(SCTP_RESET_STREAMS)
+				// Выводим положительный результат
+				return true;
+			#else
+				// Выводим отрицательный результат
+				return false;
+			#endif
+		// Если опрашивается перенастройка самой связи
+		case static_cast <uint8_t> (net::sctp::feature_t::ASSOC_RESET):
+			#if defined(SCTP_RESET_ASSOC)
+				// Выводим положительный результат
+				return true;
+			#else
+				// Выводим отрицательный результат
+				return false;
+			#endif
+		// Если опрашивается смена состава потоков связи
+		case static_cast <uint8_t> (net::sctp::feature_t::STREAM_CHANGE):
+			#if defined(SCTP_ADD_STREAMS)
+				// Выводим положительный результат
+				return true;
+			#else
+				// Выводим отрицательный результат
+				return false;
+			#endif
+		// Если опрашивается оповещение об опустевшей очереди отправки
+		case static_cast <uint8_t> (net::sctp::feature_t::SENDER_DRY):
+			#if defined(SCTP_SENDER_DRY_EVENT)
+				// Выводим положительный результат
+				return true;
+			#else
+				// Выводим отрицательный результат
+				return false;
+			#endif
+		// Если опрашивается подключение по нескольким адресам одной заявкой
+		case static_cast <uint8_t> (net::sctp::feature_t::MULTIHOMING):
+			/**
+			 * У illumos многодомного подключения одной заявкой нет
+			 *
+			 * @note Функции `sctp_connectx` там не существует, и связь заводится обычным
+			 *       подключением по ПЕРВОМУ адресу списка - прочие остаются без дела
+			 */
+			#if defined(__illumos__)
+				// Выводим отрицательный результат
+				return false;
+			#else
+				// Выводим положительный результат
+				return true;
+			#endif
+		// Если опрашивается явная граница записи при отправке по частям
+		case static_cast <uint8_t> (net::sctp::feature_t::PARTIAL_MESSAGE):
+			// Выводим результат опроса явной границы записи
+			return this->partial();
+	}
+	// Выводим отрицательный результат: возможность не опознана
+	return false;
+}
+/**
  * @brief Метод проверки поддержки системой современного набора вызовов SCTP
  *
  * @return результат проверки поддержки
@@ -1191,7 +1280,22 @@ ssize_t awh::eth::Stream_Control_Transmission_Protocol::send(const net::socket_t
 			// Устанавливаем флаг границы записи
 			flags |= MSG_EOR;
 		// Выполняем отправку сообщения вместе с метаданными
-		return ::sctp_sendv(sock, &iov, 1, const_cast <struct sockaddr *> (addr), ((addr != nullptr) ? 1 : 0), &spa, sizeof(spa), SCTP_SENDV_SPA, flags);
+		const ssize_t bytes = ::sctp_sendv(sock, &iov, 1, const_cast <struct sockaddr *> (addr), ((addr != nullptr) ? 1 : 0), &spa, sizeof(spa), SCTP_SENDV_SPA, flags);
+		/**
+		 * Приводим успешный исход к числу отправленных октетов
+		 *
+		 * @details У систем Sun `sctp_sendv` объявлен отдающим `ssize_t`, но при успехе
+		 *          возвращает НУЛЬ, а не число отправленных октетов: отправка идёт через
+		 *          `ioctl(SIOCSCTPSNDV)`, и его успешный исход отдаётся как есть. Сообщение
+		 *          при этом уходит целиком - частичной отправки у этого приёма нет
+		 *
+		 * @warning Без приведения нуль достаётся вызывающей стороне как «отправлено нуль
+		 *          октетов», а это признак давно закрытого сокета - и движок сносит живую
+		 *          связь. Доказано отдельным щупом на Solaris 11.4: отправка 512 октетов
+		 *          отдала нуль при `errno` равном нулю, а трассировка ядра показала
+		 *          успешный `ioctl(3, SIOCSCTPSNDV) = 0`
+		 */
+		return ((bytes == 0) ? static_cast <ssize_t> (size) : bytes);
 	/**
 	 * Если современного набора вызовов система не несёт
 	 */

@@ -110,6 +110,47 @@ static bool parse(const std::string & text) noexcept {
 }
 
 /**
+ * @brief Функция снятия владеющего поддерева с дерева разметки
+ *
+ * @details Дерево собирается однажды, при прогреве, и замеряется одно лишь снятие
+ *          поддерева в собственное дерево: у этой реализации владеющей копией узла
+ *          служит узел другого дерева, заведённый `append_copy`
+ *
+ * @param text разбираемый текст разметки
+ * @return     признак успешного снятия
+ *
+ */
+static bool copy(const std::string & text) noexcept {
+	// Дерево разметки, с какого снимается поддерево
+	static pugi::xml_document document;
+	// Текст разметки, каким дерево собрано
+	static const std::string * source = nullptr;
+	/**
+	 * Если дерево разметки ещё не собрано либо собрано иным текстом
+	 */
+	if(source != &text){
+		/**
+		 * Если сборка дерева разметки не удалась
+		 */
+		if(!document.load_buffer(text.data(), text.size()))
+			// Выводим признак неудачного снятия
+			return false;
+		// Запоминаем текст разметки, каким дерево собрано
+		source = &text;
+	}
+	// Дерево разметки, принимающее снятое поддерево
+	pugi::xml_document owned;
+	// Выполняем снятие поддерева в собственное дерево
+	const pugi::xml_node value = owned.append_copy(document.document_element());
+	// Выполняем учёт снятого поддерева
+	rival::node();
+	// Выполняем чтение имени снятого поддерева
+	rival::touch(value.name(), ::strlen(value.name()));
+	// Выводим признак успешного снятия
+	return !value.empty();
+}
+
+/**
  * @brief Структура сценария стенда
  *
  */
@@ -138,7 +179,9 @@ static const std::vector <scenario_t> & scenarios() noexcept {
 		{"large",      rival::LARGE_ROUNDS,       rival::large,      parse},
 		{"attributes", rival::FOCUSED_ROUNDS,     rival::attributes, parse},
 		{"content",    rival::FOCUSED_ROUNDS,     rival::content,    parse},
-		{"nested",     rival::SMALL_ROUNDS,       rival::nested,     parse}
+		{"nested",     rival::SMALL_ROUNDS,       rival::nested,     parse},
+		{"copy-soap",  rival::SMALL_ROUNDS,       rival::soap,       copy},
+		{"copy-large", rival::LARGE_ROUNDS,       rival::large,      copy}
 	};
 	// Выводим перечень сценариев стенда
 	return result;
@@ -153,10 +196,17 @@ static const std::vector <scenario_t> & scenarios() noexcept {
  *
  */
 int32_t main(int32_t argc, char * argv[]){
+	/**
+	 * Выполняем установку учётного распределителя памяти
+	 *
+	 * @note Без крючка этого расход памяти отчитывался бы нулём: реализация берёт
+	 *       память `malloc`, а не оператором языка, и замене оператора невидима
+	 */
+	pugi::set_memory_management_functions(rival::capture, rival::release);
 	// Получаем отбор сценариев по вхождению в название
 	const char * filter = rival::filter(argc, argv);
 	// Итоги прогона сценария
-	rival::outcome_t outcome{0, 0, 0.0};
+	rival::outcome_t outcome{0, 0, 0.0, 0, 0};
 	/**
 	 * Выполняем перебор всех сценариев стенда
 	 */

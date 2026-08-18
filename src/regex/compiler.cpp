@@ -24,6 +24,7 @@
  * Стандартные заголовочные файлы
  */
 #include <atomic>
+#include <algorithm>
 
 /**
  * Подключаем заголовочные файлы проекта
@@ -1582,10 +1583,35 @@ void awh::regex::Compiler::analyze() noexcept {
  *
  */
 bool awh::regex::Compiler::advancing(const node_id_t id) const noexcept {
+	// Создаём след узлов, проверка каких не завершена
+	vector <node_id_t> visited;
+	// Выводим результат проверки обязательного продвижения узла по тексту
+	return this->advancing(id, visited);
+}
+/**
+ * @brief Метод проверки обязательного продвижения узла по тексту со следом обхода
+ *
+ * @param id      индекс проверяемого узла в арене узлов
+ * @param visited след узлов, проверка каких не завершена
+ * @return        результат проверки обязательного продвижения узла по тексту
+ *
+ */
+bool awh::regex::Compiler::advancing(const node_id_t id, vector <node_id_t> & visited) const noexcept {
 	/**
 	 * Если проверяемый узел отсутствует
 	 */
 	if(id == INVALID_NODE)
+		// Выводим результат проверки обязательного продвижения узла по тексту
+		return false;
+	/**
+	 * Если проверка узла уже ведётся
+	 *
+	 * @details Круговой обход возникает у рекурсивного вызова: он ссылается
+	 *          на выражение, вызов этот содержащее. Продвижения такой узел
+	 *          не подтверждает - подтверждение сняло бы сторожа продвижения.
+	 *
+	 */
+	if(std::find(visited.begin(), visited.end(), id) != visited.end())
 		// Выводим результат проверки обязательного продвижения узла по тексту
 		return false;
 	// Получаем проверяемый узел арены узлов
@@ -1632,7 +1658,7 @@ bool awh::regex::Compiler::advancing(const node_id_t id) const noexcept {
 				/**
 				 * Если очередной узел цепочки продвигается по тексту
 				 */
-				if(this->advancing(index))
+				if(this->advancing(index, visited))
 					// Выводим результат проверки обязательного продвижения
 					return true;
 			}
@@ -1659,7 +1685,7 @@ bool awh::regex::Compiler::advancing(const node_id_t id) const noexcept {
 				/**
 				 * Если очередная ветвь выбора по тексту не продвигается
 				 */
-				if(!this->advancing(index))
+				if(!this->advancing(index, visited))
 					// Выводим результат проверки обязательного продвижения
 					return false;
 			}
@@ -1673,7 +1699,7 @@ bool awh::regex::Compiler::advancing(const node_id_t id) const noexcept {
 		 *          не отличается: запись границ по тексту не двигает.
 		 *
 		 */
-		case static_cast <uint8_t> (node_t::GROUP): return this->advancing(node.child);
+		case static_cast <uint8_t> (node_t::GROUP): return this->advancing(node.child, visited);
 		/**
 		 * Если узел является повторением
 		 *
@@ -1684,7 +1710,46 @@ bool awh::regex::Compiler::advancing(const node_id_t id) const noexcept {
 		 */
 		case static_cast <uint8_t> (node_t::REPEAT):
 			// Выводим результат проверки обязательного продвижения узла по тексту
-			return ((node.repeat.min > 0) && this->advancing(node.child));
+			return ((node.repeat.min > 0) && this->advancing(node.child, visited));
+		/**
+		 * Если узел является рекурсивным вызовом
+		 *
+		 * @details Вызов продвигается, если продвигается вызываемое им: сопоставление
+		 *          вызова есть сопоставление тела его. Вызываемым выступает корень
+		 *          дерева при номере нулевом и узел группы при номере ином; группа,
+		 *          сборкою ещё не пройденная, в наборе отсутствует, и продвижения
+		 *          вызов её не подтверждает.
+		 *
+		 *          Проверка эта избавляет повторение, рекурсивный вызов содержащее,
+		 *          от сторожа продвижения - а сторож тот кодогенерации не поддаётся
+		 *          и оставлял выражения вида «\((?:[^()]|(?R))*\)» без порождения
+		 *          машинного кода вовсе.
+		 *
+		 */
+		case static_cast <uint8_t> (node_t::RECURSE): {
+			// Выполняем добавление проверяемого узла в след обхода
+			visited.push_back(id);
+			// Индекс узла вызываемого рекурсивным вызовом
+			node_id_t called = INVALID_NODE;
+			/**
+			 * Если рекурсивно вызывается выражение целиком
+			 */
+			if(node.recurse.number == 0)
+				// Выполняем установку корневого узла синтаксического дерева
+				called = this->_parser->root();
+			/**
+			 * Если вызываемая группа сборкою уже пройдена
+			 */
+			else if(this->_groups.count(node.recurse.number) != 0)
+				// Выполняем установку индекса узла вызываемой группы
+				called = this->_groups.at(node.recurse.number);
+			// Получаем результат проверки продвижения вызываемого узла
+			const bool result = this->advancing(called, visited);
+			// Выполняем снятие проверяемого узла со следа обхода
+			visited.pop_back();
+			// Выводим результат проверки обязательного продвижения узла по тексту
+			return result;
+		}
 	}
 	// Выводим результат проверки обязательного продвижения узла по тексту
 	return false;

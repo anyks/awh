@@ -27,6 +27,7 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <codec/xml/reader.hpp>
+#include <codec/xml/value.hpp>
 
 /**
  * Подключаем общее окружение эталонных стендов
@@ -99,6 +100,44 @@ static bool parse(const std::string & text) noexcept {
 }
 
 /**
+ * @brief Функция снятия владеющего поддерева с дерева разметки
+ *
+ * @details Дерево собирается однажды, при прогреве, и замеряется одно лишь снятие:
+ *          сравниваются модели владения, а не скорость разбора, уже сравнённая выше
+ *
+ * @param text разбираемый текст разметки
+ * @return     признак успешного снятия
+ *
+ */
+static bool copy(const std::string & text) noexcept {
+	// Дерево разметки, с какого снимается поддерево
+	static awh::codec::xml::document_t document;
+	// Текст разметки, каким дерево собрано
+	static const std::string * source = nullptr;
+	/**
+	 * Если дерево разметки ещё не собрано либо собрано иным текстом
+	 */
+	if(source != &text){
+		/**
+		 * Если сборка дерева разметки не удалась
+		 */
+		if(!document.parse(text))
+			// Выводим признак неудачного снятия
+			return false;
+		// Запоминаем текст разметки, каким дерево собрано
+		source = &text;
+	}
+	// Выполняем снятие владеющего поддерева с дерева разметки
+	const awh::codec::xml::value_t value(document.element());
+	// Выполняем учёт снятого поддерева
+	rival::node();
+	// Выполняем чтение имени снятого поддерева
+	rival::touch(value.local().data(), value.local().size());
+	// Выводим признак успешного снятия
+	return value.valid();
+}
+
+/**
  * @brief Структура сценария стенда
  *
  */
@@ -127,7 +166,9 @@ static const std::vector <scenario_t> & scenarios() noexcept {
 		{"large",      rival::LARGE_ROUNDS,       rival::large,      parse},
 		{"attributes", rival::FOCUSED_ROUNDS,     rival::attributes, parse},
 		{"content",    rival::FOCUSED_ROUNDS,     rival::content,    parse},
-		{"nested",     rival::SMALL_ROUNDS,       rival::nested,     parse}
+		{"nested",     rival::SMALL_ROUNDS,       rival::nested,     parse},
+		{"copy-soap",  rival::SMALL_ROUNDS,       rival::soap,       copy},
+		{"copy-large", rival::LARGE_ROUNDS,       rival::large,      copy}
 	};
 	// Выводим перечень сценариев стенда
 	return result;
@@ -145,7 +186,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Получаем отбор сценариев по вхождению в название
 	const char * filter = rival::filter(argc, argv);
 	// Итоги прогона сценария
-	rival::outcome_t outcome{0, 0, 0.0};
+	rival::outcome_t outcome{0, 0, 0.0, 0, 0};
 	/**
 	 * Выполняем перебор всех сценариев стенда
 	 */

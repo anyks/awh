@@ -136,7 +136,9 @@ static const std::vector <scenario_t> & scenarios() noexcept {
 		{"large",      rival::LARGE_ROUNDS,       rival::large,      parse},
 		{"attributes", rival::FOCUSED_ROUNDS,     rival::attributes, parse},
 		{"content",    rival::FOCUSED_ROUNDS,     rival::content,    parse},
-		{"nested",     rival::SMALL_ROUNDS,       rival::nested,     parse}
+		{"nested",     rival::SMALL_ROUNDS,       rival::nested,     parse},
+		{"copy-soap",  rival::SMALL_ROUNDS,       rival::soap,       nullptr},
+		{"copy-large", rival::LARGE_ROUNDS,       rival::large,      nullptr}
 	};
 	// Выводим перечень сценариев стенда
 	return result;
@@ -154,7 +156,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Получаем отбор сценариев по вхождению в название
 	const char * filter = rival::filter(argc, argv);
 	// Итоги прогона сценария
-	rival::outcome_t outcome{0, 0, 0.0};
+	rival::outcome_t outcome{0, 0, 0.0, 0, 0};
 	/**
 	 * Выполняем перебор всех сценариев стенда
 	 */
@@ -165,6 +167,22 @@ int32_t main(int32_t argc, char * argv[]){
 		if(!rival::selected(scenario.name, filter))
 			// Выполняем переход к следующему сценарию
 			continue;
+		/**
+		 * Если прогон сценария выполнить не удалось
+		 */
+		/**
+		 * Если сценарий этой реализации неведом вовсе
+		 *
+		 * @note Снятия владеющего поддерева у потоковой выдачи не бывает: дерева она не
+		 *       заводит, и снимать нечего. Сценарий назван и пропущен явно, а не изъят
+		 *       молча: молчание в отчёте неотличимо от недосмотра
+		 */
+		if(scenario.subject == nullptr){
+			// Выводим сообщение о пропуске сценария
+			rival::skip(scenario.name, "no tree: streaming only");
+			// Выполняем переход к следующему сценарию
+			continue;
+		}
 		/**
 		 * Если прогон сценария выполнить не удалось
 		 */

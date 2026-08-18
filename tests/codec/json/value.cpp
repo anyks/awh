@@ -981,3 +981,124 @@ TEST(CodecJsonValue, Differential) {
 		}
 	}
 }
+
+/**
+ * @brief Проверка добавления поля объекта с удержанием повтора
+ *
+ */
+TEST(CodecJsonValue, Append) {
+	// Собираемое владеющее значение
+	json::value_t value(json::kind_t::OBJECT);
+	// Выполняем установку поля объекта
+	ASSERT_TRUE(value.insert("a", json::value_t(static_cast <uint64_t> (1))));
+	// Выполняем добавление поля объекта с тем же именем
+	ASSERT_TRUE(value.append("a", json::value_t(static_cast <uint64_t> (2))));
+	// Выполняем проверку того, что объект несёт два поля
+	ASSERT_EQ(value.size(), static_cast <size_t> (2));
+	// Выполняем проверку имени первого поля объекта
+	ASSERT_EQ(value.key(0), "a");
+	// Выполняем проверку имени второго поля объекта
+	ASSERT_EQ(value.key(1), "a");
+	// Выполняем проверку записи объекта с повторяющимися именами
+	ASSERT_EQ(value.dump(), "{\"a\":1,\"a\":2}");
+	/**
+	 * Выполняем проверку того, что установка повтора не заводит
+	 *
+	 * @note Установка перезаписывает поле первое: обращение по имени отдаёт его же,
+	 *       и разница с добавлением видна лишь по количеству полей
+	 */
+	ASSERT_TRUE(value.insert("a", json::value_t(static_cast <uint64_t> (3))));
+	// Выполняем проверку того, что количество полей объекта не изменилось
+	ASSERT_EQ(value.size(), static_cast <size_t> (2));
+	// Выполняем проверку записи объекта после установки
+	ASSERT_EQ(value.dump(), "{\"a\":3,\"a\":2}");
+}
+
+/**
+ * @brief Проверка потоковой сборки объекта с повторяющимися именами полей
+ *
+ */
+TEST(CodecJsonValue, BuilderAppend) {
+	// Объект потоковой сборки значения
+	json::builder_t builder;
+	// Выполняем открытие объекта
+	ASSERT_TRUE(builder.object());
+	// Выполняем запись имени поля объекта
+	ASSERT_TRUE(builder.key("a"));
+	// Выполняем запись значения поля объекта
+	ASSERT_TRUE(builder.value(static_cast <uint64_t> (1)));
+	// Выполняем запись имени поля объекта с удержанием повтора
+	ASSERT_TRUE(builder.append("a"));
+	// Выполняем запись значения поля объекта
+	ASSERT_TRUE(builder.value(static_cast <uint64_t> (2)));
+	/**
+	 * Выполняем запись имени поля объекта с удержанием повтора и вложенным вместилищем
+	 *
+	 * @note Вместилище проверяется отдельно: указание на добавленное поле берётся по
+	 *       номеру, и ошибка здесь увела бы дальнейшую сборку в поле первое
+	 */
+	ASSERT_TRUE(builder.append("a"));
+	// Выполняем открытие массива
+	ASSERT_TRUE(builder.array());
+	// Выполняем запись значения массива
+	ASSERT_TRUE(builder.value(static_cast <uint64_t> (3)));
+	// Выполняем закрытие массива
+	ASSERT_TRUE(builder.close());
+	// Выполняем запись имени поля объекта
+	ASSERT_TRUE(builder.key("b"));
+	// Выполняем запись значения поля объекта
+	ASSERT_TRUE(builder.value(static_cast <uint64_t> (4)));
+	/**
+	 * Выполняем запись имени поля объекта, уже заведённого
+	 *
+	 * @note Признак добавления принадлежит имени, а не сборщику целиком: обычная
+	 *       запись имени обязана вернуть перезапись на месте
+	 */
+	ASSERT_TRUE(builder.key("b"));
+	// Выполняем запись значения поля объекта
+	ASSERT_TRUE(builder.value(static_cast <uint64_t> (5)));
+	// Выполняем закрытие объекта
+	ASSERT_TRUE(builder.close());
+	// Изымаем собранное значение
+	const json::value_t value = builder.finish();
+	// Выполняем проверку записи собранного значения
+	ASSERT_EQ(value.dump(), "{\"a\":1,\"a\":2,\"a\":[3],\"b\":5}");
+}
+
+/**
+ * @brief Проверка кругового хода объекта с повторяющимися именами полей
+ *
+ */
+TEST(CodecJsonValue, AppendRoundtrip) {
+	// Объект дерева документа
+	json::document_t document;
+	// Получаем настройки разбора текста документа
+	json::document_t::settings_t settings = document.settings();
+	// Устанавливаем удержание повторяющихся имён полей объекта
+	settings.duplicates = json::duplicate_t::KEEP;
+	// Выполняем установку настроек разбора текста документа
+	document.settings(settings);
+	// Выполняем разбор текста документа с повторяющимися именами полей
+	ASSERT_TRUE(document.parse("{\"a\":1,\"a\":2}"));
+	// Снятое с дерева документа значение
+	const json::value_t value(document.root());
+	// Выполняем проверку того, что повторы значением удержаны
+	ASSERT_EQ(value.size(), static_cast <size_t> (2));
+	// Объект потоковой сборки значения
+	json::builder_t builder;
+	// Выполняем открытие объекта
+	ASSERT_TRUE(builder.object());
+	/**
+	 * Выполняем перебор всех полей снятого значения
+	 */
+	for(size_t i = 0; i < value.size(); i++){
+		// Выполняем запись имени поля объекта с удержанием повтора
+		ASSERT_TRUE(builder.append(value.key(i)));
+		// Выполняем запись значения поля объекта
+		ASSERT_TRUE(builder.value(value[i]));
+	}
+	// Выполняем закрытие объекта
+	ASSERT_TRUE(builder.close());
+	// Выполняем проверку совпадения пересобранного значения со снятым
+	ASSERT_TRUE(builder.finish() == value);
+}

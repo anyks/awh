@@ -20174,6 +20174,99 @@ TEST_F(IoFixture, IoSnapshotSilenceTest){
 #endif
 
 /**
+ * @brief Проверка разбора оборота, где готовых дескрипторов больше размера пачки
+ *
+ * @details Пачка записей разбора заводится размером в шестьдесят четыре события, а
+ *          завершений движок забирает у системы до двухсот пятидесяти шести за оборот,
+ *          и каждое вправе дать до двух записей. Проверка сводит их разом: полторы
+ *          сотни дейтаграммных событий получают по сообщению и становятся готовыми
+ *          одним оборотом опроса
+ *
+ * @note Проверка утверждает, что дошли ВСЕ сообщения: переполнение пачки теряло бы
+ *       готовность молча, а разбор писал бы записи мимо её конца - за пределы
+ *       выделенной памяти
+ *
+ */
+TEST_F(IoFixture, IoManyReadyDescriptorsTest){
+	// Число дейтаграммных пар, заводимых проверкой
+	constexpr size_t COUNT = 150;
+	// Выполняем инициализацию сетевого движка
+	ASSERT_TRUE(this->_io->initialize());
+	// Число принятых сообщений
+	size_t received = 0;
+	// Список заведённых пар обмена
+	std::vector <std::array <awh::event::id_t, 2>> pairs;
+	/**
+	 * Заводим дейтаграммные пары
+	 */
+	for(size_t i = 0; i < COUNT; i++){
+		// Получаем порт, на котором слушает приёмная сторона пары
+		const uint16_t number = port();
+		// Заводим дейтаграммную пару обмена
+		const auto & events = this->_io->events(awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
+		// Проверяем, что оба идентификатора пары созданы
+		ASSERT_GT(events[0], 0);
+		ASSERT_GT(events[1], 0);
+		// Устанавливаем порт, куда отправляет отправляющая сторона
+		ASSERT_TRUE(this->_io->setTargetPort(events[0], number));
+		// Устанавливаем порт, на котором слушает приёмная сторона
+		ASSERT_TRUE(this->_io->setSourcePort(events[1], number));
+		/**
+		 * Устанавливаем опции обеим сторонам пары
+		 */
+		for(uint8_t index = 0; index < 2; index++)
+			ASSERT_TRUE(this->_io->setOptions(events[index], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK));
+		// Устанавливаем адрес привязки отправляющей стороны
+		ASSERT_TRUE(this->_io->setAddress(events[0], awh::event::address_t::IPV4, "0.0.0.0"));
+		// Устанавливаем адрес получателя
+		ASSERT_TRUE(this->_io->setTarget(events[0], "127.0.0.1"));
+		// Устанавливаем адрес привязки приёмной стороны
+		ASSERT_TRUE(this->_io->setAddress(events[1], awh::event::address_t::IPV4, "127.0.0.1"));
+		/**
+		 * Устанавливаем функцию обратного вызова на приход дейтаграммы
+		 *
+		 * @note Дейтаграммная приёмная сторона выдаёт пришедшее не чтением самого события,
+		 *       а принятым узлом: движок разбирает отправителя и заводит ему свой узел,
+		 *       и сообщение читается уже с него
+		 */
+		this->_io->on(events[1], static_cast <awh::engine::callback::accept_t> ([&received, this](const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
+			// Устанавливаем функцию обратного вызова на получение сообщения принятым узлом
+			this->_io->on(cid, [&received](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+				// Считаем принятое сообщение
+				received++;
+			});
+		}));
+		// Выполняем фиксацию настроек приёмной стороны
+		ASSERT_TRUE(this->_io->commit(events[1]));
+		// Выполняем запуск приёмной стороны
+		ASSERT_TRUE(this->_io->launch(events[1]));
+		// Выполняем фиксацию настроек отправляющей стороны
+		ASSERT_TRUE(this->_io->commit(events[0]));
+		// Выполняем запуск отправляющей стороны
+		ASSERT_TRUE(this->_io->launch(events[0]));
+		// Запоминаем заведённую пару
+		pairs.push_back(events);
+	}
+	/**
+	 * Отправляем сообщения всем приёмным сторонам разом
+	 *
+	 * @note Опрос между отправками НЕ проворачивается намеренно: готовыми все стороны
+	 *       обязаны стать одним оборотом, иначе проверка мерила бы не то
+	 */
+	for(auto & events : pairs)
+		// Отправляем сообщение приёмной стороне пары
+		ASSERT_TRUE(this->_io->send(events[0], "x", 1));
+	// Срок, отведённый на приём всех сообщений
+	const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
+	// Выполняем опрос событий, пока не придут все сообщения либо не выйдет срок
+	while((received < COUNT) && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(100));
+	// Проверяем, что дошли все отправленные сообщения
+	ASSERT_EQ(COUNT, received) << "часть готовности потеряна: пришло " << received << " из " << COUNT;
+	// Уничтожаем все события движка
+	ASSERT_TRUE(this->_io->deinitialize());
+}
+
+/**
  * Проверка передачи заведена и для MS Windows, но своя
  *
  * @note Работник здесь порождается заново через `CreateProcess`: наследования у этой
