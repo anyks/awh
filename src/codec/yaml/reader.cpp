@@ -517,6 +517,8 @@ awh::codec::yaml::Reader::item_t & awh::codec::yaml::Reader::emit(const event_t 
 	result.flow = !this->_flow.empty();
 	// Запоминаем схему, при выдаче события действовавшую
 	result.schema = this->_schema;
+	// Запоминаем признак того, что документ наречие своё директивой объявил
+	result.versioned = this->_versioned;
 	// Выводим ссылку на поставленное событие
 	return result;
 }
@@ -3803,6 +3805,8 @@ bool awh::codec::yaml::Reader::next() noexcept {
 	this->_content.flow = this->_current.flow;
 	// Устанавливаем схему, при выдаче события действовавшую
 	this->_content.schema = this->_current.schema;
+	// Устанавливаем признак того, что документ наречие своё директивой объявил
+	this->_content.versioned = this->_current.versioned;
 	// Устанавливаем содержимое значения полученного события
 	this->_content.text = string_view(this->_storage.data() + this->_current.offset, this->_current.length);
 	// Устанавливаем имя метки, событию предпосланной

@@ -160,6 +160,15 @@ namespace awh {
 				 */
 				schema_t schema;
 				/**
+				 * Признак того, что документ наречие своё директивой объявил
+				 *
+				 * @note Признак этот принадлежит документу, а не потоку: директива есть
+				 *       принадлежность документа и стоит перед каждою чертою начала своею.
+				 *       Держащему документ целиком он велит вернуть директиву перезаписью
+				 *       ровно тем документам, у каких она стояла
+				 */
+				bool versioned;
+				/**
 				 * \~russian
 				 * @brief Конструктор
 				 *
@@ -170,7 +179,8 @@ namespace awh {
 				 * \~
 				 */
 				Content() noexcept :
-				 type(type_t::UNDEFINED), style(style_t::PLAIN), flow(false), schema(schema_t::CORE) {}
+				 type(type_t::UNDEFINED), style(style_t::PLAIN), flow(false), schema(schema_t::CORE),
+				 versioned(false) {}
 			} content_t;
 
 			/**
@@ -405,6 +415,8 @@ namespace awh {
 						bool flow;
 						// Схема, действовавшая при выдаче события
 						schema_t schema;
+						// Признак того, что документ наречие своё директивой объявил
+						bool versioned;
 						/**
 						 * \~russian
 						 * @brief Конструктор
@@ -417,7 +429,7 @@ namespace awh {
 						 */
 						Item() noexcept :
 						 event(event_t::NONE), type(type_t::UNDEFINED), style(style_t::PLAIN),
-						 offset(0), length(0), flow(false), schema(schema_t::CORE) {}
+						 offset(0), length(0), flow(false), schema(schema_t::CORE), versioned(false) {}
 					} item_t;
 				private:
 					// Настройки разбора текста
