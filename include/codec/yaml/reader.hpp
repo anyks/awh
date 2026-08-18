@@ -151,6 +151,15 @@ namespace awh {
 				 */
 				bool flow;
 				/**
+				 * Схема, действовавшая при выдаче события
+				 *
+				 * @note Схема эта берётся событием, а не чтением целиком: директива `%YAML 1.1`
+				 *       переводит на наречие 1.1 один свой документ, а поток вправе нести
+				 *       документы обоих наречий. Спроси схему у чтения по concу разбора - и
+				 *       получишь наречие документа последнего, каким бы ни был первый
+				 */
+				schema_t schema;
+				/**
 				 * \~russian
 				 * @brief Конструктор
 				 *
@@ -160,7 +169,8 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				Content() noexcept : type(type_t::UNDEFINED), style(style_t::PLAIN), flow(false) {}
+				Content() noexcept :
+				 type(type_t::UNDEFINED), style(style_t::PLAIN), flow(false), schema(schema_t::CORE) {}
 			} content_t;
 
 			/**
@@ -393,6 +403,8 @@ namespace awh {
 						location_t location;
 						// Признак того, что событие собрано внутри поточного построения
 						bool flow;
+						// Схема, действовавшая при выдаче события
+						schema_t schema;
 						/**
 						 * \~russian
 						 * @brief Конструктор
@@ -405,7 +417,7 @@ namespace awh {
 						 */
 						Item() noexcept :
 						 event(event_t::NONE), type(type_t::UNDEFINED), style(style_t::PLAIN),
-						 offset(0), length(0), flow(false) {}
+						 offset(0), length(0), flow(false), schema(schema_t::CORE) {}
 					} item_t;
 				private:
 					// Настройки разбора текста

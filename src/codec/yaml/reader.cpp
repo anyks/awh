@@ -515,6 +515,8 @@ awh::codec::yaml::Reader::item_t & awh::codec::yaml::Reader::emit(const event_t 
 	result.location.depth = static_cast <uint32_t> (this->_levels.size());
 	// Запоминаем признак того, что событие собрано внутри поточного построения
 	result.flow = !this->_flow.empty();
+	// Запоминаем схему, при выдаче события действовавшую
+	result.schema = this->_schema;
 	// Выводим ссылку на поставленное событие
 	return result;
 }
@@ -3799,6 +3801,8 @@ bool awh::codec::yaml::Reader::next() noexcept {
 	this->_content.location = this->_current.location;
 	// Запоминаем признак того, что значение собрано внутри поточного построения
 	this->_content.flow = this->_current.flow;
+	// Устанавливаем схему, при выдаче события действовавшую
+	this->_content.schema = this->_current.schema;
 	// Устанавливаем содержимое значения полученного события
 	this->_content.text = string_view(this->_storage.data() + this->_current.offset, this->_current.length);
 	// Устанавливаем имя метки, событию предпосланной

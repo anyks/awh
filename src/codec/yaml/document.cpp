@@ -180,6 +180,8 @@ void awh::codec::yaml::Document::clear() noexcept {
 	this->_encoding = encoding_t::NONE;
 	// Выполняем сброс номеров корневых узлов документов
 	this->_roots.clear();
+	// Выполняем очистку наречий документов потока
+	this->_dialects.clear();
 	// Выполняем сброс смещений начала документов
 	this->_starts.clear();
 	// Выполняем сброс кода ошибки разбора текста
@@ -674,6 +676,8 @@ bool awh::codec::yaml::Document::digest(reader_t & reader) noexcept {
 		} else {
 			// Выполняем постановку узла корнем очередного документа
 			this->_roots.push_back(result);
+			// Запоминаем наречие, документу этому объявленное
+			this->_dialects.push_back(reader.value().schema);
 			/**
 			 * Запоминаем смещение начала очередного документа
 			 *
@@ -931,7 +935,7 @@ bool awh::codec::yaml::Document::digest(reader_t & reader) noexcept {
 					 *       значения чтение опознавало по одной схеме, а число дерево разбирало
 					 *       по другой: `on` выходило логическим, а `0777` давало 777 вместо 511
 					 */
-					const type_t narrowed = narrow(reader.value().text, this->_schema, number);
+					const type_t narrowed = narrow(reader.value().text, reader.value().schema, number);
 					/**
 					 * Если разобрать запись числа удалось
 					 */
@@ -1988,13 +1992,28 @@ void awh::codec::yaml::Document::compose(writer_t & writer, const uint32_t index
 						// Выполняем переход к следующему знаку строки
 						position++;
 					/**
+					 * Признак того, что строку ребёнка открывает черта записи перечня
+					 *
+					 * @note Черта опознаётся вместе с пробелом за нею: имя `-key` чертою
+					 *       открывается, записью перечня не будучи
+					 */
+					const bool dashed = ((position < this->_source.size()) && (this->_source.at(position) == '-') &&
+					 (((position + 1) >= this->_source.size()) || ::blanking(this->_source.at(position + 1)) ||
+					  (this->_source.at(position + 1) == '\n')));
+					/**
 					 * Если вместилище отображением является либо черта в строке ребёнка стоит
 					 *
 					 * @note Написание `-` со значением строкою ниже кладёт черту в строку свою, а
 					 *       собственная строка ребёнка стоит ниже и глубже: отступ её отступом
 					 *       перечня не является вовсе. Нашёл это ворошитель правкой дерева
+					 *
+					 * @note Отображение, на строке черты объемлющей записи начатое, отступа
+					 *       исходного не получает: отступ той строки есть отступ черты, а не
+					 *       содержимого отображения, и назначение его клало бы пары на отступ
+					 *       самой черты. Написание `- !метка имя:` с меткою давало тем текст,
+					 *       обратно не читаемый. Нашёл это ворошитель правкой дерева
 					 */
-					if(mapping || ((position < this->_source.size()) && (this->_source.at(position) == '-')))
+					if((mapping && !dashed) || (!mapping && dashed))
 						// Назначаем открываемому вместилищу отступ исходный
 						writer.margin(static_cast <uint32_t> (position - own));
 				}
@@ -3143,6 +3162,22 @@ schema_t awh::codec::yaml::Document::Value::schema() const noexcept {
 	if(this->_doc == nullptr)
 		// Выводим схему ядровую
 		return schema_t::CORE;
+	/**
+	 * Выполняем перебор всех документов потока с конца
+	 *
+	 * @note Наречие берётся у того документа, какому узел принадлежит: поток вправе
+	 *       нести документы разных наречий, и схема одна на поток отдавала бы наречие
+	 *       документа последнего всякому узлу его
+	 */
+	for(size_t i = this->_doc->_roots.size(); i > 0; i--){
+		/**
+		 * Если узел документу этому принадлежит
+		 */
+		if(this->_index >= this->_doc->_roots.at(i - 1))
+			// Выводим наречие, документу этому объявленное
+			return ((i <= this->_doc->_dialects.size()) ?
+			 this->_doc->_dialects.at(i - 1) : this->_doc->_schema);
+	}
 	// Выводим схему, над разбором действовавшую
 	return this->_doc->_schema;
 }
