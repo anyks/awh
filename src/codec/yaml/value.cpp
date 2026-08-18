@@ -30,6 +30,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <cstdio>
+#include <atomic>
 #include <limits>
 #include <fstream>
 #include <type_traits>
@@ -109,9 +110,44 @@ namespace {
 	 * @return     признак числовой записи
 	 *
 	 */
-	static bool numbering(const string & text) noexcept {
-		// Выводим признак числовой записи
-		return (!text.empty() && (text.find_first_not_of("0123456789") == string::npos));
+	static bool numbering(const string & text, size_t & index) noexcept {
+		/**
+		 * Если запись пуста вовсе
+		 */
+		if(text.empty())
+			// Выводим признак того, что запись номером не является
+			return false;
+		// Выполняем сброс разбираемого номера значения
+		index = 0;
+		/**
+		 * Выполняем перебор всех знаков записи
+		 */
+		for(const char letter : text){
+			/**
+			 * Если знак цифрой не является
+			 */
+			if((letter < '0') || (letter > '9'))
+				// Выводим признак того, что запись номером не является
+				return false;
+			/**
+			 * Если добавление разряда выведет номер за предел разрядности
+			 *
+			 * @details Номер разбирается беззнаковым, и переполнение его языком определено
+			 * заворотом: запись `18446744073709551617` обращалась бы единицей, и обращение
+			 * по такому пути отдавало бы соседнее значение молча. Вместилища такой длины
+			 * не бывает вовсе - номер этот номером не является
+			 *
+			 * @note Пришло это находкою сессии владеющих значений JSON и XML, проверенной
+			 *       затем у себя
+			 */
+			if(index > ((std::numeric_limits <size_t>::max() - static_cast <size_t> (letter - '0')) / 10))
+				// Выводим признак того, что запись номером не является
+				return false;
+			// Добавляем разряд к номеру значения вместилища
+			index = ((index * 10) + static_cast <size_t> (letter - '0'));
+		}
+		// Выводим признак того, что запись является номером значения
+		return true;
 	}
 	/**
 	 * @brief Функция получения ссылки на неопределённое значение
@@ -123,6 +159,19 @@ namespace {
 	 * @return ссылка на неопределённое значение
 	 *
 	 */
+	/**
+	 * Предел роста вместилища обращением по номеру
+	 *
+	 * @details Номер, пришедший извне, обращается требованием памяти по нему, и предел
+	 * этот рост стережёт. Ставится он пользователем рамки, а нуль снимает его вовсе:
+	 * сколько памяти есть у приложения, ведомо ему одному
+	 *
+	 * @note Хранится оно беззнаковым числом с упорядоченным доступом: ставится предел
+	 *       единожды при заведении приложения, а читается всяким потоком, обращающимся
+	 *       по номеру
+	 *
+	 */
+	static ::std::atomic <size_t> LIMIT(0x10000);
 	static const awh::codec::yaml::Value & missing() noexcept {
 		// Неопределённое значение, обращением неудачным выдаваемое
 		static const awh::codec::yaml::Value result;
@@ -489,6 +538,44 @@ const awh::codec::yaml::Value & awh::codec::yaml::Value::operator [] (const size
 	return this->_items.at(index);
 }
 /**
+ * @brief Метод извлечения значения мусорного
+ *
+ * @details Значение это принимает на себя запись при неудачном обращении изменяемом:
+ * выдать ссылку метод обязан, а заводить значение по неверному пути не вправе.
+ * Записанное в него пропадает при следующем же неудачном обращении
+ *
+ * @return значение мусорное
+ *
+ */
+awh::codec::yaml::Value & awh::codec::yaml::Value::scrap() noexcept {
+	// Значение мусорное, принимающее на себя запись при неудачном обращении
+	static thread_local Value result;
+	// Выполняем очистку значения мусорного от записанного прежде
+	result.clear();
+	// Выводим значение мусорное
+	return result;
+}
+/**
+ * @brief Метод извлечения предела роста вместилища по номеру
+ *
+ * @return предел роста вместилища, нуль - предела нет
+ *
+ */
+size_t awh::codec::yaml::Value::limit() noexcept {
+	// Выводим установленный предел роста вместилища
+	return ::LIMIT.load(::std::memory_order_relaxed);
+}
+/**
+ * @brief Метод установки предела роста вместилища по номеру
+ *
+ * @param value устанавливаемый предел, нуль снимает предел вовсе
+ *
+ */
+void awh::codec::yaml::Value::limit(const size_t value) noexcept {
+	// Выполняем установку предела роста вместилища
+	::LIMIT.store(value, ::std::memory_order_relaxed);
+}
+/**
  * @brief Метод обращения к значению вместилища по номеру с заведением недостающего
  *
  * @param index номер значения во вместилище
@@ -506,6 +593,23 @@ awh::codec::yaml::Value & awh::codec::yaml::Value::operator [] (const size_t ind
 		this->_kind = kind_t::SEQUENCE;
 		// Назначаем значению вид хранения перечня значений
 		this->_type = type_t::SEQUENCE;
+	}
+	/**
+	 * Если рост вместилища за поставленный предел выйдет
+	 *
+	 * @note Номер, пришедший извне, обращается требованием памяти по нему: предел этот
+	 *       рост и стережёт. Ставится он пользователем рамки, а нуль снимает его вовсе -
+	 *       см. `Value::limit`
+	 */
+	{
+		// Получаем поставленный предел роста вместилища
+		const size_t limit = ::LIMIT.load(::std::memory_order_relaxed);
+		/**
+		 * Если предел поставлен и затребованный номер за него выходит
+		 */
+		if((limit > 0) && (index >= limit))
+			// Выводим значение мусорное
+			return Value::scrap();
 	}
 	/**
 	 * Выполняем рост вместилища до затребованного номера
@@ -557,9 +661,14 @@ const awh::codec::yaml::Value & awh::codec::yaml::Value::at(const string & path)
 		/**
 		 * Если вместилище является перечнем значений, а часть пути числом
 		 */
-		if((result->_kind == kind_t::SEQUENCE) && ::numbering(part))
+		// Номер значения вместилища, частью пути заданный
+		size_t index = 0;
+		/**
+		 * Если вместилище является перечнем значений, а часть пути номером
+		 */
+		if((result->_kind == kind_t::SEQUENCE) && ::numbering(part, index))
 			// Выполняем переход к значению перечня по номеру его
-			result = &((* result)[static_cast <size_t> (::strtoull(part.c_str(), nullptr, 10))]);
+			result = &((* result)[index]);
 		// Выполняем переход к полю отображения по имени его
 		else result = &((* result)[part]);
 		/**
@@ -608,8 +717,10 @@ awh::codec::yaml::Value & awh::codec::yaml::Value::place(const string & path) no
 		const size_t separator = route.find('/', start);
 		// Получаем очередную часть пути
 		const string part(route.substr(start, ((separator == string::npos) ? string::npos : (separator - start))));
-		// Получаем признак того, что часть пути является числом
-		const bool numeric = ::numbering(part);
+		// Номер значения вместилища, частью пути заданный
+		size_t index = 0;
+		// Получаем признак того, что часть пути является номером
+		const bool numeric = ::numbering(part, index);
 		/**
 		 * Если значение вместилищем не является вовсе
 		 *
@@ -629,7 +740,7 @@ awh::codec::yaml::Value & awh::codec::yaml::Value::place(const string & path) no
 		 */
 		if((result->_kind == kind_t::SEQUENCE) && numeric)
 			// Выполняем переход к значению перечня по номеру его
-			result = &((* result)[static_cast <size_t> (::strtoull(part.c_str(), nullptr, 10))]);
+			result = &((* result)[index]);
 		// Выполняем переход к полю отображения по имени его
 		else result = &((* result)[part]);
 		/**

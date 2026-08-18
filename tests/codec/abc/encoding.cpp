@@ -1,0 +1,499 @@
+/**
+ * @file encoding.cpp
+ * @date 2026-08-18
+ *
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @brief Проверки проволочной укладки бинарного контейнера ABC — укладка и снятие
+ *        элементарных единиц записи, независимость снятия от нарезки на куски и
+ *        проверка строк на соответствие кодировке UTF-8
+ *
+ * @copyright Copyright © 2026
+ *
+ */
+
+/**
+ * Стандартные заголовочные файлы
+ */
+#include <vector>
+#include <string>
+#include <cstdint>
+#include <cstring>
+#include <limits>
+
+/**
+ * Подключаем заголовочные файлы проекта
+ */
+#include <gtest/gtest.h>
+#include <codec/abc/abc.hpp>
+
+/**
+ * Используем стандартное пространство имён
+ */
+using namespace std;
+using namespace awh;
+using namespace awh::codec;
+
+/**
+ * @brief Проверка укладки целого числа установленной ширины
+ *
+ * @details Октеты укладываются от младшего к старшему, и порядок этот есть часть вида
+ * записи: смена его сделала бы прежние контейнеры нечитаемыми
+ *
+ */
+TEST(CodecAbcEncoding, FixedOrder) {
+	// Буфер собираемой записи
+	vector <uint8_t> result;
+	// Выполняем укладку числа шириною в четыре октета
+	abc::fixed(result, 0x11223344, 4);
+	// Выполняем проверку длины собранной записи
+	ASSERT_EQ(result.size(), 4u);
+	// Выполняем проверку младшего октета записи
+	ASSERT_EQ(result[0], 0x44u);
+	// Выполняем проверку второго октета записи
+	ASSERT_EQ(result[1], 0x33u);
+	// Выполняем проверку третьего октета записи
+	ASSERT_EQ(result[2], 0x22u);
+	// Выполняем проверку старшего октета записи
+	ASSERT_EQ(result[3], 0x11u);
+	// Выполняем снятие уложенного числа
+	ASSERT_EQ(abc::gather(result.data(), 4), 0x11223344u);
+}
+/**
+ * @brief Проверка кругового обхода целого без знака
+ *
+ * @details Всякое значение обязано сниматься тем же, каким уложено, и запись его
+ * обязана быть наименьшей из возможных
+ *
+ */
+TEST(CodecAbcEncoding, UnsignedRoundtrip) {
+	/**
+	 * Значения, стоящие на границах ширины записи
+	 */
+	const vector <uint64_t> values = {
+		0, 1, 23, 24, 255, 256, 65535, 65536, 4294967295ull, 4294967296ull,
+		numeric_limits <uint64_t>::max()
+	};
+	/**
+	 * Ожидаемые длины записей значений
+	 */
+	const vector <size_t> lengths = {1, 1, 1, 2, 2, 3, 3, 5, 5, 9, 9};
+	/**
+	 * Выполняем перебор всех проверяемых значений
+	 */
+	for(size_t i = 0; i < values.size(); i++){
+		// Буфер собираемой записи
+		vector <uint8_t> result;
+		// Выполняем укладку значения крупным видом целого без знака
+		abc::put(result, abc::major_t::UNSIGNED, values.at(i));
+		// Выполняем проверку длины собранной записи
+		ASSERT_EQ(result.size(), lengths.at(i)) << "значение: " << values.at(i);
+		// Смещение, с какого следует снимать единицу
+		size_t offset = 0;
+		// Снятая единица проволочной записи
+		abc::item_t item;
+		// Код отказа снятия единицы
+		abc::error_t error = abc::error_t::NONE;
+		// Выполняем снятие единицы проволочной записи
+		ASSERT_TRUE(abc::take(result.data(), result.size(), offset, item, error)) << "значение: " << values.at(i);
+		// Выполняем проверку крупного вида снятой единицы
+		ASSERT_EQ(item.major, abc::major_t::UNSIGNED) << "значение: " << values.at(i);
+		// Выполняем проверку значения снятой единицы
+		ASSERT_EQ(item.value, values.at(i)) << "значение: " << values.at(i);
+		// Выполняем проверку, что запись снята целиком
+		ASSERT_EQ(offset, result.size()) << "значение: " << values.at(i);
+	}
+}
+/**
+ * @brief Проверка кругового обхода целого со знаком
+ *
+ * @details Число, меньшее нуля, укладывается дополнением до −1, отчего `INT64_MIN`
+ * укладывается без переполнения, а малое по величине отрицательное число получает
+ * наименьшую запись
+ *
+ */
+TEST(CodecAbcEncoding, IntegerRoundtrip) {
+	/**
+	 * Значения, стоящие на границах записи
+	 */
+	const vector <int64_t> values = {
+		0, 1, -1, 23, -24, 24, -25, 255, -256, -257, 65535, -65536,
+		numeric_limits <int64_t>::max(), numeric_limits <int64_t>::min()
+	};
+	/**
+	 * Выполняем перебор всех проверяемых значений
+	 */
+	for(const int64_t value : values){
+		// Буфер собираемой записи
+		vector <uint8_t> result;
+		// Выполняем укладку целого числа со знаком
+		abc::integer(result, value);
+		// Смещение, с какого следует снимать единицу
+		size_t offset = 0;
+		// Снятая единица проволочной записи
+		abc::item_t item;
+		// Код отказа снятия единицы
+		abc::error_t error = abc::error_t::NONE;
+		// Выполняем снятие единицы проволочной записи
+		ASSERT_TRUE(abc::take(result.data(), result.size(), offset, item, error)) << "значение: " << value;
+		// Выполняем проверку, что запись снята целиком
+		ASSERT_EQ(offset, result.size()) << "значение: " << value;
+		// Если число не меньше нуля
+		if(value >= 0){
+			// Выполняем проверку крупного вида снятой единицы
+			ASSERT_EQ(item.major, abc::major_t::UNSIGNED) << "значение: " << value;
+			// Выполняем проверку значения снятой единицы
+			ASSERT_EQ(item.value, static_cast <uint64_t> (value)) << "значение: " << value;
+		// Если число меньше нуля
+		} else {
+			// Обращённое число со знаком
+			int64_t restored = 0;
+			// Выполняем проверку крупного вида снятой единицы
+			ASSERT_EQ(item.major, abc::major_t::NEGATIVE) << "значение: " << value;
+			// Выполняем обращение записи дополнения до −1 в число со знаком
+			ASSERT_TRUE(abc::negative(item.value, restored)) << "значение: " << value;
+			// Выполняем проверку обращённого числа
+			ASSERT_EQ(restored, value) << "значение: " << value;
+		}
+	}
+	// Выполняем проверку, что запись `−1` умещается в один октет
+	{
+		// Буфер собираемой записи
+		vector <uint8_t> result;
+		// Выполняем укладку числа `−1`
+		abc::integer(result, -1);
+		// Выполняем проверку длины собранной записи
+		ASSERT_EQ(result.size(), 1u);
+	}
+}
+/**
+ * @brief Проверка отказа обращения непредставимой записи дополнения до −1
+ *
+ * @details Запись свыше `INT64_MAX` означает число, меньшее `INT64_MIN`: видом
+ * `int64_t` оно не представимо, и молчаливая выдача его дала бы иное число
+ *
+ */
+TEST(CodecAbcEncoding, NegativeOutOfRange) {
+	// Обращённое число со знаком
+	int64_t result = 0;
+	// Выполняем проверку обращения наибольшей представимой записи
+	ASSERT_TRUE(abc::negative(static_cast <uint64_t> (numeric_limits <int64_t>::max()), result));
+	// Выполняем проверку обращённого числа
+	ASSERT_EQ(result, numeric_limits <int64_t>::min());
+	// Выполняем проверку отказа обращения непредставимой записи
+	ASSERT_FALSE(abc::negative(static_cast <uint64_t> (numeric_limits <int64_t>::max()) + 1, result));
+	// Выполняем проверку отказа обращения наибольшей записи
+	ASSERT_FALSE(abc::negative(numeric_limits <uint64_t>::max(), result));
+}
+/**
+ * @brief Проверка кругового обхода дробных чисел
+ *
+ */
+TEST(CodecAbcEncoding, RealRoundtrip) {
+	// Буфер собираемой записи
+	vector <uint8_t> result;
+	// Выполняем укладку дробного числа одинарной точности
+	abc::real(result, 3.5f);
+	// Выполняем проверку длины собранной записи
+	ASSERT_EQ(result.size(), 5u);
+	// Смещение, с какого следует снимать единицу
+	size_t offset = 0;
+	// Снятая единица проволочной записи
+	abc::item_t item;
+	// Код отказа снятия единицы
+	abc::error_t error = abc::error_t::NONE;
+	// Выполняем снятие единицы проволочной записи
+	ASSERT_TRUE(abc::take(result.data(), result.size(), offset, item, error));
+	// Выполняем проверку крупного вида снятой единицы
+	ASSERT_EQ(item.major, abc::major_t::SINGLE);
+	// Выполняем проверку разновидности снятой единицы
+	ASSERT_EQ(item.detail, static_cast <uint8_t> (abc::single_t::FLOAT));
+	// Выполняем проверку, что снята одна лишь метка
+	ASSERT_EQ(offset, 1u);
+	// Разрядная запись дробного числа
+	uint32_t bits = static_cast <uint32_t> (abc::gather(result.data() + offset, 4));
+	// Снятое дробное число одинарной точности
+	float restored = 0.0f;
+	// Выполняем снятие дробного числа из разрядной записи
+	::memcpy(&restored, &bits, sizeof(restored));
+	// Выполняем проверку снятого дробного числа
+	ASSERT_FLOAT_EQ(restored, 3.5f);
+	// Выполняем очистку буфера собираемой записи
+	result.clear();
+	// Выполняем укладку дробного числа двойной точности
+	abc::real(result, -2.25);
+	// Выполняем проверку длины собранной записи
+	ASSERT_EQ(result.size(), 9u);
+	// Выполняем сброс смещения снятия единицы
+	offset = 0;
+	// Выполняем снятие единицы проволочной записи
+	ASSERT_TRUE(abc::take(result.data(), result.size(), offset, item, error));
+	// Выполняем проверку разновидности снятой единицы
+	ASSERT_EQ(item.detail, static_cast <uint8_t> (abc::single_t::DOUBLE));
+	// Разрядная запись дробного числа двойной точности
+	const uint64_t wide = abc::gather(result.data() + offset, 8);
+	// Снятое дробное число двойной точности
+	double value = 0.0;
+	// Выполняем снятие дробного числа из разрядной записи
+	::memcpy(&value, &wide, sizeof(value));
+	// Выполняем проверку снятого дробного числа
+	ASSERT_DOUBLE_EQ(value, -2.25);
+}
+/**
+ * @brief Проверка снятия одиночных значений
+ *
+ */
+TEST(CodecAbcEncoding, SingleValues) {
+	/**
+	 * Разновидности одиночного значения
+	 */
+	const vector <abc::single_t> singles = {
+		abc::single_t::NUL, abc::single_t::FALSE, abc::single_t::TRUE,
+		abc::single_t::TIME, abc::single_t::UUID, abc::single_t::BREAK
+	};
+	/**
+	 * Выполняем перебор всех разновидностей одиночного значения
+	 */
+	for(const abc::single_t single : singles){
+		// Буфер собираемой записи
+		vector <uint8_t> result;
+		// Выполняем укладку одиночного значения
+		abc::mark(result, abc::major_t::SINGLE, static_cast <uint8_t> (single));
+		// Выполняем проверку длины собранной записи
+		ASSERT_EQ(result.size(), 1u);
+		// Смещение, с какого следует снимать единицу
+		size_t offset = 0;
+		// Снятая единица проволочной записи
+		abc::item_t item;
+		// Код отказа снятия единицы
+		abc::error_t error = abc::error_t::NONE;
+		// Выполняем снятие единицы проволочной записи
+		ASSERT_TRUE(abc::take(result.data(), result.size(), offset, item, error))
+			<< "разновидность: " << static_cast <uint32_t> (single);
+		// Выполняем проверку крупного вида снятой единицы
+		ASSERT_EQ(item.major, abc::major_t::SINGLE);
+		// Выполняем проверку разновидности снятой единицы
+		ASSERT_EQ(item.detail, static_cast <uint8_t> (single));
+	}
+}
+/**
+ * @brief Проверка отказа на отведённых под будущее метках
+ *
+ * @details Метка, отведённая под будущее, обязана отвергаться сразу: принятая молчанием,
+ * она была бы разобрана иначе тем, кто её однажды заведёт
+ *
+ */
+TEST(CodecAbcEncoding, ReservedTags) {
+	/**
+	 * Выполняем перебор отведённых подробностей у целого без знака
+	 */
+	for(uint8_t detail = (abc::INLINE_LIMIT + 5); detail < 0x1F; detail++){
+		// Буфер собираемой записи
+		vector <uint8_t> result;
+		// Выполняем укладку метки с отведённой подробностью
+		abc::mark(result, abc::major_t::UNSIGNED, detail);
+		// Смещение, с какого следует снимать единицу
+		size_t offset = 0;
+		// Снятая единица проволочной записи
+		abc::item_t item;
+		// Код отказа снятия единицы
+		abc::error_t error = abc::error_t::NONE;
+		// Выполняем проверку отказа снятия единицы
+		ASSERT_FALSE(abc::take(result.data(), result.size(), offset, item, error))
+			<< "подробность: " << static_cast <uint32_t> (detail);
+		// Выполняем проверку кода отказа
+		ASSERT_EQ(error, abc::error_t::RESERVED_TAG) << "подробность: " << static_cast <uint32_t> (detail);
+		// Выполняем проверку, что смещение осталось нетронутым
+		ASSERT_EQ(offset, 0u) << "подробность: " << static_cast <uint32_t> (detail);
+	}
+	/**
+	 * Выполняем перебор отведённых разновидностей одиночного значения
+	 */
+	for(uint8_t detail = 0x07; detail < 0x1F; detail++){
+		// Буфер собираемой записи
+		vector <uint8_t> result;
+		// Выполняем укладку метки с отведённой разновидностью
+		abc::mark(result, abc::major_t::SINGLE, detail);
+		// Смещение, с какого следует снимать единицу
+		size_t offset = 0;
+		// Снятая единица проволочной записи
+		abc::item_t item;
+		// Код отказа снятия единицы
+		abc::error_t error = abc::error_t::NONE;
+		// Выполняем проверку отказа снятия единицы
+		ASSERT_FALSE(abc::take(result.data(), result.size(), offset, item, error))
+			<< "разновидность: " << static_cast <uint32_t> (detail);
+		// Выполняем проверку кода отказа
+		ASSERT_EQ(error, abc::error_t::RESERVED_TAG) << "разновидность: " << static_cast <uint32_t> (detail);
+	}
+	/**
+	 * Выполняем перебор отведённых разновидностей расширения
+	 */
+	for(uint8_t detail = 0x02; detail < 0x20; detail++){
+		// Буфер собираемой записи
+		vector <uint8_t> result;
+		// Выполняем укладку метки с отведённой разновидностью
+		abc::mark(result, abc::major_t::EXTEND, detail);
+		// Смещение, с какого следует снимать единицу
+		size_t offset = 0;
+		// Снятая единица проволочной записи
+		abc::item_t item;
+		// Код отказа снятия единицы
+		abc::error_t error = abc::error_t::NONE;
+		// Выполняем проверку отказа снятия единицы
+		ASSERT_FALSE(abc::take(result.data(), result.size(), offset, item, error))
+			<< "разновидность: " << static_cast <uint32_t> (detail);
+		// Выполняем проверку кода отказа
+		ASSERT_EQ(error, abc::error_t::RESERVED_TAG) << "разновидность: " << static_cast <uint32_t> (detail);
+	}
+}
+/**
+ * @brief Проверка неопределённой длины вместимого
+ *
+ * @details Неопределённая длина дозволена лишь вместимому: у строки и у числа она
+ * означала бы запись, чей конец опознать нечем
+ *
+ */
+TEST(CodecAbcEncoding, IndefiniteLength) {
+	/**
+	 * Крупные виды, вместимыми являющиеся
+	 */
+	const vector <abc::major_t> containers = {abc::major_t::ARRAY, abc::major_t::MAP};
+	/**
+	 * Выполняем перебор всех вместимых крупных видов
+	 */
+	for(const abc::major_t major : containers){
+		// Буфер собираемой записи
+		vector <uint8_t> result;
+		// Выполняем укладку метки неопределённой длины
+		abc::mark(result, major, static_cast <uint8_t> (abc::single_t::BREAK));
+		// Смещение, с какого следует снимать единицу
+		size_t offset = 0;
+		// Снятая единица проволочной записи
+		abc::item_t item;
+		// Код отказа снятия единицы
+		abc::error_t error = abc::error_t::NONE;
+		// Выполняем снятие единицы проволочной записи
+		ASSERT_TRUE(abc::take(result.data(), result.size(), offset, item, error))
+			<< "крупный вид: " << static_cast <uint32_t> (major);
+		// Выполняем проверку признака неопределённой длины вместимого
+		ASSERT_TRUE(item.indefinite) << "крупный вид: " << static_cast <uint32_t> (major);
+	}
+	/**
+	 * Крупные виды, вместимыми не являющиеся
+	 */
+	const vector <abc::major_t> plains = {
+		abc::major_t::UNSIGNED, abc::major_t::NEGATIVE, abc::major_t::STRING, abc::major_t::BLOB
+	};
+	/**
+	 * Выполняем перебор всех невместимых крупных видов
+	 */
+	for(const abc::major_t major : plains){
+		// Буфер собираемой записи
+		vector <uint8_t> result;
+		// Выполняем укладку метки неопределённой длины
+		abc::mark(result, major, static_cast <uint8_t> (abc::single_t::BREAK));
+		// Смещение, с какого следует снимать единицу
+		size_t offset = 0;
+		// Снятая единица проволочной записи
+		abc::item_t item;
+		// Код отказа снятия единицы
+		abc::error_t error = abc::error_t::NONE;
+		// Выполняем проверку отказа снятия единицы
+		ASSERT_FALSE(abc::take(result.data(), result.size(), offset, item, error))
+			<< "крупный вид: " << static_cast <uint32_t> (major);
+		// Выполняем проверку кода отказа
+		ASSERT_EQ(error, abc::error_t::UNKNOWN_TAG) << "крупный вид: " << static_cast <uint32_t> (major);
+	}
+}
+/**
+ * @brief Проверка независимости снятия от нарезки записи на куски
+ *
+ * @details Единица, поданная не целиком, обязана оставлять смещение нетронутым: подача
+ * следующего куска продолжит разбор с того же места. Сдвиг смещения у наполовину снятой
+ * единицы обратил бы разбор в зависимый от того, как запись нарезана
+ *
+ */
+TEST(CodecAbcEncoding, ChunkIndependence) {
+	// Буфер собираемой записи
+	vector <uint8_t> result;
+	// Выполняем укладку значения, ведущего запись в восемь октетов
+	abc::put(result, abc::major_t::UNSIGNED, numeric_limits <uint64_t>::max());
+	// Выполняем проверку длины собранной записи
+	ASSERT_EQ(result.size(), 9u);
+	/**
+	 * Выполняем перебор всех неполных подач записи
+	 */
+	for(size_t size = 0; size < result.size(); size++){
+		// Смещение, с какого следует снимать единицу
+		size_t offset = 0;
+		// Снятая единица проволочной записи
+		abc::item_t item;
+		// Код отказа снятия единицы
+		abc::error_t error = abc::error_t::NONE;
+		// Выполняем проверку отказа снятия единицы
+		ASSERT_FALSE(abc::take(result.data(), size, offset, item, error)) << "подано октетов: " << size;
+		// Выполняем проверку кода отказа
+		ASSERT_EQ(error, abc::error_t::UNEXPECTED_EOF) << "подано октетов: " << size;
+		// Выполняем проверку, что смещение осталось нетронутым
+		ASSERT_EQ(offset, 0u) << "подано октетов: " << size;
+	}
+	// Смещение, с какого следует снимать единицу
+	size_t offset = 0;
+	// Снятая единица проволочной записи
+	abc::item_t item;
+	// Код отказа снятия единицы
+	abc::error_t error = abc::error_t::NONE;
+	// Выполняем снятие единицы проволочной записи, поданной целиком
+	ASSERT_TRUE(abc::take(result.data(), result.size(), offset, item, error));
+	// Выполняем проверку значения снятой единицы
+	ASSERT_EQ(item.value, numeric_limits <uint64_t>::max());
+}
+/**
+ * @brief Проверка строк на соответствие кодировке UTF-8
+ *
+ */
+TEST(CodecAbcEncoding, Utf8Validation) {
+	/**
+	 * Годные строки
+	 */
+	const vector <string> valid = {
+		"", "hello", "Привет", "\xE6\x97\xA5\xE6\x9C\xAC", "\xF0\x9F\x98\x80",
+		string("\x00", 1), "\x7F", "\xC2\x80", "\xDF\xBF", "\xE0\xA0\x80", "\xF4\x8F\xBF\xBF"
+	};
+	// Смещение первой негодной последовательности
+	size_t position = 0;
+	/**
+	 * Выполняем перебор всех годных строк
+	 */
+	for(const string & text : valid)
+		// Выполняем проверку соответствия строки кодировке
+		ASSERT_TRUE(abc::utf8(reinterpret_cast <const uint8_t *> (text.data()), text.size(), position))
+			<< "строка отвергнута на смещении: " << position;
+	/**
+	 * Негодные строки
+	 */
+	const vector <string> invalid = {
+		"\x80",                 // Продолжающий октет ведущим не является
+		"\xC2",                 // Продолжающего октета недостаёт
+		"\xC2\x20",             // Продолжающий октет продолжающим не является
+		"\xC0\x80",             // Запись длиннее необходимого
+		"\xE0\x80\x80",         // Запись длиннее необходимого
+		"\xED\xA0\x80",         // Кодовая точка является суррогатом
+		"\xF4\x90\x80\x80",     // Кодовая точка выходит за предел Юникода
+		"\xF8\x88\x80\x80\x80", // Ведущий октет пятиоктетной записи
+		"\xFE",                 // Октет, ведущим не являющийся вовсе
+		"hello\xC2"             // Запись обрывается посреди кодовой точки
+	};
+	/**
+	 * Выполняем перебор всех негодных строк
+	 */
+	for(const string & text : invalid)
+		// Выполняем проверку отказа строке, кодировке не отвечающей
+		ASSERT_FALSE(abc::utf8(reinterpret_cast <const uint8_t *> (text.data()), text.size(), position))
+			<< "строка принята: " << text;
+	// Выполняем проверку смещения негодной последовательности у последней строки
+	ASSERT_EQ(position, 5u);
+}
