@@ -235,8 +235,11 @@ awh::codec::yaml::Reader::Reader() noexcept :
  _state(state_t::READY), _error(error_t::NONE), _reading(0), _offset(0), _line(0), _position(0),
  _started(false), _opened(false), _filled(false), _blocking(false), _block(style_t::LITERAL),
  _chomp(chomp_t::CLIP), _marked(NO_INDENT), _outer(0), _margin(0), _inner(0), _opening(0),
- _breaks(0), _padding(0), _deepened(false), _expected(false), _awaited(false), _valued(false), _headed(false), _propped(false), _tabbed(false), _rooted(false), _detected(false), _entered(false), _pending(0), _schema(schema_t::CORE), _plaining(false),
- _folds(0), _required(0), _phase(flow_t::ENTRY), _directed(false), _versioned(false), _declared(false), _dialect(schema_t::CORE) {}
+ _breaks(0), _padding(0), _deepened(false), _expected(false), _awaited(false), _valued(false),
+ _headed(false), _propped(false), _tabbed(false), _rooted(false), _detected(false),
+ _entered(false), _pending(0), _schema(schema_t::CORE), _plaining(false), _folds(0),
+ _required(0), _phase(flow_t::ENTRY), _directed(false), _versioned(false), _declared(false),
+ _dialect(schema_t::CORE) {}
 /**
  * @brief Конструктор
  *
@@ -247,7 +250,9 @@ awh::codec::yaml::Reader::Reader(const settings_t & settings) noexcept :
  _settings(settings), _state(state_t::READY), _error(error_t::NONE), _reading(0), _offset(0),
  _line(0), _position(0), _started(false), _opened(false), _filled(false),
  _blocking(false), _block(style_t::LITERAL), _chomp(chomp_t::CLIP), _marked(NO_INDENT),
- _outer(0), _margin(0), _inner(0), _opening(0), _breaks(0), _padding(0), _deepened(false), _expected(false), _awaited(false), _valued(false), _headed(false), _propped(false), _tabbed(false), _rooted(false), _detected(false), _entered(false), _pending(0),
+ _outer(0), _margin(0), _inner(0), _opening(0), _breaks(0), _padding(0), _deepened(false),
+ _expected(false), _awaited(false), _valued(false), _headed(false), _propped(false),
+ _tabbed(false), _rooted(false), _detected(false), _entered(false), _pending(0),
  _schema(settings.schema), _plaining(false), _folds(0), _required(0),
  _phase(flow_t::ENTRY), _directed(false), _versioned(false), _declared(false), _dialect(settings.schema) {
 	/**
@@ -288,6 +293,14 @@ bool awh::codec::yaml::Reader::settings(const settings_t & settings) noexcept {
 	this->_settings = settings;
 	// Запоминаем схему разрешения видов, над документом действующую
 	this->_schema = settings.schema;
+	/**
+	 * Запоминаем схему, директивой наречия назначенную
+	 *
+	 * @note Сброс состояния схему эту от настроек и берёт, а установка настроек её не
+	 *       трогала вовсе: чтение, переиспользованное без сброса, отдавало бы наречие
+	 *       текста прежнего
+	 */
+	this->_dialect = settings.schema;
 	// Выполняем навязывание кодировки приведению
 	this->_decoder.encoding(this->_settings.encoding);
 	// Выводим признак принятия настроек разбора
