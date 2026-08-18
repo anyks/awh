@@ -659,3 +659,84 @@ TEST(CodecYamlEncoding, Forbidden) {
 		ASSERT_EQ(decoder.error(), yaml::error_t::NONE);
 	}
 }
+
+/**
+ * @brief Проверка снятия метки порядка байтов при навязанной кодировке
+ *
+ * @details Навязывание кодировки значит «не гадай о кодировке», а не «оставь метку в
+ *          тексте». Прежде снятие метки шло лишь по опознанию, и текст с меткою,
+ *          кодировка которого навязана извне, отвергался разбором знаком U+FEFF в первом
+ *          же значении своём. Проверка держит все пять кодировок и ведётся вдобавок
+ *          подачей по одному байту: снятие метки обязано быть от нарезки на куски
+ *          независимым
+ *
+ */
+TEST(CodecYamlEncoding, ForcedSignature) {
+	/**
+	 * @brief Строение проверяемого случая
+	 *
+	 */
+	struct Sample {
+		// Навязываемая кодировка исходного текста
+		yaml::encoding_t encoding;
+		// Исходный текст вместе с меткою порядка байтов
+		string text;
+	};
+	// Перечень проверяемых случаев
+	const vector <Sample> samples = {
+		{yaml::encoding_t::UTF8, string("\xEF\xBB\xBF" "a: 1\n")},
+		{yaml::encoding_t::UTF16LE, string("\xFF\xFE" "a\0:\0 \0" "1\0\n\0", 12)},
+		{yaml::encoding_t::UTF16BE, string("\xFE\xFF" "\0a\0:\0 \0" "1\0\n", 12)},
+		{yaml::encoding_t::UTF32LE, string("\xFF\xFE\0\0" "a\0\0\0:\0\0\0 \0\0\0" "1\0\0\0\n\0\0\0", 24)},
+		{yaml::encoding_t::UTF32BE, string("\0\0\xFE\xFF" "\0\0\0a\0\0\0:\0\0\0 \0\0\0" "1\0\0\0\n", 24)}
+	};
+	/**
+	 * Выполняем перебор всех проверяемых случаев
+	 */
+	for(auto & sample : samples){
+		/**
+		 * Выполняем перебор размеров куска подачи
+		 */
+		for(const size_t chunk : {static_cast <size_t> (0), static_cast <size_t> (1), static_cast <size_t> (3)}){
+			// Объект приведения кодировки исходного текста
+			yaml::decoder_t decoder;
+			// Выполняем навязывание кодировки приведению
+			ASSERT_TRUE(decoder.encoding(sample.encoding));
+			// Приведённый к UTF-8 текст
+			string result;
+			// Получаем размер куска подачи
+			const size_t step = ((chunk == 0) ? sample.text.size() : chunk);
+			/**
+			 * Выполняем подачу текста кусками заданного размера
+			 */
+			for(size_t i = 0; i < sample.text.size(); i += step){
+				// Получаем размер очередного куска подачи
+				const size_t length = (((i + step) > sample.text.size()) ? (sample.text.size() - i) : step);
+				// Выполняем приведение очередного куска
+				ASSERT_TRUE(decoder.convert((sample.text.data() + i), length, ((i + length) >= sample.text.size()), result))
+					<< "кодировка " << static_cast <unsigned> (sample.encoding) << ", кусок " << chunk;
+			}
+			// Выполняем проверку опознания метки порядка байтов
+			ASSERT_TRUE(decoder.signature())
+				<< "кодировка " << static_cast <unsigned> (sample.encoding) << ", кусок " << chunk;
+			// Выполняем проверку того, что метка в приведённый текст не попала
+			ASSERT_EQ(result, "a: 1\n")
+				<< "кодировка " << static_cast <unsigned> (sample.encoding) << ", кусок " << chunk;
+		}
+	}
+	/**
+	 * Выполняем проверку того, что разбор текста с меткою при навязанной кодировке проходит
+	 */
+	{
+		// Настройки разбора дерева с навязанной кодировкой
+		yaml::document_t::settings_t settings;
+		// Выполняем навязывание кодировки разбору
+		settings.encoding = yaml::encoding_t::UTF8;
+		// Объект дерева документа
+		yaml::document_t doc(settings);
+		// Выполняем разбор текста, меткою порядка байтов открытого
+		ASSERT_TRUE(doc.parse(string("\xEF\xBB\xBF") + "имя: значение\n"));
+		// Выполняем проверку собранного значения пары
+		ASSERT_EQ(doc.root().at("/имя").text(), "значение");
+	}
+}
