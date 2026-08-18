@@ -915,32 +915,6 @@ namespace awh {
 			bool json(string_view text, const exp_t & exp, grok::json_t & result) const noexcept;
 			/**
 			 * \~russian
-			 * @brief Метод вывода извлечённых полей записью JSON
-			 *
-			 * @details Посредник над выводом значением: запись получается выводом
-			 *          собранного значения средствами кодека.
-			 *
-			 * @param text   текст для сопоставления
-			 * @param exp    собранный шаблон
-			 * @param result запись JSON извлечённых полей
-			 * @param pretty признак вывода записи с отступами
-			 * @return       результат вывода извлечённых полей записью JSON
-			 *
-			 * \~english
-			 * @brief Method of outputting the extracted fields as a JSON record
-			 * @details A mediator over the output as a value: the record is obtained by
-			 *          dumping the built value by the means of the codec.
-			 * @param text   text to match
-			 * @param exp    built pattern
-			 * @param result JSON record of the extracted fields
-			 * @param pretty indication of outputting the record with indentation
-			 * @return       result of outputting the extracted fields as a JSON record
-			 *
-			 * \~
-			 */
-			bool json(string_view text, const exp_t & exp, string & result, const bool pretty = false) const noexcept;
-			/**
-			 * \~russian
 			 * @brief Метод вывода набора значений полей записью JSON
 			 *
 			 * @param values набор значений полей
@@ -956,31 +930,6 @@ namespace awh {
 			 * \~
 			 */
 			grok::json_t json(const vector <value_t> & values) const noexcept;
-			/**
-			 * \~russian
-			 * @brief Метод вывода набора значений полей записью JSON
-			 *
-			 * @details Посредник над выводом значением. Умолчания у признака
-			 *          отступов нет намеренно: с ним обращение «json(values)»
-			 *          стало бы неоднозначным между выводом значением и выводом
-			 *          записью.
-			 *
-			 * @param values набор значений полей
-			 * @param pretty признак вывода записи с отступами
-			 * @return       запись JSON набора значений полей
-			 *
-			 * \~english
-			 * @brief Method of outputting a set of field values as a JSON record
-			 * @details A mediator over the output as a value. The indentation flag has
-			 *          no default deliberately: with one, the call «json(values)» would
-			 *          become ambiguous between the output as a value and as a record.
-			 * @param values set of the field values
-			 * @param pretty indication of outputting the record with indentation
-			 * @return       JSON record of the set of field values
-			 *
-			 * \~
-			 */
-			string json(const vector <value_t> & values, const bool pretty) const noexcept;
 		public:
 			/**
 			 * \~russian

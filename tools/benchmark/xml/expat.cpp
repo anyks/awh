@@ -88,7 +88,16 @@ static bool parse(const std::string & text) noexcept {
 	 *       пространства имён не разрешает, и работа стенда оказалась бы меньше
 	 *       работы прочих реализаций
 	 */
-	XML_Parser parser = ::XML_ParserCreateNS(nullptr, ' ');
+	/**
+	 * Набор средств выделения памяти с учётом расхода
+	 *
+	 * @note Без него расход отчитывался бы нулём: реализация написана на языке Си и
+	 *       берёт память `malloc`, а не оператором языка. Ноль же означал бы отсутствие
+	 *       расхода, и выдавать «не мерено» за «не берёт» нельзя
+	 */
+	static XML_Memory_Handling_Suite memory = {rival::capture, rival::recapture, rival::release};
+	// Объект разбора текста разметки с учётом расхода памяти
+	XML_Parser parser = ::XML_ParserCreate_MM(nullptr, &memory, " ");
 	/**
 	 * Если объект разбора создать не удалось
 	 */

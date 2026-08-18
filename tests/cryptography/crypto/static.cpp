@@ -2748,3 +2748,433 @@ TEST_F(CryptoFixture, TailCapacityCryptoTest){
 		EXPECT_NE(parent, child);
 	}
 #endif
+
+/**
+ * @brief Тест выработки ключей подписи всех заведённых видов
+ *
+ */
+TEST_F(CryptoFixture, SignatureKindsCryptoTest){
+	/**
+	 * Выполняем перебор всех заведённых видов подписи
+	 */
+	for(auto & kind : {awh::crypto_t::signature_t::RSA, awh::crypto_t::signature_t::ECDSA, awh::crypto_t::signature_t::ED25519}){
+		// Выполняем выработку ключа подписи
+		ASSERT_TRUE(this->_crypto->generateKey("owner", kind)) << "kind = " << static_cast <uint16_t> (kind);
+		// Проверяем вид подписи выработанного ключа
+		EXPECT_EQ(this->_crypto->signature("owner"), kind) << "kind = " << static_cast <uint16_t> (kind);
+	}
+	// Проверяем отсутствие вида подписи у имени, ключа не имеющего
+	EXPECT_EQ(this->_crypto->signature("stranger"), awh::crypto_t::signature_t::NONE);
+	/**
+	 * Вид подписи, работой не заведённый, отвергается: место под ГОСТ Р 34.10 в
+	 * перечислении занято, а схемы за ним нет
+	 */
+	// Проверяем отказ выработки ключа вида, работой не заведённого
+	EXPECT_FALSE(this->_crypto->generateKey("gost", awh::crypto_t::signature_t::GOST));
+	// Проверяем отказ выработки ключа вида, разбору не знакомого
+	EXPECT_FALSE(this->_crypto->generateKey("none", awh::crypto_t::signature_t::NONE));
+}
+
+/**
+ * @brief Тест подписи и её проверки всеми заведёнными видами
+ *
+ * @details Закрепляет три отказа, ради которых подпись и заводится: подпись отвергается
+ *          чужим ключом, испорченная на разряд подпись отвергается, испорченное на
+ *          разряд сообщение отвергается
+ *
+ */
+TEST_F(CryptoFixture, SignatureVerifyCryptoTest){
+	// Данные для подписи
+	const std::string text = "Anyks Framework, Hello World!!!";
+	/**
+	 * Выполняем перебор всех заведённых видов подписи
+	 */
+	for(auto & kind : {awh::crypto_t::signature_t::RSA, awh::crypto_t::signature_t::ECDSA, awh::crypto_t::signature_t::ED25519}){
+		// Тип хэш-суммы, схеме подписи отвечающий
+		const awh::crypto_t::hash_t hash = ((kind == awh::crypto_t::signature_t::ED25519) ? awh::crypto_t::hash_t::NONE : awh::crypto_t::hash_t::SHA256);
+		// Выполняем выработку ключа владельца
+		ASSERT_TRUE(this->_crypto->generateKey("owner", kind)) << "kind = " << static_cast <uint16_t> (kind);
+		// Выполняем выработку ключа постороннего
+		ASSERT_TRUE(this->_crypto->generateKey("stranger", kind)) << "kind = " << static_cast <uint16_t> (kind);
+		// Подпись данных
+		std::vector <uint8_t> signature;
+		// Выполняем подписание данных ключом владельца
+		ASSERT_TRUE(this->_crypto->sign("owner", reinterpret_cast <const uint8_t *> (text.data()), text.size(), hash, signature)) << "kind = " << static_cast <uint16_t> (kind);
+		// Проверяем наличие выработанной подписи
+		ASSERT_FALSE(signature.empty()) << "kind = " << static_cast <uint16_t> (kind);
+		// Проверяем подпись ключом владельца
+		EXPECT_TRUE(this->_crypto->verify("owner", reinterpret_cast <const uint8_t *> (text.data()), text.size(), signature, hash)) << "kind = " << static_cast <uint16_t> (kind);
+		// Проверяем отказ подписи чужим ключом
+		EXPECT_FALSE(this->_crypto->verify("stranger", reinterpret_cast <const uint8_t *> (text.data()), text.size(), signature, hash)) << "kind = " << static_cast <uint16_t> (kind);
+		// Подпись, испорченная на один разряд
+		std::vector <uint8_t> tampered = signature;
+		// Выполняем порчу одного разряда подписи
+		tampered[tampered.size() / 2] ^= 0x01;
+		// Проверяем отказ подписи, испорченной на разряд
+		EXPECT_FALSE(this->_crypto->verify("owner", reinterpret_cast <const uint8_t *> (text.data()), text.size(), tampered, hash)) << "kind = " << static_cast <uint16_t> (kind);
+		// Сообщение, испорченное на один разряд
+		std::string message = text;
+		// Выполняем порчу одного разряда сообщения
+		message[message.size() / 2] = static_cast <char> (message[message.size() / 2] ^ 0x01);
+		// Проверяем отказ подписи испорченного на разряд сообщения
+		EXPECT_FALSE(this->_crypto->verify("owner", reinterpret_cast <const uint8_t *> (message.data()), message.size(), signature, hash)) << "kind = " << static_cast <uint16_t> (kind);
+	}
+}
+
+/**
+ * @brief Тест уместности типа хэш-суммы по видам подписи
+ *
+ * @details Схемам RSA и ECDSA тип хэш-суммы обязателен, а схеме Ed25519 неуместен: она
+ *          подписывает сообщение сама. Договор различие это выражает прямо, а не
+ *          сглаживает: поданная схеме Ed25519 хэш-сумма подписью хэш-суммы не станет
+ *
+ */
+TEST_F(CryptoFixture, SignatureHashContractCryptoTest){
+	// Данные для подписи
+	const std::string text = "Anyks Framework, Hello World!!!";
+	// Подпись данных
+	std::vector <uint8_t> signature;
+	// Выполняем выработку ключа Ed25519
+	ASSERT_TRUE(this->_crypto->generateKey("pure", awh::crypto_t::signature_t::ED25519));
+	// Проверяем отказ подписи Ed25519 при поданной хэш-сумме
+	EXPECT_FALSE(this->_crypto->sign("pure", reinterpret_cast <const uint8_t *> (text.data()), text.size(), awh::crypto_t::hash_t::SHA256, signature));
+	// Проверяем пустоту буфера подписи при отказе
+	EXPECT_TRUE(signature.empty());
+	/**
+	 * Выполняем перебор видов подписи, подписывающих хэш-сумму
+	 */
+	for(auto & kind : {awh::crypto_t::signature_t::RSA, awh::crypto_t::signature_t::ECDSA}){
+		// Выполняем выработку ключа подписи
+		ASSERT_TRUE(this->_crypto->generateKey("digest", kind)) << "kind = " << static_cast <uint16_t> (kind);
+		// Проверяем отказ подписи при отсутствии типа хэш-суммы
+		EXPECT_FALSE(this->_crypto->sign("digest", reinterpret_cast <const uint8_t *> (text.data()), text.size(), awh::crypto_t::hash_t::NONE, signature)) << "kind = " << static_cast <uint16_t> (kind);
+		// Проверяем пустоту буфера подписи при отказе
+		EXPECT_TRUE(signature.empty()) << "kind = " << static_cast <uint16_t> (kind);
+	}
+}
+
+/**
+ * @brief Тест поточности видов подписи
+ *
+ * @details Поточной подписи Ed25519 не имеет вовсе, и отказ его называет причину видом
+ *          подписи. Спросить о поточности можно наперёд: потребитель, написавший работу
+ *          под поточный договор, иначе наткнулся бы на отказ посреди работы при одной
+ *          лишь смене вида ключа
+ *
+ */
+TEST_F(CryptoFixture, SignatureStreamableCryptoTest){
+	// Проверяем поточность вида подписи RSA
+	EXPECT_TRUE(this->_crypto->streamable(awh::crypto_t::signature_t::RSA));
+	// Проверяем поточность вида подписи ECDSA
+	EXPECT_TRUE(this->_crypto->streamable(awh::crypto_t::signature_t::ECDSA));
+	// Проверяем отсутствие поточности у вида подписи Ed25519
+	EXPECT_FALSE(this->_crypto->streamable(awh::crypto_t::signature_t::ED25519));
+	// Выполняем выработку ключа Ed25519
+	ASSERT_TRUE(this->_crypto->generateKey("pure", awh::crypto_t::signature_t::ED25519));
+	// Проверяем отказ заведения потока подписи видом, поточным не бывающим
+	EXPECT_FALSE(this->_crypto->signInitialize("pure", awh::crypto_t::hash_t::SHA256));
+	// Подпись потока
+	std::vector <uint8_t> signature;
+	// Проверяем отказ подачи в поток, заведения не прошедший
+	EXPECT_FALSE(this->_crypto->signUpdate(reinterpret_cast <const uint8_t *> ("test"), 4));
+	// Проверяем отказ завершения потока, заведения не прошедшего
+	EXPECT_FALSE(this->_crypto->signFinalize(signature));
+}
+
+/**
+ * @brief Тест совпадения поточной подписи с подписью буфером целиком
+ *
+ * @details Подпись схемы RSA с дополнением PKCS#1 v1.5 от случайности не зависит, и
+ *          поточная её выработка обязана совпасть с разовой число в число. Схемы же
+ *          ECDSA и PSS подпись вырабатывают на случайном значении, и сличать их подписи
+ *          дословно нельзя вовсе - у них сличается принятие проверкой
+ *
+ */
+TEST_F(CryptoFixture, SignatureStreamMatchCryptoTest){
+	// Данные для подписи
+	const std::string text = "Anyks Framework, Hello World!!! Anyks Framework, Hello World!!!";
+	// Устанавливаем схему дополнения подписи, от случайности не зависящую
+	this->_crypto->padding(awh::crypto_t::padding_t::PKCS1);
+	// Выполняем выработку ключа подписи
+	ASSERT_TRUE(this->_crypto->generateKey("owner", awh::crypto_t::signature_t::RSA));
+	// Подпись данных буфером целиком
+	std::vector <uint8_t> whole;
+	// Выполняем подписание данных буфером целиком
+	ASSERT_TRUE(this->_crypto->sign("owner", reinterpret_cast <const uint8_t *> (text.data()), text.size(), awh::crypto_t::hash_t::SHA256, whole));
+	// Подпись данных потоком
+	std::vector <uint8_t> stream;
+	// Выполняем заведение потока подписи
+	ASSERT_TRUE(this->_crypto->signInitialize("owner", awh::crypto_t::hash_t::SHA256));
+	/**
+	 * Выполняем подачу данных потоку по одному октету
+	 */
+	for(size_t i = 0; i < text.size(); i++)
+		// Выполняем подачу очередного октета потоку подписи
+		ASSERT_TRUE(this->_crypto->signUpdate(reinterpret_cast <const uint8_t *> (text.data() + i), 1));
+	// Выполняем завершение потока подписи
+	ASSERT_TRUE(this->_crypto->signFinalize(stream));
+	// Проверяем совпадение поточной подписи с подписью буфером целиком
+	EXPECT_EQ(stream, whole);
+	// Проверяем принятие поточной подписи проверкой
+	EXPECT_TRUE(this->_crypto->verify("owner", reinterpret_cast <const uint8_t *> (text.data()), text.size(), stream, awh::crypto_t::hash_t::SHA256));
+	/**
+	 * Схема ECDSA подпись вырабатывает на случайном значении: сличать её подписи
+	 * дословно нельзя, и совпадение потока с разовой работой у неё судится проверкой
+	 */
+	// Выполняем выработку ключа ECDSA
+	ASSERT_TRUE(this->_crypto->generateKey("ecdsa", awh::crypto_t::signature_t::ECDSA));
+	// Подпись данных потоком ключом ECDSA
+	std::vector <uint8_t> signature;
+	// Выполняем заведение потока подписи ключом ECDSA
+	ASSERT_TRUE(this->_crypto->signInitialize("ecdsa", awh::crypto_t::hash_t::SHA256));
+	// Выполняем подачу данных потоку подписи двумя порциями
+	ASSERT_TRUE(this->_crypto->signUpdate(reinterpret_cast <const uint8_t *> (text.data()), text.size() / 2));
+	// Выполняем подачу остатка данных потоку подписи
+	ASSERT_TRUE(this->_crypto->signUpdate(reinterpret_cast <const uint8_t *> (text.data() + (text.size() / 2)), text.size() - (text.size() / 2)));
+	// Выполняем завершение потока подписи
+	ASSERT_TRUE(this->_crypto->signFinalize(signature));
+	// Проверяем принятие поточной подписи ключом ECDSA
+	EXPECT_TRUE(this->_crypto->verify("ecdsa", reinterpret_cast <const uint8_t *> (text.data()), text.size(), signature, awh::crypto_t::hash_t::SHA256));
+}
+
+/**
+ * @brief Тест длины подписи, спрашиваемой наперёд
+ *
+ * @details Работам, правящим запись на месте, место под подпись приходится резервировать
+ *          заранее. Постоянной длины подпись имеет не всегда: у ECDSA запись DER несёт
+ *          два числа переменной длины, и одна пара ключей даёт подписи разной длины на
+ *          разных сообщениях
+ *
+ */
+TEST_F(CryptoFixture, SignatureLengthCryptoTest){
+	// Данные для подписи
+	const std::string text = "Anyks Framework, Hello World!!!";
+	// Выполняем выработку ключа Ed25519
+	ASSERT_TRUE(this->_crypto->generateKey("pure", awh::crypto_t::signature_t::ED25519));
+	// Проверяем постоянную длину подписи Ed25519
+	EXPECT_EQ(this->_crypto->length("pure"), static_cast <size_t> (64));
+	// Проверяем верхний предел длины подписи Ed25519
+	EXPECT_EQ(this->_crypto->limit("pure"), static_cast <size_t> (64));
+	// Выполняем выработку ключа RSA
+	ASSERT_TRUE(this->_crypto->generateKey("rsa", awh::crypto_t::signature_t::RSA));
+	// Проверяем постоянную длину подписи RSA, равную разрядности ключа
+	EXPECT_EQ(this->_crypto->length("rsa"), static_cast <size_t> (2048 / 8));
+	// Проверяем совпадение предела с точной длиной подписи RSA
+	EXPECT_EQ(this->_crypto->limit("rsa"), this->_crypto->length("rsa"));
+	// Выполняем выработку ключа ECDSA
+	ASSERT_TRUE(this->_crypto->generateKey("ecdsa", awh::crypto_t::signature_t::ECDSA));
+	// Проверяем отсутствие постоянной длины подписи ECDSA
+	EXPECT_EQ(this->_crypto->length("ecdsa"), static_cast <size_t> (0));
+	// Проверяем наличие верхнего предела длины подписи ECDSA
+	ASSERT_GT(this->_crypto->limit("ecdsa"), static_cast <size_t> (0));
+	// Проверяем отсутствие длины у имени, ключа не имеющего
+	EXPECT_EQ(this->_crypto->limit("stranger"), static_cast <size_t> (0));
+	/**
+	 * Выполняем перебор ключей, длину подписи объявляющих
+	 */
+	for(auto & name : {"pure", "rsa", "ecdsa"}){
+		// Подпись данных
+		std::vector <uint8_t> signature;
+		// Тип хэш-суммы, схеме подписи отвечающий
+		const awh::crypto_t::hash_t hash = ((this->_crypto->signature(name) == awh::crypto_t::signature_t::ED25519) ? awh::crypto_t::hash_t::NONE : awh::crypto_t::hash_t::SHA256);
+		// Выполняем подписание данных
+		ASSERT_TRUE(this->_crypto->sign(name, reinterpret_cast <const uint8_t *> (text.data()), text.size(), hash, signature)) << "name = " << name;
+		// Проверяем, что выработанная подпись предела не превышает
+		EXPECT_LE(signature.size(), this->_crypto->limit(name)) << "name = " << name;
+		// Получаем объявленную точную длину подписи
+		const size_t length = this->_crypto->length(name);
+		// Если точная длина подписи объявлена
+		if(length > 0)
+			// Проверяем совпадение выработанной подписи с объявленной длиной
+			EXPECT_EQ(signature.size(), length) << "name = " << name;
+	}
+}
+
+/**
+ * @brief Тест отпечатка открытого ключа
+ *
+ * @details Отпечаток считается от канонической записи открытого ключа и выдаётся полными
+ *          тридцатью двумя октетами. Требуется он проверяющей стороне, а та закрытого
+ *          ключа не имеет вовсе
+ *
+ */
+TEST_F(CryptoFixture, SignatureFingerprintCryptoTest){
+	/**
+	 * Выполняем перебор всех заведённых видов подписи
+	 */
+	for(auto & kind : {awh::crypto_t::signature_t::RSA, awh::crypto_t::signature_t::ECDSA, awh::crypto_t::signature_t::ED25519}){
+		// Выполняем выработку ключа владельца
+		ASSERT_TRUE(this->_crypto->generateKey("owner", kind)) << "kind = " << static_cast <uint16_t> (kind);
+		// Выполняем выработку ключа постороннего
+		ASSERT_TRUE(this->_crypto->generateKey("stranger", kind)) << "kind = " << static_cast <uint16_t> (kind);
+		// Получаем отпечаток открытого ключа владельца
+		const std::vector <uint8_t> & owner = this->_crypto->fingerprint <std::vector <uint8_t>> ("owner");
+		// Проверяем длину отпечатка открытого ключа
+		ASSERT_EQ(owner.size(), static_cast <size_t> (32)) << "kind = " << static_cast <uint16_t> (kind);
+		// Проверяем постоянство отпечатка одного и того же ключа
+		EXPECT_EQ(this->_crypto->fingerprint <std::vector <uint8_t>> ("owner"), owner) << "kind = " << static_cast <uint16_t> (kind);
+		// Проверяем несовпадение отпечатков разных ключей
+		EXPECT_NE(this->_crypto->fingerprint <std::vector <uint8_t>> ("stranger"), owner) << "kind = " << static_cast <uint16_t> (kind);
+		// Получаем шестнадцатеричную запись отпечатка открытого ключа
+		const std::string & hex = this->_crypto->fingerprint <std::string> ("owner", awh::crypto_t::format_t::HEX);
+		// Проверяем длину шестнадцатеричной записи отпечатка
+		EXPECT_EQ(hex.size(), static_cast <size_t> (64)) << "kind = " << static_cast <uint16_t> (kind);
+		/**
+		 * Отпечаток считается от открытой части ключа: проверяющая сторона закрытого
+		 * ключа не имеет, и требовать его для опознания было бы нечем
+		 */
+		// Получаем запись открытого ключа владельца
+		const std::string & pem = this->_crypto->getKey("owner", awh::crypto_t::key_type_t::PUBLIC);
+		// Проверяем получение записи открытого ключа
+		ASSERT_FALSE(pem.empty()) << "kind = " << static_cast <uint16_t> (kind);
+		// Объект работы, закрытого ключа не имеющий
+		awh::crypto_t verifier(this->_fmk.get(), this->_log.get());
+		// Выполняем ввод одного лишь открытого ключа
+		ASSERT_TRUE(verifier.setKey("owner", pem, awh::crypto_t::key_type_t::PUBLIC)) << "kind = " << static_cast <uint16_t> (kind);
+		// Проверяем совпадение отпечатка, снятого без закрытого ключа
+		EXPECT_EQ(verifier.fingerprint <std::vector <uint8_t>> ("owner"), owner) << "kind = " << static_cast <uint16_t> (kind);
+	}
+	// Проверяем пустоту отпечатка у имени, ключа не имеющего
+	EXPECT_TRUE(this->_crypto->fingerprint <std::vector <uint8_t>> ("nobody").empty());
+}
+
+/**
+ * @brief Тест проверки подписи одним лишь открытым ключом
+ *
+ * @details Проверяющая сторона закрытого ключа не имеет, и проверка обязана идти без
+ *          него: иначе всякий, кто способен проверить подпись, способен и подписать
+ *
+ */
+TEST_F(CryptoFixture, SignaturePublicOnlyCryptoTest){
+	// Данные для подписи
+	const std::string text = "Anyks Framework, Hello World!!!";
+	/**
+	 * Выполняем перебор всех заведённых видов подписи
+	 */
+	for(auto & kind : {awh::crypto_t::signature_t::RSA, awh::crypto_t::signature_t::ECDSA, awh::crypto_t::signature_t::ED25519}){
+		// Тип хэш-суммы, схеме подписи отвечающий
+		const awh::crypto_t::hash_t hash = ((kind == awh::crypto_t::signature_t::ED25519) ? awh::crypto_t::hash_t::NONE : awh::crypto_t::hash_t::SHA256);
+		// Выполняем выработку ключа владельца
+		ASSERT_TRUE(this->_crypto->generateKey("owner", kind)) << "kind = " << static_cast <uint16_t> (kind);
+		// Подпись данных
+		std::vector <uint8_t> signature;
+		// Выполняем подписание данных ключом владельца
+		ASSERT_TRUE(this->_crypto->sign("owner", reinterpret_cast <const uint8_t *> (text.data()), text.size(), hash, signature)) << "kind = " << static_cast <uint16_t> (kind);
+		// Получаем запись открытого ключа владельца
+		const std::string & pem = this->_crypto->getKey("owner", awh::crypto_t::key_type_t::PUBLIC);
+		// Проверяем получение записи открытого ключа
+		ASSERT_FALSE(pem.empty()) << "kind = " << static_cast <uint16_t> (kind);
+		// Объект работы, закрытого ключа не имеющий
+		awh::crypto_t verifier(this->_fmk.get(), this->_log.get());
+		// Выполняем ввод одного лишь открытого ключа
+		ASSERT_TRUE(verifier.setKey("owner", pem, awh::crypto_t::key_type_t::PUBLIC)) << "kind = " << static_cast <uint16_t> (kind);
+		// Проверяем вид подписи введённого открытого ключа
+		EXPECT_EQ(verifier.signature("owner"), kind) << "kind = " << static_cast <uint16_t> (kind);
+		// Проверяем подпись одним лишь открытым ключом
+		EXPECT_TRUE(verifier.verify("owner", reinterpret_cast <const uint8_t *> (text.data()), text.size(), signature, hash)) << "kind = " << static_cast <uint16_t> (kind);
+		// Подпись, выработанная одним лишь открытым ключом
+		std::vector <uint8_t> denied;
+		// Проверяем отказ подписания одним лишь открытым ключом
+		EXPECT_FALSE(verifier.sign("owner", reinterpret_cast <const uint8_t *> (text.data()), text.size(), hash, denied)) << "kind = " << static_cast <uint16_t> (kind);
+	}
+}
+
+/**
+ * @brief Тест нескольких ключей на одном объекте работы
+ *
+ * @details Один контейнер подписывают владелец и заверитель, а проверяющая сторона
+ *          сличает с несколькими открытыми ключами подряд. Заводить объект работы на
+ *          всякий ключ негодно: у него внутри стейт шифрования, к подписи отношения не
+ *          имеющий вовсе
+ *
+ */
+TEST_F(CryptoFixture, SignatureKeyringCryptoTest){
+	// Данные для подписи
+	const std::string text = "Anyks Framework, Hello World!!!";
+	// Выполняем выработку ключа владельца
+	ASSERT_TRUE(this->_crypto->generateKey("owner", awh::crypto_t::signature_t::ED25519));
+	// Выполняем выработку ключа заверителя
+	ASSERT_TRUE(this->_crypto->generateKey("notary", awh::crypto_t::signature_t::ECDSA));
+	// Подпись владельца
+	std::vector <uint8_t> owner;
+	// Подпись заверителя
+	std::vector <uint8_t> notary;
+	// Выполняем подписание данных ключом владельца
+	ASSERT_TRUE(this->_crypto->sign("owner", reinterpret_cast <const uint8_t *> (text.data()), text.size(), awh::crypto_t::hash_t::NONE, owner));
+	// Выполняем подписание данных ключом заверителя
+	ASSERT_TRUE(this->_crypto->sign("notary", reinterpret_cast <const uint8_t *> (text.data()), text.size(), awh::crypto_t::hash_t::SHA256, notary));
+	// Проверяем подпись владельца его же ключом
+	EXPECT_TRUE(this->_crypto->verify("owner", reinterpret_cast <const uint8_t *> (text.data()), text.size(), owner, awh::crypto_t::hash_t::NONE));
+	// Проверяем подпись заверителя его же ключом
+	EXPECT_TRUE(this->_crypto->verify("notary", reinterpret_cast <const uint8_t *> (text.data()), text.size(), notary, awh::crypto_t::hash_t::SHA256));
+	// Проверяем отказ подписи владельца ключом заверителя
+	EXPECT_FALSE(this->_crypto->verify("notary", reinterpret_cast <const uint8_t *> (text.data()), text.size(), owner, awh::crypto_t::hash_t::SHA256));
+	// Проверяем несовпадение отпечатков ключей владельца и заверителя
+	EXPECT_NE(this->_crypto->fingerprint <std::vector <uint8_t>> ("owner"), this->_crypto->fingerprint <std::vector <uint8_t>> ("notary"));
+	// Выполняем снятие ключа заверителя
+	EXPECT_TRUE(this->_crypto->removeKey("notary"));
+	// Проверяем отсутствие снятого ключа в связке
+	EXPECT_EQ(this->_crypto->signature("notary"), awh::crypto_t::signature_t::NONE);
+	// Проверяем отказ снятия ключа, в связке не лежащего
+	EXPECT_FALSE(this->_crypto->removeKey("notary"));
+	// Проверяем, что ключ владельца снятие соседа пережил
+	EXPECT_TRUE(this->_crypto->verify("owner", reinterpret_cast <const uint8_t *> (text.data()), text.size(), owner, awh::crypto_t::hash_t::NONE));
+}
+
+/**
+ * @brief Тест обращения ключей подписи через записи и файлы
+ *
+ */
+TEST_F(CryptoFixture, SignatureKeyStorageCryptoTest){
+	// Данные для подписи
+	const std::string text = "Anyks Framework, Hello World!!!";
+	/**
+	 * Выполняем перебор всех заведённых видов подписи
+	 */
+	for(auto & kind : {awh::crypto_t::signature_t::RSA, awh::crypto_t::signature_t::ECDSA, awh::crypto_t::signature_t::ED25519}){
+		// Тип хэш-суммы, схеме подписи отвечающий
+		const awh::crypto_t::hash_t hash = ((kind == awh::crypto_t::signature_t::ED25519) ? awh::crypto_t::hash_t::NONE : awh::crypto_t::hash_t::SHA256);
+		// Выполняем выработку ключа владельца
+		ASSERT_TRUE(this->_crypto->generateKey("owner", kind)) << "kind = " << static_cast <uint16_t> (kind);
+		// Получаем отпечаток выработанного ключа
+		const std::vector <uint8_t> & origin = this->_crypto->fingerprint <std::vector <uint8_t>> ("owner");
+		// Выполняем запись закрытого ключа в файл
+		ASSERT_TRUE(this->_crypto->saveKey("owner", "sign_private.pem", awh::crypto_t::key_type_t::PRIVATE)) << "kind = " << static_cast <uint16_t> (kind);
+		// Выполняем запись открытого ключа в файл
+		ASSERT_TRUE(this->_crypto->saveKey("owner", "sign_public.pem", awh::crypto_t::key_type_t::PUBLIC)) << "kind = " << static_cast <uint16_t> (kind);
+		/**
+		 * Права файла закрытого ключа сличаются с правами одного лишь владельца тем же
+		 * порядком, каким сличаются права файла ключа RSA (5.29)
+		 */
+		#if !_WIN32 && !_WIN64
+			// Приметы файла закрытого ключа
+			struct stat info;
+			// Выполняем снятие примет файла закрытого ключа
+			ASSERT_EQ(::stat("sign_private.pem", &info), 0) << "kind = " << static_cast <uint16_t> (kind);
+			// Проверяем права файла закрытого ключа
+			EXPECT_EQ(static_cast <uint32_t> (info.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO)), static_cast <uint32_t> (S_IRUSR | S_IWUSR)) << "kind = " << static_cast <uint16_t> (kind);
+		#endif
+		// Объект работы, читающий ключи из файлов
+		awh::crypto_t reader(this->_fmk.get(), this->_log.get());
+		// Выполняем чтение закрытого ключа из файла
+		ASSERT_TRUE(reader.loadKey("owner", "sign_private.pem", awh::crypto_t::key_type_t::PRIVATE)) << "kind = " << static_cast <uint16_t> (kind);
+		// Проверяем совпадение отпечатка прочитанного ключа с выработанным
+		EXPECT_EQ(reader.fingerprint <std::vector <uint8_t>> ("owner"), origin) << "kind = " << static_cast <uint16_t> (kind);
+		// Подпись данных прочитанным ключом
+		std::vector <uint8_t> signature;
+		// Выполняем подписание данных прочитанным ключом
+		ASSERT_TRUE(reader.sign("owner", reinterpret_cast <const uint8_t *> (text.data()), text.size(), hash, signature)) << "kind = " << static_cast <uint16_t> (kind);
+		// Выполняем чтение открытого ключа из файла
+		ASSERT_TRUE(reader.loadKey("public", "sign_public.pem", awh::crypto_t::key_type_t::PUBLIC)) << "kind = " << static_cast <uint16_t> (kind);
+		// Проверяем подпись прочитанным открытым ключом
+		EXPECT_TRUE(reader.verify("public", reinterpret_cast <const uint8_t *> (text.data()), text.size(), signature, hash)) << "kind = " << static_cast <uint16_t> (kind);
+		// Выполняем снятие файла закрытого ключа
+		::remove("sign_private.pem");
+		// Выполняем снятие файла открытого ключа
+		::remove("sign_public.pem");
+	}
+	// Проверяем отказ чтения ключа из отсутствующего файла
+	EXPECT_FALSE(this->_crypto->loadKey("owner", "sign_missing.pem", awh::crypto_t::key_type_t::PUBLIC));
+	// Проверяем отказ ввода записи ключа, ключом не являющейся
+	EXPECT_FALSE(this->_crypto->setKey("owner", "not a key at all", awh::crypto_t::key_type_t::PUBLIC));
+}

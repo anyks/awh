@@ -20352,6 +20352,97 @@ TEST_F(IoFixture, IoPipeHandleReleaseTest){
 }
 
 /**
+ * @brief Проверка освобождения описателей, заведённых заранее под приём подключений
+ *
+ * @details Обращение наложенного приёма требует дескриптора, заведённого ЗАРАНЕЕ, и живёт
+ *          такой дескриптор до прихода завершения. Закройся слушатель прежде - завершение
+ *          вправе не прийти вовсе, и заведённый под приём дескриптор остался бы жить до
+ *          конца процесса
+ *
+ * @note Проверка идёт счётом описателей у самого процесса: уничтожение слушателя
+ *       отчитывается успехом независимо от того, что стало с заведённым под приём
+ *       дескриптором
+ *
+ * @note Честная оговорка: обычный ход работы проверку эту проходит и без правки - снятое
+ *       закрытием обращение приёма отдаёт завершение ближайшим оборотом, и разбор его
+ *       дескриптор закрывает. Держит проверка именно этот ход, а не путь разрушения
+ *       движка, где завершений уже не разбирает никто: смоделировать его проверкой
+ *       дёшево не выходит
+ *
+ */
+TEST_F(IoFixture, IoAcceptSocketReleaseTest){
+	// Выполняем инициализацию сетевого движка
+	ASSERT_TRUE(this->_io->initialize());
+	/**
+	 * Заводим и уничтожаем слушающее событие вхолостую
+	 *
+	 * @note Первый заход тратит описатели на то, что заводится единожды на процесс, и в
+	 *       счёт идти не должен
+	 */
+	for(uint8_t attempt = 0; attempt < 2; attempt++){
+		// Заводим слушающее событие
+		const awh::event::id_t server = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+		// Проверяем, что идентификатор события создан
+		ASSERT_GT(server, 0);
+		// Устанавливаем опции слушающего события
+		ASSERT_TRUE(this->_io->setOptions(server, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK));
+		// Устанавливаем адрес привязки
+		ASSERT_TRUE(this->_io->setAddress(server, awh::event::address_t::IPV4, "127.0.0.1"));
+		// Устанавливаем порт привязки
+		ASSERT_TRUE(this->_io->setSourcePort(server, port()));
+		// Выполняем фиксацию настроек слушающего события
+		ASSERT_TRUE(this->_io->commit(server));
+		// Переводим событие в прослушивание: приём подаётся именно здесь
+		ASSERT_TRUE(this->_io->listen(server, 16));
+		// Проворачиваем опрос, чтобы приём подключения был подан ядру
+		this->_io->poll(0);
+		// Уничтожаем слушающее событие
+		ASSERT_TRUE(this->_io->destroy(server));
+		// Проворачиваем опрос, чтобы снесённый узел был уничтожен
+		this->_io->poll(0);
+		this->_io->poll(0);
+	}
+	// Число описателей, какими процесс владеет до заведения слушателей
+	DWORD before = 0;
+	// Спрашиваем у системы число описателей процесса
+	ASSERT_TRUE(::GetProcessHandleCount(::GetCurrentProcess(), &before));
+	/**
+	 * Заводим и уничтожаем слушающие события десять раз подряд
+	 */
+	for(uint8_t attempt = 0; attempt < 10; attempt++){
+		// Заводим слушающее событие
+		const awh::event::id_t server = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+		// Проверяем, что идентификатор события создан
+		ASSERT_GT(server, 0);
+		// Устанавливаем опции слушающего события
+		ASSERT_TRUE(this->_io->setOptions(server, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK));
+		// Устанавливаем адрес привязки
+		ASSERT_TRUE(this->_io->setAddress(server, awh::event::address_t::IPV4, "127.0.0.1"));
+		// Устанавливаем порт привязки
+		ASSERT_TRUE(this->_io->setSourcePort(server, port()));
+		// Выполняем фиксацию настроек слушающего события
+		ASSERT_TRUE(this->_io->commit(server));
+		// Переводим событие в прослушивание
+		ASSERT_TRUE(this->_io->listen(server, 16));
+		// Проворачиваем опрос, чтобы приём подключения был подан ядру
+		this->_io->poll(0);
+		// Уничтожаем слушающее событие
+		ASSERT_TRUE(this->_io->destroy(server));
+		// Проворачиваем опрос, чтобы снесённый узел был уничтожен
+		this->_io->poll(0);
+		this->_io->poll(0);
+	}
+	// Число описателей, какими процесс владеет после уничтожения слушателей
+	DWORD after = 0;
+	// Спрашиваем у системы число описателей процесса
+	ASSERT_TRUE(::GetProcessHandleCount(::GetCurrentProcess(), &after));
+	// Проверяем, что описатели уничтоженных слушателей освобождены
+	ASSERT_LE(after, (before + 4)) << "описатели, заведённые под приём подключений, остались жить: было " << before << ", стало " << after;
+	// Уничтожаем все события движка
+	ASSERT_TRUE(this->_io->deinitialize());
+}
+
+/**
  * @brief Работник проверки передачи слушающего события чужому процессу
  *
  * @details Проверкой не является и в общем прогоне не участвует - оттого и отключена

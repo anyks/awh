@@ -42,18 +42,47 @@ call :SOURCES
 rem Сборка ведётся набором cl: он единственный доступен на всякой машине
 rem Windows без установки постороннего, а переносимой проверке кроме
 rem компилятора C++ ничего и не нужно
-cl /nologo /EHsc /std:c++17 /O2 /Iinclude /Itools/regex ^
-	/Fe:conformance.exe ^
-	tools\regex\conformance.cpp %SOURCES% > compile.log 2>&1
+rem
+rem Файлы переводятся по одному, а не единым вызовом: cl кладёт объектные
+rem файлы в текущий каталог по имени исходного, и два файла «table.cpp» -
+rem из src\regex и из src\encoding\unicode - дают один «table.obj».
+rem Единый вызов оттого затирал таблицы Юникода и валил связывание
+rem тридцатью тремя неразрешёнными именами, а предупреждение LNK4042
+rem об этом терялось в выводе. Имя объектного файла потому нумеруется.
+set "OBJECTS="
+set /a NUMBER=0
+for %%F in (tools\regex\conformance.cpp %SOURCES%) do (
+	set /a NUMBER+=1
+	call :COMPILE "%%F"
+	if errorlevel 1 (
+		echo Сборка не выполнена:
+		type compile.log
+		exit /b 4
+	)
+)
+
+cl /nologo /Fe:conformance.exe %OBJECTS% >> compile.log 2>&1
 
 if errorlevel 1 (
-	echo Сборка не выполнена:
+	echo Связывание не выполнено:
 	type compile.log
 	exit /b 4
 )
 
 call :RUN
 exit /b %errorlevel%
+
+rem Перевод одного файла исходного текста в объектный файл с нумерованным именем
+rem
+rem Имя объектного файла берётся номером, а не именем исходного: имена
+rem исходных файлов по дереву повторяются, и совпадение их молча теряло
+rem перевод одного из них
+:COMPILE
+cl /nologo /EHsc /std:c++17 /O2 /Iinclude /Itools/regex /c ^
+	/Fostand%NUMBER%.obj %~1 >> compile.log 2>&1
+if errorlevel 1 exit /b 1
+set "OBJECTS=%OBJECTS% stand%NUMBER%.obj"
+exit /b 0
 
 rem Сборка сборщиком MinGW-w64
 rem

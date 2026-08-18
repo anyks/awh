@@ -6609,6 +6609,15 @@ namespace timer {
 						EV_SET(&event, 0, EVFILT_TIMER, EV_ADD | EV_ONESHOT, 0, static_cast <intptr_t> (wait), ::local::internal);
 						// Активируем событие в ядре операционной системы через Kqueue
 						if(::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr) == net::invalid_socket_t){
+							/**
+							 * Откатываем отметку о взводе, ядром не принятом
+							 *
+							 * @warning Отметка ставится ДО обращения к ядру, и без отката движок
+							 *          остаётся уверен во взводе, которого у ядра нет: следующий
+							 *          взвод на тот же срок будет принят за уже сделанный и к ядру
+							 *          не пойдёт вовсе - таймеры замолчат навсегда
+							 */
+							__awh_armed__ = UINT64_MAX;
 							// Если объект логирования доступен
 							if(log != nullptr){
 								/**
@@ -8147,6 +8156,15 @@ namespace timer {
 						EV_SET(&event, 0, EVFILT_TIMER, EV_ADD | EV_ONESHOT, 0, static_cast <intptr_t> (wait), ::local::internal);
 						// Активируем событие в ядре операционной системы через Kqueue
 						if(::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr) == net::invalid_socket_t){
+							/**
+							 * Откатываем отметку о взводе, ядром не принятом
+							 *
+							 * @warning Отметка ставится ДО обращения к ядру, и без отката движок
+							 *          остаётся уверен во взводе, которого у ядра нет: следующий
+							 *          взвод на тот же срок будет принят за уже сделанный и к ядру
+							 *          не пойдёт вовсе - таймеры замолчат навсегда
+							 */
+							__awh_armed__ = UINT64_MAX;
 							// Если объект логирования доступен
 							if(log != nullptr){
 								/**
@@ -14098,8 +14116,18 @@ namespace io {
 									#if __FreeBSD__
 										// Если протокол интернета установлен как SCTP
 										if(client->state.protocol == event::protocol_t::SCTP){
-											// Запоминаем идентификатор ассоциации SCTP
-											client->transfer.sctp.use().id = client->transfer.sctp.use().info.sinfo_assoc_id;
+											/**
+											 * Запоминаем опознаватель связи, нулём его не затирая
+											 *
+											 * @warning Метаданные сообщения приходят заполненными не всегда, и
+											 *          нулевой опознаватель в них означает «не сообщён», а не
+											 *          «связи нет». Безусловная запись стирала опознаватель,
+											 *          оповещением о заведении связи полученный, и запросы
+											 *          свойств связи отвечали отказом «Invalid argument»
+											 */
+											if(client->transfer.sctp.use().info.sinfo_assoc_id != 0)
+												// Запоминаем идентификатор ассоциации SCTP
+												client->transfer.sctp.use().id = client->transfer.sctp.use().info.sinfo_assoc_id;
 											// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
 											if(client->transfer.sctp.endpoint().callbacks.info != nullptr){
 												// Объект для хранения информационных метаданных SCTP сообщения
@@ -14265,8 +14293,18 @@ namespace io {
 								#if __FreeBSD__
 									// Если протокол интернета установлен как SCTP
 									if(client->state.protocol == event::protocol_t::SCTP){
-										// Запоминаем идентификатор ассоциации SCTP
-										client->transfer.sctp.use().id = client->transfer.sctp.use().info.sinfo_assoc_id;
+										/**
+										 * Запоминаем опознаватель связи, нулём его не затирая
+										 *
+										 * @warning Метаданные сообщения приходят заполненными не всегда, и
+										 *          нулевой опознаватель в них означает «не сообщён», а не
+										 *          «связи нет». Безусловная запись стирала опознаватель,
+										 *          оповещением о заведении связи полученный, и запросы
+										 *          свойств связи отвечали отказом «Invalid argument»
+										 */
+										if(client->transfer.sctp.use().info.sinfo_assoc_id != 0)
+											// Запоминаем идентификатор ассоциации SCTP
+											client->transfer.sctp.use().id = client->transfer.sctp.use().info.sinfo_assoc_id;
 										// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
 										if(client->transfer.sctp.endpoint().callbacks.info != nullptr){
 											// Объект для хранения информационных метаданных SCTP сообщения
@@ -14443,8 +14481,18 @@ namespace io {
 									#if __FreeBSD__
 										// Если протокол интернета установлен как SCTP
 										if(client->state.protocol == event::protocol_t::SCTP){
-											// Запоминаем идентификатор ассоциации SCTP
-											client->transfer.sctp.use().id = client->transfer.sctp.use().info.sinfo_assoc_id;
+											/**
+											 * Запоминаем опознаватель связи, нулём его не затирая
+											 *
+											 * @warning Метаданные сообщения приходят заполненными не всегда, и
+											 *          нулевой опознаватель в них означает «не сообщён», а не
+											 *          «связи нет». Безусловная запись стирала опознаватель,
+											 *          оповещением о заведении связи полученный, и запросы
+											 *          свойств связи отвечали отказом «Invalid argument»
+											 */
+											if(client->transfer.sctp.use().info.sinfo_assoc_id != 0)
+												// Запоминаем идентификатор ассоциации SCTP
+												client->transfer.sctp.use().id = client->transfer.sctp.use().info.sinfo_assoc_id;
 											// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
 											if(client->transfer.sctp.endpoint().callbacks.info != nullptr){
 												// Объект для хранения информационных метаданных SCTP сообщения
@@ -14623,8 +14671,18 @@ namespace io {
 								#if __FreeBSD__
 									// Если протокол интернета установлен как SCTP
 									if(client->state.protocol == event::protocol_t::SCTP){
-										// Запоминаем идентификатор ассоциации SCTP
-										client->transfer.sctp.use().id = client->transfer.sctp.use().info.sinfo_assoc_id;
+										/**
+										 * Запоминаем опознаватель связи, нулём его не затирая
+										 *
+										 * @warning Метаданные сообщения приходят заполненными не всегда, и
+										 *          нулевой опознаватель в них означает «не сообщён», а не
+										 *          «связи нет». Безусловная запись стирала опознаватель,
+										 *          оповещением о заведении связи полученный, и запросы
+										 *          свойств связи отвечали отказом «Invalid argument»
+										 */
+										if(client->transfer.sctp.use().info.sinfo_assoc_id != 0)
+											// Запоминаем идентификатор ассоциации SCTP
+											client->transfer.sctp.use().id = client->transfer.sctp.use().info.sinfo_assoc_id;
 										// Если функция обратного вызова для обработки информационных метаданных SCTP сообщения установлена
 										if(client->transfer.sctp.endpoint().callbacks.info != nullptr){
 											// Объект для хранения информационных метаданных SCTP сообщения
@@ -34075,6 +34133,29 @@ namespace sctp {
 						net::sctp::event_assoc_change_t * association = awh_cast <net::sctp::event_assoc_change_t *> (event.get());
 						// Устанавливаем идентификатор ассоциации SCTP
 						association->id = sac->sac_assoc_id;
+						/**
+						 * Запоминаем опознаватель связи в самом узле
+						 *
+						 * @details У сокета упорядоченных сообщений связей много, и запрос свойств
+						 *          связи обязан называть, по какой именно идти. Опознаватель этот
+						 *          ядро сообщает единственно здесь - оповещением о заведении связи
+						 *
+						 * @warning Без него запрос чанков проверки подлинности отвечает отказом
+						 *          «Invalid argument»: нулевой опознаватель годен лишь сокету
+						 *          одной связи, а у сокета упорядоченных сообщений его нет
+						 */
+						switch(static_cast <uint8_t> (node->state.node)){
+							// Если узел является одноранговым узлом
+							case static_cast <uint8_t> (event::node_t::PEER):
+								// Запоминаем опознаватель связи однорангового узла
+								awh_cast <::io::peer_t *> (node)->transfer.sctp.use().id = sac->sac_assoc_id;
+							break;
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+								// Запоминаем опознаватель связи клиента
+								awh_cast <::io::client_t *> (node)->transfer.sctp.use().id = sac->sac_assoc_id;
+							break;
+						}
 						// Устанавливаем тип ассоциации SCTP
 						association->type = net::sctp::event_type_t::ASSOC_CHANGE;
 						// Устанавливаем код ошибки ассоциации SCTP
@@ -71720,13 +71801,78 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 						if(item.data != 0){
 							// Получаем узел, которому принадлежит отвергнутая запись
 							::io::node_t * owner = (((item.udata != nullptr) && (item.udata != ::local::internal)) ? reinterpret_cast <::io::node_t *> (item.udata) : nullptr);
+							// Запоминаем код отказа, ядром названный
+							const int32_t reason = static_cast <int32_t> (item.data);
 							// Записываем ошибку в лог
 							this->_log->print("Event change rejected: ident=%llu, filter=%d, flags=0x%x, %s (node: id=%u, type=%u, status=%u)", log_t::flag_t::WARNING,
 							 static_cast <uint64_t> (item.ident), static_cast <int32_t> (item.filter), static_cast <uint32_t> (item.flags),
-							 ::strerror(static_cast <int32_t> (item.data)),
+							 ::strerror(reason),
 							 (owner != nullptr ? owner->id : 0u),
 							 (owner != nullptr ? static_cast <uint32_t> (owner->state.node) : 0xFFu),
 							 (owner != nullptr ? static_cast <uint32_t> (owner->state.status) : 0xFFu));
+							/**
+							 * Обходим стороной снятие того, чего у ядра и нет
+							 *
+							 * @note Снятие подписки, ядру неизвестной, отвечает `ENOENT` либо
+							 *       `ESRCH`, и отказ этот пустой: добивались её отсутствия, оно
+							 *       и достигнуто. Сносить узел по такому поводу было бы
+							 *       расправой над живым событием
+							 */
+							if(!((item.flags & EV_DELETE) && ((reason == ENOENT) || (reason == ESRCH)))){
+								/**
+								 * Определяем, временен отказ или окончателен
+								 *
+								 * @details Ядро называет причину точно, и обходиться с ней следует
+								 *          по ней же. Нехватка памяти проходит сама, и запись
+								 *          стоит подать заново; недействительный же описатель
+								 *          заново не оживёт, и узлу по нему жить нечем
+								 *
+								 * @warning Прежде отказ любого рода лишь писался в лог, а сама
+								 *          запись отбрасывалась. Подписки у ядра не появлялось, а
+								 *          движок оставался уверен в обратном: событие, которое
+								 *          лишь ждёт данных, замолкало навсегда, и потребителю о
+								 *          том не говорилось ничего
+								 */
+								switch(reason){
+									/**
+									 * Отказ временный: у ядра кончилась память
+									 */
+									case ENOMEM: {
+										// Собираем запись заново, снимая с неё отметку отказа
+										struct kevent again = item;
+										// Снимаем признак отказа и признак получения исхода
+										again.flags &= ~(EV_ERROR | EV_RECEIPT);
+										// Снимаем код отказа, нагрузкой записи стоявший
+										again.data = 0;
+										/**
+										 * Возвращаем запись в пакет изменений
+										 *
+										 * @note Горячего цикла отсюда не выходит: пакет уходит ядру
+										 *       единожды за оборот, тем же вызовом, что и ожидание
+										 */
+										::events::add(::move(again));
+									} break;
+									/**
+									 * Отказы окончательные: описателя нет либо опрос его невозможен
+									 */
+									case EBADF:
+									case EPERM:
+									case EINVAL:
+									case ELOOP: {
+										// Если узел, которому запись принадлежит, известен
+										if(owner != nullptr){
+											// Получаем набор функций обратного вызова узла
+											::io::callbacks_t * callbacks = owner->hooks();
+											// Если функция обратного вызова об ошибке установлена
+											if((callbacks != nullptr) && (callbacks->error != nullptr))
+												// Вызываем функцию обратного вызова об ошибке события
+												callbacks->error(owner->id, event::error_t::EVENT_FAIL, ::strerror(reason));
+											// Выполняем удаление узла события
+											::io::destroy(owner, &this->_eth, this->_log);
+										}
+									} break;
+								}
+							}
 						}
 						// Переходим к следующей записи пачки
 						continue;

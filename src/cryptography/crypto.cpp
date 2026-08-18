@@ -32,6 +32,8 @@
 #include <openssl/err.h>
 #include <openssl/hmac.h>
 #include <openssl/rand.h>
+#include <openssl/ec.h>
+#include <openssl/obj_mac.h>
 
 /**
  * Для операционной системы отличной от MS Windows
@@ -89,6 +91,16 @@
 #include <cstdio>
 #include <cstring>
 #include <csignal>
+
+/**
+ * Стандартный заголовочный файл словаря
+ */
+#include <map>
+
+/**
+ * Стандартный заголовочный файл работы с файловыми потоками
+ */
+#include <fstream>
 
 /**
  * Если операционной системой не является MS Windows
@@ -549,6 +561,85 @@ namespace awh {
 				// Снимаем указатель освобождённого ключа
 				this->ctx = nullptr;
 			}
+		}
+	};
+	/**
+	 * @brief Полное определение непрозрачной связки ключей подписи
+	 *
+	 * @details Ключи держатся под своими именами: один контейнер подписывают владелец и
+	 *          заверитель, а проверяющая сторона сличает с несколькими открытыми ключами
+	 *          подряд. Вид подписи хранится рядом с ключом, а не выводится из него всякий
+	 *          раз: выводится он при вводе ключа, и вывод этот один на всю его жизнь
+	 *
+	 */
+	struct keyring_t {
+		/**
+		 * @brief Запись ключа подписи в связке
+		 *
+		 */
+		struct record_t {
+			// Контекст ключа подписи
+			EVP_PKEY * ctx;
+			// Вид подписи ключа
+			crypto_t::signature_t type;
+			/**
+			 * @brief Конструктор
+			 *
+			 */
+			explicit record_t() noexcept :
+			 ctx(nullptr), type(crypto_t::signature_t::NONE) {}
+		};
+		// Ключи подписи, заведённые под своими именами
+		std::map <string, record_t> keys;
+		// Контекст потока подписи
+		EVP_MD_CTX * stream;
+		// Имя ключа, которым заведён поток подписи
+		string name;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit keyring_t() noexcept : stream(nullptr) {}
+		/**
+		 * @brief Метод сброса потока подписи
+		 *
+		 */
+		void reset() noexcept {
+			// Если поток подписи заведён
+			if(this->stream != nullptr){
+				// Освобождаем контекст потока подписи
+				::EVP_MD_CTX_free(this->stream);
+				// Снимаем указатель освобождённого контекста
+				this->stream = nullptr;
+			}
+			// Выполняем очистку имени ключа потока подписи
+			this->name.clear();
+		}
+		/**
+		 * @brief Деструктор
+		 *
+		 * @details Ключи освобождаются здесь по тому же доводу, что и ключ RSA: владеет
+		 *          ими эта структура, и освобождение, вынесенное наружу, держалось бы на
+		 *          том, что наружное место о нём не забудет
+		 *
+		 */
+		~keyring_t() noexcept {
+			// Выполняем сброс потока подписи
+			this->reset();
+			/**
+			 * Выполняем перебор всех ключей связки
+			 */
+			for(auto & item : this->keys){
+				// Если ключ подписи заведён
+				if(item.second.ctx != nullptr){
+					// Освобождаем память выделенную под ключ подписи
+					::EVP_PKEY_free(item.second.ctx);
+					// Снимаем указатель освобождённого ключа
+					item.second.ctx = nullptr;
+				}
+			}
+			// Выполняем очистку связки ключей
+			this->keys.clear();
 		}
 	};
 	/**
@@ -2236,6 +2327,100 @@ namespace driver {
 	 * @return        результат установки схемы дополнения
 	 *
 	 */
+	/**
+	 * @brief Функция получения хэш-функции по типу хэш-суммы
+	 *
+	 * @param hash тип хэш-суммы
+	 * @return     хэш-функция библиотеки криптографии, либо nullptr если тип разбору не знаком
+	 *
+	 */
+	static const EVP_MD * evpmd(const crypto_t::hash_t hash) noexcept {
+		/**
+		 * Определяем тип хэш-суммы
+		 */
+		switch(static_cast <uint8_t> (hash)){
+			// Если тип хэш-суммы указан как MD5
+			case static_cast <uint8_t> (crypto_t::hash_t::MD5):
+				// Выводим хэш-функцию MD5
+				return ::EVP_md5();
+			// Если тип хэш-суммы указан как SHA1
+			case static_cast <uint8_t> (crypto_t::hash_t::SHA1):
+				// Выводим хэш-функцию SHA1
+				return ::EVP_sha1();
+			// Если тип хэш-суммы указан как SHA224
+			case static_cast <uint8_t> (crypto_t::hash_t::SHA224):
+				// Выводим хэш-функцию SHA224
+				return ::EVP_sha224();
+			// Если тип хэш-суммы указан как SHA256
+			case static_cast <uint8_t> (crypto_t::hash_t::SHA256):
+				// Выводим хэш-функцию SHA256
+				return ::EVP_sha256();
+			// Если тип хэш-суммы указан как SHA384
+			case static_cast <uint8_t> (crypto_t::hash_t::SHA384):
+				// Выводим хэш-функцию SHA384
+				return ::EVP_sha384();
+			// Если тип хэш-суммы указан как SHA512
+			case static_cast <uint8_t> (crypto_t::hash_t::SHA512):
+				// Выводим хэш-функцию SHA512
+				return ::EVP_sha512();
+		}
+		// Выводим отсутствие хэш-функции
+		return nullptr;
+	}
+	/**
+	 * @brief Функция получения вида подписи по ключу
+	 *
+	 * @details Вид выводится у самого ключа, а не подаётся вызывающей стороной: запись
+	 *          ключа вид свой несёт, и подача его отдельно позволила бы им разойтись.
+	 *
+	 *          Кривая ключа ECDSA сличается с P-256: договор объявляет одну лишь эту
+	 *          кривую, и ключ на иной кривой подписывался бы схемой, которой вызывающая
+	 *          сторона не просила, - а по виду подписи отличить их было бы нечем
+	 *
+	 * @param key ключ подписи
+	 * @return    вид подписи ключа, либо NONE если ключ договору не отвечает
+	 *
+	 */
+	static crypto_t::signature_t kind(EVP_PKEY * key) noexcept {
+		// Если ключ подписи не заведён
+		if(key == nullptr)
+			// Выводим отсутствие вида подписи
+			return crypto_t::signature_t::NONE;
+		/**
+		 * Определяем разновидность ключа подписи
+		 */
+		switch(::EVP_PKEY_id(key)){
+			// Если ключ подписи является ключом RSA
+			case EVP_PKEY_RSA:
+				// Выводим вид подписи RSA
+				return crypto_t::signature_t::RSA;
+			// Если ключ подписи является ключом Ed25519
+			case EVP_PKEY_ED25519:
+				// Выводим вид подписи Ed25519
+				return crypto_t::signature_t::ED25519;
+			// Если ключ подписи является ключом на эллиптической кривой
+			case EVP_PKEY_EC: {
+				// Получаем ключ на эллиптической кривой
+				const EC_KEY * ec = ::EVP_PKEY_get0_EC_KEY(key);
+				// Если ключ на эллиптической кривой получить не удалось
+				if(ec == nullptr)
+					// Выводим отсутствие вида подписи
+					return crypto_t::signature_t::NONE;
+				// Получаем группу точек эллиптической кривой
+				const EC_GROUP * group = ::EC_KEY_get0_group(ec);
+				// Если группа точек эллиптической кривой не получена
+				if(group == nullptr)
+					// Выводим отсутствие вида подписи
+					return crypto_t::signature_t::NONE;
+				// Если кривая ключа является кривой P-256
+				if(::EC_GROUP_get_curve_name(group) == NID_X9_62_prime256v1)
+					// Выводим вид подписи ECDSA
+					return crypto_t::signature_t::ECDSA;
+			} break;
+		}
+		// Выводим отсутствие вида подписи
+		return crypto_t::signature_t::NONE;
+	}
 	static bool padding(EVP_PKEY_CTX * pctx, EVP_PKEY * key, const EVP_MD * md, const crypto_t::padding_t padding, const log_t * log) noexcept {
 		// Если ключ подписи устройства RSA не имеет
 		if(::EVP_PKEY_base_id(key) != EVP_PKEY_RSA)
@@ -2683,7 +2868,7 @@ awh::Crypto::Params_RSA::Params_RSA() noexcept :
  */
 bool awh::Crypto::ready() const noexcept {
 	// Если стейт шифрования и ключевые данные отведены
-	if((this->_params.state != nullptr) && (this->_params.key != nullptr))
+	if((this->_params.state != nullptr) && (this->_params.key != nullptr) && (this->_keyring != nullptr))
 		// Выводим готовность объекта к работе
 		return true;
 	/**
@@ -8169,13 +8354,1560 @@ bool awh::Crypto::verifyWithPublicKey(const uint8_t * buffer, const size_t size,
 	return result;
 }
 /**
+ * @brief Метод проверки поточности вида подписи
+ *
+ * @param type вид подписи
+ * @return     признак поточной работы вида подписи
+ *
+ */
+bool awh::Crypto::streamable(const signature_t type) const noexcept {
+	/**
+	 * Поточной подписи Ed25519 не имеет по своему устройству: выработка его подписи
+	 * требует двух проходов по сообщению, и поточная её разновидность - схема
+	 * отдельная (Ed25519ph по RFC 8032), дающая иную подпись. Схемы RSA и ECDSA
+	 * подписывают хэш-сумму, а та набирается порциями
+	 */
+	// Выводим признак поточной работы вида подписи
+	return ((type == signature_t::RSA) || (type == signature_t::ECDSA));
+}
+/**
+ * @brief Метод получения вида подписи ключа из связки
+ *
+ * @param name имя ключа в связке
+ * @return     вид подписи ключа, либо NONE если ключа под таким именем нет
+ *
+ */
+awh::Crypto::signature_t awh::Crypto::signature(const string & name) const noexcept {
+	// Если объект собран не был
+	if(!this->ready())
+		// Выходим из метода
+		return signature_t::NONE;
+	// Выполняем поиск ключа в связке
+	auto i = this->_keyring->keys.find(name);
+	// Если ключ в связке найден
+	if(i != this->_keyring->keys.end())
+		// Выводим вид подписи найденного ключа
+		return i->second.type;
+	// Выводим отсутствие вида подписи
+	return signature_t::NONE;
+}
+/**
+ * @brief Метод удаления ключа из связки
+ *
+ * @param name имя ключа в связке
+ * @return     признак успешно выполненной работы
+ *
+ */
+bool awh::Crypto::removeKey(const string & name) noexcept {
+	// Если объект собран не был
+	if(!this->ready())
+		// Выходим из метода
+		return false;
+	// Выполняем поиск ключа в связке
+	auto i = this->_keyring->keys.find(name);
+	// Если ключа под таким именем в связке нет
+	if(i == this->_keyring->keys.end())
+		// Выходим из метода
+		return false;
+	// Если ключ подписи заведён
+	if(i->second.ctx != nullptr)
+		// Освобождаем память выделенную под ключ подписи
+		::EVP_PKEY_free(i->second.ctx);
+	// Выполняем удаление ключа из связки
+	this->_keyring->keys.erase(i);
+	// Выводим признак успешно выполненной работы
+	return true;
+}
+/**
+ * @brief Метод выработки ключа подписи
+ *
+ * @param name имя ключа в связке
+ * @param type вид подписи
+ * @param bits разрядность ключа, значима одному лишь виду RSA
+ * @return     признак успешно выполненной работы
+ *
+ */
+bool awh::Crypto::generateKey(const string & name, const signature_t type, const uint16_t bits) noexcept {
+	// Если объект собран не был
+	if(!this->ready())
+		// Выходим из метода
+		return false;
+	// Охранник очереди ошибок библиотеки криптографии
+	const driver::purge_t purge;
+	// Признак успешно выполненной работы
+	bool outcome = false;
+	// Контекст выработки ключа подписи
+	EVP_PKEY_CTX * pctx = nullptr;
+	// Выработанный ключ подписи
+	EVP_PKEY * key = nullptr;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Разновидность вырабатываемого ключа
+		int32_t kind = 0;
+		/**
+		 * Определяем вид вырабатываемой подписи
+		 */
+		switch(static_cast <uint8_t> (type)){
+			// Если вид подписи указан как RSA
+			case static_cast <uint8_t> (signature_t::RSA):
+				// Устанавливаем разновидность вырабатываемого ключа
+				kind = EVP_PKEY_RSA;
+			break;
+			// Если вид подписи указан как ECDSA
+			case static_cast <uint8_t> (signature_t::ECDSA):
+				// Устанавливаем разновидность вырабатываемого ключа
+				kind = EVP_PKEY_EC;
+			break;
+			// Если вид подписи указан как Ed25519
+			case static_cast <uint8_t> (signature_t::ED25519):
+				// Устанавливаем разновидность вырабатываемого ключа
+				kind = EVP_PKEY_ED25519;
+			break;
+			/**
+			 * Вид подписи, работой не заведённый, отвергается с названной причиной:
+			 * место под ГОСТ Р 34.10 в перечислении занято, а схемы за ним нет, и
+			 * молчаливый отказ не дал бы отличить незаведённую схему от сбоя работы
+			 */
+			// Если вид подписи разбору не знаком либо работой не заведён
+			default: {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Записываем ошибку в лог
+					this->_log->debug("Signature kind is unsupported", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (type)), log_t::flag_t::WARNING);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем ошибку в лог
+					this->_log->print("Signature kind is unsupported", log_t::flag_t::WARNING);
+				#endif
+				// Выходим из метода
+				return outcome;
+			}
+		}
+		// Выполняем заведение контекста выработки ключа подписи
+		pctx = ::EVP_PKEY_CTX_new_id(kind, nullptr);
+		// Если контекст выработки ключа подписи заведён
+		if((pctx != nullptr) && (::EVP_PKEY_keygen_init(pctx) == 1)){
+			// Признак готовности параметров выработки ключа
+			bool ready = true;
+			/**
+			 * Если выработке подлежит ключ RSA
+			 */
+			if(type == signature_t::RSA){
+				// Разрядность вырабатываемого ключа
+				const size_t width = ((bits > 0) ? static_cast <size_t> (bits) : static_cast <size_t> (AWH_CRYPTO_RSA_BITS));
+				/**
+				 * Разрядность ниже порога отвергается тем же порядком, что и у выработки
+				 * ключа RSA прежним договором (5.20): ключ короче стойкости не имеет
+				 */
+				// Если разрядность вырабатываемого ключа ниже порога
+				if(width < static_cast <size_t> (AWH_CRYPTO_RSA_BITS)){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Записываем ошибку в лог
+						this->_log->debug("Signature key width is below the threshold", __PRETTY_FUNCTION__, make_tuple(name, static_cast <uint16_t> (bits)), log_t::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем ошибку в лог
+						this->_log->print("Signature key width is below the threshold", log_t::flag_t::WARNING);
+					#endif
+					// Снимаем признак готовности параметров выработки ключа
+					ready = false;
+				// Устанавливаем разрядность вырабатываемого ключа
+				} else ready = (::EVP_PKEY_CTX_set_rsa_keygen_bits(pctx, static_cast <int32_t> (width)) == 1);
+			/**
+			 * Если выработке подлежит ключ ECDSA
+			 */
+			} else if(type == signature_t::ECDSA)
+				// Устанавливаем кривую вырабатываемого ключа
+				ready = (::EVP_PKEY_CTX_set_ec_paramgen_curve_nid(pctx, NID_X9_62_prime256v1) == 1);
+			// Если параметры выработки ключа установлены
+			if(ready)
+				// Выполняем выработку ключа подписи
+				outcome = (::EVP_PKEY_keygen(pctx, &key) == 1);
+		}
+		// Если ключ подписи выработать не удалось
+		if(!outcome || (key == nullptr)){
+			// Снимаем признак успешно выполненной работы
+			outcome = false;
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				this->_log->debug("Generate signature key failed", __PRETTY_FUNCTION__, make_tuple(name, static_cast <uint16_t> (type)), log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				this->_log->print("Generate signature key failed", log_t::flag_t::WARNING);
+			#endif
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		// Снимаем признак успешно выполненной работы
+		outcome = false;
+		// Записываем ошибку в лог
+		this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+	}
+	// Если контекст выработки ключа подписи заведён
+	if(pctx != nullptr)
+		// Освобождаем контекст выработки ключа подписи
+		::EVP_PKEY_CTX_free(pctx);
+	/**
+	 * Ключ кладётся в связку одним лишь успехом работы: отказ, случившийся после
+	 * снятия прежнего ключа, оставил бы имя пустым, а вызывающая сторона считала бы
+	 * ключ прежним. Прежний ключ потому снимается здесь, а не в начале работы
+	 */
+	// Если ключ подписи выработан
+	if(outcome){
+		// Выполняем снятие ключа, лежавшего под этим именем прежде
+		this->removeKey(name);
+		// Получаем запись ключа в связке
+		keyring_t::record_t & record = this->_keyring->keys[name];
+		// Устанавливаем контекст выработанного ключа
+		record.ctx = key;
+		// Устанавливаем вид подписи выработанного ключа
+		record.type = type;
+	// Если ключ подписи выработан не был
+	} else if(key != nullptr)
+		// Освобождаем память выработанного ключа
+		::EVP_PKEY_free(key);
+	// Выводим признак успешно выполненной работы
+	return outcome;
+}
+/**
+ * @brief Метод получения точной длины подписи
+ *
+ * @param name имя ключа в связке
+ * @return     точная длина подписи в октетах, либо ноль если длина непостоянна
+ *
+ */
+size_t awh::Crypto::length(const string & name) const noexcept {
+	// Если объект собран не был
+	if(!this->ready())
+		// Выходим из метода
+		return 0;
+	// Выполняем поиск ключа в связке
+	auto i = this->_keyring->keys.find(name);
+	// Если ключа под таким именем в связке нет
+	if((i == this->_keyring->keys.end()) || (i->second.ctx == nullptr))
+		// Выходим из метода
+		return 0;
+	/**
+	 * Определяем вид подписи ключа
+	 */
+	switch(static_cast <uint8_t> (i->second.type)){
+		/**
+		 * Подпись Ed25519 длину имеет постоянную и от ключа не зависящую вовсе:
+		 * шестьдесят четыре октета по RFC 8032
+		 */
+		// Если вид подписи указан как Ed25519
+		case static_cast <uint8_t> (signature_t::ED25519):
+			// Выводим постоянную длину подписи Ed25519
+			return 64;
+		/**
+		 * Подпись RSA равна разрядности ключа и от подписываемого не зависит
+		 */
+		// Если вид подписи указан как RSA
+		case static_cast <uint8_t> (signature_t::RSA):
+			// Выводим длину подписи, равную разрядности ключа
+			return static_cast <size_t> (::EVP_PKEY_size(i->second.ctx));
+		/**
+		 * Подпись ECDSA постоянной длины не имеет: запись DER несёт два числа
+		 * переменной длины, и старший разряд числа требует нулевого предшествования -
+		 * оттого одна и та же пара ключей даёт подписи разной длины на разных
+		 * сообщениях. Место под такую подпись резервируется по верхнему пределу
+		 */
+		// Если вид подписи указан как ECDSA
+		case static_cast <uint8_t> (signature_t::ECDSA):
+			// Выводим отсутствие постоянной длины подписи
+			return 0;
+	}
+	// Выводим отсутствие постоянной длины подписи
+	return 0;
+}
+/**
+ * @brief Метод получения верхнего предела длины подписи
+ *
+ * @param name имя ключа в связке
+ * @return     верхний предел длины подписи в октетах
+ *
+ */
+size_t awh::Crypto::limit(const string & name) const noexcept {
+	// Если объект собран не был
+	if(!this->ready())
+		// Выходим из метода
+		return 0;
+	// Выполняем поиск ключа в связке
+	auto i = this->_keyring->keys.find(name);
+	// Если ключа под таким именем в связке нет
+	if((i == this->_keyring->keys.end()) || (i->second.ctx == nullptr))
+		// Выходим из метода
+		return 0;
+	// Если вид подписи ключа договору не отвечает
+	if(i->second.type == signature_t::NONE)
+		// Выходим из метода
+		return 0;
+	/**
+	 * Предел берётся у самой библиотеки криптографии: у Ed25519 и RSA он совпадает с
+	 * точной длиной, а у ECDSA учитывает наибольшую запись DER
+	 */
+	// Выводим верхний предел длины подписи
+	return static_cast <size_t> (::EVP_PKEY_size(i->second.ctx));
+}
+/**
+ * @brief Метод получения записи ключа подписи
+ *
+ * @param name имя ключа в связке
+ * @param type тип выдаваемого ключа
+ * @return     запись ключа в виде PEM, либо пустая запись при отказе
+ *
+ */
+string awh::Crypto::getKey(const string & name, const key_type_t type) const noexcept {
+	// Переменная результата
+	string result = "";
+	// Если объект собран не был
+	if(!this->ready())
+		// Выходим из метода
+		return result;
+	// Охранник очереди ошибок библиотеки криптографии
+	const driver::purge_t purge;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Выполняем поиск ключа в связке
+		auto i = this->_keyring->keys.find(name);
+		// Если ключа под таким именем в связке нет
+		if((i == this->_keyring->keys.end()) || (i->second.ctx == nullptr))
+			// Выходим из метода
+			return result;
+		// Заводим объект BIO для записи ключа
+		BIO * bio = ::BIO_new(::BIO_s_mem());
+		// Если объект BIO заведён
+		if(bio != nullptr){
+			// Признак удавшейся выписки ключа
+			bool exported = false;
+			/**
+			 * Определяем тип выдаваемого ключа
+			 */
+			switch(static_cast <uint8_t> (type)){
+				// Если выдаче подлежит открытый ключ
+				case static_cast <uint8_t> (key_type_t::PUBLIC):
+					// Выполняем выписку открытого ключа
+					exported = (::PEM_write_bio_PUBKEY(bio, i->second.ctx) == 1);
+				break;
+				// Если выдаче подлежит закрытый ключ
+				case static_cast <uint8_t> (key_type_t::PRIVATE): {
+					/**
+					 * Закрытый ключ выдаётся защищённым паролем, если пароль защиты
+					 * установлен: тем же порядком, каким выдаётся и ключ RSA
+					 */
+					// Если пароль защиты закрытого ключа установлен
+					if(!this->_params.passwordRSA.empty())
+						// Выполняем выписку закрытого ключа под защитой пароля
+						exported = (::PEM_write_bio_PrivateKey(
+							bio, i->second.ctx, ::EVP_aes_256_cbc(),
+							nullptr, 0, &driver::password,
+							const_cast <string *> (&this->_params.passwordRSA)
+						) == 1);
+					// Выполняем выписку закрытого ключа без защиты паролем
+					else exported = (::PEM_write_bio_PrivateKey(bio, i->second.ctx, nullptr, nullptr, 0, nullptr, nullptr) == 1);
+				} break;
+			}
+			// Если выписка ключа удалась
+			if(exported){
+				// Буфер выписанной записи ключа
+				char * buffer = nullptr;
+				// Получаем размер выписанной записи ключа
+				const size_t size = static_cast <size_t> (::BIO_get_mem_data(bio, &buffer));
+				// Если запись ключа выписана
+				if((buffer != nullptr) && (size > 0))
+					// Устанавливаем полученную запись ключа
+					result.assign(buffer, size);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				} else this->_log->debug("Signature key export failed", __PRETTY_FUNCTION__, make_tuple(name, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				} else this->_log->print("Signature key export failed", log_t::flag_t::CRITICAL);
+			#endif
+			/**
+			 * Память объекта BIO гасится прежде освобождения: в ней лежит запись
+			 * закрытого ключа, а освобождение содержимого не гасит (5.29b)
+			 */
+			// Буфер памяти объекта BIO
+			BUF_MEM * memory = nullptr;
+			// Получаем память объекта BIO
+			::BIO_get_mem_ptr(bio, &memory);
+			// Если память объекта BIO получена
+			if((memory != nullptr) && (memory->data != nullptr) && (memory->length > 0))
+				// Выполняем затирание памяти объекта BIO
+				::OPENSSL_cleanse(memory->data, memory->length);
+			// Освобождаем объект BIO
+			::BIO_free_all(bio);
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		// Выполняем затирание записи ключа
+		secret::erase(result);
+		// Выполняем очистку записи ключа
+		result.clear();
+		// Записываем ошибку в лог
+		this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+	}
+	// Выводим полученную запись ключа
+	return result;
+}
+/**
+ * @brief Метод ввода записи ключа подписи
+ *
+ * @param name имя ключа в связке
+ * @param key  запись ключа в виде PEM
+ * @param type тип вводимого ключа
+ * @return     признак успешно выполненной работы
+ *
+ */
+bool awh::Crypto::setKey(const string & name, const string & key, const key_type_t type) noexcept {
+	// Если объект собран не был
+	if(!this->ready())
+		// Выходим из метода
+		return false;
+	// Если запись ключа не передана
+	if(key.empty())
+		// Выходим из метода
+		return false;
+	// Охранник очереди ошибок библиотеки криптографии
+	const driver::purge_t purge;
+	// Признак успешно выполненной работы
+	bool outcome = false;
+	// Введённый ключ подписи
+	EVP_PKEY * result = nullptr;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Заводим объект BIO для чтения записи ключа
+		BIO * bio = ::BIO_new_mem_buf(key.data(), static_cast <int32_t> (key.size()));
+		// Если объект BIO заведён
+		if(bio != nullptr){
+			/**
+			 * Определяем тип вводимого ключа
+			 */
+			switch(static_cast <uint8_t> (type)){
+				// Если вводу подлежит открытый ключ
+				case static_cast <uint8_t> (key_type_t::PUBLIC):
+					// Выполняем чтение открытого ключа
+					result = ::PEM_read_bio_PUBKEY(bio, nullptr, nullptr, nullptr);
+				break;
+				// Если вводу подлежит закрытый ключ
+				case static_cast <uint8_t> (key_type_t::PRIVATE):
+					// Выполняем чтение закрытого ключа
+					result = ::PEM_read_bio_PrivateKey(bio, nullptr, &driver::password, const_cast <string *> (&this->_params.passwordRSA));
+				break;
+			}
+			// Освобождаем объект BIO
+			::BIO_free_all(bio);
+		}
+		// Если ключ подписи прочитан
+		if(result != nullptr){
+			// Получаем вид подписи прочитанного ключа
+			const signature_t kind = driver::kind(result);
+			/**
+			 * Ключ, договору не отвечающий, отвергается с названной причиной: вид
+			 * подписи выводится у самого ключа, и ключ на иной кривой либо иной
+			 * схемы подписывался бы тем, чего вызывающая сторона не просила
+			 */
+			// Если вид подписи прочитанного ключа договору не отвечает
+			if(kind == signature_t::NONE){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Записываем ошибку в лог
+					this->_log->debug("Signature key kind is unsupported", __PRETTY_FUNCTION__, make_tuple(name, static_cast <uint16_t> (type)), log_t::flag_t::WARNING);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем ошибку в лог
+					this->_log->print("Signature key kind is unsupported", log_t::flag_t::WARNING);
+				#endif
+				// Освобождаем память прочитанного ключа
+				::EVP_PKEY_free(result);
+				// Снимаем указатель освобождённого ключа
+				result = nullptr;
+			// Если вид подписи прочитанного ключа договору отвечает
+			} else {
+				/**
+				 * Разрядность ключа оглашается, но ключа не отвергает - тем же
+				 * порядком, каким оглашается разрядность вводимого ключа RSA (5.28)
+				 */
+				// Выполняем оглашение разрядности введённого ключа
+				driver::strength(result, type, this->_log);
+				// Выполняем снятие ключа, лежавшего под этим именем прежде
+				this->removeKey(name);
+				// Получаем запись ключа в связке
+				keyring_t::record_t & record = this->_keyring->keys[name];
+				// Устанавливаем контекст введённого ключа
+				record.ctx = result;
+				// Устанавливаем вид подписи введённого ключа
+				record.type = kind;
+				// Устанавливаем признак успешно выполненной работы
+				outcome = true;
+			}
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			} else this->_log->debug("Signature key import failed", __PRETTY_FUNCTION__, make_tuple(name, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			} else this->_log->print("Signature key import failed", log_t::flag_t::CRITICAL);
+		#endif
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		// Снимаем признак успешно выполненной работы
+		outcome = false;
+		// Записываем ошибку в лог
+		this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+	}
+	// Выводим признак успешно выполненной работы
+	return outcome;
+}
+/**
+ * @brief Шаблон типа выдаваемого результата
+ *
+ * @tparam T тип выдаваемого результата
+ *
+ */
+template <typename T>
+/**
+ * @brief Метод получения отпечатка открытого ключа
+ *
+ * @param name   имя ключа в связке
+ * @param format вид записи выдаваемого отпечатка
+ * @return       отпечаток открытого ключа, либо пустой результат при отказе
+ *
+ */
+T awh::Crypto::fingerprint(const string & name, const format_t format) const noexcept {
+	// Переменная результата
+	T result;
+	// Если объект собран не был
+	if(!this->ready())
+		// Выходим из метода
+		return result;
+	/**
+	 * Вид записи, разбору не знакомый, отвергается тем же порядком, что и у выработки
+	 * хэш-суммы (5.31): значение, ни одному из видов не отвечающее, ушло бы в двоичную
+	 * выдачу молча - в вид, которого вызывающая сторона не просила
+	 */
+	// Если вид записи отпечатка разбору не знаком
+	if((format != format_t::HEX) && (format != format_t::RAW)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("Fingerprint format is unsupported", __PRETTY_FUNCTION__, make_tuple(name, static_cast <uint16_t> (format)), log_t::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("Fingerprint format is unsupported", log_t::flag_t::WARNING);
+		#endif
+		// Выходим из метода
+		return result;
+	}
+	// Охранник очереди ошибок библиотеки криптографии
+	const driver::purge_t purge;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Выполняем поиск ключа в связке
+		auto i = this->_keyring->keys.find(name);
+		// Если ключа под таким именем в связке нет
+		if((i == this->_keyring->keys.end()) || (i->second.ctx == nullptr))
+			// Выходим из метода
+			return result;
+		/**
+		 * Отпечаток считается от канонической записи открытого ключа
+		 * (SubjectPublicKeyInfo в виде DER): запись эта одна на все виды ключей, и
+		 * закрытой части ключа не требует - проверяющая сторона её не имеет
+		 */
+		// Буфер канонической записи открытого ключа
+		uint8_t * buffer = nullptr;
+		// Выполняем выработку канонической записи открытого ключа
+		const int32_t size = ::i2d_PUBKEY(i->second.ctx, &buffer);
+		// Если каноническая запись открытого ключа выработана
+		if((size > 0) && (buffer != nullptr)){
+			// Буфер вырабатываемого отпечатка
+			uint8_t digest[SHA256_DIGEST_LENGTH];
+			// Выполняем выработку отпечатка открытого ключа
+			::SHA256(buffer, static_cast <size_t> (size), digest);
+			/**
+			 * Буфер размечается прежде записи: работа выписывания в него пишет по
+			 * положению, а не дополняет его, и запись в неразмеченный буфер ушла бы
+			 * за его границу
+			 */
+			// Размечаем буфер под запись отпечатка требуемого вида
+			result.resize(driver::width(sizeof(digest), format));
+			// Выполняем запись отпечатка в требуемом виде
+			driver::emit(digest, sizeof(digest), format, result);
+			/**
+			 * Каноническая запись открытого ключа тайной не является, но память под
+			 * неё отведена библиотекой криптографии и освобождается ею же
+			 */
+			// Освобождаем память канонической записи открытого ключа
+			::OPENSSL_free(buffer);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			} else this->_log->debug("Public key canonical form export failed", __PRETTY_FUNCTION__, make_tuple(name), log_t::flag_t::CRITICAL);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			} else this->_log->print("Public key canonical form export failed", log_t::flag_t::CRITICAL);
+		#endif
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		// Выполняем очистку буфера результата
+		driver::wipe(result);
+		// Записываем ошибку в лог
+		this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+	}
+	// Выводим полученный отпечаток открытого ключа
+	return result;
+}
+/**
+ * @brief Метод получения отпечатка открытого ключа
+ *
+ */
+template string awh::Crypto::fingerprint(const string &, const format_t) const noexcept;
+/**
+ * @brief Метод получения отпечатка открытого ключа
+ *
+ */
+template vector <char> awh::Crypto::fingerprint(const string &, const format_t) const noexcept;
+/**
+ * @brief Метод получения отпечатка открытого ключа
+ *
+ */
+template vector <uint8_t> awh::Crypto::fingerprint(const string &, const format_t) const noexcept;
+/**
+ * @brief Метод подписания данных ключом из связки
+ *
+ * @param name   имя ключа в связке
+ * @param buffer буфер данных для подписи
+ * @param size   размер данных для подписи
+ * @param hash   тип хэш-суммы, NONE для схемы Ed25519
+ * @param result буфер куда следует положить результат
+ * @return       признак успешно выполненной работы
+ *
+ */
+bool awh::Crypto::sign(const string & name, const uint8_t * buffer, const size_t size, const hash_t hash, vector <uint8_t> & result) const noexcept {
+	// Если объект собран не был
+	if(!this->ready())
+		// Выходим из метода
+		return false;
+	// Охранник очереди ошибок библиотеки криптографии
+	const driver::purge_t purge;
+	/**
+	 * Буфер результата затирается и очищается на входе тем же порядком, что и у
+	 * подписи ключом RSA (4.18): отказ, случившийся до отведения буфера, оставлял бы
+	 * в нём подпись прежних данных - а та выглядела бы подписью нынешних
+	 */
+	// Затираем и очищаем буфер результата
+	driver::wipe(result);
+	// Признак успешно выполненной работы
+	bool outcome = false;
+	// Контекст выработки подписи
+	EVP_MD_CTX * ctx = nullptr;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		/**
+		 * Отсутствующий буфер при заявленном размере отвергается тем же порядком, что
+		 * и у работы по симметричному ключу (4.27)
+		 */
+		// Если буфер данных не передан, а размер его заявлен
+		if((buffer == nullptr) && (size > 0)){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				this->_log->debug("Data buffer for the signature is not passed", __PRETTY_FUNCTION__, make_tuple(name, size), log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				this->_log->print("Data buffer for the signature is not passed", log_t::flag_t::WARNING);
+			#endif
+			// Выходим из метода
+			return outcome;
+		}
+		// Выполняем поиск ключа в связке
+		auto i = this->_keyring->keys.find(name);
+		// Если ключа под таким именем в связке нет
+		if((i == this->_keyring->keys.end()) || (i->second.ctx == nullptr)){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				this->_log->debug("Signature key is not found in the keyring", __PRETTY_FUNCTION__, make_tuple(name), log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				this->_log->print("Signature key is not found in the keyring", log_t::flag_t::WARNING);
+			#endif
+			// Выходим из метода
+			return outcome;
+		}
+		// Получаем вид подписи ключа
+		const signature_t type = i->second.type;
+		// Признак схемы, подписывающей сообщение само
+		const bool pure = (type == signature_t::ED25519);
+		/**
+		 * Уместность типа хэш-суммы проверяется прежде работы: схемам RSA и ECDSA он
+		 * обязателен, а схеме Ed25519 неуместен - она подписывает сообщение сама, и
+		 * поданная ей хэш-сумма подписью хэш-суммы не станет. Молчание об этом выдало
+		 * бы одно за другое
+		 */
+		// Если тип хэш-суммы схеме подписи не отвечает
+		if(pure ? (hash != hash_t::NONE) : (hash == hash_t::NONE)){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				this->_log->debug(pure ? "Hash type is inapplicable to the Ed25519 signature" : "Hash type is required for the signature kind", __PRETTY_FUNCTION__, make_tuple(name, static_cast <uint16_t> (type), static_cast <uint16_t> (hash)), log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				this->_log->print(pure ? "Hash type is inapplicable to the Ed25519 signature" : "Hash type is required for the signature kind", log_t::flag_t::WARNING);
+			#endif
+			// Выходим из метода
+			return outcome;
+		}
+		// Хэш-функция выработки подписи
+		const EVP_MD * md = (pure ? nullptr : driver::evpmd(hash));
+		// Если хэш-функция схемы подписи не получена
+		if(!pure && (md == nullptr)){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				this->_log->debug("Unsupported hash type", __PRETTY_FUNCTION__, make_tuple(name, static_cast <uint16_t> (hash)), log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				this->_log->print("Unsupported hash type", log_t::flag_t::WARNING);
+			#endif
+			// Выходим из метода
+			return outcome;
+		}
+		// Выполняем заведение контекста выработки подписи
+		ctx = ::EVP_MD_CTX_new();
+		// Если контекст выработки подписи заведён
+		if(ctx != nullptr){
+			// Контекст работы с ключом подписи
+			EVP_PKEY_CTX * pctx = nullptr;
+			// Если заведение выработки подписи удалось
+			if(::EVP_DigestSignInit(ctx, &pctx, md, nullptr, i->second.ctx) == 1){
+				// Признак готовности схемы дополнения подписи
+				bool ready = true;
+				/**
+				 * Схема дополнения ставится одному лишь ключу RSA: у прочих схем
+				 * дополнения нет вовсе, и постановка его им отказала бы
+				 */
+				// Если подпись вырабатывается ключом RSA
+				if(type == signature_t::RSA)
+					// Выполняем установку схемы дополнения подписи
+					ready = driver::padding(pctx, i->second.ctx, md, this->_params.padding, this->_log);
+				// Если схема дополнения подписи установлена
+				if(ready){
+					// Длина вырабатываемой подписи
+					size_t length = 0;
+					/**
+					 * Схема Ed25519 подписывает сообщение одним вызовом: поточной
+					 * выработки она не имеет вовсе - см. streamable
+					 */
+					// Если подпись вырабатывается схемой, подписывающей сообщение само
+					if(pure){
+						// Выполняем получение длины вырабатываемой подписи
+						if(::EVP_DigestSign(ctx, nullptr, &length, buffer, size) == 1){
+							// Отводим память под вырабатываемую подпись
+							result.resize(length, 0);
+							// Выполняем выработку подписи
+							outcome = (::EVP_DigestSign(ctx, result.data(), &length, buffer, size) == 1);
+						}
+					// Если подпись вырабатывается схемой, подписывающей хэш-сумму
+					} else if(::EVP_DigestSignUpdate(ctx, buffer, size) == 1){
+						// Выполняем получение длины вырабатываемой подписи
+						if(::EVP_DigestSignFinal(ctx, nullptr, &length) == 1){
+							// Отводим память под вырабатываемую подпись
+							result.resize(length, 0);
+							// Выполняем выработку подписи
+							outcome = (::EVP_DigestSignFinal(ctx, result.data(), &length) == 1);
+						}
+					}
+					/**
+					 * Буфер подписи укорачивается до её настоящей длины: отводится он
+					 * по длине, названной наперёд, а запись DER у схемы ECDSA выходит
+					 * короче отведённого - хвост отведения ушёл бы в подпись нулями
+					 */
+					// Если подпись выработана
+					if(outcome)
+						// Укорачиваем буфер подписи до её настоящей длины
+						result.resize(length);
+				}
+			}
+		}
+		// Если подпись выработать не удалось
+		if(!outcome){
+			// Затираем и очищаем буфер результата
+			driver::wipe(result);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				this->_log->debug("Data signing failed", __PRETTY_FUNCTION__, make_tuple(name, static_cast <uint16_t> (type), size), log_t::flag_t::CRITICAL);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				this->_log->print("Data signing failed", log_t::flag_t::CRITICAL);
+			#endif
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		// Снимаем признак успешно выполненной работы
+		outcome = false;
+		// Затираем и очищаем буфер результата
+		driver::wipe(result);
+		// Записываем ошибку в лог
+		this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+	}
+	// Если контекст выработки подписи заведён
+	if(ctx != nullptr)
+		// Освобождаем контекст выработки подписи
+		::EVP_MD_CTX_free(ctx);
+	// Выводим признак успешно выполненной работы
+	return outcome;
+}
+/**
+ * @brief Метод проверки подписи данных ключом из связки
+ *
+ * @param name      имя ключа в связке
+ * @param buffer    буфер данных для проверки
+ * @param size      размер данных для проверки
+ * @param signature буфер с подписью данных
+ * @param hash      тип хэш-суммы, NONE для схемы Ed25519
+ * @return          результат проверки подписи
+ *
+ */
+bool awh::Crypto::verify(const string & name, const uint8_t * buffer, const size_t size, const vector <uint8_t> & signature, const hash_t hash) const noexcept {
+	// Если объект собран не был
+	if(!this->ready())
+		// Выходим из метода
+		return false;
+	// Охранник очереди ошибок библиотеки криптографии
+	const driver::purge_t purge;
+	// Признак успешно выполненной работы
+	bool outcome = false;
+	// Контекст проверки подписи
+	EVP_MD_CTX * ctx = nullptr;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Если буфер данных не передан, а размер его заявлен
+		if((buffer == nullptr) && (size > 0)){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				this->_log->debug("Data buffer for the verification is not passed", __PRETTY_FUNCTION__, make_tuple(name, size), log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				this->_log->print("Data buffer for the verification is not passed", log_t::flag_t::WARNING);
+			#endif
+			// Выходим из метода
+			return outcome;
+		}
+		/**
+		 * Пустая подпись отвергается прежде работы: проверка пустого буфера у иных
+		 * схем отвечает отказом сама, но полагаться на это значило бы отдать решение
+		 * библиотеке
+		 */
+		// Если подпись данных не передана
+		if(signature.empty())
+			// Выходим из метода
+			return outcome;
+		// Выполняем поиск ключа в связке
+		auto i = this->_keyring->keys.find(name);
+		// Если ключа под таким именем в связке нет
+		if((i == this->_keyring->keys.end()) || (i->second.ctx == nullptr)){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				this->_log->debug("Signature key is not found in the keyring", __PRETTY_FUNCTION__, make_tuple(name), log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				this->_log->print("Signature key is not found in the keyring", log_t::flag_t::WARNING);
+			#endif
+			// Выходим из метода
+			return outcome;
+		}
+		// Получаем вид подписи ключа
+		const signature_t type = i->second.type;
+		// Признак схемы, подписывающей сообщение само
+		const bool pure = (type == signature_t::ED25519);
+		// Если тип хэш-суммы схеме подписи не отвечает
+		if(pure ? (hash != hash_t::NONE) : (hash == hash_t::NONE)){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				this->_log->debug(pure ? "Hash type is inapplicable to the Ed25519 signature" : "Hash type is required for the signature kind", __PRETTY_FUNCTION__, make_tuple(name, static_cast <uint16_t> (type), static_cast <uint16_t> (hash)), log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				this->_log->print(pure ? "Hash type is inapplicable to the Ed25519 signature" : "Hash type is required for the signature kind", log_t::flag_t::WARNING);
+			#endif
+			// Выходим из метода
+			return outcome;
+		}
+		// Хэш-функция проверки подписи
+		const EVP_MD * md = (pure ? nullptr : driver::evpmd(hash));
+		// Если хэш-функция схемы подписи не получена
+		if(!pure && (md == nullptr))
+			// Выходим из метода
+			return outcome;
+		// Выполняем заведение контекста проверки подписи
+		ctx = ::EVP_MD_CTX_new();
+		// Если контекст проверки подписи заведён
+		if(ctx != nullptr){
+			// Контекст работы с ключом подписи
+			EVP_PKEY_CTX * pctx = nullptr;
+			// Если заведение проверки подписи удалось
+			if(::EVP_DigestVerifyInit(ctx, &pctx, md, nullptr, i->second.ctx) == 1){
+				// Признак готовности схемы дополнения подписи
+				bool ready = true;
+				// Если подпись проверяется ключом RSA
+				if(type == signature_t::RSA)
+					// Выполняем установку схемы дополнения подписи
+					ready = driver::padding(pctx, i->second.ctx, md, this->_params.padding, this->_log);
+				// Если схема дополнения подписи установлена
+				if(ready){
+					/**
+					 * Несовпадение подписи отказом работы не является и в лог не
+					 * пишется: подделка - это законный исход проверки, а не сбой
+					 * (5.23). Сбой же заведения проверки записан выше
+					 */
+					// Если подпись проверяется схемой, подписывающей сообщение само
+					if(pure)
+						// Выполняем проверку подписи одним вызовом
+						outcome = (::EVP_DigestVerify(ctx, signature.data(), signature.size(), buffer, size) == 1);
+					// Если подпись проверяется схемой, подписывающей хэш-сумму
+					else if(::EVP_DigestVerifyUpdate(ctx, buffer, size) == 1)
+						// Выполняем проверку подписи
+						outcome = (::EVP_DigestVerifyFinal(ctx, signature.data(), signature.size()) == 1);
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		// Снимаем признак успешно выполненной работы
+		outcome = false;
+		// Записываем ошибку в лог
+		this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+	}
+	// Если контекст проверки подписи заведён
+	if(ctx != nullptr)
+		// Освобождаем контекст проверки подписи
+		::EVP_MD_CTX_free(ctx);
+	// Выводим результат проверки подписи
+	return outcome;
+}
+/**
+ * @brief Метод чтения ключа подписи из файла
+ *
+ * @param name     имя ключа в связке
+ * @param filename адрес файла ключа
+ * @param type     тип читаемого ключа
+ * @return         признак успешно выполненной работы
+ *
+ */
+bool awh::Crypto::loadKey(const string & name, const string & filename, const key_type_t type) noexcept {
+	// Если объект собран не был
+	if(!this->ready())
+		// Выходим из метода
+		return false;
+	// Признак успешно выполненной работы
+	bool outcome = false;
+	// Запись прочитанного ключа
+	string key = "";
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		/**
+		 * Файл читается целиком в память и вводится тем же разбором, каким вводится
+		 * поданная запись: разбор ключа один на оба пути, и второй его список
+		 * разошёлся бы с первым при всякой правке
+		 */
+		// Выполняем открытие файла ключа
+		std::ifstream file(filename, std::ios::binary);
+		// Если файл ключа открыт
+		if(file.is_open()){
+			// Выполняем чтение записи ключа целиком
+			key.assign(std::istreambuf_iterator <char> (file), std::istreambuf_iterator <char> ());
+			// Выполняем закрытие файла ключа
+			file.close();
+			// Выполняем ввод прочитанной записи ключа
+			outcome = this->setKey(name, key, type);
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			} else this->_log->debug("Signature key file is not found", __PRETTY_FUNCTION__, make_tuple(name, filename), log_t::flag_t::CRITICAL);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			} else this->_log->print("Signature key file is not found", log_t::flag_t::CRITICAL);
+		#endif
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		// Снимаем признак успешно выполненной работы
+		outcome = false;
+		// Записываем ошибку в лог
+		this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+	}
+	/**
+	 * Запись прочитанного ключа гасится: в ней лежит закрытый ключ, а освобождение
+	 * строки содержимого её не гасит (3.9)
+	 */
+	// Выполняем затирание записи прочитанного ключа
+	secret::erase(key);
+	// Выводим признак успешно выполненной работы
+	return outcome;
+}
+/**
+ * @brief Метод записи ключа подписи в файл
+ *
+ * @param name     имя ключа в связке
+ * @param filename адрес файла ключа
+ * @param type     тип записываемого ключа
+ * @return         признак успешно выполненной работы
+ *
+ */
+bool awh::Crypto::saveKey(const string & name, const string & filename, const key_type_t type) const noexcept {
+	// Если объект собран не был
+	if(!this->ready())
+		// Выходим из метода
+		return false;
+	// Признак успешно выполненной работы
+	bool outcome = false;
+	// Получаем запись выписываемого ключа
+	string key = this->getKey(name, type);
+	// Если запись ключа получить не удалось
+	if(key.empty())
+		// Выходим из метода
+		return outcome;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		/**
+		 * Ключ выписывается в отдельный файл и ставится на место переименованием
+		 * (5.29a): запись прямо в конечный файл усекает прежний ключ первым же
+		 * открытием, и отказ выписки оставлял бы вызывающего вовсе без ключа
+		 */
+		// Имя отдельного файла, в который ключ выписывается
+		const string temporary(filename + ".tmp");
+		/**
+		 * Для операционной системы MS Windows
+		 */
+		#if _WIN32 || _WIN64
+			// Выполняем заведение файла, доступного одному лишь заводящему
+			FILE * file = ((type == key_type_t::PRIVATE) ? openPrivateFile(this->_fmk->convert(temporary)) : ::_wfopen(this->_fmk->convert(temporary).c_str(), L"wb"));
+		/**
+		 * Для операционных систем семейства POSIX
+		 */
+		#else
+			// Дескриптор заводимого файла ключа
+			const int32_t fd = ::open(temporary.c_str(), O_WRONLY | O_CREAT | O_TRUNC, ((type == key_type_t::PRIVATE) ? (S_IRUSR | S_IWUSR) : (S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)));
+			// Выполняем заведение потока записи файла ключа
+			FILE * file = ((fd >= 0) ? ::fdopen(fd, "wb") : nullptr);
+			/**
+			 * Дескриптор закрывается при отказе заведения потока записи: поток им
+			 * тогда не владеет, и дескриптор оставался бы висеть до конца работы
+			 */
+			// Если поток записи файла ключа завести не удалось
+			if((fd >= 0) && (file == nullptr))
+				// Выполняем закрытие дескриптора файла ключа
+				::close(fd);
+			/**
+			 * Права ставятся ещё и заведённому файлу: маска процесса разряды прав
+			 * при заведении снимает, и файл закрытого ключа мог выйти доступным
+			 * прочим в системе (5.29)
+			 */
+			// Если файл закрытого ключа заведён
+			if((file != nullptr) && (type == key_type_t::PRIVATE))
+				// Выполняем установку прав одного лишь владельца
+				outcome = (::fchmod(::fileno(file), S_IRUSR | S_IWUSR) == 0);
+			// Если файл открытого ключа заведён
+			else outcome = (file != nullptr);
+		#endif
+		/**
+		 * Для операционной системы MS Windows
+		 */
+		#if _WIN32 || _WIN64
+			// Устанавливаем признак заведения файла ключа
+			outcome = (file != nullptr);
+		#endif
+		// Если файл ключа заведён
+		if(outcome && (file != nullptr)){
+			// Выполняем запись ключа в файл
+			outcome = (::fwrite(key.data(), sizeof(char), key.size(), file) == key.size());
+			/**
+			 * Запись доводится до носителя прежде переименования (5.33): переименование
+			 * ставит на место запись, но не обещает, что запись эта на носителе есть
+			 */
+			// Если довести запись файла до носителя не удалось
+			if(outcome)
+				// Выполняем доведение записи файла до носителя
+				outcome = ((::fflush(file) == 0) && (::fsync(::fileno(file)) == 0));
+			// Выполняем закрытие файла ключа
+			::fclose(file);
+			// Если запись ключа удалась
+			if(outcome)
+				// Выполняем постановку записанного ключа на место
+				outcome = (::rename(temporary.c_str(), filename.c_str()) == 0);
+			/**
+			 * Отдельный файл снимается на всяком отказе: он несёт закрытый ключ, и
+			 * оставленный на диске давал бы его тому, кто до каталога дотянулся
+			 */
+			// Если запись ключа не удалась
+			if(!outcome)
+				// Выполняем снятие отдельного файла
+				::remove(temporary.c_str());
+			// Если запись ключа удалась
+			else outcome = driver::settled(filename);
+		}
+		// Если записать ключ не удалось
+		if(!outcome){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				this->_log->debug("Signature key saving failed", __PRETTY_FUNCTION__, make_tuple(name, filename, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				this->_log->print("Signature key saving failed", log_t::flag_t::CRITICAL);
+			#endif
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		// Снимаем признак успешно выполненной работы
+		outcome = false;
+		// Записываем ошибку в лог
+		this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+	}
+	/**
+	 * Запись выписанного ключа гасится: в ней лежит закрытый ключ
+	 */
+	// Выполняем затирание записи выписанного ключа
+	secret::erase(key);
+	// Выводим признак успешно выполненной работы
+	return outcome;
+}
+/**
+ * @brief Метод заведения потока подписи
+ *
+ * @param name имя ключа в связке
+ * @param hash тип хэш-суммы
+ * @return     признак успешно выполненной работы
+ *
+ */
+bool awh::Crypto::signInitialize(const string & name, const hash_t hash) noexcept {
+	// Если объект собран не был
+	if(!this->ready())
+		// Выходим из метода
+		return false;
+	// Охранник очереди ошибок библиотеки криптографии
+	const driver::purge_t purge;
+	/**
+	 * Поток, заведённый прежде, сбрасывается: заведение нового потока поверх прежнего
+	 * оставляло бы его контекст висеть, а поданное в него - неподписанным
+	 */
+	// Выполняем сброс потока подписи, заведённого прежде
+	this->_keyring->reset();
+	// Признак успешно выполненной работы
+	bool outcome = false;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Выполняем поиск ключа в связке
+		auto i = this->_keyring->keys.find(name);
+		// Если ключа под таким именем в связке нет
+		if((i == this->_keyring->keys.end()) || (i->second.ctx == nullptr)){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				this->_log->debug("Signature key is not found in the keyring", __PRETTY_FUNCTION__, make_tuple(name), log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				this->_log->print("Signature key is not found in the keyring", log_t::flag_t::WARNING);
+			#endif
+			// Выходим из метода
+			return outcome;
+		}
+		/**
+		 * Вид, поточным не бывающий, отвергается с названной причиной: потребитель,
+		 * написавший работу под поточный договор, при одной лишь смене вида ключа
+		 * наткнулся бы на отказ посреди работы, а по общему «нельзя» причины не узнал
+		 * бы вовсе. Спросить о поточности можно и наперёд - см. streamable
+		 */
+		// Если вид подписи ключа поточным не бывает
+		if(!this->streamable(i->second.type)){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				this->_log->debug("Signature kind has no streaming mode", __PRETTY_FUNCTION__, make_tuple(name, static_cast <uint16_t> (i->second.type)), log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				this->_log->print("Signature kind has no streaming mode", log_t::flag_t::WARNING);
+			#endif
+			// Выходим из метода
+			return outcome;
+		}
+		// Хэш-функция выработки подписи
+		const EVP_MD * md = driver::evpmd(hash);
+		// Если хэш-функция схемы подписи не получена
+		if((hash == hash_t::NONE) || (md == nullptr)){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				this->_log->debug("Hash type is required for the signature kind", __PRETTY_FUNCTION__, make_tuple(name, static_cast <uint16_t> (hash)), log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				this->_log->print("Hash type is required for the signature kind", log_t::flag_t::WARNING);
+			#endif
+			// Выходим из метода
+			return outcome;
+		}
+		// Выполняем заведение контекста потока подписи
+		this->_keyring->stream = ::EVP_MD_CTX_new();
+		// Если контекст потока подписи заведён
+		if(this->_keyring->stream != nullptr){
+			// Контекст работы с ключом подписи
+			EVP_PKEY_CTX * pctx = nullptr;
+			// Если заведение выработки подписи удалось
+			if(::EVP_DigestSignInit(this->_keyring->stream, &pctx, md, nullptr, i->second.ctx) == 1){
+				// Если подпись вырабатывается ключом RSA
+				if(i->second.type == signature_t::RSA)
+					// Выполняем установку схемы дополнения подписи
+					outcome = driver::padding(pctx, i->second.ctx, md, this->_params.padding, this->_log);
+				// Устанавливаем признак успешно выполненной работы
+				else outcome = true;
+			}
+		}
+		/**
+		 * Стейт потока сбрасывается на всяком отказе заведения: контекст к этой поре
+		 * мог быть заведён, а имя ключа не записано - подача в такой поток шла бы в
+		 * контекст, заведения не прошедший (4.31)
+		 */
+		// Если поток подписи заведён
+		if(outcome)
+			// Запоминаем имя ключа, которым заведён поток подписи
+			this->_keyring->name = name;
+		// Если поток подписи завести не удалось
+		else this->_keyring->reset();
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		// Снимаем признак успешно выполненной работы
+		outcome = false;
+		// Выполняем сброс потока подписи
+		this->_keyring->reset();
+		// Записываем ошибку в лог
+		this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+	}
+	// Выводим признак успешно выполненной работы
+	return outcome;
+}
+/**
+ * @brief Метод подачи порции данных в поток подписи
+ *
+ * @param buffer буфер порции данных
+ * @param size   размер порции данных
+ * @return       признак успешно выполненной работы
+ *
+ */
+bool awh::Crypto::signUpdate(const uint8_t * buffer, const size_t size) noexcept {
+	// Если объект собран не был
+	if(!this->ready())
+		// Выходим из метода
+		return false;
+	// Если поток подписи не заведён
+	if(this->_keyring->stream == nullptr){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("Signature stream is not initialized", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("Signature stream is not initialized", log_t::flag_t::WARNING);
+		#endif
+		// Выходим из метода
+		return false;
+	}
+	// Если буфер данных не передан, а размер его заявлен
+	if((buffer == nullptr) && (size > 0))
+		// Выходим из метода
+		return false;
+	/**
+	 * Порция нулевого размера подачей является законной: поток мог быть подан
+	 * порциями, из которых последняя пуста, и отказ на ней рвал бы работу без причины
+	 */
+	// Если порция данных пуста
+	if(size == 0)
+		// Выводим признак успешно выполненной работы
+		return true;
+	// Охранник очереди ошибок библиотеки криптографии
+	const driver::purge_t purge;
+	// Выполняем подачу порции данных в поток подписи
+	const bool outcome = (::EVP_DigestSignUpdate(this->_keyring->stream, buffer, size) == 1);
+	/**
+	 * Поток сбрасывается на отказе подачи: продолжать поток, порцию потерявший,
+	 * значило бы подписать не то, что подано, - и подпись эта прошла бы проверку у
+	 * того, кто подал бы те же данные с той же потерей
+	 */
+	// Если подать порцию данных в поток подписи не удалось
+	if(!outcome){
+		// Выполняем сброс потока подписи
+		this->_keyring->reset();
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("Signature stream update failed", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::CRITICAL);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("Signature stream update failed", log_t::flag_t::CRITICAL);
+		#endif
+	}
+	// Выводим признак успешно выполненной работы
+	return outcome;
+}
+/**
+ * @brief Метод завершения потока подписи
+ *
+ * @param result буфер куда следует положить результат
+ * @return       признак успешно выполненной работы
+ *
+ */
+bool awh::Crypto::signFinalize(vector <uint8_t> & result) noexcept {
+	// Если объект собран не был
+	if(!this->ready())
+		// Выходим из метода
+		return false;
+	// Затираем и очищаем буфер результата
+	driver::wipe(result);
+	// Если поток подписи не заведён
+	if(this->_keyring->stream == nullptr){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("Signature stream is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("Signature stream is not initialized", log_t::flag_t::WARNING);
+		#endif
+		// Выходим из метода
+		return false;
+	}
+	// Охранник очереди ошибок библиотеки криптографии
+	const driver::purge_t purge;
+	// Признак успешно выполненной работы
+	bool outcome = false;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Длина вырабатываемой подписи
+		size_t length = 0;
+		// Выполняем получение длины вырабатываемой подписи
+		if(::EVP_DigestSignFinal(this->_keyring->stream, nullptr, &length) == 1){
+			// Отводим память под вырабатываемую подпись
+			result.resize(length, 0);
+			// Выполняем выработку подписи потока
+			outcome = (::EVP_DigestSignFinal(this->_keyring->stream, result.data(), &length) == 1);
+			// Если подпись потока выработана
+			if(outcome)
+				// Укорачиваем буфер подписи до её настоящей длины
+				result.resize(length);
+		}
+		// Если подпись потока выработать не удалось
+		if(!outcome){
+			// Затираем и очищаем буфер результата
+			driver::wipe(result);
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				this->_log->debug("Signature stream finalization failed", __PRETTY_FUNCTION__, make_tuple(this->_keyring->name), log_t::flag_t::CRITICAL);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				this->_log->print("Signature stream finalization failed", log_t::flag_t::CRITICAL);
+			#endif
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		// Снимаем признак успешно выполненной работы
+		outcome = false;
+		// Затираем и очищаем буфер результата
+		driver::wipe(result);
+		// Записываем ошибку в лог
+		this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+	}
+	/**
+	 * Поток сбрасывается и удачей, и отказом: продолжать завершённый поток нечем -
+	 * контекст выработки подписи завершением израсходован
+	 */
+	// Выполняем сброс потока подписи
+	this->_keyring->reset();
+	// Выводим признак успешно выполненной работы
+	return outcome;
+}
+/**
+
+
+
+
+
+
  * @brief Конструктор
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  *
  */
-awh::Crypto::Crypto(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {
+awh::Crypto::Crypto(const fmk_t * fmk, const log_t * log) noexcept : _keyring(nullptr), _fmk(fmk), _log(log) {
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -8184,6 +9916,8 @@ awh::Crypto::Crypto(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), 
 		this->_params.state = new state_t();
 		// Выделяем память под ключевые данные
 		this->_params.key = new key_rsa_t();
+		// Выделяем память под связку ключей подписи
+		this->_keyring = new keyring_t();
 	/**
 	 * Если возникает ошибка
 	 */
@@ -8206,6 +9940,13 @@ awh::Crypto::Crypto(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), 
 			delete this->_params.key;
 			// Снимаем указатель освобождённых ключевых данных
 			this->_params.key = nullptr;
+		}
+		// Если связка ключей подписи отведена
+		if(this->_keyring != nullptr){
+			// Освобождаем память связки ключей подписи
+			delete this->_keyring;
+			// Снимаем указатель освобождённой связки ключей
+			this->_keyring = nullptr;
 		}
 		// Записываем ошибку в лог
 		this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
@@ -8240,6 +9981,12 @@ awh::Crypto::~Crypto() noexcept {
 	 */
 	// Освобождаем память контекста ключа RSA
 	delete this->_params.key;
+	/**
+	 * Связка ключей подписи освобождает свои ключи собственным деструктором,
+	 * поэтому делать это здесь не требуется
+	 */
+	// Освобождаем память связки ключей подписи
+	delete this->_keyring;
 	/**
 	 * Стейт AES-шифрования освобождает свой контекст и затирает ключ
 	 * собственным деструктором, поэтому делать это здесь не требуется

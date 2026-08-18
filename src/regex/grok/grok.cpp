@@ -1356,22 +1356,6 @@ awh::grok::json_t awh::Grok::json(const vector <value_t> & values) const noexcep
 	return builder.finish();
 }
 /**
- * @brief Метод вывода набора значений полей записью JSON
- *
- * @details Посредник над выводом значением: запись получается выводом
- *          собранного значения средствами кодека.
- *
- * @param values набор значений полей
- * @param pretty признак вывода записи с отступами
- * @return       запись JSON набора значений полей
- *
- */
-string awh::Grok::json(const vector <value_t> & values, const bool pretty) const noexcept {
-	// Выводим запись JSON набора значений полей
-	return this->json(values).dump(pretty ?
-	 awh::codec::json::format_t::PRETTY : awh::codec::json::format_t::COMPACT);
-}
-/**
  * @brief Метод вывода извлечённых полей значением JSON
  *
  * @param text   текст для сопоставления
@@ -1394,46 +1378,6 @@ bool awh::Grok::json(string_view text, const exp_t & exp, grok::json_t & result)
 	// Выполняем вывод набора значений полей значением JSON
 	result = this->json(values);
 	// Выводим результат вывода извлечённых полей значением JSON
-	return true;
-}
-/**
- * @brief Метод вывода извлечённых полей записью JSON
- *
- * @param text   текст для сопоставления
- * @param exp    собранный шаблон
- * @param result запись JSON извлечённых полей
- * @param pretty признак вывода записи с отступами
- * @return       результат вывода извлечённых полей записью JSON
- *
- */
-bool awh::Grok::json(string_view text, const exp_t & exp, string & result, const bool pretty) const noexcept {
-	// Выполняем очистку записи JSON извлечённых полей
-	result.clear();
-	// Значение JSON извлечённых полей
-	grok::json_t value;
-	/**
-	 * Если вывод извлечённых полей значением JSON не выполнен
-	 */
-	if(!this->json(text, exp, value))
-		// Выводим результат вывода извлечённых полей записью JSON
-		return false;
-	// Выполняем вывод записи JSON извлечённых полей
-	result = value.dump(pretty ?
-	 awh::codec::json::format_t::PRETTY : awh::codec::json::format_t::COMPACT);
-	/**
-	 * Если запись JSON извлечённых полей пуста
-	 *
-	 * @details Кодек отвечает на отказ записи текстом пустым, а не усечённым:
-	 *          усечённый негоден вовсе, и выдавать его молча кодек не вправе.
-	 *          Объект же, полей не имеющий, выводится записью «{}», отчего
-	 *          пустота означает именно отказ, а не пустоту содержимого.
-	 *          Доложить о нём успехом было бы молчаливой потерей.
-	 *
-	 */
-	if(result.empty())
-		// Выводим результат вывода извлечённых полей записью JSON
-		return false;
-	// Выводим результат вывода извлечённых полей записью JSON
 	return true;
 }
 /**

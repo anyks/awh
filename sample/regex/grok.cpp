@@ -167,18 +167,20 @@ static void encoding(const grok_t & grok) noexcept {
 	if(!exp)
 		// Выходим из примера
 		return;
-	// Разобранный текст в виде JSON
-	string result;
+	// Разобранный текст значением кодека JSON
+	awh::grok::json_t result;
 	/**
 	 * Если разбор текста выполнен
 	 *
 	 * @details Вид поля определяет представление значения: поле вида «int»
-	 *          выводится числом, а не строкой
+	 *          выводится числом, а не строкой. Надстройка отдаёт значение
+	 *          кодека, а не текст: из значения доступен и точный вид данных,
+	 *          и вывод текстом любого облика.
 	 *
 	 */
-	if(grok.json("10.0.0.7 GET /index.html?a=1 200", exp, result, true))
+	if(grok.json("10.0.0.7 GET /index.html?a=1 200", exp, result))
 		// Выводим разобранный текст в виде JSON
-		cout << result << endl;
+		cout << result.dump(awh::codec::json::format_t::PRETTY) << endl;
 	// Выводим разделитель примеров
 	cout << endl;
 }

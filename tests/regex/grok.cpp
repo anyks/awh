@@ -44,6 +44,41 @@ using namespace std;
 using namespace awh;
 
 /**
+ * @brief Метод получения записи JSON извлечённых полей текстом
+ *
+ * @details Надстройка Grok отдаёт извлечённые поля значением кодека, а не
+ *          текстом: строковые перегрузки убраны как повторяющие вывод самого
+ *          кодека. Проверкам же текст нужен для сличения, отчего посредник
+ *          и заведён тут, а не в надстройке.
+ *
+ * @param grok   объект разбора текста по шаблонам Grok
+ * @param text   текст сопоставления шаблона
+ * @param exp    собранный шаблон Grok
+ * @param result записываемая запись JSON извлечённых полей
+ * @param pretty признак вывода записи с отступами
+ * @return       результат вывода извлечённых полей записью JSON
+ *
+ */
+static bool dumping(const awh::grok_t & grok, const string & text,
+ const awh::grok_t::exp_t & exp, string & result, const bool pretty = false) noexcept {
+	// Выполняем очистку записи JSON извлечённых полей
+	result.clear();
+	// Значение JSON извлечённых полей
+	awh::grok::json_t value;
+	/**
+	 * Если вывод извлечённых полей значением не выполнен
+	 */
+	if(!grok.json(text, exp, value))
+		// Выводим результат вывода извлечённых полей записью JSON
+		return false;
+	// Выполняем вывод записи JSON извлечённых полей
+	result = value.dump(pretty ?
+	 awh::codec::json::format_t::PRETTY : awh::codec::json::format_t::COMPACT);
+	// Выводим результат вывода извлечённых полей записью JSON
+	return !result.empty();
+}
+
+/**
  * @brief Тест сборки всего встроенного набора шаблонов
  *
  * @details Каждый шаблон набора собирается отдельно: набор поставляется вместе
@@ -465,11 +500,11 @@ TEST(Grok, JsonOutput) {
 	// Запись JSON извлечённых полей
 	string result;
 	// Выполняем вывод извлечённых полей записью JSON
-	ASSERT_TRUE(grok.json("node 42 3.14", exp, result));
+	ASSERT_TRUE(dumping(grok, "node 42 3.14", exp, result));
 	// Выполняем проверку приведения значений по виду поля
 	EXPECT_EQ(result, "{\"name\":\"node\",\"code\":42,\"rate\":3.14}");
 	// Выполняем вывод извлечённых полей записью JSON с отступами
-	ASSERT_TRUE(grok.json("node 42 3.14", exp, result, true));
+	ASSERT_TRUE(dumping(grok, "node 42 3.14", exp, result, true));
 	/**
 	 * Выполняем проверку вывода записи с отступами
 	 *
@@ -482,7 +517,7 @@ TEST(Grok, JsonOutput) {
 	 */
 	EXPECT_EQ(result, "{\n  \"name\": \"node\",\n  \"code\": 42,\n  \"rate\": 3.14\n}");
 	// Выполняем проверку отказа вывода при отсутствии совпадения
-	EXPECT_FALSE(grok.json("совпадения здесь нет", exp, result));
+	EXPECT_FALSE(dumping(grok, "совпадения здесь нет", exp, result));
 	// Выполняем проверку очистки записи JSON
 	EXPECT_TRUE(result.empty());
 }
@@ -506,11 +541,11 @@ TEST(Grok, JsonKindMismatch) {
 	// Запись JSON извлечённых полей
 	string result;
 	// Выполняем вывод извлечённых полей записью JSON
-	ASSERT_TRUE(grok.json("42abc", exp, result));
+	ASSERT_TRUE(dumping(grok, "42abc", exp, result));
 	// Выполняем проверку вывода захвата текстом
 	EXPECT_EQ(result, "{\"value\":\"42abc\"}");
 	// Выполняем вывод извлечённых полей записью JSON
-	ASSERT_TRUE(grok.json("42", exp, result));
+	ASSERT_TRUE(dumping(grok, "42", exp, result));
 	// Выполняем проверку вывода захвата числом
 	EXPECT_EQ(result, "{\"value\":42}");
 	// Выполняем сборку шаблона Grok без объявления вида значения
@@ -518,7 +553,7 @@ TEST(Grok, JsonKindMismatch) {
 	// Выполняем проверку сборки шаблона Grok
 	ASSERT_TRUE(!!plain);
 	// Выполняем вывод извлечённых полей записью JSON
-	ASSERT_TRUE(grok.json("42", plain, result));
+	ASSERT_TRUE(dumping(grok, "42", plain, result));
 	// Выполняем проверку вывода захвата текстом при виде необъявленном
 	EXPECT_EQ(result, "{\"value\":\"42\"}");
 }
@@ -536,7 +571,7 @@ TEST(Grok, JsonEscaping) {
 	// Запись JSON извлечённых полей
 	string result;
 	// Выполняем вывод извлечённых полей записью JSON
-	ASSERT_TRUE(grok.json("кавычка \" косая \\ таб\tи \x01", exp, result));
+	ASSERT_TRUE(dumping(grok, "кавычка \" косая \\ таб\tи \x01", exp, result));
 	// Выполняем проверку экранирования записи JSON
 	EXPECT_EQ(result, "{\"message\":\"кавычка \\\" косая \\\\ таб\\tи \\u0001\"}");
 }
@@ -612,7 +647,7 @@ TEST(Grok, JsonNumberEdges) {
 		// Запись JSON извлечённых полей
 		string result;
 		// Выполняем вывод извлечённых полей записью JSON
-		ASSERT_TRUE(grok.json(sample.text, exp, result)) << sample.text;
+		ASSERT_TRUE(dumping(grok, sample.text, exp, result)) << sample.text;
 		// Выполняем проверку записи JSON извлечённых полей
 		EXPECT_EQ(result, sample.expected) << sample.text;
 	}
@@ -681,7 +716,7 @@ TEST(Grok, JsonDuplicateNames) {
 	// Запись JSON извлечённых полей
 	string result;
 	// Выполняем вывод извлечённых полей записью JSON
-	ASSERT_TRUE(grok.json("alpha-bravo node", exp, result));
+	ASSERT_TRUE(dumping(grok, "alpha-bravo node", exp, result));
 	// Выполняем проверку выигрыша последнего значения
 	EXPECT_EQ(result, "{\"tag\":\"bravo\",\"name\":\"node\"}");
 	// Набор извлечённых значений полей
@@ -821,8 +856,8 @@ TEST(Grok, StorageRoundtrip) {
 			 << "шаблон \"" << patterns.at(i) << "\" на тексте \"" << text << "\"";
 			// Выполняем сличение вывода значений полей в JSON
 			string first, second;
-			grok.json(text, fresh, first);
-			restored.json(text, expressions.at(i), second);
+			dumping(grok, text, fresh, first);
+			dumping(restored, text, expressions.at(i), second);
 			// Выполняем сличение выведенных значений полей
 			EXPECT_EQ(first, second) << "шаблон \"" << patterns.at(i) << "\" на тексте \"" << text << "\"";
 		}

@@ -105,6 +105,24 @@ namespace awh {
 	struct key_rsa_t;
 	/**
 	 * \~russian
+	 * @brief Упреждающее объявление непрозрачной связки ключей подписи
+	 *
+	 * @details Полное определение скрыто в модуле реализации по тому же доводу, что и у
+	 *          ключа RSA: заголовочные файлы стороннего криптопровайдера в открытый
+	 *          договор не подключаются
+	 *
+	 * \~english
+	 * @brief Forward declaration of the opaque keyring of the signature keys
+	 *
+	 * @details The full definition is hidden in the implementation module by the same reason as for
+	 *          the RSA key: the header files of the third-party cryptographic provider are not included into
+	 *          the public contract
+	 *
+	 * \~
+	 */
+	struct keyring_t;
+	/**
+	 * \~russian
 	 * @brief Класс криптографии
 	 *
 	 * \~english
@@ -222,6 +240,62 @@ namespace awh {
 			};
 			/**
 			 * \~russian
+			 * @brief Вид подписи
+			 *
+			 * @details Вид задаёт, по какой схеме вырабатывается и проверяется подпись.
+			 *          Вызывающая сторона хранит один октет вида, а устройством ключа не
+			 *          занимается вовсе: договор подписи и проверки один на все виды.
+			 *
+			 *          Схемы эти между собой не равны по устройству, и договор их различие
+			 *          выражает прямо, а не сглаживает. Ed25519 подписывает сообщение сам,
+			 *          отдельной хэш-суммы не принимая: тип хэш-суммы ему не то чтобы не
+			 *          нужен - он ему неуместен, и подача его отвергается. Схемы же RSA и
+			 *          ECDSA подписывают хэш-сумму, и без неё работать не могут. Поточной
+			 *          подписи Ed25519 не имеет вовсе - см. streamable.
+			 *
+			 * @warning Числовые значения вида закреплены и меняться не будут: они уходят в
+			 *          записи потребителей, и вставка нового вида в середину перечисления
+			 *          обратила бы прежние записи в другую схему молча. Новые виды
+			 *          прибавляются одним лишь хвостом
+			 *
+			 * @note Значение GOST занято под ГОСТ Р 34.10 и работой не заведено: схема эта
+			 *       требует стороннего криптопровайдера и ведётся отдельной работой.
+			 *       Обращение с этим видом отвечает отказом с названной причиной
+			 *
+			 * \~english
+			 * @brief Kind of the signature
+			 *
+			 * @details The kind sets by what scheme the signature is produced and verified.
+			 *          The calling side stores one octet of the kind, and does not deal with the
+			 *          structure of the key at all: the contract of the signing and the verification is one for all kinds.
+			 *
+			 *          These schemes are not equal to each other by their structure, and the contract expresses
+			 *          their difference directly rather than smooths it over. Ed25519 signs the message itself,
+			 *          accepting no separate hash sum: the type of the hash sum is not merely
+			 *          unneeded for it - it is inapplicable to it, and passing it is rejected. The RSA and
+			 *          ECDSA schemes, on the contrary, sign the hash sum, and cannot work without it. Ed25519 has
+			 *          no streaming signature at all - see streamable.
+			 *
+			 * @warning The numeric values of the kind are fixed and will not change: they go into
+			 *          the records of the consumers, and an insertion of a new kind into the middle of the enumeration
+			 *          would silently turn the previous records into another scheme. New kinds
+			 *          are added by the end only
+			 *
+			 * @note The GOST value is occupied by GOST R 34.10 and is not set up by the work: that scheme
+			 *       requires a third-party cryptographic provider and is carried out by a separate work.
+			 *       Addressing this kind answers with a failure naming the reason
+			 *
+			 * \~
+			 */
+			enum class signature_t : uint8_t {
+				NONE    = 0x00, // Вид подписи не установлен
+				RSA     = 0x01, // Подпись RSA, схема дополнения задаётся отдельно
+				ECDSA   = 0x02, // Подпись ECDSA на кривой P-256, ради согласия с чужими работами
+				ED25519 = 0x03, // Подпись Ed25519, подпись 64 октета, хэш-суммы не принимает
+				GOST    = 0x04  // Место под ГОСТ Р 34.10, работой не заведено
+			};
+			/**
+			 * \~russian
 			 * @brief Тип хэш-суммы
 			 *
 			 * \~english
@@ -325,6 +399,17 @@ namespace awh {
 		private:
 			// Стейт AES шифрования
 			params_rsa_t _params;
+		private:
+			/**
+			 * Связка ключей подписи, заведённая отдельно от ключа RSA
+			 *
+			 * Ключей на объекте держится несколько и всякий зовётся своим именем: один
+			 * контейнер подписывают владелец и заверитель, а проверяющая сторона сличает
+			 * с несколькими открытыми ключами подряд. Заводить объект работы на всякий
+			 * ключ негодно - у него внутри стейт шифрования, к подписи отношения не
+			 * имеющий вовсе
+			 */
+			keyring_t * _keyring;
 		private:
 			// Объект фреймворка
 			const fmk_t * _fmk;
@@ -1933,6 +2018,474 @@ namespace awh {
 			 * \~
 			 */
 			bool verifyWithPublicKey(const uint8_t * buffer, const size_t size, const vector <uint8_t> & signature, const hash_t hash) const noexcept;
+		public:
+			/**
+			 * \~russian
+			 * @brief Метод проверки поточности вида подписи
+			 *
+			 * @details Спрашивается прежде заведения потока: вид, поточным не бывающий,
+			 *          отвечает отказом уже при заведении, и потребитель, написавший работу
+			 *          под поточный договор, наткнулся бы на отказ посреди работы при одной
+			 *          лишь смене вида ключа. Вопрос этот позволяет выбрать путь заранее.
+			 *
+			 *          Поточной подписи Ed25519 не имеет по своему устройству: подпись его
+			 *          требует двух проходов по сообщению, и поточная её разновидность
+			 *          (Ed25519ph по RFC 8032) - схема отдельная, дающая иную подпись. Схемы
+			 *          RSA и ECDSA подписывают хэш-сумму, а та набирается порциями
+			 *
+			 * @param type вид подписи
+			 * @return     признак поточной работы вида подписи
+			 *
+			 * \~english
+			 * @brief Method checking the streaming ability of the signature kind
+			 *
+			 * @details Is asked before the setting up of a stream: a kind that does not happen to be streaming
+			 *          answers with a failure already at the setting up, and a consumer who has written the work
+			 *          for the streaming contract would run into a failure in the middle of the work upon a mere
+			 *          change of the kind of the key. This question makes it possible to choose the path beforehand.
+			 *
+			 *          Ed25519 has no streaming signature by its structure: its signature
+			 *          requires two passes over the message, and its streaming variety
+			 *          (Ed25519ph by RFC 8032) is a separate scheme giving a different signature. The RSA
+			 *          and ECDSA schemes sign the hash sum, and that one is gathered by portions
+			 *
+			 * @param type kind of the signature
+			 * @return     sign of the streaming work of the signature kind
+			 *
+			 * \~
+			 */
+			bool streamable(const signature_t type) const noexcept;
+		public:
+			/**
+			 * \~russian
+			 * @brief Метод выработки ключа подписи
+			 *
+			 * @details Вырабатывает пару ключей указанного вида и кладёт её в связку под
+			 *          указанным именем. Ключ, лежавший под этим именем прежде, заменяется
+			 *
+			 * @param name имя ключа в связке
+			 * @param type вид подписи
+			 * @param bits разрядность ключа, значима одному лишь виду RSA
+			 * @return     признак успешно выполненной работы
+			 *
+			 * \~english
+			 * @brief Method of the production of a signature key
+			 *
+			 * @details Produces a pair of keys of the specified kind and puts it into the keyring under
+			 *          the specified name. A key that lay under this name before is replaced
+			 *
+			 * @param name name of the key in the keyring
+			 * @param type kind of the signature
+			 * @param bits bit width of the key, is significant to the RSA kind only
+			 * @return     sign of the successfully performed work
+			 *
+			 * \~
+			 */
+			bool generateKey(const string & name, const signature_t type, const uint16_t bits = 0) noexcept;
+			/**
+			 * \~russian
+			 * @brief Метод удаления ключа из связки
+			 *
+			 * @param name имя ключа в связке
+			 * @return     признак успешно выполненной работы
+			 *
+			 * \~english
+			 * @brief Method of the removal of a key from the keyring
+			 *
+			 * @param name name of the key in the keyring
+			 * @return     sign of the successfully performed work
+			 *
+			 * \~
+			 */
+			bool removeKey(const string & name) noexcept;
+			/**
+			 * \~russian
+			 * @brief Метод получения вида подписи ключа из связки
+			 *
+			 * @param name имя ключа в связке
+			 * @return     вид подписи ключа, либо NONE если ключа под таким именем нет
+			 *
+			 * \~english
+			 * @brief Method of the obtaining of the signature kind of a key from the keyring
+			 *
+			 * @param name name of the key in the keyring
+			 * @return     kind of the signature of the key, or NONE if there is no key under such a name
+			 *
+			 * \~
+			 */
+			signature_t signature(const string & name) const noexcept;
+		public:
+			/**
+			 * \~russian
+			 * @brief Метод получения записи ключа подписи
+			 *
+			 * @details Запись выдаётся в виде PEM. Закрытый ключ выдаётся защищённым паролем,
+			 *          если пароль защиты ключа установлен
+			 *
+			 * @param name имя ключа в связке
+			 * @param type тип выдаваемого ключа
+			 * @return     запись ключа в виде PEM, либо пустая запись при отказе
+			 *
+			 * \~english
+			 * @brief Method of the obtaining of the record of a signature key
+			 *
+			 * @details The record is given out in the PEM form. The private key is given out protected by a password,
+			 *          if the password of the protection of the key is set
+			 *
+			 * @param name name of the key in the keyring
+			 * @param type type of the key being given out
+			 * @return     record of the key in the PEM form, or an empty record upon a failure
+			 *
+			 * \~
+			 */
+			string getKey(const string & name, const key_type_t type) const noexcept;
+			/**
+			 * \~russian
+			 * @brief Метод ввода записи ключа подписи
+			 *
+			 * @details Вид подписи определяется по самому ключу, а не подаётся отдельно:
+			 *          запись ключа его несёт, и подача вида вторым доводом позволила бы
+			 *          им разойтись
+			 *
+			 * @param name имя ключа в связке
+			 * @param key  запись ключа в виде PEM
+			 * @param type тип вводимого ключа
+			 * @return     признак успешно выполненной работы
+			 *
+			 * \~english
+			 * @brief Method of the input of the record of a signature key
+			 *
+			 * @details The kind of the signature is determined by the key itself rather than passed separately:
+			 *          the record of the key carries it, and passing the kind as a second argument would allow
+			 *          them to diverge
+			 *
+			 * @param name name of the key in the keyring
+			 * @param key  record of the key in the PEM form
+			 * @param type type of the key being input
+			 * @return     sign of the successfully performed work
+			 *
+			 * \~
+			 */
+			bool setKey(const string & name, const string & key, const key_type_t type) noexcept;
+		public:
+			/**
+			 * \~russian
+			 * @brief Метод чтения ключа подписи из файла
+			 *
+			 * @param name     имя ключа в связке
+			 * @param filename адрес файла ключа
+			 * @param type     тип читаемого ключа
+			 * @return         признак успешно выполненной работы
+			 *
+			 * \~english
+			 * @brief Method of the reading of a signature key from a file
+			 *
+			 * @param name     name of the key in the keyring
+			 * @param filename address of the file of the key
+			 * @param type     type of the key being read
+			 * @return         sign of the successfully performed work
+			 *
+			 * \~
+			 */
+			bool loadKey(const string & name, const string & filename, const key_type_t type) noexcept;
+			/**
+			 * \~russian
+			 * @brief Метод записи ключа подписи в файл
+			 *
+			 * @details Файл закрытого ключа заводится правами одного лишь владельца и
+			 *          ставится на место переименованием - тем же порядком, что и у ключа RSA
+			 *
+			 * @param name     имя ключа в связке
+			 * @param filename адрес файла ключа
+			 * @param type     тип записываемого ключа
+			 * @return         признак успешно выполненной работы
+			 *
+			 * \~english
+			 * @brief Method of the writing of a signature key into a file
+			 *
+			 * @details The file of the private key is set up with the rights of the owner alone and
+			 *          is put into place by a renaming - by the same order as for the RSA key
+			 *
+			 * @param name     name of the key in the keyring
+			 * @param filename address of the file of the key
+			 * @param type     type of the key being written
+			 * @return         sign of the successfully performed work
+			 *
+			 * \~
+			 */
+			bool saveKey(const string & name, const string & filename, const key_type_t type) const noexcept;
+		public:
+			/**
+			 * \~russian
+			 * @brief Метод получения точной длины подписи
+			 *
+			 * @details Длина спрашивается прежде выработки подписи: работам, правящим запись
+			 *          на месте, место под подпись приходится резервировать заранее.
+			 *
+			 *          Постоянной длины подпись имеет не всегда. У Ed25519 она равна
+			 *          шестидесяти четырём октетам всегда, у RSA - разрядности ключа, а у
+			 *          ECDSA плавает: запись DER несёт два числа переменной длины, и старший
+			 *          разряд числа требует нулевого предшествования. Вид, постоянной длины
+			 *          не имеющий, отвечает нулём, и место под подпись резервируется по
+			 *          верхнему пределу
+			 *
+			 * @param name имя ключа в связке
+			 * @return     точная длина подписи в октетах, либо ноль если длина непостоянна
+			 * @see limit
+			 *
+			 * \~english
+			 * @brief Method of the obtaining of the exact length of a signature
+			 *
+			 * @details The length is asked before the production of the signature: works that correct a record
+			 *          in place have to reserve the place for the signature beforehand.
+			 *
+			 *          A signature does not always have a constant length. For Ed25519 it equals
+			 *          sixty four octets always, for RSA it equals the bit width of the key, and for
+			 *          ECDSA it floats: the DER record carries two numbers of a variable length, and the high
+			 *          bit of a number requires a leading zero. A kind that has no constant length
+			 *          answers with a zero, and the place for the signature is reserved by the
+			 *          upper limit
+			 *
+			 * @param name name of the key in the keyring
+			 * @return     exact length of the signature in octets, or zero if the length is not constant
+			 * @see limit
+			 *
+			 * \~
+			 */
+			size_t length(const string & name) const noexcept;
+			/**
+			 * \~russian
+			 * @brief Метод получения верхнего предела длины подписи
+			 *
+			 * @details Предел выдаётся всяким видом подписи и годен для резервирования места
+			 *          под подпись, длина которой непостоянна
+			 *
+			 * @param name имя ключа в связке
+			 * @return     верхний предел длины подписи в октетах
+			 * @see length
+			 *
+			 * \~english
+			 * @brief Method of the obtaining of the upper limit of the length of a signature
+			 *
+			 * @details The limit is given out by every kind of the signature and is fit for the reservation of the place
+			 *          for a signature whose length is not constant
+			 *
+			 * @param name name of the key in the keyring
+			 * @return     upper limit of the length of the signature in octets
+			 * @see length
+			 *
+			 * \~
+			 */
+			size_t limit(const string & name) const noexcept;
+		public:
+			/**
+			 * \~russian
+			 * @brief Шаблон типа выдаваемого результата
+			 *
+			 * @tparam T тип выдаваемого результата
+			 *
+			 * \~english
+			 * @brief Template of the type of the result being given out
+			 *
+			 * @tparam T type of the result being given out
+			 *
+			 * \~
+			 */
+			template <typename T>
+			/**
+			 * \~russian
+			 * @brief Метод получения отпечатка открытого ключа
+			 *
+			 * @details Отпечаток - это свёртка SHA-256 от канонической записи открытого ключа
+			 *          (SubjectPublicKeyInfo в виде DER). Запись эта одна на все виды ключей
+			 *          и совпадает с той, от которой отпечаток считают прочие работы.
+			 *
+			 *          Выдаются полные тридцать два октета: усечение - дело того, кто отпечаток
+			 *          хранит, а не того, кто его вырабатывает. Отдавай работа усечённый
+			 *          отпечаток, смена заголовка потребителя требовала бы правки этого модуля.
+			 *
+			 *          Отпечаток считается от открытой части ключа и выдаётся тогда, когда
+			 *          закрытый ключ не введён вовсе: проверяющая сторона закрытого ключа не имеет
+			 *
+			 * @param name   имя ключа в связке
+			 * @param format вид записи выдаваемого отпечатка
+			 * @return       отпечаток открытого ключа, либо пустой результат при отказе
+			 *
+			 * \~english
+			 * @brief Method of the obtaining of the fingerprint of a public key
+			 *
+			 * @details The fingerprint is the SHA-256 digest of the canonical record of the public key
+			 *          (SubjectPublicKeyInfo in the DER form). That record is one for all kinds of keys
+			 *          and coincides with the one from which other works compute the fingerprint.
+			 *
+			 *          The full thirty two octets are given out: the truncation is the business of the one who stores
+			 *          the fingerprint rather than of the one who produces it. Were the work to give out a truncated
+			 *          fingerprint, a change of the header of the consumer would require a correction of this module.
+			 *
+			 *          The fingerprint is computed from the public part of the key and is given out when
+			 *          the private key is not input at all: the verifying side has no private key
+			 *
+			 * @param name   name of the key in the keyring
+			 * @param format form of the record of the fingerprint being given out
+			 * @return       fingerprint of the public key, or an empty result upon a failure
+			 *
+			 * \~
+			 */
+			T fingerprint(const string & name, const format_t format = format_t::RAW) const noexcept;
+		public:
+			/**
+			 * \~russian
+			 * @brief Метод подписания данных ключом из связки
+			 *
+			 * @details Тип хэш-суммы обязателен схемам, подписывающим хэш-сумму (RSA и ECDSA),
+			 *          и неуместен схеме Ed25519, подписывающей сообщение саму. Подача
+			 *          неуместного отвергается, а не сглаживается: вызывающая сторона, подавшая
+			 *          хэш-сумму схеме Ed25519, подписи хэш-суммы не получит, и молчание об
+			 *          этом выдало бы одно за другое
+			 *
+			 * @param name   имя ключа в связке
+			 * @param buffer буфер данных для подписи
+			 * @param size   размер данных для подписи
+			 * @param hash   тип хэш-суммы, NONE для схемы Ed25519
+			 * @param result буфер куда следует положить результат
+			 * @return       признак успешно выполненной работы
+			 *
+			 * \~english
+			 * @brief Method of the signing of data by a key from the keyring
+			 *
+			 * @details The type of the hash sum is mandatory to the schemes signing a hash sum (RSA and ECDSA),
+			 *          and is inapplicable to the Ed25519 scheme signing the message itself. Passing
+			 *          the inapplicable is rejected rather than smoothed over: a calling side that has passed
+			 *          a hash sum to the Ed25519 scheme will get no signature of the hash sum, and keeping silent about
+			 *          that would pass off one thing for another
+			 *
+			 * @param name   name of the key in the keyring
+			 * @param buffer data buffer for the signature
+			 * @param size   size of the data for the signature
+			 * @param hash   type of the hash sum, NONE for the Ed25519 scheme
+			 * @param result buffer the result should be placed into
+			 * @return       sign of the successfully performed work
+			 *
+			 * \~
+			 */
+			bool sign(const string & name, const uint8_t * buffer, const size_t size, const hash_t hash, vector <uint8_t> & result) const noexcept;
+			/**
+			 * \~russian
+			 * @brief Метод проверки подписи данных ключом из связки
+			 *
+			 * @details Работа изменяемого состояния объекта не трогает вовсе и потому годна
+			 *          для одновременного вызова из нескольких потоков выполнения на одном
+			 *          объекте: связка ключей при проверке лишь читается
+			 *
+			 * @param name      имя ключа в связке
+			 * @param buffer    буфер данных для проверки
+			 * @param size      размер данных для проверки
+			 * @param signature буфер с подписью данных
+			 * @param hash      тип хэш-суммы, NONE для схемы Ed25519
+			 * @return          результат проверки подписи
+			 *
+			 * \~english
+			 * @brief Method of the verification of the signature of data by a key from the keyring
+			 *
+			 * @details The work does not touch the mutable state of the object at all and therefore is fit
+			 *          for a simultaneous call from several threads of execution on one
+			 *          object: the keyring is only read during the verification
+			 *
+			 * @param name      name of the key in the keyring
+			 * @param buffer    data buffer for the verification
+			 * @param size      size of the data for the verification
+			 * @param signature buffer with the signature of the data
+			 * @param hash      type of the hash sum, NONE for the Ed25519 scheme
+			 * @return          result of the verification of the signature
+			 *
+			 * \~
+			 */
+			bool verify(const string & name, const uint8_t * buffer, const size_t size, const vector <uint8_t> & signature, const hash_t hash) const noexcept;
+		public:
+			/**
+			 * \~russian
+			 * @brief Метод заведения потока подписи
+			 *
+			 * @details Договор потока взят у потокового шифрования: заведение, подача
+			 *          порциями, завершение. Имена работ иные лишь потому, что завершение
+			 *          потока шифрования буфер дополняет, а завершение потока подписи
+			 *          выдаёт подпись целиком, - одно имя на два разных договора сбивало бы
+			 *          с толку.
+			 *
+			 *          Вид подписи берётся у самого ключа. Вид, поточным не бывающий,
+			 *          отвечает отказом с названной причиной, а не общим «нельзя»: спросить
+			 *          о поточности можно и наперёд - см. streamable
+			 *
+			 * @param name имя ключа в связке
+			 * @param hash тип хэш-суммы
+			 * @return     признак успешно выполненной работы
+			 * @see streamable
+			 *
+			 * \~english
+			 * @brief Method of the setting up of a signature stream
+			 *
+			 * @details The contract of the stream is taken from the streaming encryption: the setting up,
+			 *          the feeding by portions, the finalization. The names of the works are different only because
+			 *          the finalization of an encryption stream appends to the buffer, whereas the finalization of a signature stream
+			 *          gives out the whole signature - one name for two different contracts would be
+			 *          confusing.
+			 *
+			 *          The kind of the signature is taken from the key itself. A kind that does not happen to be streaming
+			 *          answers with a failure naming the reason rather than with a general "it is impossible": it is possible to ask
+			 *          about the streaming ability beforehand as well - see streamable
+			 *
+			 * @param name name of the key in the keyring
+			 * @param hash type of the hash sum
+			 * @return     sign of the successfully performed work
+			 * @see streamable
+			 *
+			 * \~
+			 */
+			bool signInitialize(const string & name, const hash_t hash) noexcept;
+			/**
+			 * \~russian
+			 * @brief Метод подачи порции данных в поток подписи
+			 *
+			 * @param buffer буфер порции данных
+			 * @param size   размер порции данных
+			 * @return       признак успешно выполненной работы
+			 *
+			 * \~english
+			 * @brief Method of the feeding of a portion of data into a signature stream
+			 *
+			 * @param buffer buffer of the portion of data
+			 * @param size   size of the portion of data
+			 * @return       sign of the successfully performed work
+			 *
+			 * \~
+			 */
+			bool signUpdate(const uint8_t * buffer, const size_t size) noexcept;
+			/**
+			 * \~russian
+			 * @brief Метод завершения потока подписи
+			 *
+			 * @details Работа выдаёт подпись всего поданного потока и освобождает его
+			 *          контекст. Подпись эта число в число совпадает с подписью тех же
+			 *          данных буфером целиком у схем, подпись которых от случайности не
+			 *          зависит
+			 *
+			 * @param result буфер куда следует положить результат
+			 * @return       признак успешно выполненной работы
+			 *
+			 * \~english
+			 * @brief Method of the finalization of a signature stream
+			 *
+			 * @details The work gives out the signature of the whole fed stream and releases its
+			 *          context. That signature coincides octet for octet with the signature of the same
+			 *          data by a whole buffer for the schemes whose signature does not depend on
+			 *          randomness
+			 *
+			 * @param result buffer the result should be placed into
+			 * @return       sign of the successfully performed work
+			 *
+			 * \~
+			 */
+			bool signFinalize(vector <uint8_t> & result) noexcept;
 		public:
 			/**
 			 * \~russian
