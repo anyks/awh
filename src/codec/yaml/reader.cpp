@@ -229,7 +229,7 @@ awh::codec::yaml::Reader::Reader() noexcept :
  _state(state_t::READY), _error(error_t::NONE), _reading(0), _offset(0), _line(0), _position(0),
  _started(false), _opened(false), _filled(false), _blocking(false), _block(style_t::LITERAL),
  _chomp(chomp_t::CLIP), _marked(NO_INDENT), _outer(0), _margin(0), _inner(0), _opening(0),
- _breaks(0), _deepened(false), _expected(false), _awaited(false), _entered(false), _pending(0), _schema(schema_t::CORE), _plaining(false),
+ _breaks(0), _deepened(false), _expected(false), _awaited(false), _valued(false), _entered(false), _pending(0), _schema(schema_t::CORE), _plaining(false),
  _folds(0), _required(0), _phase(flow_t::ENTRY), _directed(false), _versioned(false), _declared(false), _dialect(schema_t::CORE) {}
 /**
  * @brief Конструктор
@@ -241,7 +241,7 @@ awh::codec::yaml::Reader::Reader(const settings_t & settings) noexcept :
  _settings(settings), _state(state_t::READY), _error(error_t::NONE), _reading(0), _offset(0),
  _line(0), _position(0), _started(false), _opened(false), _filled(false),
  _blocking(false), _block(style_t::LITERAL), _chomp(chomp_t::CLIP), _marked(NO_INDENT),
- _outer(0), _margin(0), _inner(0), _opening(0), _breaks(0), _deepened(false), _expected(false), _awaited(false), _entered(false), _pending(0),
+ _outer(0), _margin(0), _inner(0), _opening(0), _breaks(0), _deepened(false), _expected(false), _awaited(false), _valued(false), _entered(false), _pending(0),
  _schema(settings.schema), _plaining(false), _folds(0), _required(0),
  _phase(flow_t::ENTRY), _directed(false), _versioned(false), _declared(false), _dialect(settings.schema) {
 	/**
@@ -340,6 +340,8 @@ void awh::codec::yaml::Reader::clear() noexcept {
 	this->_expected = false;
 	// Выполняем сброс признака подачи значения пары, объявленной прежде
 	this->_awaited = false;
+	// Выполняем сброс признака разбора значения пары в строке имени её
+	this->_valued = false;
 	// Выполняем сброс признака принадлежности ожидаемого значения записи перечня
 	this->_entered = false;
 	// Выполняем сброс отступа, на котором ожидается значение пары
@@ -2051,6 +2053,22 @@ bool awh::codec::yaml::Reader::content(const string_view line, const size_t offs
 	if((position < line.size()) && (line[position] == ':') &&
 	   (((position + 1) >= line.size()) || spacing(line[position + 1]))){
 		/**
+		 * Если имя пары в этой строке уже объявлено
+		 *
+		 * @details Описание дозволяет строке блочного построения нести одно имя пары:
+		 *          запись `a: b: c` двусмысленна - неведомо, пара ли это со значением
+		 *          `b: c` либо отображение внутри пары, - и разбор её наугад выдал бы
+		 *          дерево, исходному тексту не отвечающее. Прежде вторым двоеточием
+		 *          заводилась пара внутри значения
+		 *
+		 * @note Написание `время: 12:30` под правило не подпадает: двоеточие там пробелом
+		 *       не отделено и разделителем не является. Отвечает rapidyaml отказом «two
+		 *       consecutive keys». Нашло это сличение с набором yaml-test-suite
+		 */
+		if(this->_valued)
+			// Выводим отказ недопустимого знака в этом месте текста
+			return this->fail(error_t::INVALID_CHARACTER, position);
+		/**
 		 * Если ожидалось значение пары, объявленной прежде
 		 *
 		 * @note Пара, стоящая на отступе имени прежней пары, знаменует не значение её, а
@@ -2179,8 +2197,14 @@ bool awh::codec::yaml::Reader::content(const string_view line, const size_t offs
 		if((line[position] == '-') && (((position + 1) >= line.size()) || spacing(line[position + 1])))
 			// Выводим отказ записи перечня в строке имени пары
 			return this->fail(error_t::MIXED_COLLECTION, position);
+		// Запоминаем признак разбора значения пары, в строке имени её стоящего
+		this->_valued = true;
 		// Выполняем разбор значения пары, стоящего в той же строке
-		return this->content(line, position, static_cast <uint32_t> (position));
+		const bool result = this->content(line, position, static_cast <uint32_t> (position));
+		// Выполняем сброс признака разбора значения пары в строке имени её
+		this->_valued = false;
+		// Выводим признак разбора значения пары
+		return result;
 	}
 	/**
 	 * Если значение стоит на отступе, значения пары не ожидающем
@@ -2273,14 +2297,24 @@ bool awh::codec::yaml::Reader::content(const string_view line, const size_t offs
 		return false;
 	/**
 	 * Если за значением стоит примечание, а выдача примечаний затребована
+	 *
+	 * @note Примечание опознаётся лишь за пробельным знаком: запись `key: "value"# нет`
+	 *       примечания не открывает, а является содержимым за завершённой записью.
+	 *       Отвечает rapidyaml отказом «comment must be preceded by whitespace». Нашло
+	 *       это сличение с набором yaml-test-suite
 	 */
-	if((position < line.size()) && (line[position] == '#')){
+	if((position < line.size()) && (line[position] == '#') &&
+	   ((position == 0) || spacing(line[position - 1]))){
 		// Выполняем постановку события примечания
 		this->remark(line, position);
 	/**
 	 * Если за значением стоит содержимое, значением не являющееся
+	 *
+	 * @note Сличение со знаком примечания здесь снято: знак этот, пробелом не
+	 *       предварённый, примечания не открывает, а прежнее условие пропускало его
+	 *       мимо обеих ветвей - и запись `key: "value"# нет` принималась молча
 	 */
-	} else if((position < line.size()) && (line[position] != '#'))
+	} else if(position < line.size())
 		// Выводим отказ содержимого за завершённой записью
 		return this->fail(error_t::TRAILING_CHARACTERS, position);
 	// Выводим признак успешного разбора содержимого
@@ -2318,7 +2352,7 @@ bool awh::codec::yaml::Reader::opening(const string_view line, const size_t offs
 	/**
 	 * Выполняем перебор всех знаков заголовка блочного значения
 	 */
-	while((position < line.size()) && !spacing(line[position]) && (line[position] != '#')){
+	while((position < line.size()) && !spacing(line[position])){
 		// Получаем очередной знак заголовка блочного значения
 		const char letter = line[position];
 		/**
@@ -2685,6 +2719,22 @@ bool awh::codec::yaml::Reader::flowed(const string_view line, size_t & offset) n
 	 *       пробела перед ним нет. Нашло это сличение с набором yaml-test-suite
 	 */
 	if(leading == '#')
+		// Выводим отказ недопустимого знака в этом месте текста
+		return this->fail(error_t::INVALID_CHARACTER, offset);
+	/**
+	 * Если значение построения одною чертою записи перечня и составлено
+	 *
+	 * @details Внутри скобок черта записи перечня смысла не имеет - записи там отделяет
+	 *          запятая, - а простым значением она быть не вправе: описание запрещает
+	 *          простому значению открываться чертою, за какою стоит пробельный знак либо
+	 *          конец записи. Прежде запись `[-]` принималась значением `-`
+	 *
+	 * @note Число `-1` под правило это не подпадает: за чертою там стоит цифра. Отвечает
+	 *       rapidyaml отказом «invalid scalar». Нашло это сличение с набором
+	 *       yaml-test-suite
+	 */
+	if((leading == '-') && (((offset + 1) >= line.size()) || spacing(line[offset + 1]) ||
+	   (line[offset + 1] == ',') || (line[offset + 1] == ']') || (line[offset + 1] == '}')))
 		// Выводим отказ недопустимого знака в этом месте текста
 		return this->fail(error_t::INVALID_CHARACTER, offset);
 	// Вид записи разбираемого значения
