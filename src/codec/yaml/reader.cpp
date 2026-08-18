@@ -235,7 +235,7 @@ awh::codec::yaml::Reader::Reader() noexcept :
  _state(state_t::READY), _error(error_t::NONE), _reading(0), _offset(0), _line(0), _position(0),
  _started(false), _opened(false), _filled(false), _blocking(false), _block(style_t::LITERAL),
  _chomp(chomp_t::CLIP), _marked(NO_INDENT), _outer(0), _margin(0), _inner(0), _opening(0),
- _breaks(0), _padding(0), _deepened(false), _expected(false), _awaited(false), _valued(false), _headed(false), _entered(false), _pending(0), _schema(schema_t::CORE), _plaining(false),
+ _breaks(0), _padding(0), _deepened(false), _expected(false), _awaited(false), _valued(false), _headed(false), _propped(false), _entered(false), _pending(0), _schema(schema_t::CORE), _plaining(false),
  _folds(0), _required(0), _phase(flow_t::ENTRY), _directed(false), _versioned(false), _declared(false), _dialect(schema_t::CORE) {}
 /**
  * @brief Конструктор
@@ -247,7 +247,7 @@ awh::codec::yaml::Reader::Reader(const settings_t & settings) noexcept :
  _settings(settings), _state(state_t::READY), _error(error_t::NONE), _reading(0), _offset(0),
  _line(0), _position(0), _started(false), _opened(false), _filled(false),
  _blocking(false), _block(style_t::LITERAL), _chomp(chomp_t::CLIP), _marked(NO_INDENT),
- _outer(0), _margin(0), _inner(0), _opening(0), _breaks(0), _padding(0), _deepened(false), _expected(false), _awaited(false), _valued(false), _headed(false), _entered(false), _pending(0),
+ _outer(0), _margin(0), _inner(0), _opening(0), _breaks(0), _padding(0), _deepened(false), _expected(false), _awaited(false), _valued(false), _headed(false), _propped(false), _entered(false), _pending(0),
  _schema(settings.schema), _plaining(false), _folds(0), _required(0),
  _phase(flow_t::ENTRY), _directed(false), _versioned(false), _declared(false), _dialect(settings.schema) {
 	/**
@@ -1503,6 +1503,8 @@ bool awh::codec::yaml::Reader::property(const string_view line, size_t & offset)
 			}
 		// Если знак свойством узла не является
 		} else break;
+		// Запоминаем признак разбора свойств узла в этой строке
+		this->_propped = true;
 		/**
 		 * Если за разобранным свойством содержимое строки исчерпано
 		 */
@@ -1980,6 +1982,36 @@ bool awh::codec::yaml::Reader::content(const string_view line, const size_t offs
 		 *       yaml-test-suite
 		 */
 		if(this->_headed)
+			// Выводим отказ недопустимого знака в этом месте текста
+			return this->fail(error_t::INVALID_CHARACTER, offset);
+		/**
+		 * Если черте записи предпосланы свойства узла в той же строке
+		 *
+		 * @details Свойства блочного построения отделяются от него переводом строки:
+		 *          правило `s-l+block-collection` описания ставит между ними
+		 *          `s-l-comments`, а тот перевода строки требует. Написание
+		 *          `&метка - запись` перевода не несёт, и метка узла своего не имеет
+		 *
+		 * @note Написание `&метка` строкою выше черты дозволено и правилу не противно.
+		 *       Случай SY6V набора yaml-test-suite
+		 */
+		if(this->_propped && (!this->_anchor.empty() || !this->_tag.empty()))
+			// Выводим отказ недопустимого знака в этом месте текста
+			return this->fail(error_t::INVALID_CHARACTER, offset);
+		/**
+		 * Если черте записи предпосланы свойства узла при уже открытом перечне
+		 *
+		 * @details Строка перечня на отступе его обязана открываться чертою записи:
+		 *          правило `l+block-sequence` описания иного там не дозволяет. Свойства,
+		 *          строку эту занявшие, узлу принадлежать не могут - записи своей у них
+		 *          нет, а перечень уже открыт, - и написание `- один`, `&метка`,
+		 *          `- два` есть ошибка
+		 *
+		 * @note Случай GT5M набора yaml-test-suite
+		 */
+		if(!this->_levels.empty() && (this->_levels.back().indent == indent) &&
+		   (this->_levels.back().kind == nesting_t::SEQUENCE) &&
+		   (!this->_anchor.empty() || !this->_tag.empty()))
 			// Выводим отказ недопустимого знака в этом месте текста
 			return this->fail(error_t::INVALID_CHARACTER, offset);
 		/**
@@ -3405,6 +3437,8 @@ bool awh::codec::yaml::Reader::plaining(const string_view line, bool & attached)
 bool awh::codec::yaml::Reader::record(const string_view line) noexcept {
 	// Выполняем учёт разбираемой строки
 	this->_line++;
+	// Выполняем сброс признака разбора свойств узла в этой строке
+	this->_propped = false;
 	/**
 	 * Если разбирается поточное построение, скобками ещё не закрытое
 	 *
@@ -3745,8 +3779,20 @@ bool awh::codec::yaml::Reader::record(const string_view line) noexcept {
 	} else if(this->_filled && this->_levels.empty() && !this->_expected)
 		// Выводим отказ содержимого за завершённой записью
 		return this->fail(error_t::TRAILING_CHARACTERS, offset);
-	// Выполняем сброс признака подачи значения пары, объявленной прежде
-	this->_awaited = false;
+	/**
+	 * Если свойства узла не дождались узла своего
+	 *
+	 * @details Строка, одними свойствами занятая, узла не несёт: узел ждёт их строкою
+	 *          ниже. Сброс признака подачи значения терял тогда ожидание вовсе, и
+	 *          написание `имя:`, `&метка`, `- запись` отвергалось отступом, ни одному
+	 *          уровню не отвечающим
+	 *
+	 * @note Строка примечания под правило не подпадала - примечание признака этого не
+	 *       трогает, - и оттого расхождение видно было лишь на свойствах
+	 */
+	if(this->_anchor.empty() && this->_tag.empty())
+		// Выполняем сброс признака подачи значения пары, объявленной прежде
+		this->_awaited = false;
 	/**
 	 * Если ожидалось значение пары, а отступ строки глубже отступа имени её
 	 */
