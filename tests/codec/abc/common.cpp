@@ -58,7 +58,9 @@ TEST(CodecAbcCommon, Messages) {
 		abc::error_t::DEPTH_EXCEEDED, abc::error_t::STRING_TOO_LONG,
 		abc::error_t::BLOB_TOO_LONG, abc::error_t::TOO_MANY_NODES,
 		abc::error_t::TRAILING_OCTETS, abc::error_t::EMPTY_RECORD,
-		abc::error_t::OVERFLOW_LIMIT
+		abc::error_t::OVERFLOW_LIMIT, abc::error_t::INVALID_KEY, abc::error_t::UNORDERED_KEY,
+		abc::error_t::INDEFINITE_REFUSED, abc::error_t::UNBALANCED_CONTAINER,
+		abc::error_t::CONTAINER_OVERFLOW
 	};
 	// Набор уже встреченных описаний кодов отказов
 	unordered_set <string> seen;

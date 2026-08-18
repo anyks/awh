@@ -100,6 +100,9 @@ if (${GTest_FOUND})
             yaml/writer.cpp
             yaml/document.cpp
             yaml/value.cpp
+            abc/common.cpp
+            abc/encoding.cpp
+            abc/reader.cpp
         )
 
         # Библиотеки GTest для линковки

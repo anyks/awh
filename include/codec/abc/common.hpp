@@ -134,8 +134,10 @@ namespace awh {
 		 * @details **Намеренные решения.** Перечисленное ниже выбрано осознанно, и
 		 * возвращаться к этим вопросам при разборе кода не следует:
 		 *
-		 * @li **Имя поля отображения - значение любого вида, а не только строка.** Двоичной
-		 * записи ограничение это ничего не даёт, а целое именем и короче, и сличается быстрее
+		 * @li **Имя поля отображения - значение любого вида, кроме вместимого.** Двоичной
+		 * записи ограничение строкою ничего не даёт, а целое именем и короче, и сличается
+		 * быстрее. Вместимое же именем отвергается: розыск по такому имени требовал бы
+		 * сличения поддеревьев, и цена его несоразмерна получаемому
 		 * @li **Число свыше родных видов хранится точно.** Целое шире 64 разрядов и
 		 * десятичное с точным дробным разрядом записываются своими видами через `awh::BigNum`,
 		 * а не обращаются в `double` с потерей точности
@@ -163,8 +165,10 @@ namespace awh {
 		 * as a whole costs an addition rather than a parsing, and the traversal goes forward through the memory
 		 * @details **Deliberate decisions.** The below is chosen consciously, and one should not
 		 * return to these questions at the reading of the code:
-		 * @li **The name of a field of a mapping is a value of any kind rather than a string alone.** The restriction
-		 * gives nothing to a binary record, while an integer as a name is both shorter and compared faster
+		 * @li **The name of a field of a mapping is a value of any kind except a container.** The restriction
+		 * to a string gives nothing to a binary record, while an integer as a name is both shorter and compared
+		 * faster. A container as a name is rejected: a search by such a name would require
+		 * a comparison of the subtrees, and its price is disproportionate to what is obtained
 		 * @li **A number above the native kinds is stored exactly.** An integer wider than 64 bits and
 		 * a decimal one with an exact fractional bit are written by their own kinds through `awh::BigNum`
 		 * rather than turned into a `double` with a loss of the precision
@@ -480,7 +484,12 @@ namespace awh {
 				TOO_MANY_NODES       = 0x11, // Количество узлов документа превышает допустимое
 				TRAILING_OCTETS      = 0x12, // Октеты за окончанием документа
 				EMPTY_RECORD         = 0x13, // Запись пуста, а документ затребован
-				OVERFLOW_LIMIT       = 0x14  // Превышен предел, заданный настройками разбора
+				OVERFLOW_LIMIT       = 0x14, // Превышен предел, заданный настройками разбора
+				INVALID_KEY          = 0x15, // Именем поля отображения стоит вместимое
+				UNORDERED_KEY        = 0x16, // Имена полей отображения идут не по возрастанию
+				INDEFINITE_REFUSED   = 0x17, // Неопределённая длина при строгом виде записи
+				UNBALANCED_CONTAINER = 0x18, // Вместимое не закрыто либо закрыто лишний раз
+				CONTAINER_OVERFLOW   = 0x19  // Значений вместимого больше объявленного
 			};
 
 			/**

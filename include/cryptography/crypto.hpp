@@ -2489,6 +2489,89 @@ namespace awh {
 		public:
 			/**
 			 * \~russian
+			 * @brief Метод заведения потока проверки подписи
+			 *
+			 * @details Договор тот же, что и у потока подписи: заведение, подача порциями,
+			 *          завершение. Нужен он проверке чужой записи, подписанной целиком: своя
+			 *          работа подписывает короткую свёртку и потока не требует, а чужая в
+			 *          память может и не подняться.
+			 *
+			 *          Поток проверки и поток подписи на объекте один: заведение одного поверх
+			 *          другого прежний сбрасывает, а подача не в свой поток отвергается. Вид,
+			 *          поточным не бывающий, отвечает отказом с названной причиной
+			 *
+			 * @param name имя ключа в связке
+			 * @param hash тип хэш-суммы
+			 * @return     признак успешно выполненной работы
+			 * @see streamable
+			 *
+			 * \~english
+			 * @brief Method of the setting up of a signature verification stream
+			 *
+			 * @details The contract is the same as for the signature stream: the setting up, the feeding by portions,
+			 *          the finalization. It is needed for the verification of a foreign record signed as a whole: one's own
+			 *          work signs a short digest and requires no stream, whereas a foreign one may not fit
+			 *          into the memory.
+			 *
+			 *          The verification stream and the signature stream on an object are one: the setting up of one over
+			 *          another resets the previous one, and the feeding into the wrong stream is rejected. A kind that
+			 *          does not happen to be streaming answers with a failure naming the reason
+			 *
+			 * @param name name of the key in the keyring
+			 * @param hash type of the hash sum
+			 * @return     sign of the successfully performed work
+			 * @see streamable
+			 *
+			 * \~
+			 */
+			bool verifyInitialize(const string & name, const hash_t hash) noexcept;
+			/**
+			 * \~russian
+			 * @brief Метод подачи порции данных в поток проверки подписи
+			 *
+			 * @param buffer буфер порции данных
+			 * @param size   размер порции данных
+			 * @return       признак успешно выполненной работы
+			 *
+			 * \~english
+			 * @brief Method of the feeding of a portion of data into a signature verification stream
+			 *
+			 * @param buffer buffer of the portion of data
+			 * @param size   size of the portion of data
+			 * @return       sign of the successfully performed work
+			 *
+			 * \~
+			 */
+			bool verifyUpdate(const uint8_t * buffer, const size_t size) noexcept;
+			/**
+			 * \~russian
+			 * @brief Метод завершения потока проверки подписи
+			 *
+			 * @details Работа сличает поданный поток с подписью и освобождает контекст потока.
+			 *          Несовпадение подписи отказом работы не является - оно есть законный
+			 *          исход проверки, и от сбоя самой работы по признаку не отличается: судить
+			 *          о причине следует по журналу, где сбой записан, а подделка нет
+			 *
+			 * @param signature буфер с подписью данных
+			 * @return          результат проверки подписи
+			 *
+			 * \~english
+			 * @brief Method of the finalization of a signature verification stream
+			 *
+			 * @details The work matches the fed stream against the signature and releases the context of the stream.
+			 *          A mismatch of the signature is not a failure of the work - it is a legitimate
+			 *          outcome of the verification, and is not distinguished from a failure of the work itself by the sign: the reason
+			 *          should be judged by the log, where a failure is recorded and a forgery is not
+			 *
+			 * @param signature buffer with the signature of the data
+			 * @return          result of the verification of the signature
+			 *
+			 * \~
+			 */
+			bool verifyFinalize(const vector <uint8_t> & signature) noexcept;
+		public:
+			/**
+			 * \~russian
 			 * @brief Оператор копирования
 			 *
 			 * @details Копирование запрещено: объект владеет состоянием шифрования и

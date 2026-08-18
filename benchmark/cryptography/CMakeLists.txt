@@ -56,6 +56,7 @@ if (${CMAKE_BUILD_${BENCHMARK_NAME}_BENCHMARKS})
             crypto/stream.cpp
             crypto/digest.cpp
             crypto/keys.cpp
+            crypto/signature.cpp
         )
     # Если не нужно собрать бенчмарки для подмодуля криптографии
     else()

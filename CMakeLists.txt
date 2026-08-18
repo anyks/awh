@@ -1080,6 +1080,9 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/codec/toml/reader.cpp"
     "${CMAKE_SOURCE_DIR}/src/codec/toml/writer.cpp"
     "${CMAKE_SOURCE_DIR}/src/codec/toml/document.cpp"
+    "${CMAKE_SOURCE_DIR}/src/codec/abc/common.cpp"
+    "${CMAKE_SOURCE_DIR}/src/codec/abc/encoding.cpp"
+    "${CMAKE_SOURCE_DIR}/src/codec/abc/reader.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/net.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/fds.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/uri.cpp"
@@ -1439,6 +1442,11 @@ if (${CMAKE_BUILD_SAMPLES})
     SET(HASH_APP_CRYPTOGRAPHY_NAME cryptography-hash)
     # Указываем что нужно собрать приложение работы с хэшированием данных
     option(CMAKE_BUILD_HASH_CRYPTOGRAPHY_APP_SAMPLE "Build Hash app sample" ON)
+
+    # Устанавливаем имя приложения работы с электронной подписью
+    SET(SIGNATURE_APP_CRYPTOGRAPHY_NAME cryptography-signature)
+    # Указываем что нужно собрать приложение работы с электронной подписью
+    option(CMAKE_BUILD_SIGNATURE_CRYPTOGRAPHY_APP_SAMPLE "Build Signature app sample" ON)
 
     # Устанавливаем имя приложения работы с HTTP-авторизацией
     SET(AUTH_APP_PROTO_NAME proto-auth)
@@ -2077,6 +2085,18 @@ if (${CMAKE_BUILD_SAMPLES})
         # Выводим сообщение о сборке семпла
         message(STATUS "Build sample Hash: No\n")
     endif (${CMAKE_BUILD_HASH_CRYPTOGRAPHY_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с электронной подписью
+    if (${CMAKE_BUILD_SIGNATURE_CRYPTOGRAPHY_APP_SAMPLE})
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample Signature: Yes\n")
+        # Выполняем создание приложения работы с электронной подписью
+        add_sample(${SIGNATURE_APP_CRYPTOGRAPHY_NAME} sample/cryptography/signature.cpp cryptography)
+    # Если не нужно собирать семплы для работы с электронной подписью
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample Signature: No\n")
+    endif (${CMAKE_BUILD_SIGNATURE_CRYPTOGRAPHY_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с HTTP-авторизацией
     if (${CMAKE_BUILD_AUTH_PROTO_APP_SAMPLE})
@@ -3048,6 +3068,17 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_HASH_CRYPTOGRAPHY_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с электронной подписью
+        if (${CMAKE_BUILD_SIGNATURE_CRYPTOGRAPHY_APP_SAMPLE})
+            # Выполняем сборку приложения работы с электронной подписью
+            target_link_libraries(
+                ${SIGNATURE_APP_CRYPTOGRAPHY_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_SIGNATURE_CRYPTOGRAPHY_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с HTTP-авторизацией
         if (${CMAKE_BUILD_AUTH_PROTO_APP_SAMPLE})
@@ -4226,6 +4257,18 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_HASH_CRYPTOGRAPHY_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с электронной подписью
+        if (${CMAKE_BUILD_SIGNATURE_CRYPTOGRAPHY_APP_SAMPLE})
+            # Выполняем сборку приложения работы с электронной подписью
+            target_link_libraries(
+                ${SIGNATURE_APP_CRYPTOGRAPHY_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_SIGNATURE_CRYPTOGRAPHY_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с HTTP-авторизацией
         if (${CMAKE_BUILD_AUTH_PROTO_APP_SAMPLE})

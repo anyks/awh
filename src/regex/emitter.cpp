@@ -83,6 +83,10 @@ void awh::regex::Emitter::clear() noexcept {
 	this->_labels.clear();
 	// Выполняем очистку набора отложенных переходов
 	this->_fixups.clear();
+	// Выполняем очистку ряда записей в память, подряд размещённых
+	this->_stored.clear();
+	// Выполняем обрыв ряда записей в память
+	this->_stamp = SIZE_MAX;
 	// Выполняем сброс флага отказа порождения машинного кода
 	this->_failed = false;
 }
@@ -118,6 +122,15 @@ void awh::regex::Emitter::place(const size_t label) noexcept {
 	}
 	// Выполняем установку положения метки перехода
 	this->_labels.at(label) = this->_code.size();
+	/**
+	 * Выполняем обрыв ряда записей в память
+	 *
+	 * @details Через метку управление приходит со стороны, отчего содержимое
+	 *          регистров ряду более не известно и снятие чтения избыточного
+	 *          стало бы неверным.
+	 *
+	 */
+	this->_stamp = SIZE_MAX;
 }
 /**
  * @brief Метод извлечения порождённой последовательности команд
@@ -153,7 +166,7 @@ bool awh::regex::Emitter::failed() const noexcept {
  * @brief Конструктор
  *
  */
-awh::regex::Emitter::Emitter() noexcept : _failed(false) {}
+awh::regex::Emitter::Emitter() noexcept : _stamp(SIZE_MAX), _failed(false) {}
 
 #if defined(__aarch64__) || defined(_M_ARM64)
 
@@ -727,6 +740,39 @@ void awh::regex::Emitter::fetch(const reg_t target, const reg_t base, const uint
 		// Выходим из метода размещения чтения
 		return;
 	}
+	/**
+	 * Если ряд записей в память не прерван
+	 *
+	 * @details Ряд из одних записей регистров не меняет, отчего значение,
+	 *          записанное в то же место, ещё цело в регистре-источнике:
+	 *          чтение его из памяти избыточно и стоит пересылки из буфера
+	 *          записи. Порождение кладёт такую пару всякий раз, когда цепочка
+	 *          ветвей стоит в теле повторения: повторение пишет свой отказ
+	 *          в ячейку кадра, а цепочка тут же читает его оттуда обратно.
+	 *
+	 */
+	if(this->_stamp == this->_code.size()) {
+		/**
+		 * Выполняем обход ряда записей в память с конца
+		 */
+		for(auto i = this->_stored.rbegin(); i != this->_stored.rend(); ++i) {
+			/**
+			 * Если запись выполнена в то же самое место памяти
+			 */
+			if((i->base == base) && (i->index == index)) {
+				/**
+				 * Если значение уже лежит в требуемом регистре
+				 */
+				if(i->source == target)
+					// Выходим из метода размещения чтения
+					return;
+				// Выполняем пересылку значения из регистра-источника
+				this->move(target, i->source);
+				// Выходим из метода размещения чтения
+				return;
+			}
+		}
+	}
 	// Выполняем размещение команды чтения значения из памяти
 	::emit(this->_code, ::fetch(static_cast <uint32_t> (target), static_cast <uint32_t> (base), index));
 }
@@ -748,8 +794,24 @@ void awh::regex::Emitter::store(const reg_t source, const reg_t base, const uint
 		// Выходим из метода размещения записи
 		return;
 	}
+	/**
+	 * Если ряд записей в память прерван командой посторонней
+	 */
+	if(this->_stamp != this->_code.size())
+		// Выполняем очистку ряда записей в память
+		this->_stored.clear();
+	/**
+	 * Если ряд записей в память прерван командой посторонней
+	 */
+	if(this->_stamp != this->_code.size())
+		// Выполняем очистку ряда записей в память
+		this->_stored.clear();
 	// Выполняем размещение команды записи значения регистра в память
 	::emit(this->_code, ::store(static_cast <uint32_t> (source), static_cast <uint32_t> (base), index));
+	// Выполняем добавление размещённой записи в ряд
+	this->_stored.emplace_back(source, base, index);
+	// Выполняем установку длины кода на миг завершения ряда
+	this->_stamp = this->_code.size();
 }
 /**
  * @brief Метод размещения чтения значения из памяти по адресу в регистре
@@ -841,6 +903,8 @@ void awh::regex::Emitter::proceed(const reg_t reg) noexcept {
 void awh::regex::Emitter::landing() noexcept {
 	// Выполняем размещение метки цели перехода «bti j»
 	::emit(this->_code, 0xD503249Fu);
+	// Выполняем обрыв ряда записей в память
+	this->_stamp = SIZE_MAX;
 }
 /**
  * @brief Метод размещения завершения вызова

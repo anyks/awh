@@ -115,6 +115,21 @@ const char * awh::codec::abc::message(const error_t error) noexcept {
 		// Если превышен предел, заданный настройками разбора
 		case static_cast <uint8_t> (error_t::OVERFLOW_LIMIT):
 			return "limit set by the settings of the parsing is exceeded";
+		// Если именем поля отображения стоит вместимое
+		case static_cast <uint8_t> (error_t::INVALID_KEY):
+			return "a container stands as the name of a field of a mapping";
+		// Если имена полей отображения идут не по возрастанию
+		case static_cast <uint8_t> (error_t::UNORDERED_KEY):
+			return "names of the fields of a mapping do not go in the ascending order";
+		// Если неопределённая длина встречена при строгом виде записи
+		case static_cast <uint8_t> (error_t::INDEFINITE_REFUSED):
+			return "an indefinite length at the strict kind of the record";
+		// Если вместимое не закрыто либо закрыто лишний раз
+		case static_cast <uint8_t> (error_t::UNBALANCED_CONTAINER):
+			return "container is not closed or is closed once too many";
+		// Если значений вместимого больше объявленного
+		case static_cast <uint8_t> (error_t::CONTAINER_OVERFLOW):
+			return "there are more values of a container than declared";
 	}
 	// Выводим результат по умолчанию
 	return "unknown error";

@@ -593,13 +593,21 @@ namespace awh {
 		std::map <string, record_t> keys;
 		// Контекст потока подписи
 		EVP_MD_CTX * stream;
+		/**
+		 * Признак потока проверки подписи
+		 *
+		 * Поток на объекте один, а работы у него две - выработка подписи и её проверка, -
+		 * и контекст их между собой не взаимозаменяем: подача проверяемого в поток
+		 * выработки принята была бы молча, а подпись вышла бы не той, которой ждут
+		 */
+		bool checking;
 		// Имя ключа, которым заведён поток подписи
 		string name;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
-		explicit keyring_t() noexcept : stream(nullptr) {}
+		explicit keyring_t() noexcept : stream(nullptr), checking(false) {}
 		/**
 		 * @brief Метод сброса потока подписи
 		 *
@@ -612,6 +620,8 @@ namespace awh {
 				// Снимаем указатель освобождённого контекста
 				this->stream = nullptr;
 			}
+			// Сбрасываем признак потока проверки подписи
+			this->checking = false;
 			// Выполняем очистку имени ключа потока подписи
 			this->name.clear();
 		}
@@ -8861,11 +8871,17 @@ bool awh::Crypto::setKey(const string & name, const string & key, const key_type
 			// Если вид подписи прочитанного ключа договору отвечает
 			} else {
 				/**
-				 * Разрядность ключа оглашается, но ключа не отвергает - тем же
-				 * порядком, каким оглашается разрядность вводимого ключа RSA (5.28)
+				 * Разрядность оглашается одному лишь ключу RSA: порог её взят у RSA и
+				 * прочим схемам не отвечает вовсе. Ключ Ed25519 имеет 253 разряда, а
+				 * ключ на кривой P-256 - 256, и оба заведомо ниже порога RSA, хотя
+				 * стойкость их с ним сравнима: разрядность у этих схем задана самой
+				 * схемой и вызывающей стороной не выбирается. Оглашение их по порогу
+				 * RSA было бы предупреждением о том, что исправить нельзя и не нужно
 				 */
-				// Выполняем оглашение разрядности введённого ключа
-				driver::strength(result, type, this->_log);
+				// Если введённый ключ является ключом RSA
+				if(kind == signature_t::RSA)
+					// Выполняем оглашение разрядности введённого ключа
+					driver::strength(result, type, this->_log);
 				// Выполняем снятие ключа, лежавшего под этим именем прежде
 				this->removeKey(name);
 				// Получаем запись ключа в связке
@@ -9545,15 +9561,48 @@ bool awh::Crypto::saveKey(const string & name, const string & filename, const ke
 			 * ставит на место запись, но не обещает, что запись эта на носителе есть
 			 */
 			// Если довести запись файла до носителя не удалось
-			if(outcome)
-				// Выполняем доведение записи файла до носителя
-				outcome = ((::fflush(file) == 0) && (::fsync(::fileno(file)) == 0));
+			if(outcome){
+				/**
+				 * Для операционной системы MS Windows
+				 */
+				#if _WIN32 || _WIN64
+					/**
+					 * Доведение записи до носителя у MS Windows зовётся иначе: работы
+					 * «fsync» там нет вовсе, и её место занимает «_commit»
+					 */
+					// Выполняем доведение записи файла до носителя
+					outcome = ((::fflush(file) == 0) && (::_commit(::_fileno(file)) == 0));
+				/**
+				 * Для операционных систем семейства POSIX
+				 */
+				#else
+					// Выполняем доведение записи файла до носителя
+					outcome = ((::fflush(file) == 0) && (::fsync(::fileno(file)) == 0));
+				#endif
+			}
 			// Выполняем закрытие файла ключа
 			::fclose(file);
 			// Если запись ключа удалась
-			if(outcome)
-				// Выполняем постановку записанного ключа на место
-				outcome = (::rename(temporary.c_str(), filename.c_str()) == 0);
+			if(outcome){
+				/**
+				 * Для операционной системы MS Windows
+				 */
+				#if _WIN32 || _WIN64
+					/**
+					 * Переименование поверх существующего файла у MS Windows отказывает,
+					 * и постановка ключа на место идёт своим средством системы: оно и
+					 * заменяет существующий файл, и доводит замену до носителя
+					 */
+					// Выполняем постановку записанного ключа на место
+					outcome = (::MoveFileExW(this->_fmk->convert(temporary).c_str(), this->_fmk->convert(filename).c_str(), (MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) != 0);
+				/**
+				 * Для операционных систем семейства POSIX
+				 */
+				#else
+					// Выполняем постановку записанного ключа на место
+					outcome = (::rename(temporary.c_str(), filename.c_str()) == 0);
+				#endif
+			}
 			/**
 			 * Отдельный файл снимается на всяком отказе: он несёт закрытый ключ, и
 			 * оставленный на диске давал бы его тому, кто до каталога дотянулся
@@ -9562,8 +9611,14 @@ bool awh::Crypto::saveKey(const string & name, const string & filename, const ke
 			if(!outcome)
 				// Выполняем снятие отдельного файла
 				::remove(temporary.c_str());
-			// Если запись ключа удалась
-			else outcome = driver::settled(filename);
+			/**
+			 * Каталог доводится до носителя одним лишь POSIX: у MS Windows постановка на
+			 * место выполнена сквозной записью, и доводить там нечего
+			 */
+			#if !_WIN32 && !_WIN64
+				// Если запись ключа удалась
+				else outcome = driver::settled(filename);
+			#endif
 		}
 		// Если записать ключ не удалось
 		if(!outcome){
@@ -9614,10 +9669,29 @@ bool awh::Crypto::signInitialize(const string & name, const hash_t hash) noexcep
 	// Охранник очереди ошибок библиотеки криптографии
 	const driver::purge_t purge;
 	/**
-	 * Поток, заведённый прежде, сбрасывается: заведение нового потока поверх прежнего
-	 * оставляло бы его контекст висеть, а поданное в него - неподписанным
+	 * Поток, заведённый прежде, сбрасывается, а не отвергает заведение: тем же порядком
+	 * ведёт себя заведение потока шифрования, и почерк у модуля один. Но сброс этот
+	 * оглашается: незавершённый поток несёт поданное в него, и работа эта пропадает -
+	 * молчаливая же пропажа выглядит работающим обиходом, покуда кто-нибудь не хватится
+	 * подписи, которой нет
 	 */
-	// Выполняем сброс потока подписи, заведённого прежде
+	// Если поток, заведённый прежде, ещё не завершён
+	if(this->_keyring->stream != nullptr){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем предупреждение в лог
+			this->_log->debug("Unfinished stream is discarded by the new initialization", __PRETTY_FUNCTION__, make_tuple(this->_keyring->name, name), log_t::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем предупреждение в лог
+			this->_log->print("Unfinished stream is discarded by the new initialization", log_t::flag_t::WARNING);
+		#endif
+	}
+	// Выполняем сброс потока, заведённого прежде
 	this->_keyring->reset();
 	// Признак успешно выполненной работы
 	bool outcome = false;
@@ -9743,20 +9817,25 @@ bool awh::Crypto::signUpdate(const uint8_t * buffer, const size_t size) noexcept
 	if(!this->ready())
 		// Выходим из метода
 		return false;
-	// Если поток подписи не заведён
-	if(this->_keyring->stream == nullptr){
+	/**
+	 * Поток проверки подписи подачи в выработку не принимает: контексты их между собой
+	 * не взаимозаменяемы, и подача проверяемого в поток выработки прошла бы молча -
+	 * подпись вышла бы не той, которой ждёт вызывающая сторона
+	 */
+	// Если поток подписи не заведён либо заведён проверкой
+	if((this->_keyring->stream == nullptr) || this->_keyring->checking){
 		/**
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("Signature stream is not initialized", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::WARNING);
+			this->_log->debug(this->_keyring->checking ? "Stream is initialized for the verification, not for the signing" : "Signature stream is not initialized", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("Signature stream is not initialized", log_t::flag_t::WARNING);
+			this->_log->print(this->_keyring->checking ? "Stream is initialized for the verification, not for the signing" : "Signature stream is not initialized", log_t::flag_t::WARNING);
 		#endif
 		// Выходим из метода
 		return false;
@@ -9817,20 +9896,20 @@ bool awh::Crypto::signFinalize(vector <uint8_t> & result) noexcept {
 		return false;
 	// Затираем и очищаем буфер результата
 	driver::wipe(result);
-	// Если поток подписи не заведён
-	if(this->_keyring->stream == nullptr){
+	// Если поток подписи не заведён либо заведён проверкой
+	if((this->_keyring->stream == nullptr) || this->_keyring->checking){
 		/**
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("Signature stream is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+			this->_log->debug(this->_keyring->checking ? "Stream is initialized for the verification, not for the signing" : "Signature stream is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("Signature stream is not initialized", log_t::flag_t::WARNING);
+			this->_log->print(this->_keyring->checking ? "Stream is initialized for the verification, not for the signing" : "Signature stream is not initialized", log_t::flag_t::WARNING);
 		#endif
 		// Выходим из метода
 		return false;
@@ -9895,6 +9974,299 @@ bool awh::Crypto::signFinalize(vector <uint8_t> & result) noexcept {
 	return outcome;
 }
 /**
+ * @brief Метод заведения потока проверки подписи
+ *
+ * @param name имя ключа в связке
+ * @param hash тип хэш-суммы
+ * @return     признак успешно выполненной работы
+ *
+ */
+bool awh::Crypto::verifyInitialize(const string & name, const hash_t hash) noexcept {
+	// Если объект собран не был
+	if(!this->ready())
+		// Выходим из метода
+		return false;
+	// Охранник очереди ошибок библиотеки криптографии
+	const driver::purge_t purge;
+	/**
+	 * Поток, заведённый прежде, сбрасывается, а не отвергает заведение: тем же порядком
+	 * ведёт себя заведение потока шифрования, и почерк у модуля один. Но сброс этот
+	 * оглашается: незавершённый поток несёт поданное в него, и работа эта пропадает -
+	 * молчаливая же пропажа выглядит работающим обиходом, покуда кто-нибудь не хватится
+	 * подписи, которой нет
+	 */
+	// Если поток, заведённый прежде, ещё не завершён
+	if(this->_keyring->stream != nullptr){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем предупреждение в лог
+			this->_log->debug("Unfinished stream is discarded by the new initialization", __PRETTY_FUNCTION__, make_tuple(this->_keyring->name, name), log_t::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем предупреждение в лог
+			this->_log->print("Unfinished stream is discarded by the new initialization", log_t::flag_t::WARNING);
+		#endif
+	}
+	// Выполняем сброс потока, заведённого прежде
+	this->_keyring->reset();
+	// Признак успешно выполненной работы
+	bool outcome = false;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Выполняем поиск ключа в связке
+		auto i = this->_keyring->keys.find(name);
+		// Если ключа под таким именем в связке нет
+		if((i == this->_keyring->keys.end()) || (i->second.ctx == nullptr)){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				this->_log->debug("Signature key is not found in the keyring", __PRETTY_FUNCTION__, make_tuple(name), log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				this->_log->print("Signature key is not found in the keyring", log_t::flag_t::WARNING);
+			#endif
+			// Выходим из метода
+			return outcome;
+		}
+		/**
+		 * Вид, поточным не бывающий, отвергается с названной причиной - тем же порядком,
+		 * что и у потока выработки подписи (5а.3): схема Ed25519 требует двух проходов по
+		 * сообщению, и поточной разновидности у неё нет
+		 */
+		// Если вид подписи ключа поточным не бывает
+		if(!this->streamable(i->second.type)){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				this->_log->debug("Signature kind has no streaming mode", __PRETTY_FUNCTION__, make_tuple(name, static_cast <uint16_t> (i->second.type)), log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				this->_log->print("Signature kind has no streaming mode", log_t::flag_t::WARNING);
+			#endif
+			// Выходим из метода
+			return outcome;
+		}
+		// Хэш-функция проверки подписи
+		const EVP_MD * md = driver::evpmd(hash);
+		// Если хэш-функция схемы подписи не получена
+		if((hash == hash_t::NONE) || (md == nullptr)){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				this->_log->debug("Hash type is required for the signature kind", __PRETTY_FUNCTION__, make_tuple(name, static_cast <uint16_t> (hash)), log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				this->_log->print("Hash type is required for the signature kind", log_t::flag_t::WARNING);
+			#endif
+			// Выходим из метода
+			return outcome;
+		}
+		// Выполняем заведение контекста потока проверки подписи
+		this->_keyring->stream = ::EVP_MD_CTX_new();
+		// Если контекст потока проверки подписи заведён
+		if(this->_keyring->stream != nullptr){
+			// Контекст работы с ключом подписи
+			EVP_PKEY_CTX * pctx = nullptr;
+			// Если заведение проверки подписи удалось
+			if(::EVP_DigestVerifyInit(this->_keyring->stream, &pctx, md, nullptr, i->second.ctx) == 1){
+				// Если подпись проверяется ключом RSA
+				if(i->second.type == signature_t::RSA)
+					// Выполняем установку схемы дополнения подписи
+					outcome = driver::padding(pctx, i->second.ctx, md, this->_params.padding, this->_log);
+				// Устанавливаем признак успешно выполненной работы
+				else outcome = true;
+			}
+		}
+		// Если поток проверки подписи заведён
+		if(outcome){
+			// Устанавливаем признак потока проверки подписи
+			this->_keyring->checking = true;
+			// Запоминаем имя ключа, которым заведён поток
+			this->_keyring->name = name;
+		/**
+		 * Стейт потока сбрасывается на всяком отказе заведения: контекст к этой поре мог
+		 * быть заведён, а приметы потока не записаны (4.31)
+		 */
+		// Если поток проверки подписи завести не удалось
+		} else this->_keyring->reset();
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		// Снимаем признак успешно выполненной работы
+		outcome = false;
+		// Выполняем сброс потока проверки подписи
+		this->_keyring->reset();
+		// Записываем ошибку в лог
+		this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+	}
+	// Выводим признак успешно выполненной работы
+	return outcome;
+}
+/**
+ * @brief Метод подачи порции данных в поток проверки подписи
+ *
+ * @param buffer буфер порции данных
+ * @param size   размер порции данных
+ * @return       признак успешно выполненной работы
+ *
+ */
+bool awh::Crypto::verifyUpdate(const uint8_t * buffer, const size_t size) noexcept {
+	// Если объект собран не был
+	if(!this->ready())
+		// Выходим из метода
+		return false;
+	/**
+	 * Поток выработки подписи подачи в проверку не принимает: контексты их между собой
+	 * не взаимозаменяемы, и подача проверяемого в поток выработки прошла бы молча
+	 */
+	// Если поток проверки не заведён либо заведён выработкой подписи
+	if((this->_keyring->stream == nullptr) || !this->_keyring->checking){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug((this->_keyring->stream != nullptr) ? "Stream is initialized for the signing, not for the verification" : "Verification stream is not initialized", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print((this->_keyring->stream != nullptr) ? "Stream is initialized for the signing, not for the verification" : "Verification stream is not initialized", log_t::flag_t::WARNING);
+		#endif
+		// Выходим из метода
+		return false;
+	}
+	// Если буфер данных не передан, а размер его заявлен
+	if((buffer == nullptr) && (size > 0))
+		// Выходим из метода
+		return false;
+	// Если порция данных пуста
+	if(size == 0)
+		// Выводим признак успешно выполненной работы
+		return true;
+	// Охранник очереди ошибок библиотеки криптографии
+	const driver::purge_t purge;
+	// Выполняем подачу порции данных в поток проверки подписи
+	const bool outcome = (::EVP_DigestVerifyUpdate(this->_keyring->stream, buffer, size) == 1);
+	/**
+	 * Поток сбрасывается на отказе подачи: продолжать поток, порцию потерявший, значило
+	 * бы проверить не то, что подано, - и подпись такого потока была бы отвергнута с
+	 * видом подделки, хотя подделки не было
+	 */
+	// Если подать порцию данных в поток проверки не удалось
+	if(!outcome){
+		// Выполняем сброс потока проверки подписи
+		this->_keyring->reset();
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("Verification stream update failed", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::CRITICAL);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("Verification stream update failed", log_t::flag_t::CRITICAL);
+		#endif
+	}
+	// Выводим признак успешно выполненной работы
+	return outcome;
+}
+/**
+ * @brief Метод завершения потока проверки подписи
+ *
+ * @param signature буфер с подписью данных
+ * @return          результат проверки подписи
+ *
+ */
+bool awh::Crypto::verifyFinalize(const vector <uint8_t> & signature) noexcept {
+	// Если объект собран не был
+	if(!this->ready())
+		// Выходим из метода
+		return false;
+	// Если поток проверки не заведён либо заведён выработкой подписи
+	if((this->_keyring->stream == nullptr) || !this->_keyring->checking){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug((this->_keyring->stream != nullptr) ? "Stream is initialized for the signing, not for the verification" : "Verification stream is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print((this->_keyring->stream != nullptr) ? "Stream is initialized for the signing, not for the verification" : "Verification stream is not initialized", log_t::flag_t::WARNING);
+		#endif
+		// Выходим из метода
+		return false;
+	}
+	// Охранник очереди ошибок библиотеки криптографии
+	const driver::purge_t purge;
+	// Признак успешно выполненной работы
+	bool outcome = false;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		/**
+		 * Пустая подпись отвергается прежде работы - тем же порядком, что и у разовой
+		 * проверки: полагаться на отказ библиотеки значило бы отдать решение ей
+		 */
+		// Если подпись данных передана
+		if(!signature.empty())
+			/**
+			 * Несовпадение подписи отказом работы не является и в лог не пишется:
+			 * подделка - это законный исход проверки, а не сбой (5.23)
+			 */
+			// Выполняем проверку подписи поданного потока
+			outcome = (::EVP_DigestVerifyFinal(this->_keyring->stream, signature.data(), signature.size()) == 1);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		// Снимаем признак успешно выполненной работы
+		outcome = false;
+		// Записываем ошибку в лог
+		this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+	}
+	/**
+	 * Поток сбрасывается и удачей, и отказом: продолжать завершённый поток нечем -
+	 * контекст проверки завершением израсходован
+	 */
+	// Выполняем сброс потока проверки подписи
+	this->_keyring->reset();
+	// Выводим результат проверки подписи
+	return outcome;
+}
+/**
+
 
 
 

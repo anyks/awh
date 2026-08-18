@@ -2693,6 +2693,31 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	 */
 	const uint32_t frame = static_cast <uint32_t> (((((spill + SPILLS) * sizeof(size_t)) + 15) / 16) * 16);
 	/**
+	 * Получаем шаг записи кадра порождаемого сопоставителя
+	 *
+	 * @details Шаг этот кадру вызова не равен: места сохранения регистров,
+	 *          вызовом затираемых, адресуются указателем стека, а не регистром
+	 *          записи, - обращения по записи идут местами ниже них. Запись,
+	 *          отводимая на каждый проход повторения, несла бы их пустым весом.
+	 *
+	 *          Вес этот не безобиден, и не одной лишь скоростью. Замер
+	 *          укорочением шага показал, что повторение с записью на проход
+	 *          платит **объёмом памяти**, а не числом команд: тело в два байта
+	 *          шло медленнее тела простого в 3.8 раза, и укорочение шага
+	 *          со ста семидесяти шести байт до шестнадцати давало половину
+	 *          этой платы обратно, тогда как снятие обеих зависимостей,
+	 *          через виток проносимых, - лишь шестую часть.
+	 *
+	 *          Главное же не в скорости: число уровней выводится делением
+	 *          области на шаг, и укорочение его **удваивает длину текста**,
+	 *          какую сопоставитель берёт до отказа «не берусь». Опыт
+	 *          на «(?:([a-m])[a-m])*»: отказ шёл на 16 384 знаках, стал
+	 *          на 32 768. Текст длиннее прежде доигрывался разбором программы,
+	 *          а там разница не проценты, а разы.
+	 *
+	 */
+	const uint32_t record = static_cast <uint32_t> ((((spill * sizeof(size_t)) + 15) / 16) * 16);
+	/**
 	 * Получаем место набора границ, адрес области записей несущее
 	 *
 	 * @details Границы совпадения и захваченных групп занимают набор целиком,
@@ -2702,7 +2727,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	 */
 	const size_t arena = ((static_cast <size_t> (program.captures) + 1) * 2);
 	// Выполняем установку размера записи кадра порождаемого сопоставителя
-	this->_frame = frame;
+	this->_frame = record;
 	/**
 	 * Выполняем установку наибольшего количества записей кадра
 	 *
@@ -2712,7 +2737,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	 *          область записей ограничивается размером, а не числом уровней.
 	 *
 	 */
-	this->_levels = static_cast <uint32_t> (((framed > 0) || (calls > 0)) ? (((ARENA / frame) < 2) ? 2 : (ARENA / frame)) : LEVELS);
+	this->_levels = static_cast <uint32_t> (((framed > 0) || (calls > 0)) ? (((ARENA / record) < 2) ? 2 : (ARENA / record)) : LEVELS);
 	// Заводим метку начала очередной попытки сопоставления
 	const size_t attempt = emitter.label();
 	// Заводим метку перехода к следующей позиции начала попытки
@@ -2776,7 +2801,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	 */
 	if(calls > 0)
 		// Выполняем установку вершины области на запись, за первой следующую
-		emitter.add(reg_t::SUMMIT, reg_t::RECORD, frame);
+		emitter.add(reg_t::SUMMIT, reg_t::RECORD, record);
 	// Выполняем установку позиции начала попытки сопоставления
 	emitter.move(reg_t::KEEPER, reg_t::START);
 	// Выполняем сохранение позиции начала поиска совпадения в кадре вызова
@@ -3022,7 +3047,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	 */
 	if(calls > 0)
 		// Выполняем установку вершины области на запись, за первой следующую
-		emitter.add(reg_t::SUMMIT, reg_t::RECORD, frame);
+		emitter.add(reg_t::SUMMIT, reg_t::RECORD, record);
 	// Выполняем установку позиции сопоставления в позицию начала попытки
 	emitter.move(reg_t::CURSOR, reg_t::KEEPER);
 	/**
@@ -3136,7 +3161,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 		 */
 		if(calls == 0) {
 			// Выполняем отведение записи сдвигом регистра записи
-			emitter.enter(frame);
+			emitter.enter(record);
 			// Выходим из отведения записи уровня
 			return;
 		}
@@ -3149,7 +3174,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 		// Выполняем установку записи уровня вершиной области
 		emitter.move(reg_t::RECORD, reg_t::SUMMIT);
 		// Выполняем подъём вершины области на размер записи
-		emitter.add(reg_t::SUMMIT, reg_t::SUMMIT, frame);
+		emitter.add(reg_t::SUMMIT, reg_t::SUMMIT, record);
 	};
 	/**
 	 * @brief Снятие записи уровня вложенного
@@ -3165,7 +3190,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 		 */
 		if(calls == 0) {
 			// Выполняем снятие записи сдвигом регистра записи
-			emitter.leave(frame);
+			emitter.leave(record);
 			// Выходим из снятия записи уровня
 			return;
 		}

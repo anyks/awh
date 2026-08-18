@@ -1143,6 +1143,20 @@ namespace awh {
 					 * с новым разбором. Устройство это намеренное - перенумерование узлов
 					 * обесценило бы всякую ссылку на дерево, выданную наружу прежде
 					 *
+					 * @note Значение, несущее корень дерева с единственным узлом, прививается
+					 * узлом этим: разбор текста во владеющее значение корень заводит всегда, и
+					 * правило это то же самое, каким сборка отдаёт собранный узел без корня над
+					 * ним. Корень с иным числом узлов отвергается - одним узлом ему не стать, а
+					 * прививка заменяет узел узлом
+					 *
+					 * @note Перенос значения в арену идёт возвратно, глубина за глубиной, и
+					 * дерево небывалой вложенности сорвало бы стек. Значение, снятое с разбора,
+					 * тем ограждено пределом вложенности чтения (1024 по умолчанию), а
+					 * собранному вручную предела нет вовсе. Замер по стендам: при стеке 4 МБ
+					 * (NetBSD, OpenBSD) срыв наступает около 9 000 уровней у самой скупой из
+					 * систем, при стеке 8 МБ (macOS) - около 25 000. Предел чтения держится
+					 * оттого с девятикратным запасом даже там, где стека меньше всего
+					 *
 					 * @param path  путь к прививаемому месту
 					 * @param value прививаемое владеющее значение
 					 * @return      признак успешности прививки
@@ -1159,6 +1173,18 @@ namespace awh {
 					 * in it unreachable and give their place back only with the clearing of the tree or
 					 * with a new parsing. This arrangement is deliberate — a renumbering of the nodes
 					 * would invalidate every reference to the tree given away outside before
+					 * @note A value carrying the root of a tree with a single node is grafted by that
+					 * node: the parsing of a text into an owning value always creates a root, and this rule
+					 * is the very same by which the building gives away a built node without a root above it.
+					 * A root with any other number of nodes is refused — it is never to become a single node,
+					 * while the grafting replaces a node by a node
+					 * @note The transfer of a value into the arena goes recursively, depth by depth, and
+					 * a tree of an unheard-of nesting would overflow the stack. A value taken from a parsing
+					 * is guarded by the limit of the nesting of the reading (1024 by default), while for one
+					 * built by hand there is no limit at all. A measurement across the stands: with a stack of 4 MB
+					 * (NetBSD, OpenBSD) the overflow comes at about 9 000 levels at the scarcest of the systems,
+					 * with a stack of 8 MB (macOS) — at about 25 000. The limit of the reading thus holds
+					 * with a ninefold reserve even where there is the least stack
 					 * @param path  path to the place being grafted
 					 * @param value owning value being grafted
 					 * @return      sign of the success of the grafting

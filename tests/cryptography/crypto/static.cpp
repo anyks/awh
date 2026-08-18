@@ -33,6 +33,8 @@
  * Стандартный заголовочный файл работы с файлами
  */
 #include <chrono>
+#include <thread>
+#include <atomic>
 #include <fstream>
 
 /**
@@ -3177,4 +3179,322 @@ TEST_F(CryptoFixture, SignatureKeyStorageCryptoTest){
 	EXPECT_FALSE(this->_crypto->loadKey("owner", "sign_missing.pem", awh::crypto_t::key_type_t::PUBLIC));
 	// Проверяем отказ ввода записи ключа, ключом не являющейся
 	EXPECT_FALSE(this->_crypto->setKey("owner", "not a key at all", awh::crypto_t::key_type_t::PUBLIC));
+}
+
+/**
+ * @brief Тест одновременной проверки подписи из нескольких потоков выполнения
+ *
+ * @details Проверка подписи объявлена работой, изменяемого состояния объекта не
+ *          трогающей: связка ключей при ней лишь читается, а контекст заводится свой на
+ *          всякий вызов. Свойство это требуется потребителю - он зовёт проверку из потока
+ *          цикла событий, пока другой поток работает с тем же объектом, - и незакреплённое
+ *          оно держится на одном лишь честном слове до первой правки
+ *
+ * @note Гонку сама по себе проверка не ловит: гонка проявляется не всегда, а
+ *       порознь взятые вызовы могут разойтись во времени. Ловит её прогон под
+ *       сторожем потоков (см. DECISIONS 5а.16); эта же проверка стоит на страже
+ *       грубой поломки - отказа проверки либо срыва работы при одновременном вызове
+ *
+ */
+TEST_F(CryptoFixture, SignatureConcurrentVerifyCryptoTest){
+	// Количество потоков выполнения
+	static constexpr size_t THREADS = 8;
+	// Количество проверок подписи в каждом потоке
+	static constexpr size_t ROUNDS = 200;
+	// Данные для подписи
+	const std::string text = "Anyks Framework, Hello World!!!";
+	// Имена ключей связки
+	const std::vector <std::string> names = {"ed", "ec", "rsa"};
+	// Виды подписи ключей связки
+	const std::vector <awh::crypto_t::signature_t> kinds = {
+		awh::crypto_t::signature_t::ED25519,
+		awh::crypto_t::signature_t::ECDSA,
+		awh::crypto_t::signature_t::RSA
+	};
+	// Подписи данных ключами связки
+	std::vector <std::vector <uint8_t>> signatures(names.size());
+	/**
+	 * Выполняем заведение ключей связки и выработку подписей
+	 */
+	for(size_t i = 0; i < names.size(); i++){
+		// Выполняем выработку ключа подписи
+		ASSERT_TRUE(this->_crypto->generateKey(names.at(i), kinds.at(i)));
+		// Тип хэш-суммы, схеме подписи отвечающий
+		const awh::crypto_t::hash_t hash = ((kinds.at(i) == awh::crypto_t::signature_t::ED25519) ? awh::crypto_t::hash_t::NONE : awh::crypto_t::hash_t::SHA256);
+		// Выполняем выработку подписи данных
+		ASSERT_TRUE(this->_crypto->sign(names.at(i), reinterpret_cast <const uint8_t *> (text.data()), text.size(), hash, signatures.at(i)));
+	}
+	// Количество принятых проверкой подписей
+	std::atomic <size_t> accepted{0};
+	// Количество отвергнутых проверкой подписей
+	std::atomic <size_t> rejected{0};
+	// Потоки выполнения, проверку зовущие
+	std::vector <std::thread> threads;
+	/**
+	 * Выполняем заведение потоков выполнения
+	 */
+	for(size_t i = 0; i < THREADS; i++){
+		// Выполняем заведение очередного потока выполнения
+		threads.emplace_back([&, i]() noexcept {
+			/**
+			 * Выполняем перебор проверок подписи
+			 */
+			for(size_t k = 0; k < ROUNDS; k++){
+				// Порядковый номер ключа, которым идёт проверка
+				const size_t index = ((i + k) % names.size());
+				// Тип хэш-суммы, схеме подписи отвечающий
+				const awh::crypto_t::hash_t hash = ((kinds.at(index) == awh::crypto_t::signature_t::ED25519) ? awh::crypto_t::hash_t::NONE : awh::crypto_t::hash_t::SHA256);
+				/**
+				 * Проверка зовётся у одного и того же объекта из всех потоков разом,
+				 * и ключи при этом берутся разные: связка читается вперемешку
+				 */
+				// Если подпись принята проверкой
+				if(this->_crypto->verify(names.at(index), reinterpret_cast <const uint8_t *> (text.data()), text.size(), signatures.at(index), hash))
+					// Считаем принятую проверкой подпись
+					accepted.fetch_add(1);
+				// Если подпись проверкой отвергнута
+				else rejected.fetch_add(1);
+			}
+		});
+	}
+	/**
+	 * Выполняем ожидание завершения потоков выполнения
+	 */
+	for(auto & thread : threads)
+		// Выполняем ожидание завершения очередного потока выполнения
+		thread.join();
+	// Проверяем, что все подписи приняты проверкой
+	EXPECT_EQ(accepted.load(), (THREADS * ROUNDS));
+	// Проверяем, что ни одна подпись не отвергнута
+	EXPECT_EQ(rejected.load(), static_cast <size_t> (0));
+	/**
+	 * Связка после одновременного чтения обязана остаться прежней: работа проверки её
+	 * не трогает вовсе
+	 */
+	for(size_t i = 0; i < names.size(); i++)
+		// Проверяем сохранность вида подписи ключа связки
+		EXPECT_EQ(this->_crypto->signature(names.at(i)), kinds.at(i)) << "name = " << names.at(i);
+}
+
+/**
+ * @brief Тест поточной проверки подписи
+ *
+ * @details Поточная проверка нужна чужой записи, подписанной целиком: своя работа
+ *          подписывает короткую свёртку, а чужая в память может и не подняться
+ *
+ */
+TEST_F(CryptoFixture, SignatureStreamVerifyCryptoTest){
+	// Данные для подписи
+	const std::string text = "Anyks Framework, Hello World!!! Anyks Framework, Hello World!!!";
+	// Устанавливаем схему дополнения подписи
+	this->_crypto->padding(awh::crypto_t::padding_t::PSS);
+	/**
+	 * Выполняем перебор видов подписи, поточную работу имеющих
+	 */
+	for(auto & kind : {awh::crypto_t::signature_t::RSA, awh::crypto_t::signature_t::ECDSA}){
+		// Выполняем выработку ключа владельца
+		ASSERT_TRUE(this->_crypto->generateKey("owner", kind)) << "kind = " << static_cast <uint16_t> (kind);
+		// Выполняем выработку ключа постороннего
+		ASSERT_TRUE(this->_crypto->generateKey("stranger", kind)) << "kind = " << static_cast <uint16_t> (kind);
+		// Подпись данных буфером целиком
+		std::vector <uint8_t> signature;
+		// Выполняем подписание данных буфером целиком
+		ASSERT_TRUE(this->_crypto->sign("owner", reinterpret_cast <const uint8_t *> (text.data()), text.size(), awh::crypto_t::hash_t::SHA256, signature)) << "kind = " << static_cast <uint16_t> (kind);
+		/**
+		 * Поточная проверка обязана принять подпись, выработанную буфером целиком: иначе
+		 * чужую запись, подписанную разовой работой, проверить потоком было бы нельзя
+		 */
+		// Выполняем заведение потока проверки подписи
+		ASSERT_TRUE(this->_crypto->verifyInitialize("owner", awh::crypto_t::hash_t::SHA256)) << "kind = " << static_cast <uint16_t> (kind);
+		/**
+		 * Выполняем подачу данных потоку по одному октету
+		 */
+		for(size_t i = 0; i < text.size(); i++)
+			// Выполняем подачу очередного октета потоку проверки
+			ASSERT_TRUE(this->_crypto->verifyUpdate(reinterpret_cast <const uint8_t *> (text.data() + i), 1)) << "kind = " << static_cast <uint16_t> (kind);
+		// Проверяем принятие подписи поточной проверкой
+		EXPECT_TRUE(this->_crypto->verifyFinalize(signature)) << "kind = " << static_cast <uint16_t> (kind);
+		// Подпись, испорченная на один разряд
+		std::vector <uint8_t> tampered = signature;
+		// Выполняем порчу одного разряда подписи
+		tampered[tampered.size() / 2] ^= 0x01;
+		// Выполняем заведение потока проверки подписи
+		ASSERT_TRUE(this->_crypto->verifyInitialize("owner", awh::crypto_t::hash_t::SHA256)) << "kind = " << static_cast <uint16_t> (kind);
+		// Выполняем подачу данных потоку проверки
+		ASSERT_TRUE(this->_crypto->verifyUpdate(reinterpret_cast <const uint8_t *> (text.data()), text.size())) << "kind = " << static_cast <uint16_t> (kind);
+		// Проверяем отказ подписи, испорченной на разряд
+		EXPECT_FALSE(this->_crypto->verifyFinalize(tampered)) << "kind = " << static_cast <uint16_t> (kind);
+		// Выполняем заведение потока проверки подписи чужим ключом
+		ASSERT_TRUE(this->_crypto->verifyInitialize("stranger", awh::crypto_t::hash_t::SHA256)) << "kind = " << static_cast <uint16_t> (kind);
+		// Выполняем подачу данных потоку проверки
+		ASSERT_TRUE(this->_crypto->verifyUpdate(reinterpret_cast <const uint8_t *> (text.data()), text.size())) << "kind = " << static_cast <uint16_t> (kind);
+		// Проверяем отказ подписи, проверяемой чужим ключом
+		EXPECT_FALSE(this->_crypto->verifyFinalize(signature)) << "kind = " << static_cast <uint16_t> (kind);
+		/**
+		 * Испорченный поток обязан быть отвергнут наравне с испорченной подписью: подпись
+		 * покрывает поданное целиком, и потеря одного разряда подачи её рушит
+		 */
+		// Поток, испорченный на один разряд
+		std::string message = text;
+		// Выполняем порчу одного разряда потока
+		message[message.size() / 2] = static_cast <char> (message[message.size() / 2] ^ 0x01);
+		// Выполняем заведение потока проверки подписи
+		ASSERT_TRUE(this->_crypto->verifyInitialize("owner", awh::crypto_t::hash_t::SHA256)) << "kind = " << static_cast <uint16_t> (kind);
+		// Выполняем подачу испорченного потока проверке
+		ASSERT_TRUE(this->_crypto->verifyUpdate(reinterpret_cast <const uint8_t *> (message.data()), message.size())) << "kind = " << static_cast <uint16_t> (kind);
+		// Проверяем отказ подписи испорченного на разряд потока
+		EXPECT_FALSE(this->_crypto->verifyFinalize(signature)) << "kind = " << static_cast <uint16_t> (kind);
+	}
+	// Выполняем выработку ключа Ed25519
+	ASSERT_TRUE(this->_crypto->generateKey("pure", awh::crypto_t::signature_t::ED25519));
+	// Проверяем отказ заведения потока проверки видом, поточным не бывающим
+	EXPECT_FALSE(this->_crypto->verifyInitialize("pure", awh::crypto_t::hash_t::SHA256));
+	// Проверяем отказ подачи в поток проверки, заведения не прошедший
+	EXPECT_FALSE(this->_crypto->verifyUpdate(reinterpret_cast <const uint8_t *> (text.data()), text.size()));
+	// Проверяем отказ завершения потока проверки, заведения не прошедшего
+	EXPECT_FALSE(this->_crypto->verifyFinalize(std::vector <uint8_t> (64, 0)));
+}
+
+/**
+ * @brief Тест раздельности потоков подписи и её проверки
+ *
+ * @details Поток на объекте один, а работы у него две, и контексты их между собой не
+ *          взаимозаменяемы: подача проверяемого в поток выработки прошла бы молча, а
+ *          подпись вышла бы не той, которой ждут
+ *
+ */
+TEST_F(CryptoFixture, SignatureStreamDirectionCryptoTest){
+	// Данные для подписи
+	const std::string text = "Anyks Framework, Hello World!!!";
+	// Буфер подписи
+	std::vector <uint8_t> signature;
+	// Выполняем выработку ключа подписи
+	ASSERT_TRUE(this->_crypto->generateKey("owner", awh::crypto_t::signature_t::ECDSA));
+	// Выполняем заведение потока выработки подписи
+	ASSERT_TRUE(this->_crypto->signInitialize("owner", awh::crypto_t::hash_t::SHA256));
+	// Проверяем отказ подачи в поток проверки, заведённый выработкой
+	EXPECT_FALSE(this->_crypto->verifyUpdate(reinterpret_cast <const uint8_t *> (text.data()), text.size()));
+	// Проверяем отказ завершения проверки у потока, заведённого выработкой
+	EXPECT_FALSE(this->_crypto->verifyFinalize(std::vector <uint8_t> (72, 0)));
+	// Выполняем подачу данных потоку выработки подписи
+	ASSERT_TRUE(this->_crypto->signUpdate(reinterpret_cast <const uint8_t *> (text.data()), text.size()));
+	// Выполняем завершение потока выработки подписи
+	ASSERT_TRUE(this->_crypto->signFinalize(signature));
+	// Выполняем заведение потока проверки подписи
+	ASSERT_TRUE(this->_crypto->verifyInitialize("owner", awh::crypto_t::hash_t::SHA256));
+	// Проверяем отказ подачи в поток выработки, заведённый проверкой
+	EXPECT_FALSE(this->_crypto->signUpdate(reinterpret_cast <const uint8_t *> (text.data()), text.size()));
+	// Буфер подписи потока, заведённого проверкой
+	std::vector <uint8_t> denied;
+	// Проверяем отказ завершения выработки у потока, заведённого проверкой
+	EXPECT_FALSE(this->_crypto->signFinalize(denied));
+	// Выполняем подачу данных потоку проверки подписи
+	ASSERT_TRUE(this->_crypto->verifyUpdate(reinterpret_cast <const uint8_t *> (text.data()), text.size()));
+	// Проверяем принятие подписи поточной проверкой
+	EXPECT_TRUE(this->_crypto->verifyFinalize(signature));
+	/**
+	 * Заведение потока поверх прежнего прежний сбрасывает: продолжать его нечем, и
+	 * завершение его обязано отказать
+	 */
+	// Выполняем заведение потока выработки подписи
+	ASSERT_TRUE(this->_crypto->signInitialize("owner", awh::crypto_t::hash_t::SHA256));
+	// Выполняем заведение потока проверки поверх потока выработки
+	ASSERT_TRUE(this->_crypto->verifyInitialize("owner", awh::crypto_t::hash_t::SHA256));
+	// Проверяем отказ завершения выработки у сброшенного потока
+	EXPECT_FALSE(this->_crypto->signFinalize(denied));
+}
+
+/**
+ * @brief Тест оглашения сброса незавершённого потока подписи
+ *
+ * @details Заведение потока поверх незавершённого прежний сбрасывает, а не отвергает
+ *          заведение: тем же порядком ведёт себя поток шифрования, и почерк у модуля
+ *          один. Но сброс этот оглашается: незавершённый поток несёт поданное в него, и
+ *          работа эта пропадает - молчаливая же пропажа выглядит работающим обиходом,
+ *          покуда кто-нибудь не хватится подписи, которой нет
+ *
+ */
+TEST_F(CryptoFixture, SignatureStreamDiscardCryptoTest){
+	// Количество полученных предупреждений
+	size_t records = 0;
+	// Выполняем выработку ключа подписи
+	ASSERT_TRUE(this->_crypto->generateKey("owner", awh::crypto_t::signature_t::ECDSA));
+	// Выполняем подписку на записи лога
+	this->_log->subscribe([&records](const awh::log_t::flag_t flag, std::string_view text) noexcept -> void {
+		// Снимаем предупреждение о неиспользуемом параметре
+		(void) text;
+		// Если получено предупреждение
+		if(flag == awh::log_t::flag_t::WARNING)
+			// Наращиваем количество полученных предупреждений
+			records++;
+	});
+	// Устанавливаем отложенный режим логов, консоль набора не засоряя
+	this->_log->mode({awh::log_t::mode_t::DEFERRED});
+	// Выполняем заведение потока подписи
+	ASSERT_TRUE(this->_crypto->signInitialize("owner", awh::crypto_t::hash_t::SHA256));
+	// Проверяем, что заведение первого потока предупреждения не даёт
+	EXPECT_EQ(records, static_cast <size_t> (0));
+	// Выполняем подачу данных потоку подписи
+	ASSERT_TRUE(this->_crypto->signUpdate(reinterpret_cast <const uint8_t *> ("Anyks"), 5));
+	// Выполняем заведение потока подписи поверх незавершённого
+	ASSERT_TRUE(this->_crypto->signInitialize("owner", awh::crypto_t::hash_t::SHA256));
+	// Проверяем, что сброс незавершённого потока оглашён
+	EXPECT_EQ(records, static_cast <size_t> (1));
+	// Выполняем заведение потока проверки поверх незавершённого потока подписи
+	ASSERT_TRUE(this->_crypto->verifyInitialize("owner", awh::crypto_t::hash_t::SHA256));
+	// Проверяем, что сброс незавершённого потока оглашён и здесь
+	EXPECT_EQ(records, static_cast <size_t> (2));
+	// Выполняем завершение потока проверки подписи
+	EXPECT_FALSE(this->_crypto->verifyFinalize(std::vector <uint8_t> (72, 0)));
+	// Выполняем заведение потока подписи на завершённом потоке
+	ASSERT_TRUE(this->_crypto->signInitialize("owner", awh::crypto_t::hash_t::SHA256));
+	// Проверяем, что заведение на завершённом потоке предупреждения не даёт
+	EXPECT_EQ(records, static_cast <size_t> (2));
+}
+
+/**
+ * @brief Тест оглашения разрядности по видам подписи
+ *
+ * @details Порог разрядности взят у RSA и прочим схемам не отвечает: ключ Ed25519 имеет
+ *          253 разряда, а ключ на кривой P-256 - 256, и оба заведомо ниже порога RSA,
+ *          хотя стойкость их с ним сравнима. Разрядность у этих схем задана самой схемой
+ *          и вызывающей стороной не выбирается: оглашение было бы предупреждением о том,
+ *          что исправить нельзя и не нужно
+ *
+ */
+TEST_F(CryptoFixture, SignatureStrengthNoiseCryptoTest){
+	// Количество полученных предупреждений
+	size_t records = 0;
+	// Записи ключей, подлежащих вводу
+	std::vector <std::string> keys;
+	/**
+	 * Выполняем выработку ключей схем, разрядность которых задана самой схемой
+	 */
+	for(auto & kind : {awh::crypto_t::signature_t::ED25519, awh::crypto_t::signature_t::ECDSA}){
+		// Выполняем выработку ключа подписи
+		ASSERT_TRUE(this->_crypto->generateKey("origin", kind)) << "kind = " << static_cast <uint16_t> (kind);
+		// Получаем запись закрытого ключа
+		keys.push_back(this->_crypto->getKey("origin", awh::crypto_t::key_type_t::PRIVATE));
+		// Проверяем получение записи закрытого ключа
+		ASSERT_FALSE(keys.back().empty()) << "kind = " << static_cast <uint16_t> (kind);
+	}
+	// Выполняем подписку на записи лога
+	this->_log->subscribe([&records](const awh::log_t::flag_t flag, std::string_view text) noexcept -> void {
+		// Снимаем предупреждение о неиспользуемом параметре
+		(void) text;
+		// Если получено предупреждение
+		if(flag == awh::log_t::flag_t::WARNING)
+			// Наращиваем количество полученных предупреждений
+			records++;
+	});
+	// Устанавливаем отложенный режим логов, консоль набора не засоряя
+	this->_log->mode({awh::log_t::mode_t::DEFERRED});
+	/**
+	 * Выполняем ввод выработанных ключей
+	 */
+	for(size_t i = 0; i < keys.size(); i++)
+		// Проверяем ввод записи закрытого ключа
+		ASSERT_TRUE(this->_crypto->setKey("imported", keys.at(i), awh::crypto_t::key_type_t::PRIVATE)) << "index = " << i;
+	// Проверяем, что разрядность схем с заданной разрядностью не оглашается
+	EXPECT_EQ(records, static_cast <size_t> (0));
 }

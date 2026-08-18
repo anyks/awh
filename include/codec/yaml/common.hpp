@@ -251,15 +251,37 @@ namespace awh {
 			 * \~russian
 			 * @brief Наибольшая допустимая глубина вложенности
 			 *
-			 * @details Предел этот стережёт не стек вызовов - разбор ведётся без рекурсии, -
-			 * а память под стопу отступов: текст из одних открывающих скобок либо из одних
-			 * нарастающих отступов иначе занял бы её всю
+			 * @details Предел этот стережёт две вещи разом. Первая - память под стопу отступов:
+			 * разбор ведётся без рекурсии, но текст из одних открывающих скобок либо из одних
+			 * нарастающих отступов занял бы её всю. Вторая - стек вызовов тех работ, что идут
+			 * по готовому дереву возвратно: сборка текста по дереву, снятие дерева в значение
+			 * владеющее и его размножение
+			 *
+			 * @note Замер 18.08.2026 показал, где стек кончается: скупее прочих сборка текста
+			 *       по дереву документа - у NetBSD amd64 при стеке 4 МБ она валится около
+			 *       11400 уровней, у macOS arm64 при 8 МБ - около 37300; снятие в значение
+			 *       владеющее и размножение его вдвое-впятеро просторнее. Отсюда и предел по
+			 *       умолчанию: он оставляет запаса вдесятеро на самом скупом из стендов
+			 *
+			 * @warning Предел этот настройкою поднимается, и поднявший выше десяти тысяч
+			 *          лишается той ограды: дерево такой глубины разберётся, а сборка текста
+			 *          по нему сорвёт стек. Поднимая предел, поднимать и стек потока
 			 *
 			 * \~english
 			 * @brief Largest admissible depth of the nesting
-			 * @details This limit guards not the stack of the calls — the parsing is conducted without a recursion —
-			 * but the memory for the stack of the indentations: a text of opening brackets alone or of
-			 * growing indentations alone would otherwise occupy all of it
+			 * @details This limit guards two things at once. The first one is the memory for the stack of
+			 * the indentations: the parsing is conducted without a recursion, but a text of opening brackets alone
+			 * or of growing indentations alone would occupy all of it. The second one is the stack of the calls
+			 * of those works which are conducted over the ready tree recursively: the composing of a text by the tree,
+			 * the taking of the tree into an owning value and the duplication of it
+			 * @note The measurement of the 18.08.2026 has shown where the stack ends: leaner than the others is
+			 *       the composing of a text by the tree of a document — on the NetBSD amd64 with the stack of 4 MB
+			 *       it falls at about 11400 levels, on the macOS arm64 with 8 MB — at about 37300; the taking into
+			 *       an owning value and the duplication of it are two to five times more spacious. Hence the limit
+			 *       by default: it leaves the tenfold reserve on the leanest of the stands
+			 * @warning This limit is raised by a setting, and the one who raises it above the ten thousands deprives
+			 *          themselves of that guard: a tree of such a depth will be parsed, but the composing of a text
+			 *          by it will break the stack. While raising the limit, raise the stack of the thread as well
 			 *
 			 * \~
 			 */

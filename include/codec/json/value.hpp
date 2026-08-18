@@ -337,6 +337,57 @@ namespace awh {
 				public:
 					/**
 					 * \~russian
+					 * @brief Метод извлечения предела роста вместилища по номеру
+					 *
+					 * @details Обращение по номеру растит вместилище значениями
+					 * неопределёнными до затребованного номера, и номер, пришедший извне -
+					 * из настроек либо из запроса, - обращается требованием памяти по нему.
+					 * Предел этот рост и стережёт: обращение за пределом заводит вместо
+					 * значения значение мусорное, а вместилище не растит вовсе
+					 *
+					 * @note Предел ограждает один лишь рост обращением по номеру. Вместилище,
+					 *       собранное разбором либо добавлением значений в конец, ему не
+					 *       подвластно: длину разбираемого текста задаёт пользователь рамки,
+					 *       и решать за него, сколько значений ему дозволено, рамка не вправе
+					 *
+					 * @return предел роста вместилища, нуль - предела нет
+					 *
+					 * \~english
+					 * @brief Method of the extraction of the limit of the growth of a container by an index
+					 * @details An access by an index grows a container by undefined values up to the requested
+					 * index, and an index that came from outside — from the settings or from a request — turns
+					 * into a demand of the memory by it. This limit guards that growth: an access beyond the limit
+					 * creates a scrap value instead of a value and does not grow the container at all
+					 * @note The limit guards only the growth by an access by an index. A container built by a parsing
+					 *       or by an addition of values at the end is not subject to it: the length of a text being
+					 *       parsed is set by the user of the framework, and the framework has no right to decide
+					 *       for them how many values they are allowed
+					 * @return limit of the growth of a container, zero — there is no limit
+					 *
+					 * \~
+					 */
+					static size_t limit() noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод установки предела роста вместилища по номеру
+					 *
+					 * @details Предел этот пользователем рамки и ставится: сколько памяти есть у
+					 * приложения, ведомо ему одному. Значение по умолчанию - 65536 значений
+					 *
+					 * @param value устанавливаемый предел, нуль снимает предел вовсе
+					 *
+					 * \~english
+					 * @brief Method of the setting of the limit of the growth of a container by an index
+					 * @details This limit is set by the user of the framework: how much memory an application has
+					 * is known to it alone. The default value is 65536 values
+					 * @param value limit being set, zero removes the limit altogether
+					 *
+					 * \~
+					 */
+					static void limit(const size_t value) noexcept;
+				public:
+					/**
+					 * \~russian
 					 * @brief Метод проверки определённости значения
 					 *
 					 * @return признак определённости значения

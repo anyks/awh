@@ -4603,6 +4603,14 @@ namespace kernel {
 				 *          ему нечем, событий по нему не будет никогда
 				 */
 				case EBADF:
+				/**
+				 * @note Sun Solaris отвечает на негодный описатель `EBADFD`, а не `EBADF`.
+				 *       Имя это есть и здесь, и разбор равняется на оба - расхождение
+				 *       между движками по такому поводу было бы ловушкой
+				 */
+				#if defined(EBADFD)
+					case EBADFD:
+				#endif
 				case EPERM:
 				case EINVAL:
 				case ELOOP: {
@@ -31942,6 +31950,21 @@ namespace io {
 											// Выходим из функции
 											return (bytes > 0);
 										}
+										/**
+										 * Запоминаем опознаватель связи, нулём его не затирая
+										 *
+										 * @details Связей у сокета упорядоченных сообщений много, и запросы свойств
+										 *          связи у узла сервера обязаны называть, по какой именно идти.
+										 *          Здесь и есть единственное место, где сервер опознаватель видит:
+										 *          дальше связь отделяется в свой сокет и достаётся принятому узлу
+										 *
+										 * @warning Прежде поле это не записывалось НИГДЕ ни в одном движке, а
+										 *          читалось пятью местами - временем ожидания, ключом и чанками
+										 *          проверки подлинности: все они получали нуль
+										 */
+										if(server->sctp.info.sinfo_assoc_id != 0)
+											// Запоминаем опознаватель связи узла сервера
+											server->sctp.id = server->sctp.info.sinfo_assoc_id;
 										// Получаем дескриптор сокета из информации о сообщении SCTP
 										sock = ::sctp_peeloff(server->fd, server->sctp.info.sinfo_assoc_id);
 									} break;
@@ -34289,6 +34312,11 @@ namespace sctp {
 						case static_cast <uint8_t> (event::node_t::CLIENT):
 							// Запоминаем опознаватель связи клиента
 							awh_cast <::io::client_t *> (node)->transfer.sctp.use().id = sac->sac_assoc_id;
+						break;
+						// Если узел является сервером
+						case static_cast <uint8_t> (event::node_t::SERVER):
+							// Запоминаем опознаватель связи сервера
+							awh_cast <::io::server_t *> (node)->sctp.id = sac->sac_assoc_id;
 						break;
 					}
 					// Устанавливаем тип ассоциации SCTP
