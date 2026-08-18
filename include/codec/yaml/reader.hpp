@@ -551,6 +551,23 @@ namespace awh {
 					bool _asked;
 					// Отступ, на котором стоит вопрос составного имени
 					uint32_t _questioned;
+					/**
+					 * \~russian
+					 * Признак того, что документ открыт чертою начала своего
+					 *
+					 * @details Документ, чертою открытый и содержимого не получивший, узел свой
+					 * всё же имеет: описание берёт его правилом `e-node` - пустым узлом. Документ
+					 * же, черты не имеющий, без содержимого не заводится вовсе
+					 *
+					 * \~english
+					 * Sign that a document is opened by the dashes of its beginning
+					 * @details A document opened by the dashes and which has not received a content still has
+					 * its node: the description takes it by the `e-node` rule — by an empty node. A document
+					 * without the dashes, on the contrary, is not created at all without a content
+					 *
+					 * \~
+					 */
+					bool _dashed;
 				private:
 					/**
 					 * \~russian

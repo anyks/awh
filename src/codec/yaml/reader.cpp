@@ -474,7 +474,7 @@ awh::codec::yaml::Reader::Reader() noexcept :
  _chomp(chomp_t::CLIP), _marked(NO_INDENT), _outer(0), _margin(0), _inner(0), _opening(0),
  _breaks(0), _padding(0), _deepened(false), _expected(false), _awaited(false), _valued(false),
  _headed(false), _propped(false), _tabbed(false), _rooted(false), _detected(false),
- _joined(0), _stretched(false), _shallow(0), _asked(false), _questioned(0), _entered(false), _pending(0), _schema(schema_t::CORE), _plaining(false), _folds(0),
+ _joined(0), _stretched(false), _shallow(0), _asked(false), _questioned(0), _dashed(false), _entered(false), _pending(0), _schema(schema_t::CORE), _plaining(false), _folds(0),
  _required(0), _phase(flow_t::ENTRY), _directed(false), _versioned(false), _declared(false),
  _dialect(schema_t::CORE) {}
 /**
@@ -490,7 +490,7 @@ awh::codec::yaml::Reader::Reader(const settings_t & settings) noexcept :
  _outer(0), _margin(0), _inner(0), _opening(0), _breaks(0), _padding(0), _deepened(false),
  _expected(false), _awaited(false), _valued(false), _headed(false), _propped(false),
  _tabbed(false), _rooted(false), _detected(false), _entered(false), _pending(0),
- _joined(0), _stretched(false), _shallow(0), _asked(false), _questioned(0), _schema(settings.schema), _plaining(false), _folds(0), _required(0),
+ _joined(0), _stretched(false), _shallow(0), _asked(false), _questioned(0), _dashed(false), _schema(settings.schema), _plaining(false), _folds(0), _required(0),
  _phase(flow_t::ENTRY), _directed(false), _versioned(false), _declared(false), _dialect(settings.schema) {
 	/**
 	 * Если кодировка исходного текста навязана извне
@@ -1054,6 +1054,27 @@ bool awh::codec::yaml::Reader::finish(const size_t column) noexcept {
 		this->_staged.back().location.column = this->_awaiting.column;
 	}
 	/**
+	 * Если документ чертою открыт, а содержимого так и не получил
+	 *
+	 * @details Узел свой он всё же имеет: описание берёт его правилом `e-node` - пустым
+	 *          узлом. Написание `---` без содержимого есть документ с пустым значением, а
+	 *          не документ без значения вовсе, и потребитель, по узлам обходящий, обязан
+	 *          застать его наравне с прочими
+	 *
+	 * @note Документ, черты не имеющий, под правило не подпадает: без содержимого он не
+	 *       заводится вовсе, и пустого узла ему давать неоткуда
+	 */
+	if(this->_dashed && !this->_filled){
+		/**
+		 * Если поставить событие пустого значения не удалось
+		 */
+		if(!this->scalar(string(), style_t::PLAIN, column))
+			// Выводим признак неудачного закрытия документа
+			return false;
+		// Устанавливаем вид пустого значения последнему событию
+		this->_staged.back().type = type_t::NUL;
+	}
+	/**
 	 * Если закрыть открытые уровни вложенности не удалось
 	 */
 	if(!this->collapse(0, column))
@@ -1079,6 +1100,8 @@ bool awh::codec::yaml::Reader::finish(const size_t column) noexcept {
 	this->_opened = false;
 	// Выполняем сброс признака наполнения документа
 	this->_filled = false;
+	// Выполняем сброс признака документа, чертою открытого
+	this->_dashed = false;
 	/**
 	 * Выполняем сброс всего, объявленного закрытым документом
 	 *
@@ -4328,6 +4351,8 @@ bool awh::codec::yaml::Reader::record(const string_view line) noexcept {
 		this->emit(event_t::DOCUMENT_START, offset);
 		// Запоминаем признак открытия документа
 		this->_opened = true;
+		// Запоминаем признак документа, чертою открытого
+		this->_dashed = true;
 		// Выполняем сброс признака наполнения документа
 		this->_filled = false;
 		/**
@@ -4431,6 +4456,8 @@ bool awh::codec::yaml::Reader::record(const string_view line) noexcept {
 		this->emit(event_t::DOCUMENT_START, offset);
 		// Запоминаем признак открытия документа
 		this->_opened = true;
+		// Выполняем сброс признака документа, чертою открытого
+		this->_dashed = false;
 		// Выполняем сброс признака наполнения документа
 		this->_filled = false;
 	/**
