@@ -22,6 +22,7 @@
 /**
  * Подключаем заголовочные файлы модуля
  */
+#include <vector>
 #include "yaml.hpp"
 
 /**
@@ -103,6 +104,78 @@ namespace {
 	 * @return       размер собранного текста настроек
 	 *
 	 */
+	/**
+	 * @brief Функция получения записей имён пар, заранее собранных
+	 *
+	 * @details Собираются они ОДИН РАЗ и вне замеряемого места: сборка строки заводит
+	 *          память сама по себе, и счёт выделений мерил бы работу оснастки
+	 *          вперемешку с работой кодека
+	 *
+	 * @warning Так и было: из 233 353 выделений прогона 83 333 принадлежали самой
+	 *          оснастке. Наружу это торчало лишь у libstdc++, где короткий запас строки
+	 *          вмещает 15 октетов, а не 22, и потому на рабочей машине пряталось
+	 *          целиком - порог сторожил смесь, а разглядеть её было нечем
+	 *
+	 * @note Заводится перечень при первом обращении, и обращаться к нему надлежит ДО
+	 *       начала замера: перенос сборки в начало замеряемого места её оттуда не
+	 *       выносит вовсе - мерится вызов целиком
+	 *
+	 * @param keys количество собираемых записей
+	 * @return     перечень собранных записей имён
+	 *
+	 */
+	static const vector <string> & names(const size_t keys) noexcept {
+		// Перечень собранных записей имён пар
+		static vector <string> result;
+		/**
+		 * Если перечень ещё не собран
+		 */
+		if(result.size() < keys){
+			// Выполняем заведение места под записи имён
+			result.reserve(keys);
+			/**
+			 * Выполняем сборку недостающих записей имён
+			 */
+			while(result.size() < keys)
+				// Выполняем сборку очередной записи имени
+				result.push_back("key" + to_string(result.size()));
+		}
+		// Выводим перечень собранных записей имён
+		return result;
+	}
+	/**
+	 * @brief Функция получения записей значений, заранее собранных
+	 *
+	 * @param keys   количество собираемых записей
+	 * @param quoted признак того, что записи ограды требуют
+	 * @return       перечень собранных записей значений
+	 *
+	 */
+	static const vector <string> & texts(const size_t keys, const bool quoted) noexcept {
+		// Перечень собранных записей значений, ограды не требующих
+		static vector <string> plain;
+		// Перечень собранных записей значений, ограды требующих
+		static vector <string> fenced;
+		// Получаем перечень, виду записей отвечающий
+		vector <string> & result = (quoted ? fenced : plain);
+		/**
+		 * Если перечень ещё не собран
+		 */
+		if(result.size() < keys){
+			// Выполняем заведение места под записи значений
+			result.reserve(keys);
+			/**
+			 * Выполняем сборку недостающих записей значений
+			 */
+			while(result.size() < keys)
+				// Выполняем сборку очередной записи значения
+				result.push_back(quoted ?
+					(string("значение: с двоеточием ") + to_string(result.size())) :
+					(string("значение") + to_string(result.size())));
+		}
+		// Выводим перечень собранных записей значений
+		return result;
+	}
 	static uint64_t write(const awh::codec::yaml::layout_t layout, const size_t keys, const bool quoted = false) noexcept {
 		// Настройки записи текста настроек
 		awh::codec::yaml::writer_t::settings_t settings;
@@ -110,6 +183,10 @@ namespace {
 		settings.layout = layout;
 		// Объект записи текста настроек
 		awh::codec::yaml::writer_t writer(settings);
+		// Получаем записи имён и значений, заранее собранные
+		const vector <string> & names = ::names(keys);
+		// Получаем записи значений, заранее собранные
+		const vector <string> & texts = ::texts(keys, quoted);
 		/**
 		 * Если открыть отображение пар не удалось
 		 */
@@ -121,19 +198,19 @@ namespace {
 		 */
 		for(size_t i = 0; i < keys; i++){
 			// Выполняем запись имени очередной пары отображения
-			writer.key("key" + to_string(i));
+			writer.key(names.at(i));
 			/**
 			 * Если записываются значения, ограды требующие
 			 */
 			if(quoted)
 				// Выполняем запись строкового значения, ограды требующего
-				writer.value(string("значение: с двоеточием ") + to_string(i));
+				writer.value(texts.at(i));
 			/**
 			 * Выполняем выбор вида значения очередной пары
 			 */
 			else switch(i % 4){
 				// Если значением является последовательность знаков
-				case 0: writer.value(string("значение") + to_string(i)); break;
+				case 0: writer.value(texts.at(i)); break;
 				// Если значением является целое число
 				case 1: writer.value(static_cast <int64_t> (i * 1000)); break;
 				// Если значением является логическое значение

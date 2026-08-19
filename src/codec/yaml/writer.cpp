@@ -1504,6 +1504,18 @@ bool awh::codec::yaml::Writer::value(const string & value, const style_t style) 
 	if(!this->sanitize(value, record))
 		// Выводим признак неудачной записи значения
 		return false;
+	// Выполняем запись значения, к годной кодировке приведённого
+	return this->written(record, style);
+}
+/**
+ * @brief Метод записи значения, к годной кодировке уже приведённого
+ *
+ * @param record приведённая запись значения
+ * @param style  вид ограды записи значения
+ * @return       признак успешной записи значения
+ *
+ */
+bool awh::codec::yaml::Writer::written(const string & record, const style_t style) noexcept {
 	/**
 	 * Если поставить запись на своё место не удалось
 	 */
@@ -1561,8 +1573,14 @@ bool awh::codec::yaml::Writer::value(const string & value) noexcept {
 	 */
 	const style_t style = ((this->_settings.quoting == style_t::PLAIN) ?
 	 quoting(record, this->_settings.schema, false) : this->_settings.quoting);
-	// Выполняем запись строкового значения выбранной оградою
-	return this->value(record, style);
+	/**
+	 * Выполняем запись строкового значения выбранной оградою
+	 *
+	 * @note Зовётся запись приведённого, а не общая: приведение уже выполнено выше, и
+	 *       повторное завело бы строку вторично - выделение на каждое значение сверх
+	 *       необходимого
+	 */
+	return this->written(record, style);
 }
 /**
  * @brief Метод записи строкового значения

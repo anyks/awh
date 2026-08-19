@@ -383,6 +383,33 @@ namespace awh {
 					bool sanitize(const string & text, string & result) noexcept;
 					/**
 					 * \~russian
+					 * @brief Метод записи значения, к годной кодировке уже приведённого
+					 *
+					 * @details Заведён он ради того, чтобы приведение не выполнялось дважды:
+					 * запись значения без указания ограды приводит его сама - ограда выбирается
+					 * по приведённой записи, - и повторное приведение в записи с оградою было
+					 * бы работой над уже сделанным
+					 *
+					 * @note Стоило это выделения памяти на КАЖДОЕ строковое значение сверх
+					 *       необходимого: приведение заводит строку под запись, и заводилась
+					 *       она дважды. Наружу торчало счётом выделений у libstdc++, где
+					 *       короткий запас строки вмещает 15 октетов против 22 у libc++
+					 *
+					 * @param record приведённая запись значения
+					 * @param style  вид ограды записи значения
+					 * @return       признак успешной записи значения
+					 *
+					 * \~english
+					 * @brief Method of the writing of a value already brought to a valid encoding
+					 * @param record brought record of the value
+					 * @param style  kind of the fence of the record of the value
+					 * @return       flag of a successful writing of the value
+					 *
+					 * \~
+					 */
+					bool written(const string & record, const style_t style) noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод открытия вместилища заданного вида
 					 *
 					 * @param kind   вид открываемого вместилища
