@@ -310,7 +310,30 @@ namespace awh {
 				SHA224 = 0x03, // Хэш SHA224
 				SHA256 = 0x04, // Хэш SHA256
 				SHA384 = 0x05, // Хэш SHA384
-				SHA512 = 0x06  // Хэш SHA512
+				SHA512 = 0x06, // Хэш SHA512
+				/**
+				 * \~russian
+				 * Хэш-функции ГОСТ Р 34.11-2012 (Streebog)
+				 *
+				 * @details Считаются своими силами: библиотека криптографии их не знает.
+				 *          Годны для выработки хэш-суммы, имитовставки и вывода ключа
+				 *          шифрования; подписи RSA и ECDSA с ними не вырабатываются -
+				 *          сочетание это ни одним сводом не описано, а схема ГОСТ Р 34.10
+				 *          предписывает себе хэш-функцию сама
+				 *
+				 * \~english
+				 * Hash functions of GOST R 34.11-2012 (Streebog)
+				 *
+				 * @details They are computed by our own means: the cryptography library does not know them.
+				 *          They are suitable for producing a hash sum, a message authentication code and for deriving
+				 *          an encryption key; RSA and ECDSA signatures are not produced with them -
+				 *          such a combination is not described by any standard, and the GOST R 34.10 scheme
+				 *          prescribes its own hash function
+				 *
+				 * \~
+				 */
+				STREEBOG256 = 0x07, // Хэш ГОСТ Р 34.11-2012 на 256 разрядов
+				STREEBOG512 = 0x08  // Хэш ГОСТ Р 34.11-2012 на 512 разрядов
 			};
 			/**
 			 * \~russian

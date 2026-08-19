@@ -709,3 +709,187 @@ TEST(CodecAbcWriter, SegmentedBlobInsideContainer) {
 	// Выполняем проверку собранного содержимого двоичных данных
 	ASSERT_EQ(content.size(), 3ul);
 }
+/**
+ * @brief Проверка укладки содержимого ссылкой
+ *
+ */
+TEST(CodecAbcWriter, ReferencedContent){
+	// Сборка бинарной записи
+	abc::writer_t writer;
+	// Выполняем получение настроек сборки записи
+	abc::writer_t::settings_t settings = writer.settings();
+	// Выполняем установку порога укладки содержимого ссылкой
+	settings.reference = 16;
+	// Выполняем установку настроек сборки записи
+	writer.settings(settings);
+	// Крупное значение, укладываемое ссылкой
+	const string large(1024, 'a');
+	// Мелкое значение, укладываемое копией
+	const string small(4, 'b');
+	// Выполняем укладку начала массива
+	ASSERT_TRUE(writer.arrayBegin(static_cast <uint64_t> (2)));
+	// Выполняем укладку крупного значения
+	ASSERT_TRUE(writer.text(large)) << "код отказа: " << abc::message(writer.error());
+	// Выполняем укладку мелкого значения
+	ASSERT_TRUE(writer.text(small));
+	// Выполняем укладку конца массива
+	ASSERT_TRUE(writer.arrayEnd());
+	// Выполняем проверку завершённости собранной записи
+	ASSERT_TRUE(writer.complete());
+	// Выполняем получение кусков собранной записи
+	const vector <abc::piece_t> pieces = writer.pieces();
+	/**
+	 * Выполняем проверку того, что крупное значение уложено ссылкой: буфер собираемой
+	 * записи октетов его не держит вовсе, и выдача идёт кусками
+	 */
+	ASSERT_GT(pieces.size(), 1ul);
+	// Признак того, что октеты крупного значения выданы своей же памятью
+	bool referenced = false;
+	// Общая длина кусков собранной записи
+	size_t length = 0;
+	/**
+	 * Выполняем перебор кусков собранной записи
+	 */
+	for(auto & piece : pieces){
+		// Выполняем учёт длины куска собранной записи
+		length += piece.size;
+		// Если кусок выдан памятью крупного значения
+		if(piece.buffer == large.data()){
+			// Выполняем установку признака укладки ссылкой
+			referenced = true;
+			// Выполняем проверку размера куска собранной записи
+			ASSERT_EQ(piece.size, large.size());
+		}
+	}
+	// Выполняем проверку того, что крупное значение уложено ссылкой
+	ASSERT_TRUE(referenced);
+	// Выполняем проверку длины собранной записи
+	ASSERT_EQ(length, writer.length());
+	/**
+	 * Выполняем проверку того, что цельная запись выходит той же самой: выдача её
+	 * вклеивает содержимое, уложенное ссылкой, и потребителю ничего не меняется
+	 */
+	const vector <uint8_t> record = writer.record();
+	// Выполняем проверку длины цельной записи
+	ASSERT_EQ(record.size(), length);
+	// Разбиратель бинарной записи
+	abc::reader_t reader;
+	// Выполняем подачу собранной записи разбирателю
+	ASSERT_TRUE(reader.feed(record.data(), record.size(), true))
+		<< "код отказа: " << abc::message(reader.error());
+	// Собираемые значения массива
+	vector <string> values;
+	/**
+	 * Выполняем снятие всех событий разбора
+	 */
+	while(reader.next()){
+		// Если событием является строковое значение
+		if(reader.event() == abc::event_t::STRING)
+			// Выполняем накопление снятого значения
+			values.push_back(string(reader.value().data));
+	}
+	// Выполняем проверку количества снятых значений
+	ASSERT_EQ(values.size(), 2ul);
+	// Выполняем проверку крупного значения
+	ASSERT_EQ(values.front(), large);
+	// Выполняем проверку мелкого значения
+	ASSERT_EQ(values.back(), small);
+}
+/**
+ * @brief Проверка укладки имени поля отображения копией
+ *
+ */
+TEST(CodecAbcWriter, ReferencedKeysAreCopied){
+	// Сборка бинарной записи
+	abc::writer_t writer;
+	// Выполняем получение настроек сборки записи
+	abc::writer_t::settings_t settings = writer.settings();
+	// Выполняем установку порога укладки содержимого ссылкой
+	settings.reference = 8;
+	// Выполняем установку строгого вида записи
+	settings.canonical = true;
+	// Выполняем установку настроек сборки записи
+	writer.settings(settings);
+	// Имена полей отображения, чья длина порог укладки ссылкой превышает
+	const string first(32, 'a'), second(32, 'b');
+	// Выполняем укладку начала отображения
+	ASSERT_TRUE(writer.mapBegin(static_cast <uint64_t> (2)));
+	// Выполняем укладку первого имени поля
+	ASSERT_TRUE(writer.text(first)) << "код отказа: " << abc::message(writer.error());
+	// Выполняем укладку значения первого поля
+	ASSERT_TRUE(writer.number(static_cast <uint64_t> (1)));
+	/**
+	 * Выполняем укладку второго имени поля: сличается оно отрезком в буфере собираемой
+	 * записи, и уложи мы имя ссылкой, сличать было бы нечего
+	 */
+	ASSERT_TRUE(writer.text(second)) << "код отказа: " << abc::message(writer.error());
+	// Выполняем укладку значения второго поля
+	ASSERT_TRUE(writer.number(static_cast <uint64_t> (2)));
+	// Выполняем укладку конца отображения
+	ASSERT_TRUE(writer.mapEnd());
+	// Выполняем проверку завершённости собранной записи
+	ASSERT_TRUE(writer.complete());
+	// Выполняем проверку того, что имена полей уложены не по возрастанию
+	abc::writer_t other;
+	// Выполняем установку настроек сборки записи
+	other.settings(settings);
+	// Выполняем укладку начала отображения
+	ASSERT_TRUE(other.mapBegin(static_cast <uint64_t> (2)));
+	// Выполняем укладку первого имени поля
+	ASSERT_TRUE(other.text(second));
+	// Выполняем укладку значения первого поля
+	ASSERT_TRUE(other.number(static_cast <uint64_t> (1)));
+	// Выполняем проверку отказа на имя поля, стоящее не по возрастанию
+	ASSERT_FALSE(other.text(first));
+	// Выполняем проверку кода отказа сборки
+	ASSERT_EQ(other.error(), abc::error_t::UNORDERED_KEY);
+}
+/**
+ * @brief Проверка сличения имён полей после вклейки содержимого
+ *
+ */
+TEST(CodecAbcWriter, FlattenKeepsKeys){
+	// Сборка бинарной записи
+	abc::writer_t writer;
+	// Выполняем получение настроек сборки записи
+	abc::writer_t::settings_t settings = writer.settings();
+	// Выполняем установку порога укладки содержимого ссылкой
+	settings.reference = 8;
+	// Выполняем установку строгого вида записи
+	settings.canonical = true;
+	// Выполняем установку настроек сборки записи
+	writer.settings(settings);
+	// Крупное значение, укладываемое ссылкой
+	const string large(256, 'z');
+	// Выполняем укладку начала отображения
+	ASSERT_TRUE(writer.mapBegin(static_cast <uint64_t> (3)));
+	// Выполняем укладку первого имени поля
+	ASSERT_TRUE(writer.text("bbb"));
+	// Выполняем укладку крупного значения первого поля
+	ASSERT_TRUE(writer.text(large));
+	/**
+	 * Выполняем укладку второго имени поля: стоит оно ПОСЛЕ содержимого, уложенного
+	 * ссылкой, и вклейка того содержимого отрезок его сдвигает
+	 */
+	ASSERT_TRUE(writer.text("ccc"));
+	// Выполняем укладку значения второго поля
+	ASSERT_TRUE(writer.number(static_cast <uint64_t> (1)));
+	/**
+	 * Выполняем выдачу цельной записи посреди сборки: выдача эта вклеивает содержимое,
+	 * уложенное ссылкой, и отрезок имени поля, уложенного прежде, обязан быть сдвинут
+	 * на вклеенное - иначе сличение имён сличало бы не имена
+	 */
+	ASSERT_FALSE(writer.record().empty());
+	/**
+	 * Выполняем укладку третьего имени поля, стоящего по возрастанию: сдвинь мы отрезок
+	 * имени неверно, сличалось бы оно с октетами крупного значения, и имя, стоящее по
+	 * возрастанию, было бы отвергнуто ни за что
+	 */
+	ASSERT_TRUE(writer.text("ddd")) << "код отказа: " << abc::message(writer.error());
+	// Выполняем укладку значения третьего поля
+	ASSERT_TRUE(writer.number(static_cast <uint64_t> (2)));
+	// Выполняем укладку конца отображения
+	ASSERT_TRUE(writer.mapEnd());
+	// Выполняем проверку завершённости собранной записи
+	ASSERT_TRUE(writer.complete());
+}

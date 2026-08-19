@@ -1054,6 +1054,160 @@ namespace gost {
 		reverse(digest, state.hash, width);
 	}
 	/**
+	 * @brief Метод выработки хэш-суммы разом
+	 *
+	 * @param digest буфер для записи хэш-суммы
+	 * @param data   буфер данных
+	 * @param size   размер данных в октетах
+	 * @param bits   разрядность вырабатываемой хэш-суммы
+	 */
+	static void digest(uint8_t * digest, const uint8_t * data, const size_t size, const size_t bits) noexcept {
+		// Состояние счёта хэш-суммы
+		digest_t state;
+		// Выполняем заведение состояния счёта
+		initialize(state, bits);
+		// Выполняем подачу данных в счёт
+		update(state, data, size);
+		// Выполняем завершение счёта
+		finalize(state, digest);
+	}
+	/**
+	 * @brief Метод выработки имитовставки HMAC
+	 *
+	 * @param result буфер для записи имитовставки
+	 * @param key    буфер ключа
+	 * @param length размер ключа в октетах
+	 * @param data   буфер данных
+	 * @param size   размер данных в октетах
+	 * @param bits   разрядность вырабатываемой имитовставки
+	 *
+	 * @details Построение обычное по RFC 2104 при размере блока в 64 октета: своя
+	 *          хэш-функция библиотеке криптографии не известна, и её HMAC негоден
+	 */
+	static void hmac(uint8_t * result, const uint8_t * key, const size_t length, const uint8_t * data, const size_t size, const size_t bits) noexcept {
+		// Ширина вырабатываемой хэш-суммы
+		const size_t width = (bits / 8);
+		// Ключ, приведённый к размеру блока
+		uint8_t block[BLOCK];
+		// Выполняем обнуление приведённого ключа
+		::memset(block, 0, BLOCK);
+		/**
+		 * Ключ длиннее блока заменяется своей хэш-суммой, короче - дополняется нулями
+		 */
+		if(length > BLOCK)
+			// Выполняем замену ключа его хэш-суммой
+			digest(block, key, length, bits);
+		// Выполняем перенос ключа целиком
+		else ::memcpy(block, key, length);
+		// Заполнение внутреннего и внешнего проходов
+		uint8_t inner[BLOCK], outer[BLOCK];
+		/**
+		 * Выполняем перебор всех октетов блока
+		 */
+		for(size_t i = 0; i < BLOCK; i++){
+			// Выполняем заполнение внутреннего прохода
+			inner[i] = static_cast <uint8_t> (block[i] ^ 0x36);
+			// Выполняем заполнение внешнего прохода
+			outer[i] = static_cast <uint8_t> (block[i] ^ 0x5C);
+		}
+		// Состояние счёта внутреннего прохода
+		digest_t state;
+		// Выполняем заведение состояния счёта
+		initialize(state, bits);
+		// Выполняем подачу заполнения внутреннего прохода
+		update(state, inner, BLOCK);
+		// Выполняем подачу данных
+		update(state, data, size);
+		// Хэш-сумма внутреннего прохода
+		uint8_t hash[BLOCK];
+		// Выполняем завершение счёта внутреннего прохода
+		finalize(state, hash);
+		// Выполняем заведение состояния счёта внешнего прохода
+		initialize(state, bits);
+		// Выполняем подачу заполнения внешнего прохода
+		update(state, outer, BLOCK);
+		// Выполняем подачу хэш-суммы внутреннего прохода
+		update(state, hash, width);
+		// Выполняем завершение счёта внешнего прохода
+		finalize(state, result);
+		// Выполняем затирание приведённого ключа
+		::OPENSSL_cleanse(block, BLOCK);
+		// Выполняем затирание заполнения внутреннего прохода
+		::OPENSSL_cleanse(inner, BLOCK);
+		// Выполняем затирание заполнения внешнего прохода
+		::OPENSSL_cleanse(outer, BLOCK);
+	}
+	/**
+	 * @brief Метод вывода ключа по PBKDF2
+	 *
+	 * @param result   буфер для записи выведенного ключа
+	 * @param width    размер выводимого ключа в октетах
+	 * @param password буфер пароля
+	 * @param length   размер пароля в октетах
+	 * @param salt     буфер соли
+	 * @param count    размер соли в октетах
+	 * @param rounds   количество итераций вывода
+	 * @param bits     разрядность применяемой хэш-функции
+	 *
+	 * @details Построение обычное по RFC 8018: своя хэш-функция библиотеке криптографии
+	 *          не известна, и её вывод ключа с нею не работает
+	 */
+	static void pbkdf2(uint8_t * result, const size_t width, const uint8_t * password, const size_t length, const uint8_t * salt, const size_t count, const size_t rounds, const size_t bits) noexcept {
+		// Ширина вырабатываемой хэш-суммы
+		const size_t size = (bits / 8);
+		// Записанное количество октетов ключа
+		size_t written = 0;
+		// Номер вырабатываемого куска ключа
+		uint32_t number = 1;
+		/**
+		 * Выполняем выработку кусков ключа до заполнения
+		 */
+		while(written < width){
+			// Подаваемое в первую итерацию
+			vector <uint8_t> seed(salt, salt + count);
+			// Выполняем добавление номера куска старшим октетом вперёд
+			seed.push_back(static_cast <uint8_t> ((number >> 24) & 0xFF));
+			seed.push_back(static_cast <uint8_t> ((number >> 16) & 0xFF));
+			seed.push_back(static_cast <uint8_t> ((number >> 8) & 0xFF));
+			seed.push_back(static_cast <uint8_t> (number & 0xFF));
+			// Итог очередной итерации
+			uint8_t current[BLOCK];
+			// Выполняем первую итерацию вывода
+			hmac(current, password, length, seed.data(), seed.size(), bits);
+			// Накопитель куска ключа
+			uint8_t chunk[BLOCK];
+			// Выполняем перенос итога первой итерации в накопитель
+			::memcpy(chunk, current, size);
+			/**
+			 * Выполняем остальные итерации вывода
+			 */
+			for(size_t i = 1; i < rounds; i++){
+				// Итог очередной итерации
+				uint8_t next[BLOCK];
+				// Выполняем очередную итерацию вывода
+				hmac(next, password, length, current, size, bits);
+				// Выполняем перенос итога итерации
+				::memcpy(current, next, size);
+				// Выполняем перебор всех октетов куска
+				for(size_t k = 0; k < size; k++)
+					// Выполняем накопление куска по модулю два
+					chunk[k] ^= current[k];
+			}
+			// Определяем размер переносимой части куска
+			const size_t part = (((width - written) < size) ? (width - written) : size);
+			// Выполняем перенос части куска в ключ
+			::memcpy(result + written, chunk, part);
+			// Наращиваем количество записанных октетов ключа
+			written += part;
+			// Наращиваем номер вырабатываемого куска
+			number++;
+			// Выполняем затирание итога итерации
+			::OPENSSL_cleanse(current, BLOCK);
+			// Выполняем затирание накопителя куска
+			::OPENSSL_cleanse(chunk, BLOCK);
+		}
+	}
+	/**
 	 * @brief Метод разбора записи числа в буфер вычислений
 	 *
 	 * @param value буфер вычислений для записи
@@ -2971,6 +3125,25 @@ namespace driver {
 						else driver::emit(digest.data(), 64, format, result);
 					} break;
 					/**
+					 * Если тип хэш-суммы указан как ГОСТ Р 34.11-2012
+					 *
+					 * @details Хэш-функция считается своими силами: библиотека криптографии
+					 *          её не знает вовсе, оттого и контекста у неё здесь нет
+					 */
+					case static_cast <uint8_t> (crypto_t::hash_t::STREEBOG256):
+					case static_cast <uint8_t> (crypto_t::hash_t::STREEBOG512): {
+						// Определяем разрядность вырабатываемой хэш-суммы
+						const size_t bits = ((hash == crypto_t::hash_t::STREEBOG256) ? 256 : 512);
+						// Выделяем память для промежуточных значений
+						digest.resize((bits / 8), 0);
+						// Выделяем память для буфера данных
+						result.resize(driver::width((bits / 8), format), 0);
+						// Выполняем выработку хэш-суммы
+						gost::digest(digest.data(), reinterpret_cast <const uint8_t *> (buffer.data()), buffer.size(), bits);
+						// Формируем данные хэш-суммы
+						driver::emit(digest.data(), (bits / 8), format, result);
+					} break;
+					/**
 					 * Незаданный либо разбору не знакомый тип хэш-суммы отвергается
 					 * явно: работа выводила пустоту молча, и отличить её от пустого
 					 * итога было нечем. Подпись ключом тот же случай называет прямо
@@ -3199,6 +3372,27 @@ namespace driver {
 							result.clear();
 						// Формируем данные SHA512-хэша
 						else driver::emit(digest, 64, format, result);
+						// Выполняем затирание буфера промежуточных значений
+						::OPENSSL_cleanse(digest, sizeof(digest));
+					} break;
+					/**
+					 * Если тип хэш-суммы указан как ГОСТ Р 34.11-2012
+					 *
+					 * @details Имитовставка строится своими силами по RFC 2104: библиотека
+					 *          криптографии хэш-функции этой не знает, и её HMAC негоден
+					 */
+					case static_cast <uint8_t> (crypto_t::hash_t::STREEBOG256):
+					case static_cast <uint8_t> (crypto_t::hash_t::STREEBOG512): {
+						// Определяем разрядность вырабатываемой имитовставки
+						const size_t bits = ((hash == crypto_t::hash_t::STREEBOG256) ? 256 : 512);
+						// Выделяем память для буфера данных
+						result.resize(driver::width((bits / 8), format), 0);
+						// Буфер для двоичного значения имитовставки
+						uint8_t digest[EVP_MAX_MD_SIZE] = {0};
+						// Выполняем выработку имитовставки
+						gost::hmac(digest, reinterpret_cast <const uint8_t *> (key.data()), key.size(), reinterpret_cast <const uint8_t *> (buffer.data()), buffer.size(), bits);
+						// Формируем данные имитовставки
+						driver::emit(digest, (bits / 8), format, result);
 						// Выполняем затирание буфера промежуточных значений
 						::OPENSSL_cleanse(digest, sizeof(digest));
 					} break;
@@ -4483,6 +4677,17 @@ namespace driver {
 						// Устанавливаем функцию хэширования
 						md = ::EVP_sha512();
 					break;
+					/**
+					 * Если тип хэш-суммы указан как ГОСТ Р 34.11-2012
+					 *
+					 * @details Хэш-функция библиотеке криптографии не известна, оттого
+					 *          её указатель остаётся пустым, а вывод ключа идёт своим
+					 *          путём ниже. Пустота указателя здесь законна и отказом
+					 *          не является
+					 */
+					case static_cast <uint8_t> (crypto_t::hash_t::STREEBOG256):
+					case static_cast <uint8_t> (crypto_t::hash_t::STREEBOG512):
+					break;
 					// Если ничего не выбрано
 					default: {
 						/**
@@ -4572,8 +4777,26 @@ namespace driver {
 						log->print("Key derivation without a salt is vulnerable to precomputed tables", log_t::flag_t::WARNING);
 					#endif
 				}
+				/**
+				 * Если хэш-функция задана видом ГОСТ Р 34.11-2012
+				 *
+				 * @details Вывод ключа библиотеки криптографии берёт её же хэш-функцию,
+				 *          а этой она не знает вовсе. Вывод строится своими силами по
+				 *          RFC 8018 поверх своей имитовставки; отказать он не может,
+				 *          оттого и признака отказа у него нет
+				 */
+				if((hash == crypto_t::hash_t::STREEBOG256) || (hash == crypto_t::hash_t::STREEBOG512)){
+					// Выполняем вывод ключа шифрования
+					gost::pbkdf2(
+						state.key.data(), state.key.size(),
+						reinterpret_cast <const uint8_t *> (pass.c_str()), pass.length(),
+						(salt.empty() ? reinterpret_cast <const uint8_t *> ("") : reinterpret_cast <const uint8_t *> (salt.c_str())), salt.length(),
+						rounds, ((hash == crypto_t::hash_t::STREEBOG256) ? 256 : 512)
+					);
+					// Устанавливаем признак успешно выполненной работы
+					result = true;
 				// Генерация ключа шифрования через PBKDF2
-				result = (::PKCS5_PBKDF2_HMAC(
+				} else result = (::PKCS5_PBKDF2_HMAC(
 					pass.c_str(),
 					static_cast <int32_t> (pass.length()),
 					(salt.empty() ? nullptr : reinterpret_cast <const uint8_t *> (salt.c_str())),

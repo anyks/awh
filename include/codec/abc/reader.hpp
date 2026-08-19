@@ -428,6 +428,9 @@ namespace awh {
 					// Смещение начала буфера от начала поданной записи
 					uint64_t _origin;
 				private:
+					// Размер места, выданного под приём октетов записи
+					size_t _reserved;
+				private:
 					// Стек вместимых разбора
 					vector <frame_t> _stack;
 				private:
@@ -568,6 +571,31 @@ namespace awh {
 					 * \~
 					 */
 					[[nodiscard]] bool item(bool & done) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод усечения разобранной части буфера
+					 *
+					 * \~english
+					 * @brief Method of the truncation of the parsed part of the buffer
+					 *
+					 * \~
+					 */
+					void trim() noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод разбора накопленных октетов вместе с окончанием записи
+					 *
+					 * @param last признак того, что поданный кусок записи последний
+					 * @return     признак успешности разбора
+					 *
+					 * \~english
+					 * @brief Method of the parsing of the accumulated octets together with the end of the record
+					 * @param last flag that the submitted chunk of the record is the last one
+					 * @return sign of the success of the parsing
+					 *
+					 * \~
+					 */
+					[[nodiscard]] bool digest(const bool last) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -611,6 +639,48 @@ namespace awh {
 					 * \~
 					 */
 					[[nodiscard]] bool feed(const void * buffer, const size_t size, const bool last = false) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод выдачи места под приём октетов записи
+					 *
+					 * @details Место это выдаётся в самом буфере разбора: принятое ложится в него
+					 * сразу, и подача разбирателю лишнего копирования не стоит вовсе
+					 *
+					 * @note Выданное место годно до ближайшего вызова, приняв октеты, обязан звать
+					 * commit: всякий иной вызов вправе буфер подвинуть, и указатель станет негоден
+					 *
+					 * @param size размер запрашиваемого места в октетах
+					 * @return     указатель на выданное место, ноль - разбор отвечен отказом
+					 *
+					 * \~english
+					 * @brief Method of the issuance of a place for the reception of the octets of a record
+					 * @details This place is issued in the very buffer of the parsing: the received lies into it
+					 * at once, and the submission to the parser does not cost a superfluous copying at all
+					 * @note The issued place is valid until the nearest call, and having received the octets one is obliged to call
+					 * commit: any other call has the right to move the buffer, and the pointer will become invalid
+					 * @param size size of the requested place in octets
+					 * @return pointer to the issued place, zero — the parsing is answered by a refusal
+					 *
+					 * \~
+					 */
+					[[nodiscard]] void * reserve(const size_t size) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод подачи октетов, принятых в выданное место
+					 *
+					 * @param size размер принятых октетов, не свыше выданного места
+					 * @param last признак того, что кусок последний
+					 * @return     признак успешности разбора
+					 *
+					 * \~english
+					 * @brief Method of the submission of the octets received into the issued place
+					 * @param size size of the received octets, not above the issued place
+					 * @param last flag that the chunk is the last one
+					 * @return sign of the success of the parsing
+					 *
+					 * \~
+					 */
+					[[nodiscard]] bool commit(const size_t size, const bool last = false) noexcept;
 				public:
 					/**
 					 * \~russian

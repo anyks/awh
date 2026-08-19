@@ -145,6 +145,23 @@ namespace awh {
 						uint32_t maxDepth;
 						/**
 						 * \~russian
+						 * Порог укладки содержимого ссылкой в октетах, ноль - копировать всегда
+						 *
+						 * @note Настройка эта по умолчанию снята: содержимое, уложенное ссылкой,
+						 * обязано пережить выдачу записи, и обязанность эта ложится на потребителя.
+						 * Впрягать её всем без спроса нельзя
+						 *
+						 * \~english
+						 * Threshold of the laying of the content by a reference in octets, zero — to copy always
+						 * @note This setting is removed by default: the content laid by a reference
+						 * is obliged to outlive the issuance of the record, and this obligation lies upon the consumer.
+						 * It cannot be harnessed to everyone without asking
+						 *
+						 * \~
+						 */
+						size_t reference;
+						/**
+						 * \~russian
 						 * @brief Конструктор
 						 *
 						 *
@@ -209,6 +226,48 @@ namespace awh {
 						 mapping(false), indefinite(false), expectKey(false), marked(false), remain(0),
 						 segment(type_t::UNDEFINED) {}
 					} frame_t;
+					/**
+					 * \~russian
+					 * @brief Врезка чужого содержимого в собираемую запись
+					 *
+					 * @details Врезка хранит место в буфере собираемой записи, куда содержимое
+					 * это встаёт, но октетов его не держит: они остаются у потребителя, и
+					 * запись выдаётся кусками, не склеиваясь в один буфер
+					 *
+					 * \~english
+					 * @brief Insertion of a foreign content into an assembled record
+					 * @details The insertion holds the place in the buffer of the assembled record where
+					 * this content stands, but does not hold its octets: they remain at the consumer, and
+					 * the record is issued by the pieces without being glued into one buffer
+					 *
+					 * \~
+					 */
+					typedef struct Cut {
+						// Смещение врезки в буфере собираемой записи
+						size_t offset;
+						// Буфер октетов врезки
+						const void * buffer;
+						// Размер октетов врезки
+						size_t size;
+						/**
+						 * \~russian
+						 * @brief Конструктор
+						 *
+						 * @param offset смещение врезки в буфере собираемой записи
+						 * @param buffer буфер октетов врезки
+						 * @param size   размер октетов врезки
+						 *
+						 * \~english
+						 * @brief Constructor
+						 * @param offset offset of the insertion in the buffer of the assembled record
+						 * @param buffer buffer of the octets of the insertion
+						 * @param size size of the octets of the insertion
+						 *
+						 * \~
+						 */
+						Cut(const size_t offset, const void * buffer, const size_t size) noexcept :
+						 offset(offset), buffer(buffer), size(size) {}
+					} cut_t;
 				private:
 					// Настройки сборки записи
 					settings_t _settings;
@@ -217,10 +276,42 @@ namespace awh {
 					error_t _error;
 				private:
 					// Буфер собираемой записи
-					vector <uint8_t> _record;
+					/**
+					 * \~russian
+					 * Буфер собираемой записи
+					 *
+					 * @note Буфер переменен у постоянного вида: выдача цельной записи вправе
+					 * вклеить в него содержимое, уложенное ссылкой, и потребителю от того
+					 * ничего не меняется
+					 *
+					 * \~english
+					 * Buffer of the assembled record
+					 * @note The buffer is mutable at a constant kind: the issuance of a whole record
+					 * has the right to glue into it the content laid by a reference, and for the consumer
+					 * nothing changes from that
+					 *
+					 * \~
+					 */
+					mutable vector <uint8_t> _record;
 				private:
-					// Стек вместимых сборки
-					vector <frame_t> _stack;
+					// Врезки чужого содержимого в собираемую запись
+					mutable vector <cut_t> _cuts;
+				private:
+					/**
+					 * \~russian
+					 * Стек вместимых сборки
+					 *
+					 * @note Стек переменен у постоянного вида: вклейка содержимого, уложенного
+					 * ссылкой, сдвигает отрезки имён полей, отсчитанные от начала буфера
+					 *
+					 * \~english
+					 * Stack of the containers of the assembling
+					 * @note The stack is mutable at a constant kind: the gluing of the content laid
+					 * by a reference shifts the segments of the names of the fields counted from the beginning of the buffer
+					 *
+					 * \~
+					 */
+					mutable vector <frame_t> _stack;
 				private:
 					// Признак того, что сборка отвечена отказом
 					bool _failed;
@@ -337,6 +428,45 @@ namespace awh {
 					 * \~
 					 */
 					[[nodiscard]] bool segmentEnd(const bool string) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод вклейки содержимого, уложенного ссылкой
+					 *
+					 * @details Врезки вклеиваются в буфер собираемой записи, а отрезки имён
+					 * полей, уложенных ранее, сдвигаются на вклеенное: смещения их отсчитаны от
+					 * начала буфера, и вклейка сдвинула бы их молча
+					 *
+					 * \~english
+					 * @brief Method of the gluing of the content laid by a reference
+					 * @details The insertions are glued into the buffer of the assembled record, while the segments of the names
+					 * of the fields laid earlier are shifted by the glued: their offsets are counted from
+					 * the beginning of the buffer, and the gluing would shift them silently
+					 *
+					 * \~
+					 */
+					void flatten() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод укладки октетов содержимого значения
+					 *
+					 * @details Содержимое, чей размер порог укладки ссылкой превысил, ложится
+					 * врезкой, а прочее копируется в буфер собираемой записи
+					 *
+					 * @param buffer буфер укладываемых октетов
+					 * @param size   размер укладываемых октетов
+					 * @param copy   признак того, что копировать содержимое обязательно
+					 *
+					 * \~english
+					 * @brief Method of the laying of the octets of the content of a value
+					 * @details The content whose size has exceeded the threshold of the laying by a reference is laid
+					 * by an insertion, while the rest is copied into the buffer of the assembled record
+					 * @param buffer buffer of the octets being laid
+					 * @param size size of the octets being laid
+					 * @param copy sign that the copying of the content is obligatory
+					 *
+					 * \~
+					 */
+					void content(const void * buffer, const size_t size, const bool copy) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -736,6 +866,49 @@ namespace awh {
 					 * \~
 					 */
 					const vector <uint8_t> & record() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод извлечения собранной записи кусками
+					 *
+					 * @details Куски эти подаются средству записи россыпью - скажем, вызовом
+					 * writev: содержимое, уложенное ссылкой, в буфер записи не копируется вовсе,
+					 * и крупные значения уходят наружу, не быв удвоены в памяти
+					 *
+					 * @note Куски ссылаются на память сборки и на память потребителя: живут они
+					 * не дольше и той, и другой
+					 *
+					 * @return куски собранной записи по порядку
+					 *
+					 * \~english
+					 * @brief Method of the extraction of an assembled record by the pieces
+					 * @details These pieces are submitted to the means of the writing scattered — say, by the call of
+					 * writev: the content laid by a reference is not copied into the buffer of the record at all,
+					 * and the large values go outside without having been doubled in the memory
+					 * @note The pieces refer to the memory of the assembling and to the memory of the consumer: they live
+					 * no longer than both the one and the other
+					 * @return pieces of the assembled record in order
+					 *
+					 * \~
+					 */
+					[[nodiscard]] vector <piece_t> pieces() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод извлечения длины собранной записи
+					 *
+					 * @note Длина эта считает и содержимое, уложенное ссылкой, оттого размеру
+					 * буфера собираемой записи она равна не всегда
+					 *
+					 * @return длина собранной записи в октетах
+					 *
+					 * \~english
+					 * @brief Method of the extraction of the length of an assembled record
+					 * @note This length counts the content laid by a reference as well, whereby it is not always
+					 * equal to the size of the buffer of the assembled record
+					 * @return length of the assembled record in octets
+					 *
+					 * \~
+					 */
+					size_t length() const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод извлечения кода отказа сборки

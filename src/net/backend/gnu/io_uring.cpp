@@ -47605,6 +47605,31 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 			 */
 			switch(static_cast <uint8_t> (i->second->state.node)){
 				// Если узел является посредником
+				/**
+				 * Если узел является туннелем
+				 *
+				 * @details Имя устройства туннеля задаётся здесь и нигде больше. Нужно оно
+				 *          не всем системам: Linux и BSD заводят устройство сами и имя ему
+				 *          выдают, а у Sun Solaris и illumos связи канального уровня
+				 *          заводятся административно (`dladm`), и движку остаётся лишь
+				 *          открыть готовую по имени - без имени он отказывает прямо:
+				 *          «tunnel device name is required»
+				 *
+				 * @warning Прежде разбор узла туннеля здесь отсутствовал вовсе: договор
+				 *          требовал имя, а передать его было НЕЧЕМ, и туннели у систем Sun
+				 *          не работали вовсе. Имя запоминается на узле, а к делу его
+				 *          приводит заведение устройства - при фиксации настроек либо
+				 *          пересозданием
+				 */
+				case static_cast <uint8_t> (event::node_t::TUNNEL): {
+					// Получаем объект туннеля
+					::io::tun_t * tunnel = awh_cast <::io::tun_t *> (i->second.get());
+					// Запоминаем название устройства туннеля
+					tunnel->iface.assign(name.begin(), name.end());
+					// Выводим успешный результат
+					return true;
+				}
+				// Если узел является посредником
 				case static_cast <uint8_t> (event::node_t::MEDIATOR): {
 					// Получаем объект посредника
 					::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());

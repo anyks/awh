@@ -1237,6 +1237,25 @@ namespace awh {
 				private:
 					// Признак того, что имя поля объекта разобрано, а значение его - ещё нет
 					bool _keyed;
+					/**
+					 * \~russian
+					 * Признак того, что документ уже собран целиком
+					 *
+					 * @details Поток несёт документы один за другим, а дерево вмещает один. Без
+					 * обработчика потоковой выдачи второй документ потока уходил бы в никуда
+					 * молча: узлы его ложились бы за корнем недостижимыми, а выдача текста
+					 * отдавала бы первый документ признаком успеха
+					 *
+					 * \~english
+					 * Sign of the document having already been assembled as a whole
+					 * @details A stream carries the documents one after another, while a tree holds one.
+					 * Without a handler of the streaming issuance the second document of a stream would
+					 * go nowhere silently: its nodes would lie behind the root unreachable, while the
+					 * issuance of the text would give away the first document with a sign of success
+					 *
+					 * \~
+					 */
+					bool _completed;
 				private:
 					/**
 					 * \~russian

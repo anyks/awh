@@ -44,7 +44,7 @@ using namespace std;
  *
  */
 awh::codec::abc::Writer::Settings::Settings() noexcept :
- canonical(false), validate(true), duplicates(true), maxDepth(0) {}
+ canonical(false), validate(true), duplicates(true), maxDepth(0), reference(0) {}
 /**
  * @brief Конструктор
  *
@@ -60,6 +60,8 @@ void awh::codec::abc::Writer::reset() noexcept {
 	this->_error = error_t::NONE;
 	// Выполняем очистку буфера собираемой записи
 	this->_record.clear();
+	// Выполняем очистку врезок чужого содержимого
+	this->_cuts.clear();
 	// Выполняем очистку стека вместимых
 	this->_stack.clear();
 	// Выполняем сброс признака отказа сборки
@@ -120,6 +122,94 @@ bool awh::codec::abc::Writer::prepare(const bool container) noexcept {
 		return this->fail(error_t::CONTAINER_OVERFLOW);
 	// Сообщаем, что место укладки годно
 	return true;
+}
+/**
+ * @brief Метод укладки октетов содержимого значения
+ *
+ * @details Содержимое, чей размер порог укладки ссылкой превысил, ложится врезкой,
+ * а прочее копируется в буфер собираемой записи
+ *
+ * @param buffer буфер укладываемых октетов
+ * @param size   размер укладываемых октетов
+ * @param copy   признак того, что копировать содержимое обязательно
+ *
+ */
+void awh::codec::abc::Writer::content(const void * buffer, const size_t size, const bool copy) noexcept {
+	// Если укладываемое содержимое пусто
+	if((buffer == nullptr) || (size == 0))
+		// Выходим из функции
+		return;
+	// Выполняем получение указателя на октеты содержимого
+	const uint8_t * octets = reinterpret_cast <const uint8_t *> (buffer);
+	/**
+	 * Если содержимое следует уложить ссылкой. Порог, равный нулю, укладку ссылкой
+	 * снимает вовсе: настройка эта по умолчанию не впряжена
+	 */
+	if(!copy && (this->_settings.reference > 0) && (size >= this->_settings.reference)){
+		// Выполняем укладку врезки чужого содержимого
+		this->_cuts.push_back(cut_t(this->_record.size(), buffer, size));
+		// Выходим из функции
+		return;
+	}
+	// Выполняем укладку октетов содержимого в буфер собираемой записи
+	this->_record.insert(this->_record.end(), octets, octets + size);
+}
+/**
+ * @brief Метод вклейки содержимого, уложенного ссылкой
+ *
+ */
+void awh::codec::abc::Writer::flatten() const noexcept {
+	// Если врезок чужого содержимого нет
+	if(this->_cuts.empty())
+		// Выходим из функции
+		return;
+	// Буфер цельной записи
+	vector <uint8_t> result;
+	// Выполняем резервирование памяти под цельную запись
+	result.reserve(this->length());
+	// Смещение вклеенной части буфера собираемой записи
+	size_t offset = 0;
+	// Выполняем перебор врезок чужого содержимого
+	for(auto & cut : this->_cuts){
+		// Выполняем вклейку части буфера, стоящей перед врезкой
+		result.insert(result.end(), this->_record.begin() + static_cast <ptrdiff_t> (offset),
+		 this->_record.begin() + static_cast <ptrdiff_t> (cut.offset));
+		// Выполняем получение указателя на октеты врезки
+		const uint8_t * octets = reinterpret_cast <const uint8_t *> (cut.buffer);
+		// Выполняем вклейку октетов врезки
+		result.insert(result.end(), octets, octets + cut.size);
+		// Выполняем сдвиг смещения вклеенной части буфера
+		offset = cut.offset;
+	}
+	// Выполняем вклейку остатка буфера собираемой записи
+	result.insert(result.end(), this->_record.begin() + static_cast <ptrdiff_t> (offset), this->_record.end());
+	/**
+	 * Выполняем сдвиг отрезков имён полей, уложенных прежде. Смещения их отсчитаны от
+	 * начала буфера, и вклейка сдвинула бы их молча, обратив сличение имён в ложь
+	 */
+	for(auto & frame : this->_stack){
+		// Если имени поля в этом вместимом ещё не было
+		if(!frame.marked)
+			// Переходим к следующему звену стека
+			continue;
+		// Размер содержимого, вклеенного перед отрезком имени поля
+		size_t shift = 0;
+		// Выполняем перебор врезок чужого содержимого
+		for(auto & cut : this->_cuts){
+			// Если врезка стоит после отрезка имени поля
+			if(cut.offset > static_cast <size_t> (frame.key.offset))
+				// Выполняем прекращение перебора врезок
+				break;
+			// Выполняем учёт размера вклеенного содержимого
+			shift += cut.size;
+		}
+		// Выполняем сдвиг отрезка записи имени поля
+		frame.key.offset += static_cast <uint32_t> (shift);
+	}
+	// Выполняем замену буфера собираемой записи цельным
+	this->_record.swap(result);
+	// Выполняем очистку врезок чужого содержимого
+	this->_cuts.clear();
 }
 /**
  * @brief Метод учёта уложенного значения
@@ -429,17 +519,18 @@ bool awh::codec::abc::Writer::text(const string_view value) noexcept {
 			// Выполняем объявление отказа сборки
 			return this->fail(error_t::INVALID_ENCODING);
 	}
+	/**
+	 * Выполняем получение признака имени поля отображения: имя копируется всегда,
+	 * ибо сличается оно отрезком в буфере собираемой записи, а содержимое, уложенное
+	 * ссылкой, отрезка в нём не имеет вовсе
+	 */
+	const bool key = (!this->_stack.empty() && this->_stack.back().mapping && this->_stack.back().expectKey);
 	// Выполняем получение смещения начала записи значения
 	const size_t start = this->_record.size();
 	// Выполняем укладку метки строки вместе с её длиной
 	abc::put(this->_record, group_t::STRING, static_cast <uint64_t> (value.size()));
-	// Если строка не пуста
-	if(!value.empty()){
-		// Выполняем получение указателя на октеты строки
-		const uint8_t * octets = reinterpret_cast <const uint8_t *> (value.data());
-		// Выполняем укладку октетов строки
-		this->_record.insert(this->_record.end(), octets, octets + value.size());
-	}
+	// Выполняем укладку октетов строки
+	this->content(value.data(), value.size(), key);
 	/**
 	 * Если уложен кусок собираемого значения, учитывать его вместившим нельзя:
 	 * кусок есть часть значения, а не значение
@@ -475,17 +566,14 @@ bool awh::codec::abc::Writer::blob(const void * buffer, const size_t size) noexc
 	if((buffer == nullptr) && (size > 0))
 		// Выполняем объявление отказа сборки
 		return this->fail(error_t::INTERNAL);
+	// Выполняем получение признака имени поля отображения
+	const bool key = (!this->_stack.empty() && this->_stack.back().mapping && this->_stack.back().expectKey);
 	// Выполняем получение смещения начала записи значения
 	const size_t start = this->_record.size();
 	// Выполняем укладку метки двоичных данных вместе с их длиной
 	abc::put(this->_record, group_t::BLOB, static_cast <uint64_t> (size));
-	// Если укладываемые данные не пусты
-	if(size > 0){
-		// Выполняем получение указателя на октеты данных
-		const uint8_t * octets = reinterpret_cast <const uint8_t *> (buffer);
-		// Выполняем укладку октетов данных
-		this->_record.insert(this->_record.end(), octets, octets + size);
-	}
+	// Выполняем укладку октетов данных
+	this->content(buffer, size, key);
 	/**
 	 * Если уложен кусок собираемого значения, учитывать его вместившим нельзя
 	 */
@@ -814,8 +902,57 @@ bool awh::codec::abc::Writer::complete() const noexcept {
  *
  */
 const vector <uint8_t> & awh::codec::abc::Writer::record() const noexcept {
+	// Выполняем вклейку содержимого, уложенного ссылкой
+	this->flatten();
 	// Выводим собранную запись
 	return this->_record;
+}
+/**
+ * @brief Метод извлечения собранной записи кусками
+ *
+ * @return куски собранной записи по порядку
+ *
+ */
+vector <awh::codec::abc::piece_t> awh::codec::abc::Writer::pieces() const noexcept {
+	// Результат работы функции
+	vector <piece_t> result;
+	// Выполняем резервирование памяти под куски выдачи
+	result.reserve((this->_cuts.size() * 2) + 1);
+	// Смещение выданной части буфера собираемой записи
+	size_t offset = 0;
+	// Выполняем перебор врезок чужого содержимого
+	for(auto & cut : this->_cuts){
+		// Если перед врезкой стоит часть буфера собираемой записи
+		if(cut.offset > offset)
+			// Выполняем выдачу части буфера, стоящей перед врезкой
+			result.push_back(piece_t(this->_record.data() + offset, cut.offset - offset));
+		// Выполняем выдачу октетов врезки
+		result.push_back(piece_t(cut.buffer, cut.size));
+		// Выполняем сдвиг смещения выданной части буфера
+		offset = cut.offset;
+	}
+	// Если остаток буфера собираемой записи не пуст
+	if(this->_record.size() > offset)
+		// Выполняем выдачу остатка буфера собираемой записи
+		result.push_back(piece_t(this->_record.data() + offset, this->_record.size() - offset));
+	// Выводим куски собранной записи
+	return result;
+}
+/**
+ * @brief Метод извлечения длины собранной записи
+ *
+ * @return длина собранной записи в октетах
+ *
+ */
+size_t awh::codec::abc::Writer::length() const noexcept {
+	// Результат работы функции
+	size_t result = this->_record.size();
+	// Выполняем перебор врезок чужого содержимого
+	for(auto & cut : this->_cuts)
+		// Выполняем учёт размера октетов врезки
+		result += cut.size;
+	// Выводим длину собранной записи
+	return result;
 }
 /**
  * @brief Метод извлечения кода отказа сборки

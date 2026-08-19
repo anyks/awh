@@ -87,6 +87,8 @@ typedef struct Params {
 	uint16_t port;
 	// Префикс сети маршрута
 	uint8_t prefix;
+	// Название готового устройства туннеля
+	string iface;
 	// Признак поднятия устройства туннеля
 	bool up;
 	// Признак установки маршрута через туннель
@@ -97,7 +99,7 @@ typedef struct Params {
 	 */
 	explicit Params() noexcept :
 	 tun{"10.0.0.1"}, peer{"10.0.0.2"}, bind{"127.0.0.1"},
-	 net{"10.0.0.0"}, port(2222), prefix(24), up(true), route(true) {}
+	 net{"10.0.0.0"}, iface{""}, port(2222), prefix(24), up(true), route(true) {}
 } params_t;
 
 /**
@@ -117,6 +119,8 @@ static void usage(const char * name) noexcept {
 	cout << "  --prefix <длина>  префикс сети маршрута (по умолчанию 24)" << endl;
 	cout << "  --no-route        не ставить маршрут через туннель" << endl;
 	cout << "  --no-up           не поднимать устройство туннеля" << endl;
+	cout << "  --iface <имя>     готовое устройство туннеля (обязательно у Solaris и illumos:" << endl;
+	cout << "                    связи там заводятся административно, например dladm)" << endl;
 	cout << "  --help            напечатать этот текст" << endl << endl;
 	cout << "Права суперпользователя обязательны: заведение устройства туннеля их требует." << endl;
 }
@@ -168,6 +172,7 @@ static bool parse(int32_t argc, char * argv[], params_t & params) noexcept {
 			else if(arg.compare("--tun") == 0) params.tun = value;
 			else if(arg.compare("--peer") == 0) params.peer = value;
 			else if(arg.compare("--net") == 0) params.net = value;
+			else if(arg.compare("--iface") == 0) params.iface = value;
 			else if(arg.compare("--prefix") == 0) params.prefix = static_cast <uint8_t> (::stoi(value));
 			// Если довод неизвестен
 			else {
@@ -209,6 +214,26 @@ int32_t main(int32_t argc, char * argv[]){
 	event::id_t eid = io.event(event::node_t::SERVER, event::family_t::IPV4, event::type_t::DATAGRAM, event::protocol_t::UDP);
 	// Устанавливаем порт события
 	io.setSourcePort(eid, params.port);
+	/**
+	 * Задаём готовое устройство туннеля, если оно названо
+	 *
+	 * @note Linux и BSD заводят устройство сами и имя выдают. У Solaris и illumos
+	 *       связи канального уровня заводятся административно, движку остаётся
+	 *       открыть готовую по имени - и без имени он отказывает прямо. Имя
+	 *       задаётся узлу, а к делу его приводит пересоздание устройства
+	 */
+	if(!params.iface.empty()){
+		// Задаём название устройства туннеля
+		if(io.setIface(tid, params.iface)){
+			// Пересоздаём устройство туннеля по названному имени
+			if(io.rebuild(tid))
+				// Записываем в лог сообщение об успешном заведении устройства
+				cout << " Устройство туннеля \"" << params.iface << "\" заведено!" << endl;
+			// Записываем ошибку в лог заведения устройства
+			else cout << " Ошибка заведения устройства туннеля \"" << params.iface << "\"!" << endl;
+		// Записываем ошибку в лог установки названия устройства
+		} else cout << " Ошибка установки названия устройства туннеля!" << endl;
+	}
 	// Инициализируем асинхронный движок ввода-вывода
 	if(io.initialize()){
 		// Устананавливаем опции события туннеля

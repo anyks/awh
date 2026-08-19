@@ -19,6 +19,7 @@
 #include <vector>
 #include <string>
 #include <cstdint>
+#include <cstring>
 #include <limits>
 
 /**
@@ -26,6 +27,7 @@
  */
 #include <gtest/gtest.h>
 #include <codec/abc/reader.hpp>
+#include <codec/abc/writer.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -710,4 +712,74 @@ TEST(CodecAbcReader, DeferredEvents) {
 		ASSERT_EQ(events, (vector <string> {"[", "S:первая строка", "S:вторая строка",
 		 "S:третья строка", "S:четвёртая строка", "]", ";", "."})) << "размер куска: " << chunk;
 	}
+}
+/**
+ * @brief Проверка приёма октетов прямо в буфер разбора
+ *
+ */
+TEST(CodecAbcReader, ReserveAndCommit){
+	// Сборка бинарной записи
+	abc::writer_t writer;
+	// Выполняем укладку начала массива
+	ASSERT_TRUE(writer.arrayBegin(static_cast <uint64_t> (2)));
+	// Выполняем укладку первого значения массива
+	ASSERT_TRUE(writer.text("первое"));
+	// Выполняем укладку второго значения массива
+	ASSERT_TRUE(writer.number(static_cast <uint64_t> (7)));
+	// Выполняем укладку конца массива
+	ASSERT_TRUE(writer.arrayEnd());
+	// Выполняем получение собранной записи
+	const vector <uint8_t> & record = writer.record();
+	// Разбиратель бинарной записи
+	abc::reader_t reader;
+	// Смещение поданной части записи
+	size_t offset = 0;
+	// Количество снятых значений массива
+	size_t values = 0;
+	/**
+	 * Выполняем подачу записи кусками по три октета прямо в буфер разбора
+	 */
+	while(offset < record.size()){
+		// Выполняем получение размера подаваемого куска записи
+		const size_t size = ((record.size() - offset) < 3 ? (record.size() - offset) : 3);
+		/**
+		 * Выполняем выдачу места под приём октетов: место это запрашивается с запасом,
+		 * а принято бывает меньше, и хвост его обязан быть возвращён
+		 */
+		void * place = reader.reserve(8);
+		// Выполняем проверку выданного места под приём октетов
+		ASSERT_TRUE(place != nullptr);
+		// Выполняем приём октетов записи прямо в выданное место
+		::memcpy(place, record.data() + offset, size);
+		// Выполняем сдвиг смещения поданной части записи
+		offset += size;
+		// Выполняем подачу принятых октетов разбирателю
+		ASSERT_TRUE(reader.commit(size, offset >= record.size()))
+			<< "код отказа: " << abc::message(reader.error());
+		/**
+		 * Выполняем снятие собранных событий разбора
+		 */
+		while(reader.next()){
+			// Если событием является строковое значение либо число
+			if((reader.event() == abc::event_t::STRING) || (reader.event() == abc::event_t::NUMBER))
+				// Выполняем учёт снятого значения массива
+				values++;
+		}
+	}
+	// Выполняем проверку количества снятых значений массива
+	ASSERT_EQ(values, 2ul);
+}
+/**
+ * @brief Проверка отказа на подачу сверх выданного места
+ *
+ */
+TEST(CodecAbcReader, CommitBeyondReserve){
+	// Разбиратель бинарной записи
+	abc::reader_t reader;
+	// Выполняем выдачу места под приём октетов записи
+	ASSERT_TRUE(reader.reserve(4) != nullptr);
+	// Выполняем проверку отказа на подачу сверх выданного места
+	ASSERT_FALSE(reader.commit(8));
+	// Выполняем проверку кода отказа разбора
+	ASSERT_EQ(reader.error(), abc::error_t::INTERNAL);
 }

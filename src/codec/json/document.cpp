@@ -132,7 +132,7 @@ namespace {
  * @brief Конструктор
  *
  */
-awh::codec::json::Document::Document() noexcept : _error(error_t::NONE), _named(0), _keyed(false), _pointer(0), _base(0), _callback(nullptr) {
+awh::codec::json::Document::Document() noexcept : _error(error_t::NONE), _named(0), _keyed(false), _pointer(0), _base(0), _completed(false), _callback(nullptr) {
 	/**
 	 * Выполняем заведение запаса памяти под сборку дерева документа
 	 *
@@ -940,7 +940,24 @@ bool awh::codec::json::Document::digest(reader_t & reader, const event_t event, 
 			this->_storage.clear();
 			// Выполняем очистку отображения имён полей в номера узлов
 			this->_index.clear();
-		}
+		/**
+		 * Если документ потока собран не первым
+		 *
+		 * @details Поток несёт документы один за другим, а дерево вмещает один. Прежде
+		 * второй документ уходил в никуда молча: узлы его ложились за корнем
+		 * недостижимыми, выдача текста отдавала первый документ, и разбор отвечал успехом
+		 *
+		 * @note Отказ выносится лишь при разборе БЕЗ обработчика потоковой выдачи:
+		 *       с обработчиком поток разбирается как поток, и всякий документ его
+		 *       отдаётся потребителю целым
+		 */
+		} else if(this->_completed){
+			// Запоминаем код отказа разбора
+			this->_error = error_t::TRAILING_CHARACTERS;
+			// Выводим признак неудачной сборки
+			return false;
+		// Запоминаем признак собранного целиком документа
+		} else this->_completed = true;
 		// Выводим признак успешной сборки
 		return true;
 	}
@@ -1360,6 +1377,8 @@ void awh::codec::json::Document::clear() noexcept {
 	this->_named = 0;
 	// Снимаем признак разбора имени поля объекта
 	this->_keyed = false;
+	// Снимаем признак собранного целиком документа
+	this->_completed = false;
 	// Сбрасываем сквозное положение конца имени поля объекта
 	this->_pointer = 0;
 	// Сбрасываем сквозное положение первого знака хранилища документа

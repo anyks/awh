@@ -661,6 +661,58 @@ namespace awh {
 
 			/**
 			 * \~russian
+			 * @brief Кусок выдачи собранной записи
+			 *
+			 * @details Служит выдаче записи без склейки её в один буфер: куски подаются
+			 * средству записи россыпью, и содержимое, взятое ссылкой, не копируется вовсе
+			 *
+			 * @note Кусок ссылается на чужую память и живёт не дольше её: содержимое,
+			 * уложенное ссылкой, обязано пережить выдачу записи
+			 *
+			 * \~english
+			 * @brief Piece of the issuance of an assembled record
+			 * @details Serves the issuance of a record without gluing it into one buffer: the pieces are submitted
+			 * to the means of the writing scattered, and the content taken by a reference is not copied at all
+			 * @note A piece refers to a foreign memory and lives no longer than it: the content
+			 * laid by a reference is obliged to outlive the issuance of the record
+			 *
+			 * \~
+			 */
+			typedef struct __AWH_SHARED_EXPORT__ Piece {
+				// Буфер октетов куска выдачи
+				const void * buffer;
+				// Размер октетов куска выдачи
+				size_t size;
+				/**
+				 * \~russian
+				 * @brief Конструктор
+				 *
+				 *
+				 * \~english
+				 * @brief Constructor
+				 *
+				 * \~
+				 */
+				Piece() noexcept : buffer(nullptr), size(0) {}
+				/**
+				 * \~russian
+				 * @brief Конструктор
+				 *
+				 * @param buffer буфер октетов куска выдачи
+				 * @param size   размер октетов куска выдачи
+				 *
+				 * \~english
+				 * @brief Constructor
+				 * @param buffer buffer of the octets of the piece of the issuance
+				 * @param size size of the octets of the piece of the issuance
+				 *
+				 * \~
+				 */
+				Piece(const void * buffer, const size_t size) noexcept : buffer(buffer), size(size) {}
+			} piece_t;
+
+			/**
+			 * \~russian
 			 * @brief Положение в поданной записи
 			 *
 			 * @details Служит для указания места отказа и для привязки значений к поданной

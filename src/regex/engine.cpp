@@ -309,8 +309,14 @@ bool awh::regex::Engine::test(const expression_t & expression, string_view text,
 		return (seek(text, expression.forward.text, start) != string_view::npos);
 	/**
 	 * Если обязательный литерал совпадения в тексте отсутствует
+	 *
+	 * @details Выражение, к позиции начала поиска привязанное, проверки этой
+	 *          не получает: совпадение у него начинается лишь в позиции поиска,
+	 *          и одна попытка вопрос решает целиком, тогда как проверка проходит
+	 *          текст до конца.
+	 *
 	 */
-	if(!expression.forward.prefilter.possible(text, start))
+	if(!expression.forward.anchored && !expression.forward.prefilter.possible(text, start))
 		// Выводим результат проверки наличия совпадения
 		return false;
 	/**
@@ -464,8 +470,14 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
 	}
 	/**
 	 * Если обязательный литерал совпадения в тексте отсутствует
+	 *
+	 * @details Выражение, к позиции начала поиска привязанное, проверки этой
+	 *          не получает: совпадение у него начинается лишь в позиции поиска,
+	 *          и одна попытка вопрос решает целиком, тогда как проверка проходит
+	 *          текст до конца.
+	 *
 	 */
-	if(!expression.forward.prefilter.possible(text, start))
+	if(!expression.forward.anchored && !expression.forward.prefilter.possible(text, start))
 		// Выводим результат поиска совпадения
 		return false;
 	/**

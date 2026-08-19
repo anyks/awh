@@ -111,7 +111,7 @@ awh::codec::abc::Reader::Settings::Settings() noexcept :
  *
  */
 awh::codec::abc::Reader::Reader() noexcept :
- _state(state_t::ITEM), _error(error_t::NONE), _offset(0), _origin(0), _nodes(0),
+ _state(state_t::ITEM), _error(error_t::NONE), _offset(0), _origin(0), _reserved(0), _nodes(0),
  _pending(0), _awaited(type_t::UNDEFINED), _extend(extend_t::BIGNUM), _exponent(0),
  _negative(false), _document(false), _handler(nullptr), _context(nullptr) {
 	// Выполняем установку начального положения разбора
@@ -140,6 +140,8 @@ void awh::codec::abc::Reader::reset() noexcept {
 	this->_offset = 0;
 	// Выполняем сброс смещения начала буфера
 	this->_origin = 0;
+	// Выполняем сброс размера выданного места под приём октетов
+	this->_reserved = 0;
 	// Выполняем очистку стека вместимых
 	this->_stack.clear();
 	// Выполняем очистку очереди собранных событий
@@ -1125,6 +1127,33 @@ bool awh::codec::abc::Reader::feed(const void * buffer, const size_t size, const
 		// Выполняем объявление отказа разбора
 		return this->fail(error_t::INTERNAL);
 	/**
+	 * Если место под приём октетов было выдано, а принятого подано не было, выданное
+	 * место обращается вспять: содержимым записи хвост его не является вовсе
+	 */
+	if(this->_reserved > 0){
+		// Выполняем возврат выданного места под приём октетов
+		this->_buffer.resize(this->_buffer.size() - this->_reserved);
+		// Выполняем сброс размера выданного места
+		this->_reserved = 0;
+	}
+	// Выполняем усечение разобранной части буфера
+	this->trim();
+	// Если подаваемая запись не пуста
+	if(size > 0){
+		// Выполняем получение указателя на подаваемую запись
+		const uint8_t * octets = reinterpret_cast <const uint8_t *> (buffer);
+		// Выполняем накопление подаваемой записи в буфере разбора
+		this->_buffer.insert(this->_buffer.end(), octets, octets + size);
+	}
+	// Выполняем разбор накопленных октетов
+	return this->digest(last);
+}
+/**
+ * @brief Метод усечения разобранной части буфера
+ *
+ */
+void awh::codec::abc::Reader::trim() noexcept {
+	/**
 	 * Выполняем усечение разобранной части буфера. Отрезки собранных событий ссылаются
 	 * в буфер смещением, оттого усечение возможно лишь при пустой очереди событий
 	 */
@@ -1136,13 +1165,15 @@ bool awh::codec::abc::Reader::feed(const void * buffer, const size_t size, const
 		// Выполняем сброс смещения разбора в буфере
 		this->_offset = 0;
 	}
-	// Если подаваемая запись не пуста
-	if(size > 0){
-		// Выполняем получение указателя на подаваемую запись
-		const uint8_t * octets = reinterpret_cast <const uint8_t *> (buffer);
-		// Выполняем накопление подаваемой записи в буфере разбора
-		this->_buffer.insert(this->_buffer.end(), octets, octets + size);
-	}
+}
+/**
+ * @brief Метод разбора накопленных октетов вместе с окончанием записи
+ *
+ * @param last признак того, что поданный кусок записи последний
+ * @return     признак успешности разбора
+ *
+ */
+bool awh::codec::abc::Reader::digest(const bool last) noexcept {
 	// Если разбор накопленных октетов отвечен отказом
 	if(!this->process())
 		// Сообщаем, что разбор отвечен отказом
@@ -1163,6 +1194,63 @@ bool awh::codec::abc::Reader::feed(const void * buffer, const size_t size, const
 	}
 	// Сообщаем, что разбор успешен
 	return true;
+}
+/**
+ * @brief Метод выдачи места под приём октетов записи
+ *
+ * @param size размер запрашиваемого места в октетах
+ * @return     указатель на выданное место, ноль - разбор отвечен отказом
+ *
+ */
+void * awh::codec::abc::Reader::reserve(const size_t size) noexcept {
+	// Если разбор отвечен отказом
+	if(this->_state == state_t::FAILED)
+		// Сообщаем, что места под приём октетов нет
+		return nullptr;
+	// Если места под приём октетов запрошено не было
+	if(size == 0){
+		// Выполняем сброс размера выданного места
+		this->_reserved = 0;
+		// Сообщаем, что места под приём октетов нет
+		return nullptr;
+	}
+	// Выполняем усечение разобранной части буфера
+	this->trim();
+	// Выполняем получение размера накопленных октетов записи
+	const size_t offset = this->_buffer.size();
+	// Выполняем выдачу места под приём октетов записи
+	this->_buffer.resize(offset + size);
+	// Выполняем запоминание размера выданного места
+	this->_reserved = size;
+	// Выводим указатель на выданное место
+	return (this->_buffer.data() + offset);
+}
+/**
+ * @brief Метод подачи октетов, принятых в выданное место
+ *
+ * @param size размер принятых октетов, не свыше выданного места
+ * @param last признак того, что кусок последний
+ * @return     признак успешности разбора
+ *
+ */
+bool awh::codec::abc::Reader::commit(const size_t size, const bool last) noexcept {
+	// Если разбор отвечен отказом
+	if(this->_state == state_t::FAILED)
+		// Сообщаем, что разбор отвечен отказом
+		return false;
+	// Если принятых октетов больше, чем места было выдано
+	if(size > this->_reserved)
+		// Выполняем объявление отказа разбора
+		return this->fail(error_t::INTERNAL);
+	/**
+	 * Выполняем возврат невостребованной части выданного места. Принято бывает меньше
+	 * запрошенного, и хвост выданного места содержимым записи не является вовсе
+	 */
+	this->_buffer.resize(this->_buffer.size() - (this->_reserved - size));
+	// Выполняем сброс размера выданного места
+	this->_reserved = 0;
+	// Выполняем разбор накопленных октетов
+	return this->digest(last);
 }
 /**
  * @brief Метод перехода к следующему собранному событию

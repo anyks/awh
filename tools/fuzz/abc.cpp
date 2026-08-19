@@ -218,7 +218,7 @@ namespace {
 		 * Выполняем получение вида строимого значения: на исходе глубины вместимые
 		 * из выбора изымаются, иначе построение уходит в бесконечную вложенность
 		 */
-		const uint64_t kind = number(0, (depth > 0 ? 12 : 9));
+		const uint64_t kind = number(0, (depth > 0 ? 14 : 9));
 		/**
 		 * Определяем вид строимого значения
 		 */
@@ -313,6 +313,55 @@ namespace {
 				// Выводим результат закрытия перечня
 				return writer.arrayEnd();
 			}
+			/**
+			 * Если строится значение, собираемое кусками
+			 */
+			case 13:
+			case 14: {
+				/**
+				 * Признак того, что собирается строка, а не двоичные данные.
+				 *
+				 * Имя взято не «string»: оно заслонило бы собою тип строки, и сборка
+				 * повалилась бы на первом же употреблении его
+				 */
+				const bool textual = (kind == 13);
+				/**
+				 * Если открыть значение, собираемое кусками, не вышло
+				 */
+				if(!(textual ? writer.textBegin() : writer.blobBegin()))
+					// Выводим признак неудачного построения
+					return false;
+				// Выполняем получение количества кусков значения
+				const uint64_t count = number(0, 4);
+				/**
+				 * Выполняем построение всех кусков значения
+				 */
+				for(uint64_t i = 0; i < count; i++){
+					// Если собирается строка
+					if(textual){
+						// Выполняем получение содержимого куска строки
+						const string value = text(static_cast <size_t> (number(0, 12)));
+						// Если уложить кусок строки не вышло
+						if(!writer.text(value))
+							// Выводим признак неудачного построения
+							return false;
+					// Иначе собираются двоичные данные
+					} else {
+						// Собираемый кусок двоичных данных
+						vector <uint8_t> value(static_cast <size_t> (number(0, 12)), 0);
+						// Выполняем перебор всех октетов куска
+						for(uint8_t & octet : value)
+							// Выполняем установку очередного октета
+							octet = static_cast <uint8_t> (number(0, 0xFF));
+						// Если уложить кусок двоичных данных не вышло
+						if(!writer.blob(value.data(), value.size()))
+							// Выводим признак неудачного построения
+							return false;
+					}
+				}
+				// Выводим результат закрытия значения, собираемого кусками
+				return (textual ? writer.textEnd() : writer.blobEnd());
+			}
 			// Если строится отображение
 			case 12: {
 				// Выполняем получение количества полей отображения
@@ -369,6 +418,11 @@ namespace {
 		 * разбору всё равно придётся встретить на носителе
 		 */
 		settings.validate = (number(0, 1) == 1);
+		/**
+		 * Порог укладки содержимого ссылкой ворошителем не трогается: содержимое,
+		 * уложенное ссылкой, обязано пережить выдачу записи, а строится запись из
+		 * временных буферов построителя значения, кои выдачи не переживают
+		 */
 		// Выполняем установку настроек сборки бинарной записи
 		writer.settings(settings);
 		/**
@@ -436,10 +490,11 @@ namespace {
 	 * @param buffer буфер разбираемой записи
 	 * @param chunk  размер куска подачи, ноль - подача целиком
 	 * @param events запомненные события разбора
+	 * @param direct признак приёма октетов прямо в буфер разбора
 	 * @return       признак записи, разобранной до конца
 	 *
 	 */
-	bool parse(const vector <uint8_t> & buffer, const size_t chunk, vector <Event> & events) noexcept {
+	bool parse(const vector <uint8_t> & buffer, const size_t chunk, vector <Event> & events, const bool direct = false) noexcept {
 		// Разбиратель бинарной записи
 		abc::reader_t reader;
 		// Выполняем очистку запомненных событий разбора
@@ -465,7 +520,27 @@ namespace {
 			 * выдал, и бросать их значило бы считать выдачу зависящей от нарезки там,
 			 * где зависит лишь миг обнаружения отказа
 			 */
-			const bool accepted = reader.feed(buffer.data() + offset, size, last);
+			bool accepted = false;
+			/**
+			 * Если октеты принимаются прямо в буфер разбора. Место запрашивается с
+			 * запасом, а принято бывает меньше: путь этот обязан выдать те же события,
+			 * что и подача своим буфером
+			 */
+			if(direct){
+				// Выполняем выдачу места под приём октетов записи
+				void * place = reader.reserve(size + static_cast <size_t> (number(0, 8)));
+				// Если место под приём октетов выдано
+				if(place != nullptr){
+					// Если принимаемые октеты не пусты
+					if(size > 0)
+						// Выполняем приём октетов записи прямо в выданное место
+						::memcpy(place, buffer.data() + offset, size);
+					// Выполняем подачу принятых октетов разбирателю
+					accepted = reader.commit(size, last);
+				// Иначе выполняем подачу октетов записи своим буфером
+				} else accepted = reader.feed(buffer.data() + offset, size, last);
+			// Иначе выполняем подачу октетов записи своим буфером
+			} else accepted = reader.feed(buffer.data() + offset, size, last);
 			/**
 			 * Выполняем выдачу всех событий, какие набрались подачей
 			 */
@@ -547,16 +622,23 @@ namespace {
 		 * Выполняем перебор всех размеров кусков подачи
 		 */
 		for(const size_t size : sizes){
+			/**
+			 * Выполняем сличение обоих путей подачи: своим буфером и приёмом октетов
+			 * прямо в буфер разбора. Выдача событий от пути подачи зависеть не вправе
+			 */
+			for(uint8_t pass = 0; pass < 2; pass++){
+			// Название пути подачи разбираемой записи
+			const char * path = ((pass == 1) ? "direct" : "buffered");
 			// События разбора записи, поданной кусками
 			vector <Event> sliced;
 			// Выполняем разбор записи, поданной кусками
-			const bool result = parse(buffer, size, sliced);
+			const bool result = parse(buffer, size, sliced, (pass == 1));
 			/**
 			 * Если исход разбора разошёлся с разбором записи, поданной целиком
 			 */
 			if(result != survived){
 				// Выводим сообщение о расхождении исхода разбора
-				::fprintf(stderr, "abc fuzz: parsing outcome differs at chunk size %zu\n", size);
+				::fprintf(stderr, "abc fuzz: parsing outcome differs at chunk size %zu (%s)\n", size, path);
 				// Выполняем выход с признаком расхождения
 				::exit(1);
 			}
@@ -565,8 +647,8 @@ namespace {
 			 */
 			if(sliced.size() != whole.size()){
 				// Выводим сообщение о расхождении количества событий
-				::fprintf(stderr, "abc fuzz: event count differs at chunk size %zu: %zu against %zu\n",
-				 size, sliced.size(), whole.size());
+				::fprintf(stderr, "abc fuzz: event count differs at chunk size %zu (%s): %zu against %zu\n",
+				 size, path, sliced.size(), whole.size());
 				// Выполняем выход с признаком расхождения
 				::exit(1);
 			}
@@ -579,7 +661,7 @@ namespace {
 				 */
 				if(sliced.at(i) != whole.at(i)){
 					// Выводим сообщение о расхождении события разбора
-					::fprintf(stderr, "abc fuzz: event %zu differs at chunk size %zu\n", i, size);
+					::fprintf(stderr, "abc fuzz: event %zu differs at chunk size %zu (%s)\n", i, size, path);
 					// Выводим признаки события разбора записи, поданной кусками
 					::fprintf(stderr, "  sliced: event=%u type=%u data=%zu count=%llu number=%llu integer=%lld real=%llx exp=%lld bool=%d neg=%d ind=%d depth=%u\n",
 					 sliced.at(i).event, sliced.at(i).type, sliced.at(i).data.size(),
@@ -597,6 +679,7 @@ namespace {
 					// Выполняем выход с признаком расхождения
 					::exit(1);
 				}
+			}
 			}
 		}
 	}

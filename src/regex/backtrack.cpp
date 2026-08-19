@@ -1387,8 +1387,14 @@ bool awh::regex::Backtrack::exec(const program_t & program, string_view text, co
 	while(true) {
 		/**
 		 * Если обязательный литерал совпадения в тексте отсутствует
+		 *
+		 * @details Выражение, к позиции начала попытки привязанное, проверки
+		 *          этой не получает: совпадение у него начинается лишь в позиции
+		 *          поиска, и одна попытка вопрос решает целиком, тогда как
+		 *          проверка проходит текст до конца.
+		 *
 		 */
-		if(!program.prefilter.possible(text, pos))
+		if(!bound && !program.prefilter.possible(text, pos))
 			// Выводим результат поиска совпадения
 			return false;
 		/**

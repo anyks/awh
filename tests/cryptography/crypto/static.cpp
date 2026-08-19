@@ -3819,3 +3819,137 @@ TEST_F(CryptoFixture, StreamDiscardCryptoTest){
 	// Проверяем, что заведение на завершённом потоке предупреждения не даёт
 	EXPECT_EQ(records, static_cast <size_t> (1));
 }
+
+/**
+ * @brief Тест хэш-функции ГОСТ Р 34.11-2012
+ *
+ * @details Закрепляет числа сторонней реализации: значения выработаны gost-engine и
+ *          обязаны совпадать октет в октет, иначе свёртка, посчитанная нами, чужой
+ *          работой опознана не будет
+ *
+ */
+TEST_F(CryptoFixture, StreebogHashCryptoTest){
+	// Проверяем хэш-сумму на 256 разрядов
+	EXPECT_EQ(this->_crypto->hash <std::string> (std::string_view("test message"), awh::crypto_t::hash_t::STREEBOG256),
+	 "0639b3cbb205941a9811f329d893057881382c5ab11d3e7e8423ec0a7a196bbb");
+	// Проверяем хэш-сумму на 512 разрядов
+	EXPECT_EQ(this->_crypto->hash <std::string> (std::string_view("test message"), awh::crypto_t::hash_t::STREEBOG512),
+	 "600c1335c84f405ea2a8c10bf3d18dfe1aed19ad847da206d70310a83ab1a8ae444e15692cd3c1dfef9452850b36e8aab3ee46b288d900d0956bff39ec3d1ef5");
+	/**
+	 * Сообщение, октетов не имеющее, отвергается договором всего фреймворка, и вид
+	 * ГОСТ тут не исключение: хэш-сумма его - пустота, а не значение стандарта.
+	 * Закрепляется именно это, иначе правка договора прошла бы здесь незамеченной
+	 */
+	// Проверяем отказ пустого сообщения
+	EXPECT_TRUE(this->_crypto->hash <std::string> (std::string_view(""), awh::crypto_t::hash_t::STREEBOG256).empty());
+	// Проверяем, что отказ этот общий, а не свойственный виду ГОСТ
+	EXPECT_TRUE(this->_crypto->hash <std::string> (std::string_view(""), awh::crypto_t::hash_t::SHA256).empty());
+	// Проверяем длину записи хэш-суммы на 256 разрядов
+	EXPECT_EQ(this->_crypto->hash <std::string> (std::string_view("anyks"), awh::crypto_t::hash_t::STREEBOG256).size(), static_cast <size_t> (64));
+	// Проверяем длину записи хэш-суммы на 512 разрядов
+	EXPECT_EQ(this->_crypto->hash <std::string> (std::string_view("anyks"), awh::crypto_t::hash_t::STREEBOG512).size(), static_cast <size_t> (128));
+	// Проверяем несовпадение хэш-сумм разных сообщений
+	EXPECT_NE(this->_crypto->hash <std::string> (std::string_view("anyks"), awh::crypto_t::hash_t::STREEBOG256),
+	 this->_crypto->hash <std::string> (std::string_view("anykt"), awh::crypto_t::hash_t::STREEBOG256));
+}
+
+/**
+ * @brief Тест имитовставки на хэш-функции ГОСТ Р 34.11-2012
+ *
+ * @details Построение обычное по RFC 2104, но своими силами: библиотека криптографии
+ *          хэш-функции этой не знает. Закрепляются числа сторонней реализации
+ *
+ */
+TEST_F(CryptoFixture, StreebogHmacCryptoTest){
+	// Ключ имитовставки из двадцати октетов
+	const std::string key(20, static_cast <char> (0x0b));
+	// Проверяем имитовставку на 256 разрядов
+	EXPECT_EQ(this->_crypto->hmac <std::string> (key, std::string_view("test message"), awh::crypto_t::hash_t::STREEBOG256),
+	 "814d737ae33a4776ca8aa5ae4b5d84a1f645478b6cfa8ef675fc6bee19e48407");
+	// Проверяем имитовставку на 512 разрядов
+	EXPECT_EQ(this->_crypto->hmac <std::string> (key, std::string_view("test message"), awh::crypto_t::hash_t::STREEBOG512),
+	 "3105310b85662bb65eae8aa6aaa9e4758a3df4aa69f5dea1d00aa5b0049988d418bd47a7162af19cebdc83691aa6ad68cc772f7fb1b9677f28d0f3270e275118");
+	/**
+	 * Ключ длиннее блока заменяется своей хэш-суммой, и путь этот проверяется особо:
+	 * ошибка в нём видна лишь на длинном ключе
+	 */
+	// Ключ длиннее блока хэш-функции
+	const std::string big(100, static_cast <char> (0x42));
+	// Проверяем длину имитовставки на длинном ключе
+	EXPECT_EQ(this->_crypto->hmac <std::string> (big, std::string_view("test message"), awh::crypto_t::hash_t::STREEBOG256).size(), static_cast <size_t> (64));
+	// Проверяем несовпадение имитовставок с разными ключами
+	EXPECT_NE(this->_crypto->hmac <std::string> (key, std::string_view("test message"), awh::crypto_t::hash_t::STREEBOG256),
+	 this->_crypto->hmac <std::string> (big, std::string_view("test message"), awh::crypto_t::hash_t::STREEBOG256));
+}
+
+/**
+ * @brief Тест вывода ключа шифрования на хэш-функции ГОСТ Р 34.11-2012
+ *
+ * @details Вывод ключа библиотеки криптографии берёт её же хэш-функцию, а этой она не
+ *          знает вовсе, оттого вывод строится своими силами по RFC 8018. Закрепляется
+ *          не значение ключа, а его пригодность: зашифрованное обязано расшифровываться
+ *
+ */
+TEST_F(CryptoFixture, StreebogCipherCryptoTest){
+	// Выполняем установку пароля шифрования
+	this->_crypto->password("Qw8#zR2!vN5@hL7$pM3&kT6^");
+	// Выполняем установку соли шифрования
+	this->_crypto->salt("j4Hs9Wk2Lp7Qz5Xr");
+	// Шифруемое содержимое
+	const std::string content = "содержимое, зашифрованное на ключе ГОСТ";
+	/**
+	 * Выполняем перебор обеих разрядностей хэш-функции
+	 */
+	for(auto & hash : {awh::crypto_t::hash_t::STREEBOG256, awh::crypto_t::hash_t::STREEBOG512}){
+		// Выполняем шифрование содержимого
+		const std::string sealed = this->_crypto->encrypt <std::string> (content, hash, awh::crypto_t::cipher_t::AES256);
+		// Проверяем, что содержимое зашифровано
+		ASSERT_FALSE(sealed.empty()) << "hash = " << static_cast <uint16_t> (hash);
+		// Проверяем, что зашифрованное от исходного отличается
+		EXPECT_NE(sealed, content) << "hash = " << static_cast <uint16_t> (hash);
+		// Выполняем расшифровку содержимого
+		EXPECT_EQ(this->_crypto->decrypt <std::string> (sealed, hash, awh::crypto_t::cipher_t::AES256), content) << "hash = " << static_cast <uint16_t> (hash);
+	}
+	/**
+	 * Ключ, выведенный разными хэш-функциями, обязан выйти разным: иначе разрядность
+	 * хэш-функции на вывод не влияла бы вовсе
+	 */
+	// Выполняем шифрование хэш-функцией на 256 разрядов
+	const std::string first = this->_crypto->encrypt <std::string> (content, awh::crypto_t::hash_t::STREEBOG256, awh::crypto_t::cipher_t::AES256);
+	// Проверяем отказ расшифровки ключом иной хэш-функции
+	EXPECT_NE(this->_crypto->decrypt <std::string> (first, awh::crypto_t::hash_t::STREEBOG512, awh::crypto_t::cipher_t::AES256), content);
+}
+
+/**
+ * @brief Тест отказа подписи на хэш-функции ГОСТ Р 34.11-2012
+ *
+ * @details Подписи RSA и ECDSA с этой хэш-функцией не вырабатываются: сочетание не
+ *          описано ни одним сводом, а библиотека криптографии её не знает. Отказ обязан
+ *          быть явным: подпись, выработанная иной хэш-функцией вместо запрошенной,
+ *          прошла бы за запрошенную
+ *
+ */
+TEST_F(CryptoFixture, StreebogSignatureRefusalCryptoTest){
+	// Подписываемое сообщение
+	static const char * MESSAGE = "сообщение";
+	// Набор выработанной подписи
+	std::vector <uint8_t> signature;
+	/**
+	 * Выполняем перебор видов подписи, хэш-функцию принимающих
+	 */
+	for(auto & kind : {awh::crypto_t::signature_t::RSA, awh::crypto_t::signature_t::ECDSA}){
+		// Выполняем выработку ключа подписи
+		ASSERT_TRUE(this->_crypto->generateKey("owner", kind)) << "kind = " << static_cast <uint16_t> (kind);
+		/**
+		 * Выполняем перебор обеих разрядностей хэш-функции
+		 */
+		for(auto & hash : {awh::crypto_t::hash_t::STREEBOG256, awh::crypto_t::hash_t::STREEBOG512}){
+			// Проверяем отказ выработки подписи
+			EXPECT_FALSE(this->_crypto->sign("owner", reinterpret_cast <const uint8_t *> (MESSAGE), ::strlen(MESSAGE), hash, signature)) << "kind = " << static_cast <uint16_t> (kind);
+			// Проверяем пустоту буфера подписи после отказа
+			EXPECT_TRUE(signature.empty()) << "kind = " << static_cast <uint16_t> (kind);
+			// Проверяем отказ заведения потока подписи
+			EXPECT_FALSE(this->_crypto->signInitialize("owner", hash)) << "kind = " << static_cast <uint16_t> (kind);
+		}
+	}
+}
