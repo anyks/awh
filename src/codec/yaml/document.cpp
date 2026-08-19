@@ -26,6 +26,7 @@
 #include <cstdio>
 #include <limits>
 #include <fstream>
+#include <algorithm>
 #include <type_traits>
 #include <unordered_map>
 
