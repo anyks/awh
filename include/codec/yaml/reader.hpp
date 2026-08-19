@@ -1055,6 +1055,31 @@ namespace awh {
 					bool record(const string_view line) noexcept;
 					/**
 					 * \~russian
+					 * @brief Метод разбора имени пары, записью составною являющегося
+					 *
+					 * @details Именем пары описание дозволяет быть и построению поточному, и
+					 * ссылке на метку: правило `ns-s-implicit-yaml-key` требует от такого имени
+					 * лишь одной строки
+					 *
+					 * @param line   разбираемая строка
+					 * @param offset смещение разделителя имени пары в строке
+					 * @param indent отступ разбираемой строки
+					 * @param origin место начала записи имени в накопителе строки
+					 * @return       признак успешного разбора имени пары
+					 *
+					 * \~english
+					 * @brief Method of the parsing of a name of a pair being a composite record
+					 * @param line   line being parsed
+					 * @param offset offset of the separator of the name of a pair in the line
+					 * @param indent indentation of the line being parsed
+					 * @param origin place of the beginning of the record of the name in the accumulator
+					 * @return sign of the successful parsing of the name of a pair
+					 *
+					 * \~
+					 */
+					bool keyed(const string_view line, size_t offset, const uint32_t indent, const size_t origin) noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод переноса накопленных свойств узла в собранное событие
 					 *
 					 * @details Метка и метка типа стоят прежде узла своего и ожидают его - быть
