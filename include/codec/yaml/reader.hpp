@@ -309,6 +309,15 @@ namespace awh {
 						 */
 						bool entered;
 						/**
+						 * Признак того, что запись объявлена вопросом составного имени
+						 *
+						 * @note Вопрос, содержимого за собою не имеющий, даёт пару из двух
+						 *       пустот - имени и значения, - тогда как имя без двоеточия даёт
+						 *       одну лишь пустоту значения. Различить их можно только этим
+						 *       признаком. Случай DFF7 набора yaml-test-suite
+						 */
+						bool asked;
+						/**
 						 * Признак того, что разбирается значение пары, а не имя её
 						 *
 						 * @note Отображение `{a, b}` описанием дозволено: значения пар пусты. Отличить
@@ -363,7 +372,7 @@ namespace awh {
 						 * \~
 						 */
 						Bracket(const nesting_t kind) noexcept :
-						 kind(kind), filled(false), entered(false), valued(false), paired(false), origin(0) {}
+						 kind(kind), filled(false), entered(false), asked(false), valued(false), paired(false), origin(0) {}
 					} bracket_t;
 					/**
 					 * \~russian

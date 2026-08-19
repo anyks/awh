@@ -4121,16 +4121,36 @@ bool awh::codec::yaml::Reader::flowing(const string_view line, size_t & offset) 
 			if(letter == closer){
 				/**
 				 * Если имя пары осталось без значения своего
+				 *
+				 * @details Случая тут два, и оба дают пустое значение: имя без двоеточия
+				 *          вовсе - запись `{a}` - и двоеточие без значения за ним - запись
+				 *          `{a:}`. Прежде сличался лишь первый, и второй терял значение
+				 *          пары молча
+				 *
+				 * @note Случаи C2DT и DFF7 набора yaml-test-suite
 				 */
-				if(!sequence && bracket.entered && !bracket.valued){
+				if(!sequence && (bracket.entered || bracket.valued)){
 					/**
-					 * Если поставить событие пустого значения не удалось
+					 * Количество пустот, паре недостающих
+					 *
+					 * @note Вопрос, содержимого за собою не имеющий, даёт пару из двух пустот -
+					 *       имени и значения, - а имя без двоеточия даёт одну лишь пустоту
+					 *       значения
 					 */
-					if(!this->scalar(string(), style_t::PLAIN, offset))
-						// Выводим признак неудачного разбора построения
-						return false;
-					// Устанавливаем вид пустого значения последнему событию
-					this->_staged.back().type = type_t::NUL;
+					const size_t missing = ((bracket.asked && !bracket.valued) ? 2 : 1);
+					/**
+					 * Выполняем постановку недостающих пустот пары
+					 */
+					for(size_t i = 0; i < missing; i++){
+						/**
+						 * Если поставить событие пустого значения не удалось
+						 */
+						if(!this->scalar(string(), style_t::PLAIN, offset))
+							// Выводим признак неудачного разбора построения
+							return false;
+						// Устанавливаем вид пустого значения последнему событию
+						this->_staged.back().type = type_t::NUL;
+					}
 				}
 				// Выполняем переход за закрывающую скобку построения
 				offset++;
@@ -4183,6 +4203,8 @@ bool awh::codec::yaml::Reader::flowing(const string_view line, size_t & offset) 
 				bracket.filled = true;
 				// Запоминаем признак того, что запись построения начата
 				bracket.entered = true;
+				// Запоминаем признак того, что запись объявлена вопросом составного имени
+				bracket.asked = true;
 				// Выполняем сброс признака разбора значения пары
 				bracket.valued = false;
 				// Запоминаем признак наполнения открытого документа
@@ -4242,6 +4264,8 @@ bool awh::codec::yaml::Reader::flowing(const string_view line, size_t & offset) 
 					bracket.valued = false;
 					// Выполняем сброс признака начатой записи построения
 					bracket.entered = false;
+					// Выполняем сброс признака записи, вопросом объявленной
+					bracket.asked = false;
 					// Выполняем переход за разделитель значений
 					offset++;
 					// Запоминаем ожидание очередного значения построения
@@ -4487,6 +4511,8 @@ bool awh::codec::yaml::Reader::flowing(const string_view line, size_t & offset) 
 			bracket.valued = false;
 			// Выполняем сброс признака начатой записи построения
 			bracket.entered = false;
+			// Выполняем сброс признака записи, вопросом объявленной
+			bracket.asked = false;
 			// Выполняем переход за разделитель значений
 			offset++;
 			// Запоминаем ожидание очередного значения построения
