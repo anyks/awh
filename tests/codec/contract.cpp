@@ -37,6 +37,8 @@
 #include <codec/json/json.hpp>
 #include <codec/xml/xml.hpp>
 #include <codec/yaml/yaml.hpp>
+#include <codec/toml/toml.hpp>
+#include <codec/ini/ini.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -196,6 +198,71 @@ namespace {
 		// Выводим признак того, что запись кодеком разобрана
 		return true;
 	}
+	/**
+	 * @brief Метод извлечения числа из записи кодеком TOML
+	 *
+	 * @details Владеющего значения у кодека этого ещё нет, и договор извлечения берётся
+	 * прямо у дерева документа. Разницы для щупа в том нет: договор один и тот же, а
+	 * владеющее значение к нему лишь пристраивается - переносится он сюда целиком, и
+	 * расхождение обязано всплыть здесь ещё до переноса, а не сличением задним числом
+	 *
+	 * @note Переставить кодек на владеющее значение надлежит вместе с переносом его:
+	 *       щуп сличает договор, а не путь до него
+	 *
+	 * @param record  подаваемая запись числа
+	 * @param outcome собираемый итог извлечения
+	 * @return        признак того, что запись кодеком разобрана
+	 *
+	 */
+	static bool viaToml(const string & record, outcome_t & outcome) noexcept {
+		// Собираемый текст документа
+		const string text = ("value = " + record + "\n");
+		// Дерево документа TOML
+		toml::document_t document;
+		/**
+		 * Если разбор записи завершился отказом
+		 */
+		if(!document.parse(text))
+			// Выводим признак того, что запись кодеком не разобрана
+			return false;
+		// Составное имя искомой пары
+		const vector <string_view> path = {"value"};
+		// Выполняем извлечение записи числом дробным
+		outcome.extracted = document.value(outcome.real, path);
+		// Выполняем извлечение записи числом целым
+		outcome.wholed = document.value(outcome.whole, path);
+		// Выводим признак того, что запись кодеком разобрана
+		return true;
+	}
+	/**
+	 * @brief Метод извлечения числа из записи кодеком INI
+	 *
+	 * @note Своих видов у кодека нет вовсе: значение свойства есть запись, и вид её
+	 *       решается самой записью при извлечении - ровно как у разметки
+	 *
+	 * @param record  подаваемая запись числа
+	 * @param outcome собираемый итог извлечения
+	 * @return        признак того, что запись кодеком разобрана
+	 *
+	 */
+	static bool viaIni(const string & record, outcome_t & outcome) noexcept {
+		// Собираемый текст настроек
+		const string text = ("value=" + record + "\n");
+		// Дерево настроек INI
+		ini::document_t document;
+		/**
+		 * Если разбор записи завершился отказом
+		 */
+		if(!document.parse(text))
+			// Выводим признак того, что запись кодеком не разобрана
+			return false;
+		// Выполняем извлечение записи числом дробным
+		outcome.extracted = document.value(outcome.real, "value");
+		// Выполняем извлечение записи числом целым
+		outcome.wholed = document.value(outcome.whole, "value");
+		// Выводим признак того, что запись кодеком разобрана
+		return true;
+	}
 };
 
 /**
@@ -223,7 +290,8 @@ TEST(CodecContract, NumberExtraction) {
 	};
 	// Перечень кодеков, чьи договоры сличаются
 	const vector <pair <string, function <bool (const string &, outcome_t &)>>> codecs = {
-		{"JSON", viaJson}, {"XML", viaXml}, {"YAML", viaYaml}
+		{"JSON", viaJson}, {"XML", viaXml}, {"YAML", viaYaml},
+		{"TOML", viaToml}, {"INI", viaIni}
 	};
 	/**
 	 * Выполняем перебор всех подаваемых записей
@@ -260,11 +328,19 @@ TEST(CodecContract, NumberExtraction) {
 				// Выполняем переход к следующему кодеку
 				continue;
 			}
-			// Выполняем проверку совпадения итога извлечения с образцом
+			/**
+			 * Выполняем проверку совпадения итога извлечения с образцом
+			 *
+			 * @note Сообщение печатает ОБА извлечения - и дробное, и целое: сличаются они
+			 *       оба, а расходиться вправе одно. Печатая одно дробное, сообщение
+			 *       читалось «JSON даёт 1.5, а TOML даёт 1.5» и уводило от причины прочь
+			 */
 			ASSERT_TRUE(same(sample, outcome))
 				<< "запись [" << record << "] извлекается кодеками по-разному: "
-				<< origin << " даёт " << (sample.extracted ? "" : "отказ ") << sample.real
-				<< ", а " << codec.first << " даёт " << (outcome.extracted ? "" : "отказ ") << outcome.real;
+				<< origin << " даёт дробным " << (sample.extracted ? "" : "отказ ") << sample.real
+				<< " и целым " << (sample.wholed ? "" : "отказ ") << sample.whole
+				<< ", а " << codec.first << " даёт дробным " << (outcome.extracted ? "" : "отказ ") << outcome.real
+				<< " и целым " << (outcome.wholed ? "" : "отказ ") << outcome.whole;
 		}
 		// Выполняем проверку того, что запись разобрана хоть одним кодеком
 		ASSERT_TRUE(sampled) << "запись [" << record << "] не разобрана ни одним кодеком";
@@ -281,13 +357,21 @@ TEST(CodecContract, NumberExtraction) {
  *
  */
 TEST(CodecContract, NumberRefusal) {
-	// Перечень записей, числами не являющихся ни по одному из стандартов
+	/**
+	 * Перечень записей, числами не являющихся ни по одному из стандартов
+	 *
+	 * @note Записи `0b101` и `nan` из перечня этого изъяты: описание TOML знает их
+	 *       числами - двоичным целым и нечислом дробным, - и держатся они ниже, среди
+	 *       расхождений, стандартами заданных. Перечень этот писался, когда кодека
+	 *       TOML в щупе не было, и был он верен ровно до внесения его
+	 */
 	const vector <string> records = {
-		"текст", "12abc", "abc12", "1e", "--5", "5.5.5", "0b101", "nan"
+		"текст", "12abc", "abc12", "1e", "--5", "5.5.5"
 	};
 	// Перечень кодеков, чьи договоры сличаются
 	const vector <pair <string, function <bool (const string &, outcome_t &)>>> codecs = {
-		{"JSON", viaJson}, {"XML", viaXml}, {"YAML", viaYaml}
+		{"JSON", viaJson}, {"XML", viaXml}, {"YAML", viaYaml},
+		{"TOML", viaToml}, {"INI", viaIni}
 	};
 	/**
 	 * Выполняем перебор всех подаваемых записей
@@ -369,6 +453,38 @@ TEST(CodecContract, StandardDivergence) {
 		// Выполняем проверку того, что кодек JSON записи такой не разбирает вовсе
 		ASSERT_FALSE(viaJson(item.first, outcome)) << "запись [" << item.first << "]";
 	}
+	/**
+	 * Выполняем перебор записей, числами являющихся у одного лишь TOML
+	 *
+	 * @note Записи эти заданы описанием TOML 1.0.0: двоичное целое, разделитель разрядов
+	 *       подчёркиванием и нечисло дробное. Прочие кодеки числами их не считают -
+	 *       разметка и INI отвергают их извлечением, JSON отвергает разбором
+	 */
+	for(auto & item : vector <pair <string, double>> {{"0b101", 5.}, {"1_000", 1000.}}){
+		// Собираемый итог извлечения кодеком TOML
+		outcome_t taken;
+		// Выполняем проверку того, что запись кодеком TOML разобрана и извлечена
+		ASSERT_TRUE(viaToml(item.first, taken)) << "запись [" << item.first << "]";
+		ASSERT_TRUE(taken.extracted) << "запись [" << item.first << "]";
+		ASSERT_DOUBLE_EQ(taken.real, item.second);
+		// Собираемый итог извлечения кодеком INI
+		outcome_t missed;
+		// Выполняем проверку того, что кодек INI записи такой числом не считает
+		ASSERT_TRUE(viaIni(item.first, missed)) << "запись [" << item.first << "]";
+		ASSERT_FALSE(missed.extracted) << "запись [" << item.first << "]";
+	}
+	// Собираемый итог извлечения записи нечисла кодеком TOML
+	outcome_t senseless;
+	/**
+	 * Выполняем проверку того, что кодек TOML знает запись нечисла
+	 *
+	 * @note Написание у TOML своё: `nan` без точки, тогда как YAML пишет его `.nan`.
+	 *       Извлечение выдаёт нечисло, а обращение его нулём есть дело сужения вида, а
+	 *       не извлечения
+	 */
+	ASSERT_TRUE(viaToml("nan", senseless));
+	ASSERT_TRUE(senseless.extracted);
+	ASSERT_TRUE(::std::isnan(senseless.real));
 }
 /**
  * @brief Проверка длинной записи числа
