@@ -4051,6 +4051,8 @@ bool awh::codec::yaml::Reader::flowing(const string_view line, size_t & offset) 
 				this->_staged.back().type = type_t::NUL;
 				// Запоминаем признак наполнения открытого построения
 				bracket.filled = true;
+				// Запоминаем признак того, что запись построения начата
+				bracket.entered = true;
 				// Запоминаем ожидание запятой либо закрывающей скобки
 				this->_phase = flow_t::AFTER;
 				// Выполняем переход к разбору того же знака строки
@@ -4063,7 +4065,7 @@ bool awh::codec::yaml::Reader::flowing(const string_view line, size_t & offset) 
 				/**
 				 * Если имя пары осталось без значения своего
 				 */
-				if(!sequence && bracket.filled && !bracket.valued){
+				if(!sequence && bracket.entered && !bracket.valued){
 					/**
 					 * Если поставить событие пустого значения не удалось
 					 */
@@ -4122,6 +4124,8 @@ bool awh::codec::yaml::Reader::flowing(const string_view line, size_t & offset) 
 				}
 				// Запоминаем признак наполнения открытого построения
 				bracket.filled = true;
+				// Запоминаем признак того, что запись построения начата
+				bracket.entered = true;
 				// Выполняем сброс признака разбора значения пары
 				bracket.valued = false;
 				// Запоминаем признак наполнения открытого документа
@@ -4144,9 +4148,53 @@ bool awh::codec::yaml::Reader::flowing(const string_view line, size_t & offset) 
 			 *       записи не открывает, а закрывает последнюю. Нашло это сличение с
 			 *       набором yaml-test-suite
 			 */
-			if(letter == ',')
+			if(letter == ','){
+				/**
+				 * Если запятая стоит на месте значения пары, двоеточием объявленной
+				 *
+				 * @details Пара, двоеточие несущая, значение своё вправе не иметь вовсе:
+				 *          правило `e-node` пустоту значением признаёт. Запись `{ имя:, }`
+				 *          тем и разнится с записью `[ a, , b ]`, что там запятая стоит на
+				 *          месте целой записи, а здесь - на месте значения объявленной пары
+				 *
+				 * @note Прежде отказ шёл на обе разом. Случаи 4ABK и FRK4 набора
+				 *       yaml-test-suite
+				 */
+				if(bracket.valued){
+					/**
+					 * Если поставить событие пустого значения не удалось
+					 */
+					if(!this->scalar(string(), style_t::PLAIN, offset))
+						// Выводим признак неудачного разбора построения
+						return false;
+					// Устанавливаем вид пустого значения последнему событию
+					this->_staged.back().type = type_t::NUL;
+					/**
+					 * Если запись перечня отображением об одной паре объявлена
+					 *
+					 * @note Скобок своих отображение это не имеет, и закрывается оно
+					 *       запятой - той самой, что стоит на месте значения
+					 */
+					if(bracket.paired){
+						// Выполняем постановку события закрытия отображения об одной паре
+						this->emit(event_t::MAPPING_END, offset);
+						// Выполняем сброс признака отображения об одной паре
+						bracket.paired = false;
+					}
+					// Выполняем сброс признака разбора значения пары
+					bracket.valued = false;
+					// Выполняем сброс признака начатой записи построения
+					bracket.entered = false;
+					// Выполняем переход за разделитель значений
+					offset++;
+					// Запоминаем ожидание очередного значения построения
+					this->_phase = flow_t::ENTRY;
+					// Выполняем переход к разбору следующего знака строки
+					continue;
+				}
 				// Выводим отказ ожидания значения
 				return this->fail(error_t::EXPECTED_VALUE, offset);
+			}
 			/**
 			 * Если значение открывается свойствами узла
 			 *
@@ -4183,6 +4231,8 @@ bool awh::codec::yaml::Reader::flowing(const string_view line, size_t & offset) 
 					return false;
 				// Запоминаем признак наполнения открытого построения
 				bracket.filled = true;
+				// Запоминаем признак того, что запись построения начата
+				bracket.entered = true;
 				// Выполняем постановку события открытия вложенного построения
 				item_t & item = this->emit(((letter == '[') ? event_t::SEQUENCE_START : event_t::MAPPING_START), offset);
 				// Выполняем перенос накопленных свойств узла в собранное событие
@@ -4378,6 +4428,8 @@ bool awh::codec::yaml::Reader::flowing(const string_view line, size_t & offset) 
 			}
 			// Выполняем сброс признака разбора значения пары
 			bracket.valued = false;
+			// Выполняем сброс признака начатой записи построения
+			bracket.entered = false;
 			// Выполняем переход за разделитель значений
 			offset++;
 			// Запоминаем ожидание очередного значения построения
