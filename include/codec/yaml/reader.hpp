@@ -959,7 +959,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool scalar(const string & text, const style_t style, const size_t column) noexcept;
+					bool scalar(const string_view text, const style_t style, const size_t column) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод закрытия открытых уровней глубже заданного отступа
@@ -1343,7 +1343,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool deferred(const string & text, const size_t column) noexcept;
+					bool deferred(const string_view text, const size_t column) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод выдачи собранного простого значения

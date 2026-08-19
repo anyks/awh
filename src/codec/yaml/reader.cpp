@@ -952,7 +952,7 @@ void awh::codec::yaml::Reader::remark(const string_view line, const size_t posit
  * @return       признак успешной постановки события
  *
  */
-bool awh::codec::yaml::Reader::scalar(const string & text, const style_t style, const size_t column) noexcept {
+bool awh::codec::yaml::Reader::scalar(const string_view text, const style_t style, const size_t column) noexcept {
 	// Получаем предел длины скалярного значения
 	const size_t limit = ((this->_settings.scalar > 0) ? this->_settings.scalar : MAX_SCALAR);
 	/**
@@ -3208,20 +3208,44 @@ bool awh::codec::yaml::Reader::content(const string_view line, const size_t offs
 				// Выводим признак неудачного разбора содержимого
 				return false;
 		}
-		// Собираемое содержимое имени пары
-		string name;
 		/**
-		 * Если снять ограду с имени пары не удалось
+		 * Если имя пары записано простым видом
+		 *
+		 * @details Простое имя ограды не имеет, и снимать с него нечего: переносится оно
+		 *          в хранилище как есть. Снятие ограды у такого имени сводилось к заводу
+		 *          строки и переписыванию в неё уже имеющегося
+		 *
+		 * @note Наружу это торчало счётом выделений: короткий запас строки у libc++
+		 *       вмещает 22 октета и прятал их, у libstdc++ он 15 - и там выделение шло
+		 *       на всякое имя длиннее пятнадцати. Работа делалась на ВСЕХ системах,
+		 *       видна была на пяти из семи
 		 */
-		if(!this->unquote(line.substr(offset, length), style, offset, name))
-			// Выводим признак неудачного разбора содержимого
-			return false;
+		if(style == style_t::PLAIN){
+			/**
+			 * Если поставить событие имени пары не удалось
+			 */
+			if(!this->scalar(line.substr(offset, length), style, offset))
+				// Выводим признак неудачного разбора содержимого
+				return false;
 		/**
-		 * Если поставить событие имени пары не удалось
+		 * Если имя пары оградою окружено
 		 */
-		if(!this->scalar(name, style, offset))
-			// Выводим признак неудачного разбора содержимого
-			return false;
+		} else {
+			// Собираемое содержимое имени пары
+			string name;
+			/**
+			 * Если снять ограду с имени пары не удалось
+			 */
+			if(!this->unquote(line.substr(offset, length), style, offset, name))
+				// Выводим признак неудачного разбора содержимого
+				return false;
+			/**
+			 * Если поставить событие имени пары не удалось
+			 */
+			if(!this->scalar(name, style, offset))
+				// Выводим признак неудачного разбора содержимого
+				return false;
+		}
 		// Выполняем переход за разделитель имени пары
 		position++;
 		/**
@@ -3369,14 +3393,24 @@ bool awh::codec::yaml::Reader::content(const string_view line, const size_t offs
 		// Выводим признак успешного разбора содержимого
 		return true;
 	}
-	// Собираемое содержимое значения
+	/**
+	 * Собираемое содержимое значения
+	 *
+	 * @note Простое значение ограды не имеет, и снимать с него нечего: строка заводится
+	 *       лишь ради откладывания выдачи, а при выдаче немедленной обходится и без неё
+	 */
 	string value;
 	/**
-	 * Если снять ограду со значения не удалось
+	 * Если значение оградою окружено
 	 */
-	if(!this->unquote(line.substr(offset, length), style, offset, value))
-		// Выводим признак неудачного разбора содержимого
-		return false;
+	if(style != style_t::PLAIN){
+		/**
+		 * Если снять ограду со значения не удалось
+		 */
+		if(!this->unquote(line.substr(offset, length), style, offset, value))
+			// Выводим признак неудачного разбора содержимого
+			return false;
+	}
 	/**
 	 * Если значение записано без ограды и добежало до конца строки
 	 *
@@ -3387,11 +3421,14 @@ bool awh::codec::yaml::Reader::content(const string_view line, const size_t offs
 	 */
 	if((style == style_t::PLAIN) && (position >= line.size()))
 		// Выполняем откладывание выдачи простого значения
-		return this->deferred(value, offset);
+		return this->deferred(line.substr(offset, length), offset);
 	/**
 	 * Если поставить событие значения не удалось
+	 *
+	 * @note Простое значение уходит в хранилище своим срезом исходной строки, без
+	 *       промежутка: заводить под него строку незачем
 	 */
-	if(!this->scalar(value, style, offset))
+	if(!this->scalar(((style == style_t::PLAIN) ? line.substr(offset, length) : string_view(value)), style, offset))
 		// Выводим признак неудачного разбора содержимого
 		return false;
 	/**
@@ -4184,20 +4221,46 @@ bool awh::codec::yaml::Reader::flowed(const string_view line, size_t & offset) n
 	// Получаем запись значения без пробельной обвязки
 	const string_view text = ((style == style_t::PLAIN) ?
 		trimmed(line.substr(offset, (position - offset))) : line.substr(offset, (position - offset)));
-	// Собираемое содержимое значения
-	string value;
 	/**
-	 * Если снять ограду со значения не удалось
+	 * Если значение записано простым видом
+	 *
+	 * @details Простое значение ограды не имеет, и снимать с него нечего: перенос его в
+	 *          хранилище идёт как есть. Прежде оно всё же проходило через снятие ограды,
+	 *          а то заводило строку и переписывало в неё уже имеющееся - выделение и
+	 *          копия на КАЖДОЕ значение документа
+	 *
+	 * @note Наружу это торчало счётом выделений: короткий запас строки у libc++ вмещает
+	 *       22 октета и прятал их, у libstdc++ он 15 - и там же выделение шло на всякое
+	 *       значение длиннее пятнадцати. На тексте в 16 МБ выходило 460 756 выделений
+	 *       против 66. Работа при том делалась на всех системах, видна была лишь на
+	 *       пяти из семи
 	 */
-	if(!this->unquote(text, style, offset, value))
-		// Выводим признак неудачного разбора значения
-		return false;
+	if(style == style_t::PLAIN){
+		/**
+		 * Если поставить событие значения не удалось
+		 */
+		if(!this->scalar(text, style, offset))
+			// Выводим признак неудачного разбора значения
+			return false;
 	/**
-	 * Если поставить событие значения не удалось
+	 * Если значение оградою окружено
 	 */
-	if(!this->scalar(value, style, offset))
-		// Выводим признак неудачного разбора значения
-		return false;
+	} else {
+		// Собираемое содержимое значения
+		string value;
+		/**
+		 * Если снять ограду со значения не удалось
+		 */
+		if(!this->unquote(text, style, offset, value))
+			// Выводим признак неудачного разбора значения
+			return false;
+		/**
+		 * Если поставить событие значения не удалось
+		 */
+		if(!this->scalar(value, style, offset))
+			// Выводим признак неудачного разбора значения
+			return false;
+	}
 	// Запоминаем смещение за разобранным значением
 	offset = position;
 	// Выводим признак успешного разбора значения
@@ -4815,7 +4878,7 @@ bool awh::codec::yaml::Reader::flowing(const string_view line, size_t & offset) 
  * @return       признак успешного откладывания выдачи
  *
  */
-bool awh::codec::yaml::Reader::deferred(const string & text, const size_t column) noexcept {
+bool awh::codec::yaml::Reader::deferred(const string_view text, const size_t column) noexcept {
 	// Запоминаем признак сборки простого значения
 	this->_plaining = true;
 	// Запоминаем собранное содержимое простого значения
@@ -4857,18 +4920,34 @@ bool awh::codec::yaml::Reader::settle() noexcept {
 		return true;
 	// Выполняем сброс признака сборки простого значения
 	this->_plaining = false;
-	// Получаем собранное содержимое простого значения
-	const string text(this->_plain);
-	// Выполняем сброс собираемого содержимого значения
-	this->_plain.clear();
+	/**
+	 * Получаем собранное содержимое простого значения
+	 *
+	 * @details Берётся оно СРЕЗОМ члена, а не копией его: копия заводилась лишь затем,
+	 *          чтобы очистить член до выдачи, - а очистить его можно и после неё.
+	 *          Постановка события содержимое своё переносит в хранилище знаков и
+	 *          указателя на него не держит, так что срез переживает выдачу свободно
+	 *
+	 * @note Копия эта стоила выделения на КАЖДОЕ простое значение документа. Короткий
+	 *       запас строки у libc++ вмещает 22 октета и прятал её, у libstdc++ он 15 - и
+	 *       там выделение шло на всякое значение длиннее пятнадцати. На тексте в 16 МБ
+	 *       выходило 460 756 выделений против 66, то есть работа делалась на ВСЕХ
+	 *       системах, а видна была на пяти машинах из семи
+	 */
+	const string_view text(this->_plain);
 	// Выполняем сброс количества пустых строк значения
 	this->_folds = 0;
 	/**
 	 * Если поставить событие простого значения не удалось
 	 */
-	if(!this->scalar(text, style_t::PLAIN, 0))
+	if(!this->scalar(text, style_t::PLAIN, 0)){
+		// Выполняем сброс собираемого содержимого значения
+		this->_plain.clear();
 		// Выводим признак неудачной выдачи значения
 		return false;
+	}
+	// Выполняем сброс собираемого содержимого значения
+	this->_plain.clear();
 	/**
 	 * Устанавливаем положение начала значения поставленному событию
 	 *
