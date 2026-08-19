@@ -24,6 +24,11 @@
 #          раскладку запустил: подпёртый в чужом дереве дефект расходится двумя
 #          редакциями, и всплыть у владельца ему уже нечем
 #
+# @warning Всё, что исполняется НА СТОРОНЕ МАШИНЫ, обязано обходиться средствами POSIX:
+#          у систем Sun они вида SVR4, и привычные ключи там неизвестны. Родной `tar` не
+#          понимает `-z`, родной `grep` не знает `-E`. Свёрток оттого разворачивается
+#          через `gzip -dc`, а отбор строк ведётся оболочкою
+#
 # @copyright Copyright © 2026
 #
 # Вызов:
@@ -160,7 +165,21 @@ for SCRIPT in $AWH_SCRIPTS; do
 		#       печатается ещё ниже, - но узнать, сколько проверок прошло, было нельзя
 		#       вовсе, а пропуск есть молчаливое отключение и виден быть обязан
 		#
-		[ -x "$BINARY" ] && "$BINARY" 2>&1 | grep -E 'tests? from .* ran|\[  PASSED  \]|\[  FAILED  \]|\[  SKIPPED \]'
+		#
+		# @note Отбор ведётся оболочкою, а не `grep -E`: родной `grep` у систем Sun
+		#       расширенных выражений не знает вовсе и отвечает «illegal option -- E»,
+		#       после чего итог прогона пропадает целиком. Наступал на это дважды за день
+		#
+		[ -x "$BINARY" ] && "$BINARY" 2>&1 | while IFS= read -r OUTPUT; do
+			# Определяем строку итога прогона
+			case "$OUTPUT" in
+				*"tests from"*"ran."*) echo "$OUTPUT" ;;
+				*"test from"*"ran."*) echo "$OUTPUT" ;;
+				"[  PASSED  ]"*) echo "$OUTPUT" ;;
+				"[  FAILED  ]"*) echo "$OUTPUT" ;;
+				"[  SKIPPED ]"*) echo "$OUTPUT" ;;
+			esac
+		done
 	done
 done
 RUN
@@ -192,7 +211,7 @@ echo "$MACHINES" | while IFS='|' read -r HOST GTEST TAG; do
 	#
 	ssh -n -o BatchMode=yes -o StrictHostKeyChecking=no "$HOST" \
 		"rm -rf ~/codec-stands-$STAMP && mkdir -p ~/codec-stands-$STAMP && cd ~/codec-stands-$STAMP &&
-		 tar xzf /tmp/awh-codec-stands-$STAMP.tgz &&
+		 gzip -dc /tmp/awh-codec-stands-$STAMP.tgz | tar -xf - &&
 		 GTEST_ROOT='$GTEST' AWH_SCRIPTS='$STANDS' AWH_STAMP='$STAMP' sh /tmp/awh-codec-runner-$STAMP.sh;
 		 cd ~ && rm -rf ~/codec-stands-$STAMP /tmp/awh-codec-stands-$STAMP.tgz /tmp/awh-codec-runner-$STAMP.sh /tmp/awh-stand-$STAMP-*[!g]" |
 	#
