@@ -3532,3 +3532,79 @@ TEST(CodecYamlReader, QuestionedKeyNesting) {
 		"SEQUENCE_START\nSCALAR «a»\nSEQUENCE_END\nSCALAR «b»\n"
 		"MAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
 }
+
+/**
+ * @brief Проверка свойств узла, вместилищу отложенных
+ *
+ * @details Метка, строкою выше объявленная, принадлежит вместилищу, какое строка ниже
+ * открывает, а не имени пары её. Имя же пары вправе быть чем угодно - записью простой,
+ * поточным построением либо ссылкою, - и возврат отложенного обязан работать у всякого
+ * из них
+ *
+ * @note Не дождавшись вместилища своего, отложенное оборачивается отказом: строка,
+ * вместилища не открывшая, несёт узел один, и двух меток он не несёт. Случаи 26DV, 6BFJ
+ * и 4JVG набора yaml-test-suite
+ *
+ */
+TEST(CodecYamlReader, DelayedContainerProperties) {
+	/**
+	 * Выполняем проверку метки у имени, поточным построением являющегося
+	 */
+	ASSERT_EQ(events("&mapping\n&key [a]: value\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START &mapping\n"
+		"SEQUENCE_START &key\nSCALAR «a»\nSEQUENCE_END\nSCALAR «value»\n"
+		"MAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
+	/**
+	 * Выполняем проверку метки у имени, ссылкою являющегося
+	 *
+	 * @note Ссылка своих свойств иметь не вправе, и метка эта достаётся отображению,
+	 *       ссылкою открытому
+	 */
+	ASSERT_EQ(events("first: &a v\ntop: &node\n  *a : scalar\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\nSCALAR «first»\nSCALAR «v» &a\n"
+		"SCALAR «top»\nMAPPING_START &node\nALIAS «a»\nSCALAR «scalar»\nMAPPING_END\n"
+		"MAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
+	/**
+	 * Выполняем проверку ссылки, вместилища за собою не открывшей
+	 *
+	 * @note Метка здесь вместилища своего не дождалась, и написание это есть отказ
+	 */
+	ASSERT_NE(events("first: &a v\ntop: &node\n  *a\n").find("ОТКАЗ"), string::npos);
+}
+
+/**
+ * @brief Проверка имени вопроса, одною меткою составленного
+ *
+ * @details Ожидание у имени и у значения его один признак несёт, и различить их
+ * надлежит: пустота имени принадлежит отображению вопроса прямо, а пустота значения
+ * приходит за закрытием построения имени. Написание `? &метка` есть пара из имени
+ * пустого с меткою и значения пустого без неё - двух пустот, а не одной
+ *
+ * @note Двоеточие ответа пустоту значения откладывает, а пустоту имени выдать обязано:
+ * иначе метка, имени предпосланная, узла своего не получает вовсе. Случай PW8X набора
+ * yaml-test-suite
+ *
+ */
+TEST(CodecYamlReader, QuestionedEmptyKeyAnchor) {
+	/**
+	 * Выполняем проверку вопроса, одною меткою составленного
+	 */
+	ASSERT_EQ(events("? &d\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\n"
+		"SCALAR «» &d\nSCALAR «»\nMAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
+	/**
+	 * Выполняем проверку вопроса с меткою и ответом за ним
+	 *
+	 * @note Пустот здесь по-прежнему две, но вторая приходит от двоеточия ответа
+	 */
+	ASSERT_EQ(events("? &e\n: &a\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\n"
+		"SCALAR «» &e\nSCALAR «» &a\nMAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
+	/**
+	 * Выполняем проверку вопроса с меткою и строкою, ожидание обрывающей
+	 */
+	ASSERT_EQ(events("? &d\nx: 1\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\n"
+		"SCALAR «» &d\nSCALAR «»\nSCALAR «x»\nSCALAR «1»\n"
+		"MAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
+}

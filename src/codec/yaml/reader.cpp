@@ -504,7 +504,7 @@ awh::codec::yaml::Reader::Reader() noexcept :
  _breaks(0), _padding(0), _deepened(false), _expected(false), _awaited(false), _valued(false),
  _headed(false), _propped(false), _anchoredHere(false), _taggedHere(false),
  _tabbed(false), _rooted(false), _detected(false),
- _joined(0), _stretched(false), _shallow(0), _asked(false), _questioned(0), _asking(0), _dashed(false), _flowning(false), _entered(false), _pending(0), _schema(schema_t::CORE), _plaining(false), _folds(0),
+ _joined(0), _stretched(false), _shallow(0), _asked(false), _answering(false), _questioned(0), _asking(0), _dashed(false), _flowning(false), _entered(false), _pending(0), _schema(schema_t::CORE), _plaining(false), _folds(0),
  _required(0), _phase(flow_t::ENTRY), _directed(false), _versioned(false), _declared(false),
  _dialect(schema_t::CORE) {}
 /**
@@ -521,7 +521,7 @@ awh::codec::yaml::Reader::Reader(const settings_t & settings) noexcept :
  _expected(false), _awaited(false), _valued(false), _headed(false), _propped(false),
  _anchoredHere(false), _taggedHere(false),
  _tabbed(false), _rooted(false), _detected(false), _entered(false), _pending(0),
- _joined(0), _stretched(false), _shallow(0), _asked(false), _questioned(0), _asking(0), _dashed(false), _flowning(false), _schema(settings.schema), _plaining(false), _folds(0), _required(0),
+ _joined(0), _stretched(false), _shallow(0), _asked(false), _answering(false), _questioned(0), _asking(0), _dashed(false), _flowning(false), _schema(settings.schema), _plaining(false), _folds(0), _required(0),
  _phase(flow_t::ENTRY), _directed(false), _versioned(false), _declared(false), _dialect(settings.schema) {
 	/**
 	 * Если кодировка исходного текста навязана извне
@@ -631,6 +631,8 @@ void awh::codec::yaml::Reader::clear() noexcept {
 	this->_expected = false;
 	// Выполняем сброс признака имени, вопросом объявленного
 	this->_asked = false;
+	// Выполняем сброс признака ожидания значения имени, вопросом объявленного
+	this->_answering = false;
 	// Выполняем сброс признака простого значения, внутри скобок собираемого
 	this->_flowning = false;
 	// Выполняем сброс собираемого содержимого простого значения внутри скобок
@@ -1082,7 +1084,7 @@ bool awh::codec::yaml::Reader::finish(const size_t column) noexcept {
 		 * @note Конец текста ожидание обрывает наравне со строкою, и закрытие уровней
 		 *       имени надлежит здесь ровно то же. Случай M2N8 набора yaml-test-suite
 		 */
-		if(this->_asked){
+		if(this->_asked && this->_answering){
 			// Выполняем сброс признака имени, вопросом объявленного
 			this->_asked = false;
 			/**
@@ -1116,6 +1118,28 @@ bool awh::codec::yaml::Reader::finish(const size_t column) noexcept {
 		this->_staged.back().location.line = this->_awaiting.line;
 		// Устанавливаем столбец пустого значения там, где оно ожидалось
 		this->_staged.back().location.column = this->_awaiting.column;
+		/**
+		 * Если пустота эта была именем, вопросом объявленным
+		 *
+		 * @details Имя своё вопрос получил здесь же, пустотою, а значения ему никто так и
+		 *          не дал: написание `? &метка` есть пара из имени пустого с меткою и
+		 *          значения пустого без неё. Одною пустотою обойтись нельзя - отображение
+		 *          осталось бы с именем без пары
+		 *
+		 * @note Случай PW8X набора yaml-test-suite
+		 */
+		if(this->_asked){
+			// Выполняем сброс признака имени, вопросом объявленного
+			this->_asked = false;
+			/**
+			 * Если поставить событие пустого значения не удалось
+			 */
+			if(!this->scalar(string(), style_t::PLAIN, column))
+				// Выводим признак неудачного закрытия документа
+				return false;
+			// Устанавливаем вид пустого значения последнему событию
+			this->_staged.back().type = type_t::NUL;
+		}
 	}
 	/**
 	 * Если документ чертою открыт, а содержимого так и не получил
@@ -2269,6 +2293,13 @@ bool awh::codec::yaml::Reader::content(const string_view line, const size_t offs
 		 *       строкою своей не заполненное, пустоту получает ровно так же
 		 */
 		this->_expected = true;
+		/**
+		 * Выполняем сброс признака ожидания значения имени
+		 *
+		 * @note Ожидается здесь имя, а не значение его: пустота имени принадлежит
+		 *       отображению вопроса прямо, и закрывать перед нею нечего
+		 */
+		this->_answering = false;
 		// Выполняем сброс признака принадлежности ожидаемого значения записи перечня
 		this->_entered = false;
 		// Запоминаем отступ, на котором ожидается имя пары
@@ -2520,6 +2551,27 @@ bool awh::codec::yaml::Reader::content(const string_view line, const size_t offs
 		 *       вставляется перед записью её
 		 */
 		const size_t origin = this->_staged.size();
+		/**
+		 * Выполняем откладывание свойств, строкою выше объявленных
+		 *
+		 * @details Ссылка своих свойств иметь не вправе, и свойства, в этой же строке ей
+		 *          предпосланные, есть отказ. Свойства же строки прежней ссылке не
+		 *          принадлежат вовсе: они дожидаются вместилища, какое строка эта
+		 *          открывает - написание `top: &метка` со строкою `*ссылка : значение`
+		 *          ниже метку отдаёт отображению, ссылкою открытому
+		 *
+		 * @note Не дождавшись вместилища своего, отложенное отказом и обернётся - концом
+		 *       строки, а не здесь. Случай 26DV набора yaml-test-suite
+		 */
+		if(!this->_anchoredHere && this->_delayed.empty())
+			// Выполняем откладывание метки узла вместилищу
+			this->_delayed.swap(this->_anchor);
+		/**
+		 * Если метка типа объявлена была строкою выше
+		 */
+		if(!this->_taggedHere && this->_delayedTag.empty())
+			// Выполняем откладывание метки типа вместилищу
+			this->_delayedTag.swap(this->_tag);
 		/**
 		 * Если разобрать ссылку не удалось
 		 */
@@ -3319,6 +3371,26 @@ bool awh::codec::yaml::Reader::keyed(const string_view line, size_t offset, cons
 		if(origin > this->_staged.size())
 			// Выводим отказ недопустимого знака в этом месте текста
 			return this->fail(error_t::INVALID_CHARACTER, offset);
+		/**
+		 * Выполняем возврат отложенных свойств открываемому вместилищу
+		 *
+		 * @details Метка, строкою выше объявленная, принадлежит вместилищу, какое строка
+		 *          эта открывает, а не имени пары её: свойства самого имени разобраны уже
+		 *          и узлу его отданы, а отложенное дожидается здесь своего отображения
+		 *
+		 * @note Прежде возврата этого не было, и написание `&метка` со строкою
+		 *       `&имя [a]: значение` ниже отказ получало: отложенное вместилища своего не
+		 *       дожидалось. Случаи 6BFJ и 26DV набора yaml-test-suite
+		 */
+		if(!this->_delayed.empty())
+			// Выполняем возврат отложенной метки открываемому отображению
+			this->_anchor.swap(this->_delayed);
+		/**
+		 * Если метка типа вместилищу отложена была
+		 */
+		if(!this->_delayedTag.empty())
+			// Выполняем возврат отложенной метки типа открываемому отображению
+			this->_tag.swap(this->_delayedTag);
 		/**
 		 * Если открыть уровень отображения не удалось
 		 */
@@ -5368,7 +5440,7 @@ bool awh::codec::yaml::Reader::record(const string_view line) noexcept {
 	 * @note Ожидание записи перечня чертою не снимается: черта на отступе ожидания есть
 	 *       запись следующая, и пустоту прежней записи надлежит выдать прежде неё
 	 */
-	if(this->_expected && !implied && !answer && (indent <= this->_pending)){
+	if(this->_expected && !implied && (!answer || !this->_answering) && (indent <= this->_pending)){
 		// Выполняем сброс признака ожидания значения пары
 		this->_expected = false;
 		/**
@@ -5385,7 +5457,7 @@ bool awh::codec::yaml::Reader::record(const string_view line) noexcept {
 		 *       отображение вопроса, пустоту принять некому. Случаи KK5P и M2N8 набора
 		 *       yaml-test-suite
 		 */
-		if(this->_asked){
+		if(this->_asked && this->_answering){
 			// Выполняем сброс признака имени, вопросом объявленного
 			this->_asked = false;
 			/**
@@ -5424,6 +5496,35 @@ bool awh::codec::yaml::Reader::record(const string_view line) noexcept {
 		this->_staged.back().location.line = this->_awaiting.line;
 		// Устанавливаем столбец пустого значения там, где оно ожидалось
 		this->_staged.back().location.column = this->_awaiting.column;
+		/**
+		 * Если пустота эта была именем, вопросом объявленным
+		 *
+		 * @details Имя своё вопрос получил здесь же, пустотою, а значения ему никто так и
+		 *          не дал: написание `? &метка` со строкою, ожидание обрывающей, есть пара
+		 *          из имени пустого с меткою и значения пустого без неё
+		 *
+		 * @note Двоеточие ответа сюда не подпадает: значение своё имя получит от него, и
+		 *       выданная здесь пустота легла бы значением лишним. Случай PW8X набора
+		 *       yaml-test-suite
+		 */
+		if(this->_asked && !answer){
+			// Выполняем сброс признака имени, вопросом объявленного
+			this->_asked = false;
+			/**
+			 * Если поставить событие пустого значения не удалось
+			 */
+			if(!this->scalar(string(), style_t::PLAIN, offset))
+				// Выводим признак неудачного разбора строки
+				return false;
+			// Устанавливаем вид пустого значения последнему событию
+			this->_staged.back().type = type_t::NUL;
+			// Устанавливаем место пустого значения там, где оно ожидалось
+			this->_staged.back().location.offset = this->_awaiting.offset;
+			// Устанавливаем строку пустого значения там, где оно ожидалось
+			this->_staged.back().location.line = this->_awaiting.line;
+			// Устанавливаем столбец пустого значения там, где оно ожидалось
+			this->_staged.back().location.column = this->_awaiting.column;
+		}
 	}
 	/**
 	 * Если закрыть уровни глубже отступа строки не удалось
@@ -5480,6 +5581,8 @@ bool awh::codec::yaml::Reader::record(const string_view line) noexcept {
 	if(this->_asked && !this->_expected){
 		// Запоминаем признак ожидания значения имени, вопросом объявленного
 		this->_expected = true;
+		// Запоминаем признак того, что ожидается именно значение имени
+		this->_answering = true;
 		// Выполняем сброс признака принадлежности ожидаемого значения записи перечня
 		this->_entered = false;
 		// Запоминаем отступ, на котором ожидается значение имени
