@@ -67,10 +67,23 @@ $COMPILER $OPTIONS -c "$ROOT/src/num/lexical/table.cpp" -o "$OUTPUT/lexical-tabl
 # Выполняем сборку проверок сличения кодеков
 $COMPILER $OPTIONS -c "$ROOT/tests/codec/contract.cpp" -o "$OUTPUT/contract.o"
 
-# Выполняем перебор всех сличаемых кодеков
-for CODEC in json xml yaml; do
+#
+# Выполняем перебор всех сличаемых кодеков вместе с составом частей каждого
+#
+# @warning Перечень этот держится ВРУЧНУЮ и обязан отвечать перечню кодеков, какие зовёт
+#          `contract.cpp`. Разойдись они - стенд не свяжется вовсе, а раскладка по
+#          машинам напечатает «СБОРКА ОТКАЗАЛА» и пойдёт дальше: проверка, ради какой
+#          стенд и заведён, окажется не прогнанной ни разу, и молчание это неотличимо от
+#          согласия. Так и вышло при внесении TOML и INI в щуп
+#
+# @note Состав частей у кодеков разный: владеющее значение есть пока не у всех, и часть
+#       `value` перечисляется лишь у тех, у кого она заведена
+#
+for ENTRY in "json:common encoding reader writer document value"              "xml:common encoding reader writer document value"              "yaml:common encoding reader writer document value"              "toml:common encoding reader writer document"              "ini:common encoding reader writer document"; do
+	# Получаем название очередного сличаемого кодека
+	CODEC="${ENTRY%%:*}"
 	# Выполняем перебор всех частей очередного кодека
-	for PART in common encoding reader writer document value; do
+	for PART in ${ENTRY#*:}; do
 		# Выполняем сборку очередной части кодека
 		$COMPILER $OPTIONS -c "$ROOT/src/codec/$CODEC/$PART.cpp" -o "$OUTPUT/$CODEC-$PART.o"
 		# Добавляем собранное к перечню объектных файлов стенда
