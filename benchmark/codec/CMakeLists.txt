@@ -158,6 +158,7 @@ if (${CMAKE_BUILD_${BENCHMARK_NAME}_BENCHMARKS})
             yaml/reader.cpp
             yaml/writer.cpp
             yaml/document.cpp
+            yaml/value.cpp
         )
     # Если не нужно собрать бенчмарки для контейнера YAML
     else()
