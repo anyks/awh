@@ -658,9 +658,6 @@ const awh::codec::yaml::Value & awh::codec::yaml::Value::at(const string & path)
 		const size_t separator = route.find('/', start);
 		// Получаем очередную часть пути
 		const string part(route.substr(start, ((separator == string::npos) ? string::npos : (separator - start))));
-		/**
-		 * Если вместилище является перечнем значений, а часть пути числом
-		 */
 		// Номер значения вместилища, частью пути заданный
 		size_t index = 0;
 		/**
