@@ -78,7 +78,7 @@ namespace {
 	 *       кодека настроек INI втрое и более
 	 *
 	 */
-	static constexpr double READ_SERVICE_THRESHOLD = 8.0;
+	static constexpr double READ_SERVICE_THRESHOLD = 6.0;
 	/**
 	 * @brief Порог пропускной способности чтения крупного файла настроек
 	 *
@@ -102,7 +102,7 @@ namespace {
 	 * @brief Порог пропускной способности чтения текста с преобладанием построений
 	 *
 	 */
-	static constexpr double READ_ARRAYS_THRESHOLD = 4.0;
+	static constexpr double READ_ARRAYS_THRESHOLD = 3.0;
 	/**
 	 * @brief Порог пропускной способности чтения текста с блочными значениями
 	 *
@@ -111,7 +111,7 @@ namespace {
 	 *          пробелы. Путь этот у соседних кодеков подобия не имеет вовсе
 	 *
 	 */
-	static constexpr double READ_BLOCKS_THRESHOLD = 4.0;
+	static constexpr double READ_BLOCKS_THRESHOLD = 11.0;
 	/**
 	 * @brief Порог пропускной способности чтения текста с метками и ссылками
 	 *
@@ -161,7 +161,7 @@ namespace {
 	 *       к рабочей машине, наравне с соседними кодеками
 	 *
 	 */
-	static constexpr double READ_SERVICE_LATENCY_THRESHOLD = 100.0;
+	static constexpr double READ_SERVICE_LATENCY_THRESHOLD = 128.0;
 
 	/**
 	 * @brief Функция потокового чтения текста настроек

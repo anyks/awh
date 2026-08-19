@@ -100,7 +100,7 @@ namespace {
 	 * @brief Порог пропускной способности обхода владеющего значения
 	 *
 	 */
-	static constexpr double WALK_LARGE_THRESHOLD = 180.0;
+	static constexpr double WALK_LARGE_THRESHOLD = 142.0;
 	/**
 	 * @brief Порог расхода выделений памяти на снятие одного значения
 	 *
