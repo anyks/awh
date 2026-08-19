@@ -60,15 +60,16 @@ namespace {
 	/**
 	 * @brief Пороги количества операций в секунду
 	 *
-	 * @details Пороги откалиброваны по отладочной сборке репозитория с двукратным
-	 *          запасом: они ловят регрессию в разы, а не колебания планировщика
-	 *          операционной системы
+	 * @details Пороги сняты выпускной сборкой по самому медленному из восьми стендов
+	 *          с двукратным запасом к нему: они ловят регрессию в разы, а не колебания
+	 *          планировщика операционной системы и не разницу самих машин. Отладочная
+	 *          сборка мерой не служит - на потоковой расшифровке она врёт на порядок
 	 *
 	 */
-	static constexpr double SEAL_THRESHOLD = 52000.0;
-	static constexpr double OPEN_THRESHOLD = 1300.0;
-	static constexpr double SIGN_THRESHOLD = 1300.0;
-	static constexpr double VERIFY_THRESHOLD = 60000.0;
+	static constexpr double SEAL_THRESHOLD = 5800.0;
+	static constexpr double OPEN_THRESHOLD = 430.0;
+	static constexpr double SIGN_THRESHOLD = 450.0;
+	static constexpr double VERIFY_THRESHOLD = 10000.0;
 
 	/**
 	 * @brief Функция получения объекта криптографии с заведённым ключом RSA

@@ -329,7 +329,7 @@ const vector <uint8_t> & awh::benchmark::binary::numbers() noexcept {
 				// Если числом является дробное
 				case 2: laid = writer.number(static_cast <double> (i % 1000) + 0.5); break;
 				// Если числом является крупное целое без знака
-				case 3: laid = writer.number(static_cast <uint64_t> (i) * 1000000007ull); break;
+				case 3: laid = writer.number(static_cast <uint64_t> (static_cast <uint64_t> (i) * 1000000007ull)); break;
 			}
 			// Выполняем переход к следующему числу записи
 			i++;

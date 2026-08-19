@@ -142,6 +142,7 @@ static void usage(const char * name) noexcept {
 	cout << "  --peer <адрес>    адрес другой стороны туннеля (по умолчанию 10.0.0.2)" << endl;
 	cout << "  --net <адрес>     сеть маршрута через туннель (по умолчанию 10.0.0.0)" << endl;
 	cout << "  --prefix <длина>  префикс сети маршрута (по умолчанию 24)" << endl;
+	cout << "  Семейство адресов выводится из вида адресов: с двоеточием - IPv6" << endl;
 	cout << "  --no-route        не ставить маршрут через туннель" << endl;
 	cout << "  --no-up           не поднимать устройство туннеля" << endl;
 	cout << "  --iface <имя>     готовое устройство туннеля (обязательно у Solaris и illumos:" << endl;
@@ -234,12 +235,30 @@ int32_t main(int32_t argc, char * argv[]){
 	net_addr_t addr(&fmk, &log);
 	// Создаём объект работы с шлюзами
 	eth::gateway_t gateway(&fmk, &log);
+	/**
+	 * Семейство адресов узлов выводим из вида заданных адресов
+	 *
+	 * @note Отдельного довода запуска тут не нужно: адрес IPv6 отличим от адреса
+	 *       IPv4 двоеточием, и семейство узла следует из него однозначно
+	 */
+	// Семейство адресов туннеля
+	const bool tun6 = (params.tun.find(':') != string::npos);
+	// Семейство адресов несущей связи
+	const bool net6 = (params.bind.find(':') != string::npos);
+	// Семейство адресов узла туннеля
+	const event::family_t tunFamily = (tun6 ? event::family_t::IPV6 : event::family_t::IPV4);
+	// Семейство адресов узла несущей связи
+	const event::family_t netFamily = (net6 ? event::family_t::IPV6 : event::family_t::IPV4);
+	// Вид адреса узла туннеля
+	const event::address_t tunAddress = (tun6 ? event::address_t::IPV6 : event::address_t::IPV4);
+	// Вид адреса узла несущей связи
+	const event::address_t netAddress = (net6 ? event::address_t::IPV6 : event::address_t::IPV4);
 	// Добавляем новое событие туннеля
-	event::id_t tid = io.event(event::node_t::TUNNEL, event::family_t::IPV4);
+	event::id_t tid = io.event(event::node_t::TUNNEL, tunFamily);
 	// Добавляем новое событие посредника
-	event::id_t mid = io.event(event::node_t::MEDIATOR, event::family_t::IPV4);
+	event::id_t mid = io.event(event::node_t::MEDIATOR, tunFamily);
 	// Добавляем новое событие сервера UDP
-	event::id_t eid = io.event(event::node_t::SERVER, event::family_t::IPV4, event::type_t::DATAGRAM, event::protocol_t::UDP);
+	event::id_t eid = io.event(event::node_t::SERVER, netFamily, event::type_t::DATAGRAM, event::protocol_t::UDP);
 	// Устанавливаем порт события
 	io.setSourcePort(eid, params.port);
 	/**
@@ -277,9 +296,15 @@ int32_t main(int32_t argc, char * argv[]){
 		// Записываем ошибку в лог установки опций события
 		else cout << " Ошибка установки опций события сервера!" << endl;
 		// Устанавливаем IP-адрес события
-		if(io.setAddress(eid, event::address_t::IPV4, params.bind) && io.setAddress(tid, event::address_t::IPV4, params.tun)){
-			// Устанавливаем адрес сервера назначения
-			if(io.setTarget(mid, params.peer)){
+		if(io.setAddress(eid, netAddress, params.bind) && io.setAddress(tid, tunAddress, params.tun)){
+			/**
+			 * Устанавливаем адрес встречной стороны
+			 *
+			 * @note Адрес называется и посреднику, и самому туннелю: без него движку
+			 *       нечего задать другим концом точки-точки, и у IPv6 обратный путь
+			 *       остаётся без маршрута вовсе
+			 */
+			if(io.setTarget(mid, params.peer) && io.setTarget(tid, params.peer)){
 				// Устанавливаем функцию обратного вызова на событие сервера
 				io.on(eid, [&log](const event::id_t eid, const event::status_t status) noexcept -> void {
 					/**
@@ -1234,14 +1259,30 @@ int32_t main(int32_t argc, char * argv[]){
 						route.ifname = iface;
 						// Устанавливаем префикс маршрута туннеля
 						route.prefix = params.prefix;
-						// Создаём шлюз маршрута туннеля
-						route.gateway = make_unique <net::addr_net_ipv4_t> ();
-						// Создаём адрес назначения маршрута туннеля
-						route.destination = make_unique <net::addr_net_ipv4_t> ();
 						// Выполням парсинг адреса назначения маршрута туннеля
 						addr = params.net;
-						// Устанавливаем адрес назначения маршрута туннеля
-						awh_cast <net::addr_net_ipv4_t *> (route.destination.get())->address = addr.v4(net_addr_t::endian_t::LITTLE);
+						/**
+						 * Вид маршрута следует виду заданной сети
+						 *
+						 * @note Сеть IPv6 отличима двоеточием, и гадать о виде маршрута
+						 *       по иным доводам запуска тут незачем
+						 */
+						if(params.net.find(':') != string::npos){
+							// Создаём шлюз маршрута туннеля
+							route.gateway = make_unique <net::addr_net_ipv6_t> ();
+							// Создаём адрес назначения маршрута туннеля
+							route.destination = make_unique <net::addr_net_ipv6_t> ();
+							// Устанавливаем адрес назначения маршрута туннеля
+							awh_cast <net::addr_net_ipv6_t *> (route.destination.get())->address = addr.v6(net_addr_t::endian_t::LITTLE);
+						// Если сеть маршрута задана адресом IPv4
+						} else {
+							// Создаём шлюз маршрута туннеля
+							route.gateway = make_unique <net::addr_net_ipv4_t> ();
+							// Создаём адрес назначения маршрута туннеля
+							route.destination = make_unique <net::addr_net_ipv4_t> ();
+							// Устанавливаем адрес назначения маршрута туннеля
+							awh_cast <net::addr_net_ipv4_t *> (route.destination.get())->address = addr.v4(net_addr_t::endian_t::LITTLE);
+						}
 						// Устанавливаем маршрут туннеля (sudo route -n add -net 10.0.0.0/24 -interface utun7)
 						if(params.route && gateway.add(route))
 							// Записываем в лог сообщение об успешной установке маршрута туннеля

@@ -2197,7 +2197,14 @@ bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, c
 		 */
 		try {
 			// Создаём сокет для управления интерфейсом
-			net::socket_t sock = ::socket(AF_INET, SOCK_DGRAM, 0);
+			/**
+			 * Семейство управляющего сокета следует виду адреса
+			 *
+			 * @warning Запрос назначения адреса IPv6 сокет семейства IPv4 не знает вовсе
+			 *          и отвечает ENOTTY: адрес на устройство не встаёт, а отказ выглядит
+			 *          несуразным доводом об устройстве
+			 */
+			net::socket_t sock = ::socket(((ip->size == 16) ? AF_INET6 : AF_INET), SOCK_DGRAM, 0);
 			// Если создание сокета прошло неудачно
 			if(!(result = (sock != net::invalid_socket_t))){
 				/**
@@ -2396,7 +2403,14 @@ bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, c
 		 */
 		try {
 			// Создаём сокет для управления интерфейсом
-			net::socket_t sock = ::socket(AF_INET, SOCK_DGRAM, 0);
+			/**
+			 * Семейство управляющего сокета следует виду адреса
+			 *
+			 * @warning Запрос назначения адреса IPv6 сокет семейства IPv4 не знает вовсе
+			 *          и отвечает ENOTTY: адрес на устройство не встаёт, а отказ выглядит
+			 *          несуразным доводом об устройстве
+			 */
+			net::socket_t sock = ::socket(((ip->size == 16) ? AF_INET6 : AF_INET), SOCK_DGRAM, 0);
 			// Если создание сокета прошло неудачно
 			if(!(result = (sock != net::invalid_socket_t))){
 				/**
@@ -2635,7 +2649,14 @@ bool awh::eth::Interface::configure(string_view name, const net::addr_t * ip, co
 		 */
 		try {
 			// Создаём единственный управляющий сокет для всех операций
-			net::socket_t sock = ::socket(AF_INET, SOCK_DGRAM, 0);
+			/**
+			 * Семейство управляющего сокета следует виду адреса
+			 *
+			 * @warning Запрос назначения адреса IPv6 сокет семейства IPv4 не знает вовсе
+			 *          и отвечает ENOTTY: адрес на устройство не встаёт, а отказ выглядит
+			 *          несуразным доводом об устройстве
+			 */
+			net::socket_t sock = ::socket(((ip->size == 16) ? AF_INET6 : AF_INET), SOCK_DGRAM, 0);
 			// Если создание сокета прошло неудачно
 			if(sock == net::invalid_socket_t){
 				/**

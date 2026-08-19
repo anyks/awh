@@ -52,16 +52,17 @@ namespace {
 	/**
 	 * @brief Пороги пропускной способности в октетах в секунду
 	 *
-	 * @details Пороги откалиброваны по отладочной сборке репозитория с двукратным
-	 *          запасом: они ловят регрессию в разы, а не колебания планировщика
-	 *          операционной системы
+	 * @details Пороги сняты выпускной сборкой по самому медленному из восьми стендов
+	 *          с двукратным запасом к нему: они ловят регрессию в разы, а не колебания
+	 *          планировщика операционной системы и не разницу самих машин. Отладочная
+	 *          сборка мерой не служит - на потоковой расшифровке она врёт на порядок
 	 *
 	 */
-	static constexpr double SHORT_GCM_THRESHOLD = 60000000.0;
-	static constexpr double SHORT_CFB_THRESHOLD = 65000000.0;
-	static constexpr double CHUNK_GCM_THRESHOLD = 800000000.0;
-	static constexpr double DECODE_GCM_THRESHOLD = 1200000000.0;
-	static constexpr double BASE64_THRESHOLD = 340000000.0;
+	static constexpr double SHORT_GCM_THRESHOLD = 9500000.0;
+	static constexpr double SHORT_CFB_THRESHOLD = 10000000.0;
+	static constexpr double CHUNK_GCM_THRESHOLD = 32000000.0;
+	static constexpr double DECODE_GCM_THRESHOLD = 32000000.0;
+	static constexpr double BASE64_THRESHOLD = 110000000.0;
 	/**
 	 * @brief Порог количества выделений памяти на одну операцию
 	 *

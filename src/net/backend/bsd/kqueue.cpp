@@ -11908,6 +11908,17 @@ namespace io {
 												else const_cast <engine::io_t *> (io)->relay(mediator->dest, ::__awh_buffer__, static_cast <size_t> (size));
 											}
 										}
+									/**
+									 * Служебный обмен самого узла туннелю не адресован
+									 *
+									 * @note Ядро на всяком устройстве IPv6 заводит адрес связи (FE80::/10) и
+									 *       шлёт с него оповещения групповым адресам (FF00::/8). Ни подмены,
+									 *       ни атаки тут нет: такой пакет отбрасываем молча, не тревожа потребителя
+									 */
+									} else if(((awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->address[0] == 0xFE) &&
+									          ((awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->address[1] & 0xC0) == 0x80)) ||
+									          (awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0] == 0xFF)) {
+										// Пакет служебного обмена узла разбору не подлежит
 									// Если адрес сервера не совпадает с настройками туннеля
 									} else {
 										// Если установлена функция обратного вызова
@@ -12461,6 +12472,17 @@ namespace io {
 											else const_cast <engine::io_t *> (io)->relay(mediator->dest, ::__awh_buffer__, static_cast <size_t> (size));
 										}
 									}
+								/**
+								 * Служебный обмен самого узла туннелю не адресован
+								 *
+								 * @note Ядро на всяком устройстве IPv6 заводит адрес связи (FE80::/10) и
+								 *       шлёт с него оповещения групповым адресам (FF00::/8). Ни подмены,
+								 *       ни атаки тут нет: такой пакет отбрасываем молча, не тревожа потребителя
+								 */
+								} else if(((awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->address[0] == 0xFE) &&
+								          ((awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->address[1] & 0xC0) == 0x80)) ||
+								          (awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0] == 0xFF)) {
+									// Пакет служебного обмена узла разбору не подлежит
 								// Если адрес сервера не совпадает с настройками туннеля
 								} else {
 									// Если установлена функция обратного вызова
@@ -63294,138 +63316,20 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 							case static_cast <uint8_t> (event::node_t::CLIENT):
 							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER): {
-								// Проверяем совместимость типов и семейств событий
-								if(mediator->state.family == j->second->state.family){
-									// Устанавливаем идентификатор события-приёмника в объекте посредника
-									mediator->dest = j->second->id;
-									// Устанавливаем тип события в объекте посредника
-									mediator->state.type = j->second->state.type;
-									// Устанавливаем протокол события в объекте посредника
-									mediator->state.protocol = j->second->state.protocol;
-									// Возвращаем положительный результат
-									return true;
-								// Если не совместимы типы или семейства событий
-								} else {
-									// Если установлена функция обратного вызова
-									if(mediator->callbacks.status != nullptr)
-										// Вызываем функцию обратного вызова об ошибке отказа
-										mediator->callbacks.status(mediator->id, event::status_t::FAILURE);
-									// Устанавливаем текст ошибки
-									const string error = "Events cannot be combined with each other because they are not compatible";
-									// Если установлена функция обратного вызова
-									if(mediator->callbacks.error != nullptr)
-										// Вызываем функцию обратного вызова ошибки события
-										mediator->callbacks.error(mediator->id, event::error_t::INVALID, error);
-									// Если функция обратного вызова для вывода события не установлена
-									else {
-										/**
-										 * Если включён режим отладки
-										 */
-										#if DEBUG_MODE
-											// Записываем ошибку в лог
-											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
-										/**
-										 * Если режим отладки не включён
-										 */
-										#else
-											// Записываем ошибку в лог
-											this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-										#endif
-									}
-								}
-							} break;
-						}
-					} break;
-					// Если узел является клиентом
-					case static_cast <uint8_t> (event::node_t::CLIENT): {
-						// Получаем текущее значение объекта клиента
-						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
-						/**
-						 * Определяем чем является текущий узел
-						 */
-						switch(static_cast <uint8_t> (j->second->state.node)){
-							// Если узел является директорией
-							case static_cast <uint8_t> (event::node_t::DIR): {
-								// Получаем текущее значение объекта директории
-								::io::dir_t * dir = awh_cast <::io::dir_t *> (j->second.get());
-								// Если установлена функция обратного вызова
-								if(dir->callbacks.status != nullptr)
-									// Вызываем функцию обратного вызова об ошибке отказа
-									dir->callbacks.status(dir->id, event::status_t::FAILURE);
-								// Устанавливаем текст ошибки
-								const string error = "Cannot splice events, a client node, and a directory node";
-								// Если установлена функция обратного вызова
-								if(dir->callbacks.error != nullptr)
-									// Вызываем функцию обратного вызова ошибки события
-									dir->callbacks.error(dir->id, event::error_t::INVALID, error);
-								// Если функция обратного вызова для вывода события не установлена
-								else {
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Записываем ошибку в лог
-										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Записываем ошибку в лог
-										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-									#endif
-								}
-							} break;
-							// Если узел является таймаутом
-							case static_cast <uint8_t> (event::node_t::TIMEOUT):
-							// Если узел является интервалом
-							case static_cast <uint8_t> (event::node_t::INTERVAL): {
-								// Получаем текущее значение объекта директории
-								::io::timer_t * timer = awh_cast <::io::timer_t *> (j->second.get());
-								// Если установлена функция обратного вызова
-								if(timer->callbacks.status != nullptr)
-									// Вызываем функцию обратного вызова об ошибке отказа
-									timer->callbacks.status(timer->id, event::status_t::FAILURE);
-								// Устанавливаем текст ошибки
-								const string error = "Cannot splice events, a client node, and a timer node";
-								// Если установлена функция обратного вызова
-								if(timer->callbacks.error != nullptr)
-									// Вызываем функцию обратного вызова ошибки события
-									timer->callbacks.error(timer->id, event::error_t::INVALID, error);
-								// Если функция обратного вызова для вывода события не установлена
-								else {
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Записываем ошибку в лог
-										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Записываем ошибку в лог
-										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-									#endif
-								}
-							} break;
-							// Если узел является пользовательским событием
-							case static_cast <uint8_t> (event::node_t::NOTIFY):
-							// Если узел является файловой системой
-							case static_cast <uint8_t> (event::node_t::FILE):
-							// Если узел является межпроцессным взаимодействием
-							case static_cast <uint8_t> (event::node_t::IPC):
-							// Если узел является одноранговым узлом
-							case static_cast <uint8_t> (event::node_t::PEER):
-							// Если узел является одноранговым узлом-источником
-							case static_cast <uint8_t> (event::node_t::ORIGIN):
-							// Если узел является посредником
-							case static_cast <uint8_t> (event::node_t::MEDIATOR):
-							// Если узел является клиентом
-							case static_cast <uint8_t> (event::node_t::CLIENT):
-							// Если узел является сервером
-							case static_cast <uint8_t> (event::node_t::SERVER): {
-								// Устанавливаем идентификатор события-приёмника в объекте клиента
-								client->transfer.dest = dest;
+								/**
+								 * Семейства узлов сличать незачем
+								 *
+								 * @details Посредник несёт адрес ВНУТРИ туннеля, а приёмник - перенос
+								 *          наружу: слои разные, и семейства их между собой не связаны.
+								 *          Туннель IPv6 поверх переноса IPv4 - обычный расклад, и
+								 *          сличение семейств запрещало его вовсе
+								 */
+								// Устанавливаем идентификатор события-приёмника в объекте посредника
+								mediator->dest = j->second->id;
+								// Устанавливаем тип события в объекте посредника
+								mediator->state.type = j->second->state.type;
+								// Устанавливаем протокол события в объекте посредника
+								mediator->state.protocol = j->second->state.protocol;
 								// Возвращаем положительный результат
 								return true;
 							}

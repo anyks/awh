@@ -160,6 +160,20 @@ application. Prepare the device beforehand and pass its name to the interface.
 ```bash
 $ sudo dladm create-etherstub awhstub0
 $ sudo dladm create-vnic -l awhstub0 awhtun0
+$ sudo dladm create-vnic -l awhstub0 awhtun1
+```
+
+Two links are needed, not one. The framework opens the first of them and reads the
+raw frames off it, so no IP address may live there — the address belongs on the
+second link, and the kernel routes through that one. The etherstub carries the
+frames between the two.
+
+On illumos a VNIC also filters by its own address by default, and the frames of its
+neighbour never reach the reader; the filtering has to be switched off on the link
+the framework opens.
+
+```bash
+$ sudo dladm set-linkprop -p promisc-filtered=off awhtun0
 ```
 
 The framework then opens the prepared device by name and exchanges frames over a
@@ -168,6 +182,7 @@ ships no declarations for it.
 
 ```bash
 $ sudo dladm delete-vnic awhtun0
+$ sudo dladm delete-vnic awhtun1
 $ sudo dladm delete-etherstub awhstub0
 ```
 

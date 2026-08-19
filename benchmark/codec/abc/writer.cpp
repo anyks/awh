@@ -74,12 +74,12 @@ namespace {
 	 * @brief Порог пропускной способности сборки крупной записи
 	 *
 	 */
-	static constexpr double WRITE_LARGE_THRESHOLD = 6.0;
+	static constexpr double WRITE_LARGE_THRESHOLD = 29.0;
 	/**
 	 * @brief Порог пропускной способности сборки строк
 	 *
 	 */
-	static constexpr double WRITE_STRINGS_THRESHOLD = 20.0;
+	static constexpr double WRITE_STRINGS_THRESHOLD = 75.0;
 	/**
 	 * @brief Порог количества выделений памяти на сборку записи
 	 *
@@ -93,7 +93,7 @@ namespace {
 	 * @brief Порог задержки сборки записи ответа службы в микросекундах
 	 *
 	 */
-	static constexpr double WRITE_SERVICE_LATENCY_THRESHOLD = 20.0;
+	static constexpr double WRITE_SERVICE_LATENCY_THRESHOLD = 4.0;
 	/**
 	 * @brief Порог выигрыша от укладки содержимого ссылкой
 	 *

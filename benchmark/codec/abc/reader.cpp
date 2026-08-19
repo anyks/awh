@@ -66,32 +66,32 @@ namespace {
 	 *          порог, назначенный по рабочей машине впритык, валил бы прогон на них
 	 *
 	 */
-	static constexpr double READ_SERVICE_THRESHOLD = 4.0;
+	static constexpr double READ_SERVICE_THRESHOLD = 8.0;
 	/**
 	 * @brief Порог пропускной способности чтения крупной записи
 	 *
 	 */
-	static constexpr double READ_LARGE_THRESHOLD = 9.0;
+	static constexpr double READ_LARGE_THRESHOLD = 10.0;
 	/**
 	 * @brief Порог пропускной способности чтения записи с преобладанием чисел
 	 *
 	 */
-	static constexpr double READ_NUMBERS_THRESHOLD = 10.0;
+	static constexpr double READ_NUMBERS_THRESHOLD = 12.0;
 	/**
 	 * @brief Порог пропускной способности чтения записи с преобладанием строк
 	 *
 	 */
-	static constexpr double READ_STRINGS_THRESHOLD = 24.0;
+	static constexpr double READ_STRINGS_THRESHOLD = 53.0;
 	/**
 	 * @brief Порог пропускной способности чтения записи с двоичными значениями
 	 *
 	 */
-	static constexpr double READ_BLOBS_THRESHOLD = 28.0;
+	static constexpr double READ_BLOBS_THRESHOLD = 93.0;
 	/**
 	 * @brief Порог пропускной способности чтения записи с глубокой вложенностью
 	 *
 	 */
-	static constexpr double READ_NESTED_THRESHOLD = 2.0;
+	static constexpr double READ_NESTED_THRESHOLD = 2.5;
 	/**
 	 * @brief Порог количества выделений памяти на чтение крупной записи
 	 *
@@ -119,7 +119,7 @@ namespace {
 	 *       FreeBSD равномерно впятеро медленнее её
 	 *
 	 */
-	static constexpr double READ_SERVICE_LATENCY_THRESHOLD = 20.0;
+	static constexpr double READ_SERVICE_LATENCY_THRESHOLD = 8.0;
 
 	/**
 	 * @brief Функция потокового чтения записи

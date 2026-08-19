@@ -72,17 +72,17 @@ namespace {
 	 * @brief Порог пропускной способности сборки контейнера без сжатия
 	 *
 	 */
-	static constexpr double BUILD_PLAIN_THRESHOLD = 6.0;
+	static constexpr double BUILD_PLAIN_THRESHOLD = 200.0;
 	/**
 	 * @brief Порог пропускной способности сборки контейнера со сжатием
 	 *
 	 */
-	static constexpr double BUILD_PACKED_THRESHOLD = 12.0;
+	static constexpr double BUILD_PACKED_THRESHOLD = 105.0;
 	/**
 	 * @brief Порог пропускной способности сборки контейнера с шифрованием
 	 *
 	 */
-	static constexpr double BUILD_CIPHERED_THRESHOLD = 12.0;
+	static constexpr double BUILD_CIPHERED_THRESHOLD = 100.0;
 	/**
 	 * @brief Порог сжатия содержимого контейнера
 	 *
@@ -101,12 +101,12 @@ namespace {
 	 *          чтению всего содержимого, означал бы, что оглавление перестало работать
 	 *
 	 */
-	static constexpr double FETCH_LATENCY_THRESHOLD = 1500.0;
+	static constexpr double FETCH_LATENCY_THRESHOLD = 100.0;
 	/**
 	 * @brief Порог задержки правки контейнера на месте в микросекундах
 	 *
 	 */
-	static constexpr double EDIT_LATENCY_THRESHOLD = 8000.0;
+	static constexpr double EDIT_LATENCY_THRESHOLD = 2000.0;
 
 	/**
 	 * @brief Класс окружения замеров контейнера

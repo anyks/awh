@@ -66,21 +66,22 @@ namespace {
 	/**
 	 * @brief Пороги пропускной способности в октетах в секунду
 	 *
-	 * @details Пороги откалиброваны по отладочной сборке репозитория с двукратным
-	 *          запасом: они ловят регрессию в разы, а не колебания планировщика
-	 *          операционной системы
+	 * @details Пороги сняты выпускной сборкой по самому медленному из восьми стендов
+	 *          с двукратным запасом к нему: они ловят регрессию в разы, а не колебания
+	 *          планировщика операционной системы и не разницу самих машин. Отладочная
+	 *          сборка мерой не служит - на потоковой расшифровке она врёт на порядок
 	 *
 	 */
-	static constexpr double ENCODE_CHUNK_THRESHOLD = 1600000000.0;
-	static constexpr double ENCODE_BULK_THRESHOLD = 3500000000.0;
-	static constexpr double DECODE_CHUNK_THRESHOLD = 90000000.0;
-	static constexpr double DECODE_BULK_THRESHOLD = 98000000.0;
+	static constexpr double ENCODE_CHUNK_THRESHOLD = 36000000.0;
+	static constexpr double ENCODE_BULK_THRESHOLD = 38000000.0;
+	static constexpr double DECODE_CHUNK_THRESHOLD = 36000000.0;
+	static constexpr double DECODE_BULK_THRESHOLD = 37000000.0;
 	/**
 	 * @brief Пороги количества операций в секунду
 	 *
 	 */
-	static constexpr double CYCLE_THRESHOLD = 700000.0;
-	static constexpr double DERIVE_THRESHOLD = 80.0;
+	static constexpr double CYCLE_THRESHOLD = 40000.0;
+	static constexpr double DERIVE_THRESHOLD = 4.0;
 
 	/**
 	 * @brief Функция прогона потока шифрования порциями указанного размера

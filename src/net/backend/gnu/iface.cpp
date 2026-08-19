@@ -320,6 +320,110 @@ namespace device {
 		return result;
 	}
 	/**
+	 * @brief Функция заведения маршрутов до встречных сторон устройства
+	 *
+	 * @details Маршрут до другого конца точки-точки ядро заводит лишь при назначении
+	 *          адреса на ПОДНЯТОЕ устройство. Движок же адреса назначает раньше, чем
+	 *          устройство поднимут, и маршрут не появляется вовсе: обратный путь
+	 *          туннеля молчит при исправных адресах с обеих сторон
+	 *
+	 * @note Адрес встречной стороны берётся у самого ядра: назначение его сохранило,
+	 *       и держать эти сведения ещё и у себя незачем
+	 *
+	 * @param name название сетевого интерфейса
+	 * @param log  объект для работы с логами
+	 *
+	 */
+	static void routePeers(const string_view name, const awh::log_t * log) noexcept {
+		// Список сетевых интерфейсов машины
+		struct ifaddrs * addresses = nullptr;
+		// Если список сетевых интерфейсов получить не удалось
+		if(::getifaddrs(&addresses) != 0)
+			// Выходим из функции
+			return;
+		// Получаем номер сетевого интерфейса по его имени
+		const uint32_t index = ::if_nametoindex(string(name).c_str());
+		// Если номер сетевого интерфейса получен
+		if(index > 0){
+			// Объект работы с ядром через сокет управления сетью
+			const awh::gnu::netlink_t netlink(log);
+			// Проходим по всему списку сетевых интерфейсов
+			for(struct ifaddrs * i = addresses; i != nullptr; i = i->ifa_next){
+				// Если запись принадлежит другому устройству
+				if((i->ifa_name == nullptr) || (name.compare(i->ifa_name) != 0))
+					// Переходим к следующей записи
+					continue;
+				// Если запись не является адресом IPv6 со встречной стороной
+				if((i->ifa_addr == nullptr) || (i->ifa_addr->sa_family != AF_INET6) ||
+				   (i->ifa_dstaddr == nullptr) || (i->ifa_dstaddr->sa_family != AF_INET6))
+					// Переходим к следующей записи
+					continue;
+				// Получаем адрес встречной стороны
+				const struct sockaddr_in6 * peer = reinterpret_cast <const struct sockaddr_in6 *> (i->ifa_dstaddr);
+				// Если адрес встречной стороны совпадает со своим адресом
+				if(::memcmp(&peer->sin6_addr, &reinterpret_cast <const struct sockaddr_in6 *> (i->ifa_addr)->sin6_addr, 16) == 0)
+					// Переходим к следующей записи: встречной стороны у адреса нет
+					continue;
+				/**
+				 * @brief Структура сообщения заведения маршрута
+				 *
+				 */
+				struct {
+					// Заголовок сообщения
+					struct nlmsghdr header;
+					// Описание маршрута
+					struct rtmsg route;
+					// Место под свойства маршрута
+					uint8_t buffer[64];
+				} message{};
+				// Устанавливаем размер сообщения
+				message.header.nlmsg_len = NLMSG_LENGTH(sizeof(struct rtmsg));
+				// Устанавливаем тип запроса
+				message.header.nlmsg_type = RTM_NEWROUTE;
+				// Устанавливаем признаки запроса заведения с подтверждением
+				message.header.nlmsg_flags = (NLM_F_REQUEST | NLM_F_CREATE | NLM_F_REPLACE | NLM_F_ACK);
+				// Устанавливаем порядковый номер запроса
+				message.header.nlmsg_seq = 1;
+				// Устанавливаем семейство маршрута
+				message.route.rtm_family = AF_INET6;
+				// Устанавливаем длину приставки назначения: маршрут ведёт к одному адресу
+				message.route.rtm_dst_len = 128;
+				// Устанавливаем таблицу маршрута
+				message.route.rtm_table = RT_TABLE_MAIN;
+				// Устанавливаем способ заведения маршрута
+				message.route.rtm_protocol = RTPROT_STATIC;
+				// Устанавливаем область действия маршрута
+				message.route.rtm_scope = RT_SCOPE_UNIVERSE;
+				// Устанавливаем вид маршрута
+				message.route.rtm_type = RTN_UNICAST;
+				// Получаем место под свойство адреса назначения маршрута
+				struct rtattr * attribute = reinterpret_cast <struct rtattr *> (reinterpret_cast <uint8_t *> (&message) + NLMSG_ALIGN(message.header.nlmsg_len));
+				// Устанавливаем вид свойства
+				attribute->rta_type = RTA_DST;
+				// Устанавливаем размер свойства
+				attribute->rta_len = RTA_LENGTH(16);
+				// Устанавливаем адрес назначения маршрута
+				::memcpy(RTA_DATA(attribute), &peer->sin6_addr, 16);
+				// Увеличиваем размер сообщения на размер свойства
+				message.header.nlmsg_len = (NLMSG_ALIGN(message.header.nlmsg_len) + RTA_ALIGN(attribute->rta_len));
+				// Получаем место под свойство устройства маршрута
+				attribute = reinterpret_cast <struct rtattr *> (reinterpret_cast <uint8_t *> (&message) + NLMSG_ALIGN(message.header.nlmsg_len));
+				// Устанавливаем вид свойства
+				attribute->rta_type = RTA_OIF;
+				// Устанавливаем размер свойства
+				attribute->rta_len = RTA_LENGTH(sizeof(uint32_t));
+				// Устанавливаем устройство маршрута
+				::memcpy(RTA_DATA(attribute), &index, sizeof(index));
+				// Увеличиваем размер сообщения на размер свойства
+				message.header.nlmsg_len = (NLMSG_ALIGN(message.header.nlmsg_len) + RTA_ALIGN(attribute->rta_len));
+				// Выполняем отправку сообщения ядру
+				netlink.commit(&message, message.header.nlmsg_len);
+			}
+		}
+		// Освобождаем список сетевых интерфейсов
+		::freeifaddrs(addresses);
+	}
+	/**
 	 * @brief Функция применения IP-адреса (и при необходимости адреса пира) к интерфейсу через указанный сокет
 	 *
 	 * @param sock   управляющий сокет
@@ -478,8 +582,79 @@ namespace device {
 					ifr6.ifr6_prefixlen = 128;
 				// Устанавливаем длину приставки подсети
 				else ifr6.ifr6_prefixlen = prefix;
-				// Применяем новый IP-адрес интерфейса
-				if(!(result = (::ioctl(sock, SIOCSIFADDR, &ifr6) == 0))){
+				/**
+				 * Задаём адрес вместе с адресом встречной стороны
+				 *
+				 * @details Запрос ioctl несёт только свой адрес, и точка-точка у IPv6
+				 *          остаётся без другого конца: ядро не знает, которым устройством
+				 *          достигать встречную сторону, и обратный путь туннеля молчит.
+				 *          Сокет управления сетью принимает оба адреса разом, и маршрут до
+				 *          встречной стороны ядро заводит само - ровно как у систем BSD
+				 *
+				 * @warning Маршрут ядро заводит лишь на поднятом устройстве, оттого сам
+				 *          маршрут тут НЕ задаётся: ядро поставит его, когда устройство
+				 *          поднимут, а заведи мы его сами - получили бы отказ «сеть опущена»
+				 */
+				if((peer != nullptr) && (peer->size == 16)){
+					/**
+					 * @brief Структура сообщения назначения адреса
+					 *
+					 */
+					struct {
+						// Заголовок сообщения
+						struct nlmsghdr header;
+						// Описание адреса
+						struct ifaddrmsg address;
+						// Место под свойства адреса
+						uint8_t buffer[64];
+					} message{};
+					// Устанавливаем размер сообщения
+					message.header.nlmsg_len = NLMSG_LENGTH(sizeof(struct ifaddrmsg));
+					// Устанавливаем тип запроса
+					message.header.nlmsg_type = RTM_NEWADDR;
+					// Устанавливаем признаки запроса назначения с подтверждением
+					message.header.nlmsg_flags = (NLM_F_REQUEST | NLM_F_CREATE | NLM_F_REPLACE | NLM_F_ACK);
+					// Устанавливаем порядковый номер запроса
+					message.header.nlmsg_seq = 1;
+					// Устанавливаем семейство адреса
+					message.address.ifa_family = AF_INET6;
+					// Устанавливаем длину приставки адреса
+					message.address.ifa_prefixlen = ifr6.ifr6_prefixlen;
+					// Устанавливаем номер устройства адреса
+					message.address.ifa_index = static_cast <uint32_t> (ifr6.ifr6_ifindex);
+					// Получаем место под свойство своего адреса
+					struct rtattr * attribute = reinterpret_cast <struct rtattr *> (reinterpret_cast <uint8_t *> (&message) + NLMSG_ALIGN(message.header.nlmsg_len));
+					// Устанавливаем вид свойства
+					attribute->rta_type = IFA_LOCAL;
+					// Устанавливаем размер свойства
+					attribute->rta_len = RTA_LENGTH(16);
+					// Устанавливаем свой адрес устройства
+					::memcpy(RTA_DATA(attribute), &awh_cast <const awh::net::addr_net_ipv6_t *> (ip)->address[0], 16);
+					// Увеличиваем размер сообщения на размер свойства
+					message.header.nlmsg_len = (NLMSG_ALIGN(message.header.nlmsg_len) + RTA_ALIGN(attribute->rta_len));
+					// Получаем место под свойство адреса встречной стороны
+					attribute = reinterpret_cast <struct rtattr *> (reinterpret_cast <uint8_t *> (&message) + NLMSG_ALIGN(message.header.nlmsg_len));
+					// Устанавливаем вид свойства
+					attribute->rta_type = IFA_ADDRESS;
+					// Устанавливаем размер свойства
+					attribute->rta_len = RTA_LENGTH(16);
+					// Устанавливаем адрес встречной стороны
+					::memcpy(RTA_DATA(attribute), &awh_cast <const awh::net::addr_net_ipv6_t *> (peer)->address[0], 16);
+					// Увеличиваем размер сообщения на размер свойства
+					message.header.nlmsg_len = (NLMSG_ALIGN(message.header.nlmsg_len) + RTA_ALIGN(attribute->rta_len));
+					// Объект работы с ядром через сокет управления сетью
+					const awh::gnu::netlink_t netlink(log);
+					// Выполняем отправку сообщения ядру
+					result = netlink.commit(&message, message.header.nlmsg_len);
+				}
+				/**
+				 * Применяем новый IP-адрес интерфейса
+				 *
+				 * @note Запрос сюда доходит лишь тогда, когда встречной стороны нет либо
+				 *       сокет управления сетью отказал: назначение с двумя адресами уже
+				 *       сделано выше и повторять его запросом ioctl незачем
+				 */
+				if(!result && !(result = (::ioctl(sock, SIOCSIFADDR, &ifr6) == 0))){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -1870,6 +2045,16 @@ bool awh::eth::Interface::flag(string_view name, const event::eth_flag_t flag, c
 					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 			}
+			/**
+			 * Заводим маршруты до встречных сторон поднятого устройства
+			 *
+			 * @note Порядок тут обратный привычному: адреса на устройство ставит движок
+			 *       ЗАРАНЕЕ, а поднимает его потребитель, и ядру заводить маршрут в тот
+			 *       миг ещё не по чему. Наверстываем это здесь, сразу по поднятии
+			 */
+			if(result && (flag == event::eth_flag_t::UP) && (mode == event::mode_t::ENABLED))
+				// Заводим маршруты до встречных сторон устройства
+				::device::routePeers(name, this->_log);
 			// Закрываем сокет
 			::close(sock);
 		/**
@@ -1914,7 +2099,14 @@ bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, c
 		 */
 		try {
 			// Создаём сокет для управления интерфейсом
-			net::socket_t sock = ::socket(AF_INET, SOCK_DGRAM, 0);
+			/**
+			 * Семейство управляющего сокета следует виду адреса
+			 *
+			 * @warning Запрос назначения адреса IPv6 сокет семейства IPv4 отвергает
+			 *          с EINVAL: адрес на устройство не встаёт вовсе, а отказ выглядит
+			 *          неверным доводом запроса
+			 */
+			net::socket_t sock = ::socket(((ip->size == 16) ? AF_INET6 : AF_INET), SOCK_DGRAM, 0);
 			// Если создание сокета прошло неудачно
 			if(!(result = (sock != net::invalid_socket_t))){
 				/**
@@ -2113,7 +2305,14 @@ bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, c
 		 */
 		try {
 			// Создаём сокет для управления интерфейсом
-			net::socket_t sock = ::socket(AF_INET, SOCK_DGRAM, 0);
+			/**
+			 * Семейство управляющего сокета следует виду адреса
+			 *
+			 * @warning Запрос назначения адреса IPv6 сокет семейства IPv4 отвергает
+			 *          с EINVAL: адрес на устройство не встаёт вовсе, а отказ выглядит
+			 *          неверным доводом запроса
+			 */
+			net::socket_t sock = ::socket(((ip->size == 16) ? AF_INET6 : AF_INET), SOCK_DGRAM, 0);
 			// Если создание сокета прошло неудачно
 			if(!(result = (sock != net::invalid_socket_t))){
 				/**
@@ -2352,7 +2551,14 @@ bool awh::eth::Interface::configure(string_view name, const net::addr_t * ip, co
 		 */
 		try {
 			// Создаём единственный управляющий сокет для всех операций
-			net::socket_t sock = ::socket(AF_INET, SOCK_DGRAM, 0);
+			/**
+			 * Семейство управляющего сокета следует виду адреса
+			 *
+			 * @warning Запрос назначения адреса IPv6 сокет семейства IPv4 отвергает
+			 *          с EINVAL: адрес на устройство не встаёт вовсе, а отказ выглядит
+			 *          неверным доводом запроса
+			 */
+			net::socket_t sock = ::socket(((ip->size == 16) ? AF_INET6 : AF_INET), SOCK_DGRAM, 0);
 			// Если создание сокета прошло неудачно
 			if(sock == net::invalid_socket_t){
 				/**

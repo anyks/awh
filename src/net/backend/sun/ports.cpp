@@ -4442,6 +4442,166 @@ namespace ether {
 		// Выводим признак того, что кадр был запросом и ответ отправлен
 		return true;
 	}
+	/**
+	 * @brief Функция подсчёта контрольной суммы ICMPv6
+	 *
+	 * @details Сумма ICMPv6 берётся не с одного лишь сообщения: стандарт велит
+	 *          накрывать ею вымышленный заголовок из адресов, длины и опознавателя
+	 *          вышестоящего протокола. Без него встречная сторона отбрасывает ответ молча
+	 *
+	 * @param source адрес источника пакета
+	 * @param target адрес назначения пакета
+	 * @param buffer буфер сообщения ICMPv6
+	 * @param size   размер сообщения ICMPv6
+	 * @return       контрольная сумма в сетевом порядке октетов
+	 *
+	 */
+	static uint16_t checksum(const uint8_t * source, const uint8_t * target, const uint8_t * buffer, const size_t size) noexcept {
+		// Накопитель контрольной суммы
+		uint32_t result = 0;
+		// Проходим по адресам источника и назначения вымышленного заголовка
+		for(size_t i = 0; i < 16; i += 2){
+			// Складываем очередное слово адреса источника
+			result += ((static_cast <uint32_t> (source[i]) << 8) | source[i + 1]);
+			// Складываем очередное слово адреса назначения
+			result += ((static_cast <uint32_t> (target[i]) << 8) | target[i + 1]);
+		}
+		// Складываем длину сообщения вымышленного заголовка
+		result += static_cast <uint32_t> (size & 0xFFFF);
+		// Складываем длину сообщения вымышленного заголовка старшим словом
+		result += static_cast <uint32_t> ((size >> 16) & 0xFFFF);
+		// Складываем опознаватель вышестоящего протокола вымышленного заголовка
+		result += 58;
+		// Проходим по всему сообщению ICMPv6
+		for(size_t i = 0; i < size; i += 2)
+			// Складываем очередное слово сообщения, дополняя нечётный хвост нулём
+			result += ((static_cast <uint32_t> (buffer[i]) << 8) | ((i + 1) < size ? buffer[i + 1] : 0));
+		// Сворачиваем перенос накопителя в младшее слово
+		while(result >> 16)
+			// Складываем перенос с младшим словом накопителя
+			result = ((result & 0xFFFF) + (result >> 16));
+		// Выводим обращённую контрольную сумму в сетевом порядке октетов
+		return htons(static_cast <uint16_t> (~result & 0xFFFF));
+	}
+	/**
+	 * @brief Функция ответа на разрешение адреса IPv6
+	 *
+	 * @details Роль та же, что у разрешения адреса IPv4, но спрашивает ядро иначе:
+	 *          запросом соседа поверх ICMPv6. Отвечаем за встречную сторону тем же
+	 *          выдуманным адресом, каким отвечаем и на запрос IPv4
+	 *
+	 * @warning Запрос с пустым адресом источника - это проверка неповторимости адреса
+	 *          у самого соседа. Ответить на него значит объявить его адрес занятым и
+	 *          отнять у соседа его же адрес: такие запросы обходим стороной
+	 *
+	 * @param fd     дескриптор устройства переноса данных
+	 * @param buffer буфер принятого кадра
+	 * @param size   размер принятого кадра
+	 * @param target аппаратный адрес встречной стороны
+	 * @return       признак того, что кадр был запросом и ответ отправлен
+	 *
+	 */
+	static bool neighbor(const int32_t fd, const uint8_t * buffer, const size_t size, const string & target) noexcept {
+		// Размер заголовка пакета IPv6
+		static constexpr size_t HEADER_IPV6 = 40;
+		// Размер запроса соседа: заголовок ICMPv6 с адресом искомого соседа
+		static constexpr size_t REQUEST_SIZE = 24;
+		// Если кадр короче запроса соседа
+		if(size < (::ether::HEADER_SIZE + HEADER_IPV6 + REQUEST_SIZE))
+			// Выводим отказ, так-как кадр запросом не является
+			return false;
+		// Получаем заголовок пакета IPv6
+		const uint8_t * packet = (buffer + ::ether::HEADER_SIZE);
+		/**
+		 * Отвечаем лишь на запрос соседа поверх ICMPv6
+		 *
+		 * @note Опознаватель вышестоящего протокола 58 - это ICMPv6, вид сообщения 135 -
+		 *       запрос соседа, 136 - его объявление. На чужие объявления отвечать незачем
+		 */
+		if((((packet[0] >> 4) & 0x0F) != 6) || (packet[6] != 58) || (packet[HEADER_IPV6] != 135))
+			// Выводим отказ, так-как запрос нам не предназначен
+			return false;
+		// Признак проверки неповторимости адреса у самого соседа
+		bool duplicate = true;
+		// Проходим по всему адресу источника пакета
+		for(size_t i = 0; i < 16; i++){
+			// Если очередной октет адреса источника не пустой
+			if(packet[8 + i] != 0){
+				// Снимаем признак проверки неповторимости адреса
+				duplicate = false;
+				// Выходим из перебора адреса источника
+				break;
+			}
+		}
+		// Если запрос является проверкой неповторимости адреса у самого соседа
+		if(duplicate)
+			// Выводим признак того, что кадр разобран, но ответа не требует
+			return true;
+		// Получаем адрес искомого соседа из запроса
+		const uint8_t * address = (packet + HEADER_IPV6 + 8);
+		// Буфер объявления соседа
+		uint8_t answer[::ether::HEADER_SIZE + HEADER_IPV6 + 32];
+		// Заполняем буфер объявления нулями
+		::memset(answer, 0, sizeof(answer));
+		// Записываем адрес назначения кадра: им становится источник запроса
+		::memcpy(answer + 0, buffer + ::ether::ADDR_SIZE, ::ether::ADDR_SIZE);
+		// Записываем адрес источника кадра: им становится выдуманная встречная сторона
+		::memcpy(answer + ::ether::ADDR_SIZE, target.c_str(), ::ether::ADDR_SIZE);
+		// Получаем опознаватель протокола IPv6 в сетевом порядке октетов
+		const uint16_t type = htons(::ether::TYPE_IPV6);
+		// Записываем опознаватель протокола кадра
+		::memcpy(answer + (::ether::ADDR_SIZE * 2), &type, sizeof(type));
+		// Получаем заголовок пакета IPv6 объявления
+		uint8_t * reply = (answer + ::ether::HEADER_SIZE);
+		// Записываем вид протокола пакета
+		reply[0] = 0x60;
+		// Получаем размер полезной нагрузки пакета в сетевом порядке октетов
+		const uint16_t length = htons(32);
+		// Записываем размер полезной нагрузки пакета
+		::memcpy(reply + 4, &length, sizeof(length));
+		// Записываем опознаватель вышестоящего протокола пакета
+		reply[6] = 58;
+		/**
+		 * Записываем предел переходов пакета
+		 *
+		 * @note Стандарт велит объявлению соседа приходить пределом 255: сосед
+		 *       отбрасывает всякое иное, оберегаясь от подделки извне сегмента
+		 */
+		reply[7] = 255;
+		// Записываем адрес источника пакета: им становится адрес искомого соседа
+		::memcpy(reply + 8, address, 16);
+		// Записываем адрес назначения пакета: им становится источник запроса
+		::memcpy(reply + 24, packet + 8, 16);
+		// Получаем тело сообщения ICMPv6 объявления
+		uint8_t * body = (reply + HEADER_IPV6);
+		// Записываем вид сообщения объявления соседа
+		body[0] = 136;
+		/**
+		 * Записываем признаки объявления соседа
+		 *
+		 * @note Разряд 0x40 - объявление отвечает на запрос, 0x20 - оно замещает
+		 *       собой всё, что сосед о нашем адресе помнил прежде
+		 */
+		body[4] = 0x60;
+		// Записываем адрес объявляемого соседа
+		::memcpy(body + 8, address, 16);
+		// Записываем вид дополнения: аппаратный адрес объявляемого соседа
+		body[24] = 2;
+		// Записываем размер дополнения восьмёрками октетов
+		body[25] = 1;
+		// Записываем аппаратный адрес объявляемого соседа
+		::memcpy(body + 26, target.c_str(), ::ether::ADDR_SIZE);
+		// Получаем контрольную сумму сообщения ICMPv6
+		const uint16_t control = ::ether::checksum(reply + 8, reply + 24, body, 32);
+		// Записываем контрольную сумму сообщения ICMPv6
+		::memcpy(body + 2, &control, sizeof(control));
+		// Отправляем объявление соседа в устройство переноса данных
+		if(::write(fd, answer, sizeof(answer)) < 0)
+			// Выводим признак того, что кадр разобран: отказ отправки узла не валит
+			return true;
+		// Выводим признак того, что кадр был запросом и ответ отправлен
+		return true;
+	}
 };
 
 /**
@@ -12595,6 +12755,10 @@ namespace io {
 								// Переходим к следующему кадру: наверх запрос не уходит
 								continue;
 							}
+							// Если кадр несёт запрос соседа поверх IPv6
+							if((type == ::ether::TYPE_IPV6) && ::ether::neighbor(tunnel->fd, ::__awh_buffer__, static_cast <size_t> (bytes), tunnel->remote))
+								// Переходим к следующему кадру: наверх запрос не уходит
+								continue;
 							// Если кадр несёт не сетевой пакет
 							if((type != ::ether::TYPE_IPV4) && (type != ::ether::TYPE_IPV6))
 								// Переходим к следующему кадру: чужой протокол туннелю не адресован
@@ -12962,6 +13126,17 @@ namespace io {
 												else const_cast <engine::io_t *> (io)->relay(mediator->dest, ::__awh_buffer__, static_cast <size_t> (size));
 											}
 										}
+									/**
+									 * Служебный обмен самого узла туннелю не адресован
+									 *
+									 * @note Ядро на всяком устройстве IPv6 заводит адрес связи (FE80::/10) и
+									 *       шлёт с него оповещения групповым адресам (FF00::/8). Ни подмены,
+									 *       ни атаки тут нет: такой пакет отбрасываем молча, не тревожа потребителя
+									 */
+									} else if(((awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->address[0] == 0xFE) &&
+									          ((awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->address[1] & 0xC0) == 0x80)) ||
+									          (awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0] == 0xFF)) {
+										// Пакет служебного обмена узла разбору не подлежит
 									// Если адрес сервера не совпадает с настройками туннеля
 									} else {
 										// Если установлена функция обратного вызова
@@ -13203,6 +13378,10 @@ namespace io {
 							// Выводим успех: запрос разобран, а подписка чтения обязана перевзвестись
 							return true;
 						}
+						// Если кадр несёт запрос соседа поверх IPv6
+						if((type == ::ether::TYPE_IPV6) && ::ether::neighbor(tunnel->fd, ::__awh_buffer__, static_cast <size_t> (bytes), tunnel->remote))
+							// Выводим успех: запрос разобран, а подписка чтения обязана перевзвестись
+							return true;
 						// Если кадр несёт не сетевой пакет
 						if((type != ::ether::TYPE_IPV4) && (type != ::ether::TYPE_IPV6))
 							// Выводим успех: кадр отброшен, а подписка чтения обязана перевзвестись
@@ -13568,6 +13747,17 @@ namespace io {
 											else const_cast <engine::io_t *> (io)->relay(mediator->dest, ::__awh_buffer__, static_cast <size_t> (size));
 										}
 									}
+								/**
+								 * Служебный обмен самого узла туннелю не адресован
+								 *
+								 * @note Ядро на всяком устройстве IPv6 заводит адрес связи (FE80::/10) и
+								 *       шлёт с него оповещения групповым адресам (FF00::/8). Ни подмены,
+								 *       ни атаки тут нет: такой пакет отбрасываем молча, не тревожа потребителя
+								 */
+								} else if(((awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->address[0] == 0xFE) &&
+								          ((awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->address[1] & 0xC0) == 0x80)) ||
+								          (awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0] == 0xFF)) {
+									// Пакет служебного обмена узла разбору не подлежит
 								// Если адрес сервера не совпадает с настройками туннеля
 								} else {
 									// Если установлена функция обратного вызова
@@ -61679,138 +61869,20 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 							case static_cast <uint8_t> (event::node_t::CLIENT):
 							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER): {
-								// Проверяем совместимость типов и семейств событий
-								if(mediator->state.family == j->second->state.family){
-									// Устанавливаем идентификатор события-приёмника в объекте посредника
-									mediator->dest = j->second->id;
-									// Устанавливаем тип события в объекте посредника
-									mediator->state.type = j->second->state.type;
-									// Устанавливаем протокол события в объекте посредника
-									mediator->state.protocol = j->second->state.protocol;
-									// Возвращаем положительный результат
-									return true;
-								// Если не совместимы типы или семейства событий
-								} else {
-									// Если установлена функция обратного вызова
-									if(mediator->callbacks.status != nullptr)
-										// Вызываем функцию обратного вызова об ошибке отказа
-										mediator->callbacks.status(mediator->id, event::status_t::FAILURE);
-									// Устанавливаем текст ошибки
-									const string error = "Events cannot be combined with each other because they are not compatible";
-									// Если установлена функция обратного вызова
-									if(mediator->callbacks.error != nullptr)
-										// Вызываем функцию обратного вызова ошибки события
-										mediator->callbacks.error(mediator->id, event::error_t::INVALID, error);
-									// Если функция обратного вызова для вывода события не установлена
-									else {
-										/**
-										 * Если включён режим отладки
-										 */
-										#if DEBUG_MODE
-											// Записываем ошибку в лог
-											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
-										/**
-										 * Если режим отладки не включён
-										 */
-										#else
-											// Записываем ошибку в лог
-											this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-										#endif
-									}
-								}
-							} break;
-						}
-					} break;
-					// Если узел является клиентом
-					case static_cast <uint8_t> (event::node_t::CLIENT): {
-						// Получаем текущее значение объекта клиента
-						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
-						/**
-						 * Определяем чем является текущий узел
-						 */
-						switch(static_cast <uint8_t> (j->second->state.node)){
-							// Если узел является директорией
-							case static_cast <uint8_t> (event::node_t::DIR): {
-								// Получаем текущее значение объекта директории
-								::io::dir_t * dir = awh_cast <::io::dir_t *> (j->second.get());
-								// Если установлена функция обратного вызова
-								if(dir->callbacks.status != nullptr)
-									// Вызываем функцию обратного вызова об ошибке отказа
-									dir->callbacks.status(dir->id, event::status_t::FAILURE);
-								// Устанавливаем текст ошибки
-								const string error = "Cannot splice events, a client node, and a directory node";
-								// Если установлена функция обратного вызова
-								if(dir->callbacks.error != nullptr)
-									// Вызываем функцию обратного вызова ошибки события
-									dir->callbacks.error(dir->id, event::error_t::INVALID, error);
-								// Если функция обратного вызова для вывода события не установлена
-								else {
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Записываем ошибку в лог
-										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Записываем ошибку в лог
-										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-									#endif
-								}
-							} break;
-							// Если узел является таймаутом
-							case static_cast <uint8_t> (event::node_t::TIMEOUT):
-							// Если узел является интервалом
-							case static_cast <uint8_t> (event::node_t::INTERVAL): {
-								// Получаем текущее значение объекта директории
-								::io::timer_t * timer = awh_cast <::io::timer_t *> (j->second.get());
-								// Если установлена функция обратного вызова
-								if(timer->callbacks.status != nullptr)
-									// Вызываем функцию обратного вызова об ошибке отказа
-									timer->callbacks.status(timer->id, event::status_t::FAILURE);
-								// Устанавливаем текст ошибки
-								const string error = "Cannot splice events, a client node, and a timer node";
-								// Если установлена функция обратного вызова
-								if(timer->callbacks.error != nullptr)
-									// Вызываем функцию обратного вызова ошибки события
-									timer->callbacks.error(timer->id, event::error_t::INVALID, error);
-								// Если функция обратного вызова для вывода события не установлена
-								else {
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Записываем ошибку в лог
-										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Записываем ошибку в лог
-										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-									#endif
-								}
-							} break;
-							// Если узел является пользовательским событием
-							case static_cast <uint8_t> (event::node_t::NOTIFY):
-							// Если узел является файловой системой
-							case static_cast <uint8_t> (event::node_t::FILE):
-							// Если узел является межпроцессным взаимодействием
-							case static_cast <uint8_t> (event::node_t::IPC):
-							// Если узел является одноранговым узлом
-							case static_cast <uint8_t> (event::node_t::PEER):
-							// Если узел является одноранговым узлом-источником
-							case static_cast <uint8_t> (event::node_t::ORIGIN):
-							// Если узел является посредником
-							case static_cast <uint8_t> (event::node_t::MEDIATOR):
-							// Если узел является клиентом
-							case static_cast <uint8_t> (event::node_t::CLIENT):
-							// Если узел является сервером
-							case static_cast <uint8_t> (event::node_t::SERVER): {
-								// Устанавливаем идентификатор события-приёмника в объекте клиента
-								client->transfer.dest = dest;
+								/**
+								 * Семейства узлов сличать незачем
+								 *
+								 * @details Посредник несёт адрес ВНУТРИ туннеля, а приёмник - перенос
+								 *          наружу: слои разные, и семейства их между собой не связаны.
+								 *          Туннель IPv6 поверх переноса IPv4 - обычный расклад, и
+								 *          сличение семейств запрещало его вовсе
+								 */
+								// Устанавливаем идентификатор события-приёмника в объекте посредника
+								mediator->dest = j->second->id;
+								// Устанавливаем тип события в объекте посредника
+								mediator->state.type = j->second->state.type;
+								// Устанавливаем протокол события в объекте посредника
+								mediator->state.protocol = j->second->state.protocol;
 								// Возвращаем положительный результат
 								return true;
 							}

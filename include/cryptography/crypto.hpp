@@ -2376,6 +2376,11 @@ namespace awh {
 			 *          хэш-сумму схеме Ed25519, подписи хэш-суммы не получит, и молчание об
 			 *          этом выдало бы одно за другое
 			 *
+			 * @note Первая подпись схемой ГОСТ Р 34.10-2012 снимает таблицу кратных точки
+			 *       основания - 98 килооктетов на набор свойств кривой, - и удерживает её до
+			 *       конца работы приложения. Таблица эта ускоряет выработку подписи вчетверо и
+			 *       снимается лениво: наборы свойств, которыми не пользуются, памяти не занимают
+			 *
 			 * @param name   имя ключа в связке
 			 * @param buffer буфер данных для подписи
 			 * @param size   размер данных для подписи
@@ -2392,6 +2397,11 @@ namespace awh {
 			 *          the inapplicable is rejected rather than smoothed over: a calling side that has passed
 			 *          a hash sum to the Ed25519 scheme will get no signature of the hash sum, and keeping silent about
 			 *          that would pass off one thing for another
+			 *
+			 * @note The first signature by the GOST R 34.10-2012 scheme builds the table of the multiples
+			 *       of the base point - 98 kilooctets per set of the curve properties, - and holds it until
+			 *       the end of the work of the application. That table speeds the production of the signature up
+			 *       fourfold and is built lazily: the sets of the properties that are not used occupy no memory
 			 *
 			 * @param name   name of the key in the keyring
 			 * @param buffer data buffer for the signature
