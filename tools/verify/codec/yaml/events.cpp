@@ -3,6 +3,7 @@
 #include <sstream>
 #include <iostream>
 #include <string>
+#include <vector>
 using namespace awh::codec;
 /**
  * Приведение содержимого к записи набора сверки: перевод строки, подача и обратная
@@ -29,6 +30,26 @@ int main(int argc, char ** argv){
 	yaml::reader_t::settings_t settings;
 	yaml::reader_t reader(settings);
 	if(!reader.feed(text)){ std::cout << "ОТКАЗ: " << yaml::message(reader.error()) << "\n"; return 1; }
+	/**
+	 * Места событий открытия построений, проходом предварительным собранные
+	 *
+	 * @note Собираются они вторым чтением того же текста: сличение места события с местом
+	 *       события следующего требует взгляда вперёд, а чтение потоковое его не даёт
+	 */
+	std::vector <uint64_t> starts;
+	{
+		yaml::reader_t::settings_t opening;
+		yaml::reader_t scout(opening);
+		if(scout.feed(text)){
+			while(scout.next()){
+				if((scout.event() == yaml::event_t::MAPPING_START) ||
+				   (scout.event() == yaml::event_t::SEQUENCE_START))
+					starts.push_back(scout.value().location.offset);
+			}
+		}
+	}
+	// Номер разбираемого события открытия построения
+	size_t started = 0;
 	std::string result;
 	size_t depth = 0;
 	const auto indent = [&](){ result.append(depth, ' '); };
@@ -57,12 +78,22 @@ int main(int argc, char ** argv){
 		 * @warning Розыск этот есть догадка щупа, а не сведение от чтения: признак
 		 *          поточного построения выдаётся детям его, а самому построению - нет,
 		 *          ибо оно не ВНУТРИ построения стоит, а построением и является. Догадка
-		 *          ошибается там, где имя пары само поточным построением является: место
-		 *          события блочного отображения стоит тогда на скобке имени, и щуп метит
-		 *          скобками отображение блочное. Случай Q9WF расходится по этой причине,
-		 *          а не по вине кодека
+		 *          ошибалась там, где имя пары само поточным построением является, и
+		 *          правится она сличением мест ниже - но остаётся догадкою: расхождение
+		 *          по ней есть изъян щупа, а не кодека, и первым делом проверять надлежит
+		 *          её
 		 */
 		if(reader.value().location.offset == yaml::NO_OFFSET) return std::string();
+		/**
+		 * Построение блочное, место своё у имени поточного взявшее
+		 *
+		 * @note Отображение блочное стоит там же, где стоит имя первой пары его, и имя
+		 *       это вправе быть построением поточным: скобка тогда одна на два события, и
+		 *       принадлежит она внутреннему. Опознаётся это совпадением мест: события
+		 *       открытия идут подряд с одного и того же места. Случай Q9WF
+		 */
+		if(((started + 1) < starts.size()) && (starts.at(started) == starts.at(started + 1)))
+			return std::string();
 		size_t offset = static_cast <size_t> (reader.value().location.offset);
 		while((offset < text.size()) && ((text.at(offset) == ' ') || (text.at(offset) == '\t'))) offset++;
 		if(offset >= text.size()) return std::string();
@@ -98,12 +129,14 @@ int main(int argc, char ** argv){
 			break;
 			case static_cast <uint8_t> (yaml::event_t::MAPPING_START):
 				indent(); result.append("+MAP").append(marked("{}")).append(props()).append("\n"); depth++;
+				started++;
 			break;
 			case static_cast <uint8_t> (yaml::event_t::MAPPING_END):
 				depth--; indent(); result.append("-MAP\n");
 			break;
 			case static_cast <uint8_t> (yaml::event_t::SEQUENCE_START):
 				indent(); result.append("+SEQ").append(marked("[]")).append(props()).append("\n"); depth++;
+				started++;
 			break;
 			case static_cast <uint8_t> (yaml::event_t::SEQUENCE_END):
 				depth--; indent(); result.append("-SEQ\n");
