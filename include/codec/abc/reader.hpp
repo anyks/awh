@@ -33,7 +33,6 @@
 /**
  * Стандартные заголовочные файлы
  */
-#include <deque>
 #include <vector>
 #include <string>
 #include <cstdint>
@@ -437,8 +436,26 @@ namespace awh {
 					// Стек вместимых разбора
 					vector <frame_t> _stack;
 				private:
-					// Очередь собранных событий разбора
-					deque <record_t> _events;
+					/**
+					 * \~russian
+					 * Очередь собранных событий разбора
+					 *
+					 * @details Очередь ведётся кольцом на вместилище, память какого держится
+					 * между подачами: событий у крупной записи миллионы, и заводись вместилище
+					 * под них заново, расход выделений рос бы с размером записи
+					 *
+					 * \~english
+					 * Queue of the assembled events of the parsing
+					 * @details The queue is led by a ring on a container whose memory is held
+					 * between the submissions: a large record has millions of events, and were the container
+					 * created anew, the expenditure of the allocations would grow with the size of the record
+					 *
+					 * \~
+					 */
+					vector <record_t> _events;
+				private:
+					// Смещение первого невыданного события очереди
+					size_t _head;
 				private:
 					// Событие, выданное последним переходом
 					record_t _current;

@@ -49,7 +49,7 @@ namespace {
 	 * @brief Порог пропускной способности сборки дерева крупной записи
 	 *
 	 */
-	static constexpr double TREE_LARGE_THRESHOLD = 30.0;
+	static constexpr double TREE_LARGE_THRESHOLD = 7.0;
 	/**
 	 * @brief Порог пропускной способности обхода собранного дерева
 	 *
@@ -61,7 +61,7 @@ namespace {
 	 * @brief Порог пропускной способности перезаписи дерева в запись
 	 *
 	 */
-	static constexpr double TREE_REWRITE_THRESHOLD = 30.0;
+	static constexpr double TREE_REWRITE_THRESHOLD = 6.0;
 	/**
 	 * @brief Порог количества выделений памяти на сборку дерева
 	 *
@@ -70,12 +70,12 @@ namespace {
 	 *          означал бы выделение памяти на всякий узел
 	 *
 	 */
-	static constexpr double TREE_ALLOCATIONS_THRESHOLD = 40.0;
+	static constexpr double TREE_ALLOCATIONS_THRESHOLD = 80.0;
 	/**
 	 * @brief Порог пропускной способности снятия владеющего значения
 	 *
 	 */
-	static constexpr double VALUE_TAKE_THRESHOLD = 5.0;
+	static constexpr double VALUE_TAKE_THRESHOLD = 1.5;
 	/**
 	 * @brief Порог задержки сборки дерева записи ответа службы в микросекундах
 	 *

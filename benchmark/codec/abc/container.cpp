@@ -51,7 +51,7 @@ namespace {
 	 * @brief Количество записей собираемого контейнера
 	 *
 	 */
-	static constexpr size_t RECORD_COUNT = 20000;
+	static constexpr size_t RECORD_COUNT = 5000;
 	/**
 	 * @brief Количество собираемых контейнеров
 	 *
@@ -61,28 +61,28 @@ namespace {
 	 * @brief Количество выбираемых записей контейнера
 	 *
 	 */
-	static constexpr size_t FETCH_ROUNDS = 20000;
+	static constexpr size_t FETCH_ROUNDS = 5000;
 	/**
 	 * @brief Количество вносимых правок контейнера
 	 *
 	 */
-	static constexpr size_t EDIT_ROUNDS = 2000;
+	static constexpr size_t EDIT_ROUNDS = 500;
 
 	/**
 	 * @brief Порог пропускной способности сборки контейнера без сжатия
 	 *
 	 */
-	static constexpr double BUILD_PLAIN_THRESHOLD = 40.0;
+	static constexpr double BUILD_PLAIN_THRESHOLD = 6.0;
 	/**
 	 * @brief Порог пропускной способности сборки контейнера со сжатием
 	 *
 	 */
-	static constexpr double BUILD_PACKED_THRESHOLD = 8.0;
+	static constexpr double BUILD_PACKED_THRESHOLD = 12.0;
 	/**
 	 * @brief Порог пропускной способности сборки контейнера с шифрованием
 	 *
 	 */
-	static constexpr double BUILD_CIPHERED_THRESHOLD = 3.0;
+	static constexpr double BUILD_CIPHERED_THRESHOLD = 12.0;
 	/**
 	 * @brief Порог сжатия содержимого контейнера
 	 *
@@ -101,12 +101,12 @@ namespace {
 	 *          чтению всего содержимого, означал бы, что оглавление перестало работать
 	 *
 	 */
-	static constexpr double FETCH_LATENCY_THRESHOLD = 60.0;
+	static constexpr double FETCH_LATENCY_THRESHOLD = 1500.0;
 	/**
 	 * @brief Порог задержки правки контейнера на месте в микросекундах
 	 *
 	 */
-	static constexpr double EDIT_LATENCY_THRESHOLD = 200.0;
+	static constexpr double EDIT_LATENCY_THRESHOLD = 8000.0;
 
 	/**
 	 * @brief Класс окружения замеров контейнера

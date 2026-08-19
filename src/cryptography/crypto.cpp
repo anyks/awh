@@ -103,6 +103,31 @@
 #include <fstream>
 
 /**
+ * Если собиратель даёт набор команд SSE2
+ *
+ * @note Набор этот есть у всякого процессора x86-64 по своду самой архитектуры, оттого
+ *       ни проверки во время работы, ни запасного пути под x86-64 не требуется. У
+ *       прочих архитектур ветвь эта не собирается вовсе - см. описание метода lps
+ *
+ */
+#if defined(__SSE2__)
+	/**
+	 * Заголовочный файл набора команд SSE2
+	 */
+	#include <emmintrin.h>
+#endif
+
+/**
+ * Стандартный заголовочный файл однократного выполнения
+ *
+ * @note Требуется одним лишь счётом предвычисленных кратных точки основания схемы
+ *       ГОСТ Р 34.10-2012: таблица снимается при первом обращении к набору свойств
+ *       кривой, и обращение это может прийти из нескольких потоков разом
+ *
+ */
+#include <mutex>
+
+/**
  * Если операционной системой не является MS Windows
  */
 #if !_WIN32 && !_WIN64
@@ -418,10 +443,14 @@ namespace entropy {
 	/**
 	 * @brief Наибольший размер выдачи, обслуживаемый из запаса, в октетах
 	 *
-	 * @details Из запаса выдаются одни лишь векторы инициализации - двенадцать октетов у
-	 *          счётчика Галуа и шестнадцать у гаммирования. Запрос сверх этого предела
-	 *          обслуживается прямым обращением: запас заведён под известную надобность и
-	 *          подменою общего средства выработки случайных данных не является
+	 * @details Из запаса выдаются векторы инициализации - двенадцать октетов у счётчика
+	 *          Галуа и шестнадцать у гаммирования, - а также закрытая часть ключа и
+	 *          одноразовое число подписи ГОСТ на 256 разрядов, равные тридцати двум
+	 *          октетам. Запрос сверх этого предела обслуживается прямым обращением, и
+	 *          закрытая часть ключа схемы на 512 разрядов идёт как раз им. Источник у
+	 *          обоих путей один и тот же, качество случайности от выбора пути не
+	 *          меняется; запас заведён под известную надобность и подменою общего
+	 *          средства выработки случайных данных не является
 	 *
 	 */
 	static constexpr size_t IVEC_LIMIT = 32;
@@ -545,6 +574,16 @@ namespace gost {
 	// Размер блока хэш-функции в октетах
 	static constexpr size_t BLOCK = 64;
 	/**
+	 * Количество слов блока хэш-функции
+	 *
+	 * @details Состояние счёта держится словами по 64 разряда, а не набором октетов:
+	 *          преобразование LPS и наложение по модулю два идут словами целиком, и
+	 *          раскладка итога обратно в октеты - шестьдесят четыре записи на всякое
+	 *          преобразование - отпадает вовсе. Замерено щупом: выигрыш 1,4 раза на
+	 *          горячей паре действий
+	 */
+	static constexpr size_t WORDS = 8;
+	/**
 	 * Наибольшая рабочая ширина числа в октетах
 	 *
 	 * @details Произведение двух чисел занимает вдвое больше разрядов, чем множители,
@@ -626,11 +665,11 @@ namespace gost {
 	 */
 	struct digest_t {
 		// Промежуточное значение хэш-суммы
-		uint8_t hash[BLOCK];
+		uint64_t hash[WORDS];
 		// Счётчик обработанных разрядов
-		uint8_t counter[BLOCK];
+		uint64_t counter[WORDS];
 		// Контрольная сумма обработанных блоков
-		uint8_t sigma[BLOCK];
+		uint64_t sigma[WORDS];
 		// Накопитель неполного блока
 		uint8_t tail[BLOCK];
 		// Заполненность накопителя неполного блока
@@ -712,6 +751,8 @@ namespace gost {
 			"F5CE40D95B5EB899ABBCCFF5911CB8577939804D6527378B8C108C3D2090FF9BE18E2D33E3021ED2EF32D85822423B6304F726AA854BAE07D0396E9A9ADDC40F"
 		}
 	};
+	// Количество известных работе наборов свойств кривых
+	static constexpr size_t COUNT = 5;
 	/**
 	 * @brief Ключ подписи по ГОСТ Р 34.10-2012
 	 *
@@ -737,6 +778,21 @@ namespace gost {
 			::memset(this->x, 0, DIGIT);
 			::memset(this->y, 0, DIGIT);
 		}
+		/**
+		 * @brief Деструктор
+		 *
+		 * @details Закрытая часть ключа затирается при разрушении, а не при снятии
+		 *          ключа из связки: ключи RSA и прочие держатся контекстом библиотеки
+		 *          криптографии, и та гасит их сама, а ключ ГОСТ лежит здесь голыми
+		 *          октетами - снятие его из связки одним лишь удалением записи
+		 *          оставляло бы закрытую часть лежать в отпущенной памяти. Затирание
+		 *          деструктором накрывает все пути разом: и снятие ключа, и разрушение
+		 *          связки, и всякий список записи, отданный по значению
+		 */
+		~key_t() noexcept {
+			// Выполняем затирание закрытой части ключа
+			::OPENSSL_cleanse(this->secret, DIGIT);
+		}
 	};
 	/**
 	 * @brief Метод переворота порядка октетов
@@ -752,43 +808,97 @@ namespace gost {
 			result[i] = value[size - 1 - i];
 	}
 	/**
+	 * @brief Метод чтения слова блока старшим октетом вперёд
+	 *
+	 * @param value буфер октетов
+	 * @return      прочитанное слово
+	 *
+	 * @details Слово собирается из октетов вручную: приведение указателя к типу шире
+	 *          октета опиралось бы на порядок октетов машины и на выравнивание буфера
+	 */
+	static uint64_t word(const uint8_t * value) noexcept {
+		// Выводим собранное слово
+		return ((static_cast <uint64_t> (value[0]) << 56) | (static_cast <uint64_t> (value[1]) << 48) |
+		 (static_cast <uint64_t> (value[2]) << 40) | (static_cast <uint64_t> (value[3]) << 32) |
+		 (static_cast <uint64_t> (value[4]) << 24) | (static_cast <uint64_t> (value[5]) << 16) |
+		 (static_cast <uint64_t> (value[6]) << 8) | static_cast <uint64_t> (value[7]));
+	}
+	/**
+	 * @brief Метод записи слова блока старшим октетом вперёд
+	 *
+	 * @param result буфер октетов для записи
+	 * @param value  записываемое слово
+	 */
+	static void word(uint8_t * result, const uint64_t value) noexcept {
+		// Выполняем перебор всех октетов слова
+		for(size_t i = 0; i < 8; i++)
+			// Выполняем запись очередного октета слова
+			result[i] = static_cast <uint8_t> ((value >> (56 - (i * 8))) & 0xFF);
+	}
+	/**
+	 * @brief Метод чтения блока потока словами
+	 *
+	 * @param result набор слов для записи
+	 * @param data   буфер блока в порядке потока
+	 *
+	 * @details Счётное ядро работает числовым видом стандарта, где старший октет стоит
+	 *          первым, а поток октетов идёт обратным порядком. Переворот блока при
+	 *          словном виде состояния отдельного прохода не требует: слово берётся с
+	 *          обратного конца блока и собирается младшим октетом вперёд
+	 */
+	static void gather(uint64_t * result, const uint8_t * data) noexcept {
+		/**
+		 * Выполняем перебор всех слов блока
+		 */
+		for(size_t i = 0; i < WORDS; i++){
+			// Начало очередного слова с обратного конца блока
+			const uint8_t * source = (data + ((WORDS - 1 - i) * 8));
+			// Выполняем сборку слова обратным порядком октетов
+			result[i] = ((static_cast <uint64_t> (source[7]) << 56) | (static_cast <uint64_t> (source[6]) << 48) |
+			 (static_cast <uint64_t> (source[5]) << 40) | (static_cast <uint64_t> (source[4]) << 32) |
+			 (static_cast <uint64_t> (source[3]) << 24) | (static_cast <uint64_t> (source[2]) << 16) |
+			 (static_cast <uint64_t> (source[1]) << 8) | static_cast <uint64_t> (source[0]));
+		}
+	}
+	/**
 	 * @brief Метод сложения по модулю два в степени 512
 	 *
-	 * @param result буфер слагаемого и итога
-	 * @param value  буфер второго слагаемого
+	 * @param result набор слагаемого и итога
+	 * @param value  набор второго слагаемого
 	 */
-	static void add512(uint8_t * result, const uint8_t * value) noexcept {
-		// Переносимый в старший разряд остаток
-		uint32_t carry = 0;
+	static void add512(uint64_t * result, const uint64_t * value) noexcept {
+		// Переносимый в старшее слово остаток
+		uint64_t carry = 0;
 		/**
-		 * Выполняем сложение от младшего октета к старшему
+		 * Выполняем сложение от младшего слова к старшему
 		 */
-		for(size_t i = BLOCK; i-- > 0;){
-			// Выполняем сложение очередных октетов
-			const uint32_t sum = (static_cast <uint32_t> (result[i]) + static_cast <uint32_t> (value[i]) + carry);
-			// Выполняем запись младших разрядов суммы
-			result[i] = static_cast <uint8_t> (sum & 0xFF);
-			// Выполняем перенос старших разрядов суммы
-			carry = (sum >> 8);
+		for(size_t i = WORDS; i-- > 0;){
+			// Выполняем сложение очередных слов
+			const uint64_t sum = (result[i] + value[i] + carry);
+			/**
+			 * Выполняем счёт переноса в старшее слово
+			 *
+			 * @note Перенос ловится сличением суммы со слагаемым: сумма меньше
+			 *       слагаемого означает переполнение, а равенство при переносе значит,
+			 *       что второе слагаемое было наибольшим
+			 */
+			carry = (((sum < result[i]) || ((carry != 0) && (sum == result[i]))) ? 1 : 0);
+			// Выполняем запись суммы
+			result[i] = sum;
 		}
 	}
 	/**
 	 * @brief Метод сложения по модулю два
 	 *
-	 * @param result буфер слагаемого и итога
-	 * @param value  буфер второго слагаемого
+	 * @param result набор слагаемого и итога
+	 * @param value  набор второго слагаемого
 	 */
-	static void bxor(uint8_t * result, const uint8_t * value) noexcept {
-		// Выполняем перебор всех октетов блока
-		for(size_t i = 0; i < BLOCK; i++)
-			// Выполняем сложение очередных октетов по модулю два
+	static void bxor(uint64_t * result, const uint64_t * value) noexcept {
+		// Выполняем перебор всех слов блока
+		for(size_t i = 0; i < WORDS; i++)
+			// Выполняем сложение очередных слов по модулю два
 			result[i] ^= value[i];
 	}
-	/**
-	 * @brief Метод преобразования LPS хэш-функции
-	 *
-	 * @param value буфер преобразуемого блока
-	 */
 	/**
 	 * @brief Свод преобразования LPS, считаемый однажды
 	 *
@@ -800,7 +910,14 @@ namespace gost {
 	 *
 	 */
 	struct table_t {
-		// Свод вкладов октета в итог преобразования
+		/**
+		 * Свод вкладов октета в итог преобразования
+		 *
+		 * @details Свод собран с уже вложенной подстановкой Pi: указателем служит сам
+		 *          октет состояния, а не подставленный. Отдельная подстановка стоила
+		 *          бы шестидесяти четырёх зависимых чтений памяти на всякое
+		 *          преобразование, и замер щупом дал за неё 1,68 раза на ARM64
+		 */
 		uint64_t value[8][256];
 		/**
 		 * @brief Конструктор
@@ -817,12 +934,14 @@ namespace gost {
 				for(size_t octet = 0; octet < 256; octet++){
 					// Вклад октета в итог преобразования
 					uint64_t outcome = 0;
+					// Выполняем подстановку октета
+					const uint8_t substituted = PI[octet];
 					/**
-					 * Выполняем перебор всех разрядов октета
+					 * Выполняем перебор всех разрядов подставленного октета
 					 */
 					for(size_t bit = 0; bit < 8; bit++){
-						// Если очередной разряд октета установлен
-						if(octet & (1U << (7 - bit)))
+						// Если очередной разряд подставленного октета установлен
+						if(substituted & (1U << (7 - bit)))
 							// Выполняем сложение строки матрицы по модулю два
 							outcome ^= AM[(position * 8) + bit];
 					}
@@ -848,66 +967,135 @@ namespace gost {
 		return result;
 	}
 	/**
+	 * @brief Свод постоянных величин кругов шифрования словами
+	 *
+	 * @details Величины стандарта записаны октетами, а счёт идёт словами: свод этот
+	 *          собирается из записи стандарта единожды. Держать их записанными словами
+	 *          прямо было бы короче, но сличать с текстом стандарта - труднее
+	 *
+	 */
+	struct rounds_t {
+		// Постоянные величины кругов шифрования словами
+		uint64_t value[12][WORDS];
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit rounds_t() noexcept {
+			// Выполняем перебор всех кругов шифрования
+			for(size_t i = 0; i < 12; i++){
+				// Выполняем перебор всех слов круга
+				for(size_t k = 0; k < WORDS; k++)
+					// Выполняем сборку очередного слова круга
+					this->value[i][k] = word(CS[i] + (k * 8));
+			}
+		}
+	};
+	/**
+	 * @brief Метод получения свода постоянных величин кругов шифрования
+	 *
+	 * @return свод постоянных величин
+	 */
+	static const rounds_t & rounds() noexcept {
+		// Свод постоянных величин, заводимый однажды
+		static const rounds_t result;
+		// Выводим свод постоянных величин
+		return result;
+	}
+	/**
 	 * @brief Метод преобразования LPS хэш-функции
 	 *
-	 * @param value буфер преобразуемого блока
+	 * @param value набор слов преобразуемого блока
 	 */
-	static void lps(uint8_t * value) noexcept {
+	static void lps(uint64_t * value) noexcept {
 		// Получаем свод преобразования
 		const table_t & lookup = table();
 		// Итог преобразования по словам
-		uint64_t words[8];
+		uint64_t words[WORDS];
 		/**
-		 * Выполняем перебор всех слов блока
+		 * Если собиратель даёт набор команд SSE2
 		 *
-		 * @note Перестановка Tau переносит октет с указателем (k * 8 + j), где j -
-		 *       указатель слова, а k - положение октета в слове; вычисление его на
-		 *       месте избавляет от таблицы перестановки
+		 * @details Ветвь эта складывает вклады октетов сразу для пары слов итога, чем
+		 *          вдвое сокращает число сложений по модулю два. Выигрыш замерен щупом
+		 *          и равен 1,10 раза на x86-64; на ARM64 та же самая перестройка
+		 *          замедляет счёт (0,96 раза) - там перекладывание половин вектора
+		 *          стоит дороже сложений, - оттого ветвь заведена под одну архитектуру,
+		 *          а не под все, у кого есть векторные команды
 		 */
-		for(size_t j = 0; j < 8; j++){
-			// Итог преобразования очередного слова
-			uint64_t outcome = 0;
-			// Выполняем перебор всех положений октета в слове
-			for(size_t k = 0; k < 8; k++)
-				// Выполняем сложение вклада очередного октета по модулю два
-				outcome ^= lookup.value[k][PI[value[(k * 8) + j]]];
-			// Выполняем запись итога преобразования слова
-			words[j] = outcome;
-		}
+		#if defined(__SSE2__)
+			/**
+			 * Выполняем перебор пар слов блока
+			 */
+			for(size_t j = 0; j < WORDS; j += 2){
+				// Накопитель вкладов пары слов
+				__m128i outcome = _mm_setzero_si128();
+				/**
+				 * Выполняем перебор всех положений октета в слове
+				 */
+				for(size_t k = 0; k < WORDS; k++){
+					// Очередное слово состояния
+					const uint64_t current = value[k];
+					// Выполняем сложение вкладов пары октетов по модулю два
+					outcome = _mm_xor_si128(outcome, _mm_set_epi64x(
+					 static_cast <long long> (lookup.value[k][(current >> (56 - ((j + 1) * 8))) & 0xFF]),
+					 static_cast <long long> (lookup.value[k][(current >> (56 - (j * 8))) & 0xFF])));
+				}
+				// Выполняем запись итога преобразования младшего слова пары
+				words[j] = static_cast <uint64_t> (_mm_cvtsi128_si64(outcome));
+				// Выполняем запись итога преобразования старшего слова пары
+				words[j + 1] = static_cast <uint64_t> (_mm_cvtsi128_si64(_mm_unpackhi_epi64(outcome, outcome)));
+			}
 		/**
-		 * Выполняем раскладку итога обратно в блок
+		 * Если набора команд SSE2 собиратель не даёт
 		 */
-		for(size_t j = 0; j < 8; j++){
-			// Выполняем перебор всех октетов слова
-			for(size_t k = 0; k < 8; k++)
-				// Выполняем раскладку октета итога обратно в блок
-				value[(j * 8) + k] = static_cast <uint8_t> ((words[j] >> (56 - (k * 8))) & 0xFF);
-		}
+		#else
+			/**
+			 * Выполняем перебор всех слов блока
+			 *
+			 * @note Перестановка Tau переносит октет с указателем (k * 8 + j), где j -
+			 *       указатель слова итога, а k - положение октета в слове; при словном
+			 *       виде состояния октет этот берётся сдвигом слова, а не чтением памяти
+			 */
+			for(size_t j = 0; j < WORDS; j++){
+				// Итог преобразования очередного слова
+				uint64_t outcome = 0;
+				// Выполняем перебор всех положений октета в слове
+				for(size_t k = 0; k < WORDS; k++)
+					// Выполняем сложение вклада очередного октета по модулю два
+					outcome ^= lookup.value[k][(value[k] >> (56 - (j * 8))) & 0xFF];
+				// Выполняем запись итога преобразования слова
+				words[j] = outcome;
+			}
+		#endif
+		// Выполняем перенос итога преобразования
+		::memcpy(value, words, sizeof(words));
 	}
 	/**
 	 * @brief Метод сжимающего преобразования хэш-функции
 	 *
-	 * @param hash    буфер промежуточного значения хэш-суммы
-	 * @param counter буфер счётчика разрядов
-	 * @param message буфер обрабатываемого блока
+	 * @param hash    набор промежуточного значения хэш-суммы
+	 * @param counter набор счётчика разрядов
+	 * @param message набор обрабатываемого блока
 	 */
-	static void compress(uint8_t * hash, const uint8_t * counter, const uint8_t * message) noexcept {
+	static void compress(uint64_t * hash, const uint64_t * counter, const uint64_t * message) noexcept {
+		// Свод постоянных величин кругов шифрования словами
+		const rounds_t & constants = rounds();
 		// Ключ шифрования блока
-		uint8_t key[BLOCK];
+		uint64_t key[WORDS];
 		// Выполняем копирование промежуточного значения хэш-суммы
-		::memcpy(key, hash, BLOCK);
+		::memcpy(key, hash, sizeof(key));
 		// Выполняем наложение счётчика разрядов
 		bxor(key, counter);
 		// Выполняем преобразование ключа
 		lps(key);
 		// Ключ очередного круга шифрования
-		uint8_t round[BLOCK];
+		uint64_t round[WORDS];
 		// Выполняем копирование ключа шифрования
-		::memcpy(round, key, BLOCK);
+		::memcpy(round, key, sizeof(round));
 		// Итог шифрования блока
-		uint8_t result[BLOCK];
+		uint64_t result[WORDS];
 		// Выполняем копирование обрабатываемого блока
-		::memcpy(result, message, BLOCK);
+		::memcpy(result, message, sizeof(result));
 		// Выполняем первое наложение ключа
 		bxor(result, round);
 		/**
@@ -917,7 +1105,7 @@ namespace gost {
 			// Выполняем преобразование состояния
 			lps(result);
 			// Выполняем наложение постоянной величины круга
-			bxor(round, CS[i]);
+			bxor(round, constants.value[i]);
 			// Выполняем преобразование ключа круга
 			lps(round);
 			// Выполняем наложение ключа круга
@@ -928,7 +1116,7 @@ namespace gost {
 		// Выполняем наложение обрабатываемого блока
 		bxor(result, message);
 		// Выполняем запись нового промежуточного значения хэш-суммы
-		::memcpy(hash, result, BLOCK);
+		::memcpy(hash, result, sizeof(result));
 	}
 	/**
 	 * @brief Метод заведения состояния счёта хэш-суммы
@@ -943,11 +1131,11 @@ namespace gost {
 		 * @note Хэш-функция на 256 разрядов отличается от хэш-функции на 512 разрядов
 		 *       только начальным значением и усечением итога
 		 */
-		::memset(state.hash, ((bits == 256) ? 0x01 : 0x00), BLOCK);
+		::memset(state.hash, ((bits == 256) ? 0x01 : 0x00), sizeof(state.hash));
 		// Выполняем обнуление счётчика разрядов
-		::memset(state.counter, 0, BLOCK);
+		::memset(state.counter, 0, sizeof(state.counter));
 		// Выполняем обнуление контрольной суммы блоков
-		::memset(state.sigma, 0, BLOCK);
+		::memset(state.sigma, 0, sizeof(state.sigma));
 		// Выполняем обнуление накопителя неполного блока
 		::memset(state.tail, 0, BLOCK);
 		// Выполняем сброс заполненности накопителя
@@ -970,17 +1158,17 @@ namespace gost {
 		 *          хэш-сумма вышла бы верной по стандарту, но не принимаемой ни одной
 		 *          чужой работой
 		 */
-		uint8_t block[BLOCK];
-		// Выполняем переворот порядка октетов блока
-		reverse(block, data, BLOCK);
+		uint64_t block[WORDS];
+		// Выполняем чтение блока словами с переворотом порядка октетов
+		gather(block, data);
 		// Выполняем сжимающее преобразование
 		compress(state.hash, state.counter, block);
 		// Прибавка счётчика разрядов на один блок
-		uint8_t length[BLOCK];
+		uint64_t length[WORDS];
 		// Выполняем обнуление прибавки
-		::memset(length, 0, BLOCK);
+		::memset(length, 0, sizeof(length));
 		// Выполняем установку разрядности блока
-		length[BLOCK - 2] = 0x02;
+		length[WORDS - 1] = 512;
 		// Выполняем прибавку разрядности блока к счётчику
 		add512(state.counter, length);
 		// Выполняем прибавку блока к контрольной сумме
@@ -1058,34 +1246,42 @@ namespace gost {
 			block[BLOCK - state.filled + i] = state.tail[state.filled - 1 - i];
 		// Выполняем установку признака дополнения
 		block[BLOCK - state.filled - 1] = 0x01;
+		// Набор слов дополненного блока
+		uint64_t words[WORDS];
+		// Выполняем сборку слов дополненного блока
+		for(size_t i = 0; i < WORDS; i++)
+			// Выполняем сборку очередного слова блока
+			words[i] = word(block + (i * 8));
 		// Выполняем сжимающее преобразование дополненного блока
-		compress(state.hash, state.counter, block);
+		compress(state.hash, state.counter, words);
 		// Прибавка счётчика разрядов на остаток
-		uint8_t length[BLOCK];
+		uint64_t length[WORDS];
 		// Выполняем обнуление прибавки
-		::memset(length, 0, BLOCK);
-		// Определяем разрядность остатка
-		const size_t count = (state.filled * 8);
-		// Выполняем установку младших разрядов разрядности остатка
-		length[BLOCK - 1] = static_cast <uint8_t> (count & 0xFF);
-		// Выполняем установку старших разрядов разрядности остатка
-		length[BLOCK - 2] = static_cast <uint8_t> ((count >> 8) & 0xFF);
+		::memset(length, 0, sizeof(length));
+		// Выполняем установку разрядности остатка
+		length[WORDS - 1] = static_cast <uint64_t> (state.filled * 8);
 		// Выполняем прибавку разрядности остатка к счётчику
 		add512(state.counter, length);
 		// Выполняем прибавку дополненного блока к контрольной сумме
-		add512(state.sigma, block);
+		add512(state.sigma, words);
 		// Нулевой счётчик завершающих преобразований
-		uint8_t zero[BLOCK];
+		uint64_t zero[WORDS];
 		// Выполняем обнуление счётчика завершающих преобразований
-		::memset(zero, 0, BLOCK);
+		::memset(zero, 0, sizeof(zero));
 		// Выполняем завершающее преобразование над счётчиком разрядов
 		compress(state.hash, zero, state.counter);
 		// Выполняем завершающее преобразование над контрольной суммой
 		compress(state.hash, zero, state.sigma);
+		// Промежуточное значение хэш-суммы октетами
+		uint8_t outcome[BLOCK];
+		// Выполняем раскладку промежуточного значения хэш-суммы в октеты
+		for(size_t i = 0; i < WORDS; i++)
+			// Выполняем раскладку очередного слова хэш-суммы
+			word(outcome + (i * 8), state.hash[i]);
 		// Определяем ширину вырабатываемой хэш-суммы
 		const size_t width = (state.bits / 8);
 		// Выполняем переворот хэш-суммы в порядок потока
-		reverse(digest, state.hash, width);
+		reverse(digest, outcome, width);
 	}
 	/**
 	 * @brief Метод выработки хэш-суммы разом
@@ -1253,6 +1449,16 @@ namespace gost {
 		// Определяем количество октетов записи
 		const size_t length = (::strlen(text) / 2);
 		/**
+		 * Если запись шире буфера вычислений
+		 *
+		 * @note Записи свойств кривых лежат в своде работы и шире буфера быть не могут,
+		 *       но запись, вписанная туда шире положенного, писала бы за его конец
+		 *       молча - как уже случалось с записями, оказавшимися длиннее прочих
+		 */
+		if(length > WIDTH)
+			// Выходим из метода
+			return;
+		/**
 		 * Выполняем перебор всех октетов записи
 		 */
 		for(size_t i = 0; i < length; i++){
@@ -1323,8 +1529,16 @@ namespace gost {
 	static void addmod(uint8_t * result, const uint8_t * value, const uint8_t * mod, const size_t width) noexcept {
 		// Выполняем сложение чисел
 		bignum::add(result, value, width);
-		// Выполняем приведение суммы по модулю
-		reduce(result, mod, width);
+		/**
+		 * Приведение суммы делать делением не нужно
+		 *
+		 * @note Оба слагаемых меньше модуля, оттого сумма меньше удвоенного модуля, и
+		 *       одного условного вычитания довольно. Деление здесь стоило бы 102
+		 *       наносекунды на сложение при цене самого сложения в единицы
+		 */
+		if(bignum::ucompare(result, mod, width) >= 0)
+			// Выполняем вычитание модуля из суммы
+			bignum::sub(result, mod, width);
 	}
 	/**
 	 * @brief Метод вычитания по модулю
@@ -1336,12 +1550,17 @@ namespace gost {
 	 */
 	static void submod(uint8_t * result, const uint8_t * value, const uint8_t * mod, const size_t width) noexcept {
 		/**
-		 * Выполняем добавление модуля, пока уменьшаемое меньше вычитаемого
+		 * Выполняем добавление модуля, если уменьшаемое меньше вычитаемого
 		 *
 		 * @note Числа держатся беззнаковыми, поэтому отрицательный итог получить нельзя
 		 *       вовсе, и заём берётся у модуля заранее
+		 *
+		 * @warning Одного добавления довольно лишь потому, что оба довода приведены по
+		 *          модулю: всякое действие поля отдаёт приведённый итог, а свойства
+		 *          кривой и оси ключа меньше модуля по своему устройству. Довод, по
+		 *          модулю не приведённый, дал бы здесь молчаливо неверный итог
 		 */
-		while(bignum::ucompare(result, value, width) < 0)
+		if(bignum::ucompare(result, value, width) < 0)
 			// Выполняем добавление модуля к уменьшаемому
 			bignum::add(result, mod, width);
 		// Выполняем вычитание чисел
@@ -1433,6 +1652,284 @@ namespace gost {
 		powmod(result, value, exponent, mod, width);
 	}
 	/**
+	 * @brief Свойства приведения Монтгомери
+	 *
+	 * @details Приведение по модулю делением - самое дорогое действие поля: замер на
+	 *          стенде дал 102 наносекунды деления при 143 наносекундах самого умножения,
+	 *          то есть 42% цены умножения по модулю. Приведение Монтгомери убирает
+	 *          деление целиком, заменяя его умножением на постоянную величину, снятую
+	 *          с модуля один раз
+	 *
+	 */
+	struct mont_t {
+		// Количество звеньев модуля
+		size_t limbs;
+		// Обратная величина младшего звена модуля со знаком минус
+		uint32_t factor;
+		// Квадрат основания приведения по модулю
+		uint8_t square[WIDTH];
+	};
+	/**
+	 * @brief Метод чтения звена числа
+	 *
+	 * @param value буфер числа
+	 * @param index указатель звена
+	 * @return      значение звена
+	 *
+	 * @details Числа держатся младшим октетом вперёд, и звено собирается из октетов
+	 *          вручную: приведение указателя к типу шире октета опиралось бы на порядок
+	 *          октетов машины и на выравнивание буфера
+	 */
+	static uint32_t limb(const uint8_t * value, const size_t index) noexcept {
+		// Выводим собранное звено числа
+		return (static_cast <uint32_t> (value[index * 4]) |
+		 (static_cast <uint32_t> (value[(index * 4) + 1]) << 8) |
+		 (static_cast <uint32_t> (value[(index * 4) + 2]) << 16) |
+		 (static_cast <uint32_t> (value[(index * 4) + 3]) << 24));
+	}
+	/**
+	 * @brief Метод записи звена числа
+	 *
+	 * @param value буфер числа
+	 * @param index указатель звена
+	 * @param digit записываемое значение звена
+	 */
+	static void limb(uint8_t * value, const size_t index, const uint32_t digit) noexcept {
+		// Выполняем запись октетов звена младшим вперёд
+		value[index * 4] = static_cast <uint8_t> (digit & 0xFF);
+		value[(index * 4) + 1] = static_cast <uint8_t> ((digit >> 8) & 0xFF);
+		value[(index * 4) + 2] = static_cast <uint8_t> ((digit >> 16) & 0xFF);
+		value[(index * 4) + 3] = static_cast <uint8_t> ((digit >> 24) & 0xFF);
+	}
+	/**
+	 * @brief Метод заведения свойств приведения Монтгомери
+	 *
+	 * @param mont  свойства приведения для записи
+	 * @param mod   буфер модуля
+	 * @param digit размер модуля в октетах
+	 * @param width ширина счёта в октетах
+	 */
+	static void setupMont(mont_t & mont, const uint8_t * mod, const size_t digit, const size_t width) noexcept {
+		// Выполняем установку количества звеньев модуля
+		mont.limbs = (digit / 4);
+		/**
+		 * Выполняем счёт обратной величины младшего звена модуля
+		 *
+		 * @note Обратная берётся приближением Ньютона: всякий оборот удваивает число
+		 *       верных разрядов, и пяти оборотов хватает на все 32 разряда звена.
+		 *       Модуль поля нечётен, оттого обратная величина существует
+		 */
+		uint32_t inverse = 1;
+		// Младшее звено модуля
+		const uint32_t lowest = limb(mod, 0);
+		// Выполняем перебор оборотов приближения
+		for(size_t i = 0; i < 5; i++)
+			// Выполняем очередной оборот приближения
+			inverse *= (2 - (lowest * inverse));
+		// Выполняем установку обратной величины со знаком минус
+		mont.factor = (~inverse + 1);
+		/**
+		 * Выполняем счёт квадрата основания приведения
+		 *
+		 * @note Основание равно двойке в степени числа разрядов модуля, и его квадрат
+		 *       снимается удвоением по модулю: возводить двойку в степень напрямую
+		 *       нельзя - она не вошла бы в буфер счёта
+		 */
+		// Выполняем обнуление квадрата основания
+		::memset(mont.square, 0, WIDTH);
+		// Выполняем установку основания приведения
+		bignum::bit(mont.square, width, (mont.limbs * 32), true);
+		// Выполняем приведение основания по модулю
+		reduce(mont.square, mod, width);
+		// Выполняем перебор всех разрядов основания
+		for(size_t i = 0; i < (mont.limbs * 32); i++)
+			// Выполняем удвоение основания по модулю
+			addmod(mont.square, mont.square, mod, width);
+	}
+	/**
+	 * @brief Метод умножения по модулю приведением Монтгомери
+	 *
+	 * @param result буфер множимого и итога
+	 * @param value  буфер множителя
+	 * @param mod    буфер модуля
+	 * @param mont   свойства приведения Монтгомери
+	 *
+	 * @details Итогом выходит произведение доводов, делённое на основание приведения,
+	 *          оттого числа держатся домноженными на это основание - в таком виде
+	 *          множитель основания сокращается сам собою и вывода не требует
+	 */
+	static void montmul(uint8_t * result, const uint8_t * value, const uint8_t * mod, const mont_t & mont) noexcept {
+		// Количество звеньев модуля
+		const size_t count = mont.limbs;
+		// Накопитель итога с запасом в два звена
+		uint32_t accumulator[(DIGIT / 4) + 2];
+		// Выполняем обнуление накопителя итога
+		::memset(accumulator, 0, sizeof(uint32_t) * (count + 2));
+		/**
+		 * Выполняем перебор всех звеньев множителя
+		 */
+		for(size_t i = 0; i < count; i++){
+			// Очередное звено множителя
+			const uint32_t multiplier = limb(value, i);
+			// Переносимый в старшее звено остаток
+			uint64_t carry = 0;
+			/**
+			 * Выполняем умножение множимого на очередное звено множителя
+			 */
+			for(size_t k = 0; k < count; k++){
+				// Выполняем счёт очередного произведения со сложением
+				const uint64_t sum = (static_cast <uint64_t> (accumulator[k]) +
+				 (static_cast <uint64_t> (limb(result, k)) * multiplier) + carry);
+				// Выполняем запись младшего звена суммы
+				accumulator[k] = static_cast <uint32_t> (sum & 0xFFFFFFFFULL);
+				// Выполняем перенос старшего звена суммы
+				carry = (sum >> 32);
+			}
+			// Выполняем счёт суммы старшего звена накопителя
+			const uint64_t highest = (static_cast <uint64_t> (accumulator[count]) + carry);
+			// Выполняем запись старшего звена накопителя
+			accumulator[count] = static_cast <uint32_t> (highest & 0xFFFFFFFFULL);
+			// Выполняем запись переноса старшего звена
+			accumulator[count + 1] = static_cast <uint32_t> (highest >> 32);
+			// Множитель приведения очередного оборота
+			const uint32_t reducer = (accumulator[0] * mont.factor);
+			// Выполняем счёт младшего произведения приведения
+			uint64_t sum = (static_cast <uint64_t> (accumulator[0]) +
+			 (static_cast <uint64_t> (reducer) * limb(mod, 0)));
+			// Выполняем перенос старшего звена суммы
+			carry = (sum >> 32);
+			/**
+			 * Выполняем приведение накопителя по модулю со сдвигом на звено
+			 */
+			for(size_t k = 1; k < count; k++){
+				// Выполняем счёт очередного произведения приведения
+				sum = (static_cast <uint64_t> (accumulator[k]) +
+				 (static_cast <uint64_t> (reducer) * limb(mod, k)) + carry);
+				// Выполняем запись младшего звена суммы со сдвигом
+				accumulator[k - 1] = static_cast <uint32_t> (sum & 0xFFFFFFFFULL);
+				// Выполняем перенос старшего звена суммы
+				carry = (sum >> 32);
+			}
+			// Выполняем счёт суммы старшего звена накопителя
+			sum = (static_cast <uint64_t> (accumulator[count]) + carry);
+			// Выполняем запись старшего звена со сдвигом
+			accumulator[count - 1] = static_cast <uint32_t> (sum & 0xFFFFFFFFULL);
+			// Выполняем счёт нового старшего звена
+			accumulator[count] = static_cast <uint32_t> (accumulator[count + 1] + (sum >> 32));
+		}
+		// Выполняем обнуление буфера итога
+		::memset(result, 0, WIDTH);
+		// Выполняем перебор всех звеньев накопителя
+		for(size_t i = 0; i < count; i++)
+			// Выполняем запись очередного звена итога
+			limb(result, i, accumulator[i]);
+		/**
+		 * Если итог не меньше модуля либо перенос старшего звена не пуст
+		 *
+		 * @note Итог приведения меньше удвоенного модуля, оттого одного вычитания
+		 *       довольно; перенос старшего звена значит, что итог превысил основание
+		 */
+		if((accumulator[count] != 0) || (bignum::ucompare(result, mod, mont.limbs * 4) >= 0))
+			// Выполняем вычитание модуля из итога
+			bignum::sub(result, mod, mont.limbs * 4);
+	}
+	/**
+	 * @brief Метод перевода числа в вид Монтгомери
+	 *
+	 * @param value буфер числа
+	 * @param mod   буфер модуля
+	 * @param mont  свойства приведения Монтгомери
+	 */
+	static void enter(uint8_t * value, const uint8_t * mod, const mont_t & mont) noexcept {
+		// Выполняем домножение числа на квадрат основания приведения
+		montmul(value, mont.square, mod, mont);
+	}
+	/**
+	 * @brief Метод вывода числа из вида Монтгомери
+	 *
+	 * @param value буфер числа
+	 * @param mod   буфер модуля
+	 * @param mont  свойства приведения Монтгомери
+	 */
+	static void leave(uint8_t * value, const uint8_t * mod, const mont_t & mont) noexcept {
+		// Единица вида обычного счёта
+		uint8_t one[WIDTH];
+		// Выполняем обнуление единицы
+		::memset(one, 0, WIDTH);
+		// Выполняем установку единицы
+		one[0] = 0x01;
+		// Выполняем деление числа на основание приведения
+		montmul(value, one, mod, mont);
+	}
+	/**
+	 * @brief Метод возведения в степень по модулю видом Монтгомери
+	 *
+	 * @param result   буфер для записи итога
+	 * @param base     буфер основания видом Монтгомери
+	 * @param exponent буфер показателя
+	 * @param mod      буфер модуля
+	 * @param mont     свойства приведения Монтгомери
+	 * @param width    ширина счёта в октетах
+	 */
+	static void montpow(uint8_t * result, const uint8_t * base, const uint8_t * exponent, const uint8_t * mod, const mont_t & mont, const size_t width) noexcept {
+		// Накопитель итога возведения
+		uint8_t outcome[WIDTH];
+		// Выполняем обнуление накопителя итога
+		::memset(outcome, 0, WIDTH);
+		// Выполняем установку единицы в накопитель итога
+		outcome[0] = 0x01;
+		// Выполняем перевод единицы в вид Монтгомери
+		enter(outcome, mod, mont);
+		// Накопитель квадратов основания
+		uint8_t square[WIDTH];
+		// Выполняем копирование основания
+		::memcpy(square, base, WIDTH);
+		// Определяем количество значащих разрядов показателя
+		const size_t count = bignum::bits(exponent, width);
+		/**
+		 * Выполняем перебор разрядов показателя от младшего к старшему
+		 */
+		for(size_t i = 0; i < count; i++){
+			// Если очередной разряд показателя установлен
+			if(bignum::bit(exponent, width, i))
+				// Выполняем умножение накопителя итога на квадрат основания
+				montmul(outcome, square, mod, mont);
+			// Промежуточное значение квадрата основания
+			uint8_t temp[WIDTH];
+			// Выполняем копирование квадрата основания
+			::memcpy(temp, square, WIDTH);
+			// Выполняем возведение основания в очередной квадрат
+			montmul(square, temp, mod, mont);
+		}
+		// Выполняем запись итога возведения
+		::memcpy(result, outcome, WIDTH);
+	}
+	/**
+	 * @brief Метод получения обратного по модулю видом Монтгомери
+	 *
+	 * @param result буфер для записи итога
+	 * @param value  буфер обращаемого числа видом Монтгомери
+	 * @param mod    буфер модуля
+	 * @param mont   свойства приведения Монтгомери
+	 * @param width  ширина счёта в октетах
+	 */
+	static void montinv(uint8_t * result, const uint8_t * value, const uint8_t * mod, const mont_t & mont, const size_t width) noexcept {
+		// Показатель степени обращения
+		uint8_t exponent[WIDTH];
+		// Выполняем копирование модуля
+		::memcpy(exponent, mod, WIDTH);
+		// Уменьшаемое показателя степени
+		uint8_t two[WIDTH];
+		// Выполняем обнуление уменьшаемого
+		::memset(two, 0, WIDTH);
+		// Выполняем установку двойки
+		two[0] = 0x02;
+		// Выполняем уменьшение показателя степени на два
+		bignum::sub(exponent, two, width);
+		// Выполняем возведение обращаемого числа в степень
+		montpow(result, value, exponent, mod, mont, width);
+	}
+	/**
 	 * @brief Точка кривой в проективных координатах Якоби
 	 *
 	 * @details Проективные координаты избавляют от обращения по модулю на всяком
@@ -1453,6 +1950,10 @@ namespace gost {
 	 *
 	 */
 	struct field_t {
+		// Свойства приведения Монтгомери по модулю простого поля
+		mont_t mont;
+		// Свойства приведения Монтгомери по порядку точки основания
+		mont_t order;
 		// Размер числа подписи и координаты точки в октетах
 		size_t digit;
 		// Ширина счёта поля в октетах
@@ -1489,10 +1990,52 @@ namespace gost {
 		parse(field.basis.x, curve.x);
 		// Выполняем разбор второй оси точки основания
 		parse(field.basis.y, curve.y);
+		/**
+		 * Выполняем заведение свойств приведения Монтгомери
+		 *
+		 * @note Свойства снимаются с модуля поля при всяком заведении: счёт их стоит
+		 *       около пяти сотых доли процента от выработки подписи, а удержание их
+		 *       между вызовами потребовало бы состояния, живущего дольше работы
+		 */
+		setupMont(field.mont, field.p, curve.digit, field.width);
+		// Выполняем заведение свойств приведения по порядку точки основания
+		setupMont(field.order, field.q, curve.digit, field.width);
+		// Выполняем перевод коэффициента кривой в вид Монтгомери
+		enter(field.a, field.p, field.mont);
+		// Выполняем перевод первой оси точки основания в вид Монтгомери
+		enter(field.basis.x, field.p, field.mont);
+		// Выполняем перевод второй оси точки основания в вид Монтгомери
+		enter(field.basis.y, field.p, field.mont);
 		// Выполняем обнуление знаменателя точки основания
 		::memset(field.basis.z, 0, WIDTH);
 		// Выполняем установку единицы в знаменатель точки основания
 		field.basis.z[0] = 0x01;
+		// Выполняем перевод знаменателя точки основания в вид Монтгомери
+		enter(field.basis.z, field.p, field.mont);
+	}
+	/**
+	 * @brief Метод получения свойств кривой
+	 *
+	 * @param index указатель набора свойств кривой
+	 * @return      свойства кривой в буферах вычислений
+	 *
+	 * @details Свойства снимаются с набора при первом обращении к нему и живут до конца
+	 *          работы: разбор записей свойств, счёт величин приведения Монтгомери и
+	 *          перевод точки основания в его вид зависят от одного лишь набора, и счёт
+	 *          их на всякой подписи отдавал бы пятую часть её времени задаром
+	 */
+	static const field_t & fieldOf(const size_t index) noexcept {
+		// Признаки выполненного заведения свойств по всем наборам
+		static once_flag flags[COUNT];
+		// Свойства кривых по всем наборам
+		static field_t fields[COUNT];
+		// Выполняем заведение свойств кривой единожды
+		call_once(flags[index], [index]() noexcept {
+			// Выполняем заведение свойств кривой
+			setup(fields[index], index);
+		});
+		// Выводим свойства кривой
+		return fields[index];
 	}
 	/**
 	 * @brief Метод проверки точки на бесконечную удалённость
@@ -1526,30 +2069,30 @@ namespace gost {
 		uint8_t yy[WIDTH], s[WIDTH], m[WIDTH], t[WIDTH], zz[WIDTH];
 		// Выполняем возведение второй оси в квадрат
 		::memcpy(yy, point.y, WIDTH);
-		mulmod(yy, point.y, field.p, field.width);
+		montmul(yy, point.y, field.p, field.mont);
 		// Выполняем счёт учетверённого произведения первой оси на квадрат второй
 		::memcpy(s, point.x, WIDTH);
-		mulmod(s, yy, field.p, field.width);
+		montmul(s, yy, field.p, field.mont);
 		addmod(s, s, field.p, field.width);
 		addmod(s, s, field.p, field.width);
 		// Выполняем возведение знаменателя в квадрат
 		::memcpy(zz, point.z, WIDTH);
-		mulmod(zz, point.z, field.p, field.width);
+		montmul(zz, point.z, field.p, field.mont);
 		// Выполняем счёт углового коэффициента касательной
 		::memcpy(m, point.x, WIDTH);
-		mulmod(m, point.x, field.p, field.width);
+		montmul(m, point.x, field.p, field.mont);
 		::memcpy(t, m, WIDTH);
 		addmod(m, t, field.p, field.width);
 		addmod(m, t, field.p, field.width);
 		::memcpy(t, zz, WIDTH);
-		mulmod(t, zz, field.p, field.width);
-		mulmod(t, field.a, field.p, field.width);
+		montmul(t, zz, field.p, field.mont);
+		montmul(t, field.a, field.p, field.mont);
 		addmod(m, t, field.p, field.width);
 		// Первая ось итога
 		uint8_t nx[WIDTH];
 		// Выполняем счёт первой оси итога
 		::memcpy(nx, m, WIDTH);
-		mulmod(nx, m, field.p, field.width);
+		montmul(nx, m, field.p, field.mont);
 		submod(nx, s, field.p, field.width);
 		submod(nx, s, field.p, field.width);
 		// Вторая ось итога
@@ -1557,9 +2100,9 @@ namespace gost {
 		// Выполняем счёт второй оси итога
 		::memcpy(ny, s, WIDTH);
 		submod(ny, nx, field.p, field.width);
-		mulmod(ny, m, field.p, field.width);
+		montmul(ny, m, field.p, field.mont);
 		::memcpy(t, yy, WIDTH);
-		mulmod(t, yy, field.p, field.width);
+		montmul(t, yy, field.p, field.mont);
 		// Выполняем восьмикратное увеличение вычитаемого
 		for(size_t i = 0; i < 3; i++)
 			addmod(t, t, field.p, field.width);
@@ -1568,7 +2111,7 @@ namespace gost {
 		uint8_t nz[WIDTH];
 		// Выполняем счёт знаменателя итога
 		::memcpy(nz, point.y, WIDTH);
-		mulmod(nz, point.z, field.p, field.width);
+		montmul(nz, point.z, field.p, field.mont);
 		addmod(nz, nz, field.p, field.width);
 		// Выполняем запись первой оси итога
 		::memcpy(result.x, nx, WIDTH);
@@ -1608,21 +2151,21 @@ namespace gost {
 		uint8_t z1[WIDTH], z2[WIDTH], u1[WIDTH], u2[WIDTH], s1[WIDTH], s2[WIDTH], h[WIDTH], r[WIDTH], t[WIDTH];
 		// Выполняем возведение знаменателей в квадрат
 		::memcpy(z1, first.z, WIDTH);
-		mulmod(z1, first.z, field.p, field.width);
+		montmul(z1, first.z, field.p, field.mont);
 		::memcpy(z2, second.z, WIDTH);
-		mulmod(z2, second.z, field.p, field.width);
+		montmul(z2, second.z, field.p, field.mont);
 		// Выполняем приведение первых осей к общему знаменателю
 		::memcpy(u1, first.x, WIDTH);
-		mulmod(u1, z2, field.p, field.width);
+		montmul(u1, z2, field.p, field.mont);
 		::memcpy(u2, second.x, WIDTH);
-		mulmod(u2, z1, field.p, field.width);
+		montmul(u2, z1, field.p, field.mont);
 		// Выполняем приведение вторых осей к общему знаменателю
 		::memcpy(s1, first.y, WIDTH);
-		mulmod(s1, z2, field.p, field.width);
-		mulmod(s1, second.z, field.p, field.width);
+		montmul(s1, z2, field.p, field.mont);
+		montmul(s1, second.z, field.p, field.mont);
 		::memcpy(s2, second.y, WIDTH);
-		mulmod(s2, z1, field.p, field.width);
-		mulmod(s2, first.z, field.p, field.width);
+		montmul(s2, z1, field.p, field.mont);
+		montmul(s2, first.z, field.p, field.mont);
 		/**
 		 * Если первые оси слагаемых совпали
 		 */
@@ -1650,18 +2193,18 @@ namespace gost {
 		uint8_t hh[WIDTH], hhh[WIDTH];
 		// Выполняем возведение разности первых осей в квадрат
 		::memcpy(hh, h, WIDTH);
-		mulmod(hh, h, field.p, field.width);
+		montmul(hh, h, field.p, field.mont);
 		// Выполняем возведение разности первых осей в куб
 		::memcpy(hhh, hh, WIDTH);
-		mulmod(hhh, h, field.p, field.width);
+		montmul(hhh, h, field.p, field.mont);
 		// Первая ось итога
 		uint8_t nx[WIDTH];
 		// Выполняем счёт первой оси итога
 		::memcpy(nx, r, WIDTH);
-		mulmod(nx, r, field.p, field.width);
+		montmul(nx, r, field.p, field.mont);
 		submod(nx, hhh, field.p, field.width);
 		::memcpy(t, u1, WIDTH);
-		mulmod(t, hh, field.p, field.width);
+		montmul(t, hh, field.p, field.mont);
 		submod(nx, t, field.p, field.width);
 		submod(nx, t, field.p, field.width);
 		// Вторая ось итога
@@ -1669,16 +2212,16 @@ namespace gost {
 		// Выполняем счёт второй оси итога
 		::memcpy(ny, t, WIDTH);
 		submod(ny, nx, field.p, field.width);
-		mulmod(ny, r, field.p, field.width);
+		montmul(ny, r, field.p, field.mont);
 		::memcpy(t, s1, WIDTH);
-		mulmod(t, hhh, field.p, field.width);
+		montmul(t, hhh, field.p, field.mont);
 		submod(ny, t, field.p, field.width);
 		// Знаменатель итога
 		uint8_t nz[WIDTH];
 		// Выполняем счёт знаменателя итога
 		::memcpy(nz, h, WIDTH);
-		mulmod(nz, first.z, field.p, field.width);
-		mulmod(nz, second.z, field.p, field.width);
+		montmul(nz, first.z, field.p, field.mont);
+		montmul(nz, second.z, field.p, field.mont);
 		// Выполняем запись первой оси итога
 		::memcpy(result.x, nx, WIDTH);
 		// Выполняем запись второй оси итога
@@ -1695,34 +2238,209 @@ namespace gost {
 	 * @param field  свойства кривой
 	 */
 	static void multiply(point_t & result, const point_t & point, const uint8_t * factor, const field_t & field) noexcept {
+		// Размер окна перебора в разрядах
+		static constexpr size_t WINDOW = 4;
+		/**
+		 * Кратные умножаемой точки по всем значениям окна
+		 *
+		 * @details Окно в четыре разряда меняет сложение на всякой единице множителя
+		 *          сложением на всякие четыре разряда: у множителя в 256 разрядов это
+		 *          64 сложения вместо 128 в среднем, ценою пятнадцати сложений счёта
+		 *          самой таблицы
+		 */
+		point_t table[1u << WINDOW];
+		// Выполняем обнуление знаменателя первого кратного
+		::memset(table[0].z, 0, WIDTH);
+		// Выполняем установку умножаемой точки вторым кратным
+		table[1] = point;
+		/**
+		 * Выполняем счёт остальных кратных умножаемой точки
+		 */
+		for(size_t i = 2; i < (1u << WINDOW); i++){
+			/**
+			 * Чётное кратное выходит удвоением половинного, нечётное - сложением
+			 */
+			if((i % 2) == 0)
+				// Выполняем удвоение половинного кратного
+				twice(table[i], table[i / 2], field);
+			// Выполняем сложение предыдущего кратного с умножаемой точкой
+			else append(table[i], table[i - 1], point, field);
+		}
 		// Накопитель итога умножения
 		point_t outcome;
-		// Выполняем обнуление осей накопителя
-		::memset(outcome.x, 0, WIDTH);
-		::memset(outcome.y, 0, WIDTH);
 		// Выполняем обнуление знаменателя накопителя
 		::memset(outcome.z, 0, WIDTH);
-		// Выполняем установку единиц в оси накопителя
-		outcome.x[0] = 0x01;
-		outcome.y[0] = 0x01;
 		// Определяем количество значащих разрядов множителя
 		const size_t count = bignum::bits(factor, field.width);
+		// Определяем количество окон перебора
+		const size_t windows = ((count + WINDOW - 1) / WINDOW);
 		/**
-		 * Выполняем перебор разрядов множителя от старшего к младшему
+		 * Выполняем перебор окон множителя от старшего к младшему
 		 */
-		for(size_t i = count; i-- > 0;){
+		for(size_t i = windows; i-- > 0;){
+			/**
+			 * Выполняем удвоение накопителя по разрядам окна
+			 */
+			for(size_t k = 0; k < WINDOW; k++){
+				// Промежуточное значение накопителя
+				const point_t temp = outcome;
+				// Выполняем удвоение накопителя
+				twice(outcome, temp, field);
+			}
+			// Значение очередного окна множителя
+			size_t index = 0;
+			/**
+			 * Выполняем сбор разрядов окна множителя
+			 */
+			for(size_t k = 0; k < WINDOW; k++){
+				// Если очередной разряд окна установлен
+				if(bignum::bit(factor, field.width, (i * WINDOW) + k))
+					// Выполняем установку разряда в значение окна
+					index |= (1u << k);
+			}
+			/**
+			 * Если значение окна не пусто
+			 */
+			if(index != 0){
+				// Промежуточное значение накопителя
+				const point_t temp = outcome;
+				// Выполняем добавление кратного окна к накопителю
+				append(outcome, temp, table[index], field);
+			}
+		}
+		// Выполняем запись итога умножения
+		result = outcome;
+	}
+	/**
+	 * @brief Предвычисленные кратные точки основания
+	 *
+	 * @details Выработка подписи - это умножение одной и той же, неизменной точки
+	 *          основания, и кратные её снимаются один раз на всю работу. Множитель
+	 *          делится на восемь долей, а таблица держит все сочетания их старших
+	 *          кратных: умножение сводится к тридцати двум удвоениям и тридцати двум
+	 *          сложениям вместо двухсот пятидесяти шести и ста двадцати восьми
+	 *
+	 */
+	struct comb_t {
+		// Кратные точки основания по всем сочетаниям долей множителя
+		point_t table[256];
+	};
+	// Количество долей множителя
+	static constexpr size_t PARTS = 8;
+	/**
+	 * @brief Метод получения предвычисленных кратных точки основания
+	 *
+	 * @param curve указатель набора свойств кривой
+	 * @return      предвычисленные кратные точки основания
+	 *
+	 * @details Кратные снимаются при первом обращении к набору свойств кривой и живут
+	 *          до конца работы: счёт их стоит около пятисот действий над точками, то
+	 *          есть полутора выработок подписи, и повторять его на всякой подписи
+	 *          значило бы отдать весь выигрыш обратно
+	 */
+	static const comb_t & comb(const size_t curve) noexcept {
+		/**
+		 * Свойства кривой берутся по её же указателю
+		 *
+		 * @note Прежде свойства подавались доводом рядом с указателем набора, и два
+		 *       эти довода обязаны были отвечать друг другу: несовпадение их отравило
+		 *       бы свод кратных, снимаемый однажды и на всю работу. Довод снят, и
+		 *       несовпадению взяться неоткуда
+		 */
+		const field_t & field = fieldOf(curve);
+		// Признаки выполненного счёта кратных по всем наборам свойств кривых
+		static once_flag flags[COUNT];
+		// Кратные точки основания по всем наборам свойств кривых
+		static comb_t combs[COUNT];
+		/**
+		 * Выполняем счёт кратных точки основания единожды
+		 */
+		call_once(flags[curve], [&field, curve]() noexcept {
+			// Размер доли множителя в разрядах
+			const size_t part = ((field.digit * 8) / PARTS);
+			// Старшие кратные долей множителя
+			point_t powers[PARTS];
+			// Выполняем установку точки основания первой долей
+			powers[0] = field.basis;
+			/**
+			 * Выполняем перебор всех долей множителя сверх первой
+			 */
+			for(size_t i = 1; i < PARTS; i++){
+				// Выполняем установку кратного предыдущей доли
+				powers[i] = powers[i - 1];
+				/**
+				 * Выполняем удвоение кратного по разрядам доли
+				 */
+				for(size_t k = 0; k < part; k++){
+					// Промежуточное значение кратного
+					const point_t temp = powers[i];
+					// Выполняем удвоение кратного
+					twice(powers[i], temp, field);
+				}
+			}
+			// Выполняем обнуление знаменателя первого сочетания долей
+			::memset(combs[curve].table[0].z, 0, WIDTH);
+			/**
+			 * Выполняем перебор всех сочетаний долей множителя
+			 */
+			for(size_t i = 1; i < 256; i++){
+				// Указатель младшей установленной доли сочетания
+				size_t index = 0;
+				// Выполняем поиск младшей установленной доли сочетания
+				while(((i >> index) & 0x01) == 0)
+					// Переходим к следующей доле сочетания
+					index++;
+				// Выполняем сложение кратного доли с сочетанием без неё
+				append(combs[curve].table[i], combs[curve].table[i ^ (1u << index)], powers[index], field);
+			}
+		});
+		// Выводим предвычисленные кратные точки основания
+		return combs[curve];
+	}
+	/**
+	 * @brief Метод умножения точки основания на число
+	 *
+	 * @param result точка для записи итога
+	 * @param factor буфер множителя
+	 * @param field  свойства кривой
+	 * @param curve  указатель набора свойств кривой
+	 */
+	static void multiplyBase(point_t & result, const uint8_t * factor, const field_t & field, const size_t curve) noexcept {
+		// Предвычисленные кратные точки основания
+		const comb_t & table = comb(curve);
+		// Размер доли множителя в разрядах
+		const size_t part = ((field.digit * 8) / PARTS);
+		// Накопитель итога умножения
+		point_t outcome;
+		// Выполняем обнуление знаменателя накопителя
+		::memset(outcome.z, 0, WIDTH);
+		/**
+		 * Выполняем перебор разрядов доли множителя от старшего к младшему
+		 */
+		for(size_t i = part; i-- > 0;){
 			// Промежуточное значение накопителя
 			point_t temp = outcome;
 			// Выполняем удвоение накопителя
 			twice(outcome, temp, field);
+			// Сочетание долей множителя очередного разряда
+			size_t index = 0;
 			/**
-			 * Если очередной разряд множителя установлен
+			 * Выполняем перебор всех долей множителя
 			 */
-			if(bignum::bit(factor, field.width, i)){
+			for(size_t k = 0; k < PARTS; k++){
+				// Если очередной разряд доли множителя установлен
+				if(bignum::bit(factor, field.width, (k * part) + i))
+					// Выполняем установку доли в сочетание
+					index |= (1u << k);
+			}
+			/**
+			 * Если сочетание долей не пусто
+			 */
+			if(index != 0){
 				// Выполняем копирование накопителя
 				temp = outcome;
-				// Выполняем добавление умножаемой точки к накопителю
-				append(outcome, temp, point, field);
+				// Выполняем добавление кратного сочетания к накопителю
+				append(outcome, temp, table.table[index], field);
 			}
 		}
 		// Выполняем запись итога умножения
@@ -1740,19 +2458,51 @@ namespace gost {
 		// Обратное значение знаменателя
 		uint8_t inverse[WIDTH];
 		// Выполняем обращение знаменателя
-		invmod(inverse, point.z, field.p, field.width);
+		montinv(inverse, point.z, field.p, field.mont, field.width);
 		// Квадрат обратного значения знаменателя
 		uint8_t square[WIDTH];
 		// Выполняем возведение обратного значения в квадрат
 		::memcpy(square, inverse, WIDTH);
-		mulmod(square, inverse, field.p, field.width);
+		montmul(square, inverse, field.p, field.mont);
 		// Выполняем счёт первой оси
 		::memcpy(x, point.x, WIDTH);
-		mulmod(x, square, field.p, field.width);
+		montmul(x, square, field.p, field.mont);
 		// Выполняем счёт второй оси
 		::memcpy(y, point.y, WIDTH);
-		mulmod(y, square, field.p, field.width);
-		mulmod(y, inverse, field.p, field.width);
+		montmul(y, square, field.p, field.mont);
+		montmul(y, inverse, field.p, field.mont);
+		/**
+		 * Выполняем вывод осей из вида Монтгомери
+		 *
+		 * @note Плоские координаты уходят наружу - в запись ключа, в число подписи и в
+		 *       сличение с нею, - и вид Монтгомери там был бы иным числом
+		 */
+		leave(x, field.p, field.mont);
+		leave(y, field.p, field.mont);
+	}
+	/**
+	 * @brief Метод затирания рабочих буферов тайны
+	 *
+	 * @param first  первый затираемый буфер
+	 * @param second второй затираемый буфер
+	 * @param third  третий затираемый буфер
+	 *
+	 * @details Затираются буферы, несущие закрытую часть ключа и одноразовое число
+	 *          выработки подписи. Одноразовое число тайна не меньшая, чем сам ключ:
+	 *          зная его и подпись, закрытую часть выводят прямым счётом. Правило
+	 *          затирания тайн у модуля общее (4.8, 4.18), и путь ГОСТ ему следует
+	 */
+	static void purge(uint8_t * first, uint8_t * second = nullptr, uint8_t * third = nullptr) noexcept {
+		// Выполняем затирание первого буфера
+		::OPENSSL_cleanse(first, WIDTH);
+		// Если второй буфер подан
+		if(second != nullptr)
+			// Выполняем затирание второго буфера
+			::OPENSSL_cleanse(second, WIDTH);
+		// Если третий буфер подан
+		if(third != nullptr)
+			// Выполняем затирание третьего буфера
+			::OPENSSL_cleanse(third, WIDTH);
 	}
 	/**
 	 * @brief Метод получения открытой части ключа из закрытой
@@ -1762,9 +2512,7 @@ namespace gost {
 	 */
 	static bool derive(key_t & key) noexcept {
 		// Свойства кривой
-		field_t field;
-		// Выполняем заведение свойств кривой
-		setup(field, key.curve);
+		const field_t & field = fieldOf(key.curve);
 		// Буфер закрытой части ключа
 		uint8_t secret[WIDTH];
 		// Выполняем перенос закрытой части ключа
@@ -1772,19 +2520,25 @@ namespace gost {
 		/**
 		 * Если закрытая часть ключа нулевая либо не меньше порядка точки основания
 		 */
-		if(bignum::zero(secret, field.width) || (bignum::ucompare(secret, field.q, field.width) >= 0))
+		if(bignum::zero(secret, field.width) || (bignum::ucompare(secret, field.q, field.width) >= 0)){
+			// Выполняем затирание закрытой части ключа
+			purge(secret);
 			// Выводим результат неудачи
 			return false;
+		}
 		// Открытая часть ключа
 		point_t outcome;
 		// Выполняем умножение точки основания на закрытую часть ключа
-		multiply(outcome, field.basis, secret, field);
+		multiplyBase(outcome, secret, field, key.curve);
 		/**
 		 * Если открытая часть ключа бесконечно удалена
 		 */
-		if(infinity(outcome, field.width))
+		if(infinity(outcome, field.width)){
+			// Выполняем затирание закрытой части ключа
+			purge(secret);
 			// Выводим результат неудачи
 			return false;
+		}
 		// Оси открытой части ключа
 		uint8_t x[WIDTH], y[WIDTH];
 		// Выполняем приведение открытой части ключа к плоским координатам
@@ -1795,6 +2549,8 @@ namespace gost {
 		save(key.y, y, field.digit);
 		// Выполняем установку признака наличия закрытой части
 		key.secured = true;
+		// Выполняем затирание закрытой части ключа
+		purge(secret);
 		// Выводим результат успеха
 		return true;
 	}
@@ -1849,9 +2605,7 @@ namespace gost {
 			// Выводим результат неудачи
 			return false;
 		// Свойства кривой
-		field_t field;
-		// Выполняем заведение свойств кривой
-		setup(field, key.curve);
+		const field_t & field = fieldOf(key.curve);
 		// Буферы закрытой части ключа и хэш-суммы
 		uint8_t secret[WIDTH], e[WIDTH];
 		// Выполняем перенос закрытой части ключа
@@ -1879,15 +2633,26 @@ namespace gost {
 			// Выполняем установку единицы вместо нуля
 			e[0] = 0x01;
 		/**
+		 * Случайное число выработки подписи и числа подписи
+		 *
+		 * @note Буферы эти заведены вне перебора попыток нарочно: всякая брошенная
+		 *       попытка оставляла бы одноразовое число лежать в своей ячейке стека, а
+		 *       затирание на всяком выходе из перебора накрывает и её
+		 */
+		uint8_t raw[DIGIT], k[WIDTH], s[WIDTH], temp[WIDTH];
+		/**
 		 * Выполняем выработку подписи до годной
 		 */
 		for(size_t attempt = 0; attempt < 32; attempt++){
-			// Случайное число выработки подписи
-			uint8_t raw[DIGIT], k[WIDTH];
 			// Выполняем выработку случайного числа
-			if(!entropy::random(raw, field.digit))
+			if(!entropy::random(raw, field.digit)){
+				// Выполняем затирание закрытой части ключа и одноразового числа
+				purge(secret, k);
+				// Выполняем затирание случайного числа
+				::OPENSSL_cleanse(raw, DIGIT);
 				// Выводим результат неудачи
 				return false;
+			}
 			// Выполняем перенос случайного числа
 			load(k, raw, field.digit);
 			/**
@@ -1899,7 +2664,7 @@ namespace gost {
 			// Точка выработки подписи
 			point_t outcome;
 			// Выполняем умножение точки основания на случайное число
-			multiply(outcome, field.basis, k, field);
+			multiplyBase(outcome, k, field, key.curve);
 			/**
 			 * Если точка выработки подписи бесконечно удалена
 			 */
@@ -1922,8 +2687,6 @@ namespace gost {
 			if(bignum::zero(r, field.width))
 				// Переходим к следующей попытке
 				continue;
-			// Второе число подписи и промежуточное значение
-			uint8_t s[WIDTH], temp[WIDTH];
 			// Выполняем умножение первого числа подписи на закрытую часть ключа
 			::memcpy(s, r, WIDTH);
 			mulmod(s, secret, field.q, field.width);
@@ -1942,9 +2705,21 @@ namespace gost {
 			save(signature, s, field.digit);
 			// Выполняем выгрузку первого числа подписи
 			save(signature + field.digit, r, field.digit);
+			// Выполняем затирание закрытой части ключа, одноразового числа и слагаемых
+			purge(secret, k, s);
+			// Выполняем затирание промежуточного значения
+			purge(temp);
+			// Выполняем затирание случайного числа
+			::OPENSSL_cleanse(raw, DIGIT);
 			// Выводим результат успеха
 			return true;
 		}
+		// Выполняем затирание закрытой части ключа, одноразового числа и слагаемых
+		purge(secret, k, s);
+		// Выполняем затирание промежуточного значения
+		purge(temp);
+		// Выполняем затирание случайного числа
+		::OPENSSL_cleanse(raw, DIGIT);
 		// Выводим результат неудачи
 		return false;
 	}
@@ -1959,9 +2734,7 @@ namespace gost {
 	 */
 	static bool verify(const key_t & key, const uint8_t * digest, const size_t size, const uint8_t * signature) noexcept {
 		// Свойства кривой
-		field_t field;
-		// Выполняем заведение свойств кривой
-		setup(field, key.curve);
+		const field_t & field = fieldOf(key.curve);
 		// Числа подписи
 		uint8_t r[WIDTH], s[WIDTH];
 		// Выполняем перенос второго числа подписи
@@ -1991,8 +2764,21 @@ namespace gost {
 			e[0] = 0x01;
 		// Обратное значение хэш-суммы и множители точек
 		uint8_t v[WIDTH], z1[WIDTH], z2[WIDTH], temp[WIDTH];
+		/**
+		 * Выполняем обращение хэш-суммы видом Монтгомери
+		 *
+		 * @details Обращение берётся малой теоремой Ферма, то есть возведением в степень
+		 *          по порядку точки основания: это около четырёхсот умножений по модулю,
+		 *          и приведение делением обошлось бы здесь в шестую часть всей проверки
+		 */
+		// Выполняем копирование хэш-суммы
+		::memcpy(v, e, WIDTH);
+		// Выполняем перевод хэш-суммы в вид Монтгомери
+		enter(v, field.q, field.order);
 		// Выполняем обращение хэш-суммы
-		invmod(v, e, field.q, field.width);
+		montinv(v, v, field.q, field.order, field.width);
+		// Выполняем вывод обращённой хэш-суммы из вида Монтгомери
+		leave(v, field.q, field.order);
 		// Выполняем счёт множителя точки основания
 		::memcpy(z1, s, WIDTH);
 		mulmod(z1, v, field.q, field.width);
@@ -2007,16 +2793,22 @@ namespace gost {
 		point_t open;
 		// Выполняем перенос первой оси открытой части ключа
 		load(open.x, key.x, field.digit);
+		// Выполняем перевод первой оси в вид Монтгомери
+		enter(open.x, field.p, field.mont);
 		// Выполняем перенос второй оси открытой части ключа
 		load(open.y, key.y, field.digit);
+		// Выполняем перевод второй оси в вид Монтгомери
+		enter(open.y, field.p, field.mont);
 		// Выполняем обнуление знаменателя открытой части ключа
 		::memset(open.z, 0, WIDTH);
 		// Выполняем установку единицы в знаменатель открытой части ключа
 		open.z[0] = 0x01;
+		// Выполняем перевод знаменателя в вид Монтгомери
+		enter(open.z, field.p, field.mont);
 		// Слагаемые и сумма точек проверки
 		point_t first, second, sum;
 		// Выполняем умножение точки основания
-		multiply(first, field.basis, z1, field);
+		multiplyBase(first, z1, field, key.curve);
 		// Выполняем умножение открытой части ключа
 		multiply(second, open, z2, field);
 		// Выполняем сложение точек проверки
@@ -2059,8 +2851,6 @@ namespace gost {
 	static const uint8_t OID_CURVE_D[9] = {0x2a, 0x85, 0x03, 0x07, 0x01, 0x02, 0x01, 0x02, 0x02};
 	// Опознаватель набора свойств ТК26 512 C: 1.2.643.7.1.2.1.2.3
 	static const uint8_t OID_CURVE_E[9] = {0x2a, 0x85, 0x03, 0x07, 0x01, 0x02, 0x01, 0x02, 0x03};
-	// Количество известных работе наборов свойств кривых
-	static constexpr size_t COUNT = 5;
 	/**
 	 * @brief Метод записи длины по правилам DER
 	 *

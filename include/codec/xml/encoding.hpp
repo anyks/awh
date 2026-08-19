@@ -322,6 +322,9 @@ namespace awh {
 					 * @warning Устанавливается лишь до приведения первого куска: сменить
 					 * кодировку посреди текста нельзя, и такое указание отвергается
 					 *
+					 * @note Кодировка неопределённая снимает навязывание, возвращая приведение
+					 * к определению кодировки по метке порядка байтов и объявлению разметки
+					 *
 					 * @param encoding устанавливаемая кодировка исходного текста
 					 * @return         результат выполнения операции
 					 *
@@ -332,6 +335,8 @@ namespace awh {
 					 * — say, from the «Content-Type» field of an answer over the HTTP protocol
 					 * @warning It is set only before the conversion of the first chunk: the encoding cannot be
 					 * changed in the middle of a text, and such an indication is rejected
+					 * @note An undefined encoding removes the imposition, returning the conversion to the
+					 * determination of the encoding by the byte order mark and by the declaration of the markup
 					 * @param encoding encoding of the source text being set
 					 * @return         result of performing the operation
 					 *

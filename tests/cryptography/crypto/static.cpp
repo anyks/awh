@@ -22,6 +22,7 @@
 /**
  * Подключаем заголовочный файлы проекта
  */
+#include <random>
 #include "crypto.hpp"
 
 /**
@@ -3127,9 +3128,17 @@ TEST_F(CryptoFixture, SignatureKeyStorageCryptoTest){
 	/**
 	 * Выполняем перебор всех заведённых видов подписи
 	 */
-	for(auto & kind : {awh::crypto_t::signature_t::RSA, awh::crypto_t::signature_t::ECDSA, awh::crypto_t::signature_t::ED25519}){
-		// Тип хэш-суммы, схеме подписи отвечающий
-		const awh::crypto_t::hash_t hash = ((kind == awh::crypto_t::signature_t::ED25519) ? awh::crypto_t::hash_t::NONE : awh::crypto_t::hash_t::SHA256);
+	for(auto & kind : {awh::crypto_t::signature_t::RSA, awh::crypto_t::signature_t::ECDSA, awh::crypto_t::signature_t::ED25519,
+	 awh::crypto_t::signature_t::GOST, awh::crypto_t::signature_t::GOST512}){
+		/**
+		 * Тип хэш-суммы, схеме подписи отвечающий
+		 *
+		 * @note Схемы Ed25519 и ГОСТ хэш-суммы не принимают: первая подписывает
+		 *       сообщение сама, вторая предписывает хэш-функцию собою
+		 */
+		const awh::crypto_t::hash_t hash = (((kind == awh::crypto_t::signature_t::ED25519) ||
+		 (kind == awh::crypto_t::signature_t::GOST) || (kind == awh::crypto_t::signature_t::GOST512)) ?
+		 awh::crypto_t::hash_t::NONE : awh::crypto_t::hash_t::SHA256);
 		// Выполняем выработку ключа владельца
 		ASSERT_TRUE(this->_crypto->generateKey("owner", kind)) << "kind = " << static_cast <uint16_t> (kind);
 		// Получаем отпечаток выработанного ключа
@@ -4333,5 +4342,110 @@ TEST_F(CryptoFixture, GostRecordPrefixCryptoTest){
 		EXPECT_EQ(opened.substr(first + 1, ::strlen(sample.opened)), std::string(sample.opened)) << "вид " << static_cast <uint16_t> (sample.kind);
 		// Проверяем начало записи закрытой части ключа
 		EXPECT_EQ(secret.substr(second + 1, ::strlen(sample.secret)), std::string(sample.secret)) << "вид " << static_cast <uint16_t> (sample.kind);
+	}
+}
+
+/**
+ * @brief Тест переноса при сложении контрольной суммы хэш-функции
+ *
+ * @details Контрольная сумма блоков складывается словами по 64 разряда, и перенос в
+ *          старшее слово ловится сличением суммы со слагаемым. Случай, когда слагаемое
+ *          равно наибольшему слову, а перенос уже пришёл, даёт сумму, равную первому
+ *          слагаемому: без особой проверки перенос там теряется молча. Ни одна проверка
+ *          набора этого случая не задевала - он вскрылся пробой порчей, - оттого
+ *          подаётся сообщение, попадающее в него ровно. Числа сняты чужой работой
+ *          (gost12sum из gost-engine v3.0.3), а не своей
+ *
+ */
+TEST_F(CryptoFixture, StreebogCarryCryptoTest){
+	// Подаваемое сообщение в два блока
+	std::string content(128, '\0');
+	/**
+	 * Первый блок несёт единицу в младшем слове и пятёрку в следующем, второй -
+	 * наибольшие значения в обоих: сложение их даёт перенос в слово, сумма которого
+	 * равна его же первому слагаемому
+	 */
+	// Выполняем установку единицы младшего слова первого блока
+	content[0] = static_cast <char> (0x01);
+	// Выполняем установку пятёрки следующего слова первого блока
+	content[8] = static_cast <char> (0x05);
+	/**
+	 * Выполняем заполнение двух младших слов второго блока
+	 */
+	for(size_t i = 64; i < 80; i++)
+		// Выполняем установку наибольшего значения октета
+		content[i] = static_cast <char> (0xFF);
+	// Проверяем хэш-сумму на 256 разрядов
+	EXPECT_EQ(this->_crypto->hash <std::string> (content, awh::crypto_t::hash_t::STREEBOG256),
+	 std::string("c440ef267d7972891ed59b0319ee3a38904b0d1ec016ce64ff8a722c718c8179"));
+	// Проверяем хэш-сумму на 512 разрядов
+	EXPECT_EQ(this->_crypto->hash <std::string> (content, awh::crypto_t::hash_t::STREEBOG512),
+	 std::string("c1f318b38d38f8d98434820903c97dec59f7e0a2c65af2e97c7df07b0b9c1b2390779b3ec5a255bfec7c1ec89749dea61c8e9f366f568feef820cc5d0443c83d"));
+}
+
+/**
+ * @brief Тест разбора порченых записей ключа ГОСТ Р 34.10-2012
+ *
+ * @details Записи ключа приходят извне, и разбор их - единственное место модуля, где
+ *          работа читает недоверенное содержимое. Проверка ворошит подлинную запись
+ *          случайными порчами и требует не отсутствия отказов, а того, чтобы всякая
+ *          принятая запись оставалась годной: разрядность схемы отвечала бы длине
+ *          подписи, а работы подписи и отпечатка не роняли бы работу. Прогон под
+ *          санитайзерами двадцатью тысячами порч расхождений не дал
+ *
+ */
+TEST_F(CryptoFixture, GostFuzzKeyCryptoTest){
+	// Количество ворошимых записей
+	static constexpr size_t ROUNDS = 2000;
+	// Выполняем выработку подлинного ключа
+	ASSERT_TRUE(this->_crypto->generateKey("origin", awh::crypto_t::signature_t::GOST512));
+	// Выписка закрытой части подлинного ключа
+	const std::string secret = this->_crypto->getKey("origin", awh::crypto_t::key_type_t::PRIVATE);
+	// Выписка открытой части подлинного ключа
+	const std::string opened = this->_crypto->getKey("origin", awh::crypto_t::key_type_t::PUBLIC);
+	/**
+	 * Источник случайности заведён с постоянного зерна: ворошитель обязан давать один
+	 * и тот же набор порч на всякой машине, иначе отказ его невоспроизводим
+	 */
+	std::mt19937 generator(20260819);
+	/**
+	 * Выполняем перебор всех ворошимых записей
+	 */
+	for(size_t round = 0; round < ROUNDS; round++){
+		// Признак порчи закрытой части ключа
+		const bool secured = ((round % 2) == 0);
+		// Ворошимая запись ключа
+		std::string sample = (secured ? secret : opened);
+		// Количество порч записи
+		const size_t count = (1 + (generator() % 4));
+		/**
+		 * Выполняем внесение порч в запись
+		 */
+		for(size_t i = 0; i < count; i++)
+			// Выполняем порчу очередного знака записи
+			sample[generator() % sample.size()] = static_cast <char> (generator() % 256);
+		/**
+		 * Если порченая запись всё же принята
+		 */
+		if(this->_crypto->setKey("fuzz", sample, (secured ? awh::crypto_t::key_type_t::PRIVATE : awh::crypto_t::key_type_t::PUBLIC))){
+			// Вид подписи принятой записи
+			const awh::crypto_t::signature_t kind = this->_crypto->signature("fuzz");
+			// Проверяем, что вид подписи принятой записи схеме ГОСТ отвечает
+			ASSERT_TRUE((kind == awh::crypto_t::signature_t::GOST) || (kind == awh::crypto_t::signature_t::GOST512)) << "оборот " << round;
+			// Проверяем согласие длины подписи с разрядностью схемы
+			EXPECT_EQ(this->_crypto->length("fuzz"), ((kind == awh::crypto_t::signature_t::GOST512) ? 128u : 64u)) << "оборот " << round;
+			// Набор выработанной подписи
+			std::vector <uint8_t> signature;
+			/**
+			 * Работы подписи и проверки на порченом ключе законны: отказ их - обычный
+			 * исход, а вот падение работы либо чтение за пределами буфера - нет
+			 */
+			// Выполняем выработку подписи порченым ключом
+			this->_crypto->sign("fuzz", reinterpret_cast <const uint8_t *> ("x"), 1, awh::crypto_t::hash_t::NONE, signature);
+			// Выполняем проверку выработанной подписи
+			this->_crypto->verify("fuzz", reinterpret_cast <const uint8_t *> ("x"), 1, signature, awh::crypto_t::hash_t::NONE);
+			// Проверяем снятие отпечатка порченого ключа
+			EXPECT_FALSE(this->_crypto->fingerprint <std::string> ("fuzz", awh::crypto_t::format_t::HEX).empty()) << "оборот " << round;
+		}
 	}
 }

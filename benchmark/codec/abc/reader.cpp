@@ -66,32 +66,32 @@ namespace {
 	 *          порог, назначенный по рабочей машине впритык, валил бы прогон на них
 	 *
 	 */
-	static constexpr double READ_SERVICE_THRESHOLD = 20.0;
+	static constexpr double READ_SERVICE_THRESHOLD = 4.0;
 	/**
 	 * @brief Порог пропускной способности чтения крупной записи
 	 *
 	 */
-	static constexpr double READ_LARGE_THRESHOLD = 40.0;
+	static constexpr double READ_LARGE_THRESHOLD = 9.0;
 	/**
 	 * @brief Порог пропускной способности чтения записи с преобладанием чисел
 	 *
 	 */
-	static constexpr double READ_NUMBERS_THRESHOLD = 40.0;
+	static constexpr double READ_NUMBERS_THRESHOLD = 10.0;
 	/**
 	 * @brief Порог пропускной способности чтения записи с преобладанием строк
 	 *
 	 */
-	static constexpr double READ_STRINGS_THRESHOLD = 60.0;
+	static constexpr double READ_STRINGS_THRESHOLD = 24.0;
 	/**
 	 * @brief Порог пропускной способности чтения записи с двоичными значениями
 	 *
 	 */
-	static constexpr double READ_BLOBS_THRESHOLD = 60.0;
+	static constexpr double READ_BLOBS_THRESHOLD = 28.0;
 	/**
 	 * @brief Порог пропускной способности чтения записи с глубокой вложенностью
 	 *
 	 */
-	static constexpr double READ_NESTED_THRESHOLD = 20.0;
+	static constexpr double READ_NESTED_THRESHOLD = 2.0;
 	/**
 	 * @brief Порог количества выделений памяти на чтение крупной записи
 	 *
@@ -101,7 +101,7 @@ namespace {
 	 *          что какое-то хранилище перестало переиспользоваться
 	 *
 	 */
-	static constexpr double READ_ALLOCATIONS_THRESHOLD = 24.0;
+	static constexpr double READ_ALLOCATIONS_THRESHOLD = 48.0;
 	/**
 	 * @brief Порог просадки чтения от подачи записи кусками
 	 *

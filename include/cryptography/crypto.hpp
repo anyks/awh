@@ -2059,7 +2059,8 @@ namespace awh {
 			 *          Поточной подписи Ed25519 не имеет по своему устройству: подпись его
 			 *          требует двух проходов по сообщению, и поточная её разновидность
 			 *          (Ed25519ph по RFC 8032) - схема отдельная, дающая иную подпись. Схемы
-			 *          RSA и ECDSA подписывают хэш-сумму, а та набирается порциями
+			 *          RSA, ECDSA и ГОСТ Р 34.10-2012 обеих разрядностей подписывают хэш-сумму,
+			 *          а та набирается порциями
 			 *
 			 * @param type вид подписи
 			 * @return     признак поточной работы вида подписи
@@ -2074,8 +2075,9 @@ namespace awh {
 			 *
 			 *          Ed25519 has no streaming signature by its structure: its signature
 			 *          requires two passes over the message, and its streaming variety
-			 *          (Ed25519ph by RFC 8032) is a separate scheme giving a different signature. The RSA
-			 *          and ECDSA schemes sign the hash sum, and that one is gathered by portions
+			 *          (Ed25519ph by RFC 8032) is a separate scheme giving a different signature. The RSA,
+			 *          ECDSA and GOST R 34.10-2012 schemes of both bit widths sign the hash sum, and that
+			 *          one is gathered by portions
 			 *
 			 * @param type kind of the signature
 			 * @return     sign of the streaming work of the signature kind
@@ -2251,11 +2253,12 @@ namespace awh {
 			 *          на месте, место под подпись приходится резервировать заранее.
 			 *
 			 *          Постоянной длины подпись имеет не всегда. У Ed25519 она равна
-			 *          шестидесяти четырём октетам всегда, у RSA - разрядности ключа, а у
-			 *          ECDSA плавает: запись DER несёт два числа переменной длины, и старший
-			 *          разряд числа требует нулевого предшествования. Вид, постоянной длины
-			 *          не имеющий, отвечает нулём, и место под подпись резервируется по
-			 *          верхнему пределу
+			 *          шестидесяти четырём октетам всегда, у ГОСТ Р 34.10-2012 - шестидесяти
+			 *          четырём октетам у схемы на 256 разрядов и ста двадцати восьми у схемы
+			 *          на 512, у RSA - разрядности ключа, а у ECDSA плавает: запись DER несёт
+			 *          два числа переменной длины, и старший разряд числа требует нулевого
+			 *          предшествования. Вид, постоянной длины не имеющий, отвечает нулём, и
+			 *          место под подпись резервируется по верхнему пределу
 			 *
 			 * @param name имя ключа в связке
 			 * @return     точная длина подписи в октетах, либо ноль если длина непостоянна
@@ -2268,11 +2271,12 @@ namespace awh {
 			 *          in place have to reserve the place for the signature beforehand.
 			 *
 			 *          A signature does not always have a constant length. For Ed25519 it equals
-			 *          sixty four octets always, for RSA it equals the bit width of the key, and for
-			 *          ECDSA it floats: the DER record carries two numbers of a variable length, and the high
-			 *          bit of a number requires a leading zero. A kind that has no constant length
-			 *          answers with a zero, and the place for the signature is reserved by the
-			 *          upper limit
+			 *          sixty four octets always, for GOST R 34.10-2012 it equals sixty four octets for the
+			 *          scheme with 256 bits and one hundred twenty eight for the scheme with 512, for RSA it
+			 *          equals the bit width of the key, and for ECDSA it floats: the DER record carries two
+			 *          numbers of a variable length, and the high bit of a number requires a leading zero.
+			 *          A kind that has no constant length answers with a zero, and the place for the signature
+			 *          is reserved by the upper limit
 			 *
 			 * @param name name of the key in the keyring
 			 * @return     exact length of the signature in octets, or zero if the length is not constant
@@ -2366,7 +2370,8 @@ namespace awh {
 			 * @brief Метод подписания данных ключом из связки
 			 *
 			 * @details Тип хэш-суммы обязателен схемам, подписывающим хэш-сумму (RSA и ECDSA),
-			 *          и неуместен схеме Ed25519, подписывающей сообщение саму. Подача
+			 *          неуместен схеме Ed25519, подписывающей сообщение саму, и неуместен схемам
+			 *          ГОСТ Р 34.10-2012, предписывающим себе хэш-функцию собою. Подача
 			 *          неуместного отвергается, а не сглаживается: вызывающая сторона, подавшая
 			 *          хэш-сумму схеме Ed25519, подписи хэш-суммы не получит, и молчание об
 			 *          этом выдало бы одно за другое
@@ -2374,7 +2379,7 @@ namespace awh {
 			 * @param name   имя ключа в связке
 			 * @param buffer буфер данных для подписи
 			 * @param size   размер данных для подписи
-			 * @param hash   тип хэш-суммы, NONE для схемы Ed25519
+			 * @param hash   тип хэш-суммы, NONE для схем Ed25519 и ГОСТ Р 34.10-2012
 			 * @param result буфер куда следует положить результат
 			 * @return       признак успешно выполненной работы
 			 *
@@ -2382,7 +2387,8 @@ namespace awh {
 			 * @brief Method of the signing of data by a key from the keyring
 			 *
 			 * @details The type of the hash sum is mandatory to the schemes signing a hash sum (RSA and ECDSA),
-			 *          and is inapplicable to the Ed25519 scheme signing the message itself. Passing
+			 *          is inapplicable to the Ed25519 scheme signing the message itself, and is inapplicable
+			 *          to the GOST R 34.10-2012 schemes prescribing the hash function by themselves. Passing
 			 *          the inapplicable is rejected rather than smoothed over: a calling side that has passed
 			 *          a hash sum to the Ed25519 scheme will get no signature of the hash sum, and keeping silent about
 			 *          that would pass off one thing for another
@@ -2390,7 +2396,7 @@ namespace awh {
 			 * @param name   name of the key in the keyring
 			 * @param buffer data buffer for the signature
 			 * @param size   size of the data for the signature
-			 * @param hash   type of the hash sum, NONE for the Ed25519 scheme
+			 * @param hash   type of the hash sum, NONE for the Ed25519 and GOST R 34.10-2012 schemes
 			 * @param result buffer the result should be placed into
 			 * @return       sign of the successfully performed work
 			 *
@@ -2409,7 +2415,7 @@ namespace awh {
 			 * @param buffer    буфер данных для проверки
 			 * @param size      размер данных для проверки
 			 * @param signature буфер с подписью данных
-			 * @param hash      тип хэш-суммы, NONE для схемы Ed25519
+			 * @param hash      тип хэш-суммы, NONE для схем Ed25519 и ГОСТ Р 34.10-2012
 			 * @return          результат проверки подписи
 			 *
 			 * \~english
@@ -2423,7 +2429,7 @@ namespace awh {
 			 * @param buffer    data buffer for the verification
 			 * @param size      size of the data for the verification
 			 * @param signature buffer with the signature of the data
-			 * @param hash      type of the hash sum, NONE for the Ed25519 scheme
+			 * @param hash      type of the hash sum, NONE for the Ed25519 and GOST R 34.10-2012 schemes
 			 * @return          result of the verification of the signature
 			 *
 			 * \~
@@ -2445,7 +2451,7 @@ namespace awh {
 			 *          о поточности можно и наперёд - см. streamable
 			 *
 			 * @param name имя ключа в связке
-			 * @param hash тип хэш-суммы
+			 * @param hash тип хэш-суммы, NONE для схем Ed25519 и ГОСТ Р 34.10-2012
 			 * @return     признак успешно выполненной работы
 			 * @see streamable
 			 *
@@ -2463,7 +2469,7 @@ namespace awh {
 			 *          about the streaming ability beforehand as well - see streamable
 			 *
 			 * @param name name of the key in the keyring
-			 * @param hash type of the hash sum
+			 * @param hash type of the hash sum, NONE for the Ed25519 and GOST R 34.10-2012 schemes
 			 * @return     sign of the successfully performed work
 			 * @see streamable
 			 *
@@ -2529,7 +2535,7 @@ namespace awh {
 			 *          поточным не бывающий, отвечает отказом с названной причиной
 			 *
 			 * @param name имя ключа в связке
-			 * @param hash тип хэш-суммы
+			 * @param hash тип хэш-суммы, NONE для схем Ed25519 и ГОСТ Р 34.10-2012
 			 * @return     признак успешно выполненной работы
 			 * @see streamable
 			 *
@@ -2546,7 +2552,7 @@ namespace awh {
 			 *          does not happen to be streaming answers with a failure naming the reason
 			 *
 			 * @param name name of the key in the keyring
-			 * @param hash type of the hash sum
+			 * @param hash type of the hash sum, NONE for the Ed25519 and GOST R 34.10-2012 schemes
 			 * @return     sign of the successfully performed work
 			 * @see streamable
 			 *

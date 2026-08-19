@@ -133,13 +133,17 @@ namespace {
 		wintun_session_t session;            // Описатель сеанса Wintun
 		HANDLE handle;                       // Дескриптор файла устройства tap-windows6
 		HANDLE event;                        // Событие готовности к чтению
+		bool pending;                        // Признак поданного упреждающего приёма
+		OVERLAPPED overlapped;               // Описатель упреждающего приёма
+		std::vector <uint8_t> buffer;        // Буфер упреждающего приёма
 		/**
 		 * @brief Конструктор
 		 *
 		 */
 		entry_t() noexcept :
 		 driver(awh::win::tunnel::driver_t::NONE), adapter(nullptr),
-		 session(nullptr), handle(INVALID_HANDLE_VALUE), event(nullptr) {}
+		 session(nullptr), handle(INVALID_HANDLE_VALUE), event(nullptr),
+		 pending(false), overlapped{} {}
 	};
 	// Замок, оберегающий реестр заведённых устройств
 	static std::mutex __awh_mutex__;
@@ -398,6 +402,55 @@ namespace {
 		// Выводим результат выполнения перевода
 		return result;
 	}
+	/**
+	 * @brief Функция подачи упреждающего приёма устройству tap-windows6
+	 *
+	 * @details Драйвер этот события готовности не выдаёт вовсе, а событие завершения
+	 *          обмена взводит: значит готовность приходится изображать самим приёмом,
+	 *          поданным заранее. Событие поданного приёма взводится, едва пакет лёг в
+	 *          буфер, и годится в ожидание наравне с событием Wintun
+	 *
+	 * @warning Приём подаётся ЗАРАНЕЕ, а не по готовности: у Wintun пакет ждёт разбора
+	 *          в кольце, и спросить о нём можно когда угодно, а tap-windows6 отдаёт
+	 *          пакет лишь тому, кто попросил его прежде прихода. Без упреждающего
+	 *          приёма событие не взводится никогда, и туннель молчит навсегда
+	 *
+	 * @param entry запись устройства, какому подаётся приём
+	 * @return      признак принятой системой подачи
+	 *
+	 */
+	static bool __awh_arm__(entry_t & entry) noexcept {
+		// Если приём уже подан либо устройство к приёму не готово
+		if(entry.pending || (entry.handle == INVALID_HANDLE_VALUE) || (entry.event == nullptr))
+			// Выводим признак поданности приёма
+			return entry.pending;
+		// Выполняем сброс описателя упреждающего приёма
+		entry.overlapped = OVERLAPPED{};
+		// Устанавливаем событие завершения упреждающего приёма
+		entry.overlapped.hEvent = entry.event;
+		// Выполняем сброс события завершения упреждающего приёма
+		::ResetEvent(entry.event);
+		// Размер принятого пакета
+		DWORD length = 0;
+		// Выполняем подачу упреждающего приёма
+		if(::ReadFile(entry.handle, entry.buffer.data(), static_cast <DWORD> (entry.buffer.size()), &length, &entry.overlapped)){
+			/**
+			 * Взводим событие сами: приём выполнен разом
+			 *
+			 * @note Система событие в этом случае взводит не всегда, а ждущая сторона
+			 *       обязана узнать о готовности одинаково при обоих исходах подачи
+			 *
+			 */
+			::SetEvent(entry.event);
+			// Запоминаем поданность упреждающего приёма
+			entry.pending = true;
+		// Если подача упреждающего приёма принята системой
+		} else if(::GetLastError() == ERROR_IO_PENDING)
+			// Запоминаем поданность упреждающего приёма
+			entry.pending = true;
+		// Выводим признак поданности приёма
+		return entry.pending;
+	}
 }
 
 /**
@@ -500,7 +553,41 @@ awh::net::socket_t awh::win::tunnel::create(const event::eth_t type, const drive
 				// Выводим пустой дескриптор
 				return net::invalid_socket_t;
 			}
-			// Запоминаем драйвер, каким устройство заведено
+			/**
+			 * Заводим событие готовности и буфер упреждающего приёма
+			 *
+			 * @note Событие заводится СБРАСЫВАЕМЫМ вручную: ждущих у него вправе
+			 *       оказаться несколько, а сбрасывает его подача следующего приёма
+			 *
+			 */
+			entry.event = ::CreateEventW(nullptr, TRUE, FALSE, nullptr);
+			// Если завести событие готовности не удалось
+			if(entry.event == nullptr){
+				// Выводим в журнал сообщение о невозможности заведения события
+				log->print("%s: tap-windows6 readiness event could not be created, error %lu", log_t::flag_t::WARNING, ::__AWH_TUNNEL_BACKEND__, ::GetLastError());
+				// Выполняем освобождение занятого устройства
+				::CloseHandle(entry.handle);
+				// Выводим пустой дескриптор
+				return net::invalid_socket_t;
+			}
+			/**
+			 * Объём буфера берётся с запасом на кадр канального уровня
+			 *
+			 * @note Буфер этот - место, куда драйвер кладёт пакет ещё до того, как о
+			 *       нём спросили, и меньше наибольшего кадра он быть не вправе:
+			 *       короткий буфер обрывает приём отказом `ERROR_MORE_DATA`
+			 *
+			 */
+			entry.buffer.resize(0xFFFF, 0);
+			/**
+			 * Запоминаем драйвер, каким устройство заведено
+			 *
+			 * @warning Упреждающий приём здесь НЕ подаётся: запись эта переезжает в
+			 *          реестр перемещением, а драйвер держит адрес описателя приёма,
+			 *          какой при переезде меняется. Подаётся приём уже над записью,
+			 *          лежащей в реестре - у выдачи события готовности и у самого приёма
+			 *
+			 */
 			entry.driver = driver_t::TAP;
 		} break;
 		// Если драйвер заведения устройства не определён
@@ -548,6 +635,24 @@ bool awh::win::tunnel::destroy(const net::socket_t sock, const log_t * log) noex
 		if(i == ::__awh_registry__.end())
 			// Выводим отрицательный результат устранения
 			return false;
+		/**
+		 * Отменяем поданный упреждающий приём прежде переезда записи
+		 *
+		 * @warning Порядок здесь значим: драйвер держит адрес описателя приёма, а
+		 *          переезд записи его меняет. Отмена по новому адресу драйверу
+		 *          неизвестна, и приём остаётся поданным над памятью, какой уже нет
+		 *
+		 */
+		if(i->second.pending){
+			// Выполняем отмену поданного упреждающего приёма
+			::CancelIoEx(i->second.handle, &i->second.overlapped);
+			// Размер принятого пакета
+			DWORD length = 0;
+			// Выполняем ожидание завершения отменяемого приёма
+			::GetOverlappedResult(i->second.handle, &i->second.overlapped, &length, TRUE);
+			// Снимаем признак поданности упреждающего приёма
+			i->second.pending = false;
+		}
 		// Снимаем запись устраняемого устройства
 		entry = ::std::move(i->second);
 		// Выполняем изъятие устройства из реестра
@@ -570,10 +675,14 @@ bool awh::win::tunnel::destroy(const net::socket_t sock, const log_t * log) noex
 			}
 		} break;
 		// Если устройство заведено драйвером tap-windows6
-		case static_cast <uint8_t> (driver_t::TAP):
+		case static_cast <uint8_t> (driver_t::TAP): {
 			// Выполняем освобождение занятого устройства
 			::CloseHandle(entry.handle);
-		break;
+			// Если событие готовности заведено
+			if(entry.event != nullptr)
+				// Выполняем закрытие события готовности
+				::CloseHandle(entry.event);
+		} break;
 	}
 	// Выводим положительный результат устранения
 	return true;
@@ -696,8 +805,23 @@ HANDLE awh::win::tunnel::event(const net::socket_t sock) noexcept {
 	const std::lock_guard <std::mutex> lock(::__awh_mutex__);
 	// Выполняем поиск устройства в реестре
 	auto i = ::__awh_registry__.find(sock);
+	// Если устройство в реестре не значится
+	if(i == ::__awh_registry__.end())
+		// Выводим пустое событие готовности
+		return nullptr;
+	/**
+	 * Устройству tap-windows6 подаём упреждающий приём
+	 *
+	 * @details Событие его взводится завершением обмена, а не приходом пакета:
+	 *          неподанный приём не взводит событие никогда, сколько бы пакетов
+	 *          устройству ни пришло
+	 *
+	 */
+	if(i->second.driver == driver_t::TAP)
+		// Выполняем подачу упреждающего приёма
+		::__awh_arm__(i->second);
 	// Выводим событие готовности устройства к чтению
-	return (i != ::__awh_registry__.end() ? i->second.event : nullptr);
+	return i->second.event;
 }
 /**
  * @brief Функция приёма пакета из туннельного устройства
@@ -756,29 +880,48 @@ int64_t awh::win::tunnel::read(const net::socket_t sock, void * buffer, const si
 		// Выводим размер принятого пакета
 		return static_cast <int64_t> (count);
 	}
-	// Описатель перекрытого обмена
-	OVERLAPPED overlapped{};
-	// Выполняем заведение события завершения обмена
-	overlapped.hEvent = ::CreateEventW(nullptr, TRUE, FALSE, nullptr);
-	// Если завести событие завершения обмена не удалось
-	if(overlapped.hEvent == nullptr)
+	/**
+	 * Приём у tap-windows6 снимается с упреждающего, а не подаётся заново
+	 *
+	 * @details Приём подан прежде прихода пакета, и здесь остаётся лишь спросить,
+	 *          завершился ли он. Спрашивается это БЕЗ ожидания: место вызова -
+	 *          цикл разбора событий, и остановить его на приходе пакета нельзя
+	 *
+	 * @warning Прежде здесь подавался свой приём с ожиданием `TRUE`, и вызов
+	 *          останавливался навсегда, покуда пакет не придёт. В цикле разбора
+	 *          событий это останавливало и все прочие узлы вместе с ним
+	 *
+	 * @note Запись берётся под замком целиком, а не снимается копией: признак
+	 *       поданности приёма живёт в реестре, и копия его теряет
+	 *
+	 */
+	const std::lock_guard <std::mutex> lock(::__awh_mutex__);
+	// Выполняем поиск устройства в реестре
+	auto i = ::__awh_registry__.find(sock);
+	// Если устройство в реестре не значится
+	if(i == ::__awh_registry__.end())
+		// Выводим признак отказа приёма
+		return -1;
+	// Если упреждающий приём не подан
+	if(!i->second.pending && !::__awh_arm__(i->second))
 		// Выводим признак отказа приёма
 		return -1;
 	// Размер принятого пакета
 	DWORD length = 0;
-	// Результат выполнения приёма
-	int64_t result = -1;
-	// Если приём пакета выполнен либо начат
-	if(::ReadFile(entry.handle, buffer, static_cast <DWORD> (size), &length, &overlapped) || (::GetLastError() == ERROR_IO_PENDING)){
-		// Если приём пакета завершён
-		if(::GetOverlappedResult(entry.handle, &overlapped, &length, TRUE))
-			// Запоминаем размер принятого пакета
-			result = static_cast <int64_t> (length);
-	}
-	// Выполняем закрытие события завершения обмена
-	::CloseHandle(overlapped.hEvent);
-	// Выводим результат выполнения приёма
-	return result;
+	// Если упреждающий приём ещё не завершён
+	if(!::GetOverlappedResult(i->second.handle, &i->second.overlapped, &length, FALSE))
+		// Выводим отсутствие принятых пакетов либо признак отказа приёма
+		return (::GetLastError() == ERROR_IO_INCOMPLETE ? 0 : -1);
+	// Снимаем признак поданности упреждающего приёма
+	i->second.pending = false;
+	// Определяем размер переносимых данных
+	const size_t count = (static_cast <size_t> (length) < size ? static_cast <size_t> (length) : size);
+	// Выполняем перенос принятого пакета в буфер приёма
+	::memcpy(buffer, i->second.buffer.data(), count);
+	// Выполняем подачу следующего упреждающего приёма
+	::__awh_arm__(i->second);
+	// Выводим размер принятого пакета
+	return static_cast <int64_t> (count);
 }
 /**
  * @brief Функция отправки пакета в туннельное устройство

@@ -95,23 +95,24 @@ namespace {
 	 *          замедление хэша в них не видно. Свод преобразования дал 88 МБ/с против
 	 *          1,9 МБ/с у поразрядного счёта (5б.12), и порог стоит стражем этой правки
 	 */
-	static constexpr double STREEBOG_THRESHOLD = 7.0;
+	static constexpr double STREEBOG_THRESHOLD = 18.0;
 	/**
 	 * Порог взят по самому медленному стенду, а не по рабочей машине: NetBSD даёт
 	 * 14,8 МБ/с против 95 у машины, и порог, посчитанный от машины, валил бы замер
 	 * на стенде при полностью исправном модуле (5б.13)
 	 */
-	static constexpr double GOST_SIGN_THRESHOLD = 130.0;
-	static constexpr double GOST_VERIFY_THRESHOLD = 60.0;
+	static constexpr double GOST_SIGN_THRESHOLD = 800.0;
+	static constexpr double GOST_VERIFY_THRESHOLD = 190.0;
 	/**
 	 * Пороги схемы на 512 разрядов
 	 *
-	 * @details Счёт поля идёт вдвое более широкими числами, а умножение и деление
-	 *          растут от ширины квадратично, оттого схема эта дороже схемы на 256
-	 *          разрядов примерно вшестеро; пороги взяты по самому медленному стенду
+	 * @details Счёт поля идёт вдвое более широкими числами, а умножение растёт от
+	 *          ширины квадратично, оттого схема эта дороже схемы на 256 разрядов
+	 *          примерно вшестеро; пороги взяты по самому медленному стенду - Debian
+	 *          под QEMU, где схема даёт 376 подписей и 88 проверок в секунду
 	 */
-	static constexpr double GOST512_SIGN_THRESHOLD = 20.0;
-	static constexpr double GOST512_VERIFY_THRESHOLD = 9.0;
+	static constexpr double GOST512_SIGN_THRESHOLD = 125.0;
+	static constexpr double GOST512_VERIFY_THRESHOLD = 29.0;
 	static constexpr double FINGERPRINT_THRESHOLD = 290000.0;
 	/**
 	 * @brief Функция получения объекта криптографии со связкой ключей подписи

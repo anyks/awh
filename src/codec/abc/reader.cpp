@@ -112,7 +112,7 @@ awh::codec::abc::Reader::Settings::Settings() noexcept :
  */
 awh::codec::abc::Reader::Reader() noexcept :
  _state(state_t::ITEM), _error(error_t::NONE), _offset(0), _origin(0), _reserved(0), _nodes(0),
- _pending(0), _awaited(type_t::UNDEFINED), _extend(extend_t::BIGNUM), _exponent(0), _subtype(0),
+ _head(0), _pending(0), _awaited(type_t::UNDEFINED), _extend(extend_t::BIGNUM), _exponent(0), _subtype(0),
  _negative(false), _document(false), _handler(nullptr), _context(nullptr) {
 	// Выполняем установку начального положения разбора
 	this->_mark = location_t();
@@ -146,6 +146,8 @@ void awh::codec::abc::Reader::reset() noexcept {
 	this->_stack.clear();
 	// Выполняем очистку очереди собранных событий
 	this->_events.clear();
+	// Выполняем сброс смещения первого невыданного события
+	this->_head = 0;
 	// Выполняем сброс события, выданного последним переходом
 	this->_current = record_t();
 	// Выполняем сброс количества разобранных узлов
@@ -174,6 +176,8 @@ void awh::codec::abc::Reader::abort() noexcept {
 	this->_state = state_t::FAILED;
 	// Выполняем очистку очереди собранных событий
 	this->_events.clear();
+	// Выполняем сброс смещения первого невыданного события
+	this->_head = 0;
 }
 /**
  * @brief Метод объявления отказа разбора
@@ -1262,7 +1266,7 @@ void awh::codec::abc::Reader::trim() noexcept {
 	 * Выполняем усечение разобранной части буфера. Отрезки собранных событий ссылаются
 	 * в буфер смещением, оттого усечение возможно лишь при пустой очереди событий
 	 */
-	if(this->_events.empty() && (this->_offset > 0)){
+	if((this->_head >= this->_events.size()) && (this->_offset > 0)){
 		// Выполняем усечение разобранной части буфера
 		this->_buffer.erase(this->_buffer.begin(), this->_buffer.begin() + static_cast <ptrdiff_t> (this->_offset));
 		// Выполняем сдвиг смещения начала буфера
@@ -1364,17 +1368,29 @@ bool awh::codec::abc::Reader::commit(const size_t size, const bool last) noexcep
  *
  */
 bool awh::codec::abc::Reader::next() noexcept {
-	// Если очередь собранных событий пуста
-	if(this->_events.empty()){
+	/**
+	 * Если все собранные события выданы, очередь опорожняется целиком.
+	 *
+	 * Память её при том удерживается: событий у крупной записи миллионы, и заводись
+	 * вместилище под них заново на всякую подачу, расход выделений рос бы с размером
+	 * записи, а не оставался постоянным
+	 */
+	if(this->_head >= this->_events.size()){
+		// Выполняем опорожнение очереди выдачи
+		this->_events.clear();
+	// Выполняем сброс смещения первого невыданного события
+	this->_head = 0;
+		// Выполняем сброс смещения первого невыданного события
+		this->_head = 0;
 		// Выполняем сброс события, выданного последним переходом
 		this->_current = record_t();
 		// Сообщаем, что события нет
 		return false;
 	}
 	// Выполняем снятие события с очереди выдачи
-	this->_current = this->_events.front();
-	// Выполняем удаление события из очереди выдачи
-	this->_events.pop_front();
+	this->_current = this->_events.at(this->_head);
+	// Выполняем сдвиг смещения первого невыданного события
+	this->_head++;
 	/**
 	 * Выполняем установку положения разбора местом снятого события: место берётся
 	 * событием, а не состоянием разбирателя, иначе оно разошлось бы от одной лишь
