@@ -356,7 +356,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					void quoted(const string & text, const style_t style) noexcept;
+					void quoted(const string_view text, const style_t style) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод приведения записи к годной кодировке UTF-8
@@ -383,6 +383,31 @@ namespace awh {
 					bool sanitize(const string & text, string & result) noexcept;
 					/**
 					 * \~russian
+					 * @brief Метод приведения записи к годной кодировке UTF-8 с выдачей среза
+					 *
+					 * @details Выдаётся СРЕЗ, а не строка: запись, негодных последовательностей
+					 * не несущая, изменения не требует вовсе, и переносить её куда-либо незачем
+					 *
+					 * @warning Срез живёт ровно столько, сколько живёт исходная запись либо
+					 *          накопитель: зовущий обязан держать оба до конца работы со срезом
+					 *
+					 * @param text   приводимая запись
+					 * @param result накопитель под приведённую запись
+					 * @param record выдаваемый срез приведённой записи
+					 * @return       признак пригодности записи
+					 *
+					 * \~english
+					 * @brief Method of the bringing of a record to a valid UTF-8 encoding with the issuing of a view
+					 * @param text   record being brought
+					 * @param result accumulator for the brought record
+					 * @param record issued view of the brought record
+					 * @return       flag of the suitability of the record
+					 *
+					 * \~
+					 */
+					bool brought(const string & text, string & result, string_view & record) noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод записи значения, к годной кодировке уже приведённого
 					 *
 					 * @details Заведён он ради того, чтобы приведение не выполнялось дважды:
@@ -407,7 +432,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool written(const string & record, const style_t style) noexcept;
+					bool written(const string_view record, const style_t style) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод открытия вместилища заданного вида

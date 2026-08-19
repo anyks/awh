@@ -750,6 +750,50 @@ bool awh::codec::yaml::Writer::enter() noexcept {
  *
  */
 bool awh::codec::yaml::Writer::sanitize(const string & text, string & result) noexcept {
+	// Приведённая запись, срезом выданная
+	string_view record;
+	/**
+	 * Если привести запись не удалось
+	 */
+	if(!this->brought(text, result, record))
+		// Выводим признак непригодности записи
+		return false;
+	/**
+	 * Если срез указывает не на накопитель
+	 *
+	 * @note Перенос здесь обязателен: договор этого вида велит выдать запись строкою, а
+	 *       ядро приведения выдало срез исходной. Зовущие, коим срез годится, зовут ядро
+	 *       напрямую и переноса этого избегают
+	 */
+	if(record.data() != result.data())
+		// Выполняем перенос приведённой записи
+		result.assign(record);
+	// Выводим признак пригодности записи
+	return true;
+}
+/**
+ * @brief Метод приведения записи к годной кодировке UTF-8 с выдачей среза
+ *
+ * @details Выдаётся СРЕЗ, а не строка: запись, негодных последовательностей не несущая,
+ *          изменения не требует вовсе, и переносить её куда-либо незачем. Срез тогда
+ *          указывает на исходную запись, а накопитель остаётся пустым
+ *
+ * @note Перенос этот стоил выделения памяти на каждое записываемое значение. Наружу он
+ *       торчал у libstdc++, где короткий запас строки вмещает 15 октетов против 22 у
+ *       libc++, и на рабочей машине прятался целиком
+ *
+ * @warning Срез живёт ровно столько, сколько живёт исходная запись либо накопитель:
+ *          зовущий обязан держать оба до конца работы со срезом
+ *
+ * @param text   приводимая запись
+ * @param result накопитель под приведённую запись
+ * @param record выдаваемый срез приведённой записи
+ * @return       признак пригодности записи
+ *
+ */
+bool awh::codec::yaml::Writer::brought(const string & text, string & result, string_view & record) noexcept {
+	// Выполняем сброс накопителя приведённой записи
+	result.clear();
 	/**
 	 * Если байты пропускаются как есть
 	 *
@@ -757,8 +801,8 @@ bool awh::codec::yaml::Writer::sanitize(const string & text, string & result) no
 	 *       такой записи отвечает отказом, и потребитель, правило выбравший, о том знает
 	 */
 	if(this->_settings.malformed == malformed_t::PASS){
-		// Выполняем перенос записи как она есть
-		result.assign(text);
+		// Выдаём срез исходной записи
+		record = text;
 		// Выводим признак пригодности записи
 		return true;
 	}
@@ -838,9 +882,8 @@ bool awh::codec::yaml::Writer::sanitize(const string & text, string & result) no
 	/**
 	 * Если запись негодных последовательностей не несла вовсе
 	 */
-	if(!malformed)
-		// Выполняем перенос записи как она есть
-		result.assign(text);
+	// Выдаём срез приведённой записи либо исходной, коли менять было нечего
+	record = (malformed ? string_view(result) : string_view(text));
 	// Выводим признак пригодности записи
 	return true;
 }
@@ -851,7 +894,7 @@ bool awh::codec::yaml::Writer::sanitize(const string & text, string & result) no
  * @param style ограда, какою обносится значение
  *
  */
-void awh::codec::yaml::Writer::quoted(const string & text, const style_t style) noexcept {
+void awh::codec::yaml::Writer::quoted(const string_view text, const style_t style) noexcept {
 	/**
 	 * Определяем ограду, какою обносится записываемое значение
 	 */
@@ -1496,12 +1539,14 @@ bool awh::codec::yaml::Writer::value(const bool value) noexcept {
  *
  */
 bool awh::codec::yaml::Writer::value(const string & value, const style_t style) noexcept {
-	// Запись, к годной кодировке приведённая
-	string record;
+	// Накопитель под приведённую запись
+	string buffer;
+	// Приведённая запись, срезом выданная
+	string_view record;
 	/**
 	 * Если запись к годной кодировке UTF-8 привести не удалось
 	 */
-	if(!this->sanitize(value, record))
+	if(!this->brought(value, buffer, record))
 		// Выводим признак неудачной записи значения
 		return false;
 	// Выполняем запись значения, к годной кодировке приведённого
@@ -1515,7 +1560,7 @@ bool awh::codec::yaml::Writer::value(const string & value, const style_t style) 
  * @return       признак успешной записи значения
  *
  */
-bool awh::codec::yaml::Writer::written(const string & record, const style_t style) noexcept {
+bool awh::codec::yaml::Writer::written(const string_view record, const style_t style) noexcept {
 	/**
 	 * Если поставить запись на своё место не удалось
 	 */
@@ -1556,12 +1601,14 @@ bool awh::codec::yaml::Writer::written(const string & record, const style_t styl
  *
  */
 bool awh::codec::yaml::Writer::value(const string & value) noexcept {
-	// Запись, к годной кодировке приведённая
-	string record;
+	// Накопитель под приведённую запись
+	string buffer;
+	// Приведённая запись, срезом выданная
+	string_view record;
 	/**
 	 * Если запись к годной кодировке UTF-8 привести не удалось
 	 */
-	if(!this->sanitize(value, record))
+	if(!this->brought(value, buffer, record))
 		// Выводим признак неудачной записи значения
 		return false;
 	/**
