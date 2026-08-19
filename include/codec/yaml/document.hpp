@@ -1328,6 +1328,32 @@ namespace awh {
 					bool extract(const uint32_t index) noexcept;
 					/**
 					 * \~russian
+					 * @brief Метод разбора повторяющихся имён пар отображения
+					 *
+					 * @details Описание языка имена пар отображения объявляет неповторимыми, а
+					 * обхождение с повторами оставляет читающему: правило берётся из настроек
+					 * разбора, и по умолчанию повтор отвергается отказом
+					 *
+					 * @note Разбор ведётся при закрытии отображения, а не при заведении пары:
+					 *       имя пары становится известно раньше значения её, но поддерево
+					 *       значения дописывается позже, и снимать пару прежде конца нельзя
+					 *
+					 * @param parent  номер узла разбираемого отображения пар
+					 * @param anchors имена меток, документом объявленные, вместе с номерами узлов их
+					 * @param reader  поток разбора, положение отказа несущий
+					 * @return        признак успешного разбора
+					 *
+					 * \~english
+					 * @brief Method of the handling of the repeating names of the pairs of a mapping
+					 * @param parent index of the node of the mapping being handled
+					 * @param reader parsing stream carrying the location of a refusal
+					 * @return sign of the successful handling
+					 *
+					 * \~
+					 */
+					bool deduplicate(const uint32_t parent, ::std::unordered_map <::std::string, uint32_t> & anchors, const reader_t & reader) noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод розыска узла по пути к нему с заведением недостающего
 					 *
 					 * @param path   путь к разыскиваемому узлу
