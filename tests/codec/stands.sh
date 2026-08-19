@@ -57,8 +57,30 @@ forman@10.100.1.250|/usr|debian
 forman@10.100.1.245|/usr|alpine
 }"
 
+#
+# Метка прогона, разводящая рабочие каталоги на машинах
+#
+# @details Номер запустившего прогон дознавателя своим прогонам не повторяется, а
+# работают на одних и тех же машинах несколько работников разом
+#
+# @warning Метка эта не украшение: сценарий начинает работу СНОСОМ рабочего каталога, и
+#          при имени общем снос одного прогона приходится на сборку другого. Отказ
+#          выглядит при этом порчей передачи - «нет такого файла» на файле, который
+#          лежит и в свёртке, и на машине, - и доказать причину со своей стороны
+#          нельзя вовсе: со стороны сносящего видна порченая строка, со стороны
+#          собирающего пропавший файл, и оба объяснения правдоподобны и неверны
+#
+STAMP="${AWH_STAMP:-$$}"
+
+#
+# @note Убирается за собою прогон ВСЕГДА, отказавший в том числе: место на машинах
+#       считанное, у OpenBSD свободного чуть больше гигабайта, а дерево с собранными
+#       стендами весит немало. Записи отказов сборки при уборке сохраняются - они и есть
+#       единственное, ради чего стоило бы дерево оставлять
+#
+
 # Собираемый свёрток исходных текстов
-BUNDLE="/tmp/awh-codec-stands.tgz"
+BUNDLE="/tmp/awh-codec-stands-$STAMP.tgz"
 
 # Выводим сообщение о сборке свёртка
 echo "Собираем свёрток: $BUNDLE"
@@ -74,7 +96,7 @@ echo "Собираем свёрток: $BUNDLE"
 	include src/codec src/num/lexical/table.cpp tests/main.hpp tests/codec tools/verify ) || exit 1
 
 # Собираемый сценарий прогона на стороне машины
-RUNNER="/tmp/awh-codec-runner.sh"
+RUNNER="/tmp/awh-codec-runner-$STAMP.sh"
 
 #
 # Выполняем сборку сценария прогона на стороне машины
@@ -102,16 +124,16 @@ for SCRIPT in $AWH_SCRIPTS; do
 	# Выводим сообщение о начале прогона очередного стенда
 	echo "--- $SCRIPT ---"
 	# Выполняем сборку очередного стенда
-	if ! "./$SCRIPT" . "/tmp/awh-stand-$NAME" > "/tmp/awh-stand-$NAME.log" 2>&1; then
+	if ! "./$SCRIPT" . "/tmp/awh-stand-$AWH_STAMP-$NAME" > "/tmp/awh-stand-$AWH_STAMP-$NAME.log" 2>&1; then
 		# Выводим сообщение об отказе сборки стенда
 		echo 'СБОРКА ОТКАЗАЛА'
 		# Выводим первые строки отказа сборки
-		grep -i error "/tmp/awh-stand-$NAME.log" | head -5
+		grep -i error "/tmp/awh-stand-$AWH_STAMP-$NAME.log" | head -5
 		# Выполняем переход к следующему стенду
 		continue
 	fi
 	# Выполняем перебор всех собранных двоичных файлов стенда
-	for BINARY in "/tmp/awh-stand-$NAME"/*-tests "/tmp/awh-stand-$NAME"/*-tests.exe; do
+	for BINARY in "/tmp/awh-stand-$AWH_STAMP-$NAME"/*-tests "/tmp/awh-stand-$AWH_STAMP-$NAME"/*-tests.exe; do
 		# Выполняем прогон очередного двоичного файла стенда
 		[ -x "$BINARY" ] && "$BINARY" 2>&1 | tail -2
 	done
@@ -144,9 +166,10 @@ echo "$MACHINES" | while IFS='|' read -r HOST GTEST TAG; do
 	#          первой же из них
 	#
 	ssh -n -o BatchMode=yes -o StrictHostKeyChecking=no "$HOST" \
-		"rm -rf ~/codec-stands && mkdir -p ~/codec-stands && cd ~/codec-stands &&
-		 tar xzf /tmp/awh-codec-stands.tgz &&
-		 GTEST_ROOT='$GTEST' AWH_SCRIPTS='$STANDS' sh /tmp/awh-codec-runner.sh"
+		"rm -rf ~/codec-stands-$STAMP && mkdir -p ~/codec-stands-$STAMP && cd ~/codec-stands-$STAMP &&
+		 tar xzf /tmp/awh-codec-stands-$STAMP.tgz &&
+		 GTEST_ROOT='$GTEST' AWH_SCRIPTS='$STANDS' AWH_STAMP='$STAMP' sh /tmp/awh-codec-runner-$STAMP.sh;
+		 cd ~ && rm -rf ~/codec-stands-$STAMP /tmp/awh-codec-stands-$STAMP.tgz /tmp/awh-codec-runner-$STAMP.sh /tmp/awh-stand-$STAMP-*[!g]"
 done
 
 # Выводим сообщение об окончании раскладки

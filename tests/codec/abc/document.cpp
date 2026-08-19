@@ -20,12 +20,14 @@
 #include <string>
 #include <cstdint>
 #include <limits>
+#include <functional>
 
 /**
  * Подключаем заголовочные файлы проекта
  */
 #include <gtest/gtest.h>
 #include <codec/abc/document.hpp>
+#include <codec/abc/value.hpp>
 #include <codec/abc/writer.hpp>
 
 /**
@@ -472,4 +474,196 @@ TEST(CodecAbcDocument, SegmentedValue) {
 	ASSERT_TRUE(value.is(abc::type_t::STRING));
 	// Выполняем проверку содержимого значения, собранного кусками
 	ASSERT_EQ(value.data(), "часть один, часть два");
+}
+/**
+ * @brief Проверка кругового хода открытого расширения через дерево документа
+ *
+ */
+TEST(CodecAbcDocument, CustomExtensionRoundtrip){
+	// Сборка бинарной записи
+	abc::writer_t writer;
+	// Октеты расширения, заведённого потребителем
+	const string content = "\xDE\xAD\xBE\xEF";
+	// Выполняем укладку начала отображения
+	ASSERT_TRUE(writer.mapBegin(static_cast <uint64_t> (1)));
+	// Выполняем укладку имени поля отображения
+	ASSERT_TRUE(writer.text("ext"));
+	// Выполняем укладку открытого расширения значением поля
+	ASSERT_TRUE(writer.custom(static_cast <uint64_t> (1000), content.data(), content.size()));
+	// Выполняем укладку конца отображения
+	ASSERT_TRUE(writer.mapEnd());
+	// Выполняем проверку завершённости собранной записи
+	ASSERT_TRUE(writer.complete());
+	// Выполняем получение собранной записи
+	const vector <uint8_t> record = writer.record();
+	// Дерево документа
+	abc::document_t document;
+	// Выполняем разбор записи в дерево документа
+	ASSERT_TRUE(document.parse(record.data(), record.size()))
+		<< "код отказа: " << abc::message(document.error());
+	// Выполняем получение значения поля отображения
+	const abc::document_t::value_t value = document.root().get("ext");
+	// Выполняем проверку действительности значения поля
+	ASSERT_TRUE(value.valid());
+	// Выполняем проверку вида узла значения
+	ASSERT_EQ(value.kind(), abc::kind_t::CUSTOM);
+	// Выполняем проверку номера подвида расширения
+	ASSERT_EQ(value.subtype(), static_cast <uint64_t> (1000));
+	// Выполняем проверку содержимого расширения
+	ASSERT_EQ(string(value.data()), content);
+	// Сборка записи из дерева документа
+	abc::writer_t rebuild;
+	/**
+	 * Выполняем перезапись дерева документа: путь этот свой, и расширение обязано
+	 * пережить и его
+	 */
+	ASSERT_TRUE(document.build(rebuild)) << "код отказа: " << abc::message(document.error());
+	// Выполняем проверку перезаписанной дереву документа записи
+	ASSERT_EQ(rebuild.record(), record);
+	// Владеющее значение документа
+	abc::value_t owning;
+	// Выполняем разбор записи во владеющее значение
+	ASSERT_TRUE(owning.parse(record.data(), record.size()));
+	// Выполняем перезапись владеющего значения
+	const vector <uint8_t> rewritten = owning.dump();
+	/**
+	 * Выполняем проверку того, что перезаписанная запись совпала с исходной: расширение
+	 * переживает и дерево документа, и владеющее значение
+	 */
+	ASSERT_EQ(rewritten, record);
+}
+/**
+ * @brief Проверка последовательного обхода дерева документа
+ *
+ */
+TEST(CodecAbcDocument, SequentialTraversal){
+	// Сборка бинарной записи
+	abc::writer_t writer;
+	// Выполняем укладку начала массива
+	ASSERT_TRUE(writer.arrayBegin(static_cast <uint64_t> (3)));
+	// Выполняем укладку первого значения массива
+	ASSERT_TRUE(writer.number(static_cast <uint64_t> (1)));
+	// Выполняем укладку начала вложенного отображения
+	ASSERT_TRUE(writer.mapBegin(static_cast <uint64_t> (2)));
+	// Выполняем укладку первого имени поля отображения
+	ASSERT_TRUE(writer.text("a"));
+	// Выполняем укладку начала вложенного массива
+	ASSERT_TRUE(writer.arrayBegin(static_cast <uint64_t> (2)));
+	// Выполняем укладку первого значения вложенного массива
+	ASSERT_TRUE(writer.number(static_cast <uint64_t> (2)));
+	// Выполняем укладку второго значения вложенного массива
+	ASSERT_TRUE(writer.number(static_cast <uint64_t> (3)));
+	// Выполняем укладку конца вложенного массива
+	ASSERT_TRUE(writer.arrayEnd());
+	// Выполняем укладку второго имени поля отображения
+	ASSERT_TRUE(writer.text("b"));
+	// Выполняем укладку значения второго поля отображения
+	ASSERT_TRUE(writer.number(static_cast <uint64_t> (4)));
+	// Выполняем укладку конца вложенного отображения
+	ASSERT_TRUE(writer.mapEnd());
+	// Выполняем укладку третьего значения массива
+	ASSERT_TRUE(writer.number(static_cast <uint64_t> (5)));
+	// Выполняем укладку конца массива
+	ASSERT_TRUE(writer.arrayEnd());
+	// Дерево документа
+	abc::document_t document;
+	// Выполняем разбор записи в дерево документа
+	ASSERT_TRUE(document.parse(writer.record().data(), writer.record().size()))
+		<< "код отказа: " << abc::message(document.error());
+	// Снятые числа дерева документа
+	vector <uint64_t> numbers;
+	// Снятые имена полей отображения
+	vector <string> keys;
+	/**
+	 * Функция обхода дерева документа
+	 *
+	 * @param value обходимое значение документа
+	 * @param self  ссылка на саму работу обхода
+	 *
+	 */
+	const function <void (const abc::document_t::value_t &, const function <void (const abc::document_t::value_t &)> &)> traverse =
+	[&numbers, &keys](const abc::document_t::value_t & value, const function <void (const abc::document_t::value_t &)> & self) noexcept -> void {
+		// Если значение является вместимым
+		if(value.is(abc::type_t::CONTAINER)){
+			/**
+			 * Выполняем обход всех значений вместимого
+			 */
+			for(auto item = value.begin(); item.valid(); item = item.next())
+				// Выполняем обход очередного значения вместимого
+				self(item);
+			// Выходим из работы обхода
+			return;
+		}
+		// Если значение является именем поля отображения
+		if(value.keyed())
+			// Выполняем накопление снятого имени поля
+			keys.push_back(string(value.data()));
+		/**
+		 * Если значение является числом
+		 */
+		else {
+			// Снимаемое число
+			uint64_t result = 0;
+			// Выполняем извлечение числа
+			ASSERT_TRUE(value.value(result));
+			// Выполняем накопление снятого числа
+			numbers.push_back(result);
+		}
+	};
+	// Работа обхода дерева документа
+	function <void (const abc::document_t::value_t &)> walk;
+	// Выполняем заведение работы обхода дерева документа
+	walk = [&traverse, &walk](const abc::document_t::value_t & value) noexcept -> void {
+		// Выполняем обход очередного значения документа
+		traverse(value, walk);
+	};
+	// Выполняем обход дерева документа
+	walk(document.root());
+	// Выполняем проверку снятых чисел дерева документа
+	ASSERT_EQ(numbers, (vector <uint64_t> {1, 2, 3, 4, 5}));
+	/**
+	 * Выполняем проверку снятых имён полей отображения: имя стоит таким же узлом, что
+	 * и значение, и обход выдаёт его наравне со значениями
+	 */
+	ASSERT_EQ(keys, (vector <string> {"a", "b"}));
+}
+/**
+ * @brief Проверка границы вместимого при последовательном обходе
+ *
+ */
+TEST(CodecAbcDocument, TraversalStopsAtBound){
+	// Сборка бинарной записи
+	abc::writer_t writer;
+	// Выполняем укладку начала внешнего массива
+	ASSERT_TRUE(writer.arrayBegin(static_cast <uint64_t> (2)));
+	// Выполняем укладку начала вложенного массива
+	ASSERT_TRUE(writer.arrayBegin(static_cast <uint64_t> (1)));
+	// Выполняем укладку значения вложенного массива
+	ASSERT_TRUE(writer.number(static_cast <uint64_t> (1)));
+	// Выполняем укладку конца вложенного массива
+	ASSERT_TRUE(writer.arrayEnd());
+	// Выполняем укладку соседа вложенного массива
+	ASSERT_TRUE(writer.number(static_cast <uint64_t> (2)));
+	// Выполняем укладку конца внешнего массива
+	ASSERT_TRUE(writer.arrayEnd());
+	// Дерево документа
+	abc::document_t document;
+	// Выполняем разбор записи в дерево документа
+	ASSERT_TRUE(document.parse(writer.record().data(), writer.record().size()));
+	// Выполняем получение вложенного массива
+	const abc::document_t::value_t nested = document.root().begin();
+	// Выполняем проверку действительности вложенного массива
+	ASSERT_TRUE(nested.valid());
+	// Выполняем получение единственного значения вложенного массива
+	const abc::document_t::value_t item = nested.begin();
+	// Выполняем проверку действительности значения вложенного массива
+	ASSERT_TRUE(item.valid());
+	/**
+	 * Выполняем проверку того, что обход вложенного массива на нём и кончается: без
+	 * границы вместимого он продолжился бы соседом родителя, и значение `2` попало бы
+	 * во вложенный массив, которому оно не принадлежит вовсе
+	 */
+	ASSERT_FALSE(item.next().valid());
+	// Выполняем проверку того, что у внешнего массива сосед вложенного есть
+	ASSERT_TRUE(nested.next().valid());
 }

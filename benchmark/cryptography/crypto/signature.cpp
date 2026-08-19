@@ -103,6 +103,15 @@ namespace {
 	 */
 	static constexpr double GOST_SIGN_THRESHOLD = 130.0;
 	static constexpr double GOST_VERIFY_THRESHOLD = 60.0;
+	/**
+	 * Пороги схемы на 512 разрядов
+	 *
+	 * @details Счёт поля идёт вдвое более широкими числами, а умножение и деление
+	 *          растут от ширины квадратично, оттого схема эта дороже схемы на 256
+	 *          разрядов примерно вшестеро; пороги взяты по самому медленному стенду
+	 */
+	static constexpr double GOST512_SIGN_THRESHOLD = 20.0;
+	static constexpr double GOST512_VERIFY_THRESHOLD = 9.0;
 	static constexpr double FINGERPRINT_THRESHOLD = 290000.0;
 	/**
 	 * @brief Функция получения объекта криптографии со связкой ключей подписи
@@ -125,8 +134,10 @@ namespace {
 			result.generateKey("ecdsa", awh::crypto_t::signature_t::ECDSA);
 			// Выполняем выработку ключа RSA
 			result.generateKey("rsa", awh::crypto_t::signature_t::RSA);
-			// Выполняем выработку ключа ГОСТ Р 34.10-2012
+			// Выполняем выработку ключа ГОСТ Р 34.10-2012 на 256 разрядов
 			result.generateKey("gost", awh::crypto_t::signature_t::GOST);
+			// Выполняем выработку ключа ГОСТ Р 34.10-2012 на 512 разрядов
+			result.generateKey("gost512", awh::crypto_t::signature_t::GOST512);
 			// Выводим признак выполненного заведения
 			return true;
 		}();
@@ -332,6 +343,30 @@ namespace {
 		return result;
 	}
 	/**
+	 * @brief Функция получения итогов прогона выработки подписи ГОСТ на 512 разрядов
+	 *
+	 * @return итоги прогона сценария
+	 *
+	 */
+	static const outcome_t & signedGOST512() noexcept {
+		// Итоги прогона выработки подписи ГОСТ на 512 разрядов
+		static const outcome_t result = ::signing("gost512", awh::crypto_t::hash_t::NONE, SLOW_ROUNDS);
+		// Выводим итоги прогона сценария
+		return result;
+	}
+	/**
+	 * @brief Функция получения итогов прогона проверки подписи ГОСТ на 512 разрядов
+	 *
+	 * @return итоги прогона сценария
+	 *
+	 */
+	static const outcome_t & verifiedGOST512() noexcept {
+		// Итоги прогона проверки подписи ГОСТ на 512 разрядов
+		static const outcome_t result = ::verifying("gost512", awh::crypto_t::hash_t::NONE, SLOW_ROUNDS);
+		// Выводим итоги прогона сценария
+		return result;
+	}
+	/**
 	 * @brief Функция получения итогов прогона выработки подписи RSA
 	 *
 	 * @return итоги прогона сценария
@@ -386,6 +421,10 @@ namespace {
 	AWH_CRYPTO_SCENARIO(SignGOST, ::signedGOST)
 	// Объявляем сценарии проверки подписи ГОСТ Р 34.10-2012
 	AWH_CRYPTO_SCENARIO(VerifyGOST, ::verifiedGOST)
+	// Сценарий выработки подписи ГОСТ на 512 разрядов
+	AWH_CRYPTO_SCENARIO(SignGOST512, ::signedGOST512)
+	// Сценарий проверки подписи ГОСТ на 512 разрядов
+	AWH_CRYPTO_SCENARIO(VerifyGOST512, ::verifiedGOST512)
 	// Объявляем сценарии выработки отпечатка открытого ключа
 	AWH_CRYPTO_SCENARIO(Print, ::printed)
 
@@ -433,6 +472,16 @@ namespace {
 	static const bool gVerifyGost = awh::benchmark::add(
 		"crypto/signature/gost-verify", "проверок/с", GOST_VERIFY_THRESHOLD,
 		awh::benchmark::bound_t::MINIMUM, &::speedVerifyGOST
+	);
+	// Регистрируем сценарий скорости выработки подписи ГОСТ на 512 разрядов
+	static const bool gSignGost512 = awh::benchmark::add(
+		"crypto/signature/gost512-sign", "подписей/с", GOST512_SIGN_THRESHOLD,
+		awh::benchmark::bound_t::MINIMUM, &::speedSignGOST512
+	);
+	// Регистрируем сценарий скорости проверки подписи ГОСТ на 512 разрядов
+	static const bool gVerifyGost512 = awh::benchmark::add(
+		"crypto/signature/gost512-verify", "проверок/с", GOST512_VERIFY_THRESHOLD,
+		awh::benchmark::bound_t::MINIMUM, &::speedVerifyGOST512
 	);
 	// Регистрируем сценарий скорости выработки отпечатка открытого ключа
 	static const bool gPrint = awh::benchmark::add(

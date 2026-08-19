@@ -1088,6 +1088,7 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/codec/abc/signature.cpp"
     "${CMAKE_SOURCE_DIR}/src/codec/abc/schedule.cpp"
     "${CMAKE_SOURCE_DIR}/src/codec/abc/editor.cpp"
+    "${CMAKE_SOURCE_DIR}/src/codec/abc/storage.cpp"
     "${CMAKE_SOURCE_DIR}/src/codec/abc/encoding.cpp"
     "${CMAKE_SOURCE_DIR}/src/codec/abc/reader.cpp"
     "${CMAKE_SOURCE_DIR}/src/codec/abc/writer.cpp"

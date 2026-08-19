@@ -187,6 +187,9 @@ const char * awh::codec::abc::message(const error_t error) noexcept {
 		// Если значение, собираемое кусками, несёт кусок иного вида
 		case static_cast <uint8_t> (error_t::INVALID_SEGMENT):
 			return "value assembled by the chunks carries a chunk of another kind";
+		// Если запись открытого расширения повреждена
+		case static_cast <uint8_t> (error_t::INVALID_EXTENSION):
+			return "record of the open extension is damaged";
 	}
 	// Выводим результат по умолчанию
 	return "unknown error";
@@ -233,6 +236,9 @@ const char * awh::codec::abc::name(const kind_t kind) noexcept {
 		// Если узел является отображением
 		case static_cast <uint8_t> (kind_t::MAP):
 			return "map";
+		// Если узел является открытым расширением
+		case static_cast <uint8_t> (kind_t::CUSTOM):
+			return "custom";
 	}
 	// Выводим результат по умолчанию
 	return "none";
@@ -312,6 +318,9 @@ const char * awh::codec::abc::name(const type_t type) noexcept {
 		// Если значение является десятичным
 		case static_cast <uint32_t> (type_t::DECIMAL):
 			return "decimal";
+		// Если значение является открытым расширением
+		case static_cast <uint32_t> (type_t::CUSTOM):
+			return "custom";
 	}
 	// Выводим результат по умолчанию
 	return "undefined";
@@ -356,6 +365,9 @@ awh::codec::abc::kind_t awh::codec::abc::kind(const type_t type) noexcept {
 		// Если значение является отображением
 		case static_cast <uint32_t> (type_t::MAP):
 			return kind_t::MAP;
+		// Если значение является открытым расширением
+		case static_cast <uint32_t> (type_t::CUSTOM):
+			return kind_t::CUSTOM;
 	}
 	// Выводим результат по умолчанию
 	return kind_t::NONE;

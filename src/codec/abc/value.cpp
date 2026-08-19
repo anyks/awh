@@ -1153,15 +1153,41 @@ void awh::codec::abc::Value::absorb(const Document::value_t & value) noexcept {
 					// Выполняем заведение имён полей отображения
 					task.target->_keys.resize(count);
 				/**
-				 * Выполняем заведение работ перенесения всех детей вместимого
+				 * Выполняем заведение работ перенесения всех детей вместимого.
+				 *
+				 * Обход ведётся первым значением вместе с переходом к соседу, а не
+				 * обращением по номеру: обращение по номеру пропускает узлы, стоящие до
+				 * затребованного, и перенесение вместимого из тысяч значений обошлось бы
+				 * квадратом их количества
 				 */
-				for(size_t i = 0; i < count; i++){
-					// Выполняем заведение работы перенесения значения вместимого
-					pending.push_back(task_t{task.source.at(i), &task.target->_items.at(i)});
-					// Если вместимое является отображением
-					if(type == type_t::MAP)
+				size_t index = 0;
+				// Выполняем получение первого значения вместимого
+				Document::value_t item = task.source.begin();
+				/**
+				 * Выполняем перебор всех значений вместимого
+				 */
+				while(item.valid() && (index < count)){
+					/**
+					 * Если вместимое является отображением, первым узлом пары стоит имя
+					 * поля: имя есть такой же узел, что и значение, и обход выдаёт его
+					 * наравне со значениями
+					 */
+					if(type == type_t::MAP){
 						// Выполняем заведение работы перенесения имени поля
-						pending.push_back(task_t{task.source.key(i), &task.target->_keys.at(i)});
+						pending.push_back(task_t{item, &task.target->_keys.at(index)});
+						// Выполняем переход к значению поля отображения
+						item = item.next();
+						// Если значения у имени поля не оказалось
+						if(!item.valid())
+							// Выполняем прекращение перебора значений вместимого
+							break;
+					}
+					// Выполняем заведение работы перенесения значения вместимого
+					pending.push_back(task_t{item, &task.target->_items.at(index)});
+					// Выполняем переход к следующему значению вместимого
+					item = item.next();
+					// Выполняем учёт перенесённого значения вместимого
+					index++;
 				}
 			} break;
 			/**
@@ -1183,6 +1209,15 @@ void awh::codec::abc::Value::absorb(const Document::value_t & value) noexcept {
 			case static_cast <uint32_t> (type_t::UUID): {
 				// Выполняем перенесение содержимого значения
 				task.target->_text.assign(task.source.data());
+			} break;
+			/**
+			 * Если значение является открытым расширением
+			 */
+			case static_cast <uint32_t> (type_t::CUSTOM): {
+				// Выполняем перенесение октетов расширения
+				task.target->_text.assign(task.source.data());
+				// Выполняем установку номера подвида расширения
+				task.target->_number.natural = task.source.subtype();
 			} break;
 			/**
 			 * Если значение является числом неограниченной ширины
@@ -1272,6 +1307,10 @@ bool awh::codec::abc::Value::compose(writer_t & writer) const noexcept {
 			case static_cast <uint32_t> (type_t::UUID): return writer.uuid(node._text.data(), node._text.size());
 			// Если значение является отметкой времени
 			case static_cast <uint32_t> (type_t::TIME): return writer.timestamp(node._number.integer);
+			// Если значение является открытым расширением
+			case static_cast <uint32_t> (type_t::CUSTOM):
+				// Выполняем укладку открытого расширения
+				return writer.custom(node._number.natural, node._text.data(), node._text.size());
 			/**
 			 * Если значение является числом неограниченной ширины
 			 */
@@ -1519,6 +1558,13 @@ bool awh::codec::abc::Value::operator == (const Value & value) const noexcept {
 			case static_cast <uint32_t> (type_t::UUID): return (first._text.compare(second._text) == 0);
 			// Если значения являются отметками времени
 			case static_cast <uint32_t> (type_t::TIME): return (first._number.integer == second._number.integer);
+			/**
+			 * Если значения являются открытыми расширениями. Сличаются они вместе с
+			 * номером подвида: одни и те же октеты у разных подвидов означают разное
+			 */
+			case static_cast <uint32_t> (type_t::CUSTOM):
+				return ((first._number.natural == second._number.natural) &&
+				        (first._text.compare(second._text) == 0));
 		}
 		// Сообщаем, что значения неравны
 		return false;

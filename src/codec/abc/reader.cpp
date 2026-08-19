@@ -112,7 +112,7 @@ awh::codec::abc::Reader::Settings::Settings() noexcept :
  */
 awh::codec::abc::Reader::Reader() noexcept :
  _state(state_t::ITEM), _error(error_t::NONE), _offset(0), _origin(0), _reserved(0), _nodes(0),
- _pending(0), _awaited(type_t::UNDEFINED), _extend(extend_t::BIGNUM), _exponent(0),
+ _pending(0), _awaited(type_t::UNDEFINED), _extend(extend_t::BIGNUM), _exponent(0), _subtype(0),
  _negative(false), _document(false), _handler(nullptr), _context(nullptr) {
 	// Выполняем установку начального положения разбора
 	this->_mark = location_t();
@@ -156,6 +156,8 @@ void awh::codec::abc::Reader::reset() noexcept {
 	this->_awaited = type_t::UNDEFINED;
 	// Выполняем сброс разновидности ожидаемого расширения
 	this->_extend = extend_t::BIGNUM;
+	// Выполняем сброс номера подвида открытого расширения
+	this->_subtype = 0;
 	// Выполняем сброс десятичного порядка величины
 	this->_exponent = 0;
 	// Выполняем сброс признака отрицательности величины
@@ -207,12 +209,20 @@ void awh::codec::abc::Reader::emit(const record_t & item) noexcept {
 	 * поданный кусок
 	 */
 	record.location = this->_mark;
-	// Если обработчик прямой выдачи событий установлен
+	/**
+	 * Если обработчик прямой выдачи событий установлен, очередь выдачи минуется.
+	 *
+	 * Событие ложилось бы в неё, а потом снималось с неё же копией: работа двойная, а
+	 * очередь при том растёт без предела, ибо снимать с неё некому - обработчик
+	 * событие уже принял
+	 */
 	if(this->_handler != nullptr){
 		// Выполняем установку выдаваемого события текущим
 		this->_current = record;
 		// Выполняем прямую выдачу события разбора
 		this->_handler(this->_context, (* this), record.event);
+		// Выходим из работы
+		return;
 	}
 	// Выполняем добавление события в очередь выдачи
 	this->_events.push_back(record);
@@ -756,6 +766,14 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 			if(this->_extend == extend_t::DECIMAL)
 				// Выполняем перевод разбора в ожидание десятичного порядка
 				this->_state = state_t::EXTEND_EXPONENT;
+			// Иначе, если расширение заведено потребителем
+			else if(this->_extend == extend_t::CUSTOM)
+				// Выполняем перевод разбора в ожидание номера подвида расширения
+				this->_state = state_t::CUSTOM_SUBTYPE;
+			// Иначе, если расширение заведено потребителем
+			else if(this->_extend == extend_t::CUSTOM)
+				// Выполняем перевод разбора в ожидание номера подвида расширения
+				this->_state = state_t::CUSTOM_SUBTYPE;
 			// Если расширение является целым любой ширины
 			else this->_state = state_t::EXTEND_LENGTH;
 			// Сообщаем, что разбор успешен
@@ -1068,17 +1086,104 @@ bool awh::codec::abc::Reader::process() noexcept {
 				// Выполняем перевод разбора в ожидание очередной единицы
 				this->_state = state_t::ITEM;
 				/**
-				 * Если значение собирается кусками, кусок выдаётся сам по себе.
+				 * Если выдача события завершённого значения отвечена отказом.
 				 *
-				 * Учитывать его вместившим нельзя: значений у вместившего от того
-				 * прибавилось бы, а кусок есть часть значения, а не значение
+				 * Куском собираемого значения число стоять не вправе: кусками собираются
+				 * строка да двоичные данные, и число внутри них выдачу вправе лишь
+				 * отвергнуть, - отчего работа выдачи и зовётся здесь без изъятий
 				 */
-				if(!this->_stack.empty() && (this->_stack.back().segment != type_t::UNDEFINED)){
-					// Выполняем выдачу события куска значения
-					this->emit(record);
-					// Прекращаем разбор куска значения
-					break;
+				if(!this->settle(record))
+					// Сообщаем, что разбор отвечен отказом
+					return false;
+			} break;
+			/**
+			 * Если ожидается номер подвида открытого расширения
+			 */
+			case static_cast <uint8_t> (state_t::CUSTOM_SUBTYPE): {
+				// Снятая единица проволочной записи
+				item_t unit;
+				// Код отказа снятия единицы
+				error_t error = error_t::NONE;
+				// Смещение, с какого следует снимать единицу
+				size_t offset = this->_offset;
+				// Если снять единицу проволочной записи не удалось
+				if(!abc::take(this->_buffer.data(), this->_buffer.size(), offset, unit, error)){
+					// Если октетов единицы недостаёт
+					if(error == error_t::UNEXPECTED_EOF)
+						// Сообщаем, что разбор успешен
+						return true;
+					// Выполняем объявление отказа разбора
+					return this->fail(error_t::INVALID_EXTENSION);
 				}
+				// Если на месте номера подвида расширения стоит иное
+				if(unit.group != group_t::UNSIGNED)
+					// Выполняем объявление отказа разбора
+					return this->fail(error_t::INVALID_EXTENSION);
+				// Выполняем сдвиг смещения разбора
+				this->_offset = offset;
+				// Выполняем установку номера подвида расширения
+				this->_subtype = unit.value;
+				// Выполняем перевод разбора в ожидание длины октетов расширения
+				this->_state = state_t::CUSTOM_LENGTH;
+			} break;
+			/**
+			 * Если ожидается длина октетов открытого расширения
+			 */
+			case static_cast <uint8_t> (state_t::CUSTOM_LENGTH): {
+				// Снятая единица проволочной записи
+				item_t unit;
+				// Код отказа снятия единицы
+				error_t error = error_t::NONE;
+				// Смещение, с какого следует снимать единицу
+				size_t offset = this->_offset;
+				// Если снять единицу проволочной записи не удалось
+				if(!abc::take(this->_buffer.data(), this->_buffer.size(), offset, unit, error)){
+					// Если октетов единицы недостаёт
+					if(error == error_t::UNEXPECTED_EOF)
+						// Сообщаем, что разбор успешен
+						return true;
+					// Выполняем объявление отказа разбора
+					return this->fail(error_t::INVALID_EXTENSION);
+				}
+				// Если на месте длины октетов расширения стоит иное
+				if(unit.group != group_t::UNSIGNED)
+					// Выполняем объявление отказа разбора
+					return this->fail(error_t::INVALID_EXTENSION);
+				// Если длина октетов расширения превышает допустимую
+				if((this->_settings.maxBlob > 0) && (unit.value > this->_settings.maxBlob))
+					// Выполняем объявление отказа разбора
+					return this->fail(error_t::BLOB_TOO_LONG);
+				// Выполняем сдвиг смещения разбора
+				this->_offset = offset;
+				// Выполняем установку количества недостающих октетов
+				this->_pending = unit.value;
+				// Выполняем перевод разбора в ожидание октетов расширения
+				this->_state = state_t::CUSTOM_DATA;
+			} break;
+			/**
+			 * Если ожидаются октеты открытого расширения
+			 */
+			case static_cast <uint8_t> (state_t::CUSTOM_DATA): {
+				// Если октетов расширения недостаёт
+				if((this->_buffer.size() - this->_offset) < this->_pending)
+					// Сообщаем, что разбор успешен
+					return true;
+				// Собираемое событие разбора
+				record_t record;
+				// Выполняем установку вида события открытого расширения
+				record.event = event_t::CUSTOM;
+				// Выполняем установку вида значения
+				record.type = type_t::CUSTOM;
+				// Выполняем установку отрезка октетов расширения
+				record.span = span_t(static_cast <uint32_t> (this->_offset), static_cast <uint32_t> (this->_pending));
+				// Выполняем установку номера подвида расширения
+				record.number = this->_subtype;
+				// Выполняем сдвиг смещения разбора
+				this->_offset += static_cast <size_t> (this->_pending);
+				// Выполняем сброс количества недостающих октетов
+				this->_pending = 0;
+				// Выполняем перевод разбора в ожидание очередной единицы
+				this->_state = state_t::ITEM;
 				// Если выдача события завершённого значения отвечена отказом
 				if(!this->settle(record))
 					// Сообщаем, что разбор отвечен отказом

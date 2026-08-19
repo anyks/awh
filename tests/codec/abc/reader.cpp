@@ -783,3 +783,69 @@ TEST(CodecAbcReader, CommitBeyondReserve){
 	// Выполняем проверку кода отказа разбора
 	ASSERT_EQ(reader.error(), abc::error_t::INTERNAL);
 }
+/**
+ * @brief Проверка отказа на число внутри значения, собираемого кусками
+ *
+ */
+TEST(CodecAbcReader, NumberInsideSegment){
+	// Запись, где внутри строки, собираемой кусками, стоит число неограниченной ширины
+	const vector <uint8_t> record = {
+		0x5F,             // Начало строки, собираемой кусками
+		0xE0,             // Метка целого неограниченной ширины
+		0x01,             // Длина октетов величины
+		0x00,             // Знак величины
+		0x01,             // Октет величины
+		0xDF              // Конец значения, собираемого кусками
+	};
+	// Разбиратель бинарной записи
+	abc::reader_t reader;
+	/**
+	 * Выполняем проверку отказа разбора: куском собираемого значения вправе стоять лишь
+	 * значение того же вида, и число внутри строки означает запись негодную
+	 */
+	ASSERT_FALSE(reader.feed(record.data(), record.size(), true));
+	// Выполняем проверку кода отказа разбора
+	ASSERT_EQ(reader.error(), abc::error_t::INVALID_SEGMENT);
+}
+/**
+ * @brief Проверка того, что обработчик прямой выдачи заменяет собою очередь
+ *
+ */
+TEST(CodecAbcReader, HandlerReplacesQueue){
+	// Сборка бинарной записи
+	abc::writer_t writer;
+	// Выполняем укладку начала массива
+	ASSERT_TRUE(writer.arrayBegin(static_cast <uint64_t> (3)));
+	// Выполняем укладку значений массива
+	ASSERT_TRUE(writer.number(static_cast <uint64_t> (1)));
+	// Выполняем укладку второго значения массива
+	ASSERT_TRUE(writer.number(static_cast <uint64_t> (2)));
+	// Выполняем укладку третьего значения массива
+	ASSERT_TRUE(writer.number(static_cast <uint64_t> (3)));
+	// Выполняем укладку конца массива
+	ASSERT_TRUE(writer.arrayEnd());
+	// Количество событий, принятых обработчиком
+	size_t taken = 0;
+	// Разбиратель бинарной записи
+	abc::reader_t reader;
+	// Выполняем установку обработчика прямой выдачи событий разбора
+	reader.handler([](void * context, abc::reader_t & reader, const abc::event_t event) noexcept -> void {
+		// Разбиратель работе обработчика не нужен
+		(void) reader;
+		// Событие разбора работе обработчика не нужно
+		(void) event;
+		// Выполняем учёт принятого события разбора
+		(* reinterpret_cast <size_t *> (context))++;
+	}, & taken);
+	// Выполняем подачу собранной записи разбирателю
+	ASSERT_TRUE(reader.feed(writer.record().data(), writer.record().size(), true))
+		<< "код отказа: " << abc::message(reader.error());
+	// Выполняем проверку того, что события до обработчика дошли
+	ASSERT_GT(taken, 5ul);
+	/**
+	 * Выполняем проверку того, что очередь выдачи пуста: событие, уже принятое
+	 * обработчиком, ложась ещё и в очередь, копило бы её без предела - снимать с неё
+	 * стало бы некому
+	 */
+	ASSERT_FALSE(reader.next());
+}

@@ -701,6 +701,39 @@ bool awh::codec::abc::Writer::decimal(const void * buffer, const size_t size, co
 	return this->account(start);
 }
 /**
+ * @brief Метод укладки открытого расширения
+ *
+ * @param subtype номер подвида расширения, заведённый потребителем
+ * @param buffer  буфер октетов расширения
+ * @param size    размер октетов расширения
+ * @return        признак успешности сборки
+ *
+ */
+bool awh::codec::abc::Writer::custom(const uint64_t subtype, const void * buffer, const size_t size) noexcept {
+	// Если место укладки значения негодно
+	if(!this->prepare(false))
+		// Сообщаем, что сборка отвечена отказом
+		return false;
+	// Если буфер октетов расширения не существует, а октеты объявлены
+	if((buffer == nullptr) && (size > 0))
+		// Выполняем объявление отказа сборки
+		return this->fail(error_t::INTERNAL);
+	// Выполняем получение признака имени поля отображения
+	const bool key = (!this->_stack.empty() && this->_stack.back().mapping && this->_stack.back().expectKey);
+	// Выполняем получение смещения начала записи значения
+	const size_t start = this->_record.size();
+	// Выполняем укладку метки открытого расширения
+	abc::mark(this->_record, group_t::EXTEND, static_cast <uint8_t> (extend_t::CUSTOM));
+	// Выполняем укладку номера подвида расширения
+	abc::put(this->_record, group_t::UNSIGNED, subtype);
+	// Выполняем укладку длины октетов расширения
+	abc::put(this->_record, group_t::UNSIGNED, static_cast <uint64_t> (size));
+	// Выполняем укладку октетов расширения
+	this->content(buffer, size, key);
+	// Выполняем учёт уложенного значения
+	return this->account(start);
+}
+/**
  * @brief Метод начала значения, собираемого кусками
  *
  * @param string признак того, что собирается строка, а не двоичные данные

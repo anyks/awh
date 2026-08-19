@@ -266,6 +266,9 @@ namespace awh {
 						EXTEND_LENGTH,    // Ожидается длина октетов величины
 						EXTEND_SIGN,      // Ожидается знак величины
 						EXTEND_DATA,      // Ожидаются октеты величины
+						CUSTOM_SUBTYPE,   // Ожидается номер подвида открытого расширения
+						CUSTOM_LENGTH,    // Ожидается длина октетов открытого расширения
+						CUSTOM_DATA,      // Ожидаются октеты открытого расширения
 						FINISHED,         // Разбор завершён
 						FAILED            // Разбор отвечен отказом
 					};
@@ -454,6 +457,9 @@ namespace awh {
 				private:
 					// Десятичный порядок ожидаемой величины
 					int64_t _exponent;
+				private:
+					// Номер подвида ожидаемого открытого расширения
+					uint64_t _subtype;
 				private:
 					// Признак того, что величина ожидаемого расширения меньше нуля
 					bool _negative;
@@ -726,11 +732,23 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод установки обработчика прямой выдачи событий разбора
 					 *
+					 * @details Обработчик очередь выдачи собою заменяет: событие приходит ему
+					 * прямо из разбора, а в очередь не ложится вовсе. Иначе работа выходила бы
+					 * двойной, а очередь росла бы без предела - снимать с неё стало бы некому
+					 *
+					 * @note Оттого при установленном обработчике переход к следующему событию
+					 * не выдаёт ничего: события все до одного ушли обработчику
+					 *
 					 * @param callback устанавливаемый обработчик, ноль - снятие обработчика
 					 * @param context  опора обработчика
 					 *
 					 * \~english
 					 * @brief Method of the setting of the handler of the direct issuance of the events of the parsing
+					 * @details The handler replaces the queue of the issuance by itself: an event comes to it
+					 * directly from the parsing and does not lie into the queue at all. Otherwise the work would come out
+					 * double, while the queue would grow without a limit — there would be nobody to take from it
+					 * @note Whereby with an installed handler the transition to the next event
+					 * issues nothing: all the events to a single one have gone to the handler
 					 * @param callback handler being set, zero — removal of the handler
 					 * @param context support of the handler
 					 *

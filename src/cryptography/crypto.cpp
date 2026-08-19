@@ -545,16 +545,19 @@ namespace gost {
 	// Размер блока хэш-функции в октетах
 	static constexpr size_t BLOCK = 64;
 	/**
-	 * Рабочая ширина числа в октетах
+	 * Наибольшая рабочая ширина числа в октетах
 	 *
-	 * @details Произведение двух чисел по 256 разрядов занимает ровно 512 разрядов и
-	 *          в буфер такой ширины входит без потери старших разрядов, поэтому всё
-	 *          поле считается на ней; умножение awh::bignum усекает итог до ширины
-	 *          буфера и на меньшей ширине молча портило бы результат
+	 * @details Произведение двух чисел занимает вдвое больше разрядов, чем множители,
+	 *          и в буфер такой ширины входит без потери старших разрядов, поэтому всё
+	 *          поле считается на удвоенной ширине числа; умножение awh::bignum усекает
+	 *          итог до поданной ширины и на меньшей ширине молча портило бы результат.
+	 *          Величина здесь наибольшая из применяемых - под схему на 512 разрядов;
+	 *          сама же ширина счёта берётся у кривой и подаётся всякому действию поля,
+	 *          иначе схема на 256 разрядов считалась бы вчетверо дороже нужного
 	 */
-	static constexpr size_t WIDTH = 64;
-	// Размер числа подписи и координаты точки в октетах
-	static constexpr size_t DIGIT = 32;
+	static constexpr size_t WIDTH = 128;
+	// Наибольший размер числа подписи и координаты точки в октетах
+	static constexpr size_t DIGIT = 64;
 	// Подстановка Pi хэш-функции
 	static const uint8_t PI[256] = {
 		252,238,221, 17,207,110, 49, 22,251,196,250,218, 35,197,  4, 77,
@@ -640,6 +643,8 @@ namespace gost {
 	 *
 	 */
 	struct curve_t {
+		// Размер числа подписи и координаты точки в октетах
+		size_t digit;
 		// Название набора свойств
 		const char * name;
 		// Модуль простого поля
@@ -660,8 +665,9 @@ namespace gost {
 	 *          приведение их по памяти дало три ошибки из пяти чисел и было поймано
 	 *          проверкой порядка точки основания
 	 */
-	static const curve_t CURVES[2] = {
+	static const curve_t CURVES[5] = {
 		{
+			32,
 			"id-GostR3410-2001-CryptoPro-A-ParamSet",
 			"FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFD97",
 			"FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFD94",
@@ -670,12 +676,40 @@ namespace gost {
 			"8D91E471E0989CDA27DF505A453F2B7635294F2DDF23E3B122ACC99C9E9F1E14"
 		},
 		{
+			32,
 			"id-tc26-gost-3410-2012-256-paramSetA",
 			"FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFD97",
 			"C2173F1513981673AF4892C23035A27CE25E2013BF95AA33B22C656F277E7335",
 			"400000000000000000000000000000000FD8CDDFC87B6635C115AF556C360C67",
 			"91E38443A5E82C0D880923425712B2BB658B9196932E02C78B2582FE742DAA28",
 			"32879423AB1A0375895786C4BB46E9565FDE0B5344766740AF268ADB32322E5C"
+		},
+		{
+			64,
+			"id-tc26-gost-3410-2012-512-paramSetA",
+			"FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFDC7",
+			"FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFDC4",
+			"FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF27E69532F48D89116FF22B8D4E0560609B4B38ABFAD2B85DCACDB1411F10B275",
+			"00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003",
+			"7503CFE87A836AE3A61B8816E25450E6CE5E1C93ACF1ABC1778064FDCBEFA921DF1626BE4FD036E93D75E6A50E3A41E98028FE5FC235F5B889A589CB5215F2A4"
+		},
+		{
+			64,
+			"id-tc26-gost-3410-2012-512-paramSetB",
+			"8000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006F",
+			"8000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006C",
+			"800000000000000000000000000000000000000000000000000000000000000149A1EC142565A545ACFDB77BD9D40CFA8B996712101BEA0EC6346C54374F25BD",
+			"00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002",
+			"1A8F7EDA389B094C2C071E3647A8940F3C123B697578C213BE6DD9E6C8EC7335DCB228FD1EDF4A39152CBCAAF8C0398828041055F94CEEEC7E21340780FE41BD"
+		},
+		{
+			64,
+			"id-tc26-gost-3410-2012-512-paramSetC",
+			"FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFDC7",
+			"DC9203E514A721875485A529D2C722FB187BC8980EB866644DE41C68E143064546E861C0E2C9EDD92ADE71F46FCF50FF2AD97F951FDA9F2A2EB6546F39689BD3",
+			"3FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFC98CDBA46506AB004C33A9FF5147502CC8EDA9E7A769A12694623CEF47F023ED",
+			"E2E31EDFC23DE7BDEBE241CE593EF5DE2295B7A9CBAEF021D385F7074CEA043AA27272A7AE602BF2A7B9033DB9ED3610C6FB85487EAE97AAC5BC7928C1950148",
+			"F5CE40D95B5EB899ABBCCFF5911CB8577939804D6527378B8C108C3D2090FF9BE18E2D33E3021ED2EF32D85822423B6304F726AA854BAE07D0396E9A9ADDC40F"
 		}
 	};
 	/**
@@ -1268,14 +1302,15 @@ namespace gost {
 	 *
 	 * @param value буфер приводимого числа и итога
 	 * @param mod   буфер модуля
+	 * @param width ширина счёта в октетах
 	 */
-	static void reduce(uint8_t * value, const uint8_t * mod) noexcept {
+	static void reduce(uint8_t * value, const uint8_t * mod, const size_t width) noexcept {
 		// Буфер частного от деления
 		uint8_t quotient[WIDTH];
 		// Выполняем копирование приводимого числа
-		::memcpy(quotient, value, WIDTH);
+		::memcpy(quotient, value, width);
 		// Выполняем деление с остатком, остаток и есть приведённое число
-		bignum::divmod(quotient, mod, value, WIDTH);
+		bignum::divmod(quotient, mod, value, width);
 	}
 	/**
 	 * @brief Метод сложения по модулю
@@ -1283,12 +1318,13 @@ namespace gost {
 	 * @param result буфер слагаемого и итога
 	 * @param value  буфер второго слагаемого
 	 * @param mod    буфер модуля
+	 * @param width  ширина счёта в октетах
 	 */
-	static void addmod(uint8_t * result, const uint8_t * value, const uint8_t * mod) noexcept {
+	static void addmod(uint8_t * result, const uint8_t * value, const uint8_t * mod, const size_t width) noexcept {
 		// Выполняем сложение чисел
-		bignum::add(result, value, WIDTH);
+		bignum::add(result, value, width);
 		// Выполняем приведение суммы по модулю
-		reduce(result, mod);
+		reduce(result, mod, width);
 	}
 	/**
 	 * @brief Метод вычитания по модулю
@@ -1296,19 +1332,20 @@ namespace gost {
 	 * @param result буфер уменьшаемого и итога
 	 * @param value  буфер вычитаемого
 	 * @param mod    буфер модуля
+	 * @param width  ширина счёта в октетах
 	 */
-	static void submod(uint8_t * result, const uint8_t * value, const uint8_t * mod) noexcept {
+	static void submod(uint8_t * result, const uint8_t * value, const uint8_t * mod, const size_t width) noexcept {
 		/**
 		 * Выполняем добавление модуля, пока уменьшаемое меньше вычитаемого
 		 *
 		 * @note Числа держатся беззнаковыми, поэтому отрицательный итог получить нельзя
 		 *       вовсе, и заём берётся у модуля заранее
 		 */
-		while(bignum::ucompare(result, value, WIDTH) < 0)
+		while(bignum::ucompare(result, value, width) < 0)
 			// Выполняем добавление модуля к уменьшаемому
-			bignum::add(result, mod, WIDTH);
+			bignum::add(result, mod, width);
 		// Выполняем вычитание чисел
-		bignum::sub(result, value, WIDTH);
+		bignum::sub(result, value, width);
 	}
 	/**
 	 * @brief Метод умножения по модулю
@@ -1316,12 +1353,13 @@ namespace gost {
 	 * @param result буфер множимого и итога
 	 * @param value  буфер множителя
 	 * @param mod    буфер модуля
+	 * @param width  ширина счёта в октетах
 	 */
-	static void mulmod(uint8_t * result, const uint8_t * value, const uint8_t * mod) noexcept {
+	static void mulmod(uint8_t * result, const uint8_t * value, const uint8_t * mod, const size_t width) noexcept {
 		// Выполняем умножение чисел
-		bignum::mul(result, value, WIDTH);
+		bignum::mul(result, value, width);
 		// Выполняем приведение произведения по модулю
-		reduce(result, mod);
+		reduce(result, mod, width);
 	}
 	/**
 	 * @brief Метод возведения в степень по модулю
@@ -1330,8 +1368,9 @@ namespace gost {
 	 * @param base     буфер основания
 	 * @param exponent буфер показателя
 	 * @param mod      буфер модуля
+	 * @param width    ширина счёта в октетах
 	 */
-	static void powmod(uint8_t * result, const uint8_t * base, const uint8_t * exponent, const uint8_t * mod) noexcept {
+	static void powmod(uint8_t * result, const uint8_t * base, const uint8_t * exponent, const uint8_t * mod, const size_t width) noexcept {
 		// Накопитель итога возведения
 		uint8_t outcome[WIDTH];
 		// Выполняем обнуление накопителя итога
@@ -1343,23 +1382,23 @@ namespace gost {
 		// Выполняем копирование основания
 		::memcpy(square, base, WIDTH);
 		// Выполняем приведение основания по модулю
-		reduce(square, mod);
+		reduce(square, mod, width);
 		// Определяем количество значащих разрядов показателя
-		const size_t count = bignum::bits(exponent, WIDTH);
+		const size_t count = bignum::bits(exponent, width);
 		/**
 		 * Выполняем перебор разрядов показателя от младшего к старшему
 		 */
 		for(size_t i = 0; i < count; i++){
 			// Если очередной разряд показателя установлен
-			if(bignum::bit(exponent, WIDTH, i))
+			if(bignum::bit(exponent, width, i))
 				// Выполняем умножение накопителя итога на квадрат основания
-				mulmod(outcome, square, mod);
+				mulmod(outcome, square, mod, width);
 			// Промежуточное значение квадрата основания
 			uint8_t temp[WIDTH];
 			// Выполняем копирование квадрата основания
 			::memcpy(temp, square, WIDTH);
 			// Выполняем возведение основания в очередной квадрат
-			mulmod(square, temp, mod);
+			mulmod(square, temp, mod, width);
 		}
 		// Выполняем запись итога возведения
 		::memcpy(result, outcome, WIDTH);
@@ -1374,8 +1413,10 @@ namespace gost {
 	 * @details Обратное берётся малой теоремой Ферма, а не расширенным алгоритмом
 	 *          Евклида: модуль здесь всегда простой, а возведение в степень идёт по
 	 *          тому же пути, что и всё поле, и не заводит второй разновидности кода
+	 *
+	 * @param width ширина счёта в октетах
 	 */
-	static void invmod(uint8_t * result, const uint8_t * value, const uint8_t * mod) noexcept {
+	static void invmod(uint8_t * result, const uint8_t * value, const uint8_t * mod, const size_t width) noexcept {
 		// Показатель степени обращения
 		uint8_t exponent[WIDTH];
 		// Выполняем копирование модуля
@@ -1387,9 +1428,9 @@ namespace gost {
 		// Выполняем установку двойки
 		two[0] = 0x02;
 		// Выполняем уменьшение показателя степени на два
-		bignum::sub(exponent, two, WIDTH);
+		bignum::sub(exponent, two, width);
 		// Выполняем возведение обращаемого числа в степень
-		powmod(result, value, exponent, mod);
+		powmod(result, value, exponent, mod, width);
 	}
 	/**
 	 * @brief Точка кривой в проективных координатах Якоби
@@ -1412,6 +1453,10 @@ namespace gost {
 	 *
 	 */
 	struct field_t {
+		// Размер числа подписи и координаты точки в октетах
+		size_t digit;
+		// Ширина счёта поля в октетах
+		size_t width;
 		// Модуль простого поля
 		uint8_t p[WIDTH];
 		// Коэффициент кривой
@@ -1430,6 +1475,10 @@ namespace gost {
 	static void setup(field_t & field, const size_t index) noexcept {
 		// Определяем набор свойств кривой
 		const curve_t & curve = CURVES[index];
+		// Выполняем установку размера числа подписи
+		field.digit = curve.digit;
+		// Выполняем установку ширины счёта поля
+		field.width = (curve.digit * 2);
 		// Выполняем разбор модуля простого поля
 		parse(field.p, curve.p);
 		// Выполняем разбор коэффициента кривой
@@ -1449,11 +1498,12 @@ namespace gost {
 	 * @brief Метод проверки точки на бесконечную удалённость
 	 *
 	 * @param point проверяемая точка
+	 * @param width ширина счёта в октетах
 	 * @return      результат проверки
 	 */
-	static bool infinity(const point_t & point) noexcept {
+	static bool infinity(const point_t & point, const size_t width) noexcept {
 		// Выводим результат проверки знаменателя на нуль
-		return bignum::zero(point.z, WIDTH);
+		return bignum::zero(point.z, width);
 	}
 	/**
 	 * @brief Метод удвоения точки
@@ -1466,7 +1516,7 @@ namespace gost {
 		/**
 		 * Если точка бесконечно удалена либо лежит на оси
 		 */
-		if(infinity(point) || bignum::zero(point.y, WIDTH)){
+		if(infinity(point, field.width) || bignum::zero(point.y, field.width)){
 			// Выполняем запись бесконечно удалённой точки
 			::memset(result.z, 0, WIDTH);
 			// Выходим из метода
@@ -1476,50 +1526,50 @@ namespace gost {
 		uint8_t yy[WIDTH], s[WIDTH], m[WIDTH], t[WIDTH], zz[WIDTH];
 		// Выполняем возведение второй оси в квадрат
 		::memcpy(yy, point.y, WIDTH);
-		mulmod(yy, point.y, field.p);
+		mulmod(yy, point.y, field.p, field.width);
 		// Выполняем счёт учетверённого произведения первой оси на квадрат второй
 		::memcpy(s, point.x, WIDTH);
-		mulmod(s, yy, field.p);
-		addmod(s, s, field.p);
-		addmod(s, s, field.p);
+		mulmod(s, yy, field.p, field.width);
+		addmod(s, s, field.p, field.width);
+		addmod(s, s, field.p, field.width);
 		// Выполняем возведение знаменателя в квадрат
 		::memcpy(zz, point.z, WIDTH);
-		mulmod(zz, point.z, field.p);
+		mulmod(zz, point.z, field.p, field.width);
 		// Выполняем счёт углового коэффициента касательной
 		::memcpy(m, point.x, WIDTH);
-		mulmod(m, point.x, field.p);
+		mulmod(m, point.x, field.p, field.width);
 		::memcpy(t, m, WIDTH);
-		addmod(m, t, field.p);
-		addmod(m, t, field.p);
+		addmod(m, t, field.p, field.width);
+		addmod(m, t, field.p, field.width);
 		::memcpy(t, zz, WIDTH);
-		mulmod(t, zz, field.p);
-		mulmod(t, field.a, field.p);
-		addmod(m, t, field.p);
+		mulmod(t, zz, field.p, field.width);
+		mulmod(t, field.a, field.p, field.width);
+		addmod(m, t, field.p, field.width);
 		// Первая ось итога
 		uint8_t nx[WIDTH];
 		// Выполняем счёт первой оси итога
 		::memcpy(nx, m, WIDTH);
-		mulmod(nx, m, field.p);
-		submod(nx, s, field.p);
-		submod(nx, s, field.p);
+		mulmod(nx, m, field.p, field.width);
+		submod(nx, s, field.p, field.width);
+		submod(nx, s, field.p, field.width);
 		// Вторая ось итога
 		uint8_t ny[WIDTH];
 		// Выполняем счёт второй оси итога
 		::memcpy(ny, s, WIDTH);
-		submod(ny, nx, field.p);
-		mulmod(ny, m, field.p);
+		submod(ny, nx, field.p, field.width);
+		mulmod(ny, m, field.p, field.width);
 		::memcpy(t, yy, WIDTH);
-		mulmod(t, yy, field.p);
+		mulmod(t, yy, field.p, field.width);
 		// Выполняем восьмикратное увеличение вычитаемого
 		for(size_t i = 0; i < 3; i++)
-			addmod(t, t, field.p);
-		submod(ny, t, field.p);
+			addmod(t, t, field.p, field.width);
+		submod(ny, t, field.p, field.width);
 		// Знаменатель итога
 		uint8_t nz[WIDTH];
 		// Выполняем счёт знаменателя итога
 		::memcpy(nz, point.y, WIDTH);
-		mulmod(nz, point.z, field.p);
-		addmod(nz, nz, field.p);
+		mulmod(nz, point.z, field.p, field.width);
+		addmod(nz, nz, field.p, field.width);
 		// Выполняем запись первой оси итога
 		::memcpy(result.x, nx, WIDTH);
 		// Выполняем запись второй оси итога
@@ -1539,7 +1589,7 @@ namespace gost {
 		/**
 		 * Если первое слагаемое бесконечно удалено
 		 */
-		if(infinity(first)){
+		if(infinity(first, field.width)){
 			// Выполняем запись второго слагаемого
 			result = second;
 			// Выходим из метода
@@ -1548,7 +1598,7 @@ namespace gost {
 		/**
 		 * Если второе слагаемое бесконечно удалено
 		 */
-		if(infinity(second)){
+		if(infinity(second, field.width)){
 			// Выполняем запись первого слагаемого
 			result = first;
 			// Выходим из метода
@@ -1558,29 +1608,29 @@ namespace gost {
 		uint8_t z1[WIDTH], z2[WIDTH], u1[WIDTH], u2[WIDTH], s1[WIDTH], s2[WIDTH], h[WIDTH], r[WIDTH], t[WIDTH];
 		// Выполняем возведение знаменателей в квадрат
 		::memcpy(z1, first.z, WIDTH);
-		mulmod(z1, first.z, field.p);
+		mulmod(z1, first.z, field.p, field.width);
 		::memcpy(z2, second.z, WIDTH);
-		mulmod(z2, second.z, field.p);
+		mulmod(z2, second.z, field.p, field.width);
 		// Выполняем приведение первых осей к общему знаменателю
 		::memcpy(u1, first.x, WIDTH);
-		mulmod(u1, z2, field.p);
+		mulmod(u1, z2, field.p, field.width);
 		::memcpy(u2, second.x, WIDTH);
-		mulmod(u2, z1, field.p);
+		mulmod(u2, z1, field.p, field.width);
 		// Выполняем приведение вторых осей к общему знаменателю
 		::memcpy(s1, first.y, WIDTH);
-		mulmod(s1, z2, field.p);
-		mulmod(s1, second.z, field.p);
+		mulmod(s1, z2, field.p, field.width);
+		mulmod(s1, second.z, field.p, field.width);
 		::memcpy(s2, second.y, WIDTH);
-		mulmod(s2, z1, field.p);
-		mulmod(s2, first.z, field.p);
+		mulmod(s2, z1, field.p, field.width);
+		mulmod(s2, first.z, field.p, field.width);
 		/**
 		 * Если первые оси слагаемых совпали
 		 */
-		if(bignum::ucompare(u1, u2, WIDTH) == 0){
+		if(bignum::ucompare(u1, u2, field.width) == 0){
 			/**
 			 * Если совпали и вторые оси, слагаемые являются одной точкой
 			 */
-			if(bignum::ucompare(s1, s2, WIDTH) == 0){
+			if(bignum::ucompare(s1, s2, field.width) == 0){
 				// Выполняем удвоение точки вместо сложения
 				twice(result, first, field);
 				// Выходим из метода
@@ -1593,42 +1643,42 @@ namespace gost {
 		}
 		// Выполняем счёт разностей осей
 		::memcpy(h, u2, WIDTH);
-		submod(h, u1, field.p);
+		submod(h, u1, field.p, field.width);
 		::memcpy(r, s2, WIDTH);
-		submod(r, s1, field.p);
+		submod(r, s1, field.p, field.width);
 		// Степени разности первых осей
 		uint8_t hh[WIDTH], hhh[WIDTH];
 		// Выполняем возведение разности первых осей в квадрат
 		::memcpy(hh, h, WIDTH);
-		mulmod(hh, h, field.p);
+		mulmod(hh, h, field.p, field.width);
 		// Выполняем возведение разности первых осей в куб
 		::memcpy(hhh, hh, WIDTH);
-		mulmod(hhh, h, field.p);
+		mulmod(hhh, h, field.p, field.width);
 		// Первая ось итога
 		uint8_t nx[WIDTH];
 		// Выполняем счёт первой оси итога
 		::memcpy(nx, r, WIDTH);
-		mulmod(nx, r, field.p);
-		submod(nx, hhh, field.p);
+		mulmod(nx, r, field.p, field.width);
+		submod(nx, hhh, field.p, field.width);
 		::memcpy(t, u1, WIDTH);
-		mulmod(t, hh, field.p);
-		submod(nx, t, field.p);
-		submod(nx, t, field.p);
+		mulmod(t, hh, field.p, field.width);
+		submod(nx, t, field.p, field.width);
+		submod(nx, t, field.p, field.width);
 		// Вторая ось итога
 		uint8_t ny[WIDTH];
 		// Выполняем счёт второй оси итога
 		::memcpy(ny, t, WIDTH);
-		submod(ny, nx, field.p);
-		mulmod(ny, r, field.p);
+		submod(ny, nx, field.p, field.width);
+		mulmod(ny, r, field.p, field.width);
 		::memcpy(t, s1, WIDTH);
-		mulmod(t, hhh, field.p);
-		submod(ny, t, field.p);
+		mulmod(t, hhh, field.p, field.width);
+		submod(ny, t, field.p, field.width);
 		// Знаменатель итога
 		uint8_t nz[WIDTH];
 		// Выполняем счёт знаменателя итога
 		::memcpy(nz, h, WIDTH);
-		mulmod(nz, first.z, field.p);
-		mulmod(nz, second.z, field.p);
+		mulmod(nz, first.z, field.p, field.width);
+		mulmod(nz, second.z, field.p, field.width);
 		// Выполняем запись первой оси итога
 		::memcpy(result.x, nx, WIDTH);
 		// Выполняем запись второй оси итога
@@ -1656,7 +1706,7 @@ namespace gost {
 		outcome.x[0] = 0x01;
 		outcome.y[0] = 0x01;
 		// Определяем количество значащих разрядов множителя
-		const size_t count = bignum::bits(factor, WIDTH);
+		const size_t count = bignum::bits(factor, field.width);
 		/**
 		 * Выполняем перебор разрядов множителя от старшего к младшему
 		 */
@@ -1668,7 +1718,7 @@ namespace gost {
 			/**
 			 * Если очередной разряд множителя установлен
 			 */
-			if(bignum::bit(factor, WIDTH, i)){
+			if(bignum::bit(factor, field.width, i)){
 				// Выполняем копирование накопителя
 				temp = outcome;
 				// Выполняем добавление умножаемой точки к накопителю
@@ -1690,19 +1740,19 @@ namespace gost {
 		// Обратное значение знаменателя
 		uint8_t inverse[WIDTH];
 		// Выполняем обращение знаменателя
-		invmod(inverse, point.z, field.p);
+		invmod(inverse, point.z, field.p, field.width);
 		// Квадрат обратного значения знаменателя
 		uint8_t square[WIDTH];
 		// Выполняем возведение обратного значения в квадрат
 		::memcpy(square, inverse, WIDTH);
-		mulmod(square, inverse, field.p);
+		mulmod(square, inverse, field.p, field.width);
 		// Выполняем счёт первой оси
 		::memcpy(x, point.x, WIDTH);
-		mulmod(x, square, field.p);
+		mulmod(x, square, field.p, field.width);
 		// Выполняем счёт второй оси
 		::memcpy(y, point.y, WIDTH);
-		mulmod(y, square, field.p);
-		mulmod(y, inverse, field.p);
+		mulmod(y, square, field.p, field.width);
+		mulmod(y, inverse, field.p, field.width);
 	}
 	/**
 	 * @brief Метод получения открытой части ключа из закрытой
@@ -1718,11 +1768,11 @@ namespace gost {
 		// Буфер закрытой части ключа
 		uint8_t secret[WIDTH];
 		// Выполняем перенос закрытой части ключа
-		load(secret, key.secret, DIGIT);
+		load(secret, key.secret, field.digit);
 		/**
 		 * Если закрытая часть ключа нулевая либо не меньше порядка точки основания
 		 */
-		if(bignum::zero(secret, WIDTH) || (bignum::ucompare(secret, field.q, WIDTH) >= 0))
+		if(bignum::zero(secret, field.width) || (bignum::ucompare(secret, field.q, field.width) >= 0))
 			// Выводим результат неудачи
 			return false;
 		// Открытая часть ключа
@@ -1732,7 +1782,7 @@ namespace gost {
 		/**
 		 * Если открытая часть ключа бесконечно удалена
 		 */
-		if(infinity(outcome))
+		if(infinity(outcome, field.width))
 			// Выводим результат неудачи
 			return false;
 		// Оси открытой части ключа
@@ -1740,9 +1790,9 @@ namespace gost {
 		// Выполняем приведение открытой части ключа к плоским координатам
 		affine(x, y, outcome, field);
 		// Выполняем выгрузку первой оси открытой части ключа
-		save(key.x, x, DIGIT);
+		save(key.x, x, field.digit);
 		// Выполняем выгрузку второй оси открытой части ключа
-		save(key.y, y, DIGIT);
+		save(key.y, y, field.digit);
 		// Выполняем установку признака наличия закрытой части
 		key.secured = true;
 		// Выводим результат успеха
@@ -1767,7 +1817,7 @@ namespace gost {
 		 */
 		for(size_t attempt = 0; attempt < 32; attempt++){
 			// Выполняем выработку случайной закрытой части ключа
-			if(!entropy::random(key.secret, DIGIT))
+			if(!entropy::random(key.secret, CURVES[curve].digit))
 				// Выводим результат неудачи
 				return false;
 			// Если открытая часть ключа получена
@@ -1805,7 +1855,7 @@ namespace gost {
 		// Буферы закрытой части ключа и хэш-суммы
 		uint8_t secret[WIDTH], e[WIDTH];
 		// Выполняем перенос закрытой части ключа
-		load(secret, key.secret, DIGIT);
+		load(secret, key.secret, field.digit);
 		/**
 		 * Выполняем перенос хэш-суммы числом
 		 *
@@ -1818,14 +1868,14 @@ namespace gost {
 			// Выполняем перенос очередного октета хэш-суммы
 			e[i] = digest[i];
 		// Выполняем приведение хэш-суммы по порядку точки основания
-		reduce(e, field.q);
+		reduce(e, field.q, field.width);
 		/**
 		 * Если приведённая хэш-сумма нулевая
 		 *
 		 * @note Стандарт велит брать единицу вместо нуля: нулевая хэш-сумма обратного
 		 *       по модулю не имеет, и проверка такой подписи была бы невозможна
 		 */
-		if(bignum::zero(e, WIDTH))
+		if(bignum::zero(e, field.width))
 			// Выполняем установку единицы вместо нуля
 			e[0] = 0x01;
 		/**
@@ -1835,15 +1885,15 @@ namespace gost {
 			// Случайное число выработки подписи
 			uint8_t raw[DIGIT], k[WIDTH];
 			// Выполняем выработку случайного числа
-			if(!entropy::random(raw, DIGIT))
+			if(!entropy::random(raw, field.digit))
 				// Выводим результат неудачи
 				return false;
 			// Выполняем перенос случайного числа
-			load(k, raw, DIGIT);
+			load(k, raw, field.digit);
 			/**
 			 * Если случайное число негодно
 			 */
-			if(bignum::zero(k, WIDTH) || (bignum::ucompare(k, field.q, WIDTH) >= 0))
+			if(bignum::zero(k, field.width) || (bignum::ucompare(k, field.q, field.width) >= 0))
 				// Переходим к следующей попытке
 				continue;
 			// Точка выработки подписи
@@ -1853,7 +1903,7 @@ namespace gost {
 			/**
 			 * Если точка выработки подписи бесконечно удалена
 			 */
-			if(infinity(outcome))
+			if(infinity(outcome, field.width))
 				// Переходим к следующей попытке
 				continue;
 			// Оси точки выработки подписи
@@ -1865,33 +1915,33 @@ namespace gost {
 			// Выполняем копирование первой оси точки
 			::memcpy(r, x, WIDTH);
 			// Выполняем приведение первого числа подписи
-			reduce(r, field.q);
+			reduce(r, field.q, field.width);
 			/**
 			 * Если первое число подписи нулевое
 			 */
-			if(bignum::zero(r, WIDTH))
+			if(bignum::zero(r, field.width))
 				// Переходим к следующей попытке
 				continue;
 			// Второе число подписи и промежуточное значение
 			uint8_t s[WIDTH], temp[WIDTH];
 			// Выполняем умножение первого числа подписи на закрытую часть ключа
 			::memcpy(s, r, WIDTH);
-			mulmod(s, secret, field.q);
+			mulmod(s, secret, field.q, field.width);
 			// Выполняем умножение случайного числа на хэш-сумму
 			::memcpy(temp, k, WIDTH);
-			mulmod(temp, e, field.q);
+			mulmod(temp, e, field.q, field.width);
 			// Выполняем сложение слагаемых второго числа подписи
-			addmod(s, temp, field.q);
+			addmod(s, temp, field.q, field.width);
 			/**
 			 * Если второе число подписи нулевое
 			 */
-			if(bignum::zero(s, WIDTH))
+			if(bignum::zero(s, field.width))
 				// Переходим к следующей попытке
 				continue;
 			// Выполняем выгрузку второго числа подписи
-			save(signature, s, DIGIT);
+			save(signature, s, field.digit);
 			// Выполняем выгрузку первого числа подписи
-			save(signature + DIGIT, r, DIGIT);
+			save(signature + field.digit, r, field.digit);
 			// Выводим результат успеха
 			return true;
 		}
@@ -1915,14 +1965,14 @@ namespace gost {
 		// Числа подписи
 		uint8_t r[WIDTH], s[WIDTH];
 		// Выполняем перенос второго числа подписи
-		load(s, signature, DIGIT);
+		load(s, signature, field.digit);
 		// Выполняем перенос первого числа подписи
-		load(r, signature + DIGIT, DIGIT);
+		load(r, signature + field.digit, field.digit);
 		/**
 		 * Если числа подписи вышли за промежуток годных значений
 		 */
-		if(bignum::zero(r, WIDTH) || bignum::zero(s, WIDTH) ||
-		   (bignum::ucompare(r, field.q, WIDTH) >= 0) || (bignum::ucompare(s, field.q, WIDTH) >= 0))
+		if(bignum::zero(r, field.width) || bignum::zero(s, field.width) ||
+		   (bignum::ucompare(r, field.q, field.width) >= 0) || (bignum::ucompare(s, field.q, field.width) >= 0))
 			// Выводим результат отказа
 			return false;
 		// Буфер хэш-суммы
@@ -1934,31 +1984,31 @@ namespace gost {
 			// Выполняем перенос очередного октета хэш-суммы
 			e[i] = digest[i];
 		// Выполняем приведение хэш-суммы по порядку точки основания
-		reduce(e, field.q);
+		reduce(e, field.q, field.width);
 		// Если приведённая хэш-сумма нулевая
-		if(bignum::zero(e, WIDTH))
+		if(bignum::zero(e, field.width))
 			// Выполняем установку единицы вместо нуля
 			e[0] = 0x01;
 		// Обратное значение хэш-суммы и множители точек
 		uint8_t v[WIDTH], z1[WIDTH], z2[WIDTH], temp[WIDTH];
 		// Выполняем обращение хэш-суммы
-		invmod(v, e, field.q);
+		invmod(v, e, field.q, field.width);
 		// Выполняем счёт множителя точки основания
 		::memcpy(z1, s, WIDTH);
-		mulmod(z1, v, field.q);
+		mulmod(z1, v, field.q, field.width);
 		// Выполняем счёт множителя открытой части ключа
 		::memcpy(z2, r, WIDTH);
-		mulmod(z2, v, field.q);
+		mulmod(z2, v, field.q, field.width);
 		// Выполняем смену знака множителя открытой части ключа
 		::memcpy(temp, field.q, WIDTH);
-		submod(temp, z2, field.q);
+		submod(temp, z2, field.q, field.width);
 		::memcpy(z2, temp, WIDTH);
 		// Открытая часть ключа
 		point_t open;
 		// Выполняем перенос первой оси открытой части ключа
-		load(open.x, key.x, DIGIT);
+		load(open.x, key.x, field.digit);
 		// Выполняем перенос второй оси открытой части ключа
-		load(open.y, key.y, DIGIT);
+		load(open.y, key.y, field.digit);
 		// Выполняем обнуление знаменателя открытой части ключа
 		::memset(open.z, 0, WIDTH);
 		// Выполняем установку единицы в знаменатель открытой части ключа
@@ -1974,7 +2024,7 @@ namespace gost {
 		/**
 		 * Если сумма точек проверки бесконечно удалена
 		 */
-		if(infinity(sum))
+		if(infinity(sum, field.width))
 			// Выводим результат отказа
 			return false;
 		// Оси суммы точек проверки
@@ -1982,9 +2032,9 @@ namespace gost {
 		// Выполняем приведение суммы точек к плоским координатам
 		affine(x, y, sum, field);
 		// Выполняем приведение первой оси по порядку точки основания
-		reduce(x, field.q);
+		reduce(x, field.q, field.width);
 		// Выводим результат сличения с первым числом подписи
-		return (bignum::ucompare(x, r, WIDTH) == 0);
+		return (bignum::ucompare(x, r, field.width) == 0);
 	}
 	/**
 	 * Опознаватель схемы подписи ГОСТ Р 34.10-2012 на 256 разрядов
@@ -1993,12 +2043,24 @@ namespace gost {
 	 *          1.2.643.7.1.1.1.1
 	 */
 	static const uint8_t OID_SIGN[8] = {0x2a, 0x85, 0x03, 0x07, 0x01, 0x01, 0x01, 0x01};
+	// Опознаватель схемы подписи на 512 разрядов: 1.2.643.7.1.1.1.2
+	static const uint8_t OID_SIGN512[8] = {0x2a, 0x85, 0x03, 0x07, 0x01, 0x01, 0x01, 0x02};
 	// Опознаватель хэш-функции ГОСТ Р 34.11-2012 на 256 разрядов: 1.2.643.7.1.1.2.2
 	static const uint8_t OID_HASH[8] = {0x2a, 0x85, 0x03, 0x07, 0x01, 0x01, 0x02, 0x02};
+	// Опознаватель хэш-функции ГОСТ Р 34.11-2012 на 512 разрядов: 1.2.643.7.1.1.2.3
+	static const uint8_t OID_HASH512[8] = {0x2a, 0x85, 0x03, 0x07, 0x01, 0x01, 0x02, 0x03};
 	// Опознаватель набора свойств CryptoPro-A: 1.2.643.2.2.35.1
 	static const uint8_t OID_CURVE_A[7] = {0x2a, 0x85, 0x03, 0x02, 0x02, 0x23, 0x01};
 	// Опознаватель набора свойств ТК26 256 A: 1.2.643.7.1.2.1.1.1
 	static const uint8_t OID_CURVE_B[9] = {0x2a, 0x85, 0x03, 0x07, 0x01, 0x02, 0x01, 0x01, 0x01};
+	// Опознаватель набора свойств ТК26 512 A: 1.2.643.7.1.2.1.2.1
+	static const uint8_t OID_CURVE_C[9] = {0x2a, 0x85, 0x03, 0x07, 0x01, 0x02, 0x01, 0x02, 0x01};
+	// Опознаватель набора свойств ТК26 512 B: 1.2.643.7.1.2.1.2.2
+	static const uint8_t OID_CURVE_D[9] = {0x2a, 0x85, 0x03, 0x07, 0x01, 0x02, 0x01, 0x02, 0x02};
+	// Опознаватель набора свойств ТК26 512 C: 1.2.643.7.1.2.1.2.3
+	static const uint8_t OID_CURVE_E[9] = {0x2a, 0x85, 0x03, 0x07, 0x01, 0x02, 0x01, 0x02, 0x03};
+	// Количество известных работе наборов свойств кривых
+	static constexpr size_t COUNT = 5;
 	/**
 	 * @brief Метод записи длины по правилам DER
 	 *
@@ -2048,6 +2110,32 @@ namespace gost {
 		result.insert(result.end(), value, value + size);
 	}
 	/**
+	 * @brief Метод опознания вида подписи схемой ГОСТ Р 34.10-2012
+	 *
+	 * @param type вид подписи
+	 * @return     результат опознания
+	 *
+	 * @details Обе разрядности схемы ходят одним и тем же путём работы и разнятся лишь
+	 *          свойствами кривой, оттого проверок вида в работе много, и каждая обязана
+	 *          принимать обе. Посредник этот избавляет от перечисления видов на месте:
+	 *          пропуск одного из них молча увёл бы схему на 512 разрядов в путь
+	 *          библиотеки криптографии, где ключа её нет вовсе
+	 */
+	static bool kindOf(const crypto_t::signature_t type) noexcept {
+		// Выводим признак принадлежности вида подписи схеме ГОСТ
+		return ((type == crypto_t::signature_t::GOST) || (type == crypto_t::signature_t::GOST512));
+	}
+	/**
+	 * @brief Метод получения размера числа подписи ключа
+	 *
+	 * @param key ключ подписи
+	 * @return    размер числа подписи в октетах
+	 */
+	static size_t digitOf(const key_t & key) noexcept {
+		// Выводим размер числа подписи набора свойств кривой ключа
+		return CURVES[key.curve].digit;
+	}
+	/**
 	 * @brief Метод получения опознавателя набора свойств кривой
 	 *
 	 * @param index указатель набора свойств кривой
@@ -2055,10 +2143,14 @@ namespace gost {
 	 * @return      буфер опознавателя
 	 */
 	static const uint8_t * oidCurve(const size_t index, size_t & size) noexcept {
+		// Набор опознавателей известных работе кривых
+		static const uint8_t * OIDS[COUNT] = {OID_CURVE_A, OID_CURVE_B, OID_CURVE_C, OID_CURVE_D, OID_CURVE_E};
+		// Набор размеров опознавателей известных работе кривых
+		static const size_t SIZES[COUNT] = {sizeof(OID_CURVE_A), sizeof(OID_CURVE_B), sizeof(OID_CURVE_C), sizeof(OID_CURVE_D), sizeof(OID_CURVE_E)};
 		// Выполняем установку размера опознавателя набора свойств
-		size = ((index == 0) ? sizeof(OID_CURVE_A) : sizeof(OID_CURVE_B));
+		size = SIZES[index];
 		// Выводим буфер опознавателя набора свойств
-		return ((index == 0) ? OID_CURVE_A : OID_CURVE_B);
+		return OIDS[index];
 	}
 	/**
 	 * @brief Метод записи опознавателя схемы подписи
@@ -2071,16 +2163,18 @@ namespace gost {
 		size_t size = 0;
 		// Получаем опознаватель набора свойств кривой
 		const uint8_t * oid = oidCurve(index, size);
+		// Признак схемы подписи на 512 разрядов
+		const bool wide = (CURVES[index].digit == 64);
 		// Свойства схемы подписи
 		vector <uint8_t> params;
 		// Выполняем запись опознавателя набора свойств кривой
 		derRecord(params, 0x06, oid, size);
 		// Выполняем запись опознавателя хэш-функции
-		derRecord(params, 0x06, OID_HASH, sizeof(OID_HASH));
+		derRecord(params, 0x06, (wide ? OID_HASH512 : OID_HASH), (wide ? sizeof(OID_HASH512) : sizeof(OID_HASH)));
 		// Опознаватель схемы подписи целиком
 		vector <uint8_t> algorithm;
 		// Выполняем запись опознавателя схемы подписи
-		derRecord(algorithm, 0x06, OID_SIGN, sizeof(OID_SIGN));
+		derRecord(algorithm, 0x06, (wide ? OID_SIGN512 : OID_SIGN), (wide ? sizeof(OID_SIGN512) : sizeof(OID_SIGN)));
 		// Выполняем запись свойств схемы подписи
 		derRecord(algorithm, 0x30, params.data(), params.size());
 		// Выполняем запись опознавателя схемы подписи целиком
@@ -2103,16 +2197,18 @@ namespace gost {
 		vector <uint8_t> body;
 		// Выполняем запись опознавателя схемы подписи
 		derAlgorithm(body, key.curve);
+		// Размер числа подписи ключа
+		const size_t digit = digitOf(key);
 		// Оси открытой части ключа
 		uint8_t point[DIGIT * 2];
 		// Выполняем запись первой оси младшим октетом вперёд
-		reverse(point, key.x, DIGIT);
+		reverse(point, key.x, digit);
 		// Выполняем запись второй оси младшим октетом вперёд
-		reverse(point + DIGIT, key.y, DIGIT);
+		reverse(point + digit, key.y, digit);
 		// Запись осей строкой октетов
 		vector <uint8_t> octets;
 		// Выполняем запись осей строкой октетов
-		derRecord(octets, 0x04, point, sizeof(point));
+		derRecord(octets, 0x04, point, (digit * 2));
 		// Запись осей строкой разрядов
 		vector <uint8_t> bits;
 		// Выполняем запись признака отсутствия неполных разрядов
@@ -2141,14 +2237,16 @@ namespace gost {
 		derRecord(body, 0x02, &version, sizeof(version));
 		// Выполняем запись опознавателя схемы подписи
 		derAlgorithm(body, key.curve);
+		// Размер числа подписи ключа
+		const size_t digit = digitOf(key);
 		// Закрытая часть ключа младшим октетом вперёд
 		uint8_t secret[DIGIT];
 		// Выполняем переворот закрытой части ключа
-		reverse(secret, key.secret, DIGIT);
+		reverse(secret, key.secret, digit);
 		// Запись закрытой части строкой октетов
 		vector <uint8_t> inner;
 		// Выполняем запись закрытой части строкой октетов
-		derRecord(inner, 0x04, secret, sizeof(secret));
+		derRecord(inner, 0x04, secret, digit);
 		// Выполняем запись закрытой части вложенной строкой октетов
 		derRecord(body, 0x04, inner.data(), inner.size());
 		// Выполняем запись PrivateKeyInfo целиком
@@ -2255,7 +2353,8 @@ namespace gost {
 		/**
 		 * Если схема подписи работе не знакома
 		 */
-		if((length != sizeof(OID_SIGN)) || (::memcmp(body, OID_SIGN, length) != 0))
+		if((length != sizeof(OID_SIGN)) ||
+		   ((::memcmp(body, OID_SIGN, length) != 0) && (::memcmp(body, OID_SIGN512, length) != 0)))
 			// Выводим результат неудачи
 			return false;
 		// Если свойства схемы подписи считать не удалось
@@ -2271,7 +2370,7 @@ namespace gost {
 		/**
 		 * Выполняем перебор всех наборов свойств кривых
 		 */
-		for(size_t index = 0; index < 2; index++){
+		for(size_t index = 0; index < COUNT; index++){
 			// Размер опознавателя набора свойств
 			size_t width = 0;
 			// Получаем опознаватель набора свойств
@@ -2337,13 +2436,13 @@ namespace gost {
 		/**
 		 * Если размер осей открытой части ключа схеме не отвечает
 		 */
-		if(length != (DIGIT * 2))
+		if(length != (CURVES[key.curve].digit * 2))
 			// Выводим результат неудачи
 			return false;
 		// Выполняем перенос первой оси старшим октетом вперёд
-		reverse(key.x, body, DIGIT);
+		reverse(key.x, body, CURVES[key.curve].digit);
 		// Выполняем перенос второй оси старшим октетом вперёд
-		reverse(key.y, body + DIGIT, DIGIT);
+		reverse(key.y, body + CURVES[key.curve].digit, CURVES[key.curve].digit);
 		// Выполняем обнуление закрытой части ключа
 		::memset(key.secret, 0, DIGIT);
 		// Снимаем признак наличия закрытой части ключа
@@ -2396,7 +2495,7 @@ namespace gost {
 		 */
 		if(derRead(nested, 0x04, body, length)){
 			// Если размер закрытой части ключа схеме не отвечает
-			if(length != DIGIT)
+			if(length != CURVES[key.curve].digit)
 				// Выводим результат неудачи
 				return false;
 		// Если закрытая часть записана прямо
@@ -2406,12 +2505,12 @@ namespace gost {
 			// Выполняем установку размера прямой записи закрытой части
 			length = nested.size;
 			// Если размер закрытой части ключа схеме не отвечает
-			if(length != DIGIT)
+			if(length != CURVES[key.curve].digit)
 				// Выводим результат неудачи
 				return false;
 		}
 		// Выполняем перенос закрытой части ключа старшим октетом вперёд
-		reverse(key.secret, body, DIGIT);
+		reverse(key.secret, body, CURVES[key.curve].digit);
 		// Выводим результат получения открытой части ключа
 		return derive(key);
 	}
@@ -10412,7 +10511,7 @@ bool awh::Crypto::streamable(const signature_t type) const noexcept {
 	 * ГОСТ Р 34.10 подписывают хэш-сумму, а та набирается порциями
 	 */
 	// Выводим признак поточной работы вида подписи
-	return ((type == signature_t::RSA) || (type == signature_t::ECDSA) || (type == signature_t::GOST));
+	return ((type == signature_t::RSA) || (type == signature_t::ECDSA) || gost::kindOf(type));
 }
 /**
  * @brief Метод получения вида подписи ключа из связки
@@ -10516,15 +10615,23 @@ bool awh::Crypto::generateKey(const string & name, const signature_t type, const
 			 *          криптографии не доходит вовсе, поэтому работа завершается прямо
 			 *          здесь, не заводя ни контекста выработки, ни ключа EVP
 			 */
-			case static_cast <uint8_t> (signature_t::GOST): {
+			case static_cast <uint8_t> (signature_t::GOST):
+			case static_cast <uint8_t> (signature_t::GOST512): {
+				// Признак схемы подписи на 512 разрядов
+				const bool wide = (type == signature_t::GOST512);
 				// Заводим запись ключа подписи
 				keyring_t::record_t record;
 				// Устанавливаем вид подписи записи
-				record.type = signature_t::GOST;
+				record.type = type;
 				/**
 				 * Если ключ подписи выработать не удалось
+				 *
+				 * @note Набор свойств кривой берётся первым из отвечающих разрядности:
+				 *       у схемы на 256 разрядов это CryptoPro-A, у схемы на 512 - ТК26 A.
+				 *       Прочие наборы работе известны и принимаются при вводе ключа, но
+				 *       своей выработке не заказываются: выбор набора договором не задан
 				 */
-				if(!gost::generate(record.gost, 0)){
+				if(!gost::generate(record.gost, (wide ? 2 : 0))){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -10690,7 +10797,7 @@ size_t awh::Crypto::length(const string & name) const noexcept {
 	 */
 	// Если ключа под таким именем в связке нет
 	if((i == this->_keyring->keys.end()) ||
-	   ((i->second.type == signature_t::GOST) ? false : (i->second.ctx == nullptr)))
+	   (gost::kindOf(i->second.type) ? false : (i->second.ctx == nullptr)))
 		// Выходим из метода
 		return 0;
 	/**
@@ -10706,14 +10813,15 @@ size_t awh::Crypto::length(const string & name) const noexcept {
 			// Выводим постоянную длину подписи Ed25519
 			return 64;
 		/**
-		 * Подпись ГОСТ Р 34.10-2012 длину имеет постоянную: два числа по 32 октета,
-		 * каждое дополняется нулями до полной ширины, оттого длина от сообщения не
-		 * зависит - в отличие от записи DER у схемы ECDSA
+		 * Подпись ГОСТ Р 34.10-2012 длину имеет постоянную: два числа шириною со
+		 * свойства кривой, каждое дополняется нулями до полной ширины, оттого длина от
+		 * сообщения не зависит - в отличие от записи DER у схемы ECDSA
 		 */
 		// Если вид подписи указан как ГОСТ Р 34.10-2012
 		case static_cast <uint8_t> (signature_t::GOST):
+		case static_cast <uint8_t> (signature_t::GOST512):
 			// Выводим постоянную длину подписи ГОСТ
-			return (gost::DIGIT * 2);
+			return (gost::digitOf(i->second.gost) * 2);
 		/**
 		 * Подпись RSA равна разрядности ключа и от подписываемого не зависит
 		 */
@@ -10755,7 +10863,7 @@ size_t awh::Crypto::limit(const string & name) const noexcept {
 	 */
 	// Если ключа под таким именем в связке нет
 	if((i == this->_keyring->keys.end()) ||
-	   ((i->second.type == signature_t::GOST) ? false : (i->second.ctx == nullptr)))
+	   (gost::kindOf(i->second.type) ? false : (i->second.ctx == nullptr)))
 		// Выходим из метода
 		return 0;
 	// Если вид подписи ключа договору не отвечает
@@ -10772,9 +10880,9 @@ size_t awh::Crypto::limit(const string & name) const noexcept {
 	 * @details Длина подписи ГОСТ постоянна, оттого предел равен ей самой, а спросить
 	 *          его у библиотеки криптографии нельзя - вида этого она не знает
 	 */
-	if(i->second.type == signature_t::GOST)
+	if(gost::kindOf(i->second.type))
 		// Выводим постоянную длину подписи ГОСТ
-		return (gost::DIGIT * 2);
+		return (gost::digitOf(i->second.gost) * 2);
 	// Выводим верхний предел длины подписи
 	return static_cast <size_t> (::EVP_PKEY_size(i->second.ctx));
 }
@@ -10803,7 +10911,7 @@ string awh::Crypto::getKey(const string & name, const key_type_t type) const noe
 		auto i = this->_keyring->keys.find(name);
 		// Если ключа под таким именем в связке нет
 		if((i == this->_keyring->keys.end()) ||
-		   ((i->second.type == signature_t::GOST) ? false : (i->second.ctx == nullptr)))
+		   (gost::kindOf(i->second.type) ? false : (i->second.ctx == nullptr)))
 			// Выходим из метода
 			return result;
 		/**
@@ -10813,7 +10921,7 @@ string awh::Crypto::getKey(const string & name, const key_type_t type) const noe
 		 *          схемы этой не знает, а выписка обязана остаться в том же виде, что
 		 *          и у прочих ключей - её принимают и чужие работы
 		 */
-		if(i->second.type == signature_t::GOST){
+		if(gost::kindOf(i->second.type)){
 			// Каноническая запись ключа
 			vector <uint8_t> record;
 			/**
@@ -11038,6 +11146,15 @@ bool awh::Crypto::setKey(const string & name, const string & key, const key_type
 					 * Если ключ подписи разобран
 					 */
 					if(parsed){
+						/**
+						 * Устанавливаем вид подписи по разрядности разобранного ключа
+						 *
+						 * @note Вид ставится после разбора, а не до него: разрядность
+						 *       схемы задана набором свойств кривой в самой записи, и
+						 *       постоянная величина здесь выдавала бы схему на 512
+						 *       разрядов за схему на 256 - при верной работе подписи
+						 */
+						record.type = ((gost::digitOf(record.gost) == 64) ? signature_t::GOST512 : signature_t::GOST);
 						// Выполняем удаление ключа подписи с тем же именем
 						this->removeKey(name);
 						// Выполняем добавление ключа подписи в связку
@@ -11193,7 +11310,7 @@ T awh::Crypto::fingerprint(const string & name, const format_t format) const noe
 		auto i = this->_keyring->keys.find(name);
 		// Если ключа под таким именем в связке нет
 		if((i == this->_keyring->keys.end()) ||
-		   ((i->second.type == signature_t::GOST) ? false : (i->second.ctx == nullptr)))
+		   (gost::kindOf(i->second.type) ? false : (i->second.ctx == nullptr)))
 			// Выходим из метода
 			return result;
 		/**
@@ -11209,7 +11326,7 @@ T awh::Crypto::fingerprint(const string & name, const format_t format) const noe
 		 *          остаться единым на все виды подписи - иначе опознание владельца
 		 *          у ГОСТ считалось бы иначе, чем у прочих, и переносимым не было бы
 		 */
-		if(i->second.type == signature_t::GOST){
+		if(gost::kindOf(i->second.type)){
 			// Каноническая запись открытого ключа
 			vector <uint8_t> record;
 			// Выполняем выработку канонической записи открытого ключа
@@ -11354,7 +11471,7 @@ bool awh::Crypto::sign(const string & name, const uint8_t * buffer, const size_t
 		 */
 		// Если ключа под таким именем в связке нет
 		if((i == this->_keyring->keys.end()) ||
-		   ((i->second.type == signature_t::GOST) ? !i->second.gost.secured : (i->second.ctx == nullptr))){
+		   (gost::kindOf(i->second.type) ? !i->second.gost.secured : (i->second.ctx == nullptr))){
 			/**
 			 * Если включён режим отладки
 			 */
@@ -11381,7 +11498,7 @@ bool awh::Crypto::sign(const string & name, const uint8_t * buffer, const size_t
 		 *          предписана - ГОСТ Р 34.11-2012 на 256 разрядов, - и подача иной была
 		 *          бы подменой предписанного, оттого тип хэш-суммы обязан быть пустым
 		 */
-		if(type == signature_t::GOST){
+		if(gost::kindOf(type)){
 			/**
 			 * Если тип хэш-суммы всё же задан
 			 */
@@ -11402,10 +11519,18 @@ bool awh::Crypto::sign(const string & name, const uint8_t * buffer, const size_t
 				// Выходим из метода
 				return outcome;
 			}
+			/**
+			 * Размер числа подписи ключа
+			 *
+			 * @note Разрядность хэш-функции схемой предписана и равна разрядности самой
+			 *       схемы: у схемы на 256 разрядов - ГОСТ Р 34.11-2012 на 256 разрядов,
+			 *       у схемы на 512 разрядов - на 512
+			 */
+			const size_t digit = gost::digitOf(i->second.gost);
 			// Состояние счёта хэш-суммы
 			gost::digest_t state;
 			// Выполняем заведение состояния счёта хэш-суммы
-			gost::initialize(state, 256);
+			gost::initialize(state, (digit * 8));
 			// Выполняем подачу подписываемых данных в счёт хэш-суммы
 			gost::update(state, buffer, size);
 			// Буфер хэш-суммы подписываемых данных
@@ -11413,9 +11538,9 @@ bool awh::Crypto::sign(const string & name, const uint8_t * buffer, const size_t
 			// Выполняем завершение счёта хэш-суммы
 			gost::finalize(state, digest);
 			// Выполняем отведение буфера результата под подпись
-			result.resize(gost::DIGIT * 2, 0);
+			result.resize((digit * 2), 0);
 			// Выполняем выработку подписи
-			outcome = gost::sign(i->second.gost, digest, gost::DIGIT, result.data());
+			outcome = gost::sign(i->second.gost, digest, digit, result.data());
 			/**
 			 * Если подпись выработать не удалось
 			 */
@@ -11640,7 +11765,7 @@ bool awh::Crypto::verify(const string & name, const uint8_t * buffer, const size
 		 */
 		// Если ключа под таким именем в связке нет
 		if((i == this->_keyring->keys.end()) ||
-		   ((i->second.type == signature_t::GOST) ? false : (i->second.ctx == nullptr))){
+		   (gost::kindOf(i->second.type) ? false : (i->second.ctx == nullptr))){
 			/**
 			 * Если включён режим отладки
 			 */
@@ -11665,7 +11790,7 @@ bool awh::Crypto::verify(const string & name, const uint8_t * buffer, const size
 		 * @details Договор тот же, что и у выработки подписи: хэш-функция схемой
 		 *          предписана, и тип хэш-суммы обязан быть пустым
 		 */
-		if(type == signature_t::GOST){
+		if(gost::kindOf(type)){
 			/**
 			 * Если тип хэш-суммы всё же задан
 			 */
@@ -11692,7 +11817,7 @@ bool awh::Crypto::verify(const string & name, const uint8_t * buffer, const size
 			 * @note Подпись ГОСТ имеет постоянную длину в два числа по 32 октета, и
 			 *       разбор подписи иной длины взял бы под числа чужие октеты
 			 */
-			if(signature.size() != (gost::DIGIT * 2)){
+			if(signature.size() != (gost::digitOf(i->second.gost) * 2)){
 				/**
 				 * Если включён режим отладки
 				 */
@@ -11712,7 +11837,7 @@ bool awh::Crypto::verify(const string & name, const uint8_t * buffer, const size
 			// Состояние счёта хэш-суммы
 			gost::digest_t state;
 			// Выполняем заведение состояния счёта хэш-суммы
-			gost::initialize(state, 256);
+			gost::initialize(state, (gost::digitOf(i->second.gost) * 8));
 			// Выполняем подачу проверяемых данных в счёт хэш-суммы
 			gost::update(state, buffer, size);
 			// Буфер хэш-суммы проверяемых данных
@@ -11720,7 +11845,7 @@ bool awh::Crypto::verify(const string & name, const uint8_t * buffer, const size
 			// Выполняем завершение счёта хэш-суммы
 			gost::finalize(state, digest);
 			// Выводим результат проверки подписи
-			return gost::verify(i->second.gost, digest, gost::DIGIT, signature.data());
+			return gost::verify(i->second.gost, digest, gost::digitOf(i->second.gost), signature.data());
 		}
 		// Признак схемы, подписывающей сообщение само
 		const bool pure = (type == signature_t::ED25519);
@@ -12094,7 +12219,7 @@ bool awh::Crypto::signInitialize(const string & name, const hash_t hash) noexcep
 		 */
 		// Если ключа под таким именем в связке нет
 		if((i == this->_keyring->keys.end()) ||
-		   ((i->second.type == signature_t::GOST) ? !i->second.gost.secured : (i->second.ctx == nullptr))){
+		   (gost::kindOf(i->second.type) ? !i->second.gost.secured : (i->second.ctx == nullptr))){
 			/**
 			 * Если включён режим отладки
 			 */
@@ -12141,7 +12266,7 @@ bool awh::Crypto::signInitialize(const string & name, const hash_t hash) noexcep
 		 * @details Хэш-функция схемой предписана, оттого тип хэш-суммы обязан быть
 		 *          пустым - тем же договором, что и у разовой работы
 		 */
-		if(i->second.type == signature_t::GOST){
+		if(gost::kindOf(i->second.type)){
 			/**
 			 * Если тип хэш-суммы всё же задан
 			 */
@@ -12162,8 +12287,14 @@ bool awh::Crypto::signInitialize(const string & name, const hash_t hash) noexcep
 				// Выходим из метода
 				return outcome;
 			}
-			// Выполняем заведение состояния поточного счёта хэш-суммы
-			gost::initialize(this->_keyring->digest, 256);
+			/**
+			 * Выполняем заведение состояния поточного счёта хэш-суммы
+			 *
+			 * @note Разрядность хэш-функции берётся у свойств кривой ключа: схема
+			 *       предписывает её сама, и постоянная величина здесь увела бы схему на
+			 *       512 разрядов на хэш-функцию чужой разрядности
+			 */
+			gost::initialize(this->_keyring->digest, (gost::digitOf(i->second.gost) * 8));
 			// Устанавливаем признак потока по ГОСТ
 			this->_keyring->streaming = true;
 			// Устанавливаем признак потока проверки подписи
@@ -12395,14 +12526,16 @@ bool awh::Crypto::signFinalize(vector <uint8_t> & result) noexcept {
 				// Выходим из метода
 				return outcome;
 			}
+			// Размер числа подписи ключа
+			const size_t digit = gost::digitOf(i->second.gost);
 			// Буфер хэш-суммы подписываемых данных
 			uint8_t digest[gost::DIGIT];
 			// Выполняем завершение счёта хэш-суммы
 			gost::finalize(this->_keyring->digest, digest);
 			// Выполняем отведение буфера результата под подпись
-			result.resize(gost::DIGIT * 2, 0);
+			result.resize((digit * 2), 0);
 			// Выполняем выработку подписи
-			outcome = gost::sign(i->second.gost, digest, gost::DIGIT, result.data());
+			outcome = gost::sign(i->second.gost, digest, digit, result.data());
 			// Если подпись выработать не удалось
 			if(!outcome)
 				// Затираем и очищаем буфер результата
@@ -12518,7 +12651,7 @@ bool awh::Crypto::verifyInitialize(const string & name, const hash_t hash) noexc
 		 */
 		// Если ключа под таким именем в связке нет
 		if((i == this->_keyring->keys.end()) ||
-		   ((i->second.type == signature_t::GOST) ? false : (i->second.ctx == nullptr))){
+		   (gost::kindOf(i->second.type) ? false : (i->second.ctx == nullptr))){
 			/**
 			 * Если включён режим отладки
 			 */
@@ -12564,7 +12697,7 @@ bool awh::Crypto::verifyInitialize(const string & name, const hash_t hash) noexc
 		 * @details Хэш-функция схемой предписана, оттого тип хэш-суммы обязан быть
 		 *          пустым - тем же договором, что и у разовой работы
 		 */
-		if(i->second.type == signature_t::GOST){
+		if(gost::kindOf(i->second.type)){
 			/**
 			 * Если тип хэш-суммы всё же задан
 			 */
@@ -12585,8 +12718,14 @@ bool awh::Crypto::verifyInitialize(const string & name, const hash_t hash) noexc
 				// Выходим из метода
 				return outcome;
 			}
-			// Выполняем заведение состояния поточного счёта хэш-суммы
-			gost::initialize(this->_keyring->digest, 256);
+			/**
+			 * Выполняем заведение состояния поточного счёта хэш-суммы
+			 *
+			 * @note Разрядность хэш-функции берётся у свойств кривой ключа: схема
+			 *       предписывает её сама, и постоянная величина здесь увела бы схему на
+			 *       512 разрядов на хэш-функцию чужой разрядности
+			 */
+			gost::initialize(this->_keyring->digest, (gost::digitOf(i->second.gost) * 8));
 			// Устанавливаем признак потока по ГОСТ
 			this->_keyring->streaming = true;
 			// Устанавливаем признак потока проверки подписи
@@ -12799,9 +12938,9 @@ bool awh::Crypto::verifyFinalize(const vector <uint8_t> & signature) noexcept {
 			 * Проверка идёт только при найденном ключе и подписи должной длины:
 			 * подпись иной длины взяла бы под числа чужие октеты
 			 */
-			if((i != this->_keyring->keys.end()) && (signature.size() == (gost::DIGIT * 2)))
+			if((i != this->_keyring->keys.end()) && (signature.size() == (gost::digitOf(i->second.gost) * 2)))
 				// Выполняем проверку подписи поданного потока
-				outcome = gost::verify(i->second.gost, digest, gost::DIGIT, signature.data());
+				outcome = gost::verify(i->second.gost, digest, gost::digitOf(i->second.gost), signature.data());
 			// Выполняем сброс потока проверки подписи
 			this->_keyring->reset();
 			// Выходим из метода

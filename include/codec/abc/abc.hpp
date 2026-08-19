@@ -46,5 +46,6 @@
 #include "signature.hpp"
 #include "schedule.hpp"
 #include "editor.hpp"
+#include "storage.hpp"
 
 #endif // __AWH_CODEC_ABC__

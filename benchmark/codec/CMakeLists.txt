@@ -104,6 +104,27 @@ if (${CMAKE_BUILD_${BENCHMARK_NAME}_BENCHMARKS})
         message(STATUS "Build benchmarks CSV submodule: No\n")
     endif (${CMAKE_BUILD_${BENCHMARK_NAME}_CSV_BENCHMARK})
 
+    # Указываем что нужно собрать замеры для бинарного контейнера ABC
+    option(CMAKE_BUILD_${BENCHMARK_NAME}_ABC_BENCHMARK "Build ABC benchmark for ${BENCHMARK_NAME}" ON)
+
+    # Если нужно собрать замеры для бинарного контейнера ABC
+    if (${CMAKE_BUILD_${BENCHMARK_NAME}_ABC_BENCHMARK})
+        # Выводим сообщение о сборке замеров для бинарного контейнера ABC
+        message(STATUS "Build benchmarks ABC submodule: Yes\n")
+        # Дополняем список источников замерами для бинарного контейнера ABC
+        list(APPEND ${PROJECT_NAME}_BENCHMARK_SOURCES
+            abc/abc.cpp
+            abc/reader.cpp
+            abc/writer.cpp
+            abc/document.cpp
+            abc/container.cpp
+        )
+    # Если не нужно собрать замеры для бинарного контейнера ABC
+    else()
+        # Выводим сообщение о сборке замеров для бинарного контейнера ABC
+        message(STATUS "Build benchmarks ABC submodule: No\n")
+    endif (${CMAKE_BUILD_${BENCHMARK_NAME}_ABC_BENCHMARK})
+
     # Указываем что нужно собрать бенчмарки для контейнера TOML
     option(CMAKE_BUILD_${BENCHMARK_NAME}_TOML_BENCHMARK "Build TOML benchmark for ${BENCHMARK_NAME}" ON)
 

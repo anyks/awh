@@ -109,6 +109,7 @@ if (${GTest_FOUND})
             abc/signature.cpp
             abc/schedule.cpp
             abc/editor.cpp
+            abc/storage.cpp
             abc/encoding.cpp
             abc/reader.cpp
             abc/writer.cpp

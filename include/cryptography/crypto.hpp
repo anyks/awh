@@ -258,9 +258,11 @@ namespace awh {
 			 *          обратила бы прежние записи в другую схему молча. Новые виды
 			 *          прибавляются одним лишь хвостом
 			 *
-			 * @note Значение GOST занято под ГОСТ Р 34.10 и работой не заведено: схема эта
-			 *       требует стороннего криптопровайдера и ведётся отдельной работой.
-			 *       Обращение с этим видом отвечает отказом с названной причиной
+			 * @note Схемы ГОСТ Р 34.10-2012 на 256 и на 512 разрядов заведены отдельными
+			 *       видами: у них разные опознаватели записей, разные наборы свойств кривых
+			 *       и разная длина подписи, и сводить их к одному виду значило бы скрывать
+			 *       различие. Хэш-функция каждой из них предписана самой схемой, оттого тип
+			 *       хэш-суммы им подавать нельзя - см. описание типа хэш-суммы
 			 *
 			 * \~english
 			 * @brief Kind of the signature
@@ -281,9 +283,11 @@ namespace awh {
 			 *          would silently turn the previous records into another scheme. New kinds
 			 *          are added by the end only
 			 *
-			 * @note The GOST value is occupied by GOST R 34.10 and is not set up by the work: that scheme
-			 *       requires a third-party cryptographic provider and is carried out by a separate work.
-			 *       Addressing this kind answers with a failure naming the reason
+			 * @note The GOST R 34.10-2012 schemes with 256 and with 512 bits are set up as separate
+			 *       kinds: they have different record identifiers, different sets of the curve properties
+			 *       and a different length of the signature, and reducing them to one kind would mean hiding
+			 *       the difference. The hash function of each of them is prescribed by the scheme itself, therefore
+			 *       the type of the hash sum cannot be passed to them - see the description of the type of the hash sum
 			 *
 			 * \~
 			 */
@@ -292,7 +296,8 @@ namespace awh {
 				RSA     = 0x01, // Подпись RSA, схема дополнения задаётся отдельно
 				ECDSA   = 0x02, // Подпись ECDSA на кривой P-256, ради согласия с чужими работами
 				ED25519 = 0x03, // Подпись Ed25519, подпись 64 октета, хэш-суммы не принимает
-				GOST    = 0x04  // Место под ГОСТ Р 34.10, работой не заведено
+				GOST    = 0x04, // Подпись ГОСТ Р 34.10-2012 на 256 разрядов, подпись 64 октета
+				GOST512 = 0x05  // Подпись ГОСТ Р 34.10-2012 на 512 разрядов, подпись 128 октетов
 			};
 			/**
 			 * \~russian

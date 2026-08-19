@@ -893,3 +893,63 @@ TEST(CodecAbcWriter, FlattenKeepsKeys){
 	// Выполняем проверку завершённости собранной записи
 	ASSERT_TRUE(writer.complete());
 }
+/**
+ * @brief Проверка открытого расширения
+ *
+ */
+TEST(CodecAbcWriter, CustomExtension){
+	// Сборка бинарной записи
+	abc::writer_t writer;
+	// Октеты расширения, заведённого потребителем
+	const string content = "\x01\x02\x03\x04";
+	// Выполняем укладку начала массива
+	ASSERT_TRUE(writer.arrayBegin(static_cast <uint64_t> (3)));
+	// Выполняем укладку расширения с малым номером подвида
+	ASSERT_TRUE(writer.custom(static_cast <uint64_t> (7), content.data(), content.size()))
+		<< "код отказа: " << abc::message(writer.error());
+	// Выполняем укладку расширения с крупным номером подвида
+	ASSERT_TRUE(writer.custom(numeric_limits <uint64_t>::max(), content.data(), content.size()));
+	// Выполняем укладку расширения без октетов
+	ASSERT_TRUE(writer.custom(static_cast <uint64_t> (0), nullptr, 0));
+	// Выполняем укладку конца массива
+	ASSERT_TRUE(writer.arrayEnd());
+	// Выполняем проверку завершённости собранной записи
+	ASSERT_TRUE(writer.complete());
+	// Разбиратель бинарной записи
+	abc::reader_t reader;
+	// Выполняем подачу собранной записи разбирателю
+	ASSERT_TRUE(reader.feed(writer.record().data(), writer.record().size(), true))
+		<< "код отказа: " << abc::message(reader.error());
+	// Снятые номера подвидов расширения
+	vector <uint64_t> subtypes;
+	// Снятое содержимое расширений
+	vector <string> contents;
+	/**
+	 * Выполняем снятие всех событий разбора
+	 */
+	while(reader.next()){
+		// Если событием является открытое расширение
+		if(reader.event() == abc::event_t::CUSTOM){
+			// Выполняем получение значения текущего события
+			const abc::reader_t::value_t value = reader.value();
+			// Выполняем проверку вида значения
+			ASSERT_EQ(value.type, abc::type_t::CUSTOM);
+			// Выполняем накопление номера подвида расширения
+			subtypes.push_back(value.number);
+			// Выполняем накопление содержимого расширения
+			contents.push_back(string(value.data));
+		}
+	}
+	// Выполняем проверку количества снятых расширений
+	ASSERT_EQ(subtypes.size(), 3ul);
+	// Выполняем проверку малого номера подвида
+	ASSERT_EQ(subtypes.at(0), static_cast <uint64_t> (7));
+	// Выполняем проверку крупного номера подвида
+	ASSERT_EQ(subtypes.at(1), numeric_limits <uint64_t>::max());
+	// Выполняем проверку номера подвида расширения без октетов
+	ASSERT_EQ(subtypes.at(2), static_cast <uint64_t> (0));
+	// Выполняем проверку содержимого первого расширения
+	ASSERT_EQ(contents.at(0), content);
+	// Выполняем проверку содержимого расширения без октетов
+	ASSERT_TRUE(contents.at(2).empty());
+}

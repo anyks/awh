@@ -339,6 +339,24 @@ namespace awh {
 						private:
 							// Номер узла значения в дереве документа
 							uint32_t _index;
+						private:
+							/**
+							 * \~russian
+							 * Номер узла за последним узлом вместимого, какому значение принадлежит
+							 *
+							 * @details Указания на родителя узел не несёт, а переход к соседу обязан
+							 * останавливаться на границе своего вместимого: без границы обход массива
+							 * продолжился бы соседом родителя его
+							 *
+							 * \~english
+							 * Index of the node past the last node of the container to which the value belongs
+							 * @details A node does not carry a pointer to its parent, while the transition to a sibling is obliged
+							 * to stop at the boundary of its own container: without the boundary the traversal of an array
+							 * would continue with the sibling of its parent
+							 *
+							 * \~
+							 */
+							uint32_t _bound;
 						public:
 							/**
 							 * \~russian
@@ -443,6 +461,62 @@ namespace awh {
 							 * \~
 							 */
 							Value key(const size_t index) const noexcept;
+							/**
+							 * \~russian
+							 * @brief Метод извлечения первого значения вместимого
+							 *
+							 * @details Обход вместимого ведётся первым значением вместе с переходом к
+							 * соседу: обращение по номеру пропускает узлы, стоящие до затребованного,
+							 * и обход им обошёлся бы дороже квадрата
+							 *
+							 * @note У отображения первым значением стоит имя первого поля: имя есть
+							 * такой же узел, и признак `keyed` отличает его от значения
+							 *
+							 * @return ссылка на первое значение вместимого
+							 *
+							 * \~english
+							 * @brief Method of the extraction of the first value of a container
+							 * @details The traversal of a container is conducted by the first value together with the transition to
+							 * a sibling: an access by a number skips the nodes standing before the demanded one,
+							 * and a traversal by it would cost more than a square
+							 * @note For a mapping the first value is the name of the first field: a name is
+							 * the same kind of node, and the flag `keyed` distinguishes it from a value
+							 * @return reference to the first value of the container
+							 *
+							 * \~
+							 */
+							Value begin() const noexcept;
+							/**
+							 * \~russian
+							 * @brief Метод перехода к следующему значению вместимого
+							 *
+							 * @details Переход стоит одного сложения: вложенное вместимое пропускается
+							 * целиком по размаху своего поддерева
+							 *
+							 * @return ссылка на следующее значение вместимого
+							 *
+							 * \~english
+							 * @brief Method of the transition to the next value of a container
+							 * @details The transition costs one addition: a nested container is skipped
+							 * as a whole by the extent of its subtree
+							 * @return reference to the next value of the container
+							 *
+							 * \~
+							 */
+							Value next() const noexcept;
+							/**
+							 * \~russian
+							 * @brief Метод проверки того, что значение является именем поля отображения
+							 *
+							 * @return признак того, что значение является именем поля отображения
+							 *
+							 * \~english
+							 * @brief Method of the checking that a value is the name of a field of a mapping
+							 * @return sign that the value is the name of a field of a mapping
+							 *
+							 * \~
+							 */
+							[[nodiscard]] bool keyed() const noexcept;
 							/**
 							 * \~russian
 							 * @brief Метод извлечения значения поля отображения по имени
@@ -567,6 +641,22 @@ namespace awh {
 							int64_t exponent() const noexcept;
 							/**
 							 * \~russian
+							 * @brief Метод извлечения номера подвида открытого расширения
+							 *
+							 * @note Номер этот принадлежит потребителю целиком: модуль его не толкует
+							 *
+							 * @return номер подвида открытого расширения
+							 *
+							 * \~english
+							 * @brief Method of the extraction of the number of the subtype of an open extension
+							 * @note This number belongs to the consumer entirely: the module does not interpret it
+							 * @return number of the subtype of the open extension
+							 *
+							 * \~
+							 */
+							uint64_t subtype() const noexcept;
+							/**
+							 * \~russian
 							 * @brief Метод проверки того, что величина меньше нуля
 							 *
 							 * @return признак того, что величина меньше нуля
@@ -589,22 +679,25 @@ namespace awh {
 							 *
 							 * \~
 							 */
-							Value() noexcept : _doc(nullptr), _index(NO_INDEX) {}
+							Value() noexcept : _doc(nullptr), _index(NO_INDEX), _bound(0) {}
 							/**
 							 * \~russian
 							 * @brief Конструктор
 							 *
 							 * @param doc   документ, которому значение принадлежит
 							 * @param index номер узла значения в дереве документа
+							 * @param bound номер узла за последним узлом вместимого, какому значение принадлежит
 							 *
 							 * \~english
 							 * @brief Constructor
 							 * @param doc document the value belongs to
 							 * @param index number of the node of the value in the tree of the document
+							 * @param bound index of the node past the last node of the container to which the value belongs
 							 *
 							 * \~
 							 */
-							Value(const Document * doc, const uint32_t index) noexcept : _doc(doc), _index(index) {}
+							Value(const Document * doc, const uint32_t index, const uint32_t bound) noexcept :
+							 _doc(doc), _index(index), _bound(bound) {}
 					} value_t;
 				private:
 					// Вместилище узлов дерева документа
@@ -697,6 +790,45 @@ namespace awh {
 					 * \~
 					 */
 					[[nodiscard]] bool build(writer_t & writer) const noexcept;
+				private:
+					/**
+					 * \~russian
+					 * @brief Метод приёма события разбора, выданного прямо из чтения
+					 *
+					 * @param context указание на состояние сборки дерева документа
+					 * @param reader  разбиратель бинарной записи
+					 * @param event   вид принимаемого события разбора
+					 *
+					 * \~english
+					 * @brief Method of the reception of an event of the parsing issued directly from the reading
+					 * @param context pointer to the state of the assembling of the tree of the document
+					 * @param reader parser of a binary record
+					 * @param event kind of the received event of the parsing
+					 *
+					 * \~
+					 */
+					static void assemble(void * context, reader_t & reader, const event_t event) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод сборки дерева документа по событию разбора
+					 *
+					 * @param context указание на состояние сборки дерева документа
+					 * @param self    документ, чьё дерево собирается
+					 * @param reader  разбиратель бинарной записи
+					 * @param event   вид принимаемого события разбора
+					 * @return        признак успешности сборки дерева
+					 *
+					 * \~english
+					 * @brief Method of the assembling of the tree of a document by an event of the parsing
+					 * @param context pointer to the state of the assembling of the tree of the document
+					 * @param self document whose tree is being assembled
+					 * @param reader parser of a binary record
+					 * @param event kind of the received event of the parsing
+					 * @return sign of the success of the assembling of the tree
+					 *
+					 * \~
+					 */
+					[[nodiscard]] static bool digest(void * context, Document * self, const reader_t & reader, const event_t event) noexcept;
 				public:
 					/**
 					 * \~russian

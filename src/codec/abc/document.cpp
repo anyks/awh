@@ -55,6 +55,268 @@ void awh::codec::abc::Document::clear() noexcept {
 	this->_error = error_t::NONE;
 }
 /**
+ * @brief Структура состояния сборки дерева документа
+ *
+ * @details Состояние это живёт одним разбором и документу не принадлежит: держи он
+ *          стек открытых вместимых своим полем, поле это стояло бы пустым у всякого
+ *          собранного документа
+ *
+ */
+typedef struct Building {
+	// Документ, чьё дерево собирается
+	awh::codec::abc::Document * self;
+	// Стек номеров узлов открытых вместимых
+	vector <uint32_t> stack;
+	/**
+	 * Номер узла значения, собираемого кусками, либо предел, если такого нет.
+	 *
+	 * Значение, собранное кусками, ложится в дерево ОДНИМ узлом: куски суть части
+	 * значения, а не значения, и потребителю дерева они видны быть не должны
+	 */
+	uint32_t segment;
+	// Признак отказа сборки дерева документа
+	bool failed;
+} building_t;
+
+/**
+ * @brief Метод приёма события разбора, выданного прямо из чтения
+ *
+ * @param context указание на состояние сборки дерева документа
+ * @param reader  разбиратель бинарной записи
+ * @param event   вид принимаемого события разбора
+ *
+ */
+void awh::codec::abc::Document::assemble(void * context, reader_t & reader, const event_t event) noexcept {
+	// Выполняем получение состояния сборки дерева документа
+	building_t * state = reinterpret_cast <building_t *> (context);
+	// Выполняем получение документа, чьё дерево собирается
+	Document * self = state->self;
+	/**
+	 * Если сборка дерева по очередному событию разбора отвечена отказом
+	 */
+	if(!Document::digest(state, self, reader, event)){
+		// Выполняем установку признака отказа сборки дерева
+		state->failed = true;
+		/**
+		 * Выполняем прекращение разбора.
+		 *
+		 * Возвращать отказ обработчику некуда, а подача записи обязана прекратиться
+		 * немедля: причина отказа документом уже записана
+		 */
+		reader.abort();
+	}
+}
+/**
+ * @brief Метод сборки дерева документа по событию разбора
+ *
+ * @param context указание на состояние сборки дерева документа
+ * @param self    документ, чьё дерево собирается
+ * @param reader  разбиратель бинарной записи
+ * @param event   вид принимаемого события разбора
+ * @return        признак успешности сборки дерева
+ *
+ */
+bool awh::codec::abc::Document::digest(void * context, Document * self, const reader_t & reader, const event_t event) noexcept {
+	// Выполняем получение состояния сборки дерева документа
+	building_t * state = reinterpret_cast <building_t *> (context);
+	/**
+	 * Если событием является конец значения, собираемого кусками
+	 */
+	if((event == event_t::STRING_END) || (event == event_t::BLOB_END)){
+		// Выполняем сброс номера узла значения, собираемого кусками
+		state->segment = numeric_limits <uint32_t>::max();
+		// Сообщаем, что событие принято
+		return true;
+	}
+	/**
+	 * Если снят очередной кусок собираемого значения
+	 */
+	if(state->segment != numeric_limits <uint32_t>::max()){
+		// Выполняем получение значения снятого куска
+		const reader_t::value_t chunk = reader.value();
+		// Выполняем перенос содержимого куска в хранилище
+		self->_storage.append(chunk.data);
+		// Выполняем наращивание длины содержимого собираемого значения
+		self->_nodes.at(state->segment).length(self->_nodes.at(state->segment).length() +
+		 static_cast <uint32_t> (chunk.data.size()));
+		// Сообщаем, что событие принято
+		return true;
+	}
+	// Если событие является окончанием записи либо документа
+	if((event == event_t::FINISH) || (event == event_t::DOCUMENT))
+		// Сообщаем, что событие принято
+		return true;
+	// Если событием является конец вместимого
+	if((event == event_t::ARRAY_END) || (event == event_t::MAP_END)){
+		// Если закрывать нечего
+		if(state->stack.empty()){
+			// Выполняем установку кода внутреннего отказа
+			self->_error = error_t::INTERNAL;
+			// Сообщаем, что разбор отвечен отказом
+			return false;
+		}
+		// Выполняем получение номера узла закрываемого вместимого
+		const uint32_t index = state->stack.back();
+		// Выполняем снятие номера узла со стека
+		state->stack.pop_back();
+		// Выполняем установку размаха поддерева закрытого вместимого
+		self->_nodes.at(index).extent(static_cast <uint32_t> (self->_nodes.size()) - index);
+		// Сообщаем, что событие принято
+		return true;
+	}
+	// Выполняем получение значения текущего события
+	const reader_t::value_t value = reader.value();
+	// Заводимый узел дерева документа
+	node_t node;
+	/**
+	 * Если событием является начало значения, собираемого кусками
+	 */
+	if((event == event_t::STRING_BEGIN) || (event == event_t::BLOB_BEGIN)){
+		// Выполняем установку вида значения узла
+		node.type = value.type;
+		// Выполняем установку смещения содержимого в хранилище
+		node.offset = static_cast <uint32_t> (self->_storage.size());
+		// Выполняем установку пустой длины содержимого
+		node.length(0);
+		// Если узел стоит внутри вместимого, учитываем его ребёнком
+		if(!state->stack.empty())
+			// Выполняем учёт ребёнка вместившего вместимого
+			self->_nodes.at(state->stack.back()).length(self->_nodes.at(state->stack.back()).length() + 1);
+		// Выполняем установку номера узла значения, собираемого кусками
+		state->segment = static_cast <uint32_t> (self->_nodes.size());
+		// Выполняем добавление узла в дерево документа
+		self->_nodes.push_back(node);
+		// Сообщаем, что событие принято
+		return true;
+	}
+	// Выполняем установку вида значения узла
+	node.type = value.type;
+	// Выполняем установку признака имени поля отображения
+	node.keyed = (event == event_t::KEY);
+	/**
+	 * Определяем вид значения текущего события
+	 */
+	switch(static_cast <uint32_t> (value.type)){
+		// Если значение является пустым
+		case static_cast <uint32_t> (type_t::NUL): break;
+		/**
+		 * Если значение является логическим
+		 */
+		case static_cast <uint32_t> (type_t::BOOL): {
+			// Выполняем установку логического значения
+			node.length(value.boolean ? 1 : 0);
+		} break;
+		/**
+		 * Если значение является строкой, двоичными данными либо опознавателем
+		 */
+		case static_cast <uint32_t> (type_t::STRING):
+		case static_cast <uint32_t> (type_t::BLOB):
+		case static_cast <uint32_t> (type_t::UUID): {
+			// Выполняем установку смещения содержимого в хранилище
+			node.offset = static_cast <uint32_t> (self->_storage.size());
+			// Выполняем установку длины содержимого
+			node.length(static_cast <uint32_t> (value.data.size()));
+			// Выполняем перенос содержимого в хранилище
+			self->_storage.append(value.data);
+		} break;
+		/**
+		 * Если значение является целым неограниченной ширины либо десятичным
+		 */
+		case static_cast <uint32_t> (type_t::EXTENDED):
+		case static_cast <uint32_t> (type_t::DECIMAL): {
+			// Выполняем установку смещения содержимого в хранилище
+			node.offset = static_cast <uint32_t> (self->_storage.size());
+			// Выполняем установку длины октетов величины
+			node.length(static_cast <uint32_t> (value.data.size()));
+			// Выполняем установку признака отрицательности величины
+			node.negative = value.negative;
+			// Разрядная запись десятичного порядка величины
+			const uint64_t exponent = static_cast <uint64_t> (value.exponent);
+			/**
+			 * Выполняем перенос десятичного порядка в хранилище. Порядок кладётся
+			 * впереди величины оттого, что поля под него у узла нет: восемь октетов
+			 * содержимого заняты длиною величины, а расширять узел ради одного вида
+			 * значения дороже, чем положить порядок в хранилище
+			 */
+			for(uint8_t i = 0; i < 8; i++)
+				// Выполняем перенос очередного октета порядка в хранилище
+				self->_storage.push_back(static_cast <char> ((exponent >> (i * 8)) & 0xFF));
+			// Выполняем перенос октетов величины в хранилище
+			self->_storage.append(value.data);
+		} break;
+		/**
+		 * Если значение является открытым расширением
+		 */
+		case static_cast <uint32_t> (type_t::CUSTOM): {
+			// Выполняем установку смещения содержимого в хранилище
+			node.offset = static_cast <uint32_t> (self->_storage.size());
+			// Выполняем установку длины октетов расширения
+			node.length(static_cast <uint32_t> (value.data.size()));
+			// Номер подвида расширения, заведённый потребителем
+			const uint64_t subtype = value.number;
+			/**
+			 * Выполняем перенос номера подвида в хранилище. Кладётся он впереди
+			 * октетов расширения тем же порядком, что и десятичный порядок величины:
+			 * поля под него у узла нет, а расширять узел ради одного вида значения
+			 * дороже, чем положить номер в хранилище
+			 */
+			for(uint8_t i = 0; i < 8; i++)
+				// Выполняем перенос очередного октета номера подвида в хранилище
+				self->_storage.push_back(static_cast <char> ((subtype >> (i * 8)) & 0xFF));
+			// Выполняем перенос октетов расширения в хранилище
+			self->_storage.append(value.data);
+		} break;
+		/**
+		 * Если значение является вместимым
+		 */
+		case static_cast <uint32_t> (type_t::ARRAY):
+		case static_cast <uint32_t> (type_t::MAP): {
+			// Выполняем установку количества значений вместимого
+			node.length(0);
+		} break;
+		/**
+		 * Если значение является числом родного вида либо отметкой времени
+		 */
+		default: {
+			// Разрядная запись значения
+			uint64_t bits = 0;
+			// Если значение является дробным
+			if(static_cast <uint32_t> (value.type) & static_cast <uint32_t> (type_t::REAL)){
+				// Снимаемое дробное значение
+				const double real = value.real;
+				// Выполняем снятие разрядной записи дробного значения
+				::memcpy(&bits, &real, sizeof(bits));
+			// Если значение является целым со знаком либо отметкой времени
+			} else if((static_cast <uint32_t> (value.type) & static_cast <uint32_t> (type_t::SIGNED)) ||
+			          (value.type == type_t::TIME))
+				// Выполняем снятие разрядной записи целого со знаком
+				bits = static_cast <uint64_t> (value.integer);
+			// Выполняем снятие разрядной записи целого без знака
+			else bits = value.number;
+			// Выполняем перенос разрядной записи значения в поле содержимого
+			::memcpy(node.content, &bits, sizeof(bits));
+		} break;
+	}
+	/**
+	 * Если узел стоит внутри вместимого, учитываем его ребёнком. Имя поля
+	 * отображения учитывается наравне со значением: имя есть такой же узел, и
+	 * отображение из `N` пар несёт `2N` детей
+	 */
+	if(!state->stack.empty())
+		// Выполняем учёт ребёнка вместившего вместимого
+		self->_nodes.at(state->stack.back()).length(self->_nodes.at(state->stack.back()).length() + 1);
+	// Выполняем получение номера заводимого узла
+	const uint32_t index = static_cast <uint32_t> (self->_nodes.size());
+	// Выполняем добавление узла в дерево документа
+	self->_nodes.push_back(node);
+	// Если узел является вместимым
+	if((event == event_t::ARRAY_BEGIN) || (event == event_t::MAP_BEGIN))
+		// Выполняем добавление номера узла в стек открытых вместимых
+		state->stack.push_back(index);
+	// Сообщаем, что событие принято
+	return true;
+}
+/**
  * @brief Метод разбора записи в дерево документа
  *
  * @param buffer   буфер разбираемой записи
@@ -70,206 +332,35 @@ bool awh::codec::abc::Document::parse(const void * buffer, const size_t size, co
 	reader_t reader;
 	// Выполняем установку настроек разбора записи
 	reader.settings(settings);
-	// Стек номеров узлов открытых вместимых
-	vector <uint32_t> stack;
-	// Если подача записи отвечена отказом
-	if(!reader.feed(buffer, size, true)){
-		// Выполняем установку кода отказа разбора
-		this->_error = reader.error();
+	// Состояние сборки дерева документа
+	building_t state{this, {}, numeric_limits <uint32_t>::max(), false};
+	/**
+	 * Выполняем установку обработчика прямой выдачи событий разбора.
+	 *
+	 * События приходят прямо в сборку дерева, минуя очередь выдачи разбирателя:
+	 * событие ложилось в неё, а затем снималось с неё же копией, - работа двойная
+	 */
+	reader.handler(& Document::assemble, & state);
+	// Выполняем подачу записи разбирателю
+	const bool result = reader.feed(buffer, size, true);
+	// Выполняем снятие обработчика прямой выдачи событий разбора
+	reader.handler(nullptr, nullptr);
+	/**
+	 * Если подача записи отвечена отказом
+	 */
+	if(!result){
+		/**
+		 * Если отказ объявлен не сборкой дерева, причина берётся у разбирателя: сборка
+		 * дерева причину свою записала сама, и затирать её кодом отказа разбора нельзя
+		 */
+		if(!state.failed)
+			// Выполняем установку кода отказа разбора
+			this->_error = reader.error();
 		// Сообщаем, что разбор отвечен отказом
 		return false;
 	}
-	/**
-	 * Выполняем снятие всех собранных событий разбора
-	 */
-	/**
-	 * Номер узла значения, собираемого кусками, либо предел, если такого нет.
-	 *
-	 * Значение, собранное кусками, ложится в дерево ОДНИМ узлом: куски суть части
-	 * значения, а не значения, и потребителю дерева они видны быть не должны
-	 */
-	uint32_t segment = numeric_limits <uint32_t>::max();
-	/**
-	 * Выполняем снятие всех событий разбора
-	 */
-	while(reader.next()){
-		// Выполняем получение вида текущего события разбора
-		const event_t event = reader.event();
-		/**
-		 * Если событием является конец значения, собираемого кусками
-		 */
-		if((event == event_t::STRING_END) || (event == event_t::BLOB_END)){
-			// Выполняем сброс номера узла значения, собираемого кусками
-			segment = numeric_limits <uint32_t>::max();
-			// Продолжаем снятие событий разбора
-			continue;
-		}
-		/**
-		 * Если снят очередной кусок собираемого значения
-		 */
-		if(segment != numeric_limits <uint32_t>::max()){
-			// Выполняем получение значения снятого куска
-			const reader_t::value_t chunk = reader.value();
-			// Выполняем перенос содержимого куска в хранилище
-			this->_storage.append(chunk.data);
-			// Выполняем наращивание длины содержимого собираемого значения
-			this->_nodes.at(segment).length(this->_nodes.at(segment).length() +
-			 static_cast <uint32_t> (chunk.data.size()));
-			// Продолжаем снятие событий разбора
-			continue;
-		}
-		// Если событие является окончанием записи либо документа
-		if((event == event_t::FINISH) || (event == event_t::DOCUMENT))
-			// Продолжаем снятие событий разбора
-			continue;
-		// Если событием является конец вместимого
-		if((event == event_t::ARRAY_END) || (event == event_t::MAP_END)){
-			// Если закрывать нечего
-			if(stack.empty()){
-				// Выполняем установку кода внутреннего отказа
-				this->_error = error_t::INTERNAL;
-				// Сообщаем, что разбор отвечен отказом
-				return false;
-			}
-			// Выполняем получение номера узла закрываемого вместимого
-			const uint32_t index = stack.back();
-			// Выполняем снятие номера узла со стека
-			stack.pop_back();
-			// Выполняем установку размаха поддерева закрытого вместимого
-			this->_nodes.at(index).extent(static_cast <uint32_t> (this->_nodes.size()) - index);
-			// Продолжаем снятие событий разбора
-			continue;
-		}
-		// Выполняем получение значения текущего события
-		const reader_t::value_t value = reader.value();
-		// Заводимый узел дерева документа
-		node_t node;
-		/**
-		 * Если событием является начало значения, собираемого кусками
-		 */
-		if((event == event_t::STRING_BEGIN) || (event == event_t::BLOB_BEGIN)){
-			// Выполняем установку вида значения узла
-			node.type = value.type;
-			// Выполняем установку смещения содержимого в хранилище
-			node.offset = static_cast <uint32_t> (this->_storage.size());
-			// Выполняем установку пустой длины содержимого
-			node.length(0);
-			// Если узел стоит внутри вместимого, учитываем его ребёнком
-			if(!stack.empty())
-				// Выполняем учёт ребёнка вместившего вместимого
-				this->_nodes.at(stack.back()).length(this->_nodes.at(stack.back()).length() + 1);
-			// Выполняем установку номера узла значения, собираемого кусками
-			segment = static_cast <uint32_t> (this->_nodes.size());
-			// Выполняем добавление узла в дерево документа
-			this->_nodes.push_back(node);
-			// Продолжаем снятие событий разбора
-			continue;
-		}
-		// Выполняем установку вида значения узла
-		node.type = value.type;
-		// Выполняем установку признака имени поля отображения
-		node.keyed = (event == event_t::KEY);
-		/**
-		 * Определяем вид значения текущего события
-		 */
-		switch(static_cast <uint32_t> (value.type)){
-			// Если значение является пустым
-			case static_cast <uint32_t> (type_t::NUL): break;
-			/**
-			 * Если значение является логическим
-			 */
-			case static_cast <uint32_t> (type_t::BOOL): {
-				// Выполняем установку логического значения
-				node.length(value.boolean ? 1 : 0);
-			} break;
-			/**
-			 * Если значение является строкой, двоичными данными либо опознавателем
-			 */
-			case static_cast <uint32_t> (type_t::STRING):
-			case static_cast <uint32_t> (type_t::BLOB):
-			case static_cast <uint32_t> (type_t::UUID): {
-				// Выполняем установку смещения содержимого в хранилище
-				node.offset = static_cast <uint32_t> (this->_storage.size());
-				// Выполняем установку длины содержимого
-				node.length(static_cast <uint32_t> (value.data.size()));
-				// Выполняем перенос содержимого в хранилище
-				this->_storage.append(value.data);
-			} break;
-			/**
-			 * Если значение является целым неограниченной ширины либо десятичным
-			 */
-			case static_cast <uint32_t> (type_t::EXTENDED):
-			case static_cast <uint32_t> (type_t::DECIMAL): {
-				// Выполняем установку смещения содержимого в хранилище
-				node.offset = static_cast <uint32_t> (this->_storage.size());
-				// Выполняем установку длины октетов величины
-				node.length(static_cast <uint32_t> (value.data.size()));
-				// Выполняем установку признака отрицательности величины
-				node.negative = value.negative;
-				// Разрядная запись десятичного порядка величины
-				const uint64_t exponent = static_cast <uint64_t> (value.exponent);
-				/**
-				 * Выполняем перенос десятичного порядка в хранилище. Порядок кладётся
-				 * впереди величины оттого, что поля под него у узла нет: восемь октетов
-				 * содержимого заняты длиною величины, а расширять узел ради одного вида
-				 * значения дороже, чем положить порядок в хранилище
-				 */
-				for(uint8_t i = 0; i < 8; i++)
-					// Выполняем перенос очередного октета порядка в хранилище
-					this->_storage.push_back(static_cast <char> ((exponent >> (i * 8)) & 0xFF));
-				// Выполняем перенос октетов величины в хранилище
-				this->_storage.append(value.data);
-			} break;
-			/**
-			 * Если значение является вместимым
-			 */
-			case static_cast <uint32_t> (type_t::ARRAY):
-			case static_cast <uint32_t> (type_t::MAP): {
-				// Выполняем установку количества значений вместимого
-				node.length(0);
-			} break;
-			/**
-			 * Если значение является числом родного вида либо отметкой времени
-			 */
-			default: {
-				// Разрядная запись значения
-				uint64_t bits = 0;
-				// Если значение является дробным
-				if(static_cast <uint32_t> (value.type) & static_cast <uint32_t> (type_t::REAL)){
-					// Снимаемое дробное значение
-					const double real = value.real;
-					// Выполняем снятие разрядной записи дробного значения
-					::memcpy(&bits, &real, sizeof(bits));
-				// Если значение является целым со знаком либо отметкой времени
-				} else if((static_cast <uint32_t> (value.type) & static_cast <uint32_t> (type_t::SIGNED)) ||
-				          (value.type == type_t::TIME))
-					// Выполняем снятие разрядной записи целого со знаком
-					bits = static_cast <uint64_t> (value.integer);
-				// Выполняем снятие разрядной записи целого без знака
-				else bits = value.number;
-				// Выполняем перенос разрядной записи значения в поле содержимого
-				::memcpy(node.content, &bits, sizeof(bits));
-			} break;
-		}
-		/**
-		 * Если узел стоит внутри вместимого, учитываем его ребёнком. Имя поля
-		 * отображения учитывается наравне со значением: имя есть такой же узел, и
-		 * отображение из `N` пар несёт `2N` детей
-		 */
-		if(!stack.empty())
-			// Выполняем учёт ребёнка вместившего вместимого
-			this->_nodes.at(stack.back()).length(this->_nodes.at(stack.back()).length() + 1);
-		// Выполняем получение номера заводимого узла
-		const uint32_t index = static_cast <uint32_t> (this->_nodes.size());
-		// Выполняем добавление узла в дерево документа
-		this->_nodes.push_back(node);
-		// Если узел является вместимым
-		if((event == event_t::ARRAY_BEGIN) || (event == event_t::MAP_BEGIN))
-			// Выполняем добавление номера узла в стек открытых вместимых
-			stack.push_back(index);
-	}
 	// Если стек открытых вместимых не опустел
-	if(!stack.empty()){
+	if(!state.stack.empty()){
 		// Выполняем установку кода внутреннего отказа
 		this->_error = error_t::INTERNAL;
 		// Сообщаем, что разбор отвечен отказом
@@ -285,6 +376,7 @@ bool awh::codec::abc::Document::parse(const void * buffer, const size_t size, co
 	// Сообщаем, что разбор успешен
 	return true;
 }
+
 /**
  * @brief Метод разбора записи в дерево документа
  *
@@ -366,6 +458,21 @@ bool awh::codec::abc::Document::build(writer_t & writer) const noexcept {
 				// Выполняем укладку десятичного числа
 				result = writer.decimal(this->_storage.data() + node.offset + 8, node.length(),
 				 node.negative, static_cast <int64_t> (bits));
+			} break;
+			/**
+			 * Если значение является открытым расширением
+			 */
+			case static_cast <uint32_t> (type_t::CUSTOM): {
+				// Номер подвида расширения, заведённый потребителем
+				uint64_t subtype = 0;
+				/**
+				 * Выполняем снятие номера подвида расширения из хранилища
+				 */
+				for(uint8_t i = 0; i < 8; i++)
+					// Выполняем снятие очередного октета номера подвида
+					subtype |= (static_cast <uint64_t> (static_cast <uint8_t> (this->_storage.at(node.offset + i))) << (i * 8));
+				// Выполняем укладку открытого расширения
+				result = writer.custom(subtype, this->_storage.data() + node.offset + 8, node.length());
 			} break;
 			/**
 			 * Если значение является вместимым
@@ -524,7 +631,7 @@ awh::codec::abc::Document::value_t awh::codec::abc::Document::root() const noexc
 		// Выводим недействительную ссылку на значение
 		return value_t();
 	// Выводим ссылку на корень дерева документа
-	return value_t(this, 0);
+	return value_t(this, 0, static_cast <uint32_t> (this->_nodes.size()));
 }
 /**
  * @brief Метод извлечения количества узлов дерева документа
@@ -650,7 +757,7 @@ awh::codec::abc::Document::value_t awh::codec::abc::Document::Value::at(const si
 		// Выполняем пропуск поддерева очередного узла целиком
 		child += this->_doc->_nodes.at(child).extent();
 	// Выводим ссылку на затребованное значение вместимого
-	return value_t(this->_doc, child);
+	return value_t(this->_doc, child, (this->_index + node.extent()));
 }
 /**
  * @brief Метод извлечения имени поля отображения по его номеру
@@ -683,7 +790,61 @@ awh::codec::abc::Document::value_t awh::codec::abc::Document::Value::key(const s
 		// Выполняем пропуск поддерева очередного узла целиком
 		child += this->_doc->_nodes.at(child).extent();
 	// Выводим ссылку на имя затребованного поля отображения
-	return value_t(this->_doc, child);
+	return value_t(this->_doc, child, (this->_index + node.extent()));
+}
+/**
+ * @brief Метод извлечения первого значения вместимого
+ *
+ * @return ссылка на первое значение вместимого
+ *
+ */
+awh::codec::abc::Document::value_t awh::codec::abc::Document::Value::begin() const noexcept {
+	// Если ссылка на значение недействительна
+	if(!this->valid())
+		// Выводим недействительную ссылку на значение
+		return value_t();
+	// Выполняем получение узла значения документа
+	const node_t & node = this->_doc->_nodes.at(this->_index);
+	// Если узел вместимым не является либо вместимое пусто
+	if(!node.container() || (node.length() == 0))
+		// Выводим недействительную ссылку на значение
+		return value_t();
+	// Выводим ссылку на первое значение вместимого
+	return value_t(this->_doc, (this->_index + 1), (this->_index + node.extent()));
+}
+/**
+ * @brief Метод перехода к следующему значению вместимого
+ *
+ * @return ссылка на следующее значение вместимого
+ *
+ */
+awh::codec::abc::Document::value_t awh::codec::abc::Document::Value::next() const noexcept {
+	// Если ссылка на значение недействительна
+	if(!this->valid())
+		// Выводим недействительную ссылку на значение
+		return value_t();
+	// Выполняем получение номера следующего значения вместимого
+	const uint32_t index = (this->_index + this->_doc->_nodes.at(this->_index).extent());
+	// Если следующее значение вышло за границу вместимого
+	if(index >= this->_bound)
+		// Выводим недействительную ссылку на значение
+		return value_t();
+	// Выводим ссылку на следующее значение вместимого
+	return value_t(this->_doc, index, this->_bound);
+}
+/**
+ * @brief Метод проверки того, что значение является именем поля отображения
+ *
+ * @return признак того, что значение является именем поля отображения
+ *
+ */
+bool awh::codec::abc::Document::Value::keyed() const noexcept {
+	// Если ссылка на значение недействительна
+	if(!this->valid())
+		// Выводим признак того, что значение именем поля не является
+		return false;
+	// Выводим признак того, что значение является именем поля отображения
+	return this->_doc->_nodes.at(this->_index).keyed;
 }
 /**
  * @brief Метод извлечения значения поля отображения по имени
@@ -708,7 +869,8 @@ awh::codec::abc::Document::value_t awh::codec::abc::Document::Value::get(const s
 	// Если затребованное имя поля отображения найдено
 	if(i != naming.end())
 		// Выводим ссылку на значение затребованного поля
-		return value_t(this->_doc, i->second);
+		return value_t(this->_doc, i->second,
+		 (this->_index + this->_doc->_nodes.at(this->_index).extent()));
 	// Выводим недействительную ссылку на значение
 	return value_t();
 }
@@ -923,6 +1085,10 @@ string_view awh::codec::abc::Document::Value::data() const noexcept {
 		case static_cast <uint32_t> (type_t::DECIMAL):
 			// Выводим октеты величины числа, стоящие за десятичным порядком
 			return string_view(this->_doc->_storage.data() + node.offset + 8, node.length());
+		// Если значение является открытым расширением
+		case static_cast <uint32_t> (type_t::CUSTOM):
+			// Выводим октеты расширения, стоящие за номером его подвида
+			return string_view(this->_doc->_storage.data() + node.offset + 8, node.length());
 	}
 	// Выводим пустое содержимое значения
 	return string_view();
@@ -954,6 +1120,34 @@ int64_t awh::codec::abc::Document::Value::exponent() const noexcept {
 		bits |= (static_cast <uint64_t> (static_cast <uint8_t> (this->_doc->_storage.at(node.offset + i))) << (i * 8));
 	// Выводим десятичный порядок величины
 	return static_cast <int64_t> (bits);
+}
+/**
+ * @brief Метод извлечения номера подвида открытого расширения
+ *
+ * @return номер подвида открытого расширения
+ *
+ */
+uint64_t awh::codec::abc::Document::Value::subtype() const noexcept {
+	// Если ссылка на значение недействительна
+	if(!this->valid())
+		// Выводим отсутствие номера подвида расширения
+		return 0;
+	// Выполняем получение узла значения документа
+	const node_t & node = this->_doc->_nodes.at(this->_index);
+	// Если значение открытым расширением не является
+	if(node.type != type_t::CUSTOM)
+		// Выводим отсутствие номера подвида расширения
+		return 0;
+	// Разрядная запись номера подвида расширения
+	uint64_t bits = 0;
+	/**
+	 * Выполняем снятие номера подвида расширения из хранилища
+	 */
+	for(uint8_t i = 0; i < 8; i++)
+		// Выполняем снятие очередного октета номера подвида
+		bits |= (static_cast <uint64_t> (static_cast <uint8_t> (this->_doc->_storage.at(node.offset + i))) << (i * 8));
+	// Выводим номер подвида расширения
+	return bits;
 }
 /**
  * @brief Метод проверки того, что величина меньше нуля

@@ -674,6 +674,39 @@ namespace awh {
 					 * \~
 					 */
 					[[nodiscard]] bool decimal(const void * buffer, const size_t size, const bool negative, const int64_t exponent) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод укладки открытого расширения
+					 *
+					 * @details Расширение это заводится потребителем, а не модулем: номер подвида
+					 * толкует он сам, а запись несёт его вместе с октетами. Так к записи прибавляется
+					 * свой вид значения, и разбору чужой записи он не мешает ничем - разбиратель
+					 * выдаёт расширение отдельным событием, не пытаясь его толковать
+					 *
+					 * @note Номера подвидов модулем не заняты вовсе и потребителю принадлежат
+					 * целиком: соглашение о них есть дело того, кто запись пишет и читает
+					 *
+					 * @param subtype номер подвида расширения, заведённый потребителем
+					 * @param buffer  буфер октетов расширения
+					 * @param size    размер октетов расширения
+					 * @return        признак успешности сборки
+					 *
+					 * \~english
+					 * @brief Method of the laying of an open extension
+					 * @details This extension is instituted by the consumer rather than by the module: the number of the subtype
+					 * is interpreted by it itself, while the record carries it together with the octets. Thus its own kind
+					 * of a value is added to the record, and it does not hinder the parsing of a foreign record in any way — the parser
+					 * issues the extension by a separate event without attempting to interpret it
+					 * @note The numbers of the subtypes are not occupied by the module at all and belong to the consumer
+					 * entirely: the agreement about them is the affair of the one who writes and reads the record
+					 * @param subtype number of the subtype of the extension instituted by the consumer
+					 * @param buffer buffer of the octets of the extension
+					 * @param size size of the octets of the extension
+					 * @return sign of the success of the assembling
+					 *
+					 * \~
+					 */
+					[[nodiscard]] bool custom(const uint64_t subtype, const void * buffer, const size_t size) noexcept;
 				public:
 					/**
 					 * \~russian
