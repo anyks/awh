@@ -53,6 +53,15 @@ int main(int argc, char ** argv){
 		 *       Розыском по тексту его не опознать - место события стоит на имени пары
 		 */
 		if(reader.value().flow) return std::string(" ").append(1, pair[0]).append(1, pair[1]);
+		/**
+		 * @warning Розыск этот есть догадка щупа, а не сведение от чтения: признак
+		 *          поточного построения выдаётся детям его, а самому построению - нет,
+		 *          ибо оно не ВНУТРИ построения стоит, а построением и является. Догадка
+		 *          ошибается там, где имя пары само поточным построением является: место
+		 *          события блочного отображения стоит тогда на скобке имени, и щуп метит
+		 *          скобками отображение блочное. Случай Q9WF расходится по этой причине,
+		 *          а не по вине кодека
+		 */
 		if(reader.value().location.offset == yaml::NO_OFFSET) return std::string();
 		size_t offset = static_cast <size_t> (reader.value().location.offset);
 		while((offset < text.size()) && ((text.at(offset) == ' ') || (text.at(offset) == '\t'))) offset++;
@@ -66,7 +75,15 @@ int main(int argc, char ** argv){
 		size_t offset = static_cast <size_t> (reader.value().location.offset);
 		while((offset < text.size()) && ((text.at(offset) == ' ') || (text.at(offset) == '\t'))) offset++;
 		if((offset + 2) > text.size()) return std::string();
-		if(text.compare(offset, 3, mark) == 0) return std::string(" ").append(mark);
+		/**
+		 * Черта опознаётся лишь тогда, когда за нею стоит пробельный знак либо конец
+		 * строки: запись `---word1` чертою начала документа не является вовсе, а есть
+		 * простое значение целиком. Случай 82AN
+		 */
+		if((text.compare(offset, 3, mark) == 0) &&
+		   (((offset + 3) >= text.size()) || (text.at(offset + 3) == ' ') ||
+		    (text.at(offset + 3) == '\t') || (text.at(offset + 3) == '\n')))
+			return std::string(" ").append(mark);
 		return std::string();
 	};
 	result.append("+STR\n");
