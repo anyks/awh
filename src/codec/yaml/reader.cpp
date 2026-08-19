@@ -473,7 +473,8 @@ awh::codec::yaml::Reader::Reader() noexcept :
  _started(false), _opened(false), _filled(false), _blocking(false), _block(style_t::LITERAL),
  _chomp(chomp_t::CLIP), _marked(NO_INDENT), _outer(0), _margin(0), _inner(0), _opening(0),
  _breaks(0), _padding(0), _deepened(false), _expected(false), _awaited(false), _valued(false),
- _headed(false), _propped(false), _tabbed(false), _rooted(false), _detected(false),
+ _headed(false), _propped(false), _anchoredHere(false), _taggedHere(false),
+ _tabbed(false), _rooted(false), _detected(false),
  _joined(0), _stretched(false), _shallow(0), _asked(false), _questioned(0), _dashed(false), _flowning(false), _entered(false), _pending(0), _schema(schema_t::CORE), _plaining(false), _folds(0),
  _required(0), _phase(flow_t::ENTRY), _directed(false), _versioned(false), _declared(false),
  _dialect(schema_t::CORE) {}
@@ -489,6 +490,7 @@ awh::codec::yaml::Reader::Reader(const settings_t & settings) noexcept :
  _blocking(false), _block(style_t::LITERAL), _chomp(chomp_t::CLIP), _marked(NO_INDENT),
  _outer(0), _margin(0), _inner(0), _opening(0), _breaks(0), _padding(0), _deepened(false),
  _expected(false), _awaited(false), _valued(false), _headed(false), _propped(false),
+ _anchoredHere(false), _taggedHere(false),
  _tabbed(false), _rooted(false), _detected(false), _entered(false), _pending(0),
  _joined(0), _stretched(false), _shallow(0), _asked(false), _questioned(0), _dashed(false), _flowning(false), _schema(settings.schema), _plaining(false), _folds(0), _required(0),
  _phase(flow_t::ENTRY), _directed(false), _versioned(false), _declared(false), _dialect(settings.schema) {
@@ -620,6 +622,10 @@ void awh::codec::yaml::Reader::clear() noexcept {
 	this->_anchor.clear();
 	// Выполняем сброс метки типа, узла своего ожидающей
 	this->_tag.clear();
+	// Выполняем сброс имени метки, вместилищу отложенной
+	this->_delayed.clear();
+	// Выполняем сброс метки типа, вместилищу отложенной
+	this->_delayedTag.clear();
 	// Выполняем сброс признака сборки простого значения
 	this->_plaining = false;
 	// Выполняем сброс собираемого содержимого простого значения
@@ -1124,6 +1130,10 @@ bool awh::codec::yaml::Reader::finish(const size_t column) noexcept {
 	this->_anchor.clear();
 	// Выполняем сброс метки типа, узла своего так и не дождавшейся
 	this->_tag.clear();
+	// Выполняем сброс имени метки, вместилищу отложенной
+	this->_delayed.clear();
+	// Выполняем сброс метки типа, вместилищу отложенной
+	this->_delayedTag.clear();
 	// Выводим признак успешного закрытия документа
 	return true;
 }
@@ -1673,9 +1683,25 @@ bool awh::codec::yaml::Reader::property(const string_view line, size_t & offset)
 			/**
 			 * Если метка узлу уже предпослана
 			 */
-			if(!this->_anchor.empty())
-				// Выводим отказ недопустимого знака в этом месте текста
-				return this->fail(error_t::INVALID_CHARACTER, offset);
+			if(!this->_anchor.empty()){
+				/**
+				 * Если метка предпослана была в этой же строке
+				 *
+				 * @note Двух меток один узел не несёт: описание дозволяет узлу метку одну
+				 */
+				if(this->_anchoredHere || !this->_delayed.empty())
+					// Выводим отказ недопустимого знака в этом месте текста
+					return this->fail(error_t::INVALID_CHARACTER, offset);
+				/**
+				 * Выполняем откладывание прежней метки вместилищу
+				 *
+				 * @details Метка, строкою выше объявленная, принадлежит вместилищу, какое
+				 *          строка эта открывает, а не имени пары её: написание `top: &m`
+				 *          со строкою `&k имя: значение` ниже несёт метку вместилища и
+				 *          метку имени разом
+				 */
+				this->_delayed.swap(this->_anchor);
+			}
 			// Получаем смещение начала имени метки
 			const size_t begin = (offset + 1);
 			// Смещение разбираемого знака строки
@@ -1700,6 +1726,8 @@ bool awh::codec::yaml::Reader::property(const string_view line, size_t & offset)
 				return this->fail(error_t::ANCHOR_TOO_LONG, offset);
 			// Запоминаем имя метки, узла своего ожидающей
 			this->_anchor.assign(line.substr(begin, (position - begin)));
+			// Запоминаем признак объявления метки узла в разбираемой строке
+			this->_anchoredHere = true;
 			/**
 			 * Запоминаем метку среди объявленных документом
 			 *
@@ -1717,9 +1745,26 @@ bool awh::codec::yaml::Reader::property(const string_view line, size_t & offset)
 			/**
 			 * Если метка типа узлу уже предпослана
 			 */
-			if(!this->_tag.empty())
-				// Выводим отказ недопустимого знака в этом месте текста
-				return this->fail(error_t::INVALID_CHARACTER, offset);
+			if(!this->_tag.empty()){
+				/**
+				 * Если метка типа предпослана была в этой же строке
+				 *
+				 * @note Двух меток типа один узел не несёт: описание дозволяет узлу метку одну
+				 */
+				if(this->_taggedHere || !this->_delayedTag.empty())
+					// Выводим отказ недопустимого знака в этом месте текста
+					return this->fail(error_t::INVALID_CHARACTER, offset);
+				/**
+				 * Выполняем откладывание прежней метки типа вместилищу
+				 *
+				 * @details Метка типа, строкою выше объявленная, принадлежит вместилищу,
+				 *          какое строка эта открывает, а не имени пары её - ровно как и
+				 *          метка узла
+				 */
+				this->_delayedTag.swap(this->_tag);
+			}
+			// Запоминаем признак объявления метки типа в разбираемой строке
+			this->_taggedHere = true;
 			// Смещение разбираемого знака строки
 			size_t position = (offset + 1);
 			/**
@@ -2773,6 +2818,21 @@ bool awh::codec::yaml::Reader::content(const string_view line, const size_t offs
 				anchor.swap(this->_anchor);
 				// Выполняем изъятие метки типа у открываемого отображения
 				tag.swap(this->_tag);
+				/**
+				 * Выполняем возврат отложенных свойств открываемому вместилищу
+				 *
+				 * @note Метка, строкою выше объявленная, вместилищу и предназначалась:
+				 *       изъятие выше отняло у него метку имени пары, а эта - его
+				 */
+				if(!this->_delayed.empty())
+					// Выполняем возврат отложенной метки открываемому отображению
+					this->_anchor.swap(this->_delayed);
+				/**
+				 * Если метка типа вместилищу отложена была
+				 */
+				if(!this->_delayedTag.empty())
+					// Выполняем возврат отложенной метки типа открываемому отображению
+					this->_tag.swap(this->_delayedTag);
 			}
 			// Признак успешного открытия уровня отображения
 			const bool opened = this->expand(nesting_t::MAPPING, indent, false, offset);
@@ -4404,6 +4464,10 @@ bool awh::codec::yaml::Reader::record(const string_view line) noexcept {
 	}
 	// Выполняем сброс признака разбора свойств узла в этой строке
 	this->_propped = false;
+	// Выполняем сброс признака объявления метки узла в разбираемой строке
+	this->_anchoredHere = false;
+	// Выполняем сброс признака объявления метки типа в разбираемой строке
+	this->_taggedHere = false;
 	// Выполняем сброс признака подачи в отступе вложенного построения
 	this->_tabbed = false;
 	/**
@@ -4883,6 +4947,22 @@ bool awh::codec::yaml::Reader::record(const string_view line) noexcept {
 	if(!this->content(line, offset, indent))
 		// Выводим признак неудачного разбора строки
 		return false;
+	/**
+	 * Если метка, вместилищу отложенная, вместилища своего не дождалась
+	 *
+	 * @details Откладывание оправдано лишь тем, что строка вместилище открывает: метка
+	 *          строкою выше достаётся вместилищу, а метка этой строки - имени пары его.
+	 *          Строка же, вместилища не открывшая, несёт узел один, и двух меток он не
+	 *          несёт: написание `top: &m` со строкою `&v значение` ниже есть две метки
+	 *          одному простому значению, и описание того не дозволяет
+	 *
+	 * @note Нашло это сличение с набором yaml-test-suite: случай 4JVG отказа требует,
+	 *       а соседний 7BMT тем же написанием законен - разнятся они лишь тем, что
+	 *       строка нижняя открывает отображение либо не открывает его вовсе
+	 */
+	if(!this->_delayed.empty() || !this->_delayedTag.empty())
+		// Выводим отказ недопустимого знака в этом месте текста
+		return this->fail(error_t::INVALID_CHARACTER, offset);
 	/**
 	 * Если имя, вопросом объявленное, собрано, а значения его ещё нет
 	 *
