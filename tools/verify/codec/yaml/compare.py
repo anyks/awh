@@ -23,8 +23,12 @@ for name in sorted(os.listdir(SRC)):
                 cur[key] = '\n'.join(buf) + ('\n' if buf else '')
             cur = {}; entries.append(cur); key = None; buf = []; indent = None
             k, v = m.group(1), m.group(2)
-            if v == '|' or v.startswith('|'):
-                key = k; buf = []; indent = None
+            if v.startswith('|'):
+                # Указатель отступа заголовка отсчитывается от отступа отображения,
+                # а не от первой строки содержимого: без него значащие пробелы в
+                # начале строк срезались вместе с отступом
+                marked = re.search(r'\|[+-]?(\d)', v)
+                key = k; buf = []; indent = (2 + int(marked.group(1))) if marked else None
             else:
                 cur[k] = v
             continue
@@ -35,7 +39,9 @@ for name in sorted(os.listdir(SRC)):
             key = None; buf = []; indent = None
             k, v = m.group(1), m.group(2)
             if v.startswith('|'):
-                key = k; buf = []; indent = None
+                # Указатель отступа заголовка отсчитывается от отступа отображения
+                marked = re.search(r'\|[+-]?(\d)', v)
+                key = k; buf = []; indent = (2 + int(marked.group(1))) if marked else None
             else:
                 cur[k] = v
             continue
