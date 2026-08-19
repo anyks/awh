@@ -3608,3 +3608,42 @@ TEST(CodecYamlReader, QuestionedEmptyKeyAnchor) {
 		"SCALAR «» &d\nSCALAR «»\nSCALAR «x»\nSCALAR «1»\n"
 		"MAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
 }
+
+/**
+ * @brief Проверка долевых записей знаков в метке типа
+ *
+ * @details Метка типа есть единообразный указатель, и знаки, перечню его не
+ * принадлежащие, записываются в ней долею с точкою кода. Раскрытие это дело чтения, а
+ * не потребителя: наружу выдаётся указатель сам по себе, а не запись его
+ *
+ * @note Доля без двух разрядов за нею записи указателя не принадлежит вовсе и есть
+ * отказ. Случай 6CK3 набора yaml-test-suite
+ *
+ */
+TEST(CodecYamlReader, TagPercentEscapes) {
+	/**
+	 * Выполняем проверку доли в окончании метки, сокращением объявленной
+	 */
+	ASSERT_EQ(events("%TAG !e! tag:example.com,2000:app/\n---\n- !e!tag%21 baz\n"),
+		"STREAM_START\nDOCUMENT_START\nSEQUENCE_START\n"
+		"SCALAR «baz» <tag:example.com,2000:app/tag!>\n"
+		"SEQUENCE_END\nDOCUMENT_END\nSTREAM_END\n");
+	/**
+	 * Выполняем проверку доли в дословной записи метки типа
+	 */
+	ASSERT_EQ(events("!<tag:a.com,2000:x%2Fy> v\n"),
+		"STREAM_START\nDOCUMENT_START\n"
+		"SCALAR «v» <tag:a.com,2000:x/y>\nDOCUMENT_END\nSTREAM_END\n");
+	/**
+	 * Выполняем проверку доли, разрядов за собою не имеющей
+	 */
+	ASSERT_NE(events("!e%2 v\n").find("ОТКАЗ"), string::npos);
+	/**
+	 * Выполняем проверку знака вне ASCII, долями записанного
+	 *
+	 * @note Раскрывается запись побайтно: знак записан двумя долями подряд
+	 */
+	ASSERT_EQ(events("!<tag:a.com,2000:%D0%B0> v\n"),
+		"STREAM_START\nDOCUMENT_START\n"
+		"SCALAR «v» <tag:a.com,2000:а>\nDOCUMENT_END\nSTREAM_END\n");
+}
