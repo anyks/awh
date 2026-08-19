@@ -28,7 +28,7 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <gtest/gtest.h>
-#include <codec/abc/abc.hpp>
+#include <codec/abc/common.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -257,25 +257,25 @@ TEST(CodecAbcCommon, TagRoundtrip) {
 	/**
 	 * Крупные виды проволочной записи
 	 */
-	const vector <abc::major_t> majors = {
-		abc::major_t::UNSIGNED, abc::major_t::NEGATIVE, abc::major_t::STRING,
-		abc::major_t::BLOB, abc::major_t::ARRAY, abc::major_t::MAP,
-		abc::major_t::SINGLE, abc::major_t::EXTEND
+	const vector <abc::group_t> majors = {
+		abc::group_t::UNSIGNED, abc::group_t::NEGATIVE, abc::group_t::STRING,
+		abc::group_t::BLOB, abc::group_t::ARRAY, abc::group_t::MAP,
+		abc::group_t::SINGLE, abc::group_t::EXTEND
 	};
 	// Набор уже встреченных ведущих октетов
 	unordered_set <uint32_t> seen;
 	/**
 	 * Выполняем перебор всех крупных видов проволочной записи
 	 */
-	for(const abc::major_t major : majors){
+	for(const abc::group_t group : majors){
 		/**
 		 * Выполняем перебор всех подробностей метки
 		 */
 		for(uint8_t detail = 0; detail < 0x20; detail++){
 			// Выполняем сборку ведущего октета значения
-			const uint8_t tag = abc::tag(major, detail);
+			const uint8_t tag = abc::tag(group, detail);
 			// Выполняем проверку, что крупный вид разобран тем же
-			ASSERT_EQ(abc::major(tag), major) << "ведущий октет: " << static_cast <uint32_t> (tag);
+			ASSERT_EQ(abc::group(tag), group) << "ведущий октет: " << static_cast <uint32_t> (tag);
 			// Выполняем проверку, что подробность разобрана тою же
 			ASSERT_EQ(abc::detail(tag), detail) << "ведущий октет: " << static_cast <uint32_t> (tag);
 			// Выполняем проверку, что ведущий октет не повторяется у иной пары

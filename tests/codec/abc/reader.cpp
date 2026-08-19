@@ -25,7 +25,7 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <gtest/gtest.h>
-#include <codec/abc/abc.hpp>
+#include <codec/abc/reader.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -174,7 +174,7 @@ namespace {
 	 */
 	void text(vector <uint8_t> & result, const string & text) noexcept {
 		// Выполняем укладку метки строки вместе с её длиной
-		abc::put(result, abc::major_t::STRING, static_cast <uint64_t> (text.size()));
+		abc::put(result, abc::group_t::STRING, static_cast <uint64_t> (text.size()));
 		// Выполняем укладку октетов строки
 		result.insert(result.end(), text.begin(), text.end());
 	}
@@ -188,7 +188,7 @@ TEST(CodecAbcReader, Scalars) {
 	// Буфер собираемой записи
 	vector <uint8_t> data;
 	// Выполняем укладку пустого значения
-	abc::mark(data, abc::major_t::SINGLE, static_cast <uint8_t> (abc::single_t::NUL));
+	abc::mark(data, abc::group_t::SINGLE, static_cast <uint8_t> (abc::single_t::NUL));
 	// Читатель бинарной записи
 	abc::reader_t reader;
 	// Выполняем сбор всех событий разбора
@@ -200,7 +200,7 @@ TEST(CodecAbcReader, Scalars) {
 	// Выполняем сброс состояния разбора
 	reader.reset();
 	// Выполняем укладку логического значения
-	abc::mark(data, abc::major_t::SINGLE, static_cast <uint8_t> (abc::single_t::TRUE));
+	abc::mark(data, abc::group_t::SINGLE, static_cast <uint8_t> (abc::single_t::TRUE));
 	// Выполняем сбор всех событий разбора
 	events = collect(data, 0, reader);
 	// Выполняем проверку собранной последовательности событий
@@ -268,21 +268,21 @@ TEST(CodecAbcReader, Containers) {
 	// Буфер собираемой записи
 	vector <uint8_t> data;
 	// Выполняем укладку массива из трёх значений
-	abc::put(data, abc::major_t::ARRAY, 3);
+	abc::put(data, abc::group_t::ARRAY, 3);
 	// Выполняем укладку первого значения массива
-	abc::put(data, abc::major_t::UNSIGNED, 1);
+	abc::put(data, abc::group_t::UNSIGNED, 1);
 	// Выполняем укладку вложенного массива из двух значений
-	abc::put(data, abc::major_t::ARRAY, 2);
+	abc::put(data, abc::group_t::ARRAY, 2);
 	// Выполняем укладку первого значения вложенного массива
-	abc::put(data, abc::major_t::UNSIGNED, 2);
+	abc::put(data, abc::group_t::UNSIGNED, 2);
 	// Выполняем укладку второго значения вложенного массива
-	abc::put(data, abc::major_t::UNSIGNED, 3);
+	abc::put(data, abc::group_t::UNSIGNED, 3);
 	// Выполняем укладку отображения из одной пары
-	abc::put(data, abc::major_t::MAP, 1);
+	abc::put(data, abc::group_t::MAP, 1);
 	// Выполняем укладку имени поля отображения
 	text(data, "имя");
 	// Выполняем укладку значения поля отображения
-	abc::mark(data, abc::major_t::SINGLE, static_cast <uint8_t> (abc::single_t::NUL));
+	abc::mark(data, abc::group_t::SINGLE, static_cast <uint8_t> (abc::single_t::NUL));
 	// Читатель бинарной записи
 	abc::reader_t reader;
 	// Выполняем сбор всех событий разбора
@@ -301,11 +301,11 @@ TEST(CodecAbcReader, EmptyContainers) {
 	// Буфер собираемой записи
 	vector <uint8_t> data;
 	// Выполняем укладку массива из двух значений
-	abc::put(data, abc::major_t::ARRAY, 2);
+	abc::put(data, abc::group_t::ARRAY, 2);
 	// Выполняем укладку пустого массива
-	abc::put(data, abc::major_t::ARRAY, 0);
+	abc::put(data, abc::group_t::ARRAY, 0);
 	// Выполняем укладку пустого отображения
-	abc::put(data, abc::major_t::MAP, 0);
+	abc::put(data, abc::group_t::MAP, 0);
 	// Читатель бинарной записи
 	abc::reader_t reader;
 	// Выполняем сбор всех событий разбора
@@ -322,17 +322,17 @@ TEST(CodecAbcReader, IndefiniteContainers) {
 	// Буфер собираемой записи
 	vector <uint8_t> data;
 	// Выполняем укладку отображения неопределённой длины
-	abc::mark(data, abc::major_t::MAP, static_cast <uint8_t> (abc::single_t::BREAK));
+	abc::mark(data, abc::group_t::MAP, static_cast <uint8_t> (abc::single_t::BREAK));
 	// Выполняем укладку имени поля отображения числом
-	abc::put(data, abc::major_t::UNSIGNED, 7);
+	abc::put(data, abc::group_t::UNSIGNED, 7);
 	// Выполняем укладку массива неопределённой длины
-	abc::mark(data, abc::major_t::ARRAY, static_cast <uint8_t> (abc::single_t::BREAK));
+	abc::mark(data, abc::group_t::ARRAY, static_cast <uint8_t> (abc::single_t::BREAK));
 	// Выполняем укладку значения массива
-	abc::put(data, abc::major_t::UNSIGNED, 8);
+	abc::put(data, abc::group_t::UNSIGNED, 8);
 	// Выполняем укладку конца массива
-	abc::mark(data, abc::major_t::SINGLE, static_cast <uint8_t> (abc::single_t::BREAK));
+	abc::mark(data, abc::group_t::SINGLE, static_cast <uint8_t> (abc::single_t::BREAK));
 	// Выполняем укладку конца отображения
-	abc::mark(data, abc::major_t::SINGLE, static_cast <uint8_t> (abc::single_t::BREAK));
+	abc::mark(data, abc::group_t::SINGLE, static_cast <uint8_t> (abc::single_t::BREAK));
 	// Читатель бинарной записи
 	abc::reader_t reader;
 	// Выполняем сбор всех событий разбора
@@ -352,11 +352,11 @@ TEST(CodecAbcReader, ChunkIndependence) {
 	// Буфер собираемой записи
 	vector <uint8_t> data;
 	// Выполняем укладку отображения из трёх пар
-	abc::put(data, abc::major_t::MAP, 3);
+	abc::put(data, abc::group_t::MAP, 3);
 	// Выполняем укладку имени первого поля отображения
 	text(data, "первое");
 	// Выполняем укладку значения первого поля отображения
-	abc::put(data, abc::major_t::UNSIGNED, 300000);
+	abc::put(data, abc::group_t::UNSIGNED, 300000);
 	// Выполняем укладку имени второго поля отображения
 	text(data, "второе");
 	// Выполняем укладку дробного значения двойной точности
@@ -364,13 +364,13 @@ TEST(CodecAbcReader, ChunkIndependence) {
 	// Выполняем укладку имени третьего поля отображения
 	text(data, "третье");
 	// Выполняем укладку массива из двух значений
-	abc::put(data, abc::major_t::ARRAY, 2);
+	abc::put(data, abc::group_t::ARRAY, 2);
 	// Выполняем укладку двоичного значения
-	abc::put(data, abc::major_t::BLOB, 4);
+	abc::put(data, abc::group_t::BLOB, 4);
 	// Выполняем укладку октетов двоичного значения
 	data.insert(data.end(), {0x01, 0x02, 0x03, 0x04});
 	// Выполняем укладку опознавателя
-	abc::mark(data, abc::major_t::SINGLE, static_cast <uint8_t> (abc::single_t::UUID));
+	abc::mark(data, abc::group_t::SINGLE, static_cast <uint8_t> (abc::single_t::UUID));
 	/**
 	 * Выполняем укладку октетов опознавателя
 	 */
@@ -405,11 +405,11 @@ TEST(CodecAbcReader, DocumentStream) {
 	// Буфер собираемой записи
 	vector <uint8_t> data;
 	// Выполняем укладку первого документа
-	abc::put(data, abc::major_t::UNSIGNED, 1);
+	abc::put(data, abc::group_t::UNSIGNED, 1);
 	// Выполняем укладку второго документа
-	abc::put(data, abc::major_t::UNSIGNED, 2);
+	abc::put(data, abc::group_t::UNSIGNED, 2);
 	// Выполняем укладку третьего документа
-	abc::put(data, abc::major_t::ARRAY, 0);
+	abc::put(data, abc::group_t::ARRAY, 0);
 	// Читатель бинарной записи
 	abc::reader_t reader;
 	// Настройки разбора записи
@@ -451,7 +451,7 @@ TEST(CodecAbcReader, Failures) {
 		// Читатель бинарной записи
 		abc::reader_t reader;
 		// Выполняем укладку конца вместимого
-		abc::mark(data, abc::major_t::SINGLE, static_cast <uint8_t> (abc::single_t::BREAK));
+		abc::mark(data, abc::group_t::SINGLE, static_cast <uint8_t> (abc::single_t::BREAK));
 		// Выполняем подачу записи целиком
 		ASSERT_FALSE(reader.feed(data.data(), data.size(), true));
 		// Выполняем проверку кода отказа
@@ -464,11 +464,11 @@ TEST(CodecAbcReader, Failures) {
 		// Читатель бинарной записи
 		abc::reader_t reader;
 		// Выполняем укладку отображения неопределённой длины
-		abc::mark(data, abc::major_t::MAP, static_cast <uint8_t> (abc::single_t::BREAK));
+		abc::mark(data, abc::group_t::MAP, static_cast <uint8_t> (abc::single_t::BREAK));
 		// Выполняем укладку имени поля отображения
-		abc::put(data, abc::major_t::UNSIGNED, 1);
+		abc::put(data, abc::group_t::UNSIGNED, 1);
 		// Выполняем укладку конца отображения
-		abc::mark(data, abc::major_t::SINGLE, static_cast <uint8_t> (abc::single_t::BREAK));
+		abc::mark(data, abc::group_t::SINGLE, static_cast <uint8_t> (abc::single_t::BREAK));
 		// Выполняем подачу записи целиком
 		ASSERT_FALSE(reader.feed(data.data(), data.size(), true));
 		// Выполняем проверку кода отказа
@@ -481,9 +481,9 @@ TEST(CodecAbcReader, Failures) {
 		// Читатель бинарной записи
 		abc::reader_t reader;
 		// Выполняем укладку отображения из одной пары
-		abc::put(data, abc::major_t::MAP, 1);
+		abc::put(data, abc::group_t::MAP, 1);
 		// Выполняем укладку массива именем поля отображения
-		abc::put(data, abc::major_t::ARRAY, 0);
+		abc::put(data, abc::group_t::ARRAY, 0);
 		// Выполняем подачу записи целиком
 		ASSERT_FALSE(reader.feed(data.data(), data.size(), true));
 		// Выполняем проверку кода отказа
@@ -496,7 +496,7 @@ TEST(CodecAbcReader, Failures) {
 		// Читатель бинарной записи
 		abc::reader_t reader;
 		// Выполняем укладку метки строки вместе с её длиной
-		abc::put(data, abc::major_t::STRING, 2);
+		abc::put(data, abc::group_t::STRING, 2);
 		// Выполняем укладку октетов, кодировке не отвечающих
 		data.insert(data.end(), {0xC0, 0x80});
 		// Выполняем подачу записи целиком
@@ -511,7 +511,7 @@ TEST(CodecAbcReader, Failures) {
 		// Читатель бинарной записи
 		abc::reader_t reader;
 		// Выполняем укладку метки строки вместе с её длиной
-		abc::put(data, abc::major_t::STRING, 4);
+		abc::put(data, abc::group_t::STRING, 4);
 		// Выполняем укладку неполных октетов строки
 		data.insert(data.end(), {'a', 'b'});
 		// Выполняем подачу записи целиком
@@ -536,7 +536,7 @@ TEST(CodecAbcReader, Failures) {
 		 */
 		for(uint32_t i = 0; i < 8; i++)
 			// Выполняем укладку очередного вложенного массива
-			abc::put(data, abc::major_t::ARRAY, 1);
+			abc::put(data, abc::group_t::ARRAY, 1);
 		// Выполняем подачу записи целиком
 		ASSERT_FALSE(reader.feed(data.data(), data.size(), true));
 		// Выполняем проверку кода отказа
@@ -579,9 +579,9 @@ TEST(CodecAbcReader, Extensions) {
 		// Читатель бинарной записи
 		abc::reader_t reader;
 		// Выполняем укладку метки расширения
-		abc::mark(data, abc::major_t::EXTEND, static_cast <uint8_t> (abc::extend_t::BIGNUM));
+		abc::mark(data, abc::group_t::EXTEND, static_cast <uint8_t> (abc::extend_t::BIGNUM));
 		// Выполняем укладку длины октетов величины
-		abc::put(data, abc::major_t::UNSIGNED, 9);
+		abc::put(data, abc::group_t::UNSIGNED, 9);
 		// Выполняем укладку знака величины
 		data.push_back(1);
 		/**
@@ -602,11 +602,11 @@ TEST(CodecAbcReader, Extensions) {
 		// Читатель бинарной записи
 		abc::reader_t reader;
 		// Выполняем укладку метки расширения
-		abc::mark(data, abc::major_t::EXTEND, static_cast <uint8_t> (abc::extend_t::DECIMAL));
+		abc::mark(data, abc::group_t::EXTEND, static_cast <uint8_t> (abc::extend_t::DECIMAL));
 		// Выполняем укладку десятичного порядка величины
 		abc::integer(data, -2);
 		// Выполняем укладку длины октетов величины
-		abc::put(data, abc::major_t::UNSIGNED, 2);
+		abc::put(data, abc::group_t::UNSIGNED, 2);
 		// Выполняем укладку знака величины
 		data.push_back(0);
 		// Выполняем укладку октетов величины
@@ -623,9 +623,9 @@ TEST(CodecAbcReader, Extensions) {
 		// Читатель бинарной записи
 		abc::reader_t reader;
 		// Выполняем укладку метки расширения
-		abc::mark(data, abc::major_t::EXTEND, static_cast <uint8_t> (abc::extend_t::BIGNUM));
+		abc::mark(data, abc::group_t::EXTEND, static_cast <uint8_t> (abc::extend_t::BIGNUM));
 		// Выполняем укладку длины октетов величины
-		abc::put(data, abc::major_t::UNSIGNED, 2);
+		abc::put(data, abc::group_t::UNSIGNED, 2);
 		// Выполняем укладку знака величины
 		data.push_back(0);
 		// Выполняем укладку октетов величины с нулевым старшим октетом
@@ -642,9 +642,9 @@ TEST(CodecAbcReader, Extensions) {
 		// Читатель бинарной записи
 		abc::reader_t reader;
 		// Выполняем укладку метки расширения
-		abc::mark(data, abc::major_t::EXTEND, static_cast <uint8_t> (abc::extend_t::BIGNUM));
+		abc::mark(data, abc::group_t::EXTEND, static_cast <uint8_t> (abc::extend_t::BIGNUM));
 		// Выполняем укладку длины октетов величины
-		abc::put(data, abc::major_t::UNSIGNED, 0);
+		abc::put(data, abc::group_t::UNSIGNED, 0);
 		// Выполняем укладку знака величины
 		data.push_back(1);
 		// Выполняем подачу записи целиком
@@ -669,7 +669,7 @@ TEST(CodecAbcReader, DeferredEvents) {
 	// Буфер собираемой записи
 	vector <uint8_t> data;
 	// Выполняем укладку массива из четырёх строк
-	abc::put(data, abc::major_t::ARRAY, 4);
+	abc::put(data, abc::group_t::ARRAY, 4);
 	// Выполняем укладку первой строки
 	text(data, "первая строка");
 	// Выполняем укладку второй строки

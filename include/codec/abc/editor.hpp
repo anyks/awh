@@ -34,6 +34,7 @@
  * Стандартные заголовочные файлы
  */
 #include <mutex>
+#include <string>
 #include <vector>
 #include <cstdint>
 #include <cstddef>
@@ -45,6 +46,7 @@
 #include "chunk.hpp"
 #include "index.hpp"
 #include "schedule.hpp"
+#include "signature.hpp"
 #include "value.hpp"
 #include "common.hpp"
 #include "header.hpp"
@@ -301,6 +303,18 @@ namespace awh {
 					// Отбой срока самочинной фиксации
 					schedule_t _schedule;
 				private:
+					// Дерево свёрток по кадрам правимого контейнера
+					merkle_t _merkle;
+				private:
+					// Модуль шифрования, отданный для подписи контейнера
+					const crypto_t * _signer;
+				private:
+					// Имя ключа владельца правимого контейнера
+					string _name;
+				private:
+					// Желаемый вид хэш-суммы подписи владельца
+					crypto_t::hash_t _hash;
+				private:
 					// Заголовок опознания правимого контейнера
 					header_t _header;
 				private:
@@ -390,7 +404,29 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool fetch(const uint64_t origin) noexcept;
+					[[nodiscard]] bool fetch(const uint64_t origin) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод сбора свёрток по кадрам тела контейнера
+					 *
+					 * @details Сбор идёт по октетам, как они лежат, и ключа расшифровки не
+					 * требует: подписан шифротекст. Идёт он единожды при объявлении подписи,
+					 * а далее дерево ведётся дописыванием - иначе всякая фиксация обязала бы
+					 * перечитывать контейнер целиком
+					 *
+					 * @return признак успешного сбора свёрток
+					 *
+					 * \~english
+					 * @brief Method of the gathering of the digests over the chunks of the body of a container
+					 * @details The gathering goes over the octets as they lie and does not require the key of the decryption:
+					 * the ciphertext is signed. It goes once at the declaration of the signature,
+					 * while further the tree is led by an appending — otherwise every commit would oblige one
+					 * to reread the whole container
+					 * @return sign of a successful gathering of the digests
+					 *
+					 * \~
+					 */
+					[[nodiscard]] bool harvest() noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод укладки накопленных записей кадром в память
@@ -403,7 +439,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool pack() noexcept;
+					[[nodiscard]] bool pack() noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод накопления записи правкой контейнера
@@ -426,7 +462,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool add(const void * buffer, const size_t size, const payload_t kind,
+					[[nodiscard]] bool add(const void * buffer, const size_t size, const payload_t kind,
 					 const bool added, const uint64_t number) noexcept;
 				public:
 					/**
@@ -455,6 +491,38 @@ namespace awh {
 					 * \~
 					 */
 					void crypto(const crypto_t * value) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод объявления подписи правимого контейнера
+					 *
+					 * @details Подпись объявляется по открытии контейнера, а не до него: сбор
+					 * свёрток по кадрам тела требует чтения, а читать до открытия нечего
+					 *
+					 * @note Всякая фиксация кладёт свою подпись: поколение сменилось, а
+					 * подпись прежнего поколения на новое тело не сходится и сходиться не
+					 * должна
+					 *
+					 * @param crypto модуль шифрования, ноль - снятие подписи
+					 * @param name   имя ключа владельца контейнера
+					 * @param hash   желаемый вид хэш-суммы подписи
+					 * @return       признак успешно объявленной подписи
+					 *
+					 * \~english
+					 * @brief Method of the declaration of the signature of an edited container
+					 * @details The signature is declared after the opening of the container rather than before it: the gathering
+					 * of the digests over the chunks of the body requires a reading, while there is nothing to read before the opening
+					 * @note Every commit lays its own signature: the generation has changed, while
+					 * the signature of the previous generation does not agree with the new body and must not
+					 * agree
+					 * @param crypto module of the encryption, zero — removal of the signature
+					 * @param name name of the key of the owner of the container
+					 * @param hash desired kind of the hash of the signature
+					 * @return sign of a successfully declared signature
+					 *
+					 * \~
+					 */
+					[[nodiscard]] bool sign(const crypto_t * crypto, const string & name,
+					 const crypto_t::hash_t hash = crypto_t::hash_t::SHA256) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -481,7 +549,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool open(source_t source, sink_t sink, const uint64_t length) noexcept;
+					[[nodiscard]] bool open(source_t source, sink_t sink, const uint64_t length) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -501,7 +569,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool append(const void * buffer, const size_t size, const payload_t kind = payload_t::MIXED) noexcept;
+					[[nodiscard]] bool append(const void * buffer, const size_t size, const payload_t kind = payload_t::MIXED) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод правки записи контейнера по номеру
@@ -522,7 +590,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool replace(const uint64_t number, const void * buffer, const size_t size,
+					[[nodiscard]] bool replace(const uint64_t number, const void * buffer, const size_t size,
 					 const payload_t kind = payload_t::MIXED) noexcept;
 					/**
 					 * \~russian
@@ -545,7 +613,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool erase(const uint64_t number) noexcept;
+					[[nodiscard]] bool erase(const uint64_t number) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод выборки записи контейнера по номеру
@@ -562,7 +630,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool record(const uint64_t number, vector <uint8_t> & result) noexcept;
+					[[nodiscard]] bool record(const uint64_t number, vector <uint8_t> & result) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -576,7 +644,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool commit() noexcept;
+					[[nodiscard]] bool commit() noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод уборки мусора перестройкой контейнера
@@ -623,7 +691,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool compact(sink_t target, const payload_t kind, uint64_t & length) noexcept;
+					[[nodiscard]] bool compact(sink_t target, const payload_t kind, uint64_t & length) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод сброса состояния правки контейнера

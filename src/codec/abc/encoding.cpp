@@ -60,15 +60,15 @@ void awh::codec::abc::fixed(vector <uint8_t> & result, const uint64_t value, con
  * @brief Функция укладки метки вместе с ведомым значением
  *
  * @param result буфер, куда следует уложить запись
- * @param major  крупный вид проволочной записи
+ * @param group  крупный вид проволочной записи
  * @param value  укладываемое значение
  *
  */
-void awh::codec::abc::put(vector <uint8_t> & result, const major_t major, const uint64_t value) noexcept {
+void awh::codec::abc::put(vector <uint8_t> & result, const group_t group, const uint64_t value) noexcept {
 	// Выполняем получение наименьшей подробности, вмещающей значение
 	const uint8_t detail = abc::fit(value);
 	// Выполняем укладку ведущего октета значения
-	result.push_back(abc::tag(major, detail));
+	result.push_back(abc::tag(group, detail));
 	// Ширина записи, ведомой подробностью метки
 	uint8_t width = 0;
 	// Если подробность ведёт за собой запись
@@ -80,13 +80,13 @@ void awh::codec::abc::put(vector <uint8_t> & result, const major_t major, const 
  * @brief Функция укладки метки с заданной подробностью
  *
  * @param result буфер, куда следует уложить запись
- * @param major  крупный вид проволочной записи
+ * @param group  крупный вид проволочной записи
  * @param detail подробность ведущего октета
  *
  */
-void awh::codec::abc::mark(vector <uint8_t> & result, const major_t major, const uint8_t detail) noexcept {
+void awh::codec::abc::mark(vector <uint8_t> & result, const group_t group, const uint8_t detail) noexcept {
 	// Выполняем укладку ведущего октета значения
-	result.push_back(abc::tag(major, detail));
+	result.push_back(abc::tag(group, detail));
 }
 /**
  * @brief Функция укладки целого числа со знаком
@@ -99,7 +99,7 @@ void awh::codec::abc::integer(vector <uint8_t> & result, const int64_t value) no
 	// Если число не меньше нуля
 	if(value >= 0)
 		// Выполняем укладку числа крупным видом целого без знака
-		abc::put(result, major_t::UNSIGNED, static_cast <uint64_t> (value));
+		abc::put(result, group_t::UNSIGNED, static_cast <uint64_t> (value));
 	// Если число меньше нуля
 	else {
 		/**
@@ -107,7 +107,7 @@ void awh::codec::abc::integer(vector <uint8_t> & result, const int64_t value) no
 		 * Обращение разрядов даёт ровно это и переполнения не знает даже у `INT64_MIN`,
 		 * тогда как прямое отрицание его переполнило бы
 		 */
-		abc::put(result, major_t::NEGATIVE, ~static_cast <uint64_t> (value));
+		abc::put(result, group_t::NEGATIVE, ~static_cast <uint64_t> (value));
 	}
 }
 /**
@@ -143,7 +143,7 @@ void awh::codec::abc::real(vector <uint8_t> & result, const float value) noexcep
 	// Выполняем снятие разрядной записи дробного числа
 	::memcpy(&bits, &value, sizeof(bits));
 	// Выполняем укладку ведущего октета значения
-	abc::mark(result, major_t::SINGLE, static_cast <uint8_t> (single_t::FLOAT));
+	abc::mark(result, group_t::SINGLE, static_cast <uint8_t> (single_t::FLOAT));
 	// Выполняем укладку разрядной записи дробного числа
 	abc::fixed(result, static_cast <uint64_t> (bits), 4);
 }
@@ -160,7 +160,7 @@ void awh::codec::abc::real(vector <uint8_t> & result, const double value) noexce
 	// Выполняем снятие разрядной записи дробного числа
 	::memcpy(&bits, &value, sizeof(bits));
 	// Выполняем укладку ведущего октета значения
-	abc::mark(result, major_t::SINGLE, static_cast <uint8_t> (single_t::DOUBLE));
+	abc::mark(result, group_t::SINGLE, static_cast <uint8_t> (single_t::DOUBLE));
 	// Выполняем укладку разрядной записи дробного числа
 	abc::fixed(result, bits, 8);
 }
@@ -226,17 +226,17 @@ bool awh::codec::abc::take(const uint8_t * buffer, const size_t size, size_t & o
 	// Выполняем снятие ведущего октета значения
 	const uint8_t tag = buffer[offset];
 	// Выполняем снятие крупного вида проволочной записи
-	item.major = abc::major(tag);
+	item.group = abc::group(tag);
 	// Выполняем снятие подробности ведущего октета
 	item.detail = abc::detail(tag);
 	/**
 	 * Определяем крупный вид проволочной записи
 	 */
-	switch(static_cast <uint8_t> (item.major)){
+	switch(static_cast <uint8_t> (item.group)){
 		/**
 		 * Если значение является одиночным
 		 */
-		case static_cast <uint8_t> (major_t::SINGLE): {
+		case static_cast <uint8_t> (group_t::SINGLE): {
 			/**
 			 * Определяем разновидность одиночного значения
 			 */
@@ -266,7 +266,7 @@ bool awh::codec::abc::take(const uint8_t * buffer, const size_t size, size_t & o
 		/**
 		 * Если значение является расширением
 		 */
-		case static_cast <uint8_t> (major_t::EXTEND): {
+		case static_cast <uint8_t> (group_t::EXTEND): {
 			/**
 			 * Определяем разновидность расширения
 			 */
@@ -288,10 +288,16 @@ bool awh::codec::abc::take(const uint8_t * buffer, const size_t size, size_t & o
 			return false;
 		}
 	}
-	// Если подробность означает неопределённую длину вместимого
+	// Если подробность означает неопределённую длину
 	if(item.detail == static_cast <uint8_t> (single_t::BREAK)){
-		// Если крупный вид вместимым не является
-		if((item.major != major_t::ARRAY) && (item.major != major_t::MAP)){
+		/**
+		 * Если крупный вид неопределённой длины не допускает.
+		 *
+		 * Неопределённую длину несут вместимые, а также строка и двоичные данные:
+		 * последние собираются кусками, когда длина их наперёд неизвестна
+		 */
+		if((item.group != group_t::ARRAY) && (item.group != group_t::MAP) &&
+		   (item.group != group_t::STRING) && (item.group != group_t::BLOB)){
 			// Выполняем установку кода отказа неопознанной метки
 			error = error_t::UNKNOWN_TAG;
 			// Сообщаем, что единица не снята

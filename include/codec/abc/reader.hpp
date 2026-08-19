@@ -289,6 +289,23 @@ namespace awh {
 						uint64_t remain;
 						/**
 						 * \~russian
+						 * Вид значения, собираемого кусками, либо UNDEFINED у вместимого
+						 *
+						 * @note Значение, собираемое кусками, ведётся тем же стеком, что и
+						 * вместимые: закрывается оно тем же концом, и куски его обязаны
+						 * учитываться не значениями вместившего, а частями его самого
+						 *
+						 * \~english
+						 * Kind of the value assembled by the chunks, or UNDEFINED at a container
+						 * @note A value assembled by the chunks is led by the same stack as the
+						 * containers: it is closed by the same end, and its chunks are obliged
+						 * to be counted not as the values of the container but as the parts of itself
+						 *
+						 * \~
+						 */
+						type_t segment;
+						/**
+						 * \~russian
 						 * @brief Конструктор
 						 *
 						 *
@@ -297,7 +314,8 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						Frame() noexcept : mapping(false), indefinite(false), expectKey(false), remain(0) {}
+						Frame() noexcept :
+						 mapping(false), indefinite(false), expectKey(false), remain(0), segment(type_t::UNDEFINED) {}
 					} frame_t;
 					/**
 					 * \~russian
@@ -346,6 +364,25 @@ namespace awh {
 						 *
 						 * \~
 						 */
+						/**
+						 * \~russian
+						 * Место события в поданной записи
+						 *
+						 * @note Место запоминается событием, а не берётся состоянием
+						 * разбирателя: события копятся очередью, и состояние к выдаче события
+						 * уходит вперёд тем дальше, чем крупнее поданный кусок. Место,
+						 * взятое состоянием, разошлось бы от одной лишь нарезки на куски
+						 *
+						 * \~english
+						 * Place of the event in the submitted record
+						 * @note The place is remembered by the event rather than being taken from the state
+						 * of the parser: the events accumulate in a queue, and by the issuing of an event the state
+						 * goes ahead the further the larger the submitted chunk is. A place
+						 * taken from the state would diverge from the slicing into the chunks alone
+						 *
+						 * \~
+						 */
+						location_t location;
 						Record() noexcept :
 						 event(event_t::NONE), type(type_t::UNDEFINED), count(0), number(0),
 						 integer(0), real(0.0), exponent(0), boolean(false), negative(false),
@@ -366,6 +403,24 @@ namespace awh {
 				private:
 					// Буфер накопленных октетов поданной записи
 					vector <uint8_t> _buffer;
+				private:
+					/**
+					 * \~russian
+					 * Место начала разбираемой единицы
+					 *
+					 * @note Место это запоминается началом единицы и держится до следующей:
+					 * значение, разбираемое несколькими подачами, началось раньше, а место
+					 * события обязано указывать на начало его, а не на конец
+					 *
+					 * \~english
+					 * Place of the beginning of the unit being parsed
+					 * @note This place is remembered at the beginning of a unit and is held until the next one:
+					 * a value parsed by several submissions began earlier, while the place
+					 * of the event is obliged to point to its beginning rather than to its end
+					 *
+					 * \~
+					 */
+					location_t _mark;
 				private:
 					// Смещение разбора в буфере накопленных октетов
 					size_t _offset;
@@ -423,7 +478,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool fail(const error_t error) noexcept;
+					[[nodiscard]] bool fail(const error_t error) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод выдачи собранного события разбора
@@ -456,7 +511,22 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool settle(record_t & record) noexcept;
+					[[nodiscard]] bool settle(record_t & record) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод учёта завершённого значения вместившим его
+					 *
+					 * @param record выдаваемое событие завершённого значения
+					 * @return       признак успешности разбора
+					 *
+					 * \~english
+					 * @brief Method of the accounting of a completed value by its container
+					 * @param record issued event of the completed value
+					 * @return sign of the success of the parsing
+					 *
+					 * \~
+					 */
+					[[nodiscard]] bool finalize(record_t & record) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод закрытия исчерпанных вместимых
@@ -469,7 +539,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool unwind() noexcept;
+					[[nodiscard]] bool unwind() noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод разбора накопленных октетов записи
@@ -482,7 +552,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool process() noexcept;
+					[[nodiscard]] bool process() noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод разбора очередной единицы проволочной записи
@@ -497,7 +567,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool item(bool & done) noexcept;
+					[[nodiscard]] bool item(bool & done) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -540,7 +610,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool feed(const void * buffer, const size_t size, const bool last = false) noexcept;
+					[[nodiscard]] bool feed(const void * buffer, const size_t size, const bool last = false) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -554,7 +624,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool next() noexcept;
+					[[nodiscard]] bool next() noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод извлечения вида текущего события

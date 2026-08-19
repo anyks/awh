@@ -82,9 +82,42 @@ bool awh::codec::abc::Document::parse(const void * buffer, const size_t size, co
 	/**
 	 * Выполняем снятие всех собранных событий разбора
 	 */
+	/**
+	 * Номер узла значения, собираемого кусками, либо предел, если такого нет.
+	 *
+	 * Значение, собранное кусками, ложится в дерево ОДНИМ узлом: куски суть части
+	 * значения, а не значения, и потребителю дерева они видны быть не должны
+	 */
+	uint32_t segment = numeric_limits <uint32_t>::max();
+	/**
+	 * Выполняем снятие всех событий разбора
+	 */
 	while(reader.next()){
 		// Выполняем получение вида текущего события разбора
 		const event_t event = reader.event();
+		/**
+		 * Если событием является конец значения, собираемого кусками
+		 */
+		if((event == event_t::STRING_END) || (event == event_t::BLOB_END)){
+			// Выполняем сброс номера узла значения, собираемого кусками
+			segment = numeric_limits <uint32_t>::max();
+			// Продолжаем снятие событий разбора
+			continue;
+		}
+		/**
+		 * Если снят очередной кусок собираемого значения
+		 */
+		if(segment != numeric_limits <uint32_t>::max()){
+			// Выполняем получение значения снятого куска
+			const reader_t::value_t chunk = reader.value();
+			// Выполняем перенос содержимого куска в хранилище
+			this->_storage.append(chunk.data);
+			// Выполняем наращивание длины содержимого собираемого значения
+			this->_nodes.at(segment).length(this->_nodes.at(segment).length() +
+			 static_cast <uint32_t> (chunk.data.size()));
+			// Продолжаем снятие событий разбора
+			continue;
+		}
 		// Если событие является окончанием записи либо документа
 		if((event == event_t::FINISH) || (event == event_t::DOCUMENT))
 			// Продолжаем снятие событий разбора
@@ -111,6 +144,27 @@ bool awh::codec::abc::Document::parse(const void * buffer, const size_t size, co
 		const reader_t::value_t value = reader.value();
 		// Заводимый узел дерева документа
 		node_t node;
+		/**
+		 * Если событием является начало значения, собираемого кусками
+		 */
+		if((event == event_t::STRING_BEGIN) || (event == event_t::BLOB_BEGIN)){
+			// Выполняем установку вида значения узла
+			node.type = value.type;
+			// Выполняем установку смещения содержимого в хранилище
+			node.offset = static_cast <uint32_t> (this->_storage.size());
+			// Выполняем установку пустой длины содержимого
+			node.length(0);
+			// Если узел стоит внутри вместимого, учитываем его ребёнком
+			if(!stack.empty())
+				// Выполняем учёт ребёнка вместившего вместимого
+				this->_nodes.at(stack.back()).length(this->_nodes.at(stack.back()).length() + 1);
+			// Выполняем установку номера узла значения, собираемого кусками
+			segment = static_cast <uint32_t> (this->_nodes.size());
+			// Выполняем добавление узла в дерево документа
+			this->_nodes.push_back(node);
+			// Продолжаем снятие событий разбора
+			continue;
+		}
 		// Выполняем установку вида значения узла
 		node.type = value.type;
 		// Выполняем установку признака имени поля отображения

@@ -322,7 +322,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool valid() const noexcept;
+					[[nodiscard]] bool valid() const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод извлечения вида узла значения
@@ -363,7 +363,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool is(const type_t type) const noexcept;
+					[[nodiscard]] bool is(const type_t type) const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод извлечения количества значений вместимого
@@ -389,7 +389,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool empty() const noexcept;
+					[[nodiscard]] bool empty() const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод очистки значения
@@ -444,7 +444,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool negative() const noexcept;
+					[[nodiscard]] bool negative() const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод извлечения имени поля отображения по его номеру
@@ -475,7 +475,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool contains(const string & name) const noexcept;
+					[[nodiscard]] bool contains(const string & name) const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод извлечения значения по пути
@@ -594,7 +594,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool push(const Value & value) noexcept;
+					[[nodiscard]] bool push(const Value & value) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод добавления поля в отображение
@@ -616,7 +616,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool insert(const string & name, const Value & value) noexcept;
+					[[nodiscard]] bool insert(const string & name, const Value & value) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод удаления поля отображения по имени
@@ -631,7 +631,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool erase(const string & name) noexcept;
+					[[nodiscard]] bool erase(const string & name) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод удаления значения вместимого по номеру
@@ -646,7 +646,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool erase(const size_t index) noexcept;
+					[[nodiscard]] bool erase(const size_t index) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -662,7 +662,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool value(bool & result) const noexcept;
+					[[nodiscard]] bool value(bool & result) const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод извлечения числа видом целого со знаком
@@ -677,7 +677,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool value(int64_t & result) const noexcept;
+					[[nodiscard]] bool value(int64_t & result) const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод извлечения числа видом целого без знака
@@ -692,7 +692,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool value(uint64_t & result) const noexcept;
+					[[nodiscard]] bool value(uint64_t & result) const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод извлечения числа видом дробного
@@ -707,7 +707,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool value(double & result) const noexcept;
+					[[nodiscard]] bool value(double & result) const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод извлечения содержимого значения строкой
@@ -722,7 +722,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool value(string & result) const noexcept;
+					[[nodiscard]] bool value(string & result) const noexcept;
 				public:
 					/**
 					 * \~russian
@@ -756,7 +756,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool compose(writer_t & writer) const noexcept;
+					[[nodiscard]] bool compose(writer_t & writer) const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод разбора записи во владеющее значение
@@ -773,7 +773,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool parse(const void * buffer, const size_t size) noexcept;
+					[[nodiscard]] bool parse(const void * buffer, const size_t size) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод сборки записи из владеющего значения

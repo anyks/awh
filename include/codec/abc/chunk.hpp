@@ -389,7 +389,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool pack(const void * buffer, const size_t size, const payload_t kind,
+					[[nodiscard]] bool pack(const void * buffer, const size_t size, const payload_t kind,
 					 const uint64_t number, const uint32_t generation, vector <uint8_t> & result) noexcept;
 					/**
 					 * \~russian
@@ -418,7 +418,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool unpack(const void * buffer, const size_t size, size_t & offset,
+					[[nodiscard]] bool unpack(const void * buffer, const size_t size, size_t & offset,
 					 vector <uint8_t> & result, chunk_t & chunk) noexcept;
 				public:
 					/**

@@ -157,7 +157,7 @@ namespace awh {
 		 * @details ABC (ANYKS Binary Container) stores the same constructions as the textual codecs
 		 * of the library — the values, the arrays and the mappings of any depth of the nesting — but
 		 * by a binary record rather than by a character one. Its structure is set by four decisions:
-		 * @li **A tag leads a value.** The leading octet carries the major kind in its three high bits
+		 * @li **A tag leads a value.** The leading octet carries the group kind in its three high bits
 		 * and the detail in its five low ones: a small number, a short string and all the singleton values
 		 * fit into it entirely without occupying a single octet more
 		 * @li **The kind of a number is recorded rather than deduced.** A textual codec stores the record of a number
@@ -279,17 +279,17 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Major kinds of the wire record
-			 * @details The leading octet of every value carries the major kind in its three high bits,
+			 * @details The leading octet of every value carries the group kind in its three high bits,
 			 * and the detail in its five low ones. The detail means one of the three: the value
 			 * itself when it fits into the five bits; the width of the length following the tag;
 			 * or the variety of a singleton value
-			 * @note The integer is divided into two major kinds by the sign deliberately. A single kind
+			 * @note The integer is divided into two group kinds by the sign deliberately. A single kind
 			 * would require a record with a shifted zero or a zigzag, and a small negative
 			 * number would cease to fit into the leading octet
 			 *
 			 * \~
 			 */
-			enum class major_t : uint8_t {
+			enum class group_t : uint8_t {
 				UNSIGNED = 0x00, // Целое без знака, подробность - само значение либо ширина записи
 				NEGATIVE = 0x01, // Целое со знаком, меньшее нуля, записанное дополнением до −1
 				STRING   = 0x02, // Строка, подробность - длина в октетах либо её ширина
@@ -515,7 +515,8 @@ namespace awh {
 				INVALID_SIGNATURE    = 0x28, // Запись подписи повреждена
 				UNSIGNED_CONTAINER   = 0x29, // Подпись владельца контейнером не объявлена
 				REFUSED_SIGNATURE    = 0x2A, // Подпись владельца контейнера не сошлась
-				SIGNING_FAILED       = 0x2B  // Выработка подписи владельца отвечена отказом
+				SIGNING_FAILED       = 0x2B, // Выработка подписи владельца отвечена отказом
+				INVALID_SEGMENT      = 0x2C  // Значение, собираемое кусками, несёт кусок иного вида
 			};
 
 			/**
@@ -559,7 +560,11 @@ namespace awh {
 				MAP_BEGIN   = 0x0B, // Начало отображения
 				MAP_END     = 0x0C, // Конец отображения
 				DOCUMENT    = 0x0D, // Документ разобран до конца, следом вправе идти новый
-				FINISH      = 0x0E  // Запись разобрана до конца, событие видно после цикла разбора
+				FINISH      = 0x0E, // Запись разобрана до конца, событие видно после цикла разбора
+				STRING_BEGIN = 0x0F, // Начало строки, собираемой кусками
+				STRING_END   = 0x10, // Конец строки, собираемой кусками
+				BLOB_BEGIN   = 0x11, // Начало двоичных данных, собираемых кусками
+				BLOB_END     = 0x12  // Конец двоичных данных, собираемых кусками
 			};
 
 			/**
@@ -762,19 +767,19 @@ namespace awh {
 			 * \~russian
 			 * @brief Функция сборки ведущего октета значения
 			 *
-			 * @param major  крупный вид проволочной записи
+			 * @param group  крупный вид проволочной записи
 			 * @param detail подробность метки
 			 * @return       собранный ведущий октет
 			 *
 			 * \~english
 			 * @brief Function of the assembling of the leading octet of a value
-			 * @param major major kind of the wire record
+			 * @param group group kind of the wire record
 			 * @param detail detail of the tag
 			 * @return assembled leading octet
 			 *
 			 * \~
 			 */
-			__AWH_SHARED_EXPORT__ uint8_t tag(const major_t major, const uint8_t detail) noexcept;
+			__AWH_SHARED_EXPORT__ uint8_t tag(const group_t group, const uint8_t detail) noexcept;
 			/**
 			 * \~russian
 			 * @brief Функция извлечения крупного вида из ведущего октета
@@ -783,13 +788,13 @@ namespace awh {
 			 * @return    крупный вид проволочной записи
 			 *
 			 * \~english
-			 * @brief Function of the extraction of the major kind from the leading octet
+			 * @brief Function of the extraction of the group kind from the leading octet
 			 * @param tag leading octet of a value
-			 * @return major kind of the wire record
+			 * @return group kind of the wire record
 			 *
 			 * \~
 			 */
-			__AWH_SHARED_EXPORT__ major_t major(const uint8_t tag) noexcept;
+			__AWH_SHARED_EXPORT__ group_t group(const uint8_t tag) noexcept;
 			/**
 			 * \~russian
 			 * @brief Функция извлечения подробности из ведущего октета
@@ -835,7 +840,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			__AWH_SHARED_EXPORT__ bool width(const uint8_t detail, uint8_t & result) noexcept;
+			[[nodiscard]] __AWH_SHARED_EXPORT__ bool width(const uint8_t detail, uint8_t & result) noexcept;
 			/**
 			 * \~russian
 			 * @brief Функция получения наименьшей подробности, вмещающей значение

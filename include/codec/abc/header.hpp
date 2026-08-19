@@ -205,9 +205,9 @@ namespace awh {
 			 */
 			typedef struct __AWH_SHARED_EXPORT__ Header {
 				// Старшая версия вида записи контейнера
-				uint8_t major;
+				uint8_t version;
 				// Младшая версия вида записи контейнера
-				uint8_t minor;
+				uint8_t revision;
 				// Разряды свойств контейнера
 				uint16_t flags;
 				// Вид содержимого контейнера, ставимый потребителем
@@ -253,7 +253,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				bool is(const flag_t flag) const noexcept;
+				[[nodiscard]] bool is(const flag_t flag) const noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод объявления свойства контейнера
@@ -307,7 +307,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				bool unpack(const void * buffer, const size_t size, error_t & error) noexcept;
+				[[nodiscard]] bool unpack(const void * buffer, const size_t size, error_t & error) noexcept;
 				/**
 				 * \~russian
 				 * @brief Конструктор
@@ -342,7 +342,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			__AWH_SHARED_EXPORT__ bool probe(const void * buffer, const size_t size) noexcept;
+			[[nodiscard]] __AWH_SHARED_EXPORT__ bool probe(const void * buffer, const size_t size) noexcept;
 		};
 	};
 };

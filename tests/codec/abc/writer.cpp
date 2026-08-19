@@ -25,7 +25,8 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <gtest/gtest.h>
-#include <codec/abc/abc.hpp>
+#include <codec/abc/writer.hpp>
+#include <codec/abc/reader.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -530,4 +531,181 @@ TEST(CodecAbcWriter, SmallestRecord) {
 		// Выполняем проверку длины собранной записи
 		ASSERT_EQ(writer.record().size(), 1u);
 	}
+}
+
+/**
+ * @brief Проверка строки, собираемой кусками
+ *
+ * @details Строка эта кладётся, когда длина её наперёд неизвестна: так большой текст
+ *          уходит в запись потоком, не собираясь в памяти целиком
+ *
+ */
+TEST(CodecAbcWriter, SegmentedString) {
+	// Сборщик бинарной записи
+	abc::writer_t writer;
+	// Выполняем укладку начала строки, собираемой кусками
+	ASSERT_TRUE(writer.textBegin()) << "код отказа: " << abc::message(writer.error());
+	// Выполняем укладку первого куска строки
+	ASSERT_TRUE(writer.text("первый кусок, "));
+	// Выполняем укладку второго куска строки
+	ASSERT_TRUE(writer.text("второй кусок"));
+	// Выполняем укладку конца строки, собираемой кусками
+	ASSERT_TRUE(writer.textEnd()) << "код отказа: " << abc::message(writer.error());
+	// Выполняем проверку завершённости собранной записи
+	ASSERT_TRUE(writer.complete());
+	// Разбиратель бинарной записи
+	abc::reader_t reader;
+	// Выполняем подачу собранной записи разбирателю
+	ASSERT_TRUE(reader.feed(writer.record().data(), writer.record().size(), true))
+		<< "код отказа: " << abc::message(reader.error());
+	// Собираемое содержимое строки
+	string content;
+	// Виды снятых событий разбора
+	vector <abc::event_t> events;
+	/**
+	 * Выполняем снятие всех событий разбора
+	 */
+	while(reader.next()){
+		// Выполняем запоминание вида снятого события
+		events.push_back(reader.event());
+		// Если событием является кусок строки
+		if(reader.event() == abc::event_t::STRING)
+			// Выполняем накопление содержимого куска
+			content.append(reader.value().data);
+	}
+	// Выполняем проверку череды снятых событий
+	ASSERT_EQ(events, (vector <abc::event_t> {
+		abc::event_t::STRING_BEGIN, abc::event_t::STRING, abc::event_t::STRING,
+		abc::event_t::STRING_END, abc::event_t::DOCUMENT, abc::event_t::FINISH
+	}));
+	// Выполняем проверку собранного содержимого строки
+	ASSERT_EQ(content, "первый кусок, второй кусок");
+}
+/**
+ * @brief Проверка отказов при сборке значения кусками
+ *
+ */
+TEST(CodecAbcWriter, SegmentedRefusals) {
+	/**
+	 * Выполняем проверку отказа неопределённой длины при строгом виде записи
+	 */
+	{
+		// Сборщик бинарной записи
+		abc::writer_t writer;
+		// Получаем настройки сборки записи
+		abc::writer_t::settings_t settings = writer.settings();
+		// Выполняем установку строгого вида записи
+		settings.canonical = true;
+		// Выполняем установку настроек сборки записи
+		writer.settings(settings);
+		// Выполняем проверку отказа начала строки, собираемой кусками
+		ASSERT_FALSE(writer.textBegin());
+		// Выполняем проверку кода отказа
+		ASSERT_EQ(writer.error(), abc::error_t::INDEFINITE_REFUSED);
+	}
+	/**
+	 * Выполняем проверку отказа куска иного вида
+	 */
+	{
+		// Сборщик бинарной записи
+		abc::writer_t writer;
+		// Выполняем укладку начала строки, собираемой кусками
+		ASSERT_TRUE(writer.textBegin());
+		// Выполняем проверку отказа укладки двоичных данных куском строки
+		ASSERT_FALSE(writer.blob("октеты", 6));
+		// Выполняем проверку кода отказа
+		ASSERT_EQ(writer.error(), abc::error_t::INVALID_SEGMENT);
+	}
+	/**
+	 * Выполняем проверку отказа значения иного вида внутри собираемого
+	 */
+	{
+		// Сборщик бинарной записи
+		abc::writer_t writer;
+		// Выполняем укладку начала двоичных данных, собираемых кусками
+		ASSERT_TRUE(writer.blobBegin());
+		// Выполняем проверку отказа укладки числа внутрь собираемого значения
+		ASSERT_FALSE(writer.number(static_cast <uint64_t> (7)));
+		// Выполняем проверку кода отказа
+		ASSERT_EQ(writer.error(), abc::error_t::INVALID_SEGMENT);
+	}
+	/**
+	 * Выполняем проверку отказа собираемого значения именем поля отображения
+	 */
+	{
+		// Сборщик бинарной записи
+		abc::writer_t writer;
+		// Выполняем укладку начала отображения
+		ASSERT_TRUE(writer.mapBegin(1));
+		// Выполняем проверку отказа собираемого значения именем поля
+		ASSERT_FALSE(writer.textBegin());
+		// Выполняем проверку кода отказа
+		ASSERT_EQ(writer.error(), abc::error_t::INVALID_KEY);
+	}
+	/**
+	 * Выполняем проверку отказа конца, не отвечающего началу
+	 */
+	{
+		// Сборщик бинарной записи
+		abc::writer_t writer;
+		// Выполняем укладку начала строки, собираемой кусками
+		ASSERT_TRUE(writer.textBegin());
+		// Выполняем проверку отказа конца двоичных данных у начатой строки
+		ASSERT_FALSE(writer.blobEnd());
+		// Выполняем проверку кода отказа
+		ASSERT_EQ(writer.error(), abc::error_t::UNBALANCED_CONTAINER);
+	}
+}
+/**
+ * @brief Проверка сборки двоичных данных кусками внутри вместимого
+ *
+ */
+TEST(CodecAbcWriter, SegmentedBlobInsideContainer) {
+	// Сборщик бинарной записи
+	abc::writer_t writer;
+	// Выполняем укладку начала массива из двух значений
+	ASSERT_TRUE(writer.arrayBegin(2));
+	// Выполняем укладку начала двоичных данных, собираемых кусками
+	ASSERT_TRUE(writer.blobBegin());
+	// Выполняем укладку первого куска двоичных данных
+	ASSERT_TRUE(writer.blob("\x01\x02", 2));
+	// Выполняем укладку второго куска двоичных данных
+	ASSERT_TRUE(writer.blob("\x03", 1));
+	// Выполняем укладку конца двоичных данных
+	ASSERT_TRUE(writer.blobEnd()) << "код отказа: " << abc::message(writer.error());
+	/**
+	 * Выполняем укладку второго значения массива: значение, собранное кусками, есть
+	 * ОДНО значение вместившего, а не череда их
+	 */
+	ASSERT_TRUE(writer.number(static_cast <uint64_t> (42)));
+	// Выполняем укладку конца массива
+	ASSERT_TRUE(writer.arrayEnd()) << "код отказа: " << abc::message(writer.error());
+	// Выполняем проверку завершённости собранной записи
+	ASSERT_TRUE(writer.complete());
+	// Разбиратель бинарной записи
+	abc::reader_t reader;
+	// Выполняем подачу собранной записи разбирателю
+	ASSERT_TRUE(reader.feed(writer.record().data(), writer.record().size(), true))
+		<< "код отказа: " << abc::message(reader.error());
+	// Количество снятых значений массива
+	size_t values = 0;
+	// Собираемое содержимое двоичных данных
+	string content;
+	/**
+	 * Выполняем снятие всех событий разбора
+	 */
+	while(reader.next()){
+		// Если событием является кусок двоичных данных
+		if(reader.event() == abc::event_t::BLOB)
+			// Выполняем накопление содержимого куска
+			content.append(reader.value().data);
+		// Если событием является конец собранного значения либо число
+		if((reader.event() == abc::event_t::BLOB_END) || (reader.event() == abc::event_t::NUMBER))
+			// Выполняем учёт снятого значения массива
+			values++;
+	}
+	// Выполняем проверку количества снятых значений массива
+	ASSERT_EQ(values, 2ul);
+	// Выполняем проверку собранного содержимого двоичных данных
+	ASSERT_EQ(content.size(), 3ul);
 }

@@ -1171,7 +1171,7 @@ void awh::codec::abc::Value::absorb(const Document::value_t & value) noexcept {
 				// Извлекаемое логическое значение
 				bool flag = false;
 				// Выполняем извлечение логического значения
-				task.source.value(flag);
+				(void) task.source.value(flag);
 				// Выполняем установку логического значения
 				task.target->_number.flag = flag;
 			} break;
@@ -1207,7 +1207,7 @@ void awh::codec::abc::Value::absorb(const Document::value_t & value) noexcept {
 					// Извлекаемое дробное значение
 					double real = 0.0;
 					// Выполняем извлечение дробного значения
-					task.source.value(real);
+					(void) task.source.value(real);
 					// Выполняем установку дробного значения
 					task.target->_number.real = real;
 				// Если значение является целым со знаком либо отметкой времени
@@ -1216,7 +1216,7 @@ void awh::codec::abc::Value::absorb(const Document::value_t & value) noexcept {
 					// Извлекаемое целое со знаком
 					int64_t integer = 0;
 					// Выполняем извлечение целого со знаком
-					task.source.value(integer);
+					(void) task.source.value(integer);
 					// Выполняем установку целого со знаком
 					task.target->_number.integer = integer;
 				// Если значение является целым без знака
@@ -1224,7 +1224,7 @@ void awh::codec::abc::Value::absorb(const Document::value_t & value) noexcept {
 					// Извлекаемое целое без знака
 					uint64_t natural = 0;
 					// Выполняем извлечение целого без знака
-					task.source.value(natural);
+					(void) task.source.value(natural);
 					// Выполняем установку целого без знака
 					task.target->_number.natural = natural;
 				}
@@ -1468,6 +1468,25 @@ bool awh::codec::abc::Value::operator == (const Value & value) const noexcept {
 			if(!first.value(left) || !second.value(right))
 				// Сообщаем, что значения неравны
 				return false;
+			/**
+			 * Если оба значения суть нечисла, сличаем их записью.
+			 *
+			 * Нечисло само себе не равно по правилу арифметики, но правило это о
+			 * вычислениях, а не о тождестве записи: значение обязано быть равно самому
+			 * себе, иначе круговой ход записи недоказуем вовсе
+			 */
+			if((left != left) && (right != right)){
+				// Запись первого сличаемого нечисла
+				uint64_t bits = 0;
+				// Запись второго сличаемого нечисла
+				uint64_t other = 0;
+				// Выполняем получение записи первого сличаемого нечисла
+				::memcpy(& bits, & left, sizeof(bits));
+				// Выполняем получение записи второго сличаемого нечисла
+				::memcpy(& other, & right, sizeof(other));
+				// Выводим признак равенства записей сличаемых нечисел
+				return (bits == other);
+			}
 			// Выводим признак равенства дробных значений
 			return (left == right);
 		}

@@ -194,7 +194,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool add(const void * buffer, const size_t size) noexcept;
+					[[nodiscard]] bool add(const void * buffer, const size_t size) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод сведения дерева к корню
@@ -209,7 +209,35 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool root(vector <uint8_t> & result) const noexcept;
+					[[nodiscard]] bool root(vector <uint8_t> & result) const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод сведения дерева к корню с приданной свёрткой
+					 *
+					 * @details Приданный кадр в дерево не оседает, а лишь участвует в
+					 * сведении. Так берётся кадр оглавления: он подписывается наравне с
+					 * телом, но при следующей фиксации ложится наново, и оседи он в дереве -
+					 * дерево пришлось бы править задним числом
+					 *
+					 * @param result буфер, куда следует положить корень дерева
+					 * @param buffer буфер октетов приданного кадра
+					 * @param size   размер октетов приданного кадра
+					 * @return       признак успешно сведённого дерева
+					 *
+					 * \~english
+					 * @brief Method of the reduction of the tree to the root with an attached digest
+					 * @details The attached chunk does not settle in the tree but only participates in
+					 * the reduction. Thus the chunk of the index is taken: it is signed on a par with
+					 * the body, but at the next commit it is laid anew, and were it to settle in the tree —
+					 * the tree would have to be corrected after the fact
+					 * @param result buffer the root of the tree should be placed into
+					 * @param buffer buffer of the octets of the attached chunk
+					 * @param size size of the octets of the attached chunk
+					 * @return sign of a successfully reduced tree
+					 *
+					 * \~
+					 */
+					[[nodiscard]] bool root(vector <uint8_t> & result, const void * buffer, const size_t size) const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод извлечения количества внесённых кадров
@@ -353,7 +381,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			__AWH_SHARED_EXPORT__ bool unpack(const void * buffer, const size_t size,
+			[[nodiscard]] __AWH_SHARED_EXPORT__ bool unpack(const void * buffer, const size_t size,
 			 sign_t & sign, error_t & error) noexcept;
 			/**
 			 * \~russian
@@ -387,7 +415,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			__AWH_SHARED_EXPORT__ bool fingerprint(const crypto_t & crypto, const string & name,
+			[[nodiscard]] __AWH_SHARED_EXPORT__ bool fingerprint(const crypto_t & crypto, const string & name,
 			 vector <uint8_t> & result) noexcept;
 		};
 	};

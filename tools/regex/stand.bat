@@ -39,6 +39,39 @@ cd /d "%~dp0..\.."
 
 call :SOURCES
 
+rem Собираем обёртку вызова, приметы в оберегаемые регистры укладывающую
+rem
+rem Вставок на языке ассемблера связка вооружения Visual Studio не имеет вовсе,
+rem отчего обёртка приходит отдельным файлом и переводится набором ml64 либо
+rem armasm64 по разрядности цели. Отсутствие набора стенда не валит: проверка
+rem сохранности отчитается пропуском, как и прежде
+set "ASMSRC="
+set "ASMTOOL="
+if "%TOOLSET%" == "x64" (
+	set "ASMSRC=tools\regex\preserving-x64.asm"
+	set "ASMTOOL=ml64 /nologo /c /Fopreserving.obj"
+)
+if "%TOOLSET%" == "arm64" (
+	set "ASMSRC=tools\regex\preserving-arm64.asm"
+	set "ASMTOOL=armasm64 -nologo -o preserving.obj"
+)
+if "%TOOLSET%" == "x64_arm64" (
+	set "ASMSRC=tools\regex\preserving-arm64.asm"
+	set "ASMTOOL=armasm64 -nologo -o preserving.obj"
+)
+
+set "PRESERVING="
+set "DEFINES="
+if not "%ASMSRC%" == "" (
+	%ASMTOOL% %ASMSRC% >> compile.log 2>&1
+	if errorlevel 1 (
+		echo Обёртка сохранности регистров не собрана, проверка её будет пропущена
+	) else (
+		set "PRESERVING=preserving.obj"
+		set "DEFINES=/DAWH_PRESERVING_EXTERN"
+	)
+)
+
 rem Сборка ведётся набором cl: он единственный доступен на всякой машине
 rem Windows без установки постороннего, а переносимой проверке кроме
 rem компилятора C++ ничего и не нужно
@@ -61,7 +94,7 @@ for %%F in (tools\regex\conformance.cpp %SOURCES%) do (
 	)
 )
 
-cl /nologo /Fe:conformance.exe %OBJECTS% >> compile.log 2>&1
+cl /nologo /Fe:conformance.exe %OBJECTS% %PRESERVING% >> compile.log 2>&1
 
 if errorlevel 1 (
 	echo Связывание не выполнено:
@@ -78,7 +111,7 @@ rem Имя объектного файла берётся номером, а н�
 rem исходных файлов по дереву повторяются, и совпадение их молча теряло
 rem перевод одного из них
 :COMPILE
-cl /nologo /EHsc /std:c++17 /O2 /Iinclude /Itools/regex /c ^
+cl /nologo /EHsc /std:c++17 /O2 /Iinclude /Itools/regex %DEFINES% /c ^
 	/Fostand%NUMBER%.obj %~1 >> compile.log 2>&1
 if errorlevel 1 exit /b 1
 set "OBJECTS=%OBJECTS% stand%NUMBER%.obj"

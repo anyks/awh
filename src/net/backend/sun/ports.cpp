@@ -12129,18 +12129,28 @@ namespace io {
 		 * Выполняем перехват ошибок
 		 */
 		try {
-			// Семейство адресов туннеля
+			/**
+			 * Семейство адресов туннеля
+			 *
+			 * @warning Заголовка перед пакетом здесь НЕТ, и слово это выводится из
+			 *          самого пакета - по первым четырём разрядам первого октета.
+			 *          Прежде обмен обрамлялся по договору BSD: первым буфером шло
+			 *          четырёхоктетное слово семейства. Договор этот верен у BSD,
+			 *          где заголовок включается намеренно (`TUNSIFHEAD`), а у
+			 *          OpenBSD присутствует всегда. Здесь же устройство заводится
+			 *          БЕЗ заголовка - у Linux признаком `IFF_NO_PI`, у систем Sun
+			 *          сырым режимом устройства, - и движок съедал четыре первых
+			 *          октета заголовка IP, после чего пакета не узнавал вовсе:
+			 *          «packet from the tunnel did not match the expected IP address
+			 *          format». Чтение из туннеля не работало ни разу
+			 */
 			uint32_t family = 0;
-			// Буфер ввода-вывода заголовка туннеля
-			struct iovec iov[2];
-			// Устанавливаем базу буфера
-			iov[0].iov_base = &family;
-			// Устанавливаем длину буфера
-			iov[0].iov_len = sizeof(family);
+			// Буфер ввода-вывода пакета туннеля
+			struct iovec iov[1];
 			// Устанавливаем буфер для чтения данных
-			iov[1].iov_base = ::__awh_buffer__;
+			iov[0].iov_base = ::__awh_buffer__;
 			// Устанавливаем размер буфера для чтения данных
-			iov[1].iov_len = AWH_EVENT_MAX_BUFFER_SIZE;
+			iov[0].iov_len = AWH_EVENT_MAX_BUFFER_SIZE;
 			// Если событие является неблокирующим
 			if((tunnel->state.options & event::options::NO_IO_BLOCK) || (tunnel->state.options & event::options::SM_IO_BLOCK)){
 				// Количество прочитанных байт
@@ -12156,7 +12166,7 @@ namespace io {
 					 */
 					errno = 0;
 					// Читаем данные из туннеля
-					bytes = ::readv(tunnel->fd, iov, 2);
+					bytes = ::readv(tunnel->fd, iov, 1);
 					// Учитываем полученное в объявленном ядром объёме
 					watchdog.consume(bytes);
 					// Если мы получили ошибку
@@ -12197,15 +12207,13 @@ namespace io {
 							return result;
 						}
 					// Если мы получили данные из сокета
-					} else if(bytes > static_cast <ssize_t> (sizeof(family))) {
-						// Если мы получили семейство протоколов в неверном порядке байт
-						if(family > 0xFFFF)
-							// Преобразуем к хостовому порядку
-							family = ntohl(family);
+					} else if(bytes > 0) {
 						// Определяем версию по первым 4 битам
 						const uint8_t version = ((::__awh_buffer__[0] & 0xF0) >> 4); // Маска 1111 0000
+						// Выводим семейство адресов из версии пакета: заголовка перед ним нет
+						family = ((version == 6) ? AF_INET6 : AF_INET);
 						// Вычисляем размер полезной нагрузки IP-пакета
-						const size_t size = (bytes - static_cast <ssize_t> (sizeof(family)));
+						const size_t size = static_cast <size_t> (bytes);
 						/**
 						 * Определяем тип IP-пакета
 						 */
@@ -12702,7 +12710,7 @@ namespace io {
 			// Если событие является блокирующим
 			} else {
 				// Читаем данные из туннеля
-				const ssize_t bytes = ::readv(tunnel->fd, iov, 2);
+				const ssize_t bytes = ::readv(tunnel->fd, iov, 1);
 				// Если мы получили ошибку
 				if(bytes < 0){
 					// Если установлена функция обратного вызова
@@ -12732,15 +12740,13 @@ namespace io {
 					// Выполняем удаление узла
 					::io::destroy(tunnel, eth, log);
 				// Если мы получили данные из сокета
-				} else if(bytes > static_cast <ssize_t> (sizeof(family))) {
-					// Если мы получили семейство протоколов в неверном порядке байт
-					if(family > 0xFFFF)
-						// Преобразуем к хостовому порядку
-						family = ntohl(family);
+				} else if(bytes > 0) {
 					// Определяем версию по первым 4 битам
 					const uint8_t version = ((::__awh_buffer__[0] & 0xF0) >> 4); // Маска 1111 0000
+					// Выводим семейство адресов из версии пакета: заголовка перед ним нет
+					family = ((version == 6) ? AF_INET6 : AF_INET);
 					// Вычисляем размер полезной нагрузки IP-пакета
-					const size_t size = (bytes - static_cast <ssize_t> (sizeof(family)));
+					const size_t size = static_cast <size_t> (bytes);
 					/**
 					 * Определяем тип IP-пакета
 					 */
@@ -18084,29 +18090,16 @@ namespace io {
 		try {
 			// Если есть данные для отправки в сокет
 			if(!tunnel->queue.empty()){
-				// Семейство адресов туннеля
-				uint32_t family = 0;
-				// Буфер ввода-вывода заголовка туннеля
-				struct iovec iov[2];
-				// Устанавливаем базу буфера
-				iov[0].iov_base = &family;
-				// Устанавливаем длину буфера
-				iov[0].iov_len = sizeof(family);
 				/**
-				 * Определяем семейство адресов
+				 * Буфер ввода-вывода пакета туннеля
+				 *
+				 * @warning Заголовка перед пакетом здесь НЕТ: устройство заводится без
+				 *          него - у Linux признаком `IFF_NO_PI`, у систем Sun сырым
+				 *          режимом. Прежде запись предваряла пакет четырёхоктетным
+				 *          словом семейства по договору BSD, и в устройство уходил
+				 *          пакет с четырьмя лишними октетами впереди
 				 */
-				switch(static_cast <uint8_t> (tunnel->state.family)){
-					// Для семейства IPv4
-					case static_cast <uint8_t> (event::family_t::IPV4):
-						// Устанавливаем семейство IPv4
-						family = htonl(AF_INET);
-					break;
-					// Для семейства IPv6
-					case static_cast <uint8_t> (event::family_t::IPV6):
-						// Устанавливаем семейство IPv6
-						family = htonl(AF_INET6);
-					break;
-				}
+				struct iovec iov[1];
 				// Размер данных для извлечения из очереди
 				size_t size = 0;
 				// Указатель на данные в очереди
@@ -18118,11 +18111,11 @@ namespace io {
 					 */
 					errno = 0;
 					// Устанавливаем размер буфера для записи данных
-					iov[1].iov_len = size;
+					iov[0].iov_len = size;
 					// Устанавливаем буфер для записи данных
-					iov[1].iov_base = const_cast <void *> (buffer);
+					iov[0].iov_base = const_cast <void *> (buffer);
 					// Выполняем отправку данных в туннель
-					const ssize_t bytes = ::writev(tunnel->fd, iov, 2);
+					const ssize_t bytes = ::writev(tunnel->fd, iov, 1);
 					// Если данные отправлены успешно
 					if((result = (bytes > 0))){
 						// Удаляем запись из очереди
@@ -23461,28 +23454,15 @@ namespace io {
 				// Завершаем выполнение функции, так как отправлять нечего
 				return result;
 			// Семейство адресов туннеля
-			uint32_t family = 0;
-			// Буфер ввода-вывода заголовка туннеля
-			struct iovec iov[2];
-			// Устанавливаем базу буфера
-			iov[0].iov_base = &family;
-			// Устанавливаем длину буфера
-			iov[0].iov_len = sizeof(family);
 			/**
-			 * Определяем семейство адресов
+			 * Буфер ввода-вывода пакета туннеля
+			 *
+			 * @warning Заголовка перед пакетом здесь НЕТ: устройство заводится без него -
+			 *          у Linux признаком `IFF_NO_PI`, у систем Sun сырым режимом. Прежде
+			 *          отправка предваряла пакет четырёхоктетным словом семейства по
+			 *          договору BSD, и в устройство уходил пакет с лишними октетами
 			 */
-			switch(static_cast <uint8_t> (tunnel->state.family)){
-				// Для семейства IPv4
-				case static_cast <uint8_t> (event::family_t::IPV4):
-					// Устанавливаем семейство IPv4
-					family = htonl(AF_INET);
-				break;
-				// Для семейства IPv6
-				case static_cast <uint8_t> (event::family_t::IPV6):
-					// Устанавливаем семейство IPv6
-					family = htonl(AF_INET6);
-				break;
-			}
+			struct iovec iov[1];
 			// Если событие является неблокирующим
 			if(tunnel->state.options & event::options::NO_IO_BLOCK){
 				// Если очередь передачи данных пустая
@@ -23492,11 +23472,11 @@ namespace io {
 					 */
 					errno = 0;
 					// Устанавливаем размер буфера для записи данных
-					iov[1].iov_len = size;
+					iov[0].iov_len = size;
 					// Устанавливаем буфер для записи данных
-					iov[1].iov_base = const_cast <void *> (buffer);
+					iov[0].iov_base = const_cast <void *> (buffer);
 					// Выполняем отправку данных в туннель
-					const ssize_t bytes = ::writev(tunnel->fd, iov, 2);
+					const ssize_t bytes = ::writev(tunnel->fd, iov, 1);
 					// Если данные не отправлены
 					if(bytes <= 0){
 						// Идентификатор полученной ошибки
@@ -23849,11 +23829,11 @@ namespace io {
 				// Переводим сокет в блокирующий режим
 				if(eth->socket.switchOption(tunnel->fd, tunnel->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 					// Устанавливаем размер буфера для записи данных
-					iov[1].iov_len = size;
+					iov[0].iov_len = size;
 					// Устанавливаем буфер для записи данных
-					iov[1].iov_base = const_cast <void *> (buffer);
+					iov[0].iov_base = const_cast <void *> (buffer);
 					// Выполняем отправку данных в туннель
-					const ssize_t bytes = ::writev(tunnel->fd, iov, 2);
+					const ssize_t bytes = ::writev(tunnel->fd, iov, 1);
 					// Если данные не отправлены
 					if(bytes <= 0){
 						// Идентификатор полученной ошибки
@@ -24175,11 +24155,11 @@ namespace io {
 			// Если событие является блокирующим
 			} else {
 				// Устанавливаем размер буфера для записи данных
-				iov[1].iov_len = size;
+				iov[0].iov_len = size;
 				// Устанавливаем буфер для записи данных
-				iov[1].iov_base = const_cast <void *> (buffer);
+				iov[0].iov_base = const_cast <void *> (buffer);
 				// Выполняем отправку данных в туннель
-				const ssize_t bytes = ::writev(tunnel->fd, iov, 2);
+				const ssize_t bytes = ::writev(tunnel->fd, iov, 1);
 				// Если данные не отправлены
 				if(bytes <= 0){
 					// Идентификатор полученной ошибки

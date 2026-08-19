@@ -352,7 +352,7 @@ namespace awh {
 							 *
 							 * \~
 							 */
-							bool valid() const noexcept;
+							[[nodiscard]] bool valid() const noexcept;
 							/**
 							 * \~russian
 							 * @brief Метод извлечения вида значения
@@ -393,7 +393,7 @@ namespace awh {
 							 *
 							 * \~
 							 */
-							bool is(const type_t type) const noexcept;
+							[[nodiscard]] bool is(const type_t type) const noexcept;
 							/**
 							 * \~russian
 							 * @brief Метод извлечения количества значений вместимого
@@ -472,7 +472,7 @@ namespace awh {
 							 *
 							 * \~
 							 */
-							bool has(const string_view name) const noexcept;
+							[[nodiscard]] bool has(const string_view name) const noexcept;
 						public:
 							/**
 							 * \~russian
@@ -488,7 +488,7 @@ namespace awh {
 							 *
 							 * \~
 							 */
-							bool value(bool & result) const noexcept;
+							[[nodiscard]] bool value(bool & result) const noexcept;
 							/**
 							 * \~russian
 							 * @brief Метод извлечения числа видом целого без знака
@@ -503,7 +503,7 @@ namespace awh {
 							 *
 							 * \~
 							 */
-							bool value(uint64_t & result) const noexcept;
+							[[nodiscard]] bool value(uint64_t & result) const noexcept;
 							/**
 							 * \~russian
 							 * @brief Метод извлечения числа видом целого со знаком
@@ -518,7 +518,7 @@ namespace awh {
 							 *
 							 * \~
 							 */
-							bool value(int64_t & result) const noexcept;
+							[[nodiscard]] bool value(int64_t & result) const noexcept;
 							/**
 							 * \~russian
 							 * @brief Метод извлечения числа видом дробного
@@ -533,7 +533,7 @@ namespace awh {
 							 *
 							 * \~
 							 */
-							bool value(double & result) const noexcept;
+							[[nodiscard]] bool value(double & result) const noexcept;
 							/**
 							 * \~russian
 							 * @brief Метод извлечения содержимого значения
@@ -577,7 +577,7 @@ namespace awh {
 							 *
 							 * \~
 							 */
-							bool negative() const noexcept;
+							[[nodiscard]] bool negative() const noexcept;
 						public:
 							/**
 							 * \~russian
@@ -664,7 +664,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool parse(const void * buffer, const size_t size, const reader_t::settings_t & settings) noexcept;
+					[[nodiscard]] bool parse(const void * buffer, const size_t size, const reader_t::settings_t & settings) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод разбора записи в дерево документа
@@ -681,7 +681,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool parse(const void * buffer, const size_t size) noexcept;
+					[[nodiscard]] bool parse(const void * buffer, const size_t size) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод сборки записи из дерева документа
@@ -696,7 +696,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool build(writer_t & writer) const noexcept;
+					[[nodiscard]] bool build(writer_t & writer) const noexcept;
 				public:
 					/**
 					 * \~russian

@@ -3403,7 +3403,7 @@ TEST_F(CryptoFixture, SignatureStreamDirectionCryptoTest){
  *
  * @details Заведение потока поверх незавершённого прежний сбрасывает, а не отвергает
  *          заведение: тем же порядком ведёт себя поток шифрования, и почерк у модуля
- *          один. Но сброс этот оглашается: незавершённый поток несёт поданное в него, и
+ *          один - оглашают сброс оба, см. StreamDiscardCryptoTest. Но сброс этот оглашается: незавершённый поток несёт поданное в него, и
  *          работа эта пропадает - молчаливая же пропажа выглядит работающим обиходом,
  *          покуда кто-нибудь не хватится подписи, которой нет
  *
@@ -3762,4 +3762,60 @@ TEST_F(CryptoFixture, GostStreamDirectionCryptoTest){
 	ASSERT_TRUE(this->_crypto->verifyUpdate(reinterpret_cast <const uint8_t *> (MESSAGE), ::strlen(MESSAGE)));
 	// Проверяем отказ завершения потока выработки, заведённого как поток проверки
 	EXPECT_FALSE(this->_crypto->signFinalize(signature));
+}
+
+/**
+ * @brief Тест оглашения сброса незавершённого потока шифрования
+ *
+ * @details Поток шифрования сбрасывался при повторном заведении молча, тогда как поток
+ *          подписи сброс оглашал (5а.18). Расхождение это правится в пользу оглашения:
+ *          незавершённый поток несёт поданное в него, и работа эта пропадает, а
+ *          молчаливая пропажа выглядит работающим обиходом до тех пор, пока кто-нибудь
+ *          не хватится записи, которой нет
+ *
+ */
+TEST_F(CryptoFixture, StreamDiscardCryptoTest){
+	// Количество полученных предупреждений
+	size_t records = 0;
+	/**
+	 * Пароль берётся стойким намеренно: слабый даёт своё предупреждение, и счётчик
+	 * записей считал бы его вместе с оглашением сброса потока
+	 */
+	// Выполняем установку пароля шифрования
+	this->_crypto->password("Qw8#zR2!vN5@hL7$pM3&kT6^");
+	/**
+	 * Соль задаётся намеренно: вывод ключа без неё даёт своё законное предупреждение,
+	 * и счётчик записей считал бы его вместе с оглашением сброса потока
+	 */
+	// Выполняем установку соли шифрования
+	this->_crypto->salt("j4Hs9Wk2Lp7Qz5Xr");
+	// Выполняем подписку на записи лога
+	this->_log->subscribe([&records](const awh::log_t::flag_t flag, std::string_view text) noexcept -> void {
+		// Снимаем предупреждение о неиспользуемом параметре
+		(void) text;
+		// Если получено предупреждение
+		if(flag == awh::log_t::flag_t::WARNING)
+			// Наращиваем количество полученных предупреждений
+			records++;
+	});
+	// Устанавливаем отложенный режим логов, консоль набора не засоряя
+	this->_log->mode({awh::log_t::mode_t::DEFERRED});
+	// Выполняем заведение потока шифрования
+	ASSERT_TRUE(this->_crypto->initialize(awh::crypto_t::event_t::ENCODE, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256));
+	// Проверяем, что заведение первого потока предупреждения не даёт
+	EXPECT_EQ(records, static_cast <size_t> (0));
+	// Набор зашифрованного содержимого
+	std::vector <uint8_t> buffer;
+	// Выполняем подачу данных потоку шифрования
+	ASSERT_TRUE(this->_crypto->encrypt(reinterpret_cast <const uint8_t *> ("Anyks"), 5, buffer));
+	// Выполняем заведение потока шифрования поверх незавершённого
+	ASSERT_TRUE(this->_crypto->initialize(awh::crypto_t::event_t::ENCODE, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256));
+	// Проверяем, что сброс незавершённого потока оглашён
+	EXPECT_EQ(records, static_cast <size_t> (1));
+	// Выполняем завершение потока шифрования
+	ASSERT_TRUE(this->_crypto->finalize(buffer));
+	// Выполняем заведение потока шифрования на завершённом потоке
+	ASSERT_TRUE(this->_crypto->initialize(awh::crypto_t::event_t::ENCODE, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256));
+	// Проверяем, что заведение на завершённом потоке предупреждения не даёт
+	EXPECT_EQ(records, static_cast <size_t> (1));
 }

@@ -130,3 +130,9 @@
 [submodule "submodules/fkYAML"]
 	path = submodules/fkYAML
 	url = https://github.com/fktn-k/fkYAML.git
+[submodule "submodules/libcbor"]
+	path = submodules/libcbor
+	url = https://github.com/PJK/libcbor.git
+[submodule "submodules/msgpack-c"]
+	path = submodules/msgpack-c
+	url = https://github.com/msgpack/msgpack-c.git

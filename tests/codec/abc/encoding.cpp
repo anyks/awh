@@ -27,7 +27,7 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <gtest/gtest.h>
-#include <codec/abc/abc.hpp>
+#include <codec/abc/encoding.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -87,7 +87,7 @@ TEST(CodecAbcEncoding, UnsignedRoundtrip) {
 		// Буфер собираемой записи
 		vector <uint8_t> result;
 		// Выполняем укладку значения крупным видом целого без знака
-		abc::put(result, abc::major_t::UNSIGNED, values.at(i));
+		abc::put(result, abc::group_t::UNSIGNED, values.at(i));
 		// Выполняем проверку длины собранной записи
 		ASSERT_EQ(result.size(), lengths.at(i)) << "значение: " << values.at(i);
 		// Смещение, с какого следует снимать единицу
@@ -99,7 +99,7 @@ TEST(CodecAbcEncoding, UnsignedRoundtrip) {
 		// Выполняем снятие единицы проволочной записи
 		ASSERT_TRUE(abc::take(result.data(), result.size(), offset, item, error)) << "значение: " << values.at(i);
 		// Выполняем проверку крупного вида снятой единицы
-		ASSERT_EQ(item.major, abc::major_t::UNSIGNED) << "значение: " << values.at(i);
+		ASSERT_EQ(item.group, abc::group_t::UNSIGNED) << "значение: " << values.at(i);
 		// Выполняем проверку значения снятой единицы
 		ASSERT_EQ(item.value, values.at(i)) << "значение: " << values.at(i);
 		// Выполняем проверку, что запись снята целиком
@@ -143,7 +143,7 @@ TEST(CodecAbcEncoding, IntegerRoundtrip) {
 		// Если число не меньше нуля
 		if(value >= 0){
 			// Выполняем проверку крупного вида снятой единицы
-			ASSERT_EQ(item.major, abc::major_t::UNSIGNED) << "значение: " << value;
+			ASSERT_EQ(item.group, abc::group_t::UNSIGNED) << "значение: " << value;
 			// Выполняем проверку значения снятой единицы
 			ASSERT_EQ(item.value, static_cast <uint64_t> (value)) << "значение: " << value;
 		// Если число меньше нуля
@@ -151,7 +151,7 @@ TEST(CodecAbcEncoding, IntegerRoundtrip) {
 			// Обращённое число со знаком
 			int64_t restored = 0;
 			// Выполняем проверку крупного вида снятой единицы
-			ASSERT_EQ(item.major, abc::major_t::NEGATIVE) << "значение: " << value;
+			ASSERT_EQ(item.group, abc::group_t::NEGATIVE) << "значение: " << value;
 			// Выполняем обращение записи дополнения до −1 в число со знаком
 			ASSERT_TRUE(abc::negative(item.value, restored)) << "значение: " << value;
 			// Выполняем проверку обращённого числа
@@ -207,7 +207,7 @@ TEST(CodecAbcEncoding, RealRoundtrip) {
 	// Выполняем снятие единицы проволочной записи
 	ASSERT_TRUE(abc::take(result.data(), result.size(), offset, item, error));
 	// Выполняем проверку крупного вида снятой единицы
-	ASSERT_EQ(item.major, abc::major_t::SINGLE);
+	ASSERT_EQ(item.group, abc::group_t::SINGLE);
 	// Выполняем проверку разновидности снятой единицы
 	ASSERT_EQ(item.detail, static_cast <uint8_t> (abc::single_t::FLOAT));
 	// Выполняем проверку, что снята одна лишь метка
@@ -260,7 +260,7 @@ TEST(CodecAbcEncoding, SingleValues) {
 		// Буфер собираемой записи
 		vector <uint8_t> result;
 		// Выполняем укладку одиночного значения
-		abc::mark(result, abc::major_t::SINGLE, static_cast <uint8_t> (single));
+		abc::mark(result, abc::group_t::SINGLE, static_cast <uint8_t> (single));
 		// Выполняем проверку длины собранной записи
 		ASSERT_EQ(result.size(), 1u);
 		// Смещение, с какого следует снимать единицу
@@ -273,7 +273,7 @@ TEST(CodecAbcEncoding, SingleValues) {
 		ASSERT_TRUE(abc::take(result.data(), result.size(), offset, item, error))
 			<< "разновидность: " << static_cast <uint32_t> (single);
 		// Выполняем проверку крупного вида снятой единицы
-		ASSERT_EQ(item.major, abc::major_t::SINGLE);
+		ASSERT_EQ(item.group, abc::group_t::SINGLE);
 		// Выполняем проверку разновидности снятой единицы
 		ASSERT_EQ(item.detail, static_cast <uint8_t> (single));
 	}
@@ -293,7 +293,7 @@ TEST(CodecAbcEncoding, ReservedTags) {
 		// Буфер собираемой записи
 		vector <uint8_t> result;
 		// Выполняем укладку метки с отведённой подробностью
-		abc::mark(result, abc::major_t::UNSIGNED, detail);
+		abc::mark(result, abc::group_t::UNSIGNED, detail);
 		// Смещение, с какого следует снимать единицу
 		size_t offset = 0;
 		// Снятая единица проволочной записи
@@ -315,7 +315,7 @@ TEST(CodecAbcEncoding, ReservedTags) {
 		// Буфер собираемой записи
 		vector <uint8_t> result;
 		// Выполняем укладку метки с отведённой разновидностью
-		abc::mark(result, abc::major_t::SINGLE, detail);
+		abc::mark(result, abc::group_t::SINGLE, detail);
 		// Смещение, с какого следует снимать единицу
 		size_t offset = 0;
 		// Снятая единица проволочной записи
@@ -335,7 +335,7 @@ TEST(CodecAbcEncoding, ReservedTags) {
 		// Буфер собираемой записи
 		vector <uint8_t> result;
 		// Выполняем укладку метки с отведённой разновидностью
-		abc::mark(result, abc::major_t::EXTEND, detail);
+		abc::mark(result, abc::group_t::EXTEND, detail);
 		// Смещение, с какого следует снимать единицу
 		size_t offset = 0;
 		// Снятая единица проволочной записи
@@ -360,15 +360,17 @@ TEST(CodecAbcEncoding, IndefiniteLength) {
 	/**
 	 * Крупные виды, вместимыми являющиеся
 	 */
-	const vector <abc::major_t> containers = {abc::major_t::ARRAY, abc::major_t::MAP};
+	const vector <abc::group_t> containers = {
+		abc::group_t::ARRAY, abc::group_t::MAP, abc::group_t::STRING, abc::group_t::BLOB
+	};
 	/**
 	 * Выполняем перебор всех вместимых крупных видов
 	 */
-	for(const abc::major_t major : containers){
+	for(const abc::group_t group : containers){
 		// Буфер собираемой записи
 		vector <uint8_t> result;
 		// Выполняем укладку метки неопределённой длины
-		abc::mark(result, major, static_cast <uint8_t> (abc::single_t::BREAK));
+		abc::mark(result, group, static_cast <uint8_t> (abc::single_t::BREAK));
 		// Смещение, с какого следует снимать единицу
 		size_t offset = 0;
 		// Снятая единица проволочной записи
@@ -377,24 +379,28 @@ TEST(CodecAbcEncoding, IndefiniteLength) {
 		abc::error_t error = abc::error_t::NONE;
 		// Выполняем снятие единицы проволочной записи
 		ASSERT_TRUE(abc::take(result.data(), result.size(), offset, item, error))
-			<< "крупный вид: " << static_cast <uint32_t> (major);
+			<< "крупный вид: " << static_cast <uint32_t> (group);
 		// Выполняем проверку признака неопределённой длины вместимого
-		ASSERT_TRUE(item.indefinite) << "крупный вид: " << static_cast <uint32_t> (major);
+		ASSERT_TRUE(item.indefinite) << "крупный вид: " << static_cast <uint32_t> (group);
 	}
 	/**
-	 * Крупные виды, вместимыми не являющиеся
+	 * Крупные виды, неопределённой длины не допускающие
+	 *
+	 * @details Строка и двоичные данные её допускают: собираются они кусками, когда
+	 *          длина наперёд неизвестна. Число же кусками не собирается - величина его
+	 *          цельна, и делить её на куски значило бы толковать запись двояко
 	 */
-	const vector <abc::major_t> plains = {
-		abc::major_t::UNSIGNED, abc::major_t::NEGATIVE, abc::major_t::STRING, abc::major_t::BLOB
+	const vector <abc::group_t> plains = {
+		abc::group_t::UNSIGNED, abc::group_t::NEGATIVE
 	};
 	/**
 	 * Выполняем перебор всех невместимых крупных видов
 	 */
-	for(const abc::major_t major : plains){
+	for(const abc::group_t group : plains){
 		// Буфер собираемой записи
 		vector <uint8_t> result;
 		// Выполняем укладку метки неопределённой длины
-		abc::mark(result, major, static_cast <uint8_t> (abc::single_t::BREAK));
+		abc::mark(result, group, static_cast <uint8_t> (abc::single_t::BREAK));
 		// Смещение, с какого следует снимать единицу
 		size_t offset = 0;
 		// Снятая единица проволочной записи
@@ -403,9 +409,9 @@ TEST(CodecAbcEncoding, IndefiniteLength) {
 		abc::error_t error = abc::error_t::NONE;
 		// Выполняем проверку отказа снятия единицы
 		ASSERT_FALSE(abc::take(result.data(), result.size(), offset, item, error))
-			<< "крупный вид: " << static_cast <uint32_t> (major);
+			<< "крупный вид: " << static_cast <uint32_t> (group);
 		// Выполняем проверку кода отказа
-		ASSERT_EQ(error, abc::error_t::UNKNOWN_TAG) << "крупный вид: " << static_cast <uint32_t> (major);
+		ASSERT_EQ(error, abc::error_t::UNKNOWN_TAG) << "крупный вид: " << static_cast <uint32_t> (group);
 	}
 }
 /**
@@ -420,7 +426,7 @@ TEST(CodecAbcEncoding, ChunkIndependence) {
 	// Буфер собираемой записи
 	vector <uint8_t> result;
 	// Выполняем укладку значения, ведущего запись в восемь октетов
-	abc::put(result, abc::major_t::UNSIGNED, numeric_limits <uint64_t>::max());
+	abc::put(result, abc::group_t::UNSIGNED, numeric_limits <uint64_t>::max());
 	// Выполняем проверку длины собранной записи
 	ASSERT_EQ(result.size(), 9u);
 	/**

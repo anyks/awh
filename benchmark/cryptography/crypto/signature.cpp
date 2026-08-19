@@ -95,7 +95,12 @@ namespace {
 	 *          замедление хэша в них не видно. Свод преобразования дал 88 МБ/с против
 	 *          1,9 МБ/с у поразрядного счёта (5б.12), и порог стоит стражем этой правки
 	 */
-	static constexpr double STREEBOG_THRESHOLD = 15.0;
+	static constexpr double STREEBOG_THRESHOLD = 7.0;
+	/**
+	 * Порог взят по самому медленному стенду, а не по рабочей машине: NetBSD даёт
+	 * 14,8 МБ/с против 95 у машины, и порог, посчитанный от машины, валил бы замер
+	 * на стенде при полностью исправном модуле (5б.13)
+	 */
 	static constexpr double GOST_SIGN_THRESHOLD = 130.0;
 	static constexpr double GOST_VERIFY_THRESHOLD = 60.0;
 	static constexpr double FINGERPRINT_THRESHOLD = 290000.0;

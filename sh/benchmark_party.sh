@@ -151,5 +151,13 @@ $ROOT/submodule.sh add yaml-cpp https://github.com/jbeder/yaml-cpp.git
 $ROOT/submodule.sh remove fkYAML
 $ROOT/submodule.sh add fkYAML https://github.com/fktn-k/fkYAML.git
 
+# Выполняем пересборку сабмодуля libcbor
+$ROOT/submodule.sh remove libcbor
+$ROOT/submodule.sh add libcbor https://github.com/PJK/libcbor.git
+
+# Выполняем пересборку сабмодуля msgpack-c
+$ROOT/submodule.sh remove msgpack-c
+$ROOT/submodule.sh add msgpack-c https://github.com/msgpack/msgpack-c.git
+
 # Выводим список добавленных модулей
 cat $ROOT/../.gitmodules

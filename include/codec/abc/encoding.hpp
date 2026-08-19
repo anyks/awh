@@ -118,7 +118,7 @@ namespace awh {
 			 * \~english
 			 * @brief Taken unit of the wire record
 			 * @details A unit is the leading octet together with the record led by it. The value
-			 * is interpreted by the major kind: for an integer it is the number itself, for a string and binary
+			 * is interpreted by the group kind: for an integer it is the number itself, for a string and binary
 			 * data — the length in octets, for a container — the number of the nested values, and for
 			 * a singleton value and an extension — the variety
 			 *
@@ -126,7 +126,7 @@ namespace awh {
 			 */
 			typedef struct __AWH_SHARED_EXPORT__ Item {
 				// Крупный вид проволочной записи
-				major_t major;
+				group_t group;
 				// Подробность ведущего октета
 				uint8_t detail;
 				// Значение, ведомое меткой
@@ -143,7 +143,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				Item() noexcept : major(major_t::UNSIGNED), detail(0), value(0), indefinite(false) {}
+				Item() noexcept : group(group_t::UNSIGNED), detail(0), value(0), indefinite(false) {}
 			} item_t;
 
 			/**
@@ -177,7 +177,7 @@ namespace awh {
 			 * ширины
 			 *
 			 * @param result буфер, куда следует уложить запись
-			 * @param major  крупный вид проволочной записи
+			 * @param group  крупный вид проволочной записи
 			 * @param value  укладываемое значение
 			 *
 			 * \~english
@@ -186,12 +186,12 @@ namespace awh {
 			 * `INLINE_LIMIT` it fits into the tag itself, above it leads a record of a set
 			 * width
 			 * @param result buffer the record should be laid into
-			 * @param major major kind of the wire record
+			 * @param group group kind of the wire record
 			 * @param value value being laid
 			 *
 			 * \~
 			 */
-			__AWH_SHARED_EXPORT__ void put(vector <uint8_t> & result, const major_t major, const uint64_t value) noexcept;
+			__AWH_SHARED_EXPORT__ void put(vector <uint8_t> & result, const group_t group, const uint64_t value) noexcept;
 			/**
 			 * \~russian
 			 * @brief Функция укладки метки с заданной подробностью
@@ -200,7 +200,7 @@ namespace awh {
 			 * вместимого неопределённой длины, конца его и одиночных значений
 			 *
 			 * @param result буфер, куда следует уложить запись
-			 * @param major  крупный вид проволочной записи
+			 * @param group  крупный вид проволочной записи
 			 * @param detail подробность ведущего октета
 			 *
 			 * \~english
@@ -208,12 +208,12 @@ namespace awh {
 			 * @details Serves the laying of that whose detail is not a value: the beginning
 			 * of a container of an indefinite length, its end and the singleton values
 			 * @param result buffer the record should be laid into
-			 * @param major major kind of the wire record
+			 * @param group group kind of the wire record
 			 * @param detail detail of the leading octet
 			 *
 			 * \~
 			 */
-			__AWH_SHARED_EXPORT__ void mark(vector <uint8_t> & result, const major_t major, const uint8_t detail) noexcept;
+			__AWH_SHARED_EXPORT__ void mark(vector <uint8_t> & result, const group_t group, const uint8_t detail) noexcept;
 			/**
 			 * \~russian
 			 * @brief Функция укладки целого числа со знаком
@@ -227,7 +227,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of the laying of an integer with a sign
-			 * @details A number less than zero is laid by the major kind `NEGATIVE` by a complement
+			 * @details A number less than zero is laid by the group kind `NEGATIVE` by a complement
 			 * to −1: the record holds `−1 − value`, whereby the smallest in magnitude negative
 			 * number receives the smallest record, and `INT64_MIN` is laid without an overflow
 			 * @param result buffer the record should be laid into
@@ -246,13 +246,13 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Function of the turning of a record of a complement to −1 into a number with a sign
-			 * @param value value taken from a record of the major kind `NEGATIVE`
+			 * @param value value taken from a record of the group kind `NEGATIVE`
 			 * @param result turned number with a sign
 			 * @return sign of the representability of the number by the kind `int64_t`
 			 *
 			 * \~
 			 */
-			__AWH_SHARED_EXPORT__ bool negative(const uint64_t value, int64_t & result) noexcept;
+			[[nodiscard]] __AWH_SHARED_EXPORT__ bool negative(const uint64_t value, int64_t & result) noexcept;
 			/**
 			 * \~russian
 			 * @brief Функция укладки дробного числа одинарной точности
@@ -311,7 +311,7 @@ namespace awh {
 			 * @note For a singleton value and an extension the work takes **the tag alone**:
 			 *       the data led by them are taken by the consumer. Their width is set by the variety,
 			 *       while for an identifier it moreover does not fit into the value of the unit at all.
-			 *       The other major kinds are taken together with the led record
+			 *       The other group kinds are taken together with the led record
 			 * @param buffer buffer of the submitted record
 			 * @param size size of the submitted record in octets
 			 * @param offset offset the unit should be taken from
@@ -321,7 +321,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			__AWH_SHARED_EXPORT__ bool take(const uint8_t * buffer, const size_t size, size_t & offset, item_t & item, error_t & error) noexcept;
+			[[nodiscard]] __AWH_SHARED_EXPORT__ bool take(const uint8_t * buffer, const size_t size, size_t & offset, item_t & item, error_t & error) noexcept;
 			/**
 			 * \~russian
 			 * @brief Функция снятия целого числа установленной ширины
@@ -364,7 +364,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			__AWH_SHARED_EXPORT__ bool utf8(const uint8_t * buffer, const size_t size, size_t & position) noexcept;
+			[[nodiscard]] __AWH_SHARED_EXPORT__ bool utf8(const uint8_t * buffer, const size_t size, size_t & position) noexcept;
 		};
 	};
 };

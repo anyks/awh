@@ -46,6 +46,7 @@
  */
 #include <net/io.hpp>
 #include <net/addr.hpp>
+#include <net/eth/eth.hpp>
 #include <net/eth/gateway.hpp>
 
 /**
@@ -66,7 +67,130 @@ using namespace placeholders;
  * @return     код выхода из приложения
  *
  */
+/**
+ * @brief Параметры запуска сервера туннеля
+ *
+ * @details Значения по умолчанию оставлены теми же, какими они были записаны в
+ *          коде: запуск без единого довода ведёт себя ровно как прежде
+ *
+ */
+typedef struct Params {
+	// Адрес своей стороны туннеля
+	string tun;
+	// Адрес другой стороны туннеля
+	string peer;
+	// Локальный адрес переноса
+	string bind;
+	// Сеть маршрута через туннель
+	string net;
+	// Порт переноса
+	uint16_t port;
+	// Префикс сети маршрута
+	uint8_t prefix;
+	// Признак поднятия устройства туннеля
+	bool up;
+	// Признак установки маршрута через туннель
+	bool route;
+	/**
+	 * @brief Конструктор
+	 *
+	 */
+	explicit Params() noexcept :
+	 tun{"10.0.0.1"}, peer{"10.0.0.2"}, bind{"127.0.0.1"},
+	 net{"10.0.0.0"}, port(2222), prefix(24), up(true), route(true) {}
+} params_t;
+
+/**
+ * @brief Функция печати способа запуска
+ *
+ * @param name название исполняемого файла
+ *
+ */
+static void usage(const char * name) noexcept {
+	cout << "Сервер туннеля AWH" << endl << endl;
+	cout << "Запуск: " << name << " [доводы]" << endl << endl;
+	cout << "  --bind <адрес>    локальный адрес переноса (по умолчанию 127.0.0.1)" << endl;
+	cout << "  --port <номер>    порт переноса (по умолчанию 2222)" << endl;
+	cout << "  --tun <адрес>     адрес своей стороны туннеля (по умолчанию 10.0.0.1)" << endl;
+	cout << "  --peer <адрес>    адрес другой стороны туннеля (по умолчанию 10.0.0.2)" << endl;
+	cout << "  --net <адрес>     сеть маршрута через туннель (по умолчанию 10.0.0.0)" << endl;
+	cout << "  --prefix <длина>  префикс сети маршрута (по умолчанию 24)" << endl;
+	cout << "  --no-route        не ставить маршрут через туннель" << endl;
+	cout << "  --no-up           не поднимать устройство туннеля" << endl;
+	cout << "  --help            напечатать этот текст" << endl << endl;
+	cout << "Права суперпользователя обязательны: заведение устройства туннеля их требует." << endl;
+}
+
+/**
+ * @brief Функция разбора доводов запуска
+ *
+ * @param argc   длина массива параметров
+ * @param argv   массив параметров
+ * @param params параметры запуска
+ * @return       результат разбора
+ *
+ */
+static bool parse(int32_t argc, char * argv[], params_t & params) noexcept {
+	/**
+	 * Перебираем все переданные доводы
+	 */
+	for(int32_t i = 1; i < argc; i++){
+		// Получаем название довода
+		const string arg(argv[i]);
+		// Если запрошен способ запуска
+		if(arg.compare("--help") == 0){
+			// Печатаем способ запуска
+			usage(argv[0]);
+			// Выводим отказ: работать дальше незачем
+			return false;
+		// Если запрошено не ставить маршрут
+		} else if(arg.compare("--no-route") == 0)
+			// Отключаем установку маршрута
+			params.route = false;
+		// Если запрошено не поднимать устройство
+		else if(arg.compare("--no-up") == 0)
+			// Отключаем поднятие устройства
+			params.up = false;
+		// Иначе довод требует значения
+		else {
+			// Если значение довода не передано
+			if((i + 1) >= argc){
+				// Сообщаем о доводе без значения
+				cout << "Довод \"" << arg << "\" требует значения" << endl;
+				// Выводим отказ
+				return false;
+			}
+			// Получаем значение довода
+			const string value(argv[++i]);
+			// Разбираем довод по названию
+			if(arg.compare("--bind") == 0) params.bind = value;
+			else if(arg.compare("--port") == 0) params.port = static_cast <uint16_t> (::stoi(value));
+			else if(arg.compare("--tun") == 0) params.tun = value;
+			else if(arg.compare("--peer") == 0) params.peer = value;
+			else if(arg.compare("--net") == 0) params.net = value;
+			else if(arg.compare("--prefix") == 0) params.prefix = static_cast <uint8_t> (::stoi(value));
+			// Если довод неизвестен
+			else {
+				// Сообщаем о неизвестном доводе
+				cout << "Довод \"" << arg << "\" неизвестен" << endl;
+				// Печатаем способ запуска
+				usage(argv[0]);
+				// Выводим отказ
+				return false;
+			}
+		}
+	}
+	// Выводим успешный результат
+	return true;
+}
+
 int32_t main(int32_t argc, char * argv[]){
+	// Параметры запуска
+	params_t params;
+	// Выполняем разбор доводов запуска
+	if(!parse(argc, argv, params))
+		// Выводим отказ
+		return 1;
 	// Создаём объект фреймворка
 	fmk_t fmk;
 	// Создаём объект логирования
@@ -84,7 +208,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Добавляем новое событие сервера UDP
 	event::id_t eid = io.event(event::node_t::SERVER, event::family_t::IPV4, event::type_t::DATAGRAM, event::protocol_t::UDP);
 	// Устанавливаем порт события
-	io.setSourcePort(eid, 2222);
+	io.setSourcePort(eid, params.port);
 	// Инициализируем асинхронный движок ввода-вывода
 	if(io.initialize()){
 		// Устананавливаем опции события туннеля
@@ -100,9 +224,9 @@ int32_t main(int32_t argc, char * argv[]){
 		// Записываем ошибку в лог установки опций события
 		else cout << " Ошибка установки опций события сервера!" << endl;
 		// Устанавливаем IP-адрес события
-		if(io.setAddress(eid, event::address_t::IPV4, "127.0.0.1") && io.setAddress(tid, event::address_t::IPV4, "10.0.0.1")){
+		if(io.setAddress(eid, event::address_t::IPV4, params.bind) && io.setAddress(tid, event::address_t::IPV4, params.tun)){
 			// Устанавливаем адрес сервера назначения
-			if(io.setTarget(mid, "10.0.0.2")){
+			if(io.setTarget(mid, params.peer)){
 				// Устанавливаем функцию обратного вызова на событие сервера
 				io.on(eid, [&log](const event::id_t eid, const event::status_t status) noexcept -> void {
 					/**
@@ -1030,22 +1154,43 @@ int32_t main(int32_t argc, char * argv[]){
 				if(io.commit(eid) && io.commit(tid) && io.commit(mid)){
 					// Выполняем запуск события
 					if(io.launch(eid) && io.launch(tid)){
+						// Получаем название устройства туннеля
+						const string iface = io.getIface(tid);
+						// Записываем в лог название заведённого устройства
+						cout << " Устройство туннеля: " << iface << endl;
+						/**
+						 * Поднимаем устройство туннеля
+						 *
+						 * @note Движок устройство заводит и адреса ему назначает, но признака
+						 *       UP не ставит: без него устройство остаётся опущенным, маршрута
+						 *       через него нет и пакету идти некуда
+						 */
+						if(params.up && !iface.empty()){
+							// Создаём объект работы с сетью
+							eth_t eth(&fmk, &log);
+							// Поднимаем устройство туннеля
+							if(eth.iface.flag(iface, event::eth_flag_t::UP, event::mode_t::ENABLED))
+								// Записываем в лог сообщение об успешном поднятии устройства
+								cout << " Устройство туннеля поднято!" << endl;
+							// Записываем ошибку в лог поднятия устройства
+							else cout << " Ошибка поднятия устройства туннеля!" << endl;
+						}
 						// Маршрут туннеля
 						eth::gateway_t::route_t route;
 						// Устанавливаем интерфейс туннеля
-						route.ifname = io.getIface(tid);
+						route.ifname = iface;
 						// Устанавливаем префикс маршрута туннеля
-						route.prefix = 24;
+						route.prefix = params.prefix;
 						// Создаём шлюз маршрута туннеля
 						route.gateway = make_unique <net::addr_net_ipv4_t> ();
 						// Создаём адрес назначения маршрута туннеля
 						route.destination = make_unique <net::addr_net_ipv4_t> ();
 						// Выполням парсинг адреса назначения маршрута туннеля
-						addr = "10.0.0.0";
+						addr = params.net;
 						// Устанавливаем адрес назначения маршрута туннеля
 						awh_cast <net::addr_net_ipv4_t *> (route.destination.get())->address = addr.v4(net_addr_t::endian_t::LITTLE);
 						// Устанавливаем маршрут туннеля (sudo route -n add -net 10.0.0.0/24 -interface utun7)
-						if(gateway.add(route))
+						if(params.route && gateway.add(route))
 							// Записываем в лог сообщение об успешной установке маршрута туннеля
 							cout << " Маршрут туннеля успешно установлен!" << endl;
 						// Записываем в лог сообщение об успешном запуске события

@@ -115,6 +115,7 @@ awh::codec::abc::Reader::Reader() noexcept :
  _pending(0), _awaited(type_t::UNDEFINED), _extend(extend_t::BIGNUM), _exponent(0),
  _negative(false), _document(false), _handler(nullptr), _context(nullptr) {
 	// Выполняем установку начального положения разбора
+	this->_mark = location_t();
 	this->_location.offset = 0;
 	// Выполняем установку начальной глубины вложенности разбора
 	this->_location.depth = 0;
@@ -129,6 +130,7 @@ void awh::codec::abc::Reader::reset() noexcept {
 	// Выполняем сброс кода отказа разбора
 	this->_error = error_t::NONE;
 	// Выполняем сброс положения разбора в поданной записи
+	this->_mark = location_t();
 	this->_location.offset = 0;
 	// Выполняем сброс глубины вложенности разбора
 	this->_location.depth = 0;
@@ -194,7 +196,15 @@ bool awh::codec::abc::Reader::fail(const error_t error) noexcept {
  * @param record собранное событие разбора
  *
  */
-void awh::codec::abc::Reader::emit(const record_t & record) noexcept {
+void awh::codec::abc::Reader::emit(const record_t & item) noexcept {
+	// Выдаваемое событие разбора с запомненным местом его
+	record_t record = item;
+	/**
+	 * Выполняем запоминание места события самим событием: события копятся очередью,
+	 * и состояние разбирателя к выдаче события уходит вперёд тем дальше, чем крупнее
+	 * поданный кусок
+	 */
+	record.location = this->_mark;
 	// Если обработчик прямой выдачи событий установлен
 	if(this->_handler != nullptr){
 		// Выполняем установку выдаваемого события текущим
@@ -218,6 +228,12 @@ bool awh::codec::abc::Reader::unwind() noexcept {
 	while(!this->_stack.empty()){
 		// Выполняем получение верхнего звена стека вместимых
 		const frame_t & frame = this->_stack.back();
+		/**
+		 * Если значение собирается кусками, закрывается оно лишь своим концом
+		 */
+		if(frame.segment != type_t::UNDEFINED)
+			// Выходим из обхода стека вместимых
+			break;
 		// Если длина вместимого неопределённая, закрывается оно лишь своим концом
 		if(frame.indefinite)
 			// Выходим из обхода стека вместимых
@@ -271,6 +287,13 @@ bool awh::codec::abc::Reader::unwind() noexcept {
  *
  */
 bool awh::codec::abc::Reader::settle(record_t & record) noexcept {
+	/**
+	 * Если значение собирается кусками, всякое иное значение внутри него негодно:
+	 * куски выдаются своим путём, а сюда попадает лишь то, что кусками не является
+	 */
+	if(!this->_stack.empty() && (this->_stack.back().segment != type_t::UNDEFINED))
+		// Выполняем объявление отказа разбора
+		return this->fail(error_t::INVALID_SEGMENT);
 	// Выполняем получение предела количества узлов документа
 	const uint32_t limit = ((this->_settings.maxNodes > 0) ? this->_settings.maxNodes : MAX_NODES);
 	// Если количество узлов документа превышает допустимое
@@ -293,6 +316,17 @@ bool awh::codec::abc::Reader::settle(record_t & record) noexcept {
 			return true;
 		}
 	}
+	// Выполняем учёт завершённого значения вместившим его
+	return this->finalize(record);
+}
+/**
+ * @brief Метод учёта завершённого значения вместившим его
+ *
+ * @param record выдаваемое событие завершённого значения
+ * @return       признак успешности разбора
+ *
+ */
+bool awh::codec::abc::Reader::finalize(record_t & record) noexcept {
 	// Выполняем выдачу события значения
 	this->emit(record);
 	// Если стек вместимых пуст, документ разобран до конца
@@ -356,11 +390,11 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 	/**
 	 * Определяем крупный вид снятой единицы
 	 */
-	switch(static_cast <uint8_t> (unit.major)){
+	switch(static_cast <uint8_t> (unit.group)){
 		/**
 		 * Если значение является целым без знака
 		 */
-		case static_cast <uint8_t> (major_t::UNSIGNED): {
+		case static_cast <uint8_t> (group_t::UNSIGNED): {
 			// Выполняем сдвиг смещения разбора
 			this->_offset = offset;
 			// Выполняем установку вида события числа
@@ -381,7 +415,7 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 		/**
 		 * Если значение является целым со знаком, меньшим нуля
 		 */
-		case static_cast <uint8_t> (major_t::NEGATIVE): {
+		case static_cast <uint8_t> (group_t::NEGATIVE): {
 			// Обращённое число со знаком
 			int64_t value = 0;
 			// Если запись дополнения до −1 видом целого со знаком не представима
@@ -406,10 +440,70 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 		/**
 		 * Если значение является строкой либо двоичными данными
 		 */
-		case static_cast <uint8_t> (major_t::STRING):
-		case static_cast <uint8_t> (major_t::BLOB): {
+		case static_cast <uint8_t> (group_t::STRING):
+		case static_cast <uint8_t> (group_t::BLOB): {
 			// Признак того, что значение является строкой
-			const bool text = (unit.major == major_t::STRING);
+			const bool text = (unit.group == group_t::STRING);
+			// Вид значения, собираемого кусками
+			const type_t segment = (text ? type_t::STRING : type_t::BLOB);
+			/**
+			 * Если значение объявлено неопределённой длины, собирается оно кусками
+			 */
+			if(unit.indefinite){
+				// Если стек вместимых не пуст
+				if(!this->_stack.empty()){
+					// Выполняем получение верхнего звена стека вместимых
+					const frame_t & frame = this->_stack.back();
+					/**
+					 * Если значение, собираемое кусками, стоит внутри такого же:
+					 * вложенности здесь нет, кусок обязан быть определённой длины
+					 */
+					if(frame.segment != type_t::UNDEFINED)
+						// Выполняем объявление отказа разбора
+						return this->fail(error_t::INVALID_SEGMENT);
+					/**
+					 * Если значение, собираемое кусками, стоит именем поля отображения:
+					 * имя обязано быть цельным, иначе строгий вид записи невозможен
+					 */
+					if(frame.mapping && frame.expectKey)
+						// Выполняем объявление отказа разбора
+						return this->fail(error_t::INVALID_KEY);
+				}
+				// Выполняем получение предела глубины вложенности
+				const uint32_t depth = ((this->_settings.maxDepth > 0) ?
+				 ((this->_settings.maxDepth < MAX_DEPTH) ? this->_settings.maxDepth : MAX_DEPTH) : MAX_DEPTH);
+				// Если глубина вложенности превышает допустимую
+				if(static_cast <uint32_t> (this->_stack.size() + 1) > depth)
+					// Выполняем объявление отказа разбора
+					return this->fail(error_t::DEPTH_EXCEEDED);
+				// Выполняем сдвиг смещения разбора
+				this->_offset = offset;
+				// Выполняем установку вида события начала значения
+				record.event = (text ? event_t::STRING_BEGIN : event_t::BLOB_BEGIN);
+				// Выполняем установку вида значения
+				record.type = segment;
+				// Выполняем установку признака неопределённой длины значения
+				record.indefinite = true;
+				// Выполняем выдачу события начала значения
+				this->emit(record);
+				// Заводимое звено стека вместимых
+				frame_t frame;
+				// Выполняем установку вида значения, собираемого кусками
+				frame.segment = segment;
+				// Выполняем установку признака неопределённой длины
+				frame.indefinite = true;
+				// Выполняем добавление звена в стек вместимых
+				this->_stack.push_back(frame);
+				// Сообщаем, что разбор успешен
+				return true;
+			}
+			/**
+			 * Если значение собирается кусками, кусок обязан быть того же вида
+			 */
+			if(!this->_stack.empty() && (this->_stack.back().segment != type_t::UNDEFINED) &&
+			   (this->_stack.back().segment != segment))
+				// Выполняем объявление отказа разбора
+				return this->fail(error_t::INVALID_SEGMENT);
 			// Выполняем получение предела длины значения
 			const uint64_t limit = (text ? this->_settings.maxString : this->_settings.maxBlob);
 			// Если длина значения превышает допустимую
@@ -430,14 +524,21 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 		/**
 		 * Если значение является вместимым
 		 */
-		case static_cast <uint8_t> (major_t::ARRAY):
-		case static_cast <uint8_t> (major_t::MAP): {
+		case static_cast <uint8_t> (group_t::ARRAY):
+		case static_cast <uint8_t> (group_t::MAP): {
 			// Признак того, что вместимое является отображением
-			const bool mapping = (unit.major == major_t::MAP);
+			const bool mapping = (unit.group == group_t::MAP);
 			// Если стек вместимых не пуст
 			if(!this->_stack.empty()){
 				// Выполняем получение верхнего звена стека вместимых
 				const frame_t & frame = this->_stack.back();
+				/**
+				 * Если вместимое стоит внутри значения, собираемого кусками: кусками
+				 * собираются лишь строка и двоичные данные, вместимого там быть не может
+				 */
+				if(frame.segment != type_t::UNDEFINED)
+					// Выполняем объявление отказа разбора
+					return this->fail(error_t::INVALID_SEGMENT);
 				// Если вместимое стоит именем поля отображения
 				if(frame.mapping && frame.expectKey)
 					// Выполняем объявление отказа разбора
@@ -486,7 +587,7 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 		/**
 		 * Если значение является одиночным
 		 */
-		case static_cast <uint8_t> (major_t::SINGLE): {
+		case static_cast <uint8_t> (group_t::SINGLE): {
 			/**
 			 * Определяем разновидность одиночного значения
 			 */
@@ -569,6 +670,26 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 						return this->fail(error_t::UNBALANCED_BREAK);
 					// Выполняем получение верхнего звена стека вместимых
 					const frame_t & frame = this->_stack.back();
+					/**
+					 * Если концом закрывается значение, собираемое кусками
+					 */
+					if(frame.segment != type_t::UNDEFINED){
+						// Признак того, что закрываемое значение является строкой
+						const bool string = (frame.segment == type_t::STRING);
+						// Выполняем сдвиг смещения разбора
+						this->_offset = offset;
+						// Выполняем снятие звена со стека вместимых
+						this->_stack.pop_back();
+						// Выполняем установку вида события конца значения
+						record.event = (string ? event_t::STRING_END : event_t::BLOB_END);
+						// Выполняем установку вида значения
+						record.type = (string ? type_t::STRING : type_t::BLOB);
+						/**
+						 * Выполняем учёт завершённого значения вместившим его: значение,
+						 * собранное кусками, есть одно значение, а не череда их
+						 */
+						return this->finalize(record);
+					}
 					// Если длина вместимого объявлена
 					if(!frame.indefinite)
 						// Выполняем объявление отказа разбора
@@ -622,7 +743,7 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 		/**
 		 * Если значение является расширением
 		 */
-		case static_cast <uint8_t> (major_t::EXTEND): {
+		case static_cast <uint8_t> (group_t::EXTEND): {
 			// Выполняем сдвиг смещения разбора
 			this->_offset = offset;
 			// Выполняем установку разновидности ожидаемого расширения
@@ -661,6 +782,10 @@ bool awh::codec::abc::Reader::process() noexcept {
 			 * Если ожидается ведущий октет очередной единицы
 			 */
 			case static_cast <uint8_t> (state_t::ITEM): {
+				// Выполняем установку смещения начала разбираемой единицы
+				this->_mark.offset = (this->_origin + static_cast <uint64_t> (this->_offset));
+				// Выполняем установку глубины вложенности разбираемой единицы
+				this->_mark.depth = static_cast <uint32_t> (this->_stack.size());
 				// Признак того, что единицу разобрать не удалось
 				bool done = false;
 				// Если разбор очередной единицы отвечен отказом
@@ -706,6 +831,18 @@ bool awh::codec::abc::Reader::process() noexcept {
 				this->_pending = 0;
 				// Выполняем перевод разбора в ожидание очередной единицы
 				this->_state = state_t::ITEM;
+				/**
+				 * Если значение собирается кусками, кусок выдаётся сам по себе.
+				 *
+				 * Учитывать его вместившим нельзя: значений у вместившего от того
+				 * прибавилось бы, а кусок есть часть значения, а не значение
+				 */
+				if(!this->_stack.empty() && (this->_stack.back().segment != type_t::UNDEFINED)){
+					// Выполняем выдачу события куска значения
+					this->emit(record);
+					// Прекращаем разбор куска значения
+					break;
+				}
 				// Если выдача события завершённого значения отвечена отказом
 				if(!this->settle(record))
 					// Сообщаем, что разбор отвечен отказом
@@ -786,6 +923,18 @@ bool awh::codec::abc::Reader::process() noexcept {
 				this->_pending = 0;
 				// Выполняем перевод разбора в ожидание очередной единицы
 				this->_state = state_t::ITEM;
+				/**
+				 * Если значение собирается кусками, кусок выдаётся сам по себе.
+				 *
+				 * Учитывать его вместившим нельзя: значений у вместившего от того
+				 * прибавилось бы, а кусок есть часть значения, а не значение
+				 */
+				if(!this->_stack.empty() && (this->_stack.back().segment != type_t::UNDEFINED)){
+					// Выполняем выдачу события куска значения
+					this->emit(record);
+					// Прекращаем разбор куска значения
+					break;
+				}
 				// Если выдача события завершённого значения отвечена отказом
 				if(!this->settle(record))
 					// Сообщаем, что разбор отвечен отказом
@@ -811,7 +960,7 @@ bool awh::codec::abc::Reader::process() noexcept {
 					return this->fail(error_t::INVALID_DECIMAL);
 				}
 				// Если десятичный порядок является целым без знака
-				if(unit.major == major_t::UNSIGNED){
+				if(unit.group == group_t::UNSIGNED){
 					// Если порядок видом целого со знаком не представим
 					if(unit.value > static_cast <uint64_t> (numeric_limits <int64_t>::max()))
 						// Выполняем объявление отказа разбора
@@ -819,7 +968,7 @@ bool awh::codec::abc::Reader::process() noexcept {
 					// Выполняем установку десятичного порядка величины
 					this->_exponent = static_cast <int64_t> (unit.value);
 				// Если десятичный порядок является целым со знаком
-				} else if(unit.major == major_t::NEGATIVE) {
+				} else if(unit.group == group_t::NEGATIVE) {
 					// Если обратить запись дополнения до −1 не удалось
 					if(!abc::negative(unit.value, this->_exponent))
 						// Выполняем объявление отказа разбора
@@ -851,7 +1000,7 @@ bool awh::codec::abc::Reader::process() noexcept {
 					return this->fail(error_t::INVALID_BIGNUM);
 				}
 				// Если на месте длины октетов величины стоит иное
-				if(unit.major != major_t::UNSIGNED)
+				if(unit.group != group_t::UNSIGNED)
 					// Выполняем объявление отказа разбора
 					return this->fail(error_t::INVALID_BIGNUM);
 				// Выполняем сдвиг смещения разбора
@@ -916,6 +1065,18 @@ bool awh::codec::abc::Reader::process() noexcept {
 				this->_pending = 0;
 				// Выполняем перевод разбора в ожидание очередной единицы
 				this->_state = state_t::ITEM;
+				/**
+				 * Если значение собирается кусками, кусок выдаётся сам по себе.
+				 *
+				 * Учитывать его вместившим нельзя: значений у вместившего от того
+				 * прибавилось бы, а кусок есть часть значения, а не значение
+				 */
+				if(!this->_stack.empty() && (this->_stack.back().segment != type_t::UNDEFINED)){
+					// Выполняем выдачу события куска значения
+					this->emit(record);
+					// Прекращаем разбор куска значения
+					break;
+				}
 				// Если выдача события завершённого значения отвечена отказом
 				if(!this->settle(record))
 					// Сообщаем, что разбор отвечен отказом
@@ -986,10 +1147,6 @@ bool awh::codec::abc::Reader::feed(const void * buffer, const size_t size, const
 	if(!this->process())
 		// Сообщаем, что разбор отвечен отказом
 		return false;
-	// Выполняем установку положения разбора в поданной записи
-	this->_location.offset = (this->_origin + static_cast <uint64_t> (this->_offset));
-	// Выполняем установку глубины вложенности разбора
-	this->_location.depth = static_cast <uint32_t> (this->_stack.size());
 	// Если поданный кусок записи последний
 	if(last){
 		// Если разбор оборвался посреди значения
@@ -1025,6 +1182,12 @@ bool awh::codec::abc::Reader::next() noexcept {
 	this->_current = this->_events.front();
 	// Выполняем удаление события из очереди выдачи
 	this->_events.pop_front();
+	/**
+	 * Выполняем установку положения разбора местом снятого события: место берётся
+	 * событием, а не состоянием разбирателя, иначе оно разошлось бы от одной лишь
+	 * нарезки записи на куски
+	 */
+	this->_location = this->_current.location;
 	// Сообщаем, что событие снято
 	return true;
 }
@@ -1114,7 +1277,7 @@ const awh::codec::abc::location_t & awh::codec::abc::Reader::location() const no
  */
 uint32_t awh::codec::abc::Reader::depth() const noexcept {
 	// Выводим глубину вложенности разбора
-	return static_cast <uint32_t> (this->_stack.size());
+	return this->_location.depth;
 }
 /**
  * @brief Метод извлечения настроек разбора записи

@@ -100,6 +100,13 @@ bool awh::codec::abc::Writer::prepare(const bool container) noexcept {
 		return true;
 	// Выполняем получение верхнего звена стека вместимых
 	const frame_t & frame = this->_stack.back();
+	/**
+	 * Если значение собирается кусками, всякое иное значение внутри него негодно:
+	 * куски ложатся своим путём и сюда не приходят
+	 */
+	if(frame.segment != type_t::UNDEFINED)
+		// Выполняем объявление отказа сборки
+		return this->fail(error_t::INVALID_SEGMENT);
 	// Если ожидается имя поля отображения
 	if(frame.mapping && frame.expectKey){
 		// Если именем поля стоит вместимое
@@ -211,13 +218,13 @@ bool awh::codec::abc::Writer::open(const bool mapping, const uint64_t count, con
 		// Выполняем объявление отказа сборки
 		return this->fail(error_t::DEPTH_EXCEEDED);
 	// Выполняем получение крупного вида укладываемого вместимого
-	const major_t major = (mapping ? major_t::MAP : major_t::ARRAY);
+	const group_t group = (mapping ? group_t::MAP : group_t::ARRAY);
 	// Если длина вместимого неопределённая
 	if(indefinite)
 		// Выполняем укладку метки неопределённой длины
-		abc::mark(this->_record, major, static_cast <uint8_t> (single_t::BREAK));
+		abc::mark(this->_record, group, static_cast <uint8_t> (single_t::BREAK));
 	// Выполняем укладку метки вместе с объявленной длиной
-	else abc::put(this->_record, major, count);
+	else abc::put(this->_record, group, count);
 	// Заводимое звено стека вместимых
 	frame_t frame;
 	// Выполняем установку признака отображения
@@ -272,7 +279,7 @@ bool awh::codec::abc::Writer::close(const bool mapping) noexcept {
 	// Если длина вместимого неопределённая
 	if(indefinite)
 		// Выполняем укладку конца вместимого
-		abc::mark(this->_record, major_t::SINGLE, static_cast <uint8_t> (single_t::BREAK));
+		abc::mark(this->_record, group_t::SINGLE, static_cast <uint8_t> (single_t::BREAK));
 	// Выполняем учёт закрытого вместимого значением вместившего
 	return this->account(start);
 }
@@ -290,7 +297,7 @@ bool awh::codec::abc::Writer::nul() noexcept {
 	// Выполняем получение смещения начала записи значения
 	const size_t start = this->_record.size();
 	// Выполняем укладку пустого значения
-	abc::mark(this->_record, major_t::SINGLE, static_cast <uint8_t> (single_t::NUL));
+	abc::mark(this->_record, group_t::SINGLE, static_cast <uint8_t> (single_t::NUL));
 	// Выполняем учёт уложенного значения
 	return this->account(start);
 }
@@ -309,7 +316,7 @@ bool awh::codec::abc::Writer::boolean(const bool value) noexcept {
 	// Выполняем получение смещения начала записи значения
 	const size_t start = this->_record.size();
 	// Выполняем укладку логического значения
-	abc::mark(this->_record, major_t::SINGLE,
+	abc::mark(this->_record, group_t::SINGLE,
 	 static_cast <uint8_t> (value ? single_t::TRUE : single_t::FALSE));
 	// Выполняем учёт уложенного значения
 	return this->account(start);
@@ -348,7 +355,7 @@ bool awh::codec::abc::Writer::number(const uint64_t value) noexcept {
 	// Выполняем получение смещения начала записи значения
 	const size_t start = this->_record.size();
 	// Выполняем укладку целого числа без знака
-	abc::put(this->_record, major_t::UNSIGNED, value);
+	abc::put(this->_record, group_t::UNSIGNED, value);
 	// Выполняем учёт уложенного значения
 	return this->account(start);
 }
@@ -398,8 +405,19 @@ bool awh::codec::abc::Writer::number(const float value) noexcept {
  *
  */
 bool awh::codec::abc::Writer::text(const string_view value) noexcept {
+	/**
+	 * Выполняем получение признака куска собираемого значения: внутри строки,
+	 * собираемой кусками, всякая строка есть кусок её, а не отдельное значение
+	 */
+	const bool chunk = (!this->_stack.empty() && (this->_stack.back().segment != type_t::UNDEFINED));
+	/**
+	 * Если кусок ложится внутрь двоичных данных, собираемых кусками
+	 */
+	if(chunk && (this->_stack.back().segment != type_t::STRING))
+		// Выполняем объявление отказа сборки
+		return this->fail(error_t::INVALID_SEGMENT);
 	// Если место укладки значения негодно
-	if(!this->prepare(false))
+	if(!chunk && !this->prepare(false))
 		// Сообщаем, что сборка отвечена отказом
 		return false;
 	// Если строку следует проверить на соответствие кодировке
@@ -414,7 +432,7 @@ bool awh::codec::abc::Writer::text(const string_view value) noexcept {
 	// Выполняем получение смещения начала записи значения
 	const size_t start = this->_record.size();
 	// Выполняем укладку метки строки вместе с её длиной
-	abc::put(this->_record, major_t::STRING, static_cast <uint64_t> (value.size()));
+	abc::put(this->_record, group_t::STRING, static_cast <uint64_t> (value.size()));
 	// Если строка не пуста
 	if(!value.empty()){
 		// Выполняем получение указателя на октеты строки
@@ -422,6 +440,13 @@ bool awh::codec::abc::Writer::text(const string_view value) noexcept {
 		// Выполняем укладку октетов строки
 		this->_record.insert(this->_record.end(), octets, octets + value.size());
 	}
+	/**
+	 * Если уложен кусок собираемого значения, учитывать его вместившим нельзя:
+	 * кусок есть часть значения, а не значение
+	 */
+	if(chunk)
+		// Сообщаем, что укладка куска успешна
+		return true;
 	// Выполняем учёт уложенного значения
 	return this->account(start);
 }
@@ -434,8 +459,16 @@ bool awh::codec::abc::Writer::text(const string_view value) noexcept {
  *
  */
 bool awh::codec::abc::Writer::blob(const void * buffer, const size_t size) noexcept {
+	// Выполняем получение признака куска собираемого значения
+	const bool chunk = (!this->_stack.empty() && (this->_stack.back().segment != type_t::UNDEFINED));
+	/**
+	 * Если кусок ложится внутрь строки, собираемой кусками
+	 */
+	if(chunk && (this->_stack.back().segment != type_t::BLOB))
+		// Выполняем объявление отказа сборки
+		return this->fail(error_t::INVALID_SEGMENT);
 	// Если место укладки значения негодно
-	if(!this->prepare(false))
+	if(!chunk && !this->prepare(false))
 		// Сообщаем, что сборка отвечена отказом
 		return false;
 	// Если буфер укладываемых данных не существует, а октеты объявлены
@@ -445,7 +478,7 @@ bool awh::codec::abc::Writer::blob(const void * buffer, const size_t size) noexc
 	// Выполняем получение смещения начала записи значения
 	const size_t start = this->_record.size();
 	// Выполняем укладку метки двоичных данных вместе с их длиной
-	abc::put(this->_record, major_t::BLOB, static_cast <uint64_t> (size));
+	abc::put(this->_record, group_t::BLOB, static_cast <uint64_t> (size));
 	// Если укладываемые данные не пусты
 	if(size > 0){
 		// Выполняем получение указателя на октеты данных
@@ -453,6 +486,12 @@ bool awh::codec::abc::Writer::blob(const void * buffer, const size_t size) noexc
 		// Выполняем укладку октетов данных
 		this->_record.insert(this->_record.end(), octets, octets + size);
 	}
+	/**
+	 * Если уложен кусок собираемого значения, учитывать его вместившим нельзя
+	 */
+	if(chunk)
+		// Сообщаем, что укладка куска успешна
+		return true;
 	// Выполняем учёт уложенного значения
 	return this->account(start);
 }
@@ -471,7 +510,7 @@ bool awh::codec::abc::Writer::timestamp(const int64_t value) noexcept {
 	// Выполняем получение смещения начала записи значения
 	const size_t start = this->_record.size();
 	// Выполняем укладку метки отметки времени
-	abc::mark(this->_record, major_t::SINGLE, static_cast <uint8_t> (single_t::TIME));
+	abc::mark(this->_record, group_t::SINGLE, static_cast <uint8_t> (single_t::TIME));
 	// Выполняем укладку значения отметки времени
 	abc::fixed(this->_record, static_cast <uint64_t> (value), static_cast <uint8_t> (TIME_WIDTH));
 	// Выполняем учёт уложенного значения
@@ -501,7 +540,7 @@ bool awh::codec::abc::Writer::uuid(const void * buffer, const size_t size) noexc
 	// Выполняем получение смещения начала записи значения
 	const size_t start = this->_record.size();
 	// Выполняем укладку метки опознавателя
-	abc::mark(this->_record, major_t::SINGLE, static_cast <uint8_t> (single_t::UUID));
+	abc::mark(this->_record, group_t::SINGLE, static_cast <uint8_t> (single_t::UUID));
 	// Выполняем получение указателя на октеты опознавателя
 	const uint8_t * octets = reinterpret_cast <const uint8_t *> (buffer);
 	// Выполняем укладку октетов опознавателя
@@ -556,14 +595,14 @@ bool awh::codec::abc::Writer::decimal(const void * buffer, const size_t size, co
 	// Выполняем получение смещения начала записи значения
 	const size_t start = this->_record.size();
 	// Выполняем укладку метки расширения
-	abc::mark(this->_record, major_t::EXTEND,
+	abc::mark(this->_record, group_t::EXTEND,
 	 static_cast <uint8_t> (fraction ? extend_t::DECIMAL : extend_t::BIGNUM));
 	// Если число является десятичным
 	if(fraction)
 		// Выполняем укладку десятичного порядка величины
 		abc::integer(this->_record, exponent);
 	// Выполняем укладку длины октетов величины
-	abc::put(this->_record, major_t::UNSIGNED, static_cast <uint64_t> (size));
+	abc::put(this->_record, group_t::UNSIGNED, static_cast <uint64_t> (size));
 	// Выполняем укладку знака величины
 	this->_record.push_back(static_cast <uint8_t> (negative ? 1 : 0));
 	// Если октеты величины не пусты
@@ -572,6 +611,129 @@ bool awh::codec::abc::Writer::decimal(const void * buffer, const size_t size, co
 		this->_record.insert(this->_record.end(), octets, octets + size);
 	// Выполняем учёт уложенного значения
 	return this->account(start);
+}
+/**
+ * @brief Метод начала значения, собираемого кусками
+ *
+ * @param string признак того, что собирается строка, а не двоичные данные
+ * @return       признак успешности укладки
+ *
+ */
+bool awh::codec::abc::Writer::segment(const bool string) noexcept {
+	// Если место укладки значения негодно
+	if(!this->prepare(false))
+		// Сообщаем, что сборка отвечена отказом
+		return false;
+	/**
+	 * Если вид записи строгий, неопределённая длина отвергается: длина обязана быть
+	 * объявлена, иначе запись одного и того же значения выйдет разной
+	 */
+	if(this->_settings.canonical)
+		// Выполняем объявление отказа сборки
+		return this->fail(error_t::INDEFINITE_REFUSED);
+	/**
+	 * Если значение стоит именем поля отображения: имя обязано быть цельным, иначе
+	 * сличение имён по записи станет невозможным
+	 */
+	if(!this->_stack.empty()){
+		// Выполняем получение верхнего звена стека вместимых
+		const frame_t & frame = this->_stack.back();
+		// Если ожидается имя поля отображения
+		if(frame.mapping && frame.expectKey)
+			// Выполняем объявление отказа сборки
+			return this->fail(error_t::INVALID_KEY);
+	}
+	// Выполняем получение предела глубины вложенности
+	const uint32_t limit = ((this->_settings.maxDepth > 0) ?
+	 ((this->_settings.maxDepth < MAX_DEPTH) ? this->_settings.maxDepth : MAX_DEPTH) : MAX_DEPTH);
+	// Если глубина вложенности превышает допустимую
+	if(static_cast <uint32_t> (this->_stack.size() + 1) > limit)
+		// Выполняем объявление отказа сборки
+		return this->fail(error_t::DEPTH_EXCEEDED);
+	// Выполняем укладку метки значения неопределённой длины
+	abc::mark(this->_record, (string ? group_t::STRING : group_t::BLOB),
+	 static_cast <uint8_t> (single_t::BREAK));
+	// Заводимое звено стека вместимых
+	frame_t frame;
+	// Выполняем установку вида значения, собираемого кусками
+	frame.segment = (string ? type_t::STRING : type_t::BLOB);
+	// Выполняем установку признака неопределённой длины
+	frame.indefinite = true;
+	// Выполняем добавление звена в стек вместимых
+	this->_stack.push_back(frame);
+	// Сообщаем, что укладка успешна
+	return true;
+}
+/**
+ * @brief Метод конца значения, собираемого кусками
+ *
+ * @param string признак того, что собирается строка, а не двоичные данные
+ * @return       признак успешности укладки
+ *
+ */
+bool awh::codec::abc::Writer::segmentEnd(const bool string) noexcept {
+	// Если сборка уже отвечена отказом
+	if(this->_failed)
+		// Сообщаем, что сборка отвечена отказом
+		return false;
+	/**
+	 * Если стек вместимых пуст либо закрывается не значение, собираемое кусками
+	 */
+	if(this->_stack.empty() || (this->_stack.back().segment !=
+	 (string ? type_t::STRING : type_t::BLOB)))
+		// Выполняем объявление отказа сборки
+		return this->fail(error_t::UNBALANCED_CONTAINER);
+	// Выполняем снятие звена со стека вместимых
+	this->_stack.pop_back();
+	// Выполняем получение смещения начала записи конца значения
+	const size_t start = this->_record.size();
+	// Выполняем укладку конца значения, собираемого кусками
+	abc::mark(this->_record, group_t::SINGLE, static_cast <uint8_t> (single_t::BREAK));
+	/**
+	 * Выполняем учёт уложенного значения: значение, собранное кусками, есть одно
+	 * значение вместившего, а не череда их
+	 */
+	return this->account(start);
+}
+/**
+ * @brief Метод начала строки, собираемой кусками
+ *
+ * @return признак успешности укладки
+ *
+ */
+bool awh::codec::abc::Writer::textBegin() noexcept {
+	// Выводим результат начала строки, собираемой кусками
+	return this->segment(true);
+}
+/**
+ * @brief Метод конца строки, собираемой кусками
+ *
+ * @return признак успешности укладки
+ *
+ */
+bool awh::codec::abc::Writer::textEnd() noexcept {
+	// Выводим результат конца строки, собираемой кусками
+	return this->segmentEnd(true);
+}
+/**
+ * @brief Метод начала двоичных данных, собираемых кусками
+ *
+ * @return признак успешности укладки
+ *
+ */
+bool awh::codec::abc::Writer::blobBegin() noexcept {
+	// Выводим результат начала двоичных данных, собираемых кусками
+	return this->segment(false);
+}
+/**
+ * @brief Метод конца двоичных данных, собираемых кусками
+ *
+ * @return признак успешности укладки
+ *
+ */
+bool awh::codec::abc::Writer::blobEnd() noexcept {
+	// Выводим результат конца двоичных данных, собираемых кусками
+	return this->segmentEnd(false);
 }
 /**
  * @brief Метод укладки начала массива объявленной длины

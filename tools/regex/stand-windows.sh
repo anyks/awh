@@ -109,7 +109,8 @@ ICON="Icon$(printf '\r')"
 # shellcheck disable=SC2086
 tar --format ustar -czf - -C "$ROOT" --exclude "$ICON" \
 	$STAND_HEADERS $STAND_SOURCES $STAND_TOOLS \
-	tools/regex/sources.list tools/regex/stand.bat $EXTRA \
+	tools/regex/sources.list tools/regex/stand.bat \
+	tools/regex/preserving-x64.asm tools/regex/preserving-arm64.asm $EXTRA \
 	| ssh -p "$PORT" "$TARGET" "
 		cmd.exe //c \"rmdir /s /q %USERPROFILE%\\\\$REMOTE 2>nul & mkdir %USERPROFILE%\\\\$REMOTE\" > /dev/null 2>&1
 		cd ~/$REMOTE && tar xzf -

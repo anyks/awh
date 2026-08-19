@@ -120,6 +120,37 @@ bool awh::codec::abc::Merkle::add(const void * buffer, const size_t size) noexce
  * @return       признак успешно сведённого дерева
  *
  */
+bool awh::codec::abc::Merkle::root(vector <uint8_t> & result, const void * buffer, const size_t size) const noexcept {
+	// Выполняем очистку буфера корня дерева
+	result.clear();
+	/**
+	 * Если модуль шифрования не отдан либо приданный кадр не передан
+	 */
+	if((this->_crypto == nullptr) || (buffer == nullptr) || (size == 0))
+		// Выводим признак неудачного сведения дерева
+		return false;
+	// Дерево свёрток с приданным кадром
+	Merkle merkle;
+	// Выполняем установку модуля шифрования дереву свёрток
+	merkle.crypto(this->_crypto);
+	// Выполняем перенесение свёрток нынешнего дерева
+	merkle._leaves = this->_leaves;
+	/**
+	 * Если внести приданный кадр свёрткой в дерево не вышло
+	 */
+	if(!merkle.add(buffer, size))
+		// Выводим признак неудачного сведения дерева
+		return false;
+	// Выводим результат сведения дерева с приданной свёрткой к корню
+	return merkle.root(result);
+}
+/**
+ * @brief Метод сведения дерева к корню
+ *
+ * @param result буфер, куда следует положить корень дерева
+ * @return       признак успешно сведённого дерева
+ *
+ */
 bool awh::codec::abc::Merkle::root(vector <uint8_t> & result) const noexcept {
 	// Выполняем очистку буфера корня дерева
 	result.clear();

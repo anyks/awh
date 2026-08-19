@@ -3635,7 +3635,6 @@ namespace io {
 		net::socket_t fd;
 		// Флаги активированных событий файла
 		uint16_t actions;
-		// Название сетевого интерфейса
 		/**
 		 * Признак того, что вытягивание данных из источника ведётся
 		 *
@@ -3646,6 +3645,7 @@ namespace io {
 		 *       источника признак НЕ снимает - движок вернётся к нему на сливе очереди
 		 */
 		bool pulling;
+		// Название сетевого интерфейса
 		string iface;
 		// Очередь отправки данных
 		net_queue_t queue;
@@ -43787,8 +43787,15 @@ bool awh::engine::IO::rebuild(const event::id_t id) noexcept {
 				size_t readBuffer = 0, writeBuffer = 0;
 				// Если действующий дескриптор присутствует - снимаем снимок состояния, живущего на дескрипторе
 				if(present){
-					// Снимаем название привязанного сетевого интерфейса
-					iface = ::move(this->getIface(id));
+					/**
+					 * Снимается устройство НАЗВАННОЕ, а не выданное getIface(id)
+					 *
+					 * @warning getIface() при неназванном устройстве отдаёт устройство
+					 *          маршрута по умолчанию, и перестройка привязывала узел к
+					 *          нему - к устройству, какого никто не называл. На машине
+					 *          с VPN это туннель, и узел после перестройки уходил туда
+					 */
+					iface.assign(client->iface.begin(), client->iface.end());
 					// Снимаем размер буфера приёма
 					readBuffer = this->getBufferSize(id, event::action_t::READ);
 					// Снимаем размер буфера отправки
@@ -43964,8 +43971,15 @@ bool awh::engine::IO::rebuild(const event::id_t id) noexcept {
 				size_t readBuffer = 0, writeBuffer = 0;
 				// Если действующий дескриптор присутствует
 				if(present){
-					// Снимаем название привязанного сетевого интерфейса
-					iface = ::move(this->getIface(id));
+					/**
+					 * Снимается устройство НАЗВАННОЕ, а не выданное getIface(id)
+					 *
+					 * @warning getIface() при неназванном устройстве отдаёт устройство
+					 *          маршрута по умолчанию, и перестройка привязывала узел к
+					 *          нему - к устройству, какого никто не называл. На машине
+					 *          с VPN это туннель, и узел после перестройки уходил туда
+					 */
+					iface.assign(server->iface.begin(), server->iface.end());
 					// Снимаем размер буфера приёма
 					readBuffer = this->getBufferSize(id, event::action_t::READ);
 					// Снимаем размер буфера отправки
@@ -44420,19 +44434,21 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 								 * Устройство выхода групповой рассылки задаётся отдельной
 								 * настройкой гнезда: привязка его не задаёт, и рассылка без
 								 * неё уходит туда, куда укажет таблица маршрутов
+								 *
+								 * @note Имя названного устройства запоминается ВСЕГДА, а не
+								 *       при уже заданном режиме рассылки: порядок вызовов
+								 *       произволен, и прежде имя терялось, когда устройство
+								 *       называли раньше режима. Режим потом забирал его у
+								 *       getIface(), а тот при неназванном устройстве отдаёт
+								 *       устройство маршрута по умолчанию - на машине с VPN
+								 *       это туннель
 								 */
-								if(client->state.delivery == event::delivery_mode_t::MULTICAST)
+								// Запоминаем названное устройство групповой рассылки
+								client->iface.assign(src.iface.begin(), src.iface.end());
+								// Если режим групповой рассылки задан, а гнездо уже заведено
+								if((client->state.delivery == event::delivery_mode_t::MULTICAST) && (client->transfer.fd != net::invalid_socket_t))
 									// Устанавливаем устройство выхода групповой рассылки
-									{
-										// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
-										if(client->transfer.fd != net::invalid_socket_t)
-											result = this->_eth.socket.setMulticastIface(client->transfer.fd, client->state.family, src.iface);
-										// Запоминаем устройство групповой рассылки до фиксации настроек
-										else {
-											client->iface.assign(src.iface.begin(), src.iface.end());
-											result = true;
-										}
-									}
+									result = this->_eth.socket.setMulticastIface(client->transfer.fd, client->state.family, client->iface);
 							// Если IP-адрес не получен
 							} else {
 								// Если установлена функция обратного вызова
@@ -44499,19 +44515,21 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 								 * Устройство выхода групповой рассылки задаётся отдельной
 								 * настройкой гнезда: привязка его не задаёт, и рассылка без
 								 * неё уходит туда, куда укажет таблица маршрутов
+								 *
+								 * @note Имя названного устройства запоминается ВСЕГДА, а не
+								 *       при уже заданном режиме рассылки: порядок вызовов
+								 *       произволен, и прежде имя терялось, когда устройство
+								 *       называли раньше режима. Режим потом забирал его у
+								 *       getIface(), а тот при неназванном устройстве отдаёт
+								 *       устройство маршрута по умолчанию - на машине с VPN
+								 *       это туннель
 								 */
-								if(client->state.delivery == event::delivery_mode_t::MULTICAST)
+								// Запоминаем названное устройство групповой рассылки
+								client->iface.assign(src.iface.begin(), src.iface.end());
+								// Если режим групповой рассылки задан, а гнездо уже заведено
+								if((client->state.delivery == event::delivery_mode_t::MULTICAST) && (client->transfer.fd != net::invalid_socket_t))
 									// Устанавливаем устройство выхода групповой рассылки
-									{
-										// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
-										if(client->transfer.fd != net::invalid_socket_t)
-											result = this->_eth.socket.setMulticastIface(client->transfer.fd, client->state.family, src.iface);
-										// Запоминаем устройство групповой рассылки до фиксации настроек
-										else {
-											client->iface.assign(src.iface.begin(), src.iface.end());
-											result = true;
-										}
-									}
+									result = this->_eth.socket.setMulticastIface(client->transfer.fd, client->state.family, client->iface);
 							// Если IP-адрес не получен
 							} else {
 								// Если установлена функция обратного вызова
@@ -65666,23 +65684,17 @@ bool awh::engine::IO::setDelivery(const event::id_t id, const event::delivery_mo
 					 *       установке устройства - когда режим назвали прежде него
 					 *
 					 */
-					if(delivery == event::delivery_mode_t::MULTICAST){
-						// Получаем название устройства, заданного событию
-						const string & iface = this->getIface(id);
-						// Если устройство событию задано
-						if(!iface.empty())
-							// Устанавливаем устройство выхода групповой рассылки
-							{
-								// Сокет заводится фиксацией настроек: пока его нет, устройство лишь запомнено
-								if(client->transfer.fd != net::invalid_socket_t)
-									return this->_eth.socket.setMulticastIface(client->transfer.fd, client->state.family, iface);
-								// Запоминаем устройство групповой рассылки до фиксации настроек
-								else {
-									client->iface.assign(iface.begin(), iface.end());
-									return true;
-								}
-							}
-					}
+					/**
+					 * @warning Устройство берётся НАЗВАННОЕ, а не выданное getIface(id):
+					 *          тот при неназванном устройстве отдаёт устройство маршрута
+					 *          по умолчанию, и на машине с VPN настройка выставлялась
+					 *          туннелем - рассылка уходила туда, куда её никто не посылал.
+					 *          Пользователь, назвавший 0.0.0.0, просит отдать выбор ядру:
+					 *          не назвали устройства - настройку гнезда не ставить вовсе
+					 */
+					if((delivery == event::delivery_mode_t::MULTICAST) && !client->iface.empty() && (client->transfer.fd != net::invalid_socket_t))
+						// Устанавливаем устройство выхода групповой рассылки
+						return this->_eth.socket.setMulticastIface(client->transfer.fd, client->state.family, client->iface);
 					// Выводим результат
 					return true;
 				}

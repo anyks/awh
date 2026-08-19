@@ -824,6 +824,18 @@ namespace awh {
 					 *       стандарт зовёт такое приведение неопределённым поведением, а
 					 *       неопределённого поведения в кодеке не будет
 					 *
+					 * @note Целое, не помещающееся в затребованный целый вид, ЗАВОРАЧИВАЕТСЯ
+					 *       по правилам самого языка, а не огранивается пределом: приведение
+					 *       это языком определено, и выдумывать поверх него нечего. Огранение
+					 *       заведено лишь у дробного, и заведено по необходимости - там
+					 *       приведение языком не определено вовсе. Правило это одно на все три
+					 *       поверхности извлечения: дерево, узел дерева и владеющее значение
+					 *
+					 * @warning Ни то, ни другое отказом не является: извлечение непомещающегося
+					 *          числа выдаёт признак успеха. Потребителю, которому важна
+					 *          сохранность величины, надлежит брать вид пошире либо запись
+					 *          числа целиком
+					 *
 					 * @param result переменная, куда помещается извлечённое значение
 					 * @return       признак успешности извлечения
 					 *
@@ -837,6 +849,15 @@ namespace awh {
 					 *       integer kind is issued as the limit of that kind, while `NaN` — as a zero:
 					 *       the standard calls such a casting an undefined behaviour, and
 					 *       there will be no undefined behaviour in the codec
+					 * @note An integer not fitting into the demanded integer kind is WRAPPED by the rules
+					 *       of the language itself rather than clamped to the limit: that casting is defined by
+					 *       the language, and there is nothing to invent on top of it. The clamping is arranged
+					 *       only for a fractional number, and arranged out of necessity — there the casting is
+					 *       not defined by the language at all. This rule is one and the same for all the three
+					 *       surfaces of the extraction: the tree, a node of the tree and an owning value
+					 * @warning Neither of the two is a refusal: the extraction of a number that does not fit
+					 *          issues a sign of success. A consumer to whom the preservation of the magnitude
+					 *          matters ought to take a wider kind or the record of the number as a whole
 					 * @param result variable where the extracted value is placed
 					 * @return sign of the success of the extraction
 					 *

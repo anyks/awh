@@ -356,7 +356,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool append(const value_t & value, const payload_t kind = payload_t::MIXED) noexcept;
+					[[nodiscard]] bool append(const value_t & value, const payload_t kind = payload_t::MIXED) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод внесения готовой записи контейнера
@@ -380,7 +380,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool append(const void * buffer, const size_t size, const payload_t kind = payload_t::MIXED) noexcept;
+					[[nodiscard]] bool append(const void * buffer, const size_t size, const payload_t kind = payload_t::MIXED) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -394,7 +394,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool flush() noexcept;
+					[[nodiscard]] bool flush() noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод завершения сборки контейнера
@@ -409,7 +409,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool complete(vector <uint8_t> & result) noexcept;
+					[[nodiscard]] bool complete(vector <uint8_t> & result) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод сброса состояния сборки контейнера
@@ -641,7 +641,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool feed(const void * buffer, const size_t size) noexcept;
+					[[nodiscard]] bool feed(const void * buffer, const size_t size) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод выдачи содержимого очередного кадра
@@ -658,7 +658,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool next(vector <uint8_t> & result, chunk_t & chunk) noexcept;
+					[[nodiscard]] bool next(vector <uint8_t> & result, chunk_t & chunk) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод сброса состояния снятия контейнера
@@ -683,7 +683,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool ready() const noexcept;
+					[[nodiscard]] bool ready() const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод извлечения снятого заголовка опознания контейнера
@@ -779,7 +779,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			__AWH_SHARED_EXPORT__ bool verify(const crypto_t & crypto, const string & name,
+			[[nodiscard]] __AWH_SHARED_EXPORT__ bool verify(const crypto_t & crypto, const string & name,
 			 const void * buffer, const size_t size, error_t & error) noexcept;
 		};
 	};

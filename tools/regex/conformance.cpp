@@ -114,9 +114,22 @@
  */
 #if (defined(__GNUC__) || defined(__clang__)) && !defined(_MSC_VER)
 	#define AWH_PRESERVING_ASM 1
+	#define AWH_PRESERVING_INLINE 1
+#elif defined(AWH_PRESERVING_EXTERN)
+	/**
+	 * Признак доступности обёртки вызова, отдельным файлом размещённой
+	 *
+	 * @details Связка вооружения Visual Studio вставок не имеет, отчего обёртка
+	 *          собирается отдельным файлом на языке ассемблера -
+	 *          tools/regex/preserving-x64.asm либо tools/regex/preserving-arm64.asm, -
+	 *          и признак этот заводится сборкой стенда при их приложении.
+	 *          Тело их повторяет вставку слово в слово.
+	 *
+	 */
+	#define AWH_PRESERVING_ASM 1
 #endif
 
-#if defined(AWH_PRESERVING_ASM) && (defined(__aarch64__) || defined(_M_ARM64))
+#if defined(AWH_PRESERVING_INLINE) && (defined(__aarch64__) || defined(_M_ARM64))
 	/**
 	 * Имя обёртки вызова
 	 *
@@ -210,7 +223,7 @@
 	 */
 	extern "C" uint64_t awh_regex_preserving(const void * entry, const char * text,
 	 size_t size, size_t start, size_t * bounds, const void ** ctx);
-#elif defined(AWH_PRESERVING_ASM) && (defined(__x86_64__) || defined(_M_X64))
+#elif defined(AWH_PRESERVING_INLINE) && (defined(__x86_64__) || defined(_M_X64))
 	#if defined(_WIN32)
 		/**
 		 * Размещаем обёртку вызова соглашения Windows
@@ -299,6 +312,26 @@
 	 *          совпадение её с суммой укладываемых примет означает сохранность
 	 *          всех оберегаемых регистров, а расхождение - затирание хотя бы
 	 *          одного.
+	 *
+	 * @param entry  адрес вызываемого порождённого кода
+	 * @param text   текст сопоставления
+	 * @param size   размер текста сопоставления
+	 * @param start  позиция начала попытки сопоставления
+	 * @param bounds набор границ совпадения
+	 * @param ctx    таблица адресов обстановки исполнения
+	 * @return       сумма примет оберегаемых регистров по возвращении
+	 *
+	 */
+	extern "C" uint64_t awh_regex_preserving(const void * entry, const char * text,
+	 size_t size, size_t start, size_t * bounds, const void ** ctx);
+#elif defined(AWH_PRESERVING_ASM)
+	/**
+	 * @brief Функция вызова с укладкой примет в оберегаемые регистры
+	 *
+	 * @details Обёртка размещена отдельным файлом на языке ассемблера, вставок
+	 *          не допускающей связкой вооружения ради: тело её повторяет вставку
+	 *          слово в слово, и выдаётся ею та же сумма примет по исключающему
+	 *          или, снятая по возвращении.
 	 *
 	 * @param entry  адрес вызываемого порождённого кода
 	 * @param text   текст сопоставления
@@ -952,14 +985,24 @@ namespace {
 			const uint64_t received = awh_regex_preserving(assembly.entry(), "", 0, 0, bounds, context);
 			/**
 			 * Получаем сумму примет, в оберегаемые регистры укладываемых
+			 *
+			 * @details Разбор ведётся набором команд прежде системы: признак
+			 *          «_WIN32» определён и на наборе ARM64, отчего проверка
+			 *          по системе впереди набора брала бы там сумму шести примет
+			 *          соглашения Microsoft для x86-64 взамен суммы пяти примет
+			 *          соглашения AAPCS64. Изъян этот прежде виден не был:
+			 *          связка вооружения Visual Studio вставок не имеет, и
+			 *          проверка сохранности на Windows ARM64 отчитывалась
+			 *          пропуском, а обёртка отдельным файлом её и вскрыла.
+			 *
 			 */
-			#if defined(_WIN32)
+			#if defined(__aarch64__) || defined(_M_ARM64)
+				const uint64_t expected = (0x1122334455667788ull ^ 0x99AABBCCDDEEFF00ull ^
+				 0x0F1E2D3C4B5A6978ull ^ 0x2468ACE013579BDFull ^ 0x76543210FEDCBA98ull);
+			#elif defined(_WIN32)
 				const uint64_t expected = (0x1122334455667788ull ^ 0x99AABBCCDDEEFF00ull ^
 				 0x0F1E2D3C4B5A6978ull ^ 0x2468ACE013579BDFull ^ 0x76543210FEDCBA98ull ^
 				 0x0123456789ABCDEFull);
-			#elif defined(__aarch64__) || defined(_M_ARM64)
-				const uint64_t expected = (0x1122334455667788ull ^ 0x99AABBCCDDEEFF00ull ^
-				 0x0F1E2D3C4B5A6978ull ^ 0x2468ACE013579BDFull ^ 0x76543210FEDCBA98ull);
 			#else
 				const uint64_t expected = (0x1122334455667788ull ^ 0x99AABBCCDDEEFF00ull ^
 				 0x0F1E2D3C4B5A6978ull ^ 0x2468ACE013579BDFull);

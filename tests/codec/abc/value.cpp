@@ -26,7 +26,8 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <gtest/gtest.h>
-#include <codec/abc/abc.hpp>
+#include <codec/abc/value.hpp>
+#include <codec/abc/writer.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -371,4 +372,34 @@ TEST(CodecAbcValue, NumericComparison) {
 	ASSERT_NE(abc::value_t(static_cast <uint64_t> (1)), abc::value_t("1"));
 	// Выполняем проверку неравенства логического значения и числа
 	ASSERT_NE(abc::value_t(true), abc::value_t(static_cast <uint64_t> (1)));
+}
+
+/**
+ * @brief Проверка равенства нечисла самому себе
+ *
+ * @details Нечисло само себе не равно по правилу арифметики, но правило это о
+ *          вычислениях, а не о тождестве записи: значение обязано быть равно самому себе,
+ *          иначе круговой ход записи недоказуем вовсе
+ *
+ */
+TEST(CodecAbcValue, NotANumberEquality) {
+	// Значение, несущее нечисло
+	abc::value_t value(numeric_limits <double>::quiet_NaN());
+	// Выполняем проверку равенства нечисла самому себе
+	ASSERT_TRUE(value == value);
+	// Выполняем перезапись значения
+	const vector <uint8_t> record = value.dump();
+	// Значение, собранное из перезаписи
+	abc::value_t repeated;
+	// Выполняем разбор перезаписи
+	ASSERT_TRUE(repeated.parse(record.data(), record.size()));
+	// Выполняем проверку кругового хода записи нечисла
+	ASSERT_TRUE(repeated == value);
+	// Значение, несущее бесконечность
+	abc::value_t infinity(numeric_limits <double>::infinity());
+	/**
+	 * Выполняем проверку того, что нечисло с бесконечностью не сошлись: равенство
+	 * записей не означает равенства всякой пары величин
+	 */
+	ASSERT_FALSE(infinity == value);
 }

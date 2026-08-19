@@ -110,7 +110,7 @@ namespace {
  *
  */
 awh::codec::abc::Header::Header() noexcept :
- major(VERSION_MAJOR), minor(VERSION_MINOR), flags(static_cast <uint16_t> (flag_t::NONE)),
+ version(VERSION_MAJOR), revision(VERSION_MINOR), flags(static_cast <uint16_t> (flag_t::NONE)),
  content(0), length(0), records(0), index(0), signature(0), generation(0) {
 	// Выполняем обнуление признака владельца контейнера
 	::memset(this->owner, 0, OWNER_LENGTH);
@@ -159,9 +159,9 @@ void awh::codec::abc::Header::pack(vector <uint8_t> & result) const noexcept {
 	// Выполняем укладку опознавательной записи контейнера
 	::memcpy(buffer, Magic, sizeof(Magic));
 	// Выполняем укладку старшей версии вида записи
-	buffer[4] = this->major;
+	buffer[4] = this->version;
 	// Выполняем укладку младшей версии вида записи
-	buffer[5] = this->minor;
+	buffer[5] = this->revision;
 	// Выполняем укладку разрядов свойств контейнера
 	lay(buffer + 6, static_cast <uint64_t> (this->flags), 2);
 	// Выполняем укладку признака владельца контейнера
@@ -237,18 +237,18 @@ bool awh::codec::abc::Header::unpack(const void * buffer, const size_t size, err
 		return false;
 	}
 	// Выполняем снятие старшей версии вида записи
-	const uint8_t major = octets[4];
+	const uint8_t group = octets[4];
 	// Если вид записи контейнера не поддерживается
-	if(major != VERSION_MAJOR){
+	if(group != VERSION_MAJOR){
 		// Выполняем установку кода отказа вида записи
 		error = error_t::INVALID_VERSION;
 		// Сообщаем, что заголовок не снят
 		return false;
 	}
 	// Выполняем установку старшей версии вида записи
-	this->major = major;
+	this->version = group;
 	// Выполняем снятие младшей версии вида записи
-	this->minor = octets[5];
+	this->revision = octets[5];
 	// Выполняем снятие разрядов свойств контейнера
 	this->flags = static_cast <uint16_t> (take(octets + 6, 2));
 	// Выполняем снятие признака владельца контейнера

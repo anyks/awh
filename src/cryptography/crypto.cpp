@@ -5997,6 +5997,32 @@ bool awh::Crypto::initialize(const event_t event, const hash_t hash, const ciphe
 				 * своими установками стейт сбрасывают, и уцелевший ключ означает, что выведен
 				 * он из них же (5.21)
 				 */
+				/**
+				 * Если контекст шифрования уцелел, прежний поток завершён не был
+				 *
+				 * @details Завершение потока состояние сбрасывает, оттого уцелевший
+				 *          контекст означает поток, брошенный на середине. Сброс его
+				 *          законен и работу не отменяет, но молчать о нём нельзя:
+				 *          вызывающая сторона, забывшая завершить поток, получала бы
+				 *          верную работу нового потока и никакого признака того, что
+				 *          написанное прежде пропало. Оглашается тем же словом, что и
+				 *          у потока подписи (5а.18)
+				 */
+				if(state.ctx != nullptr){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Записываем предупреждение в лог
+						this->_log->debug("Unfinished stream is discarded by the new initialization", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (event), static_cast <uint16_t> (cipher)), log_t::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем предупреждение в лог
+						this->_log->print("Unfinished stream is discarded by the new initialization", log_t::flag_t::WARNING);
+					#endif
+				}
 				// Определяем, выведен ли ключ теми же приметами
 				const bool derived = (!state.key.empty() && (state.hash == hash) &&
 				                      (state.cipher == cipher) && (state.mode == this->_params.mode) &&

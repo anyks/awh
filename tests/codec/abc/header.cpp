@@ -100,9 +100,9 @@ TEST(CodecAbcHeader, Roundtrip) {
 	ASSERT_TRUE(restored.unpack(record.data(), record.size(), error))
 		<< "код отказа: " << abc::message(error);
 	// Выполняем проверку старшей версии вида записи
-	ASSERT_EQ(restored.major, abc::VERSION_MAJOR);
+	ASSERT_EQ(restored.version, abc::VERSION_MAJOR);
 	// Выполняем проверку младшей версии вида записи
-	ASSERT_EQ(restored.minor, abc::VERSION_MINOR);
+	ASSERT_EQ(restored.revision, abc::VERSION_MINOR);
 	// Выполняем проверку разрядов свойств контейнера
 	ASSERT_EQ(restored.flags, header.flags);
 	// Выполняем проверку вида содержимого контейнера
@@ -248,7 +248,7 @@ TEST(CodecAbcHeader, Failures) {
 		// Заголовок опознания иного вида записи
 		abc::header_t future = assemble();
 		// Выполняем установку старшей версии вида записи из будущего
-		future.major = static_cast <uint8_t> (abc::VERSION_MAJOR + 1);
+		future.version = static_cast <uint8_t> (abc::VERSION_MAJOR + 1);
 		// Буфер уложенного заголовка
 		vector <uint8_t> record;
 		// Выполняем укладку заголовка в октеты

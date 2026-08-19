@@ -180,6 +180,23 @@ namespace awh {
 						span_t key;
 						/**
 						 * \~russian
+						 * Вид значения, собираемого кусками, либо UNDEFINED у вместимого
+						 *
+						 * @note Значение, собираемое кусками, ведётся тем же стеком, что и
+						 * вместимые: закрывается оно тем же концом, а куски его не суть
+						 * значения вместившего
+						 *
+						 * \~english
+						 * Kind of the value assembled by the chunks, or UNDEFINED at a container
+						 * @note A value assembled by the chunks is led by the same stack as the
+						 * containers: it is closed by the same end, while its chunks are not
+						 * the values of the container
+						 *
+						 * \~
+						 */
+						type_t segment;
+						/**
+						 * \~russian
 						 * @brief Конструктор
 						 *
 						 *
@@ -189,7 +206,8 @@ namespace awh {
 						 * \~
 						 */
 						Frame() noexcept :
-						 mapping(false), indefinite(false), expectKey(false), marked(false), remain(0) {}
+						 mapping(false), indefinite(false), expectKey(false), marked(false), remain(0),
+						 segment(type_t::UNDEFINED) {}
 					} frame_t;
 				private:
 					// Настройки сборки записи
@@ -224,7 +242,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool fail(const error_t error) noexcept;
+					[[nodiscard]] bool fail(const error_t error) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод проверки места, куда укладывается значение
@@ -239,7 +257,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool prepare(const bool container) noexcept;
+					[[nodiscard]] bool prepare(const bool container) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод учёта уложенного значения
@@ -254,7 +272,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool account(const size_t start) noexcept;
+					[[nodiscard]] bool account(const size_t start) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод укладки начала вместимого
@@ -273,7 +291,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool open(const bool mapping, const uint64_t count, const bool indefinite) noexcept;
+					[[nodiscard]] bool open(const bool mapping, const uint64_t count, const bool indefinite) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод укладки конца вместимого
@@ -288,7 +306,37 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool close(const bool mapping) noexcept;
+					[[nodiscard]] bool close(const bool mapping) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод начала значения, собираемого кусками
+					 *
+					 * @param string признак того, что собирается строка, а не двоичные данные
+					 * @return       признак успешности укладки
+					 *
+					 * \~english
+					 * @brief Method of the beginning of a value assembled by the chunks
+					 * @param string sign that a string is being assembled rather than binary data
+					 * @return sign of the success of the laying
+					 *
+					 * \~
+					 */
+					[[nodiscard]] bool segment(const bool string) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод конца значения, собираемого кусками
+					 *
+					 * @param string признак того, что собирается строка, а не двоичные данные
+					 * @return       признак успешности укладки
+					 *
+					 * \~english
+					 * @brief Method of the end of a value assembled by the chunks
+					 * @param string sign that a string is being assembled rather than binary data
+					 * @return sign of the success of the laying
+					 *
+					 * \~
+					 */
+					[[nodiscard]] bool segmentEnd(const bool string) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -302,7 +350,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool nul() noexcept;
+					[[nodiscard]] bool nul() noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод укладки логического значения
@@ -317,7 +365,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool boolean(const bool value) noexcept;
+					[[nodiscard]] bool boolean(const bool value) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод укладки целого числа со знаком
@@ -332,7 +380,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool number(const int64_t value) noexcept;
+					[[nodiscard]] bool number(const int64_t value) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод укладки целого числа без знака
@@ -347,7 +395,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool number(const uint64_t value) noexcept;
+					[[nodiscard]] bool number(const uint64_t value) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод укладки дробного числа двойной точности
@@ -362,7 +410,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool number(const double value) noexcept;
+					[[nodiscard]] bool number(const double value) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод укладки дробного числа одинарной точности
@@ -377,7 +425,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool number(const float value) noexcept;
+					[[nodiscard]] bool number(const float value) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод укладки строки
@@ -392,7 +440,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool text(const string_view value) noexcept;
+					[[nodiscard]] bool text(const string_view value) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод укладки двоичных данных
@@ -409,7 +457,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool blob(const void * buffer, const size_t size) noexcept;
+					[[nodiscard]] bool blob(const void * buffer, const size_t size) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод укладки отметки времени
@@ -424,7 +472,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool timestamp(const int64_t value) noexcept;
+					[[nodiscard]] bool timestamp(const int64_t value) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод укладки опознавателя
@@ -441,7 +489,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool uuid(const void * buffer, const size_t size) noexcept;
+					[[nodiscard]] bool uuid(const void * buffer, const size_t size) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод укладки целого числа неограниченной ширины
@@ -467,7 +515,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool bignum(const void * buffer, const size_t size, const bool negative) noexcept;
+					[[nodiscard]] bool bignum(const void * buffer, const size_t size, const bool negative) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод укладки десятичного числа
@@ -495,7 +543,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool decimal(const void * buffer, const size_t size, const bool negative, const int64_t exponent) noexcept;
+					[[nodiscard]] bool decimal(const void * buffer, const size_t size, const bool negative, const int64_t exponent) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -511,7 +559,73 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool arrayBegin(const uint64_t count) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод начала строки, собираемой кусками
+					 *
+					 * @details Строка эта кладётся, когда длина её наперёд неизвестна: куски
+					 * её ложатся один за другим обыкновенными строками, а концом объявляется
+					 * их завершение. Так большой текст уходит в запись потоком, не собираясь
+					 * в памяти целиком
+					 *
+					 * @note Строгий вид записи неопределённую длину отвергает: длина обязана
+					 * быть объявлена, иначе запись одного и того же значения выйдет разной
+					 *
+					 * @return признак успешности укладки
+					 *
+					 * \~english
+					 * @brief Method of the beginning of a string assembled by the chunks
+					 * @details This string is laid when its length is not known beforehand: its chunks
+					 * lie one after another as ordinary strings, while their completion is declared by the end.
+					 * Thus a large text goes into the record by a stream without being assembled
+					 * in the memory as a whole
+					 * @note The strict kind of the record rejects an indefinite length: the length is obliged
+					 * to be declared, otherwise the record of one and the same value will come out different
+					 * @return sign of the success of the laying
+					 *
+					 * \~
+					 */
+					[[nodiscard]] bool textBegin() noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод конца строки, собираемой кусками
+					 *
+					 * @return признак успешности укладки
+					 *
+					 * \~english
+					 * @brief Method of the end of a string assembled by the chunks
+					 * @return sign of the success of the laying
+					 *
+					 * \~
+					 */
+					[[nodiscard]] bool textEnd() noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод начала двоичных данных, собираемых кусками
+					 *
+					 * @return признак успешности укладки
+					 *
+					 * \~english
+					 * @brief Method of the beginning of binary data assembled by the chunks
+					 * @return sign of the success of the laying
+					 *
+					 * \~
+					 */
+					[[nodiscard]] bool blobBegin() noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод конца двоичных данных, собираемых кусками
+					 *
+					 * @return признак успешности укладки
+					 *
+					 * \~english
+					 * @brief Method of the end of binary data assembled by the chunks
+					 * @return sign of the success of the laying
+					 *
+					 * \~
+					 */
+					[[nodiscard]] bool blobEnd() noexcept;
+					[[nodiscard]] bool arrayBegin(const uint64_t count) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод укладки начала массива неопределённой длины
@@ -524,7 +638,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool arrayBegin() noexcept;
+					[[nodiscard]] bool arrayBegin() noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод укладки конца массива
@@ -537,7 +651,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool arrayEnd() noexcept;
+					[[nodiscard]] bool arrayEnd() noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод укладки начала отображения объявленной длины
@@ -552,7 +666,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool mapBegin(const uint64_t count) noexcept;
+					[[nodiscard]] bool mapBegin(const uint64_t count) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод укладки начала отображения неопределённой длины
@@ -565,7 +679,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool mapBegin() noexcept;
+					[[nodiscard]] bool mapBegin() noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод укладки конца отображения
@@ -578,7 +692,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool mapEnd() noexcept;
+					[[nodiscard]] bool mapEnd() noexcept;
 				public:
 					/**
 					 * \~russian
@@ -608,7 +722,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool complete() const noexcept;
+					[[nodiscard]] bool complete() const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод извлечения собранной записи

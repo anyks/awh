@@ -184,6 +184,9 @@ const char * awh::codec::abc::message(const error_t error) noexcept {
 		// Если выработка подписи владельца отвечена отказом
 		case static_cast <uint8_t> (error_t::SIGNING_FAILED):
 			return "production of the signature of the owner is refused";
+		// Если значение, собираемое кусками, несёт кусок иного вида
+		case static_cast <uint8_t> (error_t::INVALID_SEGMENT):
+			return "value assembled by the chunks carries a chunk of another kind";
 	}
 	// Выводим результат по умолчанию
 	return "unknown error";
@@ -360,14 +363,14 @@ awh::codec::abc::kind_t awh::codec::abc::kind(const type_t type) noexcept {
 /**
  * @brief Функция сборки ведущего октета значения
  *
- * @param major  крупный вид проволочной записи
+ * @param group  крупный вид проволочной записи
  * @param detail подробность метки
  * @return       собранный ведущий октет
  *
  */
-uint8_t awh::codec::abc::tag(const major_t major, const uint8_t detail) noexcept {
+uint8_t awh::codec::abc::tag(const group_t group, const uint8_t detail) noexcept {
 	// Выполняем сборку ведущего октета, укладывая крупный вид в три старших разряда
-	return static_cast <uint8_t> ((static_cast <uint8_t> (major) << 5) | (detail & 0x1F));
+	return static_cast <uint8_t> ((static_cast <uint8_t> (group) << 5) | (detail & 0x1F));
 }
 /**
  * @brief Функция извлечения крупного вида из ведущего октета
@@ -376,9 +379,9 @@ uint8_t awh::codec::abc::tag(const major_t major, const uint8_t detail) noexcept
  * @return    крупный вид проволочной записи
  *
  */
-awh::codec::abc::major_t awh::codec::abc::major(const uint8_t tag) noexcept {
+awh::codec::abc::group_t awh::codec::abc::group(const uint8_t tag) noexcept {
 	// Выводим крупный вид, снятый с трёх старших разрядов ведущего октета
-	return static_cast <major_t> (tag >> 5);
+	return static_cast <group_t> (tag >> 5);
 }
 /**
  * @brief Функция извлечения подробности из ведущего октета

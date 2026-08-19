@@ -212,7 +212,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool start(const mode_t mode, const uint32_t delay) noexcept;
+					[[nodiscard]] bool start(const mode_t mode, const uint32_t delay) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод остановки отбоя срока
@@ -241,7 +241,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool touch() noexcept;
+					[[nodiscard]] bool touch() noexcept;
 				public:
 					/**
 					 * \~russian
@@ -255,7 +255,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool working() const noexcept;
+					[[nodiscard]] bool working() const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод извлечения способа отбоя срока

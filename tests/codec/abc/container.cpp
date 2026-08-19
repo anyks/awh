@@ -548,3 +548,79 @@ TEST_F(ContainerFixture, ForeignOctets) {
 	// Выполняем проверку того, что заголовок опознания снятым не объявлен
 	ASSERT_FALSE(loader.ready());
 }
+/**
+ * @brief Проверка работы контейнера без сжатия и шифрования вовсе
+ *
+ * @details Решение владельца: сжатие и шифрование суть настройки, а не обязательная
+ *          часть работы. Контейнер, собранный без обоих модулей, обязан и собираться, и
+ *          читаться, и выбираться по номеру - модулей ему не отдано вовсе
+ *
+ */
+TEST_F(ContainerFixture, ModulesAreOptional) {
+	// Сборщик контейнера, какому не отдано ни сжатия, ни шифрования
+	abc::assembler_t assembler;
+	// Получаем настройки сборки контейнера
+	abc::assembler_t::settings_t settings = assembler.settings();
+	// Выполняем установку порога накопления, дающего несколько кадров
+	settings.block = 32;
+	// Выполняем установку настроек сборки контейнера
+	assembler.settings(settings);
+	// Внесённые в контейнер записи
+	vector <vector <uint8_t>> records;
+	/**
+	 * Выполняем внесение записей в собираемый контейнер
+	 */
+	for(size_t i = 0; i < 6; i++){
+		// Выполняем сборку очередной записи
+		const vector <uint8_t> item = record(string{"запись без сжатия и шифрования "} + to_string(i));
+		// Выполняем внесение очередной записи в собираемый контейнер
+		ASSERT_TRUE(assembler.append(item.data(), item.size(), abc::payload_t::TEXT))
+			<< "код отказа: " << abc::message(assembler.error());
+		// Выполняем накопление внесённой записи
+		records.push_back(item);
+	}
+	// Буфер собранного контейнера
+	vector <uint8_t> buffer;
+	// Выполняем завершение сборки контейнера
+	ASSERT_TRUE(assembler.complete(buffer)) << "код отказа: " << abc::message(assembler.error());
+	// Сниматель контейнера, какому не отдано ни сжатия, ни шифрования
+	abc::loader_t loader;
+	// Выполняем подачу собранного контейнера снимателю
+	ASSERT_TRUE(loader.feed(buffer.data(), buffer.size()));
+	// Количество снятых кадров
+	size_t count = 0;
+	// Выполняем вычитывание содержимого всех кадров контейнера
+	const vector <uint8_t> payload = drain(loader, count);
+	// Выполняем проверку того, что сжатие контейнером не объявлено
+	ASSERT_FALSE(loader.header().is(abc::flag_t::COMPRESSED));
+	// Выполняем проверку того, что шифрование контейнером не объявлено
+	ASSERT_FALSE(loader.header().is(abc::flag_t::ENCRYPTED));
+	// Собираемое ожидаемое содержимое кадров контейнера
+	vector <uint8_t> expected;
+	// Выполняем перебор всех внесённых записей
+	for(const vector <uint8_t> & item : records)
+		// Выполняем накопление ожидаемого содержимого кадров
+		expected.insert(expected.end(), item.begin(), item.end());
+	// Выполняем проверку содержимого снятых кадров
+	ASSERT_EQ(payload, expected);
+	// Выборщик записей контейнера, какому не отдано ни сжатия, ни шифрования
+	abc::fetcher_t fetcher;
+	// Выполняем открытие контейнера отданной работой чтения
+	ASSERT_TRUE(fetcher.open([&buffer](const uint64_t offset, const size_t size, vector <uint8_t> & result) noexcept -> bool {
+		// Если затребованные октеты за концом контейнера
+		if((offset + size) > static_cast <uint64_t> (buffer.size()))
+			// Выводим признак неудачного чтения октетов
+			return false;
+		// Выполняем выдачу затребованных октетов
+		result.assign(buffer.begin() + static_cast <ptrdiff_t> (offset),
+		 buffer.begin() + static_cast <ptrdiff_t> (offset + size));
+		// Выводим признак успешного чтения октетов
+		return true;
+	})) << "код отказа: " << abc::message(fetcher.error());
+	// Буфер выбранной записи контейнера
+	vector <uint8_t> picked;
+	// Выполняем выборку последней записи контейнера
+	ASSERT_TRUE(fetcher.record(records.size() - 1, picked)) << "код отказа: " << abc::message(fetcher.error());
+	// Выполняем проверку выбранной записи контейнера
+	ASSERT_EQ(picked, records.back());
+}

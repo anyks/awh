@@ -25,7 +25,8 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <gtest/gtest.h>
-#include <codec/abc/abc.hpp>
+#include <codec/abc/document.hpp>
+#include <codec/abc/writer.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -419,4 +420,56 @@ TEST(CodecAbcDocument, Failures) {
 	ASSERT_FALSE(document.parse(nullptr, 0));
 	// Выполняем проверку кода отказа
 	ASSERT_EQ(document.error(), abc::error_t::EMPTY_RECORD);
+}
+
+/**
+ * @brief Проверка сборки значения кусками в дереве документа
+ *
+ * @details Значение, собранное кусками, ложится в дерево ОДНИМ узлом: куски суть части
+ *          значения, а не значения, и потребителю дерева они видны быть не должны
+ *
+ */
+TEST(CodecAbcDocument, SegmentedValue) {
+	// Сборщик бинарной записи
+	abc::writer_t writer;
+	// Выполняем укладку начала отображения из одного поля
+	ASSERT_TRUE(writer.mapBegin(1));
+	// Выполняем укладку имени поля отображения
+	ASSERT_TRUE(writer.text("текст"));
+	// Выполняем укладку начала строки, собираемой кусками
+	ASSERT_TRUE(writer.textBegin());
+	// Выполняем укладку первого куска строки
+	ASSERT_TRUE(writer.text("часть один, "));
+	// Выполняем укладку второго куска строки
+	ASSERT_TRUE(writer.text("часть два"));
+	// Выполняем укладку конца строки
+	ASSERT_TRUE(writer.textEnd());
+	// Выполняем укладку конца отображения
+	ASSERT_TRUE(writer.mapEnd());
+	// Выполняем проверку завершённости собранной записи
+	ASSERT_TRUE(writer.complete());
+	// Дерево документа
+	abc::document_t document;
+	// Выполняем разбор собранной записи в дерево документа
+	ASSERT_TRUE(document.parse(writer.record().data(), writer.record().size()))
+		<< "код отказа: " << abc::message(document.error());
+	/**
+	 * Выполняем проверку количества узлов дерева: отображение, имя поля и значение,
+	 * собранное кусками, - три узла, а не четыре и не пять
+	 */
+	ASSERT_EQ(document.nodes(), 3ul);
+	// Выполняем получение корня дерева документа
+	const abc::document_t::value_t root = document.root();
+	// Выполняем проверку вида корня дерева
+	ASSERT_TRUE(root.is(abc::type_t::MAP));
+	// Выполняем проверку количества полей отображения
+	ASSERT_EQ(root.size(), 1ul);
+	// Выполняем получение значения поля отображения
+	const abc::document_t::value_t value = root.get("текст");
+	// Выполняем проверку годности значения поля
+	ASSERT_TRUE(value.valid());
+	// Выполняем проверку вида значения поля
+	ASSERT_TRUE(value.is(abc::type_t::STRING));
+	// Выполняем проверку содержимого значения, собранного кусками
+	ASSERT_EQ(value.data(), "часть один, часть два");
 }

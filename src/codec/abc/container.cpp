@@ -327,21 +327,6 @@ bool awh::codec::abc::Assembler::complete(vector <uint8_t> & result) noexcept {
 		 * лежит за телом, и длиною тела оно не считается
 		 */
 		this->_header.index = static_cast <uint64_t> (HEADER_LENGTH + this->_body.size());
-		/**
-		 * Если контейнер подписывается, выполняем внесение оглавления в дерево:
-		 * оглавление подписывается наравне с телом, иначе подмена его прошла бы мимо
-		 */
-		if(this->_signer != nullptr){
-			/**
-			 * Если внести кадр оглавления свёрткой в дерево не вышло
-			 */
-			if(!this->_merkle.add(tail.data(), tail.size())){
-				// Выполняем установку кода отказа выработки свёртки
-				this->_error = error_t::SIGNING_FAILED;
-				// Выводим признак неудачной сборки контейнера
-				return false;
-			}
-		}
 	}
 	// Выполняем установку длины тела собранного контейнера
 	this->_header.length = static_cast <uint64_t> (this->_body.size());
@@ -375,7 +360,11 @@ bool awh::codec::abc::Assembler::complete(vector <uint8_t> & result) noexcept {
 		/**
 		 * Если свести дерево свёрток к корню не вышло
 		 */
-		if(!this->_merkle.root(sign.root)){
+		/**
+		 * Кадр оглавления придаётся сведению дерева, а не оседает в нём: оглавление
+		 * подписывается наравне с телом, но при правке контейнера ложится наново
+		 */
+		if(!this->_merkle.root(sign.root, tail.data(), tail.size())){
 			// Выполняем установку кода отказа выработки свёртки
 			this->_error = error_t::SIGNING_FAILED;
 			// Выводим признак неудачной сборки контейнера
