@@ -3480,3 +3480,55 @@ TEST(CodecYamlReader, BarePropertiesDocument) {
 		ASSERT_EQ(counted, 0u);
 	}
 }
+
+/**
+ * @brief Проверка построения, именем вопроса являющегося
+ *
+ * @details Имя, вопросом объявленное, вправе быть построением, и построение это стоит
+ * отступом глубже вопроса своего. Пустота значения, вопросу причитающаяся, принадлежит
+ * отображению вопроса, а не построению имени его: выданная прежде закрытия уровней, она
+ * ложится записью перечня имени либо парою отображения его
+ *
+ * @note Двоеточие ответа сличается отступом с вопросом: двоеточие глубже вопроса ответом
+ * ему не является вовсе - оно открывает пару вложенную, и пара эта есть часть имени
+ * составного. Случаи KK5P и M2N8 набора yaml-test-suite
+ *
+ */
+TEST(CodecYamlReader, QuestionedKeyNesting) {
+	/**
+	 * Выполняем проверку перечня, именем вопроса являющегося
+	 *
+	 * @note Пустота вопроса стоит за закрытием перечня, а не записью его
+	 */
+	ASSERT_EQ(events("outer:\n  ? - a\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\nSCALAR «outer»\n"
+		"MAPPING_START\nSEQUENCE_START\nSCALAR «a»\nSEQUENCE_END\nSCALAR «»\n"
+		"MAPPING_END\nMAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
+	/**
+	 * Выполняем проверку двоеточия, глубже вопроса стоящего
+	 *
+	 * @note Двоеточие это открывает пару с именем пустым, и пара эта есть имя вопроса
+	 */
+	ASSERT_EQ(events("- ? : x\n"),
+		"STREAM_START\nDOCUMENT_START\nSEQUENCE_START\nMAPPING_START\n"
+		"MAPPING_START\nSCALAR «»\nSCALAR «x»\nMAPPING_END\nSCALAR «»\n"
+		"MAPPING_END\nSEQUENCE_END\nDOCUMENT_END\nSTREAM_END\n");
+	/**
+	 * Выполняем проверку поточного построения, именем вопроса являющегося
+	 *
+	 * @note Имя здесь есть пара целиком, и отображение своё она заводит сама
+	 */
+	ASSERT_EQ(events("? []: x\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\n"
+		"MAPPING_START\nSEQUENCE_START\nSEQUENCE_END\nSCALAR «x»\nMAPPING_END\n"
+		"SCALAR «»\nMAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
+	/**
+	 * Выполняем проверку двоеточия ответа на отступе вопроса
+	 *
+	 * @note Здесь двоеточие ответом является, и пустоты за именем не выдаётся вовсе
+	 */
+	ASSERT_EQ(events("? - a\n: b\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\n"
+		"SEQUENCE_START\nSCALAR «a»\nSEQUENCE_END\nSCALAR «b»\n"
+		"MAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
+}
