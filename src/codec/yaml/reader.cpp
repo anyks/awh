@@ -504,7 +504,7 @@ awh::codec::yaml::Reader::Reader() noexcept :
  _breaks(0), _padding(0), _deepened(false), _expected(false), _awaited(false), _valued(false),
  _headed(false), _propped(false), _anchoredHere(false), _taggedHere(false),
  _tabbed(false), _rooted(false), _detected(false),
- _joined(0), _stretched(false), _shallow(0), _asked(false), _questioned(0), _dashed(false), _flowning(false), _entered(false), _pending(0), _schema(schema_t::CORE), _plaining(false), _folds(0),
+ _joined(0), _stretched(false), _shallow(0), _asked(false), _questioned(0), _asking(0), _dashed(false), _flowning(false), _entered(false), _pending(0), _schema(schema_t::CORE), _plaining(false), _folds(0),
  _required(0), _phase(flow_t::ENTRY), _directed(false), _versioned(false), _declared(false),
  _dialect(schema_t::CORE) {}
 /**
@@ -521,7 +521,7 @@ awh::codec::yaml::Reader::Reader(const settings_t & settings) noexcept :
  _expected(false), _awaited(false), _valued(false), _headed(false), _propped(false),
  _anchoredHere(false), _taggedHere(false),
  _tabbed(false), _rooted(false), _detected(false), _entered(false), _pending(0),
- _joined(0), _stretched(false), _shallow(0), _asked(false), _questioned(0), _dashed(false), _flowning(false), _schema(settings.schema), _plaining(false), _folds(0), _required(0),
+ _joined(0), _stretched(false), _shallow(0), _asked(false), _questioned(0), _asking(0), _dashed(false), _flowning(false), _schema(settings.schema), _plaining(false), _folds(0), _required(0),
  _phase(flow_t::ENTRY), _directed(false), _versioned(false), _declared(false), _dialect(settings.schema) {
 	/**
 	 * Если кодировка исходного текста навязана извне
@@ -2213,6 +2213,8 @@ bool awh::codec::yaml::Reader::content(const string_view line, const size_t offs
 		this->_asked = true;
 		// Запоминаем отступ, на котором стоит вопрос составного имени
 		this->_questioned = indent;
+		// Запоминаем количество открытых уровней на миг объявления имени вопросом
+		this->_asking = this->_levels.size();
 		// Получаем смещение содержимого за вопросом составного имени
 		size_t position = (offset + 1);
 		/**
@@ -2277,6 +2279,30 @@ bool awh::codec::yaml::Reader::content(const string_view line, const size_t offs
 	 *       того дозволяет, и имя такое выдаётся пустым скалярным значением
 	 */
 	if((leading == ':') && (((offset + 1) >= line.size()) || spacing(line[offset + 1]))){
+		/**
+		 * Если имя вопросом объявлялось
+		 *
+		 * @details Имя, вопросом объявленное, вправе быть построением, и стоит оно на
+		 *          отступе самого вопроса: закрыть его отступом нельзя - отступ у имени и
+		 *          у двоеточия один. Оттого закрывается оно счётом уровней: двоеточие
+		 *          снимает всё, что открылось за вопросом его
+		 *
+		 * @note Прежде перечень имени и перечень значения сливались в один: записи
+		 *       второго дописывались к первому. Случай 6PBE набора yaml-test-suite
+		 */
+		if(this->_asked){
+			/**
+			 * Выполняем закрытие всех уровней, за вопросом открытых
+			 */
+			while(this->_levels.size() > this->_asking){
+				// Получаем вид закрываемого уровня вложенности
+				const nesting_t kind = this->_levels.back().kind;
+				// Выполняем снятие закрываемого уровня со стопы
+				this->_levels.pop_back();
+				// Выполняем постановку события закрытия уровня
+				this->emit(((kind == nesting_t::MAPPING) ? event_t::MAPPING_END : event_t::SEQUENCE_END), offset);
+			}
+		}
 		/**
 		 * Если имя вопросом не объявлялось
 		 */
