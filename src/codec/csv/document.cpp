@@ -996,14 +996,45 @@ void awh::codec::csv::Document::append(const vector <string> & fields) noexcept 
 void awh::codec::csv::Document::append(const vector <string_view> & fields) noexcept {
 	// Заносим указание на начало записи
 	this->_records.push_back(static_cast <uint32_t> (this->_fields.size()));
+	// Длина всех полей добавляемой записи
+	size_t length = 0;
+	/**
+	 * Выполняем перебор всех полей записи
+	 */
+	for(const string_view value : fields)
+		// Накапливаем длину полей записи
+		length += value.length();
+	/**
+	 * Выполняем сбор полей записи во временное хранилище
+	 *
+	 * @note Поля собираются на стороне, а не доливаются в хранилище знаков по одному:
+	 *       вид, поданный сюда, вправе указывать в это же хранилище - именно такой вид
+	 *       выдают `row()` и `col()`, - и первый же долив, хранилище перераспределивший,
+	 *       обратил бы виды остальных полей записи в висячие. Резервированием места
+	 *       наперёд беды не избыть: перераспределяет хранилище и оно само, обесценивая
+	 *       поданные виды ещё до первого долива
+	 */
+	string buffer;
+	// Резервируем память под поля записи
+	buffer.reserve(length);
+	/**
+	 * Выполняем перебор всех полей записи
+	 */
+	for(const string_view value : fields)
+		// Переносим содержимое поля во временное хранилище
+		buffer.append(value);
+	// Смещение первого поля записи в хранилище знаков
+	size_t offset = this->_storage.size();
+	// Переносим собранные поля в хранилище знаков
+	this->_storage.append(buffer);
 	/**
 	 * Выполняем перебор всех полей записи
 	 */
 	for(const string_view value : fields){
 		// Заносим указание на поле записи
-		this->_fields.emplace_back(static_cast <uint32_t> (this->_storage.size()), static_cast <uint32_t> (value.length()));
-		// Переносим содержимое поля в хранилище знаков
-		this->_storage.append(value);
+		this->_fields.emplace_back(static_cast <uint32_t> (offset), static_cast <uint32_t> (value.length()));
+		// Смещаемся на длину занесённого поля
+		offset += value.length();
 	}
 }
 /**
