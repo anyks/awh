@@ -166,6 +166,18 @@ namespace scenarios {
 		{"region-varied-long",    "(?:[a-z]+ )+dog",                             kind_t::LONG,  true},
 		{"region-nested-heavy",   "\\((?:[^()]|\\([^()]*\\))*\\)",               kind_t::HEAVY, true},
 		{"region-capture-heavy",  "(?:(\\w+) )+forman",                          kind_t::HEAVY, true},
+		/**
+		 * Отбор позиций начала попытки по обязательному литералу
+		 *
+		 * @details Выражения дают удаление литерала малое и ограниченное:
+		 *          ветви выбора постоянной длины стоят перед литералом,
+		 *          а повторения перед ним нет вовсе. Прочие строки набора
+		 *          удаления ограниченного не дают ни одна.
+		 *
+		 */
+		{"bounded-short",         "(?:HT|TP)/1",                                kind_t::SHORT, true},
+		{"bounded-long",          "(?:fox|dog)trot",                            kind_t::LONG,  true},
+		{"bounded-absent",        "(?:fox|dog)trap",                            kind_t::LONG,  false},
 		{"region-lazy-short",     "(?:HT|TP)+?/",                                kind_t::SHORT, true},
 		{"region-lazy-long",      "(?:[a-z]+ )+?dog",                            kind_t::LONG,  true},
 		{"region-lazy-heavy",     "\\((?:[^()]|\\([^()]*\\))*?\\)",              kind_t::HEAVY, true},

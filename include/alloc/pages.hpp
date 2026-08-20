@@ -96,6 +96,10 @@ namespace awh {
 				static constexpr size_t PAGES = (CHUNK / PAGE);
 				// Наибольшее число страниц, учитываемое отдельным списком
 				static constexpr size_t LISTS = 128;
+				// Начальная длина таблицы поиска куска по адресу
+				static constexpr size_t TABLE = 1024;
+				// Наибольшее число областей, отдаваемых системе за один заход
+				static constexpr size_t BATCH = 32;
 			public:
 				/**
 				 * \~russian
@@ -146,8 +150,20 @@ namespace awh {
 					bool released;
 					// Признак отданного системе содержимого
 					bool purged;
+					/**
+					 * Признак области, изъятой на время отдачи системе
+					 *
+					 * Область эта не лежит ни в одном списке свободных и выдана быть не
+					 * может, но освобождённой числится по-прежнему - оттого разбор адреса
+					 * сбоя отвечает о ней верно. Слияние же обязано её обходить: изъятую
+					 * область нельзя изъять вторично
+					 */
+					// Признак изъятости области на время отдачи
+					bool pending;
 					// Отметка времени освобождения в миллисекундах
 					uint64_t stamp;
+					// Метка владельца области, проставляемая слоем выше
+					uint32_t tag;
 					// Кусок, которому принадлежит область
 					Chunk * chunk;
 					// Предыдущая область в списке свободных
@@ -176,6 +192,20 @@ namespace awh {
 				source_t * _source;
 				// Общий список взятых у источника кусков
 				chunk_t * _chunks;
+				/**
+				 * Таблица поиска куска по адресу
+				 *
+				 * Куски выровнены по своему размеру, оттого начало куска берётся у любого
+				 * адреса одной маской, а таблица отвечает лишь на вопрос, наш ли это кусок.
+				 * Перебор списка кусков для того негоден: он зовётся на каждом
+				 * освобождении, а не однажды при разборе сбоя
+				 */
+				// Таблица поиска куска по адресу
+				chunk_t ** _table;
+				// Длина таблицы поиска в местах
+				size_t _length;
+				// Число кусков, внесённых в таблицу
+				size_t _enrolled;
 				// Списки свободных областей по числу страниц
 				span_t * _lists[LISTS + 1];
 				// Список свободных областей, не помещающихся в списки по числу страниц
@@ -248,6 +278,42 @@ namespace awh {
 				 *
 				 */
 				void mark(span_t * span) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод перестроения таблицы поиска куска по адресу
+				 *
+				 * @param length требуемая длина таблицы в местах
+				 * @return       признак перестроения таблицы
+				 *
+				 * \~english
+				 * @brief Method of rebuilding the chunk lookup table
+				 *
+				 */
+				bool rehash(const size_t length) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод внесения куска в таблицу поиска
+				 *
+				 * @param chunk вносимый кусок
+				 * @return      признак внесения куска
+				 *
+				 * \~english
+				 * @brief Method of enrolling a chunk into the lookup table
+				 *
+				 */
+				bool enroll(chunk_t * chunk) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод поиска куска, которому принадлежит адрес
+				 *
+				 * @param addr разбираемый адрес
+				 * @return     найденный кусок либо nullptr
+				 *
+				 * \~english
+				 * @brief Method of looking up the chunk an address belongs to
+				 *
+				 */
+				chunk_t * lookup(const void * addr) const noexcept;
 			public:
 				/**
 				 * \~russian
@@ -331,6 +397,49 @@ namespace awh {
 				 *
 				 */
 				bool locate(const void * addr, const void ** begin, size_t * pages, bool * live) const noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод проверки принадлежности адреса куче
+				 *
+				 * @note В отличие от locate работает за постоянное время и годится для
+				 *       вызова на каждом освобождении
+				 *
+				 * @param addr проверяемый адрес
+				 * @return     признак того, что адрес лежит внутри взятого у источника куска
+				 *
+				 * \~english
+				 * @brief Method of checking whether an address belongs to the heap
+				 *
+				 */
+				bool owns(const void * addr) const noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод описания области, которой принадлежит адрес
+				 *
+				 * @param addr  разбираемый адрес
+				 * @param begin адрес начала найденной области
+				 * @param pages размер найденной области в страницах кучи
+				 * @param tag   метка владельца найденной области
+				 * @return      признак того, что адрес принадлежит выданной наружу области
+				 *
+				 * \~english
+				 * @brief Method of describing the region an address belongs to
+				 *
+				 */
+				bool describe(const void * addr, void ** begin, size_t * pages, uint32_t * tag) const noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод пометки выданной области
+				 *
+				 * @param addr адрес начала выданной области
+				 * @param tag  проставляемая метка владельца
+				 * @return     признак пометки области
+				 *
+				 * \~english
+				 * @brief Method of tagging an allocated region
+				 *
+				 */
+				bool tag(void * addr, const uint32_t tag) noexcept;
 			public:
 				/**
 				 * \~russian
@@ -345,6 +454,59 @@ namespace awh {
 				 *
 				 */
 				size_t purge(const uint64_t now, const bool all) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод изъятия областей, подлежащих отдаче системе
+				 *
+				 * @note Половина отдачи, идущая ПОД ЗАМКОМ. Вторая половина - обращение к
+				 *       источнику - обязана идти снаружи: то системные вызовы, и держать
+				 *       на них замок кучи значило бы заставить прочие потоки кружить всё
+				 *       время работы ядра
+				 *
+				 * @param now    текущее время в миллисекундах
+				 * @param all    отдавать всё, не глядя на отсрочку
+				 * @param spans  место под изъятые области
+				 * @param limit  наибольшее число изымаемых областей
+				 * @param cursor место перебираемого списка, откуда продолжать
+				 * @return       число изъятых областей
+				 *
+				 * \~english
+				 * @brief Method of detaching the regions to be returned to the system
+				 *
+				 */
+				size_t detach(const uint64_t now, const bool all, void ** spans, const size_t limit, size_t * cursor) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод возврата изъятых областей в списки свободных
+				 *
+				 * @note Половина отдачи, идущая ПОД ЗАМКОМ, вслед за обращением к источнику
+				 *
+				 * @param spans  изъятые области
+				 * @param count  число изъятых областей
+				 * @param given  признаки состоявшейся отдачи по каждой области
+				 * @return       объём отданной системе памяти в байтах
+				 *
+				 * \~english
+				 * @brief Method of returning the detached regions to the free lists
+				 *
+				 */
+				size_t attach(void ** spans, const size_t count, const bool * given) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод отдачи содержимого изъятой области источнику
+				 *
+				 * @note Половина отдачи, идущая БЕЗ ЗАМКА. Изъятая область никому не
+				 *       выдаётся и никем не сливается, а источник состояния не хранит, -
+				 *       оттого обращение это замка не требует
+				 *
+				 * @param span изъятая область
+				 * @return     признак состоявшейся отдачи
+				 *
+				 * \~english
+				 * @brief Method of discharging a detached region to the source
+				 *
+				 */
+				bool discharge(void * span) const noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод задания порядка отдачи памяти системе

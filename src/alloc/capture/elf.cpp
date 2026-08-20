@@ -1,0 +1,261 @@
+/**
+ * @file elf.cpp
+ * @date 2026-08-20
+ *
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
+ * @copyright Copyright © 2026
+ *
+ */
+
+/**
+ * Признак того, что расширения GNU затребованы
+ *
+ * Объявляется ПЕРВЫМ, прежде всякого подключения: glibc решает состав объявлений при
+ * разборе своего первого же заголовочного файла, и объявленный после него признак не
+ * действует вовсе - `RTLD_NEXT` тогда не объявляется, а без него прежних функций не
+ * добыть
+ */
+#ifndef _GNU_SOURCE
+	#define _GNU_SOURCE
+#endif
+
+/**
+ * Подключаем заголовочный файл
+ */
+#include <alloc/elf.hpp>
+
+/**
+ * Если операционной системой не является MS Windows и не macOS
+ */
+#if !defined(_WIN32) && !defined(_WIN64) && !defined(__APPLE__)
+
+/**
+ * Стандартные заголовочные файлы
+ */
+#include <dlfcn.h>
+#include <cstring>
+
+/**
+ * Если расширения связывателя не объявлены
+ *
+ * Объявляются они не всюду: у musl и Solaris `RTLD_NEXT` есть, но лежит за
+ * признаком набора возможностей
+ */
+#ifndef RTLD_NEXT
+	#define RTLD_NEXT reinterpret_cast <void *> (-1l)
+#endif
+
+/**
+ * Если поиск по всему процессу не объявлен
+ */
+#ifndef RTLD_DEFAULT
+	#define RTLD_DEFAULT reinterpret_cast <void *> (0)
+#endif
+
+/**
+ * @brief Метод сверки того, что имя заслонено нами
+ *
+ * @param name название сверяемого имени
+ * @param ours адрес нашей функции
+ * @return     признак того, что процесс видит наш адрес
+ *
+ */
+bool awh::alloc::ELFCapture::shadowed(const char * name, const void * ours) const noexcept {
+	// Если название имени либо наша функция не заданы
+	if((name == nullptr) || (ours == nullptr))
+		// Сверять нечего
+		return false;
+	/**
+	 * Спрашиваем у связывателя адрес, который видит процесс
+	 *
+	 * Спрашиваем именно так, а не берём адрес имени прямо: взятый прямо адрес - это
+	 * всегда наш собственный, и сверка с ним сошлась бы при любом исходе связывания
+	 */
+	const void * seen = ::dlsym(RTLD_DEFAULT, name);
+	// Если имя не разрешилось вовсе
+	if(seen == nullptr)
+		// Заслонить не вышло
+		return false;
+	// Выводим признак совпадения увиденного процессом с нашим
+	return (seen == ours);
+}
+/**
+ * @brief Метод захвата выделения памяти процесса
+ *
+ * @param hooks     наши функции, ставимые на место прежних
+ * @param originals прежние функции, отдаваемые захватом
+ * @return          признак состоявшегося захвата
+ *
+ */
+bool awh::alloc::ELFCapture::acquire(const functions_t & hooks, functions_t & originals) noexcept {
+	// Если захват уже состоялся
+	if(this->_acquired){
+		// Отдаём прежде добытые функции
+		originals = this->_originals;
+		// Отвечаем успехом
+		return true;
+	}
+	// Если наши функции заданы не полностью
+	if((hooks.malloc == nullptr) || (hooks.free == nullptr) ||
+	   (hooks.calloc == nullptr) || (hooks.realloc == nullptr))
+		// Отвечаем отказом: неполный захват хуже отсутствия захвата
+		return false;
+	/**
+	 * Сверяем, что наши имена действительно заслонили прежние
+	 *
+	 * Сверяем ВСЕ четыре, а не одно: связыватель волен взять наш `malloc` и чужой
+	 * `free` - скажем, если наш файл кода попал в архив, а из архива взялся не
+	 * целиком. Выдача нашей памяти чужому `free` неисправима
+	 */
+	if(!this->shadowed("malloc", reinterpret_cast <const void *> (hooks.malloc)))
+		// Отвечаем отказом
+		return false;
+	// Сверяем освобождение памяти
+	if(!this->shadowed("free", reinterpret_cast <const void *> (hooks.free)))
+		// Отвечаем отказом
+		return false;
+	// Сверяем выделение обнулённой памяти
+	if(!this->shadowed("calloc", reinterpret_cast <const void *> (hooks.calloc)))
+		// Отвечаем отказом
+		return false;
+	// Сверяем изменение размера выделенной памяти
+	if(!this->shadowed("realloc", reinterpret_cast <const void *> (hooks.realloc)))
+		// Отвечаем отказом
+		return false;
+	/**
+	 * Добываем прежние функции
+	 *
+	 * `RTLD_NEXT` отвечает определением, следующим за нашим, - то есть тем самым,
+	 * которое мы заслонили. Названия библиотеки времени исполнения при этом знать не
+	 * надо, а оно у каждой системы своё
+	 */
+	// Добываем прежнее выделение памяти
+	this->_originals.malloc = reinterpret_cast <void * (*)(size_t)> (::dlsym(RTLD_NEXT, "malloc"));
+	// Добываем прежнее освобождение памяти
+	this->_originals.free = reinterpret_cast <void (*)(void *)> (::dlsym(RTLD_NEXT, "free"));
+	// Добываем прежнее выделение обнулённой памяти
+	this->_originals.calloc = reinterpret_cast <void * (*)(size_t, size_t)> (::dlsym(RTLD_NEXT, "calloc"));
+	// Добываем прежнее изменение размера выделенной памяти
+	this->_originals.realloc = reinterpret_cast <void * (*)(void *, size_t)> (::dlsym(RTLD_NEXT, "realloc"));
+	/**
+	 * Добываем прежнее измерение блока
+	 *
+	 * Своего у систем ELF лишь это имя: `malloc_usable_size` у Linux и Solaris,
+	 * `malloc_size` у FreeBSD, а у OpenBSD и NetBSD такого метода нет вовсе.
+	 * Отсутствие его отказом не считается - размер блока берётся у самой кучи
+	 */
+	// Пробуем имя, принятое у Linux и Solaris
+	this->_originals.msize = reinterpret_cast <size_t (*)(const void *)> (::dlsym(RTLD_NEXT, "malloc_usable_size"));
+	// Если такого имени нет, пробуем принятое у FreeBSD
+	if(this->_originals.msize == nullptr)
+		// Пробуем имя, принятое у FreeBSD
+		this->_originals.msize = reinterpret_cast <size_t (*)(const void *)> (::dlsym(RTLD_NEXT, "malloc_size"));
+	/**
+	 * Отвечаем отказом, если прежних функций добыть не вышло
+	 *
+	 * Без них освобождать выданную до захвата память нечем, а такая память в процессе
+	 * есть всегда: связыватель и сама библиотека времени исполнения выделяют её прежде
+	 * входа в программу
+	 */
+	if((this->_originals.malloc == nullptr) || (this->_originals.free == nullptr) ||
+	   (this->_originals.calloc == nullptr) || (this->_originals.realloc == nullptr)){
+		// Обнуляем добытое наполовину
+		this->_originals = functions_t();
+		// Отвечаем отказом
+		return false;
+	}
+	// Отмечаем захват состоявшимся
+	this->_acquired = true;
+	// Отдаём добытые прежние функции
+	originals = this->_originals;
+	// Отвечаем успехом
+	return true;
+}
+/**
+ * @brief Метод снятия захвата
+ *
+ */
+void awh::alloc::ELFCapture::release() noexcept {
+	/**
+	 * Снимать нечего: подмена состоялась при связывании
+	 *
+	 * Вернуть прежние имена на место можно было бы лишь пересвязав программу, оттого
+	 * снятие здесь означает лишь отметку. Распределитель же обязан пережить снятие и
+	 * продолжать освобождать выданное им - на то договор и требует хранить прежние
+	 * функции, а не прятать их
+	 */
+	// Отмечаем захват снятым
+	this->_acquired = false;
+}
+/**
+ * @brief Метод определения состоявшегося захвата
+ *
+ * @return признак захвата
+ *
+ */
+bool awh::alloc::ELFCapture::acquired() const noexcept {
+	// Выводим признак состоявшегося захвата
+	return this->_acquired;
+}
+/**
+ * @brief Метод опознания указателя, выданного прежним распределителем
+ *
+ * @param ptr разбираемый указатель
+ * @return    признак принадлежности прежнему распределителю
+ *
+ */
+bool awh::alloc::ELFCapture::foreign(const void * ptr) const noexcept {
+	/**
+	 * Опознать чужой указатель здесь нечем
+	 *
+	 * У MS Windows кучи процесса перечисляются, и принадлежность указателя прежнему
+	 * распределителю там устанавливается прямо. У систем же ELF такого перечня нет:
+	 * `malloc` библиотеки времени исполнения своих областей наружу не показывает.
+	 * Оттого решение принимается от обратного - указатель, не лежащий в наших
+	 * областях, считается чужим, - а знает о наших областях куча, а не захват
+	 */
+	(void) ptr;
+	// Опознать нечем
+	return false;
+}
+/**
+ * @brief Метод получения названия способа захвата
+ *
+ * @return название способа захвата
+ *
+ */
+const char * awh::alloc::ELFCapture::name() const noexcept {
+	// Выводим название способа захвата
+	return "ELF symbol interposition";
+}
+/**
+ * @brief Метод получения прежних функций выделения памяти
+ *
+ * @return прежние функции
+ *
+ */
+const awh::alloc::functions_t & awh::alloc::ELFCapture::originals() const noexcept {
+	// Выводим прежние функции выделения памяти
+	return this->_originals;
+}
+/**
+ * @brief Деструктор
+ *
+ */
+awh::alloc::ELFCapture::~ELFCapture() noexcept {
+	// Снимаем захват, если он состоялся
+	if(this->_acquired)
+		// Снимаем захват
+		this->release();
+}
+
+#endif // !_WIN32 && !_WIN64 && !__APPLE__

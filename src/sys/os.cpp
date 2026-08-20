@@ -31,34 +31,13 @@
 #include <iostream>
 
 /**
- * Если используется аллокатор TcMalloc
- */
-#if __AWH_USE_TCMALLOC__
-	/**
-	 * Объявляем средства аллокатора собственными, а не импортируемыми из DLL
-	 *
-	 * @details Заголовок аллокатора помечает свои объявления как __declspec(dllimport),
-	 *          едва увидит _WIN32, и переопределить это можно лишь выставив
-	 *          PERFTOOLS_DLL_DECL до его подключения. Аллокатор же компонуется в AWH
-	 *          статически, и при пометке импортом компоновщик ищет метки вида
-	 *          __imp__..., каких в статической библиотеке нет вовсе
-	 *
-	 * @note Отказ этот не всплывает на сборке самой библиотеки: архив несобранных
-	 *       меток не ищет, и обнаруживается пропажа лишь на компоновке приложения
-	 *
-	 */
-	#if _WIN32 || _WIN64
-		// Снимаем пометку импорта из DLL со средств аллокатора
-		#define PERFTOOLS_DLL_DECL
-	#endif
-	/**
-	 * Заголовочный файл аллокатора TcMalloc
-	 */
-	#include <gperftools/malloc_extension.h>
-/**
  * Если используется аллокатор Glibc
+ *
+ * @note Подключается ради `malloc_trim` и родни, к каким обращаются иные места этого
+ *       файла. Управление памятью самого фреймворка ведётся своим распределителем -
+ *       смотри include/alloc/alloc.hpp
  */
-#elif __GLIBC__
+#if __GLIBC__
 	/**
 	 * Заголовочный файл аллокатора Glibc
 	 */
@@ -232,6 +211,11 @@
  * Подключаем заголовочный файл проекта
  */
 #include <sys/os.hpp>
+
+/**
+ * Заголовочный файл своего распределителя памяти
+ */
+#include <alloc/alloc.hpp>
 #include <encoding/ascii.hpp>
 
 /**
@@ -1136,15 +1120,24 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 			// Если необходимо получить текущее потребление памяти
 			case static_cast <uint8_t> (rss_t::CURRENT): {
 				/**
-				 * Если используется аллокатор TcMalloc
+				 * Спрашиваем свой распределитель, если он заслонил выделение памяти
+				 *
+				 * Свой отвечает тем, что занято ПРИКЛАДНЫМ кодом, а система - тем, что
+				 * занято процессом: во второе входят и код программы, и её стеки, и
+				 * память, взятая у системы про запас. Величины эти разные, и подменять
+				 * одну другой нельзя, - оттого системный путь остаётся запасным, на
+				 * случай незахваченного выделения
 				 */
-				#if __AWH_USE_TCMALLOC__
-					// Выполняем получение занятой памяти выделенной аллокатором
-					MallocExtension::instance()->GetNumericProperty("generic.current_allocated_bytes", &result);
+				if(alloc::Allocator::captured()){
+					// Выполняем получение занятой прикладным кодом памяти
+					result = alloc::Allocator::property(alloc::property_t::ALLOCATED);
+					// Выходим из разбора
+					break;
+				}
 				/**
-				 * Если используются стандартные аллокаторы
+				 * Спрашиваем систему: выделение памяти нами не захвачено
 				 */
-				#else
+				{
 					/**
 					 * Для операционной системы MS Windows
 					 */
@@ -1372,7 +1365,7 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 						// Выполняем извлечение размера пика потребляемой памяти
 						result = static_cast <size_t> (psinfo.pr_rssize * 1024L);
 					#endif
-				#endif
+				}
 			} break;
 			// Если необходимо получить максимальное потребление памяти
 			case static_cast <uint8_t> (rss_t::MAXIMUM): {
@@ -1519,45 +1512,40 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
  *
  */
 void awh::Operating_System::printStatsMemory() const noexcept {
-	/**
-	 * Если используется аллокатор TcMalloc
-	 */
-	#if __AWH_USE_TCMALLOC__
-		// Буфер собираемой статистики аллокатора
-		char buffer[16384];
-		// Обнуляем первый символ буфера на случай, если аллокатор ничего не запишет
-		buffer[0] = '\0';
-		/**
-		 * Собираем статистику аллокатора в буфер: печатать её самостоятельно
-		 * реализация не умеет, вывод выполняется вызывающей стороной
-		 */
-		MallocExtension::instance()->GetStats(buffer, static_cast <int32_t> (sizeof(buffer) - 1));
-		// Принудительно завершаем собранную статистику
-		buffer[sizeof(buffer) - 1] = '\0';
-		// Печатаем разделители
-		cout << "*************** START ***************" << endl << endl << flush;
-		// Выводим собранную статистику занятой памяти
-		cout << buffer << flush;
-		// Печатаем разделители
-		cout << endl << "---------------- END ----------------" << endl << endl << flush;
-	/**
-	 * Если аллокатор TcMalloc не используется
-	 */
-	#else
+	// Если выделение памяти нами не захвачено
+	if(!alloc::Allocator::captured()){
 		/**
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, "Memory operations only work in the release build");
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, "Memory statistics are available only when the allocator has captured process memory allocation");
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory operations only work in the release build");
+			this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory statistics are available only when the allocator has captured process memory allocation");
 		#endif
-	#endif
+		// Выводить нечего
+		return;
+	}
+	// Печатаем разделители
+	cout << "*************** START ***************" << endl << endl << flush;
+	// Выводим занятое прикладным кодом прямо сейчас
+	cout << "Allocated by application: " << alloc::Allocator::property(alloc::property_t::ALLOCATED) << " bytes" << endl;
+	// Выводим наибольшее занятое за время работы
+	cout << "Peak allocated:           " << alloc::Allocator::property(alloc::property_t::PEAK) << " bytes" << endl;
+	// Выводим взятое у системы под кучу
+	cout << "Taken from system:        " << alloc::Allocator::property(alloc::property_t::HEAP) << " bytes" << endl;
+	// Выводим свободное в поток-локальных кэшах
+	cout << "Free in thread caches:    " << alloc::Allocator::property(alloc::property_t::CACHED) << " bytes" << endl;
+	// Выводим свободное в страничной куче, но системе не отданное
+	cout << "Free in page heap:        " << alloc::Allocator::property(alloc::property_t::PAGEFREE) << " bytes" << endl;
+	// Выводим отданное системе обратно
+	cout << "Returned to system:       " << alloc::Allocator::property(alloc::property_t::UNMAPPED) << " bytes" << endl;
+	// Печатаем разделители
+	cout << endl << "---------------- END ----------------" << endl << endl << flush;
 }
 /**
  * @brief Метод очистки выделенной памяти
@@ -1565,71 +1553,16 @@ void awh::Operating_System::printStatsMemory() const noexcept {
  */
 void awh::Operating_System::releaseFreeMemory() const noexcept {
 	/**
-	 * Если используется аллокатор TcMalloc
+	 * Отдаём память своим распределителем, а не средствами системных
+	 *
+	 * Прежде здесь стояла лесенка из пяти ветвей - `ReleaseFreeMemory` у TcMalloc,
+	 * `malloc_trim` у glibc, `malloc_zone_pressure_relief` у macOS, `mallctl` у
+	 * jemalloc и `_heapmin` у MS Windows, - и каждая отдавала память по-своему, а
+	 * иные не отдавали вовсе. Свой распределитель отдаёт её одинаково всюду, и
+	 * знать, чем собран потребитель, для того не надо
 	 */
-	#if __AWH_USE_TCMALLOC__
-		// Выполняем сброс памяти
-		MallocExtension::instance()->ReleaseFreeMemory();
-	/**
-	 * Если используется аллокатор Glibc
-	 */
-	#elif __GLIBC__
-		// Выполняем сброс памяти
-		::malloc_trim(0);
-	/**
-	 * Операционной системой является macOS
-	 */
-	#elif __APPLE__ || __MACH__
-		/**
-		 * macOS: нет malloc_trim, но можно использовать malloc_zone.
-		 * В новых версиях достаточно madvise, но явного API нет.
-		 * Альтернатива: malloc_zone_pressure_relief (доступна в macOS 11+)
-		 */
-		#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 110000
-			// Выполняем сброс памяти
-			::malloc_zone_pressure_relief(nullptr, 0);
-		#endif
-	/**
-	 * Если операционной системой является FreeBSD, NetBSD и OpenBSD
-	 */
-	#elif __FreeBSD__ || __NetBSD__ || __OpenBSD__
-		/**
-		 * BSD: на FreeBSD стандартный аллокатор — jemalloc, принудительный возврат памяти системе выполняется через mallctl
-		 */
-		#if __FreeBSD__ && JEMALLOC
-			// Объявляем функцию управления аллокатором jemalloc
-			extern "C" int32_t mallctl(const char *, void *, size_t *, void *, size_t);
-			/**
-			 * Принудительно очищаем все арены аллокатора (MALLCTL_ARENAS_ALL == 4096), возвращая память системе
-			 */
-			::mallctl("arena.4096.purge", nullptr, nullptr, nullptr, 0);
-		#endif
-	/**
-	 * Для операционной системы MS Windows
-	 */
-	#elif _WIN32 || _WIN64
-		/**
-		 * Если активирован компилятор MS Visual Studio
-		 */
-		#if _MSC_VER
-			// Выполняем сброс памяти
-			::_heapmin();
-		/**
-		 * Если активирован компилятор MinGW
-		 *
-		 * @note Сброс ведётся тою же _heapmin, что и у MS Visual Studio: обе среды
-		 *       выполнения зовут её из <malloc.h>, а он для MinGW подключается выше.
-		 *       Прежде здесь звалась _heap_trim, которой нет ни в msvcrt, ни в UCRT,
-		 *       и объявлялась она как extern "C" прямо в теле метода - объявление
-		 *       такое языком не дозволено вовсе, и сборка MinGW валилась отказом
-		 *       «expected unqualified-id before string constant». Обнаружено на
-		 *       стенде MSYS2 MinGW64 (13.08.2026)
-		 */
-		#elif __MINGW32__ || __MINGW64__
-			// Выполняем сброс памяти
-			::_heapmin();
-		#endif
-	#endif
+	// Отдаём системе свободную память
+	alloc::Allocator::purge();
 }
 /**
  * @brief Метод резервирования нужного размера памяти для всего приложения
@@ -1656,7 +1589,13 @@ bool awh::Operating_System::warmup(const size_t size) const noexcept {
 			 */
 			::madvise(mem, size, MADV_WILLNEED);
 		#endif
-		// Освобождаем — tcmalloc/jemalloc сохранят регион в пуле
+		/**
+		 * Освобождаем: наш распределитель оставит взятое у системы у себя
+		 *
+		 * Оставит по своей настройке отсрочки возврата, а не по случайности: взятые у
+		 * системы страницы уходят обратно не раньше, чем истечёт отсрочка, и до тех
+		 * пор занятая область остаётся тёплой
+		 */
 		::free(mem);
 		// Возвращаем положительный результат
 		return true;
@@ -1671,49 +1610,40 @@ bool awh::Operating_System::warmup(const size_t size) const noexcept {
  * @return     результат выполнения операции
  *
  */
-bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode) const noexcept {
-	// Переменная результата
-	bool result = false;
-	/**
-	 * Если используется аллокатор TcMalloc
-	 */
-	#if __AWH_USE_TCMALLOC__
-		/**
-		 * Скорость возврата памяти системе задаётся отдельным интерфейсом, а не
-		 * числовым свойством: нулевая скорость означает, что память системе не
-		 * возвращается вовсе, что и требуется для блокировки возврата
-		 */
-		// Требуемая скорость возврата памяти системе
-		const double required = (mode ? 0. : 1.);
-		// Устанавливаем требуемую скорость возврата памяти системе
-		MallocExtension::instance()->SetMemoryReleaseRate(required);
-		// Получаем установленную скорость возврата памяти системе
-		const double rate = MallocExtension::instance()->GetMemoryReleaseRate();
-		/**
-		 * Формируем результат: отрицательное значение означает, что реализация
-		 * аллокатора управление скоростью возврата памяти не поддерживает
-		 */
-		result = ((rate >= 0.) && (rate == required));
-	/**
-	 * Если аллокатор TcMalloc не используется
-	 */
-	#else
+bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept {
+	// Если выделение памяти нами не захвачено
+	if(!alloc::Allocator::captured()){
 		/**
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(mode), log_t::flag_t::CRITICAL, "Memory operations only work in the release build");
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(mode), log_t::flag_t::CRITICAL, "Memory release policy is available only when the allocator has captured process memory allocation");
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory operations only work in the release build");
+			this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory release policy is available only when the allocator has captured process memory allocation");
 		#endif
-	#endif
-	// Возвращаем результат
-	return result;
+		// Возвращаем отрицательный результат
+		return false;
+	}
+	// Получаем действующие настройки распределителя
+	alloc::options_t options = alloc::Allocator::options();
+	/**
+	 * Задаём отсрочку возврата памяти системе
+	 *
+	 * Отрицательная отсрочка означает, что память системе не возвращается вовсе, -
+	 * это и есть блокировка возврата. Снятие блокировки возвращает отсрочку к
+	 * умолчанию модуля, а не к тому, что стояло до блокировки: помнить прежнее
+	 * значение значило бы завести второе место хранения настройки
+	 */
+	options.purgeDelay = (mode ? -1 : alloc::options_t().purgeDelay);
+	// Задаём распределителю требуемые настройки
+	alloc::Allocator::options(options);
+	// Возвращаем признак применения требуемой отсрочки
+	return (alloc::Allocator::options().purgeDelay == options.purgeDelay);
 }
 /**
  * Для операционной системы не являющейся MS Windows

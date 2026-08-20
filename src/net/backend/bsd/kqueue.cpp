@@ -28945,6 +28945,14 @@ namespace io {
 								 *          tun_destroy освобождения последней ссылки на устройство, а держит
 								 *          её сам же процесс - разбор встаёт навсегда в состоянии D
 								 *
+								 * @warning Порядок этот НЕ подлежит сведению к соседним движкам «для
+								 *          единообразия»: он вынужден ядром, и перестановка строк даёт не
+								 *          ложный отклик, а вечное зависание разбора. Соседние движки
+								 *          20.08.2026 приведены К ЭТОМУ порядку, а не наоборот: у них снос
+								 *          шёл раньше закрытия, и в окне между ними ядро отдавало признак
+								 *          ошибки по мёртвому устройству, а движок объявлял потребителю
+								 *          отказ подключения на снесённом узле
+								 *
 								 * @note Закрытие дескриптора само снимает поставленные ему события kqueue,
 								 *       оттого очередь изменений тут не нужна
 								 */
@@ -39112,6 +39120,8 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 						tunnel->state.status = event::status_t::INITIAL;
 						// Если файловый дескриптор туннеля существует
 						if((result = (tunnel->fd != net::invalid_socket_t))){
+							// Признак назначенного устройству адреса
+							bool assigned = false;
 							/**
 							 * Определяем семейство адресов
 							 */
@@ -39143,9 +39153,9 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 									// Если адрес для удаленного подключения установлен
 									if(awh_cast <net::addr_net_ipv4_t *> (tunnel->target.get())->address > 0)
 										// Устанавливаем адрес IPv4 для клиента
-										this->_eth.iface.setAddress(tunnel->iface, tunnel->source.get(), tunnel->target.get(), 32);
+										assigned = this->_eth.iface.setAddress(tunnel->iface, tunnel->source.get(), tunnel->target.get(), 32);
 									// Устанавливаем адрес IPv4 для сервера
-									else this->_eth.iface.setAddress(tunnel->iface, tunnel->source.get(), tunnel->source.get(), 32);
+									else assigned = this->_eth.iface.setAddress(tunnel->iface, tunnel->source.get(), tunnel->source.get(), 32);
 								} break;
 								// Для семейства IPv6
 								case static_cast <uint8_t> (event::family_t::IPV6): {
@@ -39188,10 +39198,41 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 									// Если адрес для удаленного подключения установлен
 									if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (tunnel->target.get())->address[0], ::__awh_zero_ipv6__, 16) != 0)
 										// Устанавливаем адрес IPv6 для клиента
-										this->_eth.iface.setAddress(tunnel->iface, tunnel->source.get(), tunnel->target.get(), 128);
+										assigned = this->_eth.iface.setAddress(tunnel->iface, tunnel->source.get(), tunnel->target.get(), 128);
 									// Устанавливаем адрес IPv6 для сервера
-									else this->_eth.iface.setAddress(tunnel->iface, tunnel->source.get(), tunnel->source.get(), 128);
+									else assigned = this->_eth.iface.setAddress(tunnel->iface, tunnel->source.get(), tunnel->source.get(), 128);
 								} break;
+							}
+							/**
+							 * Устройство без адреса работать не может
+							 *
+							 * @details Итог назначения адреса прежде ОТБРАСЫВАЛСЯ, и устройство,
+							 *          оставшееся без адреса, движок отдавал потребителю как
+							 *          годное. Отправлять с него нечем: путь к встречной стороне
+							 *          проложен, сосед недостижим, и система отвечает отправителю
+							 *          «ресурс временно недоступен» бесконечно. Выдавала себя беда
+							 *          лишь пропуском проверки переноса пакета, где её причиной
+							 *          названы были правила пакетного фильтра
+							 *
+							 * @note Установлено на стенде Windows ARM64 20.08.2026 при первом
+							 *       прогоне пути Wintun: адрес числился за прежним устройством,
+							 *       система отвечала «уже существует», и оба слоя - назначение и
+							 *       разбор его итога - принимали это за успех. Движки POSIX
+							 *       приведены к тому же разбору
+							 */
+							if(!assigned){
+								// Если установлена функция обратного вызова
+								if(tunnel->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова об ошибке отказа
+									tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
+								// Устанавливаем текст ошибки
+								const string error = "Tunnel device was left without an address";
+								// Если установлена функция обратного вызова
+								if(tunnel->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									tunnel->callbacks.error(tunnel->id, event::error_t::EVENT_FAIL, error);
+								// Если функция обратного вызова вывода ошибки не установлена
+								else this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 							}
 							// Создаём объект события для Kqueue
 							struct kevent event{};
@@ -69831,6 +69872,14 @@ void awh::engine::IO::clear() noexcept {
 								 * @warning Дескриптор устройства обязан закрываться до сноса: ядро ждёт в
 								 *          tun_destroy освобождения последней ссылки на устройство, а держит
 								 *          её сам же процесс - разбор встаёт навсегда в состоянии D
+								 *
+								 * @warning Порядок этот НЕ подлежит сведению к соседним движкам «для
+								 *          единообразия»: он вынужден ядром, и перестановка строк даёт не
+								 *          ложный отклик, а вечное зависание разбора. Соседние движки
+								 *          20.08.2026 приведены К ЭТОМУ порядку, а не наоборот: у них снос
+								 *          шёл раньше закрытия, и в окне между ними ядро отдавало признак
+								 *          ошибки по мёртвому устройству, а движок объявлял потребителю
+								 *          отказ подключения на снесённом узле
 								 *
 								 * @note Закрытие дескриптора само снимает поставленные ему события kqueue,
 								 *       оттого очередь изменений тут не нужна

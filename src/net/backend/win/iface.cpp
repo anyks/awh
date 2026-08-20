@@ -932,8 +932,12 @@ bool awh::eth::Interface::destroy(string_view name) const noexcept {
  *
  * @note Адрес добавляется к устройству, а не замещает прежние: у MS Windows за
  *       устройством числится перечень адресов, и понятия «единственного» адреса нет
- *       вовсе. Отказ ERROR_OBJECT_ALREADY_EXISTS означает, что адрес уже стоит, и
- *       считается за успех - итог тот же, какого добивались
+ *       вовсе
+ *
+ * @warning Ответ ERROR_OBJECT_ALREADY_EXISTS сам по себе за успех НЕ принимается:
+ *          система отвечает так и тогда, когда адрес занят ДРУГИМ устройством машины.
+ *          Успехом он считается лишь после сличения записи по нашему номеру
+ *          устройства - подробности у самого места разбора
  *
  * @warning Установка требует надзорных прав и переживает завершение процесса
  *
@@ -999,14 +1003,160 @@ bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, c
 	}
 	// Выполняем установку адреса устройства
 	const DWORD code = ::CreateUnicastIpAddressEntry(&row);
-	// Если адрес устройства установлен либо уже стоял
-	if((code == NO_ERROR) || (code == ERROR_OBJECT_ALREADY_EXISTS))
+	// Если адрес устройства установлен
+	if(code == NO_ERROR)
 		// Выводим положительный результат установки
 		return true;
+	/**
+	 * Ответ «объект уже существует» согласием НЕ считается, покуда не сличён номер устройства
+	 *
+	 * @details Система отвечает так и тогда, когда адрес занят ДРУГИМ устройством машины, -
+	 *          а такое случается сплошь и рядом: устройство tap-windows6 живёт в системе
+	 *          постоянно, приложением не сносится, и назначенный ему адрес переживает
+	 *          прогон. Следующее устройство, заведённое драйвером Wintun, получало от
+	 *          системы «уже есть», движок считал дело сделанным - и устройство оставалось
+	 *          БЕЗ АДРЕСА вовсе. Отправлять с него нечем: путь к встречной стороне проложен,
+	 *          сосед недостижим, и система отвечает отправителю «ресурс временно недоступен»
+	 *          бесконечно
+	 *
+	 * @note Установлено щупом на Windows ARM64 20.08.2026: адрес 10.77.0.1 числился за
+	 *       ОТКЛЮЧЁННЫМ устройством «Подключение по локальной сети» в состоянии Deprecated,
+	 *       а работающее устройство AWH стояло без адреса. Снятие застрявшего адреса
+	 *       возвращало перенос пакета немедленно - 302 мс против бесконечного ожидания
+	 *
+	 * @warning Сличается именно ЗАПИСЬ ПО НАШЕМУ НОМЕРУ устройства, а не наличие адреса в
+	 *          системе: второе как раз и вводило в заблуждение
+	 */
+	if(code == ERROR_OBJECT_ALREADY_EXISTS){
+		// Запись адреса для сличения
+		MIB_UNICASTIPADDRESS_ROW check{};
+		// Выполняем начальную подготовку записи сличения
+		::InitializeUnicastIpAddressEntry(&check);
+		// Устанавливаем местный номер нашего устройства
+		check.InterfaceLuid = luid;
+		// Переносим сам адрес
+		check.Address = row.Address;
+		// Если адрес числится именно за нашим устройством
+		if(::GetUnicastIpAddressEntry(&check) == NO_ERROR)
+			// Выводим положительный результат установки
+			return true;
+		// Выводим в журнал сообщение о занятости адреса другим устройством
+		this->_log->print("%s: address is already assigned to another interface, \"%s\" left without it", log_t::flag_t::WARNING, ::__AWH_IFACE_BACKEND__, string(name).c_str());
+		// Выводим отрицательный результат установки
+		return false;
+	}
 	// Выводим в журнал сообщение о невозможности установки адреса
 	this->_log->print("%s: interface address could not be assigned, error %lu", log_t::flag_t::WARNING, ::__AWH_IFACE_BACKEND__, code);
 	// Выводим отрицательный результат установки
 	return false;
+}
+/**
+ * @brief Метод снятия адреса сетевого устройства и пути к тому концу связи
+ *
+ * @param name название сетевого устройства
+ * @param ip   снимаемый адрес
+ * @param peer адрес того конца связи, путь к которому снимается
+ * @return     результат выполнения снятия
+ *
+ * @details Снимает ровно то, что поставила установка адреса, и снимает молча: отказ
+ *          системы записью в журнал не сопровождается. Причина в том, что снятие идёт
+ *          при свёртывании туннеля, когда устройство может быть уже снесено вместе со
+ *          всем, что за ним числилось, - и отказ «нет такого объекта» здесь законен
+ *
+ * @warning Снятие ОБЯЗАТЕЛЬНО у MS Windows и не нужно у систем POSIX: устройство
+ *          драйвера tap-windows6 живёт в системе постоянно, приложением не сносится, и
+ *          назначенный ему адрес переживает прогон. Установлено на Windows ARM64
+ *          20.08.2026: адреса 10.77.0.1 и fd77:aa::1 вместе с путём 10.77.0.2/32
+ *          оставались на устройстве от прежних прогонов, и следующее устройство,
+ *          заведённое драйвером Wintun, оставалось без адреса вовсе
+ *
+ */
+bool awh::eth::Interface::delAddress(string_view name, const net::addr_t * ip, const net::addr_t * peer) const noexcept {
+	// Если название сетевого устройства либо адрес не переданы
+	if(name.empty() || (ip == nullptr))
+		// Выводим отрицательный результат снятия
+		return false;
+	// Местный номер сетевого устройства
+	NET_LUID luid{};
+	// Если сетевое устройство найти не удалось
+	if(!::__awh_luid__(name, luid))
+		// Выводим отрицательный результат снятия
+		return false;
+	// Признак снятого адреса
+	bool result = false;
+	// Снимаемая запись адреса устройства
+	MIB_UNICASTIPADDRESS_ROW row{};
+	// Выполняем начальную подготовку записи адреса
+	::InitializeUnicastIpAddressEntry(&row);
+	// Устанавливаем местный номер устройства
+	row.InterfaceLuid = luid;
+	/**
+	 * Определяем семейство снимаемого адреса
+	 */
+	switch(ip->size){
+		// Если снимается адрес IPv4
+		case 4: {
+			// Устанавливаем семейство адреса
+			row.Address.Ipv4.sin_family = AF_INET;
+			// Устанавливаем сам адрес
+			row.Address.Ipv4.sin_addr.s_addr = awh_cast <const net::addr_net_ipv4_t *> (ip)->address;
+		} break;
+		// Если снимается адрес IPv6
+		case 16: {
+			// Устанавливаем семейство адреса
+			row.Address.Ipv6.sin6_family = AF_INET6;
+			// Устанавливаем сам адрес
+			::memcpy(&row.Address.Ipv6.sin6_addr, &awh_cast <const net::addr_net_ipv6_t *> (ip)->address[0], sizeof(struct in6_addr));
+		} break;
+		// Если семейство адреса определить не удалось
+		default: return false;
+	}
+	// Если запись адреса устройства найдена
+	if(::GetUnicastIpAddressEntry(&row) == NO_ERROR)
+		// Выполняем снятие адреса устройства
+		result = (::DeleteUnicastIpAddressEntry(&row) == NO_ERROR);
+	// Если адрес того конца связи передан
+	if(peer != nullptr){
+		// Снимаемая запись пути к тому концу связи
+		MIB_IPFORWARD_ROW2 route{};
+		// Выполняем начальную подготовку записи пути
+		::InitializeIpForwardEntry(&route);
+		// Устанавливаем местный номер устройства
+		route.InterfaceLuid = luid;
+		/**
+		 * Определяем семейство адреса того конца связи
+		 */
+		switch(peer->size){
+			// Если тот конец связи адресуется IPv4
+			case 4: {
+				// Устанавливаем семейство адреса назначения
+				route.DestinationPrefix.Prefix.Ipv4.sin_family = AF_INET;
+				// Устанавливаем сам адрес назначения
+				route.DestinationPrefix.Prefix.Ipv4.sin_addr.s_addr = awh_cast <const net::addr_net_ipv4_t *> (peer)->address;
+				// Устанавливаем длину префикса сети назначения
+				route.DestinationPrefix.PrefixLength = 32;
+			} break;
+			// Если тот конец связи адресуется IPv6
+			case 16: {
+				// Устанавливаем семейство адреса назначения
+				route.DestinationPrefix.Prefix.Ipv6.sin6_family = AF_INET6;
+				// Устанавливаем сам адрес назначения
+				::memcpy(&route.DestinationPrefix.Prefix.Ipv6.sin6_addr, &awh_cast <const net::addr_net_ipv6_t *> (peer)->address[0], sizeof(struct in6_addr));
+				// Устанавливаем длину префикса сети назначения
+				route.DestinationPrefix.PrefixLength = 128;
+			} break;
+			// Если семейство адреса определить не удалось
+			default: return result;
+		}
+		// Устанавливаем семейство следующего узла пути
+		route.NextHop.si_family = route.DestinationPrefix.Prefix.si_family;
+		// Если запись пути найдена
+		if(::GetIpForwardEntry2(&route) == NO_ERROR)
+			// Выполняем снятие пути к тому концу связи
+			::DeleteIpForwardEntry2(&route);
+	}
+	// Выводим результат выполнения снятия
+	return result;
 }
 /**
  * @brief Метод установки адреса сетевого устройства связи точка-точка
@@ -1228,21 +1378,42 @@ bool awh::eth::Interface::flag(string_view name, const event::eth_flag_t flag, c
 		// Выводим отрицательный результат установки
 		return false;
 	}
-	// Настройки сетевого устройства
-	MIB_IF_ROW2 row{};
-	// Устанавливаем местный номер устройства
-	row.InterfaceLuid = luid;
+	// Порядковый номер сетевого устройства
+	NET_IFINDEX index = 0;
+	// Если порядковый номер устройства по местному номеру получить не удалось
+	if(::ConvertInterfaceLuidToIndex(&luid, &index) != NO_ERROR){
+		// Выводим в журнал сообщение о ненайденном устройстве
+		this->_log->print("%s: interface \"%s\" has no index", log_t::flag_t::WARNING, ::__AWH_IFACE_BACKEND__, string(name).c_str());
+		// Выводим отрицательный результат установки
+		return false;
+	}
+	/**
+	 * Настройки сетевого устройства
+	 *
+	 * @warning Здесь обязана стоять именно MIB_IFROW, а не MIB_IF_ROW2: записи состояния
+	 *          отвечает единственная SetIfEntry, и принимает она устаревшую структуру.
+	 *          Прежде тут заполнялась MIB_IF_ROW2 и приводилась указателем к PMIB_IFROW -
+	 *          раскладка полей у них не совпадает вовсе (MIB_IF_ROW2 открывается местным
+	 *          номером InterfaceLuid, MIB_IFROW - названием и порядковым номером dwIndex),
+	 *          оттого система читала номер устройства из чужого места и отвечала кодом 2
+	 *          «не найдено». Подъём устройства под MS Windows не работал НИКОГДА и ни для
+	 *          какого устройства - выдал себя дефект только проверкой переноса пакета
+	 *          через туннель 20.08.2026. Замены в виде SetIfEntry2 в заголовках MinGW нет
+	 */
+	MIB_IFROW row{};
+	// Устанавливаем порядковый номер устройства
+	row.dwIndex = static_cast <DWORD> (index);
 	// Если снять нынешние настройки устройства не удалось
-	if(::GetIfEntry2(&row) != NO_ERROR){
+	if(::GetIfEntry(&row) != NO_ERROR){
 		// Выводим в журнал сообщение о невозможности опроса устройства
 		this->_log->print("%s: interface state could not be read", log_t::flag_t::WARNING, ::__AWH_IFACE_BACKEND__);
 		// Выводим отрицательный результат установки
 		return false;
 	}
 	// Устанавливаем состояние устройства
-	row.AdminStatus = (mode == event::mode_t::ENABLED ? NET_IF_ADMIN_STATUS_UP : NET_IF_ADMIN_STATUS_DOWN);
+	row.dwAdminStatus = (mode == event::mode_t::ENABLED ? MIB_IF_ADMIN_STATUS_UP : MIB_IF_ADMIN_STATUS_DOWN);
 	// Выполняем запись настроек устройства
-	const DWORD code = ::SetIfEntry(reinterpret_cast <PMIB_IFROW> (&row));
+	const DWORD code = ::SetIfEntry(&row);
 	// Если настройки устройства записаны
 	if(code == NO_ERROR)
 		// Выводим положительный результат установки

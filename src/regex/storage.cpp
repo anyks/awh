@@ -627,6 +627,17 @@ void awh::regex::Storage::save(const program_t & program, string & result) const
 	writeText(program.prefilter.literal, result);
 	// Выполняем запись последовательности начала любого совпадения
 	writeText(program.prefilter.leading, result);
+	/**
+	 * Выполняем запись удаления обязательного литерала от начала совпадения
+	 *
+	 * @details Удаление вычисляется разбором синтаксического дерева, какого
+	 *          запись не несёт, отчего восстановить его по записи иначе
+	 *          как чтением нельзя. Отсутствие же его обратило бы отбор
+	 *          позиций по литералу в отбор по удалению нулевому, то есть
+	 *          отвергло бы совпадения, литералом не начинаемые.
+	 *
+	 */
+	write64(static_cast <uint64_t> (program.prefilter.distance), result);
 	// Выполняем запись набора инструкций программы образом памяти
 	writeRegion(program.instructions, result);
 	// Выполняем запись хранилища ссылок на классы символов образом памяти
@@ -757,6 +768,19 @@ bool awh::regex::Storage::load(string_view data, size_t & offset, program_t & pr
 		// Выводим результат восстановления программы
 		return false;
 	}
+	// Удаление обязательного литерала от начала совпадения
+	uint64_t distance = 0;
+	/**
+	 * Если чтение удаления обязательного литерала не выполнено
+	 */
+	if(!read64(data, offset, distance)) {
+		// Устанавливаем ошибку обрыва записи
+		this->_error = storage_error_t::TRUNCATED;
+		// Выводим результат восстановления программы
+		return false;
+	}
+	// Выполняем установку удаления обязательного литерала
+	program.prefilter.distance = static_cast <size_t> (distance);
 	/**
 	 * Если восстановление набора инструкций программы не выполнено
 	 */

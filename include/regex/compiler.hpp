@@ -723,6 +723,67 @@ namespace awh {
 				string required(const node_id_t id) const noexcept;
 				/**
 				 * \~russian
+				 * @brief Метод извлечения обязательного литерала цепочки узлов с удалением его
+				 *
+				 * @details Удаление есть наибольшее число байтов, какое способно
+				 *          предшествовать литералу внутри совпадения. Оно позволяет
+				 *          употребить литерал позиционно: совпадение обязано его
+				 *          содержать, отчего начало совпадения не может лежать
+				 *          дальше чем за удаление до ближайшего вхождения литерала.
+				 *          Значение «string_view::npos» означает удаление
+				 *          неограниченное, при каком позиционное употребление
+				 *          литерала неприменимо.
+				 *
+				 * @param id       индекс первого узла цепочки в арене узлов
+				 * @param distance наибольшее удаление литерала от начала совпадения
+				 * @return         обязательный литерал совпадения цепочки узлов
+				 *
+				 * \~english
+				 * @brief Method of getting the mandatory literal of a chain of nodes with its distance
+				 * @param id       index of the first node of the chain in the node arena
+				 * @param distance the greatest distance of the literal from the beginning of a match
+				 * @return         mandatory literal of a match of the chain of nodes
+				 *
+				 * \~
+				 */
+				string required(const node_id_t id, size_t & distance) const noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод извлечения наибольшей длины сопоставления узла
+				 *
+				 * @details Длина выводится в байтах текста. Значение
+				 *          «string_view::npos» означает длину неограниченную:
+				 *          её дают повторение без верхнего предела, обратная
+				 *          ссылка, рекурсивный вызов и условное выражение.
+				 *
+				 * @param id индекс узла в арене узлов
+				 * @return   наибольшая длина сопоставления узла в байтах
+				 *
+				 * \~english
+				 * @brief Method of getting the greatest matching length of a node
+				 * @param id index of the node in the node arena
+				 * @return   the greatest matching length of the node in bytes
+				 *
+				 * \~
+				 */
+				size_t spanningNode(const node_id_t id) const noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод извлечения наибольшей длины сопоставления цепочки узлов
+				 *
+				 * @param id индекс первого узла цепочки в арене узлов
+				 * @return   наибольшая длина сопоставления цепочки узлов в байтах
+				 *
+				 * \~english
+				 * @brief Method of getting the greatest matching length of a chain of nodes
+				 * @param id index of the first node of the chain in the node arena
+				 * @return   the greatest matching length of the chain of nodes in bytes
+				 *
+				 * \~
+				 */
+				size_t spanning(const node_id_t id) const noexcept;
+				/**
+				 * \~russian
 				 * @brief Метод извлечения обязательного литерала узла
 				 *
 				 * @param id индекс узла в арене узлов
@@ -736,6 +797,23 @@ namespace awh {
 				 * \~
 				 */
 				string requiredNode(const node_id_t id) const noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод извлечения обязательного литерала узла с удалением его
+				 *
+				 * @param id       индекс узла в арене узлов
+				 * @param distance наибольшее удаление литерала от начала сопоставления узла
+				 * @return         обязательный литерал совпадения узла
+				 *
+				 * \~english
+				 * @brief Method of getting the mandatory literal of a node with its distance
+				 * @param id       index of the node in the node arena
+				 * @param distance the greatest distance of the literal from the beginning of the node match
+				 * @return         mandatory literal of a match of the node
+				 *
+				 * \~
+				 */
+				string requiredNode(const node_id_t id, size_t & distance) const noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод извлечения литерала, сопоставляемого узлом целиком

@@ -955,6 +955,204 @@ string awh::regex::Compiler::literal(const node_id_t id) const noexcept {
  *
  */
 string awh::regex::Compiler::requiredNode(const node_id_t id) const noexcept {
+	// Удаление обязательного литерала от начала сопоставления узла
+	size_t distance = 0;
+	// Выводим обязательный литерал совпадения узла
+	return this->requiredNode(id, distance);
+}
+/**
+ * @brief Метод извлечения обязательного литерала цепочки узлов
+ *
+ * @param id индекс первого узла цепочки в арене узлов
+ * @return   обязательный литерал совпадения цепочки узлов
+ *
+ */
+string awh::regex::Compiler::required(const node_id_t id) const noexcept {
+	// Удаление обязательного литерала от начала совпадения
+	size_t distance = 0;
+	// Выводим обязательный литерал совпадения цепочки узлов
+	return this->required(id, distance);
+}
+/**
+ * @brief Метод извлечения наибольшей длины сопоставления узла
+ *
+ * @details Длина выводится в байтах текста, а не в кодовых значениях: позиционное
+ *          употребление обязательного литерала ведётся над байтами. В режиме
+ *          разбора UTF-8 одиночному символу отводится наибольшая длина
+ *          последовательности, то есть четыре байта: точная длина зависит
+ *          от кодового значения, а у класса символов не определена вовсе,
+ *          и завышение здесь безопасно - оно лишь ослабляет пропуск позиций.
+ *
+ * @param id индекс узла в арене узлов
+ * @return   наибольшая длина сопоставления узла в байтах
+ *
+ */
+size_t awh::regex::Compiler::spanningNode(const node_id_t id) const noexcept {
+	/**
+	 * Если индекс узла отсутствует
+	 */
+	if(id == INVALID_NODE)
+		// Выводим наибольшую длину сопоставления узла
+		return 0;
+	// Получаем узел синтаксического дерева
+	const node_data_t & node = this->_parser->node(id);
+	// Получаем наибольшую длину одиночного символа в байтах
+	const size_t letter = (((this->_program->flags & static_cast <uint32_t> (flag_t::UTF)) != 0) ? 4 : 1);
+	/**
+	 * Определяем тип узла синтаксического дерева
+	 */
+	switch(static_cast <uint8_t> (node.type)) {
+		// Пустое выражение текста не поглощает вовсе
+		case static_cast <uint8_t> (node_t::EMPTY):
+		// Привязка к позиции в тексте текста не поглощает вовсе
+		case static_cast <uint8_t> (node_t::ANCHOR):
+		// Проверка окружения текста не поглощает вовсе
+		case static_cast <uint8_t> (node_t::LOOKAROUND):
+			// Выводим наибольшую длину сопоставления узла
+			return 0;
+		// Одиночный символ поглощает единицу кодирования
+		case static_cast <uint8_t> (node_t::LITERAL):
+		// Класс символов поглощает единицу кодирования
+		case static_cast <uint8_t> (node_t::CLASS):
+		// Любой символ поглощает единицу кодирования
+		case static_cast <uint8_t> (node_t::ANY):
+			// Выводим наибольшую длину сопоставления узла
+			return letter;
+		// Одиночная единица кодирования поглощает ровно байт
+		case static_cast <uint8_t> (node_t::CODEUNIT):
+			// Выводим наибольшую длину сопоставления узла
+			return 1;
+		/**
+		 * Выводим наибольшую длину последовательности символов
+		 */
+		case static_cast <uint8_t> (node_t::STRING):
+			// Выводим наибольшую длину сопоставления узла
+			return (static_cast <size_t> (node.string.length) * letter);
+		// Выводим наибольшую длину тела последовательности элементов
+		case static_cast <uint8_t> (node_t::CONCAT): return this->spanning(node.child);
+		// Выводим наибольшую длину тела группы
+		case static_cast <uint8_t> (node_t::GROUP): return this->spanning(node.child);
+		/**
+		 * Выводим наибольшую длину выбора одной из ветвей
+		 *
+		 * @details Ветви лежат дочерними узлами одного уровня, и длина выбора
+		 *          есть наибольшая из длин их, а не сумма: сопоставляется
+		 *          ветвь одна.
+		 *
+		 */
+		case static_cast <uint8_t> (node_t::ALTERNATE): {
+			// Наибольшая длина сопоставления ветвей выбора
+			size_t result = 0;
+			/**
+			 * Выполняем обход ветвей выбора одной из них
+			 */
+			for(node_id_t index = node.child; index != INVALID_NODE; index = this->_parser->node(index).next) {
+				// Получаем наибольшую длину сопоставления очередной ветви
+				const size_t length = this->spanningNode(index);
+				/**
+				 * Если длина ветви не ограничена
+				 */
+				if(length == string_view::npos)
+					// Выводим длину сопоставления неограниченную
+					return string_view::npos;
+				/**
+				 * Если длина ветви наибольшую превышает
+				 */
+				if(length > result)
+					// Выполняем установку наибольшей длины сопоставления
+					result = length;
+			}
+			// Выводим наибольшую длину сопоставления узла
+			return result;
+		}
+		/**
+		 * Выводим наибольшую длину повторения дочернего узла
+		 */
+		case static_cast <uint8_t> (node_t::REPEAT): {
+			/**
+			 * Если верхнего предела числа повторений нет
+			 */
+			if(node.repeat.max == UNBOUNDED)
+				// Выводим длину сопоставления неограниченную
+				return string_view::npos;
+			// Получаем наибольшую длину сопоставления тела повторения
+			const size_t length = this->spanningNode(node.child);
+			/**
+			 * Если длина тела повторения не ограничена
+			 */
+			if(length == string_view::npos)
+				// Выводим длину сопоставления неограниченную
+				return string_view::npos;
+			/**
+			 * Если тело повторения текста не поглощает вовсе
+			 */
+			if(length == 0)
+				// Выводим наибольшую длину сопоставления узла
+				return 0;
+			/**
+			 * Если произведение предел разрядности превышает
+			 *
+			 * @details Число повторений задаётся выражением и доходит до предела
+			 *          разрядности, отчего умножение обязано проверяться:
+			 *          переполнение обратило бы длину неограниченную в малую
+			 *          и пропустило бы позиции, пропуску не подлежащие.
+			 *
+			 */
+			if(static_cast <size_t> (node.repeat.max) > (string_view::npos / length))
+				// Выводим длину сопоставления неограниченную
+				return string_view::npos;
+			// Выводим наибольшую длину сопоставления узла
+			return (static_cast <size_t> (node.repeat.max) * length);
+		}
+	}
+	// Выводим длину сопоставления неограниченную
+	return string_view::npos;
+}
+/**
+ * @brief Метод извлечения наибольшей длины сопоставления цепочки узлов
+ *
+ * @param id индекс первого узла цепочки в арене узлов
+ * @return   наибольшая длина сопоставления цепочки узлов в байтах
+ *
+ */
+size_t awh::regex::Compiler::spanning(const node_id_t id) const noexcept {
+	// Наибольшая длина сопоставления цепочки узлов
+	size_t result = 0;
+	/**
+	 * Выполняем обход цепочки узлов одного уровня вложенности
+	 */
+	for(node_id_t index = id; index != INVALID_NODE; index = this->_parser->node(index).next) {
+		// Получаем наибольшую длину сопоставления очередного узла
+		const size_t length = this->spanningNode(index);
+		/**
+		 * Если длина узла не ограничена
+		 */
+		if(length == string_view::npos)
+			// Выводим длину сопоставления неограниченную
+			return string_view::npos;
+		/**
+		 * Если сумма предел разрядности превышает
+		 */
+		if(length > (string_view::npos - result))
+			// Выводим длину сопоставления неограниченную
+			return string_view::npos;
+		// Выполняем накопление наибольшей длины сопоставления
+		result += length;
+	}
+	// Выводим наибольшую длину сопоставления цепочки узлов
+	return result;
+}
+/**
+ * @brief Метод извлечения обязательного литерала узла с удалением его
+ *
+ * @param id       индекс узла в арене узлов
+ * @param distance наибольшее удаление литерала от начала сопоставления узла
+ * @return         обязательный литерал совпадения узла
+ *
+ */
+string awh::regex::Compiler::requiredNode(const node_id_t id, size_t & distance) const noexcept {
+	// Выполняем сброс удаления литерала от начала сопоставления узла
+	distance = 0;
 	/**
 	 * Если индекс узла отсутствует
 	 */
@@ -968,11 +1166,16 @@ string awh::regex::Compiler::requiredNode(const node_id_t id) const noexcept {
 	 */
 	switch(static_cast <uint8_t> (node.type)) {
 		// Выводим обязательный литерал тела последовательности элементов
-		case static_cast <uint8_t> (node_t::CONCAT): return this->required(node.child);
+		case static_cast <uint8_t> (node_t::CONCAT): return this->required(node.child, distance);
 		// Выводим обязательный литерал тела группы
-		case static_cast <uint8_t> (node_t::GROUP): return this->required(node.child);
+		case static_cast <uint8_t> (node_t::GROUP): return this->required(node.child, distance);
 		/**
 		 * Выводим обязательный литерал повторяемого элемента выражения
+		 *
+		 * @details Литерал повторения содержится в каждом проходе его, отчего
+		 *          вхождение ближайшее лежит в проходе первом, и удаление
+		 *          берётся внутри тела, числу повторений не умножаясь.
+		 *
 		 */
 		case static_cast <uint8_t> (node_t::REPEAT): {
 			/**
@@ -982,24 +1185,41 @@ string awh::regex::Compiler::requiredNode(const node_id_t id) const noexcept {
 				// Выводим отсутствие обязательного литерала
 				return string();
 			// Выводим обязательный литерал повторяемого элемента выражения
-			return this->requiredNode(node.child);
+			return this->requiredNode(node.child, distance);
 		}
 	}
 	// Выводим литерал, сопоставляемый узлом целиком
 	return this->literal(id);
 }
 /**
- * @brief Метод извлечения обязательного литерала цепочки узлов
+ * @brief Метод извлечения обязательного литерала цепочки узлов с удалением его
  *
- * @param id индекс первого узла цепочки в арене узлов
- * @return   обязательный литерал совпадения цепочки узлов
+ * @details Разбор литерала ведётся здесь, а вид без удаления обращается сюда же:
+ *          два разбора разошлись бы рано или поздно, и позиционное употребление
+ *          получило бы литерал один, а проверка возможности совпадения - иной.
+ *
+ *          Удаление накапливается наибольшими длинами узлов, литералу
+ *          предшествующих. Узел длины неограниченной обращает его
+ *          в «string_view::npos», чем позиционное употребление и отменяется:
+ *          литерал такой в тексте отыскивается, но начала совпадения
+ *          не ограничивает.
+ *
+ * @param id       индекс первого узла цепочки в арене узлов
+ * @param distance наибольшее удаление литерала от начала совпадения
+ * @return         обязательный литерал совпадения цепочки узлов
  *
  */
-string awh::regex::Compiler::required(const node_id_t id) const noexcept {
+string awh::regex::Compiler::required(const node_id_t id, size_t & distance) const noexcept {
 	// Наибольший обнаруженный обязательный литерал
 	string result;
 	// Литерал, накапливаемый по смежным узлам цепочки
 	string run;
+	// Удаление наибольшего обнаруженного литерала от начала совпадения
+	size_t found = 0;
+	// Удаление накапливаемого литерала от начала совпадения
+	size_t reach = 0;
+	// Наибольшее число байтов, цепочкой до очередного узла поглощаемое
+	size_t passed = 0;
 	/**
 	 * Выполняем обход цепочки узлов одного уровня вложенности
 	 */
@@ -1014,34 +1234,81 @@ string awh::regex::Compiler::required(const node_id_t id) const noexcept {
 		 *
 		 */
 		if(!value.empty()) {
+			/**
+			 * Если накопление литерала лишь начинается
+			 */
+			if(run.empty())
+				// Выполняем установку удаления накапливаемого литерала
+				reach = passed;
 			// Выполняем накопление литерала по смежным узлам
 			run.append(value);
+			/**
+			 * Если длина цепочки ещё ограничена
+			 */
+			if(passed != string_view::npos)
+				// Выполняем накопление длины, цепочкой поглощаемой
+				passed += value.size();
 			// Переходим к следующему узлу цепочки
 			continue;
 		}
 		/**
 		 * Если накопленный литерал длиннее обнаруженного
 		 */
-		if(run.size() > result.size())
+		if(run.size() > result.size()) {
 			// Выполняем установку наибольшего обнаруженного литерала
 			result = run;
+			// Выполняем установку удаления обнаруженного литерала
+			found = reach;
+		}
 		// Выполняем сброс накопленного литерала
 		run.clear();
+		// Удаление обязательного литерала узла от начала сопоставления его
+		size_t spacing = 0;
 		// Получаем обязательный литерал очередного узла цепочки
-		const string nested = this->requiredNode(index);
+		const string nested = this->requiredNode(index, spacing);
 		/**
 		 * Если обязательный литерал узла длиннее обнаруженного
 		 */
-		if(nested.size() > result.size())
+		if(nested.size() > result.size()) {
 			// Выполняем установку наибольшего обнаруженного литерала
 			result = nested;
+			/**
+			 * Если удаление литерала узла либо длина цепочки не ограничены
+			 */
+			if((passed == string_view::npos) || (spacing == string_view::npos) ||
+			 (spacing > (string_view::npos - passed)))
+				// Выполняем установку удаления неограниченного
+				found = string_view::npos;
+			// Выполняем установку удаления обнаруженного литерала
+			else found = (passed + spacing);
+		}
+		/**
+		 * Если длина цепочки ещё ограничена
+		 */
+		if(passed != string_view::npos) {
+			// Получаем наибольшую длину сопоставления очередного узла
+			const size_t length = this->spanningNode(index);
+			/**
+			 * Если длина узла не ограничена
+			 */
+			if((length == string_view::npos) || (length > (string_view::npos - passed)))
+				// Выполняем установку длины цепочки неограниченной
+				passed = string_view::npos;
+			// Выполняем накопление длины, цепочкой поглощаемой
+			else passed += length;
+		}
 	}
 	/**
 	 * Если накопленный литерал длиннее обнаруженного
 	 */
-	if(run.size() > result.size())
+	if(run.size() > result.size()) {
 		// Выполняем установку наибольшего обнаруженного литерала
 		result = run;
+		// Выполняем установку удаления обнаруженного литерала
+		found = reach;
+	}
+	// Выполняем установку удаления обнаруженного литерала
+	distance = found;
 	// Выводим наибольший обнаруженный обязательный литерал
 	return result;
 }
@@ -1542,8 +1809,15 @@ void awh::regex::Compiler::analyze() noexcept {
 		prefilter.clear();
 	// Выполняем установку режима разбора текста как последовательности UTF-8
 	prefilter.utf = ((this->_program->flags & static_cast <uint32_t> (flag_t::UTF)) != 0);
-	// Выполняем определение обязательного литерала совпадения
-	prefilter.literal = this->required(this->_parser->root());
+	/**
+	 * Выполняем определение обязательного литерала совпадения и удаления его
+	 *
+	 * @details Удаление берётся тем же разбором, что и литерал: оно есть
+	 *          наибольшее число байтов, какое способно предшествовать литералу
+	 *          внутри совпадения, и позволяет употребить литерал позиционно.
+	 *
+	 */
+	prefilter.literal = this->required(this->_parser->root(), prefilter.distance);
 	/**
 	 * Если набор допустимых начальных байтов применим
 	 *

@@ -200,6 +200,42 @@ namespace awh {
 					 * \~
 					 */
 					void driver(const driver_t driver) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод снятия адреса сетевого устройства и пути к тому концу связи
+					 *
+					 * @details Снимает то, что поставила установка адреса: сам адрес и проложенный
+					 *          к тому концу связи путь
+					 *
+					 * @note Метод заведён ТОЛЬКО для MS Windows, и это не пробел прочих систем.
+					 *       У систем POSIX устройство туннеля исчезает вместе с процессом, унося
+					 *       адреса с собою; у MS Windows же устройство драйвера tap-windows6 живёт
+					 *       в системе постоянно и приложением не сносится, оттого назначенный ему
+					 *       адрес переживает прогон
+					 *
+					 * @warning Без снятия прогон отравляет следующий, и отравляет ЧЕРЕЗ ГРАНИЦУ
+					 *          ДРАЙВЕРА: оставшийся адрес числится за прежним устройством, система
+					 *          отвечает новому «объект уже существует», и устройство остаётся без
+					 *          адреса вовсе
+					 *
+					 * @param name название сетевого устройства
+					 * @param ip   снимаемый адрес
+					 * @param peer адрес того конца связи, путь к которому снимается
+					 * @return     результат выполнения снятия
+					 *
+					 * \~english
+					 * @brief Method of the removal of the address of the network interface and of the route to the peer
+					 * @details Removes what the setting of the address has put: the address itself and the route to the peer
+					 * @note The method exists for MS Windows ONLY: on POSIX systems the tunnel device
+					 *       disappears together with the process, while the tap-windows6 device outlives the run
+					 * @param name name of the network interface
+					 * @param ip   address to remove
+					 * @param peer address of the peer whose route is removed
+					 * @return     result of the removal
+					 *
+					 * \~
+					 */
+					bool delAddress(string_view name, const net::addr_t * ip, const net::addr_t * peer) const noexcept;
 			#endif
 			public:
 				/**

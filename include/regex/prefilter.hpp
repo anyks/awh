@@ -490,6 +490,33 @@ namespace awh {
 			string literal;
 			/**
 			 * \~russian
+			 * Наибольшее удаление обязательного литерала от начала совпадения
+			 *
+			 * @details Совпадение обязано литерал содержать, отчего начало его
+			 *          не может лежать дальше чем за удаление до ближайшего
+			 *          вхождения литерала: позиции до «вхождение минус удаление»
+			 *          пропускаются разом, поиском последовательности взамен
+			 *          перебора. Значение «string_view::npos» означает удаление
+			 *          неограниченное - такое даёт всякий узел неограниченной
+			 *          длины, литералу предшествующий, - и при нём литерал
+			 *          служит лишь проверке возможности совпадения.
+			 *
+			 * \~english
+			 * The greatest distance of the mandatory literal from the beginning of a match
+			 * @details A match is bound to contain the literal, which is why its beginning
+			 *          cannot lie further than the distance before the nearest
+			 *          occurrence of the literal: the positions before "occurrence minus distance"
+			 *          are skipped at once, by a sequence search instead of
+			 *          a walk. The value "string_view::npos" means an unbounded
+			 *          distance - such is given by any node of unbounded length
+			 *          preceding the literal - and with it the literal
+			 *          serves only the check of the possibility of a match.
+			 *
+			 * \~
+			 */
+			size_t distance;
+			/**
+			 * \~russian
 			 * Признак единственного допустимого начального байта
 			 *
 			 * @details Единственный допустимый байт отыскивается поиском байта
@@ -538,7 +565,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			Prefilter() noexcept : active(false), utf(false), bytes{}, unique(false), letter(0) {}
+			Prefilter() noexcept : active(false), utf(false), bytes{}, distance(0), unique(false), letter(0) {}
 			/**
 			 * \~russian
 			 * @brief Метод завершения формирования отбора позиций
@@ -604,6 +631,8 @@ namespace awh {
 				this->utf = false;
 				// Выполняем очистку обязательного литерала совпадения
 				this->literal.clear();
+				// Выполняем сброс удаления обязательного литерала
+				this->distance = 0;
 				/**
 				 * Выполняем очистку набора допустимых начальных байтов
 				 */
@@ -641,6 +670,63 @@ namespace awh {
 					return true;
 				// Выводим результат поиска обязательного литерала в тексте
 				return (seek(text, this->literal, pos) != string_view::npos);
+			}
+			/**
+			 * \~russian
+			 * @brief Метод отбора позиции начала совпадения по обязательному литералу
+			 *
+			 * @details Совпадение обязано обязательный литерал содержать, и литерал
+			 *          этот отстоит от начала совпадения не далее чем на удаление.
+			 *          Отсюда: начало совпадения не может лежать раньше, чем
+			 *          за удаление до ближайшего вхождения литерала, и позиции
+			 *          до неё пропускаются разом - поиском последовательности
+			 *          взамен перебора по одной.
+			 *
+			 *          Отсутствие литерала в оставшемся тексте означает отсутствие
+			 *          совпадения, и выводится размер текста - тем же уговором,
+			 *          какого держится поиск по набору допустимых байтов.
+			 *
+			 *          Отбор неприменим при удалении неограниченном и при литерале
+			 *          пустом: в обоих случаях выводится сама позиция поиска,
+			 *          отчего вызывающему проверять применимость не требуется.
+			 *
+			 * @param text текст сопоставления
+			 * @param pos  позиция начала поиска
+			 * @return     позиция возможного начала совпадения либо размер текста
+			 *
+			 * \~english
+			 * @brief Method of selecting the position of the beginning of a match by the mandatory literal
+			 * @details A match is bound to contain the mandatory literal, and that literal
+			 *          stands no further from the beginning of the match than the distance.
+			 *          Hence the beginning of a match cannot lie earlier than
+			 *          the distance before the nearest occurrence of the literal, and the positions
+			 *          before it are skipped at once - by a sequence search
+			 *          instead of a walk one by one.
+			 * @param text text to match
+			 * @param pos  position to start the search from
+			 * @return     position of a possible beginning of a match or the size of the text
+			 *
+			 * \~
+			 */
+			size_t bounded(string_view text, const size_t pos) const noexcept {
+				/**
+				 * Если отбор позиции по обязательному литералу неприменим
+				 */
+				if(this->literal.empty() || (this->distance == string_view::npos))
+					// Выводим позицию начала поиска нетронутой
+					return pos;
+				// Выполняем поиск обязательного литерала в оставшемся тексте
+				const size_t found = seek(text, this->literal, pos);
+				/**
+				 * Если обязательный литерал в оставшемся тексте отсутствует
+				 */
+				if(found == string_view::npos)
+					// Выводим размер текста признаком отсутствия совпадения
+					return text.size();
+				// Получаем позицию, раньше какой совпадение начаться не может
+				const size_t bound = ((found > this->distance) ? (found - this->distance) : 0);
+				// Выводим позицию возможного начала совпадения
+				return ((bound > pos) ? bound : pos);
 			}
 			/**
 			 * \~russian

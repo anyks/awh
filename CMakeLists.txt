@@ -670,10 +670,12 @@ else()
      #       он отвечает отказом, и проверка внутри самого gperftools валит прогон ещё до
      #       первой строки вывода. Подробности - в комментарии к TCMALLOC_LIBRARIES
      ##
-    if ((NOT ${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD") AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "DragonFly") AND (NOT (WIN32 AND ${ARCHITECTURE} MATCHES "aarch64")) AND (NOT CMAKE_BUILD_SANITIZE))
-        # Активируем использование TcMalloc
-        add_compile_definitions(__AWH_USE_TCMALLOC__)
-    endif()
+    ##
+     # Признак использования TcMalloc более не выставляется
+     #
+     # Ни один файл его больше не читает: управление памятью переведено на свой
+     # распределитель, а `sys/os.cpp` спрашивает состояние у него
+     ##
 
     # Выводим сообщение релизной информации
     message(STATUS "C Flags: ${CMAKE_C_FLAGS} ${CMAKE_C_FLAGS_RELEASE}")
@@ -797,18 +799,27 @@ elseif (WIN32 AND ${ARCHITECTURE} MATCHES "aarch64")
     SET(TCMALLOC_LIBRARIES "")
     # Выводим сообщение об использовании системного распределителя памяти
     message(STATUS "TcMalloc is not available on Windows ARM64: using the system allocator")
-# Если распределитель памяти TcMalloc системой поддерживается
+##
+ # TcMalloc отключён: управление памятью ведёт свой распределитель
+ #
+ # Отключён именно СВЯЗЫВАНИЕМ, а не признаком сборки: TcMalloc заслоняет собою
+ # выделение и освобождение памяти всего процесса самим фактом своего присутствия в
+ # связке, и признак на то не влияет никак. Два заслонившихся распределителя в одном
+ # процессе - это выдача одним и освобождение другим, и мешает он не только работе
+ # приложений, но и всякой отладке.
+ #
+ # Своё управление памятью - в include/alloc/alloc.hpp: страничная куча, разряды
+ # размеров, поток-локальные кэши и захват выделения памяти процесса всеми тремя
+ # приёмами (имена ELF, зона macOS, переписывание входа у MS Windows).
+ #
+ # Подмодуль gperftools, скрипт третьей стороны и поиск библиотеки снимаются
+ # отдельным заходом: они ещё нужны для сличения замеров
+ ##
 else()
-    # Выполняем поиск библиотеки TcMalloc
-    find_package(TcMalloc REQUIRED)
-
-    # Провекра TcMalloc
-    if (TcMalloc_FOUND)
-        message(STATUS "TcMalloc include dir found: " ${TCMALLOC_INCLUDE_DIR})
-        message(STATUS "TcMalloc lib found: " ${TCMALLOC_LIBRARY} " " ${TCMALLOC_COMMON_LIBRARY})
-    else (TcMalloc_FOUND)
-        message(FATAL_ERROR "TcMalloc not found")
-    endif (TcMalloc_FOUND)
+    # Оставляем набор библиотек TcMalloc пустым
+    SET(TCMALLOC_LIBRARIES "")
+    # Выводим сообщение об использовании своего распределителя памяти
+    message(STATUS "TcMalloc is disabled: using the AWH allocator")
 endif()
 
 # Если Doxygen найден
@@ -1022,25 +1033,66 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
         "${CMAKE_SOURCE_DIR}/src/net/backend/win/qos.cpp"
         "${CMAKE_SOURCE_DIR}/src/net/backend/win/addr.cpp"
     )
-    ##
-     # Выполняем подключение захвата выделения памяти переписыванием входа функций
-     #
-     # Способ этот применяется только у MS Windows: формат PE подмены имён при
-     # связывании не даёт, и распределитель заслоняет собою выделение памяти,
-     # переписывая начала функций библиотеки времени исполнения. Подробности и
-     # намеренные решения - в include/alloc/pe.hpp
-     ##
+endif()
+
+##
+ # Выполняем подключение захвата выделения памяти процесса
+ #
+ # Цепочка своя, а не общая с движком ввода-вывода: тот делит системы по механизму
+ # ожидания и держит macOS вместе с BSD в одной ветви, а захват делится ИНАЧЕ - по
+ # приёму подмены. Уложи мы захват в ту же цепочку, ветвь macOS оказалась бы за уже
+ # выбранной ветвью BSD и не срабатывала бы вовсе
+ ##
+##
+ # Если сборка производится под операционную систему MS Windows
+ #
+ # Формат PE подмены имён при связывании не даёт, и распределитель заслоняет собою
+ # выделение памяти, переписывая начала функций библиотеки времени исполнения.
+ # Подробности и намеренные решения - в include/alloc/pe.hpp
+ ##
+if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+    # Выполняем подключение захвата переписыванием входа функций
     SET(SOURCE_FILES
         "${SOURCE_FILES}"
         "${CMAKE_SOURCE_DIR}/src/alloc/capture/pe.cpp"
+    )
+##
+ # Если сборка производится под операционную систему macOS
+ #
+ # Имена там связываются двухуровнево, и обращение из библиотеки времени исполнения
+ # нашим определением не заслоняется вовсе. Подробности - в include/alloc/zone.hpp
+ ##
+elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
+    # Выполняем подключение захвата зоной
+    SET(SOURCE_FILES
+        "${SOURCE_FILES}"
+        "${CMAKE_SOURCE_DIR}/src/alloc/capture/mach.cpp"
+    )
+##
+ # Если сборка производится под операционную систему семейства ELF
+ #
+ # Приём один на Linux, все BSD и Solaris: формат ELF позволяет заслонить имя
+ # библиотеки времени исполнения нашим определением, и делить его на семейства значило
+ # бы трижды написать одно. Подробности - в include/alloc/elf.hpp
+ ##
+else()
+    # Выполняем подключение захвата подменой имён
+    SET(SOURCE_FILES
+        "${SOURCE_FILES}"
+        "${CMAKE_SOURCE_DIR}/src/alloc/capture/elf.cpp"
     )
 endif()
 
 # Выполняем подключение исходников
 SET(SOURCE_FILES
     "${SOURCE_FILES}"
+    "${CMAKE_SOURCE_DIR}/src/alloc/alloc.cpp"
     "${CMAKE_SOURCE_DIR}/src/alloc/source.cpp"
     "${CMAKE_SOURCE_DIR}/src/alloc/pages.cpp"
+    "${CMAKE_SOURCE_DIR}/src/alloc/classes.cpp"
+    "${CMAKE_SOURCE_DIR}/src/alloc/spin.cpp"
+    "${CMAKE_SOURCE_DIR}/src/alloc/central.cpp"
+    "${CMAKE_SOURCE_DIR}/src/alloc/cache.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/os.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/fs.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/fmk.cpp"
@@ -1195,6 +1247,21 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/proto/quic/handshake.cpp"
     "${CMAKE_SOURCE_DIR}/src/proto/quic/connection.cpp"
 )
+
+##
+ # Запрещаем собирателю числить malloc-семейство встроенным
+ #
+ # Файл этот определяет malloc, free, calloc и realloc. Числя их встроенными,
+ # собиратель узнаёт в нашем `calloc` пару «выделение плюс обнуление» и подменяет её
+ # вызовом... `calloc`, то есть себя самого - программа встаёт навсегда. Проверено
+ # опытом на Solaris: при -O2 щуп там вставал, при -O0 проходил целиком
+ ##
+if (NOT MSVC)
+    set_source_files_properties(
+        "${CMAKE_SOURCE_DIR}/src/alloc/alloc.cpp"
+        PROPERTIES COMPILE_OPTIONS "-fno-builtin-malloc;-fno-builtin-calloc;-fno-builtin-realloc;-fno-builtin-free"
+    )
+endif()
 
 # Устанавливаем имя библиотеки
 SET(AWH_LIB_NAME ${PROJECT_NAME})

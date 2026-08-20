@@ -24,6 +24,9 @@
  * Подключаем стандартные модули
  */
 #include <random>
+#include <thread>
+#include <chrono>
+#include <cstring>
 /**
  * Для операционной системы MS Windows
  *
@@ -792,7 +795,105 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 		 *       недостаёт лишь переписывания проверки под иной способ порождения
 		 *
 		 */
-		GTEST_SKIP() << "inter-process exchange test is built on fork, which MS Windows does not have";
+		/**
+		 * Обмен по сокетам домена UNIX проверить здесь нечем
+		 *
+		 * @details Из трёх видов сокета домена UNIX у MS Windows есть один потоковый, и
+		 *          тот подключается обращением системы, а не наложенным `ConnectEx`:
+		 *          домен UNIX его не поддерживает вовсе. Видов же с сохранением границ и
+		 *          дейтаграммных там нет как таковых
+		 *
+		 * @note Пропуск этот - правда о системе, а не о движке, и снять его переписыванием
+		 *       проверки нельзя. Проверять под MS Windows остаётся обмен по каналу, он
+		 *       ниже и проверяется
+		 */
+		if(this->_parameter.family != awh::event::family_t::UDS){
+			// Флаг остановки проверки
+			bool stop = false;
+			/**
+			 * Заводим пару концов канала обмена
+			 *
+			 * @note Второй конец нужен лишь ради имени: у MS Windows встреча процессов идёт
+			 *       ПО ИМЕНИ канала, а не наследованием описателя, как у систем POSIX. Оттого
+			 *       имя снимается с него и уходит работнику окружением, а сам он сносится
+			 */
+			const auto & channels = this->_io->events(awh::event::family_t::PIPE, awh::event::type_t::SEQPACKET);
+			// Проверяем, что идентификаторы событий заведены
+			ASSERT_GT(channels[0], 0);
+			ASSERT_GT(channels[1], 0);
+			// Инициализируем асинхронный движок ввода-вывода
+			ASSERT_TRUE(this->_io->initialize());
+			// Получаем имя канала обмена, каким работник нас найдёт
+			const std::string pipe = this->_io->getTarget(channels[1]);
+			// Имя канала обмена обязано быть известно
+			ASSERT_FALSE(pipe.empty());
+			// Сносим второй конец: работник заведёт свой сам, по имени
+			ASSERT_TRUE(this->_io->destroy(channels[1]));
+			// Опознаватель процесса, доложившийся работником
+			uint32_t reported = 0;
+			// Устанавливаем функцию обратного вызова на получение доклада работника
+			this->_io->on(channels[0], [&reported, &stop](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+				// Если доклад пришёл целиком
+				if((data != nullptr) && (size == sizeof(uint32_t))){
+					// Запоминаем опознаватель процесса работника
+					::memcpy(&reported, data, sizeof(uint32_t));
+					// Отмечаем полученный доклад
+					stop = true;
+				}
+			});
+			// Выполняем фиксацию настроек своего конца канала обмена
+			ASSERT_TRUE(this->_io->commit(channels[0]));
+			// Выполняем запуск своего конца канала обмена
+			ASSERT_TRUE(this->_io->launch(channels[0]));
+			// Буфер под путь к своему двоичному файлу
+			wchar_t executable[MAX_PATH]{0};
+			// Получаем путь к своему двоичному файлу: работник это тот же файл
+			ASSERT_GT(::GetModuleFileNameW(nullptr, executable, static_cast <DWORD> (sizeof(executable) / sizeof(executable[0]))), 0u);
+			// Передаём имя канала обмена порождаемому процессу через окружение
+			ASSERT_TRUE(::SetEnvironmentVariableW(L"AWH_IO_IPC_PIPE", this->_fmk->convert(pipe).c_str()));
+			// Собираем строку запуска работника: своя проверка отключена именем и зовётся особо
+			std::wstring command = L"\"" + std::wstring(executable) + L"\" --gtest_also_run_disabled_tests --gtest_filter=IoFixture.DISABLED_IoIPCWorkerTest";
+			// Настройки порождаемого процесса
+			STARTUPINFOW startup{};
+			// Устанавливаем размер записи настроек
+			startup.cb = sizeof(startup);
+			// Сведения о порождённом процессе
+			PROCESS_INFORMATION process{};
+			// Выполняем порождение работника
+			const BOOL spawned = ::CreateProcessW(executable, command.data(), nullptr, nullptr, FALSE, 0, nullptr, nullptr, &startup, &process);
+			// Работник обязан быть порождён
+			ASSERT_TRUE(spawned) << "Дочерний процесс создать не удалось";
+			// Отсчёт времени ожидания доклада
+			const auto start = std::chrono::steady_clock::now();
+			/**
+			 * Крутим опрос, покуда работник не доложится
+			 */
+			while(!stop && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 20))
+				// Выполняем оборот опроса
+				ASSERT_TRUE(this->_io->poll(100));
+			// Дожидаемся завершения работника
+			::WaitForSingleObject(process.hProcess, 5000);
+			// Закрываем описатели порождённого процесса
+			::CloseHandle(process.hThread);
+			::CloseHandle(process.hProcess);
+			// Доклад работника обязан прийти
+			ASSERT_TRUE(stop) << "работник не доложился за отведённый срок";
+			/**
+			 * Опознаватель работника обязан отличаться от своего
+			 *
+			 * @note Проверка эта не придирка: без неё доклад, пришедший от самого себя,
+			 *       выглядел бы межпроцессным обменом, каким он не является
+			 */
+			ASSERT_NE(reported, static_cast <uint32_t> (::GetCurrentProcessId()));
+			ASSERT_GT(reported, 0u);
+			// Сносим свой конец канала обмена
+			ASSERT_TRUE(this->_io->destroy(channels[0]));
+			// Сворачиваем движок
+			ASSERT_TRUE(this->_io->deinitialize());
+			// Оканчиваем проверку
+			return;
+		}
+		GTEST_SKIP() << "MS Windows has no datagram or seqpacket UNIX domain sockets, and its stream one does not take overlapped connect";
 	#else
 	// Флаг остановки теста
 	bool stop = false;
@@ -1798,6 +1899,83 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
  * @brief Инициализация параметров теста
  *
  */
+/**
+ * Для операционной системы MS Windows
+ */
+#if _WIN32 || _WIN64
+	/**
+	 * @brief Работник проверки межпроцессного обмена
+	 *
+	 * @details Обращения `fork` у MS Windows нет вовсе, и второй процесс поднимается
+	 *          повторным запуском СВОЕГО ЖЕ двоичного файла - так порождает работников
+	 *          и модуль кластера. Оттого работник живёт отдельной проверкой, отключённой
+	 *          именем: сам по себе набор её не запускает, а родитель зовёт её особо
+	 *
+	 * @note Встреча процессов идёт ПО ИМЕНИ канала, названному родителем и переданному
+	 *       окружением: наследовать описатель, как то делает ветвление у систем POSIX,
+	 *       здесь нечем
+	 *
+	 */
+	TEST_F(IoFixture, DISABLED_IoIPCWorkerTest){
+		// Буфер под имя канала обмена, названного родителем
+		wchar_t buffer[256]{0};
+		// Получаем имя канала обмена из окружения
+		const DWORD length = ::GetEnvironmentVariableW(L"AWH_IO_IPC_PIPE", buffer, static_cast <DWORD> (sizeof(buffer) / sizeof(buffer[0])));
+		// Если имени канала в окружении нет, работать нечем
+		if((length == 0) || (length >= (sizeof(buffer) / sizeof(buffer[0]))))
+			// Выходим отказом: без имени канала родителя не найти
+			::_exit(EXIT_FAILURE);
+		/**
+		 * Ставим работнику предел по времени
+		 *
+		 * @note Обращения `alarm` у MS Windows нет вовсе, а опрос событий ждёт их без
+		 *       срока: не встретивший родителя работник ждал бы вечно вместо отказа
+		 */
+		std::thread([]() noexcept -> void {
+			// Ждём предельный срок работы
+			std::this_thread::sleep_for(std::chrono::seconds(20));
+			// Выходим отказом: за отведённый срок встречи не состоялось
+			::_exit(EXIT_FAILURE);
+		}).detach();
+		// Выполняем инициализацию сетевого движка
+		ASSERT_TRUE(this->_io->initialize());
+		// Заводим событие канала обмена, каким доложимся родителю
+		const awh::event::id_t channel = this->_io->event(awh::event::node_t::IPC, awh::event::family_t::PIPE, awh::event::type_t::SEQPACKET);
+		// Проверяем, что идентификатор события канала заведён
+		ASSERT_GT(channel, 0);
+		// Устанавливаем имя канала обмена, названное родителем
+		ASSERT_TRUE(this->_io->setTarget(channel, this->_fmk->convert(std::wstring(buffer))));
+		// Выполняем фиксацию настроек канала обмена
+		ASSERT_TRUE(this->_io->commit(channel));
+		// Выполняем подключение канала обмена к родителю
+		ASSERT_TRUE(this->_io->connect({channel}));
+		// Выполняем запуск канала обмена
+		ASSERT_TRUE(this->_io->launch(channel));
+		// Свой опознаватель процесса: им и доказывается, что процессов было два
+		const uint32_t self = static_cast <uint32_t> (::GetCurrentProcessId());
+		// Докладываем родителю свой опознаватель процесса
+		ASSERT_TRUE(this->_io->send(channel, reinterpret_cast <const char *> (&self), sizeof(self)));
+		// Отсчёт времени на доставку доклада
+		const auto start = std::chrono::steady_clock::now();
+		/**
+		 * Крутим опрос, давая докладу уйти
+		 */
+		while((std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 1000))
+			// Выполняем оборот опроса
+			this->_io->poll(50);
+		// Сворачиваем движок
+		this->_io->destroy(channel);
+		this->_io->deinitialize();
+		/**
+		 * Выходим успехом
+		 *
+		 * @note Выход здесь обязан быть немедленным: работник это тот же двоичный файл
+		 *       набора, и обычное возвращение увело бы его в отчёт о прогоне
+		 */
+		::_exit(EXIT_SUCCESS);
+	}
+#endif
+
 INSTANTIATE_TEST_SUITE_P(TestParameters, IoIPCTestParameterizedFixture,
 	::testing::Values(
 		IoIPCTestParameter({

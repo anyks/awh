@@ -33,7 +33,7 @@
  *
  */
 awh::alloc::Pages::Pages() noexcept :
- _source(nullptr), _chunks(nullptr), _large(nullptr), _spare(nullptr),
+ _source(nullptr), _chunks(nullptr), _table(nullptr), _length(0), _enrolled(0), _large(nullptr), _spare(nullptr),
  _meta(nullptr), _metaLeft(0), _metaChunks(nullptr), _confined(false),
  _delay(10), _block(0), _state() {
 	// Обнуляем списки свободных областей
@@ -89,6 +89,141 @@ void * awh::alloc::Pages::meta() noexcept {
 	this->_metaLeft -= need;
 	// Выводим адрес выданной памяти
 	return result;
+}
+/**
+ * @brief Метод перестроения таблицы поиска куска по адресу
+ *
+ * @param length требуемая длина таблицы в местах
+ * @return       признак перестроения таблицы
+ *
+ */
+bool awh::alloc::Pages::rehash(const size_t length) noexcept {
+	// Действительно выданный размер
+	size_t actual = 0;
+	// Требуемый размер новой таблицы в байтах
+	const size_t size = (length * sizeof(chunk_t *));
+	// Берём у источника память под новую таблицу
+	chunk_t ** table = reinterpret_cast <chunk_t **> (this->_source->alloc(size, 0, actual));
+	// Если память под таблицу не выдана
+	if(table == nullptr)
+		// Отвечаем отказом
+		return false;
+	// Обнуляем места новой таблицы
+	::memset(table, 0, size);
+	// Запоминаем прежнюю таблицу прежде подмены
+	chunk_t ** previous = this->_table;
+	// Запоминаем длину прежней таблицы
+	const size_t before = this->_length;
+	// Подменяем таблицу новой
+	this->_table = table;
+	// Запоминаем длину новой таблицы
+	this->_length = length;
+	// Внесённых кусков у новой таблицы пока нет
+	this->_enrolled = 0;
+	/**
+	 * Переносим в новую таблицу куски прежней
+	 */
+	for(size_t i = 0; i < before; i++){
+		// Если место прежней таблицы занято
+		if(previous[i] != nullptr)
+			// Вносим кусок в новую таблицу
+			this->enroll(previous[i]);
+	}
+	/**
+	 * Отдаём источнику прежнюю таблицу
+	 *
+	 * Отдаём, а не оставляем: таблица стоит особняком и на неё никто не ссылается,
+	 * а брошенная она копила бы память при каждом удвоении
+	 */
+	if(previous != nullptr)
+		// Отдаём источнику память прежней таблицы
+		this->_source->release(previous, (before * sizeof(chunk_t *)));
+	// Отвечаем успехом
+	return true;
+}
+/**
+ * @brief Метод внесения куска в таблицу поиска
+ *
+ * @param chunk вносимый кусок
+ * @return      признак внесения куска
+ *
+ */
+bool awh::alloc::Pages::enroll(chunk_t * chunk) noexcept {
+	// Если таблица не заведена либо заполнена наполовину
+	if((this->_length == 0) || (((this->_enrolled + 1) * 2) > this->_length)){
+		/**
+		 * Перестраиваем таблицу вдвое большей длины
+		 *
+		 * Порог в половину длины взят не для скорости, а для завершимости: перебор мест
+		 * идёт подряд, и при плотном заполнении он вырождается в перебор всей таблицы
+		 */
+		if(!this->rehash((this->_length == 0) ? TABLE : (this->_length * 2)))
+			// Отвечаем отказом
+			return false;
+	}
+	// Определяем ключ куска: номер куска в разбиении памяти по его размеру
+	const uintptr_t key = (reinterpret_cast <uintptr_t> (chunk->base) / CHUNK);
+	// Определяем место куска в таблице
+	size_t index = static_cast <size_t> ((key * 0x9E3779B97F4A7C15ull) % this->_length);
+	/**
+	 * Ищем свободное место, перебирая места подряд
+	 */
+	while(this->_table[index] != nullptr){
+		// Если кусок в таблице уже есть
+		if((reinterpret_cast <uintptr_t> (this->_table[index]->base) / CHUNK) == key)
+			// Вносить нечего
+			return true;
+		// Переходим к следующему месту таблицы
+		index = ((index + 1) % this->_length);
+	}
+	// Записываем кусок в найденное место
+	this->_table[index] = chunk;
+	// Увеличиваем число внесённых кусков
+	this->_enrolled++;
+	// Отвечаем успехом
+	return true;
+}
+/**
+ * @brief Метод поиска куска, которому принадлежит адрес
+ *
+ * @param addr разбираемый адрес
+ * @return     найденный кусок либо nullptr
+ *
+ */
+awh::alloc::Pages::chunk_t * awh::alloc::Pages::lookup(const void * addr) const noexcept {
+	// Если адрес не задан либо таблица не заведена
+	if((addr == nullptr) || (this->_length == 0))
+		// Искать нечего
+		return nullptr;
+	// Определяем ключ адреса: номер куска, которому адрес мог бы принадлежать
+	const uintptr_t key = (reinterpret_cast <uintptr_t> (addr) / CHUNK);
+	// Определяем место в таблице
+	size_t index = static_cast <size_t> ((key * 0x9E3779B97F4A7C15ull) % this->_length);
+	/**
+	 * Ищем кусок, перебирая места подряд
+	 */
+	while(this->_table[index] != nullptr){
+		// Получаем кусок, лежащий в очередном месте
+		chunk_t * chunk = this->_table[index];
+		// Если ключ куска совпал с ключом адреса
+		if((reinterpret_cast <uintptr_t> (chunk->base) / CHUNK) == key){
+			/**
+			 * Сличаем адрес с действительными границами куска
+			 *
+			 * Ключ сходится и у адреса за концом куска, если источник выдал куска
+			 * меньше запрошенного, - границы того не прощают
+			 */
+			if(reinterpret_cast <uintptr_t> (addr) < (reinterpret_cast <uintptr_t> (chunk->base) + chunk->size))
+				// Выводим найденный кусок
+				return chunk;
+			// Адрес лежит за концом куска
+			return nullptr;
+		}
+		// Переходим к следующему месту таблицы
+		index = ((index + 1) % this->_length);
+	}
+	// Куска за адресом не нашлось
+	return nullptr;
 }
 /**
  * @brief Метод записи области в указатели куска
@@ -193,6 +328,10 @@ awh::alloc::Pages::chunk_t * awh::alloc::Pages::grow() noexcept {
 	chunk->next = this->_chunks;
 	// Запоминаем кусок как первый
 	this->_chunks = chunk;
+	// Вносим кусок в таблицу поиска по адресу
+	if(!this->enroll(chunk))
+		// Отвечаем отказом: без таблицы кусок не отыскать при освобождении
+		return nullptr;
 	// Обнуляем указатели областей куска
 	::memset(chunk->index, 0, sizeof(chunk->index));
 	// Выдаём память под учётную запись области, накрывающей кусок целиком
@@ -209,8 +348,12 @@ awh::alloc::Pages::chunk_t * awh::alloc::Pages::grow() noexcept {
 	span->released = true;
 	// Содержимое области системе не отдано
 	span->purged = false;
+	// Область никем не изъята
+	span->pending = false;
 	// Отметки времени у области ещё нет
 	span->stamp = 0;
+	// Метки владельца у области ещё нет
+	span->tag = 0;
 	// Область принадлежит новому куску
 	span->chunk = chunk;
 	// Связей в списке свободных у области пока нет
@@ -295,8 +438,13 @@ awh::alloc::Pages::span_t * awh::alloc::Pages::merge(span_t * span) noexcept {
 	if(first > 0){
 		// Получаем соседа слева
 		span_t * left = chunk->index[first - 1];
-		// Если сосед слева свободен
-		if((left != nullptr) && left->released){
+		/**
+		 * Если сосед слева свободен и никем не изъят
+		 *
+		 * Изъятая область не лежит ни в одном списке свободных: слить её значило бы
+		 * изъять её вторично и порвать список
+		 */
+		if((left != nullptr) && left->released && !left->pending){
 			// Изымаем соседа из списка свободных
 			this->pull(left);
 			/**
@@ -343,7 +491,7 @@ awh::alloc::Pages::span_t * awh::alloc::Pages::merge(span_t * span) noexcept {
 		// Получаем соседа справа
 		span_t * right = chunk->index[after];
 		// Если сосед справа свободен
-		if((right != nullptr) && right->released){
+		if((right != nullptr) && right->released && !right->pending){
 			// Изымаем соседа из списка свободных
 			this->pull(right);
 			// Определяем, отданы ли обе части
@@ -446,6 +594,16 @@ void awh::alloc::Pages::destroy() noexcept {
 		// Переходим к предыдущему куску
 		block = previous;
 	}
+	// Отдаём источнику таблицу поиска куска по адресу
+	if(this->_table != nullptr)
+		// Отдаём источнику память таблицы
+		this->_source->release(this->_table, (this->_length * sizeof(chunk_t *)));
+	// Обнуляем таблицу поиска
+	this->_table = nullptr;
+	// Обнуляем длину таблицы поиска
+	this->_length = 0;
+	// Обнуляем число внесённых в таблицу кусков
+	this->_enrolled = 0;
 	// Обнуляем общий список кусков
 	this->_chunks = nullptr;
 	// Обнуляем список крупных свободных областей
@@ -518,6 +676,8 @@ void * awh::alloc::Pages::alloc(const size_t pages) noexcept {
 			 */
 			// Отмечаем область выданной наружу
 			span->released = false;
+			// Обнуляем метку владельца: прежняя досталась от прошлой жизни области
+			span->tag = 0;
 			// Отмечаем содержимое области присутствующим
 			span->purged = false;
 			// Увеличиваем число выданных страниц куска
@@ -537,8 +697,12 @@ void * awh::alloc::Pages::alloc(const size_t pages) noexcept {
 		rest->released = true;
 		// Признак отданного содержимого остаток наследует у делимой области
 		rest->purged = span->purged;
+		// Остаток никем не изъят
+		rest->pending = false;
 		// Отметку времени остаток наследует у делимой области
 		rest->stamp = span->stamp;
+		// Метки владельца у остатка нет: он свободен
+		rest->tag = 0;
 		// Остаток принадлежит тому же куску
 		rest->chunk = span->chunk;
 		// Связей в списке свободных у остатка пока нет
@@ -554,6 +718,8 @@ void * awh::alloc::Pages::alloc(const size_t pages) noexcept {
 	}
 	// Отмечаем область выданной наружу
 	span->released = false;
+	// Обнуляем метку владельца: прежняя досталась от прошлой жизни области
+	span->tag = 0;
 	// Записываем область в указатели куска
 	this->mark(span);
 	// Если содержимое области было системе отдано
@@ -730,6 +896,85 @@ void awh::alloc::Pages::policy(const int64_t delay, const size_t block) noexcept
 	this->_block = block;
 }
 /**
+ * @brief Метод проверки принадлежности адреса куче
+ *
+ * @param addr проверяемый адрес
+ * @return     признак того, что адрес лежит внутри взятого у источника куска
+ *
+ */
+bool awh::alloc::Pages::owns(const void * addr) const noexcept {
+	// Выводим признак того, что за адресом нашёлся кусок
+	return (this->lookup(addr) != nullptr);
+}
+/**
+ * @brief Метод описания области, которой принадлежит адрес
+ *
+ * @param addr  разбираемый адрес
+ * @param begin адрес начала найденной области
+ * @param pages размер найденной области в страницах кучи
+ * @param tag   метка владельца найденной области
+ * @return      признак того, что адрес принадлежит выданной наружу области
+ *
+ */
+bool awh::alloc::Pages::describe(const void * addr, void ** begin, size_t * pages, uint32_t * tag) const noexcept {
+	// Ищем кусок, которому принадлежит адрес
+	const chunk_t * chunk = this->lookup(addr);
+	// Если куска за адресом не нашлось
+	if(chunk == nullptr)
+		// Адрес куче не принадлежит
+		return false;
+	// Определяем номер страницы, которой принадлежит адрес
+	const size_t page = static_cast <size_t> ((reinterpret_cast <uintptr_t> (addr) - reinterpret_cast <uintptr_t> (chunk->base)) / PAGE);
+	// Получаем область, которой принадлежит страница
+	const span_t * span = chunk->index[page];
+	// Если области у страницы нет либо область наружу не выдана
+	if((span == nullptr) || span->released)
+		// Описывать нечего
+		return false;
+	// Если требуется адрес начала области
+	if(begin != nullptr)
+		// Записываем адрес начала области
+		(* begin) = span->base;
+	// Если требуется размер области
+	if(pages != nullptr)
+		// Записываем размер области
+		(* pages) = span->pages;
+	// Если требуется метка владельца
+	if(tag != nullptr)
+		// Записываем метку владельца
+		(* tag) = span->tag;
+	// Отвечаем успехом
+	return true;
+}
+/**
+ * @brief Метод пометки выданной области
+ *
+ * @param addr адрес начала выданной области
+ * @param tag  проставляемая метка владельца
+ * @return     признак пометки области
+ *
+ */
+bool awh::alloc::Pages::tag(void * addr, const uint32_t tag) noexcept {
+	// Ищем кусок, которому принадлежит адрес
+	const chunk_t * chunk = this->lookup(addr);
+	// Если куска за адресом не нашлось
+	if(chunk == nullptr)
+		// Помечать нечего
+		return false;
+	// Определяем номер страницы, которой принадлежит адрес
+	const size_t page = static_cast <size_t> ((reinterpret_cast <uintptr_t> (addr) - reinterpret_cast <uintptr_t> (chunk->base)) / PAGE);
+	// Получаем область, которой принадлежит страница
+	span_t * span = chunk->index[page];
+	// Если области у страницы нет либо область наружу не выдана
+	if((span == nullptr) || span->released)
+		// Помечать нечего
+		return false;
+	// Проставляем области метку владельца
+	span->tag = tag;
+	// Отвечаем успехом
+	return true;
+}
+/**
  * @brief Метод отдачи системе свободной памяти
  *
  * @param now текущее время в миллисекундах
@@ -737,28 +982,31 @@ void awh::alloc::Pages::policy(const int64_t delay, const size_t block) noexcept
  * @return    объём отданной системе памяти в байтах
  *
  */
-size_t awh::alloc::Pages::purge(const uint64_t now, const bool all) noexcept {
-	// Если куча не заведена
-	if(this->_source == nullptr)
-		// Отдавать нечего
+size_t awh::alloc::Pages::detach(const uint64_t now, const bool all, void ** spans, const size_t limit, size_t * cursor) noexcept {
+	// Если изымать некуда либо нечем
+	if((this->_source == nullptr) || (spans == nullptr) || (limit == 0) || (cursor == nullptr))
+		// Изымать нечего
 		return 0;
 	// Если отдача памяти системе запрещена и не требуется отдать всё
 	if((this->_delay < 0) && !all)
-		// Отдавать нечего
+		// Изымать нечего
 		return 0;
-	// Объём отданной системе памяти
+	// Число изъятых областей
 	size_t result = 0;
 	/**
-	 * Перебираем все списки свободных областей
+	 * Перебираем списки свободных областей, начиная с места, где остановились
+	 *
+	 * Место перебора передаётся снаружи: замок между заходами отпускается, и начинать
+	 * всякий раз сначала значило бы перебирать уже отданное вновь и вновь
 	 */
-	for(size_t i = 0; i <= (LISTS + 1); i++){
+	for(size_t i = (* cursor); i <= (LISTS + 1); i++){
 		// Определяем перебираемый список
 		span_t * span = ((i <= LISTS) ? this->_lists[i] : this->_large);
 		/**
 		 * Перебираем области списка
 		 */
 		while(span != nullptr){
-			// Запоминаем следующую область: отдача связей не меняет, но осторожность дешева
+			// Запоминаем следующую область прежде изъятия текущей
 			span_t * next = span->next;
 			// Определяем размер области в байтах
 			const size_t size = (span->pages * PAGE);
@@ -783,18 +1031,138 @@ size_t awh::alloc::Pages::purge(const uint64_t now, const bool all) noexcept {
 				// Продолжаем перебор
 				continue;
 			}
-			// Отдаём содержимое области системе
-			if(this->_source->purge(span->base, size)){
-				// Отмечаем содержимое области отданным
-				span->purged = true;
-				// Увеличиваем отданное системе
-				this->_state.purged += size;
-				// Копим объём отданного
-				result += size;
+			/**
+			 * Изымаем область из списка свободных
+			 *
+			 * Изымаем ПРЕЖДЕ отдачи, а не помечаем на месте: замок на время обращения к
+			 * источнику отпускается, и оставленную в списке область успел бы выдать
+			 * другой поток - а мы вслед за тем отдали бы её содержимое системе вместе с
+			 * записанными в неё данными
+			 */
+			this->pull(span);
+			// Отмечаем область изъятой
+			span->pending = true;
+			// Записываем изъятую область
+			spans[result++] = span;
+			// Если набрано требуемое число областей
+			if(result == limit){
+				// Запоминаем место перебора
+				(* cursor) = i;
+				// Выводим число изъятых областей
+				return result;
 			}
 			// Переходим к следующей области
 			span = next;
 		}
+	}
+	// Отмечаем перебор списков завершённым
+	(* cursor) = (LISTS + 2);
+	// Выводим число изъятых областей
+	return result;
+}
+/**
+ * @brief Метод отдачи содержимого изъятой области источнику
+ *
+ * @param span изъятая область
+ * @return     признак состоявшейся отдачи
+ *
+ */
+bool awh::alloc::Pages::discharge(void * span) const noexcept {
+	// Если отдавать нечего
+	if((this->_source == nullptr) || (span == nullptr))
+		// Отдавать нечего
+		return false;
+	// Приводим область к учётной записи
+	const span_t * record = reinterpret_cast <const span_t *> (span);
+	// Отдаём содержимое области источнику
+	return this->_source->purge(record->base, (record->pages * PAGE));
+}
+/**
+ * @brief Метод возврата изъятых областей в списки свободных
+ *
+ * @param spans изъятые области
+ * @param count число изъятых областей
+ * @param given признаки состоявшейся отдачи по каждой области
+ * @return      объём отданной системе памяти в байтах
+ *
+ */
+size_t awh::alloc::Pages::attach(void ** spans, const size_t count, const bool * given) noexcept {
+	// Если возвращать нечего
+	if((spans == nullptr) || (count == 0) || (given == nullptr))
+		// Возвращать нечего
+		return 0;
+	// Объём отданной системе памяти
+	size_t result = 0;
+	/**
+	 * Возвращаем изъятые области в списки свободных
+	 */
+	for(size_t i = 0; i < count; i++){
+		// Получаем очередную изъятую область
+		span_t * span = reinterpret_cast <span_t *> (spans[i]);
+		// Снимаем с области отметку изъятости
+		span->pending = false;
+		// Если содержимое области системе отдано
+		if(given[i]){
+			// Определяем размер области в байтах
+			const size_t size = (span->pages * PAGE);
+			// Отмечаем содержимое области отданным
+			span->purged = true;
+			// Увеличиваем отданное системе
+			this->_state.purged += size;
+			// Копим объём отданного
+			result += size;
+		}
+		/**
+		 * Возвращаем область в список свободных
+		 *
+		 * Возвращаем БЕЗ слияния с соседями: слияние отданной области с неотданной
+		 * лишает отданную её признака, и отданное пришлось бы отдавать заново.
+		 * Соседи сольются сами при первом же освобождении рядом
+		 */
+		this->push(span);
+	}
+	// Выводим объём отданной системе памяти
+	return result;
+}
+/**
+ * @brief Метод отдачи системе свободной памяти
+ *
+ * @note Оставлен ради полноты договора кучи: обращение к источнику идёт здесь ПОД
+ *       замком вызывающей стороны. Слой выше зовёт detach и attach порознь, отпуская
+ *       замок на время обращения к источнику
+ *
+ * @param now текущее время в миллисекундах
+ * @param all отдавать всё, не глядя на отсрочку
+ * @return    объём отданной системе памяти в байтах
+ *
+ */
+size_t awh::alloc::Pages::purge(const uint64_t now, const bool all) noexcept {
+	// Объём отданной системе памяти
+	size_t result = 0;
+	// Место перебора списков свободных областей
+	size_t cursor = 0;
+	// Изымаемые области
+	void * spans[BATCH];
+	// Признаки состоявшейся отдачи
+	bool given[BATCH];
+	/**
+	 * Отдаём память пачками, покуда есть что отдавать
+	 */
+	while(cursor <= (LISTS + 1)){
+		// Изымаем очередную пачку областей
+		const size_t count = this->detach(now, all, spans, BATCH, &cursor);
+		// Если изъять нечего
+		if(count == 0)
+			// Прекращаем отдачу
+			break;
+		/**
+		 * Отдаём содержимое изъятых областей источнику
+		 */
+		for(size_t i = 0; i < count; i++)
+			// Отдаём содержимое очередной области источнику
+			given[i] = this->discharge(spans[i]);
+		// Возвращаем изъятые области в списки свободных
+		result += this->attach(spans, count, given);
 	}
 	// Выводим объём отданной системе памяти
 	return result;

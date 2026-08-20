@@ -36,7 +36,7 @@ ROOT=$(cd "$(dirname "$0")/../../.." && pwd)
 . "$ROOT/tools/regex/sources.sh"
 
 # Состав стенда замеров
-STAND_BENCH="tools/benchmark/regex/awh.cpp tools/benchmark/regex/driver.hpp tools/benchmark/regex/scenarios.hpp"
+STAND_BENCH="tools/benchmark/regex/awh.cpp tools/benchmark/regex/driver.hpp tools/benchmark/regex/scenarios.hpp tools/benchmark/common.hpp"
 
 BUNDLE=$(mktemp -t awh-regex-bench)
 

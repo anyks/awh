@@ -143,6 +143,36 @@ namespace awh {
 			public:
 				/**
 				 * \~russian
+				 * @brief Метод смены доступности области
+				 *
+				 * @note Умение это необязательное: источник, страницами системы не
+				 *       владеющий, отвечает отказом, и заслоны с ним выключаются. Отказ
+				 *       здесь означает «не умею», а не «не вышло»
+				 *
+				 * @param addr    адрес области
+				 * @param size    размер области
+				 * @param opened  признак открытой области: ложь закрывает её вовсе
+				 * @return        признак выполнения операции
+				 *
+				 * \~english
+				 * @brief Method of changing the accessibility of a region
+				 *
+				 * @param addr   region address
+				 * @param size   region size
+				 * @param opened open region flag: false closes it entirely
+				 * @return       flag of the operation having been performed
+				 *
+				 */
+				virtual bool protect(void * addr, const size_t size, const bool opened) noexcept {
+					// Область не наша, менять доступность нечему
+					(void) addr; (void) size; (void) opened;
+					// Отвечаем отказом: источник страницами системы не владеет
+					return false;
+				}
+
+			public:
+				/**
+				 * \~russian
 				 * @brief Метод получения размера страницы источника
 				 *
 				 * @return размер страницы в байтах
@@ -214,6 +244,18 @@ namespace awh {
 				 *
 				 */
 				bool release(void * addr, const size_t size) noexcept override;
+			public:
+				/**
+				 * @brief Метод смены доступности области
+				 *
+				 * @param addr   адрес области
+				 * @param size   размер области
+				 * @param opened признак открытой области: ложь закрывает её вовсе
+				 * @return       признак выполнения операции
+				 *
+				 */
+				bool protect(void * addr, const size_t size, const bool opened) noexcept override;
+
 			public:
 				/**
 				 * @brief Метод получения размера страницы источника

@@ -182,10 +182,47 @@ namespace {
 	constexpr size_t SIFTING = 16;
 
 	/**
+	 * @brief Наибольшее удаление литерала, при каком отбор по нему порождается
+	 *
+	 * @details Отбор по обязательному литералу отводит начало совпадения
+	 *          не далее чем за удаление до вхождения литерала. Попытка
+	 *          отвергнутая повторяет отбор с позиции следующей, и поиск
+	 *          литерала проходит участок длиной в удаление, отчего плата
+	 *          отбора растёт с удалением, тогда как просеивание позиций
+	 *          стоит на всякой из них одинаково.
+	 *
+	 *          Величина снята замером, а не выведена доводом: лестница
+	 *          по удалению на тексте, отбор изматывающем - совпадения нет,
+	 *          байты начала часты, и поиск повторяется на всякой позиции, -
+	 *          дала перелом между шестнадцатью и тридцатью двумя:
+	 *
+	 *          | удаление | с отбором | без отбора |
+	 *          |---|---|---|
+	 *          | 2 | 40.2 нс | 180.5 нс |
+	 *          | 8 | 99.3 нс | 186.4 нс |
+	 *          | 16 | 153.7 нс | 187.5 нс |
+	 *          | 32 | 286.2 нс | 193.3 нс |
+	 *          | 64 | 580.9 нс | 198.9 нс |
+	 *
+	 *          Довод, прежде здесь стоявший, брал величину по цене вызова
+	 *          подпрограммы и давал шестьдесят четыре - вчетверо больше
+	 *          измеренного перелома, то есть отдавал отбору целый разряд
+	 *          удалений, на каких он вдвое-втрое убыточен.
+	 *
+	 */
+	constexpr size_t NARROWING = 16;
+
+	/**
+	 * @brief Номер места обстановки, несущего адрес подпрограммы отбора по литералу
+	 *
+	 */
+	constexpr size_t SLOT_BOUNDING = 6;
+
+	/**
 	 * @brief Количество мест обстановки, отведённых прежде значений хранилища
 	 *
 	 */
-	constexpr size_t SLOT_TABLES = 6;
+	constexpr size_t SLOT_TABLES = 7;
 
 	/**
 	 * @brief Количество границ совпадения, отводимых на кадре вызова
@@ -289,6 +326,20 @@ namespace {
 	size_t feasible(const char * text, const size_t size, const size_t pos, const void * prefilter) noexcept {
 		// Выводим результат проверки возможности совпадения
 		return (reinterpret_cast <const awh::regex::prefilter_t *> (prefilter)->possible(std::string_view(text, size), pos) ? 1 : 0);
+	}
+	/**
+	 * @brief Функция отбора позиции начала попытки по обязательному литералу
+	 *
+	 * @param text      адрес начала текста сопоставления
+	 * @param size      размер текста сопоставления в байтах
+	 * @param pos       позиция начала поиска совпадения
+	 * @param prefilter адрес предварительного отбора позиций
+	 * @return          позиция возможного начала совпадения либо размер текста
+	 *
+	 */
+	size_t bounding(const char * text, const size_t size, const size_t pos, const void * prefilter) noexcept {
+		// Выводим позицию возможного начала совпадения
+		return reinterpret_cast <const awh::regex::prefilter_t *> (prefilter)->bounded(std::string_view(text, size), pos);
 	}
 	/**
 	 * @brief Функция проверки привязки к позиции в тексте
@@ -2672,7 +2723,29 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			break;
 		}
 	}
-	const bool sifting = (!program.anchored && this->_prefilter.active && !seek && !lining && (allowed > 0) && (allowed < TABLE));
+	/**
+	 * Получаем признак отбора позиций начала попытки по обязательному литералу
+	 *
+	 * @details Совпадение обязано обязательный литерал содержать, и литерал этот
+	 *          отстоит от начала совпадения не далее чем на удаление, при
+	 *          порождении вычисленное. Отсюда начало совпадения не может лежать
+	 *          раньше, чем за удаление до ближайшего вхождения литерала, и весь
+	 *          участок до неё пропускается разом - поиском последовательности
+	 *          взамен перебора позиций по одной.
+	 *
+	 *          Отбор по ведущему литералу и отбор по началам строк отменяют
+	 *          этот: первый называет позиции точнее, второй - реже.
+	 *
+	 *          Удаление большое отбор отменяет: попытка отвергнутая повторяет
+	 *          поиск литерала, а искать ему приходится по участку длиной
+	 *          в удаление, отчего плата отбора растёт с ним, тогда как
+	 *          просеивание стоит на всякой позиции одинаково.
+	 *
+	 */
+	const bool narrowing = (!program.anchored && !seek && !lining &&
+	 !this->_prefilter.literal.empty() && (this->_prefilter.distance != string_view::npos) &&
+	 (this->_prefilter.distance <= NARROWING));
+	const bool sifting = (!program.anchored && this->_prefilter.active && !seek && !lining && !narrowing && (allowed > 0) && (allowed < TABLE));
 	/**
 	 * Получаем номер места кадра, действующий отказ сопоставления несущего
 	 *
@@ -2989,6 +3062,8 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	const size_t refusing = emitter.label();
 	// Заводим метку отбора позиции начала очередной попытки сопоставления
 	const size_t seeker = emitter.label();
+	// Заводим метку отбора позиции начала попытки по обязательному литералу
+	const size_t narrower = emitter.label();
 	// Заводим метку просеивания позиции начала очередной попытки сопоставления
 	const size_t sifter = emitter.label();
 	// Заводим метку выхода позиции начала попытки на границу символа
@@ -3061,13 +3136,41 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	 *          этим просмотром.
 	 *
 	 */
-	if(possible) {
+	if(possible && !narrowing) {
 		// Выполняем вызов подпрограммы проверки возможности совпадения
 		invoke(emitter, SLOT_FEASIBLE, spill, reg_t::KEEPER, SLOT_PREFILTER);
 		// Выполняем сравнение итога проверки возможности совпадения с нулём
 		emitter.compare(reg_t::SCRATCH, static_cast <uint32_t> (0));
 		// Выполняем переход к отсутствию совпадения при невозможности его
 		emitter.branch(cond_t::EQUAL, none);
+	}
+	/**
+	 * Если отбор позиций начала попытки по обязательному литералу порождается
+	 *
+	 * @details Отбор выдаёт позицию, раньше какой совпадение начаться не может,
+	 *          либо размер текста, вхождения литерала не обнаружив. Проверки
+	 *          возможности совпадения он при этом заменяет собою: отсутствие
+	 *          литерала отбор различает тем же поиском.
+	 *
+	 */
+	if(narrowing) {
+		// Выполняем расстановку метки отбора позиции начала попытки по литералу
+		emitter.place(narrower);
+		// Выполняем вызов подпрограммы отбора позиции по обязательному литералу
+		invoke(emitter, SLOT_BOUNDING, spill, reg_t::KEEPER, SLOT_PREFILTER);
+		// Выполняем установку отобранной позиции начала попытки
+		emitter.move(reg_t::KEEPER, reg_t::SCRATCH);
+		// Выполняем сравнение позиции начала попытки с размером текста
+		emitter.compare(reg_t::KEEPER, reg_t::SIZE);
+		/**
+		 * Выполняем переход к отсутствию совпадения по исчерпании текста
+		 *
+		 * @details Отбор выдаёт размер текста, вхождения литерала не обнаружив,
+		 *          а совпадение в позиции конца текста при действующем отборе
+		 *          невозможно: литерал непуст, и совпадение поглощает байты.
+		 *
+		 */
+		emitter.branch(cond_t::ABOVE, none);
 	}
 	/**
 	 * Если отбор позиции начала попытки сопоставления порождается
@@ -5864,7 +5967,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 		// Переходим к следующей позиции начала попытки сопоставления
 		} else emitter.add(reg_t::KEEPER, reg_t::KEEPER, 1);
 		// Выполняем переход к отбору позиции начала очередной попытки сопоставления
-		emitter.jump(seek ? seeker : (lining ? liner : (sifting ? sifter : entry)));
+		emitter.jump(seek ? seeker : (lining ? liner : (narrowing ? narrower : (sifting ? sifter : entry))));
 	}
 	// Выполняем расстановку метки обнаружения совпадения в тексте
 	emitter.place(found);
@@ -5951,6 +6054,8 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	this->_context.at(SLOT_SEEKING) = reinterpret_cast <const void *> (&seeking);
 	// Выполняем установку адреса подпрограммы проверки возможности совпадения
 	this->_context.at(SLOT_FEASIBLE) = reinterpret_cast <const void *> (&feasible);
+	// Выполняем установку адреса подпрограммы отбора позиции по литералу
+	this->_context.at(SLOT_BOUNDING) = reinterpret_cast <const void *> (&bounding);
 	// Выполняем установку адреса подпрограммы проверки привязки к позиции
 	this->_context.at(SLOT_ASSERTING) = reinterpret_cast <const void *> (&asserting);
 	// Выполняем установку адреса подпрограммы прохода ряда повторения
@@ -6263,6 +6368,8 @@ bool awh::regex::Codegen::restore(string_view data, size_t & offset, const progr
 	this->_context.at(SLOT_SEEKING) = reinterpret_cast <const void *> (&seeking);
 	// Выполняем установку адреса подпрограммы проверки возможности совпадения
 	this->_context.at(SLOT_FEASIBLE) = reinterpret_cast <const void *> (&feasible);
+	// Выполняем установку адреса подпрограммы отбора позиции по литералу
+	this->_context.at(SLOT_BOUNDING) = reinterpret_cast <const void *> (&bounding);
 	// Выполняем установку адреса подпрограммы проверки привязки к позиции
 	this->_context.at(SLOT_ASSERTING) = reinterpret_cast <const void *> (&asserting);
 	// Выполняем установку адреса подпрограммы прохода ряда повторения

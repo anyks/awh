@@ -319,3 +319,33 @@ bool awh::alloc::SystemSource::release(void * addr, const size_t size) noexcept 
 		return (::munmap(addr, size) == 0);
 	#endif
 }
+/**
+ * @brief Метод смены доступности области
+ *
+ * @param addr   адрес области
+ * @param size   размер области
+ * @param opened признак открытой области: ложь закрывает её вовсе
+ * @return       признак выполнения операции
+ *
+ */
+bool awh::alloc::SystemSource::protect(void * addr, const size_t size, const bool opened) noexcept {
+	// Если область не задана
+	if((addr == nullptr) || (size == 0))
+		// Менять доступность нечему
+		return false;
+	/**
+	 * Для операционной системы MS Windows
+	 */
+	#if _WIN32 || _WIN64
+		// Прежняя доступность области
+		DWORD previous = 0;
+		// Меняем доступность области
+		return (::VirtualProtect(addr, size, (opened ? PAGE_READWRITE : PAGE_NOACCESS), &previous) != FALSE);
+	/**
+	 * Для операционной системы не являющейся MS Windows
+	 */
+	#else
+		// Меняем доступность области
+		return (::mprotect(addr, size, (opened ? (PROT_READ | PROT_WRITE) : PROT_NONE)) == 0);
+	#endif
+}
