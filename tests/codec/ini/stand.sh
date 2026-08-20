@@ -71,7 +71,7 @@ echo "Собираем стенд проверок INI: $COMPILER"
 $COMPILER $OPTIONS -c "$ROOT/src/num/lexical/table.cpp" -o "$OUTPUT/lexical-table.o"
 
 # Выполняем перебор всех частей кодека INI
-for PART in common encoding reader writer document; do
+for PART in common encoding reader writer document value; do
 	# Выполняем сборку очередной части кодека INI
 	$COMPILER $OPTIONS -c "$ROOT/src/codec/ini/$PART.cpp" -o "$OUTPUT/codec-$PART.o"
 	# Выполняем сборку проверок очередной части кодека INI

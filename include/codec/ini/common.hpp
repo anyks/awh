@@ -444,6 +444,40 @@ namespace awh {
 
 			/**
 			 * \~russian
+			 * @brief Виды значения владеющего типа
+			 *
+			 * @details Своих видов значения у наречия INI нет вовсе: значение свойства
+			 * есть последовательность знаков, а число ли это, логическое значение либо
+			 * запись как она есть - решает извлечение. Перечисление это описывает не вид
+			 * записи, а устройство владеющего значения: простое оно, перечнем является
+			 * либо вместилищем пар
+			 *
+			 * @note Перечисление заведено ради владеющего значения из `value.hpp` и им
+			 *       одним употребляется: разбор, запись и дерево настроек видов значения
+			 *       не различают вовсе, и вводить их туда незачем
+			 *
+			 * \~english
+			 * @brief Kinds of the value of the owning type
+			 * @details The INI dialect has no kinds of a value of its own at all: the value of a property
+			 * is a sequence of characters, while whether this is a number, a logical value or
+			 * a record as it is — is decided by the extraction. This enumeration describes not the kind of
+			 * the record but the arrangement of the owning value: whether it is a simple one, an array
+			 * or a container of the pairs
+			 * @note The enumeration is created for the sake of the owning value from `value.hpp` and is used
+			 *       by it alone: the parsing, the writing and the settings tree do not distinguish the kinds
+			 *       of a value at all, and there is no point in introducing them there
+			 *
+			 * \~
+			 */
+			enum class type_t : uint8_t {
+				NONE   = 0x00, // Значение не определено
+				STRING = 0x01, // Значение свойства последовательностью знаков
+				ARRAY  = 0x02, // Перечень значений одноимённого свойства
+				TABLE  = 0x03  // Вместилище пар: раздел, подраздел либо корень настроек
+			};
+
+			/**
+			 * \~russian
 			 * @brief Обращение с кавычками вокруг значения свойства
 			 *
 			 * \~english

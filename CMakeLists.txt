@@ -1023,6 +1023,7 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/codec/ini/reader.cpp"
     "${CMAKE_SOURCE_DIR}/src/codec/ini/writer.cpp"
     "${CMAKE_SOURCE_DIR}/src/codec/ini/document.cpp"
+    "${CMAKE_SOURCE_DIR}/src/codec/ini/value.cpp"
     "${CMAKE_SOURCE_DIR}/src/codec/csv/common.cpp"
     "${CMAKE_SOURCE_DIR}/src/codec/csv/encoding.cpp"
     "${CMAKE_SOURCE_DIR}/src/codec/csv/reader.cpp"
