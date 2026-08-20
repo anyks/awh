@@ -60,7 +60,7 @@ namespace {
 	 *          Fedora ARM64
 	 *
 	 */
-	static constexpr double WRITE_SERVICE_THRESHOLD = 30.0;
+	static constexpr double WRITE_SERVICE_THRESHOLD = 26.0;
 	/**
 	 * @brief Порог пропускной способности записи значений, требующих ограждения
 	 *
@@ -69,7 +69,7 @@ namespace {
 	 *          на каждый его знак уронил бы показатель вдвое
 	 *
 	 */
-	static constexpr double WRITE_ESCAPED_THRESHOLD = 50.0;
+	static constexpr double WRITE_ESCAPED_THRESHOLD = 40.0;
 
 	/**
 	 * @brief Функция получения перечня записываемых значений свойств

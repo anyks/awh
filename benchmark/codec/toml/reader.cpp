@@ -78,7 +78,7 @@ namespace {
 	 *       кодека настроек INI втрое и более
 	 *
 	 */
-	static constexpr double READ_SERVICE_THRESHOLD = 12.0;
+	static constexpr double READ_SERVICE_THRESHOLD = 6.8;
 	/**
 	 * @brief Порог пропускной способности чтения крупного файла настроек
 	 *
@@ -89,22 +89,22 @@ namespace {
 	 *       ini 6.1 раза, toml 5.5 раза
 	 *
 	 */
-	static constexpr double READ_LARGE_THRESHOLD = 4.0;
+	static constexpr double READ_LARGE_THRESHOLD = 4.2;
 	/**
 	 * @brief Порог пропускной способности чтения текста с преобладанием строк
 	 *
 	 */
-	static constexpr double READ_STRINGS_THRESHOLD = 8.0;
+	static constexpr double READ_STRINGS_THRESHOLD = 10.0;
 	/**
 	 * @brief Порог пропускной способности чтения текста с преобладанием чисел
 	 *
 	 */
-	static constexpr double READ_NUMBERS_THRESHOLD = 6.0;
+	static constexpr double READ_NUMBERS_THRESHOLD = 7.6;
 	/**
 	 * @brief Порог пропускной способности чтения текста с преобладанием перечней
 	 *
 	 */
-	static constexpr double READ_ARRAYS_THRESHOLD = 6.0;
+	static constexpr double READ_ARRAYS_THRESHOLD = 5.0;
 	/**
 	 * @brief Порог расхода выделений памяти на чтение
 	 *
@@ -136,7 +136,7 @@ namespace {
 	 *       мерит соседний сценарий
 	 *
 	 */
-	static constexpr double READ_DECLARED_THRESHOLD = 1.5;
+	static constexpr double READ_DECLARED_THRESHOLD = 5.0;
 	/**
 	 * @brief Порог просадки чтения от подачи текста кусками
 	 *

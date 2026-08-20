@@ -81,22 +81,22 @@ namespace {
 	 *       показатель в три раза и более
 	 *
 	 */
-	static constexpr double READ_SERVICE_THRESHOLD = 25.0;
+	static constexpr double READ_SERVICE_THRESHOLD = 27.0;
 	/**
 	 * @brief Порог пропускной способности чтения настроек по образцу Git
 	 *
 	 */
-	static constexpr double READ_REPOSITORY_THRESHOLD = 25.0;
+	static constexpr double READ_REPOSITORY_THRESHOLD = 24.0;
 	/**
 	 * @brief Порог пропускной способности чтения крупного файла настроек
 	 *
 	 */
-	static constexpr double READ_LARGE_THRESHOLD = 16.0;
+	static constexpr double READ_LARGE_THRESHOLD = 17.0;
 	/**
 	 * @brief Порог пропускной способности чтения текста с преобладанием примечаний
 	 *
 	 */
-	static constexpr double READ_ANNOTATED_THRESHOLD = 16.0;
+	static constexpr double READ_ANNOTATED_THRESHOLD = 18.0;
 	/**
 	 * @brief Порог количества выделений памяти на чтение крупного файла настроек
 	 *
@@ -121,7 +121,7 @@ namespace {
 	 *       ему можно назначить впритык
 	 *
 	 */
-	static constexpr double READ_CHUNKED_THRESHOLD = 2.0;
+	static constexpr double READ_CHUNKED_THRESHOLD = 1.9;
 	/**
 	 * @brief Порог задержки чтения файла настроек приложения в микросекундах
 	 *
@@ -130,7 +130,7 @@ namespace {
 	 *          Превышение порога означает, что заведение хранилищ разбора подорожало
 	 *
 	 */
-	static constexpr double READ_SERVICE_LATENCY_THRESHOLD = 15.0;
+	static constexpr double READ_SERVICE_LATENCY_THRESHOLD = 14.0;
 
 	/**
 	 * @brief Функция потокового чтения текста настроек

@@ -63,7 +63,7 @@ namespace {
 	 *          вчетверо: отладочные стенды отстают от неё вчетверо-впятеро
 	 *
 	 */
-	static constexpr double WRITE_THRESHOLD = 8.0;
+	static constexpr double WRITE_THRESHOLD = 23.0;
 	/**
 	 * @brief Порог пропускной способности записи строк, требующих ограждения
 	 *
@@ -72,7 +72,7 @@ namespace {
 	 *          такими строками и стоит заметно дороже записи как есть
 	 *
 	 */
-	static constexpr double WRITE_GUARDED_THRESHOLD = 4.0;
+	static constexpr double WRITE_GUARDED_THRESHOLD = 17.0;
 	/**
 	 * @brief Порог расхода выделений памяти на запись
 	 *

@@ -70,12 +70,12 @@ namespace {
 	 *          Fedora ARM64
 	 *
 	 */
-	static constexpr double BUILD_SERVICE_THRESHOLD = 6.0;
+	static constexpr double BUILD_SERVICE_THRESHOLD = 6.3;
 	/**
 	 * @brief Порог пропускной способности сборки крупного дерева настроек
 	 *
 	 */
-	static constexpr double BUILD_LARGE_THRESHOLD = 8.0;
+	static constexpr double BUILD_LARGE_THRESHOLD = 8.6;
 	/**
 	 * @brief Порог пропускной способности сборки дерева со множеством разделов
 	 *
@@ -86,12 +86,12 @@ namespace {
 	 *          между тем и другим - тысячекратная
 	 *
 	 */
-	static constexpr double BUILD_SECTIONS_THRESHOLD = 4.0;
+	static constexpr double BUILD_SECTIONS_THRESHOLD = 4.2;
 	/**
 	 * @brief Порог пропускной способности обратной записи дерева в текст
 	 *
 	 */
-	static constexpr double WRITE_BACK_THRESHOLD = 40.0;
+	static constexpr double WRITE_BACK_THRESHOLD = 35.0;
 	/**
 	 * @brief Порог пропускной способности обхода дерева со множеством разделов
 	 *
@@ -108,7 +108,7 @@ namespace {
 	 *       от другого с двойным запасом в обе стороны
 	 *
 	 */
-	static constexpr double WALK_SECTIONS_THRESHOLD = 15.0;
+	static constexpr double WALK_SECTIONS_THRESHOLD = 10.0;
 	/**
 	 * @brief Порог количества обращений к значениям в секунду
 	 *
@@ -117,7 +117,7 @@ namespace {
 	 *          дерева при каждом обращении уронил бы его на порядки
 	 *
 	 */
-	static constexpr double LOOKUP_THRESHOLD = 500000.0;
+	static constexpr double LOOKUP_THRESHOLD = 440000.0;
 	/**
 	 * @brief Количество свойств, заводимых при замере сборки вызовами
 	 *
