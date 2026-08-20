@@ -69,7 +69,7 @@ $COMPILER $OPTIONS -c "$ROOT/src/num/lexical/table.cpp" -o "$OUTPUT/lexical-tabl
 $COMPILER $OPTIONS -c "$ROOT/benchmark/main.cpp" -o "$OUTPUT/main.o"
 
 # Выполняем перебор всех частей кодека INI
-for PART in common encoding reader writer document; do
+for PART in common encoding reader writer document value; do
 	# Выполняем сборку очередной части кодека INI
 	$COMPILER $OPTIONS -c "$ROOT/src/codec/ini/$PART.cpp" -o "$OUTPUT/codec-$PART.o"
 	# Добавляем собранное к перечню объектных файлов стенда
@@ -77,7 +77,7 @@ for PART in common encoding reader writer document; do
 done
 
 # Выполняем перебор всех частей набора замеров кодека INI
-for PART in ini reader writer document; do
+for PART in ini reader writer document value; do
 	# Выполняем сборку очередной части набора замеров
 	$COMPILER $OPTIONS -c "$ROOT/benchmark/codec/ini/$PART.cpp" -o "$OUTPUT/bench-$PART.o"
 	# Добавляем собранное к перечню объектных файлов стенда

@@ -235,6 +235,48 @@ namespace awh {
 			bool available(const driver_t driver) noexcept;
 			/**
 			 * \~russian
+			 * @brief Функция сообщения драйверу адресов туннеля
+			 *
+			 * @details Драйвер tap-windows6 в режиме переноса пакетов сетевого уровня
+			 *          отбирает их по настроенной сети: пакет, посланный за её пределы,
+			 *          до устройства не доходит вовсе. Оттого адреса ему сообщаются
+			 *          настоящие - те, какими туннель заведён, - и сообщаются они тогда,
+			 *          когда стали известны, а не в миг заведения устройства
+			 *
+			 * @note Устройству Wintun сообщать нечего: отбора по сети у него нет, и
+			 *       обращение отвечает согласием, не делая ничего
+			 *
+			 * @warning Адреса берутся в порядке октетов сети - в том самом, в каком они
+			 *          лежат в `sin_addr.s_addr`, - и перестановки не требуют
+			 *
+			 * @param sock   дескриптор туннельного устройства
+			 * @param local  адрес своего конца туннеля
+			 * @param remote адрес встречного конца туннеля
+			 * @param log    объект ведения журнала
+			 * @return       результат выполнения сообщения
+			 *
+			 * \~english
+			 * @brief Function of telling a driver the addresses of a tunnel
+			 * @details The tap-windows6 driver in the mode of the carrying of the network layer packets
+			 *          selects them by the configured network: a packet sent beyond its bounds
+			 *          does not reach the device at all. Therefore the addresses told to it are
+			 *          the real ones — those the tunnel is started with — and they are told then,
+			 *          when they have become known, and not at the moment of the starting of the device
+			 * @note There is nothing to tell to a Wintun device: it has no selection by network, and
+			 *       the call answers with a consent, doing nothing
+			 * @warning The addresses are taken in the network octet order — in the very one they
+			 *          lie in `sin_addr.s_addr` — and require no rearrangement
+			 * @param sock   descriptor of the tunnel device
+			 * @param local  address of the own end of the tunnel
+			 * @param remote address of the opposite end of the tunnel
+			 * @param log    object of the keeping of the log
+			 * @return       result of the performance of the telling
+			 *
+			 * \~
+			 */
+			bool configure(const net::socket_t sock, const uint32_t local, const uint32_t remote, const log_t * log) noexcept;
+			/**
+			 * \~russian
 			 * @brief Функция устранения туннельного устройства
 			 *
 			 * @param sock дескриптор устраняемого устройства

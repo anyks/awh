@@ -136,3 +136,12 @@
 [submodule "submodules/msgpack-c"]
 	path = submodules/msgpack-c
 	url = https://github.com/msgpack/msgpack-c.git
+[submodule "submodules/pprof"]
+	path = submodules/pprof
+	url = https://github.com/google/pprof.git
+[submodule "submodules/mimalloc"]
+	path = submodules/mimalloc
+	url = https://github.com/microsoft/mimalloc.git
+[submodule "submodules/jemalloc"]
+	path = submodules/jemalloc
+	url = https://github.com/jemalloc/jemalloc.git

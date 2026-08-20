@@ -159,5 +159,17 @@ $ROOT/submodule.sh add libcbor https://github.com/PJK/libcbor.git
 $ROOT/submodule.sh remove msgpack-c
 $ROOT/submodule.sh add msgpack-c https://github.com/msgpack/msgpack-c.git
 
+# Выполняем пересборку сабмодуля pprof
+$ROOT/submodule.sh remove pprof
+$ROOT/submodule.sh add pprof https://github.com/google/pprof.git
+
+# Выполняем пересборку сабмодуля mimalloc
+$ROOT/submodule.sh remove mimalloc
+$ROOT/submodule.sh add mimalloc https://github.com/microsoft/mimalloc.git
+
+# Выполняем пересборку сабмодуля jemalloc
+$ROOT/submodule.sh remove jemalloc
+$ROOT/submodule.sh add jemalloc https://github.com/jemalloc/jemalloc.git
+
 # Выводим список добавленных модулей
 cat $ROOT/../.gitmodules

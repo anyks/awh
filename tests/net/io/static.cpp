@@ -453,6 +453,55 @@ TEST_F(IoFixture, SpliceValidCombinationsTest){
 }
 
 /**
+ * @brief Тест объединения узлов РАЗНЫХ семейств адресов
+ *
+ * @details Посредник несёт адрес ВНУТРИ туннеля, а приёмник - перенос наружу:
+ *          слои разные, и семейства их между собой не связаны. Туннель IPv6
+ *          поверх переноса IPv4 - обычный расклад, и прежнее сличение семейств
+ *          запрещало его вовсе: туннели по IPv6 не поднимались ни на одной системе
+ *
+ * @note Закрепляет НАМЕРЕННОЕ решение: сличение семейств у объединения снято.
+ *       Проверка стоит здесь, чтобы разбор кода не вернул его обратно как «защиту»
+ *
+ */
+TEST_F(IoFixture, SpliceMixedFamiliesTest){
+	// Создаём узел посредника семейства IPv6 (узел-источник)
+	awh::event::id_t mediator = this->_io->event(awh::event::node_t::MEDIATOR, awh::event::family_t::IPV6);
+	// Создаём событие клиента UDP семейства IPv4 (узел-приёмник, перенос наружу)
+	awh::event::id_t client = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
+	// Проверяем, что идентификаторы событий созданы
+	ASSERT_GT(mediator, 0);
+	ASSERT_GT(client, 0);
+	// Объединение посредника IPv6 с переносом IPv4 допустимо
+	ASSERT_TRUE(this->_io->splice(mediator, client));
+	// Уничтожаем созданные события
+	this->_io->destroy(mediator);
+	this->_io->destroy(client);
+}
+
+/**
+ * @brief Тест объединения узлов разных семейств в обратном сочетании
+ *
+ * @note Зеркало к SpliceMixedFamiliesTest: посредник IPv4 поверх переноса IPv6.
+ *       Туннель IPv4 поверх несущей IPv6 проверен на стендах и обязан быть допустим
+ *
+ */
+TEST_F(IoFixture, SpliceMixedFamiliesReverseTest){
+	// Создаём узел посредника семейства IPv4 (узел-источник)
+	awh::event::id_t mediator = this->_io->event(awh::event::node_t::MEDIATOR, awh::event::family_t::IPV4);
+	// Создаём событие клиента UDP семейства IPv6 (узел-приёмник, перенос наружу)
+	awh::event::id_t client = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::IPV6, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
+	// Проверяем, что идентификаторы событий созданы
+	ASSERT_GT(mediator, 0);
+	ASSERT_GT(client, 0);
+	// Объединение посредника IPv4 с переносом IPv6 допустимо
+	ASSERT_TRUE(this->_io->splice(mediator, client));
+	// Уничтожаем созданные события
+	this->_io->destroy(mediator);
+	this->_io->destroy(client);
+}
+
+/**
  * @brief Тест того, что серверный узел не может быть источником объединения данных
  *
  */

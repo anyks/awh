@@ -170,6 +170,7 @@ if (${GTest_FOUND})
             list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
                 io/io.cpp
                 io/static.cpp
+                io/tunnel.cpp
                 io/parameterized.cpp
             )
         # Если не нужно собрать тесты для работы с модулем ввода-вывода

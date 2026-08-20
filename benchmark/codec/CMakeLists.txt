@@ -77,6 +77,7 @@ if (${CMAKE_BUILD_${BENCHMARK_NAME}_BENCHMARKS})
             ini/reader.cpp
             ini/writer.cpp
             ini/document.cpp
+            ini/value.cpp
         )
     # Если не нужно собрать бенчмарки для контейнера INI
     else()
@@ -138,6 +139,7 @@ if (${CMAKE_BUILD_${BENCHMARK_NAME}_BENCHMARKS})
             toml/reader.cpp
             toml/writer.cpp
             toml/document.cpp
+            toml/value.cpp
         )
     # Если не нужно собрать бенчмарки для контейнера TOML
     else()

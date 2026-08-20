@@ -244,6 +244,8 @@ namespace awh {
 			#if !_WIN32 && !_WIN64
 				// Дескрипторы самопайпа: [0] - чтение, [1] - запись
 				int32_t _pipe[2];
+				// Запасной стек обработчика сбоев, нужный при срыве основного
+				stack_t _stack;
 			#endif
 		private:
 			// Объект фреймворка
@@ -294,19 +296,21 @@ namespace awh {
 				 * \~russian
 				 * @brief Метод обработки полученного сигнала вне контекста обработчика
 				 *
-				 * @param sig номер полученного сигнала
-				 * @param pid идентификатор процесса-отправителя
-				 * @param uid идентификатор пользователя-отправителя
+				 * @param sig  номер полученного сигнала
+				 * @param pid  идентификатор процесса-отправителя
+				 * @param uid  идентификатор пользователя-отправителя
+				 * @param addr адрес обращения, вызвавшего сбой
 				 *
 				 * \~english
 				 * @brief Method of handling a received signal outside the context of the handler
-				 * @param sig number of the received signal
-				 * @param pid identifier of the sending process
-				 * @param uid identifier of the sending user
+				 * @param sig  number of the received signal
+				 * @param pid  identifier of the sending process
+				 * @param uid  identifier of the sending user
+				 * @param addr address of the access that caused the fault
 				 *
 				 * \~
 				 */
-				void process(const int32_t sig, const pid_t pid, const uid_t uid) noexcept;
+				void process(const int32_t sig, const pid_t pid, const uid_t uid, void * addr) noexcept;
 			/**
 			 * Для операционной системы MS Windows
 			 */

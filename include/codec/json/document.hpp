@@ -802,10 +802,10 @@ namespace awh {
 							 * числом не является вовсе. Вид хранения извлечению не указ: узел,
 							 * хранящий `INT8`, извлекается и как `double`, и как `uint64_t`
 							 *
-							 * @details Сужение выполняется обычным приведением языка: дробная
-							 * часть отбрасывается усечением к нулю, а целое, не вмещающееся в
-							 * затребованный вид, переносится младшими разрядами - ровно так, как
-							 * это делает `static_cast`
+							 * @details Целое, не вмещающееся в затребованный вид, переносится
+							 * младшими разрядами - ровно так, как это делает `static_cast`. Дробное
+							 * же ОКРУГЛЯЕТСЯ по правилам математики с уводом половины от нуля:
+							 * `1.5` даёт `2`, `-1.5` даёт `-2`, `1.4` даёт `1`
 							 *
 							 * @note Единственное отступление от `static_cast` касается дробного,
 							 *       чья целая часть лежит за пределами затребованного вида, - вроде
@@ -821,10 +821,10 @@ namespace awh {
 							 * @details The extraction ends with a refusal only when the node
 							 * is not a number at all. The kind of the storage is not a directive to the extraction: a node
 							 * storing an `INT8` is extracted both as a `double` and as a `uint64_t`
-							 * @details The narrowing is performed by the usual conversion of the language: the fractional
-							 * part is discarded by a truncation towards zero, while an integer not fitting into
-							 * the demanded kind is transferred by the lower bits — exactly as
-							 * `static_cast` does it
+							 * @details An integer not fitting into the demanded kind is transferred by the lower
+							 * bits — exactly as `static_cast` does it. A fractional number, however, is ROUNDED
+							 * by the rules of mathematics with the half taken away from zero:
+							 * `1.5` gives `2`, `-1.5` gives `-2`, `1.4` gives `1`
 							 * @note The only deviation from `static_cast` concerns a fractional number
 							 *       whose integer part lies beyond the limits of the demanded kind — like
 							 *       `1e300` into an `int32_t`. The standard calls this an undefined
