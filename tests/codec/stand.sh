@@ -79,7 +79,7 @@ $COMPILER $OPTIONS -c "$ROOT/tests/codec/contract.cpp" -o "$OUTPUT/contract.o"
 # @note Состав частей у кодеков разный: владеющее значение есть пока не у всех, и часть
 #       `value` перечисляется лишь у тех, у кого она заведена
 #
-for ENTRY in "json:common encoding reader writer document value"              "xml:common encoding reader writer document value"              "yaml:common encoding reader writer document value"              "toml:common encoding reader writer document"              "ini:common encoding reader writer document"; do
+for ENTRY in "json:common encoding reader writer document value"              "xml:common encoding reader writer document value"              "yaml:common encoding reader writer document value"              "toml:common encoding reader writer document value"              "ini:common encoding reader writer document"; do
 	# Получаем название очередного сличаемого кодека
 	CODEC="${ENTRY%%:*}"
 	# Выполняем перебор всех частей очередного кодека

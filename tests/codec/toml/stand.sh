@@ -71,7 +71,7 @@ echo "Собираем стенд проверок TOML: $COMPILER"
 $COMPILER $OPTIONS -c "$ROOT/src/num/lexical/table.cpp" -o "$OUTPUT/lexical-table.o"
 
 # Выполняем перебор всех частей кодека TOML
-for PART in common encoding reader writer document; do
+for PART in common encoding reader writer document value; do
 	# Выполняем сборку очередной части кодека TOML
 	$COMPILER $OPTIONS -c "$ROOT/src/codec/toml/$PART.cpp" -o "$OUTPUT/codec-$PART.o"
 	# Выполняем сборку проверок очередной части кодека TOML

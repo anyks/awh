@@ -89,6 +89,7 @@ if (${GTest_FOUND})
             toml/reader.cpp
             toml/writer.cpp
             toml/document.cpp
+            toml/value.cpp
             json/common.cpp
             json/encoding.cpp
             json/reader.cpp
