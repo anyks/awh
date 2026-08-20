@@ -1046,6 +1046,25 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 		case static_cast <uint8_t> (event::protocol_t::TCP): protocol = IPPROTO_TCP; break;
 		// Если протоколом передачи данных является UDP
 		case static_cast <uint8_t> (event::protocol_t::UDP): protocol = IPPROTO_UDP; break;
+		/**
+		 * Если протоколом передачи данных является ICMP
+		 *
+		 * @details Протокол этот выбирается по семейству адресов: у IPv4 он свой, у
+		 *          IPv6 - отдельный, и подменять один другим нельзя. Прочие платформы
+		 *          заводят его так же (`bsd`, `gnu`, `sun`)
+		 *
+		 * @warning Прежде ICMP попадал в ветвь по умолчанию и сокет заводился с
+		 *          протоколом 0. Система такой сокет создаёт, отправку принимает и
+		 *          отвечает успехом, но пакет никуда не уходит и откликов не приходит:
+		 *          установлено щупом на стенде Windows ARM64 (20.08.2026), где голый
+		 *          сокет с `IPPROTO_ICMP` получал отклик за миллисекунды, а движок не
+		 *          получал ничего за двенадцать секунд
+		 *
+		 */
+		case static_cast <uint8_t> (event::protocol_t::ICMP):
+			// Устанавливаем протокол ICMP по семейству адресов
+			protocol = ((domain == AF_INET6) ? IPPROTO_ICMPV6 : IPPROTO_ICMP);
+		break;
 		// Если протокол передачи данных не задан - система выбирает его сама по типу
 		default: protocol = 0;
 	}

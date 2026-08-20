@@ -59997,6 +59997,101 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 								mediator->state.protocol = j->second->state.protocol;
 								// Возвращаем положительный результат
 								return true;
+							} break;
+						}
+					} break;
+					// Если узел является клиентом
+					case static_cast <uint8_t> (event::node_t::CLIENT): {
+						// Получаем текущее значение объекта клиента
+						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
+						/**
+						 * Определяем чем является текущий узел
+						 */
+						switch(static_cast <uint8_t> (j->second->state.node)){
+							// Если узел является директорией
+							case static_cast <uint8_t> (event::node_t::DIR): {
+								// Получаем текущее значение объекта директории
+								::io::dir_t * dir = awh_cast <::io::dir_t *> (j->second.get());
+								// Если установлена функция обратного вызова
+								if(dir->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова об ошибке отказа
+									dir->callbacks.status(dir->id, event::status_t::FAILURE);
+								// Устанавливаем текст ошибки
+								const string error = "Cannot splice events, a client node, and a directory node";
+								// Если установлена функция обратного вызова
+								if(dir->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									dir->callbacks.error(dir->id, event::error_t::INVALID, error);
+								// Если функция обратного вызова для вывода события не установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Записываем ошибку в лог
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Записываем ошибку в лог
+										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+									#endif
+								}
+							} break;
+							// Если узел является таймаутом
+							case static_cast <uint8_t> (event::node_t::TIMEOUT):
+							// Если узел является интервалом
+							case static_cast <uint8_t> (event::node_t::INTERVAL): {
+								// Получаем текущее значение объекта директории
+								::io::timer_t * timer = awh_cast <::io::timer_t *> (j->second.get());
+								// Если установлена функция обратного вызова
+								if(timer->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова об ошибке отказа
+									timer->callbacks.status(timer->id, event::status_t::FAILURE);
+								// Устанавливаем текст ошибки
+								const string error = "Cannot splice events, a client node, and a timer node";
+								// Если установлена функция обратного вызова
+								if(timer->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									timer->callbacks.error(timer->id, event::error_t::INVALID, error);
+								// Если функция обратного вызова для вывода события не установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Записываем ошибку в лог
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Записываем ошибку в лог
+										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+									#endif
+								}
+							} break;
+							// Если узел является пользовательским событием
+							case static_cast <uint8_t> (event::node_t::NOTIFY):
+							// Если узел является файловой системой
+							case static_cast <uint8_t> (event::node_t::FILE):
+							// Если узел является межпроцессным взаимодействием
+							case static_cast <uint8_t> (event::node_t::IPC):
+							// Если узел является одноранговым узлом
+							case static_cast <uint8_t> (event::node_t::PEER):
+							// Если узел является одноранговым узлом-источником
+							case static_cast <uint8_t> (event::node_t::ORIGIN):
+							// Если узел является посредником
+							case static_cast <uint8_t> (event::node_t::MEDIATOR):
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER): {
+								// Устанавливаем идентификатор события-приёмника в объекте клиента
+								client->transfer.dest = dest;
+								// Возвращаем положительный результат
+								return true;
 							}
 						}
 					} break;
