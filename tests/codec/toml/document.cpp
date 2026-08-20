@@ -195,7 +195,7 @@ TEST(CodecTomlDocument, Composite) {
 	// Выполняем проверку количества значений перечня
 	ASSERT_EQ(document.length({"server", "flags"}), 2u);
 	// Прочитанное значение перечня
-	toml::value_t value;
+	toml::content_t value;
 	// Выполняем проверку чтения первого значения перечня
 	ASSERT_TRUE(document.item({"server", "flags"}, 0, value));
 	// Выполняем проверку типа прочитанного значения
@@ -484,7 +484,7 @@ TEST(CodecTomlDocument, Preserving) {
 	// Выполняем разбор текста настроек
 	ASSERT_TRUE(document.parse(SAMPLE));
 	// Прочитанное значение пары
-	toml::value_t value;
+	toml::content_t value;
 	// Выполняем чтение значения пары
 	ASSERT_TRUE(document.get({"server", "host"}, value));
 	// Выполняем проверку сохранения ограды строкового значения
@@ -1162,7 +1162,7 @@ TEST(CodecTomlDocument, LeadingZeroOrdinal) {
 	 */
 	ASSERT_TRUE(reread.parse(text)) << toml::message(reread.error());
 	// Получаемое значение правленой пары
-	toml::value_t value;
+	toml::content_t value;
 	// Выполняем проверку получения значения правленой пары
 	ASSERT_TRUE(reread.get({"products", "1", "name"}, value));
 	// Выполняем проверку правленого значения

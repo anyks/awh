@@ -85,7 +85,7 @@ static void named(const vector <codec::toml::part_t> & path) noexcept {
  * @param value выводимое значение события разбора
  *
  */
-static void valued(const codec::toml::value_t & value) noexcept {
+static void valued(const codec::toml::content_t & value) noexcept {
 	// Выводим название типа значения
 	cout << codec::toml::name(value.type) << " ";
 	/**

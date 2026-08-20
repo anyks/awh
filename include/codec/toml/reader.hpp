@@ -631,7 +631,7 @@ namespace awh {
 					// Составные части имени ключа текущего события
 					vector <part_t> _path;
 					// Значение текущего события разбора
-					value_t _value;
+					content_t _value;
 					// Примечание текущего события разбора
 					comment_t _comment;
 				private:
@@ -1447,7 +1447,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					const value_t & value() const noexcept;
+					const content_t & value() const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод получения примечания текущего события

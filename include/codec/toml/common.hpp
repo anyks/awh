@@ -819,15 +819,27 @@ namespace awh {
 			 * признаками его записи. Поле, отвечающее типу значения, значаще лишь для
 			 * своего типа: прочие поля при этом обнулены
 			 *
+			 * @note Зовётся тип нагрузкою события, а не значением, оттого что имя `value_t`
+			 *       отведено договором рамки владеющему значению из `value.hpp`. Имя
+			 *       `content_t` для нагрузки события взято у кодека YAML, где оно стоит в
+			 *       том же месте и в той же роли. Строка нагрузки есть взгляд в буфер
+			 *       чтения и чтение не переживает - тем нагрузка от владеющего значения и
+			 *       отличается
+			 *
 			 * \~english
 			 * @brief Value of a pair or of an array
 			 * @details Issued by the VALUE event and carries the parsed value together with
 			 * the attributes of its notation. The field corresponding to the type of the value is significant only for
 			 * its own type: the other fields are thereby zeroed
+			 * @note The type is called the payload of the event rather than the value because the name `value_t`
+			 * is allotted by the contract of the framework to the owning value from `value.hpp`. The name
+			 * `content_t` for the payload of the event is taken from the YAML codec, where it stands in
+			 * the same place and in the same role. The string of the payload is a view into the buffer of the
+			 * reading and does not outlive the reading — therein the payload differs from the owning value
 			 *
 			 * \~
 			 */
-			typedef struct __AWH_SHARED_EXPORT__ Value {
+			typedef struct __AWH_SHARED_EXPORT__ Content {
 				// Тип значения
 				type_t type;
 				// Запись строкового значения
@@ -856,10 +868,10 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				Value() noexcept :
+				Content() noexcept :
 				 type(type_t::NONE), quoting(string_t::BASIC), radix(radix_t::DECIMAL),
 				 boolean(false), integer(0), real(0.0) {}
-			} value_t;
+			} content_t;
 
 			/**
 			 * \~russian

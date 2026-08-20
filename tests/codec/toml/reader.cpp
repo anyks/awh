@@ -318,7 +318,7 @@ TEST(CodecTomlReader, Floats) {
 	// Выполняем проверку того, что разбор текста настроек удался
 	ASSERT_TRUE(reader.feed(text.data(), text.size(), true));
 	// Собранные значения текста настроек
-	vector <toml::value_t> values;
+	vector <toml::content_t> values;
 	/**
 	 * Выполняем перебор выданных разбором событий
 	 */
@@ -366,7 +366,7 @@ TEST(CodecTomlReader, Stamps) {
 	// Выполняем проверку того, что разбор текста настроек удался
 	ASSERT_TRUE(reader.feed(text.data(), text.size(), true));
 	// Собранные значения текста настроек
-	vector <toml::value_t> values;
+	vector <toml::content_t> values;
 	/**
 	 * Выполняем перебор выданных разбором событий
 	 */

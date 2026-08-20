@@ -103,7 +103,7 @@ static bool parse(const std::string & text) noexcept {
 			 */
 			case static_cast <uint8_t> (awh::codec::toml::event_t::VALUE): {
 				// Получаем полученное значение разбора
-				const awh::codec::toml::value_t & value = reader.value();
+				const awh::codec::toml::content_t & value = reader.value();
 				// Выполняем учёт обработанной пары
 				rival::entry();
 				/**

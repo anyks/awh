@@ -1134,7 +1134,7 @@ bool awh::codec::toml::Writer::key(const string_view name) noexcept {
  * @return      результат выполнения операции
  *
  */
-bool awh::codec::toml::Writer::value(const value_t & value) noexcept {
+bool awh::codec::toml::Writer::value(const content_t & value) noexcept {
 	/**
 	 * Выполняем выбор типа записываемого значения
 	 */

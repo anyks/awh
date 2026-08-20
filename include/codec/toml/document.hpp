@@ -1128,7 +1128,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					void assign(const uint32_t node, const value_t & value) noexcept;
+					void assign(const uint32_t node, const content_t & value) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод записи узла значения собираемым текстом
@@ -1446,7 +1446,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool get(const vector <string_view> & path, value_t & result) const noexcept;
+					bool get(const vector <string_view> & path, content_t & result) const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод получения строкового значения пары
@@ -1495,7 +1495,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool item(const vector <string_view> & path, const size_t index, value_t & result) const noexcept;
+					bool item(const vector <string_view> & path, const size_t index, content_t & result) const noexcept;
 				public:
 					/**
 					 * \~russian

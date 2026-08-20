@@ -952,7 +952,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool value(const value_t & value) noexcept;
+					bool value(const content_t & value) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод записи строкового значения

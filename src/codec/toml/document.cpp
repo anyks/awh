@@ -751,7 +751,7 @@ uint32_t awh::codec::toml::Document::reserve() noexcept {
  * @param value переносимое значение разбора
  *
  */
-void awh::codec::toml::Document::assign(const uint32_t node, const value_t & value) noexcept {
+void awh::codec::toml::Document::assign(const uint32_t node, const content_t & value) noexcept {
 	// Выполняем добавление строкового значения к хранилищу знаков
 	const span_t text = this->add(value.text);
 	// Получаем заполняемый узел значения
@@ -1871,7 +1871,7 @@ awh::codec::toml::type_t awh::codec::toml::Document::type(const vector <string_v
  * @return       результат выполнения операции
  *
  */
-bool awh::codec::toml::Document::get(const vector <string_view> & path, value_t & result) const noexcept {
+bool awh::codec::toml::Document::get(const vector <string_view> & path, content_t & result) const noexcept {
 	// Выполняем поиск узла значения по составному имени
 	const node_t * node = this->seek(path);
 	/**
@@ -1946,7 +1946,7 @@ size_t awh::codec::toml::Document::length(const vector <string_view> & path) con
  * @return       результат выполнения операции
  *
  */
-bool awh::codec::toml::Document::item(const vector <string_view> & path, const size_t index, value_t & result) const noexcept {
+bool awh::codec::toml::Document::item(const vector <string_view> & path, const size_t index, content_t & result) const noexcept {
 	// Выполняем поиск узла значения по составному имени
 	const node_t * node = this->seek(path);
 	/**

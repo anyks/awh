@@ -168,7 +168,7 @@ TEST(CodecTomlCommon, Defaults) {
 	// Выполняем проверку того, что обозначение отсутствия смещения нулём не является
 	ASSERT_NE(toml::NO_TIMEZONE, 0);
 	// Объект значения текста настроек
-	const toml::value_t value;
+	const toml::content_t value;
 	// Выполняем проверку того, что тип значения не определён
 	ASSERT_EQ(value.type, toml::type_t::NONE);
 	// Объект составной части имени ключа

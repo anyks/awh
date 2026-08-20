@@ -3541,7 +3541,7 @@ bool awh::codec::toml::Reader::next() noexcept {
 	// Запоминаем место текущего события в исходном тексте
 	this->_location = item.location;
 	// Выполняем сброс значения текущего события
-	this->_value = value_t();
+	this->_value = content_t();
 	// Выполняем сброс примечания текущего события
 	this->_comment = comment_t();
 	/**
@@ -3641,7 +3641,7 @@ const vector <awh::codec::toml::part_t> & awh::codec::toml::Reader::path() const
  * @return значение текущего события разбора
  *
  */
-const awh::codec::toml::value_t & awh::codec::toml::Reader::value() const noexcept {
+const awh::codec::toml::content_t & awh::codec::toml::Reader::value() const noexcept {
 	// Выводим значение текущего события разбора
 	return this->_value;
 }
@@ -3747,7 +3747,7 @@ void awh::codec::toml::Reader::clear() noexcept {
 	// Выполняем очистку составных частей имени ключа текущего события
 	this->_path.clear();
 	// Выполняем сброс значения текущего события
-	this->_value = value_t();
+	this->_value = content_t();
 	// Выполняем сброс примечания текущего события
 	this->_comment = comment_t();
 	// Выполняем очистку имени текущей таблицы

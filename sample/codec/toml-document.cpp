@@ -108,7 +108,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	 */
 	for(size_t i = 0; i < document.length({"server", "hosts"}); i++){
 		// Прочитанное значение перечня
-		codec::toml::value_t value;
+		codec::toml::content_t value;
 		/**
 		 * Если чтение очередного значения перечня удалось
 		 */
