@@ -40,5 +40,6 @@
 #include "reader.hpp"
 #include "writer.hpp"
 #include "document.hpp"
+#include "value.hpp"
 
 #endif // __AWH_CODEC_TOML__

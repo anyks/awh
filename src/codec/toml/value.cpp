@@ -1,0 +1,2384 @@
+/**
+ * @file value.cpp
+ * @date 2026-08-20
+ *
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
+ * \~russian
+ * @brief Исходный файл владеющего значения TOML
+ *
+ * \~english
+ * @brief Source file of the owning value of TOML
+ *
+ * \~
+ *
+ * @copyright Copyright © 2026
+ *
+ */
+
+/**
+ * Подключаем стандартные заголовочные файлы
+ */
+#include <cmath>
+#include <atomic>
+#include <limits>
+#include <fstream>
+#include <type_traits>
+
+/**
+ * Подключаем заголовочные файлы модуля
+ */
+#include <codec/toml/value.hpp>
+
+/**
+ * Используем стандартное пространство имён
+ */
+using namespace std;
+
+/**
+ * Используем пространство имён контейнера TOML
+ */
+using namespace awh::codec::toml;
+
+/**
+ * @brief Внутренние помощники владеющего значения
+ *
+ */
+namespace {
+	/**
+	 * @brief Шаблонная функция приведения дробного числа к затребованному виду
+	 *
+	 * @details Приведение это перенято у контейнера JSON дословно: договор извлечения
+	 * общий у всех кодеков рамки, и расхождение в нём всплыло бы у потребителя,
+	 * читающего два из них, - всплыло бы не сразу и не там, где заведено
+	 *
+	 * @tparam T     вид, к какому приводится число
+	 * @param  value приводимое дробное число
+	 * @return       приведённое число
+	 *
+	 */
+	template <typename T>
+	T convert(const double value) noexcept {
+		/**
+		 * Если затребован дробный вид
+		 */
+		if(is_floating_point <T>::value)
+			// Выводим приведённое число как оно есть
+			return static_cast <T> (value);
+		/**
+		 * Если число не является числом вовсе
+		 */
+		if(::isnan(value))
+			// Выводим нулевое число
+			return static_cast <T> (0);
+		/**
+		 * Если целая часть числа лежит ниже предела затребованного вида
+		 */
+		if(value <= static_cast <double> (numeric_limits <T>::lowest()))
+			// Выводим нижний предел затребованного вида
+			return numeric_limits <T>::lowest();
+		/**
+		 * Если целая часть числа лежит выше предела затребованного вида
+		 */
+		if(value >= static_cast <double> (numeric_limits <T>::max()))
+			// Выводим верхний предел затребованного вида
+			return numeric_limits <T>::max();
+		// Выводим приведённое число, округлённое по правилам математики
+		return static_cast <T> (::round(value));
+	}
+	/**
+	 * @brief Предел роста вместилища обращением по номеру
+	 *
+	 * @details Номер, пришедший извне, обращается требованием памяти по нему, и предел
+	 * этот рост стережёт. Нуль снимает его вовсе: сколько памяти есть у приложения,
+	 * ведомо ему одному
+	 *
+	 */
+	static ::std::atomic <size_t> LIMIT(0x10000);
+	/**
+	 * @brief Функция проверки записи на числовую
+	 *
+	 * @details Проверкой этой решается, чем является часть пути: номером значения
+	 *          перечня либо именем пары таблицы. Таблица, пару числовую несущая,
+	 *          разыскивается именем - тип вместилища решает раньше вида записи
+	 *
+	 * @param text  проверяемая запись
+	 * @param index разбираемый порядковый номер
+	 * @return      признак числовой записи
+	 *
+	 */
+	static bool numbering(const string & text, size_t & index) noexcept {
+		/**
+		 * Если запись пуста вовсе
+		 */
+		if(text.empty())
+			// Выводим признак того, что запись номером не является
+			return false;
+		// Выполняем сброс разбираемого номера значения
+		index = 0;
+		/**
+		 * Выполняем перебор всех знаков записи
+		 */
+		for(const char letter : text){
+			/**
+			 * Если знак цифрой не является
+			 */
+			if((letter < '0') || (letter > '9'))
+				// Выводим признак того, что запись номером не является
+				return false;
+			/**
+			 * Если добавление разряда выведет номер за предел разрядности
+			 *
+			 * @details Номер разбирается беззнаковым, и переполнение его языком определено
+			 * заворотом: запись `18446744073709551617` обращалась бы единицей, и обращение
+			 * по такому пути отдавало бы соседнее значение молча
+			 */
+			if(index > ((numeric_limits <size_t>::max() - static_cast <size_t> (letter - '0')) / 10))
+				// Выводим признак того, что запись номером не является
+				return false;
+			// Добавляем разряд к номеру значения вместилища
+			index = ((index * 10) + static_cast <size_t> (letter - '0'));
+		}
+		// Выводим признак того, что запись является номером значения
+		return true;
+	}
+	/**
+	 * @brief Функция получения ссылки на неопределённое значение
+	 *
+	 * @details Обращение постоянное, ничего не разыскавшее, обязано выдать ссылку, а
+	 *          не завести значение: значение это одно на весь кодек и живёт оно всю
+	 *          работу приложения
+	 *
+	 * @return ссылка на неопределённое значение
+	 *
+	 */
+	static const awh::codec::toml::Value & missing() noexcept {
+		// Неопределённое значение, обращением неудачным выдаваемое
+		static const awh::codec::toml::Value result;
+		// Выводим ссылку на неопределённое значение
+		return result;
+	}
+	/**
+	 * @brief Функция получения ссылки на пустую запись
+	 *
+	 * @return ссылка на пустую запись
+	 *
+	 */
+	static const string & nothing() noexcept {
+		// Пустая запись, обращением неудачным выдаваемая
+		static const string result;
+		// Выводим ссылку на пустую запись
+		return result;
+	}
+	/**
+	 * @brief Функция проверки того, что тип значения является вместилищем
+	 *
+	 * @param type проверяемый тип значения
+	 * @return     признак того, что тип является вместилищем
+	 *
+	 */
+	static bool holding(const type_t type) noexcept {
+		// Выводим признак того, что тип значения является вместилищем
+		return ((type == type_t::TABLE) || (type == type_t::ARRAY));
+	}
+	/**
+	 * @brief Функция проверки того, что тип значения является отметкой времени
+	 *
+	 * @param type проверяемый тип значения
+	 * @return     признак того, что тип является отметкой времени
+	 *
+	 */
+	static bool stamped(const type_t type) noexcept {
+		// Выводим признак того, что тип значения является отметкой времени
+		return (
+			(type == type_t::OFFSET_DATETIME) || (type == type_t::LOCAL_DATETIME) ||
+			(type == type_t::LOCAL_DATE) || (type == type_t::LOCAL_TIME)
+		);
+	}
+}
+
+/**
+ * @brief Метод проверки определённости значения
+ *
+ * @return признак определённости значения
+ *
+ */
+bool awh::codec::toml::Value::valid() const noexcept {
+	// Выводим признак определённости значения
+	return (this->_type != type_t::NONE);
+}
+/**
+ * @brief Метод извлечения типа значения
+ *
+ * @return тип хранимого значения
+ *
+ */
+awh::codec::toml::type_t awh::codec::toml::Value::type() const noexcept {
+	// Выводим тип хранимого значения
+	return this->_type;
+}
+/**
+ * @brief Метод проверки соответствия значения затребованному типу
+ *
+ * @param type сличаемый тип значения
+ * @return     признак соответствия значения затребованному типу
+ *
+ */
+bool awh::codec::toml::Value::is(const type_t type) const noexcept {
+	// Выводим признак соответствия значения затребованному типу
+	return (this->_type == type);
+}
+/**
+ * @brief Метод извлечения количества значений вместилища
+ *
+ * @return количество значений вместилища
+ *
+ */
+size_t awh::codec::toml::Value::size() const noexcept {
+	// Выводим количество значений вместилища
+	return this->_items.size();
+}
+/**
+ * @brief Метод проверки пустоты вместилища
+ *
+ * @return признак пустоты вместилища
+ *
+ */
+bool awh::codec::toml::Value::empty() const noexcept {
+	// Выводим признак пустоты вместилища
+	return this->_items.empty();
+}
+/**
+ * @brief Метод сброса значения в исходное состояние
+ *
+ */
+void awh::codec::toml::Value::clear() noexcept {
+	// Выполняем сброс типа хранимого значения
+	this->_type = type_t::NONE;
+	// Выполняем сброс записи строкового значения
+	this->_quoting = string_t::BASIC;
+	// Выполняем сброс системы счисления записи целого числа
+	this->_radix = radix_t::DECIMAL;
+	// Выполняем сброс логического значения
+	this->_boolean = false;
+	// Выполняем сброс признака записи перечня несколькими строками
+	this->_multiline = false;
+	// Выполняем сброс целого числа
+	this->_integer = 0;
+	// Выполняем сброс числа с плавающей точкой
+	this->_real = 0.;
+	// Выполняем сброс отметки времени
+	this->_stamp = stamp_t();
+	// Выполняем очистку содержимого строкового значения
+	this->_text.clear();
+	// Выполняем очистку имён пар таблицы
+	this->_names.clear();
+	// Выполняем очистку значений вместилища
+	this->_items.clear();
+}
+/**
+ * @brief Метод извлечения содержимого строкового значения
+ *
+ * @return содержимое строкового значения
+ *
+ */
+const string & awh::codec::toml::Value::text() const noexcept {
+	// Выводим содержимое строкового значения
+	return this->_text;
+}
+/**
+ * @brief Метод извлечения имени пары таблицы по номеру
+ *
+ * @param index порядковый номер пары таблицы
+ * @return      имя пары таблицы
+ *
+ */
+const string & awh::codec::toml::Value::key(const size_t index) const noexcept {
+	/**
+	 * Если номер за пределы перечня имён выходит
+	 */
+	if(index >= this->_names.size())
+		// Выводим ссылку на пустую запись
+		return ::nothing();
+	// Выводим имя пары таблицы
+	return this->_names.at(index);
+}
+/**
+ * @brief Метод извлечения записи строкового значения
+ *
+ * @return запись строкового значения
+ *
+ */
+awh::codec::toml::string_t awh::codec::toml::Value::quoting() const noexcept {
+	// Выводим запись строкового значения
+	return this->_quoting;
+}
+/**
+ * @brief Метод установки записи строкового значения
+ *
+ * @param quoting устанавливаемая запись строкового значения
+ *
+ */
+void awh::codec::toml::Value::quoting(const string_t quoting) noexcept {
+	// Выполняем установку записи строкового значения
+	this->_quoting = quoting;
+}
+/**
+ * @brief Метод извлечения системы счисления записи целого числа
+ *
+ * @return система счисления записи целого числа
+ *
+ */
+awh::codec::toml::radix_t awh::codec::toml::Value::radix() const noexcept {
+	// Выводим систему счисления записи целого числа
+	return this->_radix;
+}
+/**
+ * @brief Метод установки системы счисления записи целого числа
+ *
+ * @param radix устанавливаемая система счисления
+ *
+ */
+void awh::codec::toml::Value::radix(const radix_t radix) noexcept {
+	// Выполняем установку системы счисления записи целого числа
+	this->_radix = radix;
+}
+/**
+ * @brief Метод извлечения признака записи перечня несколькими строками
+ *
+ * @return признак записи перечня несколькими строками
+ *
+ */
+bool awh::codec::toml::Value::multiline() const noexcept {
+	// Выводим признак записи перечня несколькими строками
+	return this->_multiline;
+}
+/**
+ * @brief Метод установки признака записи перечня несколькими строками
+ *
+ * @param multiline устанавливаемый признак
+ *
+ */
+void awh::codec::toml::Value::multiline(const bool multiline) noexcept {
+	// Выполняем установку признака записи перечня несколькими строками
+	this->_multiline = multiline;
+}
+/**
+ * @brief Метод извлечения отметки времени
+ *
+ * @return отметка времени
+ *
+ */
+const awh::codec::toml::stamp_t & awh::codec::toml::Value::stamp() const noexcept {
+	// Выводим отметку времени
+	return this->_stamp;
+}
+/**
+ * @brief Метод установки отметки времени
+ *
+ * @param stamp устанавливаемая отметка времени
+ * @param type  вид отметки времени
+ * @return      признак успешности установки
+ *
+ */
+bool awh::codec::toml::Value::stamp(const stamp_t & stamp, const type_t type) noexcept {
+	/**
+	 * Если вид отметкой времени не является
+	 *
+	 * @note Отказ здесь намеренный: вид задаётся потребителем, и приятие вида чужого
+	 *       положило бы отметку в значение, каким она не читается вовсе
+	 */
+	if(!::stamped(type))
+		// Выводим признак неудачной установки
+		return false;
+	// Выполняем очистку значения от прежнего содержимого
+	this->clear();
+	// Выполняем установку вида отметки времени
+	this->_type = type;
+	// Выполняем установку отметки времени
+	this->_stamp = stamp;
+	// Выводим признак успешной установки
+	return true;
+}
+/**
+ * @brief Метод извлечения значения мусорного
+ *
+ * @return значение мусорное
+ *
+ */
+awh::codec::toml::Value & awh::codec::toml::Value::scrap() noexcept {
+	/**
+	 * Значение мусорное, обращением изменяемым неудачным выдаваемое
+	 *
+	 * @note Своё оно у всякого потока: одно на приложение обратило бы запись мимо цели
+	 *       в гонку между потоками
+	 */
+	static thread_local Value result;
+	// Выполняем сброс мусорного значения от прежней записи в него
+	result.clear();
+	// Выводим ссылку на значение мусорное
+	return result;
+}
+/**
+ * @brief Метод извлечения предела роста вместилища по номеру
+ *
+ * @return предел роста вместилища по номеру
+ *
+ */
+size_t awh::codec::toml::Value::limit() noexcept {
+	// Выводим предел роста вместилища по номеру
+	return ::LIMIT.load(::std::memory_order_relaxed);
+}
+/**
+ * @brief Метод установки предела роста вместилища по номеру
+ *
+ * @param value устанавливаемый предел роста
+ *
+ */
+void awh::codec::toml::Value::limit(const size_t value) noexcept {
+	// Выполняем установку предела роста вместилища по номеру
+	::LIMIT.store(value, ::std::memory_order_relaxed);
+}
+/**
+ * @brief Метод проверки наличия пары таблицы по имени
+ *
+ * @param name имя искомой пары таблицы
+ * @return     признак наличия пары таблицы
+ *
+ */
+bool awh::codec::toml::Value::contains(const string & name) const noexcept {
+	/**
+	 * Если значение таблицей не является
+	 */
+	if(this->_type != type_t::TABLE)
+		// Выводим отсутствие пары таблицы
+		return false;
+	/**
+	 * Выполняем перебор имён пар таблицы
+	 */
+	for(auto & item : this->_names){
+		/**
+		 * Если имя пары таблицы совпадает с разыскиваемым
+		 */
+		if(item.compare(name) == 0)
+			// Выводим наличие пары таблицы
+			return true;
+	}
+	// Выводим отсутствие пары таблицы
+	return false;
+}
+/**
+ * @brief Оператор обращения к паре таблицы по имени
+ *
+ * @param name имя искомой пары таблицы
+ * @return     найденное значение
+ *
+ */
+const awh::codec::toml::Value & awh::codec::toml::Value::operator [] (const string & name) const noexcept {
+	/**
+	 * Если значение таблицей не является
+	 */
+	if(this->_type != type_t::TABLE)
+		// Выводим неопределённое значение
+		return ::missing();
+	/**
+	 * Выполняем перебор имён пар таблицы
+	 */
+	for(size_t i = 0; i < this->_names.size(); i++){
+		/**
+		 * Если имя пары таблицы совпадает с разыскиваемым
+		 */
+		if(this->_names.at(i).compare(name) == 0)
+			// Выводим значение разысканной пары таблицы
+			return this->_items.at(i);
+	}
+	// Выводим неопределённое значение
+	return ::missing();
+}
+/**
+ * @brief Оператор обращения к паре таблицы по имени с заведением
+ *
+ * @param name имя искомой пары таблицы
+ * @return     найденное либо заведённое значение
+ *
+ */
+awh::codec::toml::Value & awh::codec::toml::Value::operator [] (const string & name) noexcept {
+	/**
+	 * Если значение таблицей не является
+	 *
+	 * @note Значение перерождается таблицей, а простое содержимое его теряется. Решено
+	 *       это так же, как решает розыск с заведением: обращение изменяемое есть
+	 *       заявление о том, что здесь стоит вместилище, и спорить с ним нечем
+	 */
+	if(this->_type != type_t::TABLE){
+		// Выполняем очистку прежнего значения
+		this->clear();
+		// Назначаем значению тип таблицы
+		this->_type = type_t::TABLE;
+	}
+	/**
+	 * Выполняем перебор имён пар таблицы
+	 */
+	for(size_t i = 0; i < this->_names.size(); i++){
+		/**
+		 * Если имя пары таблицы совпадает с разыскиваемым
+		 */
+		if(this->_names.at(i).compare(name) == 0)
+			// Выводим значение разысканной пары таблицы
+			return this->_items.at(i);
+	}
+	// Выполняем добавление имени заводимой пары таблицы
+	this->_names.push_back(name);
+	// Выполняем добавление значения заводимой пары таблицы
+	this->_items.emplace_back();
+	// Выводим значение заведённой пары таблицы
+	return this->_items.back();
+}
+/**
+ * @brief Оператор обращения к значению перечня по номеру
+ *
+ * @param index порядковый номер значения перечня
+ * @return      найденное значение
+ *
+ */
+const awh::codec::toml::Value & awh::codec::toml::Value::operator [] (const size_t index) const noexcept {
+	/**
+	 * Если номер за пределы вместилища выходит
+	 */
+	if(index >= this->_items.size())
+		// Выводим неопределённое значение
+		return ::missing();
+	// Выводим значение вместилища по номеру
+	return this->_items.at(index);
+}
+/**
+ * @brief Оператор обращения к значению перечня по номеру с заведением
+ *
+ * @param index порядковый номер значения перечня
+ * @return      найденное либо заведённое значение
+ *
+ */
+awh::codec::toml::Value & awh::codec::toml::Value::operator [] (const size_t index) noexcept {
+	/**
+	 * Если значение вместилищем не является вовсе
+	 *
+	 * @note Обращение по номеру заводит перечень, а не таблицу: имени у номера нет, и
+	 *       положить значение в таблицу было бы некуда
+	 */
+	if(!::holding(this->_type)){
+		// Выполняем очистку прежнего значения
+		this->clear();
+		// Назначаем значению тип перечня значений
+		this->_type = type_t::ARRAY;
+	}
+	/**
+	 * Если номер за пределы вместилища выходит
+	 */
+	if(index >= this->_items.size()){
+		// Получаем предел роста вместилища по номеру
+		const size_t limit = ::LIMIT.load(::std::memory_order_relaxed);
+		/**
+		 * Если рост вместилища предел превышает
+		 *
+		 * @note Значение мусорное выдаётся вместо роста: номер, пришедший извне,
+		 *       обращается требованием памяти по нему, и без предела запись по номеру
+		 *       `0xFFFFFFFF` требовала бы памяти на четыре миллиарда значений
+		 */
+		if((limit > 0) && ((index + 1) > limit))
+			// Выводим значение мусорное
+			return Value::scrap();
+		/**
+		 * Если значение является таблицей
+		 *
+		 * @note Рост таблицы по номеру ведётся именами пустыми: пара таблицы без имени
+		 *       записана быть не может, и заведённая так пара записи не подлежит. Рост
+		 *       такой оставлен намеренно - обращение по номеру к таблице есть обращение к
+		 *       паре по порядку её, и отвечать на него отказом значило бы запретить обход
+		 */
+		if(this->_type == type_t::TABLE)
+			// Выполняем рост перечня имён пар таблицы
+			this->_names.resize(index + 1);
+		// Выполняем рост вместилища до затребованного номера
+		this->_items.resize(index + 1);
+	}
+	// Выводим значение вместилища по номеру
+	return this->_items.at(index);
+}
+/**
+ * @brief Метод обращения к вложенному значению по пути
+ *
+ * @param path путь до искомого значения
+ * @return     найденное значение
+ *
+ */
+const awh::codec::toml::Value & awh::codec::toml::Value::at(const string & path) const noexcept {
+	// Получаем путь к значению без ведущего разделителя частей
+	const string route((!path.empty() && (path.front() == '/')) ? path.substr(1) : path);
+	/**
+	 * Если путь к значению пуст вовсе
+	 */
+	if(route.empty())
+		// Выводим текущее значение
+		return (* this);
+	// Получаем ссылку на значение, путём разыскиваемое
+	const Value * result = this;
+	// Начало очередной части пути
+	size_t start = 0;
+	/**
+	 * Выполняем перебор частей пути
+	 */
+	while(start <= route.size()){
+		// Разыскиваем конец очередной части пути
+		const size_t separator = route.find('/', start);
+		// Получаем очередную часть пути
+		const string part(route.substr(start, ((separator == string::npos) ? string::npos : (separator - start))));
+		// Номер значения вместилища, частью пути заданный
+		size_t index = 0;
+		/**
+		 * Если вместилище является перечнем значений, а часть пути номером
+		 *
+		 * @note Тип вместилища решает раньше вида записи: таблица, пару числовую
+		 *       несущую, разыскивается именем, а не номером
+		 */
+		if((result->_type == type_t::ARRAY) && ::numbering(part, index))
+			// Выполняем переход к значению перечня по номеру его
+			result = &((* result)[index]);
+		// Выполняем переход к паре таблицы по имени её
+		else result = &((* result)[part]);
+		/**
+		 * Если разыскать значение не удалось
+		 */
+		if(!result->valid())
+			// Выводим неопределённое значение
+			return ::missing();
+		/**
+		 * Если части пути закончились
+		 */
+		if(separator == string::npos)
+			// Выходим из перебора частей пути
+			break;
+		// Выполняем переход к следующей части пути
+		start = (separator + 1);
+	}
+	// Выводим разысканное значение
+	return (* result);
+}
+/**
+ * @brief Метод заведения вложенного значения по пути
+ *
+ * @param path путь до заводимого значения
+ * @return     заведённое значение
+ *
+ */
+awh::codec::toml::Value & awh::codec::toml::Value::place(const string & path) noexcept {
+	// Получаем путь к значению без ведущего разделителя частей
+	const string route((!path.empty() && (path.front() == '/')) ? path.substr(1) : path);
+	/**
+	 * Если путь к значению пуст вовсе
+	 */
+	if(route.empty())
+		// Выводим текущее значение
+		return (* this);
+	/**
+	 * Если глубина пути предел вложенности превышает
+	 *
+	 * @details Заведение по пути идёт последовательно и стека не берёт, зато работы по
+	 *          заведённому дереву - размножение его и снятие - идут возвратно, и дерево
+	 *          небывалой глубины срывает на них стек. Записать такое дерево нельзя ни при
+	 *          каком пределе: запись отвергает его вложенностью своей, - оттого предел
+	 *          заведения ему и равен, ибо дерево, записать которое нельзя, заводить незачем
+	 */
+	{
+		// Количество звеньев пути к значению
+		size_t links = 1;
+		/**
+		 * Выполняем перебор разделителей звеньев пути
+		 */
+		for(size_t position = route.find('/'); position != string::npos; position = route.find('/', (position + 1)))
+			// Увеличиваем количество звеньев пути
+			links++;
+		/**
+		 * Если звеньев пути больше предела допустимого
+		 */
+		if(links > static_cast <size_t> (MAX_DEPTH))
+			// Выводим значение мусорное
+			return Value::scrap();
+	}
+	// Получаем ссылку на значение, путём разыскиваемое
+	Value * result = this;
+	// Начало очередной части пути
+	size_t start = 0;
+	/**
+	 * Выполняем перебор частей пути
+	 */
+	while(start <= route.size()){
+		// Разыскиваем конец очередной части пути
+		const size_t separator = route.find('/', start);
+		// Получаем очередную часть пути
+		const string part(route.substr(start, ((separator == string::npos) ? string::npos : (separator - start))));
+		// Номер значения вместилища, частью пути заданный
+		size_t index = 0;
+		// Получаем признак того, что часть пути является номером
+		const bool numeric = ::numbering(part, index);
+		/**
+		 * Если значение вместилищем не является вовсе
+		 *
+		 * @note Тип заводимого вместилища решает запись части пути: часть числовая
+		 *       заводит перечень значений, а всякая иная - таблицу
+		 */
+		if(!::holding(result->_type)){
+			// Выполняем очистку прежнего значения
+			result->clear();
+			// Назначаем значению тип заводимого вместилища
+			result->_type = (numeric ? type_t::ARRAY : type_t::TABLE);
+		}
+		/**
+		 * Если вместилище является перечнем значений, а часть пути числом
+		 */
+		if((result->_type == type_t::ARRAY) && numeric)
+			// Выполняем переход к значению перечня по номеру его
+			result = &((* result)[index]);
+		// Выполняем переход к паре таблицы по имени её
+		else result = &((* result)[part]);
+		/**
+		 * Если части пути закончились
+		 */
+		if(separator == string::npos)
+			// Выходим из перебора частей пути
+			break;
+		// Выполняем переход к следующей части пути
+		start = (separator + 1);
+	}
+	// Выводим разысканное либо заведённое значение
+	return (* result);
+}
+/**
+ * @brief Метод добавления значения в конец перечня
+ *
+ * @param value добавляемое значение
+ * @return      признак успешности добавления
+ *
+ */
+bool awh::codec::toml::Value::push(const Value & value) noexcept {
+	/**
+	 * Если значение вместилищем не является вовсе
+	 */
+	if(!::holding(this->_type)){
+		// Выполняем очистку прежнего значения
+		this->clear();
+		// Назначаем значению тип перечня значений
+		this->_type = type_t::ARRAY;
+	}
+	/**
+	 * Если значение является таблицей
+	 *
+	 * @note Отказ здесь намеренный: добавление без имени в таблицу положить некуда, а
+	 *       подставлять имя пустое значило бы завести пару, записи не подлежащую
+	 */
+	if(this->_type == type_t::TABLE)
+		// Выводим признак неудачного добавления
+		return false;
+	// Выполняем добавление значения в конец перечня
+	this->_items.push_back(value);
+	// Выводим признак успешного добавления
+	return true;
+}
+/**
+ * @brief Метод установки пары таблицы
+ *
+ * @param name  имя устанавливаемой пары
+ * @param value устанавливаемое значение
+ * @return      признак успешности установки
+ *
+ */
+bool awh::codec::toml::Value::insert(const string & name, const Value & value) noexcept {
+	/**
+	 * Если имя пары таблицы пусто вовсе
+	 */
+	if(name.empty())
+		// Выводим признак неудачной установки
+		return false;
+	/**
+	 * Если значение таблицей не является
+	 */
+	if(this->_type != type_t::TABLE){
+		// Выполняем очистку прежнего значения
+		this->clear();
+		// Назначаем значению тип таблицы
+		this->_type = type_t::TABLE;
+	}
+	/**
+	 * Выполняем перебор имён пар таблицы
+	 */
+	for(size_t i = 0; i < this->_names.size(); i++){
+		/**
+		 * Если имя пары таблицы совпадает с устанавливаемым
+		 *
+		 * @note Перезапись ведётся на прежнем месте: порядок пар задан потребителем, и
+		 *       перестановка их при перезаписи меняла бы вид записанного текста без его
+		 *       на то воли
+		 */
+		if(this->_names.at(i).compare(name) == 0){
+			// Выполняем перезапись значения пары таблицы
+			this->_items.at(i) = value;
+			// Выводим признак успешной установки
+			return true;
+		}
+	}
+	// Выполняем добавление имени заводимой пары таблицы
+	this->_names.push_back(name);
+	// Выполняем добавление значения заводимой пары таблицы
+	this->_items.push_back(value);
+	// Выводим признак успешной установки
+	return true;
+}
+/**
+ * @brief Метод добавления пары таблицы без перезаписи
+ *
+ * @param name  имя добавляемой пары
+ * @param value добавляемое значение
+ * @return      признак успешности добавления
+ *
+ */
+bool awh::codec::toml::Value::append(const string & name, const Value & value) noexcept {
+	/**
+	 * Если имя пары таблицы пусто вовсе либо занято уже
+	 */
+	if(name.empty() || this->contains(name))
+		// Выводим признак неудачного добавления
+		return false;
+	// Выполняем установку пары таблицы
+	return this->insert(name, value);
+}
+/**
+ * @brief Метод удаления пары таблицы по имени
+ *
+ * @param name имя удаляемой пары
+ * @return     признак успешности удаления
+ *
+ */
+bool awh::codec::toml::Value::erase(const string & name) noexcept {
+	/**
+	 * Если значение таблицей не является
+	 */
+	if(this->_type != type_t::TABLE)
+		// Выводим признак неудачного удаления
+		return false;
+	/**
+	 * Выполняем перебор имён пар таблицы
+	 */
+	for(size_t i = 0; i < this->_names.size(); i++){
+		/**
+		 * Если имя пары таблицы совпадает с удаляемым
+		 */
+		if(this->_names.at(i).compare(name) == 0){
+			// Выполняем удаление имени пары таблицы
+			this->_names.erase(this->_names.begin() + static_cast <ptrdiff_t> (i));
+			// Выполняем удаление значения пары таблицы
+			this->_items.erase(this->_items.begin() + static_cast <ptrdiff_t> (i));
+			// Выводим признак успешного удаления
+			return true;
+		}
+	}
+	// Выводим признак неудачного удаления
+	return false;
+}
+/**
+ * @brief Метод удаления значения вместилища по номеру
+ *
+ * @param index порядковый номер удаляемого значения
+ * @return      признак успешности удаления
+ *
+ */
+bool awh::codec::toml::Value::erase(const size_t index) noexcept {
+	/**
+	 * Если номер за пределы вместилища выходит
+	 */
+	if(index >= this->_items.size())
+		// Выводим признак неудачного удаления
+		return false;
+	/**
+	 * Если значение является таблицей
+	 *
+	 * @note Имя удаляется вместе со значением: перечни имён и значений идут рядом, и
+	 *       рассогласование их сдвинуло бы все имена за удалённым на единицу
+	 */
+	if((this->_type == type_t::TABLE) && (index < this->_names.size()))
+		// Выполняем удаление имени пары таблицы
+		this->_names.erase(this->_names.begin() + static_cast <ptrdiff_t> (index));
+	// Выполняем удаление значения вместилища
+	this->_items.erase(this->_items.begin() + static_cast <ptrdiff_t> (index));
+	// Выводим признак успешного удаления
+	return true;
+}
+/**
+ * @brief Шаблонный метод извлечения числа затребованным видом
+ *
+ * @tparam T      затребованный вид числа
+ * @param  result переменная, куда помещается извлечённое значение
+ * @return        признак успешности извлечения
+ *
+ */
+template <typename T>
+bool awh::codec::toml::Value::extract(T & result) const noexcept {
+	/**
+	 * Определяем тип хранимого значения
+	 */
+	switch(static_cast <uint8_t> (this->_type)){
+		// Если значение является целым числом
+		case static_cast <uint8_t> (type_t::INTEGER):
+			/**
+			 * Устанавливаем извлечённое значение приведением языка
+			 *
+			 * @note Целое, за отрезок затребованного вида выходящее, переносится младшими
+			 *       разрядами: приведение языка не отказывает нигде, и признак успешности
+			 *       отведён одному лишь случаю, когда значение числом не является вовсе
+			 */
+			result = static_cast <T> (this->_integer);
+		break;
+		// Если значение является числом с плавающей точкой
+		case static_cast <uint8_t> (type_t::FLOAT):
+			// Устанавливаем извлечённое значение приведением дробного
+			result = ::convert <T> (this->_real);
+		break;
+		/**
+		 * Если значение числом не является вовсе
+		 */
+		default:
+			// Выводим признак неудачного извлечения
+			return false;
+	}
+	// Выводим признак успешного извлечения
+	return true;
+}
+/**
+ * @brief Метод извлечения логического значения
+ *
+ * @param result переменная, куда помещается извлечённое значение
+ * @return       признак успешности извлечения
+ *
+ */
+bool awh::codec::toml::Value::value(bool & result) const noexcept {
+	/**
+	 * Если значение логическим не является
+	 */
+	if(this->_type != type_t::BOOLEAN)
+		// Выводим признак неудачного извлечения
+		return false;
+	// Устанавливаем извлечённое логическое значение
+	result = this->_boolean;
+	// Выводим признак успешного извлечения
+	return true;
+}
+/**
+ * @brief Метод извлечения содержимого строкового значения
+ *
+ * @param result переменная, куда помещается извлечённое содержимое
+ * @return       признак успешности извлечения
+ *
+ */
+bool awh::codec::toml::Value::value(string & result) const noexcept {
+	/**
+	 * Если значение строковым не является
+	 */
+	if(this->_type != type_t::STRING)
+		// Выводим признак неудачного извлечения
+		return false;
+	// Устанавливаем извлечённое содержимое
+	result = this->_text;
+	// Выводим признак успешного извлечения
+	return true;
+}
+/**
+ * @brief Метод извлечения числа видом `int8_t`
+ *
+ * @param result переменная, куда помещается извлечённое значение
+ * @return       признак успешности извлечения
+ *
+ */
+bool awh::codec::toml::Value::value(int8_t & result) const noexcept {
+	// Выводим признак успешности извлечения числа
+	return this->extract <int8_t> (result);
+}
+/**
+ * @copydoc awh::codec::toml::Value::value(int8_t &) const
+ */
+bool awh::codec::toml::Value::value(int16_t & result) const noexcept {
+	// Выводим признак успешности извлечения числа
+	return this->extract <int16_t> (result);
+}
+/**
+ * @copydoc awh::codec::toml::Value::value(int8_t &) const
+ */
+bool awh::codec::toml::Value::value(int32_t & result) const noexcept {
+	// Выводим признак успешности извлечения числа
+	return this->extract <int32_t> (result);
+}
+/**
+ * @copydoc awh::codec::toml::Value::value(int8_t &) const
+ */
+bool awh::codec::toml::Value::value(int64_t & result) const noexcept {
+	// Выводим признак успешности извлечения числа
+	return this->extract <int64_t> (result);
+}
+/**
+ * @copydoc awh::codec::toml::Value::value(int8_t &) const
+ */
+bool awh::codec::toml::Value::value(uint8_t & result) const noexcept {
+	// Выводим признак успешности извлечения числа
+	return this->extract <uint8_t> (result);
+}
+/**
+ * @copydoc awh::codec::toml::Value::value(int8_t &) const
+ */
+bool awh::codec::toml::Value::value(uint16_t & result) const noexcept {
+	// Выводим признак успешности извлечения числа
+	return this->extract <uint16_t> (result);
+}
+/**
+ * @copydoc awh::codec::toml::Value::value(int8_t &) const
+ */
+bool awh::codec::toml::Value::value(uint32_t & result) const noexcept {
+	// Выводим признак успешности извлечения числа
+	return this->extract <uint32_t> (result);
+}
+/**
+ * @copydoc awh::codec::toml::Value::value(int8_t &) const
+ */
+bool awh::codec::toml::Value::value(uint64_t & result) const noexcept {
+	// Выводим признак успешности извлечения числа
+	return this->extract <uint64_t> (result);
+}
+/**
+ * @copydoc awh::codec::toml::Value::value(int8_t &) const
+ */
+bool awh::codec::toml::Value::value(float & result) const noexcept {
+	// Выводим признак успешности извлечения числа
+	return this->extract <float> (result);
+}
+/**
+ * @copydoc awh::codec::toml::Value::value(int8_t &) const
+ */
+bool awh::codec::toml::Value::value(double & result) const noexcept {
+	// Выводим признак успешности извлечения числа
+	return this->extract <double> (result);
+}
+/**
+ * @brief Оператор сличения значений
+ *
+ * @param value сличаемое значение
+ * @return      признак совпадения значений
+ *
+ */
+bool awh::codec::toml::Value::operator == (const Value & value) const noexcept {
+	/**
+	 * Если типы значений разнятся
+	 *
+	 * @note Целое и дробное сличаются как числа, а не как виды: запись `1` и запись
+	 *       `1.0` суть одно число, и расходиться им незачем
+	 */
+	if(this->_type != value._type){
+		/**
+		 * Если оба значения числами являются
+		 */
+		if(((this->_type == type_t::INTEGER) || (this->_type == type_t::FLOAT)) &&
+		   ((value._type == type_t::INTEGER) || (value._type == type_t::FLOAT))){
+			// Получаем первое сличаемое число дробным видом
+			const double first = ((this->_type == type_t::INTEGER) ? static_cast <double> (this->_integer) : this->_real);
+			// Получаем второе сличаемое число дробным видом
+			const double second = ((value._type == type_t::INTEGER) ? static_cast <double> (value._integer) : value._real);
+			// Выводим признак совпадения чисел
+			return (first == second);
+		}
+		// Выводим признак расхождения значений
+		return false;
+	}
+	/**
+	 * Определяем тип сличаемых значений
+	 */
+	switch(static_cast <uint8_t> (this->_type)){
+		// Если значения не определены вовсе
+		case static_cast <uint8_t> (type_t::NONE):
+			// Выводим признак совпадения значений
+			return true;
+		// Если значения являются строковыми
+		case static_cast <uint8_t> (type_t::STRING):
+			/**
+			 * Выводим признак совпадения содержимого
+			 *
+			 * @note Запись строки сличению не подлежит: дословная и основная записи
+			 *       одного содержимого суть одно значение
+			 */
+			return (this->_text.compare(value._text) == 0);
+		// Если значения являются целыми числами
+		case static_cast <uint8_t> (type_t::INTEGER):
+			/**
+			 * Выводим признак совпадения чисел
+			 *
+			 * @note Система счисления сличению не подлежит: `0x1F` и `31` суть одно число
+			 */
+			return (this->_integer == value._integer);
+		// Если значения являются числами с плавающей точкой
+		case static_cast <uint8_t> (type_t::FLOAT):
+			// Выводим признак совпадения чисел
+			return (this->_real == value._real);
+		// Если значения являются логическими
+		case static_cast <uint8_t> (type_t::BOOLEAN):
+			// Выводим признак совпадения логических значений
+			return (this->_boolean == value._boolean);
+		// Если значения являются перечнями
+		case static_cast <uint8_t> (type_t::ARRAY): {
+			/**
+			 * Если количества значений перечней разнятся
+			 */
+			if(this->_items.size() != value._items.size())
+				// Выводим признак расхождения значений
+				return false;
+			/**
+			 * Выполняем перебор значений перечня
+			 *
+			 * @note Порядок значений перечня сличению подлежит: перечень есть
+			 *       последовательность, и порядок её значением является
+			 */
+			for(size_t i = 0; i < this->_items.size(); i++){
+				/**
+				 * Если очередные значения перечней разнятся
+				 */
+				if(!(this->_items.at(i) == value._items.at(i)))
+					// Выводим признак расхождения значений
+					return false;
+			}
+			// Выводим признак совпадения значений
+			return true;
+		}
+		// Если значения являются таблицами
+		case static_cast <uint8_t> (type_t::TABLE): {
+			/**
+			 * Если количества пар таблиц разнятся
+			 */
+			if(this->_names.size() != value._names.size())
+				// Выводим признак расхождения значений
+				return false;
+			/**
+			 * Выполняем перебор пар таблицы
+			 *
+			 * @note Порядок пар таблицы сличению НЕ подлежит: таблица есть отображение
+			 *       имён на значения, и порядок записи её значением не является
+			 */
+			for(size_t i = 0; i < this->_names.size(); i++){
+				// Получаем значение одноимённой пары сличаемой таблицы
+				const Value & item = value[this->_names.at(i)];
+				/**
+				 * Если одноимённой пары в сличаемой таблице нет вовсе
+				 */
+				if(!item.valid() && this->_items.at(i).valid())
+					// Выводим признак расхождения значений
+					return false;
+				/**
+				 * Если значения одноимённых пар разнятся
+				 */
+				if(!(this->_items.at(i) == item))
+					// Выводим признак расхождения значений
+					return false;
+			}
+			// Выводим признак совпадения значений
+			return true;
+		}
+	}
+	/**
+	 * Выводим признак совпадения отметок времени
+	 *
+	 * @note Заход этот берёт все четыре вида отметки времени разом: вид их уже сличён
+	 *       выше, и остаётся сличить саму отметку
+	 */
+	return (
+		(this->_stamp.date.year == value._stamp.date.year) &&
+		(this->_stamp.date.month == value._stamp.date.month) &&
+		(this->_stamp.date.day == value._stamp.date.day) &&
+		(this->_stamp.time.hour == value._stamp.time.hour) &&
+		(this->_stamp.time.minute == value._stamp.time.minute) &&
+		(this->_stamp.time.second == value._stamp.time.second) &&
+		(this->_stamp.time.nanosecond == value._stamp.time.nanosecond) &&
+		(this->_stamp.offset == value._stamp.offset)
+	);
+}
+/**
+ * @brief Оператор сличения значений на расхождение
+ *
+ * @param value сличаемое значение
+ * @return      признак расхождения значений
+ *
+ */
+bool awh::codec::toml::Value::operator != (const Value & value) const noexcept {
+	// Выводим признак расхождения значений
+	return !((* this) == value);
+}
+/**
+ * @brief Оператор присваивания значения
+ *
+ * @param value присваиваемое значение
+ * @return      ссылка на текущее значение
+ *
+ */
+awh::codec::toml::Value & awh::codec::toml::Value::operator = (const Value & value) noexcept {
+	/**
+	 * Если присваивается значение самому себе
+	 */
+	if(this == &value)
+		// Выводим ссылку на текущее значение
+		return (* this);
+	// Выполняем копирование типа хранимого значения
+	this->_type = value._type;
+	// Выполняем копирование записи строкового значения
+	this->_quoting = value._quoting;
+	// Выполняем копирование системы счисления записи целого числа
+	this->_radix = value._radix;
+	// Выполняем копирование логического значения
+	this->_boolean = value._boolean;
+	// Выполняем копирование признака записи перечня несколькими строками
+	this->_multiline = value._multiline;
+	// Выполняем копирование целого числа
+	this->_integer = value._integer;
+	// Выполняем копирование числа с плавающей точкой
+	this->_real = value._real;
+	// Выполняем копирование отметки времени
+	this->_stamp = value._stamp;
+	// Выполняем копирование содержимого строкового значения
+	this->_text = value._text;
+	// Выполняем копирование имён пар таблицы
+	this->_names = value._names;
+	// Выполняем копирование значений вместилища
+	this->_items = value._items;
+	// Выводим ссылку на текущее значение
+	return (* this);
+}
+/**
+ * @brief Оператор присваивания значения переносом
+ *
+ * @param value переносимое значение
+ * @return      ссылка на текущее значение
+ *
+ */
+awh::codec::toml::Value & awh::codec::toml::Value::operator = (Value && value) noexcept {
+	/**
+	 * Если присваивается значение самому себе
+	 */
+	if(this == &value)
+		// Выводим ссылку на текущее значение
+		return (* this);
+	// Выполняем перенос типа хранимого значения
+	this->_type = value._type;
+	// Выполняем перенос записи строкового значения
+	this->_quoting = value._quoting;
+	// Выполняем перенос системы счисления записи целого числа
+	this->_radix = value._radix;
+	// Выполняем перенос логического значения
+	this->_boolean = value._boolean;
+	// Выполняем перенос признака записи перечня несколькими строками
+	this->_multiline = value._multiline;
+	// Выполняем перенос целого числа
+	this->_integer = value._integer;
+	// Выполняем перенос числа с плавающей точкой
+	this->_real = value._real;
+	// Выполняем перенос отметки времени
+	this->_stamp = value._stamp;
+	// Выполняем перенос содержимого строкового значения
+	this->_text = ::std::move(value._text);
+	// Выполняем перенос имён пар таблицы
+	this->_names = ::std::move(value._names);
+	// Выполняем перенос значений вместилища
+	this->_items = ::std::move(value._items);
+	/**
+	 * Выполняем сброс перенесённого значения
+	 *
+	 * @note Сброс обязателен: перенесённое значение остаётся годным к употреблению, и
+	 *       тип его, при переносе не тронутый, изображал бы содержимое, уже ушедшее
+	 */
+	value._type = type_t::NONE;
+	// Выводим ссылку на текущее значение
+	return (* this);
+}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::toml::Value::Value() noexcept :
+ _type(type_t::NONE), _quoting(string_t::BASIC), _radix(radix_t::DECIMAL),
+ _boolean(false), _multiline(false), _integer(0), _real(0.) {}
+/**
+ * @brief Конструктор вместилища затребованного типа
+ *
+ * @param type тип заводимого значения
+ *
+ */
+awh::codec::toml::Value::Value(const type_t type) noexcept :
+ _type(type), _quoting(string_t::BASIC), _radix(radix_t::DECIMAL),
+ _boolean(false), _multiline(false), _integer(0), _real(0.) {}
+/**
+ * @brief Конструктор логического значения
+ *
+ * @param value устанавливаемое логическое значение
+ *
+ */
+awh::codec::toml::Value::Value(const bool value) noexcept :
+ _type(type_t::BOOLEAN), _quoting(string_t::BASIC), _radix(radix_t::DECIMAL),
+ _boolean(value), _multiline(false), _integer(0), _real(0.) {}
+/**
+ * @brief Конструктор целого числа
+ *
+ * @param value устанавливаемое целое число
+ * @param radix система счисления записи целого числа
+ *
+ */
+awh::codec::toml::Value::Value(const int64_t value, const radix_t radix) noexcept :
+ _type(type_t::INTEGER), _quoting(string_t::BASIC), _radix(radix),
+ _boolean(false), _multiline(false), _integer(value), _real(0.) {}
+/**
+ * @brief Конструктор целого числа без знака
+ *
+ * @param value устанавливаемое целое число без знака
+ * @param radix система счисления записи целого числа
+ *
+ */
+awh::codec::toml::Value::Value(const uint64_t value, const radix_t radix) noexcept :
+ _type(type_t::INTEGER), _quoting(string_t::BASIC), _radix(radix),
+ _boolean(false), _multiline(false), _integer(static_cast <int64_t> (value)), _real(0.) {}
+/**
+ * @brief Конструктор числа с плавающей точкой
+ *
+ * @param value устанавливаемое число с плавающей точкой
+ *
+ */
+awh::codec::toml::Value::Value(const double value) noexcept :
+ _type(type_t::FLOAT), _quoting(string_t::BASIC), _radix(radix_t::DECIMAL),
+ _boolean(false), _multiline(false), _integer(0), _real(value) {}
+/**
+ * @brief Конструктор строкового значения
+ *
+ * @param value   устанавливаемое содержимое
+ * @param quoting запись строкового значения
+ *
+ */
+awh::codec::toml::Value::Value(const string & value, const string_t quoting) noexcept :
+ _type(type_t::STRING), _quoting(quoting), _radix(radix_t::DECIMAL),
+ _boolean(false), _multiline(false), _integer(0), _real(0.), _text(value) {}
+/**
+ * @brief Конструктор строкового значения из строки языка
+ *
+ * @param value   устанавливаемое содержимое
+ * @param quoting запись строкового значения
+ *
+ */
+awh::codec::toml::Value::Value(const char * value, const string_t quoting) noexcept :
+ _type(type_t::STRING), _quoting(quoting), _radix(radix_t::DECIMAL),
+ _boolean(false), _multiline(false), _integer(0), _real(0.),
+ _text((value != nullptr) ? value : "") {}
+/**
+ * @brief Конструктор копирования
+ *
+ * @param value копируемое значение
+ *
+ */
+awh::codec::toml::Value::Value(const Value & value) noexcept :
+ _type(value._type), _quoting(value._quoting), _radix(value._radix),
+ _boolean(value._boolean), _multiline(value._multiline), _integer(value._integer),
+ _real(value._real), _stamp(value._stamp), _text(value._text),
+ _names(value._names), _items(value._items) {}
+/**
+ * @brief Конструктор переноса
+ *
+ * @param value переносимое значение
+ *
+ */
+awh::codec::toml::Value::Value(Value && value) noexcept :
+ _type(value._type), _quoting(value._quoting), _radix(value._radix),
+ _boolean(value._boolean), _multiline(value._multiline), _integer(value._integer),
+ _real(value._real), _stamp(value._stamp), _text(::std::move(value._text)),
+ _names(::std::move(value._names)), _items(::std::move(value._items)) {
+	// Выполняем сброс перенесённого значения
+	value._type = type_t::NONE;
+}
+/**
+ * @brief Метод снятия значения с дерева настроек по составному имени
+ *
+ * @param document дерево настроек, откуда снимается значение
+ * @param path     составное имя снимаемого значения
+ * @return         признак успешности снятия
+ *
+ */
+bool awh::codec::toml::Value::absorb(const Document & document, const vector <string_view> & path) noexcept {
+	// Выполняем очистку значения от прежнего содержимого
+	this->clear();
+	/**
+	 * Если по составному имени объявлена таблица
+	 *
+	 * @note Проверка таблицы ведётся прежде получения значения: таблица, объявленная
+	 *       заголовком, значением не выдаётся вовсе, и без этой проверки снятие корня
+	 *       отвечало бы отказом
+	 */
+	if(document.table(path) || path.empty()){
+		// Назначаем значению тип таблицы
+		this->_type = type_t::TABLE;
+		// Получаем перечень дочерних имён таблицы
+		const vector <string_view> keys = document.keys(path);
+		/**
+		 * Выполняем перебор дочерних имён таблицы
+		 */
+		for(auto & key : keys){
+			// Собираем составное имя очередной пары таблицы
+			vector <string_view> nested = path;
+			// Добавляем имя очередной пары в составное имя
+			nested.push_back(key);
+			// Заводим значение очередной пары таблицы
+			Value item;
+			/**
+			 * Если снять значение очередной пары не удалось
+			 *
+			 * @note Пара, снятия не давшая, пропускается, а не валит снятие целиком:
+			 *       перечень имён взят у самого дерева, и отказ на нём означал бы
+			 *       рассогласование дерева с собою - докладывать о нём не здесь
+			 */
+			if(!item.absorb(document, nested))
+				// Выполняем переход к следующей паре таблицы
+				continue;
+			// Выполняем добавление имени снятой пары таблицы
+			this->_names.emplace_back(key);
+			// Выполняем добавление значения снятой пары таблицы
+			this->_items.push_back(::std::move(item));
+		}
+		// Выводим признак успешного снятия
+		return true;
+	}
+	// Нагрузка события, дерево значения несущая
+	content_t content;
+	/**
+	 * Если получить значение по составному имени не удалось
+	 */
+	if(!document.get(path, content))
+		// Выводим признак неудачного снятия
+		return false;
+	/**
+	 * Определяем тип полученного значения
+	 */
+	switch(static_cast <uint8_t> (content.type)){
+		// Если значение является перечнем
+		case static_cast <uint8_t> (type_t::ARRAY): {
+			// Назначаем значению тип перечня
+			this->_type = type_t::ARRAY;
+			// Получаем количество значений перечня
+			const size_t length = document.length(path);
+			/**
+			 * Выполняем перебор всех значений перечня
+			 */
+			for(size_t i = 0; i < length; i++){
+				/**
+				 * Собираем запись порядкового номера значения перечня
+				 *
+				 * @note Запись хранится своею памятью намеренно: составное имя собрано
+				 *       взглядами, и взгляд на временную запись висел бы к обращению
+				 */
+				const string ordinal = ::std::to_string(i);
+				// Собираем составное имя очередного значения перечня
+				vector <string_view> nested = path;
+				// Добавляем номер очередного значения в составное имя
+				nested.push_back(ordinal);
+				// Заводим очередное значение перечня
+				Value item;
+				/**
+				 * Если снять очередное значение перечня не удалось
+				 */
+				if(!item.absorb(document, nested))
+					// Выполняем переход к следующему значению перечня
+					continue;
+				// Выполняем добавление снятого значения перечня
+				this->_items.push_back(::std::move(item));
+			}
+		} break;
+		// Если значение является встроенной таблицей
+		case static_cast <uint8_t> (type_t::TABLE): {
+			// Назначаем значению тип таблицы
+			this->_type = type_t::TABLE;
+			// Получаем перечень дочерних имён встроенной таблицы
+			const vector <string_view> keys = document.keys(path);
+			/**
+			 * Выполняем перебор дочерних имён встроенной таблицы
+			 */
+			for(auto & key : keys){
+				// Собираем составное имя очередной пары таблицы
+				vector <string_view> nested = path;
+				// Добавляем имя очередной пары в составное имя
+				nested.push_back(key);
+				// Заводим значение очередной пары таблицы
+				Value item;
+				/**
+				 * Если снять значение очередной пары не удалось
+				 */
+				if(!item.absorb(document, nested))
+					// Выполняем переход к следующей паре таблицы
+					continue;
+				// Выполняем добавление имени снятой пары таблицы
+				this->_names.emplace_back(key);
+				// Выполняем добавление значения снятой пары таблицы
+				this->_items.push_back(::std::move(item));
+			}
+		} break;
+		// Если значение является строковым
+		case static_cast <uint8_t> (type_t::STRING):
+			// Назначаем значению тип строкового
+			this->_type = type_t::STRING;
+			// Выполняем установку записи строкового значения
+			this->_quoting = content.quoting;
+			// Выполняем установку содержимого строкового значения
+			this->_text.assign(content.text);
+		break;
+		// Если значение является целым числом
+		case static_cast <uint8_t> (type_t::INTEGER):
+			// Назначаем значению тип целого числа
+			this->_type = type_t::INTEGER;
+			// Выполняем установку системы счисления записи целого числа
+			this->_radix = content.radix;
+			// Выполняем установку целого числа
+			this->_integer = content.integer;
+		break;
+		// Если значение является числом с плавающей точкой
+		case static_cast <uint8_t> (type_t::FLOAT):
+			// Назначаем значению тип числа с плавающей точкой
+			this->_type = type_t::FLOAT;
+			// Выполняем установку числа с плавающей точкой
+			this->_real = content.real;
+		break;
+		// Если значение является логическим
+		case static_cast <uint8_t> (type_t::BOOLEAN):
+			// Назначаем значению тип логического значения
+			this->_type = type_t::BOOLEAN;
+			// Выполняем установку логического значения
+			this->_boolean = content.boolean;
+		break;
+		/**
+		 * Если значение является отметкой времени любого из четырёх видов
+		 */
+		default:
+			/**
+			 * Если тип значения отметкой времени не является вовсе
+			 */
+			if(!::stamped(content.type))
+				// Выводим признак неудачного снятия
+				return false;
+			// Назначаем значению вид отметки времени
+			this->_type = content.type;
+			// Выполняем установку отметки времени
+			this->_stamp = content.stamp;
+	}
+	// Выводим признак успешного снятия
+	return true;
+}
+/**
+ * @brief Конструктор снятия значения с дерева настроек
+ *
+ * @param document дерево настроек, откуда снимается значение
+ *
+ */
+awh::codec::toml::Value::Value(const Document & document) noexcept :
+ _type(type_t::NONE), _quoting(string_t::BASIC), _radix(radix_t::DECIMAL),
+ _boolean(false), _multiline(false), _integer(0), _real(0.) {
+	// Выполняем снятие значения с корня дерева настроек
+	this->absorb(document, {});
+}
+/**
+ * @brief Конструктор снятия значения с дерева настроек по составному имени
+ *
+ * @param document дерево настроек, откуда снимается значение
+ * @param path     составное имя снимаемого значения
+ *
+ */
+awh::codec::toml::Value::Value(const Document & document, const vector <string_view> & path) noexcept :
+ _type(type_t::NONE), _quoting(string_t::BASIC), _radix(radix_t::DECIMAL),
+ _boolean(false), _multiline(false), _integer(0), _real(0.) {
+	// Выполняем снятие значения с дерева настроек по составному имени
+	this->absorb(document, path);
+}
+/**
+ * @brief Метод разбора текста настроек во владеющее значение
+ *
+ * @param text разбираемый текст настроек
+ * @return     признак успешности разбора
+ *
+ */
+bool awh::codec::toml::Value::parse(const string & text) noexcept {
+	// Дерево настроек, разбором собираемое
+	Document document;
+	/**
+	 * Если разбор текста настроек завершился отказом
+	 */
+	if(!document.parse(text))
+		// Выводим признак неудачного разбора
+		return false;
+	// Выполняем снятие значения с корня дерева настроек
+	return this->absorb(document, {});
+}
+/**
+ * @brief Метод разбора текста настроек во владеющее значение с настройками
+ *
+ * @param text     разбираемый текст настроек
+ * @param settings настройки разбора
+ * @return         признак успешности разбора
+ *
+ */
+bool awh::codec::toml::Value::parse(const string & text, const Document::settings_t & settings) noexcept {
+	// Дерево настроек, разбором собираемое
+	Document document;
+	/**
+	 * Если разбор текста настроек завершился отказом
+	 */
+	if(!document.parse(text, settings))
+		// Выводим признак неудачного разбора
+		return false;
+	// Выполняем снятие значения с корня дерева настроек
+	return this->absorb(document, {});
+}
+/**
+ * @brief Метод чтения текста настроек из файла во владеющее значение
+ *
+ * @param filename имя читаемого файла
+ * @return         признак успешности чтения
+ *
+ */
+bool awh::codec::toml::Value::load(const string & filename) noexcept {
+	// Поток чтения файла настроек
+	ifstream file(filename, ios::binary);
+	/**
+	 * Если файл настроек открыть не удалось
+	 */
+	if(!file.is_open())
+		// Выводим признак неудачного чтения
+		return false;
+	// Считываем содержимое файла настроек целиком
+	const string text((istreambuf_iterator <char> (file)), istreambuf_iterator <char> ());
+	// Выполняем разбор считанного текста настроек
+	return this->parse(text);
+}
+/**
+ * @brief Метод чтения текста настроек из файла с настройками
+ *
+ * @param filename имя читаемого файла
+ * @param settings настройки разбора
+ * @return         признак успешности чтения
+ *
+ */
+bool awh::codec::toml::Value::load(const string & filename, const Document::settings_t & settings) noexcept {
+	// Поток чтения файла настроек
+	ifstream file(filename, ios::binary);
+	/**
+	 * Если файл настроек открыть не удалось
+	 */
+	if(!file.is_open())
+		// Выводим признак неудачного чтения
+		return false;
+	// Считываем содержимое файла настроек целиком
+	const string text((istreambuf_iterator <char> (file)), istreambuf_iterator <char> ());
+	// Выполняем разбор считанного текста настроек
+	return this->parse(text, settings);
+}
+/**
+ * @brief Метод записи значения в поток записи
+ *
+ * @param writer поток записи, куда ложится значение
+ * @param name   имя пары, пустое - значение записывается без имени
+ * @return       признак успешности записи
+ *
+ */
+bool awh::codec::toml::Value::compose(writer_t & writer, const string_view name) const noexcept {
+	/**
+	 * Если имя пары задано
+	 */
+	if(!name.empty()){
+		/**
+		 * Если записать имя пары не удалось
+		 */
+		if(!writer.key(name))
+			// Выводим признак неудачной записи
+			return false;
+	}
+	/**
+	 * Определяем тип записываемого значения
+	 */
+	switch(static_cast <uint8_t> (this->_type)){
+		// Если значение является строковым
+		case static_cast <uint8_t> (type_t::STRING):
+			// Выводим признак успешности записи строкового значения
+			return writer.text(this->_text, this->_quoting);
+		// Если значение является целым числом
+		case static_cast <uint8_t> (type_t::INTEGER):
+			// Выводим признак успешности записи целого числа
+			return writer.integer(this->_integer, this->_radix);
+		// Если значение является числом с плавающей точкой
+		case static_cast <uint8_t> (type_t::FLOAT):
+			// Выводим признак успешности записи числа с плавающей точкой
+			return writer.real(this->_real);
+		// Если значение является логическим
+		case static_cast <uint8_t> (type_t::BOOLEAN):
+			// Выводим признак успешности записи логического значения
+			return writer.boolean(this->_boolean);
+		// Если значение является перечнем
+		case static_cast <uint8_t> (type_t::ARRAY): {
+			/**
+			 * Если открыть перечень не удалось
+			 */
+			if(!writer.arrayOpen(this->_multiline))
+				// Выводим признак неудачной записи
+				return false;
+			/**
+			 * Выполняем перебор всех значений перечня
+			 */
+			for(auto & item : this->_items){
+				/**
+				 * Если записать очередное значение перечня не удалось
+				 */
+				if(!item.compose(writer, ""))
+					// Выводим признак неудачной записи
+					return false;
+			}
+			// Выводим признак успешности закрытия перечня
+			return writer.arrayClose();
+		}
+		// Если значение является таблицей
+		case static_cast <uint8_t> (type_t::TABLE): {
+			/**
+			 * Если открыть встроенную таблицу не удалось
+			 */
+			if(!writer.inlineOpen())
+				// Выводим признак неудачной записи
+				return false;
+			/**
+			 * Выполняем перебор всех пар таблицы
+			 */
+			for(size_t i = 0; i < this->_items.size(); i++){
+				/**
+				 * Если имя очередной пары таблицы пусто вовсе
+				 *
+				 * @note Пара такая заводится ростом таблицы по номеру, и записана быть не
+				 *       может: имя есть у всякой пары наречия. Пропускается она молча -
+				 *       отказ на ней сорвал бы запись всего дерева из-за одной дыры
+				 */
+				if((i >= this->_names.size()) || this->_names.at(i).empty())
+					// Выполняем переход к следующей паре таблицы
+					continue;
+				/**
+				 * Если записать очередную пару таблицы не удалось
+				 */
+				if(!this->_items.at(i).compose(writer, this->_names.at(i)))
+					// Выводим признак неудачной записи
+					return false;
+			}
+			// Выводим признак успешности закрытия встроенной таблицы
+			return writer.inlineClose();
+		}
+	}
+	/**
+	 * Если значение является отметкой времени любого из четырёх видов
+	 */
+	if(::stamped(this->_type))
+		// Выводим признак успешности записи отметки времени
+		return writer.stamp(this->_stamp, this->_type);
+	/**
+	 * Выводим признак неудачной записи
+	 *
+	 * @note Заход этот берёт значение неопределённое: записать его нечем, а пустого
+	 *       значения у наречия TOML нет вовсе
+	 */
+	return false;
+}
+/**
+ * @brief Метод записи владеющего значения текстом настроек с настройками
+ *
+ * @param settings настройки записи
+ * @return         записанный текст настроек
+ *
+ */
+string awh::codec::toml::Value::dump(const writer_t::settings_t & settings) const noexcept {
+	// Объект записи текста настроек
+	writer_t writer(settings);
+	/**
+	 * Если значение таблицей не является
+	 *
+	 * @note Корнем текста настроек может быть одна лишь таблица: описание наречия
+	 *       велит тексту быть перечнем пар, и число либо строка корнем его не бывают
+	 */
+	if(this->_type != type_t::TABLE)
+		// Выводим пустой текст настроек
+		return string();
+	/**
+	 * Выполняем перебор всех пар корневой таблицы
+	 *
+	 * @note Пары простые пишутся прежде вложенных таблиц намеренно: пара, за
+	 *       объявлением таблицы записанная, принадлежала бы уже ей, а не корню
+	 */
+	for(size_t i = 0; i < this->_items.size(); i++){
+		/**
+		 * Если имя очередной пары таблицы пусто вовсе
+		 */
+		if((i >= this->_names.size()) || this->_names.at(i).empty())
+			// Выполняем переход к следующей паре таблицы
+			continue;
+		/**
+		 * Если значение очередной пары таблицей является
+		 */
+		if(this->_items.at(i).is(type_t::TABLE))
+			// Выполняем переход к следующей паре таблицы
+			continue;
+		/**
+		 * Если записать очередную пару таблицы не удалось
+		 */
+		if(!this->_items.at(i).compose(writer, this->_names.at(i)))
+			// Выводим пустой текст настроек
+			return string();
+	}
+	/**
+	 * Выполняем перебор всех пар корневой таблицы вторым заходом
+	 */
+	for(size_t i = 0; i < this->_items.size(); i++){
+		/**
+		 * Если имя очередной пары таблицы пусто вовсе
+		 */
+		if((i >= this->_names.size()) || this->_names.at(i).empty())
+			// Выполняем переход к следующей паре таблицы
+			continue;
+		/**
+		 * Если значение очередной пары таблицей не является
+		 */
+		if(!this->_items.at(i).is(type_t::TABLE))
+			// Выполняем переход к следующей паре таблицы
+			continue;
+		/**
+		 * Если объявить таблицу не удалось
+		 */
+		if(!writer.table(this->_names.at(i)))
+			// Выводим пустой текст настроек
+			return string();
+		// Получаем значение объявленной таблицы
+		const Value & table = this->_items.at(i);
+		/**
+		 * Выполняем перебор всех пар объявленной таблицы
+		 *
+		 * @note Вложенные таблицы записываются встроенными, а не объявлениями своими:
+		 *       объявление вложенное требует составного имени, а составные имена
+		 *       владеющее значение не держит - имя всякой пары у него простое
+		 */
+		for(size_t j = 0; j < table._items.size(); j++){
+			/**
+			 * Если имя очередной пары таблицы пусто вовсе
+			 */
+			if((j >= table._names.size()) || table._names.at(j).empty())
+				// Выполняем переход к следующей паре таблицы
+				continue;
+			/**
+			 * Если записать очередную пару таблицы не удалось
+			 */
+			if(!table._items.at(j).compose(writer, table._names.at(j)))
+				// Выводим пустой текст настроек
+				return string();
+		}
+	}
+	/**
+	 * Выводим записанный текст настроек
+	 *
+	 * @note Отдельного завершения запись не требует: поток дописывает окончание строки
+	 *       сам, и дерево настроек забирает у него текст ровно так же
+	 */
+	return writer.text();
+}
+/**
+ * @brief Метод записи владеющего значения текстом настроек
+ *
+ * @return записанный текст настроек
+ *
+ */
+string awh::codec::toml::Value::dump() const noexcept {
+	// Выводим записанный текст настроек с настройками записи по умолчанию
+	return this->dump(writer_t::settings_t());
+}
+/**
+ * @brief Метод записи владеющего значения в файл
+ *
+ * @param filename имя записываемого файла
+ * @return         признак успешности записи
+ *
+ */
+bool awh::codec::toml::Value::save(const string & filename) const noexcept {
+	// Получаем записанный текст настроек
+	const string text = this->dump();
+	/**
+	 * Если записанный текст настроек пуст вовсе
+	 */
+	if(text.empty() && !this->_items.empty())
+		// Выводим признак неудачной записи
+		return false;
+	// Поток записи файла настроек
+	ofstream file(filename, ios::binary | ios::trunc);
+	/**
+	 * Если файл настроек открыть не удалось
+	 */
+	if(!file.is_open())
+		// Выводим признак неудачной записи
+		return false;
+	// Выполняем запись текста настроек в файл
+	file.write(text.data(), static_cast <streamsize> (text.size()));
+	// Выводим признак успешности записи
+	return file.good();
+}
+/**
+ * @brief Метод переноса владеющего значения в дерево настроек
+ *
+ * @param document дерево настроек, куда переносится значение
+ * @param path     составное имя места переноса
+ * @return         признак успешности переноса
+ *
+ */
+bool awh::codec::toml::Value::graft(Document & document, const vector <string_view> & path) const noexcept {
+	/**
+	 * Определяем тип переносимого значения
+	 */
+	switch(static_cast <uint8_t> (this->_type)){
+		// Если значение является строковым
+		case static_cast <uint8_t> (type_t::STRING):
+			// Выводим признак успешности переноса строкового значения
+			return document.set(path, string_view(this->_text), this->_quoting);
+		// Если значение является целым числом
+		case static_cast <uint8_t> (type_t::INTEGER):
+			// Выводим признак успешности переноса целого числа
+			return document.set(path, this->_integer, this->_radix);
+		// Если значение является числом с плавающей точкой
+		case static_cast <uint8_t> (type_t::FLOAT):
+			// Выводим признак успешности переноса числа с плавающей точкой
+			return document.set(path, this->_real);
+		// Если значение является логическим
+		case static_cast <uint8_t> (type_t::BOOLEAN):
+			// Выводим признак успешности переноса логического значения
+			return document.set(path, this->_boolean);
+		// Если значение является таблицей
+		case static_cast <uint8_t> (type_t::TABLE): {
+			/**
+			 * Если составное имя места переноса задано
+			 *
+			 * @note Корень объявления не требует: таблицею он является всегда, и
+			 *       объявлять его заголовком значило бы завести таблицу с пустым именем
+			 */
+			if(!path.empty()){
+				/**
+				 * Если объявить таблицу не удалось
+				 */
+				if(!document.create(path))
+					// Выводим признак неудачного переноса
+					return false;
+			}
+			/**
+			 * Выполняем перебор всех пар таблицы
+			 */
+			for(size_t i = 0; i < this->_items.size(); i++){
+				/**
+				 * Если имя очередной пары таблицы пусто вовсе
+				 */
+				if((i >= this->_names.size()) || this->_names.at(i).empty())
+					// Выполняем переход к следующей паре таблицы
+					continue;
+				// Собираем составное имя очередной пары таблицы
+				vector <string_view> nested = path;
+				// Добавляем имя очередной пары в составное имя
+				nested.push_back(this->_names.at(i));
+				/**
+				 * Если перенести очередную пару таблицы не удалось
+				 */
+				if(!this->_items.at(i).graft(document, nested))
+					// Выводим признак неудачного переноса
+					return false;
+			}
+			// Выводим признак успешного переноса
+			return true;
+		}
+		/**
+		 * Если значение является перечнем
+		 *
+		 * @warning Перенос перечня в дерево настроек НЕ поддержан, и отказ здесь
+		 *          намеренный. Договор правки дерева перечней не строит вовсе: `set`
+		 *          кладёт одно простое значение, `create` объявляет таблицу, а способа
+		 *          завести перечень значений у дерева нет ни одного. Молчаливый пропуск
+		 *          перечня был бы хуже отказа: потребитель получил бы дерево без части
+		 *          своего значения и узнал бы о том лишь при записи в текст
+		 *
+		 * @note Снятию это не мешает: перечни снимаются с дерева и записываются в текст
+		 *       исправно, не поддержана одна лишь обратная дорога. Расширение договора
+		 *       правки дерева перечнями есть работа отдельная, ибо трогает она
+		 *       общедоступный договор дерева, а не владеющее значение
+		 */
+		case static_cast <uint8_t> (type_t::ARRAY):
+			// Выводим признак неудачного переноса
+			return false;
+	}
+	/**
+	 * Если значение является отметкой времени любого из четырёх видов
+	 */
+	if(::stamped(this->_type))
+		// Выводим признак успешности переноса отметки времени
+		return document.set(path, this->_stamp, this->_type);
+	/**
+	 * Выводим признак неудачного переноса
+	 *
+	 * @note Заход этот берёт значение неопределённое: переносить нечего
+	 */
+	return false;
+}
+
+/**
+ * @brief Метод получения вместилища, сборкой открытого
+ *
+ * @return ссылка на открытое вместилище
+ *
+ */
+awh::codec::toml::Value & awh::codec::toml::Builder::opened() noexcept {
+	// Получаем ссылку на собираемое значение
+	Value * result = &this->_root;
+	/**
+	 * Выполняем перебор пути к открытому вместилищу
+	 */
+	for(auto & index : this->_path)
+		// Выполняем переход к вложенному вместилищу по номеру его
+		result = &((* result)[index]);
+	// Выводим ссылку на открытое вместилище
+	return (* result);
+}
+/**
+ * @brief Метод занесения собранного значения во вместилище
+ *
+ * @param value заносимое значение
+ * @return      номер занесённого значения во вместилище
+ *
+ */
+size_t awh::codec::toml::Builder::deposit(Value && value) noexcept {
+	// Получаем ссылку на открытое вместилище
+	Value & holder = this->opened();
+	/**
+	 * Если имя пары таблицы назначено
+	 */
+	if(this->_keyed){
+		// Выполняем установку пары таблицы
+		holder.insert(this->_key, value);
+		// Выполняем сброс признака назначенного имени
+		this->_keyed = false;
+		// Выполняем очистку имени пары таблицы
+		this->_key.clear();
+		// Выводим номер занесённого значения во вместилище
+		return (holder.size() - 1);
+	}
+	// Выполняем добавление значения в конец перечня
+	holder.push(value);
+	// Выводим номер занесённого значения во вместилище
+	return (holder.size() - 1);
+}
+/**
+ * @brief Метод открытия вместилища затребованного типа
+ *
+ * @param value открываемое вместилище
+ * @return      признак успешности открытия
+ *
+ */
+bool awh::codec::toml::Builder::expand(Value && value) noexcept {
+	/**
+	 * Если сборка завершена уже
+	 */
+	if(this->_done)
+		// Выводим признак неудачного открытия
+		return false;
+	/**
+	 * Если глубина открытых вместилищ предел вложенности превышает
+	 */
+	if(this->_path.size() >= static_cast <size_t> (MAX_DEPTH))
+		// Выводим признак неудачного открытия
+		return false;
+	/**
+	 * Если вместилище корневое ещё не открыто
+	 */
+	if(this->_path.empty() && !this->_root.valid()){
+		/**
+		 * Если имя пары таблицы назначено
+		 *
+		 * @note Отказ намеренный: имя, назначенное до открытия корня, положить некуда -
+		 *       вместилища, какому оно принадлежало бы, ещё нет
+		 */
+		if(this->_keyed)
+			// Выводим признак неудачного открытия
+			return false;
+		// Выполняем установку корневого вместилища
+		this->_root = ::std::move(value);
+		// Выводим признак успешного открытия
+		return true;
+	}
+	// Выполняем занесение открываемого вместилища
+	const size_t index = this->deposit(::std::move(value));
+	// Выполняем добавление номера открытого вместилища в путь
+	this->_path.push_back(index);
+	// Выводим признак успешного открытия
+	return true;
+}
+/**
+ * @brief Метод открытия таблицы
+ *
+ * @return признак успешности открытия
+ *
+ */
+bool awh::codec::toml::Builder::table() noexcept {
+	// Выводим признак успешности открытия таблицы
+	return this->expand(Value(type_t::TABLE));
+}
+/**
+ * @brief Метод открытия перечня значений
+ *
+ * @param multiline признак записи перечня несколькими строками
+ * @return          признак успешности открытия
+ *
+ */
+bool awh::codec::toml::Builder::array(const bool multiline) noexcept {
+	// Заводим открываемый перечень значений
+	Value value(type_t::ARRAY);
+	// Выполняем установку признака записи перечня несколькими строками
+	value.multiline(multiline);
+	// Выводим признак успешности открытия перечня значений
+	return this->expand(::std::move(value));
+}
+/**
+ * @brief Метод закрытия открытого вместилища
+ *
+ * @return признак успешности закрытия
+ *
+ */
+bool awh::codec::toml::Builder::close() noexcept {
+	/**
+	 * Если сборка завершена уже
+	 */
+	if(this->_done)
+		// Выводим признак неудачного закрытия
+		return false;
+	/**
+	 * Если имя пары таблицы назначено, а значения ему не дано
+	 *
+	 * @note Отказ намеренный: имя без значения есть незавершённая пара, и закрытие
+	 *       вместилища на ней потеряло бы имя молча
+	 */
+	if(this->_keyed)
+		// Выводим признак неудачного закрытия
+		return false;
+	/**
+	 * Если открытых вложенных вместилищ нет вовсе
+	 */
+	if(this->_path.empty()){
+		/**
+		 * Если вместилище корневое не открыто вовсе
+		 */
+		if(!this->_root.valid())
+			// Выводим признак неудачного закрытия
+			return false;
+		// Запоминаем, что сборка завершена
+		this->_done = true;
+		// Выводим признак успешного закрытия
+		return true;
+	}
+	// Выполняем снятие номера закрываемого вместилища с пути
+	this->_path.pop_back();
+	// Выводим признак успешного закрытия
+	return true;
+}
+/**
+ * @brief Метод назначения имени пары таблицы
+ *
+ * @param name назначаемое имя пары таблицы
+ * @return     признак успешности назначения
+ *
+ */
+bool awh::codec::toml::Builder::key(const string & name) noexcept {
+	/**
+	 * Если сборка завершена уже, имя пусто вовсе либо назначено уже
+	 */
+	if(this->_done || name.empty() || this->_keyed)
+		// Выводим признак неудачного назначения
+		return false;
+	/**
+	 * Если открытое вместилище таблицей не является
+	 */
+	if(!this->opened().is(type_t::TABLE))
+		// Выводим признак неудачного назначения
+		return false;
+	// Выполняем установку имени пары таблицы
+	this->_key = name;
+	// Запоминаем, что имя пары таблицы назначено
+	this->_keyed = true;
+	// Выводим признак успешного назначения
+	return true;
+}
+/**
+ * @brief Метод записи готового значения
+ *
+ * @param value записываемое значение
+ * @return      признак успешности записи
+ *
+ */
+bool awh::codec::toml::Builder::value(const Value & value) noexcept {
+	/**
+	 * Если сборка завершена уже либо вместилище корневое не открыто вовсе
+	 */
+	if(this->_done || (this->_path.empty() && !this->_root.valid()))
+		// Выводим признак неудачной записи
+		return false;
+	/**
+	 * Если открытое вместилище таблицей является, а имя пары не назначено
+	 */
+	if(this->opened().is(type_t::TABLE) && !this->_keyed)
+		// Выводим признак неудачной записи
+		return false;
+	// Выполняем занесение записываемого значения
+	this->deposit(Value(value));
+	// Выводим признак успешной записи
+	return true;
+}
+/**
+ * @brief Метод записи логического значения
+ *
+ * @param value записываемое логическое значение
+ * @return      признак успешности записи
+ *
+ */
+bool awh::codec::toml::Builder::value(const bool value) noexcept {
+	// Выводим признак успешности записи логического значения
+	return this->value(Value(value));
+}
+/**
+ * @brief Метод записи целого числа со знаком
+ *
+ * @param value записываемое целое число
+ * @param radix система счисления записи целого числа
+ * @return      признак успешности записи
+ *
+ */
+bool awh::codec::toml::Builder::value(const int64_t value, const radix_t radix) noexcept {
+	// Выводим признак успешности записи целого числа
+	return this->value(Value(value, radix));
+}
+/**
+ * @brief Метод записи целого числа без знака
+ *
+ * @param value записываемое целое число без знака
+ * @param radix система счисления записи целого числа
+ * @return      признак успешности записи
+ *
+ */
+bool awh::codec::toml::Builder::value(const uint64_t value, const radix_t radix) noexcept {
+	// Выводим признак успешности записи целого числа без знака
+	return this->value(Value(value, radix));
+}
+/**
+ * @brief Метод записи числа с плавающей точкой
+ *
+ * @param value записываемое число с плавающей точкой
+ * @return      признак успешности записи
+ *
+ */
+bool awh::codec::toml::Builder::value(const double value) noexcept {
+	// Выводим признак успешности записи числа с плавающей точкой
+	return this->value(Value(value));
+}
+/**
+ * @brief Метод записи строкового значения
+ *
+ * @param value   записываемое содержимое
+ * @param quoting запись строкового значения
+ * @return        признак успешности записи
+ *
+ */
+bool awh::codec::toml::Builder::value(const string & value, const string_t quoting) noexcept {
+	// Выводим признак успешности записи строкового значения
+	return this->value(Value(value, quoting));
+}
+/**
+ * @copydoc awh::codec::toml::Builder::value(const string &, const string_t)
+ */
+bool awh::codec::toml::Builder::value(const char * value, const string_t quoting) noexcept {
+	// Выводим признак успешности записи строкового значения
+	return this->value(Value(value, quoting));
+}
+/**
+ * @brief Метод записи отметки времени
+ *
+ * @param value записываемая отметка времени
+ * @param type  вид отметки времени
+ * @return      признак успешности записи
+ *
+ */
+bool awh::codec::toml::Builder::value(const stamp_t & value, const type_t type) noexcept {
+	// Заводим записываемое значение отметки времени
+	Value stamped;
+	/**
+	 * Если установить отметку времени не удалось
+	 */
+	if(!stamped.stamp(value, type))
+		// Выводим признак неудачной записи
+		return false;
+	// Выводим признак успешности записи отметки времени
+	return this->value(stamped);
+}
+/**
+ * @brief Метод извлечения глубины открытых вместилищ
+ *
+ * @return глубина открытых вместилищ
+ *
+ */
+size_t awh::codec::toml::Builder::depth() const noexcept {
+	/**
+	 * Если сборка завершена уже либо вместилище корневое не открыто вовсе
+	 */
+	if(this->_done || !this->_root.valid())
+		// Выводим нулевую глубину открытых вместилищ
+		return 0;
+	// Выводим глубину открытых вместилищ вместе с корневым
+	return (this->_path.size() + 1);
+}
+/**
+ * @brief Метод сброса сборки в исходное состояние
+ *
+ */
+void awh::codec::toml::Builder::reset() noexcept {
+	// Выполняем сброс собираемого значения
+	this->_root.clear();
+	// Выполняем очистку пути к открытому вместилищу
+	this->_path.clear();
+	// Выполняем очистку имени пары таблицы
+	this->_key.clear();
+	// Выполняем сброс признака назначенного имени
+	this->_keyed = false;
+	// Выполняем сброс признака завершённости сборки
+	this->_done = false;
+}
+/**
+ * @brief Метод изъятия собранного значения
+ *
+ * @return собранное значение
+ *
+ */
+awh::codec::toml::Value awh::codec::toml::Builder::finish() noexcept {
+	// Выполняем изъятие собранного значения переносом
+	Value result(::std::move(this->_root));
+	// Выполняем сброс сборки в исходное состояние
+	this->reset();
+	// Выводим собранное значение
+	return result;
+}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::toml::Builder::Builder() noexcept : _keyed(false), _done(false) {}
