@@ -871,6 +871,10 @@ namespace awh {
 					 * выполняется обычным приведением языка - ровно так, как это делает
 					 * ссылка на узел документа
 					 *
+					 * @details Дробное, извлекаемое целым видом, округляется по правилам
+					 * математики с уводом половины от нуля: `1.5` выдаётся двойкой, а `-1.5` -
+					 * минус двойкой. Усечения к нулю здесь нет
+					 *
 					 * @param result переменная, куда помещается извлечённое значение
 					 * @return       признак успешности извлечения
 					 *
@@ -880,6 +884,9 @@ namespace awh {
 					 * is not a number at all. The kind of the storage is not a rule for the extraction, while the narrowing
 					 * is performed by the ordinary casting of the language — exactly as a reference
 					 * to a node of a document does it
+					 * @details A fractional number extracted as an integer kind is rounded by the rules
+					 * of mathematics with a half taken away from zero: `1.5` is issued as a two, while `-1.5` —
+					 * as a minus two. There is no truncation towards zero here
 					 * @param result variable where the extracted value is placed
 					 * @return sign of the success of the extraction
 					 *

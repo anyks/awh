@@ -1515,9 +1515,21 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод получения значения пары числом
 					 *
-					 * @details Тип значения при этом соблюдается: целое число выдаётся
-					 * целым, а число с плавающей точкой - им же. Приведение одного к другому
-					 * выполняется лишь тогда, когда оно значения не искажает
+					 * @details Отказом получение завершается лишь тогда, когда значение
+					 * числом не является вовсе. Вид хранения извлечению не указ: целое
+					 * выдаётся и дробным видом, а дробное - и целым
+					 *
+					 * @details Дробное, извлекаемое целым видом, округляется по правилам
+					 * математики с уводом половины от нуля: `1.5` выдаётся двойкой, а `-1.5` -
+					 * минус двойкой. Целое, за отрезок затребованного вида выходящее,
+					 * переносится младшими разрядами, а дробное вне его пределов выдаётся
+					 * пределом: приведение такое стандарт зовёт неопределённым поведением,
+					 * а неопределённого поведения в кодеке не будет
+					 *
+					 * @note Прежде вид значения соблюдался, и приведение одного к другому
+					 *       выполнялось лишь тогда, когда оно значения не искажало. Отменено
+					 *       владельцем 20.08.2026: договор извлечения общий у всех кодеков
+					 *       рамки, а приведение языка не отказывает нигде
 					 *
 					 * @param result ссылка на результат разбора
 					 * @param path   составное имя искомой пары
@@ -1525,9 +1537,15 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of getting the value of a pair as a number
-					 * @details The type of the value is thereby observed: an integer is issued as an
-					 * integer, while a floating-point number — as itself. A conversion of the one to the other
-					 * is performed only when it does not distort the value
+					 * @details The receipt ends with a refusal only when the value is not a number
+					 * at all. The kind of the storage is not a directive to the extraction: an integer is issued
+					 * also as a fractional kind, and a fractional one — also as an integer
+					 * @details A fractional number extracted as an integer kind is rounded by the rules
+					 * of mathematics with a half taken away from zero: `1.5` is issued as a two, while `-1.5` —
+					 * as a minus two. An integer going beyond the range of the requested kind is carried over
+					 * by the lower bits, while a fractional one beyond its limits is issued as the limit: such a
+					 * conversion is called an undefined behaviour by the standard, and there will be no
+					 * undefined behaviour in the codec
 					 * @param result reference to the result of the parsing
 					 * @param path   compound name of the pair being sought
 					 * @return       flag of a successful parsing

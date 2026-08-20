@@ -1031,9 +1031,22 @@ namespace awh {
 			 * \~russian
 			 * @brief Метод разбора числа из значения свойства
 			 *
-			 * @details Разбор ведётся с проверкой выхода за пределы запрошенного типа:
-			 * значение, в тип не помещающееся, отвергается, а не усекается молча. Тип
-			 * определяется запрошенным типом результата, отдельного указания не требуя
+			 * @details Отказом разбор завершается лишь тогда, когда значение числом не
+			 * является вовсе. Запись значения разбору не указ: дробная запись извлекается
+			 * и целым видом, а целая - и дробным. Тип определяется запрошенным типом
+			 * результата, отдельного указания не требуя
+			 *
+			 * @details Дробное, извлекаемое целым видом, округляется по правилам математики
+			 * с уводом половины от нуля: `1.5` выдаётся двойкой, а `-1.5` - минус двойкой.
+			 * Целое, за отрезок затребованного вида выходящее, переносится младшими
+			 * разрядами, а дробное вне его пределов выдаётся пределом: приведение такое
+			 * стандарт зовёт неопределённым поведением, а неопределённого поведения в
+			 * кодеке не будет
+			 *
+			 * @note Прежде разбор вёлся с проверкой выхода за пределы запрошенного типа, и
+			 *       значение, в тип не помещающееся, отвергалось. Отменено владельцем
+			 *       20.08.2026: договор извлечения общий у всех кодеков рамки, а приведение
+			 *       языка не отказывает нигде
 			 *
 			 * @param text   разбираемое значение свойства
 			 * @param result ссылка на результат разбора
@@ -1048,9 +1061,15 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of parsing a number from the value of a property
-			 * @details The parsing is conducted with a check of going beyond the limits of the requested type:
-			 * a value that does not fit into the type is rejected rather than being truncated silently. The type
+			 * @details The parsing ends with a refusal only when the value is not a number at all.
+			 * The notation of the value is not a directive to the parsing: a fractional notation is extracted
+			 * also as an integer kind, and an integer one — also as a fractional. The type
 			 * is determined by the requested type of the result without requiring a separate indication
+			 * @details A fractional number extracted as an integer kind is rounded by the rules of mathematics
+			 * with a half taken away from zero: `1.5` is issued as a two, while `-1.5` — as a minus two.
+			 * An integer going beyond the range of the requested kind is carried over by the lower bits,
+			 * while a fractional one beyond its limits is issued as the limit: such a conversion is called
+			 * an undefined behaviour by the standard, and there will be no undefined behaviour in the codec
 			 * @param text   value of the property being parsed
 			 * @param result reference to the result of the parsing
 			 * @param forms  recognized notation of a logical value
