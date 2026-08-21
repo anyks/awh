@@ -399,26 +399,34 @@ namespace {
 		// Подписываемся на перечисление регистров соглашения о вызове
 		using reg_t = awh::regex::Emitter::reg_t;
 		/**
-		 * Выполняем сохранение затираемых вызовом регистров в кадре вызова
+		 * @brief Набор регистров, вызовом подпрограммы затираемых
+		 *
+		 * @details Вершина области записей живёт в регистре наравне с прочими:
+		 *          изъян её отсутствия был живым - рекурсия валила исполнение
+		 *          на «(a(b)c)», покуда вершина в сохраняемые не попала.
+		 *
 		 */
-		emitter.store(reg_t::TEXT, reg_t::STACK, static_cast <uint32_t> (spill + 0));
-		emitter.store(reg_t::SIZE, reg_t::STACK, static_cast <uint32_t> (spill + 1));
-		emitter.store(reg_t::BOUNDS, reg_t::STACK, static_cast <uint32_t> (spill + 2));
-		emitter.store(reg_t::CONTEXT, reg_t::STACK, static_cast <uint32_t> (spill + 3));
-		emitter.store(reg_t::LINK, reg_t::STACK, static_cast <uint32_t> (spill + 4));
-		emitter.store(reg_t::KEEPER, reg_t::STACK, static_cast <uint32_t> (spill + 5));
-		emitter.store(reg_t::CURSOR, reg_t::STACK, static_cast <uint32_t> (spill + 6));
-		emitter.store(reg_t::RECORD, reg_t::STACK, static_cast <uint32_t> (spill + 7));
+		static const reg_t SPILLED[] = {
+			reg_t::TEXT, reg_t::SIZE, reg_t::BOUNDS, reg_t::CONTEXT, reg_t::LINK,
+			reg_t::KEEPER, reg_t::CURSOR, reg_t::RECORD, reg_t::SUMMIT
+		};
 		/**
-		 * Выполняем сохранение вершины области записей на время вызова
+		 * Выполняем сохранение затираемых вызовом регистров в кадре вызова
 		 *
-		 * @details Вершина живёт в регистре, вызываемым не оберегаемом, отчего
-		 *          вызов подпрограммы обстановки её затирает. Изъян этот был
-		 *          живым: рекурсия валила исполнение на «(a(b)c)», покуда
-		 *          вершина в сохраняемые не попала.
+		 * @details Регистры, соглашением о вызове оберегаемые, сохранения
+		 *          не требуют вовсе: вызываемый обязан вернуть их нетронутыми.
+		 *          Место кадра за ними всё же закрепляется - разметка кадра
+		 *          от соглашения зависеть не должна.
 		 *
 		 */
-		emitter.store(reg_t::SUMMIT, reg_t::STACK, static_cast <uint32_t> (spill + 8));
+		for(size_t i = 0; i < (sizeof(SPILLED) / sizeof(SPILLED[0])); i++) {
+			/**
+			 * Если регистр вызовом затирается
+			 */
+			if(!awh::regex::Emitter::preserved(SPILLED[i]))
+				// Выполняем сохранение затираемого регистра в кадре вызова
+				emitter.store(SPILLED[i], reg_t::STACK, static_cast <uint32_t> (spill + i));
+		}
 		// Выполняем чтение адреса вызываемой подпрограммы из обстановки исполнения
 		emitter.context(reg_t::SCRATCH, static_cast <uint32_t> (slot));
 		// Выполняем передачу адреса значения обстановки четвёртым доводом
@@ -432,16 +440,14 @@ namespace {
 		/**
 		 * Выполняем восстановление затёртых вызовом регистров из кадра вызова
 		 */
-		emitter.fetch(reg_t::TEXT, reg_t::STACK, static_cast <uint32_t> (spill + 0));
-		emitter.fetch(reg_t::SIZE, reg_t::STACK, static_cast <uint32_t> (spill + 1));
-		emitter.fetch(reg_t::BOUNDS, reg_t::STACK, static_cast <uint32_t> (spill + 2));
-		emitter.fetch(reg_t::CONTEXT, reg_t::STACK, static_cast <uint32_t> (spill + 3));
-		emitter.fetch(reg_t::LINK, reg_t::STACK, static_cast <uint32_t> (spill + 4));
-		emitter.fetch(reg_t::KEEPER, reg_t::STACK, static_cast <uint32_t> (spill + 5));
-		emitter.fetch(reg_t::CURSOR, reg_t::STACK, static_cast <uint32_t> (spill + 6));
-		emitter.fetch(reg_t::RECORD, reg_t::STACK, static_cast <uint32_t> (spill + 7));
-		// Выполняем восстановление вершины области записей вслед за вызовом
-		emitter.fetch(reg_t::SUMMIT, reg_t::STACK, static_cast <uint32_t> (spill + 8));
+		for(size_t i = 0; i < (sizeof(SPILLED) / sizeof(SPILLED[0])); i++) {
+			/**
+			 * Если регистр вызовом затирался
+			 */
+			if(!awh::regex::Emitter::preserved(SPILLED[i]))
+				// Выполняем восстановление затёртого регистра из кадра вызова
+				emitter.fetch(SPILLED[i], reg_t::STACK, static_cast <uint32_t> (spill + i));
+		}
 	}
 
 	/**
@@ -3199,11 +3205,16 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	// Выполняем сохранение позиции начала поиска совпадения в кадре вызова
 	emitter.store(reg_t::START, reg_t::STACK, static_cast <uint32_t> (origin));
 	/**
-	 * Если проверка возможности совпадения в тексте порождается
+	 * Выполняем установку признака проверки возможности совпадения
 	 *
 	 * @details Проверка выполняется единожды: обязательный литерал совпадения
 	 *          отсутствует в оставшемся тексте целиком, а не в отдельной
-	 *          позиции начала попытки.
+	 *          позиции начала попытки. Оттого место её - перед входом
+	 *          в порождённый код, где она обходится вызовом обычным, а не
+	 *          внутри него, где всякий вызов подпрограммы обстановки несёт
+	 *          девять хранений регистров в кадре и девять чтений обратно.
+	 *          Замером: обвязка эта стоила восьми наносекунд из шестнадцати
+	 *          на «[a-z]+/v1», то есть половины времени сопоставления.
 	 *
 	 *          Выражение, к позиции начала поиска привязанное, проверки этой
 	 *          не получает вовсе: совпадение у него начинается лишь в позиции
@@ -3214,14 +3225,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	 *          этим просмотром.
 	 *
 	 */
-	if(possible && !narrowing) {
-		// Выполняем вызов подпрограммы проверки возможности совпадения
-		invoke(emitter, SLOT_FEASIBLE, spill, reg_t::KEEPER, SLOT_PREFILTER);
-		// Выполняем сравнение итога проверки возможности совпадения с нулём
-		emitter.compare(reg_t::SCRATCH, static_cast <uint32_t> (0));
-		// Выполняем переход к отсутствию совпадения при невозможности его
-		emitter.branch(cond_t::EQUAL, none);
-	}
+	this->_feasible = (possible && !narrowing);
 	/**
 	 * Если отбор позиций начала попытки по обязательному литералу порождается
 	 *
@@ -6339,6 +6343,15 @@ bool awh::regex::Codegen::save(string & result) const noexcept {
 		return false;
 	// Выполняем запись опознания набора команд порождённого кода
 	result.push_back(static_cast <char> (instructionSet()));
+	/**
+	 * Выполняем запись признака проверки возможности совпадения
+	 *
+	 * @details Признак выводится из отбора позиций и обязательного литерала,
+	 *          величинами порождения выводимых, - воспроизвести его при
+	 *          восстановлении нечем, оттого он и пишется.
+	 *
+	 */
+	result.push_back(static_cast <char> (this->_feasible ? 1 : 0));
 	// Выполняем запись размера записи кадра порождённого сопоставителя
 	writeSize(static_cast <uint64_t> (this->_frame), result);
 	// Выполняем запись наибольшего количества записей кадра
@@ -6386,6 +6399,14 @@ bool awh::regex::Codegen::restore(string_view data, size_t & offset, const progr
 		return false;
 	// Получаем опознание набора команд порождённого кода
 	const uint8_t machine = static_cast <uint8_t> (data[offset++]);
+	/**
+	 * Если признак проверки возможности совпадения записью не отдан
+	 */
+	if(offset >= data.size())
+		// Выводим результат восстановления сопоставителя
+		return false;
+	// Получаем признак проверки возможности совпадения перед сопоставлением
+	const bool feasible = (static_cast <uint8_t> (data[offset++]) != 0);
 	// Размер записи кадра порождённого сопоставителя
 	uint64_t sizing = 0;
 	// Наибольшее количество записей кадра порождённого сопоставителя
@@ -6512,6 +6533,8 @@ bool awh::regex::Codegen::restore(string_view data, size_t & offset, const progr
 	this->_offsets = ::move(offsets);
 	// Выполняем установку предварительного отбора позиций
 	this->_prefilter = program.prefilter;
+	// Выполняем установку признака проверки возможности совпадения
+	this->_feasible = feasible;
 	// Выполняем размещение набора адресов обстановки исполнения
 	this->_context.assign((SLOT_TABLES + this->_offsets.size()), nullptr);
 	/**
@@ -6562,6 +6585,8 @@ bool awh::regex::Codegen::restore(string_view data, size_t & offset, const progr
  *
  */
 void awh::regex::Codegen::clear() noexcept {
+	// Выполняем сброс признака проверки возможности совпадения
+	this->_feasible = false;
 	// Выполняем освобождение исполняемой памяти порождённого сопоставителя
 	this->_assembly.release();
 	// Выполняем очистку таблиц принадлежности значений байта
@@ -6617,6 +6642,21 @@ bool awh::regex::Codegen::exec(string_view text, const size_t start, vector <pai
 	 * Если порождённый сопоставитель не готов
 	 */
 	if(this->_matcher == nullptr)
+		// Выводим результат поиска совпадения
+		return false;
+	/**
+	 * Если совпадение в тексте невозможно вовсе
+	 *
+	 * @details Обязательный литерал совпадения ищется в тексте целиком, и
+	 *          отсутствие его отвергает сопоставление, попыток не начиная.
+	 *          Проверка эта прежде порождалась внутри машинного кода вызовом
+	 *          подпрограммы обстановки, а обвязка такого вызова - девять
+	 *          хранений регистров в кадре и девять чтений обратно - обходилась
+	 *          вдвое дороже самой проверки там, где совпадение близко.
+	 *          Выполняемая единожды на сопоставление, она принадлежит входу.
+	 *
+	 */
+	if(this->_feasible && !this->_prefilter.possible(text, start))
 		// Выводим результат поиска совпадения
 		return false;
 	// Получаем требуемое количество границ обнаруженного совпадения
@@ -6826,4 +6866,4 @@ size_t awh::regex::Codegen::length() const noexcept {
  * @brief Конструктор
  *
  */
-awh::regex::Codegen::Codegen() noexcept : _captures(0), _frame(0), _levels(0), _identity(0), _matcher(nullptr) {}
+awh::regex::Codegen::Codegen() noexcept : _feasible(false), _captures(0), _frame(0), _levels(0), _identity(0), _matcher(nullptr) {}

@@ -383,6 +383,24 @@ namespace awh {
 				bool init(central_t * central, classes_t * classes) noexcept;
 				/**
 				 * \~russian
+				 * @brief Метод заведения ключа хранения кэшей потоков
+				 *
+				 * @note Зовётся ОТДЕЛЬНО от заведения и ПОЗЖЕ него: заведение приходится
+				 *       на первую выдачу памяти в процессе, когда средства потоков могут
+				 *       быть ещё не готовы сами. До этого вызова кэшей потоков нет вовсе,
+				 *       и выдача идёт общим путём через центральные списки
+				 *
+				 * @return признак заведённого ключа
+				 *
+				 * \~english
+				 * @brief Method of creating the thread cache storage key
+				 *
+				 * @return flag of the key having been created
+				 *
+				 */
+				bool arm() noexcept;
+				/**
+				 * \~russian
 				 * @brief Метод разрушения управляющего кэшами
 				 *
 				 * @note Отдаёт центральным спискам блоки всех кэшей

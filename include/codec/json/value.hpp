@@ -235,6 +235,99 @@ namespace awh {
 				private:
 					/**
 					 * \~russian
+					 * Отображение имён полей объекта на их номера, заводимое по требованию
+					 *
+					 * @details Мелкие объекты разыскиваются перебором имён, а крупные -
+					 * отображением: заведение его обходится дороже сличения немногих имён,
+					 * а объектов о немногих полях в обиходе подавляющее большинство. Порог
+					 * тот же, каким заводит отображение документ, - речь об одном выборе
+					 *
+					 * @note Ключом служит САМО ИМЯ, а не вид на него: у документа
+					 *       отображение опирается на неподвижное хранилище знаков, здесь же
+					 *       имена лежат перечнем, и перевыделение его сдвинуло бы знаки
+					 *       коротких имён вместе с самими строками, обратив всякий вид
+					 *       висячим
+					 *
+					 * @note Повтор имени отображение хранит ПЕРВЫМ вхождением: добавление
+					 *       поля повтор допускает намеренно, а перебор находит первое, и
+					 *       отображению надлежит отвечать тем же
+					 *
+					 * \~english
+					 * Mapping of the names of the fields of an object onto their numbers, built on demand
+					 *
+					 * \~
+					 */
+					mutable unordered_map <string, size_t> _index;
+				private:
+					/**
+					 * \~russian
+					 * Признак заведённости отображения имён полей объекта
+					 *
+					 * @note Признак отдельный от пустоты отображения обязателен: у объекта
+					 *       об одних лишь повторяющихся именах отображение вышло бы короче
+					 *       перечня, и сличение размеров велело бы заводить его снова и
+					 *       снова на всяком обращении
+					 *
+					 * \~english
+					 * Flag of the readiness of the mapping of the names of the fields of an object
+					 *
+					 * \~
+					 */
+					mutable bool _indexed;
+				private:
+					/**
+					 * \~russian
+					 * @brief Метод розыска номера поля объекта по имени
+					 *
+					 * @details Мелкий объект разыскивается перебором имён, крупный -
+					 * отображением, заводимым при первом же обращении
+					 *
+					 * @param  name разыскиваемое имя поля объекта
+					 * @return      номер разысканного поля объекта либо признак отсутствия
+					 *
+					 * \~english
+					 * @brief Method of the search of the number of a field of an object by name
+					 *
+					 * @param  name the searched name of a field of an object
+					 * @return      the number of the found field of an object or the flag of absence
+					 *
+					 * \~
+					 */
+					size_t lookup(const string & name) const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод учёта заведённого поля объекта в отображении имён
+					 *
+					 * @note Метод зовётся ПОСЛЕ добавления имени в перечень: номером служит
+					 *       место, какое имя в перечне заняло
+					 *
+					 * @param name имя заведённого поля объекта
+					 *
+					 * \~english
+					 * @brief Method of the accounting of an added field of an object in the mapping of names
+					 *
+					 * @param name the name of the added field of an object
+					 *
+					 * \~
+					 */
+					void indexed(const string & name) const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод сброса отображения имён полей объекта
+					 *
+					 * @note Сброс обязателен при всяком сдвиге номеров: снятие поля сдвигает
+					 *       все следующие за ним, и отображение, пережившее сдвиг, отвечало
+					 *       бы номером соседа
+					 *
+					 * \~english
+					 * @brief Method of the reset of the mapping of the names of the fields of an object
+					 *
+					 * \~
+					 */
+					void reindex() const noexcept;
+				private:
+					/**
+					 * \~russian
 					 * @brief Шаблонный метод извлечения числа затребованным видом
 					 *
 					 * @tparam T      затребованный вид числа

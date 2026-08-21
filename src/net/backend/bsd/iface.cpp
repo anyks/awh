@@ -83,6 +83,19 @@
 	 * Подключаем заголовочный файл для работы с TUN интерфейсами
 	 */
 	#include <net/if_tun.h>
+/**
+ * Для операционной системы DragonFly BSD
+ *
+ * @note Заголовки туннеля и моста лежат там СВОИМИ путями, каталогом глубже:
+ *       «net/tun/if_tun.h» вместо «net/if_tun.h». Оттого система и не легла в
+ *       общую ветвь BSD, хотя управляющие вызовы у неё те же
+ */
+#elif __DragonFly__
+	/**
+	 * Подключаем заголовочные файлы для работы с TUN и TAP интерфейсами
+	 */
+	#include <net/tun/if_tun.h>
+	#include <net/tap/if_tap.h>
 #endif
 
 /**
@@ -393,8 +406,16 @@ namespace iface {
 					ifra.ifra_broadaddr.sin_addr.s_addr = awh_cast <const awh::net::addr_net_ipv4_t *> (peer)->address;
 				// Вычисляем широковещательный адрес
 				else ifra.ifra_broadaddr.sin_addr.s_addr = ((ifra.ifra_addr.sin_addr.s_addr & ifra.ifra_mask.sin_addr.s_addr) | ~ifra.ifra_mask.sin_addr.s_addr);
-				// Применяем новый IP-адрес и маску интерфейса
-				if(!(result = (::ioctl(sock, SIOCAIFADDR, &ifra) == 0))){
+				/**
+				 * Применяем новый IP-адрес и маску интерфейса
+				 *
+				 * @note EEXIST считается УСПЕХОМ: он означает, что запрошенный адрес на
+				 *       устройстве уже стоит, а это ровно то, чего добивался вызывающий.
+				 *       Считая его отказом, движок бросал устройство БЕЗ адреса, и дальше
+				 *       всё отчитывалось поднятым, а связи не было. Копится такое от
+				 *       мёртвых маршрутов, остающихся после прибитых прогонов
+				 */
+				if(!(result = ((::ioctl(sock, SIOCAIFADDR, &ifra) == 0) || (errno == EEXIST)))){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -466,7 +487,8 @@ namespace iface {
 				ifra6.ifra_lifetime.ia6t_vltime = ND6_INFINITE_LIFETIME;
 				ifra6.ifra_lifetime.ia6t_pltime = ND6_INFINITE_LIFETIME;
 				// Применяем новый IP-адрес и маску интерфейса
-				if(!(result = (::ioctl(sock, SIOCAIFADDR_IN6, &ifra6) == 0))){
+				// EEXIST считается УСПЕХОМ по тому же доводу, что и у IPv4 выше
+				if(!(result = ((::ioctl(sock, SIOCAIFADDR_IN6, &ifra6) == 0) || (errno == EEXIST)))){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -1294,7 +1316,7 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 				/**
 				 * Для операционной системы FreeBSD, NetBSD, OpenBSD
 				 */
-				#elif __FreeBSD__ || __NetBSD__ || __OpenBSD__
+				#elif __FreeBSD__ || __NetBSD__ || __OpenBSD__ || __DragonFly__
 					/**
 					 * Заводим устройство туннеля
 					 *
@@ -1310,7 +1332,7 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 					 *       OpenBSD отсутствует
 					 *
 					 */
-					#if __FreeBSD__
+					#if __FreeBSD__ || __DragonFly__
 						// Создаём сокет для управления UTUN интерфейсом
 						result = ::open("/dev/tun", O_RDWR);
 					#else
@@ -1367,13 +1389,35 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 					 * @note Разрешение имени по описателю нужно лишь клонирующему устройству:
 					 *       перебор имя уже знает из пути, которым устройство открывал
 					 */
-					#if __FreeBSD__
+					#if __FreeBSD__ || __DragonFly__
 					// Запоминаем заказанное имя устройства до его разрешения
 					const string request(name);
 					// Выделяем буфер для имени интерфейса
 					name.resize(IFNAMSIZ, '\0');
-					// Получаем имя созданного интерфейса
-					if(::fdevname_r(result, &name[0], IFNAMSIZ) == nullptr){
+					/**
+					 * Получаем имя созданного интерфейса
+					 *
+					 * @warning У DragonFly `fdevname_r` отдаёт ЧИСЛО, а не указатель, и сличение
+					 *          с nullptr там не собирается вовсе. Имя берётся родным запросом
+					 *          устройства TUNGIFNAME, отдающим его сразу в структуре запроса
+					 */
+					#if __DragonFly__
+						// Объект запроса имени устройства
+						struct ifreq ifr;
+						// Обнуляем объект запроса имени устройства
+						::memset(&ifr, 0, sizeof(ifr));
+						// Спрашиваем у открытого устройства его имя
+						const bool failure = (::ioctl(result, TUNGIFNAME, &ifr) != 0);
+						// Если имя устройства получено
+						if(!failure)
+							// Запоминаем полученное имя устройства
+							name.assign(ifr.ifr_name, ::strnlen(ifr.ifr_name, IFNAMSIZ));
+					#else
+						// Получаем имя созданного интерфейса
+						const bool failure = (::fdevname_r(result, &name[0], IFNAMSIZ) == nullptr);
+					#endif
+					// Если имя устройства получить не удалось
+					if(failure){
 						/**
 						 * Если включён режим отладки
 						 */
@@ -1512,7 +1556,7 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 				/**
 				 * Для операционной системы FreeBSD, NetBSD, OpenBSD
 				 */
-				#elif __FreeBSD__ || __NetBSD__ || __OpenBSD__
+				#elif __FreeBSD__ || __NetBSD__ || __OpenBSD__ || __DragonFly__
 					/**
 					 * Заводим устройство передачи кадров
 					 *

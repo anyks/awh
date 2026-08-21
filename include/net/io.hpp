@@ -1069,6 +1069,47 @@ namespace awh {
 				 * \~
 				 */
 				bool setIface(const event::id_t id, string_view name) noexcept;
+			/**
+			 * Для операционной системы MS Windows
+			 */
+			#if _WIN32 || _WIN64
+				public:
+					/**
+					 * \~russian
+					 * @brief Метод получения драйвера, каким заводятся устройства туннеля
+					 *
+					 * @return драйвер устройств туннеля
+					 *
+					 * \~english
+					 * @brief Method of getting the driver by which the tunnel devices are created
+					 * @return driver of the tunnel devices
+					 *
+					 * \~
+					 */
+					eth::iface_t::driver_t getDriver() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод установки драйвера, каким заводятся устройства туннеля
+					 *
+					 * @details Драйверов у MS Windows два, и они несут разное: Wintun переносит
+					 *          пакеты сетевого уровня кольцом в общей с драйвером памяти, а
+					 *          tap-windows6 - кадры канального уровня через дескриптор файла.
+					 *          Выбор по умолчанию (`AUTO`) отдан модулю: для пакетов сетевого
+					 *          уровня предпочитается Wintun, если он доступен
+					 *
+					 * @note Ставить драйвер надлежит ДО заведения устройства: выбор делается один
+					 *       раз, при создании
+					 *
+					 * @param driver драйвер устройств туннеля для установки
+					 *
+					 * \~english
+					 * @brief Method of setting the driver by which the tunnel devices are created
+					 * @param driver driver of the tunnel devices to set
+					 *
+					 * \~
+					 */
+					void setDriver(const eth::iface_t::driver_t driver) noexcept;
+			#endif
 			public:
 				/**
 				 * \~russian

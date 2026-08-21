@@ -354,6 +354,8 @@ void awh::codec::json::Value::clear() noexcept {
 	this->_text.clear();
 	// Выполняем очистку имён полей объекта
 	this->_names.clear();
+	// Выполняем сброс отображения имён полей объекта
+	this->reindex();
 	// Выполняем очистку значений вместилища
 	this->_items.clear();
 }
@@ -394,6 +396,88 @@ string awh::codec::json::Value::raw() const noexcept {
 	return writer.take();
 }
 /**
+ * @brief Метод розыска номера поля объекта по имени
+ *
+ * @details Мелкий объект разыскивается перебором имён, крупный - отображением,
+ *          заводимым при первом же обращении. Порог тот же, каким заводит отображение
+ *          документ: и там, и здесь речь об одном и том же выборе
+ *
+ * @note Отображение хранит ПЕРВОЕ вхождение имени: добавление поля повтор имени
+ *       допускает намеренно, а перебор находит первое, и отображению надлежит
+ *       отвечать тем же. Оттого наполнение идёт `emplace`, а не установкой по ключу
+ *
+ * @param  name разыскиваемое имя поля объекта
+ * @return      номер разысканного поля объекта либо признак отсутствия
+ *
+ */
+size_t awh::codec::json::Value::lookup(const string & name) const noexcept {
+	/**
+	 * Если количество полей объекта превышает порог заведения отображения
+	 */
+	if(this->_names.size() > INDEX_THRESHOLD){
+		/**
+		 * Если отображение имён полей объекта ещё не заведено
+		 */
+		if(!this->_indexed){
+			// Выполняем выделение памяти под отображение имён полей объекта
+			this->_index.reserve(this->_names.size());
+			/**
+			 * Выполняем перебор всех имён полей объекта
+			 */
+			for(size_t i = 0; i < this->_names.size(); i++)
+				// Добавляем имя поля объекта в отображение, если оно ещё не занято
+				this->_index.emplace(this->_names.at(i), i);
+			// Запоминаем, что отображение имён полей объекта заведено
+			this->_indexed = true;
+		}
+		// Выполняем поиск имени поля объекта в отображении
+		auto i = this->_index.find(name);
+		// Выводим номер разысканного поля объекта, если оно заведено
+		return ((i != this->_index.end()) ? i->second : static_cast <size_t> (~0ull));
+	}
+	/**
+	 * Выполняем перебор всех имён полей объекта
+	 */
+	for(size_t i = 0; i < this->_names.size(); i++){
+		/**
+		 * Если имя поля объекта совпадает с разыскиваемым
+		 */
+		if(this->_names.at(i).compare(name) == 0)
+			// Выводим номер разысканного поля объекта
+			return i;
+	}
+	// Выводим признак отсутствия поля объекта с таким именем
+	return static_cast <size_t> (~0ull);
+}
+/**
+ * @brief Метод учёта заведённого поля объекта в отображении имён
+ *
+ * @note Метод зовётся ПОСЛЕ добавления имени в перечень: номером служит место, какое
+ *       имя в перечне заняло. Пока отображение не заведено, учитывать нечего - оно
+ *       наполнится целиком при первом же обращении
+ *
+ * @param name имя заведённого поля объекта
+ *
+ */
+void awh::codec::json::Value::indexed(const string & name) const noexcept {
+	/**
+	 * Если отображение имён полей объекта заведено
+	 */
+	if(this->_indexed)
+		// Добавляем имя поля объекта в отображение, если оно ещё не занято
+		this->_index.emplace(name, this->_names.size() - 1);
+}
+/**
+ * @brief Метод сброса отображения имён полей объекта
+ *
+ */
+void awh::codec::json::Value::reindex() const noexcept {
+	// Выполняем очистку отображения имён полей объекта
+	this->_index.clear();
+	// Запоминаем, что отображение имён полей объекта не заведено
+	this->_indexed = false;
+}
+/**
  * @brief Метод извлечения имени поля объекта по номеру
  *
  * @param index номер поля объекта
@@ -412,19 +496,8 @@ const string & awh::codec::json::Value::key(const size_t index) const noexcept {
  *
  */
 bool awh::codec::json::Value::contains(const string & name) const noexcept {
-	/**
-	 * Выполняем перебор всех имён полей объекта
-	 */
-	for(auto & item : this->_names){
-		/**
-		 * Если имя поля объекта совпадает с разыскиваемым
-		 */
-		if(item.compare(name) == 0)
-			// Выводим признак наличия поля объекта
-			return true;
-	}
-	// Выводим отсутствие поля объекта
-	return false;
+	// Выводим признак наличия поля объекта с таким именем
+	return (this->lookup(name) != static_cast <size_t> (~0ull));
 }
 /**
  * @brief Метод извлечения предела роста вместилища по номеру
@@ -524,26 +597,12 @@ const awh::codec::json::Value & awh::codec::json::Value::at(const string & path)
 			} break;
 			// Если звено пути обращается к полю объекта
 			case static_cast <uint8_t> (kind_t::OBJECT): {
-				// Номер разыскиваемого поля объекта
-				size_t index = result->_names.size();
-				/**
-				 * Выполняем перебор всех имён полей объекта
-				 */
-				for(size_t i = 0; i < result->_names.size(); i++){
-					/**
-					 * Если имя поля объекта совпадает с разыскиваемым
-					 */
-					if(result->_names.at(i).compare(token) == 0){
-						// Запоминаем номер разысканного поля объекта
-						index = i;
-						// Прекращаем перебор имён полей объекта
-						break;
-					}
-				}
+				// Выполняем розыск номера поля объекта по имени
+				const size_t index = result->lookup(token);
 				/**
 				 * Если поле объекта с таким именем не разыскано
 				 */
-				if(index >= result->_names.size())
+				if(index == static_cast <size_t> (~0ull))
 					// Выводим значение неопределённое
 					return Value::undefined();
 				// Выполняем переход к значению поля объекта
@@ -651,28 +710,18 @@ awh::codec::json::Value & awh::codec::json::Value::place(const string & path) no
 		 * Если звено пути обращается к полю объекта
 		 */
 		} else {
-			// Номер разыскиваемого поля объекта
-			size_t offset = result->_names.size();
-			/**
-			 * Выполняем перебор всех имён полей объекта
-			 */
-			for(size_t i = 0; i < result->_names.size(); i++){
-				/**
-				 * Если имя поля объекта совпадает с разыскиваемым
-				 */
-				if(result->_names.at(i).compare(token) == 0){
-					// Запоминаем номер разысканного поля объекта
-					offset = i;
-					// Прекращаем перебор имён полей объекта
-					break;
-				}
-			}
+			// Выполняем розыск номера поля объекта по имени
+			size_t offset = result->lookup(token);
 			/**
 			 * Если поле объекта с таким именем ещё не заведено
 			 */
-			if(offset >= result->_names.size()){
+			if(offset == static_cast <size_t> (~0ull)){
+				// Запоминаем номер заводимого поля объекта
+				offset = result->_names.size();
 				// Добавляем имя поля объекта в перечень имён
 				result->_names.push_back(token);
+				// Выполняем учёт заведённого поля объекта в отображении имён
+				result->indexed(token);
 				// Добавляем в объект значение неопределённое
 				result->_items.push_back(Value());
 			}
@@ -697,17 +746,14 @@ const awh::codec::json::Value & awh::codec::json::Value::operator [] (const stri
 	if(this->_kind != kind_t::OBJECT)
 		// Выводим значение неопределённое
 		return Value::undefined();
+	// Выполняем розыск номера поля объекта по имени
+	const size_t offset = this->lookup(name);
 	/**
-	 * Выполняем перебор всех имён полей объекта
+	 * Если поле объекта с таким именем заведено
 	 */
-	for(size_t i = 0; i < this->_names.size(); i++){
-		/**
-		 * Если имя поля объекта совпадает с разыскиваемым
-		 */
-		if(this->_names.at(i).compare(name) == 0)
-			// Выводим ссылку на значение поля объекта
-			return this->_items.at(i);
-	}
+	if(offset != static_cast <size_t> (~0ull))
+		// Выводим ссылку на значение поля объекта
+		return this->_items.at(offset);
 	// Выводим значение неопределённое
 	return Value::undefined();
 }
@@ -738,19 +784,18 @@ awh::codec::json::Value & awh::codec::json::Value::operator [] (const string & n
 	if(this->_kind != kind_t::OBJECT)
 		// Выводим значение мусорное
 		return Value::scrap();
+	// Выполняем розыск номера поля объекта по имени
+	const size_t offset = this->lookup(name);
 	/**
-	 * Выполняем перебор всех имён полей объекта
+	 * Если поле объекта с таким именем заведено
 	 */
-	for(size_t i = 0; i < this->_names.size(); i++){
-		/**
-		 * Если имя поля объекта совпадает с разыскиваемым
-		 */
-		if(this->_names.at(i).compare(name) == 0)
-			// Выводим ссылку на значение поля объекта
-			return this->_items.at(i);
-	}
+	if(offset != static_cast <size_t> (~0ull))
+		// Выводим ссылку на значение поля объекта
+		return this->_items.at(offset);
 	// Добавляем имя поля объекта в перечень имён
 	this->_names.push_back(name);
+	// Выполняем учёт заведённого поля объекта в отображении имён
+	this->indexed(name);
 	// Добавляем в объект значение неопределённое
 	this->_items.push_back(Value());
 	// Выводим ссылку на заведённое значение поля объекта
@@ -877,22 +922,21 @@ bool awh::codec::json::Value::insert(const string & name, const Value & value) n
 	if(this->_kind != kind_t::OBJECT)
 		// Выводим признак неудачной установки
 		return false;
+	// Выполняем розыск номера поля объекта по имени
+	const size_t offset = this->lookup(name);
 	/**
-	 * Выполняем перебор всех имён полей объекта
+	 * Если поле объекта с таким именем уже заведено
 	 */
-	for(size_t i = 0; i < this->_names.size(); i++){
-		/**
-		 * Если имя поля объекта совпадает с устанавливаемым
-		 */
-		if(this->_names.at(i).compare(name) == 0){
-			// Выполняем перезапись значения поля объекта на своём месте
-			this->_items.at(i) = value;
-			// Выводим признак успешной установки
-			return true;
-		}
+	if(offset != static_cast <size_t> (~0ull)){
+		// Выполняем перезапись значения поля объекта на своём месте
+		this->_items.at(offset) = value;
+		// Выводим признак успешной установки
+		return true;
 	}
 	// Добавляем имя поля объекта в перечень имён
 	this->_names.push_back(name);
+	// Выполняем учёт заведённого поля объекта в отображении имён
+	this->indexed(name);
 	// Добавляем значение поля в объект
 	this->_items.push_back(value);
 	// Выводим признак успешной установки
@@ -929,6 +973,14 @@ bool awh::codec::json::Value::append(const string & name, const Value & value) n
 	 *       установкой, что поле кладётся рядом, а не поверх
 	 */
 	this->_names.push_back(name);
+	/**
+	 * Выполняем учёт заведённого поля объекта в отображении имён
+	 *
+	 * @note Повтор имени отображение оставит за ПЕРВЫМ вхождением: `emplace` занятого
+	 *       ключа не перезаписывает, и розыск отвечает тем же номером, каким отвечал
+	 *       бы перебор
+	 */
+	this->indexed(name);
 	// Добавляем значение поля в объект
 	this->_items.push_back(value);
 	// Выводим признак успешного добавления
@@ -948,21 +1000,25 @@ bool awh::codec::json::Value::erase(const string & name) noexcept {
 	if(this->_kind != kind_t::OBJECT)
 		// Выводим признак неудачного снятия
 		return false;
+	// Выполняем розыск номера поля объекта по имени
+	const size_t offset = this->lookup(name);
 	/**
-	 * Выполняем перебор всех имён полей объекта
+	 * Если поле объекта с таким именем заведено
 	 */
-	for(size_t i = 0; i < this->_names.size(); i++){
+	if(offset != static_cast <size_t> (~0ull)){
+		// Выполняем снятие имени поля объекта
+		this->_names.erase(this->_names.begin() + static_cast <ptrdiff_t> (offset));
+		// Выполняем снятие значения поля объекта
+		this->_items.erase(this->_items.begin() + static_cast <ptrdiff_t> (offset));
 		/**
-		 * Если имя поля объекта совпадает со снимаемым
+		 * Выполняем сброс отображения имён полей объекта
+		 *
+		 * @note Сброс здесь обязателен: снятие поля сдвигает номера всех следующих
+		 *       за ним, и отображение, пережившее сдвиг, отвечало бы номером соседа
 		 */
-		if(this->_names.at(i).compare(name) == 0){
-			// Выполняем снятие имени поля объекта
-			this->_names.erase(this->_names.begin() + static_cast <ptrdiff_t> (i));
-			// Выполняем снятие значения поля объекта
-			this->_items.erase(this->_items.begin() + static_cast <ptrdiff_t> (i));
-			// Выводим признак успешного снятия
-			return true;
-		}
+		this->reindex();
+		// Выводим признак успешного снятия
+		return true;
 	}
 	// Выводим признак неудачного снятия
 	return false;
@@ -984,9 +1040,12 @@ bool awh::codec::json::Value::erase(const size_t index) noexcept {
 	/**
 	 * Если значение является объектом
 	 */
-	if(this->_kind == kind_t::OBJECT)
+	if(this->_kind == kind_t::OBJECT){
 		// Выполняем снятие имени поля объекта
 		this->_names.erase(this->_names.begin() + static_cast <ptrdiff_t> (index));
+		// Выполняем сброс отображения имён полей объекта
+		this->reindex();
+	}
 	// Выполняем снятие значения вместилища
 	this->_items.erase(this->_items.begin() + static_cast <ptrdiff_t> (index));
 	// Выводим признак успешного снятия
@@ -1479,6 +1538,13 @@ void awh::codec::json::Value::absorb(const Document::value_t & value) noexcept {
 				// Выполняем снятие очередного значения вместилища
 				this->_items.back().absorb(item);
 			}
+			/**
+			 * Выполняем сброс отображения имён полей объекта
+			 *
+			 * @note Наполнение идёт перечнем напрямую, минуя учёт: отображение,
+			 *       заведённое прежде снятия, отвечало бы о полях, каких уже нет
+			 */
+			this->reindex();
 		} break;
 	}
 }
@@ -1820,6 +1886,8 @@ awh::codec::json::Value & awh::codec::json::Value::operator = (const Value & val
 	this->_names = value._names;
 	// Выполняем копирование значений вместилища
 	this->_items = value._items;
+	// Выполняем сброс отображения имён полей объекта
+	this->reindex();
 	// Выводим ссылку на текущее значение
 	return (* this);
 }
@@ -1849,6 +1917,8 @@ awh::codec::json::Value & awh::codec::json::Value::operator = (Value && value) n
 	this->_names = ::std::move(value._names);
 	// Выполняем перенос значений вместилища
 	this->_items = ::std::move(value._items);
+	// Выполняем сброс отображения имён полей объекта
+	this->reindex();
 	// Выполняем очистку значения, у какого содержимое отобрано
 	value.clear();
 	// Выводим ссылку на текущее значение
@@ -1858,7 +1928,7 @@ awh::codec::json::Value & awh::codec::json::Value::operator = (Value && value) n
  * @brief Конструктор
  *
  */
-awh::codec::json::Value::Value() noexcept : _kind(kind_t::NONE), _type(type_t::UNDEFINED) {
+awh::codec::json::Value::Value() noexcept : _kind(kind_t::NONE), _type(type_t::UNDEFINED), _indexed(false) {
 	// Выполняем сброс хранимого числа
 	this->_number.natural = 0;
 }
@@ -1868,7 +1938,7 @@ awh::codec::json::Value::Value() noexcept : _kind(kind_t::NONE), _type(type_t::U
  * @param kind вид заводимого значения
  *
  */
-awh::codec::json::Value::Value(const kind_t kind) noexcept : _kind(kind), _type(type_t::UNDEFINED) {
+awh::codec::json::Value::Value(const kind_t kind) noexcept : _kind(kind), _type(type_t::UNDEFINED), _indexed(false) {
 	// Выполняем сброс хранимого числа
 	this->_number.natural = 0;
 	/**
@@ -1919,7 +1989,7 @@ awh::codec::json::Value::Value(const kind_t kind) noexcept : _kind(kind), _type(
  * @param value заводимое значение
  *
  */
-awh::codec::json::Value::Value(const bool value) noexcept : _kind(kind_t::BOOL), _type(type_t::BOOL) {
+awh::codec::json::Value::Value(const bool value) noexcept : _kind(kind_t::BOOL), _type(type_t::BOOL), _indexed(false) {
 	// Выполняем сброс хранимого числа
 	this->_number.natural = 0;
 	// Устанавливаем заводимое логическое значение
@@ -1934,7 +2004,7 @@ awh::codec::json::Value::Value(const bool value) noexcept : _kind(kind_t::BOOL),
  * @param value заводимое значение
  *
  */
-awh::codec::json::Value::Value(const int64_t value) noexcept : _kind(kind_t::NUMBER), _type(type_t::INT64) {
+awh::codec::json::Value::Value(const int64_t value) noexcept : _kind(kind_t::NUMBER), _type(type_t::INT64), _indexed(false) {
 	// Выполняем сброс хранимого числа
 	this->_number.natural = 0;
 	// Устанавливаем заводимое целое число со знаком
@@ -1956,7 +2026,7 @@ awh::codec::json::Value::Value(const int64_t value) noexcept : _kind(kind_t::NUM
  * @param value заводимое значение
  *
  */
-awh::codec::json::Value::Value(const uint64_t value) noexcept : _kind(kind_t::NUMBER), _type(type_t::UINT64) {
+awh::codec::json::Value::Value(const uint64_t value) noexcept : _kind(kind_t::NUMBER), _type(type_t::UINT64), _indexed(false) {
 	// Выполняем сброс хранимого числа
 	this->_number.natural = 0;
 	// Устанавливаем заводимое целое число без знака
@@ -1982,7 +2052,7 @@ awh::codec::json::Value::Value(const uint64_t value) noexcept : _kind(kind_t::NU
  * @param value заводимое значение
  *
  */
-awh::codec::json::Value::Value(const double value) noexcept : _kind(kind_t::NUMBER), _type(type_t::DOUBLE) {
+awh::codec::json::Value::Value(const double value) noexcept : _kind(kind_t::NUMBER), _type(type_t::DOUBLE), _indexed(false) {
 	// Выполняем сброс хранимого числа
 	this->_number.natural = 0;
 	// Устанавливаем заводимое дробное число
@@ -2000,7 +2070,7 @@ awh::codec::json::Value::Value(const double value) noexcept : _kind(kind_t::NUMB
  * @param value заводимое значение
  *
  */
-awh::codec::json::Value::Value(const string & value) noexcept : _kind(kind_t::STRING), _type(type_t::STRING), _text(value) {
+awh::codec::json::Value::Value(const string & value) noexcept : _kind(kind_t::STRING), _type(type_t::STRING), _text(value), _indexed(false) {
 	// Выполняем сброс хранимого числа
 	this->_number.natural = 0;
 }
@@ -2010,7 +2080,7 @@ awh::codec::json::Value::Value(const string & value) noexcept : _kind(kind_t::ST
  * @param value заводимое значение, ноль - значение пустое
  *
  */
-awh::codec::json::Value::Value(const char * value) noexcept : _kind(kind_t::STRING), _type(type_t::STRING) {
+awh::codec::json::Value::Value(const char * value) noexcept : _kind(kind_t::STRING), _type(type_t::STRING), _indexed(false) {
 	// Выполняем сброс хранимого числа
 	this->_number.natural = 0;
 	/**
@@ -2026,7 +2096,7 @@ awh::codec::json::Value::Value(const char * value) noexcept : _kind(kind_t::STRI
  * @param value ссылка на узел документа
  *
  */
-awh::codec::json::Value::Value(const Document::value_t & value) noexcept : _kind(kind_t::NONE), _type(type_t::UNDEFINED) {
+awh::codec::json::Value::Value(const Document::value_t & value) noexcept : _kind(kind_t::NONE), _type(type_t::UNDEFINED), _indexed(false) {
 	// Выполняем сброс хранимого числа
 	this->_number.natural = 0;
 	// Выполняем снятие значения со ссылки на узел документа
@@ -2040,7 +2110,7 @@ awh::codec::json::Value::Value(const Document::value_t & value) noexcept : _kind
  */
 awh::codec::json::Value::Value(const Value & value) noexcept :
  _kind(value._kind), _type(value._type), _number(value._number),
- _text(value._text), _names(value._names), _items(value._items) {}
+ _text(value._text), _names(value._names), _items(value._items), _indexed(false) {}
 /**
  * @brief Конструктор переноса
  *
@@ -2049,7 +2119,7 @@ awh::codec::json::Value::Value(const Value & value) noexcept :
  */
 awh::codec::json::Value::Value(Value && value) noexcept :
  _kind(value._kind), _type(value._type), _number(value._number),
- _text(::std::move(value._text)), _names(::std::move(value._names)), _items(::std::move(value._items)) {
+ _text(::std::move(value._text)), _names(::std::move(value._names)), _items(::std::move(value._items)), _indexed(false) {
 	// Выполняем очистку значения, у какого содержимое отобрано
 	value.clear();
 }

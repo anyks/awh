@@ -96,6 +96,22 @@ bool awh::alloc::ELFCapture::shadowed(const char * name, const void * ours) cons
  * @return          признак состоявшегося захвата
  *
  */
+/**
+ * @brief Метод определения работающего разрешения имён у процесса
+ *
+ * @return признак работающего разрешения имён
+ *
+ */
+static bool __awh_elf_dynamic__() noexcept {
+	/**
+	 * Спрашиваем имя, какое есть у всякой системы
+	 *
+	 * У статической программы `dlsym` отвечает пустотой на всё: разрешать имена ей
+	 * негде и незачем - связыватель разрешил их единожды при сборке. Отличить этот
+	 * случай от порчи связывания можно лишь так: имя, какое есть заведомо, тоже пусто
+	 */
+	return (::dlsym(RTLD_DEFAULT, "getpid") != nullptr);
+}
 bool awh::alloc::ELFCapture::acquire(const functions_t & hooks, functions_t & originals) noexcept {
 	// Если захват уже состоялся
 	if(this->_acquired){
@@ -116,19 +132,27 @@ bool awh::alloc::ELFCapture::acquire(const functions_t & hooks, functions_t & or
 	 * `free` - скажем, если наш файл кода попал в архив, а из архива взялся не
 	 * целиком. Выдача нашей памяти чужому `free` неисправима
 	 */
-	if(!this->shadowed("malloc", reinterpret_cast <const void *> (hooks.malloc)))
+	/**
+	 * Признак работающего разрешения имён
+	 *
+	 * У статической программы заслонение сверять НЕ НУЖНО и нечем: два определения
+	 * одного имени связыватель туда не пропустил бы вовсе - сборка отказала бы ошибкой
+	 * двойного имени. Оттого сверка там пропускается, а не проваливается
+	 */
+	const bool dynamic = ::__awh_elf_dynamic__();
+	if(dynamic && !this->shadowed("malloc", reinterpret_cast <const void *> (hooks.malloc)))
 		// Отвечаем отказом
 		return false;
 	// Сверяем освобождение памяти
-	if(!this->shadowed("free", reinterpret_cast <const void *> (hooks.free)))
+	if(dynamic && !this->shadowed("free", reinterpret_cast <const void *> (hooks.free)))
 		// Отвечаем отказом
 		return false;
 	// Сверяем выделение обнулённой памяти
-	if(!this->shadowed("calloc", reinterpret_cast <const void *> (hooks.calloc)))
+	if(dynamic && !this->shadowed("calloc", reinterpret_cast <const void *> (hooks.calloc)))
 		// Отвечаем отказом
 		return false;
 	// Сверяем изменение размера выделенной памяти
-	if(!this->shadowed("realloc", reinterpret_cast <const void *> (hooks.realloc)))
+	if(dynamic && !this->shadowed("realloc", reinterpret_cast <const void *> (hooks.realloc)))
 		// Отвечаем отказом
 		return false;
 	/**
@@ -170,8 +194,28 @@ bool awh::alloc::ELFCapture::acquire(const functions_t & hooks, functions_t & or
 	   (this->_originals.calloc == nullptr) || (this->_originals.realloc == nullptr)){
 		// Обнуляем добытое наполовину
 		this->_originals = functions_t();
-		// Отвечаем отказом
-		return false;
+		/**
+		 * Отказ этот НЕ окончателен: у статической программы прежних функций нет вовсе
+		 *
+		 * Связывание там разрешает имена единожды, и наше определение занимает место
+		 * распределителя целиком: ни одной чужой выдачи в процессе не остаётся, а стало
+		 * быть и освобождать чужое не придётся. `dlsym` же в статической программе либо
+		 * отсутствует, либо честно отвечает пустотой - отличить этот случай от порчи
+		 * связывания можно лишь по тому, ведёт ли имя `malloc` к нам самим
+		 *
+		 * Проверено на OpenBSD: там подмена именами до внутренностей libc не достаёт
+		 * вовсе, и статическое связывание - единственный способ перехвата
+		 */
+		/**
+		 * Отсутствие прежних функций допустимо ЛИШЬ у статической программы
+		 *
+		 * Там наше определение занимает место распределителя целиком: ни одной чужой
+		 * выдачи в процессе не остаётся, а стало быть и освобождать чужое не придётся.
+		 * При работающем же разрешении имён пустота означает порчу захвата
+		 */
+		if(dynamic)
+			// Отвечаем отказом
+			return false;
 	}
 	// Отмечаем захват состоявшимся
 	this->_acquired = true;

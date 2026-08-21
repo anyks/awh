@@ -949,6 +949,36 @@ else()
         "${SOURCE_FILES}"
         "${CMAKE_SOURCE_DIR}/src/alloc/capture/elf.cpp"
     )
+    ##
+     # Если сборка производится под операционную систему OpenBSD
+     #
+     # Библиотека времени исполнения зовёт там выдачу памяти напрямую, по внутреннему
+     # имени, и подмена именами до неё не достаёт. Определения внутренних имён отдают
+     # нам и эти вызовы - при статическом связывании. Подробности в самом файле
+     ##
+    if (${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD")
+        # Выполняем подключение внутренних имён распределителя libc
+        SET(SOURCE_FILES
+            "${SOURCE_FILES}"
+            "${CMAKE_SOURCE_DIR}/src/alloc/capture/obsd.cpp"
+        )
+        ##
+         # Ключ полного перехвата у OpenBSD
+         #
+         # Внутренние имена libc отдаются нам лишь при СТАТИЧЕСКОМ связывании: у
+         # разделяемой libc вызовы связаны внутри неё самой ещё при её сборке. Режим
+         # этот потребитель выбирает сам, и объявить его обязан сборкой - опознать его
+         # в работе не выходит, подробности в src/alloc/cache.cpp
+         #
+         # Собирать надлежит вместе с -static у самой программы
+         ##
+        option(CMAKE_BUILD_ALLOCATOR_OPENBSD_FULL "Total interposition on OpenBSD (requires static linking)" OFF)
+        if (CMAKE_BUILD_ALLOCATOR_OPENBSD_FULL)
+            # Включаем полный перехват
+            add_definitions(-DAWH_ALLOC_OPENBSD_FULL)
+            message(STATUS "OpenBSD total interposition is ENABLED (link your program with -static)")
+        endif()
+    endif()
 endif()
 
 ##

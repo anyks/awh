@@ -142,6 +142,14 @@ typedef struct Params {
 	uint8_t prefix;
 	// Название готового устройства туннеля
 	string iface;
+	/**
+	 * Название драйвера, каким заводится устройство туннеля
+	 *
+	 * @note Драйверов у MS Windows два, и переносят они разное: Wintun несёт пакеты
+	 *       сетевого уровня, tap-windows6 - кадры канального уровня. У прочих систем
+	 *       выбора нет, и довод там не значит ничего
+	 */
+	string driver;
 	// Признак поднятия устройства туннеля
 	bool up;
 	// Признак установки маршрута через туннель
@@ -152,7 +160,7 @@ typedef struct Params {
 	 */
 	explicit Params() noexcept :
 	 tun{"10.0.0.1"}, peer{"10.0.0.2"}, bind{"127.0.0.1"},
-	 net{"10.0.0.0"}, iface{""}, port(2222), prefix(24), up(true), route(true) {}
+	 net{"10.0.0.0"}, iface{""}, driver{"auto"}, port(2222), prefix(24), up(true), route(true) {}
 } params_t;
 
 /**
@@ -175,6 +183,8 @@ static void usage(const char * name) noexcept {
 	cout << "  --no-up           не поднимать устройство туннеля" << endl;
 	cout << "  --iface <имя>     готовое устройство туннеля (обязательно у Solaris и illumos:" << endl;
 	cout << "                    связи там заводятся административно, например dladm)" << endl;
+	cout << "  --driver <вид>    драйвер устройства туннеля у MS Windows:" << endl;
+	cout << "                    auto (по умолчанию), wintun либо tap" << endl;
 	cout << "  --help            напечатать этот текст" << endl << endl;
 	cout << "Права суперпользователя обязательны: заведение устройства туннеля их требует." << endl;
 }
@@ -227,6 +237,7 @@ static bool parse(int32_t argc, char * argv[], params_t & params) noexcept {
 			else if(arg.compare("--peer") == 0) params.peer = value;
 			else if(arg.compare("--net") == 0) params.net = value;
 			else if(arg.compare("--iface") == 0) params.iface = value;
+			else if(arg.compare("--driver") == 0) params.driver = value;
 			else if(arg.compare("--prefix") == 0) params.prefix = static_cast <uint8_t> (::stoi(value));
 			// Если довод неизвестен
 			else {
@@ -298,6 +309,38 @@ int32_t main(int32_t argc, char * argv[]){
 	event::id_t eid = io.event(event::node_t::SERVER, netFamily, event::type_t::DATAGRAM, event::protocol_t::UDP);
 	// Устанавливаем порт события
 	io.setSourcePort(eid, params.port);
+	/**
+	 * Задаём драйвер, каким заводится устройство туннеля
+	 *
+	 * @details Драйверов у MS Windows два, и переносят они разное: Wintun несёт пакеты
+	 *          сетевого уровня кольцом в общей с драйвером памяти, а tap-windows6 -
+	 *          кадры канального уровня через дескриптор файла. По умолчанию выбор
+	 *          отдан модулю: `AUTO` берёт Wintun, если тот доступен, иначе
+	 *          tap-windows6
+	 *
+	 * @note Задавать драйвер надлежит ДО заведения устройства: выбор делается один
+	 *       раз, при создании. У прочих систем драйвер один, и довод там не значит
+	 *       ничего - оттого весь этот кусок собирается только у MS Windows
+	 */
+	#if _WIN32 || _WIN64
+		if(!params.driver.empty() && (params.driver.compare("auto") != 0)){
+			// Если заказан драйвер Wintun
+			if(params.driver.compare("wintun") == 0){
+				// Задаём драйвер устройств туннеля
+				io.setDriver(eth::iface_t::driver_t::WINTUN);
+				// Записываем в лог сообщение о выбранном драйвере
+				cout << " Драйвер устройства туннеля: Wintun" << endl;
+			// Если заказан драйвер tap-windows6
+			} else if(params.driver.compare("tap") == 0) {
+				// Задаём драйвер устройств туннеля
+				io.setDriver(eth::iface_t::driver_t::TAP);
+				// Записываем в лог сообщение о выбранном драйвере
+				cout << " Драйвер устройства туннеля: tap-windows6" << endl;
+			// Если заказан драйвер, какого не существует
+			} else cout << " Драйвер устройства туннеля \"" << params.driver << "\" не опознан, выбор оставлен модулю!" << endl;
+		// Записываем в лог сообщение о том, что выбор оставлен модулю
+		} else cout << " Драйвер устройства туннеля выбирает модуль" << endl;
+	#endif
 	/**
 	 * Задаём готовое устройство туннеля, если оно названо
 	 *
