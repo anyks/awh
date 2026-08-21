@@ -1651,3 +1651,45 @@ TEST(CodecYamlValue, GraftingRefusal) {
 	// Выполняем проверку отказа переноса значения с косою чертой в имени пары
 	ASSERT_FALSE(value.graft(document));
 }
+
+/**
+ * @brief Проверка кругового переноса владеющего значения через дерево документа
+ *
+ * @details Значение переносится в дерево, снимается с него заново и сличается с
+ * исходным: перенос, часть значения теряющий, расхождение тем и обнаруживает
+ *
+ */
+TEST(CodecYamlValue, GraftRoundTrip) {
+	// Собираемое владеющее значение
+	yaml::value_t value;
+	// Выполняем установку строкового значения
+	ASSERT_TRUE(value.insert("title", yaml::value_t("пример")));
+	// Выполняем установку целого числа
+	ASSERT_TRUE(value.insert("port", yaml::value_t(static_cast <int64_t> (8080))));
+	// Выполняем установку числа с плавающей точкой
+	ASSERT_TRUE(value.insert("ratio", yaml::value_t(1.5)));
+	// Выполняем установку логического значения
+	ASSERT_TRUE(value.insert("secure", yaml::value_t(true)));
+	// Выполняем установку пустого значения
+	ASSERT_TRUE(value.insert("proxy", yaml::value_t(yaml::kind_t::NUL)));
+	// Выполняем заведение перечня значений
+	value.place("/tags/0") = yaml::value_t("one");
+	// Выполняем добавление второго значения перечня
+	value.place("/tags/1") = yaml::value_t("two");
+	// Выполняем заведение перечня перечней
+	value.place("/matrix/0/0") = yaml::value_t(static_cast <int64_t> (3));
+	// Выполняем заведение отображения внутри перечня
+	value.place("/points/0/name") = yaml::value_t("угол");
+	// Выполняем установку строкового значения отображения
+	value.place("/server/host") = yaml::value_t("localhost");
+	// Дерево документа, куда переносится значение
+	yaml::document_t document;
+	// Выполняем разбор пустого отображения
+	ASSERT_TRUE(document.parse("{}"));
+	// Выполняем перенос владеющего значения в дерево документа
+	ASSERT_TRUE(value.graft(document));
+	// Выполняем снятие владеющего значения с дерева документа
+	const yaml::value_t lifted(document.root());
+	// Выполняем сличение снятого значения с исходным
+	ASSERT_TRUE(lifted == value);
+}

@@ -931,3 +931,48 @@ TEST(CodecTomlValue, NameIndexConsistency) {
 	// Выполняем проверку того, что удалённой пары нет и у копии
 	ASSERT_FALSE(copy.contains("поле0"));
 }
+
+/**
+ * @brief Проверка кругового переноса владеющего значения через дерево настроек
+ *
+ * @details Значение переносится в дерево, снимается с него заново и сличается с
+ * исходным: перенос, часть значения теряющий, расхождение тем и обнаруживает
+ *
+ * @note Сличением проверяется именно перенос, а не запись: дерево, вид значения
+ *       потерявшее, отдало бы значение иное, и сличение того не пропустит
+ *
+ */
+TEST(CodecTomlValue, GraftRoundTrip) {
+	// Собираемое владеющее значение
+	toml::value_t value;
+	// Выполняем установку строкового значения
+	ASSERT_TRUE(value.insert("title", toml::value_t("пример")));
+	// Выполняем установку целого числа
+	ASSERT_TRUE(value.insert("port", toml::value_t(static_cast <int64_t> (8080))));
+	// Выполняем установку числа с плавающей точкой
+	ASSERT_TRUE(value.insert("ratio", toml::value_t(1.5)));
+	// Выполняем установку логического значения
+	ASSERT_TRUE(value.insert("secure", toml::value_t(true)));
+	// Выполняем заведение перечня значений
+	value.place("/numbers/0") = toml::value_t(static_cast <int64_t> (1));
+	// Выполняем добавление второго значения перечня
+	value.place("/numbers/1") = toml::value_t(static_cast <int64_t> (2));
+	// Выполняем заведение перечня перечней
+	value.place("/matrix/0/0") = toml::value_t(static_cast <int64_t> (3));
+	// Выполняем добавление второго значения вложенного перечня
+	value.place("/matrix/0/1") = toml::value_t(static_cast <int64_t> (4));
+	// Выполняем заведение таблицы со своим перечнем
+	value.place("/server/tags/0") = toml::value_t("one");
+	// Выполняем установку строкового значения таблицы
+	value.place("/server/host") = toml::value_t("localhost");
+	// Дерево настроек, куда переносится значение
+	toml::document_t document;
+	// Выполняем разбор пустого текста настроек
+	ASSERT_TRUE(document.parse(""));
+	// Выполняем перенос владеющего значения в дерево настроек
+	ASSERT_TRUE(value.graft(document, {}));
+	// Выполняем снятие владеющего значения с дерева настроек
+	const toml::value_t lifted(document);
+	// Выполняем сличение снятого значения с исходным
+	ASSERT_TRUE(lifted == value);
+}
