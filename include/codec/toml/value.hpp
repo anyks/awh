@@ -35,6 +35,12 @@
 #define __AWH_CODEC_TOML_VALUE__
 
 /**
+ * Стандартные заголовочные файлы
+ */
+#include <memory>
+#include <unordered_map>
+
+/**
  * Подключаем заголовочные файлы модуля
  */
 #include "document.hpp"
@@ -1126,6 +1132,11 @@ namespace awh {
 					 * @details Перенос ведётся составным именем: у дерева настроек TOML
 					 * взгляда на узел нет вовсе, и место переноса задаётся именем
 					 *
+					 * @note Перечни переносятся наравне с прочим: у места объявляется перечень
+					 *       пустой, а значения его доливаются - вложенные перечни и встроенные
+					 *       таблицы тем же способом. Перенос поверх готового дерева перечня не
+					 *       наращивает: объявление кладёт его заново
+					 *
 					 * @param document дерево настроек, куда переносится значение
 					 * @param path     составное имя места переноса
 					 * @return         признак успешности переноса
@@ -1134,6 +1145,10 @@ namespace awh {
 					 * @brief Method of the grafting of an owning value into a settings tree
 					 * @details The grafting is conducted by a compound name: the settings tree of TOML has
 					 * no view onto a node at all, and the place of the grafting is given by a name
+					 * @note The arrays are grafted on a par with the rest: an empty array is declared at the place
+					 *       while its values are appended — the nested arrays and the inline tables in the same
+					 *       way. A grafting on top of a ready tree does not grow an array:
+					 *       the declaring lays it down anew
 					 * @param document settings tree whereinto the value is grafted
 					 * @param path     compound name of the place of the grafting
 					 * @return sign of the success of the grafting
@@ -1141,6 +1156,38 @@ namespace awh {
 					 * \~
 					 */
 					bool graft(Document & document, const vector <string_view> & path) const noexcept;
+				private:
+					/**
+					 * \~russian
+					 * @brief Метод сборки содержимого значения для правки дерева настроек
+					 *
+					 * @param result собираемое содержимое значения
+					 *
+					 * \~english
+					 * @brief Method of the assembling of the content of a value for an editing of a settings tree
+					 * @param result content of the value being assembled
+					 *
+					 * \~
+					 */
+					void contented(content_t & result) const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод наполнения составного значения, у места уже объявленного
+					 *
+					 * @param document дерево настроек, куда переносится значение
+					 * @param path     составное имя места наполняемого значения
+					 * @return         признак успешности наполнения
+					 *
+					 * \~english
+					 * @brief Method of the filling of a compound value already declared at a place
+					 * @param document settings tree whereinto the value is grafted
+					 * @param path     compound name of the place of the value being filled
+					 * @return         sign of the success of the filling
+					 *
+					 * \~
+					 */
+					bool inflate(Document & document, const vector <string_view> & path) const noexcept;
+				public:
 				public:
 					/**
 					 * \~russian

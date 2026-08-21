@@ -1214,6 +1214,39 @@ namespace awh {
 					 * \~
 					 */
 					node_t * reach(const vector <string_view> & path) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод учёта узла значения и всего вложенного в него мусором правки
+					 *
+					 * @param node порядковый номер узла значения, в мусор обращаемого
+					 *
+					 * \~english
+					 * @brief Method of the accounting of a node of a value and of everything nested in it as a garbage of an editing
+					 * @param node ordinal number of the node of the value being turned into a garbage
+					 *
+					 * \~
+					 */
+					void discard(const uint32_t node) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод получения порядкового номера узла значения по составному имени
+					 *
+					 * @note Выдаётся порядковый номер, а не указатель: правка перечня узлов
+					 *       наращивает его, и указатель, выданный до того, повис бы
+					 *
+					 * @param path составное имя искомого места
+					 * @return     порядковый номер найденного узла значения либо признак отсутствия
+					 *
+					 * \~english
+					 * @brief Method of the obtaining of the ordinal number of a node of a value by a compound name
+					 * @note An ordinal number rather than a pointer is issued: an editing of the list of the nodes
+					 *       grows it, and a pointer issued before that would dangle
+					 * @param path compound name of the place being sought
+					 * @return     ordinal number of the found node of the value or the sign of the absence
+					 *
+					 * \~
+					 */
+					uint32_t dive(const vector <string_view> & path) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -1693,6 +1726,89 @@ namespace awh {
 					 * \~
 					 */
 					bool set(const vector <string_view> & path, const stamp_t & value, const type_t type) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод объявления составного значения пары
+					 *
+					 * @details Место объявления задаётся тем же построением, каким задаёт его
+					 * поиск значения: начало имени именует пару, а остаток ведёт внутрь
+					 * составного значения - порядковым номером в перечень, именем ключа во
+					 * встроенную таблицу. Объявленное значение пусто, а наполняется оно
+					 * вызовами @c push() и @c put()
+					 *
+					 * @note Прежнее содержимое места объявлением снимается: объявить перечень
+					 *       поверх перечня значит завести его заново, а не дописать к нему
+					 *
+					 * @param path  составное имя объявляемого места
+					 * @param table признак объявления встроенной таблицы заместо перечня
+					 * @return      результат выполнения операции
+					 *
+					 * \~english
+					 * @brief Method of the declaring of a compound value of a pair
+					 * @details The place of the declaring is given by the same construction by which the search
+					 * of a value gives it: the beginning of the name names a pair, while the remainder leads inside
+					 * a compound value — by an ordinal number into an array, by a name of a key into
+					 * an inline table. The declared value is empty and is filled by
+					 * the calls @c push() and @c put()
+					 * @note The previous content of the place is removed by the declaring: to declare an array
+					 *       on top of an array means to establish it anew rather than to append to it
+					 * @param path  compound name of the place being declared
+					 * @param table flag of the declaring of an inline table instead of an array
+					 * @return      result of performing the operation
+					 *
+					 * \~
+					 */
+					bool arrange(const vector <string_view> & path, const bool table = false) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод добавления значения к перечню
+					 *
+					 * @details Значение задаётся тем же построением, каким выдаёт его чтение
+					 * значения перечня: тип его задан полем @c type, а вложенному перечню и
+					 * встроенной таблице отвечает значение пустое, наполняемое вызовами по
+					 * составному имени с порядковым номером его на конце
+					 *
+					 * @param path  составное имя перечня
+					 * @param value добавляемое значение перечня
+					 * @return      результат выполнения операции
+					 *
+					 * \~english
+					 * @brief Method of the appending of a value to an array
+					 * @details The value is given by the same construction by which the reading of a value
+					 * of an array issues it: its type is given by the field @c type, while an empty value
+					 * corresponds to a nested array and to an inline table, filled by the calls by
+					 * a compound name with its ordinal number at the end
+					 * @param path  compound name of the array
+					 * @param value value being appended to the array
+					 * @return      result of performing the operation
+					 *
+					 * \~
+					 */
+					bool push(const vector <string_view> & path, const content_t & value) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод добавления пары к встроенной таблице
+					 *
+					 * @note Имя пары составное: запись «{a.b = 1}» описанием дозволена, и имя
+					 *       такой пары есть перечень частей его
+					 *
+					 * @param path  составное имя встроенной таблицы
+					 * @param name  составное имя добавляемой пары
+					 * @param value значение добавляемой пары
+					 * @return      результат выполнения операции
+					 *
+					 * \~english
+					 * @brief Method of the appending of a pair to an inline table
+					 * @note The name of a pair is compound: the record «{a.b = 1}» is allowed by the specification, and the name
+					 *       of such a pair is a list of its parts
+					 * @param path  compound name of the inline table
+					 * @param name  compound name of the pair being appended
+					 * @param value value of the pair being appended
+					 * @return      result of performing the operation
+					 *
+					 * \~
+					 */
+					bool put(const vector <string_view> & path, const vector <string_view> & name, const content_t & value) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод удаления пары

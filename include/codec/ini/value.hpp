@@ -35,6 +35,12 @@
 #define __AWH_CODEC_INI_VALUE__
 
 /**
+ * Стандартные заголовочные файлы
+ */
+#include <memory>
+#include <unordered_map>
+
+/**
  * Подключаем заголовочные файлы модуля
  */
 #include "document.hpp"
@@ -939,6 +945,12 @@ namespace awh {
 					 * @note Дерево, построение это нарушающее, отвечает отказом: молчаливый
 					 *       пропуск оставил бы потребителя с деревом без части его значения
 					 *
+					 * @note Перечень значений переносится повтором имени свойства - записью,
+					 *       какой перечень записи INI и является. Объявления, в разделе уже
+					 *       имеющиеся, при этом сносятся: перенос обязан выдать перечень тот,
+					 *       какой в значении, а не сросшийся с прежним. Своё место в разделе
+					 *       перечень тем самым теряет и уходит в конец его
+					 *
 					 * @param document дерево настроек, куда переносится значение
 					 * @return         признак успешности переноса
 					 *
@@ -949,6 +961,11 @@ namespace awh {
 					 * and the subsections
 					 * @note A tree violating this construction answers with a refusal: a silent skipping would
 					 *       leave the consumer with a tree without a part of its value
+					 * @note A list of the values is grafted by a repetition of the name of the property — the record
+					 *       which a list of the INI notation is. The declarations already present in the section
+					 *       are thereby removed: the grafting must issue the list which is in the value
+					 *       rather than one grown together with the previous one. The list thereby loses its place
+					 *       in the section and goes to the end of it
 					 * @param document settings tree whereinto the value is grafted
 					 * @return sign of the success of the grafting
 					 *

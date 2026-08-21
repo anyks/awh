@@ -818,6 +818,32 @@ namespace awh {
 					bool substitute() noexcept;
 					/**
 					 * \~russian
+					 * @brief Метод заведения новой записи свойства в разделе
+					 *
+					 * @details Помощник этот общий у установки значения и у долива к перечню:
+					 * обе они заводят запись свойства одинаково, и расходятся лишь тем,
+					 * правится ли объявление, уже имеющееся в разделе
+					 *
+					 * @param index порядковый номер раздела, которому запись принадлежит
+					 * @param key   имя заводимого свойства
+					 * @param value значение заводимого свойства
+					 * @return      результат выполнения операции
+					 *
+					 * \~english
+					 * @brief Method of the establishing of a new record of a property in a section
+					 * @details The helper is common to the setting of a value and to the appending to a list:
+					 * both of them establish a record of a property in the same way and differ only in
+					 * whether a declaration already present in the section is edited
+					 * @param index ordinal number of the section whereto the record belongs
+					 * @param key   name of the property being established
+					 * @param value value of the property being established
+					 * @return      result of performing the operation
+					 *
+					 * \~
+					 */
+					bool attach(const uint32_t index, const string_view key, const string_view value) noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод пересчёта устаревшей подстановки перед чтением значения
 					 *
 					 * @details Правка помечает подстановку устаревшей, а пересчитывается она
@@ -1190,6 +1216,43 @@ namespace awh {
 					 * \~
 					 */
 					bool set(const string_view key, const string_view value, const string_view section = "", const string_view subsection = "") noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод долива значения к перечню значений свойства
+					 *
+					 * @details Установка значения правит объявление, уже имеющееся в
+					 * разделе, и перечня тем самым не строит. Долив же заводит новое
+					 * объявление того же имени всегда: перечень значений записи INI и есть
+					 * последовательность одноимённых свойств, и выдаёт её @c values()
+					 *
+					 * @note Признак записи «имя[] = значение» доливом не взводится: скобки
+					 * суть послабление разбора языка PHP, и ставить их дереву, собранному
+					 * вызовами, значило бы писать наречие там, где его не просили
+					 *
+					 * @param key        имя свойства, к перечню значений которого ведётся долив
+					 * @param value      доливаемое значение свойства
+					 * @param section    имя раздела
+					 * @param subsection имя подраздела
+					 * @return           результат выполнения операции
+					 *
+					 * \~english
+					 * @brief Method of the appending of a value to the list of the values of a property
+					 * @details The setting of a value edits a declaration already present in the
+					 * section and thereby builds no list. The appending, however, always establishes a new
+					 * declaration of the same name: the list of the values of the INI notation is
+					 * a sequence of the properties of the same name, and @c values() issues it
+					 * @note The flag of the record «name[] = value» is not raised by the appending: the brackets
+					 * are an indulgence of the parsing of the PHP language, and to put them into a tree assembled
+					 * by the calls would mean to write a dialect where it has not been asked for
+					 * @param key        name of the property to whose list of the values the appending is conducted
+					 * @param value      value being appended
+					 * @param section    name of the section
+					 * @param subsection name of the subsection
+					 * @return           result of performing the operation
+					 *
+					 * \~
+					 */
+					bool push(const string_view key, const string_view value, const string_view section = "", const string_view subsection = "") noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод удаления свойства

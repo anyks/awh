@@ -35,6 +35,12 @@
 #define __AWH_CODEC_YAML_VALUE__
 
 /**
+ * Стандартные заголовочные файлы
+ */
+#include <memory>
+#include <unordered_map>
+
+/**
  * Подключаем заголовочные файлы модуля
  */
 #include "document.hpp"
