@@ -106,7 +106,7 @@ namespace {
 	 *          его, пороговое число надлежит переснять
 	 *
 	 */
-	static constexpr double ASSEMBLY_THRESHOLD = 25000.0;
+	static constexpr double ASSEMBLY_THRESHOLD = 2764.0;
 	/**
 	 * @brief Порог скорости поиска значения по имени
 	 *
@@ -118,7 +118,7 @@ namespace {
 	 * @warning ПОРОГ ЭТОТ ВРЕМЕННЫЙ, снят по одной рабочей машине
 	 *
 	 */
-	static constexpr double LOOKUP_THRESHOLD = 25000.0;
+	static constexpr double LOOKUP_THRESHOLD = 2790.41;
 
 	/**
 	 * @brief Порог пропускной способности снятия значения с дерева настроек

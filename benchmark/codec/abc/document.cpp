@@ -49,19 +49,19 @@ namespace {
 	 * @brief Порог пропускной способности сборки дерева крупной записи
 	 *
 	 */
-	static constexpr double TREE_LARGE_THRESHOLD = 11.0;
+	static constexpr double TREE_LARGE_THRESHOLD = 14.84;
 	/**
 	 * @brief Порог пропускной способности обхода собранного дерева
 	 *
 	 * @details Дерево собирается до замера, чтобы сборка и обход не скрывали друг друга
 	 *
 	 */
-	static constexpr double TREE_WALK_THRESHOLD = 100.0;
+	static constexpr double TREE_WALK_THRESHOLD = 166.95;
 	/**
 	 * @brief Порог пропускной способности перезаписи дерева в запись
 	 *
 	 */
-	static constexpr double TREE_REWRITE_THRESHOLD = 26.0;
+	static constexpr double TREE_REWRITE_THRESHOLD = 35.13;
 	/**
 	 * @brief Порог количества выделений памяти на сборку дерева
 	 *

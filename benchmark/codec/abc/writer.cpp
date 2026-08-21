@@ -74,7 +74,7 @@ namespace {
 	 * @brief Порог пропускной способности сборки крупной записи
 	 *
 	 */
-	static constexpr double WRITE_LARGE_THRESHOLD = 29.0;
+	static constexpr double WRITE_LARGE_THRESHOLD = 40.08;
 	/**
 	 * @brief Порог пропускной способности сборки строк
 	 *
@@ -106,7 +106,7 @@ namespace {
 	 *       выигрыш ниже единицы означал бы, что копия всё-таки делается
 	 *
 	 */
-	static constexpr double WRITE_REFERENCE_THRESHOLD = 1.5;
+	static constexpr double WRITE_REFERENCE_THRESHOLD = 10.75;
 
 	/**
 	 * @brief Функция сборки записи однородных отображений

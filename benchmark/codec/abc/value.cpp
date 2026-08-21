@@ -75,7 +75,7 @@ namespace {
 	 * @brief Порог пропускной способности обхода владеющего значения
 	 *
 	 */
-	static constexpr double WALK_LARGE_THRESHOLD = 50.0;
+	static constexpr double WALK_LARGE_THRESHOLD = 115.64;
 	/**
 	 * @brief Порог пропускной способности записи значения в запись
 	 *
@@ -98,7 +98,7 @@ namespace {
 	 *          пороговое число надлежит переснять
 	 *
 	 */
-	static constexpr double ASSEMBLY_THRESHOLD = 27000.0;
+	static constexpr double ASSEMBLY_THRESHOLD = 2696.98;
 	/**
 	 * @brief Порог пропускной способности потоковой сборки значения
 	 *
@@ -126,7 +126,7 @@ namespace {
 	 *          именам полей
 	 *
 	 */
-	static constexpr double LOOKUP_THRESHOLD = 27000.0;
+	static constexpr double LOOKUP_THRESHOLD = 2713.65;
 	/**
 	 * @brief Порог расхода выделений памяти на снятие одного значения
 	 *
@@ -137,7 +137,7 @@ namespace {
 	 *          не по узлу, а по нескольку раз на узел
 	 *
 	 */
-	static constexpr double TAKE_ALLOCATIONS_THRESHOLD = 128.0;
+	static constexpr double TAKE_ALLOCATIONS_THRESHOLD = 50.0;
 
 	/**
 	 * @brief Функция обхода владеющего значения

@@ -111,7 +111,7 @@ namespace {
 	 *       впритык
 	 *
 	 */
-	static constexpr double READ_CHUNKED_THRESHOLD = 2.5;
+	static constexpr double READ_CHUNKED_THRESHOLD = 1.26;
 	/**
 	 * @brief Порог задержки чтения записи ответа службы в микросекундах
 	 *
