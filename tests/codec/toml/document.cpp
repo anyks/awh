@@ -1300,3 +1300,55 @@ TEST(CodecTomlDocument, ArrayBuilding) {
 	// Выполняем проверку того, что перечень объявлен пустым заново
 	ASSERT_EQ(document.length({"numbers"}), 0);
 }
+
+/**
+ * @brief Проверка долива к перечню значением, взятым у того же дерева
+ *
+ * @note Долив кладёт значение в хранилище знаков того же дерева, и вид, в него
+ *       указывающий, наращивание хранилища пережить обязан
+ *
+ */
+TEST(CodecTomlDocument, PushFromOwnView) {
+	// Объект дерева настроек
+	toml::document_t document;
+	// Значение, заведомо превышающее короткий запас строки
+	const string big(4096, 'z');
+	// Выполняем разбор текста настроек
+	ASSERT_TRUE(document.parse("[server]\nhost = \"" + big + "\"\n"));
+	/**
+	 * Выполняем набивку дерева, заведомо перераспределяющую хранилище знаков
+	 */
+	for(size_t i = 0; i < 64; i++)
+		// Выполняем установку очередного значения
+		ASSERT_TRUE(document.set({"server", "поле" + to_string(i)}, string(256, 'a')));
+	// Выполняем объявление перечня значений
+	ASSERT_TRUE(document.arrange({"server", "перечень"}));
+	// Собираемое содержимое доливаемого значения
+	toml::content_t content;
+	// Запоминаем тип доливаемого значения
+	content.type = toml::type_t::STRING;
+	// Выполняем снятие значения видом в хранилище знаков
+	content.text = document.text({"server", "host"});
+	// Выполняем проверку длины снятого значения
+	ASSERT_EQ(content.text.length(), big.length());
+	// Выполняем долив снятого значения тому же дереву
+	ASSERT_TRUE(document.push({"server", "перечень"}, content));
+	// Извлекаемое содержимое значения перечня
+	toml::content_t result;
+	// Выполняем проверку успешности получения доливаемого значения
+	ASSERT_TRUE(document.item({"server", "перечень"}, 0, result));
+	// Выполняем проверку того, что значение перенесено целым
+	ASSERT_EQ(result.text, big);
+	// Выполняем проверку сохранности исходного значения
+	ASSERT_EQ(document.text({"server", "host"}), big);
+	// Выполняем объявление встроенной таблицы
+	ASSERT_TRUE(document.arrange({"server", "таблица"}, true));
+	// Выполняем снятие имени видом в хранилище знаков
+	const string_view name = document.text({"server", "host"});
+	// Запоминаем содержимое добавляемой пары видом в то же хранилище
+	content.text = name;
+	// Выполняем добавление пары встроенной таблицы именем из того же хранилища
+	ASSERT_TRUE(document.put({"server", "таблица"}, {name.substr(0, 8)}, content));
+	// Выполняем проверку значения добавленной пары встроенной таблицы
+	ASSERT_EQ(document.text({"server", "таблица", big.substr(0, 8)}), big);
+}
