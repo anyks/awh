@@ -345,7 +345,7 @@ bool awh::alloc::Central::free(void * addr, const uint64_t now) noexcept {
  * @return      признак того, что адрес выдан нами
  *
  */
-bool awh::alloc::Central::owner(const void * addr, size_t * index, void ** begin, size_t * size) noexcept {
+bool awh::alloc::Central::owner(const void * addr, size_t * index, void ** begin, size_t * size, void ** hint) noexcept {
 	// Если куча не заведена либо адрес не задан
 	if((this->_pages == nullptr) || (addr == nullptr))
 		// Разбирать нечего
@@ -360,10 +360,19 @@ bool awh::alloc::Central::owner(const void * addr, size_t * index, void ** begin
 	 * Описываем область, которой принадлежит адрес
 	 */
 	{
-		// Захватываем замок кучи
-		hold_t hold(this->_heap);
-		// Если области за адресом не нашлось
-		if(!this->_pages->describe(addr, &base, &pages, &tag))
+		/**
+		 * Разбираем адрес БЕЗ замка кучи
+		 *
+		 * Замок здесь стоял на пути КАЖДОГО освобождения и обращал его в очередь: восемь
+		 * потоков на мелкой выдаче давали 285 наносекунд на действие против 84 без него,
+		 * и время на действие РОСЛО с числом потоков - верный признак очереди.
+		 *
+		 * Читать без замка позволено потому, что живая область неизменна: дробят и
+		 * сливают лишь свободные, а у живой ни границы, ни метка не меняются, пока её не
+		 * освободят. Таблица же поиска куска сменяется целой записью, и читатель берёт
+		 * её одним неделимым обращением
+		 */
+		if(!this->_pages->describe(addr, &base, &pages, &tag, hint))
 			// Адрес выдан не нами
 			return false;
 	}

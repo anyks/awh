@@ -248,7 +248,7 @@ namespace awh {
 				 * @brief Method of determining the class an address belongs to
 				 *
 				 */
-				bool owner(const void * addr, size_t * index, void ** begin, size_t * size) noexcept;
+				bool owner(const void * addr, size_t * index, void ** begin, size_t * size, void ** hint = nullptr) noexcept;
 			public:
 				/**
 				 * \~russian

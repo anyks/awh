@@ -171,5 +171,9 @@ $ROOT/submodule.sh add mimalloc https://github.com/microsoft/mimalloc.git
 $ROOT/submodule.sh remove jemalloc
 $ROOT/submodule.sh add jemalloc https://github.com/jemalloc/jemalloc.git
 
+# Выполняем пересборку сабмодуля gperftools
+$ROOT/submodule.sh remove gperftools
+$ROOT/submodule.sh add gperftools https://github.com/gperftools/gperftools.git
+
 # Выводим список добавленных модулей
 cat $ROOT/../.gitmodules

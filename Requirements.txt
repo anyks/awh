@@ -9,4 +9,3 @@ brotli --version 1.1.0
 density --version 0.14.2
 lizard --version 1.0
 static --none
-gperftools --version 2.17.2

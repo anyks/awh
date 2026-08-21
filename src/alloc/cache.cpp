@@ -92,7 +92,7 @@ namespace {
  *
  */
 awh::alloc::Cache::Cache() noexcept :
- _owner(nullptr), _central(nullptr), _classes(nullptr), _bytes(0), _limit(LIMIT), _next(nullptr), _busy(false) {
+ _owner(nullptr), _central(nullptr), _classes(nullptr), _bytes(0), _limit(LIMIT), _tally(0), _hint(nullptr), _next(nullptr), _busy(false) {
 	// Обнуляем списки свободных блоков
 	::memset(this->_lists, 0, sizeof(this->_lists));
 }
@@ -118,10 +118,59 @@ bool awh::alloc::Cache::init(central_t * central, classes_t * classes, const siz
 	this->_limit = ((limit > 0) ? limit : LIMIT);
 	// Лежащего в кэше пока нет
 	this->_bytes = 0;
+	/**
+	 * Накопленное НЕ обнуляем
+	 *
+	 * Кэш заводится и на переиспользовании после завершения потока, а блоки, выданные
+	 * прежним потоком и до сих пор живые, числятся занятыми по-прежнему. Обнули мы
+	 * накопленное - занятое прикладным кодом уехало бы вниз на пустом месте
+	 */
 	// Обнуляем списки свободных блоков
 	::memset(this->_lists, 0, sizeof(this->_lists));
 	// Отвечаем успехом
 	return true;
+}
+/**
+ * @brief Метод накопления занятого прикладным кодом
+ *
+ * @param delta изменение занятого в байтах
+ * @param batch величина, по достижении которой накопленное отдаётся наружу
+ * @return      отдаваемое наружу накопленное, либо нуль
+ *
+ */
+int64_t awh::alloc::Cache::tally(const int64_t delta, const int64_t batch) noexcept {
+	// Накапливаем изменение занятого
+	this->_tally += delta;
+	// Если накопленное не дотянуло до величины отдачи
+	if((this->_tally < batch) && (this->_tally > -batch))
+		// Отдавать нечего
+		return 0;
+	// Запоминаем накопленное
+	const int64_t result = this->_tally;
+	// Обнуляем накопленное: оно уходит наружу
+	this->_tally = 0;
+	// Выводим отдаваемое наружу накопленное
+	return result;
+}
+/**
+ * @brief Метод получения накопленного, но не отданного наружу
+ *
+ * @return накопленное этим потоком в байтах
+ *
+ */
+int64_t awh::alloc::Cache::pending() const noexcept {
+	// Выводим накопленное этим потоком
+	return this->_tally;
+}
+/**
+ * @brief Метод получения места под подсказку поиска куска
+ *
+ * @return место под подсказку поиска
+ *
+ */
+void ** awh::alloc::Cache::hint() noexcept {
+	// Выводим место под подсказку поиска
+	return &this->_hint;
 }
 /**
  * @brief Метод возврата пачки блоков разряда центральным спискам
@@ -627,6 +676,29 @@ size_t awh::alloc::Caches::cached(size_t * count) noexcept {
 	return result;
 }
 /**
+ * @brief Метод получения накопленного кэшами, но не отданного наружу
+ *
+ * @return накопленное всеми кэшами в байтах
+ *
+ */
+int64_t awh::alloc::Caches::pending() noexcept {
+	// Накопленное всеми кэшами
+	int64_t result = 0;
+	// Захватываем замок общего списка кэшей
+	hold_t hold(this->_lock);
+	/**
+	 * Перебираем заведённые кэши
+	 *
+	 * Перебираются ВСЕ, включая кэши завершившихся потоков: те не разрушаются, а
+	 * переиспользуются, и накопленное в них остаётся верным
+	 */
+	for(cache_t * cache = this->_caches; cache != nullptr; cache = cache->_next)
+		// Увеличиваем накопленное всеми кэшами
+		result += cache->pending();
+	// Выводим накопленное всеми кэшами
+	return result;
+}
+/**
  * @brief Метод отдачи центральным спискам блоков всех кэшей
  *
  * @return объём отданного в байтах
@@ -669,6 +741,16 @@ void awh::alloc::Caches::destroy() noexcept {
 	 */
 	if(this->_keyed){
 		/**
+		 * Отвязываем кэш от текущего потока ПРЕЖДЕ снятия ключа
+		 *
+		 * Обращение к снятому ключу - ошибка, и NetBSD её не прощает: там
+		 * `pthread_setspecific` по ключу без отклика завершения валит процесс
+		 * утверждением `pthread__tsd_destructors[key] != NULL` внутри libpthread.
+		 * Прежде отвязка стояла ниже, за снятием ключа, и щуп кэшей там валился с
+		 * кодом 134 у самого последнего наблюдения
+		 */
+		::attach(nullptr);
+		/**
 		 * Если операционной системой является MS Windows
 		 */
 		#if defined(_WIN32) || defined(_WIN64)
@@ -697,8 +779,6 @@ void awh::alloc::Caches::destroy() noexcept {
 	this->_caches = nullptr;
 	// Обнуляем число заведённых кэшей
 	this->_count = 0;
-	// Отвязываем кэш от текущего потока
-	::attach(nullptr);
 	// Обнуляем разряды размеров
 	this->_classes = nullptr;
 	// Обнуляем центральные списки

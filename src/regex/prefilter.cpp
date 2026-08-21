@@ -691,6 +691,20 @@ static scanning_t scanning(const std::string_view text, const std::string_view w
 				continue;
 			}
 			/**
+			 * Увеличиваем число участков, встречи пары байтов несущих
+			 *
+			 * @details Счёт ведётся участками, а не встречами: встреча лежит
+			 *          в обороте внутреннем, и счёт её давит на регистры
+			 *          оборота внешнего - замером проход замедлялся в 1.84 раза
+			 *          (9456 наносекунд против 5145 при сличении в одном
+			 *          процессе), тогда как счёт участками не стоит ничего
+			 *          вовсе (0.99 к проходу без счёта). Мерою плотности
+			 *          участок годится наравне со встречей: он несёт разбор
+			 *          встреч своих целиком.
+			 *
+			 */
+			rejects++;
+			/**
 			 * Выполняем обход половин участка текста сопоставления
 			 *
 			 * @details Половины разбираются по порядку: совпадение выводится
@@ -723,9 +737,7 @@ static scanning_t scanning(const std::string_view text, const std::string_view w
 					if(::memcmp((base + start), what.data(), length) == 0)
 						// Выводим позицию найденной последовательности
 						return {start, rejects};
-					// Увеличиваем число ложных кандидатов, проходом отвергнутых
-				rejects++;
-				// Выполняем снятие разобранной встречи пары байтов
+					// Выполняем снятие разобранной встречи пары байтов
 					hits &= ~(static_cast <uint64_t> (0x0F) << (lane << 2));
 				}
 			}
@@ -774,6 +786,16 @@ static scanning_t scanning(const std::string_view text, const std::string_view w
 			uint32_t hits = (static_cast <uint32_t> (_mm_movemask_epi8(equal)) |
 			 (static_cast <uint32_t> (_mm_movemask_epi8(equal2)) << 16));
 			/**
+			 * Если участок текста встречи пары байтов несёт
+			 *
+			 * @details Счёт ведётся участками, а не встречами - см. проход
+			 *          набором команд NEON.
+			 *
+			 */
+			if(hits != 0)
+				// Увеличиваем число участков, встречи пары байтов несущих
+				rejects++;
+			/**
 			 * Выполняем разбор встреч пары байтов в участке текста
 			 */
 			while(hits != 0) {
@@ -793,8 +815,6 @@ static scanning_t scanning(const std::string_view text, const std::string_view w
 				if(::memcmp((base + start), what.data(), length) == 0)
 					// Выводим позицию найденной последовательности
 					return {start, rejects};
-				// Увеличиваем число ложных кандидатов, проходом отвергнутых
-				rejects++;
 				// Выполняем снятие разобранной встречи пары байтов
 				hits &= (hits - 1);
 			}
@@ -835,6 +855,16 @@ static scanning_t scanning(const std::string_view text, const std::string_view w
 			 */
 			uint64_t hits = (((heading - ONES) & ~heading) & ((following - ONES) & ~following) & HIGHS);
 			/**
+			 * Если слово текста встречи пары байтов несёт
+			 *
+			 * @details Счёт ведётся словами, а не встречами - см. проход
+			 *          набором команд NEON.
+			 *
+			 */
+			if(hits != 0)
+				// Увеличиваем число слов, встречи пары байтов несущих
+				rejects++;
+			/**
 			 * Выполняем разбор встреч пары байтов в участке текста
 			 */
 			while(hits != 0) {
@@ -867,8 +897,6 @@ static scanning_t scanning(const std::string_view text, const std::string_view w
 				if(::memcmp((base + start), what.data(), length) == 0)
 					// Выводим позицию найденной последовательности
 					return {start, rejects};
-				// Увеличиваем число ложных кандидатов, проходом отвергнутых
-				rejects++;
 				// Выполняем снятие разобранной встречи пары байтов
 				hits &= (hits - 1);
 			}

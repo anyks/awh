@@ -56,6 +56,7 @@
 /**
  * Стандартные заголовочные файлы
  */
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 
@@ -184,9 +185,29 @@ namespace awh {
 					size_t used;
 					// Следующий кусок в общем списке
 					Chunk * next;
+					/**
+					 * Указатели областей по номеру страницы куска
+					 *
+					 * Читаются БЕЗ замка кучи - разбором адреса на пути освобождения, -
+					 * оттого вид их неделимый: обычный указатель дал бы состязание в
+					 * глазах средств проверки, даже когда живая область никем не
+					 * переписывается
+					 */
 					// Указатели областей по номеру страницы куска
-					span_t * index[PAGES];
+					std::atomic <span_t *> index[PAGES];
 				} chunk_t;
+				/**
+				 * @brief Запись таблицы поиска куска по адресу
+				 *
+				 */
+				typedef struct Registry {
+					// Места таблицы поиска
+					chunk_t ** table;
+					// Длина таблицы поиска в местах
+					size_t length;
+					// Предыдущая запись таблицы, оставленная перестроением
+					struct Registry * previous;
+				} registry_t;
 			private:
 				// Источник страниц
 				source_t * _source;
@@ -199,11 +220,16 @@ namespace awh {
 				 * адреса одной маской, а таблица отвечает лишь на вопрос, наш ли это кусок.
 				 * Перебор списка кусков для того негоден: он зовётся на каждом
 				 * освобождении, а не однажды при разборе сбоя
+				 *
+				 * Таблица и длина её лежат ОДНОЙ записью, сменяемой неделимо. Порознь их
+				 * читатель без замка застал бы вразнобой - новую длину при прежней
+				 * таблице, - и ушёл бы за её конец. Прежние записи при перестроении НЕ
+				 * отдаются источнику: читатель волен быть внутри одной из них. Теряется
+				 * на этом менее половины действующей таблицы: длина удваивается, и все
+				 * прежние вместе короче нынешней
 				 */
-				// Таблица поиска куска по адресу
-				chunk_t ** _table;
-				// Длина таблицы поиска в местах
-				size_t _length;
+				// Запись таблицы поиска куска по адресу
+				std::atomic <registry_t *> _registry;
 				// Число кусков, внесённых в таблицу
 				size_t _enrolled;
 				// Списки свободных областей по числу страниц
@@ -317,7 +343,7 @@ namespace awh {
 				 * @brief Method of looking up the chunk an address belongs to
 				 *
 				 */
-				chunk_t * lookup(const void * addr) const noexcept;
+				chunk_t * lookup(const void * addr, void ** hint = nullptr) const noexcept;
 			public:
 				/**
 				 * \~russian
@@ -430,7 +456,7 @@ namespace awh {
 				 * @brief Method of describing the region an address belongs to
 				 *
 				 */
-				bool describe(const void * addr, void ** begin, size_t * pages, uint32_t * tag) const noexcept;
+				bool describe(const void * addr, void ** begin, size_t * pages, uint32_t * tag, void ** hint = nullptr) const noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод пометки выданной области

@@ -50,7 +50,6 @@
 - [ZStandart](https://github.com/facebook/zstd)
 - [Lempel–Ziv–Markov](https://github.com/hunter-packages/lzma)
 - [BoringSSL](https://boringssl.googlesource.com/boringssl)
-- [GPerfTools](https://github.com/gperftools/gperftools)
 
 ## Build tools
 

@@ -33,7 +33,7 @@
  *
  */
 awh::alloc::Pages::Pages() noexcept :
- _source(nullptr), _chunks(nullptr), _table(nullptr), _length(0), _enrolled(0), _large(nullptr), _spare(nullptr),
+ _source(nullptr), _chunks(nullptr), _registry(nullptr), _enrolled(0), _large(nullptr), _spare(nullptr),
  _meta(nullptr), _metaLeft(0), _metaChunks(nullptr), _confined(false),
  _delay(10), _block(0), _limit(0), _jammed(false), _state() {
 	// Обнуляем списки свободных областей
@@ -110,34 +110,56 @@ bool awh::alloc::Pages::rehash(const size_t length) noexcept {
 		return false;
 	// Обнуляем места новой таблицы
 	::memset(table, 0, size);
-	// Запоминаем прежнюю таблицу прежде подмены
-	chunk_t ** previous = this->_table;
-	// Запоминаем длину прежней таблицы
-	const size_t before = this->_length;
-	// Подменяем таблицу новой
-	this->_table = table;
-	// Запоминаем длину новой таблицы
-	this->_length = length;
+	// Запоминаем прежнюю запись таблицы
+	registry_t * previous = this->_registry.load(std::memory_order_relaxed);
+	// Берём у источника память под запись новой таблицы
+	registry_t * record = reinterpret_cast <registry_t *> (this->meta());
+	// Если память под запись не выдана
+	if(record == nullptr){
+		// Отдаём источнику взятую таблицу
+		this->_source->release(table, size);
+		// Отвечаем отказом
+		return false;
+	}
+	// Записываем места новой таблицы
+	record->table = table;
+	// Записываем длину новой таблицы
+	record->length = length;
+	/**
+	 * Связываем запись с прежней
+	 *
+	 * Связь нужна одному лишь снятию кучи: отдать источнику надо ВСЕ таблицы, а
+	 * действующая знает только себя. В работе цепочка эта не читается вовсе
+	 */
+	record->previous = previous;
+	/**
+	 * Подменяем запись таблицы неделимо
+	 *
+	 * Читатель без замка берёт запись ОДНИМ обращением и дальше держится за неё: ни
+	 * длина, ни места её больше не меняются
+	 */
+	this->_registry.store(record, std::memory_order_release);
 	// Внесённых кусков у новой таблицы пока нет
 	this->_enrolled = 0;
 	/**
 	 * Переносим в новую таблицу куски прежней
 	 */
-	for(size_t i = 0; i < before; i++){
-		// Если место прежней таблицы занято
-		if(previous[i] != nullptr)
-			// Вносим кусок в новую таблицу
-			this->enroll(previous[i]);
+	if(previous != nullptr){
+		// Перебираем места прежней таблицы
+		for(size_t i = 0; i < previous->length; i++){
+			// Если место прежней таблицы занято
+			if(previous->table[i] != nullptr)
+				// Вносим кусок в новую таблицу
+				this->enroll(previous->table[i]);
+		}
 	}
 	/**
-	 * Отдаём источнику прежнюю таблицу
+	 * Прежнюю таблицу источнику НЕ отдаём
 	 *
-	 * Отдаём, а не оставляем: таблица стоит особняком и на неё никто не ссылается,
-	 * а брошенная она копила бы память при каждом удвоении
+	 * Читатель разбирает адрес без замка и волен быть внутри прежней таблицы прямо
+	 * сейчас: отдай мы её - он читал бы отданную системе память. Теряется на этом
+	 * менее половины действующей таблицы, ибо длина удваивается
 	 */
-	if(previous != nullptr)
-		// Отдаём источнику память прежней таблицы
-		this->_source->release(previous, (before * sizeof(chunk_t *)));
 	// Отвечаем успехом
 	return true;
 }
@@ -150,34 +172,39 @@ bool awh::alloc::Pages::rehash(const size_t length) noexcept {
  */
 bool awh::alloc::Pages::enroll(chunk_t * chunk) noexcept {
 	// Если таблица не заведена либо заполнена наполовину
-	if((this->_length == 0) || (((this->_enrolled + 1) * 2) > this->_length)){
+	// Получаем действующую запись таблицы
+	registry_t * registry = this->_registry.load(std::memory_order_relaxed);
+	// Если таблица не заведена либо заполнена наполовину
+	if((registry == nullptr) || (((this->_enrolled + 1) * 2) > registry->length)){
 		/**
 		 * Перестраиваем таблицу вдвое большей длины
 		 *
 		 * Порог в половину длины взят не для скорости, а для завершимости: перебор мест
 		 * идёт подряд, и при плотном заполнении он вырождается в перебор всей таблицы
 		 */
-		if(!this->rehash((this->_length == 0) ? TABLE : (this->_length * 2)))
+		if(!this->rehash((registry == nullptr) ? TABLE : (registry->length * 2)))
 			// Отвечаем отказом
 			return false;
+		// Получаем перестроенную запись таблицы
+		registry = this->_registry.load(std::memory_order_relaxed);
 	}
 	// Определяем ключ куска: номер куска в разбиении памяти по его размеру
 	const uintptr_t key = (reinterpret_cast <uintptr_t> (chunk->base) / CHUNK);
 	// Определяем место куска в таблице
-	size_t index = static_cast <size_t> ((key * 0x9E3779B97F4A7C15ull) % this->_length);
+	size_t index = static_cast <size_t> ((key * 0x9E3779B97F4A7C15ull) & (registry->length - 1));
 	/**
 	 * Ищем свободное место, перебирая места подряд
 	 */
-	while(this->_table[index] != nullptr){
+	while(registry->table[index] != nullptr){
 		// Если кусок в таблице уже есть
-		if((reinterpret_cast <uintptr_t> (this->_table[index]->base) / CHUNK) == key)
+		if((reinterpret_cast <uintptr_t> (registry->table[index]->base) / CHUNK) == key)
 			// Вносить нечего
 			return true;
 		// Переходим к следующему месту таблицы
-		index = ((index + 1) % this->_length);
+		index = ((index + 1) & (registry->length - 1));
 	}
 	// Записываем кусок в найденное место
-	this->_table[index] = chunk;
+	registry->table[index] = chunk;
 	// Увеличиваем число внесённых кусков
 	this->_enrolled++;
 	// Отвечаем успехом
@@ -190,21 +217,63 @@ bool awh::alloc::Pages::enroll(chunk_t * chunk) noexcept {
  * @return     найденный кусок либо nullptr
  *
  */
-awh::alloc::Pages::chunk_t * awh::alloc::Pages::lookup(const void * addr) const noexcept {
-	// Если адрес не задан либо таблица не заведена
-	if((addr == nullptr) || (this->_length == 0))
+/**
+ * Место в таблице берётся маской, а не остатком от деления
+ *
+ * Длина таблицы всегда степень двойки: начальная такова, а перестроение её удваивает.
+ * Деление же с остатком по длине, известной лишь во время работы, стоит десятков тактов,
+ * и стоит оно их на КАЖДОМ освобождении - замеры на FreeBSD дали 139 наносекунд на
+ * действие с делением против 123 с маской. Кольцо карантина маской НЕ берётся: длина его
+ * считается по объёму и степенью двойки не бывает
+ */
+awh::alloc::Pages::chunk_t * awh::alloc::Pages::lookup(const void * addr, void ** hint) const noexcept {
+	/**
+	 * Сперва пробуем подсказку
+	 *
+	 * Поток освобождает блоки из тех же немногих кусков, что и выдавал, и сличение
+	 * границ последнего найденного куска отвечает почти всегда. Поиск же по таблице
+	 * стоит умножения, маски и обращения к памяти вразнобой - съём образцов стека
+	 * показал, что на работе контейнеров туда уходит львиная доля пути освобождения
+	 *
+	 * Кусок, однажды взятый у источника, живёт до снятия кучи: отдаётся он лишь там,
+	 * и подсказка повиснуть не может
+	 */
+	if(hint != nullptr){
+		// Получаем кусок из подсказки
+		chunk_t * chunk = reinterpret_cast <chunk_t *> (* hint);
+		// Если подсказка задана и адрес лежит внутри её куска
+		if((chunk != nullptr) && (reinterpret_cast <uintptr_t> (addr) >= reinterpret_cast <uintptr_t> (chunk->base)) &&
+		   (reinterpret_cast <uintptr_t> (addr) < (reinterpret_cast <uintptr_t> (chunk->base) + chunk->size)))
+			// Выводим кусок из подсказки
+			return chunk;
+	}
+	// Если адрес не задан
+	if(addr == nullptr)
+		// Искать нечего
+		return nullptr;
+	/**
+	 * Берём запись таблицы ОДНИМ обращением
+	 *
+	 * Дальше держимся именно за неё: перестроение подменяет запись целиком, а прежняя
+	 * остаётся годной к чтению навсегда. Читай мы таблицу и длину порознь - застали бы
+	 * их вразнобой и ушли за конец
+	 */
+	// Получаем действующую запись таблицы
+	const registry_t * registry = this->_registry.load(std::memory_order_acquire);
+	// Если таблица не заведена
+	if((registry == nullptr) || (registry->length == 0))
 		// Искать нечего
 		return nullptr;
 	// Определяем ключ адреса: номер куска, которому адрес мог бы принадлежать
 	const uintptr_t key = (reinterpret_cast <uintptr_t> (addr) / CHUNK);
 	// Определяем место в таблице
-	size_t index = static_cast <size_t> ((key * 0x9E3779B97F4A7C15ull) % this->_length);
+	size_t index = static_cast <size_t> ((key * 0x9E3779B97F4A7C15ull) & (registry->length - 1));
 	/**
 	 * Ищем кусок, перебирая места подряд
 	 */
-	while(this->_table[index] != nullptr){
+	while(registry->table[index] != nullptr){
 		// Получаем кусок, лежащий в очередном месте
-		chunk_t * chunk = this->_table[index];
+		chunk_t * chunk = registry->table[index];
 		// Если ключ куска совпал с ключом адреса
 		if((reinterpret_cast <uintptr_t> (chunk->base) / CHUNK) == key){
 			/**
@@ -213,14 +282,19 @@ awh::alloc::Pages::chunk_t * awh::alloc::Pages::lookup(const void * addr) const 
 			 * Ключ сходится и у адреса за концом куска, если источник выдал куска
 			 * меньше запрошенного, - границы того не прощают
 			 */
-			if(reinterpret_cast <uintptr_t> (addr) < (reinterpret_cast <uintptr_t> (chunk->base) + chunk->size))
+			if(reinterpret_cast <uintptr_t> (addr) < (reinterpret_cast <uintptr_t> (chunk->base) + chunk->size)){
+				// Если подсказку требуется запомнить
+				if(hint != nullptr)
+					// Запоминаем найденный кусок подсказкой
+					(* hint) = chunk;
 				// Выводим найденный кусок
 				return chunk;
+			}
 			// Адрес лежит за концом куска
 			return nullptr;
 		}
 		// Переходим к следующему месту таблицы
-		index = ((index + 1) % this->_length);
+		index = ((index + 1) & (registry->length - 1));
 	}
 	// Куска за адресом не нашлось
 	return nullptr;
@@ -242,7 +316,13 @@ void awh::alloc::Pages::mark(span_t * span) noexcept {
 	 */
 	for(size_t i = 0; i < span->pages; i++)
 		// Записываем область по очередной странице
-		span->chunk->index[first + i] = span;
+		/**
+		 * Запись отдаётся с отпусканием
+		 *
+		 * Читатель разбирает адрес без замка кучи, и увидь он указатель прежде, чем
+		 * записанные в область поля, - прочёл бы недописанное
+		 */
+		span->chunk->index[first + i].store(span, std::memory_order_release);
 }
 /**
  * @brief Метод внесения области в список свободных
@@ -347,7 +427,16 @@ awh::alloc::Pages::chunk_t * awh::alloc::Pages::grow() noexcept {
 		// Отвечаем отказом: без таблицы кусок не отыскать при освобождении
 		return nullptr;
 	// Обнуляем указатели областей куска
-	::memset(chunk->index, 0, sizeof(chunk->index));
+	/**
+	 * Обнуляем указатели областей по одному
+	 *
+	 * Побайтовое обнуление неделимых видов стандарт не обещает: у нас оно сработало бы,
+	 * но обещание это нигде не записано, а цена перебора - однажды на кусок в четыре
+	 * мегабайта
+	 */
+	for(size_t i = 0; i < PAGES; i++)
+		// Обнуляем указатель области очередной страницы
+		chunk->index[i].store(nullptr, std::memory_order_relaxed);
 	// Выдаём память под учётную запись области, накрывающей кусок целиком
 	span_t * span = reinterpret_cast <span_t *> (this->meta());
 	// Если память под учётную запись не выдана
@@ -451,7 +540,7 @@ awh::alloc::Pages::span_t * awh::alloc::Pages::merge(span_t * span) noexcept {
 	 */
 	if(first > 0){
 		// Получаем соседа слева
-		span_t * left = chunk->index[first - 1];
+		span_t * left = chunk->index[first - 1].load(std::memory_order_relaxed);
 		/**
 		 * Если сосед слева свободен и никем не изъят
 		 *
@@ -503,7 +592,7 @@ awh::alloc::Pages::span_t * awh::alloc::Pages::merge(span_t * span) noexcept {
 	 */
 	if(after < PAGES){
 		// Получаем соседа справа
-		span_t * right = chunk->index[after];
+		span_t * right = chunk->index[after].load(std::memory_order_relaxed);
 		// Если сосед справа свободен
 		if((right != nullptr) && right->released && !right->pending){
 			// Изымаем соседа из списка свободных
@@ -593,6 +682,23 @@ void awh::alloc::Pages::destroy() noexcept {
 		chunk = next;
 	}
 	/**
+	 * Отдаём источнику таблицы поиска куска по адресу
+	 *
+	 * Отдаются ВСЕ, включая оставленные перестроением: в работе прежние не отдаются
+	 * затем, что читатель разбирает адрес без замка и волен быть внутри одной из них.
+	 * Отдаются прежде кусков под учётные записи: сами записи таблиц лежат в тех кусках
+	 */
+	for(registry_t * registry = this->_registry.load(std::memory_order_relaxed); registry != nullptr;){
+		// Запоминаем предыдущую запись таблицы
+		registry_t * previous = registry->previous;
+		// Если места таблицы заведены
+		if(registry->table != nullptr)
+			// Отдаём источнику память таблицы
+			this->_source->release(registry->table, (registry->length * sizeof(chunk_t *)));
+		// Переходим к предыдущей записи таблицы
+		registry = previous;
+	}
+	/**
 	 * Отдаём источнику куски памяти под учётные записи
 	 *
 	 * Отдаются последними: учётные записи кусков лежат в них же, и отдать их прежде
@@ -608,14 +714,15 @@ void awh::alloc::Pages::destroy() noexcept {
 		// Переходим к предыдущему куску
 		block = previous;
 	}
-	// Отдаём источнику таблицу поиска куска по адресу
-	if(this->_table != nullptr)
-		// Отдаём источнику память таблицы
-		this->_source->release(this->_table, (this->_length * sizeof(chunk_t *)));
-	// Обнуляем таблицу поиска
-	this->_table = nullptr;
-	// Обнуляем длину таблицы поиска
-	this->_length = 0;
+	/**
+	 * Таблицы поиска источнику НЕ отдаются
+	 *
+	 * Прежние записи их при перестроении остаются жить: читатель разбирает адрес без
+	 * замка. Лежат они в тех же кусках под учётные записи, что уже отданы выше, - и
+	 * отдавать их порознь нечем и незачем
+	 */
+	// Обнуляем запись таблицы поиска
+	this->_registry.store(nullptr, std::memory_order_relaxed);
 	// Обнуляем число внесённых в таблицу кусков
 	this->_enrolled = 0;
 	// Обнуляем общий список кусков
@@ -785,7 +892,7 @@ bool awh::alloc::Pages::locate(const void * addr, const void ** begin, size_t * 
 		// Определяем номер страницы, которой принадлежит адрес
 		const size_t page = static_cast <size_t> ((value - base) / PAGE);
 		// Получаем область, которой принадлежит страница
-		const span_t * span = chunk->index[page];
+		const span_t * span = chunk->index[page].load(std::memory_order_acquire);
 		// Если области у страницы нет
 		if(span == nullptr)
 			// Адрес принадлежит куче, но области за ним нет
@@ -861,7 +968,7 @@ bool awh::alloc::Pages::free(void * addr, const uint64_t now) noexcept {
 		// Определяем номер страницы, которой принадлежит адрес
 		const size_t page = static_cast <size_t> ((value - base) / PAGE);
 		// Получаем область, которой принадлежит страница
-		span_t * span = chunk->index[page];
+		span_t * span = chunk->index[page].load(std::memory_order_acquire);
 		// Если области нет либо адрес не есть её начало
 		if((span == nullptr) || (span->base != reinterpret_cast <uint8_t *> (addr)))
 			// Отвечаем отказом: адрес выдан не нами
@@ -954,9 +1061,9 @@ bool awh::alloc::Pages::owns(const void * addr) const noexcept {
  * @return      признак того, что адрес принадлежит выданной наружу области
  *
  */
-bool awh::alloc::Pages::describe(const void * addr, void ** begin, size_t * pages, uint32_t * tag) const noexcept {
+bool awh::alloc::Pages::describe(const void * addr, void ** begin, size_t * pages, uint32_t * tag, void ** hint) const noexcept {
 	// Ищем кусок, которому принадлежит адрес
-	const chunk_t * chunk = this->lookup(addr);
+	const chunk_t * chunk = this->lookup(addr, hint);
 	// Если куска за адресом не нашлось
 	if(chunk == nullptr)
 		// Адрес куче не принадлежит
@@ -964,7 +1071,7 @@ bool awh::alloc::Pages::describe(const void * addr, void ** begin, size_t * page
 	// Определяем номер страницы, которой принадлежит адрес
 	const size_t page = static_cast <size_t> ((reinterpret_cast <uintptr_t> (addr) - reinterpret_cast <uintptr_t> (chunk->base)) / PAGE);
 	// Получаем область, которой принадлежит страница
-	const span_t * span = chunk->index[page];
+	const span_t * span = chunk->index[page].load(std::memory_order_acquire);
 	// Если области у страницы нет либо область наружу не выдана
 	if((span == nullptr) || span->released)
 		// Описывать нечего
@@ -1002,7 +1109,7 @@ bool awh::alloc::Pages::tag(void * addr, const uint32_t tag) noexcept {
 	// Определяем номер страницы, которой принадлежит адрес
 	const size_t page = static_cast <size_t> ((reinterpret_cast <uintptr_t> (addr) - reinterpret_cast <uintptr_t> (chunk->base)) / PAGE);
 	// Получаем область, которой принадлежит страница
-	span_t * span = chunk->index[page];
+	span_t * span = chunk->index[page].load(std::memory_order_acquire);
 	// Если области у страницы нет либо область наружу не выдана
 	if((span == nullptr) || span->released)
 		// Помечать нечего

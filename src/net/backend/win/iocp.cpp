@@ -61589,45 +61589,27 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 							case static_cast <uint8_t> (event::node_t::CLIENT):
 							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER): {
-								// Проверяем совместимость типов и семейств событий
-								if(mediator->state.family == j->second->state.family){
-									// Устанавливаем идентификатор события-приёмника в объекте посредника
-									mediator->dest = j->second->id;
-									// Устанавливаем тип события в объекте посредника
-									mediator->state.type = j->second->state.type;
-									// Устанавливаем протокол события в объекте посредника
-									mediator->state.protocol = j->second->state.protocol;
-									// Возвращаем положительный результат
-									return true;
-								// Если не совместимы типы или семейства событий
-								} else {
-									// Если установлена функция обратного вызова
-									if(mediator->callbacks.status != nullptr)
-										// Вызываем функцию обратного вызова об ошибке отказа
-										mediator->callbacks.status(mediator->id, event::status_t::FAILURE);
-									// Устанавливаем текст ошибки
-									const string error = "Events cannot be combined with each other because they are not compatible";
-									// Если установлена функция обратного вызова
-									if(mediator->callbacks.error != nullptr)
-										// Вызываем функцию обратного вызова ошибки события
-										mediator->callbacks.error(mediator->id, event::error_t::INVALID, error);
-									// Если функция обратного вызова для вывода события не установлена
-									else {
-										/**
-										 * Если включён режим отладки
-										 */
-										#if DEBUG_MODE
-											// Записываем ошибку в лог
-											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
-										/**
-										 * Если режим отладки не включён
-										 */
-										#else
-											// Записываем ошибку в лог
-											this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-										#endif
-									}
-								}
+								/**
+								 * Семейства узлов сличать незачем
+								 *
+								 * @details Посредник несёт адрес ВНУТРИ туннеля, а приёмник - перенос
+								 *          наружу: слои разные, и семейства их между собой не связаны.
+								 *          Туннель IPv6 поверх переноса IPv4 - обычный расклад, и
+								 *          сличение семейств запрещало его вовсе
+								 *
+								 * @warning У всех движков POSIX сличение снято, а у IOCP оставалось:
+								 *          оттого SpliceMixedFamiliesTest и обратная ему проходили
+								 *          всюду, кроме Windows. Возвращать его обратно «как защиту»
+								 *          нельзя - оно запрещает обычный расклад
+								 */
+								// Устанавливаем идентификатор события-приёмника в объекте посредника
+								mediator->dest = j->second->id;
+								// Устанавливаем тип события в объекте посредника
+								mediator->state.type = j->second->state.type;
+								// Устанавливаем протокол события в объекте посредника
+								mediator->state.protocol = j->second->state.protocol;
+								// Возвращаем положительный результат
+								return true;
 							} break;
 						}
 					} break;

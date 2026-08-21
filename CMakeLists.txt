@@ -649,34 +649,6 @@ else()
     # Устанавливаем уровень оптимизации
     SET(CMAKE_C_FLAGS_DISTRIBUTION "-O3")
     SET(CMAKE_CXX_FLAGS_DISTRIBUTION "-O3")
-
-    ##
-     # Если распределитель памяти TcMalloc системой поддерживается и санитайзеры не включены
-     #
-     # @note Санитайзер обращений к памяти подменяет распределитель собою, и второй
-     #       такой же подменщик отнимает у него всякую видимость
-     ##
-    ##
-     # @note DragonFly исключена наравне с OpenBSD: gperftools там не собирается и
-     #       скриптом третьей стороны пропускается намеренно, а значит заголовков
-     #       распределителя на машине нет вовсе. Прежде условие о ней не знало, и
-     #       сборка Release валилась на «gperftools/malloc_extension.h: No such file»,
-     #       тогда как отладочная проходила - оттого пробел и не вскрывался
-     ##
-    ##
-     # @note MS Windows набора команд ARM64 исключена по той же статье, что и обе BSD
-     #       выше: подмена функций выделения памяти идёт там через PreamblePatcher,
-     #       а тот разбирает машинный код разбирателем ia32_* - только Intel. На ARM64
-     #       он отвечает отказом, и проверка внутри самого gperftools валит прогон ещё до
-     #       первой строки вывода. Подробности - в комментарии к TCMALLOC_LIBRARIES
-     ##
-    ##
-     # Признак использования TcMalloc более не выставляется
-     #
-     # Ни один файл его больше не читает: управление памятью переведено на свой
-     # распределитель, а `sys/os.cpp` спрашивает состояние у него
-     ##
-
     # Выводим сообщение релизной информации
     message(STATUS "C Flags: ${CMAKE_C_FLAGS} ${CMAKE_C_FLAGS_RELEASE}")
     message(STATUS "C++ Flags: ${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_RELEASE}\n")
@@ -713,114 +685,11 @@ if (Dependence_FOUND)
     message(STATUS "NgHttp2 include dir found: " ${NGHTTP2_INCLUDE_DIR})
     message(STATUS "BoringSSL include dir found: " ${BORINGSSL_INCLUDE_DIR})
     message(STATUS "Brotli include dir found: " ${BROTLI_INCLUDE_ENCODE_DIR} " " ${BROTLI_INCLUDE_DECODE_DIR})
-
+# Если библиотека зависимостей не найдена
 else (Dependence_FOUND)
+    # Выводим сообщение об отсутствии библиотеки зависимостей
     message(FATAL_ERROR "Dependence not found")
 endif (Dependence_FOUND)
-
-##
- # Распределитель памяти TcMalloc собирается не везде
- #
- # Библиотека gperftools обращается к системе вызовом syscall(2), а OpenBSD этот
- # вызов убрала целиком - таково их решение по усилению защиты, а не пробел выпуска.
- # Собрать её там нельзя, и подменить обращение нечем: вызов убран намеренно.
- # Распределитель памяти при этом не пропадает - его задачу берёт на себя
- # собственный распределитель OpenBSD, писанный с тем же вниманием к защите
- ##
-if (${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD")
-    # Оставляем набор библиотек TcMalloc пустым
-    SET(TCMALLOC_LIBRARIES "")
-    # Выводим сообщение об использовании системного распределителя памяти
-    message(STATUS "TcMalloc is not available on OpenBSD: using the system allocator")
-##
- # У DragonFly BSD причина иная, а исход тот же
- #
- # Библиотека gperftools объявляет malloc_usable_size(void *), а система - через
- # malloc_np.h, подключаемый прямо из stdlib.h, - объявляет её же с const. Объявления
- # расходятся, и собиратель отвергает их как противоречащие. У FreeBSD объявление
- # системы точно такое же, но stdlib.h там malloc_np.h не подключает, оттого gperftools
- # его и не видит. Подробности - в sh/third_party/011_gperftools.sh
- ##
-elseif (${CMAKE_SYSTEM_NAME} STREQUAL "DragonFly")
-    # Оставляем набор библиотек TcMalloc пустым
-    SET(TCMALLOC_LIBRARIES "")
-    # Выводим сообщение об использовании системного распределителя памяти
-    message(STATUS "TcMalloc is not available on DragonFly BSD: using the system allocator")
-##
- # У MS Windows набора команд ARM64 библиотека собирается, но работать не может
- #
- # Виноват не набор команд сам по себе, а его пересечение с Windows: способ подмены
- # распределителя у gperftools разнится от системы к системе.
- #
- # У Unix подмена идёт именами при связывании: форматы ELF и Mach-O позволяют
- # определить свои malloc, free и operator new и заслонить ими библиотечные. Машинный
- # код при этом не трогают вовсе, и набор команд к делу не относится - оттого на
- # macOS ARM64 и Linux ARM64 распределитель работает наравне с x86-64.
- #
- # У Windows такого нет: формат PE подмены имён не даёт, и библиотека идёт путём иным
- # - переписывает начало уже загруженной функции переходом на себя
- # (src/windows/patch_functions.cc). Начало это требуется сперва разобрать - перезапись
- # возможна только по границе команды, - и разбиратель у неё один-единственный,
- # ia32_opcode_map.cc вместе с ia32_modrm_map.cc, то есть Intel и только Intel.
- # На Windows x86-64 всё сходится и распределитель встаёт на место; на ARM64
- # PreamblePatcher отвечает отказом, а CHECK_EQ внутри самой gperftools валит прогон
- # при заведении процесса - до первой строки вывода.
- #
- # Обойти это нечем: нужен разбиратель ARM64, какого в библиотеке нет. Условие потому
- # и стоит на пересечении WIN32 и aarch64 - ни прочих ARM64, ни Windows x86-64 оно
- # не касается.
- #
- # Проверено опытом на стенде Windows 11 ARM64 (17.08.2026) - набор проверок sys
- # валился сообщением «patch_functions.cc:567 Check failed: sidestep::SIDESTEP_SUCCESS
- # == PreamblePatcher::Patch(...)», прочие наборы уцелели лишь потому, что тела
- # распределителя к ним не привязывались вовсе
- #
- # ОБХОД ПРОВЕРЕН И ОТВЕРГНУТ (20.08.2026). Сборку gperftools можно перевести на путь
- # её же цели tcmalloc_minimal_nopatch: вместо patch_functions.cc взять обычный
- # tcmalloc.cc, подменяющий malloc и operator new именами, а разбиратель ia32_* из
- # сборки убрать. Собирается, подменяет всё семейство malloc, и набор sys на стенде
- # проходит - 1391 из 1392.
- #
- # Но лишь при статическом связывании времени исполнения. Подмена именами в формате PE
- # достаёт только статически связанное; стоит рядом оказаться libc++.dll или
- # libwinpthread-1.dll, и память, выданную их собственным ucrtbase, освобождает уже наш
- # распределитель - процесс гибнет при заведении с «tcmalloc.cc:258] Attempt to free
- # invalid pointer». Доказано сличением с одной разницей: те же исходники и ключи,
- # отличалось только связывание, статическое проходит, обычное валится.
- #
- # Условие это фреймворк не контролирует - чем связывать приложение, решает потребитель,
- # и нарушение даёт не отказ сборки, а падение до первой строки вывода. Оттого путь и
- # отвергнут: ловушка вместо настройки. Полный охват даст свой перехватчик начала
- # функций, разбирателя машинного кода на ARM64 для него не требуется - команды там
- # по четыре байта
- ##
-elseif (WIN32 AND ${ARCHITECTURE} MATCHES "aarch64")
-    # Оставляем набор библиотек TcMalloc пустым
-    SET(TCMALLOC_LIBRARIES "")
-    # Выводим сообщение об использовании системного распределителя памяти
-    message(STATUS "TcMalloc is not available on Windows ARM64: using the system allocator")
-##
- # TcMalloc отключён: управление памятью ведёт свой распределитель
- #
- # Отключён именно СВЯЗЫВАНИЕМ, а не признаком сборки: TcMalloc заслоняет собою
- # выделение и освобождение памяти всего процесса самим фактом своего присутствия в
- # связке, и признак на то не влияет никак. Два заслонившихся распределителя в одном
- # процессе - это выдача одним и освобождение другим, и мешает он не только работе
- # приложений, но и всякой отладке.
- #
- # Своё управление памятью - в include/alloc/alloc.hpp: страничная куча, разряды
- # размеров, поток-локальные кэши и захват выделения памяти процесса всеми тремя
- # приёмами (имена ELF, зона macOS, переписывание входа у MS Windows).
- #
- # Подмодуль gperftools, скрипт третьей стороны и поиск библиотеки снимаются
- # отдельным заходом: они ещё нужны для сличения замеров
- ##
-else()
-    # Оставляем набор библиотек TcMalloc пустым
-    SET(TCMALLOC_LIBRARIES "")
-    # Выводим сообщение об использовании своего распределителя памяти
-    message(STATUS "TcMalloc is disabled: using the AWH allocator")
-endif()
 
 # Если Doxygen найден
 if(Doxygen_FOUND)
@@ -894,7 +763,6 @@ endif()
 
 # Выполняем подключение хидеров
 include_directories(BEFORE ${DEPEND_INCLUDE_DIRS})
-include_directories(BEFORE ${TCMALLOC_INCLUDE_DIR})
 include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/include)
 include_directories(BEFORE ${CMAKE_SOURCE_DIR}/contrib/include)
 include_directories(SYSTEM ${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES})
@@ -1316,15 +1184,6 @@ if (CMAKE_BUILD_TESTS)
         SET(GCC_COVERAGE_COMPILE_FLAGS ${GCC_COVERAGE_COMPILE_FLAGS} -fsanitize=${CMAKE_BUILD_SANITIZE_LIST} -fno-omit-frame-pointer -g)
         # Дополняем зависимости линковки проверок рантаймом санитайзеров
         SET(GCC_COVERAGE_LIBS ${GCC_COVERAGE_LIBS} -fsanitize=${CMAKE_BUILD_SANITIZE_LIST})
-
-        ##
-         # Отключаем распределитель памяти TcMalloc
-         #
-         # @note Санитайзер обращений к памяти подменяет распределитель собою, и второй
-         #       такой же подменщик отнимает у него всякую видимость: отчёты о дефектах
-         #       перестают появляться вовсе
-         ##
-        SET(TCMALLOC_LIBRARIES "")
 
         # Выводим сообщение о сборке проверок под санитайзерами
         message(STATUS "Build unit tests with sanitizers: ${CMAKE_BUILD_SANITIZE_LIST}\n")
@@ -1811,7 +1670,6 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
      #   Iphlpapi - сведения о сетевых устройствах и перевод названия устройства в номер
      #   psapi    - сведения о памяти процесса, нужны модулям os и procre
      #   dbghelp  - разбор стека вызовов в отладочной сборке взамен execinfo
-     #   synchronization - ожидание по адресу (WaitOnAddress), нужно аллокатору TcMalloc
      #   crypt32  - хранилище сертификатов системы
      #   bcrypt   - источник случайных чисел системы
      #   gdi32    - требуется зависимостями, самой библиотекой графика не используется
@@ -1824,7 +1682,7 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
      # связанную с библиотекой, и отбор его в наборе замеров не спасал. Обнаружено на стенде
      # MSYS2 MinGW64 (14.08.2026)
      ##
-    SET(AWH_FLAGS -lws2_32 -lIphlpapi -lpsapi -ldbghelp -lsynchronization -lcrypt32 -lbcrypt -lgdi32 -flto=auto)
+    SET(AWH_FLAGS -lws2_32 -lIphlpapi -lpsapi -ldbghelp -lcrypt32 -lbcrypt -lgdi32 -flto=auto)
 
     # Устанавливаем иконку для windows под MinGW.
     SET(RES_FILES ${CMAKE_PROJECT_NAME}.rc)
@@ -2680,12 +2538,6 @@ if (${CMAKE_BUILD_SAMPLES})
     endif()
 endif (${CMAKE_BUILD_SAMPLES})
 
-# Если активирован режим отладки
-if (CMAKE_BUILD_TYPE MATCHES Debug)
-    # Удаляем библиотеку TCMalloc
-    SET(TCMALLOC_LIBRARIES "")
-endif()
-
 # Если нужно собрать и динамическую библиотеку
 if (CMAKE_SHARED_BUILD_LIB)
     # Выполняем сборку динамической библиотеки
@@ -2693,7 +2545,6 @@ if (CMAKE_SHARED_BUILD_LIB)
         ${AWH_LIB_NAME}
         PRIVATE
         ${DEPEND_LIBRARY}
-        ${TCMALLOC_LIBRARIES}
         ${AWH_FLAGS}
     )
 
@@ -2705,7 +2556,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${CLIENT_APP_UDS_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -2713,7 +2563,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${CLIENT_APP_UDS-2_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -2721,7 +2570,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${CLIENT_APP_TCP_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -2729,7 +2577,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${CLIENT_APP_TCP-2_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -2737,7 +2584,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${CLIENT_APP_UDP_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -2745,7 +2591,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${CLIENT_APP_UDP-2_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -2753,7 +2598,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${CLIENT_APP_TLS_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -2761,7 +2605,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${CLIENT_APP_TLS-2_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -2769,7 +2612,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${CLIENT_APP_DTLS_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -2777,7 +2619,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${CLIENT_APP_DTLS-2_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -2785,7 +2626,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${CLIENT_APP_TLS-WEB_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -2795,7 +2635,6 @@ if (CMAKE_SHARED_BUILD_LIB)
                 target_link_libraries(
                     ${CLIENT_APP_SCTP_NAME}
                     ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
                     ${AWH_FLAGS}
                 )
 
@@ -2803,7 +2642,6 @@ if (CMAKE_SHARED_BUILD_LIB)
                 target_link_libraries(
                     ${CLIENT_APP_SCTP-2_NAME}
                     ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
                     ${AWH_FLAGS}
                 )
             endif()
@@ -2815,7 +2653,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${SERVER_APP_UDS_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -2823,7 +2660,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${SERVER_APP_UDS-2_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -2831,7 +2667,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${SERVER_APP_TCP_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -2839,7 +2674,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${SERVER_APP_TCP-2_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -2847,7 +2681,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${SERVER_APP_UDP_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -2855,7 +2688,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${SERVER_APP_UDP-2_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -2863,7 +2695,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${SERVER_APP_TLS_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -2871,7 +2702,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${SERVER_APP_TLS-MULTICERT_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -2879,7 +2709,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${SERVER_APP_DTLS_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -2887,7 +2716,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${SERVER_APP_DTLS-MULTICERT_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -2897,7 +2725,6 @@ if (CMAKE_SHARED_BUILD_LIB)
                 target_link_libraries(
                     ${SERVER_APP_SCTP_NAME}
                     ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
                     ${AWH_FLAGS}
                 )
 
@@ -2905,7 +2732,6 @@ if (CMAKE_SHARED_BUILD_LIB)
                 target_link_libraries(
                     ${SERVER_APP_SCTP-2_NAME}
                     ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
                     ${AWH_FLAGS}
                 )
             endif()
@@ -2917,7 +2743,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${CLIENT_APP_VPN_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -2925,7 +2750,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${SERVER_APP_VPN_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_VPN_APP_SAMPLE})
@@ -2936,7 +2760,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${CLIENT_APP_SOCKS5_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -2944,7 +2767,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${CLIENT_APP_SOCKS5-UDP_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -2952,7 +2774,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${CLIENT_APP_SOCKS5-DTLS_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -2960,7 +2781,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                ${SERVER_APP_SOCKS5_NAME}
                ${AWH_LIB_NAME}
-               ${TCMALLOC_LIBRARIES}
                ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_SOCKS5_APP_SAMPLE})
@@ -2971,7 +2791,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${UNIT_APP_FS_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_UNIT_FS_APP_SAMPLE})
@@ -2982,7 +2801,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${UNIT_APP_DNS_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_UNIT_DNS_APP_SAMPLE})
@@ -2993,7 +2811,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${UNIT_APP_NTP_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_UNIT_NTP_APP_SAMPLE})
@@ -3004,7 +2821,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${UNIT_APP_PORTMAP_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_UNIT_PORTMAP_APP_SAMPLE})
@@ -3015,7 +2831,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${UNIT_APP_WATCHDOG_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_UNIT_WATCHDOG_APP_SAMPLE})
@@ -3026,7 +2841,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${UNIT_APP_ICMP_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_UNIT_ICMP_APP_SAMPLE})
@@ -3037,7 +2851,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${UNIT_APP_TIMER_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_UNIT_TIMER_APP_SAMPLE})
@@ -3048,7 +2861,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${UNIT_APP_CLUSTER_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_UNIT_CLUSTER_APP_SAMPLE})
@@ -3059,7 +2871,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${UNIT_APP_NOTIFIER_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_UNIT_NOTIFIER_APP_SAMPLE})
@@ -3070,7 +2881,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${IP_APP_NET_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
@@ -3081,7 +2891,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${URI_APP_NET_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_URI_NET_APP_SAMPLE})
@@ -3092,7 +2901,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${ETH_APP_NET_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_ETH_NET_APP_SAMPLE})
@@ -3103,7 +2911,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${DATE_APP_SYS_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
@@ -3114,7 +2921,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${EXPRESSION_APP_REGEX_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_EXPRESSION_REGEX_APP_SAMPLE})
@@ -3125,7 +2931,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${GROK_APP_REGEX_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_GROK_REGEX_APP_SAMPLE})
@@ -3136,7 +2941,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${BINBOX_APP_CONTAINER_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_BINBOX_CONTAINER_APP_SAMPLE})
@@ -3147,7 +2951,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${FILESYSTEM_APP_SYS_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_FILESYSTEM_SYS_APP_SAMPLE})
@@ -3158,7 +2961,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${PROCRE_APP_SYS_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_PROCRE_SYS_APP_SAMPLE})
@@ -3169,7 +2971,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${CRYPTO_APP_CRYPTOGRAPHY_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_CRYPTO_CRYPTOGRAPHY_APP_SAMPLE})
@@ -3180,7 +2981,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${HASH_APP_CRYPTOGRAPHY_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_HASH_CRYPTOGRAPHY_APP_SAMPLE})
@@ -3191,7 +2991,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${SIGNATURE_APP_CRYPTOGRAPHY_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_SIGNATURE_CRYPTOGRAPHY_APP_SAMPLE})
@@ -3202,7 +3001,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${AUTH_APP_PROTO_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_AUTH_PROTO_APP_SAMPLE})
@@ -3213,7 +3011,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${HEADERS_APP_PROTO_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_HEADERS_PROTO_APP_SAMPLE})
@@ -3224,7 +3021,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${PARSER_APP_PROTO_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_PARSER_PROTO_APP_SAMPLE})
@@ -3235,7 +3031,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${PARSER2_APP_PROTO_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_PARSER2_PROTO_APP_SAMPLE})
@@ -3246,7 +3041,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${SOCKS5_APP_PROTO_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_SOCKS5_PROTO_APP_SAMPLE})
@@ -3257,28 +3051,24 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${QUIC_CLIENT_APP_PROTO_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
             # Выполняем сборку приложения работы с QUIC сервером
             target_link_libraries(
                 ${QUIC_SERVER_APP_PROTO_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
             # Выполняем сборку клиентского приложения проверки QUIC-прокси на объединении данных (splice)
             target_link_libraries(
                 ${QUIC_PROXY_CLIENT_APP_PROTO_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
             # Выполняем сборку серверного приложения QUIC-прокси на объединении данных (splice)
             target_link_libraries(
                 ${QUIC_PROXY_SERVER_APP_PROTO_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_QUIC_PROTO_APP_SAMPLE})
@@ -3289,28 +3079,24 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${CODEC_APP_XML_READER_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
             # Выполняем сборку приложения работы с деревом разметки
             target_link_libraries(
                 ${CODEC_APP_XML_DOCUMENT_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
             # Выполняем сборку приложения записи текста разметки
             target_link_libraries(
                 ${CODEC_APP_XML_WRITER_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
             # Выполняем сборку приложения получения содержимого разметки числами
             target_link_libraries(
                 ${CODEC_APP_XML_NUMERIC_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_CODEC_XML_APP_SAMPLE})
@@ -3321,21 +3107,18 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${CODEC_APP_INI_READER_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
             # Выполняем сборку приложения работы с деревом настроек
             target_link_libraries(
                 ${CODEC_APP_INI_DOCUMENT_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
             # Выполняем сборку приложения записи текста настроек
             target_link_libraries(
                 ${CODEC_APP_INI_WRITER_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_CODEC_INI_APP_SAMPLE})
@@ -3346,21 +3129,18 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${CODEC_APP_TOML_READER_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
             # Выполняем сборку приложения работы с деревом настроек
             target_link_libraries(
                 ${CODEC_APP_TOML_DOCUMENT_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
             # Выполняем сборку приложения записи текста настроек
             target_link_libraries(
                 ${CODEC_APP_TOML_WRITER_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_CODEC_TOML_APP_SAMPLE})
@@ -3371,21 +3151,18 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${CODEC_APP_JSON_READER_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
             # Выполняем сборку приложения работы с деревом документа
             target_link_libraries(
                 ${CODEC_APP_JSON_DOCUMENT_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
             # Выполняем сборку приложения записи текста документа
             target_link_libraries(
                 ${CODEC_APP_JSON_WRITER_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_CODEC_JSON_APP_SAMPLE})
@@ -3396,13 +3173,11 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${COMPRESSOR_APP_BLOCK_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
             target_link_libraries(
                 ${COMPRESSOR_APP_STREAM_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})
@@ -3413,7 +3188,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${DIR_APP_IO_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
@@ -3424,7 +3198,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${FILE_APP_IO_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
@@ -3435,7 +3208,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${PING_APP_IO_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_PING_IO_APP_SAMPLE})
@@ -3446,7 +3218,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${TIMER_APP_IO_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
@@ -3457,7 +3228,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${EVENTS_APP_IO_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
@@ -3468,7 +3238,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${IPC_PIPE_APP_IO_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -3476,7 +3245,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${IPC_STREAM_APP_IO_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -3484,7 +3252,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${IPC_DATAGRAM_APP_IO_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -3492,7 +3259,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${IPC_SEQPACKET_APP_IO_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_IPC_IO_APP_SAMPLE})
@@ -3503,7 +3269,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${CLIENT_APP_NET_TCP_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -3511,7 +3276,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${SERVER_APP_NET_TCP_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_NET_TCP_APP_SAMPLE})
@@ -3522,7 +3286,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${CLIENT_APP_NET_UDP_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -3530,7 +3293,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${CLIENT_APP_NET_UDP_CONN_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -3538,7 +3300,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${SERVER_APP_NET_UDP_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_NET_UDP_APP_SAMPLE})
@@ -3549,7 +3310,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${CLIENT_APP_NET_TCP_BANDWIDTH_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -3557,7 +3317,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${SERVER_APP_NET_TCP_BANDWIDTH_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_NET_BANDWIDTH_APP_SAMPLE})
@@ -3568,7 +3327,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${CLIENT_APP_NET_TUN_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -3576,7 +3334,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${SERVER_APP_NET_TUN_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_NET_TUN_APP_SAMPLE})
@@ -3587,7 +3344,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${CLIENT_APP_NET_BROADCAST_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -3595,7 +3351,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${SERVER_APP_NET_BROADCAST_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_NET_BROADCAST_APP_SAMPLE})
@@ -3606,7 +3361,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${CLIENT_APP_NET_MULTICAST1_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -3614,7 +3368,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${SERVER_APP_NET_MULTICAST1_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -3622,7 +3375,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${CLIENT_APP_NET_MULTICAST3_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -3630,7 +3382,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${SERVER_APP_NET_MULTICAST3_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_NET_MULTICAST_APP_SAMPLE})
@@ -3641,7 +3392,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${CLIENT_APP_NET_SPLICE_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -3649,7 +3399,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${SERVER_APP_NET_SPLICE_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_NET_SPLICE_APP_SAMPLE})
@@ -3660,7 +3409,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${CLIENT_APP_NET_UDS_TCP_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -3668,7 +3416,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${SERVER_APP_NET_UDS_TCP_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -3676,7 +3423,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${CLIENT_APP_NET_UDS_UDP_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -3684,7 +3430,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${SERVER_APP_NET_UDS_UDP_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_NET_UDS_APP_SAMPLE})
@@ -3695,7 +3440,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${CLIENT_APP_NET_DTLS_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -3703,7 +3447,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${SERVER_APP_NET_DTLS_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_NET_DTLS_APP_SAMPLE})
@@ -3714,7 +3457,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${CLIENT_APP_NET_TLS_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -3722,7 +3464,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${SERVER_APP_NET_TLS_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -3730,7 +3471,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${CLIENT_APP_NET_TLS_WEB_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -3738,7 +3478,6 @@ if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(
                 ${SERVER_APP_NET_TLS_MULTI_NAME}
                 ${AWH_LIB_NAME}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_NET_TLS_APP_SAMPLE})
@@ -3751,84 +3490,72 @@ if (CMAKE_SHARED_BUILD_LIB)
                 target_link_libraries(
                     ${CLIENT_APP_NET_SCTP_TLS_NAME}
                     ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
                 )
 
                 # Выполняем сборку приложения сервера работы с TLS
                 target_link_libraries(
                     ${SERVER_APP_NET_SCTP_TLS_NAME}
                     ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
                 )
 
                 # Выполняем сборку приложения клиента работы с DTLS
                 target_link_libraries(
                     ${CLIENT_APP_NET_SCTP_DTLS_NAME}
                     ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
                 )
 
                 # Выполняем сборку приложения сервера работы с DTLS
                 target_link_libraries(
                     ${SERVER_APP_NET_SCTP_DTLS_NAME}
                     ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
                 )
 
                 # Выполняем сборку приложения клиента работы с SCTP - AUTH
                 target_link_libraries(
                     ${CLIENT_APP_NET_SCTP_AUTH_NAME}
                     ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
                 )
 
                 # Выполняем сборку приложения сервера работы с SCTP - AUTH
                 target_link_libraries(
                     ${SERVER_APP_NET_SCTP_AUTH_NAME}
                     ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
                 )
 
                 # Выполняем сборку приложения клиента работы с SCTP - STREAM
                 target_link_libraries(
                     ${CLIENT_APP_NET_SCTP_STREAM_NAME}
                     ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
                 )
 
                 # Выполняем сборку приложения сервера работы с SCTP - STREAM
                 target_link_libraries(
                     ${SERVER_APP_NET_SCTP_STREAM_NAME}
                     ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
                 )
 
                 # Выполняем сборку приложения клиента работы с SCTP - SEQPACKET
                 target_link_libraries(
                     ${CLIENT_APP_NET_SCTP_SEQPACKET_NAME}
                     ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
                 )
 
                 # Выполняем сборку приложения сервера работы с SCTP - SEQPACKET
                 target_link_libraries(
                     ${SERVER_APP_NET_SCTP_SEQPACKET_NAME}
                     ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
                 )
 
                 # Выполняем сборку приложения клиента переноса файла по SCTP
                 target_link_libraries(
                     ${CLIENT_APP_NET_SCTP_TRANSFER_NAME}
                     ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
                 )
 
                 # Выполняем сборку приложения сервера переноса файла по SCTP
                 target_link_libraries(
                     ${SERVER_APP_NET_SCTP_TRANSFER_NAME}
                     ${AWH_LIB_NAME}
-                    ${TCMALLOC_LIBRARIES}
                 )
             endif (${CMAKE_BUILD_NET_SCTP_APP_SAMPLE})
         endif()
@@ -3844,7 +3571,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CLIENT_APP_UDS_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -3853,7 +3579,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CLIENT_APP_UDS-2_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -3862,7 +3587,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CLIENT_APP_TCP_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -3871,7 +3595,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CLIENT_APP_TCP-2_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -3880,7 +3603,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CLIENT_APP_UDP_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -3889,7 +3611,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CLIENT_APP_UDP-2_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -3898,7 +3619,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CLIENT_APP_TLS_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -3907,7 +3627,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CLIENT_APP_TLS-2_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -3916,7 +3635,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CLIENT_APP_DTLS_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -3925,7 +3643,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CLIENT_APP_DTLS-2_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -3934,7 +3651,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CLIENT_APP_TLS-WEB_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -3945,7 +3661,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                     ${CLIENT_APP_SCTP_NAME}
                     ${AWH_LIB_NAME}
                     ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
                     ${AWH_FLAGS}
                 )
 
@@ -3954,7 +3669,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                     ${CLIENT_APP_SCTP-2_NAME}
                     ${AWH_LIB_NAME}
                     ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
                     ${AWH_FLAGS}
                 )
             endif()
@@ -3967,7 +3681,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${SERVER_APP_UDS_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -3976,7 +3689,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${SERVER_APP_UDS-2_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -3985,7 +3697,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${SERVER_APP_TCP_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -3994,7 +3705,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${SERVER_APP_TCP-2_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -4003,7 +3713,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${SERVER_APP_UDP_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -4012,7 +3721,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${SERVER_APP_UDP-2_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -4021,7 +3729,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${SERVER_APP_TLS_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -4030,7 +3737,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${SERVER_APP_TLS-MULTICERT_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -4039,7 +3745,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${SERVER_APP_DTLS_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -4048,7 +3753,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${SERVER_APP_DTLS-MULTICERT_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -4059,7 +3763,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                     ${SERVER_APP_SCTP_NAME}
                     ${AWH_LIB_NAME}
                     ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
                     ${AWH_FLAGS}
                 )
 
@@ -4068,7 +3771,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                     ${SERVER_APP_SCTP-2_NAME}
                     ${AWH_LIB_NAME}
                     ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
                     ${AWH_FLAGS}
                 )
             endif()
@@ -4081,7 +3783,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CLIENT_APP_VPN_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -4090,7 +3791,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${SERVER_APP_VPN_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_VPN_APP_SAMPLE})
@@ -4102,7 +3802,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CLIENT_APP_SOCKS5_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -4111,7 +3810,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CLIENT_APP_SOCKS5-UDP_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -4120,7 +3818,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CLIENT_APP_SOCKS5-DTLS_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -4129,7 +3826,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                ${SERVER_APP_SOCKS5_NAME}
                ${AWH_LIB_NAME}
                ${DEPEND_LIBRARY}
-               ${TCMALLOC_LIBRARIES}
                ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_SOCKS5_APP_SAMPLE})
@@ -4141,7 +3837,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${UNIT_APP_FS_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_UNIT_FS_APP_SAMPLE})
@@ -4153,7 +3848,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${UNIT_APP_DNS_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_UNIT_DNS_APP_SAMPLE})
@@ -4165,7 +3859,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${UNIT_APP_NTP_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_UNIT_NTP_APP_SAMPLE})
@@ -4177,7 +3870,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${UNIT_APP_PORTMAP_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_UNIT_PORTMAP_APP_SAMPLE})
@@ -4189,7 +3881,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${UNIT_APP_WATCHDOG_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_UNIT_WATCHDOG_APP_SAMPLE})
@@ -4201,7 +3892,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${UNIT_APP_ICMP_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_UNIT_ICMP_APP_SAMPLE})
@@ -4213,7 +3903,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${UNIT_APP_TIMER_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_UNIT_TIMER_APP_SAMPLE})
@@ -4225,7 +3914,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${UNIT_APP_CLUSTER_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_UNIT_CLUSTER_APP_SAMPLE})
@@ -4237,7 +3925,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${UNIT_APP_NOTIFIER_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_UNIT_NOTIFIER_APP_SAMPLE})
@@ -4249,7 +3936,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${IP_APP_NET_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
@@ -4261,7 +3947,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${URI_APP_NET_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_URI_NET_APP_SAMPLE})
@@ -4273,7 +3958,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${ETH_APP_NET_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_ETH_NET_APP_SAMPLE})
@@ -4285,7 +3969,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${DATE_APP_SYS_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
@@ -4297,7 +3980,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${EXPRESSION_APP_REGEX_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_EXPRESSION_REGEX_APP_SAMPLE})
@@ -4309,7 +3991,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${GROK_APP_REGEX_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_GROK_REGEX_APP_SAMPLE})
@@ -4321,7 +4002,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${BINBOX_APP_CONTAINER_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_BINBOX_CONTAINER_APP_SAMPLE})
@@ -4333,7 +4013,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${FILESYSTEM_APP_SYS_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_FILESYSTEM_SYS_APP_SAMPLE})
@@ -4345,7 +4024,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${PROCRE_APP_SYS_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_PROCRE_SYS_APP_SAMPLE})
@@ -4357,7 +4035,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CRYPTO_APP_CRYPTOGRAPHY_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_CRYPTO_CRYPTOGRAPHY_APP_SAMPLE})
@@ -4369,7 +4046,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${HASH_APP_CRYPTOGRAPHY_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_HASH_CRYPTOGRAPHY_APP_SAMPLE})
@@ -4381,7 +4057,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${SIGNATURE_APP_CRYPTOGRAPHY_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_SIGNATURE_CRYPTOGRAPHY_APP_SAMPLE})
@@ -4393,7 +4068,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AUTH_APP_PROTO_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_AUTH_PROTO_APP_SAMPLE})
@@ -4405,7 +4079,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${HEADERS_APP_PROTO_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_HEADERS_PROTO_APP_SAMPLE})
@@ -4417,7 +4090,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${PARSER_APP_PROTO_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_PARSER_PROTO_APP_SAMPLE})
@@ -4429,7 +4101,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${PARSER2_APP_PROTO_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_PARSER2_PROTO_APP_SAMPLE})
@@ -4441,7 +4112,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${SOCKS5_APP_PROTO_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_SOCKS5_PROTO_APP_SAMPLE})
@@ -4453,7 +4123,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${QUIC_CLIENT_APP_PROTO_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
             # Выполняем сборку приложения работы с QUIC сервером
@@ -4461,7 +4130,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${QUIC_SERVER_APP_PROTO_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
             # Выполняем сборку клиентского приложения проверки QUIC-прокси на объединении данных (splice)
@@ -4469,7 +4137,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${QUIC_PROXY_CLIENT_APP_PROTO_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
             # Выполняем сборку серверного приложения QUIC-прокси на объединении данных (splice)
@@ -4477,7 +4144,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${QUIC_PROXY_SERVER_APP_PROTO_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_QUIC_PROTO_APP_SAMPLE})
@@ -4489,7 +4155,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CODEC_APP_XML_READER_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
             # Выполняем сборку приложения работы с деревом разметки
@@ -4497,7 +4162,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CODEC_APP_XML_DOCUMENT_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
             # Выполняем сборку приложения записи текста разметки
@@ -4505,7 +4169,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CODEC_APP_XML_WRITER_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
             # Выполняем сборку приложения получения содержимого разметки числами
@@ -4513,7 +4176,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CODEC_APP_XML_NUMERIC_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_CODEC_XML_APP_SAMPLE})
@@ -4525,7 +4187,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CODEC_APP_INI_READER_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
             # Выполняем сборку приложения работы с деревом настроек
@@ -4533,7 +4194,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CODEC_APP_INI_DOCUMENT_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
             # Выполняем сборку приложения записи текста настроек
@@ -4541,7 +4201,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CODEC_APP_INI_WRITER_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_CODEC_INI_APP_SAMPLE})
@@ -4553,7 +4212,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CODEC_APP_TOML_READER_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
             # Выполняем сборку приложения работы с деревом настроек
@@ -4561,7 +4219,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CODEC_APP_TOML_DOCUMENT_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
             # Выполняем сборку приложения записи текста настроек
@@ -4569,7 +4226,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CODEC_APP_TOML_WRITER_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_CODEC_TOML_APP_SAMPLE})
@@ -4581,7 +4237,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CODEC_APP_JSON_READER_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
             # Выполняем сборку приложения работы с деревом документа
@@ -4589,7 +4244,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CODEC_APP_JSON_DOCUMENT_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
             # Выполняем сборку приложения записи текста документа
@@ -4597,7 +4251,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CODEC_APP_JSON_WRITER_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_CODEC_JSON_APP_SAMPLE})
@@ -4609,14 +4262,12 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${COMPRESSOR_APP_BLOCK_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
             target_link_libraries(
                 ${COMPRESSOR_APP_STREAM_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})
@@ -4628,7 +4279,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${DIR_APP_IO_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
@@ -4640,7 +4290,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${FILE_APP_IO_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
@@ -4652,7 +4301,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${PING_APP_IO_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_PING_IO_APP_SAMPLE})
@@ -4664,7 +4312,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${TIMER_APP_IO_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
@@ -4676,7 +4323,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${EVENTS_APP_IO_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
@@ -4688,7 +4334,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${IPC_PIPE_APP_IO_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -4697,7 +4342,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${IPC_STREAM_APP_IO_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -4706,7 +4350,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${IPC_DATAGRAM_APP_IO_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -4715,7 +4358,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${IPC_SEQPACKET_APP_IO_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_IPC_IO_APP_SAMPLE})
@@ -4727,7 +4369,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CLIENT_APP_NET_TCP_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -4736,7 +4377,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${SERVER_APP_NET_TCP_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_NET_TCP_APP_SAMPLE})
@@ -4748,7 +4388,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CLIENT_APP_NET_UDP_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -4757,7 +4396,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CLIENT_APP_NET_UDP_CONN_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -4766,7 +4404,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${SERVER_APP_NET_UDP_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_NET_UDP_APP_SAMPLE})
@@ -4778,7 +4415,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CLIENT_APP_NET_TCP_BANDWIDTH_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -4787,7 +4423,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${SERVER_APP_NET_TCP_BANDWIDTH_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_NET_BANDWIDTH_APP_SAMPLE})
@@ -4799,7 +4434,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CLIENT_APP_NET_TUN_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -4808,7 +4442,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${SERVER_APP_NET_TUN_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_NET_TUN_APP_SAMPLE})
@@ -4820,7 +4453,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CLIENT_APP_NET_BROADCAST_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -4829,7 +4461,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${SERVER_APP_NET_BROADCAST_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_NET_BROADCAST_APP_SAMPLE})
@@ -4841,7 +4472,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CLIENT_APP_NET_MULTICAST1_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -4850,7 +4480,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${SERVER_APP_NET_MULTICAST1_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -4859,7 +4488,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CLIENT_APP_NET_MULTICAST3_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -4868,7 +4496,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${SERVER_APP_NET_MULTICAST3_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_NET_MULTICAST_APP_SAMPLE})
@@ -4880,7 +4507,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CLIENT_APP_NET_SPLICE_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -4889,7 +4515,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${SERVER_APP_NET_SPLICE_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_NET_SPLICE_APP_SAMPLE})
@@ -4901,7 +4526,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CLIENT_APP_NET_UDS_TCP_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -4910,7 +4534,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${SERVER_APP_NET_UDS_TCP_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -4919,7 +4542,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CLIENT_APP_NET_UDS_UDP_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -4928,7 +4550,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${SERVER_APP_NET_UDS_UDP_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_NET_UDS_APP_SAMPLE})
@@ -4940,7 +4561,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CLIENT_APP_NET_DTLS_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -4949,7 +4569,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${SERVER_APP_NET_DTLS_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_NET_DTLS_APP_SAMPLE})
@@ -4961,7 +4580,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CLIENT_APP_NET_TLS_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -4970,7 +4588,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${SERVER_APP_NET_TLS_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -4979,7 +4596,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${CLIENT_APP_NET_TLS_WEB_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
 
@@ -4988,7 +4604,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${SERVER_APP_NET_TLS_MULTI_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_NET_TLS_APP_SAMPLE})
@@ -5002,7 +4617,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                     ${CLIENT_APP_NET_SCTP_TLS_NAME}
                     ${AWH_LIB_NAME}
                     ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
                 )
 
                 # Выполняем сборку приложения сервера работы с TLS
@@ -5010,7 +4624,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                     ${SERVER_APP_NET_SCTP_TLS_NAME}
                     ${AWH_LIB_NAME}
                     ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
                 )
 
                 # Выполняем сборку приложения клиента работы с DTLS
@@ -5018,7 +4631,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                     ${CLIENT_APP_NET_SCTP_DTLS_NAME}
                     ${AWH_LIB_NAME}
                     ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
                 )
 
                 # Выполняем сборку приложения сервера работы с DTLS
@@ -5026,7 +4638,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                     ${SERVER_APP_NET_SCTP_DTLS_NAME}
                     ${AWH_LIB_NAME}
                     ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
                 )
 
                 # Выполняем сборку приложения клиента работы с SCTP - AUTH
@@ -5034,7 +4645,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                     ${CLIENT_APP_NET_SCTP_AUTH_NAME}
                     ${AWH_LIB_NAME}
                     ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
                 )
 
                 # Выполняем сборку приложения сервера работы с SCTP - AUTH
@@ -5042,7 +4652,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                     ${SERVER_APP_NET_SCTP_AUTH_NAME}
                     ${AWH_LIB_NAME}
                     ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
                 )
 
                 # Выполняем сборку приложения клиента работы с SCTP - STREAM
@@ -5050,7 +4659,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                     ${CLIENT_APP_NET_SCTP_STREAM_NAME}
                     ${AWH_LIB_NAME}
                     ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
                 )
 
                 # Выполняем сборку приложения сервера работы с SCTP - STREAM
@@ -5058,7 +4666,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                     ${SERVER_APP_NET_SCTP_STREAM_NAME}
                     ${AWH_LIB_NAME}
                     ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
                 )
 
                 # Выполняем сборку приложения клиента работы с SCTP - SEQPACKET
@@ -5066,7 +4673,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                     ${CLIENT_APP_NET_SCTP_SEQPACKET_NAME}
                     ${AWH_LIB_NAME}
                     ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
                 )
 
                 # Выполняем сборку приложения сервера работы с SCTP - SEQPACKET
@@ -5074,7 +4680,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                     ${SERVER_APP_NET_SCTP_SEQPACKET_NAME}
                     ${AWH_LIB_NAME}
                     ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
                 )
 
                 # Выполняем сборку приложения клиента переноса файла по SCTP
@@ -5082,7 +4687,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                     ${CLIENT_APP_NET_SCTP_TRANSFER_NAME}
                     ${AWH_LIB_NAME}
                     ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
                 )
 
                 # Выполняем сборку приложения сервера переноса файла по SCTP
@@ -5090,7 +4694,6 @@ else (CMAKE_SHARED_BUILD_LIB)
                     ${SERVER_APP_NET_SCTP_TRANSFER_NAME}
                     ${AWH_LIB_NAME}
                     ${DEPEND_LIBRARY}
-                    ${TCMALLOC_LIBRARIES}
                 )
             endif (${CMAKE_BUILD_NET_SCTP_APP_SAMPLE})
         endif()
@@ -6415,9 +6018,6 @@ else()
     # Устанавливаем статическую библиотеку AWH
     install(TARGETS ${AWH_LIB_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 endif()
-
-# Устанавливаем статическую библиотеку TcMalloc
-install(FILES ${TCMALLOC_LIBRARIES} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 
 # Если необходимо собрать семплы
 if (${CMAKE_BUILD_SAMPLES})
