@@ -94,6 +94,16 @@ namespace awh {
 					void * body;
 					// Прежнее содержимое области подмены
 					uint8_t saved[PATCH_SIZE];
+					/**
+					 * Число байт, вытесненных подменой
+					 *
+					 * У ARM64 оно всегда равно области подмены: вход там - горячая
+					 * заплатка, отведённая Microsoft под ровно эту надобность. У x86-64
+					 * заплатки нет вовсе, и подмена вытесняет НАСТОЯЩИЕ команды входа -
+					 * столько, сколько их укладывается в пять байт перехода
+					 */
+					// Число байт, вытесненных подменой
+					size_t moved;
 					// Признак наложенной подмены
 					bool applied;
 					/**
@@ -101,11 +111,25 @@ namespace awh {
 					 *
 					 */
 					Patch() noexcept :
-					 entry(nullptr), body(nullptr), saved{0}, applied(false) {}
+					 entry(nullptr), body(nullptr), saved{0}, moved(0), applied(false) {}
 				} patch_t;
 			private:
 				// Наложенные подмены
 				patch_t _patches[PATCH_COUNT];
+				/**
+				 * Область под переходники
+				 *
+				 * Нужна лишь x86-64: переход по относительному смещению достаёт не далее
+				 * двух гигабайт, а наши функции лежат в образе программы - от библиотеки
+				 * времени исполнения это семь гигабайт и более. Оттого вход прыгает на
+				 * переходник ПОБЛИЗОСТИ, а тот уже - абсолютным переходом к нам
+				 */
+				// Область под переходники
+				void * _arena;
+				// Занято в области под переходники
+				size_t _arenaUsed;
+				// Размер области под переходники
+				size_t _arenaSize;
 				// Признак состоявшегося захвата
 				bool _acquired;
 			private:
@@ -117,6 +141,51 @@ namespace awh {
 				 *
 				 */
 				void * body(void * entry) const noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод измерения длины команд входа функции
+				 *
+				 * @note Разбиратель узкий НАМЕРЕННО: он знает лишь те виды команд, какие
+				 *       встречаются в начале функций, и на всяком незнакомом отвечает
+				 *       отказом. Переписывать вслепую нельзя - порча кода библиотеки
+				 *       времени исполнения неисправима
+				 *
+				 * @param entry   адрес входа функции
+				 * @param need    требуемое число байт
+				 * @param offsets массив под смещения начал команд, либо nullptr
+				 * @param count   число разобранных команд, либо nullptr
+				 * @return        длина целого числа команд не менее требуемой, либо нуль
+				 *
+				 * \~english
+				 * @brief Method of measuring the length of the function entry instructions
+				 *
+				 */
+				size_t prologue(const void * entry, const size_t need, size_t * offsets, size_t * count) const noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод определения пригодности входа функции к подмене
+				 *
+				 * @param entry адрес входа функции
+				 * @return      признак пригодности входа
+				 *
+				 * \~english
+				 * @brief Method of determining whether a function entry suits patching
+				 *
+				 */
+				bool suits(void * entry) const noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод выдачи памяти под переходник вблизи образа
+				 *
+				 * @param anchor адрес, вблизи которого нужна память
+				 * @param size  требуемый размер в байтах
+				 * @return      адрес выданной памяти либо nullptr
+				 *
+				 * \~english
+				 * @brief Method of allocating trampoline memory near an image
+				 *
+				 */
+				void * nearby(const void * anchor, const size_t size) noexcept;
 				/**
 				 * @brief Метод наложения подмены на вход функции
 				 *
@@ -178,7 +247,8 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				PECapture() noexcept : _acquired(false) {}
+				PECapture() noexcept :
+				 _arena(nullptr), _arenaUsed(0), _arenaSize(0), _acquired(false) {}
 				/**
 				 * @brief Деструктор
 				 *

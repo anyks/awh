@@ -226,7 +226,17 @@ echo "$MACHINES" | while IFS='|' read -r HOST TAG COMPILER BUILDFLAGS; do
 	# @note Отказ передачи прогон не прекращает: недоступная машина - это отсутствие
 	#       сведений о ней, а не отказ прочих
 	#
-	if ! scp -q -o BatchMode=yes -o StrictHostKeyChecking=no "$BUNDLE" "$RUNNER" "$HOST:/tmp/"; then
+	#
+	# @warning Сроки на передачу обязательны: застрявшая передача без них держит обход
+	#          ВЕЧНО и молча. Однажды `scp` на Fedora простоял два часа девять минут,
+	#          тогда как сама машина простаивала и следов передачи не имела вовсе;
+	#          обход при этом выглядел идущим, а не вставшим. `ServerAliveInterval`
+	#          нужен наравне с `ConnectTimeout`: подключение состоялось, а встала
+	#          передача, и срок на подключение тут не срабатывает
+	#
+	if ! scp -q -o BatchMode=yes -o StrictHostKeyChecking=no \
+		-o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=4 \
+		"$BUNDLE" "$RUNNER" "$HOST:/tmp/"; then
 		# Выводим сообщение о недоступности машины
 		echo "МАШИНА НЕДОСТУПНА"
 		# Выполняем переход к следующей машине
@@ -246,7 +256,8 @@ echo "$MACHINES" | while IFS='|' read -r HOST TAG COMPILER BUILDFLAGS; do
 	#          кажется машина. Наступал на это, переписывая раскладку с проверок,
 	#          где ключ этот стоит
 	#
-	ssh -n -o BatchMode=yes -o StrictHostKeyChecking=no "$HOST" "
+	ssh -n -o BatchMode=yes -o StrictHostKeyChecking=no \
+		-o ConnectTimeout=20 -o ServerAliveInterval=30 -o ServerAliveCountMax=240 "$HOST" "
 		set -u
 		rm -rf /tmp/awh-bench-tree-$STAMP
 		mkdir -p /tmp/awh-bench-tree-$STAMP

@@ -21,6 +21,13 @@
  */
 #include <alloc/alloc.hpp>
 #include <alloc/guard.hpp>
+#include <alloc/profile.hpp>
+
+/**
+ * Стандартные заголовочные файлы
+ */
+#include <thread>
+#include <chrono>
 
 /**
  * Наши модули
@@ -116,12 +123,17 @@ namespace {
 		awh::alloc::guard_t guard;
 		// Карантин освобождённой памяти
 		awh::alloc::quarantine_t quarantine;
+		// Съём стека вызовов
+		awh::alloc::trace_t trace;
+		// Учёт мест выдачи памяти
+		awh::alloc::profile_t profile;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
 		Machinery() noexcept :
-		 system(), pages(), classes(), central(), caches(), guard(), quarantine() {}
+		 system(), pages(), classes(), central(), caches(), guard(), quarantine(),
+		 trace(), profile() {}
 	} machinery_t;
 	// Место под устройство распределителя
 	alignas(16) static uint8_t space[sizeof(machinery_t)];
@@ -146,12 +158,76 @@ namespace {
 	 */
 	// Номер процесса, которому принадлежит распределитель
 	static std::atomic <int64_t> holder(0);
+	/**
+	 * Признак выданных когда-либо заслонённых блоков
+	 *
+	 * Держится здесь, а не спрашивается у заслонов: спросить их значит взять замок, а
+	 * стоит этот вопрос на пути КАЖДОГО освобождения - и при выключенных заслонах тоже.
+	 * Признак же читается одним обращением к памяти и при лжи снимает вопрос вовсе
+	 *
+	 * Взведённый, он НЕ снимается никогда. Считать живые заслонённые блоки было бы
+	 * дешевле, но неверно: освобождённая заслонённая область остаётся нашей до самой
+	 * отдачи системе, и перестань мы спрашивать заслоны при нуле живых - повторное
+	 * освобождение ушло бы прежнему распределителю. Проверено опытом: щуп валился с
+	 * кодом 134 ровно на этом
+	 */
+	// Признак выданных когда-либо заслонённых блоков
+	static std::atomic <bool> guarded(false);
 	// Занято прикладным кодом прямо сейчас
 	static std::atomic <size_t> occupied(0);
 	// Наибольшее занятое за время работы
 	static std::atomic <size_t> summit(0);
 	// Объект журнала
 	static const awh::log_t * journal = nullptr;
+	/**
+	 * Поток доклада
+	 *
+	 * Отклики зовутся ОТДЕЛЬНЫМ потоком, а не из выдачи памяти: позови мы отклик прямо
+	 * из malloc - тот волен обратиться за памятью, и обращение вернулось бы в ту же
+	 * выдачу. Поток же опрашивает состояние размеренно и зовёт отклики у себя
+	 *
+	 * Ждёт он выдержкой, а не условной переменной: подача сигнала берёт мьютекс, а
+	 * подавать его пришлось бы ИЗНУТРИ выдачи памяти - то есть завести там ровно тот
+	 * мьютекс, ради отсутствия которого писался свой замок
+	 */
+	// Длина кольца докладов о крупных выдачах
+	static constexpr size_t REPORTS = 1024;
+	// Выдержка между опросами потока доклада в миллисекундах
+	static constexpr int64_t TICK = 50;
+	/**
+	 * @brief Доклад о крупной выдаче
+	 *
+	 */
+	typedef struct Report {
+		// Адрес выданного блока
+		const void * block;
+		// Затребованный размер блока в байтах
+		size_t size;
+	} report_t;
+	// Замок кольца докладов
+	static awh::alloc::spin_t reportLock;
+	// Кольцо докладов о крупных выдачах
+	static report_t reports[REPORTS];
+	// Место записи очередного доклада
+	static size_t reportHead = 0;
+	// Место изъятия старейшего доклада
+	static size_t reportTail = 0;
+	// Число докладов в кольце
+	static size_t reportHeld = 0;
+	// Число докладов, потерянных из-за переполнения кольца
+	static std::atomic <size_t> reportLost(0);
+	// Замок откликов доклада
+	static awh::alloc::spin_t callbackLock;
+	// Отклик на крупное выделение
+	static std::function <void (const void *, const size_t)> largeCallback;
+	// Отклик на достижение потолка кучи
+	static std::function <void (const size_t)> limitCallback;
+	// Признак работы потока доклада
+	static std::atomic <bool> reporting(false);
+	// Поток доклада
+	static std::thread * reporter = nullptr;
+	// Число блоков, испорченных записью после освобождения, доложенное прежде
+	static size_t spoiledSeen = 0;
 	/**
 	 * Способ захвата, свой у каждой семьи систем
 	 */
@@ -283,6 +359,12 @@ namespace {
 			machinery->guard.adopt();
 			// Приводим в порядок замок карантина
 			machinery->quarantine.adopt();
+			// Приводим в порядок замок учёта мест выдачи
+			machinery->profile.adopt();
+			// Приводим в порядок замки доклада
+			reportLock.reset();
+			// Приводим в порядок замок откликов доклада
+			callbackLock.reset();
 		#endif
 	}
 	/**
@@ -311,6 +393,10 @@ namespace {
 			machinery->guard.prepare();
 			// Захватываем замок карантина
 			machinery->quarantine.prepare();
+			// Захватываем замок учёта мест выдачи
+			machinery->profile.prepare();
+			// Захватываем замок кольца докладов
+			reportLock.acquire();
 		}
 		/**
 		 * @brief Метод освобождения замков распределителя у родителя после ветвления
@@ -321,6 +407,10 @@ namespace {
 			if(stage.load(std::memory_order_acquire) != STAGE_READY)
 				// Освобождать нечего
 				return;
+			// Освобождаем замок кольца докладов
+			reportLock.release();
+			// Освобождаем замок учёта мест выдачи
+			machinery->profile.resume();
 			// Освобождаем замок карантина
 			machinery->quarantine.resume();
 			// Освобождаем замок заслонов
@@ -349,6 +439,24 @@ namespace {
 			machinery->guard.adopt();
 			// Приводим в порядок замок карантина
 			machinery->quarantine.adopt();
+			// Приводим в порядок замок учёта мест выдачи
+			machinery->profile.adopt();
+			/**
+			 * Потока доклада у потомка ветвления НЕТ
+			 *
+			 * Ветвление переносит лишь звавший поток, а прочие остаются у родителя.
+			 * Отмечаем доклад остановленным и забываем поток, не трогая его: снести его
+			 * значило бы тронуть состояние потока, какого в этом процессе нет. Приложению,
+			 * которому доклад нужен и у потомка, довольно поставить отклик заново
+			 */
+			// Отмечаем поток доклада остановленным
+			reporting.store(false, std::memory_order_release);
+			// Забываем поток доклада
+			reporter = nullptr;
+			// Замок кольца докладов приводим в порядок
+			reportLock.reset();
+			// Замок откликов доклада приводим в порядок
+			callbackLock.reset();
 		}
 	#endif
 	/**
@@ -391,6 +499,8 @@ namespace {
 		const bool heaped = machinery->pages.init(source, settings.arena, settings.confined);
 		// Задаём куче порядок отдачи памяти системе
 		machinery->pages.policy(settings.purgeDelay, settings.purgeBlock);
+		// Задаём куче потолок взятого у источника
+		machinery->pages.ceiling(settings.heapLimit);
 		// Заводим центральные списки
 		const bool listed = machinery->central.init(&machinery->pages, &machinery->classes);
 		// Заводим управляющего поток-локальными кэшами
@@ -414,6 +524,18 @@ namespace {
 		machinery->quarantine.init(source, settings.quarantine);
 		// Задаём карантину засев удерживаемой памяти
 		machinery->quarantine.junk(settings.fill == awh::alloc::fill_t::JUNK);
+		/**
+		 * Заводим съём стека и учёт мест выдачи
+		 *
+		 * Съём прогревается прямо здесь, вне всякой выдачи: первое обращение к раскрутке
+		 * у части систем само просит памяти
+		 */
+		// Заводим съём стека вызовов
+		machinery->trace.init();
+		// Заводим учёт мест выдачи памяти
+		machinery->profile.init(source, &machinery->trace);
+		// Задаём учёту долю выборки
+		machinery->profile.rate(settings.profileRate);
 		/**
 		 * Заводим отклики ветвления процесса
 		 *
@@ -483,6 +605,157 @@ namespace {
 		}
 	}
 	/**
+	 * @brief Метод постановки доклада о крупной выдаче
+	 *
+	 * @note Зовётся ИЗНУТРИ выдачи памяти: ни отклика, ни журнала, ни памяти здесь
+	 *       трогать нельзя - только запись в кольцо под своим замком
+	 *
+	 * @param ptr  адрес выданного блока
+	 * @param size затребованный размер блока в байтах
+	 *
+	 */
+	static void announce(const void * ptr, const size_t size) noexcept {
+		// Захватываем замок кольца докладов
+		awh::alloc::hold_t hold(reportLock);
+		// Если кольцо заполнено целиком
+		if(reportHeld >= REPORTS){
+			/**
+			 * Считаем потерянное, а не вытесняем старейшее
+			 *
+			 * Доклад о крупной выдаче нужен, чтобы найти виновника; вытесняя старейшие,
+			 * мы теряли бы как раз первые - те, что случились прежде затопления
+			 */
+			reportLost.fetch_add(1, std::memory_order_relaxed);
+			// Докладывать больше некуда
+			return;
+		}
+		// Записываем адрес выданного блока
+		reports[reportHead].block = ptr;
+		// Записываем затребованный размер блока
+		reports[reportHead].size = size;
+		// Сдвигаем место записи очередного доклада
+		reportHead = ((reportHead + 1) % REPORTS);
+		// Увеличиваем число докладов в кольце
+		reportHeld++;
+	}
+	/**
+	 * @brief Метод работы потока доклада
+	 *
+	 */
+	static void deliver() noexcept {
+		/**
+		 * Опрашиваем состояние, пока поток доклада работает
+		 */
+		while(reporting.load(std::memory_order_acquire)){
+			// Отклик на крупное выделение
+			std::function <void (const void *, const size_t)> large;
+			// Отклик на достижение потолка кучи
+			std::function <void (const size_t)> limit;
+			{
+				// Захватываем замок откликов доклада
+				awh::alloc::hold_t hold(callbackLock);
+				// Забираем отклик на крупное выделение
+				large = largeCallback;
+				// Забираем отклик на достижение потолка кучи
+				limit = limitCallback;
+			}
+			/**
+			 * Разбираем кольцо докладов о крупных выдачах
+			 */
+			for(;;){
+				// Очередной доклад о крупной выдаче
+				report_t report;
+				{
+					// Захватываем замок кольца докладов
+					awh::alloc::hold_t hold(reportLock);
+					// Если кольцо пусто
+					if(reportHeld == 0)
+						// Разбирать больше нечего
+						break;
+					// Забираем старейший доклад
+					report = reports[reportTail];
+					// Сдвигаем место изъятия старейшего доклада
+					reportTail = ((reportTail + 1) % REPORTS);
+					// Уменьшаем число докладов в кольце
+					reportHeld--;
+				}
+				// Если отклик на крупное выделение задан
+				if(large)
+					// Докладываем о крупной выдаче
+					large(report.block, report.size);
+			}
+			// Если распределитель заведён
+			if(stage.load(std::memory_order_acquire) == STAGE_READY){
+				// Если куча упёрлась в потолок
+				if(machinery->central.jammed() && limit)
+					// Докладываем о достижении потолка кучи
+					limit(machinery->pages.state().total);
+				/**
+				 * Докладываем о записи по освобождённому блоку
+				 *
+				 * Отклика на то в договоре нет, и заводить его отдельно незачем: находка
+				 * эта - сообщение о дефекте прикладного кода, а место таких сообщений в
+				 * журнале. Ловит её карантин, а докладывает поток - изнутри освобождения
+				 * запись в журнал сама пошла бы за памятью
+				 */
+				// Получаем состояние карантина
+				const awh::alloc::Quarantine::state_t quarantine = machinery->quarantine.state();
+				// Если испорченных блоков прибавилось
+				if((quarantine.spoiled > spoiledSeen) && (journal != nullptr)){
+					// Запоминаем число доложенных испорченных блоков
+					spoiledSeen = quarantine.spoiled;
+					// Докладываем о записи по освобождённому блоку
+					journal->print("Memory was written after being freed: %zu block(s), first at %p offset %zu", awh::log_t::flag_t::CRITICAL, quarantine.spoiled, quarantine.culprit, quarantine.offset);
+				}
+			}
+			// Ждём до следующего опроса
+			std::this_thread::sleep_for(std::chrono::milliseconds(TICK));
+		}
+	}
+	/**
+	 * @brief Метод заведения потока доклада
+	 *
+	 * @note Звать ВНЕ выдачи памяти: заведение потока само за памятью и обращается
+	 *
+	 */
+	static void awaken() noexcept {
+		// Если поток доклада уже заведён
+		if(reporting.load(std::memory_order_acquire))
+			// Заводить нечего
+			return;
+		// Отмечаем поток доклада работающим
+		reporting.store(true, std::memory_order_release);
+		// Заводим поток доклада
+		reporter = new std::thread(&deliver);
+	}
+	/**
+	 * @brief Метод взятия выданного блока под учёт места выдачи
+	 *
+	 * @note Стек, снимаемый учётом, начинается с того, кто позвал взятие: сколько
+	 *       ближних уровней придётся на сам распределитель, зависит от подстановки у
+	 *       собирателя, и обрезать их числом наперёд значило бы обрезать наугад
+	 *
+	 * @param ptr  адрес выданного блока
+	 * @param size затребованный размер блока в байтах
+	 *
+	 */
+	static void enrol(void * ptr, const size_t size) noexcept {
+		// Если выдавать было нечего
+		if(ptr == nullptr)
+			// Учитывать нечего
+			return;
+		// Если выдача перекрыла порог доклада о крупном выделении
+		if((settings.reportLarge > 0) && (size >= settings.reportLarge))
+			// Ставим доклад о крупной выдаче
+			announce(ptr, size);
+		// Если выданный блок под выборку учёта не попал
+		if(!machinery->profile.wanted())
+			// Учитывать нечего
+			return;
+		// Берём выданный блок под учёт места выдачи
+		machinery->profile.enroll(ptr, size, now(), 0);
+	}
+	/**
 	 * @brief Метод выдачи памяти
 	 *
 	 * @param size требуемый размер в байтах
@@ -503,6 +776,28 @@ namespace {
 		if(!prepare())
 			// Выдаём из области первоначальной выдачи
 			return initial(size);
+		/**
+		 * Выдаём блок под заслонами, если выборка взяла эту выдачу
+		 *
+		 * Отказ заслонов отказом выдачи НЕ является: заслоны выборочны и всегда могут
+		 * не состояться - у источника нет памяти, источник не умеет закрывать страницы.
+		 * Выдача при этом идёт обычным путём
+		 */
+		if(machinery->guard.wanted(size)){
+			// Выдаём блок под заслонами
+			void * result = machinery->guard.alloc(size);
+			// Если блок под заслонами выдан
+			if(result != nullptr){
+				// Отмечаем заслонённые блоки выданными
+				guarded.store(true, std::memory_order_relaxed);
+				// Учитываем выданное прикладному коду
+				account(size);
+				// Берём выданный блок под учёт места выдачи
+				enrol(result, size);
+				// Выводим выданный блок
+				return result;
+			}
+		}
 		// Определяем разряд требуемого размера
 		const size_t index = machinery->classes.index(size);
 		// Если размер обслуживается разрядами
@@ -517,6 +812,8 @@ namespace {
 				if(result != nullptr){
 					// Учитываем выданное прикладному коду
 					account(machinery->classes.size(index));
+					// Берём выданный блок под учёт места выдачи
+					enrol(result, size);
 					// Выводим выданный блок
 					return result;
 				}
@@ -527,11 +824,84 @@ namespace {
 		// Выдаём область страниц под запрос сверх разрядов
 		void * result = machinery->central.alloc(size);
 		// Если область выдана
-		if(result != nullptr)
+		if(result != nullptr){
 			// Учитываем выданное прикладному коду
 			account(((size + (awh::alloc::Pages::PAGE - 1)) / awh::alloc::Pages::PAGE) * awh::alloc::Pages::PAGE);
+			// Берём выданную область под учёт места выдачи
+			enrol(result, size);
+		}
 		// Выводим выданную область
 		return result;
+	}
+	/**
+	 * @brief Метод выдачи памяти с требуемым выравниванием
+	 *
+	 * @param alignment требуемое выравнивание в байтах
+	 * @param size      требуемый размер в байтах
+	 * @return          адрес выданной памяти либо nullptr
+	 *
+	 */
+	static void * align(const size_t alignment, const size_t size) noexcept {
+		/**
+		 * Если требуемое выравнивание не превышает выравнивания разрядов
+		 *
+		 * Всякий выданный нами блок выровнен по шестнадцати байтам: того требует язык
+		 * от обычной выдачи, и просить меньшего незачем
+		 */
+		if(alignment <= awh::alloc::Classes::ALIGN)
+			// Выдаём память обычным путём
+			return reserve(size);
+		// Если распределитель не готов
+		if(!prepare()){
+			/**
+			 * Выдаём из области первоначальной выдачи с запасом на выравнивание
+			 *
+			 * Память эта не освобождается вовсе, оттого пропуск перед выровненным
+			 * адресом теряется безвозвратно - но области той четверть мегабайта на весь
+			 * век процесса, и выравнивающих запросов до заведения считанные единицы
+			 */
+			uint8_t * block = reinterpret_cast <uint8_t *> (initial(size + alignment));
+			// Если память не выдана
+			if(block == nullptr)
+				// Выдавать нечего
+				return nullptr;
+			// Определяем пропуск до выровненного адреса
+			const size_t shift = (reinterpret_cast <uintptr_t> (block) % alignment);
+			// Выводим выровненный адрес
+			return (block + ((shift == 0) ? 0 : (alignment - shift)));
+		}
+		/**
+		 * Если требуемое выравнивание не превышает страницы кучи
+		 *
+		 * Области сверх разрядов выдаются страничной кучей, а начала её страниц выровнены
+		 * по размеру страницы: кусок берётся у источника выровненным по своему размеру, а
+		 * страницы нарезаются от начала куска. Оттого выдача сверх разрядов выровнена
+		 * всегда, и добиваться выравнивания приведением адреса не требуется
+		 */
+		if(alignment <= awh::alloc::Pages::PAGE){
+			// Требуемый размер, заведомо выходящий за разряды
+			size_t need = size;
+			// Если размер обслуживается разрядами
+			if(need <= awh::alloc::Classes::MAXIMUM)
+				// Поднимаем размер за пределы разрядов
+				need = (awh::alloc::Classes::MAXIMUM + 1);
+			// Выдаём область страниц
+			void * result = machinery->central.alloc(need);
+			// Если область выдана
+			if(result != nullptr)
+				// Учитываем выданное прикладному коду
+				account(((need + (awh::alloc::Pages::PAGE - 1)) / awh::alloc::Pages::PAGE) * awh::alloc::Pages::PAGE);
+			// Выводим выданную область
+			return result;
+		}
+		/**
+		 * Отвечаем отказом
+		 *
+		 * Выравнивание сверх страницы кучи нам не по силам: куски у источника выровнены
+		 * по своему размеру, но начала областей внутри них - лишь по странице. Звавший
+		 * волен обратиться к прежнему распределителю - и обращается
+		 */
+		return nullptr;
 	}
 	/**
 	 * @brief Метод определения размера выданного блока
@@ -559,6 +929,20 @@ namespace {
 		if(stage.load(std::memory_order_acquire) != STAGE_READY)
 			// Разбирать нечем
 			return 0;
+		// Если заслонённые блоки выдавались
+		if(guarded.load(std::memory_order_relaxed)){
+			// Размер заслонённого блока в байтах
+			size_t served = 0;
+			// Если адрес принадлежит заслонённому блоку
+			if(machinery->guard.owner(ptr, &served)){
+				// Если требуется номер разряда
+				if(index != nullptr)
+					// Отмечаем блок лежащим вне разрядов
+					(* index) = awh::alloc::Classes::LIMIT;
+				// Выводим затребованный размер заслонённого блока
+				return served;
+			}
+		}
 		// Номер разряда, которому принадлежит адрес
 		size_t which = 0;
 		// Адрес начала области
@@ -579,6 +963,29 @@ namespace {
 			return machinery->classes.size(which);
 		// Выводим размер области сверх разрядов
 		return size;
+	}
+	/**
+	 * @brief Метод возврата блока слоям распределителя
+	 *
+	 * @param ptr   адрес возвращаемого блока
+	 * @param index номер разряда, которому принадлежит блок
+	 *
+	 */
+	static void recycle(void * ptr, const size_t index) noexcept {
+		// Если блок принадлежит области разряда
+		if(index < machinery->classes.count()){
+			// Получаем кэш текущего потока
+			awh::alloc::cache_t * cache = machinery->caches.local();
+			// Если кэш текущего потока заведён
+			if(cache != nullptr){
+				// Возвращаем блок в кэш текущего потока
+				cache->free(index, ptr);
+				// Возвращать больше нечего
+				return;
+			}
+		}
+		// Возвращаем куче область, выданную сверх разрядов
+		machinery->central.free(ptr, now());
 	}
 	/**
 	 * @brief Метод освобождения памяти
@@ -610,6 +1017,49 @@ namespace {
 			// Освобождать больше нечем
 			return;
 		}
+		/**
+		 * Освобождаем заслонённый блок
+		 *
+		 * Спрашиваем заслоны лишь когда заслонённые блоки есть: при выключенных
+		 * заслонах вопрос этот стоил бы замка на каждом освобождении
+		 */
+		if(guarded.load(std::memory_order_relaxed)){
+			// Признак принадлежности адреса заслонам
+			bool mine = false;
+			// Освобождаем заслонённый блок
+			const size_t served = machinery->guard.free(ptr, &mine);
+			/**
+			 * Если адрес принадлежит заслонам
+			 *
+			 * Нулевой размер при нашем адресе означает повторное освобождение: блок
+			 * закрыт прежде. Отдавать слоям нечего, но и прежнему распределителю такой
+			 * указатель нести НЕЛЬЗЯ - тот принял бы за свой чужой ему адрес
+			 */
+			if(mine){
+				/**
+				 * Учёт правим лишь при настоящем освобождении
+				 *
+				 * Повторное отдаёт нулевой размер, и вычитай мы его - занятое прикладным
+				 * кодом уехало бы вниз на пустом месте
+				 */
+				if(served > 0){
+					// Если учёт мест выдачи ведётся
+					if(machinery->profile.tracking())
+						// Снимаем блок с учёта места выдачи
+						machinery->profile.expel(ptr);
+					// Уменьшаем занятое прикладным кодом
+					occupied.fetch_sub(((occupied.load(std::memory_order_relaxed) < served) ? occupied.load(std::memory_order_relaxed) : served), std::memory_order_relaxed);
+				}
+				/**
+				 * Освобождать больше нечего
+				 *
+				 * Область заслонённого блока закрыта целиком и слоям не возвращается:
+				 * обращение по освобождённому адресу обязано валить, а не доставаться
+				 * следующей выдаче
+				 */
+				return;
+			}
+		}
 		// Номер разряда, которому принадлежит адрес
 		size_t index = awh::alloc::Classes::LIMIT;
 		// Определяем размер освобождаемого блока
@@ -629,26 +1079,44 @@ namespace {
 			// Освобождать больше нечем
 			return;
 		}
+		// Если учёт мест выдачи ведётся
+		if(machinery->profile.tracking())
+			// Снимаем блок с учёта места выдачи
+			machinery->profile.expel(ptr);
+		// Уменьшаем занятое прикладным кодом
+		occupied.fetch_sub(((occupied.load(std::memory_order_relaxed) < size) ? occupied.load(std::memory_order_relaxed) : size), std::memory_order_relaxed);
+		/**
+		 * Удерживаем блок карантином, если тот заведён
+		 *
+		 * Карантин засевает удерживаемое сам, оттого засев здесь идёт лишь тем блокам,
+		 * каких он не принял: непомерным ему по размеру да пришедшим к полному кольцу
+		 */
+		if((settings.quarantine > 0) && machinery->quarantine.hold(ptr, size, index)){
+			// Размер вытесненного из карантина блока
+			size_t served = 0;
+			// Номер разряда вытесненного из карантина блока
+			size_t which = 0;
+			// Адрес вытесненного из карантина блока
+			void * exiled = nullptr;
+			/**
+			 * Возвращаем слоям вытесненное карантином
+			 *
+			 * Возвращает их принявший, а не сам карантин: тот слоёв не знает вовсе и
+			 * знать не должен - иначе очередь освобождённого оказалась бы вплетена в
+			 * выдачу памяти
+			 */
+			while((exiled = machinery->quarantine.release(&served, &which)) != nullptr)
+				// Возвращаем слоям вытесненный блок
+				recycle(exiled, which);
+			// Освобождать больше нечего
+			return;
+		}
 		// Если требуется засевать освобождаемое
 		if(settings.fill == awh::alloc::fill_t::JUNK)
 			// Засеваем освобождаемое заметным образом
 			::memset(ptr, 0xDE, size);
-		// Уменьшаем занятое прикладным кодом
-		occupied.fetch_sub(((occupied.load(std::memory_order_relaxed) < size) ? occupied.load(std::memory_order_relaxed) : size), std::memory_order_relaxed);
-		// Если блок принадлежит области разряда
-		if(index < machinery->classes.count()){
-			// Получаем кэш текущего потока
-			awh::alloc::cache_t * cache = machinery->caches.local();
-			// Если кэш текущего потока заведён
-			if(cache != nullptr){
-				// Возвращаем блок в кэш текущего потока
-				cache->free(index, ptr);
-				// Освобождать больше нечего
-				return;
-			}
-		}
-		// Возвращаем куче область, выданную сверх разрядов
-		machinery->central.free(ptr, now());
+		// Возвращаем блок слоям распределителя
+		recycle(ptr, index);
 	}
 };
 
@@ -800,6 +1268,38 @@ static size_t AWH_ALLOC_HOOK(msize)(const void * ptr) {
 	// Выводим размер выданного блока
 	return ::measure(ptr, nullptr);
 }
+/**
+ * @brief Метод выделения памяти с требуемым выравниванием
+ *
+ * @param alignment требуемое выравнивание в байтах
+ * @param size      требуемый размер в байтах
+ * @return          адрес выданной памяти либо nullptr
+ *
+ */
+/**
+ * Имя выравнивающей выдачи своё у ВСЕХ систем, а не только у macOS и MS Windows
+ *
+ * У систем ELF `memalign` объявлен библиотекой времени исполнения, и наше определение
+ * с внутренним связыванием спорит с тем объявлением: собиратели Alpine и Solaris валят
+ * сборку словами «объявлено extern, а затем static». Имени этого мы там и не заслоняем:
+ * выравнивающая выдача идёт своим путём внутри библиотеки и нашего malloc не зовёт, а
+ * зовут наш отклик лишь зона macOS да переписывание входа у MS Windows - и оба зовут
+ * его указателем, имени не спрашивая
+ */
+static void * __awh_alloc_memalign__(size_t alignment, size_t size) {
+	// Если выравнивание не задано либо не является степенью двойки
+	if((alignment == 0) || ((alignment & (alignment - 1)) != 0))
+		// Выравнивать нечем
+		return nullptr;
+	// Выдаём память с требуемым выравниванием
+	void * result = ::align(alignment, size);
+	// Если требуется обнулять выдаваемое
+	if((result != nullptr) && (::settings.fill == awh::alloc::fill_t::ZERO))
+		// Обнуляем выданную память
+		::memset(result, 0, size);
+	// Выводим выданную память
+	return result;
+}
 
 /**
  * @brief Метод захвата выделения памяти процесса
@@ -840,6 +1340,8 @@ bool awh::alloc::Allocator::capture(const options_t & options, const log_t * log
 	hooks.realloc = &AWH_ALLOC_HOOK(realloc);
 	// Задаём определение размера выделенного блока
 	hooks.msize = &AWH_ALLOC_HOOK(msize);
+	// Задаём выделение памяти с требуемым выравниванием
+	hooks.memalign = &__awh_alloc_memalign__;
 	// Захватываем выделение памяти процесса
 	if(!::seizure.acquire(hooks, ::originals)){
 		// Если объект журнала задан
@@ -863,6 +1365,26 @@ void awh::alloc::Allocator::surrender() noexcept {
 	if(!::seized.load(std::memory_order_acquire))
 		// Снимать нечего
 		return;
+	/**
+	 * Гасим поток доклада прежде снятия захвата
+	 *
+	 * Поток этот ходит в состояние распределителя и зовёт отклики приложения: оставь мы
+	 * его жить после снятия - он звал бы отклики о распределителе, каким уже никто не
+	 * пользуется
+	 */
+	if(::reporting.load(std::memory_order_acquire)){
+		// Отмечаем поток доклада остановленным
+		::reporting.store(false, std::memory_order_release);
+		// Если поток доклада заведён
+		if(::reporter != nullptr){
+			// Дожидаемся завершения потока доклада
+			::reporter->join();
+			// Сносим поток доклада
+			delete ::reporter;
+			// Забываем поток доклада
+			::reporter = nullptr;
+		}
+	}
 	// Снимаем захват выделения памяти процесса
 	::seizure.release();
 	// Отмечаем захват снятым
@@ -915,10 +1437,26 @@ void awh::alloc::Allocator::options(const options_t & options) noexcept {
 	if(::stage.load(std::memory_order_acquire) == STAGE_READY){
 		// Задаём куче порядок отдачи памяти системе
 		::machinery->central.policy(::settings.purgeDelay, ::settings.purgeBlock);
+		// Задаём куче потолок взятого у источника
+		::machinery->central.ceiling(::settings.heapLimit);
 		// Если потолок поток-локальных кэшей задан
 		if(::settings.cacheLimit > 0)
 			// Задаём потолок поток-локальных кэшей
 			::machinery->caches.limit(::settings.cacheLimit);
+		// Задаём заслонам долю выборки
+		::machinery->guard.rate(::settings.guardRate);
+		/**
+		 * Задаём карантину потолок объёма
+		 *
+		 * Кольцо карантина заведено при заведении распределителя и в работе не растёт:
+		 * потолок сверх заказанного при заведении упрётся в число мест кольца, и
+		 * карантин окажется короче заказанного - но верным останется
+		 */
+		::machinery->quarantine.limit(::settings.quarantine);
+		// Задаём карантину засев удерживаемой памяти
+		::machinery->quarantine.junk(::settings.fill == fill_t::JUNK);
+		// Задаём учёту мест выдачи долю выборки
+		::machinery->profile.rate(::settings.profileRate);
 	}
 }
 /**
@@ -1062,6 +1600,76 @@ awh::alloc::region_t awh::alloc::Allocator::resolve(const void * addr) noexcept 
 	if(::stage.load(std::memory_order_acquire) != STAGE_READY)
 		// Выводим сведения о разобранном адресе
 		return result;
+	/**
+	 * Спрашиваем заслоны прежде кучи
+	 *
+	 * Заслонённые блоки лежат в стороне от кучи, взяты прямо у источника, и куче о них
+	 * неизвестно ничего: спроси мы её первой - она честно ответила бы «память чужая»
+	 */
+	{
+		// Адрес начала заслонённого блока
+		const void * block = nullptr;
+		// Затребованный размер заслонённого блока
+		size_t size = 0;
+		// Смещение разбираемого адреса от начала блока
+		ptrdiff_t offset = 0;
+		// Признак освобождённого блока
+		bool sealed = false;
+		// Если адрес принадлежит заслонённой области
+		if(::machinery->guard.resolve(addr, &block, &size, &offset, &sealed)){
+			// Записываем адрес начала блока
+			result.begin = block;
+			// Записываем размер блока
+			result.size = size;
+			// Записываем смещение разбираемого адреса от начала блока
+			result.offset = offset;
+			/**
+			 * Определяем, чем оказался адрес
+			 *
+			 * Заслон на то и ставится, чтобы край обращения был известен точно:
+			 * смещение ниже нуля означает недобор, смещение за концом - переполнение,
+			 * а закрытая область - обращение по освобождённому блоку
+			 */
+			// Если адрес лежит перед началом блока
+			if(offset < 0)
+				// Отмечаем адрес недобором
+				result.origin = origin_t::UNDERRUN;
+			// Если адрес лежит за концом блока
+			else if(offset >= static_cast <ptrdiff_t> (size))
+				// Отмечаем адрес переполнением
+				result.origin = origin_t::OVERRUN;
+			// Отмечаем блок живым либо освобождённым
+			else result.origin = (sealed ? origin_t::FREED : origin_t::LIVE);
+			// Выводим сведения о разобранном адресе
+			return result;
+		}
+	}
+	/**
+	 * Спрашиваем карантин прежде кучи
+	 *
+	 * Удерживаемый карантином блок куче принадлежит по-прежнему, и та ответила бы о
+	 * нём «область жива»: слоям он ещё не возвращён. Освобождённым его числит один
+	 * только карантин
+	 */
+	{
+		// Адрес начала удерживаемого блока
+		const void * block = nullptr;
+		// Размер удерживаемого блока
+		size_t size = 0;
+		// Если адрес удерживается карантином
+		if(::machinery->quarantine.held(addr, &block, &size)){
+			// Записываем адрес начала блока
+			result.begin = block;
+			// Записываем размер блока
+			result.size = size;
+			// Записываем смещение разбираемого адреса от начала блока
+			result.offset = (reinterpret_cast <const uint8_t *> (addr) - reinterpret_cast <const uint8_t *> (block));
+			// Отмечаем блок освобождённым
+			result.origin = origin_t::FREED;
+			// Выводим сведения о разобранном адресе
+			return result;
+		}
+	}
 	// Адрес начала области
 	const void * begin = nullptr;
 	// Размер области в страницах кучи
@@ -1079,12 +1687,81 @@ awh::alloc::region_t awh::alloc::Allocator::resolve(const void * addr) noexcept 
 	result.begin = begin;
 	// Записываем размер области
 	result.size = (pages * Pages::PAGE);
-	// Записываем смещение разбираемого адреса от начала области
-	result.offset = (reinterpret_cast <const uint8_t *> (addr) - reinterpret_cast <const uint8_t *> (begin));
 	// Отмечаем область живой либо освобождённой
 	result.origin = (live ? origin_t::LIVE : origin_t::FREED);
+	/**
+	 * Уточняем ответ до блока разряда
+	 *
+	 * Куча знает лишь области своих страниц, а прикладному коду выдан блок внутри
+	 * области - и сказать «адрес в области на четыре килобайта» значит не сказать
+	 * почти ничего. Блоки разряда одинаковы, оттого начало нужного берётся делением
+	 *
+	 * Живость блока при этом остаётся живостью ОБЛАСТИ: свободный блок лежит в списках
+	 * без всякой отметки, а перебор списков и кэшей всех потоков у самого сбоя
+	 * ненадёжен вдвойне. Освобождённый блок опознаёт карантин, спрошенный выше
+	 */
+	if(live){
+		// Номер разряда, которому принадлежит адрес
+		size_t which = 0;
+		// Адрес начала области разряда
+		void * region = nullptr;
+		// Размер области разряда в байтах
+		size_t size = 0;
+		// Если адрес принадлежит области разряда
+		if(::machinery->central.owner(addr, &which, &region, &size) && (which < ::machinery->classes.count())){
+			// Определяем размер блока разряда
+			const size_t block = ::machinery->classes.size(which);
+			// Определяем смещение разбираемого адреса от начала области
+			const size_t shift = (reinterpret_cast <const uint8_t *> (addr) - reinterpret_cast <const uint8_t *> (region));
+			// Записываем адрес начала блока
+			result.begin = (reinterpret_cast <const uint8_t *> (region) + ((shift / block) * block));
+			// Записываем размер блока
+			result.size = block;
+		}
+	}
+	// Записываем смещение разбираемого адреса от начала блока
+	result.offset = (reinterpret_cast <const uint8_t *> (addr) - reinterpret_cast <const uint8_t *> (result.begin));
 	// Выводим сведения о разобранном адресе
 	return result;
+}
+/**
+ * @brief Метод перебора удерживаемой прикладным кодом памяти
+ *
+ * @param callback отклик перебора
+ * @return         число перебранных блоков
+ *
+ */
+size_t awh::alloc::Allocator::holdings(function <bool (const holding_t &)> callback) noexcept {
+	// Если распределитель не заведён либо перебирать нечем
+	if((::stage.load(std::memory_order_acquire) != STAGE_READY) || (callback == nullptr))
+		// Перебирать нечего
+		return 0;
+	/**
+	 * Отдаём отклик перебору через предмет, а не замыканием
+	 *
+	 * Учёт мест выдачи о `std::function` не знает и знать не должен: он лежит слоем
+	 * ниже и стандартной библиотекой не пользуется вовсе - та ходит за памятью в нас же
+	 */
+	return ::machinery->profile.walk([](const holding_t & holding, void * context) noexcept -> bool {
+		// Выводим решение отклика перебора
+		return (* reinterpret_cast <function <bool (const holding_t &)> *> (context))(holding);
+	}, &callback);
+}
+/**
+ * @brief Метод обращения адреса стека вызовов в имя
+ *
+ * @param frame  разбираемый адрес
+ * @param symbol сведения о разобранном адресе
+ * @return       признак разбора адреса
+ *
+ */
+bool awh::alloc::Allocator::symbol(const void * frame, symbol_t & symbol) noexcept {
+	// Если распределитель не заведён
+	if(::stage.load(std::memory_order_acquire) != STAGE_READY)
+		// Разбирать нечем
+		return false;
+	// Выводим результат обращения адреса стека в имя
+	return ::machinery->trace.resolve(frame, symbol);
 }
 /**
  * @brief Метод установки отклика на крупное выделение
@@ -1093,15 +1770,19 @@ awh::alloc::region_t awh::alloc::Allocator::resolve(const void * addr) noexcept 
  *
  */
 void awh::alloc::Allocator::onLarge(function <void (const void *, const size_t)> callback) noexcept {
+	{
+		// Захватываем замок откликов доклада
+		hold_t hold(::callbackLock);
+		// Запоминаем отклик на крупное выделение
+		::largeCallback = callback;
+	}
 	/**
-	 * Отклики пока не подключены
+	 * Заводим поток доклада
 	 *
-	 * Договор требует звать их отдельным потоком, вне выдачи памяти, - иначе отклик
-	 * ушёл бы в возвратность через ту же выдачу. Поток этот заводится вместе со
-	 * съёмом стека и профилированием, и до них отклик молча не ставится, а не
-	 * ставится наполовину
+	 * Заводим здесь, а не при захвате: поток нужен лишь тому, кто отклики поставил, а
+	 * заведение его само обращается за памятью - изнутри выдачи того делать нельзя
 	 */
-	(void) callback;
+	::awaken();
 }
 /**
  * @brief Метод установки отклика на достижение потолка кучи
@@ -1110,6 +1791,12 @@ void awh::alloc::Allocator::onLarge(function <void (const void *, const size_t)>
  *
  */
 void awh::alloc::Allocator::onLimit(function <void (const size_t)> callback) noexcept {
-	// Отклики пока не подключены: смотри примечание у onLarge
-	(void) callback;
+	{
+		// Захватываем замок откликов доклада
+		hold_t hold(::callbackLock);
+		// Запоминаем отклик на достижение потолка кучи
+		::limitCallback = callback;
+	}
+	// Заводим поток доклада
+	::awaken();
 }

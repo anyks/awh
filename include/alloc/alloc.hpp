@@ -77,7 +77,9 @@
 /**
  * Наши модули
  */
+#include "trace.hpp"
 #include "source.hpp"
+#include "profile.hpp"
 #include "../sys/log.hpp"
 #include "../sys/global.hpp"
 
@@ -193,6 +195,15 @@ namespace awh {
 			size_t cacheLimit;
 			// Порог доклада о крупном выделении, в байтах: нуль - не докладывать
 			size_t reportLarge;
+			/**
+			 * Доля выборки учёта мест выдачи: одна выдача из скольких
+			 *
+			 * Нуль - учёт выключен, и выключен он по умолчанию: место выдачи стоит съёма
+			 * стека при выдаче и поиска по таблице при КАЖДОМ освобождении, в том числе
+			 * у блоков, под учёт не попавших. Плата эта для разбора, а не для боя
+			 */
+			// Доля выборки учёта мест выдачи: одна выдача из скольких
+			size_t profileRate;
 			// Доля выборки заслонов: одна выдача из скольких: нуль - заслоны выключены
 			size_t guardRate;
 			// Объём карантина на освобождённое, в байтах: нуль - карантин выключен
@@ -207,8 +218,8 @@ namespace awh {
 			 */
 			Options() noexcept :
 			 arena(0), confined(false), purgeDelay(10), purgeBlock(0),
-			 heapLimit(0), cacheLimit(0), reportLarge(0), guardRate(0),
-			 quarantine(0), fill(fill_t::NONE), hugePages(false) {}
+			 heapLimit(0), cacheLimit(0), reportLarge(0), profileRate(0),
+			 guardRate(0), quarantine(0), fill(fill_t::NONE), hugePages(false) {}
 		} options_t;
 		/**
 		 * \~russian
@@ -386,6 +397,51 @@ namespace awh {
 				 *
 				 */
 				static region_t resolve(const void * addr) noexcept;
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод перебора удерживаемой прикладным кодом памяти
+				 *
+				 * @note Отвечает он о том, что выдано и до сих пор не освобождено, а НЕ
+				 *       об утечках: намерений прикладного кода распределитель не знает, и
+				 *       блок, живущий до конца процесса, бывает и утечкой, и намеренным
+				 *       кэшем. Называть найденное утечкой волен лишь тот, кто писал код
+				 *
+				 * @note Перебираются лишь блоки, попавшие под выборку `profileRate`: без
+				 *       неё перебор отвечает нулём, а не пустотой знания
+				 *
+				 * @note Перебор идёт с взятым замком учёта: отклику нельзя ни выделять
+				 *       память, ни звать распределитель. Возврат лжи прекращает перебор
+				 *
+				 * @param callback отклик перебора
+				 * @return         число перебранных блоков
+				 *
+				 * \~english
+				 * @brief Method of enumerating the memory held by the application
+				 *
+				 * @param callback enumeration callback
+				 * @return         number of blocks enumerated
+				 *
+				 */
+				static size_t holdings(function <bool (const holding_t &)> callback) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод обращения адреса стека вызовов в имя
+				 *
+				 * @note Имена функций самой ПРОГРАММЫ видны лишь тогда, когда та связана
+				 *       с выносом имён в динамическую таблицу (`-rdynamic` у систем ELF):
+				 *       иначе разбор назовёт образ и смещение, но не функцию. Имена
+				 *       разделяемых библиотек видны всегда
+				 *
+				 * @param frame  разбираемый адрес
+				 * @param symbol сведения о разобранном адресе
+				 * @return       признак разбора адреса
+				 *
+				 * \~english
+				 * @brief Method of resolving a call stack address into a name
+				 *
+				 */
+				static bool symbol(const void * frame, symbol_t & symbol) noexcept;
 			public:
 				/**
 				 * \~russian

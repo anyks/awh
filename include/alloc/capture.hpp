@@ -97,12 +97,23 @@ namespace awh {
 			// Определение размера выделенного блока
 			size_t (* msize)(const void *);
 			/**
+			 * Выделение памяти с требуемым выравниванием
+			 *
+			 * Нужно не всякому приёму захвата: у систем ELF выравнивающая выдача
+			 * библиотеки времени исполнения идёт своим путём и нашего malloc не зовёт.
+			 * У macOS же зона обязана его иметь: библиотека зовёт `zone->memalign`
+			 * БЕЗ проверки на пустоту, и пустое поле валит процесс обращением по нулю -
+			 * проверено съёмом стека, где `xpc_atfork_child` шёл в `posix_memalign`
+			 */
+			// Выделение памяти с требуемым выравниванием
+			void * (* memalign)(size_t, size_t);
+			/**
 			 * @brief Конструктор
 			 *
 			 */
 			Functions() noexcept :
 			 malloc(nullptr), free(nullptr), calloc(nullptr),
-			 realloc(nullptr), msize(nullptr) {}
+			 realloc(nullptr), msize(nullptr), memalign(nullptr) {}
 		} functions_t;
 		/**
 		 * \~russian

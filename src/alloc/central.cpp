@@ -467,6 +467,30 @@ void awh::alloc::Central::policy(const int64_t delay, const size_t block) noexce
 	this->_pages->policy(delay, block);
 }
 /**
+ * @brief Метод задания потолка взятого у источника
+ *
+ * @param limit потолок в байтах: нуль - без потолка
+ *
+ */
+void awh::alloc::Central::ceiling(const size_t limit) noexcept {
+	// Захватываем замок кучи
+	hold_t hold(this->_heap);
+	// Задаём куче потолок взятого у источника
+	this->_pages->ceiling(limit);
+}
+/**
+ * @brief Метод определения упёртости кучи в потолок
+ *
+ * @return признак упёртости кучи в потолок
+ *
+ */
+bool awh::alloc::Central::jammed() noexcept {
+	// Захватываем замок кучи
+	hold_t hold(this->_heap);
+	// Выводим признак упёртости кучи в потолок
+	return this->_pages->jammed();
+}
+/**
  * @brief Метод получения состояния центральных списков
  *
  * @return состояние списков

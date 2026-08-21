@@ -224,6 +224,10 @@ namespace awh {
 				int64_t _delay;
 				// Наименьший отдаваемый системе кусок в байтах
 				size_t _block;
+				// Потолок взятого у источника в байтах
+				size_t _limit;
+				// Признак отказа кучи в росте из-за потолка
+				bool _jammed;
 				// Состояние кучи
 				state_t _state;
 			private:
@@ -519,6 +523,35 @@ namespace awh {
 				 *
 				 */
 				void policy(const int64_t delay, const size_t block) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод задания потолка взятого у источника
+				 *
+				 * @note Потолок считается по ВЗЯТОМУ у источника, а не по выданному
+				 *       прикладному коду: обращаться к системе сверх него куча не станет,
+				 *       но уже взятое раздаёт до последней страницы
+				 *
+				 * @param limit потолок в байтах: нуль - без потолка
+				 *
+				 * \~english
+				 * @brief Method of setting the ceiling of memory taken from the source
+				 *
+				 */
+				void ceiling(const size_t limit) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод определения упёртости кучи в потолок
+				 *
+				 * @note Признак снимается опросом: он взводится, когда куче отказано в
+				 *       росте, и держится до следующего опроса
+				 *
+				 * @return признак упёртости кучи в потолок
+				 *
+				 * \~english
+				 * @brief Method of determining whether the heap has hit its ceiling
+				 *
+				 */
+				bool jammed() noexcept;
 			public:
 				/**
 				 * \~russian

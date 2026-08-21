@@ -461,6 +461,139 @@ namespace iface {
 		return result;
 	}
 	/**
+	 * @brief Функция заведения логического интерфейса под адрес IPv6
+	 *
+	 * @details Адрес IPv6 у Sun Solaris и illumos на ОСНОВНОЙ логический интерфейс не
+	 *          ложится: там живёт адрес канальной связи (`fe80::/10`), заведённый
+	 *          системой, и подменить его нельзя - запрос отвечает отказом
+	 *          «запрошенный адрес назначить невозможно». Под всякий свой адрес IPv6
+	 *          система велит заводить ОТДЕЛЬНЫЙ логический интерфейс, и заводит его
+	 *          сама, выдавая имя вида "awhtun0:1"
+	 *
+	 * @note Установлено щупом на стенде Solaris 11.4 21.08.2026 - весь путь целиком:
+	 *       на основной отказ, SIOCLIFADDIF заводит "awhtun0:1", адрес на него
+	 *       ложится, подъём проходит, SIOCLIFREMOVEIF снимает. Тем же путём идёт и
+	 *       `ipadm`, заводя под статический адрес IPv6 новый объект адреса
+	 *
+	 * @warning Адреса IPv4 это НЕ касается: они ложатся на основной интерфейс прямо,
+	 *          и заводить им логический незачем
+	 *
+	 * @param sock управляющий сокет
+	 * @param name имя сетевого устройства
+	 * @param log  объект работы с логами
+	 * @return     имя заведённого логического интерфейса либо пустая строка
+	 *
+	 */
+	static string logical(const awh::net::socket_t sock, const string_view name, const awh::log_t * log) noexcept {
+		// Результат работы функции
+		string result;
+		// Объект запроса настройки логического интерфейса
+		struct lifreq lifr;
+		// Заполняем объект запроса нулями
+		::memset(&lifr, 0, sizeof(lifr));
+		// Копируем имя сетевого устройства
+		::iface::copyName(lifr.lifr_name, name);
+		// Заводим логический интерфейс, имя ему система выдаёт сама
+		if(::ioctl(sock, SIOCLIFADDIF, &lifr) != 0){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				log->debug("%s: logical interface could not be created on \"%s\": %s", __PRETTY_FUNCTION__, make_tuple(sock, name), awh::log_t::flag_t::CRITICAL, ::__AWH_IFACE_BACKEND__, string(name).c_str(), ::strerror(errno));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log->print("%s: logical interface could not be created on \"%s\": %s", awh::log_t::flag_t::CRITICAL, ::__AWH_IFACE_BACKEND__, string(name).c_str(), ::strerror(errno));
+			#endif
+			// Выводим пустой результат
+			return result;
+		}
+		// Запоминаем имя заведённого логического интерфейса
+		result.assign(lifr.lifr_name, ::strnlen(lifr.lifr_name, sizeof(lifr.lifr_name)));
+		// Выводим результат
+		return result;
+	};
+	/**
+	 * @brief Функция поиска логического интерфейса, несущего заданный адрес
+	 *
+	 * @details Снятие адреса IPv6 ведётся сносом того логического интерфейса, каким он
+	 *          был заведён, а имя его движок не хранит: узлу принадлежит связь, а не
+	 *          логический интерфейс. Оттого имя отыскивается по самому адресу
+	 *
+	 * @param sock управляющий сокет
+	 * @param name имя сетевого устройства
+	 * @param ip   искомый адрес
+	 * @return     имя логического интерфейса либо пустая строка
+	 *
+	 */
+	static string lookup(const awh::net::socket_t sock, const string_view name, const awh::net::addr_t * ip) noexcept {
+		// Результат работы функции
+		string result;
+		// Запрос числа логических интерфейсов машины
+		struct lifnum count;
+		// Заполняем запрос числа нулями
+		::memset(&count, 0, sizeof(count));
+		// Спрашиваем интерфейсы семейства искомого адреса
+		count.lifn_family = AF_INET6;
+		// Если число логических интерфейсов машины получить не удалось
+		if((::ioctl(sock, SIOCGLIFNUM, &count) != 0) || (count.lifn_count <= 0))
+			// Выводим пустой результат
+			return result;
+		// Состав логических интерфейсов машины
+		vector <struct lifreq> items(static_cast <size_t> (count.lifn_count));
+		// Запрос состава логических интерфейсов машины
+		struct lifconf conf;
+		// Заполняем запрос состава нулями
+		::memset(&conf, 0, sizeof(conf));
+		// Спрашиваем интерфейсы семейства искомого адреса
+		conf.lifc_family = AF_INET6;
+		// Устанавливаем буфер под состав
+		conf.lifc_buf = reinterpret_cast <caddr_t> (items.data());
+		// Устанавливаем размер буфера под состав
+		conf.lifc_len = static_cast <int32_t> (items.size() * sizeof(struct lifreq));
+		// Если состав логических интерфейсов машины получить не удалось
+		if(::ioctl(sock, SIOCGLIFCONF, &conf) != 0)
+			// Выводим пустой результат
+			return result;
+		// Получаем число полученных записей состава
+		const size_t size = (static_cast <size_t> (conf.lifc_len) / sizeof(struct lifreq));
+		/**
+		 * Переходим по всему составу логических интерфейсов машины
+		 */
+		for(size_t i = 0; i < size; i++){
+			// Получаем имя очередного логического интерфейса
+			const string label(items[i].lifr_name, ::strnlen(items[i].lifr_name, sizeof(items[i].lifr_name)));
+			// Если логический интерфейс принадлежит другому устройству
+			if((label.size() < name.size()) || (label.compare(0, name.size(), name) != 0))
+				// Переходим к следующему логическому интерфейсу
+				continue;
+			// Объект запроса настройки логического интерфейса
+			struct lifreq lifr;
+			// Заполняем объект запроса нулями
+			::memset(&lifr, 0, sizeof(lifr));
+			// Копируем имя логического интерфейса
+			::iface::copyName(lifr.lifr_name, label);
+			// Если адрес логического интерфейса получить не удалось
+			if(::ioctl(sock, SIOCGLIFADDR, &lifr) != 0)
+				// Переходим к следующему логическому интерфейсу
+				continue;
+			// Получаем адрес логического интерфейса нужного вида
+			const struct sockaddr_in6 * addr = reinterpret_cast <const struct sockaddr_in6 *> (&lifr.lifr_addr);
+			// Если адрес логического интерфейса совпал с искомым
+			if(::memcmp(&addr->sin6_addr, &awh_cast <const awh::net::addr_net_ipv6_t *> (ip)->address[0], 16) == 0){
+				// Запоминаем имя найденного логического интерфейса
+				result = label;
+				// Выходим из цикла
+				break;
+			}
+		}
+		// Выводим результат
+		return result;
+	};
+	/**
 	 * @brief Функция применения IP-адреса (и при необходимости адреса пира) к интерфейсу через указанный сокет
 	 *
 	 * @param sock   управляющий сокет
@@ -2576,6 +2709,196 @@ bool awh::eth::Interface::flag(string_view name, const event::eth_flag_t flag, c
 	return result;
 }
 /**
+ * @brief Метод снятия адреса сетевого устройства и пути к тому концу связи
+ *
+ * @details Снятие ведётся ОБНУЛЕНИЕМ адреса тем же запросом, каким он ставился:
+ *          отдельного приёма снятия у Sun Solaris и illumos нет. Установлено щупом
+ *          на стенде Solaris 11.4 21.08.2026: после обнуления опрос отдаёт 0.0.0.0,
+ *          а состав адресов машины связи уже не показывает
+ *
+ * @warning Связь канального уровня движку НЕ ПРИНАДЛЕЖИТ - заводится она
+ *          административно (`dladm`) и сноситься им не может. Оттого убирать за
+ *          собою приходится ровно то, что он ставил: адрес и путь к тому концу
+ *
+ * @param name название сетевого устройства
+ * @param ip   снимаемый адрес
+ * @param peer адрес того конца связи, путь к которому снимается
+ * @return     результат выполнения снятия
+ *
+ */
+bool awh::eth::Interface::delAddress(string_view name, const net::addr_t * ip, const net::addr_t * peer) const noexcept {
+	// Переменная результата
+	bool result = false;
+	// Если название сетевого устройства и снимаемый адрес переданы
+	if(!name.empty() && (ip != nullptr)){
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			/**
+			 * Семейство управляющего сокета обязано совпадать с семейством адреса
+			 *
+			 * @details Запросы SIOCSLIF* берут семейство у САМОГО сокета, а не у
+			 *          передаваемой структуры: сокет AF_INET отвечает на всякий запрос
+			 *          с адресом IPv6 отказом «семейство адресов не поддержано
+			 *          семейством протокола»
+			 */
+			// Создаём управляющий сокет семейства снимаемого адреса
+			net::socket_t sock = ::socket(((ip->size == 16) ? AF_INET6 : AF_INET), SOCK_DGRAM, 0);
+			// Если создание управляющего сокета прошло неудачно
+			if(sock == net::invalid_socket_t){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Записываем ошибку в лог
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(name), log_t::flag_t::CRITICAL, ::strerror(errno));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем ошибку в лог
+					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+				#endif
+				// Возвращаем результат
+				return result;
+			}
+			// Объект запроса настройки логического интерфейса
+			struct lifreq lifr;
+			/**
+			 * Снимаем путь к тому концу связи прежде самого адреса
+			 *
+			 * @details Путь опирается на адрес устройства, и снятие в обратном порядке
+			 *          система отвергает: адреса, которым путь проложен, уже нет
+			 */
+			if(peer != nullptr){
+				// Заполняем объект запроса нулями
+				::memset(&lifr, 0, sizeof(lifr));
+				// Копируем имя сетевого устройства
+				::iface::copyName(lifr.lifr_name, name);
+				/**
+				 * Определяем тип снимаемого адреса
+				 */
+				switch(peer->size){
+					// Если адрес является IPv4
+					case 4: {
+						// Получаем адрес того конца связи нужного вида
+						struct sockaddr_in * addr = reinterpret_cast <struct sockaddr_in *> (&lifr.lifr_dstaddr);
+						// Устанавливаем семейство адресов IPv4
+						addr->sin_family = AF_INET;
+						// Обнуляем адрес того конца связи
+						addr->sin_addr.s_addr = INADDR_ANY;
+					} break;
+					// Если адрес является IPv6
+					case 16: {
+						// Получаем адрес того конца связи нужного вида
+						struct sockaddr_in6 * addr = reinterpret_cast <struct sockaddr_in6 *> (&lifr.lifr_dstaddr);
+						// Устанавливаем семейство адресов IPv6
+						addr->sin6_family = AF_INET6;
+						// Обнуляем адрес того конца связи
+						addr->sin6_addr = in6addr_any;
+					} break;
+				}
+				// Снимаем путь к тому концу связи, отказ здесь снятию адреса не помеха
+				::ioctl(sock, SIOCSLIFDSTADDR, &lifr);
+			}
+			/**
+			 * Адрес IPv6 снимается СНОСОМ логического интерфейса
+			 *
+			 * @details Заводился он на своём логическом интерфейсе - обнулять там нечего,
+			 *          сносится весь интерфейс целиком. Имени его движок не хранит: узлу
+			 *          принадлежит связь, а не логический интерфейс, - оттого имя
+			 *          отыскивается по самому адресу
+			 *
+			 * @warning Снести ОСНОВНОЙ интерфейс нельзя: на нём живёт адрес канальной связи,
+			 *          заведённый системой. Поиск потому и ведётся по адресу - основной под
+			 *          условие не подходит
+			 */
+			if(ip->size == 16){
+				// Отыскиваем логический интерфейс, несущий снимаемый адрес
+				const string target = ::iface::lookup(sock, name, ip);
+				// Если логический интерфейс со снимаемым адресом найден
+				if(!target.empty()){
+					// Заполняем объект запроса нулями
+					::memset(&lifr, 0, sizeof(lifr));
+					// Копируем имя логического интерфейса
+					::iface::copyName(lifr.lifr_name, target);
+					// Сносим логический интерфейс вместе с его адресом
+					result = (::ioctl(sock, SIOCLIFREMOVEIF, &lifr) == 0);
+				}
+				// Закрываем управляющий сокет
+				::close(sock);
+				// Возвращаем результат
+				return result;
+			}
+			// Заполняем объект запроса нулями
+			::memset(&lifr, 0, sizeof(lifr));
+			// Копируем имя сетевого устройства
+			::iface::copyName(lifr.lifr_name, name);
+			/**
+			 * Определяем тип снимаемого адреса
+			 */
+			switch(ip->size){
+				// Если адрес является IPv4
+				case 4: {
+					// Получаем адрес устройства нужного вида
+					struct sockaddr_in * addr = reinterpret_cast <struct sockaddr_in *> (&lifr.lifr_addr);
+					// Устанавливаем семейство адресов IPv4
+					addr->sin_family = AF_INET;
+					// Обнуляем адрес устройства
+					addr->sin_addr.s_addr = INADDR_ANY;
+				} break;
+				// Если адрес является IPv6
+				case 16: {
+					// Получаем адрес устройства нужного вида
+					struct sockaddr_in6 * addr = reinterpret_cast <struct sockaddr_in6 *> (&lifr.lifr_addr);
+					// Устанавливаем семейство адресов IPv6
+					addr->sin6_family = AF_INET6;
+					// Обнуляем адрес устройства
+					addr->sin6_addr = in6addr_any;
+				} break;
+			}
+			// Снимаем адрес сетевого устройства обнулением
+			if(!(result = (::ioctl(sock, SIOCSLIFADDR, &lifr) == 0))){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Записываем ошибку в лог
+					this->_log->debug("%s: address could not be removed from interface \"%s\": %s", __PRETTY_FUNCTION__, make_tuple(name), log_t::flag_t::CRITICAL, ::__AWH_IFACE_BACKEND__, string(name).c_str(), ::strerror(errno));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем ошибку в лог
+					this->_log->print("%s: address could not be removed from interface \"%s\": %s", log_t::flag_t::CRITICAL, ::__AWH_IFACE_BACKEND__, string(name).c_str(), ::strerror(errno));
+				#endif
+			}
+			// Закрываем управляющий сокет
+			::close(sock);
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const std::exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(name), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
+	// Возвращаем результат
+	return result;
+}
+/**
  * @brief Метод установки IP-адреса на сетевой интерфейс
  *
  * @param name   имя сетевого интерфейса
@@ -2594,8 +2917,20 @@ bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, c
 		 * Выполняем перехват ошибок
 		 */
 		try {
+			/**
+			 * Семейство управляющего сокета обязано совпадать с семейством адреса
+			 *
+			 * @details Настройка интерфейса у Sun Solaris и illumos идёт запросами
+			 *          SIOCSLIF* по управляющему сокету, и семейство берётся у НЕГО,
+			 *          а не у передаваемой структуры. Сокет AF_INET отвечает на всякий
+			 *          запрос с адресом IPv6 отказом «семейство адресов не поддержано
+			 *          семейством протокола», и адрес до интерфейса не доходит вовсе
+			 *
+			 * @note Установлено на стенде Solaris 11.4 21.08.2026: обмен по IPv6 через
+			 *       устройство туннеля не шёл, а причиной значилось негодное окружение
+			 */
 			// Создаём сокет для управления интерфейсом
-			net::socket_t sock = ::socket(AF_INET, SOCK_DGRAM, 0);
+			net::socket_t sock = ::socket(((ip->size == 16) ? AF_INET6 : AF_INET), SOCK_DGRAM, 0);
 			// Если создание сокета прошло неудачно
 			if(!(result = (sock != net::invalid_socket_t))){
 				/**
@@ -2615,7 +2950,25 @@ bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, c
 				return result;
 			}
 			// Применяем IP-адрес и маску интерфейса через управляющий сокет
-			result = ::iface::applyAddress(sock, name, ip, nullptr, prefix, this->_log);
+			/**
+			 * Адресу IPv6 нужен СВОЙ логический интерфейс
+			 *
+			 * @details На основном логическом интерфейсе живёт адрес канальной связи,
+			 *          заведённый системой, и подменить его нельзя. Под свой адрес IPv6
+			 *          система велит заводить отдельный логический интерфейс
+			 *
+			 * @warning Адреса IPv4 ложатся на основной интерфейс прямо, и заводить им
+			 *          логический незачем: лишний интерфейс пришлось бы ещё и сносить
+			 */
+			const string target = ((ip->size == 16) ? ::iface::logical(sock, name, this->_log) : string(name));
+			// Если логический интерфейс под адрес IPv6 завести не удалось
+			if(target.empty()){
+				// Закрываем управляющий сокет
+				::close(sock);
+				// Возвращаем результат
+				return result;
+			}
+			result = ::iface::applyAddress(sock, target, ip, nullptr, prefix, this->_log);
 			// Закрываем сокет
 			::close(sock);
 		/**
@@ -2793,8 +3146,20 @@ bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, c
 		 * Выполняем перехват ошибок
 		 */
 		try {
+			/**
+			 * Семейство управляющего сокета обязано совпадать с семейством адреса
+			 *
+			 * @details Настройка интерфейса у Sun Solaris и illumos идёт запросами
+			 *          SIOCSLIF* по управляющему сокету, и семейство берётся у НЕГО,
+			 *          а не у передаваемой структуры. Сокет AF_INET отвечает на всякий
+			 *          запрос с адресом IPv6 отказом «семейство адресов не поддержано
+			 *          семейством протокола», и адрес до интерфейса не доходит вовсе
+			 *
+			 * @note Установлено на стенде Solaris 11.4 21.08.2026: обмен по IPv6 через
+			 *       устройство туннеля не шёл, а причиной значилось негодное окружение
+			 */
 			// Создаём сокет для управления интерфейсом
-			net::socket_t sock = ::socket(AF_INET, SOCK_DGRAM, 0);
+			net::socket_t sock = ::socket(((ip->size == 16) ? AF_INET6 : AF_INET), SOCK_DGRAM, 0);
 			// Если создание сокета прошло неудачно
 			if(!(result = (sock != net::invalid_socket_t))){
 				/**
@@ -2814,7 +3179,25 @@ bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, c
 				return result;
 			}
 			// Применяем IP-адрес, маску и адрес удалённого пира интерфейса через управляющий сокет
-			result = ::iface::applyAddress(sock, name, ip, peer, prefix, this->_log);
+			/**
+			 * Адресу IPv6 нужен СВОЙ логический интерфейс
+			 *
+			 * @details На основном логическом интерфейсе живёт адрес канальной связи,
+			 *          заведённый системой, и подменить его нельзя. Под свой адрес IPv6
+			 *          система велит заводить отдельный логический интерфейс
+			 *
+			 * @warning Адреса IPv4 ложатся на основной интерфейс прямо, и заводить им
+			 *          логический незачем: лишний интерфейс пришлось бы ещё и сносить
+			 */
+			const string target = ((ip->size == 16) ? ::iface::logical(sock, name, this->_log) : string(name));
+			// Если логический интерфейс под адрес IPv6 завести не удалось
+			if(target.empty()){
+				// Закрываем управляющий сокет
+				::close(sock);
+				// Возвращаем результат
+				return result;
+			}
+			result = ::iface::applyAddress(sock, target, ip, peer, prefix, this->_log);
 			// Закрываем сокет
 			::close(sock);
 		/**
@@ -3032,8 +3415,20 @@ bool awh::eth::Interface::configure(string_view name, const net::addr_t * ip, co
 		 * Выполняем перехват ошибок
 		 */
 		try {
+			/**
+			 * Семейство управляющего сокета обязано совпадать с семейством адреса
+			 *
+			 * @details Настройка интерфейса у Sun Solaris и illumos идёт запросами
+			 *          SIOCSLIF* по управляющему сокету, и семейство берётся у НЕГО,
+			 *          а не у передаваемой структуры. Сокет AF_INET отвечает на всякий
+			 *          запрос с адресом IPv6 отказом «семейство адресов не поддержано
+			 *          семейством протокола», и адрес до интерфейса не доходит вовсе
+			 *
+			 * @note Установлено на стенде Solaris 11.4 21.08.2026: обмен по IPv6 через
+			 *       устройство туннеля не шёл, а причиной значилось негодное окружение
+			 */
 			// Создаём единственный управляющий сокет для всех операций
-			net::socket_t sock = ::socket(AF_INET, SOCK_DGRAM, 0);
+			net::socket_t sock = ::socket(((ip->size == 16) ? AF_INET6 : AF_INET), SOCK_DGRAM, 0);
 			// Если создание сокета прошло неудачно
 			if(sock == net::invalid_socket_t){
 				/**
@@ -3055,7 +3450,25 @@ bool awh::eth::Interface::configure(string_view name, const net::addr_t * ip, co
 			/**
 			 * Шаг 1. Применяем IP-адрес (и при необходимости адрес пира) через управляющий сокет
 			 */
-			result = ::iface::applyAddress(sock, name, ip, peer, prefix, this->_log);
+			/**
+			 * Адресу IPv6 нужен СВОЙ логический интерфейс
+			 *
+			 * @details На основном логическом интерфейсе живёт адрес канальной связи,
+			 *          заведённый системой, и подменить его нельзя. Под свой адрес IPv6
+			 *          система велит заводить отдельный логический интерфейс
+			 *
+			 * @warning Адреса IPv4 ложатся на основной интерфейс прямо, и заводить им
+			 *          логический незачем: лишний интерфейс пришлось бы ещё и сносить
+			 */
+			const string target = ((ip->size == 16) ? ::iface::logical(sock, name, this->_log) : string(name));
+			// Если логический интерфейс под адрес IPv6 завести не удалось
+			if(target.empty()){
+				// Закрываем управляющий сокет
+				::close(sock);
+				// Возвращаем результат
+				return result;
+			}
+			result = ::iface::applyAddress(sock, target, ip, peer, prefix, this->_log);
 			/**
 			 * Шаг 2. Устанавливаем MTU интерфейса (если задан)
 			 */

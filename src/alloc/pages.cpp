@@ -35,7 +35,7 @@
 awh::alloc::Pages::Pages() noexcept :
  _source(nullptr), _chunks(nullptr), _table(nullptr), _length(0), _enrolled(0), _large(nullptr), _spare(nullptr),
  _meta(nullptr), _metaLeft(0), _metaChunks(nullptr), _confined(false),
- _delay(10), _block(0), _state() {
+ _delay(10), _block(0), _limit(0), _jammed(false), _state() {
 	// Обнуляем списки свободных областей
 	::memset(this->_lists, 0, sizeof(this->_lists));
 }
@@ -299,6 +299,20 @@ awh::alloc::Pages::chunk_t * awh::alloc::Pages::grow() noexcept {
 	if(this->_confined)
 		// Отвечаем отказом: расти некуда
 		return nullptr;
+	/**
+	 * Если очередной кусок вывел бы взятое за потолок
+	 *
+	 * Потолок считается по взятому у источника, а не по выданному прикладному коду:
+	 * куча раздаёт страницами и часть взятого всегда лежит в её списках свободных.
+	 * Считай мы по выданному - потолок сдвигался бы на величину раздробленности, то
+	 * есть на величину, которой приложение не задавало
+	 */
+	if((this->_limit > 0) && ((this->_state.total + CHUNK) > this->_limit)){
+		// Отмечаем куче отказ в росте из-за потолка
+		this->_jammed = true;
+		// Отвечаем отказом: расти некуда
+		return nullptr;
+	}
 	// Выдаём память под учётную запись куска
 	chunk_t * chunk = reinterpret_cast <chunk_t *> (this->meta());
 	// Если память под учётную запись не выдана
@@ -894,6 +908,30 @@ void awh::alloc::Pages::policy(const int64_t delay, const size_t block) noexcept
 	this->_delay = delay;
 	// Запоминаем наименьший отдаваемый кусок
 	this->_block = block;
+}
+/**
+ * @brief Метод задания потолка взятого у источника
+ *
+ * @param limit потолок в байтах: нуль - без потолка
+ *
+ */
+void awh::alloc::Pages::ceiling(const size_t limit) noexcept {
+	// Запоминаем потолок взятого у источника
+	this->_limit = limit;
+}
+/**
+ * @brief Метод определения упёртости кучи в потолок
+ *
+ * @return признак упёртости кучи в потолок
+ *
+ */
+bool awh::alloc::Pages::jammed() noexcept {
+	// Запоминаем признак упёртости кучи в потолок
+	const bool result = this->_jammed;
+	// Снимаем признак упёртости кучи в потолок
+	this->_jammed = false;
+	// Выводим признак упёртости кучи в потолок
+	return result;
 }
 /**
  * @brief Метод проверки принадлежности адреса куче

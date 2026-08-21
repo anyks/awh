@@ -57,6 +57,12 @@ namespace scenarios {
 	static constexpr size_t LONG_ROUNDS = 2000;
 
 	/**
+	 * @brief Количество повторений сценариев на тексте среднем
+	 *
+	 */
+	static constexpr size_t MEDIUM_ROUNDS = 50000;
+
+	/**
 	 * @brief Количество повторений сценариев исполнения с возвратом
 	 *
 	 * @details Исполнение с возвратом обходится дороже прочих способов
@@ -82,13 +88,20 @@ namespace scenarios {
 	static constexpr size_t LONG_LENGTH = 262144;
 
 	/**
+	 * @brief Длина текста среднего в октетах
+	 *
+	 */
+	static constexpr size_t MEDIUM_LENGTH = 2048;
+
+	/**
 	 * @brief Вид сценария сравнения
 	 *
 	 */
 	enum class kind_t : uint8_t {
-		SHORT = 0x00, // Сопоставление на коротком тексте
-		LONG  = 0x01, // Сопоставление на длинном тексте
-		HEAVY = 0x02  // Сопоставление исполнением с возвратом
+		SHORT  = 0x00, // Сопоставление на коротком тексте
+		LONG   = 0x01, // Сопоставление на длинном тексте
+		HEAVY  = 0x02, // Сопоставление исполнением с возвратом
+		MEDIUM = 0x03  // Сопоставление на тексте среднего размера
 	};
 
 	/**
@@ -178,6 +191,15 @@ namespace scenarios {
 		{"bounded-short",         "(?:HT|TP)/1",                                kind_t::SHORT, true},
 		{"bounded-long",          "(?:fox|dog)trot",                            kind_t::LONG,  true},
 		{"bounded-absent",        "(?:fox|dog)trap",                            kind_t::LONG,  false},
+		/**
+		 * Сопоставление на тексте среднего размера
+		 *
+		 */
+		{"literal-medium",        "needle-in-haystack",                         kind_t::MEDIUM, true},
+		{"alternate-medium",      "alpha|bravo|charlie|delta|echo|foxtrot",     kind_t::MEDIUM, true},
+		{"captures-medium",       "(\\w+)@(\\w+)\\.(\\w+)",                     kind_t::MEDIUM, true},
+		{"bounded-medium",        "(?:fox|dog)trot",                            kind_t::MEDIUM, true},
+		{"region-medium",         "(?:[a-z]+/)+v1",                             kind_t::MEDIUM, true},
 		{"region-lazy-short",     "(?:HT|TP)+?/",                                kind_t::SHORT, true},
 		{"region-lazy-long",      "(?:[a-z]+ )+?dog",                            kind_t::LONG,  true},
 		{"region-lazy-heavy",     "\\((?:[^()]|\\([^()]*\\))*?\\)",              kind_t::HEAVY, true},
@@ -230,6 +252,47 @@ namespace scenarios {
 		return result;
 	}
 	/**
+	 * @brief Функция получения текста сопоставления среднего размера
+	 *
+	 * @details Текст сложен обменом по протоколу HTTP, а не связной прозой:
+	 *          доля байтов, совпадению начало дающих, у прозы и у протокола
+	 *          разная, и отбор позиций на них ведёт себя по-разному
+	 *
+	 * @return текст сопоставления среднего размера
+	 *
+	 */
+	static inline const std::string & mediumText() noexcept {
+		// Текст сопоставления среднего размера
+		static const std::string result = []() noexcept -> std::string {
+			// Создаём основу текста сопоставления
+			std::string outcome;
+			// Выполняем размещение текста сопоставления
+			outcome.reserve(MEDIUM_LENGTH + 128);
+			// Номер порождаемого обмена по протоколу
+			size_t number = 0;
+			/**
+			 * Выполняем наполнение текста до заданной длины
+			 */
+			while(outcome.size() < MEDIUM_LENGTH) {
+				// Выполняем добавление строки запроса обмена по протоколу
+				outcome.append("GET /api/v1/items/");
+				// Выполняем добавление номера запрашиваемого ресурса
+				outcome.append(std::to_string(number++));
+				// Выполняем добавление заголовков обмена по протоколу
+				outcome.append(" HTTP/1.1\r\nHost: node-07.anyks.com\r\n"
+				 "User-Agent: awh/5.0\r\nAccept: application/json\r\n"
+				 "X-Request-Id: 7f3a9c2e-41bd-4e88-9a1f-0c5d6e8b2a34\r\n"
+				 "Content-Length: 512\r\n\r\n");
+			}
+			// Выполняем добавление искомых последовательностей у конца текста
+			outcome.append("needle-in-haystack foxtrot forman@anyks.com needle 4096 ");
+			// Выводим текст сопоставления среднего размера
+			return outcome;
+		}();
+		// Выводим текст сопоставления среднего размера
+		return result;
+	}
+	/**
 	 * @brief Функция получения текста сопоставления исполнения с возвратом
 	 *
 	 * @return текст сопоставления исполнения с возвратом
@@ -261,6 +324,8 @@ namespace scenarios {
 			case static_cast <uint8_t> (kind_t::LONG): return longText();
 			// Выводим текст сопоставления исполнения с возвратом
 			case static_cast <uint8_t> (kind_t::HEAVY): return heavyText();
+			// Выводим текст сопоставления среднего размера
+			case static_cast <uint8_t> (kind_t::MEDIUM): return mediumText();
 		}
 		// Выводим короткий текст сопоставления
 		return shortText();
@@ -281,6 +346,8 @@ namespace scenarios {
 			case static_cast <uint8_t> (kind_t::LONG): return LONG_ROUNDS;
 			// Выводим количество повторений сценария исполнения с возвратом
 			case static_cast <uint8_t> (kind_t::HEAVY): return HEAVY_ROUNDS;
+			// Выводим количество повторений сценария на тексте среднем
+			case static_cast <uint8_t> (kind_t::MEDIUM): return MEDIUM_ROUNDS;
 		}
 		// Выводим количество повторений сценария на коротком тексте
 		return SHORT_ROUNDS;

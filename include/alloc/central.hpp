@@ -275,6 +275,28 @@ namespace awh {
 				 *
 				 */
 				void policy(const int64_t delay, const size_t block) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод задания потолка взятого у источника
+				 *
+				 * @param limit потолок в байтах: нуль - без потолка
+				 *
+				 * \~english
+				 * @brief Method of setting the ceiling of memory taken from the source
+				 *
+				 */
+				void ceiling(const size_t limit) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод определения упёртости кучи в потолок
+				 *
+				 * @return признак упёртости кучи в потолок
+				 *
+				 * \~english
+				 * @brief Method of determining whether the heap has hit its ceiling
+				 *
+				 */
+				bool jammed() noexcept;
 			public:
 				/**
 				 * \~russian

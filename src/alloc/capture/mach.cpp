@@ -31,6 +31,7 @@
  */
 #include <cstdlib>
 #include <cstring>
+#include <unistd.h>
 #include <malloc/malloc.h>
 
 /**
@@ -40,6 +41,15 @@
 namespace {
 	// Наши функции выделения памяти, отданные захвату
 	static awh::alloc::functions_t __awh_zone_hooks__;
+	/**
+	 * Прежняя основная зона процесса
+	 *
+	 * Объявлена здесь, а не рядом с нашей зоной: к ней обращается выравнивающая выдача,
+	 * а та стоит выше по файлу - объявления в безымянном пространстве видны лишь ниже
+	 * себя
+	 */
+	// Прежняя основная зона процесса
+	static ::malloc_zone_t * __awh_zone_previous__ = nullptr;
 	// Отклик перед ветвлением процесса
 	static void (* __awh_zone_before__)() = nullptr;
 	// Отклик у родителя после ветвления процесса
@@ -107,16 +117,112 @@ namespace {
 	 * @return     адрес выданной памяти либо nullptr
 	 *
 	 */
-	static void * reservePaged(::malloc_zone_t * zone, size_t size) noexcept {
+	static void * reserveAligned(::malloc_zone_t * zone, size_t alignment, size_t size) noexcept {
 		// Зона нам известна
 		(void) zone;
 		/**
+		 * Выдаём с требуемым выравниванием
+		 *
+		 * Отклик этот обязателен у зоны пятого выпуска и выше: библиотека времени
+		 * исполнения зовёт `zone->memalign` БЕЗ проверки на пустоту, и пустое поле
+		 * валит процесс обращением по нулевому адресу. Найдено съёмом стека:
+		 * `xpc_atfork_child` у потомка ветвления шёл в `posix_memalign`, а тот - в наше
+		 * пустое поле
+		 */
+		if(__awh_zone_hooks__.memalign != nullptr){
+			// Выдаём память с требуемым выравниванием
+			void * result = (* __awh_zone_hooks__.memalign)(alignment, size);
+			// Если память выдана
+			if(result != nullptr)
+				// Выводим выданную память
+				return result;
+		}
+		/**
+		 * Отдаём выдачу прежней зоне
+		 *
+		 * Выравнивание сверх нашей страницы нам не по силам, и отказ здесь означал бы
+		 * отказ выдачи всему процессу. Освобождение выданного прежней зоной уйдёт к
+		 * ней же: наш `free` чужого указателя не узнаёт и отдаёт его прежнему
+		 * распределителю
+		 */
+		if(::__awh_zone_previous__ != nullptr)
+			// Выводим память, выданную прежней зоной
+			return ::malloc_zone_memalign(::__awh_zone_previous__, alignment, size);
+		// Выдавать нечего
+		return nullptr;
+	}
+	/**
+	 * @brief Метод выделения памяти зоной с выравниванием по странице
+	 *
+	 * @param zone зона, у которой просят
+	 * @param size требуемый размер в байтах
+	 * @return     адрес выданной памяти либо nullptr
+	 *
+	 */
+	static void * reservePaged(::malloc_zone_t * zone, size_t size) noexcept {
+		/**
 		 * Выдаём страничным выравниванием
 		 *
-		 * Отдельного выравнивающего отклика у прежних выпусков зоны нет, и `valloc`
-		 * обязан выдать выровненное по странице сам
+		 * Выравнивание берём у системы, а не у своей страницы: `valloc` обещает
+		 * выравнивание по странице СИСТЕМЫ, и обещание это проверяемо снаружи
 		 */
-		return (* __awh_zone_hooks__.malloc)(size);
+		return ::reserveAligned(zone, static_cast <size_t> (::getpagesize()), size);
+	}
+	/**
+	 * @brief Метод выделения памяти зоной пачкой
+	 *
+	 * @param zone   зона, у которой просят
+	 * @param size   требуемый размер блока в байтах
+	 * @param blocks массив под адреса выданных блоков
+	 * @param count  требуемое число блоков
+	 * @return       число выданных блоков
+	 *
+	 */
+	static unsigned reserveBatch(::malloc_zone_t * zone, size_t size, void ** blocks, unsigned count) noexcept {
+		// Зона нам известна
+		(void) zone;
+		// Число выданных блоков
+		unsigned result = 0;
+		/**
+		 * Выдаём блоки поодиночке
+		 *
+		 * Выгода пачки у нашего распределителя невелика: горячий путь и без того идёт
+		 * без замка, кэшем потока. Отклик же обязан быть непустым - зона третьего
+		 * выпуска и выше несёт его в договоре
+		 */
+		while(result < count){
+			// Выдаём очередной блок
+			void * block = (* __awh_zone_hooks__.malloc)(size);
+			// Если блок не выдан
+			if(block == nullptr)
+				// Выдавать больше нечего
+				break;
+			// Записываем выданный блок
+			blocks[result++] = block;
+		}
+		// Выводим число выданных блоков
+		return result;
+	}
+	/**
+	 * @brief Метод освобождения памяти зоной пачкой
+	 *
+	 * @param zone   зона, у которой просят
+	 * @param blocks массив адресов освобождаемых блоков
+	 * @param count  число освобождаемых блоков
+	 *
+	 */
+	static void discardBatch(::malloc_zone_t * zone, void ** blocks, unsigned count) noexcept {
+		// Зона нам известна
+		(void) zone;
+		/**
+		 * Освобождаем блоки поодиночке
+		 */
+		for(unsigned i = 0; i < count; i++){
+			// Если блок задан
+			if(blocks[i] != nullptr)
+				// Освобождаем блок
+				(* __awh_zone_hooks__.free)(blocks[i]);
+		}
 	}
 	/**
 	 * @brief Метод освобождения памяти зоной
@@ -362,8 +468,6 @@ namespace {
 	}
 	// Наша зона выделения памяти
 	static ::malloc_zone_t __awh_zone__;
-	// Прежняя основная зона процесса
-	static ::malloc_zone_t * __awh_zone_previous__ = nullptr;
 	/**
 	 * Прежние функции зовутся у прежней ЗОНЫ, а не через `::malloc`
 	 *
@@ -537,6 +641,10 @@ bool awh::alloc::ZoneCapture::acquire(const functions_t & hooks, functions_t & o
 	::__awh_zone__.realloc = &::resize;
 	// Задаём зоне метод разрушения
 	::__awh_zone__.destroy = &::demolish;
+	// Задаём зоне метод выделения памяти пачкой
+	::__awh_zone__.batch_malloc = &::reserveBatch;
+	// Задаём зоне метод освобождения памяти пачкой
+	::__awh_zone__.batch_free = &::discardBatch;
 	// Задаём зоне название, видимое средствами разбора памяти
 	::__awh_zone__.zone_name = TITLE;
 	// Задаём зоне средства разбора
@@ -548,6 +656,15 @@ bool awh::alloc::ZoneCapture::acquire(const functions_t & hooks, functions_t & o
 	 * требованию системы, но ещё не требует полей, каких мы не заполняем
 	 */
 	::__awh_zone__.version = 9;
+	/**
+	 * Задаём зоне метод выделения памяти с требуемым выравниванием
+	 *
+	 * Поле обязательное, а не по желанию: библиотека времени исполнения зовёт его без
+	 * проверки на пустоту, и незаполненное валит процесс при первом же
+	 * `posix_memalign`. Пустым оно и было, пока не вскрылось съёмом стека упавшего
+	 * потомка ветвления
+	 */
+	::__awh_zone__.memalign = &::reserveAligned;
 	// Задаём зоне метод освобождения памяти с известным размером
 	::__awh_zone__.free_definite_size = &::discardSized;
 	// Задаём зоне метод отдачи системе свободной памяти

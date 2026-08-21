@@ -525,6 +525,14 @@ size_t awh::regex::anchored(const string_view text, const string_view what, cons
  *
  */
 /**
+ * @brief Опережающее объявление прохода по паре байтов со счётом отвергнутых
+ *
+ */
+typedef struct Scanning scanning_t;
+static scanning_t scanning(const std::string_view text, const std::string_view what, const size_t pos,
+ const size_t first, const size_t second) noexcept;
+
+/**
  * @brief Метод поиска последовательности в окне по паре байтов умолчания
  *
  * @details Пара берётся первым байтом искомого и байтом на пределе разноса,
@@ -542,7 +550,62 @@ size_t awh::regex::windowed(const string_view text, const string_view what, cons
 	// Выводим результат поиска последовательности по паре байтов умолчания
 	return awh::regex::paired(text, what, pos, 0, (((what.size() - 1) < SPACING) ? (what.size() - 1) : SPACING));
 }
-size_t awh::regex::paired(const string_view text, const string_view what, const size_t pos, const size_t first, const size_t second) noexcept {
+/**
+ * @brief Функция поиска последовательности по паре байтов со счётом отвергнутых
+ *
+ * @details Тело прохода заведено здесь единожды: вид со счётом и вид без него
+ *          разошлись бы рано или поздно, и отбор способа поиска судил бы
+ *          по числу, проходом ином полученному.
+ *
+ * @param text     текст сопоставления
+ * @param what     искомая последовательность
+ * @param pos      позиция начала поиска
+ * @param first    смещение первого байта пары в искомом
+ * @param second   смещение второго байта пары в искомом
+ * @param rejected число ложных кандидатов, проходом отвергнутых
+ * @return         позиция найденной последовательности либо признак отсутствия
+ *
+ */
+/**
+ * @brief Итог прохода текста по паре байтов
+ *
+ * @details Проход выдаёт положение и число ложных кандидатов разом, значением
+ *          возвращаемым, а не ссылкой на выходе: ссылка в горячем обороте
+ *          вынуждает собиратель держать счёт в памяти взамен регистра, и проход
+ *          замедлялся втрое - 13 055 наносекунд против 4 812 у точной своей
+ *          копии, счёта не ведущей, при сличении в одном процессе.
+ *
+ *          Выход единственный завести нельзя: возвраты прохода стоят внутри
+ *          условий, скобок не имеющих, и вынос счёта перед каждым из них
+ *          обратил бы условие в присваивание.
+ *
+ */
+typedef struct Scanning {
+	// Позиция найденной последовательности либо признак отсутствия
+	size_t position;
+	// Число ложных кандидатов, проходом отвергнутых
+	size_t rejected;
+} scanning_t;
+
+/**
+ * @brief Функция поиска последовательности по паре байтов со счётом отвергнутых
+ *
+ * @details Тело прохода заведено здесь единожды: вид со счётом и вид без него
+ *          разошлись бы рано или поздно, и отбор способа поиска судил бы
+ *          по числу, проходом иным полученному.
+ *
+ * @param text   текст сопоставления
+ * @param what   искомая последовательность
+ * @param pos    позиция начала поиска
+ * @param first  смещение первого байта пары в искомом
+ * @param second смещение второго байта пары в искомом
+ * @return       положение найденной последовательности и число отвергнутых
+ *
+ */
+static scanning_t scanning(const std::string_view text, const std::string_view what, const size_t pos,
+ const size_t first, const size_t second) noexcept {
+	// Число ложных кандидатов, проходом отвергнутых
+	size_t rejects = 0;
 	// Получаем размер текста сопоставления
 	const size_t size = text.size();
 	// Получаем размер искомой последовательности
@@ -552,7 +615,7 @@ size_t awh::regex::paired(const string_view text, const string_view what, const 
 	 */
 	if((length == 0) || (size < length) || (pos > (size - length)))
 		// Выводим признак отсутствия искомой последовательности
-		return string_view::npos;
+		return {string_view::npos, rejects};
 	// Получаем расстояние между байтами выбранной пары
 	const size_t spacing = (second - first);
 	// Получаем адрес начала текста сопоставления
@@ -653,14 +716,16 @@ size_t awh::regex::paired(const string_view text, const string_view what, const 
 					 */
 					if((offset + lane) >= limit)
 						// Выводим признак отсутствия искомой последовательности
-						return string_view::npos;
+						return {string_view::npos, rejects};
 					/**
 					 * Если искомая последовательность в тексте обнаружена
 					 */
 					if(::memcmp((base + start), what.data(), length) == 0)
 						// Выводим позицию найденной последовательности
-						return start;
-					// Выполняем снятие разобранной встречи пары байтов
+						return {start, rejects};
+					// Увеличиваем число ложных кандидатов, проходом отвергнутых
+				rejects++;
+				// Выполняем снятие разобранной встречи пары байтов
 					hits &= ~(static_cast <uint64_t> (0x0F) << (lane << 2));
 				}
 			}
@@ -721,13 +786,15 @@ size_t awh::regex::paired(const string_view text, const string_view what, const 
 				 */
 				if((at + lane) >= limit)
 					// Выводим признак отсутствия искомой последовательности
-					return string_view::npos;
+					return {string_view::npos, rejects};
 				/**
 				 * Если искомая последовательность в тексте обнаружена
 				 */
 				if(::memcmp((base + start), what.data(), length) == 0)
 					// Выводим позицию найденной последовательности
-					return start;
+					return {start, rejects};
+				// Увеличиваем число ложных кандидатов, проходом отвергнутых
+				rejects++;
 				// Выполняем снятие разобранной встречи пары байтов
 				hits &= (hits - 1);
 			}
@@ -793,13 +860,15 @@ size_t awh::regex::paired(const string_view text, const string_view what, const 
 				 */
 				if((at + lane) >= limit)
 					// Выводим признак отсутствия искомой последовательности
-					return string_view::npos;
+					return {string_view::npos, rejects};
 				/**
 				 * Если искомая последовательность в тексте обнаружена
 				 */
 				if(::memcmp((base + start), what.data(), length) == 0)
 					// Выводим позицию найденной последовательности
-					return start;
+					return {start, rejects};
+				// Увеличиваем число ложных кандидатов, проходом отвергнутых
+				rejects++;
 				// Выполняем снятие разобранной встречи пары байтов
 				hits &= (hits - 1);
 			}
@@ -815,5 +884,39 @@ size_t awh::regex::paired(const string_view text, const string_view what, const 
 	 *          десятков байтов, отчего способ прохода его на скорость не влияет.
 	 *
 	 */
-	return text.find(what, (at - first));
+	return {text.find(what, (at - first)), rejects};
+}
+/**
+ * @brief Метод поиска последовательности в тексте по заданной паре байтов
+ *
+ * @param text   текст сопоставления
+ * @param what   искомая последовательность
+ * @param pos    позиция начала поиска
+ * @param first  смещение первого байта пары в искомом
+ * @param second смещение второго байта пары в искомом
+ * @return       позиция найденной последовательности либо признак отсутствия
+ *
+ */
+size_t awh::regex::paired(const string_view text, const string_view what, const size_t pos, const size_t first, const size_t second) noexcept {
+	// Выводим результат поиска последовательности по заданной паре байтов
+	return scanning(text, what, pos, first, second).position;
+}
+/**
+ * @brief Метод поиска последовательности в окне со счётом ложных кандидатов
+ *
+ * @param text     текст сопоставления
+ * @param what     искомая последовательность
+ * @param pos      позиция начала поиска
+ * @param rejected число ложных кандидатов, проходом отвергнутых
+ * @return         позиция найденной последовательности либо признак отсутствия
+ *
+ */
+size_t awh::regex::windowed(const string_view text, const string_view what, const size_t pos, size_t & rejected) noexcept {
+	// Выводим результат поиска последовательности по паре байтов умолчания
+	// Выполняем проход текста сопоставления по паре байтов умолчания
+	const scanning_t outcome = scanning(text, what, pos, 0, (((what.size() - 1) < SPACING) ? (what.size() - 1) : SPACING));
+	// Выполняем вынос числа ложных кандидатов наружу прохода
+	rejected = outcome.rejected;
+	// Выводим позицию найденной последовательности
+	return outcome.position;
 }
