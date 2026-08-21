@@ -201,61 +201,67 @@ namespace awh {
 					 */
 					void driver(const driver_t driver) noexcept;
 			#endif
+			/**
+			 * Для операционной системы MS Windows и для систем Sun MicroSystems
+			 */
 			#if _WIN32 || _WIN64 || __sun__
 				public:
-				/**
-				 * \~russian
-				 * @brief Метод снятия адреса сетевого устройства и пути к тому концу связи
-				 *
-				 * @details Снимает то, что поставила установка адреса: сам адрес и проложенный
-				 *          к тому концу связи путь
-				 *
-				 * @note Метод заведён для MS Windows и для систем Sun, и отсутствие его у
-				 *       прочих систем - не пробел. У Linux и BSD устройство туннеля исчезает
-				 *       вместе с процессом, унося адреса с собою, и снимать нечего. Двум же
-				 *       этим системам устройство НЕ ПРИНАДЛЕЖИТ: у MS Windows устройство
-				 *       драйвера tap-windows6 живёт в системе постоянно и приложением не
-				 *       сносится, а у Sun Solaris и illumos связь канального уровня заводится
-				 *       административно (`dladm`) и движком не сносится тем более. Адрес на
-				 *       них ставил движок - убрать его за собою обязан он же
-				 *
-				 * @note Метод объявлен в общем договоре, а нужен двум системам - и это в
-				 *       порядке вещей: слои этих систем отдельны и с прочими не пересекаются.
-				 *       Решение владельца, 21.08.2026
-				 *
-				 * @warning Без снятия прогон отравляет следующий. У MS Windows отравляет
-				 *          ЧЕРЕЗ ГРАНИЦУ ДРАЙВЕРА: оставшийся адрес числится за прежним
-				 *          устройством, система отвечает новому «объект уже существует», и
-				 *          устройство остаётся без адреса вовсе. У систем Sun связь переживает
-				 *          процесс вместе с чужим адресом, и следующий прогон получает её
-				 *          занятой - заведение отвечает отказом «Not a data message», отчего
-				 *          красным становится КАЖДЫЙ ВТОРОЙ прогон
-				 *
-				 * @param name название сетевого устройства
-				 * @param ip   снимаемый адрес
-				 * @param peer адрес того конца связи, путь к которому снимается
-				 * @return     результат выполнения снятия
-				 *
-				 * \~english
-				 * @brief Method of the removal of the address of the network interface and of the route to the peer
-				 * @details Removes what the setting of the address has put: the address itself and the route to the peer
-				 * @note The method exists for MS Windows ONLY: on POSIX systems the tunnel device
-				 *       disappears together with the process, while the tap-windows6 device outlives the run
-				 * @param name name of the network interface
-				 * @param ip   address to remove
-				 * @param peer address of the peer whose route is removed
-				 * @return     result of the removal
-				 *
-				 * \~
-				 */
-				bool delAddress(string_view name, const net::addr_t * ip, const net::addr_t * peer) const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод снятия адреса сетевого устройства и пути к тому концу связи
+					 *
+					 * @details Снимает то, что поставила установка адреса: сам адрес и проложенный
+					 *          к тому концу связи путь.
+					 *
+					 * @note Метод заведён для MS Windows и для систем Sun, и отсутствие его у
+					 *       прочих систем - не пробел. У Linux и BSD устройство туннеля исчезает
+					 *       вместе с процессом, унося адреса с собою, и снимать нечего. Двум же
+					 *       этим системам устройство НЕ ПРИНАДЛЕЖИТ: у MS Windows устройство
+					 *       драйвера tap-windows6 живёт в системе постоянно и приложением не
+					 *       сносится, а у Sun Solaris и illumos связь канального уровня заводится
+					 *       административно (`dladm`) и движком не сносится тем более. Адрес на
+					 *       них ставил движок - убрать его за собою обязан он же
+					 *
+					 * @note Метод объявлен в общем договоре, а нужен двум системам - и это в
+					 *       порядке вещей: слои этих систем отдельны и с прочими не пересекаются.
+					 *       Решение владельца, 21.08.2026
+					 *
+					 * @warning Без снятия прогон отравляет следующий. У MS Windows отравляет
+					 *          ЧЕРЕЗ ГРАНИЦУ ДРАЙВЕРА: оставшийся адрес числится за прежним
+					 *          устройством, система отвечает новому «объект уже существует», и
+					 *          устройство остаётся без адреса вовсе. У систем Sun связь переживает
+					 *          процесс вместе с чужим адресом, и следующий прогон получает её
+					 *          занятой - заведение отвечает отказом «Not a data message», отчего
+					 *          красным становится КАЖДЫЙ ВТОРОЙ прогон
+					 *
+					 * @param name название сетевого устройства
+					 * @param ip   снимаемый адрес
+					 * @param peer адрес того конца связи, путь к которому снимается
+					 * @return     результат выполнения снятия
+					 *
+					 * \~english
+					 * @brief Method of the removal of the address of the network interface and of the route to the peer
+					 *
+					 * @details Removes what the setting of the address has put: the address itself and the route to the peer.
+					 *
+					 * @note The method exists for MS Windows ONLY: on POSIX systems the tunnel device
+					 *       disappears together with the process, while the tap-windows6 device outlives the run
+					 *
+					 * @param name name of the network interface
+					 * @param ip   address to remove
+					 * @param peer address of the peer whose route is removed
+					 * @return     result of the removal
+					 *
+					 * \~
+					 */
+					bool delAddress(string_view name, const net::addr_t * ip, const net::addr_t * peer) const noexcept;
 			#endif
 			public:
 				/**
 				 * \~russian
 				 * @brief Метод удаления сетевого интерфейса
 				 *
-				 * @details Убирает устройство из системы
+				 * @details Убирает устройство из системы.
 				 *
 				 * @warning Требует надзорных прав. Подключения, шедшие через это
 				 *          устройство, оборвутся
@@ -265,9 +271,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of removing a network interface
-				 * @details Removes a device from the system
+				 *
+				 * @details Removes a device from the system.
+				 *
 				 * @warning Requires supervisory rights. The connections that went through this
 				 *          device will be broken
+				 *
 				 * @param name name of the network interface
 				 * @return     result of the removal of the network interface
 				 *
@@ -279,7 +288,7 @@ namespace awh {
 				 * \~russian
 				 * @brief Метод получения списка сетевых интерфейсов системы
 				 *
-				 * @details Перечисляет устройства машины вместе с их настройками
+				 * @details Перечисляет устройства машины вместе с их настройками.
 				 *
 				 * @note В список попадают все устройства, включая петлевое и
 				 *       неподнятые: отбирать нужные следует по их признакам
@@ -288,9 +297,12 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Method of getting the list of the network interfaces of the system
-				 * @details Enumerates the devices of the machine together with their settings
+				 *
+				 * @details Enumerates the devices of the machine together with their settings.
+				 *
 				 * @note All the devices get into the list, including the loopback one and
 				 *       the ones not brought up: the needed ones should be selected by their signs
+				 *
 				 * @return list of the network interfaces of the system
 				 *
 				 * \~
