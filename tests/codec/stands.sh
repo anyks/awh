@@ -38,7 +38,7 @@
 #   tests/codec/xml/stand.sh tests/codec/json/stand.sh tests/codec/stand.sh
 #
 # Переменные окружения:
-#   AWH_STANDS — перечень машин видом «доступ|корень GoogleTest|краткое имя»
+#   AWH_STANDS — перечень машин видом «доступ|корень GoogleTest|краткое имя|собиратель»
 #   AWH_ROOT   — корень дерева исходных текстов, по умолчанию каталог сценария
 #
 
@@ -52,14 +52,29 @@ ROOT="${AWH_ROOT:-$(cd "$(dirname "$0")/../.." && pwd)}"
 STANDS="${*:-tests/codec/xml/stand.sh tests/codec/json/stand.sh tests/codec/stand.sh}"
 
 # Получаем перечень машин, по каким ведётся раскладка
+#
+# Перечень машин, по каким ведётся раскладка
+#
+# @note Строка машины устроена видом «доступ|корень GoogleTest|краткое имя|собиратель»,
+#       и четвёртое поле пустует у всех, кроме DragonFly: основной `c++` там от 2019
+#       года и наш код им не собрать вовсе, тогда как рядом стоит `g++14` из портов.
+#       Без поля этого DragonFly в раскладке не участвовала никак, а отказ её выглядел
+#       обычной «СБОРКА ОТКАЗАЛА» - то есть машина числилась опрошенной и отвергнутой,
+#       тогда как опросить её было попросту нечем
+#
+# @warning FreeBSD берётся МЕСТНАЯ (10.100.1.207), а не anyks.com: та рвёт длинный
+#          сеанс ssh посреди прогона, а после череды обрывов перестаёт принимать
+#          подключения вовсе. Машина публичная и служит не одним проверкам
+#
 MACHINES="${AWH_STANDS:-
-anyks@anyks.com|/usr/local|freebsd
-forman@10.100.1.200|/usr/pkg|netbsd
-forman@10.100.1.145|/usr/local|openbsd
-forman@10.100.1.105|/usr/local|solaris
-forman@10.100.1.159|/usr|openindiana
-forman@10.100.1.250|/usr|debian
-forman@10.100.1.245|/usr|alpine
+forman@10.100.1.207|/usr/local|freebsd|
+forman@10.100.1.200|/usr/pkg|netbsd|
+forman@10.100.1.145|/usr/local|openbsd|
+forman@10.100.1.155|/usr/local|dragonfly|g++14
+forman@10.100.1.105|/usr/local|solaris|
+forman@10.100.1.159|/usr|openindiana|
+forman@10.100.1.250|/usr|debian|
+forman@10.100.1.245|/usr|alpine|
 }"
 
 #
@@ -185,7 +200,7 @@ done
 RUN
 
 # Выполняем перебор всех машин раскладки
-echo "$MACHINES" | while IFS='|' read -r HOST GTEST TAG; do
+echo "$MACHINES" | while IFS='|' read -r HOST GTEST TAG COMPILER; do
 	# Пропускаем пустые строки перечня машин
 	[ -n "${HOST:-}" ] || continue
 	# Выводим сообщение о начале прогона на очередной машине
@@ -212,7 +227,7 @@ echo "$MACHINES" | while IFS='|' read -r HOST GTEST TAG; do
 	ssh -n -o BatchMode=yes -o StrictHostKeyChecking=no "$HOST" \
 		"rm -rf ~/codec-stands-$STAMP && mkdir -p ~/codec-stands-$STAMP && cd ~/codec-stands-$STAMP &&
 		 gzip -dc /tmp/awh-codec-stands-$STAMP.tgz | tar -xf - &&
-		 GTEST_ROOT='$GTEST' AWH_SCRIPTS='$STANDS' AWH_STAMP='$STAMP' sh /tmp/awh-codec-runner-$STAMP.sh;
+		 GTEST_ROOT='$GTEST' AWH_SCRIPTS='$STANDS' AWH_STAMP='$STAMP' ${COMPILER:+CXX='$COMPILER'} sh /tmp/awh-codec-runner-$STAMP.sh;
 		 cd ~ && rm -rf ~/codec-stands-$STAMP /tmp/awh-codec-stands-$STAMP.tgz /tmp/awh-codec-runner-$STAMP.sh /tmp/awh-stand-$STAMP-*[!g]" |
 	#
 	# Выполняем отбор отказов сборки в перечень несобравшегося
