@@ -64,6 +64,41 @@ namespace {
 	static constexpr size_t LARGE_ROUNDS = 4;
 
 	/**
+	 * @brief Количество устанавливаемых значений при сборке вызовами
+	 *
+	 */
+	static constexpr size_t ASSEMBLY_COUNT = 20000;
+
+	/**
+	 * @brief Порог скорости сборки значения вызовами
+	 *
+	 * @details Показатель этот стережёт устройство отображения: поиск поля попарным
+	 *          сличением имён обращает сборку в квадратичную
+	 *
+	 * @warning ПОРОГ ЭТОТ ВРЕМЕННЫЙ, снят по одной рабочей машине: разметку брать
+	 *          раскладкой по стендам, как у прочих сценариев набора
+	 *
+	 * @warning Сборка эта КВАДРАТИЧНА ныне, и порог поставлен по измеренному, а не по
+	 *          должному. Свойство общее у владеющих значений ВСЕХ пяти кодеков, решение
+	 *          по устройству за владельцем. Порог привязан к ASSEMBLY_COUNT: изменив
+	 *          его, пороговое число надлежит переснять
+	 *
+	 */
+	static constexpr double ASSEMBLY_THRESHOLD = 25000.0;
+	/**
+	 * @brief Порог скорости поиска значения по имени
+	 *
+	 * @details Сценарий этот ПАРНЫЙ сборке вызовами и заведён потому, что та стережёт
+	 *          лишь половину беды: перебор имён стоит одинаково и при заведении поля, и
+	 *          при обращении к нему. Правка, ускорившая построение и замедлившая поиск,
+	 *          прошла бы мимо порога, будь сценарий один
+	 *
+	 * @warning ПОРОГ ЭТОТ ВРЕМЕННЫЙ, снят по одной рабочей машине
+	 *
+	 */
+	static constexpr double LOOKUP_THRESHOLD = 25000.0;
+
+	/**
 	 * @brief Порог пропускной способности снятия значения с дерева документа
 	 *
 	 * @details Пороги назначены по САМОМУ МЕДЛЕННОМУ из отладочных стендов - OpenBSD на
@@ -392,6 +427,105 @@ namespace {
 	}
 
 	/**
+	 * @brief Функция прогона сценария сборки значения вызовами
+	 *
+	 * @return результат измерения
+	 *
+	 */
+	static awh::benchmark::result_t assembly() noexcept {
+		// Результат измерения
+		awh::benchmark::result_t result;
+		// Выполняем прогон измеряемой операции
+		const outcome_t outcome = measure(0, 1, []() noexcept {
+			// Собираемое владеющее значение
+			awh::codec::yaml::value_t value;
+			// Количество выполненных установок
+			uint64_t count = 0;
+			/**
+			 * Выполняем установку всех значений отображения
+			 */
+			for(size_t i = 0; i < ASSEMBLY_COUNT; i++){
+				// Выполняем установку очередного значения отображения
+				value["поле" + to_string(i)] = awh::codec::yaml::value_t(static_cast <int64_t> (i));
+				// Выполняем учёт выполненной установки
+				count++;
+			}
+			// Выводим количество выполненных установок
+			return count;
+		});
+		/**
+		 * Если ни одной операции не выполнено
+		 */
+		if(outcome.operations == 0){
+			// Запоминаем признак недействительности измерения
+			result.invalid = true;
+			// Запоминаем причину недействительности измерения
+			result.reason = "сборка не выполнила ни одной установки";
+			// Выводим результат измерения
+			return result;
+		}
+		// Устанавливаем измеренную скорость выполнения установок
+		result.value = ((outcome.seconds > 0.0) ? (static_cast <double> (outcome.operations * ASSEMBLY_COUNT) / outcome.seconds) : 0.0);
+		// Устанавливаем сведения о прогоне
+		result.details = details(outcome);
+		// Выводим результат измерения
+		return result;
+	}
+	/**
+	 * @brief Функция прогона сценария поиска значения по имени
+	 *
+	 * @details Отображение собирается до замера, чтобы сборка и поиск не скрывали друг
+	 * друга: обе они упираются в один и тот же перебор имён
+	 *
+	 * @return результат измерения
+	 *
+	 */
+	static awh::benchmark::result_t lookup() noexcept {
+		// Результат измерения
+		awh::benchmark::result_t result;
+		// Обыскиваемое владеющее значение
+		awh::codec::yaml::value_t value;
+		/**
+		 * Выполняем сборку обыскиваемого отображения
+		 */
+		for(size_t i = 0; i < ASSEMBLY_COUNT; i++)
+			// Выполняем установку очередного значения отображения
+			value["поле" + to_string(i)] = awh::codec::yaml::value_t(static_cast <int64_t> (i));
+		// Выполняем прогон измеряемой операции
+		const outcome_t outcome = measure(0, 1, [&value]() noexcept {
+			// Количество разысканных значений
+			uint64_t count = 0;
+			/**
+			 * Выполняем перебор всех полей отображения
+			 */
+			for(size_t i = 0; i < ASSEMBLY_COUNT; i++){
+				// Если очередное поле отображения разыскано
+				if(value["поле" + to_string(i)].valid())
+					// Выполняем учёт разысканного значения
+					count++;
+			}
+			// Выводим количество разысканных значений
+			return count;
+		});
+		/**
+		 * Если ни одной операции не выполнено
+		 */
+		if(outcome.operations == 0){
+			// Запоминаем признак недействительности измерения
+			result.invalid = true;
+			// Запоминаем причину недействительности измерения
+			result.reason = "поиск не выполнил ни одного обращения";
+			// Выводим результат измерения
+			return result;
+		}
+		// Устанавливаем измеренную скорость выполнения обращений
+		result.value = ((outcome.seconds > 0.0) ? (static_cast <double> (outcome.operations * ASSEMBLY_COUNT) / outcome.seconds) : 0.0);
+		// Устанавливаем сведения о прогоне
+		result.details = details(outcome);
+		// Выводим результат измерения
+		return result;
+	}
+	/**
 	 * Выполняем регистрацию сценария снятия значения с дерева крупного файла настроек
 	 */
 	static const bool TAKE_LARGE_REGISTERED = awh::benchmark::add(
@@ -432,5 +566,19 @@ namespace {
 	static const bool TAKE_ALLOCATIONS_REGISTERED = awh::benchmark::add(
 		"codec/yaml: выделения на снятие значения", "выд./док.", TAKE_ALLOCATIONS_THRESHOLD,
 		awh::benchmark::bound_t::MAXIMUM, takeAllocations
+	);
+	/**
+	 * Выполняем регистрацию сценария сборки значения вызовами
+	 */
+	static const bool ASSEMBLY_REGISTERED = awh::benchmark::add(
+		"codec/yaml: сборка значения вызовами", "уст./с", ASSEMBLY_THRESHOLD,
+		awh::benchmark::bound_t::MINIMUM, assembly
+	);
+	/**
+	 * Выполняем регистрацию сценария поиска значения по имени
+	 */
+	static const bool LOOKUP_REGISTERED = awh::benchmark::add(
+		"codec/yaml: поиск значения по имени", "обр./с", LOOKUP_THRESHOLD,
+		awh::benchmark::bound_t::MINIMUM, lookup
 	);
 };
