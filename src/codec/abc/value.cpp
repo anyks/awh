@@ -344,7 +344,15 @@ awh::codec::abc::Value::Value(const Document::value_t & value) noexcept :
  */
 awh::codec::abc::Value::Value(const Value & value) noexcept :
  _kind(value._kind), _type(value._type), _number(value._number), _text(value._text),
- _exponent(value._exponent), _negative(value._negative), _keys(value._keys), _items(value._items) {}
+ _exponent(value._exponent), _negative(value._negative), _keys(value._keys), _items(value._items) {
+	/**
+	 * Указатель поиска копии НЕ достаётся намеренно
+	 *
+	 * @note Заведётся он у копии заново при первом же поиске по имени. Копирование его
+	 *       стоило бы выделения памяти и счёта отпечатков на всякое имя - и стоило бы
+	 *       того ВСЯКОМУ копированию узла, тогда как ищут по имени далеко не во всяком
+	 */
+}
 /**
  * @brief Конструктор переноса
  *
@@ -354,7 +362,7 @@ awh::codec::abc::Value::Value(const Value & value) noexcept :
 awh::codec::abc::Value::Value(Value && value) noexcept :
  _kind(value._kind), _type(value._type), _number(value._number), _text(std::move(value._text)),
  _exponent(value._exponent), _negative(value._negative), _keys(std::move(value._keys)),
- _items(std::move(value._items)) {
+ _items(std::move(value._items)), _index(std::move(value._index)) {
 	// Выполняем сброс вида узла перенесённого значения
 	value._kind = kind_t::NONE;
 	// Выполняем сброс вида перенесённого значения
@@ -390,6 +398,8 @@ awh::codec::abc::Value & awh::codec::abc::Value::operator = (const Value & value
 	this->_keys = value._keys;
 	// Выполняем установку значений вместимого
 	this->_items = value._items;
+	// Выполняем снос указателя поиска: заведётся он заново при первом же поиске
+	this->unindex();
 	// Выводим ссылку на присвоенное значение
 	return (* this);
 }
@@ -423,6 +433,8 @@ awh::codec::abc::Value & awh::codec::abc::Value::operator = (Value && value) noe
 	this->_keys = std::move(value._keys);
 	// Выполняем перенесение значений вместимого
 	this->_items = std::move(value._items);
+	// Выполняем перенесение указателя поиска вместе с именами
+	this->_index = std::move(value._index);
 	// Выполняем сброс вида узла перенесённого значения
 	value._kind = kind_t::NONE;
 	// Выполняем сброс вида перенесённого значения
@@ -443,6 +455,8 @@ awh::codec::abc::Value::~Value() noexcept {
  *
  */
 void awh::codec::abc::Value::clear() noexcept {
+	// Выполняем снос указателя поиска
+	this->unindex();
 	/**
 	 * Если детей у значения нет, разбирать нечего
 	 */
@@ -600,6 +614,75 @@ bool awh::codec::abc::Value::negative() const noexcept {
 	return this->_negative;
 }
 /**
+ * @brief Метод разыскания поля отображения по имени
+ *
+ * @param name имя разыскиваемого поля отображения
+ * @return     номер поля отображения, размер вместимого при отсутствии
+ *
+ */
+size_t awh::codec::abc::Value::locate(const string & name) const noexcept {
+	/**
+	 * Если полей отображения меньше порога заведения указателя
+	 *
+	 * @note Перебор при малом числе полей дешевле всякого указателя: сличение имён идёт
+	 *       по памяти подряд, тогда как заведение указателя стоит выделения памяти и
+	 *       счёта отпечатка на всякое имя
+	 */
+	if(this->_keys.size() < static_cast <size_t> (INDEX_THRESHOLD)){
+		/**
+		 * Выполняем перебор всех имён полей отображения
+		 */
+		for(size_t i = 0; i < this->_keys.size(); i++){
+			// Выполняем получение очередного имени поля отображения
+			const Value & key = this->_keys.at(i);
+			// Если имя поля отображения совпало с затребованным
+			if((key._type == type_t::STRING) && (key._text.compare(name) == 0))
+				// Выводим номер разысканного поля отображения
+				return i;
+		}
+		// Выводим признак отсутствия поля отображения
+		return this->_keys.size();
+	}
+	/**
+	 * Если указатель поиска ещё не заведён
+	 */
+	if(!this->_index){
+		// Выполняем заведение указателя поиска
+		this->_index.reset(new unordered_map <string, size_t>());
+		// Резервируем место под имена полей отображения
+		this->_index->reserve(this->_keys.size());
+		/**
+		 * Выполняем перебор всех имён полей отображения
+		 */
+		for(size_t i = 0; i < this->_keys.size(); i++){
+			// Выполняем получение очередного имени поля отображения
+			const Value & key = this->_keys.at(i);
+			/**
+			 * Если имя поля отображения является строкой
+			 *
+			 * @note Именем вправе стоять и число, и отметка времени, но разыскиваются
+			 *       такие поля лишь перебором: указатель ведётся по строкам, а поиск по
+			 *       имени строкового и требует
+			 */
+			if(key._type == type_t::STRING)
+				// Выполняем добавление имени поля в указатель поиска
+				this->_index->emplace(key._text, i);
+		}
+	}
+	// Выполняем поиск затребованного имени поля отображения
+	auto i = this->_index->find(name);
+	// Выводим номер разысканного поля отображения
+	return ((i != this->_index->end()) ? i->second : this->_keys.size());
+}
+/**
+ * @brief Метод сноса указателя поиска
+ *
+ */
+void awh::codec::abc::Value::unindex() noexcept {
+	// Выполняем снос заведённого указателя поиска
+	this->_index.reset(nullptr);
+}
+/**
  * @brief Метод извлечения имени поля отображения по его номеру
  *
  * @param index номер пары отображения
@@ -626,17 +709,8 @@ bool awh::codec::abc::Value::contains(const string & name) const noexcept {
 	if(this->_type != type_t::MAP)
 		// Сообщаем, что поля отображения нет
 		return false;
-	/**
-	 * Выполняем перебор всех имён полей отображения
-	 */
-	for(const Value & key : this->_keys){
-		// Если имя поля отображения совпало с затребованным
-		if((key._type == type_t::STRING) && (key._text.compare(name) == 0))
-			// Сообщаем, что поле отображения найдено
-			return true;
-	}
-	// Сообщаем, что поля отображения нет
-	return false;
+	// Выводим признак того, что поле отображения разыскано
+	return (this->locate(name) < this->_keys.size());
 }
 /**
  * @brief Оператор извлечения значения поля отображения по имени
@@ -650,17 +724,12 @@ const awh::codec::abc::Value & awh::codec::abc::Value::operator [] (const string
 	if(this->_type != type_t::MAP)
 		// Выводим ссылку на отсутствующее значение
 		return Value::undefined();
-	/**
-	 * Выполняем перебор всех имён полей отображения
-	 */
-	for(size_t i = 0; i < this->_keys.size(); i++){
-		// Выполняем получение очередного имени поля отображения
-		const Value & key = this->_keys.at(i);
-		// Если имя поля отображения совпало с затребованным
-		if((key._type == type_t::STRING) && (key._text.compare(name) == 0))
-			// Выводим значение затребованного поля отображения
-			return this->_items.at(i);
-	}
+	// Выполняем разыскание затребованного поля отображения
+	const size_t index = this->locate(name);
+	// Если поле отображения разыскано
+	if(index < this->_items.size())
+		// Выводим значение затребованного поля отображения
+		return this->_items.at(index);
 	// Выводим ссылку на отсутствующее значение
 	return Value::undefined();
 }
@@ -683,17 +752,21 @@ awh::codec::abc::Value & awh::codec::abc::Value::operator [] (const string & nam
 		// Выполняем установку вида отображения
 		this->_type = type_t::MAP;
 	}
+	// Выполняем разыскание затребованного поля отображения
+	const size_t found = this->locate(name);
+	// Если поле отображения разыскано
+	if(found < this->_items.size())
+		// Выводим значение затребованного поля отображения
+		return this->_items.at(found);
 	/**
-	 * Выполняем перебор всех имён полей отображения
+	 * Если указатель поиска заведён, ведём его приращением
+	 *
+	 * @note Приращение обязательно: перестроение указателя на всякой правке вернуло бы
+	 *       ту самую квадратичность, от какой указатель и заводится
 	 */
-	for(size_t i = 0; i < this->_keys.size(); i++){
-		// Выполняем получение очередного имени поля отображения
-		const Value & key = this->_keys.at(i);
-		// Если имя поля отображения совпало с затребованным
-		if((key._type == type_t::STRING) && (key._text.compare(name) == 0))
-			// Выводим значение затребованного поля отображения
-			return this->_items.at(i);
-	}
+	if(this->_index)
+		// Выполняем добавление заводимого имени в указатель поиска
+		this->_index->emplace(name, this->_keys.size());
 	// Выполняем заведение имени затребованного поля отображения
 	this->_keys.push_back(Value(name));
 	// Выполняем заведение значения затребованного поля отображения
@@ -789,6 +862,45 @@ bool awh::codec::abc::Value::push(const Value & value) noexcept {
  *
  */
 bool awh::codec::abc::Value::insert(const string & name, const Value & value) noexcept {
+	// Выполняем добавление поля отображения с именем-строкою
+	return this->insert(Value(name), value);
+}
+/**
+ * @brief Метод добавления поля в отображение с именем любого вида
+ *
+ * @param name  имя поля отображения
+ * @param value добавляемое значение
+ * @return      признак успешности добавления
+ *
+ */
+/**
+ * @brief Метод добавления поля в отображение с именем строковым литералом
+ *
+ * @param name  имя поля отображения
+ * @param value добавляемое значение
+ * @return      признак успешности добавления
+ *
+ */
+bool awh::codec::abc::Value::insert(const char * name, const Value & value) noexcept {
+	// Выполняем добавление поля отображения с именем строковым литералом
+	return this->insert(Value((name != nullptr) ? string(name) : string{}), value);
+}
+bool awh::codec::abc::Value::insert(const Value & name, const Value & value) noexcept {
+	/**
+	 * Если именем поля отображения стоит вместимое, добавление отвергается
+	 *
+	 * @note Отказ намеренный: розыск по такому имени требовал бы сличения поддеревьев,
+	 *       и цена его несоразмерна получаемому. Ср. `INVALID_KEY` у разбора записи
+	 */
+	if(name.is(type_t::ARRAY) || name.is(type_t::MAP))
+		// Сообщаем, что добавление отвечено отказом
+		return false;
+	/**
+	 * Если имя поля отображения не задано вовсе
+	 */
+	if(!name.valid())
+		// Сообщаем, что добавление отвечено отказом
+		return false;
 	// Если значение вместимым иного вида является
 	if((this->_type != type_t::MAP) && this->valid() && (this->_type != type_t::NUL))
 		// Сообщаем, что добавление отвечено отказом
@@ -804,10 +916,13 @@ bool awh::codec::abc::Value::insert(const string & name, const Value & value) no
 	 * Выполняем перебор всех имён полей отображения
 	 */
 	for(size_t i = 0; i < this->_keys.size(); i++){
-		// Выполняем получение очередного имени поля отображения
-		const Value & key = this->_keys.at(i);
-		// Если имя поля отображения совпало с затребованным
-		if((key._type == type_t::STRING) && (key._text.compare(name) == 0)){
+		/**
+		 * Если имя поля отображения совпало с затребованным.
+		 *
+		 * Сличение идёт ЗНАЧЕНИЕМ, а не видом хранения: `UINT64(42)` при пересборке
+		 * сужается до `UINT8`, и сличение видами объявило бы равные имена разными
+		 */
+		if(this->_keys.at(i) == name){
 			/**
 			 * Выполняем перезапись занятого имени на прежнем его месте.
 			 *
@@ -820,8 +935,17 @@ bool awh::codec::abc::Value::insert(const string & name, const Value & value) no
 			return true;
 		}
 	}
+	/**
+	 * Если указатель поиска заведён, а заводимое имя является строкою
+	 *
+	 * @note Указатель ведётся приращением: перестроение его на всякой правке вернуло бы
+	 *       ту самую квадратичность, от какой он и заводится
+	 */
+	if(this->_index && name.is(type_t::STRING))
+		// Выполняем добавление заводимого имени в указатель поиска
+		this->_index->emplace(name.text(), this->_keys.size());
 	// Выполняем заведение имени затребованного поля отображения
-	this->_keys.push_back(Value(name));
+	this->_keys.push_back(name);
 	// Выполняем заведение значения затребованного поля отображения
 	this->_items.push_back(value);
 	// Сообщаем, что добавление успешно
@@ -851,6 +975,8 @@ bool awh::codec::abc::Value::erase(const string & name) noexcept {
 			this->_keys.erase(this->_keys.begin() + static_cast <ptrdiff_t> (i));
 			// Выполняем удаление значения поля отображения
 			this->_items.erase(this->_items.begin() + static_cast <ptrdiff_t> (i));
+			// Выполняем снос указателя поиска
+			this->unindex();
 			// Сообщаем, что удаление успешно
 			return true;
 		}
@@ -876,6 +1002,13 @@ bool awh::codec::abc::Value::erase(const size_t index) noexcept {
 	if((this->_type == type_t::MAP) && (index < this->_keys.size()))
 		// Выполняем удаление имени поля отображения
 		this->_keys.erase(this->_keys.begin() + static_cast <ptrdiff_t> (index));
+	/**
+	 * Выполняем снос указателя поиска
+	 *
+	 * @note Сносится он целиком, а не чинится: удаление сдвигает номера всех полей после
+	 *       удалённого, и починка обошлась бы дороже заведения заново
+	 */
+	this->unindex();
 	// Сообщаем, что удаление успешно
 	return true;
 }
@@ -1867,9 +2000,62 @@ bool awh::codec::abc::Builder::close() noexcept {
  */
 bool awh::codec::abc::Builder::key(const string & name) noexcept {
 	/**
-	 * Если сборка завершена уже, имя пусто вовсе либо назначено уже
+	 * Если имя поля отображения пусто вовсе
+	 *
+	 * @note Пустая строка именем отвергается сборкою, хотя записи она дозволена:
+	 *       сборка ведёт путь к открытому вместилищу сама, и пустое имя в ней
+	 *       неотличимо от неназначенного
 	 */
-	if(this->_done || name.empty() || this->_keyed)
+	if(name.empty())
+		// Выводим признак неудачного назначения
+		return false;
+	// Выполняем назначение имени поля отображения строкою
+	return this->key(Value(name));
+}
+/**
+ * @brief Метод назначения имени поля отображения строковым литералом
+ *
+ * @param name назначаемое имя поля отображения
+ * @return     признак успешности назначения
+ *
+ */
+bool awh::codec::abc::Builder::key(const char * name) noexcept {
+	/**
+	 * Если имя поля отображения не отдано вовсе
+	 */
+	if(name == nullptr)
+		// Выводим признак неудачного назначения
+		return false;
+	// Выполняем назначение имени поля отображения строковым литералом
+	return this->key(string(name));
+}
+/**
+ * @brief Метод назначения имени поля отображения любого вида
+ *
+ * @param name назначаемое имя поля отображения
+ * @return     признак успешности назначения
+ *
+ */
+bool awh::codec::abc::Builder::key(const Value & name) noexcept {
+	/**
+	 * Если сборка завершена уже либо имя назначено уже
+	 */
+	if(this->_done || this->_keyed)
+		// Выводим признак неудачного назначения
+		return false;
+	/**
+	 * Если имя поля отображения не задано вовсе
+	 */
+	if(!name.valid())
+		// Выводим признак неудачного назначения
+		return false;
+	/**
+	 * Если именем поля отображения стоит вместимое
+	 *
+	 * @note Отказ намеренный и отвечает разбору записи (`INVALID_KEY`): розыск по
+	 *       такому имени требовал бы сличения поддеревьев
+	 */
+	if(name.is(type_t::ARRAY) || name.is(type_t::MAP))
 		// Выводим признак неудачного назначения
 		return false;
 	/**

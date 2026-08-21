@@ -209,6 +209,66 @@ namespace awh {
 				private:
 					/**
 					 * \~russian
+					 * Указатель поиска поля отображения по имени
+					 *
+					 * @details Поиск ведётся перебором имён, покуда полей меньше `INDEX_LIMIT`,
+					 * и указателем далее. Перебор при тысячах полей обращает и сборку, и чтение
+					 * в квадратичные: замерено 21.08.2026 - 3.26 мкс на установку при 2500
+					 * полях против 18.90 при 20000, и столько же на обращение
+					 *
+					 * @note Указатель заводится ЛЕНИВО и держится значением необязательным:
+					 * узел мелкого отображения не платит за него ни памятью, ни выделением,
+					 * а таких узлов в дереве подавляющее большинство
+					 *
+					 * @note Указатель ведётся приращением, а не перестроением: перестроение на
+					 * всякой правке вернуло бы ту же квадратичность, от какой он и заводится
+					 *
+					 * \~english
+					 * Index of the search of a field of a mapping by a name
+					 * @details The search is conducted by the enumeration of the names while there are fewer
+					 * fields than `INDEX_LIMIT`, and by the index further on
+					 * @note The index is created LAZILY: a node of a small mapping does not pay for it
+					 * @note The index is maintained by an increment rather than by a rebuilding
+					 *
+					 * \~
+					 */
+					mutable unique_ptr <unordered_map <string, size_t>> _index;
+				private:
+					/**
+					 * \~russian
+					 * @brief Метод разыскания поля отображения по имени
+					 *
+					 * @details Перебор либо указатель - смотря по количеству полей. Способ
+					 * выбирается здесь одним местом, дабы пути поиска не разошлись
+					 *
+					 * @param name имя разыскиваемого поля отображения
+					 * @return     номер поля отображения, `size()` при отсутствии
+					 *
+					 * \~english
+					 * @brief Method of the searching of a field of a mapping by a name
+					 * @param name name of the field of the mapping being searched for
+					 * @return number of the field of the mapping, `size()` at the absence
+					 *
+					 * \~
+					 */
+					size_t locate(const string & name) const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод сноса указателя поиска
+					 *
+					 * @details Сносится указатель при всякой перестановке полей: удаление
+					 * сдвигает номера всех полей после удалённого, и починка его обошлась бы
+					 * дороже, чем заведение заново при первом же поиске
+					 *
+					 * \~english
+					 * @brief Method of the demolition of the index of the search
+					 *
+					 * \~
+					 */
+					void unindex() noexcept;
+				private:
+					/**
+					 * \~russian
 					 * @brief Метод разбора звена пути на номер значения
 					 *
 					 * @details Разбор отвергает запись целиком, а не приводит её к пределу:
@@ -617,6 +677,63 @@ namespace awh {
 					 * \~
 					 */
 					[[nodiscard]] bool insert(const string & name, const Value & value) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод добавления поля в отображение с именем любого вида
+					 *
+					 * @details Именем поля запись ABC дозволяет всякое НЕВМЕСТИМОЕ значение, а не
+					 * одну лишь строку: целое именем и короче, и сличается быстрее. Вместимое
+					 * же именем отвергается - розыск по такому имени требовал бы сличения
+					 * поддеревьев, и цена его несоразмерна получаемому
+					 *
+					 * @note Занятое имя разыскивается сличением ЗНАЧЕНИЙ, а не видов хранения:
+					 * `UINT64(42)` при пересборке сужается до `UINT8`, и сличение видами
+					 * объявило бы равные имена разными
+					 *
+					 * @param name  имя поля отображения
+					 * @param value добавляемое значение
+					 * @return      признак успешности добавления
+					 *
+					 * \~english
+					 * @brief Method of the addition of a field into a mapping with a name of any kind
+					 * @details The record of ABC allows any NON-CONTAINER value as the name of a field rather than
+					 * a string alone: an integer is both shorter as a name and faster to compare. A container
+					 * as a name is rejected: a lookup by such a name would demand a comparison of the subtrees,
+					 * and its price is disproportionate to what is gained
+					 * @note An occupied name is looked up by a comparison of the VALUES rather than of the kinds
+					 * of the storage: `UINT64(42)` narrows to `UINT8` upon a reassembling, and a comparison by
+					 * the kinds would declare equal names different
+					 * @param name name of the field of the mapping
+					 * @param value value being added
+					 * @return sign of the success of the addition
+					 *
+					 * \~
+					 */
+					[[nodiscard]] bool insert(const Value & name, const Value & value) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод добавления поля в отображение с именем строковым литералом
+					 *
+					 * @details Работа эта заведена РАЗРЕШЕНИЯ РАДИ: обращение `const char *` в
+					 * `Value` и в `std::string` стоит собирателю одинаково, и вызов с литералом
+					 * без неё двусмыслен. Ср. тот же случай у конструктора `Value(const char *)`
+					 *
+					 * @param name  имя поля отображения
+					 * @param value добавляемое значение
+					 * @return      признак успешности добавления
+					 *
+					 * \~english
+					 * @brief Method of the addition of a field into a mapping with a string literal as a name
+					 * @details This work is introduced FOR THE SAKE OF THE RESOLUTION: the conversion of
+					 * `const char *` into `Value` and into `std::string` costs the compiler the same, and a call
+					 * with a literal is ambiguous without it. Compare the same case at the constructor `Value(const char *)`
+					 * @param name name of the field of the mapping
+					 * @param value value being added
+					 * @return sign of the success of the addition
+					 *
+					 * \~
+					 */
+					[[nodiscard]] bool insert(const char * name, const Value & value) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод удаления поля отображения по имени
@@ -1056,7 +1173,7 @@ namespace awh {
 					vector <size_t> _path;
 				private:
 					// Имя поля отображения, сборкой назначенное
-					string _key;
+					Value _key;
 				private:
 					// Признак назначенного имени поля отображения
 					bool _keyed;
@@ -1175,6 +1292,48 @@ namespace awh {
 					 * \~
 					 */
 					bool key(const string & name) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод назначения имени поля отображения любого вида
+					 *
+					 * @details Именем поля запись ABC дозволяет всякое НЕВМЕСТИМОЕ значение, а не
+					 * одну лишь строку. Без этой работы потоковая сборка не выражала бы часть
+					 * записей, какие сам же кодек и читает, и пишет
+					 *
+					 * @param name назначаемое имя поля отображения
+					 * @return     признак успешности назначения
+					 *
+					 * \~english
+					 * @brief Method of the assignment of the name of a field of a mapping of any kind
+					 * @details The record of ABC allows any NON-CONTAINER value as the name of a field rather than
+					 * a string alone. Without this work the streaming assembling would not express a part of
+					 * the records which the codec itself both reads and writes
+					 * @param name name of the field of the mapping being assigned
+					 * @return sign of the success of the assignment
+					 *
+					 * \~
+					 */
+					bool key(const Value & name) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод назначения имени поля отображения строковым литералом
+					 *
+					 * @details Работа эта заведена РАЗРЕШЕНИЯ РАДИ: вызов с литералом без неё
+					 * двусмыслен. Ср. `Value::insert(const char *, const Value &)`
+					 *
+					 * @param name назначаемое имя поля отображения
+					 * @return     признак успешности назначения
+					 *
+					 * \~english
+					 * @brief Method of the assignment of the name of a field of a mapping by a string literal
+					 * @details This work is introduced FOR THE SAKE OF THE RESOLUTION: a call with a literal is
+					 * ambiguous without it. Compare `Value::insert(const char *, const Value &)`
+					 * @param name name of the field of the mapping being assigned
+					 * @return sign of the success of the assignment
+					 *
+					 * \~
+					 */
+					bool key(const char * name) noexcept;
 				public:
 					/**
 					 * \~russian
