@@ -503,3 +503,65 @@ TEST(CodecAbcValue, RealToWholeContract) {
 		ASSERT_FALSE(value.value(signedValue));
 	}
 }
+
+/**
+ * @brief Проверка стойкости снятия значения к усечению и порче записи
+ *
+ * @details Владеющее значение заводит память по объявленному размеру вместимого, и
+ *          запись, объявляющая тысячи значений при считанных октетах содержимого, была
+ *          бы способом исчерпать память подачей двух десятков октетов. Проверка
+ *          закрепляет, что объявленный размер держится содержимым: усечённая запись
+ *          отвергается вся, а порча одного октета вместимое сверх записи не растит
+ *
+ */
+TEST(CodecAbcValue, TruncationAndCorruption) {
+	// Сборка образцовой записи
+	abc::writer_t writer;
+	// Выполняем сборку записи отображения
+	ASSERT_TRUE(writer.mapBegin(static_cast <uint64_t> (2)));
+	ASSERT_TRUE(writer.text("имя") && writer.text("Юрий"));
+	ASSERT_TRUE(writer.text("лет") && writer.number(static_cast <uint64_t> (42)));
+	ASSERT_TRUE(writer.mapEnd());
+	// Собранная образцовая запись
+	const vector <uint8_t> record(writer.record().begin(), writer.record().end());
+	// Выполняем проверку того, что образцовая запись собрана
+	ASSERT_FALSE(record.empty());
+	/**
+	 * Выполняем разбор всякого начального куска записи
+	 */
+	for(size_t i = 0; i < record.size(); i++){
+		// Снимаемое владеющее значение
+		abc::value_t value;
+		// Выполняем проверку отказа разбора усечённой записи
+		ASSERT_FALSE(value.parse(record.data(), i)) << "усечение до " << i << " октетов принято";
+	}
+	// Наибольший объявленный размер вместимого, встреченный при порче
+	size_t largest = 0;
+	/**
+	 * Выполняем перебор всех октетов записи
+	 */
+	for(size_t i = 0; i < record.size(); i++){
+		/**
+		 * Выполняем перебор всех значений очередного октета
+		 */
+		for(size_t b = 0; b < 256; b++){
+			// Порченая запись
+			vector <uint8_t> copy = record;
+			// Выполняем порчу очередного октета записи
+			copy.at(i) = static_cast <uint8_t> (b);
+			// Снимаемое владеющее значение
+			abc::value_t value;
+			// Если разбор порченой записи отвечен отказом, переходим к следующей
+			if(!value.parse(copy.data(), copy.size()))
+				continue;
+			// Запоминаем наибольший объявленный размер вместимого
+			largest = (value.size() > largest ? value.size() : largest);
+		}
+	}
+	// Выполняем проверку того, что объявленный размер держится содержимым записи
+	ASSERT_LE(largest, record.size());
+	// Выполняем проверку того, что образцовая запись разбирается целой
+	abc::value_t value;
+	ASSERT_TRUE(value.parse(record.data(), record.size()));
+	ASSERT_EQ(value.size(), 2u);
+}
