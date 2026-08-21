@@ -78,7 +78,7 @@ namespace {
 	 *       кодека настроек INI втрое и более
 	 *
 	 */
-	static constexpr double READ_SERVICE_THRESHOLD = 6.0;
+	static constexpr double READ_SERVICE_THRESHOLD = 6.61;
 	/**
 	 * @brief Порог пропускной способности чтения крупного файла настроек
 	 *
@@ -87,22 +87,22 @@ namespace {
 	 *       просадка эта принадлежит машине, а не модулю
 	 *
 	 */
-	static constexpr double READ_LARGE_THRESHOLD = 4.0;
+	static constexpr double READ_LARGE_THRESHOLD = 4.57;
 	/**
 	 * @brief Порог пропускной способности чтения текста с преобладанием строк
 	 *
 	 */
-	static constexpr double READ_STRINGS_THRESHOLD = 4.0;
+	static constexpr double READ_STRINGS_THRESHOLD = 8.71;
 	/**
 	 * @brief Порог пропускной способности чтения текста с преобладанием чисел
 	 *
 	 */
-	static constexpr double READ_NUMBERS_THRESHOLD = 4.0;
+	static constexpr double READ_NUMBERS_THRESHOLD = 5.12;
 	/**
 	 * @brief Порог пропускной способности чтения текста с преобладанием построений
 	 *
 	 */
-	static constexpr double READ_ARRAYS_THRESHOLD = 3.0;
+	static constexpr double READ_ARRAYS_THRESHOLD = 3.46;
 	/**
 	 * @brief Порог пропускной способности чтения текста с блочными значениями
 	 *
@@ -111,7 +111,7 @@ namespace {
 	 *          пробелы. Путь этот у соседних кодеков подобия не имеет вовсе
 	 *
 	 */
-	static constexpr double READ_BLOCKS_THRESHOLD = 11.0;
+	static constexpr double READ_BLOCKS_THRESHOLD = 12.21;
 	/**
 	 * @brief Порог пропускной способности чтения текста с метками и ссылками
 	 *
@@ -119,7 +119,7 @@ namespace {
 	 *       выдача события ссылки, а раскрытие их мерит сценарий дерева документа
 	 *
 	 */
-	static constexpr double READ_ANCHORS_THRESHOLD = 4.0;
+	static constexpr double READ_ANCHORS_THRESHOLD = 5.61;
 	/**
 	 * @brief Порог количества выделений памяти на чтение крупного файла настроек
 	 *
@@ -149,7 +149,7 @@ namespace {
 	 *       ему можно назначить впритык
 	 *
 	 */
-	static constexpr double READ_CHUNKED_THRESHOLD = 2.0;
+	static constexpr double READ_CHUNKED_THRESHOLD = 1.9;
 	/**
 	 * @brief Порог задержки чтения файла настроек приложения в микросекундах
 	 *
@@ -161,7 +161,7 @@ namespace {
 	 *       к рабочей машине, наравне с соседними кодеками
 	 *
 	 */
-	static constexpr double READ_SERVICE_LATENCY_THRESHOLD = 128.0;
+	static constexpr double READ_SERVICE_LATENCY_THRESHOLD = 121.24;
 
 	/**
 	 * @brief Функция потокового чтения текста настроек

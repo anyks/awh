@@ -111,7 +111,7 @@ namespace {
 	 *       Показатели прогона 19.08.2026 сведены в описании набора
 	 *
 	 */
-	static constexpr double TAKE_LARGE_THRESHOLD = 7.0;
+	static constexpr double TAKE_LARGE_THRESHOLD = 7.25;
 	/**
 	 * @brief Порог пропускной способности снятия значения с дерева настроек службы
 	 *
@@ -120,22 +120,22 @@ namespace {
 	 *       того, кто медленнее
 	 *
 	 */
-	static constexpr double TAKE_SERVICE_THRESHOLD = 16.0;
+	static constexpr double TAKE_SERVICE_THRESHOLD = 16.93;
 	/**
 	 * @brief Порог пропускной способности потоковой сборки значения
 	 *
 	 */
-	static constexpr double BUILD_SERVICE_THRESHOLD = 50.0;
+	static constexpr double BUILD_SERVICE_THRESHOLD = 54.73;
 	/**
 	 * @brief Порог пропускной способности записи значения в текст
 	 *
 	 */
-	static constexpr double DUMP_LARGE_THRESHOLD = 10.0;
+	static constexpr double DUMP_LARGE_THRESHOLD = 10.59;
 	/**
 	 * @brief Порог пропускной способности обхода владеющего значения
 	 *
 	 */
-	static constexpr double WALK_LARGE_THRESHOLD = 142.0;
+	static constexpr double WALK_LARGE_THRESHOLD = 212.91;
 	/**
 	 * @brief Порог расхода выделений памяти на снятие одного значения
 	 *
@@ -151,7 +151,7 @@ namespace {
 	 *       вдвое выше большего из них
 	 *
 	 */
-	static constexpr double TAKE_ALLOCATIONS_THRESHOLD = 128.0;
+	static constexpr double TAKE_ALLOCATIONS_THRESHOLD = 124.0;
 
 	/**
 	 * @brief Функция обхода владеющего значения

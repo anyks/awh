@@ -63,7 +63,7 @@ namespace {
 	 *          вчетверо: отладочные стенды отстают от неё вчетверо-впятеро
 	 *
 	 */
-	static constexpr double WRITE_BLOCK_THRESHOLD = 8.0;
+	static constexpr double WRITE_BLOCK_THRESHOLD = 12.78;
 	/**
 	 * @brief Порог пропускной способности записи поточного построения
 	 *
@@ -71,7 +71,7 @@ namespace {
 	 *       быстрее блочного: показатель этот стережёт именно разницу двух путей
 	 *
 	 */
-	static constexpr double WRITE_FLOW_THRESHOLD = 8.0;
+	static constexpr double WRITE_FLOW_THRESHOLD = 13.11;
 	/**
 	 * @brief Порог пропускной способности записи значений с оградою
 	 *
@@ -79,7 +79,7 @@ namespace {
 	 *          значении, а двойная ограда вдобавок отменяет знаки последовательностями
 	 *
 	 */
-	static constexpr double WRITE_QUOTED_THRESHOLD = 4.0;
+	static constexpr double WRITE_QUOTED_THRESHOLD = 19.38;
 	/**
 	 * @brief Порог количества выделений памяти на запись крупного файла настроек
 	 *
@@ -88,12 +88,12 @@ namespace {
 	 *          показателя означает, что накопитель заводится заново на всякую запись
 	 *
 	 */
-	static constexpr double WRITE_ALLOCATIONS_THRESHOLD = 64.0;
+	static constexpr double WRITE_ALLOCATIONS_THRESHOLD = 40.0;
 	/**
 	 * @brief Порог задержки записи файла настроек приложения в микросекундах
 	 *
 	 */
-	static constexpr double WRITE_SERVICE_LATENCY_THRESHOLD = 100.0;
+	static constexpr double WRITE_SERVICE_LATENCY_THRESHOLD = 45.08;
 
 	/**
 	 * @brief Функция записи текста настроек заданным построением

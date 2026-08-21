@@ -28,9 +28,6 @@
 [submodule "submodules/boringssl"]
 	path = submodules/boringssl
 	url = https://gitflic.ru/project/third_party/boringssl.git
-[submodule "submodules/gperftools"]
-	path = submodules/gperftools
-	url = https://gitflic.ru/project/third_party/gperftools.git
 [submodule "submodules/libuv"]
 	path = submodules/libuv
 	url = https://github.com/libuv/libuv.git
@@ -145,3 +142,6 @@
 [submodule "submodules/jemalloc"]
 	path = submodules/jemalloc
 	url = https://github.com/jemalloc/jemalloc.git
+[submodule "submodules/gperftools"]
+	path = submodules/gperftools
+	url = https://github.com/gperftools/gperftools.git
