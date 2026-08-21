@@ -172,8 +172,25 @@ TEST_F(EthFixture, EthSuiteTest){
 	ASSERT_EQ(0, this->_eth->socket.getError(sock));
 	// Включаем режим cork для TCP-сокета
 	ASSERT_FALSE(this->_eth->socket.switchOption(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::ENABLED, awh::event::options::TCP_CORKING));
-	// Включаем или отключаем режим отображения IPv4 => IPv6
-	ASSERT_FALSE(this->_eth->socket.switchOption(sock, awh::event::family_t::IPV6, awh::net::socket_mode_t::ENABLED, awh::event::options::IPV6_ONLY));
+	/**
+	 * Включаем или отключаем режим отображения IPv4 => IPv6
+	 *
+	 * @details Испытуемый сокет заведён семейством IPv4, а настройка спрашивается у
+	 *          IPv6: ядра POSIX такое сочетание отвергают, и отказ здесь утверждается
+	 *          именно как их поведение
+	 *
+	 * @warning MS Windows то же сочетание ПРИНИМАЕТ, обращая настройку пустым
+	 *          действием, и отказом не отвечает. Утверждается оттого местное
+	 *          поведение каждой системы, а не поведение одной из них: прежде проверка
+	 *          ждала отказа всюду и падала на всякой машине Windows
+	 */
+	#if _WIN32 || _WIN64
+		// Настройка принимается и обращается пустым действием
+		ASSERT_TRUE(this->_eth->socket.switchOption(sock, awh::event::family_t::IPV6, awh::net::socket_mode_t::ENABLED, awh::event::options::IPV6_ONLY));
+	#else
+		// Настройка отвергается ядром: семейства сокета и настройки не сходятся
+		ASSERT_FALSE(this->_eth->socket.switchOption(sock, awh::event::family_t::IPV6, awh::net::socket_mode_t::ENABLED, awh::event::options::IPV6_ONLY));
+	#endif
 	// Устанавливаем повторное использование адреса сокета
 	ASSERT_TRUE(this->_eth->socket.switchOption(sock, awh::event::family_t::IPV4, awh::net::socket_mode_t::ENABLED, awh::event::options::REUSE_ADDR));
 	// Устанавливаем повторное использование порта сокета

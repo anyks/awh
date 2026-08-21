@@ -223,7 +223,36 @@ namespace {
  *
  */
 bool awh::eth::Gateway::get(route_t & route) const noexcept {
-	// Если адрес назначения не передан
+	/**
+	 * Непереданный адрес назначения заводится сам
+	 *
+	 * @details Договор движков таков: не назван ни адрес назначения, ни шлюз - ищется
+	 *          маршрут по умолчанию, и объект назначения заводится под семейство
+	 *          названного шлюза. Движки POSIX так и поступают, отказом на это не
+	 *          отвечая
+	 *
+	 * @warning Прежде здесь стоял отказ, и он расходился с прочими движками: проверка
+	 *          GatewayGetDefaultIPv4NullDestination падала на всякой машине Windows.
+	 *          Семейство берётся у шлюза, потому что иного указателя тут нет вовсе
+	 */
+	if((route.destination == nullptr) && (route.gateway != nullptr)){
+		/**
+		 * Определяем семейство названного шлюза
+		 */
+		switch(route.gateway->size){
+			// Для адреса IPv4
+			case 4:
+				// Заводим объект адреса назначения семейства IPv4
+				route.destination = make_unique <net::addr_net_ipv4_t> ();
+			break;
+			// Для адреса IPv6
+			case 16:
+				// Заводим объект адреса назначения семейства IPv6
+				route.destination = make_unique <net::addr_net_ipv6_t> ();
+			break;
+		}
+	}
+	// Если адрес назначения не передан и завести его было не из чего
 	if(route.destination == nullptr){
 		// Выводим в журнал сообщение о непереданном адресе назначения
 		this->_log->print("%s: destination address is not initialized", log_t::flag_t::CRITICAL, ::__AWH_GATEWAY_BACKEND__);

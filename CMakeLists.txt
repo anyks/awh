@@ -951,6 +951,23 @@ else()
     )
 endif()
 
+##
+ # Ключ временного отключения распределителя
+ #
+ # У систем ELF распределитель встаёт на место системного САМИМ СВЯЗЫВАНИЕМ: наш файл
+ # определяет знак `malloc`, и связывающий берёт его, звал кто `capture` или нет.
+ # Вызовом это не отключается - только несовпадением имён, то есть при сборке
+ #
+ # Ключ этот - подпорка на время доводки модуля. Собранная с ним библиотека оставляет
+ # системе её собственный распределитель: cmake -DCMAKE_BUILD_ALLOCATOR=OFF ..
+ ##
+option(CMAKE_BUILD_ALLOCATOR "Capture process memory allocation by the built-in allocator" ON)
+if (NOT CMAKE_BUILD_ALLOCATOR)
+    # Запрещаем подмену имён библиотеки времени исполнения
+    add_definitions(-DAWH_ALLOC_DISABLED)
+    message(STATUS "Built-in allocator capture is DISABLED")
+endif()
+
 # Выполняем подключение исходников
 SET(SOURCE_FILES
     "${SOURCE_FILES}"
@@ -961,6 +978,7 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/alloc/spin.cpp"
     "${CMAKE_SOURCE_DIR}/src/alloc/central.cpp"
     "${CMAKE_SOURCE_DIR}/src/alloc/cache.cpp"
+    "${CMAKE_SOURCE_DIR}/src/alloc/huge.cpp"
     "${CMAKE_SOURCE_DIR}/src/alloc/guard.cpp"
     "${CMAKE_SOURCE_DIR}/src/alloc/trace.cpp"
     "${CMAKE_SOURCE_DIR}/src/alloc/profile.cpp"

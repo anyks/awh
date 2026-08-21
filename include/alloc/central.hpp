@@ -288,6 +288,51 @@ namespace awh {
 				void ceiling(const size_t limit) noexcept;
 				/**
 				 * \~russian
+				 * @brief Метод занятия области у кучи
+				 *
+				 * @note Нужен затем, что у систем ELF куча заводится задолго до захвата -
+				 *       с первой выдачи стандартной библиотеки; заказанное приложением
+				 *       при заведении там применить неоткуда
+				 *
+				 * @param arena    занимаемая область в байтах
+				 * @param confined запрет обращаться к источнику сверх занятого
+				 * @return         признак занятия требуемой области
+				 *
+				 * \~english
+				 * @brief Method of occupying an area of the heap
+				 *
+				 * @param arena    area to occupy in bytes
+				 * @param confined ban on going to the source beyond what is occupied
+				 * @return         flag of the required area having been occupied
+				 *
+				 */
+				bool occupy(const size_t arena, const bool confined) noexcept;
+			private:
+				/**
+				 * \~russian
+				 * @brief Метод взятия у кучи области с ожиданием изымаемых
+				 *
+				 * @note Обход отдачи изымает свободные области из списков на время
+				 *       обращения к системе, и под заданным потолком кучи выдача упирается
+				 *       в пустоту там, где память есть - она изъята и вот-вот вернётся.
+				 *       Замерено на OpenBSD: восемь нехваток на восьми потоках, и ВСЕ
+				 *       восемь пришлись ровно на изъятые области. Оттого отказ при
+				 *       ненулевом числе изъятых - повод подождать, а не отвечать отказом
+				 *
+				 * @param pages требуемое число страниц кучи
+				 * @return      адрес выданной области либо nullptr
+				 *
+				 * \~english
+				 * @brief Method of taking a span from the heap, awaiting withheld ones
+				 *
+				 * @param pages required number of heap pages
+				 * @return      address of the allocated span or nullptr
+				 *
+				 */
+				void * take(const size_t pages) noexcept;
+			public:
+				/**
+				 * \~russian
 				 * @brief Метод определения упёртости кучи в потолок
 				 *
 				 * @return признак упёртости кучи в потолок

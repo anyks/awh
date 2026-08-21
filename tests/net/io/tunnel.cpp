@@ -626,6 +626,517 @@ TEST_F(IoFixture, IoTunnelCarriesPacketTest){
 }
 
 /**
+ * @brief Проверка обратного направления туннеля: пакет, вписанный движком
+ *
+ * @details Соседняя `IoTunnelCarriesPacketTest` доказывает лишь направление ЧТЕНИЯ -
+ *          «система → устройство → движок». Направление записи - «движок → устройство
+ *          → система» - не было закреплено ни одной проверкой НИ НА ОДНОЙ системе, и
+ *          половина договора туннеля жила непроверенной
+ *
+ * @details Пакет здесь собирается руками, а не берётся у системы: движку надлежит
+ *          отдать устройству ровно то, что ему подали, - голый пакет IP без всякой
+ *          метки семейства впереди. Собранное принимает обычный дейтаграммный сокет
+ *          системы, то есть проверяется весь путь целиком, вплоть до стека IP
+ *
+ * @note Установлено Андреем на стенде Windows ARM64 21.08.2026: путь этот исправен и
+ *       под tap-windows6, и под Wintun, - но проверки на него не было, и три дня
+ *       разбора ушли на мусор стенда, какой такая проверка отсеяла бы сразу
+ *
+ */
+TEST_F(IoFixture, IoTunnelAcceptsWrittenPacketTest){
+	// Порт приёмника собранного пакета
+	const uint16_t port = tunnelPort();
+	// Полезная нагрузка вписываемого пакета
+	static constexpr const char PAYLOAD[] = "AWH-INJECT";
+	// Размер полезной нагрузки
+	static constexpr size_t PAYLOAD_SIZE = sizeof(PAYLOAD) - 1;
+	// Если надзорных прав у процесса нет
+	if(!tunnelPrivileged())
+		// Пропускаем проверку
+		GTEST_SKIP() << "заведение туннельного устройства требует надзорных прав";
+	// Выполняем инициализацию движка
+	ASSERT_TRUE(this->_io->initialize());
+	// Заводим событие туннеля
+	const awh::event::id_t tid = this->_io->event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV4);
+	// Ставим охранника узла: снос обязан пройти и при отказе утверждения
+	const TunnelGuard guard(this->_io.get(), tid);
+		/**
+		 * Называем движку подготовленное устройство там, где система требует имени
+		 */
+		if(!tunnelDevice().empty())
+			// Устанавливаем имя подготовленного туннельного устройства
+			ASSERT_TRUE(this->_io->setIface(tid, tunnelDevice()));
+	// Узел обязан завестись: устройство заводится позже, фиксацией настроек
+	ASSERT_GT(tid, 0u) << "движок не записал узел туннеля";
+	// Устанавливаем опции события
+	ASSERT_TRUE(this->_io->setOptions(tid, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
+	// Устанавливаем адреса концов туннеля
+	ASSERT_TRUE(this->_io->setAddress(tid, awh::event::address_t::IPV4, TUNNEL_LOCAL));
+	ASSERT_TRUE(this->_io->setTarget(tid, TUNNEL_PEER));
+	// Устройство заводится фиксацией настроек: годность окружения проверена выше пробой
+	ASSERT_TRUE(this->_io->commit(tid)) << "права есть, а устройство не заведено - нет драйвера туннельных устройств либо дефект движка";
+	// Запускаем событие туннеля
+	ASSERT_TRUE(this->_io->launch(tid));
+	/**
+	 * Поднимаем устройство туннеля
+	 *
+	 * @details Признака UP движок не ставит, а без него устройство остаётся опущенным
+	 *          и стек IP пакета с него не берёт
+	 */
+	{
+		// Получаем название устройства туннеля
+		const std::string iface = this->_io->getIface(tid);
+		// Название устройства обязано быть известно
+		ASSERT_FALSE(iface.empty());
+		// Создаём объект работы с сетью
+		awh::eth_t eth(this->_fmk.get(), this->_log.get());
+		// Поднимаем устройство туннеля
+		ASSERT_TRUE(eth.iface.flag(iface, awh::event::eth_flag_t::UP, awh::event::mode_t::ENABLED));
+	}
+	// Заводим приёмник собранного пакета
+	awh::net::socket_t fd = static_cast <awh::net::socket_t> (::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP));
+	ASSERT_NE(fd, awh::net::invalid_socket_t);
+	// Адрес, каким приёмник занимает порт
+	struct sockaddr_in bound{};
+	// Устанавливаем семейство адреса приёмника
+	bound.sin_family = AF_INET;
+	// Устанавливаем порт приёмника
+	bound.sin_port = htons(port);
+	// Слушаем на всех адресах: пакет придёт устройством туннеля
+	bound.sin_addr.s_addr = INADDR_ANY;
+	// Занимаем порт приёмником
+	ASSERT_EQ(::bind(fd, reinterpret_cast <struct sockaddr *> (&bound), sizeof(bound)), 0);
+	/**
+	 * Ставим приёмнику срок ожидания
+	 *
+	 * @note Срок нужен обеим пробам ниже, и потому ставится один раз здесь
+	 */
+	{
+		// Срок ожидания приёмника
+		#if _WIN32 || _WIN64
+			// Срок ожидания задаётся числом миллисекунд
+			const DWORD timeout = 500;
+		#else
+			// Срок ожидания задаётся раздельно секундами и микросекундами
+			struct timeval timeout{0, 500000};
+		#endif
+		// Устанавливаем срок ожидания приёмнику
+		::setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast <const char *> (&timeout), sizeof(timeout));
+	}
+	/**
+	 * Собираем пакет IPv4 с дейтаграммой UDP руками
+	 *
+	 * @details Идёт он от встречной стороны туннеля к своей: движку надлежит отдать
+	 *          устройству ровно эти октеты, а системе - принять их как пришедшие извне
+	 */
+	uint8_t packet[28 + PAYLOAD_SIZE] = {0};
+	// Размер собранного пакета
+	const uint16_t length = static_cast <uint16_t> (sizeof(packet));
+	// Устанавливаем вид протокола IPv4 и длину заголовка в 20 октетов
+	packet[0] = 0x45;
+	// Устанавливаем полную длину пакета
+	packet[2] = static_cast <uint8_t> (length >> 8);
+	packet[3] = static_cast <uint8_t> (length & 0xFF);
+	// Устанавливаем опознаватель пакета
+	packet[4] = 0x13;
+	packet[5] = 0x37;
+	// Устанавливаем срок жизни пакета
+	packet[8] = 64;
+	// Устанавливаем протокол UDP
+	packet[9] = 17;
+	// Адрес источника: встречная сторона туннеля
+	const uint32_t source = ::inet_addr(TUNNEL_PEER);
+	// Адрес назначения: своя сторона туннеля
+	const uint32_t target = ::inet_addr(TUNNEL_LOCAL);
+	// Переносим адрес источника в заголовок
+	::memcpy(packet + 12, &source, sizeof(source));
+	// Переносим адрес назначения в заголовок
+	::memcpy(packet + 16, &target, sizeof(target));
+	/**
+	 * Считаем контрольную сумму заголовка
+	 *
+	 * @warning Нулевая сумма заголовка IP незаконна всегда, и пакет с нею система
+	 *          отбрасывает молча
+	 */
+	{
+		// Накопитель суммы
+		uint32_t acc = 0;
+		// Складываем заголовок словами по два октета
+		for(uint8_t i = 0; i < 20; i += 2)
+			// Прибавляем очередное слово заголовка
+			acc += static_cast <uint32_t> ((packet[i] << 8) | packet[i + 1]);
+		// Сворачиваем перенос в саму сумму
+		while(acc >> 16)
+			// Прибавляем перенос к младшей части
+			acc = (acc & 0xFFFF) + (acc >> 16);
+		// Обращаем сумму и переносим её в заголовок
+		const uint16_t sum = static_cast <uint16_t> (~acc);
+		packet[10] = static_cast <uint8_t> (sum >> 8);
+		packet[11] = static_cast <uint8_t> (sum & 0xFF);
+	}
+	// Устанавливаем порт источника дейтаграммы
+	packet[20] = static_cast <uint8_t> (port >> 8);
+	packet[21] = static_cast <uint8_t> (port & 0xFF);
+	// Устанавливаем порт назначения дейтаграммы
+	packet[22] = static_cast <uint8_t> (port >> 8);
+	packet[23] = static_cast <uint8_t> (port & 0xFF);
+	// Устанавливаем длину дейтаграммы вместе с её заголовком
+	packet[24] = static_cast <uint8_t> ((8 + PAYLOAD_SIZE) >> 8);
+	packet[25] = static_cast <uint8_t> ((8 + PAYLOAD_SIZE) & 0xFF);
+	/**
+	 * Сумму дейтаграммы оставляем нулевой
+	 *
+	 * @note Для IPv4 нуль здесь законен и означает «сумма не считана», - в отличие от
+	 *       суммы заголовка IP выше
+	 */
+	// Переносим полезную нагрузку в дейтаграмму
+	::memcpy(packet + 28, PAYLOAD, PAYLOAD_SIZE);
+	// Адрес встречной стороны туннеля для запрашивающей посылки
+	struct sockaddr_in outward{};
+	// Устанавливаем семейство адреса встречной стороны
+	outward.sin_family = AF_INET;
+	// Устанавливаем порт встречной стороны
+	outward.sin_port = htons(port);
+	// Устанавливаем адрес встречной стороны
+	outward.sin_addr.s_addr = ::inet_addr(TUNNEL_PEER);
+	// Признак того, что вписанный пакет дошёл до стека IP
+	bool accepted = false;
+	// Признак того, что движок хотя бы раз принял пакет к записи
+	bool written = false;
+	// Код отказа посылки, запрашивающей ответ
+	int32_t failure = 0;
+	// Отсчёт времени ожидания
+	const auto start = std::chrono::steady_clock::now();
+	/**
+	 * Крутим опрос, вписывая пакет в каждом обороте
+	 *
+	 * @warning Оборот опроса здесь обязателен: в неблокирующем режиме отдача лишь
+	 *          копит пакет в очереди, а отдаёт его устройству уже опрос
+	 *
+	 * @warning Вписывать пакет ОДИН раз нельзя: адреса устройству назначает система, и
+	 *          у MS Windows они встают лишь через несколько секунд после подъёма. Пакет,
+	 *          вписанный до того, уходит в никуда, и проверка краснела бы на исправном
+	 *          движке. Оттого пакет и подсылается в каждом обороте - ровно так же, как
+	 *          соседняя проверка подсылает дейтаграммы со стороны системы
+	 */
+	while((std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 10000) && !accepted){
+		/**
+		 * Шлём дейтаграмму встречной стороне туннеля
+		 *
+		 * @details Нужна она не встречной стороне - её нет вовсе, - а заслону системы:
+		 *          у MS Windows незапрошенная дейтаграмма извне отвергается, покуда
+		 *          правило заслона её не разрешит, а вот ОТВЕТ на свою же посылку
+		 *          проходит. Вписываемый ниже пакет как раз таким ответом и выглядит:
+		 *          идёт он с того же адреса и порта, куда ушла эта посылка
+		 *
+		 * @warning Без неё проверка краснела на исправном движке, и отличить заслон от
+		 *          дефекта было нечем: петля заслоном не гонится вовсе, а посылка своему
+		 *          же адресу гонится как местная, - обе пробы негодности не показывали
+		 */
+		/**
+		 * Отказ запрашивающей посылки запоминаем
+		 *
+		 * @details Идёт она через устройство туннеля, и пакетный фильтр системы вправе
+		 *          её не пустить: у стенда FreeBSD правила заслона выписаны через lo0 и
+		 *          igb0, а обмен через tun0 не совпадает ни с одним и падает в общий
+		 *          отказ. Тогда до устройства не доходит НИЧЕГО, и проверять движку
+		 *          нечего - ровно так же, как у соседней проверки чтения
+		 */
+		if(::sendto(fd, PAYLOAD, static_cast <int32_t> (PAYLOAD_SIZE), 0, reinterpret_cast <struct sockaddr *> (&outward), sizeof(outward)) < 0)
+			// Запоминаем код отказа посылки
+			failure = errno;
+		/**
+		 * Прямой запрет оспаривать нечем - ждать оставшиеся секунды незачем
+		 *
+		 * @note Замечено Гришей 21.08.2026: сторож стоял ПОСЛЕ полного ожидания, и на
+		 *       заслонённом стенде проверка пропускалась за 10299 мс против 3155 мс у
+		 *       соседней. На числа это не влияло, а время на каждом таком стенде тратило
+		 */
+		if((failure == EACCES) || (failure == EPERM) ||
+		   (failure == ENETUNREACH) || (failure == EHOSTUNREACH))
+			// Прекращаем ожидание: до устройства не доходит ничего
+			break;
+		// Вписываем собранный пакет в устройство туннеля
+		written = (this->_io->send(tid, reinterpret_cast <const char *> (packet), sizeof(packet)) > 0) || written;
+		// Выполняем оборот опроса
+		ASSERT_TRUE(this->_io->poll(100));
+		// Буфер под принятое приёмником
+		char buffer[64] = {0};
+		// Выполняем чтение принятого приёмником
+		const int32_t bytes = ::recv(fd, buffer, static_cast <int32_t> (sizeof(buffer)), 0);
+		// Если принятое совпало с вписанным - пакет прошёл весь путь
+		if((bytes == static_cast <int32_t> (PAYLOAD_SIZE)) && (::memcmp(buffer, PAYLOAD, PAYLOAD_SIZE) == 0))
+			// Запоминаем, что вписанный пакет дошёл
+			accepted = true;
+	}
+	// Закрываем приёмник
+	::closesocket(fd);
+	/**
+	 * Отказ системы означает негодное окружение, а не дефект движка
+	 *
+	 * @details Сторож этот взят у соседней проверки чтения дословно, и не случайно:
+	 *          обе шлют дейтаграмму через устройство туннеля, обе получают отказ от
+	 *          одного и того же пакетного фильтра, и разнобой в доводах только сбивал
+	 *          бы с толку
+	 *
+	 * @warning Негодностью признаются ТОЛЬКО запрет и недостижимость, названные самой
+	 *          системой. Пропуск по ним ничего не гасит: будь движок сломан, посылка
+	 *          прошла бы, пакет не пришёл, и проверка покраснела бы как надо
+	 *
+	 * @note Установлено Гришей на стенде FreeBSD 21.08.2026: правила заслона там
+	 *       выписаны через lo0 и igb0, обмен через tun0 падает в общий отказ
+	 *       `65535 deny ip from any to any`, и проверка обвиняла исправный движок.
+	 *       Доказано счётчиком правила с эталоном покоя: прогон - прирост 31,
+	 *       десять секунд покоя - прирост 0
+	 */
+	const bool forbidden = ((failure == EACCES) || (failure == EPERM) ||
+	                        (failure == ENETUNREACH) || (failure == EHOSTUNREACH));
+	// Если пакет не дошёл, а система назвала запрет либо недостижимость
+	if(!accepted && forbidden){
+		// Сворачиваем движок
+		this->_io->deinitialize();
+		// Пропускаем проверку
+		GTEST_SKIP() << "система запретила пакету идти в устройство туннеля (" << ::strerror(failure) << "): заслон либо отсутствие маршрута";
+	}
+	// Движок обязан был принять пакет к записи хотя бы раз
+	ASSERT_TRUE(written) << "движок отказался вписать пакет в устройство туннеля";
+	// Вписанный пакет обязан дойти до стека IP своей же машины
+	ASSERT_TRUE(accepted) << "движок принял пакет, а устройство его не отдало системе: направление записи туннеля не работает";
+	// Сворачиваем движок
+	ASSERT_TRUE(this->_io->deinitialize());
+}
+
+/**
+ * @brief Проверка доставки ПЕРВОГО пакета, вписанного в туннель
+ *
+ * @details Соседняя `IoTunnelAcceptsWrittenPacketTest` вписывает пакет в каждом обороте
+ *          опроса, и потеря первого прикрывается вторым - потому она этого дефекта не
+ *          ловила. Здесь пакет вписывается РОВНО ОДИН раз, и готовность устройства
+ *          дожидается заранее, спрашиванием адреса у самой системы, а не выдержкой
+ *
+ * @note Дефект, ради какого проверка заведена: отдача туннеля в неблокирующем режиме
+ *       писала в устройство лишь при НЕПУСТОЙ очереди, а первый пакет клала в очередь
+ *       и события записи не поднимала. Накопленное не выходило оттуда никогда: терялся
+ *       ровно один пакет, всегда первый, и молча - отдача отвечала согласием
+ *
+ * @note Установлено Андреем 21.08.2026 на трёх межмашинных парах: в первом обороте
+ *       доходило 7 кусков из 8, и пропадал всегда кусок номер ноль. После правки первый
+ *       же оборот даёт 8 из 8 на всех трёх парах
+ *
+ */
+TEST_F(IoFixture, IoTunnelDeliversFirstWrittenPacketTest){
+	// Порт приёмника собранного пакета
+	const uint16_t port = tunnelPort();
+	// Полезная нагрузка вписываемого пакета
+	static constexpr const char PAYLOAD[] = "AWH-FIRST";
+	// Размер полезной нагрузки
+	static constexpr size_t PAYLOAD_SIZE = sizeof(PAYLOAD) - 1;
+	// Если надзорных прав у процесса нет
+	if(!tunnelPrivileged())
+		// Пропускаем проверку
+		GTEST_SKIP() << "заведение туннельного устройства требует надзорных прав";
+	// Выполняем инициализацию движка
+	ASSERT_TRUE(this->_io->initialize());
+	// Заводим событие туннеля
+	const awh::event::id_t tid = this->_io->event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV4);
+	// Ставим охранника узла: снос обязан пройти и при отказе утверждения
+	const TunnelGuard guard(this->_io.get(), tid);
+		/**
+		 * Называем движку подготовленное устройство там, где система требует имени
+		 */
+		if(!tunnelDevice().empty())
+			// Устанавливаем имя подготовленного туннельного устройства
+			ASSERT_TRUE(this->_io->setIface(tid, tunnelDevice()));
+	// Узел обязан завестись: устройство заводится позже, фиксацией настроек
+	ASSERT_GT(tid, 0u) << "движок не записал узел туннеля";
+	// Устанавливаем опции события
+	ASSERT_TRUE(this->_io->setOptions(tid, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
+	// Устанавливаем адреса концов туннеля
+	ASSERT_TRUE(this->_io->setAddress(tid, awh::event::address_t::IPV4, TUNNEL_LOCAL));
+	ASSERT_TRUE(this->_io->setTarget(tid, TUNNEL_PEER));
+	// Устройство заводится фиксацией настроек
+	ASSERT_TRUE(this->_io->commit(tid)) << "права есть, а устройство не заведено - нет драйвера туннельных устройств либо дефект движка";
+	// Запускаем событие туннеля
+	ASSERT_TRUE(this->_io->launch(tid));
+	// Получаем название устройства туннеля
+	const std::string iface = this->_io->getIface(tid);
+	// Название устройства обязано быть известно
+	ASSERT_FALSE(iface.empty());
+	// Создаём объект работы с сетью
+	awh::eth_t eth(this->_fmk.get(), this->_log.get());
+	// Поднимаем устройство туннеля
+	ASSERT_TRUE(eth.iface.flag(iface, awh::event::eth_flag_t::UP, awh::event::mode_t::ENABLED));
+	/**
+	 * Дожидаемся, покуда адрес встанет у самой системы
+	 *
+	 * @warning Выдержкой здесь пользоваться нельзя: у MS Windows адрес встаёт секундами
+	 *          позже подъёма, а у систем POSIX сразу, и всякое число секунд оказалось бы
+	 *          либо ложным отказом, либо напрасным ожиданием. Спрашивается потому сама
+	 *          система - и ожидание кончается тем мигом, когда она адрес показала
+	 */
+	{
+		// Признак того, что адрес у системы появился
+		bool ready = false;
+		// Отсчёт времени ожидания готовности
+		const auto since = std::chrono::steady_clock::now();
+		// Крутим опрос, покуда система не покажет адрес
+		while((std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - since).count() < 15000) && !ready){
+			// Спрашиваем у системы адрес устройства
+			const std::unique_ptr <awh::net::addr_t> actual = eth.iface.getAddress(iface, awh::event::family_t::IPV4);
+			// Если адрес получен и совпал с ожидаемым - устройство готово
+			ready = ((actual != nullptr) && (actual->size == 4) &&
+			         (awh_cast <const awh::net::addr_net_ipv4_t *> (actual.get())->address == ::inet_addr(TUNNEL_LOCAL)));
+			// Выполняем оборот опроса
+			ASSERT_TRUE(this->_io->poll(100));
+		}
+		// Адрес обязан встать: без него проверять доставку бессмысленно
+		ASSERT_TRUE(ready) << "система так и не показала адреса на устройстве туннеля: проверять доставку нечем";
+	}
+	// Заводим приёмник собранного пакета
+	awh::net::socket_t fd = static_cast <awh::net::socket_t> (::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP));
+	ASSERT_NE(fd, awh::net::invalid_socket_t);
+	// Адрес, каким приёмник занимает порт
+	struct sockaddr_in bound{};
+	// Устанавливаем семейство адреса приёмника
+	bound.sin_family = AF_INET;
+	// Устанавливаем порт приёмника
+	bound.sin_port = htons(port);
+	// Слушаем на всех адресах: пакет придёт устройством туннеля
+	bound.sin_addr.s_addr = INADDR_ANY;
+	// Занимаем порт приёмником
+	ASSERT_EQ(::bind(fd, reinterpret_cast <struct sockaddr *> (&bound), sizeof(bound)), 0);
+	/**
+	 * Ставим приёмнику срок ожидания
+	 */
+	{
+		// Срок ожидания приёмника
+		#if _WIN32 || _WIN64
+			// Срок ожидания задаётся числом миллисекунд
+			const DWORD timeout = 500;
+		#else
+			// Срок ожидания задаётся раздельно секундами и микросекундами
+			struct timeval timeout{0, 500000};
+		#endif
+		// Устанавливаем срок ожидания приёмнику
+		::setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast <const char *> (&timeout), sizeof(timeout));
+	}
+	// Адрес встречной стороны туннеля для запрашивающей посылки
+	struct sockaddr_in outward{};
+	// Устанавливаем семейство адреса встречной стороны
+	outward.sin_family = AF_INET;
+	// Устанавливаем порт встречной стороны
+	outward.sin_port = htons(port);
+	// Устанавливаем адрес встречной стороны
+	outward.sin_addr.s_addr = ::inet_addr(TUNNEL_PEER);
+	// Код отказа посылки, запрашивающей ответ
+	int32_t failure = 0;
+	/**
+	 * Шлём дейтаграмму встречной стороне: заслон системы иначе не пустит ответа
+	 */
+	if(::sendto(fd, PAYLOAD, static_cast <int32_t> (PAYLOAD_SIZE), 0, reinterpret_cast <struct sockaddr *> (&outward), sizeof(outward)) < 0)
+		// Запоминаем код отказа посылки
+		failure = errno;
+	// Собираем пакет IPv4 с дейтаграммой UDP руками
+	uint8_t packet[28 + PAYLOAD_SIZE] = {0};
+	// Размер собранного пакета
+	const uint16_t length = static_cast <uint16_t> (sizeof(packet));
+	// Устанавливаем вид протокола IPv4 и длину заголовка в 20 октетов
+	packet[0] = 0x45;
+	// Устанавливаем полную длину пакета
+	packet[2] = static_cast <uint8_t> (length >> 8);
+	packet[3] = static_cast <uint8_t> (length & 0xFF);
+	// Устанавливаем опознаватель пакета
+	packet[4] = 0x24;
+	packet[5] = 0x01;
+	// Устанавливаем срок жизни пакета
+	packet[8] = 64;
+	// Устанавливаем протокол UDP
+	packet[9] = 17;
+	// Адрес источника: встречная сторона туннеля
+	const uint32_t source = ::inet_addr(TUNNEL_PEER);
+	// Адрес назначения: своя сторона туннеля
+	const uint32_t target = ::inet_addr(TUNNEL_LOCAL);
+	// Переносим адреса в заголовок
+	::memcpy(packet + 12, &source, sizeof(source));
+	::memcpy(packet + 16, &target, sizeof(target));
+	/**
+	 * Считаем контрольную сумму заголовка
+	 */
+	{
+		// Накопитель суммы
+		uint32_t acc = 0;
+		// Складываем заголовок словами по два октета
+		for(uint8_t i = 0; i < 20; i += 2)
+			// Прибавляем очередное слово заголовка
+			acc += static_cast <uint32_t> ((packet[i] << 8) | packet[i + 1]);
+		// Сворачиваем перенос в саму сумму
+		while(acc >> 16)
+			// Прибавляем перенос к младшей части
+			acc = (acc & 0xFFFF) + (acc >> 16);
+		// Обращаем сумму и переносим её в заголовок
+		const uint16_t sum = static_cast <uint16_t> (~acc);
+		packet[10] = static_cast <uint8_t> (sum >> 8);
+		packet[11] = static_cast <uint8_t> (sum & 0xFF);
+	}
+	// Устанавливаем порты дейтаграммы
+	packet[20] = static_cast <uint8_t> (port >> 8);
+	packet[21] = static_cast <uint8_t> (port & 0xFF);
+	packet[22] = static_cast <uint8_t> (port >> 8);
+	packet[23] = static_cast <uint8_t> (port & 0xFF);
+	// Устанавливаем длину дейтаграммы вместе с её заголовком
+	packet[24] = static_cast <uint8_t> ((8 + PAYLOAD_SIZE) >> 8);
+	packet[25] = static_cast <uint8_t> ((8 + PAYLOAD_SIZE) & 0xFF);
+	// Переносим полезную нагрузку в дейтаграмму
+	::memcpy(packet + 28, PAYLOAD, PAYLOAD_SIZE);
+	/**
+	 * Вписываем пакет РОВНО ОДИН раз
+	 *
+	 * @warning Повторять вписывание здесь нельзя: ровно этим соседняя проверка и
+	 *          прикрывала дефект - второй пакет застаёт очередь непустой и уходит
+	 *          в устройство сам, а потеря первого остаётся незамеченной
+	 */
+	ASSERT_GT(this->_io->send(tid, reinterpret_cast <const char *> (packet), sizeof(packet)), 0u)
+		<< "движок отказался вписать пакет в устройство туннеля";
+	// Признак того, что вписанный пакет дошёл до стека IP
+	bool accepted = false;
+	// Отсчёт времени ожидания
+	const auto start = std::chrono::steady_clock::now();
+	/**
+	 * Крутим опрос, ожидая единственного вписанного пакета
+	 */
+	while((std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 5000) && !accepted){
+		// Выполняем оборот опроса
+		ASSERT_TRUE(this->_io->poll(100));
+		// Буфер под принятое приёмником
+		char buffer[64] = {0};
+		// Выполняем чтение принятого приёмником
+		const int32_t bytes = ::recv(fd, buffer, static_cast <int32_t> (sizeof(buffer)), 0);
+		// Если принятое совпало с вписанным - пакет прошёл весь путь
+		if((bytes == static_cast <int32_t> (PAYLOAD_SIZE)) && (::memcmp(buffer, PAYLOAD, PAYLOAD_SIZE) == 0))
+			// Запоминаем, что вписанный пакет дошёл
+			accepted = true;
+	}
+	// Закрываем приёмник
+	::closesocket(fd);
+	/**
+	 * Отказ системы означает негодное окружение, а не дефект движка
+	 */
+	const bool forbidden = ((failure == EACCES) || (failure == EPERM) ||
+	                        (failure == ENETUNREACH) || (failure == EHOSTUNREACH));
+	// Если пакет не дошёл, а система назвала запрет либо недостижимость
+	if(!accepted && forbidden){
+		// Сворачиваем движок
+		this->_io->deinitialize();
+		// Пропускаем проверку
+		GTEST_SKIP() << "система запретила пакету идти в устройство туннеля (" << ::strerror(failure) << "): заслон либо отсутствие маршрута";
+	}
+	// Первый же вписанный пакет обязан дойти
+	ASSERT_TRUE(accepted) << "потерян ПЕРВЫЙ вписанный пакет: отдача приняла его, а устройству он не достался";
+	// Сворачиваем движок
+	ASSERT_TRUE(this->_io->deinitialize());
+}
+
+/**
  * @brief Адреса концов испытуемого туннеля IPv6
  *
  * @details Берутся они из блока местных адресов (ULA, RFC 4193) и берутся нарочно

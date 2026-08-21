@@ -35,7 +35,7 @@
 awh::alloc::Pages::Pages() noexcept :
  _source(nullptr), _chunks(nullptr), _registry(nullptr), _enrolled(0), _large(nullptr), _spare(nullptr),
  _meta(nullptr), _metaLeft(0), _metaChunks(nullptr), _confined(false),
- _delay(10), _block(0), _limit(0), _jammed(false), _state() {
+ _delay(10), _block(0), _limit(0), _jammed(false), _pending(0), _state() {
 	// Обнуляем списки свободных областей
 	::memset(this->_lists, 0, sizeof(this->_lists));
 }
@@ -633,6 +633,47 @@ awh::alloc::Pages::span_t * awh::alloc::Pages::merge(span_t * span) noexcept {
  * @return         признак заведения кучи
  *
  */
+bool awh::alloc::Pages::occupy(const size_t arena, const bool confined) noexcept {
+	// Если куча не заведена
+	if(this->_source == nullptr)
+		// Отвечать нечем
+		return false;
+	/**
+	 * Снимаем запрет на время занятия
+	 *
+	 * Занятие само идёт к источнику, и действуй запрет здесь - оно упёрлось бы в него
+	 * же и не заняло бы ничего
+	 */
+	this->_confined = false;
+	/**
+	 * Дозанимаем недостающее до требуемой области
+	 *
+	 * Считаем по УЖЕ взятому, а не по заказанному: повторное занятие не обязано
+	 * удваивать взятое, а у систем ELF куча к мигу захвата уже держит кусок-другой
+	 */
+	while(this->_state.total < arena){
+		// Берём у источника очередной кусок
+		if(this->grow() == nullptr){
+			// Возвращаем запрет обращаться к источнику
+			this->_confined = confined;
+			// Отвечаем отказом: занять требуемое не вышло
+			return false;
+		}
+	}
+	// Запоминаем запрет обращаться к источнику сверх занятого
+	this->_confined = confined;
+	// Отвечаем успехом
+	return true;
+}
+/**
+ * @brief Метод заведения кучи
+ *
+ * @param source   источник страниц
+ * @param arena    занимаемая при заведении область в байтах
+ * @param confined запрет обращаться к источнику сверх занятого
+ * @return         признак заведения кучи
+ *
+ */
 bool awh::alloc::Pages::init(source_t * source, const size_t arena, const bool confined) noexcept {
 	// Если источник не задан
 	if(source == nullptr)
@@ -1032,6 +1073,73 @@ void awh::alloc::Pages::ceiling(const size_t limit) noexcept {
  * @return признак упёртости кучи в потолок
  *
  */
+size_t awh::alloc::Pages::pending() const noexcept {
+	// Выводим число областей, изъятых на время отдачи
+	return this->_pending;
+}
+/**
+ * @brief Метод возврата изъятых областей в списки у потомка ветвления
+ *
+ * @return число возвращённых областей
+ *
+ */
+size_t awh::alloc::Pages::reclaim() noexcept {
+	// Если изымать было нечего
+	if(this->_pending == 0)
+		// Возвращать нечего
+		return 0;
+	// Число возвращённых областей
+	size_t result = 0;
+	/**
+	 * Обходим области по кускам, а не по спискам свободных
+	 *
+	 * Изъятая область не лежит ни в одном списке - в том и состоит изъятие, - оттого
+	 * обход списков её не нашёл бы вовсе. Указатели же областей по номеру страницы
+	 * куска ведут к ней прямо
+	 */
+	for(chunk_t * chunk = this->_chunks; chunk != nullptr; chunk = chunk->next){
+		// Обходим страницы очередного куска
+		for(size_t i = 0; i < PAGES; i++){
+			// Получаем область, которой принадлежит страница
+			span_t * span = chunk->index[i].load(std::memory_order_relaxed);
+			/**
+			 * Берём область лишь по её первой странице
+			 *
+			 * Область занимает подряд несколько страниц, и указатель её стоит у каждой:
+			 * не отсеки мы прочие, крупная область вернулась бы в список многократно и
+			 * закольцевала бы его на себе
+			 */
+			if((span == nullptr) || (span->base != (chunk->base + (i * PAGE))))
+				// Переходим к следующей странице
+				continue;
+			// Если область изъятой не числится
+			if(!span->pending)
+				// Переходим к следующей странице
+				continue;
+			// Снимаем с области отметку изъятости
+			span->pending = false;
+			/**
+			 * Возвращаем область в список свободных БЕЗ слияния с соседями
+			 *
+			 * Ровно как это делает возврат обычным путём: слияние отданной системе
+			 * области с неотданной потеряло бы отметку отданности одной из них
+			 */
+			this->push(span);
+			// Увеличиваем число возвращённых областей
+			result++;
+		}
+	}
+	// Отмечаем изъятых областей не осталось
+	this->_pending = 0;
+	// Выводим число возвращённых областей
+	return result;
+}
+/**
+ * @brief Метод определения упёртости кучи в потолок
+ *
+ * @return признак упёртости кучи в потолок
+ *
+ */
 bool awh::alloc::Pages::jammed() noexcept {
 	// Запоминаем признак упёртости кучи в потолок
 	const bool result = this->_jammed;
@@ -1187,6 +1295,8 @@ size_t awh::alloc::Pages::detach(const uint64_t now, const bool all, void ** spa
 			this->pull(span);
 			// Отмечаем область изъятой
 			span->pending = true;
+			// Увеличиваем число изъятых областей
+			this->_pending++;
 			// Записываем изъятую область
 			spans[result++] = span;
 			// Если набрано требуемое число областей
@@ -1246,6 +1356,10 @@ size_t awh::alloc::Pages::attach(void ** spans, const size_t count, const bool *
 		span_t * span = reinterpret_cast <span_t *> (spans[i]);
 		// Снимаем с области отметку изъятости
 		span->pending = false;
+		// Уменьшаем число изъятых областей
+		if(this->_pending > 0)
+			// Уменьшаем число изъятых областей
+			this->_pending--;
 		// Если содержимое области системе отдано
 		if(given[i]){
 			// Определяем размер области в байтах

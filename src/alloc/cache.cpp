@@ -92,7 +92,7 @@ namespace {
  *
  */
 awh::alloc::Cache::Cache() noexcept :
- _owner(nullptr), _central(nullptr), _classes(nullptr), _bytes(0), _limit(LIMIT), _tally(0), _hint(nullptr), _next(nullptr), _busy(false) {
+ _owner(nullptr), _central(nullptr), _classes(nullptr), _bytes(0), _limit(LIMIT), _tally(0), _freed(0), _hint(nullptr), _next(nullptr), _busy(false) {
 	// Обнуляем списки свободных блоков
 	::memset(this->_lists, 0, sizeof(this->_lists));
 }
@@ -128,6 +128,26 @@ bool awh::alloc::Cache::init(central_t * central, classes_t * classes, const siz
 	// Обнуляем списки свободных блоков
 	::memset(this->_lists, 0, sizeof(this->_lists));
 	// Отвечаем успехом
+	return true;
+}
+/**
+ * @brief Метод накопления занятого прикладным кодом
+ *
+ * @param delta изменение занятого в байтах
+ * @param batch величина, по достижении которой накопленное отдаётся наружу
+ * @return      отдаваемое наружу накопленное, либо нуль
+ *
+ */
+bool awh::alloc::Cache::stepped(const size_t delta, const size_t step) noexcept {
+	// Накапливаем освобождённое
+	this->_freed += delta;
+	// Если накопленное не дотянуло до шага
+	if(this->_freed < step)
+		// Проверять нечего
+		return false;
+	// Обнуляем накопленное: шаг пройден
+	this->_freed = 0;
+	// Порог пора проверить
 	return true;
 }
 /**

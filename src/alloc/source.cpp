@@ -98,6 +98,133 @@ size_t awh::alloc::SystemSource::granularity() const noexcept {
  * @return          адрес выданной области либо nullptr
  *
  */
+void awh::alloc::SystemSource::superpages(const bool wanted) noexcept {
+	// Запоминаем признак просьбы о крупных страницах
+	this->_superpages = wanted;
+}
+/**
+ * @brief Метод получения числа областей, доставшихся крупными страницами
+ *
+ * @return число областей, доставшихся крупными страницами
+ *
+ */
+size_t awh::alloc::SystemSource::superpaged() const noexcept {
+	// Выводим число областей, доставшихся крупными страницами
+	return this->_superpaged;
+}
+/**
+ * @brief Метод отведения области крупными страницами
+ *
+ * @note Отказ здесь - обычный исход: крупные страницы у всех наших систем требуют либо
+ *       заранее отведённого запаса, либо особого права. Отказавшись, выдача идёт
+ *       обычным путём
+ *
+ * @param size выравненный по зерну размер в байтах
+ * @return     адрес отведённой области либо nullptr
+ *
+ */
+static void * __awh_source_huge__(const size_t size) noexcept {
+	#if _WIN32 || _WIN64
+		/**
+		 * Просим у системы крупные страницы
+		 *
+		 * Требуют они права SeLockMemoryPrivilege, какого у обычного пользователя нет:
+		 * отказ здесь - правило, а не исключение. Размер обязан быть кратен размеру
+		 * крупной страницы, иначе система отвечает отказом сама
+		 */
+		static SIZE_T (WINAPI * minimum)() = reinterpret_cast <SIZE_T (WINAPI *)()> (
+			reinterpret_cast <void *> (::GetProcAddress(::GetModuleHandleA("kernel32.dll"), "GetLargePageMinimum"))
+		);
+		// Если средства узнать размер крупной страницы нет
+		if(minimum == nullptr)
+			// Крупных страниц у этой системы нет
+			return nullptr;
+		// Узнаём размер крупной страницы
+		const SIZE_T grain = minimum();
+		// Если крупных страниц система не даёт
+		if(grain == 0)
+			// Отвечаем отказом
+			return nullptr;
+		// Если размер не кратен крупной странице
+		if((size % static_cast <size_t> (grain)) != 0)
+			// Отвечаем отказом
+			return nullptr;
+		// Отводим область крупными страницами
+		return ::VirtualAlloc(nullptr, size, MEM_RESERVE | MEM_COMMIT | MEM_LARGE_PAGES, PAGE_READWRITE);
+	#elif __linux__
+		/**
+		 * Просим у системы крупные страницы
+		 *
+		 * Требуют они заранее отведённого запаса (`vm.nr_hugepages`), какого у обычной
+		 * машины нет: отказ здесь - правило
+		 */
+		#if defined(MAP_HUGETLB)
+			// Отображаем область крупными страницами
+			void * result = ::mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB, -1, 0);
+			// Выводим отображённую область
+			return ((result != MAP_FAILED) ? result : nullptr);
+		#else
+			// Крупных страниц у этой системы нет
+			(void) size;
+			return nullptr;
+		#endif
+	#elif __FreeBSD__
+		/**
+		 * Просим у системы сверхстраницы
+		 *
+		 * FreeBSD не отводит их особым отображением, а СОБИРАЕТ из обычных, когда
+		 * область выровнена по их размеру: `MAP_ALIGNED_SUPER` о том и просит
+		 */
+		#if defined(MAP_ALIGNED_SUPER)
+			// Отображаем область, выровненную под сверхстраницу
+			void * result = ::mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_ALIGNED_SUPER, -1, 0);
+			// Выводим отображённую область
+			return ((result != MAP_FAILED) ? result : nullptr);
+		#else
+			(void) size;
+			return nullptr;
+		#endif
+	#else
+		/**
+		 * Крупных страниц отдельным отображением эта система не даёт
+		 *
+		 * У macOS они просятся лишь через `mach_vm_allocate`, у NetBSD и OpenBSD их нет
+		 * вовсе, а у систем Sun о них просят советом уже отображённой области - что и
+		 * делается ниже, обычным путём
+		 */
+		(void) size;
+		return nullptr;
+	#endif
+}
+/**
+ * @brief Метод совета системе держать область крупными страницами
+ *
+ * @note Совет этот не отводит крупных страниц, а просит собрать их из обычных: систему
+ *       он ни к чему не обязывает, и ответ его нам безразличен
+ *
+ * @param addr адрес отображённой области
+ * @param size размер области в байтах
+ *
+ */
+static void __awh_source_advise__(void * addr, const size_t size) noexcept {
+	#if defined(MADV_HUGEPAGE)
+		// Советуем системе собрать крупные страницы
+		::madvise(addr, size, MADV_HUGEPAGE);
+	#elif defined(MADV_COLLAPSE)
+		::madvise(addr, size, MADV_COLLAPSE);
+	#else
+		(void) addr; (void) size;
+	#endif
+}
+/**
+ * @brief Метод отведения области у системы
+ *
+ * @param size      требуемый размер в байтах
+ * @param alignment требуемое выравнивание в байтах
+ * @param actual    действительно выданный размер в байтах
+ * @return          адрес отведённой области либо nullptr
+ *
+ */
 void * awh::alloc::SystemSource::alloc(const size_t size, const size_t alignment, size_t & actual) noexcept {
 	// Обнуляем действительно выданный размер
 	actual = 0;
@@ -121,6 +248,26 @@ void * awh::alloc::SystemSource::alloc(const size_t size, const size_t alignment
 	const size_t align = ((alignment > grain) ? alignment : grain);
 	// Округляем требуемый размер до целого числа страниц
 	const size_t rounded = (((size + (grain - 1)) / grain) * grain);
+	/**
+	 * Пробуем крупные страницы, если о них просили
+	 *
+	 * Просим их лишь у выдач без особого выравнивания: крупная страница выровнена по
+	 * себе самой и вольного выравнивания не держит. Отказ - обычный исход, и выдача
+	 * идёт дальше обычным путём
+	 */
+	if(this->_superpages && (align <= grain)){
+		// Отводим область крупными страницами
+		void * result = __awh_source_huge__(rounded);
+		// Если область отведена
+		if(result != nullptr){
+			// Запоминаем действительно выданный размер
+			actual = rounded;
+			// Считаем области, доставшиеся крупными страницами
+			this->_superpaged++;
+			// Выводим адрес отведённой области
+			return result;
+		}
+	}
 	/**
 	 * Для операционной системы MS Windows
 	 */
@@ -185,6 +332,16 @@ void * awh::alloc::SystemSource::alloc(const size_t size, const size_t alignment
 		const size_t span = ((align > grain) ? (rounded + align) : rounded);
 		// Отображаем область у системы
 		void * probe = ::mmap(nullptr, span, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+		/**
+		 * Советуем системе собрать крупные страницы, если о них просили
+		 *
+		 * Совет этот - второй заход после отказа в отведении: часть систем крупных
+		 * страниц отдельным отображением не даёт вовсе, но собирает их из обычных по
+		 * совету. Ни к чему систему он не обязывает, и ответ его нам безразличен
+		 */
+		if(this->_superpages && (probe != MAP_FAILED))
+			// Советуем системе собрать крупные страницы
+			__awh_source_advise__(probe, span);
 		// Если область не отображена
 		if(probe == MAP_FAILED)
 			// Отвечаем отказом

@@ -24,6 +24,12 @@
 /**
  * Стандартные заголовочные файлы
  */
+#include <thread>
+#include <chrono>
+
+/**
+ * Стандартные заголовочные файлы
+ */
 #include <cstring>
 
 /**
@@ -145,14 +151,19 @@ bool awh::alloc::Central::carve(const size_t index) noexcept {
 	 * Берём у кучи новую область
 	 */
 	{
-		// Захватываем замок кучи
-		hold_t hold(this->_heap);
-		// Берём у кучи область требуемого размера
-		base = reinterpret_cast <uint8_t *> (this->_pages->alloc(pages));
+		/**
+		 * Берём у кучи область ВНЕ замка
+		 *
+		 * Взятие уступает время тому, кто отдаёт память системе: держи мы замок кучи -
+		 * ждали бы того, чему сами мешаем
+		 */
+		base = reinterpret_cast <uint8_t *> (this->take(pages));
 		// Если область не выдана
 		if(base == nullptr)
 			// Отвечаем отказом
 			return false;
+		// Захватываем замок кучи под разметку области
+		hold_t hold(this->_heap);
 		/**
 		 * Помечаем область разрядом, которому она отдана
 		 *
@@ -298,10 +309,78 @@ void awh::alloc::Central::back(const size_t index, void * head, void * tail, con
  * @return     адрес выданной памяти либо nullptr
  *
  */
+void * awh::alloc::Central::take(const size_t pages) noexcept {
+	/**
+	 * Пробуем взять область, пока есть изымаемые
+	 *
+	 * Ждём СРОКОМ, а не числом уступок. Уступка стоит по-разному: у MS Windows она
+	 * почти ничего не стоит, когда есть кому работать, и шесть десятков уступок там
+	 * проходят за микросекунды - быстрее, чем длится обращение к системе. Замерено:
+	 * семьсот четыре уступки и одиннадцать сдач подряд, обернувшихся отказами выдачи на
+	 * ровном месте. Первые заходы уступают, дальнейшие спят понемногу: так ожидание не
+	 * зависит от того, чего стоит уступка у этой системы
+	 */
+	// Число заходов, отводимых уступке времени
+	static constexpr size_t SPINS = 64;
+	// Наибольшее время ожидания изымаемых областей
+	static constexpr auto PATIENCE = std::chrono::milliseconds(50);
+	// Отметка начала ожидания
+	const auto began = std::chrono::steady_clock::now();
+	// Число сделанных заходов
+	size_t attempt = 0;
+	/**
+	 * Пробуем, пока не выйдет срок
+	 */
+	while((std::chrono::steady_clock::now() - began) < PATIENCE){
+		{
+			// Захватываем замок кучи
+			hold_t hold(this->_heap);
+			// Берём у кучи область требуемого размера
+			void * result = this->_pages->alloc(pages);
+			// Если область выдана
+			if(result != nullptr)
+				// Выводим выданную область
+				return result;
+			// Если изымаемых областей нет
+			if(this->_pages->pending() == 0)
+				// Памяти и вправду нет
+				return nullptr;
+		}
+		/**
+		 * Уступаем время тому, кто отдаёт
+		 *
+		 * Уступаем ВНЕ замка кучи: обход отдачи возвращает изъятые области под тем же
+		 * замком, и держи мы его - ждали бы того, чему сами мешаем
+		 */
+		if(attempt++ < SPINS)
+			// Уступаем время тому, кто отдаёт
+			std::this_thread::yield();
+		// Спим понемногу: уступка у этой системы, видимо, ничего не стоит
+		else std::this_thread::sleep_for(std::chrono::microseconds(200));
+	}
+	// Выдавать нечего
+	return nullptr;
+}
+/**
+ * @brief Метод выдачи памяти сверх разрядов
+ *
+ * @param size требуемый размер в байтах
+ * @return     адрес выданной памяти либо nullptr
+ *
+ */
 void * awh::alloc::Central::alloc(const size_t size) noexcept {
 	// Если куча не заведена либо размер не задан
 	if((this->_pages == nullptr) || (size == 0))
 		// Выдавать нечего
+		return nullptr;
+	/**
+	 * Сверяем размер на переполнение при приведении к границе страницы
+	 *
+	 * Счёт страниц у размера близ предела переполняется в нуль, и сверка с куском
+	 * пропустила бы САМЫЙ крупный запрос вглубь кучи - той нашлась бы нулевая область
+	 */
+	if(size > (static_cast <size_t> (-1) - (Pages::PAGE - 1)))
+		// Отвечаем отказом
 		return nullptr;
 	// Определяем требуемое число страниц кучи
 	const size_t pages = ((size + (Pages::PAGE - 1)) / Pages::PAGE);
@@ -309,10 +388,8 @@ void * awh::alloc::Central::alloc(const size_t size) noexcept {
 	if(pages > Pages::PAGES)
 		// Отвечаем отказом
 		return nullptr;
-	// Захватываем замок кучи
-	hold_t hold(this->_heap);
 	// Выводим выданную кучей область
-	return this->_pages->alloc(pages);
+	return this->take(pages);
 }
 /**
  * @brief Метод возврата памяти, выданной сверх разрядов
@@ -481,6 +558,22 @@ void awh::alloc::Central::policy(const int64_t delay, const size_t block) noexce
  * @param limit потолок в байтах: нуль - без потолка
  *
  */
+bool awh::alloc::Central::occupy(const size_t arena, const bool confined) noexcept {
+	// Если куча не заведена
+	if(this->_pages == nullptr)
+		// Отвечать нечем
+		return false;
+	// Захватываем замок кучи
+	hold_t hold(this->_heap);
+	// Занимаем требуемую область у кучи
+	return this->_pages->occupy(arena, confined);
+}
+/**
+ * @brief Метод задания потолка взятого у источника
+ *
+ * @param limit потолок взятого у источника в байтах
+ *
+ */
 void awh::alloc::Central::ceiling(const size_t limit) noexcept {
 	// Захватываем замок кучи
 	hold_t hold(this->_heap);
@@ -590,4 +683,19 @@ void awh::alloc::Central::adopt() noexcept {
 	for(size_t i = 0; i < Classes::LIMIT; i++)
 		// Освобождаем замок очередного разряда
 		this->_lists[i].lock.reset();
+	/**
+	 * Возвращаем в списки области, изъятые на время отдачи системе
+	 *
+	 * Отдача изымает области из списков и держит их в местном массиве НА СТЕКЕ
+	 * отдающего потока, отпуская замок кучи на время обращения к системе. Ветвление в
+	 * этот миг переносит потомку и области, и счётчик изъятых, но не поток, обязанный
+	 * вернуть их на место: без возврата области выпадают из кучи навсегда, а всякая
+	 * выдача, какой не хватило места, ждёт их полную отсрочку впустую
+	 *
+	 * Проверено щупом: при расширенном окне изъятия 86 потомков из 200 наследовали
+	 * изъятые области, тогда как с отключённой отдачей - ни один из 200
+	 */
+	if(this->_pages != nullptr)
+		// Возвращаем изъятые области в списки свободных
+		this->_pages->reclaim();
 }

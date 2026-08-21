@@ -1688,6 +1688,7 @@ bool awh::eth::Socket::setDifferentiatedServicesCodePoint(const net::socket_t so
 	// Выводим результат установки класса обслуживания сокету
 	return win::qos::mark(sock, dscp, this->_log);
 }
+
 /**
  * @brief Метод получения признака перегрузки в заголовке IP-пакета
  *
@@ -2081,13 +2082,22 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 	switch(option){
 		// Если переключается настройка самостоятельной сборки заголовков пакета
 		case event::options::HDRINCL: {
-			// Если сокет работает по протоколу IPv6
-			if(family == event::family_t::IPV6){
-				// Выводим в журнал сообщение об отсутствии соответствия
-				this->_log->print("%s: IPv6 header inclusion is not supported by MS Windows", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__);
-				// Выводим отрицательный результат переключения
-				return false;
-			}
+			/**
+			 * Если сокет работает по протоколу IPv6
+			 *
+			 * @details Своей головы у IPv6 не даёт ни одна система: опции IP_HDRINCL
+			 *          для него нет ни у BSD, ни у Linux, ни у систем Sun. Договор
+			 *          движков оттого един - отвечать УСПЕХОМ на пустое действие, и
+			 *          движки POSIX так и делают
+			 *
+			 * @warning Прежде здесь стоял отказ, и он расходился с прочими движками:
+			 *          отсутствие опции у ВСЕХ систем выдавалось за особенность MS
+			 *          Windows. Проверка SocketSwitchOptionIPv6Test падала оттого на
+			 *          всякой машине Windows, закрепляя общий договор
+			 */
+			if(family == event::family_t::IPV6)
+				// Выводим положительный результат: делать нечего, и это не отказ
+				return true;
 			// Устанавливаем уровень настройки
 			level = IPPROTO_IP;
 			// Устанавливаем название настройки
@@ -2237,10 +2247,38 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 			return true;
 		// Если переключается настройка придержки отправки
 		case event::options::TCP_CORKING: {
-			// Выводим в журнал сообщение об отсутствии соответствия
-			this->_log->print("%s: TCP output corking has no counterpart on MS Windows", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__);
-			// Выводим отрицательный результат переключения
-			return false;
+			/**
+			 * Придержка отправки изображается алгоритмом Нейгла
+			 *
+			 * @details Ни TCP_CORK, ни TCP_NOPUSH у MS Windows нет, и ближайшее, что
+			 *          даёт там сам TCP, - алгоритм Нейгла: назначение у него то же,
+			 *          копить мелкие отправки до заполнения сегмента. Придержка
+			 *          включается снятием TCP_NODELAY, снимается - его возвратом
+			 *
+			 * @details Ровно так же поступает движок kqueue у NetBSD, где нет ни того,
+			 *          ни другого: наружу выставлено одно имя опции, а движок
+			 *          подставляет то, что даёт система
+			 *
+			 * @warning Равенством это не является: придержка держит до явного снятия,
+			 *          Нейгл - лишь до подтверждения предыдущего сегмента. Обмен,
+			 *          которому придержка нужна как строгая, получит здесь
+			 *          приближение, а не её саму
+			 *
+			 * @warning Прежде здесь стоял отказ, и он расходился с движками POSIX:
+			 *          проверка SocketSwitchOptionTcpTest падала на всякой машине
+			 *          Windows, а изобразить придержку было чем
+			 */
+			// Придержке отправки соответствует включённый алгоритм Нейгла, снятию - выключенный
+			const int32_t nodelay = (mode == net::socket_mode_t::ENABLED ? 0 : 1);
+			// Включаем либо отключаем алгоритм Нейгла вместо придержки отправки
+			if(::setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast <const char *> (&nodelay), static_cast <int32_t> (sizeof(nodelay))) != 0){
+				// Выводим в журнал сообщение об ошибке
+				this->_log->print("%s: TCP output corking could not be emulated by the Nagle algorithm, %s", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+				// Выводим отрицательный результат переключения
+				return false;
+			}
+			// Выводим положительный результат переключения
+			return true;
 		}
 		/**
 		 * Если переключается настройка повторного занятия порта

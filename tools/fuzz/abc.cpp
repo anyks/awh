@@ -79,13 +79,15 @@ namespace {
 		uint64_t compactions;
 		// Количество сошедшихся поверок подписи
 		uint64_t verified;
+		// Количество значений, пересобранных потоковой сборкой
+		uint64_t assemblies;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
 		Statistic() noexcept :
 		 records(0), corrupted(0), survived(0), events(0), trees(0), containers(0),
-		 fetches(0), edits(0), compactions(0), verified(0) {}
+		 fetches(0), edits(0), compactions(0), verified(0), assemblies(0) {}
 	} totals;
 
 	/**
@@ -702,6 +704,77 @@ namespace {
 	 * @param buffer буфер разбираемой записи
 	 *
 	 */
+	/**
+	 * @brief Функция пересборки владеющего значения потоковой сборкой
+	 *
+	 * @details Сборка вызовами обязана давать то же значение, что и разбор записи: путь
+	 *          к открытому вместимому она ведёт сама, и расхождение означало бы, что
+	 *          путь этот теряется на какой-то глубине
+	 *
+	 * @note Имя поля отображения сборка принимает всякого НЕВМЕСТИМОГО вида, ровно как
+	 *       и сама запись. Отвергается ею лишь пустая строка именем: сборка ведёт путь
+	 *       сама, и пустое имя в ней неотличимо от неназначенного
+	 *
+	 * @param builder потоковая сборка, какою ведётся пересборка
+	 * @param value   пересобираемое владеющее значение
+	 * @return        признак того, что значение потоковой сборке выразимо
+	 *
+	 */
+	bool rebuild(abc::builder_t & builder, const abc::value_t & value) noexcept {
+		/**
+		 * Если пересобирается отображение
+		 */
+		if(value.is(abc::type_t::MAP)){
+			// Если завести отображение не вышло
+			if(!builder.map())
+				// Выводим признак невыразимого значения
+				return false;
+			/**
+			 * Выполняем перебор всех пар отображения
+			 */
+			for(size_t i = 0; i < value.size(); i++){
+				/**
+				 * Если назначить имя очередного поля отображения не вышло
+				 *
+				 * @note Имя поля сборка принимает всякого невместимого вида, ровно как и
+				 *       запись: пустая строка именем ею отвергается, и такая запись
+				 *       сличением пропускается
+				 */
+				if(!builder.key(value.key(i)))
+					// Выводим признак невыразимого значения
+					return false;
+				// Если пересобрать значение поля не вышло
+				if(!rebuild(builder, value[i]))
+					// Выводим признак невыразимого значения
+					return false;
+			}
+			// Выводим признак закрытия отображения
+			return builder.close();
+		/**
+		 * Если пересобирается массив
+		 */
+		} else if(value.is(abc::type_t::ARRAY)) {
+			// Если завести массив не вышло
+			if(!builder.array())
+				// Выводим признак невыразимого значения
+				return false;
+			/**
+			 * Выполняем перебор всех значений массива
+			 */
+			for(size_t i = 0; i < value.size(); i++){
+				// Если пересобрать очередное значение массива не вышло
+				if(!rebuild(builder, value[i]))
+					// Выводим признак невыразимого значения
+					return false;
+			}
+			// Выводим признак закрытия массива
+			return builder.close();
+		}
+		/**
+		 * Значение-одиночка ложится как есть: вид его сборке разбирать незачем
+		 */
+		return builder.value(value);
+	}
 	void tree(const vector <uint8_t> & buffer) noexcept {
 		// Дерево документа
 		abc::document_t document;
@@ -762,6 +835,34 @@ namespace {
 			::fprintf(stderr, "\n");
 			// Выполняем выход с признаком расхождения
 			::exit(1);
+		}
+		// Потоковая сборка владеющего значения
+		abc::builder_t builder;
+		/**
+		 * Если значение потоковой сборке выразимо, сличаем собранное с разобранным
+		 */
+		if(rebuild(builder, value)){
+			// Выполняем завершение потоковой сборки значения
+			const abc::value_t assembled = builder.finish();
+			// Выполняем увеличение количества пересобранных значений
+			totals.assemblies++;
+			/**
+			 * Если пересобранное значение разошлось с разобранным
+			 */
+			if(!(assembled == value)){
+				// Выводим сообщение о расхождении пересборки
+				::fprintf(stderr, "abc fuzz: assembled value differs from the parsed one\n");
+				// Выводим октеты исходной записи
+				::fprintf(stderr, "  source: ");
+				// Выполняем перебор всех октетов исходной записи
+				for(const uint8_t octet : buffer)
+					// Выполняем вывод очередного октета исходной записи
+					::fprintf(stderr, "%02X", octet);
+				// Выводим перевод строки
+				::fprintf(stderr, "\n");
+				// Выполняем выход с признаком расхождения
+				::exit(1);
+			}
 		}
 	}
 	/**
@@ -1206,12 +1307,14 @@ int main(int argc, char * argv[]) noexcept {
 	}
 	// Выводим учёт проделанной работы
 	::printf("abc fuzz: %llu records (%llu corrupted), %llu parsed to the end, %llu events, "
-	 "%llu trees, %llu containers, %llu fetches, %llu edits, %llu compactions, %llu signatures verified\n",
+	 "%llu trees, %llu containers, %llu fetches, %llu edits, %llu compactions, %llu signatures verified, "
+	 "%llu values assembled\n",
 	 static_cast <unsigned long long> (totals.records), static_cast <unsigned long long> (totals.corrupted),
 	 static_cast <unsigned long long> (totals.survived), static_cast <unsigned long long> (totals.events),
 	 static_cast <unsigned long long> (totals.trees), static_cast <unsigned long long> (totals.containers),
 	 static_cast <unsigned long long> (totals.fetches), static_cast <unsigned long long> (totals.edits),
-	 static_cast <unsigned long long> (totals.compactions), static_cast <unsigned long long> (totals.verified));
+	 static_cast <unsigned long long> (totals.compactions), static_cast <unsigned long long> (totals.verified),
+	 static_cast <unsigned long long> (totals.assemblies));
 	// Выводим успешное завершение работы
 	return 0;
 }

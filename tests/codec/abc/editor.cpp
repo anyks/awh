@@ -861,3 +861,122 @@ TEST_F(EditorFixture, SignedWasteCounted) {
 	// Выполняем проверку кода отказа поверки подписи
 	ASSERT_EQ(error, abc::error_t::REFUSED_SIGNATURE);
 }
+/**
+ * @brief Проверка отказов правки контейнера
+ *
+ * @details Молчаливое согласие правщика на негодный довод опаснее отказа: строка
+ * оглавления увела бы выборку в произвольное место, а пустая запись легла бы
+ * кадром, неотличимым от оборванного
+ *
+ */
+TEST_F(EditorFixture, Refusals) {
+	// Правщик неоткрытого контейнера
+	abc::editor_t closed;
+	// Выполняем сборку записи правки
+	const vector <uint8_t> item = abc::value_t(string{"запись"}).dump();
+	// Выполняем проверку отказа дописывания в неоткрытый контейнер
+	ASSERT_FALSE(closed.append(item.data(), item.size(), abc::payload_t::TEXT));
+	// Выполняем проверку отказа правки записи неоткрытого контейнера
+	ASSERT_FALSE(closed.replace(0, item.data(), item.size(), abc::payload_t::TEXT));
+	// Выполняем проверку отказа сноса записи неоткрытого контейнера
+	ASSERT_FALSE(closed.erase(0));
+	// Буфер выбранной записи контейнера
+	vector <uint8_t> picked;
+	// Выполняем проверку отказа выборки записи неоткрытого контейнера
+	ASSERT_FALSE(closed.record(0, picked));
+	// Носитель, несущий правимый контейнер
+	Medium medium;
+	// Выполняем сборку контейнера с двумя записями
+	this->build(medium, {"первая", "вторая"});
+	// Правщик контейнера
+	abc::editor_t editor;
+	// Выполняем открытие контейнера правщиком
+	ASSERT_TRUE(this->open(editor, medium)) << "код отказа: " << abc::message(editor.error());
+	// Выполняем проверку количества записей открытого контейнера
+	ASSERT_EQ(editor.records(), 2ull);
+	/**
+	 * Выполняем проверку отказов правки записи, какой в контейнере нет: номер
+	 * записи приходит извне, и доверять ему нельзя
+	 */
+	ASSERT_FALSE(editor.replace(2, item.data(), item.size(), abc::payload_t::TEXT));
+	// Выполняем проверку отказа сноса записи, какой в контейнере нет
+	ASSERT_FALSE(editor.erase(2));
+	// Выполняем проверку отказа выборки записи, какой в контейнере нет
+	ASSERT_FALSE(editor.record(2, picked));
+	// Выполняем проверку отказа дописывания несуществующего буфера
+	ASSERT_FALSE(editor.append(nullptr, item.size(), abc::payload_t::TEXT));
+	// Выполняем проверку отказа дописывания пустой записи
+	ASSERT_FALSE(editor.append(item.data(), 0, abc::payload_t::TEXT));
+	// Выполняем снос первой записи контейнера
+	ASSERT_TRUE(editor.erase(0)) << "код отказа: " << abc::message(editor.error());
+	// Выполняем получение количества октетов, обращённых сносом в мусор
+	const uint64_t garbage = editor.garbage();
+	/**
+	 * Выполняем проверку того, что повторный снос снесённой записи безобиден:
+	 * разряд сноса уже стоит, и отказом такой снос отвечать незачем
+	 */
+	ASSERT_TRUE(editor.erase(0)) << "код отказа: " << abc::message(editor.error());
+	/**
+	 * Выполняем проверку того, что повторный снос мусора не приписал: длина
+	 * снесённого, посчитанная дважды, увела бы уборку по ложному порогу
+	 */
+	ASSERT_EQ(editor.garbage(), garbage);
+	// Выполняем проверку отказа выборки снесённой записи
+	ASSERT_FALSE(editor.record(0, picked));
+	// Выполняем проверку кода отказа выборки снесённой записи
+	ASSERT_EQ(editor.error(), abc::error_t::MISSING_RECORD);
+	/**
+	 * Выполняем проверку того, что правка снесённой записи дозволена: снос ставит
+	 * разряд, а не изымает строку, и правка возвращает запись к жизни
+	 */
+	ASSERT_TRUE(editor.replace(0, item.data(), item.size(), abc::payload_t::TEXT))
+		<< "код отказа: " << abc::message(editor.error());
+	// Выполняем проверку того, что правленная запись читается
+	ASSERT_TRUE(editor.record(0, picked)) << "код отказа: " << abc::message(editor.error());
+	// Выполняем проверку выбранной записи контейнера
+	ASSERT_EQ(picked, item);
+}
+/**
+ * @brief Проверка сброса правщика контейнера
+ *
+ * @details Сброс возвращает правщик к неоткрытому виду: накопленное отбрасывается,
+ * а работы чтения и записи забываются - иначе следующее открытие писало бы на
+ * прежний носитель
+ *
+ */
+TEST_F(EditorFixture, ResetForgets) {
+	// Носитель, несущий правимый контейнер
+	Medium medium;
+	// Выполняем сборку контейнера с одной записью
+	this->build(medium, {"первая"});
+	// Полная длина контейнера до правки
+	const size_t length = medium.data.size();
+	// Правщик контейнера
+	abc::editor_t editor;
+	// Выполняем открытие контейнера правщиком
+	ASSERT_TRUE(this->open(editor, medium)) << "код отказа: " << abc::message(editor.error());
+	// Выполняем сборку дописываемой записи
+	const vector <uint8_t> item = abc::value_t(string{"накопленная"}).dump();
+	// Выполняем дописывание записи в конец контейнера
+	ASSERT_TRUE(editor.append(item.data(), item.size(), abc::payload_t::TEXT))
+		<< "код отказа: " << abc::message(editor.error());
+	// Выполняем проверку количества записей вместе с накопленной
+	ASSERT_EQ(editor.records(), 2ull);
+	// Выполняем сброс правщика контейнера
+	editor.reset();
+	// Выполняем проверку того, что количество записей сброшено
+	ASSERT_EQ(editor.records(), 0ull);
+	// Выполняем проверку того, что мусор сброшен
+	ASSERT_EQ(editor.garbage(), 0ull);
+	// Выполняем проверку отказа дописывания в сброшенный правщик
+	ASSERT_FALSE(editor.append(item.data(), item.size(), abc::payload_t::TEXT));
+	/**
+	 * Выполняем проверку того, что накопленное сбросом на носитель не ушло:
+	 * фиксации не было, и носитель обязан остаться прежним
+	 */
+	ASSERT_EQ(medium.data.size(), length);
+	// Выполняем открытие контейнера сброшенным правщиком наново
+	ASSERT_TRUE(this->open(editor, medium)) << "код отказа: " << abc::message(editor.error());
+	// Выполняем проверку того, что открыт прежний контейнер без накопленного
+	ASSERT_EQ(editor.records(), 1ull);
+}

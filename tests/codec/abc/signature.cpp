@@ -399,3 +399,159 @@ TEST_F(SignatureFixture, UnsignedRefused) {
 	// Выполняем проверку кода отказа поверки подписи
 	ASSERT_EQ(error, abc::error_t::UNSIGNED_CONTAINER);
 }
+/**
+ * @brief Проверка укладки и снятия записи подписи контейнера
+ *
+ * @details Запись подписи лежит хвостом контейнера и приходит извне: доверять её
+ * объявленным длинам нельзя, иначе снятие ушло бы читать за поданные октеты
+ *
+ */
+TEST_F(SignatureFixture, SignRecordRoundtrip) {
+	// Укладываемая подпись контейнера
+	abc::sign_t sign;
+	// Выполняем установку вида подписи владельца контейнера
+	sign.kind = crypto_t::signature_t::ECDSA;
+	// Выполняем установку вида хэш-суммы, какой подпись выработана
+	sign.hash = crypto_t::hash_t::SHA512;
+	// Выполняем сборку корня дерева свёрток по кадрам контейнера
+	sign.root.assign(abc::DIGEST_LENGTH, 0xA5);
+	// Выполняем сборку октетов подписи владельца контейнера
+	sign.signature.assign(72, 0x5A);
+	// Октеты уложенной записи подписи
+	vector <uint8_t> buffer;
+	// Выполняем укладку записи подписи контейнера
+	abc::pack(sign, buffer);
+	// Выполняем проверку длины уложенной записи подписи
+	ASSERT_EQ(buffer.size(), abc::SIGNATURE_HEADER + abc::DIGEST_LENGTH + sign.signature.size());
+	// Снятая подпись контейнера
+	abc::sign_t taken;
+	// Код отказа снятия записи подписи
+	abc::error_t error = abc::error_t::NONE;
+	// Выполняем снятие уложенной записи подписи
+	ASSERT_TRUE(abc::unpack(buffer.data(), buffer.size(), taken, error))
+		<< "код отказа: " << abc::message(error);
+	// Выполняем проверку снятого вида подписи владельца контейнера
+	ASSERT_EQ(taken.kind, sign.kind);
+	// Выполняем проверку снятого вида хэш-суммы
+	ASSERT_EQ(taken.hash, sign.hash);
+	// Выполняем проверку снятого корня дерева свёрток
+	ASSERT_EQ(taken.root, sign.root);
+	// Выполняем проверку снятых октетов подписи владельца
+	ASSERT_EQ(taken.signature, sign.signature);
+	/**
+	 * Выполняем проверку того, что запись подписи самоограничена: длины объявлены
+	 * заголовком её, и приписанный хвост снятию не мешает
+	 */
+	vector <uint8_t> tailed = buffer;
+	// Выполняем приписывание хвоста к записи подписи
+	tailed.insert(tailed.end(), 16, 0xFF);
+	// Выполняем снятие записи подписи с приписанным хвостом
+	ASSERT_TRUE(abc::unpack(tailed.data(), tailed.size(), taken, error))
+		<< "код отказа: " << abc::message(error);
+	// Выполняем проверку снятых октетов подписи владельца
+	ASSERT_EQ(taken.signature, sign.signature);
+	// Выполняем проверку отказа снятия несуществующих октетов
+	ASSERT_FALSE(abc::unpack(nullptr, buffer.size(), taken, error));
+	// Выполняем проверку кода внутреннего отказа
+	ASSERT_EQ(error, abc::error_t::INTERNAL);
+	// Выполняем проверку отказа снятия записи короче заголовка её
+	ASSERT_FALSE(abc::unpack(buffer.data(), abc::SIGNATURE_HEADER - 1, taken, error));
+	// Выполняем проверку кода отказа обрыва записи подписи
+	ASSERT_EQ(error, abc::error_t::TRUNCATED_SIGNATURE);
+	// Выполняем проверку отказа снятия записи, оборванной посреди подписи
+	ASSERT_FALSE(abc::unpack(buffer.data(), buffer.size() - 1, taken, error));
+	// Выполняем проверку кода отказа обрыва записи подписи
+	ASSERT_EQ(error, abc::error_t::TRUNCATED_SIGNATURE);
+	/**
+	 * Выполняем проверку того, что снятие поверяет длину корня дерева свёрток:
+	 * длина эта закреплена договором, и объявленная иною означает порчу
+	 */
+	vector <uint8_t> damaged = buffer;
+	// Выполняем порчу объявленной длины корня дерева свёрток
+	damaged.at(4) = static_cast <uint8_t> (abc::DIGEST_LENGTH - 1);
+	// Выполняем проверку отказа снятия повреждённой записи подписи
+	ASSERT_FALSE(abc::unpack(damaged.data(), damaged.size(), taken, error));
+	// Выполняем проверку кода отказа повреждённой записи подписи
+	ASSERT_EQ(error, abc::error_t::INVALID_SIGNATURE);
+	// Выполняем восстановление объявленной длины корня дерева свёрток
+	damaged.at(4) = static_cast <uint8_t> (abc::DIGEST_LENGTH);
+	// Выполняем порчу объявленной длины подписи владельца контейнера
+	damaged.at(2) = 0;
+	// Выполняем порчу старшего октета объявленной длины подписи владельца
+	damaged.at(3) = 0;
+	// Выполняем проверку отказа снятия записи с пустой подписью
+	ASSERT_FALSE(abc::unpack(damaged.data(), damaged.size(), taken, error));
+	// Выполняем проверку кода отказа повреждённой записи подписи
+	ASSERT_EQ(error, abc::error_t::INVALID_SIGNATURE);
+}
+/**
+ * @brief Проверка подбора вида хэш-суммы под вид подписи
+ *
+ * @details Вид хэш-суммы ставится подбором, а не потребителем напрямую: поданный не
+ * тому виду ключа обратился бы в отказ подписи посреди фиксации
+ *
+ */
+TEST_F(SignatureFixture, DigestSelection) {
+	/**
+	 * Выполняем проверку того, что у Ed25519 хэш-суммы нет вовсе: желаемая
+	 * поданная отвергается, а не принимается
+	 */
+	ASSERT_EQ(abc::digest(crypto_t::signature_t::ED25519, crypto_t::hash_t::SHA512), crypto_t::hash_t::NONE);
+	// Выполняем проверку того, что у подписи по ГОСТ хэш-сумма предписана схемой
+	ASSERT_EQ(abc::digest(crypto_t::signature_t::GOST, crypto_t::hash_t::SHA256), crypto_t::hash_t::NONE);
+	// Выполняем проверку того, что у RSA поданный вид хэш-суммы принимается
+	ASSERT_EQ(abc::digest(crypto_t::signature_t::RSA, crypto_t::hash_t::SHA512), crypto_t::hash_t::SHA512);
+	// Выполняем проверку того, что у ECDSA поданный вид хэш-суммы принимается
+	ASSERT_EQ(abc::digest(crypto_t::signature_t::ECDSA, crypto_t::hash_t::SHA384), crypto_t::hash_t::SHA384);
+	/**
+	 * Выполняем проверку вида хэш-суммы по умолчанию: у RSA и ECDSA она
+	 * обязательна, и отсутствие поданной отказом отвечать незачем
+	 */
+	ASSERT_EQ(abc::digest(crypto_t::signature_t::RSA, crypto_t::hash_t::NONE), crypto_t::hash_t::SHA256);
+	// Выполняем проверку вида хэш-суммы по умолчанию у ECDSA
+	ASSERT_EQ(abc::digest(crypto_t::signature_t::ECDSA, crypto_t::hash_t::NONE), crypto_t::hash_t::SHA256);
+	// Выполняем проверку того, что отсутствие вида подписи хэш-суммы не даёт
+	ASSERT_EQ(abc::digest(crypto_t::signature_t::NONE, crypto_t::hash_t::SHA256), crypto_t::hash_t::NONE);
+}
+/**
+ * @brief Проверка очистки дерева свёрток по кадрам контейнера
+ *
+ * @details Дерево живёт у сборщика и у правщика, и уборка перестраивает контейнер
+ * наново: неочищенное дерево свело бы к корню кадры обоих контейнеров разом
+ *
+ */
+TEST_F(SignatureFixture, MerkleClear) {
+	// Дерево свёрток по кадрам контейнера
+	abc::merkle_t merkle;
+	// Выполняем установку модуля шифрования дереву свёрток
+	merkle.crypto(this->_crypto.get());
+	// Выполняем внесение двух кадров в дерево свёрток
+	ASSERT_TRUE(merkle.add("первый кадр", 11));
+	// Выполняем внесение второго кадра в дерево свёрток
+	ASSERT_TRUE(merkle.add("второй кадр", 11));
+	// Корень дерева свёрток по кадрам контейнера
+	vector <uint8_t> first;
+	// Выполняем сведение дерева свёрток к корню
+	ASSERT_TRUE(merkle.root(first));
+	// Выполняем очистку дерева свёрток по кадрам контейнера
+	merkle.clear();
+	// Выполняем проверку того, что кадров в дереве не осталось
+	ASSERT_EQ(merkle.leaves(), 0ul);
+	// Корень очищенного дерева свёрток
+	vector <uint8_t> empty;
+	// Выполняем проверку того, что очищенное дерево к корню не сводится
+	ASSERT_FALSE(merkle.root(empty));
+	// Выполняем внесение тех же двух кадров в очищенное дерево свёрток
+	ASSERT_TRUE(merkle.add("первый кадр", 11));
+	// Выполняем внесение второго кадра в очищенное дерево свёрток
+	ASSERT_TRUE(merkle.add("второй кадр", 11));
+	// Корень дерева свёрток, собранного наново
+	vector <uint8_t> second;
+	// Выполняем сведение дерева свёрток к корню
+	ASSERT_TRUE(merkle.root(second));
+	/**
+	 * Выполняем проверку того, что очистка кадры ЗАБЫЛА, а не отбросила счёт:
+	 * уцелевшие свёртки дали бы дереву вчетверо больше кадров и иной корень
+	 */
+	ASSERT_EQ(second, first);
+}

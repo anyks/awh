@@ -975,3 +975,52 @@ TEST(CodecJsonEncoding, DirectRefusals) {
 	// Выполняем проверку принятия годного текста
 	ASSERT_EQ(once(string("\"\xE2\x82\xAC\"", 5)), json::error_t::NONE);
 }
+
+/**
+ * @brief Проверка удержания недочитанной пары байтов UTF-16 между кусками
+ *
+ * @details Пара байтов кодировки UTF-16 вправе разорваться границей куска, и приведение
+ *          удерживает нечётный байт до прихода следующего. Кусок же, пришедший следом,
+ *          вправе оказаться ПУСТЫМ - подающая сторона не обязана знать, чего приведению
+ *          недостаёт, - и удержанный байт обязан пережить такой кусок нетронутым
+ *
+ * @note Место это отыскано по карте покрытия: набор пустых кусков посреди текста не подавал
+ *       вовсе, и удержание через них не проверялось ни разу
+ *
+ */
+TEST(CodecJsonEncoding, Utf16PendingAcrossChunks) {
+	// Метка порядка байтов кодировки UTF-16 с обратным порядком
+	const string bom("\xFF\xFE", 2);
+	// Тело текста в кодировке UTF-16 с обратным порядком байтов
+	const string body("\x22\x00\x61\x00\x22\x00", 6);
+	/**
+	 * Выполняем перебор видов куска, подаваемого следом за нечётным
+	 */
+	for(uint32_t kind = 0; kind < 3; kind++){
+		// Объект приведения кодировки исходного текста
+		json::decoder_t decoder;
+		// Приведённый текст
+		string result;
+		// Собираем первый кусок, оборванный посреди пары байтов
+		const string head = (bom + body.substr(0, 3));
+		// Выполняем подачу первого куска
+		ASSERT_TRUE(decoder.convert(head.data(), head.size(), false, result)) << kind;
+		/**
+		 * Определяем вид куска, подаваемого следом
+		 */
+		switch(kind){
+			// Подаём пустой кусок
+			case 0: ASSERT_TRUE(decoder.convert("", 0, false, result)) << kind; break;
+			// Подаём пустой указатель
+			case 1: ASSERT_TRUE(decoder.convert(nullptr, 0, false, result)) << kind; break;
+			// Подаём один байт, пару байтов завершающий
+			case 2: ASSERT_TRUE(decoder.convert(body.data() + 3, 1, false, result)) << kind; break;
+		}
+		// Выполняем подачу остатка текста
+		ASSERT_TRUE(decoder.convert(body.data() + ((kind == 2) ? 4 : 3), ((kind == 2) ? 2 : 3), true, result)) << kind;
+		// Выполняем проверку отсутствия ошибки приведения
+		ASSERT_EQ(decoder.error(), json::error_t::NONE) << kind;
+		// Выполняем проверку приведённого текста
+		ASSERT_EQ(result, "\"a\"") << kind;
+	}
+}

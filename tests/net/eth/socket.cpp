@@ -102,10 +102,28 @@ TEST_F(EthFixture, SocketCreateTest){
 
 	// Создаём DATAGRAM сокет Unix Domain
 	auto udsg = this->_eth->socket.issue(awh::event::family_t::UDS, awh::event::type_t::DATAGRAM, awh::event::protocol_t::NONE);
-	// Проверяем что Unix Domain дейтаграммный сокет создан успешно
-	ASSERT_NE(udsg, awh::net::invalid_socket_t);
-	// Закрываем сокет
-	::closesocket(udsg);
+	/**
+	 * Для операционной системы MS Windows
+	 *
+	 * @details Дейтаграммных сокетов домена UNIX у MS Windows нет ВОВСЕ: подсистема
+	 *          несёт только потоковые, и отказ здесь - местное поведение, а не дефект
+	 *
+	 * @warning Утверждается именно ОТКАЗ, а не пропуск: пропуск перестал бы стеречь
+	 *          и тот случай, когда сокет вдруг заведётся вопреки устройству системы.
+	 *          Прежде проверка ждала успеха и падала на всякой машине Windows
+	 */
+	#if _WIN32 || _WIN64
+		// Дейтаграммный сокет домена UNIX завестись не может
+		ASSERT_EQ(udsg, awh::net::invalid_socket_t) << "у MS Windows дейтаграммных сокетов домена UNIX нет, а сокет заведён";
+	/**
+	 * Для всех остальных операционных систем
+	 */
+	#else
+		// Проверяем что Unix Domain дейтаграммный сокет создан успешно
+		ASSERT_NE(udsg, awh::net::invalid_socket_t);
+		// Закрываем сокет
+		::closesocket(udsg);
+	#endif
 }
 
 /**
@@ -458,6 +476,39 @@ TEST_F(EthFixture, SocketDscpTest){
  *          не должна сбрасывать другое
  *
  */
+/**
+ * @brief Функция ожидаемого показания метки перегрузки на сокете
+ *
+ * @details У систем POSIX метка живёт в октете заголовка IP и читается тем же
+ *          значением, каким поставлена. У MS Windows настройка IP_ECN на СОКЕТЕ -
+ *          признак способности, а не двухразрядный код: щуп на стенде Windows ARM64
+ *          показал, что значения 1, 2 и 3 читаются оттуда одинаково единицей, а сам
+ *          код метки задаётся ОТДЕЛЬНО, на каждую датаграмму управляющим сообщением
+ *
+ * @warning Проверка оттого утверждает МЕСТНОЕ показание каждой системы, а не
+ *          показание одной из них. Прежде она ждала всюду точного кода и падала на
+ *          всякой машине Windows на первом же круговом обходе
+ *
+ * @param ecn запрошенная метка перегрузки
+ * @return    показание, какого следует ждать от системы
+ *
+ */
+static awh::event::ecn_t ecnExpected(const awh::event::ecn_t ecn) noexcept {
+	/**
+	 * Для операционной системы MS Windows
+	 */
+	#if _WIN32 || _WIN64
+		// Всякая поставленная метка читается признаком способности
+		return ((ecn == awh::event::ecn_t::NOT_ECT) ? awh::event::ecn_t::NOT_ECT : awh::event::ecn_t::ECT1);
+	/**
+	 * Для всех остальных операционных систем
+	 */
+	#else
+		// Метка читается тем же значением, каким поставлена
+		return ecn;
+	#endif
+}
+
 TEST_F(EthFixture, SocketEcnTest){
 	// Создаём UDP сокет IPv4
 	auto sock4 = this->_eth->socket.issue(awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
@@ -467,11 +518,11 @@ TEST_F(EthFixture, SocketEcnTest){
 	ASSERT_EQ(awh::event::ecn_t::NOT_ECT, this->_eth->socket.getExplicitCongestionNotification(sock4, awh::event::family_t::IPV4));
 	// Устанавливаем и проверяем признак поддержки ECN для IPv4
 	ASSERT_TRUE(this->_eth->socket.setExplicitCongestionNotification(sock4, awh::event::family_t::IPV4, awh::event::ecn_t::ECT0));
-	ASSERT_EQ(awh::event::ecn_t::ECT0, this->_eth->socket.getExplicitCongestionNotification(sock4, awh::event::family_t::IPV4));
+	ASSERT_EQ(ecnExpected(awh::event::ecn_t::ECT0), this->_eth->socket.getExplicitCongestionNotification(sock4, awh::event::family_t::IPV4));
 	// Устанавливаем класс обслуживания поверх установленного признака перегрузки
 	ASSERT_TRUE(this->_eth->socket.setDifferentiatedServicesCodePoint(sock4, awh::event::family_t::IPV4, awh::event::dscp_t::CS3));
 	// Проверяем что признак перегрузки установкой класса обслуживания не сброшен
-	ASSERT_EQ(awh::event::ecn_t::ECT0, this->_eth->socket.getExplicitCongestionNotification(sock4, awh::event::family_t::IPV4));
+	ASSERT_EQ(ecnExpected(awh::event::ecn_t::ECT0), this->_eth->socket.getExplicitCongestionNotification(sock4, awh::event::family_t::IPV4));
 	// Проверяем что класс обслуживания установлен
 	ASSERT_EQ(awh::event::dscp_t::CS3, this->_eth->socket.getDifferentiatedServicesCodePoint(sock4, awh::event::family_t::IPV4));
 	// Меняем признак перегрузки поверх установленного класса обслуживания
@@ -479,7 +530,7 @@ TEST_F(EthFixture, SocketEcnTest){
 	// Проверяем что класс обслуживания сменой признака перегрузки не сброшен
 	ASSERT_EQ(awh::event::dscp_t::CS3, this->_eth->socket.getDifferentiatedServicesCodePoint(sock4, awh::event::family_t::IPV4));
 	// Проверяем что признак перегрузки сменён
-	ASSERT_EQ(awh::event::ecn_t::ECT1, this->_eth->socket.getExplicitCongestionNotification(sock4, awh::event::family_t::IPV4));
+	ASSERT_EQ(ecnExpected(awh::event::ecn_t::ECT1), this->_eth->socket.getExplicitCongestionNotification(sock4, awh::event::family_t::IPV4));
 	// Снимаем признак поддержки ECN
 	ASSERT_TRUE(this->_eth->socket.setExplicitCongestionNotification(sock4, awh::event::family_t::IPV4, awh::event::ecn_t::NOT_ECT));
 	ASSERT_EQ(awh::event::ecn_t::NOT_ECT, this->_eth->socket.getExplicitCongestionNotification(sock4, awh::event::family_t::IPV4));
@@ -492,11 +543,11 @@ TEST_F(EthFixture, SocketEcnTest){
 	ASSERT_NE(sock6, awh::net::invalid_socket_t);
 	// Устанавливаем и проверяем признак поддержки ECN для IPv6
 	ASSERT_TRUE(this->_eth->socket.setExplicitCongestionNotification(sock6, awh::event::family_t::IPV6, awh::event::ecn_t::ECT0));
-	ASSERT_EQ(awh::event::ecn_t::ECT0, this->_eth->socket.getExplicitCongestionNotification(sock6, awh::event::family_t::IPV6));
+	ASSERT_EQ(ecnExpected(awh::event::ecn_t::ECT0), this->_eth->socket.getExplicitCongestionNotification(sock6, awh::event::family_t::IPV6));
 	// Устанавливаем класс обслуживания поверх установленного признака перегрузки
 	ASSERT_TRUE(this->_eth->socket.setDifferentiatedServicesCodePoint(sock6, awh::event::family_t::IPV6, awh::event::dscp_t::CS5));
 	// Проверяем что оба поля октета сохранены независимо
-	ASSERT_EQ(awh::event::ecn_t::ECT0, this->_eth->socket.getExplicitCongestionNotification(sock6, awh::event::family_t::IPV6));
+	ASSERT_EQ(ecnExpected(awh::event::ecn_t::ECT0), this->_eth->socket.getExplicitCongestionNotification(sock6, awh::event::family_t::IPV6));
 	ASSERT_EQ(awh::event::dscp_t::CS5, this->_eth->socket.getDifferentiatedServicesCodePoint(sock6, awh::event::family_t::IPV6));
 	// Закрываем сокет
 	::closesocket(sock6);

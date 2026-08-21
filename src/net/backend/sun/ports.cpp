@@ -4374,6 +4374,249 @@ namespace ether {
 		return ntohs(* reinterpret_cast <const uint16_t *> (buffer + (::ether::ADDR_SIZE * 2)));
 	}
 	/**
+	 * @brief Функция накопления суммы по правилу дополнения до единицы
+	 *
+	 * @param buffer накапливаемая область
+	 * @param size   размер накапливаемой области
+	 * @param acc    накопленное прежде
+	 * @return       накопленное с учётом области
+	 *
+	 */
+	static uint32_t accumulate(const uint8_t * buffer, const size_t size, uint32_t acc) noexcept {
+		// Смещение разбираемого слова
+		size_t offset = 0;
+		// Накапливаем сумму словами по два октета
+		for(; (offset + 1) < size; offset += 2)
+			// Прибавляем очередное слово в порядке сети
+			acc += ((static_cast <uint32_t> (buffer[offset]) << 8) | static_cast <uint32_t> (buffer[offset + 1]));
+		// Если область оканчивается одиноким октетом
+		if(offset < size)
+			// Дополняем его нулём справа, как велит правило
+			acc += (static_cast <uint32_t> (buffer[offset]) << 8);
+		// Выводим накопленное
+		return acc;
+	}
+	/**
+	 * @brief Функция свёртки накопленной суммы
+	 *
+	 * @param acc накопленная сумма
+	 * @return    контрольная сумма в порядке машины
+	 *
+	 */
+	static uint16_t fold(uint32_t acc) noexcept {
+		// Складываем перенос обратно, пока тот есть
+		while((acc >> 16) != 0)
+			// Складываем младшее слово со старшим
+			acc = ((acc & 0xFFFF) + (acc >> 16));
+		// Выводим дополнение накопленного
+		return static_cast <uint16_t> (~acc & 0xFFFF);
+	}
+	/**
+	 * @brief Функция заполнения контрольных сумм пакета
+	 *
+	 * @details Система откладывает подсчёт сумм до оборудования связи, и на канальном
+	 *          слое, откуда движок берёт кадр, суммы стоят нулевыми. Прочие системы
+	 *          отдают пакет с сетевого слоя, где ядро их уже заполнило, оттого правило
+	 *          это и нужно ОДНОЙ этой системе
+	 *
+	 * @note Зовётся не `checksum` нарочно: имя это уже занято подсчётом суммы
+	 *       одного лишь сообщения ICMPv6, а здесь заполняется ВЕСЬ пакет
+	 *
+	 * @warning Доказано щупом на самой системе, БЕЗ участия движка: обычная посылка
+	 *          UDP обычным сокетом, снятая snoop на связи, несёт сумму заголовка IP
+	 *          0000 и сумму UDP 0000. Сумма заголовка IP нулевой не бывает законно
+	 *          НИКОГДА, оттого встречная сторона такой пакет отбрасывает испорченным
+	 *
+	 * @param packet разбираемый пакет
+	 * @param size   размер разбираемого пакета
+	 *
+	 */
+	static void complete(uint8_t * packet, const size_t size) noexcept {
+		// Если разбирать нечего
+		if((packet == nullptr) || (size < 1))
+			// Заполнять нечего
+			return;
+		// Определяем версию по первым четырём битам
+		const uint8_t version = ((packet[0] & 0xF0) >> 4); // Маска 1111 0000
+		// Адрес полезной нагрузки пакета
+		uint8_t * payload = nullptr;
+		// Размер полезной нагрузки пакета
+		size_t length = 0;
+		// Накопленная сумма мнимого заголовка
+		uint32_t acc = 0;
+		// Опознаватель протокола переноса
+		uint8_t protocol = 0;
+		/**
+		 * Определяем версию пакета
+		 */
+		switch(version){
+			// Если пакет является пакетом IPv4
+			case 4: {
+				// Если пакет короче наименьшего заголовка
+				if(size < 20)
+					// Заполнять нечего
+					return;
+				// Определяем длину заголовка пакета
+				const size_t header = (static_cast <size_t> (packet[0] & 0x0F) * 4); // Маска 0000 1111
+				// Если длина заголовка не умещается в принятом
+				if((header < 20) || (header > size))
+					// Заполнять нечего
+					return;
+				/**
+				 * Заполняем сумму заголовка, если та не заполнена
+				 *
+				 * Своё поле в подсчёт не входит, оттого обнуляем его прежде счёта: у
+				 * незаполненной суммы оно и так нулевое, но правило это обязано быть
+				 * верным и при пересчёте заполненной
+				 */
+				if((packet[10] | packet[11]) == 0){
+					// Обнуляем поле суммы на время подсчёта
+					packet[10] = 0;
+					// Обнуляем поле суммы на время подсчёта
+					packet[11] = 0;
+					// Подсчитываем сумму заголовка
+					const uint16_t result = ::ether::fold(::ether::accumulate(packet, header, 0));
+					// Записываем старший октет суммы
+					packet[10] = static_cast <uint8_t> ((result >> 8) & 0xFF);
+					// Записываем младший октет суммы
+					packet[11] = static_cast <uint8_t> (result & 0xFF);
+				}
+				/**
+				 * Дроблёному пакету сумму переноса не подсчитать
+				 *
+				 * Она берётся со ВСЕЙ полезной нагрузки, а в куске лежит лишь часть её:
+				 * ни первый кусок, ни последующие целого не знают. Оставляем такому
+				 * пакету одну сумму заголовка
+				 */
+				if((static_cast <uint16_t> ((static_cast <uint16_t> (packet[6]) << 8) | packet[7]) & 0x3FFF) != 0)
+					// Заполнять больше нечего
+					return;
+				// Определяем полную длину пакета, объявленную заголовком
+				size_t total = static_cast <size_t> ((static_cast <uint16_t> (packet[2]) << 8) | packet[3]);
+				// Если объявленное не умещается в принятом
+				if((total > size) || (total < header))
+					// Правим объявленное принятым: считать по нему нельзя
+					total = size;
+				// Запоминаем опознаватель протокола переноса
+				protocol = packet[9];
+				// Запоминаем адрес полезной нагрузки
+				payload = (packet + header);
+				// Запоминаем размер полезной нагрузки
+				length = (total - header);
+				/**
+				 * Накапливаем мнимый заголовок IPv4
+				 *
+				 * Он в пакете не лежит вовсе и складывается из адресов, опознавателя
+				 * протокола и длины переноса
+				 */
+				acc = ::ether::accumulate(packet + 12, 8, 0);
+				// Прибавляем опознаватель протокола
+				acc += static_cast <uint32_t> (protocol);
+				// Прибавляем длину полезной нагрузки
+				acc += static_cast <uint32_t> (length);
+			} break;
+			// Если пакет является пакетом IPv6
+			case 6: {
+				// Если пакет короче своего заголовка
+				if(size < 40)
+					// Заполнять нечего
+					return;
+				// Запоминаем опознаватель следующего заголовка
+				protocol = packet[6];
+				/**
+				 * Расширенных заголовков не разбираем
+				 *
+				 * За ними перенос лежит не сразу, и смещение его берётся обходом цепи.
+				 * Пакеты туннеля их не несут, а угадывать смещение - вернейший способ
+				 * записать сумму посреди чужих данных
+				 */
+				if((protocol != IPPROTO_TCP) && (protocol != IPPROTO_UDP) && (protocol != IPPROTO_ICMPV6))
+					// Заполнять нечего
+					return;
+				// Определяем длину полезной нагрузки, объявленную заголовком
+				length = static_cast <size_t> ((static_cast <uint16_t> (packet[4]) << 8) | packet[5]);
+				// Если объявленное не умещается в принятом
+				if(length > (size - 40))
+					// Правим объявленное принятым: считать по нему нельзя
+					length = (size - 40);
+				// Запоминаем адрес полезной нагрузки
+				payload = (packet + 40);
+				// Накапливаем адреса мнимого заголовка IPv6
+				acc = ::ether::accumulate(packet + 8, 32, 0);
+				// Прибавляем длину полезной нагрузки
+				acc += static_cast <uint32_t> (length);
+				// Прибавляем опознаватель следующего заголовка
+				acc += static_cast <uint32_t> (protocol);
+			} break;
+			// Если версия пакета движку неизвестна
+			default:
+				// Заполнять нечего
+				return;
+		}
+		// Смещение поля суммы внутри переноса
+		size_t offset = 0;
+		/**
+		 * Определяем протокол переноса
+		 */
+		switch(protocol){
+			// Если перенос идёт протоколом TCP
+			case IPPROTO_TCP:
+				// Поле суммы лежит семнадцатым октетом заголовка
+				offset = 16;
+			break;
+			// Если перенос идёт протоколом UDP
+			case IPPROTO_UDP:
+				// Поле суммы лежит седьмым октетом заголовка
+				offset = 6;
+			break;
+			// Если перенос идёт протоколом ICMP
+			case IPPROTO_ICMP:
+			// Если перенос идёт протоколом ICMPv6
+			case IPPROTO_ICMPV6:
+				// Поле суммы лежит третьим октетом заголовка
+				offset = 2;
+			break;
+			// Если протокол переноса движку неизвестен
+			default:
+				// Заполнять нечего
+				return;
+		}
+		// Если поле суммы не умещается в полезной нагрузке
+		if((offset + 2) > length)
+			// Заполнять нечего
+			return;
+		// Получаем адрес полезной нагрузки для записи
+		uint8_t * transport = payload;
+		// Если сумма переноса уже заполнена
+		if((transport[offset] | transport[offset + 1]) != 0)
+			// Заполнять нечего
+			return;
+		/**
+		 * Мнимого заголовка у ICMP поверх IPv4 нет
+		 *
+		 * Сумма его берётся с одного лишь сообщения. У ICMPv6 всё наоборот: там мнимый
+		 * заголовок обязателен, оттого разделяем эти два протокола, а не имя одно
+		 */
+		if(protocol == IPPROTO_ICMP)
+			// Забываем накопленный мнимый заголовок
+			acc = 0;
+		// Подсчитываем сумму переноса
+		uint16_t result = ::ether::fold(::ether::accumulate(transport, length, acc));
+		/**
+		 * Нулевую сумму UDP выдаём единицами
+		 *
+		 * Нуль в этом поле значит «сумма не подсчитана», и записав его, мы обратили бы
+		 * подсчитанное в отказ от подсчёта
+		 */
+		if((result == 0) && (protocol == IPPROTO_UDP))
+			// Выдаём нулевую сумму принятым для того видом
+			result = 0xFFFF;
+		// Записываем старший октет суммы
+		transport[offset] = static_cast <uint8_t> ((result >> 8) & 0xFF);
+		// Записываем младший октет суммы
+		transport[offset + 1] = static_cast <uint8_t> (result & 0xFF);
+	}
+	/**
 	 * @brief Функция ответа на разрешение адреса IPv4
 	 *
 	 * @details Ядро, собравшись слать пакет встречной стороне, прежде спрашивает её
@@ -12851,6 +13094,14 @@ namespace io {
 							::memmove(::__awh_buffer__, ::__awh_buffer__ + ::ether::HEADER_SIZE, static_cast <size_t> (bytes) - ::ether::HEADER_SIZE);
 							// Уменьшаем размер принятого на размер снятого заголовка
 							bytes -= static_cast <ssize_t> (::ether::HEADER_SIZE);
+							/**
+							 * Заполняем контрольные суммы пакета
+							 *
+							 * Система откладывает подсчёт их до оборудования связи, и на
+							 * канальном слое, откуда движок берёт кадр, суммы стоят нулевыми:
+							 * встречная сторона такой пакет отбрасывает испорченным
+							 */
+							::ether::complete(::__awh_buffer__, static_cast <size_t> (bytes));
 						}
 						// Определяем версию по первым 4 битам
 						const uint8_t version = ((::__awh_buffer__[0] & 0xF0) >> 4); // Маска 1111 0000
@@ -13334,10 +13585,26 @@ namespace io {
 							case EBADF:
 							// Если нет такого ресурса
 							case ENOENT:
-							// Если получатель недоступен
-							case EINVAL:
 								// Устанавливаем идентификатор полученной ошибки
 								error = event::error_t::INVALID_SOCKET;
+							break;
+							/**
+							 * Негодный пакет НЕ равен негодному устройству
+							 *
+							 * `EINVAL` у туннельного устройства означает, что негоден САМ пакет, а не
+							 * описатель: длина не сходится с заголовком, семейство не то, кадр короче
+							 * заголовка. Стояло это вместе с EBADF и ENOENT, а те ведут к сносу
+							 * устройства - и одна испорченная датаграмма, пришедшая по несущей связи,
+							 * сносила туннель НАВСЕГДА, тогда как узел продолжал работу как ни в чём
+							 * не бывало
+							 *
+							 * Доказано опытом: устройств tun было 1, послана одна негодная датаграмма
+							 * с третьей машины, стало 0, а сервер жив
+							 */
+							// Если пакет негоден для устройства
+							case EINVAL:
+								// Устанавливаем идентификатор полученной ошибки
+								error = event::error_t::INVALID;
 							break;
 							// Если мы получили другую непонятную ошибку
 							default:
@@ -13472,6 +13739,14 @@ namespace io {
 							return true;
 						// Сдвигаем полезную нагрузку кадра на место его заголовка
 						::memmove(::__awh_buffer__, ::__awh_buffer__ + ::ether::HEADER_SIZE, static_cast <size_t> (bytes) - ::ether::HEADER_SIZE);
+						/**
+						 * Заполняем контрольные суммы пакета
+						 *
+						 * Система откладывает подсчёт их до оборудования связи, и на
+						 * канальном слое, откуда движок берёт кадр, суммы стоят нулевыми:
+						 * встречная сторона такой пакет отбрасывает испорченным
+						 */
+						::ether::complete(::__awh_buffer__, static_cast <size_t> (bytes) - ::ether::HEADER_SIZE);
 					}
 					// Определяем версию по первым 4 битам
 					const uint8_t version = ((::__awh_buffer__[0] & 0xF0) >> 4); // Маска 1111 0000
@@ -13955,10 +14230,26 @@ namespace io {
 						case EBADF:
 						// Если нет такого ресурса
 						case ENOENT:
-						// Если получатель недоступен
-						case EINVAL:
 							// Устанавливаем идентификатор полученной ошибки
 							error = event::error_t::INVALID_SOCKET;
+						break;
+						/**
+						 * Негодный пакет НЕ равен негодному устройству
+						 *
+						 * `EINVAL` у туннельного устройства означает, что негоден САМ пакет, а не
+						 * описатель: длина не сходится с заголовком, семейство не то, кадр короче
+						 * заголовка. Стояло это вместе с EBADF и ENOENT, а те ведут к сносу
+						 * устройства - и одна испорченная датаграмма, пришедшая по несущей связи,
+						 * сносила туннель НАВСЕГДА, тогда как узел продолжал работу как ни в чём
+						 * не бывало
+						 *
+						 * Доказано опытом: устройств tun было 1, послана одна негодная датаграмма
+						 * с третьей машины, стало 0, а сервер жив
+						 */
+						// Если пакет негоден для устройства
+						case EINVAL:
+							// Устанавливаем идентификатор полученной ошибки
+							error = event::error_t::INVALID;
 						break;
 						// Если мы получили другую непонятную ошибку
 						default:
@@ -18971,10 +19262,26 @@ namespace io {
 							case EBADF:
 							// Если нет такого ресурса
 							case ENOENT:
-							// Если получатель недоступен
-							case EINVAL:
 								// Устанавливаем идентификатор полученной ошибки
 								error = event::error_t::INVALID_SOCKET;
+							break;
+							/**
+							 * Негодный пакет НЕ равен негодному устройству
+							 *
+							 * `EINVAL` у туннельного устройства означает, что негоден САМ пакет, а не
+							 * описатель: длина не сходится с заголовком, семейство не то, кадр короче
+							 * заголовка. Стояло это вместе с EBADF и ENOENT, а те ведут к сносу
+							 * устройства - и одна испорченная датаграмма, пришедшая по несущей связи,
+							 * сносила туннель НАВСЕГДА, тогда как узел продолжал работу как ни в чём
+							 * не бывало
+							 *
+							 * Доказано опытом: устройств tun было 1, послана одна негодная датаграмма
+							 * с третьей машины, стало 0, а сервер жив
+							 */
+							// Если пакет негоден для устройства
+							case EINVAL:
+								// Устанавливаем идентификатор полученной ошибки
+								error = event::error_t::INVALID;
 							break;
 							// Если мы получили другую непонятную ошибку
 							default:
@@ -24247,7 +24554,7 @@ namespace io {
 			// Если событие является неблокирующим
 			if(tunnel->state.options & event::options::NO_IO_BLOCK){
 				// Если очередь передачи данных пустая
-				if(!tunnel->queue.empty()){
+				if(tunnel->queue.empty()){
 					/**
 					 * Сбрасываем значение errno перед отправкой данных в сокет
 					 */
@@ -24306,10 +24613,26 @@ namespace io {
 							case EBADF:
 							// Если нет такого ресурса
 							case ENOENT:
-							// Если получатель недоступен
-							case EINVAL:
 								// Устанавливаем идентификатор полученной ошибки
 								error = event::error_t::INVALID_SOCKET;
+							break;
+							/**
+							 * Негодный пакет НЕ равен негодному устройству
+							 *
+							 * `EINVAL` у туннельного устройства означает, что негоден САМ пакет, а не
+							 * описатель: длина не сходится с заголовком, семейство не то, кадр короче
+							 * заголовка. Стояло это вместе с EBADF и ENOENT, а те ведут к сносу
+							 * устройства - и одна испорченная датаграмма, пришедшая по несущей связи,
+							 * сносила туннель НАВСЕГДА, тогда как узел продолжал работу как ни в чём
+							 * не бывало
+							 *
+							 * Доказано опытом: устройств tun было 1, послана одна негодная датаграмма
+							 * с третьей машины, стало 0, а сервер жив
+							 */
+							// Если пакет негоден для устройства
+							case EINVAL:
+								// Устанавливаем идентификатор полученной ошибки
+								error = event::error_t::INVALID;
 							break;
 							// Если мы получили другую непонятную ошибку
 							default:
@@ -24652,10 +24975,26 @@ namespace io {
 							case EBADF:
 							// Если нет такого ресурса
 							case ENOENT:
-							// Если получатель недоступен
-							case EINVAL:
 								// Устанавливаем идентификатор полученной ошибки
 								error = event::error_t::INVALID_SOCKET;
+							break;
+							/**
+							 * Негодный пакет НЕ равен негодному устройству
+							 *
+							 * `EINVAL` у туннельного устройства означает, что негоден САМ пакет, а не
+							 * описатель: длина не сходится с заголовком, семейство не то, кадр короче
+							 * заголовка. Стояло это вместе с EBADF и ENOENT, а те ведут к сносу
+							 * устройства - и одна испорченная датаграмма, пришедшая по несущей связи,
+							 * сносила туннель НАВСЕГДА, тогда как узел продолжал работу как ни в чём
+							 * не бывало
+							 *
+							 * Доказано опытом: устройств tun было 1, послана одна негодная датаграмма
+							 * с третьей машины, стало 0, а сервер жив
+							 */
+							// Если пакет негоден для устройства
+							case EINVAL:
+								// Устанавливаем идентификатор полученной ошибки
+								error = event::error_t::INVALID;
 							break;
 							// Если мы получили другую непонятную ошибку
 							default:
@@ -24988,10 +25327,26 @@ namespace io {
 						case EBADF:
 						// Если нет такого ресурса
 						case ENOENT:
-						// Если получатель недоступен
-						case EINVAL:
 							// Устанавливаем идентификатор полученной ошибки
 							error = event::error_t::INVALID_SOCKET;
+						break;
+						/**
+						 * Негодный пакет НЕ равен негодному устройству
+						 *
+						 * `EINVAL` у туннельного устройства означает, что негоден САМ пакет, а не
+						 * описатель: длина не сходится с заголовком, семейство не то, кадр короче
+						 * заголовка. Стояло это вместе с EBADF и ENOENT, а те ведут к сносу
+						 * устройства - и одна испорченная датаграмма, пришедшая по несущей связи,
+						 * сносила туннель НАВСЕГДА, тогда как узел продолжал работу как ни в чём
+						 * не бывало
+						 *
+						 * Доказано опытом: устройств tun было 1, послана одна негодная датаграмма
+						 * с третьей машины, стало 0, а сервер жив
+						 */
+						// Если пакет негоден для устройства
+						case EINVAL:
+							// Устанавливаем идентификатор полученной ошибки
+							error = event::error_t::INVALID;
 						break;
 						// Если мы получили другую непонятную ошибку
 						default:
@@ -43483,6 +43838,15 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		#endif
 																	}
 																	// Выводим результат
+																	/**
+																	 * Возвращаем узел в несведённое состояние
+																	 *
+																	 * @details Признак «сведено» ставится ПРЕЖДЕ обращения к ядру, и без отката
+																	 * неудавшаяся привязка оставляет его стоять. Тогда `launch`
+																	 * отвечает согласием узлу, какого нет: сокет не привязан, а
+																	 * событие числится запущенным
+																	 */
+																	server->state.status = event::status_t::NONE;
 																	return result;
 																}
 															} break;
@@ -43770,6 +44134,15 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																#endif
 															}
 															// Выводим результат
+															/**
+															 * Возвращаем узел в несведённое состояние
+															 *
+															 * @details Признак «сведено» ставится ПРЕЖДЕ обращения к ядру, и без отката
+															 * неудавшаяся привязка оставляет его стоять. Тогда `launch`
+															 * отвечает согласием узлу, какого нет: сокет не привязан, а
+															 * событие числится запущенным
+															 */
+															server->state.status = event::status_t::NONE;
 															return result;
 														// Если бинд события выполнен успешно
 														} else {
@@ -43977,6 +44350,15 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																#endif
 															}
 															// Выводим результат
+															/**
+															 * Возвращаем узел в несведённое состояние
+															 *
+															 * @details Признак «сведено» ставится ПРЕЖДЕ обращения к ядру, и без отката
+															 * неудавшаяся привязка оставляет его стоять. Тогда `launch`
+															 * отвечает согласием узлу, какого нет: сокет не привязан, а
+															 * событие числится запущенным
+															 */
+															server->state.status = event::status_t::NONE;
 															return result;
 														// Если бинд события выполнен успешно
 														} else {
@@ -50327,6 +50709,27 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 													::memcpy(&buffer[0], ::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_addr.s6_addr, 16);
 													// Устанавливаем полученный IPv6-адрес
 													this->_addr.v6(buffer, net_addr_t::endian_t::LITTLE);
+													/**
+													 * Возвращаем зону, снятую установкой адреса
+													 *
+													 * @details `v6` зону очищает НАМЕРЕННО - адрес в чистом виде её не
+													 *          несёт, - а здесь она известна: встречная сторона пришла
+													 *          готовой структурой, и зона лежит в её `sin6_scope_id`.
+													 *          Без возврата дейтаграммный сервер отдавал запись без
+													 *          хвоста устройства, тогда как поточный отдавал с ним:
+													 *          тот идёт через `source`, зону сохраняющий
+													 *
+													 */
+													if(::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_scope_id > 0){
+														// Буфер названия устройства зоны адреса
+														char zone[IF_NAMESIZE];
+														// Выполняем перевод номера устройства зоны в его название
+														if(::if_indextoname(::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_scope_id, zone) != nullptr)
+															// Устанавливаем название устройства зоны адреса
+															this->_addr.zone(zone);
+														// Если устройства с таким номером в системе больше нет, записываем зону номером
+														else this->_addr.zone(::to_string(::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_scope_id));
+													}
 													// Выводим результат
 													return static_cast <string> (this->_addr);
 												}
@@ -51976,6 +52379,30 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address = ::move(addr);
 											// Выполняем извлечение сетевых параметров
 											this->_eth.addr.fillSource(server->state.node, src);
+											/**
+											 * Переносим зону, названную самой записью адреса
+											 *
+											 * @details Разбор записи `fe80::1%eth0` зону извлекает и хранит, а
+											 *          `fillSource` вывести её не может: он берёт её либо из
+											 *          хекстета, встроенного наследием KAME, либо из названия
+											 *          устройства - а здесь нет ни того, ни другого. Без переноса
+											 *          зона остаётся нулевой, и привязка к канальному адресу
+											 *          отвечает «Can't assign requested address»
+											 *
+											 * @note Зона записывается названием устройства либо его номером;
+											 *       неизвестное название даёт ноль, что равносильно её отсутствию
+											 *
+											 */
+											if(!this->_addr.zone().empty() && (awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->zone == 0)){
+												// Выполняем перевод названия устройства зоны в его номер
+												uint32_t zone = ::if_nametoindex(this->_addr.zone().c_str());
+												// Если название устройства не распознано, пробуем прочесть зону номером
+												if(zone == 0)
+													// Выполняем чтение зоны адреса записанной номером устройства
+													zone = static_cast <uint32_t> (::strtoul(this->_addr.zone().c_str(), nullptr, 10));
+												// Устанавливаем номер устройства зоны адреса
+												awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->zone = zone;
+											}
 											// Если MAC-адрес успешно получен
 											if((result = ((own == net_addr_t::own_t::LAN) || (own == net_addr_t::own_t::SYS) ||
 											   (::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], ::__awh_zero_mac__, 6) != 0)))){
@@ -53935,6 +54362,8 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 									value = make_unique <net::addr_net_ipv6_t> ();
 								// Устанавливаем полученный IPv6-адрес
 								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (value.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (peer->remote.get())->ip.get())->address[0], 16);
+								// Переносим зону адреса: без неё канальный адрес выдачи неоднозначен
+								awh_cast <net::addr_net_ipv6_t *> (value.get())->zone = awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (peer->remote.get())->ip.get())->zone;
 							} break;
 							// Если узел является одноранговым узлом-источником
 							case static_cast <uint8_t> (event::node_t::ORIGIN): {
@@ -53950,6 +54379,8 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 									value = make_unique <net::addr_net_ipv6_t> ();
 								// Устанавливаем полученный IPv6-адрес
 								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (value.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (origin->remote.get())->ip.get())->address[0], 16);
+								// Переносим зону адреса: без неё канальный адрес выдачи неоднозначен
+								awh_cast <net::addr_net_ipv6_t *> (value.get())->zone = awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (origin->remote.get())->ip.get())->zone;
 							} break;
 							// Если узел является туннелем
 							case static_cast <uint8_t> (event::node_t::TUNNEL): {
@@ -53965,6 +54396,8 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 									value = make_unique <net::addr_net_ipv6_t> ();
 								// Устанавливаем полученный IPv6-адрес
 								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (value.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (tunnel->source.get())->address[0], 16);
+								// Переносим зону адреса: без неё канальный адрес выдачи неоднозначен
+								awh_cast <net::addr_net_ipv6_t *> (value.get())->zone = awh_cast <net::addr_net_ipv6_t *> (tunnel->source.get())->zone;
 							} break;
 							// Если узел является посредником
 							case static_cast <uint8_t> (event::node_t::MEDIATOR): {
@@ -53980,6 +54413,8 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 									value = make_unique <net::addr_net_ipv6_t> ();
 								// Устанавливаем полученный IPv6-адрес хоста
 								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (value.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (mediator->host.get())->address[0], 16);
+								// Переносим зону адреса: без неё канальный адрес выдачи неоднозначен
+								awh_cast <net::addr_net_ipv6_t *> (value.get())->zone = awh_cast <net::addr_net_ipv6_t *> (mediator->host.get())->zone;
 							} break;
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -54014,6 +54449,8 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 								}
 								// Устанавливаем полученный IPv6-адрес
 								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (value.get())->address[0], &awh_cast <const net::addr_net_ipv6_t *> (origin)->address[0], 16);
+								// Переносим зону адреса: без неё канальный адрес выдачи неоднозначен
+								awh_cast <net::addr_net_ipv6_t *> (value.get())->zone = awh_cast <const net::addr_net_ipv6_t *> (origin)->zone;
 							} break;
 							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER): {
@@ -54043,6 +54480,8 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 												if(::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_port > 0){
 													// Копируем полученный IPv6-адрес во временный буфер
 													::memcpy(&awh_cast <net::addr_net_ipv6_t *> (value.get())->address[0], ::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_addr.s6_addr, 16);
+													// Переносим зону адреса: без неё канальный адрес выдачи неоднозначен
+													awh_cast <net::addr_net_ipv6_t *> (value.get())->zone = ::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_scope_id;
 													// Выводим результат
 													return result;
 												}
@@ -54050,6 +54489,8 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 										}
 										// Устанавливаем полученный IPv6-адрес
 										::memcpy(&awh_cast <net::addr_net_ipv6_t *> (value.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (server->host.get())->ip.get())->address[0], 16);
+										// Переносим зону адреса: без неё канальный адрес выдачи неоднозначен
+										awh_cast <net::addr_net_ipv6_t *> (value.get())->zone = awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (server->host.get())->ip.get())->zone;
 									} break;
 								}
 							} break;
@@ -55073,6 +55514,12 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										tunnel->source = make_unique <net::addr_net_ipv6_t> ();
 									// Устанавливаем полученный IP-адрес в источник сетевого адреса туннеля
 									awh_cast <net::addr_net_ipv6_t *> (tunnel->source.get())->address = ::move(awh_cast <const net::addr_net_ipv6_t *> (value)->address);
+									// Переносим зону вслед за адресом
+									/**
+									 * @warning Перенос брал у поданного объекта ОДНО поле адреса, и зона терялась
+									 *          молча. Закреплено проверкой IoNodeKeepsAddressZoneByObjectTest
+									 */
+									awh_cast <net::addr_net_ipv6_t *> (tunnel->source.get())->zone = awh_cast <const net::addr_net_ipv6_t *> (value)->zone;
 								// Если типы адресов не соответствуют
 								} else {
 									// Если установлена функция обратного вызова
@@ -55117,6 +55564,12 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										mediator->host = make_unique <net::addr_net_ipv6_t> ();
 									// Устанавливаем полученный IP-адрес в хост посредника
 									awh_cast <net::addr_net_ipv6_t *> (mediator->host.get())->address = ::move(awh_cast <const net::addr_net_ipv6_t *> (value)->address);
+									// Переносим зону вслед за адресом
+									/**
+									 * @warning Перенос брал у поданного объекта ОДНО поле адреса, и зона терялась
+									 *          молча. Закреплено проверкой IoNodeKeepsAddressZoneByObjectTest
+									 */
+									awh_cast <net::addr_net_ipv6_t *> (mediator->host.get())->zone = awh_cast <const net::addr_net_ipv6_t *> (value)->zone;
 								// Если типы адресов не соответствуют
 								} else {
 									// Если установлена функция обратного вызова
@@ -55190,6 +55643,18 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 									awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address = ::move(addr);
 									// Выполняем извлечение сетевых параметров
 									this->_eth.addr.fillSource(client->state.node, src);
+									/**
+									 * Возвращаем зону, поданную вместе с адресом
+									 *
+									 * @warning Ставится ПОСЛЕ извлечения параметров устройства: fillSource выводит
+									 *          зону сам и поданную затирает. Заказ потребителя весомее вывода
+									 *
+									 * @note Нуль зоной не считается: он значит «зона не названа», и затирать им
+									 *       выведенную нельзя
+									 */
+									if(awh_cast <const net::addr_net_ipv6_t *> (value)->zone > 0)
+										// Ставим зону, названную подателем адреса
+										awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->zone = awh_cast <const net::addr_net_ipv6_t *> (value)->zone;
 									// Если MAC-адрес успешно получен
 									if((result = ((own == net_addr_t::own_t::LAN) || (own == net_addr_t::own_t::SYS) ||
 									   (::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], ::__awh_zero_mac__, 6) != 0)))){
@@ -55305,6 +55770,18 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address = ::move(addr);
 										// Выполняем извлечение сетевых параметров
 										this->_eth.addr.fillSource(server->state.node, src);
+										/**
+										 * Возвращаем зону, поданную вместе с адресом
+										 *
+										 * @warning Ставится ПОСЛЕ извлечения параметров устройства: fillSource выводит
+										 *          зону сам и поданную затирает. Заказ потребителя весомее вывода
+										 *
+										 * @note Нуль зоной не считается: он значит «зона не названа», и затирать им
+										 *       выведенную нельзя
+										 */
+										if(awh_cast <const net::addr_net_ipv6_t *> (value)->zone > 0)
+											// Ставим зону, названную подателем адреса
+											awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->zone = awh_cast <const net::addr_net_ipv6_t *> (value)->zone;
 										// Если MAC-адрес успешно получен
 										if((result = ((own == net_addr_t::own_t::LAN) || (own == net_addr_t::own_t::SYS) ||
 										   (::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], ::__awh_zero_mac__, 6) != 0)))){

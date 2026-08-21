@@ -207,6 +207,18 @@ namespace awh {
 			private:
 				// Размер страницы, узнаваемый у системы однажды
 				size_t _granularity;
+				/**
+				 * Признак просьбы о крупных страницах
+				 *
+				 * Именно ПРОСЬБЫ: крупные страницы у всех наших систем требуют либо
+				 * заранее отведённого запаса, либо особого права, и отказ в них - обычный
+				 * исход, а не дефект. Не вышло - берём обычные, о чём договор и говорит
+				 * словом «просить»
+				 */
+				// Признак просьбы о крупных страницах
+				bool _superpages;
+				// Число областей, доставшихся крупными страницами
+				size_t _superpaged;
 			private:
 				/**
 				 * @brief Метод определения размера страницы у системы
@@ -226,6 +238,39 @@ namespace awh {
 				 *
 				 */
 				void * alloc(const size_t size, const size_t alignment, size_t & actual) noexcept override;
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод включения просьбы о крупных страницах
+				 *
+				 * @note Действует на выдачи, идущие ПОСЛЕ него: уже отведённые области
+				 *       крупными страницами задним числом не станут
+				 *
+				 * @param wanted признак просьбы о крупных страницах
+				 *
+				 * \~english
+				 * @brief Method of enabling the request for huge pages
+				 *
+				 * @param wanted huge pages request flag
+				 *
+				 */
+				void superpages(const bool wanted) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод получения числа областей, доставшихся крупными страницами
+				 *
+				 * @note Нуль при включённой просьбе означает лишь отказ системы: у всех
+				 *       наших систем крупные страницы требуют запаса либо права
+				 *
+				 * @return число областей, доставшихся крупными страницами
+				 *
+				 * \~english
+				 * @brief Method of getting the number of spans backed by huge pages
+				 *
+				 * @return number of spans backed by huge pages
+				 *
+				 */
+				size_t superpaged() const noexcept;
 				/**
 				 * @brief Метод отдачи содержимого страниц системе
 				 *
@@ -269,7 +314,7 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				SystemSource() noexcept : _granularity(0) {}
+				SystemSource() noexcept : _granularity(0), _superpages(false), _superpaged(0) {}
 		} system_source_t;
 	};
 };
