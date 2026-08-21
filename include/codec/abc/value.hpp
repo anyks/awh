@@ -1016,6 +1016,322 @@ namespace awh {
 					 */
 					~Value() noexcept;
 			} value_t;
+
+			/**
+			 * \~russian
+			 * @brief Класс потоковой сборки владеющего значения ABC
+			 *
+			 * @details Сборка ведёт вместилища сама и избавляет потребителя от обхода
+			 * собираемого дерева: открытое вместилище помнится путём, а не ссылкою.
+			 * Договор тот же, что у сборок прочих кодеков, - разнятся лишь имена
+			 * вместилищ, `map` и `array` вместо `table` и `array` у TOML
+			 *
+			 * \~english
+			 * @brief Class of the streaming assembly of an owning value of ABC
+			 * @details The assembly leads the containers itself and relieves the consumer of the traversal
+			 * of the tree being assembled: an opened container is remembered by a path, not by a reference.
+			 * The contract is the same as that of the assemblies of the other containers
+			 *
+			 * \~
+			 */
+			typedef class __AWH_SHARED_EXPORT__ Builder {
+				private:
+					// Собираемое значение
+					Value _root;
+				private:
+					/**
+					 * \~russian
+					 * Путь к вместилищу, сборкой открытому
+					 *
+					 * @details Путь хранится номерами, а не указателями: значения вместилища
+					 * лежат в перечне, и всякое добавление переселяет его в памяти, отчего
+					 * указатель на открытое вместилище стал бы висячим на первой же паре
+					 *
+					 * \~english
+					 * @brief Path to the container opened by the assembly
+					 * @details The path is stored by numbers, not by pointers
+					 *
+					 * \~
+					 */
+					vector <size_t> _path;
+				private:
+					// Имя поля отображения, сборкой назначенное
+					string _key;
+				private:
+					// Признак назначенного имени поля отображения
+					bool _keyed;
+				private:
+					/**
+					 * \~russian
+					 * Признак завершённости сборки
+					 *
+					 * @details Признак нужен затем, что закрытие корневого вместилища путь
+					 * опустошает, а опустошённый путь неотличим от несобранного значения
+					 *
+					 * \~english
+					 * @brief Flag of the completeness of the assembly
+					 * @details The flag is needed because the closing of the root container empties the path
+					 *
+					 * \~
+					 */
+					bool _done;
+				private:
+					/**
+					 * \~russian
+					 * @brief Метод получения вместилища, сборкой открытого
+					 *
+					 * @return ссылка на открытое вместилище
+					 *
+					 * \~english
+					 * @brief Method of the obtaining of the container opened by the assembly
+					 * @return reference to the opened container
+					 *
+					 * \~
+					 */
+					Value & opened() noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод занесения собранного значения во вместилище
+					 *
+					 * @param value заносимое значение
+					 * @return      номер занесённого значения во вместилище
+					 *
+					 * \~english
+					 * @brief Method of the depositing of an assembled value into the container
+					 * @param value value being deposited
+					 * @return number of the deposited value in the container
+					 *
+					 * \~
+					 */
+					size_t deposit(Value && value) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод открытия вместилища затребованного вида
+					 *
+					 * @param value открываемое вместилище
+					 * @return      признак успешности открытия
+					 *
+					 * \~english
+					 * @brief Method of the opening of a container of the requested kind
+					 * @param value container being opened
+					 * @return sign of the success of the opening
+					 *
+					 * \~
+					 */
+					bool expand(Value && value) noexcept;
+				public:
+					/**
+					 * \~russian
+					 * @brief Метод открытия отображения
+					 *
+					 * @return признак успешности открытия
+					 *
+					 * \~english
+					 * @brief Method of the opening of a mapping
+					 * @return sign of the success of the opening
+					 *
+					 * \~
+					 */
+					bool map() noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод открытия перечня значений
+					 *
+					 * @return признак успешности открытия
+					 *
+					 * \~english
+					 * @brief Method of the opening of a list of the values
+					 * @return sign of the success of the opening
+					 *
+					 * \~
+					 */
+					bool array() noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод закрытия открытого вместилища
+					 *
+					 * @return признак успешности закрытия
+					 *
+					 * \~english
+					 * @brief Method of the closing of the opened container
+					 * @return sign of the success of the closing
+					 *
+					 * \~
+					 */
+					bool close() noexcept;
+				public:
+					/**
+					 * \~russian
+					 * @brief Метод назначения имени поля отображения
+					 *
+					 * @param name назначаемое имя поля отображения
+					 * @return     признак успешности назначения
+					 *
+					 * \~english
+					 * @brief Method of the assignment of the name of a field of a mapping
+					 * @param name name of the field of the mapping being assigned
+					 * @return sign of the success of the assignment
+					 *
+					 * \~
+					 */
+					bool key(const string & name) noexcept;
+				public:
+					/**
+					 * \~russian
+					 * @brief Метод записи готового значения
+					 *
+					 * @param value записываемое значение
+					 * @return      признак успешности записи
+					 *
+					 * \~english
+					 * @brief Method of the writing of a ready value
+					 * @param value value being written
+					 * @return sign of the success of the writing
+					 *
+					 * \~
+					 */
+					bool value(const Value & value) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод записи пустого значения
+					 *
+					 * @return признак успешности записи
+					 *
+					 * \~english
+					 * @brief Method of the writing of an empty value
+					 * @return sign of the success of the writing
+					 *
+					 * \~
+					 */
+					bool nul() noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод записи логического значения
+					 *
+					 * @param value записываемое логическое значение
+					 * @return      признак успешности записи
+					 *
+					 * \~english
+					 * @brief Method of the writing of a logical value
+					 * @param value logical value being written
+					 * @return sign of the success of the writing
+					 *
+					 * \~
+					 */
+					bool value(const bool value) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод записи целого значения со знаком
+					 *
+					 * @param value записываемое целое значение со знаком
+					 * @return      признак успешности записи
+					 *
+					 * \~english
+					 * @brief Method of the writing of a whole value with a sign
+					 * @param value whole value with a sign being written
+					 * @return sign of the success of the writing
+					 *
+					 * \~
+					 */
+					bool value(const int64_t value) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод записи целого значения без знака
+					 *
+					 * @param value записываемое целое значение без знака
+					 * @return      признак успешности записи
+					 *
+					 * \~english
+					 * @brief Method of the writing of a whole value without a sign
+					 * @param value whole value without a sign being written
+					 * @return sign of the success of the writing
+					 *
+					 * \~
+					 */
+					bool value(const uint64_t value) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод записи дробного значения
+					 *
+					 * @param value записываемое дробное значение
+					 * @return      признак успешности записи
+					 *
+					 * \~english
+					 * @brief Method of the writing of a fractional value
+					 * @param value fractional value being written
+					 * @return sign of the success of the writing
+					 *
+					 * \~
+					 */
+					bool value(const double value) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод записи строкового значения
+					 *
+					 * @param value записываемое строковое значение
+					 * @return      признак успешности записи
+					 *
+					 * \~english
+					 * @brief Method of the writing of a string value
+					 * @param value string value being written
+					 * @return sign of the success of the writing
+					 *
+					 * \~
+					 */
+					bool value(const string & value) noexcept;
+				public:
+					/**
+					 * \~russian
+					 * @brief Метод извлечения глубины открытых вместилищ
+					 *
+					 * @return глубина открытых вместилищ
+					 *
+					 * \~english
+					 * @brief Method of the extraction of the depth of the opened containers
+					 * @return depth of the opened containers
+					 *
+					 * \~
+					 */
+					size_t depth() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод сброса сборки в исходное состояние
+					 *
+					 * \~english
+					 * @brief Method of the reset of the assembly to the initial state
+					 *
+					 * \~
+					 */
+					void reset() noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод изъятия собранного значения
+					 *
+					 * @details Сборка после изъятия сбрасывается в исходное состояние и
+					 * годна к сборке следующего значения
+					 *
+					 * @return собранное значение
+					 *
+					 * \~english
+					 * @brief Method of the withdrawal of the assembled value
+					 * @details The assembly is reset to the initial state after the withdrawal
+					 * @return assembled value
+					 *
+					 * \~
+					 */
+					Value finish() noexcept;
+				public:
+					/**
+					 * \~russian
+					 * @brief Конструктор
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
+					 */
+					Builder() noexcept;
+			} builder_t;
 		};
 	};
 };

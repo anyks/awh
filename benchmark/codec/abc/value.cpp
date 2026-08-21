@@ -100,6 +100,18 @@ namespace {
 	 */
 	static constexpr double ASSEMBLY_THRESHOLD = 27000.0;
 	/**
+	 * @brief Порог пропускной способности потоковой сборки значения
+	 *
+	 * @details Сборка ведёт вместилища сама, и показатель этот стережёт цену ведения:
+	 *          путь к открытому вместилищу проходится на всякой записи, и хранение его
+	 *          указателями вместо номеров обратило бы сборку в порчу памяти, а хранение
+	 *          ссылками - в висячие ссылки на первом же добавлении
+	 *
+	 * @warning ПОРОГ ЭТОТ ВРЕМЕННЫЙ, снят по одной рабочей машине
+	 *
+	 */
+	static constexpr double BUILD_SERVICE_THRESHOLD = 30.0;
+	/**
 	 * @brief Порог скорости поиска значения по имени
 	 *
 	 * @details Сценарий этот ПАРНЫЙ сборке вызовами и заведён потому, что та стережёт
@@ -315,6 +327,49 @@ namespace {
 		return result;
 	}
 	/**
+	 * @brief Функция прогона сценария потоковой сборки значения
+	 *
+	 * @return результат измерения
+	 *
+	 */
+	static awh::benchmark::result_t buildService() noexcept {
+		// Результат измерения
+		awh::benchmark::result_t result;
+		// Разбираемая запись
+		const vector <uint8_t> & record = service();
+		// Выполняем прогон измеряемой операции
+		const outcome_t outcome = measure(record.size(), SMALL_ROUNDS, []() noexcept {
+			// Потоковая сборка владеющего значения
+			awh::codec::abc::builder_t builder;
+			// Выполняем сборку значения записи ответа службы
+			if(!(builder.map() &&
+			     builder.key("active") && builder.value(true) &&
+			     builder.key("amount") && builder.value(static_cast <double> (42.5)) &&
+			     builder.key("id") && builder.value(static_cast <uint64_t> (17)) &&
+			     builder.key("name") && builder.value(string("Товар")) &&
+			     builder.key("note") && builder.nul() &&
+			     builder.key("tags") && builder.array() &&
+			     builder.value(string("один")) && builder.value(string("два")) &&
+			     builder.close() && builder.close()))
+				// Выводим нулевое количество значений
+				return static_cast <uint64_t> (0);
+			// Выполняем изъятие собранного значения
+			const awh::codec::abc::value_t value = builder.finish();
+			// Выводим количество значений собранного значения
+			return static_cast <uint64_t> (value.size() + 1);
+		});
+		// Если сценарий работы не выполнил
+		if(!worked(outcome, result))
+			// Выводим результат измерения
+			return result;
+		// Устанавливаем измеренное значение
+		result.value = perSecond(outcome);
+		// Устанавливаем сведения о прогоне
+		result.details = details(outcome);
+		// Выводим результат измерения
+		return result;
+	}
+	/**
 	 * @brief Функция прогона сценария поиска значения по имени
 	 *
 	 * @details Отображение собирается до замера, чтобы сборка и поиск не скрывали друг
@@ -428,6 +483,13 @@ namespace {
 	static const bool ASSEMBLY_REGISTERED = awh::benchmark::add(
 		"codec/abc: сборка значения вызовами", "уст./с", ASSEMBLY_THRESHOLD,
 		awh::benchmark::bound_t::MINIMUM, assembly
+	);
+	/**
+	 * Выполняем регистрацию сценария потоковой сборки значения
+	 */
+	static const bool BUILD_REGISTERED = awh::benchmark::add(
+		"codec/abc: потоковая сборка значения", "МБ/с", BUILD_SERVICE_THRESHOLD,
+		awh::benchmark::bound_t::MINIMUM, buildService
 	);
 	/**
 	 * Выполняем регистрацию сценария поиска значения по имени
