@@ -261,6 +261,8 @@ bool awh::codec::toml::Value::empty() const noexcept {
  *
  */
 void awh::codec::toml::Value::clear() noexcept {
+	// Выполняем снос указателя поиска
+	this->unindex();
 	// Выполняем сброс типа хранимого значения
 	this->_type = type_t::NONE;
 	// Выполняем сброс записи строкового значения
@@ -461,19 +463,64 @@ bool awh::codec::toml::Value::contains(const string & name) const noexcept {
 	if(this->_type != type_t::TABLE)
 		// Выводим отсутствие пары таблицы
 		return false;
+	// Выводим признак того, что пара таблицы разыскана
+	return (this->locate(name) < this->_names.size());
+}
+/**
+ * @brief Метод разыскания пары по имени
+ *
+ * @param name имя разыскиваемой пары
+ * @return     номер пары, размер вместилища при отсутствии
+ *
+ */
+size_t awh::codec::toml::Value::locate(const string & name) const noexcept {
 	/**
-	 * Выполняем перебор имён пар таблицы
+	 * Если пар меньше порога заведения указателя
+	 *
+	 * @note Перебор при малом числе пар дешевле всякого указателя: сличение имён идёт по
+	 *       памяти подряд, тогда как заведение указателя стоит выделения памяти и счёта
+	 *       отпечатка на всякое имя
 	 */
-	for(auto & item : this->_names){
+	if(this->_names.size() < static_cast <size_t> (INDEX_THRESHOLD)){
 		/**
-		 * Если имя пары таблицы совпадает с разыскиваемым
+		 * Выполняем перебор имён пар вместилища
 		 */
-		if(item.compare(name) == 0)
-			// Выводим наличие пары таблицы
-			return true;
+		for(size_t i = 0; i < this->_names.size(); i++){
+			// Если имя пары совпадает с разыскиваемым
+			if(this->_names.at(i).compare(name) == 0)
+				// Выводим номер разысканной пары
+				return i;
+		}
+		// Выводим признак отсутствия пары
+		return this->_names.size();
 	}
-	// Выводим отсутствие пары таблицы
-	return false;
+	/**
+	 * Если указатель поиска ещё не заведён
+	 */
+	if(!this->_index){
+		// Выполняем заведение указателя поиска
+		this->_index.reset(new unordered_map <string, size_t>());
+		// Резервируем место под имена пар вместилища
+		this->_index->reserve(this->_names.size());
+		/**
+		 * Выполняем перебор имён пар вместилища
+		 */
+		for(size_t i = 0; i < this->_names.size(); i++)
+			// Выполняем добавление имени пары в указатель поиска
+			this->_index->emplace(this->_names.at(i), i);
+	}
+	// Выполняем поиск затребованного имени пары
+	auto i = this->_index->find(name);
+	// Выводим номер разысканной пары
+	return ((i != this->_index->end()) ? i->second : this->_names.size());
+}
+/**
+ * @brief Метод сноса указателя поиска
+ *
+ */
+void awh::codec::toml::Value::unindex() noexcept {
+	// Выполняем снос заведённого указателя поиска
+	this->_index.reset(nullptr);
 }
 /**
  * @brief Оператор обращения к паре таблицы по имени
@@ -489,17 +536,12 @@ const awh::codec::toml::Value & awh::codec::toml::Value::operator [] (const stri
 	if(this->_type != type_t::TABLE)
 		// Выводим неопределённое значение
 		return ::missing();
-	/**
-	 * Выполняем перебор имён пар таблицы
-	 */
-	for(size_t i = 0; i < this->_names.size(); i++){
-		/**
-		 * Если имя пары таблицы совпадает с разыскиваемым
-		 */
-		if(this->_names.at(i).compare(name) == 0)
-			// Выводим значение разысканной пары таблицы
-			return this->_items.at(i);
-	}
+	// Выполняем разыскание затребованной пары таблицы
+	const size_t found = this->locate(name);
+	// Если пара таблицы разыскана
+	if(found < this->_items.size())
+		// Выводим значение разысканной пары таблицы
+		return this->_items.at(found);
 	// Выводим неопределённое значение
 	return ::missing();
 }
@@ -524,17 +566,21 @@ awh::codec::toml::Value & awh::codec::toml::Value::operator [] (const string & n
 		// Назначаем значению тип таблицы
 		this->_type = type_t::TABLE;
 	}
+	// Выполняем разыскание затребованной пары таблицы
+	const size_t found = this->locate(name);
+	// Если пара таблицы разыскана
+	if(found < this->_items.size())
+		// Выводим значение разысканной пары таблицы
+		return this->_items.at(found);
 	/**
-	 * Выполняем перебор имён пар таблицы
+	 * Если указатель поиска заведён, ведём его приращением
+	 *
+	 * @note Приращение обязательно: перестроение указателя на всякой правке вернуло бы ту
+	 *       самую квадратичность, от какой указатель и заводится
 	 */
-	for(size_t i = 0; i < this->_names.size(); i++){
-		/**
-		 * Если имя пары таблицы совпадает с разыскиваемым
-		 */
-		if(this->_names.at(i).compare(name) == 0)
-			// Выводим значение разысканной пары таблицы
-			return this->_items.at(i);
-	}
+	if(this->_index)
+		// Выполняем добавление заводимого имени в указатель поиска
+		this->_index->emplace(name, this->_names.size());
 	// Выполняем добавление имени заводимой пары таблицы
 	this->_names.push_back(name);
 	// Выполняем добавление значения заводимой пары таблицы
@@ -815,24 +861,25 @@ bool awh::codec::toml::Value::insert(const string & name, const Value & value) n
 		// Назначаем значению тип таблицы
 		this->_type = type_t::TABLE;
 	}
+	// Выполняем разыскание устанавливаемой пары таблицы
+	const size_t found = this->locate(name);
 	/**
-	 * Выполняем перебор имён пар таблицы
+	 * Если пара таблицы разыскана
+	 *
+	 * @note Перезапись ведётся на прежнем месте: порядок пар задан потребителем, и
+	 *       перестановка их при перезаписи меняла бы вид записанного текста без его на то
+	 *       воли
 	 */
-	for(size_t i = 0; i < this->_names.size(); i++){
-		/**
-		 * Если имя пары таблицы совпадает с устанавливаемым
-		 *
-		 * @note Перезапись ведётся на прежнем месте: порядок пар задан потребителем, и
-		 *       перестановка их при перезаписи меняла бы вид записанного текста без его
-		 *       на то воли
-		 */
-		if(this->_names.at(i).compare(name) == 0){
-			// Выполняем перезапись значения пары таблицы
-			this->_items.at(i) = value;
-			// Выводим признак успешной установки
-			return true;
-		}
+	if(found < this->_items.size()){
+		// Выполняем перезапись значения пары таблицы
+		this->_items.at(found) = value;
+		// Выводим признак успешной установки
+		return true;
 	}
+	// Если указатель поиска заведён, ведём его приращением
+	if(this->_index)
+		// Выполняем добавление заводимого имени в указатель поиска
+		this->_index->emplace(name, this->_names.size());
 	// Выполняем добавление имени заводимой пары таблицы
 	this->_names.push_back(name);
 	// Выполняем добавление значения заводимой пары таблицы
@@ -884,6 +931,8 @@ bool awh::codec::toml::Value::erase(const string & name) noexcept {
 			this->_names.erase(this->_names.begin() + static_cast <ptrdiff_t> (i));
 			// Выполняем удаление значения пары таблицы
 			this->_items.erase(this->_items.begin() + static_cast <ptrdiff_t> (i));
+			// Выполняем снос указателя поиска
+			this->unindex();
 			// Выводим признак успешного удаления
 			return true;
 		}
@@ -916,6 +965,13 @@ bool awh::codec::toml::Value::erase(const size_t index) noexcept {
 		this->_names.erase(this->_names.begin() + static_cast <ptrdiff_t> (index));
 	// Выполняем удаление значения вместилища
 	this->_items.erase(this->_items.begin() + static_cast <ptrdiff_t> (index));
+	/**
+	 * Выполняем снос указателя поиска
+	 *
+	 * @note Сносится он целиком, а не чинится: удаление сдвигает номера всех пар после
+	 *       удалённой, и починка обошлась бы дороже заведения заново
+	 */
+	this->unindex();
 	// Выводим признак успешного удаления
 	return true;
 }
@@ -1255,6 +1311,8 @@ awh::codec::toml::Value & awh::codec::toml::Value::operator = (const Value & val
 	this->_text = value._text;
 	// Выполняем копирование имён пар таблицы
 	this->_names = value._names;
+	// Выполняем снос указателя поиска: заведётся он заново при первом же поиске
+	this->unindex();
 	// Выполняем копирование значений вместилища
 	this->_items = value._items;
 	// Выводим ссылку на текущее значение
@@ -1294,6 +1352,8 @@ awh::codec::toml::Value & awh::codec::toml::Value::operator = (Value && value) n
 	this->_text = ::std::move(value._text);
 	// Выполняем перенос имён пар таблицы
 	this->_names = ::std::move(value._names);
+	// Выполняем перенесение указателя поиска вместе с именами
+	this->_index = ::std::move(value._index);
 	// Выполняем перенос значений вместилища
 	this->_items = ::std::move(value._items);
 	/**
@@ -1402,7 +1462,8 @@ awh::codec::toml::Value::Value(Value && value) noexcept :
  _type(value._type), _quoting(value._quoting), _radix(value._radix),
  _boolean(value._boolean), _multiline(value._multiline), _integer(value._integer),
  _real(value._real), _stamp(value._stamp), _text(::std::move(value._text)),
- _names(::std::move(value._names)), _items(::std::move(value._items)) {
+ _names(::std::move(value._names)), _items(::std::move(value._items)),
+ _index(::std::move(value._index)) {
 	// Выполняем сброс перенесённого значения
 	value._type = type_t::NONE;
 }

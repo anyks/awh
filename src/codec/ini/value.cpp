@@ -231,6 +231,8 @@ bool awh::codec::ini::Value::empty() const noexcept {
  *
  */
 void awh::codec::ini::Value::clear() noexcept {
+	// Выполняем снос указателя поиска
+	this->unindex();
 	// Выполняем сброс типа хранимого значения
 	this->_type = type_t::NONE;
 	// Выполняем сброс признака значения, записанного в кавычках
@@ -306,16 +308,64 @@ bool awh::codec::ini::Value::contains(const string & name) const noexcept {
 	/**
 	 * Выполняем перебор имён пар вместилища
 	 */
-	for(auto & item : this->_names){
+	// Выводим признак того, что пары вместилища разыскана
+	return (this->locate(name) < this->_names.size());
+}
+/**
+ * @brief Метод разыскания пары по имени
+ *
+ * @param name имя разыскиваемой пары
+ * @return     номер пары, размер вместилища при отсутствии
+ *
+ */
+size_t awh::codec::ini::Value::locate(const string & name) const noexcept {
+	/**
+	 * Если пар меньше порога заведения указателя
+	 *
+	 * @note Перебор при малом числе пар дешевле всякого указателя: сличение имён идёт по
+	 *       памяти подряд, тогда как заведение указателя стоит выделения памяти и счёта
+	 *       отпечатка на всякое имя
+	 */
+	if(this->_names.size() < static_cast <size_t> (INDEX_THRESHOLD)){
 		/**
-		 * Если имя пары вместилища совпадает с разыскиваемым
+		 * Выполняем перебор имён пар вместилища
 		 */
-		if(item.compare(name) == 0)
-			// Выводим наличие пары вместилища
-			return true;
+		for(size_t i = 0; i < this->_names.size(); i++){
+			// Если имя пары совпадает с разыскиваемым
+			if(this->_names.at(i).compare(name) == 0)
+				// Выводим номер разысканной пары
+				return i;
+		}
+		// Выводим признак отсутствия пары
+		return this->_names.size();
 	}
-	// Выводим отсутствие пары вместилища
-	return false;
+	/**
+	 * Если указатель поиска ещё не заведён
+	 */
+	if(!this->_index){
+		// Выполняем заведение указателя поиска
+		this->_index.reset(new unordered_map <string, size_t>());
+		// Резервируем место под имена пар вместилища
+		this->_index->reserve(this->_names.size());
+		/**
+		 * Выполняем перебор имён пар вместилища
+		 */
+		for(size_t i = 0; i < this->_names.size(); i++)
+			// Выполняем добавление имени пары в указатель поиска
+			this->_index->emplace(this->_names.at(i), i);
+	}
+	// Выполняем поиск затребованного имени пары
+	auto i = this->_index->find(name);
+	// Выводим номер разысканной пары
+	return ((i != this->_index->end()) ? i->second : this->_names.size());
+}
+/**
+ * @brief Метод сноса указателя поиска
+ *
+ */
+void awh::codec::ini::Value::unindex() noexcept {
+	// Выполняем снос заведённого указателя поиска
+	this->_index.reset(nullptr);
 }
 /**
  * @brief Оператор обращения к паре вместилища по имени
@@ -334,14 +384,12 @@ const awh::codec::ini::Value & awh::codec::ini::Value::operator [] (const string
 	/**
 	 * Выполняем перебор имён пар вместилища
 	 */
-	for(size_t i = 0; i < this->_names.size(); i++){
-		/**
-		 * Если имя пары вместилища совпадает с разыскиваемым
-		 */
-		if(this->_names.at(i).compare(name) == 0)
-			// Выводим значение разысканной пары вместилища
-			return this->_items.at(i);
-	}
+	// Выполняем разыскание затребованной пары вместилища
+	const size_t found = this->locate(name);
+	// Если пары вместилища разыскана
+	if(found < this->_items.size())
+		// Выводим значение разысканной пары вместилища
+		return this->_items.at(found);
 	// Выводим неопределённое значение
 	return ::missing();
 }
@@ -368,14 +416,21 @@ awh::codec::ini::Value & awh::codec::ini::Value::operator [] (const string & nam
 	/**
 	 * Выполняем перебор имён пар вместилища
 	 */
-	for(size_t i = 0; i < this->_names.size(); i++){
-		/**
-		 * Если имя пары вместилища совпадает с разыскиваемым
-		 */
-		if(this->_names.at(i).compare(name) == 0)
-			// Выводим значение разысканной пары вместилища
-			return this->_items.at(i);
-	}
+	// Выполняем разыскание затребованной пары вместилища
+	const size_t found = this->locate(name);
+	// Если пары вместилища разыскана
+	if(found < this->_items.size())
+		// Выводим значение разысканной пары вместилища
+		return this->_items.at(found);
+	/**
+	 * Если указатель поиска заведён, ведём его приращением
+	 *
+	 * @note Приращение обязательно: перестроение указателя на всякой правке вернуло бы ту
+	 *       самую квадратичность, от какой указатель и заводится
+	 */
+	if(this->_index)
+		// Выполняем добавление заводимого имени в указатель поиска
+		this->_index->emplace(name, this->_names.size());
 	// Выполняем добавление имени заводимой пары вместилища
 	this->_names.push_back(name);
 	// Выполняем добавление значения заводимой пары вместилища
@@ -639,17 +694,24 @@ bool awh::codec::ini::Value::insert(const string & name, const Value & value) no
 	/**
 	 * Выполняем перебор имён пар вместилища
 	 */
-	for(size_t i = 0; i < this->_names.size(); i++){
-		/**
-		 * Если имя пары вместилища совпадает с устанавливаемым
-		 */
-		if(this->_names.at(i).compare(name) == 0){
-			// Выполняем перезапись значения пары вместилища
-			this->_items.at(i) = value;
-			// Выводим признак успешной установки
-			return true;
-		}
+	// Выполняем разыскание устанавливаемой пары вместилища
+	const size_t found = this->locate(name);
+	/**
+	 * Если пары вместилища разыскана
+	 *
+	 * @note Перезапись ведётся на прежнем месте: порядок пар задан потребителем, и
+	 *       перестановка их меняла бы вид записанного текста без его на то воли
+	 */
+	if(found < this->_items.size()){
+		// Выполняем перезапись значения пары вместилища
+		this->_items.at(found) = value;
+		// Выводим признак успешной установки
+		return true;
 	}
+	// Если указатель поиска заведён, ведём его приращением
+	if(this->_index)
+		// Выполняем добавление заводимого имени в указатель поиска
+		this->_index->emplace(name, this->_names.size());
 	// Выполняем добавление имени заводимой пары вместилища
 	this->_names.push_back(name);
 	// Выполняем добавление значения заводимой пары вместилища
@@ -701,6 +763,8 @@ bool awh::codec::ini::Value::erase(const string & name) noexcept {
 			this->_names.erase(this->_names.begin() + static_cast <ptrdiff_t> (i));
 			// Выполняем удаление значения пары вместилища
 			this->_items.erase(this->_items.begin() + static_cast <ptrdiff_t> (i));
+			// Выполняем снос указателя поиска
+			this->unindex();
 			// Выводим признак успешного удаления
 			return true;
 		}
@@ -730,6 +794,13 @@ bool awh::codec::ini::Value::erase(const size_t index) noexcept {
 		this->_names.erase(this->_names.begin() + static_cast <ptrdiff_t> (index));
 	// Выполняем удаление значения вместилища
 	this->_items.erase(this->_items.begin() + static_cast <ptrdiff_t> (index));
+	/**
+	 * Выполняем снос указателя поиска
+	 *
+	 * @note Сносится он целиком, а не чинится: удаление сдвигает номера всех пар после
+	 *       удалённой, и починка обошлась бы дороже заведения заново
+	 */
+	this->unindex();
 	// Выводим признак успешного удаления
 	return true;
 }
@@ -989,6 +1060,8 @@ awh::codec::ini::Value & awh::codec::ini::Value::operator = (const Value & value
 	this->_text = value._text;
 	// Выполняем копирование имён пар вместилища
 	this->_names = value._names;
+	// Выполняем снос указателя поиска: заведётся он заново при первом же поиске
+	this->unindex();
 	// Выполняем копирование значений вместилища
 	this->_items = value._items;
 	// Выводим ссылку на текущее значение
@@ -1016,6 +1089,8 @@ awh::codec::ini::Value & awh::codec::ini::Value::operator = (Value && value) noe
 	this->_text = ::std::move(value._text);
 	// Выполняем перенос имён пар вместилища
 	this->_names = ::std::move(value._names);
+	// Выполняем перенесение указателя поиска вместе с именами
+	this->_index = ::std::move(value._index);
 	// Выполняем перенос значений вместилища
 	this->_items = ::std::move(value._items);
 	/**
@@ -1075,7 +1150,8 @@ awh::codec::ini::Value::Value(const Value & value) noexcept :
  */
 awh::codec::ini::Value::Value(Value && value) noexcept :
  _type(value._type), _quoted(value._quoted), _text(::std::move(value._text)),
- _names(::std::move(value._names)), _items(::std::move(value._items)) {
+ _names(::std::move(value._names)), _items(::std::move(value._items)),
+ _index(::std::move(value._index)) {
 	// Выполняем сброс перенесённого значения
 	value._type = type_t::NONE;
 }

@@ -220,6 +220,31 @@ namespace awh {
 
 			/**
 			 * \~russian
+			 * @brief Количество пар вместилища, начиная с какого заводится указатель имён
+			 *
+			 * @details Ниже порога имя разыскивается перебором, и это дешевле всякого
+			 * указателя: сличение имён идёт по памяти подряд, а заведение указателя стоит
+			 * выделения памяти и подсчёта отпечатка на всякое имя. Выше порога перебор
+			 * обращает и сборку вместилища, и чтение его по именам в квадратичные, и
+			 * указатель окупается
+			 *
+			 * @note Указатель заводится **по требованию** - при первом обращении по имени, а
+			 * не при разборе. Вместилище, к которому по имени не обращались, не платит ничего
+			 *
+			 * \~english
+			 * @brief Number of the pairs of a container starting from which the index of the names is created
+			 * @details Below this threshold a name is searched for by an enumeration, and this is cheaper than any
+			 * index: above the threshold an enumeration turns both the assembly of a container and the reading of it
+			 * by the names into quadratic ones, and the index pays off
+			 * @note The index is created **on demand** — at the first access by a name
+			 *
+			 * \~
+			 */
+			constexpr uint32_t INDEX_THRESHOLD = 16;
+
+
+			/**
+			 * \~russian
 			 * @brief Наибольшее допустимое количество строк продолжения у одной записи
 			 *
 			 * \~english

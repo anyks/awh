@@ -272,6 +272,8 @@ bool awh::codec::yaml::Value::empty() const noexcept {
  *
  */
 void awh::codec::yaml::Value::clear() noexcept {
+	// Выполняем снос указателя поиска
+	this->unindex();
 	// Выполняем сброс вида хранимого значения
 	this->_kind = kind_t::NONE;
 	// Выполняем сброс вида хранения значения
@@ -446,16 +448,64 @@ bool awh::codec::yaml::Value::contains(const string & name) const noexcept {
 	/**
 	 * Выполняем перебор имён полей отображения
 	 */
-	for(auto & item : this->_names){
+	// Выводим признак того, что поле отображения разыскано
+	return (this->locate(name) < this->_names.size());
+}
+/**
+ * @brief Метод разыскания пары по имени
+ *
+ * @param name имя разыскиваемой пары
+ * @return     номер пары, размер вместилища при отсутствии
+ *
+ */
+size_t awh::codec::yaml::Value::locate(const string & name) const noexcept {
+	/**
+	 * Если пар меньше порога заведения указателя
+	 *
+	 * @note Перебор при малом числе пар дешевле всякого указателя: сличение имён идёт по
+	 *       памяти подряд, тогда как заведение указателя стоит выделения памяти и счёта
+	 *       отпечатка на всякое имя
+	 */
+	if(this->_names.size() < static_cast <size_t> (INDEX_THRESHOLD)){
 		/**
-		 * Если имя поля отображения совпадает с разыскиваемым
+		 * Выполняем перебор имён пар вместилища
 		 */
-		if(item.compare(name) == 0)
-			// Выводим наличие поля отображения
-			return true;
+		for(size_t i = 0; i < this->_names.size(); i++){
+			// Если имя пары совпадает с разыскиваемым
+			if(this->_names.at(i).compare(name) == 0)
+				// Выводим номер разысканной пары
+				return i;
+		}
+		// Выводим признак отсутствия пары
+		return this->_names.size();
 	}
-	// Выводим отсутствие поля отображения
-	return false;
+	/**
+	 * Если указатель поиска ещё не заведён
+	 */
+	if(!this->_index){
+		// Выполняем заведение указателя поиска
+		this->_index.reset(new unordered_map <string, size_t>());
+		// Резервируем место под имена пар вместилища
+		this->_index->reserve(this->_names.size());
+		/**
+		 * Выполняем перебор имён пар вместилища
+		 */
+		for(size_t i = 0; i < this->_names.size(); i++)
+			// Выполняем добавление имени пары в указатель поиска
+			this->_index->emplace(this->_names.at(i), i);
+	}
+	// Выполняем поиск затребованного имени пары
+	auto i = this->_index->find(name);
+	// Выводим номер разысканной пары
+	return ((i != this->_index->end()) ? i->second : this->_names.size());
+}
+/**
+ * @brief Метод сноса указателя поиска
+ *
+ */
+void awh::codec::yaml::Value::unindex() noexcept {
+	// Выполняем снос заведённого указателя поиска
+	this->_index.reset(nullptr);
 }
 /**
  * @brief Метод обращения к полю отображения по имени
@@ -474,14 +524,12 @@ const awh::codec::yaml::Value & awh::codec::yaml::Value::operator [] (const stri
 	/**
 	 * Выполняем перебор имён полей отображения
 	 */
-	for(size_t i = 0; i < this->_names.size(); i++){
-		/**
-		 * Если имя поля отображения совпадает с разыскиваемым
-		 */
-		if(this->_names.at(i).compare(name) == 0)
-			// Выводим значение разысканного поля отображения
-			return this->_items.at(i);
-	}
+	// Выполняем разыскание затребованного поля отображения
+	const size_t found = this->locate(name);
+	// Если поле отображения разыскано
+	if(found < this->_items.size())
+		// Выводим значение разысканного поля отображения
+		return this->_items.at(found);
 	// Выводим неопределённое значение
 	return ::missing();
 }
@@ -511,14 +559,21 @@ awh::codec::yaml::Value & awh::codec::yaml::Value::operator [] (const string & n
 	/**
 	 * Выполняем перебор имён полей отображения
 	 */
-	for(size_t i = 0; i < this->_names.size(); i++){
-		/**
-		 * Если имя поля отображения совпадает с разыскиваемым
-		 */
-		if(this->_names.at(i).compare(name) == 0)
-			// Выводим значение разысканного поля отображения
-			return this->_items.at(i);
-	}
+	// Выполняем разыскание затребованного поля отображения
+	const size_t found = this->locate(name);
+	// Если поле отображения разыскано
+	if(found < this->_items.size())
+		// Выводим значение разысканного поля отображения
+		return this->_items.at(found);
+	/**
+	 * Если указатель поиска заведён, ведём его приращением
+	 *
+	 * @note Приращение обязательно: перестроение указателя на всякой правке вернуло бы ту
+	 *       самую квадратичность, от какой указатель и заводится
+	 */
+	if(this->_index)
+		// Выполняем добавление заводимого имени в указатель поиска
+		this->_index->emplace(name, this->_names.size());
 	// Выполняем добавление имени заводимого поля отображения
 	this->_names.push_back(name);
 	// Выполняем добавление значения заводимого поля отображения
@@ -861,6 +916,10 @@ bool awh::codec::yaml::Value::insert(const string & name, const Value & value) n
 			return true;
 		}
 	}
+	// Если указатель поиска заведён, ведём его приращением
+	if(this->_index)
+		// Выполняем добавление заводимого имени в указатель поиска
+		this->_index->emplace(name, this->_names.size());
 	// Выполняем добавление имени заводимого поля отображения
 	this->_names.push_back(name);
 	// Выполняем добавление значения заводимого поля отображения
@@ -899,6 +958,16 @@ bool awh::codec::yaml::Value::append(const string & name, const Value & value) n
 	 *       разбор с настройкой `duplicate_t::KEEP` удерживает все вхождения
 	 *       повторяющегося имени, и воспроизвести такое отображение установкой нельзя
 	 */
+	/**
+	 * Если указатель поиска заведён, ведём его приращением
+	 *
+	 * @note Занесение ведётся `emplace`, а не присваиванием: имена здесь ВПРАВЕ
+	 *       повторяться, и указатель обязан держать ПЕРВОЕ вхождение - ровно то, какое
+	 *       отдавал перебор
+	 */
+	if(this->_index)
+		// Выполняем добавление заводимого имени в указатель поиска
+		this->_index->emplace(name, this->_names.size());
 	this->_names.push_back(name);
 	// Выполняем добавление значения заводимого поля отображения
 	this->_items.push_back(value);
@@ -931,6 +1000,8 @@ bool awh::codec::yaml::Value::erase(const string & name) noexcept {
 			this->_names.erase(std::next(this->_names.begin(), static_cast <ptrdiff_t> (i)));
 			// Выполняем снятие значения поля отображения
 			this->_items.erase(std::next(this->_items.begin(), static_cast <ptrdiff_t> (i)));
+			// Выполняем снос указателя поиска
+			this->unindex();
 			// Выводим признак успешного снятия
 			return true;
 		}
@@ -960,6 +1031,13 @@ bool awh::codec::yaml::Value::erase(const size_t index) noexcept {
 		this->_names.erase(std::next(this->_names.begin(), static_cast <ptrdiff_t> (index)));
 	// Выполняем снятие значения вместилища
 	this->_items.erase(std::next(this->_items.begin(), static_cast <ptrdiff_t> (index)));
+	/**
+	 * Выполняем снос указателя поиска
+	 *
+	 * @note Сносится он целиком, а не чинится: снятие сдвигает номера всех полей после
+	 *       снятого, и починка обошлась бы дороже заведения заново
+	 */
+	this->unindex();
 	// Выводим признак успешного снятия
 	return true;
 }
@@ -1900,6 +1978,8 @@ awh::codec::yaml::Value & awh::codec::yaml::Value::operator = (const Value & val
 	this->_tag = value._tag;
 	// Выполняем копирование имён полей отображения
 	this->_names = value._names;
+	// Выполняем снос указателя поиска: заведётся он заново при первом же поиске
+	this->unindex();
 	// Выполняем копирование значений вместилища
 	this->_items = value._items;
 	// Выводим ссылку на текущее значение
@@ -1941,6 +2021,8 @@ awh::codec::yaml::Value & awh::codec::yaml::Value::operator = (Value && value) n
 	this->_tag = std::move(value._tag);
 	// Выполняем перенос имён полей отображения
 	this->_names = std::move(value._names);
+	// Выполняем перенесение указателя поиска вместе с именами
+	this->_index = std::move(value._index);
 	// Выполняем перенос значений вместилища
 	this->_items = std::move(value._items);
 	// Выполняем сброс перенесённого значения

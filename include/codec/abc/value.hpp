@@ -33,11 +33,13 @@
 /**
  * Стандартные заголовочные файлы
  */
+#include <memory>
 #include <vector>
 #include <string>
 #include <cstdint>
 #include <cstddef>
 #include <string_view>
+#include <unordered_map>
 
 /**
  * Подключаем заголовочные файлы модуля

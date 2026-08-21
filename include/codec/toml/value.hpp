@@ -222,6 +222,62 @@ namespace awh {
 				private:
 					/**
 					 * \~russian
+					 * Указатель поиска пары по имени
+					 *
+					 * @details Поиск ведётся перебором имён, покуда пар меньше порога, и
+					 * указателем далее. Перебор при тысячах пар обращает и сборку, и чтение в
+					 * квадратичные: замерено 21.08.2026 - около трёх микросекунд на обращение
+					 * при 2500 парах против двадцати при 20000
+					 *
+					 * @note Указатель заводится ЛЕНИВО и держится значением необязательным:
+					 * узел мелкого вместилища не платит за него ни памятью, ни выделением, а
+					 * таких узлов в дереве подавляющее большинство
+					 *
+					 * @note Указатель ведётся приращением, а не перестроением: перестроение на
+					 * всякой правке вернуло бы ту же квадратичность, от какой он и заводится
+					 *
+					 * \~english
+					 * Index of the search of a pair by a name
+					 * @details The search is conducted by the enumeration of the names while there are fewer
+					 * pairs than the threshold, and by the index further on
+					 * @note The index is created LAZILY and is maintained by an increment
+					 *
+					 * \~
+					 */
+					mutable unique_ptr <unordered_map <string, size_t>> _index;
+				private:
+					/**
+					 * \~russian
+					 * @brief Метод разыскания пары по имени
+					 *
+					 * @param name имя разыскиваемой пары
+					 * @return     номер пары, размер вместилища при отсутствии
+					 *
+					 * \~english
+					 * @brief Method of the searching of a pair by a name
+					 * @param name name of the pair being searched for
+					 * @return number of the pair, size of the container at the absence
+					 *
+					 * \~
+					 */
+					size_t locate(const string & name) const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод сноса указателя поиска
+					 *
+					 * @details Сносится указатель при всякой перестановке пар: удаление сдвигает
+					 * номера всех пар после удалённой, и починка его обошлась бы дороже, чем
+					 * заведение заново при первом же поиске
+					 *
+					 * \~english
+					 * @brief Method of the demolition of the index of the search
+					 *
+					 * \~
+					 */
+					void unindex() noexcept;
+				private:
+					/**
+					 * \~russian
 					 * @brief Шаблонный метод извлечения числа затребованным видом
 					 *
 					 * @tparam T      затребованный вид числа
