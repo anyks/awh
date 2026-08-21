@@ -1544,3 +1544,110 @@ TEST(CodecYamlValue, NameIndexConsistency) {
 	// Выполняем проверку того, что удалённой пары нет и у копии
 	ASSERT_FALSE(copy.contains("поле0"));
 }
+
+/**
+ * @brief Проверка переноса владеющего значения в дерево документа
+ *
+ */
+TEST(CodecYamlValue, Grafting) {
+	// Собираемое владеющее значение
+	yaml::value_t value;
+	// Выполняем установку строкового значения верхнего уровня
+	ASSERT_TRUE(value.insert("title", yaml::value_t("пример")));
+	// Выполняем установку строкового значения отображения
+	value.place("/server/host") = yaml::value_t("localhost");
+	// Выполняем установку целого числа отображения
+	value.place("/server/port") = yaml::value_t(static_cast <int64_t> (8080));
+	// Выполняем установку логического значения отображения
+	value.place("/server/secure") = yaml::value_t(true);
+	// Выполняем установку пустого значения отображения
+	value.place("/server/proxy") = yaml::value_t(yaml::kind_t::NUL);
+	// Выполняем заведение перечня значений
+	value.place("/tags/0") = yaml::value_t("one");
+	// Выполняем добавление второго значения перечня
+	value.place("/tags/1") = yaml::value_t("two");
+	// Выполняем заведение отображения внутри перечня значений
+	value.place("/points/0/name") = yaml::value_t("угол");
+	// Дерево документа, куда переносится значение
+	yaml::document_t document;
+	// Выполняем разбор пустого отображения
+	ASSERT_TRUE(document.parse("{}"));
+	// Выполняем перенос владеющего значения в дерево документа
+	ASSERT_TRUE(value.graft(document));
+	// Выполняем проверку перенесённого строкового значения верхнего уровня
+	ASSERT_EQ(document.root().at("/title").text(), "пример");
+	// Выполняем проверку перенесённого строкового значения отображения
+	ASSERT_EQ(document.root().at("/server/host").text(), "localhost");
+	// Извлекаемое целое число
+	int64_t number = 0;
+	// Выполняем проверку успешности получения перенесённого числа
+	ASSERT_TRUE(document.root().at("/server/port").value(number));
+	// Выполняем проверку полученного числа
+	ASSERT_EQ(number, 8080);
+	/**
+	 * Выполняем проверку вида перенесённого числа
+	 *
+	 * @note Проверяется именно вид: ограда, числу поставленная, обратила бы его в
+	 *       строку, и чтением оно выдавалось бы прежним
+	 */
+	ASSERT_EQ(document.root().at("/server/port").kind(), yaml::kind_t::NUMBER);
+	// Выполняем проверку вида перенесённого логического значения
+	ASSERT_EQ(document.root().at("/server/secure").kind(), yaml::kind_t::BOOL);
+	// Выполняем проверку вида перенесённого пустого значения
+	ASSERT_EQ(document.root().at("/server/proxy").kind(), yaml::kind_t::NUL);
+	// Выполняем проверку вида перенесённого перечня значений
+	ASSERT_EQ(document.root().at("/tags").kind(), yaml::kind_t::SEQUENCE);
+	// Выполняем проверку количества значений перенесённого перечня
+	ASSERT_EQ(document.root().at("/tags").size(), 2);
+	// Выполняем проверку второго значения перенесённого перечня
+	ASSERT_EQ(document.root().at("/tags/1").text(), "two");
+	// Выполняем проверку значения отображения внутри перечня
+	ASSERT_EQ(document.root().at("/points/0/name").text(), "угол");
+	/**
+	 * Выполняем повторный перенос того же значения
+	 *
+	 * @note Перенос поверх готового дерева перечня не наращивает: объявление кладёт
+	 *       вместилище заново, а не дописывает к прежнему
+	 */
+	ASSERT_TRUE(value.graft(document));
+	// Выполняем проверку того, что перечень не наращён повторным переносом
+	ASSERT_EQ(document.root().at("/tags").size(), 2);
+	/**
+	 * Выполняем проверку того, что перенесённое значение записывается текстом
+	 *
+	 * @note Проверяется именно запись: дерево, вид значения потерявшее, чтением
+	 *       выдавало бы то же самое, а в текст ушло бы значение иное
+	 */
+	const string text = document.dump();
+	// Выполняем проверку записи целого числа без ограды
+	ASSERT_NE(text.find("port: 8080"), string::npos);
+	// Выполняем проверку записи логического значения без ограды
+	ASSERT_NE(text.find("secure: true"), string::npos);
+	// Собираемое дерево документа, разбираемое из записанного текста
+	yaml::document_t reparsed;
+	// Выполняем разбор записанного текста
+	ASSERT_TRUE(reparsed.parse(text));
+	// Выполняем проверку того, что вид числа обратное чтение пережил
+	ASSERT_EQ(reparsed.root().at("/server/port").kind(), yaml::kind_t::NUMBER);
+	// Выполняем проверку того, что вид перечня обратное чтение пережил
+	ASSERT_EQ(reparsed.root().at("/tags").kind(), yaml::kind_t::SEQUENCE);
+}
+
+/**
+ * @brief Проверка отказа переноса имени пары с косою чертой
+ *
+ * @note Путь делится косою чертой, и имя, её несущее, указывало бы на узел чужой
+ *
+ */
+TEST(CodecYamlValue, GraftingRefusal) {
+	// Собираемое владеющее значение
+	yaml::value_t value;
+	// Выполняем установку пары с косою чертой в имени
+	ASSERT_TRUE(value.insert("a/b", yaml::value_t("значение")));
+	// Дерево документа, куда переносится значение
+	yaml::document_t document;
+	// Выполняем разбор пустого отображения
+	ASSERT_TRUE(document.parse("{}"));
+	// Выполняем проверку отказа переноса значения с косою чертой в имени пары
+	ASSERT_FALSE(value.graft(document));
+}

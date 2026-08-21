@@ -1410,6 +1410,24 @@ namespace awh {
 					 *
 					 * \~
 					 */
+					/**
+					 * \~russian
+					 * @brief Метод снятия детей узла
+					 *
+					 * @details Вместилище, значением иным заменяемое, детей своих лишается:
+					 * держать их некуда, и записаны они уже не будут
+					 *
+					 * @param index номер узла, детей лишаемого
+					 *
+					 * \~english
+					 * @brief Method of the removal of the children of a node
+					 * @details A container being replaced by another value loses its children:
+					 * there is nowhere to hold them, and they will not be written any more
+					 * @param index number of the node being deprived of the children
+					 *
+					 * \~
+					 */
+					void prune(const uint32_t index) noexcept;
 					bool assign(const uint32_t index, const string_view text, const style_t style) noexcept;
 					/**
 					 * \~russian
@@ -1598,6 +1616,67 @@ namespace awh {
 					 * \~
 					 */
 					bool reset(const string & path) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод объявления узла вместилищем
+					 *
+					 * @details Объявленное вместилище пусто, а наполняется оно установкою
+					 * значений по пути внутрь него: части пути, кроме последней, обязаны быть
+					 * налицо, и объявление это их и заводит. Прежнее содержимое узла
+					 * объявлением снимается - вместе со всем поддеревом его
+					 *
+					 * @note Узла по пути может и не быть: заводится он тем же порядком, каким
+					 *       заводит его установка значения
+					 *
+					 * @param path     путь к объявляемому узлу
+					 * @param sequence признак объявления перечня значений заместо отображения пар
+					 * @return         признак успешного объявления вместилища
+					 *
+					 * \~english
+					 * @brief Method of the declaring of a node as a container
+					 * @details The declared container is empty and is filled by the setting of the
+					 * values by a path inside it: the parts of a path except the last one must be
+					 * present, and this declaring establishes them. The previous content of the node
+					 * is removed by the declaring — together with the whole of its subtree
+					 * @note The node by the path may be absent: it is established by the same order by which
+					 *       the setting of a value establishes it
+					 * @param path     path to the node being declared
+					 * @param sequence flag of the declaring of a sequence of the values instead of a mapping of the pairs
+					 * @return         sign of the successful declaring of the container
+					 *
+					 * \~
+					 */
+					bool arrange(const string & path, const bool sequence = false) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод установки значения дословною записью
+					 *
+					 * @details Ограды запись не получает никакой: кладётся она в дерево как
+					 * подана, и вид значения решается обратным чтением её. Тем и отличается
+					 * установка эта от строковой: та ограду подбирает содержимым, дабы запись
+					 * `12` числом не обернулась
+					 *
+					 * @note Способ этот берут значения, вида родного не имеющие вовсе -
+					 *       отметки времени, двоичное содержимое и числа, ни в один родной вид
+					 *       не вместимые: записью своею они и держатся
+					 *
+					 * @param path   путь к устанавливаемому узлу
+					 * @param record устанавливаемая запись значения
+					 * @return       признак успешной установки значения
+					 *
+					 * \~english
+					 * @brief Method of the setting of a value by a verbatim record
+					 * @details The record receives no quoting at all: it is laid into the tree as
+					 * it is given, and the kind of the value is decided by the reading back of it
+					 * @note This way is taken by the values having no native kind at all —
+					 *       the timestamps, the binary content and the numbers not fitting into any native kind
+					 * @param path   path to the node being set
+					 * @param record record of the value being set
+					 * @return       sign of the successful setting of the value
+					 *
+					 * \~
+					 */
+					bool imprint(const string & path, const string_view record) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод снятия узла вместе с поддеревом его

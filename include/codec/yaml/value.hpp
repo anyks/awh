@@ -1136,6 +1136,43 @@ namespace awh {
 				public:
 					/**
 					 * \~russian
+					 * @brief Метод переноса владеющего значения в дерево документа
+					 *
+					 * @details Перенос ведётся путём: вместилище объявляется у места пустым, а
+					 * дети его переносятся по пути внутрь него. Путь ведётся от корня первого
+					 * документа, части его делятся косою чертой, а часть внутри перечня есть
+					 * номер значения
+					 *
+					 * @note Имя пары, косую черту несущее, переносу не подлежит и отвечает
+					 *       отказом: путь делится ею, и имя такое указывало бы на узел чужой
+					 *
+					 * @note Числа, отметки времени и двоичное содержимое переносятся дословною
+					 *       записью своею: ограда обратила бы их в строки
+					 *
+					 * @param document дерево документа, куда переносится значение
+					 * @param path     путь к месту переноса
+					 * @return         признак успешности переноса
+					 *
+					 * \~english
+					 * @brief Method of the grafting of an owning value into the tree of a document
+					 * @details The grafting is conducted by a path: a container is declared empty at the place, while
+					 * its children are grafted by a path inside it. The path is led from the root of the first
+					 * document, its parts are divided by a slash, and a part inside a sequence is
+					 * the number of a value
+					 * @note A name of a pair carrying a slash is not subject to the grafting and answers
+					 *       with a refusal: the path is divided by it, and such a name would point at an alien node
+					 * @note The numbers, the timestamps and the binary content are grafted by their verbatim
+					 *       record: a quoting would turn them into the strings
+					 * @param document tree of the document whereinto the value is grafted
+					 * @param path     path to the place of the grafting
+					 * @return         sign of the success of the grafting
+					 *
+					 * \~
+					 */
+					bool graft(Document & document, const string & path = "") const noexcept;
+				public:
+					/**
+					 * \~russian
 					 * @brief Метод сличения значений
 					 *
 					 * @details Сличаются вид и содержимое дерева, а оформление записи,

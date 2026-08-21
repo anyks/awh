@@ -3189,15 +3189,16 @@ bool awh::codec::yaml::Document::settle(const string & path, const string_view t
 	return this->assign(index, text, style_t::PLAIN);
 }
 /**
- * @brief Метод установки значения узла заданною оградою
+ * @brief Метод снятия детей узла
  *
- * @param index номер устанавливаемого узла
- * @param text  устанавливаемая запись значения
- * @param style ограда, какою обносится значение
- * @return      признак успешной установки значения
+ * @details Вместилище, значением иным заменяемое, детей своих лишается: держать их
+ * некуда, и записаны они уже не будут. Снятие сдвигает номера всех узлов за ними, и
+ * потому правит размахи предков, номера корней и указатели имён
+ *
+ * @param index номер узла, детей лишаемого
  *
  */
-bool awh::codec::yaml::Document::assign(const uint32_t index, const string_view text, const style_t style) noexcept {
+void awh::codec::yaml::Document::prune(const uint32_t index) noexcept {
 	// Получаем размах поддерева устанавливаемого узла
 	const uint32_t extent = this->_nodes.at(index).extent();
 	/**
@@ -3242,6 +3243,19 @@ bool awh::codec::yaml::Document::assign(const uint32_t index, const string_view 
 				this->_roots.at(i) -= (extent - 1);
 		}
 	}
+}
+/**
+ * @brief Метод установки значения узла заданною оградою
+ *
+ * @param index номер устанавливаемого узла
+ * @param text  устанавливаемая запись значения
+ * @param style ограда, какою обносится значение
+ * @return      признак успешной установки значения
+ *
+ */
+bool awh::codec::yaml::Document::assign(const uint32_t index, const string_view text, const style_t style) noexcept {
+	// Выполняем снятие детей устанавливаемого узла
+	this->prune(index);
 	// Получаем имя пары, узлом несомое
 	const string name(this->_storage, this->_nodes.at(index).offset, this->_nodes.at(index).named);
 	// Выполняем запись имени и значения узла в хранилище знаков
@@ -3377,6 +3391,53 @@ bool awh::codec::yaml::Document::set(const string & path, const double value) no
 bool awh::codec::yaml::Document::reset(const string & path) noexcept {
 	// Выполняем установку пустого значения пустою записью
 	return this->settle(path, string_view());
+}
+/**
+ * @brief Метод объявления узла вместилищем
+ *
+ * @param path     путь к объявляемому узлу
+ * @param sequence признак объявления перечня значений заместо отображения пар
+ * @return         признак успешного объявления вместилища
+ *
+ */
+bool awh::codec::yaml::Document::arrange(const string & path, const bool sequence) noexcept {
+	// Номер объявляемого узла дерева
+	uint32_t index = 0;
+	/**
+	 * Если разыскать узел по пути не удалось
+	 */
+	if(!this->place(path, index, true))
+		// Выводим признак неудачного объявления вместилища
+		return false;
+	// Выполняем снятие детей объявляемого узла
+	this->prune(index);
+	// Получаем имя пары, узлом несомое
+	const string name(this->_storage, this->_nodes.at(index).offset, this->_nodes.at(index).named);
+	/**
+	 * Выполняем запись имени узла в хранилище знаков записью пустою
+	 *
+	 * @note Запись значения снимается: вместилище своей записи не имеет вовсе, а
+	 *       прежняя, узлом несомая, ушла бы в текст рядом с детьми его
+	 */
+	this->inscribe(index, name, string_view(), style_t::PLAIN);
+	// Запоминаем вид объявляемого вместилища
+	this->_nodes.at(index).type = (sequence ? type_t::SEQUENCE : type_t::MAPPING);
+	// Выполняем пометку узла и предков его правлеными
+	this->mark(index);
+	// Выводим признак успешного объявления вместилища
+	return true;
+}
+/**
+ * @brief Метод установки значения дословною записью
+ *
+ * @param path   путь к устанавливаемому узлу
+ * @param record устанавливаемая запись значения
+ * @return       признак успешной установки значения
+ *
+ */
+bool awh::codec::yaml::Document::imprint(const string & path, const string_view record) noexcept {
+	// Выводим результат установки значения записью без ограды
+	return this->settle(path, record);
 }
 /**
  * @brief Метод снятия узла вместе с поддеревом его
