@@ -119,6 +119,7 @@ if (${CMAKE_BUILD_${BENCHMARK_NAME}_BENCHMARKS})
             abc/writer.cpp
             abc/document.cpp
             abc/container.cpp
+            abc/value.cpp
         )
     # Если не нужно собрать замеры для бинарного контейнера ABC
     else()
