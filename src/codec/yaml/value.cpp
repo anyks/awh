@@ -452,6 +452,17 @@ bool awh::codec::yaml::Value::contains(const string & name) const noexcept {
 	return (this->locate(name) < this->_names.size());
 }
 /**
+ * @brief Метод разыскания номера пары по имени её
+ *
+ * @param name имя разыскиваемой пары
+ * @return     номер пары, размер вместилища при отсутствии
+ *
+ */
+size_t awh::codec::yaml::Value::search(const string & name) const noexcept {
+	// Выводим номер разысканной пары
+	return this->locate(name);
+}
+/**
  * @brief Метод разыскания пары по имени
  *
  * @param name имя разыскиваемой пары
@@ -2403,17 +2414,15 @@ size_t awh::codec::yaml::Builder::deposit(Value && value) noexcept {
 		owner.insert(name, value);
 		/**
 		 * Выполняем розыск номера занесённого поля отображения
+		 *
+		 * @note Розыск ведётся указателем имён, а не перебором: сборка отображения
+		 *       вызовами шла бы иначе квадратичной. Концом же вместилища номер брать
+		 *       нельзя: имя, вторично поданное сборкою, перезаписывает поле на своём
+		 *       месте, и концом оказалось бы поле чужое
 		 */
-		for(size_t i = 0; i < owner.size(); i++){
-			/**
-			 * Если имя поля отображения совпадает с занесённым
-			 */
-			if(owner.key(i).compare(name) == 0)
-				// Выводим номер занесённого поля отображения
-				return i;
-		}
+		const size_t found = owner.search(name);
 		// Выводим номер занесённого поля отображения
-		return (owner.size() > 0 ? (owner.size() - 1) : 0);
+		return ((found < owner.size()) ? found : (owner.size() > 0 ? (owner.size() - 1) : 0));
 	}
 	// Выполняем занесение значения в конец перечня
 	owner.push(value);

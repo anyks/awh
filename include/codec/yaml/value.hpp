@@ -695,6 +695,30 @@ namespace awh {
 					bool contains(const string & name) const noexcept;
 					/**
 					 * \~russian
+					 * @brief Метод разыскания номера пары по имени её
+					 *
+					 * @details Розыск ведётся указателем имён, когда тот заведён: перебор
+					 * обратил бы сборку вместилища вызовами в квадратичную
+					 *
+					 * @note Выдаётся размер вместилища, когда пары с таким именем нет: способ
+					 *       этот тот же, каким отвечает `npos` у строки
+					 *
+					 * @param name имя разыскиваемой пары
+					 * @return     номер пары, размер вместилища при отсутствии
+					 *
+					 * \~english
+					 * @brief Method of the searching of the number of a pair by its name
+					 * @details The search is conducted by the index of the names when it is established: an enumeration
+					 * would turn the assembling of a container by the calls into a quadratic one
+					 * @note The size of the container is issued when there is no pair with such a name
+					 * @param name name of the pair being searched for
+					 * @return     number of the pair, size of the container at the absence
+					 *
+					 * \~
+					 */
+					size_t search(const string & name) const noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод обращения к значению по пути
 					 *
 					 * @details Путь записывается частями, разделёнными косой чертой:
