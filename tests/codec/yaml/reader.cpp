@@ -3701,3 +3701,56 @@ TEST(CodecYamlReader, UnclosedQuoteWithBrokenEncoding) {
 	// Выполняем проверку того, что отказ подачи кусками объявлен
 	ASSERT_NE(chunked.error(), yaml::error_t::NONE);
 }
+
+/**
+ * @brief Проверка закрытия пары без значения скобкой перечня
+ *
+ * @details Запись перечня, двоеточие несущая, есть отображение об одной паре: скобок
+ * своих оно не имеет вовсе и закрывается запятой либо скобкой перечня. Ветка закрытия
+ * скобкою в ожидании очередной записи разбирала один лишь случай отображения, а перечень
+ * с парою открытою уходил со стопы: событие закрытия перечня выдавалось прежде закрытия
+ * пары, и поток событий выходил перекрещенным. Значение пары притом пропадало вовсе
+ *
+ * @note Строитель дерева снимал тогда не тот уровень, размах корня оставался единицею, и
+ *       перезапись выдавала пустое отображение вместо всего документа. Нашёл это
+ *       ворошитель длинным прогоном
+ *
+ */
+TEST(CodecYamlReader, FlowEntryPairClosedByBracket) {
+	/**
+	 * Выполняем проверку пары с пустым значением, скобкой перечня закрытой
+	 *
+	 * @note Ровно это и терялось: значение пары не выдавалось вовсе, а закрытие перечня
+	 *       выходило прежде закрытия пары
+	 */
+	ASSERT_EQ(events("a: [ x:]\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\nSCALAR «a»\n"
+		"SEQUENCE_START\nMAPPING_START\nSCALAR «x»\nSCALAR «»\nMAPPING_END\n"
+		"SEQUENCE_END\nMAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
+	/**
+	 * Выполняем проверку пары, пустой и именем и значением
+	 */
+	ASSERT_EQ(events("a: [ :]\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\nSCALAR «a»\n"
+		"SEQUENCE_START\nMAPPING_START\nSCALAR «»\nSCALAR «»\nMAPPING_END\n"
+		"SEQUENCE_END\nMAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
+	/**
+	 * Выполняем проверку пары со значением своим
+	 *
+	 * @note Случай этот работал и прежде: закрывается он веткою иною, значение уже
+	 *       прочитавшею
+	 */
+	ASSERT_EQ(events("a: [ x: 1]\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\nSCALAR «a»\n"
+		"SEQUENCE_START\nMAPPING_START\nSCALAR «x»\nSCALAR «1»\nMAPPING_END\n"
+		"SEQUENCE_END\nMAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
+	/**
+	 * Выполняем проверку записи перечня, парою не являющейся
+	 *
+	 * @note Отображения тут нет вовсе, и закрывать нечего
+	 */
+	ASSERT_EQ(events("a: [ x]\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\nSCALAR «a»\n"
+		"SEQUENCE_START\nSCALAR «x»\n"
+		"SEQUENCE_END\nMAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
+}
