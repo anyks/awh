@@ -265,6 +265,7 @@ namespace awh {
 						EXTEND_LENGTH,    // Ожидается длина октетов величины
 						EXTEND_SIGN,      // Ожидается знак величины
 						EXTEND_DATA,      // Ожидаются октеты величины
+						SPANNED_WIDTH,    // Ожидаются октеты объявленного размаха вместимого
 						CUSTOM_SUBTYPE,   // Ожидается номер подвида открытого расширения
 						CUSTOM_LENGTH,    // Ожидается длина октетов открытого расширения
 						CUSTOM_DATA,      // Ожидаются октеты открытого расширения
@@ -281,6 +282,23 @@ namespace awh {
 					 * \~
 					 */
 					typedef struct Frame {
+						/**
+						 * \~russian
+						 * Место записи за вместимым, объявленное размахом, ноль - не объявлено
+						 *
+						 * @note Место это ПОЛНОЕ, от начала записи, а не смещение в буфере:
+						 * буфер ужимается по выдаче событий, и смещение в нём не переживает
+						 * ужатия
+						 *
+						 * \~english
+						 * Place of the record past the container declared by the span, zero — not declared
+						 * @note This place is FULL, from the beginning of the record, rather than an offset
+						 * in the buffer: the buffer is compacted upon the issuing of the events, and an offset
+						 * in it does not survive a compaction
+						 *
+						 * \~
+						 */
+						uint64_t beyond;
 						// Признак того, что вместимое является отображением
 						bool mapping;
 						// Признак неопределённой длины вместимого
@@ -317,7 +335,8 @@ namespace awh {
 						 * \~
 						 */
 						Frame() noexcept :
-						 mapping(false), indefinite(false), expectKey(false), remain(0), segment(type_t::UNDEFINED) {}
+						 beyond(0), mapping(false), indefinite(false), expectKey(false), remain(0),
+						 segment(type_t::UNDEFINED) {}
 					} frame_t;
 					/**
 					 * \~russian
@@ -471,6 +490,44 @@ namespace awh {
 				private:
 					// Разновидность ожидаемого расширения
 					extend_t _extend;
+				private:
+					/**
+					 * \~russian
+					 * Размах вместимого, объявленный меткою, ноль - не объявлен
+					 *
+					 * @note Размах считается от конца записи его: чтение, пропускающее
+					 * вместимое, прибавляет размах к своему месту и оказывается за ним
+					 *
+					 * \~english
+					 * Span of the container declared by a tag, zero — not declared
+					 * @note The span is counted from the end of its record: a reading skipping
+					 * the container adds the span to its place and finds itself past it
+					 *
+					 * \~
+					 */
+					uint64_t _span;
+				private:
+					// Место записи за вместимым, объявленное последнею меткою размаха
+					uint64_t _beyond;
+				private:
+					/**
+					 * \~russian
+					 * Признак затребованного пропуска открываемого вместимого
+					 *
+					 * @note Пропуск объявляется обработчиком прямой выдачи ПОСРЕДИ открытия
+					 * вместимого: событие начала его выдано, а звено стека ещё не заведено.
+					 * Признак этот и переносит волю обработчика к тому месту, где вместимое
+					 * заводится
+					 *
+					 * \~english
+					 * Sign of a demanded skipping of the container being opened
+					 * @note The skipping is declared by the handler of the direct issuing IN THE MIDDLE of
+					 * the opening of a container: the event of its beginning is issued, while the link of
+					 * the stack is not yet created
+					 *
+					 * \~
+					 */
+					bool _skipping;
 				private:
 					// Десятичный порядок ожидаемой величины
 					int64_t _exponent;
@@ -718,6 +775,37 @@ namespace awh {
 					 * \~
 					 */
 					[[nodiscard]] bool next() noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод пропуска открытого вместимого целиком
+					 *
+					 * @details Пропуск даётся ОДНИМ сложением и только тому вместимому, чей
+					 * размах объявлен меткою при сборке (настройка `spanned` у сборки).
+					 * Замер 21.08.2026: обход поддерева из ста тысяч значений стоил 2 мс,
+					 * и обращение к соседнему полю стоило ровно столько же
+					 *
+					 * @note Звать надлежит сразу по событию начала вместимого. Пропуск выдаёт
+					 * событие конца его, и разбор продолжается с записи, стоящей следом
+					 *
+					 * @note Отказом отвечается, если размах не объявлен, если вместимое несёт
+					 * неопределённую длину либо если октеты его ещё не поданы целиком:
+					 * поточному чтению пропускать нечего, покуда пропускаемое не пришло
+					 *
+					 * @return признак успешного пропуска вместимого
+					 *
+					 * \~english
+					 * @brief Method of the skipping of an opened container as a whole
+					 * @details The skipping is given by ONE addition and only to a container whose span
+					 * is declared by a tag upon the assembling (the setting `spanned` of the assembling)
+					 * @note It ought to be called right upon the event of the beginning of a container. The skipping
+					 * issues the event of its end, and the parsing continues from the record standing next
+					 * @note It is answered by a refusal if the span is not declared, if the container carries
+					 * an indefinite length or if its octets have not yet been submitted as a whole
+					 * @return sign of the success of the skipping of the container
+					 *
+					 * \~
+					 */
+					[[nodiscard]] bool skip() noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод извлечения вида текущего события

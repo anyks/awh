@@ -32,6 +32,8 @@
  * отличает полный перехват от обычного - без единого вызова и без опроса связывателя
  */
 bool __awh_alloc_libc_seen__ = false;
+// Выдача блока, укрытого от снимков памяти: определена фасадом распределителя
+extern void * __awh_alloc_conceal__(const size_t size, bool * hidden, const bool wire, bool * wired) noexcept;
 extern "C" {
 	void * malloc(size_t);
 	void free(void *);
@@ -46,11 +48,38 @@ extern "C" {
 	void * _libc_realloc(void * ptr, size_t size) { ::__awh_alloc_libc_seen__ = true; return ::realloc(ptr, size); }
 	int _libc_posix_memalign(void ** memptr, size_t alignment, size_t size) { return ::posix_memalign(memptr, alignment, size); }
 	void * _libc_aligned_alloc(size_t alignment, size_t size) { return ::aligned_alloc(alignment, size); }
-	// Выдача, обнуляемая при освобождении: своего слоя у нас нет, обнуляем сами
-	void * _libc_malloc_conceal(size_t size) { return ::malloc(size); }
-	void * _libc_calloc_conceal(size_t count, size_t size) { return ::calloc(count, size); }
-	void * malloc_conceal(size_t size) { return ::malloc(size); }
-	void * calloc_conceal(size_t count, size_t size) { return ::calloc(count, size); }
+	/**
+	 * Выдача, укрытая от снимков памяти
+	 *
+	 * Договор OpenBSD обещает по ней две вещи: область отводится с признаком
+	 * `MAP_CONCEAL` - то есть не попадает в снимок памяти при падении, - и содержимое
+	 * затирается при освобождении. Прежде здесь стояла обычная выдача, и оба обещания
+	 * понижались МОЛЧА: тот, кто держал в такой памяти ключи, о том не узнавал
+	 *
+	 * Выдача идёт слоем крупных выдач: лишь он берёт память у источника напрямую, а
+	 * укрытие задаётся при отведении и задним числом не навешивается
+	 */
+	void * malloc_conceal(size_t size) { return ::__awh_alloc_conceal__(size, nullptr, false, nullptr); }
+	/**
+	 * Укрытая выдача с обнулением
+	 *
+	 * Обнулять здесь нечего: область приходит от системы свежей, а та отдаёт лишь
+	 * обнулённые страницы. Сверять переполнение произведения, однако, обязаны - иначе
+	 * усечённый счёт дал бы блок меньше затребованного
+	 */
+	void * calloc_conceal(size_t count, size_t size) {
+		// Если произведение переполнится
+		if((size != 0) && (count > (static_cast <size_t> (-1) / size))){
+			// Отвечаем отказом
+			errno = ENOMEM;
+			// Выдавать нечего
+			return nullptr;
+		}
+		// Выдаём укрытую область
+		return ::__awh_alloc_conceal__((count * size), nullptr, false, nullptr);
+	}
+	void * _libc_malloc_conceal(size_t size) { return malloc_conceal(size); }
+	void * _libc_calloc_conceal(size_t count, size_t size) { return calloc_conceal(count, size); }
 	/**
 	 * Освобождение с обнулением содержимого
 	 *

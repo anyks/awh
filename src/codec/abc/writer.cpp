@@ -44,7 +44,7 @@ using namespace std;
  *
  */
 awh::codec::abc::Writer::Settings::Settings() noexcept :
- canonical(false), validate(true), duplicates(true), maxDepth(0), reference(0) {}
+ canonical(false), validate(true), duplicates(true), maxDepth(0), reference(0), spanned(0) {}
 /**
  * @brief Конструктор
  *
@@ -309,6 +309,22 @@ bool awh::codec::abc::Writer::open(const bool mapping, const uint64_t count, con
 		return this->fail(error_t::DEPTH_EXCEEDED);
 	// Выполняем получение крупного вида укладываемого вместимого
 	const group_t group = (mapping ? group_t::MAP : group_t::ARRAY);
+	// Смещение отведённого места записи размаха вместимого
+	size_t spanned = 0;
+	/**
+	 * Если размах вместимого объявляется настройкою
+	 *
+	 * @note Место под размах отводится ЗДЕСЬ и заполняется при закрытии: размах в
+	 *       октетах при открытии ещё не известен, а сдвигать уложенное следом нельзя
+	 */
+	if(!indefinite && (this->_settings.spanned > 0) && (count >= this->_settings.spanned)){
+		// Выполняем укладку метки вместимого с объявленным размахом
+		abc::mark(this->_record, group_t::EXTEND, static_cast <uint8_t> (extend_t::SPANNED));
+		// Запоминаем смещение отведённого места записи размаха
+		spanned = this->_record.size();
+		// Выполняем отведение места под запись размаха вместимого
+		this->_record.resize(this->_record.size() + SPAN_LENGTH, 0);
+	}
 	// Если длина вместимого неопределённая
 	if(indefinite)
 		// Выполняем укладку метки неопределённой длины
@@ -317,6 +333,8 @@ bool awh::codec::abc::Writer::open(const bool mapping, const uint64_t count, con
 	else abc::put(this->_record, group, count);
 	// Заводимое звено стека вместимых
 	frame_t frame;
+	// Выполняем установку смещения отведённого места записи размаха
+	frame.spanned = spanned;
 	// Выполняем установку признака отображения
 	frame.mapping = mapping;
 	// Выполняем установку признака неопределённой длины
@@ -362,6 +380,8 @@ bool awh::codec::abc::Writer::close(const bool mapping) noexcept {
 		return this->fail(error_t::UNBALANCED_CONTAINER);
 	// Признак неопределённой длины закрываемого вместимого
 	const bool indefinite = frame.indefinite;
+	// Смещение отведённого места записи размаха закрываемого вместимого
+	const size_t spanned = frame.spanned;
 	// Выполняем снятие звена со стека вместимых
 	this->_stack.pop_back();
 	// Выполняем получение смещения начала записи закрытого вместимого
@@ -370,6 +390,20 @@ bool awh::codec::abc::Writer::close(const bool mapping) noexcept {
 	if(indefinite)
 		// Выполняем укладку конца вместимого
 		abc::mark(this->_record, group_t::SINGLE, static_cast <uint8_t> (single_t::BREAK));
+	/**
+	 * Если размах вместимого объявлен, заполняем отведённое под него место
+	 *
+	 * @note Размах считается от конца записи размаха до конца вместимого: чтение,
+	 *       сняв размах, прибавляет его к своему месту и оказывается за вместимым
+	 */
+	if(spanned > 0){
+		// Выполняем вычисление размаха закрытого вместимого
+		const uint64_t width = static_cast <uint64_t> (this->_record.size() - (spanned + SPAN_LENGTH));
+		// Выполняем перебор всех октетов записи размаха
+		for(size_t i = 0; i < SPAN_LENGTH; i++)
+			// Выполняем укладку очередного октета размаха
+			this->_record.at(spanned + i) = static_cast <uint8_t> ((width >> (i * 8)) & 0xFF);
+	}
 	// Выполняем учёт закрытого вместимого значением вместившего
 	return this->account(start);
 }

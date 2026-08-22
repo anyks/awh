@@ -397,6 +397,8 @@ void awh::codec::xml::Value::clear() noexcept {
 	this->_bindings.clear();
 	// Выполняем очистку вложенных узлов
 	this->_items.clear();
+	// Выполняем сброс отображения имён вложенных узлов
+	this->reindex();
 }
 /**
  * @brief Метод извлечения имени узла
@@ -584,6 +586,8 @@ bool awh::codec::xml::Value::text(const string & text) noexcept {
 			this->_items.clear();
 			// Добавляем во вложенные узлы узел текстового содержимого
 			this->_items.push_back(Value(kind_t::TEXT, text));
+			// Выполняем сброс отображения имён вложенных узлов
+			this->reindex();
 			// Выводим признак успешной установки
 			return true;
 		}
@@ -833,7 +837,144 @@ awh::codec::xml::Value & awh::codec::xml::Value::scrap() noexcept {
 	return result;
 }
 /**
- * @brief Метод проверки наличия вложенного узла разметки с указанным именем
+ * @brief Метод розыска номера вложенного узла разметки по местному имени
+ *
+ * @details Узел о немногих детях разыскивается перебором, широкий - отображением,
+ *          заводимым при первом же обращении
+ *
+ * @note Отображение хранит ПЕРВОЕ вхождение имени: повтор имени у соседних узлов есть
+ *       обычный вид разметки, а перебор отвечал первым из них. Оттого наполнение идёт
+ *       `emplace`, а не установкой по ключу
+ *
+ * @warning Розыск ведётся по ОДНОМУ местному имени, без пространства имён: розыск по
+ *          паре отображением не пользуется вовсе - первое совпадение местного имени
+ *          могло бы оказаться узлом чужого пространства
+ *
+ * @param  local разыскиваемое местное имя вложенного узла
+ * @return       номер разысканного узла либо признак отсутствия
+ *
+ */
+size_t awh::codec::xml::Value::lookup(const string & local) const noexcept {
+	/**
+	 * Если количество вложенных узлов порога заведения отображения не превышает
+	 *
+	 * @note Ветвь эта стоит ПЕРВОЙ и отвечает целиком сама: узкий узел обязан пройти
+	 *       перебор ОДИН раз. Прежде быстрый путь по первому узлу разметки стоял выше
+	 *       всех ветвей, и узкий узел перебирался дважды - плата на розыск выросла у него
+	 *       на десятую-пятую часть
+	 */
+	if(this->_items.size() <= INDEX_THRESHOLD){
+		/**
+		 * Выполняем перебор всех вложенных узлов
+		 */
+		for(size_t i = 0; i < this->_items.size(); i++){
+			/**
+			 * Если вложенный узел является узлом разметки с разыскиваемым именем
+			 */
+			if((this->_items.at(i)._kind == kind_t::ELEMENT) && (this->_items.at(i)._local.compare(local) == 0))
+				// Выводим номер разысканного вложенного узла
+				return i;
+		}
+		// Выводим признак отсутствия вложенного узла с таким именем
+		return static_cast <size_t> (~0ull);
+	}
+	/**
+	 * Выполняем перебор вложенных узлов до первого узла разметки
+	 *
+	 * @details Розыск отвечает ПЕРВЫМ узлом разметки с разыскиваемым именем, и когда им
+	 * оказывается первый же узел разметки вовсе, отвечать надлежит немедля. Случай этот
+	 * у разметки самый частый: широкий узел о повторяющемся имени - `<item>` подряд -
+	 * есть обычный её вид, а отображение о таком узле хранит одну-единственную запись
+	 *
+	 * @note Без этого пути обычный вид разметки просел бы ВТРОЕ: замерено 22.08.2026 на
+	 *       узле о 20000 детях одного имени - 0.0037 мкс перебором против 0.0124 мкс
+	 *       отображением. Перебор там отвечал первым же ребёнком, отображение же считало
+	 *       свёртку имени
+	 *
+	 * @note Перебор ограничен узлами до первого узла разметки, а не всеми: узлов текста и
+	 *       примечаний перед первым узлом разметки бывает считанное число
+	 */
+	for(size_t i = 0; i < this->_items.size(); i++){
+		/**
+		 * Если вложенный узел узлом разметки не является
+		 */
+		if(this->_items.at(i)._kind != kind_t::ELEMENT)
+			// Выполняем переход к следующему вложенному узлу
+			continue;
+		/**
+		 * Если первый узел разметки несёт разыскиваемое имя
+		 */
+		if(this->_items.at(i)._local.compare(local) == 0)
+			// Выводим номер разысканного вложенного узла
+			return i;
+		// Прекращаем перебор вложенных узлов
+		break;
+	}
+	/**
+	 * Если отображение имён вложенных узлов ещё не заведено
+	 */
+	if(!this->_indexed){
+		// Выполняем выделение памяти под отображение имён вложенных узлов
+		this->_index.reserve(this->_items.size());
+		/**
+		 * Выполняем перебор всех вложенных узлов
+		 */
+		for(size_t i = 0; i < this->_items.size(); i++){
+			/**
+			 * Если вложенный узел узлом разметки не является
+			 *
+			 * @note Узлы текста, примечаний и указаний в отображение не попадают вовсе:
+			 *       розыск по имени их не разыскивает, а место в отображении они заняли бы
+			 *       наравне с прочими
+			 */
+			if(this->_items.at(i)._kind != kind_t::ELEMENT)
+				// Выполняем переход к следующему вложенному узлу
+				continue;
+			// Добавляем имя вложенного узла в отображение, если оно ещё не занято
+			this->_index.emplace(this->_items.at(i)._local, i);
+		}
+		// Запоминаем, что отображение имён вложенных узлов заведено
+		this->_indexed = true;
+	}
+	// Выполняем поиск имени вложенного узла в отображении
+	auto i = this->_index.find(local);
+	// Выводим номер разысканного вложенного узла, если он заведён
+	return ((i != this->_index.end()) ? i->second : static_cast <size_t> (~0ull));
+}
+/**
+ * @brief Метод учёта заведённого вложенного узла разметки в отображении имён
+ *
+ * @details Долив отображения обязателен там, где узел заводится В КОНЕЦ перечня: сброс
+ *          вместо долива обращает заведение узлов подряд в перестроение отображения на
+ *          всякой вставке. Замерено 22.08.2026: сброс дал 382 мкс на одну вставку при
+ *          20000 узлах против 18 мкс перебором - вдвадцатеро ХУЖЕ прежнего
+ *
+ * @note Повтор имени отображение оставит за первым вхождением: `emplace` занятого ключа
+ *       не перезаписывает
+ *
+ * @param local местное имя заведённого вложенного узла
+ *
+ */
+void awh::codec::xml::Value::indexed(const string & local) const noexcept {
+	/**
+	 * Если отображение имён вложенных узлов заведено
+	 */
+	if(this->_indexed)
+		// Добавляем имя вложенного узла в отображение, если оно ещё не занято
+		this->_index.emplace(local, this->_items.size() - 1);
+}
+/**
+ * @brief Метод сброса отображения имён вложенных узлов
+ *
+ */
+void awh::codec::xml::Value::reindex() const noexcept {
+	// Выполняем очистку отображения имён вложенных узлов
+	this->_index.clear();
+	// Запоминаем, что отображение имён вложенных узлов не заведено
+	this->_indexed = false;
+}
+/**
+ * @brief Метод проверки наличия вложенного узла разметки
  *
  * @param local местное имя разыскиваемого узла
  * @param uri   обозначение пространства имён узла
@@ -919,26 +1060,12 @@ const awh::codec::xml::Value & awh::codec::xml::Value::at(const string & path) c
 			// Выполняем переход к следующему звену пути
 			continue;
 		}
-		// Номер разыскиваемого узла разметки
-		size_t found = result->_items.size();
-		/**
-		 * Выполняем перебор всех вложенных узлов
-		 */
-		for(size_t i = 0; i < result->_items.size(); i++){
-			/**
-			 * Если вложенный узел является узлом разметки с разыскиваемым именем
-			 */
-			if((result->_items.at(i)._kind == kind_t::ELEMENT) && (result->_items.at(i)._local.compare(token) == 0)){
-				// Запоминаем номер разысканного узла разметки
-				found = i;
-				// Прекращаем перебор вложенных узлов
-				break;
-			}
-		}
+		// Выполняем розыск номера вложенного узла разметки по имени звена пути
+		const size_t found = result->lookup(token);
 		/**
 		 * Если узел разметки с таким именем не разыскан
 		 */
-		if(found >= result->_items.size())
+		if(found == static_cast <size_t> (~0ull))
 			// Выводим значение неопределённое
 			return Value::undefined();
 		// Выполняем переход к разысканному узлу разметки
@@ -1018,31 +1145,31 @@ awh::codec::xml::Value & awh::codec::xml::Value::place(const string & path) noex
 		if((result->_kind != kind_t::ELEMENT) && (result->_kind != kind_t::DOCUMENT))
 			// Выводим значение мусорное
 			return Value::scrap();
-		// Номер разыскиваемого узла разметки
-		size_t found = result->_items.size();
-		/**
-		 * Выполняем перебор всех вложенных узлов
-		 */
-		for(size_t i = 0; i < result->_items.size(); i++){
-			/**
-			 * Если вложенный узел является узлом разметки с разыскиваемым именем
-			 */
-			if((result->_items.at(i)._kind == kind_t::ELEMENT) && (result->_items.at(i)._local.compare(token) == 0)){
-				// Запоминаем номер разысканного узла разметки
-				found = i;
-				// Прекращаем перебор вложенных узлов
-				break;
-			}
-		}
+		// Выполняем розыск номера вложенного узла разметки по имени звена пути
+		size_t found = result->lookup(token);
 		/**
 		 * Если узел разметки с таким именем ещё не заведён
 		 */
-		if(found >= result->_items.size()){
+		if(found == static_cast <size_t> (~0ull)){
 			// Заводим вложенный узел разметки с именем звена пути
 			result->_items.push_back(Value(token));
+			// Выполняем учёт заведённого узла разметки в отображении имён
+			result->indexed(token);
 			// Запоминаем номер заведённого узла разметки
 			found = (result->_items.size() - 1);
-		}
+		/**
+		 * Если узел разметки с таким именем уже заведён
+		 */
+		} else
+			/**
+			 * Выполняем сброс отображения имён вложенных узлов
+			 *
+			 * @warning Обход выдаёт наружу ссылку ИЗМЕНЯЕМУЮ, и получивший её вправе
+			 *          присвоить узлу иное имя вместе со значением. Довод тот же, что и при
+			 *          обращении по имени: имя хранится у самого узла, и родитель правки не
+			 *          наблюдает
+			 */
+			result->reindex();
 		// Выполняем переход к разысканному либо заведённому узлу разметки
 		result = &result->_items.at(found);
 	}
@@ -1057,17 +1184,14 @@ awh::codec::xml::Value & awh::codec::xml::Value::place(const string & path) noex
  *
  */
 const awh::codec::xml::Value & awh::codec::xml::Value::operator [] (const string & local) const noexcept {
+	// Выполняем розыск номера вложенного узла разметки по местному имени
+	const size_t offset = this->lookup(local);
 	/**
-	 * Выполняем перебор всех вложенных узлов
+	 * Если вложенный узел разметки с таким именем разыскан
 	 */
-	for(auto & item : this->_items){
-		/**
-		 * Если вложенный узел является узлом разметки с разыскиваемым именем
-		 */
-		if((item._kind == kind_t::ELEMENT) && (item._local.compare(local) == 0))
-			// Выводим ссылку на разысканный узел разметки
-			return item;
-	}
+	if(offset != static_cast <size_t> (~0ull))
+		// Выводим ссылку на разысканный узел разметки
+		return this->_items.at(offset);
 	// Выводим значение неопределённое
 	return Value::undefined();
 }
@@ -1091,19 +1215,34 @@ awh::codec::xml::Value & awh::codec::xml::Value::operator [] (const string & loc
 	if((this->_kind != kind_t::ELEMENT) && (this->_kind != kind_t::DOCUMENT))
 		// Выводим значение мусорное
 		return Value::scrap();
+	// Выполняем розыск номера вложенного узла разметки по местному имени
+	const size_t offset = this->lookup(local);
 	/**
-	 * Выполняем перебор всех вложенных узлов
+	 * Если вложенный узел разметки с таким именем разыскан
 	 */
-	for(auto & item : this->_items){
+	if(offset != static_cast <size_t> (~0ull)){
 		/**
-		 * Если вложенный узел является узлом разметки с разыскиваемым именем
+		 * Выполняем сброс отображения имён вложенных узлов
+		 *
+		 * @warning Сброс здесь ОБЯЗАТЕЛЕН, и вот почему. Наружу отдаётся ссылка ИЗМЕНЯЕМАЯ,
+		 *          и получивший её вправе присвоить узлу иное значение целиком - вместе с
+		 *          иным именем. Имя узла разметки хранится у САМОГО УЗЛА, а не у родителя,
+		 *          и правку эту родитель наблюдать не может никак. Отображение, её
+		 *          пережившее, отвечало бы об узле под именем, какого у того уже нет, а об
+		 *          имени новом - что узла с ним нет вовсе
+		 *
+		 * @note Заведение узла НОВОГО сброса не требует и идёт доливом: имя его родителю
+		 *       известно, и подменить его получивший ссылку может лишь тем же присваиванием,
+		 *       а оно приходит уже следующим обращением
 		 */
-		if((item._kind == kind_t::ELEMENT) && (item._local.compare(local) == 0))
-			// Выводим ссылку на разысканный узел разметки
-			return item;
+		this->reindex();
+		// Выводим ссылку на разысканный узел разметки
+		return this->_items.at(offset);
 	}
 	// Заводим вложенный узел разметки с затребованным именем
 	this->_items.push_back(Value(local));
+	// Выполняем учёт заведённого узла разметки в отображении имён
+	this->indexed(local);
 	// Выводим ссылку на заведённый узел разметки
 	return this->_items.back();
 }
@@ -1135,9 +1274,21 @@ awh::codec::xml::Value & awh::codec::xml::Value::operator [] (const size_t index
 	/**
 	 * Если вложенный узел с таким номером уже заведён
 	 */
-	if(index < this->_items.size())
+	if(index < this->_items.size()){
+		/**
+		 * Выполняем сброс отображения имён вложенных узлов
+		 *
+		 * @warning Возврат этот ранний, и сброс при нём ОБЯЗАТЕЛЕН наравне с тем, что ниже.
+		 *          Именно этим путём узел и подменяют: `value[5] = иной` кладёт на место
+		 *          пятого узел с иным именем, перечень при этом не растёт вовсе, и путь
+		 *          роста, стоящий ниже, не проходится. Первая правка сброс поставила лишь
+		 *          туда, и подмена узла отображение пережила: розыск отвечал об имени
+		 *          снесённом, что оно есть, а о новом - что его нет
+		 */
+		this->reindex();
 		// Выводим ссылку на вложенный узел
 		return this->_items.at(index);
+	}
 	/**
 	 * Если узел вложенных узлов иметь не может
 	 */
@@ -1167,6 +1318,17 @@ awh::codec::xml::Value & awh::codec::xml::Value::operator [] (const size_t index
 	while(this->_items.size() <= index)
 		// Добавляем в перечень вложенных узлов узел неопределённый
 		this->_items.push_back(Value());
+	/**
+	 * Выполняем сброс отображения имён вложенных узлов
+	 *
+	 * @warning Сброс ОБЯЗАТЕЛЕН, и рост перечня тут ни при чём: узлы неопределённые имени не
+	 *          имеют, а заведение их в конец номеров прежних узлов не сдвигает. Дело в том,
+	 *          что наружу отдаётся ссылка ИЗМЕНЯЕМАЯ на ЛЮБОЕ место перечня, и получивший её
+	 *          вправе положить туда узел разметки с каким угодно именем - хоть на место
+	 *          заведённого только что, хоть поверх давнего. Имя хранится у самого узла, и
+	 *          правку эту родитель не наблюдает
+	 */
+	this->reindex();
 	// Выводим ссылку на вложенный узел
 	return this->_items.at(index);
 }
@@ -1207,6 +1369,16 @@ bool awh::codec::xml::Value::push(const Value & value) noexcept {
 		return false;
 	// Добавляем узел в конец перечня вложенных узлов
 	this->_items.push_back(value);
+	/**
+	 * Если добавленный узел является узлом разметки
+	 *
+	 * @note Узлы текста, примечаний и указаний в отображении не учитываются вовсе, а
+	 *       заведение их В КОНЕЦ номеров прежних узлов не сдвигает: сбрасывать
+	 *       отображение ради них было бы напрасной тратой
+	 */
+	if(value._kind == kind_t::ELEMENT)
+		// Выполняем учёт заведённого узла разметки в отображении имён
+		this->indexed(value._local);
 	// Выводим признак успешного добавления
 	return true;
 }
@@ -1255,6 +1427,14 @@ bool awh::codec::xml::Value::insert(const string & local, const Value & value) n
 	this->_items.back()._kind = kind_t::ELEMENT;
 	// Устанавливаем имя добавленного узла затребованным
 	this->_items.back()._local = local;
+	/**
+	 * Выполняем учёт заведённого узла разметки в отображении имён
+	 *
+	 * @note Учёт идёт ПОСЛЕ установки имени, а не сразу за добавлением: добавляемый узел
+	 *       приходит со своим собственным именем, и учтённое до установки указывало бы
+	 *       на узел под чужим именем
+	 */
+	this->indexed(local);
 	// Выводим признак успешной установки
 	return true;
 }
@@ -1278,6 +1458,8 @@ bool awh::codec::xml::Value::erase(const string & local, const string & uri) noe
 		   (this->_items.at(i)._local.compare(local) == 0) && (this->_items.at(i)._uri.compare(uri) == 0)){
 			// Выполняем снятие вложенного узла
 			this->_items.erase(this->_items.begin() + static_cast <ptrdiff_t> (i));
+			// Выполняем сброс отображения имён вложенных узлов
+			this->reindex();
 			// Выводим признак успешного снятия
 			return true;
 		}
@@ -1301,6 +1483,8 @@ bool awh::codec::xml::Value::erase(const size_t index) noexcept {
 		return false;
 	// Выполняем снятие вложенного узла
 	this->_items.erase(this->_items.begin() + static_cast <ptrdiff_t> (index));
+	// Выполняем сброс отображения имён вложенных узлов
+	this->reindex();
 	// Выводим признак успешного снятия
 	return true;
 }
@@ -1796,6 +1980,13 @@ void awh::codec::xml::Value::absorb(const node_t & node) noexcept {
 		// Выполняем снятие очередного вложенного узла
 		this->_items.back().absorb(item);
 	}
+	/**
+	 * Выполняем сброс отображения имён вложенных узлов
+	 *
+	 * @note Наполнение идёт перечнем напрямую, и сброс довольно выполнить единожды по
+	 *       окончании перебора, а не на всяком заведённом узле
+	 */
+	this->reindex();
 }
 /**
  * @brief Метод разбора текста разметки во владеющее значение
@@ -2038,6 +2229,8 @@ awh::codec::xml::Value & awh::codec::xml::Value::operator = (const Value & value
 	this->_bindings = value._bindings;
 	// Выполняем копирование вложенных узлов
 	this->_items = value._items;
+	// Выполняем сброс отображения имён вложенных узлов
+	this->reindex();
 	// Выводим ссылку на текущее значение
 	return (* this);
 }
@@ -2071,6 +2264,8 @@ awh::codec::xml::Value & awh::codec::xml::Value::operator = (Value && value) noe
 	this->_bindings = ::std::move(value._bindings);
 	// Выполняем перенос вложенных узлов
 	this->_items = ::std::move(value._items);
+	// Выполняем сброс отображения имён вложенных узлов
+	this->reindex();
 	// Выполняем очистку значения, у какого содержимое отобрано
 	value.clear();
 	// Выводим ссылку на текущее значение
@@ -2080,14 +2275,14 @@ awh::codec::xml::Value & awh::codec::xml::Value::operator = (Value && value) noe
  * @brief Конструктор
  *
  */
-awh::codec::xml::Value::Value() noexcept : _kind(kind_t::NONE) {}
+awh::codec::xml::Value::Value() noexcept : _kind(kind_t::NONE), _indexed(false) {}
 /**
  * @brief Конструктор узла указанного вида
  *
  * @param kind вид заводимого узла
  *
  */
-awh::codec::xml::Value::Value(const kind_t kind) noexcept : _kind(kind) {}
+awh::codec::xml::Value::Value(const kind_t kind) noexcept : _kind(kind), _indexed(false) {}
 /**
  * @brief Конструктор узла разметки с именем
  *
@@ -2097,7 +2292,7 @@ awh::codec::xml::Value::Value(const kind_t kind) noexcept : _kind(kind) {}
  *
  */
 awh::codec::xml::Value::Value(const string & local, const string & uri, const string & prefix) noexcept :
- _kind(kind_t::ELEMENT), _prefix(prefix), _local(local), _uri(uri) {}
+ _kind(kind_t::ELEMENT), _prefix(prefix), _local(local), _uri(uri), _indexed(false) {}
 /**
  * @brief Конструктор узла указанного вида с содержимым
  *
@@ -2105,14 +2300,14 @@ awh::codec::xml::Value::Value(const string & local, const string & uri, const st
  * @param text содержимое заводимого узла
  *
  */
-awh::codec::xml::Value::Value(const kind_t kind, const string & text) noexcept : _kind(kind), _text(text) {}
+awh::codec::xml::Value::Value(const kind_t kind, const string & text) noexcept : _kind(kind), _text(text), _indexed(false) {}
 /**
  * @brief Конструктор снятия значения с узла дерева разметки
  *
  * @param node узел дерева разметки
  *
  */
-awh::codec::xml::Value::Value(const node_t & node) noexcept : _kind(kind_t::NONE) {
+awh::codec::xml::Value::Value(const node_t & node) noexcept : _kind(kind_t::NONE), _indexed(false) {
 	// Выполняем снятие значения с узла дерева разметки
 	this->absorb(node);
 }
@@ -2124,7 +2319,7 @@ awh::codec::xml::Value::Value(const node_t & node) noexcept : _kind(kind_t::NONE
  */
 awh::codec::xml::Value::Value(const Value & value) noexcept :
  _kind(value._kind), _prefix(value._prefix), _local(value._local), _uri(value._uri),
- _text(value._text), _attributes(value._attributes), _bindings(value._bindings), _items(value._items) {}
+ _text(value._text), _attributes(value._attributes), _bindings(value._bindings), _items(value._items), _indexed(false) {}
 /**
  * @brief Конструктор переноса
  *
@@ -2135,7 +2330,7 @@ awh::codec::xml::Value::Value(Value && value) noexcept :
  _kind(value._kind), _prefix(::std::move(value._prefix)), _local(::std::move(value._local)),
  _uri(::std::move(value._uri)), _text(::std::move(value._text)),
  _attributes(::std::move(value._attributes)), _bindings(::std::move(value._bindings)),
- _items(::std::move(value._items)) {
+ _items(::std::move(value._items)), _indexed(false) {
 	// Выполняем очистку значения, у какого содержимое отобрано
 	value.clear();
 }
@@ -2761,6 +2956,18 @@ bool awh::codec::xml::Document::graft(const string & path, const xml::Value & va
 	this->_nodes.at(target).prev = INVALID_NODE;
 	// Устанавливаем отсутствие следующего узла того же уровня у заменённого узла
 	this->_nodes.at(target).next = INVALID_NODE;
+	/**
+	 * Выполняем очистку отображений имён вложенных узлов
+	 *
+	 * @warning Очистка эта обязательна по двум причинам разом. Первая: прививка пополняет
+	 *          общее хранилище знаков, а ключи отображений суть виды в него, и рост его
+	 *          обращает их висячими. Вторая: прививка перевязывает цепочку детей, и
+	 *          отображение родителя отвечало бы узлом, из дерева уже отвязанным
+	 *
+	 * @note Сбрасываются ВСЕ отображения, а не одно лишь родительское: рост хранилища
+	 *       обращает висячими ключи у всех родителей разом, а не у одного
+	 */
+	this->_index.clear();
 	// Выводим признак успешной прививки
 	return true;
 }

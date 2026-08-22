@@ -1185,11 +1185,27 @@ void awh::codec::ini::Value::absorb(const Document & document) noexcept {
 	 * @param subsection имя подраздела
 	 *
 	 */
-	const auto gather = [&document](Value & holder, const string_view section, const string_view subsection) noexcept -> void {
+	const auto gather = [&document](Value & holder, const string & section, const string & subsection) noexcept -> void {
+		/**
+		 * Имена свойств раздела, снятые своими копиями
+		 *
+		 * @note Копии обязательны: дерево выдаёт имена видами в своё хранилище знаков, а
+		 *       всякое обращение к дереву вправе пересчитать подстановку обращений и
+		 *       хранилище то переместить. Вид, взятый до пересчёта, повисал бы, и разбор
+		 *       брал бы содержимое из освобождённой памяти. Нашёл это ворошитель под
+		 *       санитайзером, круговым переносом значения
+		 */
+		vector <string> names;
 		/**
 		 * Выполняем перебор всех имён свойств раздела
 		 */
-		for(auto & key : document.keys(section, subsection)){
+		for(auto & name : document.keys(section, subsection))
+			// Выполняем снятие копии очередного имени свойства
+			names.emplace_back(name);
+		/**
+		 * Выполняем перебор всех снятых имён свойств раздела
+		 */
+		for(auto & key : names){
 			// Получаем перечень значений одноимённого свойства
 			const vector <string_view> values = document.values(key, section, subsection);
 			/**
@@ -1226,34 +1242,47 @@ void awh::codec::ini::Value::absorb(const Document & document) noexcept {
 		}
 	};
 	// Выполняем снятие свойств верхнего уровня текста настроек
-	gather(* this, "", "");
+	gather(* this, string(), string());
+	/**
+	 * Имена объявленных разделов, снятые своими копиями
+	 *
+	 * @note Копии обязательны по той же причине, что и у имён свойств: дерево выдаёт
+	 *       имена видами в своё хранилище знаков, а снятие свойств вправе его переместить
+	 */
+	vector <pair <string, string>> sections;
 	/**
 	 * Выполняем перебор всех объявленных разделов текста настроек
 	 */
-	for(auto & name : document.sections()){
+	for(auto & item : document.sections())
+		// Выполняем снятие копии имени очередного раздела
+		sections.emplace_back(string(item.section), string(item.subsection));
+	/**
+	 * Выполняем перебор всех снятых имён разделов текста настроек
+	 */
+	for(auto & name : sections){
 		/**
 		 * Если имя раздела пусто вовсе
 		 *
 		 * @note Раздел с пустым именем есть верхний уровень, и свойства его сняты уже
 		 */
-		if(name.section.empty())
+		if(name.first.empty())
 			// Выполняем переход к следующему разделу
 			continue;
 		// Получаем вместилище раздела, заводя его при надобности
-		Value & section = (* this)[string(name.section)];
+		Value & section = (* this)[name.first];
 		/**
 		 * Если имя подраздела пусто вовсе
 		 */
-		if(name.subsection.empty()){
+		if(name.second.empty()){
 			// Выполняем снятие свойств раздела
-			gather(section, name.section, "");
+			gather(section, name.first, string());
 			// Выполняем переход к следующему разделу
 			continue;
 		}
 		// Получаем вместилище подраздела, заводя его при надобности
-		Value & subsection = section[string(name.subsection)];
+		Value & subsection = section[name.second];
 		// Выполняем снятие свойств подраздела
-		gather(subsection, name.section, name.subsection);
+		gather(subsection, name.first, name.second);
 	}
 }
 /**
@@ -1594,6 +1623,55 @@ bool awh::codec::ini::Value::graft(Document & document) const noexcept {
 		// Выводим признак неудачного переноса
 		return false;
 	/**
+	 * Знак, которым начинается обращение к значению
+	 *
+	 * @note Знак этот берётся у дерева, куда перенос ведётся: подстановка обращений
+	 *       настройкою задаётся, и дерево, её не ведущее, оград не требует вовсе
+	 */
+	const char letter = ((document.settings().references == reference_t::SHELL) ? '$' :
+	 ((document.settings().references == reference_t::PYTHON) ? '%' : '\0'));
+	/**
+	 * @brief Функция ограждения знака обращения удвоением его
+	 *
+	 * @details Владеющее значение несёт значения РАЗРЕШЁННЫЕ: обращение, в тексте
+	 * стоявшее, подстановкою уже заменено, а знак, ограждённый удвоением, разбором
+	 * уже сведён к одинарному. Уложи такое значение в дерево дословно - и знак, данными
+	 * бывший, обратился бы обращением, а перенос выдал бы значение иное
+	 *
+	 * @note Нашёл это ворошитель круговым переносом на записи `$${цель}`
+	 *
+	 * @param value ограждаемое значение
+	 * @return      значение с ограждённым знаком обращения
+	 *
+	 */
+	const auto guarded = [letter](const string & value) noexcept -> string {
+		/**
+		 * Если ограждать нечего
+		 */
+		if((letter == '\0') || (value.find(letter) == string::npos))
+			// Выводим значение неизменным
+			return value;
+		// Собираемое значение с ограждённым знаком обращения
+		string result;
+		// Выполняем выделение места под собираемое значение
+		result.reserve(value.length() + 8);
+		/**
+		 * Выполняем перебор всех знаков значения
+		 */
+		for(size_t i = 0; i < value.length(); i++){
+			// Выполняем добавление очередного знака к собираемому значению
+			result.push_back(value.at(i));
+			/**
+			 * Если очередной знак знаком обращения является
+			 */
+			if(value.at(i) == letter)
+				// Выполняем удвоение знака обращения
+				result.push_back(letter);
+		}
+		// Выводим собранное значение
+		return result;
+	};
+	/**
 	 * @brief Функция переноса свойств вместилища в дерево настроек
 	 *
 	 * @param holder     вместилище, чьи свойства переносятся
@@ -1602,7 +1680,7 @@ bool awh::codec::ini::Value::graft(Document & document) const noexcept {
 	 * @return           признак успешности переноса
 	 *
 	 */
-	const auto transfer = [&document](const Value & holder, const string_view section, const string_view subsection) noexcept -> bool {
+	const auto transfer = [&document, &guarded](const Value & holder, const string_view section, const string_view subsection) noexcept -> bool {
 		/**
 		 * Выполняем перебор всех пар вместилища
 		 */
@@ -1662,7 +1740,7 @@ bool awh::codec::ini::Value::graft(Document & document) const noexcept {
 					/**
 					 * Если перенести очередное значение перечня не удалось
 					 */
-					if(!document.push(holder._names.at(i), entry._text, section, subsection))
+					if(!document.push(holder._names.at(i), guarded(entry._text), section, subsection))
 						// Выводим признак неудачного переноса
 						return false;
 				}
@@ -1678,7 +1756,7 @@ bool awh::codec::ini::Value::graft(Document & document) const noexcept {
 			/**
 			 * Если перенести простое свойство не удалось
 			 */
-			if(!document.set(holder._names.at(i), item._text, section, subsection))
+			if(!document.set(holder._names.at(i), guarded(item._text), section, subsection))
 				// Выводим признак неудачного переноса
 				return false;
 		}

@@ -19,6 +19,7 @@
 /**
  * Подключаем заголовочный файл
  */
+#include <alloc/link.hpp>
 #include <alloc/cache.hpp>
 #if defined(__OpenBSD__)
 	#include <dlfcn.h>
@@ -64,12 +65,8 @@ namespace {
 	 *
 	 */
 	static void * following(void * block) noexcept {
-		// Следующий свободный блок
-		void * result = nullptr;
-		// Читаем указатель побайтовым копированием: выравнивания указателя мы не обещали
-		::memcpy(&result, block, sizeof(void *));
-		// Выводим следующий свободный блок
-		return result;
+		// Выводим следующий свободный блок, разбирая перемешивание
+		return awh::alloc::Link::next(block);
 	}
 	/**
 	 * @brief Метод записи указателя на следующий свободный блок
@@ -79,8 +76,8 @@ namespace {
 	 *
 	 */
 	static void following(void * block, void * subsequent) noexcept {
-		// Записываем указатель побайтовым копированием
-		::memcpy(block, &subsequent, sizeof(void *));
+		// Записываем указатель перемешанным
+		awh::alloc::Link::next(block, subsequent);
 	}
 	/**
 	 * Кэш потока хранится ключом системы, а НЕ в `thread_local`
@@ -406,6 +403,16 @@ size_t awh::alloc::Cache::bytes() const noexcept {
 #if defined(_WIN32) || defined(_WIN64)
 	// Место хранения кэша, отслеживаемое системой
 	static DWORD __awh_alloc_slot__ = FLS_OUT_OF_INDEXES;
+	/**
+	 * Сторож возвратности здесь не нужен
+	 *
+	 * Заведён он ради OpenBSD, чья библиотека времени исполнения обращается за памятью
+	 * из-под чтения места потока. Место потока у MS Windows держится своим средством
+	 * (FLS) и к выделению памяти не обращается вовсе, - оттого сторож здесь пуст,
+	 * но определён: зовут его в общем для всех систем коде
+	 */
+	#define AWH_ALLOC_BUSY false
+	#define AWH_ALLOC_BUSY_SET(value) static_cast <void> (value)
 #else
 	// Ключ хранения кэша, отслеживаемый системой
 	static pthread_key_t __awh_alloc_key__;

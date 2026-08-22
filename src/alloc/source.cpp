@@ -380,6 +380,101 @@ void * awh::alloc::SystemSource::alloc(const size_t size, const size_t alignment
 	#endif
 }
 /**
+ * @brief Метод запрета области уходить в подкачку
+ *
+ * @param addr   адрес области
+ * @param size   размер области в байтах
+ * @param wanted признак необходимости запрета
+ * @return       признак выполнения операции
+ *
+ */
+bool awh::alloc::SystemSource::wire(void * addr, const size_t size, const bool wanted) noexcept {
+	// Если области нет
+	if((addr == nullptr) || (size == 0))
+		// Запрещать нечего
+		return false;
+	/**
+	 * Для операционной системы MS Windows
+	 */
+	#if _WIN32 || _WIN64
+		// Ставим либо снимаем запрет уходить в подкачку
+		return (wanted ? (::VirtualLock(addr, size) != 0) : (::VirtualUnlock(addr, size) != 0));
+	/**
+	 * Для операционной системы не являющейся MS Windows
+	 */
+	#else
+		/**
+		 * Право на запрет ограничено пределом RLIMIT_MEMLOCK
+		 *
+		 * Отказ здесь - обычный исход, а не дефект: предел этот у обычной машины
+		 * невелик, и просьба сверх него отвергается системой
+		 */
+		return ((wanted ? ::mlock(addr, size) : ::munlock(addr, size)) == 0);
+	#endif
+}
+/**
+ * @brief Метод отведения области, укрытой от снимков памяти
+ *
+ * @param size   требуемый размер в байтах
+ * @param actual действительно выданный размер
+ * @param hidden признак состоявшегося укрытия
+ * @return       адрес выданной области либо nullptr
+ *
+ */
+void * awh::alloc::SystemSource::conceal(const size_t size, size_t & actual, bool & hidden) noexcept {
+	// Обнуляем действительно выданный размер
+	actual = 0;
+	// Укрытия пока не состоялось
+	hidden = false;
+	// Если размер не задан
+	if(size == 0)
+		// Выдавать нечего
+		return nullptr;
+	/**
+	 * Укрытие от снимков памяти умеют не все системы
+	 *
+	 * У OpenBSD это `MAP_CONCEAL`: область не попадает в снимок памяти при падении. У
+	 * FreeBSD тому же служит `MAP_NOCORE`. Прочим системам укрыть область при отведении
+	 * нечем, и мы отвечаем честным «не укрыто», отводя её обычным путём: понизить
+	 * обещание молча значило бы обмануть того, кто просил защиты
+	 */
+	#if defined(MAP_CONCEAL) || defined(MAP_NOCORE)
+		// Получаем зернистость выдачи
+		const size_t grain = this->granularity();
+		// Если зернистость выдачи не определена
+		if(grain == 0)
+			// Выдавать нечего
+			return nullptr;
+		// Округляем требуемый размер до целого числа страниц
+		const size_t rounded = (((size + (grain - 1)) / grain) * grain);
+		/**
+		 * Признак укрытия у своей системы
+		 */
+		#if defined(MAP_CONCEAL)
+			// Область не попадает в снимок памяти при падении
+			const int shelter = MAP_CONCEAL;
+		#else
+			// Область не попадает в снимок памяти при падении
+			const int shelter = MAP_NOCORE;
+		#endif
+		// Отводим укрытую область у системы
+		void * result = ::mmap(nullptr, rounded, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | shelter, -1, 0);
+		// Если область не отведена
+		if(result == MAP_FAILED)
+			// Выдавать нечего
+			return nullptr;
+		// Запоминаем действительно выданный размер
+		actual = rounded;
+		// Отмечаем укрытие состоявшимся
+		hidden = true;
+		// Выводим адрес отведённой области
+		return result;
+	#else
+		// Отводим область обычным путём
+		return this->alloc(size, 0, actual);
+	#endif
+}
+/**
  * @brief Метод отдачи содержимого страниц системе
  *
  * @param addr адрес отдаваемой области

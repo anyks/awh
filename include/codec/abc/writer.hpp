@@ -162,6 +162,40 @@ namespace awh {
 						size_t reference;
 						/**
 						 * \~russian
+						 * Порог объявления размаха вместимого в значениях, ноль - не объявлять
+						 *
+						 * @details Вместимое, несущее значений не менее порога, укладывается за
+						 * меткой размаха (`extend_t::SPANNED`): чтение вправе пропустить его
+						 * ОДНИМ сложением, вместо обхода всех его значений. Замер 21.08.2026:
+						 * обращение к полю за поддеревом из ста тысяч значений стоило ровно
+						 * столько же, сколько разбор всей записи, - 2 мс
+						 *
+						 * @note Настройка эта по умолчанию СНЯТА, и снята намеренно: метка
+						 * размаха есть расширение проволочной записи, и чтение, о ней не
+						 * знающее, такую запись не разберёт. Запись, собранная без настройки,
+						 * не отличается от прежней ни одним октетом
+						 *
+						 * @note Порог задаётся в ЗНАЧЕНИЯХ, а не в октетах: размах в октетах
+						 * сборке при открытии вместимого ещё не известен, а количество значений
+						 * строгий вид записи объявляет наперёд
+						 *
+						 * \~english
+						 * Threshold of the declaration of the span of a container in values, zero — not to declare
+						 * @details A container carrying no fewer values than the threshold is laid after a tag
+						 * of the span (`extend_t::SPANNED`): a reading is entitled to skip it by ONE addition
+						 * instead of a walk over all of its values
+						 * @note This setting is REMOVED by default, and removed deliberately: the tag of the span
+						 * is an extension of the wire record, and a reading unaware of it will not parse such a record.
+						 * A record assembled without the setting does not differ from the former one by a single octet
+						 * @note The threshold is set in VALUES rather than in octets: the span in octets is not yet
+						 * known to the assembling upon the opening of a container, while the number of the values
+						 * is declared in advance by the strict kind of the record
+						 *
+						 * \~
+						 */
+						uint64_t spanned;
+						/**
+						 * \~russian
 						 * @brief Конструктор
 						 *
 						 *
@@ -197,6 +231,21 @@ namespace awh {
 						span_t key;
 						/**
 						 * \~russian
+						 * Смещение отведённого места записи размаха, ноль - размах не объявлен
+						 *
+						 * @note Ноль признаком отсутствия годится: перед размахом лежит хотя бы
+						 * метка расширения, и нулевым смещение его быть не может никогда
+						 *
+						 * \~english
+						 * Offset of the set aside place of the record of the span, zero — the span is not declared
+						 * @note Zero is fit as a sign of an absence: before the span there lies at least the tag
+						 * of the extension, and its offset can never be zero
+						 *
+						 * \~
+						 */
+						size_t spanned;
+						/**
+						 * \~russian
 						 * Вид значения, собираемого кусками, либо UNDEFINED у вместимого
 						 *
 						 * @note Значение, собираемое кусками, ведётся тем же стеком, что и
@@ -224,7 +273,7 @@ namespace awh {
 						 */
 						Frame() noexcept :
 						 mapping(false), indefinite(false), expectKey(false), marked(false), remain(0),
-						 segment(type_t::UNDEFINED) {}
+						 spanned(0), segment(type_t::UNDEFINED) {}
 					} frame_t;
 					/**
 					 * \~russian

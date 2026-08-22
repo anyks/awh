@@ -68,13 +68,17 @@ namespace {
 		uint64_t trees;
 		// Количество перезаписей дерева настроек
 		uint64_t rewrites;
+		// Количество попыток кругового переноса владеющего значения
+		uint64_t grafts;
+		// Количество удавшихся переносов владеющего значения
+		uint64_t grafted;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
 		Statistic() noexcept :
 		 texts(0), corrupted(0), survived(0),
-		 events(0), trees(0), rewrites(0) {}
+		 events(0), trees(0), rewrites(0), grafts(0), grafted(0) {}
 	/**
 	 * Учёт проделанной работы
 	 *
@@ -1256,6 +1260,55 @@ namespace {
 			// Выводим результат проверки дерева настроек
 			return false;
 		}
+		/**
+		 * Выполняем круговой перенос владеющего значения через дерево настроек
+		 *
+		 * @details Дерево снимается владеющим значением, значение переносится в дерево
+		 * пустое, а перенесённое снимается вновь: снятое обязано совпасть с исходным.
+		 * Сличение ведётся значениями, а не текстом: дерево, часть значения потерявшее,
+		 * записывает текст, выглядящий верным, - недостаёт в нём лишь строки
+		 *
+		 * @note Настройки дерева переноса берутся у исходного: подстановка обращений и
+		 *       вид записи перечня заданы ими, и дерево иных настроек выдало бы значение
+		 *       иное по праву, а не по дефекту
+		 */
+		{
+			// Выполняем снятие владеющего значения с дерева настроек
+			const ini::value_t lifted(document);
+			// Собираемое дерево настроек, куда переносится значение
+			ini::document_t target(relaxed);
+			/**
+			 * Если разобрать пустой текст настроек удалось
+			 */
+			if(target.parse("")){
+				// Выполняем учёт попытки кругового переноса
+				totals.grafts++;
+				/**
+				 * Если перенести владеющее значение в дерево удалось
+				 */
+				if(lifted.graft(target)){
+					// Выполняем учёт удавшегося переноса
+					totals.grafted++;
+					// Выполняем снятие владеющего значения с дерева переноса
+					const ini::value_t back(target);
+					/**
+					 * Если снятое с дерева переноса значение с исходным разошлось
+					 */
+					if(!(back == lifted)){
+						// Выводим сообщение о расхождении перенесённого значения с исходным
+						::fprintf(stderr, "ini fuzz: grafted value differs from the lifted one\n");
+						// Выводим исходный текст настроек
+						dump(text);
+						// Выводим перезапись дерева, с какого значение снято
+						dump(document.text());
+						// Выводим перезапись дерева переноса
+						dump(target.text());
+						// Выводим результат проверки дерева настроек
+						return false;
+					}
+				}
+			}
+		}
 		// Выводим результат проверки дерева настроек
 		return true;
 	}
@@ -1519,13 +1572,15 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	// Выводим статистику работы генератора
 	::fprintf(
 		stdout,
-		"ini fuzz: %llu texts (%llu corrupted), %llu events, %llu parsed to the end, %llu trees, %llu rewrites\n",
+		"ini fuzz: %llu texts (%llu corrupted), %llu events, %llu parsed to the end, %llu trees, %llu rewrites, %llu grafts (%llu refused)\n",
 		static_cast <unsigned long long> (totals.texts),
 		static_cast <unsigned long long> (totals.corrupted),
 		static_cast <unsigned long long> (totals.events),
 		static_cast <unsigned long long> (totals.survived),
 		static_cast <unsigned long long> (totals.trees),
-		static_cast <unsigned long long> (totals.rewrites)
+		static_cast <unsigned long long> (totals.rewrites),
+		static_cast <unsigned long long> (totals.grafted),
+		static_cast <unsigned long long> (totals.grafts - totals.grafted)
 	);
 	// Выходим из приложения
 	return EXIT_SUCCESS;

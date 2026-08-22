@@ -1,4 +1,5 @@
 # СБорка тестов и бенчмарков
+add_subdirectory(alloc)
 add_subdirectory(net)
 add_subdirectory(sys)
 add_subdirectory(cryptography)

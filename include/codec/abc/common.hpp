@@ -344,8 +344,29 @@ namespace awh {
 			enum class extend_t : uint8_t {
 				BIGNUM  = 0x00, // Целое любой ширины, за меткой длина и октеты числа
 				DECIMAL = 0x01, // Десятичное, за меткой порядок и целое любой ширины
-				CUSTOM  = 0x02  // Открытое расширение, за меткой номер подвида, длина и октеты
+				CUSTOM  = 0x02, // Открытое расширение, за меткой номер подвида, длина и октеты
+				SPANNED = 0x03  // Вместимое с объявленным размахом, за меткой размах и само вместимое
 			};
+
+			/**
+			 * \~russian
+			 * @brief Ширина записи размаха вместимого в октетах
+			 *
+			 * @details Размах кладётся записью ПОСТОЯННОЙ ширины, а не переменной: сборка
+			 * узнаёт его лишь при закрытии вместимого, и место под него отводится наперёд,
+			 * а заполняется задним числом. Переменная ширина обязала бы сдвигать всё
+			 * уложенное следом
+			 *
+			 * \~english
+			 * @brief Width of the record of the span of a container in octets
+			 * @details The span is laid by a record of a CONSTANT width rather than of a variable one:
+			 * the assembling learns it only upon the closing of the container, and the place for it is
+			 * set aside in advance and filled in after the fact. A variable width would oblige one to
+			 * shift everything laid afterwards
+			 *
+			 * \~
+			 */
+			constexpr size_t SPAN_LENGTH = 8;
 
 			/**
 			 * \~russian

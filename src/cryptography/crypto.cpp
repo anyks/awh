@@ -32,6 +32,11 @@
 #include <openssl/err.h>
 #include <openssl/hmac.h>
 #include <openssl/rand.h>
+
+/**
+ * Подключаем заголовочный файл распределителя укрытой памяти
+ */
+#include <alloc/keeper.hpp>
 #include <openssl/ec.h>
 #include <openssl/obj_mac.h>
 
@@ -7734,6 +7739,13 @@ template bool awh::Crypto::encrypt(const void *, const size_t, vector <char> &, 
  */
 template bool awh::Crypto::encrypt(const void *, const size_t, vector <uint8_t> &, const hash_t, const cipher_t) const noexcept;
 /**
+ * @brief Явный специализированный шаблон метода кодирования с выводом результата в укрытый буфер
+ *
+ * @note Нужен складу тайн: открытый текст там не вправе лечь в общую кучу
+ *
+ */
+template bool awh::Crypto::encrypt(const void *, const size_t, vector <char, awh::alloc::Keeper <char>> &, const hash_t, const cipher_t) const noexcept;
+/**
  * @brief Шаблон метода кодирования
  *
  * @tparam T тип возвращаемого результата
@@ -8162,6 +8174,13 @@ template bool awh::Crypto::decrypt(const void *, const size_t, vector <char> &, 
  *
  */
 template bool awh::Crypto::decrypt(const void *, const size_t, vector <uint8_t> &, const hash_t, const cipher_t) const noexcept;
+/**
+ * @brief Явный специализированный шаблон метода декодирования с выводом результата в укрытый буфер
+ *
+ * @note Нужен складу тайн: открытый текст там не вправе лечь в общую кучу
+ *
+ */
+template bool awh::Crypto::decrypt(const void *, const size_t, vector <char, awh::alloc::Keeper <char>> &, const hash_t, const cipher_t) const noexcept;
 /**
  * @brief Шаблон метода декодирования
  *

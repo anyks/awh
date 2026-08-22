@@ -19,6 +19,7 @@
 /**
  * Подключаем заголовочный файл
  */
+#include <alloc/link.hpp>
 #include <alloc/central.hpp>
 
 /**
@@ -45,18 +46,8 @@ namespace {
 	 *
 	 */
 	static void * following(void * block) noexcept {
-		// Следующий свободный блок
-		void * result = nullptr;
-		/**
-		 * Читаем указатель побайтовым копированием
-		 *
-		 * Копированием, а не приведением вида: выданная память выровнена лишь по
-		 * шестнадцати байтам, а приведение к указателю на указатель обещало бы
-		 * компилятору выравнивание, которого мы не обещали
-		 */
-		::memcpy(&result, block, sizeof(void *));
-		// Выводим следующий свободный блок
-		return result;
+		// Выводим следующий свободный блок, разбирая перемешивание
+		return awh::alloc::Link::next(block);
 	}
 	/**
 	 * @brief Метод записи указателя на следующий свободный блок
@@ -66,8 +57,8 @@ namespace {
 	 *
 	 */
 	static void following(void * block, void * subsequent) noexcept {
-		// Записываем указатель побайтовым копированием
-		::memcpy(block, &subsequent, sizeof(void *));
+		// Записываем указатель перемешанным
+		awh::alloc::Link::next(block, subsequent);
 	}
 };
 
@@ -93,6 +84,8 @@ bool awh::alloc::Central::init(pages_t * pages, classes_t * classes) noexcept {
 	if(classes->count() == 0)
 		// Отвечаем отказом
 		return false;
+	// Сеем зерно перемешивания указателей прежде, чем связан первый блок
+	link_t::seed();
 	// Запоминаем страничную кучу
 	this->_pages = pages;
 	// Запоминаем разряды размеров

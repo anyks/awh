@@ -1771,6 +1771,100 @@ static void * __awh_alloc_memalign__(size_t alignment, size_t size) {
 #endif
 
 /**
+ * @brief Метод выдачи блока, укрытого от снимков памяти
+ *
+ * @note Служит именам библиотеки времени исполнения, обещающим укрытую выдачу:
+ *       `malloc_conceal` и `calloc_conceal` у OpenBSD. Выдача идёт слоем крупных выдач
+ *       - тот берёт память у источника напрямую, а лишь источник и умеет просить
+ *       укрытия: задаётся оно ПРИ ОТВЕДЕНИИ и задним числом не навешивается
+ *
+ * @param size   требуемый размер в байтах
+ * @param hidden признак состоявшегося укрытия либо nullptr
+ * @return       адрес выданного блока либо nullptr
+ *
+ */
+void * __awh_alloc_conceal__(const size_t size, bool * hidden, const bool wire, bool * wired) noexcept {
+	// Если укрытие не состоялось
+	if(hidden != nullptr)
+		// Отмечаем укрытие несостоявшимся
+		(* hidden) = false;
+	// Если запрет подкачки не состоялся
+	if(wired != nullptr)
+		// Отмечаем запрет несостоявшимся
+		(* wired) = false;
+	// Заводим распределитель, если он ещё не заведён
+	if(!::prepare())
+		// Выдавать нечего
+		return nullptr;
+	// Признак состоявшегося укрытия
+	bool sheltered = false;
+	// Выдаём укрытый блок слоем крупных выдач
+	void * result = ::machinery->huge.conceal(((size > 0) ? size : 1), sheltered, wire, wired);
+	// Если блок не выдан
+	if(result == nullptr)
+		// Выдавать нечего
+		return nullptr;
+	// Отмечаем крупные блоки выданными
+	::enormous.store(true, std::memory_order_relaxed);
+	// Учитываем выданное прикладному коду
+	::account(::machinery->caches.local(), static_cast <int64_t> (size));
+	// Берём выданный блок под учёт места выдачи
+	::enrol(result, size);
+	// Если ответ об укрытии затребован
+	if(hidden != nullptr)
+		// Отдаём признак состоявшегося укрытия
+		(* hidden) = sheltered;
+	// Выводим адрес выданного блока
+	return result;
+}
+/**
+ * @brief Метод выдачи защищённой памяти
+ *
+ * @param size    требуемый размер в байтах
+ * @param shelter сведения о состоявшейся защите либо nullptr
+ * @return        адрес выданной памяти либо nullptr
+ *
+ */
+void * awh::alloc::Allocator::secure(const size_t size, shelter_t * shelter) noexcept {
+	// Признак состоявшегося укрытия от снимков памяти
+	bool hidden = false;
+	// Признак состоявшегося запрета уходить в подкачку
+	bool wired = false;
+	// Выдаём укрытую память с запретом уходить в подкачку
+	void * result = ::__awh_alloc_conceal__(size, &hidden, true, &wired);
+	/**
+	 * Отдаём сведения о состоявшейся защите
+	 *
+	 * Отдаём их и при отказе выдачи: звавший вправе знать, что защита не состоялась,
+	 * прежде чем решать, годится ли ему такая память
+	 */
+	if(shelter != nullptr){
+		// Запоминаем признак укрытия от снимков памяти
+		shelter->hidden = hidden;
+		// Запоминаем признак запрета уходить в подкачку
+		shelter->wired = wired;
+	}
+	// Выводим адрес выданной памяти
+	return result;
+}
+/**
+ * @brief Метод возврата выданной памяти
+ *
+ * @param addr адрес возвращаемой памяти
+ *
+ */
+void awh::alloc::Allocator::release(void * addr) noexcept {
+	/**
+	 * Возврат идёт к НАМ всегда
+	 *
+	 * Обычный `free` совпадает с нашим лишь там, где захват выдачи памяти процесса
+	 * состоялся: у систем ELF наш `free` стоит в двоичном файле с самого связывания,
+	 * а у macOS и MS Windows без захвата он принадлежит системе и нашей области не
+	 * узнаёт вовсе
+	 */
+	::discard(addr);
+}
+/**
  * @brief Метод захвата выделения памяти процесса
  *
  * @param options настройки распределителя

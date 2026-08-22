@@ -100,6 +100,68 @@ namespace awh {
 				virtual void * alloc(const size_t size, const size_t alignment, size_t & actual) noexcept = 0;
 				/**
 				 * \~russian
+				 * @brief Метод отведения области, укрытой от снимков памяти
+				 *
+				 * @note Укрытие задаётся ПРИ ОТВЕДЕНИИ и задним числом не навешивается:
+				 *       оттого это отдельный путь, а не признак у обычной выдачи
+				 *
+				 * @note Умеет его не всякая система. Отклик по умолчанию отводит область
+				 *       обычным путём и отвечает признаком «не укрыто»: молчаливое
+				 *       понижение обещания хуже честного отказа, и решает потребитель
+				 *
+				 * @param size   требуемый размер в байтах
+				 * @param actual действительно выданный размер
+				 * @param hidden признак состоявшегося укрытия
+				 * @return       адрес выданной области либо nullptr
+				 *
+				 * \~english
+				 * @brief Method of allocating a region concealed from memory dumps
+				 *
+				 * @param size   required size in bytes
+				 * @param actual actually allocated size
+				 * @param hidden flag of the concealment having taken place
+				 * @return       address of the allocated region or nullptr
+				 *
+				 */
+				/**
+				 * \~russian
+				 * @brief Метод запрета области уходить в подкачку
+				 *
+				 * @note В отличие от укрытия, запрет этот навешивается на УЖЕ отведённую
+				 *       область: он и есть отдельный вызов системы. Снимать его при
+				 *       отдаче области незачем - система снимает его сама
+				 *
+				 * @note Право на запрет ограничено: у части систем оно требует поднятого
+				 *       предела `RLIMIT_MEMLOCK`, и отказ здесь - обычный исход
+				 *
+				 * @param addr   адрес области
+				 * @param size   размер области в байтах
+				 * @param wanted признак необходимости запрета
+				 * @return       признак выполнения операции
+				 *
+				 * \~english
+				 * @brief Method of preventing a region from being swapped out
+				 *
+				 * @param addr   region address
+				 * @param size   region size in bytes
+				 * @param wanted flag of the lock being required
+				 * @return       flag of the operation having been performed
+				 *
+				 */
+				virtual bool wire(void * addr, const size_t size, const bool wanted) noexcept {
+					// Запрета у источника по умолчанию нет
+					(void) addr; (void) size; (void) wanted;
+					// Отвечаем отказом
+					return false;
+				}
+				virtual void * conceal(const size_t size, size_t & actual, bool & hidden) noexcept {
+					// Укрытия у источника по умолчанию нет
+					hidden = false;
+					// Отводим область обычным путём
+					return this->alloc(size, 0, actual);
+				}
+				/**
+				 * \~russian
 				 * @brief Метод отдачи содержимого страниц системе
 				 *
 				 * @note Адреса при этом остаются за нами: обращение по ним годно и
@@ -238,6 +300,44 @@ namespace awh {
 				 *
 				 */
 				void * alloc(const size_t size, const size_t alignment, size_t & actual) noexcept override;
+				/**
+				 * \~russian
+				 * @brief Метод отведения области, укрытой от снимков памяти
+				 *
+				 * @param size   требуемый размер в байтах
+				 * @param actual действительно выданный размер
+				 * @param hidden признак состоявшегося укрытия
+				 * @return       адрес выданной области либо nullptr
+				 *
+				 * \~english
+				 * @brief Method of allocating a region concealed from memory dumps
+				 *
+				 * @param size   required size in bytes
+				 * @param actual actually allocated size
+				 * @param hidden flag of the concealment having taken place
+				 * @return       address of the allocated region or nullptr
+				 *
+				 */
+				void * conceal(const size_t size, size_t & actual, bool & hidden) noexcept override;
+				/**
+				 * \~russian
+				 * @brief Метод запрета области уходить в подкачку
+				 *
+				 * @param addr   адрес области
+				 * @param size   размер области в байтах
+				 * @param wanted признак необходимости запрета
+				 * @return       признак выполнения операции
+				 *
+				 * \~english
+				 * @brief Method of preventing a region from being swapped out
+				 *
+				 * @param addr   region address
+				 * @param size   region size in bytes
+				 * @param wanted flag of the lock being required
+				 * @return       flag of the operation having been performed
+				 *
+				 */
+				bool wire(void * addr, const size_t size, const bool wanted) noexcept override;
 			public:
 				/**
 				 * \~russian

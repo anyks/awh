@@ -39,9 +39,9 @@ endif()
 find_package(GTest)
 
 # Если библиотека GTest найдена
-if(${GTest_FOUND})
+if (${GTest_FOUND})
     # Определяем имя для юнит-тестов
-    SET(NAME "cryptography")
+    SET(NAME "alloc")
 
     # Переводим название теста в верхний регистр
     string(TOUPPER "${NAME}" UNIT_TEST_NAME)
@@ -64,67 +64,24 @@ if(${GTest_FOUND})
         # Источники для сборки юнит-тестов
         SET(${PROJECT_NAME}_UNITTEST_SOURCES ../main.cpp)
 
-        # Указываем что нужно собрать тесты для модуля работы с криптографией
-        option(CMAKE_BUILD_${UNIT_TEST_NAME}_CRYPTO_TEST "Build unit CRYPTO test for ${UNIT_TEST_NAME}" ON)
-        # Указываем что нужно собрать тесты для модуля работы с хэшированием данных
-        option(CMAKE_BUILD_${UNIT_TEST_NAME}_HASH_TEST "Build unit HASH test for ${UNIT_TEST_NAME}" ON)
-        # Указываем что нужно собрать тесты для модуля работы с защищённым соединением
-        option(CMAKE_BUILD_${UNIT_TEST_NAME}_TLS_TEST "Build unit TLS test for ${UNIT_TEST_NAME}" ON)
+        # Указываем что нужно собрать тесты для модуля распределителя памяти
+        option(CMAKE_BUILD_${UNIT_TEST_NAME}_ALLOCATOR_TEST "Build unit ALLOCATOR test for ${UNIT_TEST_NAME}" ON)
 
-        # Если нужно собрать тесты для модуля работы с криптографией
-        if (${CMAKE_BUILD_${UNIT_TEST_NAME}_CRYPTO_TEST})
-            # Выводим сообщение о сборке тестов для модуля работы с криптографией
-            message(STATUS "Build tests CRYPTO module: Yes\n")
-            # Дополняем список источников тестами для модуля работы с криптографией
+        # Если нужно собрать тесты для модуля распределителя памяти
+        if (${CMAKE_BUILD_${UNIT_TEST_NAME}_ALLOCATOR_TEST})
+            # Выводим сообщение о сборке тестов для модуля распределителя памяти
+            message(STATUS "Build tests ALLOCATOR module: Yes\n")
+            # Дополняем список источников тестами для модуля распределителя памяти
             list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
-                crypto/crypto.cpp
-                crypto/static.cpp
-                crypto/parameterized.cpp
-                vault/vault.cpp
-                vault/secrets.cpp
+                capture.cpp
+                mangle.cpp
+                contract.cpp
             )
-        # Если не нужно собрать тесты для модуля работы с криптографией
+        # Если не нужно собрать тесты для модуля распределителя памяти
         else()
-            # Выводим сообщение о сборке тестов для модуля работы с криптографией
-            message(STATUS "Build tests CRYPTO module: No\n")
-        endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_CRYPTO_TEST})
-
-        # Если нужно собрать тесты для модуля работы с хэшированием данных
-        if (${CMAKE_BUILD_${UNIT_TEST_NAME}_HASH_TEST})
-            # Выводим сообщение о сборке тестов для модуля работы с хэшированием данных
-            message(STATUS "Build tests HASH module: Yes\n")
-            # Дополняем список источников тестами для модуля работы с хэшированием данных
-            list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
-                hash/hash.cpp
-                hash/static.cpp
-                hash/engine.cpp
-                hash/bignum.cpp
-                hash/crypto.cpp
-                hash/stress.cpp
-                hash/parameterized.cpp
-            )
-        # Если не нужно собрать тесты для модуля работы с хэшированием данных
-        else()
-            # Выводим сообщение о сборке тестов для модуля работы с хэшированием данных
-            message(STATUS "Build tests HASH module: No\n")
-        endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_HASH_TEST})
-
-        # Если нужно собрать тесты для модуля работы с защищённым соединением
-        if (${CMAKE_BUILD_${UNIT_TEST_NAME}_TLS_TEST})
-            # Выводим сообщение о сборке тестов для модуля работы с защищённым соединением
-            message(STATUS "Build tests TLS module: Yes\n")
-            # Дополняем список источников тестами для модуля работы с защищённым соединением
-            list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
-                tls/tls.cpp
-                tls/static.cpp
-                tls/handshake.cpp
-            )
-        # Если не нужно собрать тесты для модуля работы с защищённым соединением
-        else()
-            # Выводим сообщение о сборке тестов для модуля работы с защищённым соединением
-            message(STATUS "Build tests TLS module: No\n")
-        endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_TLS_TEST})
-
+            # Выводим сообщение о сборке тестов для модуля распределителя памяти
+            message(STATUS "Build tests ALLOCATOR module: No\n")
+        endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_ALLOCATOR_TEST})
 
         # Библиотеки GTest для линковки
         SET(${PROJECT_NAME}_GTEST_LIBS
@@ -209,9 +166,9 @@ if(${GTest_FOUND})
         if (APPLE AND NOT IOS)
             # Включаем флаги компиляции для сбора статистики покрытия кода
             target_compile_options(
-            ${PROJECT_NAME}${POSTFIX} PRIVATE
-            ${GCC_COVERAGE_COMPILE_FLAGS} -x objective-c++ -fobjc-arc
-        )
+                ${PROJECT_NAME}${POSTFIX} PRIVATE
+                ${GCC_COVERAGE_COMPILE_FLAGS} -x objective-c++ -fobjc-arc
+            )
         # Если сборка производится под операционную систему Windows
         else()
             # Включаем флаги компиляции для сбора статистики покрытия кода
@@ -219,8 +176,7 @@ if(${GTest_FOUND})
         endif()
     # Если не нужно собрать тесты
     else()
-        # Выводим сообщение о сборке тестов для модуля работы с фреймворком
-        message(STATUS "Build tests ${NAME} module: No\n")
+        # Выводим сообщение о сборке тестов для модуля распределителя памяти
+        message(STATUS "Build tests ALLOC module: No\n")
     endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_TESTS})
 endif()
-

@@ -189,6 +189,30 @@ namespace awh {
 		} region_t;
 		/**
 		 * \~russian
+		 * @brief Сведения о защите выданного блока
+		 *
+		 * @note Оба признака отвечают о том, что состоялось НА ДЕЛЕ, а не о том, о чём
+		 *       просили: умеет такое не всякая система, а право на запрет подкачки к
+		 *       тому же ограничено пределом. Молчаливое понижение защиты хуже честного
+		 *       отказа - решать, годится ли она, обязан звавший
+		 *
+		 * \~english
+		 * @brief Information about the protection of an allocated block
+		 *
+		 */
+		typedef struct Shelter {
+			// Признак блока, укрытого от снимков памяти
+			bool hidden;
+			// Признак блока, которому запрещено уходить в подкачку
+			bool wired;
+			/**
+			 * @brief Конструктор
+			 *
+			 */
+			Shelter() noexcept : hidden(false), wired(false) {}
+		} shelter_t;
+		/**
+		 * \~russian
 		 * @brief Настройки распределителя памяти
 		 *
 		 * @note Значения по умолчанию отвечают обычному узлу: арена не занимается
@@ -483,6 +507,62 @@ namespace awh {
 				 *
 				 */
 				static region_t resolve(const void * addr) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод выдачи защищённой памяти
+				 *
+				 * @note Защита состоит из трёх обещаний: область не попадает в снимок
+				 *       памяти при падении, ей запрещено уходить в подкачку, а содержимое
+				 *       затирается при освобождении. Первые два умеет не всякая система, и
+				 *       ответ `shelter` говорит, что состоялось НА ДЕЛЕ. Затирание же
+				 *       обещано всегда
+				 *
+				 * @note Защита эта - НЕ шифрование: живую память шифровать нечем, к ней
+				 *       обращается сам процессор. Она защищает от снимков - подкачки,
+				 *       снимка при падении, спящего режима, - а не от того, кто читает
+				 *       память процесса: такой прочтёт и ключ
+				 *
+				 * @note Блок берётся у системы отдельной областью, а не из кучи: цена его
+				 *       - целая страница даже под малый запрос. Место таких блоков -
+				 *       ключи и пароли, а не рабочие буферы
+				 *
+				 * @note Освобождается методом `release`, а НЕ обычным `free`. Совпадают
+				 *       они лишь там, где захват выдачи памяти процесса состоялся: у
+				 *       систем ELF наш `free` стоит в двоичном файле с самого
+				 *       связывания, а у macOS и MS Windows без захвата `free` -
+				 *       СИСТЕМНЫЙ, и наша область валит его. Проверено тестом склада
+				 *       тайн: `pointer being freed was not allocated`
+				 *
+				 * @param size    требуемый размер в байтах
+				 * @param shelter сведения о состоявшейся защите либо nullptr
+				 * @return        адрес выданной памяти либо nullptr
+				 *
+				 * \~english
+				 * @brief Method of allocating protected memory
+				 *
+				 * @param size    required size in bytes
+				 * @param shelter information about the protection achieved or nullptr
+				 * @return        address of the allocated memory or nullptr
+				 *
+				 */
+				static void * secure(const size_t size, shelter_t * shelter = nullptr) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод возврата выданной памяти
+				 *
+				 * @note Возврат этот идёт к НАМ всегда, состоялся захват выдачи памяти
+				 *       процесса или нет. Обычный `free` там, где захвата не было,
+				 *       принадлежит системе и нашу область не узнаёт
+				 *
+				 * @param addr адрес возвращаемой памяти
+				 *
+				 * \~english
+				 * @brief Method of releasing the allocated memory
+				 *
+				 * @param addr address of the memory being released
+				 *
+				 */
+				static void release(void * addr) noexcept;
 			public:
 				/**
 				 * \~russian

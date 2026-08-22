@@ -906,6 +906,53 @@ namespace awh {
 					 * \~
 					 */
 					vector <uint8_t> dump() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод переноса владеющего значения в дерево документа
+					 *
+					 * @details Работа эта заведена ЕДИНООБРАЗИЯ РАДИ: у прочих кодеков она
+					 * зовётся так же, и потребителю, пишущему поверх нескольких кодеков,
+					 * не приходится помнить, у какого из них перенос зовётся иначе
+					 *
+					 * @warning **Стоит она полного круга через октеты** и правкою на месте
+					 * НЕ является: значение укладывается в запись, а запись разбирается в
+					 * дерево наново. У прочих кодеков дерево умеет правку, и перенос кладёт
+					 * себя её вызовами; у ABC правки дерева нет и не будет - она завела бы
+					 * второй путь укладки записи, мимо строгого вида, порога укладки ссылкой,
+					 * порога объявления размаха и подбора метода сжатия
+					 *
+					 * @note Дерево поданного документа перед переносом очищается: перенос
+					 * заменяет его целиком, а не доливает к нему
+					 *
+					 * @note Прямая дорога у ABC иная и дешевле: собрать значение сборкою
+					 * `builder_t`, уложить его `compose(writer)` либо `dump()`, внести в
+					 * контейнер `editor_t::append` с последующей фиксацией
+					 *
+					 * @param document дерево документа, куда переносится значение
+					 * @return         признак успешности переноса
+					 *
+					 * \~english
+					 * @brief Method of the transfer of an owning value into a tree of a document
+					 * @details This work is introduced FOR THE SAKE OF THE UNIFORMITY: at the other codecs it is
+					 * called the same, and a consumer writing over several codecs does not have to remember
+					 * at which of them the transfer is called otherwise
+					 * @warning **It costs a full circle through the octets** and is NOT an editing in place:
+					 * the value is laid into a record, and the record is parsed into a tree anew. At the other
+					 * codecs the tree is capable of editing, and the transfer lays itself by its calls; at ABC
+					 * there is no editing of the tree and there will not be — it would introduce a second path
+					 * of the laying of a record, past the strict kind, the threshold of the laying by a reference,
+					 * the threshold of the declaration of the span and the selection of the method of the compression
+					 * @note The tree of the submitted document is cleared before the transfer: the transfer replaces
+					 * it as a whole rather than adds to it
+					 * @note The direct road at ABC is different and cheaper: to assemble the value by the assembling
+					 * `builder_t`, to lay it by `compose(writer)` or `dump()`, to bring it into a container by
+					 * `editor_t::append` with a subsequent commit
+					 * @param document tree of the document the value is transferred into
+					 * @return sign of the success of the transfer
+					 *
+					 * \~
+					 */
+					[[nodiscard]] bool graft(Document & document) const noexcept;
 				public:
 					/**
 					 * \~russian

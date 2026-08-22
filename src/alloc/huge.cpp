@@ -400,6 +400,8 @@ void * awh::alloc::Huge::alloc(const size_t size, const size_t alignment) noexce
 	record->size = size;
 	// Сбрасываем связь повторного использования
 	record->spare = nullptr;
+	// Обычная выдача укрытой не бывает
+	record->hidden = false;
 	// Если запись в таблицу поиска не внесена
 	if(!this->enroll(record)){
 		// Возвращаем запись в список повторно используемых
@@ -421,6 +423,101 @@ void * awh::alloc::Huge::alloc(const size_t size, const size_t alignment) noexce
 	return base;
 }
 /**
+ * @brief Метод выдачи блока, укрытого от снимков памяти
+ *
+ * @param size   требуемый размер в байтах
+ * @param hidden признак состоявшегося укрытия
+ * @return       адрес выданного блока либо nullptr
+ *
+ */
+void * awh::alloc::Huge::conceal(const size_t size, bool & hidden, const bool wire, bool * wired) noexcept {
+	// Укрытия пока не состоялось
+	hidden = false;
+	// Запрета уходить в подкачку пока не состоялось
+	if(wired != nullptr)
+		// Отмечаем запрет несостоявшимся
+		(* wired) = false;
+	// Если выдавать нечего
+	if((this->_source == nullptr) || (size == 0))
+		// Выдавать нечего
+		return nullptr;
+	/**
+	 * Сверяем запрос на переполнение при приведении к границе страницы
+	 */
+	if(size > (static_cast <size_t> (-1) - (awh::alloc::Pages::PAGE - 1)))
+		// Отвечаем отказом
+		return nullptr;
+	// Действительно выданный размер
+	size_t actual = 0;
+	// Захватываем замок слоя прежде обращения к источнику
+	hold_t hold(this->_lock);
+	// Берём у источника укрытую область
+	uint8_t * base = reinterpret_cast <uint8_t *> (this->_source->conceal(size, actual, hidden));
+	// Если область не выдана
+	if(base == nullptr)
+		// Выдавать нечего
+		return nullptr;
+	// Выдаём память под учётную запись
+	record_t * record = reinterpret_cast <record_t *> (this->meta());
+	// Если память под учётную запись не выдана
+	if(record == nullptr){
+		// Отдаём источнику взятую область
+		this->_source->release(base, actual);
+		// Укрытия не состоялось
+		hidden = false;
+		// Выдавать нечего
+		return nullptr;
+	}
+	// Запоминаем адрес выданного блока
+	record->block = base;
+	// Запоминаем адрес начала взятой области
+	record->base = base;
+	// Запоминаем размер взятой области
+	record->span = actual;
+	// Запоминаем затребованный размер
+	record->size = size;
+	// Сбрасываем связь повторного использования
+	record->spare = nullptr;
+	// Запоминаем признак укрытия
+	record->hidden = true;
+	// Если запись в таблицу поиска не внесена
+	if(!this->enroll(record)){
+		// Возвращаем запись в список повторно используемых
+		record->spare = this->_spare;
+		// Запоминаем список повторно используемых записей
+		this->_spare = record;
+		// Отдаём источнику взятую область
+		this->_source->release(base, actual);
+		// Укрытия не состоялось
+		hidden = false;
+		// Выдавать нечего
+		return nullptr;
+	}
+	// Увеличиваем число живых крупных выдач
+	this->_state.live++;
+	// Увеличиваем взятое у источника
+	this->_state.taken += actual;
+	// Увеличиваем выданное прикладному коду
+	this->_state.given += size;
+	/**
+	 * Запрещаем области уходить в подкачку, если о том просили
+	 *
+	 * Запрет навешивается на уже отведённую область, оттого он и стоит здесь, а не в
+	 * самом отведении. Отказ его - обычный исход: право ограничено пределом
+	 * `RLIMIT_MEMLOCK`, и понижение это обязано быть видимым звавшему, а не молчаливым
+	 */
+	if(wire){
+		// Ставим запрет уходить в подкачку
+		const bool locked = this->_source->wire(base, actual, true);
+		// Если ответ о запрете затребован
+		if(wired != nullptr)
+			// Отдаём признак состоявшегося запрета
+			(* wired) = locked;
+	}
+	// Выводим адрес выданного блока
+	return base;
+}
+/**
  * @brief Метод освобождения крупной выдачи
  *
  * @param ptr адрес освобождаемой памяти
@@ -438,6 +535,8 @@ size_t awh::alloc::Huge::free(void * ptr) noexcept {
 	size_t span = 0;
 	// Затребованный прикладным кодом размер блока
 	size_t size = 0;
+	// Признак блока, укрытого от снимков памяти
+	bool hidden = false;
 	/**
 	 * Снимаем запись с учёта под замком, а область отдаём после
 	 */
@@ -492,6 +591,8 @@ size_t awh::alloc::Huge::free(void * ptr) noexcept {
 		span = record->span;
 		// Запоминаем затребованный прикладным кодом размер
 		size = record->size;
+		// Запоминаем признак укрытого блока
+		hidden = record->hidden;
 		// Уменьшаем число живых крупных выдач
 		this->_state.live--;
 		// Уменьшаем взятое у источника
@@ -510,6 +611,16 @@ size_t awh::alloc::Huge::free(void * ptr) noexcept {
 	 * ней замок слоя - соседние потоки ждали бы работы ядра, к их выдаче отношения не
 	 * имеющей
 	 */
+	/**
+	 * Затираем содержимое укрытого блока ПРЕЖДЕ отдачи области
+	 *
+	 * Договор укрытой выдачи обещает затирание при освобождении наравне с самим
+	 * укрытием. Отдача области системе содержимого не затирает: страницы уходят в
+	 * общий запас как есть, и до их следующей раздачи оно остаётся в памяти
+	 */
+	if(hidden)
+		// Затираем содержимое отдаваемой области
+		::memset(base, 0, span);
 	this->_source->release(base, span);
 	// Выводим затребованный прикладным кодом размер блока
 	return size;

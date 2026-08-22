@@ -57,6 +57,21 @@ namespace {
 	 *
 	 */
 	static constexpr size_t CHUNK_SIZE = 1460;
+	/**
+	 * @brief Порог объявления размаха вложенного вместимого в значениях
+	 *
+	 */
+	static constexpr uint64_t SPANNED_LIMIT = 8;
+	/**
+	 * @brief Количество полей груза записи с объявленным размахом
+	 *
+	 */
+	static constexpr size_t SPANNED_FIELDS = 64;
+	/**
+	 * @brief Количество значений в каждом поле груза записи с объявленным размахом
+	 *
+	 */
+	static constexpr size_t SPANNED_VALUES = 256;
 
 	/**
 	 * @brief Пороги пропускной способности потокового чтения в мегабайтах в секунду
@@ -120,6 +135,20 @@ namespace {
 	 *
 	 */
 	static constexpr double READ_SERVICE_LATENCY_THRESHOLD = 8.0;
+	/**
+	 * @brief Порог выигрыша от пропуска вложенного груза по объявленному размаху
+	 *
+	 * @details Измеряется отношение времени разбора записи целиком ко времени разбора
+	 *          её же с пропуском вложенного груза, а не быстродействие само по себе.
+	 *          Отношение двух прогонов на одной машине от её быстродействия не зависит,
+	 *          и порог ему можно назначить впритык
+	 *
+	 * @note Порог стережёт не скорость, а самоё работу пропуска: разбор, перешагнувший
+	 *       груз по объявленной длине, обязан быть кратно быстрее прошедшего его насквозь.
+	 *       Утрата пропуска обрушила бы показатель к единице
+	 *
+	 */
+	static constexpr double READ_SKIPPED_THRESHOLD = 3.0;
 
 	/**
 	 * @brief Функция потокового чтения записи
@@ -368,6 +397,175 @@ namespace {
 	}
 
 	/**
+	 * @brief Функция получения записи с объявленным размахом вложенных перечней
+	 *
+	 * @details Запись изображает случай, ради какого метка размаха и заведена: крупный
+	 *          груз лежит вложенными перечнями, а потребителю нужно одно поле рядом с
+	 *          ними. Без метки размаха разбор обязан пройти груз целиком, с меткою -
+	 *          перешагнуть его по объявленной длине
+	 *
+	 * @return запись с объявленным размахом вложенных перечней
+	 *
+	 */
+	static const vector <uint8_t> & spanned() noexcept {
+		// Запись с объявленным размахом вложенных перечней
+		static const vector <uint8_t> result = []() noexcept -> vector <uint8_t> {
+			// Сборка бинарной записи
+			awh::codec::abc::writer_t writer;
+			// Настройки сборки записи
+			awh::codec::abc::writer_t::settings_t settings = writer.settings();
+			// Выполняем установку порога объявления размаха
+			settings.spanned = SPANNED_LIMIT;
+			// Выполняем установку настроек сборки записи
+			writer.settings(settings);
+			// Если открыть отображение записи не удалось
+			if(!writer.mapBegin(static_cast <uint64_t> (SPANNED_FIELDS + 1)))
+				// Выводим пустую запись
+				return vector <uint8_t> ();
+			/**
+			 * Выполняем укладку полей груза записи
+			 */
+			for(size_t i = 0; i < SPANNED_FIELDS; i++){
+				// Если уложить имя очередного поля груза не удалось
+				if(!(writer.text("груз" + to_string(i)) &&
+				     writer.arrayBegin(static_cast <uint64_t> (SPANNED_VALUES))))
+					// Выводим пустую запись
+					return vector <uint8_t> ();
+				/**
+				 * Выполняем укладку значений очередного поля груза
+				 */
+				for(size_t j = 0; j < SPANNED_VALUES; j++){
+					// Если уложить очередное значение поля груза не удалось
+					if(!writer.number(static_cast <uint64_t> (j)))
+						// Выводим пустую запись
+						return vector <uint8_t> ();
+				}
+				// Если закрыть перечень значений очередного поля груза не удалось
+				if(!writer.arrayEnd())
+					// Выводим пустую запись
+					return vector <uint8_t> ();
+			}
+			// Если уложить искомое поле записи не удалось
+			if(!(writer.text("хвост") && writer.text("искомое") && writer.mapEnd()))
+				// Выводим пустую запись
+				return vector <uint8_t> ();
+			// Выводим собранную запись
+			return writer.record();
+		}();
+		// Выводим запись с объявленным размахом вложенных перечней
+		return result;
+	}
+	/**
+	 * @brief Функция потокового чтения записи прямой выдачей событий
+	 *
+	 * @note Пропуск зовётся ТОЛЬКО из обработчика прямой выдачи: события копятся
+	 *       очередью, и к выдаче события разбор уходит вперёд - пропускать к тому
+	 *       времени уже нечего
+	 *
+	 * @param record   разбираемая запись
+	 * @param skipping признак пропуска вложенных перечней целиком
+	 * @return         количество полученных событий разбора
+	 *
+	 */
+	static uint64_t sweep(const vector <uint8_t> & record, const bool skipping) noexcept {
+		/**
+		 * @brief Опора прямой выдачи событий разбора
+		 *
+		 */
+		struct Sink {
+			// Признак пропуска вложенных перечней целиком
+			bool skipping = false;
+			// Количество снятых событий разбора
+			uint64_t counted = 0;
+			// Признак снятия искомого значения записи
+			bool found = false;
+		} sink;
+		// Выполняем установку признака пропуска вложенных перечней
+		sink.skipping = skipping;
+		// Разбиратель бинарной записи
+		awh::codec::abc::reader_t reader;
+		// Выполняем установку обработчика прямой выдачи событий разбора
+		reader.handler([](void * context, awh::codec::abc::reader_t & reader, const awh::codec::abc::event_t event) noexcept -> void {
+			// Выполняем получение опоры прямой выдачи событий
+			Sink * sink = reinterpret_cast <Sink *> (context);
+			// Выполняем учёт снятого события разбора
+			sink->counted++;
+			// Если снято событие начала перечня и пропуск затребован
+			if(sink->skipping && (event == awh::codec::abc::event_t::ARRAY_BEGIN))
+				// Выполняем пропуск вложенного перечня целиком
+				(void) reader.skip();
+			// Если снято искомое значение записи
+			else if((event == awh::codec::abc::event_t::STRING) && (reader.value().data == "искомое"))
+				// Выполняем запоминание снятия искомого значения записи
+				sink->found = true;
+		}, &sink);
+		// Если подать запись разбирателю не удалось
+		if(!reader.feed(record.data(), record.size(), true))
+			// Выводим нулевое количество событий разбора
+			return 0;
+		/**
+		 * Выполняем перебор всех событий разбора
+		 */
+		while(reader.next())
+			// Выполняем продвижение разбора записи
+			;
+		/**
+		 * Если искомое значение записи снято не было
+		 *
+		 * @note Поверка обязательна: разбор, отвалившийся на первом же событии, без
+		 *       неё отчитался бы самым быстрым прогоном, и пропуск изобразил бы
+		 *       выигрыш там, где записи не разобрано вовсе
+		 */
+		if(!sink.found)
+			// Выводим нулевое количество событий разбора
+			return 0;
+		// Выводим количество полученных событий разбора
+		return sink.counted;
+	}
+	/**
+	 * @brief Функция прогона сценария выигрыша от пропуска вложенного груза
+	 *
+	 * @return результат измерения
+	 *
+	 */
+	static awh::benchmark::result_t readSkipped() noexcept {
+		// Результат измерения
+		awh::benchmark::result_t result;
+		// Разбираемая запись
+		const vector <uint8_t> & record = ::spanned();
+		// Выполняем прогон разбора записи целиком
+		const outcome_t whole = measure(record.size(), FOCUSED_ROUNDS, [&record]() noexcept {
+			// Выполняем разбор записи целиком
+			return ::sweep(record, false);
+		});
+		// Выполняем прогон разбора записи с пропуском вложенного груза
+		const outcome_t skipped = measure(record.size(), FOCUSED_ROUNDS, [&record]() noexcept {
+			// Выполняем разбор записи с пропуском вложенного груза
+			return ::sweep(record, true);
+		});
+		// Если сценарий работы не выполнил
+		if(!worked(whole, result) || !worked(skipped, result))
+			// Выводим результат измерения
+			return result;
+		/**
+		 * Если время разбора записи с пропуском не измерено
+		 */
+		if(skipped.seconds <= 0.0){
+			// Запоминаем признак недействительности измерения
+			result.invalid = true;
+			// Запоминаем причину недействительности измерения
+			result.reason = "время разбора записи с пропуском не измерено";
+			// Выводим результат измерения
+			return result;
+		}
+		// Устанавливаем измеренный выигрыш от пропуска вложенного груза
+		result.value = (whole.seconds / skipped.seconds);
+		// Устанавливаем сведения о прогоне
+		result.details = details(skipped);
+		// Выводим результат измерения
+		return result;
+	}
+	/**
 	 * Выполняем регистрацию сценария чтения записи ответа службы
 	 */
 	static const bool SERVICE_REGISTERED = awh::benchmark::add(
@@ -429,5 +627,12 @@ namespace {
 	static const bool SERVICE_LATENCY_REGISTERED = awh::benchmark::add(
 		"codec/abc: задержка чтения ответа службы", "мкс/зап.", READ_SERVICE_LATENCY_THRESHOLD,
 		awh::benchmark::bound_t::MAXIMUM, latencyService
+	);
+	/**
+	 * Выполняем регистрацию сценария выигрыша от пропуска вложенного груза
+	 */
+	static const bool SKIPPED_REGISTERED = awh::benchmark::add(
+		"codec/abc: выигрыш от пропуска груза", "раз", READ_SKIPPED_THRESHOLD,
+		awh::benchmark::bound_t::MINIMUM, readSkipped
 	);
 };

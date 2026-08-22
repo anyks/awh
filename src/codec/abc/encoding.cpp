@@ -274,7 +274,8 @@ bool awh::codec::abc::take(const uint8_t * buffer, const size_t size, size_t & o
 				// Если разновидность расширения опознана
 				case static_cast <uint8_t> (extend_t::BIGNUM):
 				case static_cast <uint8_t> (extend_t::DECIMAL):
-				case static_cast <uint8_t> (extend_t::CUSTOM): {
+				case static_cast <uint8_t> (extend_t::CUSTOM):
+				case static_cast <uint8_t> (extend_t::SPANNED): {
 					// Выполняем установку разновидности значением единицы
 					item.value = static_cast <uint64_t> (item.detail);
 					// Выполняем сдвиг смещения на ведущий октет

@@ -140,11 +140,18 @@ namespace awh {
 					// Следующая повторно используемая запись
 					struct Record * spare;
 					/**
+					 * Признак блока, укрытого от снимков памяти
+					 *
+					 * Такой блок обязан затираться при освобождении: договор укрытой
+					 * выдачи обещает это наравне с самим укрытием
+					 */
+					bool hidden;
+					/**
 					 * @brief Конструктор
 					 *
 					 */
 					Record() noexcept :
-					 block(nullptr), base(nullptr), span(0), size(0), spare(nullptr) {}
+					 block(nullptr), base(nullptr), span(0), size(0), spare(nullptr), hidden(false) {}
 				} record_t;
 			private:
 				// Источник страниц
@@ -260,6 +267,30 @@ namespace awh {
 				 *
 				 */
 				void * alloc(const size_t size, const size_t alignment) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод выдачи блока, укрытого от снимков памяти
+				 *
+				 * @note Блок этот затирается при освобождении и не попадает в снимок
+				 *       памяти при падении - там, где система такое умеет. Ответ
+				 *       `hidden` говорит, состоялось ли укрытие: молчаливое понижение
+				 *       обещания хуже честного отказа
+				 *
+				 * @param size   требуемый размер в байтах
+				 * @param hidden признак состоявшегося укрытия
+				 * @param wire   признак необходимости запрета уходить в подкачку
+				 * @param wired  признак состоявшегося запрета либо nullptr
+				 * @return       адрес выданного блока либо nullptr
+				 *
+				 * \~english
+				 * @brief Method of allocating a block concealed from memory dumps
+				 *
+				 * @param size   required size in bytes
+				 * @param hidden flag of the concealment having taken place
+				 * @return       address of the allocated block or nullptr
+				 *
+				 */
+				void * conceal(const size_t size, bool & hidden, const bool wire = false, bool * wired = nullptr) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод освобождения крупной выдачи
