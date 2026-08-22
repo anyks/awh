@@ -840,7 +840,7 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin" OR ${CMAKE_SYSTEM_NAME} STREQUAL "Fre
  #
  # Набор модулей здесь пока заполняется: они переносятся с bsd по одному, с тем же
  # самым API, и подключаются по мере готовности. Движка ввода-вывода тут ещё нет,
- # потому наборы тестов net, proto и units под эти системы не собираются
+ # потому наборы тестов net, proto и unit под эти системы не собираются
  ##
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
     # Выполняем подключение бэкендов IO
@@ -1159,20 +1159,20 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/cryptography/vault.cpp"
     "${CMAKE_SOURCE_DIR}/src/cryptography/tls/coder.cpp"
     "${CMAKE_SOURCE_DIR}/src/cryptography/tls/fingerprint.cpp"
-    "${CMAKE_SOURCE_DIR}/src/units/fs.cpp"
-    "${CMAKE_SOURCE_DIR}/src/units/dns.cpp"
-    "${CMAKE_SOURCE_DIR}/src/units/ntp.cpp"
-    "${CMAKE_SOURCE_DIR}/src/units/icmp.cpp"
-    "${CMAKE_SOURCE_DIR}/src/units/portmap.cpp"
-    "${CMAKE_SOURCE_DIR}/src/units/quic.cpp"
-    "${CMAKE_SOURCE_DIR}/src/units/unit.cpp"
-    "${CMAKE_SOURCE_DIR}/src/units/timer.cpp"
-    "${CMAKE_SOURCE_DIR}/src/units/client.cpp"
-    "${CMAKE_SOURCE_DIR}/src/units/server.cpp"
-    "${CMAKE_SOURCE_DIR}/src/units/tunnel.cpp"
-    "${CMAKE_SOURCE_DIR}/src/units/cluster.cpp"
-    "${CMAKE_SOURCE_DIR}/src/units/mediator.cpp"
-    "${CMAKE_SOURCE_DIR}/src/units/notifier.cpp"
+    "${CMAKE_SOURCE_DIR}/src/unit/fs.cpp"
+    "${CMAKE_SOURCE_DIR}/src/unit/dns.cpp"
+    "${CMAKE_SOURCE_DIR}/src/unit/ntp.cpp"
+    "${CMAKE_SOURCE_DIR}/src/unit/icmp.cpp"
+    "${CMAKE_SOURCE_DIR}/src/unit/portmap.cpp"
+    "${CMAKE_SOURCE_DIR}/src/unit/quic.cpp"
+    "${CMAKE_SOURCE_DIR}/src/unit/unit.cpp"
+    "${CMAKE_SOURCE_DIR}/src/unit/timer.cpp"
+    "${CMAKE_SOURCE_DIR}/src/unit/client.cpp"
+    "${CMAKE_SOURCE_DIR}/src/unit/server.cpp"
+    "${CMAKE_SOURCE_DIR}/src/unit/tunnel.cpp"
+    "${CMAKE_SOURCE_DIR}/src/unit/cluster.cpp"
+    "${CMAKE_SOURCE_DIR}/src/unit/mediator.cpp"
+    "${CMAKE_SOURCE_DIR}/src/unit/notifier.cpp"
     "${CMAKE_SOURCE_DIR}/src/client/client.cpp"
     "${CMAKE_SOURCE_DIR}/src/client/socks5.cpp"
     "${CMAKE_SOURCE_DIR}/src/server/server.cpp"
@@ -1958,7 +1958,7 @@ if (${CMAKE_BUILD_SAMPLES})
         # Выводим сообщение о сборке семпла
         message(STATUS "Build sample UNIT Filesystem: Yes\n")
         # Выполняем создание приложения работы с юнитом файловой системы
-        add_sample(${UNIT_APP_FS_NAME} sample/units/fs.cpp units)
+        add_sample(${UNIT_APP_FS_NAME} sample/unit/fs.cpp unit)
     # Если не нужно собирать семплы для работы с юнитом файловой системы
     else()
         # Выводим сообщение о сборке семпла
@@ -1970,7 +1970,7 @@ if (${CMAKE_BUILD_SAMPLES})
         # Выводим сообщение о сборке семпла
         message(STATUS "Build sample UNIT DNS: Yes\n")
         # Выполняем создание приложения работы с юнитом резолвером доменных имён
-        add_sample(${UNIT_APP_DNS_NAME} sample/units/dns.cpp units)
+        add_sample(${UNIT_APP_DNS_NAME} sample/unit/dns.cpp unit)
     # Если не нужно собирать семплы для работы с юнитом резолвером доменных имён
     else()
         # Выводим сообщение о сборке семпла
@@ -1982,7 +1982,7 @@ if (${CMAKE_BUILD_SAMPLES})
         # Выводим сообщение о сборке семпла
         message(STATUS "Build sample UNIT NTP: Yes\n")
         # Выполняем создание приложения работы с юнитом синхронизации времени NTP
-        add_sample(${UNIT_APP_NTP_NAME} sample/units/ntp.cpp units)
+        add_sample(${UNIT_APP_NTP_NAME} sample/unit/ntp.cpp unit)
     # Если не нужно собирать семплы для работы с юнитом синхронизации времени NTP
     else()
         # Выводим сообщение о сборке семпла
@@ -1994,7 +1994,7 @@ if (${CMAKE_BUILD_SAMPLES})
         # Выводим сообщение о сборке семпла
         message(STATUS "Build sample UNIT PORTMAP: Yes\n")
         # Выполняем создание приложения работы с юнитом перенаправления портов
-        add_sample(${UNIT_APP_PORTMAP_NAME} sample/units/portmap.cpp units)
+        add_sample(${UNIT_APP_PORTMAP_NAME} sample/unit/portmap.cpp unit)
     # Если не нужно собирать семплы для работы с юнитом перенаправления портов
     else()
         # Выводим сообщение о сборке семпла
@@ -2006,7 +2006,7 @@ if (${CMAKE_BUILD_SAMPLES})
         # Выводим сообщение о сборке семпла
         message(STATUS "Build sample UNIT WATCHDOG: Yes\n")
         # Выполняем создание приложения присмотра за перенаправлением порта
-        add_sample(${UNIT_APP_WATCHDOG_NAME} sample/units/watchdog.cpp units)
+        add_sample(${UNIT_APP_WATCHDOG_NAME} sample/unit/watchdog.cpp unit)
     # Если не нужно собирать семплы присмотра за перенаправлением порта
     else()
         # Выводим сообщение о сборке семпла
@@ -2018,7 +2018,7 @@ if (${CMAKE_BUILD_SAMPLES})
         # Выводим сообщение о сборке семпла
         message(STATUS "Build sample UNIT ICMP: Yes\n")
         # Выполняем создание приложения работы с юнитом ICMP-клиентом
-        add_sample(${UNIT_APP_ICMP_NAME} sample/units/ping.cpp units)
+        add_sample(${UNIT_APP_ICMP_NAME} sample/unit/ping.cpp unit)
     # Если не нужно собирать семплы для работы с юнитом ICMP-клиентом
     else()
         # Выводим сообщение о сборке семпла
@@ -2030,7 +2030,7 @@ if (${CMAKE_BUILD_SAMPLES})
         # Выводим сообщение о сборке семпла
         message(STATUS "Build sample UNIT Timer: Yes\n")
         # Выполняем создание приложения работы с юнитом таймера
-        add_sample(${UNIT_APP_TIMER_NAME} sample/units/timer.cpp units)
+        add_sample(${UNIT_APP_TIMER_NAME} sample/unit/timer.cpp unit)
     # Если не нужно собирать семплы для работы с юнитом таймера
     else()
         # Выводим сообщение о сборке семпла
@@ -2042,7 +2042,7 @@ if (${CMAKE_BUILD_SAMPLES})
         # Выводим сообщение о сборке семпла
         message(STATUS "Build sample UNIT Cluster: Yes\n")
         # Выполняем создание приложения работы с юнитом кластера
-        add_sample(${UNIT_APP_CLUSTER_NAME} sample/units/cluster.cpp units)
+        add_sample(${UNIT_APP_CLUSTER_NAME} sample/unit/cluster.cpp unit)
     # Если не нужно собирать семплы для работы с юнитом кластера
     else()
         # Выводим сообщение о сборке семпла
@@ -2054,7 +2054,7 @@ if (${CMAKE_BUILD_SAMPLES})
         # Выводим сообщение о сборке семпла
         message(STATUS "Build sample UNIT Notifier: Yes\n")
         # Выполняем создание приложения работы с юнитом уведомителя
-        add_sample(${UNIT_APP_NOTIFIER_NAME} sample/units/notifier.cpp units)
+        add_sample(${UNIT_APP_NOTIFIER_NAME} sample/unit/notifier.cpp unit)
     # Если не нужно собирать семплы для работы с юнитом уведомителя
     else()
         # Выводим сообщение о сборке семпла

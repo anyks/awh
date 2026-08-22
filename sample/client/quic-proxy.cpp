@@ -28,7 +28,7 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <client/client.hpp>
-#include <units/timer.hpp>
+#include <unit/timer.hpp>
 
 /**
  * Используем пространство имён AWH

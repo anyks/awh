@@ -5,7 +5,7 @@
             "name": "Debug Notifier Sample",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/samples/units/unit-notifier",
+            "program": "${workspaceFolder}/build/samples/unit/unit-notifier",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

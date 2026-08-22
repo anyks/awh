@@ -46,7 +46,7 @@
  * Подключаем заголовочные файлы проекта
  */
 #include "server.hpp"
-#include "../units/client.hpp"
+#include "../unit/client.hpp"
 #include "../proto/socks5/server.hpp"
 
 /**

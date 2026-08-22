@@ -23,8 +23,8 @@
  * Подключаем заголовочный файл проекта
  */
 #include <client/client.hpp>
-#include <units/tunnel.hpp>
-#include <units/mediator.hpp>
+#include <unit/tunnel.hpp>
+#include <unit/mediator.hpp>
 
 /**
  * Используем пространство имён AWH

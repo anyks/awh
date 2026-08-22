@@ -28,7 +28,7 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <server/server.hpp>
-#include <units/client.hpp>
+#include <unit/client.hpp>
 
 /**
  * Используем пространство имён AWH
