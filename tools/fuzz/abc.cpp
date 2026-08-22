@@ -89,13 +89,17 @@ namespace {
 		uint64_t swept;
 		// Количество записей, сличённых перечитыванием с носителя
 		uint64_t reread;
+		// Количество записей с устойчивой перезаписью
+		uint64_t stable;
+		// Количество правок значения, устойчивости не порушивших
+		uint64_t edited;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
 		Statistic() noexcept :
 		 records(0), corrupted(0), survived(0), events(0), trees(0), containers(0),
-		 fetches(0), edits(0), compactions(0), verified(0), assemblies(0), skips(0), spikes(0), swept(0), reread(0) {}
+		 fetches(0), edits(0), compactions(0), verified(0), assemblies(0), skips(0), spikes(0), swept(0), reread(0), stable(0), edited(0) {}
 	} totals;
 
 	/**
@@ -1250,6 +1254,117 @@ namespace {
 			::exit(1);
 		}
 		/**
+		 * Если вторая перезапись разошлась с первой
+		 *
+		 * @details Договор этот стоит у соседних кодеков - INI, TOML и XML - и у ABC его
+		 * не было: сличалось лишь равенство ЗНАЧЕНИЙ, а не октетов. Меж тем запись обязана
+		 * быть неподвижной точкой: разбор перезаписи и повторная её запись обязаны дать те
+		 * же октеты. Расхождение означало бы, что вид записи от собственного разбора
+		 * зависит, и круговой ход её никогда не сходится
+		 */
+		if(repeated.dump() != rewritten){
+			// Выводим сообщение о неустойчивой перезаписи
+			::fprintf(stderr, "abc fuzz: the second rewriting differs from the first: %zu against %zu octets\n",
+			 repeated.dump().size(), rewritten.size());
+			// Выполняем выход с признаком расхождения
+			::exit(1);
+		}
+		// Выполняем учёт устойчивой перезаписи
+		totals.stable++;
+		/**
+		 * Выполняем поверку того, что правка значения устойчивости не рушит
+		 *
+		 * @details Договор этот стоит у INI и TOML, и у ABC его не было. Правка вносится
+		 * в разобранное значение, и перезапись правленого обязана быть той же неподвижной
+		 * точкой: внесённое обязано в перезаписи НАЙТИСЬ, а вторая перезапись - совпасть
+		 * с первой октет в октет
+		 */
+		{
+			// Правимое значение, снятое с разобранного
+			abc::value_t edited = value;
+			/**
+			 * Имя вносимого поля, неповторимое у всякой правки
+			 *
+			 * @note Имя берётся неповторимым нарочно: поле, случайно совпавшее с уже
+			 *       стоящим в отображении, сделало бы правку неотличимой от её отсутствия
+			 */
+			const string name = ("вносимое-" + to_string(totals.edited) + "-" + to_string(buffer.size()));
+			// Вносимое правкой значение
+			const abc::value_t added(string{"вносимое правкой значение"});
+			// Признак состоявшейся правки значения
+			bool changed = false;
+			// Если значение является отображением
+			if(edited.is(abc::type_t::MAP))
+				// Выполняем внесение поля в отображение
+				changed = edited.insert(abc::value_t(name), added);
+			// Иначе, если значение является перечнем
+			else if(edited.is(abc::type_t::ARRAY))
+				// Выполняем долив значения в перечень
+				changed = edited.push(added);
+			/**
+			 * Если правка значения состоялась
+			 */
+			if(changed){
+				/**
+				 * Если правка, ответившая успехом, значения не изменила
+				 *
+				 * @details Поверка эта - главная в договоре, и первая её порода её НЕ
+				 * несла: сличались правленое с правленым же, отчего внесение, ответившее
+				 * успехом да ничего не сделавшее, проходило насквозь. Вскрыто мутацией -
+				 * внесение обратили в пустышку, и договор её не заметил
+				 */
+				if(edited == value){
+					// Выводим сообщение о правке, ничего не изменившей
+					::fprintf(stderr, "abc fuzz: the editing succeeded but changed nothing: вид %u, размеров %zu против %zu, имя %s, запись ",
+					 static_cast <unsigned> (edited.type()), edited.size(), value.size(), name.c_str());
+					// Выполняем перебор всех октетов записи
+					for(const uint8_t octet : buffer)
+						// Выполняем вывод очередного октета записи
+						::fprintf(stderr, "%02X", octet);
+					// Выполняем перевод строки
+					::fprintf(stderr, "\n");
+					// Выполняем выход с признаком расхождения
+					::exit(1);
+				}
+				// Перезапись правленого значения
+				const vector <uint8_t> written = edited.dump();
+				// Значение, собранное из перезаписи правленого
+				abc::value_t back;
+				/**
+				 * Если разобрать перезапись правленого не вышло
+				 */
+				if(written.empty() || !back.parse(written.data(), written.size())){
+					// Выводим сообщение о неразбираемой перезаписи правленого значения
+					::fprintf(stderr, "abc fuzz: the edited value is not parsable back\n");
+					// Выполняем выход с признаком расхождения
+					::exit(1);
+				}
+				/**
+				 * Если внесённое правкой в перезаписи не нашлось
+				 *
+				 * @note Поверка эта обязательна: без неё договор доказывал бы лишь
+				 *       устойчивость записи, а не то, что правка в неё ПОПАЛА
+				 */
+				if(!(back == edited)){
+					// Выводим сообщение о потерянной правке значения
+					::fprintf(stderr, "abc fuzz: the edited value differs after the rewriting\n");
+					// Выполняем выход с признаком расхождения
+					::exit(1);
+				}
+				/**
+				 * Если вторая перезапись правленого разошлась с первой
+				 */
+				if(back.dump() != written){
+					// Выводим сообщение о неустойчивой перезаписи правленого значения
+					::fprintf(stderr, "abc fuzz: the second rewriting of the edited value differs\n");
+					// Выполняем выход с признаком расхождения
+					::exit(1);
+				}
+				// Выполняем учёт правки, устойчивость не порушившей
+				totals.edited++;
+			}
+		}
+		/**
 		 * Если перезапись разошлась с исходным значением
 		 */
 		if(!(repeated == value)){
@@ -1990,13 +2105,13 @@ int main(int argc, char * argv[]) noexcept {
 	// Выводим учёт проделанной работы
 	::printf("abc fuzz: %llu records (%llu corrupted), %llu parsed to the end, %llu events, "
 	 "%llu trees, %llu containers, %llu fetches, %llu edits, %llu compactions, %llu signatures verified, "
-	 "%llu values assembled, %llu skipping runs, %llu spiked spans, %llu swept records, %llu reread records\n",
+	 "%llu values assembled, %llu skipping runs, %llu spiked spans, %llu swept records, %llu reread records, %llu stable rewritings, %llu edited values\n",
 	 static_cast <unsigned long long> (totals.records), static_cast <unsigned long long> (totals.corrupted),
 	 static_cast <unsigned long long> (totals.survived), static_cast <unsigned long long> (totals.events),
 	 static_cast <unsigned long long> (totals.trees), static_cast <unsigned long long> (totals.containers),
 	 static_cast <unsigned long long> (totals.fetches), static_cast <unsigned long long> (totals.edits),
 	 static_cast <unsigned long long> (totals.compactions), static_cast <unsigned long long> (totals.verified),
-	 static_cast <unsigned long long> (totals.assemblies), static_cast <unsigned long long> (totals.skips), static_cast <unsigned long long> (totals.spikes), static_cast <unsigned long long> (totals.swept), static_cast <unsigned long long> (totals.reread));
+	 static_cast <unsigned long long> (totals.assemblies), static_cast <unsigned long long> (totals.skips), static_cast <unsigned long long> (totals.spikes), static_cast <unsigned long long> (totals.swept), static_cast <unsigned long long> (totals.reread), static_cast <unsigned long long> (totals.stable), static_cast <unsigned long long> (totals.edited));
 	// Выводим успешное завершение работы
 	return 0;
 }
