@@ -67,6 +67,24 @@
 #include "../sys/global.hpp"
 
 /**
+ * Если компилятор принадлежит к Visual Studio
+ */
+#if defined(_MSC_VER)
+	/**
+	 * Принудительная подстановка средствами Visual Studio
+	 */
+	#define AWH_PAGES_INLINE __forceinline
+/**
+ * Если компилятор принадлежит к семейству GCC или Clang
+ */
+#else
+	/**
+	 * Принудительная подстановка средствами GCC и Clang
+	 */
+	#define AWH_PAGES_INLINE inline __attribute__((always_inline))
+#endif
+
+/**
  * @brief Пространство имён фреймворка
  *
  */
@@ -356,7 +374,48 @@ namespace awh {
 				 * @brief Method of looking up the chunk an address belongs to
 				 *
 				 */
-				chunk_t * lookup(const void * addr, void ** hint = nullptr) const noexcept;
+				chunk_t * discover(const void * addr) const noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод поиска куска, которому принадлежит адрес
+				 *
+				 * @note Подставляется намеренно: подсказка отвечает почти всегда, и вызов
+				 *       ради сличения двух границ стоил бы дороже самого сличения. Поиск
+				 *       же по таблице - холодный хвост, и он остался в файле кода
+				 *
+				 * @param addr разбираемый адрес
+				 * @param hint место хранения подсказки поиска
+				 * @return     найденный кусок либо nullptr
+				 *
+				 * \~english
+				 * @brief Method of looking up the chunk an address belongs to
+				 *
+				 */
+				AWH_PAGES_INLINE chunk_t * lookup(const void * addr, void ** hint = nullptr) const noexcept {
+					/**
+					 * Сперва пробуем подсказку
+					 *
+					 * Поток освобождает блоки из тех же немногих кусков, что и выдавал, и
+					 * сличение границ последнего найденного куска отвечает почти всегда
+					 */
+					if(hint != nullptr){
+						// Получаем кусок из подсказки
+						chunk_t * chunk = reinterpret_cast <chunk_t *> (* hint);
+						// Если подсказка задана и адрес лежит внутри её куска
+						if((chunk != nullptr) && (reinterpret_cast <uintptr_t> (addr) >= reinterpret_cast <uintptr_t> (chunk->base)) &&
+						   (reinterpret_cast <uintptr_t> (addr) < (reinterpret_cast <uintptr_t> (chunk->base) + chunk->size)))
+							// Выводим кусок из подсказки
+							return chunk;
+					}
+					// Ищем кусок по таблице
+					chunk_t * chunk = this->discover(addr);
+					// Если кусок найден и подсказку требуется запомнить
+					if((chunk != nullptr) && (hint != nullptr))
+						// Запоминаем найденный кусок подсказкой
+						(* hint) = chunk;
+					// Выводим найденный кусок
+					return chunk;
+				}
 			public:
 				/**
 				 * \~russian
@@ -492,7 +551,36 @@ namespace awh {
 				 * @brief Method of describing the region an address belongs to
 				 *
 				 */
-				bool describe(const void * addr, void ** begin, size_t * pages, uint32_t * tag, void ** hint = nullptr) const noexcept;
+				AWH_PAGES_INLINE bool describe(const void * addr, void ** begin, size_t * pages, uint32_t * tag, void ** hint = nullptr) const noexcept {
+					// Ищем кусок, которому принадлежит адрес
+					const chunk_t * chunk = this->lookup(addr, hint);
+					// Если куска за адресом не нашлось
+					if(chunk == nullptr)
+						// Адрес куче не принадлежит
+						return false;
+					// Определяем номер страницы, которой принадлежит адрес
+					const size_t page = static_cast <size_t> ((reinterpret_cast <uintptr_t> (addr) - reinterpret_cast <uintptr_t> (chunk->base)) / PAGE);
+					// Получаем область, которой принадлежит страница
+					const span_t * span = chunk->index[page].load(std::memory_order_acquire);
+					// Если области у страницы нет либо область наружу не выдана
+					if((span == nullptr) || span->released)
+						// Описывать нечего
+						return false;
+					// Если требуется адрес начала области
+					if(begin != nullptr)
+						// Записываем адрес начала области
+						(* begin) = span->base;
+					// Если требуется размер области
+					if(pages != nullptr)
+						// Записываем размер области
+						(* pages) = span->pages;
+					// Если требуется метка владельца
+					if(tag != nullptr)
+						// Записываем метку владельца
+						(* tag) = span->tag;
+					// Отвечаем успехом
+					return true;
+				}
 				/**
 				 * \~russian
 				 * @brief Метод пометки выданной области

@@ -281,41 +281,34 @@ void awh::alloc::Cache::release() noexcept {
 	this->_owner->retire(this);
 }
 /**
- * @brief Метод выдачи блока разряда
+ * @brief Метод пополнения разряда пачкой блоков у центральных списков
  *
  * @param index номер разряда
  * @return      адрес выданного блока либо nullptr
  *
  */
-void * awh::alloc::Cache::alloc(const size_t index) noexcept {
-	// Если кэш не заведён либо разряд неведом
-	if((this->_classes == nullptr) || (index >= this->_classes->count()))
+void * awh::alloc::Cache::refill(const size_t index) noexcept {
+	// Голова изымаемой у центральных списков цепочки
+	void * head = nullptr;
+	// Хвост изымаемой цепочки
+	void * tail = nullptr;
+	/**
+	 * Забираем у центральных списков пачку блоков
+	 *
+	 * Пачку, а не блок: захват замка стоит дороже самой передачи, и платить за
+	 * него поштучно значило бы свести кэш к обёртке над центральными списками
+	 */
+	const size_t taken = this->_central->fetch(index, &head, &tail, Central::BATCH);
+	// Если пачку взять не вышло
+	if(taken == 0)
 		// Выдавать нечего
 		return nullptr;
-	// Если свободных блоков разряда в кэше не осталось
-	if(this->_lists[index].free == nullptr){
-		// Голова изымаемой у центральных списков цепочки
-		void * head = nullptr;
-		// Хвост изымаемой цепочки
-		void * tail = nullptr;
-		/**
-		 * Забираем у центральных списков пачку блоков
-		 *
-		 * Пачку, а не блок: захват замка стоит дороже самой передачи, и платить за
-		 * него поштучно значило бы свести кэш к обёртке над центральными списками
-		 */
-		const size_t taken = this->_central->fetch(index, &head, &tail, Central::BATCH);
-		// Если пачку взять не вышло
-		if(taken == 0)
-			// Выдавать нечего
-			return nullptr;
-		// Головой кэша становится голова взятой цепочки
-		this->_lists[index].free = head;
-		// Увеличиваем число блоков в кэше
-		this->_lists[index].count += taken;
-		// Увеличиваем лежащее в кэше
-		this->_bytes += (taken * this->_classes->size(index));
-	}
+	// Головой кэша становится голова взятой цепочки
+	this->_lists[index].free = head;
+	// Увеличиваем число блоков в кэше
+	this->_lists[index].count += taken;
+	// Увеличиваем лежащее в кэше
+	this->_bytes += (taken * this->_classes->size(index));
 	// Снимаем блок с головы списка
 	void * result = this->_lists[index].free;
 	// Головой списка становится следующий блок
@@ -328,27 +321,12 @@ void * awh::alloc::Cache::alloc(const size_t index) noexcept {
 	return result;
 }
 /**
- * @brief Метод возврата блока разряда
- *
- * @param index номер разряда
- * @param addr  адрес возвращаемого блока
+ * @brief Метод отдачи излишка центральным спискам
  *
  */
-void awh::alloc::Cache::free(const size_t index, void * addr) noexcept {
-	// Если кэш не заведён, разряд неведом либо блок не задан
-	if((this->_classes == nullptr) || (index >= this->_classes->count()) || (addr == nullptr))
-		// Возвращать нечего
-		return;
-	// Связываем возвращаемый блок с прежней головой списка
-	::following(addr, this->_lists[index].free);
-	// Головой списка становится возвращаемый блок
-	this->_lists[index].free = addr;
-	// Увеличиваем число блоков в кэше
-	this->_lists[index].count++;
-	// Увеличиваем лежащее в кэше
-	this->_bytes += this->_classes->size(index);
+void awh::alloc::Cache::relieve() noexcept {
 	/**
-	 * Отдаём излишек центральным спискам, если предел кэша перебран
+	 * Отдаём излишек центральным спискам, пока предел кэша перебран
 	 *
 	 * Отдаём пачками и лишь пока предел перебран: отдача всего разом обнулила бы
 	 * кэш и следующее же выделение снова пошло бы за замком

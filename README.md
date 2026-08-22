@@ -185,6 +185,37 @@ $ sudo dladm delete-vnic awhtun1
 $ sudo dladm delete-etherstub awhstub0
 ```
 
+### Prepare a tunnel driver (MS Windows)
+
+Neither tunnel driver ships with the framework: both are installed by the user.
+Two are supported, and they are different devices, not two names for one.
+
+* **tap-windows6** — the driver of OpenVPN. It carries **link-layer frames** and is
+  installed together with OpenVPN, or on its own from the OpenVPN distribution.
+* **Wintun** — a ring in shared memory. It carries **network-layer packets** and
+  creates its own device when the application asks for one. It ships as a single
+  `wintun.dll`, downloaded from the WireGuard site.
+
+By default the driver is chosen automatically: Wintun when `wintun.dll` can be
+loaded, tap-windows6 otherwise. The choice can be made explicit — the tunnel samples
+take `--driver auto|wintun|tap`, and the engine takes `setDriver()`.
+
+**`wintun.dll` must sit next to the executable that loads it**, or in `System32`,
+and nowhere else: the framework loads it with `LOAD_LIBRARY_SEARCH_APPLICATION_DIR |
+LOAD_LIBRARY_SEARCH_SYSTEM32`, so neither the current directory nor `PATH` is
+searched. That holds for unit tests as much as for applications: a test exercising
+Wintun needs the library beside the **test** binary, not beside the samples.
+
+Creating a tunnel device requires administrator rights on this system.
+
+Incoming ICMP is dropped by the Windows firewall by default, which makes a tunnel
+look one-way — the packets arrive and are written to the device, yet nothing answers.
+Allow it once:
+
+```
+netsh advfirewall firewall add rule name="AWH ICMP" protocol=icmpv4:8,any dir=in action=allow
+```
+
 ```bash
 $ cd ./sh/certificates
 $ ./generate.sh example.com

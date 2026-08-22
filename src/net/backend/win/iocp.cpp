@@ -41062,7 +41062,45 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 								} break;
 							}
 							// Регистрируем сессию источника по идентификатору источника
-							result = ::__awh_origin_sessions__.emplace(sid, mediator).second;
+							if(!(result = ::__awh_origin_sessions__.emplace(sid, mediator).second)){
+								/**
+								 * Отказ записи сессии обязан быть ДОЛОЖЕН, а не только возвращён
+								 *
+								 * @details Посредник на тот же адрес источника уже заведён, и второй
+								 *          узел системе не нужен. Прежде этот путь возвращал отказ
+								 *          МОЛЧА: ни отклика состояния, ни отклика ошибки, ни строки
+								 *          в журнале, - тогда как соседняя ветвь того же места
+								 *          докладывает всеми тремя способами. Состояние при этом
+								 *          оставалось стоять в INITIAL, хотя фиксация не удалась
+								 */
+								if(mediator->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова об ошибке отказа
+									mediator->callbacks.status(mediator->id, event::status_t::FAILURE);
+								// Устанавливаем текст ошибки
+								const string error = "Mediator with the same source address is already registered";
+								// Если установлена функция обратного вызова
+								if(mediator->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									mediator->callbacks.error(mediator->id, event::error_t::EVENT_FAIL, error);
+								// Если функция обратного вызова вывода ошибки не установлена
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Записываем ошибку в лог
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Записываем ошибку в лог
+										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+									#endif
+								}
+								// Снимаем флаг ожидания подключения
+								mediator->state.status = event::status_t::NONE;
+							}
 						// Если объекта хоста не существует
 						} else {
 							// Если установлена функция обратного вызова
@@ -41476,6 +41514,26 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																				this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 																			#endif
 																		}
+																		/**
+																		 * Состояние узла обязано быть СНЯТО перед выходом
+																		 *
+																		 * @details Признак INITIAL ставится тремя сотнями строк выше, до всякой
+																		 *          работы с ядром. Этот путь возвращал отказ, оставив его стоять,
+																		 *          и последующий launch поднимал узел, чья фиксация провалилась.
+																		 *          Все прочие пути отказа этой ветви состояние снимают
+																		 */
+																		client->state.status = event::status_t::NONE;
+																		/**
+																		 * Итог фиксации обязан стать ЛОЖЬЮ
+																		 *
+																		 * @details Признак итога выставлен истиной ещё проверкой длины
+																		 *          самого адреса, тремя десятками строк выше, и возврат
+																		 *          отдавал его как есть. Выходило, что движок докладывал
+																		 *          об отказе всеми тремя способами и тут же отвечал
+																		 *          вызывающему согласием, а узел поднимался поверх
+																		 *          негодного имени
+																		 */
+																		result = false;
 																		// Выходим из функции с ошибкой
 																		return result;
 																	}
@@ -43236,6 +43294,15 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																			this->_log->print("%s", log_t::flag_t::CRITICAL, ::__awh_strerror__(errno));
 																		#endif
 																	}
+																	/**
+																	 * Состояние узла обязано быть СНЯТО перед выходом
+																	 *
+																	 * @details Признак INITIAL выставлен до обращения к ядру, и этот путь
+																	 *          возвращал отказ, оставив его стоять: launch() смотрит именно
+																	 *          на него и поднял бы узел, чья привязка не удалась. Соседние
+																	 *          пути привязки той же ветви состояние снимают
+																	 */
+																	server->state.status = event::status_t::NONE;
 																	// Выводим результат
 																	return result;
 																}
@@ -43297,6 +43364,15 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																			this->_log->print("%s", log_t::flag_t::CRITICAL, ::__awh_strerror__(errno));
 																		#endif
 																	}
+																	/**
+																	 * Состояние узла обязано быть СНЯТО перед выходом
+																	 *
+																	 * @details Признак INITIAL выставлен до обращения к ядру, и этот путь
+																	 *          возвращал отказ, оставив его стоять: launch() смотрит именно
+																	 *          на него и поднял бы узел, чья привязка не удалась. Соседние
+																	 *          пути привязки той же ветви состояние снимают
+																	 */
+																	server->state.status = event::status_t::NONE;
 																	// Выводим результат
 																	return result;
 																}
@@ -43480,6 +43556,15 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	this->_log->print("%s", log_t::flag_t::CRITICAL, ::__awh_strerror__(errno));
 																#endif
 															}
+															/**
+															 * Состояние узла обязано быть СНЯТО перед выходом
+															 *
+															 * @details Признак INITIAL выставлен до обращения к ядру, и этот путь
+															 *          возвращал отказ, оставив его стоять: launch() смотрит именно
+															 *          на него и поднял бы узел, чья привязка не удалась. Соседние
+															 *          пути привязки той же ветви состояние снимают
+															 */
+															server->state.status = event::status_t::NONE;
 															// Выводим результат
 															return result;
 														// Если бинд события выполнен успешно
@@ -43636,6 +43721,15 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	this->_log->print("%s", log_t::flag_t::CRITICAL, ::__awh_strerror__(errno));
 																#endif
 															}
+															/**
+															 * Состояние узла обязано быть СНЯТО перед выходом
+															 *
+															 * @details Признак INITIAL выставлен до обращения к ядру, и этот путь
+															 *          возвращал отказ, оставив его стоять: launch() смотрит именно
+															 *          на него и поднял бы узел, чья привязка не удалась. Соседние
+															 *          пути привязки той же ветви состояние снимают
+															 */
+															server->state.status = event::status_t::NONE;
 															// Выводим результат
 															return result;
 														// Если бинд события выполнен успешно

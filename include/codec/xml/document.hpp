@@ -921,6 +921,43 @@ namespace awh {
 						 */
 						Record() noexcept;
 					} record_t;
+					/**
+					 * \~russian
+					 * @brief Запись отображения имён: первый узел с именем и число одноимённых
+					 *
+					 * @details Числа одноимённых довольно, чтобы выдать ВСЕХ совпавших без
+					 * перебора там, где он всего дороже: у широкого родителя разных имён
+					 * совпавший один, и перебор всей цепочки ради него был квадратичен
+					 *
+					 * @note Хранить положения ВСЕХ одноимённых незачем: там, где их много, и
+					 * выдача велика, и перебор цепочки платится не зря - у родителя о двадцати
+					 * тысячах детей одного имени он стоит семи наносекунд на выданный узел
+					 *
+					 * \~english
+					 * @brief Record of the mapping of the names: the first node with the name and the count of the namesakes
+					 *
+					 * \~
+					 */
+					typedef struct Entry {
+						// Номер первого узла разметки с этим именем
+						node_id_t first;
+						// Количество узлов разметки с этим именем
+						uint32_t count;
+						/**
+						 * \~russian
+						 * @brief Конструктор
+						 *
+						 * @param first номер первого узла разметки с этим именем
+						 *
+						 * \~english
+						 * @brief Constructor
+						 *
+						 * @param first the number of the first markup node with this name
+						 *
+						 * \~
+						 */
+						Entry(const node_id_t first = 0) noexcept : first(first), count(1) {}
+					} entry_t;
 				private:
 					// Код ошибки последней операции разбора
 					error_t _error;
@@ -1019,7 +1056,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					mutable unordered_map <node_id_t, unordered_map <string_view, node_id_t>> _index;
+					mutable unordered_map <node_id_t, unordered_map <string_view, entry_t>> _index;
 				private:
 					/**
 					 * \~russian

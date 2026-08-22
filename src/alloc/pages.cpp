@@ -226,27 +226,7 @@ bool awh::alloc::Pages::enroll(chunk_t * chunk) noexcept {
  * действие с делением против 123 с маской. Кольцо карантина маской НЕ берётся: длина его
  * считается по объёму и степенью двойки не бывает
  */
-awh::alloc::Pages::chunk_t * awh::alloc::Pages::lookup(const void * addr, void ** hint) const noexcept {
-	/**
-	 * Сперва пробуем подсказку
-	 *
-	 * Поток освобождает блоки из тех же немногих кусков, что и выдавал, и сличение
-	 * границ последнего найденного куска отвечает почти всегда. Поиск же по таблице
-	 * стоит умножения, маски и обращения к памяти вразнобой - съём образцов стека
-	 * показал, что на работе контейнеров туда уходит львиная доля пути освобождения
-	 *
-	 * Кусок, однажды взятый у источника, живёт до снятия кучи: отдаётся он лишь там,
-	 * и подсказка повиснуть не может
-	 */
-	if(hint != nullptr){
-		// Получаем кусок из подсказки
-		chunk_t * chunk = reinterpret_cast <chunk_t *> (* hint);
-		// Если подсказка задана и адрес лежит внутри её куска
-		if((chunk != nullptr) && (reinterpret_cast <uintptr_t> (addr) >= reinterpret_cast <uintptr_t> (chunk->base)) &&
-		   (reinterpret_cast <uintptr_t> (addr) < (reinterpret_cast <uintptr_t> (chunk->base) + chunk->size)))
-			// Выводим кусок из подсказки
-			return chunk;
-	}
+awh::alloc::Pages::chunk_t * awh::alloc::Pages::discover(const void * addr) const noexcept {
 	// Если адрес не задан
 	if(addr == nullptr)
 		// Искать нечего
@@ -282,14 +262,9 @@ awh::alloc::Pages::chunk_t * awh::alloc::Pages::lookup(const void * addr, void *
 			 * Ключ сходится и у адреса за концом куска, если источник выдал куска
 			 * меньше запрошенного, - границы того не прощают
 			 */
-			if(reinterpret_cast <uintptr_t> (addr) < (reinterpret_cast <uintptr_t> (chunk->base) + chunk->size)){
-				// Если подсказку требуется запомнить
-				if(hint != nullptr)
-					// Запоминаем найденный кусок подсказкой
-					(* hint) = chunk;
+			if(reinterpret_cast <uintptr_t> (addr) < (reinterpret_cast <uintptr_t> (chunk->base) + chunk->size))
 				// Выводим найденный кусок
 				return chunk;
-			}
 			// Адрес лежит за концом куска
 			return nullptr;
 		}
@@ -1158,46 +1133,6 @@ bool awh::alloc::Pages::jammed() noexcept {
 bool awh::alloc::Pages::owns(const void * addr) const noexcept {
 	// Выводим признак того, что за адресом нашёлся кусок
 	return (this->lookup(addr) != nullptr);
-}
-/**
- * @brief Метод описания области, которой принадлежит адрес
- *
- * @param addr  разбираемый адрес
- * @param begin адрес начала найденной области
- * @param pages размер найденной области в страницах кучи
- * @param tag   метка владельца найденной области
- * @return      признак того, что адрес принадлежит выданной наружу области
- *
- */
-bool awh::alloc::Pages::describe(const void * addr, void ** begin, size_t * pages, uint32_t * tag, void ** hint) const noexcept {
-	// Ищем кусок, которому принадлежит адрес
-	const chunk_t * chunk = this->lookup(addr, hint);
-	// Если куска за адресом не нашлось
-	if(chunk == nullptr)
-		// Адрес куче не принадлежит
-		return false;
-	// Определяем номер страницы, которой принадлежит адрес
-	const size_t page = static_cast <size_t> ((reinterpret_cast <uintptr_t> (addr) - reinterpret_cast <uintptr_t> (chunk->base)) / PAGE);
-	// Получаем область, которой принадлежит страница
-	const span_t * span = chunk->index[page].load(std::memory_order_acquire);
-	// Если области у страницы нет либо область наружу не выдана
-	if((span == nullptr) || span->released)
-		// Описывать нечего
-		return false;
-	// Если требуется адрес начала области
-	if(begin != nullptr)
-		// Записываем адрес начала области
-		(* begin) = span->base;
-	// Если требуется размер области
-	if(pages != nullptr)
-		// Записываем размер области
-		(* pages) = span->pages;
-	// Если требуется метка владельца
-	if(tag != nullptr)
-		// Записываем метку владельца
-		(* tag) = span->tag;
-	// Отвечаем успехом
-	return true;
 }
 /**
  * @brief Метод пометки выданной области

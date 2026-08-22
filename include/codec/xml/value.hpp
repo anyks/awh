@@ -251,6 +251,44 @@ namespace awh {
 				private:
 					/**
 					 * \~russian
+					 * @brief Запись отображения имён: первый узел с именем и число одноимённых
+					 *
+					 * @details Числа одноимённых довольно, чтобы выдать ВСЕХ совпавших без
+					 * перебора там, где он всего дороже: у широкого узла разных имён совпавший
+					 * один, и перебор всего перечня ради него был квадратичен - 40.8 мкс на
+					 * обращение при 20000 детях
+					 *
+					 * @note Хранить положения ВСЕХ одноимённых незачем: там, где их много, и
+					 * выдача велика, и перебор платится не зря
+					 *
+					 * \~english
+					 * @brief Record of the mapping of the names: the first node with the name and the count of the namesakes
+					 *
+					 * \~
+					 */
+					typedef struct Entry {
+						// Номер первого вложенного узла разметки с этим именем
+						size_t first;
+						// Количество вложенных узлов разметки с этим именем
+						size_t count;
+						/**
+						 * \~russian
+						 * @brief Конструктор
+						 *
+						 * @param first номер первого вложенного узла с этим именем
+						 *
+						 * \~english
+						 * @brief Constructor
+						 *
+						 * @param first the number of the first nested node with this name
+						 *
+						 * \~
+						 */
+						Entry(const size_t first = 0) noexcept : first(first), count(1) {}
+					} entry_t;
+				private:
+					/**
+					 * \~russian
 					 * Отображение местных имён вложенных узлов на их номера, заводимое по требованию
 					 *
 					 * @details Узел о немногих детях разыскивается перебором, широкий -
@@ -300,7 +338,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					mutable unordered_map <string, size_t> _index;
+					mutable unordered_map <string, entry_t> _index;
 				private:
 					/**
 					 * \~russian

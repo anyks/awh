@@ -97,6 +97,14 @@ namespace awh {
 			 * целиком, разбор не сдвигает: недостающие октеты дожидаются следующей подачи, а
 			 * выдача событий от того, как запись нарезана, не зависит ничем
 			 *
+			 * @note **Разбиратель надлежит держать между записями, а не заводить на всякую.**
+			 * Сброс через `reset()` вместимость буфера сохраняет, а новый разбиратель заводит
+			 * буфер заново. Плата за это невелика по себе, но от размера разбираемого не
+			 * зависит вовсе и потому целиком ложится на дешёвый разбор: замер 22.08.2026
+			 * показал, что у нового разбирателя на всякую запись она забирает от 6 до 47
+			 * процентов времени разбора смотря по системе (стенды Linux против macOS). Ради
+			 * этого заведён и сценарий замера «плата за заведение разбирателя»
+			 *
 			 * \~english
 			 * @brief Class of the streaming reading of a binary record
 			 * @details The reading issues the events as the record is parsed without holding it in full.
@@ -105,6 +113,10 @@ namespace awh {
 			 * @details **Independence from the cutting into chunks.** A unit of the record submitted not
 			 * in full does not shift the parsing: the missing octets wait for the next submission, while
 			 * the issuance of the events does not depend in any way on how the record is cut
+			 * @note **The reader is to be held between the records rather than created for each one.**
+			 * The reset via `reset()` preserves the capacity of the buffer, while a new reader creates
+			 * the buffer anew. The price of that is small by itself, yet it does not depend on the size
+			 * of what is being parsed at all and therefore falls entirely upon the cheap parsing
 			 *
 			 * \~
 			 */

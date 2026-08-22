@@ -1989,8 +1989,8 @@ namespace {
 							 *          кадра само по себе не включает.
 							 *
 							 */
-							const bool framing = (!written.empty() ||
-							 !stretching(program, opening, closing, length) || (length > awh::regex::MAX_STRETCH));
+							const bool framing = (!written.empty() || (eager &&
+							 (!stretching(program, opening, closing, length) || (length > awh::regex::MAX_STRETCH))));
 							/**
 							 * Если повторение, записи кадра на проход требующее,
 							 * лежит внутри атомарной группы
@@ -4765,7 +4765,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				 *          и отказ ячейкой кадра не ведётся.
 				 *
 				 */
-				if(!eager && keepers.empty() && stretching(program, opening, closing, length) && (length <= MAX_STRETCH)) {
+				if(!eager && keepers.empty()) {
 					// Заводим метку выполнения прохода по отказу продолжения
 					const size_t iterating = emitter.label();
 					// Заводим метку продолжения сопоставления за повторением
@@ -5805,6 +5805,15 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			} else if(following >= 0) {
 				// Заводим метку продвижения ряда до байта продолжения
 				const size_t stepping = emitter.label();
+				/**
+				 * Выполняем чтение адреса таблицы принадлежности байтов
+				 *
+				 * @details Чтение вынесено прежде метки продвижения: таблица
+				 *          у ряда одна на всё продвижение, а регистр её витком
+				 *          не переписывается.
+				 *
+				 */
+				emitter.context(reg_t::SCRATCH, static_cast <uint32_t> (number));
 				// Выполняем расстановку метки продвижения ряда до байта продолжения
 				emitter.place(stepping);
 				// Выполняем сравнение позиции сопоставления с размером текста
@@ -5814,8 +5823,6 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				// Выполняем чтение байта текста в позиции сопоставления
 				emitter.load(reg_t::LETTER, reg_t::TEXT, reg_t::CURSOR);
 				// Выполняем чтение принадлежности байта таблице сопоставления
-				// Выполняем чтение адреса таблицы принадлежности байтов
-				emitter.context(reg_t::SCRATCH, static_cast <uint32_t> (number));
 				emitter.load(reg_t::SPARE, reg_t::SCRATCH, reg_t::LETTER);
 				// Выполняем сравнение принадлежности байта с нулём
 				emitter.compare(reg_t::SPARE, static_cast <uint32_t> (0));
@@ -6026,6 +6033,17 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			 * Если ряд повторения проходится разбором таблицы принадлежности
 			 */
 			} else {
+			/**
+			 * Выполняем чтение адреса таблицы принадлежности байтов
+			 *
+			 * @details Чтение вынесено прежде метки прохода: таблица у ряда
+			 *          одна на весь проход, а регистр её витком не переписывается,
+			 *          и чтение на всяком байте было бы обращением к памяти
+			 *          впустую. Вход в проход идёт метки этой одной, отчего
+			 *          адрес и оказывается прочтён всегда.
+			 *
+			 */
+			emitter.context(reg_t::SCRATCH, static_cast <uint32_t> (number));
 			// Выполняем расстановку метки прохода ряда подходящих символов
 			emitter.place(scan);
 			// Выполняем сравнение позиции сопоставления с размером текста
@@ -6034,8 +6052,6 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			emitter.branch(cond_t::ABOVE, complete);
 			// Выполняем чтение байта текста в позиции сопоставления
 			emitter.load(reg_t::LETTER, reg_t::TEXT, reg_t::CURSOR);
-			// Выполняем чтение адреса таблицы принадлежности байтов
-			emitter.context(reg_t::SCRATCH, static_cast <uint32_t> (number));
 			// Выполняем чтение принадлежности байта таблице сопоставления
 			emitter.load(reg_t::SPARE, reg_t::SCRATCH, reg_t::LETTER);
 			// Выполняем сравнение принадлежности байта с нулём

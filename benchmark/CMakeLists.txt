@@ -62,6 +62,7 @@ if (NOT (WIN32 OR MINGW OR CYGWIN))
     endif()
 endif()
 
+add_subdirectory(alloc)
 add_subdirectory(sys)
 add_subdirectory(cryptography)
 add_subdirectory(net)

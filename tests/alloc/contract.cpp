@@ -36,6 +36,7 @@
 /**
  * Стандартные модули
  */
+#include <new>
 #include <cstdlib>
 
 /**
@@ -152,10 +153,14 @@ TEST(AllocContractTest, HugeSizeRefusesWithoutCrash){
  *
  */
 TEST(AllocContractTest, AlignedAllocationIsAligned){
-	// Выданная память
-	void * block = nullptr;
-	// Выдаём память с выравниванием
-	EXPECT_EQ(::posix_memalign(&block, 4096, 8192), 0);
+	/**
+	 * Выдаём память с выравниванием средствами ЯЗЫКА, а не POSIX
+	 *
+	 * `posix_memalign` есть не везде: у MinGW его нет вовсе, и проверка, написанная на
+	 * нём, закрывала себе Windows целиком. Выровненная выдача языка ведёт к тому же
+	 * нашему пути, но пишется одинаково для всех систем
+	 */
+	void * block = ::operator new (8192, std::align_val_t(4096));
 	ASSERT_NE(block, nullptr);
 	// Выравнивание обязано быть соблюдено
 	EXPECT_EQ((reinterpret_cast <uintptr_t> (block) % 4096), static_cast <uintptr_t> (0));
@@ -163,14 +168,15 @@ TEST(AllocContractTest, AlignedAllocationIsAligned){
 	::memset(block, 0x77, 8192);
 	EXPECT_EQ(reinterpret_cast <const uint8_t *> (block)[8191], static_cast <uint8_t> (0x77));
 	// Освобождаем выданное
-	::free(block);
+	::operator delete (block, std::align_val_t(4096));
 	/**
 	 * Негодное выравнивание обязано быть отвергнуто кодом, а не падением
 	 *
-	 * Под санитайзером край не проверяется: он валит процесс на негодном выравнивании
-	 * сам, по своей политике
+	 * Проверяется лишь у систем POSIX: у MinGW `posix_memalign` нет вовсе. Под
+	 * санитайзером край не проверяется и там: он валит процесс на негодном
+	 * выравнивании сам, по своей политике
 	 */
-	#if !AWH_ALLOC_SANITIZED
+	#if !defined(_WIN32) && !defined(_WIN64) && !AWH_ALLOC_SANITIZED
 		void * refused = nullptr;
 		EXPECT_NE(::posix_memalign(&refused, 3, 128), 0);
 	#endif

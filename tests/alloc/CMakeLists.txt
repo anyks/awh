@@ -76,6 +76,10 @@ if (${GTest_FOUND})
                 capture.cpp
                 mangle.cpp
                 contract.cpp
+                guard.cpp
+                purge.cpp
+                profile.cpp
+                fork.cpp
             )
         # Если не нужно собрать тесты для модуля распределителя памяти
         else()

@@ -980,3 +980,94 @@ TEST_F(EditorFixture, ResetForgets) {
 	// Выполняем проверку того, что открыт прежний контейнер без накопленного
 	ASSERT_EQ(editor.records(), 1ull);
 }
+
+/**
+ * @brief Проверка сноса записи, правленной в том же наборе накопленного
+ *
+ * @details Правки копятся списком, и содержимым записи стоит правка её ПОСЛЕДНЯЯ. Снос,
+ *          пришедший вслед за правкой той же записи, обязан её и отменить: правка,
+ *          ответившая успехом, обязана изменить содержимое контейнера
+ *
+ * @note Вскрыто ворошителем 22.08.2026 ходом «erase 0; replace 1; erase 1»: снесённая
+ *       запись выдавалась и после фиксации
+ *
+ */
+TEST_F(EditorFixture, EraseAfterReplace) {
+	// Носитель, несущий правимый контейнер
+	Medium medium;
+	// Выполняем сборку контейнера с тремя записями
+	this->build(medium, {"первая", "вторая", "третья"});
+	// Правщик контейнера
+	abc::editor_t editor;
+	// Выполняем открытие контейнера правщиком
+	ASSERT_TRUE(this->open(editor, medium)) << "код отказа: " << abc::message(editor.error());
+	// Октеты записи, какою правится вторая запись контейнера
+	const vector <uint8_t> item = abc::value_t(string{"правленая"}).dump();
+	// Выполняем правку второй записи контейнера
+	ASSERT_TRUE(editor.replace(1, item.data(), item.size(), abc::payload_t::MIXED))
+	 << "код отказа: " << abc::message(editor.error());
+	// Выполняем снос той же второй записи контейнера
+	ASSERT_TRUE(editor.erase(1)) << "код отказа: " << abc::message(editor.error());
+	// Буфер снятой записи контейнера
+	vector <uint8_t> taken;
+	// Выполняем проверку того, что снесённая запись не выдаётся и до фиксации
+	ASSERT_FALSE(editor.record(1, taken)) << "снесённая запись выдана до фиксации";
+	// Выполняем фиксацию накопленных правок на носителе
+	ASSERT_TRUE(editor.commit()) << "код отказа: " << abc::message(editor.error());
+	// Выполняем проверку того, что снесённая запись не выдаётся и после фиксации
+	ASSERT_FALSE(editor.record(1, taken)) << "снесённая запись выдана после фиксации";
+	// Код отказа выборки записи контейнера
+	abc::error_t error = abc::error_t::NONE;
+	// Буфер выбранной записи контейнера
+	vector <uint8_t> picked;
+	// Выполняем проверку отказа выборки снесённой записи с носителя
+	ASSERT_FALSE(this->pick(medium, 1, picked, error));
+	// Выполняем проверку кода отказа выборки снесённой записи
+	ASSERT_EQ(error, abc::error_t::MISSING_RECORD);
+	// Выполняем проверку того, что соседняя запись сносом не задета
+	ASSERT_TRUE(this->pick(medium, 2, picked, error)) << "код отказа: " << abc::message(error);
+	// Выполняем проверку выбранной соседней записи контейнера
+	ASSERT_EQ(picked, abc::value_t(string{"третья"}).dump());
+}
+
+/**
+ * @brief Проверка правки записи, снесённой в том же наборе накопленного
+ *
+ * @details Порядок обратный: снос, а следом правка той же записи. Побеждать обязано
+ *          действие последнее - правка воскрешает снесённое. Направление это работало
+ *          и прежде, и закреплено оно ради того, чтобы правка сноса его не сломала
+ *
+ */
+TEST_F(EditorFixture, ReplaceAfterErase) {
+	// Носитель, несущий правимый контейнер
+	Medium medium;
+	// Выполняем сборку контейнера с тремя записями
+	this->build(medium, {"первая", "вторая", "третья"});
+	// Правщик контейнера
+	abc::editor_t editor;
+	// Выполняем открытие контейнера правщиком
+	ASSERT_TRUE(this->open(editor, medium)) << "код отказа: " << abc::message(editor.error());
+	// Выполняем снос второй записи контейнера
+	ASSERT_TRUE(editor.erase(1)) << "код отказа: " << abc::message(editor.error());
+	// Октеты записи, какою воскрешается снесённая
+	const vector <uint8_t> item = abc::value_t(string{"воскрешённая"}).dump();
+	// Выполняем правку снесённой записи контейнера
+	ASSERT_TRUE(editor.replace(1, item.data(), item.size(), abc::payload_t::MIXED))
+	 << "код отказа: " << abc::message(editor.error());
+	// Буфер снятой записи контейнера
+	vector <uint8_t> taken;
+	// Выполняем проверку выдачи воскрешённой записи до фиксации
+	ASSERT_TRUE(editor.record(1, taken)) << "код отказа: " << abc::message(editor.error());
+	// Выполняем проверку содержимого воскрешённой записи до фиксации
+	ASSERT_EQ(taken, item);
+	// Выполняем фиксацию накопленных правок на носителе
+	ASSERT_TRUE(editor.commit()) << "код отказа: " << abc::message(editor.error());
+	// Код отказа выборки записи контейнера
+	abc::error_t error = abc::error_t::NONE;
+	// Буфер выбранной записи контейнера
+	vector <uint8_t> picked;
+	// Выполняем проверку выборки воскрешённой записи с носителя
+	ASSERT_TRUE(this->pick(medium, 1, picked, error)) << "код отказа: " << abc::message(error);
+	// Выполняем проверку содержимого воскрешённой записи на носителе
+	ASSERT_EQ(picked, item);
+}

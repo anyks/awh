@@ -60,9 +60,28 @@
  * Наши модули
  */
 #include "spin.hpp"
+#include "link.hpp"
 #include "central.hpp"
 #include "classes.hpp"
 #include "../sys/global.hpp"
+
+/**
+ * Если компилятор принадлежит к Visual Studio
+ */
+#if defined(_MSC_VER)
+	/**
+	 * Принудительная подстановка средствами Visual Studio
+	 */
+	#define AWH_CACHE_INLINE __forceinline
+/**
+ * Если компилятор принадлежит к семейству GCC или Clang
+ */
+#else
+	/**
+	 * Принудительная подстановка средствами GCC и Clang
+	 */
+	#define AWH_CACHE_INLINE inline __attribute__((always_inline))
+#endif
 
 /**
  * @brief Пространство имён фреймворка
@@ -97,6 +116,33 @@ namespace awh {
 				// Предел кэша потока по умолчанию в байтах
 				static constexpr size_t LIMIT = (4u * 1024u * 1024u);
 			private:
+				/**
+				 * \~russian
+				 * @brief Метод пополнения разряда пачкой блоков у центральных списков
+				 *
+				 * @note Холодный хвост быстрого пути выдачи: вынесен в файл кода, чтобы
+				 *       подстановка тащила за собою лишь снятие блока с головы списка
+				 *
+				 * @param index номер разряда
+				 * @return      адрес выданного блока либо nullptr
+				 *
+				 * \~english
+				 * @brief Method of refilling a class with a batch from the central lists
+				 *
+				 */
+				void * refill(const size_t index) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод отдачи излишка центральным спискам
+				 *
+				 * @note Холодный хвост быстрого пути возврата: перебор предела - случай
+				 *       редкий, и держать его в подставляемом теле незачем
+				 *
+				 * \~english
+				 * @brief Method of giving the excess back to the central lists
+				 *
+				 */
+				void relieve() noexcept;
 				/**
 				 * @brief Список свободных блоков одного разряда
 				 *
@@ -225,7 +271,26 @@ namespace awh {
 				 * @brief Method of allocating a block of a class
 				 *
 				 */
-				void * alloc(const size_t index) noexcept;
+				AWH_CACHE_INLINE void * alloc(const size_t index) noexcept {
+					// Если кэш не заведён либо разряд неведом
+					if((this->_classes == nullptr) || (index >= this->_classes->count()))
+						// Выдавать нечего
+						return nullptr;
+					// Если свободных блоков разряда в кэше не осталось
+					if(this->_lists[index].free == nullptr)
+						// Забираем у центральных списков пачку блоков
+						return this->refill(index);
+					// Снимаем блок с головы списка
+					void * result = this->_lists[index].free;
+					// Головой списка становится следующий блок
+					this->_lists[index].free = awh::alloc::Link::next(result);
+					// Уменьшаем число блоков в кэше
+					this->_lists[index].count--;
+					// Уменьшаем лежащее в кэше
+					this->_bytes -= this->_classes->size(index);
+					// Выводим выданный блок
+					return result;
+				}
 				/**
 				 * \~russian
 				 * @brief Метод возврата блока разряда
@@ -237,7 +302,24 @@ namespace awh {
 				 * @brief Method of returning a block of a class
 				 *
 				 */
-				void free(const size_t index, void * addr) noexcept;
+				AWH_CACHE_INLINE void free(const size_t index, void * addr) noexcept {
+					// Если кэш не заведён, разряд неведом либо блок не задан
+					if((this->_classes == nullptr) || (index >= this->_classes->count()) || (addr == nullptr))
+						// Возвращать нечего
+						return;
+					// Связываем возвращаемый блок с прежней головой списка
+					awh::alloc::Link::next(addr, this->_lists[index].free);
+					// Головой списка становится возвращаемый блок
+					this->_lists[index].free = addr;
+					// Увеличиваем число блоков в кэше
+					this->_lists[index].count++;
+					// Увеличиваем лежащее в кэше
+					this->_bytes += this->_classes->size(index);
+					// Если предел кэша перебран
+					if(this->_bytes > this->_limit)
+						// Отдаём излишек центральным спискам
+						this->relieve();
+				}
 			public:
 				/**
 				 * \~russian

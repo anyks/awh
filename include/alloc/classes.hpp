@@ -18,7 +18,14 @@
  *
  * @section classes_decisions Намеренные решения
  *
- * @details <b>Разряды растут геометрически, а не равномерно.</b> Равномерный шаг даёт
+ * @details <b>Поиск разряда, размер блока и число разрядов вынесены посредниками с
+ *          принудительной подстановкой.</b> Зовут их на пути КАЖДОЙ выдачи и каждого
+ *          освобождения, а работы там - таблица да три сравнения: вызов между
+ *          единицами трансляции стоил бы дороже самой работы. Замерено на стенде
+ *          `benchmark/alloc`: 19,59 → 17,10 наносекунды на действие, то есть 13 %.
+ *          Прочее тело разрядов лежит в файле кода, как и положено.
+ *
+ *          <b>Разряды растут геометрически, а не равномерно.</b> Равномерный шаг даёт
  *          либо непомерное число разрядов, либо непомерную потерю на округлении у
  *          мелких запросов: шаг в 64 байта на запросе в 129 байт теряет треть. Шаг же,
  *          равный восьмой доле размера, держит потерю ниже 12,5 % при семи десятках
@@ -61,6 +68,24 @@
  */
 #include "pages.hpp"
 #include "../sys/global.hpp"
+
+/**
+ * Если компилятор принадлежит к Visual Studio
+ */
+#if defined(_MSC_VER)
+	/**
+	 * Принудительная подстановка средствами Visual Studio
+	 */
+	#define AWH_CLASSES_INLINE __forceinline
+/**
+ * Если компилятор принадлежит к семейству GCC или Clang
+ */
+#else
+	/**
+	 * Принудительная подстановка средствами GCC и Clang
+	 */
+	#define AWH_CLASSES_INLINE inline __attribute__((always_inline))
+#endif
 
 /**
  * @brief Пространство имён фреймворка
@@ -141,7 +166,28 @@ namespace awh {
 				 * @brief Method of determining the class by the required size
 				 *
 				 */
-				size_t index(const size_t size) const noexcept;
+				AWH_CLASSES_INLINE size_t index(const size_t size) const noexcept {
+					// Если размер разрядами не обслуживается
+					if(size > MAXIMUM)
+						// Сообщаем, что разряда для него нет
+						return LIMIT;
+					// Запрос нулевого размера обслуживается наименьшим разрядом
+					const size_t need = ((size > 0) ? size : 1);
+					// Номер найденного разряда
+					size_t result = 0;
+					// Если размер не превышает порога мелкого запроса
+					if(need <= SMALL)
+						// Берём разряд из мелкой таблицы
+						result = static_cast <size_t> (this->_small[((need + (STEP_SMALL - 1)) / STEP_SMALL)]);
+					// Если размер превышает порог мелкого запроса
+					else result = static_cast <size_t> (this->_large[((need + (STEP_LARGE - 1)) / STEP_LARGE)]);
+					// Если разряда для размера не нашлось
+					if(result >= this->_count)
+						// Сообщаем, что разряда для него нет
+						return LIMIT;
+					// Выводим найденный разряд
+					return result;
+				}
 				/**
 				 * \~russian
 				 * @brief Метод получения размера блока разряда
@@ -153,7 +199,10 @@ namespace awh {
 				 * @brief Method of getting the class block size
 				 *
 				 */
-				size_t size(const size_t index) const noexcept;
+				AWH_CLASSES_INLINE size_t size(const size_t index) const noexcept {
+					// Выводим размер блока разряда либо нуль при негодном номере
+					return ((index < this->_count) ? this->_size[index] : 0);
+				}
 				/**
 				 * \~russian
 				 * @brief Метод получения числа страниц на область разряда
@@ -188,7 +237,10 @@ namespace awh {
 				 * @brief Method of getting the number of classes created
 				 *
 				 */
-				size_t count() const noexcept;
+				AWH_CLASSES_INLINE size_t count() const noexcept {
+					// Выводим число заведённых разрядов
+					return this->_count;
+				}
 			public:
 				/**
 				 * @brief Конструктор

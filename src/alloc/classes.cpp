@@ -229,46 +229,6 @@ size_t awh::alloc::Classes::init() noexcept {
 	return this->_count;
 }
 /**
- * @brief Метод определения разряда по требуемому размеру
- *
- * @param size требуемый размер в байтах
- * @return     номер разряда, либо LIMIT если размер разрядами не обслуживается
- *
- */
-size_t awh::alloc::Classes::index(const size_t size) const noexcept {
-	// Если размер разрядами не обслуживается
-	if(size > MAXIMUM)
-		// Сообщаем, что разряда для него нет
-		return LIMIT;
-	// Запрос нулевого размера обслуживается наименьшим разрядом
-	const size_t need = ((size > 0) ? size : 1);
-	// Номер найденного разряда
-	size_t result = 0;
-	// Если размер не превышает порога мелкого запроса
-	if(need <= SMALL)
-		// Берём разряд из мелкой таблицы
-		result = static_cast <size_t> (this->_small[((need + (STEP_SMALL - 1)) / STEP_SMALL)]);
-	// Если размер превышает порог мелкого запроса
-	else result = static_cast <size_t> (this->_large[((need + (STEP_LARGE - 1)) / STEP_LARGE)]);
-	// Если разряда для размера не нашлось
-	if(result >= this->_count)
-		// Сообщаем, что разряда для него нет
-		return LIMIT;
-	// Выводим найденный разряд
-	return result;
-}
-/**
- * @brief Метод получения размера блока разряда
- *
- * @param index номер разряда
- * @return      размер блока в байтах
- *
- */
-size_t awh::alloc::Classes::size(const size_t index) const noexcept {
-	// Выводим размер блока разряда либо нуль при негодном номере
-	return ((index < this->_count) ? this->_size[index] : 0);
-}
-/**
  * @brief Метод получения числа страниц на область разряда
  *
  * @param index номер разряда
@@ -289,14 +249,4 @@ size_t awh::alloc::Classes::pages(const size_t index) const noexcept {
 size_t awh::alloc::Classes::blocks(const size_t index) const noexcept {
 	// Выводим число блоков разряда либо нуль при негодном номере
 	return ((index < this->_count) ? this->_blocks[index] : 0);
-}
-/**
- * @brief Метод получения числа заведённых разрядов
- *
- * @return число разрядов
- *
- */
-size_t awh::alloc::Classes::count() const noexcept {
-	// Выводим число заведённых разрядов
-	return this->_count;
 }
