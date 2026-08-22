@@ -1194,9 +1194,27 @@ bool awh::codec::toml::Value::operator == (const Value & value) const noexcept {
 			 */
 			return (this->_integer == value._integer);
 		// Если значения являются числами с плавающей точкой
-		case static_cast <uint8_t> (type_t::FLOAT):
+		/**
+		 * Если значения являются числами с плавающей точкой
+		 *
+		 * @details Нечисло не равно даже самому себе - таково правило языка, - и сличение
+		 *          обычное объявляло бы неравными два значения `nan`. Тем всякий документ,
+		 *          нечисло несущий, переставал бы равняться сам себе, а сличение обязано
+		 *          быть возвратным прежде всего прочего
+		 *
+		 * @note Нашёл это ворошитель круговым переносом снятого значения на записи `nan`.
+		 *       У кодека YAML тем же способом найдено то же самое и решено так же
+		 */
+		case static_cast <uint8_t> (type_t::FLOAT): {
+			/**
+			 * Если хотя бы одно из чисел нечислом является
+			 */
+			if(::isnan(this->_real) || ::isnan(value._real))
+				// Выводим признак совпадения нечисел
+				return (::isnan(this->_real) && ::isnan(value._real));
 			// Выводим признак совпадения чисел
 			return (this->_real == value._real);
+		}
 		// Если значения являются логическими
 		case static_cast <uint8_t> (type_t::BOOLEAN):
 			// Выводим признак совпадения логических значений
@@ -1767,11 +1785,15 @@ bool awh::codec::toml::Value::load(const string & filename, const Document::sett
  * @return       признак успешности записи
  *
  */
-bool awh::codec::toml::Value::compose(writer_t & writer, const string_view name) const noexcept {
+bool awh::codec::toml::Value::compose(writer_t & writer, const string_view name, const bool keyed) const noexcept {
 	/**
-	 * Если имя пары задано
+	 * Если значение парою является
+	 *
+	 * @note Признак этот берётся отдельно от самого имени: имя пустое отличать от
+	 *       отсутствия имени иначе нечем, а запись `"" = 5` описанием дозволена -
+	 *       значение перечня же имени не имеет вовсе
 	 */
-	if(!name.empty()){
+	if(keyed || !name.empty()){
 		/**
 		 * Если записать имя пары не удалось
 		 */
@@ -1834,19 +1856,26 @@ bool awh::codec::toml::Value::compose(writer_t & writer, const string_view name)
 			 */
 			for(size_t i = 0; i < this->_items.size(); i++){
 				/**
-				 * Если имя очередной пары таблицы пусто вовсе
+				 * Если очередная пара таблицы дырою является
 				 *
-				 * @note Пара такая заводится ростом таблицы по номеру, и записана быть не
-				 *       может: имя есть у всякой пары наречия. Пропускается она молча -
-				 *       отказ на ней сорвал бы запись всего дерева из-за одной дыры
+				 * @details Дыра заводится ростом таблицы по номеру: имени у неё нет, а
+				 *          значение недействительно. Записана она быть не может - имя есть у
+				 *          всякой пары наречия, - и пропускается молча: отказ на ней сорвал бы
+				 *          запись всего дерева из-за одной дыры
+				 *
+				 * @note Дыра узнаётся по НЕДЕЙСТВИТЕЛЬНОМУ значению, а не по одному лишь
+				 *       пустому имени: запись `"" = 5` описанием дозволена, и пара с пустым
+				 *       именем, значение несущая, записи подлежит наравне с прочими.
+				 *       Прежде она пропускалась вместе с дырами, и снятое с дерева значение
+				 *       её теряло молча - нашёл это ворошитель круговым переносом
 				 */
-				if((i >= this->_names.size()) || this->_names.at(i).empty())
+				if((i >= this->_names.size()) || (this->_names.at(i).empty() && !this->_items.at(i).valid()))
 					// Выполняем переход к следующей паре таблицы
 					continue;
 				/**
 				 * Если записать очередную пару таблицы не удалось
 				 */
-				if(!this->_items.at(i).compose(writer, this->_names.at(i)))
+				if(!this->_items.at(i).compose(writer, this->_names.at(i), true))
 					// Выводим признак неудачной записи
 					return false;
 			}
@@ -1895,9 +1924,9 @@ string awh::codec::toml::Value::dump(const writer_t::settings_t & settings) cons
 	 */
 	for(size_t i = 0; i < this->_items.size(); i++){
 		/**
-		 * Если имя очередной пары таблицы пусто вовсе
+		 * Если очередная пара таблицы дырою является (пустое имя при недействительном значении)
 		 */
-		if((i >= this->_names.size()) || this->_names.at(i).empty())
+		if((i >= this->_names.size()) || (this->_names.at(i).empty() && !this->_items.at(i).valid()))
 			// Выполняем переход к следующей паре таблицы
 			continue;
 		/**
@@ -1909,7 +1938,7 @@ string awh::codec::toml::Value::dump(const writer_t::settings_t & settings) cons
 		/**
 		 * Если записать очередную пару таблицы не удалось
 		 */
-		if(!this->_items.at(i).compose(writer, this->_names.at(i)))
+		if(!this->_items.at(i).compose(writer, this->_names.at(i), true))
 			// Выводим пустой текст настроек
 			return string();
 	}
@@ -1918,9 +1947,9 @@ string awh::codec::toml::Value::dump(const writer_t::settings_t & settings) cons
 	 */
 	for(size_t i = 0; i < this->_items.size(); i++){
 		/**
-		 * Если имя очередной пары таблицы пусто вовсе
+		 * Если очередная пара таблицы дырою является (пустое имя при недействительном значении)
 		 */
-		if((i >= this->_names.size()) || this->_names.at(i).empty())
+		if((i >= this->_names.size()) || (this->_names.at(i).empty() && !this->_items.at(i).valid()))
 			// Выполняем переход к следующей паре таблицы
 			continue;
 		/**
@@ -1954,7 +1983,7 @@ string awh::codec::toml::Value::dump(const writer_t::settings_t & settings) cons
 			/**
 			 * Если записать очередную пару таблицы не удалось
 			 */
-			if(!table._items.at(j).compose(writer, table._names.at(j)))
+			if(!table._items.at(j).compose(writer, table._names.at(j), true))
 				// Выводим пустой текст настроек
 				return string();
 		}
@@ -2092,11 +2121,20 @@ bool awh::codec::toml::Value::inflate(Document & document, const vector <string_
 			continue;
 		}
 		/**
-		 * Если имя очередной пары встроенной таблицы пусто вовсе
+		 * Если очередная пара встроенной таблицы дырою является
+		 *
+		 * @note Дыра узнаётся недействительным значением: пара с пустым именем, значение
+		 *       несущая, есть запись `"" = 5`, описанием дозволенная, и переносу подлежит
 		 */
-		if((i >= this->_names.size()) || this->_names.at(i).empty())
+		if(i >= this->_names.size())
 			// Выводим признак неудачного наполнения
 			return false;
+		/**
+		 * Если очередная пара встроенной таблицы дырою является
+		 */
+		if(this->_names.at(i).empty() && !item.valid())
+			// Выполняем переход к следующей паре встроенной таблицы
+			continue;
 		// Собираемое составное имя очередной пары встроенной таблицы
 		const vector <string_view> name = {string_view(this->_names.at(i))};
 		/**
@@ -2173,9 +2211,9 @@ bool awh::codec::toml::Value::graft(Document & document, const vector <string_vi
 			 */
 			for(size_t i = 0; i < this->_items.size(); i++){
 				/**
-				 * Если имя очередной пары таблицы пусто вовсе
+				 * Если очередная пара таблицы дырою является (пустое имя при недействительном значении)
 				 */
-				if((i >= this->_names.size()) || this->_names.at(i).empty())
+				if((i >= this->_names.size()) || (this->_names.at(i).empty() && !this->_items.at(i).valid()))
 					// Выполняем переход к следующей паре таблицы
 					continue;
 				// Собираем составное имя очередной пары таблицы

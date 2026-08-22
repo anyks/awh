@@ -317,7 +317,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool compose(writer_t & writer, const string_view name) const noexcept;
+					bool compose(writer_t & writer, const string_view name, const bool keyed = false) const noexcept;
 				private:
 					/**
 					 * \~russian

@@ -69,12 +69,17 @@ namespace {
 		uint64_t trees;
 		// Количество выполненных перезаписей дерева
 		uint64_t rewrites;
+		// Количество попыток кругового переноса владеющего значения
+		uint64_t grafts;
+		// Количество удавшихся переносов владеющего значения
+		uint64_t grafted;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
 		Statistic() noexcept :
-		 texts(0), corrupted(0), survived(0), events(0), trees(0), rewrites(0) {}
+		 texts(0), corrupted(0), survived(0), events(0), trees(0), rewrites(0),
+		 grafts(0), grafted(0) {}
 	} totals;
 
 	/**
@@ -1012,6 +1017,16 @@ namespace {
 	 * @return        результат проверки дерева настроек
 	 *
 	 */
+	/**
+	 * @brief Предварительное объявление проверки кругового переноса
+	 *
+	 * @param document проверяемое дерево настроек
+	 * @param text     исходный текст настроек
+	 * @return         результат проверки кругового переноса
+	 *
+	 */
+	bool transplant(const toml::document_t & document, const string & text) noexcept;
+
 	bool tree(const string & text, const toml::reader_t::settings_t & reading, mt19937 & engine) noexcept {
 		// Собираемые настройки дерева настроек
 		toml::document_t::settings_t settings;
@@ -1215,7 +1230,70 @@ namespace {
 			// Выводим результат проверки дерева настроек
 			return false;
 		}
-		// Выводим результат проверки дерева настроек
+		// Выводим результат проверки кругового переноса владеющего значения
+		return transplant(document, text);
+	}
+	/**
+	 * @brief Метод проверки кругового переноса владеющего значения
+	 *
+	 * @details Дерево снимается владеющим значением, значение переносится в дерево
+	 * пустое, а перенесённое снимается вновь: снятое обязано совпасть с исходным
+	 *
+	 * @note Перенос вправе и отказать: имя, одною лишь оградою выразимое, правка дерева
+	 *       не принимает. Отказ расхождением не считается, но считается счётчиком -
+	 *       молчаливый пропуск обратил бы проверку в бездействующую
+	 *
+	 * @param document проверяемое дерево настроек
+	 * @param text     исходный текст настроек
+	 * @return         результат проверки кругового переноса
+	 *
+	 */
+	bool transplant(const toml::document_t & document, const string & text) noexcept {
+		// Выполняем снятие владеющего значения с дерева настроек
+		const toml::value_t lifted(document);
+		// Собираемое дерево настроек, куда переносится значение
+		toml::document_t target;
+		/**
+		 * Если разобрать пустой текст настроек не удалось
+		 */
+		if(!target.parse("")){
+			// Выводим сообщение о неудаче заведения пустого дерева
+			::fprintf(stderr, "toml fuzz: empty tree is not parseable\n");
+			// Выводим результат проверки кругового переноса
+			return false;
+		}
+		// Выполняем учёт попытки кругового переноса
+		totals.grafts++;
+		/**
+		 * Если перенести владеющее значение в дерево не удалось
+		 */
+		if(!lifted.graft(target, {}))
+			// Выводим результат проверки кругового переноса
+			return true;
+		// Выполняем учёт удавшегося переноса
+		totals.grafted++;
+		// Выполняем снятие владеющего значения с дерева переноса
+		const toml::value_t back(target);
+		/**
+		 * Если снятое с дерева переноса значение с исходным разошлось
+		 */
+		if(!(back == lifted)){
+			// Выводим сообщение о расхождении перенесённого значения с исходным
+			::fprintf(stderr, "toml fuzz: grafted value differs from the lifted one\n");
+			// Выводим исходный текст настроек
+			dump(text);
+			// Выводим перезапись дерева, с какого значение снято
+			dump(document.text());
+			// Выводим перезапись дерева переноса
+			dump(target.text());
+			// Выводим запись снятого значения
+			dump(lifted.dump());
+			// Выводим запись перенесённого значения
+			dump(back.dump());
+			// Выводим результат проверки кругового переноса
+			return false;
+		}
+		// Выводим результат проверки кругового переноса
 		return true;
 	}
 	/**
@@ -1552,13 +1630,15 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	// Выводим статистику работы генератора
 	::fprintf(
 		stdout,
-		"toml fuzz: %llu texts (%llu corrupted), %llu events, %llu parsed to the end, %llu trees, %llu rewrites\n",
+		"toml fuzz: %llu texts (%llu corrupted), %llu events, %llu parsed to the end, %llu trees, %llu rewrites, %llu grafts (%llu refused)\n",
 		static_cast <unsigned long long> (totals.texts),
 		static_cast <unsigned long long> (totals.corrupted),
 		static_cast <unsigned long long> (totals.events),
 		static_cast <unsigned long long> (totals.survived),
 		static_cast <unsigned long long> (totals.trees),
-		static_cast <unsigned long long> (totals.rewrites)
+		static_cast <unsigned long long> (totals.rewrites),
+		static_cast <unsigned long long> (totals.grafted),
+		static_cast <unsigned long long> (totals.grafts - totals.grafted)
 	);
 	// Выходим из приложения
 	return EXIT_SUCCESS;
