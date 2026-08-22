@@ -42,6 +42,7 @@
  *
  * \~english
  * For the MS Windows operating system
+ *
  * @note The check is driven by defined rather than by the value: the <windows.h> header of mingw-w64
  *       defines WIN32 as an empty macro, which is why a condition of the «|| WIN32 ||» form loses an operand
  *       and the build answers with the failure «operator '||' has no right operand»
@@ -49,13 +50,17 @@
  * \~
  */
 #if defined(_MSC_VER) || defined(WIN64) || defined(_WIN64) || defined(__WIN64__) || defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+	// Экспортируем символы динамической библиотеки с видимостью по умолчанию
 	#define __AWH_DECL_EXPORT__ __declspec(dllexport)
+	// Импортируем символы динамической библиотеки с видимостью по умолчанию
 	#define __AWH_DECL_IMPORT__ __declspec(dllimport)
 /**
  * Для операционной системы не являющейся MS Windows
  */
 #else
+	// Экспортируем символы динамической библиотеки с видимостью по умолчанию
 	#define __AWH_DECL_EXPORT__ __attribute__((visibility("default")))
+	// Импортируем символы динамической библиотеки с видимостью по умолчанию
 	#define __AWH_DECL_IMPORT__ __attribute__((visibility("default")))
 #endif
 
@@ -63,16 +68,19 @@
  * Если активирован экспорт динамической библиотеки
  */
 #if __AWH_SHARED_LIBRARY_EXPORT__
+	// Экспортируем символы динамической библиотеки
 	#define __AWH_SHARED_EXPORT__ __AWH_DECL_EXPORT__
 /**
  * Если активирован импорт динамической библиотеки
  */
 #elif __AWH_SHARED_LIBRARY_IMPORT__
+	// Импортируем символы динамической библиотеки
 	#define __AWH_SHARED_EXPORT__ __AWH_DECL_IMPORT__
 /**
  * Если мы работаем со статической библиотекой
  */
 #else
+	// Статическая сборка, экспортировать символы не требуется
 	#define __AWH_SHARED_EXPORT__
 #endif
 
@@ -83,7 +91,7 @@
  * @details Шаблоны создаются явно, для каждого типа порознь. Обыкновенно size_t совпадает
  *          с uint64_t, а ssize_t с int64_t, и создание их отдельно оказалось бы повторным
  *          - сборка на это отвечает отказом. Но есть системы, где типы эти самостоятельны,
- *          и там создание их необходимо, иначе не найдётся тела
+ *          и там создание их необходимо, иначе не найдётся тела.
  *
  *          Проверено опытом на девяти системах через std::is_same:
  *
@@ -102,16 +110,20 @@
  *
  * \~english
  * Indication that size_t and ssize_t are types of their own
+ *
  * @details The templates are instantiated explicitly, for every type separately. Ordinarily size_t coincides
  *          with uint64_t, and ssize_t with int64_t, and instantiating them separately would turn out to be a repetition
  *          — the build answers to that with a failure. But there are systems where those types are of their own,
- *          and there instantiating them is necessary, otherwise no body will be found
+ *          and there instantiating them is necessary, otherwise no body will be found.
+ *
  *          Checked by experience on nine systems through std::is_same:
  *          - of their own: macOS, OpenBSD
  *          - coincide: FreeBSD, NetBSD, Solaris, OpenIndiana, Linux, Windows
+ *
  * @note The list is set apart as a separate indication because before it was rewritten in every
  *       condition separately — thirty-three places in five files — and its ground was written down
  *       nowhere
+ *
  * @warning The former list held Linux, written as `__Linux__`. No compiler declares such an
  *          indication — they give `__linux__` — which is why the condition there was
  *          always false, and it is by that alone that the Linux build held: the types coincide there, and
@@ -131,10 +143,10 @@
  * @details Кластер держит по слушающему сокету на процесс, все они встают на один и тот
  *          же порт, а ядро раздаёт им входящие подключения. Так поступают лишь три
  *          системы, и признак этот выделен в отдельный макрос, чтобы перечень их лежал в
- *          одном месте, а не переписывался в каждом условии порознь
+ *          одном месте, а не переписывался в каждом условии порознь.
  *
  *          Проверено опытом на стендах: три сокета встают на один порт, следом идут
- *          тридцать подключений, и считается, скольким сокетам они достались
+ *          тридцать подключений, и считается, скольким сокетам они достались.
  *
  *          - Linux - разводит с версии 3.9
  *          - FreeBSD - разводит **лишь** через `SO_REUSEPORT_LB`, заведённую в 12.0;
@@ -172,24 +184,30 @@
  *
  * \~english
  * Indication that the kernel itself distributes the connections between the processes of the cluster
+ *
  * @details The cluster keeps one listening socket per process, all of them stand on one and the same
  *          port, and the kernel hands the incoming connections out to them. Only three systems
  *          behave that way, and this indication is set apart as a separate macro so that their list lies in
- *          one place rather than being rewritten in every condition separately
+ *          one place rather than being rewritten in every condition separately.
+ *
  *          Checked by experience on the stands: three sockets stand on one port, then go
- *          thirty connections, and it is counted how many sockets got them
+ *          thirty connections, and it is counted how many sockets got them.
+ *
  *          - Linux — distributes since version 3.9
  *          - FreeBSD — distributes **only** through `SO_REUSEPORT_LB`, introduced in 12.0;
  *            the ordinary `SO_REUSEPORT` there gives all the connections to the last socket
  *          - Solaris — distributes by the ordinary `SO_REUSEPORT`, like Linux
+ *
  * @note The other systems carry no such cluster, and enabling it for them is to their harm: the connections
  *       will go to one process, while the others will stand idle in vain. macOS, NetBSD and OpenBSD
  *       **declare** the setting, admit the binding of several sockets, but distribute
  *       nothing — all the connections go to the last one that bound. OpenIndiana, on the other hand, does not
  *       declare it at all
+ *
  * @warning Solaris and OpenIndiana here **diverge**, although both declare `__sun`, and
  *          they have to be told apart by `__illumos__` — only the second one declares it. This is
  *          the first divergence between them met in the work: on SCTP they went together
+ *
  * @note MS Windows is not in the list deliberately and cannot enter it, but the reason here
  *       is not the one of macOS, NetBSD and OpenBSD. Those also lack the distributing setting,
  *       however they have a second way — the listening socket is created once and is passed to
@@ -197,10 +215,12 @@
  *       between those accepting on **one and the same** socket. MS Windows has neither
  *       of the two: `SO_REUSEPORT` is not declared by Winsock at all, and a direct
  *       counterpart of `fork` does not exist
+ *
  *       Checked by experience on the Windows 10 x86-64 stand, MinGW64: two listeners with
  *       `SO_REUSEADDR` bind to one port without a failure, but all ten trial
  *       connections were accepted by one of them, the second got not a single one. In other words,
  *       the binding goes through, while no distribution happens, and it cannot be relied upon
+ *
  *       The way for MS Windows is in essence the same as for macOS and OpenBSD: the workers accept
  *       on one socket. They get it not by inheritance but by a hand-over through
  *       `WSADuplicateSocket` as a service message over the cluster channel. That work
@@ -209,8 +229,20 @@
  *
  * \~
  */
-#if __linux__ || (defined(__sun) && !defined(__illumos__))
+#if __linux__ || (__sun && !__illumos__)
+	// Разводящая настройка заведена в Linux 3.9 и Solaris 11.4
 	#define __AWH_CLUSTER_BALANCE__ 1
+/**
+ * \~russian
+ * Число версии FreeBSD объявляет не компилятор, а заголовок: без его подключения
+ * проверка версии молча не срабатывает, и разводящая настройка теряется
+ *
+ * \~english
+ * The version number of FreeBSD is declared not by the compiler but by the header: without its inclusion
+ * the version check silently fails, and the distributing setting is lost
+ *
+ * \~
+ */
 #elif __FreeBSD__
 	/**
 	 * Число версии FreeBSD объявляет не компилятор, а заголовок: без его подключения
@@ -218,9 +250,10 @@
 	 */
 	#include <sys/param.h>
 	/**
-	 * Разводящая настройка заведена в FreeBSD 12.0
+	 * Разводящая настройка заведена в FreeBSD 12.0 и выше
 	 */
 	#if __FreeBSD_version >= 1200000
+		// Разводящая настройка заведена в FreeBSD 12.0 и выше
 		#define __AWH_CLUSTER_BALANCE__ 1
 	#endif
 #endif

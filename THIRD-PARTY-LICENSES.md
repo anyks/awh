@@ -22,7 +22,6 @@ license texts of the components you actually linked in.
 | Brotli | [github.com/google/brotli](https://github.com/google/brotli) | `MIT` | Compression. |
 | bzip2 | [sourceware.org/bzip2](https://sourceware.org/bzip2/) | `bzip2-1.0.6` | Compression. BSD-style, four clauses. |
 | Density | [github.com/k0dai/density](https://github.com/k0dai/density) | `BSD-3-Clause` | Compression. |
-| gperftools | [github.com/gperftools/gperftools](https://github.com/gperftools/gperftools) | `BSD-3-Clause` | TCMalloc allocator, optional. |
 | Lizard | [github.com/inikep/lizard](https://github.com/inikep/lizard) | `BSD-2-Clause` | Compression. Only the `lib` directory is used; the `programs`/`examples` directories are GPL-2.0 and are neither built nor shipped. |
 | LZ4 | [lz4.org](https://lz4.org) | `BSD-2-Clause` | Compression. Only the `lib` directory is used; the `programs`/`tests`/`examples` directories are GPL-2.0-or-later and are neither built nor shipped. |
 | liblzma (XZ Utils) | [tukaani.org/xz](https://tukaani.org/xz/) | public domain | Compression. `liblzma` itself is in the public domain. The GPL-licensed parts of XZ Utils are build-system and command-line-tool files that do not end up in the binaries. |
@@ -55,8 +54,7 @@ submodules/boringssl/LICENSE       submodules/lz4/LICENSE
 submodules/brotli/LICENSE          submodules/lzma/COPYING
 submodules/bz2/COPYING             submodules/snappy/COPYING
 submodules/density/LICENSE.md      submodules/zlib/LICENSE
-submodules/gperftools/COPYING      submodules/zstd/LICENSE
-submodules/lizard/lib/LICENSE
+submodules/lizard/lib/LICENSE      submodules/zstd/LICENSE
 ```
 
 Note that for **Lizard** and **LZ4** the applicable file is the one inside

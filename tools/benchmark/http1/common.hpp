@@ -40,13 +40,6 @@
 #include <sys/resource.h>
 
 /**
- * Если стенд собран с аллокатором TcMalloc
- */
-#if __AWH_USE_TCMALLOC__
-	#include <gperftools/malloc_hook.h>
-#endif
-
-/**
  * @brief Пространство имён эталонных стендов сравнения парсера протокола HTTP/1.x
  *
  * @details Эталонные сообщения и параметры нагрузки обязаны совпадать со
@@ -176,48 +169,12 @@ namespace rival {
 		checksum = (checksum + name + value);
 	}
 	/**
-	 * Если стенд собран с аллокатором TcMalloc
-	 */
-	#if __AWH_USE_TCMALLOC__
-		/**
-		 * @brief Функция обратного вызова аллокатора о выполненном выделении памяти
-		 *
-		 * @note Аллокатор TcMalloc сам подменяет операторы выделения памяти,
-		 *       поэтому перегрузить их повторно невозможно - учёт ведётся штатным
-		 *       механизмом перехватчиков, который он для этого и предоставляет
-		 *
-		 * @param ptr  указатель на выделенную память
-		 * @param size размер выделенной памяти
-		 *
-		 */
-		static void allocationHook([[maybe_unused]] const void * ptr, const size_t size){
-			// Если учёт выделений памяти активен
-			if(counter::enabled){
-				// Считаем выполненное выделение памяти
-				counter::count++;
-				// Суммируем объём выделенной памяти
-				counter::bytes += size;
-			}
-		}
-	#endif
-	/**
 	 * @brief Функция управления учётом выделений памяти
 	 *
 	 * @param mode режим учёта выделений памяти
 	 *
 	 */
 	static inline void counting(const bool mode) noexcept {
-		/**
-		 * Если стенд собран с аллокатором TcMalloc
-		 */
-		#if __AWH_USE_TCMALLOC__
-			// Признак установленного перехватчика выделений памяти
-			static bool attached = false;
-			// Если перехватчик выделений памяти ещё не установлен
-			if(mode && !attached)
-				// Устанавливаем перехватчик выделений памяти аллокатора
-				attached = MallocHook::AddNewHook(&allocationHook);
-		#endif
 		// Если учёт выделений памяти включается
 		if(mode){
 			// Сбрасываем количество выполненных выделений памяти
@@ -605,10 +562,6 @@ namespace rival {
 };
 
 /**
- * Если стенд собран без аллокатора TcMalloc
- */
-#if !__AWH_USE_TCMALLOC__
-/**
  * @brief Оператор выделения памяти с учётом статистики
  *
  * @note Оператор подменяется на уровне программы, поэтому заголовочный файл
@@ -689,6 +642,5 @@ void operator delete [] (void * ptr, size_t) noexcept {
 	// Выполняем освобождение памяти
 	::free(ptr);
 }
-#endif
 
 #endif // __AWH_BENCHMARK_RIVAL_HTTP1__

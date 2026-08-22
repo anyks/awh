@@ -393,6 +393,8 @@ void awh::codec::xml::Value::clear() noexcept {
 	this->_text.clear();
 	// Выполняем очистку свойств узла
 	this->_attributes.clear();
+	// Выполняем сброс отображения имён свойств узла
+	this->reproperty();
 	// Выполняем очистку связываний префиксов
 	this->_bindings.clear();
 	// Выполняем очистку вложенных узлов
@@ -615,20 +617,19 @@ const vector <awh::codec::xml::Value::property_t> & awh::codec::xml::Value::attr
  */
 const string & awh::codec::xml::Value::attribute(const string & local, const string & uri) const noexcept {
 	/**
-	 * Выполняем перебор всех свойств узла
+	 * Выполняем розыск номера свойства узла
+	 *
+	 * @note Сличение идёт по паре обозначения пространства имён и местного имени, а не по
+	 *       записи с префиксом: отвечающие по UPnP ставят префиксы всякий по-своему, и
+	 *       сличение записью на них разваливается
 	 */
-	for(auto & item : this->_attributes){
-		/**
-		 * Если имя свойства совпадает с разыскиваемым
-		 *
-		 * @note Сличение идёт по паре обозначения пространства имён и местного имени, а
-		 *       не по записи с префиксом: отвечающие по UPnP ставят префиксы всякий
-		 *       по-своему, и сличение записью на них разваливается
-		 */
-		if((item.local.compare(local) == 0) && (item.uri.compare(uri) == 0))
-			// Выводим значение разысканного свойства
-			return item.value;
-	}
+	const size_t index = this->property(local, uri);
+	/**
+	 * Если свойство узла разыскано
+	 */
+	if(index != string::npos)
+		// Выводим значение разысканного свойства
+		return this->_attributes.at(index).value;
 	// Выводим отсутствие значения свойства
 	return ::empty();
 }
@@ -658,21 +659,22 @@ bool awh::codec::xml::Value::attribute(const string & local, const string & valu
 	if(this->_kind != kind_t::ELEMENT)
 		// Выводим признак неудачной установки
 		return false;
+	// Выполняем розыск номера устанавливаемого свойства узла
+	const size_t index = this->property(local, uri);
 	/**
-	 * Выполняем перебор всех свойств узла
+	 * Если свойство узла уже заведено
+	 *
+	 * @note Пара имени и пространства имён у свойства неизменна, и отображение правки
+	 *       здесь не требует: свойство перезаписывается на СВОЁМ месте, номер его не
+	 *       двигается, а ключом отображения служит именно эта пара
 	 */
-	for(auto & item : this->_attributes){
-		/**
-		 * Если имя свойства совпадает с устанавливаемым
-		 */
-		if((item.local.compare(local) == 0) && (item.uri.compare(uri) == 0)){
-			// Выполняем перезапись значения свойства на своём месте
-			item.value = value;
-			// Выполняем перезапись префикса пространства имён свойства
-			item.prefix = prefix;
-			// Выводим признак успешной установки
-			return true;
-		}
+	if(index != string::npos){
+		// Выполняем перезапись значения свойства на своём месте
+		this->_attributes.at(index).value = value;
+		// Выполняем перезапись префикса пространства имён свойства
+		this->_attributes.at(index).prefix = prefix;
+		// Выводим признак успешной установки
+		return true;
 	}
 	// Заводим свойство узла разметки
 	this->_attributes.emplace_back();
@@ -684,6 +686,8 @@ bool awh::codec::xml::Value::attribute(const string & local, const string & valu
 	this->_attributes.back().uri = uri;
 	// Устанавливаем значение свойства
 	this->_attributes.back().value = value;
+	// Выполняем учёт заведённого свойства узла в отображении имён
+	this->propertied(local, uri);
 	// Выводим признак успешной установки
 	return true;
 }
@@ -696,19 +700,8 @@ bool awh::codec::xml::Value::attribute(const string & local, const string & valu
  *
  */
 bool awh::codec::xml::Value::has(const string & local, const string & uri) const noexcept {
-	/**
-	 * Выполняем перебор всех свойств узла
-	 */
-	for(auto & item : this->_attributes){
-		/**
-		 * Если имя свойства совпадает с разыскиваемым
-		 */
-		if((item.local.compare(local) == 0) && (item.uri.compare(uri) == 0))
-			// Выводим признак наличия свойства
-			return true;
-	}
-	// Выводим отсутствие свойства
-	return false;
+	// Выводим признак наличия свойства узла по итогу его розыска
+	return (this->property(local, uri) != string::npos);
 }
 /**
  * @brief Метод снятия свойства узла разметки
@@ -719,19 +712,25 @@ bool awh::codec::xml::Value::has(const string & local, const string & uri) const
  *
  */
 bool awh::codec::xml::Value::detach(const string & local, const string & uri) noexcept {
+	// Выполняем розыск номера снимаемого свойства узла
+	const size_t index = this->property(local, uri);
 	/**
-	 * Выполняем перебор всех свойств узла
+	 * Если свойство узла разыскано
 	 */
-	for(size_t i = 0; i < this->_attributes.size(); i++){
+	if(index != string::npos){
+		// Выполняем снятие свойства узла
+		this->_attributes.erase(this->_attributes.begin() + static_cast <ptrdiff_t> (index));
 		/**
-		 * Если имя свойства совпадает со снимаемым
+		 * Выполняем сброс отображения имён свойств узла
+		 *
+		 * @warning Сброс здесь обязателен и доливом не заменяется: снятие свойства из
+		 *          середины перечня сдвигает номера ВСЕХ свойств, следующих за ним, и
+		 *          отображение стало бы указывать мимо. Разряд сложности снятия сбросом
+		 *          не портится - изъятие из перечня и само по себе линейно
 		 */
-		if((this->_attributes.at(i).local.compare(local) == 0) && (this->_attributes.at(i).uri.compare(uri) == 0)){
-			// Выполняем снятие свойства узла
-			this->_attributes.erase(this->_attributes.begin() + static_cast <ptrdiff_t> (i));
-			// Выводим признак успешного снятия
-			return true;
-		}
+		this->reproperty();
+		// Выводим признак успешного снятия
+		return true;
 	}
 	// Выводим признак неудачного снятия
 	return false;
@@ -990,6 +989,108 @@ void awh::codec::xml::Value::reindex() const noexcept {
 	this->_index.clear();
 	// Запоминаем, что отображение имён вложенных узлов не заведено
 	this->_indexed = false;
+}
+/**
+ * @brief Метод розыска номера свойства узла по имени и пространству имён
+ *
+ * @details Отображение заводится по требованию, начиная с порога `INDEX_THRESHOLD`: у узла
+ * о двух-трёх свойствах перебор дешевле отображения, и заведение его на всяком узле
+ * платило бы за разметку обычную ради разметки редкой
+ *
+ * @note Сличение идёт по ПАРЕ имени и пространства имён, и двух свойств с одинаковой парой
+ *       у узла не бывает: установка перезаписывает такое свойство на его же месте. Оттого
+ *       отображение отвечает точно, и отката к перебору здесь нет ни на одном пути - в
+ *       отличие от розыска вложенных узлов, где первое вхождение имени вправе принадлежать
+ *       чужому пространству имён
+ *
+ * @param  local местное имя разыскиваемого свойства
+ * @param  uri   обозначение пространства имён свойства
+ * @return       номер разысканного свойства либо признак отсутствия
+ *
+ */
+size_t awh::codec::xml::Value::property(const string & local, const string & uri) const noexcept {
+	/**
+	 * Если свойств у узла немного
+	 *
+	 * @note Ветвь эта стоит ПЕРВОЙ намеренно: узел об одном-двух свойствах не должен
+	 *       платить ни сличением признака заведённости, ни обращением к отображению
+	 */
+	if(this->_attributes.size() < INDEX_THRESHOLD){
+		/**
+		 * Выполняем перебор всех свойств узла
+		 */
+		for(size_t i = 0; i < this->_attributes.size(); i++){
+			/**
+			 * Если имя свойства совпадает с разыскиваемым
+			 */
+			if((this->_attributes.at(i).local.compare(local) == 0) && (this->_attributes.at(i).uri.compare(uri) == 0))
+				// Выводим номер разысканного свойства
+				return i;
+		}
+		// Выводим признак отсутствия свойства
+		return string::npos;
+	}
+	/**
+	 * Если отображение имён свойств ещё не заведено
+	 */
+	if(!this->_propertied){
+		// Выполняем очистку отображения имён свойств узла
+		this->_properties.clear();
+		/**
+		 * Выполняем перебор всех свойств узла
+		 */
+		for(size_t i = 0; i < this->_attributes.size(); i++)
+			// Выполняем учёт свойства узла в отображении имён
+			this->_properties[this->_attributes.at(i).local].emplace(this->_attributes.at(i).uri, i);
+		// Запоминаем, что отображение имён свойств узла заведено
+		this->_propertied = true;
+	}
+	// Выполняем поиск местного имени свойства в отображении
+	auto i = this->_properties.find(local);
+	/**
+	 * Если местное имя свойства в отображении разыскано
+	 */
+	if(i != this->_properties.end()){
+		// Выполняем поиск пространства имён свойства в отображении
+		auto j = i->second.find(uri);
+		/**
+		 * Если пространство имён свойства в отображении разыскано
+		 */
+		if(j != i->second.end())
+			// Выводим номер разысканного свойства
+			return j->second;
+	}
+	// Выводим признак отсутствия свойства
+	return string::npos;
+}
+/**
+ * @brief Метод учёта заведённого свойства узла в отображении имён
+ *
+ * @warning Долив, а не сброс: сброс на всякой установке обратил бы заведение свойств
+ *          подряд в перестроение отображения на каждой вставке - ровно тот дефект, что
+ *          был замерен у отображения вложенных узлов
+ *
+ * @param local местное имя заведённого свойства
+ * @param uri   обозначение пространства имён заведённого свойства
+ *
+ */
+void awh::codec::xml::Value::propertied(const string & local, const string & uri) const noexcept {
+	/**
+	 * Если отображение имён свойств узла заведено
+	 */
+	if(this->_propertied)
+		// Выполняем учёт заведённого свойства узла в отображении имён
+		this->_properties[local].emplace(uri, this->_attributes.size() - 1);
+}
+/**
+ * @brief Метод сброса отображения имён свойств узла
+ *
+ */
+void awh::codec::xml::Value::reproperty() const noexcept {
+	// Выполняем очистку отображения имён свойств узла
+	this->_properties.clear();
+	// Запоминаем, что отображение имён свойств узла не заведено
+	this->_propertied = false;
 }
 /**
  * @brief Метод проверки наличия вложенного узла разметки
@@ -2023,6 +2124,12 @@ void awh::codec::xml::Value::absorb(const node_t & node) noexcept {
 				// Выполняем снятие значения свойства собственной памятью
 				this->_attributes.back().value.assign(item.value.data(), item.value.size());
 			}
+			/**
+			 * @note Сброса отображения имён свойств здесь НЕТ намеренно: заполнение
+			 *       начинается с очистки значения, а она отображение уже сбросила.
+			 *       Сброс повторный был бы тихой самопочинкой - он скрыл бы забытую
+			 *       очистку вместо того, чтобы её показать
+			 */
 			// Получаем связывания префиксов узла дерева разметки
 			const vector <binding_t> bindings = node.bindings();
 			// Выполняем выделение памяти под связывания префиксов
@@ -2313,6 +2420,8 @@ awh::codec::xml::Value & awh::codec::xml::Value::operator = (const Value & value
 	this->_text = value._text;
 	// Выполняем копирование свойств узла
 	this->_attributes = value._attributes;
+	// Выполняем сброс отображения имён свойств узла
+	this->reproperty();
 	// Выполняем копирование связываний префиксов
 	this->_bindings = value._bindings;
 	// Выполняем копирование вложенных узлов
@@ -2348,6 +2457,8 @@ awh::codec::xml::Value & awh::codec::xml::Value::operator = (Value && value) noe
 	this->_text = ::std::move(value._text);
 	// Выполняем перенос свойств узла
 	this->_attributes = ::std::move(value._attributes);
+	// Выполняем сброс отображения имён свойств узла
+	this->reproperty();
 	// Выполняем перенос связываний префиксов
 	this->_bindings = ::std::move(value._bindings);
 	// Выполняем перенос вложенных узлов
@@ -2363,14 +2474,14 @@ awh::codec::xml::Value & awh::codec::xml::Value::operator = (Value && value) noe
  * @brief Конструктор
  *
  */
-awh::codec::xml::Value::Value() noexcept : _kind(kind_t::NONE), _indexed(false) {}
+awh::codec::xml::Value::Value() noexcept : _kind(kind_t::NONE), _indexed(false), _propertied(false) {}
 /**
  * @brief Конструктор узла указанного вида
  *
  * @param kind вид заводимого узла
  *
  */
-awh::codec::xml::Value::Value(const kind_t kind) noexcept : _kind(kind), _indexed(false) {}
+awh::codec::xml::Value::Value(const kind_t kind) noexcept : _kind(kind), _indexed(false), _propertied(false) {}
 /**
  * @brief Конструктор узла разметки с именем
  *
@@ -2380,7 +2491,7 @@ awh::codec::xml::Value::Value(const kind_t kind) noexcept : _kind(kind), _indexe
  *
  */
 awh::codec::xml::Value::Value(const string & local, const string & uri, const string & prefix) noexcept :
- _kind(kind_t::ELEMENT), _prefix(prefix), _local(local), _uri(uri), _indexed(false) {}
+ _kind(kind_t::ELEMENT), _prefix(prefix), _local(local), _uri(uri), _indexed(false), _propertied(false) {}
 /**
  * @brief Конструктор узла указанного вида с содержимым
  *
@@ -2388,14 +2499,14 @@ awh::codec::xml::Value::Value(const string & local, const string & uri, const st
  * @param text содержимое заводимого узла
  *
  */
-awh::codec::xml::Value::Value(const kind_t kind, const string & text) noexcept : _kind(kind), _text(text), _indexed(false) {}
+awh::codec::xml::Value::Value(const kind_t kind, const string & text) noexcept : _kind(kind), _text(text), _indexed(false), _propertied(false) {}
 /**
  * @brief Конструктор снятия значения с узла дерева разметки
  *
  * @param node узел дерева разметки
  *
  */
-awh::codec::xml::Value::Value(const node_t & node) noexcept : _kind(kind_t::NONE), _indexed(false) {
+awh::codec::xml::Value::Value(const node_t & node) noexcept : _kind(kind_t::NONE), _indexed(false), _propertied(false) {
 	// Выполняем снятие значения с узла дерева разметки
 	this->absorb(node);
 }
@@ -2407,7 +2518,7 @@ awh::codec::xml::Value::Value(const node_t & node) noexcept : _kind(kind_t::NONE
  */
 awh::codec::xml::Value::Value(const Value & value) noexcept :
  _kind(value._kind), _prefix(value._prefix), _local(value._local), _uri(value._uri),
- _text(value._text), _attributes(value._attributes), _bindings(value._bindings), _items(value._items), _indexed(false) {}
+ _text(value._text), _attributes(value._attributes), _bindings(value._bindings), _items(value._items), _indexed(false), _propertied(false) {}
 /**
  * @brief Конструктор переноса
  *
@@ -2418,7 +2529,7 @@ awh::codec::xml::Value::Value(Value && value) noexcept :
  _kind(value._kind), _prefix(::std::move(value._prefix)), _local(::std::move(value._local)),
  _uri(::std::move(value._uri)), _text(::std::move(value._text)),
  _attributes(::std::move(value._attributes)), _bindings(::std::move(value._bindings)),
- _items(::std::move(value._items)), _indexed(false) {
+ _items(::std::move(value._items)), _indexed(false), _propertied(false) {
 	// Выполняем очистку значения, у какого содержимое отобрано
 	value.clear();
 }

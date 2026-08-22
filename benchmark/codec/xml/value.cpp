@@ -285,6 +285,26 @@ namespace {
 	 */
 	static constexpr double WIDE_LOOKUP_THRESHOLD = 250.0;
 	/**
+	 * @brief Количество свойств широкого узла разметки
+	 *
+	 * @note Число это заведомо больше порога заведения отображения `INDEX_THRESHOLD`:
+	 *       узел о десятке свойств разыскивает их перебором, и отображения замер такого
+	 *       узла не коснулся бы вовсе
+	 */
+	static constexpr uint32_t WIDE_NODE_PROPERTIES = 4096;
+	/**
+	 * @brief Порог платы на одно обращение к свойству широкого узла разметки
+	 *
+	 * @details Розыск свойства пользуется отображением по паре местного имени и обозначения
+	 *          пространства имён: прежде он перебирал весь перечень и стоил 8.15 мкс на
+	 *          обращение при 4096 свойствах, стало 0.026 мкс - в 313 раз дешевле. Показатель
+	 *          плоский по числу свойств: при 16384 прежде было 32.6 мкс, стало те же 0.027
+	 *
+	 * @note Порог взят с запасом на самую медленную из двенадцати машин, а не по замеру
+	 *       рабочей: замер здесь плоский, и порог стережёт возврат перебора, а не дрожание
+	 */
+	static constexpr double WIDE_PROPERTY_THRESHOLD = 250.0;
+	/**
 	 * @brief Порог платы на одну выдачу совпавших узлов у широкого узла разметки
 	 *
 	 * @details Выдача всех совпавших пользуется отображением, когда совпавший ОДИН: прежде
@@ -861,6 +881,75 @@ namespace {
 	/**
 	 * Выполняем регистрацию сценария розыска вложенного узла по имени
 	 */
+	/**
+	 * @brief Замер платы на одно обращение к свойству широкого узла разметки
+	 *
+	 * @return результат измерения
+	 *
+	 */
+	static awh::benchmark::result_t widePropertyLatency() noexcept {
+		// Результат измерения
+		awh::benchmark::result_t result;
+		// Собираемые имена свойств узла разметки
+		static vector <string> keys;
+		// Собираемый узел разметки
+		static awh::codec::xml::value_t value(string("root"));
+		/**
+		 * Если узел разметки ещё не собран
+		 */
+		if(keys.empty()){
+			// Выполняем заведение места под имена свойств узла
+			keys.reserve(WIDE_NODE_PROPERTIES);
+			/**
+			 * Выполняем сборку узла разметки со свойствами
+			 */
+			for(uint32_t i = 0; i < WIDE_NODE_PROPERTIES; i++){
+				// Выполняем добавление очередного имени свойства узла
+				keys.push_back("key" + std::to_string(i));
+				// Выполняем установку очередного свойства узла
+				value.attribute(keys.back(), "value");
+			}
+		}
+		// Выполняем прогон измеряемой операции
+		const outcome_t outcome = measure(WIDE_NODE_PROPERTIES, 1, []() noexcept -> uint64_t {
+			// Число разысканных свойств узла
+			uint64_t result = 0;
+			//
+			// Получаем ссылку на узел разметки только для чтения
+			//
+			// @warning Ссылка эта обязательна: у ИЗМЕНЯЕМОГО узла вызов о двух доводах
+			//          попадает в УСТАНОВКУ свойства, а не в снятие его значения, и замер
+			//          мерил бы установку, а узел рос бы от круга к кругу
+			//
+			const awh::codec::xml::value_t & ro = value;
+			/**
+			 * Выполняем перебор всех разыскиваемых свойств узла
+			 */
+			for(uint32_t i = 0; i < WIDE_NODE_PROPERTIES; i++){
+				/**
+				 * Если свойство узла разыскано
+				 */
+				if(!ro.attribute(keys.at(i)).empty())
+					// Выполняем учёт разысканного свойства узла
+					result++;
+			}
+			// Выводим число разысканных свойств узла
+			return result;
+		});
+		// Устанавливаем измеренное значение
+		result.value = ((perLatency(outcome) * 1000.0) / static_cast <double> (WIDE_NODE_PROPERTIES));
+		// Устанавливаем сведения о прогоне
+		result.details = details(outcome);
+		// Выводим результат измерения
+		return result;
+	}
+	/**
+	 * Выполняем регистрацию сценария платы на обращение к свойству широкого узла
+	 */
+	static const bool WIDE_PROPERTY_REGISTERED = awh::benchmark::add(
+		"codec/xml: розыск свойства широкого узла", "нс/обр.", WIDE_PROPERTY_THRESHOLD,
+		awh::benchmark::bound_t::MAXIMUM, widePropertyLatency
+	);
 	static const bool WIDE_LOOKUP_REGISTERED = awh::benchmark::add(
 		"codec/xml: розыск узла широкого узла по имени", "нс/обр.", WIDE_LOOKUP_THRESHOLD,
 		awh::benchmark::bound_t::MAXIMUM, wideLookupLatency

@@ -410,6 +410,95 @@ namespace awh {
 				private:
 					/**
 					 * \~russian
+					 * Отображение имён свойств узла на их номера, заводимое по требованию
+					 *
+					 * @details Ключ двухуровневый - местное имя, а под ним обозначение пространства
+					 * имён, - и составного ключа отсюда не собирается нигде. Ключ, склеенный из
+					 * двух имён, требовал бы выделения памяти на ВСЯКОМ розыске, тогда как
+					 * розыск обязан обходиться без выделений вовсе
+					 *
+					 * @note Отображение это отвечает ТОЧНО, в отличие от отображения вложенных
+					 *       узлов: сличение свойств идёт по паре имени и пространства имён, и
+					 *       двух свойств с одинаковой парой у узла не бывает - установка
+					 *       перезаписывает такое свойство на его же месте. Оттого отката к
+					 *       перебору здесь нет ни на одном пути
+					 *
+					 * \~english
+					 * Mapping of the names of the node properties onto their numbers, built on demand
+					 *
+					 * \~
+					 */
+					mutable unordered_map <string, unordered_map <string, size_t>> _properties;
+				private:
+					/**
+					 * \~russian
+					 * Признак заведённости отображения имён свойств узла
+					 *
+					 * @note Признак отдельный от пустоты отображения обязателен по той же причине,
+					 *       что и у отображения вложенных узлов: у узла без свойств отображение
+					 *       выходит пустым, и сличение размеров велело бы заводить его снова
+					 *       на всяком обращении
+					 *
+					 * \~english
+					 * Flag of the readiness of the mapping of the names of the node properties
+					 *
+					 * \~
+					 */
+					mutable bool _propertied;
+				private:
+					/**
+					 * \~russian
+					 * @brief Метод розыска номера свойства узла по имени и пространству имён
+					 *
+					 * @param  local местное имя разыскиваемого свойства
+					 * @param  uri   обозначение пространства имён свойства
+					 * @return       номер разысканного свойства либо признак отсутствия
+					 *
+					 * \~english
+					 * @brief Method of the search of the number of a node property by name and namespace
+					 *
+					 * @param  local the local name of the searched property
+					 * @param  uri   the namespace designation of the property
+					 * @return       the number of the found property or the flag of absence
+					 *
+					 * \~
+					 */
+					size_t property(const string & local, const string & uri) const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод сброса отображения имён свойств узла
+					 *
+					 * @note Сброс обязателен при всякой правке перечня свойств, КРОМЕ заведения
+					 *       свойства в конец: там отображение доливается, а не сбрасывается
+					 *
+					 * \~english
+					 * @brief Method of the reset of the mapping of the names of the node properties
+					 *
+					 * \~
+					 */
+					void reproperty() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод учёта заведённого свойства узла в отображении имён
+					 *
+					 * @note Метод зовётся ПОСЛЕ добавления свойства в перечень: номером служит
+					 *       место, какое свойство в перечне заняло
+					 *
+					 * @param local местное имя заведённого свойства
+					 * @param uri   обозначение пространства имён заведённого свойства
+					 *
+					 * \~english
+					 * @brief Method of the accounting of an added node property in the mapping of names
+					 *
+					 * @param local the local name of the added property
+					 * @param uri   the namespace designation of the added property
+					 *
+					 * \~
+					 */
+					void propertied(const string & local, const string & uri) const noexcept;
+				private:
+					/**
+					 * \~russian
 					 * @brief Шаблонный метод извлечения числа затребованным видом
 					 *
 					 * @tparam T      затребованный вид числа

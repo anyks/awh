@@ -31,20 +31,6 @@
 #include <iostream>
 
 /**
- * Если используется аллокатор Glibc
- *
- * @note Подключается ради `malloc_trim` и родни, к каким обращаются иные места этого
- *       файла. Управление памятью самого фреймворка ведётся своим распределителем -
- *       смотри include/alloc/alloc.hpp
- */
-#if __GLIBC__
-	/**
-	 * Заголовочный файл аллокатора Glibc
-	 */
-	#include <malloc.h>
-#endif
-
-/**
  * Операционной системой является Linux
  */
 #if __linux__
@@ -140,7 +126,6 @@
 		 * Системные заголовочные файлы
 		 */
 		#include <mach/mach.h>
-		#include <malloc/malloc.h>
 	/**
 	 * Для операционной системы Sun Solaris
 	 */
@@ -189,17 +174,9 @@
 	#include <processthreadsapi.h>
 
 	/**
-	 * Если активирован компилятор MinGW
-	 */
-	#if __MINGW32__ || __MINGW64__
-		/**
-		 * Заголовочный файл аллокатора
-		 */
-		#include <malloc.h>
-	/**
 	 * Если активирован компилятор MS Visual Studio
 	 */
-	#else
+	#if !(__MINGW32__ || __MINGW64__)
 		/**
 		 * Заголовочный файл контроллера памяти
 		 */
@@ -1128,9 +1105,9 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 				 * одну другой нельзя, - оттого системный путь остаётся запасным, на
 				 * случай незахваченного выделения
 				 */
-				if(alloc::Allocator::captured()){
+				if(alloc::allocator_t::captured()){
 					// Выполняем получение занятой прикладным кодом памяти
-					result = alloc::Allocator::property(alloc::property_t::ALLOCATED);
+					result = alloc::allocator_t::property(alloc::property_t::ALLOCATED);
 					// Выходим из разбора
 					break;
 				}
@@ -1513,7 +1490,7 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
  */
 void awh::Operating_System::printStatsMemory() const noexcept {
 	// Если выделение памяти нами не захвачено
-	if(!alloc::Allocator::captured()){
+	if(!alloc::allocator_t::captured()){
 		/**
 		 * Если включён режим отладки
 		 */
@@ -1533,17 +1510,17 @@ void awh::Operating_System::printStatsMemory() const noexcept {
 	// Печатаем разделители
 	cout << "*************** START ***************" << endl << endl << flush;
 	// Выводим занятое прикладным кодом прямо сейчас
-	cout << "Allocated by application: " << alloc::Allocator::property(alloc::property_t::ALLOCATED) << " bytes" << endl;
+	cout << "Allocated by application: " << alloc::allocator_t::property(alloc::property_t::ALLOCATED) << " bytes" << endl;
 	// Выводим наибольшее занятое за время работы
-	cout << "Peak allocated:           " << alloc::Allocator::property(alloc::property_t::PEAK) << " bytes" << endl;
+	cout << "Peak allocated:           " << alloc::allocator_t::property(alloc::property_t::PEAK) << " bytes" << endl;
 	// Выводим взятое у системы под кучу
-	cout << "Taken from system:        " << alloc::Allocator::property(alloc::property_t::HEAP) << " bytes" << endl;
+	cout << "Taken from system:        " << alloc::allocator_t::property(alloc::property_t::HEAP) << " bytes" << endl;
 	// Выводим свободное в поток-локальных кэшах
-	cout << "Free in thread caches:    " << alloc::Allocator::property(alloc::property_t::CACHED) << " bytes" << endl;
+	cout << "Free in thread caches:    " << alloc::allocator_t::property(alloc::property_t::CACHED) << " bytes" << endl;
 	// Выводим свободное в страничной куче, но системе не отданное
-	cout << "Free in page heap:        " << alloc::Allocator::property(alloc::property_t::PAGEFREE) << " bytes" << endl;
+	cout << "Free in page heap:        " << alloc::allocator_t::property(alloc::property_t::PAGEFREE) << " bytes" << endl;
 	// Выводим отданное системе обратно
-	cout << "Returned to system:       " << alloc::Allocator::property(alloc::property_t::UNMAPPED) << " bytes" << endl;
+	cout << "Returned to system:       " << alloc::allocator_t::property(alloc::property_t::UNMAPPED) << " bytes" << endl;
 	// Печатаем разделители
 	cout << endl << "---------------- END ----------------" << endl << endl << flush;
 }
@@ -1562,7 +1539,7 @@ void awh::Operating_System::releaseFreeMemory() const noexcept {
 	 * знать, чем собран потребитель, для того не надо
 	 */
 	// Отдаём системе свободную память
-	alloc::Allocator::purge();
+	alloc::allocator_t::purge();
 }
 /**
  * @brief Метод резервирования нужного размера памяти для всего приложения
@@ -1612,7 +1589,7 @@ bool awh::Operating_System::warmup(const size_t size) const noexcept {
  */
 bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept {
 	// Если выделение памяти нами не захвачено
-	if(!alloc::Allocator::captured()){
+	if(!alloc::allocator_t::captured()){
 		/**
 		 * Если включён режим отладки
 		 */
@@ -1630,7 +1607,7 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 		return false;
 	}
 	// Получаем действующие настройки распределителя
-	alloc::options_t options = alloc::Allocator::options();
+	alloc::options_t options = alloc::allocator_t::options();
 	/**
 	 * Задаём отсрочку возврата памяти системе
 	 *
@@ -1641,9 +1618,9 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 	 */
 	options.purgeDelay = (mode ? -1 : alloc::options_t().purgeDelay);
 	// Задаём распределителю требуемые настройки
-	alloc::Allocator::options(options);
+	alloc::allocator_t::options(options);
 	// Возвращаем признак применения требуемой отсрочки
-	return (alloc::Allocator::options().purgeDelay == options.purgeDelay);
+	return (alloc::allocator_t::options().purgeDelay == options.purgeDelay);
 }
 /**
  * Для операционной системы не являющейся MS Windows

@@ -43,9 +43,5 @@ $ROOT/submodule.sh add brotli https://gitflic.ru/project/third_party/brotli.git
 $ROOT/submodule.sh remove boringssl
 $ROOT/submodule.sh add boringssl https://gitflic.ru/project/third_party/boringssl.git
 
-# Выполняем пересборку сабмодуля gperftools
-$ROOT/submodule.sh remove gperftools
-$ROOT/submodule.sh add gperftools https://gitflic.ru/project/third_party/gperftools.git
-
 # Выводим список добавленных модулей
 cat $ROOT/../.gitmodules

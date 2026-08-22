@@ -126,13 +126,12 @@ c++ -std=c++17 $FLAGS -DLSHPACK_DEC_HTTP1X_OUTPUT=0 -o "$OUTPUT/lshpack" "$STAND
 #
 if [ -f "$RELEASE/libawh.a" ]; then
 	echo "Build \"awh\""
-	c++ -std=gnu++17 $FLAGS -pthread -DAWH_STATICLIB -D__AWH_USE_TCMALLOC__ \
+	c++ -std=gnu++17 $FLAGS -pthread -DAWH_STATICLIB \
 		-o "$OUTPUT/awh" "$STANDS/awh.cpp" \
-		-I"$ROOT/contrib/include" -I"$ROOT/third_party/include/tcmalloc" \
+		-I"$ROOT/contrib/include" \
 		-I"$ROOT/third_party/include/pcre2" -I"$ROOT/third_party/include" \
 		-isystem "$ROOT/include" $NGHTTP2_INCLUDE \
 		"$RELEASE/libawh.a" "$ROOT/third_party/lib/libdependence.a" \
-		"$ROOT/third_party/lib/libtcmalloc_minimal.a" "$ROOT/third_party/lib/libcommon.a" \
 		"$NGHTTP2_LIBRARY" \
 		$(if [ "$OS" = "Darwin" ]; then echo "-framework Foundation"; fi) 2> /dev/null || exit 1
 else

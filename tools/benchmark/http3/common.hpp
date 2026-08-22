@@ -49,13 +49,6 @@
 #include <nghttp3/nghttp3.h>
 
 /**
- * Если стенд собран с аллокатором TcMalloc
- */
-#if __AWH_USE_TCMALLOC__
-	#include <gperftools/malloc_hook.h>
-#endif
-
-/**
  * @brief Пространство имён эталонных стендов сравнения
  *
  */
@@ -1224,52 +1217,8 @@ namespace rival {
 		// Фильтр названий сценариев не задан
 		return nullptr;
 	}
-	/**
-	 * Если стенд собран с аллокатором TcMalloc
-	 */
-	#if __AWH_USE_TCMALLOC__
-		/**
-		 * @brief Функция обратного вызова аллокатора о выполненном выделении памяти
-		 *
-		 * @note Аллокатор TcMalloc сам подменяет операторы выделения памяти языка,
-		 *       поэтому перегрузить их повторно невозможно - учёт ведётся штатным
-		 *       механизмом перехватчиков, который он для этого и предоставляет
-		 *
-		 * @param size размер выделенной памяти
-		 *
-		 */
-		static void allocationHook([[maybe_unused]] const void * ptr, const size_t size){
-			// Учитываем выполненное выделение памяти
-			note(size);
-		}
-		/**
-		 * @brief Функция установки перехватчика выделений памяти аллокатора
-		 *
-		 */
-		static inline void attach() noexcept {
-			// Признак установленного перехватчика выделений памяти
-			static bool attached = false;
-			// Если перехватчик выделений памяти ещё не установлен
-			if(!attached)
-				// Устанавливаем перехватчик выделений памяти аллокатора
-				attached = MallocHook::AddNewHook(&allocationHook);
-		}
-	#else
-		/**
-		 * @brief Функция установки перехватчика выделений памяти аллокатора
-		 *
-		 * @details Учёт ведётся перегруженными операторами выделения памяти языка,
-		 *          устанавливать нечего
-		 *
-		 */
-		static inline void attach() noexcept {}
-	#endif
 };
 
-/**
- * Если стенд собран без аллокатора TcMalloc
- */
-#if !__AWH_USE_TCMALLOC__
 
 /**
  * Оператор выделения памяти с учётом выполненных выделений
@@ -1345,6 +1294,5 @@ void operator delete [] (void * ptr, size_t) noexcept {
 	// Выполняем освобождение памяти
 	::free(ptr);
 }
-#endif
 
 #endif // __AWH_BENCHMARK_RIVAL_HTTP3__

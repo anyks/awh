@@ -4310,8 +4310,21 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 		 * Если инструкция сопоставляет одиночный символ
 		 */
 		if(singular(instruction.type)) {
+			/**
+			 * Получаем признак сопоставления литералом ASCII напрямую
+			 *
+			 * @details Литерал ASCII, различия прописных и строчных не ведущий,
+			 *          сопоставляется сличением байта со значением известным.
+			 *          Таблица принадлежности такому сопоставлению не нужна
+			 *          вовсе: обращение к ней есть чтение адреса её да чтение
+			 *          из неё самой - две команды и одно хождение в память
+			 *          взамен единого сличения с постоянной.
+			 *
+			 */
+			const bool literal = ((instruction.type == opcode_t::CHAR) &&
+			 (instruction.letter.code < 0x80) && !hasFlag(instruction.flags, flag_t::CASELESS));
 			// Выполняем заведение таблицы принадлежности байтов сопоставления
-			const size_t number = this->table(instruction, program);
+			const size_t number = (literal ? 0 : this->table(instruction, program));
 			/**
 			 * Если байт текста к сопоставлению не готов
 			 *
@@ -4330,14 +4343,27 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				// Выполняем чтение байта текста в позиции сопоставления
 				emitter.load(reg_t::LETTER, reg_t::TEXT, reg_t::CURSOR);
 			}
-			// Выполняем чтение адреса таблицы принадлежности байтов
-			emitter.context(reg_t::SCRATCH, static_cast <uint32_t> (number));
-			// Выполняем чтение принадлежности байта таблице сопоставления
-			emitter.load(reg_t::SPARE, reg_t::SCRATCH, reg_t::LETTER);
-			// Выполняем сравнение принадлежности байта с нулём
-			emitter.compare(reg_t::SPARE, static_cast <uint32_t> (0));
-			// Выполняем переход к отказу при непринадлежности байта таблице
-			emitter.branch(cond_t::EQUAL, failure);
+			/**
+			 * Если сопоставление ведётся литералом ASCII напрямую
+			 */
+			if(literal) {
+				// Выполняем сравнение байта текста со значением литерала
+				emitter.compare(reg_t::LETTER, static_cast <uint32_t> (instruction.letter.code));
+				// Выполняем переход к отказу при несовпадении байта с литералом
+				emitter.branch(cond_t::NOTEQUAL, failure);
+			/**
+			 * Если сопоставление ведётся таблицей принадлежности байтов
+			 */
+			} else {
+				// Выполняем чтение адреса таблицы принадлежности байтов
+				emitter.context(reg_t::SCRATCH, static_cast <uint32_t> (number));
+				// Выполняем чтение принадлежности байта таблице сопоставления
+				emitter.load(reg_t::SPARE, reg_t::SCRATCH, reg_t::LETTER);
+				// Выполняем сравнение принадлежности байта с нулём
+				emitter.compare(reg_t::SPARE, static_cast <uint32_t> (0));
+				// Выполняем переход к отказу при непринадлежности байта таблице
+				emitter.branch(cond_t::EQUAL, failure);
+			}
 			// Переходим к следующей позиции текста сопоставления
 			emitter.add(reg_t::CURSOR, reg_t::CURSOR, 1);
 			// Увеличиваем длину участка, ряду первому предшествующего

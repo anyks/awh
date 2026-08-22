@@ -221,6 +221,32 @@ $ cd ./sh/certificates
 $ ./generate.sh example.com
 ```
 
+### Bring up a tunnel pair
+
+Two properties of a working pair look exactly like a broken one. Both were measured on
+a Windows (Wintun) to FreeBSD pair, 5140 octets each way.
+
+**The MTU of the tunnel must be smaller than the MTU of the network underneath it.**
+Left equal — 1500 over 1500 — a packet above the limit is fragmented twice: once by the
+host onto the device, and again by the network under the UDP wrapper. The first fragment
+is lost and only the tail arrives: a 2000-octet ping reached the far side as 548 octets,
+with no head at all. Anything up to 1472 (+28 = 1500) passed, anything above it did not.
+Give the tunnel 1400 on both ends and 5140 octets pass in both directions.
+
+**The mediator cannot speak first.** A ping *from the server* to the client is answered
+by nothing, and the log says what is wrong:
+
+```
+Прочитано из посредника: ID=0
+Ошибка отправки в сервер: ID=0
+```
+
+The zero in place of an identifier means the client has no session yet: the mediator
+matches a packet to a session by its source, so until the client has spoken once there
+is nobody to send to. Let a single exchange go *from the client* and the reverse
+direction works immediately. This is by design, not a fault — a server behind a mediator
+answers, it does not initiate.
+
 ### Build third party
 
 ```bash

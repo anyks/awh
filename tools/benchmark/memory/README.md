@@ -45,12 +45,11 @@ c++ -std=c++17 -O3 -o /tmp/mem-libuv tools/benchmark/memory/libuv.cpp \
 реализации, собранные с разной оптимизацией, бессмысленно:
 
 ```sh
-c++ -std=c++17 -O3 -DNDEBUG -DAWH_STATICLIB -D__AWH_USE_TCMALLOC__ \
+c++ -std=c++17 -O3 -DNDEBUG -DAWH_STATICLIB \
 	-x objective-c++ -fobjc-arc -isystem include \
-	-I third_party/include -I third_party/include/tcmalloc -I contrib/include \
+	-I third_party/include -I contrib/include \
 	tools/benchmark/memory/awh.cpp -x none -o /tmp/mem-awh \
-	build-release/libawh.a third_party/lib/libdependence.a \
-	third_party/lib/libtcmalloc_minimal.a third_party/lib/libcommon.a -framework Foundation
+	build-release/libawh.a third_party/lib/libdependence.a -framework Foundation
 ```
 
 ## Прогон

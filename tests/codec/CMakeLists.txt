@@ -169,7 +169,6 @@ if (${GTest_FOUND})
                 ${${PROJECT_NAME}_GTEST_LIBS}
                 ${AWH_LIB_GCOV_NAME}
                 ${GCC_COVERAGE_LIBS}
-                ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
         # Если нужно собрать и статическую библиотеку
@@ -181,7 +180,6 @@ if (${GTest_FOUND})
                     ${AWH_LIB_GCOV_NAME}
                     ${PCRE_LIBRARY}
                     ${GCC_COVERAGE_LIBS}
-                    ${TCMALLOC_LIBRARIES}
                     ${AWH_FLAGS}
                 )
             # Если режим отладки активирован
@@ -192,7 +190,6 @@ if (${GTest_FOUND})
                     ${DEPEND_LIBRARY}
                     ${PCRE_LIBRARY}
                     ${GCC_COVERAGE_LIBS}
-                    ${TCMALLOC_LIBRARIES}
                     ${AWH_FLAGS}
                 )
             endif()
