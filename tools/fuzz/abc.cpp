@@ -85,13 +85,17 @@ namespace {
 		uint64_t skips;
 		// Количество прогонов записи с вбитой меткой размаха
 		uint64_t spikes;
+		// Количество записей, сличённых после уборки мусора
+		uint64_t swept;
+		// Количество записей, сличённых перечитыванием с носителя
+		uint64_t reread;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
 		Statistic() noexcept :
 		 records(0), corrupted(0), survived(0), events(0), trees(0), containers(0),
-		 fetches(0), edits(0), compactions(0), verified(0), assemblies(0), skips(0), spikes(0) {}
+		 fetches(0), edits(0), compactions(0), verified(0), assemblies(0), skips(0), spikes(0), swept(0), reread(0) {}
 	} totals;
 
 	/**
@@ -1497,6 +1501,34 @@ namespace {
 			// Прекращаем правку контейнера
 			return;
 		/**
+		 * @brief Ожидаемое состояние записи контейнера после правок
+		 *
+		 * @details Ворошитель прежде поверял лишь то, что правленый контейнер ЧИТАЕТСЯ:
+		 * подпись сходится, длина уборки та же. Что правка в контейнер ПОПАЛА, он не
+		 * доказывал ничем, и правка, ответившая успехом да ничего не изменившая, прошла
+		 * бы мимо него незамеченной
+		 *
+		 */
+		struct Expected {
+			// Признак снесённой записи контейнера
+			bool erased = false;
+			// Ожидаемое содержимое записи контейнера
+			vector <uint8_t> data;
+		};
+		// Ожидаемое состояние всех записей контейнера
+		vector <Expected> expected(static_cast <size_t> (editor.records()));
+		// Ход правок контейнера, печатаемый при расхождении
+		string trace = "записей " + to_string(editor.records()) + ": ";
+		/**
+		 * Выполняем снятие исходного состояния записей контейнера
+		 */
+		for(size_t i = 0; i < expected.size(); i++){
+			// Если исходную запись контейнера снять не удалось
+			if(!editor.record(static_cast <uint64_t> (i), expected.at(i).data))
+				// Прекращаем правку контейнера
+				return;
+		}
+		/**
 		 * Выполняем несколько правок контейнера подряд
 		 */
 		for(uint64_t i = 0; i < number(1, 4); i++){
@@ -1508,17 +1540,45 @@ namespace {
 			if(!assemble(item))
 				// Прекращаем правку контейнера
 				break;
+			// Номер правимой записи контейнера
+			const uint64_t place = number(0, (editor.records() > 0 ? editor.records() - 1 : 0));
 			// Если запись дописывается в конец контейнера
-			if(kind == 0)
-				// Выполняем дописывание записи в конец контейнера
-				(void) editor.append(item.data(), item.size(), abc::payload_t::MIXED);
+			if(kind == 0){
+				/**
+				 * Если дописывание записи ответило успехом
+				 */
+				if(editor.append(item.data(), item.size(), abc::payload_t::MIXED)){
+					// Ожидаемое состояние дописанной записи контейнера
+					Expected added;
+					// Выполняем запоминание содержимого дописанной записи
+					added.data = item;
+					// Выполняем добавление ожидаемого состояния дописанной записи
+					expected.push_back(::std::move(added));
+				}
 			// Иначе, если запись контейнера правится
-			else if(kind == 1)
-				// Выполняем правку записи контейнера по номеру
-				(void) editor.replace(number(0, (editor.records() > 0 ? editor.records() - 1 : 0)),
-				 item.data(), item.size(), abc::payload_t::MIXED);
-			// Иначе выполняем снос записи контейнера по номеру
-			else (void) editor.erase(number(0, (editor.records() > 0 ? editor.records() - 1 : 0)));
+			} else if(kind == 1) {
+				/**
+				 * Если правка записи ответила успехом
+				 */
+				if(editor.replace(place, item.data(), item.size(), abc::payload_t::MIXED) &&
+				   (place < static_cast <uint64_t> (expected.size()))){
+					// Выполняем снятие признака снесённой записи
+					expected.at(static_cast <size_t> (place)).erased = false;
+					// Выполняем запоминание содержимого правленой записи
+					expected.at(static_cast <size_t> (place)).data = item;
+				}
+			/**
+			 * Иначе, если снос записи ответил успехом
+			 */
+			} else if(editor.erase(place) && (place < static_cast <uint64_t> (expected.size()))) {
+				// Выполняем установку признака снесённой записи
+				expected.at(static_cast <size_t> (place)).erased = true;
+				// Выполняем очистку содержимого снесённой записи
+				expected.at(static_cast <size_t> (place)).data.clear();
+			}
+			// Выполняем запоминание хода правки
+			trace += ((kind == 0) ? "append" : ((kind == 1) ? "replace " : "erase ")) +
+			 ((kind == 0) ? string("") : to_string(place)) + "; ";
 			// Выполняем увеличение количества правок контейнера
 			totals.edits++;
 		}
@@ -1528,6 +1588,125 @@ namespace {
 		if(!editor.commit())
 			// Прекращаем правку контейнера
 			return;
+		/**
+		 * Выполняем поверку того, что правки в контейнер ПОПАЛИ
+		 */
+		for(size_t i = 0; i < expected.size(); i++){
+			// Снятое содержимое записи контейнера
+			vector <uint8_t> taken;
+			// Признак успешного снятия записи контейнера
+			const bool got = editor.record(static_cast <uint64_t> (i), taken);
+			/**
+			 * Если запись была снесена
+			 *
+			 * @note Снос, ответивший успехом, обязан изменить содержимое контейнера:
+			 *       снесённая запись выдаваться не вправе
+			 */
+			if(expected.at(i).erased){
+				/**
+				 * Если снесённая запись всё же выдалась
+				 */
+				if(got){
+					// Выводим сообщение о выданной снесённой записи
+					::fprintf(stderr, "abc fuzz: erased record %zu is still served [%s]\n", i, trace.c_str());
+					// Выполняем выход с признаком расхождения
+					::exit(1);
+				}
+				// Переходим к следующей записи контейнера
+				continue;
+			}
+			/**
+			 * Если запись контейнера снять не удалось
+			 */
+			if(!got){
+				// Выводим сообщение о неснятой записи контейнера
+				::fprintf(stderr, "abc fuzz: record %zu is not served after the editing [%s]\n", i, trace.c_str());
+				// Выполняем выход с признаком расхождения
+				::exit(1);
+			}
+			/**
+			 * Если содержимое записи разошлось с ожидаемым
+			 */
+			if(taken != expected.at(i).data){
+				// Выводим сообщение о расхождении содержимого записи
+				::fprintf(stderr, "abc fuzz: record %zu differs after the editing: %zu against %zu octets [%s]\n",
+				 i, taken.size(), expected.at(i).data.size(), trace.c_str());
+				// Выполняем выход с признаком расхождения
+				::exit(1);
+			}
+		}
+		/**
+		 * Выполняем поверку правленого контейнера ПЕРЕЧИТЫВАНИЕМ С НОСИТЕЛЯ
+		 *
+		 * @details Поверка выше идёт через тот же правщик, то есть по состоянию, какое
+		 * он держит в памяти. Правщик вправе держать одно, а записать на носитель другое,
+		 * и такое расхождение той поверке недоступно вовсе. Здесь контейнер открывается
+		 * ЗАНОВО, сторонним выборщиком, знающим лишь октеты носителя
+		 */
+		{
+			// Выборщик записей правленого контейнера
+			abc::fetcher_t rereader;
+			// Выполняем установку модуля сжатия выборщику
+			rereader.compressor(& compressor);
+			// Выполняем установку модуля шифрования выборщику
+			rereader.crypto(& crypto);
+			/**
+			 * Если открыть правленый контейнер выборщиком удалось
+			 */
+			if(rereader.open([&medium](const uint64_t offset, const size_t size, vector <uint8_t> & result) noexcept -> bool {
+				// Выполняем чтение затребованных октетов контейнера
+				return medium.read(offset, size, result);
+			})){
+				/**
+				 * Если число записей на носителе разошлось с ожидаемым
+				 */
+				if(rereader.records() != static_cast <uint64_t> (expected.size())){
+					// Выводим сообщение о расхождении числа записей на носителе
+					::fprintf(stderr, "abc fuzz: reopened container holds %llu records against %zu expected [%s]\n",
+					 static_cast <unsigned long long> (rereader.records()), expected.size(), trace.c_str());
+					// Выполняем выход с признаком расхождения
+					::exit(1);
+				}
+				/**
+				 * Выполняем перебор всех записей перечитанного контейнера
+				 */
+				for(size_t i = 0; i < expected.size(); i++){
+					// Буфер выбранной записи перечитанного контейнера
+					vector <uint8_t> picked;
+					// Признак успешной выборки записи перечитанного контейнера
+					const bool got = rereader.record(static_cast <uint64_t> (i), picked);
+					/**
+					 * Если запись была снесена, выдаваться она не вправе
+					 */
+					if(expected.at(i).erased){
+						/**
+						 * Если снесённая запись выдалась с носителя
+						 */
+						if(got){
+							// Выводим сообщение о выданной снесённой записи
+							::fprintf(stderr, "abc fuzz: erased record %zu is served after the reopening [%s]\n",
+							 i, trace.c_str());
+							// Выполняем выход с признаком расхождения
+							::exit(1);
+						}
+						// Переходим к следующей записи перечитанного контейнера
+						continue;
+					}
+					// Выполняем учёт сличённой после перечитывания записи
+					totals.reread++;
+					/**
+					 * Если живая запись на носителе потеряна либо изменилась
+					 */
+					if(!got || (picked != expected.at(i).data)){
+						// Выводим сообщение о расхождении записи на носителе
+						::fprintf(stderr, "abc fuzz: record %zu differs after the reopening: served %d [%s]\n",
+						 i, got ? 1 : 0, trace.c_str());
+						// Выполняем выход с признаком расхождения
+						::exit(1);
+					}
+				}
+			}
+		}
 		/**
 		 * Если контейнер подписан, выполняем поверку подписи после правки
 		 */
@@ -1566,6 +1745,73 @@ namespace {
 				::fprintf(stderr, "abc fuzz: compacted container length differs from the written one\n");
 				// Выполняем выход с признаком расхождения
 				::exit(1);
+			}
+			// Выборщик записей убранного контейнера
+			abc::fetcher_t sweeper;
+			// Выполняем установку модуля сжатия выборщику убранного контейнера
+			sweeper.compressor(& compressor);
+			// Выполняем установку модуля шифрования выборщику убранного контейнера
+			sweeper.crypto(& crypto);
+			/**
+			 * Если открыть убранный контейнер выборщиком удалось
+			 *
+			 * @details Прежде уборка поверялась одною длиною: контейнер, потерявший
+			 * содержимое либо сдвинувший номера, отчитывался бы успехом. Ныне
+			 * поверяется, что всякая живая запись цела И СТОИТ НА СВОЁМ НОМЕРЕ, а
+			 * снесённая по-прежнему не выдаётся: строки снесённых записей уборка
+			 * сохраняет пустыми ровно затем, чтобы номера соседей не поехали
+			 */
+			if(sweeper.open([&cleaned](const uint64_t offset, const size_t size, vector <uint8_t> & result) noexcept -> bool {
+				// Выполняем чтение затребованных октетов убранного контейнера
+				return cleaned.read(offset, size, result);
+			})){
+				/**
+				 * Если число записей убранного контейнера разошлось с ожидаемым
+				 */
+				if(sweeper.records() != static_cast <uint64_t> (expected.size())){
+					// Выводим сообщение о расхождении числа записей
+					::fprintf(stderr, "abc fuzz: compacted container holds %llu records against %zu expected\n",
+					 static_cast <unsigned long long> (sweeper.records()), expected.size());
+					// Выполняем выход с признаком расхождения
+					::exit(1);
+				}
+				/**
+				 * Выполняем перебор всех записей убранного контейнера
+				 */
+				for(size_t i = 0; i < expected.size(); i++){
+					// Буфер выбранной записи убранного контейнера
+					vector <uint8_t> picked;
+					// Признак успешной выборки записи убранного контейнера
+					const bool got = sweeper.record(static_cast <uint64_t> (i), picked);
+					/**
+					 * Если запись была снесена
+					 */
+					if(expected.at(i).erased){
+						/**
+						 * Если снесённая запись уборку пережила
+						 */
+						if(got){
+							// Выводим сообщение о выданной снесённой записи
+							::fprintf(stderr, "abc fuzz: erased record %zu survived the compaction\n", i);
+							// Выполняем выход с признаком расхождения
+							::exit(1);
+						}
+						// Переходим к следующей записи убранного контейнера
+						continue;
+					}
+					// Выполняем учёт сличённой после уборки записи
+					totals.swept++;
+					/**
+					 * Если живая запись уборку не пережила либо изменилась
+					 */
+					if(!got || (picked != expected.at(i).data)){
+						// Выводим сообщение о потерянной записи убранного контейнера
+						::fprintf(stderr, "abc fuzz: record %zu is lost or differs after the compaction: served %d\n",
+						 i, got ? 1 : 0);
+						// Выполняем выход с признаком расхождения
+						::exit(1);
+					}
+				}
 			}
 		}
 	}
@@ -1744,13 +1990,13 @@ int main(int argc, char * argv[]) noexcept {
 	// Выводим учёт проделанной работы
 	::printf("abc fuzz: %llu records (%llu corrupted), %llu parsed to the end, %llu events, "
 	 "%llu trees, %llu containers, %llu fetches, %llu edits, %llu compactions, %llu signatures verified, "
-	 "%llu values assembled, %llu skipping runs, %llu spiked spans\n",
+	 "%llu values assembled, %llu skipping runs, %llu spiked spans, %llu swept records, %llu reread records\n",
 	 static_cast <unsigned long long> (totals.records), static_cast <unsigned long long> (totals.corrupted),
 	 static_cast <unsigned long long> (totals.survived), static_cast <unsigned long long> (totals.events),
 	 static_cast <unsigned long long> (totals.trees), static_cast <unsigned long long> (totals.containers),
 	 static_cast <unsigned long long> (totals.fetches), static_cast <unsigned long long> (totals.edits),
 	 static_cast <unsigned long long> (totals.compactions), static_cast <unsigned long long> (totals.verified),
-	 static_cast <unsigned long long> (totals.assemblies), static_cast <unsigned long long> (totals.skips), static_cast <unsigned long long> (totals.spikes));
+	 static_cast <unsigned long long> (totals.assemblies), static_cast <unsigned long long> (totals.skips), static_cast <unsigned long long> (totals.spikes), static_cast <unsigned long long> (totals.swept), static_cast <unsigned long long> (totals.reread));
 	// Выводим успешное завершение работы
 	return 0;
 }

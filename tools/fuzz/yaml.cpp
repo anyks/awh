@@ -75,7 +75,7 @@ namespace {
 		uint64_t kept;
 		// Количество деревьев, удержавших текст при сносе повторных пар
 		uint64_t pruned;
-		// Количество сносов узла, сличению состоявшейся правки подвергнутых
+		// Количество правок, чтением перезаписи сличённых
 		uint64_t mirrored;
 		// Количество деревьев, правку принявших
 		uint64_t edited;
@@ -1832,6 +1832,45 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 							 *       сличению не подлежат - постановка значения вправе записанного
 							 *       и не изменить, коли значение то уже стояло
 							 */
+							/**
+							 * Выполняем проверку правки, в текст попавшей
+							 *
+							 * @details Обратное чтение доказывает лишь то, что текст читается.
+							 *          Сличается оттого чтение правленого дерева с чтением
+							 *          перезаписи его: правка, до текста не дошедшая, расходит
+							 *          их немедля. Ворошители TOML да INI поверку эту несли, а
+							 *          YAML - нет, и снос узла, из записи пропадавший, проходил
+							 *          ими незамеченным
+							 *
+							 * @note Тексты со ссылками сличению не подлежат: ссылка
+							 *       раскрывается при разборе, и копия её правку метки уже не
+							 *       видит, тогда как перезапись с обратным чтением раскрывает
+							 *       ссылку заново - значением правленым. Расхождение это
+							 *       ссылкам присуще и дефектом не является
+							 */
+							if((text.find('*') == string::npos) && (text.find('&') == string::npos)){
+								// Выполняем учёт правки, чтением сличаемой
+								totals.mirrored++;
+								/**
+								 * Если чтение правленого дерева с чтением записи его разошлось
+								 */
+								if(!(yaml::value_t(edited.root()) == yaml::value_t(back.root()))){
+									// Выводим сообщение о правке, в текст не попавшей
+									::fprintf(stderr, "yaml fuzz: edit %u lost at «%s», settings %s\n",
+										static_cast <unsigned> (kind), path.c_str(), described(settings).c_str());
+									// Выводим разбираемый текст
+									dump(text);
+									// Выводим правленый текст
+									dump(edited.dump());
+									// Выводим запись обратного чтения
+									dump(back.dump());
+									// Выходим из приложения с ошибкой
+									return EXIT_FAILURE;
+								}
+							}
+							/**
+							 * Если правкой снимался узел
+							 */
 							if(kind == 5){
 								// Объект дерева, исходный текст удержанием читающего
 								yaml::document_t before(held);
@@ -1839,8 +1878,6 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 								 * Если исходный текст удержанием прочитан
 								 */
 								if(before.parse(text)){
-									// Выполняем учёт сноса, сличению подлежащего
-									totals.mirrored++;
 									/**
 									 * Если запись после сноса записи до него равна
 									 */
@@ -2016,7 +2053,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		}
 	}
 	// Выводим итог работы генератора
-	::fprintf(stderr, "yaml fuzz: %llu texts (%llu corrupted, %llu survived), %llu events, %llu chunked, %llu transcoded, %llu trees, %llu kept, %llu pruned, %llu edited (%llu erasures checked), %llu taken, %llu assembled, %llu grafts (%llu refused)\n",
+	::fprintf(stderr, "yaml fuzz: %llu texts (%llu corrupted, %llu survived), %llu events, %llu chunked, %llu transcoded, %llu trees, %llu kept, %llu pruned, %llu edited (%llu verified), %llu taken, %llu assembled, %llu grafts (%llu refused)\n",
 		static_cast <unsigned long long> (totals.texts), static_cast <unsigned long long> (totals.corrupted),
 		static_cast <unsigned long long> (totals.survived), static_cast <unsigned long long> (totals.events),
 		static_cast <unsigned long long> (totals.chunked), static_cast <unsigned long long> (totals.transcoded),

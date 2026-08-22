@@ -1221,6 +1221,14 @@ namespace awh {
 					 */
 					void tighten(const uint32_t index) noexcept;
 					/**
+					 * @brief Метод получения конца содержимого блочного значения, документ замыкающего
+					 *
+					 * @param root номер корневого узла документа
+					 * @return     смещение за концом содержимого блока, `NO_ORIGIN` - блока нет
+					 *
+					 */
+					uint32_t trailing(const uint32_t root) const noexcept;
+					/**
 					 * \~russian
 					 * @brief Метод отнесения пустых строк к узлам, под ними стоящим
 					 *
