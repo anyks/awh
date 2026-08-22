@@ -7848,18 +7848,24 @@ const unordered_set <string> & awh::Framework::domainZones() const noexcept {
  * @param locale локализация приложения
  *
  */
-void awh::Framework::setLocale(const string & locale) noexcept {
+void awh::Framework::setLocale(string_view locale) noexcept {
+	// Устанавливаем локализацию приложения по умолчанию
+	string name = AWH_LOCALE;
+	// Если локализация приложения передана
+	if(!locale.empty())
+		// Устанавливаем локализацию приложения
+		name.assign(locale.data(), locale.size());
 	/**
 	 * Если локализация приложения передана
 	 */
-	if(!locale.empty()){
+	if(!name.empty()){
 		/**
 		 * Выполняем установку локализации приложения
 		 *
 		 * @note Разряд LC_ALL включает в себя и LC_CTYPE, и LC_COLLATE: отдельные их
 		 *       установки той же строкой ничего не меняли бы
 		 */
-		const bool established = (::setlocale(LC_ALL, locale.c_str()) != nullptr);
+		const bool established = (::setlocale(LC_ALL, name.c_str()) != nullptr);
 		/**
 		 * Если локализацию приложения установить не удалось
 		 *
@@ -7878,11 +7884,11 @@ void awh::Framework::setLocale(const string & locale) noexcept {
 			/**
 			 * Если запрошенная локализация общепринятой не является
 			 */
-			if(locale.compare("C") != 0)
+			if(name.compare("C") != 0)
 				// Выполняем установку общепринятой локализации приложения
 				::setlocale(LC_ALL, "C");
 			// Собираемое сообщение об ошибке установки локализации
-			const string message = ("Locale \"" + locale + "\" is not supported by the system, the \"C\" locale is set instead");
+			const string message = ("Locale \"" + name + "\" is not supported by the system, the \"C\" locale is set instead");
 			/**
 			 * Если объект логирования установлен
 			 */
@@ -7892,7 +7898,7 @@ void awh::Framework::setLocale(const string & locale) noexcept {
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(locale), log_t::flag_t::WARNING, message.c_str());
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(name), log_t::flag_t::WARNING, message.c_str());
 				/**
 				 * Если режим отладки не включён
 				 */

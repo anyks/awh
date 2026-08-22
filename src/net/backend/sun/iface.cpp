@@ -27,6 +27,7 @@
 #include <cerrno>
 #include <cctype>
 #include <set>
+#include <array>
 #include <mutex>
 #include <memory>
 #include <string>
@@ -97,18 +98,58 @@
 static constexpr const char * __AWH_IFACE_BACKEND__ = "Sun Solaris interface backend";
 
 /**
+ * Подключаем заголовочный файл проекта
+ *
+ * @note Нужен ради краткого имени библиотеки: из него выводится приставка
+ *       имени связи, отводимой под туннель
+ */
+#include <sys/lib.hpp>
+
+/**
+ * @brief Функция перевода строки в нижний регистр на этапе сборки
+ *
+ * @details Заведена ради имени связи: берётся оно из краткого имени библиотеки,
+ *          а то записано прописными. Перевод идёт при сборке, и в работе от него
+ *          не остаётся ни действия, ни отдельной строки
+ *
+ * @note Разбирается здесь ЛАТИНИЦА и только она: имя библиотеки иных знаков не
+ *       содержит, а имена связей у этих систем иных и не допускают
+ *
+ * @param text переводимая строка
+ * @return     строка, переведённая в нижний регистр
+ *
+ */
+template <size_t N>
+static constexpr std::array <char, N> __awh_iface_lower__(const char (& text)[N]) noexcept {
+	// Объект строки, переведённой в нижний регистр
+	std::array <char, N> result{};
+	/**
+	 * Переходим по всем знакам переводимой строки
+	 */
+	for(size_t i = 0; i < N; i++)
+		// Переводим очередной знак в нижний регистр
+		result[i] = (((text[i] >= 'A') && (text[i] <= 'Z')) ? static_cast <char> ((text[i] - 'A') + 'a') : text[i]);
+	// Выводим результат
+	return result;
+}
+
+/**
  * @brief Приставка имени связи, отводимой под туннель
  *
  * @details Связи заводятся распорядителем машины заранее, и движок отыскивает
  *          свободную перебором имён с этой приставкой: «awh_tun0», «awh_tun1»
- *          и далее. Подчёркивание системой допускается - проверено заведением
- *          связи на стенде Solaris 11.4
+ *          и далее. Берётся она из краткого имени библиотеки, а не пишется
+ *          рядом второй раз: сменится имя библиотеки - сменится и приставка
  *
- * @note Имя связи у этих систем ограничено 31 знаком, и приставка выбрана
- *       короткой намеренно: перебор дописывает к ней номер
+ * @note Склейка литералов идёт препроцессором, перевод регистра - при сборке.
+ *       Подчёркивание системой допускается, проверено заведением связи на
+ *       стенде Solaris 11.4
+ *
+ * @warning Имя связи у этих систем ограничено 31 знаком: приставка обязана
+ *          оставаться короткой, перебор дописывает к ней номер
  *
  */
-static constexpr const char * __AWH_IFACE_TUNNEL_PREFIX__ = "awh_tun";
+static constexpr auto __AWH_IFACE_TUNNEL_PREFIX__ = ::__awh_iface_lower__(AWH_SHORT_NAME "_tun");
 
 /**
  * Определяем константу времени жизни, если она не задана
@@ -1204,7 +1245,7 @@ namespace iface {
 		 */
 		for(uint16_t unit = 0; unit < 0x100; unit++){
 			// Формируем имя очередной связи
-			const string candidate = (string(::__AWH_IFACE_TUNNEL_PREFIX__) + to_string(unit));
+			const string candidate = (string(::__AWH_IFACE_TUNNEL_PREFIX__.data()) + to_string(unit));
 			/**
 			 * Пропускаем связь, отданную туннелю этого же процесса
 			 *
@@ -1246,7 +1287,7 @@ namespace iface {
 			::iface::release(candidate);
 		}
 		// Записываем ошибку в лог
-		log->print("%s: no free tunnel data link found: prepare them administratively as \"%s0\", \"%s1\" and so on (dladm create-vnic over an etherstub)", awh::log_t::flag_t::CRITICAL, ::__AWH_IFACE_BACKEND__, ::__AWH_IFACE_TUNNEL_PREFIX__, ::__AWH_IFACE_TUNNEL_PREFIX__);
+		log->print("%s: no free tunnel data link found: prepare them administratively as \"%s0\", \"%s1\" and so on (dladm create-vnic over an etherstub)", awh::log_t::flag_t::CRITICAL, ::__AWH_IFACE_BACKEND__, ::__AWH_IFACE_TUNNEL_PREFIX__.data(), ::__AWH_IFACE_TUNNEL_PREFIX__.data());
 		// Выводим результат
 		return awh::net::invalid_socket_t;
 	};

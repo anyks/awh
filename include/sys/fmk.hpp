@@ -2887,7 +2887,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			void setLocale(const string & locale = AWH_LOCALE) noexcept;
+			void setLocale(string_view locale = "") noexcept;
 		public:
 			/**
 			 * \~russian

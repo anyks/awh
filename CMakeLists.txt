@@ -68,7 +68,54 @@ if (APPLE)
     endif()
 endif()
 
-##
+# Если необходимо задать имя AWH
+if (CMAKE_AWH_NAME)
+    add_compile_definitions(AWH_NAME=${CMAKE_AWH_NAME})
+    message(STATUS "Build with name: ${CMAKE_AWH_NAME}\n")
+endif (CMAKE_AWH_NAME)
+
+# Если необходимо задать короткое имя AWH
+if (CMAKE_AWH_SHORT_NAME)
+    add_compile_definitions(AWH_SHORT_NAME=${CMAKE_AWH_SHORT_NAME})
+    message(STATUS "Build with short name: ${CMAKE_AWH_SHORT_NAME}\n")
+endif (CMAKE_AWH_SHORT_NAME)
+
+# Если необходимо задать версию AWH
+if (CMAKE_AWH_VERSION)
+    add_compile_definitions(AWH_VERSION=${CMAKE_AWH_VERSION})
+    message(STATUS "Build with version: ${CMAKE_AWH_VERSION}\n")
+endif (CMAKE_AWH_VERSION)
+
+# Если необходимо задать основной хост AWH
+if (CMAKE_AWH_HOST)
+    add_compile_definitions(AWH_HOST=${CMAKE_AWH_HOST})
+    message(STATUS "Build with host: ${CMAKE_AWH_HOST}\n")
+endif (CMAKE_AWH_HOST)
+
+# Если необходимо задать адрес сайта AWH
+if (CMAKE_AWH_SITE)
+    add_compile_definitions(AWH_SITE=${CMAKE_AWH_SITE})
+    message(STATUS "Build with site: ${CMAKE_AWH_SITE}\n")
+endif (CMAKE_AWH_SITE)
+
+# Если необходимо задать адрес электронной почты AWH
+if (CMAKE_AWH_EMAIL)
+    add_compile_definitions(AWH_EMAIL=${CMAKE_AWH_EMAIL})
+    message(STATUS "Build with email: ${CMAKE_AWH_EMAIL}\n")
+endif (CMAKE_AWH_EMAIL)
+
+# Если необходимо задать контактный адрес AWH
+if (CMAKE_AWH_CONTACT)
+    add_compile_definitions(AWH_CONTACT=${CMAKE_AWH_CONTACT})
+    message(STATUS "Build with contact: ${CMAKE_AWH_CONTACT}\n")
+endif (CMAKE_AWH_CONTACT)
+
+# Если необходимо задать локаль AWH
+if (CMAKE_AWH_LOCALE)
+    add_compile_definitions(AWH_LOCALE=${CMAKE_AWH_LOCALE})
+    message(STATUS "Build with locale: ${CMAKE_AWH_LOCALE}\n")
+endif (CMAKE_AWH_LOCALE)
+
  # Приведение доменных имён модулем awh::idna вместо средств операционной системы
  #
  # Средствами операционной системы доменные имена приводятся лишь на MS Windows,

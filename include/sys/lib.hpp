@@ -34,69 +34,99 @@
 #ifndef __AWH_CONFIG__
 #define __AWH_CONFIG__
 
-// Версия приложения
-#define AWH_VERSION "5.0.0"
-// Короткое название библиотеки
-#define AWH_SHORT_NAME "AWH"
-// Название библиотеки
-#define AWH_NAME "ANYKS-WEB"
-// Основной хост системы
-#define AWH_HOST "anyks.com"
-// Адрес сайта автора
-#define AWH_SITE "https://anyks.com"
-// Адрес электронной почты
-#define AWH_EMAIL "info@anyks.com"
-// Телеграм-контакт
-#define AWH_CONTACT "https://t.me/forman"
-
 /**
- * Для операционной системы MS Windows
+ * Если название библиотеки не определено
  */
-#if _WIN32 || _WIN64
-	// Локаль словаря по умолчанию
-	#define AWH_LOCALE "C"
-/**
- * Для операционной системы не являющейся MS Windows
- */
-#else
-	// Локаль словаря по умолчанию
-	#define AWH_LOCALE "en_US.UTF-8"
+#ifndef AWH_NAME
+	/**
+	 * @brief Устанавливаем название библиотеки
+	 *
+	 */
+	#define AWH_NAME "ANYKS-WEB"
 #endif
-
 /**
- * \~russian
- * @brief Приведение типов, проверяемое в отладочной сборке
- *
- * @details Отладочная сборка приводит тип с проверкой, выпускная - без неё. Так
- *          и задумано, и заменять приведение на проверяемое в обеих сборках не
- *          следует: отлаживаться нужно в отладочной сборке, а выпускная - это
- *          уже отлаженное, и от неё требуется наибольшая скорость. Приведение,
- *          уехавшее в выпуск неверным, есть ошибка разработчика, не поймавшего
- *          его в отладке, и проверка в выпуске её не исправит - лишь скроет
- *
- * \~english
- * @brief Type cast checked in a debug build
- * @details A debug build casts the type with a check, a release one without it. That is
- *          how it is meant, and the cast should not be replaced by a checked one in both builds:
- *          debugging is to be done in a debug build, while a release one is
- *          already debugged, and the greatest speed is required of it. A cast
- *          that went into the release wrong is a mistake of the developer who did not catch
- *          it in debugging, and a check in the release will not correct it — it will only hide it
- *
- * \~
+ * Если короткое название библиотеки не определено
  */
+#ifndef AWH_SHORT_NAME
+	/**
+	 * @brief Устанавливаем короткое название библиотеки
+	 *
+	 */
+	#define AWH_SHORT_NAME "AWH"
+#endif
 /**
- * Если включён режим отладки
+ * Если версия библиотеки не определена
  */
-#if DEBUG_MODE
-	// Безопасное приведение типов с проверкой
-	#define awh_cast dynamic_cast
+#ifndef AWH_VERSION
+	/**
+	 * @brief Устанавливаем версию библиотеки
+	 *
+	 */
+	#define AWH_VERSION "5.0.0"
+#endif
 /**
- * Если режим отладки не включён
+ * Если хост библиотеки не определён
  */
-#else
-	// Безопасное приведение типов без проверки
-	#define awh_cast static_cast
+#ifndef AWH_HOST
+	/**
+	 * @brief Устанавливаем хост библиотеки
+	 *
+	 */
+	#define AWH_HOST "anyks.com"
+#endif
+/**
+ * Если адрес сайта библиотеки не определён
+ */
+#ifndef AWH_SITE
+	/**
+	 * @brief Устанавливаем адрес сайта библиотеки
+	 *
+	 */
+	#define AWH_SITE "https://anyks.com"
+#endif
+/**
+ * Если адрес электронной почты библиотеки не определён
+ */
+#ifndef AWH_EMAIL
+	/**
+	 * @brief Устанавливаем адрес электронной почты библиотеки
+	 *
+	 */
+	#define AWH_EMAIL "info@anyks.com"
+#endif
+/**
+ * Если контактный адрес библиотеки не определён
+ */
+#ifndef AWH_CONTACT
+	/**
+	 * @brief Устанавливаем контактный адрес библиотеки
+	 *
+	 */
+	#define AWH_CONTACT "https://t.me/forman"
+#endif
+/**
+ * Если локаль библиотеки не определена
+ */
+#ifndef AWH_LOCALE
+	/**
+	 * Для операционной системы MS Windows
+	 */
+	#if _WIN32 || _WIN64
+		/**
+		 * @brief Устанавливаем локаль словаря по умолчанию
+		 *
+		 */
+		#define AWH_LOCALE "C"
+	/**
+	 * Для операционной системы не являющейся MS Windows
+	 */
+	#else
+		/**
+		 * @brief Устанавливаем локаль словаря по умолчанию
+		 *
+		 */
+		#define AWH_LOCALE "en_US.UTF-8"
+	#endif
 #endif
 
 /**

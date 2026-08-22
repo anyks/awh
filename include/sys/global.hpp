@@ -34,6 +34,40 @@
 
 /**
  * \~russian
+ * @brief Приведение типов, проверяемое в отладочной сборке
+ *
+ * @details Отладочная сборка приводит тип с проверкой, выпускная - без неё. Так
+ *          и задумано, и заменять приведение на проверяемое в обеих сборках не
+ *          следует: отлаживаться нужно в отладочной сборке, а выпускная - это
+ *          уже отлаженное, и от неё требуется наибольшая скорость. Приведение,
+ *          уехавшее в выпуск неверным, есть ошибка разработчика, не поймавшего
+ *          его в отладке, и проверка в выпуске её не исправит - лишь скроет.
+ *
+ * \~english
+ * @brief Type cast checked in a debug build
+ *
+ * @details A debug build casts the type with a check, a release one without it. That is
+ *          how it is meant, and the cast should not be replaced by a checked one in both builds:
+ *          debugging is to be done in a debug build, while a release one is
+ *          already debugged, and the greatest speed is required of it. A cast
+ *          that went into the release wrong is a mistake of the developer who did not catch
+ *          it in debugging, and a check in the release will not correct it — it will only hide it.
+ *
+ * \~
+ */
+#if DEBUG_MODE
+	// Безопасное приведение типов с проверкой
+	#define awh_cast dynamic_cast
+/**
+ * Если режим отладки не включён
+ */
+#else
+	// Безопасное приведение типов без проверки
+	#define awh_cast static_cast
+#endif
+
+/**
+ * \~russian
  * Для операционной системы MS Windows
  *
  * @note Проверка ведётся через defined, а не значением: заголовок <windows.h> у mingw-w64
