@@ -73,6 +73,8 @@ namespace {
 		uint64_t trees;
 		// Количество деревьев, исходный текст удержавших
 		uint64_t kept;
+		// Количество деревьев, удержавших текст при сносе повторных пар
+		uint64_t pruned;
 		// Количество деревьев, правку принявших
 		uint64_t edited;
 		// Количество владеющих значений, с деревьев снятых
@@ -88,8 +90,8 @@ namespace {
 		 *
 		 */
 		Statistic() noexcept :
-		 texts(0), corrupted(0), survived(0), events(0), chunked(0), transcoded(0), trees(0), kept(0), edited(0),
-		 assembled(0), taken(0), grafts(0), grafted(0) {}
+		 texts(0), corrupted(0), survived(0), events(0), chunked(0), transcoded(0), trees(0), kept(0), pruned(0),
+		 edited(0), assembled(0), taken(0), grafts(0), grafted(0) {}
 	} totals;
 
 	/**
@@ -1815,6 +1817,59 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 				}
 			}
 			/**
+			 * Выполняем проверку удержания исходного текста при сносе повторных пар
+			 *
+			 * @details Проверка дословная ниже правило повторов сама ставит `KEEP`, и потому
+			 *          сочетание «удержание плюс снос пары» ей недоступно вовсе. Между тем
+			 *          снос пары двигает границы записей соседних узлов, и узел, к снесённой
+			 *          паре примыкающий, накрывает её байты своим хвостом при дословном
+			 *          переносе - пара, деревом снесённая, возвращается в текст. Правки для
+			 *          этого не требуется никакой: хватает разбора и обратной записи
+			 *
+			 * @note Сличать здесь с исходным текстом побайтово нельзя: пару снесли нарочно, и
+			 *       расхождение байтов законно. Потому запись читается обратно, и сличаются
+			 *       два дерева - записанное обязано нести ровно то, что дерево держит
+			 */
+			{
+				// Настройки разбора дерева с удержанием исходного текста
+				yaml::document_t::settings_t held = tree;
+				// Устанавливаем удержание исходного текста
+				held.retain = true;
+				// Объект дерева документа, текст удерживающего
+				yaml::document_t pruned(held);
+				/**
+				 * Если разобрать текст в дерево документа удалось
+				 */
+				if(pruned.parse(text) && (pruned.encoding() == yaml::encoding_t::UTF8)){
+					// Выполняем учёт собранного дерева с удержанием
+					totals.pruned++;
+					// Выполняем перезапись удержанного дерева
+					const string & written = pruned.dump();
+					// Объект дерева документа, перезапись обратно читающего
+					yaml::document_t reread(held);
+					/**
+					 * Если перезапись обратным чтением принята
+					 */
+					if(reread.parse(written)){
+						/**
+						 * Если дерево перезаписи с деревом исходным разошлось
+						 */
+						if(reread.dump() != written){
+							// Выводим сообщение о расхождении удержания при сносе пар
+							::fprintf(stderr, "yaml fuzz: pruned retention unstable, settings %s\n", described(settings).c_str());
+							// Выводим разбираемый текст
+							dump(text);
+							// Выводим перезапись удержанного дерева
+							dump(written);
+							// Выводим перезапись обратного чтения
+							dump(reread.dump());
+							// Выходим из приложения с ошибкой
+							return EXIT_FAILURE;
+						}
+					}
+				}
+			}
+			/**
 			 * Выполняем проверку дословной перезаписи при удержании исходного текста
 			 *
 			 * @details Удержание обязано давать перезапись, исходному тексту побайтово
@@ -1916,11 +1971,12 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		}
 	}
 	// Выводим итог работы генератора
-	::fprintf(stderr, "yaml fuzz: %llu texts (%llu corrupted, %llu survived), %llu events, %llu chunked, %llu transcoded, %llu trees, %llu kept, %llu edited, %llu taken, %llu assembled, %llu grafts (%llu refused)\n",
+	::fprintf(stderr, "yaml fuzz: %llu texts (%llu corrupted, %llu survived), %llu events, %llu chunked, %llu transcoded, %llu trees, %llu kept, %llu pruned, %llu edited, %llu taken, %llu assembled, %llu grafts (%llu refused)\n",
 		static_cast <unsigned long long> (totals.texts), static_cast <unsigned long long> (totals.corrupted),
 		static_cast <unsigned long long> (totals.survived), static_cast <unsigned long long> (totals.events),
 		static_cast <unsigned long long> (totals.chunked), static_cast <unsigned long long> (totals.transcoded),
 		static_cast <unsigned long long> (totals.trees), static_cast <unsigned long long> (totals.kept),
+		static_cast <unsigned long long> (totals.pruned),
 		static_cast <unsigned long long> (totals.edited), static_cast <unsigned long long> (totals.taken),
 		static_cast <unsigned long long> (totals.assembled),
 		static_cast <unsigned long long> (totals.grafted),
