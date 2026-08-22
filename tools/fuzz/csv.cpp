@@ -71,12 +71,15 @@ namespace {
 		uint64_t rewrites;
 		// Количество выполненных потоковых выдач записей
 		uint64_t streams;
+		// Количество таблиц, собранных договором правки
+		uint64_t assembled;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
 		Statistic() noexcept :
-		 texts(0), corrupted(0), survived(0), events(0), documents(0), rewrites(0), streams(0) {}
+		 texts(0), corrupted(0), survived(0), events(0), documents(0), rewrites(0), streams(0),
+		 assembled(0) {}
 	} totals;
 
 	/**
@@ -634,6 +637,122 @@ namespace {
 		return true;
 	}
 	/**
+	 * @brief Метод проверки сборки таблицы договором правки
+	 *
+	 * @details Круговой ход через запись идёт текстом, а этот - мимо текста вовсе: поля
+	 * берутся у разобранной таблицы видами и подаются доливом в таблицу пустую.
+	 * Собранная обязана совпасть с исходною полем в поле
+	 *
+	 * @note Поля подаются ВИДАМИ, а не копиями, и вид указывает в хранилище знаков той
+	 *       же таблицы, откуда взят: заход этот и есть самый острый у долива - хранилище
+	 *       приёмника наращивается, а виды подателя обязаны его пережить. На этом месте
+	 *       уже был дефект чтения освобождённой памяти
+	 *
+	 * @param text     разбираемый текст таблицы
+	 * @param settings настройки разбора таблицы
+	 * @return         результат проверки сборки таблицы
+	 *
+	 */
+	bool rebuild(const string & text, const csv::document_t::settings_t & settings) noexcept {
+		// Контейнер разбираемой таблицы
+		csv::document_t document(settings);
+		/**
+		 * Если разбор таблицы не удался
+		 */
+		if(!document.parse(text))
+			// Выводим результат проверки сборки таблицы
+			return true;
+			// Собираемая таблица, доливом наполняемая
+		csv::document_t built(settings);
+		/**
+		 * Если заголовок таблицы объявлен
+		 */
+		if(document.cols() > 0){
+			// Собираемый перечень имён столбцов заголовка
+			vector <string> names;
+			/**
+			 * Выполняем перебор всех имён столбцов заголовка
+			 */
+			for(auto & name : document.header())
+				// Выполняем снятие копии имени очередного столбца
+				names.emplace_back(name);
+			/**
+			 * Если заголовок несёт хотя бы одно имя
+			 */
+			if(!names.empty())
+				// Выполняем объявление заголовка собираемой таблицы
+				(void) built.header(names);
+		}
+		/**
+		 * Выполняем перебор всех записей разобранной таблицы
+		 */
+		for(size_t i = 0; i < document.rows(); i++){
+			// Собираемый перечень полей очередной записи
+			vector <string_view> fields;
+			/**
+			 * Выполняем перебор всех полей очередной записи
+			 */
+			for(size_t j = 0; j < document.size(i); j++)
+				// Выполняем добавление вида очередного поля к перечню
+				fields.push_back(document.get(i, j));
+			// Выполняем долив собранной записи к таблице
+			built.append(fields);
+		}
+		// Выполняем учёт таблицы, договором правки собранной
+		totals.assembled++;
+		/**
+		 * Если количество записей собранной таблицы разошлось
+		 */
+		if(built.rows() != document.rows()){
+			// Выводим сообщение о расхождении количества записей
+			::fprintf(stderr, "csv fuzz: assembled row count differs: %zu against %zu\n",
+				built.rows(), document.rows());
+			// Выводим разобранную таблицу
+			dump(text);
+			// Выводим результат проверки кругового хода
+			return false;
+		}
+		/**
+		 * Выполняем перебор всех записей собранной таблицы
+		 */
+		for(size_t i = 0; i < document.rows(); i++){
+			/**
+			 * Если количество полей записи разошлось
+			 */
+			if(built.size(i) != document.size(i)){
+				// Выводим сообщение о расхождении количества полей записи
+				::fprintf(stderr, "csv fuzz: assembled field count of row %zu differs: %zu against %zu\n",
+					i, built.size(i), document.size(i));
+				// Выводим разобранную таблицу
+				dump(text);
+				// Выводим результат проверки кругового хода
+				return false;
+			}
+			/**
+			 * Выполняем перебор всех полей записи
+			 */
+			for(size_t j = 0; j < document.size(i); j++){
+				/**
+				 * Если содержимое поля разошлось
+				 */
+				if(built.get(i, j) != document.get(i, j)){
+					// Выводим сообщение о расхождении содержимого поля
+					::fprintf(stderr, "csv fuzz: assembled field %zu:%zu differs\n", i, j);
+					// Выводим разобранную таблицу
+					dump(text);
+					// Выводим содержимое поля разобранной таблицы
+					dump(string(document.get(i, j)));
+					// Выводим содержимое поля собранной таблицы
+					dump(string(built.get(i, j)));
+					// Выводим результат проверки кругового хода
+					return false;
+				}
+			}
+		}
+		// Выводим результат проверки сборки таблицы
+		return true;
+	}
+	/**
 	 * @brief Метод проверки кругового хода полей через запись
 	 *
 	 * @details Поля со враждебным содержимым записываются и читаются обратно при всяком
@@ -1078,6 +1197,20 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 			return EXIT_FAILURE;
 		}
 		/**
+		 * Если сборка таблицы договором правки разошлась с разобранной
+		 *
+		 * @note Проверка эта ведётся при ВСЯКИХ настройках, в отличие от кругового хода
+		 *       выше: тот идёт через запись и оттого узкими настройками ограничен, а эта
+		 *       текста не касается вовсе - сличаются таблица разобранная и таблица,
+		 *       собранная доливом её же полей
+		 */
+		if(!rebuild(text, document)){
+			// Выводим настройки разбора таблицы
+			dump(settings);
+			// Выходим из приложения с кодом ошибки
+			return EXIT_FAILURE;
+		}
+		/**
 		 * Если потоковая выдача записей разошлась со сборкой таблицы целиком
 		 */
 		if(!streaming(text, document)){
@@ -1095,11 +1228,12 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		}
 	}
 	// Выводим итог работы генератора
-	::fprintf(stderr, "csv fuzz: %llu passes, %llu texts (%llu corrupted), %llu survived, %llu events, %llu documents, %llu rewrites, %llu streams\n",
+	::fprintf(stderr, "csv fuzz: %llu passes, %llu texts (%llu corrupted), %llu survived, %llu events, %llu documents, %llu rewrites, %llu streams, %llu assembled\n",
 		static_cast <unsigned long long> (count), static_cast <unsigned long long> (totals.texts),
 		static_cast <unsigned long long> (totals.corrupted), static_cast <unsigned long long> (totals.survived),
 		static_cast <unsigned long long> (totals.events), static_cast <unsigned long long> (totals.documents),
-		static_cast <unsigned long long> (totals.rewrites), static_cast <unsigned long long> (totals.streams));
+		static_cast <unsigned long long> (totals.rewrites), static_cast <unsigned long long> (totals.streams),
+		static_cast <unsigned long long> (totals.assembled));
 	// Выходим из приложения
 	return EXIT_SUCCESS;
 }
