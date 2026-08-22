@@ -88,7 +88,7 @@ void awh::Files_Descriptors::help(const uint32_t actual, const uint32_t desired)
 			"   SetHandleCount(%u);\n\n"
 			"   C++ Example:\n"
 			"      #include <windows.h>\n"
-			"      int main() {\n"
+			"      int32_t main() {\n"
 			"          SetHandleCount(%u); // Call as early as possible!\n"
 			"          // ... rest of your code ...\n"
 			"      }\n\n"
@@ -478,7 +478,7 @@ std::pair <uint32_t, uint32_t> awh::Files_Descriptors::limit() const noexcept {
 		 * так как пробинг сокетами крайне дорог и не отражает реальный одновременный лимит.
 		 */
 		// Получаем текущее значение лимита файловых дескрипторов уровня CRT
-		const int current = ::_getmaxstdio();
+		const int32_t current = ::_getmaxstdio();
 		// Устанавливаем текущее значение количества доступных файловых дескрипторов
 		result.first = (current > 0 ? static_cast <uint32_t> (current) : 512);
 		// Устанавливаем максимально возможное значение (потолок _setmaxstdio)

@@ -37,11 +37,6 @@
 #include <cstdlib>
 
 /**
- * Системный заголовочный файл
- */
-#include <sys/resource.h>
-
-/**
  * Подключаем заголовочные файлы проекта
  */
 #include <sys/os.hpp>
@@ -74,33 +69,6 @@ namespace options {
 			awh::os_t os(log);
 			// Выполняем инициализацию объекта работы с файловыми дескрипторами
 			awh::fds_t fds(log);
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Структура лимитов дампов
-				struct rlimit limit;
-				// Устанавливаем текущий лимит равный бесконечности
-				limit.rlim_cur = RLIM_INFINITY;
-				// Устанавливаем максимальный лимит равный бесконечности
-				limit.rlim_max = RLIM_INFINITY;
-				// Возвращаем результат установки лимита дампов ядра
-				if(::setrlimit(RLIMIT_CORE, &limit) != 0){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Записываем ошибку в лог
-						log->debug("%s", __PRETTY_FUNCTION__, {}, awh::log_t::flag_t::WARNING, ::strerror(errno));
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Записываем ошибку в лог
-						log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
-					#endif
-				}
-			#endif
 			/**
 			 * Выполняем установку нужного нам количества файловых дескрипторов
 			 */
