@@ -1214,6 +1214,13 @@ namespace awh {
 					 */
 					uint32_t leading(const uint32_t index) const noexcept;
 					/**
+					 * @brief Метод подрезки границ записей узлов, в снимаемый упирающихся
+					 *
+					 * @param index номер снимаемого узла
+					 *
+					 */
+					void tighten(const uint32_t index) noexcept;
+					/**
 					 * \~russian
 					 * @brief Метод отнесения пустых строк к узлам, под ними стоящим
 					 *

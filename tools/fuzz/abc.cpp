@@ -81,13 +81,17 @@ namespace {
 		uint64_t verified;
 		// Количество значений, пересобранных потоковой сборкой
 		uint64_t assemblies;
+		// Количество прогонов разбора с пропуском вместимого
+		uint64_t skips;
+		// Количество прогонов записи с вбитой меткой размаха
+		uint64_t spikes;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
 		Statistic() noexcept :
 		 records(0), corrupted(0), survived(0), events(0), trees(0), containers(0),
-		 fetches(0), edits(0), compactions(0), verified(0), assemblies(0) {}
+		 fetches(0), edits(0), compactions(0), verified(0), assemblies(0), skips(0), spikes(0) {}
 	} totals;
 
 	/**
@@ -623,6 +627,424 @@ namespace {
 		}
 		// Выводим признак записи, разобранной до конца
 		return true;
+	}
+	/**
+	 * @brief Функция потокового разбора записи прямой выдачей событий
+	 *
+	 * @details Пропуск зовётся ТОЛЬКО из обработчика прямой выдачи: события копятся
+	 *          очередью, и к выдаче события разбор уходит вперёд - пропускать к тому
+	 *          времени уже нечего
+	 *
+	 * @param buffer  буфер разбираемой записи
+	 * @param target  номер вместимого, пропускаемого целиком, -1 - без пропуска,
+	 *                -2 - пропуск на всяком НЕвместимом событии
+	 * @param events  выдаваемые события разбора
+	 * @param skipped признак состоявшегося пропуска
+	 * @return        признак записи, разобранной до конца
+	 *
+	 */
+	bool sweep(const vector <uint8_t> & buffer, const int64_t target, vector <Event> & events, bool & skipped) noexcept {
+		/**
+		 * @brief Опора прямой выдачи событий разбора
+		 *
+		 */
+		struct Sink {
+			// Номер пропускаемого вместимого
+			int64_t target;
+			// Порядковый номер очередного встреченного вместимого
+			int64_t counter;
+			// Признак состоявшегося пропуска
+			bool skipped;
+			// Запоминаемые события разбора
+			vector <Event> * events;
+			/**
+			 * @brief Конструктор
+			 *
+			 */
+			Sink() noexcept : target(-1), counter(0), skipped(false), events(nullptr) {}
+		} sink;
+		// Выполняем очистку запомненных событий разбора
+		events.clear();
+		// Выполняем установку номера пропускаемого вместимого
+		sink.target = target;
+		// Выполняем установку вместилища запоминаемых событий разбора
+		sink.events = & events;
+		// Разбиратель бинарной записи
+		abc::reader_t reader;
+		// Выполняем установку обработчика прямой выдачи событий разбора
+		reader.handler([](void * context, abc::reader_t & reader, const abc::event_t event) noexcept -> void {
+			// Выполняем получение опоры прямой выдачи событий
+			Sink * sink = reinterpret_cast <Sink *> (context);
+			// Запоминаемое событие разбора
+			Event item;
+			// Выполняем получение значения события разбора
+			const abc::reader_t::value_t value = reader.value();
+			// Выполняем запоминание разновидности события
+			item.event = static_cast <uint8_t> (event);
+			// Выполняем запоминание вида значения события
+			item.type = static_cast <uint32_t> (value.type);
+			// Выполняем запоминание содержимого значения
+			item.data.assign(value.data.data(), value.data.size());
+			// Выполняем запоминание количества значений вместимого
+			item.count = value.count;
+			// Выполняем запоминание целого без знака
+			item.number = value.number;
+			// Выполняем запоминание целого со знаком
+			item.integer = value.integer;
+			// Выполняем запоминание двоичного представления дробного числа
+			::memcpy(& item.real, & value.real, sizeof(item.real));
+			// Выполняем запоминание десятичного порядка величины
+			item.exponent = value.exponent;
+			// Выполняем запоминание логического значения
+			item.boolean = value.boolean;
+			// Выполняем запоминание признака величины меньше нуля
+			item.negative = value.negative;
+			// Выполняем запоминание признака неопределённой длины
+			item.indefinite = value.indefinite;
+			// Выполняем запоминание глубины вложенности события
+			item.depth = reader.depth();
+			// Выполняем запоминание события разбора
+			sink->events->push_back(::std::move(item));
+			// Признак снятого события начала вместимого
+			const bool opening = ((event == abc::event_t::ARRAY_BEGIN) || (event == abc::event_t::MAP_BEGIN));
+			/**
+			 * Если снято событие начала вместимого
+			 */
+			if(opening){
+				/**
+				 * Если встречено искомое вместимое
+				 */
+				if(sink->counter == sink->target)
+					// Выполняем запоминание исхода пропуска вместимого целиком
+					sink->skipped = reader.skip();
+				// Выполняем учёт встреченного вместимого
+				sink->counter++;
+			/**
+			 * Иначе, если затребован пропуск на всяком невместимом событии
+			 *
+			 * @note Потребитель вправе звать пропуск где угодно, и там, где пропускать
+			 *       нечего, пропуск обязан отвечать отказом и НИЧЕГО не менять
+			 */
+			} else if(sink->target == -2) {
+				// Если пропуск невместимого вдруг состоялся
+				if(reader.skip())
+					// Выполняем запоминание состоявшегося пропуска невместимого
+					sink->skipped = true;
+			}
+		}, & sink);
+		// Если подать запись разбирателю не удалось
+		if(!reader.feed(buffer.data(), buffer.size(), true)){
+			// Выполняем запоминание исхода пропуска вместимого
+			skipped = sink.skipped;
+			// Выводим признак записи, разобранной не до конца
+			return false;
+		}
+		/**
+		 * Выполняем продвижение разбора записи
+		 */
+		while(reader.next())
+			// Выполняем продвижение разбора записи
+			;
+		// Выполняем запоминание исхода пропуска вместимого
+		skipped = sink.skipped;
+		// Выводим признак записи, разобранной до конца
+		return (reader.error() == abc::error_t::NONE);
+	}
+	/**
+	 * @brief Функция сличения разбора записи с пропуском вложенного вместимого
+	 *
+	 * @details Пропуск нарезкою на куски не проверить: пропуск её сбивает, и сличение
+	 *          разборов оказалось бы ложным. Проверяемое правило иное - выдача разбора
+	 *          с пропуском обязана совпасть с выдачей разбора насквозь, из какой изъята
+	 *          начинка пропущенного вместимого. Ни одно событие ЗА пропущенным вместимым
+	 *          сдвинуться либо пропасть не вправе
+	 *
+	 * @param buffer   буфер разбираемой записи
+	 * @param pristine признак неиспорченной записи
+	 *
+	 */
+	void skipping(const vector <uint8_t> & buffer, const bool pristine) noexcept {
+		// Признак состоявшегося пропуска вместимого
+		bool skipped = false;
+		// События разбора записи насквозь
+		vector <Event> whole;
+		/**
+		 * Если запись разобрать насквозь не удалось
+		 */
+		if(!sweep(buffer, -1, whole, skipped))
+			// Прекращаем сличение разбора записи
+			return;
+		// События разбора записи с пропуском на всяком невместимом событии
+		vector <Event> aside;
+		// Выполняем разбор записи с пропуском на всяком невместимом событии
+		const bool untouched = sweep(buffer, -2, aside, skipped);
+		/**
+		 * Если пропуск невместимого состоялся
+		 *
+		 * @note Пропускать перед невместимым нечего: размах объявляется впереди
+		 *       вместимого и принадлежит вместимому ближайшему
+		 */
+		if(skipped){
+			// Выводим сообщение о состоявшемся пропуске невместимого
+			::fprintf(stderr, "abc fuzz: skipping succeeded on a non-container event\n");
+			// Выполняем выход с признаком расхождения
+			::exit(1);
+		}
+		/**
+		 * Если исход разбора либо выдача его разошлись с разбором насквозь
+		 */
+		if((untouched != true) || (aside.size() != whole.size())){
+			// Выводим сообщение о расхождении выдачи разбора
+			::fprintf(stderr, "abc fuzz: refused skipping changed the parsing: %d, %zu against %zu\n",
+			 untouched ? 1 : 0, aside.size(), whole.size());
+			// Выполняем выход с признаком расхождения
+			::exit(1);
+		}
+		/**
+		 * Выполняем перебор всех событий разбора записи
+		 */
+		for(size_t i = 0; i < aside.size(); i++){
+			/**
+			 * Если событие разошлось с событием разбора насквозь
+			 */
+			if(aside.at(i) != whole.at(i)){
+				// Выводим сообщение о расхождении события разбора
+				::fprintf(stderr, "abc fuzz: refused skipping changed event %zu\n", i);
+				// Выполняем выход с признаком расхождения
+				::exit(1);
+			}
+		}
+		/**
+		 * Выполняем прогон записи с меткой размаха, вбитой перед первым значением
+		 *
+		 * @details Своя сборка метку размаха кладёт лишь ВПЕРЕДИ вместимого, и породить
+		 * запись, где размах объявлен перед невместимым, ворошитель сам по себе не может.
+		 * Меж тем запись приходит извне, и вид этот законно возможен: метка вбивается
+		 * сюда нарочно, сразу за меткой корневого вместимого. Проверяемое правило то же -
+		 * пропуск, отвечающий отказом, не вправе менять разбор ничем
+		 */
+		if(pristine && (buffer.size() > 1)){
+			// Октеты записи с вбитой меткой размаха
+			vector <uint8_t> spiked;
+			// Выполняем укладку метки корневого вместимого
+			spiked.push_back(buffer.front());
+			// Выполняем укладку метки объявленного размаха
+			spiked.push_back(static_cast <uint8_t> ((static_cast <uint8_t> (abc::group_t::EXTEND) << 5) |
+			 static_cast <uint8_t> (abc::extend_t::SPANNED)));
+			// Объявляемый размах вбитой метки
+			const uint64_t width = number(0, static_cast <uint64_t> (buffer.size()) + 4);
+			/**
+			 * Выполняем укладку самого размаха
+			 */
+			for(size_t i = 0; i < abc::SPAN_LENGTH; i++)
+				// Выполняем укладку очередного октета размаха
+				spiked.push_back(static_cast <uint8_t> ((width >> (i * 8)) & 0xFF));
+			// Выполняем укладку остатка записи
+			spiked.insert(spiked.end(), buffer.begin() + 1, buffer.end());
+			// События разбора вбитой записи насквозь
+			vector <Event> plain;
+			// Признак состоявшегося пропуска вбитой записи
+			bool touched = false;
+			// Выполняем разбор вбитой записи насквозь
+			const bool straight = sweep(spiked, -1, plain, touched);
+			// События разбора вбитой записи с пропуском на невместимых
+			vector <Event> tried;
+			// Выполняем разбор вбитой записи с пропуском на всяком невместимом событии
+			const bool attempted = sweep(spiked, -2, tried, touched);
+			/**
+			 * Если пропуск невместимого состоялся либо разбор от него изменился
+			 */
+			if(touched || (attempted != straight) || (tried.size() != plain.size())){
+				// Выводим сообщение о расхождении разбора вбитой записи
+				::fprintf(stderr, "abc fuzz: spiked span changed the parsing: skipped %d, %d against %d, %zu against %zu\n",
+				 touched ? 1 : 0, attempted ? 1 : 0, straight ? 1 : 0, tried.size(), plain.size());
+				// Выполняем выход с признаком расхождения
+				::exit(1);
+			}
+			/**
+			 * Выполняем перебор всех событий разбора вбитой записи
+			 */
+			for(size_t i = 0; i < tried.size(); i++){
+				/**
+				 * Если событие разошлось с разбором насквозь
+				 */
+				if(tried.at(i) != plain.at(i)){
+					// Выводим сообщение о расхождении события разбора вбитой записи
+					::fprintf(stderr, "abc fuzz: spiked span changed event %zu\n", i);
+					// Выполняем выход с признаком расхождения
+					::exit(1);
+				}
+			}
+			// Выполняем учёт прогона вбитой записи
+			totals.spikes++;
+		}
+		// Количество вместимых, встреченных разбором записи
+		int64_t containers = 0;
+		/**
+		 * Выполняем перебор всех событий разбора записи
+		 */
+		for(const Event & item : whole){
+			// Если снято событие начала вместимого
+			if((item.event == static_cast <uint8_t> (abc::event_t::ARRAY_BEGIN)) ||
+			   (item.event == static_cast <uint8_t> (abc::event_t::MAP_BEGIN)))
+				// Выполняем учёт встреченного вместимого
+				containers++;
+		}
+		// Если вместимых в записи нет
+		if(containers == 0)
+			// Прекращаем сличение разбора записи
+			return;
+		/**
+		 * Выполняем перебор всех вместимых записи
+		 */
+		for(int64_t target = 0; target < containers; target++){
+			// События разбора записи с пропуском вместимого
+			vector <Event> cut;
+			// Выполняем разбор записи с пропуском очередного вместимого
+			const bool survived = sweep(buffer, target, cut, skipped);
+			/**
+			 * Если разбор записи с пропуском оборвался
+			 *
+			 * @note Обрыв дозволен: пропуск ведётся по объявленному размаху, а размах
+			 *       мог быть испорчен. Недозволен лишь обрыв ТАМ, ГДЕ ПРОПУСКА НЕ БЫЛО
+			 */
+			if(!survived){
+				/**
+				 * Если запись не испорчена либо пропуск не состоялся
+				 *
+				 * @note Поблажка эта дана ТОЛЬКО порченой записи: там размах объявлен
+				 *       лживый, и обрыв разбора - верный исход. У целой записи пропуск
+				 *       обрывать разбор не вправе НИКОГДА, и без разделения этих двух
+				 *       случаев проверка прощала бы промах посадки на октет
+				 */
+				if(pristine || !skipped){
+					// Выводим сообщение об обрыве разбора записи
+					::fprintf(stderr, "abc fuzz: parsing broke at container %lld (pristine %d, skipped %d)\n",
+					 (long long) target, pristine ? 1 : 0, skipped ? 1 : 0);
+					// Выполняем выход с признаком расхождения
+					::exit(1);
+				}
+				// Переходим к следующему вместимому записи
+				continue;
+			}
+			// Выполняем учёт прогона разбора с пропуском вместимого
+			totals.skips++;
+			/**
+			 * Если пропуск не состоялся
+			 */
+			if(!skipped){
+				/**
+				 * Если выдача разбора разошлась с разбором насквозь
+				 */
+				if(cut.size() != whole.size()){
+					// Выводим сообщение о расхождении количества событий
+					::fprintf(stderr, "abc fuzz: refused skip changed event count at container %lld: %zu against %zu\n",
+					 (long long) target, cut.size(), whole.size());
+					// Выполняем выход с признаком расхождения
+					::exit(1);
+				}
+				// Переходим к следующему вместимому записи
+				continue;
+			}
+			// Порядковый номер очередного встреченного вместимого
+			int64_t counter = 0;
+			// Место начала пропущенного вместимого в выдаче разбора насквозь
+			size_t begin = whole.size();
+			/**
+			 * Выполняем перебор всех событий разбора записи насквозь
+			 */
+			for(size_t i = 0; i < whole.size(); i++){
+				// Если снято событие начала вместимого
+				if((whole.at(i).event == static_cast <uint8_t> (abc::event_t::ARRAY_BEGIN)) ||
+				   (whole.at(i).event == static_cast <uint8_t> (abc::event_t::MAP_BEGIN))){
+					/**
+					 * Если встречено пропущенное вместимое
+					 */
+					if(counter == target){
+						// Выполняем запоминание места начала пропущенного вместимого
+						begin = i;
+						// Прекращаем перебор событий разбора записи насквозь
+						break;
+					}
+					// Выполняем учёт встреченного вместимого
+					counter++;
+				}
+			}
+			// Если места начала пропущенного вместимого не нашлось
+			if(begin >= whole.size())
+				// Переходим к следующему вместимому записи
+				continue;
+			// Глубина вложенности пропущенного вместимого
+			int64_t nesting = 1;
+			// Место конца пропущенного вместимого в выдаче разбора насквозь
+			size_t end = whole.size();
+			/**
+			 * Выполняем розыск конца пропущенного вместимого
+			 */
+			for(size_t i = (begin + 1); i < whole.size(); i++){
+				// Если снято событие начала вместимого
+				if((whole.at(i).event == static_cast <uint8_t> (abc::event_t::ARRAY_BEGIN)) ||
+				   (whole.at(i).event == static_cast <uint8_t> (abc::event_t::MAP_BEGIN)))
+					// Выполняем углубление вложенности вместимого
+					nesting++;
+				// Если снято событие конца вместимого
+				else if((whole.at(i).event == static_cast <uint8_t> (abc::event_t::ARRAY_END)) ||
+				        (whole.at(i).event == static_cast <uint8_t> (abc::event_t::MAP_END))){
+					// Выполняем снятие вложенности вместимого
+					nesting--;
+					/**
+					 * Если вложенность вместимого исчерпана
+					 */
+					if(nesting == 0){
+						// Выполняем запоминание места конца пропущенного вместимого
+						end = i;
+						// Прекращаем розыск конца пропущенного вместимого
+						break;
+					}
+				}
+			}
+			// Если конца пропущенного вместимого не нашлось
+			if(end >= whole.size())
+				// Переходим к следующему вместимому записи
+				continue;
+			// Ожидаемая выдача разбора записи с пропуском вместимого
+			vector <Event> expected;
+			/**
+			 * Выполняем сборку ожидаемой выдачи разбора записи с пропуском
+			 */
+			for(size_t i = 0; i < whole.size(); i++){
+				// Если событие лежит внутри пропущенного вместимого
+				if((i > begin) && (i < end))
+					// Переходим к следующему событию разбора записи насквозь
+					continue;
+				// Выполняем запоминание ожидаемого события разбора записи
+				expected.push_back(whole.at(i));
+			}
+			/**
+			 * Если количество событий разошлось с ожидаемым
+			 */
+			if(cut.size() != expected.size()){
+				// Выводим сообщение о расхождении количества событий
+				::fprintf(stderr, "abc fuzz: skipped event count differs at container %lld: %zu against %zu (whole %zu)\n",
+				 (long long) target, cut.size(), expected.size(), whole.size());
+				// Выполняем выход с признаком расхождения
+				::exit(1);
+			}
+			/**
+			 * Выполняем перебор всех событий разбора записи с пропуском
+			 */
+			for(size_t i = 0; i < cut.size(); i++){
+				/**
+				 * Если событие разошлось с ожидаемым
+				 */
+				if(cut.at(i) != expected.at(i)){
+					// Выводим сообщение о расхождении события разбора
+					::fprintf(stderr, "abc fuzz: skipped event %zu differs at container %lld\n", i, (long long) target);
+					// Выполняем выход с признаком расхождения
+					::exit(1);
+				}
+			}
+		}
 	}
 	/**
 	 * @brief Функция сличения разбора записи при разной нарезке на куски
@@ -1275,6 +1697,8 @@ int main(int argc, char * argv[]) noexcept {
 				continue;
 			// Выполняем сличение разбора записи при разной нарезке на куски
 			slicing(item);
+			// Выполняем сличение разбора записи с пропуском вложенного вместимого
+			skipping(item, true);
 			// Выполняем сборку дерева документа и перезапись его
 			tree(item);
 			// Выполняем запоминание построенной записи
@@ -1288,6 +1712,8 @@ int main(int argc, char * argv[]) noexcept {
 			 * но не вправе выходить за буфер и рушить работу
 			 */
 			slicing(spoiled);
+			// Выполняем сличение разбора порченой записи с пропуском вместимого
+			skipping(spoiled, false);
 			// Выполняем сборку дерева документа из порченой записи
 			tree(spoiled);
 		}
@@ -1318,13 +1744,13 @@ int main(int argc, char * argv[]) noexcept {
 	// Выводим учёт проделанной работы
 	::printf("abc fuzz: %llu records (%llu corrupted), %llu parsed to the end, %llu events, "
 	 "%llu trees, %llu containers, %llu fetches, %llu edits, %llu compactions, %llu signatures verified, "
-	 "%llu values assembled\n",
+	 "%llu values assembled, %llu skipping runs, %llu spiked spans\n",
 	 static_cast <unsigned long long> (totals.records), static_cast <unsigned long long> (totals.corrupted),
 	 static_cast <unsigned long long> (totals.survived), static_cast <unsigned long long> (totals.events),
 	 static_cast <unsigned long long> (totals.trees), static_cast <unsigned long long> (totals.containers),
 	 static_cast <unsigned long long> (totals.fetches), static_cast <unsigned long long> (totals.edits),
 	 static_cast <unsigned long long> (totals.compactions), static_cast <unsigned long long> (totals.verified),
-	 static_cast <unsigned long long> (totals.assemblies));
+	 static_cast <unsigned long long> (totals.assemblies), static_cast <unsigned long long> (totals.skips), static_cast <unsigned long long> (totals.spikes));
 	// Выводим успешное завершение работы
 	return 0;
 }

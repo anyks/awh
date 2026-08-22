@@ -75,6 +75,8 @@ namespace {
 		uint64_t kept;
 		// Количество деревьев, удержавших текст при сносе повторных пар
 		uint64_t pruned;
+		// Количество сносов узла, сличению состоявшейся правки подвергнутых
+		uint64_t mirrored;
 		// Количество деревьев, правку принявших
 		uint64_t edited;
 		// Количество владеющих значений, с деревьев снятых
@@ -91,7 +93,7 @@ namespace {
 		 */
 		Statistic() noexcept :
 		 texts(0), corrupted(0), survived(0), events(0), chunked(0), transcoded(0), trees(0), kept(0), pruned(0),
-		 edited(0), assembled(0), taken(0), grafts(0), grafted(0) {}
+		 mirrored(0), edited(0), assembled(0), taken(0), grafts(0), grafted(0) {}
 	} totals;
 
 	/**
@@ -1773,10 +1775,12 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 						const string & path = paths.at(engine() % paths.size());
 						// Признак успешной правки дерева документа
 						bool changed = false;
+						// Вид совершаемой правки
+						const uint8_t kind = static_cast <uint8_t> (engine() % 6);
 						/**
 						 * Определяем вид совершаемой правки
 						 */
-						switch(engine() % 6){
+						switch(kind){
 							// Если правкой ставится строковое значение
 							case 0: changed = edited.set(path, string_view("правка")); break;
 							// Если правкой ставится значение, числом читаемое
@@ -1811,6 +1815,47 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 								dump(edited.dump());
 								// Выходим из приложения с ошибкой
 								return EXIT_FAILURE;
+							}
+							/**
+							 * Выполняем проверку состоявшегося сноса узла
+							 *
+							 * @details Обратное чтение правленого текста доказывает лишь то, что
+							 *          текст читается, - но не то, что снос в него попал. Узел,
+							 *          удержанием дословно перенесённый, остаётся в тексте и
+							 *          после снятия своего из дерева: сосед его накрывает байты
+							 *          снятого хвостом записи своей. Снос, успехом ответивший,
+							 *          записанное изменить обязан
+							 *
+							 * @note Обе стороны идут одним и тем же путём записи с удержанием, и
+							 *       потому вид записи из сличения выпадает: сохранение вида есть
+							 *       смысл удержания, и сличать по нему нечего. Прочие правки
+							 *       сличению не подлежат - постановка значения вправе записанного
+							 *       и не изменить, коли значение то уже стояло
+							 */
+							if(kind == 5){
+								// Объект дерева, исходный текст удержанием читающего
+								yaml::document_t before(held);
+								/**
+								 * Если исходный текст удержанием прочитан
+								 */
+								if(before.parse(text)){
+									// Выполняем учёт сноса, сличению подлежащего
+									totals.mirrored++;
+									/**
+									 * Если запись после сноса записи до него равна
+									 */
+									if(before.dump() == edited.dump()){
+										// Выводим сообщение о сносе, в текст не попавшем
+										::fprintf(stderr, "yaml fuzz: erase lost at «%s», settings %s\n",
+											path.c_str(), described(settings).c_str());
+										// Выводим разбираемый текст
+										dump(text);
+										// Выводим запись, сносу подвергнутую
+										dump(edited.dump());
+										// Выходим из приложения с ошибкой
+										return EXIT_FAILURE;
+									}
+								}
 							}
 						}
 					}
@@ -1971,13 +2016,13 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		}
 	}
 	// Выводим итог работы генератора
-	::fprintf(stderr, "yaml fuzz: %llu texts (%llu corrupted, %llu survived), %llu events, %llu chunked, %llu transcoded, %llu trees, %llu kept, %llu pruned, %llu edited, %llu taken, %llu assembled, %llu grafts (%llu refused)\n",
+	::fprintf(stderr, "yaml fuzz: %llu texts (%llu corrupted, %llu survived), %llu events, %llu chunked, %llu transcoded, %llu trees, %llu kept, %llu pruned, %llu edited (%llu erasures checked), %llu taken, %llu assembled, %llu grafts (%llu refused)\n",
 		static_cast <unsigned long long> (totals.texts), static_cast <unsigned long long> (totals.corrupted),
 		static_cast <unsigned long long> (totals.survived), static_cast <unsigned long long> (totals.events),
 		static_cast <unsigned long long> (totals.chunked), static_cast <unsigned long long> (totals.transcoded),
 		static_cast <unsigned long long> (totals.trees), static_cast <unsigned long long> (totals.kept),
 		static_cast <unsigned long long> (totals.pruned),
-		static_cast <unsigned long long> (totals.edited), static_cast <unsigned long long> (totals.taken),
+		static_cast <unsigned long long> (totals.edited), static_cast <unsigned long long> (totals.mirrored), static_cast <unsigned long long> (totals.taken),
 		static_cast <unsigned long long> (totals.assembled),
 		static_cast <unsigned long long> (totals.grafted),
 		static_cast <unsigned long long> (totals.grafts - totals.grafted));
