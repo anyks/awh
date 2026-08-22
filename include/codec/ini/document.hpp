@@ -1001,10 +1001,23 @@ namespace awh {
 					 *
 					 * @return перечень объявленных разделов текста настроек
 					 *
+					 * @warning Выданные виды живут до СЛЕДУЮЩЕГО обращения к дереву. Дерево
+					 *          выдаёт содержимое видами в своё хранилище знаков, а подстановка
+					 *          обращений считается по требованию: обращение к дереву, её
+					 *          устаревшей заставшее, пересчитывает подстановку и хранилище
+					 *          перемещает. Вид, взятый до пересчёта, повисает. Нужен вид
+					 *          дольше - снимайте копию
+					 *
 					 * \~english
 					 * @brief Method of getting the list of the declared sections
 					 * @details The sections are issued in the order of their declaration in the source text
 					 * @return list of the declared sections of the settings text
+					 *
+					 * @warning The issued views live until the NEXT call to the tree. The tree
+					 *          issues the content by the views into its storage of the characters, while the substitution
+					 *          of the references is computed on demand: a call to the tree finding it stale
+					 *          recomputes the substitution and relocates the storage. A view taken before the
+					 *          recomputation dangles. Should a view be needed longer — take a copy
 					 *
 					 * \~
 					 */
@@ -1037,6 +1050,13 @@ namespace awh {
 					 * @param subsection имя подраздела
 					 * @return           перечень имён свойств раздела
 					 *
+					 * @warning Выданные виды живут до СЛЕДУЮЩЕГО обращения к дереву. Дерево
+					 *          выдаёт содержимое видами в своё хранилище знаков, а подстановка
+					 *          обращений считается по требованию: обращение к дереву, её
+					 *          устаревшей заставшее, пересчитывает подстановку и хранилище
+					 *          перемещает. Вид, взятый до пересчёта, повисает. Нужен вид
+					 *          дольше - снимайте копию
+					 *
 					 * \~english
 					 * @brief Method of getting the list of the names of the properties of a section
 					 * @details The names are issued in the order of their declaration and carry no repetitions:
@@ -1044,6 +1064,12 @@ namespace awh {
 					 * @param section    name of the section
 					 * @param subsection name of the subsection
 					 * @return           list of the names of the properties of the section
+					 *
+					 * @warning The issued views live until the NEXT call to the tree. The tree
+					 *          issues the content by the views into its storage of the characters, while the substitution
+					 *          of the references is computed on demand: a call to the tree finding it stale
+					 *          recomputes the substitution and relocates the storage. A view taken before the
+					 *          recomputation dangles. Should a view be needed longer — take a copy
 					 *
 					 * \~
 					 */
@@ -1081,6 +1107,13 @@ namespace awh {
 					 * @param subsection имя подраздела
 					 * @return           значение найденного свойства либо пустая последовательность
 					 *
+					 * @warning Выданные виды живут до СЛЕДУЮЩЕГО обращения к дереву. Дерево
+					 *          выдаёт содержимое видами в своё хранилище знаков, а подстановка
+					 *          обращений считается по требованию: обращение к дереву, её
+					 *          устаревшей заставшее, пересчитывает подстановку и хранилище
+					 *          перемещает. Вид, взятый до пересчёта, повисает. Нужен вид
+					 *          дольше - снимайте копию
+					 *
 					 * \~english
 					 * @brief Method of getting the value of a property
 					 * @details At several declarations of a property the one of them is issued
@@ -1090,6 +1123,12 @@ namespace awh {
 					 * @param section    name of the section
 					 * @param subsection name of the subsection
 					 * @return           value of the found property or an empty sequence
+					 *
+					 * @warning The issued views live until the NEXT call to the tree. The tree
+					 *          issues the content by the views into its storage of the characters, while the substitution
+					 *          of the references is computed on demand: a call to the tree finding it stale
+					 *          recomputes the substitution and relocates the storage. A view taken before the
+					 *          recomputation dangles. Should a view be needed longer — take a copy
 					 *
 					 * \~
 					 */
@@ -1107,6 +1146,13 @@ namespace awh {
 					 * @param subsection имя подраздела
 					 * @return           перечень значений найденного свойства
 					 *
+					 * @warning Выданные виды живут до СЛЕДУЮЩЕГО обращения к дереву. Дерево
+					 *          выдаёт содержимое видами в своё хранилище знаков, а подстановка
+					 *          обращений считается по требованию: обращение к дереву, её
+					 *          устаревшей заставшее, пересчитывает подстановку и хранилище
+					 *          перемещает. Вид, взятый до пересчёта, повисает. Нужен вид
+					 *          дольше - снимайте копию
+					 *
 					 * \~english
 					 * @brief Method of getting the list of the values of a property
 					 * @details All the declarations of the property are issued in the order of their succession.
@@ -1116,6 +1162,12 @@ namespace awh {
 					 * @param section    name of the section
 					 * @param subsection name of the subsection
 					 * @return           list of the values of the found property
+					 *
+					 * @warning The issued views live until the NEXT call to the tree. The tree
+					 *          issues the content by the views into its storage of the characters, while the substitution
+					 *          of the references is computed on demand: a call to the tree finding it stale
+					 *          recomputes the substitution and relocates the storage. A view taken before the
+					 *          recomputation dangles. Should a view be needed longer — take a copy
 					 *
 					 * \~
 					 */

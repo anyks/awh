@@ -1468,6 +1468,12 @@ namespace awh {
 					 * @param result значение найденной пары
 					 * @return       результат выполнения операции
 					 *
+					 * @warning Выданные виды живут до следующей ПРАВКИ дерева. Дерево выдаёт
+					 *          содержимое видами в своё хранилище знаков, а правка его
+					 *          наращивает и по мере накопления мусора уплотняет, хранилище
+					 *          перемещая: вид, взятый до правки, повисает. Нужен вид дольше -
+					 *          снимайте копию
+					 *
 					 * \~english
 					 * @brief Method of getting the value of a pair
 					 * @details A compound value — an array or an inline table —
@@ -1476,6 +1482,11 @@ namespace awh {
 					 * @param path   compound name of the pair being sought
 					 * @param result value of the found pair
 					 * @return       result of performing the operation
+					 *
+					 * @warning The issued views live until the next EDITING of the tree. The tree issues
+					 *          the content by the views into its storage of the characters, while an editing grows it
+					 *          and compacts it as the garbage accumulates, relocating the storage: a view taken
+					 *          before an editing dangles. Should a view be needed longer — take a copy
 					 *
 					 * \~
 					 */
@@ -1487,10 +1498,21 @@ namespace awh {
 					 * @param path составное имя искомой пары
 					 * @return     строковое значение найденной пары либо пустая последовательность
 					 *
+					 * @warning Выданные виды живут до следующей ПРАВКИ дерева. Дерево выдаёт
+					 *          содержимое видами в своё хранилище знаков, а правка его
+					 *          наращивает и по мере накопления мусора уплотняет, хранилище
+					 *          перемещая: вид, взятый до правки, повисает. Нужен вид дольше -
+					 *          снимайте копию
+					 *
 					 * \~english
 					 * @brief Method of getting the string value of a pair
 					 * @param path compound name of the pair being sought
 					 * @return     string value of the found pair or an empty sequence
+					 *
+					 * @warning The issued views live until the next EDITING of the tree. The tree issues
+					 *          the content by the views into its storage of the characters, while an editing grows it
+					 *          and compacts it as the garbage accumulates, relocating the storage: a view taken
+					 *          before an editing dangles. Should a view be needed longer — take a copy
 					 *
 					 * \~
 					 */
@@ -1519,12 +1541,23 @@ namespace awh {
 					 * @param result значение перечня
 					 * @return       результат выполнения операции
 					 *
+					 * @warning Выданные виды живут до следующей ПРАВКИ дерева. Дерево выдаёт
+					 *          содержимое видами в своё хранилище знаков, а правка его
+					 *          наращивает и по мере накопления мусора уплотняет, хранилище
+					 *          перемещая: вид, взятый до правки, повисает. Нужен вид дольше -
+					 *          снимайте копию
+					 *
 					 * \~english
 					 * @brief Method of getting a value of an array by an ordinal number
 					 * @param path   compound name of the array being sought
 					 * @param index  ordinal number of the value of the array
 					 * @param result value of the array
 					 * @return       result of performing the operation
+					 *
+					 * @warning The issued views live until the next EDITING of the tree. The tree issues
+					 *          the content by the views into its storage of the characters, while an editing grows it
+					 *          and compacts it as the garbage accumulates, relocating the storage: a view taken
+					 *          before an editing dangles. Should a view be needed longer — take a copy
 					 *
 					 * \~
 					 */

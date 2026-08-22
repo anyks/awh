@@ -600,9 +600,20 @@ namespace awh {
 							 *
 							 * @return имя пары отображения, пусто у значения перечня
 							 *
+							 * @warning Выданные виды живут до следующей ПРАВКИ дерева. Дерево выдаёт
+							 *          содержимое видами в своё хранилище знаков, а правка его
+							 *          наращивает и по мере накопления мусора уплотняет, хранилище
+							 *          перемещая: вид, взятый до правки, повисает. Нужен вид дольше -
+							 *          снимайте копию
+							 *
 							 * \~english
 							 * @brief Method of the extraction of the name of a pair of a mapping
 							 * @return name of the pair of the mapping, empty for a value of a sequence
+							 *
+							 * @warning The issued views live until the next EDITING of the tree. The tree issues
+							 *          the content by the views into its storage of the characters, while an editing grows it
+							 *          and compacts it as the garbage accumulates, relocating the storage: a view taken
+							 *          before an editing dangles. Should a view be needed longer — take a copy
 							 *
 							 * \~
 							 */
@@ -618,11 +629,22 @@ namespace awh {
 							 *
 							 * @return запись значения узла
 							 *
+							 * @warning Выданные виды живут до следующей ПРАВКИ дерева. Дерево выдаёт
+							 *          содержимое видами в своё хранилище знаков, а правка его
+							 *          наращивает и по мере накопления мусора уплотняет, хранилище
+							 *          перемещая: вид, взятый до правки, повисает. Нужен вид дольше -
+							 *          снимайте копию
+							 *
 							 * \~english
 							 * @brief Method of the extraction of the record of a value given by the source text
 							 * @details The record is issued brought to the final kind: the quoting is removed from it,
 							 * and the escape sequences are expanded
 							 * @return record of the value of the node
+							 *
+							 * @warning The issued views live until the next EDITING of the tree. The tree issues
+							 *          the content by the views into its storage of the characters, while an editing grows it
+							 *          and compacts it as the garbage accumulates, relocating the storage: a view taken
+							 *          before an editing dangles. Should a view be needed longer — take a copy
 							 *
 							 * \~
 							 */
