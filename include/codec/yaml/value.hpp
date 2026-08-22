@@ -1173,6 +1173,15 @@ namespace awh {
 					 * @note Числа, отметки времени и двоичное содержимое переносятся дословною
 					 *       записью своею: ограда обратила бы их в строки
 					 *
+					 * @note Записью же они и прочтутся обратно, а чем прочтутся - решает схема
+					 *       дерева, куда перенос ведётся: запись `0777` наречием 1.1 есть число
+					 *       восьмеричное, а схемою ядровой - десятичное. Перенос в дерево иной
+					 *       схемы выдаёт значение иное по праву, а не по дефекту
+					 *
+					 * @note Имя пары, вторично встреченное, отвечает отказом: отображение вправе
+					 *       нести имена повторные, а путь второе вхождение выразить не может -
+					 *       он указывает на первое всегда
+					 *
 					 * @param document дерево документа, куда переносится значение
 					 * @param path     путь к месту переноса
 					 * @return         признак успешности переноса
@@ -1187,6 +1196,11 @@ namespace awh {
 					 *       with a refusal: the path is divided by it, and such a name would point at an alien node
 					 * @note The numbers, the timestamps and the binary content are grafted by their verbatim
 					 *       record: a quoting would turn them into the strings
+					 * @note By the record they are read back as well, and what they are read as is decided by the schema
+					 *       of the tree whereinto the grafting is conducted: the record `0777` by the dialect 1.1 is an octal
+					 *       number while by the core schema — a decimal one
+					 * @note A name of a pair met a second time answers with a refusal: a mapping is entitled
+					 *       to carry repeated names while a path cannot express the second occurrence
 					 * @param document tree of the document whereinto the value is grafted
 					 * @param path     path to the place of the grafting
 					 * @return         sign of the success of the grafting

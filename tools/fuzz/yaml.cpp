@@ -79,13 +79,17 @@ namespace {
 		uint64_t taken;
 		// Количество значений, потоковой сборкой собранных
 		uint64_t assembled;
+		// Количество попыток кругового переноса значения в дерево
+		uint64_t grafts;
+		// Количество удавшихся переносов значения в дерево
+		uint64_t grafted;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
 		Statistic() noexcept :
 		 texts(0), corrupted(0), survived(0), events(0), chunked(0), transcoded(0), trees(0), kept(0), edited(0),
-		 assembled(0), taken(0) {}
+		 assembled(0), taken(0), grafts(0), grafted(0) {}
 	} totals;
 
 	/**
@@ -1598,6 +1602,84 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 						// Выполняем учёт собранного потоковой сборкой значения
 						totals.assembled++;
 					}
+					/**
+					 * Выполняем круговой перенос снятого значения в дерево документа
+					 *
+					 * @note Перенос вправе и отказать: имя пары, косую черту несущее, путь
+					 *       выразить не может, и отказ там намеренный. Отказ расхождением не
+					 *       считается, но считается счётчиком - молчаливый пропуск обратил бы
+					 *       проверку в бездействующую
+					 */
+					{
+						// Собираемое дерево документа, куда переносится значение
+						yaml::document_t target;
+						/**
+						 * Если разобрать пустое отображение удалось
+						 *
+						 * @note Настройки берутся те же, какими разобрано исходное дерево:
+						 *       перенос кладёт числа записью своею, и наречие дерева решает,
+						 *       чем они прочтутся обратно. Запись `0777` наречием 1.1 есть
+						 *       число восьмеричное, а наречием 1.2 - десятичное, и дерево
+						 *       иных настроек выдало бы значение иное по праву, а не по
+						 *       дефекту
+						 */
+						/**
+						 * Выполняем назначение дереву переноса настроек исходного дерева
+						 *
+						 * @note Настройки берутся у самого дерева, а не у ворошителя: указание
+						 *       `%YAML 1.1` в тексте пересиливает заданную схему, и дерево
+						 *       держит уже схему действующую. Перенос кладёт числа записью
+						 *       своею, и наречие дерева решает, чем они прочтутся обратно:
+						 *       `0777` наречием 1.1 есть число восьмеричное, а ядровою схемой -
+						 *       десятичное, и расхождение то законно
+						 */
+						yaml::document_t::settings_t carried = document.settings();
+						// Выполняем снятие предела глубины вложенности
+						carried.depth = 0;
+						// Выполняем снятие предела длины скалярного значения
+						carried.scalar = 0;
+						/**
+						 * Выполняем назначение схемы, деревом действительно применяемой
+						 *
+						 * @note Указание `%YAML 1.1` в тексте пересиливает заданную схему, а
+						 *       настройки держат заданную: схему действующую выдаёт сам узел
+						 */
+						carried.schema = document.root().schema();
+						// Выполняем назначение дереву переноса настроек исходного дерева
+						target.settings(carried);
+						/**
+						 * Если разобрать пустое отображение удалось
+						 */
+						if(target.parse("{}")){
+							// Выполняем учёт попытки кругового переноса
+							totals.grafts++;
+							/**
+							 * Если перенести снятое значение в дерево удалось
+							 */
+							if(taken.graft(target)){
+								// Выполняем учёт удавшегося переноса
+								totals.grafted++;
+								// Выполняем снятие владеющего значения с дерева переноса
+								const yaml::value_t back(target.root());
+								/**
+								 * Если снятое с дерева переноса значение с исходным разошлось
+								 */
+								if(!(back == taken)){
+									// Выводим сообщение о расхождении перенесённого значения
+									::fprintf(stderr, "yaml fuzz: grafted value differs from the taken one, settings %s\n",
+										described(settings).c_str());
+									// Выводим разбираемый текст
+									dump(text);
+									// Выводим перезапись снятого значения
+									dump(taken.dump());
+									// Выводим перезапись перенесённого значения
+									dump(back.dump());
+									// Выходим из приложения с ошибкой
+									return EXIT_FAILURE;
+								}
+							}
+						}
+					}
 				}
 				/**
 				 * Настройки разбора перезаписанного документа
@@ -1834,13 +1916,15 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		}
 	}
 	// Выводим итог работы генератора
-	::fprintf(stderr, "yaml fuzz: %llu texts (%llu corrupted, %llu survived), %llu events, %llu chunked, %llu transcoded, %llu trees, %llu kept, %llu edited, %llu taken, %llu assembled\n",
+	::fprintf(stderr, "yaml fuzz: %llu texts (%llu corrupted, %llu survived), %llu events, %llu chunked, %llu transcoded, %llu trees, %llu kept, %llu edited, %llu taken, %llu assembled, %llu grafts (%llu refused)\n",
 		static_cast <unsigned long long> (totals.texts), static_cast <unsigned long long> (totals.corrupted),
 		static_cast <unsigned long long> (totals.survived), static_cast <unsigned long long> (totals.events),
 		static_cast <unsigned long long> (totals.chunked), static_cast <unsigned long long> (totals.transcoded),
 		static_cast <unsigned long long> (totals.trees), static_cast <unsigned long long> (totals.kept),
 		static_cast <unsigned long long> (totals.edited), static_cast <unsigned long long> (totals.taken),
-		static_cast <unsigned long long> (totals.assembled));
+		static_cast <unsigned long long> (totals.assembled),
+		static_cast <unsigned long long> (totals.grafted),
+		static_cast <unsigned long long> (totals.grafts - totals.grafted));
 	// Выводим код успешного выхода из приложения
 	return EXIT_SUCCESS;
 }
