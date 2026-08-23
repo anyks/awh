@@ -14,6 +14,29 @@ import json, math, os, subprocess, sys
 # сличение записью выдавало бы расхождения там, где число одно и то же
 NUMERIC = ('float',)
 
+# Виды значений, сличаемые по составу отметки времени, а не по записи
+#
+# Набор сверки записывает долю секунды приведённою к трём знакам, тогда как описание TOML
+# число знаков сохраняет за человеком: «.6» и «.600» дают одно и то же время, а записаны
+# по-разному, и подменять написание кодек не вправе
+STAMPED = ('datetime', 'datetime-local', 'time-local')
+
+
+def stamp(text):
+	"""Приведение отметки времени к виду, от числа знаков доли не зависящему"""
+
+	head, dot, rest = text.partition('.')
+	if not dot:
+		return text
+	# Отделяем долю секунды от смещения часового пояса, за нею идущего
+	digits = ''
+	for letter in rest:
+		if not letter.isdigit():
+			break
+		digits += letter
+	# Долю дополняем нулями до девяти знаков: столько несёт наносекунда
+	return '%s.%s%s' % (head, digits.ljust(9, '0'), rest[len(digits):])
+
 
 def collate(ours, theirs, path = ''):
 	"""Сличение двух деревьев с выдачей перечня расхождений"""
@@ -42,6 +65,9 @@ def collate(ours, theirs, path = ''):
 			except ValueError:
 				if first != second:
 					diffs.append('%s: запись %r против %r' % (path, first, second))
+		elif theirs.get('type') in STAMPED:
+			if stamp(first) != stamp(second):
+				diffs.append('%s: отметка %r против %r' % (path, first, second))
 		elif first != second:
 			diffs.append('%s: содержимое %r против %r' % (path, first, second))
 		return diffs
@@ -78,6 +104,20 @@ def main():
 
 	root, dump = sys.argv[1], sys.argv[2]
 
+	# Перечень случаев описания версии 1.0.0, по которому кодек и ведёт разбор
+	#
+	# Набор несёт случаи двух описаний разом, и без отбора кодеку вменялось бы в отказ то,
+	# чего он не обещал: время без секунд, переводы строк во встроенной таблице, ограждение
+	# «\e» и «\x41» - всё это нововведения 1.1.0
+	listing = os.path.join(root, 'files-toml-1.0.0')
+	allowed = None
+	if os.path.exists(listing):
+		with open(listing, encoding = 'utf-8') as file:
+			allowed = set(line.strip() for line in file if line.strip())
+
+	# Количество случаев, отсеянных как случаи иного описания
+	skipped = 0
+
 	# Счётчики исходов сличения
 	matched = refused = accepted = diverged = broken = 0
 
@@ -90,12 +130,16 @@ def main():
 			if not name.endswith('.toml'):
 				continue
 			source = os.path.join(base, name)
+			label = os.path.relpath(source, root)
+			# Случаи иного описания отсеиваются перечнем
+			if (allowed is not None) and (label not in allowed):
+				skipped += 1
+				continue
 			target = source[:-5] + '.json'
 			# Описания без эталона сличать нечем
 			if not os.path.exists(target):
 				continue
 			run = subprocess.run([dump, source], capture_output = True, text = True)
-			label = os.path.relpath(source, root)
 			# Если разбор отверг годный текст
 			if run.returncode != 0:
 				broken += 1
@@ -122,6 +166,10 @@ def main():
 			if not name.endswith('.toml'):
 				continue
 			source = os.path.join(base, name)
+			# Случаи иного описания отсеиваются перечнем
+			if (allowed is not None) and (os.path.relpath(source, root) not in allowed):
+				skipped += 1
+				continue
 			run = subprocess.run([dump, source], capture_output = True, text = True)
 			# Если разбор верно отверг негодный текст
 			if run.returncode == 1:
@@ -137,6 +185,7 @@ def main():
 	print('  НЕГОДНЫЙ ТЕКСТ ПРИНЯТ:     %d' % accepted)
 	print('  ДЕРЕВО РАЗОШЛОСЬ:          %d' % diverged)
 	print('  ГОДНЫЙ ТЕКСТ ОТВЕРГНУТ:    %d' % broken)
+	print('  отсеяно как случаи 1.1.0:  %d' % skipped)
 
 	# Выполняем раскладку расхождений
 	if report:
