@@ -26,6 +26,64 @@
 #include <codec/ini/ini.hpp>
 
 /**
+ * @brief Пространство имён проверок этого файла
+ *
+ * @note Держится оно безымянным намеренно: проверки кодеков собираются одной
+ *       программою, и одноимённые построения разных файлов иначе сходятся в
+ *       одно, порождая порчу вдали от места её причины
+ *
+ */
+namespace {
+	/**
+	 * @brief Объект журнала проверок с отключённым выводом
+	 *
+	 * @details Вывод отключается назначением пустого перечня приёмников: отказы
+	 *          разбора проверки наводят намеренно, и журнал их засорял бы выдачу
+	 *
+	 */
+	struct Silent {
+		/**
+		 * @brief Функция получения объекта фреймворка проверок
+		 *
+		 * @details Объект заводится статикою местною, а не общею файла: заведение его
+		 *          порядком построения статики оканчивается падением ещё до входа в
+		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
+		 *
+		 * @return объект фреймворка проверок
+		 *
+		 */
+		static const awh::fmk_t & framework() noexcept {
+			// Объект фреймворка проверок
+			static awh::fmk_t fmk;
+			// Выводим объект фреймворка проверок
+			return fmk;
+		}
+		// Объект журнала проверок
+		awh::log_t log;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Silent() noexcept : log(&Silent::framework()) {
+			// Выполняем отключение вывода логов
+			this->log.mode({});
+		}
+	};
+	/**
+	 * @brief Функция получения объекта журнала проверок
+	 *
+	 * @return объект журнала проверок
+	 *
+	 */
+	const awh::log_t * logger() noexcept {
+		// Объект журнала проверок
+		static Silent silent;
+		// Выводим объект журнала проверок
+		return &silent.log;
+	}
+}
+
+/**
  * Используем стандартное пространство имён
  */
 using namespace std;
@@ -450,7 +508,7 @@ TEST(CodecIniValue, Outliving) {
 	 */
 	{
 		// Дерево настроек, живущее одной областью видимости
-		ini::document_t document;
+		ini::document_t document(::logger());
 		// Выполняем разбор текста настроек
 		ASSERT_TRUE(document.parse("[server]\nhost = localhost\nport = 8080\n"));
 		// Выполняем снятие значения с дерева настроек
@@ -539,7 +597,7 @@ TEST(CodecIniValue, Grafting) {
 	// Выполняем заведение свойства раздела
 	value.place("/server/host") = ini::value_t("localhost");
 	// Дерево настроек, куда переносится значение
-	ini::document_t document;
+	ini::document_t document(::logger());
 	// Выполняем разбор пустого текста настроек
 	ASSERT_TRUE(document.parse(""));
 	// Выполняем перенос владеющего значения в дерево настроек
@@ -575,7 +633,7 @@ TEST(CodecIniValue, GraftingList) {
 	// Выполняем добавление второго значения перечня раздела
 	value.place("/server/port/1") = ini::value_t("443");
 	// Дерево настроек, куда переносится значение
-	ini::document_t document;
+	ini::document_t document(::logger());
 	// Выполняем разбор пустого текста настроек
 	ASSERT_TRUE(document.parse(""));
 	// Выполняем перенос владеющего значения в дерево настроек
@@ -810,7 +868,7 @@ TEST(CodecIniValue, GraftRoundTrip) {
 	 */
 	value.place("/server.tls/cert") = ini::value_t("/etc/cert.pem");
 	// Дерево настроек, куда переносится значение
-	ini::document_t document;
+	ini::document_t document(::logger());
 	// Выполняем разбор пустого текста настроек
 	ASSERT_TRUE(document.parse(""));
 	// Выполняем перенос владеющего значения в дерево настроек
@@ -960,7 +1018,7 @@ TEST(CodecIniValue, GraftingReferenceGuard) {
 	// Назначаем подстановку обращений вида оболочки
 	settings.references = ini::reference_t::SHELL;
 	// Дерево настроек с обращением и с ограждённым знаком обращения
-	ini::document_t document(settings);
+	ini::document_t document(::logger(), settings);
 	// Выполняем разбор текста настроек
 	ASSERT_TRUE(document.parse("цель = добыто\nдословно = $${цель}\nссылка = ${цель}\n"));
 	// Выполняем проверку того, что ограждённый знак данными остался
@@ -970,7 +1028,7 @@ TEST(CodecIniValue, GraftingReferenceGuard) {
 	// Выполняем снятие владеющего значения с дерева настроек
 	const ini::value_t lifted(document);
 	// Дерево настроек, куда переносится значение
-	ini::document_t target(settings);
+	ini::document_t target(::logger(), settings);
 	// Выполняем разбор пустого текста настроек
 	ASSERT_TRUE(target.parse(""));
 	// Выполняем перенос владеющего значения в дерево настроек
@@ -1002,7 +1060,7 @@ TEST(CodecIniValue, LiftingEmptySection) {
 	// Назначаем отделение подраздела знаком-разделителем
 	settings.reader.subsections = ini::subsection_t::DELIMITED;
 	// Дерево настроек с пустым подразделом
-	ini::document_t document(settings);
+	ini::document_t document(::logger(), settings);
 	// Выполняем разбор текста настроек с пустым подразделом
 	ASSERT_TRUE(document.parse("[b.sub]\n"));
 	// Выполняем снятие владеющего значения с дерева настроек
@@ -1012,7 +1070,7 @@ TEST(CodecIniValue, LiftingEmptySection) {
 	// Выполняем проверку того, что подраздел снят вместилищем пар
 	ASSERT_TRUE(lifted["b"]["sub"].is(ini::type_t::TABLE));
 	// Дерево настроек, куда переносится значение
-	ini::document_t target(settings);
+	ini::document_t target(::logger(), settings);
 	// Выполняем разбор пустого текста настроек
 	ASSERT_TRUE(target.parse(""));
 	// Выполняем перенос владеющего значения в дерево настроек
@@ -1049,7 +1107,7 @@ TEST(CodecIniValue, LiftingWithReferences) {
 		// Выполняем добавление очередного свойства с обращением
 		text.append("поле" + to_string(i) + " = ${цель}-" + string(64, 'a') + "\n");
 	// Дерево настроек с обращениями
-	ini::document_t document(settings);
+	ini::document_t document(::logger(), settings);
 	// Выполняем разбор собранного текста настроек
 	ASSERT_TRUE(document.parse(text));
 	// Выполняем снятие владеющего значения с дерева настроек

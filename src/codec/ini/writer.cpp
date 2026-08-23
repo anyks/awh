@@ -371,6 +371,8 @@ bool awh::codec::ini::Writer::verify(const string_view name, const bool section)
 	if(name.empty()){
 		// Запоминаем код ошибки записи
 		this->_error = (section ? error_t::EMPTY_SECTION : error_t::EMPTY_KEY);
+		// Выполняем вывод сообщения об отказе в лог
+		this->report();
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -380,6 +382,8 @@ bool awh::codec::ini::Writer::verify(const string_view name, const bool section)
 	if((this->_settings.maxName > 0) && (name.length() > this->_settings.maxName)){
 		// Запоминаем код ошибки записи
 		this->_error = error_t::NAME_TOO_LONG;
+		// Выполняем вывод сообщения об отказе в лог
+		this->report();
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -392,6 +396,8 @@ bool awh::codec::ini::Writer::verify(const string_view name, const bool section)
 	if(ascii::isSpace(name.front()) || ascii::isSpace(name.back())){
 		// Запоминаем код ошибки записи
 		this->_error = (section ? error_t::INVALID_SECTION : error_t::INVALID_KEY);
+		// Выполняем вывод сообщения об отказе в лог
+		this->report();
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -404,6 +410,8 @@ bool awh::codec::ini::Writer::verify(const string_view name, const bool section)
 	if(this->_settings.continuations && ::continued(name)){
 		// Запоминаем код ошибки записи
 		this->_error = (section ? error_t::INVALID_SECTION : error_t::INVALID_KEY);
+		// Выполняем вывод сообщения об отказе в лог
+		this->report();
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -466,6 +474,8 @@ bool awh::codec::ini::Writer::verify(const string_view name, const bool section)
 		if(invalid){
 			// Запоминаем код ошибки записи
 			this->_error = (section ? error_t::INVALID_SECTION : error_t::INVALID_KEY);
+			// Выполняем вывод сообщения об отказе в лог
+			this->report();
 			// Выводим отрицательный результат выполнения операции
 			return false;
 		}
@@ -501,6 +511,8 @@ bool awh::codec::ini::Writer::escape(const string_view value) noexcept {
 	if(quoted && !this->_settings.quotes){
 		// Запоминаем код ошибки записи
 		this->_error = error_t::CONFLICTING_SETTINGS;
+		// Выполняем вывод сообщения об отказе в лог
+		this->report();
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -526,6 +538,8 @@ bool awh::codec::ini::Writer::escape(const string_view value) noexcept {
 	   (ascii::isSpace(value.front()) || ascii::isSpace(value.back()))){
 		// Запоминаем код ошибки записи
 		this->_error = error_t::INVALID_CHARACTER;
+		// Выполняем вывод сообщения об отказе в лог
+		this->report();
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -576,6 +590,8 @@ bool awh::codec::ini::Writer::escape(const string_view value) noexcept {
 				if((value[i] != '\t') && (value[i] != '\\') && (value[i] != '"') && !ascii::isSpace(value[i])){
 					// Запоминаем код ошибки записи
 					this->_error = error_t::INVALID_CHARACTER;
+					// Выполняем вывод сообщения об отказе в лог
+					this->report();
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -589,6 +605,8 @@ bool awh::codec::ini::Writer::escape(const string_view value) noexcept {
 				if(((value[i] == '\n') && !this->_settings.indents) || (value[i] == '\r')){
 					// Запоминаем код ошибки записи
 					this->_error = error_t::INVALID_CHARACTER;
+					// Выполняем вывод сообщения об отказе в лог
+					this->report();
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -598,6 +616,8 @@ bool awh::codec::ini::Writer::escape(const string_view value) noexcept {
 				if((value[i] == '"') && quoted){
 					// Запоминаем код ошибки записи
 					this->_error = error_t::INVALID_CHARACTER;
+					// Выполняем вывод сообщения об отказе в лог
+					this->report();
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -610,6 +630,8 @@ bool awh::codec::ini::Writer::escape(const string_view value) noexcept {
 	if(needed && !quoted && !this->_settings.escapes){
 		// Запоминаем код ошибки записи
 		this->_error = error_t::INVALID_CHARACTER;
+		// Выполняем вывод сообщения об отказе в лог
+		this->report();
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -623,6 +645,8 @@ bool awh::codec::ini::Writer::escape(const string_view value) noexcept {
 	if(this->_settings.continuations && !this->_settings.escapes && ::continued(value)){
 		// Запоминаем код ошибки записи
 		this->_error = error_t::INVALID_CHARACTER;
+		// Выполняем вывод сообщения об отказе в лог
+		this->report();
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -707,6 +731,8 @@ bool awh::codec::ini::Writer::escape(const string_view value) noexcept {
 			if(((i > 0) && ascii::isSpace(value[i - 1])) || ((i + 1) >= value.length()) || ascii::isSpace(value[i + 1])){
 				// Запоминаем код ошибки записи
 				this->_error = error_t::INVALID_CHARACTER;
+				// Выполняем вывод сообщения об отказе в лог
+				this->report();
 				// Выводим отрицательный результат выполнения операции
 				return false;
 			}
@@ -814,6 +840,8 @@ bool awh::codec::ini::Writer::section(const string_view section, const string_vi
 	if(!subsection.empty() && (this->_settings.subsections == subsection_t::NONE)){
 		// Запоминаем код ошибки записи
 		this->_error = error_t::INVALID_SUBSECTION;
+		// Выполняем вывод сообщения об отказе в лог
+		this->report();
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -856,6 +884,8 @@ bool awh::codec::ini::Writer::section(const string_view section, const string_vi
 					if((subsection[i] == ']') || (subsection[i] == '\n') || (subsection[i] == '\r')){
 						// Запоминаем код ошибки записи
 						this->_error = error_t::INVALID_SUBSECTION;
+						// Выполняем вывод сообщения об отказе в лог
+						this->report();
 						// Выполняем откат собранного текста к состоянию до вызова
 						this->_text.resize(position);
 						// Выводим отрицательный результат выполнения операции
@@ -883,6 +913,8 @@ bool awh::codec::ini::Writer::section(const string_view section, const string_vi
 					if((subsection[i] == '\n') || (subsection[i] == '\r')){
 						// Запоминаем код ошибки записи
 						this->_error = error_t::INVALID_SUBSECTION;
+						// Выполняем вывод сообщения об отказе в лог
+						this->report();
 						// Выполняем откат собранного текста к состоянию до вызова
 						this->_text.resize(position);
 						// Выводим отрицательный результат выполнения операции
@@ -960,6 +992,8 @@ bool awh::codec::ini::Writer::emit(const string_view key, const string_view valu
 	if(array && !this->_settings.arrays){
 		// Запоминаем код ошибки записи
 		this->_error = error_t::INVALID_KEY;
+		// Выполняем вывод сообщения об отказе в лог
+		this->report();
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -973,6 +1007,8 @@ bool awh::codec::ini::Writer::emit(const string_view key, const string_view valu
 	if(!this->_settings.global && !this->_sectioned){
 		// Запоминаем код ошибки записи
 		this->_error = error_t::KEY_OUTSIDE_SECTION;
+		// Выполняем вывод сообщения об отказе в лог
+		this->report();
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -1069,6 +1105,8 @@ bool awh::codec::ini::Writer::property(const string_view key) noexcept {
 	if(!this->_settings.valueless){
 		// Запоминаем код ошибки записи
 		this->_error = error_t::MISSING_SEPARATOR;
+		// Выполняем вывод сообщения об отказе в лог
+		this->report();
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -1082,6 +1120,8 @@ bool awh::codec::ini::Writer::property(const string_view key) noexcept {
 	if(!this->_settings.global && !this->_sectioned){
 		// Запоминаем код ошибки записи
 		this->_error = error_t::KEY_OUTSIDE_SECTION;
+		// Выполняем вывод сообщения об отказе в лог
+		this->report();
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -1234,6 +1274,8 @@ bool awh::codec::ini::Writer::trailing(const string_view text) noexcept {
 		if((text[i] == '\n') || (text[i] == '\r')){
 			// Запоминаем код ошибки записи
 			this->_error = error_t::INVALID_CHARACTER;
+			// Выполняем вывод сообщения об отказе в лог
+			this->report();
 			// Выводим отрицательный результат выполнения операции
 			return false;
 		}
@@ -1246,6 +1288,8 @@ bool awh::codec::ini::Writer::trailing(const string_view text) noexcept {
 	if(this->_text.length() < newline.length()){
 		// Запоминаем код ошибки записи
 		this->_error = error_t::INTERNAL;
+		// Выполняем вывод сообщения об отказе в лог
+		this->report();
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -1255,6 +1299,8 @@ bool awh::codec::ini::Writer::trailing(const string_view text) noexcept {
 	if(this->_text.compare(this->_text.length() - newline.length(), newline.length(), newline) != 0){
 		// Запоминаем код ошибки записи
 		this->_error = error_t::INTERNAL;
+		// Выполняем вывод сообщения об отказе в лог
+		this->report();
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -1358,17 +1404,34 @@ void awh::codec::ini::Writer::clear() noexcept {
 	this->_text.clear();
 }
 /**
- * @brief Конструктор
+ * @brief Метод вывода сообщения об отказе в лог
  *
  */
-awh::codec::ini::Writer::Writer() noexcept : _error(error_t::NONE), _sectioned(false), _valued(false), _guarded(false) {}
+void awh::codec::ini::Writer::report() const noexcept {
+	/**
+	 * Если объект для работы с логами установлен
+	 */
+	if(this->_log != nullptr)
+		// Выполняем вывод сообщения об отказе
+		this->_log->print("INI writing failed: %s", log_t::flag_t::CRITICAL, awh::codec::ini::message(this->_error));
+}
 /**
  * @brief Конструктор
  *
+ * @param log объект для работы с логами
+ *
+ */
+awh::codec::ini::Writer::Writer(const log_t * log) noexcept :
+ _log(log), _error(error_t::NONE), _sectioned(false), _valued(false), _guarded(false) {}
+/**
+ * @brief Конструктор
+ *
+ * @param log      объект для работы с логами
  * @param settings настройки записи текста настроек
  *
  */
-awh::codec::ini::Writer::Writer(const settings_t & settings) noexcept :
+awh::codec::ini::Writer::Writer(const log_t * log, const settings_t & settings) noexcept :
+ _log(log),
  _error(error_t::NONE), _sectioned(false), _valued(false), _guarded(false), _settings(settings) {}
 /**
  * @brief Деструктор
@@ -1456,6 +1519,8 @@ bool awh::codec::ini::Writer::number(const string_view key, const T value) noexc
 	if((length <= 0) || (static_cast <size_t> (length) >= sizeof(buffer))){
 		// Запоминаем код ошибки записи
 		this->_error = error_t::INTERNAL;
+		// Выполняем вывод сообщения об отказе в лог
+		this->report();
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}

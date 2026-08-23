@@ -607,6 +607,16 @@ bool awh::codec::ini::Reader::fail(const error_t error, const size_t offset, con
 	this->_errorLocation.column = column;
 	// Выполняем сброс вида текущего события разбора
 	this->_event = event_t::NONE;
+	/**
+	 * Если объект для работы с логами установлен
+	 *
+	 * @note Код отказа остаётся доступен через error(), а место его - через
+	 *       errorLocation(): журнал есть оповещение, а не единственный способ узнать
+	 *       о случившемся
+	 */
+	if(this->_log != nullptr)
+		// Выполняем вывод сообщения об отказе разбора текста настроек
+		this->_log->print("INI parsing failed: %s at line %u column %u", log_t::flag_t::CRITICAL, awh::codec::ini::message(error), line, column);
 	// Выводим признак отказа для передачи вызывающему
 	return false;
 }
@@ -2354,17 +2364,22 @@ awh::codec::ini::encoding_t awh::codec::ini::Reader::encoding() const noexcept {
 /**
  * @brief Конструктор
  *
+ * @param log объект для работы с логами
+ *
  */
-awh::codec::ini::Reader::Reader() noexcept :
+awh::codec::ini::Reader::Reader(const log_t * log) noexcept :
+ _log(log), _decoder(log),
  _final(false), _sectioned(false), _state(state_t::HUNGRY), _event(event_t::NONE),
  _error(error_t::NONE), _decoding(error_t::NONE), _offset(0), _start(0), _base(0), _line(1), _pending(false) {}
 /**
  * @brief Конструктор
  *
+ * @param log      объект для работы с логами
  * @param settings настройки разбора текста настроек
  *
  */
-awh::codec::ini::Reader::Reader(const settings_t & settings) noexcept :
+awh::codec::ini::Reader::Reader(const log_t * log, const settings_t & settings) noexcept :
+ _log(log), _decoder(log),
  _final(false), _sectioned(false), _state(state_t::HUNGRY), _event(event_t::NONE),
  _error(error_t::NONE), _decoding(error_t::NONE), _offset(0), _start(0), _base(0), _line(1), _pending(false), _settings(settings) {
 	// Выполняем установку кодировки исходного текста

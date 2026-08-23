@@ -78,6 +78,8 @@ awh::codec::ini::span_t awh::codec::ini::Document::add(const string_view text) n
 	if((this->_store.length() + text.length()) > static_cast <size_t> (NO_RECORD)){
 		// Запоминаем код ошибки правки
 		this->_error = error_t::OVERFLOW_LIMIT;
+		// Выполняем вывод сообщения об отказе в лог
+		this->report();
 		// Выводим пустой отрезок хранилища знаков
 		return span_t();
 	}
@@ -152,6 +154,8 @@ bool awh::codec::ini::Document::acceptable(const string_view name, const bool se
 	if(name.empty()){
 		// Запоминаем код ошибки правки
 		this->_error = (section ? error_t::EMPTY_SECTION : error_t::EMPTY_KEY);
+		// Выполняем вывод сообщения об отказе в лог
+		this->report();
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -161,6 +165,8 @@ bool awh::codec::ini::Document::acceptable(const string_view name, const bool se
 	if(name.length() > this->_settings.reader.maxName){
 		// Запоминаем код ошибки правки
 		this->_error = error_t::NAME_TOO_LONG;
+		// Выполняем вывод сообщения об отказе в лог
+		this->report();
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -173,6 +179,8 @@ bool awh::codec::ini::Document::acceptable(const string_view name, const bool se
 	if(ascii::isSpace(name.front()) || ascii::isSpace(name.back())){
 		// Запоминаем код ошибки правки
 		this->_error = (section ? error_t::INVALID_SECTION : error_t::INVALID_KEY);
+		// Выполняем вывод сообщения об отказе в лог
+		this->report();
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -241,6 +249,8 @@ bool awh::codec::ini::Document::acceptable(const string_view name, const bool se
 		if(invalid){
 			// Запоминаем код ошибки правки
 			this->_error = (section ? error_t::INVALID_SECTION : error_t::INVALID_KEY);
+			// Выполняем вывод сообщения об отказе в лог
+			this->report();
 			// Выводим отрицательный результат выполнения операции
 			return false;
 		}
@@ -576,6 +586,8 @@ bool awh::codec::ini::Document::expand(const string_view value, const uint32_t s
 	if(static_cast <uint64_t> (stack.size()) > static_cast <uint64_t> (this->_settings.maxDepth)){
 		// Запоминаем код ошибки разбора
 		this->_error = error_t::REFERENCE_DEPTH;
+		// Выполняем вывод сообщения об отказе в лог
+		this->report();
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -597,6 +609,8 @@ bool awh::codec::ini::Document::expand(const string_view value, const uint32_t s
 			if((budget--) == 0){
 				// Запоминаем код ошибки разбора
 				this->_error = error_t::EXPANSION_EXCEEDED;
+				// Выполняем вывод сообщения об отказе в лог
+				this->report();
 				// Выводим отрицательный результат выполнения операции
 				return false;
 			}
@@ -618,6 +632,8 @@ bool awh::codec::ini::Document::expand(const string_view value, const uint32_t s
 			if((budget--) == 0){
 				// Запоминаем код ошибки разбора
 				this->_error = error_t::EXPANSION_EXCEEDED;
+				// Выполняем вывод сообщения об отказе в лог
+				this->report();
 				// Выводим отрицательный результат выполнения операции
 				return false;
 			}
@@ -642,6 +658,8 @@ bool awh::codec::ini::Document::expand(const string_view value, const uint32_t s
 			if((budget--) == 0){
 				// Запоминаем код ошибки разбора
 				this->_error = error_t::EXPANSION_EXCEEDED;
+				// Выполняем вывод сообщения об отказе в лог
+				this->report();
 				// Выводим отрицательный результат выполнения операции
 				return false;
 			}
@@ -658,6 +676,8 @@ bool awh::codec::ini::Document::expand(const string_view value, const uint32_t s
 		if(position == string_view::npos){
 			// Запоминаем код ошибки разбора
 			this->_error = error_t::UNKNOWN_REFERENCE;
+			// Выполняем вывод сообщения об отказе в лог
+			this->report();
 			// Выводим отрицательный результат выполнения операции
 			return false;
 		}
@@ -669,6 +689,8 @@ bool awh::codec::ini::Document::expand(const string_view value, const uint32_t s
 		if((closing == 2) && (((position + 1) >= value.length()) || (value[position + 1] != 's'))){
 			// Запоминаем код ошибки разбора
 			this->_error = error_t::UNKNOWN_REFERENCE;
+			// Выполняем вывод сообщения об отказе в лог
+			this->report();
 			// Выводим отрицательный результат выполнения операции
 			return false;
 		}
@@ -720,6 +742,8 @@ bool awh::codec::ini::Document::expand(const string_view value, const uint32_t s
 				if(!found){
 					// Запоминаем код ошибки разбора
 					this->_error = error_t::UNKNOWN_REFERENCE;
+					// Выполняем вывод сообщения об отказе в лог
+					this->report();
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -735,6 +759,8 @@ bool awh::codec::ini::Document::expand(const string_view value, const uint32_t s
 		if((j == this->_properties.end()) || j->second.empty()){
 			// Запоминаем код ошибки разбора
 			this->_error = error_t::UNKNOWN_REFERENCE;
+			// Выполняем вывод сообщения об отказе в лог
+			this->report();
 			// Выводим отрицательный результат выполнения операции
 			return false;
 		}
@@ -750,6 +776,8 @@ bool awh::codec::ini::Document::expand(const string_view value, const uint32_t s
 			if(item.compare(label) == 0){
 				// Запоминаем код ошибки разбора
 				this->_error = error_t::RECURSIVE_REFERENCE;
+				// Выполняем вывод сообщения об отказе в лог
+				this->report();
 				// Выводим отрицательный результат выполнения операции
 				return false;
 			}
@@ -986,7 +1014,7 @@ bool awh::codec::ini::Document::parse(const string_view text) noexcept {
 	// Устанавливаем выдачу пустых строк отдельным событием
 	settings.emitBlanks = true;
 	// Объект потокового чтения текста настроек
-	reader_t reader(settings);
+	reader_t reader(this->_log, settings);
 	// Выполняем заведение раздела без имени
 	this->_sections.emplace_back();
 	// Порядковый номер раздела, которому принадлежат разбираемые записи
@@ -1129,6 +1157,8 @@ bool awh::codec::ini::Document::parse(const string_view text) noexcept {
 		this->_error = error;
 		// Запоминаем положение обнаруженной ошибки
 		this->_errorLocation = location;
+		// Выполняем вывод сообщения об отказе в лог
+		this->report();
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -1144,6 +1174,8 @@ bool awh::codec::ini::Document::parse(const string_view text) noexcept {
 		this->clear();
 		// Запоминаем код ошибки подстановки обращений
 		this->_error = error;
+		// Выполняем вывод сообщения об отказе в лог
+		this->report();
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -1401,6 +1433,8 @@ bool awh::codec::ini::Document::create(const string_view section, const string_v
 		if(this->_settings.reader.subsections == subsection_t::NONE){
 			// Запоминаем код ошибки правки
 			this->_error = error_t::INVALID_SUBSECTION;
+			// Выполняем вывод сообщения об отказе в лог
+			this->report();
 			// Выводим отрицательный результат выполнения операции
 			return false;
 		}
@@ -1438,6 +1472,8 @@ bool awh::codec::ini::Document::create(const string_view section, const string_v
 			if(depth >= this->_settings.reader.maxDepth){
 				// Запоминаем код ошибки правки
 				this->_error = error_t::DEPTH_EXCEEDED;
+				// Выполняем вывод сообщения об отказе в лог
+				this->report();
 				// Выводим отрицательный результат выполнения операции
 				return false;
 			}
@@ -2140,6 +2176,8 @@ string awh::codec::ini::Document::text(const writer_t::settings_t & settings) co
 	if(this->_dangling){
 		// Запоминаем код ошибки записи
 		this->_error = error_t::UNKNOWN_REFERENCE;
+		// Выполняем вывод сообщения об отказе в лог
+		this->report();
 		// Выводим пустой текст настроек
 		return string();
 	}
@@ -2154,7 +2192,7 @@ string awh::codec::ini::Document::text(const writer_t::settings_t & settings) co
 	 */
 	options.separated = false;
 	// Объект записи текста настроек
-	writer_t writer(options);
+	writer_t writer(this->_log, options);
 	// Признак успешной записи очередной записи дерева
 	bool result = true;
 	/**
@@ -2258,17 +2296,34 @@ string awh::codec::ini::Document::text(const writer_t::settings_t & settings) co
 	return writer.text();
 }
 /**
- * @brief Конструктор
+ * @brief Метод вывода сообщения об отказе в лог
  *
  */
-awh::codec::ini::Document::Document() noexcept : _error(error_t::NONE), _referenced(false), _stale(false), _dangling(false) {}
+void awh::codec::ini::Document::report() const noexcept {
+	/**
+	 * Если объект для работы с логами установлен
+	 */
+	if(this->_log != nullptr)
+		// Выполняем вывод сообщения об отказе
+		this->_log->print("INI document failed: %s at line %u column %u", log_t::flag_t::CRITICAL, awh::codec::ini::message(this->_error), this->_errorLocation.line, this->_errorLocation.column);
+}
 /**
  * @brief Конструктор
  *
+ * @param log объект для работы с логами
+ *
+ */
+awh::codec::ini::Document::Document(const log_t * log) noexcept :
+ _log(log), _error(error_t::NONE), _referenced(false), _stale(false), _dangling(false) {}
+/**
+ * @brief Конструктор
+ *
+ * @param log      объект для работы с логами
  * @param settings настройки дерева настроек
  *
  */
-awh::codec::ini::Document::Document(const settings_t & settings) noexcept : _error(error_t::NONE), _referenced(false), _stale(false), _dangling(false), _settings(settings) {}
+awh::codec::ini::Document::Document(const log_t * log, const settings_t & settings) noexcept :
+ _log(log), _error(error_t::NONE), _referenced(false), _stale(false), _dangling(false), _settings(settings) {}
 /**
  * @brief Деструктор
  *

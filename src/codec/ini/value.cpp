@@ -1063,6 +1063,8 @@ awh::codec::ini::Value & awh::codec::ini::Value::operator = (const Value & value
 	if(this == &value)
 		// Выводим ссылку на текущее значение
 		return (* this);
+	// Выполняем копирование объекта для работы с логами
+	this->_log = value._log;
 	// Выполняем копирование типа хранимого значения
 	this->_type = value._type;
 	// Выполняем копирование признака значения, записанного в кавычках
@@ -1092,6 +1094,8 @@ awh::codec::ini::Value & awh::codec::ini::Value::operator = (Value && value) noe
 	if(this == &value)
 		// Выводим ссылку на текущее значение
 		return (* this);
+	// Выполняем перенос объекта для работы с логами
+	this->_log = value._log;
 	// Выполняем перенос типа хранимого значения
 	this->_type = value._type;
 	// Выполняем перенос признака значения, записанного в кавычках
@@ -1115,17 +1119,27 @@ awh::codec::ini::Value & awh::codec::ini::Value::operator = (Value && value) noe
 	return (* this);
 }
 /**
+ * @brief Метод назначения объекта для работы с логами
+ *
+ * @param log объект для работы с логами
+ *
+ */
+void awh::codec::ini::Value::logger(const log_t * log) noexcept {
+	// Выполняем установку объекта для работы с логами
+	this->_log = log;
+}
+/**
  * @brief Конструктор
  *
  */
-awh::codec::ini::Value::Value() noexcept : _type(type_t::NONE), _quoted(false) {}
+awh::codec::ini::Value::Value() noexcept : _log(nullptr), _type(type_t::NONE), _quoted(false) {}
 /**
  * @brief Конструктор вместилища затребованного типа
  *
  * @param type тип заводимого значения
  *
  */
-awh::codec::ini::Value::Value(const type_t type) noexcept : _type(type), _quoted(false) {}
+awh::codec::ini::Value::Value(const type_t type) noexcept : _log(nullptr), _type(type), _quoted(false) {}
 /**
  * @brief Конструктор простого значения
  *
@@ -1134,7 +1148,7 @@ awh::codec::ini::Value::Value(const type_t type) noexcept : _type(type), _quoted
  *
  */
 awh::codec::ini::Value::Value(const string & value, const bool quoted) noexcept :
- _type(type_t::STRING), _quoted(quoted), _text(value) {}
+ _log(nullptr), _type(type_t::STRING), _quoted(quoted), _text(value) {}
 /**
  * @brief Конструктор простого значения из строки языка
  *
@@ -1143,7 +1157,7 @@ awh::codec::ini::Value::Value(const string & value, const bool quoted) noexcept 
  *
  */
 awh::codec::ini::Value::Value(const char * value, const bool quoted) noexcept :
- _type(type_t::STRING), _quoted(quoted), _text((value != nullptr) ? value : "") {}
+ _log(nullptr), _type(type_t::STRING), _quoted(quoted), _text((value != nullptr) ? value : "") {}
 /**
  * @brief Конструктор копирования
  *
@@ -1151,7 +1165,7 @@ awh::codec::ini::Value::Value(const char * value, const bool quoted) noexcept :
  *
  */
 awh::codec::ini::Value::Value(const Value & value) noexcept :
- _type(value._type), _quoted(value._quoted), _text(value._text),
+ _log(value._log), _type(value._type), _quoted(value._quoted), _text(value._text),
  _names(value._names), _items(value._items) {}
 /**
  * @brief Конструктор переноса
@@ -1160,7 +1174,7 @@ awh::codec::ini::Value::Value(const Value & value) noexcept :
  *
  */
 awh::codec::ini::Value::Value(Value && value) noexcept :
- _type(value._type), _quoted(value._quoted), _text(::std::move(value._text)),
+ _log(value._log), _type(value._type), _quoted(value._quoted), _text(::std::move(value._text)),
  _names(::std::move(value._names)), _items(::std::move(value._items)),
  _index(::std::move(value._index)) {
 	// Выполняем сброс перенесённого значения
@@ -1308,7 +1322,7 @@ void awh::codec::ini::Value::absorb(const Document & document) noexcept {
  * @param document дерево настроек, откуда снимается значение
  *
  */
-awh::codec::ini::Value::Value(const Document & document) noexcept : _type(type_t::NONE), _quoted(false) {
+awh::codec::ini::Value::Value(const Document & document) noexcept : _log(nullptr), _type(type_t::NONE), _quoted(false) {
 	// Выполняем снятие значения с дерева настроек
 	this->absorb(document);
 }
@@ -1321,7 +1335,7 @@ awh::codec::ini::Value::Value(const Document & document) noexcept : _type(type_t
  */
 bool awh::codec::ini::Value::parse(const string & text) noexcept {
 	// Дерево настроек, разбором собираемое
-	Document document;
+	Document document(this->_log);
 	/**
 	 * Если разбор текста настроек завершился отказом
 	 */
@@ -1343,7 +1357,7 @@ bool awh::codec::ini::Value::parse(const string & text) noexcept {
  */
 bool awh::codec::ini::Value::parse(const string & text, const Document::settings_t & settings) noexcept {
 	// Дерево настроек, разбором собираемое
-	Document document;
+	Document document(this->_log);
 	/**
 	 * Если разбор текста настроек завершился отказом
 	 */
@@ -1416,7 +1430,7 @@ string awh::codec::ini::Value::dump(const writer_t::settings_t & settings) const
 		// Выводим пустой текст настроек
 		return string();
 	// Объект записи текста настроек
-	writer_t writer(settings);
+	writer_t writer(this->_log, settings);
 	/**
 	 * @brief Функция записи свойств вместилища
 	 *

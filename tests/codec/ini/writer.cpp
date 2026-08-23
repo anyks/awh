@@ -37,6 +37,64 @@
 #include "../../main.hpp"
 
 /**
+ * @brief Пространство имён проверок этого файла
+ *
+ * @note Держится оно безымянным намеренно: проверки кодеков собираются одной
+ *       программою, и одноимённые построения разных файлов иначе сходятся в
+ *       одно, порождая порчу вдали от места её причины
+ *
+ */
+namespace {
+	/**
+	 * @brief Объект журнала проверок с отключённым выводом
+	 *
+	 * @details Вывод отключается назначением пустого перечня приёмников: отказы
+	 *          разбора проверки наводят намеренно, и журнал их засорял бы выдачу
+	 *
+	 */
+	struct Silent {
+		/**
+		 * @brief Функция получения объекта фреймворка проверок
+		 *
+		 * @details Объект заводится статикою местною, а не общею файла: заведение его
+		 *          порядком построения статики оканчивается падением ещё до входа в
+		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
+		 *
+		 * @return объект фреймворка проверок
+		 *
+		 */
+		static const awh::fmk_t & framework() noexcept {
+			// Объект фреймворка проверок
+			static awh::fmk_t fmk;
+			// Выводим объект фреймворка проверок
+			return fmk;
+		}
+		// Объект журнала проверок
+		awh::log_t log;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Silent() noexcept : log(&Silent::framework()) {
+			// Выполняем отключение вывода логов
+			this->log.mode({});
+		}
+	};
+	/**
+	 * @brief Функция получения объекта журнала проверок
+	 *
+	 * @return объект журнала проверок
+	 *
+	 */
+	const awh::log_t * logger() noexcept {
+		// Объект журнала проверок
+		static Silent silent;
+		// Выводим объект журнала проверок
+		return &silent.log;
+	}
+}
+
+/**
  * Используем стандартное пространство имён
  */
 using namespace std;
@@ -48,7 +106,7 @@ using namespace awh::codec;
  */
 TEST(CodecIniWriter, Default) {
 	// Объект записи текста настроек
-	ini::writer_t writer;
+	ini::writer_t writer(::logger());
 	// Выполняем запись примечания
 	ASSERT_TRUE(writer.comment("собрано автоматически"));
 	// Выполняем запись объявления раздела
@@ -66,7 +124,7 @@ TEST(CodecIniWriter, Default) {
  */
 TEST(CodecIniWriter, Windows) {
 	// Объект записи текста настроек
-	ini::writer_t writer(ini::writer_t::settings_t::windows());
+	ini::writer_t writer(::logger(), ini::writer_t::settings_t::windows());
 	// Выполняем запись объявления раздела
 	ASSERT_TRUE(writer.section("paths"));
 	/**
@@ -85,7 +143,7 @@ TEST(CodecIniWriter, Windows) {
  */
 TEST(CodecIniWriter, Git) {
 	// Объект записи текста настроек
-	ini::writer_t writer(ini::writer_t::settings_t::git());
+	ini::writer_t writer(::logger(), ini::writer_t::settings_t::git());
 	// Выполняем запись объявления раздела с подразделом
 	ASSERT_TRUE(writer.section("remote", "origin"));
 	// Выполняем запись свойства с обозначением источника
@@ -109,7 +167,7 @@ TEST(CodecIniWriter, Git) {
  */
 TEST(CodecIniWriter, Quoting) {
 	// Объект записи текста настроек
-	ini::writer_t writer;
+	ini::writer_t writer(::logger());
 	// Выполняем запись объявления раздела
 	ASSERT_TRUE(writer.section("a"));
 	// Выполняем запись свойства с пробельной обвязкой значения
@@ -129,7 +187,7 @@ TEST(CodecIniWriter, Escapes) {
 	// Устанавливаем запись управляющих последовательностей в значении
 	settings.escapes = true;
 	// Объект записи текста настроек
-	ini::writer_t writer(settings);
+	ini::writer_t writer(::logger(), settings);
 	// Выполняем запись объявления раздела
 	ASSERT_TRUE(writer.section("a"));
 	// Выполняем запись свойства со знаком конца строки в значении
@@ -144,28 +202,28 @@ TEST(CodecIniWriter, Escapes) {
 TEST(CodecIniWriter, Malformed) {
 	{
 		// Объект записи текста настроек
-		ini::writer_t writer;
+		ini::writer_t writer(::logger());
 		// Выполняем проверку отклонения пустого имени раздела
 		ASSERT_FALSE(writer.section(""));
 		// Выполняем проверку кода ошибки записи
 		ASSERT_EQ(writer.error(), ini::error_t::EMPTY_SECTION);
 	}{
 		// Объект записи текста настроек
-		ini::writer_t writer;
+		ini::writer_t writer(::logger());
 		// Выполняем проверку отклонения квадратной скобки в имени раздела
 		ASSERT_FALSE(writer.section("a]b"));
 		// Выполняем проверку кода ошибки записи
 		ASSERT_EQ(writer.error(), ini::error_t::INVALID_SECTION);
 	}{
 		// Объект записи текста настроек
-		ini::writer_t writer;
+		ini::writer_t writer(::logger());
 		// Выполняем проверку отклонения разделителя в имени свойства
 		ASSERT_FALSE(writer.property("a=b", "value"));
 		// Выполняем проверку кода ошибки записи
 		ASSERT_EQ(writer.error(), ini::error_t::INVALID_KEY);
 	}{
 		// Объект записи текста настроек
-		ini::writer_t writer;
+		ini::writer_t writer(::logger());
 		/**
 		 * Выполняем проверку отклонения знака конца строки в значении
 		 *
@@ -178,7 +236,7 @@ TEST(CodecIniWriter, Malformed) {
 		ASSERT_EQ(writer.error(), ini::error_t::INVALID_CHARACTER);
 	}{
 		// Объект записи текста настроек
-		ini::writer_t writer;
+		ini::writer_t writer(::logger());
 		// Выполняем проверку отклонения имени подраздела без заданного его построения
 		ASSERT_FALSE(writer.section("a", "b"));
 		// Выполняем проверку кода ошибки записи
@@ -200,7 +258,7 @@ TEST(CodecIniWriter, Roundtrip) {
 	// Собираемые настройки записи текста настроек
 	ini::writer_t::settings_t settings = ini::writer_t::settings_t::git();
 	// Объект записи текста настроек
-	ini::writer_t writer(settings);
+	ini::writer_t writer(::logger(), settings);
 	// Выполняем запись объявления раздела с подразделом
 	ASSERT_TRUE(writer.section("раздел", "под\"раздел"));
 	/**
@@ -212,7 +270,7 @@ TEST(CodecIniWriter, Roundtrip) {
 	// Собираемые настройки разбора текста настроек
 	ini::reader_t::settings_t parsing = ini::reader_t::settings_t::git();
 	// Объект потокового чтения текста настроек
-	ini::reader_t reader(parsing);
+	ini::reader_t reader(::logger(), parsing);
 	// Выполняем передачу собранного текста настроек
 	ASSERT_TRUE(reader.feed(writer.text()));
 	// Выполняем переход к объявлению раздела
@@ -241,7 +299,7 @@ TEST(CodecIniWriter, Roundtrip) {
  */
 TEST(CodecIniWriter, Clear) {
 	// Объект записи текста настроек
-	ini::writer_t writer;
+	ini::writer_t writer(::logger());
 	// Выполняем проверку отклонения пустого имени раздела
 	ASSERT_FALSE(writer.section(""));
 	// Выполняем сброс записи в исходное состояние
@@ -263,7 +321,7 @@ TEST(CodecIniWriter, DelimitedSection) {
 	// Устанавливаем построение имени подраздела разделителем
 	settings.subsections = ini::subsection_t::DELIMITED;
 	// Объект записи текста настроек
-	ini::writer_t writer(settings);
+	ini::writer_t writer(::logger(), settings);
 	/**
 	 * Выполняем проверку отклонения знака-разделителя в имени раздела
 	 *
@@ -294,14 +352,14 @@ TEST(CodecIniWriter, Rollback) {
 		// Устанавливаем построение имени подраздела разделителем
 		settings.subsections = ini::subsection_t::DELIMITED;
 		// Объект записи текста настроек
-		ini::writer_t writer(settings);
+		ini::writer_t writer(::logger(), settings);
 		// Выполняем проверку отклонения недопустимого имени подраздела
 		ASSERT_FALSE(writer.section("a", "b]c"));
 		// Выполняем проверку отсутствия хвоста в собранном тексте
 		ASSERT_TRUE(writer.text().empty());
 	}{
 		// Объект записи текста настроек
-		ini::writer_t writer;
+		ini::writer_t writer(::logger());
 		// Выполняем запись объявления раздела
 		ASSERT_TRUE(writer.section("a"));
 		// Выполняем проверку отклонения значения со знаком конца строки
@@ -314,7 +372,7 @@ TEST(CodecIniWriter, Rollback) {
 		// Устанавливаем построение имени подраздела разделителем
 		settings.subsections = ini::subsection_t::DELIMITED;
 		// Объект записи текста настроек
-		ini::writer_t writer(settings);
+		ini::writer_t writer(::logger(), settings);
 		// Выполняем запись объявления раздела
 		ASSERT_TRUE(writer.section("a"));
 		// Выполняем запись свойства со значением
@@ -350,7 +408,7 @@ TEST(CodecIniWriter, TrailingNewline) {
 	 */
 	writing.inlineComments = true;
 	// Объект записи текста настроек
-	ini::writer_t writer(writing);
+	ini::writer_t writer(::logger(), writing);
 	// Выполняем запись свойства со значением
 	ASSERT_TRUE(writer.property("k", "v"));
 	// Выполняем проверку отклонения примечания со знаком конца строки
@@ -369,7 +427,7 @@ TEST(CodecIniWriter, TrailingNewline) {
  */
 TEST(CodecIniWriter, ShortestNumbers) {
 	// Объект записи текста настроек
-	ini::writer_t writer;
+	ini::writer_t writer(::logger());
 	// Выполняем запись числа с плавающей точкой двойной точности
 	ASSERT_TRUE(writer.number("a", 0.1));
 	// Выполняем запись числа с плавающей точкой одинарной точности
@@ -379,7 +437,7 @@ TEST(CodecIniWriter, ShortestNumbers) {
 	// Выполняем проверку собранного текста настроек
 	ASSERT_EQ(writer.text(), "a = 0.1\nb = 0.1\nc = 2\n");
 	// Дерево настроек обратного чтения
-	ini::document_t document;
+	ini::document_t document(::logger());
 	// Выполняем разбор записанного текста настроек
 	ASSERT_TRUE(document.parse(writer.text()));
 	// Прочитанное обратно значение
@@ -399,14 +457,14 @@ TEST(CodecIniWriter, IndentedValue) {
 	// Устанавливаем запись многострочного значения продолжением отступом
 	settings.indents = true;
 	// Объект записи текста настроек
-	ini::writer_t writer(settings);
+	ini::writer_t writer(::logger(), settings);
 	// Выполняем запись свойства с многострочным значением
 	ASSERT_TRUE(writer.property("k", "one\ntwo"));
 	// Выполняем проверку собранного текста настроек
 	ASSERT_EQ(writer.text(), "k = one\n\ttwo\n");
 	{
 		// Объект записи текста настроек
-		ini::writer_t writer;
+		ini::writer_t writer(::logger());
 		/**
 		 * Выполняем проверку отклонения многострочного значения без продолжений
 		 *
@@ -422,7 +480,7 @@ TEST(CodecIniWriter, IndentedValue) {
  */
 TEST(CodecIniWriter, TrailingBackslash) {
 	// Объект записи текста настроек наречия Git
-	ini::writer_t writer(ini::writer_t::settings_t::git());
+	ini::writer_t writer(::logger(), ini::writer_t::settings_t::git());
 	// Выполняем проверку отказа записи имени раздела с обратной косой чертой в конце
 	ASSERT_FALSE(writer.section("a\\"));
 	// Выполняем проверку кода ошибки записи имени раздела
@@ -446,7 +504,7 @@ TEST(CodecIniWriter, TrailingBackslash) {
 	// Устанавливаем склеивание строк, продолженных обратной косой чертой, читающим
 	settings.continuations = true;
 	// Объект записи текста настроек без управляющих последовательностей
-	ini::writer_t plain(settings);
+	ini::writer_t plain(::logger(), settings);
 	// Выполняем запись объявления раздела
 	ASSERT_TRUE(plain.section("a"));
 	// Выполняем проверку отказа записи значения с обратной косой чертой в конце
@@ -483,7 +541,7 @@ TEST(CodecIniWriter, LocaleNumbers) {
 			// Выполняем переход к следующей локали
 			continue;
 		// Объект записи текста настроек
-		ini::writer_t writer;
+		ini::writer_t writer(::logger());
 		// Выполняем запись объявления раздела
 		ASSERT_TRUE(writer.section("s")) << name;
 		// Выполняем запись числа с плавающей точкой
@@ -509,7 +567,7 @@ TEST(CodecIniWriter, LocaleNumbers) {
  */
 TEST(CodecIniWriter, Numbers) {
 	// Объект записи текста настроек
-	ini::writer_t writer;
+	ini::writer_t writer(::logger());
 	// Выполняем запись объявления раздела
 	ASSERT_TRUE(writer.section("s"));
 	// Выполняем запись логического значения
@@ -548,13 +606,13 @@ TEST(CodecIniWriter, Numbers) {
  */
 TEST(CodecIniWriter, Presets) {
 	// Объект записи текста настроек наречия языка Python
-	ini::writer_t python(ini::writer_t::settings_t::python());
+	ini::writer_t python(::logger(), ini::writer_t::settings_t::python());
 	// Выполняем запись объявления раздела
 	ASSERT_TRUE(python.section("s"));
 	// Выполняем запись многострочного значения продолжением отступом
 	ASSERT_TRUE(python.property("k", "one\ntwo"));
 	// Объект чтения текста настроек наречия языка Python
-	ini::reader_t reader(ini::reader_t::settings_t::python());
+	ini::reader_t reader(::logger(), ini::reader_t::settings_t::python());
 	// Выполняем передачу записанного текста настроек
 	ASSERT_TRUE(reader.feed(python.text()));
 	// Выполняем переход к объявлению раздела
@@ -564,7 +622,7 @@ TEST(CodecIniWriter, Presets) {
 	// Выполняем проверку прочитанного многострочного значения
 	ASSERT_EQ(reader.property().value, "one\ntwo");
 	// Объект записи текста настроек наречия системы инициализации systemd
-	ini::writer_t systemd(ini::writer_t::settings_t::systemd());
+	ini::writer_t systemd(::logger(), ini::writer_t::settings_t::systemd());
 	// Выполняем запись объявления раздела
 	ASSERT_TRUE(systemd.section("Unit"));
 	// Выполняем запись свойства раздела
@@ -581,7 +639,7 @@ TEST(CodecIniWriter, Presets) {
  */
 TEST(CodecIniWriter, PlainNumbers) {
 	// Объект записи текста настроек
-	ini::writer_t writer;
+	ini::writer_t writer(::logger());
 	// Выполняем запись объявления раздела
 	ASSERT_TRUE(writer.section("s"));
 	// Выполняем запись числа, у которого обычный вид короче показательного
@@ -595,7 +653,7 @@ TEST(CodecIniWriter, PlainNumbers) {
 	// Выполняем проверку записанного текста настроек
 	ASSERT_EQ(writer.text(), "[s]\na = 1250\nb = 1e+20\nc = 1e+300\nd = 1e-07\n");
 	// Объект дерева настроек для проверки обратного чтения
-	ini::document_t document;
+	ini::document_t document(::logger());
 	// Выполняем разбор записанного текста настроек
 	ASSERT_TRUE(document.parse(writer.text()));
 	// Прочитанное обратно значение числа
@@ -621,7 +679,7 @@ TEST(CodecIniWriter, CommentContinuation) {
 	// Выполняем установку признака склеивания строк читающим
 	settings.continuations = true;
 	// Объект записи текста настроек
-	ini::writer_t writer(settings);
+	ini::writer_t writer(::logger(), settings);
 	// Выполняем запись примечания, оканчивающегося продолжением
 	ASSERT_TRUE(writer.comment("примечание \\"));
 	// Выполняем объявление раздела текста настроек
@@ -646,7 +704,7 @@ TEST(CodecIniWriter, CommentContinuation) {
 	// Выполняем установку настроек разбора текста настроек
 	options.reader = reading;
 	// Объект дерева настроек
-	ini::document_t document(options);
+	ini::document_t document(::logger(), options);
 	// Выполняем проверку того, что разбор записанного текста удался
 	ASSERT_TRUE(document.parse(writer.text()));
 	// Выполняем проверку сохранности раздела, ограждением уберёжённого
@@ -660,7 +718,7 @@ TEST(CodecIniWriter, CommentContinuation) {
 	 */
 	{
 		// Объект дерева настроек для повторного разбора перезаписи
-		ini::document_t repeat(options);
+		ini::document_t repeat(::logger(), options);
 		// Выполняем проверку того, что повторный разбор перезаписи удался
 		ASSERT_TRUE(repeat.parse(document.text()));
 		// Выполняем проверку совпадения повторной перезаписи с первой
@@ -673,7 +731,7 @@ TEST(CodecIniWriter, CommentContinuation) {
 	 */
 	{
 		// Объект записи текста настроек
-		ini::writer_t last(settings);
+		ini::writer_t last(::logger(), settings);
 		// Выполняем запись примечания, оканчивающегося продолжением
 		ASSERT_TRUE(last.comment("хвост \\"));
 		// Выполняем проверку записанного текста настроек
@@ -684,7 +742,7 @@ TEST(CodecIniWriter, CommentContinuation) {
 	 */
 	{
 		// Объект записи текста настроек
-		ini::writer_t spaced(settings);
+		ini::writer_t spaced(::logger(), settings);
 		// Выполняем запись примечания, оканчивающегося продолжением
 		ASSERT_TRUE(spaced.comment("примечание \\"));
 		// Выполняем запись пустой строки
@@ -703,7 +761,7 @@ TEST(CodecIniWriter, CommentContinuation) {
 		// Выполняем снятие признака склеивания строк читающим
 		plain.continuations = false;
 		// Объект записи текста настроек
-		ini::writer_t writer(plain);
+		ini::writer_t writer(::logger(), plain);
 		// Выполняем запись примечания, оканчивающегося обратной косой чертой
 		ASSERT_TRUE(writer.comment("примечание \\"));
 		// Выполняем объявление раздела текста настроек
@@ -738,7 +796,7 @@ TEST(CodecIniWriter, ControlCharacters) {
 		// Выполняем добавление хвоста значения, годного в шестнадцатеричные знаки
 		value.append("beef");
 		// Объект дерева настроек
-		ini::document_t document(options);
+		ini::document_t document(::logger(), options);
 		// Выполняем установку значения свойства с управляющим знаком
 		ASSERT_TRUE(document.set("ключ", value, "раздел")) << code;
 		// Выполняем перезапись дерева настроек
@@ -746,7 +804,7 @@ TEST(CodecIniWriter, ControlCharacters) {
 		// Выполняем проверку того, что перезапись дерева настроек удалась
 		ASSERT_FALSE(text.empty()) << code << " " << static_cast <uint32_t> (document.error());
 		// Объект дерева настроек для обратного чтения перезаписи
-		ini::document_t back(options);
+		ini::document_t back(::logger(), options);
 		// Выполняем проверку того, что обратное чтение перезаписи удалось
 		ASSERT_TRUE(back.parse(text)) << code << " " << static_cast <uint32_t> (back.error());
 		// Выполняем проверку сохранности значения после кругового хода
@@ -768,7 +826,7 @@ TEST(CodecIniWriter, ControlCharacters) {
 		// Выполняем добавление хвоста значения
 		value.append("после");
 		// Объект дерева настроек
-		ini::document_t document(options);
+		ini::document_t document(::logger(), options);
 		// Выполняем установку значения свойства со знаком забоя
 		ASSERT_TRUE(document.set("ключ", value, "раздел"));
 		// Выполняем перезапись дерева настроек
@@ -776,7 +834,7 @@ TEST(CodecIniWriter, ControlCharacters) {
 		// Выполняем проверку того, что перезапись дерева настроек удалась
 		ASSERT_FALSE(text.empty()) << static_cast <uint32_t> (document.error());
 		// Объект дерева настроек для обратного чтения перезаписи
-		ini::document_t back(options);
+		ini::document_t back(::logger(), options);
 		// Выполняем проверку того, что обратное чтение перезаписи удалось
 		ASSERT_TRUE(back.parse(text)) << static_cast <uint32_t> (back.error());
 		// Выполняем проверку сохранности значения после кругового хода
@@ -792,7 +850,7 @@ TEST(CodecIniWriter, ControlCharacters) {
 		// Настройки записи текста настроек наречия Git
 		ini::writer_t::settings_t writing = ini::writer_t::settings_t::git();
 		// Объект записи текста настроек
-		ini::writer_t writer(writing);
+		ini::writer_t writer(::logger(), writing);
 		// Выполняем объявление раздела текста настроек
 		ASSERT_TRUE(writer.section("раздел"));
 		// Собираемое значение свойства с управляющим знаком
@@ -818,7 +876,7 @@ TEST(CodecIniWriter, ControlCharacters) {
 		// Выполняем запрет записи управляющих последовательностей
 		writing.escapes = false;
 		// Объект записи текста настроек
-		ini::writer_t writer(writing);
+		ini::writer_t writer(::logger(), writing);
 		// Выполняем объявление раздела текста настроек
 		ASSERT_TRUE(writer.section("раздел"));
 		// Собираемое значение свойства с управляющим знаком
@@ -859,7 +917,7 @@ TEST(CodecIniWriter, UnquotableValues) {
 	 */
 	for(auto & value : values){
 		// Объект дерева настроек
-		ini::document_t document(options);
+		ini::document_t document(::logger(), options);
 		// Выполняем установку значения свойства
 		ASSERT_TRUE(document.set("ключ", value, "раздел")) << value;
 		// Выполняем перезапись дерева настроек
@@ -867,7 +925,7 @@ TEST(CodecIniWriter, UnquotableValues) {
 		// Выполняем проверку того, что перезапись дерева настроек удалась
 		ASSERT_FALSE(text.empty()) << value << " " << static_cast <uint32_t> (document.error());
 		// Объект дерева настроек для обратного чтения перезаписи
-		ini::document_t back(options);
+		ini::document_t back(::logger(), options);
 		// Выполняем проверку того, что обратное чтение перезаписи удалось
 		ASSERT_TRUE(back.parse(text)) << value << " " << static_cast <uint32_t> (back.error());
 		// Выполняем проверку сохранности значения после кругового хода
@@ -887,7 +945,7 @@ TEST(CodecIniWriter, UnquotableValues) {
 		// Выполняем запрет управляющих последовательностей
 		plain.reader.escapes = false;
 		// Объект дерева настроек
-		ini::document_t document(plain);
+		ini::document_t document(::logger(), plain);
 		// Выполняем установку значения свойства с пробельной обвязкой
 		ASSERT_TRUE(document.set("ключ", " с пробелами ", "раздел"));
 		// Выполняем проверку отказа перезаписи дерева настроек
@@ -904,7 +962,7 @@ TEST(CodecIniWriter, UnquotableValues) {
 	 */
 	{
 		// Объект дерева настроек
-		ini::document_t document(options);
+		ini::document_t document(::logger(), options);
 		// Выполняем установку значения свойства с пробелами внутри
 		ASSERT_TRUE(document.set("ключ", "два слова ; и знак", "раздел"));
 		// Выполняем перезапись дерева настроек
@@ -927,7 +985,7 @@ TEST(CodecIniWriter, IndentVersusContinuation) {
 	// Выполняем установку записи отступа перед свойствами раздела
 	writing.indent = true;
 	// Объект записи текста настроек
-	ini::writer_t writer(writing);
+	ini::writer_t writer(::logger(), writing);
 	// Выполняем объявление раздела текста настроек
 	ASSERT_TRUE(writer.section("раздел"));
 	// Выполняем запись первого свойства раздела
@@ -943,7 +1001,7 @@ TEST(CodecIniWriter, IndentVersusContinuation) {
 	// Выполняем установку настроек разбора наречия configparser
 	options.reader = ini::reader_t::settings_t::python();
 	// Объект дерева настроек для обратного чтения записанного текста
-	ini::document_t back(options);
+	ini::document_t back(::logger(), options);
 	// Выполняем проверку того, что обратное чтение записанного текста удалось
 	ASSERT_TRUE(back.parse(text)) << static_cast <uint32_t> (back.error());
 	// Выполняем проверку сохранности значения первого свойства
@@ -971,7 +1029,7 @@ TEST(CodecIniWriter, ConflictingQuotes) {
 		// Выполняем объявление читающего, кавычек не снимающего
 		writing.quotes = false;
 		// Объект записи текста настроек
-		ini::writer_t writer(writing);
+		ini::writer_t writer(::logger(), writing);
 		// Выполняем объявление раздела текста настроек
 		ASSERT_TRUE(writer.section("раздел"));
 		// Выполняем проверку отказа записи свойства со значением
@@ -993,7 +1051,7 @@ TEST(CodecIniWriter, ConflictingQuotes) {
 		// Выполняем запись управляющих последовательностей в значении
 		writing.escapes = true;
 		// Объект записи текста настроек
-		ini::writer_t writer(writing);
+		ini::writer_t writer(::logger(), writing);
 		// Выполняем объявление раздела текста настроек
 		ASSERT_TRUE(writer.section("раздел"));
 		// Выполняем запись свойства со значением, кавычкой начинающимся
@@ -1005,7 +1063,7 @@ TEST(CodecIniWriter, ConflictingQuotes) {
 		// Выполняем признание управляющих последовательностей читающим
 		options.reader.escapes = true;
 		// Объект дерева настроек для обратного чтения записанного текста
-		ini::document_t back(options);
+		ini::document_t back(::logger(), options);
 		// Выполняем проверку того, что обратное чтение записанного текста удалось
 		ASSERT_TRUE(back.parse(text)) << text;
 		// Выполняем проверку сохранности кавычек значения
@@ -1018,7 +1076,7 @@ TEST(CodecIniWriter, ConflictingQuotes) {
 		// Настройки записи текста настроек наречия MS Windows
 		ini::writer_t::settings_t writing = ini::writer_t::settings_t::windows();
 		// Объект записи текста настроек
-		ini::writer_t writer(writing);
+		ini::writer_t writer(::logger(), writing);
 		// Выполняем объявление раздела текста настроек
 		ASSERT_TRUE(writer.section("раздел"));
 		// Выполняем запись свойства со значением, кавычкой начинающимся
@@ -1047,7 +1105,7 @@ TEST(CodecIniWriter, UntrimmedValues) {
 		// Выполняем признание примечания в конце строки читающим
 		writing.inlineComments = true;
 		// Объект записи текста настроек
-		ini::writer_t writer(writing);
+		ini::writer_t writer(::logger(), writing);
 		// Выполняем объявление раздела текста настроек
 		ASSERT_TRUE(writer.section("раздел"));
 		// Выполняем запись свойства со значением
@@ -1061,7 +1119,7 @@ TEST(CodecIniWriter, UntrimmedValues) {
 		// Выполняем признание примечания в конце строки
 		options.reader.inlineComments = true;
 		// Объект дерева настроек для обратного чтения записанного текста
-		ini::document_t back(options);
+		ini::document_t back(::logger(), options);
 		// Выполняем проверку того, что обратное чтение записанного текста удалось
 		ASSERT_TRUE(back.parse(writer.text())) << writer.text();
 		// Выполняем проверку сохранности значения свойства
@@ -1081,7 +1139,7 @@ TEST(CodecIniWriter, UntrimmedValues) {
 		// Выполняем отмену отбрасывания пробельной обвязки значения
 		options.reader.trim = false;
 		// Объект дерева настроек
-		ini::document_t document(options);
+		ini::document_t document(::logger(), options);
 		// Выполняем установку значения свойства с пробелами в конце
 		ASSERT_TRUE(document.set("ключ", "значение  ", "раздел"));
 		// Выполняем перезапись дерева настроек
@@ -1089,7 +1147,7 @@ TEST(CodecIniWriter, UntrimmedValues) {
 		// Выполняем проверку того, что перезапись дерева настроек удалась
 		ASSERT_FALSE(text.empty()) << static_cast <uint32_t> (document.error());
 		// Объект дерева настроек для обратного чтения перезаписи
-		ini::document_t back(options);
+		ini::document_t back(::logger(), options);
 		// Выполняем проверку того, что обратное чтение перезаписи удалось
 		ASSERT_TRUE(back.parse(text)) << text;
 		// Выполняем проверку сохранности значения после кругового хода
@@ -1112,7 +1170,7 @@ TEST(CodecIniWriter, UntrimmedValues) {
 			// Настройки записи текста настроек наречия configparser
 			ini::writer_t::settings_t writing = ini::writer_t::settings_t::python();
 			// Объект записи текста настроек
-			ini::writer_t writer(writing);
+			ini::writer_t writer(::logger(), writing);
 			// Выполняем объявление раздела текста настроек
 			ASSERT_TRUE(writer.section("раздел"));
 			// Выполняем проверку отказа записи свойства со значением
@@ -1128,7 +1186,7 @@ TEST(CodecIniWriter, UntrimmedValues) {
 		// Настройки записи текста настроек наречия configparser
 		ini::writer_t::settings_t writing = ini::writer_t::settings_t::python();
 		// Объект записи текста настроек
-		ini::writer_t writer(writing);
+		ini::writer_t writer(::logger(), writing);
 		// Выполняем объявление раздела текста настроек
 		ASSERT_TRUE(writer.section("раздел"));
 		// Выполняем запись свойства с многострочным значением
@@ -1138,7 +1196,7 @@ TEST(CodecIniWriter, UntrimmedValues) {
 		// Выполняем установку настроек разбора наречия configparser
 		options.reader = ini::reader_t::settings_t::python();
 		// Объект дерева настроек для обратного чтения записанного текста
-		ini::document_t back(options);
+		ini::document_t back(::logger(), options);
 		// Выполняем проверку того, что обратное чтение записанного текста удалось
 		ASSERT_TRUE(back.parse(writer.text())) << writer.text();
 		// Выполняем проверку сохранности многострочного значения
@@ -1164,7 +1222,7 @@ TEST(CodecIniWriter, ReaderInterpretation) {
 		// Выполняем объявление читающего, свойств до раздела не признающего
 		writing.global = false;
 		// Объект записи текста настроек
-		ini::writer_t writer(writing);
+		ini::writer_t writer(::logger(), writing);
 		// Выполняем проверку отказа записи свойства до объявления раздела
 		ASSERT_FALSE(writer.property("ключ", "значение"));
 		// Выполняем проверку выданного кода ошибки записи
@@ -1177,7 +1235,7 @@ TEST(CodecIniWriter, ReaderInterpretation) {
 		// Настройки записи текста настроек по умолчанию
 		ini::writer_t::settings_t writing;
 		// Объект записи текста настроек
-		ini::writer_t writer(writing);
+		ini::writer_t writer(::logger(), writing);
 		// Выполняем объявление раздела текста настроек
 		ASSERT_TRUE(writer.section("раздел"));
 		// Выполняем проверку отказа записи свойства без значения
@@ -1192,7 +1250,7 @@ TEST(CodecIniWriter, ReaderInterpretation) {
 		// Настройки записи текста настроек наречия Git
 		ini::writer_t::settings_t writing = ini::writer_t::settings_t::git();
 		// Объект записи текста настроек
-		ini::writer_t writer(writing);
+		ini::writer_t writer(::logger(), writing);
 		// Выполняем объявление раздела текста настроек
 		ASSERT_TRUE(writer.section("раздел"));
 		// Выполняем проверку записи свойства без значения
@@ -1205,7 +1263,7 @@ TEST(CodecIniWriter, ReaderInterpretation) {
 		// Настройки записи текста настроек по умолчанию
 		ini::writer_t::settings_t writing;
 		// Объект записи текста настроек
-		ini::writer_t writer(writing);
+		ini::writer_t writer(::logger(), writing);
 		// Выполняем объявление раздела текста настроек
 		ASSERT_TRUE(writer.section("раздел"));
 		// Выполняем проверку отказа записи добавления к перечню значений
@@ -1221,7 +1279,7 @@ TEST(CodecIniWriter, ReaderInterpretation) {
 		// Настройки записи текста настроек по умолчанию
 		ini::writer_t::settings_t writing;
 		// Объект записи текста настроек
-		ini::writer_t writer(writing);
+		ini::writer_t writer(::logger(), writing);
 		// Выполняем объявление раздела текста настроек
 		ASSERT_TRUE(writer.section("раздел"));
 		// Выполняем запись свойства со значением
@@ -1244,7 +1302,7 @@ TEST(CodecIniWriter, ReaderInterpretation) {
 		// Выполняем установку настроек разбора наречия Git
 		options.reader = ini::reader_t::settings_t::git();
 		// Объект дерева настроек
-		ini::document_t document(options);
+		ini::document_t document(::logger(), options);
 		// Выполняем проверку того, что разбор текста настроек удался
 		ASSERT_TRUE(document.parse("# примечание\n[раздел]\n\tключ = значение\n"));
 		// Выполняем перевод дерева настроек в наречие MS Windows
@@ -1256,7 +1314,7 @@ TEST(CodecIniWriter, ReaderInterpretation) {
 		// Выполняем установку настроек разбора наречия MS Windows
 		reading.reader = ini::reader_t::settings_t::windows();
 		// Объект дерева настроек для обратного чтения перевода
-		ini::document_t back(reading);
+		ini::document_t back(::logger(), reading);
 		// Выполняем проверку того, что обратное чтение перевода удалось
 		ASSERT_TRUE(back.parse(text)) << text << " " << static_cast <uint32_t> (back.error());
 		// Выполняем проверку сохранности значения свойства после перевода
@@ -1283,25 +1341,25 @@ TEST(CodecIniWriter, CommentMarkerInName) {
 	options.reader.inlineComments = true;
 	{
 		// Объект дерева настроек
-		ini::document_t document(options);
+		ini::document_t document(::logger(), options);
 		// Выполняем проверку отказа правке именем со знаком примечания
 		ASSERT_FALSE(document.set("k ; заметка", "значение", "раздел"));
 	}
 	{
 		// Объект дерева настроек
-		ini::document_t document(options);
+		ini::document_t document(::logger(), options);
 		// Выполняем проверку отказа правке именем раздела со знаком примечания
 		ASSERT_FALSE(document.set("k", "значение", "раздел ; заметка"));
 	}
 	{
 		// Объект дерева настроек
-		ini::document_t document(options);
+		ini::document_t document(::logger(), options);
 		// Выполняем установку свойства со знаком примечания, пробелом не отделённым
 		ASSERT_TRUE(document.set("k;заметка", "значение", "раздел"));
 		// Выполняем перезапись дерева настроек
 		const string text = document.text();
 		// Объект дерева настроек, собираемого обратным разбором
-		ini::document_t again(options);
+		ini::document_t again(::logger(), options);
 		// Выполняем разбор перезаписанного текста настроек
 		ASSERT_TRUE(again.parse(text));
 		// Выполняем проверку того, что значение пережило круговой ход

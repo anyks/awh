@@ -219,6 +219,33 @@ namespace awh {
 			 *
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Document {
+				private:
+					/**
+					 * \~russian
+					 * @brief Метод вывода сообщения об отказе в лог
+					 *
+					 * @details Код отказа остаётся доступен потребителю через error(): журнал
+					 * его не заменяет, а лишь оповещает о случившемся
+					 *
+					 * \~english
+					 * @brief Method of the output of the message about a refusal into the log
+					 * @details The code of the refusal remains available to the consumer through error():
+					 * the log does not replace it but merely notifies about what has happened
+					 *
+					 * \~
+					 */
+					void report() const noexcept;
+				private:
+					/**
+					 * \~russian
+					 * Объект для работы с логами
+					 *
+					 * \~english
+					 * Object for working with logs
+					 *
+					 * \~
+					 */
+					const log_t * _log;
 				public:
 					/**
 					 * \~russian
@@ -1463,26 +1490,30 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
+					 * @param log объект для работы с логами
 					 *
 					 * \~english
 					 * @brief Constructor
+					 * @param log object for working with logs
 					 *
 					 * \~
 					 */
-					Document() noexcept;
+					Document(const log_t * log) noexcept;
 					/**
 					 * \~russian
 					 * @brief Конструктор
 					 *
+					 * @param log      объект для работы с логами
 					 * @param settings настройки дерева настроек
 					 *
 					 * \~english
 					 * @brief Constructor
+					 * @param log      object for working with logs
 					 * @param settings settings of the settings tree
 					 *
 					 * \~
 					 */
-					explicit Document(const settings_t & settings) noexcept;
+					Document(const log_t * log, const settings_t & settings) noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор

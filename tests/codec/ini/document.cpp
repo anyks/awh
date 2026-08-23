@@ -36,6 +36,64 @@
 #include "../../main.hpp"
 
 /**
+ * @brief Пространство имён проверок этого файла
+ *
+ * @note Держится оно безымянным намеренно: проверки кодеков собираются одной
+ *       программою, и одноимённые построения разных файлов иначе сходятся в
+ *       одно, порождая порчу вдали от места её причины
+ *
+ */
+namespace {
+	/**
+	 * @brief Объект журнала проверок с отключённым выводом
+	 *
+	 * @details Вывод отключается назначением пустого перечня приёмников: отказы
+	 *          разбора проверки наводят намеренно, и журнал их засорял бы выдачу
+	 *
+	 */
+	struct Silent {
+		/**
+		 * @brief Функция получения объекта фреймворка проверок
+		 *
+		 * @details Объект заводится статикою местною, а не общею файла: заведение его
+		 *          порядком построения статики оканчивается падением ещё до входа в
+		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
+		 *
+		 * @return объект фреймворка проверок
+		 *
+		 */
+		static const awh::fmk_t & framework() noexcept {
+			// Объект фреймворка проверок
+			static awh::fmk_t fmk;
+			// Выводим объект фреймворка проверок
+			return fmk;
+		}
+		// Объект журнала проверок
+		awh::log_t log;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Silent() noexcept : log(&Silent::framework()) {
+			// Выполняем отключение вывода логов
+			this->log.mode({});
+		}
+	};
+	/**
+	 * @brief Функция получения объекта журнала проверок
+	 *
+	 * @return объект журнала проверок
+	 *
+	 */
+	const awh::log_t * logger() noexcept {
+		// Объект журнала проверок
+		static Silent silent;
+		// Выводим объект журнала проверок
+		return &silent.log;
+	}
+}
+
+/**
  * Используем стандартное пространство имён
  */
 using namespace std;
@@ -47,7 +105,7 @@ using namespace awh::codec;
  */
 TEST(CodecIniDocument, Parse) {
 	// Дерево настроек
-	ini::document_t document;
+	ini::document_t document(::logger());
 	// Выполняем разбор текста настроек
 	ASSERT_TRUE(document.parse("; шапка\n[server]\nhost = 127.0.0.1\nport = 8080\n\n[client]\nretries = 3\n"));
 	// Выполняем проверку количества объявленных разделов
@@ -89,7 +147,7 @@ TEST(CodecIniDocument, Parse) {
  */
 TEST(CodecIniDocument, Global) {
 	// Дерево настроек
-	ini::document_t document;
+	ini::document_t document(::logger());
 	// Выполняем разбор текста настроек
 	ASSERT_TRUE(document.parse("name = значение\n[a]\nname = другое\n"));
 	// Выполняем проверку значения свойства раздела без имени
@@ -112,7 +170,7 @@ TEST(CodecIniDocument, Duplicates) {
 		// Устанавливаем обращение с повторным объявлением свойства
 		settings.reader.duplicates = ini::duplicate_t::FIRST;
 		// Дерево настроек
-		ini::document_t document;
+		ini::document_t document(::logger());
 		// Выполняем разбор текста настроек
 		ASSERT_TRUE(document.parse("[a]\nk = первое\nk = второе\n", settings));
 		// Выполняем проверку выдачи первого объявления свойства
@@ -123,14 +181,14 @@ TEST(CodecIniDocument, Duplicates) {
 		// Устанавливаем обращение с повторным объявлением свойства
 		settings.reader.duplicates = ini::duplicate_t::LAST;
 		// Дерево настроек
-		ini::document_t document;
+		ini::document_t document(::logger());
 		// Выполняем разбор текста настроек
 		ASSERT_TRUE(document.parse("[a]\nk = первое\nk = второе\n", settings));
 		// Выполняем проверку выдачи последнего объявления свойства
 		ASSERT_EQ(document.get("k", "a"), "второе");
 	}{
 		// Дерево настроек
-		ini::document_t document;
+		ini::document_t document(::logger());
 		// Выполняем разбор текста настроек
 		ASSERT_TRUE(document.parse("[a]\nk = первое\nk = второе\n"));
 		// Получаем перечень значений свойства
@@ -149,7 +207,7 @@ TEST(CodecIniDocument, Duplicates) {
  */
 TEST(CodecIniDocument, Continued) {
 	// Дерево настроек
-	ini::document_t document;
+	ini::document_t document(::logger());
 	// Выполняем разбор текста настроек
 	ASSERT_TRUE(document.parse("[a]\nfirst = 1\n[b]\nx = 0\n[a]\nsecond = 2\n"));
 	// Выполняем проверку количества объявленных разделов
@@ -175,7 +233,7 @@ TEST(CodecIniDocument, References) {
 		// Устанавливаем построение обращения к значению другого свойства
 		settings.references = ini::reference_t::SHELL;
 		// Дерево настроек
-		ini::document_t document;
+		ini::document_t document(::logger());
 		// Выполняем разбор текста настроек
 		ASSERT_TRUE(document.parse("[paths]\nroot = /opt/awh\nlogs = ${root}/logs\n[run]\npid = ${paths:root}/run.pid\n", settings));
 		// Выполняем проверку подстановки обращения к значению своего раздела
@@ -188,7 +246,7 @@ TEST(CodecIniDocument, References) {
 		// Устанавливаем построение обращения по образцу configparser
 		settings.references = ini::reference_t::PYTHON;
 		// Дерево настроек
-		ini::document_t document;
+		ini::document_t document(::logger());
 		// Выполняем разбор текста настроек
 		ASSERT_TRUE(document.parse("[a]\nname = awh\ngreeting = привет, %(name)s\nescaped = 50%%\n", settings));
 		// Выполняем проверку подстановки обращения к значению
@@ -201,7 +259,7 @@ TEST(CodecIniDocument, References) {
 		// Устанавливаем построение обращения к значению другого свойства
 		settings.references = ini::reference_t::SHELL;
 		// Дерево настроек
-		ini::document_t document;
+		ini::document_t document(::logger());
 		// Выполняем проверку отклонения круговой ссылки
 		ASSERT_FALSE(document.parse("[a]\nfirst = ${second}\nsecond = ${first}\n", settings));
 		// Выполняем проверку кода ошибки разбора
@@ -212,7 +270,7 @@ TEST(CodecIniDocument, References) {
 		ASSERT_EQ(document.error(), ini::error_t::UNKNOWN_REFERENCE);
 	}{
 		// Дерево настроек
-		ini::document_t document;
+		ini::document_t document(::logger());
 		/**
 		 * Выполняем проверку того, что без настройки обращения не подставляются
 		 */
@@ -233,7 +291,7 @@ TEST(CodecIniDocument, Expansion) {
 	// Устанавливаем предел объёма подстановки значений
 	settings.maxExpansion = 64;
 	// Дерево настроек
-	ini::document_t document;
+	ini::document_t document(::logger());
 	/**
 	 * Выполняем проверку отклонения многократного разрастания значения
 	 *
@@ -265,7 +323,7 @@ TEST(CodecIniDocument, Roundtrip) {
 		"[client]\n"
 		"retries = 3\n";
 	// Дерево настроек
-	ini::document_t document;
+	ini::document_t document(::logger());
 	// Выполняем разбор текста настроек
 	ASSERT_TRUE(document.parse(text));
 	// Выполняем проверку совпадения записанного текста с исходным
@@ -286,7 +344,7 @@ TEST(CodecIniDocument, RoundtripInline) {
 	// Устанавливаем настройки разбора наречия настроек Git
 	settings.reader = ini::reader_t::settings_t::git();
 	// Дерево настроек
-	ini::document_t document;
+	ini::document_t document(::logger());
 	// Выполняем разбор текста настроек
 	ASSERT_TRUE(document.parse(text, settings));
 	// Выполняем проверку значения свойства
@@ -314,7 +372,7 @@ TEST(CodecIniDocument, RoundtripReferences) {
 	// Устанавливаем построение обращения к значению другого свойства
 	settings.references = ini::reference_t::SHELL;
 	// Дерево настроек
-	ini::document_t document;
+	ini::document_t document(::logger());
 	// Выполняем разбор текста настроек
 	ASSERT_TRUE(document.parse(text, settings));
 	// Выполняем проверку подстановки обращения при чтении значения
@@ -330,7 +388,7 @@ TEST(CodecIniDocument, RoundtripMarkers) {
 	// Разбираемый текст настроек
 	const string text = "# решётка\n; точка с запятой\n[a]\nk = v\n";
 	// Дерево настроек
-	ini::document_t document;
+	ini::document_t document(::logger());
 	// Выполняем разбор текста настроек
 	ASSERT_TRUE(document.parse(text));
 	/**
@@ -349,7 +407,7 @@ TEST(CodecIniDocument, Set) {
 	// Разбираемый текст настроек
 	const string text = "; шапка\n[server]\nhost = 127.0.0.1\nport = 8080\n";
 	// Дерево настроек
-	ini::document_t document;
+	ini::document_t document(::logger());
 	// Выполняем разбор текста настроек
 	ASSERT_TRUE(document.parse(text));
 	// Выполняем правку значения объявленного свойства
@@ -379,7 +437,7 @@ TEST(CodecIniDocument, Set) {
  */
 TEST(CodecIniDocument, Erase) {
 	// Дерево настроек
-	ini::document_t document;
+	ini::document_t document(::logger());
 	// Выполняем разбор текста настроек
 	ASSERT_TRUE(document.parse("[a]\nfirst = 1\nsecond = 2\n\n[b]\nthird = 3\n"));
 	// Выполняем удаление свойства раздела
@@ -405,7 +463,7 @@ TEST(CodecIniDocument, Erase) {
  */
 TEST(CodecIniDocument, Create) {
 	// Дерево настроек
-	ini::document_t document;
+	ini::document_t document(::logger());
 	// Выполняем объявление раздела
 	ASSERT_TRUE(document.create("first"));
 	// Выполняем повторное объявление того же раздела
@@ -430,7 +488,7 @@ TEST(CodecIniDocument, Create) {
  */
 TEST(CodecIniDocument, Assembly) {
 	// Дерево настроек
-	ini::document_t document;
+	ini::document_t document(::logger());
 	// Выполняем разбор текста настроек
 	ASSERT_TRUE(document.parse("[a]\nfirst = 1\n\n[b]\nthird = 3\n"));
 	/**
@@ -493,7 +551,7 @@ TEST(CodecIniDocument, ReferenceDuplicates) {
 	// Устанавливаем обращение с повторным объявлением свойства
 	settings.reader.duplicates = ini::duplicate_t::LAST;
 	// Дерево настроек
-	ini::document_t document;
+	ini::document_t document(::logger());
 	// Выполняем разбор текста настроек
 	ASSERT_TRUE(document.parse("[a]\nref = ${x}\nx = первое\nx = последнее\n", settings));
 	// Выполняем проверку выдачи последнего объявления свойства
@@ -510,7 +568,7 @@ TEST(CodecIniDocument, ReferenceDuplicates) {
  */
 TEST(CodecIniDocument, WriteFailure) {
 	// Дерево настроек
-	ini::document_t document;
+	ini::document_t document(::logger());
 	// Выполняем разбор текста настроек
 	ASSERT_TRUE(document.parse("[a]\n"));
 	// Выполняем установку значения со знаком конца строки
@@ -544,7 +602,7 @@ TEST(CodecIniDocument, RoundtripGitMarkers) {
 	// Устанавливаем настройки разбора по образцу Git
 	settings.reader = ini::reader_t::settings_t::git();
 	// Дерево настроек
-	ini::document_t document;
+	ini::document_t document(::logger());
 	// Выполняем разбор текста настроек
 	ASSERT_TRUE(document.parse("[a]\n", settings));
 	// Выполняем установку значения со знаком примечания внутри
@@ -552,7 +610,7 @@ TEST(CodecIniDocument, RoundtripGitMarkers) {
 	// Получаем записанный текст настроек
 	const string text = document.text(ini::writer_t::settings_t::git());
 	// Дерево настроек обратного чтения
-	ini::document_t again;
+	ini::document_t again(::logger());
 	// Выполняем разбор записанного текста настроек
 	ASSERT_TRUE(again.parse(text, settings));
 	// Выполняем проверку сохранности значения при обороте «запись - чтение»
@@ -568,7 +626,7 @@ TEST(CodecIniDocument, RoundtripArrays) {
 	// Устанавливаем признание записи добавления к перечню значений
 	settings.reader.arrays = true;
 	// Дерево настроек
-	ini::document_t document;
+	ini::document_t document(::logger());
 	// Выполняем разбор текста настроек
 	ASSERT_TRUE(document.parse("[a]\nk[] = one\nk[] = two\n", settings));
 	// Выполняем проверку количества значений свойства
@@ -597,7 +655,7 @@ TEST(CodecIniDocument, ExpansionBudget) {
 	// Выполняем добавление знака конца строки
 	text.append(1, '\n');
 	// Дерево настроек
-	ini::document_t document;
+	ini::document_t document(::logger());
 	// Выполняем проверку отклонения разбора по превышению предела
 	ASSERT_FALSE(document.parse(text, settings));
 	// Выполняем проверку кода ошибки разбора
@@ -609,7 +667,7 @@ TEST(CodecIniDocument, ExpansionBudget) {
  */
 TEST(CodecIniDocument, GlobalAssembly) {
 	// Дерево настроек
-	ini::document_t document;
+	ini::document_t document(::logger());
 	// Выполняем установку значения свойства в раздел без имени
 	ASSERT_TRUE(document.set("name", "значение"));
 	// Выполняем проверку установленного значения свойства
@@ -632,7 +690,7 @@ TEST(CodecIniDocument, SensitiveSections) {
 		// Устанавливаем настройки разбора по образцу configparser
 		settings.reader = ini::reader_t::settings_t::python();
 		// Дерево настроек
-		ini::document_t document;
+		ini::document_t document(::logger());
 		// Выполняем разбор текста настроек
 		ASSERT_TRUE(document.parse("[Server]\nHost = a\n[server]\nHost = b\n", settings));
 		/**
@@ -648,7 +706,7 @@ TEST(CodecIniDocument, SensitiveSections) {
 		ASSERT_EQ(document.get("HOST", "server"), "b");
 	}{
 		// Дерево настроек
-		ini::document_t document;
+		ini::document_t document(::logger());
 		// Выполняем разбор текста настроек
 		ASSERT_TRUE(document.parse("[Server]\nHost = a\n[server]\nHost = b\n"));
 		/**
@@ -667,7 +725,7 @@ TEST(CodecIniDocument, RoundtripControls) {
 	// Устанавливаем разбор управляющих последовательностей в значении
 	settings.reader.escapes = true;
 	// Дерево настроек
-	ini::document_t document;
+	ini::document_t document(::logger());
 	// Выполняем разбор текста настроек с незримыми знаками
 	ASSERT_TRUE(document.parse("[a]\nk = one\\btwo\\fthree\n", settings));
 	// Собираемые настройки записи текста настроек
@@ -679,7 +737,7 @@ TEST(CodecIniDocument, RoundtripControls) {
 	// Выполняем проверку прохождения записи
 	ASSERT_FALSE(text.empty());
 	// Дерево настроек обратного чтения
-	ini::document_t again;
+	ini::document_t again(::logger());
 	// Выполняем проверку прохождения обратного чтения
 	ASSERT_TRUE(again.parse(text, settings));
 	// Выполняем проверку сохранности значения при обороте
@@ -694,7 +752,7 @@ TEST(CodecIniDocument, RoundtripControls) {
  */
 TEST(CodecIniDocument, SettingsReindex) {
 	// Дерево настроек
-	ini::document_t document;
+	ini::document_t document(::logger());
 	// Выполняем разбор текста настроек
 	ASSERT_TRUE(document.parse("[Server]\nHost = a\n"));
 	// Выполняем проверку поиска без учёта регистра
@@ -719,7 +777,7 @@ TEST(CodecIniDocument, SettingsReindex) {
  */
 TEST(CodecIniDocument, InvalidNames) {
 	// Дерево настроек
-	ini::document_t document;
+	ini::document_t document(::logger());
 	// Выполняем разбор текста настроек
 	ASSERT_TRUE(document.parse("[a]\n"));
 	// Выполняем проверку отклонения имени свойства с квадратной скобкой
@@ -749,7 +807,7 @@ TEST(CodecIniDocument, ReferenceSubsection) {
 	// Устанавливаем настройки разбора по образцу Git
 	settings.reader = ini::reader_t::settings_t::git();
 	// Дерево настроек
-	ini::document_t document;
+	ini::document_t document(::logger());
 	// Выполняем разбор текста настроек
 	ASSERT_TRUE(document.parse("[remote \"origin\"]\n\turl = https://host/repo\n[core]\n\tmirror = ${remote.origin:url}\n", settings));
 	/**
@@ -769,7 +827,7 @@ TEST(CodecIniDocument, ReferenceSubsection) {
  */
 TEST(CodecIniDocument, NamesMatchWriter) {
 	// Дерево настроек
-	ini::document_t document;
+	ini::document_t document(::logger());
 	// Выполняем разбор текста настроек
 	ASSERT_TRUE(document.parse("[sec]\n"));
 	/**
@@ -795,7 +853,7 @@ TEST(CodecIniDocument, NamesMatchWriter) {
 		// Устанавливаем построение имени подраздела разделителем
 		settings.reader.subsections = ini::subsection_t::DELIMITED;
 		// Дерево настроек
-		ini::document_t document;
+		ini::document_t document(::logger());
 		// Выполняем разбор текста настроек
 		ASSERT_TRUE(document.parse("[a]\n", settings));
 		/**
@@ -815,7 +873,7 @@ TEST(CodecIniDocument, NamesMatchWriter) {
  */
 TEST(CodecIniDocument, ErrorReset) {
 	// Дерево настроек
-	ini::document_t document;
+	ini::document_t document(::logger());
 	// Выполняем разбор текста настроек
 	ASSERT_TRUE(document.parse("[a]\n"));
 	// Выполняем проверку отклонения недопустимого имени свойства
@@ -840,14 +898,14 @@ TEST(CodecIniDocument, InvalidHexEscape) {
 	settings.reader.escapes = true;
 	{
 		// Дерево настроек
-		ini::document_t document;
+		ini::document_t document(::logger());
 		// Выполняем проверку отклонения одиночного байта вне набора US-ASCII
 		ASSERT_FALSE(document.parse("[a]\nk = one\\xFFtwo\n", settings));
 		// Выполняем проверку кода ошибки разбора
 		ASSERT_EQ(document.error(), ini::error_t::INVALID_ENCODING);
 	}{
 		// Дерево настроек
-		ini::document_t document;
+		ini::document_t document(::logger());
 		/**
 		 * Выполняем проверку прохождения знака, записанного байтами верно
 		 *
@@ -865,13 +923,13 @@ TEST(CodecIniDocument, InvalidHexEscape) {
  */
 TEST(CodecIniDocument, RoundtripMarkedNames) {
 	// Дерево настроек
-	ini::document_t document;
+	ini::document_t document(::logger());
 	// Выполняем разбор текста настроек
 	ASSERT_TRUE(document.parse("[a;b]\nk;x = v\n"));
 	// Выполняем проверку сохранности имён при обратной записи
 	ASSERT_EQ(document.text(), "[a;b]\nk;x = v\n");
 	// Дерево настроек обратного чтения
-	ini::document_t again;
+	ini::document_t again(::logger());
 	// Выполняем разбор записанного текста настроек
 	ASSERT_TRUE(again.parse(document.text()));
 	// Выполняем проверку сохранности значения при обороте
@@ -891,7 +949,7 @@ TEST(CodecIniDocument, InheritedWriting) {
 		// Устанавливаем построение имени подраздела разделителем
 		settings.reader.subsections = ini::subsection_t::DELIMITED;
 		// Дерево настроек
-		ini::document_t document;
+		ini::document_t document(::logger());
 		// Выполняем разбор текста настроек
 		ASSERT_TRUE(document.parse("[a.b]\nk = v\n", settings));
 		// Выполняем проверку обратной записи без явных настроек
@@ -902,7 +960,7 @@ TEST(CodecIniDocument, InheritedWriting) {
 		// Устанавливаем настройки разбора по образцу Git
 		settings.reader = ini::reader_t::settings_t::git();
 		// Дерево настроек
-		ini::document_t document;
+		ini::document_t document(::logger());
 		// Выполняем разбор текста настроек
 		ASSERT_TRUE(document.parse("[remote \"origin\"]\n\turl = https://host\n", settings));
 		// Получаем записанный текст настроек
@@ -910,7 +968,7 @@ TEST(CodecIniDocument, InheritedWriting) {
 		// Выполняем проверку прохождения обратной записи
 		ASSERT_FALSE(text.empty());
 		// Дерево настроек обратного чтения
-		ini::document_t again;
+		ini::document_t again(::logger());
 		// Выполняем разбор записанного текста настроек
 		ASSERT_TRUE(again.parse(text, settings));
 		// Выполняем проверку сохранности значения подраздела при обороте
@@ -923,7 +981,7 @@ TEST(CodecIniDocument, InheritedWriting) {
  */
 TEST(CodecIniDocument, SubsectionUnsupported) {
 	// Дерево настроек
-	ini::document_t document;
+	ini::document_t document(::logger());
 	/**
 	 * Выполняем проверку отклонения подраздела при построении NONE
 	 */
@@ -945,7 +1003,7 @@ TEST(CodecIniDocument, WritingKeptQuotes) {
 	settings.reader = ini::reader_t::settings_t::windows();
 	{
 		// Дерево настроек
-		ini::document_t document;
+		ini::document_t document(::logger());
 		// Выполняем разбор текста настроек с кавычками внутри значения
 		ASSERT_TRUE(document.parse("[a]\nk = \"x\"\n", settings));
 		// Выполняем проверку того, что кавычки остались частью значения
@@ -954,7 +1012,7 @@ TEST(CodecIniDocument, WritingKeptQuotes) {
 		ASSERT_EQ(document.text(), "[a]\nk = \"x\"\n");
 	}{
 		// Дерево настроек
-		ini::document_t document;
+		ini::document_t document(::logger());
 		// Выполняем разбор текста настроек
 		ASSERT_TRUE(document.parse("[a]\n", settings));
 		// Выполняем установку значения с пробельной обвязкой
@@ -980,7 +1038,7 @@ TEST(CodecIniDocument, MarkersByDialect) {
 	// Устанавливаем настройки разбора по образцу MS Windows
 	settings.reader = ini::reader_t::settings_t::windows();
 	// Дерево настроек
-	ini::document_t document;
+	ini::document_t document(::logger());
 	/**
 	 * Выполняем разбор текста настроек со знаком решётки в начале имени
 	 *
@@ -1010,7 +1068,7 @@ TEST(CodecIniDocument, QuotedSubsectionNames) {
 	// Устанавливаем настройки разбора по образцу Git
 	settings.reader = ini::reader_t::settings_t::git();
 	// Дерево настроек
-	ini::document_t document;
+	ini::document_t document(::logger());
 	// Выполняем разбор текста настроек с квадратной скобкой в имени подраздела
 	ASSERT_TRUE(document.parse("[remote \"a]b\"]\n\turl = x\n", settings));
 	// Выполняем проверку значения свойства подраздела
@@ -1024,7 +1082,7 @@ TEST(CodecIniDocument, QuotedSubsectionNames) {
 	// Получаем записанный текст настроек
 	const string text = document.text();
 	// Дерево настроек обратного чтения
-	ini::document_t again;
+	ini::document_t again(::logger());
 	// Выполняем проверку прохождения обратного чтения
 	ASSERT_TRUE(again.parse(text, settings));
 	// Выполняем проверку сохранности имени подраздела с кавычкой
@@ -1047,7 +1105,7 @@ TEST(CodecIniDocument, QuotedSubsectionNames) {
  */
 TEST(CodecIniDocument, SetFromOwnView) {
 	// Объект дерева настроек
-	ini::document_t document;
+	ini::document_t document(::logger());
 	// Значение, заведомо превышающее короткий запас строки
 	const string big(4096, 'z');
 	// Выполняем разбор текста настроек
@@ -1076,7 +1134,7 @@ TEST(CodecIniDocument, SetDropsAppend) {
 	// Устанавливаем признание записи добавления к перечню значений
 	settings.reader.arrays = true;
 	// Дерево настроек
-	ini::document_t document;
+	ini::document_t document(::logger());
 	// Выполняем разбор текста настроек
 	ASSERT_TRUE(document.parse("[a]\nk[] = 1\n", settings));
 	// Выполняем установку значения объявленного свойства
@@ -1103,7 +1161,7 @@ TEST(CodecIniDocument, DepthOnCreate) {
 	// Устанавливаем наибольшую допустимую глубину вложенности подразделов
 	settings.reader.maxDepth = 1;
 	// Дерево настроек
-	ini::document_t document;
+	ini::document_t document(::logger());
 	// Выполняем разбор текста настроек
 	ASSERT_TRUE(document.parse("[a]\n", settings));
 	// Выполняем проверку отклонения подраздела предельной глубины
@@ -1113,7 +1171,7 @@ TEST(CodecIniDocument, DepthOnCreate) {
 	// Получаем записанный текст настроек
 	const string text = document.text();
 	// Дерево настроек обратного чтения
-	ini::document_t again;
+	ini::document_t again(::logger());
 	// Выполняем проверку прохождения обратного чтения
 	ASSERT_TRUE(again.parse(text, settings));
 }
@@ -1129,7 +1187,7 @@ TEST(CodecIniDocument, ReferenceDelimited) {
 	// Устанавливаем построение имени подраздела разделителем
 	settings.reader.subsections = ini::subsection_t::DELIMITED;
 	// Дерево настроек
-	ini::document_t document;
+	ini::document_t document(::logger());
 	/**
 	 * Выполняем разбор текста настроек
 	 *
@@ -1145,7 +1203,7 @@ TEST(CodecIniDocument, ReferenceDelimited) {
  */
 TEST(CodecIniDocument, CreateSpacing) {
 	// Дерево настроек
-	ini::document_t document;
+	ini::document_t document(::logger());
 	// Выполняем разбор текста настроек, оканчивающегося пустой строкой
 	ASSERT_TRUE(document.parse("[a]\nk = v\n\n"));
 	// Выполняем объявление раздела
@@ -1166,7 +1224,7 @@ TEST(CodecIniDocument, CreateSpacing) {
  */
 TEST(CodecIniDocument, RoundtripQuotes) {
 	// Дерево настроек
-	ini::document_t document;
+	ini::document_t document(::logger());
 	// Выполняем разбор текста настроек
 	ASSERT_TRUE(document.parse("[a]\nk = \"x\"\nplain = y\n"));
 	// Выполняем проверку снятия кавычек со значения
@@ -1192,7 +1250,7 @@ TEST(CodecIniDocument, RoundtripQuotes) {
  */
 TEST(CodecIniDocument, CreateAfterRemove) {
 	// Дерево настроек
-	ini::document_t document;
+	ini::document_t document(::logger());
 	// Выполняем разбор текста настроек
 	ASSERT_TRUE(document.parse("[a]\nk = 1\n\n[b]\nm = 2\n"));
 	// Выполняем удаление раздела
@@ -1217,7 +1275,7 @@ TEST(CodecIniDocument, InlineCommentContinued) {
 	// Устанавливаем признание примечания в конце строки свойства
 	settings.reader.inlineComments = true;
 	// Дерево настроек
-	ini::document_t document;
+	ini::document_t document(::logger());
 	// Выполняем разбор текста настроек
 	ASSERT_TRUE(document.parse("[a]\nk = one ; хвост\n  two\nm = 2\n", settings));
 	/**
@@ -1233,7 +1291,7 @@ TEST(CodecIniDocument, InlineCommentContinued) {
 	// Выполняем проверку прохождения обратной записи
 	ASSERT_FALSE(text.empty());
 	// Дерево настроек обратного чтения
-	ini::document_t again;
+	ini::document_t again(::logger());
 	// Выполняем проверку прохождения обратного чтения
 	ASSERT_TRUE(again.parse(text, settings));
 	// Выполняем проверку сохранности значения при обороте
@@ -1251,7 +1309,7 @@ TEST(CodecIniDocument, Malformed) {
 	// Устанавливаем строгие настройки разбора текста настроек
 	settings.reader = ini::reader_t::settings_t::strict();
 	// Дерево настроек
-	ini::document_t document;
+	ini::document_t document(::logger());
 	// Выполняем проверку отклонения повторного объявления свойства
 	ASSERT_FALSE(document.parse("[a]\nk=1\nk=2\n", settings));
 	// Выполняем проверку кода ошибки разбора
@@ -1267,7 +1325,7 @@ TEST(CodecIniDocument, Malformed) {
  */
 TEST(CodecIniDocument, Clear) {
 	// Дерево настроек
-	ini::document_t document;
+	ini::document_t document(::logger());
 	// Выполняем разбор текста настроек
 	ASSERT_TRUE(document.parse("[a]\nk = v\n"));
 	// Выполняем проверку наличия записей дерева
@@ -1292,7 +1350,7 @@ TEST(CodecIniDocument, Values) {
 	// Устанавливаем настройки разбора наречия MS Windows
 	settings.reader = ini::reader_t::settings_t::windows();
 	// Объект дерева настроек
-	ini::document_t document(settings);
+	ini::document_t document(::logger(), settings);
 	// Выполняем проверку сохранения переданных настроек
 	ASSERT_EQ(document.settings().reader.quotes, settings.reader.quotes);
 	// Выполняем разбор текста настроек
@@ -1391,7 +1449,7 @@ TEST(CodecIniDocument, ReferencesAfterEditing) {
 	 */
 	{
 		// Объект дерева настроек
-		ini::document_t document(options);
+		ini::document_t document(::logger(), options);
 		// Выполняем проверку того, что разбор текста настроек удался
 		ASSERT_TRUE(document.parse("[a]\nb = мир\nk = привет ${a:b}\n"));
 		// Выполняем проверку разрешённого при разборе значения
@@ -1406,7 +1464,7 @@ TEST(CodecIniDocument, ReferencesAfterEditing) {
 		 * @note Ради этого пересчёт и заведён: дерево, чьё чтение расходится с чтением
 		 *       собственной записи, выдаёт потребителю то одно, то другое
 		 */
-		ini::document_t back(options);
+		ini::document_t back(::logger(), options);
 		// Выполняем проверку того, что разбор записанного дерева удался
 		ASSERT_TRUE(back.parse(document.text()));
 		// Выполняем проверку совпадения значений обращения
@@ -1424,7 +1482,7 @@ TEST(CodecIniDocument, ReferencesAfterEditing) {
 	 */
 	{
 		// Объект дерева настроек
-		ini::document_t document(options);
+		ini::document_t document(::logger(), options);
 		// Выполняем проверку того, что разбор текста настроек удался
 		ASSERT_TRUE(document.parse("[a]\nb = мир\n"));
 		// Выполняем заведение свойства с обращением к другому значению
@@ -1443,7 +1501,7 @@ TEST(CodecIniDocument, ReferencesAfterEditing) {
 		// Выполняем отмену подстановки обращений
 		plain.references = ini::reference_t::NONE;
 		// Объект дерева настроек
-		ini::document_t document(plain);
+		ini::document_t document(::logger(), plain);
 		// Выполняем проверку того, что разбор текста настроек удался
 		ASSERT_TRUE(document.parse("[a]\nb = мир\nk = привет ${a:b}\n"));
 		// Выполняем правку значения, на которое обращение ссылается
@@ -1460,7 +1518,7 @@ TEST(CodecIniDocument, ReferencesAfterEditing) {
 	 */
 	{
 		// Объект дерева настроек
-		ini::document_t document(options);
+		ini::document_t document(::logger(), options);
 		// Выполняем проверку того, что разбор текста настроек удался
 		ASSERT_TRUE(document.parse("[a]\nb = мир\nk = привет ${a:b}\n"));
 		// Выполняем удаление свойства, на которое обращение ссылается
@@ -1486,7 +1544,7 @@ TEST(CodecIniDocument, ReferencesAfterEditing) {
 	 */
 	{
 		// Объект дерева настроек
-		ini::document_t document(options);
+		ini::document_t document(::logger(), options);
 		// Выполняем проверку того, что разбор текста настроек удался
 		ASSERT_TRUE(document.parse("[a]\nb = мир\n[c]\nk = привет ${a:b}\n"));
 		// Выполняем проверку разрешённого при разборе значения
@@ -1517,7 +1575,7 @@ TEST(CodecIniDocument, ReferenceThroughProxy) {
 	// Устанавливаем подстановку обращений по образцу оболочки
 	options.references = ini::reference_t::SHELL;
 	// Объект дерева настроек
-	ini::document_t document(options);
+	ini::document_t document(::logger(), options);
 	// Выполняем разбор текста настроек с обращением через посредника
 	ASSERT_TRUE(document.parse("[s]\nцель = добыто\nпосредник = $${цель}\nчерез = ${s:посредник}\n"));
 	// Выполняем проверку разрешения посредника в запись обращения
@@ -1545,7 +1603,7 @@ TEST(CodecIniDocument, GlobalAfterSection) {
 	// Настройки дерева настроек
 	ini::document_t::settings_t options;
 	// Объект дерева настроек
-	ini::document_t document(options);
+	ini::document_t document(::logger(), options);
 	// Выполняем установку свойства в именованном разделе
 	ASSERT_TRUE(document.set("j", "в разделе", "a"));
 	// Выполняем установку свойства в разделе без имени
@@ -1555,7 +1613,7 @@ TEST(CodecIniDocument, GlobalAfterSection) {
 	// Выполняем проверку того, что свойство записано прежде объявления раздела
 	ASSERT_LT(text.find("g = глобальное"), text.find("[a]"));
 	// Объект дерева настроек, собираемого обратным разбором
-	ini::document_t again(options);
+	ini::document_t again(::logger(), options);
 	// Выполняем разбор перезаписанного текста настроек
 	ASSERT_TRUE(again.parse(text));
 	// Выполняем проверку того, что свойство осталось в разделе без имени
@@ -1575,7 +1633,7 @@ TEST(CodecIniDocument, GlobalAfterSection) {
  */
 TEST(CodecIniDocument, PushFromOwnView) {
 	// Объект дерева настроек
-	ini::document_t document;
+	ini::document_t document(::logger());
 	// Значение, заведомо превышающее короткий запас строки
 	const string big(4096, 'z');
 	// Выполняем разбор текста настроек

@@ -1320,6 +1320,8 @@ awh::codec::toml::Value & awh::codec::toml::Value::operator = (const Value & val
 	if(this == &value)
 		// Выводим ссылку на текущее значение
 		return (* this);
+	// Выполняем копирование объекта для работы с логами
+	this->_log = value._log;
 	// Выполняем копирование типа хранимого значения
 	this->_type = value._type;
 	// Выполняем копирование записи строкового значения
@@ -1361,6 +1363,8 @@ awh::codec::toml::Value & awh::codec::toml::Value::operator = (Value && value) n
 	if(this == &value)
 		// Выводим ссылку на текущее значение
 		return (* this);
+	// Выполняем перенос объекта для работы с логами
+	this->_log = value._log;
 	// Выполняем перенос типа хранимого значения
 	this->_type = value._type;
 	// Выполняем перенос записи строкового значения
@@ -1419,7 +1423,7 @@ awh::codec::toml::Value::Value() noexcept :
  *
  */
 awh::codec::toml::Value::Value(const type_t type) noexcept :
- _type(type), _quoting(string_t::BASIC), _radix(radix_t::DECIMAL),
+ _log(nullptr), _type(type), _quoting(string_t::BASIC), _radix(radix_t::DECIMAL),
  _boolean(false), _multiline(false), _integer(0), _real(0.) {}
 /**
  * @brief Конструктор логического значения
@@ -1428,7 +1432,7 @@ awh::codec::toml::Value::Value(const type_t type) noexcept :
  *
  */
 awh::codec::toml::Value::Value(const bool value) noexcept :
- _type(type_t::BOOLEAN), _quoting(string_t::BASIC), _radix(radix_t::DECIMAL),
+ _log(nullptr), _type(type_t::BOOLEAN), _quoting(string_t::BASIC), _radix(radix_t::DECIMAL),
  _boolean(value), _multiline(false), _integer(0), _real(0.) {}
 /**
  * @brief Конструктор целого числа
@@ -1438,7 +1442,7 @@ awh::codec::toml::Value::Value(const bool value) noexcept :
  *
  */
 awh::codec::toml::Value::Value(const int64_t value, const radix_t radix) noexcept :
- _type(type_t::INTEGER), _quoting(string_t::BASIC), _radix(radix),
+ _log(nullptr), _type(type_t::INTEGER), _quoting(string_t::BASIC), _radix(radix),
  _boolean(false), _multiline(false), _integer(value), _real(0.) {}
 /**
  * @brief Конструктор целого числа без знака
@@ -1448,7 +1452,7 @@ awh::codec::toml::Value::Value(const int64_t value, const radix_t radix) noexcep
  *
  */
 awh::codec::toml::Value::Value(const uint64_t value, const radix_t radix) noexcept :
- _type(type_t::INTEGER), _quoting(string_t::BASIC), _radix(radix),
+ _log(nullptr), _type(type_t::INTEGER), _quoting(string_t::BASIC), _radix(radix),
  _boolean(false), _multiline(false), _integer(static_cast <int64_t> (value)), _real(0.) {}
 /**
  * @brief Конструктор числа с плавающей точкой
@@ -1457,7 +1461,7 @@ awh::codec::toml::Value::Value(const uint64_t value, const radix_t radix) noexce
  *
  */
 awh::codec::toml::Value::Value(const double value) noexcept :
- _type(type_t::FLOAT), _quoting(string_t::BASIC), _radix(radix_t::DECIMAL),
+ _log(nullptr), _type(type_t::FLOAT), _quoting(string_t::BASIC), _radix(radix_t::DECIMAL),
  _boolean(false), _multiline(false), _integer(0), _real(value) {}
 /**
  * @brief Конструктор строкового значения
@@ -1467,7 +1471,7 @@ awh::codec::toml::Value::Value(const double value) noexcept :
  *
  */
 awh::codec::toml::Value::Value(const string & value, const string_t quoting) noexcept :
- _type(type_t::STRING), _quoting(quoting), _radix(radix_t::DECIMAL),
+ _log(nullptr), _type(type_t::STRING), _quoting(quoting), _radix(radix_t::DECIMAL),
  _boolean(false), _multiline(false), _integer(0), _real(0.), _text(value) {}
 /**
  * @brief Конструктор строкового значения из строки языка
@@ -1477,7 +1481,7 @@ awh::codec::toml::Value::Value(const string & value, const string_t quoting) noe
  *
  */
 awh::codec::toml::Value::Value(const char * value, const string_t quoting) noexcept :
- _type(type_t::STRING), _quoting(quoting), _radix(radix_t::DECIMAL),
+ _log(nullptr), _type(type_t::STRING), _quoting(quoting), _radix(radix_t::DECIMAL),
  _boolean(false), _multiline(false), _integer(0), _real(0.),
  _text((value != nullptr) ? value : "") {}
 /**
@@ -1487,7 +1491,7 @@ awh::codec::toml::Value::Value(const char * value, const string_t quoting) noexc
  *
  */
 awh::codec::toml::Value::Value(const Value & value) noexcept :
- _type(value._type), _quoting(value._quoting), _radix(value._radix),
+ _log(value._log), _type(value._type), _quoting(value._quoting), _radix(value._radix),
  _boolean(value._boolean), _multiline(value._multiline), _integer(value._integer),
  _real(value._real), _stamp(value._stamp), _text(value._text),
  _names(value._names), _items(value._items) {}
@@ -1498,7 +1502,7 @@ awh::codec::toml::Value::Value(const Value & value) noexcept :
  *
  */
 awh::codec::toml::Value::Value(Value && value) noexcept :
- _type(value._type), _quoting(value._quoting), _radix(value._radix),
+ _log(value._log), _type(value._type), _quoting(value._quoting), _radix(value._radix),
  _boolean(value._boolean), _multiline(value._multiline), _integer(value._integer),
  _real(value._real), _stamp(value._stamp), _text(::std::move(value._text)),
  _names(::std::move(value._names)), _items(::std::move(value._items)),
@@ -1687,7 +1691,7 @@ bool awh::codec::toml::Value::absorb(const Document & document, const vector <st
  *
  */
 awh::codec::toml::Value::Value(const Document & document) noexcept :
- _type(type_t::NONE), _quoting(string_t::BASIC), _radix(radix_t::DECIMAL),
+ _log(nullptr), _type(type_t::NONE), _quoting(string_t::BASIC), _radix(radix_t::DECIMAL),
  _boolean(false), _multiline(false), _integer(0), _real(0.) {
 	// Выполняем снятие значения с корня дерева настроек
 	this->absorb(document, {});
@@ -1700,7 +1704,7 @@ awh::codec::toml::Value::Value(const Document & document) noexcept :
  *
  */
 awh::codec::toml::Value::Value(const Document & document, const vector <string_view> & path) noexcept :
- _type(type_t::NONE), _quoting(string_t::BASIC), _radix(radix_t::DECIMAL),
+ _log(nullptr), _type(type_t::NONE), _quoting(string_t::BASIC), _radix(radix_t::DECIMAL),
  _boolean(false), _multiline(false), _integer(0), _real(0.) {
 	// Выполняем снятие значения с дерева настроек по составному имени
 	this->absorb(document, path);

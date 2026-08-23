@@ -37,6 +37,64 @@
 #include <codec/ini/ini.hpp>
 
 /**
+ * @brief Пространство имён проверок этого файла
+ *
+ * @note Держится оно безымянным намеренно: проверки кодеков собираются одной
+ *       программою, и одноимённые построения разных файлов иначе сходятся в
+ *       одно, порождая порчу вдали от места её причины
+ *
+ */
+namespace {
+	/**
+	 * @brief Объект журнала проверок с отключённым выводом
+	 *
+	 * @details Вывод отключается назначением пустого перечня приёмников: отказы
+	 *          разбора проверки наводят намеренно, и журнал их засорял бы выдачу
+	 *
+	 */
+	struct Silent {
+		/**
+		 * @brief Функция получения объекта фреймворка проверок
+		 *
+		 * @details Объект заводится статикою местною, а не общею файла: заведение его
+		 *          порядком построения статики оканчивается падением ещё до входа в
+		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
+		 *
+		 * @return объект фреймворка проверок
+		 *
+		 */
+		static const awh::fmk_t & framework() noexcept {
+			// Объект фреймворка проверок
+			static awh::fmk_t fmk;
+			// Выводим объект фреймворка проверок
+			return fmk;
+		}
+		// Объект журнала проверок
+		awh::log_t log;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Silent() noexcept : log(&Silent::framework()) {
+			// Выполняем отключение вывода логов
+			this->log.mode({});
+		}
+	};
+	/**
+	 * @brief Функция получения объекта журнала проверок
+	 *
+	 * @return объект журнала проверок
+	 *
+	 */
+	const awh::log_t * logger() noexcept {
+		// Объект журнала проверок
+		static Silent silent;
+		// Выводим объект журнала проверок
+		return &silent.log;
+	}
+}
+
+/**
  * Используем стандартное пространство имён
  */
 using namespace std;
@@ -437,7 +495,7 @@ namespace {
 	 */
 	ini::state_t consume(const string & text, const ini::reader_t::settings_t & settings, const size_t chunk, vector <Event> & events, Event * failure = nullptr) noexcept {
 		// Создаём объект чтения текста настроек
-		ini::reader_t reader(settings);
+		ini::reader_t reader(::logger(), settings);
 		// Размер куска подачи текста настроек
 		const size_t size = (chunk > 0 ? chunk : text.length());
 		// Смещение начала очередного куска подачи
@@ -865,7 +923,7 @@ namespace {
 		// Снимаем предел количества строк продолжения
 		relaxed.reader.maxContinuation = limits.maxContinuation;
 		// Создаём дерево настроек
-		ini::document_t document(settings);
+		ini::document_t document(::logger(), settings);
 		// Выполняем учёт собранного дерева настроек
 		totals.trees++;
 		// Если разбор текста настроек не удался, то проверку прекращаем
@@ -899,7 +957,7 @@ namespace {
 			// Выводим результат проверки дерева настроек
 			return true;
 		// Создаём дерево настроек для повторного разбора
-		ini::document_t repeat(relaxed);
+		ini::document_t repeat(::logger(), relaxed);
 		// Если повторный разбор перезаписанного текста не удался
 		if(!repeat.parse(first)){
 			// Выводим сообщение об отказе повторного разбора перезаписанного текста
@@ -1042,7 +1100,7 @@ namespace {
 				// Выполняем учёт перевода дерева настроек
 				totals.rewrites++;
 				// Создаём дерево настроек для обратного чтения перевода
-				ini::document_t back(reading);
+				ini::document_t back(::logger(), reading);
 				/**
 				 * Если обратное чтение перевода не удалось
 				 */
@@ -1143,7 +1201,7 @@ namespace {
 			// Выполняем перебор признания примечания в конце строки читающим
 			plain.reader.inlineComments = ((engine() % 2) == 0);
 			// Создаём дерево настроек для проверки кругового хода значения
-			ini::document_t holder(plain);
+			ini::document_t holder(::logger(), plain);
 			/**
 			 * Если завести свойство с враждебным значением удалось
 			 */
@@ -1160,7 +1218,7 @@ namespace {
 				 */
 				if(!written.empty()){
 					// Создаём дерево настроек для обратного чтения перезаписи
-					ini::document_t back(plain);
+					ini::document_t back(::logger(), plain);
 					/**
 					 * Если обратное чтение перезаписи не удалось
 					 */
@@ -1205,7 +1263,7 @@ namespace {
 			// Выводим результат проверки дерева настроек
 			return true;
 		// Создаём дерево настроек для разбора правленого текста
-		ini::document_t rebuilt(relaxed);
+		ini::document_t rebuilt(::logger(), relaxed);
 		// Если разбор правленого текста настроек не удался
 		if(!rebuilt.parse(edited)){
 			// Выводим сообщение об отказе разбора правленого текста настроек
@@ -1276,7 +1334,7 @@ namespace {
 			// Выполняем снятие владеющего значения с дерева настроек
 			const ini::value_t lifted(document);
 			// Собираемое дерево настроек, куда переносится значение
-			ini::document_t target(relaxed);
+			ini::document_t target(::logger(), relaxed);
 			/**
 			 * Если разобрать пустой текст настроек удалось
 			 */

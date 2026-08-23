@@ -42,6 +42,64 @@
 #include <sys/macro_push.hpp>
 
 /**
+ * @brief Пространство имён проверок этого файла
+ *
+ * @note Держится оно безымянным намеренно: проверки кодеков собираются одной
+ *       программою, и одноимённые построения разных файлов иначе сходятся в
+ *       одно, порождая порчу вдали от места её причины
+ *
+ */
+namespace {
+	/**
+	 * @brief Объект журнала проверок с отключённым выводом
+	 *
+	 * @details Вывод отключается назначением пустого перечня приёмников: отказы
+	 *          разбора проверки наводят намеренно, и журнал их засорял бы выдачу
+	 *
+	 */
+	struct Silent {
+		/**
+		 * @brief Функция получения объекта фреймворка проверок
+		 *
+		 * @details Объект заводится статикою местною, а не общею файла: заведение его
+		 *          порядком построения статики оканчивается падением ещё до входа в
+		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
+		 *
+		 * @return объект фреймворка проверок
+		 *
+		 */
+		static const awh::fmk_t & framework() noexcept {
+			// Объект фреймворка проверок
+			static awh::fmk_t fmk;
+			// Выводим объект фреймворка проверок
+			return fmk;
+		}
+		// Объект журнала проверок
+		awh::log_t log;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Silent() noexcept : log(&Silent::framework()) {
+			// Выполняем отключение вывода логов
+			this->log.mode({});
+		}
+	};
+	/**
+	 * @brief Функция получения объекта журнала проверок
+	 *
+	 * @return объект журнала проверок
+	 *
+	 */
+	const awh::log_t * logger() noexcept {
+		// Объект журнала проверок
+		static Silent silent;
+		// Выводим объект журнала проверок
+		return &silent.log;
+	}
+}
+
+/**
  * Используем стандартное пространство имён
  */
 using namespace std;
@@ -62,7 +120,7 @@ using namespace awh::codec;
  */
 static string dump(const string & text, const ini::reader_t::settings_t & settings, const size_t step = 0) noexcept {
 	// Объект потокового чтения текста настроек
-	ini::reader_t reader(settings);
+	ini::reader_t reader(::logger(), settings);
 	// Собираемый слепок потока событий разбора
 	string result;
 	/**
@@ -425,7 +483,7 @@ TEST(CodecIniReader, Limits) {
  */
 TEST(CodecIniReader, Numeric) {
 	// Объект потокового чтения текста настроек
-	ini::reader_t reader;
+	ini::reader_t reader(::logger());
 	// Выполняем передачу текста настроек целиком
 	ASSERT_TRUE(reader.feed("[a]\nport = 8080\nratio = 0.25\nenabled = on\nwide = 70000\n"));
 	// Выполняем переход к объявлению раздела
@@ -493,7 +551,7 @@ TEST(CodecIniReader, Untrimmed) {
 		// Снимаем обрезку пробельной обвязки имён и значений
 		settings.trim = false;
 		// Объект потокового чтения текста настроек
-		ini::reader_t reader(settings);
+		ini::reader_t reader(::logger(), settings);
 		// Выполняем передачу текста настроек
 		ASSERT_TRUE(reader.feed(string("[a]\n  k = v   \n")));
 		// Признак получения свойства со значением
@@ -518,7 +576,7 @@ TEST(CodecIniReader, Untrimmed) {
 		ASSERT_TRUE(received);
 	}{
 		// Объект потокового чтения текста настроек
-		ini::reader_t reader;
+		ini::reader_t reader(::logger());
 		// Выполняем передачу текста настроек
 		ASSERT_TRUE(reader.feed(string("[a]\n  k = v   \n")));
 		/**
@@ -540,7 +598,7 @@ TEST(CodecIniReader, Untrimmed) {
  */
 TEST(CodecIniReader, ErrorColumn) {
 	// Объект потокового чтения текста настроек
-	ini::reader_t reader;
+	ini::reader_t reader(::logger());
 	// Выполняем передачу текста настроек
 	ASSERT_TRUE(reader.feed(string("[a]\n      k[x = 1\n")));
 	/**
@@ -570,7 +628,7 @@ TEST(CodecIniReader, EmptySubsection) {
 	settings.subsections = ini::subsection_t::DELIMITED;
 	{
 		// Объект потокового чтения текста настроек
-		ini::reader_t reader(settings);
+		ini::reader_t reader(::logger(), settings);
 		// Выполняем передачу текста настроек
 		ASSERT_TRUE(reader.feed(string("[a.]\nk = v\n")));
 		/**
@@ -581,7 +639,7 @@ TEST(CodecIniReader, EmptySubsection) {
 		ASSERT_EQ(reader.error(), ini::error_t::INVALID_SUBSECTION);
 	}{
 		// Объект потокового чтения текста настроек
-		ini::reader_t reader(settings);
+		ini::reader_t reader(::logger(), settings);
 		// Выполняем передачу текста настроек
 		ASSERT_TRUE(reader.feed(string("[a.b]\nk = v\n")));
 		// Признак получения объявления раздела
@@ -619,7 +677,7 @@ TEST(CodecIniReader, CommentProperty) {
 	// Устанавливаем признание примечания в конце строки свойства
 	settings.inlineComments = true;
 	// Объект потокового чтения текста настроек
-	ini::reader_t reader(settings);
+	ini::reader_t reader(::logger(), settings);
 	// Выполняем передачу текста настроек
 	ASSERT_TRUE(reader.feed(string("[a]\nk = v ; хвост\n")));
 	// Признак получения примечания конца строки
@@ -655,7 +713,7 @@ TEST(CodecIniReader, CommentProperty) {
 TEST(CodecIniReader, SectionClosing) {
 	{
 		// Объект потокового чтения текста настроек
-		ini::reader_t reader;
+		ini::reader_t reader(::logger());
 		// Выполняем передачу текста настроек с квадратной скобкой в примечании
 		ASSERT_TRUE(reader.feed(string("[a] ; см. раздел [docs]\nk = v\n")));
 		// Признак получения объявления раздела
@@ -680,7 +738,7 @@ TEST(CodecIniReader, SectionClosing) {
 		ASSERT_EQ(reader.error(), ini::error_t::NONE);
 	}{
 		// Объект потокового чтения текста настроек
-		ini::reader_t reader(ini::reader_t::settings_t::git());
+		ini::reader_t reader(::logger(), ini::reader_t::settings_t::git());
 		// Выполняем передачу текста настроек со скобкой внутри имени подраздела
 		ASSERT_TRUE(reader.feed(string("[remote \"a]b\"]\n\turl = x\n")));
 		// Признак получения объявления раздела
@@ -718,7 +776,7 @@ TEST(CodecIniReader, SectionClosing) {
  */
 TEST(CodecIniReader, SettingsLocked) {
 	// Объект потокового чтения текста настроек
-	ini::reader_t reader;
+	ini::reader_t reader(::logger());
 	// Выполняем передачу первого куска исходного текста
 	ASSERT_TRUE(reader.feed("[a]\nk = v\n", 9, false));
 	// Собираемые настройки разбора текста настроек
@@ -738,7 +796,7 @@ TEST(CodecIniReader, SettingsLocked) {
 }
 TEST(CodecIniReader, Reset) {
 	// Объект потокового чтения текста настроек
-	ini::reader_t reader(ini::reader_t::settings_t::strict());
+	ini::reader_t reader(::logger(), ini::reader_t::settings_t::strict());
 	// Выполняем передачу текста настроек целиком
 	ASSERT_TRUE(reader.feed("[a]\nk=1\nk=2\n"));
 	/**
@@ -773,7 +831,7 @@ TEST(CodecIniReader, DecodingPrefix) {
 	 */
 	for(size_t chunk : {static_cast <size_t> (0), static_cast <size_t> (1), static_cast <size_t> (7)}){
 		// Объект потокового чтения текста настроек
-		ini::reader_t reader(ini::reader_t::settings_t::strict());
+		ini::reader_t reader(::logger(), ini::reader_t::settings_t::strict());
 		// Размер подаваемого куска текста настроек
 		const size_t size = (chunk > 0 ? chunk : text.length());
 		// Смещение начала очередного куска подачи
@@ -840,7 +898,7 @@ TEST(CodecIniReader, Compaction) {
 	 */
 	const auto events = [](const string & text, const size_t chunk, const ini::reader_t::settings_t & settings) noexcept -> string {
 		// Объект потокового чтения текста настроек
-		ini::reader_t reader(settings);
+		ini::reader_t reader(::logger(), settings);
 		// Собираемый слепок выдачи разбора
 		string result;
 		// Положение подачи в разбираемом тексте настроек
@@ -1003,7 +1061,7 @@ TEST(CodecIniReader, HeaderCommentLocation) {
 	// Признаём примечание в конце строки
 	settings.inlineComments = true;
 	// Объект потокового чтения текста настроек
-	ini::reader_t reader(settings);
+	ini::reader_t reader(::logger(), settings);
 	// Выполняем передачу текста настроек целиком
 	reader.feed(string_view("[раздел] ; примечание\nk = v ; хвост\n"));
 	// Выполняем переход к объявлению раздела
@@ -1054,7 +1112,7 @@ TEST(CodecIniReader, ContinuationLocation) {
 	settings.escapes = true;
 	{
 		// Объект потокового чтения текста настроек
-		ini::reader_t reader(settings);
+		ini::reader_t reader(::logger(), settings);
 		// Выполняем передачу текста настроек целиком
 		reader.feed(string_view("k = начало \\\nпродолжение ; заметка\n"));
 		// Выполняем переход к свойству со значением
@@ -1072,7 +1130,7 @@ TEST(CodecIniReader, ContinuationLocation) {
 	}
 	{
 		// Объект потокового чтения текста настроек
-		ini::reader_t reader(settings);
+		ini::reader_t reader(::logger(), settings);
 		// Выполняем передачу текста настроек целиком
 		reader.feed(string_view("k = начало \\\nхвост \\q\n"));
 		// Выполняем проверку того, что разбор отвергнут негодной последовательностью
@@ -1086,7 +1144,7 @@ TEST(CodecIniReader, ContinuationLocation) {
 	}
 	{
 		// Объект потокового чтения текста настроек
-		ini::reader_t reader(settings);
+		ini::reader_t reader(::logger(), settings);
 		// Выполняем передачу текста настроек целиком
 		reader.feed(string_view("k = начало \\\nхвост \"открыта\n"));
 		// Выполняем проверку того, что разбор отвергнут незакрытой кавычкой
@@ -1104,7 +1162,7 @@ TEST(CodecIniReader, ContinuationLocation) {
 		// Признаём продолжение значения отступом
 		indented.indents = true;
 		// Объект потокового чтения текста настроек
-		ini::reader_t reader(indented);
+		ini::reader_t reader(::logger(), indented);
 		// Выполняем передачу текста настроек целиком
 		reader.feed(string_view("k = начало\n\tпродолжение ; заметка\n"));
 		// Выполняем переход к свойству со значением
