@@ -1414,12 +1414,12 @@ awh::codec::toml::Value & awh::codec::toml::Value::operator = (Value && value) n
 	return (* this);
 }
 /**
- * @brief Метод назначения объекта для работы с логами
+ * @brief Метод установки объекта для работы с логами
  *
  * @param log объект для работы с логами
  *
  */
-void awh::codec::toml::Value::logger(const log_t * log) noexcept {
+void awh::codec::toml::Value::setLogger(const log_t * log) noexcept {
 	// Выполняем установку объекта для работы с логами
 	this->_log = log;
 }

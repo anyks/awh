@@ -1133,12 +1133,12 @@ awh::codec::ini::Value & awh::codec::ini::Value::operator = (Value && value) noe
 	return (* this);
 }
 /**
- * @brief Метод назначения объекта для работы с логами
+ * @brief Метод установки объекта для работы с логами
  *
  * @param log объект для работы с логами
  *
  */
-void awh::codec::ini::Value::logger(const log_t * log) noexcept {
+void awh::codec::ini::Value::setLogger(const log_t * log) noexcept {
 	// Выполняем установку объекта для работы с логами
 	this->_log = log;
 }
