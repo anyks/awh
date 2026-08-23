@@ -182,7 +182,7 @@ namespace {
 	 */
 	static bool viaJson(const string & record, outcome_t & outcome) noexcept {
 		// Дерево документа JSON
-		json::document_t document;
+		json::document_t document(::logger());
 		/**
 		 * Если разбор записи завершился отказом
 		 */
@@ -213,7 +213,7 @@ namespace {
 		// Собираемый текст разметки
 		const string text = ("<a>" + record + "</a>");
 		// Дерево разметки XML
-		xml::document_t document;
+		xml::document_t document(::logger());
 		/**
 		 * Если разбор записи завершился отказом
 		 */
@@ -786,7 +786,7 @@ TEST(CodecContract, EncodingRelease) {
 	 */
 	{
 		// Объект приведения текста
-		json::decoder_t decoder;
+		json::decoder_t decoder(::logger());
 		// Выполняем навязывание кодировки исходного текста
 		ASSERT_TRUE(decoder.encoding(json::encoding_t::UTF16LE));
 		// Выполняем проверку принятия снятия навязанной кодировки
@@ -803,7 +803,7 @@ TEST(CodecContract, EncodingRelease) {
 	 */
 	{
 		// Объект приведения текста
-		xml::decoder_t decoder;
+		xml::decoder_t decoder(::logger());
 		// Выполняем навязывание кодировки исходного текста
 		ASSERT_TRUE(decoder.encoding(xml::encoding_t::UTF16LE));
 		// Выполняем проверку принятия снятия навязанной кодировки

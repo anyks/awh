@@ -1276,7 +1276,7 @@ namespace {
  */
 awh::grok::json_t awh::Grok::json(const vector <value_t> & values) const noexcept {
 	// Создаём сборщик значения JSON
-	awh::codec::json::builder_t builder;
+	awh::codec::json::builder_t builder(this->_log);
 	// Выполняем открытие объекта значения JSON
 	builder.object();
 	/**

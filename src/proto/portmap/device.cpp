@@ -156,7 +156,7 @@ bool awh::proto::portmap::Device::parse(const string_view text, description_t & 
 		return false;
 	}
 	// Объект дерева разметки описания устройства
-	codec::xml::document_t document;
+	codec::xml::document_t document(this->_log);
 	/**
 	 * Если разбор описания устройства выполнить не удалось
 	 */

@@ -186,7 +186,7 @@ string awh::proto::portmap::SOAP::request(const string_view service, const strin
 	 */
 	settings.collapse = false;
 	// Создаём объект записи текста разметки
-	codec::xml::writer_t writer(settings);
+	codec::xml::writer_t writer(this->_log, settings);
 	// Выполняем запись объявления разметки
 	writer.declaration();
 	// Выполняем открытие конверта запроса
@@ -336,7 +336,7 @@ bool awh::proto::portmap::SOAP::parse(const string_view text, answer_t & answer,
 		return false;
 	}
 	// Объект дерева разметки ответа службы
-	codec::xml::document_t document;
+	codec::xml::document_t document(this->_log);
 	/**
 	 * Если разбор ответа службы выполнить не удалось
 	 */
