@@ -1,13 +1,13 @@
 #!/bin/sh
 #
 # @file stand.sh
-# @date 2026-08-19
+# @date 2026-08-23
 #
 # @license{LicenseRef-AWH-1.0}
 #
 # @author Yuriy Lobarev
 #
-# @brief Отдельный стенд замеров кодека INI — сборка набора замеров без библиотеки
+# @brief Отдельный стенд замеров кодека CSV — сборка набора замеров без библиотеки
 #        целиком, ради снятия показателей на отладочных стендах
 #
 # @details Пороги набора замеров назначаются по САМОЙ МЕДЛЕННОЙ машине, а не по рабочей:
@@ -25,7 +25,7 @@
 # @copyright Copyright © 2026
 #
 # Вызов:
-#   benchmark/codec/ini/stand.sh [корень дерева] [каталог сборки]
+#   benchmark/codec/csv/stand.sh [корень дерева] [каталог сборки]
 #
 # Переменные окружения:
 #   CXX   — собиратель, по умолчанию «c++»
@@ -39,7 +39,7 @@ set -e
 ROOT="${1:-$(cd "$(dirname "$0")/../../.." && pwd)}"
 
 # Получаем каталог собранного стенда
-OUTPUT="${2:-/tmp/awh-ini-bench}"
+OUTPUT="${2:-/tmp/awh-csv-bench}"
 
 # Получаем собиратель
 COMPILER="${CXX:-c++}"
@@ -72,7 +72,7 @@ mkdir -p "$OUTPUT"
 #
 # @note Снос обязателен: при отказе сборки прежний двоичный файл остаётся на месте
 #       и прогон отчитывается успехом по коду, какого в нём уже нет
-rm -f "$OUTPUT/ini-bench" "$OUTPUT/ini-bench.exe"
+rm -f "$OUTPUT/csv-bench" "$OUTPUT/csv-bench.exe"
 
 # Собираем перечень объектных файлов стенда
 OBJECTS="$OUTPUT/lexical-table.o $OUTPUT/main.o $OUTPUT/sys-log.o $OUTPUT/sys-chrono.o $OUTPUT/sys-fmk.o $OUTPUT/charset.o $OUTPUT/charset-table.o $OUTPUT/net-nwt.o $OUTPUT/alloc-alloc.o $OUTPUT/alloc-cache.o $OUTPUT/alloc-central.o $OUTPUT/alloc-classes.o $OUTPUT/alloc-guard.o $OUTPUT/alloc-huge.o $OUTPUT/alloc-link.o $OUTPUT/alloc-pages.o $OUTPUT/alloc-profile.o $OUTPUT/alloc-source.o $OUTPUT/alloc-spin.o $OUTPUT/alloc-trace.o $OUTPUT/alloc-elf.o $OUTPUT/alloc-mach.o $OUTPUT/alloc-pe.o $OUTPUT/uni-normalize.o $OUTPUT/uni-table.o $OUTPUT/uni-unicode.o $OUTPUT/uni-utf8.o"
@@ -103,7 +103,7 @@ case "$(uname -s)" in
 esac
 
 # Выводим сообщение о начале сборки стенда
-echo "Собираем стенд замеров INI: $COMPILER"
+echo "Собираем стенд замеров CSV: $COMPILER"
 
 # Выполняем сборку таблицы степеней пятёрки модуля разбора чисел
 $COMPILER $OPTIONS -c "$ROOT/src/num/lexical/table.cpp" -o "$OUTPUT/lexical-table.o"
@@ -147,18 +147,23 @@ $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/encoding/charset/table.cpp
 # Выполняем сборку точки входа набора замеров
 $COMPILER $OPTIONS -c "$ROOT/benchmark/main.cpp" -o "$OUTPUT/main.o"
 
-# Выполняем перебор всех частей кодека INI
-for PART in common encoding reader writer document value; do
-	# Выполняем сборку очередной части кодека INI
-	$COMPILER $OPTIONS -c "$ROOT/src/codec/ini/$PART.cpp" -o "$OUTPUT/codec-$PART.o"
+# Выполняем перебор всех частей кодека CSV
+for PART in common encoding reader writer document; do
+	# Выполняем сборку очередной части кодека CSV
+	$COMPILER $OPTIONS -c "$ROOT/src/codec/csv/$PART.cpp" -o "$OUTPUT/codec-$PART.o"
 	# Добавляем собранное к перечню объектных файлов стенда
 	OBJECTS="$OBJECTS $OUTPUT/codec-$PART.o"
 done
 
-# Выполняем перебор всех частей набора замеров кодека INI
-for PART in ini reader writer document value; do
+#
+# Выполняем перебор всех частей набора замеров кодека CSV
+#
+# @note Части «value» здесь нет: владеющего значения у кодека CSV не заведено вовсе -
+#       таблица его есть перечень записей, а не дерево, - и мерить в ней нечего
+#
+for PART in csv reader writer document; do
 	# Выполняем сборку очередной части набора замеров
-	$COMPILER $OPTIONS -c "$ROOT/benchmark/codec/ini/$PART.cpp" -o "$OUTPUT/bench-$PART.o"
+	$COMPILER $OPTIONS -c "$ROOT/benchmark/codec/csv/$PART.cpp" -o "$OUTPUT/bench-$PART.o"
 	# Добавляем собранное к перечню объектных файлов стенда
 	OBJECTS="$OBJECTS $OUTPUT/bench-$PART.o"
 done
@@ -168,7 +173,7 @@ done
 # @note Объектные файлы перечисляются поимённо, а не маскою: посторонний объектный файл,
 #       оставленный в каталоге сборки кем угодно, попадал бы в связывание и валил его
 #       повтором имён
-$COMPILER $OPTIONS $OBJECTS -pthread $SYSTEM_LIBS -lz -o "$OUTPUT/ini-bench"
+$COMPILER $OPTIONS $OBJECTS -pthread $SYSTEM_LIBS -lz -o "$OUTPUT/csv-bench"
 
 # Выводим сообщение об окончании сборки стенда
-echo "Стенд собран: $OUTPUT/ini-bench"
+echo "Стенд собран: $OUTPUT/csv-bench"

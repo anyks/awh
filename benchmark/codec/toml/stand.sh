@@ -75,13 +75,74 @@ mkdir -p "$OUTPUT"
 rm -f "$OUTPUT/toml-bench" "$OUTPUT/toml-bench.exe"
 
 # Собираем перечень объектных файлов стенда
-OBJECTS="$OUTPUT/lexical-table.o $OUTPUT/main.o"
+OBJECTS="$OUTPUT/lexical-table.o $OUTPUT/main.o $OUTPUT/sys-log.o $OUTPUT/sys-chrono.o $OUTPUT/sys-fmk.o $OUTPUT/charset.o $OUTPUT/charset-table.o $OUTPUT/net-nwt.o $OUTPUT/alloc-alloc.o $OUTPUT/alloc-cache.o $OUTPUT/alloc-central.o $OUTPUT/alloc-classes.o $OUTPUT/alloc-guard.o $OUTPUT/alloc-huge.o $OUTPUT/alloc-link.o $OUTPUT/alloc-pages.o $OUTPUT/alloc-profile.o $OUTPUT/alloc-source.o $OUTPUT/alloc-spin.o $OUTPUT/alloc-trace.o $OUTPUT/alloc-elf.o $OUTPUT/alloc-mach.o $OUTPUT/alloc-pe.o $OUTPUT/uni-normalize.o $OUTPUT/uni-table.o $OUTPUT/uni-unicode.o $OUTPUT/uni-utf8.o"
+
+##
+# Внутренние имена распределителя libc берутся ТОЛЬКО под OpenBSD
+#
+# Файл «src/alloc/capture/obsd.cpp» собственной охраны по системе не несёт - её
+# несёт сборщик: CMakeLists.txt подключает его в перечень исходных текстов лишь
+# при `CMAKE_SYSTEM_NAME STREQUAL "OpenBSD"`. Стенд обязан повторять этот отбор:
+# собранный безусловно, он под MinGW валит связывание по `posix_memalign` и
+# `aligned_alloc`, каких у той библиотеки времени исполнения нет вовсе
+##
+if [ "$(uname -s)" = "OpenBSD" ]; then
+	OBJECTS="$OBJECTS $OUTPUT/alloc-obsd.o"
+fi
+
+##
+# Системные библиотеки, каких требует ядро библиотеки
+#
+# У MS Windows журнал зовёт `WSAGetLastError`: посредник `__awh_strerror__` разбирает
+# сетевые коды отказов, каких `strerror` от MinGW не знает. Живёт этот вызов в
+# «ws2_32», и без неё связывание стенда отказывает
+##
+case "$(uname -s)" in
+	MINGW*|MSYS*|CYGWIN*) SYSTEM_LIBS="-lws2_32" ;;
+	*) SYSTEM_LIBS="" ;;
+esac
 
 # Выводим сообщение о начале сборки стенда
 echo "Собираем стенд замеров TOML: $COMPILER"
 
 # Выполняем сборку таблицы степеней пятёрки модуля разбора чисел
 $COMPILER $OPTIONS -c "$ROOT/src/num/lexical/table.cpp" -o "$OUTPUT/lexical-table.o"
+
+#
+# Выполняем сборку ведения журнала работы и опоры его на средства системы
+#
+# @note Кодек сообщает об отказах разбора в журнал фреймворка, и стенд обязан нести
+#       его с собою. Иного пути нет: договор кодека принимает «log_t», и подделка его
+#       заглушкою мерила бы не тот код, что собирается в библиотеку
+#
+$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/log.cpp" -o "$OUTPUT/sys-log.o"
+$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/chrono.cpp" -o "$OUTPUT/sys-chrono.o"
+$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/fmk.cpp" -o "$OUTPUT/sys-fmk.o"
+$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/net/nwt.cpp" -o "$OUTPUT/net-nwt.o"
+$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/encoding/unicode/normalize.cpp" -o "$OUTPUT/uni-normalize.o"
+$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/encoding/unicode/table.cpp" -o "$OUTPUT/uni-table.o"
+$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/encoding/unicode/unicode.cpp" -o "$OUTPUT/uni-unicode.o"
+$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/encoding/unicode/utf8.cpp" -o "$OUTPUT/uni-utf8.o"
+$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/alloc.cpp" -o "$OUTPUT/alloc-alloc.o"
+$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/cache.cpp" -o "$OUTPUT/alloc-cache.o"
+$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/central.cpp" -o "$OUTPUT/alloc-central.o"
+$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/classes.cpp" -o "$OUTPUT/alloc-classes.o"
+$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/guard.cpp" -o "$OUTPUT/alloc-guard.o"
+$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/huge.cpp" -o "$OUTPUT/alloc-huge.o"
+$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/link.cpp" -o "$OUTPUT/alloc-link.o"
+$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/pages.cpp" -o "$OUTPUT/alloc-pages.o"
+$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/profile.cpp" -o "$OUTPUT/alloc-profile.o"
+$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/source.cpp" -o "$OUTPUT/alloc-source.o"
+$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/spin.cpp" -o "$OUTPUT/alloc-spin.o"
+$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/trace.cpp" -o "$OUTPUT/alloc-trace.o"
+$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/capture/elf.cpp" -o "$OUTPUT/alloc-elf.o"
+$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/capture/mach.cpp" -o "$OUTPUT/alloc-mach.o"
+if [ "$(uname -s)" = "OpenBSD" ]; then
+	$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/capture/obsd.cpp" -o "$OUTPUT/alloc-obsd.o"
+fi
+$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/capture/pe.cpp" -o "$OUTPUT/alloc-pe.o"
+$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/encoding/charset/charset.cpp" -o "$OUTPUT/charset.o"
+$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/encoding/charset/table.cpp" -o "$OUTPUT/charset-table.o"
 
 # Выполняем сборку точки входа набора замеров
 $COMPILER $OPTIONS -c "$ROOT/benchmark/main.cpp" -o "$OUTPUT/main.o"
@@ -107,7 +168,7 @@ done
 # @note Объектные файлы перечисляются поимённо, а не маскою: посторонний объектный файл,
 #       оставленный в каталоге сборки кем угодно, попадал бы в связывание и валил его
 #       повтором имён
-$COMPILER $OPTIONS $OBJECTS -pthread -o "$OUTPUT/toml-bench"
+$COMPILER $OPTIONS $OBJECTS -pthread $SYSTEM_LIBS -lz -o "$OUTPUT/toml-bench"
 
 # Выводим сообщение об окончании сборки стенда
 echo "Стенд собран: $OUTPUT/toml-bench"
