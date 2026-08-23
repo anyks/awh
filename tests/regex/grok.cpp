@@ -36,6 +36,65 @@
  * Подключаем заголовочные файлы тестового окружения
  */
 #include "../main.hpp"
+#include <sys/log.hpp>
+
+/**
+ * @brief Пространство имён проверок этого файла
+ *
+ * @note Держится оно безымянным намеренно: проверки кодеков собираются одной
+ *       программою, и одноимённые построения разных файлов иначе сходятся в
+ *       одно, порождая порчу вдали от места её причины
+ *
+ */
+namespace {
+	/**
+	 * @brief Объект журнала проверок с отключённым выводом
+	 *
+	 * @details Вывод отключается назначением пустого перечня приёмников: отказы
+	 *          разбора проверки наводят намеренно, и журнал их засорял бы выдачу
+	 *
+	 */
+	struct Silent {
+		/**
+		 * @brief Функция получения объекта фреймворка проверок
+		 *
+		 * @details Объект заводится статикою местною, а не общею файла: заведение его
+		 *          порядком построения статики оканчивается падением ещё до входа в
+		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
+		 *
+		 * @return объект фреймворка проверок
+		 *
+		 */
+		static const awh::fmk_t & framework() noexcept {
+			// Объект фреймворка проверок
+			static awh::fmk_t fmk;
+			// Выводим объект фреймворка проверок
+			return fmk;
+		}
+		// Объект журнала проверок
+		awh::log_t log;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Silent() noexcept : log(&Silent::framework()) {
+			// Выполняем отключение вывода логов
+			this->log.mode({});
+		}
+	};
+	/**
+	 * @brief Функция получения объекта журнала проверок
+	 *
+	 * @return объект журнала проверок
+	 *
+	 */
+	const awh::log_t * logger() noexcept {
+		// Объект журнала проверок
+		static Silent silent;
+		// Выводим объект журнала проверок
+		return &silent.log;
+	}
+}
 
 /**
  * Используем стандартное пространство имён
@@ -88,7 +147,7 @@ static bool dumping(const awh::grok_t & grok, const string & text,
  */
 TEST(Grok, PatternsBuild) {
 	// Создаём объект разбора текста по шаблонам Grok
-	grok_t grok;
+	grok_t grok(::logger());
 	/**
 	 * Выполняем перебор встроенного набора шаблонов
 	 */
@@ -110,7 +169,7 @@ TEST(Grok, PatternsBuild) {
  */
 TEST(Grok, FieldsExtract) {
 	// Создаём объект разбора текста по шаблонам Grok
-	grok_t grok;
+	grok_t grok(::logger());
 	// Выполняем сборку шаблона Grok
 	const auto exp = grok.build("%{IP:client} %{WORD:method} %{URIPATHPARAM:request}");
 	// Выполняем проверку сборки шаблона Grok
@@ -135,7 +194,7 @@ TEST(Grok, FieldsExtract) {
  */
 TEST(Grok, NestedNumbering) {
 	// Создаём объект разбора текста по шаблонам Grok
-	grok_t grok;
+	grok_t grok(::logger());
 	// Выполняем сборку шаблона Grok
 	const auto exp = grok.build("%{COMMONAPACHELOG}");
 	// Выполняем проверку сборки шаблона Grok
@@ -163,7 +222,7 @@ TEST(Grok, NestedNumbering) {
  */
 TEST(Grok, FieldKinds) {
 	// Создаём объект разбора текста по шаблонам Grok
-	grok_t grok;
+	grok_t grok(::logger());
 	// Выполняем сборку шаблона Grok
 	const auto exp = grok.build("%{WORD:name} %{INT:code:int} %{NUMBER:rate:float}");
 	// Выполняем проверку сборки шаблона Grok
@@ -197,7 +256,7 @@ TEST(Grok, FieldKinds) {
  */
 TEST(Grok, FieldNamesWide) {
 	// Создаём объект разбора текста по шаблонам Grok
-	grok_t grok;
+	grok_t grok(::logger());
 	// Выполняем сборку шаблона Grok
 	const auto exp = grok.build("%{IP:src-ip}:%{INT:src.port} %{IP:dst-ip}");
 	// Выполняем проверку сборки шаблона Grok
@@ -221,7 +280,7 @@ TEST(Grok, FieldNamesWide) {
  */
 TEST(Grok, DuplicateNames) {
 	// Создаём объект разбора текста по шаблонам Grok
-	grok_t grok;
+	grok_t grok(::logger());
 	// Выполняем сборку шаблона Grok
 	EXPECT_TRUE(!!grok.build("%{BACULA_LOGLINE}"));
 	// Выполняем сборку шаблона Grok с повторяющимся названием поля
@@ -237,7 +296,7 @@ TEST(Grok, DuplicateNames) {
  */
 TEST(Grok, RegistryCustom) {
 	// Создаём объект разбора текста по шаблонам Grok
-	grok_t grok;
+	grok_t grok(::logger());
 	// Выполняем проверку наличия встроенного шаблона в реестре
 	EXPECT_TRUE(grok.has("IPV4"));
 	// Выполняем проверку отсутствия пользовательского шаблона в реестре
@@ -272,7 +331,7 @@ TEST(Grok, RegistryCustom) {
  */
 TEST(Grok, RegistryOverride) {
 	// Создаём объект разбора текста по шаблонам Grok
-	grok_t grok;
+	grok_t grok(::logger());
 	// Выполняем замену встроенного шаблона пользовательским
 	ASSERT_TRUE(grok.pattern("WORD", "[0-9]+"));
 	// Выполняем сборку шаблона Grok
@@ -296,7 +355,7 @@ TEST(Grok, RegistryOverride) {
  */
 TEST(Grok, CircularReference) {
 	// Создаём объект разбора текста по шаблонам Grok
-	grok_t grok;
+	grok_t grok(::logger());
 	// Выполняем добавление шаблона, ссылающегося на себя
 	ASSERT_TRUE(grok.pattern("LOOP", "a%{LOOP}b"));
 	// Выполняем сборку шаблона Grok
@@ -317,7 +376,7 @@ TEST(Grok, CircularReference) {
  */
 TEST(Grok, Errors) {
 	// Создаём объект разбора текста по шаблонам Grok
-	grok_t grok;
+	grok_t grok(::logger());
 	// Выполняем сборку шаблона с пустым текстом
 	EXPECT_FALSE(!!grok.build(""));
 	EXPECT_EQ(grok.error(), grok_t::error_t::PATTERN_EMPTY);
@@ -346,7 +405,7 @@ TEST(Grok, Errors) {
  */
 TEST(Grok, NoMatching) {
 	// Создаём объект разбора текста по шаблонам Grok
-	grok_t grok;
+	grok_t grok(::logger());
 	// Выполняем сборку шаблона Grok
 	const auto exp = grok.build("%{IP:client} %{WORD:method}");
 	// Выполняем проверку сборки шаблона Grok
@@ -369,7 +428,7 @@ TEST(Grok, NoMatching) {
  */
 TEST(Grok, FieldNotCaptured) {
 	// Создаём объект разбора текста по шаблонам Grok
-	grok_t grok;
+	grok_t grok(::logger());
 	// Выполняем сборку шаблона Grok
 	const auto exp = grok.build("%{WORD:name}(?: %{INT:code})?");
 	// Выполняем проверку сборки шаблона Grok
@@ -392,7 +451,7 @@ TEST(Grok, FieldNotCaptured) {
  */
 TEST(Grok, EscapedReference) {
 	// Создаём объект разбора текста по шаблонам Grok
-	grok_t grok;
+	grok_t grok(::logger());
 	// Выполняем сборку шаблона Grok
 	const auto exp = grok.build("\\%\\{WORD\\} %{WORD:value}");
 	// Выполняем проверку сборки шаблона Grok
@@ -415,7 +474,7 @@ TEST(Grok, EscapedReference) {
  */
 TEST(Grok, Caching) {
 	// Создаём объект разбора текста по шаблонам Grok
-	grok_t grok;
+	grok_t grok(::logger());
 	// Выполняем сборку шаблона Grok
 	const auto first = grok.build("%{IP:client} %{WORD:method}");
 	// Выполняем проверку сборки шаблона Grok
@@ -452,7 +511,7 @@ TEST(Grok, Caching) {
  */
 TEST(Grok, ValuesExtract) {
 	// Создаём объект разбора текста по шаблонам Grok
-	grok_t grok;
+	grok_t grok(::logger());
 	// Выполняем сборку шаблона Grok
 	const auto exp = grok.build("%{WORD:tag}-%{WORD:tag} %{INT:code:int} %{NUMBER:rate:float}");
 	// Выполняем проверку сборки шаблона Grok
@@ -492,7 +551,7 @@ TEST(Grok, ValuesExtract) {
  */
 TEST(Grok, JsonOutput) {
 	// Создаём объект разбора текста по шаблонам Grok
-	grok_t grok;
+	grok_t grok(::logger());
 	// Выполняем сборку шаблона Grok
 	const auto exp = grok.build("%{WORD:name} %{INT:code:int} %{NUMBER:rate:float}");
 	// Выполняем проверку сборки шаблона Grok
@@ -531,7 +590,7 @@ TEST(Grok, JsonOutput) {
  */
 TEST(Grok, JsonKindMismatch) {
 	// Создаём объект разбора текста по шаблонам Grok
-	grok_t grok;
+	grok_t grok(::logger());
 	// Выполняем добавление пользовательского шаблона в реестр
 	ASSERT_TRUE(grok.pattern("ANYTHING", "\\S+"));
 	// Выполняем сборку шаблона Grok
@@ -563,7 +622,7 @@ TEST(Grok, JsonKindMismatch) {
  */
 TEST(Grok, JsonEscaping) {
 	// Создаём объект разбора текста по шаблонам Grok
-	grok_t grok;
+	grok_t grok(::logger());
 	// Выполняем сборку шаблона Grok
 	const auto exp = grok.build("%{GREEDYDATA:message}");
 	// Выполняем проверку сборки шаблона Grok
@@ -600,7 +659,7 @@ TEST(Grok, JsonEscaping) {
  */
 TEST(Grok, JsonNumberEdges) {
 	// Создаём объект разбора текста по шаблонам Grok
-	grok_t grok;
+	grok_t grok(::logger());
 	// Выполняем добавление пользовательского шаблона в реестр
 	ASSERT_TRUE(grok.pattern("ANY", "[\\s\\S]+"));
 	/**
@@ -662,7 +721,7 @@ TEST(Grok, JsonNumberEdges) {
  */
 TEST(Grok, JsonValueOutput) {
 	// Создаём объект разбора текста по шаблонам Grok
-	grok_t grok;
+	grok_t grok(::logger());
 	// Выполняем сборку шаблона Grok
 	const auto exp = grok.build("%{WORD:name} %{INT:code:int}");
 	// Выполняем проверку сборки шаблона Grok
@@ -708,7 +767,7 @@ TEST(Grok, JsonValueOutput) {
  */
 TEST(Grok, JsonDuplicateNames) {
 	// Создаём объект разбора текста по шаблонам Grok
-	grok_t grok;
+	grok_t grok(::logger());
 	// Выполняем сборку шаблона Grok
 	const auto exp = grok.build("%{WORD:tag}-%{WORD:tag} %{WORD:name}");
 	// Выполняем проверку сборки шаблона Grok
@@ -734,7 +793,7 @@ TEST(Grok, JsonDuplicateNames) {
  */
 TEST(Grok, ReadSet) {
 	// Создаём объект разбора текста по шаблонам Grok
-	Grok grok;
+	Grok grok(::logger());
 	/**
 	 * @brief Текст набора шаблонов
 	 *
@@ -788,7 +847,7 @@ TEST(Grok, ReadSet) {
  */
 TEST(Grok, StorageRoundtrip) {
 	// Создаём объект разбора текста по шаблонам Grok
-	Grok grok;
+	Grok grok(::logger());
 	/**
 	 * @brief Набор текстов шаблонов записи
 	 *
@@ -806,7 +865,7 @@ TEST(Grok, StorageRoundtrip) {
 	// Выполняем проверку непустоты записи собранных шаблонов
 	ASSERT_FALSE(record.empty());
 	// Создаём объект разбора текста по шаблонам Grok
-	Grok restored;
+	Grok restored(::logger());
 	// Набор восстановленных шаблонов Grok
 	vector <Grok::exp_t> expressions;
 	// Выполняем восстановление собранных шаблонов
@@ -877,7 +936,7 @@ TEST(Grok, StorageRoundtrip) {
  */
 TEST(Grok, StorageErrors) {
 	// Создаём объект разбора текста по шаблонам Grok
-	Grok grok;
+	Grok grok(::logger());
 	// Запись собранных шаблонов Grok
 	string record;
 	// Набор восстановленных шаблонов Grok
@@ -1029,7 +1088,7 @@ static bool reversed(string_view source, string & result) noexcept {
  */
 TEST(Grok, StoragePacking) {
 	// Создаём объект разбора текста по шаблонам Grok
-	Grok grok;
+	Grok grok(::logger());
 	/**
 	 * @brief Набор текстов шаблонов записи
 	 *
@@ -1060,7 +1119,7 @@ TEST(Grok, StoragePacking) {
 	// Выполняем проверку расхождения содержимого записей
 	EXPECT_NE(packed, plain);
 	// Создаём объект разбора текста по шаблонам Grok
-	Grok restored;
+	Grok restored(::logger());
 	// Набор восстановленных шаблонов Grok
 	vector <Grok::exp_t> expressions;
 	// Выполняем проверку отказа восстановления без обработчика разжатия
@@ -1084,7 +1143,7 @@ TEST(Grok, StoragePacking) {
  */
 TEST(Grok, StorageBuiltin) {
 	// Создаём объект разбора текста по шаблонам Grok
-	Grok grok;
+	Grok grok(::logger());
 	// Набор текстов шаблонов записи
 	vector <string> patterns;
 	/**
@@ -1100,7 +1159,7 @@ TEST(Grok, StorageBuiltin) {
 	// Выполняем запись собранных шаблонов
 	ASSERT_TRUE(grok.save(patterns, record)) << "код " << static_cast <uint32_t> (grok.error());
 	// Создаём объект разбора текста по шаблонам Grok
-	Grok restored;
+	Grok restored(::logger());
 	// Набор восстановленных шаблонов Grok
 	vector <Grok::exp_t> expressions;
 	// Выполняем восстановление собранных шаблонов

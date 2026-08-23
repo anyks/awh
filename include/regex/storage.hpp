@@ -592,7 +592,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				explicit Storage(const log_t * log = nullptr) noexcept :
+				explicit Storage(const log_t * log) noexcept :
 				 _error(storage_error_t::NONE), _trusted(false), _method(compressor::method_t::NONE), _log(log) {}
 				/**
 				 * \~russian

@@ -41,6 +41,64 @@
 #include "../main.hpp"
 
 /**
+ * @brief Пространство имён проверок этого файла
+ *
+ * @note Держится оно безымянным намеренно: проверки кодеков собираются одной
+ *       программою, и одноимённые построения разных файлов иначе сходятся в
+ *       одно, порождая порчу вдали от места её причины
+ *
+ */
+namespace {
+	/**
+	 * @brief Объект журнала проверок с отключённым выводом
+	 *
+	 * @details Вывод отключается назначением пустого перечня приёмников: отказы
+	 *          разбора проверки наводят намеренно, и журнал их засорял бы выдачу
+	 *
+	 */
+	struct Silent {
+		/**
+		 * @brief Функция получения объекта фреймворка проверок
+		 *
+		 * @details Объект заводится статикою местною, а не общею файла: заведение его
+		 *          порядком построения статики оканчивается падением ещё до входа в
+		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
+		 *
+		 * @return объект фреймворка проверок
+		 *
+		 */
+		static const awh::fmk_t & framework() noexcept {
+			// Объект фреймворка проверок
+			static awh::fmk_t fmk;
+			// Выводим объект фреймворка проверок
+			return fmk;
+		}
+		// Объект журнала проверок
+		awh::log_t log;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Silent() noexcept : log(&Silent::framework()) {
+			// Выполняем отключение вывода логов
+			this->log.mode({});
+		}
+	};
+	/**
+	 * @brief Функция получения объекта журнала проверок
+	 *
+	 * @return объект журнала проверок
+	 *
+	 */
+	const awh::log_t * logger() noexcept {
+		// Объект журнала проверок
+		static Silent silent;
+		// Выводим объект журнала проверок
+		return &silent.log;
+	}
+}
+
+/**
  * Используем стандартное пространство имён
  */
 using namespace std;
@@ -66,7 +124,7 @@ TEST(Regex, EngineVerdict) {
 	 */
 	for(const auto & pattern : patterns) {
 		// Создаём объект движка регулярных выражений
-		regex::engine_t engine;
+		regex::engine_t engine(::logger());
 		// Выполняем сборку регулярного выражения
 		ASSERT_TRUE(engine.build(pattern, 0)) << "Шаблон: " << pattern;
 		/**
@@ -141,7 +199,7 @@ TEST(Regex, EngineBacktracking) {
 	 */
 	for(const auto & item : items) {
 		// Создаём объект движка регулярных выражений
-		regex::engine_t engine;
+		regex::engine_t engine(::logger());
 		// Выполняем проверку сборки регулярного выражения
 		ASSERT_TRUE(engine.build(item.pattern, 0)) << "Шаблон: " << item.pattern;
 		// Набор границ совпадения и захваченных групп
@@ -206,7 +264,7 @@ TEST(Regex, EngineGrapheme) {
 	 */
 	for(const auto & item : items) {
 		// Создаём объект движка регулярных выражений
-		regex::engine_t engine;
+		regex::engine_t engine(::logger());
 		// Выполняем проверку сборки регулярного выражения
 		ASSERT_TRUE(engine.build("\\X", static_cast <uint32_t> (regex::flag_t::UTF))) << "Правило: " << item.rule;
 		// Набор границ совпадения и захваченных групп
@@ -243,7 +301,7 @@ TEST(Regex, EngineBudget) {
 	 */
 	const string text = "aaaaaaaaaaaaaaaaaaaaaaaaXaab";
 	// Создаём объект движка регулярных выражений
-	regex::engine_t engine;
+	regex::engine_t engine(::logger());
 	// Создаём собираемое регулярное выражение
 	regex::expression_t expression;
 	// Выполняем сборку регулярного выражения
@@ -316,7 +374,7 @@ TEST(Regex, EngineAnchoredBacktracking) {
 	 */
 	for(auto & pattern : patterns) {
 		// Создаём объект движка регулярных выражений
-		regex::engine_t engine;
+		regex::engine_t engine(::logger());
 		// Создаём собираемое регулярное выражение
 		regex::expression_t expression;
 		// Выполняем сборку регулярного выражения
@@ -385,7 +443,7 @@ TEST(Regex, EngineProgress) {
 	 */
 	for(auto & sample : samples) {
 		// Создаём объект движка регулярных выражений
-		regex::engine_t engine;
+		regex::engine_t engine(::logger());
 		// Создаём собираемое регулярное выражение
 		regex::expression_t expression;
 		// Выполняем сборку регулярного выражения
@@ -442,7 +500,7 @@ TEST(Regex, EngineLeading) {
 	 */
 	for(auto & pattern : patterns) {
 		// Создаём объект движка регулярных выражений
-		regex::engine_t engine;
+		regex::engine_t engine(::logger());
 		// Создаём собираемое регулярное выражение
 		regex::expression_t expression;
 		// Выполняем сборку регулярного выражения
@@ -550,7 +608,7 @@ TEST(Regex, EngineAnchored) {
 	 */
 	for(auto & sample : samples) {
 		// Создаём объект движка регулярных выражений
-		regex::engine_t engine;
+		regex::engine_t engine(::logger());
 		// Создаём собираемое регулярное выражение
 		regex::expression_t expression;
 		// Выполняем сборку регулярного выражения
@@ -642,7 +700,7 @@ TEST(Regex, EngineRepeatRun) {
 	 */
 	for(auto & sample : samples) {
 		// Создаём объект движка регулярных выражений
-		regex::engine_t engine;
+		regex::engine_t engine(::logger());
 		// Создаём собираемое регулярное выражение
 		regex::expression_t expression;
 		// Выполняем сборку регулярного выражения
@@ -730,7 +788,7 @@ TEST(Regex, EngineRepeatSweep) {
 		 */
 		for(auto & sample : samples) {
 			// Создаём объект движка регулярных выражений
-			regex::engine_t engine;
+			regex::engine_t engine(::logger());
 			// Создаём собираемое регулярное выражение
 			regex::expression_t expression;
 			// Выполняем сборку регулярного выражения
@@ -804,7 +862,7 @@ TEST(Regex, EngineAnchoredAttempt) {
 	 */
 	for(auto & sample : samples) {
 		// Создаём объект движка регулярных выражений
-		regex::engine_t engine;
+		regex::engine_t engine(::logger());
 		// Создаём собираемое регулярное выражение
 		regex::expression_t expression;
 		// Выполняем сборку регулярного выражения
@@ -877,7 +935,7 @@ TEST(Regex, EngineSweeping) {
 	 */
 	for(auto & sample : samples) {
 		// Создаём объект движка регулярных выражений
-		regex::engine_t engine;
+		regex::engine_t engine(::logger());
 		// Создаём собираемое регулярное выражение
 		regex::expression_t expression;
 		// Выполняем сборку регулярного выражения
@@ -976,7 +1034,7 @@ TEST(Regex, EngineNotEmpty) {
 	 */
 	for(auto & sample : samples) {
 		// Создаём объект движка регулярных выражений
-		regex::engine_t engine;
+		regex::engine_t engine(::logger());
 		// Создаём собираемое регулярное выражение
 		regex::expression_t expression;
 		// Выполняем сборку выражения с отказом от пустого совпадения
@@ -1049,7 +1107,7 @@ TEST(Regex, EngineNestedRecursion) {
 	 */
 	for(auto & sample : samples) {
 		// Создаём объект движка регулярных выражений
-		regex::engine_t engine;
+		regex::engine_t engine(::logger());
 		// Создаём собираемое регулярное выражение
 		regex::expression_t expression;
 		// Выполняем сборку регулярного выражения
@@ -1155,7 +1213,7 @@ TEST(RegexEngine, FailureReachesTheLog) {
 	 */
 	{
 		// Объект движка регулярных выражений без журнала
-		regex::engine_t engine;
+		regex::engine_t engine(::logger());
 		// Создаём собираемое регулярное выражение
 		regex::expression_t expression;
 		// Выполняем сборку заведомо неверного выражения

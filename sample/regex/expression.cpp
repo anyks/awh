@@ -31,6 +31,31 @@
  */
 #include <regex/regex.hpp>
 #include <regex/storage.hpp>
+#include <sys/log.hpp>
+
+/**
+ * @brief Пространство имён образца
+ *
+ */
+namespace {
+	/**
+	 * @brief Функция получения объекта для работы с логами
+	 *
+	 * @details Построения образца стоят и вне main(): объект заводится статикою
+	 *          местною, дабы всякое построение писало сообщения в один журнал
+	 *
+	 * @return объект для работы с логами
+	 *
+	 */
+	const awh::log_t * logger() noexcept {
+		// Объект фреймворка
+		static awh::fmk_t fmk;
+		// Объект для работы с логами
+		static awh::log_t log(&fmk);
+		// Выводим объект для работы с логами
+		return &log;
+	}
+}
 
 /**
  * Используем стандартное пространство имён
@@ -242,7 +267,7 @@ static void storing(const regexp_t & regexp) noexcept {
 	// Выводим заголовок примера
 	cout << "== Хранилище собранных выражений" << endl;
 	// Создаём объект хранилища собранных выражений
-	const regex::storage_t storage;
+	const regex::storage_t storage(::logger());
 	// Набор собираемых выражений
 	vector <regex::storage_t::exp_t> expressions;
 	/**
@@ -300,7 +325,7 @@ static void storing(const regexp_t & regexp) noexcept {
  */
 int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект работы с регулярными выражениями
-	regexp_t regexp;
+	regexp_t regexp(::logger());
 	/**
 	 * Выполняем включение согласования доступа потоков исполнения
 	 *

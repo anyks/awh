@@ -1003,7 +1003,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			explicit Grok(const log_t * log = nullptr) noexcept;
+			explicit Grok(const log_t * log) noexcept;
 			/**
 			 * \~russian
 			 * @brief Деструктор

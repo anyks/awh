@@ -694,7 +694,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				explicit Engine(const log_t * log = nullptr) noexcept;
+				explicit Engine(const log_t * log) noexcept;
 				/**
 				 * \~russian
 				 * @brief Деструктор

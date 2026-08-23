@@ -1448,7 +1448,8 @@ void awh::Grok::threadSafety(const bool mode) noexcept {
  *
  */
 awh::Grok::Grok(const log_t * log) noexcept :
- _error(error_t::NONE), _method(compressor::method_t::NONE), _threadSafety(false), _log(log), _regexp(log) {
+ _regexp(log), _storage(log), _method(compressor::method_t::NONE), _error(error_t::NONE),
+ _threadSafety(false), _log(log) {
 	// Выполняем размещение реестра шаблонов
 	this->_patterns.reserve(awh::grok::PATTERNS_COUNT);
 	/**

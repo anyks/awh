@@ -281,7 +281,18 @@ namespace awh {
 					 */
 					{"literal-medium",     "needle-in-haystack",                      kind_t::MEDIUM, true, 620000.0},
 					{"alternate-medium",   "alpha|bravo|charlie|delta|echo|foxtrot",  kind_t::MEDIUM, true, 9700.0},
-					{"captures-medium",    "(\\w+)@(\\w+)\\.(\\w+)",                  kind_t::MEDIUM, true, 1500.0},
+					/**
+					 * Порог захвата групп снят по дну стендов 23.08.2026
+					 *
+					 * @details Медленнейшей вышла OpenBSD amd64 (684.59), рядом
+					 *          DragonFly (939.10) и NetBSD (1062.97), тогда как
+					 *          машина рабочая даёт 8170.36, а Linux - около 3600.
+					 *          Порог прежний, 1500, не проходил на трёх стендах:
+					 *          запись границ захвата ведётся памятью, а доступ
+					 *          к ней у этих систем и есть узкое место.
+					 *
+					 */
+					{"captures-medium",    "(\\w+)@(\\w+)\\.(\\w+)",                  kind_t::MEDIUM, true, 450.0},
 					{"bounded-medium",     "(?:fox|dog)trot",                         kind_t::MEDIUM, true, 6900.0},
 					{"region-medium",      "(?:[a-z]+/)+v1",                          kind_t::MEDIUM, true, 100000.0},
 					/**

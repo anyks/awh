@@ -43,9 +43,30 @@ echo "система: $(uname -s) $(uname -r) $(uname -m)"
 echo "собиратель: $CXX"
 echo "дерево: $ROOT"
 echo "стенд: $OUT"
+##
+# Сборщик набора правил выбирается по наличию, а не по имени «make»
+#
+# У систем Sun родной make наследует SVR4 и правил, cmake порождаемых, не разбирает
+# вовсе: сборка эталона встала там молча - файла make.log не появилось ни одного
+##
+MAKE=make
+command -v gmake > /dev/null 2>&1 && MAKE=gmake
 PCRE="$ROOT/submodules/pcre2"
 if [ ! -f "$PCRE/CMakeLists.txt" ]; then
-	echo "ОТКАЗ: подмодуль PCRE2 не развёрнут; выполните: git submodule update --init submodules/pcre2"
+	echo "ОТКАЗ: подмодуль PCRE2 не развёрнут; выполните:"
+	echo "  git submodule update --init --recursive submodules/pcre2"
+	exit 1
+fi
+##
+# Порождение машинного кода у эталона живёт ВЛОЖЕННЫМ подмодулем
+#
+# Сам PCRE2 держит `deps/sljit` подмодулем своим, и без рекурсии он не разворачивается:
+# заголовки на месте, а сборка падает на `pcre2_jit_compile.c` посреди пути. Отказ этот
+# вышел на стенде FreeBSD и не виден вовсе на машине, где подмодуль развёрнут давно
+##
+if [ ! -f "$PCRE/deps/sljit/sljit_src/sljitLir.c" ]; then
+	echo "ОТКАЗ: вложенный подмодуль sljit не развёрнут - эталон без него порождения кода не имеет; выполните:"
+	echo "  git submodule update --init --recursive submodules/pcre2"
 	exit 1
 fi
 ##
@@ -67,7 +88,7 @@ if [ ! -f "$OUT/pcre2/libpcre2-8.a" ]; then
 	( cd "$OUT/pcre2" && cmake "$PCRE" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF \
 	   -DPCRE2_BUILD_PCRE2_8=ON -DPCRE2_SUPPORT_JIT=ON \
 	   -DPCRE2_BUILD_TESTS=OFF -DPCRE2_BUILD_PCRE2GREP=OFF > cmake.log 2>&1 \
-	  && make -j4 > make.log 2>&1 ) || { echo "ОТКАЗ СБОРКИ эталона, смотрите $OUT/pcre2/make.log"; exit 1; }
+	  && $MAKE -j4 > make.log 2>&1 ) || { echo "ОТКАЗ СБОРКИ эталона, смотрите $OUT/pcre2/make.log и cmake.log"; exit 1; }
 fi
 ##
 # Заголовок эталона порождается сборкой, а не лежит в исходниках

@@ -37,6 +37,65 @@
  * Подключаем заголовочные файлы тестового окружения
  */
 #include "../main.hpp"
+#include <sys/log.hpp>
+
+/**
+ * @brief Пространство имён проверок этого файла
+ *
+ * @note Держится оно безымянным намеренно: проверки кодеков собираются одной
+ *       программою, и одноимённые построения разных файлов иначе сходятся в
+ *       одно, порождая порчу вдали от места её причины
+ *
+ */
+namespace {
+	/**
+	 * @brief Объект журнала проверок с отключённым выводом
+	 *
+	 * @details Вывод отключается назначением пустого перечня приёмников: отказы
+	 *          разбора проверки наводят намеренно, и журнал их засорял бы выдачу
+	 *
+	 */
+	struct Silent {
+		/**
+		 * @brief Функция получения объекта фреймворка проверок
+		 *
+		 * @details Объект заводится статикою местною, а не общею файла: заведение его
+		 *          порядком построения статики оканчивается падением ещё до входа в
+		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
+		 *
+		 * @return объект фреймворка проверок
+		 *
+		 */
+		static const awh::fmk_t & framework() noexcept {
+			// Объект фреймворка проверок
+			static awh::fmk_t fmk;
+			// Выводим объект фреймворка проверок
+			return fmk;
+		}
+		// Объект журнала проверок
+		awh::log_t log;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Silent() noexcept : log(&Silent::framework()) {
+			// Выполняем отключение вывода логов
+			this->log.mode({});
+		}
+	};
+	/**
+	 * @brief Функция получения объекта журнала проверок
+	 *
+	 * @return объект журнала проверок
+	 *
+	 */
+	const awh::log_t * logger() noexcept {
+		// Объект журнала проверок
+		static Silent silent;
+		// Выводим объект журнала проверок
+		return &silent.log;
+	}
+}
 
 /**
  * Используем стандартное пространство имён
@@ -111,9 +170,9 @@ static vector <string> samples(const size_t count) noexcept {
  */
 TEST(Regex, StorageRoundtrip) {
 	// Создаём объект работы с регулярными выражениями
-	const regexp_t regexp;
+	const regexp_t regexp(::logger());
 	// Создаём объект хранилища собранных выражений
-	const regex::storage_t storage;
+	const regex::storage_t storage(::logger());
 	// Получаем набор текстов порождённых выражений
 	const auto patterns = samples(500);
 	// Набор собранных начисто выражений
@@ -181,9 +240,9 @@ TEST(Regex, StorageRoundtrip) {
  */
 TEST(Regex, StorageMachine) {
 	// Создаём объект работы с регулярными выражениями
-	const regexp_t regexp;
+	const regexp_t regexp(::logger());
 	// Создаём объект хранилища собранных выражений
-	const regex::storage_t storage;
+	const regex::storage_t storage(::logger());
 	// Выполняем сборку регулярного выражения с порождением машинного кода
 	const auto exp = regexp.build("([a-z]+)@([a-z]+)\\.[a-z]{2,4}", {regexp_t::flag_t::JIT});
 	// Выполняем проверку сборки регулярного выражения
@@ -213,9 +272,9 @@ TEST(Regex, StorageMachine) {
  */
 TEST(Regex, StorageCorrupted) {
 	// Создаём объект работы с регулярными выражениями
-	const regexp_t regexp;
+	const regexp_t regexp(::logger());
 	// Создаём объект хранилища собранных выражений
-	const regex::storage_t storage;
+	const regex::storage_t storage(::logger());
 	// Выполняем сборку регулярного выражения
 	const auto exp = regexp.build("(?<year>\\d{4})-(\\d{2})-(\\d{2})[T ](?>[0-9:]+)");
 	// Выполняем проверку сборки регулярного выражения
@@ -286,9 +345,9 @@ TEST(Regex, StorageCorrupted) {
  */
 TEST(Regex, StorageMultiple) {
 	// Создаём объект работы с регулярными выражениями
-	const regexp_t regexp;
+	const regexp_t regexp(::logger());
 	// Создаём объект хранилища собранных выражений
-	const regex::storage_t storage;
+	const regex::storage_t storage(::logger());
 	// Набор собранных выражений
 	vector <regex::storage_t::exp_t> fresh;
 	/**
@@ -335,9 +394,9 @@ TEST(Regex, StorageMultiple) {
  */
 TEST(Regex, StoragePlatform) {
 	// Создаём объект работы с регулярными выражениями
-	const regexp_t regexp;
+	const regexp_t regexp(::logger());
 	// Создаём объект хранилища собранных выражений
-	const regex::storage_t storage;
+	const regex::storage_t storage(::logger());
 	// Выполняем сборку регулярного выражения
 	const auto exp = regexp.build("[a-z]+[0-9]{2,4}", {});
 	// Выполняем проверку сборки регулярного выражения
@@ -403,9 +462,9 @@ TEST(Regex, StoragePlatform) {
  */
 TEST(Regex, StorageAdopt) {
 	// Создаём объект работы с регулярными выражениями
-	const regexp_t regexp;
+	const regexp_t regexp(::logger());
 	// Создаём объект хранилища собранных выражений
-	const regex::storage_t storage;
+	const regex::storage_t storage(::logger());
 	// Набор восстановленных выражений
 	vector <regex::storage_t::exp_t> restored;
 	/**
@@ -445,9 +504,9 @@ TEST(Regex, StorageAdopt) {
  */
 TEST(Regex, StorageLifetime) {
 	// Создаём объект работы с регулярными выражениями
-	const regexp_t regexp;
+	const regexp_t regexp(::logger());
 	// Создаём объект хранилища собранных выражений
-	const regex::storage_t storage;
+	const regex::storage_t storage(::logger());
 	// Набор восстановленных выражений
 	vector <regex::storage_t::exp_t> restored;
 	/**
@@ -503,9 +562,9 @@ static bool reversed(string_view source, string & result) noexcept {
  */
 TEST(Regex, StoragePacking) {
 	// Создаём объект работы с регулярными выражениями
-	const regexp_t regexp;
+	const regexp_t regexp(::logger());
 	// Создаём объект хранилища собранных выражений
-	regex::storage_t storage;
+	regex::storage_t storage(::logger());
 	// Получаем набор текстов порождённых выражений
 	const auto patterns = samples(200);
 	// Набор собранных начисто выражений
@@ -573,9 +632,9 @@ TEST(Regex, StoragePacking) {
  */
 TEST(Regex, StoragePackingErrors) {
 	// Создаём объект работы с регулярными выражениями
-	const regexp_t regexp;
+	const regexp_t regexp(::logger());
 	// Создаём объект хранилища собранных выражений
-	regex::storage_t storage;
+	regex::storage_t storage(::logger());
 	// Выполняем сборку регулярного выражения
 	const auto exp = regexp.build("[a-z]+[0-9]{2,4}", {});
 	// Выполняем проверку сборки регулярного выражения
@@ -616,7 +675,7 @@ TEST(Regex, StoragePackingErrors) {
 	 */
 	{
 		// Создаём объект хранилища без обработчиков сжатия
-		const regex::storage_t plain;
+		const regex::storage_t plain(::logger());
 		// Выполняем проверку отказа восстановления собранных выражений
 		EXPECT_FALSE(plain.load(record, restored));
 		// Выполняем проверку установки кода ошибки хранилища
@@ -627,7 +686,7 @@ TEST(Regex, StoragePackingErrors) {
 	 */
 	{
 		// Создаём объект хранилища с обработчиком, разжатия не выполняющим
-		regex::storage_t broken;
+		regex::storage_t broken(::logger());
 		// Выполняем установку обработчика, разжатия не выполняющего
 		broken.packer(compressor::method_t::ZSTD, &reversed,
 		 [](string_view, string &) noexcept -> bool { return false; });
@@ -641,7 +700,7 @@ TEST(Regex, StoragePackingErrors) {
 	 */
 	{
 		// Создаём объект хранилища с обработчиком, размер изменяющим
-		regex::storage_t shrunk;
+		regex::storage_t shrunk(::logger());
 		// Выполняем установку обработчика, размер изменяющего
 		shrunk.packer(compressor::method_t::ZSTD, &reversed,
 		 [](string_view source, string & result) noexcept -> bool {
@@ -744,9 +803,9 @@ TEST(Regex, StorageForged) {
 	 */
 	constexpr size_t STEP = 5;
 	// Создаём объект работы с регулярными выражениями
-	const regexp_t regexp;
+	const regexp_t regexp(::logger());
 	// Создаём объект хранилища собранных выражений
-	const regex::storage_t storage;
+	const regex::storage_t storage(::logger());
 	// Набор собранных регулярных выражений
 	vector <regex::storage_t::exp_t> expressions;
 	/**

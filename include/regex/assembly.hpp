@@ -370,7 +370,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				explicit Assembly(const log_t * log = nullptr) noexcept;
+				explicit Assembly(const log_t * log) noexcept;
 				/**
 				 * \~russian
 				 * @brief Деструктор

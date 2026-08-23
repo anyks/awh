@@ -80,6 +80,66 @@
 	#include <pcre2.h>
 #endif
 
+#include <sys/log.hpp>
+
+/**
+ * @brief Пространство имён проверок этого файла
+ *
+ * @note Держится оно безымянным намеренно: проверки кодеков собираются одной
+ *       программою, и одноимённые построения разных файлов иначе сходятся в
+ *       одно, порождая порчу вдали от места её причины
+ *
+ */
+namespace {
+	/**
+	 * @brief Объект журнала проверок с отключённым выводом
+	 *
+	 * @details Вывод отключается назначением пустого перечня приёмников: отказы
+	 *          разбора проверки наводят намеренно, и журнал их засорял бы выдачу
+	 *
+	 */
+	struct Silent {
+		/**
+		 * @brief Функция получения объекта фреймворка проверок
+		 *
+		 * @details Объект заводится статикою местною, а не общею файла: заведение его
+		 *          порядком построения статики оканчивается падением ещё до входа в
+		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
+		 *
+		 * @return объект фреймворка проверок
+		 *
+		 */
+		static const awh::fmk_t & framework() noexcept {
+			// Объект фреймворка проверок
+			static awh::fmk_t fmk;
+			// Выводим объект фреймворка проверок
+			return fmk;
+		}
+		// Объект журнала проверок
+		awh::log_t log;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Silent() noexcept : log(&Silent::framework()) {
+			// Выполняем отключение вывода логов
+			this->log.mode({});
+		}
+	};
+	/**
+	 * @brief Функция получения объекта журнала проверок
+	 *
+	 * @return объект журнала проверок
+	 *
+	 */
+	const awh::log_t * logger() noexcept {
+		// Объект журнала проверок
+		static Silent silent;
+		// Выводим объект журнала проверок
+		return &silent.log;
+	}
+}
+
 /**
  * Если стенд собирается для набора команд, порождение кода поддерживающего
  *
@@ -542,7 +602,7 @@ namespace {
 		// Создаём источник псевдослучайных значений
 		mt19937 gen(block.seed);
 		// Создаём объект движка регулярных выражений
-		regex::engine_t engine;
+		regex::engine_t engine(::logger());
 		// Получаем набор режимов сопоставления движком
 		const uint32_t flags = (block.utf ? (static_cast <uint32_t> (regex::flag_t::UTF) | static_cast <uint32_t> (regex::flag_t::UCP)) : 0);
 		// Накапливаемая сумма по итогам сопоставления блока
@@ -744,7 +804,7 @@ namespace {
 				return true;
 			}
 			// Создаём объект исполняемой памяти кодогенерации
-			regex::assembly_t assembly;
+			regex::assembly_t assembly(::logger());
 			/**
 			 * Если размещение участка исполняемой памяти не выполнено
 			 */
@@ -837,7 +897,7 @@ namespace {
 			return false;
 		}
 		// Создаём объект исполняемой памяти кодогенерации
-		regex::assembly_t assembly;
+		regex::assembly_t assembly(::logger());
 		/**
 		 * Если размещение порождённого кода не выполнено
 		 */
@@ -967,7 +1027,7 @@ namespace {
 				return false;
 			}
 			// Создаём объект исполняемой памяти кодогенерации
-			regex::assembly_t assembly;
+			regex::assembly_t assembly(::logger());
 			/**
 			 * Если размещение порождённого кода не выполнено
 			 */
@@ -1060,7 +1120,7 @@ bool matching(const bool utf, const bool verbose) noexcept {
 	// Создаём источник псевдослучайных значений
 	mt19937 gen(20260807);
 	// Создаём объект движка регулярных выражений
-	regex::engine_t engine;
+	regex::engine_t engine(::logger());
 	// Количество выражений, кодогенерацию получивших
 	size_t accepted = 0;
 	// Количество выполненных сличений границ совпадения
@@ -1117,7 +1177,7 @@ bool matching(const bool utf, const bool verbose) noexcept {
 			// Переходим к образцу следующему
 			continue;
 		// Создаём объект порождения машинного кода выражения
-		regex::codegen_t codegen;
+		regex::codegen_t codegen(::logger());
 		/**
 		 * Если порождение машинного кода выражения не выполнено
 		 */
@@ -1361,7 +1421,7 @@ static bool indexing() noexcept {
 		return false;
 	}
 	// Создаём объект размещения исполняемой памяти
-	awh::regex::assembly_t assembly;
+	awh::regex::assembly_t assembly(::logger());
 	/**
 	 * Если размещение порождённого образца не выполнено
 	 */
@@ -1571,7 +1631,7 @@ static bool nesting() noexcept {
 		return false;
 	}
 	// Создаём объект размещения исполняемой памяти
-	awh::regex::assembly_t assembly;
+	awh::regex::assembly_t assembly(::logger());
 	/**
 	 * Если размещение порождённого образца не выполнено
 	 */
@@ -1974,9 +2034,9 @@ static bool scattering() noexcept {
  */
 static bool storing(const char * write, const char * read) noexcept {
 	// Создаём объект работы с регулярными выражениями
-	const awh::regexp_t regexp;
+	const awh::regexp_t regexp(::logger());
 	// Создаём объект хранилища собранных выражений
-	awh::regex::storage_t storage;
+	awh::regex::storage_t storage(::logger());
 	/**
 	 * Выполняем установку доверия порождённому коду записи
 	 *

@@ -39,6 +39,65 @@
  * Подключаем заголовочные файлы тестового окружения
  */
 #include "../main.hpp"
+#include <sys/log.hpp>
+
+/**
+ * @brief Пространство имён проверок этого файла
+ *
+ * @note Держится оно безымянным намеренно: проверки кодеков собираются одной
+ *       программою, и одноимённые построения разных файлов иначе сходятся в
+ *       одно, порождая порчу вдали от места её причины
+ *
+ */
+namespace {
+	/**
+	 * @brief Объект журнала проверок с отключённым выводом
+	 *
+	 * @details Вывод отключается назначением пустого перечня приёмников: отказы
+	 *          разбора проверки наводят намеренно, и журнал их засорял бы выдачу
+	 *
+	 */
+	struct Silent {
+		/**
+		 * @brief Функция получения объекта фреймворка проверок
+		 *
+		 * @details Объект заводится статикою местною, а не общею файла: заведение его
+		 *          порядком построения статики оканчивается падением ещё до входа в
+		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
+		 *
+		 * @return объект фреймворка проверок
+		 *
+		 */
+		static const awh::fmk_t & framework() noexcept {
+			// Объект фреймворка проверок
+			static awh::fmk_t fmk;
+			// Выводим объект фреймворка проверок
+			return fmk;
+		}
+		// Объект журнала проверок
+		awh::log_t log;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Silent() noexcept : log(&Silent::framework()) {
+			// Выполняем отключение вывода логов
+			this->log.mode({});
+		}
+	};
+	/**
+	 * @brief Функция получения объекта журнала проверок
+	 *
+	 * @return объект журнала проверок
+	 *
+	 */
+	const awh::log_t * logger() noexcept {
+		// Объект журнала проверок
+		static Silent silent;
+		// Выводим объект журнала проверок
+		return &silent.log;
+	}
+}
 
 /**
  * Используем стандартное пространство имён
@@ -52,7 +111,7 @@ using namespace awh;
  */
 TEST(Regex, Interface) {
 	// Создаём объект работы с регулярными выражениями
-	regexp_t regexp;
+	regexp_t regexp(::logger());
 	// Выполняем сборку регулярного выражения
 	const auto expression = regexp.build("(\\w+)@(\\w+)\\.([a-z]{2,})");
 	// Выполняем проверку выполнения сборки регулярного выражения
@@ -85,7 +144,7 @@ TEST(Regex, Interface) {
  */
 TEST(Regex, InterfaceBounds) {
 	// Создаём объект работы с регулярными выражениями
-	regexp_t regexp;
+	regexp_t regexp(::logger());
 	// Выполняем сборку регулярного выражения
 	const auto expression = regexp.build("a(b)?(c)");
 	// Выполняем проверку выполнения сборки регулярного выражения
@@ -128,7 +187,7 @@ TEST(Regex, InterfaceBounds) {
  */
 TEST(Regex, InterfaceNames) {
 	// Создаём объект работы с регулярными выражениями
-	regexp_t regexp;
+	regexp_t regexp(::logger());
 	// Выполняем сборку регулярного выражения
 	const auto expression = regexp.build("(?<year>\\d{4})-(?<month>\\d{2})-(?<day>\\d{2})");
 	// Выполняем проверку выполнения сборки регулярного выражения
@@ -159,7 +218,7 @@ TEST(Regex, InterfaceNames) {
  */
 TEST(Regex, InterfaceCapture) {
 	// Создаём объект работы с регулярными выражениями
-	regexp_t regexp;
+	regexp_t regexp(::logger());
 	// Выполняем сборку регулярного выражения
 	const auto expression = regexp.build("(?P<host>[\\w.]+):(?P<port>\\d+)(?<tail>/\\w+)?");
 	// Выполняем проверку выполнения сборки регулярного выражения
@@ -192,7 +251,7 @@ TEST(Regex, InterfaceCapture) {
  */
 TEST(Regex, InterfaceNamed) {
 	// Создаём объект работы с регулярными выражениями
-	regexp_t regexp;
+	regexp_t regexp(::logger());
 	// Выполняем сборку регулярного выражения
 	const auto expression = regexp.build("(?<method>[A-Z]+) (?<path>\\S+) HTTP/(?<version>\\d\\.\\d)");
 	// Выполняем проверку выполнения сборки регулярного выражения
@@ -221,7 +280,7 @@ TEST(Regex, InterfaceNamed) {
  */
 TEST(Regex, InterfaceDuplicates) {
 	// Создаём объект работы с регулярными выражениями
-	regexp_t regexp;
+	regexp_t regexp(::logger());
 	// Выполняем сборку регулярного выражения с одноимёнными группами
 	const auto expression = regexp.build("(?J)(?<n>a)|(?<n>b)");
 	// Выполняем проверку выполнения сборки регулярного выражения
@@ -254,7 +313,7 @@ TEST(Regex, InterfaceDuplicates) {
  */
 TEST(Regex, InterfaceFlags) {
 	// Создаём объект работы с регулярными выражениями
-	regexp_t regexp;
+	regexp_t regexp(::logger());
 	// Выполняем сборку регулярного выражения с учётом регистра символов
 	const auto sensitive = regexp.build("ПРИВЕТ", static_cast <uint32_t> (regex::flag_t::UTF));
 	// Выполняем проверку выполнения сборки регулярного выражения
@@ -281,7 +340,7 @@ TEST(Regex, InterfaceFlags) {
  */
 TEST(Regex, InterfaceFailure) {
 	// Создаём объект работы с регулярными выражениями
-	regexp_t regexp;
+	regexp_t regexp(::logger());
 	// Выполняем сборку ошибочного регулярного выражения
 	const auto expression = regexp.build("a(b");
 	// Выполняем проверку отказа сборки регулярного выражения
@@ -302,7 +361,7 @@ TEST(Regex, InterfaceFailure) {
  */
 TEST(Regex, InterfaceCache) {
 	// Создаём объект работы с регулярными выражениями
-	regexp_t regexp;
+	regexp_t regexp(::logger());
 	// Выполняем сборку регулярного выражения
 	const auto first = regexp.build("[a-z]+\\d+");
 	// Выполняем проверку выполнения сборки регулярного выражения
@@ -343,7 +402,7 @@ TEST(Regex, InterfaceCache) {
  */
 TEST(Regex, InterfaceThreads) {
 	// Создаём объект работы с регулярными выражениями
-	regexp_t regexp;
+	regexp_t regexp(::logger());
 	// Выполняем установку согласования доступа к кэшу собранных выражений
 	regexp.threadSafety(true);
 	// Выполняем сборку регулярного выражения
@@ -412,7 +471,7 @@ TEST(Regex, InterfaceThreads) {
  */
 TEST(Regex, InterfacePosixUnicode) {
 	// Создаём объект работы с регулярными выражениями
-	const regexp_t regexp;
+	const regexp_t regexp(::logger());
 	/**
 	 * @brief Образец проверки класса символов POSIX
 	 *
@@ -494,7 +553,7 @@ TEST(Regex, InterfacePosixUnicode) {
  */
 TEST(Regex, InterfaceBadUtf8Subject) {
 	// Создаём объект работы с регулярными выражениями
-	const regexp_t regexp;
+	const regexp_t regexp(::logger());
 	// Выполняем сборку выражения под режимом разбора текста посимвольно
 	const auto unicode = regexp.build("\\w+|.", {regexp_t::flag_t::UTF, regexp_t::flag_t::UCP});
 	// Выполняем проверку сборки выражения

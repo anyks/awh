@@ -1489,7 +1489,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				explicit Codegen(const log_t * log = nullptr) noexcept;
+				explicit Codegen(const log_t * log) noexcept;
 		} codegen_t;
 	};
 };

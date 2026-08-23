@@ -576,7 +576,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			explicit RegularExpression(const log_t * log = nullptr) noexcept;
+			explicit RegularExpression(const log_t * log) noexcept;
 			/**
 			 * \~russian
 			 * @brief Деструктор
