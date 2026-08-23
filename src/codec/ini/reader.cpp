@@ -392,7 +392,7 @@ namespace {
  */
 awh::codec::ini::Reader::Settings::Settings() noexcept :
  comments(marker_t::BOTH), separators(separator_t::EQUALS), duplicates(duplicate_t::LAST),
- quotes(quote_t::STRIP), subsections(subsection_t::NONE), delimiter('.'), inlineComments(false), spacedComments(true),
+ quotes(quote_t::STRIP), subsections(subsection_t::NONE), delimiter('.'), inlineComments(false), spacedComments(true), greedySections(false), trimSections(true),
  escapes(false), continuations(false), indents(false), valueless(false), arrays(false),
  sensitive(false), sensitiveSections(false), trim(true), global(true), emitComments(true), emitBlanks(false),
  maxLine(MAX_LINE), maxName(MAX_NAME), maxDepth(MAX_DEPTH), maxContinuation(MAX_CONTINUATION),
@@ -451,6 +451,21 @@ awh::codec::ini::Reader::Settings awh::codec::ini::Reader::Settings::python() no
 	result.quotes = quote_t::KEEP;
 	// Устанавливаем склеивание строк, продолженных отступом
 	result.indents = true;
+	/**
+	 * Устанавливаем поиск закрывающей скобки объявления раздела до последней в строке
+	 *
+	 * @note Разбор этот берёт имя раздела выражением «\\[(?P<header>.+)\\]», и жадность
+	 *       его доводит поиск до последней скобки: «[x[]]» есть ему имя «x[]». Сличено
+	 *       с самим разбором, а не выведено из описания
+	 */
+	result.greedySections = true;
+	/**
+	 * Снимаем отбрасывание пробельной обвязки имени раздела
+	 *
+	 * @note Разбор этот обвязку сохраняет: «[ раздел ]» есть ему имя с пробелами.
+	 *       Сличено с ним самим
+	 */
+	result.trimSections = false;
 	/**
 	 * Устанавливаем учёт регистра имён разделов при сличении
 	 *
@@ -1075,8 +1090,15 @@ bool awh::codec::ini::Reader::header(const string_view line, const size_t offset
 		if(!quoted && (line[i] == ']')){
 			// Запоминаем положение закрывающей квадратной скобки объявления
 			close = i;
-			// Выполняем прекращение поиска закрывающей скобки
-			break;
+			/**
+			 * Если закрывающей скобкой берётся первая в строке
+			 *
+			 * @note При поиске до последней перебор идёт дальше: разбор языка Python
+			 *       берёт имя раздела до последней скобки, и «[x[]]» есть ему «x[]»
+			 */
+			if(!this->_settings.greedySections)
+				// Выполняем прекращение поиска закрывающей скобки
+				break;
 		}
 	}
 	/**
@@ -1085,8 +1107,14 @@ bool awh::codec::ini::Reader::header(const string_view line, const size_t offset
 	if(close == string_view::npos)
 		// Выводим сообщение об ошибке разбора
 		return this->fail(error_t::UNCLOSED_SECTION, offset, this->_line, 1);
-	// Получаем содержимое объявления раздела без квадратных скобок
-	string_view content = ::trim(line.substr(1, close - 1));
+	/**
+	 * Получаем содержимое объявления раздела без квадратных скобок
+	 *
+	 * @note Пробельная обвязка отбрасывается настройкою: разбор языка Python её
+	 *       сохраняет, и «[ раздел ]» есть ему имя с пробелами
+	 */
+	string_view content = (this->_settings.trimSections ?
+	 ::trim(line.substr(1, close - 1)) : line.substr(1, close - 1));
 	// Получаем остаток строки за закрывающей квадратной скобкой
 	const string_view tail = ::trim(line.substr(close + 1));
 	/**

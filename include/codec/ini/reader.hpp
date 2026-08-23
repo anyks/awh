@@ -297,6 +297,43 @@ namespace awh {
 						 * \~
 						 */
 						bool spacedComments;
+						/**
+						 * \~russian
+						 * Флаг поиска закрывающей скобки объявления раздела до последней в строке
+						 *
+						 * @details Умолчанием берётся первая: запись «[x[]]» такому разбору есть
+						 * имя «x[» с лишним хвостом. Разбор языка Python берёт последнюю, и
+						 * имя выходит «x[]»
+						 *
+						 * \~english
+						 * Flag of the search for the closing bracket of a section declaration up to the last one in the line
+						 * @details By default the first one is taken: the record «[x[]]» is for such a parsing
+						 * the name «x[» with a superfluous tail. The parsing of the Python language takes the last one,
+						 * and the name comes out as «x[]»
+						 *
+						 * \~
+						 */
+						bool greedySections;
+						/**
+						 * \~russian
+						 * Флаг отбрасывания пробельной обвязки имени раздела
+						 *
+						 * @details Умолчанием обвязка отбрасывается: запись «[ раздел ]» даёт имя
+						 * «раздел». Разбор языка Python её сохраняет, и имя выходит с пробелами
+						 *
+						 * @warning Сохранение обвязки значит, что «[a]» и «[ a ]» суть разные
+						 * разделы: сличение имён ведётся знак в знак
+						 *
+						 * \~english
+						 * Flag of the discarding of the whitespace trimming of the name of a section
+						 * @details By default the trimming is discarded: the record «[ section ]» gives the name
+						 * «section». The parsing of the Python language preserves it, and the name comes out with the spaces
+						 * @warning The preservation of the trimming means that «[a]» and «[ a ]» are different
+						 * sections: the comparison of the names is conducted character by character
+						 *
+						 * \~
+						 */
+						bool trimSections;
 						// Флаг разбора управляющих последовательностей в значении свойства
 						bool escapes;
 						// Флаг склеивания строк, продолженных знаком обратной косой черты

@@ -80,7 +80,32 @@ mkdir -p "$OUTPUT"
 rm -f "$OUTPUT/ini-tests" "$OUTPUT/ini-tests.exe"
 
 # Собираем перечень объектных файлов стенда
-OBJECTS="$OUTPUT/lexical-table.o $OUTPUT/sys-log.o $OUTPUT/sys-chrono.o $OUTPUT/sys-fmk.o $OUTPUT/charset.o $OUTPUT/charset-table.o $OUTPUT/net-nwt.o $OUTPUT/alloc-alloc.o $OUTPUT/alloc-cache.o $OUTPUT/alloc-central.o $OUTPUT/alloc-classes.o $OUTPUT/alloc-guard.o $OUTPUT/alloc-huge.o $OUTPUT/alloc-link.o $OUTPUT/alloc-pages.o $OUTPUT/alloc-profile.o $OUTPUT/alloc-source.o $OUTPUT/alloc-spin.o $OUTPUT/alloc-trace.o $OUTPUT/alloc-elf.o $OUTPUT/alloc-mach.o $OUTPUT/alloc-obsd.o $OUTPUT/alloc-pe.o $OUTPUT/uni-normalize.o $OUTPUT/uni-table.o $OUTPUT/uni-unicode.o $OUTPUT/uni-utf8.o"
+OBJECTS="$OUTPUT/lexical-table.o $OUTPUT/sys-log.o $OUTPUT/sys-chrono.o $OUTPUT/sys-fmk.o $OUTPUT/charset.o $OUTPUT/charset-table.o $OUTPUT/net-nwt.o $OUTPUT/alloc-alloc.o $OUTPUT/alloc-cache.o $OUTPUT/alloc-central.o $OUTPUT/alloc-classes.o $OUTPUT/alloc-guard.o $OUTPUT/alloc-huge.o $OUTPUT/alloc-link.o $OUTPUT/alloc-pages.o $OUTPUT/alloc-profile.o $OUTPUT/alloc-source.o $OUTPUT/alloc-spin.o $OUTPUT/alloc-trace.o $OUTPUT/alloc-elf.o $OUTPUT/alloc-mach.o $OUTPUT/alloc-pe.o $OUTPUT/uni-normalize.o $OUTPUT/uni-table.o $OUTPUT/uni-unicode.o $OUTPUT/uni-utf8.o"
+
+##
+# Внутренние имена распределителя libc берутся ТОЛЬКО под OpenBSD
+#
+# Файл «src/alloc/capture/obsd.cpp» собственной охраны по системе не несёт - её
+# несёт сборщик: CMakeLists.txt подключает его в перечень исходных текстов лишь
+# при `CMAKE_SYSTEM_NAME STREQUAL "OpenBSD"`. Стенд обязан повторять этот отбор:
+# собранный безусловно, он под MinGW валит связывание по `posix_memalign` и
+# `aligned_alloc`, каких у той библиотеки времени исполнения нет вовсе
+##
+if [ "$(uname -s)" = "OpenBSD" ]; then
+	OBJECTS="$OBJECTS $OUTPUT/alloc-obsd.o"
+fi
+
+##
+# Системные библиотеки, каких требует ядро библиотеки
+#
+# У MS Windows журнал зовёт `WSAGetLastError`: посредник `__awh_strerror__` разбирает
+# сетевые коды отказов, каких `strerror` от MinGW не знает. Живёт этот вызов в
+# «ws2_32», и без неё связывание стенда отказывает
+##
+case "$(uname -s)" in
+	MINGW*|MSYS*|CYGWIN*) SYSTEM_LIBS="-lws2_32" ;;
+	*) SYSTEM_LIBS="" ;;
+esac
 
 # Выводим сообщение о начале сборки стенда
 echo "Собираем стенд проверок INI: $COMPILER"
@@ -117,7 +142,9 @@ $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/spin.cpp" -o "$OUTPU
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/trace.cpp" -o "$OUTPUT/alloc-trace.o"
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/capture/elf.cpp" -o "$OUTPUT/alloc-elf.o"
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/capture/mach.cpp" -o "$OUTPUT/alloc-mach.o"
-$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/capture/obsd.cpp" -o "$OUTPUT/alloc-obsd.o"
+if [ "$(uname -s)" = "OpenBSD" ]; then
+	$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/capture/obsd.cpp" -o "$OUTPUT/alloc-obsd.o"
+fi
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/capture/pe.cpp" -o "$OUTPUT/alloc-pe.o"
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/encoding/charset/charset.cpp" -o "$OUTPUT/charset.o"
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/encoding/charset/table.cpp" -o "$OUTPUT/charset-table.o"
@@ -137,7 +164,7 @@ done
 # @note Объектные файлы перечисляются поимённо, а не маскою: посторонний объектный файл,
 #       оставленный в каталоге сборки кем угодно, попадал бы в связывание и валил его
 #       повтором имён
-$COMPILER $OPTIONS $OBJECTS -L"$GTEST/lib" -lgtest -lgtest_main -pthread -lz -o "$OUTPUT/ini-tests"
+$COMPILER $OPTIONS $OBJECTS -L"$GTEST/lib" -lgtest -lgtest_main -pthread $SYSTEM_LIBS -lz -o "$OUTPUT/ini-tests"
 
 # Выводим сообщение об окончании сборки стенда
 echo "Стенд собран: $OUTPUT/ini-tests"
