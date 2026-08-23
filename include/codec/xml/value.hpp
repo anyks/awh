@@ -387,6 +387,32 @@ namespace awh {
 					void reindex() const noexcept;
 					/**
 					 * \~russian
+					 * @brief Метод снятия вложенного узла разметки с правкой отображения имён
+					 *
+					 * @details Снятие узла ПОСЛЕДНЕГО номеров прочих узлов не двигает, и сноса
+					 * отображения не требует: довольно изъять из него одну запись. Снос обошёлся
+					 * бы разбором всего отображения, тогда как сдвигать в перечне при том нечего
+					 *
+					 * @note Замерено 23.08.2026: снос отображения стоил 132 мкс при 16384 узлах,
+					 *       тогда как само изъятие из перечня - 15 нс. Разряд сложности снятия
+					 *       последнего сносом обращался из постоянного в линейный
+					 * @warning Снятие из СЕРЕДИНЫ перечня правкой не обходится: оно сдвигает
+					 *          номера всех узлов, следующих за снятым. Не обходится и снятие
+					 *          первого вхождения имени, у какого есть одноимённые: место
+					 *          следующего из них отображению неизвестно
+					 *
+					 * @param index номер снимаемого вложенного узла
+					 *
+					 * \~english
+					 * @brief Method of the removal of a nested markup node with the update of the mapping of names
+					 *
+					 * @param index the number of the removed nested node
+					 *
+					 * \~
+					 */
+					void detached(const size_t index) noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод учёта заведённого вложенного узла разметки в отображении имён
 					 *
 					 * @details Долив отображения обязателен там, где узел заводится В КОНЕЦ
@@ -445,6 +471,22 @@ namespace awh {
 					 * \~
 					 */
 					mutable bool _propertied;
+				private:
+					/**
+					 * \~russian
+					 * Объект ведения журнала работы
+					 *
+					 * @note Умолчание стоит прямо в объявлении намеренно: конструкторы копии и
+					 *       переноса логгера не принимают, и без умолчания поле у них осталось
+					 *       бы неопределённым. Сами они логгер СНИМАЮТ С ИСТОЧНИКА, но лишь
+					 *       когда своего у цели ещё нет: настроенная цель своего не отдаёт
+					 *
+					 * \~english
+					 * Object of the keeping of the work log
+					 *
+					 * \~
+					 */
+					const log_t * _log = nullptr;
 				private:
 					/**
 					 * \~russian
@@ -1463,6 +1505,39 @@ namespace awh {
 					 * @brief Copy assignment operator
 					 * @param value value being assigned
 					 * @return reference to the current value
+					 *
+					 * \~
+					 */
+					/**
+					 * \~russian
+					 * @brief Метод установки объекта ведения журнала работы
+					 *
+					 * @details Привязка поздняя нужна там, где значение заведено копией либо
+					 * переносом: логгера они не принимают, и снять его с источника выходит лишь
+					 * когда у источника он есть
+					 *
+					 * @param log объект ведения журнала работы
+					 *
+					 * \~english
+					 * @brief Method of the setting of the object of the keeping of the work log
+					 *
+					 * @param log the object of the keeping of the work log
+					 *
+					 * \~
+					 */
+					void setLogger(const log_t * log) noexcept;
+					/**
+					 * \~russian
+					 * @brief Оператор присваивания копией
+					 *
+					 * @param value присваиваемое значение
+					 * @return      ссылка на текущее значение
+					 *
+					 * \~english
+					 * @brief Operator of the assignment by copy
+					 *
+					 * @param value the assigned value
+					 * @return      the reference to the current value
 					 *
 					 * \~
 					 */

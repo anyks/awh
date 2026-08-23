@@ -49,6 +49,11 @@
 #include "writer.hpp"
 
 /**
+ * Подключаем заголовочные файлы проекта
+ */
+#include "../../sys/log.hpp"
+
+/**
  * Снимаем на время объявлений макросы, чьи имена заняты
  */
 #include "../../sys/macro_push.hpp"
@@ -809,6 +814,9 @@ namespace awh {
 					 * \~
 					 */
 					[[nodiscard]] bool build(writer_t & writer) const noexcept;
+				protected:
+					// Объект работы с логами
+					const log_t * _log;
 				private:
 					/**
 					 * \~russian
@@ -893,13 +901,17 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
+					 * @param log объект для работы с логами
 					 *
 					 * \~english
 					 * @brief Constructor
 					 *
+					 * @param log object for working with logs
+					 *
 					 * \~
 					 */
-					Document() noexcept : _error(error_t::NONE) {}
+					explicit Document(const log_t * log) noexcept :
+					 _error(error_t::NONE), _log(log) {}
 					/**
 					 * \~russian
 					 * @brief Деструктор

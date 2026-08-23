@@ -159,7 +159,7 @@ bool awh::codec::csv::Document::parse(const string_view text) noexcept {
 	// Выполняем очистку таблицы
 	this->clear();
 	// Чтение текста таблицы
-	reader_t reader(this->_settings.reader);
+	reader_t reader(this->_log, this->_settings.reader);
 	/**
 	 * Выполняем подачу текста таблицы кусками
 	 *
@@ -227,11 +227,13 @@ bool awh::codec::csv::Document::read(const string & filename) noexcept {
 	if(!file.is_open()){
 		// Запоминаем код ошибки разбора
 		this->_error = error_t::INTERNAL;
+		// Выполняем вывод сообщения об отказе в лог
+		this->report();
 		// Выводим признак неудачного чтения
 		return false;
 	}
 	// Чтение текста таблицы
-	reader_t reader(this->_settings.reader);
+	reader_t reader(this->_log, this->_settings.reader);
 	// Буфер очередного куска файла таблицы
 	string buffer(::CHUNK, '\0');
 	/**
@@ -368,6 +370,8 @@ bool awh::codec::csv::Document::read(const string & filename, const function <bo
 	if(!static_cast <bool> (callback)){
 		// Запоминаем код ошибки разбора
 		this->_error = error_t::INTERNAL;
+		// Выполняем вывод сообщения об отказе в лог
+		this->report();
 		// Выводим признак неудачного чтения
 		return false;
 	}
@@ -379,11 +383,13 @@ bool awh::codec::csv::Document::read(const string & filename, const function <bo
 	if(!file.is_open()){
 		// Запоминаем код ошибки разбора
 		this->_error = error_t::INTERNAL;
+		// Выполняем вывод сообщения об отказе в лог
+		this->report();
 		// Выводим признак неудачного чтения
 		return false;
 	}
 	// Чтение текста таблицы
-	reader_t reader(this->_settings.reader);
+	reader_t reader(this->_log, this->_settings.reader);
 	// Буфер очередного куска файла таблицы
 	string buffer(::CHUNK, '\0');
 	// Буфер знаков текущей записи
@@ -453,11 +459,13 @@ bool awh::codec::csv::Document::parse(const string_view text, const function <bo
 	if(!static_cast <bool> (callback)){
 		// Запоминаем код ошибки разбора
 		this->_error = error_t::INTERNAL;
+		// Выполняем вывод сообщения об отказе в лог
+		this->report();
 		// Выводим признак неудачного разбора
 		return false;
 	}
 	// Чтение текста таблицы
-	reader_t reader(this->_settings.reader);
+	reader_t reader(this->_log, this->_settings.reader);
 	// Буфер знаков текущей записи
 	string storage;
 	// Указания на поля текущей записи в буфере
@@ -536,7 +544,7 @@ bool awh::codec::csv::Document::write(const string & filename) const noexcept {
 		// Выводим признак неудачной записи
 		return false;
 	// Запись текста таблицы
-	writer_t writer(this->_settings.writer);
+	writer_t writer(this->_log, this->_settings.writer);
 	/**
 	 * Если таблица имеет заголовок
 	 */
@@ -1045,7 +1053,7 @@ void awh::codec::csv::Document::append(const vector <string_view> & fields) noex
  */
 string awh::codec::csv::Document::text() const noexcept {
 	// Запись текста таблицы
-	writer_t writer(this->_settings.writer);
+	writer_t writer(this->_log, this->_settings.writer);
 	/**
 	 * Если таблица имеет заголовок
 	 */
@@ -1134,15 +1142,32 @@ awh::codec::csv::Document::operator string() const noexcept {
 	return this->text();
 }
 /**
- * @brief Конструктор
+ * @brief Метод вывода сообщения об отказе в лог
  *
  */
-awh::codec::csv::Document::Document() noexcept : _error(error_t::NONE), _opened(false) {}
+void awh::codec::csv::Document::report() const noexcept {
+	/**
+	 * Если объект для работы с логами установлен
+	 */
+	if(this->_log != nullptr)
+		// Выполняем вывод сообщения об отказе
+		this->_log->print("CSV document failed: %s", log_t::flag_t::CRITICAL, awh::codec::csv::message(this->_error));
+}
 /**
  * @brief Конструктор
  *
+ * @param log объект для работы с логами
+ *
+ */
+awh::codec::csv::Document::Document(const log_t * log) noexcept :
+ _log(log), _error(error_t::NONE), _opened(false) {}
+/**
+ * @brief Конструктор
+ *
+ * @param log      объект для работы с логами
  * @param settings настройки контейнера
  *
  */
-awh::codec::csv::Document::Document(const settings_t & settings) noexcept :
+awh::codec::csv::Document::Document(const log_t * log, const settings_t & settings) noexcept :
+ _log(log),
  _settings(settings), _error(error_t::NONE), _opened(false) {}

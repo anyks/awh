@@ -46,6 +46,11 @@
 /**
  * Подключаем заголовочные файлы модуля
  */
+#include <sys/log.hpp>
+
+/**
+ * Подключаем заголовочные файлы модуля
+ */
 #include "common.hpp"
 #include "encoding.hpp"
 
@@ -973,6 +978,44 @@ namespace awh {
 					step_t fail(const error_t error, const size_t offset) noexcept;
 					/**
 					 * \~russian
+					 * @brief Метод отказа разбора с сообщением о нём в журнал
+					 *
+					 * @details Способ этот стоит ГОРЛОМ: всякий отказ, идущий не через `fail`,
+					 * обязан идти через него. Сообщение в журнал пишется в двух местах на весь
+					 * разбор - здесь и в `fail`, - а не при всяком присваивании кода отказа:
+					 * иначе места записи разошлись бы с местами отказа, и часть бед уходила бы
+					 * молча
+					 *
+					 * @param error код ошибки разбора
+					 * @return      всегда ложь, ради возврата им из места отказа
+					 *
+					 * \~english
+					 * @brief Method of the refusal of the parsing with a report of it to the log
+					 *
+					 * @param error the code of the parsing error
+					 * @return      always false, for the returning by it from the place of the refusal
+					 *
+					 * \~
+					 */
+					bool refuse(const error_t error) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод сообщения об отказе разбора в журнал
+					 *
+					 * @param error    код ошибки разбора
+					 * @param location место обнаруженной ошибки в исходном тексте
+					 *
+					 * \~english
+					 * @brief Method of the reporting of a parsing refusal to the log
+					 *
+					 * @param error    the code of the parsing error
+					 * @param location the place of the found error in the source text
+					 *
+					 * \~
+					 */
+					void report(const error_t error, const location_t & location) const noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод прекращения разбора ошибкой с заданным местом
 					 *
 					 * @details Место отказа считается по ходу разбора и только вперёд, а
@@ -1737,6 +1780,21 @@ namespace awh {
 				private:
 					/**
 					 * \~russian
+					 * Объект ведения журнала работы
+					 *
+					 * @note Указание вправе быть пустым: разбор работает и без журнала, лишь
+					 *       не сообщая о бедах никуда. Сличение на пустоту стоит в одном месте -
+					 *       в способе записи, - и по местам отказа не разносится
+					 *
+					 * \~english
+					 * Object of the keeping of the work log
+					 *
+					 * \~
+					 */
+					const log_t * _log;
+				private:
+					/**
+					 * \~russian
 					 * Отложенный код ошибки приведения исходного текста к кодировке UTF-8
 					 *
 					 * @note Приведение переносит в хранилище всё, что успело проверить, и
@@ -2345,7 +2403,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Reader() noexcept;
+					explicit Reader(const log_t * log = nullptr) noexcept;
 					/**
 					 * \~russian
 					 * @brief Конструктор
@@ -2358,7 +2416,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					explicit Reader(const settings_t & settings) noexcept;
+					explicit Reader(const settings_t & settings, const log_t * log = nullptr) noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор

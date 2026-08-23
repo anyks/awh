@@ -33,6 +33,64 @@
 #include <codec/csv/csv.hpp>
 
 /**
+ * @brief Пространство имён проверок этого файла
+ *
+ * @note Держится оно безымянным намеренно: проверки кодеков собираются одной
+ *       программою, и одноимённые построения разных файлов иначе сходятся в
+ *       одно, порождая порчу вдали от места её причины
+ *
+ */
+namespace {
+	/**
+	 * @brief Объект журнала проверок с отключённым выводом
+	 *
+	 * @details Вывод отключается назначением пустого перечня приёмников: отказы
+	 *          разбора проверки наводят намеренно, и журнал их засорял бы выдачу
+	 *
+	 */
+	struct Silent {
+		/**
+		 * @brief Функция получения объекта фреймворка проверок
+		 *
+		 * @details Объект заводится статикою местною, а не общею файла: заведение его
+		 *          порядком построения статики оканчивается падением ещё до входа в
+		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
+		 *
+		 * @return объект фреймворка проверок
+		 *
+		 */
+		static const awh::fmk_t & framework() noexcept {
+			// Объект фреймворка проверок
+			static awh::fmk_t fmk;
+			// Выводим объект фреймворка проверок
+			return fmk;
+		}
+		// Объект журнала проверок
+		awh::log_t log;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Silent() noexcept : log(&Silent::framework()) {
+			// Выполняем отключение вывода логов
+			this->log.mode({});
+		}
+	};
+	/**
+	 * @brief Функция получения объекта журнала проверок
+	 *
+	 * @return объект журнала проверок
+	 *
+	 */
+	const awh::log_t * logger() noexcept {
+		// Объект журнала проверок
+		static Silent silent;
+		// Выводим объект журнала проверок
+		return &silent.log;
+	}
+}
+
+/**
  * Используем стандартное пространство имён
  */
 using namespace std;
@@ -53,7 +111,7 @@ static vector <vector <string>> parse(const string & text, const csv::reader_t::
 	// Поля записи, разбираемой в настоящее время
 	vector <string> record;
 	// Объект разбора текста таблицы
-	csv::reader_t reader(settings);
+	csv::reader_t reader(::logger(), settings);
 	// Выполняем подачу текста таблицы разбору
 	reader.feed(text.data(), text.size(), true);
 	/**
@@ -88,7 +146,7 @@ static vector <vector <string>> parse(const string & text, const csv::reader_t::
  */
 TEST(CodecCsvWriter, Simple) {
 	// Объект записи текста таблицы
-	csv::writer_t writer;
+	csv::writer_t writer(::logger());
 	// Выполняем запись первого поля записи
 	writer.field("a");
 	// Выполняем запись второго поля записи
@@ -107,7 +165,7 @@ TEST(CodecCsvWriter, Simple) {
  */
 TEST(CodecCsvWriter, Minimal) {
 	// Объект записи текста таблицы
-	csv::writer_t writer;
+	csv::writer_t writer(::logger());
 	// Выполняем запись целой записи полем за полем
 	writer.record(vector <string> {"a", "b,c", "d\"e", "f\ng", "h\ri"});
 	// Выполняем проверку собранного текста
@@ -124,7 +182,7 @@ TEST(CodecCsvWriter, QuotingAll) {
 	// Устанавливаем правило заключения поля в кавычки
 	settings.quoting = csv::quoting_t::ALL;
 	// Объект записи текста таблицы
-	csv::writer_t writer(settings);
+	csv::writer_t writer(::logger(), settings);
 	// Выполняем запись целой записи полем за полем
 	writer.record(vector <string> {"a", "1", ""});
 	// Выполняем проверку собранного текста
@@ -141,7 +199,7 @@ TEST(CodecCsvWriter, QuotingNonNumeric) {
 	// Устанавливаем правило заключения поля в кавычки
 	settings.quoting = csv::quoting_t::NONNUMERIC;
 	// Объект записи текста таблицы
-	csv::writer_t writer(settings);
+	csv::writer_t writer(::logger(), settings);
 	// Выполняем запись целой записи полем за полем
 	writer.record(vector <string> {"a", "1", "-2.5", "1a"});
 	// Выполняем проверку собранного текста
@@ -161,7 +219,7 @@ TEST(CodecCsvWriter, QuotingNone) {
 	// Устанавливаем правило заключения поля в кавычки
 	settings.quoting = csv::quoting_t::NONE;
 	// Объект записи текста таблицы
-	csv::writer_t writer(settings);
+	csv::writer_t writer(::logger(), settings);
 	// Выполняем запись целой записи полем за полем
 	writer.record(vector <string> {"a,b", "c"});
 	// Выполняем проверку собранного текста
@@ -178,7 +236,7 @@ TEST(CodecCsvWriter, EscapeBackslash) {
 	// Устанавливаем способ записи кавычки внутри поля
 	settings.escape = csv::escape_t::BACKSLASH;
 	// Объект записи текста таблицы
-	csv::writer_t writer(settings);
+	csv::writer_t writer(::logger(), settings);
 	// Выполняем запись целой записи полем за полем
 	writer.record(vector <string> {"a\"b", "c\\d"});
 	// Выполняем проверку собранного текста
@@ -201,7 +259,7 @@ TEST(CodecCsvWriter, QuotingNonNumericNecessary) {
 	// Устанавливаем правило заключения поля в кавычки
 	settings.quoting = csv::quoting_t::NONNUMERIC;
 	// Объект записи текста таблицы
-	csv::writer_t writer(settings);
+	csv::writer_t writer(::logger(), settings);
 	// Выполняем запись целой записи полем за полем
 	writer.record(vector <string> {"\t\r\n0", "1", " 2 ", "3,4"});
 	// Выполняем проверку того, что поля с опасным содержимым взяты в кавычки
@@ -228,7 +286,7 @@ TEST(CodecCsvWriter, Comment) {
 	// Устанавливаем знак начала строки примечания, признаваемый разбором
 	settings.comment = '#';
 	// Объект записи текста таблицы
-	csv::writer_t writer(settings);
+	csv::writer_t writer(::logger(), settings);
 	// Выполняем запись первой записи таблицы
 	writer.record(vector <string> {"#значение", "#прочее"});
 	// Выполняем проверку того, что в кавычки взято лишь поле, начинающее запись
@@ -244,7 +302,7 @@ TEST(CodecCsvWriter, Comment) {
 	// Выполняем проверку того, что запись получена обратно неизменной
 	ASSERT_EQ(records.front(), (vector <string> {"#значение", "#прочее"}));
 	// Объект записи текста таблицы без знака примечания
-	csv::writer_t plain;
+	csv::writer_t plain(::logger());
 	// Выполняем запись первой записи таблицы
 	plain.record(vector <string> {"#значение"});
 	// Выполняем проверку того, что без объявленного знака кавычки не ставятся
@@ -277,7 +335,7 @@ TEST(CodecCsvWriter, Newline) {
 		// Устанавливаем знак конца строки
 		settings.newline = item.newline;
 		// Объект записи текста таблицы
-		csv::writer_t writer(settings);
+		csv::writer_t writer(::logger(), settings);
 		// Выполняем запись целой записи полем за полем
 		writer.record(vector <string> {"a"});
 		// Выполняем проверку собранного текста
@@ -295,7 +353,7 @@ TEST(CodecCsvWriter, Separator) {
 	// Устанавливаем знак-разделитель полей
 	settings.separator = ';';
 	// Объект записи текста таблицы
-	csv::writer_t writer(settings);
+	csv::writer_t writer(::logger(), settings);
 	// Выполняем запись целой записи полем за полем
 	writer.record(vector <string> {"a;b", "c,d"});
 	// Выполняем проверку того, что в кавычки взято лишь поле с разделителем
@@ -315,7 +373,7 @@ TEST(CodecCsvWriter, Signature) {
 	// Устанавливаем признак записи метки порядка байтов
 	settings.signature = true;
 	// Объект записи текста таблицы
-	csv::writer_t writer(settings);
+	csv::writer_t writer(::logger(), settings);
 	// Выполняем запись первой записи таблицы
 	writer.record(vector <string> {"a"});
 	// Выполняем изъятие собранного текста
@@ -332,7 +390,7 @@ TEST(CodecCsvWriter, Signature) {
  */
 TEST(CodecCsvWriter, Number) {
 	// Объект записи текста таблицы
-	csv::writer_t writer;
+	csv::writer_t writer(::logger());
 	// Выполняем запись логического значения
 	writer.number <bool> (true);
 	// Выполняем запись знакового целого значения
@@ -364,7 +422,7 @@ TEST(CodecCsvWriter, Real) {
 	 */
 	for(auto & value : values){
 		// Объект записи текста таблицы
-		csv::writer_t writer;
+		csv::writer_t writer(::logger());
 		// Выполняем запись значения с плавающей запятой
 		writer.number <double> (value);
 		// Выполняем завершение текущей записи
@@ -391,7 +449,7 @@ TEST(CodecCsvWriter, Real) {
  */
 TEST(CodecCsvWriter, Write) {
 	// Объект записи текста таблицы
-	csv::writer_t writer;
+	csv::writer_t writer(::logger());
 	// Выполняем запись заголовка таблицы
 	writer.record(vector <string> {"name", "value"});
 	// Выполняем запись таблицы целиком
@@ -406,7 +464,7 @@ TEST(CodecCsvWriter, Write) {
  */
 TEST(CodecCsvWriter, Take) {
 	// Объект записи текста таблицы
-	csv::writer_t writer;
+	csv::writer_t writer(::logger());
 	// Выполняем запись первой записи таблицы
 	writer.record(vector <string> {"a"});
 	// Выполняем изъятие собранного текста
@@ -428,7 +486,7 @@ TEST(CodecCsvWriter, Take) {
  */
 TEST(CodecCsvWriter, TakeStarted) {
 	// Объект записи текста таблицы
-	csv::writer_t writer;
+	csv::writer_t writer(::logger());
 	// Выполняем запись очередного поля записи
 	writer.field("a");
 	// Выполняем проверку отказа изъятия посреди записи
@@ -447,7 +505,7 @@ TEST(CodecCsvWriter, TakeStarted) {
  */
 TEST(CodecCsvWriter, Clear) {
 	// Объект записи текста таблицы
-	csv::writer_t writer;
+	csv::writer_t writer(::logger());
 	// Выполняем запись очередного поля записи
 	writer.field("a");
 	// Выполняем очистку собранного текста
@@ -489,7 +547,7 @@ TEST(CodecCsvWriter, SignatureField) {
 		// Устанавливаем правило заключения поля в кавычки
 		settings.quoting = static_cast <csv::quoting_t> (quoting);
 		// Объект записи текста таблицы
-		csv::writer_t writer(settings);
+		csv::writer_t writer(::logger(), settings);
 		// Выполняем запись поля, содержащего метку порядка байтов
 		writer.field("\xEF\xBB\xBF");
 		// Выполняем завершение записи
@@ -499,7 +557,7 @@ TEST(CodecCsvWriter, SignatureField) {
 		// Выполняем завершение второй записи
 		writer.record();
 		// Контейнер прочитанной обратно таблицы
-		csv::document_t document;
+		csv::document_t document(::logger());
 		// Выполняем разбор записанного текста таблицы
 		ASSERT_TRUE(document.parse(writer.text())) << uint32_t(quoting);
 		// Выполняем проверку сохранения количества записей
@@ -548,7 +606,7 @@ TEST(CodecCsvWriter, RoundTrip) {
 					// Выполняем переход к следующему набору настроек записи
 					continue;
 				// Объект записи текста таблицы
-				csv::writer_t writer(settings);
+				csv::writer_t writer(::logger(), settings);
 				// Выполняем запись таблицы целиком
 				writer.write(records);
 				// Настройки разбора текста таблицы

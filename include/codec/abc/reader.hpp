@@ -46,6 +46,11 @@
 #include "encoding.hpp"
 
 /**
+ * Подключаем заголовочные файлы проекта
+ */
+#include "../../sys/log.hpp"
+
+/**
  * Снимаем на время объявлений макросы, чьи имена заняты
  */
 #include "../../sys/macro_push.hpp"
@@ -558,6 +563,9 @@ namespace awh {
 				private:
 					// Опора обработчика прямой выдачи событий разбора
 					void * _context;
+				protected:
+					// Объект работы с логами
+					const log_t * _log;
 				private:
 					/**
 					 * \~russian
@@ -944,13 +952,14 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
+					 * @param log объект для работы с логами
 					 *
 					 * \~english
 					 * @brief Constructor
 					 *
 					 * \~
 					 */
-					Reader() noexcept;
+					explicit Reader(const log_t * log) noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор

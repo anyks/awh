@@ -46,6 +46,11 @@
 #include "header.hpp"
 
 /**
+ * Подключаем заголовочные файлы проекта
+ */
+#include "../../sys/log.hpp"
+
+/**
  * Снимаем на время объявлений макросы, чьи имена заняты
  */
 #include "../../sys/macro_push.hpp"
@@ -220,6 +225,9 @@ namespace awh {
 				private:
 					// Строки оглавления контейнера
 					vector <entry_t> _entries;
+				protected:
+					// Объект работы с логами
+					const log_t * _log;
 				public:
 					/**
 					 * \~russian
@@ -326,13 +334,16 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
+					 * @param log объект для работы с логами
 					 *
 					 * \~english
 					 * @brief Constructor
 					 *
+					 * @param log object for working with logs
+					 *
 					 * \~
 					 */
-					Index() noexcept {}
+					explicit Index(const log_t * log) noexcept : _log(log) {}
 					/**
 					 * \~russian
 					 * @brief Деструктор
@@ -420,6 +431,9 @@ namespace awh {
 				private:
 					// Работа чтения октетов контейнера
 					source_t _source;
+				protected:
+					// Объект работы с логами
+					const log_t * _log;
 				public:
 					/**
 					 * \~russian
@@ -562,13 +576,14 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
+					 * @param log объект для работы с логами
 					 *
 					 * \~english
 					 * @brief Constructor
 					 *
 					 * \~
 					 */
-					Fetcher() noexcept;
+					explicit Fetcher(const log_t * log) noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор

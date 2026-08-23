@@ -155,7 +155,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					const log_t * _log;
+					const log_t * _log = nullptr;
 				private:
 					// Тип хранимого значения
 					type_t _type;

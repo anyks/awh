@@ -86,6 +86,16 @@ bool awh::codec::csv::Reader::fail(const error_t error) noexcept {
 		this->_position.line = this->_line;
 		// Запоминаем положение в строке, в котором произошла ошибка
 		this->_position.column = this->_column;
+		/**
+		 * Если объект для работы с логами установлен
+		 *
+		 * @note Код отказа остаётся доступен через error(), а место его - через
+		 *       position(): журнал есть оповещение, а не единственный способ узнать
+		 *       о случившемся
+		 */
+		if(this->_log != nullptr)
+			// Выполняем вывод сообщения об отказе разбора текста
+			this->_log->print("CSV parsing failed: %s at line %u column %u", log_t::flag_t::CRITICAL, awh::codec::csv::message(error), this->_position.line, this->_position.column);
 	}
 	// Переводим разбор в состояние отказа
 	this->_state = state_t::FAILED;
@@ -1821,8 +1831,11 @@ void awh::codec::csv::Reader::settings(const settings_t & settings) noexcept {
 /**
  * @brief Конструктор
  *
+ * @param log объект для работы с логами
+ *
  */
-awh::codec::csv::Reader::Reader() noexcept :
+awh::codec::csv::Reader::Reader(const log_t * log) noexcept :
+ _log(log), _decoder(log),
  _state(state_t::RECORD_START), _error(error_t::NONE), _encoding(encoding_t::NONE),
  _separator(','), _expected(0), _marked(false), _last(false), _headed(false), _quoted(false),
  _modified(false), _started(false), _offset(0), _line(1), _column(1),
@@ -1833,10 +1846,12 @@ awh::codec::csv::Reader::Reader() noexcept :
 /**
  * @brief Конструктор
  *
+ * @param log      объект для работы с логами
  * @param settings настройки разбора текста
  *
  */
-awh::codec::csv::Reader::Reader(const settings_t & settings) noexcept : Reader() {
+awh::codec::csv::Reader::Reader(const log_t * log, const settings_t & settings) noexcept :
+ Reader(log) {
 	// Выполняем установку настроек разбора текста
 	this->settings(settings);
 }

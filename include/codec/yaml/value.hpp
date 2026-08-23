@@ -146,7 +146,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					const log_t * _log;
+					const log_t * _log = nullptr;
 				private:
 					// Вид хранимого значения
 					kind_t _kind;

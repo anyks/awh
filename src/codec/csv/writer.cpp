@@ -435,13 +435,18 @@ void awh::codec::csv::Writer::settings(const settings_t & settings) noexcept {
 /**
  * @brief Конструктор
  *
+ * @param log объект для работы с логами
+ *
  */
-awh::codec::csv::Writer::Writer() noexcept : _started(false), _marked(false) {}
+awh::codec::csv::Writer::Writer(const log_t * log) noexcept :
+ _log(log), _started(false), _marked(false) {}
 /**
  * @brief Конструктор
  *
+ * @param log      объект для работы с логами
  * @param settings настройки записи текста
  *
  */
-awh::codec::csv::Writer::Writer(const settings_t & settings) noexcept :
+awh::codec::csv::Writer::Writer(const log_t * log, const settings_t & settings) noexcept :
+ _log(log),
  _settings(settings), _started(false), _marked(false) {}

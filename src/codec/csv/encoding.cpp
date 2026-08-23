@@ -446,6 +446,8 @@ bool awh::codec::csv::Decoder::sniff() noexcept {
 		if(!this->_forced){
 			// Запоминаем код ошибки приведения
 			this->_error = error_t::UNSUPPORTED_ENCODING;
+			// Выполняем вывод сообщения об отказе в лог
+			this->report();
 			// Выводим признак незавершённого определения кодировки
 			return false;
 		}
@@ -542,6 +544,8 @@ bool awh::codec::csv::Decoder::process(const char * buffer, const size_t size, c
 					if(end){
 						// Запоминаем код ошибки приведения
 						this->_error = error_t::INVALID_ENCODING;
+						// Выполняем вывод сообщения об отказе в лог
+						this->report();
 						// Выводим отрицательный результат выполнения операции
 						return false;
 					}
@@ -558,6 +562,8 @@ bool awh::codec::csv::Decoder::process(const char * buffer, const size_t size, c
 				if(code == INVALID_CODEPOINT){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_ENCODING;
+					// Выполняем вывод сообщения об отказе в лог
+					this->report();
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -567,6 +573,8 @@ bool awh::codec::csv::Decoder::process(const char * buffer, const size_t size, c
 				if(!isChar(code)){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_CHARACTER;
+					// Выполняем вывод сообщения об отказе в лог
+					this->report();
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -637,6 +645,8 @@ bool awh::codec::csv::Decoder::process(const char * buffer, const size_t size, c
 							result.append(buffer + begin, (offset - begin));
 							// Запоминаем код ошибки приведения
 							this->_error = error_t::INVALID_CHARACTER;
+							// Выполняем вывод сообщения об отказе в лог
+							this->report();
 							// Выводим отрицательный результат выполнения операции
 							return false;
 						}
@@ -656,6 +666,8 @@ bool awh::codec::csv::Decoder::process(const char * buffer, const size_t size, c
 				if(count == 0){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_ENCODING;
+					// Выполняем вывод сообщения об отказе в лог
+					this->report();
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -669,6 +681,8 @@ bool awh::codec::csv::Decoder::process(const char * buffer, const size_t size, c
 					if(end){
 						// Запоминаем код ошибки приведения
 						this->_error = error_t::INVALID_ENCODING;
+						// Выполняем вывод сообщения об отказе в лог
+						this->report();
 						// Выводим отрицательный результат выполнения операции
 						return false;
 					}
@@ -691,6 +705,8 @@ bool awh::codec::csv::Decoder::process(const char * buffer, const size_t size, c
 				if(code == INVALID_CODEPOINT){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_ENCODING;
+					// Выполняем вывод сообщения об отказе в лог
+					this->report();
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -700,6 +716,8 @@ bool awh::codec::csv::Decoder::process(const char * buffer, const size_t size, c
 				if(!isChar(code)){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_CHARACTER;
+					// Выполняем вывод сообщения об отказе в лог
+					this->report();
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -767,6 +785,8 @@ bool awh::codec::csv::Decoder::process(const char * buffer, const size_t size, c
 					if((unit < 0xDC00) || (unit > 0xDFFF)){
 						// Запоминаем код ошибки приведения
 						this->_error = error_t::INVALID_ENCODING;
+						// Выполняем вывод сообщения об отказе в лог
+						this->report();
 						// Выводим отрицательный результат выполнения операции
 						return false;
 					}
@@ -791,6 +811,8 @@ bool awh::codec::csv::Decoder::process(const char * buffer, const size_t size, c
 				} else if((unit >= 0xDC00) && (unit <= 0xDFFF)) {
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_ENCODING;
+					// Выполняем вывод сообщения об отказе в лог
+					this->report();
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				// Если прочитанная пара байтов суррогатной не является
@@ -801,6 +823,8 @@ bool awh::codec::csv::Decoder::process(const char * buffer, const size_t size, c
 				if(!isChar(code)){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_CHARACTER;
+					// Выполняем вывод сообщения об отказе в лог
+					this->report();
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -810,6 +834,8 @@ bool awh::codec::csv::Decoder::process(const char * buffer, const size_t size, c
 				if(!encode(code, result)){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_ENCODING;
+					// Выполняем вывод сообщения об отказе в лог
+					this->report();
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -829,6 +855,8 @@ bool awh::codec::csv::Decoder::process(const char * buffer, const size_t size, c
 			if(end && ((this->_length != 0) || (this->_surrogate != 0))){
 				// Запоминаем код ошибки приведения
 				this->_error = error_t::INVALID_ENCODING;
+				// Выполняем вывод сообщения об отказе в лог
+				this->report();
 				// Выводим отрицательный результат выполнения операции
 				return false;
 			}
@@ -854,6 +882,8 @@ bool awh::codec::csv::Decoder::process(const char * buffer, const size_t size, c
 				if((code == 0) || !isChar(code)){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_CHARACTER;
+					// Выполняем вывод сообщения об отказе в лог
+					this->report();
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -863,6 +893,8 @@ bool awh::codec::csv::Decoder::process(const char * buffer, const size_t size, c
 				if(!encode(code, result)){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_ENCODING;
+					// Выполняем вывод сообщения об отказе в лог
+					this->report();
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -879,6 +911,8 @@ bool awh::codec::csv::Decoder::process(const char * buffer, const size_t size, c
 				if(!isChar(data[i])){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_CHARACTER;
+					// Выполняем вывод сообщения об отказе в лог
+					this->report();
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -892,6 +926,8 @@ bool awh::codec::csv::Decoder::process(const char * buffer, const size_t size, c
 				if(!encode(data[i], result)){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_ENCODING;
+					// Выполняем вывод сообщения об отказе в лог
+					this->report();
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -909,6 +945,8 @@ bool awh::codec::csv::Decoder::process(const char * buffer, const size_t size, c
 				if(data[i] >= 0x80){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_ENCODING;
+					// Выполняем вывод сообщения об отказе в лог
+					this->report();
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -918,6 +956,8 @@ bool awh::codec::csv::Decoder::process(const char * buffer, const size_t size, c
 				if(!isChar(data[i])){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_CHARACTER;
+					// Выполняем вывод сообщения об отказе в лог
+					this->report();
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -929,6 +969,8 @@ bool awh::codec::csv::Decoder::process(const char * buffer, const size_t size, c
 		default: {
 			// Запоминаем код ошибки приведения
 			this->_error = error_t::UNSUPPORTED_ENCODING;
+			// Выполняем вывод сообщения об отказе в лог
+			this->report();
 			// Выводим отрицательный результат выполнения операции
 			return false;
 		}
@@ -939,6 +981,8 @@ bool awh::codec::csv::Decoder::process(const char * buffer, const size_t size, c
 	if(end && (this->_length != 0)){
 		// Запоминаем код ошибки приведения
 		this->_error = error_t::INVALID_ENCODING;
+		// Выполняем вывод сообщения об отказе в лог
+		this->report();
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -1093,10 +1137,25 @@ void awh::codec::csv::Decoder::reset() noexcept {
 		this->_encoding = encoding_t::NONE;
 }
 /**
- * @brief Конструктор
+ * @brief Метод вывода сообщения об отказе в лог
  *
  */
-awh::codec::csv::Decoder::Decoder() noexcept :
+void awh::codec::csv::Decoder::report() const noexcept {
+	/**
+	 * Если объект для работы с логами установлен
+	 */
+	if(this->_log != nullptr)
+		// Выполняем вывод сообщения об отказе
+		this->_log->print("CSV encoding failed: %s", log_t::flag_t::CRITICAL, awh::codec::csv::message(this->_error));
+}
+/**
+ * @brief Конструктор
+ *
+ * @param log объект для работы с логами
+ *
+ */
+awh::codec::csv::Decoder::Decoder(const log_t * log) noexcept :
+ _log(log),
  _encoding(encoding_t::NONE), _error(error_t::NONE), _forced(false),
  _marked(false), _signed(false), _started(false), _length(0), _surrogate(0) {
 	// Выполняем сброс удержанных байтов незавершённой последовательности знака

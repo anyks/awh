@@ -50,6 +50,11 @@
 #include "document.hpp"
 
 /**
+ * Подключаем заголовочные файлы проекта
+ */
+#include "../../sys/log.hpp"
+
+/**
  * Снимаем на время объявлений макросы, чьи имена заняты
  */
 #include "../../sys/macro_push.hpp"
@@ -134,6 +139,29 @@ namespace awh {
 			 * \~
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Value {
+				public:
+					/**
+					 * \~russian
+					 * @brief Метод установки объекта логирования
+					 *
+					 * @details Значение есть данные, а не работающий модуль: пара доставляется
+					 * ему вызовом, а не конструктором, иначе неявное приведение вида
+					 * `value_t v = "текст"` стало бы невозможным. Устройство это взято у
+					 * `awh::Buffer`, где решён тот же вопрос
+					 *
+					 * @param log объект работы с логами
+					 *
+					 * \~english
+					 * @brief Method setting the logging object
+					 *
+					 * @param log object for working with logs
+					 *
+					 * \~
+					 */
+					void setLogger(const log_t * log) noexcept;
+				private:
+					// Объект работы с логами
+					const log_t * _log = nullptr;
 				private:
 					/**
 					 * \~russian
@@ -1224,6 +1252,9 @@ namespace awh {
 					// Имя поля отображения, сборкой назначенное
 					Value _key;
 				private:
+					// Объект работы с логами
+					const log_t * _log = nullptr;
+				private:
 					// Признак назначенного имени поля отображения
 					bool _keyed;
 				private:
@@ -1539,6 +1570,20 @@ namespace awh {
 					 * \~
 					 */
 					Builder() noexcept;
+					/**
+					 * \~russian
+					 * @brief Конструктор
+					 *
+					 * @param log объект для работы с логами
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * @param log object for working with logs
+					 *
+					 * \~
+					 */
+					explicit Builder(const log_t * log) noexcept;
 			} builder_t;
 		};
 	};

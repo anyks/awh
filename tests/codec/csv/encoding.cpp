@@ -32,6 +32,64 @@
 #include <codec/csv/csv.hpp>
 
 /**
+ * @brief Пространство имён проверок этого файла
+ *
+ * @note Держится оно безымянным намеренно: проверки кодеков собираются одной
+ *       программою, и одноимённые построения разных файлов иначе сходятся в
+ *       одно, порождая порчу вдали от места её причины
+ *
+ */
+namespace {
+	/**
+	 * @brief Объект журнала проверок с отключённым выводом
+	 *
+	 * @details Вывод отключается назначением пустого перечня приёмников: отказы
+	 *          разбора проверки наводят намеренно, и журнал их засорял бы выдачу
+	 *
+	 */
+	struct Silent {
+		/**
+		 * @brief Функция получения объекта фреймворка проверок
+		 *
+		 * @details Объект заводится статикою местною, а не общею файла: заведение его
+		 *          порядком построения статики оканчивается падением ещё до входа в
+		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
+		 *
+		 * @return объект фреймворка проверок
+		 *
+		 */
+		static const awh::fmk_t & framework() noexcept {
+			// Объект фреймворка проверок
+			static awh::fmk_t fmk;
+			// Выводим объект фреймворка проверок
+			return fmk;
+		}
+		// Объект журнала проверок
+		awh::log_t log;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Silent() noexcept : log(&Silent::framework()) {
+			// Выполняем отключение вывода логов
+			this->log.mode({});
+		}
+	};
+	/**
+	 * @brief Функция получения объекта журнала проверок
+	 *
+	 * @return объект журнала проверок
+	 *
+	 */
+	const awh::log_t * logger() noexcept {
+		// Объект журнала проверок
+		static Silent silent;
+		// Выводим объект журнала проверок
+		return &silent.log;
+	}
+}
+
+/**
  * Используем стандартное пространство имён
  */
 using namespace std;
@@ -51,7 +109,7 @@ static string convert(const string & text, const size_t chunk, csv::error_t & er
 	// Результат приведения исходного текста
 	string result = "";
 	// Объект приведения исходного текста
-	csv::decoder_t decoder;
+	csv::decoder_t decoder(::logger());
 	/**
 	 * Выполняем подачу исходного текста кусками заданного размера
 	 */
@@ -172,7 +230,7 @@ TEST(CodecCsvEncoding, Bulk) {
 			// Устанавливаем проверяемый знак в заданное положение
 			text[offset] = static_cast <char> (letter);
 			// Объект приведения исходного текста
-			csv::decoder_t decoder;
+			csv::decoder_t decoder(::logger());
 			// Результат приведения исходного текста
 			string result = "";
 			// Выполняем проверку того, что проход отвечает проверке знака
@@ -201,7 +259,7 @@ TEST(CodecCsvEncoding, Bulk) {
 			// Устанавливаем второй знак пары
 			text[1] = static_cast <char> (second);
 			// Объект приведения исходного текста
-			csv::decoder_t decoder;
+			csv::decoder_t decoder(::logger());
 			// Результат приведения исходного текста
 			string result = "";
 			// Выполняем проверку того, что проход отвечает проверке знаков пары
@@ -240,7 +298,7 @@ TEST(CodecCsvEncoding, Signature) {
 	// Код ошибки приведения исходного текста
 	csv::error_t error = csv::error_t::NONE;
 	// Объект приведения исходного текста
-	csv::decoder_t decoder;
+	csv::decoder_t decoder(::logger());
 	// Результат приведения исходного текста
 	string result = "";
 	// Выполняем приведение текста с меткой порядка байтов
@@ -334,7 +392,7 @@ TEST(CodecCsvEncoding, Forced) {
 	// Результат приведения исходного текста
 	string result = "";
 	// Объект приведения исходного текста
-	csv::decoder_t decoder;
+	csv::decoder_t decoder(::logger());
 	// Выполняем навязывание кодировки исходного текста
 	ASSERT_TRUE(decoder.encoding(csv::encoding_t::LATIN1));
 	// Выполняем приведение текста в навязанной кодировке
@@ -355,7 +413,7 @@ TEST(CodecCsvEncoding, Cp1252) {
 	// Результат приведения исходного текста
 	string result = "";
 	// Объект приведения исходного текста
-	csv::decoder_t decoder;
+	csv::decoder_t decoder(::logger());
 	// Выполняем навязывание кодировки исходного текста
 	ASSERT_TRUE(decoder.encoding(csv::encoding_t::CP1252));
 	// Выполняем приведение текста в навязанной кодировке
@@ -391,7 +449,7 @@ TEST(CodecCsvEncoding, Reset) {
 	// Результат приведения исходного текста
 	string result = "";
 	// Объект приведения исходного текста
-	csv::decoder_t decoder;
+	csv::decoder_t decoder(::logger());
 	// Выполняем приведение текста с меткой порядка байтов
 	ASSERT_TRUE(decoder.convert(string("\xFF\xFE" "a\0", 4).data(), 4, true, result));
 	// Выполняем проверку определённой кодировки исходного текста

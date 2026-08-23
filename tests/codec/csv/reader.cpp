@@ -33,6 +33,64 @@
 #include <codec/csv/csv.hpp>
 
 /**
+ * @brief Пространство имён проверок этого файла
+ *
+ * @note Держится оно безымянным намеренно: проверки кодеков собираются одной
+ *       программою, и одноимённые построения разных файлов иначе сходятся в
+ *       одно, порождая порчу вдали от места её причины
+ *
+ */
+namespace {
+	/**
+	 * @brief Объект журнала проверок с отключённым выводом
+	 *
+	 * @details Вывод отключается назначением пустого перечня приёмников: отказы
+	 *          разбора проверки наводят намеренно, и журнал их засорял бы выдачу
+	 *
+	 */
+	struct Silent {
+		/**
+		 * @brief Функция получения объекта фреймворка проверок
+		 *
+		 * @details Объект заводится статикою местною, а не общею файла: заведение его
+		 *          порядком построения статики оканчивается падением ещё до входа в
+		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
+		 *
+		 * @return объект фреймворка проверок
+		 *
+		 */
+		static const awh::fmk_t & framework() noexcept {
+			// Объект фреймворка проверок
+			static awh::fmk_t fmk;
+			// Выводим объект фреймворка проверок
+			return fmk;
+		}
+		// Объект журнала проверок
+		awh::log_t log;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Silent() noexcept : log(&Silent::framework()) {
+			// Выполняем отключение вывода логов
+			this->log.mode({});
+		}
+	};
+	/**
+	 * @brief Функция получения объекта журнала проверок
+	 *
+	 * @return объект журнала проверок
+	 *
+	 */
+	const awh::log_t * logger() noexcept {
+		// Объект журнала проверок
+		static Silent silent;
+		// Выводим объект журнала проверок
+		return &silent.log;
+	}
+}
+
+/**
  * Используем стандартное пространство имён
  */
 using namespace std;
@@ -60,7 +118,7 @@ namespace {
 	 */
 	static string dump(const string & text, const size_t chunk, const csv::reader_t::settings_t & settings) noexcept {
 		// Чтение текста
-		csv::reader_t reader(settings);
+		csv::reader_t reader(::logger(), settings);
 		// Собранная выдача разбора
 		string result;
 		// Смещение от начала текста
@@ -331,7 +389,7 @@ TEST(CodecCsvReader, LocationAfterFailure) {
 	// Устанавливаем наибольшую допустимую длину записи
 	settings.maxRecord = 6;
 	// Чтение текста
-	csv::reader_t reader(settings);
+	csv::reader_t reader(::logger(), settings);
 	// Выполняем подачу текста целиком
 	reader.feed("a,b\r\nccccccccc\r\n");
 	// Выполняем получение первого события разбора
@@ -445,7 +503,7 @@ TEST(CodecCsvReader, HeaderNames) {
 	// Включаем признак наличия заголовка
 	settings.header = csv::header_t::PRESENT;
 	// Чтение текста
-	csv::reader_t reader(settings);
+	csv::reader_t reader(::logger(), settings);
 	// Выполняем подачу текста целиком
 	ASSERT_TRUE(reader.feed("имя,возраст\r\nАня,30\r\n"));
 	// Имя поля, полученное из события
@@ -653,7 +711,7 @@ TEST(CodecCsvReader, DetectedSeparator) {
 	// Включаем определение разделителя по содержимому
 	settings.separator = '\0';
 	// Чтение текста
-	csv::reader_t reader(settings);
+	csv::reader_t reader(::logger(), settings);
 	// Выполняем проверку того, что до определения разделитель не выдаётся
 	ASSERT_EQ(reader.separator(), '\0');
 	// Выполняем подачу текста целиком
@@ -693,7 +751,7 @@ TEST(CodecCsvReader, Limits) {
  */
 TEST(CodecCsvReader, Reset) {
 	// Чтение текста
-	csv::reader_t reader;
+	csv::reader_t reader(::logger());
 	// Выполняем подачу текста, разбор которого прекращается отказом
 	reader.feed("\"abc");
 	// Выполняем проверку отказа разбора
@@ -729,7 +787,7 @@ TEST(CodecCsvReader, Reset) {
  */
 TEST(CodecCsvReader, Location) {
 	// Чтение текста
-	csv::reader_t reader;
+	csv::reader_t reader(::logger());
 	// Выполняем подачу текста целиком
 	ASSERT_TRUE(reader.feed("a,b\r\n\"c\r\nd\",e\r\nf\r\n"));
 	// Положения полей в исходном тексте
@@ -768,7 +826,7 @@ TEST(CodecCsvReader, Location) {
  */
 TEST(CodecCsvReader, Flags) {
 	// Чтение текста
-	csv::reader_t reader;
+	csv::reader_t reader(::logger());
 	// Выполняем подачу текста целиком
 	ASSERT_TRUE(reader.feed("a,\"b\",\"c\"\"d\"\r\n"));
 	// Признаки заключения полей в кавычки
@@ -813,7 +871,7 @@ TEST(CodecCsvReader, Flags) {
  */
 TEST(CodecCsvReader, Finish) {
 	// Чтение текста
-	csv::reader_t reader;
+	csv::reader_t reader(::logger());
 	// Выполняем подачу текста целиком
 	ASSERT_TRUE(reader.feed("a\r\n"));
 	/**
