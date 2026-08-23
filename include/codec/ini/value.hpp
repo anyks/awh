@@ -172,7 +172,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					const Logging * _log = nullptr;
+					const log_t * _log = nullptr;
 				private:
 					// Тип хранимого значения
 					type_t _type;
@@ -1103,7 +1103,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					void logger(const Logging * log) noexcept;
+					void logger(const log_t * log) noexcept;
 				public:
 					/**
 					 * \~russian

@@ -31,7 +31,6 @@
  * Подключаем заголовочные файлы модуля
  */
 #include <codec/yaml/common.hpp>
-#include <sys/log.hpp>
 #include <codec/yaml/encoding.hpp>
 
 /**

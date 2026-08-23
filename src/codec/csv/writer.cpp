@@ -31,7 +31,6 @@
  */
 #include <num/lexical/lexical.hpp>
 #include <codec/csv/writer.hpp>
-#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -439,7 +438,7 @@ void awh::codec::csv::Writer::settings(const settings_t & settings) noexcept {
  * @param log объект для работы с логами
  *
  */
-awh::codec::csv::Writer::Writer(const Logging * log) noexcept :
+awh::codec::csv::Writer::Writer(const log_t * log) noexcept :
  _log(log), _started(false), _marked(false) {}
 /**
  * @brief Конструктор
@@ -448,6 +447,6 @@ awh::codec::csv::Writer::Writer(const Logging * log) noexcept :
  * @param settings настройки записи текста
  *
  */
-awh::codec::csv::Writer::Writer(const Logging * log, const settings_t & settings) noexcept :
+awh::codec::csv::Writer::Writer(const log_t * log, const settings_t & settings) noexcept :
  _log(log),
  _settings(settings), _started(false), _marked(false) {}

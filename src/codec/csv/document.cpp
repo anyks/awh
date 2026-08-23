@@ -28,7 +28,6 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <codec/csv/document.hpp>
-#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -1160,7 +1159,7 @@ void awh::codec::csv::Document::report() const noexcept {
  * @param log объект для работы с логами
  *
  */
-awh::codec::csv::Document::Document(const Logging * log) noexcept :
+awh::codec::csv::Document::Document(const log_t * log) noexcept :
  _log(log), _error(error_t::NONE), _opened(false) {}
 /**
  * @brief Конструктор
@@ -1169,6 +1168,6 @@ awh::codec::csv::Document::Document(const Logging * log) noexcept :
  * @param settings настройки контейнера
  *
  */
-awh::codec::csv::Document::Document(const Logging * log, const settings_t & settings) noexcept :
+awh::codec::csv::Document::Document(const log_t * log, const settings_t & settings) noexcept :
  _log(log),
  _settings(settings), _error(error_t::NONE), _opened(false) {}

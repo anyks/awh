@@ -44,6 +44,7 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
+#include "../../sys/log.hpp"
 #include "../../sys/global.hpp"
 
 /**
@@ -102,24 +103,6 @@
  * \~
  */
 namespace awh {
-	/**
-	 * \~russian
-	 * @brief Прототип класса работы с логами
-	 *
-	 * @details Заголовок журнала целиком заголовками кодека не подключается: он
-	 * тянет за собою заголовки системные, и всякий потребитель кодека получал бы их
-	 * следом. Полное описание нужно лишь исходникам, они его и подключают
-	 *
-	 * \~english
-	 * @brief Prototype of the class for working with logs
-	 * @details The header of the log is not included in whole by the headers of the codec: it
-	 * drags the system headers along, and every consumer of the codec would receive them next.
-	 * The complete description is needed only by the sources, and they include it
-	 *
-	 * \~
-	 */
-	class Logging;
-
 	/**
 	 * Подписываемся на стандартное пространство имён
 	 */

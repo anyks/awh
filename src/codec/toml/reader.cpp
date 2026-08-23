@@ -32,7 +32,6 @@
 #include <encoding/ascii.hpp>
 #include <num/lexical/lexical.hpp>
 #include <codec/toml/reader.hpp>
-#include <sys/log.hpp>
 
 /**
  * Снимаем на время реализации макросы, чьи имена заняты
@@ -3794,7 +3793,7 @@ void awh::codec::toml::Reader::clear() noexcept {
  * @param log объект для работы с логами
  *
  */
-awh::codec::toml::Reader::Reader(const Logging * log) noexcept :
+awh::codec::toml::Reader::Reader(const log_t * log) noexcept :
  _log(log), _decoder(log),
  _state(state_t::READY), _error(error_t::NONE), _decoding(error_t::NONE), _hungry(false), _final(false),
  _offset(0), _start(0), _probed(0), _anonymous(0), _base(0), _line(1), _bol(0), _current(0), _staging(0), _declaring(false), _appending(false) {}
@@ -3805,7 +3804,7 @@ awh::codec::toml::Reader::Reader(const Logging * log) noexcept :
  * @param settings настройки разбора текста настроек
  *
  */
-awh::codec::toml::Reader::Reader(const Logging * log, const settings_t & settings) noexcept :
+awh::codec::toml::Reader::Reader(const log_t * log, const settings_t & settings) noexcept :
  _log(log), _decoder(log),
  _state(state_t::READY), _error(error_t::NONE), _decoding(error_t::NONE), _hungry(false), _final(false),
  _settings(settings), _offset(0), _start(0), _probed(0), _anonymous(0), _base(0), _line(1), _bol(0), _current(0),

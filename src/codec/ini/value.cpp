@@ -35,7 +35,6 @@
  * Подключаем заголовочные файлы модуля
  */
 #include <codec/ini/value.hpp>
-#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -1139,7 +1138,7 @@ awh::codec::ini::Value & awh::codec::ini::Value::operator = (Value && value) noe
  * @param log объект для работы с логами
  *
  */
-void awh::codec::ini::Value::logger(const Logging * log) noexcept {
+void awh::codec::ini::Value::logger(const log_t * log) noexcept {
 	// Выполняем установку объекта для работы с логами
 	this->_log = log;
 }

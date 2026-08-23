@@ -32,7 +32,6 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <codec/toml/document.hpp>
-#include <sys/log.hpp>
 #include <encoding/ascii.hpp>
 
 /**
@@ -2897,7 +2896,7 @@ void awh::codec::toml::Document::report() const noexcept {
  * @param log объект для работы с логами
  *
  */
-awh::codec::toml::Document::Document(const Logging * log) noexcept :
+awh::codec::toml::Document::Document(const log_t * log) noexcept :
  _log(log), _error(error_t::NONE), _garbage(0), _compacted(0) {}
 /**
  * @brief Конструктор
@@ -2906,7 +2905,7 @@ awh::codec::toml::Document::Document(const Logging * log) noexcept :
  * @param settings настройки дерева настроек
  *
  */
-awh::codec::toml::Document::Document(const Logging * log, const settings_t & settings) noexcept :
+awh::codec::toml::Document::Document(const log_t * log, const settings_t & settings) noexcept :
  _log(log), _error(error_t::NONE), _garbage(0), _compacted(0) {
 	// Выполняем установку настроек дерева настроек
 	this->settings(settings);

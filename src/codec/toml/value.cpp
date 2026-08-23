@@ -37,7 +37,6 @@
  * Подключаем заголовочные файлы модуля
  */
 #include <codec/toml/value.hpp>
-#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -1420,7 +1419,7 @@ awh::codec::toml::Value & awh::codec::toml::Value::operator = (Value && value) n
  * @param log объект для работы с логами
  *
  */
-void awh::codec::toml::Value::logger(const Logging * log) noexcept {
+void awh::codec::toml::Value::logger(const log_t * log) noexcept {
 	// Выполняем установку объекта для работы с логами
 	this->_log = log;
 }

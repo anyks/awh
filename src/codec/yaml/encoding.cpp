@@ -24,7 +24,6 @@
  * Подключаем заголовочные файлы модуля
  */
 #include <codec/yaml/encoding.hpp>
-#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -454,7 +453,7 @@ bool awh::codec::yaml::printable(const uint32_t code) noexcept {
  * @param log объект для работы с логами
  *
  */
-awh::codec::yaml::Decoder::Decoder(const Logging * log) noexcept :
+awh::codec::yaml::Decoder::Decoder(const log_t * log) noexcept :
  _log(log), _encoding(encoding_t::NONE), _error(error_t::NONE), _sniffed(false),
  _signature(false), _forced(false), _leading(true), _surrogate(0) {}
 /**

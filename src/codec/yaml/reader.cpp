@@ -23,7 +23,6 @@
  * Подключаем заголовочные файлы модуля
  */
 #include <codec/yaml/reader.hpp>
-#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -562,7 +561,7 @@ namespace {
  * @param log объект для работы с логами
  *
  */
-awh::codec::yaml::Reader::Reader(const Logging * log) noexcept :
+awh::codec::yaml::Reader::Reader(const log_t * log) noexcept :
  _log(log), _decoder(log), _state(state_t::READY), _error(error_t::NONE), _reading(0), _offset(0), _line(0), _position(0),
  _started(false), _opened(false), _filled(false), _blocking(false), _block(style_t::LITERAL),
  _chomp(chomp_t::CLIP), _marked(NO_INDENT), _outer(0), _margin(0), _inner(0), _opening(0),
@@ -579,7 +578,7 @@ awh::codec::yaml::Reader::Reader(const Logging * log) noexcept :
  * @param settings настройки разбора текста
  *
  */
-awh::codec::yaml::Reader::Reader(const Logging * log, const settings_t & settings) noexcept :
+awh::codec::yaml::Reader::Reader(const log_t * log, const settings_t & settings) noexcept :
  _log(log), _settings(settings), _decoder(log), _state(state_t::READY), _error(error_t::NONE), _reading(0), _offset(0),
  _line(0), _position(0), _started(false), _opened(false), _filled(false),
  _blocking(false), _block(style_t::LITERAL), _chomp(chomp_t::CLIP), _marked(NO_INDENT),

@@ -163,7 +163,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					const Logging * _log;
+					const log_t * _log;
 				public:
 					/**
 					 * \~russian
@@ -917,7 +917,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Reader(const Logging * log) noexcept;
+					Reader(const log_t * log) noexcept;
 					/**
 					 * \~russian
 					 * @brief Конструктор
@@ -932,7 +932,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Reader(const Logging * log, const settings_t & settings) noexcept;
+					Reader(const log_t * log, const settings_t & settings) noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор

@@ -25,7 +25,6 @@
  */
 #include <encoding/ascii.hpp>
 #include <codec/toml/common.hpp>
-#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён

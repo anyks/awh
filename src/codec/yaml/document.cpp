@@ -34,7 +34,6 @@
  * Подключаем заголовочные файлы модуля
  */
 #include <codec/yaml/document.hpp>
-#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -140,7 +139,7 @@ awh::codec::yaml::Document::Settings::Settings() noexcept :
  * @param log объект для работы с логами
  *
  */
-awh::codec::yaml::Document::Document(const Logging * log) noexcept :
+awh::codec::yaml::Document::Document(const log_t * log) noexcept :
  _log(log), _prologue(0), _encoding(encoding_t::NONE), _versioned(false), _schema(schema_t::CORE), _error(error_t::NONE) {}
 /**
  * @brief Конструктор
@@ -149,7 +148,7 @@ awh::codec::yaml::Document::Document(const Logging * log) noexcept :
  * @param settings настройки разбора документа
  *
  */
-awh::codec::yaml::Document::Document(const Logging * log, const settings_t & settings) noexcept :
+awh::codec::yaml::Document::Document(const log_t * log, const settings_t & settings) noexcept :
  _log(log), _settings(settings), _prologue(0), _encoding(encoding_t::NONE), _versioned(false), _schema(settings.schema),
  _error(error_t::NONE) {}
 /**

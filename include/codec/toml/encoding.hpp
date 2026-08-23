@@ -204,7 +204,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					const Logging * _log;
+					const log_t * _log;
 				private:
 					// Определённая кодировка исходного текста
 					encoding_t _encoding;
@@ -369,7 +369,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Decoder(const Logging * log) noexcept;
+					Decoder(const log_t * log) noexcept;
 			} decoder_t;
 		};
 	};

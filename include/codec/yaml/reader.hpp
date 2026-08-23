@@ -497,7 +497,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					const Logging * _log;
+					const log_t * _log;
 				private:
 					// Настройки разбора текста
 					settings_t _settings;
@@ -1638,7 +1638,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Reader(const Logging * log) noexcept;
+					Reader(const log_t * log) noexcept;
 					/**
 					 * \~russian
 					 * @brief Конструктор
@@ -1653,7 +1653,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Reader(const Logging * log, const settings_t & settings) noexcept;
+					Reader(const log_t * log, const settings_t & settings) noexcept;
 			} reader_t;
 		};
 	};
