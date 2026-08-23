@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 """Сверка кодека YAML с набором yaml-test-suite по потоку событий"""
 import os, re, subprocess, sys, json
-
-import sys
 OUTPUT = sys.argv[1] if len(sys.argv) > 1 else '/tmp/verify-yaml'
 SRC = os.path.join(OUTPUT, 'corpus')
 EVENTS = os.path.join(OUTPUT, 'events')
@@ -90,7 +88,21 @@ for label, case in cases:
 
 print('всего %d: совпало %d, разошлось %d, отказ верный %d, отказа не дал %d, без эталона %d'
       % (len(cases), ok, bad, failok, failbad, skipped))
+
+##
+# Пустой корпус — отказ, а не чистый прогон
+#
+# Сорванный захват корпуса оставлял каталог пустым, сторож сборки смотрел на наличие
+# каталога, а не на состав его, и сличение отчитывалось «разошлось 0» ни по одному
+# случаю. Прогон без единого случая ничего не поверяет
+##
+if len(cases) == 0:
+    print('ОТКАЗ: корпус пуст, поверять нечего', file=sys.stderr)
+    sys.exit(2)
 path = os.path.join(OUTPUT, 'diffs.json')
 json.dump([{'case': d[0], 'вид': d[1], 'эталон': d[2], 'наше': d[3]} for d in diffs],
           open(path, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
 print('расхождения разложены в', path)
+
+# Отчитываемся отказом при всяком расхождении с эталоном
+sys.exit(1 if (bad or failbad) else 0)

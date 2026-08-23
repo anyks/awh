@@ -50,8 +50,16 @@ mkdir -p "$OUTPUT"
 #       и прогон отчитывается успехом по коду, какого в нём уже нет
 rm -f "$OUTPUT/dump" "$OUTPUT/dump.exe"
 
+##
 # Если корпус ещё не получен
-if [ ! -d "$OUTPUT/corpus" ]; then
+#
+# @warning Проверяется СОСТАВ каталога, а не наличие его: сорванный на полпути захват
+#          оставлял каталог заведённым и пустым, сторож по наличию его пропускал, и
+#          сличение отчитывалось нулём расхождений, не поверив ни единого случая
+##
+if [ -z "$(ls -A "$OUTPUT/corpus" 2>/dev/null)" ]; then
+	# Выполняем снос пустого каталога корпуса, оставшегося от сорванного захвата
+	rm -rf "$OUTPUT/corpus" "$OUTPUT/suite"
 	# Выводим сообщение о получении корпуса
 	echo "Забираем корпус toml-test"
 	# Выполняем получение корпуса
@@ -71,7 +79,7 @@ if [ ! -d "$OUTPUT/corpus" ]; then
 fi
 
 # Собираем перечень объектных файлов стенда
-OBJECTS="$OUTPUT/lexical-table.o $OUTPUT/sys-log.o $OUTPUT/sys-chrono.o $OUTPUT/sys-fmk.o $OUTPUT/charset.o $OUTPUT/charset-table.o $OUTPUT/net-nwt.o $OUTPUT/alloc-alloc.o $OUTPUT/alloc-cache.o $OUTPUT/alloc-central.o $OUTPUT/alloc-classes.o $OUTPUT/alloc-guard.o $OUTPUT/alloc-huge.o $OUTPUT/alloc-link.o $OUTPUT/alloc-pages.o $OUTPUT/alloc-profile.o $OUTPUT/alloc-source.o $OUTPUT/alloc-spin.o $OUTPUT/alloc-trace.o $OUTPUT/alloc-elf.o $OUTPUT/alloc-mach.o $OUTPUT/alloc-obsd.o $OUTPUT/alloc-pe.o $OUTPUT/uni-normalize.o $OUTPUT/uni-table.o $OUTPUT/uni-unicode.o $OUTPUT/uni-utf8.o"
+OBJECTS="$OUTPUT/lexical-table.o $OUTPUT/sys-log.o $OUTPUT/sys-chrono.o $OUTPUT/sys-fmk.o $OUTPUT/charset.o $OUTPUT/charset-table.o $OUTPUT/net-nwt.o $OUTPUT/alloc-alloc.o $OUTPUT/alloc-cache.o $OUTPUT/alloc-central.o $OUTPUT/alloc-classes.o $OUTPUT/alloc-guard.o $OUTPUT/alloc-huge.o $OUTPUT/alloc-link.o $OUTPUT/alloc-pages.o $OUTPUT/alloc-profile.o $OUTPUT/alloc-source.o $OUTPUT/alloc-spin.o $OUTPUT/alloc-trace.o $OUTPUT/alloc-elf.o $OUTPUT/alloc-mach.o $OUTPUT/alloc-pe.o $OUTPUT/uni-normalize.o $OUTPUT/uni-table.o $OUTPUT/uni-unicode.o $OUTPUT/uni-utf8.o"
 
 # Выводим сообщение о начале сборки стенда
 echo "Собираем стенд сличения TOML: $COMPILER"
@@ -108,14 +116,25 @@ $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/spin.cpp" -o "$OUTPU
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/trace.cpp" -o "$OUTPUT/alloc-trace.o"
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/capture/elf.cpp" -o "$OUTPUT/alloc-elf.o"
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/capture/mach.cpp" -o "$OUTPUT/alloc-mach.o"
-$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/capture/obsd.cpp" -o "$OUTPUT/alloc-obsd.o"
+##
+# Внутренние имена распределителя libc берутся ТОЛЬКО под OpenBSD
+#
+# Файл «src/alloc/capture/obsd.cpp» собственной охраны по системе не несёт — её несёт
+# сборщик: CMakeLists.txt подключает его лишь при OpenBSD. Собранный безусловно, он под
+# MinGW валит связывание по «posix_memalign» и «aligned_alloc», каких у той библиотеки
+# времени исполнения нет вовсе
+##
+if [ "$(uname -s)" = "OpenBSD" ]; then
+	$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/capture/obsd.cpp" -o "$OUTPUT/alloc-obsd.o"
+	OBJECTS="$OBJECTS $OUTPUT/alloc-obsd.o"
+fi
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/capture/pe.cpp" -o "$OUTPUT/alloc-pe.o"
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/encoding/charset/charset.cpp" -o "$OUTPUT/charset.o"
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/encoding/charset/table.cpp" -o "$OUTPUT/charset-table.o"
 
-# Выполняем перебор всех частей кодека YAML
+# Выполняем перебор всех частей кодека TOML
 for PART in common encoding reader writer document value; do
-	# Выполняем сборку очередной части кодека YAML
+	# Выполняем сборку очередной части кодека TOML
 	$COMPILER $OPTIONS -c "$ROOT/src/codec/toml/$PART.cpp" -o "$OUTPUT/codec-$PART.o"
 	# Добавляем собранное к перечню объектных файлов стенда
 	OBJECTS="$OBJECTS $OUTPUT/codec-$PART.o"
