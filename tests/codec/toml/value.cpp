@@ -28,6 +28,64 @@
 #include <codec/toml/toml.hpp>
 
 /**
+ * @brief Пространство имён проверок этого файла
+ *
+ * @note Держится оно безымянным намеренно: проверки кодеков собираются одной
+ *       программою, и одноимённые построения разных файлов иначе сходятся в
+ *       одно, порождая порчу вдали от места её причины
+ *
+ */
+namespace {
+	/**
+	 * @brief Объект журнала проверок с отключённым выводом
+	 *
+	 * @details Вывод отключается назначением пустого перечня приёмников: отказы
+	 *          разбора проверки наводят намеренно, и журнал их засорял бы выдачу
+	 *
+	 */
+	struct Silent {
+		/**
+		 * @brief Функция получения объекта фреймворка проверок
+		 *
+		 * @details Объект заводится статикою местною, а не общею файла: заведение его
+		 *          порядком построения статики оканчивается падением ещё до входа в
+		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
+		 *
+		 * @return объект фреймворка проверок
+		 *
+		 */
+		static const awh::fmk_t & framework() noexcept {
+			// Объект фреймворка проверок
+			static awh::fmk_t fmk;
+			// Выводим объект фреймворка проверок
+			return fmk;
+		}
+		// Объект журнала проверок
+		awh::log_t log;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Silent() noexcept : log(&Silent::framework()) {
+			// Выполняем отключение вывода логов
+			this->log.mode({});
+		}
+	};
+	/**
+	 * @brief Функция получения объекта журнала проверок
+	 *
+	 * @return объект журнала проверок
+	 *
+	 */
+	const awh::log_t * logger() noexcept {
+		// Объект журнала проверок
+		static Silent silent;
+		// Выводим объект журнала проверок
+		return &silent.log;
+	}
+}
+
+/**
  * Используем стандартное пространство имён
  */
 using namespace std;
@@ -476,7 +534,7 @@ TEST(CodecTomlValue, Outliving) {
 	 */
 	{
 		// Дерево настроек, живущее одной областью видимости
-		toml::document_t document;
+		toml::document_t document(::logger());
 		// Выполняем разбор текста настроек
 		ASSERT_TRUE(document.parse("[server]\nhost = \"localhost\"\nport = 8080\n"));
 		// Выполняем снятие значения с дерева настроек
@@ -502,7 +560,7 @@ TEST(CodecTomlValue, Outliving) {
  */
 TEST(CodecTomlValue, Reborning) {
 	// Дерево настроек
-	toml::document_t document;
+	toml::document_t document(::logger());
 	// Выполняем разбор текста настроек
 	ASSERT_TRUE(document.parse("[server]\nhost = \"localhost\"\nport = 8080\n"));
 	// Выполняем снятие значения ветви дерева настроек
@@ -580,7 +638,7 @@ TEST(CodecTomlValue, Grafting) {
 	// Выполняем установку строкового значения вложенной таблицы
 	value.place("/server/host") = toml::value_t("localhost");
 	// Дерево настроек, куда переносится значение
-	toml::document_t document;
+	toml::document_t document(::logger());
 	// Выполняем разбор пустого текста настроек
 	ASSERT_TRUE(document.parse(""));
 	// Выполняем перенос владеющего значения в дерево настроек
@@ -613,7 +671,7 @@ TEST(CodecTomlValue, GraftingArray) {
 	// Выполняем добавление второго значения перечня вложенной таблицы
 	value.place("/server/tags/1") = toml::value_t("two");
 	// Дерево настроек, куда переносится значение
-	toml::document_t document;
+	toml::document_t document(::logger());
 	// Выполняем разбор пустого текста настроек
 	ASSERT_TRUE(document.parse(""));
 	// Выполняем перенос владеющего значения в дерево настроек
@@ -665,7 +723,7 @@ TEST(CodecTomlValue, GraftingNested) {
 	// Выполняем заведение перечня внутри встроенной таблицы перечня
 	value.place("/points/0/axis/0") = toml::value_t(static_cast <int64_t> (7));
 	// Дерево настроек, куда переносится значение
-	toml::document_t document;
+	toml::document_t document(::logger());
 	// Выполняем разбор пустого текста настроек
 	ASSERT_TRUE(document.parse(""));
 	// Выполняем перенос владеющего значения в дерево настроек
@@ -966,7 +1024,7 @@ TEST(CodecTomlValue, GraftRoundTrip) {
 	// Выполняем установку строкового значения таблицы
 	value.place("/server/host") = toml::value_t("localhost");
 	// Дерево настроек, куда переносится значение
-	toml::document_t document;
+	toml::document_t document(::logger());
 	// Выполняем разбор пустого текста настроек
 	ASSERT_TRUE(document.parse(""));
 	// Выполняем перенос владеющего значения в дерево настроек
@@ -1087,7 +1145,7 @@ TEST(CodecTomlValue, GraftRoundTripScattered) {
 			// Выполняем заведение очередной пары корня
 			value.place("/имя" + std::to_string(j)) = whatever(state, 3);
 		// Дерево настроек, куда переносится значение
-		toml::document_t document;
+		toml::document_t document(::logger());
 		// Выполняем разбор пустого текста настроек
 		ASSERT_TRUE(document.parse(""));
 		// Выполняем перенос собранного значения в дерево настроек
@@ -1102,7 +1160,7 @@ TEST(CodecTomlValue, GraftRoundTripScattered) {
 		 * @note Сличение значений записи не проверяет: дерево, вид значения потерявшее,
 		 *       отдало бы то же самое, а в текст ушло бы значение иное
 		 */
-		toml::document_t reparsed;
+		toml::document_t reparsed(::logger());
 		// Выполняем разбор записанного текста настроек
 		ASSERT_TRUE(reparsed.parse(document.text())) << "заход " << i;
 		// Выполняем снятие владеющего значения с разобранного заново дерева
@@ -1257,7 +1315,7 @@ TEST(CodecTomlValue, BuilderRepeatedKey) {
  */
 TEST(CodecTomlValue, EmptyName) {
 	// Дерево настроек с парою, пустое имя несущей
-	toml::document_t document;
+	toml::document_t document(::logger());
 	// Выполняем разбор текста настроек с пустым именем пары
 	ASSERT_TRUE(document.parse("\"\" = 5\n"));
 	// Выполняем проверку наличия пары с пустым именем
@@ -1269,7 +1327,7 @@ TEST(CodecTomlValue, EmptyName) {
 	// Выполняем проверку того, что пара с пустым именем записывается
 	ASSERT_EQ(lifted.dump(), "\"\" = 5\n");
 	// Дерево настроек, куда переносится значение
-	toml::document_t target;
+	toml::document_t target(::logger());
 	// Выполняем разбор пустого текста настроек
 	ASSERT_TRUE(target.parse(""));
 	// Выполняем перенос владеющего значения в дерево настроек

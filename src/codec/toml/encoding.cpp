@@ -208,6 +208,8 @@ bool awh::codec::toml::Decoder::sniff() noexcept {
 		if(!this->_forced){
 			// Запоминаем код ошибки приведения
 			this->_error = error_t::UNSUPPORTED_ENCODING;
+			// Выполняем вывод сообщения об отказе в лог
+			this->report();
 			// Выводим признак незавершённого определения кодировки
 			return false;
 		}
@@ -304,6 +306,8 @@ bool awh::codec::toml::Decoder::process(const char * buffer, const size_t size, 
 					if(end){
 						// Запоминаем код ошибки приведения
 						this->_error = error_t::INVALID_ENCODING;
+						// Выполняем вывод сообщения об отказе в лог
+						this->report();
 						// Выводим отрицательный результат выполнения операции
 						return false;
 					}
@@ -320,6 +324,8 @@ bool awh::codec::toml::Decoder::process(const char * buffer, const size_t size, 
 				if(code == INVALID_CODEPOINT){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_ENCODING;
+					// Выполняем вывод сообщения об отказе в лог
+					this->report();
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -329,6 +335,8 @@ bool awh::codec::toml::Decoder::process(const char * buffer, const size_t size, 
 				if(!isChar(code)){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_CHARACTER;
+					// Выполняем вывод сообщения об отказе в лог
+					this->report();
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -372,6 +380,8 @@ bool awh::codec::toml::Decoder::process(const char * buffer, const size_t size, 
 							result.append(buffer + begin, (offset - begin));
 							// Запоминаем код ошибки приведения
 							this->_error = error_t::INVALID_CHARACTER;
+							// Выполняем вывод сообщения об отказе в лог
+							this->report();
 							// Выводим отрицательный результат выполнения операции
 							return false;
 						}
@@ -391,6 +401,8 @@ bool awh::codec::toml::Decoder::process(const char * buffer, const size_t size, 
 				if(count == 0){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_ENCODING;
+					// Выполняем вывод сообщения об отказе в лог
+					this->report();
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -404,6 +416,8 @@ bool awh::codec::toml::Decoder::process(const char * buffer, const size_t size, 
 					if(end){
 						// Запоминаем код ошибки приведения
 						this->_error = error_t::INVALID_ENCODING;
+						// Выполняем вывод сообщения об отказе в лог
+						this->report();
 						// Выводим отрицательный результат выполнения операции
 						return false;
 					}
@@ -426,6 +440,8 @@ bool awh::codec::toml::Decoder::process(const char * buffer, const size_t size, 
 				if(code == INVALID_CODEPOINT){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_ENCODING;
+					// Выполняем вывод сообщения об отказе в лог
+					this->report();
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -435,6 +451,8 @@ bool awh::codec::toml::Decoder::process(const char * buffer, const size_t size, 
 				if(!isChar(code)){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_CHARACTER;
+					// Выполняем вывод сообщения об отказе в лог
+					this->report();
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -502,6 +520,8 @@ bool awh::codec::toml::Decoder::process(const char * buffer, const size_t size, 
 					if((unit < 0xDC00) || (unit > 0xDFFF)){
 						// Запоминаем код ошибки приведения
 						this->_error = error_t::INVALID_ENCODING;
+						// Выполняем вывод сообщения об отказе в лог
+						this->report();
 						// Выводим отрицательный результат выполнения операции
 						return false;
 					}
@@ -526,6 +546,8 @@ bool awh::codec::toml::Decoder::process(const char * buffer, const size_t size, 
 				} else if((unit >= 0xDC00) && (unit <= 0xDFFF)) {
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_ENCODING;
+					// Выполняем вывод сообщения об отказе в лог
+					this->report();
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				// Если прочитанная пара байтов суррогатной не является
@@ -536,6 +558,8 @@ bool awh::codec::toml::Decoder::process(const char * buffer, const size_t size, 
 				if(!isChar(code)){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_CHARACTER;
+					// Выполняем вывод сообщения об отказе в лог
+					this->report();
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -545,6 +569,8 @@ bool awh::codec::toml::Decoder::process(const char * buffer, const size_t size, 
 				if(!encode(code, result)){
 					// Запоминаем код ошибки приведения
 					this->_error = error_t::INVALID_ENCODING;
+					// Выполняем вывод сообщения об отказе в лог
+					this->report();
 					// Выводим отрицательный результат выполнения операции
 					return false;
 				}
@@ -564,6 +590,8 @@ bool awh::codec::toml::Decoder::process(const char * buffer, const size_t size, 
 			if(end && ((this->_length != 0) || (this->_surrogate != 0))){
 				// Запоминаем код ошибки приведения
 				this->_error = error_t::INVALID_ENCODING;
+				// Выполняем вывод сообщения об отказе в лог
+				this->report();
 				// Выводим отрицательный результат выполнения операции
 				return false;
 			}
@@ -572,6 +600,8 @@ bool awh::codec::toml::Decoder::process(const char * buffer, const size_t size, 
 		default: {
 			// Запоминаем код ошибки приведения
 			this->_error = error_t::UNSUPPORTED_ENCODING;
+			// Выполняем вывод сообщения об отказе в лог
+			this->report();
 			// Выводим отрицательный результат выполнения операции
 			return false;
 		}
@@ -582,6 +612,8 @@ bool awh::codec::toml::Decoder::process(const char * buffer, const size_t size, 
 	if(end && (this->_length != 0)){
 		// Запоминаем код ошибки приведения
 		this->_error = error_t::INVALID_ENCODING;
+		// Выполняем вывод сообщения об отказе в лог
+		this->report();
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -736,10 +768,25 @@ void awh::codec::toml::Decoder::reset() noexcept {
 		this->_encoding = encoding_t::NONE;
 }
 /**
- * @brief Конструктор
+ * @brief Метод вывода сообщения об отказе в лог
  *
  */
-awh::codec::toml::Decoder::Decoder() noexcept :
+void awh::codec::toml::Decoder::report() const noexcept {
+	/**
+	 * Если объект для работы с логами установлен
+	 */
+	if(this->_log != nullptr)
+		// Выполняем вывод сообщения об отказе
+		this->_log->print("TOML encoding failed: %s", log_t::flag_t::CRITICAL, awh::codec::toml::message(this->_error));
+}
+/**
+ * @brief Конструктор
+ *
+ * @param log объект для работы с логами
+ *
+ */
+awh::codec::toml::Decoder::Decoder(const log_t * log) noexcept :
+ _log(log),
  _encoding(encoding_t::NONE), _error(error_t::NONE), _forced(false),
  _marked(false), _signed(false), _started(false), _length(0), _surrogate(0) {
 	// Выполняем сброс удержанных байтов незавершённой последовательности знака

@@ -1396,11 +1396,21 @@ awh::codec::toml::Value & awh::codec::toml::Value::operator = (Value && value) n
 	return (* this);
 }
 /**
+ * @brief Метод назначения объекта для работы с логами
+ *
+ * @param log объект для работы с логами
+ *
+ */
+void awh::codec::toml::Value::logger(const log_t * log) noexcept {
+	// Выполняем установку объекта для работы с логами
+	this->_log = log;
+}
+/**
  * @brief Конструктор
  *
  */
 awh::codec::toml::Value::Value() noexcept :
- _type(type_t::NONE), _quoting(string_t::BASIC), _radix(radix_t::DECIMAL),
+ _log(nullptr), _type(type_t::NONE), _quoting(string_t::BASIC), _radix(radix_t::DECIMAL),
  _boolean(false), _multiline(false), _integer(0), _real(0.) {}
 /**
  * @brief Конструктор вместилища затребованного типа
@@ -1704,7 +1714,7 @@ awh::codec::toml::Value::Value(const Document & document, const vector <string_v
  */
 bool awh::codec::toml::Value::parse(const string & text) noexcept {
 	// Дерево настроек, разбором собираемое
-	Document document;
+	Document document(this->_log);
 	/**
 	 * Если разбор текста настроек завершился отказом
 	 */
@@ -1724,7 +1734,7 @@ bool awh::codec::toml::Value::parse(const string & text) noexcept {
  */
 bool awh::codec::toml::Value::parse(const string & text, const Document::settings_t & settings) noexcept {
 	// Дерево настроек, разбором собираемое
-	Document document;
+	Document document(this->_log);
 	/**
 	 * Если разбор текста настроек завершился отказом
 	 */
@@ -1906,7 +1916,7 @@ bool awh::codec::toml::Value::compose(writer_t & writer, const string_view name,
  */
 string awh::codec::toml::Value::dump(const writer_t::settings_t & settings) const noexcept {
 	// Объект записи текста настроек
-	writer_t writer(settings);
+	writer_t writer(this->_log, settings);
 	/**
 	 * Если значение таблицей не является
 	 *

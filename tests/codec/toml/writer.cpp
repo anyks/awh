@@ -38,6 +38,64 @@
 #include <codec/toml/toml.hpp>
 
 /**
+ * @brief Пространство имён проверок этого файла
+ *
+ * @note Держится оно безымянным намеренно: проверки кодеков собираются одной
+ *       программою, и одноимённые построения разных файлов иначе сходятся в
+ *       одно, порождая порчу вдали от места её причины
+ *
+ */
+namespace {
+	/**
+	 * @brief Объект журнала проверок с отключённым выводом
+	 *
+	 * @details Вывод отключается назначением пустого перечня приёмников: отказы
+	 *          разбора проверки наводят намеренно, и журнал их засорял бы выдачу
+	 *
+	 */
+	struct Silent {
+		/**
+		 * @brief Функция получения объекта фреймворка проверок
+		 *
+		 * @details Объект заводится статикою местною, а не общею файла: заведение его
+		 *          порядком построения статики оканчивается падением ещё до входа в
+		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
+		 *
+		 * @return объект фреймворка проверок
+		 *
+		 */
+		static const awh::fmk_t & framework() noexcept {
+			// Объект фреймворка проверок
+			static awh::fmk_t fmk;
+			// Выводим объект фреймворка проверок
+			return fmk;
+		}
+		// Объект журнала проверок
+		awh::log_t log;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Silent() noexcept : log(&Silent::framework()) {
+			// Выполняем отключение вывода логов
+			this->log.mode({});
+		}
+	};
+	/**
+	 * @brief Функция получения объекта журнала проверок
+	 *
+	 * @return объект журнала проверок
+	 *
+	 */
+	const awh::log_t * logger() noexcept {
+		// Объект журнала проверок
+		static Silent silent;
+		// Выводим объект журнала проверок
+		return &silent.log;
+	}
+}
+
+/**
  * Используем стандартное пространство имён
  */
 using namespace std;
@@ -108,7 +166,7 @@ struct Scalar {
  */
 static toml::error_t reread(const string & text, vector <Scalar> & events) noexcept {
 	// Объект потокового чтения текста настроек
-	toml::reader_t reader;
+	toml::reader_t reader(::logger());
 	// Выполняем очистку собранных событий разбора
 	events.clear();
 	/**
@@ -155,7 +213,7 @@ static toml::error_t reread(const string & text, vector <Scalar> & events) noexc
  */
 TEST(CodecTomlWriter, Simple) {
 	// Объект записи текста настроек
-	toml::writer_t writer;
+	toml::writer_t writer(::logger());
 	// Выполняем запись объявления таблицы
 	ASSERT_TRUE(writer.table("server"));
 	// Выполняем запись имени ключа пары
@@ -175,7 +233,7 @@ TEST(CodecTomlWriter, Simple) {
  */
 TEST(CodecTomlWriter, DottedKeys) {
 	// Объект записи текста настроек
-	toml::writer_t writer;
+	toml::writer_t writer(::logger());
 	// Выполняем запись объявления таблицы составным именем
 	ASSERT_TRUE(writer.table(::path({"a", "b c"})));
 	// Выполняем запись имени ключа пары составным именем
@@ -199,7 +257,7 @@ TEST(CodecTomlWriter, DottedKeys) {
  */
 TEST(CodecTomlWriter, UnicodeKeys) {
 	// Объект записи текста настроек
-	toml::writer_t writer;
+	toml::writer_t writer(::logger());
 	// Выполняем запись имени ключа со знаками Юникода
 	ASSERT_TRUE(writer.key("ключ"));
 	// Выполняем запись целого числа
@@ -231,7 +289,7 @@ TEST(CodecTomlWriter, StrictNaming) {
 	// Запрещаем смену ограды имени и значения
 	settings.promote = false;
 	// Объект записи текста настроек
-	toml::writer_t writer(settings);
+	toml::writer_t writer(::logger(), settings);
 	// Собираемое составное имя ключа
 	vector <toml::part_t> name(1);
 	// Устанавливаем имя ключа, к записи без кавычек непригодное
@@ -247,7 +305,7 @@ TEST(CodecTomlWriter, StrictNaming) {
  */
 TEST(CodecTomlWriter, Strings) {
 	// Объект записи текста настроек
-	toml::writer_t writer;
+	toml::writer_t writer(::logger());
 	// Выполняем запись имени ключа пары
 	ASSERT_TRUE(writer.key("basic"));
 	// Выполняем запись строкового значения со знаками, требующими ограждения
@@ -278,7 +336,7 @@ TEST(CodecTomlWriter, Strings) {
  */
 TEST(CodecTomlWriter, Promotion) {
 	// Объект записи текста настроек
-	toml::writer_t writer;
+	toml::writer_t writer(::logger());
 	// Выполняем запись имени ключа пары
 	ASSERT_TRUE(writer.key("value"));
 	// Выполняем запись строкового значения с одинарной кавычкой дословной оградой
@@ -306,7 +364,7 @@ TEST(CodecTomlWriter, Promotion) {
  */
 TEST(CodecTomlWriter, Multiline) {
 	// Объект записи текста настроек
-	toml::writer_t writer;
+	toml::writer_t writer(::logger());
 	// Выполняем запись имени ключа пары
 	ASSERT_TRUE(writer.key("basic"));
 	// Выполняем запись многострочного строкового значения
@@ -342,7 +400,7 @@ TEST(CodecTomlWriter, Multiline) {
  */
 TEST(CodecTomlWriter, LeadingNewline) {
 	// Объект записи текста настроек
-	toml::writer_t writer;
+	toml::writer_t writer(::logger());
 	// Выполняем запись имени ключа пары
 	ASSERT_TRUE(writer.key("value"));
 	// Выполняем запись строкового значения, начинающегося знаком конца строки
@@ -362,7 +420,7 @@ TEST(CodecTomlWriter, LeadingNewline) {
  */
 TEST(CodecTomlWriter, MultilineQuotes) {
 	// Объект записи текста настроек
-	toml::writer_t writer;
+	toml::writer_t writer(::logger());
 	// Выполняем запись имени ключа пары
 	ASSERT_TRUE(writer.key("value"));
 	// Выполняем запись строкового значения, оканчивающегося кавычкой
@@ -382,7 +440,7 @@ TEST(CodecTomlWriter, MultilineQuotes) {
  */
 TEST(CodecTomlWriter, Integers) {
 	// Объект записи текста настроек
-	toml::writer_t writer;
+	toml::writer_t writer(::logger());
 	// Выполняем запись имени ключа пары
 	ASSERT_TRUE(writer.key("dec"));
 	// Выполняем запись целого числа десятичной системой счисления
@@ -425,7 +483,7 @@ TEST(CodecTomlWriter, Integers) {
  */
 TEST(CodecTomlWriter, NegativeRadix) {
 	// Объект записи текста настроек
-	toml::writer_t writer;
+	toml::writer_t writer(::logger());
 	// Выполняем запись имени ключа пары
 	ASSERT_TRUE(writer.key("value"));
 	// Выполняем проверку отказа записи отрицательного числа
@@ -442,7 +500,7 @@ TEST(CodecTomlWriter, NegativeRadix) {
  */
 TEST(CodecTomlWriter, Floats) {
 	// Объект записи текста настроек
-	toml::writer_t writer;
+	toml::writer_t writer(::logger());
 	// Выполняем запись имени ключа пары
 	ASSERT_TRUE(writer.key("whole"));
 	// Выполняем запись числа с плавающей точкой без дробной части
@@ -509,7 +567,7 @@ TEST(CodecTomlWriter, LocaleNumbers) {
 			// Выполняем переход к следующей локали
 			continue;
 		// Объект записи текста настроек
-		toml::writer_t writer;
+		toml::writer_t writer(::logger());
 		// Выполняем запись имени ключа пары
 		ASSERT_TRUE(writer.key("k")) << name;
 		// Выполняем запись числа с плавающей точкой
@@ -548,7 +606,7 @@ TEST(CodecTomlWriter, LocaleNumbers) {
  */
 TEST(CodecTomlWriter, Stamps) {
 	// Объект записи текста настроек
-	toml::writer_t writer;
+	toml::writer_t writer(::logger());
 	// Записываемая отметка времени
 	toml::stamp_t stamp;
 	// Устанавливаем год отметки времени
@@ -616,7 +674,7 @@ TEST(CodecTomlWriter, Stamps) {
  */
 TEST(CodecTomlWriter, ZuluStamp) {
 	// Объект записи текста настроек
-	toml::writer_t writer;
+	toml::writer_t writer(::logger());
 	// Записываемая отметка времени
 	toml::stamp_t stamp;
 	// Устанавливаем год отметки времени
@@ -644,7 +702,7 @@ TEST(CodecTomlWriter, ZuluStamp) {
  */
 TEST(CodecTomlWriter, InvalidStamp) {
 	// Объект записи текста настроек
-	toml::writer_t writer;
+	toml::writer_t writer(::logger());
 	// Записываемая отметка времени
 	toml::stamp_t stamp;
 	// Устанавливаем год отметки времени
@@ -666,7 +724,7 @@ TEST(CodecTomlWriter, InvalidStamp) {
  */
 TEST(CodecTomlWriter, Arrays) {
 	// Объект записи текста настроек
-	toml::writer_t writer;
+	toml::writer_t writer(::logger());
 	// Выполняем запись имени ключа пары
 	ASSERT_TRUE(writer.key("ports"));
 	// Выполняем запись начала перечня значений
@@ -704,7 +762,7 @@ TEST(CodecTomlWriter, Arrays) {
  */
 TEST(CodecTomlWriter, MultilineArray) {
 	// Объект записи текста настроек
-	toml::writer_t writer;
+	toml::writer_t writer(::logger());
 	// Выполняем запись имени ключа пары
 	ASSERT_TRUE(writer.key("hosts"));
 	// Выполняем запись начала перечня значений несколькими строками
@@ -730,7 +788,7 @@ TEST(CodecTomlWriter, MultilineArray) {
  */
 TEST(CodecTomlWriter, InlineTable) {
 	// Объект записи текста настроек
-	toml::writer_t writer;
+	toml::writer_t writer(::logger());
 	// Выполняем запись имени ключа пары
 	ASSERT_TRUE(writer.key("point"));
 	// Выполняем запись начала встроенной таблицы
@@ -766,7 +824,7 @@ TEST(CodecTomlWriter, InlineTable) {
  */
 TEST(CodecTomlWriter, ArrayTables) {
 	// Объект записи текста настроек
-	toml::writer_t writer;
+	toml::writer_t writer(::logger());
 	// Выполняем запись объявления очередной таблицы набора таблиц
 	ASSERT_TRUE(writer.arrayTable("products"));
 	// Выполняем запись имени ключа пары
@@ -794,7 +852,7 @@ TEST(CodecTomlWriter, ArrayTables) {
  */
 TEST(CodecTomlWriter, Comments) {
 	// Объект записи текста настроек
-	toml::writer_t writer;
+	toml::writer_t writer(::logger());
 	// Выполняем запись примечания, занимающего несколько строк
 	ASSERT_TRUE(writer.comment("первая\nвторая"));
 	// Выполняем запись имени ключа пары
@@ -820,7 +878,7 @@ TEST(CodecTomlWriter, Comments) {
  */
 TEST(CodecTomlWriter, TrailingRefusal) {
 	// Объект записи текста настроек
-	toml::writer_t writer;
+	toml::writer_t writer(::logger());
 	// Выполняем запись примечания
 	ASSERT_TRUE(writer.comment("примечание"));
 	// Выполняем проверку отказа дописывания примечания к строке примечания
@@ -847,7 +905,7 @@ TEST(CodecTomlWriter, TrailingRefusal) {
  */
 TEST(CodecTomlWriter, Unfinished) {
 	// Объект записи текста настроек
-	toml::writer_t writer;
+	toml::writer_t writer(::logger());
 	// Выполняем запись имени ключа пары
 	ASSERT_TRUE(writer.key("value"));
 	// Выполняем проверку отказа записи объявления таблицы
@@ -871,7 +929,7 @@ TEST(CodecTomlWriter, Unfinished) {
  */
 TEST(CodecTomlWriter, Unbalanced) {
 	// Объект записи текста настроек
-	toml::writer_t writer;
+	toml::writer_t writer(::logger());
 	// Выполняем запись имени ключа пары
 	ASSERT_TRUE(writer.key("value"));
 	// Выполняем запись начала перечня значений
@@ -903,7 +961,7 @@ TEST(CodecTomlWriter, Decoration) {
 	// Задаём знаком конца строки пару возврата каретки с переводом строки
 	settings.newline = toml::newline_t::CRLF;
 	// Объект записи текста настроек
-	toml::writer_t writer(settings);
+	toml::writer_t writer(::logger(), settings);
 	// Выполняем запись имени ключа пары
 	ASSERT_TRUE(writer.key("global"));
 	// Выполняем запись значения пары
@@ -937,7 +995,7 @@ TEST(CodecTomlWriter, Limits) {
 	// Устанавливаем наибольшую допустимую глубину вложенности значений
 	settings.maxDepth = 2;
 	// Объект записи текста настроек
-	toml::writer_t writer(settings);
+	toml::writer_t writer(::logger(), settings);
 	// Выполняем проверку отказа записи имени ключа сверх предела длины
 	ASSERT_FALSE(writer.key("длинное"));
 	// Выполняем проверку кода ошибки записи
@@ -1003,7 +1061,7 @@ TEST(CodecTomlWriter, DepthLimitMatchesReader) {
 		// Устанавливаем наибольшую допустимую глубину вложенности значений
 		reading.maxDepth = depth;
 		// Объект потокового чтения текста настроек
-		toml::reader_t reader(reading);
+		toml::reader_t reader(::logger(), reading);
 		// Выполняем подачу разбираемого текста настроек
 		static_cast <void> (reader.feed(text.data(), text.size(), true));
 		/**
@@ -1017,7 +1075,7 @@ TEST(CodecTomlWriter, DepthLimitMatchesReader) {
 		// Устанавливаем наибольшую допустимую глубину вложенности значений
 		writing.maxDepth = depth;
 		// Объект записи текста настроек
-		toml::writer_t writer(writing);
+		toml::writer_t writer(::logger(), writing);
 		// Выполняем запись имени ключа пары
 		ASSERT_TRUE(writer.key("a"));
 		/**
@@ -1048,7 +1106,7 @@ TEST(CodecTomlWriter, LineLimit) {
 	// Устанавливаем наибольшую допустимую длину логической строки
 	settings.maxLine = 16;
 	// Объект записи текста настроек
-	toml::writer_t writer(settings);
+	toml::writer_t writer(::logger(), settings);
 	// Выполняем запись имени ключа пары
 	ASSERT_TRUE(writer.key("value"));
 	// Выполняем проверку отказа записи строки сверх предела её длины
@@ -1070,7 +1128,7 @@ TEST(CodecTomlWriter, FoldedLineLimit) {
 	// Устанавливаем наибольшую допустимую длину логической строки
 	settings.maxLine = 48;
 	// Объект записи текста настроек
-	toml::writer_t writer(settings);
+	toml::writer_t writer(::logger(), settings);
 	// Выполняем запись имени ключа пары
 	ASSERT_TRUE(writer.key("value"));
 	/**
@@ -1103,7 +1161,7 @@ TEST(CodecTomlWriter, FoldedLineLimit) {
  */
 TEST(CodecTomlWriter, Numbers) {
 	// Объект записи текста настроек
-	toml::writer_t writer;
+	toml::writer_t writer(::logger());
 	// Выполняем запись пары с логическим значением
 	ASSERT_TRUE(writer.number("flag", true));
 	// Выполняем запись пары с целым числом со знаком
@@ -1135,9 +1193,9 @@ TEST(CodecTomlWriter, Rewrite) {
 	 "stamp = 1979-05-27T07:32:00Z\n"
 	 "flag = false\n";
 	// Объект потокового чтения текста настроек
-	toml::reader_t reader;
+	toml::reader_t reader(::logger());
 	// Объект записи текста настроек
-	toml::writer_t writer;
+	toml::writer_t writer(::logger());
 	// Выполняем подачу разбираемого текста настроек
 	ASSERT_TRUE(reader.feed(text.data(), text.size(), true));
 	/**
@@ -1200,7 +1258,7 @@ TEST(CodecTomlWriter, Rewrite) {
  */
 TEST(CodecTomlWriter, CarriageReturn) {
 	// Объект записи текста настроек
-	toml::writer_t writer;
+	toml::writer_t writer(::logger());
 	// Выполняем запись имени ключа пары
 	ASSERT_TRUE(writer.key("value"));
 	// Выполняем запись многострочного значения с возвратом каретки
@@ -1244,7 +1302,7 @@ TEST(CodecTomlWriter, IndentedArray) {
 	// Отменяем запись пустой строки перед объявлением таблицы
 	settings.separated = false;
 	// Объект записи текста настроек
-	toml::writer_t writer(settings);
+	toml::writer_t writer(::logger(), settings);
 	// Выполняем запись объявления таблицы
 	ASSERT_TRUE(writer.table("server"));
 	// Выполняем запись имени ключа пары
@@ -1281,7 +1339,7 @@ TEST(CodecTomlWriter, TrailingLineLimit) {
 	// Устанавливаем наибольшую допустимую длину логической строки
 	settings.maxLine = 20;
 	// Объект записи текста настроек
-	toml::writer_t writer(settings);
+	toml::writer_t writer(::logger(), settings);
 	// Выполняем запись имени ключа пары
 	ASSERT_TRUE(writer.key("a"));
 	// Выполняем запись начала перечня значений несколькими строками
@@ -1315,7 +1373,7 @@ TEST(CodecTomlWriter, LineLimitMatchesReader) {
 		// Устанавливаем наибольшую допустимую длину логической строки
 		writing.maxLine = limit;
 		// Объект записи текста настроек
-		toml::writer_t writer(writing);
+		toml::writer_t writer(::logger(), writing);
 		// Признак успешной сборки текста настроек
 		bool wrote = (writer.key("a") && writer.arrayOpen(true) && writer.integer(1) &&
 		              writer.integer(2) && writer.arrayClose() && writer.trailing("хвост"));
@@ -1335,7 +1393,7 @@ TEST(CodecTomlWriter, LineLimitMatchesReader) {
 		// Устанавливаем наибольшую допустимую длину логической строки
 		reading.maxLine = limit;
 		// Объект потокового чтения текста настроек
-		toml::reader_t reader(reading);
+		toml::reader_t reader(::logger(), reading);
 		// Выполняем подачу разбираемого текста настроек
 		static_cast <void> (reader.feed(text.data(), text.size(), true));
 		/**
@@ -1360,7 +1418,7 @@ TEST(CodecTomlWriter, DepthLimitZero) {
 	// Устанавливаем запрет вложенных значений
 	writing.maxDepth = 0;
 	// Объект записи текста настроек
-	toml::writer_t writer(writing);
+	toml::writer_t writer(::logger(), writing);
 	// Выполняем запись имени ключа пары
 	ASSERT_TRUE(writer.key("a"));
 	// Выполняем проверку отказа записи перечня значений
@@ -1368,7 +1426,7 @@ TEST(CodecTomlWriter, DepthLimitZero) {
 	// Выполняем проверку кода ошибки записи
 	ASSERT_EQ(writer.error(), toml::error_t::DEPTH_EXCEEDED);
 	// Объект записи текста настроек встроенной таблицы
-	toml::writer_t inlined(writing);
+	toml::writer_t inlined(::logger(), writing);
 	// Выполняем запись имени ключа пары
 	ASSERT_TRUE(inlined.key("a"));
 	// Выполняем проверку отказа записи встроенной таблицы
@@ -1380,7 +1438,7 @@ TEST(CodecTomlWriter, DepthLimitZero) {
 	// Устанавливаем запрет вложенных значений
 	reading.maxDepth = 0;
 	// Объект потокового чтения текста настроек
-	toml::reader_t reader(reading);
+	toml::reader_t reader(::logger(), reading);
 	// Собираемый текст настроек с перечнем значений
 	const string text("a = [1]\n");
 	// Выполняем подачу разбираемого текста настроек
@@ -1402,7 +1460,7 @@ TEST(CodecTomlWriter, DepthLimitZero) {
  */
 TEST(CodecTomlWriter, ArrayRemarks) {
 	// Объект записи текста настроек
-	toml::writer_t writer;
+	toml::writer_t writer(::logger());
 	// Выполняем запись имени ключа пары
 	ASSERT_TRUE(writer.key("a"));
 	// Выполняем запись начала многострочного перечня значений
@@ -1422,7 +1480,7 @@ TEST(CodecTomlWriter, ArrayRemarks) {
 	// Выполняем проверку собранного текста настроек
 	ASSERT_EQ(writer.text(), string("a = [\n\t1, # первое\n\t# своей строкой\n\t2 # последнее\n]\n"));
 	// Объект записи текста настроек одной строкой
-	toml::writer_t single;
+	toml::writer_t single(::logger());
 	// Выполняем запись имени ключа пары
 	ASSERT_TRUE(single.key("a"));
 	// Выполняем запись начала перечня значений одной строкой
@@ -1434,7 +1492,7 @@ TEST(CodecTomlWriter, ArrayRemarks) {
 	// Выполняем проверку кода ошибки записи
 	ASSERT_EQ(single.error(), toml::error_t::UNEXPECTED_CONTENT);
 	// Объект записи текста настроек вне перечня
-	toml::writer_t outside;
+	toml::writer_t outside(::logger());
 	// Выполняем проверку отказа записи примечания перечня вне перечня
 	ASSERT_FALSE(outside.remark("нельзя"));
 	// Выполняем проверку кода ошибки записи
@@ -1455,7 +1513,7 @@ TEST(CodecTomlWriter, TornRefusal) {
 	// Устанавливаем наибольшую допустимую длину имени ключа
 	settings.maxKey = 3;
 	// Объект записи текста настроек
-	toml::writer_t writer(settings);
+	toml::writer_t writer(::logger(), settings);
 	// Выполняем запись имени ключа пары
 	ASSERT_TRUE(writer.key("ab"));
 	// Выполняем запись значения пары

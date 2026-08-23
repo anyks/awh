@@ -36,6 +36,64 @@
 #include <codec/toml/toml.hpp>
 
 /**
+ * @brief Пространство имён проверок этого файла
+ *
+ * @note Держится оно безымянным намеренно: проверки кодеков собираются одной
+ *       программою, и одноимённые построения разных файлов иначе сходятся в
+ *       одно, порождая порчу вдали от места её причины
+ *
+ */
+namespace {
+	/**
+	 * @brief Объект журнала проверок с отключённым выводом
+	 *
+	 * @details Вывод отключается назначением пустого перечня приёмников: отказы
+	 *          разбора проверки наводят намеренно, и журнал их засорял бы выдачу
+	 *
+	 */
+	struct Silent {
+		/**
+		 * @brief Функция получения объекта фреймворка проверок
+		 *
+		 * @details Объект заводится статикою местною, а не общею файла: заведение его
+		 *          порядком построения статики оканчивается падением ещё до входа в
+		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
+		 *
+		 * @return объект фреймворка проверок
+		 *
+		 */
+		static const awh::fmk_t & framework() noexcept {
+			// Объект фреймворка проверок
+			static awh::fmk_t fmk;
+			// Выводим объект фреймворка проверок
+			return fmk;
+		}
+		// Объект журнала проверок
+		awh::log_t log;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Silent() noexcept : log(&Silent::framework()) {
+			// Выполняем отключение вывода логов
+			this->log.mode({});
+		}
+	};
+	/**
+	 * @brief Функция получения объекта журнала проверок
+	 *
+	 * @return объект журнала проверок
+	 *
+	 */
+	const awh::log_t * logger() noexcept {
+		// Объект журнала проверок
+		static Silent silent;
+		// Выводим объект журнала проверок
+		return &silent.log;
+	}
+}
+
+/**
  * Используем стандартное пространство имён
  */
 using namespace std;
@@ -76,7 +134,7 @@ static const char * SAMPLE =
  */
 TEST(CodecTomlDocument, Reading) {
 	// Объект дерева настроек
-	toml::document_t document;
+	toml::document_t document(::logger());
 	// Выполняем разбор текста настроек
 	ASSERT_TRUE(document.parse(SAMPLE)) << static_cast <uint32_t> (document.error());
 	// Выполняем проверку чтения значения верхнего уровня
@@ -121,7 +179,7 @@ TEST(CodecTomlDocument, Reading) {
  */
 TEST(CodecTomlDocument, Typed) {
 	// Объект дерева настроек
-	toml::document_t document;
+	toml::document_t document(::logger());
 	// Выполняем разбор текста настроек
 	ASSERT_TRUE(document.parse(SAMPLE));
 	// Целое число значения пары
@@ -145,7 +203,7 @@ TEST(CodecTomlDocument, Typed) {
 	 */
 	{
 		// Объект дерева настроек половинной записи
-		toml::document_t halved;
+		toml::document_t halved(::logger());
 		// Выполняем разбор текста настроек
 		ASSERT_TRUE(halved.parse("half = 2.5\nback = -2.5\n"));
 		// Выполняем проверку чтения половинной записи целым видом
@@ -199,7 +257,7 @@ TEST(CodecTomlDocument, Typed) {
  */
 TEST(CodecTomlDocument, SetFromOwnView) {
 	// Объект дерева настроек
-	toml::document_t document;
+	toml::document_t document(::logger());
 	// Значение, заведомо превышающее короткий запас строки
 	const string big(4096, 'z');
 	// Выполняем разбор текста настроек
@@ -224,7 +282,7 @@ TEST(CodecTomlDocument, SetFromOwnView) {
 
 TEST(CodecTomlDocument, Composite) {
 	// Объект дерева настроек
-	toml::document_t document;
+	toml::document_t document(::logger());
 	// Выполняем разбор текста настроек
 	ASSERT_TRUE(document.parse(SAMPLE));
 	// Выполняем проверку количества значений перечня
@@ -248,7 +306,7 @@ TEST(CodecTomlDocument, Composite) {
  */
 TEST(CodecTomlDocument, Structure) {
 	// Объект дерева настроек
-	toml::document_t document;
+	toml::document_t document(::logger());
 	// Выполняем разбор текста настроек
 	ASSERT_TRUE(document.parse(SAMPLE));
 	// Получаем перечень объявленных таблиц
@@ -298,7 +356,7 @@ TEST(CodecTomlDocument, Structure) {
  */
 TEST(CodecTomlDocument, ArrayTables) {
 	// Объект дерева настроек
-	toml::document_t document;
+	toml::document_t document(::logger());
 	// Выполняем разбор текста настроек
 	ASSERT_TRUE(document.parse(SAMPLE));
 	// Выполняем проверку количества таблиц набора таблиц
@@ -324,7 +382,7 @@ TEST(CodecTomlDocument, ArrayTables) {
  */
 TEST(CodecTomlDocument, Rewrite) {
 	// Объект дерева настроек
-	toml::document_t document;
+	toml::document_t document(::logger());
 	// Выполняем разбор текста настроек
 	ASSERT_TRUE(document.parse(SAMPLE));
 	// Выполняем проверку побайтового совпадения перезаписи с исходным текстом
@@ -343,7 +401,7 @@ TEST(CodecTomlDocument, MultilineArray) {
 	 "]\n"
 	 "ports = [80, 443]\n";
 	// Объект дерева настроек
-	toml::document_t document;
+	toml::document_t document(::logger());
 	// Выполняем разбор текста настроек
 	ASSERT_TRUE(document.parse(text)) << static_cast <uint32_t> (document.error());
 	/**
@@ -363,7 +421,7 @@ TEST(CodecTomlDocument, MultilineArray) {
  */
 TEST(CodecTomlDocument, Editing) {
 	// Объект дерева настроек
-	toml::document_t document;
+	toml::document_t document(::logger());
 	// Выполняем разбор текста настроек
 	ASSERT_TRUE(document.parse(SAMPLE));
 	// Выполняем установку значения объявленной пары
@@ -394,7 +452,7 @@ TEST(CodecTomlDocument, Editing) {
  */
 TEST(CodecTomlDocument, Appending) {
 	// Объект дерева настроек
-	toml::document_t document;
+	toml::document_t document(::logger());
 	// Выполняем разбор текста настроек
 	ASSERT_TRUE(document.parse(SAMPLE));
 	// Выполняем заведение отсутствующей пары объявленной таблицы
@@ -423,7 +481,7 @@ TEST(CodecTomlDocument, Appending) {
  */
 TEST(CodecTomlDocument, Creating) {
 	// Объект дерева настроек
-	toml::document_t document;
+	toml::document_t document(::logger());
 	// Выполняем разбор текста настроек
 	ASSERT_TRUE(document.parse(SAMPLE));
 	// Выполняем объявление отсутствующей таблицы
@@ -439,7 +497,7 @@ TEST(CodecTomlDocument, Creating) {
 	// Выполняем проверку записи объявленной таблицы с её парой
 	ASSERT_NE(result.find("[client]\nretries = 3\n"), string::npos);
 	// Выполняем проверку разбора собранного текста настроек
-	toml::document_t reread;
+	toml::document_t reread(::logger());
 	// Выполняем разбор собранного текста настроек
 	ASSERT_TRUE(reread.parse(result)) << static_cast <uint32_t> (reread.error());
 	// Выполняем проверку чтения заведённого значения
@@ -451,7 +509,7 @@ TEST(CodecTomlDocument, Creating) {
  */
 TEST(CodecTomlDocument, Erasing) {
 	// Объект дерева настроек
-	toml::document_t document;
+	toml::document_t document(::logger());
 	// Выполняем разбор текста настроек
 	ASSERT_TRUE(document.parse(SAMPLE));
 	// Выполняем удаление объявленной пары
@@ -482,7 +540,7 @@ TEST(CodecTomlDocument, Erasing) {
  */
 TEST(CodecTomlDocument, Removing) {
 	// Объект дерева настроек
-	toml::document_t document;
+	toml::document_t document(::logger());
 	// Выполняем разбор текста настроек
 	ASSERT_TRUE(document.parse(SAMPLE));
 	// Выполняем удаление объявленной таблицы
@@ -515,7 +573,7 @@ TEST(CodecTomlDocument, Removing) {
  */
 TEST(CodecTomlDocument, Preserving) {
 	// Объект дерева настроек
-	toml::document_t document;
+	toml::document_t document(::logger());
 	// Выполняем разбор текста настроек
 	ASSERT_TRUE(document.parse(SAMPLE));
 	// Прочитанное значение пары
@@ -537,7 +595,7 @@ TEST(CodecTomlDocument, Preserving) {
  */
 TEST(CodecTomlDocument, Values) {
 	// Объект дерева настроек
-	toml::document_t document;
+	toml::document_t document(::logger());
 	// Выполняем установку строкового значения пары
 	ASSERT_TRUE(document.set({"text"}, "значение"));
 	// Выполняем установку логического значения пары
@@ -582,7 +640,7 @@ TEST(CodecTomlDocument, Values) {
  */
 TEST(CodecTomlDocument, Replacing) {
 	// Объект дерева настроек
-	toml::document_t document;
+	toml::document_t document(::logger());
 	// Выполняем разбор текста настроек
 	ASSERT_TRUE(document.parse(SAMPLE));
 	// Выполняем замену перечня значений простым значением
@@ -596,7 +654,7 @@ TEST(CodecTomlDocument, Replacing) {
 	// Выполняем проверку записи установленного значения
 	ASSERT_NE(result.find("flags = 1\n"), string::npos);
 	// Объект дерева настроек для разбора собранного текста
-	toml::document_t reread;
+	toml::document_t reread(::logger());
 	// Выполняем проверку разбора собранного текста настроек
 	ASSERT_TRUE(reread.parse(result)) << static_cast <uint32_t> (reread.error());
 }
@@ -606,7 +664,7 @@ TEST(CodecTomlDocument, Replacing) {
  */
 TEST(CodecTomlDocument, Failure) {
 	// Объект дерева настроек
-	toml::document_t document;
+	toml::document_t document(::logger());
 	// Выполняем проверку отказа разбора ошибочно построенного текста
 	ASSERT_FALSE(document.parse("[server]\nport = \n"));
 	// Выполняем проверку кода ошибки разбора текста настроек
@@ -624,7 +682,7 @@ TEST(CodecTomlDocument, Failure) {
  */
 TEST(CodecTomlDocument, Rejection) {
 	// Объект дерева настроек
-	toml::document_t document;
+	toml::document_t document(::logger());
 	// Выполняем проверку отказа установки значения пустым составным именем
 	ASSERT_FALSE(document.set({}, static_cast <int64_t> (1)));
 	// Выполняем проверку кода ошибки правки дерева
@@ -644,7 +702,7 @@ TEST(CodecTomlDocument, DottedKeys) {
 	// Разбираемый текст настроек
 	const string text = "[server]\nlimits.depth = 1\n";
 	// Объект дерева настроек
-	toml::document_t document;
+	toml::document_t document(::logger());
 	// Выполняем разбор текста настроек
 	ASSERT_TRUE(document.parse(text)) << static_cast <uint32_t> (document.error());
 	// Целое число значения пары
@@ -678,7 +736,7 @@ TEST(CodecTomlDocument, EmptyKey) {
 	// Разбираемый текст настроек
 	const string text = "\"\" = 1\n[table]\n\"\" = 2\n";
 	// Объект дерева настроек
-	toml::document_t document;
+	toml::document_t document(::logger());
 	// Выполняем разбор текста настроек
 	ASSERT_TRUE(document.parse(text)) << static_cast <uint32_t> (document.error());
 	// Целое число значения пары с пустым именем ключа
@@ -715,7 +773,7 @@ TEST(CodecTomlDocument, EmptyKey) {
  */
 TEST(CodecTomlDocument, Clearing) {
 	// Объект дерева настроек
-	toml::document_t document;
+	toml::document_t document(::logger());
 	// Выполняем проверку того, что дерево настроек пусто
 	ASSERT_TRUE(document.empty());
 	// Выполняем разбор текста настроек
@@ -741,7 +799,7 @@ TEST(CodecTomlDocument, Clearing) {
  */
 TEST(CodecTomlDocument, Redefine) {
 	// Объект дерева настроек
-	toml::document_t document;
+	toml::document_t document(::logger());
 	// Выполняем разбор текста настроек
 	ASSERT_TRUE(document.parse(SAMPLE));
 	// Выполняем проверку отказа объявления таблицы поверх объявленной пары
@@ -776,7 +834,7 @@ TEST(CodecTomlDocument, Redefine) {
 	// Выполняем проверку побайтового совпадения перезаписи с ожидаемым текстом
 	ASSERT_NE(document.text().find("name = \"клещи\"\n"), string::npos);
 	// Объект дерева настроек для разбора собранного текста
-	toml::document_t reread;
+	toml::document_t reread(::logger());
 	// Выполняем проверку разбора собранного текста настроек
 	ASSERT_TRUE(reread.parse(document.text())) << static_cast <uint32_t> (reread.error());
 }
@@ -799,7 +857,7 @@ TEST(CodecTomlDocument, EditRules) {
 		make_pair(string("[[a]]\n"), true)
 	}){
 		// Объект дерева настроек
-		toml::document_t document;
+		toml::document_t document(::logger());
 		// Выполняем проверку разбора исходного текста настроек
 		ASSERT_TRUE(document.parse(item.first));
 		// Выполняем проверку отказа заведения пары поверх таблицы
@@ -822,7 +880,7 @@ TEST(CodecTomlDocument, EditRules) {
 		string("a = {b = 1}\n")
 	}){
 		// Объект дерева настроек
-		toml::document_t document;
+		toml::document_t document(::logger());
 		// Выполняем проверку разбора исходного текста настроек
 		ASSERT_TRUE(document.parse(source));
 		// Выполняем проверку отказа заведения пары под занятым именем
@@ -855,7 +913,7 @@ TEST(CodecTomlDocument, EditReadable) {
 		 */
 		for(uint32_t kind = 0; kind < 4; kind++){
 			// Объект дерева настроек
-			toml::document_t document;
+			toml::document_t document(::logger());
 			// Выполняем проверку разбора исходного текста настроек
 			ASSERT_TRUE(document.parse(source));
 			// Признак того, что правка принята
@@ -884,7 +942,7 @@ TEST(CodecTomlDocument, EditReadable) {
 			// Выполняем проверку того, что перезапись собрана
 			ASSERT_FALSE(text.empty());
 			// Объект дерева настроек для обратного чтения
-			toml::document_t after;
+			toml::document_t after(::logger());
 			// Выполняем проверку обратного чтения перезаписи
 			ASSERT_TRUE(after.parse(text)) << "правка " << kind << " над «" << source << "» дала «" << text << "»";
 		}
@@ -913,7 +971,7 @@ TEST(CodecTomlDocument, ArrayRemarks) {
 		string("# сверху\na = [\n\t1 # к первому\n] # к паре\n")
 	}){
 		// Объект дерева настроек
-		toml::document_t document;
+		toml::document_t document(::logger());
 		// Выполняем проверку разбора исходного текста настроек
 		ASSERT_TRUE(document.parse(source)) << "«" << source << "»";
 		// Выполняем проверку того, что перезапись повторяет исходный текст
@@ -947,7 +1005,7 @@ TEST(CodecTomlDocument, EditFootprint) {
 		"name = \"молоток\"\n"
 	);
 	// Объект дерева настроек
-	toml::document_t document;
+	toml::document_t document(::logger());
 	// Выполняем проверку разбора исходного текста настроек
 	ASSERT_TRUE(document.parse(source));
 	// Запоминаем перезапись дерева до правок
@@ -992,7 +1050,7 @@ TEST(CodecTomlDocument, EditFootprint) {
  */
 TEST(CodecTomlDocument, EditAfterCompaction) {
 	// Объект дерева настроек
-	toml::document_t document;
+	toml::document_t document(::logger());
 	// Выполняем проверку разбора исходного текста настроек
 	ASSERT_TRUE(document.parse("[server]\nhost = \"127.0.0.1\"\n"));
 	/**
@@ -1013,7 +1071,7 @@ TEST(CodecTomlDocument, EditAfterCompaction) {
 		ASSERT_EQ(value, static_cast <int64_t> (i));
 	}
 	// Объект дерева настроек для обратного чтения
-	toml::document_t after;
+	toml::document_t after(::logger());
 	// Выполняем проверку обратного чтения перезаписи правленого дерева
 	ASSERT_TRUE(after.parse(document.text()));
 	// Читаемое значение последней заведённой пары
@@ -1032,7 +1090,7 @@ TEST(CodecTomlDocument, EditAfterCompaction) {
  */
 TEST(CodecTomlDocument, EraseGarbageCount) {
 	// Объект дерева настроек
-	toml::document_t document;
+	toml::document_t document(::logger());
 	// Выполняем проверку разбора исходного текста настроек
 	ASSERT_TRUE(document.parse("[t]\na = 1\nb = 2\n"));
 	// Выполняем проверку снятия пары дерева настроек
@@ -1080,14 +1138,14 @@ TEST(CodecTomlDocument, StampCalendar) {
 		// Запоминаем день собираемой отметки времени
 		stamp.date.day = get <2> (item);
 		// Объект дерева настроек
-		toml::document_t document;
+		toml::document_t document(::logger());
 		// Выполняем проверку разбора исходного текста настроек
 		ASSERT_TRUE(document.parse("a = 2026-01-01\n"));
 		// Выполняем проверку итога правки отметки времени
 		ASSERT_EQ(document.set(vector <string_view> {"a"}, stamp, toml::type_t::LOCAL_DATE), get <3> (item))
 		 << get <0> (item) << "-" << static_cast <uint32_t> (get <1> (item)) << "-" << static_cast <uint32_t> (get <2> (item));
 		// Объект записи текста настроек
-		toml::writer_t writer;
+		toml::writer_t writer(::logger());
 		// Выполняем запись имени ключа пары
 		ASSERT_TRUE(writer.key("a"));
 		// Выполняем проверку итога записи отметки времени
@@ -1097,7 +1155,7 @@ TEST(CodecTomlDocument, StampCalendar) {
 		 */
 		if(get <3> (item)){
 			// Объект дерева настроек для обратного чтения
-			toml::document_t after;
+			toml::document_t after(::logger());
 			// Выполняем проверку того, что записанное разбор принимает
 			ASSERT_TRUE(after.parse(document.text())) << document.text();
 		}
@@ -1113,7 +1171,7 @@ TEST(CodecTomlDocument, StampCalendar) {
  */
 TEST(CodecTomlDocument, NestedReading) {
 	// Объект дерева настроек
-	toml::document_t document;
+	toml::document_t document(::logger());
 	// Выполняем проверку разбора исходного текста настроек
 	ASSERT_TRUE(document.parse(
 		"a = [[1, 2], [3, 4]]\n"
@@ -1176,7 +1234,7 @@ TEST(CodecTomlDocument, NestedReading) {
  */
 TEST(CodecTomlDocument, LeadingZeroOrdinal) {
 	// Объект дерева настроек
-	toml::document_t document;
+	toml::document_t document(::logger());
 	// Выполняем разбор исходного текста настроек
 	ASSERT_TRUE(document.parse("[[products]]\nname = \"первый\"\n[[products]]\nname = \"второй\"\n"));
 	// Выполняем проверку правки по порядковому номеру без ведущего нуля
@@ -1188,7 +1246,7 @@ TEST(CodecTomlDocument, LeadingZeroOrdinal) {
 	// Собранный правкой текст настроек
 	const string text = document.text();
 	// Объект дерева настроек, собранного обратным разбором
-	toml::document_t reread;
+	toml::document_t reread(::logger());
 	/**
 	 * Выполняем проверку того, что собранный текст читается собственным разбором
 	 *
@@ -1213,7 +1271,7 @@ TEST(CodecTomlDocument, LeadingZeroOrdinal) {
  */
 TEST(CodecTomlDocument, ClearedTraversal) {
 	// Объект дерева настроек
-	toml::document_t document;
+	toml::document_t document(::logger());
 	// Выполняем разбор исходного текста настроек
 	ASSERT_TRUE(document.parse("[a]\nx = 1\n"));
 	// Выполняем проверку дочерних имён верхнего уровня
@@ -1241,7 +1299,7 @@ TEST(CodecTomlDocument, ClearedTraversal) {
  */
 TEST(CodecTomlDocument, ArrayBuilding) {
 	// Собираемое дерево настроек
-	toml::document_t document;
+	toml::document_t document(::logger());
 	// Выполняем разбор пустого текста настроек
 	ASSERT_TRUE(document.parse(""));
 	// Собираемое содержимое добавляемого значения
@@ -1310,7 +1368,7 @@ TEST(CodecTomlDocument, ArrayBuilding) {
  */
 TEST(CodecTomlDocument, PushFromOwnView) {
 	// Объект дерева настроек
-	toml::document_t document;
+	toml::document_t document(::logger());
 	// Значение, заведомо превышающее короткий запас строки
 	const string big(4096, 'z');
 	// Выполняем разбор текста настроек

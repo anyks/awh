@@ -233,6 +233,16 @@ bool awh::codec::toml::Reader::failure(const error_t error, const size_t offset)
 		this->_error = error;
 		// Запоминаем место обнаружения ошибки разбора
 		this->_errorLocation = this->locate(offset);
+		/**
+		 * Если объект для работы с логами установлен
+		 *
+		 * @note Код отказа остаётся доступен через error(), а место его - через
+		 *       location(): журнал есть оповещение, а не единственный способ узнать
+		 *       о случившемся
+		 */
+		if(this->_log != nullptr)
+			// Выполняем вывод сообщения об отказе разбора текста
+			this->_log->print("TOML parsing failed: %s at line %u column %u", log_t::flag_t::CRITICAL, awh::codec::toml::message(error), this->_errorLocation.line, this->_errorLocation.column);
 	}
 	// Запоминаем состояние прекращения разбора ошибкой
 	this->_state = state_t::FAILED;
@@ -3780,17 +3790,22 @@ void awh::codec::toml::Reader::clear() noexcept {
 /**
  * @brief Конструктор
  *
+ * @param log объект для работы с логами
+ *
  */
-awh::codec::toml::Reader::Reader() noexcept :
+awh::codec::toml::Reader::Reader(const log_t * log) noexcept :
+ _log(log), _decoder(log),
  _state(state_t::READY), _error(error_t::NONE), _decoding(error_t::NONE), _hungry(false), _final(false),
  _offset(0), _start(0), _probed(0), _anonymous(0), _base(0), _line(1), _bol(0), _current(0), _staging(0), _declaring(false), _appending(false) {}
 /**
  * @brief Конструктор
  *
+ * @param log      объект для работы с логами
  * @param settings настройки разбора текста настроек
  *
  */
-awh::codec::toml::Reader::Reader(const settings_t & settings) noexcept :
+awh::codec::toml::Reader::Reader(const log_t * log, const settings_t & settings) noexcept :
+ _log(log), _decoder(log),
  _state(state_t::READY), _error(error_t::NONE), _decoding(error_t::NONE), _hungry(false), _final(false),
  _settings(settings), _offset(0), _start(0), _probed(0), _anonymous(0), _base(0), _line(1), _bol(0), _current(0),
  _staging(0), _declaring(false), _appending(false) {

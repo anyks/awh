@@ -111,6 +111,12 @@ bool awh::codec::toml::Writer::refuse(const error_t error) noexcept {
 	// Запоминаем код ошибки записи
 	this->_error = error;
 	/**
+	 * Если объект для работы с логами установлен
+	 */
+	if(this->_log != nullptr)
+		// Выполняем вывод сообщения об отказе записи текста
+		this->_log->print("TOML writing failed: %s", log_t::flag_t::CRITICAL, awh::codec::toml::message(error));
+	/**
 	 * Если отказ застал строку незавершённой
 	 */
 	if(this->_length != 0)
@@ -1969,16 +1975,21 @@ void awh::codec::toml::Writer::clear() noexcept {
 /**
  * @brief Конструктор
  *
+ * @param log объект для работы с логами
+ *
  */
-awh::codec::toml::Writer::Writer() noexcept :
+awh::codec::toml::Writer::Writer(const log_t * log) noexcept :
+ _log(log),
  _error(error_t::NONE), _tabled(false), _trailable(false), _torn(false), _length(0), _restore(0) {}
 /**
  * @brief Конструктор
  *
+ * @param log      объект для работы с логами
  * @param settings настройки записи текста настроек
  *
  */
-awh::codec::toml::Writer::Writer(const settings_t & settings) noexcept :
+awh::codec::toml::Writer::Writer(const log_t * log, const settings_t & settings) noexcept :
+ _log(log),
  _error(error_t::NONE), _tabled(false), _trailable(false), _torn(false), _length(0), _restore(0), _settings(settings) {}
 /**
  * @brief Деструктор

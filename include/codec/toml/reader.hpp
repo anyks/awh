@@ -152,6 +152,17 @@ namespace awh {
 			 *
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Reader {
+				private:
+					/**
+					 * \~russian
+					 * Объект для работы с логами
+					 *
+					 * \~english
+					 * Object for working with logs
+					 *
+					 * \~
+					 */
+					const log_t * _log;
 				public:
 					/**
 					 * \~russian
@@ -1532,26 +1543,30 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
+					 * @param log объект для работы с логами
 					 *
 					 * \~english
 					 * @brief Constructor
+					 * @param log object for working with logs
 					 *
 					 * \~
 					 */
-					Reader() noexcept;
+					Reader(const log_t * log) noexcept;
 					/**
 					 * \~russian
 					 * @brief Конструктор
 					 *
+					 * @param log      объект для работы с логами
 					 * @param settings настройки разбора текста настроек
 					 *
 					 * \~english
 					 * @brief Constructor
+					 * @param log      object for working with logs
 					 * @param settings settings of the parsing of a settings text
 					 *
 					 * \~
 					 */
-					explicit Reader(const settings_t & settings) noexcept;
+					Reader(const log_t * log, const settings_t & settings) noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор

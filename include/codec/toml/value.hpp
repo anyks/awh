@@ -137,6 +137,26 @@ namespace awh {
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Value {
 				private:
+					/**
+					 * \~russian
+					 * Объект для работы с логами
+					 *
+					 * @details Держится указателем, пустоту допускающим: значение владеющее
+					 * заводится и числом, и строкою, и связку в такие построители не заведёшь.
+					 * Журнал назначается извне вызовом logger(), и пока он не назначен, отказы
+					 * выдаются одним лишь кодом
+					 *
+					 * \~english
+					 * Object for working with logs
+					 * @details It is held by a pointer that admits emptiness: an owning value is created
+					 * both from a number and from a string, and the pair cannot be put into such builders.
+					 * The log is assigned from the outside by a call of logger(), and until it is assigned,
+					 * the refusals are given away by a code alone
+					 *
+					 * \~
+					 */
+					const log_t * _log;
+				private:
 					// Тип хранимого значения
 					type_t _type;
 				private:
@@ -1288,6 +1308,25 @@ namespace awh {
 					 * \~
 					 */
 					Value & operator = (Value && value) noexcept;
+				public:
+					/**
+					 * \~russian
+					 * @brief Метод назначения объекта для работы с логами
+					 *
+					 * @param log объект для работы с логами
+					 *
+					 * @details Журнал перенимается всяким разбором и всякою записью, значением
+					 * заведёнными, и копией значения тоже: назначить его довольно единожды
+					 *
+					 * \~english
+					 * @brief Method of the assignment of the object for working with logs
+					 * @param log object for working with logs
+					 * @details The log is taken over by every parsing and every writing created by the value,
+					 * and by a copy of the value too: it is enough to assign it once
+					 *
+					 * \~
+					 */
+					void logger(const log_t * log) noexcept;
 				public:
 					/**
 					 * \~russian
