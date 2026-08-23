@@ -7,7 +7,11 @@ readonly ROOT=$(cd "$(dirname "$0")/../../.." && pwd)
 readonly STANDS="$ROOT/tools/benchmark/toml"
 
 # Каталог исходных текстов сравниваемых реализаций
-readonly VENDOR="$ROOT/third_party/rival/toml"
+#
+# Соперники собираются из подмодулей, лежащих рядом с зависимостями самого AWH:
+# прежде четверо их забирались с сети одиночными заголовочными файлами средством
+# fetch.sh, отчего сличение мерило ещё и разницу сборок
+readonly VENDOR="$ROOT/submodules"
 
 # Каталог собранных стендов
 readonly OUTPUT="${1:-/tmp/rival-toml}"
@@ -73,31 +77,31 @@ if [ -f "$VENDOR/tomlplusplus/toml.hpp" ]; then
 # Если исходные тексты реализации toml++ не получены
 else
 	# Выводим сообщение о пропуске стенда
-	omit "tomlplusplus" "third_party/rival/toml/tomlplusplus not fetched"
+	omit "tomlplusplus" "submodules/tomlplusplus is not checked out"
 fi
 
 # Если исходные тексты реализации toml11 получены
-if [ -f "$VENDOR/toml11/toml.hpp" ]; then
+if [ -f "$VENDOR/toml11/single_include/toml.hpp" ]; then
 	# Выводим сообщение о сборке стенда реализации toml11
 	echo "Build \"toml11\""
 	# Выполняем сборку стенда реализации toml11
-	c++ $FLAGS -I"$VENDOR/toml11" "$STANDS/toml11.cpp" -o "$OUTPUT/toml11" || exit 1
+	c++ $FLAGS -I"$VENDOR/toml11/single_include" "$STANDS/toml11.cpp" -o "$OUTPUT/toml11" || exit 1
 # Если исходные тексты реализации toml11 не получены
 else
 	# Выводим сообщение о пропуске стенда
-	omit "toml11" "third_party/rival/toml/toml11 not fetched"
+	omit "toml11" "submodules/toml11 is not checked out"
 fi
 
 # Если исходные тексты реализации cpptoml получены
-if [ -f "$VENDOR/cpptoml/cpptoml.h" ]; then
+if [ -f "$VENDOR/cpptoml/include/cpptoml.h" ]; then
 	# Выводим сообщение о сборке стенда реализации cpptoml
 	echo "Build \"cpptoml\""
 	# Выполняем сборку стенда реализации cpptoml
-	c++ $FLAGS -I"$VENDOR/cpptoml" "$STANDS/cpptoml.cpp" -o "$OUTPUT/cpptoml" || exit 1
+	c++ $FLAGS -I"$VENDOR/cpptoml/include" "$STANDS/cpptoml.cpp" -o "$OUTPUT/cpptoml" || exit 1
 # Если исходные тексты реализации cpptoml не получены
 else
 	# Выводим сообщение о пропуске стенда
-	omit "cpptoml" "third_party/rival/toml/cpptoml not fetched"
+	omit "cpptoml" "submodules/cpptoml is not checked out"
 fi
 
 # Если исходные тексты реализации tomlc99 получены
@@ -111,7 +115,7 @@ if [ -f "$VENDOR/tomlc99/toml.c" ]; then
 # Если исходные тексты реализации tomlc99 не получены
 else
 	# Выводим сообщение о пропуске стенда
-	omit "tomlc99" "third_party/rival/toml/tomlc99 not fetched"
+	omit "tomlc99" "submodules/tomlc99 is not checked out"
 fi
 
 # Выполняем удаление промежуточных объектных файлов

@@ -6,12 +6,15 @@
 
 ## Как получить и собрать
 
-Исходные тексты сравниваемых реализаций в репозиторий не входят и получаются
-оснасткой в `third_party/rival/toml`.
+Все четыре соперника берутся подмодулями, лежащими рядом с зависимостями самого
+AWH. Прежде они забирались с сети одиночными заголовочными файлами средством
+`fetch.sh`; средство это снято, а подмодули заводятся общим сборником
+`sh/benchmark_party.sh`.
 
 ```sh
-# получение исходных текстов сравниваемых реализаций
-./tools/benchmark/toml/fetch.sh
+# заведение подмодулей соперников, если они ещё не заведены
+git submodule update --init submodules/tomlplusplus submodules/toml11 \
+	submodules/cpptoml submodules/tomlc99
 
 # сборка библиотеки AWH с оптимизацией, если она ещё не собрана
 cmake -B build-release -DCMAKE_BUILD_TYPE=Release . && make -C build-release awh
