@@ -87,9 +87,9 @@ $ROOT/submodule.sh add simpleini https://github.com/brofield/simpleini.git
 $ROOT/submodule.sh remove mINI
 $ROOT/submodule.sh add mINI https://github.com/metayeti/mINI.git
 
-# Выполняем пересборку сабмодуля tomlplusplus
-$ROOT/submodule.sh remove tomlplusplus
-$ROOT/submodule.sh add tomlplusplus https://github.com/marzer/tomlplusplus.git
+# Выполняем пересборку сабмодуля tomlc99
+$ROOT/submodule.sh remove tomlc99
+$ROOT/submodule.sh add tomlc99 https://github.com/cktan/tomlc99.git
 
 # Выполняем пересборку сабмодуля toml11
 $ROOT/submodule.sh remove toml11
@@ -99,9 +99,9 @@ $ROOT/submodule.sh add toml11 https://github.com/ToruNiina/toml11.git
 $ROOT/submodule.sh remove cpptoml
 $ROOT/submodule.sh add cpptoml https://github.com/skystrife/cpptoml.git
 
-# Выполняем пересборку сабмодуля tomlc99
-$ROOT/submodule.sh remove tomlc99
-$ROOT/submodule.sh add tomlc99 https://github.com/cktan/tomlc99.git
+# Выполняем пересборку сабмодуля tomlplusplus
+$ROOT/submodule.sh remove tomlplusplus
+$ROOT/submodule.sh add tomlplusplus https://github.com/marzer/tomlplusplus.git
 
 # Выполняем пересборку сабмодуля boost
 $ROOT/submodule.sh remove boost

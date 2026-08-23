@@ -29,6 +29,11 @@
 #include "suite.hpp"
 
 /**
+ * Подключаем наши модули
+ */
+#include <alloc/source.hpp>
+
+/**
  * Стандартные модули
  */
 #include <vector>

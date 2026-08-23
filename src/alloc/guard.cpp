@@ -44,7 +44,7 @@ awh::alloc::Guard::record_t * const awh::alloc::Guard::_tomb = reinterpret_cast 
  */
 awh::alloc::Guard::Guard() noexcept :
  _source(nullptr), _table(nullptr), _length(0), _enrolled(0), _meta(nullptr),
- _metaLeft(0), _spare(nullptr), _oldest(nullptr), _newest(nullptr), _rate(0), _counter(0) {}
+ _metaLeft(0), _spare(nullptr), _oldest(nullptr), _newest(nullptr), _sealedBytes(0), _rate(0), _counter(0) {}
 
 /**
  * @brief Метод выдачи памяти под учётную запись
@@ -312,6 +312,8 @@ void awh::alloc::Guard::reset() noexcept {
 	this->_oldest = nullptr;
 	// Сбрасываем конец очереди закрытых областей
 	this->_newest = nullptr;
+	// Сбрасываем объём закрытых областей
+	this->_sealedBytes = 0;
 	// Сбрасываем список повторно используемых записей
 	this->_spare = nullptr;
 	// Сбрасываем состояние заслонов
@@ -533,10 +535,18 @@ size_t awh::alloc::Guard::free(void * ptr, bool * mine) noexcept {
 	else this->_oldest = record;
 	// Запоминаем область концом очереди
 	this->_newest = record;
+	// Увеличиваем объём закрытых областей
+	this->_sealedBytes += record->span;
 	/**
 	 * Отдаём системе старейшую закрытую область, если их накопилось сверх меры
 	 */
-	while((this->_state.sealed > SEALED) && (this->_oldest != nullptr)){
+	/**
+	 * Отдаём старейшие закрытые области, пока не уложимся в ОБЕ границы
+	 *
+	 * Счёт бережёт место под адреса у мелких блоков, объём - саму память у крупных:
+	 * довод у обеих границ записан при них самих
+	 */
+	while(((this->_state.sealed > SEALED) || (this->_sealedBytes > RETAINED)) && (this->_oldest != nullptr)){
 		// Запоминаем старейшую закрытую область
 		record_t * oldest = this->_oldest;
 		// Сдвигаем начало очереди
@@ -574,6 +584,8 @@ size_t awh::alloc::Guard::free(void * ptr, bool * mine) noexcept {
 		}
 		// Открываем область прежде отдачи
 		this->_source->protect(oldest->base, oldest->span, true);
+		// Уменьшаем объём закрытых областей
+		this->_sealedBytes -= ((this->_sealedBytes < oldest->span) ? this->_sealedBytes : oldest->span);
 		// Уменьшаем взятое у источника под заслонённые блоки
 		this->_state.taken -= ((this->_state.taken < oldest->span) ? this->_state.taken : oldest->span);
 		// Отдаём источнику область заслонённого блока

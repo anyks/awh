@@ -226,7 +226,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		typedef awh::codec::json::value_t json_t;
+		using json_t = codec::json::value_t;
 
 		/**
 		 * \~russian
@@ -244,7 +244,7 @@ namespace awh {
 		 */
 		typedef struct __AWH_SHARED_EXPORT__ Expression {
 			// Собранное регулярное выражение развёрнутого текста
-			awh::RegularExpression::exp_t exp;
+			regexp_t::exp_t exp;
 			// Набор полей шаблона в порядке объявления
 			vector <field_t> fields;
 			// Исходный текст шаблона со ссылками

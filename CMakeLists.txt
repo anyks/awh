@@ -2314,13 +2314,13 @@ if (${CMAKE_BUILD_SAMPLES})
         # Выводим сообщение о сборке семпла
         message(STATUS "Build sample XML Codec: Yes\n")
         # Выполняем создание приложения потокового чтения текста разметки
-        add_sample(${CODEC_APP_XML_READER_NAME} sample/codec/reader.cpp codec)
+        add_sample(${CODEC_APP_XML_READER_NAME} sample/codec/xml-reader.cpp codec)
         # Выполняем создание приложения работы с деревом разметки
-        add_sample(${CODEC_APP_XML_DOCUMENT_NAME} sample/codec/document.cpp codec)
+        add_sample(${CODEC_APP_XML_DOCUMENT_NAME} sample/codec/xml-document.cpp codec)
         # Выполняем создание приложения записи текста разметки
-        add_sample(${CODEC_APP_XML_WRITER_NAME} sample/codec/writer.cpp codec)
+        add_sample(${CODEC_APP_XML_WRITER_NAME} sample/codec/xml-writer.cpp codec)
         # Выполняем создание приложения получения содержимого разметки числами
-        add_sample(${CODEC_APP_XML_NUMERIC_NAME} sample/codec/numeric.cpp codec)
+        add_sample(${CODEC_APP_XML_NUMERIC_NAME} sample/codec/xml-numeric.cpp codec)
     # Если не нужно собирать семплы для работы с контейнером XML
     else()
         # Выводим сообщение о сборке семпла

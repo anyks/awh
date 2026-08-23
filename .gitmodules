@@ -28,12 +28,6 @@
 [submodule "submodules/boringssl"]
 	path = submodules/boringssl
 	url = https://gitflic.ru/project/third_party/boringssl.git
-[submodule "submodules/simpleini"]
-	path = submodules/simpleini
-	url = https://github.com/brofield/simpleini.git
-[submodule "submodules/mINI"]
-	path = submodules/mINI
-	url = https://github.com/metayeti/mINI.git
 [submodule "submodules/libuv"]
 	path = submodules/libuv
 	url = https://github.com/libuv/libuv.git
@@ -76,18 +70,27 @@
 [submodule "submodules/inih"]
 	path = submodules/inih
 	url = https://github.com/benhoyt/inih.git
-[submodule "submodules/tomlplusplus"]
-	path = submodules/tomlplusplus
-	url = https://github.com/marzer/tomlplusplus.git
+[submodule "submodules/iniparser"]
+	path = submodules/iniparser
+	url = https://github.com/ndevilla/iniparser.git
+[submodule "submodules/simpleini"]
+	path = submodules/simpleini
+	url = https://github.com/brofield/simpleini.git
+[submodule "submodules/mINI"]
+	path = submodules/mINI
+	url = https://github.com/metayeti/mINI.git
+[submodule "submodules/tomlc99"]
+	path = submodules/tomlc99
+	url = https://github.com/cktan/tomlc99.git
 [submodule "submodules/toml11"]
 	path = submodules/toml11
 	url = https://github.com/ToruNiina/toml11.git
 [submodule "submodules/cpptoml"]
 	path = submodules/cpptoml
 	url = https://github.com/skystrife/cpptoml.git
-[submodule "submodules/tomlc99"]
-	path = submodules/tomlc99
-	url = https://github.com/cktan/tomlc99.git
+[submodule "submodules/tomlplusplus"]
+	path = submodules/tomlplusplus
+	url = https://github.com/marzer/tomlplusplus.git
 [submodule "submodules/boost"]
 	path = submodules/boost
 	url = https://github.com/boostorg/boost.git
@@ -151,9 +154,6 @@
 [submodule "submodules/jemalloc"]
 	path = submodules/jemalloc
 	url = https://github.com/jemalloc/jemalloc.git
-[submodule "submodules/iniparser"]
-	path = submodules/iniparser
-	url = https://github.com/ndevilla/iniparser.git
 [submodule "submodules/gperftools"]
 	path = submodules/gperftools
 	url = https://github.com/gperftools/gperftools.git

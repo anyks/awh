@@ -79,7 +79,7 @@ size_t awh::RegularExpression::Hash::operator () (const key_t & key) const noexc
  *
  */
 awh::RegularExpression::RegularExpression(const log_t * log) noexcept :
- _error(error_t::NONE), _offset(0), _safety(false), _log(log) {}
+ _error(error_t::NONE), _offset(0), _log(log) {}
 /**
  * @brief Метод извлечения кода ошибки последней сборки
  *
@@ -111,31 +111,10 @@ const string & awh::RegularExpression::message() const noexcept {
 	return this->_message;
 }
 /**
- * @brief Метод установки согласования доступа к кэшу
- *
- * @param mode флаг согласования доступа к кэшу собранных выражений
- *
- */
-void awh::RegularExpression::threadSafety(const bool mode) noexcept {
-	// Выполняем установку флага согласования доступа к кэшу
-	this->_safety = mode;
-}
-/**
  * @brief Метод очистки кэша собранных регулярных выражений
  *
  */
 void awh::RegularExpression::clear() noexcept {
-	/**
-	 * Если согласование доступа к кэшу установлено
-	 */
-	if(this->_safety) {
-		// Выполняем блокировку потока
-		const lock_guard <mutex> lock(this->_mtx);
-		// Выполняем очистку кэша собранных выражений
-		this->_cache.clear();
-		// Выходим из метода очистки кэша
-		return;
-	}
 	// Выполняем очистку кэша собранных выражений
 	this->_cache.clear();
 }
@@ -164,14 +143,6 @@ awh::RegularExpression::exp_t awh::RegularExpression::build(string_view pattern,
 	 *
 	 */
 	{
-		// Выполняем блокировку потока при согласовании доступа к кэшу
-		unique_lock <mutex> lock(this->_mtx, defer_lock);
-		/**
-		 * Если согласование доступа к кэшу установлено
-		 */
-		if(this->_safety)
-			// Выполняем блокировку потока
-			lock.lock();
 		// Выполняем поиск ключа в кэше собранных выражений
 		auto i = this->_cache.find(key);
 		/**
@@ -229,14 +200,6 @@ awh::RegularExpression::exp_t awh::RegularExpression::build(string_view pattern,
 	 * Выполняем размещение собранного выражения в кэше собранных выражений
 	 */
 	{
-		// Выполняем блокировку потока при согласовании доступа к кэшу
-		unique_lock <mutex> lock(this->_mtx, defer_lock);
-		/**
-		 * Если согласование доступа к кэшу установлено
-		 */
-		if(this->_safety)
-			// Выполняем блокировку потока
-			lock.lock();
 		// Выполняем размещение собранного выражения в кэше
 		this->_cache[key] = expression;
 	}

@@ -218,7 +218,6 @@
 /**
  * Стандартные заголовочные файлы
  */
-#include <mutex>
 #include <string>
 #include <vector>
 #include <memory>
@@ -423,30 +422,6 @@ namespace awh {
 		private:
 			// Объект журнала событий
 			const log_t * _log;
-		private:
-			// Признак согласования доступа к реестру шаблонов
-			bool _threadSafety;
-		private:
-			// Объект согласования доступа к реестру шаблонов
-			/**
-			 * \~russian
-			 * Имя типа уточняется пространством имён намеренно
-			 *
-			 * @warning У Solaris в общем пространстве имён своё имя mutex - оно приходит
-			 *          из sys/t_lock.h, - и голое обращение там становится двусмысленным.
-			 *          Уточнение принято и у прочих заголовков набора: threadpool и signals
-			 *          пишут его так же
-			 *
-			 * \~english
-			 * The type name is qualified by the namespace deliberately
-			 * @warning On Solaris the global namespace has a mutex name of its own — it comes
-			 *          from sys/t_lock.h — and a bare reference becomes ambiguous there.
-			 *          The qualification is adopted in the other headers of the set as well: threadpool and signals
-			 *          write it the same way
-			 *
-			 * \~
-			 */
-			mutable std::mutex _mtx;
 		private:
 			// Реестр именованных шаблонов
 			unordered_map <string, string> _patterns;
@@ -964,27 +939,6 @@ namespace awh {
 			 * \~
 			 */
 			error_t error() const noexcept;
-		public:
-			/**
-			 * \~russian
-			 * @brief Метод установки согласования доступа к реестру шаблонов
-			 *
-			 * @param mode режим согласования доступа к реестру шаблонов
-			 *
-			 * @details Согласование ведётся для реестра шаблонов, а не для
-			 *          сопоставления: собранный шаблон после сборки не
-			 *          изменяется и разделяется потоками без согласования.
-			 *
-			 * \~english
-			 * @brief Method of setting the coordination of the access to the pattern registry
-			 * @param mode mode of coordinating the access to the pattern registry
-			 * @details The coordination is kept for the pattern registry rather than for
-			 *          the matching: a built pattern is not changed after building
-			 *          and is shared by the threads without coordination.
-			 *
-			 * \~
-			 */
-			void threadSafety(const bool mode) noexcept;
 		public:
 			/**
 			 * \~russian

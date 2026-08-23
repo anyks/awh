@@ -23,11 +23,15 @@
  *          правке не подлежит. Раздел заведён затем, чтобы разбор кода не начинался
  *          каждый раз с одних и тех же выводов.
  *
- *          <b>Рабочее состояние сопоставления хранится отдельно для каждого потока
- *          исполнения.</b> Скомпилированное выражение после сборки не изменяется и
- *          разделяется потоками без согласования доступа, поэтому сопоставление
- *          блокировок не требует вовсе. Переключатель threadSafety согласует
- *          доступ к кэшу собранных выражений, а не к сопоставлению.
+ *          <b>Согласования доступа модуль не ведёт вовсе.</b> Рабочее состояние
+ *          сопоставления хранится отдельно для каждого потока исполнения, а
+ *          скомпилированное выражение после сборки не изменяется и разделяется
+ *          потоками без согласования. Кэш же собранных выражений и реестр шаблонов
+ *          суть поля объекта, а не память, общая на всё приложение: объектом владеет
+ *          сторонний разработчик, и защитить его он волен сам, средствами, задаче
+ *          отвечающими. Framework работы этой за него не делает: блокировка,
+ *          навязанная всем, оборачивается взаимными захватами и провалом
+ *          производительности там, где многопоточность не нужна вовсе.
  *
  *          <b>Кэш собранных выражений хранит слабые ссылки.</b> Выражение живёт,
  *          пока его удерживает вызывающая сторона; кэш лишь избавляет от повторной
@@ -47,11 +51,15 @@
  * @details What is listed below looks like an incongruity, but was chosen deliberately and
  *          is not subject to correction. The section is introduced so that reading the code does not start
  *          every time from the same conclusions.
- *          <b>The working state of the matching is kept separately for every thread
- *          of execution.</b> A compiled expression is not changed after building and
- *          is shared by the threads without coordinating the access, therefore matching
- *          requires no locks at all. The threadSafety switch coordinates
- *          the access to the cache of built expressions rather than to the matching.
+ *          <b>The module performs no coordination of the access at all.</b> The working
+ *          state of the matching is kept separately for every thread of execution, and
+ *          a compiled expression is not changed after building and is shared by the threads
+ *          without coordination. The cache of built expressions and the registry of patterns
+ *          are fields of an object rather than memory common to the whole application: the object
+ *          is owned by an outside developer, and he is free to protect it himself, by the means
+ *          that suit the task. The Framework does not do that work for him: a lock imposed
+ *          on everyone turns into deadlocks and a collapse of the performance where
+ *          multithreading is not needed at all.
  *          <b>The cache of built expressions keeps weak references.</b> An expression lives
  *          as long as the calling side holds it; the cache only relieves from repeated
  *          building of the same expression with the same set of modes. Releasing
@@ -76,7 +84,6 @@
 /**
  * Стандартные заголовочные файлы
  */
-#include <mutex>
 #include <string>
 #include <vector>
 #include <memory>
@@ -205,32 +212,8 @@ namespace awh {
 			// Текст ошибки последней операции сборки
 			mutable string _message;
 		private:
-			// Флаг согласования доступа к кэшу собранных выражений
-			bool _safety;
-		private:
 			// Объект журнала событий
 			const log_t * _log;
-		private:
-			// Мютекс согласования доступа к кэшу собранных выражений
-			/**
-			 * \~russian
-			 * Имя типа уточняется пространством имён намеренно
-			 *
-			 * @warning У Solaris в общем пространстве имён своё имя mutex - оно приходит
-			 *          из sys/t_lock.h, - и голое обращение там становится двусмысленным.
-			 *          Уточнение принято и у прочих заголовков набора: threadpool и signals
-			 *          пишут его так же
-			 *
-			 * \~english
-			 * The type name is qualified by the namespace deliberately
-			 * @warning On Solaris the global namespace has a mutex name of its own — it comes
-			 *          from sys/t_lock.h — and a bare reference becomes ambiguous there.
-			 *          The qualification is adopted in the other headers of the set as well: threadpool and signals
-			 *          write it the same way
-			 *
-			 * \~
-			 */
-			mutable std::mutex _mtx;
 		private:
 			// Кэш собранных регулярных выражений
 			mutable unordered_map <key_t, weak_ptr <const awh::regex::expression_t>, Hash> _cache;
@@ -532,27 +515,6 @@ namespace awh {
 			 * \~
 			 */
 			const string & message() const noexcept;
-		public:
-			/**
-			 * \~russian
-			 * @brief Метод установки согласования доступа к кэшу
-			 *
-			 * @details Согласование требуется, если сборка выражений выполняется
-			 *          несколькими потоками исполнения одновременно. Сопоставление
-			 *          собранного выражения согласования не требует.
-			 *
-			 * @param mode флаг согласования доступа к кэшу собранных выражений
-			 *
-			 * \~english
-			 * @brief Method of setting the coordination of the access to the cache
-			 * @details The coordination is required if building expressions is performed
-			 *          by several threads of execution at once. Matching
-			 *          a built expression requires no coordination.
-			 * @param mode flag of coordinating the access to the cache of built expressions
-			 *
-			 * \~
-			 */
-			void threadSafety(const bool mode) noexcept;
 		public:
 			/**
 			 * \~russian

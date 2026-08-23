@@ -582,19 +582,6 @@ bool awh::Grok::expand(string_view body, string & result, vector <field_t> & fie
  *
  */
 void awh::Grok::clear() noexcept {
-	/**
-	 * Если согласование доступа к реестру шаблонов установлено
-	 */
-	if(this->_threadSafety) {
-		// Выполняем блокировку доступа к реестру шаблонов
-		const lock_guard <mutex> lock(this->_mtx);
-		// Выполняем очистку реестра шаблонов
-		this->_patterns.clear();
-		// Выполняем очистку кэша собранных шаблонов
-		this->_cache.clear();
-		// Выходим из метода
-		return;
-	}
 	// Выполняем очистку реестра шаблонов
 	this->_patterns.clear();
 	// Выполняем очистку кэша собранных шаблонов
@@ -607,23 +594,6 @@ void awh::Grok::clear() noexcept {
 void awh::Grok::reset() noexcept {
 	// Выполняем очистку реестра шаблонов
 	this->clear();
-	/**
-	 * Если согласование доступа к реестру шаблонов установлено
-	 */
-	if(this->_threadSafety) {
-		// Выполняем блокировку доступа к реестру шаблонов
-		const lock_guard <mutex> lock(this->_mtx);
-		/**
-		 * Выполняем перебор встроенного набора шаблонов
-		 */
-		for(size_t i = 0; i < awh::grok::PATTERNS_COUNT; i++)
-			// Выполняем добавление шаблона в реестр
-			this->_patterns.emplace(awh::grok::PATTERNS[i].name, awh::grok::PATTERNS[i].body);
-		// Выполняем очистку кэша собранных шаблонов
-		this->_cache.clear();
-		// Выходим из метода
-		return;
-	}
 	/**
 	 * Выполняем перебор встроенного набора шаблонов
 	 */
@@ -647,15 +617,6 @@ bool awh::Grok::has(string_view name) const noexcept {
 	if(name.empty())
 		// Выводим результат проверки наличия шаблона в реестре
 		return false;
-	/**
-	 * Если согласование доступа к реестру шаблонов установлено
-	 */
-	if(this->_threadSafety) {
-		// Выполняем блокировку доступа к реестру шаблонов
-		const lock_guard <mutex> lock(this->_mtx);
-		// Выводим результат проверки наличия шаблона в реестре
-		return (this->_patterns.find(string(name)) != this->_patterns.end());
-	}
 	// Выводим результат проверки наличия шаблона в реестре
 	return (this->_patterns.find(string(name)) != this->_patterns.end());
 }
@@ -675,17 +636,6 @@ bool awh::Grok::erase(string_view name) noexcept {
 		this->_error = error_t::NAME_EMPTY;
 		// Выводим результат удаления шаблона из реестра
 		return false;
-	}
-	/**
-	 * Если согласование доступа к реестру шаблонов установлено
-	 */
-	if(this->_threadSafety) {
-		// Выполняем блокировку доступа к реестру шаблонов
-		const lock_guard <mutex> lock(this->_mtx);
-		// Выполняем очистку кэша собранных шаблонов
-		this->_cache.clear();
-		// Выводим результат удаления шаблона из реестра
-		return (this->_patterns.erase(string(name)) > 0);
 	}
 	// Выполняем очистку кэша собранных шаблонов
 	this->_cache.clear();
@@ -721,17 +671,6 @@ string awh::Grok::pattern(string_view name) const noexcept {
 			// Выполняем извлечение текста шаблона
 			result.assign(i->second);
 	};
-	/**
-	 * Если согласование доступа к реестру шаблонов установлено
-	 */
-	if(this->_threadSafety) {
-		// Выполняем блокировку доступа к реестру шаблонов
-		const lock_guard <mutex> lock(this->_mtx);
-		// Выполняем извлечение текста шаблона из реестра
-		extract();
-		// Выводим текст шаблона реестра
-		return result;
-	}
 	// Выполняем извлечение текста шаблона из реестра
 	extract();
 	// Выводим текст шаблона реестра
@@ -764,19 +703,6 @@ bool awh::Grok::pattern(string_view name, string_view body) noexcept {
 		// Выводим результат добавления шаблона в реестр
 		return false;
 	}
-	/**
-	 * Если согласование доступа к реестру шаблонов установлено
-	 */
-	if(this->_threadSafety) {
-		// Выполняем блокировку доступа к реестру шаблонов
-		const lock_guard <mutex> lock(this->_mtx);
-		// Выполняем добавление шаблона в реестр
-		this->_patterns[string(name)] = string(body);
-		// Выполняем очистку кэша собранных шаблонов
-		this->_cache.clear();
-		// Выводим результат добавления шаблона в реестр
-		return true;
-	}
 	// Выполняем добавление шаблона в реестр
 	this->_patterns[string(name)] = string(body);
 	// Выполняем очистку кэша собранных шаблонов
@@ -806,17 +732,6 @@ vector <string> awh::Grok::patterns() const noexcept {
 			// Выполняем добавление названия шаблона в набор
 			result.push_back(item.first);
 	};
-	/**
-	 * Если согласование доступа к реестру шаблонов установлено
-	 */
-	if(this->_threadSafety) {
-		// Выполняем блокировку доступа к реестру шаблонов
-		const lock_guard <mutex> lock(this->_mtx);
-		// Выполняем извлечение названий шаблонов реестра
-		extract();
-		// Выводим набор названий шаблонов реестра
-		return result;
-	}
 	// Выполняем извлечение названий шаблонов реестра
 	extract();
 	// Выводим набор названий шаблонов реестра
@@ -854,14 +769,6 @@ awh::Grok::exp_t awh::Grok::build(string_view pattern, const uint32_t flags) con
 	 *
 	 */
 	{
-		// Выполняем блокировку потока при согласовании доступа к реестру
-		unique_lock <mutex> lock(this->_mtx, defer_lock);
-		/**
-		 * Если согласование доступа к реестру шаблонов установлено
-		 */
-		if(this->_threadSafety)
-			// Выполняем блокировку потока
-			lock.lock();
 		// Выполняем поиск ключа в кэше собранных шаблонов
 		auto i = this->_cache.find(key);
 		/**
@@ -897,16 +804,8 @@ awh::Grok::exp_t awh::Grok::build(string_view pattern, const uint32_t flags) con
 	};
 	// Признак выполнения разворота ссылок текста шаблона
 	bool unfolded = false;
-	/**
-	 * Если согласование доступа к реестру шаблонов установлено
-	 */
-	if(this->_threadSafety) {
-		// Выполняем блокировку доступа к реестру шаблонов
-		const lock_guard <mutex> lock(this->_mtx);
-		// Выполняем разворот ссылок текста шаблона
-		unfolded = unfold();
 	// Выполняем разворот ссылок текста шаблона
-	} else unfolded = unfold();
+	unfolded = unfold();
 	/**
 	 * Если разворот ссылок текста шаблона не выполнен
 	 */
@@ -955,14 +854,6 @@ awh::Grok::exp_t awh::Grok::build(string_view pattern, const uint32_t flags) con
 	 * Выполняем размещение собранного шаблона в кэше собранных шаблонов
 	 */
 	{
-		// Выполняем блокировку потока при согласовании доступа к реестру
-		unique_lock <mutex> lock(this->_mtx, defer_lock);
-		/**
-		 * Если согласование доступа к реестру шаблонов установлено
-		 */
-		if(this->_threadSafety)
-			// Выполняем блокировку потока
-			lock.lock();
 		// Выполняем размещение собранного шаблона в кэше
 		this->_cache[key] = result;
 	}
@@ -1432,16 +1323,6 @@ awh::Grok::error_t awh::Grok::error() const noexcept {
 	return this->_error;
 }
 /**
- * @brief Метод установки согласования доступа к реестру шаблонов
- *
- * @param mode режим согласования доступа к реестру шаблонов
- *
- */
-void awh::Grok::threadSafety(const bool mode) noexcept {
-	// Выполняем установку согласования доступа к реестру шаблонов
-	this->_threadSafety = mode;
-}
-/**
  * @brief Конструктор
  *
  * @param log объект для работы с логами
@@ -1449,7 +1330,7 @@ void awh::Grok::threadSafety(const bool mode) noexcept {
  */
 awh::Grok::Grok(const log_t * log) noexcept :
  _regexp(log), _storage(log), _method(compressor::method_t::NONE), _error(error_t::NONE),
- _threadSafety(false), _log(log) {
+ _log(log) {
 	// Выполняем размещение реестра шаблонов
 	this->_patterns.reserve(awh::grok::PATTERNS_COUNT);
 	/**
@@ -2059,14 +1940,6 @@ bool awh::Grok::load(string_view record, vector <exp_t> & result) const noexcept
 	 *
 	 */
 	{
-		// Выполняем блокировку потока при согласовании доступа к реестру
-		unique_lock <mutex> lock(this->_mtx, defer_lock);
-		/**
-		 * Если согласование доступа к реестру шаблонов установлено
-		 */
-		if(this->_threadSafety)
-			// Выполняем блокировку потока
-			lock.lock();
 		/**
 		 * Выполняем перебор набора восстановленных шаблонов
 		 */
