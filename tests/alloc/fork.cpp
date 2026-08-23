@@ -144,7 +144,7 @@ TEST_F(AllocFixture, DescendantAllocatesAfterFork){
 	// Родитель обязан дождаться потомка
 	ASSERT_TRUE(::await(pid, status));
 	// Потомок обязан завершиться сам, а не быть снятым сигналом
-	ASSERT_TRUE(WIFEXITED(status)) << "потомок снят сигналом: зависание либо падение";
+	ASSERT_TRUE(WIFEXITED(status)) << "потомок снят сигналом " << WTERMSIG(status) << ": зависание либо падение";
 	// Потомок обязан ответить успехом
 	EXPECT_EQ(WEXITSTATUS(status), 0);
 }
@@ -201,7 +201,7 @@ TEST_F(AllocFixture, DescendantAllocatesAfterForkUnderLoad){
 	// Родитель обязан дождаться потомка
 	ASSERT_TRUE(::await(pid, status));
 	// Потомок обязан завершиться сам, а не быть снятым сигналом
-	ASSERT_TRUE(WIFEXITED(status)) << "потомок снят сигналом: замок пережил ветвление захваченным";
+	ASSERT_TRUE(WIFEXITED(status)) << "потомок снят сигналом " << WTERMSIG(status) << ": замок пережил ветвление захваченным";
 	// Потомок обязан ответить успехом
 	EXPECT_EQ(WEXITSTATUS(status), 0);
 }

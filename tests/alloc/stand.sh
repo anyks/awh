@@ -81,6 +81,7 @@ $CXX -std=c++17 -O2 $NOBUILTIN $FLAGS $GTESTFLAGS -I "$ROOT/include" -o "$OUT/al
  "$ROOT/tests/alloc/stand.cpp" \
  "$ROOT/tests/alloc/capture.cpp" "$ROOT/tests/alloc/mangle.cpp" \
  "$ROOT/tests/alloc/contract.cpp" "$ROOT/tests/alloc/guard.cpp" \
+ "$ROOT/tests/alloc/huge.cpp" "$ROOT/tests/alloc/zone.cpp" \
  "$ROOT/tests/alloc/purge.cpp" "$ROOT/tests/alloc/profile.cpp" \
  "$ROOT/tests/alloc/fork.cpp" \
  "$ROOT/src/alloc/alloc.cpp" "$ROOT/src/alloc/source.cpp" "$ROOT/src/alloc/pages.cpp" \

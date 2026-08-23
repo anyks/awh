@@ -1562,3 +1562,95 @@ TEST(CodecJsonDocument, NotANumberToInteger) {
 	// Выполняем проверку выдачи нуля вместо нечисла
 	ASSERT_EQ(number, 0);
 }
+
+/**
+ * @brief Проверка сличения дерева JSON с перезаписью после прививки
+ *
+ * @details Дерево документа лежит плоским перечнем узлов, а содержимое прививаемого
+ * значения дописывается в хвост хранилища знаков; прежнее содержимое заменённого
+ * поддерева остаётся в нём мёртвым грузом - устройство это намеренное и описано при
+ * самом методе. Отсюда и разряд опасности: сличение дерева в памяти читает по тем же
+ * ссылкам, по каким прививка и правила, и расхождение всплывает только в ЗАПИСИ -
+ * съехавшие границы содержимого, мёртвое поддерево наружу, потерянное поле
+ *
+ * @warning Прививается ЗНАЧЕНИЕ, а не поле, и имя поля объекта прививкой сохраняется -
+ *          это сличается отдельно, ибо запись, потерявшая имя, разбирается обратно
+ *          без всякого отказа
+ */
+TEST(CodecJsonDocument, GraftSurvivesRewrite){
+	/**
+	 * Выполняем перебор всех сличаемых прививок
+	 */
+	for(auto & item : vector <pair <string, function <void (json::value_t &)>>> {
+		{"строка", [](json::value_t & value){ value = json::value_t("привито"); }},
+		{"строка со знаками экранирования", [](json::value_t & value){ value = json::value_t("a \" b \\ c \n d"); }},
+		{"пустая строка", [](json::value_t & value){ value = json::value_t(""); }},
+		{"число", [](json::value_t & value){ value = json::value_t(static_cast <int64_t> (42)); }},
+		{"вещественное число", [](json::value_t & value){ value = json::value_t(3.5); }},
+		{"пустота", [](json::value_t & value){ value = json::value_t(); }},
+		{"объект", [](json::value_t & value){ value["a"] = json::value_t(static_cast <int64_t> (1)); value["b"] = json::value_t("два"); }},
+		{"перечень", [](json::value_t & value){
+			// Выполняем добавление первого звена к перечню
+			value.push(json::value_t(static_cast <int64_t> (1)));
+			// Выполняем добавление второго звена к перечню
+			value.push(json::value_t(static_cast <int64_t> (2)));
+		}},
+		{"поддерево шире исходного", [](json::value_t & value){
+			// Выполняем сброс прививаемого значения
+			value = json::value_t();
+			/**
+			 * Выполняем заведение полей числом свыше порога заведения отображения
+			 */
+			for(size_t i = 0; i < (json::INDEX_THRESHOLD * 2); i++)
+				// Выполняем установку значения очередного поля
+				value["f" + to_string(i)] = json::value_t(to_string(i));
+		}}
+	}) {
+		// Дерево JSON, принимающее прививку
+		json::document_t doc(::logger());
+		// Выполняем разбор исходного текста JSON
+		ASSERT_TRUE(doc.parse(R"({"first":1,"target":"старое","last":3})")) << item.first << ": " << json::message(doc.error());
+		// Прививаемое значение JSON
+		json::value_t value;
+		// Выполняем правку прививаемого значения JSON
+		item.second(value);
+		// Выполняем прививку значения в дерево JSON
+		ASSERT_TRUE(doc.graft("/target", value)) << item.first;
+		// Записанный текст JSON
+		const string text = doc.dump();
+		// Дерево JSON, разбирающее записанный текст
+		json::document_t back(::logger());
+		/**
+		 * Выполняем сличение прочтённого из дерева с прочтённым из перезаписи
+		 */
+		ASSERT_TRUE(back.parse(text)) << item.first << ": " << text;
+		// Выполняем сличение записи обоих деревьев JSON
+		ASSERT_EQ(back.dump(), text) << item.first;
+		// Выполняем сличение числа полей корневого объекта
+		ASSERT_EQ(back.root().size(), static_cast <size_t> (3)) << item.first << ": " << text;
+		/**
+		 * Выполняем сличение содержимого привитого поля с тем, что в него клали
+		 *
+		 * @note Сличение это отдельно от записи с записью: потеря, случившаяся одинаково
+		 *       на обоих путях, сличением их между собою не ловится никак
+		 */
+		ASSERT_NE(text.find("\"target\":" + value.dump()), string::npos) << item.first << ": " << text;
+		/**
+		 * Выполняем сличение сохранности соседей привитого поля
+		 */
+		{
+			// Извлекаемое значение соседа привитого поля
+			int64_t number = 0;
+			// Выполняем извлечение значения первого соседа привитого поля
+			ASSERT_TRUE(back.at("/first").value(number)) << item.first << ": " << text;
+			// Выполняем сличение значения первого соседа привитого поля
+			ASSERT_EQ(number, static_cast <int64_t> (1)) << item.first << ": " << text;
+			// Выполняем извлечение значения второго соседа привитого поля
+			ASSERT_TRUE(back.at("/last").value(number)) << item.first << ": " << text;
+			// Выполняем сличение значения второго соседа привитого поля
+			ASSERT_EQ(number, static_cast <int64_t> (3)) << item.first << ": " << text;
+		}
+		// Выполняем проверку того, что заменённое поддерево наружу не выдано
+		ASSERT_EQ(text.find("старое"), string::npos) << item.first << ": " << text;
+	}
+}

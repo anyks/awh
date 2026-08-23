@@ -45,7 +45,8 @@ awh::alloc::Huge::record_t * const awh::alloc::Huge::_tomb = reinterpret_cast <a
  */
 awh::alloc::Huge::Huge() noexcept :
  _source(nullptr), _table(nullptr), _length(0), _enrolled(0),
- _meta(nullptr), _metaLeft(0), _spare(nullptr) {}
+ _meta(nullptr), _metaLeft(0), _spare(nullptr), _cached(nullptr),
+ _cachedBytes(0), _ceiling(0) {}
 
 /**
  * @brief Метод выдачи памяти под учётную запись
@@ -298,6 +299,22 @@ void awh::alloc::Huge::reset() noexcept {
 	this->_enrolled = 0;
 	// Сбрасываем список повторно используемых записей
 	this->_spare = nullptr;
+	/**
+	 * Придержанные области отдавать источнику НЕ нужно
+	 *
+	 * Отдача их прошла бы дважды: записи придержанных областей в таблице поиска не
+	 * значатся, но области их уже отданы выше не были - их отдаём здесь, до сброса
+	 */
+	{
+		// Перебираем придержанные области
+		for(record_t * record = this->_cached; record != nullptr; record = record->spare)
+			// Отдаём источнику придержанную область
+			this->_source->release(record->base, record->span);
+	}
+	// Сбрасываем список придержанных областей
+	this->_cached = nullptr;
+	// Сбрасываем объём придержанного
+	this->_cachedBytes = 0;
 	// Сбрасываем состояние слоя
 	this->_state = state_t();
 	/**
@@ -307,6 +324,223 @@ void awh::alloc::Huge::reset() noexcept {
 	 * байтах куска, а те уже отданы под записи. Слой заводится однажды на процесс, и
 	 * куски эти теряются лишь при снятии распределителя, то есть перед выходом
 	 */
+}
+/**
+ * @brief Метод задания потолка придержанного
+ *
+ * @param bytes потолок придержанного в байтах: нуль - не придерживать
+ *
+ */
+void awh::alloc::Huge::ceiling(const size_t bytes) noexcept {
+	// Захватываем замок слоя
+	hold_t hold(this->_lock);
+	// Запоминаем потолок придержанного
+	this->_ceiling = bytes;
+	/**
+	 * Излишек над новым потолком отдаём тут же
+	 *
+	 * Потолок, опущенный при полном списке, иначе не действовал бы до следующего
+	 * освобождения: придержанное продолжало бы лежать сверх заказанного
+	 */
+	while((this->_cached != nullptr) && (this->_cachedBytes > this->_ceiling)){
+		// Запоминаем придержанную область
+		record_t * record = this->_cached;
+		// Сдвигаем список придержанных областей
+		this->_cached = record->spare;
+		// Уменьшаем объём придержанного
+		this->_cachedBytes -= ((this->_cachedBytes < record->span) ? this->_cachedBytes : record->span);
+		// Уменьшаем взятое у источника
+		this->_state.taken -= ((this->_state.taken < record->span) ? this->_state.taken : record->span);
+		// Отдаём источнику придержанную область
+		this->_source->release(record->base, record->span);
+		// Возвращаем запись в список повторно используемых
+		record->spare = this->_spare;
+		// Запоминаем список повторно используемых записей
+		this->_spare = record;
+	}
+}
+/**
+ * @brief Метод отдачи придержанных областей системе
+ *
+ * @return объём отданного системе в байтах
+ *
+ */
+size_t awh::alloc::Huge::drain() noexcept {
+	// Объём отданного системе
+	size_t result = 0;
+	// Захватываем замок слоя
+	hold_t hold(this->_lock);
+	// Если источник страниц не задан
+	if(this->_source == nullptr)
+		// Отдавать нечего
+		return result;
+	/**
+	 * Перебираем придержанные области
+	 */
+	while(this->_cached != nullptr){
+		// Запоминаем придержанную область
+		record_t * record = this->_cached;
+		// Сдвигаем список придержанных областей
+		this->_cached = record->spare;
+		// Считаем отданное системе
+		result += record->span;
+		// Уменьшаем взятое у источника
+		this->_state.taken -= ((this->_state.taken < record->span) ? this->_state.taken : record->span);
+		// Отдаём источнику придержанную область
+		this->_source->release(record->base, record->span);
+		// Возвращаем запись в список повторно используемых
+		record->spare = this->_spare;
+		// Запоминаем список повторно используемых записей
+		this->_spare = record;
+	}
+	// Сбрасываем объём придержанного
+	this->_cachedBytes = 0;
+	// Выводим объём отданного системе
+	return result;
+}
+/**
+ * @brief Метод повторной выдачи придержанной области
+ *
+ * @note Зовётся ПОД замком слоя: список придержанного правится здесь же
+ *
+ * @param size      требуемый размер в байтах
+ * @param alignment требуемое выравнивание в байтах
+ * @param actual    действительный размер выданной области
+ * @return          адрес области либо nullptr
+ *
+ */
+uint8_t * awh::alloc::Huge::recycle(const size_t size, const size_t alignment, size_t & actual) noexcept {
+	// Если придерживать не велено либо придержанного нет
+	if((this->_ceiling == 0) || (this->_cached == nullptr))
+		// Повторно выдавать нечего
+		return nullptr;
+	// Предыдущая запись перебора
+	record_t * previous = nullptr;
+	// Найденная запись и предшествующая ей
+	record_t * found = nullptr, * before = nullptr;
+	/**
+	 * Ищем НАИМЕНЬШУЮ подходящую область, а не первую попавшуюся
+	 *
+	 * Первая попавшаяся вправе оказаться вчетверо крупнее запрошенного: выдай мы её -
+	 * и прикладной код получил бы блок, за страницы какого никто не платил, а
+	 * подходящая по размеру область осталась бы лежать
+	 */
+	for(record_t * record = this->_cached; record != nullptr; previous = record, record = record->spare){
+		// Если область мельче запрошенного
+		if(record->span < size)
+			// Область не подходит
+			continue;
+		/**
+		 * Сверяем выравнивание области
+		 *
+		 * Область взята у источника со СВОИМ выравниванием, и запрошенное вправе быть
+		 * строже. Область, ему не отвечающую, выдать нельзя: договор выравнивающей
+		 * выдачи нарушился бы молча
+		 */
+		if((alignment > 0) && ((reinterpret_cast <uintptr_t> (record->base) % alignment) != 0))
+			// Область не подходит
+			continue;
+		// Если найденная область крупнее этой
+		if((found == nullptr) || (record->span < found->span)){
+			// Запоминаем найденную область
+			found = record;
+			// Запоминаем предшествующую ей запись
+			before = previous;
+		}
+	}
+	// Если подходящей области не нашлось
+	if(found == nullptr)
+		// Повторно выдавать нечего
+		return nullptr;
+	/**
+	 * Отвергаем область, ВДВОЕ крупнее запрошенного
+	 *
+	 * Придержка бережёт страницы, а не адреса: выдав под пять мегабайт область в
+	 * двадцать, мы обязали бы прикладной код платить за учёт вчетверо большего, чем он
+	 * просил, и потолок придержанного вычерпался бы одной выдачей
+	 */
+	if(found->span > (size + size))
+		// Повторно выдавать нечего
+		return nullptr;
+	// Если найденная область первая в списке
+	if(before == nullptr)
+		// Сдвигаем список придержанных областей
+		this->_cached = found->spare;
+	// Если найденная область лежит в середине списка
+	else before->spare = found->spare;
+	// Уменьшаем объём придержанного
+	this->_cachedBytes -= ((this->_cachedBytes < found->span) ? this->_cachedBytes : found->span);
+	/**
+	 * Снимаем область со взятого у источника
+	 *
+	 * Выдача добавит её туда сама, ровно как и свежую: счёт этот ведётся в одном месте,
+	 * и двойной долив изобразил бы вдвое больший расход
+	 */
+	this->_state.taken -= ((this->_state.taken < found->span) ? this->_state.taken : found->span);
+	// Запоминаем действительный размер области
+	actual = found->span;
+	// Запоминаем адрес области
+	uint8_t * result = found->base;
+	// Возвращаем запись в список повторно используемых
+	found->spare = this->_spare;
+	// Запоминаем список повторно используемых записей
+	this->_spare = found;
+	// Выводим адрес повторно выданной области
+	return result;
+}
+/**
+ * @brief Метод придержки освобождённой области
+ *
+ * @note Зовётся ВНЕ замка слоя: замок берётся здесь
+ *
+ * @param base адрес начала области
+ * @param span размер области в байтах
+ * @return     признак придержки области
+ *
+ */
+bool awh::alloc::Huge::retain(uint8_t * base, const size_t span) noexcept {
+	// Если придерживать нечего
+	if((base == nullptr) || (span == 0))
+		// Придерживать нечего
+		return false;
+	// Захватываем замок слоя
+	hold_t hold(this->_lock);
+	// Если придерживать не велено либо потолок не вмещает области
+	if((this->_ceiling == 0) || ((this->_cachedBytes + span) > this->_ceiling))
+		// Область придержать нельзя
+		return false;
+	// Выдаём память под учётную запись
+	record_t * record = reinterpret_cast <record_t *> (this->meta());
+	// Если память под учётную запись не выдана
+	if(record == nullptr)
+		// Область придержать нечем
+		return false;
+	// Запоминаем адрес начала придержанной области
+	record->base = base;
+	// Запоминаем размер придержанной области
+	record->span = span;
+	// Прикладному коду придержанная область не принадлежит
+	record->block = nullptr;
+	// Затребованного размера у придержанной области нет
+	record->size = 0;
+	// Укрытых областей здесь не бывает: они затираются и отдаются тут же
+	record->hidden = false;
+	// Вносим область в список придержанных
+	record->spare = this->_cached;
+	// Запоминаем список придержанных областей
+	this->_cached = record;
+	// Увеличиваем объём придержанного
+	this->_cachedBytes += span;
+	/**
+	 * Возвращаем область во взятое у источника
+	 *
+	 * Освобождение сняло её оттуда, полагая отданной системе, - но придержанная
+	 * область у системы ВЗЯТА и лежит у нас. Не верни мы её в счёт - взятое у системы
+	 * докладывалось бы меньше настоящего, и потолок кучи считался бы по лжи
+	 */
+	this->_state.taken += span;
+	// Область придержана
+	return true;
 }
 /**
  * @brief Метод определения обслуживаемости размера слоем
@@ -375,8 +609,19 @@ void * awh::alloc::Huge::alloc(const size_t size, const size_t alignment) noexce
 	 * действие целиком
 	 */
 	hold_t hold(this->_lock);
-	// Берём у источника область под крупную выдачу
-	uint8_t * base = reinterpret_cast <uint8_t *> (this->_source->alloc(size, alignment, actual));
+	/**
+	 * Берём область из придержанных, а к источнику идём лишь за нехваткой
+	 *
+	 * Придержанная область уже отображена и уже тронута: страницы её достаются без
+	 * единого отказа страницы. Свежая же приходит от системы чистой, и за каждую её
+	 * страницу платится отказом при первом обращении - замером это три сотни
+	 * микросекунд на пять мегабайт против девяти
+	 */
+	uint8_t * base = this->recycle(size, alignment, actual);
+	// Если придержанной области не нашлось
+	if(base == nullptr)
+		// Берём у источника область под крупную выдачу
+		base = reinterpret_cast <uint8_t *> (this->_source->alloc(size, alignment, actual));
 	// Если область не выдана
 	if(base == nullptr)
 		// Выдавать нечего
@@ -621,6 +866,15 @@ size_t awh::alloc::Huge::free(void * ptr) noexcept {
 	if(hidden)
 		// Затираем содержимое отдаваемой области
 		::memset(base, 0, span);
+	/**
+	 * Придерживаем область у себя, а системе отдаём лишь сверх потолка
+	 *
+	 * Укрытую область не придерживаем вовсе: договор её обещает отдачу системе, а не
+	 * лежание в нашем запасе, - и содержимое её только что затёрто ради этого
+	 */
+	if(!hidden && this->retain(base, span))
+		// Выводим затребованный прикладным кодом размер блока
+		return size;
 	this->_source->release(base, span);
 	// Выводим затребованный прикладным кодом размер блока
 	return size;

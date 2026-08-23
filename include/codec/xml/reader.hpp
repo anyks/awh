@@ -375,6 +375,22 @@ namespace awh {
 					 * \~
 					 */
 					typedef struct Default {
+						/**
+						 * Признак объявления атрибута видом, отличным от «CDATA»
+						 *
+						 * @details Договор велит приводить значение такого атрибута: снимать
+						 * пробельные знаки по краям и сводить всякую их вереницу к одному
+						 * пробелу. Приведение это к проверке по описанию типа документа не
+						 * относится и выполняется независимо от неё
+						 */
+						bool tokenized;
+						/**
+						 * Признак объявления атрибуту значения по умолчанию
+						 *
+						 * @note Объявление удерживается и без значения: вид атрибута нужен
+						 * для приведения значения, записанного в самом тексте
+						 */
+						bool defaulted;
 						// Префикс имени атрибута
 						string prefix;
 						// Местное имя атрибута
@@ -391,7 +407,7 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						Default() noexcept {}
+						Default() noexcept : tokenized(false), defaulted(false) {}
 					} default_t;
 					/**
 					 * \~russian
@@ -1678,7 +1694,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool subsetAttribute(size_t & offset, const size_t end) noexcept;
+					bool subsetAttribute(size_t & offset, const size_t end, bool & tokenized) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод разделения имени описания типа документа на префикс и местное имя

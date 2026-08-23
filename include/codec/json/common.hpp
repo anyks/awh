@@ -649,11 +649,33 @@ namespace awh {
 			 * дописыванием и вправе переехать в памяти, и указатель после переезда стал бы
 			 * недействителен
 			 *
+			 * @warning Смещение отсчитывается по ХРАНИЛИЩУ ЗНАКОВ, а не по разбираемому
+			 * тексту, и месту в тексте оно НЕ РАВНО: знаки ложатся в хранилище уже
+			 * раскодированными и уплотнёнными - без кавычек, обвязки и разделителей, с
+			 * развёрнутыми последовательностями ухода. Ключ `имя` из записи `{"имя":1}`
+			 * лежит в хранилище нулевым, а в тексте стоит вторым. Для привязки к исходному
+			 * тексту служит `location_t`, объявленный ниже, - величина иная
+			 * @note При СНЯТОМ удержании хранилища оно очищается по исчерпании выданных
+			 * событий, и смещение отсчитывается от текущего его состояния: целое место в
+			 * потоке знаков сводится через `Reader::origin()` - число выброшенных байтов.
+			 * При удержании ПОСТАВЛЕННОМ хранилище растёт во весь разбираемый текст, а
+			 * `origin` остаётся нулём
+			 *
 			 * \~english
 			 * @brief Segment in the storage of the characters
 			 * @details A segment holds an offset and a length rather than a pointer: the storage grows
 			 * by an appending and may move in the memory, and a pointer after the move would become
 			 * invalid
+			 * @warning The offset is counted along the STORAGE OF THE CHARACTERS rather than along the text
+			 * being parsed, and it is NOT EQUAL to the place in the text: the characters lie in the storage
+			 * already decoded and compacted — without the quotes, the framing and the separators, with the
+			 * escape sequences expanded. The key `имя` of the record `{"имя":1}` lies in the storage as the
+			 * zeroth one, while in the text it stands as the second. For the binding to the source text there
+			 * serves `location_t`, declared below — a different quantity
+			 * @note With the retention of the storage REMOVED it is cleared upon the exhaustion of the issued
+			 * events, and the offset is counted from its current state: the whole place in the stream of the
+			 * characters is derived through `Reader::origin()` — the number of the discarded bytes. With the
+			 * retention SET the storage grows to the whole text being parsed, while `origin` remains a zero
 			 *
 			 * \~
 			 */

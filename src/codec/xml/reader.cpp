@@ -2508,7 +2508,15 @@ void awh::codec::xml::Reader::divide(const string_view qname, string & prefix, s
  * @return       результат выполнения операции
  *
  */
-bool awh::codec::xml::Reader::subsetAttribute(size_t & offset, const size_t end) noexcept {
+bool awh::codec::xml::Reader::subsetAttribute(size_t & offset, const size_t end, bool & tokenized) noexcept {
+	/**
+	 * Полагаем атрибут объявленным видом, отличным от «CDATA»
+	 *
+	 * @note Вид «CDATA» единственный, при котором приведения не происходит; всякий прочий,
+	 *       включая перечень допустимых значений и перечень обозначений, приведению
+	 *       подлежит
+	 */
+	tokenized = true;
 	/**
 	 * @brief Виды атрибута, отведённые договором
 	 *
@@ -2525,9 +2533,12 @@ bool awh::codec::xml::Reader::subsetAttribute(size_t & offset, const size_t end)
 		/**
 		 * Если вид атрибута совпал с отведённым договором
 		 */
-		if(this->subsetKeyword(offset, end, kind))
+		if(this->subsetKeyword(offset, end, kind)){
+			// Запоминаем, объявлен ли атрибут видом, приведению не подлежащим
+			tokenized = (::strcmp(kind, "CDATA") != 0);
 			// Выводим положительный результат выполнения операции
 			return true;
+		}
 	}
 	// Признак объявления вида атрибута перечнем обозначений
 	const bool notation = this->subsetKeyword(offset, end, "NOTATION");
@@ -3065,7 +3076,7 @@ bool awh::codec::xml::Reader::parseSubset(size_t offset, const size_t end) noexc
 				/**
 				 * Если вид объявляемого атрибута разобрать не удалось
 				 */
-				if(!this->subsetAttribute(offset, end)){
+				if(!this->subsetAttribute(offset, end, item.tokenized)){
 					// Выполняем отказ разбора с сообщением о нём в журнал
 					return this->refuse(error_t::INVALID_DOCTYPE);
 				}
@@ -3185,9 +3196,18 @@ bool awh::codec::xml::Reader::parseSubset(size_t offset, const size_t end) noexc
 							return this->refuse(error_t::INVALID_REFERENCE);
 						}
 					}
-					// Выполняем добавление объявленного значения к перечню
-					defaults.push_back(::move(item));
+					// Запоминаем, что атрибуту объявлено значение по умолчанию
+					item.defaulted = true;
 				}
+				/**
+				 * Выполняем добавление объявления атрибута к перечню
+				 *
+				 * @note Объявление удерживается и БЕЗ значения по умолчанию: договор велит
+				 *       приводить значение атрибута, объявленного видом, отличным от
+				 *       «CDATA», а вид известен лишь из объявления. Прежде удерживались
+				 *       лишь объявления со значением, и приведение выполнить было нечем
+				 */
+				defaults.push_back(::move(item));
 			}
 			/**
 			 * Если перечень объявленных по умолчанию значений не пуст
@@ -3232,6 +3252,15 @@ bool awh::codec::xml::Reader::parseSubset(size_t offset, const size_t end) noexc
 		 * Выполняем перебор всех значений, объявленных узлу по умолчанию
 		 */
 		for(const default_t & item : attlist.second){
+			/**
+			 * Если атрибуту значение по умолчанию не объявлено
+			 *
+			 * @note Объявление без значения удерживается ради вида атрибута, и проверять
+			 *       в нём нечего: значения нет вовсе
+			 */
+			if(!item.defaulted)
+				// Выполняем переход к следующему объявлению
+				continue;
 			/**
 			 * Выполняем перебор ссылок на сущности в объявленном значении
 			 */
@@ -5090,6 +5119,89 @@ bool awh::codec::xml::Reader::bind() noexcept {
 		} else this->_stack.back().name.uri = this->lookup(string_view());
 	}
 	/**
+	 * Выполняем приведение значений атрибутов, объявленных видом, отличным от «CDATA»
+	 *
+	 * @details Договор велит у такого атрибута снять пробельные знаки по краям и свести
+	 * всякую их вереницу к одному пробелу. Приведение это к ПРОВЕРКЕ по описанию типа
+	 * документа не относится и выполняется независимо от неё: вид атрибута берётся из
+	 * объявления, а не из проверки соответствия ему
+	 *
+	 * @note Приведение идёт на месте, в самом хранилище значений: оно значение только
+	 *       укорачивает, и отрезок правится длиною, а начало его остаётся прежним
+	 *
+	 * @warning Стоять оно обязано ПРЕЖДЕ выдачи значений наружу и прежде подстановки
+	 *          объявленных умолчаний, а не после
+	 */
+	if(!this->_attlists.empty() && !this->_attributes.empty()){
+		// Получаем имя узла в записи, принятой в исходном тексте
+		const span_t & qname = this->_stack.back().qname;
+		// Собираем имя узла для отыскания объявлений его атрибутов
+		this->_lookup.assign(this->_scratch.data() + qname.offset, qname.length);
+		// Выполняем отыскание объявлений атрибутов узла
+		auto i = this->_attlists.find(this->_lookup);
+		/**
+		 * Если объявления атрибутов узла обнаружены
+		 */
+		if(i != this->_attlists.end()){
+			/**
+			 * Выполняем перебор всех разобранных атрибутов узла
+			 */
+			for(size_t index = 0; index < this->_attributes.size(); index++){
+				// Получаем очередной собираемый атрибут узла
+				const attribute_t & attribute = this->_attributes[index];
+				/**
+				 * Выполняем перебор всех объявлений атрибутов узла
+				 */
+				for(const default_t & item : i->second){
+					/**
+					 * Если объявление атрибуту не отвечает либо приведения не требует
+					 */
+					if(!item.tokenized || (item.local != attribute.name.local) || (item.prefix != attribute.name.prefix))
+						// Выполняем переход к следующему объявлению
+						continue;
+					// Получаем отрезок значения приводимого атрибута
+					span_t & value = this->_values[index];
+					// Положение записи приведённого значения
+					size_t at = value.offset;
+					// Признак того, что предыдущий знак был пробельным
+					bool space = true;
+					/**
+					 * Выполняем перебор всех знаков значения атрибута
+					 */
+					for(size_t pos = value.offset; pos < (value.offset + value.length); pos++){
+						/**
+						 * Если очередной знак значения является пробелом
+						 *
+						 * @note Сличается лишь сам пробел: прочие пробельные знаки к нему
+						 *       сведены приведением, договором для ВСЯКОГО атрибута
+						 *       предписанным, и до этого места иными не доходят
+						 */
+						if(this->_scratch[pos] == ' '){
+							// Запоминаем, что знак был пробельным
+							space = true;
+							// Выполняем переход к следующему знаку
+							continue;
+						}
+						/**
+						 * Если предыдущий знак был пробельным, а записано уже не пусто
+						 */
+						if(space && (at > value.offset))
+							// Выполняем запись одного пробела вместо вереницы
+							this->_scratch[at++] = ' ';
+						// Выполняем запись очередного знака значения
+						this->_scratch[at++] = this->_scratch[pos];
+						// Запоминаем, что знак пробельным не был
+						space = false;
+					}
+					// Устанавливаем длину приведённого значения атрибута
+					value.length = static_cast <uint32_t> (at - value.offset);
+					// Выходим из перебора объявлений атрибутов узла
+					break;
+				}
+			}
+		}
+	}
+	/**
 	 * Выполняем перебор всех разобранных атрибутов узла
 	 */
 	for(size_t i = 0; i < this->_attributes.size(); i++){
@@ -5641,6 +5753,15 @@ awh::codec::xml::Reader::step_t awh::codec::xml::Reader::parseElement() noexcept
 			 * Выполняем перебор всех объявленных по умолчанию значений
 			 */
 			for(const default_t & item : i->second){
+				/**
+				 * Если атрибуту значение по умолчанию не объявлено
+				 *
+				 * @note Объявление удерживается и без значения - ради вида атрибута, - и
+				 *       подставлять из него нечего
+				 */
+				if(!item.defaulted)
+					// Выполняем переход к следующему объявлению
+					continue;
 				// Признак того, что атрибут записан в тексте
 				bool exists = false;
 				/**

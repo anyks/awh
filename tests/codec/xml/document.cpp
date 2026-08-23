@@ -1461,14 +1461,31 @@ TEST(CodecXmlDocument, GraftSurvivesRewrite){
 		ASSERT_TRUE(back.parse(text)) << item.first << ": " << text;
 		// Получаем корневые узлы обоих деревьев разметки
 		const auto source = doc.element(), rewritten = back.element();
+		/**
+		 * @brief Подсчёт числа вложенных узлов обходом
+		 *
+		 * @note Узел дерева числа детей своих не выдаёт, и счёт идёт обходом связей
+		 */
+		auto count = [](const xml::node_t & node) noexcept -> size_t {
+			// Число насчитанных вложенных узлов
+			size_t result = 0;
+			/**
+			 * Выполняем обход всех вложенных узлов
+			 */
+			for(auto item = node.first(); item.valid(); item = item.next())
+				// Выполняем увеличение числа насчитанных вложенных узлов
+				result++;
+			// Выводим число насчитанных вложенных узлов
+			return result;
+		};
 		// Выполняем сличение содержимого соседей привитого узла
 		ASSERT_EQ(rewritten.child("first").text(), "1") << item.first << ": " << text;
 		// Выполняем сличение содержимого второго соседа привитого узла
 		ASSERT_EQ(rewritten.child("last").text(), "3") << item.first << ": " << text;
 		// Выполняем сличение числа вложенных узлов корня
-		ASSERT_EQ(rewritten.size(), source.size()) << item.first << ": " << text;
+		ASSERT_EQ(count(rewritten), count(source)) << item.first << ": " << text;
 		// Выполняем сличение числа вложенных узлов привитого поддерева
-		ASSERT_EQ(rewritten.child("target").size(), source.child("target").size()) << item.first << ": " << text;
+		ASSERT_EQ(count(rewritten.child("target")), count(source.child("target"))) << item.first << ": " << text;
 		/**
 		 * Выполняем сличение содержимого привитого узла с тем, что в него клали
 		 *

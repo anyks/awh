@@ -1,0 +1,495 @@
+/**
+ * @file huge.cpp
+ * @date 2026-08-23
+ *
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
+ * @brief Набор проверок крупных выдач и укрытой памяти
+ *
+ * @details Крупная выдача идёт мимо разрядов и мимо кэшей потоков: она берётся у
+ *          системы напрямую и учитывается своим перечнем. Перечень этот разбирает
+ *          адреса, растёт перехэшированием и возвращает область системе немедля -
+ *          ничего из этого не проверялось вовсе, покрытие слоя составляло 8 %
+ *
+ * @copyright Copyright © 2026
+ *
+ */
+
+/**
+ * Подключаем заголовочный файл главного модуля тестов
+ */
+#include "../main.hpp"
+
+/**
+ * Подключаем заголовочный файл набора
+ */
+#include "suite.hpp"
+
+/**
+ * Подключаем заголовочный файл слоя крупных выдач
+ *
+ * Нужен он ради начальной длины перечня: проверка роста обязана выдать заведомо
+ * БОЛЬШЕ неё, а вписанное числом разошлось бы с кодом при первой же правке
+ */
+#include <alloc/huge.hpp>
+
+/**
+ * Стандартные модули
+ */
+#include <vector>
+#include <cstdlib>
+#include <cstring>
+
+/**
+ * Под санитайзерами проверять здесь нечего: захват не состоится, и слоёв наших
+ * в процессе нет. Отсутствие это утверждает `AllocCaptureTest`
+ */
+#if !AWH_ALLOC_SANITIZED
+
+/**
+ * Порог крупной выдачи
+ *
+ * Имя `HUGE` здесь занято: у `math.h` так зовётся наибольшее дробное число, и наш
+ * порог обратился бы в него молча
+ *
+ * Крупной считается выдача свыше четырёх мегабайт - предела куска, каким распределитель
+ * берёт память у системы. Берём с запасом, а не впритык: выдача РОВНО в предел осталась
+ * бы обычной, и проверка мерила бы не тот слой
+ */
+static constexpr size_t LARGE = (5u * 1024u * 1024u);
+
+/**
+ * @brief Тест опознания крупной выдачи
+ *
+ * @note Крупный блок обязан быть узнан разбором адреса своим и живым: перечень крупных
+ *       выдач - единственное место, где он числится, и промах перечня обратил бы его в
+ *       чужую память
+ *
+ */
+TEST_F(AllocFixture, HugeBlockIsRecognized){
+	// Выдаём крупный блок
+	void * block = ::malloc(LARGE);
+	// Крупная выдача обязана состояться
+	ASSERT_NE(block, nullptr);
+	// Разбираем адрес выданного блока
+	const awh::alloc::region_t region = awh::alloc::Allocator::resolve(block);
+	// Блок обязан быть узнан живым
+	EXPECT_EQ(region.origin, awh::alloc::origin_t::LIVE);
+	// Начало блока обязано совпасть с выданным адресом
+	EXPECT_EQ(region.begin, block);
+	// Размер блока обязан покрывать запрошенное
+	EXPECT_GE(region.size, LARGE);
+	// Смещение от начала обязано быть нулевым
+	EXPECT_EQ(region.offset, static_cast <ptrdiff_t> (0));
+	// Освобождаем крупный блок
+	::free(block);
+}
+/**
+ * @brief Тест разбора адреса внутри крупной выдачи
+ *
+ * @note Разбор обязан узнать блок и по адресу ВНУТРИ него, доложив смещение: ровно это
+ *       превращает разбор в средство розыска, а не в опрос «наш ли адрес»
+ *
+ */
+TEST_F(AllocFixture, HugeBlockIsFoundByInnerAddress){
+	// Выдаём крупный блок
+	char * block = reinterpret_cast <char *> (::malloc(LARGE));
+	// Крупная выдача обязана состояться
+	ASSERT_NE(block, nullptr);
+	// Смещение, по какому спрашиваем
+	const ptrdiff_t shift = (LARGE / 3);
+	// Разбираем адрес внутри блока
+	const awh::alloc::region_t region = awh::alloc::Allocator::resolve(block + shift);
+	// Блок обязан быть узнан живым
+	EXPECT_EQ(region.origin, awh::alloc::origin_t::LIVE);
+	// Начало блока обязано указывать на его начало, а не на спрошенный адрес
+	EXPECT_EQ(region.begin, block);
+	// Смещение обязано совпасть со спрошенным
+	EXPECT_EQ(region.offset, shift);
+	// Освобождаем крупный блок
+	::free(block);
+}
+/**
+ * @brief Тест размера крупной выдачи
+ *
+ * @note Размер, доложенный распределителем, обязан покрывать запрошенное: код,
+ *       положившийся на него, пишет по всей доложенной длине
+ *
+ */
+TEST_F(AllocFixture, HugeBlockSizeCoversRequest){
+	// Выдаём крупный блок
+	void * block = ::malloc(LARGE + 7u);
+	// Крупная выдача обязана состояться
+	ASSERT_NE(block, nullptr);
+	// Разбираем адрес выданного блока
+	const awh::alloc::region_t region = awh::alloc::Allocator::resolve(block);
+	// Размер обязан покрывать запрошенное
+	ASSERT_GE(region.size, (LARGE + 7u));
+	/**
+	 * Пишем по всей доложенной длине
+	 *
+	 * Доложенный размер - обещание, а не справка: запись по нему обязана оставаться в
+	 * своей области. Заведомо порченый размер повалил бы проверку здесь
+	 */
+	::memset(block, 0x5A, region.size);
+	// Читаем последний байт доложенной длины
+	EXPECT_EQ(reinterpret_cast <unsigned char *> (block)[region.size - 1], 0x5Au);
+	// Освобождаем крупный блок
+	::free(block);
+}
+/**
+ * @brief Тест обнуления крупной выдачи
+ *
+ * @note Обнуление у крупной выдачи достаётся даром - система отдаёт страницы чистыми,
+ *       - и оттого проверять его надо тем более: пропуск обнуления здесь ничего не
+ *       ломает ровно до первой страницы, взятой повторно
+ *
+ */
+TEST_F(AllocFixture, HugeBlockIsZeroed){
+	// Выдаём крупный блок с обнулением
+	unsigned char * block = reinterpret_cast <unsigned char *> (::calloc(1, LARGE));
+	// Крупная выдача обязана состояться
+	ASSERT_NE(block, nullptr);
+	// Число ненулевых байтов
+	size_t dirty = 0;
+	/**
+	 * Перебираем содержимое блока с шагом в страницу
+	 *
+	 * Перебор побайтно ничего не добавил бы: страницы система отдаёт целиком, и грязь в
+	 * них появляется страницей же
+	 */
+	for(size_t i = 0; i < LARGE; i += 4096u){
+		// Если байт оказался ненулевым
+		if(block[i] != 0)
+			// Считаем ненулевой байт
+			dirty++;
+	}
+	// Ненулевых байтов быть не должно
+	EXPECT_EQ(dirty, static_cast <size_t> (0));
+	// Освобождаем крупный блок
+	::free(block);
+}
+/**
+ * @brief Тест перевыдачи крупного блока
+ *
+ * @note Перевыдача обязана сохранить содержимое и в обе стороны - и при росте, и при
+ *       усечении. Крупный блок перевыдаётся не так, как разрядный: копирование идёт по
+ *       МЕНЬШЕМУ из размеров, и путаница их портит содержимое молча
+ *
+ */
+TEST_F(AllocFixture, HugeBlockKeepsContentOnRealloc){
+	// Выдаём крупный блок
+	unsigned char * block = reinterpret_cast <unsigned char *> (::malloc(LARGE));
+	// Крупная выдача обязана состояться
+	ASSERT_NE(block, nullptr);
+	/**
+	 * Засеваем содержимое узнаваемым следом
+	 */
+	for(size_t i = 0; i < LARGE; i += 4096u)
+		// Кладём в начало каждой страницы её номер
+		block[i] = static_cast <unsigned char> ((i / 4096u) & 0xFFu);
+	// Перевыдаём блок с ростом
+	block = reinterpret_cast <unsigned char *> (::realloc(block, (LARGE * 2u)));
+	// Перевыдача обязана состояться
+	ASSERT_NE(block, nullptr);
+	// Число расхождений содержимого
+	size_t broken = 0;
+	/**
+	 * Сличаем содержимое с засеянным
+	 */
+	for(size_t i = 0; i < LARGE; i += 4096u){
+		// Если содержимое разошлось с засеянным
+		if(block[i] != static_cast <unsigned char> ((i / 4096u) & 0xFFu))
+			// Считаем расхождение
+			broken++;
+	}
+	// Расхождений быть не должно
+	EXPECT_EQ(broken, static_cast <size_t> (0));
+	// Перевыдаём блок с усечением до половины исходного
+	block = reinterpret_cast <unsigned char *> (::realloc(block, (LARGE / 2u)));
+	// Перевыдача обязана состояться
+	ASSERT_NE(block, nullptr);
+	// Сбрасываем счётчик расхождений
+	broken = 0;
+	/**
+	 * Сличаем уцелевшую половину содержимого
+	 */
+	for(size_t i = 0; i < (LARGE / 2u); i += 4096u){
+		// Если содержимое разошлось с засеянным
+		if(block[i] != static_cast <unsigned char> ((i / 4096u) & 0xFFu))
+			// Считаем расхождение
+			broken++;
+	}
+	// Расхождений быть не должно
+	EXPECT_EQ(broken, static_cast <size_t> (0));
+	// Освобождаем блок
+	::free(block);
+}
+/**
+ * @brief Тест роста перечня крупных выдач
+ *
+ * @note Перечень заведён на шестьдесят четыре записи и растёт перехэшированием. Рост
+ *       этот - место, где записи переносятся в новый перечень, и потеря хотя бы одной
+ *       обратила бы живой блок в чужую память. Оттого выдаём заведомо БОЛЬШЕ предела
+ *
+ */
+TEST_F(AllocFixture, HugeTableSurvivesGrowth){
+	// Число крупных выдач: вдвое больше начального предела перечня
+	const size_t count = 128;
+	// Перечень выданных блоков
+	std::vector <void *> blocks;
+	// Резервируем место под перечень
+	blocks.reserve(count);
+	/**
+	 * Выдаём крупные блоки
+	 *
+	 * Размер берём наименьший из крупных: перечень проверяется числом записей, а не
+	 * объёмом, и лишние гигабайты закрыли бы проверку на слабой машине
+	 */
+	for(size_t i = 0; i < count; i++){
+		// Выдаём очередной крупный блок
+		void * block = ::malloc(LARGE);
+		// Если выдать блок не вышло
+		if(block == nullptr)
+			// Прекращаем выдачу
+			break;
+		// Запоминаем выданный блок
+		blocks.push_back(block);
+	}
+	// Выдач должно состояться вдоволь для роста перечня
+	ASSERT_GT(blocks.size(), awh::alloc::Huge::TABLE);
+	// Число блоков, не узнанных разбором
+	size_t lost = 0;
+	/**
+	 * Перебираем выданные блоки
+	 */
+	for(void * block : blocks){
+		// Разбираем адрес блока
+		const awh::alloc::region_t region = awh::alloc::Allocator::resolve(block);
+		// Если блок не узнан живым
+		if((region.origin != awh::alloc::origin_t::LIVE) || (region.begin != block))
+			// Считаем потерянный блок
+			lost++;
+	}
+	// Потерянных блоков быть не должно
+	EXPECT_EQ(lost, static_cast <size_t> (0));
+	/**
+	 * Перебираем выданные блоки
+	 */
+	for(void * block : blocks)
+		// Освобождаем блок
+		::free(block);
+}
+/**
+ * @brief Тест придержки освобождённой крупной области
+ *
+ * @note Освобождённая область не отдаётся системе тут же, а придерживается под
+ *       потолком `hugeCache`: отданная область при следующей выдаче приходит ЧИСТОЙ, и
+ *       за каждую её страницу платится отказом страницы. Проверяется это тем, что
+ *       повторная выдача того же размера не берёт у системы НИЧЕГО
+ *
+ */
+TEST_F(AllocFixture, HugeRegionIsRetainedForReuse){
+	// Получаем действующие настройки
+	awh::alloc::options_t options = awh::alloc::Allocator::options();
+	// Задаём потолок придержанного с запасом под область
+	options.hugeCache = (LARGE * 2u);
+	// Применяем настройки
+	awh::alloc::Allocator::options(options);
+	// Выдаём крупный блок
+	void * first = ::malloc(LARGE);
+	// Крупная выдача обязана состояться
+	ASSERT_NE(first, nullptr);
+	// Освобождаем крупный блок
+	::free(first);
+	// Запоминаем взятое у системы при придержанной области
+	const size_t before = awh::alloc::Allocator::property(awh::alloc::property_t::HEAP);
+	// Выдаём крупный блок того же размера
+	void * second = ::malloc(LARGE);
+	// Крупная выдача обязана состояться
+	ASSERT_NE(second, nullptr);
+	// Область обязана достаться придержанная, то есть ТА ЖЕ САМАЯ
+	EXPECT_EQ(second, first);
+	// Взятое у системы обязано остаться прежним: у системы не взято ничего
+	EXPECT_EQ(awh::alloc::Allocator::property(awh::alloc::property_t::HEAP), before);
+	// Освобождаем крупный блок
+	::free(second);
+}
+/**
+ * @brief Тест отдачи придержанного по просьбе
+ *
+ * @note Придержка бережёт страницы, но просьба об отдаче старше этой бережливости:
+ *       просят её у затишья, когда приложение само знает, что крупных выдач впереди нет
+ *
+ */
+TEST_F(AllocFixture, RetainedRegionIsGivenBackOnRequest){
+	// Получаем действующие настройки
+	awh::alloc::options_t options = awh::alloc::Allocator::options();
+	// Задаём потолок придержанного с запасом под область
+	options.hugeCache = (LARGE * 2u);
+	// Задаём отдачу памяти системе по просьбе
+	options.purgeMode = awh::alloc::purge_t::MANUAL;
+	// Применяем настройки
+	awh::alloc::Allocator::options(options);
+	// Выдаём крупный блок
+	void * block = ::malloc(LARGE);
+	// Крупная выдача обязана состояться
+	ASSERT_NE(block, nullptr);
+	// Освобождаем крупный блок
+	::free(block);
+	// Запоминаем взятое у системы при придержанной области
+	const size_t before = awh::alloc::Allocator::property(awh::alloc::property_t::HEAP);
+	// Придержанная область обязана числиться взятой у системы: она у неё и взята
+	ASSERT_GE(before, LARGE);
+	// Просим отдать память системе
+	awh::alloc::Allocator::purge();
+	// Взятое у системы обязано убыть на размер придержанной области
+	EXPECT_LE(awh::alloc::Allocator::property(awh::alloc::property_t::HEAP), (before - LARGE));
+}
+/**
+ * @brief Тест отдачи крупной выдачи сверх потолка придержанного
+ *
+ * @note Потолок этот - плата за скорость, и плата ограниченная: область, в него не
+ *       вошедшую, слой отдаёт системе тут же, как отдавал всё до появления придержки
+ *
+ */
+TEST_F(AllocFixture, HugeBlockAboveCeilingIsGivenBackAtOnce){
+	// Получаем действующие настройки
+	awh::alloc::options_t options = awh::alloc::Allocator::options();
+	// Задаём потолок придержанного заведомо меньше выдачи
+	options.hugeCache = (LARGE / 2u);
+	// Применяем настройки
+	awh::alloc::Allocator::options(options);
+	// Запоминаем взятое у системы до выдачи
+	const size_t before = awh::alloc::Allocator::property(awh::alloc::property_t::HEAP);
+	// Выдаём крупный блок
+	void * block = ::malloc(LARGE);
+	// Крупная выдача обязана состояться
+	ASSERT_NE(block, nullptr);
+	// Запоминаем взятое у системы при живом блоке
+	const size_t during = awh::alloc::Allocator::property(awh::alloc::property_t::HEAP);
+	// Взятое у системы обязано вырасти на размер выдачи
+	EXPECT_GE((during - before), LARGE);
+	// Освобождаем крупный блок
+	::free(block);
+	// Взятое у системы обязано вернуться к прежнему БЕЗ просьбы об отдаче
+	EXPECT_LT(awh::alloc::Allocator::property(awh::alloc::property_t::HEAP), during);
+}
+/**
+ * @brief Тест выдачи укрытой памяти
+ *
+ * @note Укрытая выдача идёт тем же слоем, что и крупная, но страницами и с защитой.
+ *       Обещания у систем разные, оттого проверяется не сама защита, а честность
+ *       доклада о ней: молчаливое понижение защиты хуже честного отказа
+ *
+ */
+TEST_F(AllocFixture, SecureBlockIsAllocated){
+	// Сведения о состоявшейся защите
+	awh::alloc::shelter_t shelter;
+	// Выдаём укрытую память
+	void * secret = awh::alloc::Allocator::secure(1024u, &shelter);
+	// Укрытая выдача обязана состояться
+	ASSERT_NE(secret, nullptr);
+	// Заполняем выданное содержимым
+	::memset(secret, 0xC3, 1024u);
+	// Разбираем адрес выданного блока
+	const awh::alloc::region_t region = awh::alloc::Allocator::resolve(secret);
+	// Укрытая выдача обязана быть узнана живой
+	EXPECT_EQ(region.origin, awh::alloc::origin_t::LIVE);
+	// Размер обязан покрывать запрошенное
+	EXPECT_GE(region.size, static_cast <size_t> (1024u));
+	/**
+	 * Возвращаем укрытую память через `release`, а НЕ через `free`
+	 *
+	 * Совпадают они лишь там, где захват выдачи состоялся: у macOS и MS Windows без
+	 * захвата `free` принадлежит системе и нашу область не узнаёт
+	 */
+	awh::alloc::Allocator::release(secret);
+}
+/**
+ * @brief Тест страничной выдачи укрытой памяти
+ *
+ * @note Укрытие система выдаёт не мельче страницы, оттого всякая выдача здесь стоит не
+ *       меньше страницы. Свойство это - цена, а не пробел, и закрепляется оно затем,
+ *       чтобы будущая «бережливая» правка не свела укрытую выдачу к разрядной
+ *
+ */
+TEST_F(AllocFixture, SecureBlockIsPageSized){
+	// Выдаём укрытую память под мелочь
+	void * secret = awh::alloc::Allocator::secure(16u, nullptr);
+	// Укрытая выдача обязана состояться
+	ASSERT_NE(secret, nullptr);
+	// Разбираем адрес выданного блока
+	const awh::alloc::region_t region = awh::alloc::Allocator::resolve(secret);
+	// Начало блока обязано лежать на границе страницы
+	EXPECT_EQ((reinterpret_cast <uintptr_t> (region.begin) % 4096u), static_cast <uintptr_t> (0));
+	// Возвращаем укрытую память распределителю
+	awh::alloc::Allocator::release(secret);
+}
+/**
+ * @brief Тест независимости укрытых выдач
+ *
+ * @note Укрытые выдачи не должны делить между собою страницу: сосед по странице получил
+ *       бы чужой ключ вместе со своим. Проверяется это расстоянием между выдачами
+ *
+ */
+TEST_F(AllocFixture, SecureBlocksDoNotSharePages){
+	// Число укрытых выдач
+	const size_t count = 8;
+	// Перечень выданных блоков
+	void * blocks[count];
+	/**
+	 * Выдаём укрытую память россыпью
+	 */
+	for(size_t i = 0; i < count; i++)
+		// Выдаём очередной укрытый блок
+		blocks[i] = awh::alloc::Allocator::secure(64u, nullptr);
+	// Число выдач, делящих страницу с соседом
+	size_t shared = 0;
+	/**
+	 * Перебираем выданные блоки
+	 */
+	for(size_t i = 0; i < count; i++){
+		// Если блок выдать не вышло
+		if(blocks[i] == nullptr)
+			// Пропускаем невыданный блок
+			continue;
+		/**
+		 * Перебираем остальные блоки
+		 */
+		for(size_t j = (i + 1); j < count; j++){
+			// Если блок выдать не вышло
+			if(blocks[j] == nullptr)
+				// Пропускаем невыданный блок
+				continue;
+			// Получаем адреса блоков числом
+			const uintptr_t one = reinterpret_cast <uintptr_t> (blocks[i]);
+			const uintptr_t two = reinterpret_cast <uintptr_t> (blocks[j]);
+			// Если блоки легли на одну страницу
+			if((one / 4096u) == (two / 4096u))
+				// Считаем делёж страницы
+				shared++;
+		}
+	}
+	// Дележа страниц быть не должно
+	EXPECT_EQ(shared, static_cast <size_t> (0));
+	/**
+	 * Перебираем выданные блоки
+	 */
+	for(size_t i = 0; i < count; i++){
+		// Если блок выдан
+		if(blocks[i] != nullptr)
+			// Возвращаем блок распределителю
+			awh::alloc::Allocator::release(blocks[i]);
+	}
+}
+
+#endif // !AWH_ALLOC_SANITIZED

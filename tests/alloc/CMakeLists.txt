@@ -77,6 +77,8 @@ if (${GTest_FOUND})
                 mangle.cpp
                 contract.cpp
                 guard.cpp
+                huge.cpp
+                zone.cpp
                 purge.cpp
                 profile.cpp
                 fork.cpp

@@ -176,6 +176,74 @@ static bool tunnelPrivileged() noexcept {
 }
 
 /**
+ * @brief Драйвер устройств туннеля, задаваемый проверкой
+ *
+ * @note Свой перечень заведён нарочно: `awh::eth::iface_t::driver_t` объявлен ТОЛЬКО
+ *       под MS Windows, и ссылка на него в теле проверки не собралась бы у прочих
+ *       систем вовсе
+ *
+ */
+enum class tunnel_driver_t : uint8_t {
+	AUTO   = 0x00, // Выбор драйвера отдан модулю
+	WINTUN = 0x01, // Кольцо в общей памяти, только сетевой уровень
+	TAP    = 0x02  // Дескриптор файла, канальный уровень с адресами
+};
+
+/**
+ * @brief Закрепление драйвера, каким заводятся устройства туннеля
+ *
+ * @details Драйверов у MS Windows два, и несут они РАЗНОЕ: Wintun переносит пакеты
+ *          сетевого уровня кольцом в общей с драйвером памяти, tap-windows6 - кадры
+ *          канального уровня через дескриптор файла. Выбор по умолчанию (`AUTO`)
+ *          отдан модулю, и модуль решает его тем, лежит ли `wintun.dll` рядом с
+ *          двоичным файлом
+ *
+ * @warning Оттого весь набор ВСЕГДА шёл по tap-windows6, и не по замыслу, а потому что
+ *          библиотеки рядом не оказалось: путь Wintun не проверялся НИ РАЗУ. Положи
+ *          кто-нибудь `wintun.dll` рядом - и весь набор молча уехал бы на другой путь,
+ *          а расхождения никто бы не заметил. Установлено сессией стороны Windows
+ *          23.08.2026: когда путь Wintun впервые запустили руками, нашлось три дефекта
+ *          подряд
+ *
+ * @note Оттого драйвер задаётся ЯВНО. Проверка обязана знать, что именно она проверяет,
+ *       а не выводить это из состава каталога сборки
+ *
+ * @note Прочих систем это не касается вовсе: драйвер там один
+ *
+ * @param io     объект сетевого движка, которому задаётся драйвер
+ * @param driver драйвер устройств туннеля для закрепления
+ *
+ */
+static void tunnelPinDriver([[maybe_unused]] awh::engine::io_t * io, [[maybe_unused]] const tunnel_driver_t driver) noexcept {
+	/**
+	 * Для операционной системы MS Windows
+	 */
+	#if _WIN32 || _WIN64
+		// Если объект сетевого движка не передан
+		if(io == nullptr)
+			// Выходим из функции
+			return;
+		/**
+		 * Определяем запрошенный драйвер
+		 */
+		switch(static_cast <uint8_t> (driver)){
+			// Если запрошен драйвер Wintun
+			case static_cast <uint8_t> (tunnel_driver_t::WINTUN):
+				// Закрепляем драйвер Wintun
+				io->setDriver(awh::eth::iface_t::driver_t::WINTUN);
+			break;
+			// Если запрошен драйвер tap-windows6
+			case static_cast <uint8_t> (tunnel_driver_t::TAP):
+				// Закрепляем драйвер tap-windows6
+				io->setDriver(awh::eth::iface_t::driver_t::TAP);
+			break;
+			// Для всех прочих случаев отдаём выбор модулю
+			default: io->setDriver(awh::eth::iface_t::driver_t::AUTO);
+		}
+	#endif
+}
+
+/**
  * @brief Охранник узла туннеля: снос обязан пройти при любом исходе
  *
  * @details Утверждение, не оправдавшееся посреди проверки, возвращает управление
@@ -295,6 +363,11 @@ TEST_F(IoFixture, IoTunnelLifecycleTest){
 	if(!tunnelReady(1))
 		// Пропускаем проверку
 		GTEST_SKIP() << "связи под туннели не заведены распорядителем машины";
+	/**
+	 * Закрепляем драйвер устройств туннеля: у MS Windows их два, и выбор по умолчанию
+	 * решается составом каталога сборки, а не замыслом проверки
+	 */
+	tunnelPinDriver(this->_io.get(), tunnel_driver_t::TAP);
 	// Выполняем инициализацию движка
 	ASSERT_TRUE(this->_io->initialize());
 	/**
@@ -447,6 +520,11 @@ TEST_F(IoFixture, IoTunnelCarriesPacketTest){
 	if(!tunnelReady(1))
 		// Пропускаем проверку
 		GTEST_SKIP() << "связи под туннели не заведены распорядителем машины";
+	/**
+	 * Закрепляем драйвер устройств туннеля: у MS Windows их два, и выбор по умолчанию
+	 * решается составом каталога сборки, а не замыслом проверки
+	 */
+	tunnelPinDriver(this->_io.get(), tunnel_driver_t::TAP);
 	// Выполняем инициализацию движка
 	ASSERT_TRUE(this->_io->initialize());
 	/**
@@ -677,6 +755,11 @@ TEST_F(IoFixture, IoTunnelAcceptsWrittenPacketTest){
 	if(!tunnelReady(1))
 		// Пропускаем проверку
 		GTEST_SKIP() << "связи под туннели не заведены распорядителем машины";
+	/**
+	 * Закрепляем драйвер устройств туннеля: у MS Windows их два, и выбор по умолчанию
+	 * решается составом каталога сборки, а не замыслом проверки
+	 */
+	tunnelPinDriver(this->_io.get(), tunnel_driver_t::TAP);
 	// Выполняем инициализацию движка
 	ASSERT_TRUE(this->_io->initialize());
 	// Заводим событие туннеля
@@ -956,6 +1039,11 @@ TEST_F(IoFixture, IoTunnelDeliversFirstWrittenPacketTest){
 	if(!tunnelReady(1))
 		// Пропускаем проверку
 		GTEST_SKIP() << "связи под туннели не заведены распорядителем машины";
+	/**
+	 * Закрепляем драйвер устройств туннеля: у MS Windows их два, и выбор по умолчанию
+	 * решается составом каталога сборки, а не замыслом проверки
+	 */
+	tunnelPinDriver(this->_io.get(), tunnel_driver_t::TAP);
 	// Выполняем инициализацию движка
 	ASSERT_TRUE(this->_io->initialize());
 	// Заводим событие туннеля
@@ -1198,6 +1286,11 @@ TEST_F(IoFixture, IoTunnelIPv6HousekeepingTest){
 	if(!tunnelReady(1))
 		// Пропускаем проверку
 		GTEST_SKIP() << "связи под туннели не заведены распорядителем машины";
+	/**
+	 * Закрепляем драйвер устройств туннеля: у MS Windows их два, и выбор по умолчанию
+	 * решается составом каталога сборки, а не замыслом проверки
+	 */
+	tunnelPinDriver(this->_io.get(), tunnel_driver_t::TAP);
 	// Выполняем инициализацию движка
 	ASSERT_TRUE(this->_io->initialize());
 	/**
@@ -1335,6 +1428,11 @@ TEST_F(IoFixture, IoTunnelIPv4HousekeepingTest){
 	if(!tunnelReady(1))
 		// Пропускаем проверку
 		GTEST_SKIP() << "связи под туннели не заведены распорядителем машины";
+	/**
+	 * Закрепляем драйвер устройств туннеля: у MS Windows их два, и выбор по умолчанию
+	 * решается составом каталога сборки, а не замыслом проверки
+	 */
+	tunnelPinDriver(this->_io.get(), tunnel_driver_t::TAP);
 	// Выполняем инициализацию движка
 	ASSERT_TRUE(this->_io->initialize());
 	/**
@@ -1440,6 +1538,21 @@ TEST_F(IoFixture, IoTunnelIPv4HousekeepingTest){
 static constexpr const char * TUNNEL_REFUSED[] = {"255.255.255.255", "224.0.0.1", "240.0.0.1", "0.0.0.1"};
 
 /**
+ * @brief Образцы адресов IPv6, назначить которые система откажется
+ *
+ * @details Заведены оттого, что семейства расходятся: на NetBSD всякий образец IPv4 из
+ *          перечня выше система принимает - замерено щупом 23.08.2026 по всем восьми,
+ *          включая адрес самой машины, - а петлю IPv6 отвергает с `EINVAL`. Без этого
+ *          перечня условие отказа там не создавалось ничем
+ *
+ * @note Петля IPv6 годится образцом ровно потому, что адрес этот законен сам по себе, а
+ *       негоден ИМЕННО как адрес устройства: система не даёт присвоить `::1` ничему,
+ *       кроме петлевого устройства
+ *
+ */
+static constexpr const char * TUNNEL_REFUSED6[] = {"::1"};
+
+/**
  * @brief Тест отказа фиксации при неназначенном адресе устройства
  *
  * @details Устройство без адреса работать не может, и движок это замечает. Но доклад
@@ -1502,6 +1615,11 @@ TEST_F(IoFixture, IoTunnelRaisesManyDevicesTest){
 	if(!tunnelReady(TUNNEL_MANY))
 		// Пропускаем проверку
 		GTEST_SKIP() << "связи под туннели не заведены распорядителем машины";
+	/**
+	 * Закрепляем драйвер устройств туннеля: у MS Windows их два, и выбор по умолчанию
+	 * решается составом каталога сборки, а не замыслом проверки
+	 */
+	tunnelPinDriver(this->_io.get(), tunnel_driver_t::TAP);
 	// Выполняем инициализацию движка
 	ASSERT_TRUE(this->_io->initialize());
 	/**
@@ -1600,6 +1718,11 @@ TEST_F(IoFixture, IoTunnelCarriesOnEachDeviceTest){
 	if(!tunnelReady(TUNNEL_FLOWS))
 		// Пропускаем проверку
 		GTEST_SKIP() << "связи под туннели не заведены распорядителем машины";
+	/**
+	 * Закрепляем драйвер устройств туннеля: у MS Windows их два, и выбор по умолчанию
+	 * решается составом каталога сборки, а не замыслом проверки
+	 */
+	tunnelPinDriver(this->_io.get(), tunnel_driver_t::TAP);
 	// Выполняем инициализацию движка
 	ASSERT_TRUE(this->_io->initialize());
 	// Число дошедшего по каждому туннелю
@@ -1793,6 +1916,11 @@ TEST_F(IoFixture, IoTunnelRefusesCommitWithoutAddressTest){
 	if(!tunnelReady(1))
 		// Пропускаем проверку
 		GTEST_SKIP() << "связи под туннели не заведены распорядителем машины";
+	/**
+	 * Закрепляем драйвер устройств туннеля: у MS Windows их два, и выбор по умолчанию
+	 * решается составом каталога сборки, а не замыслом проверки
+	 */
+	tunnelPinDriver(this->_io.get(), tunnel_driver_t::TAP);
 	// Выполняем инициализацию движка
 	ASSERT_TRUE(this->_io->initialize());
 	// Итог фиксации настроек и образец адреса, на котором отказ воспроизвёлся
@@ -1855,6 +1983,56 @@ TEST_F(IoFixture, IoTunnelRefusesCommitWithoutAddressTest){
 		));
 		// Запоминаем образец адреса, которым ставился опыт
 		sample = TUNNEL_REFUSED[i];
+		// Снимаем итог фиксации настроек события туннеля
+		committed = this->_io->commit(tid);
+	}
+	/**
+	 * Перебираем образцы адресов IPv6, покуда система не откажет назначением
+	 *
+	 * @details Семейства расходятся: NetBSD принимает ВСЕ восемь образцов IPv4 и оба
+	 *          вида занятости, а петлю IPv6 отвергает. Без этого перебора условие
+	 *          отказа там не создавалось ничем, и проверка отступала, ничего не
+	 *          проверив
+	 *
+	 * @note Порядок здесь тот же, что и у IPv4 выше, и по тем же доводам: узел свой на
+	 *       каждый образец, отказ самого `setAddress` означает негодный образец
+	 */
+	for(uint8_t i = 0; (i < (sizeof(TUNNEL_REFUSED6) / sizeof(TUNNEL_REFUSED6[0]))) && committed && (orphans == 0); i++){
+		// Заводим событие туннеля
+		const awh::event::id_t tid = this->_io->event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV6);
+		// Ставим охранника узла: снос обязан пройти и при отказе утверждения
+		const TunnelGuard guard(this->_io.get(), tid);
+		// Узел обязан завестись
+		ASSERT_GT(tid, 0u) << "движок не записал узел туннеля IPv6";
+		// Устанавливаем опции события туннеля
+		ASSERT_TRUE(this->_io->setOptions(tid, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
+		// Ставим адрес, назначить который система откажется
+		if(!this->_io->setAddress(tid, awh::event::address_t::IPV6, TUNNEL_REFUSED6[i]))
+			// Переходим к следующему образцу адреса
+			continue;
+		// Устанавливаем адрес встречной стороны
+		ASSERT_TRUE(this->_io->setTarget(tid, TUNNEL_PEER6));
+		// Считаем отклики ошибки тем же счётчиком
+		this->_io->on(tid, static_cast <awh::engine::callback::error_t> (
+			[&errors, &attacks, &orphans, &reason]([[maybe_unused]] const awh::event::id_t tid, const awh::event::error_t code, const std::string & text) noexcept -> void {
+				// Считаем отклик ошибки
+				errors++;
+				// Запоминаем текст первого отказа вместе с его разновидностью
+				if(reason.empty())
+					// Устанавливаем причину первого отказа
+					reason = (std::string("вид=") + std::to_string(static_cast <uint16_t> (code)) + " «" + text + "»");
+				// Если движок доложил о неназначенном адресе
+				if(text.find("left without an address") != std::string::npos)
+					// Считаем доклад о неназначенном адресе
+					orphans++;
+				// Если движок объявил подмену адреса
+				if(text.find("Attacker replaced") != std::string::npos)
+					// Считаем объявление подмены адреса
+					attacks++;
+			}
+		));
+		// Запоминаем образец адреса, которым ставился опыт
+		sample = TUNNEL_REFUSED6[i];
 		// Снимаем итог фиксации настроек события туннеля
 		committed = this->_io->commit(tid);
 	}
@@ -2021,7 +2199,7 @@ TEST_F(IoFixture, IoTunnelRefusesCommitWithoutAddressTest){
 	 */
 	if(committed && (orphans == 0))
 		// Пропускаем проверку
-		GTEST_SKIP() << "система приняла и негодные образцы адресов, и занятый адрес IPv4, и занятый адрес IPv6: отказ назначения не воспроизведён"
+		GTEST_SKIP() << "система приняла негодные образцы обоих семейств и занятые адреса обоих семейств: отказ назначения не воспроизведён"
 		             << " [способ: " << (sample.empty() ? std::string("не поставлен") : sample)
 		             << "; докладов=" << orphans << "; отказов=" << errors
 		             << ((errors > 0) ? ("; первый: " + reason) : std::string("")) << "]";
@@ -2047,6 +2225,375 @@ TEST_F(IoFixture, IoTunnelRefusesCommitWithoutAddressTest){
 	// Сворачиваем движок
 	ASSERT_TRUE(this->_io->deinitialize());
 }
+
+/**
+ * Для операционной системы MS Windows
+ */
+#if _WIN32 || _WIN64
+	/**
+	 * @brief Доступен ли на машине драйвер Wintun
+	 *
+	 * @details Спрашивается САМА СИСТЕМА - попыткой загрузить библиотеку, - а не движок.
+	 *          Правило то же, что и у пробы надзорных прав выше: спроси движок, и на
+	 *          собственном его дефекте проверка ответит «драйвера нет» и обратится в
+	 *          пропуск вместо отказа. Пропуск - это молчаливое отключение
+	 *
+	 * @warning Развести «Wintun на машине нет» и «Wintun есть, а путь сломан» ответом
+	 *          движка НЕЛЬЗЯ: замерено сессией стороны Windows 23.08.2026 - при явно
+	 *          заданном WINTUN и убранной библиотеке фиксация отказывает, `getDriver`
+	 *          честно отдаёт WINTUN, а отклик ошибки несёт код 4 «File descriptor for
+	 *          tunnel is corrupted or not created», то есть СЛЕДСТВИЕ. Настоящая
+	 *          причина - «wintun.dll could not be loaded, error 126» - уходит только в
+	 *          журнал движка. Наружного вопроса «доступен ли драйвер» у API нет
+	 *
+	 * @note Оттого отступление решается ЗДЕСЬ, до движка: библиотека не грузится -
+	 *       окружение не готово; грузится - всякий отказ движка есть его дефект, и
+	 *       проверка обязана падать, а не отступать
+	 *
+	 * @return признак доступности драйвера Wintun
+	 *
+	 */
+	static bool tunnelWintunReady() noexcept {
+		// Выполняем загрузку библиотеки драйвера Wintun
+		HMODULE library = ::LoadLibraryW(L"wintun.dll");
+		// Если библиотеку загрузить не удалось
+		if(library == nullptr)
+			// Выводим отсутствие драйвера
+			return false;
+		// Освобождаем загруженную библиотеку
+		::FreeLibrary(library);
+		// Выводим наличие драйвера
+		return true;
+	}
+
+	/**
+	 * @brief Сетевое название устройства по его уникальному номеру
+	 *
+	 * @details Движок отдаёт устройство уникальным номером («{GUID}»), а заказ имени у
+	 *          драйвера tap-windows6 идёт по СЕТЕВОМУ названию («awh_tap3») - тому, что
+	 *          распорядитель машины видит в перечне связей. Это разные строки, и сличать
+	 *          их между собой нельзя
+	 *
+	 * @param guid уникальный номер устройства, каким его назвал движок
+	 * @return     сетевое название устройства либо пустая строка
+	 *
+	 */
+	static std::string tunnelAliasByGuid(const std::string & guid) noexcept {
+		// Если уникальный номер устройства не передан
+		if(guid.empty())
+			// Выводим пустое название
+			return std::string();
+		// Размер буфера под перечень устройств
+		ULONG size = 0;
+		// Спрашиваем потребный размер буфера
+		if(::GetAdaptersAddresses(AF_UNSPEC, GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST | GAA_FLAG_SKIP_DNS_SERVER, nullptr, nullptr, &size) != ERROR_BUFFER_OVERFLOW)
+			// Выводим пустое название
+			return std::string();
+		// Буфер под перечень устройств
+		std::vector <uint8_t> buffer(size, 0);
+		// Перечень устройств машины
+		PIP_ADAPTER_ADDRESSES adapters = reinterpret_cast <PIP_ADAPTER_ADDRESSES> (buffer.data());
+		// Выполняем опрос перечня устройств
+		/**
+		 * @note Сличаем с `ERROR_SUCCESS`, а не с `NO_ERROR`: второе объявляется лишь
+		 *       при подключённом `windows.h`, какого в этом файле нет
+		 */
+		if(::GetAdaptersAddresses(AF_UNSPEC, GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST | GAA_FLAG_SKIP_DNS_SERVER, nullptr, adapters, &size) != ERROR_SUCCESS)
+			// Выводим пустое название
+			return std::string();
+		/**
+		 * Выполняем перебор всех устройств машины
+		 */
+		for(PIP_ADAPTER_ADDRESSES adapter = adapters; adapter != nullptr; adapter = adapter->Next){
+			// Если устройство не названо либо уникальный номер не совпал
+			if((adapter->AdapterName == nullptr) || (guid.compare(adapter->AdapterName) != 0))
+				// Переходим к следующему устройству
+				continue;
+			// Если сетевое название устройства не задано
+			if(adapter->FriendlyName == nullptr)
+				// Выводим пустое название
+				return std::string();
+			// Размер названия в узкой кодировке
+			const int32_t length = ::WideCharToMultiByte(CP_UTF8, 0, adapter->FriendlyName, -1, nullptr, 0, nullptr, nullptr);
+			// Если размер названия получить не удалось
+			if(length <= 1)
+				// Выводим пустое название
+				return std::string();
+			// Буфер под название устройства
+			std::string result(static_cast <size_t> (length - 1), 0);
+			// Выполняем перевод названия в узкую кодировку
+			::WideCharToMultiByte(CP_UTF8, 0, adapter->FriendlyName, -1, result.data(), length, nullptr, nullptr);
+			// Выводим сетевое название устройства
+			return result;
+		}
+		// Выводим пустое название
+		return std::string();
+	}
+
+	/**
+	 * @brief Кому принадлежит адрес IPv4, названный текстом
+	 *
+	 * @param fmk     объект фреймворка
+	 * @param log     объект ведения журнала
+	 * @param address адрес устройства, названный текстом
+	 * @return        уникальный номер устройства-владельца либо пустая строка
+	 *
+	 */
+	static std::string tunnelOwnerOf(const awh::fmk_t * fmk, const awh::log_t * log, const char * address) noexcept {
+		// Создаём объект работы с сетью
+		awh::eth_t eth(fmk, log);
+		// Объект разбора запрошенного адреса устройства
+		awh::net_addr_t expected(fmk, log);
+		// Если разобрать запрошенный адрес не удалось
+		if(!expected.parse(address))
+			// Выводим пустого владельца
+			return std::string();
+		// Объект запрошенного адреса устройства
+		std::unique_ptr <awh::net::addr_t> value = std::make_unique <awh::net::addr_net_ipv4_t> ();
+		// Переносим разобранный адрес в объект нужного вида
+		awh_cast <awh::net::addr_net_ipv4_t *> (value.get())->address = expected.v4(awh::net_addr_t::endian_t::LITTLE);
+		// Выводим устройство, за каким адрес числится
+		return eth.iface.name(value.get());
+	}
+
+	/**
+	 * @brief Тест пересоздания устройства туннеля НА ДРУГОМ УСТРОЙСТВЕ
+	 *
+	 * @details Устройства драйвера tap-windows6 ставит установщик драйвера, движок лишь
+	 *          ОТБИРАЕТ свободное среди готовых, а заказ имени вызовом `setIface` этот
+	 *          отбор направляет. Пересоздание обязано снести прежнее устройство и завести
+	 *          заказанное, перенеся на него адрес
+	 *
+	 * @warning Пересоздание на ТО ЖЕ устройство дефекта НЕ ПОКАЗЫВАЕТ: адрес назначается
+	 *          ему заново, и остаток неотличим от назначения. Оттого проверка меняет
+	 *          устройство. Замерено стороной Windows 23.08.2026: до правки пересоздание
+	 *          на другое устройство ОТКАЗЫВАЛО («address is already assigned to another
+	 *          interface»), новое устройство оставалось без адреса вовсе, а прежнее
+	 *          держало его до перезагрузки машины
+	 *
+	 * @note Второе устройство берётся НЕ ПО ИМЕНИ и не числом: движок сам отбирает
+	 *       свободное, а проверка лишь спрашивает, какое он взял. Имён устройств здесь
+	 *       не зашито - их задаёт распорядитель машины
+	 *
+	 */
+	TEST_F(IoFixture, IoTunnelRebuildToAnotherDeviceTest){
+		// Если надзорных прав у процесса нет
+		if(!tunnelPrivileged())
+			// Пропускаем проверку
+			GTEST_SKIP() << "заведение туннельного устройства требует надзорных прав";
+		// Если окружение к заведению двух туннелей не готово
+		if(!tunnelReady(2))
+			// Пропускаем проверку
+			GTEST_SKIP() << "связи под туннели не заведены распорядителем машины";
+		// Выполняем инициализацию движка
+		ASSERT_TRUE(this->_io->initialize());
+		// Закрепляем драйвер tap-windows6 ЯВНО: у Wintun заказ имени значит другое
+		tunnelPinDriver(this->_io.get(), tunnel_driver_t::TAP);
+		// Адреса второго туннеля: свои, чтобы не спорить с первым за один адрес
+		static constexpr const char * SECOND_LOCAL = "10.77.1.1";
+		static constexpr const char * SECOND_PEER  = "10.77.1.2";
+		// Уникальные номера устройств, взятых движком
+		std::string first, second;
+		// Сетевое название устройства, освобождаемого под пересоздание
+		std::string alias;
+		// Заводим событие первого туннеля
+		const awh::event::id_t tid = this->_io->event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV4);
+		// Ставим охранника узла: снос обязан пройти и при отказе утверждения
+		const TunnelGuard guard(this->_io.get(), tid);
+		// Узел обязан завестись
+		ASSERT_GT(tid, 0u) << "движок не записал узел туннеля";
+		// Устанавливаем опции события туннеля
+		ASSERT_TRUE(this->_io->setOptions(tid, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
+		// Устанавливаем адреса концов первого туннеля
+		ASSERT_TRUE(this->_io->setAddress(tid, awh::event::address_t::IPV4, TUNNEL_LOCAL));
+		ASSERT_TRUE(this->_io->setTarget(tid, TUNNEL_PEER));
+		// Фиксация настроек первого туннеля обязана пройти
+		ASSERT_TRUE(this->_io->commit(tid)) << "устройство первого туннеля не заведено";
+		// Запускаем событие первого туннеля
+		ASSERT_TRUE(this->_io->launch(tid));
+		// Запоминаем устройство, взятое движком под первый туннель
+		first = this->_io->getIface(tid);
+		// Название устройства обязано быть известно
+		ASSERT_FALSE(first.empty()) << "движок не назвал устройство первого туннеля";
+		{
+			// Заводим событие второго туннеля: он нужен лишь затем, чтобы ЗАНЯТЬ другое устройство
+			const awh::event::id_t next = this->_io->event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV4);
+			// Узел обязан завестись
+			ASSERT_GT(next, 0u) << "движок не записал узел второго туннеля";
+			// Устанавливаем опции события второго туннеля
+			ASSERT_TRUE(this->_io->setOptions(next, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
+			// Устанавливаем адреса концов второго туннеля
+			ASSERT_TRUE(this->_io->setAddress(next, awh::event::address_t::IPV4, SECOND_LOCAL));
+			ASSERT_TRUE(this->_io->setTarget(next, SECOND_PEER));
+			// Снимаем итог фиксации настроек второго туннеля
+			const bool committed = this->_io->commit(next);
+			// Запоминаем устройство, взятое движком под второй туннель
+			second = this->_io->getIface(next);
+			// Спрашиваем сетевое название взятого устройства, пока узел жив
+			alias = tunnelAliasByGuid(second);
+			// Сносим узел второго туннеля: устройство его освобождается под пересоздание
+			this->_io->destroy(next);
+			/**
+			 * Отступаем ЧЕСТНО, если второго свободного устройства на машине нет
+			 *
+			 * @note Отступление решается СОСТАВОМ МАШИНЫ, а не отказом движка: устройства
+			 *       ставит установщик драйвера, и на машине с единственным устройством
+			 *       менять его не на что. Всё прочее - дефект, и проверка обязана падать
+			 */
+			if(!committed || second.empty() || (second.compare(first) == 0))
+				// Пропускаем проверку
+				GTEST_SKIP() << "второго свободного устройства туннеля на машине нет: первое «"
+				             << first << "», второе «" << (second.empty() ? std::string("не выдано") : second) << "»";
+			// Сетевое название устройства обязано быть известно: без него заказать его нечем
+			ASSERT_FALSE(alias.empty()) << "система не назвала сетевое имя устройства «" << second << "»";
+		}
+		// Заказываем узлу первого туннеля устройство, освобождённое вторым
+		ASSERT_TRUE(this->_io->setIface(tid, alias)) << "движок не принял заказ устройства «" << alias << "»";
+		/**
+		 * Пересоздание обязано ПРОЙТИ
+		 *
+		 * @note Ровно здесь и отказывало до правки: адрес оставался на прежнем устройстве,
+		 *       система отвечала «address is already assigned to another interface», и
+		 *       заказанное устройство доставалось узлу без адреса
+		 */
+		ASSERT_TRUE(this->_io->rebuild(tid)) << "пересоздание на устройство «" << alias << "» отказало";
+		// Устройство узла обязано смениться на заказанное
+		ASSERT_EQ(this->_io->getIface(tid), second)
+			<< "заказано устройство «" << alias << "» («" << second << "»), а узел остался на «" << this->_io->getIface(tid) << "»";
+		/**
+		 * Адрес обязан ПЕРЕЕХАТЬ на заказанное устройство
+		 *
+		 * @note Стережёт первую половину дефекта: новое устройство оставалось без адреса
+		 */
+		ASSERT_EQ(tunnelOwnerOf(this->_fmk.get(), this->_log.get(), TUNNEL_LOCAL), second)
+			<< "узел переехал на «" << second << "», а адрес " << TUNNEL_LOCAL << " числится за «"
+			<< tunnelOwnerOf(this->_fmk.get(), this->_log.get(), TUNNEL_LOCAL) << "»";
+		/**
+		 * На ПРЕЖНЕМ устройстве адреса оставаться не должно
+		 *
+		 * @note Стережёт вторую половину: прежнее устройство держало адрес до перезагрузки,
+		 *       отравляя все последующие прогоны
+		 */
+		ASSERT_NE(tunnelOwnerOf(this->_fmk.get(), this->_log.get(), TUNNEL_LOCAL), first)
+			<< "узел переехал с «" << first << "», а адрес " << TUNNEL_LOCAL << " остался числиться за ним";
+		// Сворачиваем движок
+		ASSERT_TRUE(this->_io->deinitialize());
+	}
+
+	/**
+	 * @brief Тест жизненного цикла туннеля НА ДРАЙВЕРЕ WINTUN
+	 *
+	 * @details Драйверов у MS Windows два, и несут они разное: Wintun переносит пакеты
+	 *          сетевого уровня кольцом в общей с драйвером памяти, tap-windows6 - кадры
+	 *          канального уровня через дескриптор файла. Прочие проверки набора идут по
+	 *          tap-windows6, и эта - единственная, что стережёт второй путь
+	 *
+	 * @warning Путь Wintun не проверялся набором НИ РАЗУ: выбор по умолчанию решался
+	 *          тем, лежит ли `wintun.dll` рядом с двоичным файлом, а её там не было.
+	 *          Когда путь впервые запустили руками, нашлось ТРИ дефекта подряд
+	 *          (сессия стороны Windows, 23.08.2026), и все три стерегутся отсюда:
+	 *          ответ «адрес уже существует» принимался за успех без сличения, на том ли
+	 *          устройстве адрес; итог назначения адреса отбрасывался, и безадресное
+	 *          устройство отдавалось потребителю годным; адреса не снимались при
+	 *          свёртывании, и остаток отравлял следующий прогон ЧЕРЕЗ ГРАНИЦУ ДРАЙВЕРА -
+	 *          по tap-windows6 зелено, по Wintun мертво
+	 *
+	 * @note Драйвер задаётся ЯВНО: положись проверка на выбор по умолчанию - и она
+	 *       молча ушла бы на tap-windows6, отчитавшись при этом об успехе Wintun
+	 *
+	 */
+	TEST_F(IoFixture, IoTunnelLifecycleOnWintunTest){
+		// Если надзорных прав у процесса нет
+		if(!tunnelPrivileged())
+			// Пропускаем проверку
+			GTEST_SKIP() << "заведение туннельного устройства требует надзорных прав";
+		// Если окружение к заведению туннелей не готово
+		if(!tunnelReady(1))
+			// Пропускаем проверку
+			GTEST_SKIP() << "связи под туннели не заведены распорядителем машины";
+		// Если драйвера Wintun на машине нет
+		if(!tunnelWintunReady())
+			// Пропускаем проверку
+			GTEST_SKIP() << "драйвер Wintun на машине недоступен: библиотека wintun.dll не загружается";
+		// Выполняем инициализацию движка
+		ASSERT_TRUE(this->_io->initialize());
+		// Закрепляем драйвер Wintun ЯВНО: выбор по умолчанию увёл бы проверку на другой путь
+		tunnelPinDriver(this->_io.get(), tunnel_driver_t::WINTUN);
+		// Название заведённого устройства туннеля
+		std::string iface;
+		{
+			// Заводим событие туннеля
+			const awh::event::id_t tid = this->_io->event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV4);
+			// Ставим охранника узла: снос обязан пройти и при отказе утверждения
+			const TunnelGuard guard(this->_io.get(), tid);
+			// Узел обязан завестись
+			ASSERT_GT(tid, 0u) << "движок не записал узел туннеля";
+			// Устанавливаем опции события туннеля
+			ASSERT_TRUE(this->_io->setOptions(tid, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
+			// Устанавливаем адреса концов туннеля
+			ASSERT_TRUE(this->_io->setAddress(tid, awh::event::address_t::IPV4, TUNNEL_LOCAL));
+			ASSERT_TRUE(this->_io->setTarget(tid, TUNNEL_PEER));
+			/**
+			 * Фиксация настроек обязана ПРОЙТИ
+			 *
+			 * @note Библиотека драйвера загружается - значит, окружение готово, и всякий
+			 *       отказ здесь есть дефект движка, а не свойство машины. Отступление
+			 *       решено выше, до движка
+			 */
+			ASSERT_TRUE(this->_io->commit(tid)) << "драйвер Wintun доступен, а устройство не заведено";
+			// Запускаем событие туннеля
+			ASSERT_TRUE(this->_io->launch(tid));
+			// Получаем название заведённого устройства туннеля
+			iface = this->_io->getIface(tid);
+			// Название устройства обязано быть известно
+			ASSERT_FALSE(iface.empty()) << "движок не назвал устройство туннеля";
+			// Создаём объект работы с сетью
+			awh::eth_t eth(this->_fmk.get(), this->_log.get());
+			// Объект разбора запрошенного адреса устройства
+			awh::net_addr_t expected(this->_fmk.get(), this->_log.get());
+			// Разбираем запрошенный адрес устройства
+			ASSERT_TRUE(expected.parse(TUNNEL_LOCAL));
+			// Объект запрошенного адреса устройства
+			std::unique_ptr <awh::net::addr_t> address = std::make_unique <awh::net::addr_net_ipv4_t> ();
+			// Переносим разобранный адрес в объект нужного вида
+			awh_cast <awh::net::addr_net_ipv4_t *> (address.get())->address = expected.v4(awh::net_addr_t::endian_t::LITTLE);
+			/**
+			 * Запрошенный адрес обязан принадлежать НАШЕМУ устройству
+			 *
+			 * @note Стережёт первый из трёх дефектов: ответ «адрес уже существует»
+			 *       принимался за успех без сличения, на том ли устройстве адрес
+			 */
+			const std::string owner = eth.iface.name(address.get());
+			// Сличаем владельца адреса с заведённым устройством
+			ASSERT_EQ(owner, iface)
+				<< "движок согласился поставить адрес " << TUNNEL_LOCAL << ", а система числит его "
+				<< (owner.empty() ? std::string("ни за одним устройством") : (std::string("за устройством \"") + owner + "\""));
+		}
+		/**
+		 * Утверждения про ОСТАТОК АДРЕСА здесь НЕТ - и это намеренно
+		 *
+		 * @details Оно стояло бы не на том драйвере. У Wintun адаптер заводится по
+		 *          требованию и при выходе исчезает целиком, а адрес уходит вместе с
+		 *          ним - снимай его движок или нет. Устройство tap-windows6 постоянно,
+		 *          оттого остаток живёт именно там, и стеречь его надлежит проверками
+		 *          на TAP, где второй оборот жизненного цикла его и ловит
+		 *
+		 * @warning Не возвращать сюда: замерено ЭТАЛОНОМ сессией стороны Windows
+		 *          23.08.2026 - из рабочего движка вынули ТОЛЬКО снятие адреса в
+		 *          деструкторе и прогнали обоими драйверами: у tap-windows6 адрес
+		 *          10.77.0.1 остался на устройстве, у Wintun не осталось ничего.
+		 *          Утверждение это на Wintun ЗЕЛЕНО ПРИ СЛОМАННОМ КОДЕ, а такое хуже,
+		 *          чем его отсутствие: оно изображает охват, которого нет
+		 *
+		 * @note Второй ловушкой того же места: пересоздание на ТО ЖЕ устройство остатка
+		 *       не показывает вовсе - адрес назначается заново, и остаток от назначения
+		 *       неотличим. Всякое утверждение про остаток обязано либо менять
+		 *       устройство, либо смотреть после ПОЛНОГО сноса
+		 */
+		// Сворачиваем движок
+		ASSERT_TRUE(this->_io->deinitialize());
+	}
+#endif
 
 /**
  * @brief Снятие защиты объявлений от макросов операционной системы

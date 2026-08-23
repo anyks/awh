@@ -1545,7 +1545,7 @@ namespace {
 	 * @return        результат проверки применимости кодогенерации
 	 *
 	 */
-	bool walk(const awh::regex::program_t & program, size_t & runs, size_t & chains, size_t & deciders, size_t & loops, size_t & framed, size_t & recorded, size_t & atomics, size_t & looks, size_t & calls, size_t (& deeps)[4], bool & entangled, bool & referring, bool & rooting) noexcept {
+	bool walk(const awh::regex::program_t & program, size_t & runs, size_t & chains, size_t & deciders, size_t & loops, size_t & framed, size_t & recorded, size_t & atomics, size_t & looks, size_t & calls, size_t (& deeps)[5], bool & entangled, bool & referring, bool & rooting) noexcept {
 		// Выполняем сброс количества рядов повторения
 		runs = 0;
 		// Выполняем сброс количества цепочек ветвей выбора
@@ -1583,9 +1583,9 @@ namespace {
 		 *          и проверки окружения - по месту на разряд.
 		 *
 		 */
-		size_t (& deeper)[4] = deeps;
+		size_t (& deeper)[5] = deeps;
 		// Выполняем сброс наибольших количеств мест по уровням записей проходов
-		deeper[0] = deeper[1] = deeper[2] = deeper[3] = 0;
+		deeper[0] = deeper[1] = deeper[2] = deeper[3] = deeper[4] = 0;
 		/**
 		 * Получаем признак сборки в режиме разбора UTF-8
 		 *
@@ -1621,6 +1621,18 @@ namespace {
 		 *
 		 */
 		size_t pacing = 0;
+		/**
+		 * Количество рядов повторения одиночного символа уровня записи
+		 *
+		 * @details Ряду отводятся места положений отступления, и живут они
+		 *          записью прохода, коли ряд лежит внутри повторения. Ряд же
+		 *          вне повторения проходится однажды, и места его записью
+		 *          не тиражируются - им довольно кадра основания. Счётчик этот
+		 *          и разделяет два случая: по нему сводится наибольшее число
+		 *          рядов на уровень, а шаг записи сокращается на разницу.
+		 *
+		 */
+		size_t rows = 0;
 		/**
 		 * Признак повторения с записью прохода внутри атомарной группы уровня нулевого
 		 *
@@ -1981,7 +1993,7 @@ namespace {
 							 *          разметкой записи, с нуля начинаемой.
 							 *
 							 */
-							const size_t marked[4] = {chains, recorded, atomics, looks};
+							const size_t marked[5] = {chains, recorded, atomics, looks, rows};
 							// Создаём набор ячеек захвата, повторением записываемых
 							std::vector <uint32_t> written;
 							// Выполняем сбор ячеек захвата, повторением записываемых
@@ -2052,6 +2064,8 @@ namespace {
 								atomics = 0;
 								// Выполняем обнуление количества проверок окружения уровня
 								looks = 0;
+								// Выполняем обнуление количества рядов повторения уровня
+								rows = 0;
 								// Увеличиваем количество мест запоминания границ групп
 								recorded += written.size();
 							/**
@@ -2111,6 +2125,12 @@ namespace {
 								if(looks > deeper[3])
 									// Выполняем запоминание наибольшего количества проверок
 									deeper[3] = looks;
+								/**
+								 * Если рядов уровня больше запомненного прежде
+								 */
+								if(rows > deeper[4])
+									// Выполняем запоминание наибольшего количества рядов
+									deeper[4] = rows;
 								// Выполняем возврат количества цепочек ветвей к отметке
 								chains = marked[0];
 								// Выполняем возврат количества мест запоминания к отметке
@@ -2119,6 +2139,8 @@ namespace {
 								atomics = marked[2];
 								// Выполняем возврат количества проверок окружения к отметке
 								looks = marked[3];
+								// Выполняем возврат количества рядов уровня к отметке
+								rows = marked[4];
 							}
 							// Переходим к продолжению сопоставления за повторением
 							pc = leaving;
@@ -2244,6 +2266,8 @@ namespace {
 					if(++runs > awh::regex::MAX_RUNS)
 						// Выводим неприменимость кодогенерации к программе
 						return false;
+					// Увеличиваем количество рядов повторения уровня записи
+					rows++;
 					/**
 					 * Если ряд повторения размещён внутри проверки окружения
 					 *
@@ -2687,7 +2711,7 @@ bool awh::regex::Codegen::applicable(const program_t & program) noexcept {
 	 *          по уровням записей.
 	 *
 	 */
-	size_t deeps[4] = {0, 0, 0, 0};
+	size_t deeps[5] = {0, 0, 0, 0, 0};
 	// Признак размещения ряда повторения внутри проверки окружения
 	bool entangled = false;
 	// Признак наличия ссылок на захваченный группой текст
@@ -2749,7 +2773,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	 *          по уровням записей.
 	 *
 	 */
-	size_t deeps[4] = {0, 0, 0, 0};
+	size_t deeps[5] = {0, 0, 0, 0, 0};
 	// Признак размещения ряда повторения внутри проверки окружения
 	bool entangled = false;
 	// Признак наличия ссылок на захваченный группой текст
@@ -3187,7 +3211,20 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	 */
 	const bool splitting = (calls == 0);
 	// Получаем номер первого места записи прохода, границы групп запоминающего
-	const size_t retaining = (rowing + (runs * SLOTS) + ((splitting ? deeps[0] : (chains + deeps[0])) * PICKS));
+	/**
+	 * Получаем номер первого места записи прохода, границы групп запоминающего
+	 *
+	 * @details Места рядов повторения запись несёт лишь для тех, что лежат
+	 *          внутри повторения: ряд вне его проходится однажды, и запись
+	 *          тиражировала бы места его впустую. Кадр основания при этом
+	 *          размечается по всем рядам - он один и тиражированию не подлежит.
+	 *
+	 *          Опыт раздуванием шага на 24 байта при области записей, охвату
+	 *          не мешающей: строки с повторением над областью теряли от 7.6 до
+	 *          9.7 процента на тексте в 80 килобайт. Столько же сжатие и даёт.
+	 *
+	 */
+	const size_t retaining = (rowing + ((splitting ? deeps[4] : runs) * SLOTS) + ((splitting ? deeps[0] : (chains + deeps[0])) * PICKS));
 	// Получаем номер первого места записи прохода, отказ атомарных групп несущего
 	const size_t restraint = (retaining + (splitting ? deeps[1] : (recorded + deeps[1])));
 	// Получаем номер первого места записи прохода, проверкам окружения отведённого
@@ -3667,6 +3704,16 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	// Смещение первого свободного места запоминания границ групп
 	size_t recording = 0;
 	/**
+	 * Номер ряда повторения в разметке уровня
+	 *
+	 * @details Номер этот от сквозного отличается: места рядов размечаются
+	 *          порознь по уровням, как и всё прочее, живущее записью прохода.
+	 *          Сквозной же номер ведёт метки отступления, каковые у всех рядов
+	 *          свои и в разметку не входят вовсе.
+	 *
+	 */
+	size_t rowed = 0;
+	/**
 	 * Уровень записи, порождением ведомый
 	 *
 	 * @details Уровень нулевой есть кадр основания, прочие - записи проходов.
@@ -3688,6 +3735,19 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	const auto seated = [&]() noexcept -> reg_t {
 		// Выводим регистр, уровнем записи выбранный
 		return (((depth > 0) || !splitting) ? reg_t::RECORD : reg_t::STACK);
+	};
+	/**
+	 * @brief Выполняем получение основания мест цепочек ветвей уровня
+	 *
+	 * @details Места цепочек идут сразу за местами рядов повторения, а число
+	 *          их у кадра и у записи разное: кадр размечен по всем рядам
+	 *          выражения, запись же несёт лишь те, что лежат внутри повторения.
+	 *          Оттого и основание берётся уровнем, а не числом рядов всего.
+	 *
+	 */
+	const auto chained = [&]() noexcept -> size_t {
+		// Выводим основание, уровнем записи выбранное
+		return (rowing + ((((depth > 0) || !splitting) ? (splitting ? deeps[4] : runs) : runs) * SLOTS));
 	};
 	// Выполняем получение основания мест запоминания границ групп уровня
 	const auto keeper = [&]() noexcept -> size_t {
@@ -5232,7 +5292,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				 *          с проверкой применимости.
 				 *
 				 */
-				const size_t marked[4] = {chain, recording, atomic, sight};
+				const size_t marked[5] = {chain, recording, atomic, sight, rowed};
 				// Выполняем подъём уровня записи на тело повторения
 				depth++;
 				// Выполняем обнуление номера порождаемой цепочки ветвей уровня
@@ -5243,6 +5303,8 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				atomic = 0;
 				// Выполняем обнуление номера порождаемой проверки окружения уровня
 				sight = 0;
+				// Выполняем обнуление номера ряда повторения в разметке уровня
+				rowed = 0;
 				// Получаем смещение мест запоминания границ групп повторения
 				const size_t keeping = (keeper() + recording);
 				// Получаем регистр, места прохода повторения несущий
@@ -5384,6 +5446,8 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				atomic = marked[2];
 				// Выполняем возврат номера порождаемой проверки окружения к отметке
 				sight = marked[3];
+				// Выполняем возврат номера ряда повторения к отметке
+				rowed = marked[4];
 				// Выполняем переход к входу в проход следующий
 				emitter.jump(entering);
 				/**
@@ -5647,8 +5711,16 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			if(chain >= MAX_CHAINS)
 				// Выводим отказ порождения области инструкций
 				return false;
-			// Получаем номер первого места кадра, цепочке ветвей отведённого
-			const size_t slot = (rowing + (runs * SLOTS) + (chain++ * PICKS));
+			/**
+			 * Получаем номер первого места кадра, цепочке ветвей отведённого
+			 *
+			 * @details Основание берётся уровнем записи, а не числом рядов всего
+			 *          выражения: запись прохода несёт места лишь тех рядов, что
+			 *          лежат внутри повторения, и цепочки идут сразу за ними.
+			 *          Кадр же основания размечен по всем рядам разом.
+			 *
+			 */
+			const size_t slot = (chained() + (chain++ * PICKS));
 			// Заводим метку общего продолжения цепочки ветвей выбора
 			const size_t join = emitter.label();
 			// Заводим метку исчерпания ветвей цепочки выбора
@@ -5870,7 +5942,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			// Заводим метку продолжения сопоставления вслед за ленивым рядом
 			const size_t resume = emitter.label();
 			// Выполняем сохранение положения ленивого ряда в кадре вызова
-			emitter.store(reg_t::CURSOR, reg_t::RECORD, static_cast <uint32_t> (rowing + (index * SLOTS)));
+			emitter.store(reg_t::CURSOR, seated(), static_cast <uint32_t> (rowing + (rowed * SLOTS)));
 			/**
 			 * Если действующий отказ ведётся ячейкой кадра
 			 *
@@ -5882,7 +5954,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				// Выполняем чтение прежнего отказа из кадра вызова
 				emitter.fetch(reg_t::SCRATCH, reg_t::RECORD, static_cast <uint32_t> (cell));
 				// Выполняем сохранение прежнего отказа в месте ряда повторения
-				emitter.store(reg_t::SCRATCH, reg_t::RECORD, static_cast <uint32_t> (rowing + (index * SLOTS) + 2));
+				emitter.store(reg_t::SCRATCH, seated(), static_cast <uint32_t> (rowing + (rowed * SLOTS) + 2));
 				// Выполняем получение адреса продвижения ленивого ряда
 				emitter.address(reg_t::SCRATCH, advance);
 				// Выполняем установку действующего отказа сопоставления
@@ -5902,7 +5974,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			// Выполняем размещение метки цели перехода по адресу в регистре
 			emitter.landing();
 			// Выполняем чтение положения ленивого ряда из кадра вызова
-			emitter.fetch(reg_t::CURSOR, reg_t::RECORD, static_cast <uint32_t> (rowing + (index * SLOTS)));
+			emitter.fetch(reg_t::CURSOR, seated(), static_cast <uint32_t> (rowing + (rowed * SLOTS)));
 			// Заводим метку исчерпания продвижения ленивого ряда
 			const size_t drained = (cellular ? emitter.label() : failure);
 			/**
@@ -5943,7 +6015,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				// Выполняем переход к исчерпанию при отсутствии байта продолжения
 				emitter.branch(cond_t::ABOVE, giving);
 				// Выполняем сохранение положения ленивого ряда в кадре вызова
-				emitter.store(reg_t::CURSOR, reg_t::RECORD, static_cast <uint32_t> (rowing + (index * SLOTS)));
+				emitter.store(reg_t::CURSOR, seated(), static_cast <uint32_t> (rowing + (rowed * SLOTS)));
 			/**
 			 * Если продолжение сопоставления начинается одиночным символом
 			 *
@@ -5992,7 +6064,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				// Выполняем продолжение продвижения при несовпадении байта
 				emitter.branch(cond_t::NOTEQUAL, stepping);
 				// Выполняем сохранение положения ленивого ряда в кадре вызова
-				emitter.store(reg_t::CURSOR, reg_t::RECORD, static_cast <uint32_t> (rowing + (index * SLOTS)));
+				emitter.store(reg_t::CURSOR, seated(), static_cast <uint32_t> (rowing + (rowed * SLOTS)));
 			/**
 			 * Если приметы начала продолжения сопоставления не имеется
 			 */
@@ -6014,7 +6086,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				// Переходим к следующей позиции текста сопоставления
 				emitter.add(reg_t::CURSOR, reg_t::CURSOR, 1);
 				// Выполняем сохранение положения ленивого ряда в кадре вызова
-				emitter.store(reg_t::CURSOR, reg_t::RECORD, static_cast <uint32_t> (rowing + (index * SLOTS)));
+				emitter.store(reg_t::CURSOR, seated(), static_cast <uint32_t> (rowing + (rowed * SLOTS)));
 			}
 			/**
 			 * Если запись пропуска пройденного участка ленивым рядом порождается
@@ -6056,7 +6128,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				// Выполняем размещение метки цели перехода по адресу в регистре
 				emitter.landing();
 				// Выполняем чтение прежнего отказа из места ряда повторения
-				emitter.fetch(reg_t::SCRATCH, reg_t::RECORD, static_cast <uint32_t> (rowing + (index * SLOTS) + 2));
+				emitter.fetch(reg_t::SCRATCH, seated(), static_cast <uint32_t> (rowing + (rowed * SLOTS) + 2));
 				// Выполняем восстановление действующего отказа сопоставления
 				emitter.store(reg_t::SCRATCH, reg_t::RECORD, static_cast <uint32_t> (cell));
 				// Выполняем переход по восстановленному отказу сопоставления
@@ -6068,6 +6140,8 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			failure = (cellular ? miss : advance);
 			// Переходим к следующему ряду повторения одиночного символа
 			index++;
+			// Переходим к следующему месту ряда в разметке уровня
+			rowed++;
 			// Переходим к ветви завершения ленивого повторения
 			pc = instruction.split.first;
 			// Продолжаем обход инструкций области программы
@@ -6112,7 +6186,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			 */
 			if(!sealed)
 				// Выполняем сохранение положения начала ряда в кадре вызова
-				emitter.store(reg_t::CURSOR, reg_t::RECORD, static_cast <uint32_t> (rowing + (index * SLOTS) + 1));
+				emitter.store(reg_t::CURSOR, seated(), static_cast <uint32_t> (rowing + (rowed * SLOTS) + 1));
 			/**
 			 * Если действующий отказ ведётся ячейкой кадра
 			 *
@@ -6124,7 +6198,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				// Выполняем чтение прежнего отказа из кадра вызова
 				emitter.fetch(reg_t::SCRATCH, reg_t::RECORD, static_cast <uint32_t> (cell));
 				// Выполняем сохранение прежнего отказа в месте ряда повторения
-				emitter.store(reg_t::SCRATCH, reg_t::RECORD, static_cast <uint32_t> (rowing + (index * SLOTS) + 2));
+				emitter.store(reg_t::SCRATCH, seated(), static_cast <uint32_t> (rowing + (rowed * SLOTS) + 2));
 			}
 			/**
 			 * Получаем количество значений байта, ряду не принадлежащих
@@ -6217,7 +6291,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			// Выполняем расстановку метки завершения прохода ряда
 			emitter.place(complete);
 			// Выполняем сохранение положения отступления ряда в кадре вызова
-			emitter.store(reg_t::CURSOR, reg_t::RECORD, static_cast <uint32_t> (rowing + (index * SLOTS)));
+			emitter.store(reg_t::CURSOR, seated(), static_cast <uint32_t> (rowing + (rowed * SLOTS)));
 			/**
 			 * Если пропуск пройденного участка порождается первым рядом повторения
 			 *
@@ -6264,6 +6338,8 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				emitter.place(resume);
 				// Переходим к следующему ряду повторения одиночного символа
 				index++;
+				// Переходим к следующему месту ряда в разметке уровня
+				rowed++;
 				// Переходим к ветви завершения повторения
 				pc = instruction.split.second;
 				// Продолжаем обход инструкций области программы
@@ -6284,9 +6360,9 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			// Выполняем размещение метки цели перехода по адресу в регистре
 			emitter.landing();
 			// Выполняем чтение положения отступления ряда из кадра вызова
-			emitter.fetch(reg_t::CURSOR, reg_t::RECORD, static_cast <uint32_t> (rowing + (index * SLOTS)));
+			emitter.fetch(reg_t::CURSOR, seated(), static_cast <uint32_t> (rowing + (rowed * SLOTS)));
 			// Выполняем чтение положения начала ряда из кадра вызова
-			emitter.fetch(reg_t::SCRATCH, reg_t::RECORD, static_cast <uint32_t> (rowing + (index * SLOTS) + 1));
+			emitter.fetch(reg_t::SCRATCH, seated(), static_cast <uint32_t> (rowing + (rowed * SLOTS) + 1));
 			// Заводим метку исчерпания отступления ряда повторения
 			const size_t drained = (cellular ? emitter.label() : failure);
 			// Выполняем сравнение положения отступления с положением начала ряда
@@ -6296,7 +6372,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			// Выполняем отступление на одну позицию текста
 			emitter.sub(reg_t::CURSOR, reg_t::CURSOR, 1);
 			// Выполняем сохранение положения отступления ряда в кадре вызова
-			emitter.store(reg_t::CURSOR, reg_t::RECORD, static_cast <uint32_t> (rowing + (index * SLOTS)));
+			emitter.store(reg_t::CURSOR, seated(), static_cast <uint32_t> (rowing + (rowed * SLOTS)));
 			/**
 			 * Если действующий отказ ведётся ячейкой кадра
 			 *
@@ -6312,7 +6388,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				// Выполняем размещение метки цели перехода по адресу в регистре
 				emitter.landing();
 				// Выполняем чтение прежнего отказа из места ряда повторения
-				emitter.fetch(reg_t::SCRATCH, reg_t::RECORD, static_cast <uint32_t> (rowing + (index * SLOTS) + 2));
+				emitter.fetch(reg_t::SCRATCH, seated(), static_cast <uint32_t> (rowing + (rowed * SLOTS) + 2));
 				// Выполняем восстановление действующего отказа сопоставления
 				emitter.store(reg_t::SCRATCH, reg_t::RECORD, static_cast <uint32_t> (cell));
 				// Выполняем переход по восстановленному отказу сопоставления
@@ -6324,6 +6400,8 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			failure = (cellular ? miss : retries.at(index));
 			// Переходим к следующему ряду повторения одиночного символа
 			index++;
+			// Переходим к следующему месту ряда в разметке уровня
+			rowed++;
 			// Переходим к ветви завершения повторения
 			pc = instruction.split.second;
 		}

@@ -1480,6 +1480,11 @@ if (${CMAKE_BUILD_SAMPLES})
     # Указываем что нужно собрать приложение работы с распределителем памяти
     option(CMAKE_BUILD_ALLOC_APP_SAMPLE "Build Allocator app sample" ON)
 
+    # Устанавливаем имя приложения работы с укрытой памятью
+    SET(KEEPER_APP_NAME keeper)
+    # Указываем что нужно собрать приложение работы с укрытой памятью
+    option(CMAKE_BUILD_KEEPER_APP_SAMPLE "Build Keeper app sample" ON)
+
     # Устанавливаем имя приложения работы с датой и временем
     SET(DATE_APP_SYS_NAME sys-date)
     # Указываем что нужно собрать приложение работы с датой и временем
@@ -2094,6 +2099,18 @@ if (${CMAKE_BUILD_SAMPLES})
         # Выводим сообщение о сборке семпла
         message(STATUS "Build sample ALLOC: No\n")
     endif (${CMAKE_BUILD_ALLOC_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с укрытой памятью
+    if (${CMAKE_BUILD_KEEPER_APP_SAMPLE})
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample KEEPER: Yes\n")
+        # Выполняем создание приложения работы с укрытой памятью
+        add_sample(${KEEPER_APP_NAME} sample/alloc/keeper.cpp alloc)
+    # Если не нужно собирать семплы для работы с укрытой памятью
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample KEEPER: No\n")
+    endif (${CMAKE_BUILD_KEEPER_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с датой и временем
     if (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
@@ -3077,6 +3094,16 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_ALLOC_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с укрытой памятью
+        if (${CMAKE_BUILD_KEEPER_APP_SAMPLE})
+            # Выполняем сборку приложения укрытой памяти
+            target_link_libraries(
+                ${KEEPER_APP_NAME}
+                ${AWH_LIB_NAME}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_KEEPER_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с датой и временем
         if (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
@@ -4189,6 +4216,17 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_ALLOC_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с укрытой памятью
+        if (${CMAKE_BUILD_KEEPER_APP_SAMPLE})
+            # Выполняем сборку приложения укрытой памяти
+            target_link_libraries(
+                ${KEEPER_APP_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_KEEPER_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с датой и временем
         if (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
@@ -5332,6 +5370,16 @@ if (${CMAKE_BUILD_SAMPLES})
                 )
             endif (${CMAKE_BUILD_ALLOC_APP_SAMPLE})
 
+            # Если нужно собрать семплы для работы с укрытой памятью
+            if (${CMAKE_BUILD_KEEPER_APP_SAMPLE})
+                # Выполняем сборку приложения укрытой памяти
+                add_custom_command(TARGET "${KEEPER_APP_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${KEEPER_APP_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${KEEPER_APP_NAME}\" to enable core dump on macOS"
+                    VERBATIM
+                )
+            endif (${CMAKE_BUILD_KEEPER_APP_SAMPLE})
+
             # Если нужно собрать семплы для работы с датой и временем
             if (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
                 # Выполняем сборку приложения даты и времени
@@ -5936,6 +5984,12 @@ if (${CMAKE_BUILD_SAMPLES})
                 pvs_studio_add_target(TARGET ${ALLOC_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${ALLOC_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
             endif (${CMAKE_BUILD_ALLOC_APP_SAMPLE})
 
+            # Если нужно собрать семплы для работы с укрытой памятью
+            if (${CMAKE_BUILD_KEEPER_APP_SAMPLE})
+                # Выполняем анализ приложения укрытой памяти
+                pvs_studio_add_target(TARGET ${KEEPER_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${KEEPER_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+            endif (${CMAKE_BUILD_KEEPER_APP_SAMPLE})
+
             # Если нужно собрать семплы для работы с датой и временем
             if (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
                 # Выполняем анализ приложения даты и времени
@@ -6464,6 +6518,12 @@ if (${CMAKE_BUILD_SAMPLES})
         # Устанавливаем приложение работы с распределителем памяти
         install(TARGETS ${ALLOC_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
     endif (${CMAKE_BUILD_ALLOC_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с укрытой памятью
+    if (${CMAKE_BUILD_KEEPER_APP_SAMPLE})
+        # Устанавливаем приложение работы с укрытой памятью
+        install(TARGETS ${KEEPER_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+    endif (${CMAKE_BUILD_KEEPER_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с датой и временем
     if (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
