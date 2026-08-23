@@ -578,6 +578,10 @@ const char * awh::codec::yaml::message(const error_t error) noexcept {
 		case static_cast <uint8_t> (error_t::OVERFLOW_LIMIT): return "превышен предел, заданный настройками разбора";
 		// Если настройки записи противоречат толкованию читающего
 		case static_cast <uint8_t> (error_t::CONFLICTING_SETTINGS): return "настройки записи противоречат толкованию читающего";
+		// Если файл документа открыть не удалось
+		case static_cast <uint8_t> (error_t::FILE_NOT_OPENED):
+			// Выводим описание кода ошибки
+			return "cannot open the document file";
 	}
 	// Выводим описание неизвестного кода отказа
 	return "неизвестный код отказа";

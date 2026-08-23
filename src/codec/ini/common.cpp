@@ -335,6 +335,10 @@ const char * awh::codec::ini::message(const error_t error) noexcept {
 		case static_cast <uint8_t> (error_t::CONFLICTING_SETTINGS):
 			// Выводим описание кода ошибки
 			return "writer settings conflict with reader interpretation";
+		// Если обращение к значению построено ошибочно
+		case static_cast <uint8_t> (error_t::INVALID_REFERENCE):
+			// Выводим описание кода ошибки
+			return "malformed value reference";
 	}
 	// Выводим описание неизвестного кода ошибки
 	return "unknown error";

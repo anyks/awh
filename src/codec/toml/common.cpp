@@ -171,6 +171,14 @@ const char * awh::codec::toml::message(const error_t error) noexcept {
 		case static_cast <uint8_t> (error_t::CONFLICTING_SETTINGS):
 			// Выводим описание кода ошибки
 			return "writer settings conflict with reader interpretation";
+		// Если пара с таким именем деревом не объявлена
+		case static_cast <uint8_t> (error_t::UNKNOWN_KEY):
+			// Выводим описание кода ошибки
+			return "no such key in the document";
+		// Если таблица с таким именем деревом не объявлена
+		case static_cast <uint8_t> (error_t::UNKNOWN_TABLE):
+			// Выводим описание кода ошибки
+			return "no such table in the document";
 	}
 	// Выводим описание неизвестного кода ошибки
 	return "unknown error";

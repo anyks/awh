@@ -1895,3 +1895,54 @@ TEST(CodecIniDocument, HeaderCommentKeepsSpace) {
 	// Выполняем проверку устойчивости перезаписи
 	ASSERT_EQ(again.text(), first);
 }
+
+/**
+ * @brief Проверка отличения ошибочного обращения от обращения к необъявленному
+ *
+ * @details Отказы эти разного рода, и путать их нельзя: имя, к какому обращено
+ *          значение, может быть объявлено, а само обращение оборвано. Прежде оба
+ *          отвечали кодом обращения к необъявленному значению, и потребитель искал
+ *          недостающее свойство вместо незакрытой скобки
+ *
+ */
+TEST(CodecIniDocument, MalformedReferenceDiffersFromUnknown) {
+	{
+		// Собираемые настройки дерева настроек
+		ini::document_t::settings_t settings;
+		// Устанавливаем построение обращения к значению другого свойства
+		settings.references = ini::reference_t::SHELL;
+		// Дерево настроек
+		ini::document_t document(::logger());
+		/**
+		 * Выполняем проверку отказа разбора незакрытого обращения
+		 *
+		 * @note Свойство «root» объявлено тут же: отказ принадлежит построению
+		 *       обращения, а не отсутствию имени
+		 */
+		ASSERT_FALSE(document.parse("[a]\nroot = /opt\nlogs = ${root/logs\n", settings));
+		// Выполняем проверку кода ошибки разбора
+		ASSERT_EQ(document.error(), ini::error_t::INVALID_REFERENCE);
+	}{
+		// Собираемые настройки дерева настроек
+		ini::document_t::settings_t settings;
+		// Устанавливаем построение обращения по образцу configparser
+		settings.references = ini::reference_t::PYTHON;
+		// Дерево настроек
+		ini::document_t document(::logger());
+		// Выполняем проверку отказа разбора обращения без завершающего признака
+		ASSERT_FALSE(document.parse("[a]\nname = awh\ngreeting = привет, %(name)\n", settings));
+		// Выполняем проверку кода ошибки разбора
+		ASSERT_EQ(document.error(), ini::error_t::INVALID_REFERENCE);
+	}{
+		// Собираемые настройки дерева настроек
+		ini::document_t::settings_t settings;
+		// Устанавливаем построение обращения к значению другого свойства
+		settings.references = ini::reference_t::SHELL;
+		// Дерево настроек
+		ini::document_t document(::logger());
+		// Выполняем проверку сохранения кода обращения к необъявленному значению
+		ASSERT_FALSE(document.parse("[a]\nk = ${missing}\n", settings));
+		// Выполняем проверку кода ошибки разбора
+		ASSERT_EQ(document.error(), ini::error_t::UNKNOWN_REFERENCE);
+	}
+}

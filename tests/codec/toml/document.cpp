@@ -563,10 +563,15 @@ TEST(CodecTomlDocument, Removing) {
 	ASSERT_EQ(result.find("[server]"), string::npos);
 	// Выполняем проверку сохранения вложенной таблицы в собранном тексте
 	ASSERT_NE(result.find("[server.limits]"), string::npos);
-	// Выполняем проверку отказа удаления необъявленной таблицы
+	/**
+	 * Выполняем проверку отказа удаления необъявленной таблицы
+	 *
+	 * @note Отказ отвечает кодом отсутствия таблицы, а не ошибочного построения её
+	 *       объявления: имя составлено верно, таблицы с ним в дереве нет
+	 */
 	ASSERT_FALSE(document.remove({"missing"}));
 	// Выполняем проверку кода ошибки правки дерева
-	ASSERT_EQ(document.error(), toml::error_t::INVALID_TABLE);
+	ASSERT_EQ(document.error(), toml::error_t::UNKNOWN_TABLE);
 }
 /**
  * @brief Проверка сохранения выбранной человеком записи значений
@@ -1410,4 +1415,35 @@ TEST(CodecTomlDocument, PushFromOwnView) {
 	ASSERT_TRUE(document.put({"server", "таблица"}, {name.substr(0, 8)}, content));
 	// Выполняем проверку значения добавленной пары встроенной таблицы
 	ASSERT_EQ(document.text({"server", "таблица", big.substr(0, 8)}), big);
+}
+
+/**
+ * @brief Проверка отличения отсутствия имени от ошибочного построения его
+ *
+ * @details Отказы эти разного рода: имя может быть составлено верно, а пары либо
+ *          таблицы с ним в дереве не быть. Прежде оба отвечали кодами ошибочного
+ *          построения имени, и потребитель искал изъян в имени, какого там нет
+ *
+ */
+TEST(CodecTomlDocument, UnknownNameDiffersFromMalformed) {
+	// Дерево настроек
+	toml::document_t document(::logger());
+	// Выполняем разбор текста настроек
+	ASSERT_TRUE(document.parse("[server]\nhost = \"localhost\"\n"));
+	// Выполняем проверку отказа снятия необъявленной пары
+	ASSERT_FALSE(document.erase({"server", "missing"}));
+	// Выполняем проверку кода ошибки правки дерева
+	ASSERT_EQ(document.error(), toml::error_t::UNKNOWN_KEY);
+	// Выполняем проверку отказа удаления необъявленной таблицы
+	ASSERT_FALSE(document.remove({"missing"}));
+	// Выполняем проверку кода ошибки правки дерева
+	ASSERT_EQ(document.error(), toml::error_t::UNKNOWN_TABLE);
+	/**
+	 * Выполняем проверку сохранения кода ошибочного построения имени
+	 *
+	 * @note Управляющий знак в имени - изъян самого имени, и код его прежним остаётся
+	 */
+	ASSERT_FALSE(document.set({string_view("имя\nключа")}, static_cast <int64_t> (1)));
+	// Выполняем проверку кода ошибки правки дерева
+	ASSERT_EQ(document.error(), toml::error_t::INVALID_KEY);
 }

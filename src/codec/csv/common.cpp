@@ -180,6 +180,10 @@ const char * awh::codec::csv::message(const error_t error) noexcept {
 		// Если превышен предел, заданный настройками разбора
 		case static_cast <uint8_t> (error_t::OVERFLOW_LIMIT):
 			return "parser limit exceeded";
+		// Если файл таблицы открыть не удалось
+		case static_cast <uint8_t> (error_t::FILE_NOT_OPENED):
+			// Выводим описание кода ошибки
+			return "cannot open the table file";
 	}
 	// Выводим сообщение о неизвестной ошибке
 	return "unknown error";

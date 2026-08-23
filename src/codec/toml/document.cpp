@@ -2696,10 +2696,15 @@ bool awh::codec::toml::Document::erase(const vector <string_view> & path) noexce
 	const uint32_t record = this->locate(path, kind_t::PAIR);
 	/**
 	 * Если запись пары по составному имени не найдена
+	 *
+	 * @note Отказ этот принадлежит отсутствию пары, а не построению имени: имя может
+	 *       быть составлено верно, а пары с ним в дереве не быть. Прежде здесь
+	 *       отвечалось кодом ошибочного построения имени, и потребитель искал изъян
+	 *       в имени, какого там нет
 	 */
 	if(record == NO_RECORD){
 		// Запоминаем код ошибки правки дерева настроек
-		this->_error = error_t::INVALID_KEY;
+		this->_error = error_t::UNKNOWN_KEY;
 		// Выполняем вывод сообщения об отказе в лог
 		this->report();
 		// Выводим отрицательный результат выполнения операции
@@ -2739,10 +2744,12 @@ bool awh::codec::toml::Document::remove(const vector <string_view> & path) noexc
 	const uint32_t record = this->locate(path, kind_t::TABLE);
 	/**
 	 * Если запись объявления таблицы по составному имени не найдена
+	 *
+	 * @note Отказ принадлежит отсутствию таблицы, а не построению её объявления
 	 */
 	if(record == NO_RECORD){
 		// Запоминаем код ошибки правки дерева настроек
-		this->_error = error_t::INVALID_TABLE;
+		this->_error = error_t::UNKNOWN_TABLE;
 		// Выполняем вывод сообщения об отказе в лог
 		this->report();
 		// Выводим отрицательный результат выполнения операции

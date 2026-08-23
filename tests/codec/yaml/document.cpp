@@ -2561,3 +2561,19 @@ TEST(CodecYamlDocument, EditingNextToMultilineScalar) {
 	// Выполняем проверку количества записей вложенного перечня
 	ASSERT_EQ(twin.root().at("/0").size(), 3) << "запись перечня удвоилась: " << compact.dump();
 }
+
+/**
+ * @brief Проверка отличения ненайденного файла от пустого текста
+ *
+ * @details Ненайденный файл пустым текстом не является: прежде отвечалось кодом
+ *          пустоты текста, и о том, что путь неверен, потребитель не узнавал вовсе
+ *
+ */
+TEST(CodecYamlDocument, MissingFileIsNotEmptyText) {
+	// Дерево документа
+	yaml::document_t document(::logger());
+	// Выполняем проверку отказа чтения несуществующего файла
+	ASSERT_FALSE(document.load("/несуществующий/каталог/документ.yaml"));
+	// Выполняем проверку кода ошибки чтения
+	ASSERT_EQ(document.error(), yaml::error_t::FILE_NOT_OPENED);
+}

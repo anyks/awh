@@ -672,10 +672,15 @@ bool awh::codec::ini::Document::expand(const string_view value, const uint32_t s
 		const size_t position = value.find(((this->_settings.references == reference_t::SHELL) ? '}' : ')'), i + 2);
 		/**
 		 * Если конец имени в обращении к значению не обнаружен
+		 *
+		 * @note Отказ этот принадлежит построению обращения, а не имени: имя может быть
+		 *       объявлено, а обращение к нему оборвано. Прежде здесь отвечалось кодом
+		 *       обращения к необъявленному значению, и потребитель искал недостающее
+		 *       свойство вместо незакрытой скобки
 		 */
 		if(position == string_view::npos){
 			// Запоминаем код ошибки разбора
-			this->_error = error_t::UNKNOWN_REFERENCE;
+			this->_error = error_t::INVALID_REFERENCE;
 			// Выполняем вывод сообщения об отказе в лог
 			this->report();
 			// Выводим отрицательный результат выполнения операции
@@ -685,10 +690,13 @@ bool awh::codec::ini::Document::expand(const string_view value, const uint32_t s
 		const size_t closing = ((this->_settings.references == reference_t::SHELL) ? 1 : 2);
 		/**
 		 * Если обращение по образцу configparser не закрыто признаком подстановки
+		 *
+		 * @note Отказ принадлежит построению обращения: имя может быть объявлено, а
+		 *       запись «%(имя)» оставлена без завершающего «s»
 		 */
 		if((closing == 2) && (((position + 1) >= value.length()) || (value[position + 1] != 's'))){
 			// Запоминаем код ошибки разбора
-			this->_error = error_t::UNKNOWN_REFERENCE;
+			this->_error = error_t::INVALID_REFERENCE;
 			// Выполняем вывод сообщения об отказе в лог
 			this->report();
 			// Выводим отрицательный результат выполнения операции
