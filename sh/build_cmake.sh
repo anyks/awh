@@ -33,7 +33,7 @@ if [ -n "$DESTINATION" ]; then
 	fi
 
 	# Выполняем копирование CMAKE-файла
-	cp "$ROOT/../contrib/cmake/$NAME" "$CMAKE"
+	cp "$ROOT/../cmake/$NAME" "$CMAKE"
 
 	# Если операционная система macOS
 	if [ "$OS" = "Darwin" ]; then

@@ -57,7 +57,7 @@ cp -r "@root@/../third_party/include"/* "@prefix@/usr/include/lib@name@"/
 # Копируем заголовки библиотеки
 cp -r "@root@/../include"/* "@prefix@/usr/include/lib@name@/@name@"/
 # Копируем файл cmake
-cp "@root@/../contrib/cmake"/FindAWH.cmake "@prefix@/usr/share/@name@/cmake"/
+cp "@root@/../cmake"/FindAWH.cmake "@prefix@/usr/share/@name@/cmake"/
 
 # Удаляем более ненужный нам каталог
 rm -rf @tmp@

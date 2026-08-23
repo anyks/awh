@@ -81,7 +81,7 @@ cp -r "$ROOT/../third_party/include"/* "$APP_DIR/usr/local/include/lib$PACKAGE_N
 # Копируем заголовки библиотеки
 cp -r "$ROOT/../include"/* "$APP_DIR/usr/local/include/lib$PACKAGE_NAME/$PACKAGE_NAME"/
 # Копируем файл cmake
-cp "$ROOT/../contrib/cmake"/FindAWH.cmake "$APP_DIR/usr/local/share/$PACKAGE_NAME/cmake"/
+cp "$ROOT/../cmake"/FindAWH.cmake "$APP_DIR/usr/local/share/$PACKAGE_NAME/cmake"/
 
 # Создаём ярлык на файл CMake
 ln -s /usr/local/share/$PACKAGE_NAME/cmake/FindAWH.cmake $APP_DIR/usr/local/share/cmake/Modules/FindAWH.cmake

@@ -123,7 +123,7 @@ cp -r "$ROOT/../third_party/include"/* "$APP_DIR/usr/include/lib$PACKAGE_NAME"/
 # Копируем заголовки библиотеки
 cp -r "$ROOT/../include"/* "$APP_DIR/usr/include/lib$PACKAGE_NAME/$PACKAGE_NAME"/
 # Копируем файл cmake
-cp "$ROOT/../contrib/cmake"/FindAWH.cmake "$APP_DIR/usr/share/$PACKAGE_NAME/cmake"/
+cp "$ROOT/../cmake"/FindAWH.cmake "$APP_DIR/usr/share/$PACKAGE_NAME/cmake"/
 # Копируем каталог с скриптом последующей установки
 cp "$ROOT/../package/Solaris"/postinstall "$APP_DIR/usr/sbin"/postinstall-$PACKAGE_NAME
 

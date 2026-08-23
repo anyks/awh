@@ -133,7 +133,7 @@ cp -r "$ROOT/../third_party/include"/* "$WORK_PREFIX/usr/include/lib$PACKAGE_NAM
 # Копируем заголовки библиотеки
 cp -r "$ROOT/../include"/* "$WORK_PREFIX/usr/include/lib$PACKAGE_NAME/$PACKAGE_NAME"/
 # Копируем файл cmake
-cp "$ROOT/../contrib/cmake"/FindAWH.cmake "$WORK_PREFIX/usr/share/$PACKAGE_NAME/cmake"/
+cp "$ROOT/../cmake"/FindAWH.cmake "$WORK_PREFIX/usr/share/$PACKAGE_NAME/cmake"/
 
 # Удаляем более ненужный нам каталог
 rm -rf $TMP_DIR

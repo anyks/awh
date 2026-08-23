@@ -91,7 +91,7 @@ cp "$ROOT/../icons"/icon.ico $ROOT/../setup/
 # Копируем иконку установщика
 cp "$ROOT/../icons"/setup.ico $ROOT/../setup/
 # Копируем файл cmake
-cp "$ROOT/../contrib/cmake"/FindAWH.cmake $ROOT/../setup/
+cp "$ROOT/../cmake"/FindAWH.cmake $ROOT/../setup/
 # Копируем шаблон установщика
 cp "$ROOT/../package/Windows"/install.iss $ROOT/../setup/
 # Копируем зависимости сторонние
