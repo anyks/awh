@@ -30,6 +30,31 @@
 #include <codec/ini/reader.hpp>
 
 /**
+ * @brief Пространство имён образца
+ *
+ */
+namespace {
+	/**
+	 * @brief Функция получения объекта для работы с логами
+	 *
+	 * @details Кодек связку берёт конструктором, а построения образца стоят и вне
+	 *          main(): объект заводится статикою местною, дабы всякое построение
+	 *          образца писало сообщения в один и тот же журнал
+	 *
+	 * @return объект для работы с логами
+	 *
+	 */
+	const awh::log_t * logger() noexcept {
+		// Объект фреймворка
+		static awh::fmk_t fmk;
+		// Объект для работы с логами
+		static awh::log_t log(&fmk);
+		// Выводим объект для работы с логами
+		return &log;
+	}
+}
+
+/**
  * Используем пространство имён AWH
  */
 using namespace awh;
@@ -50,7 +75,7 @@ using namespace std;
  */
 static void parse(const string & title, const string & text, const codec::ini::reader_t::settings_t & settings, const size_t step = 0) noexcept {
 	// Создаём объект потокового чтения текста настроек
-	codec::ini::reader_t reader(settings);
+	codec::ini::reader_t reader(::logger(), settings);
 	// Выводим название разбираемого наречия записи
 	cout << "== " << title << " ==" << endl;
 	// Положение начала очередного куска подаваемого текста
@@ -180,7 +205,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	 */
 	::parse("подача кусками по три байта", text, codec::ini::reader_t::settings_t(), 3);
 	// Создаём объект потокового чтения текста настроек
-	codec::ini::reader_t reader;
+	codec::ini::reader_t reader(::logger());
 	/**
 	 * Если передачу текста настроек выполнить удалось
 	 */

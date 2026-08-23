@@ -30,6 +30,31 @@
 #include <codec/ini/document.hpp>
 
 /**
+ * @brief Пространство имён образца
+ *
+ */
+namespace {
+	/**
+	 * @brief Функция получения объекта для работы с логами
+	 *
+	 * @details Кодек связку берёт конструктором, а построения образца стоят и вне
+	 *          main(): объект заводится статикою местною, дабы всякое построение
+	 *          образца писало сообщения в один и тот же журнал
+	 *
+	 * @return объект для работы с логами
+	 *
+	 */
+	const awh::log_t * logger() noexcept {
+		// Объект фреймворка
+		static awh::fmk_t fmk;
+		// Объект для работы с логами
+		static awh::log_t log(&fmk);
+		// Выводим объект для работы с логами
+		return &log;
+	}
+}
+
+/**
  * Используем пространство имён AWH
  */
 using namespace awh;
@@ -77,7 +102,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	 */
 	settings.references = codec::ini::reference_t::SHELL;
 	// Создаём дерево настроек
-	codec::ini::document_t document;
+	codec::ini::document_t document(::logger());
 	/**
 	 * Если разбор текста настроек выполнить не удалось
 	 */
