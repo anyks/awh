@@ -106,7 +106,7 @@ namespace awh {
 			 * проверкой кругового прохода
 			 *
 			 *  @code{.cpp}
-			 *  writer_t writer;
+			 *  writer_t writer(log);
 			 *
 			 *  writer.field("имя");
 			 *  writer.field("значение");
@@ -139,7 +139,7 @@ namespace awh {
 			 * a round-trip test
 			 *
 			 *  @code{.cpp}
-			 *  writer_t writer;
+			 *  writer_t writer(log);
 			 *
 			 *  writer.field("name");
 			 *  writer.field("value");

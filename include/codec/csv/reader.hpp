@@ -110,7 +110,7 @@ namespace awh {
 			 * через него, не оседая в памяти
 			 *
 			 *  @code{.cpp}
-			 *  reader_t reader;
+			 *  reader_t reader(log);
 			 *
 			 *  reader.feed(chunk.data(), chunk.size(), last);
 			 *
@@ -138,7 +138,7 @@ namespace awh {
 			 * through it without settling in the memory
 			 *
 			 *  @code{.cpp}
-			 *  reader_t reader;
+			 *  reader_t reader(log);
 			 *
 			 *  reader.feed(chunk.data(), chunk.size(), last);
 			 *

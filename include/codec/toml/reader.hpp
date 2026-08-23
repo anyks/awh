@@ -110,7 +110,7 @@ namespace awh {
 			 * достаётся потребителю потоком, а не собранным заранее деревом
 			 *
 			 *  @code{.cpp}
-			 *  reader_t reader;
+			 *  reader_t reader(log);
 			 *
 			 *  reader.feed(chunk.data(), chunk.size(), last);
 			 *
@@ -137,7 +137,7 @@ namespace awh {
 			 * goes to the consumer as a stream rather than as a tree assembled beforehand
 			 *
 			 *  @code{.cpp}
-			 *  reader_t reader;
+			 *  reader_t reader(log);
 			 *
 			 *  reader.feed(chunk.data(), chunk.size(), last);
 			 *

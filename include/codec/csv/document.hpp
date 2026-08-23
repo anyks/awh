@@ -108,7 +108,7 @@ namespace awh {
 			 * их заголовками и выделениями памяти
 			 *
 			 *  @code{.cpp}
-			 *  document_t document;
+			 *  document_t document(log);
 			 *
 			 *  document.parse(text);
 			 *
@@ -129,7 +129,7 @@ namespace awh {
 			 * their headers and memory allocations
 			 *
 			 *  @code{.cpp}
-			 *  document_t document;
+			 *  document_t document(log);
 			 *
 			 *  document.parse(text);
 			 *

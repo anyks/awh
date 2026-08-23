@@ -158,7 +158,7 @@ namespace awh {
 			 * при записи в выдачу не идёт
 			 *
 			 *  @code{.cpp}
-			 *  document_t document;
+			 *  document_t document(log);
 			 *
 			 *  if(document.parse(text)){
 			 *    const string_view host = document.get("host", "server");
@@ -208,7 +208,7 @@ namespace awh {
 			 * does not go into the output at the writing
 			 *
 			 *  @code{.cpp}
-			 *  document_t document;
+			 *  document_t document(log);
 			 *
 			 *  if(document.parse(text)){
 			 *    const string_view host = document.get("host", "server");

@@ -190,7 +190,7 @@ namespace awh {
 			 * но неограниченным не бывает: узнают его вызовом @c footprint()
 			 *
 			 *  @code{.cpp}
-			 *  document_t document;
+			 *  document_t document(log);
 			 *
 			 *  if(document.parse(text)){
 			 *    const string_view host = document.text({"server", "host"});
@@ -270,7 +270,7 @@ namespace awh {
 			 * but is never unlimited: it is learnt by a call to @c footprint()
 			 *
 			 *  @code{.cpp}
-			 *  document_t document;
+			 *  document_t document(log);
 			 *
 			 *  if(document.parse(text)){
 			 *    const string_view host = document.text({"server", "host"});

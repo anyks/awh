@@ -133,7 +133,7 @@ namespace awh {
 			 * собран целиком
 			 *
 			 *  @code{.cpp}
-			 *  reader_t reader(reader_t::settings_t::git());
+			 *  reader_t reader(log, reader_t::settings_t::git());
 			 *
 			 *  while(reader.feed(chunk, size, last)){
 			 *    while(reader.next()){
@@ -170,7 +170,7 @@ namespace awh {
 			 * is assembled in full
 			 *
 			 *  @code{.cpp}
-			 *  reader_t reader(reader_t::settings_t::git());
+			 *  reader_t reader(log, reader_t::settings_t::git());
 			 *
 			 *  while(reader.feed(chunk, size, last)){
 			 *    while(reader.next()){

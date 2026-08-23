@@ -121,7 +121,7 @@ namespace awh {
 			 * выдаёт текст, читаемый обратно неверно
 			 *
 			 *  @code{.cpp}
-			 *  writer_t writer;
+			 *  writer_t writer(log);
 			 *
 			 *  writer.comment("собрано автоматически");
 			 *  writer.section("server");
@@ -145,7 +145,7 @@ namespace awh {
 			 * issuing a text read back incorrectly
 			 *
 			 *  @code{.cpp}
-			 *  writer_t writer;
+			 *  writer_t writer(log);
 			 *
 			 *  writer.comment("built automatically");
 			 *  writer.section("server");

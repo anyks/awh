@@ -128,7 +128,7 @@ namespace awh {
 			 * запись не вправе
 			 *
 			 *  @code{.cpp}
-			 *  writer_t writer;
+			 *  writer_t writer(log);
 			 *
 			 *  writer.comment("собрано автоматически");
 			 *  writer.table("server");
@@ -164,7 +164,7 @@ namespace awh {
 			 * truncate the content
 			 *
 			 *  @code{.cpp}
-			 *  writer_t writer;
+			 *  writer_t writer(log);
 			 *
 			 *  writer.comment("built automatically");
 			 *  writer.table("server");
