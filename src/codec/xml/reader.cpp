@@ -685,10 +685,20 @@ void awh::codec::xml::Reader::report(const error_t error, const location_t & loc
 		 * @note Отказ разбора беда не критическая: негодный текст приходит извне, и работы
 		 *       приложения он не рушит. Оттого запись идёт предупреждением
 		 */
+		/**
+		 * @warning Место отказа кладётся в ТЕКСТ записи обеими ветвями, а не одним лишь
+		 *          доводом отладочной. Довод отладочная выдаёт особою строкою «Arguments
+		 *          function», и запись выходила бы РАЗНОЮ по виду сборки - читающему же
+		 *          журнал до вида сборки дела нет. Нашлось Николаем 23.08.2026: проверки
+		 *          мои шли отдельным стендом, а он собирается без «DEBUG_MODE», и оттого
+		 *          расхождение это у меня было зелено, а в общей сборке падало
+		 */
 		#if DEBUG_MODE
 			// Записываем отказ разбора в журнал работы
-			this->_log->debug("%s", __PRETTY_FUNCTION__, ::std::make_tuple(location.line, location.column),
-			                  log_t::flag_t::WARNING, message(error));
+			this->_log->debug("XML parsing failed at line %llu column %llu: %s", __PRETTY_FUNCTION__,
+			                  ::std::make_tuple(location.line, location.column), log_t::flag_t::WARNING,
+			                  static_cast <unsigned long long> (location.line),
+			                  static_cast <unsigned long long> (location.column), message(error));
 		#else
 			// Записываем отказ разбора в журнал работы
 			this->_log->print("XML parsing failed at line %llu column %llu: %s", log_t::flag_t::WARNING,
@@ -6797,14 +6807,7 @@ awh::codec::xml::Reader::Reader(const log_t * log) noexcept :
  _closing(false), _cdata(false), _partial(false), _carried(false), _section(0), _dirty(false), _foreign(false), _overlong(false), _offset(0), _consumed(0), _line(1), _column(1),
  _depth(0), _truncate(string::npos), _expansion(0), _state(state_t::HUNGRY),
  _event(event_t::NONE), _error(error_t::NONE), _decoding(error_t::NONE), _encoding(encoding_t::NONE),
- _standalone(standalone_t::NONE), _space(space_t::DEFAULT), _log(log) {
-	/**
-	 * Выполняем установку объекта ведения журнала разбору кодировок
-	 *
-	 * @note Приведение к UTF-8 сообщает о бедах своих само, и молчать ему нельзя: текст
-	 *       негодной кодировки до разбора не доходит вовсе
-	 */
-	this->_decoder.setLogger(log);
+ _standalone(standalone_t::NONE), _space(space_t::DEFAULT), _decoder(log), _log(log) {
 	// Выполняем сброс разбора в исходное состояние
 	this->reset();
 }
@@ -6815,19 +6818,12 @@ awh::codec::xml::Reader::Reader(const log_t * log) noexcept :
  * @param log      объект ведения журнала работы
  *
  */
-awh::codec::xml::Reader::Reader(const settings_t & settings, const log_t * log) noexcept :
+awh::codec::xml::Reader::Reader(const log_t * log, const settings_t & settings) noexcept :
  _final(false), _root(false), _declared(false), _doctype(false), _empty(false),
  _closing(false), _cdata(false), _partial(false), _carried(false), _section(0), _dirty(false), _foreign(false), _overlong(false), _offset(0), _consumed(0), _line(1), _column(1),
  _depth(0), _truncate(string::npos), _expansion(0), _settings(settings),
  _state(state_t::HUNGRY), _event(event_t::NONE), _error(error_t::NONE), _decoding(error_t::NONE),
- _encoding(encoding_t::NONE), _standalone(standalone_t::NONE), _space(space_t::DEFAULT), _log(log) {
-	/**
-	 * Выполняем установку объекта ведения журнала разбору кодировок
-	 *
-	 * @note Приведение к UTF-8 сообщает о бедах своих само, и молчать ему нельзя: текст
-	 *       негодной кодировки до разбора не доходит вовсе
-	 */
-	this->_decoder.setLogger(log);
+ _encoding(encoding_t::NONE), _standalone(standalone_t::NONE), _space(space_t::DEFAULT), _decoder(log), _log(log) {
 	// Выполняем сброс разбора в исходное состояние
 	this->reset();
 }

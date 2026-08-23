@@ -1475,6 +1475,11 @@ if (${CMAKE_BUILD_SAMPLES})
     # Указываем что нужно собрать приложение работы с Ethernet-адресами
     option(CMAKE_BUILD_ETH_NET_APP_SAMPLE "Build ETH app sample" ON)
 
+    # Устанавливаем имя приложения работы с распределителем памяти
+    SET(ALLOC_APP_NAME alloc)
+    # Указываем что нужно собрать приложение работы с распределителем памяти
+    option(CMAKE_BUILD_ALLOC_APP_SAMPLE "Build Allocator app sample" ON)
+
     # Устанавливаем имя приложения работы с датой и временем
     SET(DATE_APP_SYS_NAME sys-date)
     # Указываем что нужно собрать приложение работы с датой и временем
@@ -2077,6 +2082,18 @@ if (${CMAKE_BUILD_SAMPLES})
         # Выводим сообщение о сборке семпла
         message(STATUS "Build sample UNIT Notifier: No\n")
     endif (${CMAKE_BUILD_UNIT_NOTIFIER_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с распределителем памяти
+    if (${CMAKE_BUILD_ALLOC_APP_SAMPLE})
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample ALLOC: Yes\n")
+        # Выполняем создание приложения работы с распределителем памяти
+        add_sample(${ALLOC_APP_NAME} sample/alloc/alloc.cpp alloc)
+    # Если не нужно собирать семплы для работы с распределителем памяти
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample ALLOC: No\n")
+    endif (${CMAKE_BUILD_ALLOC_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с датой и временем
     if (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
@@ -3050,6 +3067,16 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_ETH_NET_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с распределителем памяти
+        if (${CMAKE_BUILD_ALLOC_APP_SAMPLE})
+            # Выполняем сборку приложения распределителя памяти
+            target_link_libraries(
+                ${ALLOC_APP_NAME}
+                ${AWH_LIB_NAME}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_ALLOC_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с датой и временем
         if (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
@@ -4151,6 +4178,17 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_ETH_NET_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с распределителем памяти
+        if (${CMAKE_BUILD_ALLOC_APP_SAMPLE})
+            # Выполняем сборку приложения распределителя памяти
+            target_link_libraries(
+                ${ALLOC_APP_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_ALLOC_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с датой и временем
         if (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
@@ -5284,6 +5322,16 @@ if (${CMAKE_BUILD_SAMPLES})
                 )
             endif (${CMAKE_BUILD_ETH_NET_APP_SAMPLE})
 
+            # Если нужно собрать семплы для работы с распределителем памяти
+            if (${CMAKE_BUILD_ALLOC_APP_SAMPLE})
+                # Выполняем сборку приложения распределителя памяти
+                add_custom_command(TARGET "${ALLOC_APP_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${ALLOC_APP_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${ALLOC_APP_NAME}\" to enable core dump on macOS"
+                    VERBATIM
+                )
+            endif (${CMAKE_BUILD_ALLOC_APP_SAMPLE})
+
             # Если нужно собрать семплы для работы с датой и временем
             if (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
                 # Выполняем сборку приложения даты и времени
@@ -5882,6 +5930,12 @@ if (${CMAKE_BUILD_SAMPLES})
                 pvs_studio_add_target(TARGET ${ETH_APP_NET_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${ETH_APP_NET_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
             endif (${CMAKE_BUILD_ETH_NET_APP_SAMPLE})
 
+            # Если нужно собрать семплы для работы с распределителем памяти
+            if (${CMAKE_BUILD_ALLOC_APP_SAMPLE})
+                # Выполняем анализ приложения распределителя памяти
+                pvs_studio_add_target(TARGET ${ALLOC_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${ALLOC_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+            endif (${CMAKE_BUILD_ALLOC_APP_SAMPLE})
+
             # Если нужно собрать семплы для работы с датой и временем
             if (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
                 # Выполняем анализ приложения даты и времени
@@ -6404,6 +6458,12 @@ if (${CMAKE_BUILD_SAMPLES})
         # Устанавливаем приложение работы с Ethernet-адресами
         install(TARGETS ${ETH_APP_NET_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
     endif (${CMAKE_BUILD_ETH_NET_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с распределителем памяти
+    if (${CMAKE_BUILD_ALLOC_APP_SAMPLE})
+        # Устанавливаем приложение работы с распределителем памяти
+        install(TARGETS ${ALLOC_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+    endif (${CMAKE_BUILD_ALLOC_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с датой и временем
     if (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})

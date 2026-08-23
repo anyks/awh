@@ -28,7 +28,71 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <gtest/gtest.h>
+#include <sys/fmk.hpp>
+#include <sys/log.hpp>
+
+/**
+ * Подключаем заголовочные файлы модуля
+ */
 #include <codec/json/json.hpp>
+
+/**
+ * @brief Пространство имён проверок этого файла
+ *
+ * @note Держится оно безымянным намеренно: проверки кодеков собираются одной
+ *       программою, и одноимённые построения разных файлов иначе сходятся в
+ *       одно, порождая порчу вдали от места её причины
+ *
+ */
+namespace {
+	/**
+	 * @brief Объект журнала проверок с отключённым выводом
+	 *
+	 * @details Вывод отключается назначением пустого перечня приёмников: отказы
+	 *          разбора проверки наводят намеренно, и журнал их засорял бы выдачу
+	 *
+	 */
+	struct Silent {
+		/**
+		 * @brief Функция получения объекта фреймворка проверок
+		 *
+		 * @details Объект заводится статикою местною, а не общею файла: заведение его
+		 *          порядком построения статики оканчивается падением ещё до входа в
+		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
+		 *
+		 * @return объект фреймворка проверок
+		 *
+		 */
+		static const awh::fmk_t & framework() noexcept {
+			// Объект фреймворка проверок
+			static awh::fmk_t fmk;
+			// Выводим объект фреймворка проверок
+			return fmk;
+		}
+		// Объект журнала проверок
+		awh::log_t log;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Silent() noexcept : log(&Silent::framework()) {
+			// Выполняем отключение вывода логов
+			this->log.mode({});
+		}
+	};
+	/**
+	 * @brief Функция получения объекта журнала проверок
+	 *
+	 * @return объект журнала проверок
+	 *
+	 */
+	const awh::log_t * logger() noexcept {
+		// Объект журнала проверок
+		static Silent silent;
+		// Выводим объект журнала проверок
+		return &silent.log;
+	}
+}
 
 /**
  * Используем стандартное пространство имён
@@ -211,7 +275,7 @@ TEST(CodecJsonValue, ParseFailure) {
  */
 TEST(CodecJsonValue, Bridge) {
 	// Документ, разбирающий текст
-	json::document_t document;
+	json::document_t document(::logger());
 	// Выполняем разбор текста документа
 	ASSERT_TRUE(document.parse("{\"вложенный\":{\"ключ\":[1,2,3]}}"));
 	// Выполняем снятие поддерева документа собственной памятью
@@ -325,7 +389,7 @@ TEST(CodecJsonValue, Place) {
  */
 TEST(CodecJsonValue, Builder) {
 	// Объект потоковой сборки значения
-	json::builder_t builder;
+	json::builder_t builder(::logger());
 	// Выполняем открытие объекта
 	ASSERT_TRUE(builder.object());
 	// Выполняем запись имени поля объекта
@@ -364,7 +428,7 @@ TEST(CodecJsonValue, Builder) {
  */
 TEST(CodecJsonValue, BuilderFailure) {
 	// Объект потоковой сборки значения
-	json::builder_t builder;
+	json::builder_t builder(::logger());
 	// Выполняем проверку отказа закрытия неоткрытого вместилища
 	ASSERT_FALSE(builder.close());
 	// Выполняем открытие объекта
@@ -394,7 +458,7 @@ TEST(CodecJsonValue, BuilderGraft) {
 	// Готовое поддерево, собранное где-то ещё
 	const json::value_t nested = ::produce();
 	// Объект потоковой сборки значения
-	json::builder_t builder;
+	json::builder_t builder(::logger());
 	// Выполняем открытие объекта
 	ASSERT_TRUE(builder.object());
 	// Выполняем запись имени поля объекта
@@ -588,7 +652,7 @@ TEST(CodecJsonValue, Consistency) {
 		"\"e\":18446744073709551615,\"f\":-9223372036854775808,"
 		"\"g\":-0.0,\"h\":255,\"i\":-128,\"j\":1e400}";
 	// Документ, разбирающий текст
-	json::document_t document;
+	json::document_t document(::logger());
 	// Выполняем разбор текста документа
 	ASSERT_TRUE(document.parse(text));
 	// Снятое с документа значение
@@ -711,7 +775,7 @@ TEST(CodecJsonValue, Clear) {
  */
 TEST(CodecJsonValue, Graft) {
 	// Документ, разбирающий текст
-	json::document_t document;
+	json::document_t document(::logger());
 	// Выполняем разбор текста документа
 	ASSERT_TRUE(document.parse("{\"a\":1,\"b\":{\"c\":[1,2,3]},\"d\":\"хвост\"}"));
 	// Прививаемое значение
@@ -743,7 +807,7 @@ TEST(CodecJsonValue, Graft) {
  */
 TEST(CodecJsonValue, GraftPlaces) {
 	// Документ, разбирающий текст
-	json::document_t document;
+	json::document_t document(::logger());
 	// Выполняем разбор текста документа
 	ASSERT_TRUE(document.parse("{\"list\":[1,{\"x\":0},3]}"));
 	// Выполняем прививку значения на место значения массива
@@ -770,7 +834,7 @@ TEST(CodecJsonValue, GraftPlaces) {
  */
 TEST(CodecJsonValue, GraftFailure) {
 	// Документ, разбирающий текст
-	json::document_t document;
+	json::document_t document(::logger());
 	// Выполняем разбор текста документа
 	ASSERT_TRUE(document.parse("{\"a\":{\"b\":1}}"));
 	// Выполняем проверку отказа прививки по отсутствующему пути
@@ -794,7 +858,7 @@ TEST(CodecJsonValue, GraftRoundtrip) {
 	// Разбираемый текст документа
 	const string text = "{\"настройки\":{\"порт\":80,\"хост\":\"localhost\"},\"прочее\":[1,2]}";
 	// Документ, разбирающий текст
-	json::document_t document;
+	json::document_t document(::logger());
 	// Выполняем разбор текста документа
 	ASSERT_TRUE(document.parse(text));
 	// Выполняем снятие поддерева документа собственной памятью
@@ -809,7 +873,7 @@ TEST(CodecJsonValue, GraftRoundtrip) {
 	ASSERT_STREQ(document.dump().c_str(),
 		"{\"настройки\":{\"порт\":8080,\"хост\":\"localhost\",\"пределы\":{\"связей\":1024}},\"прочее\":[1,2]}");
 	// Документ, разбирающий перезаписанный текст
-	json::document_t twin;
+	json::document_t twin(::logger());
 	// Выполняем разбор перезаписанного текста
 	ASSERT_TRUE(twin.parse(document.dump())) << json::message(twin.error());
 	// Выполняем проверку совпадения деревьев
@@ -838,7 +902,7 @@ TEST(CodecJsonValue, GraftIndexed) {
 	// Завершаем сборку текста объекта
 	text.append("}");
 	// Документ, разбирающий текст
-	json::document_t document;
+	json::document_t document(::logger());
 	// Выполняем разбор текста документа
 	ASSERT_TRUE(document.parse(text));
 	// Выполняем обращение по имени, заводящее отображение имён полей объекта
@@ -869,7 +933,7 @@ TEST(CodecJsonValue, CompareNan) {
 	// Дозволяем запись чисел, стандарту неведомых
 	settings.writer.allowInfinityAndNan = true;
 	// Документ, разбирающий текст
-	json::document_t document;
+	json::document_t document(::logger());
 	// Выполняем установку настроек документа
 	document.settings(settings);
 	// Выполняем разбор текста документа
@@ -904,7 +968,7 @@ TEST(CodecJsonValue, CompareDuplicates) {
 	// Затребуем сохранение полей с повторяющимися именами
 	settings.duplicates = json::duplicate_t::KEEP;
 	// Документ, разбирающий текст
-	json::document_t document;
+	json::document_t document(::logger());
 	// Выполняем установку настроек документа
 	document.settings(settings);
 	// Выполняем разбор текста документа с повторяющимся именем поля
@@ -918,7 +982,7 @@ TEST(CodecJsonValue, CompareDuplicates) {
 	// Выполняем проверку записи снятого значения
 	ASSERT_STREQ(value.dump().c_str(), "{\"a\":1,\"a\":2}");
 	// Документ, разбирающий иной порядок повторяющихся полей
-	json::document_t twin;
+	json::document_t twin(::logger());
 	// Выполняем установку настроек документа
 	twin.settings(settings);
 	// Выполняем разбор текста документа с иным порядком полей
@@ -977,7 +1041,7 @@ TEST(CodecJsonValue, Differential) {
 		 */
 		for(auto & sample : samples){
 			// Документ, разбирающий текст
-			json::document_t document;
+			json::document_t document(::logger());
 			// Выполняем установку настроек документа
 			document.settings(settings);
 			// Выполняем разбор текста документа
@@ -987,7 +1051,7 @@ TEST(CodecJsonValue, Differential) {
 			// Выполняем проверку совпадения записей обоих путей
 			ASSERT_EQ(document.dump(), value.dump(settings.writer)) << sample;
 			// Документ, разбирающий запись снятого значения
-			json::document_t twin;
+			json::document_t twin(::logger());
 			// Выполняем установку настроек документа
 			twin.settings(settings);
 			// Выполняем разбор записи снятого значения
@@ -1036,7 +1100,7 @@ TEST(CodecJsonValue, Append) {
  */
 TEST(CodecJsonValue, BuilderAppend) {
 	// Объект потоковой сборки значения
-	json::builder_t builder;
+	json::builder_t builder(::logger());
 	// Выполняем открытие объекта
 	ASSERT_TRUE(builder.object());
 	// Выполняем запись имени поля объекта
@@ -1087,7 +1151,7 @@ TEST(CodecJsonValue, BuilderAppend) {
  */
 TEST(CodecJsonValue, AppendRoundtrip) {
 	// Объект дерева документа
-	json::document_t document;
+	json::document_t document(::logger());
 	// Получаем настройки разбора текста документа
 	json::document_t::settings_t settings = document.settings();
 	// Устанавливаем удержание повторяющихся имён полей объекта
@@ -1101,7 +1165,7 @@ TEST(CodecJsonValue, AppendRoundtrip) {
 	// Выполняем проверку того, что повторы значением удержаны
 	ASSERT_EQ(value.size(), static_cast <size_t> (2));
 	// Объект потоковой сборки значения
-	json::builder_t builder;
+	json::builder_t builder(::logger());
 	// Выполняем открытие объекта
 	ASSERT_TRUE(builder.object());
 	/**
@@ -1694,7 +1758,7 @@ TEST(CodecJsonValue, BuilderSurface) {
 	 */
 	{
 		// Объект потоковой сборки значения
-		json::builder_t builder;
+		json::builder_t builder(::logger());
 		// Выполняем открытие массива
 		ASSERT_TRUE(builder.array());
 		// Выполняем запись пустого значения
@@ -1726,7 +1790,7 @@ TEST(CodecJsonValue, BuilderSurface) {
 	 */
 	{
 		// Объект потоковой сборки значения
-		json::builder_t builder;
+		json::builder_t builder(::logger());
 		// Выполняем запись пустого значения верхнего уровня
 		ASSERT_TRUE(builder.null());
 		// Выполняем проверку отклонения второго значения верхнего уровня
@@ -1739,7 +1803,7 @@ TEST(CodecJsonValue, BuilderSurface) {
 	 */
 	{
 		// Объект потоковой сборки значения
-		json::builder_t builder;
+		json::builder_t builder(::logger());
 		// Выполняем проверку отклонения имени пары вне отображения
 		ASSERT_FALSE(builder.key("x"));
 		// Выполняем открытие массива
@@ -1760,7 +1824,7 @@ TEST(CodecJsonValue, BuilderSurface) {
 	 */
 	{
 		// Объект потоковой сборки значения
-		json::builder_t builder;
+		json::builder_t builder(::logger());
 		// Выполняем открытие объекта
 		ASSERT_TRUE(builder.object());
 		// Выполняем проверку отклонения значения без имени пары
@@ -1774,7 +1838,7 @@ TEST(CodecJsonValue, BuilderSurface) {
 	 */
 	{
 		// Объект потоковой сборки значения
-		json::builder_t builder;
+		json::builder_t builder(::logger());
 		// Выполняем открытие массива
 		ASSERT_TRUE(builder.array());
 		// Выполняем закрытие массива
@@ -1811,7 +1875,7 @@ TEST(CodecJsonValue, GraftKinds) {
 	 */
 	auto graft = [](const string & text, const string & pointer, const json::value_t & value) noexcept -> string {
 		// Объект дерева документа
-		json::document_t document;
+		json::document_t document(::logger());
 		// Выполняем разбор текста дерева документа
 		if(!document.parse(text))
 			// Выводим признак отказа разбора текста дерева
@@ -1863,7 +1927,7 @@ TEST(CodecJsonValue, GraftKinds) {
 	 */
 	{
 		// Объект дерева документа
-		json::document_t document;
+		json::document_t document(::logger());
 		// Выполняем проверку отклонения пути в дереве, ещё не заведённом
 		ASSERT_FALSE(document.graft("/a", json::value_t(true)));
 		// Выполняем разбор текста дерева перечня
@@ -2001,7 +2065,7 @@ TEST(CodecJsonValue, UncoveredEdges) {
 	 */
 	{
 		// Объект дерева документа, ничего не разобравшего
-		json::document_t document;
+		json::document_t document(::logger());
 		// Объект значения, снятого с корня пустого дерева
 		json::value_t value(document.root());
 		// Выполняем проверку неопределённости снятого значения
@@ -2151,7 +2215,7 @@ TEST(CodecJsonValue, GraftNumbersIntoDocument) {
 		// Выполняем проверку выбранного вида хранения
 		ASSERT_EQ(value.is(json::type_t::FLOAT), item.second) << item.first;
 		// Объект дерева документа
-		json::document_t document;
+		json::document_t document(::logger());
 		// Выполняем разбор текста документа
 		ASSERT_TRUE(document.parse("{\"a\":1}")) << item.first;
 		// Выполняем прививку числа на место уже занятое
@@ -2171,7 +2235,7 @@ TEST(CodecJsonValue, GraftNumbersIntoDocument) {
 	 */
 	{
 		// Объект дерева документа
-		json::document_t document;
+		json::document_t document(::logger());
 		// Выполняем разбор текста документа
 		ASSERT_TRUE(document.parse("{\"a\":1}"));
 		// Выполняем проверку отказа прививки на отсутствующее место
@@ -2494,5 +2558,105 @@ TEST(CodecJsonValue, MutationSurvivesRewrite){
 		ASSERT_EQ(back["k"].text().size(), item.size()) << value.dump();
 		// Выполняем сличение содержимого строки, пережившего перезапись
 		ASSERT_EQ(back["k"].text(), item) << value.dump();
+	}
+}
+
+/**
+ * @brief Проверка сообщения об отказах кодека в журнал работы
+ *
+ * @details Кодек сообщает об отказах своих в журнал фреймворка, и записи эти собираются
+ * перехватом в функцию обратного вызова: вид вывода `DEFERRED` уводит их туда целиком,
+ * не трогая ни файлов, ни вывода на пульт
+ *
+ * @note Проверяются ОБЕ половины: отказ обязан давать запись, а успех обязан НЕ давать
+ * @warning У записи JSON поля кода отказа НЕТ вовсе, и наружу идёт голая ложь: журнал
+ *          здесь единственный способ узнать, чем запись не устроила. Оттого сличается и
+ *          содержимое записи, а не одно лишь её наличие
+ */
+TEST(CodecJsonValue, LoggerReportsFailures){
+	// Объект фреймворка
+	fmk_t fmk;
+	// Объект ведения журнала работы
+	log_t log(&fmk);
+	// Уводим записи журнала целиком в функцию обратного вызова
+	log.mode({log_t::mode_t::DEFERRED});
+	// Собираемые перехваченные записи журнала
+	vector <pair <log_t::flag_t, string>> caught;
+	// Выполняем подписку на записи журнала работы
+	log.subscribe([&caught](const log_t::flag_t flag, string_view text) noexcept {
+		// Выполняем сбор очередной перехваченной записи
+		caught.emplace_back(flag, string(text));
+	});
+	/**
+	 * Выполняем проверку сообщения об отказе разбора
+	 */
+	{
+		// Собираемое значение
+		json::value_t value;
+		// Выполняем установку объекта ведения журнала работы
+		value.setLogger(&log);
+		// Выполняем разбор негодного текста
+		ASSERT_FALSE(value.parse("{\"a\": }"));
+		// Выполняем проверку того, что запись об отказе сделана
+		ASSERT_EQ(caught.size(), static_cast <size_t> (1));
+		// Выполняем проверку важности записи об отказе разбора
+		ASSERT_EQ(caught.front().first, log_t::flag_t::WARNING);
+		/**
+		 * Выполняем проверку того, что запись несёт место отказа
+		 *
+		 * @note Запись без места бесполезна: разбирается текст в мегабайты, и «разбор
+		 *       отказал» без строки и столбца читающему журнал не говорит ничего
+		 */
+		ASSERT_NE(caught.front().second.find("line"), string::npos) << caught.front().second;
+	}
+	// Выполняем очистку собранных записей журнала
+	caught.clear();
+	/**
+	 * Выполняем проверку молчания при успешном разборе
+	 */
+	{
+		// Собираемое значение
+		json::value_t value;
+		// Выполняем установку объекта ведения журнала работы
+		value.setLogger(&log);
+		// Выполняем разбор годного текста
+		ASSERT_TRUE(value.parse("{\"a\": 1}"));
+		// Выполняем проверку того, что записей об успешном разборе не сделано
+		ASSERT_TRUE(caught.empty()) << caught.front().second;
+	}
+	/**
+	 * Выполняем проверку работы без объекта ведения журнала
+	 */
+	{
+		// Собираемое значение
+		json::value_t value;
+		// Выполняем разбор негодного текста без журнала
+		ASSERT_FALSE(value.parse("{\"a\": }"));
+	}
+	// Выполняем очистку собранных записей журнала
+	caught.clear();
+	/**
+	 * Выполняем проверку сообщения об отказе записи
+	 */
+	{
+		// Объект записи текста
+		json::writer_t writer(&log);
+		/**
+		 * Выполняем запись имени поля вне объекта
+		 *
+		 * @note Отказ этот беда СВОЯ: записывается то, что собрало приложение
+		 */
+		ASSERT_FALSE(writer.key("поле"));
+		// Выполняем проверку того, что запись об отказе сделана
+		ASSERT_FALSE(caught.empty());
+		// Выполняем проверку важности записи об отказе записи
+		ASSERT_EQ(caught.front().first, log_t::flag_t::CRITICAL) << caught.front().second;
+		/**
+		 * Выполняем проверку того, что запись несёт ДОВОД отказа
+		 *
+		 * @warning Здесь это существеннее, чем у разбора: кода отказа у записи нет, и
+		 *          запись без довода не оставила бы потребителю ничего вовсе
+		 */
+		ASSERT_NE(caught.front().second.find("object"), string::npos) << caught.front().second;
 	}
 }

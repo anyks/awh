@@ -353,6 +353,15 @@ const char * awh::codec::xml::name(const encoding_t encoding) noexcept {
 		case static_cast <uint8_t> (encoding_t::ASCII):
 			// Выводим название кодировки
 			return "US-ASCII";
+		/**
+		 * Если кодировка взята таблицею у общего модуля кодировок
+		 *
+		 * @note Имени самой кодировки вид этот не несёт: какая именно взята, хранится
+		 *       таблицею у разбора, а сюда приходит один лишь вид
+		 */
+		case static_cast <uint8_t> (encoding_t::SINGLE):
+			// Выводим обозначение вида кодировки
+			return "single-byte";
 	}
 	// Выводим название неопределённой кодировки
 	return "";

@@ -27,6 +27,64 @@
 #include <codec/json/json.hpp>
 
 /**
+ * @brief Пространство имён проверок этого файла
+ *
+ * @note Держится оно безымянным намеренно: проверки кодеков собираются одной
+ *       программою, и одноимённые построения разных файлов иначе сходятся в
+ *       одно, порождая порчу вдали от места её причины
+ *
+ */
+namespace {
+	/**
+	 * @brief Объект журнала проверок с отключённым выводом
+	 *
+	 * @details Вывод отключается назначением пустого перечня приёмников: отказы
+	 *          разбора проверки наводят намеренно, и журнал их засорял бы выдачу
+	 *
+	 */
+	struct Silent {
+		/**
+		 * @brief Функция получения объекта фреймворка проверок
+		 *
+		 * @details Объект заводится статикою местною, а не общею файла: заведение его
+		 *          порядком построения статики оканчивается падением ещё до входа в
+		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
+		 *
+		 * @return объект фреймворка проверок
+		 *
+		 */
+		static const awh::fmk_t & framework() noexcept {
+			// Объект фреймворка проверок
+			static awh::fmk_t fmk;
+			// Выводим объект фреймворка проверок
+			return fmk;
+		}
+		// Объект журнала проверок
+		awh::log_t log;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Silent() noexcept : log(&Silent::framework()) {
+			// Выполняем отключение вывода логов
+			this->log.mode({});
+		}
+	};
+	/**
+	 * @brief Функция получения объекта журнала проверок
+	 *
+	 * @return объект журнала проверок
+	 *
+	 */
+	const awh::log_t * logger() noexcept {
+		// Объект журнала проверок
+		static Silent silent;
+		// Выводим объект журнала проверок
+		return &silent.log;
+	}
+}
+
+/**
  * Используем стандартное пространство имён
  */
 using namespace std;
@@ -72,7 +130,7 @@ static vector <event_t> parse(const string & text, const size_t chunk = 0, const
 	// Собранные события разбора текста документа
 	vector <event_t> result;
 	// Объект разбора текста документа
-	json::reader_t reader;
+	json::reader_t reader(::logger());
 	// Выполняем установку настроек разбора текста
 	reader.settings(settings);
 	// Получаем размер куска, каким подаётся текст документа
@@ -505,7 +563,7 @@ TEST(CodecJsonReader, Location) {
 	// Выполняем проверку положения логического значения в строке
 	ASSERT_EQ(events[5].column, 5u);
 	// Объект разбора текста документа
-	json::reader_t reader;
+	json::reader_t reader(::logger());
 	// Выполняем подачу негодного текста документа разбору
 	ASSERT_FALSE(reader.feed(string_view("{\n  \"a\": tru\n}")));
 	// Выполняем проверку кода отказа разбора
@@ -519,7 +577,7 @@ TEST(CodecJsonReader, Location) {
  */
 TEST(CodecJsonReader, Depth) {
 	// Объект разбора текста документа
-	json::reader_t reader;
+	json::reader_t reader(::logger());
 	// Выполняем проверку глубины вложенности до подачи текста
 	ASSERT_EQ(reader.depth(), 0u);
 	/**
@@ -542,7 +600,7 @@ TEST(CodecJsonReader, Depth) {
  */
 TEST(CodecJsonReader, Reset) {
 	// Объект разбора текста документа
-	json::reader_t reader;
+	json::reader_t reader(::logger());
 	// Выполняем подачу негодного текста документа разбору
 	ASSERT_FALSE(reader.feed(string_view("[1,]")));
 	// Выполняем проверку кода отказа разбора
@@ -850,7 +908,7 @@ TEST(CodecJsonReader, DirectVerification) {
 	 */
 	auto feed = [](const string & text, const size_t chunk) noexcept -> json::error_t {
 		// Объект потокового чтения текста документа
-		json::reader_t reader;
+		json::reader_t reader(::logger());
 		/**
 		 * Выполняем подачу текста документа кусками
 		 */
@@ -960,7 +1018,7 @@ TEST(CodecJsonReader, CommentsAndEdgeRefusals) {
 		// Выполняем установку признака выдачи событий примечаний
 		settings.emitComments = true;
 		// Объект потокового чтения текста документа
-		json::reader_t reader;
+		json::reader_t reader(::logger());
 		// Выполняем установку настроек разбора
 		reader.settings(settings);
 		// Выполняем подачу текста документа целиком
@@ -1006,7 +1064,7 @@ TEST(CodecJsonReader, CommentsAndEdgeRefusals) {
 	 */
 	{
 		// Объект потокового чтения текста документа
-		json::reader_t reader;
+		json::reader_t reader(::logger());
 		// Выполняем подачу текста документа целиком
 		ASSERT_TRUE(reader.feed("[1]", 3, true));
 		/**
@@ -1227,7 +1285,7 @@ TEST(CodecJsonReader, AbortByConsumer) {
 		// Количество полученных обработчиком событий
 		uint32_t count = 0;
 		// Объект разбора текста документа
-		json::reader_t reader;
+		json::reader_t reader(::logger());
 		// Устанавливаем обработчик прямой выдачи событий разбора
 		reader.handler([](void * context, json::reader_t & reader, const json::event_t event, const json::span_t content, const bool modified) noexcept -> void {
 			// Получаем счётчик полученных событий
@@ -1253,7 +1311,7 @@ TEST(CodecJsonReader, AbortByConsumer) {
 	 */
 	{
 		// Объект разбора текста документа
-		json::reader_t reader;
+		json::reader_t reader(::logger());
 		// Настройки разбора текста документа
 		json::reader_t::settings_t settings;
 		// Дозволяем примечания в тексте документа
@@ -1280,7 +1338,7 @@ TEST(CodecJsonReader, AbortByConsumer) {
 	 */
 	{
 		// Объект разбора текста документа
-		json::reader_t reader;
+		json::reader_t reader(::logger());
 		// Выполняем подачу негодного текста документа
 		ASSERT_FALSE(reader.feed("{,}", 3, true));
 		// Выполняем проверку установки кода отказа разбора

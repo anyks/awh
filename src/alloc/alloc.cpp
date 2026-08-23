@@ -1984,6 +1984,64 @@ static void * __awh_alloc_memalign__(size_t alignment, size_t size) {
 		return __awh_alloc_memalign__(alignment, size);
 	}
 	/**
+	 * @brief Метод определения размера выданного блока
+	 *
+	 * @note Имя своё у каждой системы: `malloc_usable_size` у Linux и Solaris,
+	 *       `malloc_size` у FreeBSD, а у OpenBSD и NetBSD такого метода нет ВОВСЕ - и
+	 *       определять его там нечего. Тот же перечень записан у опознания прежних
+	 *       функций в `capture/elf.cpp`
+	 *
+	 * @note Прежде наружу оно не выставлялось вовсе, и это был пробел: подмена именами
+	 *       у систем ELF отдаёт нам `malloc`, но не его. Приложение, спросившее размер
+	 *       НАШЕГО блока, получало ответ от библиотеки времени исполнения, а та читала
+	 *       наш блок как свой. Проверено на Debian 12: ответом шёл НОЛЬ на всякий блок,
+	 *       какого размера его ни проси. Нуль безобиден лишь по случайности - разбор
+	 *       чужого заголовка вправе вернуть и мусор
+	 *
+	 * @param ptr разбираемый адрес
+	 * @return    размер выданного блока в байтах
+	 *
+	 */
+	#if defined(__linux__) || defined(__FreeBSD__) || defined(__DragonFly__) || ((defined(__sun__) || defined(__sun) || defined(sun)) && (defined(__SVR4) || defined(__svr4__)))
+		static size_t __awh_alloc_usable__(const void * ptr) {
+			// Определяем размер блока нашими слоями
+			const size_t result = AWH_ALLOC_HOOK(msize)(ptr);
+			// Если блок наш
+			if(result > 0)
+				// Выводим размер нашего блока
+				return result;
+			/**
+			 * Спрашиваем прежнюю функцию о чужом блоке
+			 *
+			 * Память, выданная до захвата, принадлежит библиотеке времени исполнения, и
+			 * размер её знает лишь она сама. Отвечать нулём за неё нельзя: прикладной
+			 * код принял бы это за отсутствие места
+			 */
+			if(::originals.msize != nullptr)
+				// Выводим размер чужого блока
+				return (* ::originals.msize)(ptr);
+			// Размера не знает никто
+			return 0;
+		}
+		/**
+		 * Имя у Linux и Solaris
+		 */
+		#if defined(__linux__) || ((defined(__sun__) || defined(__sun) || defined(sun)) && (defined(__SVR4) || defined(__svr4__)))
+			extern "C" size_t malloc_usable_size(void * ptr) {
+				// Выводим размер выданного блока
+				return __awh_alloc_usable__(ptr);
+			}
+		/**
+		 * Имя у FreeBSD и DragonFly
+		 */
+		#else
+			extern "C" size_t malloc_size(const void * ptr) {
+				// Выводим размер выданного блока
+				return __awh_alloc_usable__(ptr);
+			}
+		#endif
+	#endif
+	/**
 	 * @brief Метод выдачи памяти с требуемым выравниванием
 	 *
 	 * @note Стандарт языка Си требует размера, кратного выравниванию; библиотеки на деле
@@ -2446,8 +2504,26 @@ size_t awh::alloc::Allocator::property(const property_t property) noexcept {
 			{
 				// Читаем наибольшее занятое за время работы
 				const int64_t highest = ::summit.load(std::memory_order_relaxed);
+				/**
+				 * Сличаем с занятым ПРЯМО СЕЙЧАС и берём большее
+				 *
+				 * Наибольшее поднимается лишь тогда, когда поток отдаёт накопленное общему
+				 * счётчику пачкой, - а занятое считается вместе с накопленным у потоков.
+				 * Оттого наибольшее выходило МЕНЬШЕ занятого прямо сейчас, чего быть не
+				 * должно вовсе: замечено семплом `sample/alloc/alloc.cpp` сразу за
+				 * заведением фреймворка - 297 376 против 313 792
+				 *
+				 * Правим ОПРОСОМ, а не учётом: поднимать наибольшее на каждой выдаче
+				 * значило бы гонять общую строку памяти между ядрами, ради чего счёт и
+				 * вынесен к потокам. Огрубление остаётся - вершина, случившаяся между
+				 * двумя опросами и не отданная общему счётчику, ими не поймается, - о чём
+				 * сказано у самого счётчика
+				 */
+				const int64_t taken = (::occupied.load(std::memory_order_relaxed) + ::machinery->caches.pending());
+				// Берём большее из наибольшего и занятого прямо сейчас
+				const int64_t result = ((taken > highest) ? taken : highest);
 				// Выводим наибольшее занятое за время работы
-				return ((highest > 0) ? static_cast <size_t> (highest) : 0);
+				return ((result > 0) ? static_cast <size_t> (result) : 0);
 			}
 		// Если требуется взятое у системы под кучу
 		case static_cast <uint8_t> (property_t::HEAP):
@@ -2691,7 +2767,14 @@ awh::alloc::region_t awh::alloc::Allocator::resolve(const void * addr) noexcept 
 	// Признак выданной наружу области
 	bool live = false;
 	// Если адрес куче не принадлежит
-	if(!::machinery->pages.locate(addr, &begin, &pages, &live)){
+	/**
+	 * Спрашиваем кучу ЧЕРЕЗ центральные списки, а не напрямую
+	 *
+	 * Замок кучи держат они, и всякое обращение к ней идёт под ним. Прежде здесь стоял
+	 * прямой вызов, и он читал список кусков, покуда куча правила его в `Pages::grow`;
+	 * ThreadSanitizer называл эту гонку каждым прогоном ворошителя
+	 */
+	if(!::machinery->central.locate(addr, &begin, &pages, &live)){
 		// Отмечаем память нам не принадлежащей
 		result.origin = origin_t::FOREIGN;
 		// Выводим сведения о разобранном адресе

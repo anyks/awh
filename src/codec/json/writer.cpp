@@ -272,7 +272,8 @@ bool awh::codec::json::Writer::refuse(const char * reason) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем отказ записи в журнал работы
-			this->_log->debug("%s", __PRETTY_FUNCTION__, ::std::make_tuple(), log_t::flag_t::CRITICAL, reason);
+			this->_log->debug("JSON writing refused: %s", __PRETTY_FUNCTION__, ::std::make_tuple(),
+			                  log_t::flag_t::CRITICAL, reason);
 		#else
 			// Записываем отказ записи в журнал работы
 			this->_log->print("JSON writing refused: %s", log_t::flag_t::CRITICAL, reason);

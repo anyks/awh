@@ -1751,7 +1751,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					explicit Builder(const log_t * log = nullptr) noexcept : _keyed(false), _appended(false) {
+					explicit Builder(const log_t * log) noexcept : _keyed(false), _appended(false) {
 						// Выполняем установку объекта ведения журнала собираемому значению
 						this->_result.setLogger(log);
 					}

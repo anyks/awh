@@ -2403,7 +2403,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					explicit Reader(const log_t * log = nullptr) noexcept;
+					explicit Reader(const log_t * log) noexcept;
 					/**
 					 * \~russian
 					 * @brief Конструктор
@@ -2416,7 +2416,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					explicit Reader(const settings_t & settings, const log_t * log = nullptr) noexcept;
+					explicit Reader(const log_t * log, const settings_t & settings) noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор

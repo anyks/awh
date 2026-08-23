@@ -1306,7 +1306,8 @@ bool awh::codec::json::Decoder::refuse(const error_t error) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем отказ приведения в журнал работы
-			this->_log->debug("%s", __PRETTY_FUNCTION__, ::std::make_tuple(), log_t::flag_t::WARNING, message(error));
+			this->_log->debug("JSON decoding failed: %s", __PRETTY_FUNCTION__, ::std::make_tuple(),
+			                  log_t::flag_t::WARNING, message(error));
 		#else
 			// Записываем отказ приведения в журнал работы
 			this->_log->print("JSON decoding failed: %s", log_t::flag_t::WARNING, message(error));

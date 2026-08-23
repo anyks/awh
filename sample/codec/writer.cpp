@@ -27,7 +27,33 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
+#include <sys/log.hpp>
 #include <codec/xml/writer.hpp>
+
+/**
+ * @brief Пространство имён образца
+ *
+ */
+namespace {
+	/**
+	 * @brief Функция получения объекта для работы с логами
+	 *
+	 * @details Кодек связку берёт конструктором, а построения образца стоят и вне
+	 *          main(): объект заводится статикою местною, дабы всякое построение
+	 *          образца писало сообщения в один и тот же журнал
+	 *
+	 * @return объект для работы с логами
+	 *
+	 */
+	const awh::log_t * logger() noexcept {
+		// Объект фреймворка
+		static awh::fmk_t fmk;
+		// Объект для работы с логами
+		static awh::log_t log(&fmk);
+		// Выводим объект для работы с логами
+		return &log;
+	}
+}
 
 /**
  * Используем пространство имён AWH
@@ -70,7 +96,7 @@ static string request(const codec::xml::format_t format) noexcept {
 	 */
 	settings.format = format;
 	// Создаём объект записи текста разметки
-	codec::xml::writer_t writer(settings);
+	codec::xml::writer_t writer(::logger(), settings);
 	// Выполняем запись объявления разметки
 	writer.declaration();
 	// Выполняем открытие конверта запроса
@@ -142,7 +168,7 @@ int32_t main(int32_t argc, char * argv[]){
 	 */
 	{
 		// Создаём объект записи текста разметки
-		codec::xml::writer_t writer;
+		codec::xml::writer_t writer(::logger());
 		// Выполняем открытие узла разметки
 		writer.open("mapping");
 		// Выполняем запись атрибута узла
@@ -159,7 +185,7 @@ int32_t main(int32_t argc, char * argv[]){
 	 */
 	{
 		// Создаём объект записи текста разметки
-		codec::xml::writer_t writer;
+		codec::xml::writer_t writer(::logger());
 		// Выполняем открытие узла разметки
 		writer.open("mapping");
 		// Выполняем закрытие узла разметки
@@ -176,7 +202,7 @@ int32_t main(int32_t argc, char * argv[]){
 	 */
 	{
 		// Создаём объект записи текста разметки
-		codec::xml::writer_t writer;
+		codec::xml::writer_t writer(::logger());
 		/**
 		 * Если ошибочно построенное имя узла отвергнуто
 		 */
@@ -189,7 +215,7 @@ int32_t main(int32_t argc, char * argv[]){
 	 */
 	{
 		// Создаём объект записи текста разметки
-		codec::xml::writer_t writer;
+		codec::xml::writer_t writer(::logger());
 		// Выполняем открытие узла разметки
 		writer.open("mapping");
 		/**

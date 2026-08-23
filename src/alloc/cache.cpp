@@ -95,7 +95,7 @@ namespace {
  *
  */
 awh::alloc::Cache::Cache() noexcept :
- _owner(nullptr), _central(nullptr), _classes(nullptr), _bytes(0), _limit(LIMIT), _tally(0), _freed(0), _hint(nullptr), _next(nullptr), _busy(false) {
+ _owner(nullptr), _central(nullptr), _classes(nullptr), _bytes(0), _limit(LIMIT), _tally(0), _freed(0), _yield(false), _hint(nullptr), _next(nullptr), _busy(false) {
 	// Обнуляем списки свободных блоков
 	::memset(this->_lists, 0, sizeof(this->_lists));
 }
@@ -256,6 +256,19 @@ void awh::alloc::Cache::release() noexcept {
  *
  */
 void * awh::alloc::Cache::refill(const size_t index) noexcept {
+	/**
+	 * Исполняем просьбу опустошиться, поставленную чужим потоком
+	 *
+	 * Здесь, на ХОЛОДНОМ пути, а не на быстром: быстрый путь стоит считанных команд, и
+	 * лишнее чтение признака на каждой выдаче стоило бы дороже самой выдачи. Сюда же
+	 * поток приходит всякий раз, как его кэш опустеет, - то есть достаточно скоро
+	 *
+	 * Читаем прежде обмена: обмен - действие пишущее, и делать его на каждом пополнении
+	 * значило бы гонять строку памяти между ядрами без всякой нужды
+	 */
+	if(this->_yield.load(std::memory_order_acquire) && this->_yield.exchange(false, std::memory_order_acq_rel))
+		// Отдаём блоки кэша центральным спискам
+		this->flush();
 	// Голова изымаемой у центральных списков цепочки
 	void * head = nullptr;
 	// Хвост изымаемой цепочки
@@ -954,7 +967,26 @@ size_t awh::alloc::Caches::flush() noexcept {
 	/**
 	 * Перебираем заведённые кэши
 	 */
+	// Получаем кэш текущего потока: опустошить сами вправе лишь его
+	const cache_t * own = ::attached();
+	/**
+	 * Перебираем заведённые кэши
+	 */
 	for(cache_t * cache = this->_caches; cache != nullptr; cache = cache->_next){
+		/**
+		 * Чужой кэш НЕ ТРОГАЕМ, а просим хозяина опустошить его самому
+		 *
+		 * Кэш потока замком не защищён - к нему обращается лишь свой поток. Опустошая
+		 * чужой кэш, мы правили бы его списки под руками работающего хозяина, и живой
+		 * блок приложения оказывался бы в списке свободных. Доводы и замеры записаны у
+		 * поля `_yield`
+		 */
+		if(cache != own){
+			// Ставим кэшу просьбу опустошиться
+			cache->_yield.store(true, std::memory_order_release);
+			// Опустошать чужой кэш нам нечем
+			continue;
+		}
 		// Запоминаем лежащее в кэше прежде отдачи
 		const size_t before = cache->bytes();
 		// Отдаём блоки кэша центральным спискам

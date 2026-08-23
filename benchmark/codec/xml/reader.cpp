@@ -25,6 +25,64 @@
 #include "xml.hpp"
 
 /**
+ * @brief Пространство имён замеров этого файла
+ *
+ * @note Держится оно безымянным намеренно: замеры кодеков собираются одной
+ *       программою, и одноимённые построения разных файлов иначе сходятся в
+ *       одно, порождая порчу вдали от места её причины
+ *
+ */
+namespace {
+	/**
+	 * @brief Объект журнала замеров с отключённым выводом
+	 *
+	 * @details Вывод отключается назначением пустого перечня приёмников: отказы
+	 *          разбора замеры наводят намеренно, и журнал их засорял бы выдачу
+	 *
+	 */
+	struct Silent {
+		/**
+		 * @brief Функция получения объекта фреймворка замеров
+		 *
+		 * @details Объект заводится статикою местною, а не общею файла: заведение его
+		 *          порядком построения статики оканчивается падением ещё до входа в
+		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
+		 *
+		 * @return объект фреймворка замеров
+		 *
+		 */
+		static const awh::fmk_t & framework() noexcept {
+			// Объект фреймворка замеров
+			static awh::fmk_t fmk;
+			// Выводим объект фреймворка замеров
+			return fmk;
+		}
+		// Объект журнала замеров
+		awh::log_t log;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Silent() noexcept : log(&Silent::framework()) {
+			// Выполняем отключение вывода логов
+			this->log.mode({});
+		}
+	};
+	/**
+	 * @brief Функция получения объекта журнала замеров
+	 *
+	 * @return объект журнала замеров
+	 *
+	 */
+	const awh::log_t * logger() noexcept {
+		// Объект журнала замеров
+		static Silent silent;
+		// Выводим объект журнала замеров
+		return &silent.log;
+	}
+}
+
+/**
  * Используем стандартное пространство имён
  */
 using namespace std;
@@ -297,9 +355,15 @@ namespace {
 	 * @return     количество полученных событий разбора
 	 *
 	 */
-	static uint64_t read(const string & text) noexcept {
+	/**
+	 * @warning Имя это НЕ «read» намеренно: в заголовках, кодеком подключаемых, живёт
+	 *          `read` из POSIX, и обращение «::read» попадало бы в него, а не сюда.
+	 *          Собирается это отказом «too few arguments», уводящим читающего далеко от
+	 *          причины
+	 */
+	static uint64_t reading(const string & text) noexcept {
 		// Объект потокового чтения текста разметки
-		awh::codec::xml::reader_t reader;
+		awh::codec::xml::reader_t reader(::logger());
 		/**
 		 * Если передать текст разметки не удалось
 		 */
@@ -326,7 +390,7 @@ namespace {
 	 */
 	static uint64_t feed(const string & text) noexcept {
 		// Объект потокового чтения текста разметки
-		awh::codec::xml::reader_t reader;
+		awh::codec::xml::reader_t reader(::logger());
 		// Количество полученных событий разбора
 		uint64_t result = 0;
 		// Смещение очередного подаваемого куска текста разметки
@@ -397,7 +461,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(text.size(), SMALL_ROUNDS, [&text]() noexcept {
 			// Выполняем чтение текста разметки
-			return ::read(text);
+			return ::reading(text);
 		});
 		// Устанавливаем измеренное значение
 		result.value = perSecond(outcome);
@@ -420,7 +484,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(text.size(), (SMALL_ROUNDS / 4), [&text]() noexcept {
 			// Выполняем чтение текста разметки
-			return ::read(text);
+			return ::reading(text);
 		});
 		// Устанавливаем измеренное значение
 		result.value = perSecond(outcome);
@@ -443,7 +507,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(text.size(), LARGE_ROUNDS, [&text]() noexcept {
 			// Выполняем чтение текста разметки
-			return ::read(text);
+			return ::reading(text);
 		});
 		// Устанавливаем измеренное значение
 		result.value = perSecond(outcome);
@@ -466,7 +530,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(text.size(), FOCUSED_ROUNDS, [&text]() noexcept {
 			// Выполняем чтение текста разметки
-			return ::read(text);
+			return ::reading(text);
 		});
 		// Устанавливаем измеренное значение
 		result.value = perSecond(outcome);
@@ -489,7 +553,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(text.size(), FOCUSED_ROUNDS, [&text]() noexcept {
 			// Выполняем чтение текста разметки
-			return ::read(text);
+			return ::reading(text);
 		});
 		// Устанавливаем измеренное значение
 		result.value = perSecond(outcome);
@@ -512,7 +576,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(text.size(), SMALL_ROUNDS, [&text]() noexcept {
 			// Выполняем чтение текста разметки
-			return ::read(text);
+			return ::reading(text);
 		});
 		// Устанавливаем измеренное значение
 		result.value = perSecond(outcome);
@@ -535,7 +599,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(text.size(), LARGE_ROUNDS, [&text]() noexcept {
 			// Выполняем чтение текста разметки
-			return ::read(text);
+			return ::reading(text);
 		});
 		// Устанавливаем сведения о прогоне
 		result.details = details(outcome);
@@ -565,7 +629,7 @@ namespace {
 		// Итоги прогона подачи текста разметки целиком
 		const outcome_t whole = measure(text.size(), LARGE_ROUNDS, [&text]() noexcept {
 			// Выполняем чтение текста разметки целиком
-			return ::read(text);
+			return ::reading(text);
 		});
 		// Итоги прогона подачи текста разметки кусками
 		const outcome_t parts = measure(text.size(), LARGE_ROUNDS, [&text]() noexcept {
@@ -608,7 +672,7 @@ namespace {
 		 *       и без неё сценарий показал бы скорость отказа вместо скорости
 		 *       разбора - показатель тем выше, чем раньше разбор сдался
 		 */
-		if(::read(text) == 0){
+		if(::reading(text) == 0){
 			// Помечаем измерение как не выполненное
 			result.skipped = true;
 			// Устанавливаем причину, по которой измерение не выполнялось
@@ -619,7 +683,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(text.size(), FOCUSED_ROUNDS, [&text]() noexcept {
 			// Выполняем чтение текста разметки
-			return ::read(text);
+			return ::reading(text);
 		});
 		// Устанавливаем измеренное значение
 		result.value = perSecond(outcome);
@@ -642,7 +706,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(text.size(), SMALL_ROUNDS, [&text]() noexcept {
 			// Выполняем чтение текста разметки
-			return ::read(text);
+			return ::reading(text);
 		});
 		// Устанавливаем измеренное значение
 		result.value = perLatency(outcome);
@@ -665,7 +729,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(text.size(), (SMALL_ROUNDS / 4), [&text]() noexcept {
 			// Выполняем чтение текста разметки
-			return ::read(text);
+			return ::reading(text);
 		});
 		// Устанавливаем измеренное значение
 		result.value = perLatency(outcome);

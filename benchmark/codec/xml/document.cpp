@@ -25,6 +25,64 @@
 #include "xml.hpp"
 
 /**
+ * @brief Пространство имён замеров этого файла
+ *
+ * @note Держится оно безымянным намеренно: замеры кодеков собираются одной
+ *       программою, и одноимённые построения разных файлов иначе сходятся в
+ *       одно, порождая порчу вдали от места её причины
+ *
+ */
+namespace {
+	/**
+	 * @brief Объект журнала замеров с отключённым выводом
+	 *
+	 * @details Вывод отключается назначением пустого перечня приёмников: отказы
+	 *          разбора замеры наводят намеренно, и журнал их засорял бы выдачу
+	 *
+	 */
+	struct Silent {
+		/**
+		 * @brief Функция получения объекта фреймворка замеров
+		 *
+		 * @details Объект заводится статикою местною, а не общею файла: заведение его
+		 *          порядком построения статики оканчивается падением ещё до входа в
+		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
+		 *
+		 * @return объект фреймворка замеров
+		 *
+		 */
+		static const awh::fmk_t & framework() noexcept {
+			// Объект фреймворка замеров
+			static awh::fmk_t fmk;
+			// Выводим объект фреймворка замеров
+			return fmk;
+		}
+		// Объект журнала замеров
+		awh::log_t log;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Silent() noexcept : log(&Silent::framework()) {
+			// Выполняем отключение вывода логов
+			this->log.mode({});
+		}
+	};
+	/**
+	 * @brief Функция получения объекта журнала замеров
+	 *
+	 * @return объект журнала замеров
+	 *
+	 */
+	const awh::log_t * logger() noexcept {
+		// Объект журнала замеров
+		static Silent silent;
+		// Выводим объект журнала замеров
+		return &silent.log;
+	}
+}
+
+/**
  * Используем стандартное пространство имён
  */
 using namespace std;
@@ -206,7 +264,7 @@ namespace {
 	 */
 	static uint64_t build(const string & text) noexcept {
 		// Объект дерева разметки
-		awh::codec::xml::document_t document;
+		awh::codec::xml::document_t document(::logger());
 		/**
 		 * Если разбор текста разметки выполнить не удалось
 		 */
@@ -291,7 +349,7 @@ namespace {
 		// Результат измерения
 		awh::benchmark::result_t result;
 		// Объект дерева разметки
-		static awh::codec::xml::document_t document;
+		static awh::codec::xml::document_t document(::logger());
 		/**
 		 * Если разбор текста разметки выполнить не удалось
 		 */
@@ -338,7 +396,7 @@ namespace {
 		// Результат измерения
 		awh::benchmark::result_t result;
 		// Объект дерева разметки
-		static awh::codec::xml::document_t document;
+		static awh::codec::xml::document_t document(::logger());
 		/**
 		 * Если разбор текста разметки выполнить не удалось
 		 */
@@ -355,7 +413,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(device().size(), SMALL_ROUNDS, [&root]() noexcept -> uint64_t {
 			// Объект записи текста разметки
-			awh::codec::xml::writer_t writer;
+			awh::codec::xml::writer_t writer(::logger());
 			// Выполняем запись объявления разметки
 			writer.declaration();
 			/**
@@ -408,7 +466,7 @@ namespace {
 		// Собираемые имена вложенных узлов
 		static vector <string> names;
 		// Дерево разметки с широким родителем
-		static awh::codec::xml::document_t document;
+		static awh::codec::xml::document_t document(::logger());
 		/**
 		 * Если дерево разметки ещё не собрано
 		 */
@@ -475,7 +533,7 @@ namespace {
 		// Собираемые имена вложенных узлов
 		static vector <string> names;
 		// Дерево разметки с широким родителем
-		static awh::codec::xml::document_t document;
+		static awh::codec::xml::document_t document(::logger());
 		/**
 		 * Если дерево разметки ещё не собрано
 		 */

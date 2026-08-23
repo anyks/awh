@@ -29,6 +29,64 @@
 #include <codec/json/json.hpp>
 
 /**
+ * @brief Пространство имён проверок этого файла
+ *
+ * @note Держится оно безымянным намеренно: проверки кодеков собираются одной
+ *       программою, и одноимённые построения разных файлов иначе сходятся в
+ *       одно, порождая порчу вдали от места её причины
+ *
+ */
+namespace {
+	/**
+	 * @brief Объект журнала проверок с отключённым выводом
+	 *
+	 * @details Вывод отключается назначением пустого перечня приёмников: отказы
+	 *          разбора проверки наводят намеренно, и журнал их засорял бы выдачу
+	 *
+	 */
+	struct Silent {
+		/**
+		 * @brief Функция получения объекта фреймворка проверок
+		 *
+		 * @details Объект заводится статикою местною, а не общею файла: заведение его
+		 *          порядком построения статики оканчивается падением ещё до входа в
+		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
+		 *
+		 * @return объект фреймворка проверок
+		 *
+		 */
+		static const awh::fmk_t & framework() noexcept {
+			// Объект фреймворка проверок
+			static awh::fmk_t fmk;
+			// Выводим объект фреймворка проверок
+			return fmk;
+		}
+		// Объект журнала проверок
+		awh::log_t log;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Silent() noexcept : log(&Silent::framework()) {
+			// Выполняем отключение вывода логов
+			this->log.mode({});
+		}
+	};
+	/**
+	 * @brief Функция получения объекта журнала проверок
+	 *
+	 * @return объект журнала проверок
+	 *
+	 */
+	const awh::log_t * logger() noexcept {
+		// Объект журнала проверок
+		static Silent silent;
+		// Выводим объект журнала проверок
+		return &silent.log;
+	}
+}
+
+/**
  * Используем стандартное пространство имён
  */
 using namespace std;
@@ -41,7 +99,7 @@ using namespace awh::codec;
  */
 TEST(CodecJsonWriter, Scalars) {
 	// Объект записи текста документа
-	json::writer_t writer;
+	json::writer_t writer(::logger());
 	// Выполняем проверку записи пустого значения
 	ASSERT_TRUE(writer.null());
 	// Выполняем проверку собранного текста
@@ -77,7 +135,7 @@ TEST(CodecJsonWriter, Scalars) {
  */
 TEST(CodecJsonWriter, Containers) {
 	// Объект записи текста документа
-	json::writer_t writer;
+	json::writer_t writer(::logger());
 	// Выполняем запись пустого массива
 	ASSERT_TRUE(writer.array());
 	// Выполняем закрытие пустого массива
@@ -120,7 +178,7 @@ TEST(CodecJsonWriter, Containers) {
  */
 TEST(CodecJsonWriter, Structure) {
 	// Объект записи текста документа
-	json::writer_t writer;
+	json::writer_t writer(::logger());
 	// Выполняем проверку отклонения закрытия неоткрытого вместилища
 	ASSERT_FALSE(writer.close());
 	// Выполняем открытие объекта
@@ -156,7 +214,7 @@ TEST(CodecJsonWriter, Structure) {
  */
 TEST(CodecJsonWriter, Pretty) {
 	// Объект записи текста документа
-	json::writer_t writer;
+	json::writer_t writer(::logger());
 	// Получаем настройки записи текста документа
 	json::writer_t::settings_t settings = writer.settings();
 	// Устанавливаем оформление собираемого текста отступами
@@ -227,7 +285,7 @@ TEST(CodecJsonWriter, Pretty) {
  */
 TEST(CodecJsonWriter, Escapes) {
 	// Объект записи текста документа
-	json::writer_t writer;
+	json::writer_t writer(::logger());
 	// Выполняем запись строки со знаками, требующими экранирования
 	ASSERT_TRUE(writer.value(string("\"\\\b\f\n\r\t")));
 	// Выполняем проверку записи знаков сокращёнными записями
@@ -296,13 +354,13 @@ TEST(CodecJsonWriter, Reals) {
 	 */
 	for(const double value : values){
 		// Объект записи текста документа
-		json::writer_t writer;
+		json::writer_t writer(::logger());
 		// Выполняем запись очередного числа с плавающей запятой
 		ASSERT_TRUE(writer.value(value));
 		// Выполняем проверку соответствия записи числа стандарту
 		ASSERT_TRUE(json::numeric(writer.text())) << "запись «" << writer.text() << "»";
 		// Объект документа для обратного чтения записанного числа
-		json::document_t doc;
+		json::document_t doc(::logger());
 		// Выполняем разбор записанного числа
 		ASSERT_TRUE(doc.parse(writer.text()));
 		// Прочитанное обратно значение записанного числа
@@ -313,7 +371,7 @@ TEST(CodecJsonWriter, Reals) {
 		ASSERT_EQ(back, value) << "запись «" << writer.text() << "»";
 	}
 	// Объект записи текста документа
-	json::writer_t writer;
+	json::writer_t writer(::logger());
 	// Выполняем запись числа, у какого сокращение записи заметно на глаз
 	ASSERT_TRUE(writer.value(0.1));
 	// Выполняем проверку кратчайшей записи числа
@@ -325,7 +383,7 @@ TEST(CodecJsonWriter, Reals) {
  */
 TEST(CodecJsonWriter, Specials) {
 	// Объект записи текста документа
-	json::writer_t writer;
+	json::writer_t writer(::logger());
 	// Выполняем проверку отклонения числа, обычным числом не являющегося
 	ASSERT_FALSE(writer.value(numeric_limits <double>::quiet_NaN()));
 	// Выполняем проверку отклонения бесконечности
@@ -355,7 +413,7 @@ TEST(CodecJsonWriter, Specials) {
  */
 TEST(CodecJsonWriter, Raw) {
 	// Объект записи текста документа
-	json::writer_t writer;
+	json::writer_t writer(::logger());
 	/**
 	 * Выполняем запись числа, не представимого видом с плавающей запятой
 	 */
@@ -381,7 +439,7 @@ TEST(CodecJsonWriter, Raw) {
  */
 TEST(CodecJsonWriter, Take) {
 	// Объект записи текста документа
-	json::writer_t writer;
+	json::writer_t writer(::logger());
 	// Выполняем открытие массива
 	ASSERT_TRUE(writer.array());
 	// Выполняем запись первого значения массива
@@ -405,7 +463,7 @@ TEST(CodecJsonWriter, Take) {
  */
 TEST(CodecJsonWriter, Stream) {
 	// Объект записи текста документа
-	json::writer_t writer;
+	json::writer_t writer(::logger());
 	// Получаем настройки записи текста документа
 	json::writer_t::settings_t settings = writer.settings();
 	// Разрешаем разделение документов переводом строки
@@ -442,7 +500,7 @@ TEST(CodecJsonWriter, Stream) {
  */
 TEST(CodecJsonWriter, RoundTrip) {
 	// Объект записи текста документа
-	json::writer_t writer;
+	json::writer_t writer(::logger());
 	// Выполняем запись объекта со значениями всех видов
 	writer.object();
 	// Выполняем запись имени поля со строковым значением
@@ -480,13 +538,13 @@ TEST(CodecJsonWriter, RoundTrip) {
 	// Получаем собранный текст документа
 	const string compact = writer.text();
 	// Объект документа для разбора собранного текста
-	json::document_t doc;
+	json::document_t doc(::logger());
 	// Выполняем разбор собранного текста
 	ASSERT_TRUE(doc.parse(compact)) << json::message(doc.error());
 	// Выполняем проверку совпадения перезаписанного текста с собранным
 	ASSERT_EQ(doc.dump(), compact);
 	// Объект документа для разбора текста с отступами
-	json::document_t pretty;
+	json::document_t pretty(::logger());
 	// Выполняем разбор текста, оформленного отступами
 	ASSERT_TRUE(pretty.parse(doc.dump(json::format_t::PRETTY))) << json::message(pretty.error());
 	// Выполняем проверку совпадения документов при разном оформлении текста
@@ -504,7 +562,7 @@ TEST(CodecJsonWriter, RoundTrip) {
  */
 TEST(CodecJsonWriter, Literals) {
 	// Объект записи текста документа
-	json::writer_t writer;
+	json::writer_t writer(::logger());
 	// Получаем настройки записи текста документа
 	json::writer_t::settings_t settings = writer.settings();
 	// Разрешаем запись значения верхнего уровня
@@ -585,7 +643,7 @@ TEST(CodecJsonWriter, Malformed) {
 		 */
 		for(const json::escape_t escape : {json::escape_t::MINIMAL, json::escape_t::ASCII}){
 			// Объект записи текста документа
-			json::writer_t writer;
+			json::writer_t writer(::logger());
 			// Настройки записи текста документа
 			json::writer_t::settings_t settings;
 			// Устанавливаем затребованное правило экранирования
@@ -601,7 +659,7 @@ TEST(CodecJsonWriter, Malformed) {
 			// Выполняем закрытие объекта
 			ASSERT_TRUE(writer.close());
 			// Документ, разбирающий выданный текст
-			json::document_t document;
+			json::document_t document(::logger());
 			/**
 			 * Выполняем проверку того, что выданный текст разбирается нашим же разбором
 			 *
@@ -618,7 +676,7 @@ TEST(CodecJsonWriter, Malformed) {
  */
 TEST(CodecJsonWriter, MalformedRefuse) {
 	// Объект записи текста документа
-	json::writer_t writer;
+	json::writer_t writer(::logger());
 	// Настройки записи текста документа
 	json::writer_t::settings_t settings;
 	// Затребуем отказ записи негодной последовательности
@@ -642,7 +700,7 @@ TEST(CodecJsonWriter, MalformedRefuse) {
 	// Выполняем закрытие объекта
 	ASSERT_TRUE(writer.close());
 	// Документ, разбирающий выданный текст
-	json::document_t document;
+	json::document_t document(::logger());
 	// Выполняем проверку того, что отказ текста не испортил
 	ASSERT_TRUE(document.parse(writer.text())) << json::message(document.error());
 	// Выполняем проверку собранного текста документа
@@ -655,7 +713,7 @@ TEST(CodecJsonWriter, MalformedRefuse) {
  */
 TEST(CodecJsonWriter, MalformedPass) {
 	// Объект записи текста документа
-	json::writer_t writer;
+	json::writer_t writer(::logger());
 	// Настройки записи текста документа
 	json::writer_t::settings_t settings;
 	// Затребуем пропуск негодной последовательности байтами
@@ -677,11 +735,11 @@ TEST(CodecJsonWriter, MalformedPass) {
  */
 TEST(CodecJsonWriter, MalformedSubpart) {
 	// Объект записи текста документа
-	json::writer_t writer;
+	json::writer_t writer(::logger());
 	// Выполняем запись негодной последовательности, за какой стоит годный знак
 	ASSERT_TRUE(writer.value(string("\xC3\x28", 2)));
 	// Документ, разбирающий выданный текст
-	json::document_t document;
+	json::document_t document(::logger());
 	// Выполняем разбор выданного текста
 	ASSERT_TRUE(document.parse(writer.text())) << json::message(document.error());
 	// Извлекаемое строковое значение
@@ -705,7 +763,7 @@ TEST(CodecJsonWriter, MalformedIntact) {
 	 */
 	for(const json::malformed_t rule : {json::malformed_t::REPLACE, json::malformed_t::REFUSE, json::malformed_t::PASS}){
 		// Объект записи текста документа
-		json::writer_t writer;
+		json::writer_t writer(::logger());
 		// Настройки записи текста документа
 		json::writer_t::settings_t settings;
 		// Устанавливаем затребованное правило обращения с негодной последовательностью
@@ -744,7 +802,7 @@ TEST(CodecJsonWriter, LimitsAndRawRefusals) {
 	 */
 	{
 		// Поток записи текста документа
-		json::writer_t writer;
+		json::writer_t writer(::logger());
 		// Достигнутая глубина вложенности массивов
 		size_t depth = 0;
 		/**
@@ -765,7 +823,7 @@ TEST(CodecJsonWriter, LimitsAndRawRefusals) {
 	}
 	{
 		// Поток записи текста документа
-		json::writer_t writer;
+		json::writer_t writer(::logger());
 		// Достигнутая глубина вложенности объектов
 		size_t depth = 0;
 		/**
@@ -789,7 +847,7 @@ TEST(CodecJsonWriter, LimitsAndRawRefusals) {
 	 */
 	{
 		// Поток записи текста документа
-		json::writer_t writer;
+		json::writer_t writer(::logger());
 		// Выполняем открытие массива
 		ASSERT_TRUE(writer.array());
 		/**
@@ -826,7 +884,7 @@ TEST(CodecJsonWriter, LimitsAndRawRefusals) {
 	 */
 	{
 		// Поток записи текста документа
-		json::writer_t writer;
+		json::writer_t writer(::logger());
 		// Выполняем открытие массива
 		ASSERT_TRUE(writer.array());
 		// Выполняем проверку отклонения нечисла
@@ -855,7 +913,7 @@ TEST(CodecJsonWriter, LimitsAndRawRefusals) {
 		 */
 		{
 			// Поток записи текста документа
-			json::writer_t subnormal;
+			json::writer_t subnormal(::logger());
 			// Выполняем открытие массива
 			ASSERT_TRUE(subnormal.array());
 			// Выполняем запись наименьшего поднормального дробного числа
@@ -863,7 +921,7 @@ TEST(CodecJsonWriter, LimitsAndRawRefusals) {
 			// Выполняем закрытие массива
 			ASSERT_TRUE(subnormal.close());
 			// Выполняем проверку того, что записанное разбору поддаётся
-			json::document_t document;
+			json::document_t document(::logger());
 			// Выполняем разбор записанного текста
 			ASSERT_TRUE(document.parse(subnormal.text()));
 		}
@@ -891,7 +949,7 @@ TEST(CodecJsonWriter, StreamAndMalformed) {
 		// Выполняем установку признака записи потоком
 		settings.stream = true;
 		// Поток записи текста документа
-		json::writer_t writer;
+		json::writer_t writer(::logger());
 		// Выполняем установку настроек записи
 		writer.settings(settings);
 		// Выполняем запись первого документа потока
@@ -913,7 +971,7 @@ TEST(CodecJsonWriter, StreamAndMalformed) {
 	 */
 	{
 		// Поток записи текста документа
-		json::writer_t writer;
+		json::writer_t writer(::logger());
 		// Выполняем запись первого документа
 		ASSERT_TRUE(writer.value(true));
 		// Выполняем завершение первого документа
@@ -929,7 +987,7 @@ TEST(CodecJsonWriter, StreamAndMalformed) {
 	 */
 	{
 		// Поток записи текста документа
-		json::writer_t writer;
+		json::writer_t writer(::logger());
 		// Выполняем открытие объекта
 		ASSERT_TRUE(writer.object());
 		// Выполняем проверку отклонения логического значения без имени пары
@@ -961,7 +1019,7 @@ TEST(CodecJsonWriter, StreamAndMalformed) {
 	 */
 	{
 		// Поток записи текста документа
-		json::writer_t writer;
+		json::writer_t writer(::logger());
 		// Выполняем открытие массива
 		ASSERT_TRUE(writer.array());
 		// Выполняем запись наибольшего знака Юникода
@@ -971,7 +1029,7 @@ TEST(CodecJsonWriter, StreamAndMalformed) {
 		// Выполняем закрытие массива
 		ASSERT_TRUE(writer.close());
 		// Выполняем проверку того, что записанное разбору поддаётся
-		json::document_t document;
+		json::document_t document(::logger());
 		// Выполняем разбор записанного текста
 		ASSERT_TRUE(document.parse(writer.text()));
 	}
@@ -984,7 +1042,7 @@ TEST(CodecJsonWriter, StreamAndMalformed) {
 		// Выполняем установку обхождения с негодной записью отказом
 		settings.malformed = json::malformed_t::REFUSE;
 		// Поток записи текста документа
-		json::writer_t writer;
+		json::writer_t writer(::logger());
 		// Выполняем установку настроек записи
 		writer.settings(settings);
 		// Выполняем открытие массива
@@ -1017,7 +1075,7 @@ TEST(CodecJsonWriter, InfinityAfterTopLevelValue) {
 	 */
 	for(auto & value : vector <double> {NAN, INFINITY, -INFINITY}){
 		// Объект потоковой записи текста документа
-		json::writer_t writer;
+		json::writer_t writer(::logger());
 		// Устанавливаем настройки записи текста документа
 		writer.settings(settings);
 		// Выполняем проверку успешной записи первого значения верхнего уровня
@@ -1041,7 +1099,7 @@ TEST(CodecJsonWriter, InfinityAfterTopLevelValue) {
 			{-INFINITY, "-Infinity"}
 		}){
 			// Объект потоковой записи текста документа
-			json::writer_t writer;
+			json::writer_t writer(::logger());
 			// Устанавливаем настройки записи текста документа
 			writer.settings(settings);
 			// Выполняем проверку успешной записи числа

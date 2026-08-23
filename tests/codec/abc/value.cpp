@@ -260,15 +260,15 @@ TEST(CodecAbcValue, Comparison) {
 	// Первый сличаемый перечень
 	abc::value_t list;
 	// Выполняем заведение значений первого перечня
-	list.push(abc::value_t(static_cast <uint64_t> (1)));
+	ASSERT_TRUE(list.push(abc::value_t(static_cast <uint64_t> (1))));
 	// Выполняем заведение второго значения первого перечня
-	list.push(abc::value_t(static_cast <uint64_t> (2)));
+	ASSERT_TRUE(list.push(abc::value_t(static_cast <uint64_t> (2))));
 	// Второй сличаемый перечень
 	abc::value_t reversed;
 	// Выполняем заведение значений второго перечня в обратном порядке
-	reversed.push(abc::value_t(static_cast <uint64_t> (2)));
+	ASSERT_TRUE(reversed.push(abc::value_t(static_cast <uint64_t> (2))));
 	// Выполняем заведение второго значения второго перечня
-	reversed.push(abc::value_t(static_cast <uint64_t> (1)));
+	ASSERT_TRUE(reversed.push(abc::value_t(static_cast <uint64_t> (1))));
 	// Выполняем проверку неравенства перечней с разным порядком значений
 	ASSERT_NE(list, reversed);
 	// Выполняем проверку неравенства значений разных видов

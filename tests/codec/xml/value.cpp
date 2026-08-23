@@ -28,7 +28,71 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <gtest/gtest.h>
+#include <sys/fmk.hpp>
+#include <sys/log.hpp>
+
+/**
+ * Подключаем заголовочные файлы модуля
+ */
 #include <codec/xml/xml.hpp>
+
+/**
+ * @brief Пространство имён проверок этого файла
+ *
+ * @note Держится оно безымянным намеренно: проверки кодеков собираются одной
+ *       программою, и одноимённые построения разных файлов иначе сходятся в
+ *       одно, порождая порчу вдали от места её причины
+ *
+ */
+namespace {
+	/**
+	 * @brief Объект журнала проверок с отключённым выводом
+	 *
+	 * @details Вывод отключается назначением пустого перечня приёмников: отказы
+	 *          разбора проверки наводят намеренно, и журнал их засорял бы выдачу
+	 *
+	 */
+	struct Silent {
+		/**
+		 * @brief Функция получения объекта фреймворка проверок
+		 *
+		 * @details Объект заводится статикою местною, а не общею файла: заведение его
+		 *          порядком построения статики оканчивается падением ещё до входа в
+		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
+		 *
+		 * @return объект фреймворка проверок
+		 *
+		 */
+		static const awh::fmk_t & framework() noexcept {
+			// Объект фреймворка проверок
+			static awh::fmk_t fmk;
+			// Выводим объект фреймворка проверок
+			return fmk;
+		}
+		// Объект журнала проверок
+		awh::log_t log;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Silent() noexcept : log(&Silent::framework()) {
+			// Выполняем отключение вывода логов
+			this->log.mode({});
+		}
+	};
+	/**
+	 * @brief Функция получения объекта журнала проверок
+	 *
+	 * @return объект журнала проверок
+	 *
+	 */
+	const awh::log_t * logger() noexcept {
+		// Объект журнала проверок
+		static Silent silent;
+		// Выводим объект журнала проверок
+		return &silent.log;
+	}
+}
 
 /**
  * Используем стандартное пространство имён
@@ -221,7 +285,7 @@ TEST(CodecXmlValue, Namespaces) {
  */
 TEST(CodecXmlValue, Bridge) {
 	// Дерево разметки, разбирающее текст
-	xml::document_t document;
+	xml::document_t document(::logger());
 	// Выполняем разбор текста разметки
 	ASSERT_TRUE(document.parse("<root><nested><a>1</a></nested></root>"));
 	// Выполняем снятие поддерева разметки собственной памятью
@@ -328,7 +392,7 @@ TEST(CodecXmlValue, Place) {
  */
 TEST(CodecXmlValue, Builder) {
 	// Объект потоковой сборки значения
-	xml::builder_t builder;
+	xml::builder_t builder(::logger());
 	// Выполняем открытие корневого узла разметки
 	ASSERT_TRUE(builder.open("Envelope"));
 	// Выполняем открытие вложенного узла разметки
@@ -359,7 +423,7 @@ TEST(CodecXmlValue, Builder) {
  */
 TEST(CodecXmlValue, BuilderFailure) {
 	// Объект потоковой сборки значения
-	xml::builder_t builder;
+	xml::builder_t builder(::logger());
 	// Выполняем проверку отказа закрытия неоткрытого узла
 	ASSERT_FALSE(builder.close());
 	// Выполняем проверку отказа объявления свойства вне узла
@@ -389,7 +453,7 @@ TEST(CodecXmlValue, BuilderGraft) {
 	// Готовое поддерево, собранное где-то ещё
 	const xml::value_t nested = ::produce();
 	// Объект потоковой сборки значения
-	xml::builder_t builder;
+	xml::builder_t builder(::logger());
 	// Выполняем открытие корневого узла разметки
 	ASSERT_TRUE(builder.open("Wrapper"));
 	// Выполняем запись готового поддерева
@@ -650,11 +714,11 @@ TEST(CodecXmlValue, Differential) {
 	 */
 	for(auto & sample : samples){
 		// Дерево разметки, разбирающее текст
-		xml::document_t document;
+		xml::document_t document(::logger());
 		// Выполняем разбор текста разметки
 		ASSERT_TRUE(document.parse(sample)) << sample;
 		// Поток записи текста разметки
-		xml::writer_t writer;
+		xml::writer_t writer(::logger());
 		// Выполняем запись дерева разметки напрямую
 		ASSERT_TRUE(writer.element(document.element())) << sample;
 		// Снятое с дерева значение
@@ -662,7 +726,7 @@ TEST(CodecXmlValue, Differential) {
 		// Выполняем проверку совпадения записей обоих путей
 		ASSERT_EQ(writer.text(), taken.dump()) << sample;
 		// Дерево разметки, разбирающее запись снятого значения
-		xml::document_t twin;
+		xml::document_t twin(::logger());
 		// Выполняем разбор записи снятого значения
 		ASSERT_TRUE(twin.parse(taken.dump())) << taken.dump();
 		// Выполняем проверку совпадения значения с прошедшим круговой ход
@@ -676,11 +740,11 @@ TEST(CodecXmlValue, Differential) {
  */
 TEST(CodecXmlValue, Graft) {
 	// Дерево разметки, принимающее прививку
-	xml::document_t document;
+	xml::document_t document(::logger());
 	// Выполняем разбор текста разметки
 	ASSERT_TRUE(document.parse("<a><b><c/></b><d>текст</d></a>"));
 	// Дерево разметки, с какого снимается прививаемое значение
-	xml::document_t source;
+	xml::document_t source(::logger());
 	// Выполняем разбор текста разметки прививаемого значения
 	ASSERT_TRUE(source.parse("<x k=\"v\"><y/>содержимое</x>"));
 	// Снятое с дерева прививаемое значение
@@ -688,7 +752,7 @@ TEST(CodecXmlValue, Graft) {
 	// Выполняем прививку значения в дерево разметки
 	ASSERT_TRUE(document.graft("/a/b", value));
 	// Поток записи текста разметки
-	xml::writer_t writer;
+	xml::writer_t writer(::logger());
 	// Выполняем запись дерева разметки
 	ASSERT_TRUE(writer.element(document.element()));
 	// Выполняем завершение записи текста разметки
@@ -703,7 +767,7 @@ TEST(CodecXmlValue, Graft) {
  */
 TEST(CodecXmlValue, GraftIndexed) {
 	// Дерево разметки, принимающее прививку
-	xml::document_t document;
+	xml::document_t document(::logger());
 	// Выполняем разбор текста разметки
 	ASSERT_TRUE(document.parse("<a><b/><c/></a>"));
 	// Прививаемое значение
@@ -711,7 +775,7 @@ TEST(CodecXmlValue, GraftIndexed) {
 	// Выполняем прививку значения на место второго вложенного узла
 	ASSERT_TRUE(document.graft("/a/1", value));
 	// Поток записи текста разметки
-	xml::writer_t writer;
+	xml::writer_t writer(::logger());
 	// Выполняем запись дерева разметки
 	ASSERT_TRUE(writer.element(document.element()));
 	// Выполняем завершение записи текста разметки
@@ -726,7 +790,7 @@ TEST(CodecXmlValue, GraftIndexed) {
  */
 TEST(CodecXmlValue, GraftFailure) {
 	// Дерево разметки, принимающее прививку
-	xml::document_t document;
+	xml::document_t document(::logger());
 	// Выполняем разбор текста разметки
 	ASSERT_TRUE(document.parse("<a><b/></a>"));
 	// Прививаемое значение
@@ -754,11 +818,11 @@ TEST(CodecXmlValue, GraftFailure) {
  */
 TEST(CodecXmlValue, GraftRoundtrip) {
 	// Дерево разметки, принимающее прививку
-	xml::document_t document;
+	xml::document_t document(::logger());
 	// Выполняем разбор текста разметки
 	ASSERT_TRUE(document.parse("<a><b/></a>"));
 	// Дерево разметки, с какого снимается прививаемое значение
-	xml::document_t source;
+	xml::document_t source(::logger());
 	// Выполняем разбор текста разметки прививаемого значения
 	ASSERT_TRUE(source.parse("<ns:p xmlns:ns=\"urn:t\" ns:k=\"v\"><ns:q/>содержимое</ns:p>"));
 	// Снятое с дерева прививаемое значение
@@ -766,13 +830,13 @@ TEST(CodecXmlValue, GraftRoundtrip) {
 	// Выполняем прививку значения в дерево разметки
 	ASSERT_TRUE(document.graft("/a/b", value));
 	// Поток записи текста разметки
-	xml::writer_t writer;
+	xml::writer_t writer(::logger());
 	// Выполняем запись дерева разметки
 	ASSERT_TRUE(writer.element(document.element()));
 	// Выполняем завершение записи текста разметки
 	ASSERT_TRUE(writer.complete());
 	// Дерево разметки, разбирающее запись привитого дерева
-	xml::document_t twin;
+	xml::document_t twin(::logger());
 	// Выполняем разбор записи привитого дерева
 	ASSERT_TRUE(twin.parse(writer.text())) << writer.text();
 	/**
@@ -791,7 +855,7 @@ TEST(CodecXmlValue, GraftRoundtrip) {
  */
 TEST(CodecXmlValue, GraftIntegrity) {
 	// Дерево разметки, принимающее прививку
-	xml::document_t document;
+	xml::document_t document(::logger());
 	// Выполняем разбор текста разметки
 	ASSERT_TRUE(document.parse("<a><b/><c/><d/></a>"));
 	// Прививаемое значение
@@ -842,7 +906,7 @@ TEST(CodecXmlValue, GraftIntegrity) {
  */
 TEST(CodecXmlValue, GraftDocumentKind) {
 	// Дерево разметки, куда прививается значение
-	xml::document_t document;
+	xml::document_t document(::logger());
 	// Выполняем разбор текста разметки дерева
 	ASSERT_TRUE(document.parse("<a><b/></a>"));
 	// Прививаемое значение, разобранное из текста единственного узла
@@ -863,7 +927,7 @@ TEST(CodecXmlValue, GraftDocumentKind) {
 	// Выполняем проверку того, что прививка корня с несколькими узлами отвергается
 	ASSERT_FALSE(document.graft("/a/x", several));
 	// Поток записи текста разметки
-	xml::writer_t writer;
+	xml::writer_t writer(::logger());
 	// Выполняем запись дерева разметки
 	ASSERT_TRUE(writer.element(document.element()));
 	// Выполняем завершение записи текста разметки
@@ -874,7 +938,7 @@ TEST(CodecXmlValue, GraftDocumentKind) {
 
 TEST(CodecXmlValue, PathIndexOverflow) {
 	// Дерево разметки, с какого снимается значение
-	xml::document_t source;
+	xml::document_t source(::logger());
 	// Выполняем разбор текста разметки
 	ASSERT_TRUE(source.parse("<a><b/><c/></a>"));
 	// Снятое с дерева владеющее значение
@@ -935,7 +999,7 @@ TEST(CodecXmlValue, GrowthLimit) {
  */
 TEST(CodecXmlValue, ExtractionContract) {
 	// Дерево разметки, с какого снимается значение
-	xml::document_t document;
+	xml::document_t document(::logger());
 	// Извлекаемое из узла разметки дробное число
 	double real = 0.;
 	// Выполняем разбор записи числа, целым не вместимой
@@ -1066,7 +1130,7 @@ TEST(CodecXmlValue, UntouchedSurface) {
 	// Выполняем проверку того, что размноженное совпадает с исходным
 	ASSERT_TRUE(copy == source);
 	// Объект потоковой сборки значения
-	xml::builder_t builder;
+	xml::builder_t builder(::logger());
 	// Выполняем открытие узла разметки
 	ASSERT_TRUE(builder.open("a"));
 	// Выполняем сборку указания обработчику
@@ -1549,7 +1613,7 @@ TEST(CodecXmlValue, RefusalSurface) {
  */
 TEST(CodecXmlValue, BuilderSurface) {
 	// Объект потоковой сборки узла
-	xml::builder_t builder;
+	xml::builder_t builder(::logger());
 	// Выполняем проверку отклонения разметки без имени
 	ASSERT_FALSE(builder.open(""));
 	// Выполняем открытие узла разметки
@@ -1724,7 +1788,7 @@ TEST(CodecXmlValue, AccessAndFiles) {
 	 */
 	{
 		// Объект дерева разметки
-		xml::document_t document;
+		xml::document_t document(::logger());
 		// Объект прививаемого узла
 		xml::value_t value;
 		// Выполняем установку имени прививаемого узла
@@ -2073,7 +2137,7 @@ TEST(CodecXmlValue, UncoveredBuilderEdges) {
 	 */
 	{
 		// Объект сборщика значения
-		xml::builder_t builder;
+		xml::builder_t builder(::logger());
 		// Выполняем проверку отказа объявления связывания
 		ASSERT_FALSE(builder.binding("p", "u"));
 		// Выполняем открытие узла разметки
@@ -2089,7 +2153,7 @@ TEST(CodecXmlValue, UncoveredBuilderEdges) {
 	 */
 	{
 		// Объект сборщика значения
-		xml::builder_t builder;
+		xml::builder_t builder(::logger());
 		// Выполняем сборку примечания верхнего уровня
 		ASSERT_TRUE(builder.comment("c"));
 		// Выполняем открытие узла разметки
@@ -2108,7 +2172,7 @@ TEST(CodecXmlValue, UncoveredBuilderEdges) {
 	 */
 	{
 		// Объект дерева разметки, ничего не разобравшего
-		xml::document_t document;
+		xml::document_t document(::logger());
 		// Объект значения, снятого с корня пустого дерева
 		xml::value_t value(document.root());
 		// Выполняем проверку неопределённости снятого значения
@@ -3109,5 +3173,105 @@ TEST(CodecXmlValue, IndexSurvivesErase){
 		for(size_t i = 0; i < (count - 1); i++)
 			// Выполняем сличение значения уцелевшего свойства
 			ASSERT_EQ(fixed.attribute("k" + to_string(i)), "v" + to_string(i));
+	}
+}
+
+/**
+ * @brief Проверка сообщения об отказах кодека в журнал работы
+ *
+ * @details Кодек сообщает об отказах своих в журнал фреймворка, и записи эти собираются
+ * перехватом в функцию обратного вызова: вид вывода `DEFERRED` уводит их туда целиком,
+ * не трогая ни файлов, ни вывода на пульт
+ *
+ * @note Проверяются ОБЕ половины: отказ обязан давать запись, а успех обязан НЕ давать.
+ *       Набор из одной лишь первой половины прошёл бы и у кодека, пишущего в журнал на
+ *       всякий разбор подряд
+ * @warning Сличается и ВАЖНОСТЬ записи, а не одно лишь её наличие: отказ разбора чужого
+ *          текста беда не критическая, и запись о нём обязана идти предупреждением. Отказ
+ *          же записи разметки идёт критическим - там негодное собрало само приложение
+ */
+TEST(CodecXmlValue, LoggerReportsFailures){
+	// Объект фреймворка
+	fmk_t fmk;
+	// Объект ведения журнала работы
+	log_t log(&fmk);
+	// Уводим записи журнала целиком в функцию обратного вызова
+	log.mode({log_t::mode_t::DEFERRED});
+	// Собираемые перехваченные записи журнала
+	vector <pair <log_t::flag_t, string>> caught;
+	// Выполняем подписку на записи журнала работы
+	log.subscribe([&caught](const log_t::flag_t flag, string_view text) noexcept {
+		// Выполняем сбор очередной перехваченной записи
+		caught.emplace_back(flag, string(text));
+	});
+	/**
+	 * Выполняем проверку сообщения об отказе разбора
+	 */
+	{
+		// Собираемое значение
+		xml::value_t value;
+		// Выполняем установку объекта ведения журнала работы
+		value.setLogger(&log);
+		// Выполняем разбор негодного текста разметки
+		ASSERT_FALSE(value.parse("<a><b></a>"));
+		// Выполняем проверку того, что запись об отказе сделана
+		ASSERT_EQ(caught.size(), static_cast <size_t> (1));
+		// Выполняем проверку важности записи об отказе разбора
+		ASSERT_EQ(caught.front().first, log_t::flag_t::WARNING);
+		/**
+		 * Выполняем проверку того, что запись несёт место отказа
+		 *
+		 * @note Запись без места бесполезна: разбирается текст в мегабайты, и «разбор
+		 *       отказал» без строки и столбца читающему журнал не говорит ничего
+		 */
+		ASSERT_NE(caught.front().second.find("line"), string::npos) << caught.front().second;
+		// Выполняем проверку того, что запись несёт довод отказа
+		ASSERT_NE(caught.front().second.find("end tag"), string::npos) << caught.front().second;
+	}
+	// Выполняем очистку собранных записей журнала
+	caught.clear();
+	/**
+	 * Выполняем проверку молчания при успешном разборе
+	 */
+	{
+		// Собираемое значение
+		xml::value_t value;
+		// Выполняем установку объекта ведения журнала работы
+		value.setLogger(&log);
+		// Выполняем разбор годного текста разметки
+		ASSERT_TRUE(value.parse("<a><b/></a>"));
+		// Выполняем проверку того, что записей об успешном разборе не сделано
+		ASSERT_TRUE(caught.empty()) << caught.front().second;
+	}
+	/**
+	 * Выполняем проверку работы без объекта ведения журнала
+	 *
+	 * @note Указание на журнал вправе быть пустым, и отказ разбора при том обязан
+	 *       возвращаться кодом, ничего не роняя
+	 */
+	{
+		// Собираемое значение
+		xml::value_t value;
+		// Выполняем разбор негодного текста разметки без журнала
+		ASSERT_FALSE(value.parse("<a><b></a>"));
+	}
+	// Выполняем очистку собранных записей журнала
+	caught.clear();
+	/**
+	 * Выполняем проверку сообщения об отказе записи разметки
+	 */
+	{
+		// Объект записи текста разметки
+		xml::writer_t writer(&log);
+		/**
+		 * Выполняем запись содержимого прежде открытия корневого узла
+		 *
+		 * @note Отказ этот беда СВОЯ: записывается то, что собрало приложение
+		 */
+		ASSERT_FALSE(writer.text("содержимое"));
+		// Выполняем проверку того, что запись об отказе сделана
+		ASSERT_FALSE(caught.empty());
+		// Выполняем проверку важности записи об отказе записи разметки
+		ASSERT_EQ(caught.front().first, log_t::flag_t::CRITICAL) << caught.front().second;
 	}
 }

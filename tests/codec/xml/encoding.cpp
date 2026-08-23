@@ -24,17 +24,77 @@
  * Стандартные заголовочные файлы
  */
 #include <string>
+#include <vector>
 
 /**
  * Подключаем заголовочные файлы проекта
  */
 #include <codec/xml/encoding.hpp>
 #include <codec/xml/reader.hpp>
+#include <codec/xml/document.hpp>
 
 /**
  * Подключаем заголовочные файлы тестового окружения
  */
 #include "../../main.hpp"
+
+/**
+ * @brief Пространство имён проверок этого файла
+ *
+ * @note Держится оно безымянным намеренно: проверки кодеков собираются одной
+ *       программою, и одноимённые построения разных файлов иначе сходятся в
+ *       одно, порождая порчу вдали от места её причины
+ *
+ */
+namespace {
+	/**
+	 * @brief Объект журнала проверок с отключённым выводом
+	 *
+	 * @details Вывод отключается назначением пустого перечня приёмников: отказы
+	 *          разбора проверки наводят намеренно, и журнал их засорял бы выдачу
+	 *
+	 */
+	struct Silent {
+		/**
+		 * @brief Функция получения объекта фреймворка проверок
+		 *
+		 * @details Объект заводится статикою местною, а не общею файла: заведение его
+		 *          порядком построения статики оканчивается падением ещё до входа в
+		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
+		 *
+		 * @return объект фреймворка проверок
+		 *
+		 */
+		static const awh::fmk_t & framework() noexcept {
+			// Объект фреймворка проверок
+			static awh::fmk_t fmk;
+			// Выводим объект фреймворка проверок
+			return fmk;
+		}
+		// Объект журнала проверок
+		awh::log_t log;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Silent() noexcept : log(&Silent::framework()) {
+			// Выполняем отключение вывода логов
+			this->log.mode({});
+		}
+	};
+	/**
+	 * @brief Функция получения объекта журнала проверок
+	 *
+	 * @return объект журнала проверок
+	 *
+	 */
+	const awh::log_t * logger() noexcept {
+		// Объект журнала проверок
+		static Silent silent;
+		// Выводим объект журнала проверок
+		return &silent.log;
+	}
+}
 
 /**
  * Используем стандартное пространство имён
@@ -55,7 +115,7 @@ using namespace awh::codec;
  */
 static bool convert(const string & input, const size_t step, string & result, xml::error_t & error, xml::encoding_t & enc) noexcept {
 	// Объект приведения исходного текста к кодировке UTF-8
-	xml::decoder_t decoder;
+	xml::decoder_t decoder(::logger());
 	// Выполняем очистку приведённого текста
 	result.clear();
 	/**
@@ -275,8 +335,26 @@ TEST(CodecXmlEncoding, Unsupported) {
 	xml::error_t error = xml::error_t::NONE;
 	// Определённая кодировка исходного текста
 	xml::encoding_t enc = xml::encoding_t::NONE;
-	// Выполняем приведение текста целиком
-	ASSERT_FALSE(convert(string("<?xml version=\"1.0\" encoding=\"KOI8-R\"?><a/>"), 4096, result, error, enc));
+	/**
+	 * Выполняем приведение текста с кодировкою, приведению неизвестной
+	 *
+	 * @note Прежде здесь стояла «KOI8-R», и решение то ПЕРЕСМОТРЕНО 23.08.2026: всякая
+	 *       однобайтовая кодировка ныне берётся таблицею у `awh::charset`, и KOI8-R
+	 *       читается. Отвергается лишь то, чего не знает и общий модуль, - имя, кодировки
+	 *       не значащее вовсе
+	 */
+	ASSERT_FALSE(convert(string("<?xml version=\"1.0\" encoding=\"выдуманная\"?><a/>"), 4096, result, error, enc));
+	// Выполняем проверку кода ошибки приведения
+	ASSERT_EQ(error, xml::error_t::UNSUPPORTED_ENCODING);
+	// Выполняем сброс кода ошибки приведения
+	error = xml::error_t::NONE;
+	/**
+	 * Выполняем приведение текста с кодировкою многобайтовой, своей ветви не имеющей
+	 *
+	 * @warning Отвергать её обязательно: таблицы байта в знак у неё нет, и разбор её
+	 *          однобайтовым способом выдал бы вместо текста мусор
+	 */
+	ASSERT_FALSE(convert(string("<?xml version=\"1.0\" encoding=\"UTF-32\"?><a/>"), 4096, result, error, enc));
 	// Выполняем проверку кода ошибки приведения
 	ASSERT_EQ(error, xml::error_t::UNSUPPORTED_ENCODING);
 }
@@ -436,7 +514,7 @@ TEST(CodecXmlEncoding, Forced) {
 	// Приведённый к кодировке UTF-8 текст
 	string result;
 	// Объект приведения исходного текста к кодировке UTF-8
-	xml::decoder_t decoder;
+	xml::decoder_t decoder(::logger());
 	// Выполняем навязывание кодировки исходного текста
 	ASSERT_TRUE(decoder.encoding(xml::encoding_t::LATIN1));
 	// Выполняем приведение исходного текста
@@ -631,7 +709,7 @@ TEST(CodecXmlEncoding, SameTextAcrossEncodings) {
 		// Выполняем склеивание подряд идущих кусков содержимого
 		settings.mergeText = true;
 		// Объект потокового чтения текста разметки
-		xml::reader_t reader;
+		xml::reader_t reader(::logger());
 		// Выполняем установку настроек разбора текста разметки
 		reader.settings(settings);
 		// Собираемый слепок выдачи разбора
@@ -724,7 +802,7 @@ TEST(CodecXmlEncoding, TruncatedCharacter) {
 	// Дописываем закрывающую метку узла разметки
 	text.append("</a>");
 	// Объект потокового чтения разметки
-	xml::reader_t reader;
+	xml::reader_t reader(::logger());
 	// Выполняем подачу текста разметки целиком
 	ASSERT_TRUE(reader.feed(text.data(), text.size(), true));
 	/**
@@ -786,7 +864,7 @@ TEST(CodecXmlEncoding, ByteOrderMarkAgreement) {
 	 */
 	auto outcome = [](const string & text) -> xml::error_t {
 		// Объект потокового чтения разметки
-		xml::reader_t reader;
+		xml::reader_t reader(::logger());
 		// Выполняем подачу текста разметки целиком
 		reader.feed(text.data(), text.size(), true);
 		// Выполняем перебор всех событий разбора
@@ -864,7 +942,7 @@ TEST(CodecXmlEncoding, ReaderRefusals) {
 	 */
 	auto feed = [](const string & text, const size_t step) noexcept -> xml::error_t {
 		// Объект потокового чтения текста разметки
-		xml::reader_t reader;
+		xml::reader_t reader(::logger());
 		// Положение подачи в разбираемом тексте
 		size_t offset = 0;
 		/**
@@ -976,7 +1054,7 @@ TEST(CodecXmlEncoding, ChunkBoundaryAndKinds) {
 	 */
 	{
 		// Объект приведения кодировки исходного текста
-		xml::decoder_t decoder;
+		xml::decoder_t decoder(::logger());
 		// Приведённый текст
 		string result;
 		// Выполняем подачу куска, оборванного посреди последовательности знака
@@ -991,7 +1069,7 @@ TEST(CodecXmlEncoding, ChunkBoundaryAndKinds) {
 	 */
 	{
 		// Объект приведения кодировки исходного текста
-		xml::decoder_t decoder;
+		xml::decoder_t decoder(::logger());
 		// Приведённый текст
 		string result;
 		// Выполняем подачу куска, оборванного посреди последовательности знака
@@ -1009,7 +1087,7 @@ TEST(CodecXmlEncoding, ChunkBoundaryAndKinds) {
 	 */
 	{
 		// Объект приведения кодировки исходного текста
-		xml::decoder_t decoder;
+		xml::decoder_t decoder(::logger());
 		// Приведённый текст
 		string result;
 		// Выполняем подачу куска, оборванного посреди последовательности знака
@@ -1026,7 +1104,7 @@ TEST(CodecXmlEncoding, ChunkBoundaryAndKinds) {
 		// Выполняем перебор кодировок и недопустимых знаков в них
 		for(uint32_t kind = 0; kind < 4; kind++){
 			// Объект приведения кодировки исходного текста
-			xml::decoder_t decoder;
+			xml::decoder_t decoder(::logger());
 			// Приведённый текст
 			string result;
 			// Приводимый кусок исходного текста
@@ -1064,7 +1142,7 @@ TEST(CodecXmlEncoding, ChunkBoundaryAndKinds) {
 	 */
 	{
 		// Объект приведения кодировки исходного текста
-		xml::decoder_t decoder;
+		xml::decoder_t decoder(::logger());
 		// Приведённый текст
 		string result;
 		// Выполняем подачу негодной последовательности байтов
@@ -1081,7 +1159,7 @@ TEST(CodecXmlEncoding, ChunkBoundaryAndKinds) {
 	 */
 	{
 		// Объект приведения кодировки исходного текста
-		xml::decoder_t decoder;
+		xml::decoder_t decoder(::logger());
 		// Приведённый текст
 		string result;
 		// Собираем объявление разметки со словом без знака равенства
@@ -1098,7 +1176,7 @@ TEST(CodecXmlEncoding, ChunkBoundaryAndKinds) {
 	 */
 	{
 		// Объект приведения кодировки исходного текста
-		xml::decoder_t decoder;
+		xml::decoder_t decoder(::logger());
 		// Выполняем навязывание кодировки извне
 		ASSERT_TRUE(decoder.encoding(xml::encoding_t::UTF8));
 		// Выполняем проверку установки навязанной кодировки
@@ -1107,5 +1185,66 @@ TEST(CodecXmlEncoding, ChunkBoundaryAndKinds) {
 		ASSERT_TRUE(decoder.encoding(xml::encoding_t::NONE));
 		// Выполняем проверку снятия навязанной кодировки
 		ASSERT_EQ(decoder.encoding(), xml::encoding_t::NONE);
+	}
+}
+
+/**
+ * @brief Проверка разбора однобайтовых кодировок таблицею общего модуля
+ *
+ * @details Свой перечень кодировок несёт лишь договорные, разбираемые своими ветвями.
+ * Всякая же однобайтовая кодировка разбирается одинаково - байт в кодовое значение по
+ * таблице, - и таблицы берутся у `awh::charset`
+ *
+ * @note Прежде разметка с объявлением `windows-1251` либо `koi8-r` отвергалась наотрез,
+ *       хотя таблицы для неё лежали в дереве готовые. Решение пересмотрено 23.08.2026,
+ *       и запись о нём стоит в шапке `common.hpp`
+ * @warning Проверяются ОБЕ половины: опознанное имя обязано читаться, а неопознанное -
+ *          отвергаться. Набор из одной лишь первой половины прошёл бы и у разбора,
+ *          принимающего что угодно и читающего текст вслепую как US-ASCII
+ */
+TEST(CodecXmlEncoding, SingleByteEncodingsFromCharset){
+	/**
+	 * Выполняем перебор всех однобайтовых кодировок, читаться обязанных
+	 *
+	 * @note Содержимое у всех одно и то же слово «Привет», записанное каждой кодировкой
+	 *       по-своему: сличается именно ПРОЧТЁННОЕ, а не одно лишь отсутствие отказа
+	 */
+	for(auto & item : vector <pair <string, string>> {
+		{"windows-1251", "\xCF\xF0\xE8\xE2\xE5\xF2"},
+		{"koi8-r",       "\xF0\xD2\xC9\xD7\xC5\xD4"},
+		{"ISO-8859-5",   "\xBF\xE0\xD8\xD2\xD5\xE2"},
+		{"cp866",        "\x8F\xE0\xA8\xA2\xA5\xE2"}
+	}) {
+		// Дерево разметки
+		xml::document_t document(::logger());
+		// Собираем текст разметки с объявлением очередной кодировки
+		const string text = ("<?xml version=\"1.0\" encoding=\"" + item.first + "\"?><a>" + item.second + "</a>");
+		// Выполняем разбор текста разметки
+		ASSERT_TRUE(document.parse(text)) << item.first << ": " << xml::message(document.error());
+		// Выполняем сличение прочтённого содержимого
+		ASSERT_EQ(string(document.root().child("a").text()), "Привет") << item.first;
+	}
+	/**
+	 * Выполняем перебор всех имён кодировок, отвергаться обязанных
+	 */
+	for(auto & item : vector <string> {
+		// Имя, не значащее кодировки вовсе
+		"выдуманная",
+		/**
+		 * Кодировка многобайтовая, своей ветви разбора не имеющая
+		 *
+		 * @note Отвергать её обязательно: таблицы байта в знак у неё нет, и разбор её
+		 *       однобайтовым способом выдал бы вместо текста мусор
+		 */
+		"UTF-32"
+	}) {
+		// Дерево разметки
+		xml::document_t document(::logger());
+		// Собираем текст разметки с объявлением неподдерживаемой кодировки
+		const string text = ("<?xml version=\"1.0\" encoding=\"" + item + "\"?><a>x</a>");
+		// Выполняем проверку отказа разбора
+		ASSERT_FALSE(document.parse(text)) << item;
+		// Выполняем проверку кода отказа
+		ASSERT_EQ(document.error(), xml::error_t::UNSUPPORTED_ENCODING) << item;
 	}
 }

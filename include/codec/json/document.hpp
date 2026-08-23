@@ -1787,7 +1787,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					explicit Document(const log_t * log = nullptr) noexcept;
+					explicit Document(const log_t * log) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод установки объекта ведения журнала работы

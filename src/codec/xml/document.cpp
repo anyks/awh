@@ -121,7 +121,7 @@ bool awh::codec::xml::Document::parse(const string_view text, const reader_t::se
 	// Выполняем очистку дерева разметки
 	this->clear();
 	// Объект потокового чтения текста разметки
-	reader_t reader(settings, this->_log);
+	reader_t reader(this->_log, settings);
 	// Количество начал разметки в исходном тексте
 	size_t tags = 0;
 	{
@@ -436,8 +436,10 @@ bool awh::codec::xml::Document::parse(const string_view text, const reader_t::se
 				 *       разобрался, а места под дерево не хватило - беда своя, не чужая
 				 */
 				#if DEBUG_MODE
-					this->_log->debug("%s", __PRETTY_FUNCTION__, ::std::make_tuple(location.line, location.column),
-					                  log_t::flag_t::CRITICAL, message(error_t::OVERFLOW_LIMIT));
+					this->_log->debug("XML document build failed at line %llu column %llu: %s", __PRETTY_FUNCTION__,
+					                  ::std::make_tuple(location.line, location.column), log_t::flag_t::CRITICAL,
+					                  static_cast <unsigned long long> (location.line),
+					                  static_cast <unsigned long long> (location.column), message(error_t::OVERFLOW_LIMIT));
 				#else
 					this->_log->print("XML document build failed at line %llu column %llu: %s", log_t::flag_t::CRITICAL,
 					                  static_cast <unsigned long long> (location.line),

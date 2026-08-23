@@ -523,9 +523,83 @@ namespace iface {
 				 */
 				ifra6.ifra_lifetime.ia6t_vltime = ND6_INFINITE_LIFETIME;
 				ifra6.ifra_lifetime.ia6t_pltime = ND6_INFINITE_LIFETIME;
-				// Применяем новый IP-адрес и маску интерфейса
-				// EEXIST считается УСПЕХОМ по тому же доводу, что и у IPv4 выше
-				if(!(result = ((::ioctl(sock, SIOCAIFADDR_IN6, &ifra6) == 0) || (errno == EEXIST)))){
+				/**
+				 * Применяем новый IP-адрес и маску интерфейса
+				 *
+				 * @note Разбор EEXIST здесь ТОТ ЖЕ, что и у IPv4 выше, и по тому же доводу:
+				 *       код отказа один на два несовместимых случая - адрес уже стоит на
+				 *       НАШЕМ устройстве (успех) либо занят ДРУГИМ, и наше остаётся без
+				 *       адреса вовсе (отказ). Прежде оба считались успехом без разбора
+				 *
+				 * @warning Довод этот не умозрителен: воспроизведено щупом на стенде FreeBSD
+				 *          10.100.1.207 23.08.2026 - два устройства просили fd00:77::1,
+				 *          второе получило EEXIST, адрес остался числиться за «tun5», а
+				 *          движок счёл бы это согласием. У NetBSD и OpenBSD случай иной:
+				 *          они дубликат IPv6 принимают молча, и EEXIST там не приходит вовсе
+				 *
+				 * @note Спрашивается не адрес устройства, а весь состав связей: отдельного
+				 *       запроса вида SIOCGIFADDR у IPv6 нет, а у устройства адресов IPv6
+				 *       бывает несколько - искать надо среди всех, а не сличать первый
+				 */
+				if(::ioctl(sock, SIOCAIFADDR_IN6, &ifra6) == 0)
+					// Запоминаем успешное назначение адреса
+					result = true;
+				// Если система ответила отказом «адрес уже существует»
+				else if(errno == EEXIST) {
+					// Объект перечня связей системы
+					struct ifaddrs * ptr = nullptr;
+					// Если состав связей системы получен
+					if(::getifaddrs(&ptr) == 0){
+						// Объект-охранник перечня связей
+						const unique_ptr <struct ifaddrs, void (*)(struct ifaddrs *)> guard(ptr, &::freeifaddrs);
+						/**
+						 * Проходим по всему составу связей системы
+						 */
+						for(struct ifaddrs * ifa = ptr; ifa != nullptr; ifa = ifa->ifa_next){
+							// Если связь не несёт адреса либо адрес не является IPv6
+							if((ifa->ifa_addr == nullptr) || (ifa->ifa_addr->sa_family != AF_INET6))
+								// Переходим к следующей связи
+								continue;
+							// Если связь принадлежит не нашему устройству
+							if(::strncmp(ifa->ifa_name, string(name).c_str(), IFNAMSIZ) != 0)
+								// Переходим к следующей связи
+								continue;
+							// Получаем адрес связи нашего устройства
+							const struct sockaddr_in6 * actual = reinterpret_cast <const struct sockaddr_in6 *> (ifa->ifa_addr);
+							/**
+							 * Снимаем копии обоих адресов для сличения
+							 *
+							 * @warning Сличать напрямую нельзя: у систем BSD наследие KAME держит
+							 *          опознаватель зоны ВНУТРИ адреса - во втором и третьем октетах
+							 *          адреса связи локального звена, - тогда как запрошенный адрес
+							 *          приходит без него. Сличение вышло бы неравным всегда, и
+							 *          назначенный адрес `fe80::` числился бы неназначенным
+							 */
+							struct in6_addr left = actual->sin6_addr, right = ifra6.ifra_addr.sin6_addr;
+							// Если адрес принадлежит локальному звену
+							if(IN6_IS_ADDR_LINKLOCAL(&right)){
+								// Обнуляем опознаватель зоны у адреса связи нашего устройства
+								left.s6_addr[2] = 0;
+								left.s6_addr[3] = 0;
+								// Обнуляем опознаватель зоны у запрошенного адреса
+								right.s6_addr[2] = 0;
+								right.s6_addr[3] = 0;
+							}
+							// Успехом считаем только совпадение адреса с запрошенным
+							if(::memcmp(&left, &right, sizeof(struct in6_addr)) == 0){
+								// Запоминаем успешное назначение адреса
+								result = true;
+								// Прекращаем поиск
+								break;
+							}
+						}
+					}
+					// Возвращаем код отказа на место: разбор ниже печатает именно его
+					errno = EEXIST;
+				// Для всех прочих отказов назначение не состоялось
+				} else result = false;
+				// Если назначение адреса не состоялось
+				if(!result){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -1078,6 +1152,59 @@ string awh::eth::Interface::name(const net::addr_t * addr) const noexcept {
 	if(addr == nullptr)
 		// Возвращаем пустой результат
 		return result;
+	/**
+	 * Неопределённый адрес не называет НИЧЕГО
+	 *
+	 * @details Нулевой адрес - это `INADDR_ANY`, «любой», а не адрес какого-то
+	 *          устройства. Искать его среди связей нельзя: система выдаёт нулевой
+	 *          адрес IPv4 всякой связи, у которой адреса ещё нет, и поиск возвращал
+	 *          имя первой попавшейся из них
+	 *
+	 * @warning Прежде этого разбора не было, и держалось всё лишь на том, что у машины
+	 *          не случалось связей без адреса. Установлено 23.08.2026 на стендах
+	 *          Solaris и OpenIndiana: там заведены связи `awh_tun0`...`awh_tun7` под
+	 *          туннели, и `EthSuiteTest` падал на обеих машинах, требуя от нулевого
+	 *          адреса пустого имени
+	 */
+	switch(addr->size){
+		// Если адрес является MAC-адресом
+		case 6: {
+			// Признак нулевого аппаратного адреса
+			bool empty = true;
+			/**
+			 * Проходим по всем октетам аппаратного адреса
+			 */
+			for(uint8_t i = 0; (i < 6) && empty; i++)
+				// Снимаем признак у первого ненулевого октета
+				empty = (awh_cast <const awh::net::addr_mac_t *> (addr)->address[i] == 0);
+			// Если аппаратный адрес нулевой, возвращаем пустой результат
+			if(empty)
+				// Выводим пустой результат
+				return result;
+		} break;
+		// Если адрес является IPv4
+		case 4: {
+			// Если адрес нулевой, возвращаем пустой результат
+			if(awh_cast <const awh::net::addr_net_ipv4_t *> (addr)->address == 0)
+				// Выводим пустой результат
+				return result;
+		} break;
+		// Если адрес является IPv6
+		case 16: {
+			// Признак нулевого адреса IPv6
+			bool empty = true;
+			/**
+			 * Проходим по всем октетам адреса IPv6
+			 */
+			for(uint8_t i = 0; (i < 16) && empty; i++)
+				// Снимаем признак у первого ненулевого октета
+				empty = (awh_cast <const awh::net::addr_net_ipv6_t *> (addr)->address[i] == 0);
+			// Если адрес нулевой, возвращаем пустой результат
+			if(empty)
+				// Выводим пустой результат
+				return result;
+		} break;
+	}
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -2734,6 +2861,121 @@ bool awh::eth::Interface::getAddress(string_view name, unique_ptr <net::addr_t> 
  * @return       результат комплексной настройки сетевого интерфейса
  *
  */
+/**
+ * Метод снятия адреса заведён только для macOS
+ *
+ * @details Прочие системы BSD снимают адрес вместе с самим устройством: у них есть
+ *          `SIOCIFDESTROY`, и отдельного снятия им не нужно. У macOS устройство `utun`
+ *          снести нечем - оно заводится управляющим сокетом ядра и исчезает само при
+ *          его закрытии, - но исчезает НЕ СРАЗУ, и всё это время адрес числится за ним.
+ *          Следующий туннель получает свой адрес за мертвецом
+ *
+ * @note Установлено щупом на рабочей машине 23.08.2026: сразу после сноса узла система
+ *       по-прежнему числила адрес за «utun10», отчего второй оборот проверки жизненного
+ *       цикла и падал
+ */
+#if __APPLE__
+	/**
+	 * @brief Метод снятия адреса с сетевого интерфейса
+	 *
+	 * @param name название сетевого интерфейса
+	 * @param ip   снимаемый адрес
+	 * @param peer адрес встречной стороны, чей путь снимается
+	 * @return     результат снятия
+	 *
+	 */
+	bool awh::eth::Interface::delAddress(string_view name, const net::addr_t * ip, [[maybe_unused]] const net::addr_t * peer) const noexcept {
+		// Результат работы функции
+		bool result = false;
+		// Если название интерфейса и снимаемый адрес переданы
+		if(!name.empty() && (ip != nullptr)){
+			/**
+			 * Выполняем перехват ошибок
+			 */
+			try {
+				/**
+				 * Семейство управляющего сокета обязано совпадать с семейством адреса
+				 *
+				 * @note Запрос берёт семейство у САМОГО сокета, а не у передаваемой
+				 *       структуры: сокет AF_INET отвечает на запрос с адресом IPv6
+				 *       отказом «семейство адресов не поддержано»
+				 */
+				const net::socket_t sock = ::socket(((ip->size == 16) ? AF_INET6 : AF_INET), SOCK_DGRAM, 0);
+				// Если управляющий сокет создать не удалось
+				if(sock == net::invalid_socket_t){
+					// Записываем ошибку в лог
+					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+					// Возвращаем результат
+					return result;
+				}
+				/**
+				 * Снимаем адрес IPv6
+				 */
+				if(ip->size == 16){
+					// Объект запроса снятия адреса IPv6
+					struct in6_ifreq ifr6;
+					// Заполняем объект запроса нулями
+					::memset(&ifr6, 0, sizeof(ifr6));
+					// Копируем название сетевого интерфейса
+					::strncpy(ifr6.ifr_name, string(name).c_str(), IFNAMSIZ - 1);
+					// Устанавливаем семейство снимаемого адреса
+					ifr6.ifr_addr.sin6_family = AF_INET6;
+					// Устанавливаем длину структуры снимаемого адреса
+					ifr6.ifr_addr.sin6_len = sizeof(struct sockaddr_in6);
+					// Копируем снимаемый адрес
+					::memcpy(&ifr6.ifr_addr.sin6_addr, &awh_cast <const net::addr_net_ipv6_t *> (ip)->address[0], 16);
+					// Снимаем адрес с сетевого интерфейса
+					result = (::ioctl(sock, SIOCDIFADDR_IN6, &ifr6) == 0);
+				/**
+				 * Снимаем адрес IPv4
+				 */
+				} else {
+					// Объект запроса снятия адреса
+					struct ifreq ifr;
+					// Заполняем объект запроса нулями
+					::memset(&ifr, 0, sizeof(ifr));
+					// Копируем название сетевого интерфейса
+					::strncpy(ifr.ifr_name, string(name).c_str(), IFNAMSIZ - 1);
+					// Получаем структуру снимаемого адреса
+					struct sockaddr_in * addr = reinterpret_cast <struct sockaddr_in *> (&ifr.ifr_addr);
+					// Устанавливаем семейство снимаемого адреса
+					addr->sin_family = AF_INET;
+					// Устанавливаем длину структуры снимаемого адреса
+					addr->sin_len = sizeof(struct sockaddr_in);
+					// Устанавливаем снимаемый адрес
+					addr->sin_addr.s_addr = awh_cast <const net::addr_net_ipv4_t *> (ip)->address;
+					// Снимаем адрес с сетевого интерфейса
+					result = (::ioctl(sock, SIOCDIFADDR, &ifr) == 0);
+				}
+				/**
+				 * Отсутствие адреса отказом НЕ является
+				 *
+				 * @note Снять несуществующий адрес нельзя, но добиваться мы того и не
+				 *       собирались: устройство остаётся без него, а это ровно то, чего
+				 *       хотел вызывающий
+				 */
+				if(!result && ((errno == EADDRNOTAVAIL) || (errno == ENXIO)))
+					// Считаем отсутствие адреса успехом
+					result = true;
+				// Если снятие адреса не удалось
+				else if(!result)
+					// Записываем ошибку в лог
+					this->_log->print("address could not be removed from interface \"%s\": %s", log_t::flag_t::CRITICAL, string(name).c_str(), ::strerror(errno));
+				// Закрываем управляющий сокет
+				::close(sock);
+			/**
+			 * Если возникает ошибка
+			 */
+			} catch(const exception & error) {
+				// Записываем ошибку в лог
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			}
+		}
+		// Возвращаем результат
+		return result;
+	}
+#endif
+
 bool awh::eth::Interface::configure(string_view name, const net::addr_t * ip, const uint8_t prefix, const uint32_t mtu) const noexcept {
 	// Делегируем выполнение комплексной настройке без адреса удалённого пира
 	return this->configure(name, ip, nullptr, prefix, mtu);

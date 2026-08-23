@@ -1942,14 +1942,86 @@ TEST_F(IoFixture, IoTunnelRefusesCommitWithoutAddressTest){
 		}
 	}
 	/**
+	 * Третий способ создать условие: занятость адреса IPv6
+	 *
+	 * @details Системы расходятся не только в том, что считать негодным адресом, но и
+	 *          в том, отвергать ли ДУБЛИКАТ, - и расходятся по семействам адресов
+	 *          порознь. Замерено щупом 23.08.2026 на трёх стендах: FreeBSD дубликат
+	 *          IPv4 принимает молча, а дубликат IPv6 отвергает с EEXIST, оставляя
+	 *          адрес за прежним устройством; NetBSD и OpenBSD принимают оба. Оттого
+	 *          способ по IPv4 на FreeBSD условия не создаёт вовсе, а способ по IPv6 -
+	 *          создаёт, и проверка там перестаёт отступать
+	 *
+	 * @warning Занимающий узел ЖИВЁТ, покуда фиксируется второй, по тому же доводу,
+	 *          что и у способа по IPv4 выше
+	 */
+	if(committed && (orphans == 0)){
+		// Заводим первый узел туннеля IPv6 - тот, что займёт адрес
+		const awh::event::id_t owner = this->_io->event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV6);
+		// Ставим охранника занимающего узла
+		const TunnelGuard holder(this->_io.get(), owner);
+		// Узел обязан завестись
+		ASSERT_GT(owner, 0u) << "движок не записал узел туннеля IPv6, занимающий адрес";
+		// Устанавливаем опции события туннеля
+		ASSERT_TRUE(this->_io->setOptions(owner, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
+		// Устанавливаем адреса концов туннеля
+		ASSERT_TRUE(this->_io->setAddress(owner, awh::event::address_t::IPV6, TUNNEL_LOCAL6));
+		ASSERT_TRUE(this->_io->setTarget(owner, TUNNEL_PEER6));
+		/**
+		 * Занимающий узел обязан подняться: без него занятости не возникнет
+		 *
+		 * @note Отказ здесь означает, что окружение к опыту не готово - стека IPv6 у
+		 *       машины нет вовсе, - и судить по такому прогону нельзя
+		 */
+		if(this->_io->commit(owner)){
+			// Заводим второй узел туннеля - тот, что попросит ЗАНЯТЫЙ адрес IPv6
+			const awh::event::id_t rival = this->_io->event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV6);
+			// Ставим охранника соперничающего узла
+			const TunnelGuard contender(this->_io.get(), rival);
+			// Узел обязан завестись
+			ASSERT_GT(rival, 0u) << "движок не записал узел туннеля IPv6, просящий занятый адрес";
+			// Устанавливаем опции события туннеля
+			ASSERT_TRUE(this->_io->setOptions(rival, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
+			// Просим ТОТ ЖЕ адрес, что уже занят первым узлом
+			ASSERT_TRUE(this->_io->setAddress(rival, awh::event::address_t::IPV6, TUNNEL_LOCAL6));
+			ASSERT_TRUE(this->_io->setTarget(rival, TUNNEL_PEER6));
+			// Считаем отклики ошибки соперничающего узла тем же счётчиком
+			this->_io->on(rival, static_cast <awh::engine::callback::error_t> (
+				[&errors, &attacks, &orphans, &reason]([[maybe_unused]] const awh::event::id_t tid, const awh::event::error_t code, const std::string & text) noexcept -> void {
+					// Считаем отклик ошибки
+					errors++;
+					// Запоминаем текст первого отказа вместе с его разновидностью
+					if(reason.empty())
+						// Устанавливаем причину первого отказа
+						reason = (std::string("вид=") + std::to_string(static_cast <uint16_t> (code)) + " «" + text + "»");
+					// Если движок доложил о неназначенном адресе
+					if(text.find("left without an address") != std::string::npos)
+						// Считаем доклад о неназначенном адресе
+						orphans++;
+					// Если движок объявил подмену адреса
+					if(text.find("Attacker replaced") != std::string::npos)
+						// Считаем объявление подмены адреса
+						attacks++;
+				}
+			));
+			// Снимаем итог фиксации настроек соперничающего узла
+			committed = this->_io->commit(rival);
+			/**
+			 * Имена спрашиваются ПОСЛЕ фиксации по тому же доводу, что и у IPv4 выше
+			 */
+			sample = std::string("занятость адреса ") + TUNNEL_LOCAL6 +
+			         " (занял «" + this->_io->getIface(owner) + "», просит «" + this->_io->getIface(rival) + "»)";
+		}
+	}
+	/**
 	 * Отказ обязан прийти ОТ СИСТЕМЫ, а не от проверки
 	 *
-	 * @note Если ни один из двух способов отказа не дал, опыт не поставлен:
+	 * @note Если ни один из трёх способов отказа не дал, опыт не поставлен:
 	 *       устройство всякий раз выходило годным, и отказа фиксации ждать не от чего
 	 */
 	if(committed && (orphans == 0))
 		// Пропускаем проверку
-		GTEST_SKIP() << "система приняла и негодные образцы адресов, и занятый адрес: отказ назначения не воспроизведён"
+		GTEST_SKIP() << "система приняла и негодные образцы адресов, и занятый адрес IPv4, и занятый адрес IPv6: отказ назначения не воспроизведён"
 		             << " [способ: " << (sample.empty() ? std::string("не поставлен") : sample)
 		             << "; докладов=" << orphans << "; отказов=" << errors
 		             << ((errors > 0) ? ("; первый: " + reason) : std::string("")) << "]";

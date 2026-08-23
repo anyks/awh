@@ -2444,7 +2444,7 @@ string awh::codec::xml::Value::dump(const format_t format) const noexcept {
  */
 string awh::codec::xml::Value::dump(const writer_t::settings_t & settings) const noexcept {
 	// Поток записи текста разметки
-	writer_t writer;
+	writer_t writer(this->_log);
 	// Выполняем установку настроек записи текста
 	writer.settings(settings);
 	/**

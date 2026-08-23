@@ -43,6 +43,7 @@
  * Подключаем заголовочные файлы модуля
  */
 #include <sys/log.hpp>
+#include <encoding/charset/charset.hpp>
 
 /**
  * Подключаем заголовочные файлы модуля
@@ -269,6 +270,25 @@ namespace awh {
 				private:
 					/**
 					 * \~russian
+					 * Таблица однобайтовой кодировки, взятая у общего модуля кодировок
+					 *
+					 * @details Указание это непусто лишь при виде кодировки `SINGLE`. Таблица
+					 * даёт соответствие байта кодовому значению Юникода, и разбор по ней
+					 * состояния НЕ ИМЕЕТ вовсе: байт приходит - знак выдаётся, и границы
+					 * кусков такому разбору безразличны по устройству
+					 *
+					 * @note Указание берётся у `awh::charset` и живёт столько же, сколько
+					 *       сама программа: таблицы там постоянные
+					 *
+					 * \~english
+					 * Table of a single-byte encoding taken from the common encodings module
+					 *
+					 * \~
+					 */
+					const charset::table_t * _table = nullptr;
+				private:
+					/**
+					 * \~russian
 					 * @brief Метод отказа приведения с сообщением о нём в журнал
 					 *
 					 * @param error код ошибки приведения
@@ -440,7 +460,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					explicit Decoder(const log_t * log = nullptr) noexcept;
+					explicit Decoder(const log_t * log) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод установки объекта ведения журнала работы

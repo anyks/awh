@@ -31,6 +31,64 @@
 #include <codec/xml/writer.hpp>
 
 /**
+ * @brief Пространство имён замеров этого файла
+ *
+ * @note Держится оно безымянным намеренно: замеры кодеков собираются одной
+ *       программою, и одноимённые построения разных файлов иначе сходятся в
+ *       одно, порождая порчу вдали от места её причины
+ *
+ */
+namespace {
+	/**
+	 * @brief Объект журнала замеров с отключённым выводом
+	 *
+	 * @details Вывод отключается назначением пустого перечня приёмников: отказы
+	 *          разбора замеры наводят намеренно, и журнал их засорял бы выдачу
+	 *
+	 */
+	struct Silent {
+		/**
+		 * @brief Функция получения объекта фреймворка замеров
+		 *
+		 * @details Объект заводится статикою местною, а не общею файла: заведение его
+		 *          порядком построения статики оканчивается падением ещё до входа в
+		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
+		 *
+		 * @return объект фреймворка замеров
+		 *
+		 */
+		static const awh::fmk_t & framework() noexcept {
+			// Объект фреймворка замеров
+			static awh::fmk_t fmk;
+			// Выводим объект фреймворка замеров
+			return fmk;
+		}
+		// Объект журнала замеров
+		awh::log_t log;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Silent() noexcept : log(&Silent::framework()) {
+			// Выполняем отключение вывода логов
+			this->log.mode({});
+		}
+	};
+	/**
+	 * @brief Функция получения объекта журнала замеров
+	 *
+	 * @return объект журнала замеров
+	 *
+	 */
+	const awh::log_t * logger() noexcept {
+		// Объект журнала замеров
+		static Silent silent;
+		// Выводим объект журнала замеров
+		return &silent.log;
+	}
+}
+
+/**
  * Используем стандартное пространство имён
  */
 using namespace std;
@@ -248,7 +306,7 @@ namespace {
 	 */
 	static uint64_t namespacesDocument() noexcept {
 		// Объект записи текста разметки
-		awh::codec::xml::writer_t writer;
+		awh::codec::xml::writer_t writer(::logger());
 		// Выполняем открытие корневого узла разметки
 		writer.open("root", "urn:example:root");
 		/**
@@ -275,7 +333,7 @@ namespace {
 	}
 	static uint64_t soapCall() noexcept {
 		// Объект записи текста разметки
-		awh::codec::xml::writer_t writer;
+		awh::codec::xml::writer_t writer(::logger());
 		// Выполняем запись объявления разметки
 		writer.declaration();
 		// Выполняем открытие узла оболочки обращения
@@ -336,7 +394,7 @@ namespace {
 		 */
 		const auto write = []() noexcept -> uint64_t {
 			// Объект записи текста разметки
-			awh::codec::xml::writer_t writer;
+			awh::codec::xml::writer_t writer(::logger());
 			// Выполняем открытие корневого узла разметки
 			writer.open("root");
 			/**
@@ -406,7 +464,7 @@ namespace {
 		 */
 		const auto write = [&content]() noexcept -> uint64_t {
 			// Объект записи текста разметки
-			awh::codec::xml::writer_t writer;
+			awh::codec::xml::writer_t writer(::logger());
 			// Выполняем открытие корневого узла разметки
 			writer.open("root");
 			/**

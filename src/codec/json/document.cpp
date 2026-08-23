@@ -153,9 +153,7 @@ void awh::codec::json::Document::setLogger(const log_t * log) noexcept {
  * @param log объект ведения журнала работы
  *
  */
-awh::codec::json::Document::Document(const log_t * log) noexcept : _error(error_t::NONE), _named(0), _keyed(false), _pointer(0), _base(0), _completed(false), _callback(nullptr), _log(log) {
-	// Выполняем установку объекта ведения журнала хранимому чтению
-	this->_reader.setLogger(log);
+awh::codec::json::Document::Document(const log_t * log) noexcept : _error(error_t::NONE), _named(0), _keyed(false), _pointer(0), _base(0), _completed(false), _callback(nullptr), _reader(log), _log(log) {
 	/**
 	 * Выполняем заведение запаса памяти под сборку дерева документа
 	 *
@@ -650,7 +648,7 @@ string awh::codec::json::Document::Value::raw() const noexcept {
 		// Выводим отсутствие записи числа
 		return string();
 	// Объект записи текста документа
-	writer_t writer;
+	writer_t writer(this->_doc->_log);
 	// Выполняем запись числа, хранимого узлом
 	this->_doc->compose(writer, node);
 	// Выводим собранную запись числа
@@ -1680,7 +1678,7 @@ bool awh::codec::json::Document::load(const string & filename) noexcept {
  */
 string awh::codec::json::Document::dump(const format_t format) const noexcept {
 	// Запись текста документа
-	writer_t writer;
+	writer_t writer(this->_log);
 	// Получаем настройки записи текста
 	writer_t::settings_t settings = this->_settings.writer;
 	// Устанавливаем затребованный вид оформления собираемого текста

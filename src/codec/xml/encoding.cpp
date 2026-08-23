@@ -166,7 +166,9 @@ namespace {
 	 * @return       объявленная кодировка исходного текста
 	 *
 	 */
-	static encoding_t declared(const char * buffer, const size_t size, bool & ready, bool & known) noexcept {
+	static encoding_t declared(const char * buffer, const size_t size, bool & ready, bool & known, string_view & label) noexcept {
+		// Выполняем сброс имени объявленной кодировки
+		label = string_view();
 		// Выполняем сброс признака готовности объявления разметки
 		ready = false;
 		// Выполняем сброс признака поддержки объявленной кодировки
@@ -263,8 +265,10 @@ namespace {
 		if((stop == string_view::npos) || (stop > end))
 			// Выводим неопределённую кодировку
 			return encoding_t::NONE;
+		// Запоминаем имя объявленной кодировки
+		label = text.substr(pos, stop - pos);
 		// Выполняем определение кодировки по её названию
-		const encoding_t result = encoding(text.substr(pos, stop - pos));
+		const encoding_t result = encoding(label);
 		/**
 		 * Если объявленная кодировка не поддерживается
 		 *
@@ -681,7 +685,10 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 			// Признак того, что объявленная кодировка поддерживается
 			bool known = true;
 			// Выполняем чтение кодировки из объявления разметки
-			const encoding_t declared = ::declared(this->_prolog.data(), this->_prolog.size(), ready, known);
+			// Имя объявленной кодировки исходного текста
+			string_view label;
+			// Выполняем чтение кодировки из объявления разметки
+			const encoding_t declared = ::declared(this->_prolog.data(), this->_prolog.size(), ready, known, label);
 			/**
 			 * Если объявление разметки ещё не прочитано до конца
 			 */
@@ -716,8 +723,34 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 			 * Если объявленная кодировка не поддерживается
 			 */
 			} else if(!known) {
-				// Выполняем отказ приведения с сообщением о нём в журнал
-				return this->refuse(error_t::UNSUPPORTED_ENCODING);
+				/**
+				 * Выполняем опознание имени кодировки общим модулем кодировок
+				 *
+				 * @details Свой перечень несёт лишь договорные кодировки, разбираемые своими
+				 * ветвями. Всякую ОДНОБАЙТОВУЮ кодировку разбирать одинаково - байт в кодовое
+				 * значение по таблице, - и таблицы эти во фреймворке уже лежат
+				 *
+				 * @note Берётся одна лишь таблица, а не перекодирование целиком: `transcode`
+				 *       работает целою строкою, тогда как чтение идёт кусками
+				 */
+				const charset::encoding_t single = charset::encoding(label);
+				// Получаем таблицу опознанной однобайтовой кодировки
+				const charset::table_t * table = ((single != charset::encoding_t::NONE) ? charset::table(single) : nullptr);
+				/**
+				 * Если таблица опознанной кодировки взята
+				 */
+				if((table != nullptr) && (table->unicode != nullptr)){
+					// Запоминаем таблицу однобайтовой кодировки исходного текста
+					this->_table = table;
+					// Запоминаем вид кодировки исходного текста
+					this->_encoding = encoding_t::SINGLE;
+				/**
+				 * Если кодировка не опознана и общим модулем
+				 */
+				} else {
+					// Выполняем отказ приведения с сообщением о нём в журнал
+					return this->refuse(error_t::UNSUPPORTED_ENCODING);
+				}
 			}
 		}
 		// Запоминаем, что приведение текста началось
@@ -1115,6 +1148,41 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 			}
 		} break;
 		/**
+		 * Если кодировка исходного текста однобайтовая, взятая таблицею
+		 *
+		 * @note Разбор этот состояния НЕ ИМЕЕТ: байт приходит - знак выдаётся. Оттого
+		 *       границы кусков ему безразличны по устройству, и переноса недобранной
+		 *       последовательности здесь нет вовсе - в отличие от UTF-8 и UTF-16
+		 */
+		case static_cast <uint8_t> (encoding_t::SINGLE): {
+			/**
+			 * Если таблица кодировки не задана
+			 *
+			 * @warning Заслон этот НЕДОСТИЖИМ снаружи: вид `SINGLE` ставится лишь вместе с
+			 *          таблицею, одним действием. Он стережёт именно эту связку
+			 */
+			if(this->_table == nullptr){
+				// Выполняем отказ приведения с сообщением о нём в журнал
+				return this->refuse(error_t::UNSUPPORTED_ENCODING);
+			}
+			/**
+			 * Выполняем перебор всех байтов исходного текста
+			 */
+			while(offset < size){
+				// Получаем кодовое значение очередного знака по таблице кодировки
+				const uint32_t code = static_cast <uint32_t> (this->_table->unicode[static_cast <uint8_t> (data[offset++])]);
+				/**
+				 * Если знак недопустим в разметке
+				 */
+				if(!isChar(code)){
+					// Выполняем отказ приведения с сообщением о нём в журнал
+					return this->refuse(error_t::INVALID_CHARACTER);
+				}
+				// Выполняем добавление прочитанного знака к приведённому тексту
+				encode(code, result);
+			}
+		} break;
+		/**
 		 * Если кодировка исходного текста не определена
 		 *
 		 * @note Заслон этот НЕДОСТИЖИМ и оттого не покрыт: до разбора кодировка непременно
@@ -1201,7 +1269,8 @@ bool awh::codec::xml::Decoder::refuse(const error_t error) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем отказ приведения в журнал работы
-			this->_log->debug("%s", __PRETTY_FUNCTION__, ::std::make_tuple(), log_t::flag_t::WARNING, message(error));
+			this->_log->debug("XML decoding failed: %s", __PRETTY_FUNCTION__, ::std::make_tuple(),
+			                  log_t::flag_t::WARNING, message(error));
 		#else
 			// Записываем отказ приведения в журнал работы
 			this->_log->print("XML decoding failed: %s", log_t::flag_t::WARNING, message(error));

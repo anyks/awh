@@ -1014,13 +1014,9 @@ static int32_t __awh_close__(const SOCKET sock) noexcept {
 		 * @note Отсюда же и цена вопроса: плавная остановка работника кластера стоит
 		 *       на закрытии конца канала, и не закройся он - работник ждал бы вечно
 		 */
-		{
-			const BOOL __probe = ::CloseHandle(reinterpret_cast <HANDLE> (static_cast <uintptr_t> (sock)));
-			::fprintf(stderr, "[ЩУП] CloseHandle(%p): %s, код %lu\n", (void *) (uintptr_t) sock, (__probe ? "ДА" : "ОТКАЗ"), ::GetLastError());
-			if(__probe)
-				// Выводим успешный результат закрытия описателя системы
-				return 0;
-		}
+		if(::CloseHandle(reinterpret_cast <HANDLE> (static_cast <uintptr_t> (sock))))
+			// Выводим успешный результат закрытия описателя системы
+			return 0;
 		// Переносим код отказа закрытия описателя системы в errno
 		errno = EBADF;
 		// Выводим признак отказа закрытия
@@ -44526,9 +44522,38 @@ bool awh::engine::IO::rebuild(const event::id_t id) noexcept {
 				// Если процесс является родительским
 				if(::__awh_pid__ == ::getpid()){
 					// Если туннель создан
-					if(!tunnel->iface.empty())
-						// Выполняем удаление сетевого интерфейса туннеля
-						this->_eth.iface.destroy(tunnel->iface);
+					if(!tunnel->iface.empty()){
+						/**
+						 * Снимаем адрес с ПРЕЖНЕГО устройства прежде его сноса
+						 *
+						 * @details У систем POSIX снос устройства уносит назначенное вместе с ним.
+						 *          Устройство драйвера tap-windows6 приложением НЕ сносится, и
+						 *          адрес оставался на нём навсегда
+						 *
+						 * @warning Пересоздание на ДРУГОЕ устройство оттого отказывало: система
+						 *          отвечала «address is already assigned to another interface», и
+						 *          новое устройство оставалось без адреса вовсе, а прежнее держало
+						 *          его до перезагрузки. Пересоздание на ТО ЖЕ устройство дефекта
+						 *          не показывает - адрес назначается ему заново, и остаток
+						 *          неотличим от назначения
+						 *
+						 * @note Зовётся ДО сноса: после него ни адреса, ни пути уже не найти
+						 */
+						if(tunnel->source != nullptr)
+							// Выполняем снятие адреса устройства и пути к тому концу связи
+							this->_eth.iface.delAddress(tunnel->iface, tunnel->source.get(), tunnel->target.get());
+						/**
+						 * Отрекаемся от поданных операций прежде сноса устройства
+						 *
+						 * @note Снос закрывает описатель САМ, и закрытие после него шло бы по
+						 *       мёртвому описателю: число его система вправе выдать заново
+						 */
+						::kernel::forget(tunnel->fd);
+						// Если устройство снесено
+						if(this->_eth.iface.destroy(tunnel->iface))
+							// Сбрасываем значение дескриптора устройства: снос закрыл его сам
+							tunnel->fd = net::invalid_socket_t;
+					}
 				}
 				// Если действующий дескриптор присутствует
 				if(tunnel->fd != net::invalid_socket_t){

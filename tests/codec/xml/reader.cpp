@@ -37,6 +37,64 @@
 #include "../../main.hpp"
 
 /**
+ * @brief Пространство имён проверок этого файла
+ *
+ * @note Держится оно безымянным намеренно: проверки кодеков собираются одной
+ *       программою, и одноимённые построения разных файлов иначе сходятся в
+ *       одно, порождая порчу вдали от места её причины
+ *
+ */
+namespace {
+	/**
+	 * @brief Объект журнала проверок с отключённым выводом
+	 *
+	 * @details Вывод отключается назначением пустого перечня приёмников: отказы
+	 *          разбора проверки наводят намеренно, и журнал их засорял бы выдачу
+	 *
+	 */
+	struct Silent {
+		/**
+		 * @brief Функция получения объекта фреймворка проверок
+		 *
+		 * @details Объект заводится статикою местною, а не общею файла: заведение его
+		 *          порядком построения статики оканчивается падением ещё до входа в
+		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
+		 *
+		 * @return объект фреймворка проверок
+		 *
+		 */
+		static const awh::fmk_t & framework() noexcept {
+			// Объект фреймворка проверок
+			static awh::fmk_t fmk;
+			// Выводим объект фреймворка проверок
+			return fmk;
+		}
+		// Объект журнала проверок
+		awh::log_t log;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Silent() noexcept : log(&Silent::framework()) {
+			// Выполняем отключение вывода логов
+			this->log.mode({});
+		}
+	};
+	/**
+	 * @brief Функция получения объекта журнала проверок
+	 *
+	 * @return объект журнала проверок
+	 *
+	 */
+	const awh::log_t * logger() noexcept {
+		// Объект журнала проверок
+		static Silent silent;
+		// Выводим объект журнала проверок
+		return &silent.log;
+	}
+}
+
+/**
  * Используем стандартное пространство имён
  */
 using namespace std;
@@ -59,7 +117,7 @@ static string run(const string & text, const size_t step, xml::error_t & error, 
 	// Собираемая запись событий разбора
 	string result;
 	// Объект потокового чтения текста разметки
-	xml::reader_t reader(settings);
+	xml::reader_t reader(::logger(), settings);
 	// Положение подачи в разбираемом тексте
 	size_t offset = 0;
 	/**
@@ -819,7 +877,7 @@ TEST(CodecXmlReader, Limits) {
 		// Выполняем установку предела объёма одного события
 		settings.maxEvent = 4096;
 		// Объект потокового чтения текста разметки
-		xml::reader_t reader(settings);
+		xml::reader_t reader(::logger(), settings);
 		// Выполняем передачу начала незавершённого построения
 		ASSERT_TRUE(reader.feed(item, ::strlen(item), false));
 		/**
@@ -853,7 +911,7 @@ TEST(CodecXmlReader, Limits) {
 		// Выполняем включение склеивания кусков содержимого
 		settings.mergeText = true;
 		// Объект потокового чтения текста разметки
-		xml::reader_t reader(settings);
+		xml::reader_t reader(::logger(), settings);
 		// Выполняем передачу начала текста разметки
 		ASSERT_TRUE(reader.feed("<a>", 3, false));
 		/**
@@ -913,7 +971,7 @@ TEST(CodecXmlReader, Limits) {
 	 */
 	const auto parse = [](const string & text, const xml::reader_t::settings_t & settings, const size_t chunk, xml::error_t & error) noexcept -> bool {
 		// Объект потокового чтения текста разметки
-		xml::reader_t reader(settings);
+		xml::reader_t reader(::logger(), settings);
 		/**
 		 * Если текст подаётся целиком
 		 */
@@ -1210,7 +1268,7 @@ TEST(CodecXmlReader, AttributeLocation) {
 	 */
 	for(const probe_t & probe : probes){
 		// Объект потокового чтения текста разметки
-		xml::reader_t reader;
+		xml::reader_t reader(::logger());
 		// Выполняем передачу текста разметки
 		ASSERT_TRUE(reader.feed(probe.text)) << probe.text;
 		// Собранные места атрибутов узлов
@@ -1285,7 +1343,7 @@ TEST(CodecXmlReader, SpliceOffset) {
 		// Выполняем включение выдачи примечаний отдельным событием
 		settings.comments = true;
 		// Объект потокового чтения текста разметки
-		xml::reader_t reader(settings);
+		xml::reader_t reader(::logger(), settings);
 		// Смещение примечания в исходном тексте
 		uint64_t result = 0;
 		// Если передачу текста разметки выполнить не удалось, выводим пустое смещение
@@ -1332,7 +1390,7 @@ TEST(CodecXmlReader, SpliceLocation) {
 		// Собираемый текст разметки с подстановкой сущности
 		const string text = string("<!DOCTYPE a [<!ENTITY ").append(name).append(" \"<b/>\">]><a>&").append(name).append(";<c x=\"1\"/></a>");
 		// Объект потокового чтения текста разметки
-		xml::reader_t reader;
+		xml::reader_t reader(::logger());
 		// Место атрибута в исходном тексте
 		xml::location_t result;
 		// Если передачу текста разметки выполнить не удалось, выводим пустое место
@@ -1402,7 +1460,7 @@ TEST(CodecXmlReader, ManyAttributes) {
 		// Выполняем установку разрешения префиксов по договору о пространствах имён
 		settings.namespaces = namespaces;
 		// Объект потокового чтения текста разметки
-		xml::reader_t reader(settings);
+		xml::reader_t reader(::logger(), settings);
 		// Если передачу текста разметки выполнить не удалось, выводим отказ
 		if(!reader.feed(text)) return false;
 		// Выполняем перебор всех событий разбора
@@ -1461,7 +1519,7 @@ TEST(CodecXmlReader, DoctypeChunked) {
 	 */
 	const auto walk = [&text](const size_t step) noexcept -> string {
 		// Объект потокового чтения текста разметки
-		xml::reader_t reader;
+		xml::reader_t reader(::logger());
 		// Собираемый слепок событий разбора
 		string result;
 		/**
@@ -1532,7 +1590,7 @@ TEST(CodecXmlReader, SpaceChars) {
 	 */
 	const auto parse = [](const string & text) noexcept -> bool {
 		// Объект потокового чтения текста разметки
-		xml::reader_t reader;
+		xml::reader_t reader(::logger());
 		// Если передачу текста разметки выполнить не удалось, выводим отрицательный результат
 		if(!reader.feed(text)) return false;
 		// Выполняем перебор всех событий разбора
@@ -1587,7 +1645,7 @@ TEST(CodecXmlReader, SeparateSpacesChunked) {
 		// Выполняем включение отделения незначимого пробельного содержимого
 		settings.separateSpaces = true;
 		// Объект потокового чтения текста разметки
-		xml::reader_t reader(settings);
+		xml::reader_t reader(::logger(), settings);
 		// Собираемый поток видов событий разбора
 		string result;
 		// Вид предыдущего события разбора
@@ -1676,7 +1734,7 @@ TEST(CodecXmlReader, Compaction) {
 		// Выполняем включение склеивания кусков содержимого
 		settings.mergeText = true;
 		// Объект потокового чтения текста разметки
-		xml::reader_t reader(settings);
+		xml::reader_t reader(::logger(), settings);
 		// Собираемый поток событий разбора
 		string result;
 		// Положение передачи исходного текста
@@ -1804,7 +1862,7 @@ TEST(CodecXmlReader, Compaction) {
 		 */
 		const auto expand = [&entity, &settings](const size_t chunk) noexcept -> size_t {
 			// Объект потокового чтения текста разметки
-			xml::reader_t reader(settings);
+			xml::reader_t reader(::logger(), settings);
 			// Длина подставленного содержимого
 			size_t length = 0;
 			// Положение передачи исходного текста
@@ -1877,7 +1935,7 @@ TEST(CodecXmlReader, ErrorCodes) {
 	 */
 	const auto parse = [](const string & text, const xml::reader_t::settings_t & settings) noexcept -> xml::error_t {
 		// Объект потокового чтения текста разметки
-		xml::reader_t reader(settings);
+		xml::reader_t reader(::logger(), settings);
 		// Выполняем передачу исходного текста разметки
 		reader.feed(text);
 		// Выполняем перебор всех событий разбора
@@ -1969,7 +2027,7 @@ TEST(CodecXmlReader, Conformance) {
 	 */
 	const auto parse = [](const string & text, const xml::reader_t::settings_t & settings) noexcept -> bool {
 		// Объект потокового чтения текста разметки
-		xml::reader_t reader(settings);
+		xml::reader_t reader(::logger(), settings);
 		// Выполняем передачу исходного текста разметки
 		reader.feed(text);
 		// Выполняем перебор всех событий разбора
@@ -2132,7 +2190,7 @@ TEST(CodecXmlReader, ForeignSubsetContent) {
 	 */
 	const auto parse = [](const string & text) noexcept -> pair <bool, string> {
 		// Объект потокового чтения текста разметки
-		xml::reader_t reader;
+		xml::reader_t reader(::logger());
 		// Собираемое текстовое содержимое узлов
 		string result;
 		// Выполняем передачу исходного текста разметки
@@ -2181,7 +2239,7 @@ TEST(CodecXmlReader, SpliceTail) {
 	 */
 	const auto place = [](const string & text) noexcept -> xml::location_t {
 		// Объект потокового чтения текста разметки
-		xml::reader_t reader;
+		xml::reader_t reader(::logger());
 		// Место узла в исходном тексте
 		xml::location_t result;
 		// Если передачу текста разметки выполнить не удалось, выводим пустое место
@@ -2235,7 +2293,7 @@ TEST(CodecXmlReader, Location) {
 	// Выполняем включение выдачи примечаний отдельным событием
 	settings.comments = true;
 	// Объект потокового чтения текста разметки
-	xml::reader_t reader(settings);
+	xml::reader_t reader(::logger(), settings);
 	// Выполняем передачу текста разметки
 	ASSERT_TRUE(reader.feed(text));
 	// Место примечания в исходном тексте
@@ -2277,7 +2335,7 @@ TEST(CodecXmlReader, Numeric) {
 	 */
 	settings.mergeText = true;
 	// Объект потокового чтения текста разметки
-	xml::reader_t reader(settings);
+	xml::reader_t reader(::logger(), settings);
 	// Разбираемый текст разметки
 	const string text = "<r><port id=\"255\">52</port><rate>54.33</rate></r>";
 	// Значение разбираемого целого числа
@@ -2376,7 +2434,7 @@ TEST(CodecXmlReader, Scaling) {
 			// Выполняем установку наибольшего допустимого количества атрибутов узла
 			settings.maxAttributes = limit;
 			// Объект потокового чтения текста разметки
-			xml::reader_t reader(settings);
+			xml::reader_t reader(::logger(), settings);
 			// Время начала разбора текста разметки
 			const auto begin = chrono::steady_clock::now();
 			// Если передачу текста разметки выполнить не удалось, выводим отказ
@@ -2767,7 +2825,7 @@ TEST(CodecXmlReader, EventLocation) {
 		// Выполняем склеивание подряд идущих кусков содержимого
 		settings.mergeText = true;
 		// Объект потокового чтения текста разметки
-		xml::reader_t reader(settings);
+		xml::reader_t reader(::logger(), settings);
 		// Положение подачи в разбираемом тексте
 		size_t offset = 0;
 		/**
@@ -2900,7 +2958,7 @@ TEST(CodecXmlReader, SpaceWithoutNamespaces) {
 		// Выполняем установку разрешения префиксов по договору о пространствах имён
 		settings.namespaces = namespaces;
 		// Объект потокового чтения текста разметки
-		xml::reader_t reader;
+		xml::reader_t reader(::logger());
 		// Выполняем установку настроек разбора текста разметки
 		reader.settings(settings);
 		// Выполняем передачу текста разметки целиком
@@ -2966,7 +3024,7 @@ TEST(CodecXmlReader, PartialContent) {
 		// Выполняем выключение склейки подряд идущего содержимого
 		settings.mergeText = false;
 		// Объект потокового чтения текста разметки
-		xml::reader_t reader(settings);
+		xml::reader_t reader(::logger(), settings);
 		// Собираемое содержимое с местами начала событий
 		string result;
 		// Вид события, содержимое которого собирается
@@ -3079,7 +3137,7 @@ TEST(CodecXmlReader, ContentFailurePrecedence) {
 	 */
 	auto refuse = [](const string & text) noexcept -> xml::error_t {
 		// Объект потокового чтения текста разметки
-		xml::reader_t reader;
+		xml::reader_t reader(::logger());
 		// Выполняем подачу текста разметки целиком
 		reader.feed(text);
 		// Выполняем чтение всех выданных разбором событий
@@ -3298,7 +3356,7 @@ TEST(CodecXmlReader, Standalone) {
 	 */
 	auto taken = [](const string & text) noexcept -> xml::standalone_t {
 		// Объект потокового чтения разметки
-		xml::reader_t reader;
+		xml::reader_t reader(::logger());
 		// Выполняем подачу текста разметки целиком
 		reader.feed(text.data(), text.size(), true);
 		// Выполняем перебор всех событий разбора
@@ -4008,7 +4066,7 @@ TEST(CodecXmlReader, NewlinesAndTagRefusals) {
 	 */
 	{
 		// Объект потокового чтения текста разметки
-		xml::reader_t reader;
+		xml::reader_t reader(::logger());
 		// Выполняем подачу текста разметки целиком
 		ASSERT_TRUE(reader.feed("<a/>", 4, true));
 		/**
@@ -4461,7 +4519,7 @@ TEST(CodecXmlReader, AttributeAccessAndSpacing) {
 	 */
 	{
 		// Объект потокового чтения текста разметки
-		xml::reader_t reader;
+		xml::reader_t reader(::logger());
 		// Выполняем подачу текста разметки целиком
 		ASSERT_TRUE(reader.feed("<a x=\"1\"/>", 10, true));
 		// Признак того, что узел разметки встречен
@@ -5018,7 +5076,7 @@ TEST(CodecXmlReader, CdataCompactionBeyondLimit) {
 		// Код ошибки разбора
 		xml::error_t error = xml::error_t::NONE;
 		// Объект потокового чтения текста разметки
-		xml::reader_t reader;
+		xml::reader_t reader(::logger());
 		// Положение подачи в разбираемом тексте
 		size_t offset = 0;
 		// Собираемое содержимое разделов дословного текста
@@ -6117,7 +6175,7 @@ TEST(CodecXmlReader, EncodingImpositionTiming) {
 	 */
 	{
 		// Объект потокового чтения текста разметки
-		xml::reader_t reader;
+		xml::reader_t reader(::logger());
 		// Выполняем задание настроек разбора
 		reader.settings(settings);
 		// Выполняем проверку принятия навязанной кодировки
@@ -6128,7 +6186,7 @@ TEST(CodecXmlReader, EncodingImpositionTiming) {
 	 */
 	{
 		// Объект потокового чтения текста разметки
-		xml::reader_t reader;
+		xml::reader_t reader(::logger());
 		// Подаваемый кусок текста разметки
 		const string text = "<a>";
 		// Выполняем подачу куска текста разметки
@@ -6143,7 +6201,7 @@ TEST(CodecXmlReader, EncodingImpositionTiming) {
 	 */
 	{
 		// Объект потокового чтения текста разметки
-		xml::reader_t reader;
+		xml::reader_t reader(::logger());
 		// Подаваемый кусок текста разметки
 		const string text = "<a>x";
 		// Выполняем подачу куска текста разметки
@@ -6160,7 +6218,7 @@ TEST(CodecXmlReader, EncodingImpositionTiming) {
 	 */
 	{
 		// Объект потокового чтения текста разметки
-		xml::reader_t reader;
+		xml::reader_t reader(::logger());
 		// Подаваемый текст разметки целиком
 		const string text = "<a>x</a>";
 		// Выполняем подачу текста разметки целиком

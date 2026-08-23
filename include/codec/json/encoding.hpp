@@ -575,7 +575,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					explicit Decoder(const log_t * log = nullptr) noexcept;
+					explicit Decoder(const log_t * log) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод установки объекта ведения журнала работы

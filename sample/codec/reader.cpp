@@ -27,7 +27,33 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
+#include <sys/log.hpp>
 #include <codec/xml/reader.hpp>
+
+/**
+ * @brief Пространство имён образца
+ *
+ */
+namespace {
+	/**
+	 * @brief Функция получения объекта для работы с логами
+	 *
+	 * @details Кодек связку берёт конструктором, а построения образца стоят и вне
+	 *          main(): объект заводится статикою местною, дабы всякое построение
+	 *          образца писало сообщения в один и тот же журнал
+	 *
+	 * @return объект для работы с логами
+	 *
+	 */
+	const awh::log_t * logger() noexcept {
+		// Объект фреймворка
+		static awh::fmk_t fmk;
+		// Объект для работы с логами
+		static awh::log_t log(&fmk);
+		// Выводим объект для работы с логами
+		return &log;
+	}
+}
 
 /**
  * Используем пространство имён AWH
@@ -134,7 +160,7 @@ int32_t main(int32_t argc, char * argv[]){
 	 */
 	{
 		// Создаём объект потокового чтения текста разметки
-		codec::xml::reader_t reader;
+		codec::xml::reader_t reader(::logger());
 		/**
 		 * Если передать текст разметки не удалось
 		 */
@@ -179,7 +205,7 @@ int32_t main(int32_t argc, char * argv[]){
 		 */
 		settings.mergeText = true;
 		// Создаём объект потокового чтения текста разметки
-		codec::xml::reader_t reader(settings);
+		codec::xml::reader_t reader(::logger(), settings);
 		/**
 		 * Выполняем подачу текста разметки кусками
 		 */
@@ -226,7 +252,7 @@ int32_t main(int32_t argc, char * argv[]){
 		// Неправильно построенный текст разметки
 		const string broken = "<a>\n  <b>содержимое</c>\n</a>";
 		// Создаём объект потокового чтения текста разметки
-		codec::xml::reader_t reader;
+		codec::xml::reader_t reader(::logger());
 		// Выполняем передачу неправильно построенного текста разметки
 		reader.feed(broken);
 		/**

@@ -389,7 +389,7 @@ string awh::codec::json::Value::raw() const noexcept {
 		// Выводим отсутствие записи числа
 		return string();
 	// Объект записи текста документа
-	writer_t writer;
+	writer_t writer(this->_log);
 	// Выполняем запись числа, хранимого значением
 	this->compose(writer);
 	// Выводим собранную запись числа
@@ -1639,7 +1639,7 @@ string awh::codec::json::Value::dump(const format_t format) const noexcept {
  */
 string awh::codec::json::Value::dump(const writer_t::settings_t & settings) const noexcept {
 	// Поток записи текста значения
-	writer_t writer;
+	writer_t writer(this->_log);
 	// Выполняем установку настроек записи текста
 	writer.settings(settings);
 	/**

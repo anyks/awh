@@ -2308,11 +2308,6 @@ awh::codec::abc::Value awh::codec::abc::Builder::finish() noexcept {
 /**
  * @brief Конструктор
  *
- */
-awh::codec::abc::Builder::Builder() noexcept : _keyed(false), _done(false) {}
-/**
- * @brief Конструктор
- *
  * @param log объект для работы с логами
  *
  */

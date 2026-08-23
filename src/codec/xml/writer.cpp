@@ -1942,7 +1942,8 @@ bool awh::codec::xml::Writer::refuse(const error_t error) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем отказ записи в журнал работы
-			this->_log->debug("%s", __PRETTY_FUNCTION__, ::std::make_tuple(), log_t::flag_t::CRITICAL, message(error));
+			this->_log->debug("XML writing failed: %s", __PRETTY_FUNCTION__, ::std::make_tuple(),
+			                  log_t::flag_t::CRITICAL, message(error));
 		#else
 			// Записываем отказ записи в журнал работы
 			this->_log->print("XML writing failed: %s", log_t::flag_t::CRITICAL, message(error));
@@ -1974,7 +1975,7 @@ awh::codec::xml::Writer::Writer(const log_t * log) noexcept : _error(error_t::NO
  * @param settings настройки записи текста разметки
  *
  */
-awh::codec::xml::Writer::Writer(const settings_t & settings, const log_t * log) noexcept :
+awh::codec::xml::Writer::Writer(const log_t * log, const settings_t & settings) noexcept :
  _settings(settings), _error(error_t::NONE), _root(false), _depth(0), _bindings(0), _counter(0), _log(log) {}
 /**
  * @brief Деструктор

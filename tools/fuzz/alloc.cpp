@@ -45,12 +45,19 @@
 /**
  * Заголовок объявления размера выданного блока у системного распределителя
  */
-#if defined(AWH_FUZZ_SYSTEM)
-	#if defined(__APPLE__) || defined(__MACH__)
-		#include <malloc/malloc.h>
-	#elif !defined(_WIN32) && !defined(_WIN64)
-		#include <malloc.h>
-	#endif
+/**
+ * Заголовок объявления размера выданного блока
+ *
+ * Имя и заголовок свои у каждой системы, а у OpenBSD и NetBSD такого метода нет вовсе -
+ * и заголовка `malloc.h` там тоже нет. Включать его «всем прочим» нельзя: у OpenBSD
+ * сборка валится на первом же включении
+ */
+#if defined(__APPLE__) || defined(__MACH__)
+	#include <malloc/malloc.h>
+#elif defined(__FreeBSD__) || defined(__DragonFly__)
+	#include <malloc_np.h>
+#elif defined(__linux__) || defined(_WIN32) || defined(_WIN64) || ((defined(__sun__) || defined(__sun) || defined(sun)) && (defined(__SVR4) || defined(__svr4__)))
+	#include <malloc.h>
 #endif
 #include <mutex>
 #include <thread>
@@ -126,8 +133,27 @@
 	#define AWH_FUZZ_CALLOC   ::calloc
 	#define AWH_FUZZ_REALLOC  ::realloc
 	#define AWH_FUZZ_FREE     ::free
-	#define AWH_FUZZ_MSIZE    __awh_alloc_msize__
-	#define AWH_FUZZ_MEMALIGN __awh_alloc_memalign__
+	/**
+	 * Имя размера блока своё у каждой системы
+	 *
+	 * У macOS и MS Windows входы наши частные, и размер спрашивается у частного же
+	 * имени. У систем ELF подмена именами отдаёт нам системные имена, и спрашивать надо
+	 * ИХ - тем самым проверяя заодно, что модуль их вправду выставил: `malloc_usable_size`
+	 * у Linux и Solaris, `malloc_size` у FreeBSD. У OpenBSD и NetBSD такого имени нет
+	 * вовсе, и размер там не проверяется - это свойство системы, а не пропуск
+	 */
+	#if defined(__APPLE__) || defined(__MACH__) || defined(_WIN32) || defined(_WIN64)
+		#define AWH_FUZZ_MSIZE __awh_alloc_msize__
+	#elif defined(__linux__) || ((defined(__sun__) || defined(__sun) || defined(sun)) && (defined(__SVR4) || defined(__svr4__)))
+		#define AWH_FUZZ_MSIZE ::malloc_usable_size
+	#elif defined(__FreeBSD__) || defined(__DragonFly__)
+		#define AWH_FUZZ_MSIZE ::malloc_size
+	#endif
+	#if defined(__APPLE__) || defined(__MACH__) || defined(_WIN32) || defined(_WIN64)
+		#define AWH_FUZZ_MEMALIGN __awh_alloc_memalign__
+	#else
+		#define AWH_FUZZ_MEMALIGN ::memalign
+	#endif
 #endif
 
 /**
@@ -186,6 +212,33 @@ namespace {
 	 * Слои устройства разные, и находку надо приписать одному из них
 	 */
 	bool ranked = false;
+	/**
+	 * Признак строгого учёта выданных блоков
+	 *
+	 * Ход разбора, а не проверки: всякая выдача сличается со ВСЕМИ живыми блоками на
+	 * перекрытие. Стоит это дорого и нагрузку искажает, зато ловит саму двойную выдачу
+	 * в тот миг, когда она случилась, - и называет ОБА блока, а не оставляет обвал
+	 * памяти где-то поодаль
+	 */
+	bool strict = false;
+	// Живые блоки всех потоков при строгом учёте
+	std::vector <block_t> census;
+	// Замок учёта живых блоков
+	std::mutex censusLock;
+	/**
+	 * @brief Метод постановки блока на строгий учёт
+	 *
+	 * @param block описание выданного блока
+	 *
+	 */
+	static void enlist(const block_t & block) noexcept;
+	/**
+	 * @brief Метод снятия блока со строгого учёта
+	 *
+	 * @param addr адрес возвращаемого блока
+	 *
+	 */
+	static void delist(const void * addr) noexcept;
 	// Блоки, отданные на возврат соседним потокам
 	std::vector <block_t> orphans;
 	// Замок перечня блоков, отданных соседям
@@ -222,6 +275,77 @@ namespace {
 		// Печатаем доклад о расхождении
 		::fprintf(stderr, "РАСХОЖДЕНИЕ: %s | блок %p | размер %zu | зерно %llu\n",
 		 what, addr, size, static_cast <unsigned long long> (seed));
+	}
+	/**
+	 * @brief Метод постановки блока на строгий учёт
+	 *
+	 * @param block описание выданного блока
+	 *
+	 */
+	static void enlist(const block_t & block) noexcept {
+		// Если строгий учёт не ведётся
+		if(!strict)
+			// Учитывать нечего
+			return;
+		// Начало и конец ставимого на учёт блока
+		const uintptr_t begin = reinterpret_cast <uintptr_t> (block.addr);
+		const uintptr_t end = (begin + block.size);
+		// Захватываем замок учёта
+		std::lock_guard <std::mutex> lock(censusLock);
+		/**
+		 * Перебираем живые блоки всех потоков
+		 */
+		for(const block_t & other : census){
+			// Начало и конец разбираемого живого блока
+			const uintptr_t at = reinterpret_cast <uintptr_t> (other.addr);
+			const uintptr_t to = (at + other.size);
+			// Если блоки не перекрываются
+			if((end <= at) || (to <= begin))
+				// Разбираем следующий блок
+				continue;
+			// Печатаем оба перекрывшихся блока
+			::fprintf(stderr, "ДВОЙНАЯ ВЫДАЧА: выдан [%p .. %p) размером %zu, "
+			 "а он перекрывает живой [%p .. %p) размером %zu\n",
+			 reinterpret_cast <void *> (begin), reinterpret_cast <void *> (end), block.size,
+			 reinterpret_cast <void *> (at), reinterpret_cast <void *> (to), other.size);
+			// Докладываем о двойной выдаче
+			complain("один участок памяти выдан дважды", block.addr, block.size);
+			// Разбирать больше нечего
+			break;
+		}
+		// Ставим блок на учёт
+		census.push_back(block);
+	}
+	/**
+	 * @brief Метод снятия блока со строгого учёта
+	 *
+	 * @param addr адрес возвращаемого блока
+	 *
+	 */
+	static void delist(const void * addr) noexcept {
+		// Если строгий учёт не ведётся
+		if(!strict)
+			// Снимать нечего
+			return;
+		// Захватываем замок учёта
+		std::lock_guard <std::mutex> lock(censusLock);
+		/**
+		 * Перебираем живые блоки всех потоков
+		 */
+		for(size_t i = 0; i < census.size(); i++){
+			// Если разбираемый блок не тот
+			if(census[i].addr != addr)
+				// Разбираем следующий блок
+				continue;
+			// Переносим последний блок на место снимаемого
+			census[i] = census.back();
+			// Снимаем последний блок с учёта
+			census.pop_back();
+			// Снимать больше нечего
+			return;
+		}
+		// Докладываем о возврате блока, на учёте не стоявшего
+		complain("возвращён блок, на учёте не стоявший", addr, 0);
 	}
 	/**
 	 * @brief Метод засева блока образцом
@@ -278,11 +402,13 @@ namespace {
 		 * Меньший означал бы, что прикладной код вправе писать за пределы выданного, а
 		 * это порча кучи, какую не поймать ничем
 		 */
-		const size_t measured = AWH_FUZZ_MSIZE(block.addr);
-		// Если объявленный размер меньше затребованного
-		if(measured < block.size)
-			// Докладываем о недостаточном размере
-			complain("объявленный размер меньше затребованного", block.addr, block.size);
+		#if defined(AWH_FUZZ_MSIZE)
+			const size_t measured = AWH_FUZZ_MSIZE(block.addr);
+			// Если объявленный размер меньше затребованного
+			if(measured < block.size)
+				// Докладываем о недостаточном размере
+				complain("объявленный размер меньше затребованного", block.addr, block.size);
+		#endif
 		/**
 		 * Выравнивание обязано соблюдаться дословно
 		 */
@@ -340,6 +466,8 @@ namespace {
 				const block_t block = live[place];
 				// Сличаем содержимое блока с образцом
 				static_cast <void> (reaped(block));
+				// Снимаем блок со строгого учёта
+				delist(block.addr);
 				// Возвращаем блок распределителю
 				AWH_FUZZ_FREE(block.addr);
 				// Считаем возвращённый блок
@@ -406,6 +534,8 @@ namespace {
 				if(block.addr != nullptr){
 					// Сличаем содержимое блока с образцом
 					static_cast <void> (reaped(block));
+					// Снимаем блок со строгого учёта
+					delist(block.addr);
 					// Возвращаем блок распределителю
 					AWH_FUZZ_FREE(block.addr);
 					// Считаем возвращённый блок
@@ -430,6 +560,8 @@ namespace {
 				const uint64_t grown = next(state);
 				// Определяем новый размер блока
 				const size_t size = (static_cast <size_t> (grown % 8192) + 1);
+				// Снимаем прежний блок со строгого учёта: перевыдача его хоронит
+				delist(block.addr);
 				// Перевыдаём блок под новый размер
 				void * moved = AWH_FUZZ_REALLOC(block.addr, size);
 				// Если перевыдача не состоялась
@@ -461,6 +593,8 @@ namespace {
 				sow(fresh);
 				// Проверяем договор перевыданного блока
 				examine(fresh);
+				// Ставим перевыданный блок на строгий учёт
+				enlist(fresh);
 				// Ставим перевыданный блок на учёт
 				live[place] = fresh;
 				// Шаг отработан
@@ -559,6 +693,8 @@ namespace {
 			examine(block);
 			// Если блок выдан
 			if(addr != nullptr){
+				// Ставим выданный блок на строгий учёт ПРЕЖДЕ засева
+				enlist(block);
 				// Засеваем выданный блок образцом
 				sow(block);
 				// Считаем выданный блок
@@ -573,6 +709,8 @@ namespace {
 		for(const block_t & block : live){
 			// Сличаем содержимое блока с образцом
 			static_cast <void> (reaped(block));
+			// Снимаем блок со строгого учёта
+			delist(block.addr);
 			// Возвращаем блок распределителю
 			AWH_FUZZ_FREE(block.addr);
 			// Считаем возвращённый блок
@@ -604,6 +742,8 @@ int32_t main(int32_t argc, char ** argv) noexcept {
 	::regrowing = ((argc > 6) ? (::strtoul(argv[6], nullptr, 10) != 0) : true);
 	// Определяем ход выдачи лишь в пределах разрядов
 	::ranked = ((argc > 7) ? (::strtoul(argv[7], nullptr, 10) != 0) : false);
+	// Определяем ход строгого учёта выданных блоков
+	::strict = ((argc > 8) ? (::strtoul(argv[8], nullptr, 10) != 0) : false);
 	// Если зерно прогона не задано
 	if(::seed == 0)
 		// Заводим зерно прогона: источник от нуля не расходится вовсе

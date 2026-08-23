@@ -406,6 +406,30 @@ namespace awh {
 				 *
 				 */
 				bool jammed() noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод поиска области кучи, которой принадлежит адрес
+				 *
+				 * @note Ходит к куче ПОД ЗАМКОМ, и в том вся суть метода. Прежде разбор
+				 *       адреса (`Allocator::resolve`) обращался к куче напрямую, минуя
+				 *       замок, - а куча в это же время правила список кусков в `Pages::grow`.
+				 *       ThreadSanitizer называл гонку прямо: запись в pages.cpp:457 против
+				 *       чтения в pages.cpp:972
+				 *
+				 * @note Метод зовётся из разбора сбоя обращения, а не из обработчика
+				 *       сигнала: замок обработчику брать нельзя
+				 *
+				 * @param addr  разбираемый адрес
+				 * @param begin адрес начала найденной области
+				 * @param pages размер найденной области в страницах кучи
+				 * @param live  признак выданной наружу области
+				 * @return      признак того, что адрес принадлежит куче
+				 *
+				 * \~english
+				 * @brief Method of locating the heap region an address belongs to
+				 *
+				 */
+				bool locate(const void * addr, const void ** begin, size_t * pages, bool * live) noexcept;
 			public:
 				/**
 				 * \~russian

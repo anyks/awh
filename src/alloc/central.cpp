@@ -557,6 +557,26 @@ bool awh::alloc::Central::jammed() noexcept {
 	return this->_pages->jammed();
 }
 /**
+ * @brief Метод поиска области кучи, которой принадлежит адрес
+ *
+ * @param addr  разбираемый адрес
+ * @param begin адрес начала найденной области
+ * @param pages размер найденной области в страницах кучи
+ * @param live  признак выданной наружу области
+ * @return      признак того, что адрес принадлежит куче
+ *
+ */
+bool awh::alloc::Central::locate(const void * addr, const void ** begin, size_t * pages, bool * live) noexcept {
+	// Если куча не заведена
+	if(this->_pages == nullptr)
+		// Искать негде
+		return false;
+	// Захватываем замок кучи
+	hold_t hold(this->_heap);
+	// Выводим признак того, что адрес принадлежит куче
+	return this->_pages->locate(addr, begin, pages, live);
+}
+/**
  * @brief Метод получения состояния центральных списков
  *
  * @return состояние списков

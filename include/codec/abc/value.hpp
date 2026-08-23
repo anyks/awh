@@ -1253,7 +1253,7 @@ namespace awh {
 					Value _key;
 				private:
 					// Объект работы с логами
-					const log_t * _log = nullptr;
+					const log_t * _log;
 				private:
 					// Признак назначенного имени поля отображения
 					bool _keyed;
@@ -1560,16 +1560,6 @@ namespace awh {
 					 */
 					Value finish() noexcept;
 				public:
-					/**
-					 * \~russian
-					 * @brief Конструктор
-					 *
-					 * \~english
-					 * @brief Constructor
-					 *
-					 * \~
-					 */
-					Builder() noexcept;
 					/**
 					 * \~russian
 					 * @brief Конструктор

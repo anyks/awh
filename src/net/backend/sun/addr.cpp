@@ -1137,6 +1137,22 @@ void awh::eth::Network_Address::fillSource(const net::addr_t * net, net::src_t &
 					struct sockaddr_in * sin = reinterpret_cast <struct sockaddr_in *> (ifa->ifa_addr);
 					// Преобразуем IP-адрес в хостовый порядок
 					const uint32_t ip = sin->sin_addr.s_addr;
+					/**
+					 * Связь без адреса источником быть не может
+					 *
+					 * @details Система выдаёт нулевой адрес всякой связи, у которой адреса ещё
+					 *          нет, - у систем Sun такие связи заводятся распорядителем заранее
+					 *          под туннели. Нулевой же адрес подсети принадлежит ЛЮБОЙ подсети,
+					 *          и такая связь становилась источником для запроса по нулевому
+					 *          адресу
+					 *
+					 * @warning Установлено 23.08.2026 на стендах Solaris и OpenIndiana: там
+					 *          заведены `awh_tun0`...`awh_tun7` без адресов, и `EthSuiteTest`
+					 *          получал у нулевого адреса имя связи вместо пустого
+					 */
+					if(ip == 0)
+						// Пропускаем связь без адреса
+						continue;
 					// Проверяем принадлежность IP-адреса подсети
 					if(this->isInSubnet(ntohl(ip), htonl(network->address), network->prefix)){
 						// Устанавливаем название сетевого интерфейса
@@ -1216,6 +1232,18 @@ void awh::eth::Network_Address::fillSource(const net::addr_t * net, net::src_t &
 					 *
 					 */
 					const in6_addr ip = ::unscope(sin->sin6_addr);
+					// Признак связи без адреса IPv6
+					bool empty = true;
+					/**
+					 * Проходим по всем октетам адреса связи
+					 */
+					for(uint8_t i = 0; (i < 16) && empty; i++)
+						// Снимаем признак у первого ненулевого октета
+						empty = (ip.s6_addr[i] == 0);
+					// Связь без адреса источником быть не может, довод тот же, что и у IPv4 выше
+					if(empty)
+						// Пропускаем связь без адреса
+						continue;
 					// Проверяем принадлежность IP-адреса подсети
 					if(this->ipv6PrefixEqual(ip.s6_addr, &network->address[0], network->prefix)){
 						// Устанавливаем название сетевого интерфейса
