@@ -1596,6 +1596,37 @@ bool awh::codec::yaml::Document::verbatim(writer_t & writer, const uint32_t firs
 	 static_cast <uint32_t> (position - started));
 }
 /**
+ * @brief Метод опознания блочного значения, хвост свой сохраняющего
+ *
+ * @details Блок такой держит пустые строки за собою содержимым своим, и всякая пустая
+ * строка, за ним стоящая, к нему и пристанет при обратном чтении: предисловие соседа
+ * снизу дословным переносом уходить оттого не вправе
+ *
+ * @param index номер опознаваемого узла
+ * @return      признак блочного значения, хвост свой сохраняющего
+ *
+ */
+bool awh::codec::yaml::Document::hanging(const uint32_t index) const noexcept {
+	/**
+	 * Если узла с таким номером дерево не несёт
+	 */
+	if(index >= this->_nodes.size())
+		// Выводим признак отсутствия блока с сохранением хвоста
+		return false;
+	// Получаем опознаваемый узел дерева документа
+	const node_t & node = this->_nodes.at(index);
+	/**
+	 * Если узел блочного значения за собою не несёт
+	 */
+	if((node.style != style_t::LITERAL) && (node.style != style_t::FOLDED))
+		// Выводим признак отсутствия блока с сохранением хвоста
+		return false;
+	// Получаем запись значения узла из хранилища знаков
+	const string_view text(this->_storage.data() + node.offset + node.named, node.length());
+	// Выводим признак сохранения хвоста у записи значения узла
+	return (__awh_chomping__(string(text)) == chomp_t::KEEP);
+}
+/**
  * @brief Метод сборки детей вместилища пролётами нетронутых
  *
  * @param writer сборка текста
@@ -2355,11 +2386,11 @@ uint32_t awh::codec::yaml::Document::leading(const uint32_t index) const noexcep
  * @param index  номер записываемого узла
  *
  */
-void awh::codec::yaml::Document::produce(writer_t & writer, const uint32_t index) const noexcept {
+void awh::codec::yaml::Document::produce(writer_t & writer, const uint32_t index, const bool preface) const noexcept {
 	/**
-	 * Если исходный текст удержан
+	 * Если исходный текст удержан, а предисловие узла выдавать дозволено
 	 */
-	if(!this->_source.empty()){
+	if(!this->_source.empty() && preface){
 		// Получаем начало записи узла в удержанном тексте
 		const uint32_t origin = this->_nodes.at(index).origin;
 		// Получаем начало собственной строки узла
@@ -3390,6 +3421,57 @@ bool awh::codec::yaml::Document::extract(const uint32_t index) noexcept {
 	this->disown(index, extent);
 	// Выполняем подрезку границ записей узлов, в снимаемый упирающихся
 	this->tighten(index);
+	/**
+	 * Если снимаемому узлу блок с сохранением хвоста предшествует
+	 *
+	 * @details Блок такой держит пустые строки за собою содержимым своим. Строки же,
+	 *          соседу снизу предпосланные, содержимым его не являются - и пока меж ними
+	 *          стоит снимаемый узел, всё в порядке. Снос ставит блок вплотную к
+	 *          предисловию соседа, и строки те пристают к блоку при обратном чтении:
+	 *          значение блока прирастает переводом, а дерево о том не знает. Предисловие
+	 *          оттого уходит вместе со снесённою записью
+	 *
+	 * @note Правка стоит здесь, а не в сборке текста: строки, блоку принадлежащие,
+	 *       записаны в самом значении его, и сборка отличить их от предисловия соседа не
+	 *       может вовсе. Пустая строка при этом теряется - размен в пользу содержимого.
+	 *       Нашёл это ворошитель длинным прогоном
+	 */
+	{
+		// Номер узла, снимаемому предшествующего
+		uint32_t previous = NO_ORIGIN;
+		/**
+		 * Выполняем перебор всех узлов, снимаемому предшествующих
+		 */
+		for(uint32_t i = 0; i < index; i++){
+			/**
+			 * Если поддерево очередного узла в снимаемый упирается
+			 */
+			if((i + this->_nodes.at(i).extent()) == index)
+				// Запоминаем номер узла, снимаемому предшествующего
+				previous = i;
+		}
+		/**
+		 * Если узел, снимаемому предшествующий, блоком с сохранением хвоста записан
+		 */
+		if((previous != NO_ORIGIN) && this->hanging(previous)){
+			// Получаем номер узла, за снимаемым поддеревом стоящего
+			const uint32_t following = (index + extent);
+			/**
+			 * Если узел за снимаемым поддеревом стоит
+			 */
+			if(following < this->_nodes.size()){
+				// Получаем начало собственной строки узла, за снимаемым стоящего
+				const uint32_t own = this->leading(following);
+				/**
+				 * Если предисловие узлу предпослано
+				 */
+				if((own != NO_ORIGIN) && (this->_nodes.at(following).origin != NO_ORIGIN) &&
+				   (own > this->_nodes.at(following).origin))
+					// Запоминаем собственную строку началом записи узла
+					this->_nodes.at(following).origin = own;
+			}
+		}
+	}
 	// Номер вместилища, снимаемому узлу принадлежащего
 	uint32_t owner = NO_ORIGIN;
 	/**

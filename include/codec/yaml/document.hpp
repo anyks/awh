@@ -1229,6 +1229,14 @@ namespace awh {
 					 */
 					uint32_t trailing(const uint32_t root) const noexcept;
 					/**
+					 * @brief Метод опознания блочного значения, хвост свой сохраняющего
+					 *
+					 * @param index номер опознаваемого узла
+					 * @return      признак блочного значения, хвост свой сохраняющего
+					 *
+					 */
+					bool hanging(const uint32_t index) const noexcept;
+					/**
 					 * \~russian
 					 * @brief Метод отнесения пустых строк к узлам, под ними стоящим
 					 *
@@ -1484,7 +1492,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					void produce(writer_t & writer, const uint32_t index) const noexcept;
+					void produce(writer_t & writer, const uint32_t index, const bool preface = true) const noexcept;
 				public:
 					/**
 					 * \~russian
