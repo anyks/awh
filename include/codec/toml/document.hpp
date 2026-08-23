@@ -713,6 +713,42 @@ namespace awh {
 						string table;
 						/**
 						 * \~russian
+						 * Имя таблицы, которой принадлежат разбираемые записи, без номеров
+						 *
+						 * @details Ключ указателя несёт номера таблиц набора, а имя - одни лишь
+						 * составные части. Хранятся оба: по имени сличается, продолжает ли
+						 * объявляемая таблица нынешнюю, а ключ служит ей основанием
+						 *
+						 * \~english
+						 * Name of the table the records being parsed belong to, without the ordinals
+						 * @details The key of the index carries the ordinals of the tables of an array while the name —
+						 * only the compound parts. Both are stored: by the name it is compared whether
+						 * the table being declared continues the current one, while the key serves as its base
+						 *
+						 * \~
+						 */
+						string named;
+						/**
+						 * \~russian
+						 * Ключи указателя объявленных таблиц по именам их без номеров
+						 *
+						 * @details Служит розыску объемлющей таблицы: объявление «[[a.b]]» лежит
+						 * внутри последней таблицы набора «a», и ключ его строится на её ключе.
+						 * Сличения с одною лишь нынешнею таблицею мало - между ними встают
+						 * объявления глубже вложенные, как «[a.b.c]» перед вторым «[[a.b]]»
+						 *
+						 * \~english
+						 * Keys of the index of the declared tables by their names without the ordinals
+						 * @details Serves the search for the enclosing table: the declaration «[[a.b]]» lies
+						 * inside the last table of the array «a», and its key is built upon her key.
+						 * A comparison with the current table alone is not enough — between them stand
+						 * the declarations nested deeper, like «[a.b.c]» before the second «[[a.b]]»
+						 *
+						 * \~
+						 */
+						unordered_map <string, string> anchors;
+						/**
+						 * \~russian
 						 * Количество таблиц, объявленных каждым набором таблиц
 						 * \~english
 						 * Number of the tables declared by every array of tables
@@ -779,6 +815,10 @@ namespace awh {
 						void reset() noexcept {
 							// Выполняем очистку ключа указателя таблицы
 							this->table.clear();
+							// Выполняем очистку имени таблицы без номеров
+							this->named.clear();
+							// Выполняем очистку ключей объявленных таблиц
+							this->anchors.clear();
 							// Выполняем очистку количества таблиц наборов
 							this->ordinals.clear();
 							// Выполняем очистку объявленных дочерних имён
