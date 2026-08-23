@@ -1583,6 +1583,15 @@ if (${CMAKE_BUILD_SAMPLES})
     # Указываем что нужно собрать приложение работы с контейнером TOML
     option(CMAKE_BUILD_CODEC_TOML_APP_SAMPLE "Build TOML codec app sample" ON)
 
+    # Устанавливаем имя приложения потокового чтения текста таблицы CSV
+    SET(CODEC_APP_CSV_READER_NAME codec-csv-reader)
+    # Устанавливаем имя приложения работы с деревом таблицы CSV
+    SET(CODEC_APP_CSV_DOCUMENT_NAME codec-csv-document)
+    # Устанавливаем имя приложения записи текста таблицы CSV
+    SET(CODEC_APP_CSV_WRITER_NAME codec-csv-writer)
+    # Указываем что нужно собрать приложение работы с контейнером CSV
+    option(CMAKE_BUILD_CODEC_CSV_APP_SAMPLE "Build CSV codec app sample" ON)
+
     # Устанавливаем имя приложения потокового чтения текста документа YAML
     SET(CODEC_APP_YAML_READER_NAME codec-yaml-reader)
     # Устанавливаем имя приложения работы с деревом документа YAML
@@ -2336,6 +2345,22 @@ if (${CMAKE_BUILD_SAMPLES})
         # Выводим сообщение о сборке семпла
         message(STATUS "Build sample YAML Codec: No\n")
     endif (${CMAKE_BUILD_CODEC_YAML_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с контейнером CSV
+    if (${CMAKE_BUILD_CODEC_CSV_APP_SAMPLE})
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample CSV Codec: Yes\n")
+        # Выполняем создание приложения потокового чтения текста таблицы
+        add_sample(${CODEC_APP_CSV_READER_NAME} sample/codec/csv-reader.cpp codec)
+        # Выполняем создание приложения работы с деревом таблицы
+        add_sample(${CODEC_APP_CSV_DOCUMENT_NAME} sample/codec/csv-document.cpp codec)
+        # Выполняем создание приложения записи текста таблицы
+        add_sample(${CODEC_APP_CSV_WRITER_NAME} sample/codec/csv-writer.cpp codec)
+    # Если не нужно собирать семплы для работы с контейнером CSV
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample CSV Codec: No\n")
+    endif (${CMAKE_BUILD_CODEC_CSV_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с компрессией данных
     if (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})
@@ -3287,6 +3312,28 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_CODEC_YAML_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с контейнером CSV
+        if (${CMAKE_BUILD_CODEC_CSV_APP_SAMPLE})
+            # Выполняем сборку приложения потокового чтения текста таблицы
+            target_link_libraries(
+                ${CODEC_APP_CSV_READER_NAME}
+                ${AWH_LIB_NAME}
+                ${AWH_FLAGS}
+            )
+            # Выполняем сборку приложения работы с деревом таблицы
+            target_link_libraries(
+                ${CODEC_APP_CSV_DOCUMENT_NAME}
+                ${AWH_LIB_NAME}
+                ${AWH_FLAGS}
+            )
+            # Выполняем сборку приложения записи текста таблицы
+            target_link_libraries(
+                ${CODEC_APP_CSV_WRITER_NAME}
+                ${AWH_LIB_NAME}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_CODEC_CSV_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с контейнером JSON
         if (${CMAKE_BUILD_CODEC_JSON_APP_SAMPLE})
@@ -4397,6 +4444,31 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_CODEC_YAML_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с контейнером CSV
+        if (${CMAKE_BUILD_CODEC_CSV_APP_SAMPLE})
+            # Выполняем сборку приложения потокового чтения текста таблицы
+            target_link_libraries(
+                ${CODEC_APP_CSV_READER_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${AWH_FLAGS}
+            )
+            # Выполняем сборку приложения работы с деревом таблицы
+            target_link_libraries(
+                ${CODEC_APP_CSV_DOCUMENT_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${AWH_FLAGS}
+            )
+            # Выполняем сборку приложения записи текста таблицы
+            target_link_libraries(
+                ${CODEC_APP_CSV_WRITER_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_CODEC_CSV_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с контейнером JSON
         if (${CMAKE_BUILD_CODEC_JSON_APP_SAMPLE})
