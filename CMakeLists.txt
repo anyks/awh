@@ -1583,6 +1583,15 @@ if (${CMAKE_BUILD_SAMPLES})
     # Указываем что нужно собрать приложение работы с контейнером TOML
     option(CMAKE_BUILD_CODEC_TOML_APP_SAMPLE "Build TOML codec app sample" ON)
 
+    # Устанавливаем имя приложения потокового чтения текста документа YAML
+    SET(CODEC_APP_YAML_READER_NAME codec-yaml-reader)
+    # Устанавливаем имя приложения работы с деревом документа YAML
+    SET(CODEC_APP_YAML_DOCUMENT_NAME codec-yaml-document)
+    # Устанавливаем имя приложения записи текста документа YAML
+    SET(CODEC_APP_YAML_WRITER_NAME codec-yaml-writer)
+    # Указываем что нужно собрать приложение работы с контейнером YAML
+    option(CMAKE_BUILD_CODEC_YAML_APP_SAMPLE "Build YAML codec app sample" ON)
+
     # Устанавливаем имя приложения потокового чтения текста документа JSON
     SET(CODEC_APP_JSON_READER_NAME codec-json-reader)
     # Устанавливаем имя приложения работы с деревом документа JSON
@@ -2311,6 +2320,22 @@ if (${CMAKE_BUILD_SAMPLES})
         # Выводим сообщение о сборке семпла
         message(STATUS "Build sample TOML Codec: No\n")
     endif (${CMAKE_BUILD_CODEC_TOML_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с контейнером YAML
+    if (${CMAKE_BUILD_CODEC_YAML_APP_SAMPLE})
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample YAML Codec: Yes\n")
+        # Выполняем создание приложения потокового чтения текста документа
+        add_sample(${CODEC_APP_YAML_READER_NAME} sample/codec/yaml-reader.cpp codec)
+        # Выполняем создание приложения работы с деревом документа
+        add_sample(${CODEC_APP_YAML_DOCUMENT_NAME} sample/codec/yaml-document.cpp codec)
+        # Выполняем создание приложения записи текста документа
+        add_sample(${CODEC_APP_YAML_WRITER_NAME} sample/codec/yaml-writer.cpp codec)
+    # Если не нужно собирать семплы для работы с контейнером YAML
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample YAML Codec: No\n")
+    endif (${CMAKE_BUILD_CODEC_YAML_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с компрессией данных
     if (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})
@@ -3240,6 +3265,28 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_CODEC_TOML_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с контейнером YAML
+        if (${CMAKE_BUILD_CODEC_YAML_APP_SAMPLE})
+            # Выполняем сборку приложения потокового чтения текста документа
+            target_link_libraries(
+                ${CODEC_APP_YAML_READER_NAME}
+                ${AWH_LIB_NAME}
+                ${AWH_FLAGS}
+            )
+            # Выполняем сборку приложения работы с деревом документа
+            target_link_libraries(
+                ${CODEC_APP_YAML_DOCUMENT_NAME}
+                ${AWH_LIB_NAME}
+                ${AWH_FLAGS}
+            )
+            # Выполняем сборку приложения записи текста документа
+            target_link_libraries(
+                ${CODEC_APP_YAML_WRITER_NAME}
+                ${AWH_LIB_NAME}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_CODEC_YAML_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с контейнером JSON
         if (${CMAKE_BUILD_CODEC_JSON_APP_SAMPLE})
@@ -4325,6 +4372,31 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_CODEC_TOML_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с контейнером YAML
+        if (${CMAKE_BUILD_CODEC_YAML_APP_SAMPLE})
+            # Выполняем сборку приложения потокового чтения текста документа
+            target_link_libraries(
+                ${CODEC_APP_YAML_READER_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${AWH_FLAGS}
+            )
+            # Выполняем сборку приложения работы с деревом документа
+            target_link_libraries(
+                ${CODEC_APP_YAML_DOCUMENT_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${AWH_FLAGS}
+            )
+            # Выполняем сборку приложения записи текста документа
+            target_link_libraries(
+                ${CODEC_APP_YAML_WRITER_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_CODEC_YAML_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с контейнером JSON
         if (${CMAKE_BUILD_CODEC_JSON_APP_SAMPLE})
