@@ -552,3 +552,100 @@ TEST_F(ChunkFixture, Failures) {
 		ASSERT_EQ(packer.error(), abc::error_t::INTERNAL);
 	}
 }
+/**
+ * @brief Проверка отказа снятия кадра с неведомым методом сжатия
+ *
+ * @details Октет метода сжатия приходит с провода наравне с октетом разрядов, и
+ *          опознан обязан быть так же. Проверка эта сторожит равнение одного на
+ *          другое: неопознанный метод без него уходил бы разжатию как настоящий
+ *
+ */
+TEST_F(ChunkFixture, UnknownMethod) {
+	// Укладчик кадров
+	abc::packer_t packer;
+	// Выполняем установку модуля сжатия
+	packer.compressor(this->_compressor.get());
+	// Укладываемое содержимое кадра
+	const string payload = "содержимое кадра";
+	// Буфер уложенного кадра
+	vector <uint8_t> record;
+	// Выполняем укладку кадра
+	ASSERT_TRUE(packer.pack(payload.data(), payload.size(), abc::payload_t::TEXT, 1, 0, record))
+		<< "код отказа: " << abc::message(packer.error());
+	// Выполняем проверку того, что содержимое кадра не сжато
+	ASSERT_EQ(record.at(0), 0x00) << "содержимое кадра сжато, проверка негодна";
+	/**
+	 * Выполняем перебор неведомых значений октета метода сжатия
+	 */
+	for(uint16_t method = 0x0C; method <= 0xFF; method++){
+		// Буфер повреждаемого кадра
+		vector <uint8_t> damaged = record;
+		// Выполняем установку неведомого метода сжатия
+		damaged.at(0) = static_cast <uint8_t> (method);
+		// Смещение снятия кадра
+		size_t offset = 0;
+		// Снятое содержимое кадра
+		vector <uint8_t> content;
+		// Снятые сведения о кадре
+		abc::chunk_t chunk;
+		// Выполняем проверку отказа снятия кадра с неведомым методом сжатия
+		ASSERT_FALSE(packer.unpack(damaged.data(), damaged.size(), offset, content, chunk))
+			<< "метод сжатия: " << method;
+		// Выполняем проверку кода отказа
+		ASSERT_EQ(packer.error(), abc::error_t::INVALID_CHUNK) << "метод сжатия: " << method;
+		// Выполняем проверку того, что смещение осталось нетронутым
+		ASSERT_EQ(offset, 0u) << "метод сжатия: " << method;
+	}
+	/**
+	 * Выполняем проверку отказа на пустом кадре.
+	 *
+	 * Кадр пустой опасен более прочего: разжатие пустого содержимого даёт пустое
+	 * и без всякого метода, и сличение длин на нём проходит, а неведомый октет
+	 * уходил бы потребителю в снятых сведениях о кадре
+	 */
+	{
+		// Буфер уложенного пустого кадра
+		vector <uint8_t> empty;
+		// Выполняем укладку пустого кадра
+		ASSERT_TRUE(packer.pack(nullptr, 0, abc::payload_t::TEXT, 2, 0, empty));
+		// Выполняем установку неведомого метода сжатия
+		empty.at(0) = 0x7F;
+		// Смещение снятия кадра
+		size_t offset = 0;
+		// Снятое содержимое кадра
+		vector <uint8_t> content;
+		// Снятые сведения о кадре
+		abc::chunk_t chunk;
+		// Выполняем проверку отказа снятия пустого кадра с неведомым методом сжатия
+		ASSERT_FALSE(packer.unpack(empty.data(), empty.size(), offset, content, chunk));
+		// Выполняем проверку кода отказа
+		ASSERT_EQ(packer.error(), abc::error_t::INVALID_CHUNK);
+	}
+	/**
+	 * Выполняем проверку того, что ведомые методы сжатия отказом опознания не отвечены.
+	 *
+	 * Укладчик здесь берётся без модуля сжатия нарочно: ведомый метод отвечается
+	 * отказом сжатия, а не опознания, и разжимать мусор всеми движками подряд ради
+	 * одного этого различия ни к чему
+	 */
+	abc::packer_t plain;
+	/**
+	 * Выполняем перебор всех ведомых значений октета метода сжатия
+	 */
+	for(uint8_t method = 0x00; method <= 0x0B; method++){
+		// Буфер повреждаемого кадра
+		vector <uint8_t> damaged = record;
+		// Выполняем установку ведомого метода сжатия
+		damaged.at(0) = method;
+		// Смещение снятия кадра
+		size_t offset = 0;
+		// Снятое содержимое кадра
+		vector <uint8_t> content;
+		// Снятые сведения о кадре
+		abc::chunk_t chunk;
+		// Выполняем снятие кадра с ведомым методом сжатия
+		plain.unpack(damaged.data(), damaged.size(), offset, content, chunk);
+		// Выполняем проверку того, что кадр не отвечен отказом опознания
+		ASSERT_NE(plain.error(), abc::error_t::INVALID_CHUNK) << "метод сжатия: " << static_cast <uint16_t> (method);
+	}
+}

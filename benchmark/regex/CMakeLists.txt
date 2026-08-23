@@ -39,10 +39,6 @@ if (${CMAKE_BUILD_${BENCHMARK_NAME}_BENCHMARKS})
         message(STATUS "Build benchmarks Matching submodule: No\n")
     endif (${CMAKE_BUILD_${BENCHMARK_NAME}_MATCHING_BENCHMARK})
 
-    # Эталонная реализация PCRE2 подключается только бенчмарками сравнения: сравнение
-    # с нею и есть их предмет, тогда как самой библиотеке она не нужна
-    include_directories(${PCRE_INCLUDE_DIR})
-
     # Указывает каталог для ВСЕХ исполняемых файлов
     SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/benchmarks)
 
@@ -83,7 +79,6 @@ if (${CMAKE_BUILD_${BENCHMARK_NAME}_BENCHMARKS})
         target_link_libraries(${PROJECT_NAME}${POSTFIX} PUBLIC
             ${CMAKE_DL_LIBS}
             ${PROJECT_NAME}
-            ${PCRE_LIBRARY}
             ${AWH_FLAGS}
         )
     # Если нужно собрать и статическую библиотеку
@@ -92,7 +87,6 @@ if (${CMAKE_BUILD_${BENCHMARK_NAME}_BENCHMARKS})
             ${CMAKE_DL_LIBS}
             ${PROJECT_NAME}
             ${DEPEND_LIBRARY}
-            ${PCRE_LIBRARY}
             ${AWH_FLAGS}
         )
     endif (CMAKE_SHARED_BUILD_LIB)

@@ -22,6 +22,7 @@
 #include <string>
 #include <vector>
 #include <limits>
+#include <functional>
 
 /**
  * Подключаем заголовочные файлы проекта
@@ -2719,7 +2720,7 @@ TEST(CodecXmlValue, WideNodeProperties){
 	// Количество заводимых свойств узла разметки
 	const size_t count = (xml::INDEX_THRESHOLD * 64);
 	// Собираемый узел разметки
-	xml::value_t root("", "root", "");
+	xml::value_t root(string("root"));
 	/**
 	 * Выполняем заведение свойств узла разметки
 	 */
@@ -2762,7 +2763,7 @@ TEST(CodecXmlValue, WidePropertyMutators){
 	// Количество заводимых свойств узла разметки
 	const size_t count = (xml::INDEX_THRESHOLD * 8);
 	// Собираемый узел разметки
-	xml::value_t root("", "root", "");
+	xml::value_t root(string("root"));
 	/**
 	 * Выполняем заведение свойств узла разметки
 	 */
@@ -2836,7 +2837,7 @@ TEST(CodecXmlValue, WidePropertyNamespaces){
 	// Количество заводимых свойств узла разметки
 	const size_t count = (xml::INDEX_THRESHOLD * 4);
 	// Собираемый узел разметки
-	xml::value_t root("", "root", "");
+	xml::value_t root(string("root"));
 	/**
 	 * Выполняем заведение свойств узла разметки
 	 */
@@ -2861,4 +2862,63 @@ TEST(CodecXmlValue, WidePropertyNamespaces){
 	ASSERT_FALSE(fixed.has("twin", "urn:A"));
 	// Выполняем проверку того, что свойство второго пространства имён уцелело
 	ASSERT_EQ(fixed.attribute("twin", "urn:B"), "второе");
+}
+
+/**
+ * @brief Проверка совпадения правки узла с его перезаписью
+ *
+ * @details Дерево читается ДВАЖДЫ - напрямую и через запись его в текст с последующим
+ * разбором. Расхождение означает, что дерево держит одно, а записывает другое: правка
+ * до текста не дошла либо дошла искажённой
+ *
+ * @note Приём сличения подсказан владельцем модуля YAML, где нашёл девять дефектов
+ *       одного рода. У XML он нашёл один: пустое содержимое заводило узел текста, записи
+ *       у которого нет никакой
+ * @warning Сличаются НЕ тексты, а прочтённое из двух деревьев: сличение текстов ловило бы
+ *          порядок свойств и оформление, к сути правки отношения не имеющие
+ */
+TEST(CodecXmlValue, MutationSurvivesRewrite){
+	/**
+	 * Выполняем перебор всех сличаемых правок узла разметки
+	 */
+	for(auto & item : vector <pair <string, function <void (xml::value_t &)>>> {
+		{"установка свойства", [](xml::value_t & node){ node.attribute("k", "v"); }},
+		{"свойство с пространством имён", [](xml::value_t & node){ node.attribute("k", "v", "urn:A", "a"); }},
+		{"снятие свойства", [](xml::value_t & node){ node.attribute("k", "v"); node.attribute("j", "u"); node.detach("k"); }},
+		{"содержимое со знаками разметки", [](xml::value_t & node){ node.text("a < b & c > d"); }},
+		{"свойство со знаками разметки", [](xml::value_t & node){ node.attribute("k", "a \" b ' c < d & e"); }},
+		{"содержимое с переносами", [](xml::value_t & node){ node.text("первая\nвторая\r\nтретья"); }},
+		{"свойство с переносом", [](xml::value_t & node){ node.attribute("k", "первая\nвторая"); }},
+		{"содержимое из одних пробелов", [](xml::value_t & node){ node.text("   "); }},
+		{"пустое содержимое", [](xml::value_t & node){ node.text(""); }},
+		{"пустое значение свойства", [](xml::value_t & node){ node.attribute("k", ""); }},
+		{"снятие вложенного узла", [](xml::value_t & node){ node["a"].text("1"); node["b"].text("2"); node.erase("a"); }},
+		{"очистка и заполнение заново", [](xml::value_t & node){ node["a"].text("1"); node.clear(); node.name("root"); node["b"].text("2"); }}
+	}) {
+		// Собираемый узел разметки
+		xml::value_t node(string("root"));
+		// Выполняем правку узла разметки
+		item.second(node);
+		// Выполняем запись узла разметки в текст
+		const string text = node.dump();
+		// Разобранное обратно значение
+		xml::value_t back;
+		// Выполняем разбор записанного текста
+		ASSERT_TRUE(back.parse(text)) << item.first << ": " << text;
+		/**
+		 * Выполняем сличение прочтённого из дерева с прочтённым из перезаписи
+		 *
+		 * @note Разбор выдаёт узел ДОКУМЕНТА, и разметка лежит в нём ребёнком: сличать
+		 *       разобранное с исходным узлом напрямую нельзя
+		 */
+		ASSERT_EQ(back.size(), static_cast <size_t> (1)) << item.first << ": " << text;
+		// Выполняем сличение записи обоих узлов
+		ASSERT_EQ(back[0].dump(), text) << item.first;
+		// Выполняем сличение числа вложенных узлов
+		ASSERT_EQ(back[0].size(), node.size()) << item.first << ": " << text;
+		// Выполняем сличение числа свойств
+		ASSERT_EQ(back[0].attributes().size(), node.attributes().size()) << item.first << ": " << text;
+		// Выполняем сличение собственного содержимого
+		ASSERT_EQ(back[0].text(), node.text()) << item.first << ": " << text;
+	}
 }

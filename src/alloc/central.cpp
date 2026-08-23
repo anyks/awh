@@ -317,14 +317,23 @@ void * awh::alloc::Central::take(const size_t pages) noexcept {
 	static constexpr size_t SPINS = 64;
 	// Наибольшее время ожидания изымаемых областей
 	static constexpr auto PATIENCE = std::chrono::milliseconds(50);
-	// Отметка начала ожидания
-	const auto began = std::chrono::steady_clock::now();
+	/**
+	 * Часы спрашиваем ЛЕНИВО - лишь когда первый заход не удался
+	 *
+	 * Обращение к часам стоит заметно: замер пути выдачи сверх разрядов показал около
+	 * семи сотых времени на `clock_gettime` через vDSO, и половина того приходилась
+	 * сюда. Удачный заход - а он и есть обычный - часов теперь не спрашивает вовсе
+	 */
+	// Отметка начала ожидания, берётся при первой неудаче
+	std::chrono::steady_clock::time_point began;
+	// Признак взятой отметки
+	bool timing = false;
 	// Число сделанных заходов
 	size_t attempt = 0;
 	/**
 	 * Пробуем, пока не выйдет срок
 	 */
-	while((std::chrono::steady_clock::now() - began) < PATIENCE){
+	while(true){
 		{
 			// Захватываем замок кучи
 			hold_t hold(this->_heap);
@@ -350,6 +359,16 @@ void * awh::alloc::Central::take(const size_t pages) noexcept {
 			std::this_thread::yield();
 		// Спим понемногу: уступка у этой системы, видимо, ничего не стоит
 		else std::this_thread::sleep_for(std::chrono::microseconds(200));
+		// Если отметка начала ожидания ещё не взята
+		if(!timing){
+			// Запоминаем начало ожидания
+			began = std::chrono::steady_clock::now();
+			// Отмечаем отметку взятой
+			timing = true;
+		// Если срок ожидания вышел
+		} else if((std::chrono::steady_clock::now() - began) >= PATIENCE)
+			// Выходим: изымаемых областей мы не дождались
+			break;
 	}
 	// Выдавать нечего
 	return nullptr;

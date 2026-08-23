@@ -20,6 +20,7 @@
 #include <string>
 #include <memory>
 #include <cstdint>
+#include <limits>
 
 /**
  * Подключаем заголовочные файлы проекта
@@ -189,6 +190,53 @@ TEST_F(IndexFixture, CorruptedEntries) {
 	ASSERT_EQ(error, abc::error_t::INVALID_INDEX);
 	// Выполняем проверку того, что повреждённое оглавление снятым не осталось
 	ASSERT_EQ(index.size(), 0ul);
+	/**
+	 * Выполняем проверку отказа снятия строки с неведомыми разрядами свойств.
+	 *
+	 * Разряды свойств строки опознаются наравне с разрядами кадра: оглавление
+	 * целостностью не защищено, и порча старших разрядов ушла бы обратно в запись
+	 */
+	{
+		// Строка оглавления с ведомыми разрядами свойств
+		abc::entry_t entry;
+		// Выполняем установку смещения кадра от начала тела контейнера
+		entry.chunk = 0;
+		// Выполняем установку смещения записи в содержимом кадра
+		entry.offset = 0;
+		// Выполняем установку длины записи
+		entry.length = 16;
+		// Выполняем установку разрядов свойств строки оглавления
+		entry.marks = static_cast <uint32_t> (abc::mark_t::NONE);
+		// Укладываемое оглавление контейнера
+		abc::index_t source;
+		// Выполняем внесение строки оглавления
+		source.add(entry);
+		// Октеты уложенного оглавления
+		vector <uint8_t> record;
+		// Выполняем укладку оглавления в октеты
+		source.pack(record);
+		// Выполняем проверку длины уложенного оглавления
+		ASSERT_EQ(record.size(), abc::ENTRY_LENGTH);
+		// Выполняем проверку того, что оглавление с ведомыми разрядами снимается
+		ASSERT_TRUE(index.unpack(record.data(), record.size(), error))
+			<< "код отказа: " << abc::message(error);
+		/**
+		 * Выполняем перебор всех неведомых разрядов свойств строки оглавления
+		 */
+		for(uint8_t bit = 1; bit < 32; bit++){
+			// Октеты повреждаемого оглавления
+			vector <uint8_t> damaged = record;
+			// Выполняем установку неведомого разряда свойств строки
+			damaged.at(16 + (bit / 8)) |= static_cast <uint8_t> (1u << (bit % 8));
+			// Выполняем проверку отказа снятия строки с неведомыми разрядами
+			ASSERT_FALSE(index.unpack(damaged.data(), damaged.size(), error))
+				<< "разряд свойств: " << static_cast <uint16_t> (bit);
+			// Выполняем проверку кода отказа снятия оглавления
+			ASSERT_EQ(error, abc::error_t::INVALID_INDEX) << "разряд свойств: " << static_cast <uint16_t> (bit);
+			// Выполняем проверку того, что повреждённое оглавление снятым не осталось
+			ASSERT_EQ(index.size(), 0ul) << "разряд свойств: " << static_cast <uint16_t> (bit);
+		}
+	}
 }
 /**
  * @brief Проверка выборки всякой записи контейнера по номеру
@@ -441,4 +489,191 @@ TEST_F(IndexFixture, UnreadableSource) {
 	ASSERT_FALSE(fetcher.open(nullptr));
 	// Выполняем проверку кода отказа открытия контейнера
 	ASSERT_EQ(fetcher.error(), abc::error_t::INTERNAL);
+}
+/**
+ * @brief Проверка отказа выборки по строке оглавления, указывающей за кадр
+ *
+ * @details Строка оглавления приходит с провода наравне с содержимым и целостностью
+ *          не защищена: кадр контрольной суммы не несёт, а подпись необязательна.
+ *          Смещение и длина из повреждённой строки увели бы выборку за содержимое
+ *          снятого кадра, и читалась бы чужая память
+ *
+ */
+TEST_F(IndexFixture, EntryBeyondChunk) {
+	/**
+	 * @brief Функция сборки контейнера без сжатия и шифрования
+	 *
+	 * @details Сжатие здесь выключено нарочно: оглавление обязано лечь в кадр открыто,
+	 *          иначе правка строки в записи контейнера невозможна
+	 *
+	 * @param result буфер, куда следует уложить собранный контейнер
+	 *
+	 */
+	const auto assemble = [](vector <uint8_t> & result) noexcept -> void {
+		// Сборщик контейнера
+		abc::assembler_t assembler;
+		/**
+		 * Выполняем внесение череды записей в собираемый контейнер
+		 */
+		for(size_t i = 0; i < 8; i++){
+			// Выполняем сборку очередной записи
+			const vector <uint8_t> item = record(string{"запись номер "} + to_string(i));
+			// Выполняем внесение очередной записи в собираемый контейнер
+			assembler.append(item.data(), item.size(), abc::payload_t::TEXT);
+		}
+		// Выполняем завершение сборки контейнера
+		assembler.complete(result);
+	};
+	// Октеты собранного контейнера
+	vector <uint8_t> pristine;
+	// Выполняем сборку контейнера
+	assemble(pristine);
+	// Выполняем проверку того, что контейнер собран
+	ASSERT_FALSE(pristine.empty());
+	// Снятый заголовок опознания контейнера
+	abc::header_t header;
+	// Код отказа снятия заголовка
+	abc::error_t error = abc::error_t::NONE;
+	// Выполняем снятие заголовка опознания контейнера
+	ASSERT_TRUE(header.unpack(pristine.data(), pristine.size(), error))
+		<< "код отказа: " << abc::message(error);
+	// Выполняем проверку того, что оглавление контейнера объявлено
+	ASSERT_GT(header.index, 0u);
+	// Выполняем получение смещения первой строки оглавления в записи контейнера
+	const size_t entry = static_cast <size_t> (header.index) + abc::CHUNK_HEADER;
+	// Выполняем проверку того, что строка оглавления в записи контейнера умещается
+	ASSERT_LE(entry + abc::ENTRY_LENGTH, pristine.size());
+	/**
+	 * Выполняем проверку того, что оглавление легло в кадр открыто.
+	 *
+	 * Без этого правка строки легла бы в сжатое содержимое, разбор кадра отвечал бы
+	 * отказом сжатия, и выборка отказывалась бы вовсе не по той причине
+	 */
+	ASSERT_EQ(pristine.at(static_cast <size_t> (header.index)), 0x00) << "оглавление уложено сжатым";
+	/**
+	 * @brief Функция выборки первой записи из поданной записи контейнера
+	 *
+	 * @param data   октеты записи контейнера
+	 * @param result буфер, куда следует положить выбранную запись
+	 * @param error  код отказа выборки записи
+	 * @return       признак успешно выбранной записи
+	 *
+	 */
+	const auto fetch = [](const vector <uint8_t> & data, vector <uint8_t> & result, abc::error_t & error) noexcept -> bool {
+		// Выборщик записей контейнера
+		abc::fetcher_t fetcher;
+		/**
+		 * Если открыть контейнер не вышло
+		 */
+		if(!fetcher.open([&data](const uint64_t offset, const size_t size, vector <uint8_t> & result) noexcept -> bool {
+			// Если затребованные октеты за концом записи контейнера
+			if((offset + static_cast <uint64_t> (size)) > static_cast <uint64_t> (data.size()))
+				// Выводим признак неудачного чтения октетов
+				return false;
+			// Выполняем выдачу затребованных октетов
+			result.assign(data.begin() + static_cast <ptrdiff_t> (offset),
+			 data.begin() + static_cast <ptrdiff_t> (offset + size));
+			// Выводим признак успешного чтения октетов
+			return true;
+		})){
+			// Выполняем установку кода отказа открытия контейнера
+			error = fetcher.error();
+			// Выводим признак неудачной выборки записи
+			return false;
+		}
+		// Выполняем выборку первой записи контейнера
+		const bool result2 = fetcher.record(0, result);
+		// Выполняем установку кода отказа выборки записи
+		error = fetcher.error();
+		// Выводим признак успешности выборки записи
+		return result2;
+	};
+	// Буфер выбранной записи контейнера
+	vector <uint8_t> item;
+	// Выполняем проверку выборки записи из нетронутого контейнера
+	ASSERT_TRUE(fetch(pristine, item, error)) << "код отказа: " << abc::message(error);
+	// Выполняем проверку выбранной записи контейнера
+	ASSERT_EQ(item, record("запись номер 0"));
+	// Выполняем получение длины первой записи из строки оглавления
+	const uint32_t length = static_cast <uint32_t> (pristine.at(entry + 12)) |
+	 (static_cast <uint32_t> (pristine.at(entry + 13)) << 8) |
+	 (static_cast <uint32_t> (pristine.at(entry + 14)) << 16) |
+	 (static_cast <uint32_t> (pristine.at(entry + 15)) << 24);
+	// Выполняем проверку того, что длина записи снята верно
+	ASSERT_EQ(length, static_cast <uint32_t> (item.size())) << "строка оглавления найдена не та";
+	/**
+	 * @brief Функция правки поля строки оглавления
+	 *
+	 * @param data   октеты правимой записи контейнера
+	 * @param shift  смещение правимого поля в строке оглавления
+	 * @param value  устанавливаемое значение поля
+	 *
+	 */
+	const auto spike = [entry](vector <uint8_t> & data, const size_t shift, const uint32_t value) noexcept -> void {
+		/**
+		 * Выполняем перебор всех октетов правимого поля
+		 */
+		for(size_t i = 0; i < 4; i++)
+			// Выполняем укладку очередного октета поля
+			data.at(entry + shift + i) = static_cast <uint8_t> ((value >> (i * 8)) & 0xFF);
+	};
+	/**
+	 * Выполняем проверку отказа выборки по непомерной длине записи
+	 */
+	{
+		// Октеты правимой записи контейнера
+		vector <uint8_t> damaged = pristine;
+		// Выполняем установку непомерной длины записи
+		spike(damaged, 12, numeric_limits <uint32_t>::max());
+		// Буфер выбранной записи контейнера
+		vector <uint8_t> item;
+		// Выполняем проверку отказа выборки записи
+		ASSERT_FALSE(fetch(damaged, item, error));
+		// Выполняем проверку кода отказа выборки записи
+		ASSERT_EQ(error, abc::error_t::INVALID_INDEX);
+		// Выполняем проверку того, что выбранного наружу не ушло
+		ASSERT_TRUE(item.empty());
+	}
+	/**
+	 * Выполняем проверку отказа выборки по непомерному смещению записи
+	 */
+	{
+		// Октеты правимой записи контейнера
+		vector <uint8_t> damaged = pristine;
+		// Выполняем установку непомерного смещения записи
+		spike(damaged, 8, numeric_limits <uint32_t>::max());
+		// Буфер выбранной записи контейнера
+		vector <uint8_t> item;
+		// Выполняем проверку отказа выборки записи
+		ASSERT_FALSE(fetch(damaged, item, error));
+		// Выполняем проверку кода отказа выборки записи
+		ASSERT_EQ(error, abc::error_t::INVALID_INDEX);
+		// Выполняем проверку того, что выбранного наружу не ушло
+		ASSERT_TRUE(item.empty());
+	}
+	/**
+	 * Выполняем проверку отказа выборки по длине, вышедшей за кадр на один октет.
+	 *
+	 * Правка эта отделяет сличение по краю от сличения приблизительного: строка,
+	 * вышедшая за содержимое кадра на единый октет, годной не является
+	 */
+	{
+		// Октеты правимой записи контейнера
+		vector <uint8_t> damaged = pristine;
+		// Выполняем установку длины записи, вышедшей за кадр на один октет
+		spike(damaged, 12, length + 1);
+		// Буфер выбранной записи контейнера
+		vector <uint8_t> item;
+		// Выполняем выборку первой записи контейнера
+		const bool fetched = fetch(damaged, item, error);
+		/**
+		 * Если запись выбрана, кадр несёт октеты за нею: отказ здесь необязателен,
+		 * а вот выход за содержимое кадра - невозможен
+		 */
+		if(fetched)
+			// Выполняем проверку длины выбранной записи
+			ASSERT_EQ(item.size(), static_cast <size_t> (length + 1));
+		// Иначе сличаем код отказа выборки записи
+		else ASSERT_EQ(error, abc::error_t::INVALID_INDEX);
+	}
 }

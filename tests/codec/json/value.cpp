@@ -22,6 +22,7 @@
 #include <string>
 #include <vector>
 #include <limits>
+#include <functional>
 
 /**
  * Подключаем заголовочные файлы проекта
@@ -2406,4 +2407,92 @@ TEST(CodecJsonValue, IndexedObjectByPath){
 	ASSERT_TRUE(root.at("/field_63").value(value));
 	// Выполняем проверку извлечённого значения прежнего поля объекта
 	ASSERT_EQ(value, static_cast <int64_t> (63));
+}
+
+/**
+ * @brief Проверка совпадения правки значения с его перезаписью
+ *
+ * @details Значение читается ДВАЖДЫ - напрямую и через запись его в текст с последующим
+ * разбором. Расхождение означает, что значение держит одно, а записывает другое: правка
+ * до текста не дошла либо дошла искажённой
+ *
+ * @note Приём сличения подсказан владельцем модуля YAML, где нашёл девять дефектов
+ *       одного рода. У XML он нашёл один - пустое содержимое заводило узел текста, записи
+ *       у которого нет никакой, - а у JSON не нашёл ни одного. Проверка стоит здесь
+ *       СТОРОЖЕМ на будущее, а не итогом розыска
+ * @warning Сличения ДВА, и второе не заменяется первым: запись против переписи ловит
+ *          искажение вида и строения, но слепа к потере, случающейся на обоих путях
+ *          одинаково - усечённая строка усеклась бы дважды и записи совпали бы. Оттого
+ *          содержимое строк сличается отдельно, длиною в том числе
+ */
+TEST(CodecJsonValue, MutationSurvivesRewrite){
+	/**
+	 * Выполняем перебор всех сличаемых правок значения
+	 */
+	for(auto & item : vector <pair <string, function <void (json::value_t &)>>> {
+		{"установка поля строкой", [](json::value_t & value){ value["k"] = json::value_t(string("значение")); }},
+		{"установка поля числом", [](json::value_t & value){ value["k"] = json::value_t(static_cast <int64_t> (42)); }},
+		{"установка поля дробным", [](json::value_t & value){ value["k"] = json::value_t(static_cast <double> (3.14159265358979)); }},
+		{"перезапись поля", [](json::value_t & value){ value["k"] = json::value_t(static_cast <int64_t> (1)); value["k"] = json::value_t(string("иное")); }},
+		{"снятие поля", [](json::value_t & value){ value["a"] = json::value_t(static_cast <int64_t> (1)); value["b"] = json::value_t(static_cast <int64_t> (2)); value.erase("a"); }},
+		{"наибольшее целое", [](json::value_t & value){ value["k"] = json::value_t(static_cast <int64_t> (9223372036854775807LL)); }},
+		{"наименьшее целое", [](json::value_t & value){ value["k"] = json::value_t(static_cast <int64_t> (-9223372036854775807LL - 1)); }},
+		{"наибольшее беззнаковое", [](json::value_t & value){ value["k"] = json::value_t(static_cast <uint64_t> (18446744073709551615ULL)); }},
+		{"дробное очень малое", [](json::value_t & value){ value["k"] = json::value_t(static_cast <double> (1e-300)); }},
+		{"дробное очень большое", [](json::value_t & value){ value["k"] = json::value_t(static_cast <double> (1e300)); }},
+		{"дробное с потерей точности", [](json::value_t & value){ value["k"] = json::value_t(static_cast <double> (0.1 + 0.2)); }},
+		{"пустое имя поля", [](json::value_t & value){ value[""] = json::value_t(static_cast <int64_t> (1)); }},
+		{"вложенность объектов", [](json::value_t & value){ value["a"]["b"]["c"] = json::value_t(static_cast <int64_t> (1)); }},
+		{"снятие из перечня", [](json::value_t & value){
+			for(int64_t i = 0; i < 5; i++) value["k"].push(json::value_t(i));
+			value["k"].erase(static_cast <size_t> (2));
+		}},
+		{"очистка и заполнение заново", [](json::value_t & value){
+			value["a"] = json::value_t(static_cast <int64_t> (1));
+			value.clear();
+			value["b"] = json::value_t(static_cast <int64_t> (2));
+		}},
+		{"широкое значение: снятие и заведение поля", [](json::value_t & value){
+			for(int64_t i = 0; i < 64; i++) value["k" + to_string(i)] = json::value_t(i);
+			value.erase("k7");
+			value["k7"] = json::value_t(string("новое"));
+		}}
+	}) {
+		// Собираемое значение
+		json::value_t value;
+		// Выполняем правку значения
+		item.second(value);
+		// Выполняем запись значения в текст
+		const string text = value.dump();
+		// Разобранное обратно значение
+		json::value_t back;
+		// Выполняем разбор записанного текста
+		ASSERT_TRUE(back.parse(text)) << item.first << ": " << text;
+		// Выполняем сличение записи исходного значения с записью разобранного
+		ASSERT_EQ(back.dump(), text) << item.first;
+	}
+	/**
+	 * Выполняем перебор всех строк, сохранность которых сличается
+	 *
+	 * @note Строки взяты ГОДНЫМИ по кодировке намеренно: одиночный октет 0x80 годной
+	 *       записи не образует, и запись подменяет его знаком замены по правилу
+	 *       восстановления UTF-8. Подмена эта верна, и сличать по ней сохранность нельзя
+	 */
+	for(auto & item : vector <string> {
+		string("a\0b", 3), string("a\x01\x1f" "b"), "a\r\tb", "a\"b\\c", "по-русски",
+		"\xF0\x9F\x98\x80", string("a\x7f" "b"), ""
+	}) {
+		// Собираемое значение
+		json::value_t value;
+		// Выполняем установку строки полем значения
+		value["k"] = json::value_t(item);
+		// Разобранное обратно значение
+		json::value_t back;
+		// Выполняем разбор записанного текста
+		ASSERT_TRUE(back.parse(value.dump()));
+		// Выполняем сличение длины строки, пережившей перезапись
+		ASSERT_EQ(back["k"].text().size(), item.size()) << value.dump();
+		// Выполняем сличение содержимого строки, пережившего перезапись
+		ASSERT_EQ(back["k"].text(), item) << value.dump();
+	}
 }

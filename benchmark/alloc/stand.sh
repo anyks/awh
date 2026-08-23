@@ -84,6 +84,61 @@ echo "--- сборка на системном распределителе"
 $CXX -std=c++17 -O2 $NOBUILTIN $FLAGS -DAWH_BENCH_SYSTEM -I "$ROOT/include" -o "$OUT/bench-sys" \
  "$ROOT/benchmark/alloc/stand.cpp" -lpthread > "$OUT/sys.log" 2>&1
 head -40 "$OUT/sys.log"
+##
+# Сборки на распределителях-соперниках
+#
+# Исходник тот же самый и ключи те же: разница ОДНА - какая библиотека обслуживает
+# выдачу. Соперники подменяют malloc-семейство собою при связывании, ровно как и мы у
+# систем ELF, оттого сборка их ничем не отличается от системной, кроме одной библиотеки
+#
+# Соперника берём, лишь когда он на машине есть: перечень их у систем разный, а
+# требовать всех значило бы закрыть себе стенд. У FreeBSD, к слову, СИСТЕМНЫЙ
+# распределитель и ЕСТЬ jemalloc - отдельного пакета там нет вовсе, и это не пробел
+##
+RIVALS=""
+##
+# Пути поиска библиотек соперников при ЗАПУСКЕ
+#
+# Собраться мало: у NetBSD библиотеки лежат в /usr/pkg/lib, куда загрузчик сам не
+# смотрит, и собранная программа отвечает «Shared object not found» уже на запуске.
+# Ключ этот вписывает путь в саму программу
+##
+RPATH=""
+for dir in /usr/pkg/lib /usr/local/lib /opt/homebrew/lib /opt/local/lib; do
+	[ -d "$dir" ] && RPATH="$RPATH -Wl,-rpath,$dir"
+done
+##
+# Ищем соперников пробной сборкой, а не наличием файла
+#
+# Файл библиотеки может лежать без заголовков или быть неподходящего набора команд;
+# связывание отвечает на вопрос «годен ли он» окончательно
+##
+for rival in jemalloc tcmalloc_minimal; do
+	if $CXX -std=c++17 -O2 $FLAGS $RPATH -o "$OUT/probe-$rival" -x c++ - "-l$rival" > /dev/null 2>&1 <<-'PROBE'
+	#include <cstdlib>
+	int main(){ void * one = ::malloc(64); ::free(one); return 0; }
+	PROBE
+	then
+		##
+		# Собраться мало - соперник обязан ЗАПУСТИТЬСЯ
+		#
+		# Программа, не нашедшая библиотеку при запуске, печатает пустоту, и свод
+		# по такому выводу отчитывается «соперника нет» вместо отказа
+		##
+		if ! "$OUT/probe-$rival" > /dev/null 2>&1; then
+			echo "--- соперник $rival: СОБРАЛСЯ, НО НЕ ЗАПУСКАЕТСЯ - пропущен"
+			continue
+		fi
+		RIVALS="$RIVALS $rival"
+		echo "--- сборка на сопернике: $rival"
+		$CXX -std=c++17 -O2 $NOBUILTIN $FLAGS -DAWH_BENCH_SYSTEM -I "$ROOT/include" \
+		 -o "$OUT/bench-$rival" "$ROOT/benchmark/alloc/stand.cpp" $RPATH "-l$rival" -lpthread \
+		 > "$OUT/$rival.log" 2>&1
+		head -40 "$OUT/$rival.log"
+	else
+		echo "--- соперник $rival: на этой машине его нет"
+	fi
+done
 FAILED=0
 for name in bench-awh bench-sys; do
 	if [ ! -x "$OUT/$name" ] && [ ! -x "$OUT/$name.exe" ]; then
@@ -98,6 +153,17 @@ echo "=============== НАШ ==============="
 echo
 echo "============ СИСТЕМНЫЙ ============"
 "$OUT/bench-sys" || FAILED=$((FAILED + 1))
+for rival in $RIVALS; do
+	if [ -x "$OUT/bench-$rival" ]; then
+		echo
+		echo "============ $rival ============"
+		"$OUT/bench-$rival" || FAILED=$((FAILED + 1))
+	else
+		echo
+		echo "ОТКАЗ СБОРКИ соперника: $rival"
+		FAILED=$((FAILED + 1))
+	fi
+done
 echo
 echo "стенд: $OUT"
 [ $FAILED -eq 0 ] || exit 1

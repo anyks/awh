@@ -220,33 +220,56 @@ struct TunnelGuard {
 };
 
 /**
- * @brief Функция имени подготовленного туннельного устройства
+ * @brief Функция проверки готовности окружения к заведению туннелей
  *
  * @details Системы Sun устройств уровня IP не заводят вовсе: там связь заводится
- *          административно (`dladm create-vnic` поверх etherstub), и движку
- *          полагается имя УЖЕ ГОТОВОЙ связи, а не право завести её самому. Прочие
- *          системы заводят устройство сами, и имя им не нужно
+ *          административно (`dladm create-vnic` поверх etherstub плюс `ipadm create-ip`),
+ *          и движок отыскивает свободную перебором имён. Имя связи ему НЕ НАЗЫВАЕТСЯ:
+ *          назвав одно, проверка получила бы одну связь на все туннели разом
  *
- * @warning Отсутствие подготовленной связи у систем Sun - негодность окружения, а не
- *          дефект движка: завести её проверка не вправе, это настройка стенда.
- *          Спрашивается она у самой системы, а не у разбираемого кода
+ * @warning Отсутствие подготовленных связей у систем Sun - негодность окружения, а не
+ *          дефект движка: завести их проверка не вправе, это настройка стенда. Спрашивается
+ *          она у самой системы, а не у разбираемого кода
  *
- * @return имя подготовленного устройства либо пустая строка
+ * @note Приставка имени берётся из краткого имени библиотеки - ровно оттуда же, откуда
+ *       берёт её сам движок. Второго места, где имя писалось бы руками, нет
+ *
+ * @param count число связей, потребное проверке
+ * @return      признак готовности окружения
  *
  */
-static std::string tunnelDevice() noexcept {
+static bool tunnelReady([[maybe_unused]] const uint16_t count) noexcept {
 	/**
 	 * Для операционных систем Sun
 	 */
 	#if __sun__
-		// Выводим имя связи, заведённой для проверок по описанию стенда
-		return "awhtun0";
+		// Число отысканных связей
+		uint16_t found = 0;
+		/**
+		 * Перебираем связи, заведённые распорядителем машины
+		 */
+		for(uint16_t i = 0; (i < 0x100) && (found < count); i++){
+			// Приводим краткое имя библиотеки к нижнему регистру
+			std::string prefix(AWH_SHORT_NAME "_tun");
+			// Переводим приставку в нижний регистр
+			for(char & letter : prefix)
+				// Переводим очередной знак приставки
+				letter = static_cast <char> (::tolower(static_cast <uint8_t> (letter)));
+			// Формируем путь к очередной связи
+			const std::string path = ("/dev/net/" + prefix + std::to_string(i));
+			// Если связь заведена, считаем её
+			if(::access(path.c_str(), F_OK) == 0)
+				// Увеличиваем счётчик отысканных связей
+				found++;
+		}
+		// Выводим признак готовности окружения
+		return (found >= count);
 	/**
 	 * Для всех остальных операционных систем
 	 */
 	#else
-		// Устройство заводит сам движок, имя ему не нужно
-		return "";
+		// Устройства движок заводит сам, готовить нечего
+		return true;
 	#endif
 }
 
@@ -268,6 +291,10 @@ TEST_F(IoFixture, IoTunnelLifecycleTest){
 	if(!tunnelPrivileged())
 		// Пропускаем проверку
 		GTEST_SKIP() << "заведение туннельного устройства требует надзорных прав";
+	// Если окружение к заведению туннеля не готово
+	if(!tunnelReady(1))
+		// Пропускаем проверку
+		GTEST_SKIP() << "связи под туннели не заведены распорядителем машины";
 	// Выполняем инициализацию движка
 	ASSERT_TRUE(this->_io->initialize());
 	/**
@@ -287,12 +314,6 @@ TEST_F(IoFixture, IoTunnelLifecycleTest){
 		const awh::event::id_t tid = this->_io->event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV4);
 		// Ставим охранника узла: снос обязан пройти и при отказе утверждения
 		const TunnelGuard guard(this->_io.get(), tid);
-		/**
-		 * Называем движку подготовленное устройство там, где система требует имени
-		 */
-		if(!tunnelDevice().empty())
-			// Устанавливаем имя подготовленного туннельного устройства
-			ASSERT_TRUE(this->_io->setIface(tid, tunnelDevice()));
 		// Узел обязан завестись: устройство заводится позже, фиксацией настроек
 		ASSERT_GT(tid, 0u) << sign << ": движок не записал узел туннеля";
 		/**
@@ -422,6 +443,10 @@ TEST_F(IoFixture, IoTunnelCarriesPacketTest){
 	if(!tunnelPrivileged())
 		// Пропускаем проверку
 		GTEST_SKIP() << "заведение туннельного устройства требует надзорных прав";
+	// Если окружение к заведению туннеля не готово
+	if(!tunnelReady(1))
+		// Пропускаем проверку
+		GTEST_SKIP() << "связи под туннели не заведены распорядителем машины";
 	// Выполняем инициализацию движка
 	ASSERT_TRUE(this->_io->initialize());
 	/**
@@ -434,12 +459,6 @@ TEST_F(IoFixture, IoTunnelCarriesPacketTest){
 	const awh::event::id_t tid = this->_io->event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV4);
 	// Ставим охранника узла: снос обязан пройти и при отказе утверждения
 	const TunnelGuard guard(this->_io.get(), tid);
-		/**
-		 * Называем движку подготовленное устройство там, где система требует имени
-		 */
-		if(!tunnelDevice().empty())
-			// Устанавливаем имя подготовленного туннельного устройства
-			ASSERT_TRUE(this->_io->setIface(tid, tunnelDevice()));
 	// Узел обязан завестись: устройство заводится позже, фиксацией настроек
 	ASSERT_GT(tid, 0u) << "движок не записал узел туннеля";
 	// Заводим событие посредника
@@ -654,18 +673,16 @@ TEST_F(IoFixture, IoTunnelAcceptsWrittenPacketTest){
 	if(!tunnelPrivileged())
 		// Пропускаем проверку
 		GTEST_SKIP() << "заведение туннельного устройства требует надзорных прав";
+	// Если окружение к заведению туннеля не готово
+	if(!tunnelReady(1))
+		// Пропускаем проверку
+		GTEST_SKIP() << "связи под туннели не заведены распорядителем машины";
 	// Выполняем инициализацию движка
 	ASSERT_TRUE(this->_io->initialize());
 	// Заводим событие туннеля
 	const awh::event::id_t tid = this->_io->event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV4);
 	// Ставим охранника узла: снос обязан пройти и при отказе утверждения
 	const TunnelGuard guard(this->_io.get(), tid);
-		/**
-		 * Называем движку подготовленное устройство там, где система требует имени
-		 */
-		if(!tunnelDevice().empty())
-			// Устанавливаем имя подготовленного туннельного устройства
-			ASSERT_TRUE(this->_io->setIface(tid, tunnelDevice()));
 	// Узел обязан завестись: устройство заводится позже, фиксацией настроек
 	ASSERT_GT(tid, 0u) << "движок не записал узел туннеля";
 	// Устанавливаем опции события
@@ -935,18 +952,16 @@ TEST_F(IoFixture, IoTunnelDeliversFirstWrittenPacketTest){
 	if(!tunnelPrivileged())
 		// Пропускаем проверку
 		GTEST_SKIP() << "заведение туннельного устройства требует надзорных прав";
+	// Если окружение к заведению туннеля не готово
+	if(!tunnelReady(1))
+		// Пропускаем проверку
+		GTEST_SKIP() << "связи под туннели не заведены распорядителем машины";
 	// Выполняем инициализацию движка
 	ASSERT_TRUE(this->_io->initialize());
 	// Заводим событие туннеля
 	const awh::event::id_t tid = this->_io->event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV4);
 	// Ставим охранника узла: снос обязан пройти и при отказе утверждения
 	const TunnelGuard guard(this->_io.get(), tid);
-		/**
-		 * Называем движку подготовленное устройство там, где система требует имени
-		 */
-		if(!tunnelDevice().empty())
-			// Устанавливаем имя подготовленного туннельного устройства
-			ASSERT_TRUE(this->_io->setIface(tid, tunnelDevice()));
 	// Узел обязан завестись: устройство заводится позже, фиксацией настроек
 	ASSERT_GT(tid, 0u) << "движок не записал узел туннеля";
 	// Устанавливаем опции события
@@ -1179,6 +1194,10 @@ TEST_F(IoFixture, IoTunnelIPv6HousekeepingTest){
 	if(!tunnelPrivileged())
 		// Пропускаем проверку
 		GTEST_SKIP() << "заведение туннельного устройства требует надзорных прав";
+	// Если окружение к заведению туннеля не готово
+	if(!tunnelReady(1))
+		// Пропускаем проверку
+		GTEST_SKIP() << "связи под туннели не заведены распорядителем машины";
 	// Выполняем инициализацию движка
 	ASSERT_TRUE(this->_io->initialize());
 	/**
@@ -1197,12 +1216,6 @@ TEST_F(IoFixture, IoTunnelIPv6HousekeepingTest){
 		const awh::event::id_t tid = this->_io->event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV6);
 		// Ставим охранника узла: снос обязан пройти и при отказе утверждения
 		const TunnelGuard guard(this->_io.get(), tid);
-		/**
-		 * Называем движку подготовленное устройство там, где система требует имени
-		 */
-		if(!tunnelDevice().empty())
-			// Устанавливаем имя подготовленного туннельного устройства
-			ASSERT_TRUE(this->_io->setIface(tid, tunnelDevice()));
 		// Узел обязан завестись: устройство заводится позже, фиксацией настроек
 		ASSERT_GT(tid, 0u) << sign << ": движок не записал узел туннеля";
 		// Устанавливаем опции события туннеля
@@ -1318,6 +1331,10 @@ TEST_F(IoFixture, IoTunnelIPv4HousekeepingTest){
 	if(!tunnelPrivileged())
 		// Пропускаем проверку
 		GTEST_SKIP() << "заведение туннельного устройства требует надзорных прав";
+	// Если окружение к заведению туннеля не готово
+	if(!tunnelReady(1))
+		// Пропускаем проверку
+		GTEST_SKIP() << "связи под туннели не заведены распорядителем машины";
 	// Выполняем инициализацию движка
 	ASSERT_TRUE(this->_io->initialize());
 	/**
@@ -1336,12 +1353,6 @@ TEST_F(IoFixture, IoTunnelIPv4HousekeepingTest){
 		const awh::event::id_t tid = this->_io->event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV4);
 		// Ставим охранника узла: снос обязан пройти и при отказе утверждения
 		const TunnelGuard guard(this->_io.get(), tid);
-		/**
-		 * Называем движку подготовленное устройство там, где система требует имени
-		 */
-		if(!tunnelDevice().empty())
-			// Устанавливаем имя подготовленного туннельного устройства
-			ASSERT_TRUE(this->_io->setIface(tid, tunnelDevice()));
 		// Узел обязан завестись: устройство заводится позже, фиксацией настроек
 		ASSERT_GT(tid, 0u) << sign << ": движок не записал узел туннеля";
 		// Устанавливаем опции события туннеля
@@ -1453,6 +1464,320 @@ static constexpr const char * TUNNEL_REFUSED[] = {"255.255.255.255", "224.0.0.1"
  *          до него при исправном движке дело уже не доходит
  *
  */
+/**
+ * @brief Число туннелей, поднимаемых проверкой множественности
+ *
+ * @note Восемь взяты не наугад: у NetBSD и OpenBSD система поставляет ровно четыре узла
+ *       устройств, и меньшее число прошло бы, не проверив ничего
+ *
+ */
+static constexpr uint16_t TUNNEL_MANY = 8;
+
+/**
+ * @brief Тест подъёма нескольких туннельных устройств разом
+ *
+ * @details Фреймворк не вправе ограничивать разработчика одним туннелем: машина бывает
+ *          узловой, и туннелей ей нужно столько, сколько он закажет. Проверка поднимает
+ *          их подряд, ДЕРЖА все прежние живыми, и требует, чтобы поднялись все
+ *
+ * @details Проверяются три вещи разом, и каждая закрывает свой дефект:
+ *            - число поднятых: у NetBSD давало 3 из 8, у OpenBSD 4 из 8, у Sun 0 из 8;
+ *            - РАЗЛИЧНОСТЬ имён: у Sun перебор садился на одну связь восемь раз подряд,
+ *              и «поднято восемь» было неправдой;
+ *            - второй оборот тем же движком: учёт розданных связей, не освобождаемый при
+ *              сносе, давал 0 из 8 при восьми свободных связях.
+ *          Всё установлено замерами на стендах 22.08.2026
+ *
+ * @note Каждому туннелю отводится СВОЯ подсеть: назначение двум устройствам одного
+ *       адреса система отвергла бы сама, и отказ этот к числу устройств отношения
+ *       не имеет
+ *
+ */
+TEST_F(IoFixture, IoTunnelRaisesManyDevicesTest){
+	// Если надзорных прав у процесса нет
+	if(!tunnelPrivileged())
+		// Пропускаем проверку
+		GTEST_SKIP() << "заведение туннельного устройства требует надзорных прав";
+	// Если окружение к заведению туннелей не готово
+	if(!tunnelReady(TUNNEL_MANY))
+		// Пропускаем проверку
+		GTEST_SKIP() << "связи под туннели не заведены распорядителем машины";
+	// Выполняем инициализацию движка
+	ASSERT_TRUE(this->_io->initialize());
+	/**
+	 * Проходим оборот подъёма ДВАЖДЫ
+	 *
+	 * @note Второй оборот ловит учёт, не освобождаемый при сносе: связи к нему обязаны
+	 *       вернуться, и второй оборот обязан дать столько же, сколько первый
+	 */
+	for(uint8_t round = 0; round < 2; round++){
+		// Роспись оборота для сообщений об отказе
+		const std::string sign = std::string("оборот ") + std::to_string(round + 1);
+		// Перечень опознавателей поднятых узлов
+		std::vector <awh::event::id_t> raised;
+		// Перечень имён заведённых устройств
+		std::vector <std::string> names;
+		/**
+		 * Поднимаем туннели подряд, не снося прежних
+		 */
+		for(uint16_t i = 0; i < TUNNEL_MANY; i++){
+			// Заводим узел туннеля
+			const awh::event::id_t tid = this->_io->event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV4);
+			// Узел обязан завестись
+			ASSERT_GT(tid, 0u) << sign << ": движок не записал узел туннеля " << (i + 1);
+			// Записываем узел в перечень до всякой проверки: снос обязан пройти и при отказе
+			raised.push_back(tid);
+			// Устанавливаем опции события туннеля
+			ASSERT_TRUE(this->_io->setOptions(tid, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC)) << sign;
+			// Отводим туннелю свою подсеть, разную на разных оборотах
+			const std::string local = ("10." + std::to_string(70 + round) + "." + std::to_string(i + 1) + ".1");
+			// Устанавливаем адреса концов туннеля
+			ASSERT_TRUE(this->_io->setAddress(tid, awh::event::address_t::IPV4, local)) << sign;
+			ASSERT_TRUE(this->_io->setTarget(tid, ("10." + std::to_string(70 + round) + "." + std::to_string(i + 1) + ".2"))) << sign;
+			// Фиксация настроек обязана пройти: устройство заводится именно ею
+			ASSERT_TRUE(this->_io->commit(tid)) << sign << ": туннель " << (i + 1) << " из " << TUNNEL_MANY << " не поднялся";
+			// Получаем имя заведённого устройства
+			const std::string name = this->_io->getIface(tid);
+			// Имя заведённого устройства обязано быть известно
+			ASSERT_FALSE(name.empty()) << sign << ": движок не назвал устройство туннеля " << (i + 1);
+			/**
+			 * Имя обязано отличаться от имён всех прежних
+			 *
+			 * @warning Совпадение означает, что движок выдал одно устройство дважды, и
+			 *          число поднятых туннелей - неправда. Установлено на стенде Solaris:
+			 *          восемь туннелей сели на одну связь, а счёт показывал восемь
+			 */
+			ASSERT_EQ(std::find(names.begin(), names.end(), name), names.end())
+				<< sign << ": устройство «" << name << "» выдано дважды";
+			// Записываем имя в перечень заведённых
+			names.push_back(name);
+		}
+		// Поднятых туннелей обязано быть столько, сколько заказано
+		ASSERT_EQ(raised.size(), static_cast <size_t> (TUNNEL_MANY)) << sign;
+		/**
+		 * Сносим поднятые туннели, освобождая устройства
+		 */
+		for(const awh::event::id_t tid : raised)
+			// Сносим узел туннеля
+			this->_io->destroy(tid);
+	}
+}
+
+/**
+ * @brief Число туннелей, через какие проверяется перенос
+ *
+ * @note Меньше, чем у проверки подъёма: каждому туннелю здесь придаётся своя несущая
+ *       связь с парой узлов, и восемь таких наборов затянули бы проверку впустую
+ *
+ */
+static constexpr uint16_t TUNNEL_FLOWS = 3;
+
+/**
+ * @brief Тест переноса данных по КАЖДОМУ из нескольких туннелей
+ *
+ * @details Заведение устройства ещё ничего не говорит о переносе: устройство бывает
+ *          заведено, поднято и при этом глухо. Проверка поднимает несколько туннелей
+ *          разом, каждому отводит свою подсеть и свою несущую связь, и шлёт в каждый
+ *          дейтаграмму СОКЕТОМ СИСТЕМЫ - не движком, иначе движок проверялся бы сам
+ *          собою
+ *
+ * @warning Счёт ведётся ПО КАЖДОМУ туннелю отдельно: общий счётчик прошёл бы и тогда,
+ *          когда переносит один туннель, а прочие молчат. Ради этого у каждого туннеля
+ *          свой посредник со своим откликом чтения
+ *
+ * @note Отказ отправки означает негодность окружения, а не дефект движка: пакетный
+ *       фильтр системы вправе не пустить пакет к встречной стороне туннеля. У стенда
+ *       FreeBSD правила ipfw отвергают его с «Permission denied» ещё на отправке, и
+ *       до устройства он не доходит вовсе
+ *
+ */
+TEST_F(IoFixture, IoTunnelCarriesOnEachDeviceTest){
+	// Если надзорных прав у процесса нет
+	if(!tunnelPrivileged())
+		// Пропускаем проверку
+		GTEST_SKIP() << "заведение туннельного устройства требует надзорных прав";
+	// Если окружение к заведению туннелей не готово
+	if(!tunnelReady(TUNNEL_FLOWS))
+		// Пропускаем проверку
+		GTEST_SKIP() << "связи под туннели не заведены распорядителем машины";
+	// Выполняем инициализацию движка
+	ASSERT_TRUE(this->_io->initialize());
+	// Число дошедшего по каждому туннелю
+	std::array <uint16_t, TUNNEL_FLOWS> carried{};
+	// Код отказа отправки по каждому туннелю
+	std::array <int32_t, TUNNEL_FLOWS> failures{};
+	// Перечень опознавателей узлов туннелей
+	std::vector <awh::event::id_t> raised;
+	// Перечень адресов встречных сторон
+	std::vector <std::string> peers;
+	/**
+	 * Поднимаем туннели с их несущими связями
+	 */
+	for(uint16_t i = 0; i < TUNNEL_FLOWS; i++){
+		// Роспись туннеля для сообщений об отказе
+		const std::string sign = std::string("туннель ") + std::to_string(i + 1);
+		// Отводим туннелю свою подсеть
+		const std::string local = ("10.79." + std::to_string(i + 1) + ".1");
+		// Устанавливаем адрес встречной стороны той же подсети
+		const std::string peer = ("10.79." + std::to_string(i + 1) + ".2");
+		// Отводим несущей связи свой порт
+		const uint16_t bearer = tunnelPort();
+		// Заводим узлы туннеля и его несущей связи
+		const awh::event::id_t tid = this->_io->event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV4);
+		const awh::event::id_t mid = this->_io->event(awh::event::node_t::MEDIATOR, awh::event::family_t::IPV4);
+		const awh::event::id_t sid = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
+		const awh::event::id_t cid = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
+		// Узлы обязаны завестись
+		ASSERT_GT(tid, 0u) << sign;
+		ASSERT_GT(mid, 0u) << sign;
+		ASSERT_GT(sid, 0u) << sign;
+		ASSERT_GT(cid, 0u) << sign;
+		// Записываем узел туннеля в перечень до всякой проверки: снос обязан пройти и при отказе
+		raised.push_back(tid);
+		// Запоминаем адрес встречной стороны
+		peers.push_back(peer);
+		// Устанавливаем опции событий
+		ASSERT_TRUE(this->_io->setOptions(tid, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC)) << sign;
+		ASSERT_TRUE(this->_io->setOptions(sid, awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK)) << sign;
+		ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK)) << sign;
+		// Устанавливаем адреса концов туннеля
+		ASSERT_TRUE(this->_io->setAddress(tid, awh::event::address_t::IPV4, local)) << sign;
+		ASSERT_TRUE(this->_io->setTarget(tid, peer)) << sign;
+		// Устанавливаем встречную сторону посреднику
+		ASSERT_TRUE(this->_io->setTarget(mid, peer)) << sign;
+		// Устанавливаем адрес и порт несущей связи
+		ASSERT_TRUE(this->_io->setAddress(sid, awh::event::address_t::IPV4, "127.0.0.1")) << sign;
+		ASSERT_TRUE(this->_io->setSourcePort(sid, bearer)) << sign;
+		ASSERT_TRUE(this->_io->setTarget(cid, "127.0.0.1")) << sign;
+		ASSERT_TRUE(this->_io->setTargetPort(cid, bearer)) << sign;
+		// Связываем посредника с клиентом несущей связи
+		ASSERT_TRUE(this->_io->splice(mid, cid)) << sign;
+		/**
+		 * Считаем прочитанное посредником ИМЕННО ЭТОГО туннеля
+		 *
+		 * @note Отклик чтения ставится посреднику, а не серверу несущей связи: у события
+		 *       сервера отклик этот не заводится вовсе, а посредник как раз и держит то,
+		 *       что прочитано из туннеля
+		 */
+		this->_io->on(mid, static_cast <awh::engine::callback::read_t> (
+			[&carried, i]([[maybe_unused]] const awh::event::id_t mid, const uint8_t * data, const size_t size) noexcept -> void {
+				// Считаем дошедшее по этому туннелю
+				if((data != nullptr) && (size > 0))
+					// Увеличиваем счётчик дошедшего
+					carried[i]++;
+			}
+		));
+		// Фиксируем настройки узлов
+		ASSERT_TRUE(this->_io->commit(tid)) << sign << ": устройство не заведено";
+		ASSERT_TRUE(this->_io->commit(sid)) << sign;
+		ASSERT_TRUE(this->_io->commit(cid)) << sign;
+		ASSERT_TRUE(this->_io->commit(mid)) << sign;
+		// Подключаем несущую связь к своему же серверу
+		ASSERT_TRUE(this->_io->connect(cid)) << sign;
+		// Запускаем события
+		ASSERT_TRUE(this->_io->launch(sid)) << sign;
+		ASSERT_TRUE(this->_io->launch(cid)) << sign;
+		ASSERT_TRUE(this->_io->launch(tid)) << sign;
+		/**
+		 * Поднимаем устройство туннеля
+		 *
+		 * @details Движок устройство заводит и адреса ему назначает, но признака UP не
+		 *          ставит: без него устройство остаётся опущенным, маршрута через него
+		 *          нет и пакету идти некуда
+		 */
+		{
+			// Получаем название устройства туннеля
+			const std::string iface = this->_io->getIface(tid);
+			// Название устройства обязано быть известно
+			ASSERT_FALSE(iface.empty()) << sign;
+			// Создаём объект работы с сетью
+			awh::eth_t eth(this->_fmk.get(), this->_log.get());
+			// Поднимаем устройство туннеля
+			ASSERT_TRUE(eth.iface.flag(iface, awh::event::eth_flag_t::UP, awh::event::mode_t::ENABLED)) << sign;
+		}
+	}
+	// Полезная нагрузка отправляемой дейтаграммы
+	const char payload[] = "AWH-MULTI-TUNNEL-PROBE";
+	// Создаём сокет системы для отправки дейтаграмм
+	const awh::net::socket_t fd = static_cast <awh::net::socket_t> (::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP));
+	// Сокет отправки обязан создаться
+	ASSERT_NE(fd, awh::net::invalid_socket_t);
+	// Отсчёт времени ожидания
+	const auto start = std::chrono::steady_clock::now();
+	// Число туннелей, по которым перенос состоялся
+	uint16_t done = 0;
+	/**
+	 * Крутим опрос, подсылая дейтаграммы в каждый туннель
+	 */
+	while((std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 5000) && (done < TUNNEL_FLOWS)){
+		// Обнуляем счётчик готовых туннелей
+		done = 0;
+		/**
+		 * Переходим по всем поднятым туннелям
+		 */
+		for(uint16_t i = 0; i < TUNNEL_FLOWS; i++){
+			// Адрес встречной стороны туннеля
+			struct sockaddr_in target{};
+			// Устанавливаем семейство адреса встречной стороны
+			target.sin_family = AF_INET;
+			// Устанавливаем порт встречной стороны
+			target.sin_port = htons(9);
+			// Устанавливаем адрес встречной стороны
+			target.sin_addr.s_addr = ::inet_addr(peers[i].c_str());
+			// Отправляем дейтаграмму на адрес встречной стороны туннеля
+			if(::sendto(fd, payload, sizeof(payload) - 1, 0, reinterpret_cast <struct sockaddr *> (&target), sizeof(target)) < 0)
+				// Запоминаем код отказа отправки
+				failures[i] = errno;
+			// Считаем туннель, по которому дошло
+			if(carried[i] > 0)
+				// Увеличиваем счётчик готовых туннелей
+				done++;
+		}
+		// Выполняем оборот опроса
+		ASSERT_TRUE(this->_io->poll(100));
+	}
+	// Закрываем сокет отправки
+	::closesocket(fd);
+	// Число туннелей, отправку в которые отвергло само окружение
+	uint16_t refused = 0;
+	// Роспись итога для сообщений об отказе
+	std::string sign;
+	/**
+	 * Переходим по всем поднятым туннелям
+	 */
+	for(uint16_t i = 0; i < TUNNEL_FLOWS; i++){
+		// Считаем туннель, отправку в который отвергло окружение
+		if((carried[i] == 0) && ((failures[i] == EACCES) || (failures[i] == EPERM) || (failures[i] == ENETUNREACH) || (failures[i] == EHOSTUNREACH)))
+			// Увеличиваем счётчик отвергнутых окружением
+			refused++;
+		// Дописываем роспись очередного туннеля
+		sign.append(" туннель ").append(std::to_string(i + 1)).append(": дошло=").append(std::to_string(carried[i]))
+		    .append(" отказ=").append((failures[i] != 0) ? ::strerror(failures[i]) : "нет").append(";");
+	}
+	/**
+	 * Сносим поднятые туннели
+	 */
+	for(const awh::event::id_t tid : raised)
+		// Сносим узел туннеля
+		this->_io->destroy(tid);
+	/**
+	 * Отказ окружения по ВСЕМ туннелям означает негодное окружение, а не дефект движка
+	 *
+	 * @warning Пробой окружения здесь служит errno самой системы, а не поведение
+	 *          разбираемого кода: спрашивается тот, кто отказ и вынес. Правила заслона
+	 *          проверка не трогает и трогать не вправе - они принадлежат хозяину стенда
+	 */
+	if(refused == TUNNEL_FLOWS)
+		// Пропускаем проверку
+		GTEST_SKIP() << "отправку отвергло окружение - пакет не дошёл до устройства:" << sign;
+	/**
+	 * Перенос обязан состояться по КАЖДОМУ туннелю
+	 */
+	for(uint16_t i = 0; i < TUNNEL_FLOWS; i++)
+		// Дошедшего по очередному туннелю обязано быть больше нуля
+		ASSERT_GT(carried[i], 0u) << "перенос не состоялся по туннелю " << (i + 1) << ";" << sign;
+}
+
 TEST_F(IoFixture, IoTunnelRefusesCommitWithoutAddressTest){
 	// Счётчик откликов ошибки и счётчик объявлений подмены адреса
 	uint16_t errors = 0, attacks = 0;
@@ -1464,6 +1789,10 @@ TEST_F(IoFixture, IoTunnelRefusesCommitWithoutAddressTest){
 	if(!tunnelPrivileged())
 		// Пропускаем проверку
 		GTEST_SKIP() << "заведение туннельного устройства требует надзорных прав";
+	// Если окружение к заведению туннеля не готово
+	if(!tunnelReady(1))
+		// Пропускаем проверку
+		GTEST_SKIP() << "связи под туннели не заведены распорядителем машины";
 	// Выполняем инициализацию движка
 	ASSERT_TRUE(this->_io->initialize());
 	// Итог фиксации настроек и образец адреса, на котором отказ воспроизвёлся
@@ -1488,12 +1817,6 @@ TEST_F(IoFixture, IoTunnelRefusesCommitWithoutAddressTest){
 		const TunnelGuard guard(this->_io.get(), tid);
 		// Узел обязан завестись: устройство заводится позже, фиксацией настроек
 		ASSERT_GT(tid, 0u) << "движок не записал узел туннеля";
-		/**
-		 * Называем движку подготовленное устройство там, где система требует имени
-		 */
-		if(!tunnelDevice().empty())
-			// Устанавливаем имя подготовленного туннельного устройства
-			ASSERT_TRUE(this->_io->setIface(tid, tunnelDevice()));
 		// Устанавливаем опции события туннеля
 		ASSERT_TRUE(this->_io->setOptions(tid, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
 		/**
@@ -1559,12 +1882,6 @@ TEST_F(IoFixture, IoTunnelRefusesCommitWithoutAddressTest){
 		const TunnelGuard holder(this->_io.get(), owner);
 		// Узел обязан завестись
 		ASSERT_GT(owner, 0u) << "движок не записал узел туннеля, занимающий адрес";
-		/**
-		 * Называем движку подготовленное устройство там, где система требует имени
-		 */
-		if(!tunnelDevice().empty())
-			// Устанавливаем имя подготовленного туннельного устройства
-			ASSERT_TRUE(this->_io->setIface(owner, tunnelDevice()));
 		// Устанавливаем опции события туннеля
 		ASSERT_TRUE(this->_io->setOptions(owner, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
 		// Устанавливаем адреса концов туннеля

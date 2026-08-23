@@ -33,7 +33,7 @@
  *
  */
 awh::alloc::Pages::Pages() noexcept :
- _source(nullptr), _chunks(nullptr), _registry(nullptr), _enrolled(0), _large(nullptr), _spare(nullptr),
+ _source(nullptr), _chunks(nullptr), _registry(nullptr), _enrolled(0), _large(nullptr), _spare(nullptr), _unmerged(0),
  _meta(nullptr), _metaLeft(0), _metaChunks(nullptr), _confined(false),
  _delay(10), _block(0), _limit(0), _jammed(false), _pending(0), _state() {
 	// Обнуляем списки свободных областей
@@ -280,6 +280,64 @@ awh::alloc::Pages::chunk_t * awh::alloc::Pages::discover(const void * addr) cons
  * @param span записываемая область
  *
  */
+/**
+ * @brief Метод слияния отложенных областей
+ *
+ */
+void awh::alloc::Pages::compact() noexcept {
+	// Если сливать нечего
+	if(this->_unmerged == 0)
+		// Выходим: обход впустую стоил бы дороже отказа
+		return;
+	/**
+	 * Перебираем куски памяти
+	 */
+	for(chunk_t * chunk = this->_chunks; chunk != nullptr; chunk = chunk->next){
+		// Номер разбираемой страницы куска
+		size_t page = 0;
+		/**
+		 * Перебираем страницы куска подряд
+		 */
+		while(page < PAGES){
+			// Получаем область, которой принадлежит страница
+			span_t * span = chunk->index[page].load(std::memory_order_relaxed);
+			// Если области нет вовсе
+			if(span == nullptr){
+				// Переходим к следующей странице
+				page++;
+				// Продолжаем обход
+				continue;
+			}
+			/**
+			 * Сливаем область, свободную и никем не изъятую
+			 *
+			 * Изъятая область не лежит ни в одном списке свободных, и `pull` порвал бы
+			 * список: слияние её и без того пропускает сам `merge`
+			 */
+			if(span->released && !span->pending){
+				// Изымаем область из списка свободных
+				this->pull(span);
+				// Сливаем область с соседями по куску
+				span_t * merged = this->merge(span);
+				// Вносим слитую область в список свободных
+				this->push(merged);
+				/**
+				 * Переходим за конец СЛИТОЙ области
+				 *
+				 * Слияние могло прирастить область слева, и начало её оказалось бы левее
+				 * разбираемой страницы: считать от неё значило бы разбирать слитое дважды
+				 */
+				page = (static_cast <size_t> ((merged->base - chunk->base) / PAGE) + merged->pages);
+				// Продолжаем обход
+				continue;
+			}
+			// Переходим за конец области
+			page += span->pages;
+		}
+	}
+	// Отложенных областей не осталось
+	this->_unmerged = 0;
+}
 void awh::alloc::Pages::mark(span_t * span) noexcept {
 	// Определяем номер первой страницы области в куске
 	const size_t first = static_cast <size_t> ((span->base - span->chunk->base) / PAGE);
@@ -778,6 +836,19 @@ void * awh::alloc::Pages::alloc(const size_t pages) noexcept {
 		return nullptr;
 	// Ищем свободную область требуемого размера
 	span_t * span = this->search(pages);
+	/**
+	 * Если подходящей области не нашлось, сливаем отложенное
+	 *
+	 * Соседние свободные области могли бы дать нужный размер вместе, но по отдельности
+	 * малы. Сливаем их прежде, чем просить память у системы: обращение к источнику
+	 * дороже обхода
+	 */
+	if((span == nullptr) && (this->_unmerged > 0)){
+		// Сливаем отложенные области
+		this->compact();
+		// Повторяем поиск по слитым областям
+		span = this->search(pages);
+	}
 	// Если подходящей области не нашлось
 	if(span == nullptr){
 		// Берём у источника новый кусок
@@ -1009,10 +1080,24 @@ bool awh::alloc::Pages::free(void * addr, const uint64_t now) noexcept {
 		this->_state.used -= (span->pages * PAGE);
 		// Увеличиваем свободное
 		this->_state.free += (span->pages * PAGE);
-		// Сливаем область с соседями по куску
-		span = this->merge(span);
-		// Вносим область в список свободных
+		/**
+		 * Слияние ОТКЛАДЫВАЕМ
+		 *
+		 * Слить область с соседями значит вырастить её вплоть до целого куска, а запись
+		 * области в указатели куска идёт по всем её страницам - у куска их 512. Следующая
+		 * же выдача делит выросшую область обратно и пишет указатели снова. Замер пути
+		 * выдачи сверх разрядов показал на этой паре около семи десятых всего времени, а
+		 * отказ от слияния при возврате поднял полосу вчетверо.
+		 *
+		 * Слияние не отменяется, а откладывается: его выполняет `compact` тогда, когда
+		 * области нужного размера не нашлось, и перед отдачей памяти системе. Так
+		 * дробление не растёт без предела, а платится за него лишь тот, кому не хватило
+		 */
+		// Вносим область в список свободных как есть
 		this->push(span);
+		// Считаем область, ждущую слияния
+		this->_unmerged++;
+
 		// Отвечаем успехом
 		return true;
 	}
@@ -1331,6 +1416,14 @@ size_t awh::alloc::Pages::attach(void ** spans, const size_t count, const bool *
  *
  */
 size_t awh::alloc::Pages::purge(const uint64_t now, const bool all) noexcept {
+	/**
+	 * Сливаем отложенное прежде отдачи
+	 *
+	 * Отдаётся системе не меньше страницы, а выгоднее - целыми кусками: несведённые
+	 * соседи по отдельности мельче порога отдачи, и память, которую вместе они дают,
+	 * системе не вернулась бы вовсе
+	 */
+	this->compact();
 	// Объём отданной системе памяти
 	size_t result = 0;
 	// Место перебора списков свободных областей

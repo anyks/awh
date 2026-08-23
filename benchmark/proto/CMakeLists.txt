@@ -179,7 +179,6 @@ if (${CMAKE_BUILD_${BENCHMARK_NAME}_BENCHMARKS})
             ${CMAKE_DL_LIBS}
             ${PROJECT_NAME}
             ${DEPEND_LIBRARY}
-            ${PCRE_LIBRARY}
             ${AWH_FLAGS}
         )
     endif (CMAKE_SHARED_BUILD_LIB)

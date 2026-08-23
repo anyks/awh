@@ -21,6 +21,12 @@
 #include <string>
 #include <memory>
 #include <cstdint>
+#include <limits>
+
+/**
+ * Подключаем системные заголовочные файлы
+ */
+#include <sys/mman.h>
 
 /**
  * Подключаем заголовочные файлы проекта
@@ -623,4 +629,153 @@ TEST_F(ContainerFixture, ModulesAreOptional) {
 	ASSERT_TRUE(fetcher.record(records.size() - 1, picked)) << "код отказа: " << abc::message(fetcher.error());
 	// Выполняем проверку выбранной записи контейнера
 	ASSERT_EQ(picked, records.back());
+}
+/**
+ * @brief Проверка отказа снятия кадра, объявившего длину за телом контейнера
+ *
+ * @details Длина кадра сличается снимателем кадра лишь с поданными октетами, а тело
+ *          контейнера кончается ранее их: за телом лежат оглавление и подпись. Кадр,
+ *          объявивший длину сверх тела, вобрал бы оглавление содержимым записей, и
+ *          потребитель принял бы его за содержимое контейнера
+ *
+ */
+TEST_F(ContainerFixture, ChunkBeyondBody) {
+	// Сборщик контейнера
+	abc::assembler_t assembler;
+	// Выполняем сборку записи
+	const vector <uint8_t> item = record("запись тела контейнера");
+	// Выполняем внесение записи в собираемый контейнер
+	ASSERT_TRUE(assembler.append(item.data(), item.size(), abc::payload_t::TEXT))
+		<< "код отказа: " << abc::message(assembler.error());
+	// Буфер собранного контейнера
+	vector <uint8_t> pristine;
+	// Выполняем завершение сборки контейнера
+	ASSERT_TRUE(assembler.complete(pristine)) << "код отказа: " << abc::message(assembler.error());
+	// Снятый заголовок опознания контейнера
+	abc::header_t header;
+	// Код отказа снятия заголовка
+	abc::error_t error = abc::error_t::NONE;
+	// Выполняем снятие заголовка опознания контейнера
+	ASSERT_TRUE(header.unpack(pristine.data(), pristine.size(), error))
+		<< "код отказа: " << abc::message(error);
+	/**
+	 * Выполняем проверку того, что за телом контейнера лежат октеты оглавления:
+	 * без них кадру нечего было бы вобрать, и проверка прошла бы вхолостую
+	 */
+	ASSERT_GT(pristine.size(), abc::HEADER_LENGTH + static_cast <size_t> (header.length));
+	// Выполняем получение количества октетов, лежащих за телом контейнера
+	const size_t trailer = pristine.size() - (abc::HEADER_LENGTH + static_cast <size_t> (header.length));
+	// Выполняем проверку того, что тело содержит единый кадр
+	ASSERT_EQ(static_cast <size_t> (header.length), abc::CHUNK_HEADER + (item.size()));
+	// Октеты правимой записи контейнера
+	vector <uint8_t> damaged = pristine;
+	/**
+	 * Выполняем удлинение объявленной длины единственного кадра тела на октеты,
+	 * лежащие за телом контейнера
+	 */
+	{
+		// Выполняем получение объявленной длины содержимого кадра
+		const uint32_t length = static_cast <uint32_t> (item.size()) + static_cast <uint32_t> (trailer);
+		/**
+		 * Выполняем перебор всех октетов поля длины содержимого кадра
+		 */
+		for(size_t i = 0; i < 4; i++)
+			// Выполняем укладку очередного октета поля
+			damaged.at(abc::HEADER_LENGTH + 4 + i) = static_cast <uint8_t> ((length >> (i * 8)) & 0xFF);
+		/**
+		 * Выполняем удлинение объявленной длины исходного содержимого кадра: без
+		 * этого кадр отвечался бы отказом опознания по расхождению длин
+		 */
+		for(size_t i = 0; i < 4; i++)
+			// Выполняем укладку очередного октета поля
+			damaged.at(abc::HEADER_LENGTH + 8 + i) = static_cast <uint8_t> ((length >> (i * 8)) & 0xFF);
+	}
+	// Сниматель контейнера
+	abc::loader_t loader;
+	// Выполняем подачу правленого контейнера снимателю
+	ASSERT_TRUE(loader.feed(damaged.data(), damaged.size()));
+	// Содержимое снятого кадра
+	vector <uint8_t> payload;
+	// Сведения о снятом кадре
+	abc::chunk_t chunk;
+	// Выполняем проверку отказа снятия кадра, объявившего длину за телом
+	ASSERT_FALSE(loader.next(payload, chunk))
+		<< "кадр вобрал октеты за телом контейнера, снято " << payload.size() << " при теле " << header.length;
+	// Выполняем проверку кода отказа снятия кадра
+	ASSERT_EQ(loader.error(), abc::error_t::INVALID_CHUNK);
+	/**
+	 * Выполняем проверку того, что нетронутый контейнер снимается по-прежнему
+	 */
+	{
+		// Сниматель контейнера
+		abc::loader_t loader;
+		// Выполняем подачу нетронутого контейнера снимателю
+		ASSERT_TRUE(loader.feed(pristine.data(), pristine.size()));
+		// Количество снятых кадров
+		size_t count = 0;
+		// Выполняем вычитывание содержимого всех кадров контейнера
+		const vector <uint8_t> payload = drain(loader, count);
+		// Выполняем проверку количества снятых кадров
+		ASSERT_EQ(count, 1ul);
+		// Выполняем проверку снятого содержимого
+		ASSERT_EQ(payload, item);
+	}
+}
+/**
+ * @brief Проверка отказа внесения записи, не вмещающейся в строку оглавления
+ *
+ * @details Смещение и длина записи ложатся в оглавление разрядностью 32, и приведение
+ *          к ней усекает молча: строка указала бы не туда, а контейнер вышел бы с виду
+ *          годным. Сторож стоит до накопления поданного, потому и доказывается он
+ *          нетронутым отображением памяти: ни единой страницы оно не занимает
+ *
+ * @note Проверка эта запрашивает у системы 4 ГБ памяти отображением, но не касается
+ *       его ни разу. Занятой памяти отсюда не прибывает: страницы заводятся при
+ *       первом обращении, а отказ обязан прийти прежде всякого обращения
+ *
+ */
+TEST_F(ContainerFixture, RecordBeyondEntryField) {
+	/**
+	 * Если разрядность размера системы полю строки оглавления не шире, усечению
+	 * взяться неоткуда: сторож на такой сборке недостижим по устройству
+	 */
+	if(numeric_limits <size_t>::max() <= static_cast <size_t> (numeric_limits <uint32_t>::max())){
+		// Выводим сообщение о недостижимости сторожа на этой сборке
+		GTEST_SKIP() << "разрядность размера системы не шире поля строки оглавления";
+		// Выходим из проверки
+		return;
+	}
+	// Размер запрашиваемого отображения памяти
+	const size_t size = (static_cast <size_t> (numeric_limits <uint32_t>::max()) + 1);
+	// Выполняем запрос отображения памяти у системы
+	void * buffer = ::mmap(nullptr, size, PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	/**
+	 * Если отображения памяти система не дала, проверить сторожа нечем
+	 */
+	if(buffer == MAP_FAILED){
+		// Выводим сообщение об отказе системы в отображении памяти
+		GTEST_SKIP() << "система не дала отображения памяти размером " << size << " октетов";
+		// Выходим из проверки
+		return;
+	}
+	// Сборщик контейнера
+	abc::assembler_t assembler;
+	// Выполняем проверку отказа внесения записи, не вмещающейся в строку оглавления
+	const bool appended = assembler.append(buffer, size, abc::payload_t::BINARY);
+	// Код отказа внесения записи
+	const abc::error_t error = assembler.error();
+	// Количество уложенных записей
+	const uint64_t records = assembler.records();
+	// Размер накопленных записей
+	const size_t pending = assembler.pending();
+	// Выполняем возврат отображения памяти системе
+	::munmap(buffer, size);
+	// Выполняем проверку отказа внесения записи
+	ASSERT_FALSE(appended) << "запись длиною " << size << " внесена усечённою";
+	// Выполняем проверку кода отказа внесения записи
+	ASSERT_EQ(error, abc::error_t::INVALID_LENGTH);
+	// Выполняем проверку того, что отказ ничего не накопил
+	ASSERT_EQ(pending, 0ul);
+	// Выполняем проверку того, что отказ записи не засчитал
+	ASSERT_EQ(records, 0u);
 }
