@@ -384,6 +384,113 @@ TEST_F(AllocFixture, HugeBlockAboveCeilingIsGivenBackAtOnce){
 	EXPECT_LT(awh::alloc::Allocator::property(awh::alloc::property_t::HEAP), during);
 }
 /**
+ * @brief Тест роста области сверх разрядов НА МЕСТЕ
+ *
+ * @note Перенос содержимого при росте стоит копирования всего блока, и на цепочке
+ *       удвоений цена его выходит квадратичной. Область сверх разрядов растёт за счёт
+ *       соседней свободной, и адрес её при этом не меняется - ровно это и проверяется
+ *
+ * @warning Удаётся рост на месте НЕ ВСЕГДА: сосед вправе быть занят. Проверка ставит
+ *          себя в условия, где он свободен заведомо - блок выдан последним и растёт
+ *          тут же, - а утверждает не «всегда», а «в этих условиях»
+ *
+ */
+TEST_F(AllocFixture, PagedBlockGrowsInPlace){
+	// Размер, заведомо выходящий за разряды, но не достающий до крупных выдач
+	const size_t start = (64u * 1024u);
+	// Выдаём блок сверх разрядов
+	void * block = ::malloc(start);
+	// Выдача обязана состояться
+	ASSERT_NE(block, nullptr);
+	// Заполняем блок узнаваемым следом
+	::memset(block, 0x3C, start);
+	// Растим блок вдвое
+	void * grown = ::realloc(block, (start * 2u));
+	// Перевыдача обязана состояться
+	ASSERT_NE(grown, nullptr);
+	// Блок обязан остаться на месте: соседняя область свободна
+	EXPECT_EQ(grown, block);
+	// Размер обязан вырасти
+	EXPECT_GE(awh::alloc::Allocator::resolve(grown).size, (start * 2u));
+	// Содержимое обязано уцелеть
+	EXPECT_EQ(reinterpret_cast <unsigned char *> (grown)[start - 1], 0x3Cu);
+	// Освобождаем блок
+	::free(grown);
+}
+/**
+ * @brief Тест учёта расхода при росте на месте
+ *
+ * @note Рост на месте не проходит через выдачу, и учесть прибавку обязан он сам: иначе
+ *       занятое прикладным кодом отставало бы на всю выросшую часть, а освобождение
+ *       вычло бы её целиком и увело счёт в минус
+ *
+ */
+TEST_F(AllocFixture, InPlaceGrowthIsAccounted){
+	// Размер, заведомо выходящий за разряды
+	const size_t start = (64u * 1024u);
+	// Выдаём блок сверх разрядов
+	void * block = ::malloc(start);
+	// Выдача обязана состояться
+	ASSERT_NE(block, nullptr);
+	// Запоминаем занятое прикладным кодом до роста
+	const size_t before = awh::alloc::Allocator::property(awh::alloc::property_t::ALLOCATED);
+	// Растим блок вчетверо
+	void * grown = ::realloc(block, (start * 4u));
+	// Перевыдача обязана состояться
+	ASSERT_NE(grown, nullptr);
+	// Запоминаем занятое прикладным кодом после роста
+	const size_t after = awh::alloc::Allocator::property(awh::alloc::property_t::ALLOCATED);
+	// Занятое обязано вырасти не меньше, чем на прибавку
+	EXPECT_GE((after - before), (start * 3u));
+	// Освобождаем блок
+	::free(grown);
+	// Занятое обязано вернуться к тому, что было до выдачи
+	EXPECT_LE(awh::alloc::Allocator::property(awh::alloc::property_t::ALLOCATED), before);
+}
+/**
+ * @brief Тест правки размера у учёта мест выдачи при росте на месте
+ *
+ * @note Рост на месте через выдачу не проходит, и запись учёта осталась бы с прежним
+ *       размером: поиск утечек шёл бы по числам МЕНЬШЕ настоящих как раз у тех блоков,
+ *       что растут, - то есть у самых подозрительных
+ *
+ */
+TEST_F(AllocFixture, InPlaceGrowthAmendsHoldings){
+	// Получаем действующие настройки
+	awh::alloc::options_t options = awh::alloc::Allocator::options();
+	// Берём под учёт всякую выдачу
+	options.profileRate = 1;
+	// Применяем настройки
+	awh::alloc::Allocator::options(options);
+	// Размер, заведомо выходящий за разряды
+	const size_t start = (64u * 1024u);
+	// Выдаём блок сверх разрядов
+	void * block = ::malloc(start);
+	// Выдача обязана состояться
+	ASSERT_NE(block, nullptr);
+	// Растим блок вчетверо
+	void * grown = ::realloc(block, (start * 4u));
+	// Перевыдача обязана состояться
+	ASSERT_NE(grown, nullptr);
+	// Блок обязан остаться на месте: иначе проверять нечего
+	ASSERT_EQ(grown, block);
+	// Размер блока, доложенный учётом
+	size_t reported = 0;
+	// Перебираем удерживаемое, разыскивая наш блок
+	awh::alloc::Allocator::holdings([grown, &reported](const awh::alloc::holding_t & holding) noexcept -> bool {
+		// Если запись говорит о нашем блоке
+		if(holding.block == grown)
+			// Запоминаем доложенный размер
+			reported = holding.size;
+		// Перебираем дальше
+		return true;
+	});
+	// Учёт обязан доложить ВЫРОСШИЙ размер, а не прежний
+	EXPECT_GE(reported, (start * 4u));
+	// Освобождаем блок
+	::free(grown);
+}
+/**
  * @brief Тест выдачи укрытой памяти
  *
  * @note Укрытая выдача идёт тем же слоем, что и крупная, но страницами и с защитой.

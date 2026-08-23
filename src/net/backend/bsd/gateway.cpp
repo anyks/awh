@@ -460,10 +460,20 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 							if(!direct && (awh_cast <net::addr_net_ipv4_t *> (route.destination.get())->address != 0))
 								// Накапливаем результат совпадения по адресу назначения
 								match = match && ((dst != nullptr ? dst->sin_addr.s_addr : 0) == awh_cast <net::addr_net_ipv4_t *> (route.destination.get())->address);
+							/**
+							 * @note Устройство записи берётся из поля RTA_IFP, а при его
+							 *       отсутствии - из заголовка сообщения. Снимок таблицы
+							 *       поля RTA_IFP не несёт вовсе: его отдают лишь в ответ
+							 *       на запрос RTM_GET, где о нём спросили явно. Сличение,
+							 *       требовавшее ifp, отвергало потому ЛЮБУЮ запись снимка,
+							 *       и поиск по шлюзу вместе с устройством не находил даже
+							 *       маршрут по умолчанию - при том, что порознь оба
+							 *       условия ему отвечают
+							 */
 							// Если задан интерфейс
 							if(searchIfIndex != 0)
 								// Накапливаем результат совпадения по индексу интерфейса
-								match = match && ((ifp != nullptr) && (ifp->sdl_index == searchIfIndex));
+								match = match && ((ifp != nullptr ? ifp->sdl_index : rtm->rtm_index) == searchIfIndex);
 						}
 						// Если маршрут не найден
 						if(!match)
@@ -720,10 +730,20 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 							if(isDest)
 								// Накапливаем результат совпадения по адресу назначения
 								match = match && ((dst != nullptr) && (::memcmp(&dst->sin6_addr, searchDest, 16) == 0));
+							/**
+							 * @note Устройство записи берётся из поля RTA_IFP, а при его
+							 *       отсутствии - из заголовка сообщения. Снимок таблицы
+							 *       поля RTA_IFP не несёт вовсе: его отдают лишь в ответ
+							 *       на запрос RTM_GET, где о нём спросили явно. Сличение,
+							 *       требовавшее ifp, отвергало потому ЛЮБУЮ запись снимка,
+							 *       и поиск по шлюзу вместе с устройством не находил даже
+							 *       маршрут по умолчанию - при том, что порознь оба
+							 *       условия ему отвечают
+							 */
 							// Проверка интерфейса
 							if(searchIfIndex != 0)
 								// Накапливаем результат совпадения по индексу интерфейса
-								match = match && ((ifp != nullptr) && (ifp->sdl_index == searchIfIndex));
+								match = match && ((ifp != nullptr ? ifp->sdl_index : rtm->rtm_index) == searchIfIndex);
 						}
 						// Если маршрут не найден
 						if(!match)
@@ -1637,9 +1657,17 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 							// Устанавливаем флаг совпадения по адресу шлюза маршрута
 							match = (match && (gw != nullptr) && (gw->sin_addr.s_addr == awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address));
 						// Если имя сетевого интерфейса задано (и шлюз НЕ задан)
+						/**
+						 * @note Устройство записи берётся из поля RTA_IFP, а при его
+						 *       отсутствии - из заголовка сообщения: снимок таблицы поля
+						 *       RTA_IFP не несёт. Требование ifp отвергало здесь ЛЮБУЮ
+						 *       запись, а условие это - единственное, каким сносится
+						 *       маршрут, заданный одним устройством, без шлюза. Ровно так
+						 *       заданы маршруты через устройства точка-точка: туннели и VPN
+						 */
 						else if(!route.ifname.empty())
 							// Устанавливаем флаг совпадения по имени сетевого интерфейса маршрута
-							match = (match && (ifp != nullptr) && (ifp->sdl_index == searchIfIndex));
+							match = (match && ((ifp != nullptr ? ifp->sdl_index : rtm->rtm_index) == searchIfIndex));
 						// Если адрес не совпадает
 						if(!match){
 							// Переходим к следующему маршруту
@@ -1924,9 +1952,17 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 							// Устанавливаем флаг совпадения по адресу шлюза маршрута
 							match = match && ((gw != nullptr) && (::memcmp(&gw->sin6_addr, &awh_cast <net::addr_net_ipv6_t *> (route.gateway.get())->address[0], 16) == 0));
 						// Если имя сетевого интерфейса задано
+						/**
+						 * @note Устройство записи берётся из поля RTA_IFP, а при его
+						 *       отсутствии - из заголовка сообщения: снимок таблицы поля
+						 *       RTA_IFP не несёт. Требование ifp отвергало здесь ЛЮБУЮ
+						 *       запись, а условие это - единственное, каким сносится
+						 *       маршрут, заданный одним устройством, без шлюза. Ровно так
+						 *       заданы маршруты через устройства точка-точка: туннели и VPN
+						 */
 						else if(!route.ifname.empty())
 							// Устанавливаем флаг совпадения по имени сетевого интерфейса маршрута
-							match = match && ((ifp != nullptr) && (ifp->sdl_index == searchIfIndex));
+							match = match && ((ifp != nullptr ? ifp->sdl_index : rtm->rtm_index) == searchIfIndex);
 						// Если адрес не совпадает
 						if(!match){
 							// Переходим к следующему маршруту

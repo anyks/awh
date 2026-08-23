@@ -185,8 +185,27 @@ def escape(text):
 
 
 def main():
+	# Лад выдачи перечня путей случаев набора соответствия
+	#
+	# Перечень собирается здесь, а не стендом разбора: корпус несёт вперемешку и сами
+	# случаи, и списки их, и образцы канонической записи, и отличить одно от другого может
+	# лишь тот, кто списки разобрал
+	if ((len(sys.argv) > 2) and (sys.argv[1] == "--list")):
+		root = sys.argv[2]
+		tests = {}
+		for path in manifests(root):
+			for test in collect(path, root):
+				tests.setdefault(test["path"], test)
+		# Пустой перечень есть молчаливый пропуск, а не успех
+		if not tests:
+			print("ОТКАЗ: случаев не снято - корпус пуст либо не забран", file = sys.stderr)
+			return 2
+		for path in sorted(tests):
+			print(path)
+		return 0
 	if (len(sys.argv) < 3):
 		print("Вызов: compare.py <выдача стенда> <корень корпуса>")
+		print("       compare.py --list <корень корпуса>")
 		return 2
 	dump, root = sys.argv[1], sys.argv[2]
 	# Снимаем все случаи набора соответствия
@@ -200,13 +219,15 @@ def main():
 		for line in handle:
 			items = line.rstrip("\n").split("\t")
 			if (len(items) >= 4):
-				issued[items[0]] = (items[1], items[2], items[3])
-	counts = {"верно": 0, "расхождение": 0, "вне охвата": 0, "неустойчиво": 0, "строение": 0}
+				issued[items[0]] = (items[1], items[2], items[3],
+					(items[5] if (len(items) > 5) else items[1]),
+					(items[6] if (len(items) > 6) else "skipped"))
+	counts = {"верно": 0, "расхождение": 0, "вне охвата": 0, "неустойчиво": 0, "строение": 0, "пространства имён": 0, "запись": 0}
 	issues = []
 	for path, test in sorted(tests.items()):
 		if (path not in issued):
 			continue
-		verdict, stable, structure = issued[path]
+		verdict, stable, structure, bare, circle = issued[path]
 		if (verdict == "missing"):
 			continue
 		reason = scope(test)
@@ -215,6 +236,13 @@ def main():
 			continue
 		# Сличаем приговор с объявленным набором соответствия
 		if (verdict != expected(test)):
+			# Договор о пространствах имён - отдельный от договора о разметке, и он
+			# запрещает в именах то, что XML 1.0 дозволяет. Случай, отвергнутый лишь
+			# им одним, отступлением от договора о разметке не является: разрешение
+			# префиксов выключается настройкой, и тогда текст принимается
+			if (bare == expected(test)):
+				counts["пространства имён"] += 1
+				continue
 			issues.append("%s: набор ждёт «%s», разбор ответил «%s» (%s)" % (
 				test["id"], expected(test), verdict, test["type"]))
 			counts["расхождение"] += 1
@@ -224,6 +252,15 @@ def main():
 			issues.append("%s: исход разбора зависит от нарезки текста на куски" % test["id"])
 			counts["неустойчиво"] += 1
 			continue
+		# Сличаем строение записи дерева с исходным
+		#
+		# Основание это НЕ внешнее: сличаются два наших же пути. Оно не о соответствии
+		# договору, а о том, что запись не теряет прочитанного, - и потому идёт отдельной
+		# статьёй, а не в общий счёт согласия с эталоном
+		if ((verdict == "accept") and (circle == "differs")):
+			issues.append("%s: запись дерева разошлась с исходным разбором" % test["id"])
+			counts["запись"] += 1
+			continue
 		# Сличаем строение принятого дерева с выданным разбором expat
 		if (verdict == "accept"):
 			ok, reference = render(os.path.join(root, path))
@@ -232,9 +269,10 @@ def main():
 				counts["строение"] += 1
 				continue
 		counts["верно"] += 1
-	print("сличено случаев: %d, верно: %d, расхождений приговора: %d, неустойчивых: %d, расхождений строения: %d, вне охвата: %d" % (
+	print("сличено случаев: %d, верно: %d, расхождений приговора: %d, неустойчивых: %d, расхождений строения: %d, расхождений записи: %d, по пространствам имён: %d, вне охвата: %d" % (
 		sum(counts.values()), counts["верно"], counts["расхождение"],
-		counts["неустойчиво"], counts["строение"], counts["вне охвата"]))
+		counts["неустойчиво"], counts["строение"], counts["запись"],
+		counts["пространства имён"], counts["вне охвата"]))
 	for issue in issues[:40]:
 		print("  %s" % issue)
 	if (len(issues) > 40):

@@ -1037,20 +1037,31 @@ namespace awh {
 					 * обёртка лишь снимает с него дерево собственной памятью. Оформление
 					 * исходного текста при снятии не удерживается
 					 *
-					 * @param text разбираемый текст JSON
-					 * @return     признак успешности разбора
+					 * @note Настройки разбора принимаются доводом: без него ни одна из них - ни
+					 * обращение с повторяющимися именами полей, ни пределы вложенности - у
+					 * владеющего значения недостижима вовсе, и разбор обрывка вёлся бы одними
+					 * умолчаниями
+					 *
+					 * @param text     разбираемый текст JSON
+					 * @param settings настройки разбора текста JSON
+					 * @return         признак успешности разбора
 					 *
 					 * \~english
 					 * @brief Method of the parsing of a JSON text into an owning value
 					 * @details The parsing is conducted by the same document by which it is always conducted:
 					 * the wrapper only takes the tree off it by its own memory. The formatting
 					 * of the source text is not retained at the taking
+					 * @note The settings of the parsing are taken as an argument: without it not a single one
+					 * of them — neither the handling of the repeating names of the fields of an object, nor the
+					 * limits of the nesting — would be reachable at all for an owning value, and the parsing
+					 * of a fragment would be conducted by the defaults alone
 					 * @param text JSON text being parsed
+					 * @param settings settings of the parsing of a JSON text
 					 * @return sign of the success of the parsing
 					 *
 					 * \~
 					 */
-					bool parse(const string & text) noexcept;
+					bool parse(const string & text, const document_t::settings_t & settings = document_t::settings_t()) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод разбора текста JSON из файла

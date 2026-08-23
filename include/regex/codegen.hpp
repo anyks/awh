@@ -990,6 +990,24 @@ namespace awh {
 			private:
 				/**
 				 * \~russian
+				 * Объект журнала событий
+				 *
+				 * @details Держится он здесь для передачи порождению команд:
+				 *          изъяны свои оно сообщает само, а собственных сообщений
+				 *          у кодогенератора нет - отказы его законны и означают
+				 *          лишь неприменимость порождения к выражению
+				 *
+				 * \~english
+				 * The event log object
+				 * @details It is kept here to be handed to the instruction emitter:
+				 *          the emitter reports its own defects itself
+				 *
+				 * \~
+				 */
+				const log_t * _log;
+			private:
+				/**
+				 * \~russian
 				 * Хранилище значений, к каким обращается порождённый код
 				 *
 				 * @details Хранилище несёт таблицы принадлежности значений байта

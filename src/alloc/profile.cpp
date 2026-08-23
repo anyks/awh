@@ -369,9 +369,41 @@ bool awh::alloc::Profile::enroll(const void * block, const size_t size, const ui
 	return true;
 }
 /**
+ * @brief Метод правки размера блока, состоящего под учётом
+ *
+ * @param block адрес блока
+ * @param size  новый размер блока в байтах
+ * @return      признак состоявшейся правки
+ *
+ */
+bool awh::alloc::Profile::amend(const void * block, const size_t size) noexcept {
+	// Если править нечего
+	if((block == nullptr) || (size == 0))
+		// Править нечего
+		return false;
+	// Захватываем замок учёта
+	hold_t hold(this->_lock);
+	// Ищем место записи в таблице учёта
+	const size_t index = this->seek(block);
+	// Если записи в таблице нет
+	if(index >= this->_length)
+		// Блок под учётом не состоит
+		return false;
+	// Запоминаем правимую запись
+	record_t * record = this->_table[index];
+	// Уменьшаем объём учитываемых живых блоков на прежний размер
+	this->_state.bytes -= ((this->_state.bytes < record->size) ? this->_state.bytes : record->size);
+	// Записываем новый размер блока
+	record->size = size;
+	// Увеличиваем объём учитываемых живых блоков на новый размер
+	this->_state.bytes += size;
+	// Отвечаем успехом
+	return true;
+}
+/**
  * @brief Метод снятия блока с учёта
  *
- * @param block адрес освобождаемого блока
+ * @param block адрес блока
  * @return      признак снятия блока с учёта
  *
  */

@@ -358,6 +358,24 @@ namespace awh {
 				bool enroll(const void * block, const size_t size, const uint64_t stamp, const size_t skip) noexcept;
 				/**
 				 * \~russian
+				 * @brief Метод правки размера блока, состоящего под учётом
+				 *
+				 * @note Нужен там, где блок вырос НА МЕСТЕ: выдачи при этом не было, и
+				 *       запись учёта осталась бы с прежним размером. Поиск утечек шёл
+				 *       бы тогда по числам меньше настоящих - как раз у тех блоков, что
+				 *       растут, то есть у самых подозрительных
+				 *
+				 * @param block адрес блока
+				 * @param size  новый размер блока в байтах
+				 * @return      признак состоявшейся правки
+				 *
+				 * \~english
+				 * @brief Method of amending the size of a tracked block
+				 *
+				 */
+				bool amend(const void * block, const size_t size) noexcept;
+				/**
+				 * \~russian
 				 * @brief Метод снятия блока с учёта
 				 *
 				 * @param block адрес освобождаемого блока

@@ -150,9 +150,21 @@ namespace {
 	 * @return       признак успешности разбора
 	 *
 	 */
-	static bool digest(const string & text, const size_t chunk, string & result, string & reason) noexcept {
+	static bool digest(const string & text, const size_t chunk, string & result, string & reason, const bool namespaces = true) noexcept {
+		// Настройки чтения текста разметки
+		xml::reader_t::settings_t settings;
+		/**
+		 * Устанавливаем разрешение префиксов по договору о пространствах имён
+		 *
+		 * @note Договор о пространствах имён - ОТДЕЛЬНЫЙ от договора о разметке, и он
+		 *       запрещает в именах то, что сам XML 1.0 дозволяет: двоеточие вне разделения
+		 *       приставки от местного имени. Стенд снимает приговор обоими порядками,
+		 *       чтобы отличить отступление от договора о разметке от следствия договора о
+		 *       пространствах имён
+		 */
+		settings.namespaces = namespaces;
 		// Объект чтения текста разметки
-		xml::reader_t reader(::logger());
+		xml::reader_t reader(::logger(), settings);
 		// Получаем размер подаваемого куска
 		const size_t length = ((chunk > 0) ? chunk : (text.size() + 1));
 		// Положение подачи в разбираемом тексте
@@ -305,12 +317,65 @@ namespace {
 		 */
 		if(!finished || (reader.error() != xml::error_t::NONE)){
 			// Собираем пояснение отказа разбора
-			reason.assign(finished ? xml::message(reader.error()) : "разбор не дошёл до конца текста");
+			reason.assign((reader.error() != xml::error_t::NONE) ? xml::message(reader.error()) : "разбор не дошёл до конца текста");
 			// Выводим признак неудачного разбора
 			return false;
 		}
 		// Выводим признак успешного разбора
 		return true;
+	}
+}
+
+/**
+ * @brief Пространство имён сличения записи
+ *
+ */
+namespace {
+	/**
+	 * @brief Функция сличения записи дерева с исходным текстом
+	 *
+	 * @details Текст разбирается деревом, дерево записывается обратно, запись разбирается
+	 * вновь, и строение сличается с тем, что дал разбор исходного текста. Тем самым
+	 * ЗАПИСЬ поверяется тем же основанием, каким поверено чтение, - и на настоящих
+	 * документах набора соответствия, а не на дюжине рукописных
+	 *
+	 * @note Сличается строение, а не сами тексты: договор записи не предписывает, и
+	 *       расхождение в порядке атрибутов либо в виде пустого узла отказом не является
+	 *
+	 * @param text   разбираемый текст разметки
+	 * @param sample строение дерева, снятое разбором исходного текста
+	 * @return       признак совпадения строения записи с исходным
+	 *
+	 */
+	static bool rewritten(const string & text, const string & sample) noexcept {
+		// Объект дерева разметки
+		xml::document_t document(::logger());
+		/**
+		 * Если разбор текста разметки деревом завершился отказом
+		 */
+		if(!document.parse(text))
+			// Выводим признак несовпадения строения
+			return false;
+		// Объект записи текста разметки
+		xml::writer_t writer(::logger());
+		/**
+		 * Если запись дерева разметки выполнить не удалось
+		 */
+		if(!writer.element(document.element()) || !writer.complete())
+			// Выводим признак несовпадения строения
+			return false;
+		// Собираемое строение дерева записи
+		string result;
+		// Отбрасываемое пояснение отказа разбора записи
+		string reason;
+		/**
+		 * Если разбор записанного текста завершился отказом
+		 */
+		if(!::digest(writer.text(), 0, result, reason))
+			// Выводим признак несовпадения строения
+			return false;
+		// Выводим признак совпадения строения записи с исходным
+		return (result == sample);
 	}
 }
 
@@ -353,7 +418,7 @@ int main(int argc, char * argv[]) noexcept {
 		 */
 		if(!file.is_open()){
 			// Выводим сообщение об отсутствии текста корпуса
-			cout << path << "\tmissing\tmissing\t\t" << endl;
+			cout << path << "\tmissing\tmissing\t\t\tmissing\tskipped" << endl;
 			// Выполняем переход к следующему пути
 			continue;
 		}
@@ -365,6 +430,19 @@ int main(int argc, char * argv[]) noexcept {
 		string reason;
 		// Выполняем разбор текста, поданного целиком
 		const bool whole = ::digest(text, 0, result, reason);
+		// Отбрасываемое строение дерева при выключенных пространствах имён
+		string plain;
+		// Отбрасываемое пояснение отказа при выключенных пространствах имён
+		string skipped;
+		// Выполняем разбор текста по одному лишь договору о разметке
+		const bool bare = ::digest(text, 0, plain, skipped, false);
+		/**
+		 * Выполняем сличение записи дерева с исходным текстом
+		 *
+		 * @note Сличается лишь у ПРИНЯТЫХ текстов: записывать нечего у того, что разбором
+		 *       отвергнуто
+		 */
+		const bool circle = (whole && ::rewritten(text, result));
 		// Признак совпадения исхода при всякой нарезке текста
 		bool stable = true;
 		/**
@@ -394,7 +472,9 @@ int main(int argc, char * argv[]) noexcept {
 		     << (whole ? "accept" : "reject") << '\t'
 		     << (stable ? "stable" : "unstable") << '\t'
 		     << result << '\t'
-		     << reason << endl;
+		     << reason << '\t'
+		     << (bare ? "accept" : "reject") << '\t'
+		     << (!whole ? "skipped" : (circle ? "same" : "differs")) << endl;
 	}
 	// Выходим из приложения
 	return EXIT_SUCCESS;

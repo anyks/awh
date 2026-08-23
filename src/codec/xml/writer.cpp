@@ -1968,7 +1968,7 @@ void awh::codec::xml::Writer::setLogger(const log_t * log) noexcept {
  * @param log объект ведения журнала работы
  *
  */
-awh::codec::xml::Writer::Writer(const log_t * log) noexcept : _error(error_t::NONE), _root(false), _depth(0), _bindings(0), _counter(0), _log(log) {}
+awh::codec::xml::Writer::Writer(const log_t * log) noexcept : _error(error_t::NONE), _log(log), _root(false), _depth(0), _bindings(0), _counter(0) {}
 /**
  * @brief Конструктор
  *
@@ -1976,7 +1976,7 @@ awh::codec::xml::Writer::Writer(const log_t * log) noexcept : _error(error_t::NO
  *
  */
 awh::codec::xml::Writer::Writer(const log_t * log, const settings_t & settings) noexcept :
- _settings(settings), _error(error_t::NONE), _root(false), _depth(0), _bindings(0), _counter(0), _log(log) {}
+ _settings(settings), _error(error_t::NONE), _log(log), _root(false), _depth(0), _bindings(0), _counter(0) {}
 /**
  * @brief Деструктор
  *

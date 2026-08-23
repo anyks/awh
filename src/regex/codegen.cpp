@@ -913,6 +913,112 @@ namespace {
 	}
 
 	/**
+	 * @brief Функция проверки поглощения текста телом вызываемого подвыражения
+	 *
+	 * @details Тело, поглощения не дающее, вошло бы в себя же в той же позиции
+	 *          без конца, отчего порождение таких тел отвергается. Прежде признаком
+	 *          поглощения бралась ПЕРВАЯ инструкция тела, и тело, начинающееся
+	 *          переходом по ветвям, отвергалось даже когда поглощают обе ветви:
+	 *          «(?:a|b)(?R)?z» кода не получало вовсе.
+	 *
+	 *          Ныне обходятся все пути тела до первого поглощения. Инструкции,
+	 *          текста не поглощающие и хода не ветвящие - запись границ захвата,
+	 *          привязки, отметки состояния возврата, - проходятся насквозь: они
+	 *          зацикливания не дают. Ветвление требует поглощения от ОБЕИХ ветвей.
+	 *          Всё прочее - вызов, возврат, завершение - поглощения не даёт.
+	 *
+	 *          Набор пройденных адресов бережёт обход от зацикливания на переходах
+	 *          назад: адрес, встреченный вторично, поглощения по своему пути не дал
+	 *
+	 * @param program разбираемая программа регулярного выражения
+	 * @param address адрес разбираемой инструкции программы
+	 * @param visited набор адресов, обходом уже пройденных
+	 * @param depth   глубина обхода путей тела
+	 * @return        результат проверки поглощения текста телом
+	 *
+	 */
+	bool consuming(const awh::regex::program_t & program, const awh::regex::address_t address,
+	 std::vector <awh::regex::address_t> & visited, const size_t depth = 0) noexcept {
+		/**
+		 * Если глубина обхода путей тела исчерпана
+		 *
+		 * @details Предел глубины стоит защитою от программ, ветвление каких
+		 *          обходом целиком обходится дороже самого порождения
+		 *
+		 */
+		if(depth > 64)
+			// Выводим отсутствие поглощения текста телом
+			return false;
+		/**
+		 * Если адрес инструкции за пределы программы выходит
+		 */
+		if((address == awh::regex::INVALID_ADDRESS) ||
+		 (static_cast <size_t> (address) >= program.instructions.size()))
+			// Выводим отсутствие поглощения текста телом
+			return false;
+		/**
+		 * Если адрес инструкции обходом уже пройден
+		 */
+		if(std::find(visited.begin(), visited.end(), address) != visited.end())
+			// Выводим отсутствие поглощения текста телом
+			return false;
+		// Выполняем запоминание пройденного адреса инструкции
+		visited.push_back(address);
+		// Получаем разбираемую инструкцию программы
+		const awh::regex::instruction_t & instruction = program.instructions.at(static_cast <size_t> (address));
+		/**
+		 * Определяем код операции разбираемой инструкции
+		 */
+		switch(static_cast <uint8_t> (instruction.type)) {
+			/**
+			 * Если инструкция текст поглощает
+			 */
+			case static_cast <uint8_t> (awh::regex::opcode_t::CHAR):
+			case static_cast <uint8_t> (awh::regex::opcode_t::CLASS):
+			case static_cast <uint8_t> (awh::regex::opcode_t::ANY):
+			case static_cast <uint8_t> (awh::regex::opcode_t::CODEUNIT):
+				// Выводим наличие поглощения текста телом
+				return true;
+			/**
+			 * Если инструкция выполняет переход по двум ветвям
+			 */
+			case static_cast <uint8_t> (awh::regex::opcode_t::SPLIT): {
+				// Набор адресов, пройденных ветвью первой
+				std::vector <awh::regex::address_t> first = visited;
+				// Набор адресов, пройденных ветвью второй
+				std::vector <awh::regex::address_t> second = visited;
+				// Выводим поглощение текста обеими ветвями перехода
+				return (consuming(program, instruction.split.first, first, (depth + 1)) &&
+				 consuming(program, instruction.split.second, second, (depth + 1)));
+			}
+			/**
+			 * Если инструкция выполняет безусловный переход
+			 */
+			case static_cast <uint8_t> (awh::regex::opcode_t::JUMP):
+				// Выводим поглощение текста телом за переходом
+				return consuming(program, instruction.jump.target, visited, (depth + 1));
+			/**
+			 * Если инструкция текста не поглощает и хода не ветвит
+			 *
+			 * @details Запись границ захвата, привязки, сброс начала совпадения
+			 *          и отметки состояния возврата проходятся насквозь: они
+			 *          ни текста не берут, ни зацикливания не дают
+			 *
+			 */
+			case static_cast <uint8_t> (awh::regex::opcode_t::SAVE):
+			case static_cast <uint8_t> (awh::regex::opcode_t::ANCHOR):
+			case static_cast <uint8_t> (awh::regex::opcode_t::KEEP):
+			case static_cast <uint8_t> (awh::regex::opcode_t::MARK):
+			case static_cast <uint8_t> (awh::regex::opcode_t::CUT):
+			case static_cast <uint8_t> (awh::regex::opcode_t::PROGRESS):
+				// Выводим поглощение текста инструкцией следующей
+				return consuming(program, static_cast <awh::regex::address_t> (address + 1), visited, (depth + 1));
+		}
+		// Выводим отсутствие поглощения текста телом
+		return false;
+	}
+
+	/**
 	 * @brief Функция определения постоянной длины тела повторения
 	 *
 	 * @details Тело постоянной длины, границ групп захвата не пишущее, записи
@@ -2335,14 +2441,12 @@ namespace {
 					if(watching > 0)
 						// Выводим неприменимость кодогенерации к программе
 						return false;
-					// Получаем инструкцию начала тела вызываемого подвыражения
-					const awh::regex::instruction_t & leading =
-					 program.instructions.at(static_cast <size_t> (body));
+					// Набор адресов, обходом тела вызываемого пройденных
+					std::vector <awh::regex::address_t> passed;
 					/**
-					 * Если тело вызываемое сопоставлением символа не начинается
+					 * Если тело вызываемое текста не поглощает
 					 */
-					if(!singular(leading.type) &&
-					 (leading.type != awh::regex::opcode_t::CODEUNIT))
+					if(!consuming(program, body, passed))
 						// Выводим неприменимость кодогенерации к программе
 						return false;
 					// Увеличиваем количество мест рекурсивного вызова подвыражения
@@ -2804,7 +2908,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	// Подписываемся на перечисление условий выполнения перехода
 	using cond_t = Emitter::cond_t;
 	// Создаём объект порождения машинного кода
-	Emitter emitter;
+	Emitter emitter(this->_log);
 	// Выполняем заведение мест обстановки, отведённых прежде таблиц
 	this->_context.assign(SLOT_TABLES, nullptr);
 	// Выполняем перенос предварительного отбора позиций из программы
@@ -7245,4 +7349,4 @@ size_t awh::regex::Codegen::length() const noexcept {
  *
  */
 awh::regex::Codegen::Codegen(const log_t * log) noexcept :
- _feasible(false), _captures(0), _frame(0), _levels(0), _identity(0), _matcher(nullptr), _assembly(log) {}
+ _feasible(false), _captures(0), _frame(0), _levels(0), _identity(0), _matcher(nullptr), _assembly(log), _log(log) {}

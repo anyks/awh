@@ -171,7 +171,16 @@ namespace awh {
 				classes_t * _classes;
 			private:
 				// Лежит в кэше в байтах
-				size_t _bytes;
+				/**
+				 * Лежащее в кэше НЕДЕЛИМО по той же причине, что и накопленное
+				 *
+				 * Складывает его чужой поток - опрос лежащего в кэшах и отдача излишка
+				 * центральным спискам, - а пишет хозяин на каждой выдаче и каждом
+				 * освобождении: доложено ThreadSanitizer'ом в `Caches::cached`. Правится
+				 * загрузкой и записью порознь: пишет один поток, и неделимая правка со
+				 * своим запретом стоила бы на быстром пути ни за что
+				 */
+				std::atomic <size_t> _bytes;
 				// Предел кэша в байтах
 				size_t _limit;
 			private:
@@ -183,8 +192,18 @@ namespace awh {
 				 * наносекунд на действие против 5 без него. Оттого счёт идёт здесь, у
 				 * потока, а общему достаётся лишь накопленное пачкой
 				 */
+				/**
+				 * Накопитель НЕДЕЛИМЫЙ, хотя хозяин у него один
+				 *
+				 * Читает его чужой поток - опрос расхода складывает накопленное всеми
+				 * кэшами, - и обычное поле давало бы состязание по стандарту: доложено
+				 * ThreadSanitizer'ом, чтение в `Caches::pending` против записи хозяина.
+				 * Правится он ЗАГРУЗКОЙ И ЗАПИСЬЮ порознь, а не чтением-правкой-записью:
+				 * писать в него вправе один поток, и неделимая правка со своим запретом
+				 * стоила бы на быстром пути ни за что
+				 */
 				// Занятое прикладным кодом, накопленное этим потоком
-				int64_t _tally;
+				std::atomic <int64_t> _tally;
 				// Освобождено этим потоком с последней проверки порога отдачи
 				size_t _freed;
 			private:
@@ -326,7 +345,7 @@ namespace awh {
 					// Уменьшаем число блоков в кэше
 					this->_lists[index].count--;
 					// Уменьшаем лежащее в кэше
-					this->_bytes -= this->_classes->size(index);
+					this->_bytes.store((this->_bytes.load(std::memory_order_relaxed) - this->_classes->size(index)), std::memory_order_relaxed);
 					// Выводим выданный блок
 					return result;
 				}
@@ -353,9 +372,19 @@ namespace awh {
 					// Увеличиваем число блоков в кэше
 					this->_lists[index].count++;
 					// Увеличиваем лежащее в кэше
-					this->_bytes += this->_classes->size(index);
+					this->_bytes.store((this->_bytes.load(std::memory_order_relaxed) + this->_classes->size(index)), std::memory_order_relaxed);
+					/**
+					 * Просьба опустошиться здесь НЕ читается намеренно
+					 *
+					 * Читать её на каждом освобождении стоит около пяти сотых на трёх
+					 * сценариях замера разом (81 780 → 77 760 тыс.оп/с на одном разряде,
+					 * 801 095 → 753 877 на потоках, 84 864 → 80 840 на освобождении
+					 * чужим) - и не даёт ничего: поток, который только освобождает, копит
+					 * блоки в своём кэше, кэш перебирает предел, и просьбу видит
+					 * `relieve`. Мгновенности здесь не требуется вовсе
+					 */
 					// Если предел кэша перебран
-					if(this->_bytes > this->_limit)
+					if(this->_bytes.load(std::memory_order_relaxed) > this->_limit)
 						// Отдаём излишек центральным спискам
 						this->relieve();
 				}
@@ -376,15 +405,16 @@ namespace awh {
 				 */
 				AWH_CACHE_INLINE int64_t tally(const int64_t delta, const int64_t batch) noexcept {
 					// Накапливаем изменение занятого
-					this->_tally += delta;
+					const int64_t result = (this->_tally.load(std::memory_order_relaxed) + delta);
 					// Если накопленное не дотянуло до величины отдачи
-					if((this->_tally < batch) && (this->_tally > -batch))
+					if((result < batch) && (result > -batch)){
+						// Запоминаем накопленное
+						this->_tally.store(result, std::memory_order_relaxed);
 						// Отдавать нечего
 						return 0;
-					// Запоминаем накопленное
-					const int64_t result = this->_tally;
+					}
 					// Обнуляем накопленное: оно уходит наружу
-					this->_tally = 0;
+					this->_tally.store(0, std::memory_order_relaxed);
 					// Выводим отдаваемое наружу накопленное
 					return result;
 				}

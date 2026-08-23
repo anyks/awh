@@ -370,6 +370,46 @@ namespace awh {
 				 *
 				 * \~
 				 */
+				/**
+				 * \~russian
+				 * @brief Метод свёртки ветвей выбора в один класс символов
+				 *
+				 * @details Выбор из одиночных символов и классов есть тот же класс,
+				 *          объединением ветвей составленный, а порождение их различает:
+				 *          выбор компилируется переходом по двум ветвям, и повторение
+				 *          над ним идёт дорогим путём записи прохода вместо дешёвого
+				 *          прохода ряда по таблице принадлежности байтов
+				 *
+				 * @param id индекс узла выбора одной из ветвей в арене узлов
+				 * @return   результат выполнения свёртки ветвей
+				 *
+				 * \~english
+				 * @brief Method of folding the branches of a choice into a single character class
+				 * @details A choice among single characters and classes is the very same class
+				 *          made up by the union of the branches, whereas the generation tells
+				 *          them apart: a choice is compiled into a two-branch jump
+				 *
+				 * @param id index of the node of the choice of one of the branches in the arena of nodes
+				 * @return   result of performing the folding of the branches
+				 *
+				 * \~
+				 */
+				bool merging(const node_id_t id) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод компиляции узла выбора одной из ветвей
+				 *
+				 * @param id индекс узла выбора одной из ветвей в арене узлов
+				 * @return   результат выполнения компиляции
+				 *
+				 * \~english
+				 * @brief Method of compiling the node of the choice of one of the branches
+				 *
+				 * @param id index of the node of the choice of one of the branches in the arena of nodes
+				 * @return   result of performing the compilation
+				 *
+				 * \~
+				 */
 				bool compileAlternate(const node_id_t id) noexcept;
 				/**
 				 * \~russian

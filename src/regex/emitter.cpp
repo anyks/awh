@@ -164,6 +164,18 @@ void awh::regex::Emitter::place(const size_t label) noexcept {
 	if(label >= this->_labels.size()) {
 		// Выполняем установку флага отказа порождения машинного кода
 		this->_failed = true;
+		/**
+		 * Если объект журнала событий передан
+		 *
+		 * @details Переход к метке, заведению не подвергшейся, означает
+		 *          несогласованность самого порождения, а не свойство выражения:
+		 *          наружу он выходит неотличимым от отказа законного, и молчание
+		 *          о нём обращает изъян в «кодогенерация неприменима»
+		 *
+		 */
+		if(this->_log != nullptr)
+			// Выполняем вывод сообщения об изъяне порождения машинного кода
+			this->_log->print("Regex codegen: jump to the label %zu that has not been declared", log_t::flag_t::CRITICAL, label);
 		// Выходим из метода расстановки метки перехода
 		return;
 	}
@@ -213,7 +225,7 @@ bool awh::regex::Emitter::failed() const noexcept {
  * @brief Конструктор
  *
  */
-awh::regex::Emitter::Emitter() noexcept : _stamp(SIZE_MAX), _failed(false) {}
+awh::regex::Emitter::Emitter(const log_t * log) noexcept : _stamp(SIZE_MAX), _failed(false), _log(log) {}
 
 #if defined(__aarch64__) || defined(_M_ARM64)
 
@@ -402,7 +414,7 @@ namespace {
 	 * @return       собранная команда процессора
 	 *
 	 */
-	inline uint32_t write(const uint32_t target, const uint32_t value, const uint32_t shift, const bool keep) noexcept {
+	inline uint32_t writing(const uint32_t target, const uint32_t value, const uint32_t shift, const bool keep) noexcept {
 		// Выводим собранную команду «movz xtarget, #value, lsl #shift» либо «movk»
 		return ((keep ? 0xF2800000u : 0xD2800000u) | (shift << 21) | (value << 5) | target);
 	}
@@ -560,6 +572,18 @@ void awh::regex::Emitter::jump(const size_t label) noexcept {
 	if(label >= this->_labels.size()) {
 		// Выполняем установку флага отказа порождения машинного кода
 		this->_failed = true;
+		/**
+		 * Если объект журнала событий передан
+		 *
+		 * @details Переход к метке, заведению не подвергшейся, означает
+		 *          несогласованность самого порождения, а не свойство выражения:
+		 *          наружу он выходит неотличимым от отказа законного, и молчание
+		 *          о нём обращает изъян в «кодогенерация неприменима»
+		 *
+		 */
+		if(this->_log != nullptr)
+			// Выполняем вывод сообщения об изъяне порождения машинного кода
+			this->_log->print("Regex codegen: jump to the label %zu that has not been declared", log_t::flag_t::CRITICAL, label);
 		// Выходим из метода размещения перехода к метке
 		return;
 	}
@@ -588,6 +612,18 @@ void awh::regex::Emitter::branch(const cond_t cond, const size_t label) noexcept
 	if(label >= this->_labels.size()) {
 		// Выполняем установку флага отказа порождения машинного кода
 		this->_failed = true;
+		/**
+		 * Если объект журнала событий передан
+		 *
+		 * @details Переход к метке, заведению не подвергшейся, означает
+		 *          несогласованность самого порождения, а не свойство выражения:
+		 *          наружу он выходит неотличимым от отказа законного, и молчание
+		 *          о нём обращает изъян в «кодогенерация неприменима»
+		 *
+		 */
+		if(this->_log != nullptr)
+			// Выполняем вывод сообщения об изъяне порождения машинного кода
+			this->_log->print("Regex codegen: jump to the label %zu that has not been declared", log_t::flag_t::CRITICAL, label);
 		// Выходим из метода размещения перехода к метке
 		return;
 	}
@@ -732,7 +768,7 @@ void awh::regex::Emitter::move(const reg_t target, const uint64_t value) noexcep
 				continue;
 		}
 		// Выполняем размещение команды записи части числа в регистр
-		::emit(this->_code, ::write(reg, part, shift, written));
+		::emit(this->_code, ::writing(reg, part, shift, written));
 		// Выполняем установку флага размещения первой части числа
 		written = true;
 	}
@@ -908,6 +944,18 @@ void awh::regex::Emitter::address(const reg_t target, const size_t label) noexce
 	if(label >= this->_labels.size()) {
 		// Выполняем установку флага отказа порождения машинного кода
 		this->_failed = true;
+		/**
+		 * Если объект журнала событий передан
+		 *
+		 * @details Переход к метке, заведению не подвергшейся, означает
+		 *          несогласованность самого порождения, а не свойство выражения:
+		 *          наружу он выходит неотличимым от отказа законного, и молчание
+		 *          о нём обращает изъян в «кодогенерация неприменима»
+		 *
+		 */
+		if(this->_log != nullptr)
+			// Выполняем вывод сообщения об изъяне порождения машинного кода
+			this->_log->print("Regex codegen: jump to the label %zu that has not been declared", log_t::flag_t::CRITICAL, label);
 		// Выходим из метода размещения вычисления адреса метки
 		return;
 	}

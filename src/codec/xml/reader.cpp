@@ -601,7 +601,7 @@ namespace {
  */
 awh::codec::xml::Reader::Settings::Settings() noexcept :
  namespaces(true), entities(true), comments(true), processing(true),
- separateSpaces(false), mergeText(false), defaults(true),
+ separateSpaces(false), mergeText(false), defaults(true), externals(false),
  maxDepth(MAX_DEPTH), maxName(MAX_NAME), maxAttributes(4096),
  maxEntities(MAX_ENTITY_COUNT), maxExpansion(MAX_ENTITY_EXPANSION),
  maxEvent(0), encoding(encoding_t::NONE) {}
@@ -1449,12 +1449,30 @@ bool awh::codec::xml::Reader::expand(const string_view name, string & result, co
 	/**
 	 * Если сущность объявлена внешней
 	 *
-	 * @note Загрузка внешних сущностей запрещена устройством разбора: подставить
-	 *       такую сущность нечем, и ссылка на неё является ошибкой
+	 * @details Загрузка внешних сущностей запрещена устройством разбора, и подставить
+	 * такую ссылку нечем. Договор разнит здесь два места. В ЗНАЧЕНИИ АТРИБУТА ссылка на
+	 * внешнюю сущность запрещена им самим, и отказ следует всегда. В СОДЕРЖИМОМ же
+	 * разбору, внешних сущностей не читающему, велено ссылку распознать и пропустить, а
+	 * текст принять: отказ там - строгость сверх договора, и вынесен он в настройку
+	 *
+	 * @note Прежде отказ следовал в обоих местах без разбора, и 22 случая набора
+	 *       соответствия W3C, договором к принятию предписанных, отвергались
 	 */
 	if(i->second.external){
-		// Выполняем отказ разбора с сообщением о нём в журнал
-		return this->refuse(error_t::EXTERNAL_ENTITY);
+		/**
+		 * Если сущность объявлена неразбираемой, ссылка встречена в значении атрибута либо
+		 * строгость затребована настройкой
+		 *
+		 * @note Ссылка на НЕРАЗБИРАЕМУЮ сущность запрещена договором прямо и в содержимом:
+		 *       такая сущность не разметка вовсе, и подставлять её некуда. Пропуск её
+		 *       наравне с обычною внешнею принимал два заведомо негодных текста набора
+		 */
+		if(!content || i->second.unparsed || this->_settings.externals){
+			// Выполняем отказ разбора с сообщением о нём в журнал
+			return this->refuse(error_t::EXTERNAL_ENTITY);
+		}
+		// Выводим положительный результат пропуска ссылки на сущность
+		return true;
 	}
 	/**
 	 * Если подстановка сущности выполняется в текущий миг
@@ -2664,6 +2682,13 @@ bool awh::codec::xml::Reader::parseSubset(size_t offset, const size_t end) noexc
 			 *       на которые ссылается сам текст
 			 */
 			this->_foreign = true;
+			/**
+			 * Запоминаем встреченную ссылку на непрочитанную параметрическую сущность
+			 *
+			 * @note Объявления за нею договором обрабатывать запрещено: внутри
+			 *       непрочитанного вправе лежать объявление, их отменяющее
+			 */
+			this->_incomplete = true;
 			// Выполняем переход к следующему объявлению
 			continue;
 		}
@@ -2953,6 +2978,8 @@ bool awh::codec::xml::Reader::parseSubset(size_t offset, const size_t end) noexc
 						// Выполняем отказ разбора с сообщением о нём в журнал
 						return this->refuse(error_t::INVALID_DOCTYPE);
 					}
+					// Запоминаем, что сущность объявлена неразбираемой
+					entity.unparsed = true;
 				// Выполняем возврат разбора к пропущенным пробельным знакам
 				} else offset = place;
 			}
@@ -3213,14 +3240,60 @@ bool awh::codec::xml::Reader::parseSubset(size_t offset, const size_t end) noexc
 			 * Если перечень объявленных по умолчанию значений не пуст
 			 */
 			if(!defaults.empty()){
+				/**
+				 * Если встречена ссылка на непрочитанную параметрическую сущность
+				 *
+				 * @details Договор велит разбору, внешних сущностей не читающему,
+				 * обрабатывать объявления лишь ДО первой такой ссылки: за нею объявления
+				 * вправе быть отменены тем, что лежит внутри непрочитанного. Отсюда и
+				 * запрет опираться на них - ни подстановкою значения по умолчанию, ни
+				 * приведением значения по виду атрибута
+				 *
+				 * @note Исключение отведено договором одно: текст, объявленный
+				 * самодостаточным, обещает, что от внешнего подмножества смысл его не
+				 * зависит, и объявления его действительны все
+				 */
+				if(this->_incomplete && (this->_standalone != standalone_t::YES))
+					// Выполняем переход к следующему объявлению
+					continue;
 				// Получаем перечень объявленных значений узла
 				vector <default_t> & items = this->_attlists[name];
 				/**
 				 * Выполняем перебор всех объявленных по умолчанию значений
 				 */
-				for(default_t & item : defaults)
+				for(default_t & item : defaults){
+					// Признак того, что атрибут узлу уже объявлен
+					bool declared = false;
+					/**
+					 * Выполняем перебор всех прежде объявленных атрибутов узла
+					 */
+					for(const default_t & prior : items){
+						/**
+						 * Если имя атрибута совпадает с прежде объявленным
+						 */
+						if((prior.local == item.local) && (prior.prefix == item.prefix)){
+							// Запоминаем, что атрибут узлу уже объявлен
+							declared = true;
+							// Выходим из перебора прежде объявленных атрибутов
+							break;
+						}
+					}
+					/**
+					 * Если атрибут узлу уже объявлен
+					 *
+					 * @note Договор велит считать связывающим ПЕРВОЕ объявление атрибута, а
+					 *       повторные пропускать. Разбор брал последнее, и вид атрибута из
+					 *       повторного объявления отменял вид из первого: `CDATA`,
+					 *       объявленный первым, приводился как `NMTOKENS`
+					 */
+					if(declared)
+						// Выполняем переход к следующему объявленному значению
+						continue;
+					// Запоминаем объявление атрибута видом, приведению подлежащим
+					this->_tokenized = (this->_tokenized || item.tokenized);
 					// Выполняем добавление объявленного значения к перечню узла
 					items.push_back(::move(item));
+				}
 			}
 			// Выполняем переход к следующему объявлению
 			continue;
@@ -4895,6 +4968,132 @@ bool awh::codec::xml::Reader::bind() noexcept {
 	// Количество связываний префиксов, объявленных узлом
 	uint32_t count = 0;
 	/**
+	 * Выполняем приведение значений атрибутов, объявленных видом, отличным от «CDATA»
+	 *
+	 * @details Договор велит у такого атрибута снять пробельные знаки по краям и свести
+	 * всякую их вереницу к одному пробелу. Приведение это к ПРОВЕРКЕ по описанию типа
+	 * документа не относится и выполняется независимо от неё: вид атрибута берётся из
+	 * объявления, а не из проверки соответствия ему
+	 *
+	 * @note Приведение идёт на месте, в самом хранилище приведённых значений: оно
+	 *       значение только укорачивает, и отрезок правится длиною, а начало его
+	 *       остаётся прежним
+	 *
+	 * @warning Накрывать оно обязано и ОБЪЯВЛЕНИЯ ПРОСТРАНСТВ ИМЁН: объявление, видом
+	 *          отличным от «CDATA» описанное, приводится наравне с прочими, и два разных
+	 *          по записи объявления вправе оказаться одним и тем же обозначением. Без
+	 *          того совпадение расширенных имён атрибутов остаётся незамеченным
+	 */
+	if(this->_tokenized && (!this->_attributes.empty() || !this->_declares.empty())){
+		// Получаем имя узла в записи, принятой в исходном тексте
+		const span_t & qname = this->_stack.back().qname;
+		/**
+		 * Собираем имя узла для отыскания объявлений его атрибутов
+		 *
+		 * @note Имя узла лежит в хранилище ИМЁН, а значения атрибутов - в хранилище
+		 *       приведённых значений: хранилища эти разные, и брать имя из второго
+		 *       нельзя - отрезок укажет мимо, а имя выйдет пустым
+		 */
+		this->_lookup.assign(this->_names.data() + qname.offset, qname.length);
+		// Выполняем отыскание объявлений атрибутов узла
+		auto i = this->_attlists.find(this->_lookup);
+		/**
+		 * Если объявления атрибутов узла обнаружены
+		 */
+		if(i != this->_attlists.end()){
+			/**
+			 * @brief Приведение значения атрибута по договору
+			 *
+			 * @param value приводимый отрезок значения атрибута
+			 *
+			 */
+			auto tokenize = [this](span_t & value) noexcept -> void {
+				// Положение записи приведённого значения
+				size_t at = value.offset;
+				// Признак того, что предыдущий знак был пробельным
+				bool space = true;
+				/**
+				 * Выполняем перебор всех знаков значения атрибута
+				 */
+				for(size_t pos = value.offset; pos < (value.offset + value.length); pos++){
+					/**
+					 * Если очередной знак значения является пробелом
+					 *
+					 * @note Сличается лишь сам пробел: прочие пробельные знаки к нему сведены
+					 *       приведением, договором для ВСЯКОГО атрибута предписанным, и до
+					 *       этого места иными не доходят
+					 */
+					if(this->_scratch[pos] == ' '){
+						// Запоминаем, что знак был пробельным
+						space = true;
+						// Выполняем переход к следующему знаку
+						continue;
+					}
+					/**
+					 * Если предыдущий знак был пробельным, а записано уже не пусто
+					 */
+					if(space && (at > value.offset))
+						// Выполняем запись одного пробела вместо вереницы
+						this->_scratch[at++] = ' ';
+					// Выполняем запись очередного знака значения
+					this->_scratch[at++] = this->_scratch[pos];
+					// Запоминаем, что знак пробельным не был
+					space = false;
+				}
+				// Устанавливаем длину приведённого значения атрибута
+				value.length = static_cast <uint32_t> (at - value.offset);
+			};
+			/**
+			 * @brief Отыскание объявления атрибута узла
+			 *
+			 * @param prefix приставка имени разыскиваемого атрибута
+			 * @param local  местное имя разыскиваемого атрибута
+			 * @return       признак того, что атрибут объявлен приводимым видом
+			 *
+			 */
+			auto tokenized = [&i](const string_view prefix, const string_view local) noexcept -> bool {
+				/**
+				 * Выполняем перебор всех объявлений атрибутов узла
+				 */
+				for(const default_t & item : i->second){
+					/**
+					 * Если объявление разыскиваемому атрибуту отвечает
+					 */
+					if((item.local == local) && (item.prefix == prefix))
+						// Выводим признак объявления атрибута приводимым видом
+						return item.tokenized;
+				}
+				// Выводим признак отсутствия объявления атрибута
+				return false;
+			};
+			/**
+			 * Выполняем перебор всех разобранных атрибутов узла
+			 */
+			for(size_t index = 0; index < this->_attributes.size(); index++){
+				// Получаем очередной собираемый атрибут узла
+				const attribute_t & attribute = this->_attributes[index];
+				/**
+				 * Если атрибут объявлен видом, приведению подлежащим
+				 */
+				if(tokenized(attribute.name.prefix, attribute.name.local))
+					// Выполняем приведение значения атрибута
+					tokenize(this->_values[index]);
+			}
+			/**
+			 * Выполняем перебор всех объявлений пространств имён узла
+			 */
+			for(record_t & record : this->_declares){
+				/**
+				 * Если объявление описано видом, приведению подлежащим
+				 */
+				if(tokenized(record.prefix, record.local))
+					// Выполняем приведение значения объявления
+					tokenize(record.value);
+			}
+		}
+	}
+
+	/**
 	 * Если разрешение префиксов по договору о пространствах имён включено
 	 */
 	if(this->_settings.namespaces){
@@ -5117,89 +5316,6 @@ bool awh::codec::xml::Reader::bind() noexcept {
 			this->_stack.back().name.uri = uri;
 		// Запоминаем обозначение пространства имён узла по умолчанию
 		} else this->_stack.back().name.uri = this->lookup(string_view());
-	}
-	/**
-	 * Выполняем приведение значений атрибутов, объявленных видом, отличным от «CDATA»
-	 *
-	 * @details Договор велит у такого атрибута снять пробельные знаки по краям и свести
-	 * всякую их вереницу к одному пробелу. Приведение это к ПРОВЕРКЕ по описанию типа
-	 * документа не относится и выполняется независимо от неё: вид атрибута берётся из
-	 * объявления, а не из проверки соответствия ему
-	 *
-	 * @note Приведение идёт на месте, в самом хранилище значений: оно значение только
-	 *       укорачивает, и отрезок правится длиною, а начало его остаётся прежним
-	 *
-	 * @warning Стоять оно обязано ПРЕЖДЕ выдачи значений наружу и прежде подстановки
-	 *          объявленных умолчаний, а не после
-	 */
-	if(!this->_attlists.empty() && !this->_attributes.empty()){
-		// Получаем имя узла в записи, принятой в исходном тексте
-		const span_t & qname = this->_stack.back().qname;
-		// Собираем имя узла для отыскания объявлений его атрибутов
-		this->_lookup.assign(this->_scratch.data() + qname.offset, qname.length);
-		// Выполняем отыскание объявлений атрибутов узла
-		auto i = this->_attlists.find(this->_lookup);
-		/**
-		 * Если объявления атрибутов узла обнаружены
-		 */
-		if(i != this->_attlists.end()){
-			/**
-			 * Выполняем перебор всех разобранных атрибутов узла
-			 */
-			for(size_t index = 0; index < this->_attributes.size(); index++){
-				// Получаем очередной собираемый атрибут узла
-				const attribute_t & attribute = this->_attributes[index];
-				/**
-				 * Выполняем перебор всех объявлений атрибутов узла
-				 */
-				for(const default_t & item : i->second){
-					/**
-					 * Если объявление атрибуту не отвечает либо приведения не требует
-					 */
-					if(!item.tokenized || (item.local != attribute.name.local) || (item.prefix != attribute.name.prefix))
-						// Выполняем переход к следующему объявлению
-						continue;
-					// Получаем отрезок значения приводимого атрибута
-					span_t & value = this->_values[index];
-					// Положение записи приведённого значения
-					size_t at = value.offset;
-					// Признак того, что предыдущий знак был пробельным
-					bool space = true;
-					/**
-					 * Выполняем перебор всех знаков значения атрибута
-					 */
-					for(size_t pos = value.offset; pos < (value.offset + value.length); pos++){
-						/**
-						 * Если очередной знак значения является пробелом
-						 *
-						 * @note Сличается лишь сам пробел: прочие пробельные знаки к нему
-						 *       сведены приведением, договором для ВСЯКОГО атрибута
-						 *       предписанным, и до этого места иными не доходят
-						 */
-						if(this->_scratch[pos] == ' '){
-							// Запоминаем, что знак был пробельным
-							space = true;
-							// Выполняем переход к следующему знаку
-							continue;
-						}
-						/**
-						 * Если предыдущий знак был пробельным, а записано уже не пусто
-						 */
-						if(space && (at > value.offset))
-							// Выполняем запись одного пробела вместо вереницы
-							this->_scratch[at++] = ' ';
-						// Выполняем запись очередного знака значения
-						this->_scratch[at++] = this->_scratch[pos];
-						// Запоминаем, что знак пробельным не был
-						space = false;
-					}
-					// Устанавливаем длину приведённого значения атрибута
-					value.length = static_cast <uint32_t> (at - value.offset);
-					// Выходим из перебора объявлений атрибутов узла
-					break;
-				}
-			}
-		}
 	}
 	/**
 	 * Выполняем перебор всех разобранных атрибутов узла
@@ -6486,6 +6602,10 @@ void awh::codec::xml::Reader::reset() noexcept {
 	this->_opening = location_t();
 	// Выполняем сброс признака прихода объявлений извне разобранного
 	this->_foreign = false;
+	// Выполняем сброс признака ссылки на непрочитанную параметрическую сущность
+	this->_incomplete = false;
+	// Выполняем сброс признака объявления приводимого вида атрибута
+	this->_tokenized = false;
 	// Выполняем сброс признака имени, превысившего предел настроек
 	this->_overlong = false;
 	// Выполняем сброс признака выданной непробельной части содержимого
@@ -6925,7 +7045,7 @@ awh::codec::xml::standalone_t awh::codec::xml::Reader::standalone() const noexce
  */
 awh::codec::xml::Reader::Reader(const log_t * log) noexcept :
  _final(false), _root(false), _declared(false), _doctype(false), _empty(false),
- _closing(false), _cdata(false), _partial(false), _carried(false), _section(0), _dirty(false), _foreign(false), _overlong(false), _offset(0), _consumed(0), _line(1), _column(1),
+ _closing(false), _cdata(false), _partial(false), _carried(false), _section(0), _dirty(false), _foreign(false), _incomplete(false), _tokenized(false), _overlong(false), _offset(0), _consumed(0), _line(1), _column(1),
  _depth(0), _truncate(string::npos), _expansion(0), _state(state_t::HUNGRY),
  _event(event_t::NONE), _error(error_t::NONE), _decoding(error_t::NONE), _encoding(encoding_t::NONE),
  _standalone(standalone_t::NONE), _space(space_t::DEFAULT), _decoder(log), _log(log) {
@@ -6941,7 +7061,7 @@ awh::codec::xml::Reader::Reader(const log_t * log) noexcept :
  */
 awh::codec::xml::Reader::Reader(const log_t * log, const settings_t & settings) noexcept :
  _final(false), _root(false), _declared(false), _doctype(false), _empty(false),
- _closing(false), _cdata(false), _partial(false), _carried(false), _section(0), _dirty(false), _foreign(false), _overlong(false), _offset(0), _consumed(0), _line(1), _column(1),
+ _closing(false), _cdata(false), _partial(false), _carried(false), _section(0), _dirty(false), _foreign(false), _incomplete(false), _tokenized(false), _overlong(false), _offset(0), _consumed(0), _line(1), _column(1),
  _depth(0), _truncate(string::npos), _expansion(0), _settings(settings),
  _state(state_t::HUNGRY), _event(event_t::NONE), _error(error_t::NONE), _decoding(error_t::NONE),
  _encoding(encoding_t::NONE), _standalone(standalone_t::NONE), _space(space_t::DEFAULT), _decoder(log), _log(log) {

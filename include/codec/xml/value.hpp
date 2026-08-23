@@ -1364,19 +1364,30 @@ namespace awh {
 					 * @details Разбор ведётся тем же деревом, каким он ведётся всегда: обёртка
 					 * лишь снимает с него поддерево собственной памятью
 					 *
-					 * @param text разбираемый текст разметки
-					 * @return     признак успешности разбора
+					 * @note Настройки чтения принимаются доводом, как и у дерева: без него ни
+					 * одна из них - ни разрешение префиксов, ни строгость к внешним сущностям,
+					 * ни подстановка объявленных умолчаний - у владеющего значения недостижима
+					 * вовсе, и разбор обрывка вёлся бы одними умолчаниями
+					 *
+					 * @param text     разбираемый текст разметки
+					 * @param settings настройки чтения текста разметки
+					 * @return         признак успешности разбора
 					 *
 					 * \~english
 					 * @brief Method of the parsing of a markup text into an owning value
 					 * @details The parsing is conducted by the same tree by which it is always conducted: the wrapper
 					 * only takes a subtree off it by its own memory
+					 * @note The settings of the reading are taken as an argument, as with a tree: without it not
+					 * a single one of them — neither the resolution of the prefixes, nor the strictness towards
+					 * the external entities, nor the substitution of the declared defaults — would be reachable
+					 * at all for an owning value, and the parsing of a fragment would be conducted by the defaults alone
 					 * @param text markup text being parsed
+					 * @param settings settings of the reading of a markup text
 					 * @return sign of the success of the parsing
 					 *
 					 * \~
 					 */
-					bool parse(const string & text) noexcept;
+					bool parse(const string & text, const reader_t::settings_t & settings = reader_t::settings_t()) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод разбора текста разметки из файла

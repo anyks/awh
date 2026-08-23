@@ -844,23 +844,23 @@ awh::codec::json::Value & awh::codec::json::Value::operator [] (const size_t ind
 	if(this->_kind != kind_t::ARRAY)
 		// Выводим значение мусорное
 		return Value::scrap();
-			/**
-		 * Если рост вместилища выйдет за поставленный предел
-		 *
-		 * @note Номер, пришедший извне, обращается требованием памяти по нему: предел
-		 *       этот рост и стережёт. Ставится он пользователем рамки, а нуль снимает
-		 *       его вовсе - см. `Value::limit`
+	/**
+	 * Если рост вместилища выйдет за поставленный предел
+	 *
+	 * @note Номер, пришедший извне, обращается требованием памяти по нему: предел
+	 *       этот рост и стережёт. Ставится он пользователем рамки, а нуль снимает
+	 *       его вовсе - см. `Value::limit`
+	 */
+	{
+		// Получаем поставленный предел роста вместилища
+		const size_t limit = ::LIMIT.load(::std::memory_order_relaxed);
+		/**
+		 * Если предел поставлен и затребованный номер за него выходит
 		 */
-		{
-			// Получаем поставленный предел роста вместилища
-			const size_t limit = ::LIMIT.load(::std::memory_order_relaxed);
-			/**
-			 * Если предел поставлен и затребованный номер за него выходит
-			 */
-			if((limit > 0) && (index >= limit))
+		if((limit > 0) && (index >= limit))
 			// Выводим значение мусорное
 			return Value::scrap();
-		}
+	}
 	/**
 	 * Выполняем рост массива до затребованного номера значениями неопределёнными
 	 */
@@ -1555,7 +1555,7 @@ void awh::codec::json::Value::absorb(const Document::value_t & value) noexcept {
  * @return     признак успешности разбора
  *
  */
-bool awh::codec::json::Value::parse(const string & text) noexcept {
+bool awh::codec::json::Value::parse(const string & text, const document_t::settings_t & settings) noexcept {
 	// Документ, разбирающий поданный текст
 	/**
 	 * Заводимое дерево значения
@@ -1565,6 +1565,8 @@ bool awh::codec::json::Value::parse(const string & text) noexcept {
 	 *       дереву напрямую
 	 */
 	document_t document(this->_log);
+	// Выполняем установку настроек разбора текста JSON
+	document.settings(settings);
 	/**
 	 * Если разбор текста завершился отказом
 	 */

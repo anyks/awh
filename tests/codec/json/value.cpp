@@ -2660,3 +2660,34 @@ TEST(CodecJsonValue, LoggerReportsFailures){
 		ASSERT_NE(caught.front().second.find("object"), string::npos) << caught.front().second;
 	}
 }
+
+/**
+ * @brief Проверка достижимости настроек разбора у владеющего значения
+ *
+ * @details Разбор обрывка во владеющее значение ведётся тем же документом, и настройки
+ * обязаны быть достижимы и оттуда. Прежде довода настроек у него не было вовсе, и ни одна
+ * из них не действовала: обрывок разбирался одними умолчаниями
+ *
+ * @warning Проверка сличает ДЕЙСТВИЕ настройки, а не приём её доводом: довод, принятый и
+ *          отброшенный, сличением подписи не ловится никак
+ */
+TEST(CodecJsonValue, ParseHonoursSettings){
+	// Собираемое владеющее значение JSON
+	json::value_t value;
+	// Разбираемый текст JSON с повторяющимся именем поля
+	const string text(R"({"a":1,"a":2})");
+	/**
+	 * Выполняем проверку отказа при умолчаниях настроек
+	 *
+	 * @note Договор повтора имён не запрещает, а наше правило по умолчанию его отвергает
+	 */
+	ASSERT_FALSE(value.parse(text));
+	// Настройки разбора текста JSON
+	json::document_t::settings_t settings;
+	// Устанавливаем удержание повторяющихся имён полей
+	settings.duplicates = json::duplicate_t::KEEP;
+	// Выполняем разбор текста JSON с удержанием повторов
+	ASSERT_TRUE(value.parse(text, settings));
+	// Выполняем проверку удержания обоих полей
+	ASSERT_EQ(value.size(), static_cast <size_t> (2)) << value.dump();
+}

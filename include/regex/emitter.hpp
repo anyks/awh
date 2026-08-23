@@ -115,6 +115,11 @@
 #include "common.hpp"
 
 /**
+ * Подключаем заголовочные файлы модулей
+ */
+#include "../sys/log.hpp"
+
+/**
  * Снимаем на время объявлений макросы, чьи имена заняты
  * членами перечислений ниже (возвращает их macro_pop.hpp в конце файла)
  */
@@ -565,6 +570,28 @@ namespace awh {
 			private:
 				// Флаг отказа порождения машинного кода
 				bool _failed;
+			private:
+				/**
+				 * \~russian
+				 * Объект журнала событий
+				 *
+				 * @details Журналом сообщается лишь ОДНА беда - переход к метке,
+				 *          заведению не подвергшейся. Она означает несогласованность
+				 *          самого порождения, а не свойство выражения, и молчать
+				 *          о ней нельзя: наружу она выходит неотличимой от отказа
+				 *          законного - от числа, в поле команды не помещающегося, -
+				 *          и потребитель получает «кодогенерация неприменима» там,
+				 *          где на деле изъян
+				 *
+				 * \~english
+				 * The event log object
+				 * @details Only ONE trouble is reported through the log - a jump to
+				 *          a label that has not been declared. It means an inconsistency
+				 *          of the generation itself rather than a property of the expression
+				 *
+				 * \~
+				 */
+				const log_t * _log;
 			public:
 				/**
 				 * \~russian
@@ -1178,7 +1205,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				Emitter() noexcept;
+				explicit Emitter(const log_t * log) noexcept;
 		} emitter_t;
 	};
 };

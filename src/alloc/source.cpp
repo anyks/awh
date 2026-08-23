@@ -82,12 +82,24 @@ size_t awh::alloc::SystemSource::detect() const noexcept {
  *
  */
 size_t awh::alloc::SystemSource::granularity() const noexcept {
-	// Если размер страницы ещё не определён
-	if(this->_granularity == 0)
-		// Определяем размер страницы у системы
-		const_cast <SystemSource *> (this)->_granularity = this->detect();
+	// Читаем размер страницы
+	const size_t result = this->_granularity.load(std::memory_order_relaxed);
+	// Если размер страницы уже определён
+	if(result > 0)
+		// Выводим размер страницы
+		return result;
+	// Определяем размер страницы у системы
+	const size_t detected = this->detect();
+	/**
+	 * Записываем определённое, не сверяя с прежним
+	 *
+	 * Двое, определившие размер разом, получат ОДНО И ТО ЖЕ число: спрашивается оно у
+	 * системы, а та своей страницы посреди работы не меняет. Оттого гонка здесь
+	 * безобидна по существу - но не по договору языка, и вид поля неделимый
+	 */
+	const_cast <SystemSource *> (this)->_granularity.store(detected, std::memory_order_relaxed);
 	// Выводим размер страницы
-	return this->_granularity;
+	return detected;
 }
 /**
  * @brief Метод выдачи области страниц
@@ -103,14 +115,34 @@ void awh::alloc::SystemSource::superpages(const bool wanted) noexcept {
 	this->_superpages = wanted;
 }
 /**
+ * @brief Метод задания потолка взятого у системы
+ *
+ * @param limit потолок в байтах: нуль - без потолка
+ *
+ */
+void awh::alloc::SystemSource::ceiling(const size_t limit) noexcept {
+	// Запоминаем потолок взятого у системы
+	this->_ceiling.store(limit, std::memory_order_relaxed);
+}
+/**
+ * @brief Метод опроса взятого у системы
+ *
+ * @return взятое у системы в байтах
+ *
+ */
+size_t awh::alloc::SystemSource::taken() const noexcept {
+	// Выводим взятое у системы
+	return this->_taken.load(std::memory_order_relaxed);
+}
+/**
  * @brief Метод получения числа областей, доставшихся крупными страницами
  *
- * @return число областей, доставшихся крупными страницами
+ * @return число областей
  *
  */
 size_t awh::alloc::SystemSource::superpaged() const noexcept {
 	// Выводим число областей, доставшихся крупными страницами
-	return this->_superpaged;
+	return this->_superpaged.load(std::memory_order_relaxed);
 }
 /**
  * @brief Метод отведения области крупными страницами
@@ -244,6 +276,22 @@ void * awh::alloc::SystemSource::alloc(const size_t size, const size_t alignment
 		return nullptr;
 	// Получаем зернистость выдачи
 	const size_t grain = this->granularity();
+	/**
+	 * Сверяем потолок взятого у системы ПРЕЖДЕ обращения к ней
+	 *
+	 * Сверяем приблизительно - по запрошенному, а не по округлённому: округление
+	 * прибавит меньше страницы, а вторая сверка после выдачи стоила бы отдачи только
+	 * что взятого. Потолок здесь и есть предел, заказанный приложением, а не точная
+	 * граница до байта
+	 */
+	{
+		// Читаем потолок взятого у системы
+		const size_t limit = this->_ceiling.load(std::memory_order_relaxed);
+		// Если потолок задан и запрос его перебирает
+		if((limit > 0) && ((this->_taken.load(std::memory_order_relaxed) + size) > limit))
+			// Отвечаем отказом: приложение само заказало этот предел
+			return nullptr;
+	}
 	// Требуемое выравнивание не может быть меньше зернистости выдачи
 	const size_t align = ((alignment > grain) ? alignment : grain);
 	// Округляем требуемый размер до целого числа страниц
@@ -262,8 +310,10 @@ void * awh::alloc::SystemSource::alloc(const size_t size, const size_t alignment
 		if(result != nullptr){
 			// Запоминаем действительно выданный размер
 			actual = rounded;
+			// Считаем взятое у системы
+			this->_taken.fetch_add(rounded, std::memory_order_relaxed);
 			// Считаем области, доставшиеся крупными страницами
-			this->_superpaged++;
+			this->_superpaged.fetch_add(1, std::memory_order_relaxed);
 			// Выводим адрес отведённой области
 			return result;
 		}
@@ -295,6 +345,8 @@ void * awh::alloc::SystemSource::alloc(const size_t size, const size_t alignment
 			if(result != nullptr)
 				// Запоминаем действительно выданный размер
 				actual = rounded;
+				// Считаем взятое у системы
+				this->_taken.fetch_add(rounded, std::memory_order_relaxed);
 			// Выводим адрес отведённой области
 			return result;
 		}
@@ -318,6 +370,8 @@ void * awh::alloc::SystemSource::alloc(const size_t size, const size_t alignment
 			if(result != nullptr){
 				// Запоминаем действительно выданный размер
 				actual = rounded;
+				// Считаем взятое у системы
+				this->_taken.fetch_add(rounded, std::memory_order_relaxed);
 				// Выводим адрес отведённой области
 				return result;
 			}
@@ -350,6 +404,8 @@ void * awh::alloc::SystemSource::alloc(const size_t size, const size_t alignment
 		if(align <= grain){
 			// Запоминаем действительно выданный размер
 			actual = rounded;
+			// Считаем взятое у системы
+			this->_taken.fetch_add(rounded, std::memory_order_relaxed);
 			// Выводим адрес отображённой области
 			return probe;
 		}
@@ -375,6 +431,8 @@ void * awh::alloc::SystemSource::alloc(const size_t size, const size_t alignment
 			::munmap(reinterpret_cast <void *> (aligned + rounded), tail);
 		// Запоминаем действительно выданный размер
 		actual = rounded;
+		// Считаем взятое у системы
+		this->_taken.fetch_add(rounded, std::memory_order_relaxed);
 		// Выводим выровненный адрес области
 		return reinterpret_cast <void *> (aligned);
 	#endif
@@ -465,6 +523,8 @@ void * awh::alloc::SystemSource::conceal(const size_t size, size_t & actual, boo
 			return nullptr;
 		// Запоминаем действительно выданный размер
 		actual = rounded;
+		// Считаем взятое у системы
+		this->_taken.fetch_add(rounded, std::memory_order_relaxed);
 		// Отмечаем укрытие состоявшимся
 		hidden = true;
 		// Выводим адрес отведённой области
@@ -552,6 +612,26 @@ bool awh::alloc::SystemSource::release(void * addr, const size_t size) noexcept 
 	if((addr == nullptr) || (size == 0))
 		// Отдавать нечего
 		return false;
+	/**
+	 * Снимаем область со счёта взятого ПРЕЖДЕ отдачи
+	 *
+	 * Отдача у нас отказом не отвечает по существу - область наша, и система её примет,
+	 * - а порядок этот держит счёт не выше истины: снятый после, он на короткий срок
+	 * показывал бы взятым то, что уже отдано, и потолок отвергал бы выдачу на ровном месте
+	 */
+	{
+		// Читаем взятое у системы
+		size_t taken = this->_taken.load(std::memory_order_relaxed);
+		/**
+		 * Снимаем со счёта, не уводя его ниже нуля
+		 *
+		 * Область могла быть взята до задания потолка либо отдана частями: счёт этот
+		 * приблизительный по устройству, и уход в минус превратил бы его в огромное
+		 * число, отчего потолок закрыл бы выдачу насовсем
+		 */
+		while(!this->_taken.compare_exchange_weak(taken, ((taken > size) ? (taken - size) : 0),
+		 std::memory_order_relaxed, std::memory_order_relaxed));
+	}
 	/**
 	 * Для операционной системы MS Windows
 	 *

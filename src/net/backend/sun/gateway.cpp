@@ -789,10 +789,44 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 							if(!direct && (awh_cast <net::addr_net_ipv4_t *> (route.destination.get())->address != 0))
 								// Накапливаем результат совпадения по адресу назначения
 								match = match && ((dst != nullptr ? dst->sin_addr.s_addr : 0) == awh_cast <net::addr_net_ipv4_t *> (route.destination.get())->address);
+							/**
+							 * @note Устройство записи, снятой через mib2, известно не
+							 *       всегда: у маршрута по умолчанию поле ipRouteIfIndex
+							 *       пусто. Отвергать такую запись по несовпадению
+							 *       устройства нельзя - иначе маршрут по умолчанию,
+							 *       спрошенный вместе с устройством, не находился бы
+							 *       вовсе. Устройство тогда доспрашивается у ядра по
+							 *       адресу шлюза записи
+							 */
 							// Если задан интерфейс
-							if(searchIfIndex != 0)
+							if(searchIfIndex != 0){
+								// Индекс сетевого интерфейса записи маршрута
+								uint32_t index = (ifp != nullptr ? ifp->sdl_index : rtm->rtm_index);
+								// Если индекс сетевого интерфейса записи неизвестен, а шлюз задан
+								if((index == 0) && (gw != nullptr) && (gw->sin_addr.s_addr > 0)){
+									// Структура адреса шлюза для запроса
+									struct sockaddr_in qgw{0};
+									// Устанавливаем семейство адресов
+									qgw.sin_family = AF_INET;
+									// Устанавливаем адрес шлюза, о котором спрашиваем
+									qgw.sin_addr.s_addr = gw->sin_addr.s_addr;
+									// Буфер для приёма ответа маршрута
+									uint8_t reply[2048];
+									// Объект полученного маршрута
+									struct rt_msghdr * answer = nullptr;
+									// Выполняем запрос маршрута до адреса шлюза
+									if(::gw::query(reinterpret_cast <struct sockaddr *> (&qgw), reply, sizeof(reply), &answer)){
+										// Разбираем адреса сообщения маршрута
+										const ::gw::addrs_t addrs = ::gw::parse(answer);
+										// Если сетевой интерфейс маршрута получен
+										if(addrs.ifp != nullptr)
+											// Запоминаем индекс сетевого интерфейса записи маршрута
+											index = addrs.ifp->sdl_index;
+									}
+								}
 								// Накапливаем результат совпадения по индексу интерфейса
-								match = match && ((ifp != nullptr) && (ifp->sdl_index == searchIfIndex));
+								match = match && (index == searchIfIndex);
+							}
 						}
 						// Если маршрут не найден
 						if(!match)
@@ -860,7 +894,18 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 					 *       пойдёт пакет», а «есть ли такая запись», и для этого
 					 *       по-прежнему обходится вся таблица
 					 */
-					if((awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address == 0) && (searchIfIndex == 0)){
+					/**
+					 * @note Нулевым адресом маршрут по умолчанию у этих систем не
+					 *       спрашивается: на запрос 0.0.0.0 ядро отвечает не маршрутом
+					 *       по умолчанию, а пустышкой - нулевым шлюзом при маске
+					 *       255.255.255.255, будто спрашивали хост. Проверено щупом на
+					 *       Solaris 11.4 и OpenIndiana: на любой ненулевой адрес ответ
+					 *       правильный, на нулевой - нет. Маршрут по умолчанию потому
+					 *       берётся обходом таблицы, а устройство ему доопределяется
+					 *       ниже запросом по адресу его же шлюза
+					 */
+					if((awh_cast <net::addr_net_ipv4_t *> (route.destination.get())->address != 0) &&
+					   (awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address == 0) && (searchIfIndex == 0)){
 						// Структура адреса назначения для запроса (ноль - маршрут по умолчанию)
 						struct sockaddr_in qdst{0};
 						// Устанавливаем семейство адресов
@@ -940,6 +985,40 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 							}
 							// Переходим к следующему маршруту
 							begin += rtm->rtm_msglen;
+						}
+					}
+					/**
+					 * @note Записи таблицы, снятой через mib2, несут имя устройства не
+					 *       у всякого маршрута: у маршрута по умолчанию поле
+					 *       ipRouteIfIndex пусто - его не показывает и сам netstat.
+					 *       Устройство тогда доспрашивается у ядра запросом по адресу
+					 *       шлюза: шлюз достижим напрямую, и его маршрут устройство
+					 *       несёт всегда
+					 */
+					if(result && (foundIfIndex == 0)){
+						// Получаем адрес шлюза найденного маршрута
+						const uint32_t gateway = awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address;
+						// Если адрес шлюза получен
+						if(gateway > 0){
+							// Структура адреса шлюза для запроса
+							struct sockaddr_in qgw{0};
+							// Устанавливаем семейство адресов
+							qgw.sin_family = AF_INET;
+							// Устанавливаем адрес шлюза, о котором спрашиваем
+							qgw.sin_addr.s_addr = gateway;
+							// Буфер для приёма ответа маршрута
+							uint8_t reply[2048];
+							// Объект полученного маршрута
+							struct rt_msghdr * rtm = nullptr;
+							// Выполняем запрос маршрута до адреса шлюза
+							if(::gw::query(reinterpret_cast <struct sockaddr *> (&qgw), reply, sizeof(reply), &rtm)){
+								// Разбираем адреса сообщения маршрута
+								const ::gw::addrs_t addrs = ::gw::parse(rtm);
+								// Если сетевой интерфейс маршрута получен
+								if(addrs.ifp != nullptr)
+									// Запоминаем индекс сетевого интерфейса найденного маршрута
+									foundIfIndex = addrs.ifp->sdl_index;
+							}
 						}
 					}
 					// Если найден маршрут и известен индекс сетевого интерфейса
@@ -1023,10 +1102,15 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 							if(isDest)
 								// Накапливаем результат совпадения по адресу назначения
 								match = match && ((dst != nullptr) && (::memcmp(&dst->sin6_addr, searchDest, 16) == 0));
+							/**
+							 * @note Устройство записи берётся из поля RTA_IFP, а при его
+							 *       отсутствии - из заголовка сообщения: снимок таблицы
+							 *       поля RTA_IFP не несёт
+							 */
 							// Проверка интерфейса
 							if(searchIfIndex != 0)
 								// Накапливаем результат совпадения по индексу интерфейса
-								match = match && ((ifp != nullptr) && (ifp->sdl_index == searchIfIndex));
+								match = match && ((ifp != nullptr ? ifp->sdl_index : rtm->rtm_index) == searchIfIndex);
 						}
 						// Если маршрут не найден
 						if(!match)
@@ -1384,23 +1468,44 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 					 * Случай 2: Specific Route + No Gateway IP + Ifname [$ sudo route add -net 10.0.0.0/8 -interface utun6]
 					 * Используем интерфейс как link-layer gateway (-interface)
 					 */
+					/**
+					 * @note Ссылочного адреса устройства (sockaddr_dl) ядро этих систем в
+					 *       поле шлюза НЕ принимает - отвечает EINVAL. Маршрут через
+					 *       устройство задаётся здесь адресом IPv4 самого устройства, ровно
+					 *       так же, как это делает родная команда:
+					 *       `route add -net 192.0.2.0 -netmask 255.255.255.0 -interface 10.0.0.5`.
+					 *       Флаг RTF_GATEWAY при этом НЕ ставится: маршрут остаётся прямым,
+					 *       и система показывает его признаком «U», а не «UG»
+					 */
 					} else if(!isDefault && !isGateway && isIfname) {
-						// Получаем индекс интерфейса
-						const uint32_t index = ::if_nametoindex(route.ifname.c_str());
-						// Если найден интерфейс по имени
-						if(index > 0) {
-							// Структура канального уровня
-							struct sockaddr_dl sdl{0};
-							// Устанавливаем семейство адресов
-							sdl.sdl_family = AF_LINK;
-							// Устанавливаем индекс интерфейса
-							sdl.sdl_index = static_cast <uint16_t> (index);
-							// Устанавливаем флаг адреса шлюза (RTA_GATEWAY), но НЕ RTF_GATEWAY
-							rtm->rtm_addrs |= RTA_GATEWAY;
-							// Устанавливаем в буфер адрес шлюза
-							::memcpy(cp, &sdl, sizeof(struct sockaddr_dl));
-							// Сдвигаем буфер полезной нагрузки
-							cp += ROUNDUP(sizeof(struct sockaddr_dl));
+						// Список сетевых интерфейсов
+						struct ifaddrs * ifptr = nullptr;
+						// Получаем список сетевых интерфейсов
+						if(::getifaddrs(&ifptr) == 0){
+							/**
+							 * Перебираем интерфейсы
+							 */
+							for(struct ifaddrs * ifa = ifptr; ifa != nullptr; ifa = ifa->ifa_next){
+								// Если интерфейс совпадает и семейство адресов IPv4
+								if((ifa->ifa_addr != nullptr) && (ifa->ifa_addr->sa_family == AF_INET) && (::strcmp(ifa->ifa_name, route.ifname.c_str()) == 0)){
+									// Структура IPv4 шлюза
+									struct sockaddr_in gw{0};
+									// Устанавливаем семейство адресов
+									gw.sin_family = AF_INET;
+									// Устанавливаем адрес шлюза (адрес самого устройства)
+									gw.sin_addr = reinterpret_cast <struct sockaddr_in *> (ifa->ifa_addr)->sin_addr;
+									// Устанавливаем флаг адреса шлюза (RTA_GATEWAY), но НЕ RTF_GATEWAY
+									rtm->rtm_addrs |= RTA_GATEWAY;
+									// Устанавливаем в буфер адрес шлюза
+									::memcpy(cp, &gw, sizeof(struct sockaddr_in));
+									// Сдвигаем буфер полезной нагрузки
+									cp += ROUNDUP(sizeof(struct sockaddr_in));
+									// Прерываем цикл
+									break;
+								}
+							}
+							// Освобождаем список интерфейсов
+							::freeifaddrs(ifptr);
 						}
 					}
 					// Маска подсети (RTA_NETMASK)
@@ -1590,23 +1695,43 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 					 * Случай 2: Specific Route + No Gateway IP + Ifname [$ sudo route add -net 10.0.0.0/8 -interface utun6]
 					 * Используем интерфейс как link-layer gateway (-interface)
 					 */
+					/**
+					 * @note Ссылочного адреса устройства (sockaddr_dl) ядро этих систем в
+					 *       поле шлюза НЕ принимает - отвечает EINVAL, ровно как и по IPv4.
+					 *       Маршрут через устройство задаётся адресом IPv6 самого
+					 *       устройства, а флаг RTF_GATEWAY не ставится: маршрут прямой
+					 */
 					} else if(!isDefault && !isGateway && isIfname) {
-						// Получаем индекс интерфейса
-						const uint32_t index = ::if_nametoindex(route.ifname.c_str());
-						// Если найден интерфейс по имени
-						if(index > 0) {
-							// Структура канального уровня
-							struct sockaddr_dl sdl{0};
-							// Устанавливаем семейство адресов
-							sdl.sdl_family = AF_LINK;
-							// Устанавливаем индекс интерфейса
-							sdl.sdl_index = static_cast<uint16_t>(index);
-							// Устанавливаем флаг адреса шлюза (RTA_GATEWAY), но НЕ RTF_GATEWAY
-							rtm->rtm_addrs |= RTA_GATEWAY;
-							// Копируем в буфер адрес шлюза
-							::memcpy(cp, &sdl, sizeof(struct sockaddr_dl));
-							// Сдвигаем буфер полезной нагрузки
-							cp += ROUNDUP(sizeof(struct sockaddr_dl));
+						// Список сетевых интерфейсов
+						struct ifaddrs * ifptr = nullptr;
+						// Получаем список сетевых интерфейсов
+						if(::getifaddrs(&ifptr) == 0){
+							/**
+							 * Перебираем интерфейсы
+							 */
+							for(struct ifaddrs * ifa = ifptr; ifa != nullptr; ifa = ifa->ifa_next){
+								// Если интерфейс совпадает и семейство адресов IPv6
+								if((ifa->ifa_addr != nullptr) && (ifa->ifa_addr->sa_family == AF_INET6) && (::strcmp(ifa->ifa_name, route.ifname.c_str()) == 0)){
+									// Структура IPv6 шлюза
+									struct sockaddr_in6 gw{0};
+									// Устанавливаем семейство адресов
+									gw.sin6_family = AF_INET6;
+									// Устанавливаем адрес шлюза (адрес самого устройства)
+									gw.sin6_addr = reinterpret_cast <struct sockaddr_in6 *> (ifa->ifa_addr)->sin6_addr;
+									// Устанавливаем опознаватель зоны адреса
+									gw.sin6_scope_id = reinterpret_cast <struct sockaddr_in6 *> (ifa->ifa_addr)->sin6_scope_id;
+									// Устанавливаем флаг адреса шлюза (RTA_GATEWAY), но НЕ RTF_GATEWAY
+									rtm->rtm_addrs |= RTA_GATEWAY;
+									// Копируем в буфер адрес шлюза
+									::memcpy(cp, &gw, sizeof(struct sockaddr_in6));
+									// Сдвигаем буфер полезной нагрузки
+									cp += ROUNDUP(sizeof(struct sockaddr_in6));
+									// Прерываем цикл
+									break;
+								}
+							}
+							// Освобождаем список интерфейсов
+							::freeifaddrs(ifptr);
 						}
 					}
 					// Маска подсети (RTA_NETMASK)
@@ -1878,9 +2003,16 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 							// Устанавливаем флаг совпадения по адресу шлюза маршрута
 							match = (match && (gw != nullptr) && (gw->sin_addr.s_addr == awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address));
 						// Если имя сетевого интерфейса задано (и шлюз НЕ задан)
+						/**
+						 * @note Устройство записи берётся из поля RTA_IFP, а при его
+						 *       отсутствии - из заголовка сообщения. Требование ifp
+						 *       отвергало здесь любую запись, а условие это - единственное,
+						 *       каким сносится маршрут, заданный одним устройством, без
+						 *       шлюза: так заданы маршруты через устройства точка-точка
+						 */
 						else if(!route.ifname.empty())
 							// Устанавливаем флаг совпадения по имени сетевого интерфейса маршрута
-							match = (match && (ifp != nullptr) && (ifp->sdl_index == searchIfIndex));
+							match = (match && ((ifp != nullptr ? ifp->sdl_index : rtm->rtm_index) == searchIfIndex));
 						// Если адрес не совпадает
 						if(!match){
 							// Переходим к следующему маршруту
@@ -2143,9 +2275,16 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 							// Устанавливаем флаг совпадения по адресу шлюза маршрута
 							match = match && ((gw != nullptr) && (::memcmp(&gw->sin6_addr, &awh_cast <net::addr_net_ipv6_t *> (route.gateway.get())->address[0], 16) == 0));
 						// Если имя сетевого интерфейса задано
+						/**
+						 * @note Устройство записи берётся из поля RTA_IFP, а при его
+						 *       отсутствии - из заголовка сообщения. Требование ifp
+						 *       отвергало здесь любую запись, а условие это - единственное,
+						 *       каким сносится маршрут, заданный одним устройством, без
+						 *       шлюза: так заданы маршруты через устройства точка-точка
+						 */
 						else if(!route.ifname.empty())
 							// Устанавливаем флаг совпадения по имени сетевого интерфейса маршрута
-							match = match && ((ifp != nullptr) && (ifp->sdl_index == searchIfIndex));
+							match = match && ((ifp != nullptr ? ifp->sdl_index : rtm->rtm_index) == searchIfIndex);
 						// Если адрес не совпадает
 						if(!match){
 							// Переходим к следующему маршруту

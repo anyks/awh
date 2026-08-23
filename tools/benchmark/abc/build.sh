@@ -79,6 +79,31 @@ c++ $FLAGS -I"$STANDS" -I"$VENDOR/libcbor/src" -I"$CBOR" -I"$CBOR/src" \
 # настройку. Тем же чередом поднят он и у стенда сравнения контейнера JSON
 readonly MSGPACK="$OUTPUT/msgpack-c"
 
+##
+# Исходные тексты msgpack-c берутся из ветви «c_master»
+#
+# Устройство проекта msgpack-c разведено по ветвям: у «master» лежат одни описания, а
+# исходные тексты языка C - у «c_master». Подмодуль закреплён на «master», и сборка из
+# закреплённого состояния валится отказом «msgpack.h: file not found»
+#
+# Ветвь разворачивается ОТДЕЛЬНЫМ рабочим деревом в каталоге сборки, а не переключением
+# подмодуля: переключение сменило бы состояние дерева всем, кто с ним работает, и
+# закрепление подмодуля перестало бы отвечать тому, что собрано
+##
+readonly MSGPACK_SOURCE="$OUTPUT/msgpack-src"
+
+# Если исходные тексты msgpack-c ещё не развёрнуты
+if [ ! -f "$MSGPACK_SOURCE/CMakeLists.txt" ]; then
+	# Выводим сообщение о развёртывании исходных текстов
+	echo "Checkout \"msgpack-c\" sources from \"c_master\""
+	# Выполняем развёртывание ветви исходных текстов отдельным рабочим деревом
+	git -C "$VENDOR/msgpack-c" worktree add --detach "$MSGPACK_SOURCE" origin/c_master > /dev/null 2>&1 || {
+		# Выводим сообщение об отказе развёртывания
+		echo "Unable to checkout \"c_master\" of \"msgpack-c\""
+		exit 1
+	}
+fi
+
 # Если реализация msgpack-c ещё не собрана
 #
 # Собирается она своим устройством сборки: заголовки `sysdep.h`, `pack_template.h` и
@@ -88,7 +113,7 @@ if [ ! -f "$MSGPACK/libmsgpack-c.a" ]; then
 	echo "Build \"msgpack-c\""
 
 	# Выполняем сборку реализации msgpack-c
-	cmake -S "$VENDOR/msgpack-c" -B "$MSGPACK" -DCMAKE_BUILD_TYPE=Release \
+	cmake -S "$MSGPACK_SOURCE" -B "$MSGPACK" -DCMAKE_BUILD_TYPE=Release \
 		-DCMAKE_C_FLAGS="-O3 -DNDEBUG -DMSGPACK_EMBED_STACK_SIZE=128" -DMSGPACK_BUILD_TESTS=OFF \
 		-DMSGPACK_BUILD_EXAMPLES=OFF -DBUILD_SHARED_LIBS=OFF > /dev/null || exit 1
 	cmake --build "$MSGPACK" -j 4 > /dev/null || exit 1
@@ -98,7 +123,7 @@ fi
 echo "Build \"msgpack\""
 
 # Выполняем сборку стенда реализации msgpack-c
-c++ $FLAGS -DMSGPACK_EMBED_STACK_SIZE=128 -I"$STANDS" -I"$VENDOR/msgpack-c/include" \
+c++ $FLAGS -DMSGPACK_EMBED_STACK_SIZE=128 -I"$STANDS" -I"$MSGPACK_SOURCE/include" \
 	-I"$MSGPACK/include" -I"$MSGPACK/include/msgpack" \
 	"$STANDS/msgpack.cpp" "$MSGPACK/libmsgpack-c.a" -o "$OUTPUT/msgpack" || exit 1
 

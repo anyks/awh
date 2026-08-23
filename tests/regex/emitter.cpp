@@ -244,7 +244,7 @@ TEST(Regex, EmitterMatcher) {
 		// Выходим из проверки исполнения порождённого сопоставителя
 		GTEST_SKIP() << "порождение машинного кода сборкой не поддерживается";
 	// Создаём объект порождения машинного кода
-	regex::emitter_t emitter;
+	regex::emitter_t emitter(::logger());
 	// Выполняем порождение сопоставителя
 	generate(emitter);
 	// Выполняем проверку разрешения отложенных переходов
@@ -371,7 +371,7 @@ TEST(Regex, EmitterConstants) {
 	 */
 	for(auto & sample : samples) {
 		// Создаём объект порождения машинного кода
-		regex::emitter_t emitter;
+		regex::emitter_t emitter(::logger());
 		/**
 		 * Выполняем размещение входа в порождаемый код
 		 *
@@ -455,7 +455,7 @@ TEST(Regex, EmitterFailure) {
 	 */
 	{
 		// Создаём объект порождения машинного кода
-		regex::emitter_t emitter;
+		regex::emitter_t emitter(::logger());
 		// Заводим метку перехода, положения не получающую
 		const size_t label = emitter.label();
 		// Выполняем размещение перехода к нерасставленной метке
@@ -472,7 +472,7 @@ TEST(Regex, EmitterFailure) {
 	 */
 	{
 		// Создаём объект порождения машинного кода
-		regex::emitter_t emitter;
+		regex::emitter_t emitter(::logger());
 		// Выполняем размещение перехода к незаведённой метке
 		emitter.jump(0);
 		// Выполняем проверку установки флага отказа порождения
@@ -485,7 +485,7 @@ TEST(Regex, EmitterFailure) {
 	 */
 	{
 		// Создаём объект порождения машинного кода
-		regex::emitter_t emitter;
+		regex::emitter_t emitter(::logger());
 		// Выполняем размещение перехода по условию к незаведённой метке
 		emitter.branch(cond_t::EQUAL, 7);
 		// Выполняем проверку установки флага отказа порождения
@@ -496,7 +496,7 @@ TEST(Regex, EmitterFailure) {
 	 */
 	{
 		// Создаём объект порождения машинного кода
-		regex::emitter_t emitter;
+		regex::emitter_t emitter(::logger());
 		// Выполняем размещение сложения с числом, в поле команды не помещающимся
 		emitter.add(reg_t::CURSOR, reg_t::CURSOR, OVERSIZE);
 		// Выполняем проверку установки флага отказа порождения
@@ -504,7 +504,7 @@ TEST(Regex, EmitterFailure) {
 	}
 	{
 		// Создаём объект порождения машинного кода
-		regex::emitter_t emitter;
+		regex::emitter_t emitter(::logger());
 		// Выполняем размещение вычитания числа, в поле команды не помещающегося
 		emitter.sub(reg_t::CURSOR, reg_t::CURSOR, OVERSIZE);
 		// Выполняем проверку установки флага отказа порождения
@@ -512,7 +512,7 @@ TEST(Regex, EmitterFailure) {
 	}
 	{
 		// Создаём объект порождения машинного кода
-		regex::emitter_t emitter;
+		regex::emitter_t emitter(::logger());
 		// Выполняем размещение сравнения с числом, в поле команды не помещающимся
 		emitter.compare(reg_t::CURSOR, OVERSIZE);
 		// Выполняем проверку установки флага отказа порождения
@@ -520,7 +520,7 @@ TEST(Regex, EmitterFailure) {
 	}
 	{
 		// Создаём объект порождения машинного кода
-		regex::emitter_t emitter;
+		regex::emitter_t emitter(::logger());
 		// Выполняем размещение чтения обстановки по номеру, в поле не помещающемуся
 		emitter.context(reg_t::SCRATCH, OVERINDEX);
 		// Выполняем проверку установки флага отказа порождения
@@ -528,7 +528,7 @@ TEST(Regex, EmitterFailure) {
 	}
 	{
 		// Создаём объект порождения машинного кода
-		regex::emitter_t emitter;
+		regex::emitter_t emitter(::logger());
 		// Выполняем размещение записи по номеру, в поле команды не помещающемуся
 		emitter.store(reg_t::BEGIN, reg_t::BOUNDS, OVERINDEX);
 		// Выполняем проверку установки флага отказа порождения
@@ -547,7 +547,7 @@ TEST(Regex, EmitterFailure) {
 	#if !defined(__x86_64__) && !defined(_M_X64)
 	{
 		// Создаём объект порождения машинного кода
-		regex::emitter_t emitter;
+		regex::emitter_t emitter(::logger());
 		// Заводим метку перехода за пределами достижимости
 		const size_t label = emitter.label();
 		// Выполняем размещение перехода по условию к далёкой метке
@@ -578,7 +578,7 @@ TEST(Regex, EmitterFailure) {
  */
 TEST(Regex, EmitterReuse) {
 	// Создаём объект порождения машинного кода
-	regex::emitter_t emitter;
+	regex::emitter_t emitter(::logger());
 	// Выполняем размещение перехода к незаведённой метке
 	emitter.jump(0);
 	// Выполняем проверку установки флага отказа порождения
@@ -601,4 +601,71 @@ TEST(Regex, EmitterReuse) {
 	ASSERT_TRUE(emitter.resolve());
 	// Выполняем проверку отсутствия отказа порождения машинного кода
 	ASSERT_FALSE(emitter.failed());
+}
+
+/**
+ * @brief Проверка выдачи изъяна порождения в журнал событий
+ *
+ * @details Переход к метке, заведению не подвергшейся, означает несогласованность
+ *          самого порождения, а не свойство выражения: наружу он выходит
+ *          неотличимым от отказа законного - от числа, в поле команды
+ *          не помещающегося, - и потребитель получил бы «кодогенерация
+ *          неприменима» там, где на деле изъян. Проверка закрепляет, что
+ *          беда эта журналом сообщается, а порождение без журнала молчит
+ *
+ */
+TEST(RegexEmitter, DefectReachesTheLog) {
+	// Объект фреймворка
+	awh::fmk_t fmk;
+	// Объект журнала с перехватом сообщений
+	awh::log_t log(&fmk);
+	// Перехваченное сообщение об изъяне
+	string caught;
+	// Перехваченный вид сообщения
+	awh::log_t::flag_t flag = awh::log_t::flag_t::NONE;
+	// Выполняем разрешение выдачи логов в функцию обратного вызова
+	log.mode({awh::log_t::mode_t::DEFERRED});
+	// Выполняем установку функции перехвата сообщений журнала
+	log.subscribe([&caught, &flag](const awh::log_t::flag_t received, string_view text) noexcept -> void {
+		// Запоминаем вид полученного сообщения
+		flag = received;
+		// Запоминаем полученное сообщение
+		caught.assign(text.begin(), text.end());
+	});
+	/**
+	 * Выполняем проверку выдачи изъяна порождением с журналом
+	 */
+	{
+		// Создаём объект порождения машинного кода с журналом
+		regex::emitter_t emitter(&log);
+		// Выполняем размещение перехода к метке, заведению не подвергшейся
+		emitter.jump(7);
+		// Выполняем проверку установки признака отказа порождения
+		ASSERT_TRUE(emitter.failed());
+		// Выполняем проверку получения сообщения журналом
+		ASSERT_FALSE(caught.empty());
+		// Выполняем проверку вида полученного сообщения
+		ASSERT_EQ(flag, awh::log_t::flag_t::CRITICAL);
+		// Выполняем проверку упоминания номера метки в сообщении
+		ASSERT_NE(caught.find("7"), string::npos) << caught;
+	}
+	// Выполняем очистку перехваченного сообщения
+	caught.clear();
+	/**
+	 * Выполняем проверку молчания порождения без журнала
+	 *
+	 * @details Журнал модулю не навязывается: потребитель вправе его не заводить,
+	 *          и порождение при этом обязано работать молча, а не падать
+	 *
+	 */
+	{
+		// Создаём объект порождения машинного кода без журнала
+		regex::emitter_t emitter(nullptr);
+		// Выполняем размещение перехода к метке, заведению не подвергшейся
+		emitter.jump(7);
+		// Выполняем проверку установки признака отказа порождения
+		ASSERT_TRUE(emitter.failed());
+		// Выполняем проверку молчания порождения без журнала
+		ASSERT_TRUE(caught.empty()) << caught;
+	}
 }

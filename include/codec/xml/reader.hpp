@@ -244,6 +244,30 @@ namespace awh {
 						bool mergeText;
 						// Флаг подстановки значений атрибутов, объявленных по умолчанию
 						bool defaults;
+						/**
+						 * \~russian
+						 * @brief Флаг отказа разбора при ссылке на внешнюю сущность в содержимом
+						 *
+						 * @details Внешние сущности не загружаются никогда, и подставить такую
+						 * ссылку нечем. Договор велит разбору, их не читающему, ссылку РАСПОЗНАТЬ
+						 * и пропустить, а не отвергать текст: отказ здесь - строгость сверх
+						 * договора, и оттого он вынесен в настройку, а по умолчанию снят
+						 *
+						 * @note В значении атрибута ссылка на внешнюю сущность запрещена самим
+						 * договором, и там отказ следует ВСЕГДА, независимо от этого флага
+						 *
+						 * \~english
+						 * @brief Flag of the refusal of the parsing upon a reference to an external entity in a content
+						 * @details External entities are never loaded, and there is nothing to substitute such
+						 * a reference with. The standard orders a parser not reading them to RECOGNIZE the reference
+						 * and skip it rather than to reject the text: a refusal here is a strictness beyond
+						 * the standard, and therefore it is carried out into a setting, being removed by default
+						 * @note In an attribute value a reference to an external entity is forbidden by the standard
+						 * itself, and a refusal there follows ALWAYS, independently of this flag
+						 *
+						 * \~
+						 */
+						bool externals;
 						// Наибольшая допустимая глубина вложенности узлов
 						uint32_t maxDepth;
 						// Наибольшая допустимая длина имени в знаках
@@ -344,6 +368,14 @@ namespace awh {
 						string value;
 						// Флаг того, что сущность объявлена внешней
 						bool external;
+						/**
+						 * Признак сущности, объявленной НЕРАЗБИРАЕМОЙ (словом «NDATA»)
+						 *
+						 * @note Ссылка на такую сущность в содержимом запрещена договором прямо
+						 * и является ошибкой ВСЕГДА - в отличие от ссылки на обычную внешнюю
+						 * сущность, какую разбору, её не читающему, велено пропускать
+						 */
+						bool unparsed;
 						// Флаг того, что подстановка сущности выполняется в текущий миг
 						bool active;
 						// Флаг того, что значение сущности содержит разметку
@@ -358,7 +390,7 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						Entity() noexcept : external(false), active(false), markup(false) {}
+						Entity() noexcept : external(false), unparsed(false), active(false), markup(false) {}
 					} entity_t;
 					/**
 					 * \~russian
@@ -701,6 +733,32 @@ namespace awh {
 					 * \~
 					 */
 					bool _foreign;
+					/**
+					 * \~russian
+					 * Признак встреченной ссылки на непрочитанную параметрическую сущность
+					 *
+					 * @details Договор велит разбору, внешних сущностей не читающему, обрабатывать
+					 * объявления лишь ДО первой такой ссылки: объявления за нею вправе быть
+					 * отменены тем, что лежит внутри непрочитанного, и опираться на них нельзя.
+					 * Исключение одно - текст, объявленный самодостаточным
+					 *
+					 * @note Признак этот отдельный от `_foreign`: тот поднимается и объявлением
+					 * внешнего подмножества, какое само по себе объявлений внутреннего
+					 * подмножества не отменяет
+					 *
+					 * \~english
+					 * Flag of an encountered reference to an unread parameter entity
+					 * @details The standard orders a parser not reading external entities to process
+					 * the declarations only UP TO the first such reference: the declarations after it
+					 * may be overridden by what lies inside the unread, and one may not rely upon them.
+					 * There is one exception — a text declared standalone
+					 * @note This flag is separate from `_foreign`: the latter is raised by a declaration
+					 * of an external subset as well, which by itself does not override the declarations
+					 * of the internal subset
+					 *
+					 * \~
+					 */
+					bool _incomplete;
 					/**
 					 * \~russian
 					 * Признак того, что разобранное имя превысило предел, заданный настройками
@@ -1864,6 +1922,26 @@ namespace awh {
 				private:
 					// Объявленные по умолчанию значения атрибутов, разложенные по именам узлов
 					unordered_map <string, vector <default_t>> _attlists;
+					/**
+					 * \~russian
+					 * Признак объявления хотя бы одного атрибута видом, приведению подлежащим
+					 *
+					 * @details Приведение значений обходится в четверть скорости чтения документа
+					 * с описанием типа, а описание, объявляющее одни лишь атрибуты вида «CDATA»,
+					 * приводить нечего вовсе. Признак этот снимает с такого описания и розыск
+					 * объявлений на всякий узел, и перебор их по всякому атрибуту
+					 *
+					 * \~english
+					 * Flag of a declaration of at least one attribute by a kind subject to the normalization
+					 * @details The normalization of the values costs a quarter of the speed of the reading
+					 * of a document with a document type definition, while a definition declaring only
+					 * the attributes of the kind «CDATA» has nothing to normalize at all. This flag removes
+					 * from such a definition both the search of the declarations for every node and their
+					 * enumeration for every attribute
+					 *
+					 * \~
+					 */
+					bool _tokenized;
 				public:
 					/**
 					 * \~russian

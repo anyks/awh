@@ -1333,8 +1333,8 @@ void awh::codec::json::Decoder::setLogger(const log_t * log) noexcept {
  *
  */
 awh::codec::json::Decoder::Decoder(const log_t * log) noexcept :
- _encoding(encoding_t::NONE), _error(error_t::NONE), _forced(false),
- _marked(false), _signed(false), _started(false), _length(0), _surrogate(0), _log(log) {
+ _encoding(encoding_t::NONE), _error(error_t::NONE), _log(log), _forced(false),
+ _marked(false), _signed(false), _started(false), _length(0), _surrogate(0) {
 	// Выполняем сброс байтов доведённой последовательности знака
 	::memset(this->_complete, 0, sizeof(this->_complete));
 	// Выполняем сброс удержанных байтов незавершённой последовательности знака

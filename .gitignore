@@ -23,6 +23,10 @@
 *.mod
 *.smod
 
+# Промежуточные файлы языка Python
+*.pyc
+__pycache__/
+
 # Compiled Static libraries
 *.lai
 *.la

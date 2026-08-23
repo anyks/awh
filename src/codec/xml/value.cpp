@@ -566,6 +566,13 @@ bool awh::codec::xml::Value::text(const string & text) noexcept {
 		case static_cast <uint8_t> (kind_t::NONE):
 			// Устанавливаем вид узла текстовым содержимым
 			this->_kind = kind_t::TEXT;
+		/**
+		 * Проваливаемся к установке содержимого НАМЕРЕННО
+		 *
+		 * @note Пометка обязательна: без неё собиратель числит проваливание недосмотром и
+		 *       предупреждает, а намеренное неотличимо от забытого `break`
+		 */
+		[[fallthrough]];
 		// Если узел владеет содержимым своим
 		case static_cast <uint8_t> (kind_t::TEXT):
 		case static_cast <uint8_t> (kind_t::CDATA):
@@ -1623,23 +1630,23 @@ awh::codec::xml::Value & awh::codec::xml::Value::operator [] (const size_t index
 	if((this->_kind != kind_t::ELEMENT) && (this->_kind != kind_t::DOCUMENT))
 		// Выводим значение мусорное
 		return Value::scrap();
-			/**
-		 * Если рост вместилища выйдет за поставленный предел
-		 *
-		 * @note Номер, пришедший извне, обращается требованием памяти по нему: предел
-		 *       этот рост и стережёт. Ставится он пользователем рамки, а нуль снимает
-		 *       его вовсе - см. `Value::limit`
+	/**
+	 * Если рост вместилища выйдет за поставленный предел
+	 *
+	 * @note Номер, пришедший извне, обращается требованием памяти по нему: предел
+	 *       этот рост и стережёт. Ставится он пользователем рамки, а нуль снимает
+	 *       его вовсе - см. `Value::limit`
+	 */
+	{
+		// Получаем поставленный предел роста вместилища
+		const size_t limit = ::LIMIT.load(::std::memory_order_relaxed);
+		/**
+		 * Если предел поставлен и затребованный номер за него выходит
 		 */
-		{
-			// Получаем поставленный предел роста вместилища
-			const size_t limit = ::LIMIT.load(::std::memory_order_relaxed);
-			/**
-			 * Если предел поставлен и затребованный номер за него выходит
-			 */
-			if((limit > 0) && (index >= limit))
+		if((limit > 0) && (index >= limit))
 			// Выводим значение мусорное
 			return Value::scrap();
-		}
+	}
 	/**
 	 * Выполняем рост перечня вложенных узлов до затребованного номера
 	 */
@@ -2364,7 +2371,7 @@ void awh::codec::xml::Value::absorb(const node_t & node) noexcept {
  * @return     признак успешности разбора
  *
  */
-bool awh::codec::xml::Value::parse(const string & text) noexcept {
+bool awh::codec::xml::Value::parse(const string & text, const reader_t::settings_t & settings) noexcept {
 	// Дерево разметки, разбирающее поданный текст
 	/**
 	 * Заводимое дерево разметки
@@ -2377,7 +2384,7 @@ bool awh::codec::xml::Value::parse(const string & text) noexcept {
 	/**
 	 * Если разбор текста разметки завершился отказом
 	 */
-	if(!document.parse(text)){
+	if(!document.parse(text, settings)){
 		// Выполняем очистку прежнего содержимого значения
 		this->clear();
 		// Выводим признак неудачного разбора

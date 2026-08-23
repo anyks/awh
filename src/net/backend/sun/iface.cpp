@@ -281,6 +281,74 @@ namespace iface {
 	 * @return     размер MTU либо ноль, если связь канальному уровню неизвестна
 	 *
 	 */
+	/**
+	 * @brief Функция определения класса связи канального уровня
+	 *
+	 * @details Опознание по признакам `ifaddrs` для этих систем недостаточно: связь
+	 * `VNIC` поверх `etherstub`, которой у них заводится туннель, ведёт себя обычным
+	 * Ethernet - она не «точка-точка» и не петлевая, а тип канального уровня у неё тот
+	 * же, что у настоящей платы. Отличает её от платы только КЛАСС связи, и система сама
+	 * судит по нему же: его показывает `dladm show-link`
+	 *
+	 * @param name название связи канального уровня
+	 * @return     класс связи канального уровня либо DATALINK_CLASS_PHYS, если он неизвестен
+	 *
+	 */
+	static datalink_class_t datalinkClass(const string_view name) noexcept {
+		// Объект управления связями канального уровня
+		dladm_handle_t handle = nullptr;
+		// Выполняем открытие управления связями канального уровня
+		if(::dladm_open(&handle) != DLADM_STATUS_OK)
+			// Выводим значение по умолчанию
+			return DATALINK_CLASS_PHYS;
+		// Гарантируем закрытие управления связями при любом выходе
+		const unique_ptr <dladm_handle_t, void (*)(dladm_handle_t *)> guard(&handle, [](dladm_handle_t * handle) noexcept -> void {
+			// Выполняем закрытие управления связями канального уровня
+			::dladm_close(* handle);
+		});
+		// Название связи канального уровня
+		const string label(name);
+		// Опознаватель связи канального уровня
+		datalink_id_t link = 0;
+		// Признаки и разновидности связи канального уровня
+		uint32_t flags = 0, media = 0;
+		// Класс связи канального уровня
+		datalink_class_t kind = DATALINK_CLASS_PHYS;
+		// Выполняем поиск связи канального уровня по названию
+		if(::dladm_name2info(handle, label.c_str(), &link, &flags, &kind, &media) != DLADM_STATUS_OK)
+			// Выводим значение по умолчанию
+			return DATALINK_CLASS_PHYS;
+		// Выводим класс связи канального уровня
+		return kind;
+	}
+	/**
+	 * @brief Функция проверки того, что связь канального уровня заведена программно
+	 *
+	 * @param name название связи канального уровня
+	 * @return     результат проверки
+	 *
+	 */
+	static bool isVirtualDatalink(const string_view name) noexcept {
+		/**
+		 * Определяем класс связи канального уровня
+		 */
+		switch(::iface::datalinkClass(name)){
+			// Связь, заведённая поверх другой связи
+			case DATALINK_CLASS_VNIC:
+			// Связь-заглушка канального уровня
+			case DATALINK_CLASS_ETHERSTUB:
+			// Связь, объединяющая несколько других
+			case DATALINK_CLASS_AGGR:
+			// Связь виртуальной сети по метке
+			case DATALINK_CLASS_VLAN:
+			// Связь, полностью изображаемая программно
+			case DATALINK_CLASS_SIMNET:
+				// Выводим признак программной связи
+				return true;
+		}
+		// Выводим признак того, что связь программной не является
+		return false;
+	}
 	static uint32_t datalinkMtu(const string_view name) noexcept {
 		// Объект управления связями канального уровня
 		dladm_handle_t handle = nullptr;
@@ -499,9 +567,20 @@ namespace iface {
 				// Переходим к следующему интерфейсу
 				continue;
 			// Применяем эвристику по флагам интерфейса
-			if(virt)
+			if(virt){
 				// Виртуальный интерфейс обычно Point-to-Point или Loopback
 				result = ((ifa->ifa_flags & IFF_POINTOPOINT) || (ifa->ifa_flags & IFF_LOOPBACK));
+				/**
+				 * @note Признаков `ifaddrs` мало: связь VNIC поверх etherstub, которой у
+				 *       этих систем заводится туннель, ведёт себя обычным Ethernet, и по
+				 *       ним опознавалась платой. Спрашиваем тогда класс связи - тот самый,
+				 *       по которому судит и сама система
+				 */
+				// Если по признакам интерфейс виртуальным не опознан
+				if(!result)
+					// Опознаём его по классу связи канального уровня
+					result = ::iface::isVirtualDatalink(name);
+			}
 			// Туннель обычно Point-to-Point и не Broadcast
 			else result = ((ifa->ifa_flags & IFF_POINTOPOINT) && !(ifa->ifa_flags & IFF_BROADCAST));
 			// Дополнительная точная проверка через AF_LINK
@@ -751,21 +830,32 @@ namespace iface {
 				::memset(dest, 0, sizeof(struct sockaddr_in));
 				// Устанавливаем семейство адреса назначения
 				dest->sin_family = AF_INET;
+				// Признак постановки широковещательного адреса
+				bool broadcast = true;
 				// Если задан адрес удалённого пира (точка-точка)
 				if(peer != nullptr){
 					// Устанавливаем IP-адрес удалённого пира
 					dest->sin_addr.s_addr = awh_cast <const awh::net::addr_net_ipv4_t *> (peer)->address;
 					// Применяем адрес удалённого пира
 					result = (::ioctl(sock, SIOCSLIFDSTADDR, &lifr) == 0);
+				/**
+				 * @note Широковещательный адрес - шаг НЕОБЯЗАТЕЛЬНЫЙ, и итогом постановки
+				 *       он быть не может: у устройства точка-точка широковещательного
+				 *       адреса нет вовсе, и ядро отвечает отказом. Прежде этот отказ
+				 *       объявлял неудачной всю постановку - при том, что адрес и маска
+				 *       УЖЕ поставлены и система их показывает. Установлено щупом на
+				 *       Solaris: `setAddress` отвечал «нет», а `ipadm show-addr` тут же
+				 *       показывал адрес на устройстве
+				 */
 				// Если адрес удалённого пира не задан
 				} else {
 					// Вычисляем широковещательный адрес
 					dest->sin_addr.s_addr = ((awh_cast <const awh::net::addr_net_ipv4_t *> (ip)->address & netmask) | ~netmask);
-					// Применяем широковещательный адрес
-					result = (::ioctl(sock, SIOCSLIFBRDADDR, &lifr) == 0);
+					// Применяем широковещательный адрес, итога постановки не меняя
+					broadcast = (::ioctl(sock, SIOCSLIFBRDADDR, &lifr) == 0);
 				}
 				// Если применить адрес назначения не удалось
-				if(!result){
+				if(!(peer != nullptr ? result : broadcast)){
 					/**
 					 * Если включён режим отладки
 					 */

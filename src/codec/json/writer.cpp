@@ -299,7 +299,7 @@ void awh::codec::json::Writer::setLogger(const log_t * log) noexcept {
  *
  */
 awh::codec::json::Writer::Writer(const log_t * log) noexcept :
- _empty(true), _keyed(false), _started(false), _taken(0), _log(log) {}
+ _empty(true), _keyed(false), _log(log), _started(false), _taken(0) {}
 /**
  * @brief Метод записи разделителя перед очередным значением
  *

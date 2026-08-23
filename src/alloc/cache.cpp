@@ -120,7 +120,7 @@ bool awh::alloc::Cache::init(central_t * central, classes_t * classes, const siz
 	// Запоминаем предел кэша
 	this->_limit = ((limit > 0) ? limit : LIMIT);
 	// Лежащего в кэше пока нет
-	this->_bytes = 0;
+	this->_bytes.store(0, std::memory_order_relaxed);
 	/**
 	 * Накопленное НЕ обнуляем
 	 *
@@ -160,8 +160,14 @@ bool awh::alloc::Cache::stepped(const size_t delta, const size_t step) noexcept 
  *
  */
 int64_t awh::alloc::Cache::pending() const noexcept {
-	// Выводим накопленное этим потоком
-	return this->_tally;
+	/**
+	 * Читаем накопленное неделимо и без порядка
+	 *
+	 * Зовётся из ЧУЖОГО потока - опросом расхода, - а пишет накопленное хозяин кэша.
+	 * Порядка здесь не требуется: ответ огрубляется и без того, ибо потоки отдают
+	 * накопленное пачками, а вот состязание по стандарту неделимость снимает
+	 */
+	return this->_tally.load(std::memory_order_relaxed);
 }
 /**
  * @brief Метод возврата пачки блоков разряда центральным спискам
@@ -208,7 +214,7 @@ size_t awh::alloc::Cache::drain(const size_t index, const size_t count) noexcept
 	// Уменьшаем число блоков в кэше
 	this->_lists[index].count -= result;
 	// Уменьшаем лежащее в кэше
-	this->_bytes -= (result * this->_classes->size(index));
+	this->_bytes.store((this->_bytes.load(std::memory_order_relaxed) - (result * this->_classes->size(index))), std::memory_order_relaxed);
 	// Возвращаем цепочку центральным спискам
 	this->_central->back(index, head, tail, result);
 	// Выводим число возвращённых блоков
@@ -289,7 +295,7 @@ void * awh::alloc::Cache::refill(const size_t index) noexcept {
 	// Увеличиваем число блоков в кэше
 	this->_lists[index].count += taken;
 	// Увеличиваем лежащее в кэше
-	this->_bytes += (taken * this->_classes->size(index));
+	this->_bytes.store((this->_bytes.load(std::memory_order_relaxed) + (taken * this->_classes->size(index))), std::memory_order_relaxed);
 	// Снимаем блок с головы списка
 	void * result = this->_lists[index].free;
 	// Головой списка становится следующий блок
@@ -297,7 +303,7 @@ void * awh::alloc::Cache::refill(const size_t index) noexcept {
 	// Уменьшаем число блоков в кэше
 	this->_lists[index].count--;
 	// Уменьшаем лежащее в кэше
-	this->_bytes -= this->_classes->size(index);
+	this->_bytes.store((this->_bytes.load(std::memory_order_relaxed) - this->_classes->size(index)), std::memory_order_relaxed);
 	// Выводим выданный блок
 	return result;
 }
@@ -307,18 +313,35 @@ void * awh::alloc::Cache::refill(const size_t index) noexcept {
  */
 void awh::alloc::Cache::relieve() noexcept {
 	/**
+	 * Отзываемся на просьбу опустошиться и здесь, а не только при пополнении
+	 *
+	 * Просьбу ставит чужой поток - отдача памяти системе, - а исполняет её ХОЗЯИН кэша:
+	 * править чужой лок-фри кэш нельзя. Прежде она читалась лишь на пополнении, и поток,
+	 * который только освобождает и больше ничего не просит, держал бы свои блоки до
+	 * самого конца работы, ни разу просьбы не увидев
+	 *
+	 * Читаем прежде обмена: обмен - действие пишущее, и делать его на каждом
+	 * освобождении значило бы гонять строку памяти между ядрами без всякой нужды
+	 */
+	if(this->_yield.load(std::memory_order_acquire) && this->_yield.exchange(false, std::memory_order_acq_rel)){
+		// Отдаём блоки кэша центральным спискам
+		this->flush();
+		// Отдавать излишек больше нечего: кэш пуст
+		return;
+	}
+	/**
 	 * Отдаём излишек центральным спискам, пока предел кэша перебран
 	 *
 	 * Отдаём пачками и лишь пока предел перебран: отдача всего разом обнулила бы
 	 * кэш и следующее же выделение снова пошло бы за замком
 	 */
-	while(this->_bytes > this->_limit){
+	while(this->_bytes.load(std::memory_order_relaxed) > this->_limit){
 		// Число отданного за оборот
 		size_t given = 0;
 		/**
 		 * Перебираем разряды, отдавая по пачке
 		 */
-		for(size_t i = 0; (i < Classes::LIMIT) && (this->_bytes > this->_limit); i++){
+		for(size_t i = 0; (i < Classes::LIMIT) && (this->_bytes.load(std::memory_order_relaxed) > this->_limit); i++){
 			// Если в разряде блоков нет
 			if(this->_lists[i].count == 0)
 				// Переходим к следующему разряду
@@ -350,7 +373,13 @@ void awh::alloc::Cache::limit(const size_t limit) noexcept {
  */
 size_t awh::alloc::Cache::bytes() const noexcept {
 	// Выводим объём лежащего в кэше
-	return this->_bytes;
+	/**
+	 * Читаем лежащее неделимо и без порядка
+	 *
+	 * Зовётся из ЧУЖОГО потока - опросом расхода и отдачей излишка, - а пишет хозяин
+	 * кэша. Порядка не требуется: ответ и без того мгновенным не бывает
+	 */
+	return this->_bytes.load(std::memory_order_relaxed);
 }
 
 /**

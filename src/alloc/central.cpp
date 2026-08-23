@@ -404,6 +404,34 @@ void * awh::alloc::Central::alloc(const size_t size) noexcept {
 	return this->take(pages);
 }
 /**
+ * @brief Метод расширения выданной сверх разрядов области на месте
+ *
+ * @param addr адрес начала расширяемой области
+ * @param size требуемый размер в байтах
+ * @return     признак состоявшегося расширения
+ *
+ */
+bool awh::alloc::Central::expand(void * addr, const size_t size) noexcept {
+	// Если куча не заведена либо расширять нечего
+	if((this->_pages == nullptr) || (addr == nullptr) || (size == 0))
+		// Расширять нечего
+		return false;
+	// Сверяем размер на переполнение при приведении к границе страницы
+	if(size > (static_cast <size_t> (-1) - (Pages::PAGE - 1)))
+		// Расширять нечего
+		return false;
+	// Определяем требуемое число страниц кучи
+	const size_t pages = ((size + (Pages::PAGE - 1)) / Pages::PAGE);
+	// Если требуемое число страниц не помещается в кусок кучи
+	if(pages > Pages::PAGES)
+		// Расширять некуда
+		return false;
+	// Захватываем замок кучи
+	hold_t hold(this->_heap);
+	// Выводим признак состоявшегося расширения
+	return this->_pages->expand(addr, pages);
+}
+/**
  * @brief Метод возврата памяти, выданной сверх разрядов
  *
  * @param addr адрес возвращаемой памяти

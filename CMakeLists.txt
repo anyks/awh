@@ -1611,6 +1611,17 @@ if (${CMAKE_BUILD_SAMPLES})
     # Указываем что нужно собрать приложение работы с контейнером YAML
     option(CMAKE_BUILD_CODEC_YAML_APP_SAMPLE "Build YAML codec app sample" ON)
 
+    # Устанавливаем имя приложения потокового чтения бинарной записи ABC
+    SET(CODEC_APP_ABC_READER_NAME codec-abc-reader)
+    # Устанавливаем имя приложения работы с деревом документа ABC
+    SET(CODEC_APP_ABC_DOCUMENT_NAME codec-abc-document)
+    # Устанавливаем имя приложения сборки бинарной записи ABC
+    SET(CODEC_APP_ABC_WRITER_NAME codec-abc-writer)
+    # Устанавливаем имя приложения работы с контейнером ABC
+    SET(CODEC_APP_ABC_CONTAINER_NAME codec-abc-container)
+    # Указываем что нужно собрать приложение работы с контейнером ABC
+    option(CMAKE_BUILD_CODEC_ABC_APP_SAMPLE "Build ABC codec app sample" ON)
+
     # Устанавливаем имя приложения потокового чтения текста документа JSON
     SET(CODEC_APP_JSON_READER_NAME codec-json-reader)
     # Устанавливаем имя приложения работы с деревом документа JSON
@@ -2331,6 +2342,24 @@ if (${CMAKE_BUILD_SAMPLES})
         # Выводим сообщение о сборке семпла
         message(STATUS "Build sample INI Codec: No\n")
     endif (${CMAKE_BUILD_CODEC_INI_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с контейнером ABC
+    if (${CMAKE_BUILD_CODEC_ABC_APP_SAMPLE})
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample ABC Codec: Yes\n")
+        # Выполняем создание приложения потокового чтения бинарной записи
+        add_sample(${CODEC_APP_ABC_READER_NAME} sample/codec/abc-reader.cpp codec)
+        # Выполняем создание приложения работы с деревом документа
+        add_sample(${CODEC_APP_ABC_DOCUMENT_NAME} sample/codec/abc-document.cpp codec)
+        # Выполняем создание приложения сборки бинарной записи
+        add_sample(${CODEC_APP_ABC_WRITER_NAME} sample/codec/abc-writer.cpp codec)
+        # Выполняем создание приложения работы с контейнером
+        add_sample(${CODEC_APP_ABC_CONTAINER_NAME} sample/codec/abc-container.cpp codec)
+    # Если не нужно собирать семплы для работы с контейнером ABC
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample ABC Codec: No\n")
+    endif (${CMAKE_BUILD_CODEC_ABC_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с контейнером JSON
     if (${CMAKE_BUILD_CODEC_JSON_APP_SAMPLE})
@@ -3410,6 +3439,34 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_CODEC_JSON_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с контейнером ABC
+        if (${CMAKE_BUILD_CODEC_ABC_APP_SAMPLE})
+            # Выполняем сборку приложения потокового чтения бинарной записи
+            target_link_libraries(
+                ${CODEC_APP_ABC_READER_NAME}
+                ${AWH_LIB_NAME}
+                ${AWH_FLAGS}
+            )
+            # Выполняем сборку приложения работы с деревом документа
+            target_link_libraries(
+                ${CODEC_APP_ABC_DOCUMENT_NAME}
+                ${AWH_LIB_NAME}
+                ${AWH_FLAGS}
+            )
+            # Выполняем сборку приложения сборки бинарной записи
+            target_link_libraries(
+                ${CODEC_APP_ABC_WRITER_NAME}
+                ${AWH_LIB_NAME}
+                ${AWH_FLAGS}
+            )
+            # Выполняем сборку приложения работы с контейнером
+            target_link_libraries(
+                ${CODEC_APP_ABC_CONTAINER_NAME}
+                ${AWH_LIB_NAME}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_CODEC_ABC_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с компрессией данных
         if (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})
@@ -4570,6 +4627,38 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_CODEC_JSON_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с контейнером ABC
+        if (${CMAKE_BUILD_CODEC_ABC_APP_SAMPLE})
+            # Выполняем сборку приложения потокового чтения бинарной записи
+            target_link_libraries(
+                ${CODEC_APP_ABC_READER_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${AWH_FLAGS}
+            )
+            # Выполняем сборку приложения работы с деревом документа
+            target_link_libraries(
+                ${CODEC_APP_ABC_DOCUMENT_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${AWH_FLAGS}
+            )
+            # Выполняем сборку приложения сборки бинарной записи
+            target_link_libraries(
+                ${CODEC_APP_ABC_WRITER_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${AWH_FLAGS}
+            )
+            # Выполняем сборку приложения работы с контейнером
+            target_link_libraries(
+                ${CODEC_APP_ABC_CONTAINER_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_CODEC_ABC_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с компрессией данных
         if (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})

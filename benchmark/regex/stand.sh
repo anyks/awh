@@ -44,58 +44,16 @@ echo "собиратель: $CXX"
 echo "дерево: $ROOT"
 echo "стенд: $OUT"
 ##
-# Сборщик набора правил выбирается по наличию, а не по имени «make»
+# Эталон собирается ОБЩИМ сценарием, а не своим здесь
 #
-# У систем Sun родной make наследует SVR4 и правил, cmake порождаемых, не разбирает
-# вовсе: сборка эталона встала там молча - файла make.log не появилось ни одного
+# Тем же самым эталоном сличаются и проверки `tests/regex/reference.cpp`. Собирай
+# его каждый стенд по-своему - разошлись бы они версией да ключами сборки, и
+# расхождение пришлось бы разбирать гадая: наш ли это изъян или иное поведение
+# иной сборки соперника. Сценарий общий держит источник один - подмодуль дерева
 ##
-MAKE=make
-command -v gmake > /dev/null 2>&1 && MAKE=gmake
-PCRE="$ROOT/submodules/pcre2"
-if [ ! -f "$PCRE/CMakeLists.txt" ]; then
-	echo "ОТКАЗ: подмодуль PCRE2 не развёрнут; выполните:"
-	echo "  git submodule update --init --recursive submodules/pcre2"
-	exit 1
-fi
-##
-# Порождение машинного кода у эталона живёт ВЛОЖЕННЫМ подмодулем
-#
-# Сам PCRE2 держит `deps/sljit` подмодулем своим, и без рекурсии он не разворачивается:
-# заголовки на месте, а сборка падает на `pcre2_jit_compile.c` посреди пути. Отказ этот
-# вышел на стенде FreeBSD и не виден вовсе на машине, где подмодуль развёрнут давно
-##
-if [ ! -f "$PCRE/deps/sljit/sljit_src/sljitLir.c" ]; then
-	echo "ОТКАЗ: вложенный подмодуль sljit не развёрнут - эталон без него порождения кода не имеет; выполните:"
-	echo "  git submodule update --init --recursive submodules/pcre2"
-	exit 1
-fi
-##
-# Сборка эталона переиспользуется между прогонами
-#
-# Она занимает около минуты, а меняться ей нечего: подмодуль закреплён. Пересобрать
-# её насильно можно, удалив каталог стенда целиком
-##
-if [ ! -f "$OUT/pcre2/libpcre2-8.a" ]; then
-	echo "--- сборка эталона PCRE2 (единожды на стенд)"
-	mkdir -p "$OUT/pcre2"
-	##
-	# Порождение машинного кода у эталона включается НАРОЧНО
-	#
-	# Наш модуль сличается с эталоном на равных: у обоих оба способа исполнения.
-	# Эталон без кода мерил бы разбор программы против нашего машинного кода, и
-	# сличение обратилось бы в похвальбу
-	##
-	( cd "$OUT/pcre2" && cmake "$PCRE" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF \
-	   -DPCRE2_BUILD_PCRE2_8=ON -DPCRE2_SUPPORT_JIT=ON \
-	   -DPCRE2_BUILD_TESTS=OFF -DPCRE2_BUILD_PCRE2GREP=OFF > cmake.log 2>&1 \
-	  && $MAKE -j4 > make.log 2>&1 ) || { echo "ОТКАЗ СБОРКИ эталона, смотрите $OUT/pcre2/make.log и cmake.log"; exit 1; }
-fi
-##
-# Заголовок эталона порождается сборкой, а не лежит в исходниках
-#
-# В подмодуле его нет вовсе - там pcre2.h.in, - и путь включения ведёт в каталог сборки
-##
-HEADERS=$(dirname "$(find "$OUT/pcre2" -name pcre2.h | head -1)")
+REFERENCE=$("$ROOT/sh/reference/pcre2.sh" "$OUT/pcre2") || exit 1
+HEADERS=$(echo "$REFERENCE" | head -1)
+LIBRARY=$(echo "$REFERENCE" | tail -1)
 ##
 # Зависимости системные, журналом требуемые
 #
@@ -105,6 +63,14 @@ HEADERS=$(dirname "$(find "$OUT/pcre2" -name pcre2.h | head -1)")
 LIBS="-lz"
 case "$(uname -s)" in
 	Darwin) LIBS="$LIBS -framework Foundation" ;;
+	##
+	# У MS Windows основание фреймворка опирается на службы системы поимённо
+	#
+	# Сокеты (ws2_32) зовёт журнал, сведения о памяти (psapi) - модуль системы,
+	# случайные числа (bcrypt) - распределитель. Перечень тот же, что и у штатной
+	# сборки: расходиться им нельзя, иначе стенд соберётся не тем, чем библиотека
+	##
+	MINGW*|MSYS*|CYGWIN*) LIBS="$LIBS -lws2_32 -lIphlpapi -lpsapi -ldbghelp -lcrypt32 -lbcrypt -lgdi32" ;;
 	*) LIBS="$LIBS -lpthread" ;;
 esac
 echo "--- сборка замеров со сличением"
@@ -140,9 +106,16 @@ SUPPORT="$ROOT/src/sys/log.cpp $ROOT/src/sys/fmk.cpp $ROOT/src/sys/chrono.cpp \
  $ROOT/src/encoding/charset/*.cpp $ROOT/src/alloc/*.cpp $CAPTURE"
 SOURCES="$ROOT/benchmark/main.cpp $ROOT/benchmark/regex/matching/matching.cpp \
  $ROOT/src/regex/*.cpp $ROOT/src/encoding/unicode/*.cpp $SUPPORT"
-$CXX -std=c++17 -O2 -Wno-c++11-narrowing $FLAGS -DAWH_BENCHMARK_PCRE2 \
+##
+# Эталон связывается СТАТИЧЕСКИ, и заголовку его о том надо сказать
+#
+# Без `PCRE2_STATIC` заголовок объявляет вызовы через `__declspec(dllimport)`, и у
+# MS Windows связывание отвечает «undefined symbol», хотя символ в архиве лежит.
+# У прочих систем макрос этот не значит ничего
+##
+$CXX -std=c++17 -O2 -Wno-c++11-narrowing $FLAGS -DAWH_BENCHMARK_PCRE2 -DPCRE2_STATIC \
  -I "$ROOT/include" -I "$ROOT/tools/benchmark/syscount" -I "$HEADERS" \
- -o "$OUT/bench-regex" $SOURCES "$OUT/pcre2/libpcre2-8.a" $LIBS > "$OUT/build.log" 2>&1
+ -o "$OUT/bench-regex" $SOURCES "$LIBRARY" $LIBS > "$OUT/build.log" 2>&1
 ##
 # Вывод собирателя печатается ИЗ ФАЙЛА, а не через `head` из канала
 #
