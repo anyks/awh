@@ -46,10 +46,10 @@ if command -v "$HOST_CXX" >/dev/null 2>&1 ; then
 	HOST_DIR=$(mktemp -d -t awh-regex-host)
 	# Состав исходных текстов разбирается поиском, а не перечислением: перечень
 	# каталогов ведётся общим файлом, а состав каталога - самим деревом
-	HOST_SOURCES=$(cd "$ROOT" && find $STAND_SOURCES -maxdepth 1 -name '*.cpp')
+	HOST_SOURCES=$(cd "$ROOT" && stand_sources)
 	# shellcheck disable=SC2086
-	if (cd "$ROOT" && "$HOST_CXX" -std=c++17 -O2 -Iinclude -Itools/regex \
-		tools/regex/conformance.cpp $HOST_SOURCES \
+	if (cd "$ROOT" && "$HOST_CXX" -std=c++17 -O2 -Wno-c++11-narrowing -Iinclude -Itools/regex \
+		tools/regex/conformance.cpp $HOST_SOURCES -lz \
 		-o "$HOST_DIR/conformance") 2>"$HOST_DIR/compile.log" ; then
 		if "$HOST_DIR/conformance" "--write=$HOST_DIR/record.bin" >/dev/null 2>&1 ; then
 			RECORD="$HOST_DIR/record.bin"
@@ -69,7 +69,7 @@ fi
 # подкаталог grok, модулю выражений подчинённый, однако переносимой проверке
 # не нужный и связанный с прочими частями библиотеки. Перечень потому выводится
 # здесь по составу каталогов, а стенд берёт его готовым
-(cd "$ROOT" && find $STAND_SOURCES -maxdepth 1 -name '*.cpp') > "$ROOT/tools/regex/sources.list"
+(cd "$ROOT" && stand_sources) > "$ROOT/tools/regex/sources.list"
 
 echo "Собираем набор исходных текстов модуля"
 if [ -n "$RECORD" ] ; then
@@ -147,9 +147,17 @@ ssh -p "$PORT" "$TARGET" '
 	# и кавычки образца sed его бы разорвали
 	TRIPLE=$("$CXX" -dumpmachine 2>/dev/null || echo "не сообщается")
 	printf "  цель собирателя        %s\n" "$TRIPLE"
+	# Внутренние имена распределителя libc берутся только под OpenBSD: собранная
+	# безусловно, часть эта под MinGW валит связывание
+	SOURCES=$(cat tools/regex/sources.list)
+	if [ "$(uname -s)" = "OpenBSD" ] ; then
+		SOURCES="$SOURCES src/alloc/capture/obsd.cpp"
+	fi
+	# Предупреждение о сужении подавляется: тело фреймворка наводит его в местах,
+	# зоне модуля не принадлежащих, а в основной сборке предупреждение это живо
 	for STD in c++2b c++20 c++17 ; do
-		if "$CXX" -std=$STD -O2 -Iinclude -Itools/regex \
-			tools/regex/conformance.cpp $(cat tools/regex/sources.list) -o conformance 2>compile.log ; then
+		if "$CXX" -std=$STD -O2 -Wno-c++11-narrowing -Iinclude -Itools/regex \
+			tools/regex/conformance.cpp $SOURCES -lz -o conformance 2>compile.log ; then
 			echo "Собрано в режиме -std=$STD"
 			break
 		fi

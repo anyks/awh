@@ -870,7 +870,7 @@ namespace {
 		// Подписываемся на перечисление регистров соглашения о вызове
 		using reg_t = regex::emitter_t::reg_t;
 		// Создаём объект порождения машинного кода
-		regex::emitter_t emitter;
+		regex::emitter_t emitter(::logger());
 		/**
 		 * Выполняем размещение входа в порождаемую подпрограмму
 		 *
@@ -972,7 +972,7 @@ namespace {
 			// Подписываемся на перечисление регистров соглашения о вызове
 			using reg_t = regex::emitter_t::reg_t;
 			// Создаём объект порождения машинного кода
-			regex::emitter_t emitter;
+			regex::emitter_t emitter(::logger());
 			// Выполняем размещение входа в порождаемый сопоставитель
 			emitter.prologue(0);
 			/**
@@ -1394,7 +1394,7 @@ static bool indexing() noexcept {
 	 */
 	typedef bool (* probe_t) (const char *, size_t, size_t, size_t *, const void *);
 	// Создаём объект порождения машинного кода
-	awh::regex::emitter_t emitter;
+	awh::regex::emitter_t emitter(::logger());
 	// Выполняем размещение входа в порождаемый образец
 	emitter.prologue(32);
 	// Выполняем перенос позиции начала попытки в регистр позиции
@@ -1553,7 +1553,7 @@ static bool nesting() noexcept {
 	// Размер записи кадра образца в байтах
 	constexpr uint32_t FRAME = (PLACES * 8);
 	// Создаём объект порождения машинного кода
-	awh::regex::emitter_t emitter;
+	awh::regex::emitter_t emitter(::logger());
 	// Выполняем размещение входа в порождаемый образец
 	emitter.prologue(FRAME);
 	/**

@@ -77,13 +77,15 @@ BUNDLE="$STAND_HEADERS $STAND_SOURCES $STAND_TOOLS"
 # Разбирать состав поиском на узле сборки нельзя: дерево src/regex несёт
 # подкаталог grok, модулю выражений подчинённый, однако переносимой проверке
 # не нужный и связанный с прочими частями библиотеки
-CODE=$(cd "$ROOT" && find $STAND_SOURCES -maxdepth 1 -name '*.cpp' | tr '\n' ' ')
+CODE=$(cd "$ROOT" && stand_sources | tr '\n' ' ')
 
 # Связка ключей сборки
 #
 # Статическая связка обязательна: набор библиотек встроенной машины неизвестен
 # заранее, и связка динамическая упёрлась бы там в отсутствие libstdc++
-FLAGS="-std=c++17 -O2 -static -Iinclude -Itools/regex"
+# Предупреждение о сужении подавляется: тело фреймворка наводит его в местах, зоне
+# модуля не принадлежащих, а в основной сборке предупреждение это живо
+FLAGS="-std=c++17 -O2 -static -Wno-c++11-narrowing -Iinclude -Itools/regex"
 
 # Порождаем запись хранилища собранных выражений на рабочей машине, дабы стенд
 # проверил её восстановлением у себя. Наборы программы пишутся образом памяти,
@@ -94,7 +96,7 @@ HOST_CXX="${CXX:-c++}"
 if command -v "$HOST_CXX" >/dev/null 2>&1 ; then
 	# shellcheck disable=SC2086
 	if (cd "$ROOT" && "$HOST_CXX" -std=c++17 -O2 -Iinclude -Itools/regex \
-		tools/regex/conformance.cpp $CODE \
+		tools/regex/conformance.cpp $CODE -lz \
 		-o "$WORK/conformance") 2>"$WORK/compile.log" ; then
 		if "$WORK/conformance" "--write=$WORK/record.bin" >/dev/null 2>&1 ; then
 			RECORD="$WORK/record.bin"
@@ -132,10 +134,10 @@ if [ -n "$CROSS_HOST" ]; then
 		# не подключают. Наличие её заранее неизвестно, поэтому связывание
 		# ведётся сперва без неё, а при отказе повторяется с нею
 		\"$CROSS_CXX\" $FLAGS \
-			tools/regex/conformance.cpp $CODE \
+			tools/regex/conformance.cpp $CODE -lz \
 			-o conformance 2>compile.log || \
 		\"$CROSS_CXX\" $FLAGS \
-			tools/regex/conformance.cpp $CODE \
+			tools/regex/conformance.cpp $CODE -lz \
 			-o conformance -lgcc_eh 2>compile.log || \
 		{ echo 'Встречная сборка не выполнена:' >&2; tail -30 compile.log >&2; exit 4; }
 	"
@@ -146,7 +148,7 @@ else
 	echo "Ведём встречную сборку на рабочей машине"
 	# shellcheck disable=SC2086
 	(cd "$ROOT" && "$CROSS_CXX" $FLAGS \
-		tools/regex/conformance.cpp $CODE \
+		tools/regex/conformance.cpp $CODE -lz \
 		-o "$WORK/embedded")
 fi
 

@@ -29,7 +29,34 @@ STAND_HEADERS="include"
 # извлечённые поля значением кодека, а не текстом, собранным вручную: договор
 # на выдачу общий у пяти кодеков, и своя запись JSON у Grok была бы шестым.
 # Разбор чисел нужен уже кодеку JSON, а не Grok
-STAND_SOURCES="src/regex src/encoding/unicode src/codec/json src/num/lexical"
+#
+# Тело фреймворка перечислено оттого, что модуль сообщает об отказах разбора
+# выражения в журнал работы, а тот опирается на средства времени, строк, кодировок
+# и распределителя памяти. Прежде перечня этого здесь не было, и стенды на свежей
+# машине не собирались вовсе: связывание отказывало по «Logging::print»
+STAND_SOURCES="src/regex src/encoding/unicode src/codec/json src/num/lexical
+	src/sys src/net/nwt.cpp src/encoding/charset src/alloc src/alloc/capture"
+
+##
+# Функция выдачи состава исходных текстов набора
+#
+# Перечисляются каталоги, а состав их разбирается поиском. Часть «capture/obsd.cpp»
+# из состава изымается: внутренние имена распределителя libc берутся только под
+# OpenBSD, а собранная безусловно, часть эта под MinGW валит связывание. Стенды
+# возвращают её сами, опознав систему у себя
+#
+# @warning Из «src/sys» берётся не всё: там лежат части, тянущие за собою прочую
+#          библиотеку. Отбор ведётся поимённо
+##
+stand_sources() {
+	find src/regex src/encoding/unicode src/codec/json src/num/lexical \
+		src/encoding/charset src/alloc src/alloc/capture \
+		-maxdepth 1 -name '*.cpp' ! -name 'obsd.cpp'
+	echo src/sys/log.cpp
+	echo src/sys/chrono.cpp
+	echo src/sys/fmk.cpp
+	echo src/net/nwt.cpp
+}
 
 # Исходные тексты переносимой проверки
 STAND_TOOLS="tools/regex/conformance.cpp tools/regex/conformance.hpp"

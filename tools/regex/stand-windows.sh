@@ -55,10 +55,10 @@ RECORD=""
 HOST_CXX="${CXX:-c++}"
 if command -v "$HOST_CXX" >/dev/null 2>&1 ; then
 	HOST_DIR=$(mktemp -d -t awh-regex-host)
-	HOST_SOURCES=$(cd "$ROOT" && find $STAND_SOURCES -maxdepth 1 -name '*.cpp')
+	HOST_SOURCES=$(cd "$ROOT" && stand_sources)
 	# shellcheck disable=SC2086
-	if (cd "$ROOT" && "$HOST_CXX" -std=c++17 -O2 -Iinclude -Itools/regex \
-		tools/regex/conformance.cpp $HOST_SOURCES \
+	if (cd "$ROOT" && "$HOST_CXX" -std=c++17 -O2 -Wno-c++11-narrowing -Iinclude -Itools/regex \
+		tools/regex/conformance.cpp $HOST_SOURCES -lz \
 		-o "$HOST_DIR/conformance") 2>"$HOST_DIR/compile.log" ; then
 		if "$HOST_DIR/conformance" "--write=$HOST_DIR/record.bin" >/dev/null 2>&1 ; then
 			RECORD="$HOST_DIR/record.bin"
@@ -83,7 +83,7 @@ REMOTE="awh-regex-stand"
 # Разбирать состав поиском на самом стенде нельзя: дерево src/regex несёт
 # подкаталог grok, модулю выражений подчинённый, однако переносимой проверке
 # не нужный и связанный с прочими частями библиотеки
-(cd "$ROOT" && find $STAND_SOURCES -maxdepth 1 -name '*.cpp') > "$ROOT/tools/regex/sources.list"
+(cd "$ROOT" && stand_sources) > "$ROOT/tools/regex/sources.list"
 
 echo "Раскладываем набор исходных текстов на стенд $TARGET"
 

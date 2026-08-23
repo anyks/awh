@@ -43,7 +43,7 @@ BUNDLE=$(mktemp -t awh-regex-bench)
 # Перечень собираемых исходных текстов кладётся в набор отдельным файлом:
 # разбирать состав поиском на самом стенде нельзя, дерево src/regex несёт
 # подкаталог grok, замеру не нужный и связанный с прочими частями библиотеки
-(cd "$ROOT" && find $STAND_SOURCES -maxdepth 1 -name '*.cpp') > "$ROOT/tools/regex/sources.list"
+(cd "$ROOT" && stand_sources) > "$ROOT/tools/regex/sources.list"
 
 echo "Собираем набор исходных текстов модуля"
 # shellcheck disable=SC2086
@@ -91,9 +91,17 @@ ssh -p "$PORT" "$TARGET" '
 	# Уровень оптимизации совпадает с уровнем сборки библиотеки в режиме
 	# выпуска: замер, снятый со сборки отладочной, занижает показатели
 	# равномерно и порогом служить не может
+	# Внутренние имена распределителя libc берутся только под OpenBSD: собранная
+	# безусловно, часть эта под MinGW валит связывание
+	SOURCES=$(cat tools/regex/sources.list)
+	if [ "$(uname -s)" = "OpenBSD" ] ; then
+		SOURCES="$SOURCES src/alloc/capture/obsd.cpp"
+	fi
+	# Предупреждение о сужении подавляется: тело фреймворка наводит его в местах,
+	# зоне модуля не принадлежащих, а в основной сборке предупреждение это живо
 	for STD in c++2b c++20 c++17 ; do
-		if "$CXX" -std=$STD -O3 -DNDEBUG -Iinclude -Itools/benchmark/regex \
-			tools/benchmark/regex/awh.cpp $(cat tools/regex/sources.list) -o bench 2>compile.log ; then
+		if "$CXX" -std=$STD -O3 -DNDEBUG -Wno-c++11-narrowing -Iinclude -Itools/benchmark/regex \
+			tools/benchmark/regex/awh.cpp $SOURCES -lz -o bench 2>compile.log ; then
 			echo "Собрано в режиме -std=$STD"
 			break
 		fi
