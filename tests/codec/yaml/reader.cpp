@@ -3895,3 +3895,72 @@ TEST(CodecYamlReader, FailureReachesTheLog) {
 	// Выполняем проверку того, что сообщение несёт место отказа
 	ASSERT_NE(caught.find("line"), string::npos);
 }
+
+/**
+ * @brief Проверка выдачи пустых строк за простым значением
+ *
+ * @details Пустая строка, за простым значением стоящая, выдавалась событием лишь тогда,
+ * когда значение продолжения не ждало: за закавыченным значением она выдавалась, а за
+ * простым пропадала. Простое значение продолжения ждёт и строку эту съедало, а
+ * потребитель о том не спрашивал вовсе - выдача пустых строк есть настройка, а не
+ * свойство оформления соседа
+ *
+ * @note Нашёл это образец: он держал в тексте пустую строку, а событием её не получал
+ *
+ */
+TEST(CodecYamlReader, BlanksAfterPlainScalar) {
+	// Настройки разбора текста с выдачей пустых строк
+	yaml::reader_t::settings_t settings;
+	// Задаём выдачу пустых строк отдельным событием
+	settings.emitBlanks = true;
+	/**
+	 * @brief Функция сбора ряда событий разбора
+	 *
+	 * @param text разбираемый текст
+	 * @return     собранный ряд событий разбора
+	 *
+	 */
+	const auto collect = [&settings](const string & text) noexcept -> string {
+		// Объект потокового чтения текста
+		yaml::reader_t reader(::logger(), settings);
+		// Собираемый ряд событий разбора
+		string result;
+		// Выполняем подачу разбираемого текста
+		reader.feed(text.data(), text.length(), true);
+		/**
+		 * Выполняем перебор всех событий разбора
+		 */
+		while(reader.next())
+			// Выполняем запись названия очередного события
+			result.append(yaml::name(reader.event())).append("\n");
+		// Выводим собранный ряд событий разбора
+		return result;
+	};
+	// Выполняем проверку пустой строки за простым значением
+	ASSERT_EQ(collect("key: 1\n\nnext: 2\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\nSCALAR\nSCALAR\nBLANK\n"
+		"SCALAR\nSCALAR\nMAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
+	/**
+	 * Выполняем проверку того, что за закавыченным значением выдача та же
+	 *
+	 * @note Ровно этим сличением расхождение и вскрылось
+	 */
+	ASSERT_EQ(collect("key: \"1\"\n\nnext: 2\n"), collect("key: 1\n\nnext: 2\n"));
+	// Выполняем проверку двух пустых строк подряд
+	ASSERT_EQ(collect("key: 1\n\n\nnext: 2\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\nSCALAR\nSCALAR\nBLANK\nBLANK\n"
+		"SCALAR\nSCALAR\nMAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
+	// Выполняем проверку пустой строки между записями перечня
+	ASSERT_EQ(collect("- 1\n\n- 2\n"),
+		"STREAM_START\nDOCUMENT_START\nSEQUENCE_START\nSCALAR\nBLANK\nSCALAR\n"
+		"SEQUENCE_END\nDOCUMENT_END\nSTREAM_END\n");
+	/**
+	 * Выполняем проверку того, что пустые строки, содержимого дождавшиеся, значению
+	 * принадлежат и событиями не выдаются
+	 *
+	 * @note Описание велит им лечь переводами строк в собранное содержимое
+	 */
+	ASSERT_EQ(collect("key: первая\n\n  вторая\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\nSCALAR\nSCALAR\n"
+		"MAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
+}
