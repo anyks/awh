@@ -10,7 +10,6 @@ readonly STANDS="$ROOT/tools/benchmark/yaml"
 readonly VENDOR="$ROOT/submodules"
 
 # Каталог исходных текстов сравниваемых реализаций, выпуском получаемых
-readonly FETCHED="$ROOT/third_party/rival/yaml"
 
 # Каталог собранных стендов
 readonly OUTPUT="${1:-/tmp/rival-yaml}"
@@ -160,16 +159,25 @@ else
 	omit "fkyaml" "submodules/fkYAML is not checked out"
 fi
 
-# Если исходные тексты реализации rapidyaml получены
-if [ -f "$FETCHED/rapidyaml/ryml_all.hpp" ]; then
+##
+# Если исходные тексты реализации rapidyaml выложены
+#
+# Разбор ведёт c4core, выложенный самою реализацией свёртком «ext/c4core.src»:
+# отдельного подмодуля ему не нужно. Прежде стенд собирался единым заголовочным
+# файлом, забранным со стороны, тогда как соперник обязан
+# собираться из подмодуля наравне с прочими
+##
+if [ -f "$VENDOR/rapidyaml/src/ryml.hpp" ]; then
 	# Выводим сообщение о сборке стенда реализации rapidyaml
 	echo "Build \"rapidyaml\""
 	# Выполняем сборку стенда реализации rapidyaml
-	c++ $FLAGS -I"$FETCHED/rapidyaml" -I"$STANDS" "$STANDS/rapidyaml.cpp" -o "$OUTPUT/rapidyaml" || exit 1
-# Если исходные тексты реализации rapidyaml не получены
+	c++ $FLAGS -I"$VENDOR/rapidyaml/src" -I"$VENDOR/rapidyaml/ext/c4core.src" -I"$STANDS" \
+		"$STANDS/rapidyaml.cpp" "$VENDOR"/rapidyaml/src/c4/yml/*.cpp \
+		"$VENDOR"/rapidyaml/ext/c4core.src/c4/*.cpp -o "$OUTPUT/rapidyaml" || exit 1
+# Если исходные тексты реализации rapidyaml не выложены
 else
 	# Выводим сообщение о пропуске стенда
-	omit "rapidyaml" "third_party/rival/yaml/rapidyaml not fetched, run fetch.sh"
+	omit "rapidyaml" "submodules/rapidyaml is not checked out"
 fi
 
 # Выполняем удаление промежуточных объектных файлов

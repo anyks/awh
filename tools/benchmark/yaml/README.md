@@ -103,15 +103,17 @@
 
 ## Сборка и прогон
 
-Пять реализаций из шести берутся подмодулями. Шестая — rapidyaml — опирается на
-стороннюю библиотеку c4core, а та в подмодуле не выложена вовсе: дерево `ext/c4core`
-пусто. Оттого она получается одиночным заголовочным файлом выпуска, и получает его
-`fetch.sh`.
+Все шесть реализаций берутся подмодулями, ничего со стороны не забирается.
+
+Прежде rapidyaml забиралась одиночным заголовочным файлом выпуска средством
+`fetch.sh`, а доводом тому стояло, будто c4core в подмодуле не выложена: дерево
+`ext/c4core` пусто. Довод был неверен — исходные тексты c4core выложены самою
+реализацией рядом, свёртком `ext/c4core.src`, и стенд собирается из подмодуля
+наравне с прочими. Средство `fetch.sh` за ненадобностью снято.
 
 ```sh
 git submodule update --init submodules/libyaml submodules/libfyaml \
-	submodules/yaml-cpp submodules/fkYAML
-tools/benchmark/yaml/fetch.sh
+	submodules/yaml-cpp submodules/fkYAML submodules/rapidyaml
 cmake -B build-release -DCMAKE_BUILD_TYPE=Release . && make -C build-release awh
 tools/benchmark/yaml/build.sh
 ```
