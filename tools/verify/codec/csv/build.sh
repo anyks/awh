@@ -27,8 +27,12 @@ for STAND in $PLAIN; do
 	echo "Building stand: $STAND"
 	# Выполняем сборку стенда сверки
 	g++ $FLAGS \
+		-Wno-c++11-narrowing \
 		-I"$ROOT/include" \
 		"$STANDS/$STAND.cpp" "$ROOT"/src/codec/csv/*.cpp "$ROOT"/src/num/lexical/*.cpp \
+		"$ROOT"/src/sys/log.cpp "$ROOT"/src/sys/chrono.cpp "$ROOT"/src/sys/fmk.cpp \
+		"$ROOT"/src/net/nwt.cpp "$ROOT"/src/encoding/unicode/*.cpp "$ROOT"/src/encoding/charset/*.cpp \
+		"$ROOT"/src/alloc/*.cpp "$ROOT"/src/alloc/capture/*.cpp -lz \
 		-o "$OUTPUT/$STAND" || exit 1
 done
 
