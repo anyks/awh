@@ -4,6 +4,64 @@
 #include <iostream>
 #include <string>
 #include <vector>
+
+/**
+ * @brief Пространство имён проверок этого файла
+ *
+ * @note Держится оно безымянным намеренно: проверки кодеков собираются одной
+ *       программою, и одноимённые построения разных файлов иначе сходятся в
+ *       одно, порождая порчу вдали от места её причины
+ *
+ */
+namespace {
+	/**
+	 * @brief Объект журнала проверок с отключённым выводом
+	 *
+	 * @details Вывод отключается назначением пустого перечня приёмников: отказы
+	 *          разбора проверки наводят намеренно, и журнал их засорял бы выдачу
+	 *
+	 */
+	struct Silent {
+		/**
+		 * @brief Функция получения объекта фреймворка проверок
+		 *
+		 * @details Объект заводится статикою местною, а не общею файла: заведение его
+		 *          порядком построения статики оканчивается падением ещё до входа в
+		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
+		 *
+		 * @return объект фреймворка проверок
+		 *
+		 */
+		static const awh::fmk_t & framework() noexcept {
+			// Объект фреймворка проверок
+			static awh::fmk_t fmk;
+			// Выводим объект фреймворка проверок
+			return fmk;
+		}
+		// Объект журнала проверок
+		awh::log_t log;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Silent() noexcept : log(&Silent::framework()) {
+			// Выполняем отключение вывода логов
+			this->log.mode({});
+		}
+	};
+	/**
+	 * @brief Функция получения объекта журнала проверок
+	 *
+	 * @return объект журнала проверок
+	 *
+	 */
+	const awh::log_t * logger() noexcept {
+		// Объект журнала проверок
+		static Silent silent;
+		// Выводим объект журнала проверок
+		return &silent.log;
+	}
+}
 using namespace awh::codec;
 /**
  * Приведение содержимого к записи набора сверки: перевод строки, подача и обратная
@@ -28,7 +86,7 @@ int main(int argc, char ** argv){
 	std::stringstream stream; stream << file.rdbuf();
 	const std::string text = stream.str();
 	yaml::reader_t::settings_t settings;
-	yaml::reader_t reader(settings);
+	yaml::reader_t reader(::logger(), settings);
 	if(!reader.feed(text)){ std::cout << "ОТКАЗ: " << yaml::message(reader.error()) << "\n"; return 1; }
 	/**
 	 * Места событий открытия построений, проходом предварительным собранные
@@ -39,7 +97,7 @@ int main(int argc, char ** argv){
 	std::vector <uint64_t> starts;
 	{
 		yaml::reader_t::settings_t opening;
-		yaml::reader_t scout(opening);
+		yaml::reader_t scout(::logger(), opening);
 		if(scout.feed(text)){
 			while(scout.next()){
 				if((scout.event() == yaml::event_t::MAPPING_START) ||

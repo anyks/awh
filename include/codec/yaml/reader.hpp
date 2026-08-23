@@ -488,6 +488,17 @@ namespace awh {
 						 offset(0), length(0), flow(false), schema(schema_t::CORE), versioned(false) {}
 					} item_t;
 				private:
+					/**
+					 * \~russian
+					 * Объект для работы с логами
+					 *
+					 * \~english
+					 * Object for working with logs
+					 *
+					 * \~
+					 */
+					const log_t * _log;
+				private:
 					// Настройки разбора текста
 					settings_t _settings;
 					// Объект приведения кодировки исходного текста
@@ -1619,26 +1630,30 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
+					 * @param log объект для работы с логами
 					 *
 					 * \~english
 					 * @brief Constructor
+					 * @param log object for working with logs
 					 *
 					 * \~
 					 */
-					Reader() noexcept;
+					Reader(const log_t * log) noexcept;
 					/**
 					 * \~russian
 					 * @brief Конструктор
 					 *
+					 * @param log      объект для работы с логами
 					 * @param settings настройки разбора текста
 					 *
 					 * \~english
 					 * @brief Constructor
+					 * @param log      object for working with logs
 					 * @param settings settings of the parsing of a text
 					 *
 					 * \~
 					 */
-					explicit Reader(const settings_t & settings) noexcept;
+					Reader(const log_t * log, const settings_t & settings) noexcept;
 			} reader_t;
 		};
 	};

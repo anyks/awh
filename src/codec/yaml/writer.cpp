@@ -179,17 +179,20 @@ awh::codec::yaml::Writer::Settings::Settings() noexcept :
 /**
  * @brief Конструктор
  *
+ * @param log объект для работы с логами
+ *
  */
-awh::codec::yaml::Writer::Writer() noexcept :
- _refused(false), _margin(0), _keyed(false), _hanging(false), _verbatim(false), _transferred(false), _opened(false), _taken(0) {}
+awh::codec::yaml::Writer::Writer(const log_t * log) noexcept :
+ _log(log), _refused(false), _margin(0), _keyed(false), _hanging(false), _verbatim(false), _transferred(false), _opened(false), _taken(0) {}
 /**
  * @brief Конструктор
  *
+ * @param log      объект для работы с логами
  * @param settings настройки записи текста
  *
  */
-awh::codec::yaml::Writer::Writer(const settings_t & settings) noexcept :
- _refused(false), _margin(0), _keyed(false), _hanging(false), _verbatim(false), _transferred(false), _opened(false), _taken(0) {
+awh::codec::yaml::Writer::Writer(const log_t * log, const settings_t & settings) noexcept :
+ _log(log), _refused(false), _margin(0), _keyed(false), _hanging(false), _verbatim(false), _transferred(false), _opened(false), _taken(0) {
 	// Выполняем установку настроек записи текста
 	this->settings(settings);
 }

@@ -38,6 +38,64 @@
 #include <codec/yaml/yaml.hpp>
 
 /**
+ * @brief Пространство имён проверок этого файла
+ *
+ * @note Держится оно безымянным намеренно: проверки кодеков собираются одной
+ *       программою, и одноимённые построения разных файлов иначе сходятся в
+ *       одно, порождая порчу вдали от места её причины
+ *
+ */
+namespace {
+	/**
+	 * @brief Объект журнала проверок с отключённым выводом
+	 *
+	 * @details Вывод отключается назначением пустого перечня приёмников: отказы
+	 *          разбора проверки наводят намеренно, и журнал их засорял бы выдачу
+	 *
+	 */
+	struct Silent {
+		/**
+		 * @brief Функция получения объекта фреймворка проверок
+		 *
+		 * @details Объект заводится статикою местною, а не общею файла: заведение его
+		 *          порядком построения статики оканчивается падением ещё до входа в
+		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
+		 *
+		 * @return объект фреймворка проверок
+		 *
+		 */
+		static const awh::fmk_t & framework() noexcept {
+			// Объект фреймворка проверок
+			static awh::fmk_t fmk;
+			// Выводим объект фреймворка проверок
+			return fmk;
+		}
+		// Объект журнала проверок
+		awh::log_t log;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Silent() noexcept : log(&Silent::framework()) {
+			// Выполняем отключение вывода логов
+			this->log.mode({});
+		}
+	};
+	/**
+	 * @brief Функция получения объекта журнала проверок
+	 *
+	 * @return объект журнала проверок
+	 *
+	 */
+	const awh::log_t * logger() noexcept {
+		// Объект журнала проверок
+		static Silent silent;
+		// Выводим объект журнала проверок
+		return &silent.log;
+	}
+}
+
+/**
  * Используем стандартное пространство имён
  */
 using namespace std;
@@ -938,7 +996,7 @@ namespace {
 	 */
 	yaml::state_t consume(const string & text, const yaml::reader_t::settings_t & settings, const size_t chunk, vector <Event> & events, yaml::error_t * failure = nullptr, yaml::encoding_t * recognised = nullptr) noexcept {
 		// Создаём объект потокового чтения текста
-		yaml::reader_t reader(settings);
+		yaml::reader_t reader(::logger(), settings);
 		// Размер куска подачи текста
 		const size_t size = ((chunk > 0) ? chunk : (text.empty() ? 1 : text.length()));
 		// Смещение начала очередного куска подачи
@@ -1515,7 +1573,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 			// Устанавливаем наибольшее допустимое количество узлов раскрытия ссылок
 			tree.expansion = 4096;
 			// Объект дерева документа
-			yaml::document_t document(tree);
+			yaml::document_t document(::logger(), tree);
 			/**
 			 * Если разобрать текст в дерево документа удалось
 			 */
@@ -1616,7 +1674,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 					 */
 					{
 						// Собираемое дерево документа, куда переносится значение
-						yaml::document_t target;
+						yaml::document_t target(::logger());
 						/**
 						 * Если разобрать пустое отображение удалось
 						 *
@@ -1699,7 +1757,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 				// Выполняем снятие предела длины скалярного значения
 				limitless.scalar = 0;
 				// Объект дерева перезаписанного документа
-				yaml::document_t rewritten(limitless);
+				yaml::document_t rewritten(::logger(), limitless);
 				/**
 				 * Если разобрать перезаписанный текст не удалось
 				 *
@@ -1754,7 +1812,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 				// Снимаем предел длины скалярного значения
 				held.scalar = 0;
 				// Объект дерева документа, правке подлежащего
-				yaml::document_t edited(held);
+				yaml::document_t edited(::logger(), held);
 				/**
 				 * Если разобрать текст в дерево документа удалось
 				 */
@@ -1801,7 +1859,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 							// Выполняем учёт правленого дерева документа
 							totals.edited++;
 							// Объект дерева правленого документа
-							yaml::document_t back(held);
+							yaml::document_t back(::logger(), held);
 							/**
 							 * Если разобрать правленый текст не удалось
 							 */
@@ -1898,7 +1956,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 							 */
 							if(kind == 5){
 								// Объект дерева, исходный текст удержанием читающего
-								yaml::document_t before(held);
+								yaml::document_t before(::logger(), held);
 								/**
 								 * Если исходный текст удержанием прочитан
 								 */
@@ -1943,7 +2001,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 				// Устанавливаем удержание исходного текста
 				held.retain = true;
 				// Объект дерева документа, текст удерживающего
-				yaml::document_t pruned(held);
+				yaml::document_t pruned(::logger(), held);
 				/**
 				 * Если разобрать текст в дерево документа удалось
 				 */
@@ -1953,7 +2011,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 					// Выполняем перезапись удержанного дерева
 					const string & written = pruned.dump();
 					// Объект дерева документа, перезапись обратно читающего
-					yaml::document_t reread(held);
+					yaml::document_t reread(::logger(), held);
 					/**
 					 * Если перезапись обратным чтением принята
 					 */
@@ -2002,7 +2060,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 				 */
 				held.duplicates = yaml::duplicate_t::KEEP;
 				// Объект дерева документа, текст удерживающего
-				yaml::document_t kept(held);
+				yaml::document_t kept(::logger(), held);
 				/**
 				 * Если разобрать текст в дерево документа удалось
 				 */

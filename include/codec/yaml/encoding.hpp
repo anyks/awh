@@ -248,6 +248,33 @@ namespace awh {
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Decoder {
 				private:
+					/**
+					 * \~russian
+					 * @brief Метод вывода сообщения об отказе в лог
+					 *
+					 * @details Код отказа остаётся доступен потребителю через error(): журнал
+					 * его не заменяет, а лишь оповещает о случившемся
+					 *
+					 * \~english
+					 * @brief Method of the output of the message about a refusal into the log
+					 * @details The code of the refusal remains available to the consumer through error():
+					 * the log does not replace it but merely notifies about what has happened
+					 *
+					 * \~
+					 */
+					void report() const noexcept;
+				private:
+					/**
+					 * \~russian
+					 * Объект для работы с логами
+					 *
+					 * \~english
+					 * Object for working with logs
+					 *
+					 * \~
+					 */
+					const log_t * _log;
+				private:
 					// Опознанная кодировка исходного текста
 					encoding_t _encoding;
 					// Код ошибки приведения кодировки
@@ -472,13 +499,15 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
+					 * @param log объект для работы с логами
 					 *
 					 * \~english
 					 * @brief Constructor
+					 * @param log object for working with logs
 					 *
 					 * \~
 					 */
-					Decoder() noexcept;
+					Decoder(const log_t * log) noexcept;
 			} decoder_t;
 		};
 	};

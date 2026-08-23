@@ -450,10 +450,24 @@ bool awh::codec::yaml::printable(const uint32_t code) noexcept {
 /**
  * @brief Конструктор
  *
+ * @param log объект для работы с логами
+ *
  */
-awh::codec::yaml::Decoder::Decoder() noexcept :
- _encoding(encoding_t::NONE), _error(error_t::NONE), _sniffed(false),
+awh::codec::yaml::Decoder::Decoder(const log_t * log) noexcept :
+ _log(log), _encoding(encoding_t::NONE), _error(error_t::NONE), _sniffed(false),
  _signature(false), _forced(false), _leading(true), _surrogate(0) {}
+/**
+ * @brief Метод вывода сообщения об отказе в лог
+ *
+ */
+void awh::codec::yaml::Decoder::report() const noexcept {
+	/**
+	 * Если объект для работы с логами установлен
+	 */
+	if(this->_log != nullptr)
+		// Выполняем вывод сообщения об отказе приведения кодировки
+		this->_log->print("YAML encoding failed: %s", log_t::flag_t::CRITICAL, awh::codec::yaml::message(this->_error));
+}
 /**
  * @brief Метод сброса состояния приведения кодировки
  *
@@ -675,6 +689,8 @@ bool awh::codec::yaml::Decoder::allowed(const uint32_t code) noexcept {
 	 *       не принадлежит
 	 */
 	this->_error = error_t::INVALID_CHARACTER;
+	// Выполняем вывод сообщения об отказе в лог
+	this->report();
 	// Выводим признак недозволенности знака в тексте
 	return false;
 }
@@ -716,6 +732,8 @@ bool awh::codec::yaml::Decoder::doubled(const char * buffer, const size_t size, 
 			if((unit < SURROGATE_LOW) || (unit >= SURROGATE_END)){
 				// Запоминаем код ошибки приведения кодировки
 				this->_error = error_t::UNPAIRED_SURROGATE;
+				// Выполняем вывод сообщения об отказе в лог
+				this->report();
 				// Выводим признак неудачного приведения куска
 				return false;
 			}
@@ -731,6 +749,8 @@ bool awh::codec::yaml::Decoder::doubled(const char * buffer, const size_t size, 
 			if(!encode(paired(this->_surrogate, unit), result)){
 				// Запоминаем код ошибки приведения кодировки
 				this->_error = error_t::INVALID_ENCODING;
+				// Выполняем вывод сообщения об отказе в лог
+				this->report();
 				// Выводим признак неудачного приведения куска
 				return false;
 			}
@@ -754,6 +774,8 @@ bool awh::codec::yaml::Decoder::doubled(const char * buffer, const size_t size, 
 		if((unit >= SURROGATE_LOW) && (unit < SURROGATE_END)){
 			// Запоминаем код ошибки приведения кодировки
 			this->_error = error_t::UNPAIRED_SURROGATE;
+			// Выполняем вывод сообщения об отказе в лог
+			this->report();
 			// Выводим признак неудачного приведения куска
 			return false;
 		}
@@ -769,6 +791,8 @@ bool awh::codec::yaml::Decoder::doubled(const char * buffer, const size_t size, 
 		if(!encode(unit, result)){
 			// Запоминаем код ошибки приведения кодировки
 			this->_error = error_t::INVALID_ENCODING;
+			// Выполняем вывод сообщения об отказе в лог
+			this->report();
 			// Выводим признак неудачного приведения куска
 			return false;
 		}
@@ -783,6 +807,8 @@ bool awh::codec::yaml::Decoder::doubled(const char * buffer, const size_t size, 
 		if(end){
 			// Запоминаем код ошибки приведения кодировки
 			this->_error = error_t::INVALID_ENCODING;
+			// Выполняем вывод сообщения об отказе в лог
+			this->report();
 			// Выводим признак неудачного приведения куска
 			return false;
 		}
@@ -795,6 +821,8 @@ bool awh::codec::yaml::Decoder::doubled(const char * buffer, const size_t size, 
 	if(end && (this->_surrogate != 0)){
 		// Запоминаем код ошибки приведения кодировки
 		this->_error = error_t::UNPAIRED_SURROGATE;
+		// Выполняем вывод сообщения об отказе в лог
+		this->report();
 		// Выводим признак неудачного приведения куска
 		return false;
 	}
@@ -847,6 +875,8 @@ bool awh::codec::yaml::Decoder::quadrupled(const char * buffer, const size_t siz
 		if(!encode(code, result)){
 			// Запоминаем код ошибки приведения кодировки
 			this->_error = error_t::INVALID_ENCODING;
+			// Выполняем вывод сообщения об отказе в лог
+			this->report();
 			// Выводим признак неудачного приведения куска
 			return false;
 		}
@@ -861,6 +891,8 @@ bool awh::codec::yaml::Decoder::quadrupled(const char * buffer, const size_t siz
 		if(end){
 			// Запоминаем код ошибки приведения кодировки
 			this->_error = error_t::INVALID_ENCODING;
+			// Выполняем вывод сообщения об отказе в лог
+			this->report();
 			// Выводим признак неудачного приведения куска
 			return false;
 		}
@@ -1007,6 +1039,8 @@ bool awh::codec::yaml::Decoder::convert(const void * buffer, const size_t size, 
 					if(end){
 						// Запоминаем код ошибки приведения кодировки
 						this->_error = error_t::INVALID_ENCODING;
+						// Выполняем вывод сообщения об отказе в лог
+						this->report();
 						// Выводим признак неудачного приведения куска
 						return false;
 					}
@@ -1021,6 +1055,8 @@ bool awh::codec::yaml::Decoder::convert(const void * buffer, const size_t size, 
 				if(outcome != utf8_t::VALID){
 					// Запоминаем код ошибки приведения кодировки
 					this->_error = error_t::INVALID_ENCODING;
+					// Выполняем вывод сообщения об отказе в лог
+					this->report();
 					// Выводим признак неудачного приведения куска
 					return false;
 				}
@@ -1051,6 +1087,8 @@ bool awh::codec::yaml::Decoder::convert(const void * buffer, const size_t size, 
 	}
 	// Запоминаем код ошибки приведения кодировки
 	this->_error = error_t::UNSUPPORTED_ENCODING;
+	// Выполняем вывод сообщения об отказе в лог
+	this->report();
 	// Выводим признак неудачного приведения куска
 	return false;
 }

@@ -558,9 +558,11 @@ namespace {
 /**
  * @brief Конструктор
  *
+ * @param log объект для работы с логами
+ *
  */
-awh::codec::yaml::Reader::Reader() noexcept :
- _state(state_t::READY), _error(error_t::NONE), _reading(0), _offset(0), _line(0), _position(0),
+awh::codec::yaml::Reader::Reader(const log_t * log) noexcept :
+ _log(log), _decoder(log), _state(state_t::READY), _error(error_t::NONE), _reading(0), _offset(0), _line(0), _position(0),
  _started(false), _opened(false), _filled(false), _blocking(false), _block(style_t::LITERAL),
  _chomp(chomp_t::CLIP), _marked(NO_INDENT), _outer(0), _margin(0), _inner(0), _opening(0),
  _breaks(0), _padding(0), _deepened(false), _expected(false), _awaited(false), _valued(false),
@@ -572,11 +574,12 @@ awh::codec::yaml::Reader::Reader() noexcept :
 /**
  * @brief Конструктор
  *
+ * @param log      объект для работы с логами
  * @param settings настройки разбора текста
  *
  */
-awh::codec::yaml::Reader::Reader(const settings_t & settings) noexcept :
- _settings(settings), _state(state_t::READY), _error(error_t::NONE), _reading(0), _offset(0),
+awh::codec::yaml::Reader::Reader(const log_t * log, const settings_t & settings) noexcept :
+ _log(log), _settings(settings), _decoder(log), _state(state_t::READY), _error(error_t::NONE), _reading(0), _offset(0),
  _line(0), _position(0), _started(false), _opened(false), _filled(false),
  _blocking(false), _block(style_t::LITERAL), _chomp(chomp_t::CLIP), _marked(NO_INDENT),
  _outer(0), _margin(0), _inner(0), _opening(0), _breaks(0), _padding(0), _deepened(false),
@@ -856,6 +859,15 @@ bool awh::codec::yaml::Reader::fail(const error_t error, const size_t column) no
 	 *       отзывать их поздно, ибо при подаче кусками они уже выданы
 	 */
 	this->_staged.clear();
+	/**
+	 * Выполняем вывод сообщения об отказе в лог
+	 *
+	 * @note Код отказа остаётся доступен через error(), а место его - через location():
+	 *       журнал есть оповещение, а не единственный способ узнать о случившемся
+	 */
+	if(this->_log != nullptr)
+		// Выполняем вывод сообщения об отказе разбора текста
+		this->_log->print("YAML parsing failed: %s at line %u column %u", log_t::flag_t::CRITICAL, awh::codec::yaml::message(error), this->_location.line, this->_location.column);
 	// Выводим признак прекращения разбора
 	return false;
 }

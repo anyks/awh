@@ -28,6 +28,64 @@
 #include <codec/yaml/yaml.hpp>
 
 /**
+ * @brief Пространство имён проверок этого файла
+ *
+ * @note Держится оно безымянным намеренно: проверки кодеков собираются одной
+ *       программою, и одноимённые построения разных файлов иначе сходятся в
+ *       одно, порождая порчу вдали от места её причины
+ *
+ */
+namespace {
+	/**
+	 * @brief Объект журнала проверок с отключённым выводом
+	 *
+	 * @details Вывод отключается назначением пустого перечня приёмников: отказы
+	 *          разбора проверки наводят намеренно, и журнал их засорял бы выдачу
+	 *
+	 */
+	struct Silent {
+		/**
+		 * @brief Функция получения объекта фреймворка проверок
+		 *
+		 * @details Объект заводится статикою местною, а не общею файла: заведение его
+		 *          порядком построения статики оканчивается падением ещё до входа в
+		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
+		 *
+		 * @return объект фреймворка проверок
+		 *
+		 */
+		static const awh::fmk_t & framework() noexcept {
+			// Объект фреймворка проверок
+			static awh::fmk_t fmk;
+			// Выводим объект фреймворка проверок
+			return fmk;
+		}
+		// Объект журнала проверок
+		awh::log_t log;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Silent() noexcept : log(&Silent::framework()) {
+			// Выполняем отключение вывода логов
+			this->log.mode({});
+		}
+	};
+	/**
+	 * @brief Функция получения объекта журнала проверок
+	 *
+	 * @return объект журнала проверок
+	 *
+	 */
+	const awh::log_t * logger() noexcept {
+		// Объект журнала проверок
+		static Silent silent;
+		// Выводим объект журнала проверок
+		return &silent.log;
+	}
+}
+
+/**
  * Используем стандартное пространство имён
  */
 using namespace std;
@@ -88,7 +146,7 @@ TEST(CodecYamlValue, Outliving) {
 	 */
 	const auto produce = []() noexcept -> yaml::value_t {
 		// Дерево документа, живущее лишь внутри вызова
-		yaml::document_t doc;
+		yaml::document_t doc(::logger());
 		// Выполняем разбор текста в дерево документа
 		doc.parse("a: 1\nb:\n- x\n- y\n");
 		// Выводим значение, с дерева документа снятое
@@ -723,7 +781,7 @@ TEST(CodecYamlValue, Consistency) {
 		text.append(records.at(i)).append("\n");
 	}
 	// Дерево документа, записи чисел несущее
-	yaml::document_t doc;
+	yaml::document_t doc(::logger());
 	// Выполняем разбор текста в дерево документа
 	ASSERT_TRUE(doc.parse(text));
 	// Значение, с дерева документа снятое
@@ -846,7 +904,7 @@ TEST(CodecYamlValue, Refused) {
  */
 TEST(CodecYamlValue, Dialect) {
 	// Дерево документа, наречие директивой объявляющее
-	yaml::document_t doc;
+	yaml::document_t doc(::logger());
 	// Выполняем разбор текста в дерево документа
 	ASSERT_TRUE(doc.parse("%YAML 1.1\n---\n- on\n- 0777\n"));
 	// Выполняем проверку того, что запись прочтена логическим значением
@@ -856,7 +914,7 @@ TEST(CodecYamlValue, Dialect) {
 	// Выполняем проверку сохранения директивы перезаписью дерева
 	ASSERT_NE(doc.dump().find("%YAML 1.1"), string::npos);
 	// Дерево перезаписанного документа
-	yaml::document_t back;
+	yaml::document_t back(::logger());
 	// Выполняем проверку читаемости перезаписи обратным разбором
 	ASSERT_TRUE(back.parse(doc.dump()));
 	// Выполняем проверку сохранения вида значения круговым ходом
@@ -880,7 +938,7 @@ TEST(CodecYamlValue, Dialect) {
 	// Выполняем проверку того, что число прочтено восьмеричным
 	ASSERT_EQ(octal, 511);
 	// Дерево документа без директивы наречия
-	yaml::document_t plain;
+	yaml::document_t plain(::logger());
 	// Выполняем разбор текста в дерево документа
 	ASSERT_TRUE(plain.parse("- on\n"));
 	// Выполняем проверку того, что директива тексту не навязывается
@@ -901,7 +959,7 @@ TEST(CodecYamlValue, LegacyBoolean) {
 	// Устанавливаем удержание исходного текста
 	settings.retain = true;
 	// Объект дерева документа
-	yaml::document_t doc(settings);
+	yaml::document_t doc(::logger(), settings);
 	// Выполняем разбор текста наречия 1.1 в дерево документа
 	ASSERT_TRUE(doc.parse("%YAML 1.1\n---\nflag: yes\noff: no\n"));
 	// Выполняем проверку того, что значение прочитано логическим
@@ -934,7 +992,7 @@ TEST(CodecYamlValue, LegacyBoolean) {
  */
 TEST(CodecYamlValue, StreamDialects) {
 	// Объект дерева документа
-	yaml::document_t doc;
+	yaml::document_t doc(::logger());
 	// Выполняем разбор потока из двух документов разных наречий
 	ASSERT_TRUE(doc.parse("%YAML 1.1\n---\nx: 0b1010\n...\n%YAML 1.2\n---\ny: 0b1010\n...\n"));
 	// Выполняем проверку количества документов потока
@@ -1087,7 +1145,7 @@ TEST(CodecYamlValue, AppendRoundtrip) {
 	// Устанавливаем удержание всех вхождений повторяющегося имени
 	settings.duplicates = yaml::duplicate_t::KEEP;
 	// Объект дерева документа
-	yaml::document_t doc(settings);
+	yaml::document_t doc(::logger(), settings);
 	// Выполняем разбор текста с повторяющимися именами полей
 	ASSERT_TRUE(doc.parse("имя: 1\nимя: 2\nиное: 3\n"));
 	// Владеющее значение, с дерева документа снятое
@@ -1166,7 +1224,7 @@ TEST(CodecYamlValue, ExtendedNumbers) {
 	// Устанавливаем удержание исходного текста
 	settings.retain = true;
 	// Объект дерева документа
-	yaml::document_t doc(settings);
+	yaml::document_t doc(::logger(), settings);
 	// Выполняем разбор записей чисел поднормальных
 	ASSERT_TRUE(doc.parse("a: 1e-320\nb: 5e-324\nc: 1e-400\n"));
 	/**
@@ -1236,7 +1294,7 @@ TEST(CodecYamlValue, StreamRefusal) {
 	 * @note Отказ этот есть свойство значения владеющего, а не разбора: дерево тот же
 	 *       поток держит целиком, и оба документа его достижимы
 	 */
-	yaml::document_t doc;
+	yaml::document_t doc(::logger());
 	// Выполняем проверку разбора потока о двух документах деревом
 	ASSERT_TRUE(doc.parse("--- 1\n--- 2\n"));
 	// Выполняем проверку количества документов потока
@@ -1481,7 +1539,7 @@ TEST(CodecYamlValue, PathNestingLimit) {
  */
 TEST(CodecYamlWriter, NestingDepthGuard) {
 	// Объект записи текста
-	yaml::writer_t writer;
+	yaml::writer_t writer(::logger());
 	// Количество вместилищ, открыть которые удалось
 	size_t opened = 0;
 	/**
@@ -1569,7 +1627,7 @@ TEST(CodecYamlValue, Grafting) {
 	// Выполняем заведение отображения внутри перечня значений
 	value.place("/points/0/name") = yaml::value_t("угол");
 	// Дерево документа, куда переносится значение
-	yaml::document_t document;
+	yaml::document_t document(::logger());
 	// Выполняем разбор пустого отображения
 	ASSERT_TRUE(document.parse("{}"));
 	// Выполняем перенос владеющего значения в дерево документа
@@ -1624,7 +1682,7 @@ TEST(CodecYamlValue, Grafting) {
 	// Выполняем проверку записи логического значения без ограды
 	ASSERT_NE(text.find("secure: true"), string::npos);
 	// Собираемое дерево документа, разбираемое из записанного текста
-	yaml::document_t reparsed;
+	yaml::document_t reparsed(::logger());
 	// Выполняем разбор записанного текста
 	ASSERT_TRUE(reparsed.parse(text));
 	// Выполняем проверку того, что вид числа обратное чтение пережил
@@ -1645,7 +1703,7 @@ TEST(CodecYamlValue, GraftingRefusal) {
 	// Выполняем установку пары с косою чертой в имени
 	ASSERT_TRUE(value.insert("a/b", yaml::value_t("значение")));
 	// Дерево документа, куда переносится значение
-	yaml::document_t document;
+	yaml::document_t document(::logger());
 	// Выполняем разбор пустого отображения
 	ASSERT_TRUE(document.parse("{}"));
 	// Выполняем проверку отказа переноса значения с косою чертой в имени пары
@@ -1683,7 +1741,7 @@ TEST(CodecYamlValue, GraftRoundTrip) {
 	// Выполняем установку строкового значения отображения
 	value.place("/server/host") = yaml::value_t("localhost");
 	// Дерево документа, куда переносится значение
-	yaml::document_t document;
+	yaml::document_t document(::logger());
 	// Выполняем разбор пустого отображения
 	ASSERT_TRUE(document.parse("{}"));
 	// Выполняем перенос владеющего значения в дерево документа
@@ -1837,7 +1895,7 @@ TEST(CodecYamlValue, GraftingEmptyUnderFailsafe) {
 	// Назначаем схему, признающую одни лишь строки
 	settings.schema = yaml::schema_t::FAILSAFE;
 	// Дерево документа с парою без значения
-	yaml::document_t document;
+	yaml::document_t document(::logger());
 	// Выполняем назначение настроек разбора
 	document.settings(settings);
 	// Выполняем разбор текста с парою без значения
@@ -1847,7 +1905,7 @@ TEST(CodecYamlValue, GraftingEmptyUnderFailsafe) {
 	// Выполняем снятие владеющего значения с дерева документа
 	const yaml::value_t taken(document.root());
 	// Дерево документа, куда переносится значение
-	yaml::document_t target;
+	yaml::document_t target(::logger());
 	// Выполняем назначение тех же настроек разбора
 	target.settings(settings);
 	// Выполняем разбор пустого отображения
@@ -1880,7 +1938,7 @@ TEST(CodecYamlValue, GraftingRepeatedNames) {
 	// Выполняем проверку количества полей собранного отображения
 	ASSERT_EQ(value.size(), 2);
 	// Дерево документа, куда переносится значение
-	yaml::document_t document;
+	yaml::document_t document(::logger());
 	// Выполняем разбор пустого отображения
 	ASSERT_TRUE(document.parse("{}"));
 	// Выполняем проверку отказа переноса значения с повторными именами

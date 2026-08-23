@@ -27,6 +27,64 @@
 #include <codec/yaml/yaml.hpp>
 
 /**
+ * @brief Пространство имён проверок этого файла
+ *
+ * @note Держится оно безымянным намеренно: проверки кодеков собираются одной
+ *       программою, и одноимённые построения разных файлов иначе сходятся в
+ *       одно, порождая порчу вдали от места её причины
+ *
+ */
+namespace {
+	/**
+	 * @brief Объект журнала проверок с отключённым выводом
+	 *
+	 * @details Вывод отключается назначением пустого перечня приёмников: отказы
+	 *          разбора проверки наводят намеренно, и журнал их засорял бы выдачу
+	 *
+	 */
+	struct Silent {
+		/**
+		 * @brief Функция получения объекта фреймворка проверок
+		 *
+		 * @details Объект заводится статикою местною, а не общею файла: заведение его
+		 *          порядком построения статики оканчивается падением ещё до входа в
+		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
+		 *
+		 * @return объект фреймворка проверок
+		 *
+		 */
+		static const awh::fmk_t & framework() noexcept {
+			// Объект фреймворка проверок
+			static awh::fmk_t fmk;
+			// Выводим объект фреймворка проверок
+			return fmk;
+		}
+		// Объект журнала проверок
+		awh::log_t log;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Silent() noexcept : log(&Silent::framework()) {
+			// Выполняем отключение вывода логов
+			this->log.mode({});
+		}
+	};
+	/**
+	 * @brief Функция получения объекта журнала проверок
+	 *
+	 * @return объект журнала проверок
+	 *
+	 */
+	const awh::log_t * logger() noexcept {
+		// Объект журнала проверок
+		static Silent silent;
+		// Выводим объект журнала проверок
+		return &silent.log;
+	}
+}
+
+/**
  * Используем стандартное пространство имён
  */
 using namespace std;
@@ -39,7 +97,7 @@ using namespace awh::codec;
  */
 TEST(CodecYamlDocument, Building) {
 	// Объект дерева документа
-	yaml::document_t doc;
+	yaml::document_t doc(::logger());
 	// Выполняем разбор текста в дерево документа
 	ASSERT_TRUE(doc.parse("server:\n  host: alpha\n  ports:\n  - 80\n  - 443\nlevel: debug\n"));
 	// Выполняем проверку количества документов текста
@@ -103,7 +161,7 @@ TEST(CodecYamlDocument, Building) {
  */
 TEST(CodecYamlDocument, Extraction) {
 	// Объект дерева документа
-	yaml::document_t doc;
+	yaml::document_t doc(::logger());
 	// Выполняем разбор текста в дерево документа
 	ASSERT_TRUE(doc.parse(
 		"порт: 8080\n"
@@ -296,7 +354,7 @@ TEST(CodecYamlDocument, Extraction) {
  */
 TEST(CodecYamlDocument, SetFromOwnView) {
 	// Объект дерева настроек
-	yaml::document_t document;
+	yaml::document_t document(::logger());
 	// Значение, заведомо превышающее короткий запас строки
 	const string big(4096, 'z');
 	// Выполняем разбор текста настроек
@@ -321,7 +379,7 @@ TEST(CodecYamlDocument, SetFromOwnView) {
 
 TEST(CodecYamlDocument, Records) {
 	// Объект дерева документа
-	yaml::document_t doc;
+	yaml::document_t doc(::logger());
 	// Выполняем разбор текста в дерево документа
 	ASSERT_TRUE(doc.parse("шестнадцатеричное: 0x1F\nпоказательное: -2.5e-13\nдробное: 1.0\n"));
 	// Выполняем проверку записи шестнадцатеричного числа
@@ -355,7 +413,7 @@ TEST(CodecYamlDocument, Aliases) {
 	 */
 	{
 		// Объект дерева документа
-		yaml::document_t doc;
+		yaml::document_t doc(::logger());
 		// Выполняем разбор текста в дерево документа
 		ASSERT_TRUE(doc.parse("основа: &я\n  host: alpha\n  port: 80\nвторой: *я\n"));
 		// Выполняем проверку имени метки помеченного узла
@@ -381,7 +439,7 @@ TEST(CodecYamlDocument, Aliases) {
 	 */
 	{
 		// Объект дерева документа
-		yaml::document_t doc;
+		yaml::document_t doc(::logger());
 		// Выполняем разбор текста в дерево документа
 		ASSERT_TRUE(doc.parse("основа: &я значение\nвторой: *я\n"));
 		// Выполняем проверку содержимого раскрытого узла
@@ -402,7 +460,7 @@ TEST(CodecYamlDocument, Aliases) {
 		// Устанавливаем наибольшее допустимое количество узлов раскрытия
 		settings.expansion = 32;
 		// Объект дерева документа
-		yaml::document_t doc(settings);
+		yaml::document_t doc(::logger(), settings);
 		// Собираемый текст беды миллиарда смешков
 		string text("первый: &a [x, x, x, x]\n");
 		// Выполняем добавление второй метки, первую четырёхкратно повторяющей
@@ -421,7 +479,7 @@ TEST(CodecYamlDocument, Aliases) {
  */
 TEST(CodecYamlDocument, Documents) {
 	// Объект дерева документа
-	yaml::document_t doc;
+	yaml::document_t doc(::logger());
 	// Выполняем разбор текста в дерево документа
 	ASSERT_TRUE(doc.parse("---\na: 1\n---\nb: 2\n---\n...\n"));
 	/**
@@ -452,7 +510,7 @@ TEST(CodecYamlDocument, Rewrite) {
 		// Разбираемый текст документа
 		const string text("server:\n  host: alpha\n  ports:\n  - 80\n  - 443\nlevel: debug\n");
 		// Объект дерева документа
-		yaml::document_t doc;
+		yaml::document_t doc(::logger());
 		// Выполняем разбор текста в дерево документа
 		ASSERT_TRUE(doc.parse(text));
 		// Выполняем проверку перезаписи дерева документа
@@ -467,7 +525,7 @@ TEST(CodecYamlDocument, Rewrite) {
 	 */
 	{
 		// Объект дерева документа
-		yaml::document_t doc;
+		yaml::document_t doc(::logger());
 		// Выполняем разбор текста в дерево документа
 		ASSERT_TRUE(doc.parse("текст: |\n  первая\n  вторая\n"));
 		/**
@@ -488,7 +546,7 @@ TEST(CodecYamlDocument, Rewrite) {
 	 */
 	{
 		// Объект дерева документа
-		yaml::document_t doc;
+		yaml::document_t doc(::logger());
 		// Выполняем разбор текста в дерево документа
 		ASSERT_TRUE(doc.parse("строкой: !!str 12\nсвоя: !mine x\n"));
 		// Выполняем проверку перезаписи меток типов
@@ -499,7 +557,7 @@ TEST(CodecYamlDocument, Rewrite) {
 	 */
 	{
 		// Объект дерева документа
-		yaml::document_t doc;
+		yaml::document_t doc(::logger());
 		// Выполняем разбор текста в дерево документа
 		ASSERT_TRUE(doc.parse("пусто: {}\nперечень: []\n"));
 		// Выполняем проверку перезаписи пустых вместилищ
@@ -513,11 +571,11 @@ TEST(CodecYamlDocument, Rewrite) {
 	 */
 	{
 		// Объект дерева первого разбора
-		yaml::document_t first;
+		yaml::document_t first(::logger());
 		// Выполняем разбор текста в дерево документа
 		ASSERT_TRUE(first.parse("a: [1, два, {k: v}]\nb: &я значение\nc: *я\n"));
 		// Объект дерева второго разбора
-		yaml::document_t second;
+		yaml::document_t second(::logger());
 		// Выполняем разбор перезаписанного текста в дерево документа
 		ASSERT_TRUE(second.parse(first.dump()));
 		// Выполняем проверку совпадения перезаписей обоих деревьев
@@ -539,7 +597,7 @@ TEST(CodecYamlDocument, Refusals) {
 	 */
 	{
 		// Объект дерева документа
-		yaml::document_t doc;
+		yaml::document_t doc(::logger());
 		// Выполняем проверку отказа разбора незакрытой ограды
 		ASSERT_FALSE(doc.parse("a: 1\nb: 'не закрыта\n"));
 		// Выполняем проверку кода ошибки разбора
@@ -552,7 +610,7 @@ TEST(CodecYamlDocument, Refusals) {
 	 */
 	{
 		// Объект дерева документа
-		yaml::document_t doc;
+		yaml::document_t doc(::logger());
 		// Выполняем разбор текста в дерево документа
 		ASSERT_TRUE(doc.parse("a: 1\n"));
 		// Выполняем проверку непустоты дерева документа
@@ -583,7 +641,7 @@ TEST(CodecYamlDocument, CompactSequence) {
 	// Выполняем проверку кругового хода перечня внутри перечня
 	{
 		// Объект дерева документа
-		yaml::document_t doc;
+		yaml::document_t doc(::logger());
 		// Выполняем разбор текста в дерево документа
 		ASSERT_TRUE(doc.parse("- \n  - \n  - |-\n    x\n"));
 		/**
@@ -596,7 +654,7 @@ TEST(CodecYamlDocument, CompactSequence) {
 		 */
 		ASSERT_EQ(doc.dump(), "- -\n  - |-\n    x\n");
 		// Объект дерева перезаписанного документа
-		yaml::document_t back;
+		yaml::document_t back(::logger());
 		// Выполняем проверку читаемости перезаписи обратным разбором
 		ASSERT_TRUE(back.parse(doc.dump()));
 		// Выполняем проверку устойчивости перезаписи
@@ -605,13 +663,13 @@ TEST(CodecYamlDocument, CompactSequence) {
 	// Выполняем проверку кругового хода перечня со свойствами внутри перечня
 	{
 		// Объект дерева документа
-		yaml::document_t doc;
+		yaml::document_t doc(::logger());
 		// Выполняем разбор текста в дерево документа
 		ASSERT_TRUE(doc.parse("- !\n  - a\n  - b\n"));
 		// Выполняем проверку открытия помеченного перечня строкою ниже
 		ASSERT_EQ(doc.dump(), "- !\n  - a\n  - b\n");
 		// Объект дерева перезаписанного документа
-		yaml::document_t back;
+		yaml::document_t back(::logger());
 		// Выполняем проверку читаемости перезаписи обратным разбором
 		ASSERT_TRUE(back.parse(doc.dump()));
 		// Выполняем проверку устойчивости перезаписи
@@ -633,13 +691,13 @@ TEST(CodecYamlDocument, EmptyRewrite) {
 	// Выполняем проверку кругового хода пустой записи перечня
 	{
 		// Объект дерева документа
-		yaml::document_t doc;
+		yaml::document_t doc(::logger());
 		// Выполняем разбор текста в дерево документа
 		ASSERT_TRUE(doc.parse("- \n- beta\n"));
 		// Выполняем проверку записи пустоты пустотою же
 		ASSERT_EQ(doc.dump(), "-\n- beta\n");
 		// Объект дерева перезаписанного документа
-		yaml::document_t back;
+		yaml::document_t back(::logger());
 		// Выполняем проверку читаемости перезаписи обратным разбором
 		ASSERT_TRUE(back.parse(doc.dump()));
 		// Выполняем проверку устойчивости перезаписи
@@ -648,13 +706,13 @@ TEST(CodecYamlDocument, EmptyRewrite) {
 	// Выполняем проверку кругового хода пустоты, меткой типа помеченной
 	{
 		// Объект дерева документа
-		yaml::document_t doc;
+		yaml::document_t doc(::logger());
 		// Выполняем разбор текста в дерево документа
 		ASSERT_TRUE(doc.parse("- !<tag:x,2000:mine>\n- beta\n"));
 		// Выполняем проверку сохранения метки типа над пустотою
 		ASSERT_EQ(doc.dump(), "- !<tag:x,2000:mine>\n- beta\n");
 		// Объект дерева перезаписанного документа
-		yaml::document_t back;
+		yaml::document_t back(::logger());
 		// Выполняем проверку читаемости перезаписи обратным разбором
 		ASSERT_TRUE(back.parse(doc.dump()));
 		// Выполняем проверку устойчивости перезаписи
@@ -673,7 +731,7 @@ TEST(CodecYamlDocument, EmptyRewrite) {
  */
 TEST(CodecYamlDocument, EmptyDocument) {
 	// Объект дерева документа
-	yaml::document_t doc;
+	yaml::document_t doc(::logger());
 	// Выполняем разбор потока из пустого документа и наполненного
 	ASSERT_TRUE(doc.parse("---\n \n...\n---\nname: 1\n"));
 	// Выполняем проверку количества документов потока
@@ -688,7 +746,7 @@ TEST(CodecYamlDocument, EmptyDocument) {
 	 */
 	ASSERT_EQ(doc.dump(), "---\n---\nname: 1\n");
 	// Объект дерева перезаписанного документа
-	yaml::document_t back;
+	yaml::document_t back(::logger());
 	// Выполняем проверку читаемости перезаписи обратным разбором
 	ASSERT_TRUE(back.parse(doc.dump()));
 	// Выполняем проверку сохранения количества документов
@@ -729,7 +787,7 @@ TEST(CodecYamlDocument, Retention) {
 	 */
 	{
 		// Объект дерева документа
-		yaml::document_t doc(settings);
+		yaml::document_t doc(::logger(), settings);
 		// Выполняем разбор текста в дерево документа
 		ASSERT_TRUE(doc.parse(text));
 		// Выполняем проверку побайтового равенства перезаписи исходному тексту
@@ -743,7 +801,7 @@ TEST(CodecYamlDocument, Retention) {
 	 */
 	{
 		// Объект дерева документа
-		yaml::document_t doc(settings);
+		yaml::document_t doc(::logger(), settings);
 		// Выполняем разбор текста в дерево документа
 		ASSERT_TRUE(doc.parse(text));
 		// Получаем ссылку на правленый узел дерева
@@ -760,7 +818,7 @@ TEST(CodecYamlDocument, Retention) {
 	 */
 	{
 		// Объект дерева документа
-		yaml::document_t doc;
+		yaml::document_t doc(::logger());
 		// Выполняем разбор текста в дерево документа
 		ASSERT_TRUE(doc.parse(text));
 		// Выполняем проверку сборки текста заново по дереву
@@ -782,7 +840,7 @@ TEST(CodecYamlDocument, Retention) {
 	 */
 	{
 		// Объект дерева документа
-		yaml::document_t doc(settings);
+		yaml::document_t doc(::logger(), settings);
 		// Выполняем разбор текста в кодировке UTF-16 с обратным порядком байтов
 		ASSERT_TRUE(doc.parse(string("\xFF\xFE" "a\0:\0 \0" "1\0", 10)));
 		// Выполняем проверку опознанной кодировки текста
@@ -798,7 +856,7 @@ TEST(CodecYamlDocument, Retention) {
 	 */
 	{
 		// Объект дерева документа
-		yaml::document_t doc(settings);
+		yaml::document_t doc(::logger(), settings);
 		// Разбираемый текст с меткою порядка байтов
 		const string marked = string("\xEF\xBB\xBF") + "# сверху\na:   1\n";
 		// Выполняем разбор текста в дерево документа
@@ -843,7 +901,7 @@ TEST(CodecYamlDocument, Editing) {
 	 */
 	{
 		// Объект дерева документа
-		yaml::document_t doc(settings);
+		yaml::document_t doc(::logger(), settings);
 		// Выполняем разбор текста в дерево документа
 		ASSERT_TRUE(doc.parse(text));
 		// Выполняем замену целого значения по пути к нему
@@ -873,7 +931,7 @@ TEST(CodecYamlDocument, Editing) {
 	 */
 	{
 		// Объект дерева документа
-		yaml::document_t doc(settings);
+		yaml::document_t doc(::logger(), settings);
 		// Выполняем разбор текста в дерево документа
 		ASSERT_TRUE(doc.parse(text));
 		// Выполняем замену строкового значения по пути к нему
@@ -881,7 +939,7 @@ TEST(CodecYamlDocument, Editing) {
 		// Выполняем проверку ограды поставленного значения
 		ASSERT_NE(doc.dump().find("host: '12'"), string::npos);
 		// Объект дерева перезаписанного документа
-		yaml::document_t back;
+		yaml::document_t back(::logger());
 		// Выполняем проверку читаемости перезаписи обратным разбором
 		ASSERT_TRUE(back.parse(doc.dump()));
 		// Выполняем проверку того, что значение вернулось строкою
@@ -892,7 +950,7 @@ TEST(CodecYamlDocument, Editing) {
 	 */
 	{
 		// Объект дерева документа
-		yaml::document_t doc(settings);
+		yaml::document_t doc(::logger(), settings);
 		// Выполняем разбор текста в дерево документа
 		ASSERT_TRUE(doc.parse(text));
 		// Выполняем заведение недостающей пары отображения
@@ -910,7 +968,7 @@ TEST(CodecYamlDocument, Editing) {
 	 */
 	{
 		// Объект дерева документа
-		yaml::document_t doc(settings);
+		yaml::document_t doc(::logger(), settings);
 		// Выполняем разбор текста в дерево документа
 		ASSERT_TRUE(doc.parse(text));
 		// Выполняем проверку отказа заведения значения с дырою в перечне
@@ -927,7 +985,7 @@ TEST(CodecYamlDocument, Editing) {
 	 */
 	{
 		// Объект дерева документа
-		yaml::document_t doc(settings);
+		yaml::document_t doc(::logger(), settings);
 		// Выполняем разбор текста в дерево документа
 		ASSERT_TRUE(doc.parse(text));
 		// Выполняем снятие пары отображения по пути к ней
@@ -949,7 +1007,7 @@ TEST(CodecYamlDocument, Editing) {
 	 */
 	{
 		// Объект дерева документа
-		yaml::document_t doc(settings);
+		yaml::document_t doc(::logger(), settings);
 		// Выполняем разбор текста в дерево документа
 		ASSERT_TRUE(doc.parse(text));
 		// Выполняем замену вместилища скалярным значением
@@ -966,7 +1024,7 @@ TEST(CodecYamlDocument, Editing) {
 	 */
 	{
 		// Объект дерева документа
-		yaml::document_t doc(settings);
+		yaml::document_t doc(::logger(), settings);
 		// Выполняем разбор текста в дерево документа
 		ASSERT_TRUE(doc.parse(text));
 		// Выполняем установку логического значения по пути к нему
@@ -985,7 +1043,7 @@ TEST(CodecYamlDocument, Editing) {
 	 */
 	{
 		// Объект дерева документа
-		yaml::document_t doc(settings);
+		yaml::document_t doc(::logger(), settings);
 		// Выполняем разбор текста в дерево документа
 		ASSERT_TRUE(doc.parse(text));
 		// Выполняем проверку отказа правки внутри отсутствующего вместилища
@@ -1020,7 +1078,7 @@ TEST(CodecYamlDocument, FlowNeighbour) {
 		"    - !<e> {}\n"
 		"  -";
 	// Объект дерева документа
-	yaml::document_t doc(settings);
+	yaml::document_t doc(::logger(), settings);
 	// Выполняем разбор текста в дерево документа
 	ASSERT_TRUE(doc.parse(text));
 	// Выполняем проверку дословного переноса текста нетронутого
@@ -1032,7 +1090,7 @@ TEST(CodecYamlDocument, FlowNeighbour) {
 	// Выполняем проверку того, что запись соседа вторым разом не выдана
 	ASSERT_EQ(out.find("!<e> {}"), string::npos);
 	// Объект дерева правленого документа
-	yaml::document_t back(settings);
+	yaml::document_t back(::logger(), settings);
 	// Выполняем проверку того, что перезапись правки читается обратно
 	ASSERT_TRUE(back.parse(out));
 	// Выполняем проверку сохранения количества записей перечня
@@ -1065,7 +1123,7 @@ TEST(CodecYamlDocument, AliasRecord) {
 		"host:\n"
 		"  - *метка\n";
 	// Объект дерева документа
-	yaml::document_t doc(settings);
+	yaml::document_t doc(::logger(), settings);
 	// Выполняем разбор текста в дерево документа
 	ASSERT_TRUE(doc.parse(text));
 	// Выполняем проверку дословного переноса текста нетронутого
@@ -1077,7 +1135,7 @@ TEST(CodecYamlDocument, AliasRecord) {
 	// Выполняем проверку того, что имя метки вторым разом не выдано
 	ASSERT_EQ(out.find("origin"), out.rfind("origin"));
 	// Объект дерева правленого документа
-	yaml::document_t back(settings);
+	yaml::document_t back(::logger(), settings);
 	// Выполняем проверку того, что перезапись правки читается обратно
 	ASSERT_TRUE(back.parse(out)) << yaml::message(back.error());
 	// Выполняем проверку сохранения количества записей перечня
@@ -1114,7 +1172,7 @@ TEST(CodecYamlDocument, AnchoredEntry) {
 		"  second:\n"
 		"- &метка -1\n";
 	// Объект дерева документа
-	yaml::document_t doc(settings);
+	yaml::document_t doc(::logger(), settings);
 	// Выполняем разбор текста в дерево документа
 	ASSERT_TRUE(doc.parse(text));
 	// Выполняем проверку дословного переноса текста нетронутого
@@ -1126,7 +1184,7 @@ TEST(CodecYamlDocument, AnchoredEntry) {
 	// Выполняем проверку того, что запись с меткою вторым разом не выдана
 	ASSERT_EQ(out.find("&метка"), out.rfind("&метка"));
 	// Объект дерева правленого документа
-	yaml::document_t back(settings);
+	yaml::document_t back(::logger(), settings);
 	// Выполняем проверку того, что перезапись правки читается обратно
 	ASSERT_TRUE(back.parse(out)) << yaml::message(back.error());
 	// Выполняем проверку сохранения количества записей перечня
@@ -1157,7 +1215,7 @@ TEST(CodecYamlDocument, BrokenScalar) {
 		"   продолжение\n"
 		"  -\n";
 	// Объект дерева документа
-	yaml::document_t doc(settings);
+	yaml::document_t doc(::logger(), settings);
 	// Выполняем разбор текста в дерево документа
 	ASSERT_TRUE(doc.parse(text));
 	// Выполняем проверку дословного переноса текста нетронутого
@@ -1171,7 +1229,7 @@ TEST(CodecYamlDocument, BrokenScalar) {
 	// Выполняем проверку того, что продолжение прежнего значения снято вместе с ним
 	ASSERT_EQ(out.find("продолжение"), string::npos);
 	// Объект дерева правленого документа
-	yaml::document_t back(settings);
+	yaml::document_t back(::logger(), settings);
 	// Выполняем проверку того, что перезапись правки читается обратно
 	ASSERT_TRUE(back.parse(out)) << yaml::message(back.error());
 	// Выполняем проверку сохранения количества записей перечня
@@ -1204,7 +1262,7 @@ TEST(CodecYamlDocument, FlowClosing) {
 		"   -\n"
 		"  -\n";
 	// Объект дерева документа
-	yaml::document_t doc(settings);
+	yaml::document_t doc(::logger(), settings);
 	// Выполняем разбор текста в дерево документа
 	ASSERT_TRUE(doc.parse(text));
 	// Выполняем проверку дословного переноса текста нетронутого
@@ -1216,7 +1274,7 @@ TEST(CodecYamlDocument, FlowClosing) {
 	// Получаем перезапись правленого дерева документа
 	const string out = doc.dump();
 	// Объект дерева правленого документа
-	yaml::document_t back(settings);
+	yaml::document_t back(::logger(), settings);
 	// Выполняем проверку того, что перезапись правки читается обратно
 	ASSERT_TRUE(back.parse(out)) << yaml::message(back.error());
 	// Выполняем проверку сохранения количества записей перечня
@@ -1245,7 +1303,7 @@ TEST(CodecYamlDocument, DashedMapping) {
 		"поле:\n"
 		"  - !<tag:x,2000:mine> имя:\n";
 	// Объект дерева документа
-	yaml::document_t doc(settings);
+	yaml::document_t doc(::logger(), settings);
 	// Выполняем разбор текста в дерево документа
 	ASSERT_TRUE(doc.parse(text));
 	// Выполняем проверку дословного переноса текста нетронутого
@@ -1255,7 +1313,7 @@ TEST(CodecYamlDocument, DashedMapping) {
 	// Получаем перезапись правленого дерева документа
 	const string out = doc.dump();
 	// Объект дерева правленого документа
-	yaml::document_t back(settings);
+	yaml::document_t back(::logger(), settings);
 	// Выполняем проверку того, что перезапись правки читается обратно
 	ASSERT_TRUE(back.parse(out)) << yaml::message(back.error());
 	// Выполняем проверку сохранения количества записей перечня
@@ -1284,7 +1342,7 @@ TEST(CodecYamlDocument, StreamDirectives) {
 	 */
 	for(const string & record : records){
 		// Объект дерева документа
-		yaml::document_t doc;
+		yaml::document_t doc(::logger());
 		// Выполняем разбор потока в дерево документа
 		ASSERT_TRUE(doc.parse(record)) << record;
 		// Выполняем проверку количества документов потока
@@ -1292,7 +1350,7 @@ TEST(CodecYamlDocument, StreamDirectives) {
 		// Получаем перезапись дерева документа
 		const string out = doc.dump();
 		// Объект дерева перезаписанного потока
-		yaml::document_t back;
+		yaml::document_t back(::logger());
 		// Выполняем проверку того, что перезапись читается обратно
 		ASSERT_TRUE(back.parse(out)) << out << " ← " << record;
 		// Выполняем проверку сохранения количества документов потока
@@ -1310,7 +1368,7 @@ TEST(CodecYamlDocument, StreamDirectives) {
 		}
 	}
 	// Объект дерева документа
-	yaml::document_t doc;
+	yaml::document_t doc(::logger());
 	// Выполняем разбор потока, наречие 1.1 второму документу объявляющего
 	ASSERT_TRUE(doc.parse("---\nx: on\n...\n%YAML 1.1\n---\ny: on\n...\n"));
 	// Получаем перезапись дерева документа
@@ -1359,7 +1417,7 @@ TEST(CodecYamlDocument, CarriedComment) {
 		"- \n"
 		"  - x\n";
 	// Объект дерева документа
-	yaml::document_t doc(settings);
+	yaml::document_t doc(::logger(), settings);
 	// Выполняем разбор текста в дерево документа
 	ASSERT_TRUE(doc.parse(text));
 	// Выполняем проверку дословного переноса текста нетронутого
@@ -1393,7 +1451,7 @@ TEST(CodecYamlDocument, LeadingBlankRecords) {
 		"- первая\n"
 		"- вторая\n";
 	// Объект дерева документа
-	yaml::document_t doc(settings);
+	yaml::document_t doc(::logger(), settings);
 	// Выполняем разбор текста в дерево документа
 	ASSERT_TRUE(doc.parse(text));
 	// Выполняем проверку дословного переноса текста нетронутого
@@ -1433,7 +1491,7 @@ TEST(CodecYamlDocument, NestingDepthGuard) {
 	// Добавляем закрытие всех построений
 	text.append(excess, ']');
 	// Объект дерева документа
-	yaml::document_t doc;
+	yaml::document_t doc(::logger());
 	// Выполняем проверку отказа разбора глубины избыточной
 	ASSERT_FALSE(doc.parse(text));
 	// Выполняем проверку причины отказа разбора
@@ -1479,7 +1537,7 @@ TEST(CodecYamlDocument, NestingDepthGuard) {
  */
 TEST(CodecYamlDocument, DuplicateKey) {
 	// Объект дерева документа
-	yaml::document_t doc;
+	yaml::document_t doc(::logger());
 	// Выполняем проверку отказа разбора повтора правилом умолчания
 	ASSERT_FALSE(doc.parse("а: 1\nб: 0\nа: 2\n"));
 	// Выполняем проверку причины отказа разбора
@@ -1594,7 +1652,7 @@ TEST(CodecYamlDocument, NodeCountGuard) {
 		text.append("]\n");
 	}
 	// Объект дерева документа
-	yaml::document_t doc;
+	yaml::document_t doc(::logger());
 	/**
 	 * Выполняем проверку отказа раскрытия ссылок пределом собственным
 	 *
@@ -1650,7 +1708,7 @@ TEST(CodecYamlDocument, NamingIndex) {
 		// Добавляем очередную пару отображения
 		text.append("имя" + std::to_string(i) + ": " + std::to_string(i) + "\n");
 	// Объект дерева документа
-	yaml::document_t doc;
+	yaml::document_t doc(::logger());
 	// Выполняем разбор текста в дерево документа
 	ASSERT_TRUE(doc.parse(text));
 	/**
@@ -1709,7 +1767,7 @@ TEST(CodecYamlDocument, NamingIndex) {
 			// Добавляем очередную пару отображения
 			little.append("имя" + std::to_string(i) + ": " + std::to_string(i) + "\n");
 		// Объект дерева документа ниже порога заведения указателя
-		yaml::document_t small;
+		yaml::document_t small(::logger());
 		// Выполняем разбор текста в дерево документа
 		ASSERT_TRUE(small.parse(little));
 		/**
@@ -1751,7 +1809,7 @@ TEST(CodecYamlDocument, LongNumberRecord) {
 	// Устанавливаем удержание исходного текста
 	settings.retain = true;
 	// Объект дерева документа
-	yaml::document_t doc(settings);
+	yaml::document_t doc(::logger(), settings);
 	// Разбираемый текст с записью числа небывалой длины
 	const string text = ("число: " + digits + "\n");
 	// Выполняем разбор текста в дерево документа
@@ -1770,7 +1828,7 @@ TEST(CodecYamlDocument, LongNumberRecord) {
 	 */
 	{
 		// Объект дерева документа без удержания исходного текста
-		yaml::document_t plain;
+		yaml::document_t plain(::logger());
 		// Выполняем разбор текста в дерево документа
 		ASSERT_TRUE(plain.parse(text));
 		// Выполняем проверку сборки текста по дереву
@@ -1799,7 +1857,7 @@ TEST(CodecYamlDocument, DuplicateRemovalUnderRetention) {
 	// Назначаем правило удержания последней пары отображения
 	settings.duplicates = yaml::duplicate_t::LAST;
 	// Дерево документа с повторяющимся именем пары
-	yaml::document_t document;
+	yaml::document_t document(::logger());
 	// Выполняем назначение настроек разбора
 	document.settings(settings);
 	// Выполняем разбор текста с повторяющимся именем пары
@@ -1819,7 +1877,7 @@ TEST(CodecYamlDocument, DuplicateRemovalUnderRetention) {
 	// Выполняем проверку того, что удержанная пара в тексте осталась
 	ASSERT_NE(text.find("name: c"), string::npos);
 	// Дерево документа, записанный текст разбирающее
-	yaml::document_t back;
+	yaml::document_t back(::logger());
 	// Выполняем назначение тех же настроек разбора
 	back.settings(settings);
 	// Выполняем разбор записанного текста
@@ -1846,7 +1904,7 @@ TEST(CodecYamlDocument, MiddleRemovalUnderRetention) {
 	// Устанавливаем удержание исходного текста
 	settings.retain = true;
 	// Дерево документа отображения о трёх парах
-	yaml::document_t mapping;
+	yaml::document_t mapping(::logger());
 	// Выполняем назначение настроек разбора
 	mapping.settings(settings);
 	// Выполняем разбор текста отображения о трёх парах
@@ -1866,7 +1924,7 @@ TEST(CodecYamlDocument, MiddleRemovalUnderRetention) {
 	// Выполняем проверку того, что последняя пара в тексте осталась
 	ASSERT_NE(written.find("three: 3"), string::npos);
 	// Дерево документа перечня о трёх записях
-	yaml::document_t sequence;
+	yaml::document_t sequence(::logger());
 	// Выполняем назначение настроек разбора
 	sequence.settings(settings);
 	// Выполняем разбор текста перечня о трёх записях
@@ -1882,7 +1940,7 @@ TEST(CodecYamlDocument, MiddleRemovalUnderRetention) {
 	// Выполняем проверку того, что последняя запись перечня в тексте осталась
 	ASSERT_NE(listed.find("- c"), string::npos);
 	// Дерево документа, записанный текст перечня разбирающее
-	yaml::document_t back;
+	yaml::document_t back(::logger());
 	// Выполняем назначение тех же настроек разбора
 	back.settings(settings);
 	// Выполняем разбор записанного текста перечня
@@ -1908,7 +1966,7 @@ TEST(CodecYamlDocument, RootRemovalUnderRetention) {
 	// Устанавливаем удержание исходного текста
 	settings.retain = true;
 	// Дерево документа отображения о двух парах
-	yaml::document_t mapping;
+	yaml::document_t mapping(::logger());
 	// Выполняем назначение настроек разбора
 	mapping.settings(settings);
 	// Выполняем разбор текста отображения о двух парах
@@ -1924,7 +1982,7 @@ TEST(CodecYamlDocument, RootRemovalUnderRetention) {
 	 */
 	ASSERT_TRUE(mapping.dump().empty()) << "снесённый документ остался в тексте: " << mapping.dump();
 	// Дерево документа перечня о двух записях
-	yaml::document_t sequence;
+	yaml::document_t sequence(::logger());
 	// Выполняем назначение настроек разбора
 	sequence.settings(settings);
 	// Выполняем разбор текста перечня о двух записях
@@ -1934,7 +1992,7 @@ TEST(CodecYamlDocument, RootRemovalUnderRetention) {
 	// Выполняем проверку того, что запись опустела вместе с деревом
 	ASSERT_TRUE(sequence.dump().empty()) << "снесённый документ остался в тексте: " << sequence.dump();
 	// Дерево документа, одни примечания несущего
-	yaml::document_t bare;
+	yaml::document_t bare(::logger());
 	// Выполняем назначение настроек разбора
 	bare.settings(settings);
 	/**
@@ -1964,7 +2022,7 @@ TEST(CodecYamlDocument, TagDroppedOnAssignment) {
 	 */
 	for(const string & tag : {string("!"), string("!!str")}) {
 		// Дерево документа с меткою типа у пары
-		yaml::document_t document;
+		yaml::document_t document(::logger());
 		/**
 		 * Выполняем разбор текста с меткою типа у пары
 		 *
@@ -1975,7 +2033,7 @@ TEST(CodecYamlDocument, TagDroppedOnAssignment) {
 		// Выполняем установку целого значения по пути к паре
 		ASSERT_TRUE(document.set("/a", static_cast <int64_t> (-1250))) << "метка " << tag;
 		// Дерево документа, записанный текст разбирающее
-		yaml::document_t back;
+		yaml::document_t back(::logger());
 		// Выполняем разбор записанного текста
 		ASSERT_TRUE(back.parse(document.dump())) << "метка " << tag;
 		/**
@@ -1987,7 +2045,7 @@ TEST(CodecYamlDocument, TagDroppedOnAssignment) {
 			<< "метка " << tag << " пережила правку: " << document.dump();
 	}
 	// Дерево документа с якорем и меткою типа у пары
-	yaml::document_t anchored;
+	yaml::document_t anchored(::logger());
 	// Выполняем разбор текста с якорем, меткою и ссылкою на якорь
 	ASSERT_TRUE(anchored.parse("a: &якорь !!str x\nb: *якорь\n"));
 	// Выполняем установку целого значения по пути к паре с якорем
@@ -2003,7 +2061,7 @@ TEST(CodecYamlDocument, TagDroppedOnAssignment) {
 	 */
 	ASSERT_NE(written.find("&якорь"), string::npos) << "якорь снят вместе с меткою: " << written;
 	// Дерево документа, объявляемое вместилищем поверх метки
-	yaml::document_t arranged;
+	yaml::document_t arranged(::logger());
 	// Выполняем разбор текста с меткою типа у пары
 	ASSERT_TRUE(arranged.parse("a: !!str x\n"));
 	// Выполняем объявление узла отображением пар
@@ -2039,7 +2097,7 @@ TEST(CodecYamlDocument, BlockTailKeptOnNeighbourEdit) {
 	 */
 	for(const string & text : {string("b: 1\na: >\n  x\n  \t\n"), string("b: 1\na: >+\n  x\n\n\n")}) {
 		// Дерево документа с блочным значением в хвосте
-		yaml::document_t document;
+		yaml::document_t document(::logger());
 		// Выполняем назначение настроек разбора
 		document.settings(settings);
 		// Выполняем разбор текста с блочным значением в хвосте
@@ -2049,7 +2107,7 @@ TEST(CodecYamlDocument, BlockTailKeptOnNeighbourEdit) {
 		// Выполняем установку целого значения по пути к соседу блока
 		ASSERT_TRUE(document.set("/b", static_cast <int64_t> (-1250)));
 		// Дерево документа, правленый текст разбирающее
-		yaml::document_t back;
+		yaml::document_t back(::logger());
 		// Выполняем назначение тех же настроек разбора
 		back.settings(settings);
 		// Выполняем разбор правленого текста
@@ -2083,7 +2141,7 @@ TEST(CodecYamlDocument, BlockTailKeptBeforeDocumentEdge) {
 	// Устанавливаем удержание исходного текста
 	settings.retain = true;
 	// Дерево документа с блочным значением перед чертою документа следующего
-	yaml::document_t document;
+	yaml::document_t document(::logger());
 	// Выполняем назначение настроек разбора
 	document.settings(settings);
 	// Выполняем разбор текста из двух документов с блоком в хвосте первого
@@ -2095,7 +2153,7 @@ TEST(CodecYamlDocument, BlockTailKeptBeforeDocumentEdge) {
 	// Выполняем установку целого значения по пути к соседу блока
 	ASSERT_TRUE(document.set("/b", static_cast <int64_t> (-1250)));
 	// Дерево документа, правленый текст разбирающее
-	yaml::document_t back;
+	yaml::document_t back(::logger());
 	// Выполняем назначение тех же настроек разбора
 	back.settings(settings);
 	// Выполняем разбор правленого текста
@@ -2133,7 +2191,7 @@ TEST(CodecYamlDocument, BlockChompingChoice) {
 	for(const string & text : {string("a: |-\n  x\n"), string("a: |\n  x\n"),
 	 string("a: |+\n  x\n\n"), string("a: |+\n  \n")}) {
 		// Дерево документа с блочным значением
-		yaml::document_t document;
+		yaml::document_t document(::logger());
 		// Выполняем разбор текста с блочным значением
 		ASSERT_TRUE(document.parse(text)) << "текст " << text;
 		/**
@@ -2147,7 +2205,7 @@ TEST(CodecYamlDocument, BlockChompingChoice) {
 			// Выполняем проверку того, что круговой ход запись сохраняет побайтово
 			ASSERT_EQ(document.dump(), text) << "запись переменилась: " << document.dump();
 		// Дерево документа, записанный текст разбирающее
-		yaml::document_t back;
+		yaml::document_t back(::logger());
 		// Выполняем разбор записанного текста
 		ASSERT_TRUE(back.parse(document.dump())) << "текст " << text;
 		// Выполняем проверку того, что содержимое блока круговой ход пережило
@@ -2173,7 +2231,7 @@ TEST(CodecYamlDocument, CompactSequenceEditing) {
 	// Устанавливаем удержание исходного текста
 	settings.retain = true;
 	// Дерево документа перечня, записанного сжато
-	yaml::document_t document;
+	yaml::document_t document(::logger());
 	// Выполняем назначение настроек разбора
 	document.settings(settings);
 	// Выполняем разбор текста перечня, записанного сжато
@@ -2183,7 +2241,7 @@ TEST(CodecYamlDocument, CompactSequenceEditing) {
 	// Выполняем сброс значения третьей записи вложенного перечня
 	ASSERT_TRUE(document.reset("/0/2"));
 	// Дерево документа, правленый текст разбирающее
-	yaml::document_t back;
+	yaml::document_t back(::logger());
 	// Выполняем назначение тех же настроек разбора
 	back.settings(settings);
 	// Выполняем разбор правленого текста
@@ -2218,7 +2276,7 @@ TEST(CodecYamlDocument, SequenceEditingWithComments) {
 	// Устанавливаем удержание исходного текста
 	settings.retain = true;
 	// Дерево документа перечня, записи какого примечаниями разделены
-	yaml::document_t document;
+	yaml::document_t document(::logger());
 	// Выполняем назначение настроек разбора
 	document.settings(settings);
 	// Выполняем разбор текста перечня с примечанием между записями
@@ -2228,7 +2286,7 @@ TEST(CodecYamlDocument, SequenceEditingWithComments) {
 	// Выполняем установку целого значения по пути к паре первой записи
 	ASSERT_TRUE(document.set("/0/a", static_cast <int64_t> (-1250)));
 	// Дерево документа, правленый текст разбирающее
-	yaml::document_t back;
+	yaml::document_t back(::logger());
 	// Выполняем назначение тех же настроек разбора
 	back.settings(settings);
 	// Выполняем разбор правленого текста
@@ -2265,7 +2323,7 @@ TEST(CodecYamlDocument, BlockIndentIndicatorUnderRetention) {
 	// Устанавливаем удержание исходного текста
 	settings.retain = true;
 	// Дерево документа с блочным значением, указатель отступа несущим
-	yaml::document_t document;
+	yaml::document_t document(::logger());
 	// Выполняем назначение настроек разбора
 	document.settings(settings);
 	/**
@@ -2282,7 +2340,7 @@ TEST(CodecYamlDocument, BlockIndentIndicatorUnderRetention) {
 	// Выполняем установку целого значения по пути к соседу блока
 	ASSERT_TRUE(document.set("/a", static_cast <int64_t> (-1250)));
 	// Дерево документа, правленый текст разбирающее
-	yaml::document_t back;
+	yaml::document_t back(::logger());
 	// Выполняем назначение тех же настроек разбора
 	back.settings(settings);
 	// Выполняем разбор правленого текста
@@ -2322,7 +2380,7 @@ TEST(CodecYamlDocument, RecursiveAliasRefused) {
 	for(const string & text : {string("a: &x [1, 2, *x, 3, 4]"), string("a: &x {p: 1, q: *x, r: 2}"),
 	 string("a: &x [*x]"), string("a: &x {k: *x}")}) {
 		// Дерево документа с самоссылкою
-		yaml::document_t document;
+		yaml::document_t document(::logger());
 		// Выполняем проверку отказа разбора текста с самоссылкою
 		ASSERT_FALSE(document.parse(text)) << "самоссылка принята: " << text;
 		// Выполняем проверку кода отказа разбора
@@ -2339,12 +2397,12 @@ TEST(CodecYamlDocument, RecursiveAliasRefused) {
 	 string("a: &x [1]\nb: [*x, *x]\n"), string("a: &x [1]\nb: &y [*x]\nc: [*y, *x]\n"),
 	 string("a:\n  b: &x [1]\n  c: *x\n"), string("a: &x\n  p: 1\nb: *x\n")}) {
 		// Дерево документа со ссылкою законною
-		yaml::document_t document;
+		yaml::document_t document(::logger());
 		// Выполняем проверку разбора текста со ссылкою законною
 		ASSERT_TRUE(document.parse(text)) << "ссылка законная отвергнута: " << text;
 	}
 	// Дерево документа со ссылкою на метку соседа
-	yaml::document_t document;
+	yaml::document_t document(::logger());
 	// Выполняем разбор текста со ссылкою на метку соседа
 	ASSERT_TRUE(document.parse("a: &x [1, 2]\nb: *x\n"));
 	// Выполняем проверку того, что ссылка раскрыта содержимым метки
@@ -2376,7 +2434,7 @@ TEST(CodecYamlDocument, RemovalBetweenKeptBlockAndNeighbour) {
 	// Устанавливаем удержание исходного текста
 	settings.retain = true;
 	// Дерево документа с блоком, узлом сносимым и соседом снизу
-	yaml::document_t document;
+	yaml::document_t document(::logger());
 	// Выполняем назначение настроек разбора
 	document.settings(settings);
 	// Выполняем разбор текста с блоком, сохраняющим хвост
@@ -2388,7 +2446,7 @@ TEST(CodecYamlDocument, RemovalBetweenKeptBlockAndNeighbour) {
 	// Выполняем снос узла, меж блоком и соседом стоящего
 	ASSERT_TRUE(document.erase("/v"));
 	// Дерево документа, правленый текст разбирающее
-	yaml::document_t back;
+	yaml::document_t back(::logger());
 	// Выполняем назначение тех же настроек разбора
 	back.settings(settings);
 	// Выполняем разбор правленого текста
@@ -2408,7 +2466,7 @@ TEST(CodecYamlDocument, RemovalBetweenKeptBlockAndNeighbour) {
 	 * @note Случай обратный: строки эти суть содержимое блока, и терять их нельзя. Правка
 	 *       первой породы их и теряла - оттого стоит она в сносе, а не в сборке текста
 	 */
-	yaml::document_t owned;
+	yaml::document_t owned(::logger());
 	// Выполняем назначение настроек разбора
 	owned.settings(settings);
 	// Выполняем разбор текста, где пустые строки блоку принадлежат
@@ -2420,7 +2478,7 @@ TEST(CodecYamlDocument, RemovalBetweenKeptBlockAndNeighbour) {
 	// Выполняем установку значения по пути к соседу блока
 	ASSERT_TRUE(owned.set("/1", static_cast <int64_t> (5)));
 	// Дерево документа, правленый текст разбирающее
-	yaml::document_t twin;
+	yaml::document_t twin(::logger());
 	// Выполняем назначение тех же настроек разбора
 	twin.settings(settings);
 	// Выполняем разбор правленого текста
@@ -2449,7 +2507,7 @@ TEST(CodecYamlDocument, EditingNextToMultilineScalar) {
 	// Устанавливаем удержание исходного текста
 	settings.retain = true;
 	// Дерево документа с простым значением о трёх строках
-	yaml::document_t document;
+	yaml::document_t document(::logger());
 	// Выполняем назначение настроек разбора
 	document.settings(settings);
 	/**
@@ -2464,7 +2522,7 @@ TEST(CodecYamlDocument, EditingNextToMultilineScalar) {
 	// Выполняем установку целого значения по пути внутрь записи второй
 	ASSERT_TRUE(document.set("/1/b", static_cast <int64_t> (-1250)));
 	// Дерево документа, правленый текст разбирающее
-	yaml::document_t back;
+	yaml::document_t back(::logger());
 	// Выполняем назначение тех же настроек разбора
 	back.settings(settings);
 	// Выполняем разбор правленого текста
@@ -2481,7 +2539,7 @@ TEST(CodecYamlDocument, EditingNextToMultilineScalar) {
 	// Выполняем проверку того, что запись первая целой осталась
 	ASSERT_EQ(back.root().at("/0").text(), "c c") << document.dump();
 	// Дерево документа перечня, записанного сжато
-	yaml::document_t compact;
+	yaml::document_t compact(::logger());
 	// Выполняем назначение настроек разбора
 	compact.settings(settings);
 	/**
@@ -2494,7 +2552,7 @@ TEST(CodecYamlDocument, EditingNextToMultilineScalar) {
 	// Выполняем сброс значения третьей записи вложенного перечня
 	ASSERT_TRUE(compact.reset("/0/2"));
 	// Дерево документа, правленый текст перечня разбирающее
-	yaml::document_t twin;
+	yaml::document_t twin(::logger());
 	// Выполняем назначение тех же настроек разбора
 	twin.settings(settings);
 	// Выполняем разбор правленого текста перечня

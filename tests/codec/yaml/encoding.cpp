@@ -27,6 +27,64 @@
 #include <codec/yaml/yaml.hpp>
 
 /**
+ * @brief Пространство имён проверок этого файла
+ *
+ * @note Держится оно безымянным намеренно: проверки кодеков собираются одной
+ *       программою, и одноимённые построения разных файлов иначе сходятся в
+ *       одно, порождая порчу вдали от места её причины
+ *
+ */
+namespace {
+	/**
+	 * @brief Объект журнала проверок с отключённым выводом
+	 *
+	 * @details Вывод отключается назначением пустого перечня приёмников: отказы
+	 *          разбора проверки наводят намеренно, и журнал их засорял бы выдачу
+	 *
+	 */
+	struct Silent {
+		/**
+		 * @brief Функция получения объекта фреймворка проверок
+		 *
+		 * @details Объект заводится статикою местною, а не общею файла: заведение его
+		 *          порядком построения статики оканчивается падением ещё до входа в
+		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
+		 *
+		 * @return объект фреймворка проверок
+		 *
+		 */
+		static const awh::fmk_t & framework() noexcept {
+			// Объект фреймворка проверок
+			static awh::fmk_t fmk;
+			// Выводим объект фреймворка проверок
+			return fmk;
+		}
+		// Объект журнала проверок
+		awh::log_t log;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Silent() noexcept : log(&Silent::framework()) {
+			// Выполняем отключение вывода логов
+			this->log.mode({});
+		}
+	};
+	/**
+	 * @brief Функция получения объекта журнала проверок
+	 *
+	 * @return объект журнала проверок
+	 *
+	 */
+	const awh::log_t * logger() noexcept {
+		// Объект журнала проверок
+		static Silent silent;
+		// Выводим объект журнала проверок
+		return &silent.log;
+	}
+}
+
+/**
  * Используем стандартное пространство имён
  */
 using namespace std;
@@ -179,7 +237,7 @@ namespace {
 	 */
 	bool piecemeal(const string & source, const size_t chunk, string & result) noexcept {
 		// Объект приведения кодировки исходного текста
-		yaml::decoder_t decoder;
+		yaml::decoder_t decoder(::logger());
 		// Выполняем сброс собираемого приведённого текста
 		result.clear();
 		// Смещение очередного подаваемого куска
@@ -420,7 +478,7 @@ TEST(CodecYamlEncoding, Conversion) {
 		// Собираемый приведённый текст
 		string whole;
 		// Объект приведения кодировки исходного текста
-		yaml::decoder_t decoder;
+		yaml::decoder_t decoder(::logger());
 		// Выполняем приведение образца, поданного целиком
 		ASSERT_TRUE(decoder.convert(source.data(), source.size(), true, whole))
 			<< "кодировка " << static_cast <unsigned> (sample.encoding) << ": " << yaml::message(decoder.error());
@@ -455,7 +513,7 @@ TEST(CodecYamlEncoding, Refusals) {
 	 */
 	{
 		// Объект приведения кодировки исходного текста
-		yaml::decoder_t decoder;
+		yaml::decoder_t decoder(::logger());
 		// Собираемый приведённый текст
 		string result;
 		// Выполняем проверку отказа приведения оборванной последовательности
@@ -475,7 +533,7 @@ TEST(CodecYamlEncoding, Refusals) {
 	 */
 	{
 		// Объект приведения кодировки исходного текста
-		yaml::decoder_t decoder;
+		yaml::decoder_t decoder(::logger());
 		// Собираемый приведённый текст
 		string result;
 		// Задаём кодировку исходного текста
@@ -490,7 +548,7 @@ TEST(CodecYamlEncoding, Refusals) {
 	 */
 	{
 		// Объект приведения кодировки исходного текста
-		yaml::decoder_t decoder;
+		yaml::decoder_t decoder(::logger());
 		// Собираемый приведённый текст
 		string result;
 		// Задаём кодировку исходного текста
@@ -505,7 +563,7 @@ TEST(CodecYamlEncoding, Refusals) {
 	 */
 	{
 		// Объект приведения кодировки исходного текста
-		yaml::decoder_t decoder;
+		yaml::decoder_t decoder(::logger());
 		// Собираемый приведённый текст
 		string result;
 		// Задаём кодировку исходного текста
@@ -526,7 +584,7 @@ TEST(CodecYamlEncoding, Refusals) {
  */
 TEST(CodecYamlEncoding, Forced) {
 	// Объект приведения кодировки исходного текста
-	yaml::decoder_t decoder;
+	yaml::decoder_t decoder(::logger());
 	// Собираемый приведённый текст
 	string result;
 	// Задаём кодировку исходного текста
@@ -562,7 +620,7 @@ TEST(CodecYamlEncoding, Forced) {
  */
 TEST(CodecYamlEncoding, Direct) {
 	// Объект приведения кодировки исходного текста
-	yaml::decoder_t decoder;
+	yaml::decoder_t decoder(::logger());
 	// Собираемый приведённый текст
 	string result;
 	/**
@@ -574,7 +632,7 @@ TEST(CodecYamlEncoding, Direct) {
 	// Выполняем проверку того, что прямой разбор дозволен
 	ASSERT_TRUE(decoder.direct());
 	// Объект приведения кодировки исходного текста, записанного парами байтов
-	yaml::decoder_t doubled;
+	yaml::decoder_t doubled(::logger());
 	// Выполняем сброс собираемого приведённого текста
 	result.clear();
 	// Выполняем приведение текста, записанного парами байтов
@@ -602,7 +660,7 @@ TEST(CodecYamlEncoding, Forbidden) {
 	 */
 	{
 		// Объект приведения кодировки исходного текста
-		yaml::decoder_t decoder;
+		yaml::decoder_t decoder(::logger());
 		// Выполняем навязывание кодировки приведению
 		decoder.encoding(yaml::encoding_t::UTF8);
 		// Приведённый к UTF-8 текст
@@ -617,7 +675,7 @@ TEST(CodecYamlEncoding, Forbidden) {
 	 */
 	{
 		// Объект приведения кодировки исходного текста
-		yaml::decoder_t decoder;
+		yaml::decoder_t decoder(::logger());
 		// Выполняем навязывание кодировки приведению
 		decoder.encoding(yaml::encoding_t::UTF8);
 		// Приведённый к UTF-8 текст
@@ -632,7 +690,7 @@ TEST(CodecYamlEncoding, Forbidden) {
 	 */
 	{
 		// Объект приведения кодировки исходного текста
-		yaml::decoder_t decoder;
+		yaml::decoder_t decoder(::logger());
 		// Приведённый к UTF-8 текст
 		string result;
 		// Выполняем проверку отказа приведения пустого знака парами байтов
@@ -648,7 +706,7 @@ TEST(CodecYamlEncoding, Forbidden) {
 	 */
 	{
 		// Объект приведения кодировки исходного текста
-		yaml::decoder_t decoder;
+		yaml::decoder_t decoder(::logger());
 		// Выполняем навязывание кодировки приведению
 		decoder.encoding(yaml::encoding_t::UTF8);
 		// Приведённый к UTF-8 текст
@@ -699,7 +757,7 @@ TEST(CodecYamlEncoding, ForcedSignature) {
 		 */
 		for(const size_t chunk : {static_cast <size_t> (0), static_cast <size_t> (1), static_cast <size_t> (3)}){
 			// Объект приведения кодировки исходного текста
-			yaml::decoder_t decoder;
+			yaml::decoder_t decoder(::logger());
 			// Выполняем навязывание кодировки приведению
 			ASSERT_TRUE(decoder.encoding(sample.encoding));
 			// Приведённый к UTF-8 текст
@@ -733,7 +791,7 @@ TEST(CodecYamlEncoding, ForcedSignature) {
 		// Выполняем навязывание кодировки разбору
 		settings.encoding = yaml::encoding_t::UTF8;
 		// Объект дерева документа
-		yaml::document_t doc(settings);
+		yaml::document_t doc(::logger(), settings);
 		// Выполняем разбор текста, меткою порядка байтов открытого
 		ASSERT_TRUE(doc.parse(string("\xEF\xBB\xBF") + "имя: значение\n"));
 		// Выполняем проверку собранного значения пары

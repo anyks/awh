@@ -1600,7 +1600,7 @@ bool awh::codec::yaml::Value::parse(const string & text, const Document::setting
 	// Выполняем очистку прежнего значения
 	this->clear();
 	// Выполняем заведение дерева документа
-	document_t document(settings);
+	document_t document(this->_log, settings);
 	/**
 	 * Если разобрать текст документа не удалось
 	 */
@@ -1648,7 +1648,7 @@ bool awh::codec::yaml::Value::load(const string & filename, const Document::sett
 	// Выполняем очистку прежнего значения
 	this->clear();
 	// Выполняем заведение дерева документа
-	document_t document(settings);
+	document_t document(this->_log, settings);
 	/**
 	 * Если разобрать текст документа из файла не удалось
 	 */
@@ -1700,7 +1700,7 @@ string awh::codec::yaml::Value::dump(const writer_t::settings_t & settings) cons
 		// Выводим пустой текст
 		return string();
 	// Выполняем заведение потока записи
-	writer_t writer;
+	writer_t writer(this->_log);
 	// Выполняем установку настроек записи текста
 	writer.settings(settings);
 	// Выполняем открытие записываемого документа
@@ -2096,6 +2096,8 @@ awh::codec::yaml::Value & awh::codec::yaml::Value::operator = (const Value & val
 	if(this == &value)
 		// Выводим ссылку на текущее значение
 		return (* this);
+	// Выполняем копирование объекта для работы с логами
+	this->_log = value._log;
 	// Выполняем копирование вида хранимого значения
 	this->_kind = value._kind;
 	// Выполняем копирование вида хранения значения
@@ -2139,6 +2141,8 @@ awh::codec::yaml::Value & awh::codec::yaml::Value::operator = (Value && value) n
 	if(this == &value)
 		// Выводим ссылку на текущее значение
 		return (* this);
+	// Выполняем перенос объекта для работы с логами
+	this->_log = value._log;
 	// Выполняем перенос вида хранимого значения
 	this->_kind = value._kind;
 	// Выполняем перенос вида хранения значения
@@ -2171,11 +2175,21 @@ awh::codec::yaml::Value & awh::codec::yaml::Value::operator = (Value && value) n
 	return (* this);
 }
 /**
+ * @brief Метод назначения объекта для работы с логами
+ *
+ * @param log объект для работы с логами
+ *
+ */
+void awh::codec::yaml::Value::logger(const log_t * log) noexcept {
+	// Выполняем установку объекта для работы с логами
+	this->_log = log;
+}
+/**
  * @brief Конструктор
  *
  */
 awh::codec::yaml::Value::Value() noexcept :
- _kind(kind_t::NONE), _type(type_t::UNDEFINED), _schema(schema_t::CORE),
+ _log(nullptr), _kind(kind_t::NONE), _type(type_t::UNDEFINED), _schema(schema_t::CORE),
  _style(style_t::PLAIN), _chomp(chomp_t::KEEP), _layout(layout_t::BLOCK) {}
 /**
  * @brief Конструктор вместилища указанного вида

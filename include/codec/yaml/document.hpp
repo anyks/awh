@@ -973,6 +973,35 @@ namespace awh {
 					 */
 					friend class Value;
 				private:
+					/**
+					 * \~russian
+					 * @brief Метод вывода сообщения об отказе в лог
+					 *
+					 * @details Сообщение собирается из кода отказа да места его: код остаётся
+					 * доступен потребителю через error(), а место - через location(), и журнал
+					 * их не заменяет, а лишь оповещает о случившемся
+					 *
+					 * \~english
+					 * @brief Method of the output of the message about a refusal into the log
+					 * @details The message is composed of the code of the refusal and of its place: the code
+					 * remains available to the consumer through error(), and the place through location(),
+					 * and the log does not replace them but merely notifies about what has happened
+					 *
+					 * \~
+					 */
+					void report() const noexcept;
+				private:
+					/**
+					 * \~russian
+					 * Объект для работы с логами
+					 *
+					 * \~english
+					 * Object for working with logs
+					 *
+					 * \~
+					 */
+					const log_t * _log;
+				private:
 					// Настройки разбора документа
 					settings_t _settings;
 					// Плоский перечень узлов дерева документа
@@ -1928,26 +1957,30 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
+					 * @param log объект для работы с логами
 					 *
 					 * \~english
 					 * @brief Constructor
+					 * @param log object for working with logs
 					 *
 					 * \~
 					 */
-					Document() noexcept;
+					Document(const log_t * log) noexcept;
 					/**
 					 * \~russian
 					 * @brief Конструктор
 					 *
+					 * @param log      объект для работы с логами
 					 * @param settings настройки разбора документа
 					 *
 					 * \~english
 					 * @brief Constructor
+					 * @param log      object for working with logs
 					 * @param settings settings of the parsing of a document
 					 *
 					 * \~
 					 */
-					explicit Document(const settings_t & settings) noexcept;
+					Document(const log_t * log, const settings_t & settings) noexcept;
 			} document_t;
 		};
 	};

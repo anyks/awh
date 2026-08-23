@@ -136,18 +136,33 @@ awh::codec::yaml::Document::Settings::Settings() noexcept :
 /**
  * @brief Конструктор
  *
+ * @param log объект для работы с логами
+ *
  */
-awh::codec::yaml::Document::Document() noexcept :
- _prologue(0), _encoding(encoding_t::NONE), _versioned(false), _schema(schema_t::CORE), _error(error_t::NONE) {}
+awh::codec::yaml::Document::Document(const log_t * log) noexcept :
+ _log(log), _prologue(0), _encoding(encoding_t::NONE), _versioned(false), _schema(schema_t::CORE), _error(error_t::NONE) {}
 /**
  * @brief Конструктор
  *
+ * @param log      объект для работы с логами
  * @param settings настройки разбора документа
  *
  */
-awh::codec::yaml::Document::Document(const settings_t & settings) noexcept :
- _settings(settings), _prologue(0), _encoding(encoding_t::NONE), _versioned(false), _schema(settings.schema),
+awh::codec::yaml::Document::Document(const log_t * log, const settings_t & settings) noexcept :
+ _log(log), _settings(settings), _prologue(0), _encoding(encoding_t::NONE), _versioned(false), _schema(settings.schema),
  _error(error_t::NONE) {}
+/**
+ * @brief Метод вывода сообщения об отказе в лог
+ *
+ */
+void awh::codec::yaml::Document::report() const noexcept {
+	/**
+	 * Если объект для работы с логами установлен
+	 */
+	if(this->_log != nullptr)
+		// Выполняем вывод сообщения об отказе построения дерева документа
+		this->_log->print("YAML document failed: %s at line %u column %u", log_t::flag_t::CRITICAL, awh::codec::yaml::message(this->_error), this->_location.line, this->_location.column);
+}
 /**
  * @brief Метод получения настроек разбора документа
  *
@@ -785,6 +800,8 @@ bool awh::codec::yaml::Document::digest(reader_t & reader) noexcept {
 			this->_error = error_t::TOO_MANY_NODES;
 			// Запоминаем положение отказа разбора
 			this->_location = reader.value().location;
+			// Выполняем вывод сообщения об отказе в лог
+			this->report();
 			// Выводим признак неудачной постройки дерева
 			return false;
 		}
@@ -909,6 +926,8 @@ bool awh::codec::yaml::Document::digest(reader_t & reader) noexcept {
 					this->_error = error_t::COMPLEX_KEY;
 					// Запоминаем положение отказа разбора
 					this->_location = reader.value().location;
+					// Выполняем вывод сообщения об отказе в лог
+					this->report();
 					// Выводим признак неудачной постройки дерева
 					return false;
 				}
@@ -1151,6 +1170,8 @@ bool awh::codec::yaml::Document::digest(reader_t & reader) noexcept {
 					this->_error = error_t::COMPLEX_KEY;
 					// Запоминаем положение отказа разбора
 					this->_location = reader.value().location;
+					// Выполняем вывод сообщения об отказе в лог
+					this->report();
 					// Выводим признак неудачной постройки дерева
 					return false;
 				}
@@ -1164,6 +1185,8 @@ bool awh::codec::yaml::Document::digest(reader_t & reader) noexcept {
 					this->_error = error_t::UNKNOWN_ALIAS;
 					// Запоминаем положение отказа разбора
 					this->_location = reader.value().location;
+					// Выполняем вывод сообщения об отказе в лог
+					this->report();
 					// Выводим признак неудачной постройки дерева
 					return false;
 				}
@@ -1197,6 +1220,8 @@ bool awh::codec::yaml::Document::digest(reader_t & reader) noexcept {
 						this->_error = error_t::RECURSIVE_ALIAS;
 						// Запоминаем положение отказа разбора
 						this->_location = reader.value().location;
+						// Выполняем вывод сообщения об отказе в лог
+						this->report();
 						// Выводим признак неудачной постройки дерева
 						return false;
 					}
@@ -1215,6 +1240,8 @@ bool awh::codec::yaml::Document::digest(reader_t & reader) noexcept {
 					this->_error = error_t::TOO_MANY_NODES;
 					// Запоминаем положение отказа разбора
 					this->_location = reader.value().location;
+					// Выполняем вывод сообщения об отказе в лог
+					this->report();
 					// Выводим признак неудачной постройки дерева
 					return false;
 				}
@@ -1230,6 +1257,8 @@ bool awh::codec::yaml::Document::digest(reader_t & reader) noexcept {
 					this->_error = error_t::EXPANSION_EXCEEDED;
 					// Запоминаем положение отказа разбора
 					this->_location = reader.value().location;
+					// Выполняем вывод сообщения об отказе в лог
+					this->report();
 					// Выводим признак неудачной постройки дерева
 					return false;
 				}
@@ -1374,7 +1403,7 @@ bool awh::codec::yaml::Document::parse(const string & text) noexcept {
 		settings.emitBlanks = true;
 	}
 	// Объект потокового чтения текста
-	reader_t reader(settings);
+	reader_t reader(this->_log, settings);
 	/**
 	 * @brief Функция снятия удержания при кодировке, отличной от UTF-8
 	 *
@@ -1468,6 +1497,8 @@ bool awh::codec::yaml::Document::load(const string & filename) noexcept {
 		this->clear();
 		// Запоминаем код ошибки разбора текста
 		this->_error = error_t::EMPTY_TEXT;
+		// Выполняем вывод сообщения об отказе в лог
+		this->report();
 		// Выводим признак неудачного чтения текста
 		return false;
 	}
@@ -2634,7 +2665,7 @@ void awh::codec::yaml::Document::compose(writer_t & writer, const uint32_t index
  */
 string awh::codec::yaml::Document::dump(const writer_t::settings_t & settings) const noexcept {
 	// Объект записи текста документа
-	writer_t writer(settings);
+	writer_t writer(this->_log, settings);
 	/**
 	 * Если исходный текст удержан, а документов он не несёт
 	 *
@@ -3233,6 +3264,8 @@ bool awh::codec::yaml::Document::deduplicate(const uint32_t parent, unordered_ma
 				this->_error = error_t::DUPLICATE_KEY;
 				// Запоминаем положение отказа разбора
 				this->_location = reader.value().location;
+				// Выполняем вывод сообщения об отказе в лог
+				this->report();
 				// Выводим признак неудачного разбора
 				return false;
 			}
