@@ -4,6 +4,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <sys/log.hpp>
 
 /**
  * @brief Пространство имён проверок этого файла

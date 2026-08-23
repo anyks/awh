@@ -40,6 +40,7 @@
  * Подключаем заголовочные файлы модуля
  */
 #include <codec/yaml/value.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -2194,7 +2195,7 @@ awh::codec::yaml::Value & awh::codec::yaml::Value::operator = (Value && value) n
  * @param log объект для работы с логами
  *
  */
-void awh::codec::yaml::Value::logger(const log_t * log) noexcept {
+void awh::codec::yaml::Value::logger(const Logging * log) noexcept {
 	// Выполняем установку объекта для работы с логами
 	this->_log = log;
 }

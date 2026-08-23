@@ -31,6 +31,7 @@
  */
 #include <gtest/gtest.h>
 #include <codec/csv/csv.hpp>
+#include <sys/log.hpp>
 
 /**
  * @brief Пространство имён проверок этого файла

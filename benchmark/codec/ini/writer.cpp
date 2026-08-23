@@ -23,6 +23,65 @@
  * Подключаем заголовочный файл бенчмарков контейнера INI
  */
 #include "ini.hpp"
+#include <sys/log.hpp>
+
+/**
+ * @brief Пространство имён проверок этого файла
+ *
+ * @note Держится оно безымянным намеренно: проверки кодеков собираются одной
+ *       программою, и одноимённые построения разных файлов иначе сходятся в
+ *       одно, порождая порчу вдали от места её причины
+ *
+ */
+namespace {
+	/**
+	 * @brief Объект журнала проверок с отключённым выводом
+	 *
+	 * @details Вывод отключается назначением пустого перечня приёмников: отказы
+	 *          разбора проверки наводят намеренно, и журнал их засорял бы выдачу
+	 *
+	 */
+	struct Silent {
+		/**
+		 * @brief Функция получения объекта фреймворка проверок
+		 *
+		 * @details Объект заводится статикою местною, а не общею файла: заведение его
+		 *          порядком построения статики оканчивается падением ещё до входа в
+		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
+		 *
+		 * @return объект фреймворка проверок
+		 *
+		 */
+		static const awh::fmk_t & framework() noexcept {
+			// Объект фреймворка проверок
+			static awh::fmk_t fmk;
+			// Выводим объект фреймворка проверок
+			return fmk;
+		}
+		// Объект журнала проверок
+		awh::log_t log;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Silent() noexcept : log(&Silent::framework()) {
+			// Выполняем отключение вывода логов
+			this->log.mode({});
+		}
+	};
+	/**
+	 * @brief Функция получения объекта журнала проверок
+	 *
+	 * @return объект журнала проверок
+	 *
+	 */
+	const awh::log_t * logger() noexcept {
+		// Объект журнала проверок
+		static Silent silent;
+		// Выводим объект журнала проверок
+		return &silent.log;
+	}
+}
 
 /**
  * Используем стандартное пространство имён
@@ -96,9 +155,9 @@ namespace {
 	 * @return размер собранного текста настроек
 	 *
 	 */
-	static uint64_t write() noexcept {
+	static uint64_t writing() noexcept {
 		// Объект записи текста настроек
-		awh::codec::ini::writer_t writer;
+		awh::codec::ini::writer_t writer(::logger());
 		// Выполняем запись примечания
 		writer.comment("собрано приложением");
 		// Выполняем запись объявления раздела
@@ -138,7 +197,7 @@ namespace {
 		// Получаем настройки записи наречия настроек Git
 		const awh::codec::ini::writer_t::settings_t settings = awh::codec::ini::writer_t::settings_t::git();
 		// Объект записи текста настроек
-		awh::codec::ini::writer_t writer(settings);
+		awh::codec::ini::writer_t writer(::logger(), settings);
 		// Получаем перечень записываемых значений свойств
 		const vector <string> & values = ::values();
 		// Выполняем запись объявления раздела
@@ -162,11 +221,11 @@ namespace {
 		// Результат измерения
 		awh::benchmark::result_t result;
 		// Получаем размер собираемого текста настроек
-		const size_t bytes = static_cast <size_t> (::write());
+		const size_t bytes = static_cast <size_t> (::writing());
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(bytes, WRITE_ROUNDS, []() noexcept {
 			// Выполняем сборку файла настроек службы
-			return ::write();
+			return ::writing();
 		});
 		// Устанавливаем измеренное значение
 		result.value = perSecond(outcome);

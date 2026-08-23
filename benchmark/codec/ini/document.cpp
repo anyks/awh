@@ -23,6 +23,65 @@
  * Подключаем заголовочный файл бенчмарков контейнера INI
  */
 #include "ini.hpp"
+#include <sys/log.hpp>
+
+/**
+ * @brief Пространство имён проверок этого файла
+ *
+ * @note Держится оно безымянным намеренно: проверки кодеков собираются одной
+ *       программою, и одноимённые построения разных файлов иначе сходятся в
+ *       одно, порождая порчу вдали от места её причины
+ *
+ */
+namespace {
+	/**
+	 * @brief Объект журнала проверок с отключённым выводом
+	 *
+	 * @details Вывод отключается назначением пустого перечня приёмников: отказы
+	 *          разбора проверки наводят намеренно, и журнал их засорял бы выдачу
+	 *
+	 */
+	struct Silent {
+		/**
+		 * @brief Функция получения объекта фреймворка проверок
+		 *
+		 * @details Объект заводится статикою местною, а не общею файла: заведение его
+		 *          порядком построения статики оканчивается падением ещё до входа в
+		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
+		 *
+		 * @return объект фреймворка проверок
+		 *
+		 */
+		static const awh::fmk_t & framework() noexcept {
+			// Объект фреймворка проверок
+			static awh::fmk_t fmk;
+			// Выводим объект фреймворка проверок
+			return fmk;
+		}
+		// Объект журнала проверок
+		awh::log_t log;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Silent() noexcept : log(&Silent::framework()) {
+			// Выполняем отключение вывода логов
+			this->log.mode({});
+		}
+	};
+	/**
+	 * @brief Функция получения объекта журнала проверок
+	 *
+	 * @return объект журнала проверок
+	 *
+	 */
+	const awh::log_t * logger() noexcept {
+		// Объект журнала проверок
+		static Silent silent;
+		// Выводим объект журнала проверок
+		return &silent.log;
+	}
+}
 
 /**
  * Используем стандартное пространство имён
@@ -157,7 +216,7 @@ namespace {
 	 */
 	static uint64_t build(const string & text, const awh::codec::ini::document_t::settings_t & settings) noexcept {
 		// Дерево настроек
-		awh::codec::ini::document_t document;
+		awh::codec::ini::document_t document(::logger());
 		/**
 		 * Если разбор текста настроек выполнить не удалось
 		 */
@@ -180,7 +239,7 @@ namespace {
 		// Собираемое дерево настроек
 		static const awh::codec::ini::document_t result = []() noexcept -> awh::codec::ini::document_t {
 			// Собираемое дерево настроек
-			awh::codec::ini::document_t result;
+			awh::codec::ini::document_t result(::logger());
 			// Выполняем разбор эталонного текста настроек
 			result.parse(service());
 			// Выводим собранное дерево настроек
@@ -299,7 +358,7 @@ namespace {
 		// Разбираемый текст настроек
 		const string & text = sections();
 		// Собираемое дерево настроек
-		awh::codec::ini::document_t document;
+		awh::codec::ini::document_t document(::logger());
 		/**
 		 * Если разбор текста настроек выполнить не удалось
 		 */
@@ -413,7 +472,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(0, ASSEMBLY_ROUNDS, [&keys]() noexcept {
 			// Собираемое дерево настроек
-			awh::codec::ini::document_t document;
+			awh::codec::ini::document_t document(::logger());
 			// Накопитель итогов заведения свойств
 			uint64_t result = 0;
 			/**

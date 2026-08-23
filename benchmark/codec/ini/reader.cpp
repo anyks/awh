@@ -24,6 +24,65 @@
  * Подключаем заголовочный файл бенчмарков контейнера INI
  */
 #include "ini.hpp"
+#include <sys/log.hpp>
+
+/**
+ * @brief Пространство имён проверок этого файла
+ *
+ * @note Держится оно безымянным намеренно: проверки кодеков собираются одной
+ *       программою, и одноимённые построения разных файлов иначе сходятся в
+ *       одно, порождая порчу вдали от места её причины
+ *
+ */
+namespace {
+	/**
+	 * @brief Объект журнала проверок с отключённым выводом
+	 *
+	 * @details Вывод отключается назначением пустого перечня приёмников: отказы
+	 *          разбора проверки наводят намеренно, и журнал их засорял бы выдачу
+	 *
+	 */
+	struct Silent {
+		/**
+		 * @brief Функция получения объекта фреймворка проверок
+		 *
+		 * @details Объект заводится статикою местною, а не общею файла: заведение его
+		 *          порядком построения статики оканчивается падением ещё до входа в
+		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
+		 *
+		 * @return объект фреймворка проверок
+		 *
+		 */
+		static const awh::fmk_t & framework() noexcept {
+			// Объект фреймворка проверок
+			static awh::fmk_t fmk;
+			// Выводим объект фреймворка проверок
+			return fmk;
+		}
+		// Объект журнала проверок
+		awh::log_t log;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Silent() noexcept : log(&Silent::framework()) {
+			// Выполняем отключение вывода логов
+			this->log.mode({});
+		}
+	};
+	/**
+	 * @brief Функция получения объекта журнала проверок
+	 *
+	 * @return объект журнала проверок
+	 *
+	 */
+	const awh::log_t * logger() noexcept {
+		// Объект журнала проверок
+		static Silent silent;
+		// Выводим объект журнала проверок
+		return &silent.log;
+	}
+}
 
 /**
  * Используем стандартное пространство имён
@@ -140,9 +199,9 @@ namespace {
 	 * @return         количество полученных событий разбора
 	 *
 	 */
-	static uint64_t read(const string & text, const awh::codec::ini::reader_t::settings_t & settings) noexcept {
+	static uint64_t reading(const string & text, const awh::codec::ini::reader_t::settings_t & settings) noexcept {
 		// Объект потокового чтения текста настроек
-		awh::codec::ini::reader_t reader(settings);
+		awh::codec::ini::reader_t reader(::logger(), settings);
 		/**
 		 * Если передать текст настроек не удалось
 		 */
@@ -169,7 +228,7 @@ namespace {
 	 */
 	static uint64_t feed(const string & text) noexcept {
 		// Объект потокового чтения текста настроек
-		awh::codec::ini::reader_t reader;
+		awh::codec::ini::reader_t reader(::logger());
 		// Количество полученных событий разбора
 		uint64_t result = 0;
 		// Смещение очередного подаваемого куска текста настроек
@@ -215,7 +274,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(text.size(), SMALL_ROUNDS, [&text, &settings]() noexcept {
 			// Выполняем чтение текста настроек
-			return ::read(text, settings);
+			return ::reading(text, settings);
 		});
 		// Устанавливаем измеренное значение
 		result.value = perSecond(outcome);
@@ -240,7 +299,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(text.size(), SMALL_ROUNDS, [&text, &settings]() noexcept {
 			// Выполняем чтение текста настроек
-			return ::read(text, settings);
+			return ::reading(text, settings);
 		});
 		// Устанавливаем измеренное значение
 		result.value = perSecond(outcome);
@@ -265,7 +324,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(text.size(), LARGE_ROUNDS, [&text, &settings]() noexcept {
 			// Выполняем чтение текста настроек
-			return ::read(text, settings);
+			return ::reading(text, settings);
 		});
 		// Устанавливаем измеренное значение
 		result.value = perSecond(outcome);
@@ -290,7 +349,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(text.size(), FOCUSED_ROUNDS, [&text, &settings]() noexcept {
 			// Выполняем чтение текста настроек
-			return ::read(text, settings);
+			return ::reading(text, settings);
 		});
 		// Устанавливаем измеренное значение
 		result.value = perSecond(outcome);
@@ -315,7 +374,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(text.size(), LARGE_ROUNDS, [&text, &settings]() noexcept {
 			// Выполняем чтение текста настроек
-			return ::read(text, settings);
+			return ::reading(text, settings);
 		});
 		// Устанавливаем сведения о прогоне
 		result.details = details(outcome);
@@ -346,7 +405,7 @@ namespace {
 		// Выполняем прогон подачи текста настроек целиком
 		const outcome_t whole = measure(text.size(), LARGE_ROUNDS, [&text, &settings]() noexcept {
 			// Выполняем чтение текста настроек
-			return ::read(text, settings);
+			return ::reading(text, settings);
 		});
 		// Выполняем прогон подачи текста настроек кусками
 		const outcome_t chunked = measure(text.size(), LARGE_ROUNDS, [&text]() noexcept {
@@ -382,7 +441,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(text.size(), SMALL_ROUNDS, [&text, &settings]() noexcept {
 			// Выполняем чтение текста настроек
-			return ::read(text, settings);
+			return ::reading(text, settings);
 		});
 		// Устанавливаем измеренное значение
 		result.value = perLatency(outcome);

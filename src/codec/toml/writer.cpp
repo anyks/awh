@@ -36,6 +36,7 @@
 #include <encoding/ascii.hpp>
 #include <num/lexical/lexical.hpp>
 #include <codec/toml/writer.hpp>
+#include <sys/log.hpp>
 
 /**
  * Снимаем на время реализации макросы, чьи имена заняты
@@ -1978,7 +1979,7 @@ void awh::codec::toml::Writer::clear() noexcept {
  * @param log объект для работы с логами
  *
  */
-awh::codec::toml::Writer::Writer(const log_t * log) noexcept :
+awh::codec::toml::Writer::Writer(const Logging * log) noexcept :
  _log(log),
  _error(error_t::NONE), _tabled(false), _trailable(false), _torn(false), _length(0), _restore(0) {}
 /**
@@ -1988,7 +1989,7 @@ awh::codec::toml::Writer::Writer(const log_t * log) noexcept :
  * @param settings настройки записи текста настроек
  *
  */
-awh::codec::toml::Writer::Writer(const log_t * log, const settings_t & settings) noexcept :
+awh::codec::toml::Writer::Writer(const Logging * log, const settings_t & settings) noexcept :
  _log(log),
  _error(error_t::NONE), _tabled(false), _trailable(false), _torn(false), _length(0), _restore(0), _settings(settings) {}
 /**

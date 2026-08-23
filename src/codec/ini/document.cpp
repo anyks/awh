@@ -25,6 +25,7 @@
  */
 #include <encoding/ascii.hpp>
 #include <codec/ini/document.hpp>
+#include <sys/log.hpp>
 
 /**
  * Снимаем на время реализации макросы, чьи имена заняты
@@ -2313,7 +2314,7 @@ void awh::codec::ini::Document::report() const noexcept {
  * @param log объект для работы с логами
  *
  */
-awh::codec::ini::Document::Document(const log_t * log) noexcept :
+awh::codec::ini::Document::Document(const Logging * log) noexcept :
  _log(log), _error(error_t::NONE), _referenced(false), _stale(false), _dangling(false) {}
 /**
  * @brief Конструктор
@@ -2322,7 +2323,7 @@ awh::codec::ini::Document::Document(const log_t * log) noexcept :
  * @param settings настройки дерева настроек
  *
  */
-awh::codec::ini::Document::Document(const log_t * log, const settings_t & settings) noexcept :
+awh::codec::ini::Document::Document(const Logging * log, const settings_t & settings) noexcept :
  _log(log), _error(error_t::NONE), _referenced(false), _stale(false), _dangling(false), _settings(settings) {}
 /**
  * @brief Деструктор

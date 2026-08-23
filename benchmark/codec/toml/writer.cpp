@@ -24,6 +24,65 @@
  * Подключаем заголовочные файлы модуля
  */
 #include "toml.hpp"
+#include <sys/log.hpp>
+
+/**
+ * @brief Пространство имён проверок этого файла
+ *
+ * @note Держится оно безымянным намеренно: проверки кодеков собираются одной
+ *       программою, и одноимённые построения разных файлов иначе сходятся в
+ *       одно, порождая порчу вдали от места её причины
+ *
+ */
+namespace {
+	/**
+	 * @brief Объект журнала проверок с отключённым выводом
+	 *
+	 * @details Вывод отключается назначением пустого перечня приёмников: отказы
+	 *          разбора проверки наводят намеренно, и журнал их засорял бы выдачу
+	 *
+	 */
+	struct Silent {
+		/**
+		 * @brief Функция получения объекта фреймворка проверок
+		 *
+		 * @details Объект заводится статикою местною, а не общею файла: заведение его
+		 *          порядком построения статики оканчивается падением ещё до входа в
+		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
+		 *
+		 * @return объект фреймворка проверок
+		 *
+		 */
+		static const awh::fmk_t & framework() noexcept {
+			// Объект фреймворка проверок
+			static awh::fmk_t fmk;
+			// Выводим объект фреймворка проверок
+			return fmk;
+		}
+		// Объект журнала проверок
+		awh::log_t log;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Silent() noexcept : log(&Silent::framework()) {
+			// Выполняем отключение вывода логов
+			this->log.mode({});
+		}
+	};
+	/**
+	 * @brief Функция получения объекта журнала проверок
+	 *
+	 * @return объект журнала проверок
+	 *
+	 */
+	const awh::log_t * logger() noexcept {
+		// Объект журнала проверок
+		static Silent silent;
+		// Выводим объект журнала проверок
+		return &silent.log;
+	}
+}
 
 /**
  * Используем стандартное пространство имён
@@ -122,9 +181,9 @@ namespace {
 	 * @return        длина собранного текста настроек
 	 *
 	 */
-	static uint64_t write(const bool guarded) noexcept {
+	static uint64_t writing(const bool guarded) noexcept {
 		// Объект записи текста настроек
-		awh::codec::toml::writer_t writer;
+		awh::codec::toml::writer_t writer(::logger());
 		// Получаем перечень имён ключей собираемого файла настроек
 		const vector <string> & keys = names();
 		/**
@@ -177,7 +236,7 @@ namespace {
 	 */
 	static size_t sized(const bool guarded) noexcept {
 		// Выводим длину собираемого текста настроек
-		return static_cast <size_t> (::write(guarded));
+		return static_cast <size_t> (::writing(guarded));
 	}
 	/**
 	 * @brief Функция прогона сценария записи текста настроек
@@ -191,7 +250,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(::sized(false), ROUNDS, []() noexcept {
 			// Выполняем сборку текста настроек
-			return ::write(false);
+			return ::writing(false);
 		});
 		// Устанавливаем измеренное значение
 		result.value = perSecond(outcome);
@@ -212,7 +271,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(::sized(true), ROUNDS, []() noexcept {
 			// Выполняем сборку текста настроек
-			return ::write(true);
+			return ::writing(true);
 		});
 		// Устанавливаем измеренное значение
 		result.value = perSecond(outcome);
@@ -233,7 +292,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(::sized(false), ROUNDS, []() noexcept {
 			// Выполняем сборку текста настроек
-			return ::write(false);
+			return ::writing(false);
 		});
 		/**
 		 * Если ни одной операции не выполнено

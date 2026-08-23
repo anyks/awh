@@ -40,6 +40,7 @@
  * членами перечислений AWH (возвращает их macro_pop.hpp в конце файла)
  */
 #include <sys/macro_push.hpp>
+#include <sys/log.hpp>
 
 /**
  * @brief Пространство имён проверок этого файла

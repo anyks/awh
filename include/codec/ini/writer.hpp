@@ -183,7 +183,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					const log_t * _log;
+					const Logging * _log;
 				public:
 					/**
 					 * \~russian
@@ -981,7 +981,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Writer(const log_t * log) noexcept;
+					Writer(const Logging * log) noexcept;
 					/**
 					 * \~russian
 					 * @brief Конструктор
@@ -996,7 +996,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Writer(const log_t * log, const settings_t & settings) noexcept;
+					Writer(const Logging * log, const settings_t & settings) noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор

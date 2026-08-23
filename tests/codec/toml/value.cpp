@@ -26,6 +26,7 @@
  */
 #include <gtest/gtest.h>
 #include <codec/toml/toml.hpp>
+#include <sys/log.hpp>
 
 /**
  * @brief Пространство имён проверок этого файла

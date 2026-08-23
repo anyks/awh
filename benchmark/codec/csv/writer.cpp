@@ -24,6 +24,65 @@
  * Подключаем заголовочный файл бенчмарков контейнера CSV
  */
 #include "csv.hpp"
+#include <sys/log.hpp>
+
+/**
+ * @brief Пространство имён проверок этого файла
+ *
+ * @note Держится оно безымянным намеренно: проверки кодеков собираются одной
+ *       программою, и одноимённые построения разных файлов иначе сходятся в
+ *       одно, порождая порчу вдали от места её причины
+ *
+ */
+namespace {
+	/**
+	 * @brief Объект журнала проверок с отключённым выводом
+	 *
+	 * @details Вывод отключается назначением пустого перечня приёмников: отказы
+	 *          разбора проверки наводят намеренно, и журнал их засорял бы выдачу
+	 *
+	 */
+	struct Silent {
+		/**
+		 * @brief Функция получения объекта фреймворка проверок
+		 *
+		 * @details Объект заводится статикою местною, а не общею файла: заведение его
+		 *          порядком построения статики оканчивается падением ещё до входа в
+		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
+		 *
+		 * @return объект фреймворка проверок
+		 *
+		 */
+		static const awh::fmk_t & framework() noexcept {
+			// Объект фреймворка проверок
+			static awh::fmk_t fmk;
+			// Выводим объект фреймворка проверок
+			return fmk;
+		}
+		// Объект журнала проверок
+		awh::log_t log;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Silent() noexcept : log(&Silent::framework()) {
+			// Выполняем отключение вывода логов
+			this->log.mode({});
+		}
+	};
+	/**
+	 * @brief Функция получения объекта журнала проверок
+	 *
+	 * @return объект журнала проверок
+	 *
+	 */
+	const awh::log_t * logger() noexcept {
+		// Объект журнала проверок
+		static Silent silent;
+		// Выводим объект журнала проверок
+		return &silent.log;
+	}
+}
 
 /**
  * Используем стандартное пространство имён
@@ -151,9 +210,9 @@ namespace {
 	 * @return        размер собранного текста таблицы
 	 *
 	 */
-	static uint64_t write(const vector <string> & fields, const size_t records) noexcept {
+	static uint64_t writing(const vector <string> & fields, const size_t records) noexcept {
 		// Объект записи текста таблицы
-		awh::codec::csv::writer_t writer;
+		awh::codec::csv::writer_t writer(::logger());
 		/**
 		 * Выполняем запись всех записей таблицы
 		 */
@@ -173,7 +232,7 @@ namespace {
 	 */
 	static uint64_t stream(const vector <string> & fields, const size_t records) noexcept {
 		// Объект записи текста таблицы
-		awh::codec::csv::writer_t writer;
+		awh::codec::csv::writer_t writer(::logger());
 		// Размер изъятого текста таблицы
 		uint64_t result = 0;
 		/**
@@ -203,7 +262,7 @@ namespace {
 	 */
 	static uint64_t numbers(const size_t records) noexcept {
 		// Объект записи текста таблицы
-		awh::codec::csv::writer_t writer;
+		awh::codec::csv::writer_t writer(::logger());
 		/**
 		 * Выполняем запись всех записей таблицы
 		 */
@@ -232,7 +291,7 @@ namespace {
 	 */
 	static size_t volume(const vector <string> & fields, const size_t records) noexcept {
 		// Объект записи текста таблицы
-		awh::codec::csv::writer_t writer;
+		awh::codec::csv::writer_t writer(::logger());
 		// Выполняем запись одной записи таблицы
 		writer.record(fields);
 		// Выводим размер собираемого текста таблицы
@@ -252,7 +311,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(::volume(fields, ::WRITE_RECORDS), ::WRITE_ROUNDS, [&fields]() noexcept {
 			// Выполняем запись текста таблицы
-			return ::write(fields, ::WRITE_RECORDS);
+			return ::writing(fields, ::WRITE_RECORDS);
 		});
 		// Устанавливаем измеренное значение
 		result.value = perSecond(outcome);
@@ -275,7 +334,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(::volume(fields, ::WRITE_RECORDS), ::WRITE_ROUNDS, [&fields]() noexcept {
 			// Выполняем запись текста таблицы
-			return ::write(fields, ::WRITE_RECORDS);
+			return ::writing(fields, ::WRITE_RECORDS);
 		});
 		// Устанавливаем измеренное значение
 		result.value = perSecond(outcome);
@@ -321,7 +380,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(::volume(fields, ::WRITE_RECORDS), ::WRITE_ROUNDS, [&fields]() noexcept {
 			// Выполняем запись текста таблицы
-			return ::write(fields, ::WRITE_RECORDS);
+			return ::writing(fields, ::WRITE_RECORDS);
 		});
 		// Устанавливаем сведения о прогоне
 		result.details = details(outcome);
@@ -352,7 +411,7 @@ namespace {
 		// Выполняем прогон записи таблицы целиком
 		const outcome_t whole = measure(bytes, ::WRITE_ROUNDS, [&fields]() noexcept {
 			// Выполняем запись текста таблицы
-			return ::write(fields, ::WRITE_RECORDS);
+			return ::writing(fields, ::WRITE_RECORDS);
 		});
 		// Выполняем прогон записи таблицы с потоковым изъятием собранного
 		const outcome_t taken = measure(bytes, ::WRITE_ROUNDS, [&fields]() noexcept {

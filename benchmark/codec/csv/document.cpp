@@ -23,6 +23,65 @@
  * Подключаем заголовочный файл бенчмарков контейнера CSV
  */
 #include "csv.hpp"
+#include <sys/log.hpp>
+
+/**
+ * @brief Пространство имён проверок этого файла
+ *
+ * @note Держится оно безымянным намеренно: проверки кодеков собираются одной
+ *       программою, и одноимённые построения разных файлов иначе сходятся в
+ *       одно, порождая порчу вдали от места её причины
+ *
+ */
+namespace {
+	/**
+	 * @brief Объект журнала проверок с отключённым выводом
+	 *
+	 * @details Вывод отключается назначением пустого перечня приёмников: отказы
+	 *          разбора проверки наводят намеренно, и журнал их засорял бы выдачу
+	 *
+	 */
+	struct Silent {
+		/**
+		 * @brief Функция получения объекта фреймворка проверок
+		 *
+		 * @details Объект заводится статикою местною, а не общею файла: заведение его
+		 *          порядком построения статики оканчивается падением ещё до входа в
+		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
+		 *
+		 * @return объект фреймворка проверок
+		 *
+		 */
+		static const awh::fmk_t & framework() noexcept {
+			// Объект фреймворка проверок
+			static awh::fmk_t fmk;
+			// Выводим объект фреймворка проверок
+			return fmk;
+		}
+		// Объект журнала проверок
+		awh::log_t log;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Silent() noexcept : log(&Silent::framework()) {
+			// Выполняем отключение вывода логов
+			this->log.mode({});
+		}
+	};
+	/**
+	 * @brief Функция получения объекта журнала проверок
+	 *
+	 * @return объект журнала проверок
+	 *
+	 */
+	const awh::log_t * logger() noexcept {
+		// Объект журнала проверок
+		static Silent silent;
+		// Выводим объект журнала проверок
+		return &silent.log;
+	}
+}
 
 /**
  * Используем стандартное пространство имён
@@ -136,7 +195,7 @@ namespace {
 	 */
 	static uint64_t parse(const string & text) noexcept {
 		// Объект контейнера таблицы
-		awh::codec::csv::document_t document;
+		awh::codec::csv::document_t document(::logger());
 		/**
 		 * Если разобрать текст таблицы не удалось
 		 */
@@ -157,7 +216,7 @@ namespace {
 		// Количество выданных записей
 		uint64_t result = 0;
 		// Объект контейнера таблицы
-		awh::codec::csv::document_t document;
+		awh::codec::csv::document_t document(::logger());
 		// Выполняем потоковый разбор текста таблицы записями
 		document.parse(text, [&result](const vector <string_view> & fields) noexcept -> bool {
 			// Выполняем учёт количества полей выданной записи
@@ -185,7 +244,7 @@ namespace {
 			// Объявляем наличие заголовка в разбираемой таблице
 			settings.reader.header = awh::codec::csv::header_t::PRESENT;
 			// Объект контейнера таблицы
-			awh::codec::csv::document_t document(settings);
+			awh::codec::csv::document_t document(::logger(), settings);
 			// Выполняем разбор текста крупной таблицы
 			document.parse(large());
 			// Выводим собранную крупную таблицу
@@ -363,7 +422,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(text.size(), ::LARGE_ROUNDS, [&text, &records]() noexcept {
 			// Объект контейнера таблицы
-			awh::codec::csv::document_t document;
+			awh::codec::csv::document_t document(::logger());
 			// Количество выданных записей
 			uint64_t count = 0;
 			// Выполняем потоковый разбор текста таблицы записями

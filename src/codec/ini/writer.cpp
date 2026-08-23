@@ -35,6 +35,7 @@
 #include <encoding/ascii.hpp>
 #include <num/lexical/lexical.hpp>
 #include <codec/ini/writer.hpp>
+#include <sys/log.hpp>
 
 /**
  * Снимаем на время реализации макросы, чьи имена заняты
@@ -1421,7 +1422,7 @@ void awh::codec::ini::Writer::report() const noexcept {
  * @param log объект для работы с логами
  *
  */
-awh::codec::ini::Writer::Writer(const log_t * log) noexcept :
+awh::codec::ini::Writer::Writer(const Logging * log) noexcept :
  _log(log), _error(error_t::NONE), _sectioned(false), _valued(false), _guarded(false) {}
 /**
  * @brief Конструктор
@@ -1430,7 +1431,7 @@ awh::codec::ini::Writer::Writer(const log_t * log) noexcept :
  * @param settings настройки записи текста настроек
  *
  */
-awh::codec::ini::Writer::Writer(const log_t * log, const settings_t & settings) noexcept :
+awh::codec::ini::Writer::Writer(const Logging * log, const settings_t & settings) noexcept :
  _log(log),
  _error(error_t::NONE), _sectioned(false), _valued(false), _guarded(false), _settings(settings) {}
 /**

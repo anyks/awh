@@ -24,6 +24,65 @@
  */
 #include <vector>
 #include "yaml.hpp"
+#include <sys/log.hpp>
+
+/**
+ * @brief Пространство имён проверок этого файла
+ *
+ * @note Держится оно безымянным намеренно: проверки кодеков собираются одной
+ *       программою, и одноимённые построения разных файлов иначе сходятся в
+ *       одно, порождая порчу вдали от места её причины
+ *
+ */
+namespace {
+	/**
+	 * @brief Объект журнала проверок с отключённым выводом
+	 *
+	 * @details Вывод отключается назначением пустого перечня приёмников: отказы
+	 *          разбора проверки наводят намеренно, и журнал их засорял бы выдачу
+	 *
+	 */
+	struct Silent {
+		/**
+		 * @brief Функция получения объекта фреймворка проверок
+		 *
+		 * @details Объект заводится статикою местною, а не общею файла: заведение его
+		 *          порядком построения статики оканчивается падением ещё до входа в
+		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
+		 *
+		 * @return объект фреймворка проверок
+		 *
+		 */
+		static const awh::fmk_t & framework() noexcept {
+			// Объект фреймворка проверок
+			static awh::fmk_t fmk;
+			// Выводим объект фреймворка проверок
+			return fmk;
+		}
+		// Объект журнала проверок
+		awh::log_t log;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Silent() noexcept : log(&Silent::framework()) {
+			// Выполняем отключение вывода логов
+			this->log.mode({});
+		}
+	};
+	/**
+	 * @brief Функция получения объекта журнала проверок
+	 *
+	 * @return объект журнала проверок
+	 *
+	 */
+	const awh::log_t * logger() noexcept {
+		// Объект журнала проверок
+		static Silent silent;
+		// Выводим объект журнала проверок
+		return &silent.log;
+	}
+}
 
 /**
  * Используем стандартное пространство имён
@@ -176,13 +235,13 @@ namespace {
 		// Выводим перечень собранных записей значений
 		return result;
 	}
-	static uint64_t write(const awh::codec::yaml::layout_t layout, const size_t keys, const bool quoted = false) noexcept {
+	static uint64_t writing(const awh::codec::yaml::layout_t layout, const size_t keys, const bool quoted = false) noexcept {
 		// Настройки записи текста настроек
 		awh::codec::yaml::writer_t::settings_t settings;
 		// Устанавливаем построение, каким записывается текст
 		settings.layout = layout;
 		// Объект записи текста настроек
-		awh::codec::yaml::writer_t writer(settings);
+		awh::codec::yaml::writer_t writer(::logger(), settings);
 		// Получаем записи имён и значений, заранее собранные
 		const vector <string> & names = ::names(keys);
 		// Получаем записи значений, заранее собранные
@@ -238,7 +297,7 @@ namespace {
 		// Результат измерения
 		awh::benchmark::result_t result;
 		// Получаем размер собираемого текста настроек
-		const size_t bytes = static_cast <size_t> (::write(layout, LARGE_KEYS, quoted));
+		const size_t bytes = static_cast <size_t> (::writing(layout, LARGE_KEYS, quoted));
 		/**
 		 * Если собрать текст настроек не удалось
 		 */
@@ -253,7 +312,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(bytes, LARGE_ROUNDS, [layout, quoted]() noexcept {
 			// Выполняем запись текста настроек
-			return ::write(layout, LARGE_KEYS, quoted);
+			return ::writing(layout, LARGE_KEYS, quoted);
 		});
 		// Устанавливаем измеренное значение
 		result.value = perSecond(outcome);
@@ -302,7 +361,7 @@ namespace {
 		// Результат измерения
 		awh::benchmark::result_t result;
 		// Получаем размер собираемого текста настроек
-		const size_t bytes = static_cast <size_t> (::write(awh::codec::yaml::layout_t::BLOCK, LARGE_KEYS));
+		const size_t bytes = static_cast <size_t> (::writing(awh::codec::yaml::layout_t::BLOCK, LARGE_KEYS));
 		/**
 		 * Если собрать текст настроек не удалось
 		 */
@@ -317,7 +376,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(bytes, LARGE_ROUNDS, []() noexcept {
 			// Выполняем запись текста настроек
-			return ::write(awh::codec::yaml::layout_t::BLOCK, LARGE_KEYS);
+			return ::writing(awh::codec::yaml::layout_t::BLOCK, LARGE_KEYS);
 		});
 		/**
 		 * Если ни одной операции не выполнено
@@ -359,7 +418,7 @@ namespace {
 		// Количество пар мелкого файла настроек приложения
 		static constexpr size_t SERVICE_KEYS = 32;
 		// Получаем размер собираемого текста настроек
-		const size_t bytes = static_cast <size_t> (::write(awh::codec::yaml::layout_t::BLOCK, SERVICE_KEYS));
+		const size_t bytes = static_cast <size_t> (::writing(awh::codec::yaml::layout_t::BLOCK, SERVICE_KEYS));
 		/**
 		 * Если собрать текст настроек не удалось
 		 */
@@ -374,7 +433,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(bytes, SMALL_ROUNDS, []() noexcept {
 			// Выполняем запись текста настроек
-			return ::write(awh::codec::yaml::layout_t::BLOCK, SERVICE_KEYS);
+			return ::writing(awh::codec::yaml::layout_t::BLOCK, SERVICE_KEYS);
 		});
 		/**
 		 * Если ни одной операции не выполнено

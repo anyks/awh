@@ -25,6 +25,7 @@
  */
 #include <encoding/ascii.hpp>
 #include <codec/ini/reader.hpp>
+#include <sys/log.hpp>
 
 /**
  * Снимаем на время реализации макросы, чьи имена заняты
@@ -2367,7 +2368,7 @@ awh::codec::ini::encoding_t awh::codec::ini::Reader::encoding() const noexcept {
  * @param log объект для работы с логами
  *
  */
-awh::codec::ini::Reader::Reader(const log_t * log) noexcept :
+awh::codec::ini::Reader::Reader(const Logging * log) noexcept :
  _log(log), _decoder(log),
  _final(false), _sectioned(false), _state(state_t::HUNGRY), _event(event_t::NONE),
  _error(error_t::NONE), _decoding(error_t::NONE), _offset(0), _start(0), _base(0), _line(1), _pending(false) {}
@@ -2378,7 +2379,7 @@ awh::codec::ini::Reader::Reader(const log_t * log) noexcept :
  * @param settings настройки разбора текста настроек
  *
  */
-awh::codec::ini::Reader::Reader(const log_t * log, const settings_t & settings) noexcept :
+awh::codec::ini::Reader::Reader(const Logging * log, const settings_t & settings) noexcept :
  _log(log), _decoder(log),
  _final(false), _sectioned(false), _state(state_t::HUNGRY), _event(event_t::NONE),
  _error(error_t::NONE), _decoding(error_t::NONE), _offset(0), _start(0), _base(0), _line(1), _pending(false), _settings(settings) {

@@ -24,6 +24,7 @@
  */
 #include <encoding/ascii.hpp>
 #include <codec/csv/reader.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -1834,7 +1835,7 @@ void awh::codec::csv::Reader::settings(const settings_t & settings) noexcept {
  * @param log объект для работы с логами
  *
  */
-awh::codec::csv::Reader::Reader(const log_t * log) noexcept :
+awh::codec::csv::Reader::Reader(const Logging * log) noexcept :
  _log(log), _decoder(log),
  _state(state_t::RECORD_START), _error(error_t::NONE), _encoding(encoding_t::NONE),
  _separator(','), _expected(0), _marked(false), _last(false), _headed(false), _quoted(false),
@@ -1850,7 +1851,7 @@ awh::codec::csv::Reader::Reader(const log_t * log) noexcept :
  * @param settings настройки разбора текста
  *
  */
-awh::codec::csv::Reader::Reader(const log_t * log, const settings_t & settings) noexcept :
+awh::codec::csv::Reader::Reader(const Logging * log, const settings_t & settings) noexcept :
  Reader(log) {
 	// Выполняем установку настроек разбора текста
 	this->settings(settings);

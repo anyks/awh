@@ -30,6 +30,7 @@
 #include <encoding/ascii.hpp>
 #include <num/lexical/lexical.hpp>
 #include <codec/csv/common.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён

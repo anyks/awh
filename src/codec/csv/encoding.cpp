@@ -24,6 +24,7 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <codec/csv/encoding.hpp>
+#include <sys/log.hpp>
 
 /**
  * Стандартные заголовочные файлы
@@ -1154,7 +1155,7 @@ void awh::codec::csv::Decoder::report() const noexcept {
  * @param log объект для работы с логами
  *
  */
-awh::codec::csv::Decoder::Decoder(const log_t * log) noexcept :
+awh::codec::csv::Decoder::Decoder(const Logging * log) noexcept :
  _log(log),
  _encoding(encoding_t::NONE), _error(error_t::NONE), _forced(false),
  _marked(false), _signed(false), _started(false), _length(0), _surrogate(0) {

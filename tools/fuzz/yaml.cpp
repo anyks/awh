@@ -36,6 +36,7 @@
  * Подключаем заголовочный файл проекта
  */
 #include <codec/yaml/yaml.hpp>
+#include <sys/log.hpp>
 
 /**
  * @brief Пространство имён проверок этого файла

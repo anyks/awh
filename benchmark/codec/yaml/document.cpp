@@ -24,6 +24,65 @@
  * Подключаем заголовочные файлы модуля
  */
 #include "yaml.hpp"
+#include <sys/log.hpp>
+
+/**
+ * @brief Пространство имён проверок этого файла
+ *
+ * @note Держится оно безымянным намеренно: проверки кодеков собираются одной
+ *       программою, и одноимённые построения разных файлов иначе сходятся в
+ *       одно, порождая порчу вдали от места её причины
+ *
+ */
+namespace {
+	/**
+	 * @brief Объект журнала проверок с отключённым выводом
+	 *
+	 * @details Вывод отключается назначением пустого перечня приёмников: отказы
+	 *          разбора проверки наводят намеренно, и журнал их засорял бы выдачу
+	 *
+	 */
+	struct Silent {
+		/**
+		 * @brief Функция получения объекта фреймворка проверок
+		 *
+		 * @details Объект заводится статикою местною, а не общею файла: заведение его
+		 *          порядком построения статики оканчивается падением ещё до входа в
+		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
+		 *
+		 * @return объект фреймворка проверок
+		 *
+		 */
+		static const awh::fmk_t & framework() noexcept {
+			// Объект фреймворка проверок
+			static awh::fmk_t fmk;
+			// Выводим объект фреймворка проверок
+			return fmk;
+		}
+		// Объект журнала проверок
+		awh::log_t log;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Silent() noexcept : log(&Silent::framework()) {
+			// Выполняем отключение вывода логов
+			this->log.mode({});
+		}
+	};
+	/**
+	 * @brief Функция получения объекта журнала проверок
+	 *
+	 * @return объект журнала проверок
+	 *
+	 */
+	const awh::log_t * logger() noexcept {
+		// Объект журнала проверок
+		static Silent silent;
+		// Выводим объект журнала проверок
+		return &silent.log;
+	}
+}
 
 /**
  * Используем стандартное пространство имён
@@ -185,7 +244,7 @@ namespace {
 		// Устанавливаем признак удержания исходного текста
 		settings.retain = retain;
 		// Объект дерева документа
-		awh::codec::yaml::document_t document(settings);
+		awh::codec::yaml::document_t document(::logger(), settings);
 		/**
 		 * Если разобрать текст настроек не удалось
 		 */
@@ -260,7 +319,7 @@ namespace {
 		// Разбираемый текст настроек
 		const string & text = large();
 		// Объект дерева документа
-		awh::codec::yaml::document_t document;
+		awh::codec::yaml::document_t document(::logger());
 		/**
 		 * Если разобрать текст настроек не удалось
 		 */
@@ -339,7 +398,7 @@ namespace {
 		// Устанавливаем удержание исходного текста
 		settings.retain = true;
 		// Объект дерева документа
-		awh::codec::yaml::document_t document(settings);
+		awh::codec::yaml::document_t document(::logger(), settings);
 		/**
 		 * Если разобрать текст настроек не удалось
 		 */
@@ -409,7 +468,7 @@ namespace {
 		// Устанавливаем удержание исходного текста
 		settings.retain = true;
 		// Объект дерева документа
-		awh::codec::yaml::document_t document(settings);
+		awh::codec::yaml::document_t document(::logger(), settings);
 		/**
 		 * Если разобрать текст настроек не удалось
 		 */
@@ -469,7 +528,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(text.size(), SMALL_ROUNDS, [&text, &settings]() noexcept {
 			// Объект дерева документа
-			awh::codec::yaml::document_t document(settings);
+			awh::codec::yaml::document_t document(::logger(), settings);
 			/**
 			 * Если разобрать текст настроек не удалось
 			 */
@@ -552,9 +611,9 @@ namespace {
 		 *       эталон сличения: перезапись правленого дерева обязана стоить заметно
 		 *       меньше него, ибо соседи правки переносятся исходными байтами
 		 */
-		awh::codec::yaml::document_t rebuilt;
+		awh::codec::yaml::document_t rebuilt(::logger());
 		// Объект дерева документа, правку принявшего
-		awh::codec::yaml::document_t edited(settings);
+		awh::codec::yaml::document_t edited(::logger(), settings);
 		/**
 		 * Если разобрать текст настроек не удалось
 		 */
@@ -632,7 +691,7 @@ namespace {
 		// Разбираемый текст настроек
 		const string & text = service();
 		// Объект дерева документа
-		awh::codec::yaml::document_t document;
+		awh::codec::yaml::document_t document(::logger());
 		/**
 		 * Если разобрать текст настроек не удалось
 		 */

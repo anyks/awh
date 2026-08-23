@@ -28,6 +28,7 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <codec/ini/writer.hpp>
+#include <sys/log.hpp>
 
 /**
  * @brief Пространство имён образца
