@@ -35,6 +35,32 @@ using namespace std;
  */
 namespace {
 	/**
+	 * @brief Функция извлечения объекта журнала замеров
+	 *
+	 * @details Журнал гасится: замер меряет работу кодека, а не вывод записей, и
+	 *          сценарии отказа портили бы и вывод, и время
+	 *
+	 * @return объект журнала замеров
+	 *
+	 */
+	const awh::log_t * logger() noexcept {
+		// Объект фреймворка замеров
+		static awh::fmk_t fmk;
+		// Объект журнала замеров
+		static awh::log_t log(& fmk);
+		// Признак выполненной настройки журнала
+		static const bool ready = [](){
+			// Выполняем гашение вывода журнала замеров
+			log.level(awh::log_t::level_t::NONE);
+			// Выводим признак выполненной настройки
+			return true;
+		}();
+		// Снимаем неиспользуемый признак настройки
+		(void) ready;
+		// Выводим объект журнала замеров
+		return & log;
+	}
+	/**
 	 * @brief Размер эталонной крупной записи в октетах
 	 *
 	 * @details Размер выбран заведомо превосходящим кэш последнего уровня: разбор
@@ -233,7 +259,7 @@ const vector <uint8_t> & awh::benchmark::binary::service() noexcept {
 	// Эталонная запись ответа службы
 	static const vector <uint8_t> result = []() noexcept -> vector <uint8_t> {
 		// Сборка бинарной записи
-		awh::codec::abc::writer_t writer;
+		awh::codec::abc::writer_t writer(::logger());
 		// Выполняем укладку ответа службы
 		if(!(writer.mapBegin(static_cast <uint64_t> (6)) &&
 		     writer.text("active") && writer.boolean(true) &&
@@ -261,7 +287,7 @@ const vector <uint8_t> & awh::benchmark::binary::large() noexcept {
 	// Эталонная крупная запись
 	static const vector <uint8_t> result = []() noexcept -> vector <uint8_t> {
 		// Сборка бинарной записи
-		awh::codec::abc::writer_t writer;
+		awh::codec::abc::writer_t writer(::logger());
 		// Выполняем открытие массива однородных отображений неопределённой длины
 		if(!writer.arrayBegin())
 			// Выводим пустую запись
@@ -305,7 +331,7 @@ const vector <uint8_t> & awh::benchmark::binary::numbers() noexcept {
 	// Эталонная запись с преобладанием чисел
 	static const vector <uint8_t> result = []() noexcept -> vector <uint8_t> {
 		// Сборка бинарной записи
-		awh::codec::abc::writer_t writer;
+		awh::codec::abc::writer_t writer(::logger());
 		// Выполняем открытие массива чисел неопределённой длины
 		if(!writer.arrayBegin())
 			// Выводим пустую запись
@@ -354,7 +380,7 @@ const vector <uint8_t> & awh::benchmark::binary::strings() noexcept {
 	// Эталонная запись с преобладанием строк
 	static const vector <uint8_t> result = []() noexcept -> vector <uint8_t> {
 		// Сборка бинарной записи
-		awh::codec::abc::writer_t writer;
+		awh::codec::abc::writer_t writer(::logger());
 		// Выполняем открытие массива строк неопределённой длины
 		if(!writer.arrayBegin())
 			// Выводим пустую запись
@@ -403,7 +429,7 @@ const vector <uint8_t> & awh::benchmark::binary::blobs() noexcept {
 	// Эталонная запись с преобладанием двоичных значений
 	static const vector <uint8_t> result = []() noexcept -> vector <uint8_t> {
 		// Сборка бинарной записи
-		awh::codec::abc::writer_t writer;
+		awh::codec::abc::writer_t writer(::logger());
 		// Выполняем открытие массива двоичных значений неопределённой длины
 		if(!writer.arrayBegin())
 			// Выводим пустую запись
@@ -451,7 +477,7 @@ const vector <uint8_t> & awh::benchmark::binary::nested() noexcept {
 	// Эталонная запись с глубокой вложенностью
 	static const vector <uint8_t> result = []() noexcept -> vector <uint8_t> {
 		// Сборка бинарной записи
-		awh::codec::abc::writer_t writer;
+		awh::codec::abc::writer_t writer(::logger());
 		// Выполняем открытие массива ветвей неопределённой длины
 		if(!writer.arrayBegin())
 			// Выводим пустую запись

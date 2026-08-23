@@ -21,6 +21,7 @@
 #include <unistd.h>
 
 #include <net/io.hpp>
+#include <sys/log.hpp>
 
 using namespace std;
 

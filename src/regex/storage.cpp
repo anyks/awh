@@ -1282,6 +1282,47 @@ bool awh::regex::Storage::adopt(string && data, vector <exp_t> & result) const n
  *
  */
 bool awh::regex::Storage::restore(const shared_ptr <const string> & blob, vector <exp_t> & result) const noexcept {
+	/**
+	 * Если восстановление собранных выражений выполнено
+	 */
+	if(this->restoring(blob, result))
+		// Выводим результат восстановления собранных выражений
+		return true;
+	/**
+	 * Если объект журнала событий передан
+	 *
+	 * @details Запись хранилища приходит извне - файлом либо сетью, - и порча её
+	 *          равно как и несовпадение вида записи есть происшествие, о каком
+	 *          потребителю знать надлежит: выражения молча не восстановятся вовсе.
+	 *
+	 */
+	if(this->_log != nullptr) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("Storage record of %zu bytes could not be restored: error %u", __PRETTY_FUNCTION__, make_tuple(blob ? blob->size() : 0), log_t::flag_t::WARNING, (blob ? blob->size() : 0), static_cast <uint16_t> (this->_error));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("Storage record of %zu bytes could not be restored: error %u", log_t::flag_t::WARNING, (blob ? blob->size() : 0), static_cast <uint16_t> (this->_error));
+		#endif
+	}
+	// Выводим результат восстановления собранных выражений
+	return false;
+}
+/**
+ * @brief Метод восстановления собранных выражений телом своим
+ *
+ * @param blob   запись хранилища
+ * @param result набор восстановленных выражений
+ * @return       результат восстановления собранных выражений
+ *
+ */
+bool awh::regex::Storage::restoring(const shared_ptr <const string> & blob, vector <exp_t> & result) const noexcept {
 	// Получаем обзор записи хранилища
 	const string_view data(blob ? string_view(* blob) : string_view());
 	// Выполняем очистку набора восстановленных выражений
@@ -1688,7 +1729,7 @@ bool awh::regex::Storage::restore(const shared_ptr <const string> & blob, vector
 		  static_cast <uint32_t> (flag_t::NOTEMPTY))) == 0) &&
 		 !expression->forward.plain) {
 			// Создаём сопоставитель выражения в виде порождённого машинного кода
-			expression->machine = make_shared <codegen_t> ();
+			expression->machine = make_shared <codegen_t> (this->_log);
 			// Позиция чтения записи порождённого сопоставителя
 			size_t position = 0;
 			// Признак восстановления порождённого сопоставителя из записи

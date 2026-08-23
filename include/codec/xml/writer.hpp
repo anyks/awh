@@ -45,6 +45,11 @@
 /**
  * Подключаем заголовочные файлы модуля
  */
+#include <sys/log.hpp>
+
+/**
+ * Подключаем заголовочные файлы модуля
+ */
 #include "document.hpp"
 
 /**
@@ -286,6 +291,42 @@ namespace awh {
 				private:
 					// Код ошибки последней операции записи
 					error_t _error;
+				private:
+					/**
+					 * \~russian
+					 * Объект ведения журнала работы
+					 *
+					 * @note Умолчание стоит прямо в объявлении: конструкторы, логгера не
+					 *       принимающие, оставили бы поле неопределённым
+					 *
+					 * \~english
+					 * Object of the keeping of the work log
+					 *
+					 * \~
+					 */
+					const log_t * _log = nullptr;
+				private:
+					/**
+					 * \~russian
+					 * @brief Метод отказа записи с сообщением о нём в журнал
+					 *
+					 * @details Способ этот стоит ГОРЛОМ: всякий отказ записи обязан идти через
+					 * него. Сообщение в журнал пишется в одном месте на всю запись, а не при
+					 * всяком присваивании кода отказа: иначе места записи разошлись бы с
+					 * местами отказа, и часть бед уходила бы молча
+					 *
+					 * @param error код ошибки записи
+					 * @return      всегда ложь, ради возврата им из места отказа
+					 *
+					 * \~english
+					 * @brief Method of the refusal of the writing with a report of it to the log
+					 *
+					 * @param error the code of the writing error
+					 * @return      always false, for the returning by it from the place of the refusal
+					 *
+					 * \~
+					 */
+					bool refuse(const error_t error) noexcept;
 				private:
 					// Признак того, что корневой узел разметки уже записан
 					bool _root;
@@ -996,7 +1037,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Writer() noexcept;
+					explicit Writer(const log_t * log = nullptr) noexcept;
 					/**
 					 * \~russian
 					 * @brief Конструктор
@@ -1009,7 +1050,21 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					explicit Writer(const settings_t & settings) noexcept;
+					explicit Writer(const settings_t & settings, const log_t * log = nullptr) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод установки объекта ведения журнала работы
+					 *
+					 * @param log объект ведения журнала работы
+					 *
+					 * \~english
+					 * @brief Method of the setting of the object of the keeping of the work log
+					 *
+					 * @param log the object of the keeping of the work log
+					 *
+					 * \~
+					 */
+					void setLogger(const log_t * log) noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор

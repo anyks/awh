@@ -28,6 +28,7 @@
  * Подключаем заголовочный файл модуля
  */
 #include <codec/abc/index.hpp>
+#include <codec/abc/encoding.hpp>
 
 /**
  * Стандартные заголовочные файлы
@@ -39,49 +40,6 @@
  * Используем стандартное пространство имён
  */
 using namespace std;
-
-/**
- * @brief Пространство имён работ, доступных лишь этому файлу
- *
- */
-namespace {
-	/**
-	 * @brief Функция укладки целого числа установленной ширины
-	 *
-	 * @param buffer буфер, куда следует уложить запись
-	 * @param value  укладываемое значение
-	 * @param width  ширина записи в октетах
-	 *
-	 */
-	void lay(uint8_t * buffer, const uint64_t value, const uint8_t width) noexcept {
-		/**
-		 * Выполняем перебор всех октетов записи, от младшего к старшему
-		 */
-		for(uint8_t i = 0; i < width; i++)
-			// Выполняем укладку очередного октета записи
-			buffer[i] = static_cast <uint8_t> ((value >> (i * 8)) & 0xFF);
-	}
-	/**
-	 * @brief Функция снятия целого числа установленной ширины
-	 *
-	 * @param buffer буфер поданной записи
-	 * @param width  ширина записи в октетах
-	 * @return       снятое значение
-	 *
-	 */
-	uint64_t take(const uint8_t * buffer, const uint8_t width) noexcept {
-		// Собираемое значение
-		uint64_t result = 0;
-		/**
-		 * Выполняем перебор всех октетов записи, от младшего к старшему
-		 */
-		for(uint8_t i = 0; i < width; i++)
-			// Выполняем сборку значения из очередного октета записи
-			result |= (static_cast <uint64_t> (buffer[i]) << (i * 8));
-		// Выводим собранное значение
-		return result;
-	}
-};
 
 /**
  * @brief Метод проверки объявленного свойства строки оглавления
@@ -185,13 +143,13 @@ void awh::codec::abc::Index::pack(vector <uint8_t> & result) const noexcept {
 		// Выполняем получение указателя на укладываемую строку оглавления
 		uint8_t * record = result.data() + (start + (i * ENTRY_LENGTH));
 		// Выполняем укладку смещения кадра от начала тела контейнера
-		lay(record, this->_entries.at(i).chunk, 8);
+		abc::fixed(record, this->_entries.at(i).chunk, 8);
 		// Выполняем укладку смещения записи в содержимом кадра
-		lay(record + 8, static_cast <uint64_t> (this->_entries.at(i).offset), 4);
+		abc::fixed(record + 8, static_cast <uint64_t> (this->_entries.at(i).offset), 4);
 		// Выполняем укладку длины записи
-		lay(record + 12, static_cast <uint64_t> (this->_entries.at(i).length), 4);
+		abc::fixed(record + 12, static_cast <uint64_t> (this->_entries.at(i).length), 4);
 		// Выполняем укладку разрядов свойств строки оглавления
-		lay(record + 16, static_cast <uint64_t> (this->_entries.at(i).marks), 4);
+		abc::fixed(record + 16, static_cast <uint64_t> (this->_entries.at(i).marks), 4);
 	}
 }
 /**
@@ -239,13 +197,13 @@ bool awh::codec::abc::Index::unpack(const void * buffer, const size_t size, erro
 		// Выполняем получение указателя на снимаемую строку оглавления
 		const uint8_t * record = octets + (i * ENTRY_LENGTH);
 		// Выполняем снятие смещения кадра от начала тела контейнера
-		entry.chunk = take(record, 8);
+		entry.chunk = abc::gather(record, 8);
 		// Выполняем снятие смещения записи в содержимом кадра
-		entry.offset = static_cast <uint32_t> (take(record + 8, 4));
+		entry.offset = static_cast <uint32_t> (abc::gather(record + 8, 4));
 		// Выполняем снятие длины записи
-		entry.length = static_cast <uint32_t> (take(record + 12, 4));
+		entry.length = static_cast <uint32_t> (abc::gather(record + 12, 4));
 		// Выполняем снятие разрядов свойств строки оглавления
-		entry.marks = static_cast <uint32_t> (take(record + 16, 4));
+		entry.marks = static_cast <uint32_t> (abc::gather(record + 16, 4));
 		/**
 		 * Если разряды свойств строки несут неведомое.
 		 *
@@ -286,6 +244,42 @@ bool awh::codec::abc::Index::unpack(const void * buffer, const size_t size, erro
 }
 
 /**
+ * @brief Метод объявления отказа выборки записи
+ *
+ * @param error объявляемый код отказа
+ * @return      признак успешности, всегда ложь
+ *
+ */
+bool awh::codec::abc::Fetcher::fail(const error_t error) noexcept {
+	// Выполняем установку кода отказа
+	this->_error = error;
+	/**
+	 * Если объект логирования отдан, доносим об отказе.
+	 *
+	 * @warning Сброс кода отказа сюда НЕ идёт: воронка эта объявляет отказ, а сброс
+	 *          лишь снимает прежний, и донесение о нём наполняло бы журнал записями
+	 *          «no error» на всякий успешный вызов. Проверено на себе
+	 */
+	if((error != error_t::NONE) && (this->_log != nullptr)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("ABC: %s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (error)),
+			 log_t::flag_t::WARNING, abc::message(error));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("ABC: %s", log_t::flag_t::WARNING, abc::message(error));
+		#endif
+	}
+	// Сообщаем, что работа отвечена отказом
+	return false;
+}
+/**
  * @brief Метод установки модуля сжатия
  *
  * @param value устанавливаемый модуль сжатия, ноль - снятие модуля
@@ -320,7 +314,7 @@ bool awh::codec::abc::Fetcher::open(source_t source) noexcept {
 	 */
 	if(source == nullptr){
 		// Выполняем установку кода отказа открытия контейнера
-		this->_error = error_t::INTERNAL;
+		this->fail(error_t::INTERNAL);
 		// Выводим признак неудачного открытия контейнера
 		return false;
 	}
@@ -333,23 +327,30 @@ bool awh::codec::abc::Fetcher::open(source_t source) noexcept {
 	 */
 	if(!this->_source(0, HEADER_LENGTH, buffer) || (buffer.size() < HEADER_LENGTH)){
 		// Выполняем установку кода отказа чтения октетов контейнера
-		this->_error = error_t::UNREADABLE_SOURCE;
+		this->fail(error_t::UNREADABLE_SOURCE);
 		// Выводим признак неудачного открытия контейнера
 		return false;
 	}
 	/**
 	 * Если снять заголовок опознания контейнера не вышло
 	 */
-	if(!this->_header.unpack(buffer.data(), buffer.size(), this->_error))
-		// Выводим признак неудачного открытия контейнера
-		return false;
+	{
+		// Код отказа снятия заголовка опознания
+		error_t error = error_t::NONE;
+		/**
+		 * Если снять заголовок опознания контейнера не вышло
+		 */
+		if(!this->_header.unpack(buffer.data(), buffer.size(), error))
+			// Выводим признак неудачного открытия контейнера
+			return this->fail(error);
+	}
 	/**
 	 * Если оглавление контейнера заголовком не объявлено, выборка по номеру
 	 * невозможна: без оглавления до записи добираются лишь снятием всех кадров
 	 */
 	if(this->_header.index == 0){
 		// Выполняем установку кода отказа отсутствия оглавления
-		this->_error = error_t::MISSING_INDEX;
+		this->fail(error_t::MISSING_INDEX);
 		// Выводим признак неудачного открытия контейнера
 		return false;
 	}
@@ -360,7 +361,7 @@ bool awh::codec::abc::Fetcher::open(source_t source) noexcept {
 	 */
 	if(!this->_source(this->_header.index, CHUNK_HEADER, buffer) || (buffer.size() < CHUNK_HEADER)){
 		// Выполняем установку кода отказа чтения октетов контейнера
-		this->_error = error_t::UNREADABLE_SOURCE;
+		this->fail(error_t::UNREADABLE_SOURCE);
 		// Выводим признак неудачного открытия контейнера
 		return false;
 	}
@@ -369,7 +370,7 @@ bool awh::codec::abc::Fetcher::open(source_t source) noexcept {
 	 * длина эта объявлена заголовком кадра, и вычитывать оглавление целиком
 	 * наугад не приходится
 	 */
-	const uint64_t length = take(buffer.data() + 4, 4);
+	const uint64_t length = abc::gather(buffer.data() + 4, 4);
 	// Выполняем очистку буфера вычитанных октетов
 	buffer.clear();
 	/**
@@ -378,7 +379,7 @@ bool awh::codec::abc::Fetcher::open(source_t source) noexcept {
 	if(!this->_source(this->_header.index, static_cast <size_t> (CHUNK_HEADER + length), buffer) ||
 	 (buffer.size() < static_cast <size_t> (CHUNK_HEADER + length))){
 		// Выполняем установку кода отказа чтения октетов контейнера
-		this->_error = error_t::UNREADABLE_SOURCE;
+		this->fail(error_t::UNREADABLE_SOURCE);
 		// Выводим признак неудачного открытия контейнера
 		return false;
 	}
@@ -400,9 +401,16 @@ bool awh::codec::abc::Fetcher::open(source_t source) noexcept {
 	/**
 	 * Если снять оглавление контейнера не вышло
 	 */
-	if(!this->_index.unpack(payload.data(), payload.size(), this->_error))
-		// Выводим признак неудачного открытия контейнера
-		return false;
+	{
+		// Код отказа снятия оглавления контейнера
+		error_t error = error_t::NONE;
+		/**
+		 * Если снять оглавление контейнера не вышло
+		 */
+		if(!this->_index.unpack(payload.data(), payload.size(), error))
+			// Выводим признак неудачного открытия контейнера
+			return this->fail(error);
+	}
 	// Выполняем установку признака открытого контейнера
 	this->_opened = true;
 	// Выводим признак успешно открытого контейнера
@@ -426,7 +434,7 @@ bool awh::codec::abc::Fetcher::record(const uint64_t number, vector <uint8_t> & 
 	 */
 	if(!this->_opened){
 		// Выполняем установку кода отказа выборки записи
-		this->_error = error_t::INTERNAL;
+		this->fail(error_t::INTERNAL);
 		// Выводим признак неудачной выборки записи
 		return false;
 	}
@@ -435,7 +443,7 @@ bool awh::codec::abc::Fetcher::record(const uint64_t number, vector <uint8_t> & 
 	 */
 	if(number >= static_cast <uint64_t> (this->_index.size())){
 		// Выполняем установку кода отказа выборки записи
-		this->_error = error_t::INVALID_INDEX;
+		this->fail(error_t::INVALID_INDEX);
 		// Выводим признак неудачной выборки записи
 		return false;
 	}
@@ -446,7 +454,7 @@ bool awh::codec::abc::Fetcher::record(const uint64_t number, vector <uint8_t> & 
 	 */
 	if(entry.is(mark_t::ERASED)){
 		// Выполняем установку кода отказа выборки снесённой записи
-		this->_error = error_t::MISSING_RECORD;
+		this->fail(error_t::MISSING_RECORD);
 		// Выводим признак неудачной выборки записи
 		return false;
 	}
@@ -463,12 +471,12 @@ bool awh::codec::abc::Fetcher::record(const uint64_t number, vector <uint8_t> & 
 		 */
 		if(!this->_source(HEADER_LENGTH + entry.chunk, CHUNK_HEADER, buffer) || (buffer.size() < CHUNK_HEADER)){
 			// Выполняем установку кода отказа чтения октетов контейнера
-			this->_error = error_t::UNREADABLE_SOURCE;
+			this->fail(error_t::UNREADABLE_SOURCE);
 			// Выводим признак неудачной выборки записи
 			return false;
 		}
 		// Выполняем получение длины уложенного содержимого кадра
-		const uint64_t length = take(buffer.data() + 4, 4);
+		const uint64_t length = abc::gather(buffer.data() + 4, 4);
 		// Выполняем очистку буфера вычитанных октетов
 		buffer.clear();
 		/**
@@ -477,7 +485,7 @@ bool awh::codec::abc::Fetcher::record(const uint64_t number, vector <uint8_t> & 
 		if(!this->_source(HEADER_LENGTH + entry.chunk, static_cast <size_t> (CHUNK_HEADER + length), buffer) ||
 		 (buffer.size() < static_cast <size_t> (CHUNK_HEADER + length))){
 			// Выполняем установку кода отказа чтения октетов контейнера
-			this->_error = error_t::UNREADABLE_SOURCE;
+			this->fail(error_t::UNREADABLE_SOURCE);
 			// Выводим признак неудачной выборки записи
 			return false;
 		}
@@ -504,7 +512,7 @@ bool awh::codec::abc::Fetcher::record(const uint64_t number, vector <uint8_t> & 
 	 */
 	if((static_cast <uint64_t> (entry.offset) + entry.length) > static_cast <uint64_t> (this->_chunk.size())){
 		// Выполняем установку кода отказа выборки записи
-		this->_error = error_t::INVALID_INDEX;
+		this->fail(error_t::INVALID_INDEX);
 		// Выводим признак неудачной выборки записи
 		return false;
 	}
@@ -589,6 +597,8 @@ awh::codec::abc::packer_t & awh::codec::abc::Fetcher::packer() noexcept {
 /**
  * @brief Конструктор
  *
+ * @param log объект для работы с логами
+ *
  */
-awh::codec::abc::Fetcher::Fetcher() noexcept :
- _error(error_t::NONE), _opened(false), _cached(false), _origin(0), _source(nullptr) {}
+awh::codec::abc::Fetcher::Fetcher(const log_t * log) noexcept :
+ _packer(log), _index(log), _error(error_t::NONE), _opened(false), _cached(false), _origin(0), _source(nullptr), _log(log) {}

@@ -42,6 +42,11 @@
 /**
  * Подключаем заголовочные файлы модуля
  */
+#include <sys/log.hpp>
+
+/**
+ * Подключаем заголовочные файлы модуля
+ */
 #include "common.hpp"
 
 /**
@@ -251,6 +256,34 @@ namespace awh {
 					// Код ошибки последней операции приведения
 					error_t _error;
 				private:
+					/**
+					 * \~russian
+					 * Объект ведения журнала работы
+					 *
+					 * \~english
+					 * Object of the keeping of the work log
+					 *
+					 * \~
+					 */
+					const log_t * _log = nullptr;
+				private:
+					/**
+					 * \~russian
+					 * @brief Метод отказа приведения с сообщением о нём в журнал
+					 *
+					 * @param error код ошибки приведения
+					 * @return      всегда ложь, ради возврата им из места отказа
+					 *
+					 * \~english
+					 * @brief Method of the refusal of the conversion with a report of it to the log
+					 *
+					 * @param error the code of the conversion error
+					 * @return      always false, for the returning by it from the place of the refusal
+					 *
+					 * \~
+					 */
+					bool refuse(const error_t error) noexcept;
+				private:
 					// Признак того, что кодировка навязана извне
 					bool _forced;
 				private:
@@ -407,7 +440,21 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Decoder() noexcept;
+					explicit Decoder(const log_t * log = nullptr) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод установки объекта ведения журнала работы
+					 *
+					 * @param log объект ведения журнала работы
+					 *
+					 * \~english
+					 * @brief Method of the setting of the object of the keeping of the work log
+					 *
+					 * @param log the object of the keeping of the work log
+					 *
+					 * \~
+					 */
+					void setLogger(const log_t * log) noexcept;
 			} decoder_t;
 		};
 	};

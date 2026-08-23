@@ -910,9 +910,28 @@ awh::Grok::exp_t awh::Grok::build(string_view pattern, const uint32_t flags) con
 	/**
 	 * Если разворот ссылок текста шаблона не выполнен
 	 */
-	if(!unfolded)
+	if(!unfolded) {
+		/**
+		 * Если объект журнала событий передан
+		 */
+		if(this->_log != nullptr) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				this->_log->debug("Grok pattern could not be expanded", __PRETTY_FUNCTION__, make_tuple(string(pattern), flags), log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				this->_log->print("Grok pattern \"%s\" could not be expanded", log_t::flag_t::WARNING, string(pattern).c_str());
+			#endif
+		}
 		// Выводим собранный шаблон Grok
 		return result;
+	}
 	/**
 	 * Выполняем сборку развёрнутого регулярного выражения
 	 *
@@ -1425,8 +1444,11 @@ void awh::Grok::threadSafety(const bool mode) noexcept {
 /**
  * @brief Конструктор
  *
+ * @param log объект для работы с логами
+ *
  */
-awh::Grok::Grok() noexcept : _error(error_t::NONE), _method(compressor::method_t::NONE), _threadSafety(false) {
+awh::Grok::Grok(const log_t * log) noexcept :
+ _error(error_t::NONE), _method(compressor::method_t::NONE), _threadSafety(false), _log(log), _regexp(log) {
 	// Выполняем размещение реестра шаблонов
 	this->_patterns.reserve(awh::grok::PATTERNS_COUNT);
 	/**

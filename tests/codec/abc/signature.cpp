@@ -83,7 +83,7 @@ namespace {
 			 */
 			bool build(const string & name, vector <uint8_t> & buffer) noexcept {
 				// Сборщик контейнера
-				abc::assembler_t assembler;
+				abc::assembler_t assembler(this->_log.get());
 				// Выполняем установку модуля сжатия сборщику контейнера
 				assembler.compressor(this->_compressor.get());
 				// Выполняем объявление подписи собираемого контейнера
@@ -115,7 +115,7 @@ namespace {
  */
 TEST_F(SignatureFixture, MerkleRoot) {
 	// Дерево свёрток по кадрам контейнера
-	abc::merkle_t merkle;
+	abc::merkle_t merkle(this->_log.get());
 	// Выполняем установку модуля шифрования дереву свёрток
 	merkle.crypto(this->_crypto.get());
 	// Выполняем проверку того, что пустое дерево к корню не сводится
@@ -135,7 +135,7 @@ TEST_F(SignatureFixture, MerkleRoot) {
 	// Выполняем проверку длины корня дерева свёрток
 	ASSERT_EQ(root.size(), abc::DIGEST_LENGTH);
 	// Дерево свёрток с иной чередою тех же кадров
-	abc::merkle_t swapped;
+	abc::merkle_t swapped(this->_log.get());
 	// Выполняем установку модуля шифрования дереву свёрток
 	swapped.crypto(this->_crypto.get());
 	// Выполняем внесение второго кадра первым
@@ -163,7 +163,7 @@ TEST_F(SignatureFixture, MerkleRoot) {
  */
 TEST_F(SignatureFixture, LeafIsNotNode) {
 	// Дерево свёрток из двух кадров
-	abc::merkle_t pair;
+	abc::merkle_t pair(this->_log.get());
 	// Выполняем установку модуля шифрования дереву свёрток
 	pair.crypto(this->_crypto.get());
 	// Выполняем внесение первого кадра в дерево свёрток
@@ -175,7 +175,7 @@ TEST_F(SignatureFixture, LeafIsNotNode) {
 	// Выполняем сведение дерева свёрток к корню
 	ASSERT_TRUE(pair.root(root));
 	// Свёртки кадров, собранные порознь
-	abc::merkle_t first, second;
+	abc::merkle_t first(this->_log.get()), second(this->_log.get());
 	// Выполняем установку модуля шифрования первому дереву
 	first.crypto(this->_crypto.get());
 	// Выполняем установку модуля шифрования второму дереву
@@ -197,7 +197,7 @@ TEST_F(SignatureFixture, LeafIsNotNode) {
 	// Выполняем внесение свёртки правой ветви в поддельный кадр
 	forged.append(reinterpret_cast <const char *> (right.data()), right.size());
 	// Дерево свёрток из одного поддельного кадра
-	abc::merkle_t single;
+	abc::merkle_t single(this->_log.get());
 	// Выполняем установку модуля шифрования дереву свёрток
 	single.crypto(this->_crypto.get());
 	// Выполняем внесение поддельного кадра в дерево свёрток
@@ -236,7 +236,7 @@ TEST_F(SignatureFixture, SignedRoundtrip) {
 		// Код отказа поверки подписи владельца
 		abc::error_t error = abc::error_t::NONE;
 		// Выполняем поверку подписи владельца контейнера
-		ASSERT_TRUE(abc::verify(* this->_crypto, kind.first, buffer.data(), buffer.size(), error))
+		ASSERT_TRUE(abc::verify(* this->_crypto, kind.first, buffer.data(), buffer.size(), error, this->_log.get()))
 			<< "вид подписи: " << kind.first << ", код отказа: " << abc::message(error);
 		// Заголовок опознания собранного контейнера
 		abc::header_t header;
@@ -273,18 +273,18 @@ TEST_F(SignatureFixture, TamperRefused) {
 	// Код отказа поверки подписи владельца
 	abc::error_t error = abc::error_t::NONE;
 	// Выполняем поверку подписи владельца контейнера
-	ASSERT_TRUE(abc::verify(* this->_crypto, "владелец", buffer.data(), buffer.size(), error))
+	ASSERT_TRUE(abc::verify(* this->_crypto, "владелец", buffer.data(), buffer.size(), error, this->_log.get()))
 		<< "код отказа: " << abc::message(error);
 	// Выполняем порчу одного октета тела контейнера
 	buffer.at(abc::HEADER_LENGTH + abc::CHUNK_HEADER + 2) ^= 0xFF;
 	// Выполняем проверку отказа поверки подписи после порчи тела
-	ASSERT_FALSE(abc::verify(* this->_crypto, "владелец", buffer.data(), buffer.size(), error));
+	ASSERT_FALSE(abc::verify(* this->_crypto, "владелец", buffer.data(), buffer.size(), error, this->_log.get()));
 	// Выполняем проверку кода отказа поверки подписи
 	ASSERT_EQ(error, abc::error_t::REFUSED_SIGNATURE);
 	// Выполняем возврат испорченного октета тела контейнера
 	buffer.at(abc::HEADER_LENGTH + abc::CHUNK_HEADER + 2) ^= 0xFF;
 	// Выполняем проверку того, что возврат октета подпись возвращает
-	ASSERT_TRUE(abc::verify(* this->_crypto, "владелец", buffer.data(), buffer.size(), error))
+	ASSERT_TRUE(abc::verify(* this->_crypto, "владелец", buffer.data(), buffer.size(), error, this->_log.get()))
 		<< "код отказа: " << abc::message(error);
 	// Заголовок опознания собранного контейнера
 	abc::header_t header;
@@ -296,7 +296,7 @@ TEST_F(SignatureFixture, TamperRefused) {
 	 */
 	buffer.at(static_cast <size_t> (header.index) + abc::CHUNK_HEADER) ^= 0xFF;
 	// Выполняем проверку отказа поверки подписи после порчи оглавления
-	ASSERT_FALSE(abc::verify(* this->_crypto, "владелец", buffer.data(), buffer.size(), error));
+	ASSERT_FALSE(abc::verify(* this->_crypto, "владелец", buffer.data(), buffer.size(), error, this->_log.get()));
 	// Выполняем проверку кода отказа поверки подписи
 	ASSERT_EQ(error, abc::error_t::REFUSED_SIGNATURE);
 }
@@ -316,7 +316,7 @@ TEST_F(SignatureFixture, ForeignKeyRefused) {
 	// Код отказа поверки подписи владельца
 	abc::error_t error = abc::error_t::NONE;
 	// Выполняем проверку отказа поверки подписи чужим ключом
-	ASSERT_FALSE(abc::verify(* this->_crypto, "чужой", buffer.data(), buffer.size(), error));
+	ASSERT_FALSE(abc::verify(* this->_crypto, "чужой", buffer.data(), buffer.size(), error, this->_log.get()));
 	// Выполняем проверку кода отказа поверки подписи
 	ASSERT_EQ(error, abc::error_t::REFUSED_SIGNATURE);
 	/**
@@ -342,7 +342,7 @@ TEST_F(SignatureFixture, VerifyWithoutPassword) {
 	// Выполняем заведение ключа владельца контейнера
 	ASSERT_TRUE(this->_crypto->generateKey("владелец", crypto_t::signature_t::ED25519));
 	// Сборщик контейнера
-	abc::assembler_t assembler;
+	abc::assembler_t assembler(this->_log.get());
 	// Выполняем установку модуля сжатия сборщику контейнера
 	assembler.compressor(this->_compressor.get());
 	// Выполняем установку модуля шифрования сборщику контейнера
@@ -374,7 +374,7 @@ TEST_F(SignatureFixture, VerifyWithoutPassword) {
 	 * Выполняем поверку подписи владельца без пароля расшифровки: подпись стоит
 	 * на шифротексте, и открывать его ради поверки не приходится
 	 */
-	ASSERT_TRUE(abc::verify(stranger, "владелец", buffer.data(), buffer.size(), error))
+	ASSERT_TRUE(abc::verify(stranger, "владелец", buffer.data(), buffer.size(), error, this->_log.get()))
 		<< "код отказа: " << abc::message(error);
 }
 /**
@@ -383,7 +383,7 @@ TEST_F(SignatureFixture, VerifyWithoutPassword) {
  */
 TEST_F(SignatureFixture, UnsignedRefused) {
 	// Сборщик контейнера
-	abc::assembler_t assembler;
+	abc::assembler_t assembler(this->_log.get());
 	// Выполняем сборку записи контейнера
 	const vector <uint8_t> item = abc::value_t(string{"запись без подписи"}).dump();
 	// Выполняем внесение записи в собираемый контейнер
@@ -395,7 +395,7 @@ TEST_F(SignatureFixture, UnsignedRefused) {
 	// Код отказа поверки подписи владельца
 	abc::error_t error = abc::error_t::NONE;
 	// Выполняем проверку отказа поверки неподписанного контейнера
-	ASSERT_FALSE(abc::verify(* this->_crypto, "владелец", buffer.data(), buffer.size(), error));
+	ASSERT_FALSE(abc::verify(* this->_crypto, "владелец", buffer.data(), buffer.size(), error, this->_log.get()));
 	// Выполняем проверку кода отказа поверки подписи
 	ASSERT_EQ(error, abc::error_t::UNSIGNED_CONTAINER);
 }
@@ -522,7 +522,7 @@ TEST_F(SignatureFixture, DigestSelection) {
  */
 TEST_F(SignatureFixture, MerkleClear) {
 	// Дерево свёрток по кадрам контейнера
-	abc::merkle_t merkle;
+	abc::merkle_t merkle(this->_log.get());
 	// Выполняем установку модуля шифрования дереву свёрток
 	merkle.crypto(this->_crypto.get());
 	// Выполняем внесение двух кадров в дерево свёрток
@@ -579,9 +579,9 @@ TEST_F(SignatureFixture, MerkleDuplicationRefused) {
 	 * @return       корень сведённого дерева
 	 *
 	 */
-	const auto reduce = [](const vector <string> & frames, crypto_t * crypto) noexcept -> vector <uint8_t> {
+	const auto reduce = [this](const vector <string> & frames, crypto_t * crypto) noexcept -> vector <uint8_t> {
 		// Дерево свёрток по кадрам контейнера
-		abc::merkle_t merkle;
+		abc::merkle_t merkle(this->_log.get());
 		// Выполняем установку модуля шифрования дереву свёрток
 		merkle.crypto(crypto);
 		/**

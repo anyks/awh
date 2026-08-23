@@ -113,6 +113,42 @@ namespace {
 };
 
 /**
+ * @brief Метод объявления отказа разбора документа
+ *
+ * @param error объявляемый код отказа
+ * @return      признак успешности, всегда ложь
+ *
+ */
+bool awh::codec::abc::Document::fail(const error_t error) noexcept {
+	// Выполняем установку кода отказа
+	this->_error = error;
+	/**
+	 * Если объект логирования отдан, доносим об отказе.
+	 *
+	 * @warning Сброс кода отказа сюда НЕ идёт: воронка эта объявляет отказ, а сброс
+	 *          лишь снимает прежний, и донесение о нём наполняло бы журнал записями
+	 *          «no error» на всякий успешный вызов. Проверено на себе
+	 */
+	if((error != error_t::NONE) && (this->_log != nullptr)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("ABC: %s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (error)),
+			 log_t::flag_t::WARNING, abc::message(error));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("ABC: %s", log_t::flag_t::WARNING, abc::message(error));
+		#endif
+	}
+	// Сообщаем, что работа отвечена отказом
+	return false;
+}
+/**
  * @brief Метод сброса состояния документа
  *
  */
@@ -223,7 +259,7 @@ bool awh::codec::abc::Document::digest(void * context, Document * self, const re
 		// Если закрывать нечего
 		if(state->stack.empty()){
 			// Выполняем установку кода внутреннего отказа
-			self->_error = error_t::INTERNAL;
+			self->fail(error_t::INTERNAL);
 			// Сообщаем, что разбор отвечен отказом
 			return false;
 		}
@@ -401,7 +437,7 @@ bool awh::codec::abc::Document::parse(const void * buffer, const size_t size, co
 	// Выполняем сброс состояния документа
 	this->clear();
 	// Читатель бинарной записи
-	reader_t reader;
+	reader_t reader(this->_log);
 	// Выполняем установку настроек разбора записи
 	reader.settings(settings);
 	// Состояние сборки дерева документа
@@ -434,14 +470,14 @@ bool awh::codec::abc::Document::parse(const void * buffer, const size_t size, co
 	// Если стек открытых вместимых не опустел
 	if(!state.stack.empty()){
 		// Выполняем установку кода внутреннего отказа
-		this->_error = error_t::INTERNAL;
+		this->fail(error_t::INTERNAL);
 		// Сообщаем, что разбор отвечен отказом
 		return false;
 	}
 	// Если дерево документа осталось пустым
 	if(this->_nodes.empty()){
 		// Выполняем установку кода отказа пустой записи
-		this->_error = error_t::EMPTY_RECORD;
+		this->fail(error_t::EMPTY_RECORD);
 		// Сообщаем, что разбор отвечен отказом
 		return false;
 	}

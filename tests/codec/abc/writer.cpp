@@ -40,6 +40,34 @@ using namespace awh::codec;
  */
 namespace {
 	/**
+	 * @brief Функция извлечения объекта журнала проверок
+	 *
+	 * @details Журнал заводится единожды на весь набор и гасится: проверки отказов
+	 *          выводили бы записью всякий свой отказ, а их тут большинство. Гашение
+	 *          это - настройка журнала, а не молчание модуля: модуль доносит как
+	 *          обычно, а показывать ли - решает журнал
+	 *
+	 * @return объект журнала проверок
+	 *
+	 */
+	const log_t * logger() noexcept {
+		// Объект фреймворка проверок
+		static fmk_t fmk;
+		// Объект журнала проверок
+		static log_t log(& fmk);
+		// Признак выполненной настройки журнала
+		static const bool ready = [](){
+			// Выполняем гашение вывода журнала проверок
+			log.level(log_t::level_t::NONE);
+			// Выводим признак выполненной настройки
+			return true;
+		}();
+		// Снимаем неиспользуемый признак настройки
+		(void) ready;
+		// Выводим объект журнала проверок
+		return & log;
+	}
+	/**
 	 * @brief Функция получения краткой записи собранных событий разбора
 	 *
 	 * @param data   разбираемая запись
@@ -128,7 +156,7 @@ namespace {
  */
 TEST(CodecAbcWriter, Roundtrip) {
 	// Сборщик бинарной записи
-	abc::writer_t writer;
+	abc::writer_t writer(::logger());
 	// Октеты опознавателя
 	const vector <uint8_t> identifier(16, 0x5A);
 	// Октеты двоичного значения
@@ -172,7 +200,7 @@ TEST(CodecAbcWriter, Roundtrip) {
 	// Выполняем проверку завершённости собранной записи
 	ASSERT_TRUE(writer.complete()) << "код отказа: " << abc::message(writer.error());
 	// Читатель бинарной записи
-	abc::reader_t reader;
+	abc::reader_t reader(::logger());
 	// Выполняем разбор собранной записи
 	const vector <string> events = replay(writer.record(), reader);
 	// Выполняем проверку собранной последовательности событий
@@ -186,7 +214,7 @@ TEST(CodecAbcWriter, Roundtrip) {
  */
 TEST(CodecAbcWriter, IndefiniteRoundtrip) {
 	// Сборщик бинарной записи
-	abc::writer_t writer;
+	abc::writer_t writer(::logger());
 	// Выполняем укладку массива неопределённой длины
 	ASSERT_TRUE(writer.arrayBegin());
 	// Выполняем укладку отображения неопределённой длины
@@ -202,7 +230,7 @@ TEST(CodecAbcWriter, IndefiniteRoundtrip) {
 	// Выполняем проверку завершённости собранной записи
 	ASSERT_TRUE(writer.complete()) << "код отказа: " << abc::message(writer.error());
 	// Читатель бинарной записи
-	abc::reader_t reader;
+	abc::reader_t reader(::logger());
 	// Выполняем разбор собранной записи
 	const vector <string> events = replay(writer.record(), reader);
 	// Выполняем проверку собранной последовательности событий
@@ -220,7 +248,7 @@ TEST(CodecAbcWriter, ExtensionRoundtrip) {
 	// Октеты величины числа
 	const vector <uint8_t> magnitude = {0x39, 0x30, 0x01};
 	// Сборщик бинарной записи
-	abc::writer_t writer;
+	abc::writer_t writer(::logger());
 	// Выполняем укладку массива из трёх значений
 	ASSERT_TRUE(writer.arrayBegin(3));
 	// Выполняем укладку целого числа неограниченной ширины
@@ -232,7 +260,7 @@ TEST(CodecAbcWriter, ExtensionRoundtrip) {
 	// Выполняем укладку конца массива
 	ASSERT_TRUE(writer.arrayEnd());
 	// Читатель бинарной записи
-	abc::reader_t reader;
+	abc::reader_t reader(::logger());
 	// Выполняем разбор собранной записи
 	const vector <string> events = replay(writer.record(), reader);
 	// Выполняем проверку собранной последовательности событий
@@ -250,7 +278,7 @@ TEST(CodecAbcWriter, ContainerAccounting) {
 	// Выполняем проверку отказа на значение сверх объявленной длины
 	{
 		// Сборщик бинарной записи
-		abc::writer_t writer;
+		abc::writer_t writer(::logger());
 		// Выполняем укладку массива из одного значения
 		ASSERT_TRUE(writer.arrayBegin(1));
 		// Выполняем укладку первого значения массива
@@ -263,7 +291,7 @@ TEST(CodecAbcWriter, ContainerAccounting) {
 	// Выполняем проверку отказа на вместимое, закрытое недособранным
 	{
 		// Сборщик бинарной записи
-		abc::writer_t writer;
+		abc::writer_t writer(::logger());
 		// Выполняем укладку массива из двух значений
 		ASSERT_TRUE(writer.arrayBegin(2));
 		// Выполняем укладку первого значения массива
@@ -276,7 +304,7 @@ TEST(CodecAbcWriter, ContainerAccounting) {
 	// Выполняем проверку отказа на закрытие вместимого иного вида
 	{
 		// Сборщик бинарной записи
-		abc::writer_t writer;
+		abc::writer_t writer(::logger());
 		// Выполняем укладку массива из нуля значений
 		ASSERT_TRUE(writer.arrayBegin(0));
 		// Выполняем проверку отказа на закрытие массива концом отображения
@@ -287,7 +315,7 @@ TEST(CodecAbcWriter, ContainerAccounting) {
 	// Выполняем проверку отказа на конец вместимого вне вместимого
 	{
 		// Сборщик бинарной записи
-		abc::writer_t writer;
+		abc::writer_t writer(::logger());
 		// Выполняем проверку отказа на закрытие вместимого, какого нет
 		ASSERT_FALSE(writer.arrayEnd());
 		// Выполняем проверку кода отказа
@@ -296,7 +324,7 @@ TEST(CodecAbcWriter, ContainerAccounting) {
 	// Выполняем проверку отказа на отображение, закрытое на имени поля
 	{
 		// Сборщик бинарной записи
-		abc::writer_t writer;
+		abc::writer_t writer(::logger());
 		// Выполняем укладку отображения неопределённой длины
 		ASSERT_TRUE(writer.mapBegin());
 		// Выполняем укладку имени поля отображения
@@ -309,7 +337,7 @@ TEST(CodecAbcWriter, ContainerAccounting) {
 	// Выполняем проверку отказа на вместимое именем поля отображения
 	{
 		// Сборщик бинарной записи
-		abc::writer_t writer;
+		abc::writer_t writer(::logger());
 		// Выполняем укладку отображения из одной пары
 		ASSERT_TRUE(writer.mapBegin(1));
 		// Выполняем проверку отказа на укладку массива именем поля
@@ -320,7 +348,7 @@ TEST(CodecAbcWriter, ContainerAccounting) {
 	// Выполняем проверку незавершённости недособранной записи
 	{
 		// Сборщик бинарной записи
-		abc::writer_t writer;
+		abc::writer_t writer(::logger());
 		// Выполняем укладку массива из одного значения
 		ASSERT_TRUE(writer.arrayBegin(1));
 		// Выполняем укладку значения массива
@@ -337,7 +365,7 @@ TEST(CodecAbcWriter, ContainerAccounting) {
  */
 TEST(CodecAbcWriter, DuplicateKey) {
 	// Сборщик бинарной записи
-	abc::writer_t writer;
+	abc::writer_t writer(::logger());
 	// Выполняем укладку отображения из двух пар
 	ASSERT_TRUE(writer.mapBegin(2));
 	// Выполняем укладку имени первого поля отображения
@@ -364,7 +392,7 @@ TEST(CodecAbcWriter, Canonical) {
 	// Выполняем проверку отказа на неопределённую длину вместимого
 	{
 		// Сборщик бинарной записи
-		abc::writer_t writer;
+		abc::writer_t writer(::logger());
 		// Выполняем установку настроек сборки записи
 		writer.settings(settings);
 		// Выполняем проверку отказа на укладку массива неопределённой длины
@@ -375,7 +403,7 @@ TEST(CodecAbcWriter, Canonical) {
 	// Выполняем проверку отказа на имена полей не по возрастанию
 	{
 		// Сборщик бинарной записи
-		abc::writer_t writer;
+		abc::writer_t writer(::logger());
 		// Выполняем установку настроек сборки записи
 		writer.settings(settings);
 		// Выполняем укладку отображения из двух пар
@@ -392,7 +420,7 @@ TEST(CodecAbcWriter, Canonical) {
 	// Выполняем проверку приёма имён полей по возрастанию
 	{
 		// Сборщик бинарной записи
-		abc::writer_t writer;
+		abc::writer_t writer(::logger());
 		// Выполняем установку настроек сборки записи
 		writer.settings(settings);
 		// Выполняем укладку отображения из двух пар
@@ -413,7 +441,7 @@ TEST(CodecAbcWriter, Canonical) {
 	// Выполняем проверку того, что имена сличаются записью, а не длиною
 	{
 		// Сборщик бинарной записи
-		abc::writer_t writer;
+		abc::writer_t writer(::logger());
 		// Выполняем установку настроек сборки записи
 		writer.settings(settings);
 		// Выполняем укладку отображения из двух пар
@@ -438,7 +466,7 @@ TEST(CodecAbcWriter, ValueFailures) {
 	// Выполняем проверку отказа на строку, кодировке не отвечающую
 	{
 		// Сборщик бинарной записи
-		abc::writer_t writer;
+		abc::writer_t writer(::logger());
 		// Выполняем проверку отказа на укладку негодной строки
 		ASSERT_FALSE(writer.text(string_view("\xC0\x80", 2)));
 		// Выполняем проверку кода отказа
@@ -449,7 +477,7 @@ TEST(CodecAbcWriter, ValueFailures) {
 		// Октеты опознавателя недопустимой ширины
 		const vector <uint8_t> identifier(8, 0x11);
 		// Сборщик бинарной записи
-		abc::writer_t writer;
+		abc::writer_t writer(::logger());
 		// Выполняем проверку отказа на укладку опознавателя
 		ASSERT_FALSE(writer.uuid(identifier.data(), identifier.size()));
 		// Выполняем проверку кода отказа
@@ -460,7 +488,7 @@ TEST(CodecAbcWriter, ValueFailures) {
 		// Октеты величины с нулевым старшим октетом
 		const vector <uint8_t> magnitude = {0x01, 0x00};
 		// Сборщик бинарной записи
-		abc::writer_t writer;
+		abc::writer_t writer(::logger());
 		// Выполняем проверку отказа на укладку числа неограниченной ширины
 		ASSERT_FALSE(writer.bignum(magnitude.data(), magnitude.size(), false));
 		// Выполняем проверку кода отказа
@@ -469,7 +497,7 @@ TEST(CodecAbcWriter, ValueFailures) {
 	// Выполняем проверку отказа на величину, объявленную отрицательным нулём
 	{
 		// Сборщик бинарной записи
-		abc::writer_t writer;
+		abc::writer_t writer(::logger());
 		// Выполняем проверку отказа на укладку отрицательного нуля
 		ASSERT_FALSE(writer.bignum(nullptr, 0, true));
 		// Выполняем проверку кода отказа
@@ -478,7 +506,7 @@ TEST(CodecAbcWriter, ValueFailures) {
 	// Выполняем проверку того, что отказ сборки останавливает её насовсем
 	{
 		// Сборщик бинарной записи
-		abc::writer_t writer;
+		abc::writer_t writer(::logger());
 		// Выполняем проверку отказа на укладку негодной строки
 		ASSERT_FALSE(writer.text(string_view("\xFE", 1)));
 		// Выполняем проверку отказа на укладку значения после отказа
@@ -513,7 +541,7 @@ TEST(CodecAbcWriter, SmallestRecord) {
 	 */
 	for(const auto & item : values){
 		// Сборщик бинарной записи
-		abc::writer_t writer;
+		abc::writer_t writer(::logger());
 		// Выполняем укладку целого числа без знака
 		ASSERT_TRUE(writer.number(item.first));
 		// Выполняем проверку длины собранной записи
@@ -522,7 +550,7 @@ TEST(CodecAbcWriter, SmallestRecord) {
 	// Выполняем проверку того, что пустое отображение занимает один октет
 	{
 		// Сборщик бинарной записи
-		abc::writer_t writer;
+		abc::writer_t writer(::logger());
 		// Выполняем укладку пустого отображения
 		ASSERT_TRUE(writer.mapBegin(0));
 		// Выполняем укладку конца отображения
@@ -541,7 +569,7 @@ TEST(CodecAbcWriter, SmallestRecord) {
  */
 TEST(CodecAbcWriter, SegmentedString) {
 	// Сборщик бинарной записи
-	abc::writer_t writer;
+	abc::writer_t writer(::logger());
 	// Выполняем укладку начала строки, собираемой кусками
 	ASSERT_TRUE(writer.textBegin()) << "код отказа: " << abc::message(writer.error());
 	// Выполняем укладку первого куска строки
@@ -553,7 +581,7 @@ TEST(CodecAbcWriter, SegmentedString) {
 	// Выполняем проверку завершённости собранной записи
 	ASSERT_TRUE(writer.complete());
 	// Разбиратель бинарной записи
-	abc::reader_t reader;
+	abc::reader_t reader(::logger());
 	// Выполняем подачу собранной записи разбирателю
 	ASSERT_TRUE(reader.feed(writer.record().data(), writer.record().size(), true))
 		<< "код отказа: " << abc::message(reader.error());
@@ -590,7 +618,7 @@ TEST(CodecAbcWriter, SegmentedRefusals) {
 	 */
 	{
 		// Сборщик бинарной записи
-		abc::writer_t writer;
+		abc::writer_t writer(::logger());
 		// Получаем настройки сборки записи
 		abc::writer_t::settings_t settings = writer.settings();
 		// Выполняем установку строгого вида записи
@@ -607,7 +635,7 @@ TEST(CodecAbcWriter, SegmentedRefusals) {
 	 */
 	{
 		// Сборщик бинарной записи
-		abc::writer_t writer;
+		abc::writer_t writer(::logger());
 		// Выполняем укладку начала строки, собираемой кусками
 		ASSERT_TRUE(writer.textBegin());
 		// Выполняем проверку отказа укладки двоичных данных куском строки
@@ -620,7 +648,7 @@ TEST(CodecAbcWriter, SegmentedRefusals) {
 	 */
 	{
 		// Сборщик бинарной записи
-		abc::writer_t writer;
+		abc::writer_t writer(::logger());
 		// Выполняем укладку начала двоичных данных, собираемых кусками
 		ASSERT_TRUE(writer.blobBegin());
 		// Выполняем проверку отказа укладки числа внутрь собираемого значения
@@ -633,7 +661,7 @@ TEST(CodecAbcWriter, SegmentedRefusals) {
 	 */
 	{
 		// Сборщик бинарной записи
-		abc::writer_t writer;
+		abc::writer_t writer(::logger());
 		// Выполняем укладку начала отображения
 		ASSERT_TRUE(writer.mapBegin(1));
 		// Выполняем проверку отказа собираемого значения именем поля
@@ -646,7 +674,7 @@ TEST(CodecAbcWriter, SegmentedRefusals) {
 	 */
 	{
 		// Сборщик бинарной записи
-		abc::writer_t writer;
+		abc::writer_t writer(::logger());
 		// Выполняем укладку начала строки, собираемой кусками
 		ASSERT_TRUE(writer.textBegin());
 		// Выполняем проверку отказа конца двоичных данных у начатой строки
@@ -661,7 +689,7 @@ TEST(CodecAbcWriter, SegmentedRefusals) {
  */
 TEST(CodecAbcWriter, SegmentedBlobInsideContainer) {
 	// Сборщик бинарной записи
-	abc::writer_t writer;
+	abc::writer_t writer(::logger());
 	// Выполняем укладку начала массива из двух значений
 	ASSERT_TRUE(writer.arrayBegin(2));
 	// Выполняем укладку начала двоичных данных, собираемых кусками
@@ -682,7 +710,7 @@ TEST(CodecAbcWriter, SegmentedBlobInsideContainer) {
 	// Выполняем проверку завершённости собранной записи
 	ASSERT_TRUE(writer.complete());
 	// Разбиратель бинарной записи
-	abc::reader_t reader;
+	abc::reader_t reader(::logger());
 	// Выполняем подачу собранной записи разбирателю
 	ASSERT_TRUE(reader.feed(writer.record().data(), writer.record().size(), true))
 		<< "код отказа: " << abc::message(reader.error());
@@ -714,7 +742,7 @@ TEST(CodecAbcWriter, SegmentedBlobInsideContainer) {
  */
 TEST(CodecAbcWriter, ReferencedContent){
 	// Сборка бинарной записи
-	abc::writer_t writer;
+	abc::writer_t writer(::logger());
 	// Выполняем получение настроек сборки записи
 	abc::writer_t::settings_t settings = writer.settings();
 	// Выполняем установку порога укладки содержимого ссылкой
@@ -772,7 +800,7 @@ TEST(CodecAbcWriter, ReferencedContent){
 	// Выполняем проверку длины цельной записи
 	ASSERT_EQ(record.size(), length);
 	// Разбиратель бинарной записи
-	abc::reader_t reader;
+	abc::reader_t reader(::logger());
 	// Выполняем подачу собранной записи разбирателю
 	ASSERT_TRUE(reader.feed(record.data(), record.size(), true))
 		<< "код отказа: " << abc::message(reader.error());
@@ -800,7 +828,7 @@ TEST(CodecAbcWriter, ReferencedContent){
  */
 TEST(CodecAbcWriter, ReferencedKeysAreCopied){
 	// Сборка бинарной записи
-	abc::writer_t writer;
+	abc::writer_t writer(::logger());
 	// Выполняем получение настроек сборки записи
 	abc::writer_t::settings_t settings = writer.settings();
 	// Выполняем установку порога укладки содержимого ссылкой
@@ -829,7 +857,7 @@ TEST(CodecAbcWriter, ReferencedKeysAreCopied){
 	// Выполняем проверку завершённости собранной записи
 	ASSERT_TRUE(writer.complete());
 	// Выполняем проверку того, что имена полей уложены не по возрастанию
-	abc::writer_t other;
+	abc::writer_t other(::logger());
 	// Выполняем установку настроек сборки записи
 	other.settings(settings);
 	// Выполняем укладку начала отображения
@@ -849,7 +877,7 @@ TEST(CodecAbcWriter, ReferencedKeysAreCopied){
  */
 TEST(CodecAbcWriter, FlattenKeepsKeys){
 	// Сборка бинарной записи
-	abc::writer_t writer;
+	abc::writer_t writer(::logger());
 	// Выполняем получение настроек сборки записи
 	abc::writer_t::settings_t settings = writer.settings();
 	// Выполняем установку порога укладки содержимого ссылкой
@@ -898,7 +926,7 @@ TEST(CodecAbcWriter, FlattenKeepsKeys){
  */
 TEST(CodecAbcWriter, CustomExtension){
 	// Сборка бинарной записи
-	abc::writer_t writer;
+	abc::writer_t writer(::logger());
 	// Октеты расширения, заведённого потребителем
 	const string content = "\x01\x02\x03\x04";
 	// Выполняем укладку начала массива
@@ -915,7 +943,7 @@ TEST(CodecAbcWriter, CustomExtension){
 	// Выполняем проверку завершённости собранной записи
 	ASSERT_TRUE(writer.complete());
 	// Разбиратель бинарной записи
-	abc::reader_t reader;
+	abc::reader_t reader(::logger());
 	// Выполняем подачу собранной записи разбирателю
 	ASSERT_TRUE(reader.feed(writer.record().data(), writer.record().size(), true))
 		<< "код отказа: " << abc::message(reader.error());
@@ -962,7 +990,7 @@ TEST(CodecAbcWriter, CustomExtension){
  */
 TEST(CodecAbcWriter, SpannedContainer) {
 	// Сборщик записи без объявления размаха
-	abc::writer_t plain;
+	abc::writer_t plain(::logger());
 	// Выполняем сборку записи с вложенным перечнем
 	ASSERT_TRUE(plain.mapBegin(1));
 	// Выполняем укладку имени поля отображения
@@ -982,7 +1010,7 @@ TEST(CodecAbcWriter, SpannedContainer) {
 	// Октеты записи без объявления размаха
 	const vector <uint8_t> bare = plain.record();
 	// Сборщик записи с объявлением размаха
-	abc::writer_t spanned;
+	abc::writer_t spanned(::logger());
 	// Настройки сборки записи
 	abc::writer_t::settings_t settings = spanned.settings();
 	// Выполняем установку порога объявления размаха
@@ -1015,11 +1043,11 @@ TEST(CodecAbcWriter, SpannedContainer) {
 	 */
 	ASSERT_EQ(wide.size(), bare.size() + 1 + abc::SPAN_LENGTH);
 	// Дерево документа записи без размаха
-	abc::document_t first;
+	abc::document_t first(::logger());
 	// Выполняем разбор записи без размаха
 	ASSERT_TRUE(first.parse(bare.data(), bare.size()));
 	// Дерево документа записи с размахом
-	abc::document_t second;
+	abc::document_t second(::logger());
 	/**
 	 * Выполняем разбор записи с размахом: метка размаха разбору ПРОЗРАЧНА, и дерево
 	 * обязано выйти тем же самым
@@ -1042,7 +1070,7 @@ TEST(CodecAbcWriter, SpannedContainer) {
  */
 TEST(CodecAbcWriter, SpannedSkip) {
 	// Сборщик записи с объявлением размаха
-	abc::writer_t writer;
+	abc::writer_t writer(::logger());
 	// Настройки сборки записи
 	abc::writer_t::settings_t settings = writer.settings();
 	// Выполняем установку порога объявления размаха
@@ -1086,7 +1114,7 @@ TEST(CodecAbcWriter, SpannedSkip) {
 		string last;
 	} sink;
 	// Поточный разбиратель записи
-	abc::reader_t reader;
+	abc::reader_t reader(::logger());
 	// Выполняем установку обработчика прямой выдачи событий разбора
 	reader.handler([](void * context, abc::reader_t & reader, const abc::event_t event) noexcept -> void {
 		// Выполняем получение опоры прямой выдачи событий
@@ -1126,7 +1154,7 @@ TEST(CodecAbcWriter, SpannedSkip) {
  */
 TEST(CodecAbcWriter, SpannedHostile) {
 	// Сборщик записи с объявлением размаха
-	abc::writer_t writer;
+	abc::writer_t writer(::logger());
 	// Настройки сборки записи
 	abc::writer_t::settings_t settings = writer.settings();
 	// Выполняем установку порога объявления размаха
@@ -1189,7 +1217,7 @@ TEST(CodecAbcWriter, SpannedHostile) {
 		// Выполняем сброс количества выданных событий
 		counted = 0;
 		// Поточный разбиратель записи
-		abc::reader_t reader;
+		abc::reader_t reader(::logger());
 		// Выполняем установку обработчика прямой выдачи событий разбора
 		reader.handler([](void *, abc::reader_t & reader, const abc::event_t event) noexcept -> void {
 			// Выполняем учёт выданного события разбора
@@ -1272,7 +1300,7 @@ TEST(CodecAbcWriter, SpannedHostile) {
 	// Выполняем уменьшение младшего октета размаха
 	shortened.at(place + 1) = static_cast <uint8_t> (shortened.at(place + 1) - 1);
 	// Поточный разбиратель записи с укороченным размахом
-	abc::reader_t plain;
+	abc::reader_t plain(::logger());
 	// Выполняем подачу записи с укороченным размахом БЕЗ всякого пропуска
 	(void) plain.feed(shortened.data(), shortened.size());
 	/**
@@ -1311,7 +1339,7 @@ TEST(CodecAbcWriter, SpannedHostile) {
  */
 TEST(CodecAbcWriter, SpannedBeforeSingle) {
 	// Сборщик вложенного перечня записи
-	abc::writer_t writer;
+	abc::writer_t writer(::logger());
 	// Выполняем заведение вложенного перечня из двух чисел
 	ASSERT_TRUE(writer.arrayBegin(2));
 	// Выполняем укладку первого числа вложенного перечня
@@ -1360,7 +1388,7 @@ TEST(CodecAbcWriter, SpannedBeforeSingle) {
 			size_t numbers = 0;
 		} sink;
 		// Поточный разбиратель записи
-		abc::reader_t reader;
+		abc::reader_t reader(::logger());
 		// Выполняем установку обработчика прямой выдачи событий разбора
 		reader.handler([](void * context, abc::reader_t & reader, const abc::event_t event) noexcept -> void {
 			// Выполняем получение опоры прямой выдачи событий
@@ -1450,7 +1478,7 @@ TEST(CodecAbcWriter, SpannedIndefinite) {
 	 */
 	const auto submit = [](const vector <uint8_t> & record) noexcept -> abc::error_t {
 		// Поточный разбиратель записи
-		abc::reader_t reader;
+		abc::reader_t reader(::logger());
 		// Выполняем подачу записи разбирателю целиком
 		(void) reader.feed(record.data(), record.size(), true);
 		/**

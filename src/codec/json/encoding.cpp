@@ -345,10 +345,8 @@ bool awh::codec::json::Decoder::sniff() noexcept {
 		 * Если кодировка извне не навязана
 		 */
 		if(!this->_forced){
-			// Запоминаем код ошибки приведения
-			this->_error = error_t::UNSUPPORTED_ENCODING;
-			// Выводим признак незавершённого определения кодировки
-			return false;
+			// Выполняем отказ приведения с сообщением о нём в журнал
+			return this->refuse(error_t::UNSUPPORTED_ENCODING);
 		}
 	/**
 	 * Если началом текста является метка порядка байтов кодировки UTF-16 с прямым порядком
@@ -441,10 +439,8 @@ bool awh::codec::json::Decoder::process(const char * buffer, const size_t size, 
 					 * Если переданные байты являются последними
 					 */
 					if(end){
-						// Запоминаем код ошибки приведения
-						this->_error = error_t::INVALID_ENCODING;
-						// Выводим отрицательный результат выполнения операции
-						return false;
+						// Выполняем отказ приведения с сообщением о нём в журнал
+						return this->refuse(error_t::INVALID_ENCODING);
 					}
 					// Выводим положительный результат выполнения операции
 					return true;
@@ -457,10 +453,8 @@ bool awh::codec::json::Decoder::process(const char * buffer, const size_t size, 
 				 * Если удержанная последовательность знака построена ошибочно
 				 */
 				if(code == INVALID_CODEPOINT){
-					// Запоминаем код ошибки приведения
-					this->_error = error_t::INVALID_ENCODING;
-					// Выводим отрицательный результат выполнения операции
-					return false;
+					// Выполняем отказ приведения с сообщением о нём в журнал
+					return this->refuse(error_t::INVALID_ENCODING);
 				}
 				/**
 				 * Если знак в тексте настроек недопустим
@@ -472,10 +466,8 @@ bool awh::codec::json::Decoder::process(const char * buffer, const size_t size, 
 				 *          снимать прикрытие нельзя - оно оберегает от правки соседнего слоя
 				 */
 				if(!isChar(code)){
-					// Запоминаем код ошибки приведения
-					this->_error = error_t::INVALID_CHARACTER;
-					// Выводим отрицательный результат выполнения операции
-					return false;
+					// Выполняем отказ приведения с сообщением о нём в журнал
+					return this->refuse(error_t::INVALID_CHARACTER);
 				}
 				// Выполняем добавление удержанного знака к приведённому тексту
 				result.append(this->_pending, length);
@@ -543,10 +535,8 @@ bool awh::codec::json::Decoder::process(const char * buffer, const size_t size, 
 				 * Если первый байт последовательности построен ошибочно
 				 */
 				if(count == 0){
-					// Запоминаем код ошибки приведения
-					this->_error = error_t::INVALID_ENCODING;
-					// Выводим отрицательный результат выполнения операции
-					return false;
+					// Выполняем отказ приведения с сообщением о нём в журнал
+					return this->refuse(error_t::INVALID_ENCODING);
 				}
 				/**
 				 * Если последовательность знака разорвана границей куска
@@ -556,10 +546,8 @@ bool awh::codec::json::Decoder::process(const char * buffer, const size_t size, 
 					 * Если переданные байты являются последними
 					 */
 					if(end){
-						// Запоминаем код ошибки приведения
-						this->_error = error_t::INVALID_ENCODING;
-						// Выводим отрицательный результат выполнения операции
-						return false;
+						// Выполняем отказ приведения с сообщением о нём в журнал
+						return this->refuse(error_t::INVALID_ENCODING);
 					}
 					/**
 					 * Выполняем удержание начатой последовательности до следующего куска
@@ -578,10 +566,8 @@ bool awh::codec::json::Decoder::process(const char * buffer, const size_t size, 
 				 * Если последовательность знака построена ошибочно
 				 */
 				if(code == INVALID_CODEPOINT){
-					// Запоминаем код ошибки приведения
-					this->_error = error_t::INVALID_ENCODING;
-					// Выводим отрицательный результат выполнения операции
-					return false;
+					// Выполняем отказ приведения с сообщением о нём в журнал
+					return this->refuse(error_t::INVALID_ENCODING);
 				}
 				/**
 				 * Если знак в тексте настроек недопустим
@@ -593,10 +579,8 @@ bool awh::codec::json::Decoder::process(const char * buffer, const size_t size, 
 				 *          снимать прикрытие нельзя - оно оберегает от правки соседнего слоя
 				 */
 				if(!isChar(code)){
-					// Запоминаем код ошибки приведения
-					this->_error = error_t::INVALID_CHARACTER;
-					// Выводим отрицательный результат выполнения операции
-					return false;
+					// Выполняем отказ приведения с сообщением о нём в журнал
+					return this->refuse(error_t::INVALID_CHARACTER);
 				}
 				// Выполняем добавление знака к приведённому тексту
 				result.append(buffer + offset, length);
@@ -660,10 +644,8 @@ bool awh::codec::json::Decoder::process(const char * buffer, const size_t size, 
 					 * Если прочитанная пара байтов младшей половиной суррогатной пары не является
 					 */
 					if((unit < 0xDC00) || (unit > 0xDFFF)){
-						// Запоминаем код ошибки приведения
-						this->_error = error_t::INVALID_ENCODING;
-						// Выводим отрицательный результат выполнения операции
-						return false;
+						// Выполняем отказ приведения с сообщением о нём в журнал
+						return this->refuse(error_t::INVALID_ENCODING);
 					}
 					// Собираем кодовое значение знака из половин суррогатной пары
 					code = (0x10000 + ((this->_surrogate - 0xD800) << 10) + (unit - 0xDC00));
@@ -684,10 +666,8 @@ bool awh::codec::json::Decoder::process(const char * buffer, const size_t size, 
 				 *       текст: подставить вместо неё знак замены значило бы скрыть порчу
 				 */
 				} else if((unit >= 0xDC00) && (unit <= 0xDFFF)) {
-					// Запоминаем код ошибки приведения
-					this->_error = error_t::INVALID_ENCODING;
-					// Выводим отрицательный результат выполнения операции
-					return false;
+					// Выполняем отказ приведения с сообщением о нём в журнал
+					return this->refuse(error_t::INVALID_ENCODING);
 				// Если прочитанная пара байтов суррогатной не является
 				} else code = unit;
 				/**
@@ -700,10 +680,8 @@ bool awh::codec::json::Decoder::process(const char * buffer, const size_t size, 
 				 *          снимать прикрытие нельзя - оно оберегает от правки соседнего слоя
 				 */
 				if(!isChar(code)){
-					// Запоминаем код ошибки приведения
-					this->_error = error_t::INVALID_CHARACTER;
-					// Выводим отрицательный результат выполнения операции
-					return false;
+					// Выполняем отказ приведения с сообщением о нём в журнал
+					return this->refuse(error_t::INVALID_CHARACTER);
 				}
 				/**
 				 * Если запись знака в кодировке UTF-8 выполнить не удалось
@@ -715,10 +693,8 @@ bool awh::codec::json::Decoder::process(const char * buffer, const size_t size, 
 				 *          снимать прикрытие нельзя - оно оберегает от правки соседнего слоя
 				 */
 				if(!encode(code, result)){
-					// Запоминаем код ошибки приведения
-					this->_error = error_t::INVALID_ENCODING;
-					// Выводим отрицательный результат выполнения операции
-					return false;
+					// Выполняем отказ приведения с сообщением о нём в журнал
+					return this->refuse(error_t::INVALID_ENCODING);
 				}
 			}
 			/**
@@ -734,10 +710,8 @@ bool awh::codec::json::Decoder::process(const char * buffer, const size_t size, 
 			 * Если текст оборвался посреди пары байтов либо суррогатной пары
 			 */
 			if(end && ((this->_length != 0) || (this->_surrogate != 0))){
-				// Запоминаем код ошибки приведения
-				this->_error = error_t::INVALID_ENCODING;
-				// Выводим отрицательный результат выполнения операции
-				return false;
+				// Выполняем отказ приведения с сообщением о нём в журнал
+				return this->refuse(error_t::INVALID_ENCODING);
 			}
 		} break;
 		// Если кодировкой является ISO-8859-1
@@ -769,10 +743,8 @@ bool awh::codec::json::Decoder::process(const char * buffer, const size_t size, 
 				 *       собою на одном и том же тексте
 				 */
 				if((tabled && (code == 0)) || !isChar(code)){
-					// Запоминаем код ошибки приведения
-					this->_error = error_t::INVALID_CHARACTER;
-					// Выводим отрицательный результат выполнения операции
-					return false;
+					// Выполняем отказ приведения с сообщением о нём в журнал
+					return this->refuse(error_t::INVALID_CHARACTER);
 				}
 				/**
 				 * Если запись знака в кодировке UTF-8 выполнить не удалось
@@ -784,10 +756,8 @@ bool awh::codec::json::Decoder::process(const char * buffer, const size_t size, 
 				 *          снимать прикрытие нельзя - оно оберегает от правки соседнего слоя
 				 */
 				if(!encode(code, result)){
-					// Запоминаем код ошибки приведения
-					this->_error = error_t::INVALID_ENCODING;
-					// Выводим отрицательный результат выполнения операции
-					return false;
+					// Выполняем отказ приведения с сообщением о нём в журнал
+					return this->refuse(error_t::INVALID_ENCODING);
 				}
 			}
 		} break;
@@ -806,10 +776,8 @@ bool awh::codec::json::Decoder::process(const char * buffer, const size_t size, 
 				 *          снимать прикрытие нельзя - оно оберегает от правки соседнего слоя
 				 */
 				if(!isChar(data[i])){
-					// Запоминаем код ошибки приведения
-					this->_error = error_t::INVALID_CHARACTER;
-					// Выводим отрицательный результат выполнения операции
-					return false;
+					// Выполняем отказ приведения с сообщением о нём в журнал
+					return this->refuse(error_t::INVALID_CHARACTER);
 				}
 				/**
 				 * Если запись знака в кодировке UTF-8 выполнить не удалось
@@ -825,10 +793,8 @@ bool awh::codec::json::Decoder::process(const char * buffer, const size_t size, 
 				 *          снимать прикрытие нельзя - оно оберегает от правки соседнего слоя
 				 */
 				if(!encode(data[i], result)){
-					// Запоминаем код ошибки приведения
-					this->_error = error_t::INVALID_ENCODING;
-					// Выводим отрицательный результат выполнения операции
-					return false;
+					// Выполняем отказ приведения с сообщением о нём в журнал
+					return this->refuse(error_t::INVALID_ENCODING);
 				}
 			}
 		} break;
@@ -842,10 +808,8 @@ bool awh::codec::json::Decoder::process(const char * buffer, const size_t size, 
 				 * Если байт за пределы кодировки US-ASCII выходит
 				 */
 				if(data[i] >= 0x80){
-					// Запоминаем код ошибки приведения
-					this->_error = error_t::INVALID_ENCODING;
-					// Выводим отрицательный результат выполнения операции
-					return false;
+					// Выполняем отказ приведения с сообщением о нём в журнал
+					return this->refuse(error_t::INVALID_ENCODING);
 				}
 				/**
 				 * Если знак в тексте настроек недопустим
@@ -857,10 +821,8 @@ bool awh::codec::json::Decoder::process(const char * buffer, const size_t size, 
 				 *          снимать прикрытие нельзя - оно оберегает от правки соседнего слоя
 				 */
 				if(!isChar(data[i])){
-					// Запоминаем код ошибки приведения
-					this->_error = error_t::INVALID_CHARACTER;
-					// Выводим отрицательный результат выполнения операции
-					return false;
+					// Выполняем отказ приведения с сообщением о нём в журнал
+					return this->refuse(error_t::INVALID_CHARACTER);
 				}
 				// Выполняем добавление знака к приведённому тексту
 				result.push_back(buffer[i]);
@@ -868,10 +830,8 @@ bool awh::codec::json::Decoder::process(const char * buffer, const size_t size, 
 		} break;
 		// Если кодировка исходного текста не определена
 		default: {
-			// Запоминаем код ошибки приведения
-			this->_error = error_t::UNSUPPORTED_ENCODING;
-			// Выводим отрицательный результат выполнения операции
-			return false;
+			// Выполняем отказ приведения с сообщением о нём в журнал
+			return this->refuse(error_t::UNSUPPORTED_ENCODING);
 		}
 	}
 	/**
@@ -887,10 +847,8 @@ bool awh::codec::json::Decoder::process(const char * buffer, const size_t size, 
 	 *          успешно приведённый текст
 	 */
 	if(end && (this->_length != 0)){
-		// Запоминаем код ошибки приведения
-		this->_error = error_t::INVALID_ENCODING;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выполняем отказ приведения с сообщением о нём в журнал
+		return this->refuse(error_t::INVALID_ENCODING);
 	}
 	// Выводим положительный результат выполнения операции
 	return true;
@@ -1089,10 +1047,8 @@ bool awh::codec::json::Decoder::scan(const char * buffer, const size_t size, siz
 		 * Если первый байт последовательности построен ошибочно
 		 */
 		if(count == 0){
-			// Запоминаем код ошибки приведения
-			this->_error = error_t::INVALID_ENCODING;
-			// Выводим отрицательный результат выполнения операции
-			return false;
+			// Выполняем отказ приведения с сообщением о нём в журнал
+			return this->refuse(error_t::INVALID_ENCODING);
 		}
 		/**
 		 * Если последовательность знака разорвана границей куска
@@ -1102,10 +1058,8 @@ bool awh::codec::json::Decoder::scan(const char * buffer, const size_t size, siz
 			 * Если переданные байты являются последними
 			 */
 			if(end){
-				// Запоминаем код ошибки приведения
-				this->_error = error_t::INVALID_ENCODING;
-				// Выводим отрицательный результат выполнения операции
-				return false;
+				// Выполняем отказ приведения с сообщением о нём в журнал
+				return this->refuse(error_t::INVALID_ENCODING);
 			}
 			/**
 			 * Выполняем удержание начатой последовательности до следующего куска
@@ -1127,10 +1081,8 @@ bool awh::codec::json::Decoder::scan(const char * buffer, const size_t size, siz
 		 * Если последовательность знака построена ошибочно
 		 */
 		if(code == INVALID_CODEPOINT){
-			// Запоминаем код ошибки приведения
-			this->_error = error_t::INVALID_ENCODING;
-			// Выводим отрицательный результат выполнения операции
-			return false;
+			// Выполняем отказ приведения с сообщением о нём в журнал
+			return this->refuse(error_t::INVALID_ENCODING);
 		}
 		/**
 		 * Если знак в тексте недопустим
@@ -1142,10 +1094,8 @@ bool awh::codec::json::Decoder::scan(const char * buffer, const size_t size, siz
 		 *          снимать прикрытие нельзя - оно оберегает от правки соседнего слоя
 		 */
 		if(!isChar(code)){
-			// Запоминаем код ошибки приведения
-			this->_error = error_t::INVALID_CHARACTER;
-			// Выводим отрицательный результат выполнения операции
-			return false;
+			// Выполняем отказ приведения с сообщением о нём в журнал
+			return this->refuse(error_t::INVALID_CHARACTER);
 		}
 		// Выполняем переход к следующему знаку исходного текста
 		offset += length;
@@ -1198,10 +1148,8 @@ bool awh::codec::json::Decoder::verify(const void * buffer, const size_t size, c
 			 * Если переданные байты являются последними
 			 */
 			if(end){
-				// Запоминаем код ошибки приведения
-				this->_error = error_t::INVALID_ENCODING;
-				// Выводим отрицательный результат выполнения операции
-				return false;
+				// Выполняем отказ приведения с сообщением о нём в журнал
+				return this->refuse(error_t::INVALID_ENCODING);
 			}
 			// Выводим положительный результат выполнения операции
 			return true;
@@ -1222,10 +1170,8 @@ bool awh::codec::json::Decoder::verify(const void * buffer, const size_t size, c
 			 * Если переданные байты являются последними
 			 */
 			if(end){
-				// Запоминаем код ошибки приведения
-				this->_error = error_t::INVALID_ENCODING;
-				// Выводим отрицательный результат выполнения операции
-				return false;
+				// Выполняем отказ приведения с сообщением о нём в журнал
+				return this->refuse(error_t::INVALID_ENCODING);
 			}
 			// Выводим положительный результат выполнения операции
 			return true;
@@ -1238,10 +1184,8 @@ bool awh::codec::json::Decoder::verify(const void * buffer, const size_t size, c
 		 * Если удержанная последовательность знака построена ошибочно
 		 */
 		if(code == INVALID_CODEPOINT){
-			// Запоминаем код ошибки приведения
-			this->_error = error_t::INVALID_ENCODING;
-			// Выводим отрицательный результат выполнения операции
-			return false;
+			// Выполняем отказ приведения с сообщением о нём в журнал
+			return this->refuse(error_t::INVALID_ENCODING);
 		}
 		/**
 		 * Если знак в тексте недопустим
@@ -1253,10 +1197,8 @@ bool awh::codec::json::Decoder::verify(const void * buffer, const size_t size, c
 		 *          снимать прикрытие нельзя - оно оберегает от правки соседнего слоя
 		 */
 		if(!isChar(code)){
-			// Запоминаем код ошибки приведения
-			this->_error = error_t::INVALID_CHARACTER;
-			// Выводим отрицательный результат выполнения операции
-			return false;
+			// Выполняем отказ приведения с сообщением о нём в журнал
+			return this->refuse(error_t::INVALID_CHARACTER);
 		}
 		/**
 		 * Выполняем перенос доведённой последовательности знака в отдельный буфер
@@ -1342,9 +1284,56 @@ void awh::codec::json::Decoder::reset() noexcept {
  * @brief Конструктор
  *
  */
-awh::codec::json::Decoder::Decoder() noexcept :
+/**
+ * @brief Метод отказа приведения с сообщением о нём в журнал
+ *
+ * @param error код ошибки приведения
+ * @return      всегда ложь, ради возврата им из места отказа
+ *
+ */
+bool awh::codec::json::Decoder::refuse(const error_t error) noexcept {
+	// Запоминаем код ошибки приведения
+	this->_error = error;
+	/**
+	 * Если объект ведения журнала работы установлен
+	 */
+	if(this->_log != nullptr){
+		/**
+		 * Выполняем запись об отказе приведения в журнал
+		 *
+		 * @note Приведение работает над текстом, извне пришедшим, и негодность его беда
+		 *       не критическая - как и у разбора. Оттого запись идёт предупреждением
+		 */
+		#if DEBUG_MODE
+			// Записываем отказ приведения в журнал работы
+			this->_log->debug("%s", __PRETTY_FUNCTION__, ::std::make_tuple(), log_t::flag_t::WARNING, message(error));
+		#else
+			// Записываем отказ приведения в журнал работы
+			this->_log->print("JSON decoding failed: %s", log_t::flag_t::WARNING, message(error));
+		#endif
+	}
+	// Выводим отрицательный результат выполнения операции
+	return false;
+}
+/**
+ * @brief Метод установки объекта ведения журнала работы
+ *
+ * @param log объект ведения журнала работы
+ *
+ */
+void awh::codec::json::Decoder::setLogger(const log_t * log) noexcept {
+	// Устанавливаем объект ведения журнала работы
+	this->_log = log;
+}
+/**
+ * @brief Конструктор
+ *
+ * @param log объект ведения журнала работы
+ *
+ */
+awh::codec::json::Decoder::Decoder(const log_t * log) noexcept :
  _encoding(encoding_t::NONE), _error(error_t::NONE), _forced(false),
- _marked(false), _signed(false), _started(false), _length(0), _surrogate(0) {
+ _marked(false), _signed(false), _started(false), _length(0), _surrogate(0), _log(log) {
 	// Выполняем сброс байтов доведённой последовательности знака
 	::memset(this->_complete, 0, sizeof(this->_complete));
 	// Выполняем сброс удержанных байтов незавершённой последовательности знака

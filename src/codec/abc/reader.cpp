@@ -109,11 +109,13 @@ awh::codec::abc::Reader::Settings::Settings() noexcept :
 /**
  * @brief Конструктор
  *
+ * @param log объект для работы с логами
+ *
  */
-awh::codec::abc::Reader::Reader() noexcept :
+awh::codec::abc::Reader::Reader(const log_t * log) noexcept :
  _state(state_t::ITEM), _error(error_t::NONE), _offset(0), _origin(0), _reserved(0), _nodes(0),
  _head(0), _pending(0), _awaited(type_t::UNDEFINED), _extend(extend_t::BIGNUM), _span(0), _beyond(0), _skipping(false), _exponent(0), _subtype(0),
- _negative(false), _document(false), _handler(nullptr), _context(nullptr) {
+ _negative(false), _document(false), _handler(nullptr), _context(nullptr), _log(log)  {
 	// Выполняем установку начального положения разбора
 	this->_mark = location_t();
 	this->_location.offset = 0;
@@ -201,6 +203,36 @@ bool awh::codec::abc::Reader::fail(const error_t error) noexcept {
 	this->_location.offset = (this->_origin + static_cast <uint64_t> (this->_offset));
 	// Выполняем установку глубины вложенности, где отказ произошёл
 	this->_location.depth = static_cast <uint32_t> (this->_stack.size());
+	/**
+	 * Если объект логирования отдан, доносим об отказе разбора.
+	 *
+	 * Донесение идёт отсюда, из единственного места объявления отказа: разбор
+	 * отвечает отказом двумя десятками путей, и запись в каждом из них разошлась бы
+	 * с прочими. Потребителю остаётся код отказа, а сводить записи со всей рамки
+	 * в одну точку - работа журнала, а не его
+	 */
+	/**
+	 * @warning Сброс кода отказа сюда НЕ идёт: воронка эта объявляет отказ, а сброс
+	 *          лишь снимает прежний, и донесение о нём наполняло бы журнал записями
+	 *          «no error» на всякий успешный вызов. Проверено на себе
+	 */
+	if((error != error_t::NONE) && (this->_log != nullptr)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("ABC: %s", __PRETTY_FUNCTION__,
+			 make_tuple(static_cast <uint16_t> (error), this->_location.offset, this->_location.depth),
+			 log_t::flag_t::WARNING, abc::message(error));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("ABC: %s", log_t::flag_t::WARNING, abc::message(error));
+		#endif
+	}
 	// Сообщаем, что разбор отвечен отказом
 	return false;
 }

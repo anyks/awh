@@ -170,6 +170,28 @@ namespace awh {
 			__AWH_SHARED_EXPORT__ void fixed(vector <uint8_t> & result, const uint64_t value, const uint8_t width) noexcept;
 			/**
 			 * \~russian
+			 * @brief Функция укладки целого числа установленной ширины в готовый буфер
+			 *
+			 * @details Порода эта кладёт октеты по готовому месту, а не дописывает их в
+			 * конец вектора: заголовки кадра, оглавления и опознания отводят место наперёд
+			 * и заполняют поля по смещениям. Договор укладки у обеих пород один, и
+			 * дописывающая порода зовёт эту
+			 *
+			 * @param buffer буфер, куда следует уложить запись
+			 * @param value  укладываемое значение
+			 * @param width  ширина записи в октетах
+			 *
+			 * \~english
+			 * @brief Function of the laying of an integer of a set width into a ready buffer
+			 * @param buffer buffer the record should be laid into
+			 * @param value value being laid
+			 * @param width width of the record in octets
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ void fixed(uint8_t * buffer, const uint64_t value, const uint8_t width) noexcept;
+			/**
+			 * \~russian
 			 * @brief Функция укладки метки вместе с ведомым значением
 			 *
 			 * @details Значение укладывается наименьшей записью, какая его вмещает: до

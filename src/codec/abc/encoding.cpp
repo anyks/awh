@@ -49,12 +49,32 @@ using namespace std;
  *
  */
 void awh::codec::abc::fixed(vector <uint8_t> & result, const uint64_t value, const uint8_t width) noexcept {
+	// Выполняем получение смещения начала укладываемой записи
+	const size_t start = result.size();
+	// Выполняем отведение места под укладываемую запись
+	result.resize(start + static_cast <size_t> (width), 0);
+	// Выполняем укладку записи по отведённому месту
+	abc::fixed(result.data() + start, value, width);
+}
+/**
+ * @brief Функция укладки целого числа установленной ширины в готовый буфер
+ *
+ * @param buffer буфер, куда следует уложить запись
+ * @param value  укладываемое значение
+ * @param width  ширина записи в октетах
+ *
+ */
+void awh::codec::abc::fixed(uint8_t * buffer, const uint64_t value, const uint8_t width) noexcept {
+	// Если буфер укладываемой записи не существует
+	if(buffer == nullptr)
+		// Выходим из функции
+		return;
 	/**
 	 * Выполняем перебор всех октетов записи, от младшего к старшему
 	 */
 	for(uint8_t i = 0; i < width; i++)
 		// Выполняем укладку очередного октета записи
-		result.push_back(static_cast <uint8_t> ((value >> (i * 8)) & 0xFF));
+		buffer[i] = static_cast <uint8_t> ((value >> (i * 8)) & 0xFF);
 }
 /**
  * @brief Функция укладки метки вместе с ведомым значением

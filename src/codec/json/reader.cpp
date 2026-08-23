@@ -630,7 +630,7 @@ bool awh::codec::json::Reader::feed(const char * buffer, const size_t size, cons
 	if((this->_settings.encoding != encoding_t::NONE) && (this->_decoder.encoding() != this->_settings.encoding) &&
 	   !this->_decoder.encoding(this->_settings.encoding))
 		// Выводим ошибку неподдерживаемой кодировки
-		return ((this->_error = error_t::UNSUPPORTED_ENCODING) == error_t::NONE);
+		return this->fail(error_t::UNSUPPORTED_ENCODING);
 	/**
 	 * Если поданный текст уже отвечает кодировке UTF-8
 	 *
@@ -1109,11 +1109,18 @@ void awh::codec::json::Reader::settings(const settings_t & settings) noexcept {
  * @brief Конструктор
  *
  */
-awh::codec::json::Reader::Reader() noexcept :
+awh::codec::json::Reader::Reader(const log_t * log) noexcept :
  _state(state_t::DOCUMENT_START), _error(error_t::NONE),
  _last(false), _keyed(false), _modified(false), _empty(true), _comma(false),
  _origin(0), _head(0), _offset(0), _line(1), _column(1), _length(0),
- _unicode(0), _surrogate(0), _matched(0), _literal(nullptr), _handler(nullptr), _context(nullptr), _stopped(false), _keeping(false) {
+ _unicode(0), _surrogate(0), _matched(0), _literal(nullptr), _handler(nullptr), _context(nullptr), _stopped(false), _keeping(false), _log(log) {
+	/**
+	 * Выполняем установку объекта ведения журнала разбору кодировок
+	 *
+	 * @note Приведение к UTF-8 сообщает о бедах своих само, и молчать ему нельзя: текст
+	 *       негодной кодировки до разбора не доходит вовсе
+	 */
+	this->_decoder.setLogger(log);
 	// Выполняем заполнение разметки знаков, прерывающих быстрый проход
 	this->marking();
 }
@@ -1160,6 +1167,19 @@ void awh::codec::json::Reader::abort() noexcept {
  * @return      признак успешности разбора, всегда ложь
  *
  */
+void awh::codec::json::Reader::setLogger(const log_t * log) noexcept {
+	// Устанавливаем объект ведения журнала работы
+	this->_log = log;
+	// Выполняем установку объекта ведения журнала разбору кодировок
+	this->_decoder.setLogger(log);
+}
+/**
+ * @brief Метод отказа разбора с сообщением о нём в журнал
+ *
+ * @param error код ошибки разбора
+ * @return      всегда ложь, ради возврата им из места отказа
+ *
+ */
 bool awh::codec::json::Reader::fail(const error_t error) noexcept {
 	// Устанавливаем код отказа разбора
 	this->_error = error;
@@ -1173,6 +1193,30 @@ bool awh::codec::json::Reader::fail(const error_t error) noexcept {
 	this->_position.column = this->_column;
 	// Устанавливаем глубину вложенности, на какой произошёл отказ
 	this->_position.depth = static_cast <uint32_t> (this->_nesting.size());
+	/**
+	 * Если объект ведения журнала работы установлен
+	 *
+	 * @note Сличение стоит здесь одно на весь разбор: разнеси его по местам отказа - и
+	 *       часть их разошлась бы с ним при первой же правке
+	 */
+	if(this->_log != nullptr){
+		/**
+		 * Выполняем запись об отказе разбора в журнал
+		 *
+		 * @note Отказ разбора беда не критическая: негодный текст приходит извне, и работы
+		 *       приложения он не рушит. Оттого запись идёт предупреждением
+		 */
+		#if DEBUG_MODE
+			// Записываем отказ разбора в журнал работы
+			this->_log->debug("%s", __PRETTY_FUNCTION__, ::std::make_tuple(this->_position.line, this->_position.column),
+			                  log_t::flag_t::WARNING, message(error));
+		#else
+			// Записываем отказ разбора в журнал работы
+			this->_log->print("JSON parsing failed at line %llu column %llu: %s", log_t::flag_t::WARNING,
+			                  static_cast <unsigned long long> (this->_position.line),
+			                  static_cast <unsigned long long> (this->_position.column), message(error));
+		#endif
+	}
 	// Выводим признак неудачного разбора
 	return false;
 }

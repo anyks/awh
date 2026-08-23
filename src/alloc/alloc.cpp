@@ -56,6 +56,31 @@
 #include <alloc/spin.hpp>
 
 /**
+ * Признак принудительной подстановки
+ *
+ * Быстрые пути выдачи и освобождения зовут несколько мелких помощников, и собиратель
+ * подставлять их сам не берётся - зовут их из многих мест. Работы же в них считанные
+ * команды, а вызов стоит дороже работы: профиль `perf` на Debian отдал `enrol`,
+ * `account` и `prepare` вместе 12.7 % времени сценария одного разряда
+ */
+#if defined(_MSC_VER)
+	#define AWH_ALLOC_INLINE __forceinline
+#else
+	#define AWH_ALLOC_INLINE inline __attribute__((always_inline))
+#endif
+/**
+ * Признак запрета подстановки
+ *
+ * Ставится холодным хвостам: подставленные в быстрый путь, они раздували бы его код и
+ * вытесняли из кэша команд то, что зовётся вправду часто
+ */
+#if defined(_MSC_VER)
+	#define AWH_ALLOC_NOINLINE __declspec(noinline)
+#else
+	#define AWH_ALLOC_NOINLINE __attribute__((noinline))
+#endif
+
+/**
  * Стандартные заголовочные файлы
  */
 #include <new>
@@ -797,11 +822,7 @@ namespace {
 	 * @return признак готовности распределителя
 	 *
 	 */
-	static bool prepare() noexcept {
-		// Если распределитель уже готов
-		if(stage.load(std::memory_order_acquire) == STAGE_READY)
-			// Заводить нечего
-			return true;
+	static AWH_ALLOC_NOINLINE bool warm() noexcept {
 		// Ожидаемая ступень готовности: незаведённый распределитель
 		int32_t expected = STAGE_COLD;
 		/**
@@ -945,13 +966,30 @@ namespace {
 		return true;
 	}
 	/**
+	 * @brief Метод проверки готовности распределителя
+	 *
+	 * @note Быстрый путь: одно чтение ступени готовности. Заведение самого
+	 *       распределителя - холодный хвост `warm`, и случается оно единожды за процесс
+	 *
+	 * @return признак готовности распределителя
+	 *
+	 */
+	static AWH_ALLOC_INLINE bool prepare() noexcept {
+		// Если распределитель уже готов
+		if(stage.load(std::memory_order_acquire) == STAGE_READY)
+			// Заводить нечего
+			return true;
+		// Уходим холодным путём: распределитель ещё не заведён
+		return warm();
+	}
+	/**
 	 * @brief Метод учёта выданного прикладному коду
 	 *
 	 * @param cache кэш текущего потока, либо nullptr
 	 * @param size  изменение занятого в байтах: отрицательное при освобождении
 	 *
 	 */
-	static void account(awh::alloc::cache_t * cache, const int64_t size) noexcept {
+	static AWH_ALLOC_INLINE void account(awh::alloc::cache_t * cache, const int64_t size) noexcept {
 		// Изменение, отдаваемое общему счётчику
 		int64_t given = size;
 		// Если кэш текущего потока заведён
@@ -987,7 +1025,7 @@ namespace {
 	 * @param size затребованный размер блока в байтах
 	 *
 	 */
-	static void announce(const void * ptr, const size_t size) noexcept {
+	static AWH_ALLOC_NOINLINE void announce(const void * ptr, const size_t size) noexcept {
 		// Захватываем замок кольца докладов
 		awh::alloc::hold_t hold(reportLock);
 		// Если кольцо заполнено целиком
@@ -1157,7 +1195,7 @@ namespace {
 	 * @param size затребованный размер блока в байтах
 	 *
 	 */
-	static void enrol(void * ptr, const size_t size) noexcept {
+	static AWH_ALLOC_INLINE void enrol(void * ptr, const size_t size) noexcept {
 		// Если выдавать было нечего
 		if(ptr == nullptr)
 			// Учитывать нечего

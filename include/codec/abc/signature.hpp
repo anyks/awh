@@ -161,6 +161,23 @@ namespace awh {
 				protected:
 					// Объект работы с логами
 					const log_t * _log;
+				private:
+					/**
+					 * \~russian
+					 * @brief Метод объявления отказа работы с деревом свёрток
+					 *
+					 * @param message текст объявляемого отказа
+					 * @return        признак успешности, всегда ложь
+					 *
+					 * \~english
+					 * @brief Method of the declaration of a failure
+					 *
+					 * @param message text of the failure being declared
+					 * @return        flag of the success, always false
+					 *
+					 * \~
+					 */
+					bool fail(const char * message) const noexcept;
 				public:
 					/**
 					 * \~russian
@@ -271,9 +288,12 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
+					 * @param log объект для работы с логами
 					 *
 					 * \~english
 					 * @brief Constructor
+					 *
+					 * @param log object for working with logs
 					 *
 					 * \~
 					 */

@@ -45,6 +45,7 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <proto/http/parser/http1/http.hpp>
+#include <sys/log.hpp>
 
 /**
  * Подписываемся на пространство имён HTTP-протокола

@@ -47,7 +47,6 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include "../../sys/log.hpp"
 
 /**
  * Снимаем на время объявлений макросы, чьи имена заняты
@@ -274,9 +273,6 @@ namespace awh {
 					 * \~
 					 */
 					mode_t mode() const noexcept;
-				protected:
-					// Объект работы с логами
-					const log_t * _log;
 				private:
 					/**
 					 * \~russian
@@ -307,14 +303,16 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 * @param log объект для работы с логами
+					 * @details Журнала расписание не берёт намеренно: доносить ему не о чем -
+					 * «ложь» его вызовов означает «отбой не затребован» либо «срок не наступил»,
+					 * а это исходы работы, а не отказы. Пара берётся там, где она нужна
 					 *
 					 * \~english
 					 * @brief Constructor
 					 *
 					 * \~
 					 */
-					explicit Schedule(const log_t * log) noexcept;
+					Schedule() noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор

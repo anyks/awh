@@ -134,7 +134,7 @@ namespace {
  */
 TEST_F(IndexFixture, EntriesRoundtrip) {
 	// Собираемое оглавление контейнера
-	abc::index_t index;
+	abc::index_t index(this->_log.get());
 	// Собираемая строка оглавления
 	abc::entry_t entry;
 	// Выполняем установку смещения кадра от начала тела контейнера
@@ -152,7 +152,7 @@ TEST_F(IndexFixture, EntriesRoundtrip) {
 	// Выполняем проверку длины уложенного оглавления
 	ASSERT_EQ(buffer.size(), abc::ENTRY_LENGTH);
 	// Снимаемое оглавление контейнера
-	abc::index_t taken;
+	abc::index_t taken(this->_log.get());
 	// Код отказа снятия оглавления
 	abc::error_t error = abc::error_t::NONE;
 	// Выполняем снятие оглавления с октетов
@@ -173,7 +173,7 @@ TEST_F(IndexFixture, EntriesRoundtrip) {
  */
 TEST_F(IndexFixture, CorruptedEntries) {
 	// Снимаемое оглавление контейнера
-	abc::index_t index;
+	abc::index_t index(this->_log.get());
 	// Код отказа снятия оглавления
 	abc::error_t error = abc::error_t::NONE;
 	// Октеты, длиною не кратные длине строки оглавления
@@ -208,7 +208,7 @@ TEST_F(IndexFixture, CorruptedEntries) {
 		// Выполняем установку разрядов свойств строки оглавления
 		entry.marks = static_cast <uint32_t> (abc::mark_t::NONE);
 		// Укладываемое оглавление контейнера
-		abc::index_t source;
+		abc::index_t source(this->_log.get());
 		// Выполняем внесение строки оглавления
 		source.add(entry);
 		// Октеты уложенного оглавления
@@ -244,7 +244,7 @@ TEST_F(IndexFixture, CorruptedEntries) {
  */
 TEST_F(IndexFixture, FetchByNumber) {
 	// Сборщик контейнера
-	abc::assembler_t assembler;
+	abc::assembler_t assembler(this->_log.get());
 	// Выполняем установку модуля сжатия сборщику контейнера
 	assembler.compressor(this->_compressor.get());
 	// Получаем настройки сборки контейнера
@@ -274,7 +274,7 @@ TEST_F(IndexFixture, FetchByNumber) {
 	// Выполняем проверку количества строк оглавления собранного контейнера
 	ASSERT_EQ(assembler.index().size(), records.size());
 	// Выборщик записей контейнера
-	abc::fetcher_t fetcher;
+	abc::fetcher_t fetcher(this->_log.get());
 	// Выполняем установку модуля сжатия выборщику записей
 	fetcher.compressor(this->_compressor.get());
 	// Выполняем открытие контейнера отданной работой чтения
@@ -310,7 +310,7 @@ TEST_F(IndexFixture, FetchByNumber) {
  */
 TEST_F(IndexFixture, FetchFromSecured) {
 	// Сборщик контейнера
-	abc::assembler_t assembler;
+	abc::assembler_t assembler(this->_log.get());
 	// Выполняем установку модуля сжатия сборщику контейнера
 	assembler.compressor(this->_compressor.get());
 	// Выполняем установку модуля шифрования сборщику контейнера
@@ -340,7 +340,7 @@ TEST_F(IndexFixture, FetchFromSecured) {
 	// Выполняем завершение сборки контейнера
 	ASSERT_TRUE(assembler.complete(source.data)) << "код отказа: " << abc::message(assembler.error());
 	// Выборщик записей контейнера
-	abc::fetcher_t fetcher;
+	abc::fetcher_t fetcher(this->_log.get());
 	// Выполняем установку модуля сжатия выборщику записей
 	fetcher.compressor(this->_compressor.get());
 	// Выполняем установку модуля шифрования выборщику записей
@@ -367,7 +367,7 @@ TEST_F(IndexFixture, FetchFromSecured) {
  */
 TEST_F(IndexFixture, FetchReadsPart) {
 	// Сборщик контейнера
-	abc::assembler_t assembler;
+	abc::assembler_t assembler(this->_log.get());
 	// Получаем настройки сборки контейнера
 	abc::assembler_t::settings_t settings = assembler.settings();
 	// Выполняем установку порога накопления записей, дающего множество кадров
@@ -389,7 +389,7 @@ TEST_F(IndexFixture, FetchReadsPart) {
 	// Выполняем завершение сборки контейнера
 	ASSERT_TRUE(assembler.complete(source.data)) << "код отказа: " << abc::message(assembler.error());
 	// Выборщик записей контейнера
-	abc::fetcher_t fetcher;
+	abc::fetcher_t fetcher(this->_log.get());
 	// Выполняем открытие контейнера отданной работой чтения
 	ASSERT_TRUE(fetcher.open([&source](const uint64_t offset, const size_t size, vector <uint8_t> & result) noexcept -> bool {
 		// Выполняем чтение затребованных октетов контейнера
@@ -428,7 +428,7 @@ TEST_F(IndexFixture, FetchReadsPart) {
  */
 TEST_F(IndexFixture, MissingIndex) {
 	// Сборщик контейнера
-	abc::assembler_t assembler;
+	abc::assembler_t assembler(this->_log.get());
 	// Получаем настройки сборки контейнера
 	abc::assembler_t::settings_t settings = assembler.settings();
 	// Выполняем отключение ведения оглавления собираемого контейнера
@@ -447,7 +447,7 @@ TEST_F(IndexFixture, MissingIndex) {
 	// Выполняем проверку того, что оглавление заголовком не объявлено
 	ASSERT_EQ(assembler.index().size(), 0ul);
 	// Выборщик записей контейнера
-	abc::fetcher_t fetcher;
+	abc::fetcher_t fetcher(this->_log.get());
 	// Выполняем проверку отказа открытия контейнера без оглавления
 	ASSERT_FALSE(fetcher.open([&source](const uint64_t offset, const size_t size, vector <uint8_t> & result) noexcept -> bool {
 		// Выполняем чтение затребованных октетов контейнера
@@ -456,7 +456,7 @@ TEST_F(IndexFixture, MissingIndex) {
 	// Выполняем проверку кода отказа открытия контейнера
 	ASSERT_EQ(fetcher.error(), abc::error_t::MISSING_INDEX);
 	// Сниматель контейнера
-	abc::loader_t loader;
+	abc::loader_t loader(this->_log.get());
 	// Выполняем подачу собранного контейнера снимателю
 	ASSERT_TRUE(loader.feed(source.data.data(), source.data.size()));
 	// Содержимое снятого кадра
@@ -477,7 +477,7 @@ TEST_F(IndexFixture, MissingIndex) {
  */
 TEST_F(IndexFixture, UnreadableSource) {
 	// Выборщик записей контейнера
-	abc::fetcher_t fetcher;
+	abc::fetcher_t fetcher(this->_log.get());
 	// Выполняем проверку отказа открытия контейнера отказавшей работой чтения
 	ASSERT_FALSE(fetcher.open([](const uint64_t, const size_t, vector <uint8_t> &) noexcept -> bool {
 		// Выводим признак отказа чтения октетов контейнера
@@ -509,9 +509,9 @@ TEST_F(IndexFixture, EntryBeyondChunk) {
 	 * @param result буфер, куда следует уложить собранный контейнер
 	 *
 	 */
-	const auto assemble = [](vector <uint8_t> & result) noexcept -> void {
+	const auto assemble = [this](vector <uint8_t> & result) noexcept -> void {
 		// Сборщик контейнера
-		abc::assembler_t assembler;
+		abc::assembler_t assembler(this->_log.get());
 		/**
 		 * Выполняем внесение череды записей в собираемый контейнер
 		 */
@@ -559,9 +559,9 @@ TEST_F(IndexFixture, EntryBeyondChunk) {
 	 * @return       признак успешно выбранной записи
 	 *
 	 */
-	const auto fetch = [](const vector <uint8_t> & data, vector <uint8_t> & result, abc::error_t & error) noexcept -> bool {
+	const auto fetch = [this](const vector <uint8_t> & data, vector <uint8_t> & result, abc::error_t & error) noexcept -> bool {
 		// Выборщик записей контейнера
-		abc::fetcher_t fetcher;
+		abc::fetcher_t fetcher(this->_log.get());
 		/**
 		 * Если открыть контейнер не вышло
 		 */

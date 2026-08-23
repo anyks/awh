@@ -696,10 +696,8 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 				 * Если объявленная кодировка не отвечает однобайтовой записи начала текста
 				 */
 				if((declared == encoding_t::UTF16LE) || (declared == encoding_t::UTF16BE)){
-					// Запоминаем код ошибки приведения
-					this->_error = error_t::INVALID_ENCODING;
-					// Выводим отрицательный результат выполнения операции
-					return false;
+					// Выполняем отказ приведения с сообщением о нём в журнал
+					return this->refuse(error_t::INVALID_ENCODING);
 				}
 				/**
 				 * Если объявленная кодировка расходится с меткой порядка байтов
@@ -709,10 +707,8 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 				 *       Расхождение означает подложное объявление, а не выбор между ними
 				 */
 				if(this->_signed && (declared != this->_encoding)){
-					// Запоминаем код ошибки приведения
-					this->_error = error_t::INVALID_ENCODING;
-					// Выводим отрицательный результат выполнения операции
-					return false;
+					// Выполняем отказ приведения с сообщением о нём в журнал
+					return this->refuse(error_t::INVALID_ENCODING);
 				}
 				// Запоминаем объявленную кодировку исходного текста
 				this->_encoding = declared;
@@ -720,10 +716,8 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 			 * Если объявленная кодировка не поддерживается
 			 */
 			} else if(!known) {
-				// Запоминаем код ошибки приведения
-				this->_error = error_t::UNSUPPORTED_ENCODING;
-				// Выводим отрицательный результат выполнения операции
-				return false;
+				// Выполняем отказ приведения с сообщением о нём в журнал
+				return this->refuse(error_t::UNSUPPORTED_ENCODING);
 			}
 		}
 		// Запоминаем, что приведение текста началось
@@ -767,10 +761,8 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 					 * Если исходный текст на этом окончен
 					 */
 					if(end){
-						// Запоминаем код ошибки приведения
-						this->_error = error_t::INVALID_ENCODING;
-						// Выводим отрицательный результат выполнения операции
-						return false;
+						// Выполняем отказ приведения с сообщением о нём в журнал
+						return this->refuse(error_t::INVALID_ENCODING);
 					}
 					// Выводим положительный результат выполнения операции
 					return true;
@@ -779,19 +771,15 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 				 * Если последовательность знака построена ошибочно
 				 */
 				if(code == INVALID_CODEPOINT){
-					// Запоминаем код ошибки приведения
-					this->_error = error_t::INVALID_ENCODING;
-					// Выводим отрицательный результат выполнения операции
-					return false;
+					// Выполняем отказ приведения с сообщением о нём в журнал
+					return this->refuse(error_t::INVALID_ENCODING);
 				}
 				/**
 				 * Если знак недопустим в разметке
 				 */
 				if(!isChar(code)){
-					// Запоминаем код ошибки приведения
-					this->_error = error_t::INVALID_CHARACTER;
-					// Выводим отрицательный результат выполнения операции
-					return false;
+					// Выполняем отказ приведения с сообщением о нём в журнал
+					return this->refuse(error_t::INVALID_CHARACTER);
 				}
 				// Выполняем добавление прочитанного знака к приведённому тексту
 				result.append(this->_pending, length);
@@ -865,10 +853,8 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 						 *       тогда от того, где легла граница куска исходного текста
 						 */
 						result.append(data + begin, offset - begin);
-						// Запоминаем код ошибки приведения
-						this->_error = error_t::INVALID_CHARACTER;
-						// Выводим отрицательный результат выполнения операции
-						return false;
+						// Выполняем отказ приведения с сообщением о нём в журнал
+						return this->refuse(error_t::INVALID_CHARACTER);
 					}
 					// Выполняем переход к следующему знаку
 					offset++;
@@ -891,10 +877,8 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 					if((letter < 0xC2) || ((static_cast <uint8_t> (data[offset + 1]) & 0xC0) != 0x80)){
 						// Выполняем добавление проверенного отрезка к приведённому тексту
 						result.append(data + begin, offset - begin);
-						// Запоминаем код ошибки приведения
-						this->_error = error_t::INVALID_ENCODING;
-						// Выводим отрицательный результат выполнения операции
-						return false;
+						// Выполняем отказ приведения с сообщением о нём в журнал
+						return this->refuse(error_t::INVALID_ENCODING);
 					}
 					// Выполняем переход к следующему знаку
 					offset += 2;
@@ -926,10 +910,8 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 					   ((letter == 0xED) && (second >= 0xA0))){
 						// Выполняем добавление проверенного отрезка к приведённому тексту
 						result.append(data + begin, offset - begin);
-						// Запоминаем код ошибки приведения
-						this->_error = error_t::INVALID_ENCODING;
-						// Выводим отрицательный результат выполнения операции
-						return false;
+						// Выполняем отказ приведения с сообщением о нём в журнал
+						return this->refuse(error_t::INVALID_ENCODING);
 					}
 					/**
 					 * Если знак недопустим в разметке
@@ -940,10 +922,8 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 					if((letter == 0xEF) && (second == 0xBF) && ((third == 0xBE) || (third == 0xBF))){
 						// Выполняем добавление проверенного отрезка к приведённому тексту
 						result.append(data + begin, offset - begin);
-						// Запоминаем код ошибки приведения
-						this->_error = error_t::INVALID_CHARACTER;
-						// Выводим отрицательный результат выполнения операции
-						return false;
+						// Выполняем отказ приведения с сообщением о нём в журнал
+						return this->refuse(error_t::INVALID_CHARACTER);
 					}
 					// Выполняем переход к следующему знаку
 					offset += 3;
@@ -964,10 +944,8 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 					if(end){
 						// Выполняем добавление проверенного отрезка к приведённому тексту
 						result.append(data + begin, offset - begin);
-						// Запоминаем код ошибки приведения
-						this->_error = error_t::INVALID_ENCODING;
-						// Выводим отрицательный результат выполнения операции
-						return false;
+						// Выполняем отказ приведения с сообщением о нём в журнал
+						return this->refuse(error_t::INVALID_ENCODING);
 					}
 					// Выполняем добавление проверенного отрезка к приведённому тексту
 					result.append(data + begin, offset - begin);
@@ -984,10 +962,8 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 				if(code == INVALID_CODEPOINT){
 					// Выполняем добавление проверенного отрезка к приведённому тексту
 					result.append(data + begin, offset - begin);
-					// Запоминаем код ошибки приведения
-					this->_error = error_t::INVALID_ENCODING;
-					// Выводим отрицательный результат выполнения операции
-					return false;
+					// Выполняем отказ приведения с сообщением о нём в журнал
+					return this->refuse(error_t::INVALID_ENCODING);
 				}
 				/**
 				 * Если знак недопустим в разметке
@@ -1007,10 +983,8 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 				if(!isChar(code)){
 					// Выполняем добавление проверенного отрезка к приведённому тексту
 					result.append(data + begin, offset - begin);
-					// Запоминаем код ошибки приведения
-					this->_error = error_t::INVALID_CHARACTER;
-					// Выводим отрицательный результат выполнения операции
-					return false;
+					// Выполняем отказ приведения с сообщением о нём в журнал
+					return this->refuse(error_t::INVALID_CHARACTER);
 				}
 				// Выполняем переход к следующему знаку
 				offset += length;
@@ -1076,10 +1050,8 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 					 * Если прочитанная половина не является младшей половиной суррогатной пары
 					 */
 					if((unit < 0xDC00) || (unit > 0xDFFF)){
-						// Запоминаем код ошибки приведения
-						this->_error = error_t::INVALID_ENCODING;
-						// Выводим отрицательный результат выполнения операции
-						return false;
+						// Выполняем отказ приведения с сообщением о нём в журнал
+						return this->refuse(error_t::INVALID_ENCODING);
 					}
 					// Выполняем сборку кодового значения знака из суррогатной пары
 					code = (0x10000 + ((this->_surrogate - 0xD800) << 10) + (unit - 0xDC00));
@@ -1097,19 +1069,15 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 				 * Если прочитана младшая половина суррогатной пары без старшей
 				 */
 				} else if((unit >= 0xDC00) && (unit <= 0xDFFF)) {
-					// Запоминаем код ошибки приведения
-					this->_error = error_t::INVALID_ENCODING;
-					// Выводим отрицательный результат выполнения операции
-					return false;
+					// Выполняем отказ приведения с сообщением о нём в журнал
+					return this->refuse(error_t::INVALID_ENCODING);
 				}
 				/**
 				 * Если знак недопустим в разметке
 				 */
 				if(!isChar(code)){
-					// Запоминаем код ошибки приведения
-					this->_error = error_t::INVALID_CHARACTER;
-					// Выводим отрицательный результат выполнения операции
-					return false;
+					// Выполняем отказ приведения с сообщением о нём в журнал
+					return this->refuse(error_t::INVALID_CHARACTER);
 				}
 				// Выполняем добавление прочитанного знака к приведённому тексту
 				encode(code, result);
@@ -1132,19 +1100,15 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 				 * Если знак выходит за пределы US-ASCII вопреки объявленной кодировке
 				 */
 				if(strict && (code >= 0x80)){
-					// Запоминаем код ошибки приведения
-					this->_error = error_t::INVALID_ENCODING;
-					// Выводим отрицательный результат выполнения операции
-					return false;
+					// Выполняем отказ приведения с сообщением о нём в журнал
+					return this->refuse(error_t::INVALID_ENCODING);
 				}
 				/**
 				 * Если знак недопустим в разметке
 				 */
 				if(!isChar(code)){
-					// Запоминаем код ошибки приведения
-					this->_error = error_t::INVALID_CHARACTER;
-					// Выводим отрицательный результат выполнения операции
-					return false;
+					// Выполняем отказ приведения с сообщением о нём в журнал
+					return this->refuse(error_t::INVALID_CHARACTER);
 				}
 				// Выполняем добавление прочитанного знака к приведённому тексту
 				encode(code, result);
@@ -1163,20 +1127,16 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 		 *          обратилось бы сюда - отказом, а не молчаливым разбором вслепую
 		 */
 		default: {
-			// Запоминаем код ошибки приведения
-			this->_error = error_t::UNSUPPORTED_ENCODING;
-			// Выводим отрицательный результат выполнения операции
-			return false;
+			// Выполняем отказ приведения с сообщением о нём в журнал
+			return this->refuse(error_t::UNSUPPORTED_ENCODING);
 		}
 	}
 	/**
 	 * Если исходный текст окончен, оставив незавершённую последовательность знака
 	 */
 	if(end && ((this->_length > 0) || (this->_surrogate != 0))){
-		// Запоминаем код ошибки приведения
-		this->_error = error_t::INVALID_ENCODING;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выполняем отказ приведения с сообщением о нём в журнал
+		return this->refuse(error_t::INVALID_ENCODING);
 	}
 	// Выводим положительный результат выполнения операции
 	return true;
@@ -1219,9 +1179,56 @@ void awh::codec::xml::Decoder::reset() noexcept {
  * @brief Конструктор
  *
  */
-awh::codec::xml::Decoder::Decoder() noexcept :
+/**
+ * @brief Метод отказа приведения с сообщением о нём в журнал
+ *
+ * @param error код ошибки приведения
+ * @return      всегда ложь, ради возврата им из места отказа
+ *
+ */
+bool awh::codec::xml::Decoder::refuse(const error_t error) noexcept {
+	// Запоминаем код ошибки приведения
+	this->_error = error;
+	/**
+	 * Если объект ведения журнала работы установлен
+	 */
+	if(this->_log != nullptr){
+		/**
+		 * Выполняем запись об отказе приведения в журнал
+		 *
+		 * @note Приведение работает над текстом, извне пришедшим, и негодность его беда
+		 *       не критическая - как и у разбора. Оттого запись идёт предупреждением
+		 */
+		#if DEBUG_MODE
+			// Записываем отказ приведения в журнал работы
+			this->_log->debug("%s", __PRETTY_FUNCTION__, ::std::make_tuple(), log_t::flag_t::WARNING, message(error));
+		#else
+			// Записываем отказ приведения в журнал работы
+			this->_log->print("XML decoding failed: %s", log_t::flag_t::WARNING, message(error));
+		#endif
+	}
+	// Выводим отрицательный результат выполнения операции
+	return false;
+}
+/**
+ * @brief Метод установки объекта ведения журнала работы
+ *
+ * @param log объект ведения журнала работы
+ *
+ */
+void awh::codec::xml::Decoder::setLogger(const log_t * log) noexcept {
+	// Устанавливаем объект ведения журнала работы
+	this->_log = log;
+}
+/**
+ * @brief Конструктор
+ *
+ * @param log объект ведения журнала работы
+ *
+ */
+awh::codec::xml::Decoder::Decoder(const log_t * log) noexcept :
  _encoding(encoding_t::NONE), _error(error_t::NONE), _forced(false), _signed(false),
- _marked(false), _started(false), _length(0), _surrogate(0) {
+ _marked(false), _started(false), _length(0), _surrogate(0), _log(log) {
 	// Выполняем сброс удержанных байтов последовательности
 	::memset(this->_pending, 0, sizeof(this->_pending));
 }

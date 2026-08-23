@@ -814,6 +814,7 @@ namespace awh {
 	 */
 	using namespace std;
 
+
 	/**
 	 * \~russian
 	 * @brief Пространство имён модуля регулярных выражений
@@ -1474,13 +1475,21 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
+				 * @param log объект для работы с логами
+				 *
+				 * @details Журнала сам кодогенератор не ведёт: отказ порождения
+				 *          есть сужение охвата штатное, о каком сообщать нечего, -
+				 *          сопоставление исполняется разбором программы, как и было
+				 *          задумано. Объект журнала передаётся исполняемой памяти,
+				 *          отказы размещения какой лежат вне выражения вовсе.
 				 *
 				 * \~english
 				 * @brief Constructor
+				 * @param log object for working with logs
 				 *
 				 * \~
 				 */
-				Codegen() noexcept;
+				explicit Codegen(const log_t * log = nullptr) noexcept;
 		} codegen_t;
 	};
 };

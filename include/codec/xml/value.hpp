@@ -1922,7 +1922,10 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Builder() noexcept {}
+					explicit Builder(const log_t * log = nullptr) noexcept {
+						// Выполняем установку объекта ведения журнала собираемому значению
+						this->_result.setLogger(log);
+					}
 					/**
 					 * \~russian
 					 * @brief Деструктор

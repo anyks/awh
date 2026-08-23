@@ -35,6 +35,32 @@ using namespace awh::benchmark::binary;
  */
 namespace {
 	/**
+	 * @brief Функция извлечения объекта журнала замеров
+	 *
+	 * @details Журнал гасится: замер меряет работу кодека, а не вывод записей, и
+	 *          сценарии отказа портили бы и вывод, и время
+	 *
+	 * @return объект журнала замеров
+	 *
+	 */
+	const awh::log_t * logger() noexcept {
+		// Объект фреймворка замеров
+		static awh::fmk_t fmk;
+		// Объект журнала замеров
+		static awh::log_t log(& fmk);
+		// Признак выполненной настройки журнала
+		static const bool ready = [](){
+			// Выполняем гашение вывода журнала замеров
+			log.level(awh::log_t::level_t::NONE);
+			// Выводим признак выполненной настройки
+			return true;
+		}();
+		// Снимаем неиспользуемый признак настройки
+		(void) ready;
+		// Выводим объект журнала замеров
+		return & log;
+	}
+	/**
 	 * @brief Количество разбираемых записей ответа службы
 	 *
 	 */
@@ -209,7 +235,7 @@ namespace {
 	 */
 	static uint64_t scan(const vector <uint8_t> & record) noexcept {
 		// Разбиратель бинарной записи
-		awh::codec::abc::reader_t reader;
+		awh::codec::abc::reader_t reader(::logger());
 		// Если подать запись разбирателю не удалось
 		if(!reader.feed(record.data(), record.size(), true))
 			// Выводим нулевое количество событий разбора
@@ -234,7 +260,7 @@ namespace {
 	 */
 	static uint64_t feed(const vector <uint8_t> & record) noexcept {
 		// Разбиратель бинарной записи
-		awh::codec::abc::reader_t reader;
+		awh::codec::abc::reader_t reader(::logger());
 		// Количество полученных событий разбора
 		uint64_t result = 0;
 		// Смещение очередного подаваемого куска записи
@@ -458,7 +484,7 @@ namespace {
 		// Запись с объявленным размахом вложенных перечней
 		static const vector <uint8_t> result = []() noexcept -> vector <uint8_t> {
 			// Сборка бинарной записи
-			awh::codec::abc::writer_t writer;
+			awh::codec::abc::writer_t writer(::logger());
 			// Настройки сборки записи
 			awh::codec::abc::writer_t::settings_t settings = writer.settings();
 			// Выполняем установку порога объявления размаха
@@ -528,7 +554,7 @@ namespace {
 		 *          разбирателя держит его между записями точно так же
 		 *
 		 */
-		static awh::codec::abc::reader_t reader;
+		static awh::codec::abc::reader_t reader(::logger());
 		// Выполняем сброс разбирателя под очередной прогон
 		reader.reset();
 		/**
@@ -596,7 +622,7 @@ namespace {
 	 */
 	static uint64_t keep(const vector <uint8_t> & record) noexcept {
 		// Переиспользуемый разбиратель бинарной записи
-		static awh::codec::abc::reader_t reader;
+		static awh::codec::abc::reader_t reader(::logger());
 		// Выполняем сброс разбирателя под очередную запись
 		reader.reset();
 		// Если подать запись разбирателю не удалось

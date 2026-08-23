@@ -62,6 +62,24 @@
 #include "../sys/global.hpp"
 
 /**
+ * Если компилятор принадлежит к Visual Studio
+ */
+#if defined(_MSC_VER)
+	/**
+	 * Принудительная подстановка средствами Visual Studio
+	 */
+	#define AWH_CENTRAL_INLINE __forceinline
+/**
+ * Если компилятор принадлежит к семейству GCC или Clang
+ */
+#else
+	/**
+	 * Принудительная подстановка средствами GCC и Clang
+	 */
+	#define AWH_CENTRAL_INLINE inline __attribute__((always_inline))
+#endif
+
+/**
  * @brief Пространство имён фреймворка
  *
  */
@@ -248,7 +266,53 @@ namespace awh {
 				 * @brief Method of determining the class an address belongs to
 				 *
 				 */
-				bool owner(const void * addr, size_t * index, void ** begin, size_t * size, void ** hint = nullptr) noexcept;
+				AWH_CENTRAL_INLINE bool owner(const void * addr, size_t * index, void ** begin, size_t * size, void ** hint = nullptr) noexcept {
+					// Если куча не заведена либо адрес не задан
+					if((this->_pages == nullptr) || (addr == nullptr))
+						// Разбирать нечего
+						return false;
+					// Адрес начала области
+					void * base = nullptr;
+					// Размер области в страницах кучи
+					size_t pages = 0;
+					// Метка владельца области
+					uint32_t tag = 0;
+					/**
+					 * Описываем область, которой принадлежит адрес
+					 */
+					{
+						/**
+						 * Разбираем адрес БЕЗ замка кучи
+						 *
+						 * Замок здесь стоял на пути КАЖДОГО освобождения и обращал его в
+						 * очередь: восемь потоков на мелкой выдаче давали 285 наносекунд на
+						 * действие против 84 без него, и время на действие РОСЛО с числом
+						 * потоков - верный признак очереди
+						 *
+						 * Читать без замка позволено потому, что живая область неизменна:
+						 * дробят и сливают лишь свободные, а у живой ни границы, ни метка не
+						 * меняются, пока её не освободят. Таблица же поиска куска сменяется
+						 * целой записью, и читатель берёт её одним неделимым обращением
+						 */
+						if(!this->_pages->describe(addr, &base, &pages, &tag, hint))
+							// Адрес выдан не нами
+							return false;
+					}
+					// Если требуется адрес начала области
+					if(begin != nullptr)
+						// Записываем адрес начала области
+						(* begin) = base;
+					// Если требуется номер разряда
+					if(index != nullptr)
+						// Записываем номер разряда, либо признак выдачи сверх разрядов
+						(* index) = ((tag > 0) ? static_cast <size_t> (tag - 1) : Classes::LIMIT);
+					// Если требуется размер области
+					if(size != nullptr)
+						// Записываем размер области в байтах
+						(* size) = (pages * Pages::PAGE);
+					// Отвечаем успехом
+					return true;
+				}
 			public:
 				/**
 				 * \~russian

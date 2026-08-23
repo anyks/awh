@@ -27,6 +27,9 @@
  */
 #include <gtest/gtest.h>
 #include <codec/abc/value.hpp>
+#include <sys/fmk.hpp>
+#include <sys/log.hpp>
+#include <sys/fmk.hpp>
 #include <codec/abc/writer.hpp>
 
 /**
@@ -35,6 +38,41 @@
 using namespace std;
 using namespace awh;
 using namespace awh::codec;
+
+/**
+ * @brief Пространство имён работ, доступных лишь этому файлу
+ *
+ */
+namespace {
+	/**
+	 * @brief Функция извлечения объекта журнала проверок
+	 *
+	 * @details Журнал заводится единожды на весь набор и гасится: проверки отказов
+	 *          выводили бы записью всякий свой отказ, а их тут большинство. Гашение
+	 *          это - настройка журнала, а не молчание модуля: модуль доносит как
+	 *          обычно, а показывать ли - решает журнал
+	 *
+	 * @return объект журнала проверок
+	 *
+	 */
+	const log_t * logger() noexcept {
+		// Объект фреймворка проверок
+		static fmk_t fmk;
+		// Объект журнала проверок
+		static log_t log(& fmk);
+		// Признак выполненной настройки журнала
+		static const bool ready = [](){
+			// Выполняем гашение вывода журнала проверок
+			log.level(log_t::level_t::NONE);
+			// Выводим признак выполненной настройки
+			return true;
+		}();
+		// Снимаем неиспользуемый признак настройки
+		(void) ready;
+		// Выводим объект журнала проверок
+		return & log;
+	}
+};
 
 /**
  * @brief Проверка сборки значения из ничего и кругового обхода записи
@@ -314,7 +352,7 @@ TEST(CodecAbcValue, AbsorbFromDocument) {
 	// Октеты величины числа
 	const vector <uint8_t> magnitude = {0x39, 0x30, 0x01};
 	// Сборщик бинарной записи
-	abc::writer_t writer;
+	abc::writer_t writer(::logger());
 	// Выполняем укладку отображения из двух пар
 	ASSERT_TRUE(writer.mapBegin(2));
 	// Выполняем укладку имени поля числа неограниченной ширины
@@ -328,7 +366,7 @@ TEST(CodecAbcValue, AbsorbFromDocument) {
 	// Выполняем укладку конца отображения
 	ASSERT_TRUE(writer.mapEnd());
 	// Дерево документа
-	abc::document_t document;
+	abc::document_t document(::logger());
 	// Выполняем разбор записи в дерево документа
 	ASSERT_TRUE(document.parse(writer.record().data(), writer.record().size()));
 	// Владеющее значение, перенесённое из дерева документа
@@ -516,7 +554,7 @@ TEST(CodecAbcValue, RealToWholeContract) {
  */
 TEST(CodecAbcValue, TruncationAndCorruption) {
 	// Сборка образцовой записи
-	abc::writer_t writer;
+	abc::writer_t writer(::logger());
 	// Выполняем сборку записи отображения
 	ASSERT_TRUE(writer.mapBegin(static_cast <uint64_t> (2)));
 	ASSERT_TRUE(writer.text("имя") && writer.text("Юрий"));
@@ -669,7 +707,7 @@ TEST(CodecAbcValue, MoveAssignment) {
  */
 TEST(CodecAbcValue, BuilderAssembly) {
 	// Потоковая сборка владеющего значения
-	abc::builder_t builder;
+	abc::builder_t builder(::logger());
 	// Выполняем открытие корневого отображения
 	ASSERT_TRUE(builder.map());
 	// Выполняем проверку глубины открытых вместилищ
@@ -721,7 +759,7 @@ TEST(CodecAbcValue, BuilderAssembly) {
  */
 TEST(CodecAbcValue, BuilderRefusals) {
 	// Потоковая сборка владеющего значения
-	abc::builder_t builder;
+	abc::builder_t builder(::logger());
 	/**
 	 * Выполняем проверку отказа назначения имени до открытия вместилища
 	 *
@@ -806,7 +844,7 @@ TEST(CodecAbcValue, NonStringKeys) {
 	// Выполняем проверку того, что круговой ход записи сошёлся
 	ASSERT_EQ(parsed, value);
 	// Потоковая сборка значения
-	abc::builder_t builder;
+	abc::builder_t builder(::logger());
 	// Выполняем заведение отображения потоковой сборкой
 	ASSERT_TRUE(builder.map());
 	/**
@@ -826,7 +864,7 @@ TEST(CodecAbcValue, NonStringKeys) {
 	 */
 	ASSERT_EQ(builder.finish(), parsed);
 	// Потоковая сборка с вместимым именем поля
-	abc::builder_t refused;
+	abc::builder_t refused(::logger());
 	// Выполняем заведение отображения потоковой сборкой
 	ASSERT_TRUE(refused.map());
 	// Выполняем проверку отказа назначения вместимого имени поля
@@ -933,7 +971,7 @@ TEST(CodecAbcValue, GraftRoundTrip) {
 	// Выполняем установку поля с именем любого вида
 	ASSERT_TRUE(value.insert(abc::value_t(static_cast <uint64_t> (7)), abc::value_t(string{"семь"})));
 	// Дерево документа, куда переносится значение
-	abc::document_t document;
+	abc::document_t document(::logger());
 	// Выполняем перенос владеющего значения в дерево документа
 	ASSERT_TRUE(value.graft(document)) << "код отказа: " << abc::message(document.error());
 	// Выполняем подъём дерева документа обратно во владеющее значение
@@ -965,7 +1003,7 @@ TEST(CodecAbcValue, GraftRoundTrip) {
 	 */
 	abc::value_t empty;
 	// Дерево документа, куда переносится пустое значение
-	abc::document_t plain;
+	abc::document_t plain(::logger());
 	// Выполняем перенос пустого значения в дерево документа
 	ASSERT_TRUE(empty.graft(plain)) << "код отказа: " << abc::message(plain.error());
 	// Выполняем подъём дерева документа обратно во владеющее значение
@@ -1048,7 +1086,7 @@ TEST(CodecAbcValue, NameIndexRefill) {
  */
 TEST(CodecAbcValue, BuilderScalarRoot) {
 	// Потоковая сборка владеющего значения
-	abc::builder_t builder;
+	abc::builder_t builder(::logger());
 	// Выполняем запись одиночного значения корнем сборки
 	ASSERT_TRUE(builder.value(string("одиночное")));
 	// Выполняем проверку отказа записи второго значения: корень одиночный вместить не может
@@ -1075,7 +1113,7 @@ TEST(CodecAbcValue, BuilderScalarRoot) {
 	// Выполняем проверку равенства разобранного собранному
 	ASSERT_EQ(parsed, value);
 	// Потоковая сборка с назначенным именем до открытия вместилища
-	abc::builder_t named;
+	abc::builder_t named(::logger());
 	// Выполняем проверку отказа назначения имени до открытия вместилища
 	ASSERT_FALSE(named.key("имя"));
 	// Выполняем проверку того, что одиночный корень после этого записывается

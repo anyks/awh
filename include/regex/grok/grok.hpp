@@ -250,6 +250,7 @@ namespace awh {
 	 */
 	using namespace std;
 
+
 	/**
 	 * \~russian
 	 * @brief Класс разбора текста по шаблонам Grok
@@ -419,6 +420,9 @@ namespace awh {
 		private:
 			// Код ошибки разбора шаблона
 			mutable error_t _error;
+		private:
+			// Объект журнала событий
+			const log_t * _log;
 		private:
 			// Признак согласования доступа к реестру шаблонов
 			bool _threadSafety;
@@ -986,13 +990,20 @@ namespace awh {
 			 * \~russian
 			 * @brief Конструктор
 			 *
+			 * @param log объект для работы с логами
+			 *
+			 * @details Журналом сообщается отказ сборки шаблона: имя неизвестное,
+			 *          ссылка круговая либо вложенность чрезмерная. Ошибки самого
+			 *          регулярного выражения сообщает фасад выражений, каким
+			 *          объект журнала и передаётся.
 			 *
 			 * \~english
 			 * @brief Constructor
+			 * @param log object for working with logs
 			 *
 			 * \~
 			 */
-			Grok() noexcept;
+			explicit Grok(const log_t * log = nullptr) noexcept;
 			/**
 			 * \~russian
 			 * @brief Деструктор

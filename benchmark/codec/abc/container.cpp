@@ -48,6 +48,32 @@ using namespace awh::benchmark::binary;
  */
 namespace {
 	/**
+	 * @brief Функция извлечения объекта журнала замеров
+	 *
+	 * @details Журнал гасится: замер меряет работу кодека, а не вывод записей, и
+	 *          сценарии отказа портили бы и вывод, и время
+	 *
+	 * @return объект журнала замеров
+	 *
+	 */
+	const awh::log_t * logger() noexcept {
+		// Объект фреймворка замеров
+		static awh::fmk_t fmk;
+		// Объект журнала замеров
+		static awh::log_t log(& fmk);
+		// Признак выполненной настройки журнала
+		static const bool ready = [](){
+			// Выполняем гашение вывода журнала замеров
+			log.level(awh::log_t::level_t::NONE);
+			// Выводим признак выполненной настройки
+			return true;
+		}();
+		// Снимаем неиспользуемый признак настройки
+		(void) ready;
+		// Выводим объект журнала замеров
+		return & log;
+	}
+	/**
 	 * @brief Количество записей собираемого контейнера
 	 *
 	 */
@@ -183,7 +209,7 @@ namespace {
 		// Эталонная запись контейнера
 		static const vector <uint8_t> result = []() noexcept -> vector <uint8_t> {
 			// Сборка бинарной записи
-			awh::codec::abc::writer_t writer;
+			awh::codec::abc::writer_t writer(::logger());
 			// Выполняем укладку эталонной записи контейнера
 			if(!(writer.mapBegin(static_cast <uint64_t> (4)) &&
 			     writer.text("city") && writer.text("Москва") &&
@@ -209,7 +235,7 @@ namespace {
 	 */
 	static uint64_t assemble(const bool packed, const bool ciphered, vector <uint8_t> & result) noexcept {
 		// Сборщик контейнера
-		awh::codec::abc::assembler_t assembler;
+		awh::codec::abc::assembler_t assembler(::logger());
 		/**
 		 * Если содержимое кадров следует сжимать
 		 */
@@ -370,7 +396,7 @@ namespace {
 			return result;
 		}
 		// Выборщик записей контейнера
-		awh::codec::abc::fetcher_t fetcher;
+		awh::codec::abc::fetcher_t fetcher(::logger());
 		// Выполняем установку модуля сжатия данных
 		fetcher.compressor(environment().compressor());
 		/**
@@ -448,7 +474,7 @@ namespace {
 			return result;
 		}
 		// Правщик контейнера
-		awh::codec::abc::editor_t editor;
+		awh::codec::abc::editor_t editor(::logger());
 		// Выполняем установку модуля сжатия данных
 		editor.compressor(environment().compressor());
 		/**

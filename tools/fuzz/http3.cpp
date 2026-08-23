@@ -37,6 +37,7 @@
  * Подключаем заголовочный файл проекта
  */
 #include <proto/http/parser/http3/http.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён

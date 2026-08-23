@@ -42,6 +42,34 @@ using namespace awh::codec;
  */
 namespace {
 	/**
+	 * @brief Функция извлечения объекта журнала проверок
+	 *
+	 * @details Журнал заводится единожды на весь набор и гасится: проверки отказов
+	 *          выводили бы записью всякий свой отказ, а их тут большинство. Гашение
+	 *          это - настройка журнала, а не молчание модуля: модуль доносит как
+	 *          обычно, а показывать ли - решает журнал
+	 *
+	 * @return объект журнала проверок
+	 *
+	 */
+	const log_t * logger() noexcept {
+		// Объект фреймворка проверок
+		static fmk_t fmk;
+		// Объект журнала проверок
+		static log_t log(& fmk);
+		// Признак выполненной настройки журнала
+		static const bool ready = [](){
+			// Выполняем гашение вывода журнала проверок
+			log.level(log_t::level_t::NONE);
+			// Выводим признак выполненной настройки
+			return true;
+		}();
+		// Снимаем неиспользуемый признак настройки
+		(void) ready;
+		// Выводим объект журнала проверок
+		return & log;
+	}
+	/**
 	 * @brief Функция получения краткой записи события разбора
 	 *
 	 * @param reader читатель бинарной записи
@@ -192,7 +220,7 @@ TEST(CodecAbcReader, Scalars) {
 	// Выполняем укладку пустого значения
 	abc::mark(data, abc::group_t::SINGLE, static_cast <uint8_t> (abc::single_t::NUL));
 	// Читатель бинарной записи
-	abc::reader_t reader;
+	abc::reader_t reader(::logger());
 	// Выполняем сбор всех событий разбора
 	vector <string> events = collect(data, 0, reader);
 	// Выполняем проверку собранной последовательности событий
@@ -250,7 +278,7 @@ TEST(CodecAbcReader, NarrowType) {
 		// Буфер собираемой записи
 		vector <uint8_t> data;
 		// Читатель бинарной записи
-		abc::reader_t reader;
+		abc::reader_t reader(::logger());
 		// Выполняем укладку целого числа со знаком
 		abc::integer(data, item.first);
 		// Выполняем подачу записи целиком
@@ -286,7 +314,7 @@ TEST(CodecAbcReader, Containers) {
 	// Выполняем укладку значения поля отображения
 	abc::mark(data, abc::group_t::SINGLE, static_cast <uint8_t> (abc::single_t::NUL));
 	// Читатель бинарной записи
-	abc::reader_t reader;
+	abc::reader_t reader(::logger());
 	// Выполняем сбор всех событий разбора
 	const vector <string> events = collect(data, 0, reader);
 	// Выполняем проверку собранной последовательности событий
@@ -309,7 +337,7 @@ TEST(CodecAbcReader, EmptyContainers) {
 	// Выполняем укладку пустого отображения
 	abc::put(data, abc::group_t::MAP, 0);
 	// Читатель бинарной записи
-	abc::reader_t reader;
+	abc::reader_t reader(::logger());
 	// Выполняем сбор всех событий разбора
 	const vector <string> events = collect(data, 0, reader);
 	// Выполняем проверку собранной последовательности событий
@@ -336,7 +364,7 @@ TEST(CodecAbcReader, IndefiniteContainers) {
 	// Выполняем укладку конца отображения
 	abc::mark(data, abc::group_t::SINGLE, static_cast <uint8_t> (abc::single_t::BREAK));
 	// Читатель бинарной записи
-	abc::reader_t reader;
+	abc::reader_t reader(::logger());
 	// Выполняем сбор всех событий разбора
 	const vector <string> events = collect(data, 0, reader);
 	// Выполняем проверку собранной последовательности событий
@@ -380,7 +408,7 @@ TEST(CodecAbcReader, ChunkIndependence) {
 		// Выполняем укладку очередного октета опознавателя
 		data.push_back(i);
 	// Читатель бинарной записи, подающейся целиком
-	abc::reader_t whole;
+	abc::reader_t whole(::logger());
 	// Выполняем сбор всех событий разбора записи, поданной целиком
 	const vector <string> expected = collect(data, 0, whole);
 	// Выполняем проверку собранной последовательности событий
@@ -391,7 +419,7 @@ TEST(CodecAbcReader, ChunkIndependence) {
 	 */
 	for(size_t chunk = 1; chunk <= data.size(); chunk++){
 		// Читатель бинарной записи, подающейся кусками
-		abc::reader_t reader;
+		abc::reader_t reader(::logger());
 		// Выполняем сбор всех событий разбора записи, поданной кусками
 		const vector <string> events = collect(data, chunk, reader);
 		// Выполняем проверку совпадения выдачи с выдачей записи, поданной целиком
@@ -413,7 +441,7 @@ TEST(CodecAbcReader, DocumentStream) {
 	// Выполняем укладку третьего документа
 	abc::put(data, abc::group_t::ARRAY, 0);
 	// Читатель бинарной записи
-	abc::reader_t reader;
+	abc::reader_t reader(::logger());
 	// Настройки разбора записи
 	abc::reader_t::settings_t settings;
 	// Выполняем разрешение разбора потока документов
@@ -426,7 +454,7 @@ TEST(CodecAbcReader, DocumentStream) {
 	ASSERT_EQ(events, (vector <string> {"N1", ";", "N2", ";", "[", "]", ";", "."}))
 		<< "код отказа: " << abc::message(reader.error());
 	// Читатель бинарной записи, потока не ожидающий
-	abc::reader_t single;
+	abc::reader_t single(::logger());
 	// Выполняем сбор всех событий разбора
 	collect(data, 0, single);
 	// Выполняем проверку кода отказа на октеты за окончанием документа
@@ -440,7 +468,7 @@ TEST(CodecAbcReader, Failures) {
 	// Выполняем проверку отказа на пустую запись
 	{
 		// Читатель бинарной записи
-		abc::reader_t reader;
+		abc::reader_t reader(::logger());
 		// Выполняем подачу пустой записи
 		ASSERT_FALSE(reader.feed(nullptr, 0, true));
 		// Выполняем проверку кода отказа
@@ -451,7 +479,7 @@ TEST(CodecAbcReader, Failures) {
 		// Буфер собираемой записи
 		vector <uint8_t> data;
 		// Читатель бинарной записи
-		abc::reader_t reader;
+		abc::reader_t reader(::logger());
 		// Выполняем укладку конца вместимого
 		abc::mark(data, abc::group_t::SINGLE, static_cast <uint8_t> (abc::single_t::BREAK));
 		// Выполняем подачу записи целиком
@@ -464,7 +492,7 @@ TEST(CodecAbcReader, Failures) {
 		// Буфер собираемой записи
 		vector <uint8_t> data;
 		// Читатель бинарной записи
-		abc::reader_t reader;
+		abc::reader_t reader(::logger());
 		// Выполняем укладку отображения неопределённой длины
 		abc::mark(data, abc::group_t::MAP, static_cast <uint8_t> (abc::single_t::BREAK));
 		// Выполняем укладку имени поля отображения
@@ -481,7 +509,7 @@ TEST(CodecAbcReader, Failures) {
 		// Буфер собираемой записи
 		vector <uint8_t> data;
 		// Читатель бинарной записи
-		abc::reader_t reader;
+		abc::reader_t reader(::logger());
 		// Выполняем укладку отображения из одной пары
 		abc::put(data, abc::group_t::MAP, 1);
 		// Выполняем укладку массива именем поля отображения
@@ -496,7 +524,7 @@ TEST(CodecAbcReader, Failures) {
 		// Буфер собираемой записи
 		vector <uint8_t> data;
 		// Читатель бинарной записи
-		abc::reader_t reader;
+		abc::reader_t reader(::logger());
 		// Выполняем укладку метки строки вместе с её длиной
 		abc::put(data, abc::group_t::STRING, 2);
 		// Выполняем укладку октетов, кодировке не отвечающих
@@ -511,7 +539,7 @@ TEST(CodecAbcReader, Failures) {
 		// Буфер собираемой записи
 		vector <uint8_t> data;
 		// Читатель бинарной записи
-		abc::reader_t reader;
+		abc::reader_t reader(::logger());
 		// Выполняем укладку метки строки вместе с её длиной
 		abc::put(data, abc::group_t::STRING, 4);
 		// Выполняем укладку неполных октетов строки
@@ -526,7 +554,7 @@ TEST(CodecAbcReader, Failures) {
 		// Буфер собираемой записи
 		vector <uint8_t> data;
 		// Читатель бинарной записи
-		abc::reader_t reader;
+		abc::reader_t reader(::logger());
 		// Настройки разбора записи
 		abc::reader_t::settings_t settings;
 		// Выполняем установку предела глубины вложенности
@@ -551,7 +579,7 @@ TEST(CodecAbcReader, Failures) {
 		// Буфер собираемой записи
 		vector <uint8_t> data;
 		// Читатель бинарной записи
-		abc::reader_t reader;
+		abc::reader_t reader(::logger());
 		// Настройки разбора записи
 		abc::reader_t::settings_t settings;
 		// Выполняем установку предела длины строкового значения
@@ -579,7 +607,7 @@ TEST(CodecAbcReader, Extensions) {
 		// Буфер собираемой записи
 		vector <uint8_t> data;
 		// Читатель бинарной записи
-		abc::reader_t reader;
+		abc::reader_t reader(::logger());
 		// Выполняем укладку метки расширения
 		abc::mark(data, abc::group_t::EXTEND, static_cast <uint8_t> (abc::extend_t::BIGNUM));
 		// Выполняем укладку длины октетов величины
@@ -602,7 +630,7 @@ TEST(CodecAbcReader, Extensions) {
 		// Буфер собираемой записи
 		vector <uint8_t> data;
 		// Читатель бинарной записи
-		abc::reader_t reader;
+		abc::reader_t reader(::logger());
 		// Выполняем укладку метки расширения
 		abc::mark(data, abc::group_t::EXTEND, static_cast <uint8_t> (abc::extend_t::DECIMAL));
 		// Выполняем укладку десятичного порядка величины
@@ -623,7 +651,7 @@ TEST(CodecAbcReader, Extensions) {
 		// Буфер собираемой записи
 		vector <uint8_t> data;
 		// Читатель бинарной записи
-		abc::reader_t reader;
+		abc::reader_t reader(::logger());
 		// Выполняем укладку метки расширения
 		abc::mark(data, abc::group_t::EXTEND, static_cast <uint8_t> (abc::extend_t::BIGNUM));
 		// Выполняем укладку длины октетов величины
@@ -642,7 +670,7 @@ TEST(CodecAbcReader, Extensions) {
 		// Буфер собираемой записи
 		vector <uint8_t> data;
 		// Читатель бинарной записи
-		abc::reader_t reader;
+		abc::reader_t reader(::logger());
 		// Выполняем укладку метки расширения
 		abc::mark(data, abc::group_t::EXTEND, static_cast <uint8_t> (abc::extend_t::BIGNUM));
 		// Выполняем укладку длины октетов величины
@@ -685,7 +713,7 @@ TEST(CodecAbcReader, DeferredEvents) {
 	 */
 	for(size_t chunk = 1; chunk <= data.size(); chunk++){
 		// Читатель бинарной записи
-		abc::reader_t reader;
+		abc::reader_t reader(::logger());
 		// Смещение подаваемого куска записи
 		size_t offset = 0;
 		/**
@@ -719,7 +747,7 @@ TEST(CodecAbcReader, DeferredEvents) {
  */
 TEST(CodecAbcReader, ReserveAndCommit){
 	// Сборка бинарной записи
-	abc::writer_t writer;
+	abc::writer_t writer(::logger());
 	// Выполняем укладку начала массива
 	ASSERT_TRUE(writer.arrayBegin(static_cast <uint64_t> (2)));
 	// Выполняем укладку первого значения массива
@@ -731,7 +759,7 @@ TEST(CodecAbcReader, ReserveAndCommit){
 	// Выполняем получение собранной записи
 	const vector <uint8_t> & record = writer.record();
 	// Разбиратель бинарной записи
-	abc::reader_t reader;
+	abc::reader_t reader(::logger());
 	// Смещение поданной части записи
 	size_t offset = 0;
 	// Количество снятых значений массива
@@ -775,7 +803,7 @@ TEST(CodecAbcReader, ReserveAndCommit){
  */
 TEST(CodecAbcReader, CommitBeyondReserve){
 	// Разбиратель бинарной записи
-	abc::reader_t reader;
+	abc::reader_t reader(::logger());
 	// Выполняем выдачу места под приём октетов записи
 	ASSERT_TRUE(reader.reserve(4) != nullptr);
 	// Выполняем проверку отказа на подачу сверх выданного места
@@ -798,7 +826,7 @@ TEST(CodecAbcReader, NumberInsideSegment){
 		0xDF              // Конец значения, собираемого кусками
 	};
 	// Разбиратель бинарной записи
-	abc::reader_t reader;
+	abc::reader_t reader(::logger());
 	/**
 	 * Выполняем проверку отказа разбора: куском собираемого значения вправе стоять лишь
 	 * значение того же вида, и число внутри строки означает запись негодную
@@ -813,7 +841,7 @@ TEST(CodecAbcReader, NumberInsideSegment){
  */
 TEST(CodecAbcReader, HandlerReplacesQueue){
 	// Сборка бинарной записи
-	abc::writer_t writer;
+	abc::writer_t writer(::logger());
 	// Выполняем укладку начала массива
 	ASSERT_TRUE(writer.arrayBegin(static_cast <uint64_t> (3)));
 	// Выполняем укладку значений массива
@@ -827,7 +855,7 @@ TEST(CodecAbcReader, HandlerReplacesQueue){
 	// Количество событий, принятых обработчиком
 	size_t taken = 0;
 	// Разбиратель бинарной записи
-	abc::reader_t reader;
+	abc::reader_t reader(::logger());
 	// Выполняем установку обработчика прямой выдачи событий разбора
 	reader.handler([](void * context, abc::reader_t & reader, const abc::event_t event) noexcept -> void {
 		// Разбиратель работе обработчика не нужен
@@ -848,4 +876,75 @@ TEST(CodecAbcReader, HandlerReplacesQueue){
 	 * стало бы некому
 	 */
 	ASSERT_FALSE(reader.next());
+}
+/**
+ * @brief Проверка того, что отказ разбора доходит до журнала фреймворка
+ *
+ * @details Кодек доносит об отказах штатным журналом, и донесение это - часть договора
+ *          его, а не удобство. Без сторожа воронка отказа могла бы молчать вовсе, и
+ *          заметить это стало бы некому: набор судит по коду отказа, а не по записям
+ *
+ */
+TEST(CodecAbcReader, FailureReachesLogger) {
+	// Объект фреймворка проверки
+	fmk_t fmk;
+	// Объект журнала проверки
+	log_t log(& fmk);
+	// Накопленные записи журнала
+	vector <string> records;
+	// Выполняем разрешение вывода записей в функцию обратного вызова
+	log.mode({log_t::mode_t::DEFERRED});
+	// Выполняем разрешение вывода записей предупреждения
+	log.level(log_t::level_t::ALL);
+	// Выполняем подписку на получение записей журнала
+	log.subscribe([&records](const log_t::flag_t flag, string_view text) noexcept -> void {
+		// Выполняем накопление полученной записи журнала
+		records.push_back(string(text));
+		// Снимаем неиспользуемый вид записи
+		(void) flag;
+	});
+	// Разборщик бинарной записи с журналом проверки
+	abc::reader_t reader(& log);
+	// Заведомо негодная запись: подробность 0x1C ведущего октета не отведена ничему
+	const vector <uint8_t> broken = {0x1C};
+	// Выполняем подачу негодной записи разборщику
+	ASSERT_FALSE(reader.feed(broken.data(), broken.size()));
+	// Выполняем проверку того, что разбор отвечен отказом
+	ASSERT_NE(reader.error(), abc::error_t::NONE);
+	// Выполняем проверку того, что отказ дошёл до журнала
+	ASSERT_FALSE(records.empty()) << "отказ разбора до журнала не дошёл";
+	// Выполняем проверку того, что запись несёт вид отказа
+	{
+		// Признак найденной записи об отказе
+		bool found = false;
+		/**
+		 * Выполняем перебор всех накопленных записей журнала
+		 */
+		for(const string & record : records)
+			// Выполняем поиск текста отказа в очередной записи
+			found = (found || (record.find(abc::message(reader.error())) != string::npos));
+		// Выполняем проверку того, что запись об отказе найдена
+		ASSERT_TRUE(found) << "запись журнала не несёт текста отказа: " << records.front();
+	}
+	/**
+	 * Выполняем проверку того, что успешный разбор записей не порождает.
+	 *
+	 * Без этого сторож прошёл бы и при донесении обо ВСЯКОМ событии разбора: журнал
+	 * заполнялся бы работою, а не отказами, и толку от него не стало бы вовсе
+	 */
+	{
+		// Выполняем очистку накопленных записей журнала
+		records.clear();
+		// Разборщик годной записи с журналом проверки
+		abc::reader_t plain(& log);
+		// Сборщик годной записи
+		abc::writer_t writer(& log);
+		// Выполняем укладку строки в собираемую запись
+		ASSERT_TRUE(writer.text("годная запись"));
+		// Выполняем подачу годной записи разборщику
+		ASSERT_TRUE(plain.feed(writer.record().data(), writer.record().size()))
+			<< "код отказа: " << abc::message(plain.error());
+		// Выполняем проверку того, что записей журнала не появилось
+		ASSERT_TRUE(records.empty()) << "успешный разбор оставил запись: " << records.front();
+	}
 }

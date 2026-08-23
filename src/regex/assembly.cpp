@@ -23,7 +23,10 @@
 /**
  * Стандартные заголовочные файлы
  */
+#include <cerrno>
 #include <cstring>
+#include <string>
+#include <tuple>
 
 /**
  * Подключаем заголовочные файлы проекта
@@ -228,9 +231,48 @@ bool awh::regex::Assembly::allocate(const size_t size) noexcept {
 	/**
 	 * Если размещение участка памяти не выполнено
 	 */
-	if(this->_address == nullptr)
+	if(this->_address == nullptr) {
+		/**
+		 * Если объект журнала событий передан
+		 *
+		 * @details Отказ этот причиною лежит вне выражения: ядра укреплённые
+		 *          запрещают исполнение участков записываемых, и порождение кода
+		 *          становится невозможным целиком. Потребитель без сообщения
+		 *          видит лишь молчаливый уход на разбор программы, а он разами
+		 *          медленнее - потому причина и сообщается журналом.
+		 *
+		 */
+		if(this->_log != nullptr) {
+			/**
+			 * Получаем причину отказа размещения участка памяти
+			 *
+			 * @details Система MS Windows причину системного вызова кладёт
+			 *          не в «errno», а в собственное место, и `strerror` о ней
+			 *          не знает вовсе: сообщение вышло бы «Unknown error»
+			 *
+			 */
+			#if defined(_WIN32) || defined(_WIN64)
+				const string reason = ("code " + std::to_string(::GetLastError()));
+			#else
+				const string reason = ::strerror(errno);
+			#endif
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				this->_log->debug("Executable memory of %zu bytes could not be allocated: %s", __PRETTY_FUNCTION__, make_tuple(length), log_t::flag_t::CRITICAL, reason.c_str());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				this->_log->print("Executable memory of %zu bytes could not be allocated: %s", log_t::flag_t::CRITICAL, length, reason.c_str());
+			#endif
+		}
 		// Выводим результат размещения участка исполняемой памяти
 		return false;
+	}
 	// Выполняем установку размера размещённого участка памяти
 	this->_size = length;
 	// Выполняем сброс количества байт, занятых порождённым кодом
@@ -374,9 +416,28 @@ bool awh::regex::Assembly::commit() noexcept {
 		/**
 		 * Если установка прав доступа к участку памяти не выполнена
 		 */
-		if(::mprotect(this->_address, this->_size, PROT_READ | PROT_EXEC) != 0)
+		if(::mprotect(this->_address, this->_size, PROT_READ | PROT_EXEC) != 0) {
+			/**
+			 * Если объект журнала событий передан
+			 */
+			if(this->_log != nullptr) {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Записываем ошибку в лог
+					this->_log->debug("Execution of the allocated memory could not be permitted: %s", __PRETTY_FUNCTION__, make_tuple(this->_size), log_t::flag_t::CRITICAL, ::strerror(errno));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем ошибку в лог
+					this->_log->print("Execution of the allocated memory could not be permitted: %s", log_t::flag_t::CRITICAL, ::strerror(errno));
+				#endif
+			}
 			// Выводим результат разрешения исполнения участка памяти
 			return false;
+		}
 		/**
 		 * Если сборка выполняется компилятором, порождающим сброс кэша команд
 		 */
@@ -444,6 +505,24 @@ awh::regex::Assembly & awh::regex::Assembly::operator = (Assembly && assembly) n
 	this->_length = assembly._length;
 	// Выполняем перенятие флага разрешения исполнения участка памяти
 	this->_executable = assembly._executable;
+	/**
+	 * Если объект журнала событий установлен у объекта перемещаемого
+	 *
+	 * @details Журнал восполняется взаимно, а не перенимается затиранием:
+	 *          объект-цель мог быть заведён с журналом, а перемещаемый - без
+	 *          него, и затирание сделало бы цель немой. Приём этот взят
+	 *          у бинарного буфера, где та же задача решена так же.
+	 *
+	 */
+	if((assembly._log != nullptr) && (this->_log == nullptr))
+		// Выполняем перенятие объекта журнала событий
+		this->_log = assembly._log;
+	/**
+	 * Если объект журнала событий установлен у объекта текущего
+	 */
+	else if((this->_log != nullptr) && (assembly._log == nullptr))
+		// Выполняем передачу объекта журнала событий
+		assembly._log = this->_log;
 	// Выполняем сброс адреса участка памяти перемещаемого объекта
 	assembly._address = nullptr;
 	// Выполняем сброс размера участка памяти перемещаемого объекта
@@ -462,7 +541,7 @@ awh::regex::Assembly & awh::regex::Assembly::operator = (Assembly && assembly) n
  *
  */
 awh::regex::Assembly::Assembly(Assembly && assembly) noexcept :
- _address(assembly._address), _size(assembly._size), _length(assembly._length), _executable(assembly._executable) {
+ _address(assembly._address), _size(assembly._size), _length(assembly._length), _executable(assembly._executable), _log(assembly._log) {
 	// Выполняем сброс адреса участка памяти перемещаемого объекта
 	assembly._address = nullptr;
 	// Выполняем сброс размера участка памяти перемещаемого объекта
@@ -475,8 +554,11 @@ awh::regex::Assembly::Assembly(Assembly && assembly) noexcept :
 /**
  * @brief Конструктор
  *
+ * @param log объект для работы с логами
+ *
  */
-awh::regex::Assembly::Assembly() noexcept : _address(nullptr), _size(0), _length(0), _executable(false) {}
+awh::regex::Assembly::Assembly(const log_t * log) noexcept :
+ _address(nullptr), _size(0), _length(0), _executable(false), _log(log) {}
 /**
  * @brief Деструктор
  *

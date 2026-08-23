@@ -43,6 +43,11 @@
 /**
  * Подключаем заголовочные файлы модуля
  */
+#include <sys/log.hpp>
+
+/**
+ * Подключаем заголовочные файлы модуля
+ */
 #include "common.hpp"
 #include "encoding.hpp"
 
@@ -396,6 +401,20 @@ namespace awh {
 					state_t _state;
 					// Код отказа разбора
 					error_t _error;
+				private:
+					/**
+					 * \~russian
+					 * Объект ведения журнала работы
+					 *
+					 * @note Умолчание стоит прямо в объявлении: конструкторы, логгера не
+					 *       принимающие, оставили бы поле неопределённым
+					 *
+					 * \~english
+					 * Object of the keeping of the work log
+					 *
+					 * \~
+					 */
+					const log_t * _log = nullptr;
 				private:
 					// Признак того, что подан последний кусок текста
 					bool _last;
@@ -1067,7 +1086,21 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Reader() noexcept;
+					explicit Reader(const log_t * log = nullptr) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод установки объекта ведения журнала работы
+					 *
+					 * @param log объект ведения журнала работы
+					 *
+					 * \~english
+					 * @brief Method of the setting of the object of the keeping of the work log
+					 *
+					 * @param log the object of the keeping of the work log
+					 *
+					 * \~
+					 */
+					void setLogger(const log_t * log) noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор

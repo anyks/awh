@@ -962,6 +962,20 @@ namespace awh {
 					// Код ошибки последней операции разбора
 					error_t _error;
 				private:
+					/**
+					 * \~russian
+					 * Объект ведения журнала работы
+					 *
+					 * @note Логгер уходит и в заводимое деревом чтение: разбор сообщает о бедах
+					 *       своих сам, и дерево обязано ему это дать
+					 *
+					 * \~english
+					 * Object of the keeping of the work log
+					 *
+					 * \~
+					 */
+					const log_t * _log = nullptr;
+				private:
 					// Положение обнаруженной ошибки в исходном тексте
 					location_t _errorLocation;
 				private:
@@ -1321,7 +1335,21 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Document() noexcept;
+					explicit Document(const log_t * log = nullptr) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод установки объекта ведения журнала работы
+					 *
+					 * @param log объект ведения журнала работы
+					 *
+					 * \~english
+					 * @brief Method of the setting of the object of the keeping of the work log
+					 *
+					 * @param log the object of the keeping of the work log
+					 *
+					 * \~
+					 */
+					void setLogger(const log_t * log) noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор

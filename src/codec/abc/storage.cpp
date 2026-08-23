@@ -121,9 +121,11 @@ namespace {
 /**
  * @brief Конструктор
  *
+ * @param log объект для работы с логами
+ *
  */
-awh::codec::abc::Storage::Storage() noexcept :
- _stream(nullptr), _length(0), _error(error_t::NONE) {}
+awh::codec::abc::Storage::Storage(const log_t * log) noexcept :
+ _stream(nullptr), _length(0), _error(error_t::NONE), _log(log) {}
 /**
  * @brief Деструктор
  *
@@ -131,6 +133,42 @@ awh::codec::abc::Storage::Storage() noexcept :
 awh::codec::abc::Storage::~Storage() noexcept {
 	// Выполняем закрытие файла контейнера
 	this->close();
+}
+/**
+ * @brief Метод объявления отказа работы с носителем
+ *
+ * @param error объявляемый код отказа
+ * @return      признак успешности, всегда ложь
+ *
+ */
+bool awh::codec::abc::Storage::fail(const error_t error) noexcept {
+	// Выполняем установку кода отказа
+	this->_error = error;
+	/**
+	 * Если объект логирования отдан, доносим об отказе.
+	 *
+	 * @warning Сброс кода отказа сюда НЕ идёт: воронка эта объявляет отказ, а сброс
+	 *          лишь снимает прежний, и донесение о нём наполняло бы журнал записями
+	 *          «no error» на всякий успешный вызов. Проверено на себе
+	 */
+	if((error != error_t::NONE) && (this->_log != nullptr)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("ABC: %s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (error)),
+			 log_t::flag_t::WARNING, abc::message(error));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("ABC: %s", log_t::flag_t::WARNING, abc::message(error));
+		#endif
+	}
+	// Сообщаем, что работа отвечена отказом
+	return false;
 }
 /**
  * @brief Метод перевода потока файла на заданное смещение
@@ -166,7 +204,7 @@ bool awh::codec::abc::Storage::open(const string & filename) noexcept {
 	 */
 	if(this->_stream == nullptr){
 		// Выполняем установку кода отказа чтения октетов контейнера
-		this->_error = error_t::UNREADABLE_SOURCE;
+		this->fail(error_t::UNREADABLE_SOURCE);
 		// Выводим признак неудачно открытого файла
 		return false;
 	}
@@ -177,7 +215,7 @@ bool awh::codec::abc::Storage::open(const string & filename) noexcept {
 		// Выполняем закрытие файла контейнера
 		this->close();
 		// Выполняем установку кода отказа чтения октетов контейнера
-		this->_error = error_t::UNREADABLE_SOURCE;
+		this->fail(error_t::UNREADABLE_SOURCE);
 		// Выводим признак неудачно открытого файла
 		return false;
 	}
@@ -205,7 +243,7 @@ bool awh::codec::abc::Storage::create(const string & filename) noexcept {
 	 */
 	if(this->_stream == nullptr){
 		// Выполняем установку кода отказа записи октетов контейнера
-		this->_error = error_t::UNWRITABLE_SINK;
+		this->fail(error_t::UNWRITABLE_SINK);
 		// Выводим признак неудачно заведённого файла
 		return false;
 	}
@@ -251,7 +289,7 @@ bool awh::codec::abc::Storage::flush() noexcept {
 	 */
 	if(::fflush(this->_stream) != 0){
 		// Выполняем установку кода отказа записи октетов контейнера
-		this->_error = error_t::UNWRITABLE_SINK;
+		this->fail(error_t::UNWRITABLE_SINK);
 		// Выводим признак неудачного сброса
 		return false;
 	}
@@ -370,7 +408,7 @@ bool awh::codec::abc::Storage::bind(editor_t & editor) noexcept {
 	 */
 	if(this->_stream == nullptr){
 		// Выполняем установку кода отказа чтения октетов контейнера
-		this->_error = error_t::UNREADABLE_SOURCE;
+		this->fail(error_t::UNREADABLE_SOURCE);
 		// Выводим признак неудачно открытого контейнера
 		return false;
 	}
@@ -390,7 +428,7 @@ bool awh::codec::abc::Storage::store(const string & filename, const void * buffe
 	// Если буфер октетов собранного контейнера не существует
 	if((buffer == nullptr) && (size > 0)){
 		// Выполняем установку кода внутреннего отказа
-		this->_error = error_t::INTERNAL;
+		this->fail(error_t::INTERNAL);
 		// Выводим признак неудачной записи
 		return false;
 	}
@@ -403,7 +441,7 @@ bool awh::codec::abc::Storage::store(const string & filename, const void * buffe
 	 */
 	if((size > 0) && (::fwrite(buffer, 1, size, this->_stream) != size)){
 		// Выполняем установку кода отказа записи октетов контейнера
-		this->_error = error_t::UNWRITABLE_SINK;
+		this->fail(error_t::UNWRITABLE_SINK);
 		// Выполняем закрытие файла контейнера
 		this->close();
 		// Выводим признак неудачной записи
@@ -428,21 +466,21 @@ bool awh::codec::abc::Storage::load(loader_t & loader, const size_t block) noexc
 	 */
 	if(this->_stream == nullptr){
 		// Выполняем установку кода отказа чтения октетов контейнера
-		this->_error = error_t::UNREADABLE_SOURCE;
+		this->fail(error_t::UNREADABLE_SOURCE);
 		// Выводим признак неудачной подачи
 		return false;
 	}
 	// Если размер подаваемого куска не задан
 	if(block == 0){
 		// Выполняем установку кода внутреннего отказа
-		this->_error = error_t::INTERNAL;
+		this->fail(error_t::INTERNAL);
 		// Выводим признак неудачной подачи
 		return false;
 	}
 	// Если перевод потока файла в начало не удался
 	if(!this->seek(0)){
 		// Выполняем установку кода отказа чтения октетов контейнера
-		this->_error = error_t::UNREADABLE_SOURCE;
+		this->fail(error_t::UNREADABLE_SOURCE);
 		// Выводим признак неудачной подачи
 		return false;
 	}

@@ -189,6 +189,7 @@ namespace awh {
 	 */
 	using namespace std;
 
+
 	/**
 	 * \~russian
 	 * @brief Пространство имён модуля регулярных выражений
@@ -308,6 +309,9 @@ namespace awh {
 				// Код ошибки хранилища собранных выражений
 				mutable storage_error_t _error;
 			private:
+				// Объект журнала событий
+				const log_t * _log;
+			private:
 				/**
 				 * \~russian
 				 * Признак доверия порождённому коду, записью несомому
@@ -389,6 +393,29 @@ namespace awh {
 				 * \~
 				 */
 				bool restore(const shared_ptr <const string> & blob, vector <exp_t> & result) const noexcept;
+			private:
+				/**
+				 * \~russian
+				 * @brief Метод восстановления собранных выражений телом своим
+				 *
+				 * @param blob   запись хранилища, взятая во владение
+				 * @param result набор восстановленных выражений
+				 * @return       результат восстановления собранных выражений
+				 *
+				 * @details Тело вынесено из метода публичного, дабы отказ его
+				 *          сообщался журналом единожды: точек выхода отказных
+				 *          у восстановления три десятка, и запись в журнал
+				 *          при каждой обратила бы сообщение в бюрократию.
+				 *
+				 * \~english
+				 * @brief Method of restoring built expressions by its own body
+				 * @param blob   storage record taken into ownership
+				 * @param result set of restored expressions
+				 * @return       result of restoring the built expressions
+				 *
+				 * \~
+				 */
+				bool restoring(const shared_ptr <const string> & blob, vector <exp_t> & result) const noexcept;
 			private:
 				/**
 				 * \~russian
@@ -565,7 +592,8 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				Storage() noexcept : _error(storage_error_t::NONE), _trusted(false), _method(compressor::method_t::NONE) {}
+				explicit Storage(const log_t * log = nullptr) noexcept :
+				 _error(storage_error_t::NONE), _trusted(false), _method(compressor::method_t::NONE), _log(log) {}
 				/**
 				 * \~russian
 				 * @brief Деструктор

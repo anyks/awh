@@ -77,6 +77,24 @@
 #include "../sys/global.hpp"
 
 /**
+ * Если компилятор принадлежит к Visual Studio
+ */
+#if defined(_MSC_VER)
+	/**
+	 * Принудительная подстановка средствами Visual Studio
+	 */
+	#define AWH_GUARD_INLINE __forceinline
+/**
+ * Если компилятор принадлежит к семейству GCC или Clang
+ */
+#else
+	/**
+	 * Принудительная подстановка средствами GCC и Clang
+	 */
+	#define AWH_GUARD_INLINE inline __attribute__((always_inline))
+#endif
+
+/**
  * @brief Пространство имён фреймворка
  *
  */
@@ -271,7 +289,36 @@ namespace awh {
 				 * @brief Method of determining whether the next allocation needs a guard
 				 *
 				 */
-				bool wanted(const size_t size) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод выборки выдачи под заслоны
+				 *
+				 * @note Холодный хвост `wanted`: сюда приходят лишь при включённых заслонах
+				 *
+				 * @param size требуемый размер в байтах
+				 * @return     признак того, что выборка взяла эту выдачу
+				 *
+				 * \~english
+				 * @brief Method of sampling an allocation for guarding
+				 *
+				 */
+				bool sampled(const size_t size) noexcept;
+				AWH_GUARD_INLINE bool wanted(const size_t size) noexcept {
+					/**
+					 * Отвечаем отказом, не заходя в файл кода
+					 *
+					 * Заслоны выключены у подавляющего большинства приложений - и вопрос этот стоит
+					 * на пути КАЖДОЙ выдачи. Профиль `perf` на Debian отдавал методу
+					 * 1.8 % времени, и то была цена вызова: работы здесь одно нестрогое
+					 * чтение
+					 */
+					// Если заслоны выключены
+					if(this->_rate.load(std::memory_order_relaxed) == 0)
+						// Заслон не нужен
+						return false;
+					// Уходим холодным путём: заслоны включены, идёт выборка
+					return this->sampled(size);
+				}
 				/**
 				 * \~russian
 				 * @brief Метод выдачи заслонённого блока

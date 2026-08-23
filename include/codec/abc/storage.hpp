@@ -387,6 +387,28 @@ namespace awh {
 				private:
 					/**
 					 * \~russian
+					 * @brief Метод объявления отказа работы с носителем
+					 *
+					 * @details Донесение идёт отсюда, из единственного места объявления отказа:
+					 * работа отвечает отказом множеством путей, и запись в каждом из них
+					 * разошлась бы с прочими. Отказ, ПРИНЯТЫЙ от нижнего слоя, сюда не идёт -
+					 * тот слой донёс о нём сам, и второе донесение лишь двоило бы записи
+					 *
+					 * @param error объявляемый код отказа
+					 * @return      признак успешности, всегда ложь
+					 *
+					 * \~english
+					 * @brief Method of the declaration of a failure
+					 *
+					 * @param error code of the failure being declared
+					 * @return      flag of the success, always false
+					 *
+					 * \~
+					 */
+					bool fail(const error_t error) noexcept;
+				private:
+					/**
+					 * \~russian
 					 * @brief Оператор копирования отсутствует намеренно
 					 *
 					 * @note Хранилище владеет потоком файла: копия его закрыла бы поток дважды

@@ -618,6 +618,8 @@ awh::codec::xml::Reader::step_t awh::codec::xml::Reader::fail(const error_t erro
 	this->_error = error;
 	// Запоминаем положение обнаруженной ошибки
 	this->_errorLocation = this->locate(offset);
+	// Выполняем сообщение об отказе разбора в журнал
+	this->report(error, this->_errorLocation);
 	// Запоминаем состояние прекращённого ошибкой разбора
 	this->_state = state_t::FAILED;
 	// Выполняем сброс вида текущего события разбора
@@ -638,12 +640,62 @@ awh::codec::xml::Reader::step_t awh::codec::xml::Reader::fail(const error_t erro
 	this->_error = error;
 	// Запоминаем положение обнаруженной ошибки
 	this->_errorLocation = location;
+	// Выполняем сообщение об отказе разбора в журнал
+	this->report(error, location);
 	// Запоминаем состояние прекращённого ошибкой разбора
 	this->_state = state_t::FAILED;
 	// Выполняем сброс вида текущего события разбора
 	this->_event = event_t::NONE;
 	// Выводим отрицательный итог шага разбора
 	return step_t::FAILED;
+}
+/**
+ * @brief Метод отказа разбора с сообщением о нём в журнал
+ *
+ * @param error код ошибки разбора
+ * @return      всегда ложь, ради возврата им из места отказа
+ *
+ */
+bool awh::codec::xml::Reader::refuse(const error_t error) noexcept {
+	// Запоминаем код ошибки разбора
+	this->_error = error;
+	// Выполняем сообщение об отказе разбора в журнал
+	this->report(error, this->locate(this->_offset));
+	// Выводим отрицательный результат выполнения операции
+	return false;
+}
+/**
+ * @brief Метод сообщения об отказе разбора в журнал
+ *
+ * @param error    код ошибки разбора
+ * @param location место обнаруженной ошибки в исходном тексте
+ *
+ */
+void awh::codec::xml::Reader::report(const error_t error, const location_t & location) const noexcept {
+	/**
+	 * Если объект ведения журнала работы установлен
+	 *
+	 * @note Сличение стоит здесь одно на весь разбор: разнеси его по местам отказа - и
+	 *       часть их разошлась бы с ним при первой же правке
+	 */
+	if(this->_log != nullptr){
+		/**
+		 * Выполняем запись об отказе разбора в журнал
+		 *
+		 * @note Отказ разбора беда не критическая: негодный текст приходит извне, и работы
+		 *       приложения он не рушит. Оттого запись идёт предупреждением
+		 */
+		#if DEBUG_MODE
+			// Записываем отказ разбора в журнал работы
+			this->_log->debug("%s", __PRETTY_FUNCTION__, ::std::make_tuple(location.line, location.column),
+			                  log_t::flag_t::WARNING, message(error));
+		#else
+			// Записываем отказ разбора в журнал работы
+			this->_log->print("XML parsing failed at line %llu column %llu: %s", log_t::flag_t::WARNING,
+			                  static_cast <unsigned long long> (location.line),
+			                  static_cast <unsigned long long> (location.column), message(error));
+		#endif
+	}
 }
 /**
  * @brief Метод получения положения в исходном тексте
@@ -918,8 +970,8 @@ awh::codec::xml::span_t awh::codec::xml::Reader::store(const string_view text) n
 	 *          разница существенная, и смешивать их в отчёте нельзя
 	 */
 	if((this->_names.size() + text.length()) > static_cast <size_t> (0xFFFFFFFFu)){
-		// Запоминаем код ошибки разбора
-		this->_error = error_t::OVERFLOW_LIMIT;
+		// Выполняем отказ разбора с сообщением о нём в журнал
+		this->refuse(error_t::OVERFLOW_LIMIT);
 		// Выводим пустой отрезок хранилища знаков
 		return span_t();
 	}
@@ -1168,10 +1220,8 @@ bool awh::codec::xml::Reader::parseReference(size_t & offset, const size_t end, 
 	 *          поданное с ненулевою глубиной, обошло бы предел вложенности целиком
 	 */
 	if(depth >= MAX_ENTITY_DEPTH){
-		// Запоминаем код ошибки разбора
-		this->_error = error_t::ENTITY_DEPTH_EXCEEDED;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выполняем отказ разбора с сообщением о нём в журнал
+		return this->refuse(error_t::ENTITY_DEPTH_EXCEEDED);
 	}
 	// Получаем разбираемый текст ссылки
 	const string_view text(this->_buffer.data(), this->_buffer.size());
@@ -1181,10 +1231,8 @@ bool awh::codec::xml::Reader::parseReference(size_t & offset, const size_t end, 
 	 * Если конец ссылки на сущность не обнаружен
 	 */
 	if((stop == string_view::npos) || (stop >= end)){
-		// Запоминаем код ошибки разбора
-		this->_error = error_t::INVALID_REFERENCE;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выполняем отказ разбора с сообщением о нём в журнал
+		return this->refuse(error_t::INVALID_REFERENCE);
 	}
 	// Получаем содержимое ссылки на сущность
 	const string_view name = text.substr(offset + 1, stop - (offset + 1));
@@ -1192,10 +1240,8 @@ bool awh::codec::xml::Reader::parseReference(size_t & offset, const size_t end, 
 	 * Если ссылка на сущность пуста
 	 */
 	if(name.empty()){
-		// Запоминаем код ошибки разбора
-		this->_error = error_t::INVALID_REFERENCE;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выполняем отказ разбора с сообщением о нём в журнал
+		return this->refuse(error_t::INVALID_REFERENCE);
 	}
 	// Запоминаем положение конца ссылки на сущность
 	offset = (stop + 1);
@@ -1216,19 +1262,15 @@ bool awh::codec::xml::Reader::expand(const string_view name, string & result, co
 	 * Если глубина вложенности ссылок превышает допустимую
 	 */
 	if(depth >= MAX_ENTITY_DEPTH){
-		// Запоминаем код ошибки разбора
-		this->_error = error_t::ENTITY_DEPTH_EXCEEDED;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выполняем отказ разбора с сообщением о нём в журнал
+		return this->refuse(error_t::ENTITY_DEPTH_EXCEEDED);
 	}
 	/**
 	 * Если имя подставляемой сущности пусто
 	 */
 	if(name.empty()){
-		// Запоминаем код ошибки разбора
-		this->_error = error_t::INVALID_REFERENCE;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выполняем отказ разбора с сообщением о нём в журнал
+		return this->refuse(error_t::INVALID_REFERENCE);
 	}
 	/**
 	 * Если ссылка является числовой
@@ -1249,10 +1291,8 @@ bool awh::codec::xml::Reader::expand(const string_view name, string & result, co
 		 * Если запись кодового значения пуста
 		 */
 		if(digits.empty()){
-			// Запоминаем код ошибки разбора
-			this->_error = error_t::INVALID_CHAR_REFERENCE;
-			// Выводим отрицательный результат выполнения операции
-			return false;
+			// Выполняем отказ разбора с сообщением о нём в журнал
+			return this->refuse(error_t::INVALID_CHAR_REFERENCE);
 		}
 		/**
 		 * Если запись кодового значения начата не цифрой принятой системы счисления
@@ -1262,10 +1302,8 @@ bool awh::codec::xml::Reader::expand(const string_view name, string & result, co
 		 *       первый знак проверяется до разбора
 		 */
 		if(hex ? (ascii::hexValue(digits.front()) < 0) : !ascii::isDigit(digits.front())){
-			// Запоминаем код ошибки разбора
-			this->_error = error_t::INVALID_CHAR_REFERENCE;
-			// Выводим отрицательный результат выполнения операции
-			return false;
+			// Выполняем отказ разбора с сообщением о нём в журнал
+			return this->refuse(error_t::INVALID_CHAR_REFERENCE);
 		}
 		// Выполняем разбор записи кодового значения знака
 		const auto parsed = lexical::fromChars(digits.data(), digits.data() + digits.length(), code, (hex ? 16 : 10));
@@ -1273,28 +1311,22 @@ bool awh::codec::xml::Reader::expand(const string_view name, string & result, co
 		 * Если запись кодового значения разобрана не целиком либо число не помещается
 		 */
 		if(!parsed || (parsed.ptr != (digits.data() + digits.length()))){
-			// Запоминаем код ошибки разбора
-			this->_error = error_t::INVALID_CHAR_REFERENCE;
-			// Выводим отрицательный результат выполнения операции
-			return false;
+			// Выполняем отказ разбора с сообщением о нём в журнал
+			return this->refuse(error_t::INVALID_CHAR_REFERENCE);
 		}
 		/**
 		 * Если кодовое значение вышло за пределы Юникода
 		 */
 		if(code > MAX_CODEPOINT){
-			// Запоминаем код ошибки разбора
-			this->_error = error_t::INVALID_CHAR_REFERENCE;
-			// Выводим отрицательный результат выполнения операции
-			return false;
+			// Выполняем отказ разбора с сообщением о нём в журнал
+			return this->refuse(error_t::INVALID_CHAR_REFERENCE);
 		}
 		/**
 		 * Если указанный ссылкой знак недопустим в разметке
 		 */
 		if(!isChar(static_cast <uint32_t> (code))){
-			// Запоминаем код ошибки разбора
-			this->_error = error_t::INVALID_CHAR_REFERENCE;
-			// Выводим отрицательный результат выполнения операции
-			return false;
+			// Выполняем отказ разбора с сообщением о нём в журнал
+			return this->refuse(error_t::INVALID_CHAR_REFERENCE);
 		}
 		// Выполняем добавление указанного ссылкой знака
 		return encode(static_cast <uint32_t> (code), result);
@@ -1352,10 +1384,8 @@ bool awh::codec::xml::Reader::expand(const string_view name, string & result, co
 		 * недопустим в его начале
 		 */
 		if((length == 0) || (code == INVALID_CODEPOINT) || !isName(code) || ((offset == 0) && !isNameStart(code))){
-			// Запоминаем код ошибки разбора
-			this->_error = error_t::INVALID_REFERENCE;
-			// Выводим отрицательный результат выполнения операции
-			return false;
+			// Выполняем отказ разбора с сообщением о нём в журнал
+			return this->refuse(error_t::INVALID_REFERENCE);
 		}
 		// Выполняем переход к следующему знаку имени
 		offset += length;
@@ -1364,10 +1394,8 @@ bool awh::codec::xml::Reader::expand(const string_view name, string & result, co
 	 * Если подстановка объявленных сущностей отключена настройками
 	 */
 	if(!this->_settings.entities){
-		// Запоминаем код ошибки разбора
-		this->_error = error_t::UNKNOWN_ENTITY;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выполняем отказ разбора с сообщением о нём в журнал
+		return this->refuse(error_t::UNKNOWN_ENTITY);
 	}
 	// Выполняем поиск объявления сущности
 	this->_lookup.assign(name);
@@ -1393,10 +1421,8 @@ bool awh::codec::xml::Reader::expand(const string_view name, string & result, co
 		if(this->_foreign)
 			// Выводим положительный результат пропуска ссылки на сущность
 			return true;
-		// Запоминаем код ошибки разбора
-		this->_error = error_t::UNKNOWN_ENTITY;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выполняем отказ разбора с сообщением о нём в журнал
+		return this->refuse(error_t::UNKNOWN_ENTITY);
 	}
 	/**
 	 * Если значение сущности содержит разметку
@@ -1407,10 +1433,8 @@ bool awh::codec::xml::Reader::expand(const string_view name, string & result, co
 	 *       разбираемый текст
 	 */
 	if(i->second.markup){
-		// Запоминаем код ошибки разбора
-		this->_error = error_t::INVALID_ATTRIBUTE;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выполняем отказ разбора с сообщением о нём в журнал
+		return this->refuse(error_t::INVALID_ATTRIBUTE);
 	}
 	/**
 	 * Если сущность объявлена внешней
@@ -1419,19 +1443,15 @@ bool awh::codec::xml::Reader::expand(const string_view name, string & result, co
 	 *       такую сущность нечем, и ссылка на неё является ошибкой
 	 */
 	if(i->second.external){
-		// Запоминаем код ошибки разбора
-		this->_error = error_t::EXTERNAL_ENTITY;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выполняем отказ разбора с сообщением о нём в журнал
+		return this->refuse(error_t::EXTERNAL_ENTITY);
 	}
 	/**
 	 * Если подстановка сущности выполняется в текущий миг
 	 */
 	if(i->second.active){
-		// Запоминаем код ошибки разбора
-		this->_error = error_t::RECURSIVE_ENTITY;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выполняем отказ разбора с сообщением о нём в журнал
+		return this->refuse(error_t::RECURSIVE_ENTITY);
 	}
 	// Выполняем накопление общего объёма подстановки сущностей
 	this->_expansion += i->second.value.size();
@@ -1439,10 +1459,8 @@ bool awh::codec::xml::Reader::expand(const string_view name, string & result, co
 	 * Если общий объём подстановки превысил допустимый
 	 */
 	if(this->_expansion > this->_settings.maxExpansion){
-		// Запоминаем код ошибки разбора
-		this->_error = error_t::ENTITY_LIMIT_EXCEEDED;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выполняем отказ разбора с сообщением о нём в журнал
+		return this->refuse(error_t::ENTITY_LIMIT_EXCEEDED);
 	}
 	/**
 	 * Выполняем изъятие значения сущности из хранилища объявлений
@@ -1469,10 +1487,8 @@ bool awh::codec::xml::Reader::expand(const string_view name, string & result, co
 	 *          там нельзя: правило договора отнесено к содержимому узла
 	 */
 	if(content && (value.find("]]>") != string::npos)){
-		// Запоминаем код ошибки разбора
-		this->_error = error_t::INVALID_CHARACTER;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выполняем отказ разбора с сообщением о нём в журнал
+		return this->refuse(error_t::INVALID_CHARACTER);
 	}
 	// Запоминаем, что подстановка сущности выполняется
 	i->second.active = true;
@@ -1492,10 +1508,8 @@ bool awh::codec::xml::Reader::expand(const string_view name, string & result, co
 			 * Если конец вложенной ссылки не обнаружен
 			 */
 			if(stop == string::npos){
-				// Запоминаем код ошибки разбора
-				this->_error = error_t::INVALID_REFERENCE;
-				// Запоминаем отрицательный результат подстановки
-				success = false;
+				// Выполняем отказ разбора с сообщением о нём в журнал
+				success = this->refuse(error_t::INVALID_REFERENCE);
 				// Выходим из перебора знаков
 				break;
 			}
@@ -1570,10 +1584,8 @@ bool awh::codec::xml::Reader::parseValue(size_t & offset, const size_t end, span
 	 * Если значение атрибута не заключено в кавычки
 	 */
 	if((offset >= end) || ((this->_buffer[offset] != '"') && (this->_buffer[offset] != '\''))){
-		// Запоминаем код ошибки разбора
-		this->_error = error_t::UNQUOTED_ATTRIBUTE;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выполняем отказ разбора с сообщением о нём в журнал
+		return this->refuse(error_t::UNQUOTED_ATTRIBUTE);
 	}
 	// Получаем знак кавычки, которым заключено значение
 	const char quote = this->_buffer[offset++];
@@ -1666,10 +1678,8 @@ bool awh::codec::xml::Reader::parseValue(size_t & offset, const size_t end, span
 			 *          разница существенная, и смешивать их в отчёте нельзя
 			 */
 			if(this->_scratch.size() > static_cast <size_t> (0xFFFFFFFFu)){
-				// Запоминаем код ошибки разбора
-				this->_error = error_t::OVERFLOW_LIMIT;
-				// Выводим отрицательный результат выполнения операции
-				return false;
+				// Выполняем отказ разбора с сообщением о нём в журнал
+				return this->refuse(error_t::OVERFLOW_LIMIT);
 			}
 			value.length = static_cast <uint32_t> (this->_scratch.size() - value.offset);
 			// Выводим положительный результат выполнения операции
@@ -1679,10 +1689,8 @@ bool awh::codec::xml::Reader::parseValue(size_t & offset, const size_t end, span
 		 * Если обнаружен знак, недопустимый в значении атрибута
 		 */
 		if(letter == '<'){
-			// Запоминаем код ошибки разбора
-			this->_error = error_t::INVALID_ATTRIBUTE;
-			// Выводим отрицательный результат выполнения операции
-			return false;
+			// Выполняем отказ разбора с сообщением о нём в журнал
+			return this->refuse(error_t::INVALID_ATTRIBUTE);
 		}
 		/**
 		 * Если обнаружена ссылка на сущность
@@ -1751,9 +1759,8 @@ bool awh::codec::xml::Reader::parseValue(size_t & offset, const size_t end, span
 	 *       и незакрытую метку отвергает само - кодом «UNCLOSED_TAG». Закреплено
 	 *       проверкою «CodecXmlReader.UnterminatedAttribute»
 	 */
-	this->_error = error_t::UNQUOTED_ATTRIBUTE;
-	// Выводим отрицательный результат выполнения операции
-	return false;
+	// Выполняем отказ разбора с сообщением о нём в журнал
+	return this->refuse(error_t::UNQUOTED_ATTRIBUTE);
 }
 /**
  * @brief Метод пропуска пробельных знаков внутреннего подмножества
@@ -2623,10 +2630,8 @@ bool awh::codec::xml::Reader::parseSubset(size_t offset, const size_t end) noexc
 			 * Если ссылка на параметрическую сущность построена ошибочно
 			 */
 			if(!this->subsetName(offset, end, false) || (offset >= end) || (this->_buffer[offset] != ';')){
-				// Запоминаем код ошибки разбора
-				this->_error = error_t::INVALID_DOCTYPE;
-				// Выводим отрицательный результат выполнения операции
-				return false;
+				// Выполняем отказ разбора с сообщением о нём в журнал
+				return this->refuse(error_t::INVALID_DOCTYPE);
 			}
 			// Выполняем переход к следующему объявлению
 			offset++;
@@ -2672,10 +2677,8 @@ bool awh::codec::xml::Reader::parseSubset(size_t offset, const size_t end) noexc
 				 * Если конец примечания не обнаружен
 				 */
 				if((stop == string_view::npos) || ((stop + 2) > end)){
-					// Запоминаем код ошибки разбора
-					this->_error = error_t::INVALID_COMMENT;
-					// Выводим отрицательный результат выполнения операции
-					return false;
+					// Выполняем отказ разбора с сообщением о нём в журнал
+					return this->refuse(error_t::INVALID_COMMENT);
 				}
 				/**
 				 * Если двойной знак переноса завершает примечание
@@ -2689,10 +2692,8 @@ bool awh::codec::xml::Reader::parseSubset(size_t offset, const size_t end) noexc
 					// Выходим из поиска конца примечания
 					break;
 				}
-				// Запоминаем код ошибки разбора
-				this->_error = error_t::INVALID_COMMENT;
-				// Выводим отрицательный результат выполнения операции
-				return false;
+				// Выполняем отказ разбора с сообщением о нём в журнал
+				return this->refuse(error_t::INVALID_COMMENT);
 			}
 			// Выполняем переход к следующему объявлению
 			continue;
@@ -2709,10 +2710,8 @@ bool awh::codec::xml::Reader::parseSubset(size_t offset, const size_t end) noexc
 			 * Если обозначение обработчика разобрать не удалось
 			 */
 			if(!this->subsetName(offset, end, false)){
-				// Запоминаем код ошибки разбора
-				this->_error = error_t::INVALID_PROCESSING;
-				// Выводим отрицательный результат выполнения операции
-				return false;
+				// Выполняем отказ разбора с сообщением о нём в журнал
+				return this->refuse(error_t::INVALID_PROCESSING);
 			}
 			/**
 			 * Если обозначением обработчика является отведённое договором имя
@@ -2727,10 +2726,8 @@ bool awh::codec::xml::Reader::parseSubset(size_t offset, const size_t end) noexc
 				 * Если обозначением обработчика занято отведённое договором имя
 				 */
 				if(ascii::equals(name[0], 'x') && ascii::equals(name[1], 'm') && ascii::equals(name[2], 'l')){
-					// Запоминаем код ошибки разбора
-					this->_error = error_t::RESERVED_PROCESSING;
-					// Выводим отрицательный результат выполнения операции
-					return false;
+					// Выполняем отказ разбора с сообщением о нём в журнал
+					return this->refuse(error_t::RESERVED_PROCESSING);
 				}
 			}
 			// Выполняем поиск конца указания обработчику
@@ -2747,19 +2744,15 @@ bool awh::codec::xml::Reader::parseSubset(size_t offset, const size_t end) noexc
 			 * Если конец указания обработчику не обнаружен
 			 */
 			if((stop == string_view::npos) || ((stop + 2) > end)){
-				// Запоминаем код ошибки разбора
-				this->_error = error_t::INVALID_PROCESSING;
-				// Выводим отрицательный результат выполнения операции
-				return false;
+				// Выполняем отказ разбора с сообщением о нём в журнал
+				return this->refuse(error_t::INVALID_PROCESSING);
 			}
 			/**
 			 * Если содержимое не отделено от обозначения обработчика
 			 */
 			if((stop > offset) && !::isSpace(this->_buffer[offset])){
-				// Запоминаем код ошибки разбора
-				this->_error = error_t::INVALID_PROCESSING;
-				// Выводим отрицательный результат выполнения операции
-				return false;
+				// Выполняем отказ разбора с сообщением о нём в журнал
+				return this->refuse(error_t::INVALID_PROCESSING);
 			}
 			// Выполняем переход к следующему объявлению
 			offset = (stop + 2);
@@ -2777,10 +2770,8 @@ bool awh::codec::xml::Reader::parseSubset(size_t offset, const size_t end) noexc
 			 */
 			if(!this->subsetSpace(offset, end, true) || !this->subsetName(offset, end, false) ||
 			   !this->subsetSpace(offset, end, true) || !this->subsetContent(offset, end)){
-				// Запоминаем код ошибки разбора
-				this->_error = error_t::INVALID_DOCTYPE;
-				// Выводим отрицательный результат выполнения операции
-				return false;
+				// Выполняем отказ разбора с сообщением о нём в журнал
+				return this->refuse(error_t::INVALID_DOCTYPE);
 			}
 			// Выполняем пропуск пробельных знаков
 			this->subsetSpace(offset, end, false);
@@ -2788,10 +2779,8 @@ bool awh::codec::xml::Reader::parseSubset(size_t offset, const size_t end) noexc
 			 * Если конец объявления строения узла отсутствует
 			 */
 			if((offset >= end) || (this->_buffer[offset] != '>')){
-				// Запоминаем код ошибки разбора
-				this->_error = error_t::INVALID_DOCTYPE;
-				// Выводим отрицательный результат выполнения операции
-				return false;
+				// Выполняем отказ разбора с сообщением о нём в журнал
+				return this->refuse(error_t::INVALID_DOCTYPE);
 			}
 			// Выполняем переход к следующему объявлению
 			offset++;
@@ -2810,10 +2799,8 @@ bool awh::codec::xml::Reader::parseSubset(size_t offset, const size_t end) noexc
 			 * Если объявление обозначения не отделено пробельным знаком
 			 */
 			if(!this->subsetSpace(offset, end, true)){
-				// Запоминаем код ошибки разбора
-				this->_error = error_t::INVALID_DOCTYPE;
-				// Выводим отрицательный результат выполнения операции
-				return false;
+				// Выполняем отказ разбора с сообщением о нём в журнал
+				return this->refuse(error_t::INVALID_DOCTYPE);
 			}
 			// Запоминаем начало имени объявляемого обозначения
 			const size_t begin = offset;
@@ -2823,10 +2810,8 @@ bool awh::codec::xml::Reader::parseSubset(size_t offset, const size_t end) noexc
 			if(!this->subsetName(offset, end, false) ||
 			   (this->_settings.namespaces && (string_view(this->_buffer.data() + begin, offset - begin).find(':') != string_view::npos)) ||
 			   !this->subsetSpace(offset, end, true) || !this->subsetExternal(offset, end, false, external) || !external){
-				// Запоминаем код ошибки разбора
-				this->_error = error_t::INVALID_DOCTYPE;
-				// Выводим отрицательный результат выполнения операции
-				return false;
+				// Выполняем отказ разбора с сообщением о нём в журнал
+				return this->refuse(error_t::INVALID_DOCTYPE);
 			}
 			// Выполняем пропуск пробельных знаков
 			this->subsetSpace(offset, end, false);
@@ -2834,10 +2819,8 @@ bool awh::codec::xml::Reader::parseSubset(size_t offset, const size_t end) noexc
 			 * Если конец объявления обозначения отсутствует
 			 */
 			if((offset >= end) || (this->_buffer[offset] != '>')){
-				// Запоминаем код ошибки разбора
-				this->_error = error_t::INVALID_DOCTYPE;
-				// Выводим отрицательный результат выполнения операции
-				return false;
+				// Выполняем отказ разбора с сообщением о нём в журнал
+				return this->refuse(error_t::INVALID_DOCTYPE);
 			}
 			// Выполняем переход к следующему объявлению
 			offset++;
@@ -2854,10 +2837,8 @@ bool awh::codec::xml::Reader::parseSubset(size_t offset, const size_t end) noexc
 			 * Если объявление сущности не отделено пробельным знаком
 			 */
 			if(!this->subsetSpace(offset, end, true)){
-				// Запоминаем код ошибки разбора
-				this->_error = error_t::INVALID_DOCTYPE;
-				// Выводим отрицательный результат выполнения операции
-				return false;
+				// Выполняем отказ разбора с сообщением о нём в журнал
+				return this->refuse(error_t::INVALID_DOCTYPE);
 			}
 			// Получаем признак объявления параметрической сущности
 			const bool parameter = ((offset < end) && (this->_buffer[offset] == '%'));
@@ -2871,10 +2852,8 @@ bool awh::codec::xml::Reader::parseSubset(size_t offset, const size_t end) noexc
 				 * Если имя параметрической сущности не отделено пробельным знаком
 				 */
 				if(!this->subsetSpace(offset, end, true)){
-					// Запоминаем код ошибки разбора
-					this->_error = error_t::INVALID_DOCTYPE;
-					// Выводим отрицательный результат выполнения операции
-					return false;
+					// Выполняем отказ разбора с сообщением о нём в журнал
+					return this->refuse(error_t::INVALID_DOCTYPE);
 				}
 			}
 			// Запоминаем начало имени объявляемой сущности
@@ -2883,10 +2862,8 @@ bool awh::codec::xml::Reader::parseSubset(size_t offset, const size_t end) noexc
 			 * Если имя объявляемой сущности разобрать не удалось
 			 */
 			if(!this->subsetName(offset, end, false)){
-				// Запоминаем код ошибки разбора
-				this->_error = error_t::INVALID_DOCTYPE;
-				// Выводим отрицательный результат выполнения операции
-				return false;
+				// Выполняем отказ разбора с сообщением о нём в журнал
+				return this->refuse(error_t::INVALID_DOCTYPE);
 			}
 			/**
 			 * Запоминаем имя объявляемой сущности СРЕЗОМ, а не копией
@@ -2904,19 +2881,15 @@ bool awh::codec::xml::Reader::parseSubset(size_t offset, const size_t end) noexc
 			 *       пространства имён на сущности не распространяются
 			 */
 			if(this->_settings.namespaces && (name.find(':') != string_view::npos)){
-				// Запоминаем код ошибки разбора
-				this->_error = error_t::INVALID_DOCTYPE;
-				// Выводим отрицательный результат выполнения операции
-				return false;
+				// Выполняем отказ разбора с сообщением о нём в журнал
+				return this->refuse(error_t::INVALID_DOCTYPE);
 			}
 			/**
 			 * Если значение сущности не отделено пробельным знаком
 			 */
 			if(!this->subsetSpace(offset, end, true)){
-				// Запоминаем код ошибки разбора
-				this->_error = error_t::INVALID_DOCTYPE;
-				// Выводим отрицательный результат выполнения операции
-				return false;
+				// Выполняем отказ разбора с сообщением о нём в журнал
+				return this->refuse(error_t::INVALID_DOCTYPE);
 			}
 			// Собираемое объявление сущности
 			entity_t entity;
@@ -2928,10 +2901,8 @@ bool awh::codec::xml::Reader::parseSubset(size_t offset, const size_t end) noexc
 				 * Если значение сущности разобрать не удалось
 				 */
 				if(!this->subsetLiteral(offset, end, literal_t::ENTITY, &entity.value, &entity.markup)){
-					// Запоминаем код ошибки разбора
-					this->_error = error_t::INVALID_DOCTYPE;
-					// Выводим отрицательный результат выполнения операции
-					return false;
+					// Выполняем отказ разбора с сообщением о нём в журнал
+					return this->refuse(error_t::INVALID_DOCTYPE);
 				}
 			/**
 			 * Если сущность объявлена внешней
@@ -2943,10 +2914,8 @@ bool awh::codec::xml::Reader::parseSubset(size_t offset, const size_t end) noexc
 				 * Если обозначение внешнего источника разобрать не удалось
 				 */
 				if(!this->subsetExternal(offset, end, true, external) || !external){
-					// Запоминаем код ошибки разбора
-					this->_error = error_t::INVALID_DOCTYPE;
-					// Выводим отрицательный результат выполнения операции
-					return false;
+					// Выполняем отказ разбора с сообщением о нём в журнал
+					return this->refuse(error_t::INVALID_DOCTYPE);
 				}
 				// Запоминаем, что сущность объявлена внешней
 				entity.external = true;
@@ -2960,10 +2929,8 @@ bool awh::codec::xml::Reader::parseSubset(size_t offset, const size_t end) noexc
 					 * Если объявление обозначения записи построено ошибочно
 					 */
 					if(parameter || !this->subsetSpace(offset, end, true) || !this->subsetName(offset, end, false)){
-						// Запоминаем код ошибки разбора
-						this->_error = error_t::INVALID_DOCTYPE;
-						// Выводим отрицательный результат выполнения операции
-						return false;
+						// Выполняем отказ разбора с сообщением о нём в журнал
+						return this->refuse(error_t::INVALID_DOCTYPE);
 					}
 				// Выполняем возврат разбора к пропущенным пробельным знакам
 				} else offset = place;
@@ -2974,10 +2941,8 @@ bool awh::codec::xml::Reader::parseSubset(size_t offset, const size_t end) noexc
 			 * Если конец объявления сущности отсутствует
 			 */
 			if((offset >= end) || (this->_buffer[offset] != '>')){
-				// Запоминаем код ошибки разбора
-				this->_error = error_t::INVALID_DOCTYPE;
-				// Выводим отрицательный результат выполнения операции
-				return false;
+				// Выполняем отказ разбора с сообщением о нём в журнал
+				return this->refuse(error_t::INVALID_DOCTYPE);
 			}
 			// Выполняем переход к следующему объявлению
 			offset++;
@@ -2989,10 +2954,8 @@ bool awh::codec::xml::Reader::parseSubset(size_t offset, const size_t end) noexc
 				 * Если количество объявленных сущностей превысило допустимое
 				 */
 				if(this->_entities.size() >= this->_settings.maxEntities){
-					// Запоминаем код ошибки разбора
-					this->_error = error_t::ENTITY_COUNT_EXCEEDED;
-					// Выводим отрицательный результат выполнения операции
-					return false;
+					// Выполняем отказ разбора с сообщением о нём в журнал
+					return this->refuse(error_t::ENTITY_COUNT_EXCEEDED);
 				}
 				/**
 				 * Выполняем размещение объявления сущности
@@ -3018,10 +2981,8 @@ bool awh::codec::xml::Reader::parseSubset(size_t offset, const size_t end) noexc
 			 * Если имя узла не отделено пробельным знаком
 			 */
 			if(!this->subsetSpace(offset, end, true)){
-				// Запоминаем код ошибки разбора
-				this->_error = error_t::INVALID_DOCTYPE;
-				// Выводим отрицательный результат выполнения операции
-				return false;
+				// Выполняем отказ разбора с сообщением о нём в журнал
+				return this->refuse(error_t::INVALID_DOCTYPE);
 			}
 			// Запоминаем начало имени узла
 			const size_t begin = offset;
@@ -3029,10 +2990,8 @@ bool awh::codec::xml::Reader::parseSubset(size_t offset, const size_t end) noexc
 			 * Если имя узла разобрать не удалось
 			 */
 			if(!this->subsetName(offset, end, false)){
-				// Запоминаем код ошибки разбора
-				this->_error = error_t::INVALID_DOCTYPE;
-				// Выводим отрицательный результат выполнения операции
-				return false;
+				// Выполняем отказ разбора с сообщением о нём в журнал
+				return this->refuse(error_t::INVALID_DOCTYPE);
 			}
 			// Запоминаем имя узла в записи, принятой в исходном тексте
 			/**
@@ -3068,10 +3027,8 @@ bool awh::codec::xml::Reader::parseSubset(size_t offset, const size_t end) noexc
 				 * Если объявление атрибута не отделено пробельным знаком
 				 */
 				if(!spaced || (offset >= end)){
-					// Запоминаем код ошибки разбора
-					this->_error = error_t::INVALID_DOCTYPE;
-					// Выводим отрицательный результат выполнения операции
-					return false;
+					// Выполняем отказ разбора с сообщением о нём в журнал
+					return this->refuse(error_t::INVALID_DOCTYPE);
 				}
 				// Запоминаем начало имени объявляемого атрибута
 				const size_t start = offset;
@@ -3079,10 +3036,8 @@ bool awh::codec::xml::Reader::parseSubset(size_t offset, const size_t end) noexc
 				 * Если имя объявляемого атрибута разобрать не удалось
 				 */
 				if(!this->subsetName(offset, end, false)){
-					// Запоминаем код ошибки разбора
-					this->_error = error_t::INVALID_DOCTYPE;
-					// Выводим отрицательный результат выполнения операции
-					return false;
+					// Выполняем отказ разбора с сообщением о нём в журнал
+					return this->refuse(error_t::INVALID_DOCTYPE);
 				}
 				// Собираемое объявленное по умолчанию значение
 				default_t item;
@@ -3092,10 +3047,8 @@ bool awh::codec::xml::Reader::parseSubset(size_t offset, const size_t end) noexc
 				 * Если вид атрибута не отделён пробельным знаком
 				 */
 				if(!this->subsetSpace(offset, end, true)){
-					// Запоминаем код ошибки разбора
-					this->_error = error_t::INVALID_DOCTYPE;
-					// Выводим отрицательный результат выполнения операции
-					return false;
+					// Выполняем отказ разбора с сообщением о нём в журнал
+					return this->refuse(error_t::INVALID_DOCTYPE);
 				}
 				// Выполняем разделение имени объявляемого атрибута
 				this->divide(qname, item.prefix, item.local);
@@ -3103,19 +3056,15 @@ bool awh::codec::xml::Reader::parseSubset(size_t offset, const size_t end) noexc
 				 * Если вид объявляемого атрибута разобрать не удалось
 				 */
 				if(!this->subsetAttribute(offset, end)){
-					// Запоминаем код ошибки разбора
-					this->_error = error_t::INVALID_DOCTYPE;
-					// Выводим отрицательный результат выполнения операции
-					return false;
+					// Выполняем отказ разбора с сообщением о нём в журнал
+					return this->refuse(error_t::INVALID_DOCTYPE);
 				}
 				/**
 				 * Если объявление по умолчанию не отделено пробельным знаком
 				 */
 				if(!this->subsetSpace(offset, end, true) || (offset >= end)){
-					// Запоминаем код ошибки разбора
-					this->_error = error_t::INVALID_DOCTYPE;
-					// Выводим отрицательный результат выполнения операции
-					return false;
+					// Выполняем отказ разбора с сообщением о нём в журнал
+					return this->refuse(error_t::INVALID_DOCTYPE);
 				}
 				// Признак того, что атрибуту объявлено значение по умолчанию
 				bool declared = true;
@@ -3131,10 +3080,8 @@ bool awh::codec::xml::Reader::parseSubset(size_t offset, const size_t end) noexc
 						 * Если объявленное значение не отделено пробельным знаком
 						 */
 						if(!this->subsetSpace(offset, end, true)){
-							// Запоминаем код ошибки разбора
-							this->_error = error_t::INVALID_DOCTYPE;
-							// Выводим отрицательный результат выполнения операции
-							return false;
+							// Выполняем отказ разбора с сообщением о нём в журнал
+							return this->refuse(error_t::INVALID_DOCTYPE);
 						}
 					/**
 					 * Если объявление по умолчанию задано отведённым договором словом
@@ -3146,10 +3093,8 @@ bool awh::codec::xml::Reader::parseSubset(size_t offset, const size_t end) noexc
 					 * Если отведённое договором слово записано ошибочно
 					 */
 					else {
-						// Запоминаем код ошибки разбора
-						this->_error = error_t::INVALID_DOCTYPE;
-						// Выводим отрицательный результат выполнения операции
-						return false;
+						// Выполняем отказ разбора с сообщением о нём в журнал
+						return this->refuse(error_t::INVALID_DOCTYPE);
 					}
 				}
 				/**
@@ -3160,10 +3105,8 @@ bool awh::codec::xml::Reader::parseSubset(size_t offset, const size_t end) noexc
 					 * Если объявленное значение разобрать не удалось
 					 */
 					if(!this->subsetLiteral(offset, end, literal_t::ATTRIBUTE, &item.value, nullptr)){
-						// Запоминаем код ошибки разбора
-						this->_error = error_t::INVALID_DOCTYPE;
-						// Выводим отрицательный результат выполнения операции
-						return false;
+						// Выполняем отказ разбора с сообщением о нём в журнал
+						return this->refuse(error_t::INVALID_DOCTYPE);
 					}
 					/**
 					 * Выполняем перебор ссылок на сущности в объявленном значении
@@ -3194,10 +3137,8 @@ bool awh::codec::xml::Reader::parseSubset(size_t offset, const size_t end) noexc
 						 *       ошибочного построения ссылки
 						 */
 						if(name.empty()){
-							// Запоминаем код ошибки разбора
-							this->_error = error_t::INVALID_REFERENCE;
-							// Выводим отрицательный результат выполнения операции
-							return false;
+							// Выполняем отказ разбора с сообщением о нём в журнал
+							return this->refuse(error_t::INVALID_REFERENCE);
 						}
 						// Выполняем поиск объявления сущности
 						auto i = this->_entities.find(name);
@@ -3219,10 +3160,8 @@ bool awh::codec::xml::Reader::parseSubset(size_t offset, const size_t end) noexc
 							 *       построению
 							 */
 							if(this->_foreign) continue;
-							// Запоминаем код ошибки разбора
-							this->_error = error_t::UNKNOWN_ENTITY;
-							// Выводим отрицательный результат выполнения операции
-							return false;
+							// Выполняем отказ разбора с сообщением о нём в журнал
+							return this->refuse(error_t::UNKNOWN_ENTITY);
 						}
 						/**
 						 * Если сущность объявлена внешней
@@ -3232,10 +3171,8 @@ bool awh::codec::xml::Reader::parseSubset(size_t offset, const size_t end) noexc
 						 *       источника, а значение обязано быть готовым к выдаче
 						 */
 						if(i->second.external){
-							// Запоминаем код ошибки разбора
-							this->_error = error_t::INVALID_REFERENCE;
-							// Выводим отрицательный результат выполнения операции
-							return false;
+							// Выполняем отказ разбора с сообщением о нём в журнал
+							return this->refuse(error_t::INVALID_REFERENCE);
 						}
 					}
 					// Выполняем добавление объявленного значения к перечню
@@ -3258,10 +3195,8 @@ bool awh::codec::xml::Reader::parseSubset(size_t offset, const size_t end) noexc
 			// Выполняем переход к следующему объявлению
 			continue;
 		}
-		// Запоминаем код ошибки разбора
-		this->_error = error_t::INVALID_DOCTYPE;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выполняем отказ разбора с сообщением о нём в журнал
+		return this->refuse(error_t::INVALID_DOCTYPE);
 	}
 	// Выполняем перенос признака разметки по вложенным ссылкам
 	this->inherit();
@@ -3310,10 +3245,8 @@ bool awh::codec::xml::Reader::parseSubset(size_t offset, const size_t end) noexc
 				 * Если сущность несёт разметку
 				 */
 				if(i->second.markup){
-					// Запоминаем код ошибки разбора
-					this->_error = error_t::INVALID_REFERENCE;
-					// Выводим отрицательный результат выполнения операции
-					return false;
+					// Выполняем отказ разбора с сообщением о нём в журнал
+					return this->refuse(error_t::INVALID_REFERENCE);
 				}
 			}
 		}
@@ -4988,10 +4921,8 @@ bool awh::codec::xml::Reader::bind() noexcept {
 				 * Если объявление для того же префикса уже получено
 				 */
 				if((previous.local == current.local) && (previous.prefix == current.prefix)){
-					// Запоминаем код ошибки разбора
-					this->_error = error_t::DUPLICATE_ATTRIBUTE;
-					// Выводим отрицательный результат выполнения операции
-					return false;
+					// Выполняем отказ разбора с сообщением о нём в журнал
+					return this->refuse(error_t::DUPLICATE_ATTRIBUTE);
 				}
 			}
 		}
@@ -5016,10 +4947,8 @@ bool awh::codec::xml::Reader::bind() noexcept {
 				 * Если объявление для того же префикса уже получено
 				 */
 				if((this->_declares[i].local == record.local) && (this->_declares[i].prefix == record.prefix)){
-					// Запоминаем код ошибки разбора
-					this->_error = error_t::DUPLICATE_ATTRIBUTE;
-					// Выводим отрицательный результат выполнения операции
-					return false;
+					// Выполняем отказ разбора с сообщением о нём в журнал
+					return this->refuse(error_t::DUPLICATE_ATTRIBUTE);
 				}
 			}
 			// Получаем признак объявления пространства имён по умолчанию
@@ -5036,10 +4965,8 @@ bool awh::codec::xml::Reader::bind() noexcept {
 				 * Если выполняется попытка переопределить отведённый договором префикс
 				 */
 				if(record.local == "xmlns"){
-					// Запоминаем код ошибки разбора
-					this->_error = error_t::RESERVED_PREFIX;
-					// Выводим отрицательный результат выполнения операции
-					return false;
+					// Выполняем отказ разбора с сообщением о нём в журнал
+					return this->refuse(error_t::RESERVED_PREFIX);
 				}
 				/**
 				 * Если объявление выполняется для отведённого договором префикса
@@ -5049,10 +4976,8 @@ bool awh::codec::xml::Reader::bind() noexcept {
 					 * Если отведённому договором префиксу дано иное пространство имён
 					 */
 					if(uri != XML_NAMESPACE){
-						// Запоминаем код ошибки разбора
-						this->_error = error_t::RESERVED_PREFIX;
-						// Выводим отрицательный результат выполнения операции
-						return false;
+						// Выполняем отказ разбора с сообщением о нём в журнал
+						return this->refuse(error_t::RESERVED_PREFIX);
 					}
 				/**
 				 * Если объявление выполняется для обычного префикса
@@ -5065,19 +4990,15 @@ bool awh::codec::xml::Reader::bind() noexcept {
 					 *       позволяет: пустое обозначение здесь является ошибкой
 					 */
 					if(uri.empty()){
-						// Запоминаем код ошибки разбора
-						this->_error = error_t::INVALID_NAMESPACE;
-						// Выводим отрицательный результат выполнения операции
-						return false;
+						// Выполняем отказ разбора с сообщением о нём в журнал
+						return this->refuse(error_t::INVALID_NAMESPACE);
 					}
 					/**
 					 * Если обычному префиксу дано отведённое договором пространство имён
 					 */
 					if(uri == XML_NAMESPACE){
-						// Запоминаем код ошибки разбора
-						this->_error = error_t::RESERVED_PREFIX;
-						// Выводим отрицательный результат выполнения операции
-						return false;
+						// Выполняем отказ разбора с сообщением о нём в журнал
+						return this->refuse(error_t::RESERVED_PREFIX);
 					}
 				}
 			}
@@ -5085,19 +5006,15 @@ bool awh::codec::xml::Reader::bind() noexcept {
 			 * Если объявлению дано пространство имён объявлений
 			 */
 			if(uri == XMLNS_NAMESPACE){
-				// Запоминаем код ошибки разбора
-				this->_error = error_t::INVALID_NAMESPACE;
-				// Выводим отрицательный результат выполнения операции
-				return false;
+				// Выполняем отказ разбора с сообщением о нём в журнал
+				return this->refuse(error_t::INVALID_NAMESPACE);
 			}
 			/**
 			 * Если объявлению по умолчанию дано отведённое договором пространство имён
 			 */
 			if(common && (uri == XML_NAMESPACE)){
-				// Запоминаем код ошибки разбора
-				this->_error = error_t::INVALID_NAMESPACE;
-				// Выводим отрицательный результат выполнения операции
-				return false;
+				// Выполняем отказ разбора с сообщением о нём в журнал
+				return this->refuse(error_t::INVALID_NAMESPACE);
 			}
 			// Собираемое объявление пространства имён
 			binding_t binding;
@@ -5154,10 +5071,8 @@ bool awh::codec::xml::Reader::bind() noexcept {
 			 * Если префикс не связан ни с одним пространством имён
 			 */
 			if(uri.length == 0){
-				// Запоминаем код ошибки разбора
-				this->_error = error_t::UNBOUND_PREFIX;
-				// Выводим отрицательный результат выполнения операции
-				return false;
+				// Выполняем отказ разбора с сообщением о нём в журнал
+				return this->refuse(error_t::UNBOUND_PREFIX);
 			}
 			// Запоминаем обозначение пространства имён узла
 			this->_stack.back().name.uri = uri;
@@ -5205,10 +5120,8 @@ bool awh::codec::xml::Reader::bind() noexcept {
 		 * Если префикс не связан ни с одним пространством имён
 		 */
 		if(uri.length == 0){
-			// Запоминаем код ошибки разбора
-			this->_error = error_t::UNBOUND_PREFIX;
-			// Выводим отрицательный результат выполнения операции
-			return false;
+			// Выполняем отказ разбора с сообщением о нём в журнал
+			return this->refuse(error_t::UNBOUND_PREFIX);
 		}
 		// Запоминаем обозначение пространства имён атрибута
 		attribute.name.uri = this->view(uri);
@@ -5277,10 +5190,8 @@ bool awh::codec::xml::Reader::bind() noexcept {
 				if(!same(i, j))
 					// Выполняем переход к следующему атрибуту
 					continue;
-				// Запоминаем код ошибки разбора
-				this->_error = error_t::DUPLICATE_ATTRIBUTE;
-				// Выводим отрицательный результат выполнения операции
-				return false;
+				// Выполняем отказ разбора с сообщением о нём в журнал
+				return this->refuse(error_t::DUPLICATE_ATTRIBUTE);
 			}
 		}
 		// Выводим положительный результат выполнения операции
@@ -5392,10 +5303,8 @@ bool awh::codec::xml::Reader::bind() noexcept {
 		if(!same(this->_digests[i].index, this->_digests[i - 1].index))
 			// Выполняем переход к следующему соседу
 			continue;
-		// Запоминаем код ошибки разбора
-		this->_error = error_t::DUPLICATE_ATTRIBUTE;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выполняем отказ разбора с сообщением о нём в журнал
+		return this->refuse(error_t::DUPLICATE_ATTRIBUTE);
 	}
 	// Выводим положительный результат выполнения операции
 	return true;
@@ -6883,12 +6792,19 @@ awh::codec::xml::standalone_t awh::codec::xml::Reader::standalone() const noexce
  * @brief Конструктор
  *
  */
-awh::codec::xml::Reader::Reader() noexcept :
+awh::codec::xml::Reader::Reader(const log_t * log) noexcept :
  _final(false), _root(false), _declared(false), _doctype(false), _empty(false),
  _closing(false), _cdata(false), _partial(false), _carried(false), _section(0), _dirty(false), _foreign(false), _overlong(false), _offset(0), _consumed(0), _line(1), _column(1),
  _depth(0), _truncate(string::npos), _expansion(0), _state(state_t::HUNGRY),
  _event(event_t::NONE), _error(error_t::NONE), _decoding(error_t::NONE), _encoding(encoding_t::NONE),
- _standalone(standalone_t::NONE), _space(space_t::DEFAULT) {
+ _standalone(standalone_t::NONE), _space(space_t::DEFAULT), _log(log) {
+	/**
+	 * Выполняем установку объекта ведения журнала разбору кодировок
+	 *
+	 * @note Приведение к UTF-8 сообщает о бедах своих само, и молчать ему нельзя: текст
+	 *       негодной кодировки до разбора не доходит вовсе
+	 */
+	this->_decoder.setLogger(log);
 	// Выполняем сброс разбора в исходное состояние
 	this->reset();
 }
@@ -6896,14 +6812,22 @@ awh::codec::xml::Reader::Reader() noexcept :
  * @brief Конструктор
  *
  * @param settings настройки разбора текста разметки
+ * @param log      объект ведения журнала работы
  *
  */
-awh::codec::xml::Reader::Reader(const settings_t & settings) noexcept :
+awh::codec::xml::Reader::Reader(const settings_t & settings, const log_t * log) noexcept :
  _final(false), _root(false), _declared(false), _doctype(false), _empty(false),
  _closing(false), _cdata(false), _partial(false), _carried(false), _section(0), _dirty(false), _foreign(false), _overlong(false), _offset(0), _consumed(0), _line(1), _column(1),
  _depth(0), _truncate(string::npos), _expansion(0), _settings(settings),
  _state(state_t::HUNGRY), _event(event_t::NONE), _error(error_t::NONE), _decoding(error_t::NONE),
- _encoding(encoding_t::NONE), _standalone(standalone_t::NONE), _space(space_t::DEFAULT) {
+ _encoding(encoding_t::NONE), _standalone(standalone_t::NONE), _space(space_t::DEFAULT), _log(log) {
+	/**
+	 * Выполняем установку объекта ведения журнала разбору кодировок
+	 *
+	 * @note Приведение к UTF-8 сообщает о бедах своих само, и молчать ему нельзя: текст
+	 *       негодной кодировки до разбора не доходит вовсе
+	 */
+	this->_decoder.setLogger(log);
 	// Выполняем сброс разбора в исходное состояние
 	this->reset();
 }
@@ -6982,10 +6906,8 @@ bool awh::codec::xml::Reader::inject(const size_t begin, const size_t end, const
 	 * Если глубина вложенности подстановок превышает допустимую
 	 */
 	if(this->_splices.size() >= MAX_ENTITY_DEPTH){
-		// Запоминаем код ошибки разбора
-		this->_error = error_t::ENTITY_DEPTH_EXCEEDED;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выполняем отказ разбора с сообщением о нём в журнал
+		return this->refuse(error_t::ENTITY_DEPTH_EXCEEDED);
 	}
 	// Выполняем поиск объявления сущности
 	this->_lookup.assign(name);
@@ -7004,19 +6926,15 @@ bool awh::codec::xml::Reader::inject(const size_t begin, const size_t end, const
 	 *          бы к несуществующему объявлению
 	 */
 	if(i == this->_entities.end()){
-		// Запоминаем код ошибки разбора
-		this->_error = error_t::UNKNOWN_ENTITY;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выполняем отказ разбора с сообщением о нём в журнал
+		return this->refuse(error_t::UNKNOWN_ENTITY);
 	}
 	/**
 	 * Если подстановка сущности выполняется в текущий миг
 	 */
 	if(i->second.active){
-		// Запоминаем код ошибки разбора
-		this->_error = error_t::RECURSIVE_ENTITY;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выполняем отказ разбора с сообщением о нём в журнал
+		return this->refuse(error_t::RECURSIVE_ENTITY);
 	}
 	// Выполняем накопление общего объёма подстановки сущностей
 	this->_expansion += i->second.value.size();
@@ -7024,10 +6942,8 @@ bool awh::codec::xml::Reader::inject(const size_t begin, const size_t end, const
 	 * Если общий объём подстановки превысил допустимый
 	 */
 	if(this->_expansion > this->_settings.maxExpansion){
-		// Запоминаем код ошибки разбора
-		this->_error = error_t::ENTITY_LIMIT_EXCEEDED;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выполняем отказ разбора с сообщением о нём в журнал
+		return this->refuse(error_t::ENTITY_LIMIT_EXCEEDED);
 	}
 	// Собираемая область подставленной сущности
 	splice_t splice;

@@ -75,6 +75,17 @@ fi
 # В подмодуле его нет вовсе - там pcre2.h.in, - и путь включения ведёт в каталог сборки
 ##
 HEADERS=$(dirname "$(find "$OUT/pcre2" -name pcre2.h | head -1)")
+##
+# Зависимости системные, журналом требуемые
+#
+# Сжатие журнальных файлов ведётся zlib, а у macOS объект фреймворка обращается
+# к основанию системы средствами Objective-C
+##
+LIBS="-lz"
+case "$(uname -s)" in
+	Darwin) LIBS="$LIBS -framework Foundation" ;;
+	*) LIBS="$LIBS -lpthread" ;;
+esac
 echo "--- сборка замеров со сличением"
 ##
 # Состав исходников берётся МАСКОЙ, а не перечнем поимённо
@@ -83,11 +94,34 @@ echo "--- сборка замеров со сличением"
 # него не попал, и стенд отказал связыванием. Маска же берёт каталог целиком, а
 # подкаталоги (`src/regex/grok`) в неё не входят - и не нужны здесь
 ##
+##
+# Свой набор исходников захвата выделений на систему
+#
+# Приём захвата у систем разный: подмена именами у ELF, зона у macOS, переписывание
+# входа у MS Windows. Лишний файл захвата не соберётся - у него свои заголовки системы
+##
+case "$(uname -s)" in
+	Darwin) CAPTURE="$ROOT/src/alloc/capture/mach.cpp" ;;
+	MINGW*|MSYS*|CYGWIN*) CAPTURE="$ROOT/src/alloc/capture/pe.cpp" ;;
+	*) CAPTURE="$ROOT/src/alloc/capture/elf.cpp" ;;
+esac
+##
+# Опора модуля на журнал событий тянет за собою основание фреймворка
+#
+# Модуль сообщает журналом отказы, потребителю иначе невидимые: размещение
+# исполняемой памяти, запрещённое ядром укреплённым, и отказ сборки выражения.
+# Журнал же опирается на объект фреймворка, а тот - на время, систему, разбор
+# адресов и распределитель памяти. Перечень этот и есть цена сообщения об отказах;
+# библиотеки целиком он всё равно не составляет, и сборка идёт секундами
+##
+SUPPORT="$ROOT/src/sys/log.cpp $ROOT/src/sys/fmk.cpp $ROOT/src/sys/chrono.cpp \
+ $ROOT/src/sys/os.cpp $ROOT/src/net/nwt.cpp $ROOT/src/num/lexical/table.cpp \
+ $ROOT/src/encoding/charset/*.cpp $ROOT/src/alloc/*.cpp $CAPTURE"
 SOURCES="$ROOT/benchmark/main.cpp $ROOT/benchmark/regex/matching/matching.cpp \
- $ROOT/src/regex/*.cpp $ROOT/src/encoding/unicode/*.cpp"
-$CXX -std=c++17 -O2 $FLAGS -DAWH_BENCHMARK_PCRE2 \
+ $ROOT/src/regex/*.cpp $ROOT/src/encoding/unicode/*.cpp $SUPPORT"
+$CXX -std=c++17 -O2 -Wno-c++11-narrowing $FLAGS -DAWH_BENCHMARK_PCRE2 \
  -I "$ROOT/include" -I "$ROOT/tools/benchmark/syscount" -I "$HEADERS" \
- -o "$OUT/bench-regex" $SOURCES "$OUT/pcre2/libpcre2-8.a" > "$OUT/build.log" 2>&1
+ -o "$OUT/bench-regex" $SOURCES "$OUT/pcre2/libpcre2-8.a" $LIBS > "$OUT/build.log" 2>&1
 ##
 # Вывод собирателя печатается ИЗ ФАЙЛА, а не через `head` из канала
 #

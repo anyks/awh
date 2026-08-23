@@ -138,7 +138,7 @@ namespace {
 			 */
 			void build(Medium & medium, const vector <string> & records) noexcept {
 				// Сборщик контейнера
-				abc::assembler_t assembler;
+				abc::assembler_t assembler(this->_log.get());
 				// Выполняем перебор всех собираемых записей контейнера
 				for(const string & text : records){
 					// Выполняем сборку очередной записи
@@ -179,7 +179,7 @@ namespace {
 			 */
 			bool pick(Medium & medium, const uint64_t number, vector <uint8_t> & result, abc::error_t & error) noexcept {
 				// Выборщик записей контейнера
-				abc::fetcher_t fetcher;
+				abc::fetcher_t fetcher(this->_log.get());
 				// Выполняем открытие контейнера отданной работой чтения
 				if(!fetcher.open([&medium](const uint64_t offset, const size_t size, vector <uint8_t> & data) noexcept -> bool {
 					// Выполняем чтение затребованных октетов контейнера
@@ -212,7 +212,7 @@ TEST_F(EditorFixture, AppendCommit) {
 	// Выполняем получение длины собранного контейнера
 	const size_t origin = medium.data.size();
 	// Правщик контейнера
-	abc::editor_t editor;
+	abc::editor_t editor(this->_log.get());
 	// Выполняем открытие контейнера правщиком
 	ASSERT_TRUE(this->open(editor, medium)) << "код отказа: " << abc::message(editor.error());
 	// Выполняем проверку количества записей открытого контейнера
@@ -253,7 +253,7 @@ TEST_F(EditorFixture, ReplaceRedirects) {
 	// Выполняем сборку контейнера с тремя записями
 	this->build(medium, {"первая", "вторая", "третья"});
 	// Правщик контейнера
-	abc::editor_t editor;
+	abc::editor_t editor(this->_log.get());
 	// Выполняем открытие контейнера правщиком
 	ASSERT_TRUE(this->open(editor, medium)) << "код отказа: " << abc::message(editor.error());
 	// Выполняем сборку новой записи
@@ -290,7 +290,7 @@ TEST_F(EditorFixture, EraseMarks) {
 	// Выполняем сборку контейнера с тремя записями
 	this->build(medium, {"первая", "вторая", "третья"});
 	// Правщик контейнера
-	abc::editor_t editor;
+	abc::editor_t editor(this->_log.get());
 	// Выполняем открытие контейнера правщиком
 	ASSERT_TRUE(this->open(editor, medium)) << "код отказа: " << abc::message(editor.error());
 	// Выполняем снос второй записи контейнера
@@ -326,7 +326,7 @@ TEST_F(EditorFixture, PendingReadable) {
 	// Выполняем сборку контейнера с одной записью
 	this->build(medium, {"первая"});
 	// Правщик контейнера
-	abc::editor_t editor;
+	abc::editor_t editor(this->_log.get());
 	// Выполняем открытие контейнера правщиком
 	ASSERT_TRUE(this->open(editor, medium)) << "код отказа: " << abc::message(editor.error());
 	// Выполняем сборку дописываемой записи
@@ -367,7 +367,7 @@ TEST_F(EditorFixture, CommitFailureKeepsPending) {
 	// Выполняем сборку контейнера с одной записью
 	this->build(medium, {"первая"});
 	// Правщик контейнера
-	abc::editor_t editor;
+	abc::editor_t editor(this->_log.get());
 	// Выполняем открытие контейнера правщиком
 	ASSERT_TRUE(this->open(editor, medium)) << "код отказа: " << abc::message(editor.error());
 	// Выполняем сборку дописываемой записи
@@ -410,7 +410,7 @@ TEST_F(EditorFixture, TailHeaderRecovery) {
 	// Выполняем сборку контейнера с одной записью
 	this->build(medium, {"первая"});
 	// Правщик контейнера
-	abc::editor_t editor;
+	abc::editor_t editor(this->_log.get());
 	// Выполняем открытие контейнера правщиком
 	ASSERT_TRUE(this->open(editor, medium)) << "код отказа: " << abc::message(editor.error());
 	// Выполняем сборку дописываемой записи
@@ -426,7 +426,7 @@ TEST_F(EditorFixture, TailHeaderRecovery) {
 	 */
 	medium.data.at(4) ^= 0xFF;
 	// Правщик контейнера, открываемый после порчи головного заголовка
-	abc::editor_t restored;
+	abc::editor_t restored(this->_log.get());
 	// Выполняем открытие контейнера правщиком
 	ASSERT_TRUE(this->open(restored, medium)) << "код отказа: " << abc::message(restored.error());
 	/**
@@ -454,7 +454,7 @@ TEST_F(EditorFixture, WasteSkipped) {
 	// Выполняем сборку контейнера с одной записью
 	this->build(medium, {"первая"});
 	// Правщик контейнера
-	abc::editor_t editor;
+	abc::editor_t editor(this->_log.get());
 	// Выполняем открытие контейнера правщиком
 	ASSERT_TRUE(this->open(editor, medium)) << "код отказа: " << abc::message(editor.error());
 	// Выполняем сборку дописываемой записи
@@ -465,7 +465,7 @@ TEST_F(EditorFixture, WasteSkipped) {
 	// Выполняем фиксацию накопленных правок на носителе
 	ASSERT_TRUE(editor.commit()) << "код отказа: " << abc::message(editor.error());
 	// Сниматель контейнера
-	abc::loader_t loader;
+	abc::loader_t loader(this->_log.get());
 	// Выполняем подачу правленного контейнера снимателю
 	ASSERT_TRUE(loader.feed(medium.data.data(), medium.data.size()));
 	// Собираемое содержимое всех снятых кадров
@@ -502,7 +502,7 @@ TEST_F(EditorFixture, AutomaticCommit) {
 	// Выполняем сборку контейнера с одной записью
 	this->build(medium, {"первая"});
 	// Правщик контейнера
-	abc::editor_t editor;
+	abc::editor_t editor(this->_log.get());
 	// Выполняем открытие контейнера правщиком
 	ASSERT_TRUE(this->open(editor, medium)) << "код отказа: " << abc::message(editor.error());
 	// Получаем настройки правки контейнера
@@ -548,7 +548,7 @@ TEST_F(EditorFixture, CompactRebuilds) {
 	// Выполняем сборку контейнера с четырьмя записями
 	this->build(medium, {"первая", "вторая", "третья", "четвёртая"});
 	// Правщик контейнера
-	abc::editor_t editor;
+	abc::editor_t editor(this->_log.get());
 	// Выполняем открытие контейнера правщиком
 	ASSERT_TRUE(this->open(editor, medium)) << "код отказа: " << abc::message(editor.error());
 	// Выполняем сборку новой записи взамен прежней
@@ -595,7 +595,7 @@ TEST_F(EditorFixture, CompactRebuilds) {
 	// Выполняем проверку кода отказа выборки снесённой записи
 	ASSERT_EQ(error, abc::error_t::MISSING_RECORD);
 	// Правщик убранного контейнера
-	abc::editor_t opened;
+	abc::editor_t opened(this->_log.get());
 	// Выполняем открытие убранного контейнера правщиком
 	ASSERT_TRUE(this->open(opened, cleaned)) << "код отказа: " << abc::message(opened.error());
 	// Выполняем проверку того, что мусора в убранном контейнере не осталось
@@ -613,7 +613,7 @@ TEST_F(EditorFixture, CompactCommitsPending) {
 	// Выполняем сборку контейнера с одной записью
 	this->build(medium, {"первая"});
 	// Правщик контейнера
-	abc::editor_t editor;
+	abc::editor_t editor(this->_log.get());
 	// Выполняем открытие контейнера правщиком
 	ASSERT_TRUE(this->open(editor, medium)) << "код отказа: " << abc::message(editor.error());
 	// Выполняем сборку дописываемой записи
@@ -652,7 +652,7 @@ TEST_F(EditorFixture, DeadlineCommit) {
 	// Выполняем сборку контейнера с одной записью
 	this->build(medium, {"первая"});
 	// Правщик контейнера
-	abc::editor_t editor;
+	abc::editor_t editor(this->_log.get());
 	// Выполняем открытие контейнера правщиком
 	ASSERT_TRUE(this->open(editor, medium)) << "код отказа: " << abc::message(editor.error());
 	// Получаем настройки правки контейнера
@@ -706,7 +706,7 @@ TEST_F(EditorFixture, ThreadedCommit) {
 	// Выполняем сборку контейнера с одной записью
 	this->build(medium, {"первая"});
 	// Правщик контейнера
-	abc::editor_t editor;
+	abc::editor_t editor(this->_log.get());
 	// Выполняем открытие контейнера правщиком
 	ASSERT_TRUE(this->open(editor, medium)) << "код отказа: " << abc::message(editor.error());
 	// Получаем настройки правки контейнера
@@ -771,7 +771,7 @@ TEST_F(EditorFixture, SignedCommit) {
 	// Выполняем сборку контейнера с двумя записями
 	this->build(medium, {"первая", "вторая"});
 	// Правщик контейнера
-	abc::editor_t editor;
+	abc::editor_t editor(this->_log.get());
 	// Выполняем открытие контейнера правщиком
 	ASSERT_TRUE(this->open(editor, medium)) << "код отказа: " << abc::message(editor.error());
 	// Выполняем объявление подписи правимого контейнера
@@ -789,7 +789,7 @@ TEST_F(EditorFixture, SignedCommit) {
 	 * Выполняем поверку подписи владельца правленного контейнера: правка положила
 	 * свою подпись, и та обязана сойтись на новом теле
 	 */
-	ASSERT_TRUE(abc::verify(* this->_crypto, "владелец", medium.data.data(), medium.data.size(), error))
+	ASSERT_TRUE(abc::verify(* this->_crypto, "владелец", medium.data.data(), medium.data.size(), error, this->_log.get()))
 		<< "код отказа: " << abc::message(error);
 	// Буфер выбранной записи контейнера
 	vector <uint8_t> picked;
@@ -808,14 +808,14 @@ TEST_F(EditorFixture, SignedCommit) {
 	 * Выполняем поверку подписи после второй фиксации: дерево свёрток ведётся
 	 * дописыванием, и вторая фиксация обязана сойтись наравне с первой
 	 */
-	ASSERT_TRUE(abc::verify(* this->_crypto, "владелец", medium.data.data(), medium.data.size(), error))
+	ASSERT_TRUE(abc::verify(* this->_crypto, "владелец", medium.data.data(), medium.data.size(), error, this->_log.get()))
 		<< "код отказа: " << abc::message(error);
 	// Выполняем проверку того, что поколение записи контейнера возросло дважды
 	ASSERT_EQ(editor.header().generation, 2ull);
 	// Выполняем порчу одного октета тела правленного контейнера
 	medium.data.at(abc::HEADER_LENGTH + abc::CHUNK_HEADER + 1) ^= 0xFF;
 	// Выполняем проверку отказа поверки подписи после порчи тела
-	ASSERT_FALSE(abc::verify(* this->_crypto, "владелец", medium.data.data(), medium.data.size(), error));
+	ASSERT_FALSE(abc::verify(* this->_crypto, "владелец", medium.data.data(), medium.data.size(), error, this->_log.get()));
 	// Выполняем проверку кода отказа поверки подписи
 	ASSERT_EQ(error, abc::error_t::REFUSED_SIGNATURE);
 }
@@ -835,7 +835,7 @@ TEST_F(EditorFixture, SignedWasteCounted) {
 	// Выполняем сборку контейнера с одной записью
 	this->build(medium, {"первая"});
 	// Правщик контейнера
-	abc::editor_t editor;
+	abc::editor_t editor(this->_log.get());
 	// Выполняем открытие контейнера правщиком
 	ASSERT_TRUE(this->open(editor, medium)) << "код отказа: " << abc::message(editor.error());
 	// Выполняем объявление подписи правимого контейнера
@@ -852,12 +852,12 @@ TEST_F(EditorFixture, SignedWasteCounted) {
 	// Код отказа поверки подписи владельца
 	abc::error_t error = abc::error_t::NONE;
 	// Выполняем поверку подписи владельца правленного контейнера
-	ASSERT_TRUE(abc::verify(* this->_crypto, "владелец", medium.data.data(), medium.data.size(), error))
+	ASSERT_TRUE(abc::verify(* this->_crypto, "владелец", medium.data.data(), medium.data.size(), error, this->_log.get()))
 		<< "код отказа: " << abc::message(error);
 	// Выполняем порчу одного октета мусорного кадра прежнего оглавления
 	medium.data.at(static_cast <size_t> (waste) + abc::CHUNK_HEADER) ^= 0xFF;
 	// Выполняем проверку отказа поверки подписи после порчи мусорного кадра
-	ASSERT_FALSE(abc::verify(* this->_crypto, "владелец", medium.data.data(), medium.data.size(), error));
+	ASSERT_FALSE(abc::verify(* this->_crypto, "владелец", medium.data.data(), medium.data.size(), error, this->_log.get()));
 	// Выполняем проверку кода отказа поверки подписи
 	ASSERT_EQ(error, abc::error_t::REFUSED_SIGNATURE);
 }
@@ -871,7 +871,7 @@ TEST_F(EditorFixture, SignedWasteCounted) {
  */
 TEST_F(EditorFixture, Refusals) {
 	// Правщик неоткрытого контейнера
-	abc::editor_t closed;
+	abc::editor_t closed(this->_log.get());
 	// Выполняем сборку записи правки
 	const vector <uint8_t> item = abc::value_t(string{"запись"}).dump();
 	// Выполняем проверку отказа дописывания в неоткрытый контейнер
@@ -889,7 +889,7 @@ TEST_F(EditorFixture, Refusals) {
 	// Выполняем сборку контейнера с двумя записями
 	this->build(medium, {"первая", "вторая"});
 	// Правщик контейнера
-	abc::editor_t editor;
+	abc::editor_t editor(this->_log.get());
 	// Выполняем открытие контейнера правщиком
 	ASSERT_TRUE(this->open(editor, medium)) << "код отказа: " << abc::message(editor.error());
 	// Выполняем проверку количества записей открытого контейнера
@@ -952,7 +952,7 @@ TEST_F(EditorFixture, ResetForgets) {
 	// Полная длина контейнера до правки
 	const size_t length = medium.data.size();
 	// Правщик контейнера
-	abc::editor_t editor;
+	abc::editor_t editor(this->_log.get());
 	// Выполняем открытие контейнера правщиком
 	ASSERT_TRUE(this->open(editor, medium)) << "код отказа: " << abc::message(editor.error());
 	// Выполняем сборку дописываемой записи
@@ -998,7 +998,7 @@ TEST_F(EditorFixture, EraseAfterReplace) {
 	// Выполняем сборку контейнера с тремя записями
 	this->build(medium, {"первая", "вторая", "третья"});
 	// Правщик контейнера
-	abc::editor_t editor;
+	abc::editor_t editor(this->_log.get());
 	// Выполняем открытие контейнера правщиком
 	ASSERT_TRUE(this->open(editor, medium)) << "код отказа: " << abc::message(editor.error());
 	// Октеты записи, какою правится вторая запись контейнера
@@ -1044,7 +1044,7 @@ TEST_F(EditorFixture, ReplaceAfterErase) {
 	// Выполняем сборку контейнера с тремя записями
 	this->build(medium, {"первая", "вторая", "третья"});
 	// Правщик контейнера
-	abc::editor_t editor;
+	abc::editor_t editor(this->_log.get());
 	// Выполняем открытие контейнера правщиком
 	ASSERT_TRUE(this->open(editor, medium)) << "код отказа: " << abc::message(editor.error());
 	// Выполняем снос второй записи контейнера

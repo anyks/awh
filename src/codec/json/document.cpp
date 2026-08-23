@@ -141,7 +141,21 @@ namespace {
  * @brief Конструктор
  *
  */
-awh::codec::json::Document::Document() noexcept : _error(error_t::NONE), _named(0), _keyed(false), _pointer(0), _base(0), _completed(false), _callback(nullptr) {
+void awh::codec::json::Document::setLogger(const log_t * log) noexcept {
+	// Устанавливаем объект ведения журнала работы
+	this->_log = log;
+	// Выполняем установку объекта ведения журнала хранимому чтению
+	this->_reader.setLogger(log);
+}
+/**
+ * @brief Конструктор
+ *
+ * @param log объект ведения журнала работы
+ *
+ */
+awh::codec::json::Document::Document(const log_t * log) noexcept : _error(error_t::NONE), _named(0), _keyed(false), _pointer(0), _base(0), _completed(false), _callback(nullptr), _log(log) {
+	// Выполняем установку объекта ведения журнала хранимому чтению
+	this->_reader.setLogger(log);
 	/**
 	 * Выполняем заведение запаса памяти под сборку дерева документа
 	 *

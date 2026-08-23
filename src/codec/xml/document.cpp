@@ -121,7 +121,7 @@ bool awh::codec::xml::Document::parse(const string_view text, const reader_t::se
 	// Выполняем очистку дерева разметки
 	this->clear();
 	// Объект потокового чтения текста разметки
-	reader_t reader(settings);
+	reader_t reader(settings, this->_log);
 	// Количество начал разметки в исходном тексте
 	size_t tags = 0;
 	{
@@ -425,6 +425,25 @@ bool awh::codec::xml::Document::parse(const string_view text, const reader_t::se
 			this->_error = error_t::OVERFLOW_LIMIT;
 			// Запоминаем положение обнаруженной ошибки
 			this->_errorLocation = location;
+			/**
+			 * Если объект ведения журнала работы установлен
+			 */
+			if(this->_log != nullptr){
+				/**
+				 * Выполняем запись об отказе сборки дерева в журнал
+				 *
+				 * @note Отказ этот беда КРИТИЧЕСКАЯ, в отличие от отказа разбора: текст
+				 *       разобрался, а места под дерево не хватило - беда своя, не чужая
+				 */
+				#if DEBUG_MODE
+					this->_log->debug("%s", __PRETTY_FUNCTION__, ::std::make_tuple(location.line, location.column),
+					                  log_t::flag_t::CRITICAL, message(error_t::OVERFLOW_LIMIT));
+				#else
+					this->_log->print("XML document build failed at line %llu column %llu: %s", log_t::flag_t::CRITICAL,
+					                  static_cast <unsigned long long> (location.line),
+					                  static_cast <unsigned long long> (location.column), message(error_t::OVERFLOW_LIMIT));
+				#endif
+			}
 			// Выводим отрицательный результат выполнения операции
 			return false;
 		}
@@ -706,7 +725,17 @@ void awh::codec::xml::Document::clear() noexcept {
  * @brief Конструктор
  *
  */
-awh::codec::xml::Document::Document() noexcept : _error(error_t::NONE) {}
+awh::codec::xml::Document::Document(const log_t * log) noexcept : _error(error_t::NONE), _log(log) {}
+/**
+ * @brief Метод установки объекта ведения журнала работы
+ *
+ * @param log объект ведения журнала работы
+ *
+ */
+void awh::codec::xml::Document::setLogger(const log_t * log) noexcept {
+	// Устанавливаем объект ведения журнала работы
+	this->_log = log;
+}
 /**
  * @brief Деструктор
  *

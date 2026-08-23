@@ -43,6 +43,11 @@
 /**
  * Подключаем заголовочные файлы модуля
  */
+#include <sys/log.hpp>
+
+/**
+ * Подключаем заголовочные файлы модуля
+ */
 #include "common.hpp"
 
 /**
@@ -216,6 +221,41 @@ namespace awh {
 					bool _empty;
 					// Признак того, что имя поля объекта записано, а значение ещё нет
 					bool _keyed;
+				private:
+					/**
+					 * \~russian
+					 * Объект ведения журнала работы
+					 *
+					 * @note Кода отказа у записи нет вовсе, и наружу идёт голая ложь: журнал
+					 *       здесь ЕДИНСТВЕННЫЙ способ узнать, чем запись не устроила
+					 *
+					 * \~english
+					 * Object of the keeping of the work log
+					 *
+					 * \~
+					 */
+					const log_t * _log = nullptr;
+				private:
+					/**
+					 * \~russian
+					 * @brief Метод отказа записи с сообщением о доводе его в журнал
+					 *
+					 * @details Способ этот зовётся лишь там, где отказ ВОЗНИКАЕТ. Проброс чужого
+					 * отказа через него не идёт: о беде сообщено там, где она случилась, и
+					 * второе сообщение лишь запутало бы читающего журнал
+					 *
+					 * @param reason довод отказа записи
+					 * @return       всегда ложь, ради возврата им из места отказа
+					 *
+					 * \~english
+					 * @brief Method of the refusal of the writing with a report of its reason to the log
+					 *
+					 * @param reason the reason of the refusal of the writing
+					 * @return       always false, for the returning by it from the place of the refusal
+					 *
+					 * \~
+					 */
+					bool refuse(const char * reason) const noexcept;
 					// Признак того, что хотя бы один документ уже записан
 					bool _started;
 				private:
@@ -600,7 +640,21 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Writer() noexcept;
+					explicit Writer(const log_t * log = nullptr) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод установки объекта ведения журнала работы
+					 *
+					 * @param log объект ведения журнала работы
+					 *
+					 * \~english
+					 * @brief Method of the setting of the object of the keeping of the work log
+					 *
+					 * @param log the object of the keeping of the work log
+					 *
+					 * \~
+					 */
+					void setLogger(const log_t * log) noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор

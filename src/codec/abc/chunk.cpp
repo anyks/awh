@@ -28,6 +28,7 @@
  * Подключаем заголовочный файл модуля
  */
 #include <codec/abc/chunk.hpp>
+#include <codec/abc/encoding.hpp>
 
 /**
  * Стандартные заголовочные файлы
@@ -59,42 +60,6 @@ namespace {
 	 *
 	 */
 	constexpr uint8_t Waste = awh::codec::abc::CHUNK_WASTE;
-	/**
-	 * @brief Функция укладки целого числа установленной ширины
-	 *
-	 * @param buffer буфер, куда следует уложить запись
-	 * @param value  укладываемое значение
-	 * @param width  ширина записи в октетах
-	 *
-	 */
-	void lay(uint8_t * buffer, const uint64_t value, const uint8_t width) noexcept {
-		/**
-		 * Выполняем перебор всех октетов записи, от младшего к старшему
-		 */
-		for(uint8_t i = 0; i < width; i++)
-			// Выполняем укладку очередного октета записи
-			buffer[i] = static_cast <uint8_t> ((value >> (i * 8)) & 0xFF);
-	}
-	/**
-	 * @brief Функция снятия целого числа установленной ширины
-	 *
-	 * @param buffer буфер поданной записи
-	 * @param width  ширина записи в октетах
-	 * @return       снятое значение
-	 *
-	 */
-	uint64_t take(const uint8_t * buffer, const uint8_t width) noexcept {
-		// Собираемое значение
-		uint64_t result = 0;
-		/**
-		 * Выполняем перебор всех октетов записи, от младшего к старшему
-		 */
-		for(uint8_t i = 0; i < width; i++)
-			// Выполняем сборку значения из очередного октета записи
-			result |= (static_cast <uint64_t> (buffer[i]) << (i * 8));
-		// Выводим собранное значение
-		return result;
-	}
 };
 
 /**
@@ -108,9 +73,47 @@ awh::codec::abc::Packer::Settings::Settings() noexcept :
 /**
  * @brief Конструктор
  *
+ * @param log объект для работы с логами
+ *
  */
-awh::codec::abc::Packer::Packer() noexcept :
- _error(error_t::NONE), _compressor(nullptr), _crypto(nullptr) {}
+awh::codec::abc::Packer::Packer(const log_t * log) noexcept :
+ _error(error_t::NONE), _compressor(nullptr), _crypto(nullptr), _log(log) {}
+/**
+ * @brief Метод объявления отказа укладки либо снятия кадра
+ *
+ * @param error объявляемый код отказа
+ * @return      признак успешности, всегда ложь
+ *
+ */
+bool awh::codec::abc::Packer::fail(const error_t error) noexcept {
+	// Выполняем установку кода отказа
+	this->_error = error;
+	/**
+	 * Если объект логирования отдан, доносим об отказе.
+	 *
+	 * @warning Сброс кода отказа сюда НЕ идёт: воронка эта объявляет отказ, а сброс
+	 *          лишь снимает прежний, и донесение о нём наполняло бы журнал записями
+	 *          «no error» на всякий успешный вызов. Проверено на себе
+	 */
+	if((error != error_t::NONE) && (this->_log != nullptr)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("ABC: %s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (error)),
+			 log_t::flag_t::WARNING, abc::message(error));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("ABC: %s", log_t::flag_t::WARNING, abc::message(error));
+		#endif
+	}
+	// Сообщаем, что работа отвечена отказом
+	return false;
+}
 /**
  * @brief Метод подбора метода сжатия под вид содержимого
  *
@@ -172,14 +175,14 @@ bool awh::codec::abc::Packer::pack(const void * buffer, const size_t size, const
 	// Если буфер укладываемого содержимого не существует, а октеты объявлены
 	if((buffer == nullptr) && (size > 0)){
 		// Выполняем установку кода внутреннего отказа
-		this->_error = error_t::INTERNAL;
+		this->fail(error_t::INTERNAL);
 		// Сообщаем, что укладка отвечена отказом
 		return false;
 	}
 	// Если длина укладываемого содержимого не вмещается в запись кадра
 	if(size > static_cast <size_t> (numeric_limits <uint32_t>::max())){
 		// Выполняем установку кода отказа длины
-		this->_error = error_t::INVALID_LENGTH;
+		this->fail(error_t::INVALID_LENGTH);
 		// Сообщаем, что укладка отвечена отказом
 		return false;
 	}
@@ -220,7 +223,7 @@ bool awh::codec::abc::Packer::pack(const void * buffer, const size_t size, const
 		// Если модуль шифрования не отдан
 		if(this->_crypto == nullptr){
 			// Выполняем установку кода отказа шифрования
-			this->_error = error_t::ENCRYPTION_FAILED;
+			this->fail(error_t::ENCRYPTION_FAILED);
 			// Сообщаем, что укладка отвечена отказом
 			return false;
 		}
@@ -236,7 +239,7 @@ bool awh::codec::abc::Packer::pack(const void * buffer, const size_t size, const
 		// Если шифрование содержимого отвечено отказом
 		if(secured.empty() && !payload.empty()){
 			// Выполняем установку кода отказа шифрования
-			this->_error = error_t::ENCRYPTION_FAILED;
+			this->fail(error_t::ENCRYPTION_FAILED);
 			// Сообщаем, что укладка отвечена отказом
 			return false;
 		}
@@ -248,7 +251,7 @@ bool awh::codec::abc::Packer::pack(const void * buffer, const size_t size, const
 	// Если длина уложенного содержимого не вмещается в запись кадра
 	if(payload.size() > static_cast <size_t> (numeric_limits <uint32_t>::max())){
 		// Выполняем установку кода отказа длины
-		this->_error = error_t::INVALID_LENGTH;
+		this->fail(error_t::INVALID_LENGTH);
 		// Сообщаем, что укладка отвечена отказом
 		return false;
 	}
@@ -274,13 +277,13 @@ bool awh::codec::abc::Packer::pack(const void * buffer, const size_t size, const
 	// Выполняем укладку разрядов кадра
 	head[1] = static_cast <uint8_t> (encrypted ? Encrypted : 0x00);
 	// Выполняем укладку длины уложенного содержимого кадра
-	lay(head + 4, static_cast <uint64_t> (payload.size()), 4);
+	abc::fixed(head + 4, static_cast <uint64_t> (payload.size()), 4);
 	// Выполняем укладку длины исходного содержимого кадра
-	lay(head + 8, static_cast <uint64_t> (size), 4);
+	abc::fixed(head + 8, static_cast <uint64_t> (size), 4);
 	// Выполняем укладку порядкового номера кадра
-	lay(head + 12, number, 8);
+	abc::fixed(head + 12, number, 8);
 	// Выполняем укладку поколения записи кадра
-	lay(head + 20, static_cast <uint64_t> (generation), 4);
+	abc::fixed(head + 20, static_cast <uint64_t> (generation), 4);
 	// Если содержимое кадра не пусто
 	if(!payload.empty())
 		// Выполняем укладку содержимого кадра
@@ -310,14 +313,14 @@ bool awh::codec::abc::Packer::unpack(const void * buffer, const size_t size, siz
 	// Если буфер поданных октетов не существует
 	if(buffer == nullptr){
 		// Выполняем установку кода внутреннего отказа
-		this->_error = error_t::INTERNAL;
+		this->fail(error_t::INTERNAL);
 		// Сообщаем, что кадр не снят
 		return false;
 	}
 	// Если поданных октетов недостаёт на заголовок кадра
 	if((size < offset) || ((size - offset) < CHUNK_HEADER)){
 		// Выполняем установку кода отказа обрыва кадра
-		this->_error = error_t::TRUNCATED_CHUNK;
+		this->fail(error_t::TRUNCATED_CHUNK);
 		// Сообщаем, что кадр не снят
 		return false;
 	}
@@ -328,16 +331,16 @@ bool awh::codec::abc::Packer::unpack(const void * buffer, const size_t size, siz
 	// Если разряды кадра несут неведомое
 	if((flags & static_cast <uint8_t> (~(Encrypted | Waste))) != 0){
 		// Выполняем установку кода отказа опознания кадра
-		this->_error = error_t::INVALID_CHUNK;
+		this->fail(error_t::INVALID_CHUNK);
 		// Сообщаем, что кадр не снят
 		return false;
 	}
 	// Выполняем снятие длины уложенного содержимого кадра
-	const uint32_t length = static_cast <uint32_t> (take(head + 4, 4));
+	const uint32_t length = static_cast <uint32_t> (abc::gather(head + 4, 4));
 	// Если содержимого кадра в поданных октетах недостаёт
 	if((size - offset - CHUNK_HEADER) < static_cast <size_t> (length)){
 		// Выполняем установку кода отказа обрыва кадра
-		this->_error = error_t::TRUNCATED_CHUNK;
+		this->fail(error_t::TRUNCATED_CHUNK);
 		// Сообщаем, что кадр не снят
 		return false;
 	}
@@ -352,7 +355,7 @@ bool awh::codec::abc::Packer::unpack(const void * buffer, const size_t size, siz
 	 */
 	if(head[0] > static_cast <uint8_t> (compressor::method_t::DENSITY)){
 		// Выполняем установку кода отказа опознания кадра
-		this->_error = error_t::INVALID_CHUNK;
+		this->fail(error_t::INVALID_CHUNK);
 		// Сообщаем, что кадр не снят
 		return false;
 	}
@@ -361,11 +364,11 @@ bool awh::codec::abc::Packer::unpack(const void * buffer, const size_t size, siz
 	// Выполняем установку длины уложенного содержимого кадра
 	chunk.length = length;
 	// Выполняем снятие длины исходного содержимого кадра
-	chunk.origin = static_cast <uint32_t> (take(head + 8, 4));
+	chunk.origin = static_cast <uint32_t> (abc::gather(head + 8, 4));
 	// Выполняем снятие порядкового номера кадра
-	chunk.number = take(head + 12, 8);
+	chunk.number = abc::gather(head + 12, 8);
 	// Выполняем снятие поколения записи кадра
-	chunk.generation = static_cast <uint32_t> (take(head + 20, 4));
+	chunk.generation = static_cast <uint32_t> (abc::gather(head + 20, 4));
 	// Выполняем установку признака зашифрованности содержимого
 	chunk.encrypted = ((flags & Encrypted) != 0);
 	// Выполняем установку признака того, что кадр обращён в мусор
@@ -379,7 +382,7 @@ bool awh::codec::abc::Packer::unpack(const void * buffer, const size_t size, siz
 		// Если модуль шифрования не отдан
 		if(this->_crypto == nullptr){
 			// Выполняем установку кода отказа шифрования
-			this->_error = error_t::ENCRYPTION_FAILED;
+			this->fail(error_t::ENCRYPTION_FAILED);
 			// Сообщаем, что кадр не снят
 			return false;
 		}
@@ -389,7 +392,7 @@ bool awh::codec::abc::Packer::unpack(const void * buffer, const size_t size, siz
 		// Если расшифровка содержимого отвечена отказом
 		if(opened.empty() && (chunk.origin > 0)){
 			// Выполняем установку кода отказа шифрования
-			this->_error = error_t::ENCRYPTION_FAILED;
+			this->fail(error_t::ENCRYPTION_FAILED);
 			// Сообщаем, что кадр не снят
 			return false;
 		}
@@ -401,7 +404,7 @@ bool awh::codec::abc::Packer::unpack(const void * buffer, const size_t size, siz
 		// Если модуль сжатия не отдан
 		if(this->_compressor == nullptr){
 			// Выполняем установку кода отказа сжатия
-			this->_error = error_t::COMPRESSION_FAILED;
+			this->fail(error_t::COMPRESSION_FAILED);
 			// Сообщаем, что кадр не снят
 			return false;
 		}
@@ -412,7 +415,7 @@ bool awh::codec::abc::Packer::unpack(const void * buffer, const size_t size, siz
 		// Если разжатие содержимого отвечено отказом
 		if(opened.empty() && (chunk.origin > 0)){
 			// Выполняем установку кода отказа сжатия
-			this->_error = error_t::COMPRESSION_FAILED;
+			this->fail(error_t::COMPRESSION_FAILED);
 			// Сообщаем, что кадр не снят
 			return false;
 		}
@@ -427,7 +430,7 @@ bool awh::codec::abc::Packer::unpack(const void * buffer, const size_t size, siz
 	 */
 	if(content.size() != static_cast <size_t> (chunk.origin)){
 		// Выполняем установку кода отказа опознания кадра
-		this->_error = error_t::INVALID_CHUNK;
+		this->fail(error_t::INVALID_CHUNK);
 		// Сообщаем, что кадр не снят
 		return false;
 	}

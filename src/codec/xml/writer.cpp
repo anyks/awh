@@ -221,19 +221,15 @@ bool awh::codec::xml::Writer::verify(const string_view text) noexcept {
 		 * Если знак прочитать не удалось
 		 */
 		if((length == 0) || (code == INVALID_CODEPOINT)){
-			// Запоминаем код ошибки записи
-			this->_error = error_t::INVALID_ENCODING;
-			// Выводим отрицательный результат выполнения операции
-			return false;
+			// Выполняем отказ записи с сообщением о нём в журнал
+			return this->refuse(error_t::INVALID_ENCODING);
 		}
 		/**
 		 * Если знак недопустим в разметке
 		 */
 		if(!isChar(code)){
-			// Запоминаем код ошибки записи
-			this->_error = error_t::INVALID_CHARACTER;
-			// Выводим отрицательный результат выполнения операции
-			return false;
+			// Выполняем отказ записи с сообщением о нём в журнал
+			return this->refuse(error_t::INVALID_CHARACTER);
 		}
 		// Выполняем переход к следующему знаку последовательности
 		i += length;
@@ -262,19 +258,15 @@ bool awh::codec::xml::Writer::escape(const string_view text, const bool attribut
 		 * Если знак прочитать не удалось
 		 */
 		if((length == 0) || (code == INVALID_CODEPOINT)){
-			// Запоминаем код ошибки записи
-			this->_error = error_t::INVALID_ENCODING;
-			// Выводим отрицательный результат выполнения операции
-			return false;
+			// Выполняем отказ записи с сообщением о нём в журнал
+			return this->refuse(error_t::INVALID_ENCODING);
 		}
 		/**
 		 * Если знак недопустим в разметке
 		 */
 		if(!isChar(code)){
-			// Запоминаем код ошибки записи
-			this->_error = error_t::INVALID_CHARACTER;
-			// Выводим отрицательный результат выполнения операции
-			return false;
+			// Выполняем отказ записи с сообщением о нём в журнал
+			return this->refuse(error_t::INVALID_CHARACTER);
 		}
 		/**
 		 * Определяем очередной знак записываемой последовательности
@@ -508,10 +500,8 @@ bool awh::codec::xml::Writer::prefix(const string_view uri, const bool attribute
 	 * Если обозначение отведено договором объявлениям пространств имён
 	 */
 	if(uri.compare(XMLNS_NAMESPACE) == 0){
-		// Запоминаем код ошибки записи
-		this->_error = error_t::INVALID_NAMESPACE;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выполняем отказ записи с сообщением о нём в журнал
+		return this->refuse(error_t::INVALID_NAMESPACE);
 	}
 	/**
 	 * Назначаем префикс самостоятельно
@@ -622,10 +612,8 @@ bool awh::codec::xml::Writer::declaration(const standalone_t standalone) noexcep
 	 * Если запись уже прекращена ошибкой либо текст не пуст
 	 */
 	if((this->_error != error_t::NONE) || !this->_text.empty()){
-		// Запоминаем код ошибки записи
-		this->_error = error_t::INVALID_DECLARATION;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выполняем отказ записи с сообщением о нём в журнал
+		return this->refuse(error_t::INVALID_DECLARATION);
 	}
 	// Выполняем добавление объявления разметки
 	this->_text.append("<?xml version=\"1.0\" encoding=\"UTF-8\"");
@@ -693,10 +681,8 @@ bool awh::codec::xml::Writer::open(const string_view local, const string_view ur
 	 * Если имя открываемого узла построено ошибочно
 	 */
 	if(verbatim ? !::plain(local) : !::correct(local)){
-		// Запоминаем код ошибки записи
-		this->_error = error_t::INVALID_NAME;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выполняем отказ записи с сообщением о нём в журнал
+		return this->refuse(error_t::INVALID_NAME);
 	}
 	/**
 	 * Если корневой узел разметки в тексте уже записан
@@ -705,10 +691,8 @@ bool awh::codec::xml::Writer::open(const string_view local, const string_view ur
 	 *       узел, и второй такой узел записи не подлежит
 	 */
 	if((this->_depth == 0) && this->_root){
-		// Запоминаем код ошибки записи
-		this->_error = error_t::MULTIPLE_ROOTS;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выполняем отказ записи с сообщением о нём в журнал
+		return this->refuse(error_t::MULTIPLE_ROOTS);
 	}
 	// Выполняем завершение незакрытой метки узла
 	this->flush();
@@ -730,10 +714,8 @@ bool awh::codec::xml::Writer::open(const string_view local, const string_view ur
 	 *       обязано записываться обратно
 	 */
 	if((this->_settings.maxDepth > 0) && (this->_depth >= this->_settings.maxDepth)){
-		// Запоминаем код ошибки записи
-		this->_error = error_t::DEPTH_EXCEEDED;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выполняем отказ записи с сообщением о нём в журнал
+		return this->refuse(error_t::DEPTH_EXCEEDED);
 	}
 	/**
 	 * Если объемлющий узел записывается в одну строку
@@ -905,10 +887,8 @@ bool awh::codec::xml::Writer::close() noexcept {
 	 * Если закрывать нечего
 	 */
 	if(this->_depth == 0){
-		// Запоминаем код ошибки записи
-		this->_error = error_t::UNEXPECTED_CLOSE_TAG;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выполняем отказ записи с сообщением о нём в журнал
+		return this->refuse(error_t::UNEXPECTED_CLOSE_TAG);
 	}
 	/**
 	 * Получаем закрываемый узел разметки
@@ -972,10 +952,8 @@ bool awh::codec::xml::Writer::occupy(const string_view name) noexcept {
 		 * Если имя атрибута узлу уже записано
 		 */
 		if(item == name){
-			// Запоминаем код ошибки записи
-			this->_error = error_t::DUPLICATE_ATTRIBUTE;
-			// Выводим отрицательный результат выполнения операции
-			return false;
+			// Выполняем отказ записи с сообщением о нём в журнал
+			return this->refuse(error_t::DUPLICATE_ATTRIBUTE);
 		}
 	}
 	// Выполняем добавление имени к записанным именам атрибутов узла
@@ -1017,19 +995,15 @@ bool awh::codec::xml::Writer::attribute(const string_view local, const string_vi
 	 * Если метка узла уже завершена
 	 */
 	if((this->_depth == 0) || !this->_opened[this->_depth - 1].pending){
-		// Запоминаем код ошибки записи
-		this->_error = error_t::INVALID_ATTRIBUTE;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выполняем отказ записи с сообщением о нём в журнал
+		return this->refuse(error_t::INVALID_ATTRIBUTE);
 	}
 	/**
 	 * Если имя атрибута построено ошибочно
 	 */
 	if(verbatim ? !::plain(local) : !::correct(local)){
-		// Запоминаем код ошибки записи
-		this->_error = error_t::INVALID_NAME;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выполняем отказ записи с сообщением о нём в журнал
+		return this->refuse(error_t::INVALID_NAME);
 	}
 	/**
 	 * Если атрибутом записывается объявление пространства имён
@@ -1039,10 +1013,8 @@ bool awh::codec::xml::Writer::attribute(const string_view local, const string_vi
 	 *       записываемые следом имена получили бы не то пространство имён
 	 */
 	if(!verbatim && (local.compare("xmlns") == 0)){
-		// Запоминаем код ошибки записи
-		this->_error = error_t::INVALID_ATTRIBUTE;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выполняем отказ записи с сообщением о нём в журнал
+		return this->refuse(error_t::INVALID_ATTRIBUTE);
 	}
 	// Назначенный атрибуту префикс пространства имён
 	string prefix;
@@ -1125,37 +1097,29 @@ bool awh::codec::xml::Writer::binding(const string_view prefix, const string_vie
 	 * Если метка узла уже завершена
 	 */
 	if((this->_depth == 0) || !this->_opened[this->_depth - 1].pending){
-		// Запоминаем код ошибки записи
-		this->_error = error_t::INVALID_ATTRIBUTE;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выполняем отказ записи с сообщением о нём в журнал
+		return this->refuse(error_t::INVALID_ATTRIBUTE);
 	}
 	/**
 	 * Если префикс объявления построен ошибочно
 	 */
 	if(!prefix.empty() && !::correct(prefix)){
-		// Запоминаем код ошибки записи
-		this->_error = error_t::INVALID_PREFIX;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выполняем отказ записи с сообщением о нём в журнал
+		return this->refuse(error_t::INVALID_PREFIX);
 	}
 	/**
 	 * Если выполняется попытка переопределить отведённый договором префикс
 	 */
 	if((prefix.compare("xmlns") == 0) || ((prefix.compare("xml") == 0) && (uri.compare(XML_NAMESPACE) != 0))){
-		// Запоминаем код ошибки записи
-		this->_error = error_t::RESERVED_PREFIX;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выполняем отказ записи с сообщением о нём в журнал
+		return this->refuse(error_t::RESERVED_PREFIX);
 	}
 	/**
 	 * Если объявлению для префикса дано пустое обозначение
 	 */
 	if(!prefix.empty() && uri.empty()){
-		// Запоминаем код ошибки записи
-		this->_error = error_t::INVALID_NAMESPACE;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выполняем отказ записи с сообщением о нём в журнал
+		return this->refuse(error_t::INVALID_NAMESPACE);
 	}
 	/**
 	 * Если обычному префиксу дано отведённое договором пространство имён
@@ -1165,10 +1129,8 @@ bool awh::codec::xml::Writer::binding(const string_view prefix, const string_vie
 	 *          переопределением самого префикса
 	 */
 	if(!prefix.empty() && (prefix.compare("xml") != 0) && (uri.compare(XML_NAMESPACE) == 0)){
-		// Запоминаем код ошибки записи
-		this->_error = error_t::RESERVED_PREFIX;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выполняем отказ записи с сообщением о нём в журнал
+		return this->refuse(error_t::RESERVED_PREFIX);
 	}
 	/**
 	 * Если объявлению дано пространство имён объявлений
@@ -1177,10 +1139,8 @@ bool awh::codec::xml::Writer::binding(const string_view prefix, const string_vie
 	 *          подлежит ни префиксом, ни объявлением по умолчанию
 	 */
 	if(uri.compare(XMLNS_NAMESPACE) == 0){
-		// Запоминаем код ошибки записи
-		this->_error = error_t::INVALID_NAMESPACE;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выполняем отказ записи с сообщением о нём в журнал
+		return this->refuse(error_t::INVALID_NAMESPACE);
 	}
 	/**
 	 * Если объявлению по умолчанию дано отведённое договором пространство имён
@@ -1190,10 +1150,8 @@ bool awh::codec::xml::Writer::binding(const string_view prefix, const string_vie
 	 *       уже у принимающей стороны
 	 */
 	if(prefix.empty() && (uri.compare(XML_NAMESPACE) == 0)){
-		// Запоминаем код ошибки записи
-		this->_error = error_t::INVALID_NAMESPACE;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выполняем отказ записи с сообщением о нём в журнал
+		return this->refuse(error_t::INVALID_NAMESPACE);
 	}
 	// Собираемое имя объявления в том виде, в каком оно попадает в текст
 	string name("xmlns");
@@ -1260,10 +1218,8 @@ bool awh::codec::xml::Writer::text(const string_view text) noexcept {
 	 * Если содержимое записывается вне корневого узла
 	 */
 	if(this->_depth == 0){
-		// Запоминаем код ошибки записи
-		this->_error = error_t::CONTENT_OUTSIDE_ROOT;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выполняем отказ записи с сообщением о нём в журнал
+		return this->refuse(error_t::CONTENT_OUTSIDE_ROOT);
 	}
 	// Выполняем завершение незакрытой метки узла
 	this->flush();
@@ -1290,10 +1246,8 @@ bool awh::codec::xml::Writer::cdata(const string_view text) noexcept {
 	 * Если содержимое записывается вне корневого узла
 	 */
 	if(this->_depth == 0){
-		// Запоминаем код ошибки записи
-		this->_error = error_t::CONTENT_OUTSIDE_ROOT;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выполняем отказ записи с сообщением о нём в журнал
+		return this->refuse(error_t::CONTENT_OUTSIDE_ROOT);
 	}
 	/**
 	 * Если содержимое содержит последовательность конца дословного раздела
@@ -1302,10 +1256,8 @@ bool awh::codec::xml::Writer::cdata(const string_view text) noexcept {
 	 *       вызывающий записывает не то, что имел в виду, и знать об этом обязан
 	 */
 	if(text.find("]]>") != string_view::npos){
-		// Запоминаем код ошибки записи
-		this->_error = error_t::INVALID_CDATA;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выполняем отказ записи с сообщением о нём в журнал
+		return this->refuse(error_t::INVALID_CDATA);
 	}
 	/**
 	 * Если содержимое раздела построено ошибочно
@@ -1340,10 +1292,8 @@ bool awh::codec::xml::Writer::comment(const string_view text) noexcept {
 	 * Если содержимое примечания построено ошибочно
 	 */
 	if((text.find("--") != string_view::npos) || (!text.empty() && (text.back() == '-'))){
-		// Запоминаем код ошибки записи
-		this->_error = error_t::INVALID_COMMENT;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выполняем отказ записи с сообщением о нём в журнал
+		return this->refuse(error_t::INVALID_COMMENT);
 	}
 	/**
 	 * Если содержимое примечания построено ошибочно
@@ -1402,28 +1352,22 @@ bool awh::codec::xml::Writer::processing(const string_view target, const string_
 	 *          принимает - разобранное дерево обратно бы не записывалось
 	 */
 	if(!::plain(target)){
-		// Запоминаем код ошибки записи
-		this->_error = error_t::INVALID_PROCESSING;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выполняем отказ записи с сообщением о нём в журнал
+		return this->refuse(error_t::INVALID_PROCESSING);
 	}
 	/**
 	 * Если целью указания обработчику является отведённое договором имя
 	 */
 	if((target.length() == 3) && ((target[0] | 0x20) == 'x') && ((target[1] | 0x20) == 'm') && ((target[2] | 0x20) == 'l')){
-		// Запоминаем код ошибки записи
-		this->_error = error_t::RESERVED_PROCESSING;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выполняем отказ записи с сообщением о нём в журнал
+		return this->refuse(error_t::RESERVED_PROCESSING);
 	}
 	/**
 	 * Если данные указания обработчику содержат его завершение
 	 */
 	if(text.find("?>") != string_view::npos){
-		// Запоминаем код ошибки записи
-		this->_error = error_t::INVALID_PROCESSING;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выполняем отказ записи с сообщением о нём в журнал
+		return this->refuse(error_t::INVALID_PROCESSING);
 	}
 	/**
 	 * Если данные указания обработчику построены ошибочно
@@ -1550,10 +1494,8 @@ bool awh::codec::xml::Writer::element(const node_t & node, const bool preserve) 
 	 * Если записываемый узел непригоден
 	 */
 	if(!node.valid()){
-		// Запоминаем код ошибки записи
-		this->_error = error_t::INTERNAL;
-		// Выводим отрицательный результат выполнения операции
-		return false;
+		// Выполняем отказ записи с сообщением о нём в журнал
+		return this->refuse(error_t::INTERNAL);
 	}
 	/**
 	 * @brief Кадр обхода дерева разметки
@@ -1977,15 +1919,63 @@ void awh::codec::xml::Writer::clear() noexcept {
  * @brief Конструктор
  *
  */
-awh::codec::xml::Writer::Writer() noexcept : _error(error_t::NONE), _root(false), _depth(0), _bindings(0), _counter(0) {}
+/**
+ * @brief Метод отказа записи с сообщением о нём в журнал
+ *
+ * @param error код ошибки записи
+ * @return      всегда ложь, ради возврата им из места отказа
+ *
+ */
+bool awh::codec::xml::Writer::refuse(const error_t error) noexcept {
+	// Запоминаем код ошибки записи
+	this->_error = error;
+	/**
+	 * Если объект ведения журнала работы установлен
+	 */
+	if(this->_log != nullptr){
+		/**
+		 * Выполняем запись об отказе записи разметки в журнал
+		 *
+		 * @note Отказ этот беда КРИТИЧЕСКАЯ, в отличие от отказа разбора: разбор получает
+		 *       текст извне и негодности его не виноват, тогда как записывается то, что
+		 *       собрало само приложение. Негодное здесь означает дефект у потребителя
+		 */
+		#if DEBUG_MODE
+			// Записываем отказ записи в журнал работы
+			this->_log->debug("%s", __PRETTY_FUNCTION__, ::std::make_tuple(), log_t::flag_t::CRITICAL, message(error));
+		#else
+			// Записываем отказ записи в журнал работы
+			this->_log->print("XML writing failed: %s", log_t::flag_t::CRITICAL, message(error));
+		#endif
+	}
+	// Выводим отрицательный результат выполнения операции
+	return false;
+}
+/**
+ * @brief Метод установки объекта ведения журнала работы
+ *
+ * @param log объект ведения журнала работы
+ *
+ */
+void awh::codec::xml::Writer::setLogger(const log_t * log) noexcept {
+	// Устанавливаем объект ведения журнала работы
+	this->_log = log;
+}
+/**
+ * @brief Конструктор
+ *
+ * @param log объект ведения журнала работы
+ *
+ */
+awh::codec::xml::Writer::Writer(const log_t * log) noexcept : _error(error_t::NONE), _root(false), _depth(0), _bindings(0), _counter(0), _log(log) {}
 /**
  * @brief Конструктор
  *
  * @param settings настройки записи текста разметки
  *
  */
-awh::codec::xml::Writer::Writer(const settings_t & settings) noexcept :
- _settings(settings), _error(error_t::NONE), _root(false), _depth(0), _bindings(0), _counter(0) {}
+awh::codec::xml::Writer::Writer(const settings_t & settings, const log_t * log) noexcept :
+ _settings(settings), _error(error_t::NONE), _root(false), _depth(0), _bindings(0), _counter(0), _log(log) {}
 /**
  * @brief Деструктор
  *

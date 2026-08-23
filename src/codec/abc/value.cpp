@@ -1637,7 +1637,7 @@ bool awh::codec::abc::Value::parse(const void * buffer, const size_t size) noexc
 	// Выполняем очистку разбираемого значения
 	this->clear();
 	// Дерево разбираемого документа
-	document_t document;
+	document_t document(this->_log);
 	// Если разбор записи в дерево документа отвечен отказом
 	if(!document.parse(buffer, size))
 		// Сообщаем, что разбор отвечен отказом
@@ -1648,6 +1648,16 @@ bool awh::codec::abc::Value::parse(const void * buffer, const size_t size) noexc
 	return true;
 }
 /**
+ * @brief Метод установки объекта логирования
+ *
+ * @param log объект работы с логами
+ *
+ */
+void awh::codec::abc::Value::setLogger(const log_t * log) noexcept {
+	// Выполняем установку объекта логирования
+	this->_log = log;
+}
+/**
  * @brief Метод сборки записи из владеющего значения
  *
  * @return собранная запись
@@ -1655,7 +1665,7 @@ bool awh::codec::abc::Value::parse(const void * buffer, const size_t size) noexc
  */
 vector <uint8_t> awh::codec::abc::Value::dump() const noexcept {
 	// Сборщик бинарной записи
-	writer_t writer;
+	writer_t writer(this->_log);
 	// Если укладка значения в собираемую запись отвечена отказом
 	if(!this->compose(writer))
 		// Выводим пустую запись
@@ -2300,3 +2310,11 @@ awh::codec::abc::Value awh::codec::abc::Builder::finish() noexcept {
  *
  */
 awh::codec::abc::Builder::Builder() noexcept : _keyed(false), _done(false) {}
+/**
+ * @brief Конструктор
+ *
+ * @param log объект для работы с логами
+ *
+ */
+awh::codec::abc::Builder::Builder(const log_t * log) noexcept :
+ _log(log), _keyed(false), _done(false) {}

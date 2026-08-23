@@ -335,7 +335,20 @@ namespace awh {
 				 * @brief Method of accumulating the memory occupied by the application
 				 *
 				 */
-				int64_t tally(const int64_t delta, const int64_t batch) noexcept;
+				AWH_CACHE_INLINE int64_t tally(const int64_t delta, const int64_t batch) noexcept {
+					// Накапливаем изменение занятого
+					this->_tally += delta;
+					// Если накопленное не дотянуло до величины отдачи
+					if((this->_tally < batch) && (this->_tally > -batch))
+						// Отдавать нечего
+						return 0;
+					// Запоминаем накопленное
+					const int64_t result = this->_tally;
+					// Обнуляем накопленное: оно уходит наружу
+					this->_tally = 0;
+					// Выводим отдаваемое наружу накопленное
+					return result;
+				}
 				/**
 				 * \~russian
 				 * @brief Метод получения накопленного, но не отданного наружу
@@ -376,7 +389,10 @@ namespace awh {
 				 * @brief Method of getting the slot for the chunk lookup hint
 				 *
 				 */
-				void ** hint() noexcept;
+				AWH_CACHE_INLINE void ** hint() noexcept {
+					// Выводим место под подсказку поиска
+					return &this->_hint;
+				}
 			public:
 				/**
 				 * \~russian
@@ -411,6 +427,19 @@ namespace awh {
 			 */
 			friend class Caches;
 		} cache_t;
+		/**
+		 * Зеркало кэша текущего потока
+		 *
+		 * Объявлено ЗДЕСЬ, а не только в файле кода, ради быстрого пути `local`: тот
+		 * зовётся на каждую выдачу и каждое освобождение, и вызов ради чтения одного
+		 * указателя стоил бы дороже самого чтения. Определение лежит в `cache.cpp`,
+		 * там же записаны доводы модели `initial-exec` и перечень систем, каким
+		 * зеркало не заводится вовсе
+		 */
+		#if !defined(_WIN32) && !defined(_WIN64) && !defined(__APPLE__) && !defined(__MACH__) && !defined(__OpenBSD__)
+			#define AWH_ALLOC_MIRROR 1
+			extern __thread cache_t * __awh_alloc_mirror__ __attribute__((tls_model("initial-exec")));
+		#endif
 		/**
 		 * \~russian
 		 * @brief Класс управления поток-локальными кэшами
@@ -492,6 +521,21 @@ namespace awh {
 				 *
 				 */
 				void destroy() noexcept;
+			private:
+				/**
+				 * \~russian
+				 * @brief Метод заведения кэша текущему потоку
+				 *
+				 * @note Холодный хвост `local`: сюда приходят лишь первым обращением
+				 *       потока да у систем, каким зеркало не заводится
+				 *
+				 * @return кэш текущего потока либо nullptr
+				 *
+				 * \~english
+				 * @brief Method of creating a cache for the current thread
+				 *
+				 */
+				cache_t * enter() noexcept;
 			public:
 				/**
 				 * \~russian
@@ -505,7 +549,24 @@ namespace awh {
 				 * @brief Method of getting the current thread cache
 				 *
 				 */
-				cache_t * local() noexcept;
+				AWH_CACHE_INLINE cache_t * local() noexcept {
+					/**
+					 * Отвечаем из зеркала, не заходя в файл кода
+					 *
+					 * Заполненное зеркало значит, что кэш потоку уже заведён и записан в
+					 * ключ хранения: прочие проверки холодного пути отвечали бы то же
+					 * самое. Профиль `perf` на Debian отдавал `Caches::local` 9.9 %
+					 * времени сценария одного разряда - и то была цена вызова, а не работы
+					 */
+					#if defined(AWH_ALLOC_MIRROR)
+						// Если зеркало заполнено
+						if(__awh_alloc_mirror__ != nullptr)
+							// Выводим кэш из зеркала
+							return __awh_alloc_mirror__;
+					#endif
+					// Уходим холодным путём: кэша потоку ещё нет либо зеркала нет вовсе
+					return this->enter();
+				}
 				/**
 				 * \~russian
 				 * @brief Метод отвязки кэша от завершившегося потока

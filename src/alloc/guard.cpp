@@ -331,7 +331,7 @@ void awh::alloc::Guard::reset() noexcept {
  * @return     признак надобности заслона
  *
  */
-bool awh::alloc::Guard::wanted(const size_t size) noexcept {
+bool awh::alloc::Guard::sampled(const size_t size) noexcept {
 	// Запоминаем действующую долю выборки
 	const size_t rate = this->_rate.load(std::memory_order_relaxed);
 	// Если заслоны выключены либо размер для них непомерен

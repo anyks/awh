@@ -45,6 +45,34 @@ using namespace awh::codec;
  */
 namespace {
 	/**
+	 * @brief Функция извлечения объекта журнала проверок
+	 *
+	 * @details Журнал заводится единожды на весь набор и гасится: проверки отказов
+	 *          выводили бы записью всякий свой отказ, а их тут большинство. Гашение
+	 *          это - настройка журнала, а не молчание модуля: модуль доносит как
+	 *          обычно, а показывать ли - решает журнал
+	 *
+	 * @return объект журнала проверок
+	 *
+	 */
+	const log_t * logger() noexcept {
+		// Объект фреймворка проверок
+		static fmk_t fmk;
+		// Объект журнала проверок
+		static log_t log(& fmk);
+		// Признак выполненной настройки журнала
+		static const bool ready = [](){
+			// Выполняем гашение вывода журнала проверок
+			log.level(log_t::level_t::NONE);
+			// Выводим признак выполненной настройки
+			return true;
+		}();
+		// Снимаем неиспользуемый признак настройки
+		(void) ready;
+		// Выводим объект журнала проверок
+		return & log;
+	}
+	/**
 	 * @brief Класс временного файла проверки
 	 *
 	 * @details Файл сносится деструктором: проверка, оставившая файл на диске, портит
@@ -95,7 +123,7 @@ namespace {
 	 */
 	vector <uint8_t> build(const vector <string> & records) noexcept {
 		// Сборщик контейнера
-		abc::assembler_t assembler;
+		abc::assembler_t assembler(::logger());
 		/**
 		 * Выполняем перебор всех собираемых записей контейнера
 		 */
@@ -124,7 +152,7 @@ TEST(CodecAbcStorage, StoreAndLoad){
 	// Выполняем сборку контейнера с двумя записями
 	const vector <uint8_t> container = build({"первая", "вторая"});
 	// Хранилище контейнера в файле
-	abc::storage_t storage;
+	abc::storage_t storage(::logger());
 	// Выполняем запись собранного контейнера в файл
 	ASSERT_TRUE(storage.store(file.filename(), container.data(), container.size()))
 		<< "код отказа: " << abc::message(storage.error());
@@ -141,7 +169,7 @@ TEST(CodecAbcStorage, StoreAndLoad){
 	// Выполняем проверку полной длины открытого контейнера
 	ASSERT_EQ(storage.length(), static_cast <uint64_t> (container.size()));
 	// Сниматель контейнера
-	abc::loader_t loader;
+	abc::loader_t loader(::logger());
 	/**
 	 * Выполняем подачу файла контейнера снимателю кусками по семь октетов: снятие
 	 * ведётся потоком, и от нарезки на куски оно зависеть не вправе
@@ -193,12 +221,12 @@ TEST(CodecAbcStorage, EditInPlace){
 	// Выполняем сборку контейнера с двумя записями
 	const vector <uint8_t> container = build({"первая", "вторая"});
 	// Хранилище контейнера в файле
-	abc::storage_t storage;
+	abc::storage_t storage(::logger());
 	// Выполняем запись собранного контейнера в файл
 	ASSERT_TRUE(storage.store(file.filename(), container.data(), container.size()))
 		<< "код отказа: " << abc::message(storage.error());
 	// Правщик контейнера
-	abc::editor_t editor;
+	abc::editor_t editor(::logger());
 	// Выполняем открытие контейнера файла правщиком
 	ASSERT_TRUE(storage.bind(editor)) << "код отказа: " << abc::message(editor.error());
 	// Выполняем проверку количества записей открытого контейнера
@@ -220,11 +248,11 @@ TEST(CodecAbcStorage, EditInPlace){
 	// Выполняем закрытие файла контейнера
 	storage.close();
 	// Хранилище правленого контейнера
-	abc::storage_t reopened;
+	abc::storage_t reopened(::logger());
 	// Выполняем открытие правленого файла контейнера
 	ASSERT_TRUE(reopened.open(file.filename())) << "код отказа: " << abc::message(reopened.error());
 	// Выборщик записей контейнера
-	abc::fetcher_t fetcher;
+	abc::fetcher_t fetcher(::logger());
 	// Выполняем открытие контейнера отданной работой чтения
 	ASSERT_TRUE(fetcher.open(reopened.source())) << "код отказа: " << abc::message(fetcher.error());
 	// Буфер выбранной записи контейнера
@@ -238,7 +266,7 @@ TEST(CodecAbcStorage, EditInPlace){
 	// Выполняем проверку того, что прежняя запись правкой не тронута
 	ASSERT_EQ(picked, abc::value_t(string{"первая"}).dump());
 	// Правщик открытого наново контейнера
-	abc::editor_t again;
+	abc::editor_t again(::logger());
 	/**
 	 * Выполняем открытие правщиком контейнера, открытого работой открытия, а не
 	 * заведения: правка ведётся на месте, и одного чтения ей мало - файл обязан быть
@@ -255,7 +283,7 @@ TEST(CodecAbcStorage, EditInPlace){
 	// Выполняем сброс записанного на носитель
 	ASSERT_TRUE(reopened.flush());
 	// Выборщик записей правленого наново контейнера
-	abc::fetcher_t last;
+	abc::fetcher_t last(::logger());
 	// Выполняем открытие контейнера отданной работой чтения
 	ASSERT_TRUE(last.open(reopened.source())) << "код отказа: " << abc::message(last.error());
 	// Выполняем выборку дописанной наново записи
@@ -269,19 +297,19 @@ TEST(CodecAbcStorage, EditInPlace){
  */
 TEST(CodecAbcStorage, Refusals){
 	// Хранилище контейнера в файле
-	abc::storage_t storage;
+	abc::storage_t storage(::logger());
 	// Выполняем проверку отказа открытия несуществующего файла
 	ASSERT_FALSE(storage.open("abc-storage-missing-file.bin"));
 	// Выполняем проверку кода отказа чтения октетов контейнера
 	ASSERT_EQ(storage.error(), abc::error_t::UNREADABLE_SOURCE);
 	// Правщик контейнера
-	abc::editor_t editor;
+	abc::editor_t editor(::logger());
 	// Выполняем проверку отказа открытия контейнера закрытого файла
 	ASSERT_FALSE(storage.bind(editor));
 	// Выполняем проверку кода отказа чтения октетов контейнера
 	ASSERT_EQ(storage.error(), abc::error_t::UNREADABLE_SOURCE);
 	// Сниматель контейнера
-	abc::loader_t loader;
+	abc::loader_t loader(::logger());
 	// Выполняем проверку отказа подачи закрытого файла снимателю
 	ASSERT_FALSE(storage.load(loader));
 	// Временный файл проверки
@@ -332,7 +360,7 @@ TEST(CodecAbcStorage, CreateAndWrite){
 		// Устанавливаем очередной октет образца
 		sample.at(i) = static_cast <uint8_t> (i & 0xFF);
 	// Хранилище контейнера в файле
-	abc::storage_t storage;
+	abc::storage_t storage(::logger());
 	// Выполняем заведение файла контейнера
 	ASSERT_TRUE(storage.create(file.filename())) << "код отказа: " << abc::message(storage.error());
 	// Выполняем проверку признака открытого хранилища
@@ -363,7 +391,7 @@ TEST(CodecAbcStorage, CreateAndWrite){
 	// Выполняем проверку признака закрытого хранилища
 	ASSERT_FALSE(storage.opened());
 	// Хранилище проверки записанного
-	abc::storage_t reopened;
+	abc::storage_t reopened(::logger());
 	// Выполняем открытие записанного файла контейнера
 	ASSERT_TRUE(reopened.open(file.filename())) << "код отказа: " << abc::message(reopened.error());
 	// Выполняем проверку полной длины открытого контейнера
@@ -386,7 +414,7 @@ TEST(CodecAbcStorage, CreateAndWrite){
 	 * Выполняем проверку того, что заведение усекает прежний файл: длина
 	 * заведённого наново хранилища обязана обнулиться
 	 */
-	abc::storage_t truncated;
+	abc::storage_t truncated(::logger());
 	// Выполняем заведение файла контейнера поверх записанного
 	ASSERT_TRUE(truncated.create(file.filename())) << "код отказа: " << abc::message(truncated.error());
 	// Выполняем проверку того, что прежнее содержимое файла усечено
@@ -396,7 +424,7 @@ TEST(CodecAbcStorage, CreateAndWrite){
 	// Выполняем закрытие файла контейнера
 	truncated.close();
 	// Хранилище проверки усечения
-	abc::storage_t empty;
+	abc::storage_t empty(::logger());
 	// Выполняем открытие усечённого файла контейнера
 	ASSERT_TRUE(empty.open(file.filename())) << "код отказа: " << abc::message(empty.error());
 	// Выполняем проверку того, что хвост прежнего содержимого не уцелел
@@ -416,7 +444,7 @@ TEST(CodecAbcStorage, ClosedWorks){
 	// Образец записываемых октетов
 	const vector <uint8_t> sample(64, 0x5A);
 	// Хранилище контейнера в файле
-	abc::storage_t storage;
+	abc::storage_t storage(::logger());
 	// Выполняем заведение файла контейнера
 	ASSERT_TRUE(storage.create(file.filename())) << "код отказа: " << abc::message(storage.error());
 	// Выполняем получение работы записи октетов контейнера
@@ -454,12 +482,12 @@ TEST(CodecAbcStorage, CompactToFile){
 	// Выполняем сборку контейнера с четырьмя записями
 	const vector <uint8_t> container = build({"первая", "вторая", "третья", "четвёртая"});
 	// Хранилище правимого контейнера
-	abc::storage_t source;
+	abc::storage_t source(::logger());
 	// Выполняем запись собранного контейнера в файл
 	ASSERT_TRUE(source.store(origin.filename(), container.data(), container.size()))
 		<< "код отказа: " << abc::message(source.error());
 	// Правщик контейнера
-	abc::editor_t editor;
+	abc::editor_t editor(::logger());
 	// Выполняем открытие контейнера файла правщиком
 	ASSERT_TRUE(source.bind(editor)) << "код отказа: " << abc::message(editor.error());
 	// Выполняем снос третьей записи контейнера
@@ -471,7 +499,7 @@ TEST(CodecAbcStorage, CompactToFile){
 	// Выполняем проверку того, что мусор правкой накопился
 	ASSERT_GT(editor.garbage(), 0ull);
 	// Хранилище убранного контейнера
-	abc::storage_t cleaned;
+	abc::storage_t cleaned(::logger());
 	// Выполняем заведение файла убранного контейнера
 	ASSERT_TRUE(cleaned.create(target.filename())) << "код отказа: " << abc::message(cleaned.error());
 	// Полная длина убранного контейнера
@@ -490,13 +518,13 @@ TEST(CodecAbcStorage, CompactToFile){
 	// Выполняем закрытие файла убранного контейнера
 	cleaned.close();
 	// Хранилище проверки убранного контейнера
-	abc::storage_t reopened;
+	abc::storage_t reopened(::logger());
 	// Выполняем открытие убранного файла контейнера
 	ASSERT_TRUE(reopened.open(target.filename())) << "код отказа: " << abc::message(reopened.error());
 	// Выполняем проверку полной длины убранного контейнера
 	ASSERT_EQ(reopened.length(), length);
 	// Выборщик записей убранного контейнера
-	abc::fetcher_t fetcher;
+	abc::fetcher_t fetcher(::logger());
 	// Выполняем открытие контейнера отданной работой чтения
 	ASSERT_TRUE(fetcher.open(reopened.source())) << "код отказа: " << abc::message(fetcher.error());
 	// Буфер выбранной записи контейнера

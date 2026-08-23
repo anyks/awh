@@ -106,6 +106,7 @@ namespace awh {
 	 */
 	using namespace std;
 
+
 	/**
 	 * \~russian
 	 * @brief Класс работы с регулярными выражениями
@@ -206,6 +207,9 @@ namespace awh {
 		private:
 			// Флаг согласования доступа к кэшу собранных выражений
 			bool _safety;
+		private:
+			// Объект журнала событий
+			const log_t * _log;
 		private:
 			// Мютекс согласования доступа к кэшу собранных выражений
 			/**
@@ -568,10 +572,11 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Constructor
+			 * @param log object for working with logs
 			 *
 			 * \~
 			 */
-			RegularExpression() noexcept;
+			explicit RegularExpression(const log_t * log = nullptr) noexcept;
 			/**
 			 * \~russian
 			 * @brief Деструктор

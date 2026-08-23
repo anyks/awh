@@ -277,6 +277,22 @@ namespace awh {
 				private:
 					/**
 					 * \~russian
+					 * Объект ведения журнала работы
+					 *
+					 * @note Умолчание стоит прямо в объявлении намеренно: конструкторы копии и
+					 *       переноса логгера не принимают, и без умолчания поле у них осталось
+					 *       бы неопределённым. Сами они логгер СНИМАЮТ С ИСТОЧНИКА, но лишь
+					 *       когда своего у цели ещё нет: настроенная цель своего не отдаёт
+					 *
+					 * \~english
+					 * Object of the keeping of the work log
+					 *
+					 * \~
+					 */
+					const log_t * _log = nullptr;
+				private:
+					/**
+					 * \~russian
 					 * @brief Метод розыска номера поля объекта по имени
 					 *
 					 * @details Мелкий объект разыскивается перебором имён, крупный -
@@ -1314,6 +1330,37 @@ namespace awh {
 					 *
 					 * \~
 					 */
+					/**
+					 * \~russian
+					 * @brief Метод установки объекта ведения журнала работы
+					 *
+					 * @details Привязка поздняя нужна там, где значение заведено копией либо
+					 * переносом: логгера они не принимают, и снять его с источника выходит лишь
+					 * когда у источника он есть
+					 *
+					 * @param log объект ведения журнала работы
+					 *
+					 * \~english
+					 * @brief Method of the setting of the object of the keeping of the work log
+					 *
+					 * @param log the object of the keeping of the work log
+					 *
+					 * \~
+					 */
+					void setLogger(const log_t * log) noexcept;
+					/**
+					 * \~russian
+					 * @brief Конструктор копии
+					 *
+					 * @param value копируемое значение
+					 *
+					 * \~english
+					 * @brief Constructor of the copy
+					 *
+					 * @param value the copied value
+					 *
+					 * \~
+					 */
 					Value(const Value & value) noexcept;
 					/**
 					 * \~russian
@@ -1704,7 +1751,10 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Builder() noexcept : _keyed(false), _appended(false) {}
+					explicit Builder(const log_t * log = nullptr) noexcept : _keyed(false), _appended(false) {
+						// Выполняем установку объекта ведения журнала собираемому значению
+						this->_result.setLogger(log);
+					}
 					/**
 					 * \~russian
 					 * @brief Деструктор

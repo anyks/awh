@@ -1557,7 +1557,14 @@ void awh::codec::json::Value::absorb(const Document::value_t & value) noexcept {
  */
 bool awh::codec::json::Value::parse(const string & text) noexcept {
 	// Документ, разбирающий поданный текст
-	document_t document;
+	/**
+	 * Заводимое дерево значения
+	 *
+	 * @note Логгер уходит дереву, а оттуда чтению: иначе отказ разбора, идущий изнутри
+	 *       значения, уходил бы молча - и притом РАЗНО с отказом того же текста, поданного
+	 *       дереву напрямую
+	 */
+	document_t document(this->_log);
 	/**
 	 * Если разбор текста завершился отказом
 	 */
@@ -1581,7 +1588,14 @@ bool awh::codec::json::Value::parse(const string & text) noexcept {
  */
 bool awh::codec::json::Value::load(const string & filename) noexcept {
 	// Документ, разбирающий текст файла
-	document_t document;
+	/**
+	 * Заводимое дерево значения
+	 *
+	 * @note Логгер уходит дереву, а оттуда чтению: иначе отказ разбора, идущий изнутри
+	 *       значения, уходил бы молча - и притом РАЗНО с отказом того же текста, поданного
+	 *       дереву напрямую
+	 */
+	document_t document(this->_log);
 	/**
 	 * Если разбор текста файла завершился отказом
 	 */
@@ -1888,6 +1902,15 @@ awh::codec::json::Value & awh::codec::json::Value::operator = (const Value & val
 	this->_items = value._items;
 	// Выполняем сброс отображения имён полей объекта
 	this->reindex();
+	/**
+	 * Если объект ведения журнала у источника установлен, а у цели ещё нет
+	 *
+	 * @note Настроенная цель своего логгера НЕ отдаёт: присваивание переносит значение,
+	 *       а не настройку того, кому о бедах сообщать
+	 */
+	if((value._log != nullptr) && (this->_log == nullptr))
+		// Выполняем снятие объекта ведения журнала с источника
+		this->_log = value._log;
 	// Выводим ссылку на текущее значение
 	return (* this);
 }
@@ -1919,10 +1942,36 @@ awh::codec::json::Value & awh::codec::json::Value::operator = (Value && value) n
 	this->_items = ::std::move(value._items);
 	// Выполняем сброс отображения имён полей объекта
 	this->reindex();
+	/**
+	 * Если объект ведения журнала у источника установлен, а у цели ещё нет
+	 *
+	 * @note Настроенная цель своего логгера НЕ отдаёт: присваивание переносит значение,
+	 *       а не настройку того, кому о бедах сообщать
+	 */
+	if((value._log != nullptr) && (this->_log == nullptr))
+		// Выполняем снятие объекта ведения журнала с источника
+		this->_log = value._log;
 	// Выполняем очистку значения, у какого содержимое отобрано
 	value.clear();
 	// Выводим ссылку на текущее значение
 	return (* this);
+}
+/**
+ * @brief Конструктор
+ *
+ */
+void awh::codec::json::Value::setLogger(const log_t * log) noexcept {
+	// Устанавливаем объект ведения журнала работы
+	this->_log = log;
+	/**
+	 * Выполняем перебор всех вложенных значений
+	 *
+	 * @note Логгер уходит вглубь: значение владеет вложенными целиком, и сообщать о бедах
+	 *       они обязаны туда же, куда и родитель
+	 */
+	for(auto & item : this->_items)
+		// Выполняем установку объекта ведения журнала вложенному значению
+		item.setLogger(log);
 }
 /**
  * @brief Конструктор
@@ -2110,7 +2159,7 @@ awh::codec::json::Value::Value(const Document::value_t & value) noexcept : _kind
  */
 awh::codec::json::Value::Value(const Value & value) noexcept :
  _kind(value._kind), _type(value._type), _number(value._number),
- _text(value._text), _names(value._names), _items(value._items), _indexed(false) {}
+ _text(value._text), _names(value._names), _items(value._items), _indexed(false), _log(value._log) {}
 /**
  * @brief Конструктор переноса
  *
@@ -2119,7 +2168,7 @@ awh::codec::json::Value::Value(const Value & value) noexcept :
  */
 awh::codec::json::Value::Value(Value && value) noexcept :
  _kind(value._kind), _type(value._type), _number(value._number),
- _text(::std::move(value._text)), _names(::std::move(value._names)), _items(::std::move(value._items)), _indexed(false) {
+ _text(::std::move(value._text)), _names(::std::move(value._names)), _items(::std::move(value._items)), _indexed(false), _log(value._log) {
 	// Выполняем очистку значения, у какого содержимое отобрано
 	value.clear();
 }

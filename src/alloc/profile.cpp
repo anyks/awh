@@ -272,7 +272,7 @@ void awh::alloc::Profile::reset() noexcept {
  * @return признак надобности учёта
  *
  */
-bool awh::alloc::Profile::wanted() noexcept {
+bool awh::alloc::Profile::sampled() noexcept {
 	// Запоминаем действующую долю выборки
 	const size_t rate = this->_rate.load(std::memory_order_relaxed);
 	// Если учёт выключен
@@ -285,16 +285,6 @@ bool awh::alloc::Profile::wanted() noexcept {
 		return true;
 	// Увеличиваем счётчик выдач и берём каждую rate-ю из них
 	return ((this->_counter.fetch_add(1, std::memory_order_relaxed) % rate) == 0);
-}
-/**
- * @brief Метод определения ведения учёта хоть каких-то блоков
- *
- * @return признак наличия учитываемых блоков
- *
- */
-bool awh::alloc::Profile::tracking() const noexcept {
-	// Выводим признак наличия учитываемых блоков
-	return (this->_live.load(std::memory_order_relaxed) > 0);
 }
 /**
  * @brief Метод взятия выданного блока под учёт

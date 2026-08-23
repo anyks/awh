@@ -48,9 +48,11 @@ awh::codec::abc::Writer::Settings::Settings() noexcept :
 /**
  * @brief Конструктор
  *
+ * @param log объект для работы с логами
+ *
  */
-awh::codec::abc::Writer::Writer() noexcept :
- _error(error_t::NONE), _failed(false), _documents(0) {}
+awh::codec::abc::Writer::Writer(const log_t * log) noexcept :
+ _error(error_t::NONE), _failed(false), _documents(0), _log(log) {}
 /**
  * @brief Метод сброса состояния сборки
  *
@@ -81,6 +83,35 @@ bool awh::codec::abc::Writer::fail(const error_t error) noexcept {
 	this->_error = error;
 	// Выполняем установку признака отказа сборки
 	this->_failed = true;
+	/**
+	 * Если объект логирования отдан, доносим об отказе сборки.
+	 *
+	 * Донесение идёт отсюда, из единственного места объявления отказа: сборка
+	 * отвечает отказом множеством путей, и запись в каждом из них разошлась бы с
+	 * прочими
+	 */
+	/**
+	 * @warning Сброс кода отказа сюда НЕ идёт: воронка эта объявляет отказ, а сброс
+	 *          лишь снимает прежний, и донесение о нём наполняло бы журнал записями
+	 *          «no error» на всякий успешный вызов. Проверено на себе
+	 */
+	if((error != error_t::NONE) && (this->_log != nullptr)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("ABC: %s", __PRETTY_FUNCTION__,
+			 make_tuple(static_cast <uint16_t> (error), this->_record.size()),
+			 log_t::flag_t::WARNING, abc::message(error));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("ABC: %s", log_t::flag_t::WARNING, abc::message(error));
+		#endif
+	}
 	// Сообщаем, что сборка отвечена отказом
 	return false;
 }

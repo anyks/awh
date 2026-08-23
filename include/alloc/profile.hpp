@@ -66,6 +66,24 @@
 #include "../sys/global.hpp"
 
 /**
+ * Если компилятор принадлежит к Visual Studio
+ */
+#if defined(_MSC_VER)
+	/**
+	 * Принудительная подстановка средствами Visual Studio
+	 */
+	#define AWH_PROFILE_INLINE __forceinline
+/**
+ * Если компилятор принадлежит к семейству GCC или Clang
+ */
+#else
+	/**
+	 * Принудительная подстановка средствами GCC и Clang
+	 */
+	#define AWH_PROFILE_INLINE inline __attribute__((always_inline))
+#endif
+
+/**
  * @brief Пространство имён фреймворка
  *
  */
@@ -275,7 +293,34 @@ namespace awh {
 				 * @brief Method of determining whether the next allocation is accounted
 				 *
 				 */
-				bool wanted() noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод выборки выдачи под учёт места
+				 *
+				 * @note Холодный хвост `wanted`: сюда приходят лишь при включённом учёте
+				 *
+				 * @return признак того, что выборка взяла эту выдачу
+				 *
+				 * \~english
+				 * @brief Method of sampling an allocation for tracking
+				 *
+				 */
+				bool sampled() noexcept;
+				AWH_PROFILE_INLINE bool wanted() noexcept {
+					/**
+					 * Отвечаем отказом, не заходя в файл кода
+					 *
+					 * Учёт мест выдачи выключен у подавляющего большинства приложений, а вопрос
+					 * этот стоит на пути КАЖДОЙ выдачи: работы здесь одно нестрогое чтение,
+					 * а вызов стоил дороже работы
+					 */
+					// Если учёт выключен
+					if(this->_rate.load(std::memory_order_relaxed) == 0)
+						// Учёт не нужен
+						return false;
+					// Уходим холодным путём: учёт включён, идёт выборка
+					return this->sampled();
+				}
 				/**
 				 * \~russian
 				 * @brief Метод определения ведения учёта хоть каких-то блоков
@@ -289,7 +334,10 @@ namespace awh {
 				 * @brief Method of determining whether any blocks are accounted for
 				 *
 				 */
-				bool tracking() const noexcept;
+				AWH_PROFILE_INLINE bool tracking() const noexcept {
+					// Выводим признак наличия учитываемых блоков
+					return (this->_live.load(std::memory_order_relaxed) > 0);
+				}
 			public:
 				/**
 				 * \~russian

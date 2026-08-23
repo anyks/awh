@@ -1155,6 +1155,20 @@ namespace awh {
 				private:
 					/**
 					 * \~russian
+					 * Объект ведения журнала работы
+					 *
+					 * @note Логгер уходит и в чтение, деревом хранимое: разбор сообщает о бедах
+					 *       своих сам, и дерево обязано ему это дать
+					 *
+					 * \~english
+					 * Object of the keeping of the work log
+					 *
+					 * \~
+					 */
+					const log_t * _log = nullptr;
+				private:
+					/**
+					 * \~russian
 					 * Перечень узлов документа
 					 *
 					 * @details Дети лежат сразу за родителем, оттого обход идёт вперёд по
@@ -1773,7 +1787,21 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Document() noexcept;
+					explicit Document(const log_t * log = nullptr) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод установки объекта ведения журнала работы
+					 *
+					 * @param log объект ведения журнала работы
+					 *
+					 * \~english
+					 * @brief Method of the setting of the object of the keeping of the work log
+					 *
+					 * @param log the object of the keeping of the work log
+					 *
+					 * \~
+					 */
+					void setLogger(const log_t * log) noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор

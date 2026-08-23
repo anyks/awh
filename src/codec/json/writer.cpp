@@ -259,8 +259,46 @@ awh::codec::json::Writer::Settings::Settings() noexcept :
  * @brief Конструктор
  *
  */
-awh::codec::json::Writer::Writer() noexcept :
- _empty(true), _keyed(false), _started(false), _taken(0) {}
+bool awh::codec::json::Writer::refuse(const char * reason) const noexcept {
+	/**
+	 * Если объект ведения журнала работы установлен
+	 */
+	if(this->_log != nullptr){
+		/**
+		 * Выполняем запись об отказе записи в журнал
+		 *
+		 * @note Отказ записи беда КРИТИЧЕСКАЯ: записывается то, что собрало само приложение,
+		 *       и негодное здесь означает дефект у потребителя, а не чужой негодный ввод
+		 */
+		#if DEBUG_MODE
+			// Записываем отказ записи в журнал работы
+			this->_log->debug("%s", __PRETTY_FUNCTION__, ::std::make_tuple(), log_t::flag_t::CRITICAL, reason);
+		#else
+			// Записываем отказ записи в журнал работы
+			this->_log->print("JSON writing refused: %s", log_t::flag_t::CRITICAL, reason);
+		#endif
+	}
+	// Выводим отрицательный результат выполнения операции
+	return false;
+}
+/**
+ * @brief Метод установки объекта ведения журнала работы
+ *
+ * @param log объект ведения журнала работы
+ *
+ */
+void awh::codec::json::Writer::setLogger(const log_t * log) noexcept {
+	// Устанавливаем объект ведения журнала работы
+	this->_log = log;
+}
+/**
+ * @brief Конструктор
+ *
+ * @param log объект ведения журнала работы
+ *
+ */
+awh::codec::json::Writer::Writer(const log_t * log) noexcept :
+ _empty(true), _keyed(false), _started(false), _taken(0), _log(log) {}
 /**
  * @brief Метод записи разделителя перед очередным значением
  *
@@ -284,8 +322,8 @@ bool awh::codec::json::Writer::separate() noexcept {
 	 * Если запись ведётся внутри объекта
 	 */
 	if(!this->_nesting.empty() && (this->_nesting.back() == kind_t::OBJECT))
-		// Выводим признак недопустимости записи значения, ожидается имя поля
-		return false;
+		// Выполняем отказ записи с сообщением о доводе его в журнал
+		return this->refuse("a value is not allowed here, a field name is expected");
 	/**
 	 * Если запись ведётся вне вместилищ, а значение уже записано
 	 *
@@ -293,8 +331,8 @@ bool awh::codec::json::Writer::separate() noexcept {
 	 *       такое допустимо лишь потоком NDJSON, отделяющим документы друг от друга
 	 */
 	if(this->_nesting.empty() && !this->_empty)
-		// Выводим признак недопустимости записи значения
-		return false;
+		// Выполняем отказ записи с сообщением о доводе его в журнал
+		return this->refuse("the document root already holds a value");
 	/**
 	 * Если вне вместилищ начинается второй документ, а документы ничем не разделены
 	 *
@@ -302,8 +340,8 @@ bool awh::codec::json::Writer::separate() noexcept {
 	 *       знаков, разбор какой распался бы на границе между ними
 	 */
 	if(this->_nesting.empty() && this->_started && !this->_settings.stream)
-		// Выводим признак недопустимости записи значения
-		return false;
+		// Выполняем отказ записи с сообщением о доводе его в журнал
+		return this->refuse("the document is already finished and the stream mode is off");
 	/**
 	 * Если вместилище уже содержит значения
 	 */
@@ -567,8 +605,8 @@ bool awh::codec::json::Writer::object() noexcept {
 	 * Если глубина вложенности превышает допустимую
 	 */
 	if(this->_nesting.size() >= MAX_DEPTH)
-		// Выводим признак неуспешности записи
-		return false;
+		// Выполняем отказ записи с сообщением о доводе его в журнал
+		return this->refuse("the nesting depth exceeds the allowed one");
 	/**
 	 * Если запись значения в этом месте недопустима
 	 */
@@ -597,8 +635,8 @@ bool awh::codec::json::Writer::array() noexcept {
 	 * Если глубина вложенности превышает допустимую
 	 */
 	if(this->_nesting.size() >= MAX_DEPTH)
-		// Выводим признак неуспешности записи
-		return false;
+		// Выполняем отказ записи с сообщением о доводе его в журнал
+		return this->refuse("the nesting depth exceeds the allowed one");
 	/**
 	 * Если запись значения в этом месте недопустима
 	 */
@@ -627,14 +665,14 @@ bool awh::codec::json::Writer::close() noexcept {
 	 * Если открытых вместилищ нет вовсе
 	 */
 	if(this->_nesting.empty())
-		// Выводим признак неуспешности записи
-		return false;
+		// Выполняем отказ записи с сообщением о доводе его в журнал
+		return this->refuse("no container is open");
 	/**
 	 * Если имя поля объекта записано, а значение его - ещё нет
 	 */
 	if(this->_keyed)
-		// Выводим признак неуспешности записи
-		return false;
+		// Выполняем отказ записи с сообщением о доводе его в журнал
+		return this->refuse("the field name is already written");
 	// Получаем вид закрываемого вместилища
 	const kind_t kind = this->_nesting.back();
 	// Удаляем вид закрываемого вместилища из стека
@@ -672,8 +710,8 @@ bool awh::codec::json::Writer::key(const string & name) noexcept {
 	 * Если запись ведётся вне объекта либо имя поля объекта уже записано
 	 */
 	if(this->_nesting.empty() || (this->_nesting.back() != kind_t::OBJECT) || this->_keyed)
-		// Выводим признак неуспешности записи
-		return false;
+		// Выполняем отказ записи с сообщением о доводе его в журнал
+		return this->refuse("a field name is allowed only inside an object and only once");
 	/**
 	 * Если отказ на негодную кодировку затребован, а имя поля ей не отвечает
 	 *
@@ -681,8 +719,8 @@ bool awh::codec::json::Writer::key(const string & name) noexcept {
 	 *       записью с экранированием и негодный байт в нём портит текст ровно так же
 	 */
 	if((this->_settings.malformed == malformed_t::REFUSE) && !::conforms(name))
-		// Выводим признак неуспешности записи
-		return false;
+		// Выполняем отказ записи с сообщением о доводе его в журнал
+		return this->refuse("the field name does not conform to the encoding");
 	/**
 	 * Если объект уже содержит поля
 	 */
@@ -793,8 +831,8 @@ bool awh::codec::json::Writer::value(const string & value) noexcept {
 	 *       бы в тексте имя поля без значения его, а это хуже негодного байта
 	 */
 	if((this->_settings.malformed == malformed_t::REFUSE) && !::conforms(value))
-		// Выводим признак неуспешности записи
-		return false;
+		// Выполняем отказ записи с сообщением о доводе его в журнал
+		return this->refuse("the value does not conform to the encoding");
 	/**
 	 * Если запись значения в этом месте недопустима
 	 */
@@ -896,8 +934,8 @@ bool awh::codec::json::Writer::value(const double value) noexcept {
 		 * Если запись таких чисел настройками не дозволена
 		 */
 		if(!this->_settings.allowInfinityAndNan)
-			// Выводим признак неуспешности записи
-			return false;
+			// Выполняем отказ записи с сообщением о доводе его в журнал
+			return this->refuse("a non-finite number is refused, «allowInfinityAndNan» is off");
 		/**
 		 * Если запись значения в этом месте недопустима
 		 */
@@ -1069,8 +1107,8 @@ bool awh::codec::json::Writer::produced(const char * value, const size_t size) n
 	 *          вызова, подающее запись из хранилища большего размера, обратилось бы к нему
 	 */
 	if(size > MAX_NUMBER)
-		// Выводим признак неуспешности записи
-		return false;
+		// Выполняем отказ записи с сообщением о доводе его в журнал
+		return this->refuse("the record of the number exceeds the allowed length");
 	/**
 	 * Если запись значения в этом месте недопустима
 	 */
@@ -1098,15 +1136,15 @@ bool awh::codec::json::Writer::raw(const string & value) noexcept {
 		 * Если запись числа словами не является либо запись таких чисел не дозволена
 		 */
 		if(!this->_settings.allowInfinityAndNan || ((value != "NaN") && (value != "Infinity") && (value != "-Infinity")))
-			// Выводим признак неуспешности записи
-			return false;
+			// Выполняем отказ записи с сообщением о доводе его в журнал
+			return this->refuse("the record of the number is not recognised as a non-finite one");
 	}
 	/**
 	 * Если длина записи числа превышает допустимую
 	 */
 	if(value.size() > MAX_NUMBER)
-		// Выводим признак неуспешности записи
-		return false;
+		// Выполняем отказ записи с сообщением о доводе его в журнал
+		return this->refuse("the record of the number exceeds the allowed length");
 	/**
 	 * Если запись значения в этом месте недопустима
 	 */
@@ -1133,8 +1171,8 @@ bool awh::codec::json::Writer::finish() noexcept {
 	 * Если открытые вместилища ещё не закрыты либо документ пуст
 	 */
 	if(!this->_nesting.empty() || this->_empty)
-		// Выводим признак неуспешности записи
-		return false;
+		// Выполняем отказ записи с сообщением о доводе его в журнал
+		return this->refuse("the document is not finished");
 	/**
 	 * Если документы разделяются переводом строки
 	 */

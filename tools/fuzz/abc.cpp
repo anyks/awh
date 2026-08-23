@@ -55,6 +55,33 @@ using namespace awh::codec;
  */
 namespace {
 	/**
+	 * @brief Функция извлечения объекта журнала ворошителя
+	 *
+	 * @details Журнал гасится: ворошитель нарочно кормит кодек негодным, и всякий
+	 *          отказ ложился бы записью - вывод стал бы нечитаем, а прогон медленнее
+	 *          во много раз. Гашение это настройка журнала, а не молчание модуля
+	 *
+	 * @return объект журнала ворошителя
+	 *
+	 */
+	const log_t * logger() noexcept {
+		// Объект фреймворка ворошителя
+		static fmk_t fmk;
+		// Объект журнала ворошителя
+		static log_t log(& fmk);
+		// Признак выполненной настройки журнала
+		static const bool ready = [](){
+			// Выполняем гашение вывода журнала ворошителя
+			log.level(log_t::level_t::NONE);
+			// Выводим признак выполненной настройки
+			return true;
+		}();
+		// Снимаем неиспользуемый признак настройки
+		(void) ready;
+		// Выводим объект журнала ворошителя
+		return & log;
+	}
+	/**
 	 * @brief Учёт проделанной работы
 	 *
 	 */
@@ -93,13 +120,15 @@ namespace {
 		uint64_t stable;
 		// Количество правок значения, устойчивости не порушивших
 		uint64_t edited;
+		// Количество контейнеров с растянутым за тело кадром
+		uint64_t stretched;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
 		Statistic() noexcept :
 		 records(0), corrupted(0), survived(0), events(0), trees(0), containers(0),
-		 fetches(0), edits(0), compactions(0), verified(0), assemblies(0), skips(0), spikes(0), swept(0), reread(0), stable(0), edited(0) {}
+		 fetches(0), edits(0), compactions(0), verified(0), assemblies(0), skips(0), spikes(0), swept(0), reread(0), stable(0), edited(0), stretched(0) {}
 	} totals;
 
 	/**
@@ -435,7 +464,7 @@ namespace {
 	 */
 	bool assemble(vector <uint8_t> & result) noexcept {
 		// Сборщик бинарной записи
-		abc::writer_t writer;
+		abc::writer_t writer(::logger());
 		// Получаем настройки сборки бинарной записи
 		abc::writer_t::settings_t settings = writer.settings();
 		// Выполняем установку строгого вида записи через раз
@@ -533,7 +562,7 @@ namespace {
 	 */
 	bool parse(const vector <uint8_t> & buffer, const size_t chunk, vector <Event> & events, const bool direct = false) noexcept {
 		// Разбиратель бинарной записи
-		abc::reader_t reader;
+		abc::reader_t reader(::logger());
 		// Выполняем очистку запомненных событий разбора
 		events.clear();
 		// Смещение подачи разбираемой записи
@@ -678,7 +707,7 @@ namespace {
 		// Выполняем установку вместилища запоминаемых событий разбора
 		sink.events = & events;
 		// Разбиратель бинарной записи
-		abc::reader_t reader;
+		abc::reader_t reader(::logger());
 		// Выполняем установку обработчика прямой выдачи событий разбора
 		reader.handler([](void * context, abc::reader_t & reader, const abc::event_t event) noexcept -> void {
 			// Выполняем получение опоры прямой выдачи событий
@@ -1217,7 +1246,7 @@ namespace {
 	}
 	void tree(const vector <uint8_t> & buffer) noexcept {
 		// Дерево документа
-		abc::document_t document;
+		abc::document_t document(::logger());
 		/**
 		 * Если разобрать запись в дерево документа не вышло
 		 */
@@ -1388,7 +1417,7 @@ namespace {
 			::exit(1);
 		}
 		// Потоковая сборка владеющего значения
-		abc::builder_t builder;
+		abc::builder_t builder(::logger());
 		/**
 		 * Если значение потоковой сборке выразимо, сличаем собранное с разобранным
 		 */
@@ -1476,7 +1505,7 @@ namespace {
 	void container(crypto_t & crypto, compressor::block_t & compressor,
 	 const vector <vector <uint8_t>> & records) noexcept {
 		// Сборщик контейнера
-		abc::assembler_t assembler;
+		abc::assembler_t assembler(::logger());
 		// Выполняем установку модуля сжатия сборщику контейнера
 		assembler.compressor(& compressor);
 		// Выполняем получение признака шифрования содержимого кадров
@@ -1540,7 +1569,7 @@ namespace {
 			/**
 			 * Если подпись владельца не сошлась
 			 */
-			if(!abc::verify(crypto, "владелец", medium.data.data(), medium.data.size(), error)){
+			if(!abc::verify(crypto, "владелец", medium.data.data(), medium.data.size(), error, ::logger())){
 				// Выводим сообщение о несошедшейся подписи владельца
 				::fprintf(stderr, "abc fuzz: signature of the freshly built container does not agree: %s\n",
 				 abc::message(error));
@@ -1551,7 +1580,7 @@ namespace {
 			totals.verified++;
 		}
 		// Выборщик записей контейнера
-		abc::fetcher_t fetcher;
+		abc::fetcher_t fetcher(::logger());
 		// Выполняем установку модуля сжатия выборщику записей
 		fetcher.compressor(& compressor);
 		// Выполняем установку модуля шифрования выборщику записей
@@ -1592,7 +1621,7 @@ namespace {
 			}
 		}
 		// Правщик контейнера
-		abc::editor_t editor;
+		abc::editor_t editor(::logger());
 		// Выполняем установку модуля сжатия правщику контейнера
 		editor.compressor(& compressor);
 		// Выполняем установку модуля шифрования правщику контейнера
@@ -1760,7 +1789,7 @@ namespace {
 		 */
 		{
 			// Выборщик записей правленого контейнера
-			abc::fetcher_t rereader;
+			abc::fetcher_t rereader(::logger());
 			// Выполняем установку модуля сжатия выборщику
 			rereader.compressor(& compressor);
 			// Выполняем установку модуля шифрования выборщику
@@ -1829,7 +1858,7 @@ namespace {
 			/**
 			 * Если подпись владельца не сошлась
 			 */
-			if(!abc::verify(crypto, "владелец", medium.data.data(), medium.data.size(), error)){
+			if(!abc::verify(crypto, "владелец", medium.data.data(), medium.data.size(), error, ::logger())){
 				// Выводим сообщение о несошедшейся подписи правленного контейнера
 				::fprintf(stderr, "abc fuzz: signature of the edited container does not agree: %s\n",
 				 abc::message(error));
@@ -1862,7 +1891,7 @@ namespace {
 				::exit(1);
 			}
 			// Выборщик записей убранного контейнера
-			abc::fetcher_t sweeper;
+			abc::fetcher_t sweeper(::logger());
 			// Выполняем установку модуля сжатия выборщику убранного контейнера
 			sweeper.compressor(& compressor);
 			// Выполняем установку модуля шифрования выборщику убранного контейнера
@@ -1939,6 +1968,58 @@ namespace {
 	 *
 	 */
 	void broken(crypto_t & crypto, compressor::block_t & compressor, vector <uint8_t> buffer) noexcept {
+		/**
+		 * Выполняем растяжение первого кадра тела за пределы его.
+		 *
+		 * Порча случайным октетом до этого состояния не доходит: поля уложенной и
+		 * исходной длины кадра сличаются между собою, и правка одного из них
+		 * отвечается отказом опознания прежде всякой выдачи. Растянуть кадр можно лишь
+		 * согласованной правкой обоих - оттого подлог этот вбивается нарочно, как и
+		 * метка размаха у записи
+		 */
+		if(number(0, 1) == 0){
+			// Снятый заголовок опознания контейнера
+			abc::header_t header;
+			// Код отказа снятия заголовка опознания
+			abc::error_t error = abc::error_t::NONE;
+			/**
+			 * Если заголовок опознания контейнера снять вышло
+			 */
+			if(header.unpack(buffer.data(), buffer.size(), error) &&
+			 (header.length > abc::CHUNK_HEADER) &&
+			 (buffer.size() > (abc::HEADER_LENGTH + static_cast <size_t> (header.length))) &&
+			 (buffer.at(abc::HEADER_LENGTH) == static_cast <uint8_t> (compressor::method_t::NONE))){
+				// Выполняем получение уложенной длины первого кадра тела
+				uint64_t length = 0;
+				/**
+				 * Выполняем перебор всех октетов поля уложенной длины кадра
+				 */
+				for(size_t i = 0; i < 4; i++)
+					// Выполняем сборку длины из очередного октета поля
+					length |= (static_cast <uint64_t> (buffer.at(abc::HEADER_LENGTH + 4 + i)) << (i * 8));
+				/**
+				 * Выполняем получение растянутой длины кадра, вбирающей октеты за телом
+				 */
+				const uint64_t stretched = (length +
+				 (static_cast <uint64_t> (buffer.size()) - (abc::HEADER_LENGTH + header.length)));
+				/**
+				 * Если растянутая длина в поле кадра умещается
+				 */
+				if(stretched <= static_cast <uint64_t> (numeric_limits <uint32_t>::max())){
+					/**
+					 * Выполняем перебор всех октетов обоих полей длины кадра
+					 */
+					for(size_t i = 0; i < 4; i++){
+						// Выполняем укладку очередного октета поля уложенной длины
+						buffer.at(abc::HEADER_LENGTH + 4 + i) = static_cast <uint8_t> ((stretched >> (i * 8)) & 0xFF);
+						// Выполняем укладку очередного октета поля исходной длины
+						buffer.at(abc::HEADER_LENGTH + 8 + i) = static_cast <uint8_t> ((stretched >> (i * 8)) & 0xFF);
+					}
+					// Выполняем учёт контейнера с растянутым кадром
+					totals.stretched++;
+				}
+			}
+		}
 		// Выполняем порчу октетов контейнера
 		damage(buffer);
 		// Носитель, несущий порченый контейнер
@@ -1946,7 +2027,7 @@ namespace {
 		// Выполняем перенесение порченых октетов носителю
 		medium.data = buffer;
 		// Сниматель контейнера
-		abc::loader_t loader;
+		abc::loader_t loader(::logger());
 		// Выполняем установку модуля сжатия снимателю контейнера
 		loader.compressor(& compressor);
 		// Выполняем установку модуля шифрования снимателю контейнера
@@ -1957,17 +2038,49 @@ namespace {
 		vector <uint8_t> payload;
 		// Сведения об очередном снятом кадре
 		abc::chunk_t chunk;
+		// Октеты, занятые выданными кадрами
+		uint64_t taken = 0;
 		/**
 		 * Выполняем вычитывание всех кадров порченого контейнера
 		 */
 		while(loader.next(payload, chunk)){
+			// Выполняем учёт октетов, занятых выданным кадром
+			taken += (abc::CHUNK_HEADER + static_cast <uint64_t> (chunk.length));
+			/**
+			 * Если содержимое выданного кадра разошлось с объявленной длиною его.
+			 *
+			 * Сниматель кадра сличает их сам, и расхождение здесь означало бы, что
+			 * наружу ушло содержимое, кадру не принадлежащее
+			 */
+			if(payload.size() != static_cast <size_t> (chunk.origin)){
+				// Выводим сообщение о расхождении содержимого кадра с длиною его
+				::fprintf(stderr, "abc fuzz: chunk payload of %zu octets against declared %u\n",
+				 payload.size(), static_cast <unsigned int> (chunk.origin));
+				// Выполняем выход с признаком расхождения
+				::exit(1);
+			}
+			/**
+			 * Если выданные кадры вышли за тело контейнера.
+			 *
+			 * Договор этот стережёт вбирание кадром октетов, телу не принадлежащих:
+			 * за телом лежат оглавление и подпись, и подача их содержит. Порча длины
+			 * кадра без него уводила бы выдачу в оглавление молча
+			 */
+			if(taken > loader.header().length){
+				// Выводим сообщение о выходе выданных кадров за тело контейнера
+				::fprintf(stderr, "abc fuzz: chunks took %llu octets against the body of %llu\n",
+				 static_cast <unsigned long long> (taken),
+				 static_cast <unsigned long long> (loader.header().length));
+				// Выполняем выход с признаком расхождения
+				::exit(1);
+			}
 			// Выполняем разбор содержимого снятого кадра
 			abc::value_t value;
 			// Выполняем разбор содержимого кадра во владеющее значение
 			(void) value.parse(payload.data(), payload.size());
 		}
 		// Выборщик записей порченого контейнера
-		abc::fetcher_t fetcher;
+		abc::fetcher_t fetcher(::logger());
 		// Выполняем установку модуля сжатия выборщику записей
 		fetcher.compressor(& compressor);
 		// Выполняем установку модуля шифрования выборщику записей
@@ -1985,14 +2098,45 @@ namespace {
 			for(uint64_t i = 0; i < fetcher.records(); i++){
 				// Буфер выбранной записи контейнера
 				vector <uint8_t> picked;
-				// Выполняем выборку очередной записи контейнера
-				(void) fetcher.record(i, picked);
+				/**
+				 * Если выборка очередной записи контейнера удалась
+				 */
+				if(fetcher.record(i, picked)){
+					/**
+					 * Если выбранная запись пуста.
+					 *
+					 * Пустых записей контейнер не несёт вовсе, и снятие оглавления
+					 * такую строку отвергает. Выданная пустая запись означала бы, что
+					 * строка оглавления прошла разбор, длину имея нулевую
+					 */
+					if(picked.empty()){
+						// Выводим сообщение о выданной пустой записи контейнера
+						::fprintf(stderr, "abc fuzz: empty record %llu fetched by number\n",
+						 static_cast <unsigned long long> (i));
+						// Выполняем выход с признаком расхождения
+						::exit(1);
+					}
+					/**
+					 * Если выбранная запись длиннее всего контейнера.
+					 *
+					 * Договор этот стережёт выборку по строке оглавления, указавшей за
+					 * содержимое своего кадра: запись обязана лежать внутри кадра, а
+					 * кадр - внутри контейнера
+					 */
+					if(picked.size() > medium.data.size()){
+						// Выводим сообщение о записи, длиннейшей всего контейнера
+						::fprintf(stderr, "abc fuzz: record %llu of %zu octets against the container of %zu\n",
+						 static_cast <unsigned long long> (i), picked.size(), medium.data.size());
+						// Выполняем выход с признаком расхождения
+						::exit(1);
+					}
+				}
 			}
 		}
 		// Код отказа поверки подписи владельца
 		abc::error_t error = abc::error_t::NONE;
 		// Выполняем поверку подписи порченого контейнера
-		(void) abc::verify(crypto, "владелец", buffer.data(), buffer.size(), error);
+		(void) abc::verify(crypto, "владелец", buffer.data(), buffer.size(), error, ::logger());
 	}
 };
 
@@ -2085,7 +2229,7 @@ int main(int argc, char * argv[]) noexcept {
 			// Выполняем прогон контейнера целиком
 			container(crypto, compressor, records);
 			// Собираемый контейнер для порчи
-			abc::assembler_t assembler;
+			abc::assembler_t assembler(::logger());
 			// Выполняем объявление подписи собираемого контейнера
 			assembler.sign(& crypto, "владелец");
 			// Выполняем перебор всех записей итерации
@@ -2105,13 +2249,13 @@ int main(int argc, char * argv[]) noexcept {
 	// Выводим учёт проделанной работы
 	::printf("abc fuzz: %llu records (%llu corrupted), %llu parsed to the end, %llu events, "
 	 "%llu trees, %llu containers, %llu fetches, %llu edits, %llu compactions, %llu signatures verified, "
-	 "%llu values assembled, %llu skipping runs, %llu spiked spans, %llu swept records, %llu reread records, %llu stable rewritings, %llu edited values\n",
+	 "%llu values assembled, %llu skipping runs, %llu spiked spans, %llu swept records, %llu reread records, %llu stable rewritings, %llu edited values, %llu stretched chunks\n",
 	 static_cast <unsigned long long> (totals.records), static_cast <unsigned long long> (totals.corrupted),
 	 static_cast <unsigned long long> (totals.survived), static_cast <unsigned long long> (totals.events),
 	 static_cast <unsigned long long> (totals.trees), static_cast <unsigned long long> (totals.containers),
 	 static_cast <unsigned long long> (totals.fetches), static_cast <unsigned long long> (totals.edits),
 	 static_cast <unsigned long long> (totals.compactions), static_cast <unsigned long long> (totals.verified),
-	 static_cast <unsigned long long> (totals.assemblies), static_cast <unsigned long long> (totals.skips), static_cast <unsigned long long> (totals.spikes), static_cast <unsigned long long> (totals.swept), static_cast <unsigned long long> (totals.reread), static_cast <unsigned long long> (totals.stable), static_cast <unsigned long long> (totals.edited));
+	 static_cast <unsigned long long> (totals.assemblies), static_cast <unsigned long long> (totals.skips), static_cast <unsigned long long> (totals.spikes), static_cast <unsigned long long> (totals.swept), static_cast <unsigned long long> (totals.reread), static_cast <unsigned long long> (totals.stable), static_cast <unsigned long long> (totals.edited), static_cast <unsigned long long> (totals.stretched));
 	// Выводим успешное завершение работы
 	return 0;
 }

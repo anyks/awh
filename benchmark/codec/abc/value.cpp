@@ -39,6 +39,32 @@ using namespace awh::benchmark::binary;
  */
 namespace {
 	/**
+	 * @brief Функция извлечения объекта журнала замеров
+	 *
+	 * @details Журнал гасится: замер меряет работу кодека, а не вывод записей, и
+	 *          сценарии отказа портили бы и вывод, и время
+	 *
+	 * @return объект журнала замеров
+	 *
+	 */
+	const awh::log_t * logger() noexcept {
+		// Объект фреймворка замеров
+		static awh::fmk_t fmk;
+		// Объект журнала замеров
+		static awh::log_t log(& fmk);
+		// Признак выполненной настройки журнала
+		static const bool ready = [](){
+			// Выполняем гашение вывода журнала замеров
+			log.level(awh::log_t::level_t::NONE);
+			// Выводим признак выполненной настройки
+			return true;
+		}();
+		// Снимаем неиспользуемый признак настройки
+		(void) ready;
+		// Выводим объект журнала замеров
+		return & log;
+	}
+	/**
 	 * @brief Количество обрабатываемых крупных записей
 	 *
 	 */
@@ -279,7 +305,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(record.size(), LARGE_ROUNDS, [&value]() noexcept {
 			// Сборка собираемой записи
-			awh::codec::abc::writer_t writer;
+			awh::codec::abc::writer_t writer(::logger());
 			/**
 			 * Если записать владеющее значение не удалось
 			 */
@@ -352,7 +378,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(record.size(), SMALL_ROUNDS, []() noexcept {
 			// Потоковая сборка владеющего значения
-			awh::codec::abc::builder_t builder;
+			awh::codec::abc::builder_t builder(::logger());
 			// Выполняем сборку значения записи ответа службы
 			if(!(builder.map() &&
 			     builder.key("active") && builder.value(true) &&
