@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <regex/engine.hpp>
+#include "silent.hpp"
 #define PCRE2_CODE_UNIT_WIDTH 8
 #include <pcre2.h>
 using namespace std;
@@ -59,7 +60,7 @@ int main(){
 				string text = base;
 				const size_t at = ((place == 0) ? 0 : ((place == 1) ? (text.size() / 2) : text.size()));
 				text.insert(at, c.needle);
-				regex::engine_t eng;
+				regex::engine_t eng(verify::logger());
 				if(!eng.build(c.pattern, 0)){ unsupported++; continue; }
 				result_t ours, theirs;
 				const bool a = eng.exec(text, 0, ours);

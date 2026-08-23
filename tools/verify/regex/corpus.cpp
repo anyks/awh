@@ -5,6 +5,7 @@
 #include <vector>
 #include <map>
 #include <regex/engine.hpp>
+#include "silent.hpp"
 
 
 
@@ -39,7 +40,7 @@ static bool reference(const string & pattern, const string & text, result_t & ou
 // Сопоставление модулем AWH
 static bool actual(const string & pattern, const string & text, result_t & out, bool & supported, string & error) {
 	out.clear(); supported = true;
-	regex::engine_t engine;
+	regex::engine_t engine(verify::logger());
 	if(!engine.build(pattern, 0)) { supported = false; error = engine.message(); return false; }
 	return engine.exec(text, 0, out);
 }

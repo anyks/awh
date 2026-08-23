@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <regex/engine.hpp>
+#include "silent.hpp"
 #define PCRE2_CODE_UNIT_WIDTH 8
 #include <pcre2.h>
 using namespace std; using namespace awh;
@@ -41,7 +42,7 @@ int main(){
 			}
 			pcre2_match_data_free(d); pcre2_code_free(re);
 		}
-		regex::engine_t engine;
+		regex::engine_t engine(verify::logger());
 		const bool oursBuilt = engine.build(item.pattern, 0);
 		bool ours = false; size_t ob = 0, oe = 0;
 		vector<pair<size_t,size_t>> caps;

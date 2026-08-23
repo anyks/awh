@@ -69,6 +69,32 @@ if [ ! -f "$ORACLE/lib/libpcre2-8.a" ]; then
 fi
 
 ##
+# Части тела фреймворка, каких требует модуль
+#
+# Модуль сообщает об отказах разбора выражения в журнал работы, а тот опирается на
+# средства времени, строк, кодировок и распределителя памяти. Прежде здесь стояли
+# одни лишь исходные тексты модуля и приведения Юникода: с проведением журнала
+# связывания перечень этот больше не давал
+#
+# @warning Часть «alloc/capture/obsd.cpp» берётся ТОЛЬКО под OpenBSD: собранная
+#          безусловно, она под MinGW валит связывание по «posix_memalign»
+##
+FRAMEWORK="$ROOT/src/sys/log.cpp $ROOT/src/sys/chrono.cpp $ROOT/src/sys/fmk.cpp
+	$ROOT/src/net/nwt.cpp $ROOT/src/encoding/charset/charset.cpp
+	$ROOT/src/encoding/charset/table.cpp $ROOT/src/num/lexical/table.cpp
+	$ROOT/src/alloc/alloc.cpp $ROOT/src/alloc/cache.cpp $ROOT/src/alloc/central.cpp
+	$ROOT/src/alloc/classes.cpp $ROOT/src/alloc/guard.cpp $ROOT/src/alloc/huge.cpp
+	$ROOT/src/alloc/link.cpp $ROOT/src/alloc/pages.cpp $ROOT/src/alloc/profile.cpp
+	$ROOT/src/alloc/source.cpp $ROOT/src/alloc/spin.cpp $ROOT/src/alloc/trace.cpp
+	$ROOT/src/alloc/capture/elf.cpp $ROOT/src/alloc/capture/mach.cpp
+	$ROOT/src/alloc/capture/pe.cpp"
+
+# Внутренние имена распределителя libc берутся только под OpenBSD
+if [ "$(uname -s)" = "OpenBSD" ]; then
+	FRAMEWORK="$FRAMEWORK $ROOT/src/alloc/capture/obsd.cpp"
+fi
+
+##
 # Стенды сверки модуля регулярных выражений
 #
 # Стенды собираются из исходных текстов модуля напрямую, минуя библиотеку:
@@ -83,9 +109,10 @@ for STAND in $PLAIN; do
 	# Выполняем сборку стенда сверки
 	g++ $FLAGS \
 		-I"$ROOT/include" -I"$ROOT/tests" -I"$ORACLE/include" \
+		-Wno-c++11-narrowing \
 		"$STANDS/$STAND.cpp" "$ROOT"/src/regex/*.cpp "$ROOT"/src/encoding/unicode/*.cpp \
-		-o "$OUTPUT/$STAND" \
-		-L"$ORACLE/lib" -lpcre2-8 || exit 1
+		$FRAMEWORK -o "$OUTPUT/$STAND" \
+		-L"$ORACLE/lib" -lpcre2-8 -lz || exit 1
 done
 
 # Выполняем перебор стендов сверки, собираемых вместе с тестовым окружением
@@ -95,9 +122,10 @@ for STAND in $SUITE; do
 	# Выполняем сборку стенда сверки
 	g++ $FLAGS \
 		-I"$ROOT/include" -I"$ROOT/tests" -I"$ORACLE/include" -I"$GTEST/include" \
+		-Wno-c++11-narrowing \
 		"$STANDS/$STAND.cpp" "$ROOT/tests/main.cpp" "$ROOT"/src/regex/*.cpp "$ROOT"/src/encoding/unicode/*.cpp \
-		-o "$OUTPUT/$STAND" \
-		-L"$ORACLE/lib" -L"$GTEST/lib" -lpcre2-8 -lgtest -lgmock || exit 1
+		$FRAMEWORK -o "$OUTPUT/$STAND" \
+		-L"$ORACLE/lib" -L"$GTEST/lib" -lpcre2-8 -lgtest -lgmock -lz || exit 1
 done
 
 # Выводим сообщение о завершении сборки стендов сверки

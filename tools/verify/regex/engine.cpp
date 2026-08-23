@@ -31,6 +31,7 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <regex/engine.hpp>
+#include "silent.hpp"
 
 /**
  * Подключаем заголовочные файлы тестового окружения
@@ -216,7 +217,7 @@ TEST(Regex, Engine) {
 				// Выполняем размещение искомой последовательности в тексте
 				text.insert(at, item.needle);
 				// Создаём объект движка регулярных выражений
-				regex::engine_t engine;
+				regex::engine_t engine(verify::logger());
 				// Выполняем сборку регулярного выражения
 				ASSERT_TRUE(engine.build(item.pattern, 0)) << "Шаблон: " << item.pattern;
 				// Набор границ совпадения движка регулярных выражений

@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <regex/engine.hpp>
+#include "silent.hpp"
 #include <encoding/unicode/unicode.hpp>
 #define PCRE2_CODE_UNIT_WIDTH 8
 #include <pcre2.h>
@@ -25,7 +26,7 @@ int main(){
 		pcre2_code * re = pcre2_compile((PCRE2_SPTR) pattern.c_str(), pattern.size(), PCRE2_UTF|PCRE2_CASELESS|PCRE2_ANCHORED, &code, &off, nullptr);
 		if(re == nullptr) continue;
 		pcre2_match_data * d = pcre2_match_data_create_from_pattern(re, nullptr);
-		regex::engine_t engine;
+		regex::engine_t engine(verify::logger());
 		const uint32_t flags = ((uint32_t) regex::flag_t::UTF | (uint32_t) regex::flag_t::CASELESS | (uint32_t) regex::flag_t::ANCHORED);
 		if(!engine.build(pattern, flags)){ pcre2_match_data_free(d); pcre2_code_free(re); printf("сборка отказ U+%04X\n", cp); continue; }
 		// Проверяем сам символ и все символы, приводимые к тому же значению

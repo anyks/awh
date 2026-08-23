@@ -22,6 +22,18 @@ int main(int argc, char ** argv){
 	const char * path = ((argc > 1) ? argv[1] : "sh/unicode.accepted");
 	// Выполняем открытие набора имён свойств
 	ifstream file(path);
+	//
+	// Отсутствие набора имён — отказ, а не чистая сверка
+	//
+	// Стенд ищет набор путём относительным и запускаться обязан из корня дерева.
+	// Запущенный из каталога сборки, он набора не находил, ifstream отказа не наводит,
+	// и стенд отчитывался «свойств: 0, сличений: 0, расхождений: 0» кодом успеха,
+	// не сверив ни единого свойства
+	//
+	if(!file.is_open()){
+		printf("набор имён свойств не открыт: %s\n", path);
+		return 2;
+	}
 	string name;
 	size_t checked = 0, diverged = 0, properties = 0;
 	string first;
@@ -61,5 +73,10 @@ int main(int argc, char ** argv){
 	}
 	if(!first.empty()) printf("%s\n", first.c_str());
 	printf("свойств: %zu, сличений: %zu, расхождений: %zu\n", properties, checked, diverged);
+	// Пустой набор имён поверять нечем: отчитываемся отказом
+	if(properties == 0){
+		printf("набор имён свойств пуст: %s\n", path);
+		return 2;
+	}
 	return (diverged > 0 ? 1 : 0);
 }

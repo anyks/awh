@@ -4,6 +4,7 @@
 #include <vector>
 #include <initializer_list>
 #include <regex/regex.hpp>
+#include "silent.hpp"
 #define PCRE2_CODE_UNIT_WIDTH 8
 #include <pcre2.h>
 using namespace std; using namespace awh;
@@ -24,7 +25,7 @@ int main(){
 		{"(?<w>\\w+) \\k<w>", "hello hello", "w"}
 	};
 	size_t checked = 0, diverged = 0;
-	regexp_t regexp;
+	regexp_t regexp(verify::logger());
 	for(const auto & item : items){
 		// Эталон
 		int32_t e = 0; PCRE2_SIZE o = 0;
