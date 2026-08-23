@@ -273,6 +273,30 @@ namespace awh {
 						 * \~
 						 */
 						bool inlineComments;
+						/**
+						 * \~russian
+						 * Флаг требования пробельного знака перед началом примечания
+						 *
+						 * @details Без пробела знак примечания частью значения остаётся: запись
+						 * «key = a#b» даёт значение «a#b» целиком. С ним - обрывает значение
+						 * всякий раз, где бы ни стоял
+						 *
+						 * @warning Требование это - защита пути и пароля, где точка с запятой и
+						 * решётка стоят посреди значения. Снимать его следует лишь там, где
+						 * наречие того требует: наречие Git примечание режет без пробела
+						 *
+						 * \~english
+						 * Flag of the requirement of a whitespace character before the beginning of a comment
+						 * @details Without a space the character of a comment remains a part of the value: the record
+						 * «key = a#b» gives the value «a#b» in full. With it the value is cut off
+						 * every time, wherever the character stands
+						 * @warning This requirement is a protection of a path and of a password, where a semicolon and
+						 * a hash stand in the middle of a value. It should be lifted only there, where
+						 * the dialect requires it: the Git dialect cuts a comment without a space
+						 *
+						 * \~
+						 */
+						bool spacedComments;
 						// Флаг разбора управляющих последовательностей в значении свойства
 						bool escapes;
 						// Флаг склеивания строк, продолженных знаком обратной косой черты

@@ -1665,3 +1665,127 @@ TEST(CodecIniDocument, PushFromOwnView) {
 	 */
 	ASSERT_NE(document.text().find("перечень = второе"), string::npos);
 }
+
+/**
+ * @brief Проверка совпадения наречия Git со средством «git config»
+ *
+ * @details Наречие заявлено по образцу настроек Git, и расхождения с самим средством
+ * есть дефект, а не выбор. Три расхождения найдены сличением с ним и здесь закреплены:
+ * примечание без пробельного знака, свойства до первого раздела и подраздел, отделённый
+ * знаком-разделителем наравне с кавычками
+ *
+ * @note Всякое из ожиданий сверено с выдачей «git config -f файл --list» на той же
+ *       записи, а не выведено из описания: описание Git о части этих случаев молчит
+ *
+ */
+TEST(CodecIniDocument, GitDialectMatchesTool) {
+	// Собираемые настройки дерева настроек
+	ini::document_t::settings_t settings;
+	// Устанавливаем настройки разбора по образцу Git
+	settings.reader = ini::reader_t::settings_t::git();
+	{
+		// Дерево настроек
+		ini::document_t document(::logger());
+		/**
+		 * Выполняем разбор текста настроек с примечанием без пробельного знака
+		 *
+		 * @note Средство выдаёт «s.key=a»: знак примечания режет значение где угодно
+		 */
+		ASSERT_TRUE(document.parse("[s]\nkey = a#b\n", settings));
+		// Выполняем проверку того, что значение обрезано по знаку примечания
+		ASSERT_EQ(document.get("key", "s"), "a");
+	}{
+		// Дерево настроек
+		ini::document_t document(::logger());
+		/**
+		 * Выполняем разбор текста настроек со свойством до первого раздела
+		 *
+		 * @note Средство выдаёт «loose=1» и «s.k=v»: свойство без раздела оно принимает
+		 */
+		ASSERT_TRUE(document.parse("loose = 1\n[s]\nk = v\n", settings));
+		// Выполняем проверку того, что свойство до первого раздела принято
+		ASSERT_EQ(document.get("loose"), "1");
+		// Выполняем проверку того, что свойство раздела принято тоже
+		ASSERT_EQ(document.get("k", "s"), "v");
+	}{
+		// Дерево настроек
+		ini::document_t document(::logger());
+		/**
+		 * Выполняем разбор текста настроек с подразделом, отделённым разделителем
+		 *
+		 * @note Средство выдаёт «a.b.key=value»: запись эту оно принимает наравне с
+		 *       записью кавычками
+		 */
+		ASSERT_TRUE(document.parse("[a.b]\nkey = value\n", settings));
+		// Выполняем проверку того, что подраздел выделен
+		ASSERT_TRUE(document.section("a", "b"));
+		// Выполняем проверку значения свойства подраздела
+		ASSERT_EQ(document.get("key", "a", "b"), "value");
+	}{
+		// Дерево настроек
+		ini::document_t document(::logger());
+		/**
+		 * Выполняем разбор текста настроек с подразделом, кавычками взятым
+		 *
+		 * @note Признание обоих построений разом кавычек не отменяет
+		 */
+		ASSERT_TRUE(document.parse("[remote \"origin\"]\nurl = https://host\n", settings));
+		// Выполняем проверку того, что подраздел выделен
+		ASSERT_TRUE(document.section("remote", "origin"));
+		// Выполняем проверку значения свойства подраздела
+		ASSERT_EQ(document.get("url", "remote", "origin"), "https://host");
+	}{
+		// Дерево настроек
+		ini::document_t document(::logger());
+		/**
+		 * Выполняем разбор текста настроек с разделителем внутри имени, кавычками взятого
+		 *
+		 * @note Ровно это правка и ломала: поиск разделителя уходил внутрь кавычек и рвал
+		 *       имя надвое, выдавая раздел «remote "a» с подразделом «b"»
+		 */
+		ASSERT_TRUE(document.parse("[remote \"a.b\"]\nkey = value\n", settings));
+		// Выполняем проверку того, что имя подраздела осталось целым
+		ASSERT_TRUE(document.section("remote", "a.b"));
+		// Выполняем проверку значения свойства подраздела
+		ASSERT_EQ(document.get("key", "remote", "a.b"), "value");
+	}
+}
+
+/**
+ * @brief Проверка требования пробельного знака перед примечанием
+ *
+ * @details Требование это - защита пути и пароля, где точка с запятой и решётка стоят
+ * посреди значения. Стоит оно по умолчанию, а снимается настройкою: наречие Git режет
+ * значение без пробела
+ *
+ */
+TEST(CodecIniDocument, SpacedCommentsSetting) {
+	// Собираемые настройки дерева настроек
+	ini::document_t::settings_t settings;
+	// Устанавливаем признание примечания в конце строки свойства
+	settings.reader.inlineComments = true;
+	{
+		// Дерево настроек
+		ini::document_t document(::logger());
+		// Выполняем разбор текста настроек с примечанием без пробельного знака
+		ASSERT_TRUE(document.parse("[s]\nkey = a#b\n", settings));
+		// Выполняем проверку того, что значение осталось целым
+		ASSERT_EQ(document.get("key", "s"), "a#b");
+	}{
+		// Дерево настроек
+		ini::document_t document(::logger());
+		// Выполняем разбор текста настроек с примечанием за пробельным знаком
+		ASSERT_TRUE(document.parse("[s]\nkey = a #b\n", settings));
+		// Выполняем проверку того, что значение обрезано по знаку примечания
+		ASSERT_EQ(document.get("key", "s"), "a");
+	}{
+		// Снимаем требование пробельного знака перед началом примечания
+		settings.reader.spacedComments = false;
+		// Дерево настроек
+		ini::document_t document(::logger());
+		// Выполняем разбор текста настроек с примечанием без пробельного знака
+		ASSERT_TRUE(document.parse("[s]\nkey = a#b\n", settings));
+		// Выполняем проверку того, что значение обрезано по знаку примечания
+		ASSERT_EQ(document.get("key", "s"), "a");
+	}
+}

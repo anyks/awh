@@ -460,7 +460,8 @@ bool awh::codec::ini::Writer::verify(const string_view name, const bool section)
 			 *       его появлению, и запись «[a.b]» с именем раздела «a.b» прочиталась
 			 *       бы разделом «a» с подразделом «b»
 			 */
-			if(this->_settings.subsections == subsection_t::DELIMITED)
+			if((static_cast <uint8_t> (this->_settings.subsections) &
+			    static_cast <uint8_t> (subsection_t::DELIMITED)) != 0)
 				// Дополняем признак недопустимости знаком-разделителем имени подраздела
 				invalid = (invalid || (name[i] == this->_settings.delimiter));
 		}
@@ -870,8 +871,13 @@ bool awh::codec::ini::Writer::section(const string_view section, const string_vi
 	if(!subsection.empty()){
 		/**
 		 * Определяем построение имени подраздела
+		 *
+		 * @note Признание обоих построений разом пишется кавычками: знак-разделитель
+		 *       внутри имени подраздела прочёлся бы вторым уровнем вложенности, а
+		 *       кавычки его ограждают
 		 */
-		switch(static_cast <uint8_t> (this->_settings.subsections)){
+		switch((this->_settings.subsections == subsection_t::BOTH) ?
+		 static_cast <uint8_t> (subsection_t::QUOTED) : static_cast <uint8_t> (this->_settings.subsections)){
 			// Если подраздел отделяется знаком-разделителем
 			case static_cast <uint8_t> (subsection_t::DELIMITED): {
 				/**

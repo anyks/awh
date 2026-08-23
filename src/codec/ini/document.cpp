@@ -220,7 +220,7 @@ bool awh::codec::ini::Document::acceptable(const string_view name, const bool se
 		 *       косую черту запись ограждает, а квадратная скобка там знак
 		 *       обыкновенный. Запрет их отвергал бы правкой то, что читается
 		 */
-		if(section && !primary && (this->_settings.reader.subsections == subsection_t::QUOTED))
+		if(section && !primary && ((static_cast <uint8_t> (this->_settings.reader.subsections) & static_cast <uint8_t> (subsection_t::QUOTED)) != 0))
 			// Получаем признак недопустимости очередного знака имени подраздела
 			invalid = ((name[i] == '\n') || (name[i] == '\r'));
 		/**
@@ -235,7 +235,7 @@ bool awh::codec::ini::Document::acceptable(const string_view name, const bool se
 			 * @note Имени подраздела знак этот не заказан: читающий режет имя раздела по
 			 *       первому его появлению, и всё, что за ним, именем подраздела и служит
 			 */
-			if(primary && (this->_settings.reader.subsections == subsection_t::DELIMITED))
+			if(primary && ((static_cast <uint8_t> (this->_settings.reader.subsections) & static_cast <uint8_t> (subsection_t::DELIMITED)) != 0))
 				// Дополняем признак недопустимости знаком-разделителем имени подраздела
 				invalid = (invalid || (name[i] == this->_settings.reader.delimiter));
 		}
@@ -1447,7 +1447,7 @@ bool awh::codec::ini::Document::create(const string_view section, const string_v
 		/**
 		 * Если подраздел отделяется знаком-разделителем
 		 */
-		if(this->_settings.reader.subsections == subsection_t::DELIMITED){
+		if((static_cast <uint8_t> (this->_settings.reader.subsections) & static_cast <uint8_t> (subsection_t::DELIMITED)) != 0){
 			/**
 			 * Глубина вложенности объявляемого подраздела
 			 *

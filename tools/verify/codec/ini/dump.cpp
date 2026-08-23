@@ -1,0 +1,313 @@
+/**
+ * @file dump.cpp
+ * @date 2026-08-23
+ *
+ * @license{LicenseRef-AWH-1.0}
+ *
+ * @author Yuriy Lobarev
+ *
+ * @telegram{forman}
+ * @phone{+7 (910) 983-95-90}
+ *
+ * @email forman@anyks.com
+ * @site https://anyks.com
+ *
+ * @brief Щуп сличения разбора INI с эталоном
+ *
+ * @details Щуп читает текст настроек выбранным наречием и выдаёт разобранное записью
+ *          JSON вида `{"раздел": {"свойство": ["значение"]}}`: значение всякий раз
+ *          выдаётся перечнем, ибо запись INI дозволяет имя повторное. Свойства,
+ *          объявленные до первого раздела, ложатся в раздел с пустым именем. Годный
+ *          текст выдаётся с кодом 0, негодный - с кодом 1
+ *
+ * @note Наречие задаётся вторым доводом вызова: единого описания у записи INI нет, и
+ *       сличать её с эталоном можно лишь наречие в наречие
+ *
+ * @note Запись JSON ведётся своею рукою, а не кодеком JSON: щуп обязан мерить один
+ *       лишь кодек INI, и отказ кодека соседнего выглядел бы здесь отказом сличения
+ *
+ * @copyright Copyright © 2026
+ *
+ */
+
+/**
+ * Подключаем заголовочные файлы модуля
+ */
+#include <cstdio>
+#include <string>
+#include <vector>
+#include <fstream>
+#include <sstream>
+
+/**
+ * Подключаем заголовочные файлы проекта
+ */
+#include <codec/ini/document.hpp>
+#include <codec/ini/reader.hpp>
+#include <sys/log.hpp>
+
+/**
+ * Подключаем пространства имён
+ */
+using namespace std;
+using namespace awh;
+
+/**
+ * @brief Пространство имён щупа
+ *
+ * @note Держится оно безымянным намеренно: посредники эти нужны одному лишь файлу
+ *
+ */
+namespace {
+	/**
+	 * @brief Объект журнала щупа с отключённым выводом
+	 *
+	 * @details Вывод отключается назначением пустого перечня приёмников: щуп подаёт
+	 *          заведомо негодные тексты, и журнал засорял бы ими выдачу сличения
+	 *
+	 */
+	struct Silent {
+		/**
+		 * @brief Функция получения объекта фреймворка щупа
+		 *
+		 * @details Объект заводится статикою местною, а не общею файла: заведение его
+		 *          порядком построения статики оканчивается падением ещё до входа в
+		 *          работу, ибо фреймворк сам опирается на статику из библиотеки
+		 *
+		 * @return объект фреймворка щупа
+		 *
+		 */
+		static const awh::fmk_t & framework() noexcept {
+			// Объект фреймворка щупа
+			static awh::fmk_t fmk;
+			// Выводим объект фреймворка щупа
+			return fmk;
+		}
+		// Объект журнала щупа
+		awh::log_t log;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Silent() noexcept : log(&Silent::framework()) {
+			// Выполняем отключение вывода логов
+			this->log.mode({});
+		}
+	};
+	/**
+	 * @brief Функция получения объекта журнала щупа
+	 *
+	 * @return объект журнала щупа
+	 *
+	 */
+	const awh::log_t * logger() noexcept {
+		// Объект журнала щупа
+		static Silent silent;
+		// Выводим объект журнала щупа
+		return &silent.log;
+	}
+	/**
+	 * @brief Функция ограждения последовательности знаков для записи JSON
+	 *
+	 * @param text ограждаемая последовательность знаков
+	 * @return     ограждённая последовательность знаков
+	 *
+	 */
+	string escaped(const string_view text) noexcept {
+		// Результат ограждения
+		string result("\"");
+		/**
+		 * Выполняем перебор всех знаков последовательности
+		 */
+		for(const char letter : text){
+			/**
+			 * Определяем ограждаемый знак
+			 */
+			switch(letter){
+				// Если знаком является кавычка
+				case '"': result.append("\\\""); break;
+				// Если знаком является обратная косая черта
+				case '\\': result.append("\\\\"); break;
+				// Если знаком является перевод строки
+				case '\n': result.append("\\n"); break;
+				// Если знаком является возврат каретки
+				case '\r': result.append("\\r"); break;
+				// Если знаком является горизонтальная подача
+				case '\t': result.append("\\t"); break;
+				// Если знаком является подача страницы
+				case '\f': result.append("\\f"); break;
+				// Если знаком является возврат на знак
+				case '\b': result.append("\\b"); break;
+				/**
+				 * Если знаком является всякий иной
+				 */
+				default: {
+					/**
+					 * Если знак является управляющим
+					 */
+					if(static_cast <uint8_t> (letter) < 0x20){
+						// Хранилище записи управляющего знака
+						char buffer[8];
+						// Выполняем запись управляющего знака
+						::snprintf(buffer, sizeof(buffer), "\\u%04x", static_cast <uint32_t> (static_cast <uint8_t> (letter)));
+						// Выполняем дозапись ограждённого знака
+						result.append(buffer);
+					// Выполняем дозапись знака как есть
+					} else result.push_back(letter);
+				}
+			}
+		}
+		// Выполняем закрытие записи
+		result.push_back('"');
+		// Выводим результат ограждения
+		return result;
+	}
+}
+
+/**
+ * @brief Функция запуска щупа сличения
+ *
+ * @param argc длина массива параметров
+ * @param argv массив параметров
+ * @return     код выхода щупа сличения
+ *
+ */
+int32_t main(int32_t argc, char ** argv) noexcept {
+	/**
+	 * Если имя разбираемого файла не передано
+	 */
+	if(argc < 2){
+		// Выводим указание к вызову щупа
+		::fprintf(stderr, "usage: dump <file.ini> [windows|python|systemd|git|strict]\n");
+		// Выходим из приложения с ошибкой
+		return 2;
+	}
+	// Название наречия, которым ведётся разбор
+	const string dialect((argc > 2) ? argv[2] : "");
+	// Настройки разбора текста настроек
+	codec::ini::document_t::settings_t settings;
+	// Выполняем назначение настроек разбора выбранного наречия
+	if(dialect.compare("windows") == 0)
+		settings.reader = codec::ini::reader_t::settings_t::windows();
+	else if(dialect.compare("python") == 0)
+		settings.reader = codec::ini::reader_t::settings_t::python();
+	else if(dialect.compare("systemd") == 0)
+		settings.reader = codec::ini::reader_t::settings_t::systemd();
+	else if(dialect.compare("git") == 0)
+		settings.reader = codec::ini::reader_t::settings_t::git();
+	else if(dialect.compare("strict") == 0)
+		settings.reader = codec::ini::reader_t::settings_t::strict();
+	// Поток чтения разбираемого файла
+	ifstream file(argv[1], ios::binary);
+	// Хранилище содержимого разбираемого файла
+	stringstream buffer;
+	// Выполняем чтение содержимого разбираемого файла
+	buffer << file.rdbuf();
+	// Дерево настроек разбираемого текста
+	codec::ini::document_t document(::logger(), settings);
+	/**
+	 * Если разобрать текст настроек не удалось
+	 */
+	if(!document.parse(buffer.str())){
+		// Выводим сообщение об отказе разбора
+		::fprintf(stderr, "%s\n", codec::ini::message(document.error()));
+		// Выходим из приложения с ошибкой
+		return 1;
+	}
+	// Собираемая запись JSON
+	string result("{");
+	// Признак того, что раздел записан уже
+	bool written = false;
+	/**
+	 * @brief Функция выдачи одного раздела записью JSON
+	 *
+	 * @param section    имя выдаваемого раздела
+	 * @param subsection имя выдаваемого подраздела
+	 * @param label      имя раздела в записи JSON
+	 *
+	 */
+	auto render = [&](const string_view section, const string_view subsection, const string & label) noexcept -> void {
+		// Получаем перечень имён свойств раздела
+		const vector <string_view> keys = document.keys(section, subsection);
+		/**
+		 * Если раздел записан уже
+		 */
+		if(written)
+			// Выполняем запись разделителя разделов
+			result.push_back(',');
+		// Запоминаем, что раздел записан
+		written = true;
+		// Выполняем запись имени раздела
+		result.append(escaped(label));
+		// Выполняем открытие записи раздела
+		result.append(":{");
+		/**
+		 * Выполняем перебор всех имён свойств раздела
+		 */
+		for(size_t i = 0; i < keys.size(); i++){
+			/**
+			 * Если свойство не является первым
+			 */
+			if(i > 0)
+				// Выполняем запись разделителя свойств
+				result.push_back(',');
+			// Выполняем запись имени свойства
+			result.append(escaped(keys.at(i)));
+			// Выполняем открытие записи перечня значений свойства
+			result.append(":[");
+			// Получаем перечень значений свойства
+			const vector <string_view> values = document.values(keys.at(i), section, subsection);
+			/**
+			 * Выполняем перебор всех значений свойства
+			 */
+			for(size_t j = 0; j < values.size(); j++){
+				/**
+				 * Если значение не является первым
+				 */
+				if(j > 0)
+					// Выполняем запись разделителя значений
+					result.push_back(',');
+				// Выполняем запись очередного значения свойства
+				result.append(escaped(values.at(j)));
+			}
+			// Выполняем закрытие записи перечня значений свойства
+			result.push_back(']');
+		}
+		// Выполняем закрытие записи раздела
+		result.push_back('}');
+	};
+	/**
+	 * Выполняем выдачу свойств, объявленных до первого раздела
+	 *
+	 * @note Раздел этот выдаётся всегда, даже пустым: пустота его есть тоже сведение,
+	 *       и эталон её выдаёт наравне с прочим
+	 */
+	render("", "", "");
+	/**
+	 * Выполняем перебор всех разделов дерева настроек
+	 */
+	for(const auto & name : document.sections()){
+		// Собираемое имя раздела в записи JSON
+		string label(name.section);
+		/**
+		 * Если раздел несёт имя подраздела
+		 *
+		 * @note Подраздел записывается через косую черту: имена его и раздела выдаются
+		 *       порознь, а запись JSON несёт один уровень имён
+		 */
+		if(!name.subsection.empty()){
+			// Выполняем запись разделителя имён раздела и подраздела
+			label.push_back('/');
+			// Выполняем запись имени подраздела
+			label.append(name.subsection);
+		}
+		// Выполняем выдачу очередного раздела
+		render(name.section, name.subsection, label);
+	}
+	// Выполняем закрытие записи разобранного текста настроек
+	result.push_back('}');
+	// Выполняем вывод собранной записи JSON
+	::printf("%s\n", result.c_str());
+	// Выходим из приложения
+	return 0;
+}

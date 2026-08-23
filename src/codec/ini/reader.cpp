@@ -392,7 +392,7 @@ namespace {
  */
 awh::codec::ini::Reader::Settings::Settings() noexcept :
  comments(marker_t::BOTH), separators(separator_t::EQUALS), duplicates(duplicate_t::LAST),
- quotes(quote_t::STRIP), subsections(subsection_t::NONE), delimiter('.'), inlineComments(false),
+ quotes(quote_t::STRIP), subsections(subsection_t::NONE), delimiter('.'), inlineComments(false), spacedComments(true),
  escapes(false), continuations(false), indents(false), valueless(false), arrays(false),
  sensitive(false), sensitiveSections(false), trim(true), global(true), emitComments(true), emitBlanks(false),
  maxLine(MAX_LINE), maxName(MAX_NAME), maxDepth(MAX_DEPTH), maxContinuation(MAX_CONTINUATION),
@@ -514,8 +514,14 @@ awh::codec::ini::Reader::Settings awh::codec::ini::Reader::Settings::git() noexc
 	result.duplicates = duplicate_t::MERGE;
 	// Устанавливаем обращение с кавычками вокруг значения
 	result.quotes = quote_t::STRIP;
-	// Устанавливаем построение имени подраздела кавычками
-	result.subsections = subsection_t::QUOTED;
+	/**
+	 * Устанавливаем признание обоих построений имени подраздела
+	 *
+	 * @note Средство «git config» принимает и «[раздел "подраздел"]», и «[раздел.подраздел]»,
+	 *       выдавая оба одним и тем же именем. Запись же ведётся кавычками: точка внутри
+	 *       имени подраздела иначе прочлась бы вторым уровнем вложенности
+	 */
+	result.subsections = subsection_t::BOTH;
 	/**
 	 * Устанавливаем признание примечания в конце строки свойства
 	 *
@@ -523,14 +529,27 @@ awh::codec::ini::Reader::Settings awh::codec::ini::Reader::Settings::git() noexc
 	 *       запятой в нём приходится заключать в кавычки
 	 */
 	result.inlineComments = true;
+	/**
+	 * Снимаем требование пробельного знака перед началом примечания
+	 *
+	 * @note Средство «git config» режет значение по знаку примечания где угодно, а не
+	 *       за пробелом только: запись «key = a#b» выдаётся им значением «a». Сличено
+	 *       с самим средством, а не выведено из описания
+	 */
+	result.spacedComments = false;
 	// Устанавливаем разбор управляющих последовательностей в значении
 	result.escapes = true;
 	// Устанавливаем склеивание строк, продолженных обратной косой чертой
 	result.continuations = true;
 	// Устанавливаем признание свойства, записанного без разделителя и значения
 	result.valueless = true;
-	// Устанавливаем запрет свойств, объявленных до первого раздела
-	result.global = false;
+	/**
+	 * Устанавливаем признание свойств, объявленных до первого раздела
+	 *
+	 * @note Средство «git config» такое свойство принимает и выдаёт именем без раздела:
+	 *       запись «loose = 1» выдаётся им как «loose=1». Сличено с самим средством
+	 */
+	result.global = true;
 	// Выводим собранные настройки разбора
 	return result;
 }
@@ -1014,7 +1033,7 @@ bool awh::codec::ini::Reader::header(const string_view line, const size_t offset
 		/**
 		 * Если имя подраздела заключается в кавычки
 		 */
-		if(this->_settings.subsections == subsection_t::QUOTED){
+		if((static_cast <uint8_t> (this->_settings.subsections) & static_cast <uint8_t> (subsection_t::QUOTED)) != 0){
 			/**
 			 * Если очередным знаком является обратная косая черта внутри кавычек
 			 */
@@ -1047,7 +1066,7 @@ bool awh::codec::ini::Reader::header(const string_view line, const size_t offset
 		 *       лишь когда отделён пробельным знаком, - иначе точка с запятой внутри
 		 *       имени раздела обрывала бы объявление
 		 */
-		if(!quoted && this->_settings.inlineComments && commented(line[i], this->_settings.comments) && ascii::isSpace(line[i - 1]))
+		if(!quoted && this->_settings.inlineComments && commented(line[i], this->_settings.comments) && (!this->_settings.spacedComments || ascii::isSpace(line[i - 1])))
 			// Выполняем прекращение поиска закрывающей скобки
 			break;
 		/**
@@ -1122,13 +1141,28 @@ bool awh::codec::ini::Reader::header(const string_view line, const size_t offset
 	// Выполняем очистку имени текущего подраздела
 	this->_subsection.clear();
 	/**
-	 * Определяем построение имени подраздела
+	 * Построения имени подраздела, настройками признаваемые
+	 *
+	 * @note Виды сличаются разрядами, а не равенством: настройка «BOTH» признаёт оба
+	 *       построения разом, ибо средство «git config» принимает и «[a.b]», и «[a "b"]»
 	 */
-	switch(static_cast <uint8_t> (this->_settings.subsections)){
-		// Если подраздел отделяется знаком-разделителем
-		case static_cast <uint8_t> (subsection_t::DELIMITED): {
+	const uint8_t kinds = static_cast <uint8_t> (this->_settings.subsections);
+	/**
+	 * Если подраздел отделяется знаком-разделителем
+	 */
+	if(kinds & static_cast <uint8_t> (subsection_t::DELIMITED)){
+		{
+			/**
+			 * Граница поиска знака-разделителя имени подраздела
+			 *
+			 * @note При признании обоих построений разом поиск ведётся лишь до открывающей
+			 *       кавычки: знак-разделитель внутри имени, кавычками взятого, есть знак
+			 *       обыкновенный, и резать по нему значило бы рвать имя надвое
+			 */
+			const size_t edge = ((kinds & static_cast <uint8_t> (subsection_t::QUOTED)) ?
+			 content.find('"') : string_view::npos);
 			// Получаем положение знака-разделителя имени подраздела
-			const size_t position = content.find(this->_settings.delimiter);
+			const size_t position = content.substr(0, edge).find(this->_settings.delimiter);
 			/**
 			 * Если знак-разделитель имени подраздела обнаружен
 			 */
@@ -1173,9 +1207,13 @@ bool awh::codec::ini::Reader::header(const string_view line, const size_t offset
 					// Выводим сообщение об ошибке разбора
 					return this->fail(error_t::EMPTY_SECTION, offset, this->_line, 1);
 			}
-		} break;
-		// Если подраздел заключается в кавычки
-		case static_cast <uint8_t> (subsection_t::QUOTED): {
+		}
+	}
+	/**
+	 * Если подраздел заключается в кавычки и найден он не был
+	 */
+	if((kinds & static_cast <uint8_t> (subsection_t::QUOTED)) && this->_subsection.empty()){
+		{
 			// Получаем положение открывающей кавычки имени подраздела
 			const size_t position = content.find('"');
 			/**
@@ -1235,7 +1273,7 @@ bool awh::codec::ini::Reader::header(const string_view line, const size_t offset
 				// Получаем имя раздела без имени подраздела
 				content = ::trim(content.substr(0, position));
 			}
-		} break;
+		}
 	}
 	// Запоминаем имя текущего раздела
 	this->_section.assign(content);
@@ -1310,7 +1348,7 @@ bool awh::codec::ini::Reader::plain(const string_view value) const noexcept {
 		 * Если очередным знаком начинается примечание в конце строки
 		 */
 		if(this->_settings.inlineComments && commented(value[i], this->_settings.comments) &&
-		   ((i == 0) || ascii::isSpace(value[i - 1])))
+		   (!this->_settings.spacedComments || (i == 0) || ascii::isSpace(value[i - 1])))
 			// Выводим признак того, что значение приведения требует
 			return false;
 	}
@@ -1499,7 +1537,7 @@ bool awh::codec::ini::Reader::extract(const string_view text, const size_t posit
 		 *       решётка внутри значения - в записи цвета, скажем, - обрезала бы его
 		 */
 		if(this->_settings.inlineComments && commented(value[i], this->_settings.comments) &&
-		   ((i == 0) || ascii::isSpace(value[i - 1]))){
+		   (!this->_settings.spacedComments || (i == 0) || ascii::isSpace(value[i - 1]))){
 			/**
 			 * Получаем положение конца примечания в значении свойства
 			 *
@@ -1661,7 +1699,7 @@ bool awh::codec::ini::Reader::assign(const string_view line, const size_t offset
 		 * Если очередным знаком начинается примечание в конце строки
 		 */
 		if(this->_settings.inlineComments && commented(line[i], this->_settings.comments) &&
-		   ((i == 0) || ascii::isSpace(line[i - 1]))){
+		   (!this->_settings.spacedComments || (i == 0) || ascii::isSpace(line[i - 1]))){
 			// Запоминаем положение знака примечания
 			note = i;
 			// Выполняем прекращение поиска разделителя
