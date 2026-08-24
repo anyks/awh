@@ -152,6 +152,8 @@ namespace {
 		uint64_t assembled;
 		// Количество круговых ходов перезаписи иным оформлением
 		uint64_t restyled;
+		// Количество разборов деревом, прежним разбором занятым
+		uint64_t recycled;
 		// Количество круговых ходов, директивою наречия обойдённых
 		uint64_t undirected;
 		// Количество попыток кругового переноса значения в дерево
@@ -164,7 +166,7 @@ namespace {
 		 */
 		Statistic() noexcept :
 		 texts(0), corrupted(0), survived(0), events(0), chunked(0), transcoded(0), unconverted(0), trees(0), kept(0), pruned(0),
-		 mirrored(0), edited(0), assembled(0), restyled(0), undirected(0), taken(0), grafts(0), grafted(0) {}
+		 mirrored(0), edited(0), assembled(0), restyled(0), recycled(0), undirected(0), taken(0), grafts(0), grafted(0) {}
 	} totals;
 
 	/**
@@ -1605,6 +1607,57 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 				// Выводим отрицательный результат работы генератора
 				return EXIT_FAILURE;
 			}
+			/**
+			 * Выполняем проверку разбора на дереве, прежним разбором уже занятом
+			 *
+			 * @details Дерево, разобравшее один текст, обязано разобрать следующий ровно
+			 *          так же, как разобрало бы его дерево свежее: остаток прежнего разбора
+			 *          - метки, наречия, схема, удержанный текст - обязан быть сброшен
+			 *          целиком. Утечка такого остатка даёт дефект, ни одним прогоном
+			 *          свежего дерева не воспроизводимый: он показывается лишь у
+			 *          потребителя, разбирающего одним объектом много текстов подряд
+			 *
+			 * @note Дерево это живёт от прохода к проходу намеренно: чем длиннее череда
+			 *       разобранных им текстов, тем вернее вылезет остаток
+			 */
+			{
+				// Дерево документа, от прохода к проходу живущее
+				static yaml::document_t recycled(::logger());
+				// Устанавливаем настройки разбора очередного прохода
+				recycled.settings(tree);
+				// Выполняем разбор того же текста деревом, прежним разбором занятым
+				const bool again = recycled.parse(text);
+				/**
+				 * Если исход разбора с исходом свежего дерева разошёлся
+				 */
+				if(again != parsed){
+					// Выводим сообщение о расхождении исхода разбора
+					::fprintf(stderr, "yaml fuzz: reused tree parse differs: %s против %s, settings %s\n",
+					 (again ? "удался" : "отвергнут"), (parsed ? "удался" : "отвергнут"),
+					 described(settings).c_str());
+					// Выводим разбираемый текст
+					dump(text);
+					// Выходим из приложения с ошибкой
+					return EXIT_FAILURE;
+				}
+				/**
+				 * Если разбор удался, а перезаписи деревьев разошлись
+				 */
+				if(parsed && (recycled.dump() != document.dump())){
+					// Выводим сообщение о расхождении перезаписей
+					::fprintf(stderr, "yaml fuzz: reused tree differs, settings %s\n", described(settings).c_str());
+					// Выводим разбираемый текст
+					dump(text);
+					// Выводим перезапись свежего дерева
+					dump(document.dump());
+					// Выводим перезапись дерева, прежним разбором занятого
+					dump(recycled.dump());
+					// Выходим из приложения с ошибкой
+					return EXIT_FAILURE;
+				}
+				// Выполняем учёт разбора деревом, прежним разбором занятым
+				totals.recycled++;
+			}
 			if(parsed){
 				// Выполняем учёт собранного дерева документа
 				totals.trees++;
@@ -2332,7 +2385,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		}
 	}
 	// Выводим итог работы генератора
-	::fprintf(stderr, "yaml fuzz: %llu texts (%llu corrupted, %llu survived), %llu events, %llu chunked, %llu transcoded (%llu не допущено), %llu trees, %llu kept, %llu pruned, %llu edited (%llu verified), %llu taken, %llu assembled, %llu restyled (%llu обойдено), %llu grafts (%llu refused)\n",
+	::fprintf(stderr, "yaml fuzz: %llu texts (%llu corrupted, %llu survived), %llu events, %llu chunked, %llu transcoded (%llu не допущено), %llu trees, %llu kept, %llu pruned, %llu edited (%llu verified), %llu taken, %llu assembled, %llu restyled (%llu обойдено), %llu recycled, %llu grafts (%llu refused)\n",
 		static_cast <unsigned long long> (totals.texts), static_cast <unsigned long long> (totals.corrupted),
 		static_cast <unsigned long long> (totals.survived), static_cast <unsigned long long> (totals.events),
 		static_cast <unsigned long long> (totals.chunked), static_cast <unsigned long long> (totals.transcoded),
@@ -2343,6 +2396,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		static_cast <unsigned long long> (totals.assembled),
 		static_cast <unsigned long long> (totals.restyled),
 		static_cast <unsigned long long> (totals.undirected),
+		static_cast <unsigned long long> (totals.recycled),
 		static_cast <unsigned long long> (totals.grafted),
 		static_cast <unsigned long long> (totals.grafts - totals.grafted));
 	// Выводим код успешного выхода из приложения
