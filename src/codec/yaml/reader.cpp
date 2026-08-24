@@ -966,7 +966,7 @@ void awh::codec::yaml::Reader::remark(const string_view line, const size_t posit
  */
 bool awh::codec::yaml::Reader::scalar(const string_view text, const style_t style, const size_t column) noexcept {
 	// Получаем предел длины скалярного значения
-	const size_t limit = ((this->_settings.scalar > 0) ? this->_settings.scalar : MAX_SCALAR);
+	const size_t limit = ((this->_settings.maxScalar > 0) ? this->_settings.maxScalar : MAX_SCALAR);
 	/**
 	 * Если длина скалярного значения предел превышает
 	 */
@@ -1097,7 +1097,7 @@ bool awh::codec::yaml::Reader::matched(const nesting_t kind, const size_t column
  */
 bool awh::codec::yaml::Reader::expand(const nesting_t kind, const uint32_t indent, const bool implied, const size_t column) noexcept {
 	// Получаем предел глубины вложенности
-	const size_t limit = ((this->_settings.depth > 0) ? this->_settings.depth : MAX_DEPTH);
+	const size_t limit = ((this->_settings.maxDepth > 0) ? this->_settings.maxDepth : MAX_DEPTH);
 	/**
 	 * Если глубина вложенности предел превышает
 	 */
@@ -2785,7 +2785,7 @@ bool awh::codec::yaml::Reader::content(const string_view line, const size_t offs
 			// Выполняем сброс признака ожидания значения пары
 			this->_expected = false;
 		// Получаем предел глубины вложенности
-		const size_t limit = ((this->_settings.depth > 0) ? this->_settings.depth : MAX_DEPTH);
+		const size_t limit = ((this->_settings.maxDepth > 0) ? this->_settings.maxDepth : MAX_DEPTH);
 		/**
 		 * Если глубина вложенности предел превышает
 		 */
@@ -4334,7 +4334,7 @@ bool awh::codec::yaml::Reader::flowing(const string_view line, size_t & offset) 
 		}
 	}
 	// Получаем предел глубины вложенности
-	const size_t limit = ((this->_settings.depth > 0) ? this->_settings.depth : MAX_DEPTH);
+	const size_t limit = ((this->_settings.maxDepth > 0) ? this->_settings.maxDepth : MAX_DEPTH);
 	/**
 	 * Выполняем разбор строки до исчерпания её либо до закрытия всех построений
 	 */

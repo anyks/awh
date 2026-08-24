@@ -238,9 +238,9 @@ namespace awh {
 						// Признак выдачи пустых строк отдельным событием
 						bool emitBlanks;
 						// Наибольшая допустимая глубина вложенности, ноль - предел по умолчанию
-						uint32_t depth;
+						uint32_t maxDepth;
 						// Наибольшая допустимая длина скалярного значения, ноль - предел по умолчанию
-						uint32_t scalar;
+						uint32_t maxScalar;
 						/**
 						 * \~russian
 						 * @brief Конструктор
@@ -253,7 +253,7 @@ namespace awh {
 						 */
 						Settings() noexcept :
 						 schema(schema_t::CORE), encoding(encoding_t::NONE), duplicates(duplicate_t::ERROR),
-						 emitComments(false), emitBlanks(false), depth(0), scalar(0) {}
+						 emitComments(false), emitBlanks(false), maxDepth(0), maxScalar(0) {}
 					} settings_t;
 				private:
 					/**

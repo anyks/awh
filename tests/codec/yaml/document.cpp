@@ -459,7 +459,7 @@ TEST(CodecYamlDocument, Aliases) {
 		// Настройки разбора документа
 		yaml::document_t::settings_t settings;
 		// Устанавливаем наибольшее допустимое количество узлов раскрытия
-		settings.expansion = 32;
+		settings.maxExpansion = 32;
 		// Объект дерева документа
 		yaml::document_t doc(::logger(), settings);
 		// Собираемый текст беды миллиарда смешков

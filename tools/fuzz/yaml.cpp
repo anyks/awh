@@ -1106,9 +1106,9 @@ namespace {
 		// Выполняем добавление правила обращения с повторяющимся именем
 		result.append(" duplicates=").append(to_string(static_cast <unsigned> (settings.duplicates)));
 		// Выполняем добавление предела глубины вложенности
-		result.append(" depth=").append(to_string(settings.depth));
+		result.append(" depth=").append(to_string(settings.maxDepth));
 		// Выполняем добавление предела длины скалярного значения
-		result.append(" scalar=").append(to_string(settings.scalar));
+		result.append(" scalar=").append(to_string(settings.maxScalar));
 		// Выводим собранное описание настроек разбора
 		return result;
 	}
@@ -1460,9 +1460,9 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		 */
 		if((engine() % 4) == 0){
 			// Устанавливаем наибольшую допустимую глубину вложенности
-			settings.depth = (1 + (engine() % 4));
+			settings.maxDepth = (1 + (engine() % 4));
 			// Устанавливаем наибольшую допустимую длину скалярного значения
-			settings.scalar = (1 + (engine() % 32));
+			settings.maxScalar = (1 + (engine() % 32));
 		}
 		// Выполняем построение текста
 		string text = generate(engine);
@@ -1568,11 +1568,11 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 			// Устанавливаем правило обращения с повторяющимся именем пары
 			tree.duplicates = settings.duplicates;
 			// Устанавливаем наибольшую допустимую глубину вложенности
-			tree.depth = settings.depth;
+			tree.maxDepth = settings.maxDepth;
 			// Устанавливаем наибольшую допустимую длину скалярного значения
-			tree.scalar = settings.scalar;
+			tree.maxScalar = settings.maxScalar;
 			// Устанавливаем наибольшее допустимое количество узлов раскрытия ссылок
-			tree.expansion = 4096;
+			tree.maxExpansion = 4096;
 			// Объект дерева документа
 			yaml::document_t document(::logger(), tree);
 			/**
@@ -1626,9 +1626,9 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 					 *       перезапись раскрытого дерева законно глубже исходного текста.
 					 *       Отказ по пределу означал бы вину ворошителя, а не записи
 					 */
-					unbound.depth = 0;
+					unbound.maxDepth = 0;
 					// Выполняем снятие предела длины скалярного значения
-					unbound.scalar = 0;
+					unbound.maxScalar = 0;
 					if(!circled.parse(taken.dump(), unbound) || !(circled == taken)){
 						// Выводим сообщение о нарушении кругового хода
 						::fprintf(stderr, "yaml fuzz: taken value round trip broken, settings %s\n",
@@ -1698,9 +1698,9 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 						 */
 						yaml::document_t::settings_t carried = document.settings();
 						// Выполняем снятие предела глубины вложенности
-						carried.depth = 0;
+						carried.maxDepth = 0;
 						// Выполняем снятие предела длины скалярного значения
-						carried.scalar = 0;
+						carried.maxScalar = 0;
 						/**
 						 * Выполняем назначение схемы, деревом действительно применяемой
 						 *
@@ -1754,9 +1754,9 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 				 */
 				yaml::document_t::settings_t limitless = tree;
 				// Выполняем снятие предела глубины вложенности
-				limitless.depth = 0;
+				limitless.maxDepth = 0;
 				// Выполняем снятие предела длины скалярного значения
-				limitless.scalar = 0;
+				limitless.maxScalar = 0;
 				// Объект дерева перезаписанного документа
 				yaml::document_t rewritten(::logger(), limitless);
 				/**
@@ -1809,9 +1809,9 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 				// Устанавливаем удержание исходного текста
 				held.retain = true;
 				// Снимаем предел глубины вложенности, ссылками раскрываемый
-				held.depth = 0;
+				held.maxDepth = 0;
 				// Снимаем предел длины скалярного значения
-				held.scalar = 0;
+				held.maxScalar = 0;
 				// Объект дерева документа, правке подлежащего
 				yaml::document_t edited(::logger(), held);
 				/**

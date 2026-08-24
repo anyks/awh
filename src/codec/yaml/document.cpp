@@ -132,7 +132,7 @@ namespace {
  */
 awh::codec::yaml::Document::Settings::Settings() noexcept :
  schema(schema_t::CORE), encoding(encoding_t::NONE), duplicates(duplicate_t::ERROR),
- depth(0), scalar(0), expansion(0), retain(false) {}
+ maxDepth(0), maxScalar(0), maxExpansion(0), retain(false) {}
 /**
  * @brief Конструктор
  *
@@ -601,7 +601,7 @@ bool awh::codec::yaml::Document::digest(reader_t & reader) noexcept {
 			origin = opening();
 	};
 	// Получаем предел количества узлов раскрытия ссылок
-	const size_t limit = ((this->_settings.expansion > 0) ? this->_settings.expansion : MAX_EXPANSION);
+	const size_t limit = ((this->_settings.maxExpansion > 0) ? this->_settings.maxExpansion : MAX_EXPANSION);
 	/**
 	 * @brief Функция постановки узла на своё место в дереве
 	 *
@@ -1372,9 +1372,9 @@ bool awh::codec::yaml::Document::parse(const string & text) noexcept {
 	// Устанавливаем правило обращения с повторяющимся именем пары
 	settings.duplicates = this->_settings.duplicates;
 	// Устанавливаем наибольшую допустимую глубину вложенности
-	settings.depth = this->_settings.depth;
+	settings.maxDepth = this->_settings.maxDepth;
 	// Устанавливаем наибольшую допустимую длину скалярного значения
-	settings.scalar = this->_settings.scalar;
+	settings.maxScalar = this->_settings.maxScalar;
 	/**
 	 * Если удержание исходного текста затребовано
 	 */
