@@ -261,8 +261,29 @@ namespace awh {
 						reader_t::settings_t reader;
 						// Построение обращения к значению другого свойства
 						reference_t references;
-						// Наибольшая допустимая глубина вложенности обращений
-						uint32_t maxDepth;
+						/**
+						 * \~russian
+						 * Наибольшая допустимая глубина вложенности обращений
+						 *
+						 * @note Имя носит слово «обращений» неспроста: у читающего есть своя
+						 * настройка maxDepth, и та стережёт вложенность ПОДРАЗДЕЛОВ. Настройки
+						 * эти вложены одна в другую - «settings.maxDepth» рядом с
+						 * «settings.reader.maxDepth», - и общее имя выходило бы западнёю:
+						 * потребитель, правящий не ту из них, отказа не получит и подмены не
+						 * заметит
+						 *
+						 * \~english
+						 * Largest admissible depth of the nesting of the references
+						 * @note The name carries the word «reference» for a reason: the reader has its own
+						 * maxDepth setting, and that one guards the nesting of the SUBSECTIONS. These
+						 * settings are nested one inside the other — «settings.maxDepth» beside
+						 * «settings.reader.maxDepth» — and a common name would be a trap: a consumer that
+						 * corrects the wrong one of them will not receive a refusal and will not notice
+						 * the substitution
+						 *
+						 * \~
+						 */
+						uint32_t maxReferenceDepth;
 						// Наибольший допустимый общий объём подстановки значений в байтах
 						uint64_t maxExpansion;
 						/**

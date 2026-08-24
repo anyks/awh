@@ -1986,3 +1986,37 @@ TEST(CodecIniDocument, UnknownNameReportsReason) {
 	// Выполняем проверку сохранения дерева в целости
 	ASSERT_EQ(document.get("k", "a"), "v");
 }
+/**
+ * @brief Проверка независимости предела обращений от предела подразделов
+ *
+ * @note Настройки эти вложены одна в другую и прежде звались одинаково: правка не той
+ *       из них отказа не давала и подмены не выдавала. Проверка стережёт именно это -
+ *       что всякая стережёт своё
+ *
+ */
+TEST(CodecIniDocument, ReferenceDepthDiffersFromSubsectionDepth) {
+	// Объект документа настроек
+	ini::document_t document(::logger());
+	// Настройки разбора текста настроек
+	ini::document_t::settings_t settings;
+	// Устанавливаем построение имени подраздела разделителем
+	settings.reader.subsections = ini::subsection_t::DELIMITED;
+	// Выполняем запрет подразделов вовсе пределом читающего
+	settings.reader.maxDepth = 0;
+	// Выполняем разбор текста настроек с подразделом
+	ASSERT_FALSE(document.parse("[раздел.подраздел]\nkey = value\n", settings));
+	// Выполняем дозволение подразделов пределом читающего
+	settings.reader.maxDepth = 4;
+	// Выполняем разбор того же текста настроек
+	ASSERT_TRUE(document.parse("[раздел.подраздел]\nkey = value\n", settings));
+	// Выполняем запрет вложенности обращений пределом дерева
+	settings.maxReferenceDepth = 0;
+	// Выполняем разбор того же текста настроек, обращений не несущего
+	ASSERT_TRUE(document.parse("[раздел.подраздел]\nkey = value\n", settings));
+	// Значения свойства, из документа снятые
+	const vector <string_view> values = document.values("key", "раздел", "подраздел");
+	// Выполняем проверку количества снятых значений
+	ASSERT_EQ(values.size(), 1u);
+	// Выполняем проверку того, что предел обращений подразделу не помеха
+	ASSERT_EQ(values.front(), "value");
+}

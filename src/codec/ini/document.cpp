@@ -42,7 +42,7 @@ using namespace std;
  *
  */
 awh::codec::ini::Document::Settings::Settings() noexcept :
- references(reference_t::NONE), maxDepth(MAX_REFERENCE_DEPTH), maxExpansion(MAX_EXPANSION) {}
+ references(reference_t::NONE), maxReferenceDepth(MAX_REFERENCE_DEPTH), maxExpansion(MAX_EXPANSION) {}
 /**
  * @brief Метод получения содержимого отрезка хранилища знаков
  *
@@ -583,7 +583,7 @@ bool awh::codec::ini::Document::expand(const string_view value, const uint32_t s
 	/**
 	 * Если глубина вложенности обращений предел настроек превышает
 	 */
-	if(static_cast <uint64_t> (stack.size()) > static_cast <uint64_t> (this->_settings.maxDepth)){
+	if(static_cast <uint64_t> (stack.size()) > static_cast <uint64_t> (this->_settings.maxReferenceDepth)){
 		// Запоминаем код ошибки разбора
 		this->_error = error_t::REFERENCE_DEPTH;
 		// Выполняем вывод сообщения об отказе в лог
