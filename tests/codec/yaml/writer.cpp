@@ -1497,3 +1497,92 @@ TEST(CodecYamlWriter, QuotingRisesWhereContentDemands) {
 	// Выполняем проверку того, что ограда поднялась до двойной
 	ASSERT_NE(written.find("\\n"), string::npos);
 }
+/**
+ * @brief Проверка того, что отказ записи оборванного текста не выдаёт
+ *
+ * @details Отказ по негодной кодировке помечает запись отвергнутой, и изъятие отдаёт
+ *          после него пустоту: текст, оборванный посреди, от целого глазом неотличим,
+ *          а разбором уже не читается. Прочие отказы приходят прежде дописывания и
+ *          собранного не трогают вовсе. Здесь поверяется правило целиком: всякий отказ
+ *          обязан оставить собранное либо нетронутым, либо пустым
+ *
+ * @note Проверка утверждает и то, что отказы вообще случились: набор доводов,
+ *       ни одного отказа не давший, прошёл бы её молча, ничего не поверив
+ *
+ */
+TEST(CodecYamlWriter, RefusalNeverYieldsTornText) {
+	// Настройки записи, отказы делающие достижимыми
+	yaml::writer_t::settings_t settings;
+	// Устанавливаем отказ записи при негодной кодировке
+	settings.malformed = yaml::malformed_t::REFUSE;
+	// Количество отказов, набором доводов полученных
+	size_t refused = 0;
+	/**
+	 * @brief Описание поверяемого вызова записи
+	 *
+	 */
+	struct probe_t {
+		// Название поверяемого вызова
+		const char * name;
+		// Тело, поверяемый вызов совершающее
+		bool (* call)(yaml::writer_t & writer) noexcept;
+	};
+	// Набор поверяемых вызовов записи
+	static const probe_t PROBES[] = {
+		{"имя пары негодной кодировки", [](yaml::writer_t & writer) noexcept -> bool {
+			return writer.key(string("\xFF\xFE"));
+		}},
+		{"значение негодной кодировки", [](yaml::writer_t & writer) noexcept -> bool {
+			return writer.value(string("\xFF\xFE"));
+		}},
+		{"значение негодной кодировки за именем пары", [](yaml::writer_t & writer) noexcept -> bool {
+			// Имя пары записывается удачно, и отказ значения оставляет строку оборванной
+			return writer.key("ключ") && writer.value(string("\xFF\xFE"));
+		}},
+		{"метка типа пустая", [](yaml::writer_t & writer) noexcept -> bool {
+			return writer.tag("");
+		}},
+		{"метка узла пустая", [](yaml::writer_t & writer) noexcept -> bool {
+			return writer.anchor("");
+		}},
+		{"ссылка на метку пустая", [](yaml::writer_t & writer) noexcept -> bool {
+			return writer.alias("");
+		}},
+		{"закрытие незакрытого вместилища", [](yaml::writer_t & writer) noexcept -> bool {
+			return writer.close() && writer.close() && writer.close();
+		}},
+		{"открытие документа при открытом вместилище", [](yaml::writer_t & writer) noexcept -> bool {
+			return writer.document();
+		}}
+	};
+	/**
+	 * Выполняем перебор всех поверяемых вызовов записи
+	 */
+	for(const probe_t & probe : PROBES){
+		// Объект потоковой записи
+		yaml::writer_t writer(::logger(), settings);
+		// Выполняем открытие отображения пар
+		ASSERT_TRUE(writer.mapping()) << probe.name;
+		// Выполняем постановку имени пары
+		ASSERT_TRUE(writer.key("начало")) << probe.name;
+		// Выполняем запись значения пары
+		ASSERT_TRUE(writer.value(string("значение"))) << probe.name;
+		// Собранный текст до поверяемого вызова
+		const string before(writer.text());
+		// Выполняем проверку непустоты собранного текста
+		ASSERT_FALSE(before.empty()) << probe.name;
+		/**
+		 * Если поверяемый вызов записи отказал
+		 */
+		if(!probe.call(writer)){
+			// Выполняем учёт полученного отказа
+			refused++;
+			// Выполняем проверку того, что изъятие отдаёт либо нетронутое, либо пустое
+			const string taken(writer.take());
+			// Выполняем проверку выдачи изъятия
+			ASSERT_TRUE(taken.empty() || (taken == before)) << probe.name << ": [" << taken << "]";
+		}
+	}
+	// Выполняем проверку того, что набор доводов отказы вообще давал
+	ASSERT_GE(refused, 5u);
+}

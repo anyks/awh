@@ -1390,3 +1390,98 @@ TEST(CodecIniWriter, GitRefusesDelimiterInSectionName) {
 	// Выполняем проверку записи подраздела кавычками
 	ASSERT_NE(writer.text().find("[core \"origin\"]"), string::npos);
 }
+/**
+ * @brief Проверка того, что отказ записи собранного текста не портит
+ *
+ * @details Тело записи, отказавшее посреди работы своей, обязано вернуть собранный
+ *          текст к тому виду, какой он имел до вызова. Оставь оно дописанное начало -
+ *          и потребитель, отказ переживший и запись продолживший, получил бы текст с
+ *          огрызком посреди: имя раздела без закрывающей скобки либо имя свойства без
+ *          значения. Отличить такой текст от целого глазом нельзя
+ *
+ * @note Проверка утверждает и то, что отказы вообще случились: набор доводов,
+ *       ни одного отказа не давший, прошёл бы её молча, ничего не поверив
+ *
+ */
+TEST(CodecIniWriter, RefusalLeavesTextIntact) {
+	// Настройки записи, отказы делающие достижимыми
+	ini::writer_t::settings_t settings;
+	// Устанавливаем признание примечания в конце строки читающим
+	settings.inlineComments = true;
+	// Устанавливаем построение имени подраздела знаком-разделителем
+	settings.subsections = ini::subsection_t::DELIMITED;
+	// Количество отказов, набором доводов полученных
+	size_t refused = 0;
+	/**
+	 * @brief Описание поверяемого вызова записи
+	 *
+	 */
+	struct probe_t {
+		// Название поверяемого вызова
+		const char * name;
+		// Тело, поверяемый вызов совершающее
+		bool (* call)(ini::writer_t & writer) noexcept;
+	};
+	// Набор поверяемых вызовов записи
+	static const probe_t PROBES[] = {
+		{"раздел с квадратной скобкой", [](ini::writer_t & writer) noexcept -> bool {
+			return writer.section("раз]дел");
+		}},
+		{"раздел со знаком-разделителем", [](ini::writer_t & writer) noexcept -> bool {
+			return writer.section("раз.дел");
+		}},
+		{"раздел пустой", [](ini::writer_t & writer) noexcept -> bool {
+			return writer.section("");
+		}},
+		{"подраздел с кавычкой", [](ini::writer_t & writer) noexcept -> bool {
+			return writer.section("раздел", "под\"раздел");
+		}},
+		{"подраздел с квадратной скобкой", [](ini::writer_t & writer) noexcept -> bool {
+			return writer.section("раздел", "под]раздел");
+		}},
+		{"подраздел с переводом строки", [](ini::writer_t & writer) noexcept -> bool {
+			return writer.section("раздел", "под\nраздел");
+		}},
+		{"свойство с переводом строки в имени", [](ini::writer_t & writer) noexcept -> bool {
+			return writer.property("к\nлюч", "значение");
+		}},
+		{"свойство с разделителем в имени", [](ini::writer_t & writer) noexcept -> bool {
+			return writer.property("к=люч", "значение");
+		}},
+		{"свойство с примечанием в имени", [](ini::writer_t & writer) noexcept -> bool {
+			return writer.property("ключ ; заметка", "значение");
+		}},
+		{"свойство пустое", [](ini::writer_t & writer) noexcept -> bool {
+			return writer.property("", "значение");
+		}},
+		{"примечание в конец пустого текста", [](ini::writer_t & writer) noexcept -> bool {
+			return writer.trailing("заметка");
+		}}
+	};
+	/**
+	 * Выполняем перебор всех поверяемых вызовов записи
+	 */
+	for(const probe_t & probe : PROBES){
+		// Объект потоковой записи текста настроек
+		ini::writer_t writer(::logger(), settings);
+		// Выполняем запись раздела, текст непустым делающего
+		ASSERT_TRUE(writer.section("начало")) << probe.name;
+		// Выполняем запись свойства раздела
+		ASSERT_TRUE(writer.property("ключ", "значение")) << probe.name;
+		// Собранный текст до поверяемого вызова
+		const string before(writer.text());
+		/**
+		 * Если поверяемый вызов записи отказал
+		 */
+		if(!probe.call(writer)){
+			// Выполняем учёт полученного отказа
+			refused++;
+			// Выполняем проверку того, что отказ собранного текста не тронул
+			ASSERT_EQ(writer.text(), before) << probe.name;
+			// Выполняем проверку того, что отказ назвал свою причину
+			ASSERT_NE(writer.error(), ini::error_t::NONE) << probe.name;
+		}
+	}
+	// Выполняем проверку того, что набор доводов отказы вообще давал
+	ASSERT_GE(refused, 6u);
+}

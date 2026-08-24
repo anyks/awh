@@ -1548,3 +1548,93 @@ TEST(CodecTomlWriter, TornRefusal) {
 	// Выполняем проверку выдачи собранного заново текста настроек
 	ASSERT_EQ(writer.text(), "ab = 1\n");
 }
+/**
+ * @brief Проверка того, что отказ записи оборванного текста не выдаёт
+ *
+ * @details Проверка TornRefusal поверяет одно место отказа, а мест этих у записи
+ *          десятки. Здесь поверяется правило целиком: всякий отказ обязан оставить
+ *          выдачу либо нетронутой, либо пустой. Текст, дописанный до половины и
+ *          выданный как есть, от целого глазом неотличим, а разбором уже не читается
+ *
+ * @note Проверка утверждает и то, что отказы вообще случились: набор доводов,
+ *       ни одного отказа не давший, прошёл бы её молча, ничего не поверив
+ *
+ */
+TEST(CodecTomlWriter, RefusalNeverYieldsTornText) {
+	// Настройки записи, отказы делающие достижимыми
+	toml::writer_t::settings_t settings;
+	// Устанавливаем наибольшую допустимую длину имени ключа
+	settings.maxKey = 6;
+	// Устанавливаем наибольшую допустимую длину строки
+	settings.maxLine = 32;
+	// Устанавливаем наибольшую допустимую глубину вложенности
+	settings.maxDepth = 2;
+	// Устанавливаем наибольшее допустимое количество долей имени
+	settings.maxParts = 2;
+	// Количество отказов, набором доводов полученных
+	size_t refused = 0;
+	/**
+	 * @brief Описание поверяемого вызова записи
+	 *
+	 */
+	struct probe_t {
+		// Название поверяемого вызова
+		const char * name;
+		// Тело, поверяемый вызов совершающее
+		bool (* call)(toml::writer_t & writer) noexcept;
+	};
+	// Набор поверяемых вызовов записи
+	static const probe_t PROBES[] = {
+		{"таблица с длинным именем", [](toml::writer_t & writer) noexcept -> bool {
+			return writer.table("оченьдлинноеимя");
+		}},
+		{"таблица с долями сверх предела", [](toml::writer_t & writer) noexcept -> bool {
+			return writer.table("a.b.c.d");
+		}},
+		{"перечень таблиц с длинным именем", [](toml::writer_t & writer) noexcept -> bool {
+			return writer.arrayTable("оченьдлинноеимя");
+		}},
+		{"ключ с длинным именем", [](toml::writer_t & writer) noexcept -> bool {
+			return writer.key("оченьдлинноеимя");
+		}},
+		{"ключ с долями сверх предела", [](toml::writer_t & writer) noexcept -> bool {
+			return writer.key("a.b.c.d");
+		}},
+		{"значение сверх предела длины строки", [](toml::writer_t & writer) noexcept -> bool {
+			return writer.key("k") && writer.text(string(64, 'x'));
+		}},
+		{"примечание с переводом строки", [](toml::writer_t & writer) noexcept -> bool {
+			return writer.remark("первая\nвторая");
+		}}
+	};
+	/**
+	 * Выполняем перебор всех поверяемых вызовов записи
+	 */
+	for(const probe_t & probe : PROBES){
+		// Объект записи текста настроек
+		toml::writer_t writer(::logger(), settings);
+		// Выполняем запись имени ключа пары
+		ASSERT_TRUE(writer.key("k")) << probe.name;
+		// Выполняем запись значения пары
+		ASSERT_TRUE(writer.integer(1)) << probe.name;
+		// Собранный текст до поверяемого вызова
+		const string before(writer.text());
+		// Выполняем проверку непустоты собранного текста
+		ASSERT_FALSE(before.empty()) << probe.name;
+		/**
+		 * Если поверяемый вызов записи отказал
+		 */
+		if(!probe.call(writer)){
+			// Выполняем учёт полученного отказа
+			refused++;
+			// Собранный текст после поверяемого вызова
+			const string after(writer.text());
+			// Выполняем проверку того, что выдача либо нетронута, либо пуста
+			ASSERT_TRUE(after.empty() || (after == before)) << probe.name << ": [" << after << "]";
+			// Выполняем проверку того, что отказ назвал свою причину
+			ASSERT_NE(writer.error(), toml::error_t::NONE) << probe.name;
+		}
+	}
+	// Выполняем проверку того, что набор доводов отказы вообще давал
+	ASSERT_GE(refused, 5u);
+}
