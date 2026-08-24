@@ -52,6 +52,49 @@ mkdir -p "$OUTPUT"
 # Сличаются сами собранные тексты, а не исходные их построения: сличение текстов исходных
 # спотыкается об имена переменных да пространства имён, расхождением не являющиеся вовсе
 ##
+##
+# Сличаем количества прогонов стенда с количествами собственного набора замеров
+#
+# Постоянные эти писаны в двух местах числом, и расхождение их обесценивает отчёт
+# наравне с расхождением самих текстов: сличались бы разные объёмы работы. Сличение
+# идёт по имени постоянной, а не по месту её в файле
+##
+# Выводим сообщение о сличении количеств прогонов
+echo "Check \"rounds\""
+# Сличаем количество прогонов «SMALL_ROUNDS»
+STAND_SMALL_ROUNDS="$(sed -n 's/.*static constexpr size_t SMALL_ROUNDS = \([0-9]*\);.*/\1/p' "$STANDS/common.hpp")"
+SUITE_SMALL_ROUNDS="$(sed -n 's/.*static constexpr size_t SMALL_ROUNDS = \([0-9]*\);.*/\1/p' "$ROOT/benchmark/codec/ini/reader.cpp")"
+if [ -z "$STAND_SMALL_ROUNDS" ] || [ -z "$SUITE_SMALL_ROUNDS" ]; then
+	echo "Error: количество прогонов «SMALL_ROUNDS» не найдено (стенд «$STAND_SMALL_ROUNDS», набор «$SUITE_SMALL_ROUNDS»)" >&2
+	exit 1
+fi
+if [ "$STAND_SMALL_ROUNDS" != "$SUITE_SMALL_ROUNDS" ]; then
+	echo "Error: количество прогонов «SMALL_ROUNDS» расходится: стенд $STAND_SMALL_ROUNDS, набор $SUITE_SMALL_ROUNDS" >&2
+	exit 1
+fi
+# Сличаем количество прогонов «LARGE_ROUNDS»
+STAND_LARGE_ROUNDS="$(sed -n 's/.*static constexpr size_t LARGE_ROUNDS = \([0-9]*\);.*/\1/p' "$STANDS/common.hpp")"
+SUITE_LARGE_ROUNDS="$(sed -n 's/.*static constexpr size_t LARGE_ROUNDS = \([0-9]*\);.*/\1/p' "$ROOT/benchmark/codec/ini/reader.cpp")"
+if [ -z "$STAND_LARGE_ROUNDS" ] || [ -z "$SUITE_LARGE_ROUNDS" ]; then
+	echo "Error: количество прогонов «LARGE_ROUNDS» не найдено (стенд «$STAND_LARGE_ROUNDS», набор «$SUITE_LARGE_ROUNDS»)" >&2
+	exit 1
+fi
+if [ "$STAND_LARGE_ROUNDS" != "$SUITE_LARGE_ROUNDS" ]; then
+	echo "Error: количество прогонов «LARGE_ROUNDS» расходится: стенд $STAND_LARGE_ROUNDS, набор $SUITE_LARGE_ROUNDS" >&2
+	exit 1
+fi
+# Сличаем количество прогонов «FOCUSED_ROUNDS»
+STAND_FOCUSED_ROUNDS="$(sed -n 's/.*static constexpr size_t FOCUSED_ROUNDS = \([0-9]*\);.*/\1/p' "$STANDS/common.hpp")"
+SUITE_FOCUSED_ROUNDS="$(sed -n 's/.*static constexpr size_t FOCUSED_ROUNDS = \([0-9]*\);.*/\1/p' "$ROOT/benchmark/codec/ini/reader.cpp")"
+if [ -z "$STAND_FOCUSED_ROUNDS" ] || [ -z "$SUITE_FOCUSED_ROUNDS" ]; then
+	echo "Error: количество прогонов «FOCUSED_ROUNDS» не найдено (стенд «$STAND_FOCUSED_ROUNDS», набор «$SUITE_FOCUSED_ROUNDS»)" >&2
+	exit 1
+fi
+if [ "$STAND_FOCUSED_ROUNDS" != "$SUITE_FOCUSED_ROUNDS" ]; then
+	echo "Error: количество прогонов «FOCUSED_ROUNDS» расходится: стенд $STAND_FOCUSED_ROUNDS, набор $SUITE_FOCUSED_ROUNDS" >&2
+	exit 1
+fi
+
 # Выводим сообщение о сличении эталонных текстов
 echo "Check \"corpus\""
 # Выполняем сборку сличения эталонных текстов
