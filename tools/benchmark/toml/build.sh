@@ -60,13 +60,13 @@ omit(){
 echo "Build \"awh\""
 
 # Выполняем сборку стенда потокового чтения контейнера AWH
-c++ $FLAGS -I"$ROOT/include" "$STANDS/awh.cpp" "$RELEASE/libawh.a" -o "$OUTPUT/awh" || exit 1
+c++ $FLAGS -I"$ROOT/include" "$STANDS/awh.cpp" "$RELEASE/libawh.a" -lz -o "$OUTPUT/awh" || exit 1
 
 # Выводим сообщение о сборке стенда дерева настроек контейнера AWH
 echo "Build \"awh-tree\""
 
 # Выполняем сборку стенда дерева настроек контейнера AWH
-c++ $FLAGS -I"$ROOT/include" "$STANDS/awh-tree.cpp" "$RELEASE/libawh.a" -o "$OUTPUT/awh-tree" || exit 1
+c++ $FLAGS -I"$ROOT/include" "$STANDS/awh-tree.cpp" "$RELEASE/libawh.a" -lz -o "$OUTPUT/awh-tree" || exit 1
 
 # Если исходные тексты реализации toml++ получены
 if [ -f "$VENDOR/tomlplusplus/toml.hpp" ]; then
