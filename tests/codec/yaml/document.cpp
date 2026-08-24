@@ -2609,3 +2609,65 @@ TEST(CodecYamlDocument, UnknownPathReportsReason) {
 	// Выполняем проверку сохранения дерева в целости
 	ASSERT_NE(document.dump().find("имя: значение"), string::npos);
 }
+/**
+ * @brief Проверка сохранности вложенности при перезаписи с удержанием исходного текста
+ *
+ * @note Отступ исходный назначался вместилищу без проверки на выразимость: отображение,
+ *       легшее на отступ объемлющего, парою его же и прочитывалось, а вложенность
+ *       пропадала. Перечню равенство отступов законно - черта записи выражает
+ *       вложенность и без отступа, - и потому проверка стережёт оба случая
+ *
+ */
+TEST(CodecYamlDocument, RetainedRewriteKeepsNesting) {
+	// Настройки разбора с удержанием исходного текста
+	yaml::document_t::settings_t settings;
+	// Устанавливаем удержание исходного текста ради дословной перезаписи
+	settings.retain = true;
+	// Объект дерева документа
+	yaml::document_t document(::logger(), settings);
+	// Выполняем разбор текста, где имя пары стоит отступом мельче детей своих
+	ASSERT_TRUE(document.parse("- \n null:\n  key_2: 1\n  other: v\n"));
+	// Выполняем правку значения вложенной пары
+	ASSERT_TRUE(document.set("/0/null/key_2", string_view("правка")));
+	// Первая перезапись правленого дерева
+	const string first = document.dump();
+	// Объект дерева перезаписанного документа
+	yaml::document_t back(::logger(), settings);
+	// Выполняем разбор первой перезаписи
+	ASSERT_TRUE(back.parse(first));
+	// Выполняем проверку устойчивости перезаписи
+	ASSERT_EQ(back.dump(), first);
+	// Выполняем проверку сохранности вложенности
+	ASSERT_EQ(document.dump(), back.dump());
+	// Выполняем проверку того, что вложенная пара соседом не всплыла
+	ASSERT_TRUE(yaml::value_t(back.root()) == yaml::value_t(document.root()));
+}
+/**
+ * @brief Проверка того, что перечень отступ имени пары делить вправе
+ *
+ * @note Написание `key:` с чертою записи на том же отступе законно, и проверка на
+ *       выразимость отступа перечню помехою быть не должна
+ *
+ */
+TEST(CodecYamlDocument, RetainedRewriteKeepsFlatSequence) {
+	// Настройки разбора с удержанием исходного текста
+	yaml::document_t::settings_t settings;
+	// Устанавливаем удержание исходного текста ради дословной перезаписи
+	settings.retain = true;
+	// Объект дерева документа
+	yaml::document_t document(::logger(), settings);
+	// Выполняем разбор текста с перечнем на отступе имени пары
+	ASSERT_TRUE(document.parse("key:\n- a\n- b\n"));
+	// Выполняем правку первого значения перечня
+	ASSERT_TRUE(document.set("/key/0", string_view("правка")));
+	// Первая перезапись правленого дерева
+	const string first = document.dump();
+	// Объект дерева перезаписанного документа
+	yaml::document_t back(::logger(), settings);
+	// Выполняем разбор первой перезаписи
+	ASSERT_TRUE(back.parse(first));
+	// Выполняем проверку устойчивости перезаписи
+	ASSERT_EQ(back.dump(), first);
+	// Выполняем проверку сохранности отступа перечня
+	ASSERT_NE(first.find("\n- "), string::npos);
+}
