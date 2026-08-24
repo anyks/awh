@@ -601,4 +601,4 @@ awh::codec::abc::packer_t & awh::codec::abc::Fetcher::packer() noexcept {
  *
  */
 awh::codec::abc::Fetcher::Fetcher(const log_t * log) noexcept :
- _packer(log), _index(log), _error(error_t::NONE), _opened(false), _cached(false), _origin(0), _source(nullptr), _log(log) {}
+ _index(log), _packer(log), _error(error_t::NONE), _opened(false), _cached(false), _origin(0), _source(nullptr), _log(log) {}

@@ -331,12 +331,6 @@ namespace {
 	thread_local size_t __awh_size__ = 0;
 
 	/**
-	 * @brief Нулевой MAC-адрес для сравнения
-	 *
-	 */
-	static uint8_t __awh_zero_mac__[6] = {0};
-
-	/**
 	 * @brief Нулевой IPv6-адрес для сравнения
 	 *
 	 */
@@ -3560,17 +3554,17 @@ void awh::server::Socks5::start() noexcept {
 								// Если сервер работает с адресами Unix Domain Socket
 								case static_cast <uint8_t> (event::family_t::UDS):
 									// Извлекаем адрес хоста текущей машины для адресов Unix Domain Socket
-									host = ::move(this->_unit->server.getAddress(this->_id.eid, event::address_t::UDS));
+									host = this->_unit->server.getAddress(this->_id.eid, event::address_t::UDS);
 								break;
 								// Если сервер работает с адресами IPv4
 								case static_cast <uint8_t> (event::family_t::IPV4):
 									// Извлекаем адрес хоста текущей машины для адресов IPv4
-									host = ::move(this->_unit->server.getAddress(this->_id.eid, event::address_t::IPV4));
+									host = this->_unit->server.getAddress(this->_id.eid, event::address_t::IPV4);
 								break;
 								// Если сервер работает с адресами IPv6
 								case static_cast <uint8_t> (event::family_t::IPV6):
 									// Извлекаем адрес хоста текущей машины для адресов IPv6
-									host = ::move(this->_unit->server.getAddress(this->_id.eid, event::address_t::IPV6));
+									host = this->_unit->server.getAddress(this->_id.eid, event::address_t::IPV6);
 								break;
 							}
 							// Выполняем функцию обратного вызова
@@ -5357,7 +5351,7 @@ void awh::server::Socks5::udp(const uint16_t count, const uint16_t begin, const 
 				// Выполняем парсинг IP-адреса
 				if(this->_unit->addr.parse(addr))
 					// Устанавливаем полученный IP-адрес
-					this->_udp.address = ::move(this->_unit->addr.source(net_addr_t::endian_t::LITTLE));
+					this->_udp.address = this->_unit->addr.source(net_addr_t::endian_t::LITTLE);
 			// Если адрес для запуска UDP-серверов не передан
 			} else {
 				/**
@@ -5626,7 +5620,7 @@ void awh::server::Socks5::setAlias(string_view addr, const uint16_t intPort, str
 						// Устанавливаем полученный порт
 						awh_cast <net::attr_net_t *> (attr.get())->port = intPort;
 						// Устанавливаем полученный IP-адрес
-						awh_cast <net::attr_net_t *> (attr.get())->ip = ::move(this->_unit->addr.source(net_addr_t::endian_t::LITTLE));
+						awh_cast <net::attr_net_t *> (attr.get())->ip = this->_unit->addr.source(net_addr_t::endian_t::LITTLE);
 					} break;
 					// Для типа IPv6
 					case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
@@ -5637,7 +5631,7 @@ void awh::server::Socks5::setAlias(string_view addr, const uint16_t intPort, str
 						// Устанавливаем полученный порт
 						awh_cast <net::attr_net_t *> (attr.get())->port = intPort;
 						// Устанавливаем полученный IP-адрес
-						awh_cast <net::attr_net_t *> (attr.get())->ip = ::move(this->_unit->addr.source(net_addr_t::endian_t::LITTLE));
+						awh_cast <net::attr_net_t *> (attr.get())->ip = this->_unit->addr.source(net_addr_t::endian_t::LITTLE);
 					} break;
 				}
 			}
@@ -5673,7 +5667,7 @@ void awh::server::Socks5::setAlias(string_view addr, const uint16_t intPort, str
 							// Устанавливаем полученный порт
 							awh_cast <net::attr_net_t *> (ret.first->second.get())->port = extPort;
 							// Устанавливаем полученный IP-адрес
-							awh_cast <net::attr_net_t *> (ret.first->second.get())->ip = ::move(this->_unit->addr.source(net_addr_t::endian_t::LITTLE));
+							awh_cast <net::attr_net_t *> (ret.first->second.get())->ip = this->_unit->addr.source(net_addr_t::endian_t::LITTLE);
 						} break;
 						// Для типа IPv6
 						case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
@@ -5684,7 +5678,7 @@ void awh::server::Socks5::setAlias(string_view addr, const uint16_t intPort, str
 							// Устанавливаем полученный порт
 							awh_cast <net::attr_net_t *> (ret.first->second.get())->port = extPort;
 							// Устанавливаем полученный IP-адрес
-							awh_cast <net::attr_net_t *> (ret.first->second.get())->ip = ::move(this->_unit->addr.source(net_addr_t::endian_t::LITTLE));
+							awh_cast <net::attr_net_t *> (ret.first->second.get())->ip = this->_unit->addr.source(net_addr_t::endian_t::LITTLE);
 						} break;
 					}
 				// Если распарсить адрес не удалось, значит будем считать, что это FQDN

@@ -45,12 +45,10 @@ using namespace placeholders;
 /**
  * @brief Главная функция приложения
  *
- * @param argc длина массива параметров
- * @param argv массив параметров
- * @return     код выхода из приложения
+ * @return код выхода из приложения
  *
  */
-int32_t main(int32_t argc, char * argv[]){
+int32_t main(){
 	// Создаём объект фреймворка
 	fmk_t fmk;
 	// Создаём объект логирования
@@ -188,7 +186,7 @@ int32_t main(int32_t argc, char * argv[]){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на изменение события
-		io.on(eid, [&log](const event::id_t eid, const event::action_t action, const event::vnode_t vnode, const std::string & path) noexcept -> void {
+		io.on(eid, [&log]([[maybe_unused]] const event::id_t eid, const event::action_t action, const event::vnode_t vnode, const std::string & path) noexcept -> void {
 			/**
 			 * Обрабатываем тип узла события
 			 */

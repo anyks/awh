@@ -129,8 +129,8 @@ bool awh::alloc::Pages::rehash(const size_t length) noexcept {
 	registry_t * record = reinterpret_cast <registry_t *> (this->meta(sizeof(registry_t)));
 	// Если память под запись не выдана
 	if(record == nullptr){
-		// Отдаём источнику взятую таблицу
-		this->_source->release(table, size);
+		// Отдаём источнику взятую таблицу ВЫДАННЫМ размером
+		this->_source->release(table, actual);
 		// Отвечаем отказом
 		return false;
 	}
@@ -138,6 +138,8 @@ bool awh::alloc::Pages::rehash(const size_t length) noexcept {
 	record->table = table;
 	// Записываем длину новой таблицы
 	record->length = length;
+	// Записываем размер взятой под таблицу области
+	record->region = actual;
 	/**
 	 * Связываем запись с прежней
 	 *
@@ -827,7 +829,7 @@ void awh::alloc::Pages::destroy() noexcept {
 		// Если места таблицы заведены
 		if(registry->table != nullptr)
 			// Отдаём источнику память таблицы
-			this->_source->release(registry->table, (registry->length * sizeof(chunk_t *)));
+			this->_source->release(registry->table, registry->region);
 		// Переходим к предыдущей записи таблицы
 		registry = previous;
 	}

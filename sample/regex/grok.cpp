@@ -258,12 +258,10 @@ static void storing(const grok_t & grok) noexcept {
 /**
  * @brief Главная функция приложения
  *
- * @param argc длина массива параметров
- * @param argv массив параметров
- * @return     код выхода из приложения
+ * @return код выхода из приложения
  *
  */
-int32_t main(int32_t argc, char * argv[]){
+int32_t main(){
 	// Создаём объект разбора текста по шаблонам Grok
 	grok_t grok(::logger());
 	// Выводим количество шаблонов реестра

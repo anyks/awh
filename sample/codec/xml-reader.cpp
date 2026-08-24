@@ -137,12 +137,10 @@ static void event(const codec::xml::reader_t & reader) noexcept {
 /**
  * @brief Главная функция приложения
  *
- * @param argc длина массива параметров
- * @param argv массив параметров
- * @return     код выхода из приложения
+ * @return код выхода из приложения
  *
  */
-int32_t main(int32_t argc, char * argv[]){
+int32_t main(){
 	// Ответ по договору SOAP, каким его отдаёт устройство по договору UPnP
 	const string data =
 		"<?xml version=\"1.0\"?>"

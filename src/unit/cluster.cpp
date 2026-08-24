@@ -166,7 +166,7 @@ namespace {
 		 * @brief Объект перехвата сигнала
 		 *
 		 */
-		struct sigaction __awh_action__{0};
+		struct sigaction __awh_action__{};
 		/**
 		 * @brief Объект кластера для работы статических методов
 		 *

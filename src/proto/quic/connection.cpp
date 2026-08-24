@@ -77,8 +77,8 @@ namespace {
 	 *
 	 */
 	namespace options {
-		// Опции не установлены
-		static constexpr uint8_t NONE = 0x00;
+		// Опции не установлены (именованное нулевое состояние поля опций; парно к ROAMING)
+		[[maybe_unused]] static constexpr uint8_t NONE = 0x00;
 		// Следование за миграцией удалённого эндпоинта (RFC 9000 §9)
 		static constexpr uint8_t ROAMING = 0x01;
 	}

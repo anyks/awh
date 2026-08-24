@@ -88,9 +88,9 @@ TEST(CodecAbcValue, BuildAndRoundtrip) {
 	// Выполняем заведение поля логического значения
 	value["годен"] = abc::value_t(true);
 	// Выполняем заведение поля перечня
-	value["метки"].push(abc::value_t("первая"));
+	ASSERT_TRUE(value["метки"].push(abc::value_t("первая")));
 	// Выполняем добавление второго значения перечня
-	value["метки"].push(abc::value_t("вторая"));
+	ASSERT_TRUE(value["метки"].push(abc::value_t("вторая")));
 	// Выполняем проверку вида собранного значения
 	ASSERT_EQ(value.type(), abc::type_t::MAP);
 	// Выполняем проверку количества полей собранного значения

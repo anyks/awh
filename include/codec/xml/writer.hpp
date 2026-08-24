@@ -708,11 +708,12 @@ namespace awh {
 					 * @param uri      designation of the namespace of the node being opened
 					 * @param declares bindings of the prefixes declared by the node itself
 					 * @param prefix   desired prefix of the name of the node, an empty one — at the choice of the stream
+					 * @param oneline  flag of the writing of the content of the node in a single line without the indents
 					 * @return         result of performing the operation
 					 *
 					 * \~
 					 */
-					bool open(const string_view local, const string_view uri, const vector <binding_t> & declares, const string_view prefix = "") noexcept;
+					bool open(const string_view local, const string_view uri, const vector <binding_t> & declares, const string_view prefix = "", const bool oneline = false) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод закрытия последнего открытого узла

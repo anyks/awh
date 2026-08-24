@@ -82,12 +82,6 @@ namespace {
 	thread_local size_t __awh_size__ = 0;
 
 	/**
-	 * @brief Нулевой MAC-адрес для сравнения
-	 *
-	 */
-	static uint8_t __awh_zero_mac__[6] = {0};
-
-	/**
 	 * @brief Нулевой IPv6-адрес для сравнения
 	 *
 	 */
@@ -777,7 +771,7 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 										// Устанавливаем IP-адрес хоста для дальнейшего использования
 										this->_unit->addr.source(awh_cast <net::attr_net_t *> (this->_endpoint.attr.get())->ip.get());
 										// Устанавливаем IP-адрес хоста для дальнейшего использования
-										target = ::move(static_cast <string> (this->_unit->addr));
+										target = static_cast <string> (this->_unit->addr);
 										// Устанавливаем порт хоста для дальнейшего использования
 										port = awh_cast <net::attr_net_t *> (this->_endpoint.attr.get())->port;
 									} break;
@@ -2207,7 +2201,7 @@ bool awh::client::Socks5::endpoint(string_view addr, const uint16_t port) noexce
 							// Устанавливаем полученный порт
 							awh_cast <net::attr_net_t *> (this->_endpoint.attr.get())->port = port;
 							// Устанавливаем полученный IP-адрес
-							awh_cast <net::attr_net_t *> (this->_endpoint.attr.get())->ip = ::move(this->_unit->addr.source(net_addr_t::endian_t::LITTLE));
+							awh_cast <net::attr_net_t *> (this->_endpoint.attr.get())->ip = this->_unit->addr.source(net_addr_t::endian_t::LITTLE);
 						} break;
 						// Для типа IPv6
 						case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
@@ -2218,7 +2212,7 @@ bool awh::client::Socks5::endpoint(string_view addr, const uint16_t port) noexce
 							// Устанавливаем полученный порт
 							awh_cast <net::attr_net_t *> (this->_endpoint.attr.get())->port = port;
 							// Устанавливаем полученный IP-адрес
-							awh_cast <net::attr_net_t *> (this->_endpoint.attr.get())->ip = ::move(this->_unit->addr.source(net_addr_t::endian_t::LITTLE));
+							awh_cast <net::attr_net_t *> (this->_endpoint.attr.get())->ip = this->_unit->addr.source(net_addr_t::endian_t::LITTLE);
 						} break;
 					}
 				// Если распарсить адрес не удалось, значит будем считать, что это FQDN

@@ -46,12 +46,10 @@ using namespace placeholders;
 /**
  * @brief Главная функция приложения
  *
- * @param argc длина массива параметров
- * @param argv массив параметров
- * @return     код выхода из приложения
+ * @return код выхода из приложения
  *
  */
-int32_t main(int32_t argc, char * argv[]){
+int32_t main(){
 	// Создаём объект фреймворка
 	fmk_t fmk;
 	// Создаём объект логирования
@@ -85,7 +83,7 @@ int32_t main(int32_t argc, char * argv[]){
 						// Фиксация идёт после membership: группу привязывает к своему порту он, а не commit
 						if(io.commit(eid)){
 							// Устанавливаем функцию обратного вызова на событие клиента
-							io.on(eid, [&io, &log](const event::id_t eid, const event::status_t status) noexcept -> void {
+							io.on(eid, [&log](const event::id_t eid, const event::status_t status) noexcept -> void {
 								/**
 								 * Обрабатываем статус события
 								 */

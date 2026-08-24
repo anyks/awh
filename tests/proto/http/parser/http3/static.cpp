@@ -3646,7 +3646,7 @@ TEST_F(ParserHttp3Fixture, DataSourceFeedsBody){
 	// Количество уже выданных источником октетов
 	size_t produced = 0;
 	// Назначаем источник данных тела потока
-	server.parser->dataSource(0, [&produced, total](const uint64_t, uint8_t * buffer, const size_t cap, bool & eof) noexcept -> int64_t {
+	server.parser->dataSource(0, [&produced](const uint64_t, uint8_t * buffer, const size_t cap, bool & eof) noexcept -> int64_t {
 		// Вычисляем размер выдаваемой порции
 		const size_t size = std::min(cap, (total - produced));
 		// Заполняем порцию узнаваемым содержимым

@@ -2568,7 +2568,7 @@ namespace awh {
 						iterator _it;
 					private:
 						// Объект фреймворка
-						const fmk_t * _fmk;
+						[[maybe_unused]] const fmk_t * _fmk;
 						// Объект работы с логами
 						const log_t * _log;
 					public:
@@ -2684,7 +2684,7 @@ namespace awh {
 				mutable lock_state_t <std::shared_mutex> _mtx;
 			private:
 				// Объект фреймворка
-				const fmk_t * _fmk;
+				[[maybe_unused]] const fmk_t * _fmk;
 				// Объект работы с логами
 				const log_t * _log;
 			public:

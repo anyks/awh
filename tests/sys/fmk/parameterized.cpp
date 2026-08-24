@@ -836,10 +836,10 @@ TEST_P(FmkSizeParameterizedFixture, FmkSizeTest){
  */
 INSTANTIATE_TEST_SUITE_P(TestParameters, FmkSizeParameterizedFixture,
 	::testing::Values(
-		FmkSizeTestParameter({8, 18446744073709551615}),
-		FmkSizeTestParameter({4, 4294967295}),
-		FmkSizeTestParameter({2, 65535}),
-		FmkSizeTestParameter({1, 255}),
+		FmkSizeTestParameter({8, 18446744073709551615ull, nullptr}),
+		FmkSizeTestParameter({4, 4294967295ull, nullptr}),
+		FmkSizeTestParameter({2, 65535ull, nullptr}),
+		FmkSizeTestParameter({1, 255ull, nullptr}),
 		FmkSizeTestParameter({14, 14, "Hello World!!!"})
 	)
 );
@@ -887,14 +887,14 @@ TEST_P(FmkGreaterParameterizedFixture, FmkGreaterTest){
  */
 INSTANTIATE_TEST_SUITE_P(TestParameters, FmkGreaterParameterizedFixture,
 	::testing::Values(
-		FmkGreaterTestParameter({18446744073709551615, 18446744073709551614}),
-		FmkGreaterTestParameter({4294967295, 4294967294}),
-		FmkGreaterTestParameter({65535, 65534}),
-		FmkGreaterTestParameter({255, 254}),
+		FmkGreaterTestParameter({18446744073709551615ull, 18446744073709551614ull, {}, {}}),
+		FmkGreaterTestParameter({4294967295ull, 4294967294ull, {}, {}}),
+		FmkGreaterTestParameter({65535ull, 65534ull, {}, {}}),
+		FmkGreaterTestParameter({255ull, 254ull, {}, {}}),
 		FmkGreaterTestParameter({
 			0, 0,
-			std::vector <uint64_t> ({18446744073709551615, 18446744073709551615}),
-			std::vector <uint64_t> ({18446744073709551615, 18446744073709551614})
+			std::vector <uint64_t> ({18446744073709551615ull, 18446744073709551615ull}),
+			std::vector <uint64_t> ({18446744073709551615ull, 18446744073709551614ull})
 		})
 	)
 );

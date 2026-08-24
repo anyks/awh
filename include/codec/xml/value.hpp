@@ -579,7 +579,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool compose(writer_t & writer) const noexcept;
+					bool compose(writer_t & writer, const bool preserve = false) const noexcept;
 				private:
 					/**
 					 * \~russian

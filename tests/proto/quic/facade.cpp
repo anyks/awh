@@ -358,7 +358,7 @@ namespace {
 			 * @param error код завершения соединения
 			 *
 			 */
-			void serverDisconnect(const event::id_t cid, const quic::error_t error) noexcept {
+			void serverDisconnect([[maybe_unused]] const event::id_t cid, [[maybe_unused]] const quic::error_t error) noexcept {
 				// Запоминаем оповещение сервера о завершении соединения
 				this->_result.serverDisconnectFired = true;
 				// Для сценария закрытия клиентом обмен завершается по этому оповещению
@@ -469,7 +469,7 @@ namespace {
 			 * @param fin  флаг завершения потока
 			 *
 			 */
-			void clientStream(const uint64_t sid, const std::string & data, const bool fin) noexcept {
+			void clientStream([[maybe_unused]] const uint64_t sid, const std::string & data, const bool fin) noexcept {
 				// Накапливаем принятый от сервера эхо-ответ (поток может прийти частями)
 				this->_received.append(data);
 				// Пока поток не завершён удалённым сервером - ждём остальные части
@@ -511,7 +511,7 @@ namespace {
 			 * @param sid идентификатор потока приложения
 			 *
 			 */
-			void clientWritable(const uint64_t sid) noexcept {
+			void clientWritable([[maybe_unused]] const uint64_t sid) noexcept {
 				// Запоминаем срабатывание сигнала готовности буфера отправки
 				this->_result.writableFired = true;
 				// Сигнал writable значим лишь для сценария обратного давления
@@ -549,7 +549,7 @@ namespace {
 			 * @param error код завершения соединения
 			 *
 			 */
-			void clientDisconnect(const quic::error_t error) noexcept {
+			void clientDisconnect([[maybe_unused]] const quic::error_t error) noexcept {
 				// Запоминаем оповещение клиента о завершении соединения
 				this->_result.clientDisconnectFired = true;
 				// Обмен завершается по этому оповещению для закрытия сервером и для неудачного подключения

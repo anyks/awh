@@ -572,6 +572,33 @@ namespace awh {
 				COMPACT = 0x00, // Плотная запись без отступов и переводов строк
 				PRETTY  = 0x01  // Запись с отступами и переводами строк для удобства чтения
 			};
+			/**
+			 * \~russian
+			 * @warning Нарядная запись `PRETTY` кругового прохода НЕ сохраняет: отступ есть
+			 *          вставка пробельных знаков, а пробелы в разметке значимы, и разбор
+			 *          записанного даёт лишние текстовые узлы между вложенными. Плотная запись
+			 *          `COMPACT` круг сохраняет всегда - её и следует брать там, где записанное
+			 *          сличается с исходным либо разбирается обратно
+			 *
+			 * @note Узел со смешанным содержимым - несущий разом непробельный текст и вложенные
+			 *       узлы - от вставки заслонён: внутри него отступы не ставятся вовсе, иначе
+			 *       «перед» становилось бы «перед\n\t». Заслон держат оба пути записи, и
+			 *       древесный, и потоковый
+			 *
+			 * \~english
+			 * @warning The `PRETTY` writing does NOT preserve a round trip: an indent is an insertion
+			 *          of the whitespace characters, while the whitespace in a markup is significant, and
+			 *          the parsing of what was written gives extra text nodes between the nested ones. The
+			 *          `COMPACT` writing always preserves the round trip — it is the one to take wherever
+			 *          what was written is compared with the source or is parsed back
+			 *
+			 * @note A node with a mixed content — carrying both a non-whitespace text and the nested nodes
+			 *       at once — is shielded from the insertion: no indents are placed inside it at all,
+			 *       otherwise "before" would become "before\n\t". The shield is held by both paths of
+			 *       the writing, the tree one and the streaming one
+			 *
+			 * \~
+			 */
 
 			/**
 			 * \~russian

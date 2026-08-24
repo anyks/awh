@@ -440,7 +440,7 @@ namespace awh {
 			keyring_t * _keyring;
 		private:
 			// Объект фреймворка
-			const fmk_t * _fmk;
+			[[maybe_unused]] const fmk_t * _fmk;
 			// Объект работы с логами
 			const log_t * _log;
 		private:
@@ -532,6 +532,14 @@ namespace awh {
 			 *          пропускает. Ценой служит длина - шифротекст растёт на вектор
 			 *          инициализации и имитовставку
 			 *
+			 * @warning Ни режим, ни разрядность шифра в шифротексте не хранятся - их
+			 *          ставят обе стороны сами, - и расхождение сторон ловится одной лишь
+			 *          имитовставкой. В режиме с проверкой подлинности всякое расхождение
+			 *          кончается отказом, а в режиме гаммирования ловить его нечем: чужой
+			 *          шифротекст расшифровывается в мусор, выданный успехом. Согласие
+			 *          сторон о режиме и разрядности лежит на вызывающей стороне - его
+			 *          несёт запись потребителя, а не шифр
+			 *
 			 * @param mode режим блочного шифрования
 			 *
 			 * \~english
@@ -544,6 +552,14 @@ namespace awh {
 			 *          detects a forgery of the ciphertext, whereas the stream cipher lets it
 			 *          through. The price is the length - the ciphertext grows by the initialization
 			 *          vector and the message authentication code
+			 *
+			 * @warning Neither the mode nor the width of the cipher is stored in the ciphertext - both
+			 *          sides set them themselves, - and a divergence of the sides is caught by the message
+			 *          authentication code alone. In the mode with the authenticity check any divergence
+			 *          ends in a refusal, while in the stream cipher mode there is nothing to catch it with:
+			 *          a foreign ciphertext is decrypted into garbage given out as a success. The agreement
+			 *          of the sides about the mode and the width lies upon the calling side - it is carried
+			 *          by the record of the consumer rather than by the cipher
 			 *
 			 * @param mode mode of the block encryption
 			 *

@@ -2315,6 +2315,242 @@ TEST_F(CryptoFixture, StreamKeyReuseCryptoTest){
 }
 
 /**
+ * @brief Тест незавершённого потока шифрования
+ *
+ * @details Заведение потока вызовом initialize обращает всякий последующий encrypt в
+ *          очередную порцию потока, а не в разовую работу: вектор инициализации
+ *          выписывается один раз, имитовставка дописывается лишь вызовом finalize, а
+ *          расшифровка удерживает последние октеты как возможную имитовставку. Оттого
+ *          поток, не завершённый вызовом finalize, шифротекста не даёт - выдача его
+ *          короче полного шифротекста ровно на имитовставку, и расшифровка такой выдачи
+ *          теряет последние октеты.
+ *
+ *          Тест закрепляет именно это: не порчу, а недоведённую работу. Разбор дефекта,
+ *          принесённого владельцем кодека ABC, показал, что уклад «initialize плюс один
+ *          encrypt» читается потребителем как разовая работа, тогда как это открытый
+ *          поток, и молчание тут - не молчание об ошибке, а отсутствие ошибки: сколько
+ *          порций будет подано, работа знать не может
+ *
+ */
+TEST_F(CryptoFixture, StreamUnfinishedCryptoTest){
+	// Размер вектора инициализации режима с проверкой подлинности
+	constexpr size_t IV_SIZE = 12;
+	// Размер имитовставки режима с проверкой подлинности
+	constexpr size_t TAG_SIZE = 16;
+	// Текст для шифрования
+	const std::string text(400, 'z');
+	// Устанавливаем пароль шифрования
+	this->_crypto->password("password");
+	// Устанавливаем соль шифрования
+	this->_crypto->salt("salt");
+	// Устанавливаем режим блочного шифрования с проверкой подлинности
+	this->_crypto->mode(awh::crypto_t::mode_t::GCM);
+	// Выполняем разовое шифрование текста без заведения потока
+	const std::string oneshot = this->_crypto->encrypt <std::string> (text, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256);
+	// Проверяем надбавку разовой работы - вектор инициализации с имитовставкой
+	ASSERT_EQ(oneshot.size(), text.size() + IV_SIZE + TAG_SIZE);
+	// Выполняем заведение потока шифрования
+	ASSERT_TRUE(this->_crypto->initialize(awh::crypto_t::event_t::ENCODE, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256));
+	// Выполняем подачу всего текста одной порцией потока
+	std::string streamed = this->_crypto->encrypt <std::string> (text, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256);
+	/**
+	 * Порция потока несёт вектор инициализации, но не несёт имитовставки: та
+	 * дописывается завершением, и до него шифротекст не готов
+	 */
+	// Проверяем недостачу имитовставки у незавершённого потока
+	ASSERT_EQ(streamed.size(), oneshot.size() - TAG_SIZE);
+	// Запоминаем шифротекст незавершённого потока
+	const std::string partial = streamed;
+	// Выполняем завершение потокового шифрования
+	ASSERT_TRUE(this->_crypto->finalize(streamed));
+	// Проверяем полноту шифротекста завершённого потока
+	ASSERT_EQ(streamed.size(), oneshot.size());
+	// Расшифрованный текст
+	std::string decoded;
+	// Выполняем заведение потока расшифровки
+	ASSERT_TRUE(this->_crypto->initialize(awh::crypto_t::event_t::DECODE, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256));
+	// Выполняем расшифровку шифротекста завершённого потока
+	decoded.append(this->_crypto->decrypt <std::string> (streamed, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256));
+	// Выполняем завершение потоковой расшифровки
+	ASSERT_TRUE(this->_crypto->finalize(decoded));
+	// Проверяем обратимость завершённого потока
+	ASSERT_EQ(decoded, text);
+	/**
+	 * Завершение освобождает контекст потока, и работа возвращается к разовой:
+	 * тот же шифротекст поверх завершённого потока читается целиком и верно
+	 */
+	// Выполняем разовую расшифровку того же шифротекста поверх завершённого потока
+	ASSERT_EQ(this->_crypto->decrypt <std::string> (streamed, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256), text);
+	/**
+	 * Поток - это одно сообщение, а не работа многократного пользования: второе
+	 * сообщение поверх НЕзавершённого потока идёт продолжением прежнего счёта, и
+	 * здоровый шифротекст читается в мусор. Отказа тут нет и быть не может -
+	 * порция потока от сообщения неотличима
+	 */
+	// Выполняем заведение потока расшифровки
+	ASSERT_TRUE(this->_crypto->initialize(awh::crypto_t::event_t::DECODE, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256));
+	// Выполняем расшифровку здорового шифротекста первой порцией потока
+	const std::string first = this->_crypto->decrypt <std::string> (streamed, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256);
+	/**
+	 * Полный шифротекст читается порцией целиком: удерживаются ровно те октеты,
+	 * что и оказываются имитовставкой
+	 */
+	// Проверяем полноту вычитанного открытого текста
+	ASSERT_EQ(first, text);
+	// Выполняем расшифровку того же шифротекста второй порцией того же потока
+	const std::string second = this->_crypto->decrypt <std::string> (streamed, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256);
+	// Проверяем расхождение выдачи с открытым текстом
+	ASSERT_NE(second, text);
+	/**
+	 * Шифротекст незавершённого потока имитовставки не несёт, и расшифровка
+	 * удерживает как её последние октеты самого шифротекста: теряется ровно
+	 * имитовставка, а вычитанное остаётся верным началом открытого текста
+	 */
+	// Выполняем заведение потока расшифровки
+	ASSERT_TRUE(this->_crypto->initialize(awh::crypto_t::event_t::DECODE, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256));
+	// Выполняем расшифровку шифротекста незавершённого потока
+	const std::string truncated = this->_crypto->decrypt <std::string> (partial, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256);
+	// Проверяем недостачу последних октетов открытого текста
+	ASSERT_EQ(truncated.size(), text.size() - TAG_SIZE);
+	// Проверяем верность вычитанного начала
+	ASSERT_EQ(truncated, text.substr(0, truncated.size()));
+	/**
+	 * В режиме без проверки подлинности незавершённый поток безвреден: имитовставки
+	 * нет вовсе, удерживать расшифровке нечего, и надбавка сходится к одному вектору
+	 * инициализации. Замер закрепляется здесь же, чтобы расхождение режимов не
+	 * пришлось выводить рассуждением: опасность приходится ровно на GCM
+	 */
+	// Устанавливаем режим блочного шифрования без проверки подлинности
+	this->_crypto->mode(awh::crypto_t::mode_t::CFB);
+	// Выполняем разовое шифрование текста без заведения потока
+	const std::string plainshot = this->_crypto->encrypt <std::string> (text, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256);
+	// Выполняем заведение потока шифрования
+	ASSERT_TRUE(this->_crypto->initialize(awh::crypto_t::event_t::ENCODE, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256));
+	// Выполняем подачу всего текста одной порцией потока
+	std::string plainstream = this->_crypto->encrypt <std::string> (text, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256);
+	// Проверяем полноту шифротекста незавершённого потока
+	ASSERT_EQ(plainstream.size(), plainshot.size());
+	// Выполняем завершение потокового шифрования
+	ASSERT_TRUE(this->_crypto->finalize(plainstream));
+	// Проверяем неизменность шифротекста завершением
+	ASSERT_EQ(plainstream.size(), plainshot.size());
+	// Расшифрованный текст режима без проверки подлинности
+	std::string plainback;
+	// Выполняем заведение потока расшифровки
+	ASSERT_TRUE(this->_crypto->initialize(awh::crypto_t::event_t::DECODE, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256));
+	// Выполняем расшифровку шифротекста потока
+	plainback.append(this->_crypto->decrypt <std::string> (plainstream, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256));
+	// Выполняем завершение потоковой расшифровки
+	ASSERT_TRUE(this->_crypto->finalize(plainback));
+	// Проверяем обратимость потока режима без проверки подлинности
+	ASSERT_EQ(plainback, text);
+}
+
+/**
+ * @brief Тест расхождения сторон по разрядности шифра и по режиму блочного шифрования
+ *
+ * @details Ни разрядность шифра, ни режим блочного шифрования в шифротексте не хранятся -
+ *          обе стороны ставят их сами, и расхождение сторон возможно. Тест закрепляет, чем
+ *          оно кончается, и разница тут не в модуле, а в самом режиме: в режиме с проверкой
+ *          подлинности расхождение ловится имитовставкой и кончается отказом, а в режиме без
+ *          неё ловить нечем - гаммирование выдаёт открытый текст любой длины на любом ключе,
+ *          и выдача мусора успехом здесь неизбежна.
+ *
+ *          Закрепляется это ради того, чтобы вывод «отсутствие вида шифра в записи ничем не
+ *          грозит», снятый на GCM, не переносили на CFB: на GCM шесть расхождений из шести
+ *          отвергаются, на CFB шесть из шести проходят молча
+ *
+ */
+TEST_F(CryptoFixture, ModeMismatchCryptoTest){
+	// Текст для шифрования
+	const std::string text(400, 'z');
+	// Устанавливаем пароль шифрования
+	this->_crypto->password("password");
+	// Устанавливаем соль шифрования
+	this->_crypto->salt("salt");
+	// Набор разрядностей шифра
+	const awh::crypto_t::cipher_t ciphers[3] = {awh::crypto_t::cipher_t::AES128, awh::crypto_t::cipher_t::AES192, awh::crypto_t::cipher_t::AES256};
+	/**
+	 * Выполняем перебор режимов блочного шифрования
+	 */
+	for(const awh::crypto_t::mode_t mode : {awh::crypto_t::mode_t::GCM, awh::crypto_t::mode_t::CFB}){
+		// Признак режима с проверкой подлинности
+		const bool secured = (mode == awh::crypto_t::mode_t::GCM);
+		// Устанавливаем режим блочного шифрования
+		this->_crypto->mode(mode);
+		/**
+		 * Выполняем перебор разрядностей шифра укладывающей стороны
+		 */
+		for(const awh::crypto_t::cipher_t put : ciphers){
+			// Выполняем шифрование текста укладывающей стороной
+			const std::string encoded = this->_crypto->encrypt <std::string> (text, awh::crypto_t::hash_t::SHA256, put);
+			// Проверяем наличие шифротекста
+			ASSERT_FALSE(encoded.empty());
+			/**
+			 * Выполняем перебор разрядностей шифра читающей стороны
+			 */
+			for(const awh::crypto_t::cipher_t get : ciphers){
+				// Открытый текст читающей стороны
+				std::string decoded;
+				// Выполняем расшифровку шифротекста читающей стороной
+				const bool outcome = this->_crypto->decrypt(encoded.data(), encoded.size(), decoded, awh::crypto_t::hash_t::SHA256, get);
+				// Если разрядность шифра у сторон сходится
+				if(put == get){
+					// Проверяем успех работы
+					ASSERT_TRUE(outcome) << static_cast <uint16_t> (mode);
+					// Проверяем обратимость шифрования
+					ASSERT_EQ(decoded, text) << static_cast <uint16_t> (mode);
+				/**
+				 * Расхождение разрядности ловится имитовставкой, и лишь ею: в режиме
+				 * без проверки подлинности ловить его нечем
+				 */
+				// Если разрядность шифра у сторон расходится
+				} else if(secured) {
+					// Проверяем отказ работы
+					ASSERT_FALSE(outcome) << static_cast <uint16_t> (put);
+					// Проверяем отсутствие выдачи при отказе
+					ASSERT_TRUE(decoded.empty()) << static_cast <uint16_t> (put);
+				// Если работа идёт режимом без проверки подлинности
+				} else {
+					// Проверяем выдачу работы
+					ASSERT_TRUE(outcome) << static_cast <uint16_t> (put);
+					// Проверяем расхождение выдачи с открытым текстом
+					ASSERT_NE(decoded, text) << static_cast <uint16_t> (put);
+				}
+			}
+		}
+	}
+	/**
+	 * Расхождение сторон по самому режиму кончается тем же порядком: шифротекст
+	 * режима без проверки подлинности отвергается имитовставкой, а шифротекст режима
+	 * с нею читается гаммированием молча - вектор инициализации там короче, и первые
+	 * октеты шифротекста уходят в гамму как его часть
+	 */
+	// Устанавливаем режим блочного шифрования с проверкой подлинности
+	this->_crypto->mode(awh::crypto_t::mode_t::GCM);
+	// Выполняем шифрование текста режимом с проверкой подлинности
+	const std::string authentic = this->_crypto->encrypt <std::string> (text, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256);
+	// Устанавливаем режим блочного шифрования без проверки подлинности
+	this->_crypto->mode(awh::crypto_t::mode_t::CFB);
+	// Выполняем шифрование текста режимом без проверки подлинности
+	const std::string plain = this->_crypto->encrypt <std::string> (text, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256);
+	// Открытый текст расхождения по режиму
+	std::string decoded;
+	// Выполняем расшифровку шифротекста режима с проверкой подлинности гаммированием
+	ASSERT_TRUE(this->_crypto->decrypt(authentic.data(), authentic.size(), decoded, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256));
+	// Проверяем расхождение выдачи с открытым текстом
+	ASSERT_NE(decoded, text);
+	// Устанавливаем режим блочного шифрования с проверкой подлинности
+	this->_crypto->mode(awh::crypto_t::mode_t::GCM);
+	// Выполняем очистку открытого текста расхождения по режиму
+	decoded.clear();
+	// Выполняем расшифровку шифротекста гаммирования режимом с проверкой подлинности
+	ASSERT_FALSE(this->_crypto->decrypt(plain.data(), plain.size(), decoded, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256));
+	// Проверяем отсутствие выдачи при отказе
+	ASSERT_TRUE(decoded.empty());
+}
+
+/**
  * @brief Тест сверки частично заданных доводов вызова с заведённым потоком
  *
  * @details Незаданные доводы вызова берутся из потока, а заданные с ним сверяются (4.4).

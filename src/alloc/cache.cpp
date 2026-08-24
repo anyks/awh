@@ -118,7 +118,7 @@ bool awh::alloc::Cache::init(central_t * central, classes_t * classes, const siz
 	// Запоминаем разряды размеров
 	this->_classes = classes;
 	// Запоминаем предел кэша
-	this->_limit = ((limit > 0) ? limit : LIMIT);
+	this->_limit.store(((limit > 0) ? limit : LIMIT), std::memory_order_relaxed);
 	// Лежащего в кэше пока нет
 	this->_bytes.store(0, std::memory_order_relaxed);
 	/**
@@ -335,13 +335,15 @@ void awh::alloc::Cache::relieve() noexcept {
 	 * Отдаём пачками и лишь пока предел перебран: отдача всего разом обнулила бы
 	 * кэш и следующее же выделение снова пошло бы за замком
 	 */
-	while(this->_bytes.load(std::memory_order_relaxed) > this->_limit){
+	// Читаем предел кэша единожды: правит его чужой поток, и вид у него неделимый
+	const size_t limit = this->_limit.load(std::memory_order_relaxed);
+	while(this->_bytes.load(std::memory_order_relaxed) > limit){
 		// Число отданного за оборот
 		size_t given = 0;
 		/**
 		 * Перебираем разряды, отдавая по пачке
 		 */
-		for(size_t i = 0; (i < Classes::LIMIT) && (this->_bytes.load(std::memory_order_relaxed) > this->_limit); i++){
+		for(size_t i = 0; (i < Classes::LIMIT) && (this->_bytes.load(std::memory_order_relaxed) > limit); i++){
 			// Если в разряде блоков нет
 			if(this->_lists[i].count == 0)
 				// Переходим к следующему разряду
@@ -363,7 +365,7 @@ void awh::alloc::Cache::relieve() noexcept {
  */
 void awh::alloc::Cache::limit(const size_t limit) noexcept {
 	// Запоминаем предел кэша
-	this->_limit = ((limit > 0) ? limit : LIMIT);
+	this->_limit.store(((limit > 0) ? limit : LIMIT), std::memory_order_relaxed);
 }
 /**
  * @brief Метод получения объёма лежащего в кэше
@@ -869,7 +871,7 @@ awh::alloc::cache_t * awh::alloc::Caches::create() noexcept {
 		this->_count++;
 	}
 	// Заводим кэш
-	if(!result->init(this->_central, this->_classes, this->_limit)){
+	if(!result->init(this->_central, this->_classes, this->_limit.load(std::memory_order_relaxed))){
 		// Отмечаем кэш свободным
 		result->_busy = false;
 		// Отвечаем отказом
@@ -966,13 +968,15 @@ void awh::alloc::Caches::limit(const size_t limit) noexcept {
 	// Захватываем замок общего списка кэшей
 	hold_t hold(this->_lock);
 	// Запоминаем предел кэша потока
-	this->_limit = ((limit > 0) ? limit : Cache::LIMIT);
+	const size_t chosen = ((limit > 0) ? limit : Cache::LIMIT);
+	// Запоминаем предел кэша потока
+	this->_limit.store(chosen, std::memory_order_relaxed);
 	/**
 	 * Задаём предел уже заведённым кэшам
 	 */
 	for(cache_t * cache = this->_caches; cache != nullptr; cache = cache->_next)
 		// Задаём предел очередному кэшу
-		cache->limit(this->_limit);
+		cache->limit(chosen);
 }
 /**
  * @brief Метод получения объёма, лежащего во всех кэшах

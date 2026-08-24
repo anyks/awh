@@ -738,6 +738,23 @@ namespace {
 		return (((letter >= 'A') && (letter <= 'Z')) ? static_cast <char> (letter + ('a' - 'A')) : letter);
 	}
 	/**
+	 * @brief Функция получения куска текста, занятого группой совпадения
+	 *
+	 * @details Длина совпадения знаковая, поскольку разбор отсутствие группы
+	 *          обозначает отрицательными её границами, а string_view принимает
+	 *          длину беззнаковую, и сужение в списке инициализации язык запрещает.
+	 *          Приведение собрано здесь, чтобы не повторять его у каждого поля
+	 *
+	 * @param text  начало текста, от которого отсчитывается совпадение
+	 * @param match группа совпадения
+	 * @return      кусок текста, группой занятый
+	 *
+	 */
+	inline string_view fragment(const char * text, const match_t & match) noexcept {
+		// Выводим кусок текста, группой совпадения занятый
+		return string_view{text + match.begin, static_cast <size_t> (match.end - match.begin)};
+	}
+	/**
 	 * @brief Функция проверки, является ли символ строчной латинской буквой ('a'-'z')
 	 *
 	 * @param letter проверяемый символ
@@ -3073,7 +3090,7 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 									// Если мы определяем номер дня недели %w
 									case static_cast <uint8_t> (format_t::w): {
 										// Получаем номер дня недели, записью заданный
-										const uint8_t day = this->_fmk->atoi <uint8_t> (string_view{text.data() + (pos + match[j].begin), match[j].end - match[j].begin});
+										const uint8_t day = this->_fmk->atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
 										/**
 										 * Переменная %w счёт ведёт от нуля до шести, воскресенье обозначая
 										 * нулём: седьмой день недели ей не принадлежит, и запись «7»
@@ -3088,7 +3105,7 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 									// Если мы определяем номер недели в году %W
 									case static_cast <uint8_t> (format_t::W):
 										// Устанавливаем количество недель прошедших с начала года
-										dt.weeks = this->_fmk->atoi <uint8_t> (string_view{text.data() + (pos + match[j].begin), match[j].end - match[j].begin});
+										dt.weeks = this->_fmk->atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
 									break;
 									// Если мы определяем год недельного счёта %G либо номер недели %V
 									case static_cast <uint8_t> (format_t::G):
@@ -3104,7 +3121,7 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 									// Если мы определяем порядковый номер дня в году %j
 									case static_cast <uint8_t> (format_t::j): {
 										// Получаем порядковый номер дня в году
-										const uint16_t number = this->_fmk->atoi <uint16_t> (string_view{text.data() + (pos + match[j].begin), match[j].end - match[j].begin});
+										const uint16_t number = this->_fmk->atoi <uint16_t> (::fragment(text.data() + pos, match[j]));
 										/**
 										 * Номер дня в году отсчитывается от единицы, а поле - от нуля,
 										 * и вычитание единицы из нуля обращало беззнаковое поле в 65535:
@@ -3119,7 +3136,7 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 									// Если мы определяем номер дня недели %u
 									case static_cast <uint8_t> (format_t::u):
 										// Устанавливаем номер дня недели
-										dt.day = this->_fmk->atoi <uint8_t> (string_view{text.data() + (pos + match[j].begin), match[j].end - match[j].begin});
+										dt.day = this->_fmk->atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
 									break;
 									// Если формат получен как %C
 									case static_cast <uint8_t> (format_t::C):
@@ -3130,12 +3147,12 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 										 * записи произволен и век может встретиться первым
 										 */
 										// Устанавливаем номер века
-										dt.year = this->_fmk->atoi <uint16_t> (string_view{text.data() + (pos + match[j].begin), match[j].end - match[j].begin});
+										dt.year = this->_fmk->atoi <uint16_t> (::fragment(text.data() + pos, match[j]));
 									break;
 									// Если формат получен как %y
 									case static_cast <uint8_t> (format_t::y): {
 										// Получаем значение указанного года
-										const uint16_t num = this->_fmk->atoi <uint16_t> (string_view{text.data() + (pos + match[j].begin), match[j].end - match[j].begin});
+										const uint16_t num = this->_fmk->atoi <uint16_t> (::fragment(text.data() + pos, match[j]));
 										// Устанавливаем год, раскрыв двузначное обозначение в полное
 										dt.year = this->makeFullYear(num);
 										// Устанавливаем флаг високосного года
@@ -3144,34 +3161,34 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 									// Если формат получен как %Y
 									case static_cast <uint8_t> (format_t::Y): {
 										// Устанавливаем год
-										dt.year = this->_fmk->atoi <uint16_t> (string_view{text.data() + (pos + match[j].begin), match[j].end - match[j].begin});
+										dt.year = this->_fmk->atoi <uint16_t> (::fragment(text.data() + pos, match[j]));
 										// Устанавливаем флаг високосного года
 										dt.leap = this->leap(dt.year);
 									} break;
 									// Если формат получен как %d
 									case static_cast <uint8_t> (format_t::d):
 										// Устанавливаем число месяца
-										dt.date = this->_fmk->atoi <uint8_t> (string_view{text.data() + (pos + match[j].begin), match[j].end - match[j].begin});
+										dt.date = this->_fmk->atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
 									break;
 									// Если формат получен как %m
 									case static_cast <uint8_t> (format_t::m):
 										// Получаем значение номера месяца
-										dt.month = this->_fmk->atoi <uint8_t> (string_view{text.data() + (pos + match[j].begin), match[j].end - match[j].begin});
+										dt.month = this->_fmk->atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
 									break;
 									// Если формат получен как %I
 									case static_cast <uint8_t> (format_t::I):
 										// Устанавливаем полученный час времени
-										dt.hour = this->_fmk->atoi <uint8_t> (string_view{text.data() + (pos + match[j].begin), match[j].end - match[j].begin});
+										dt.hour = this->_fmk->atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
 									break;
 									// Если формат получен как %H
 									case static_cast <uint8_t> (format_t::H):
 										// Устанавливаем полученный час времени
-										dt.hour = this->_fmk->atoi <uint8_t> (string_view{text.data() + (pos + match[j].begin), match[j].end - match[j].begin});
+										dt.hour = this->_fmk->atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
 									break;
 									// Если формат получен как %M
 									case static_cast <uint8_t> (format_t::M):
 										// Устанавливаем значение указанного количества минут
-										dt.minutes = this->_fmk->atoi <uint8_t> (string_view{text.data() + (pos + match[j].begin), match[j].end - match[j].begin});
+										dt.minutes = this->_fmk->atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
 									break;
 									// Если формат получен как %s
 									case static_cast <uint8_t> (format_t::s):
@@ -3181,7 +3198,7 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 									// Если формат получен как %S
 									case static_cast <uint8_t> (format_t::S):
 										// Устанавливаем значение указанного количества секунд
-										dt.seconds = this->_fmk->atoi <uint8_t> (string_view{text.data() + (pos + match[j].begin), match[j].end - match[j].begin});
+										dt.seconds = this->_fmk->atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
 									break;
 									// Если формат получен как %a
 									case static_cast <uint8_t> (format_t::a): {
@@ -3357,11 +3374,11 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 								// Если мы получили час
 								else if(j == 1)
 									// Устанавливаем полученный час времени
-									dt.hour = this->_fmk->atoi <uint8_t> (string_view{text.data() + (pos + match[j].begin), match[j].end - match[j].begin});
+									dt.hour = this->_fmk->atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
 								// Если мы получили минуты
 								else if(j == 2)
 									// Устанавливаем значение указанного количества минут
-									dt.minutes = this->_fmk->atoi <uint8_t> (string_view{text.data() + (pos + match[j].begin), match[j].end - match[j].begin});
+									dt.minutes = this->_fmk->atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
 							}
 						}
 					} break;
@@ -3380,15 +3397,15 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 								// Если мы получили номер месяца
 								else if(j == 1)
 									// Устанавливаем полученный номер месяца
-									dt.month = this->_fmk->atoi <uint8_t> (string_view{text.data() + (pos + match[j].begin), match[j].end - match[j].begin});
+									dt.month = this->_fmk->atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
 								// Если мы получили число месяца
 								else if(j == 2)
 									// Устанавливаем число месяца
-									dt.date = this->_fmk->atoi <uint8_t> (string_view{text.data() + (pos + match[j].begin), match[j].end - match[j].begin});
+									dt.date = this->_fmk->atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
 								// Если мы получили год
 								else if(j == 3) {
 									// Получаем значение указанного года
-									const uint16_t num = this->_fmk->atoi <uint16_t> (string_view{text.data() + (pos + match[j].begin), match[j].end - match[j].begin});
+									const uint16_t num = this->_fmk->atoi <uint16_t> (::fragment(text.data() + pos, match[j]));
 									// Устанавливаем год, раскрыв двузначное обозначение в полное
 									dt.year = this->makeFullYear(num);
 									// Устанавливаем флаг високосного года
@@ -3412,17 +3429,17 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 								// Если мы получили год
 								else if(j == 1) {
 									// Устанавливаем год
-									dt.year = this->_fmk->atoi <uint16_t> (string_view{text.data() + (pos + match[j].begin), match[j].end - match[j].begin});
+									dt.year = this->_fmk->atoi <uint16_t> (::fragment(text.data() + pos, match[j]));
 									// Устанавливаем флаг високосного года
 									dt.leap = this->leap(dt.year);
 								// Если мы получили номер месяца
 								} else if(j == 2)
 									// Получаем значение номера месяца
-									dt.month = this->_fmk->atoi <uint8_t> (string_view{text.data() + (pos + match[j].begin), match[j].end - match[j].begin});
+									dt.month = this->_fmk->atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
 								// Если мы получили число месяца
 								else if(j == 3)
 									// Устанавливаем число месяца
-									dt.date = this->_fmk->atoi <uint8_t> (string_view{text.data() + (pos + match[j].begin), match[j].end - match[j].begin});
+									dt.date = this->_fmk->atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
 							}
 						}
 					} break;
@@ -3441,15 +3458,15 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 								// Если мы получили час
 								else if(j == 1)
 									// Устанавливаем полученный час времени
-									dt.hour = this->_fmk->atoi <uint8_t> (string_view{text.data() + (pos + match[j].begin), match[j].end - match[j].begin});
+									dt.hour = this->_fmk->atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
 								// Если мы получили минуты
 								else if(j == 2)
 									// Устанавливаем значение указанного количества минут
-									dt.minutes = this->_fmk->atoi <uint8_t> (string_view{text.data() + (pos + match[j].begin), match[j].end - match[j].begin});
+									dt.minutes = this->_fmk->atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
 								// Если мы получили секунды
 								else if(j == 3)
 									// Устанавливаем значение указанного количества секунд
-									dt.seconds = this->_fmk->atoi <uint8_t> (string_view{text.data() + (pos + match[j].begin), match[j].end - match[j].begin});
+									dt.seconds = this->_fmk->atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
 							}
 						}
 					} break;
@@ -3468,15 +3485,15 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 								// Если мы получили час
 								else if(j == 1)
 									// Устанавливаем полученный час времени
-									dt.hour = this->_fmk->atoi <uint8_t> (string_view{text.data() + (pos + match[j].begin), match[j].end - match[j].begin});
+									dt.hour = this->_fmk->atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
 								// Если мы получили минуты
 								else if(j == 2)
 									// Устанавливаем значение указанного количества минут
-									dt.minutes = this->_fmk->atoi <uint8_t> (string_view{text.data() + (pos + match[j].begin), match[j].end - match[j].begin});
+									dt.minutes = this->_fmk->atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
 								// Если мы получили секунды
 								else if(j == 3)
 									// Устанавливаем значение указанного количества секунд
-									dt.seconds = this->_fmk->atoi <uint8_t> (string_view{text.data() + (pos + match[j].begin), match[j].end - match[j].begin});
+									dt.seconds = this->_fmk->atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
 								// Если мы получили метку времени
 								else if(j == 4) {
 									// Получаем название времени суток
@@ -3544,23 +3561,23 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 								// Если мы получили число месяца
 								} else if(j == 3)
 									// Устанавливаем число месяца
-									dt.date = this->_fmk->atoi <uint8_t> (string_view{text.data() + (pos + match[j].begin), match[j].end - match[j].begin});
+									dt.date = this->_fmk->atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
 								// Если мы получили час
 								else if(j == 4)
 									// Устанавливаем полученный час времени
-									dt.hour = this->_fmk->atoi <uint8_t> (string_view{text.data() + (pos + match[j].begin), match[j].end - match[j].begin});
+									dt.hour = this->_fmk->atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
 								// Если мы получили минуты
 								else if(j == 5)
 									// Устанавливаем значение указанного количества минут
-									dt.minutes = this->_fmk->atoi <uint8_t> (string_view{text.data() + (pos + match[j].begin), match[j].end - match[j].begin});
+									dt.minutes = this->_fmk->atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
 								// Если мы получили секунды
 								else if(j == 6)
 									// Устанавливаем значение указанного количества секунд
-									dt.seconds = this->_fmk->atoi <uint8_t> (string_view{text.data() + (pos + match[j].begin), match[j].end - match[j].begin});
+									dt.seconds = this->_fmk->atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
 								// Если мы получили год
 								else if(j == 7) {
 									// Устанавливаем год
-									dt.year = this->_fmk->atoi <uint16_t> (string_view{text.data() + (pos + match[j].begin), match[j].end - match[j].begin});
+									dt.year = this->_fmk->atoi <uint16_t> (::fragment(text.data() + pos, match[j]));
 									// Устанавливаем флаг високосного года
 									dt.leap = this->leap(dt.year);
 								}
@@ -5912,7 +5929,7 @@ double awh::Chrono::seconds(string_view value) const noexcept {
 								// Если мы получили само число
 								case 1:
 									// Получаем значение числа
-									seconds = this->_fmk->atoi <double> (string_view{value.data() + match[j].begin, match[j].end - match[j].begin});
+									seconds = this->_fmk->atoi <double> (::fragment(value.data(), match[j]));
 								break;
 								// Если мы получили размерность числа
 								case 2: {

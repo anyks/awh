@@ -1074,7 +1074,7 @@ void awh::Server::errorTLS(const tls::coder_t::id_t id, const event::id_t eid, c
  * @param ctx    промежуточный контекст для передачи в функцию обратного вызова
  *
  */
-void awh::Server::processTLS(const tls::coder_t::id_t id, const event::id_t eid, const tls::coder_t::event_t event, const uint8_t * buffer, const size_t size, void * ctx) noexcept {
+void awh::Server::processTLS([[maybe_unused]] const tls::coder_t::id_t id, const event::id_t eid, const tls::coder_t::event_t event, const uint8_t * buffer, const size_t size, void * ctx) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или сервер находится в рабочем состоянии
 	if(this->active()){
 		/**
@@ -1303,17 +1303,17 @@ void awh::Server::start() noexcept {
 								// Если сервер работает с адресами Unix Domain Socket
 								case static_cast <uint8_t> (event::family_t::UDS):
 									// Извлекаем адрес хоста текущей машины для адресов Unix Domain Socket
-									host = ::move(this->_unit->server.getAddress(this->_id.eid, event::address_t::UDS));
+									host = this->_unit->server.getAddress(this->_id.eid, event::address_t::UDS);
 								break;
 								// Если сервер работает с адресами IPv4
 								case static_cast <uint8_t> (event::family_t::IPV4):
 									// Извлекаем адрес хоста текущей машины для адресов IPv4
-									host = ::move(this->getAddressUnit(event::address_t::IPV4));
+									host = this->getAddressUnit(event::address_t::IPV4);
 								break;
 								// Если сервер работает с адресами IPv6
 								case static_cast <uint8_t> (event::family_t::IPV6):
 									// Извлекаем адрес хоста текущей машины для адресов IPv6
-									host = ::move(this->getAddressUnit(event::address_t::IPV6));
+									host = this->getAddressUnit(event::address_t::IPV6);
 								break;
 							}
 							// Выполняем функцию обратного вызова

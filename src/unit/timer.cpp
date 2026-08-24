@@ -51,7 +51,7 @@ void awh::unit::Timer::state(const event::id_t eid, const event::status_t status
 			// Если функция обратного вызова установлена
 			if(this->_callback.is(eid)){
 				// Получаем функцию обратного вызова для события таймера
-				auto callback = ::move(this->_callback.get <void (const event::id_t)> (eid));
+				auto callback = this->_callback.get <void (const event::id_t)> (eid);
 				// Если функция обратного вызова получена успешно
 				if(callback != nullptr)
 					// Выполняем функцию обратного вызова

@@ -1810,12 +1810,12 @@ void awh::unit::NTP::setSource(string_view source) noexcept {
 					// Если адрес является IPv4
 					case static_cast <uint8_t> (net_addr_t::type_t::IPV4):
 						// Получаем IP-адрес в исходном виде
-						this->_client.source = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+						this->_client.source = this->_addr.source(net_addr_t::endian_t::LITTLE);
 					break;
 					// Если адрес является IPv6
 					case static_cast <uint8_t> (net_addr_t::type_t::IPV6):
 						// Получаем IP-адрес в исходном виде
-						this->_client.source = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+						this->_client.source = this->_addr.source(net_addr_t::endian_t::LITTLE);
 					break;
 				}
 			}
@@ -1916,14 +1916,14 @@ void awh::unit::NTP::setSource(const event::family_t family, string_view source)
 					// Выполняем парсинг IPv4-адреса
 					if(this->_addr.parse(source, net_addr_t::type_t::IPV4))
 						// Получаем IP-адрес в исходном виде
-						this->_client.source = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+						this->_client.source = this->_addr.source(net_addr_t::endian_t::LITTLE);
 				} break;
 				// Для семейства IPv6
 				case static_cast <uint8_t> (event::family_t::IPV6): {
 					// Выполняем парсинг IPv6-адреса
 					if(this->_addr.parse(source, net_addr_t::type_t::IPV6))
 						// Получаем IP-адрес в исходном виде
-						this->_client.source = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+						this->_client.source = this->_addr.source(net_addr_t::endian_t::LITTLE);
 				} break;
 			}
 		// Сбрасываем IP-адрес события

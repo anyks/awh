@@ -1896,7 +1896,7 @@ bool awh::Framework::is(string_view text, const check_t flag) const noexcept {
 						 * @return      результат проверки
 						 *
 						 */
-						auto checkFn = [this](string_view text, const size_t index) noexcept -> bool {
+						auto checkFn = [](string_view text, const size_t index) noexcept -> bool {
 							// Переменная результата
 							bool result = false;
 							// Получаем текущую букву
@@ -2211,7 +2211,7 @@ bool awh::Framework::is(wstring_view text, const check_t flag) const noexcept {
 						 * @return      результат проверки
 						 *
 						 */
-						auto checkFn = [this](wstring_view text, const size_t index) noexcept -> bool {
+						auto checkFn = [](wstring_view text, const size_t index) noexcept -> bool {
 							// Переменная результата
 							bool result = false;
 							// Получаем текущую букву
@@ -5567,7 +5567,7 @@ uint16_t awh::Framework::rome2arabic(string_view word) const noexcept {
 				}
 			}
 			// Символ поиска
-			char c = 0, o = 0;
+			char o = 0;
 			// Вспомогательные переменные
 			uint32_t i = 0, v = 0, n = 0;
 			/**
@@ -5832,7 +5832,7 @@ uint16_t awh::Framework::rome2arabic(wstring_view word) const noexcept {
 				}
 			}
 			// Символ поиска
-			wchar_t c = 0, o = 0;
+			wchar_t o = 0;
 			// Вспомогательные переменные
 			uint32_t i = 0, v = 0, n = 0;
 			/**
@@ -6151,7 +6151,7 @@ string awh::Framework::arabic2rome(string_view word) const noexcept {
 			// Преобразуем слово в число
 			const uint32_t number = this->atoi <uint32_t> (word);
 			// Выполняем расчет
-			result = ::move(this->convert(this->arabic2rome(number)));
+			result = this->convert(this->arabic2rome(number));
 		/**
 		 * Если возникает ошибка
 		 */

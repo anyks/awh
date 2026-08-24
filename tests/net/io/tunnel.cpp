@@ -229,7 +229,7 @@ enum class tunnel_driver_t : uint8_t {
  * @return число отысканных устройств
  *
  */
-static uint16_t tunnelDevicesCount() noexcept {
+[[maybe_unused]] static uint16_t tunnelDevicesCount() noexcept {
 	/**
 	 * Для операционной системы MS Windows
 	 */
@@ -288,7 +288,7 @@ static uint16_t tunnelDevicesCount() noexcept {
  * @return признак доступности драйвера Wintun
  *
  */
-static bool tunnelWintunAvailable() noexcept {
+[[maybe_unused]] static bool tunnelWintunAvailable() noexcept {
 	/**
 	 * Для операционной системы MS Windows
 	 */

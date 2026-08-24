@@ -143,8 +143,8 @@ typedef struct Params {
 	 */
 	explicit Params() noexcept :
 	 tun{"10.0.0.2"}, peer{"10.0.0.1"}, bind{"0.0.0.0"},
-	 host{"127.0.0.1"}, net{"10.0.0.0"}, iface{""}, driver{"auto"}, port(2222),
-	 prefix(24), up(true), route(false) {}
+	 host{"127.0.0.1"}, net{"10.0.0.0"}, port(2222),
+	 prefix(24), iface{""}, driver{"auto"}, up(true), route(false) {}
 } params_t;
 
 /**

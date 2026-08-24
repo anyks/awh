@@ -41,12 +41,10 @@ using namespace placeholders;
 /**
  * @brief Главная функция приложения
  *
- * @param argc длина массива параметров
- * @param argv массив параметров
- * @return     код выхода из приложения
+ * @return код выхода из приложения
  *
  */
-int32_t main(int32_t argc, char * argv[]){
+int32_t main(){
 	// Создаём объект фреймворка
 	fmk_t fmk;
 	// Создаём объект логирования
@@ -336,7 +334,7 @@ int32_t main(int32_t argc, char * argv[]){
 					}
 				});
 				// Устанавливаем функцию обратного вызова на удачное подключение к серверу
-				io.on(eid, static_cast <engine::callback::connect_t> ([ctl, &tls, &io, &log](const event::id_t eid, const bool ok) noexcept -> void {
+				io.on(eid, static_cast <engine::callback::connect_t> ([ctl, &tls, &log](const event::id_t eid, const bool ok) noexcept -> void {
 					// Записываем в лог сообщение о принятии события
 					log.print("Событие подключения: ID=%u, результат: %s", log_t::flag_t::INFO, eid, ok ? "YES" : "NO");
 					// Если подключение успешно

@@ -405,8 +405,6 @@ namespace awh {
 			 */
 			std::function <void (const event_t, const id_t, const fn_t &)> _callback;
 		private:
-			// Объект фреймворка
-			const fmk_t * _fmk;
 			// Объект работы с логами
 			const log_t * _log;
 		private:
@@ -3157,8 +3155,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			explicit Callback(const fmk_t * fmk, const log_t * log) noexcept :
-			 _crypto(fmk, log), _fmk(fmk), _log(log) {
+			explicit Callback(const fmk_t * fmk, const log_t * log) noexcept : _crypto(fmk, log), _log(log) {
 				// Деактивируем мьютекс на время инициализации
 				this->_mtx.enabled = false;
 			}

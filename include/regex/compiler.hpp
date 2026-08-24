@@ -395,6 +395,32 @@ namespace awh {
 				 * \~
 				 */
 				bool merging(const node_id_t id) noexcept;
+			/**
+			 * \~russian
+			 * @brief Метод свёртки повторения над необязательными частями в ряд символов
+			 *
+			 * @details Повторение вида «(?:A* B?)*», всякая часть тела какого необязательна,
+			 *          принимает ровно те же строки, что и ряд «[A∪B]*»: тело набирает любую
+			 *          часть по одной, а внешнее повторение повторяет это без счёта. Ряд же
+			 *          проходится таблицей байтов одним ходом, тогда как повторение над
+			 *          областью идёт записью кадра на всякий проход.
+			 *
+			 * @param id индекс узла повторения в арене узлов
+			 * @return   результат выполнения свёртки повторения
+			 *
+			 * \~english
+			 * @brief Method of folding a repetition over optional parts into a run of characters
+			 * @details A repetition of the form «(?:A* B?)*», every part of whose body is optional,
+			 *          accepts exactly the same strings as the run «[A∪B]*»: the body takes any
+			 *          part one at a time, and the outer repetition repeats this without count. The run
+			 *          is passed by a table of bytes in one go, whereas a repetition over a region
+			 *          goes by a frame record on every pass.
+			 * @param id index of the repetition node in the arena of nodes
+			 * @return   result of performing the folding of the repetition
+			 *
+			 * \~
+			 */
+			bool flattening(const node_id_t id) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод компиляции узла выбора одной из ветвей

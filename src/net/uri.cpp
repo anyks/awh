@@ -2656,7 +2656,7 @@ void awh::Uniform_Resource_Identifier::host(string_view host) noexcept {
 					// Заполняем IPv6-адрес хоста на месте
 					awh_cast <net::addr_net_ipv6_t *> (attr->ip.get())->address = this->_addr->v6(net_addr_t::endian_t::LITTLE);
 				// Иначе заводим объект IP-адреса хоста в атрибутах URI адреса заново
-				else attr->ip = ::move(this->_addr->source(net_addr_t::endian_t::LITTLE));
+				else attr->ip = this->_addr->source(net_addr_t::endian_t::LITTLE);
 			}
 		}
 		/**

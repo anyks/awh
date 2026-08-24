@@ -113,8 +113,8 @@ awh::codec::abc::Reader::Settings::Settings() noexcept :
  *
  */
 awh::codec::abc::Reader::Reader(const log_t * log) noexcept :
- _state(state_t::ITEM), _error(error_t::NONE), _offset(0), _origin(0), _reserved(0), _nodes(0),
- _head(0), _pending(0), _awaited(type_t::UNDEFINED), _extend(extend_t::BIGNUM), _span(0), _beyond(0), _skipping(false), _exponent(0), _subtype(0),
+ _state(state_t::ITEM), _error(error_t::NONE), _offset(0), _origin(0), _reserved(0), _head(0),
+ _nodes(0), _pending(0), _awaited(type_t::UNDEFINED), _extend(extend_t::BIGNUM), _span(0), _beyond(0), _skipping(false), _exponent(0), _subtype(0),
  _negative(false), _document(false), _handler(nullptr), _context(nullptr), _log(log)  {
 	// Выполняем установку начального положения разбора
 	this->_mark = location_t();

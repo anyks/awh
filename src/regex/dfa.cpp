@@ -69,8 +69,16 @@ namespace {
 	/**
 	 * @brief Признак отсутствия начатых сопоставлений в состоянии
 	 *
+	 * @details Имя разведено с величиной SPARSE из prefilter.hpp намеренно:
+	 *          та лежит в пространстве awh::regex, отчего поиск имени внутри
+	 *          методов автомата находил её первой, а эту, безымянным
+	 *          пространством укрытую, не находил вовсе. Признак оттого
+	 *          размещался и проверялся разрядом чужим - оба места брали
+	 *          восьмёрку вместо единицы и оттого сходились между собою,
+	 *          но разряд занимался не тот. Вскрыто ключом -Wall.
+	 *
 	 */
-	constexpr uint8_t SPARSE = 0x01;
+	constexpr uint8_t SCANT = 0x01;
 
 	/**
 	 * @brief Признак отсутствия достижимых инструкций в состоянии
@@ -536,7 +544,7 @@ uint32_t awh::regex::Dfa::state(const vector <address_t> & list, const uint32_t 
 	 *          проверяются на каждом байте текста.
 	 *
 	 */
-	this->_marks.push_back(static_cast <uint8_t> ((this->_states.back().sparse ? SPARSE : 0) | (list.empty() ? EMPTY : 0)));
+	this->_marks.push_back(static_cast <uint8_t> ((this->_states.back().sparse ? SCANT : 0) | (list.empty() ? EMPTY : 0)));
 	// Выполняем размещение участка таблицы переходов создаваемого состояния
 	this->_table.resize(this->_table.size() + this->_stride, UNKNOWN);
 	// Выполняем сохранение состояния в кэше состояний автомата
@@ -990,7 +998,7 @@ bool awh::regex::Dfa::scan(string_view text, const size_t from, size_t & result)
 					 *          с начатым сопоставлением.
 					 *
 					 */
-					if(skipping && ((marks[current] & SPARSE) != 0))
+					if(skipping && ((marks[current] & SCANT) != 0))
 						// Уступаем разбор положения общему ходу
 						break;
 					// Получаем значение перехода состояния автомата
@@ -1027,7 +1035,7 @@ bool awh::regex::Dfa::scan(string_view text, const size_t from, size_t & result)
 		 *          превосходство более чем в двадцать раз.
 		 *
 		 */
-		if(halting && (pos > from) && ((this->_marks[current] & SPARSE) != 0))
+		if(halting && (pos > from) && ((this->_marks[current] & SCANT) != 0))
 			// Выводим результат прохода по тексту
 			return found;
 		/**
@@ -1039,7 +1047,7 @@ bool awh::regex::Dfa::scan(string_view text, const size_t from, size_t & result)
 		 *          нулевой длины, поэтому пропуск позиций совпадений не теряет.
 		 *
 		 */
-		if(!backward && prefilter.active && ((this->_marks[current] & SPARSE) != 0)) {
+		if(!backward && prefilter.active && ((this->_marks[current] & SCANT) != 0)) {
 			// Выполняем поиск ближайшей позиции возможного начала совпадения
 			const size_t candidate = prefilter.search(text, pos);
 			/**

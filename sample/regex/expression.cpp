@@ -318,12 +318,10 @@ static void storing(const regexp_t & regexp) noexcept {
 /**
  * @brief Главная функция приложения
  *
- * @param argc длина массива параметров
- * @param argv массив параметров
- * @return     код выхода из приложения
+ * @return код выхода из приложения
  *
  */
-int32_t main(int32_t argc, char * argv[]){
+int32_t main(){
 	// Создаём объект работы с регулярными выражениями
 	regexp_t regexp(::logger());
 	// Выполняем пример проверки соответствия текста выражению

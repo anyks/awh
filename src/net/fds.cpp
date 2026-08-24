@@ -501,7 +501,7 @@ std::pair <uint32_t, uint32_t> awh::Files_Descriptors::limit() const noexcept {
 			/**
 			 * Структура заполнения доступных лимитов
 			 */
-			struct rlimit rl{0};
+			struct rlimit rl{};
 			// Выполняем извлечение информации об доступных файловых дескрипторах
 			if(::getrlimit(RLIMIT_NOFILE, &rl) != 0){
 				/**

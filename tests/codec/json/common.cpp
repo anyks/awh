@@ -78,7 +78,7 @@ namespace {
 	 * @return объект журнала проверок
 	 *
 	 */
-	const awh::log_t * logger() noexcept {
+	[[maybe_unused]] const awh::log_t * logger() noexcept {
 		// Объект журнала проверок
 		static Silent silent;
 		// Выводим объект журнала проверок

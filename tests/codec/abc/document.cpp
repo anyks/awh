@@ -78,41 +78,41 @@ namespace {
 	 */
 	void assemble(abc::writer_t & writer) noexcept {
 		// Выполняем укладку отображения из четырёх пар
-		writer.mapBegin(4);
+		ASSERT_TRUE(writer.mapBegin(4));
 		// Выполняем укладку имени поля числа
-		writer.text("число");
+		ASSERT_TRUE(writer.text("число"));
 		// Выполняем укладку целого числа со знаком
-		writer.number(static_cast <int64_t> (-70000));
+		ASSERT_TRUE(writer.number(static_cast <int64_t> (-70000)));
 		// Выполняем укладку имени поля строки
-		writer.text("строка");
+		ASSERT_TRUE(writer.text("строка"));
 		// Выполняем укладку строки
-		writer.text("значение");
+		ASSERT_TRUE(writer.text("значение"));
 		// Выполняем укладку имени поля массива
-		writer.text("список");
+		ASSERT_TRUE(writer.text("список"));
 		// Выполняем укладку массива из трёх значений
-		writer.arrayBegin(3);
+		ASSERT_TRUE(writer.arrayBegin(3));
 		// Выполняем укладку первого значения массива
-		writer.boolean(true);
+		ASSERT_TRUE(writer.boolean(true));
 		// Выполняем укладку вложенного пустого массива
-		writer.arrayBegin(0);
+		ASSERT_TRUE(writer.arrayBegin(0));
 		// Выполняем укладку конца вложенного массива
-		writer.arrayEnd();
+		ASSERT_TRUE(writer.arrayEnd());
 		// Выполняем укладку дробного значения
-		writer.number(0.25);
+		ASSERT_TRUE(writer.number(0.25));
 		// Выполняем укладку конца массива
-		writer.arrayEnd();
+		ASSERT_TRUE(writer.arrayEnd());
 		// Выполняем укладку имени поля вложенного отображения
-		writer.text("узел");
+		ASSERT_TRUE(writer.text("узел"));
 		// Выполняем укладку вложенного отображения из одной пары
-		writer.mapBegin(1);
+		ASSERT_TRUE(writer.mapBegin(1));
 		// Выполняем укладку имени поля вложенного отображения числом
-		writer.number(static_cast <uint64_t> (42));
+		ASSERT_TRUE(writer.number(static_cast <uint64_t> (42)));
 		// Выполняем укладку пустого значения
-		writer.nul();
+		ASSERT_TRUE(writer.nul());
 		// Выполняем укладку конца вложенного отображения
-		writer.mapEnd();
+		ASSERT_TRUE(writer.mapEnd());
 		// Выполняем укладку конца отображения
-		writer.mapEnd();
+		ASSERT_TRUE(writer.mapEnd());
 	}
 };
 

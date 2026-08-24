@@ -41,7 +41,7 @@ using namespace placeholders;
 class Executor {
 	private:
 		// Объект фреймворка
-		const fmk_t * _fmk;
+		[[maybe_unused]] const fmk_t * _fmk;
 		// Объект работы с логами
 		const log_t * _log;
 	public:
@@ -109,7 +109,7 @@ class Executor {
 		 * @param client  объект клиента
 		 *
 		 */
-		void launch(const string & address, const uint16_t port, client_t * client) noexcept {
+		void launch(const string & address, const uint16_t port, [[maybe_unused]] client_t * client) noexcept {
 			// Записываем в лог сообщение о запуске клиента
 			this->_log->print("Client is launching to %s:%d", log_t::flag_t::INFO, address.c_str(), port);
 		}
@@ -185,12 +185,10 @@ class Executor {
 /**
  * @brief Главная функция приложения
  *
- * @param argc длина массива параметров
- * @param argv массив параметров
- * @return     код выхода из приложения
+ * @return код выхода из приложения
  *
  */
-int32_t main(int32_t argc, char * argv[]){
+int32_t main(){
 	// Создаём объект фреймворка
 	fmk_t fmk;
 	// Создаём объект логирования
@@ -243,7 +241,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Устанавливаем список поддерживаемых DNS-серверов
 	dns.setServers({"77.88.8.8", "77.88.8.1"});
 	// Создаём событие клиента и сохраняем его идентификатор
-	const event::id_t eid = client.init(event::family_t::IPV4, event::type_t::DATAGRAM, event::protocol_t::UDP);
+	[[maybe_unused]] const event::id_t eid = client.init(event::family_t::IPV4, event::type_t::DATAGRAM, event::protocol_t::UDP);
 	// Устананавливаем опции события
 	if(client.setOptions(event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY))
 		// Записываем в лог сообщение об успешной установке опций события

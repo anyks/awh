@@ -952,3 +952,40 @@ TEST(CodecCsvReader, RecordLimitCountsContentOnly) {
 	// Проверяем отказ того же поля пределом на единицу ниже
 	ASSERT_EQ(::parse("\"a\r\nb\"\r\n", settings), "!record is too long");
 }
+/**
+ * @brief Проверка отказа подачи после объявленного конца текста
+ *
+ * @details Подача, продолженная после куска, объявленного последним, молча принималась
+ *          и разбиралась новыми записями: ошибка вызывающей стороны выдавалась за целый
+ *          текст. Кодеки JSON и XML такую подачу отвергают, и расходиться с ними здесь
+ *          нечем - повторное употребление чтения ведётся через reset()
+ *
+ * @note Дефект найден перебором вызовов вне порядка
+ *
+ */
+TEST(CodecCsvReader, FeedAfterLastChunkRefused) {
+	// Настройки разбора текста таблицы
+	csv::reader_t::settings_t settings;
+	// Устанавливаем знак-разделитель полей
+	settings.separator = ',';
+	// Объект чтения текста таблицы
+	csv::reader_t reader(::logger(), settings);
+	// Подаваемый текст таблицы
+	const string text = "a,b\r\n";
+	// Проверяем приём текста таблицы целиком
+	ASSERT_TRUE(reader.feed(text.data(), text.size(), true));
+	/**
+	 * Выполняем изъятие всех собранных событий разбора
+	 */
+	while(reader.next()) ;
+	// Проверяем отказ подачи после объявленного конца текста
+	ASSERT_FALSE(reader.feed(text.data(), text.size(), true));
+	// Проверяем выставленный код отказа
+	ASSERT_EQ(reader.error(), csv::error_t::TEXT_ALREADY_ENDED);
+	// Выполняем сброс состояния чтения
+	reader.reset();
+	// Проверяем, что после сброса подача принимается вновь
+	ASSERT_TRUE(reader.feed(text.data(), text.size(), true));
+	// Проверяем, что код отказа сброшен
+	ASSERT_EQ(reader.error(), csv::error_t::NONE);
+}

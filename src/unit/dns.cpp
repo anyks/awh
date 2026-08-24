@@ -2129,7 +2129,7 @@ void awh::unit::DNS::hosts(const event::id_t, const uint8_t * data, const size_t
 								// Получаем тип адреса из результата парсинга
 								type = this->_addr.type();
 								// Получаем распарсенный IP-адрес
-								parsed = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+								parsed = this->_addr.source(net_addr_t::endian_t::LITTLE);
 							}
 							// Если парсинг IP-адреса не выполнен
 							if(parsed == nullptr)
@@ -2330,7 +2330,7 @@ void awh::unit::DNS::hosts(const event::id_t, const uint8_t * data, const size_t
 						// Выполняем парсинг полученной строки
 						parseStrHosts(str);
 					// Обновляем остаток
-					remainder = ::move(remainder.substr(pos + 1));
+					remainder = remainder.substr(pos + 1);
 					// Сбрасываем позицию в остатке
 					pos = 0;
 				// Если символ является символом возврата каретки
@@ -2342,7 +2342,7 @@ void awh::unit::DNS::hosts(const event::id_t, const uint8_t * data, const size_t
 						// Выполняем парсинг полученной строки
 						parseStrHosts(str);
 					// Обновляем остаток
-					remainder = ::move(remainder.substr(pos + 2));
+					remainder = remainder.substr(pos + 2);
 					// Сбрасываем позицию в остатке
 					pos = 0;
 				// Выполняем переход к следующему символу
@@ -2444,7 +2444,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 			// Получаем размер запроса
 			size_t offset = sizeof(::dns::head_t);
 			// Выполняем декодирование доменного имени из бинарных данных запроса
-			domain = ::move(::dns::decodeDomainName(waitingIt->second.payload.buffer.get(), waitingIt->second.payload.size, offset));
+			domain = ::dns::decodeDomainName(waitingIt->second.payload.buffer.get(), waitingIt->second.payload.size, offset);
 			// Удаляем пакет из контейнера активных пакетов
 			this->_transfer.waiting.erase(waitingIt);
 			// Копируем полученный пакет для обработки вне блокировки передачи
@@ -2639,7 +2639,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 								// Устанавливаем IPv4-адрес в объекте адреса
 								this->_addr.v4(result.a[i].ip);
 								// Устанавливаем представление IP-адреса для вывода результата
-								addresses[i] = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+								addresses[i] = this->_addr.source(net_addr_t::endian_t::LITTLE);
 							}
 							// Выполняем функцию обратного вызова
 							this->_callback.call <void (const id_t, const event::family_t, const string &, const vector <unique_ptr <net::addr_t>> &)> (fid, id, event::family_t::IPV4, domain, addresses);
@@ -2655,7 +2655,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 							// Устанавливаем IPv4-адрес в объекте адреса
 							this->_addr.v4(result.a.front().ip);
 							// Устанавливаем представление IP-адреса для вывода результата
-							unique_ptr <net::addr_t> address = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+							unique_ptr <net::addr_t> address = this->_addr.source(net_addr_t::endian_t::LITTLE);
 							// Выполняем функцию обратного вызова
 							this->_callback.call <void (const id_t, const event::family_t, const string &, const net::addr_t *)> (fid, id, event::family_t::IPV4, result.a.front().name, address.get());
 						}
@@ -2686,7 +2686,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 								// Устанавливаем IPv6-адрес в объекте адреса
 								this->_addr.v6(result.aaaa[i].ip);
 								// Устанавливаем представление IP-адреса для вывода результата
-								addresses[i] = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+								addresses[i] = this->_addr.source(net_addr_t::endian_t::LITTLE);
 							}
 							// Выполняем функцию обратного вызова
 							this->_callback.call <void (const id_t, const event::family_t, const string &, const vector <unique_ptr <net::addr_t>> &)> (fid, id, event::family_t::IPV6, domain, addresses);
@@ -2702,7 +2702,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 							// Устанавливаем IPv6-адрес в объекте адреса
 							this->_addr.v6(result.aaaa.front().ip);
 							// Устанавливаем представление IP-адреса для вывода результата
-							unique_ptr <net::addr_t> address = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+							unique_ptr <net::addr_t> address = this->_addr.source(net_addr_t::endian_t::LITTLE);
 							// Выполняем функцию обратного вызова
 							this->_callback.call <void (const id_t, const event::family_t, const string &, const net::addr_t *)> (fid, id, event::family_t::IPV6, result.aaaa.front().name, address.get());
 						}
@@ -2789,7 +2789,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 							// Устанавливаем ARPA-адрес в объекте адреса
 							this->_addr.arpa(answer.name);
 							// Получаем IP-адрес
-							unique_ptr <net::addr_t> address = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+							unique_ptr <net::addr_t> address = this->_addr.source(net_addr_t::endian_t::LITTLE);
 							// Если IP-адрес получен
 							if(address != nullptr)
 								// Добавляем запись в кэш DNS-резолвера
@@ -2816,7 +2816,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 									// Если адрес является IPv6
 									case static_cast <uint8_t> (net_addr_t::type_t::IPV6):
 										// Устанавливаем представление IP-адреса для вывода результата
-										addresses.push_back(::move(this->_addr.source(net_addr_t::endian_t::LITTLE)));
+										addresses.push_back(this->_addr.source(net_addr_t::endian_t::LITTLE));
 									break;
 								}
 							}
@@ -2851,7 +2851,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 								break;
 							}
 							// Устанавливаем представление IP-адреса для вывода результата
-							unique_ptr <net::addr_t> address = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+							unique_ptr <net::addr_t> address = this->_addr.source(net_addr_t::endian_t::LITTLE);
 							// Выполняем функцию обратного вызова
 							this->_callback.call <void (const id_t, const event::family_t, const string &, const net::addr_t *)> (fid, id, family, result.ptr.front().domain, address.get());
 						}
@@ -3145,7 +3145,7 @@ bool awh::unit::DNS::timeout(const event::id_t eid, const event::action_t action
 						// Получаем размер запроса
 						size_t offset = sizeof(::dns::head_t);
 						// Выполняем декодирование доменного имени из бинарных данных запроса
-						domain = ::move(::dns::decodeDomainName(j->second.payload.buffer.get(), j->second.payload.size, offset));
+						domain = ::dns::decodeDomainName(j->second.payload.buffer.get(), j->second.payload.size, offset);
 						// Читаемые флаги вопроса пакета запроса
 						::dns::q_flags_t qflags;
 						/**
@@ -3701,7 +3701,7 @@ void awh::unit::DNS::removeAddressInBlacklist(string_view ip) noexcept {
 			// Выполняем парсинг IP-адреса
 			if(this->_addr.parse(ip)){
 				// Получаем IP-адрес в исходном виде
-				auto ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+				auto ip = this->_addr.source(net_addr_t::endian_t::LITTLE);
 				/**
 				 * Определяем тип IP-адреса
 				 */
@@ -3829,7 +3829,7 @@ void awh::unit::DNS::removeAddressInBlacklist(const event::family_t family, stri
 					// Выполняем парсинг IPv4-адреса
 					if(this->_addr.parse(ip, net_addr_t::type_t::IPV4)){
 						// Получаем IP-адрес в исходном виде
-						auto ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+						auto ip = this->_addr.source(net_addr_t::endian_t::LITTLE);
 						// Выполняем поиск IP-адреса в чёрном списке
 						auto i = ::__awh_blacklist__.ipv4.find(awh_cast <net::addr_net_ipv4_t *> (ip.get())->address);
 						// Если IP-адрес найден в чёрном списке
@@ -3843,7 +3843,7 @@ void awh::unit::DNS::removeAddressInBlacklist(const event::family_t family, stri
 					// Выполняем парсинг IPv6-адреса
 					if(this->_addr.parse(ip, net_addr_t::type_t::IPV6)){
 						// Получаем IP-адрес в исходном виде
-						auto ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+						auto ip = this->_addr.source(net_addr_t::endian_t::LITTLE);
 						// Выполняем поиск IP-адреса в чёрном списке
 						auto i = ::__awh_blacklist__.ipv6.find(awh_cast <net::addr_net_ipv6_t *> (ip.get())->address);
 						// Если IP-адрес найден в чёрном списке
@@ -3891,7 +3891,7 @@ void awh::unit::DNS::pushAddressToBlacklist(string_view ip) noexcept {
 			// Выполняем парсинг IP-адреса
 			if(this->_addr.parse(ip)){
 				// Получаем IP-адрес в исходном виде
-				auto ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+				auto ip = this->_addr.source(net_addr_t::endian_t::LITTLE);
 				/**
 				 * Определяем тип IP-адреса
 				 */
@@ -4003,7 +4003,7 @@ void awh::unit::DNS::pushAddressToBlacklist(const event::family_t family, string
 					// Выполняем парсинг IPv4-адреса
 					if(this->_addr.parse(ip, net_addr_t::type_t::IPV4)){
 						// Получаем IP-адрес в исходном виде
-						auto ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+						auto ip = this->_addr.source(net_addr_t::endian_t::LITTLE);
 						// Выполняем добавление IP-адреса в чёрный список
 						::__awh_blacklist__.ipv4.emplace(awh_cast <net::addr_net_ipv4_t *> (ip.get())->address);
 					}
@@ -4013,7 +4013,7 @@ void awh::unit::DNS::pushAddressToBlacklist(const event::family_t family, string
 					// Выполняем парсинг IPv6-адреса
 					if(this->_addr.parse(ip, net_addr_t::type_t::IPV6)){
 						// Получаем IP-адрес в исходном виде
-						auto ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+						auto ip = this->_addr.source(net_addr_t::endian_t::LITTLE);
 						// Выполняем добавление IP-адреса в чёрный список
 						::__awh_blacklist__.ipv6.emplace(awh_cast <net::addr_net_ipv6_t *> (ip.get())->address);
 					}
@@ -4058,7 +4058,7 @@ bool awh::unit::DNS::checkAddressInBlacklist(string_view ip) const noexcept {
 			// Выполняем парсинг IP-адреса
 			if(const_cast <dns_t *> (this)->_addr.parse(ip)){
 				// Получаем IP-адрес в исходном виде
-				auto ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+				auto ip = this->_addr.source(net_addr_t::endian_t::LITTLE);
 				/**
 				 * Определяем тип IP-адреса
 				 */
@@ -4174,14 +4174,14 @@ bool awh::unit::DNS::checkAddressInBlacklist(const event::family_t family, strin
 					// Выполняем парсинг IPv4-адреса
 					if(addr.parse(ip, net_addr_t::type_t::IPV4))
 						// Получаем IP-адрес в исходном виде
-						parsed = ::move(addr.source(net_addr_t::endian_t::LITTLE));
+						parsed = addr.source(net_addr_t::endian_t::LITTLE);
 				} break;
 				// Для семейства IPv6
 				case static_cast <uint8_t> (event::family_t::IPV6): {
 					// Выполняем парсинг IPv6-адреса
 					if(addr.parse(ip, net_addr_t::type_t::IPV6))
 						// Получаем IP-адрес в исходном виде
-						parsed = ::move(addr.source(net_addr_t::endian_t::LITTLE));
+						parsed = addr.source(net_addr_t::endian_t::LITTLE);
 				} break;
 			}
 			// Если IP-адрес успешно распознан
@@ -4874,7 +4874,7 @@ void awh::unit::DNS::pushAddressToCache(string_view domain, string_view ip, cons
 		// Выполняем парсинг IP-адреса
 		if(addr.parse(ip)){
 			// Получаем IP-адрес в исходном виде
-			auto parsed = ::move(addr.source(net_addr_t::endian_t::LITTLE));
+			auto parsed = addr.source(net_addr_t::endian_t::LITTLE);
 			// Выполняем добавление записи в кэш
 			this->pushAddressToCache(domain, parsed.get(), ttl);
 		}
@@ -5097,7 +5097,7 @@ void awh::unit::DNS::pushAddressToCache(const event::family_t family, string_vie
 				// Выполняем парсинг IPv4-адреса
 				if(this->_addr.parse(ip, net_addr_t::type_t::IPV4)){
 					// Получаем IP-адрес в исходном виде
-					auto ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+					auto ip = this->_addr.source(net_addr_t::endian_t::LITTLE);
 					// Выполняем добавление записи в кэш
 					this->pushAddressToCache(domain, ip.get(), ttl);
 				}
@@ -5107,7 +5107,7 @@ void awh::unit::DNS::pushAddressToCache(const event::family_t family, string_vie
 				// Выполняем парсинг IPv6-адреса
 				if(this->_addr.parse(ip, net_addr_t::type_t::IPV6)){
 					// Получаем IP-адрес в исходном виде
-					auto ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+					auto ip = this->_addr.source(net_addr_t::endian_t::LITTLE);
 					// Выполняем добавление записи в кэш
 					this->pushAddressToCache(domain, ip.get(), ttl);
 				}
@@ -6510,12 +6510,12 @@ void awh::unit::DNS::setSource(string_view source) noexcept {
 					// Если адрес является IPv4
 					case static_cast <uint8_t> (net_addr_t::type_t::IPV4):
 						// Получаем IP-адрес в исходном виде
-						this->_resolver.sourceIPv4 = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+						this->_resolver.sourceIPv4 = this->_addr.source(net_addr_t::endian_t::LITTLE);
 					break;
 					// Если адрес является IPv6
 					case static_cast <uint8_t> (net_addr_t::type_t::IPV6):
 						// Получаем IP-адрес в исходном виде
-						this->_resolver.sourceIPv6 = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+						this->_resolver.sourceIPv6 = this->_addr.source(net_addr_t::endian_t::LITTLE);
 					break;
 				}
 			}
@@ -6626,14 +6626,14 @@ void awh::unit::DNS::setSource(const event::family_t family, string_view source)
 					// Выполняем парсинг IPv4-адреса
 					if(this->_addr.parse(source, net_addr_t::type_t::IPV4))
 						// Получаем IP-адрес в исходном виде
-						this->_resolver.sourceIPv4 = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+						this->_resolver.sourceIPv4 = this->_addr.source(net_addr_t::endian_t::LITTLE);
 				} break;
 				// Для семейства IPv6
 				case static_cast <uint8_t> (event::family_t::IPV6): {
 					// Выполняем парсинг IPv6-адреса
 					if(this->_addr.parse(source, net_addr_t::type_t::IPV6))
 						// Получаем IP-адрес в исходном виде
-						this->_resolver.sourceIPv6 = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+						this->_resolver.sourceIPv6 = this->_addr.source(net_addr_t::endian_t::LITTLE);
 				} break;
 			}
 		// Если адрес сети для выполнения запроса не передан
@@ -6718,7 +6718,7 @@ bool awh::unit::DNS::search(const id_t id, const net::addr_t * ip, const uint32_
 			// Устанавливаем полученный IP-адрес
 			this->_addr.source(ip);
 			// Извлекаем доменное имя в формате ARPA
-			const string domain = ::move(this->_addr.arpa());
+			const string domain = this->_addr.arpa();
 			{
 				// Блокируем доступ к глобальному кэшу DNS
 				const locker_t <std::shared_mutex> lock(::__awh_dns_cache_mutex__, locker_t <std::shared_mutex>::mode_t::SHARED);
@@ -6976,7 +6976,7 @@ bool awh::unit::DNS::search(const id_t id, const event::family_t family, string_
 			// Возвращаем отрицательный результат
 			return false;
 		// Получаем IP-адрес в исходном виде
-		unique_ptr <net::addr_t> parsed = ::move(addr.source(net_addr_t::endian_t::LITTLE));
+		unique_ptr <net::addr_t> parsed = addr.source(net_addr_t::endian_t::LITTLE);
 		// Выполняем обратный DNS-запрос через основной метод
 		return this->search(id, parsed.get(), alive);
 	/**
@@ -7489,7 +7489,7 @@ awh::unit::DNS::DNS(const fmk_t * fmk, const log_t * log) noexcept : unit_t(fmk,
 					// Выполняем парсинг IP-адреса
 					if(this->_addr.parse(item, net_addr_t::type_t::IPV4))
 						// Добавляем DNS-сервер в глобальный список для использования при выполнении запросов к DNS-серверам
-						::ns::general.push_back(::move(this->_addr.source(net_addr_t::endian_t::LITTLE)));
+						::ns::general.push_back(this->_addr.source(net_addr_t::endian_t::LITTLE));
 				}
 			}{
 				// Создаём массив стандартных DNS-серверов IPv6
@@ -7505,7 +7505,7 @@ awh::unit::DNS::DNS(const fmk_t * fmk, const log_t * log) noexcept : unit_t(fmk,
 					// Выполняем парсинг IP-адреса
 					if(this->_addr.parse(item, net_addr_t::type_t::IPV6))
 						// Добавляем DNS-сервер в глобальный список для использования при выполнении запросов к DNS-серверам
-						::ns::general.push_back(::move(this->_addr.source(net_addr_t::endian_t::LITTLE)));
+						::ns::general.push_back(this->_addr.source(net_addr_t::endian_t::LITTLE));
 				}
 			}
 		}
@@ -7556,7 +7556,7 @@ awh::unit::DNS::DNS(const event::family_t family, const fmk_t * fmk, const log_t
 					// Выполняем парсинг IP-адреса
 					if(this->_addr.parse(item, net_addr_t::type_t::IPV4))
 						// Добавляем DNS-сервер в глобальный список для использования при выполнении запросов к DNS-серверам
-						::ns::general.push_back(::move(this->_addr.source(net_addr_t::endian_t::LITTLE)));
+						::ns::general.push_back(this->_addr.source(net_addr_t::endian_t::LITTLE));
 				}
 			}{
 				// Создаём массив стандартных DNS-серверов IPv6
@@ -7572,7 +7572,7 @@ awh::unit::DNS::DNS(const event::family_t family, const fmk_t * fmk, const log_t
 					// Выполняем парсинг IP-адреса
 					if(this->_addr.parse(item, net_addr_t::type_t::IPV6))
 						// Добавляем DNS-сервер в глобальный список для использования при выполнении запросов к DNS-серверам
-						::ns::general.push_back(::move(this->_addr.source(net_addr_t::endian_t::LITTLE)));
+						::ns::general.push_back(this->_addr.source(net_addr_t::endian_t::LITTLE));
 				}
 			}
 		}

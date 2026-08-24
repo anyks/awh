@@ -199,7 +199,7 @@ namespace awh {
 			bool _ready;
 		private:
 			// Объект фреймворка
-			const fmk_t * _fmk;
+			[[maybe_unused]] const fmk_t * _fmk;
 			// Объект работы с логами
 			const log_t * _log;
 		public:

@@ -745,7 +745,7 @@ void awh::Process_Resolver::scanning() noexcept {
 							// Если файловый дескриптор является сокетом
 							if(fdinfo[j].proc_fdtype == PROX_FDTYPE_SOCKET){
 								// Объект информации о сокете
-								struct socket_fdinfo si{0};
+								struct socket_fdinfo si{};
 								// Получаем информацию о сокете
 								if(::proc_pidfdinfo(pid, fdinfo[j].proc_fd, PROC_PIDFDSOCKETINFO, &si, sizeof(si)) > 0){
 									// Сбрасываем объект информации о процессе

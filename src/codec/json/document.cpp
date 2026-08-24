@@ -153,7 +153,7 @@ void awh::codec::json::Document::setLogger(const log_t * log) noexcept {
  * @param log объект ведения журнала работы
  *
  */
-awh::codec::json::Document::Document(const log_t * log) noexcept : _error(error_t::NONE), _named(0), _keyed(false), _pointer(0), _base(0), _completed(false), _callback(nullptr), _reader(log), _log(log) {
+awh::codec::json::Document::Document(const log_t * log) noexcept : _reader(log), _error(error_t::NONE), _log(log), _named(0), _keyed(false), _completed(false), _pointer(0), _base(0), _callback(nullptr) {
 	/**
 	 * Выполняем заведение запаса памяти под сборку дерева документа
 	 *

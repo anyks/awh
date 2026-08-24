@@ -643,8 +643,15 @@ TEST_F(ChunkFixture, UnknownMethod) {
 		vector <uint8_t> content;
 		// Снятые сведения о кадре
 		abc::chunk_t chunk;
-		// Выполняем снятие кадра с ведомым методом сжатия
-		plain.unpack(damaged.data(), damaged.size(), offset, content, chunk);
+		/**
+		 * Выполняем снятие кадра с ведомым методом сжатия
+		 *
+		 * @note Исход снятия здесь НЕ проверяется намеренно: кадр испорчен, и отказ
+		 *       на нём законен. Проверке важен не сам отказ, а его ПРИЧИНА - её и
+		 *       утверждает строка ниже. Оттого исход забирается и помечается, а не
+		 *       отбрасывается молча: отброшенный он неотличим от забытого
+		 */
+		[[maybe_unused]] const bool unpacked = plain.unpack(damaged.data(), damaged.size(), offset, content, chunk);
 		// Выполняем проверку того, что кадр не отвечен отказом опознания
 		ASSERT_NE(plain.error(), abc::error_t::INVALID_CHUNK) << "метод сжатия: " << static_cast <uint16_t> (method);
 	}

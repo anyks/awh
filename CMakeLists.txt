@@ -566,7 +566,7 @@ SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
 
 # Устанавливаем параметры игнорирования ошибок для macOS
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
-    SET(AWH_PARAMS "-Wno-cpp -Wno-deprecated -Wno-unused-command-line-argument")
+    SET(AWH_PARAMS "-Wno-unused-command-line-argument")
 # Устанавливаем параметры игнорирования ошибок для Solaris
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
     ##
@@ -579,13 +579,13 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
      # сборке набора проверок, тогда как сама библиотека собирается молча. Ставить
      # её отдельно, как это делается у Linux, не требуется - она входит в состав обеих систем
      ##
-    SET(AWH_PARAMS "-lsocket -lnsl -ldladm -lsctp -lc -Wno-cpp -Wno-deprecated")
+    SET(AWH_PARAMS "-lsocket -lnsl -ldladm -lsctp -lc")
 # Устанавливаем параметры игнорирования ошибок для Windows и Linux
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Windows" OR ${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
-    SET(AWH_PARAMS "-Wno-cpp -Wno-deprecated")
+    SET(AWH_PARAMS "")
 # Устанавливаем параметры игнорирования ошибок для FreeBSD, DragonFly, NetBSD и OpenBSD
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "DragonFly" OR ${CMAKE_SYSTEM_NAME} STREQUAL "NetBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD")
-    SET(AWH_PARAMS "-lutil -lexecinfo -Wno-cpp -Wno-deprecated -Wno-unused-command-line-argument")
+    SET(AWH_PARAMS "-lutil -lexecinfo -Wno-unused-command-line-argument")
 # Если операционная система не определена
 else()
     SET(AWH_PARAMS "-Wno-unknown-attributes")
@@ -594,11 +594,11 @@ endif()
 # Если процессор архитектуры ARM
 if (${ARCHITECTURE} MATCHES "aarch64" OR ${ARCHITECTURE} MATCHES "arm*")
     SET(CMAKE_CXX_FLAGS_RELEASE "-O3 -pipe -DNDEBUG")
-    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -fno-permissive -Wno-pedantic -Wno-narrowing -Wno-deprecated-declarations -Wno-exceptions -Wno-unused-result ${AWH_PARAMS}")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -Wall -Wextra ${AWH_PARAMS}")
 # Если процессор архитектуры x86_64
 else()
     SET(CMAKE_CXX_FLAGS_RELEASE "-O3 -pipe -mrdrnd -march=core2 -DNDEBUG")
-    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -fno-permissive -Wno-pedantic -Wno-narrowing -Wno-deprecated-declarations -Wno-exceptions -Wno-unused-result ${AWH_PARAMS}")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -Wall -Wextra ${AWH_PARAMS}")
 endif()
 
 # Устанавливаем параметр отладки

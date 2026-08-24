@@ -144,12 +144,10 @@ static void walk(const codec::xml::node_t & node, const uint32_t depth) noexcept
 /**
  * @brief Главная функция приложения
  *
- * @param argc длина массива параметров
- * @param argv массив параметров
- * @return     код выхода из приложения
+ * @return код выхода из приложения
  *
  */
-int32_t main(int32_t argc, char * argv[]){
+int32_t main(){
 	// Описание устройства, каким его отдаёт устройство по договору UPnP
 	const string data =
 		"<?xml version=\"1.0\"?>"

@@ -604,8 +604,8 @@ void awh::codec::abc::Assembler::settings(const settings_t & settings) noexcept 
  *
  */
 awh::codec::abc::Assembler::Assembler(const log_t * log) noexcept :
- _error(error_t::NONE), _kind(payload_t::MIXED), _records(0), _number(0), _compressed(false),
- _packer(log), _index(log), _merkle(log), _signer(nullptr), _hash(crypto_t::hash_t::SHA256), _log(log) {}
+ _packer(log), _error(error_t::NONE), _kind(payload_t::MIXED), _index(log), _records(0), _number(0),
+ _compressed(false), _merkle(log), _signer(nullptr), _hash(crypto_t::hash_t::SHA256), _log(log) {}
 
 /**
  * @brief Метод объявления отказа снятия контейнера

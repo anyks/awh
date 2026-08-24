@@ -3496,8 +3496,8 @@ bool awh::unit::Portmap::renew(const mapping_t & mapping) noexcept {
  */
 awh::unit::Portmap::Portmap(const fmk_t * fmk, const log_t * log) noexcept :
  unit_t(fmk, log), _type(type_t::AUTO), _family(family_t::IPV4), _action(action_t::NONE),
- _attempts(::DEFAULT_ATTEMPTS), _delay(::DEFAULT_DELAY), _announcer(0),
- _index(0), _probe(false), _stage(stage_t::NONE), _stream(0), _location{""}, _control{""}, _service{""},
+ _attempts(::DEFAULT_ATTEMPTS), _delay(::DEFAULT_DELAY), _index(0),
+ _probe(false), _announcer(0), _stage(stage_t::NONE), _stream(0), _location{""}, _control{""}, _service{""},
  _parser(http::direct_t::RESPONSE, fmk, log), _request{""}, _payload{""}, _complete(false), _connected(false), _uri(fmk, log), _router{""},
  _iface{""}, _hops(event::hops_t::NETWORK), _address(nullptr), _addr(fmk, log), _ifaces(fmk, log), _gateway(fmk, log), _pcp(fmk, log),
  _ssdp(fmk, log), _soap(fmk, log), _upnp(fmk, log), _device(fmk, log), _natpmp(fmk, log) {}

@@ -1287,7 +1287,7 @@ TEST(CodecJsonReader, AbortByConsumer) {
 		// Объект разбора текста документа
 		json::reader_t reader(::logger());
 		// Устанавливаем обработчик прямой выдачи событий разбора
-		reader.handler([](void * context, json::reader_t & reader, const json::event_t event, const json::span_t content, const bool modified) noexcept -> void {
+		reader.handler([](void * context, json::reader_t & reader, [[maybe_unused]] const json::event_t event, [[maybe_unused]] const json::span_t content, [[maybe_unused]] const bool modified) noexcept -> void {
 			// Получаем счётчик полученных событий
 			uint32_t * count = reinterpret_cast <uint32_t *> (context);
 			// Прекращаем разбор на втором полученном событии
@@ -1321,7 +1321,7 @@ TEST(CodecJsonReader, AbortByConsumer) {
 		// Выполняем установку настроек разбора текста
 		reader.settings(settings);
 		// Устанавливаем обработчик прямой выдачи событий разбора
-		reader.handler([](void * context, json::reader_t & reader, const json::event_t event, const json::span_t content, const bool modified) noexcept -> void {
+		reader.handler([]([[maybe_unused]] void * context, json::reader_t & reader, const json::event_t event, [[maybe_unused]] const json::span_t content, [[maybe_unused]] const bool modified) noexcept -> void {
 			// Прекращаем разбор на первом же примечании
 			if(event == json::event_t::COMMENT)
 				// Выполняем прекращение разбора

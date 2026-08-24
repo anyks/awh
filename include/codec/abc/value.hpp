@@ -1291,16 +1291,18 @@ namespace awh {
 					 * @brief Метод занесения собранного значения во вместилище
 					 *
 					 * @param value заносимое значение
-					 * @return      номер занесённого значения во вместилище
+					 * @param index номер занесённого значения во вместилище
+					 * @return      признак успешности занесения
 					 *
 					 * \~english
 					 * @brief Method of the depositing of an assembled value into the container
 					 * @param value value being deposited
-					 * @return number of the deposited value in the container
+					 * @param index number of the deposited value in the container
+					 * @return sign of the successful depositing
 					 *
 					 * \~
 					 */
-					size_t deposit(Value && value) noexcept;
+					[[nodiscard]] bool deposit(Value && value, size_t & index) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод открытия вместилища затребованного вида

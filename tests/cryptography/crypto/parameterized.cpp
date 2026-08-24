@@ -279,7 +279,7 @@ TEST_P(EncodeWithPasswordParameterizedFixture, EncodeWithPassword2Test){
 	// Инициализируем объект криптографии для другого типа хэша
 	this->_crypto->initialize(awh::crypto_t::event_t::ENCODE, this->_parameter.hash, this->_parameter.cipher);
 	// Выполняем шифрование текста
-	std::vector <uint8_t> result = std::move(this->_crypto->encrypt <std::vector <uint8_t>> (this->_parameter.text));
+	std::vector <uint8_t> result = this->_crypto->encrypt <std::vector <uint8_t>> (this->_parameter.text);
 	// Завершаем процесс шифрования
 	ASSERT_TRUE(this->_crypto->finalize(result));
 	// Проверяем результат выполнения шифрования
@@ -287,7 +287,7 @@ TEST_P(EncodeWithPasswordParameterizedFixture, EncodeWithPassword2Test){
 	// Инициализируем объект криптографии для другого типа хэша
 	this->_crypto->initialize(awh::crypto_t::event_t::DECODE, this->_parameter.hash, this->_parameter.cipher);
 	// Выполняем дешифрование текста
-	std::string text = std::move(this->_crypto->decrypt <std::string> (result));
+	std::string text = this->_crypto->decrypt <std::string> (result);
 	// Завершаем процесс дешифрования
 	ASSERT_TRUE(this->_crypto->finalize(text));
 	// Проверяем результат выполнения дешифрования

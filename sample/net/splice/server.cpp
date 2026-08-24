@@ -43,12 +43,10 @@ using namespace placeholders;
 /**
  * @brief Главная функция приложения
  *
- * @param argc длина массива параметров
- * @param argv массив параметров
- * @return     код выхода из приложения
+ * @return код выхода из приложения
  *
  */
-int32_t main(int32_t argc, char * argv[]){
+int32_t main(){
 	// Создаём объект фреймворка
 	fmk_t fmk;
 	// Создаём объект логирования

@@ -44,7 +44,7 @@ awh::alloc::Huge::record_t * const awh::alloc::Huge::_tomb = reinterpret_cast <a
  *
  */
 awh::alloc::Huge::Huge() noexcept :
- _source(nullptr), _table(nullptr), _length(0), _enrolled(0),
+ _source(nullptr), _table(nullptr), _length(0), _region(0), _enrolled(0), _buried(0),
  _meta(nullptr), _metaLeft(0), _metaChunks(nullptr), _spare(nullptr),
  _cached(nullptr), _cachedBytes(0), _ceiling(0) {}
 
@@ -139,12 +139,25 @@ bool awh::alloc::Huge::rehash(const size_t length) noexcept {
 	record_t ** previous = this->_table;
 	// Запоминаем длину прежней таблицы
 	const size_t before = this->_length;
+	/**
+	 * Запоминаем размер прежней области, а не считаем его по длине таблицы
+	 *
+	 * Источник округляет запрос по своему зерну и вправе выдать больше запрошенного:
+	 * начальная таблица просит 512 байт, а получает страницу целиком. Отдай мы её
+	 * запрошенным размером - счёт взятого у системы не сошёлся бы на разницу, и
+	 * заказанный приложением потолок закрыл бы выдачу тем раньше, чем дольше работа
+	 */
+	const size_t region = this->_region;
 	// Подменяем таблицу новой
 	this->_table = table;
 	// Запоминаем длину новой таблицы
 	this->_length = length;
+	// Запоминаем размер взятой под новую таблицу области
+	this->_region = actual;
 	// Внесённых записей у новой таблицы пока нет
 	this->_enrolled = 0;
+	// Снесённых мест у новой таблицы тоже нет: перестроение их и убирает
+	this->_buried = 0;
 	/**
 	 * Переносим в новую таблицу записи прежней
 	 */
@@ -157,7 +170,7 @@ bool awh::alloc::Huge::rehash(const size_t length) noexcept {
 	// Если прежняя таблица заведена
 	if(previous != nullptr)
 		// Отдаём источнику память прежней таблицы
-		this->_source->release(previous, (before * sizeof(record_t *)));
+		this->_source->release(previous, region);
 	// Отвечаем успехом
 	return true;
 }
@@ -173,14 +186,23 @@ bool awh::alloc::Huge::rehash(const size_t length) noexcept {
  */
 bool awh::alloc::Huge::enroll(record_t * record) noexcept {
 	// Если таблица не заведена либо заполнена наполовину
-	if((this->_length == 0) || (((this->_enrolled + 1) * 2) > this->_length)){
+	/**
+	 * Считаем занятыми и снесённые места, а не одни живые записи
+	 *
+	 * Место снесённой записи пустым не становится: поиск идёт подряд до первого
+	 * ПУСТОГО места, и надгробие его не останавливает. Длина же при перестроении
+	 * выбирается по живым записям: забита таблица надгробиями - перестроение той же
+	 * длины их и уберёт, расти ей положено лишь от тесноты живых
+	 */
+	if((this->_length == 0) || (((this->_enrolled + this->_buried + 1) * 2) > this->_length)){
 		/**
 		 * Перестраиваем таблицу вдвое большей длины
 		 *
 		 * Порог в половину длины взят не для скорости, а для завершимости: перебор мест
 		 * идёт подряд, и при плотном заполнении он вырождается в перебор всей таблицы
 		 */
-		if(!this->rehash((this->_length == 0) ? TABLE : (this->_length * 2)))
+		if(!this->rehash((this->_length == 0) ? TABLE :
+		 ((((this->_enrolled + 1) * 2) > this->_length) ? (this->_length * 2) : this->_length)))
 			// Отвечаем отказом
 			return false;
 	}
@@ -191,6 +213,19 @@ bool awh::alloc::Huge::enroll(record_t * record) noexcept {
 	/**
 	 * Ищем свободное место, перебирая места подряд
 	 */
+	/**
+	 * Перебор мест ОГРАНИЧЕН длиною таблицы
+	 *
+	 * Порог занятости держит таблицу заполненной не более чем наполовину, и свободное
+	 * место находится всегда - пока счётчики живых записей и надгробий верны. Сойдись
+	 * они с делом хоть однажды, и перебор без границы завис бы навсегда, а зависание от
+	 * отказа наружу неотличимо. Поиск записи в этом же файле границу имеет; внесение её
+	 * не имело, и подмена это доказала: таблице велели не расти, и набор проверок ПОВИС
+	 * вместо того, чтобы упасть. Граница обращает зависание в честный отказ, какой
+	 * звавший уже умеет разбирать, и стоит она одного сличения на холодном пути
+	 */
+	// Число пройденных мест таблицы
+	size_t passed = 0;
 	while((this->_table[index] != nullptr) && (this->_table[index] != this->_tomb)){
 		// Если запись в таблице уже есть
 		if(this->_table[index]->block == record->block)
@@ -198,8 +233,16 @@ bool awh::alloc::Huge::enroll(record_t * record) noexcept {
 			return true;
 		// Переходим к следующему месту таблицы
 		index = ((index + 1) & (this->_length - 1));
+		// Если пройдена вся таблица
+		if((++passed) >= this->_length)
+			// Отвечаем отказом: свободного места нет
+			return false;
 	}
 	// Записываем запись в найденное место
+	// Если найденное место помечено снесённым
+	if(this->_table[index] == this->_tomb)
+		// Уменьшаем число снесённых мест: надгробие занято живой записью
+		this->_buried--;
 	this->_table[index] = record;
 	// Увеличиваем число внесённых записей
 	this->_enrolled++;
@@ -313,13 +356,17 @@ void awh::alloc::Huge::reset() noexcept {
 	// Если таблица поиска заведена
 	if(this->_table != nullptr)
 		// Отдаём источнику память таблицы поиска
-		this->_source->release(this->_table, (this->_length * sizeof(record_t *)));
+		this->_source->release(this->_table, this->_region);
 	// Сбрасываем таблицу поиска
 	this->_table = nullptr;
 	// Сбрасываем длину таблицы поиска
 	this->_length = 0;
+	// Сбрасываем размер взятой под таблицу поиска области
+	this->_region = 0;
 	// Сбрасываем число внесённых записей
 	this->_enrolled = 0;
+	// Сбрасываем число снесённых мест
+	this->_buried = 0;
 	// Сбрасываем список повторно используемых записей
 	this->_spare = nullptr;
 	/**
@@ -867,6 +914,8 @@ size_t awh::alloc::Huge::free(void * ptr) noexcept {
 				 * ключей, стали бы ненаходимыми
 				 */
 				this->_table[index] = this->_tomb;
+				// Увеличиваем число снесённых мест
+				this->_buried++;
 				// Уменьшаем число внесённых записей
 				this->_enrolled--;
 				// Перебирать больше нечего

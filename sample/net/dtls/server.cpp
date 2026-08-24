@@ -44,12 +44,10 @@ using namespace placeholders;
 /**
  * @brief Главная функция приложения
  *
- * @param argc длина массива параметров
- * @param argv массив параметров
- * @return     код выхода из приложения
+ * @return код выхода из приложения
  *
  */
-int32_t main(int32_t argc, char * argv[]){
+int32_t main(){
 	// Создаём объект фреймворка
 	fmk_t fmk;
 	// Создаём объект логирования
@@ -192,7 +190,7 @@ int32_t main(int32_t argc, char * argv[]){
 					}
 				});
 				// Регистрируем функцию обратного вызова на успешное завершение рукопожатия DTLS
-				tls.on(ctl, [&tls, &io, &log](const tls::coder_t::id_t id, const tls::coder_t::state_t state) noexcept -> void {
+				tls.on(ctl, [&tls, &log](const tls::coder_t::id_t id, const tls::coder_t::state_t state) noexcept -> void {
 					/**
 					 * Обрабатываем входящие состояния DTLS
 					 */
@@ -347,7 +345,7 @@ int32_t main(int32_t argc, char * argv[]){
 					log.print("Записано: ID=%u, %zu байт", log_t::flag_t::INFO, eid, size);
 				}));
 				// Устанавливаем функцию обратного вызова на чтение из события
-				io.on(cid, [ctl, &tls, &io, &log](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+				io.on(cid, [ctl, &tls, &log](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 					// Если данные успешно дешифрованы DTLS
 					if(tls.decrypt(ctl, data, size)){
 						// Записываем в лог сообщение об успешном дешифровании данных DTLS

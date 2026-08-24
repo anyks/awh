@@ -2164,7 +2164,7 @@ TEST_F(QuicFixture, StreamDataSourceTest){
 	// Счётчик уже отданных источником байт
 	size_t produced = 0;
 	// Назначаем pull-источник тела потока: движок сам запрашивает данные по мере места
-	client.dataSource(sid, [&produced, total](const uint64_t, uint8_t * buffer, const size_t cap, bool & eof) -> int64_t {
+	client.dataSource(sid, [&produced](const uint64_t, uint8_t * buffer, const size_t cap, bool & eof) -> int64_t {
 		// Объём порции: оставшийся хвост тела, но не более ёмкости буфера
 		const size_t n = std::min(cap, total - produced);
 		// Заполняем буфер детерминированным шаблоном по глобальному смещению

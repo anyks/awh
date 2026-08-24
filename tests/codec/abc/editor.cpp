@@ -144,10 +144,10 @@ namespace {
 					// Выполняем сборку очередной записи
 					const vector <uint8_t> item = abc::value_t(text).dump();
 					// Выполняем внесение очередной записи в собираемый контейнер
-					assembler.append(item.data(), item.size(), abc::payload_t::TEXT);
+					ASSERT_TRUE(assembler.append(item.data(), item.size(), abc::payload_t::TEXT));
 				}
 				// Выполняем завершение сборки контейнера
-				assembler.complete(medium.data);
+				ASSERT_TRUE(assembler.complete(medium.data));
 			}
 			/**
 			 * @brief Метод открытия контейнера правщиком

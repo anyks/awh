@@ -656,9 +656,9 @@ bool awh::codec::xml::Writer::open(const string_view local, const string_view ur
  * @return         результат выполнения операции
  *
  */
-bool awh::codec::xml::Writer::open(const string_view local, const string_view uri, const vector <binding_t> & declares, const string_view prefix) noexcept {
+bool awh::codec::xml::Writer::open(const string_view local, const string_view uri, const vector <binding_t> & declares, const string_view prefix, const bool oneline) noexcept {
 	// Выводим результат открытия узла разметки с его объявлениями и желаемым префиксом
-	return this->open(local, uri, (declares.empty() ? nullptr : &declares), (prefix.empty() ? nullptr : &prefix), false, false);
+	return this->open(local, uri, (declares.empty() ? nullptr : &declares), (prefix.empty() ? nullptr : &prefix), false, oneline);
 }
 /**
  * @brief Метод открытия узла разметки с заданными объявлениями

@@ -1076,6 +1076,7 @@ namespace awh {
 				 * \~
 				 */
 				bool _feasible;
+
 			private:
 				// Набор адресов обстановки исполнения порождённого кода
 				vector <const void *> _context;

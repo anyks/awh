@@ -61,7 +61,7 @@ TEST_P(CompressorTestParameterizedFixture, CompressorTest){
 	this->_compressor->wbitsZlib(this->_parameter.wbits);
 	this->_compressor->wbitsDeflate(this->_parameter.wbits);
 	// Выполняем компрессию данных
-	std::vector <uint8_t> compressed = std::move(this->_compressor->compress <std::vector <uint8_t>> (this->_parameter.text, this->_parameter.method));
+	std::vector <uint8_t> compressed = this->_compressor->compress <std::vector <uint8_t>> (this->_parameter.text, this->_parameter.method);
 	// Проверяем что результат компрессии не пустой
 	ASSERT_FALSE(compressed.empty());
 	// Проверяем что результат декомпрессии совпадает с исходным текстом
@@ -173,7 +173,7 @@ TEST_P(CompressorTakeoverTestParameterizedFixture, CompressorTakeoverTest){
 	this->_compressor->takeoverDeflate(awh::compressor::event_t::ENCODE, true);
 	this->_compressor->takeoverDeflate(awh::compressor::event_t::DECODE, true);
 	// Выполняем компрессию данных
-	std::vector <uint8_t> compressed = std::move(this->_compressor->compress <std::vector <uint8_t>> (this->_parameter.text, awh::compressor::method_t::DEFLATE));
+	std::vector <uint8_t> compressed = this->_compressor->compress <std::vector <uint8_t>> (this->_parameter.text, awh::compressor::method_t::DEFLATE);
 	// Проверяем что результат компрессии не пустой
 	ASSERT_FALSE(compressed.empty());
 	// Проверяем что результат декомпрессии совпадает с исходным текстом

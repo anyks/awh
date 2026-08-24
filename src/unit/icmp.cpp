@@ -1202,7 +1202,7 @@ bool awh::unit::ICMP::setTarget(string_view target) noexcept {
 					// Выполняем парсинг IPv4-адреса
 					if((result = this->_addr.parse(target, net_addr_t::type_t::IPV4))){
 						// Устанавливаем адрес сервера назначения
-						this->_client.target = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+						this->_client.target = this->_addr.source(net_addr_t::endian_t::LITTLE);
 						// Возвращаем результат
 						return result;
 					}
@@ -1212,7 +1212,7 @@ bool awh::unit::ICMP::setTarget(string_view target) noexcept {
 					// Выполняем парсинг IPv6-адреса
 					if((result = this->_addr.parse(target, net_addr_t::type_t::IPV6))){
 						// Устанавливаем адрес сервера назначения
-						this->_client.target = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+						this->_client.target = this->_addr.source(net_addr_t::endian_t::LITTLE);
 						// Возвращаем результат
 						return result;
 					}
@@ -1347,7 +1347,7 @@ bool awh::unit::ICMP::setTarget(const event::family_t family, string_view target
 					// Выполняем парсинг IPv4-адреса
 					if((result = this->_addr.parse(target, net_addr_t::type_t::IPV4))){
 						// Устанавливаем адрес сервера назначения
-						this->_client.target = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+						this->_client.target = this->_addr.source(net_addr_t::endian_t::LITTLE);
 						// Возвращаем результат
 						return result;
 					}
@@ -1357,7 +1357,7 @@ bool awh::unit::ICMP::setTarget(const event::family_t family, string_view target
 					// Выполняем парсинг IPv6-адреса
 					if((result = this->_addr.parse(target, net_addr_t::type_t::IPV6))){
 						// Устанавливаем адрес сервера назначения
-						this->_client.target = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+						this->_client.target = this->_addr.source(net_addr_t::endian_t::LITTLE);
 						// Возвращаем результат
 						return result;
 					}
@@ -1410,14 +1410,14 @@ bool awh::unit::ICMP::setSource(string_view source) noexcept {
 					// Если адрес является IPv4
 					case static_cast <uint8_t> (net_addr_t::type_t::IPV4): {
 						// Получаем IP-адрес в исходном виде
-						this->_client.source = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+						this->_client.source = this->_addr.source(net_addr_t::endian_t::LITTLE);
 						// Возвращаем результат
 						return result;
 					}
 					// Если адрес является IPv6
 					case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
 						// Получаем IP-адрес в исходном виде
-						this->_client.source = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+						this->_client.source = this->_addr.source(net_addr_t::endian_t::LITTLE);
 						// Возвращаем результат
 						return result;
 					}
@@ -1537,7 +1537,7 @@ bool awh::unit::ICMP::setSource(const event::family_t family, string_view source
 					// Выполняем парсинг IPv4-адреса
 					if((result = this->_addr.parse(source, net_addr_t::type_t::IPV4))){
 						// Получаем IP-адрес в исходном виде
-						this->_client.source = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+						this->_client.source = this->_addr.source(net_addr_t::endian_t::LITTLE);
 						// Возвращаем результат
 						return result;
 					}
@@ -1547,7 +1547,7 @@ bool awh::unit::ICMP::setSource(const event::family_t family, string_view source
 					// Выполняем парсинг IPv6-адреса
 					if((result = this->_addr.parse(source, net_addr_t::type_t::IPV6))){
 						// Получаем IP-адрес в исходном виде
-						this->_client.source = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+						this->_client.source = this->_addr.source(net_addr_t::endian_t::LITTLE);
 						// Возвращаем результат
 						return result;
 					}

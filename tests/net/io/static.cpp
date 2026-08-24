@@ -1049,7 +1049,7 @@ TEST_F(IoFixture, IoTCPTest){
 	// Выполняем генерацию порта
 	const uint16_t port = ::port();
 	// Добавляем новое событие клиента и сервера TCP
-	const auto events = std::move(this->_io->events(awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP));
+	const auto events = this->_io->events(awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
 	/**
 	 * Проверяем, что оба идентификатора события созданы успешно
 	 */
@@ -1665,7 +1665,7 @@ TEST_F(IoFixture, IoUDPTest){
 	// Выполняем генерацию порта
 	const uint16_t port = ::port();
 	// Добавляем новое событие клиента и сервера UDP
-	const auto events = std::move(this->_io->events(awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP));
+	const auto events = this->_io->events(awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
 	/**
 	 * Проверяем, что оба идентификатора события созданы успешно
 	 */
@@ -2399,7 +2399,7 @@ TEST_F(IoFixture, IoDatagramInfoTest){
 	// Выполняем генерацию порта
 	const uint16_t port = ::port();
 	// Добавляем новое событие клиента и сервера UDP
-	const auto events = std::move(this->_io->events(awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP));
+	const auto events = this->_io->events(awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
 	/**
 	 * Проверяем, что оба идентификатора события созданы успешно
 	 */
@@ -2425,7 +2425,7 @@ TEST_F(IoFixture, IoDatagramInfoTest){
 		// Устанавливаем адрес сервера назначения
 		ASSERT_TRUE(this->_io->setAddress(events[1], awh::event::address_t::IPV4, "127.0.0.1"));
 		// Устанавливаем функцию обратного вызова на подключение нового клиента
-		this->_io->on(events[1], static_cast <awh::engine::callback::accept_t> ([this](const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
+		this->_io->on(events[1], static_cast <awh::engine::callback::accept_t> ([this]([[maybe_unused]] const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
 			// Устанавливаем функцию обратного вызова на чтение из события
 			this->_io->on(cid, [this](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 				// Отправляем принятое обратно клиенту
@@ -2446,14 +2446,14 @@ TEST_F(IoFixture, IoDatagramInfoTest){
 		// Устанавливаем адрес сервера назначения
 		ASSERT_TRUE(this->_io->setTarget(events[0], "127.0.0.1"));
 		// Устанавливаем функцию обратного вызова на приём сведений о принятом пакете
-		this->_io->on(events[0], static_cast <awh::engine::callback::traffic_t> ([&traffics, &hops](const awh::event::id_t eid, const awh::net::dgram_info_t & info) noexcept -> void {
+		this->_io->on(events[0], static_cast <awh::engine::callback::traffic_t> ([&traffics, &hops]([[maybe_unused]] const awh::event::id_t eid, const awh::net::dgram_info_t & info) noexcept -> void {
 			// Запоминаем предел жизни принятого пакета
 			hops = static_cast <uint16_t> (info.hops);
 			// Увеличиваем количество принятых сведений о пакетах
 			traffics++;
 		}));
 		// Устанавливаем функцию обратного вызова на чтение из события
-		this->_io->on(events[0], [&stop](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+		this->_io->on(events[0], [&stop]([[maybe_unused]] const awh::event::id_t eid, [[maybe_unused]] const uint8_t * data, [[maybe_unused]] const size_t size) noexcept -> void {
 			// Отмечаем проверку выполненной: отклик получен
 			stop = true;
 		});
@@ -2494,7 +2494,7 @@ TEST_F(IoFixture, IoUDPConnectTest){
 	// Выполняем генерацию порта
 	const uint16_t port = ::port();
 	// Добавляем новое событие клиента и сервера UDP
-	const auto events = std::move(this->_io->events(awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP));
+	const auto events = this->_io->events(awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
 	/**
 	 * Проверяем, что оба идентификатора события созданы успешно
 	 */
@@ -4703,7 +4703,7 @@ TEST_F(IoFixture, IoBroadcastTest){
 	// Выполняем генерацию порта
 	const uint16_t port = ::port();
 	// Добавляем новое событие клиента и сервера UDP
-	const auto events = std::move(this->_io->events(awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM));
+	const auto events = this->_io->events(awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM);
 	/**
 	 * Проверяем, что оба идентификатора события созданы успешно
 	 */
@@ -5458,7 +5458,7 @@ TEST_F(IoFixture, IoUDPSpliceConnectTest){
 	// Добавляем новое событие отслеживания файла
 	awh::event::id_t fid = this->_io->event(awh::event::node_t::FILE, awh::event::family_t::FSYS);
 	// Добавляем новое событие клиента и сервера UDP
-	const auto events = std::move(this->_io->events(awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP));
+	const auto events = this->_io->events(awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
 	/**
 	 * Проверяем, что оба идентификатора события созданы успешно
 	 */
@@ -6335,7 +6335,7 @@ TEST_F(IoFixture, IoFsTest){
 			}
 		});
 		// Устанавливаем функцию обратного вызова на изменение события
-		this->_io->on(did, [this](const awh::event::id_t eid, const awh::event::action_t action, const awh::event::vnode_t vnode, const std::string & path) noexcept -> void {
+		this->_io->on(did, [this]([[maybe_unused]] const awh::event::id_t eid, const awh::event::action_t action, const awh::event::vnode_t vnode, const std::string & path) noexcept -> void {
 			/**
 			 * Обрабатываем тип узла события
 			 */
@@ -7351,7 +7351,7 @@ TEST_F(IoFixture, IoUDSMultiAcceptTest){
 		// Устанавливаем адрес UNIX-доменного сокета сервера
 		ASSERT_TRUE(this->_io->setAddress(sid, awh::event::address_t::UDS, socketPath));
 		// Устанавливаем функцию обратного вызова на принятие подключения
-		this->_io->on(sid, static_cast <awh::engine::callback::accept_t> ([&accepted, &stop, &expected]([[maybe_unused]] const awh::event::id_t sid, [[maybe_unused]] const awh::event::id_t cid) noexcept -> void {
+		this->_io->on(sid, static_cast <awh::engine::callback::accept_t> ([&accepted, &stop]([[maybe_unused]] const awh::event::id_t sid, [[maybe_unused]] const awh::event::id_t cid) noexcept -> void {
 			// Учитываем принятое подключение
 			if((++accepted) >= expected)
 				// Останавливаем проверку: все подключения приняты
@@ -8233,7 +8233,7 @@ TEST_F(IoFixture, IoMulticast1Test){
 	// Выполняем генерацию порта
 	const uint16_t port = ::port();
 	// Добавляем новое событие клиента и сервера UDP
-	const auto events = std::move(this->_io->events(awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM));
+	const auto events = this->_io->events(awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM);
 	/**
 	 * Проверяем, что оба идентификатора события созданы успешно
 	 */
@@ -8997,7 +8997,7 @@ TEST_F(IoFixture, IoMulticastMembershipAfterCommitTest){
 	// Выполняем генерацию порта
 	const uint16_t port = ::port();
 	// Добавляем новое событие клиента и сервера UDP
-	const auto events = std::move(this->_io->events(awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM));
+	const auto events = this->_io->events(awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM);
 	/**
 	 * Проверяем, что оба идентификатора события созданы успешно
 	 */
@@ -9060,7 +9060,7 @@ TEST_F(IoFixture, IoMulticast3Test){
 	// Выполняем генерацию порта
 	const uint16_t port = ::port();
 	// Добавляем новое событие клиента и сервера UDP
-	const auto events = std::move(this->_io->events(awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM));
+	const auto events = this->_io->events(awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM);
 	/**
 	 * Проверяем, что оба идентификатора события созданы успешно
 	 */
@@ -9090,7 +9090,7 @@ TEST_F(IoFixture, IoMulticast3Test){
 		// Выполняем фиксацию настроек события интервала
 		ASSERT_TRUE(this->_io->commit(tid));
 		// Устанавливаем функцию обратного вызова на событие интервала
-		this->_io->on(tid, [&events, this](const awh::event::id_t tid, const awh::event::status_t status) noexcept -> void {
+		this->_io->on(tid, [&events, this]([[maybe_unused]] const awh::event::id_t tid, [[maybe_unused]] const awh::event::status_t status) noexcept -> void {
 			// Количество отправленных сообщений
 			static uint8_t counter = 0;
 			// Формируем отправляемое сообщение
@@ -9804,7 +9804,7 @@ TEST_F(IoFixture, IoTLSTest){
 	// Выполняем генерацию порта
 	const uint16_t port = ::port();
 	// Добавляем новое событие клиента и сервера TCP
-	const auto events = std::move(this->_io->events(awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP));
+	const auto events = this->_io->events(awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
 	/**
 	 * Проверяем, что оба идентификатора события созданы успешно
 	 */
@@ -10636,7 +10636,7 @@ TEST_F(IoFixture, IoMultiTLSTest){
 	// Выполняем генерацию порта
 	const uint16_t port = ::port();
 	// Добавляем новое событие клиента и сервера TCP
-	const auto events = std::move(this->_io->events(awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP));
+	const auto events = this->_io->events(awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
 	/**
 	 * Проверяем, что оба идентификатора события созданы успешно
 	 */
@@ -11485,7 +11485,7 @@ TEST_F(IoFixture, IoDTLSTest){
 	// Выполняем генерацию порта
 	const uint16_t port = ::port();
 	// Добавляем новое событие клиента и сервера TCP
-	const auto events = std::move(this->_io->events(awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM));
+	const auto events = this->_io->events(awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM);
 	/**
 	 * Проверяем, что оба идентификатора события созданы успешно
 	 */
@@ -17385,8 +17385,30 @@ TEST_F(IoFixture, IoOriginNamespaceTest){
 	size_t second = 0;
 	// Выполняем генерацию порта первого сервера
 	const uint16_t primary = ::port();
-	// Выполняем генерацию порта второго сервера
-	const uint16_t secondary = static_cast <uint16_t> ((primary > 49152) ? (primary - 1) : (primary + 1));
+	/**
+	 * Выполняем генерацию порта второго сервера
+	 *
+	 * @warning Порт берётся у ОБЩЕГО раздатчика, а не выводится соседним числом от
+	 *          первого. Прежде тут стояло `(primary > 49152) ? (primary - 1) : (primary + 1)`,
+	 *          и это давало ПЛАВАЮЩИЙ отказ: раздатчик выдаёт порты подряд, поэтому
+	 *          `primary - 1` - это порт ПРЕДЫДУЩЕЙ проверки, а `primary + 1` - порт
+	 *          СЛЕДУЮЩЕЙ. Своего порта у второго сервера не было вовсе, он всегда
+	 *          садился на чужой.
+	 *
+	 *          Отказ же выходил плавающим оттого, что настройки события несут
+	 *          `REUSE_ADDR | REUSE_PORT`: когда сокет соседки ещё не отпущен ядром,
+	 *          привязка не отвергается, а РАЗДЕЛЯЕТСЯ, и ядро развешивает датаграммы
+	 *          между двумя владельцами порта. Уйдёт наша - проверка проходит, уйдёт
+	 *          чужая - счётчик сессий остаётся нулём и проверка встаёт по таймауту.
+	 *          Наблюдалось однажды на Alpine (`second` нулём, 2001 мс) и не
+	 *          воспроизводилось ни трижды подряд, ни под нагрузкой - потому что зависит
+	 *          от скорости отпускания порта соседкой, а не от нашего кода.
+	 *
+	 *          Соседство портов проверке НЕ НУЖНО: совпадать обязана четвёрка
+	 *          ИСТОЧНИКА, за что отвечает единственный сокет отправителя ниже, а порты
+	 *          назначения обязаны лишь различаться
+	 */
+	const uint16_t secondary = ::port();
 	// Добавляем событие первого сервера UDP
 	const awh::event::id_t alpha = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
 	// Добавляем событие второго сервера UDP
@@ -17795,7 +17817,7 @@ static bool bandwidth(awh::engine::io_t * io, std::vector <bandwidth_consumer_t>
 	// Количество принятых сервером подключений
 	size_t accepted = 0;
 	// Устанавливаем функцию обратного вызова на принятие входящего подключения
-	io->on(server, static_cast <awh::engine::callback::accept_t> ([io, &consumers, &accepted, options, echo](
+	io->on(server, static_cast <awh::engine::callback::accept_t> ([io, &consumers, &accepted, echo](
 		[[maybe_unused]] const awh::event::id_t sid, const awh::event::id_t cid
 	) noexcept -> void {
 		// Если принято больше подключений, чем заведено потребителей
@@ -19497,9 +19519,9 @@ TEST_F(IoFixture, IoTCPSplicePairTest){
 		// Выполняем повторную генерацию порта
 		portB = ::port();
 	// Добавляем события отправителя и сервера А
-	const auto pairA = std::move(this->_io->events(awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP));
+	const auto pairA = this->_io->events(awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
 	// Добавляем события клиента Б и сервера Б
-	const auto pairB = std::move(this->_io->events(awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP));
+	const auto pairB = this->_io->events(awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
 	/**
 	 * Проверяем, что все четыре события созданы успешно
 	 */
@@ -19528,9 +19550,9 @@ TEST_F(IoFixture, IoTCPSplicePairTest){
 		// Устанавливаем адрес сервера Б
 		ASSERT_TRUE(this->_io->setAddress(pairB[1], awh::event::address_t::IPV4, "127.0.0.1"));
 		// Устанавливаем функцию обратного вызова на принятие подключения
-		this->_io->on(pairB[1], static_cast <awh::engine::callback::accept_t> ([&](const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
+		this->_io->on(pairB[1], static_cast <awh::engine::callback::accept_t> ([&]([[maybe_unused]] const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
 			// Устанавливаем функцию обратного вызова на чтение данных
-			this->_io->on(cid, [&](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+			this->_io->on(cid, [&]([[maybe_unused]] const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 				// Накапливаем полученное сообщение
 				received.append(reinterpret_cast <const char *> (data), size);
 				// Если сообщение получено целиком
@@ -19570,7 +19592,7 @@ TEST_F(IoFixture, IoTCPSplicePairTest){
 		// Устанавливаем адрес сервера А
 		ASSERT_TRUE(this->_io->setAddress(pairA[1], awh::event::address_t::IPV4, "127.0.0.1"));
 		// Устанавливаем функцию обратного вызова на принятие подключения
-		this->_io->on(pairA[1], static_cast <awh::engine::callback::accept_t> ([&](const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
+		this->_io->on(pairA[1], static_cast <awh::engine::callback::accept_t> ([&]([[maybe_unused]] const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
 			/**
 			 * Выполняем объединение принятого узла с клиентом Б
 			 *
@@ -19930,9 +19952,9 @@ TEST_F(IoFixture, IoDataSourcePullDatagramTest){
 		 * @note У дейтаграммного сервера данные приходят НЕ на сам слушающий узел: движок
 		 *       заводит отдельный узел на каждого встречного, и чтение вешается уже на него
 		 */
-		this->_io->on(sid, static_cast <awh::engine::callback::accept_t> ([this, &received, &corrupted, &stop, &expected, &length]([[maybe_unused]] const awh::event::id_t sid, const awh::event::id_t pid) noexcept -> void {
+		this->_io->on(sid, static_cast <awh::engine::callback::accept_t> ([this, &received, &corrupted, &stop]([[maybe_unused]] const awh::event::id_t sid, const awh::event::id_t pid) noexcept -> void {
 		// Устанавливаем функцию обратного вызова на чтение данных встречной стороны
-		this->_io->on(pid, [&received, &corrupted, &stop, &expected, &length]([[maybe_unused]] const awh::event::id_t eid, const uint8_t * buffer, const size_t size) noexcept -> void {
+		this->_io->on(pid, [&received, &corrupted, &stop]([[maybe_unused]] const awh::event::id_t eid, const uint8_t * buffer, const size_t size) noexcept -> void {
 			// Если размер принятого сообщения не совпадает с отправленным
 			if(size != length)
 				// Запоминаем искажение границы сообщения
@@ -20003,7 +20025,7 @@ TEST_F(IoFixture, IoDataSourcePullDatagramTest){
 		ASSERT_TRUE(this->_io->launch(cid));
 		// Устанавливаем источник данных для вытягивающей модели отправки
 		this->_io->on(cid, static_cast <awh::engine::callback::source_t> (
-			[&produced, &requests, &overruns, &finished, &expected, &length, &message]([[maybe_unused]] const awh::event::id_t eid, const uint8_t ** buffer, size_t & size) noexcept -> bool {
+			[&produced, &requests, &overruns, &finished, &message]([[maybe_unused]] const awh::event::id_t eid, const uint8_t ** buffer, size_t & size) noexcept -> bool {
 				// Учитываем обращение движка к источнику данных
 				requests++;
 				// Если источник уже исчерпан
@@ -20366,7 +20388,7 @@ TEST_F(IoFixture, IoSnapshotHandoffTest){
 			// Создаём событие, которое примет снимок
 			const awh::event::id_t target = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
 			// Устанавливаем функцию обратного вызова на получение снимка от переносчика
-			this->_io->on(pair[0], [&restored, &accepted, target, this](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+			this->_io->on(pair[0], [&restored, &accepted, target, this]([[maybe_unused]] const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 				/**
 				 * Поднимаем событие из снимка
 				 *
@@ -20382,7 +20404,7 @@ TEST_F(IoFixture, IoSnapshotHandoffTest){
 				 */
 				if(restored){
 					// Устанавливаем функцию обратного вызова на получение статуса поднятого события
-					this->_io->on(target, [&accepted](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+					this->_io->on(target, [&accepted]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 						// Если подключение принято, отмечаем это
 						if(status == awh::event::status_t::ACCEPTED)
 							// Отмечаем принятое подключение
@@ -20836,9 +20858,9 @@ TEST_F(IoFixture, IoManyReadyDescriptorsTest){
 		 *       а принятым узлом: движок разбирает отправителя и заводит ему свой узел,
 		 *       и сообщение читается уже с него
 		 */
-		this->_io->on(events[1], static_cast <awh::engine::callback::accept_t> ([&received, this](const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
+		this->_io->on(events[1], static_cast <awh::engine::callback::accept_t> ([&received, this]([[maybe_unused]] const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
 			// Устанавливаем функцию обратного вызова на получение сообщения принятым узлом
-			this->_io->on(cid, [&received](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+			this->_io->on(cid, [&received]([[maybe_unused]] const awh::event::id_t eid, [[maybe_unused]] const uint8_t * data, [[maybe_unused]] const size_t size) noexcept -> void {
 				// Считаем принятое сообщение
 				received++;
 			});

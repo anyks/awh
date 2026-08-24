@@ -45,12 +45,10 @@ using namespace placeholders;
 /**
  * @brief Главная функция приложения
  *
- * @param argc длина массива параметров
- * @param argv массив параметров
- * @return     код выхода из приложения
+ * @return код выхода из приложения
  *
  */
-int32_t main(int32_t argc, char * argv[]){
+int32_t main(){
 	// Создаём объект фреймворка
 	fmk_t fmk;
 	// Создаём объект логирования
@@ -140,7 +138,7 @@ int32_t main(int32_t argc, char * argv[]){
 			log.print("Записано: ID=%u, %zu байт", log_t::flag_t::INFO, eid, size);
 		}));
 		// Устанавливаем функцию обратного вызова на чтение из события
-		io.on(eid, [&io, &log](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+		io.on(eid, [&log](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 			// Текст входящего сообщения
 			const string message(reinterpret_cast <const char *> (data), size);
 			// Записываем в лог сообщение о чтении данных

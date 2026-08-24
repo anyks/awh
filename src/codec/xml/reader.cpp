@@ -7044,12 +7044,13 @@ awh::codec::xml::standalone_t awh::codec::xml::Reader::standalone() const noexce
  *
  */
 awh::codec::xml::Reader::Reader(const log_t * log) noexcept :
- _final(false), _root(false), _declared(false), _doctype(false), _empty(false),
- _closing(false), _cdata(false), _partial(false), _carried(false), _section(0), _dirty(false), _foreign(false), _incomplete(false), _tokenized(false), _overlong(false), _offset(0), _consumed(0), _line(1), _column(1),
+ _decoder(log), _final(false), _root(false), _declared(false), _doctype(false),
+ _foreign(false), _incomplete(false), _overlong(false), _empty(false),
+ _closing(false), _cdata(false), _partial(false), _carried(false), _section(0), _dirty(false),
+ _offset(0), _consumed(0), _line(1), _column(1),
  _depth(0), _truncate(string::npos), _expansion(0), _state(state_t::HUNGRY),
- _event(event_t::NONE), _error(error_t::NONE), _decoding(error_t::NONE), _encoding(encoding_t::NONE),
- _standalone(standalone_t::NONE), _space(space_t::DEFAULT), _decoder(log), _log(log) {
-	// Выполняем сброс разбора в исходное состояние
+ _event(event_t::NONE), _error(error_t::NONE), _log(log), _decoding(error_t::NONE), _encoding(encoding_t::NONE),
+ _standalone(standalone_t::NONE), _space(space_t::DEFAULT), _tokenized(false) {
 	this->reset();
 }
 /**
@@ -7060,12 +7061,13 @@ awh::codec::xml::Reader::Reader(const log_t * log) noexcept :
  *
  */
 awh::codec::xml::Reader::Reader(const log_t * log, const settings_t & settings) noexcept :
- _final(false), _root(false), _declared(false), _doctype(false), _empty(false),
- _closing(false), _cdata(false), _partial(false), _carried(false), _section(0), _dirty(false), _foreign(false), _incomplete(false), _tokenized(false), _overlong(false), _offset(0), _consumed(0), _line(1), _column(1),
- _depth(0), _truncate(string::npos), _expansion(0), _settings(settings),
- _state(state_t::HUNGRY), _event(event_t::NONE), _error(error_t::NONE), _decoding(error_t::NONE),
- _encoding(encoding_t::NONE), _standalone(standalone_t::NONE), _space(space_t::DEFAULT), _decoder(log), _log(log) {
-	// Выполняем сброс разбора в исходное состояние
+ _decoder(log), _final(false), _root(false), _declared(false), _doctype(false),
+ _foreign(false), _incomplete(false), _overlong(false), _empty(false),
+ _closing(false), _cdata(false), _partial(false), _carried(false), _section(0), _dirty(false),
+ _offset(0), _consumed(0), _line(1), _column(1),
+ _depth(0), _truncate(string::npos), _expansion(0), _settings(settings), _state(state_t::HUNGRY),
+ _event(event_t::NONE), _error(error_t::NONE), _log(log), _decoding(error_t::NONE), _encoding(encoding_t::NONE),
+ _standalone(standalone_t::NONE), _space(space_t::DEFAULT), _tokenized(false) {
 	this->reset();
 }
 /**

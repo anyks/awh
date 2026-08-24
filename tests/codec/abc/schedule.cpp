@@ -53,7 +53,7 @@ namespace {
 	 * @return объект журнала проверок
 	 *
 	 */
-	const log_t * logger() noexcept {
+	[[maybe_unused]] const log_t * logger() noexcept {
 		// Объект фреймворка проверок
 		static fmk_t fmk;
 		// Объект журнала проверок

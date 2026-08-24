@@ -41,7 +41,7 @@ using namespace placeholders;
 class Executor {
 	private:
 		// Объект фреймворка
-		const fmk_t * _fmk;
+		[[maybe_unused]] const fmk_t * _fmk;
 		// Объект работы с логами
 		const log_t * _log;
 	public:
@@ -80,7 +80,7 @@ class Executor {
 		 * @param client объект клиента
 		 *
 		 */
-		void status(const event::status_t status, client::socks5_t * client) noexcept {
+		void status(const event::status_t status, [[maybe_unused]] client::socks5_t * client) noexcept {
 			/**
 			 * Определяем состояние клиента
 			 */
@@ -177,12 +177,10 @@ class Executor {
 /**
  * @brief Главная функция приложения
  *
- * @param argc длина массива параметров
- * @param argv массив параметров
- * @return     код выхода из приложения
+ * @return код выхода из приложения
  *
  */
-int32_t main(int32_t argc, char * argv[]){
+int32_t main(){
 	// Создаём объект фреймворка
 	fmk_t fmk;
 	// Создаём объект логирования
@@ -210,7 +208,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Устанавливаем список поддерживаемых DNS-серверов
 	dns.setServers({"77.88.8.8", "77.88.8.1"});
 	// Создаём событие клиента и сохраняем его идентификатор
-	const event::id_t eid = client.init(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
+	[[maybe_unused]] const event::id_t eid = client.init(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 	// Устананавливаем опции события
 	if(client.setOptions(event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY))
 		// Записываем в лог сообщение об успешной установке опций события

@@ -365,22 +365,6 @@ namespace {
 		 static_cast <awh::regex::anchor_t> (packed & 0xFF), static_cast <uint32_t> (packed >> 8), pos) ? 1 : 0);
 	}
 	/**
-	 * @brief Функция проверки порождения привязки в самом машинном коде
-	 *
-	 * @details Привязки к границам текста и строки порождаются несколькими
-	 *          командами, тогда как привязка к границе слова требует разбора
-	 *          символа, ей предшествующего, - в режиме разбора UTF-8 он занимает
-	 *          несколько байтов, - и потому выполняется вызовом подпрограммы.
-	 *
-	 * @param type тип проверяемой привязки к позиции в тексте
-	 * @return     результат проверки порождения привязки в машинном коде
-	 *
-	 */
-	inline bool inlined(const awh::regex::anchor_t type) noexcept {
-		// Выводим результат проверки порождения привязки в машинном коде
-		return ((type != awh::regex::anchor_t::WORD_EDGE) && (type != awh::regex::anchor_t::WORD_INNER));
-	}
-	/**
 	 * @brief Функция порождения вызова подпрограммы обстановки исполнения
 	 *
 	 * @details Порождается сохранение затираемых вызовом регистров в кадре,
@@ -2189,13 +2173,12 @@ namespace {
 		 *
 		 * @param from   начало обходимой области инструкций
 		 * @param to     конец обходимой области инструкций
-		 * @param inside признак обхода области ветви выбора
 		 * @return       результат обхода области инструкций
 		 *
 		 */
-		std::function <bool (const awh::regex::address_t, const awh::regex::address_t, const bool)> region;
+		std::function <bool (const awh::regex::address_t, const awh::regex::address_t)> region;
 		// Выполняем установку обхода области инструкций программы
-		region = [&](const awh::regex::address_t from, const awh::regex::address_t to, const bool inside) noexcept -> bool {
+		region = [&](const awh::regex::address_t from, const awh::regex::address_t to) noexcept -> bool {
 		// Получаем адрес исполняемой инструкции программы
 		awh::regex::address_t pc = from;
 		/**
@@ -2438,7 +2421,7 @@ namespace {
 					/**
 					 * Если обход области тела проверки окружения не выполнен
 					 */
-					if(!region(instruction.look.body, ending, true))
+					if(!region(instruction.look.body, ending))
 						// Выводим неприменимость кодогенерации к программе
 						return false;
 					// Уменьшаем глубину вложения проверок окружения
@@ -2665,7 +2648,7 @@ namespace {
 								// Увеличиваем глубину вложения повторений с записью
 								pacing++;
 							// Получаем результат обхода области тела повторения
-							const bool walked = region(opening, closing, true);
+							const bool walked = region(opening, closing);
 							/**
 							 * Если тело повторения запись прохода отводило
 							 */
@@ -2807,7 +2790,7 @@ namespace {
 							/**
 							 * Если обход области очередной ветви выбора не выполнен
 							 */
-							if(!region(item.first, item.second, true))
+							if(!region(item.first, item.second))
 								// Выводим неприменимость кодогенерации к программе
 								return false;
 						}
@@ -2942,7 +2925,7 @@ namespace {
 					/**
 					 * Если обход области тела вызываемого не выполнен
 					 */
-					if(!region(body, awh::regex::INVALID_ADDRESS, false))
+					if(!region(body, awh::regex::INVALID_ADDRESS))
 						// Выводим неприменимость кодогенерации к программе
 						return false;
 					// Переходим к следующей инструкции программы
@@ -2981,7 +2964,7 @@ namespace {
 		/**
 		 * Если обход программы целиком не выполнен
 		 */
-		if(!region(0, awh::regex::INVALID_ADDRESS, false))
+		if(!region(0, awh::regex::INVALID_ADDRESS))
 			// Выводим неприменимость кодогенерации к программе
 			return false;
 		/**
@@ -7994,4 +7977,4 @@ size_t awh::regex::Codegen::length() const noexcept {
  *
  */
 awh::regex::Codegen::Codegen(const log_t * log) noexcept :
- _feasible(false), _captures(0), _frame(0), _levels(0), _identity(0), _matcher(nullptr), _assembly(log), _log(log) {}
+ _assembly(log), _log(log), _feasible(false), _captures(0), _frame(0), _levels(0), _identity(0), _matcher(nullptr) {}

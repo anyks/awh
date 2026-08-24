@@ -1110,10 +1110,11 @@ void awh::codec::json::Reader::settings(const settings_t & settings) noexcept {
  *
  */
 awh::codec::json::Reader::Reader(const log_t * log) noexcept :
- _state(state_t::DOCUMENT_START), _error(error_t::NONE),
+ _state(state_t::DOCUMENT_START), _error(error_t::NONE), _log(log),
  _last(false), _keyed(false), _modified(false), _empty(true), _comma(false),
- _origin(0), _head(0), _offset(0), _line(1), _column(1), _length(0),
- _unicode(0), _surrogate(0), _matched(0), _literal(nullptr), _handler(nullptr), _context(nullptr), _stopped(false), _keeping(false), _decoder(log), _log(log) {
+ _origin(0), _head(0), _handler(nullptr), _context(nullptr), _stopped(false), _keeping(false),
+ _offset(0), _line(1), _column(1), _length(0),
+ _unicode(0), _surrogate(0), _matched(0), _literal(nullptr), _decoder(log) {
 	// Выполняем заполнение разметки знаков, прерывающих быстрый проход
 	this->marking();
 }

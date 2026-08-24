@@ -38,12 +38,10 @@ using namespace placeholders;
 /**
  * @brief Главная функция приложения
  *
- * @param argc длина массива параметров
- * @param argv массив параметров
- * @return     код выхода из приложения
+ * @return код выхода из приложения
  *
  */
-int32_t main(int32_t argc, char * argv[]){
+int32_t main(){
 	// Создаём объект фреймворка
 	fmk_t fmk;
 	// Создаём объект логирования
@@ -57,7 +55,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Добавляем удалённый сервер для ICMP-запросов
 	icmp.setTarget("api.telegram.org");
 	// Устанавливаем функцию обратного вызова на событие получения ответа от ICMP-сервера
-	icmp.on <void (const unit::icmp_t::id_t, const unit::icmp_t::response_t &)> ("ping", [&addr, &chrono, &log](const unit::icmp_t::id_t identifier, const unit::icmp_t::response_t & response) noexcept -> void {
+	icmp.on <void (const unit::icmp_t::id_t, const unit::icmp_t::response_t &)> ("ping", [&addr, &chrono, &log]([[maybe_unused]] const unit::icmp_t::id_t identifier, const unit::icmp_t::response_t & response) noexcept -> void {
 		// Лейбл единиц измерений
 		string label = "";
 		// Получаем аббревиатуру даты

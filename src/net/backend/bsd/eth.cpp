@@ -60,7 +60,7 @@ namespace options {
 	 * @param log объект работы с логами
 	 *
 	 */
-	static void netboost(const awh::fmk_t * fmk, const awh::log_t * log) noexcept {
+	static void netboost([[maybe_unused]] const awh::fmk_t * fmk, const awh::log_t * log) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */

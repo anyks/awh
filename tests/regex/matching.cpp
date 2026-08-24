@@ -716,6 +716,112 @@ TEST(Regex, PrefilterDegenerate) {
  *          в режиме без учёта регистра символов.
  *
  */
+/**
+ * @brief Проверка свёртки повторения над необязательными частями в ряд символов
+ *
+ * @details Повторение вида «(?:A* B?)*» принимает ровно те же строки, что и ряд
+ *          «[A∪B]*»: тело набирает любую часть по одной, а внешнее повторение
+ *          повторяет это без счёта. Обязательная же часть свёртку отменяет —
+ *          «(?:[a-z]+ )*» пробела требует, а ряд «[a-z ]*» нет.
+ *
+ */
+TEST(Regex, RepeatFlattening) {
+	// Создаём объект движка регулярных выражений
+	regex::engine_t engine(::logger());
+	/**
+	 * @brief Пары выражений, свёртке подлежащих
+	 *
+	 */
+	const pair <const char *, const char *> folded[] = {
+		{"(?:[a-z]* ?)*",   "[a-z ]*"},
+		{"(?:[a-z]* ?)*?",  "[a-z ]*?"},
+		{"(?:a?b?)*",       "[ab]*"},
+		{"(?:[ab]*c*)*",    "[abc]*"},
+		{"(?:[ab]*)*",      "[ab]*"},
+		{"(?:[a-z]{0,3} ?)*", "[a-z ]*"}
+	};
+	/**
+	 * Выполняем проверку каждой пары выражений
+	 */
+	for(const auto & item : folded) {
+		// Создаём собираемое выражение со свёрткой повторения
+		regex::expression_t repeat;
+		// Создаём собираемое выражение ряда равносильного
+		regex::expression_t run;
+		// Выполняем сборку выражения со свёрткой повторения
+		ASSERT_TRUE(engine.build(item.first, 0, repeat)) << item.first;
+		// Выполняем сборку выражения ряда равносильного
+		ASSERT_TRUE(engine.build(item.second, 0, run)) << item.second;
+		// Выполняем проверку совпадения длины программ обоих выражений
+		ASSERT_EQ(repeat.forward.instructions.size(), run.forward.instructions.size())
+			<< item.first << " против " << item.second;
+	}
+	/**
+	 * @brief Набор выражений, свёртке НЕ подлежащих
+	 *
+	 */
+	const pair <const char *, const char *> kept[] = {
+		// Часть обязательная: строка без неё телу не отвечает, а ряду отвечает
+		{"(?:[a-z]+ ?)*",   "[a-z ]*"},
+		{"(?:[a-z]* )*",    "[a-z ]*"},
+		// Повторение обязательное: ряд повторяет символ без счёта
+		{"(?:[a-z]* ?){2,}", "[a-z ]*"},
+		// Группа захватывающая: границы её свёртка потеряла бы
+		{"((?:[a-z]* ?))*", "[a-z ]*"},
+		// Квантор захватывающий: возврат внутрь повторения он запрещает
+		{"(?:[a-z]* ?)*+",  "[a-z ]*"}
+	};
+	/**
+	 * Выполняем проверку каждого выражения набора
+	 */
+	for(const auto & item : kept) {
+		// Создаём собираемое выражение повторения
+		regex::expression_t repeat;
+		// Создаём собираемое выражение ряда равносильного
+		regex::expression_t run;
+		// Выполняем сборку выражения повторения
+		ASSERT_TRUE(engine.build(item.first, 0, repeat)) << item.first;
+		// Выполняем сборку выражения ряда равносильного
+		ASSERT_TRUE(engine.build(item.second, 0, run)) << item.second;
+		// Выполняем проверку сохранения повторения в программе
+		ASSERT_GT(repeat.forward.instructions.size(), run.forward.instructions.size())
+			<< item.first << " свёрнуто, а не должно";
+	}
+	/**
+	 * @brief Набор текстов сопоставления
+	 *
+	 */
+	const char * texts[] = {
+		"", "a", " ", "ab", "a b", " ab ", "abc", "a  b", "zz z", "  ", "b a c"
+	};
+	/**
+	 * Выполняем проверку совпадения итогов свёрнутого повторения и ряда
+	 */
+	for(const auto & item : folded) {
+		// Создаём собираемое выражение со свёрткой повторения
+		regex::expression_t repeat;
+		// Создаём собираемое выражение ряда равносильного
+		regex::expression_t run;
+		// Выполняем сборку выражения со свёрткой повторения
+		ASSERT_TRUE(engine.build(item.first, 0, repeat)) << item.first;
+		// Выполняем сборку выражения ряда равносильного
+		ASSERT_TRUE(engine.build(item.second, 0, run)) << item.second;
+		/**
+		 * Выполняем проверку каждого текста сопоставления
+		 */
+		for(const char * text : texts) {
+			// Создаём набор границ совпадения свёрнутого повторения
+			vector <pair <size_t, size_t>> received;
+			// Создаём набор границ совпадения ряда равносильного
+			vector <pair <size_t, size_t>> expected;
+			// Выполняем проверку совпадения вердикта сопоставления
+			ASSERT_EQ(engine.exec(repeat, text, 0, received), engine.exec(run, text, 0, expected))
+				<< item.first << " по тексту «" << text << "»";
+			// Выполняем проверку совпадения границ совпадения
+			ASSERT_EQ(received, expected) << item.first << " по тексту «" << text << "»";
+		}
+	}
+}
 TEST(Regex, AlternateFolding) {
 	// Создаём объект движка регулярных выражений
 	regex::engine_t engine(::logger());

@@ -2026,17 +2026,17 @@ awh::Filesystem::components_t awh::Filesystem::components(string_view addr, cons
 				// Если переданный адрес является каталогом
 				if(this->type(filename) == type_t::DIR)
 					// Выполняем вывод названия каталога
-					result.first = ::move(filename.substr(pos + 1, filename.length() - (pos + static_cast <size_t> (offset))));
+					result.first = filename.substr(pos + 1, filename.length() - (pos + static_cast <size_t> (offset)));
 				// Если переданный адрес не является каталогом
 				else {
 					// Извлекаем имя файла
-					string name = ::move(filename.substr(pos + 1));
+					string name = filename.substr(pos + 1);
 					// Ищем расширение файла
 					if((pos = (before ? name.find('.') : name.rfind('.'))) != string::npos){
 						// Устанавливаем имя файла
-						result.first = ::move(name.substr(0, pos));
+						result.first = name.substr(0, pos);
 						// Устанавливаем расширение файла
-						result.second = ::move(name.substr(pos + 1));
+						result.second = name.substr(pos + 1);
 					// Устанавливаем только имя файла
 					} else result.first = ::move(name);
 				}

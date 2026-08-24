@@ -74,16 +74,13 @@ class Executor {
 		// Объект работы с шлюзами
 		eth::gateway_t _gateway;
 	private:
-		// Флаг завершения рукопожатия
-		bool _handshakeCompleted;
-	private:
 		// Объект туннеля
 		unit::tunnel_t * _tunnel;
 		// Объект посредника между сервером и туннелем
 		unit::mediator_t * _mediator;
 	private:
 		// Объект фреймворка
-		const fmk_t * _fmk;
+		[[maybe_unused]] const fmk_t * _fmk;
 		// Объект работы с логами
 		const log_t * _log;
 	public:
@@ -178,7 +175,7 @@ class Executor {
 		 * @param client объект клиента
 		 *
 		 */
-		void read(const event::id_t eid, const uint8_t * data, const size_t size, client_t * client) noexcept {
+		void read(const event::id_t eid, const uint8_t * data, const size_t size, [[maybe_unused]] client_t * client) noexcept {
 			// Если данные получены
 			if(size >= sizeof(record_t)){
 				// Объект получаемых данных
@@ -350,18 +347,16 @@ class Executor {
 		 */
 		Executor(unit::tunnel_t * tun, unit::mediator_t * med, const fmk_t * fmk, const log_t * log) noexcept :
 		 _tun(0), _addr(fmk, log), _gateway(fmk, log),
-		 _handshakeCompleted(false), _tunnel(tun), _mediator(med), _fmk(fmk), _log(log) {}
+		 _tunnel(tun), _mediator(med), _fmk(fmk), _log(log) {}
 };
 
 /**
  * @brief Главная функция приложения
  *
- * @param argc длина массива параметров
- * @param argv массив параметров
- * @return     код выхода из приложения
+ * @return код выхода из приложения
  *
  */
-int32_t main(int32_t argc, char * argv[]){
+int32_t main(){
 	// Создаём объект фреймворка
 	fmk_t fmk;
 	// Создаём объект логирования

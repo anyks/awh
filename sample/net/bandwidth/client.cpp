@@ -37,12 +37,10 @@ using namespace placeholders;
 /**
  * @brief Главная функция приложения
  *
- * @param argc длина массива параметров
- * @param argv массив параметров
- * @return     код выхода из приложения
+ * @return код выхода из приложения
  *
  */
-int32_t main(int32_t argc, char * argv[]){
+int32_t main(){
 	// Создаём объект фреймворка
 	fmk_t fmk;
 	// Создаём объект логирования
@@ -377,7 +375,7 @@ int32_t main(int32_t argc, char * argv[]){
 					}
 				};
 				// Устанавливаем функцию обратного вызова на событие очереди
-				io.on(eid, [&sendMessage, &log](const event::id_t eid, const event::status_t status, const size_t size) noexcept -> void {
+				io.on(eid, [&sendMessage](const event::id_t eid, const event::status_t status, const size_t size) noexcept -> void {
 					/**
 					 * Обрабатываем статус события
 					 */
@@ -397,7 +395,7 @@ int32_t main(int32_t argc, char * argv[]){
 					}
 				});
 				// Устанавливаем функцию обратного вызова на событие неудачной отправки данных
-				io.on(eid, [&log](const event::id_t eid, const event::send_error_t error, const uint8_t * buffer, const size_t size) noexcept -> void {
+				io.on(eid, [&log](const event::id_t eid, const event::send_error_t error, [[maybe_unused]] const uint8_t * buffer, [[maybe_unused]] const size_t size) noexcept -> void {
 					/**
 					 * Обрабатываем статус ошибки отправки данных события
 					 */
@@ -488,7 +486,7 @@ int32_t main(int32_t argc, char * argv[]){
 					}
 				});
 				// Устанавливаем функцию обратного вызова на запись в событие
-				io.on(eid, static_cast <engine::callback::write_t> ([&bytesSent, &dateSent, &fmk, &log](const event::id_t eid, const size_t size) noexcept -> void {
+				io.on(eid, static_cast <engine::callback::write_t> ([&bytesSent, &dateSent, &fmk](const event::id_t eid, const size_t size) noexcept -> void {
 					// Получаем текущее время в миллисекундах
 					const uint64_t currentTime = fmk.timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
 					// Если с момента последнего отправленного сообщения прошло 60 секунд
@@ -510,7 +508,7 @@ int32_t main(int32_t argc, char * argv[]){
 					// log.print("Записано: ID=%u, %zu байт", log_t::flag_t::INFO, eid, size);
 				}));
 				// Устанавливаем функцию обратного вызова на чтение из события
-				io.on(eid, [&bytesReceived, &dateReceived, &fmk, &log](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+				io.on(eid, [&bytesReceived, &dateReceived, &fmk](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 					// Получаем текущее время в миллисекундах
 					const uint64_t currentTime = fmk.timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
 					// Если с момента последнего отправленного сообщения прошло 60 секунд
@@ -592,7 +590,7 @@ int32_t main(int32_t argc, char * argv[]){
 					}
 				});
 				// Устанавливаем функцию обратного вызова на удачное подключение к серверу
-				io.on(eid, static_cast <engine::callback::connect_t> ([&sendMessage, &io, &log](const event::id_t eid, const bool ok) noexcept -> void {
+				io.on(eid, static_cast <engine::callback::connect_t> ([&sendMessage](const event::id_t eid, const bool ok) noexcept -> void {
 					// Записываем в лог сообщение о принятии события
 					// log.print("Событие подключения: ID=%u, результат: %s", log_t::flag_t::INFO, eid, ok ? "YES" : "NO");
 					cout << " Событие подключения: ID=" << eid << ", результат: " << (ok ? "YES" : "NO") << endl;

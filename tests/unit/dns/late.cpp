@@ -115,7 +115,7 @@ TEST_F(DNSUnitFixture, DnsPromptAnswerAccepted) {
 	 * Устанавливаем функцию обратного вызова на получение адреса
 	 */
 	dns.on <void (const awh::unit::dns_t::id_t, const awh::event::family_t, const std::string &, const awh::net::addr_t *)> (
-		"address", [&dns, &addr, &result](const awh::unit::dns_t::id_t, const awh::event::family_t, const std::string & domain, const awh::net::addr_t * ip) noexcept -> void {
+		"address", [&addr, &result](const awh::unit::dns_t::id_t, const awh::event::family_t, const std::string & domain, const awh::net::addr_t * ip) noexcept -> void {
 			// Запоминаем, что адрес получен
 			result.resolved = true;
 			// Запоминаем доменное имя, по которому получен итог
@@ -133,7 +133,7 @@ TEST_F(DNSUnitFixture, DnsPromptAnswerAccepted) {
 	 * Устанавливаем функцию обратного вызова на отказ разрешения
 	 */
 	dns.on <void (const awh::unit::dns_t::id_t, const awh::unit::dns_t::record_t, const std::string &)> (
-		"failure", [&dns, &result](const awh::unit::dns_t::id_t, const awh::unit::dns_t::record_t, const std::string & domain) noexcept -> void {
+		"failure", [&result](const awh::unit::dns_t::id_t, const awh::unit::dns_t::record_t, const std::string & domain) noexcept -> void {
 			// Запоминаем, что разрешение завершилось отказом
 			result.failed = true;
 			// Запоминаем доменное имя, по которому получен итог

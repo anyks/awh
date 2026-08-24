@@ -172,7 +172,7 @@ TEST_F(FSFixture, FSTest){
 	// Тест readdir (список файлов)
 	// -------------------------------------------------------------
 	std::vector <std::string> foundFiles;
-	this->_fs->readdir(testDir, "", true, [&](const awh::fs_t::type_t type, std::string_view name) noexcept -> void {
+	this->_fs->readdir(testDir, "", true, [&]([[maybe_unused]] const awh::fs_t::type_t type, std::string_view name) noexcept -> void {
 		foundFiles.emplace_back(name);
 	});
 	

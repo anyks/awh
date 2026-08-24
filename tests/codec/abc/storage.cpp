@@ -131,12 +131,12 @@ namespace {
 			// Выполняем сборку очередной записи
 			const vector <uint8_t> item = abc::value_t(text).dump();
 			// Выполняем внесение очередной записи в собираемый контейнер
-			assembler.append(item.data(), item.size(), abc::payload_t::TEXT);
+			EXPECT_TRUE(assembler.append(item.data(), item.size(), abc::payload_t::TEXT));
 		}
 		// Октеты собранного контейнера
 		vector <uint8_t> result;
 		// Выполняем завершение сборки контейнера
-		assembler.complete(result);
+		EXPECT_TRUE(assembler.complete(result));
 		// Выводим октеты собранного контейнера
 		return result;
 	}

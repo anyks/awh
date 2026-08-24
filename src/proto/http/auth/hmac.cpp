@@ -118,7 +118,7 @@ namespace {
 				// Переходим к следующему параметру
 				continue;
 			// Извлекаем ключ параметра
-			string key = ::move(part.substr(0, sep));
+			string key = part.substr(0, sep);
 			// Удаляем крайние пробелы у ключа
 			fmk->transform(key, fmk_t::transform_t::TRIM);
 			// Приводим ключ параметра к нижнему регистру
@@ -460,7 +460,7 @@ bool awh::http::Hmac::parse(const string_view name, const string_view header) no
 					// Сообщаем о неудачном разборе
 					return result;
 				// Извлекаем и очищаем метку подписи
-				string label = ::move(value.substr(0, eq));
+				string label = value.substr(0, eq);
 				// Удаляем крайние пробелы у метки подписи
 				this->_fmk->transform(label, fmk_t::transform_t::TRIM);
 				// Устанавливаем метку подписи
@@ -468,7 +468,7 @@ bool awh::http::Hmac::parse(const string_view name, const string_view header) no
 				// Запоминаем метку из Signature-Input для сверки с Signature
 				sign.inputLabel = sign.label;
 				// Извлекаем сырое значение параметров подписи
-				string rest = ::move(value.substr(eq + 1));
+				string rest = value.substr(eq + 1);
 				// Удаляем крайние пробелы у параметров подписи
 				this->_fmk->transform(rest, fmk_t::transform_t::TRIM);
 				// Выполняем поиск границ списка покрываемых компонентов
@@ -478,7 +478,7 @@ bool awh::http::Hmac::parse(const string_view name, const string_view header) no
 					// Сохраняем сырое значение параметров подписи
 					sign.params = rest;
 					// Извлекаем содержимое списка покрываемых компонентов
-					const string inner = ::move(rest.substr(lp + 1, rp - lp - 1));
+					const string inner = rest.substr(lp + 1, rp - lp - 1);
 					// Список покрываемых компонентов
 					vector <string> items;
 					// Выполняем разделение списка покрываемых компонентов
@@ -494,14 +494,14 @@ bool awh::http::Hmac::parse(const string_view name, const string_view header) no
 						// Если компонент обёрнут в кавычки - удаляем их
 						if((item.length() > 1) && (item.front() == '"') && (item.back() == '"'))
 							// Снимаем обрамляющие кавычки
-							item = ::move(item.substr(1, item.length() - 2));
+							item = item.substr(1, item.length() - 2);
 						// Если компонент получен - добавляем его в список покрываемых
 						if(!item.empty())
 							// Сохраняем имя покрываемого компонента
 							sign.covered.push_back(::move(item));
 					}
 					// Извлекаем параметры подписи после списка компонентов
-					const string tail = ::move(rest.substr(rp + 1));
+					const string tail = rest.substr(rp + 1);
 					// Список параметров подписи
 					vector <string> parts;
 					// Выполняем разделение параметров подписи
@@ -523,9 +523,9 @@ bool awh::http::Hmac::parse(const string_view name, const string_view header) no
 							// Переходим к следующему параметру
 							continue;
 						// Извлекаем ключ параметра
-						string key = ::move(part.substr(0, sep));
+						string key = part.substr(0, sep);
 						// Извлекаем значение параметра
-						string value = ::move(part.substr(sep + 1));
+						string value = part.substr(sep + 1);
 						// Удаляем крайние пробелы у ключа
 						this->_fmk->transform(key, fmk_t::transform_t::TRIM);
 						// Удаляем крайние пробелы у значения
@@ -535,7 +535,7 @@ bool awh::http::Hmac::parse(const string_view name, const string_view header) no
 						// Если значение обёрнуто в кавычки - удаляем их
 						if((value.length() > 1) && (value.front() == '"') && (value.back() == '"'))
 							// Снимаем обрамляющие кавычки
-							value = ::move(value.substr(1, value.length() - 2));
+							value = value.substr(1, value.length() - 2);
 						// Если параметр является идентификатором ключа
 						if(key.compare("keyid") == 0)
 							// Устанавливаем идентификатор ключа
@@ -604,7 +604,7 @@ bool awh::http::Hmac::parse(const string_view name, const string_view header) no
 					// Сообщаем о неудачном разборе
 					return result;
 				// Извлекаем и очищаем метку подписи
-				string label = ::move(value.substr(0, eq));
+				string label = value.substr(0, eq);
 				// Удаляем крайние пробелы у метки подписи
 				this->_fmk->transform(label, fmk_t::transform_t::TRIM);
 				// Если метка не совпадает с Signature-Input — отклоняем разбор
@@ -614,7 +614,7 @@ bool awh::http::Hmac::parse(const string_view name, const string_view header) no
 				// Устанавливаем метку подписи
 				sign.label = ::move(label);
 				// Извлекаем значение подписи
-				string rest = ::move(value.substr(eq + 1));
+				string rest = value.substr(eq + 1);
 				// Удаляем крайние пробелы у значения подписи
 				this->_fmk->transform(rest, fmk_t::transform_t::TRIM);
 				// Выполняем поиск границ значения подписи
@@ -622,7 +622,7 @@ bool awh::http::Hmac::parse(const string_view name, const string_view header) no
 				// Если границы значения подписи найдены
 				if((result = ((c1 != string::npos) && (c2 != string::npos) && (c2 > c1))))
 					// Извлекаем подпись в формате BASE64
-					sign.signature = ::move(rest.substr(c1 + 1, c2 - c1 - 1));
+					sign.signature = rest.substr(c1 + 1, c2 - c1 - 1);
 			}
 		/**
 		 * Если возникает ошибка

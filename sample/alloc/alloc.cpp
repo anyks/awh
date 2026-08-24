@@ -103,12 +103,10 @@ static void diagnose(const char * title, const void * addr) noexcept {
 /**
  * @brief Главная функция приложения
  *
- * @param argc длина массива параметров
- * @param argv массив параметров
- * @return     код выхода из приложения
+ * @return код выхода из приложения
  *
  */
-int32_t main(int32_t argc, char * argv[]) noexcept {
+int32_t main() noexcept {
 	/**
 	 * Заводим фреймворк
 	 *

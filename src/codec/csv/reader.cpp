@@ -1514,6 +1514,17 @@ bool awh::codec::csv::Reader::feed(const char * buffer, const size_t size, const
 		// Выводим признак неудачного разбора
 		return false;
 	/**
+	 * Если текст уже объявлен исчерпанным прежней подачей
+	 *
+	 * @note Подача после последнего куска молча принималась и разбиралась новыми
+	 *       записями: ошибка вызывающей стороны выдавалась за целый текст. Кодеки
+	 *       JSON и XML такую подачу отвергают, и расходиться с ними здесь нечем -
+	 *       повторное употребление чтения ведётся через reset()
+	 */
+	if(this->_last && (size > 0))
+		// Выводим ошибку подачи после объявленного конца текста
+		return this->fail(error_t::TEXT_ALREADY_ENDED);
+	/**
 	 * Если разделитель задан настройками, а для разбора непригоден
 	 */
 	if(this->_detected && !suitable(this->_separator, this->_settings.quote))
@@ -1857,11 +1868,11 @@ void awh::codec::csv::Reader::settings(const settings_t & settings) noexcept {
  *
  */
 awh::codec::csv::Reader::Reader(const log_t * log) noexcept :
- _log(log), _decoder(log),
+ _log(log),
  _state(state_t::RECORD_START), _error(error_t::NONE), _encoding(encoding_t::NONE),
  _separator(','), _expected(0), _marked(false), _last(false), _headed(false), _quoted(false),
- _modified(false), _started(false), _offset(0), _line(1), _column(1),
- _record(0), _field(0), _count(0), _length(0), _begin(0), _head(0), _detected(true) {
+ _modified(false), _started(false), _decoder(log), _head(0), _offset(0), _line(1), _column(1),
+ _record(0), _field(0), _count(0), _length(0), _begin(0), _detected(true) {
 	// Выполняем сброс состояния разбора
 	this->reset();
 }

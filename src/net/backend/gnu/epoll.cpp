@@ -888,7 +888,7 @@ namespace io {
 		 *
 		 */
 		explicit SCTP_Endpoint() noexcept :
-		 partial(false), complete(true), id(0), flags(0), remaining(0), info{0} {}
+		 partial(false), complete(true), id(0), flags(0), remaining(0), info{} {}
 	} sctp_endpoint_t;
 
 	// Общий пустой набор параметров SCTP, отдаётся у узлов, где набор не заводился
@@ -1038,7 +1038,7 @@ namespace io {
 		 *
 		 */
 		explicit Endpoint() noexcept :
-		 size(0), client{0}, server{0} {}
+		 size(0), client{}, server{} {}
 	} endpoint_t;
 
 	/**
@@ -1168,7 +1168,6 @@ namespace io {
 		 *
 		 */
 		explicit State() noexcept :
-		 adopted(false),
 		 options(event::options::NONE),
 		 node(event::node_t::NONE),
 		 hops(event::hops_t::WORLD),
@@ -1178,7 +1177,7 @@ namespace io {
 		 family(event::family_t::NONE),
 		 address(event::address_t::NONE),
 		 protocol(event::protocol_t::NONE),
-		 delivery(event::delivery_mode_t::UNICAST), traffic(0) {}
+		 delivery(event::delivery_mode_t::UNICAST), traffic(0), adopted(false) {}
 	} state_t;
 
 	/**
@@ -1877,7 +1876,7 @@ namespace io {
 		 *
 		 */
 		explicit Inter_Process_Communication(const fmk_t * fmk, const log_t * log) noexcept :
-		 transfer(fmk, log), partner(0) {}
+		 partner(0), transfer(fmk, log) {}
 		/**
 		 * @brief Метод доступа к функциям обратного вызова узла
 		 *
@@ -1930,8 +1929,8 @@ namespace io {
 		 */
 		explicit Tunnel(const fmk_t * fmk, const log_t * log) noexcept :
 		 fd(net::invalid_socket_t),
-		 actions(::action::NONE), iface{""},
-		 pulling(false), queue(fmk, log),
+		 actions(::action::NONE), pulling(false),
+		 iface{""}, queue(fmk, log),
 		 source(nullptr), target(nullptr) {}
 		/**
 		 * @brief Метод доступа к функциям обратного вызова узла
@@ -2294,7 +2293,7 @@ namespace io {
 		 * @param log объект работы с логами
 		 *
 		 */
-		explicit Server(const fmk_t * fmk, const log_t * log) noexcept :
+		explicit Server([[maybe_unused]] const fmk_t * fmk, [[maybe_unused]] const log_t * log) noexcept :
 		 fd(net::invalid_socket_t),
 		 actions(::action::NONE),
 		 activity(::activity::NONE),
@@ -3021,7 +3020,7 @@ namespace {
 	 *
 	 */
 	Storage_Transport_Layer_Nodes::Iterator::Iterator(Storage_Transport_Layer_Nodes * owner, const size_t chunk, const size_t slot) noexcept :
-	 _owner(owner), _chunk(chunk), _slot(slot) {}
+	 _chunk(chunk), _slot(slot), _owner(owner) {}
 	
 	/**
 	 * @brief Метод отбрасывания опустевшей головы карты чанков
@@ -3767,7 +3766,7 @@ namespace {
 						// Для семейства IPv4
 						case static_cast <uint8_t> (event::family_t::IPV4): {
 							// Объект структуры адреса IPv4
-							struct sockaddr_in addr{0};
+							struct sockaddr_in addr{};
 							// Устанавливаем произвольный порт
 							addr.sin_port = htons(0);
 							// Устанавливаем семейство IP-адресов
@@ -3780,7 +3779,7 @@ namespace {
 						// Для семейства IPv6
 						case static_cast <uint8_t> (event::family_t::IPV6): {
 							// Объект структуры адреса IPv6
-							struct sockaddr_in6 addr{0};
+							struct sockaddr_in6 addr{};
 							// Устанавливаем произвольный порт
 							addr.sin6_port = htons(0);
 							// Устанавливаем семейство IP-адресов
@@ -4785,7 +4784,7 @@ namespace kernel {
 		 */
 		char path[64];
 		// Собираем путь к наблюдаемому узлу через каталог дескрипторов процесса
-		::snprintf(path, sizeof(path), "/proc/self/fd/%llu", static_cast <uint64_t> (rec.ident));
+		::snprintf(path, sizeof(path), "/proc/self/fd/%llu", static_cast <unsigned long long> (rec.ident));
 		// Выполняем заведение наблюдения
 		const int32_t wd = ::inotify_add_watch(::kernel::inotify, path, ::kernel::translate(rec.fflags));
 		// Если завести наблюдение не удалось
@@ -5326,7 +5325,7 @@ namespace local {
 	 */
 	static uint64_t nanostamp() noexcept {
 		// Объект структуры для хранения времени
-		struct timespec ts{0};
+		struct timespec ts{};
 		// Получаем текущее время в формате CLOCK_MONOTONIC
 		::clock_gettime(CLOCK_MONOTONIC, &ts);
 		// Возвращаем текущее время в наносекундах
@@ -6933,7 +6932,7 @@ namespace timer {
 		 *       миллисекунды, берутся они
 		 */
 		// Объект структуры для хранения времени
-		struct timespec ts{0};
+		struct timespec ts{};
 		// Получаем текущее время монотонных часов
 		::clock_gettime(::timer::clockSource, &ts);
 		// Возвращаем текущее время в миллисекундах
@@ -7715,7 +7714,7 @@ namespace timer {
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static void __set__(::io::timeout_t & tm, const event::id_t eid, const flag_t flag, const event::rate_t rate, const log_t * log) noexcept {
+		static void __set__(::io::timeout_t & tm, const event::id_t eid, const flag_t flag, [[maybe_unused]] const event::rate_t rate, const log_t * log) noexcept {
 			/**
 			 * Выполняем перехват ошибок
 			 */
@@ -9298,7 +9297,7 @@ namespace timer {
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static void __set__(::io::timeout_t & tm, const event::id_t eid, const flag_t flag, const event::rate_t rate, const log_t * log) noexcept {
+		static void __set__(::io::timeout_t & tm, const event::id_t eid, const flag_t flag, [[maybe_unused]] const event::rate_t rate, const log_t * log) noexcept {
 			/**
 			 * Выполняем перехват ошибок
 			 */
@@ -10612,7 +10611,7 @@ namespace io {
 	 * @return       результат выполнения обработки
 	 *
 	 */
-	static bool read(::io::file_t * fs, [[maybe_unused]] const int64_t volume, const engine::io_t * io, const eth_t * eth, const log_t * log) noexcept {
+	static bool read(::io::file_t * fs, [[maybe_unused]] const int64_t volume, const engine::io_t * io, [[maybe_unused]] const eth_t * eth, const log_t * log) noexcept {
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -12392,7 +12391,7 @@ namespace io {
 									// Если размер данных больше размера заголовка IPv6-пакета
 									if(size > 40){
 										// Смещение после основного IPv6-заголовка
-										uint16_t offset = 40;
+										size_t offset = 40;
 										// Получаем значение Next Header из 7-го байта основного заголовка IPv6-пакета, который указывает тип следующего заголовка после основного
 										uint8_t next = ::__awh_buffer__[6];
 										/**
@@ -12970,7 +12969,7 @@ namespace io {
 								// Если размер данных больше размера заголовка IPv6-пакета
 								if(size > 40){
 									// Смещение после основного IPv6-заголовка
-									uint16_t offset = 40;
+									size_t offset = 40;
 									// Получаем значение Next Header из 7-го байта основного заголовка IPv6-пакета, который указывает тип следующего заголовка после основного
 									uint8_t next = ::__awh_buffer__[6];
 									/**
@@ -19859,7 +19858,7 @@ namespace io {
 	 * @return       количество байт данных, отправленных событием
 	 *
 	 */
-	static size_t send(::io::file_t * fs, const void * buffer, const size_t size, const eth_t * eth, const log_t * log) noexcept {
+	static size_t send(::io::file_t * fs, const void * buffer, const size_t size, [[maybe_unused]] const eth_t * eth, const log_t * log) noexcept {
 		// Результат работы функции
 		size_t result = 0;
 		/**
@@ -23400,7 +23399,7 @@ namespace io {
 										// Идентификатор сессии источника
 										origin_id_t sid;
 										// Создаём объект для получения идентификатора сессии источника по IP-адресу
-										struct sockaddr_in sin{0};
+										struct sockaddr_in sin{};
 										// Устанавливаем семейство адресов IPv4
 										sin.sin_family = AF_INET;
 										// Устанавливаем полученный IP-адрес источника
@@ -23470,7 +23469,7 @@ namespace io {
 									// Если размер данных больше размера заголовка IPv6-пакета
 									if(size > 40){
 										// Смещение после основного IPv6-заголовка
-										uint16_t offset = 40;
+										size_t offset = 40;
 										// Получаем значение Next Header из 7-го байта основного заголовка IPv6-пакета, который указывает тип следующего заголовка после основного
 										uint8_t next = reinterpret_cast <const uint8_t *> (buffer)[6];
 										/**
@@ -23524,7 +23523,7 @@ namespace io {
 										// Идентификатор сессии источника
 										origin_id_t sid;
 										// Создаём объект для получения идентификатора сессии источника по IP-адресу
-										struct sockaddr_in6 sin{0};
+										struct sockaddr_in6 sin{};
 										// Устанавливаем семейство адресов IPv6
 										sin.sin6_family = AF_INET6;
 										// Устанавливаем полученный IP-адрес источника
@@ -23755,7 +23754,7 @@ namespace io {
 										// Идентификатор сессии источника
 										origin_id_t sid;
 										// Создаём объект для получения идентификатора сессии источника по IP-адресу
-										struct sockaddr_in sin{0};
+										struct sockaddr_in sin{};
 										// Устанавливаем семейство адресов IPv4
 										sin.sin_family = AF_INET;
 										// Устанавливаем полученный IP-адрес источника
@@ -23825,7 +23824,7 @@ namespace io {
 									// Если размер данных больше размера заголовка IPv6-пакета
 									if(size > 40){
 										// Смещение после основного IPv6-заголовка
-										uint16_t offset = 40;
+										size_t offset = 40;
 										// Получаем значение Next Header из 7-го байта основного заголовка IPv6-пакета, который указывает тип следующего заголовка после основного
 										uint8_t next = reinterpret_cast <const uint8_t *> (buffer)[6];
 										/**
@@ -23879,7 +23878,7 @@ namespace io {
 										// Идентификатор сессии источника
 										origin_id_t sid;
 										// Создаём объект для получения идентификатора сессии источника по IP-адресу
-										struct sockaddr_in6 sin{0};
+										struct sockaddr_in6 sin{};
 										// Устанавливаем семейство адресов IPv6
 										sin.sin6_family = AF_INET6;
 										// Устанавливаем полученный IP-адрес источника
@@ -24094,7 +24093,7 @@ namespace io {
 									// Идентификатор сессии источника
 									origin_id_t sid;
 									// Создаём объект для получения идентификатора сессии источника по IP-адресу
-									struct sockaddr_in sin{0};
+									struct sockaddr_in sin{};
 									// Устанавливаем семейство адресов IPv4
 									sin.sin_family = AF_INET;
 									// Устанавливаем полученный IP-адрес источника
@@ -24164,7 +24163,7 @@ namespace io {
 								// Если размер данных больше размера заголовка IPv6-пакета
 								if(size > 40){
 									// Смещение после основного IPv6-заголовка
-									uint16_t offset = 40;
+									size_t offset = 40;
 									// Получаем значение Next Header из 7-го байта основного заголовка IPv6-пакета, который указывает тип следующего заголовка после основного
 									uint8_t next = reinterpret_cast <const uint8_t *> (buffer)[6];
 									/**
@@ -24218,7 +24217,7 @@ namespace io {
 									// Идентификатор сессии источника
 									origin_id_t sid;
 									// Создаём объект для получения идентификатора сессии источника по IP-адресу
-									struct sockaddr_in6 sin{0};
+									struct sockaddr_in6 sin{};
 									// Устанавливаем семейство адресов IPv6
 									sin.sin6_family = AF_INET6;
 									// Устанавливаем полученный IP-адрес источника
@@ -31433,7 +31432,7 @@ namespace io {
 	 * @return       результат выполнения прерывания
 	 *
 	 */
-	static bool abandon(::io::client_t * client, const engine::io_t * io, const eth_t * eth, const log_t * log) noexcept {
+	static bool abandon(::io::client_t * client, const engine::io_t * io, [[maybe_unused]] const eth_t * eth, const log_t * log) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -31759,7 +31758,7 @@ namespace io {
 	 * @return    результат выполнения обработки
 	 *
 	 */
-	static bool change(::io::dir_t * dir, const engine::io_t * io, const fmk_t * fmk, const log_t * log) noexcept {
+	static bool change(::io::dir_t * dir, [[maybe_unused]] const engine::io_t * io, const fmk_t * fmk, const log_t * log) noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -32417,7 +32416,7 @@ namespace io {
 									}
 								}
 								// Если протокол интернета установлен как SCTP
-								if(peer->state.protocol == event::protocol_t::SCTP)
+								if(peer->state.protocol == event::protocol_t::SCTP){
 									// Выполняем активацию событий SCTP
 									eth->sctp.eventsSubscribe(peer->transfer.fd, peer->transfer.sctp.use().events);
 									/**
@@ -32430,6 +32429,7 @@ namespace io {
 									if((peer->transfer.sctp.endpoint().callbacks.message != nullptr) || (peer->transfer.sctp.endpoint().callbacks.info != nullptr))
 										// Выполняем подписку на метаданные принимаемых сообщений
 										eth->sctp.receiveInfo(peer->transfer.fd, true);
+								}
 							} break;
 							// Для семейства IPv6
 							case static_cast <uint8_t> (event::family_t::IPV6): {
@@ -32614,7 +32614,7 @@ namespace io {
 									}
 								}
 								// Если протокол интернета установлен как SCTP
-								if(peer->state.protocol == event::protocol_t::SCTP)
+								if(peer->state.protocol == event::protocol_t::SCTP){
 									// Выполняем активацию событий SCTP
 									eth->sctp.eventsSubscribe(peer->transfer.fd, peer->transfer.sctp.use().events);
 									/**
@@ -32627,6 +32627,7 @@ namespace io {
 									if((peer->transfer.sctp.endpoint().callbacks.message != nullptr) || (peer->transfer.sctp.endpoint().callbacks.info != nullptr))
 										// Выполняем подписку на метаданные принимаемых сообщений
 										eth->sctp.receiveInfo(peer->transfer.fd, true);
+								}
 							} break;
 						}
 						// Извлекаем параметры таймаутов для нового подключения
@@ -32798,7 +32799,7 @@ namespace io {
 	 * @return     результат выполнения обработки
 	 *
 	 */
-	static bool write(::io::node_t * node, const engine::io_t * io, const eth_t * eth, const fmk_t * fmk, const log_t * log) noexcept {
+	static bool write(::io::node_t * node, const engine::io_t * io, const eth_t * eth, [[maybe_unused]] const fmk_t * fmk, const log_t * log) noexcept {
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -34433,7 +34434,7 @@ namespace sctp {
 	 * @return       количество обработанных байт
 	 *
 	 */
-	static size_t events(::io::node_t * node, const uint8_t * buffer, const size_t size, const log_t * log, bool * finish) noexcept {
+	static size_t events(::io::node_t * node, const uint8_t * buffer, const size_t size, [[maybe_unused]] const log_t * log, bool * finish) noexcept {
 		// Результат работы функции
 		size_t result = 0;
 		// Если буфер данных события корректен и его размер достаточен для обработки
@@ -36554,7 +36555,7 @@ uint32_t awh::engine::Stream_Control_Transmission_Protocol::getTimeout(const eve
 						// Если тип таймаута является HEARTBEAT
 						if(type == net::sctp::timeout_t::HEARTBEAT){
 							// Создаём структуру конечного узла
-							struct sockaddr_storage endpoint{0};
+							struct sockaddr_storage endpoint{};
 							/**
 							 * Определяем тип подключения
 							 */
@@ -36758,7 +36759,7 @@ bool awh::engine::Stream_Control_Transmission_Protocol::setTimeout(const event::
 						// Если тип таймаута является HEARTBEAT
 						if(type == net::sctp::timeout_t::HEARTBEAT){
 							// Создаём структуру конечного узла
-							struct sockaddr_storage endpoint{0};
+							struct sockaddr_storage endpoint{};
 							/**
 							 * Определяем тип подключения
 							 */
@@ -39461,7 +39462,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 								// Для семейства IPv4
 								case static_cast <uint8_t> (event::family_t::IPV4): {
 									// Объект структуры адреса IPv4
-									struct sockaddr_in addr{0};
+									struct sockaddr_in addr{};
 									// Устанавливаем произвольный порт
 									addr.sin_port = htons(0);
 									// Устанавливаем семейство IP-адресов
@@ -39474,7 +39475,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 								// Для семейства IPv6
 								case static_cast <uint8_t> (event::family_t::IPV6): {
 									// Объект структуры адреса IPv6
-									struct sockaddr_in6 addr{0};
+									struct sockaddr_in6 addr{};
 									// Устанавливаем произвольный порт
 									addr.sin6_port = htons(0);
 									// Устанавливаем семейство IP-адресов
@@ -44297,7 +44298,7 @@ uint16_t awh::engine::IO::getSourcePort(const event::id_t id) const noexcept {
 								// Для семейства IPv4
 								case static_cast <uint8_t> (event::family_t::IPV4): {
 									// Объект структуры адреса IPv4
-									struct sockaddr_in addr{0};
+									struct sockaddr_in addr{};
 									// Получаем размер структуры адреса IPv4
 									socklen_t length = sizeof(addr);
 									// Извлекаем внутренний порт из сокета клиента
@@ -44311,7 +44312,7 @@ uint16_t awh::engine::IO::getSourcePort(const event::id_t id) const noexcept {
 								// Для семейства IPv6
 								case static_cast <uint8_t> (event::family_t::IPV6): {
 									// Объект структуры адреса IPv6
-									struct sockaddr_in6 addr{0};
+									struct sockaddr_in6 addr{};
 									// Получаем размер структуры адреса IPv6
 									socklen_t length = sizeof(addr);
 									// Извлекаем внутренний порт из сокета клиента
@@ -44347,7 +44348,7 @@ uint16_t awh::engine::IO::getSourcePort(const event::id_t id) const noexcept {
 										// Если событие принадлежит к типу DATAGRAM
 										case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 											// Объект структуры адреса IPv4
-											struct sockaddr_in addr{0};
+											struct sockaddr_in addr{};
 											// Получаем размер структуры адреса IPv4
 											socklen_t length = sizeof(addr);
 											// Извлекаем внутренний порт из сокета клиента
@@ -44371,7 +44372,7 @@ uint16_t awh::engine::IO::getSourcePort(const event::id_t id) const noexcept {
 										// Если событие принадлежит к типу DATAGRAM
 										case static_cast <uint8_t> (event::type_t::DATAGRAM): {
 											// Объект структуры адреса IPv6
-											struct sockaddr_in6 addr{0};
+											struct sockaddr_in6 addr{};
 											// Получаем размер структуры адреса IPv6
 											socklen_t length = sizeof(addr);
 											// Извлекаем внутренний порт из сокета клиента
@@ -55041,7 +55042,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 										// Создаём объект IPv4-адреса
 										unique_ptr <net::addr_t> source = this->_addr.source(net_addr_t::endian_t::LITTLE);
 										// Создаём объект конечной точки подключения
-										struct sockaddr_in endpoint{0};
+										struct sockaddr_in endpoint{};
 										// Устанавливаем семейство IP-адресов
 										endpoint.sin_family = AF_INET;
 										// Устанавливаем произвольный порт с которого выполняется подключение
@@ -55164,7 +55165,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 										// Создаём объект IPv6-адреса
 										unique_ptr <net::addr_t> source = this->_addr.source(net_addr_t::endian_t::LITTLE);
 										// Создаём объект конечной точки подключения
-										struct sockaddr_in6 endpoint{0};
+										struct sockaddr_in6 endpoint{};
 										// Устанавливаем семейство IP-адресов
 										endpoint.sin6_family = AF_INET6;
 										// Устанавливаем произвольный порт с которого выполняется подключение
@@ -55301,7 +55302,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 										// Создаём объект IPv4-адреса
 										unique_ptr <net::addr_t> source = this->_addr.source(net_addr_t::endian_t::LITTLE);
 										// Создаём объект конечной точки подключения
-										struct sockaddr_in endpoint{0};
+										struct sockaddr_in endpoint{};
 										// Устанавливаем семейство IP-адресов
 										endpoint.sin_family = AF_INET;
 										// Если порт подписки для сервера не указан
@@ -55430,7 +55431,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 										// Создаём объект IPv6-адреса
 										unique_ptr <net::addr_t> source = this->_addr.source(net_addr_t::endian_t::LITTLE);
 										// Создаём объект конечной точки подключения
-										struct sockaddr_in6 endpoint{0};
+										struct sockaddr_in6 endpoint{};
 										// Устанавливаем семейство IP-адресов
 										endpoint.sin6_family = AF_INET6;
 										// Если порт подписки для сервера не указан
@@ -55703,7 +55704,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 							// Для семейства IPv4
 							case static_cast <uint8_t> (event::family_t::IPV4): {
 								// Создаём объект конечной точки подключения
-								struct sockaddr_in endpoint{0};
+								struct sockaddr_in endpoint{};
 								// Устанавливаем семейство IP-адресов
 								endpoint.sin_family = AF_INET;
 								// Устанавливаем произвольный порт с которого выполняется подключение
@@ -55760,7 +55761,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 							// Для семейства IPv6
 							case static_cast <uint8_t> (event::family_t::IPV6): {
 								// Создаём объект конечной точки подключения
-								struct sockaddr_in6 endpoint{0};
+								struct sockaddr_in6 endpoint{};
 								// Устанавливаем семейство IP-адресов
 								endpoint.sin6_family = AF_INET6;
 								// Устанавливаем произвольный порт с которого выполняется подключение
@@ -55831,7 +55832,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 							// Для семейства IPv4
 							case static_cast <uint8_t> (event::family_t::IPV4): {
 								// Создаём объект конечной точки подключения
-								struct sockaddr_in endpoint{0};
+								struct sockaddr_in endpoint{};
 								// Устанавливаем семейство IP-адресов
 								endpoint.sin_family = AF_INET;
 								// Если порт подписки для сервера не указан
@@ -55894,7 +55895,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 							// Для семейства IPv6
 							case static_cast <uint8_t> (event::family_t::IPV6): {
 								// Создаём объект конечной точки подключения
-								struct sockaddr_in6 endpoint{0};
+								struct sockaddr_in6 endpoint{};
 								// Устанавливаем семейство IP-адресов
 								endpoint.sin6_family = AF_INET6;
 								// Если порт подписки для сервера не указан

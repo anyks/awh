@@ -1417,13 +1417,14 @@ namespace {
 	 * @brief Функция формирования строки IPv6-адреса со сжатием нулевых групп
 	 *
 	 * @param out    буфер назначения (должен быть достаточного размера)
+	 * @param size   размер буфера назначения, включая место под завершающий нуль
 	 * @param hexets массив из 8 хекстетов IPv6-адреса
 	 * @param conv   спецификатор системы счисления ('X' - hex, 'u' - dec, 'o' - oct)
 	 * @param delim  разделитель групп
 	 * @return       количество записанных символов
 	 *
 	 */
-	int32_t emitIPv6(char * out, const uint16_t hexets[8], const char conv, const char delim) noexcept {
+	int32_t emitIPv6(char * out, const size_t size, const uint16_t hexets[8], const char conv, const char delim) noexcept {
 		// Текущая позиция записи
 		int32_t pos = 0;
 		/**
@@ -1438,11 +1439,11 @@ namespace {
 			 */
 			switch(conv){
 				// Шестнадцатеричный формат
-				case 'X': pos += ::sprintf(out + pos, "%X", hexets[i]); break;
+				case 'X': pos += ::snprintf(out + pos, (size - static_cast <size_t> (pos)), "%X", hexets[i]); break;
 				// Десятичный формат
-				case 'u': pos += ::sprintf(out + pos, "%u", hexets[i]); break;
+				case 'u': pos += ::snprintf(out + pos, (size - static_cast <size_t> (pos)), "%u", hexets[i]); break;
 				// Восьмеричный формат
-				case 'o': pos += ::sprintf(out + pos, "%o", hexets[i]); break;
+				case 'o': pos += ::snprintf(out + pos, (size - static_cast <size_t> (pos)), "%o", hexets[i]); break;
 			}
 		};
 		// Лямбда записи разделителя
@@ -4841,8 +4842,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 											// Перераспределяем объект результата
 											result.resize(offset + 12 + 1);
 											// Выполняем получение MAC адреса
-											pos = ::sprintf(
-												&result[offset],
+											pos = ::snprintf(
+												&result[offset], (result.size() - offset),
 												"%02X%02X%02X%02X%02X%02X",
 												this->_buffer[0], this->_buffer[1],
 												this->_buffer[2], this->_buffer[3],
@@ -4853,8 +4854,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 											// Перераспределяем объект результата
 											result.resize(offset + 17 + 1);
 											// Выполняем получение MAC адреса
-											pos = ::sprintf(
-												&result[offset],
+											pos = ::snprintf(
+												&result[offset], (result.size() - offset),
 												"%02X%c%02X%c%02X%c%02X%c%02X%c%02X",
 												this->_buffer[0], separator, this->_buffer[1], separator,
 												this->_buffer[2], separator, this->_buffer[3], separator,
@@ -4869,8 +4870,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 											// Перераспределяем объект результата
 											result.resize(offset + 18 + 1);
 											// Выполняем получение MAC адреса
-											pos = ::sprintf(
-												&result[offset],
+											pos = ::snprintf(
+												&result[offset], (result.size() - offset),
 												"%02u%02u%02u%02u%02u%02u",
 												this->_buffer[0], this->_buffer[1],
 												this->_buffer[2], this->_buffer[3],
@@ -4881,8 +4882,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 											// Перераспределяем объект результата
 											result.resize(offset + 23 + 1);
 											// Выполняем получение MAC адреса
-											pos = ::sprintf(
-												&result[offset],
+											pos = ::snprintf(
+												&result[offset], (result.size() - offset),
 												"%02u%c%02u%c%02u%c%02u%c%02u%c%02u",
 												this->_buffer[0], separator, this->_buffer[1], separator,
 												this->_buffer[2], separator, this->_buffer[3], separator,
@@ -4897,8 +4898,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 											// Перераспределяем объект результата
 											result.resize(offset + 18 + 1);
 											// Выполняем получение MAC адреса
-											pos = ::sprintf(
-												&result[offset],
+											pos = ::snprintf(
+												&result[offset], (result.size() - offset),
 												"%02o%02o%02o%02o%02o%02o",
 												this->_buffer[0], this->_buffer[1],
 												this->_buffer[2], this->_buffer[3],
@@ -4909,8 +4910,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 											// Перераспределяем объект результата
 											result.resize(offset + 23 + 1);
 											// Выполняем получение MAC адреса
-											pos = ::sprintf(
-												&result[offset],
+											pos = ::snprintf(
+												&result[offset], (result.size() - offset),
 												"%02o%c%02o%c%02o%c%02o%c%02o%c%02o",
 												this->_buffer[0], separator, this->_buffer[1], separator,
 												this->_buffer[2], separator, this->_buffer[3], separator,
@@ -4953,8 +4954,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 											// Перераспределяем объект результата
 											result.resize(offset + 12 + 1);
 											// Выполняем получение MAC адреса
-											pos = ::sprintf(
-												&result[offset],
+											pos = ::snprintf(
+												&result[offset], (result.size() - offset),
 												"%02X%02X%02X%02X%02X%02X",
 												this->_buffer[0], this->_buffer[1],
 												this->_buffer[2], this->_buffer[3],
@@ -4965,8 +4966,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 											// Перераспределяем объект результата
 											result.resize(offset + 17 + 1);
 											// Выполняем получение MAC адреса
-											pos = ::sprintf(
-												&result[offset],
+											pos = ::snprintf(
+												&result[offset], (result.size() - offset),
 												"%X%c%X%c%X%c%X%c%X%c%X",
 												this->_buffer[0], separator, this->_buffer[1], separator,
 												this->_buffer[2], separator, this->_buffer[3], separator,
@@ -4981,8 +4982,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 											// Перераспределяем объект результата
 											result.resize(offset + 18 + 1);
 											// Выполняем получение MAC адреса
-											pos = ::sprintf(
-												&result[offset],
+											pos = ::snprintf(
+												&result[offset], (result.size() - offset),
 												"%u%u%u%u%u%u",
 												this->_buffer[0], this->_buffer[1],
 												this->_buffer[2], this->_buffer[3],
@@ -4993,8 +4994,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 											// Перераспределяем объект результата
 											result.resize(offset + 23 + 1);
 											// Выполняем получение MAC адреса
-											pos = ::sprintf(
-												&result[offset],
+											pos = ::snprintf(
+												&result[offset], (result.size() - offset),
 												"%u%c%u%c%u%c%u%c%u%c%u",
 												this->_buffer[0], separator, this->_buffer[1], separator,
 												this->_buffer[2], separator, this->_buffer[3], separator,
@@ -5009,8 +5010,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 											// Перераспределяем объект результата
 											result.resize(offset + 18 + 1);
 											// Выполняем получение MAC адреса
-											pos = ::sprintf(
-												&result[offset],
+											pos = ::snprintf(
+												&result[offset], (result.size() - offset),
 												"%o%o%o%o%o%o",
 												this->_buffer[0], this->_buffer[1],
 												this->_buffer[2], this->_buffer[3],
@@ -5021,8 +5022,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 											// Перераспределяем объект результата
 											result.resize(offset + 23 + 1);
 											// Выполняем получение MAC адреса
-											pos = ::sprintf(
-												&result[offset],
+											pos = ::snprintf(
+												&result[offset], (result.size() - offset),
 												"%o%c%o%c%o%c%o%c%o%c%o",
 												this->_buffer[0], separator, this->_buffer[1], separator,
 												this->_buffer[2], separator, this->_buffer[3], separator,
@@ -5057,8 +5058,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 											// Перераспределяем объект результата
 											result.resize(offset + 18 + 1);
 											// Выполняем получение MAC адреса
-											pos = ::sprintf(
-												&result[offset],
+											pos = ::snprintf(
+												&result[offset], (result.size() - offset),
 												"%03X%03X%03X%03X%03X%03X",
 												this->_buffer[0], this->_buffer[1],
 												this->_buffer[2], this->_buffer[3],
@@ -5069,8 +5070,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 											// Перераспределяем объект результата
 											result.resize(offset + 23 + 1);
 											// Выполняем получение MAC адреса
-											pos = ::sprintf(
-												&result[offset],
+											pos = ::snprintf(
+												&result[offset], (result.size() - offset),
 												"%03X%c%03X%c%03X%c%03X%c%03X%c%03X",
 												this->_buffer[0], separator, this->_buffer[1], separator,
 												this->_buffer[2], separator, this->_buffer[3], separator,
@@ -5085,8 +5086,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 											// Перераспределяем объект результата
 											result.resize(offset + 18 + 1);
 											// Выполняем получение MAC адреса
-											pos = ::sprintf(
-												&result[offset],
+											pos = ::snprintf(
+												&result[offset], (result.size() - offset),
 												"%03u%03u%03u%03u%03u%03u",
 												this->_buffer[0], this->_buffer[1],
 												this->_buffer[2], this->_buffer[3],
@@ -5097,8 +5098,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 											// Перераспределяем объект результата
 											result.resize(offset + 23 + 1);
 											// Выполняем получение MAC адреса
-											pos = ::sprintf(
-												&result[offset],
+											pos = ::snprintf(
+												&result[offset], (result.size() - offset),
 												"%03u%c%03u%c%03u%c%03u%c%03u%c%03u",
 												this->_buffer[0], separator, this->_buffer[1], separator,
 												this->_buffer[2], separator, this->_buffer[3], separator,
@@ -5113,8 +5114,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 											// Перераспределяем объект результата
 											result.resize(offset + 18 + 1);
 											// Выполняем получение MAC адреса
-											pos = ::sprintf(
-												&result[offset],
+											pos = ::snprintf(
+												&result[offset], (result.size() - offset),
 												"%03o%03o%03o%03o%03o%03o",
 												this->_buffer[0], this->_buffer[1],
 												this->_buffer[2], this->_buffer[3],
@@ -5125,8 +5126,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 											// Перераспределяем объект результата
 											result.resize(offset + 23 + 1);
 											// Выполняем получение MAC адреса
-											pos = ::sprintf(
-												&result[offset],
+											pos = ::snprintf(
+												&result[offset], (result.size() - offset),
 												"%03o%c%03o%c%03o%c%03o%c%03o%c%03o",
 												this->_buffer[0], separator, this->_buffer[1], separator,
 												this->_buffer[2], separator, this->_buffer[3], separator,
@@ -5176,8 +5177,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 										// Перераспределяем объект результата
 										result.resize(offset + 12 + 1);
 										// Выполняем получение IPv4 адреса в 10-м формате
-										pos = ::sprintf(
-											&result[offset],
+										pos = ::snprintf(
+											&result[offset], (result.size() - offset),
 											"%u%u%u%u",
 											this->_buffer[0], this->_buffer[1],
 											this->_buffer[2], this->_buffer[3]
@@ -5187,8 +5188,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 										// Перераспределяем объект результата
 										result.resize(offset + 15 + 1);
 										// Выполняем получение IPv4 адреса в 10-м формате
-										pos = ::sprintf(
-											&result[offset],
+										pos = ::snprintf(
+											&result[offset], (result.size() - offset),
 											"%u%c%u%c%u%c%u",
 											this->_buffer[0], separator, this->_buffer[1], separator,
 											this->_buffer[2], separator, this->_buffer[3]
@@ -5206,8 +5207,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 										// Перераспределяем объект результата
 										result.resize(offset + 8 + 1);
 										// Выполняем получение IPv4 адреса в 16-м формате
-										pos = ::sprintf(
-											&result[offset],
+										pos = ::snprintf(
+											&result[offset], (result.size() - offset),
 											"%X%X%X%X",
 											this->_buffer[0], this->_buffer[1],
 											this->_buffer[2], this->_buffer[3]
@@ -5217,8 +5218,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 										// Перераспределяем объект результата
 										result.resize(offset + 11 + 1);
 										// Выполняем получение IPv4 адреса в 16-м формате
-										pos = ::sprintf(
-											&result[offset],
+										pos = ::snprintf(
+											&result[offset], (result.size() - offset),
 											"%X%c%X%c%X%c%X",
 											this->_buffer[0], separator, this->_buffer[1], separator,
 											this->_buffer[2], separator, this->_buffer[3]
@@ -5236,8 +5237,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 										// Перераспределяем объект результата
 										result.resize(offset + 12 + 1);
 										// Выполняем получение IPv4 адреса в 8-м формате
-										pos = ::sprintf(
-											&result[offset],
+										pos = ::snprintf(
+											&result[offset], (result.size() - offset),
 											"%o%o%o%o",
 											this->_buffer[0], this->_buffer[1],
 											this->_buffer[2], this->_buffer[3]
@@ -5247,8 +5248,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 										// Перераспределяем объект результата
 										result.resize(offset + 15 + 1);
 										// Выполняем получение IPv4 адреса в 8-м формате
-										pos = ::sprintf(
-											&result[offset],
+										pos = ::snprintf(
+											&result[offset], (result.size() - offset),
 											"%o%c%o%c%o%c%o",
 											this->_buffer[0], separator, this->_buffer[1], separator,
 											this->_buffer[2], separator, this->_buffer[3]
@@ -5266,8 +5267,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 										// Перераспределяем объект результата
 										result.resize(offset + 12 + 1);
 										// Выполняем получение IPv4 адреса в 10-м формате
-										pos = ::sprintf(
-											&result[offset],
+										pos = ::snprintf(
+											&result[offset], (result.size() - offset),
 											"%u%u%u%u",
 											this->_buffer[0], this->_buffer[1],
 											this->_buffer[2], this->_buffer[3]
@@ -5277,8 +5278,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 										// Перераспределяем объект результата
 										result.resize(offset + 22 + 1);
 										// Выполняем получение IPv4 адреса в 10-м формате
-										pos = ::sprintf(
-											&result[offset],
+										pos = ::snprintf(
+											&result[offset], (result.size() - offset),
 											"::FFFF:%u%c%u%c%u%c%u",
 											this->_buffer[0], separator, this->_buffer[1], separator,
 											this->_buffer[2], separator, this->_buffer[3]
@@ -5296,8 +5297,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 										// Перераспределяем объект результата
 										result.resize(offset + 8 + 1);
 										// Выполняем получение IPv4 адреса в формате IPv6
-										pos = ::sprintf(
-											&result[offset],
+										pos = ::snprintf(
+											&result[offset], (result.size() - offset),
 											"%X%X",
 											(this->_buffer[0] << 8) | this->_buffer[1],
 											(this->_buffer[2] << 8) | this->_buffer[3]
@@ -5307,8 +5308,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 										// Перераспределяем объект результата
 										result.resize(offset + 16 + 1);
 										// Выполняем получение IPv4 адреса в формате IPv6
-										pos = ::sprintf(
-											&result[offset],
+										pos = ::snprintf(
+											&result[offset], (result.size() - offset),
 											"%c%cFFFF%c%X%c%X", separator, separator, separator,
 											(this->_buffer[0] << 8) | this->_buffer[1], separator,
 											(this->_buffer[2] << 8) | this->_buffer[3]
@@ -5343,8 +5344,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 										// Перераспределяем объект результата
 										result.resize(offset + 12 + 1);
 										// Выполняем получение IPv4 адреса в 10-м формате
-										pos = ::sprintf(
-											&result[offset],
+										pos = ::snprintf(
+											&result[offset], (result.size() - offset),
 											"%02u%02u%02u%02u",
 											this->_buffer[0], this->_buffer[1],
 											this->_buffer[2], this->_buffer[3]
@@ -5354,8 +5355,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 										// Перераспределяем объект результата
 										result.resize(offset + 15 + 1);
 										// Выполняем получение IPv4 адреса в 10-м формате
-										pos = ::sprintf(
-											&result[offset],
+										pos = ::snprintf(
+											&result[offset], (result.size() - offset),
 											"%02u%c%02u%c%02u%c%02u",
 											this->_buffer[0], separator, this->_buffer[1], separator,
 											this->_buffer[2], separator, this->_buffer[3]
@@ -5373,8 +5374,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 										// Перераспределяем объект результата
 										result.resize(offset + 8 + 1);
 										// Выполняем получение IPv4 адреса в 16-м формате
-										pos = ::sprintf(
-											&result[offset],
+										pos = ::snprintf(
+											&result[offset], (result.size() - offset),
 											"%02X%02X%02X%02X",
 											this->_buffer[0], this->_buffer[1],
 											this->_buffer[2], this->_buffer[3]
@@ -5384,8 +5385,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 										// Перераспределяем объект результата
 										result.resize(offset + 11 + 1);
 										// Выполняем получение IPv4 адреса в 16-м формате
-										pos = ::sprintf(
-											&result[offset],
+										pos = ::snprintf(
+											&result[offset], (result.size() - offset),
 											"%02X%c%02X%c%02X%c%02X",
 											this->_buffer[0], separator, this->_buffer[1], separator,
 											this->_buffer[2], separator, this->_buffer[3]
@@ -5403,8 +5404,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 										// Перераспределяем объект результата
 										result.resize(offset + 12 + 1);
 										// Выполняем получение IPv4 адреса в 8-м формате
-										pos = ::sprintf(
-											&result[offset],
+										pos = ::snprintf(
+											&result[offset], (result.size() - offset),
 											"%02o%02o%02o%02o",
 											this->_buffer[0], this->_buffer[1],
 											this->_buffer[2], this->_buffer[3]
@@ -5414,8 +5415,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 										// Перераспределяем объект результата
 										result.resize(offset + 15 + 1);
 										// Выполняем получение IPv4 адреса в 8-м формате
-										pos = ::sprintf(
-											&result[offset],
+										pos = ::snprintf(
+											&result[offset], (result.size() - offset),
 											"%02o%c%02o%c%02o%c%02o",
 											this->_buffer[0], separator, this->_buffer[1], separator,
 											this->_buffer[2], separator, this->_buffer[3]
@@ -5433,8 +5434,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 										// Перераспределяем объект результата
 										result.resize(offset + 12 + 1);
 										// Выполняем получение IPv4 адреса в 10-м формате
-										pos = ::sprintf(
-											&result[offset],
+										pos = ::snprintf(
+											&result[offset], (result.size() - offset),
 											"%02u%02u%02u%02u",
 											this->_buffer[0], this->_buffer[1],
 											this->_buffer[2], this->_buffer[3]
@@ -5444,8 +5445,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 										// Перераспределяем объект результата
 										result.resize(offset + 22 + 1);
 										// Выполняем получение IPv4 адреса в 10-м формате
-										pos = ::sprintf(
-											&result[offset],
+										pos = ::snprintf(
+											&result[offset], (result.size() - offset),
 											"::FFFF:%02u%c%02u%c%02u%c%02u",
 											this->_buffer[0], separator, this->_buffer[1], separator,
 											this->_buffer[2], separator, this->_buffer[3]
@@ -5463,8 +5464,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 										// Перераспределяем объект результата
 										result.resize(offset + 8 + 1);
 										// Выполняем получение IPv4 адреса в формате IPv6
-										pos = ::sprintf(
-											&result[offset],
+										pos = ::snprintf(
+											&result[offset], (result.size() - offset),
 											"%02X%02X",
 											(this->_buffer[0] << 8) | this->_buffer[1],
 											(this->_buffer[2] << 8) | this->_buffer[3]
@@ -5474,8 +5475,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 										// Перераспределяем объект результата
 										result.resize(offset + 16 + 1);
 										// Выполняем получение IPv4 адреса в формате IPv6
-										pos = ::sprintf(
-											&result[offset],
+										pos = ::snprintf(
+											&result[offset], (result.size() - offset),
 											"%c%cFFFF%c%02X%c%02X", separator, separator, separator,
 											(this->_buffer[0] << 8) | this->_buffer[1], separator,
 											(this->_buffer[2] << 8) | this->_buffer[3]
@@ -5503,8 +5504,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 										// Перераспределяем объект результата
 										result.resize(offset + 12 + 1);
 										// Выполняем получение IPv4 адреса в 10-м формате
-										pos = ::sprintf(
-											&result[offset],
+										pos = ::snprintf(
+											&result[offset], (result.size() - offset),
 											"%03u%03u%03u%03u",
 											this->_buffer[0], this->_buffer[1],
 											this->_buffer[2], this->_buffer[3]
@@ -5514,8 +5515,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 										// Перераспределяем объект результата
 										result.resize(offset + 15 + 1);
 										// Выполняем получение IPv4 адреса в 10-м формате
-										pos = ::sprintf(
-											&result[offset],
+										pos = ::snprintf(
+											&result[offset], (result.size() - offset),
 											"%03u%c%03u%c%03u%c%03u",
 											this->_buffer[0], separator, this->_buffer[1], separator,
 											this->_buffer[2], separator, this->_buffer[3]
@@ -5533,8 +5534,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 										// Перераспределяем объект результата
 										result.resize(offset + 12 + 1);
 										// Выполняем получение IPv4 адреса в 16-м формате
-										pos = ::sprintf(
-											&result[offset],
+										pos = ::snprintf(
+											&result[offset], (result.size() - offset),
 											"%03X%03X%03X%03X",
 											this->_buffer[0], this->_buffer[1],
 											this->_buffer[2], this->_buffer[3]
@@ -5544,8 +5545,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 										// Перераспределяем объект результата
 										result.resize(offset + 15 + 1);
 										// Выполняем получение IPv4 адреса в 16-м формате
-										pos = ::sprintf(
-											&result[offset],
+										pos = ::snprintf(
+											&result[offset], (result.size() - offset),
 											"%03X%c%03X%c%03X%c%03X",
 											this->_buffer[0], separator, this->_buffer[1], separator,
 											this->_buffer[2], separator, this->_buffer[3]
@@ -5563,8 +5564,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 										// Перераспределяем объект результата
 										result.resize(offset + 12 + 1);
 										// Выполняем получение IPv4 адреса в 8-м формате
-										pos = ::sprintf(
-											&result[offset],
+										pos = ::snprintf(
+											&result[offset], (result.size() - offset),
 											"%03o%03o%03o%03o",
 											this->_buffer[0], this->_buffer[1],
 											this->_buffer[2], this->_buffer[3]
@@ -5574,8 +5575,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 										// Перераспределяем объект результата
 										result.resize(offset + 15 + 1);
 										// Выполняем получение IPv4 адреса в 8-м формате
-										pos = ::sprintf(
-											&result[offset],
+										pos = ::snprintf(
+											&result[offset], (result.size() - offset),
 											"%03o%c%03o%c%03o%c%03o",
 											this->_buffer[0], separator, this->_buffer[1], separator,
 											this->_buffer[2], separator, this->_buffer[3]
@@ -5593,8 +5594,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 										// Перераспределяем объект результата
 										result.resize(offset + 12 + 1);
 										// Выполняем получение IPv4 адреса в 10-м формате
-										pos = ::sprintf(
-											&result[offset],
+										pos = ::snprintf(
+											&result[offset], (result.size() - offset),
 											"%03u%03u%03u%03u",
 											this->_buffer[0], this->_buffer[1],
 											this->_buffer[2], this->_buffer[3]
@@ -5604,8 +5605,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 										// Перераспределяем объект результата
 										result.resize(offset + 22 + 1);
 										// Выполняем получение IPv4 адреса в 10-м формате
-										pos = ::sprintf(
-											&result[offset],
+										pos = ::snprintf(
+											&result[offset], (result.size() - offset),
 											"::FFFF:%03u%c%03u%c%03u%c%03u",
 											this->_buffer[0], separator, this->_buffer[1], separator,
 											this->_buffer[2], separator, this->_buffer[3]
@@ -5623,8 +5624,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 										// Перераспределяем объект результата
 										result.resize(offset + 8 + 1);
 										// Выполняем получение IPv4 адреса в формате IPv6
-										pos = ::sprintf(
-											&result[offset],
+										pos = ::snprintf(
+											&result[offset], (result.size() - offset),
 											"%04X%04X",
 											(this->_buffer[0] << 8) | this->_buffer[1],
 											(this->_buffer[2] << 8) | this->_buffer[3]
@@ -5634,8 +5635,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 										// Перераспределяем объект результата
 										result.resize(offset + 16 + 1);
 										// Выполняем получение IPv4 адреса в формате IPv6
-										pos = ::sprintf(
-											&result[offset],
+										pos = ::snprintf(
+											&result[offset], (result.size() - offset),
 											"%c%cFFFF%c%04X%c%04X", separator, separator, separator,
 											(this->_buffer[0] << 8) | this->_buffer[1], separator,
 											(this->_buffer[2] << 8) | this->_buffer[3]
@@ -5723,29 +5724,29 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 											// Если хекстет 5 равен FFFF
 											if(hexets[5] == 0xFFFF)
 												// Возвращаем результат в формате ::FFFF:w.x.y.z
-												pos = ::sprintf(&result[offset], "%c%cFFFF%c%u.%u.%u.%u", separator, separator, separator, this->_buffer[12], this->_buffer[13], this->_buffer[14], this->_buffer[15]);
+												pos = ::snprintf(&result[offset], (result.size() - offset), "%c%cFFFF%c%u.%u.%u.%u", separator, separator, separator, this->_buffer[12], this->_buffer[13], this->_buffer[14], this->_buffer[15]);
 											// Возвращаем результат в формате ::w.x.y.z
-											else pos = ::sprintf(&result[offset], "%c%c%u.%u.%u.%u", separator, separator, this->_buffer[12], this->_buffer[13], this->_buffer[14], this->_buffer[15]);
+											else pos = ::snprintf(&result[offset], (result.size() - offset), "%c%c%u.%u.%u.%u", separator, separator, this->_buffer[12], this->_buffer[13], this->_buffer[14], this->_buffer[15]);
 										// Возвращаем результат в формате x:x:x:x:x:x:w.x.y.z
-										} else pos = ::sprintf(&result[offset], "%X%c%X%c%X%c%X%c%X%c%X%c%u.%u.%u.%u", hexets[0], separator, hexets[1], separator, hexets[2], separator, hexets[3], separator, hexets[4], separator, hexets[5], separator, this->_buffer[12], this->_buffer[13], this->_buffer[14], this->_buffer[15]);
+										} else pos = ::snprintf(&result[offset], (result.size() - offset), "%X%c%X%c%X%c%X%c%X%c%X%c%u.%u.%u.%u", hexets[0], separator, hexets[1], separator, hexets[2], separator, hexets[3], separator, hexets[4], separator, hexets[5], separator, this->_buffer[12], this->_buffer[13], this->_buffer[14], this->_buffer[15]);
 									// Если нужно использовать стандартный вывод IPv6
 									} else
 										// Формируем сжатую строку IPv6 в шестнадцатеричном виде
-										pos = ::emitIPv6(&result[offset], hexets, 'X', separator);
+										pos = ::emitIPv6(&result[offset], (result.size() - offset), hexets, 'X', separator);
 								} break;
 								// Если формат указан в 10-м виде
 								case static_cast <uint8_t> (format_flag_t::DECIMAL): {
 									// Перераспределяем объект результата под максимальный размер DECIMAL-формата (8*5 + 7)
 									result.resize(offset + 48 + 1);
 									// Формируем сжатую строку IPv6 в десятичном виде
-									pos = ::emitIPv6(&result[offset], hexets, 'u', separator);
+									pos = ::emitIPv6(&result[offset], (result.size() - offset), hexets, 'u', separator);
 								} break;
 								// Если формат указан в 8-м виде
 								case static_cast <uint8_t> (format_flag_t::OCTAL): {
 									// Перераспределяем объект результата под максимальный размер OCTAL-формата (8*6 + 7)
 									result.resize(offset + 56 + 1);
 									// Формируем сжатую строку IPv6 в восьмеричном виде
-									pos = ::emitIPv6(&result[offset], hexets, 'o', separator);
+									pos = ::emitIPv6(&result[offset], (result.size() - offset), hexets, 'o', separator);
 								} break;
 							}
 						} break;
@@ -5764,8 +5765,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 									// Перераспределяем объект результата
 									result.resize(offset + 39 + 1);
 									// Выполняем получение IPv6 адреса в 16-м формате
-									pos = ::sprintf(
-										&result[offset],
+									pos = ::snprintf(
+										&result[offset], (result.size() - offset),
 										"%X%c%X%c%X%c%X%c%X%c%X%c%X%c%X",
 										(this->_buffer[0] << 8) | this->_buffer[1], separator,
 										(this->_buffer[2] << 8) | this->_buffer[3], separator,
@@ -5782,8 +5783,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 									// Перераспределяем объект результата
 									result.resize(offset + 45 + 1);
 									// Возвращаем результат в формате x:x:x:x:x:x:w.x.y.z
-									pos = ::sprintf(
-										&result[offset],
+									pos = ::snprintf(
+										&result[offset], (result.size() - offset),
 										"%02X%c%02X%c%02X%c%02X%c%02X%c%02X%c%u.%u.%u.%u",
 										(this->_buffer[0] << 8) | this->_buffer[1], separator,
 										(this->_buffer[2] << 8) | this->_buffer[3], separator,
@@ -5799,8 +5800,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 									// Перераспределяем объект результата
 									result.resize(offset + 47 + 1);
 									// Выполняем получение IPv6 адреса в 16-м формате
-									pos = ::sprintf(
-										&result[offset],
+									pos = ::snprintf(
+										&result[offset], (result.size() - offset),
 										"%u%c%u%c%u%c%u%c%u%c%u%c%u%c%u",
 										(this->_buffer[0] << 8) | this->_buffer[1], separator,
 										(this->_buffer[2] << 8) | this->_buffer[3], separator,
@@ -5817,8 +5818,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 									// Перераспределяем объект результата
 									result.resize(offset + 55 + 1);
 									// Выполняем получение IPv6 адреса в 16-м формате
-									pos = ::sprintf(
-										&result[offset],
+									pos = ::snprintf(
+										&result[offset], (result.size() - offset),
 										"%o%c%o%c%o%c%o%c%o%c%o%c%o%c%o",
 										(this->_buffer[0] << 8) | this->_buffer[1], separator,
 										(this->_buffer[2] << 8) | this->_buffer[3], separator,
@@ -5849,8 +5850,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 										// Перераспределяем объект результата
 										result.resize(offset + 32 + 1);
 										// Выполняем получение IPv6 адреса в 16-м формате
-										pos = ::sprintf(
-											&result[offset],
+										pos = ::snprintf(
+											&result[offset], (result.size() - offset),
 											"%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
 											this->_buffer[0], this->_buffer[1],
 											this->_buffer[2], this->_buffer[3],
@@ -5866,8 +5867,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 										// Перераспределяем объект результата
 										result.resize(offset + 39 + 1);
 										// Выполняем получение IPv6 адреса в 16-м формате
-										pos = ::sprintf(
-											&result[offset],
+										pos = ::snprintf(
+											&result[offset], (result.size() - offset),
 											"%02X%02X%c%02X%02X%c%02X%02X%c%02X%02X%c%02X%02X%c%02X%02X%c%02X%02X%c%02X%02X",
 											this->_buffer[0], this->_buffer[1], separator,
 											this->_buffer[2], this->_buffer[3], separator,
@@ -5887,8 +5888,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 										// Перераспределяем объект результата
 										result.resize(offset + 39 + 1);
 										// Возвращаем результат в формате xxxxxxwx.y.z
-										pos = ::sprintf(
-											&result[offset],
+										pos = ::snprintf(
+											&result[offset], (result.size() - offset),
 											"%04X%04X%04X%04X%04X%04X%u.%u.%u.%u",
 											(this->_buffer[0] << 8) | this->_buffer[1],
 											(this->_buffer[2] << 8) | this->_buffer[3],
@@ -5903,8 +5904,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 										// Перераспределяем объект результата
 										result.resize(offset + 45 + 1);
 										// Возвращаем результат в формате x:x:x:x:x:x:w.x.y.z
-										pos = ::sprintf(
-											&result[offset],
+										pos = ::snprintf(
+											&result[offset], (result.size() - offset),
 											"%04X%c%04X%c%04X%c%04X%c%04X%c%04X%c%u.%u.%u.%u",
 											(this->_buffer[0] << 8) | this->_buffer[1], separator,
 											(this->_buffer[2] << 8) | this->_buffer[3], separator,
@@ -5923,8 +5924,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 										// Перераспределяем объект результата
 										result.resize(offset + 45 + 1);
 										// Выполняем получение IPv6 адреса в 16-м формате
-										pos = ::sprintf(
-											&result[offset],
+										pos = ::snprintf(
+											&result[offset], (result.size() - offset),
 											"%03u%03u%03u%03u%03u%03u%03u%03u",
 											(this->_buffer[0] << 8) | this->_buffer[1],
 											(this->_buffer[2] << 8) | this->_buffer[3],
@@ -5940,8 +5941,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 										// Перераспределяем объект результата
 										result.resize(offset + 47 + 1);
 										// Выполняем получение IPv6 адреса в 16-м формате
-										pos = ::sprintf(
-											&result[offset],
+										pos = ::snprintf(
+											&result[offset], (result.size() - offset),
 											"%03u%c%03u%c%03u%c%03u%c%03u%c%03u%c%03u%c%03u",
 											(this->_buffer[0] << 8) | this->_buffer[1], separator,
 											(this->_buffer[2] << 8) | this->_buffer[3], separator,
@@ -5961,8 +5962,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 										// Перераспределяем объект результата
 										result.resize(offset + 48 + 1);
 										// Выполняем получение IPv6 адреса в 16-м формате
-										pos = ::sprintf(
-											&result[offset],
+										pos = ::snprintf(
+											&result[offset], (result.size() - offset),
 											"%03o%03o%03o%03o%03o%03o%03o%03o",
 											(this->_buffer[0] << 8) | this->_buffer[1],
 											(this->_buffer[2] << 8) | this->_buffer[3],
@@ -5978,8 +5979,8 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 										// Перераспределяем объект результата
 										result.resize(offset + 55 + 1);
 										// Выполняем получение IPv6 адреса в 16-м формате
-										pos = ::sprintf(
-											&result[offset],
+										pos = ::snprintf(
+											&result[offset], (result.size() - offset),
 											"%03o%c%03o%c%03o%c%03o%c%03o%c%03o%c%03o%c%03o",
 											(this->_buffer[0] << 8) | this->_buffer[1], separator,
 											(this->_buffer[2] << 8) | this->_buffer[3], separator,

@@ -32,12 +32,10 @@ using namespace awh;
 /**
  * @brief Главная функция приложения
  *
- * @param argc длина массива параметров
- * @param argv массив параметров
- * @return     код выхода из приложения
+ * @return код выхода из приложения
  *
  */
-int32_t main(int32_t argc, char * argv[]){
+int32_t main(){
 	// Создаём объект фреймворка
 	fmk_t fmk;
 	// Создаём объект для работы с логами
@@ -47,7 +45,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Устанавливаем количество дочерних процессов в кластере
 	cluster.count(4);
 	// Устанавливаем функцию обратного вызова на изменение статуса кластера
-	cluster.on <void (const event::status_t)> ("status", [&cluster, &log](const event::status_t status) noexcept -> void {
+	cluster.on <void (const event::status_t)> ("status", [&log](const event::status_t status) noexcept -> void {
 		// Возвращаем статус работы кластера
 		log.print("Cluster status: %s", log_t::flag_t::INFO, (status == event::status_t::LAUNCHED) ? "launched" : "destroyed");
 		/**
@@ -91,22 +89,22 @@ int32_t main(int32_t argc, char * argv[]){
 		}
 	}, placeholders::_1, placeholders::_2);
 	// Устанавливаем функцию обратного вызова на событие пересоздания процесса
-	cluster.on <void (const pid_t, const pid_t)> ("rebase", [&cluster, &log](const pid_t old_pid, const pid_t new_pid) noexcept -> void {
+	cluster.on <void (const pid_t, const pid_t)> ("rebase", [&log](const pid_t old_pid, const pid_t new_pid) noexcept -> void {
 		// Возвращаем событие перезапуска процесса
 		log.print("Cluster process [%u] has been reborn as process [%u]", log_t::flag_t::INFO, old_pid, new_pid);
 	}, placeholders::_1, placeholders::_2);
 	// Устанавливаем функцию обратного вызова на событие получения ошибок
-	cluster.on <void (const pid_t, const event::error_t, const string &)> ("error", [&cluster, &log](const pid_t pid, const event::error_t error, const string & message) noexcept -> void {
+	cluster.on <void (const pid_t, const event::error_t, const string &)> ("error", [&log](const pid_t pid, const event::error_t error, const string & message) noexcept -> void {
 		// Возвращаем событие получения ошибки
 		log.print("Cluster process [%u] has received error [%d]: %s", log_t::flag_t::CRITICAL, pid, static_cast <uint16_t >(error), message.c_str());
 	}, placeholders::_1, placeholders::_2, placeholders::_3);
 	// Устанавливаем функцию обратного вызова на событие отправки сообщений
-	cluster.on <void (const pid_t, const size_t)> ("sending", [&cluster, &log](const pid_t pid, const size_t size) noexcept -> void {
+	cluster.on <void (const pid_t, const size_t)> ("sending", [&log](const pid_t pid, const size_t size) noexcept -> void {
 		// Возвращаем событие записи сообщения
 		log.print("Cluster process [%u] has sent message: %zu bytes, from PID=%u,", log_t::flag_t::INFO, ::getpid(), size, pid);
 	}, placeholders::_1, placeholders::_2);
 	// Устанавливаем функцию обратного вызова на событие получения сообщений
-	cluster.on <void (const pid_t, const uint8_t *, const size_t)> ("message", [&cluster, &log](const pid_t pid, const uint8_t * data, const size_t size) noexcept -> void {
+	cluster.on <void (const pid_t, const uint8_t *, const size_t)> ("message", [&log](const pid_t pid, const uint8_t * data, const size_t size) noexcept -> void {
 		// Текст входящего сообщения
 		const string message(reinterpret_cast <const char *> (data), size);
 		// Возвращаем событие получения сообщения
@@ -120,17 +118,17 @@ int32_t main(int32_t argc, char * argv[]){
 		 */
 	}, placeholders::_1, placeholders::_2, placeholders::_3);
 	// Устанавливаем функцию обратного вызова на событие доступности очереди сообщений
-	cluster.on <void (const pid_t, const event::status_t, const size_t)> ("available", [&cluster, &log](const pid_t pid, const event::status_t status, const size_t size) noexcept -> void {
+	cluster.on <void (const pid_t, const event::status_t, const size_t)> ("available", [&log](const pid_t pid, const event::status_t status, const size_t size) noexcept -> void {
 		// Возвращаем событие доступности очереди сообщений
 		log.print("Cluster process [%u] has message queue availability: %zu bytes, status: %s", log_t::flag_t::INFO, pid, size, (status == event::status_t::QUEUE_OVERFLOW) ? "overflow" : "available");
 	}, placeholders::_1, placeholders::_2, placeholders::_3);
 	// Устанавливаем функцию обратного вызова на событие изменения статуса процесса
-	cluster.on <void (const pid_t, const event::status_t)> ("state", [&cluster, &log](const pid_t pid, const event::status_t status) noexcept -> void {
+	cluster.on <void (const pid_t, const event::status_t)> ("state", [&log](const pid_t pid, const event::status_t status) noexcept -> void {
 		// Возвращаем событие изменения статуса
 		log.print("Cluster process [%u] state: %d", log_t::flag_t::INFO, pid, static_cast <uint16_t> (status));
 	}, placeholders::_1, placeholders::_2);
 	// Устанавливаем функцию обратного вызова на событие завершения процесса
-	cluster.on <void (const pid_t, const int32_t)> ("exit", [&cluster, &log](const pid_t pid, const int32_t status) noexcept -> void {
+	cluster.on <void (const pid_t, const int32_t)> ("exit", [&log](const pid_t pid, const int32_t status) noexcept -> void {
 		/**
 		 * Состояние завершения приходит в том виде, в каком его отдаёт система, и к
 		 * общему виду между системами не приводится: у POSIX это упакованное состояние

@@ -519,10 +519,10 @@ TEST_F(IndexFixture, EntryBeyondChunk) {
 			// Выполняем сборку очередной записи
 			const vector <uint8_t> item = record(string{"запись номер "} + to_string(i));
 			// Выполняем внесение очередной записи в собираемый контейнер
-			assembler.append(item.data(), item.size(), abc::payload_t::TEXT);
+			ASSERT_TRUE(assembler.append(item.data(), item.size(), abc::payload_t::TEXT));
 		}
 		// Выполняем завершение сборки контейнера
-		assembler.complete(result);
+		ASSERT_TRUE(assembler.complete(result));
 	};
 	// Октеты собранного контейнера
 	vector <uint8_t> pristine;

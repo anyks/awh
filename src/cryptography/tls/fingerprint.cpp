@@ -1528,7 +1528,7 @@ namespace fingerprint {
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
 	 *
 	 */
-	static void parseGrease(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+	static void parseGrease([[maybe_unused]] const uint8_t * buffer, [[maybe_unused]] const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение GREASE в список расширений браузера
 		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_grease_t> ());
 	}
@@ -1541,7 +1541,7 @@ namespace fingerprint {
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
 	 *
 	 */
-	static void parseEncryptThenMAC(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+	static void parseEncryptThenMAC([[maybe_unused]] const uint8_t * buffer, [[maybe_unused]] const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение encrypt_then_mac в список расширений браузера
 		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_encrypt_then_mac_t> ());
 	}
@@ -1554,7 +1554,7 @@ namespace fingerprint {
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
 	 *
 	 */
-	static void parseCertificateTimestamp(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+	static void parseCertificateTimestamp([[maybe_unused]] const uint8_t * buffer, [[maybe_unused]] const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение signed_certificate_timestamp в список расширений браузера
 		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_signed_certificate_timestamp_t> ());
 	}
@@ -1567,7 +1567,7 @@ namespace fingerprint {
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
 	 *
 	 */
-	static void parseClientCertificateType(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+	static void parseClientCertificateType([[maybe_unused]] const uint8_t * buffer, [[maybe_unused]] const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение client_certificate_type в список расширений браузера
 		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_client_certificate_type_t> ());
 	}
@@ -1580,7 +1580,7 @@ namespace fingerprint {
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
 	 *
 	 */
-	static void parseServerCertificateType(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+	static void parseServerCertificateType([[maybe_unused]] const uint8_t * buffer, [[maybe_unused]] const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение server_certificate_type в список расширений браузера
 		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_server_certificate_type_t> ());
 	}
@@ -1593,7 +1593,7 @@ namespace fingerprint {
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
 	 *
 	 */
-	static void parseExtendedMasterSecret(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+	static void parseExtendedMasterSecret([[maybe_unused]] const uint8_t * buffer, [[maybe_unused]] const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение extended_master_secret в список расширений браузера
 		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_extended_master_secret_t> ());
 	}
@@ -1606,7 +1606,7 @@ namespace fingerprint {
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
 	 *
 	 */
-	static void postHandshakeAuth(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+	static void postHandshakeAuth([[maybe_unused]] const uint8_t * buffer, [[maybe_unused]] const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение post_handshake_auth в список расширений браузера
 		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_post_handshake_auth_t> ());
 	}
@@ -1619,7 +1619,7 @@ namespace fingerprint {
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
 	 *
 	 */
-	static void parseOIDFilters(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+	static void parseOIDFilters([[maybe_unused]] const uint8_t * buffer, [[maybe_unused]] const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение oid_filters в список расширений браузера
 		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_oid_filters_t> ());
 	}
@@ -1632,7 +1632,7 @@ namespace fingerprint {
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
 	 *
 	 */
-	static void parseTransparencyInfo(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+	static void parseTransparencyInfo([[maybe_unused]] const uint8_t * buffer, [[maybe_unused]] const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение transparency_info в список расширений браузера
 		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_transparency_info_t> ());
 	}
@@ -1664,7 +1664,7 @@ namespace fingerprint {
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
 	 *
 	 */
-	static void parsePadding(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+	static void parsePadding([[maybe_unused]] const uint8_t * buffer, [[maybe_unused]] const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение padding в список расширений браузера
 		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_padding_t> ());
 		// Устанавливаем размер данных расширения padding в объект расширения padding
@@ -1734,7 +1734,7 @@ namespace fingerprint {
 		// Определяем размер данных расширения cookie
 		const uint16_t length = ::local::u16(buffer);
 		// Если количество данных расширения cookie достаточно для парсинга
-		if((length > 0) && (size >= (2 + length))){
+		if((length > 0) && (size >= (static_cast <size_t> (length) + 2))){
 			// Устанавливаем размер данных расширения cookie в объект расширения cookie
 			awh_cast <awh::tls::fgp_t::extension_cookie_t *> (browser.extensions.back().get())->data.resize(length);
 			// Копируем данные расширения cookie из буфера в блок данных расширения cookie
@@ -1937,7 +1937,7 @@ namespace fingerprint {
 		// Получаем количество поддерживаемых режимов обмена ключами PSK из первого байта данных расширения
 		const uint8_t count = buffer[0];
 		// Если количество поддерживаемых режимов обмена ключами PSK равно нулю или данных в буфере недостаточно для парсинга, то выходим из функции
-		if((count == 0) || (size < (1 + count)))
+		if((count == 0) || (size < (static_cast <size_t> (count) + 1)))
 			// Выходим из функции
 			return;
 		/**
@@ -3258,7 +3258,7 @@ namespace fingerprint {
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
 	 *
 	 */
-	static void parseChannelID(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+	static void parseChannelID([[maybe_unused]] const uint8_t * buffer, [[maybe_unused]] const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение channel_id в список расширений браузера
 		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_channel_id_t> ());
 	}
@@ -3273,7 +3273,7 @@ namespace fingerprint {
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
 	 *
 	 */
-	static void parseTrustAnchors(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+	static void parseTrustAnchors([[maybe_unused]] const uint8_t * buffer, [[maybe_unused]] const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение trust_anchors в список расширений браузера
 		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_trust_anchors_t> ());
 	}
@@ -5282,7 +5282,7 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 			// Имя шифра: GREASE или реальное название
 			const char * name = (browser.ciphers[i] == cipher_t::GREASE) ? "[GREASE]" : ::local::cipherName(wire);
 			// Выравниваем имена по столбцу 40
-			char index[8];
+			char index[24];
 			// Формируем индекс шифра в виде "[ i ]"
 			::snprintf(index, sizeof(index), "[%2zu]", i);
 			// Печатаем индекс, имя шифра с выравниванием и его wire-код в виде "0x%04X"
@@ -5320,7 +5320,7 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 			// Получаем wire-код метода сжатия
 			const uint8_t wire = ::local::compressorWire(browser.compressors[i]);
 			// Буфер для индекса метода сжатия
-			char index[8];
+			char index[24];
 			// Формируем индекс метода сжатия в виде "[ i ]"
 			::snprintf(index, sizeof(index), "[%2zu]", i);
 			// Печатаем индекс, имя метода сжатия и его wire-код в виде "0x%02X"
@@ -5348,7 +5348,7 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 			// Получаем wire-код расширения (0xFFFF — неизвестное)
 			const uint16_t wire = ::local::extensionWire(ext->type);
 			// Буфер для индекса расширения
-			char index[8];
+			char index[24];
 			// Формируем индекс расширения в виде "[ i ]"
 			::snprintf(index, sizeof(index), "[%2zu]", i);
 			// GREASE расширение: выводим специальный маркер и переходим к следующему
@@ -6340,7 +6340,7 @@ bool awh::tls::Fingerprint::imprint(const browser_t & browser, imprint_t & resul
 				// Если длина первого протокола ALPN больше или равна 2, используем первые 2 символа, иначе дополняем до 2 символов нулями
 				if(p0.size() >= 2)
 					// Используем первые 2 символа первого протокола ALPN для alpn2 в JA4
-					alpn2 = ::move(p0.substr(0, 2));
+					alpn2 = p0.substr(0, 2);
 				// Если длина первого протокола ALPN равна 1, используем этот символ и дополняем до 2 символов нулями
 				else if(p0.size() == 1)
 					// Используем первый символ первого протокола ALPN и дополняем до 2 символов нулями для alpn2 в JA4

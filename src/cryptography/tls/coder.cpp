@@ -767,8 +767,14 @@ namespace state {
 	/**
 	 * @brief Флаг проверки режима безсостояния TLS
 	 *
+	 * @details Признак и обе работы с куками (generate, verify) заведены заделом под
+	 *          DTLS и покуда не зовутся: настройка их идёт через
+	 *          SSL_CTX_set_stateless_cookie_*_cb, а у BoringSSL этого API нет вовсе
+	 *          (см. отбор по протоколу подключения). Пометка объявляет неупотребление
+	 *          намеренным - снимать задел ради предупреждения не следует
+	 *
 	 */
-	static constexpr uint8_t STATELESS_MODE = 0x04;
+	[[maybe_unused]] static constexpr uint8_t STATELESS_MODE = 0x04;
 	/**
 	 * @brief Флаг работы в мультисертификатном режиме
 	 *
@@ -837,10 +843,14 @@ namespace {
 	/**
 	 * @brief Метод проверки статуса участника обмена как мусорного
 	 *
+	 * @details Покуда не зовётся: деструктор охранника сличает то же условие сам, и
+	 *          порог счётчика ссылок у него иной - нуль после снятия своей ссылки
+	 *          против единицы здесь. Пометка объявляет неупотребление намеренным
+	 *
 	 * @return результат проверки
 	 *
 	 */
-	bool Guard_Transport_Layer_Security::garbage() const noexcept {
+	[[maybe_unused]] bool Guard_Transport_Layer_Security::garbage() const noexcept {
 		// Проверяем статус участника обмена
 		return (
 			(this->_member->state & ::state::GARBAGE_MODE) &&
@@ -2226,7 +2236,7 @@ namespace cookie {
 	 * @return       результат проверки
 	 *
 	 */
-	static int32_t generate(SSL * ssl, uint8_t * cookie, uint32_t * size) noexcept {
+	[[maybe_unused]] static int32_t generate(SSL * ssl, uint8_t * cookie, uint32_t * size) noexcept {
 		// Получаем объект уровня защищённых сокетов
 		auto member = reinterpret_cast <::ctl_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[0]));
 		// Создаём охранника участника обмена защищёнными данными
@@ -2359,7 +2369,7 @@ namespace cookie {
 	 * @return       результат проверки
 	 *
 	 */
-	static int32_t verify(SSL * ssl, const uint8_t * cookie, uint32_t size) noexcept {
+	[[maybe_unused]] static int32_t verify(SSL * ssl, const uint8_t * cookie, uint32_t size) noexcept {
 		// Получаем объект уровня защищённых сокетов
 		auto member = reinterpret_cast <::ctl_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[0]));
 		// Создаём охранника участника обмена защищёнными данными
@@ -2574,7 +2584,7 @@ namespace verify {
 	 * @return    результат обработки
 	 *
 	 */
-	static int32_t matchSNI(SSL * ssl, int32_t * al, [[maybe_unused]] void * ctx) noexcept {
+	static int32_t matchSNI(SSL * ssl, [[maybe_unused]] int32_t * al, [[maybe_unused]] void * ctx) noexcept {
 		// Переменная результата
 		int32_t result = SSL_TLSEXT_ERR_NOACK;
 		// Получаем название хоста (SNI) от клиента
@@ -2684,7 +2694,14 @@ namespace verify {
 				/**
 				 * Проверяем каждый элемент SAN
 				 */
-				for(int32_t i = 0; i < sk_GENERAL_NAME_num(san); i++){
+				/**
+				 * Количество снимается прежде перебора: разрядность отдачи у разновидностей
+				 * библиотеки криптографии разнится - у одной она знаковая, у другой нет, -
+				 * и сличение с нею прямо расходится в предупреждении на одной из них
+				 */
+				// Количество элементов SAN
+				const int32_t count = static_cast <int32_t> (sk_GENERAL_NAME_num(san));
+				for(int32_t i = 0; i < count; i++){
 					// Извлекаем элемент SAN
 					const GENERAL_NAME * cn = sk_GENERAL_NAME_value(san, i);
 					// Проверяем тип имени
@@ -3247,14 +3264,27 @@ string awh::tls::Coder::info(const id_t id) const noexcept {
 						BIO * bio = ::BIO_new(::BIO_s_mem());
 						// Извлекаем срока начала действия сертификата
 						::ASN1_TIME_print(bio, before);
+						/**
+						 * Итог чтения проверяется, а не отбрасывается: при неудаче буфер
+						 * остаётся неразмеченным, и запись его в отчёт вынесла бы наружу
+						 * содержимое ячейки стека под видом срока действия сертификата
+						 */
 						// Извлекаем данные срока начала действия сертификата
 						int32_t length = ::BIO_gets(bio, bufferBefore, sizeof(bufferBefore));
+						// Если срок начала действия сертификата вычитать не удалось
+						if(length <= 0)
+							// Выполняем разметку буфера пустой строкой
+							bufferBefore[0] = '\0';
 						// Выполняем сброс BIO
 						BIO_reset(bio);
 						// Извлекаем срока окончания действия сертификата
 						::ASN1_TIME_print(bio, after);
 						// Извлекаем данные срока окончания действия сертификата
 						length = ::BIO_gets(bio, bufferAfter, sizeof(bufferAfter));
+						// Если срок окончания действия сертификата вычитать не удалось
+						if(length <= 0)
+							// Выполняем разметку буфера пустой строкой
+							bufferAfter[0] = '\0';
 						// Выполняем сброс BIO
 						BIO_reset(bio);
 						// Добавляем информацию о сроках действия сертификата
@@ -3520,7 +3550,7 @@ string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
 						// Если информация получена
 						if(length > 0)
 							// Возвращаем параметры шифрования
-							result = ::move(this->_fmk->format("%sCertificate Revocation List: %s\n", result.c_str(), string(data, length).c_str()));
+							result = this->_fmk->format("%sCertificate Revocation List: %s\n", result.c_str(), string(data, length).c_str());
 						// Выполняем очистку BIO
 						::BIO_free(bio);
 					}
@@ -3643,13 +3673,13 @@ string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
 									// Получаем название сертификата
 									::X509_NAME_oneline(::X509_get_subject_name(x509), buffer, sizeof(buffer));
 									// Формируем результат
-									result = ::move(this->_fmk->format("%sClient peer certificates:\nSubject: %s\n", result.c_str(), buffer));
+									result = this->_fmk->format("%sClient peer certificates:\nSubject: %s\n", result.c_str(), buffer);
 									// Получаем эмитента выпустившего сертификат
 									::X509_NAME_oneline(::X509_get_issuer_name(x509), buffer, sizeof(buffer));
 									// Формируем результат
-									result = ::move(this->_fmk->format("%sIssuer: %s\n", result.c_str(), buffer));
+									result = this->_fmk->format("%sIssuer: %s\n", result.c_str(), buffer);
 									// Возвращаем параметры шифрования
-									result = ::move(this->_fmk->format("%sCipher: %s\n", result.c_str(), ::SSL_CIPHER_get_name(::SSL_get_current_cipher(member->ssl))));
+									result = this->_fmk->format("%sCipher: %s\n", result.c_str(), ::SSL_CIPHER_get_name(::SSL_get_current_cipher(member->ssl)));
 								}
 								// Выполняем получение сертификата сервера
 								x509 = ::SSL_get_peer_certificate(member->ssl);
@@ -3658,13 +3688,13 @@ string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
 									// Получаем название сертификата
 									::X509_NAME_oneline(::X509_get_subject_name(x509), buffer, sizeof(buffer));
 									// Формируем результат
-									result = ::move(this->_fmk->format("%s\nServer peer certificates:\nSubject: %s\n", result.c_str(), buffer));
+									result = this->_fmk->format("%s\nServer peer certificates:\nSubject: %s\n", result.c_str(), buffer);
 									// Получаем эмитента выпустившего сертификат
 									::X509_NAME_oneline(::X509_get_issuer_name(x509), buffer, sizeof(buffer));
 									// Формируем результат
-									result = ::move(this->_fmk->format("%sIssuer: %s\n", result.c_str(), buffer));
+									result = this->_fmk->format("%sIssuer: %s\n", result.c_str(), buffer);
 									// Возвращаем параметры шифрования
-									result = ::move(this->_fmk->format("%sCipher: %s\n", result.c_str(), ::SSL_CIPHER_get_name(::SSL_get_current_cipher(member->ssl))));
+									result = this->_fmk->format("%sCipher: %s\n", result.c_str(), ::SSL_CIPHER_get_name(::SSL_get_current_cipher(member->ssl)));
 									// Освобождаем объект сертификата
 									::X509_free(x509);
 								}
@@ -3680,13 +3710,13 @@ string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
 									// Получаем название сертификата
 									::X509_NAME_oneline(::X509_get_subject_name(x509), buffer, sizeof(buffer));
 									// Формируем результат
-									result = ::move(this->_fmk->format("%sPeer certificates:\nSubject: %s\n", result.c_str(), buffer));
+									result = this->_fmk->format("%sPeer certificates:\nSubject: %s\n", result.c_str(), buffer);
 									// Получаем эмитента выпустившего сертификат
 									::X509_NAME_oneline(::X509_get_issuer_name(x509), buffer, sizeof(buffer));
 									// Формируем результат
-									result = ::move(this->_fmk->format("%sIssuer: %s\n", result.c_str(), buffer));
+									result = this->_fmk->format("%sIssuer: %s\n", result.c_str(), buffer);
 									// Возвращаем параметры шифрования
-									result = ::move(this->_fmk->format("%sCipher: %s\n", result.c_str(), ::SSL_CIPHER_get_name(::SSL_get_current_cipher(member->ssl))));
+									result = this->_fmk->format("%sCipher: %s\n", result.c_str(), ::SSL_CIPHER_get_name(::SSL_get_current_cipher(member->ssl)));
 								}
 							} break;
 						}
@@ -3766,7 +3796,7 @@ string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
 						// Если информация получена
 						if(length > 0)
 							// Возвращаем параметры шифрования
-							result = ::move(this->_fmk->format("%sCertificate Revocation List: %s\n", result.c_str(), string(data, length).c_str()));
+							result = this->_fmk->format("%sCertificate Revocation List: %s\n", result.c_str(), string(data, length).c_str());
 						// Выполняем очистку BIO
 						::BIO_free(bio);
 					}
@@ -3944,11 +3974,11 @@ string awh::tls::Coder::certificateInfo(const id_t id) const noexcept {
 								// Получаем название сертификата
 								::X509_NAME_oneline(::X509_get_subject_name(x509), buffer, sizeof(buffer));
 								// Формируем результат
-								result = ::move(this->_fmk->format("Peer certificates:\nSubject: %s\n", buffer));
+								result = this->_fmk->format("Peer certificates:\nSubject: %s\n", buffer);
 								// Получаем эмитента выпустившего сертификат
 								::X509_NAME_oneline(::X509_get_issuer_name(x509), buffer, sizeof(buffer));
 								// Формируем результат
-								result = ::move(this->_fmk->format("%sIssuer: %s\n", result.c_str(), buffer));
+								result = this->_fmk->format("%sIssuer: %s\n", result.c_str(), buffer);
 								// Освобождаем объект сертификата
 								::X509_free(x509);
 							}
@@ -3964,11 +3994,11 @@ string awh::tls::Coder::certificateInfo(const id_t id) const noexcept {
 								// Получаем название сертификата
 								::X509_NAME_oneline(::X509_get_subject_name(x509), buffer, sizeof(buffer));
 								// Формируем результат
-								result = ::move(this->_fmk->format("Peer certificates:\nSubject: %s\n", buffer));
+								result = this->_fmk->format("Peer certificates:\nSubject: %s\n", buffer);
 								// Получаем эмитента выпустившего сертификат
 								::X509_NAME_oneline(::X509_get_issuer_name(x509), buffer, sizeof(buffer));
 								// Формируем результат
-								result = ::move(this->_fmk->format("%sIssuer: %s\n", result.c_str(), buffer));
+								result = this->_fmk->format("%sIssuer: %s\n", result.c_str(), buffer);
 							}
 						} break;
 					}
@@ -4941,7 +4971,14 @@ bool awh::tls::Coder::validateCertificate(const id_t id) const noexcept {
 						/**
 						 * Проверяем каждый элемент SAN
 						 */
-						for(int32_t i = 0; i < sk_GENERAL_NAME_num(san); i++){
+						/**
+						 * Количество снимается прежде перебора: разрядность отдачи у разновидностей
+						 * библиотеки криптографии разнится - у одной она знаковая, у другой нет, -
+						 * и сличение с нею прямо расходится в предупреждении на одной из них
+						 */
+						// Количество элементов SAN
+						const int32_t count = static_cast <int32_t> (sk_GENERAL_NAME_num(san));
+						for(int32_t i = 0; i < count; i++){
 							// Извлекаем элемент SAN
 							const GENERAL_NAME * cn = sk_GENERAL_NAME_value(san, i);
 							// Проверяем тип имени
@@ -11131,9 +11168,9 @@ void awh::tls::Coder::ca(const id_t id, string_view dir, string_view file) noexc
 							// Если последний символ каталога является разделителем
 							if(dir.back() == AWH_FS_SEPARATOR[0])
 								// Формируем полный путь к файлу центра сертификации
-								filename = ::move(this->_fmk->format("%s%s", dir.data(), file.data()));
+								filename = this->_fmk->format("%s%s", dir.data(), file.data());
 							// Формируем полный путь к файлу центра сертификации
-							else filename = ::move(this->_fmk->format("%s%s%s", dir.data(), AWH_FS_SEPARATOR, file.data()));
+							else filename = this->_fmk->format("%s%s%s", dir.data(), AWH_FS_SEPARATOR, file.data());
 							// Загружаем местоположение центра сертификации
 							if(::X509_STORE_load_locations(store, filename.data(), nullptr) != 1){
 								// Если функция обратного вызова состояния установлена
@@ -11255,9 +11292,9 @@ void awh::tls::Coder::ca(const id_t id, string_view dir, string_view file) noexc
 							// Если последний символ каталога является разделителем
 							if(dir.back() == AWH_FS_SEPARATOR[0])
 								// Формируем полный путь к файлу центра сертификации
-								filename = ::move(this->_fmk->format("%s%s", dir.data(), file.data()));
+								filename = this->_fmk->format("%s%s", dir.data(), file.data());
 							// Формируем полный путь к файлу центра сертификации
-							else filename = ::move(this->_fmk->format("%s%s%s", dir.data(), AWH_FS_SEPARATOR, file.data()));
+							else filename = this->_fmk->format("%s%s%s", dir.data(), AWH_FS_SEPARATOR, file.data());
 							// Загружаем местоположение центра сертификации
 							if(::X509_STORE_load_locations(store, filename.data(), nullptr) != 1){
 								// Если функция обратного вызова состояния установлена

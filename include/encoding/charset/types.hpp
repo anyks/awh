@@ -37,6 +37,7 @@
 /**
  * Стандартные заголовочные файлы
  */
+#include <cstddef>
 #include <cstdint>
 
 /**

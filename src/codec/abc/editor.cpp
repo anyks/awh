@@ -1612,6 +1612,7 @@ awh::codec::abc::Editor::~Editor() noexcept {
  *
  */
 awh::codec::abc::Editor::Editor(const log_t * log) noexcept :
+ _merkle(log), _signer(nullptr), _hash(crypto_t::hash_t::SHA256), _index(log), _packer(log),
  _error(error_t::NONE), _opened(false), _length(0), _garbage(0), _number(0),
- _kind(payload_t::MIXED), _origin(0), _cached(false), _tailed(false), _dirty(false),
- _packer(log), _index(log), _merkle(log), _signer(nullptr), _hash(crypto_t::hash_t::SHA256), _source(nullptr), _sink(nullptr), _log(log) {}
+ _kind(payload_t::MIXED), _tailed(false), _dirty(false), _origin(0), _cached(false),
+ _source(nullptr), _sink(nullptr), _log(log) {}

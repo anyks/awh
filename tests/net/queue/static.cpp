@@ -784,10 +784,6 @@ TEST_F(NetworkQueueFixture, DISABLED_LatencyBenchmark){
 	constexpr size_t FILL = 60000;
 	// Блок данных для записи
 	std::vector <uint8_t> payload(BLOCK, 0x33);
-	// Указатель на данные в очереди
-	const void * ptr = nullptr;
-	// Размер данных при чтении
-	size_t size = 0;
 	/**
 	 * @brief Лямбда измерения латентности push для заданного типа очереди
 	 *

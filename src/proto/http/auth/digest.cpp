@@ -239,7 +239,7 @@ string awh::http::Digest::response(const string & user, const string & pass) con
 			// Собираем строку HA1 без промежуточного format()
 			ha1Input.append(user).append(1, ':').append(digest.realm).append(1, ':').append(pass);
 			// Выполняем хэширование первого этапа
-			string ha1 = ::move(this->_crypto->hash <string> (ha1Input, hash));
+			string ha1 = this->_crypto->hash <string> (ha1Input, hash);
 			// Если используется сессионный режим (-sess): HA1 = H(HA1:nonce:cnonce)
 			if(!ha1.empty() && digest.mode.sess){
 				// Формируем строку для сессионного пересчёта HA1
@@ -249,7 +249,7 @@ string awh::http::Digest::response(const string & user, const string & pass) con
 				// Собираем строку сессионного HA1
 				sessInput.append(ha1).append(1, ':').append(digest.nonce).append(1, ':').append(digest.cnonce);
 				// Пересчитываем первый этап с учётом nonce и cnonce
-				ha1 = ::move(this->_crypto->hash <string> (sessInput, hash));
+				ha1 = this->_crypto->hash <string> (sessInput, hash);
 			}
 			// Если первый этап расчёта получен
 			if(!ha1.empty()){
@@ -290,7 +290,7 @@ string awh::http::Digest::response(const string & user, const string & pass) con
 						responseInput.append(ha1).append(1, ':').append(digest.nonce).append(1, ':').append(ha2);
 					}
 					// Формируем итоговый ответ
-					result = ::move(this->_crypto->hash <string> (responseInput, hash));
+					result = this->_crypto->hash <string> (responseInput, hash);
 				}
 			}
 		/**
@@ -610,7 +610,7 @@ bool awh::http::Digest::parse(const string_view header) noexcept {
 					// Если значение обёрнуто в кавычки - удаляем их
 					if((value.length() > 1) && (value.front() == '"') && (value.back() == '"'))
 						// Снимаем обрамляющие кавычки
-						value = ::move(value.substr(1, value.length() - 2));
+						value = value.substr(1, value.length() - 2);
 					// Если параметр является именем пользователя
 					if(key.compare("username") == 0)
 						// Устанавливаем логин пользователя

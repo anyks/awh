@@ -1083,7 +1083,7 @@ TEST_F(ParserFixture, SendDataSourceBeforeHeadersTest){
 	// Позиция чтения эталонного тела источником данных
 	size_t position = 0;
 	// Назначаем pull-источник данных тела ДО отправки заголовков
-	sender->dataSource(parser_http_t::data_source_callback_t([&expected, &position](const uint32_t sid, uint8_t * buffer, const size_t cap, bool & eof) noexcept -> int64_t {
+	sender->dataSource(parser_http_t::data_source_callback_t([&expected, &position]([[maybe_unused]] const uint32_t sid, uint8_t * buffer, const size_t cap, bool & eof) noexcept -> int64_t {
 		// Вычисляем размер выдаваемой порции данных
 		const size_t size = std::min(cap, (expected.size() - position));
 		// Копируем порцию эталонного тела в буфер парсера
@@ -1228,7 +1228,7 @@ TEST_F(ParserFixture, SendDataSourceResumeTest){
 	// Отправляем заголовки ответа (тело последует из pull-источника данных)
 	sender->sendHeaders(response, false);
 	// Назначаем pull-источник данных тела сообщения
-	sender->dataSource(parser_http_t::data_source_callback_t([&expected, &position](const uint32_t sid, uint8_t * buffer, const size_t cap, bool & eof) noexcept -> int64_t {
+	sender->dataSource(parser_http_t::data_source_callback_t([&expected, &position]([[maybe_unused]] const uint32_t sid, uint8_t * buffer, const size_t cap, bool & eof) noexcept -> int64_t {
 		// Вычисляем размер выдаваемой порции данных
 		const size_t size = std::min(cap, (expected.size() - position));
 		// Копируем порцию эталонного тела в буфер парсера

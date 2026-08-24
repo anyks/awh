@@ -489,7 +489,7 @@ void awh::Logging::FileSink::retention() const noexcept {
 				if((name.length() > (base.length() + 3)) && (name.compare(0, base.length(), base) == 0) &&
 				   (name[base.length()] == '_') && (name.compare(name.length() - 3, 3, ".gz") == 0)){
 					// Структура для получения статистики файла
-					struct stat info{0};
+					struct stat info{};
 					// Формируем полный путь к архиву
 					const string full = (dir + name);
 					// Получаем время модификации архива
@@ -559,7 +559,7 @@ string awh::Logging::FileSink::nextArchive() const noexcept {
 			// Подавляем предупреждение о неиспользуемом параметре захвата
 			(void) self;
 			// Структура для получения статистики файла
-			struct stat info{0};
+			struct stat info{};
 			// Проверяем существование файла
 			return (::stat(path.c_str(), &info) == 0);
 		#endif
@@ -1451,8 +1451,8 @@ awh::Logging::Logging(const fmk_t * fmk, string_view filename) noexcept :
  _async(false), _level(level_t::ALL), _sep(separator_t::ALWAYS),
  _name{AWH_SHORT_NAME}, _format{DATE_FORMAT}, _filename{filename},
  _maxSize(MAX_SIZE_LOGFILE), _sepSize(0x400), _maxQueue(0), _maxFiles(0),
- _chrono(fmk, this), _overflow(overflow_t::DROP_OLD), _counter{1},
- _pid(0), _screen(Screen <payload_t>::health_t::DEAD), _callback(nullptr), _fmk(fmk) {
+ _chrono(fmk, this), _overflow(overflow_t::DROP_OLD), _pid(0),
+ _counter{1}, _screen(Screen <payload_t>::health_t::DEAD), _callback(nullptr), _fmk(fmk) {
 	// Запоминаем идентификатор родительского процесса
 	this->_pid = ::getpid();
 	/**

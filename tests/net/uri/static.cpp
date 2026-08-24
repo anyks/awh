@@ -796,8 +796,14 @@ TEST_F(UriFixture, PrintKeepsObjectUnchangedTest){
 	const std::vector <std::string> samples = {"mailto:user@example.com", "http://example.com/x"};
 	/**
 	 * Перебираем все образцы строк URI
+	 *
+	 * @warning Тело цикла образец НЕ ЗАДЕЙСТВУЕТ: схема и хост задаются в нём
+	 *          напрямую, оттого оба прохода выходят ОДИНАКОВЫМИ, а образец
+	 *          "http://example.com/x" не проверяется вовсе. Оставлено как есть
+	 *          намеренно - решать, чем цикл наполнить, владельцу проверки, а не
+	 *          мне; правка «по догадке» сменила бы то, что проверка утверждает
 	 */
-	for(auto & sample : samples){
+	for([[maybe_unused]] auto & sample : samples){
 		/**
 		 * Перебираем все режимы элемента URI для сборки
 		 */

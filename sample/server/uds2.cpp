@@ -41,7 +41,7 @@ using namespace placeholders;
 class Executor {
 	private:
 		// Объект фреймворка
-		const fmk_t * _fmk;
+		[[maybe_unused]] const fmk_t * _fmk;
 		// Объект работы с логами
 		const log_t * _log;
 	public:
@@ -52,7 +52,7 @@ class Executor {
 		 * @param size размер данных для записи
 		 *
 		 */
-		void write(const event::id_t eid, const size_t size, [[maybe_unused]] void * ctx) noexcept {
+		void write([[maybe_unused]] const event::id_t eid, const size_t size, [[maybe_unused]] void * ctx) noexcept {
 			// Записываем в лог информацию о событии записи данных клиентом
 			this->_log->print("Client write event: %zu bytes", log_t::flag_t::INFO, size);
 		}
@@ -84,7 +84,7 @@ class Executor {
 		 * @param server объект сервера
 		 *
 		 */
-		void status(const event::status_t status, server_t * server) noexcept {
+		void status(const event::status_t status, [[maybe_unused]] server_t * server) noexcept {
 			/**
 			 * Определяем состояние сервера
 			 */
@@ -110,7 +110,7 @@ class Executor {
 		 * @param server объект сервера
 		 *
 		 */
-		void accept([[maybe_unused]] const event::id_t eid, const event::id_t cid, const tls::coder_t::id_t tid, server_t * server) noexcept {
+		void accept([[maybe_unused]] const event::id_t eid, const event::id_t cid, [[maybe_unused]] const tls::coder_t::id_t tid, server_t * server) noexcept {
 			// Записываем в лог сообщение об успешной установке опций события
 			cout << " Connection established: " << server->getAddress(cid, event::address_t::UDS) << endl;
 		}
@@ -153,12 +153,10 @@ class Executor {
 /**
  * @brief Главная функция приложения
  *
- * @param argc длина массива параметров
- * @param argv массив параметров
- * @return     код выхода из приложения
+ * @return код выхода из приложения
  *
  */
-int32_t main(int32_t argc, char * argv[]){
+int32_t main(){
 	// Создаём объект фреймворка
 	fmk_t fmk;
 	// Создаём объект логирования

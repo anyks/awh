@@ -1369,7 +1369,7 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 						// Получаем конечное значение итератора
 						char * end = (&buffer[0] + size);
 						// Создаём объект подключения
-						struct sockaddr_in6 addr{0};
+						struct sockaddr_in6 addr{};
 						// Копируем IP-адрес в структуру подключения
 						::memcpy(&addr.sin6_addr, &awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], sizeof(addr.sin6_addr));
 						/**
@@ -1468,8 +1468,8 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 										if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], __awh_zero_ipv6__, 16) == 0)
 											// Копируем IP-адрес в результат
 											::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], &sin->sin6_addr, sizeof(in6_addr));
-											// Проставляем зону адресу, которому она нужна
-											::scope(source);
+										// Проставляем зону адресу, которому она нужна
+										::scope(source);
 										// Выходим из цикла
 										break;
 									}
@@ -1613,7 +1613,7 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 							return;
 						}
 						// Создаём объект подключения
-						struct sockaddr_in6 addr{0};
+						struct sockaddr_in6 addr{};
 						// Копируем IP-адрес в структуру подключения
 						::memcpy(&addr.sin6_addr, &awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], sizeof(addr.sin6_addr));
 						/**
@@ -1699,8 +1699,8 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 									if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], __awh_zero_ipv6__, 16) == 0)
 										// Копируем IP-адрес в результат
 										::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], &sin->sin6_addr, sizeof(in6_addr));
-										// Проставляем зону адресу, которому она нужна
-										::scope(source);
+									// Проставляем зону адресу, которому она нужна
+									::scope(source);
 									// Выходим из цикла
 									break;
 								}
