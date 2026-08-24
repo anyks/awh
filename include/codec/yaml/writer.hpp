@@ -263,6 +263,9 @@ namespace awh {
 					 */
 					bool _refused;
 				private:
+					// Код ошибки последней операции записи
+					error_t _error;
+				private:
 					string _result;
 					// Стопа открытых вместилищ записи
 					vector <level_t> _levels;
@@ -343,6 +346,37 @@ namespace awh {
 					 * \~
 					 */
 					bool enter() noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод запоминания отказа записи вместе с кодом ошибки
+					 *
+					 * @details Отказ, потребителю выданный, обязан называть свою причину: голая
+					 * ложь не говорит ни места отказа, ни рода его, и потребитель, её получивший,
+					 * не знает, править ли ему свой довод или строй записи. Судится это здесь
+					 * единственным телом
+					 *
+					 * @note Тело это отвечает лишь за отказы, потребителю выданные. Отступления
+					 * внутренние, коими запись выбирает себе оформление, кодом не метятся: они
+					 * законны и потребителю не видны
+					 *
+					 * @param error код ошибки записи
+					 * @return      признак отказа для выхода из записи
+					 *
+					 * \~english
+					 * @brief Method of remembering a refusal of the writing together with the error code
+					 * @details A refusal issued to the consumer is obliged to name its cause: a bare
+					 * falsehood tells neither the place of the refusal nor its kind, and the consumer that
+					 * received it does not know whether to correct its own argument or the order of the
+					 * writing. This is judged here by a single body
+					 * @note This body answers only for the refusals issued to the consumer. The internal
+					 * retreats by which the writing chooses its own formatting are not marked by a code:
+					 * they are lawful and are not visible to the consumer
+					 * @param error error code of the writing
+					 * @return      flag of a refusal for the exit from the writing
+					 *
+					 * \~
+					 */
+					bool refuse(const error_t error) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод записи свойств узла, накопленных прежде него
@@ -740,6 +774,11 @@ namespace awh {
 					 * двойная передала бы его отменяющими последовательностями, и читающий
 					 * человек в записи той ничего бы не разобрал
 					 *
+					 * @note Отказ этого тела кодом ошибки **не** метится, и это решено намеренно:
+					 * записывающий сам зовёт его наудачу, а получив ложь, отступает к ограде
+					 * двойной и записывает значение успешно. Пометь мы отказ кодом - код тот
+					 * пережил бы удачную запись и солгал бы потребителю, её проверившему
+					 *
 					 * @param text  записываемое содержимое значения
 					 * @param style вид блочного значения, дословный либо со свёрткой
 					 * @param chomp правило усечения переводов строк в конце значения
@@ -749,6 +788,11 @@ namespace awh {
 					 * @brief Method of the writing of a block scalar
 					 * @details A multiline text is written by a block scalar: a double quoting
 					 * would pass it by the escape sequences, and a reading human would make out nothing in that notation
+					 * @note A refusal of this body is **not** marked by an error code, and this is decided
+					 * deliberately: the writer itself calls it on the off-chance, and having received a
+					 * falsehood, retreats to a double quoting and writes the value successfully. Were we to
+					 * mark the refusal by a code, that code would outlive the successful writing and would
+					 * lie to the consumer that checked it
 					 * @param text content of the value being written
 					 * @param style kind of the block scalar, literal or folded
 					 * @param chomp rule of the chomping of the line breaks at the end of the value
@@ -854,6 +898,19 @@ namespace awh {
 					 * \~
 					 */
 					const string & text() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод получения кода ошибки записи
+					 *
+					 * @return код ошибки последней операции записи
+					 *
+					 * \~english
+					 * @brief Method of getting the error code of the writing
+					 * @return error code of the last operation of the writing
+					 *
+					 * \~
+					 */
+					error_t error() const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод изъятия собранного текста из сборщика

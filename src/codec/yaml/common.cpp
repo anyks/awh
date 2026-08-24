@@ -590,6 +590,10 @@ const char * awh::codec::yaml::message(const error_t error) noexcept {
 		case static_cast <uint8_t> (error_t::INVALID_PATH):
 			// Выводим описание кода ошибки
 			return "malformed node path";
+		// Если запись не отвечает построению, на этом месте открытому
+		case static_cast <uint8_t> (error_t::UNEXPECTED_CONTENT):
+			// Выводим описание кода ошибки
+			return "content does not fit the construction opened at this place";
 	}
 	// Выводим описание неизвестного кода отказа
 	return "неизвестный код отказа";

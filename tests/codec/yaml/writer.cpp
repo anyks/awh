@@ -1374,3 +1374,70 @@ TEST(CodecYamlWriter, TagPercentEscapes) {
 	// Выполняем проверку долевой записи пробела в окончании сокращения
 	ASSERT_NE(writer.text().find("!!a%20b"), string::npos);
 }
+/**
+ * @brief Проверка того, что отказ записи называет свою причину
+ *
+ * @note Отказ, потребителю выданный, обязан отличаться от отказа иного рода: голая
+ *       ложь не говорит ни места отказа, ни рода его, и потребитель, её получивший,
+ *       не знает, править ли ему свой довод или строй записи
+ *
+ */
+TEST(CodecYamlWriter, RefusalReportsReason) {
+	// Объект потоковой записи
+	yaml::writer_t writer(::logger());
+	// Выполняем проверку чистоты кода ошибки до первого отказа
+	ASSERT_EQ(writer.error(), yaml::error_t::NONE);
+	// Выполняем открытие перечня, именам пар неподвластного
+	ASSERT_TRUE(writer.sequence());
+	// Выполняем постановку имени пары внутри перечня, чему быть не должно
+	ASSERT_FALSE(writer.key("name"));
+	// Выполняем проверку названной причины отказа
+	ASSERT_EQ(writer.error(), yaml::error_t::UNEXPECTED_CONTENT);
+	// Выполняем сброс собранного текста
+	writer.clear();
+	// Выполняем проверку сброса кода ошибки вместе с состоянием записи
+	ASSERT_EQ(writer.error(), yaml::error_t::NONE);
+	// Выполняем закрытие вместилища, ни одного из них не открыв
+	ASSERT_FALSE(writer.close());
+	// Выполняем проверку названной причины отказа
+	ASSERT_EQ(writer.error(), yaml::error_t::UNEXPECTED_CONTENT);
+	// Выполняем сброс собранного текста
+	writer.clear();
+	// Выполняем постановку метки типа пустой
+	ASSERT_FALSE(writer.tag(""));
+	// Выполняем проверку названной причины отказа
+	ASSERT_EQ(writer.error(), yaml::error_t::INVALID_TAG);
+	// Выполняем сброс собранного текста
+	writer.clear();
+	// Выполняем запись значения обыкновенного
+	ASSERT_TRUE(writer.value("baz"));
+	// Выполняем проверку того, что удача кода ошибки не ставит
+	ASSERT_EQ(writer.error(), yaml::error_t::NONE);
+}
+/**
+ * @brief Проверка того, что отступление записи блочного значения кода ошибки не ставит
+ *
+ * @note Записывающий зовёт block() наудачу и, ложь получив, отступает к ограде двойной.
+ *       Пометь мы тот отказ кодом - код пережил бы запись удачную и солгал бы потребителю
+ *
+ */
+TEST(CodecYamlWriter, BlockRetreatLeavesNoReason) {
+	// Объект потоковой записи
+	yaml::writer_t writer(::logger());
+	// Выполняем открытие поточного отображения, блочному значению неподвластного
+	ASSERT_TRUE(writer.mapping(yaml::layout_t::FLOW));
+	// Выполняем постановку имени пары
+	ASSERT_TRUE(writer.key("text"));
+	// Выполняем запись блочного значения там, где место его не держит
+	ASSERT_FALSE(writer.block("first\nsecond\n", yaml::style_t::LITERAL, yaml::chomp_t::CLIP));
+	// Выполняем проверку того, что отступление кода ошибки не поставило
+	ASSERT_EQ(writer.error(), yaml::error_t::NONE);
+	// Выполняем запись того же содержимого оградою двойною
+	ASSERT_TRUE(writer.value(string("first\nsecond\n"), yaml::style_t::DOUBLE));
+	// Выполняем закрытие поточного отображения
+	ASSERT_TRUE(writer.close());
+	// Выполняем проверку того, что запись удалась и причины отказа не назвала
+	ASSERT_EQ(writer.error(), yaml::error_t::NONE);
+	// Выполняем проверку сохранности содержимого в собранном тексте
+	ASSERT_NE(writer.text().find("\\n"), string::npos);
+}

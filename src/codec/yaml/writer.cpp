@@ -183,7 +183,7 @@ awh::codec::yaml::Writer::Settings::Settings() noexcept :
  *
  */
 awh::codec::yaml::Writer::Writer(const log_t * log) noexcept :
- _log(log), _refused(false), _margin(0), _keyed(false), _hanging(false), _verbatim(false), _transferred(false), _opened(false), _taken(0) {}
+ _log(log), _refused(false), _error(error_t::NONE), _margin(0), _keyed(false), _hanging(false), _verbatim(false), _transferred(false), _opened(false), _taken(0) {}
 /**
  * @brief Конструктор
  *
@@ -192,7 +192,7 @@ awh::codec::yaml::Writer::Writer(const log_t * log) noexcept :
  *
  */
 awh::codec::yaml::Writer::Writer(const log_t * log, const settings_t & settings) noexcept :
- _log(log), _refused(false), _margin(0), _keyed(false), _hanging(false), _verbatim(false), _transferred(false), _opened(false), _taken(0) {
+ _log(log), _refused(false), _error(error_t::NONE), _margin(0), _keyed(false), _hanging(false), _verbatim(false), _transferred(false), _opened(false), _taken(0) {
 	// Выполняем установку настроек записи текста
 	this->settings(settings);
 }
@@ -235,6 +235,8 @@ void awh::codec::yaml::Writer::clear() noexcept {
 	this->_result.clear();
 	// Выполняем сброс признака отказа по негодной кодировке
 	this->_refused = false;
+	// Выполняем сброс кода ошибки последней операции записи
+	this->_error = error_t::NONE;
 	// Выполняем сброс стопы открытых вместилищ
 	this->_levels.clear();
 	// Выполняем сброс имени метки, узла своего ожидающей
@@ -265,6 +267,16 @@ void awh::codec::yaml::Writer::clear() noexcept {
 const string & awh::codec::yaml::Writer::text() const noexcept {
 	// Выводим собранный текст
 	return this->_result;
+}
+/**
+ * @brief Метод получения кода ошибки записи
+ *
+ * @return код ошибки последней операции записи
+ *
+ */
+awh::codec::yaml::error_t awh::codec::yaml::Writer::error() const noexcept {
+	// Выводим код ошибки последней операции записи
+	return this->_error;
 }
 /**
  * @brief Метод изъятия собранного текста из сборщика
@@ -572,6 +584,25 @@ void awh::codec::yaml::Writer::spaced() noexcept {
 	this->_result.push_back(' ');
 }
 /**
+ * @brief Метод запоминания отказа записи вместе с кодом ошибки
+ *
+ * @param error код ошибки записи
+ * @return      признак отказа для выхода из записи
+ *
+ */
+bool awh::codec::yaml::Writer::refuse(const error_t error) noexcept {
+	// Запоминаем код ошибки записи
+	this->_error = error;
+	/**
+	 * Если объект для работы с логами установлен
+	 */
+	if(this->_log != nullptr)
+		// Выполняем вывод сообщения об отказе записи текста
+		this->_log->print("YAML writing failed: %s", log_t::flag_t::CRITICAL, awh::codec::yaml::message(error));
+	// Выводим признак отказа для выхода из записи
+	return false;
+}
+/**
  * @brief Метод записи свойств узла, накопленных прежде него
  *
  */
@@ -860,7 +891,7 @@ bool awh::codec::yaml::Writer::brought(const string & text, string & result, str
 			 */
 			this->_refused = true;
 			// Выводим признак непригодности записи
-			return false;
+			return this->refuse(error_t::INVALID_ENCODING);
 		}
 		/**
 		 * Если запись негодных последовательностей ещё не несла
@@ -1063,7 +1094,7 @@ bool awh::codec::yaml::Writer::expand(const kind_t kind, const layout_t layout) 
 	 */
 	if(this->_levels.size() >= MAX_DEPTH)
 		// Выводим признак неудачного открытия вместилища
-		return false;
+		return this->refuse(error_t::DEPTH_EXCEEDED);
 	// Получаем построение, каким записывается открываемое вместилище
 	layout_t nesting = layout;
 	/**
@@ -1111,7 +1142,7 @@ bool awh::codec::yaml::Writer::expand(const kind_t kind, const layout_t layout) 
 		 */
 		if(!this->enter())
 			// Выводим признак неудачного открытия вместилища
-			return false;
+			return this->refuse(error_t::UNEXPECTED_CONTENT);
 		/**
 		 * Если объемлющее вместилище является перечнем блочного построения
 		 */
@@ -1216,7 +1247,7 @@ bool awh::codec::yaml::Writer::close() noexcept {
 	 */
 	if(this->_levels.empty())
 		// Выводим признак неудачного закрытия вместилища
-		return false;
+		return this->refuse(error_t::UNEXPECTED_CONTENT);
 	// Получаем закрываемое вместилище записи
 	const level_t level = this->_levels.back();
 	// Выполняем снятие закрываемого вместилища со стопы
@@ -1300,19 +1331,19 @@ bool awh::codec::yaml::Writer::key(const string & name) noexcept {
 	 */
 	if(this->_levels.empty() || (this->_levels.back().kind != kind_t::MAPPING))
 		// Выводим признак неудачной записи имени пары
-		return false;
+		return this->refuse(error_t::UNEXPECTED_CONTENT);
 	/**
 	 * Если имя пары записано, а значение её ещё нет
 	 */
 	if(this->_keyed)
 		// Выводим признак неудачной записи имени пары
-		return false;
+		return this->refuse(error_t::UNEXPECTED_CONTENT);
 	/**
 	 * Если поставить запись на своё место не удалось
 	 */
 	if(!this->enter())
 		// Выводим признак неудачной записи имени пары
-		return false;
+		return this->refuse(error_t::UNEXPECTED_CONTENT);
 	// Выполняем добавление разделителя записей перед именем пары
 	this->spaced();
 	/**
@@ -1355,7 +1386,7 @@ bool awh::codec::yaml::Writer::anchor(const string & name) noexcept {
 	 */
 	if(record.empty() || !anchored(record))
 		// Выводим признак неудачной записи метки
-		return false;
+		return this->refuse(error_t::INVALID_CHARACTER);
 	// Запоминаем имя метки, узла своего ожидающей
 	this->_anchor.assign(record);
 	// Выводим признак успешной записи метки
@@ -1382,7 +1413,7 @@ bool awh::codec::yaml::Writer::tag(const string & name) noexcept {
 	 */
 	if(record.empty())
 		// Выводим признак неудачной записи метки типа
-		return false;
+		return this->refuse(error_t::INVALID_TAG);
 	/**
 	 * Если метка типа передана сокращением своим
 	 */
@@ -1433,7 +1464,7 @@ bool awh::codec::yaml::Writer::alias(const string & name) noexcept {
 	 */
 	if(record.empty() || !anchored(record))
 		// Выводим признак неудачной записи ссылки
-		return false;
+		return this->refuse(error_t::INVALID_CHARACTER);
 	/**
 	 * Если ссылке предпослано свойство узла
 	 *
@@ -1442,13 +1473,13 @@ bool awh::codec::yaml::Writer::alias(const string & name) noexcept {
 	 */
 	if(!this->_anchor.empty() || !this->_tag.empty())
 		// Выводим признак неудачной записи ссылки
-		return false;
+		return this->refuse(error_t::UNEXPECTED_CONTENT);
 	/**
 	 * Если поставить запись на своё место не удалось
 	 */
 	if(!this->enter())
 		// Выводим признак неудачной записи ссылки
-		return false;
+		return this->refuse(error_t::UNEXPECTED_CONTENT);
 	// Выполняем добавление разделителя записей перед ссылкой
 	this->spaced();
 	// Выполняем добавление знака ссылки
@@ -1481,7 +1512,7 @@ bool awh::codec::yaml::Writer::raw(const string & value) noexcept {
 	 */
 	if(!this->enter())
 		// Выводим признак неудачной записи содержимого
-		return false;
+		return this->refuse(error_t::UNEXPECTED_CONTENT);
 	// Выполняем запись свойств узла, накопленных прежде него
 	this->properties();
 	/**
@@ -1569,7 +1600,7 @@ bool awh::codec::yaml::Writer::written(const string_view record, const style_t s
 	 */
 	if(!this->enter())
 		// Выводим признак неудачной записи значения
-		return false;
+		return this->refuse(error_t::UNEXPECTED_CONTENT);
 	// Выполняем запись свойств узла, накопленных прежде него
 	this->properties();
 	/**
@@ -1699,7 +1730,7 @@ bool awh::codec::yaml::Writer::value(const double value) noexcept {
 	 */
 	if((length <= 0) || (static_cast <size_t> (length) >= sizeof(buffer)))
 		// Выводим признак неудачной записи значения
-		return false;
+		return this->refuse(error_t::INTERNAL);
 	// Получаем собранную запись дробного числа
 	string result(buffer, static_cast <size_t> (length));
 	/**
@@ -2008,7 +2039,7 @@ bool awh::codec::yaml::Writer::comment(const string & text) noexcept {
 	 */
 	if(!this->_levels.empty() && (this->_levels.back().layout == layout_t::FLOW))
 		// Выводим признак неудачной записи примечания
-		return false;
+		return this->refuse(error_t::UNEXPECTED_CONTENT);
 	// Выполняем закрытие открытой строки
 	this->line();
 	/**
@@ -2057,7 +2088,7 @@ bool awh::codec::yaml::Writer::trailing(const string & text) noexcept {
 	 */
 	if(this->_result.empty() || (this->_result.back() != '\n'))
 		// Выводим признак неудачной записи примечания
-		return false;
+		return this->refuse(error_t::UNEXPECTED_CONTENT);
 	// Выполняем снятие перевода строки с конца собранного текста
 	this->_result.pop_back();
 	// Выполняем добавление разделителя записей перед примечанием
@@ -2090,7 +2121,7 @@ bool awh::codec::yaml::Writer::document() noexcept {
 	 */
 	if(!this->_levels.empty())
 		// Выводим признак неудачного открытия документа
-		return false;
+		return this->refuse(error_t::UNEXPECTED_CONTENT);
 	// Выполняем закрытие открытой строки
 	this->line();
 	/**
