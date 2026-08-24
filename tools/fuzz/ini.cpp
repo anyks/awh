@@ -133,6 +133,8 @@ namespace {
 		uint64_t grafted;
 		// Количество сличений подачи в кодировке UTF-16
 		uint64_t transcoded;
+		// Количество сличений записи свежей с записью, прежней подачей занятой
+		uint64_t transcribed;
 		/**
 		 * Количество текстов, приведение каких к кодировке UTF-16 не удалось
 		 *
@@ -146,7 +148,7 @@ namespace {
 		 */
 		Statistic() noexcept :
 		 texts(0), corrupted(0), survived(0),
-		 events(0), trees(0), rewrites(0), grafts(0), grafted(0), transcoded(0), untranscodable(0) {}
+		 events(0), trees(0), rewrites(0), grafts(0), grafted(0), transcoded(0), transcribed(0), untranscodable(0) {}
 	/**
 	 * Учёт проделанной работы
 	 *
@@ -977,6 +979,86 @@ namespace {
 	}
 
 	/**
+	 * @brief Метод переписи дерева настроек прямою подачею в запись
+	 *
+	 * @details Запись до сего дня велась одним лишь деревом, а оно на всякую перезапись
+	 *          заводит объект записи заново. Прямая подача в запись - разделы, свойства
+	 *          да их значения по одному - не поверялась вовсе, и остаток прежней подачи
+	 *          в объекте записи охвата не имел
+	 *
+	 * @param document переписываемое дерево настроек
+	 * @param writer   объект записи, куда ведётся подача
+	 * @return         результат переписи дерева настроек
+	 *
+	 */
+	bool transcribe(const ini::document_t & document, ini::writer_t & writer) noexcept {
+		/**
+		 * Выполняем перебор свойств раздела без имени
+		 *
+		 * @note Раздел без имени объявления не имеет, и подача его свойств ведётся
+		 *       вперёд объявления первого из именованных разделов
+		 */
+		for(const auto & key : document.keys()){
+			// Получаем перечень значений свойства раздела без имени
+			const vector <string_view> values = document.values(key);
+			// Если свойство значений не несёт вовсе
+			if(values.empty()){
+				// Если подача свойства без значения отвергнута, перепись прекращаем
+				if(!writer.property(key))
+					// Выводим отрицательный результат переписи
+					return false;
+			// Если свойство значения несёт
+			} else {
+				/**
+				 * Выполняем перебор значений свойства
+				 */
+				for(size_t i = 0; i < values.size(); i++){
+					// Если подача значения свойства отвергнута, перепись прекращаем
+					if(!writer.property(key, values.at(i), (i > 0)))
+						// Выводим отрицательный результат переписи
+						return false;
+				}
+			}
+		}
+		/**
+		 * Выполняем перебор объявленных разделов
+		 */
+		for(const auto & name : document.sections()){
+			// Если объявление раздела отвергнуто, перепись прекращаем
+			if(!writer.section(name.section, name.subsection))
+				// Выводим отрицательный результат переписи
+				return false;
+			/**
+			 * Выполняем перебор свойств объявленного раздела
+			 */
+			for(const auto & key : document.keys(name.section, name.subsection)){
+				// Получаем перечень значений свойства объявленного раздела
+				const vector <string_view> values = document.values(key, name.section, name.subsection);
+				// Если свойство значений не несёт вовсе
+				if(values.empty()){
+					// Если подача свойства без значения отвергнута, перепись прекращаем
+					if(!writer.property(key))
+						// Выводим отрицательный результат переписи
+						return false;
+				// Если свойство значения несёт
+				} else {
+					/**
+					 * Выполняем перебор значений свойства
+					 */
+					for(size_t i = 0; i < values.size(); i++){
+						// Если подача значения свойства отвергнута, перепись прекращаем
+						if(!writer.property(key, values.at(i), (i > 0)))
+							// Выводим отрицательный результат переписи
+							return false;
+					}
+				}
+			}
+		}
+		// Выводим положительный результат переписи
+		return true;
+	}
+
+	/**
 	 * @brief Метод проверки дерева настроек на построенном тексте
 	 *
 	 * @param text     разбираемый текст настроек
@@ -1045,6 +1127,85 @@ namespace {
 			}
 			// Выводим результат проверки дерева настроек
 			return true;
+		}
+		/**
+		 * Выполняем сличение записи свежей с записью, прежней подачей уже занятой
+		 *
+		 * @details Объект записи потребитель вправе держать один на многие тексты,
+		 * очищая его между ними. Остаток прежней подачи - накопленный текст, перечень
+		 * объявленных разделов, признак начатой строки да код прежнего отказа - обязан
+		 * пропадать без следа: запись, очищенная от прежнего, обязана собрать следующий
+		 * текст ровно так же, как собрала бы его запись свежая. Дефект такого рода
+		 * прогоном свежей записи не показывается ни разу
+		 *
+		 * @note Настройки записи объекту, прежней подачей занятому, назначаются заново:
+		 *       очистка их сбрасывать не обязана, но сличение обязано вести обе записи
+		 *       одними и теми же настройками
+		 */
+		{
+			// Настройки записи текста настроек, наудачу выбранные
+			ini::writer_t::settings_t writing;
+			// Устанавливаем запись пробелов вокруг знака равенства наудачу
+			writing.spaces = ((engine() % 2) == 0);
+			// Устанавливаем запись отступа перед свойствами раздела наудачу
+			writing.indent = ((engine() % 2) == 0);
+			// Устанавливаем запись пустой строки перед объявлением раздела наудачу
+			writing.separated = ((engine() % 2) == 0);
+			// Устанавливаем вид знака конца строки наудачу
+			writing.newline = (((engine() % 2) == 0) ? ini::newline_t::LF : ini::newline_t::CRLF);
+			// Объект записи, живущий от подачи к подаче
+			static ini::writer_t reused(::logger());
+			// Выполняем очистку объекта записи от прежней подачи
+			reused.clear();
+			// Устанавливаем настройки записи объекту, прежней подачей занятому
+			reused.settings(writing);
+			// Создаём свежий объект записи для той же самой подачи
+			ini::writer_t fresh(::logger(), writing);
+			// Выполняем перепись дерева настроек свежим объектом записи
+			const bool first = transcribe(document, fresh);
+			// Выполняем перепись дерева настроек объектом, прежней подачей занятым
+			const bool second = transcribe(document, reused);
+			/**
+			 * Если исход переписи у двух объектов записи разошёлся
+			 */
+			if(first != second){
+				// Выводим сообщение о расхождении исхода переписи
+				::fprintf(stderr, "ini fuzz: исход подачи у записи свежей и занятой разошёлся: %s против %s\n",
+				 (first ? "принято" : "отвергнуто"), (second ? "принято" : "отвергнуто"));
+				// Выводим исходный текст настроек
+				dump(text);
+				// Выводим результат проверки дерева настроек
+				return false;
+			}
+			/**
+			 * Если собранный двумя объектами записи текст разошёлся
+			 */
+			if(fresh.text() != reused.text()){
+				// Выводим сообщение о расхождении собранного текста
+				::fprintf(stderr, "ini fuzz: запись, прежней подачей занятая, собрала текст иной\n");
+				// Выводим исходный текст настроек
+				dump(text);
+				// Выводим текст, собранный свежим объектом записи
+				dump(fresh.text());
+				// Выводим текст, собранный объектом, прежней подачей занятым
+				dump(reused.text());
+				// Выводим результат проверки дерева настроек
+				return false;
+			}
+			/**
+			 * Если код отказа у двух объектов записи разошёлся
+			 */
+			if(fresh.error() != reused.error()){
+				// Выводим сообщение о расхождении кода отказа
+				::fprintf(stderr, "ini fuzz: код отказа у записи свежей и занятой разошёлся: %u против %u\n",
+				 static_cast <uint32_t> (fresh.error()), static_cast <uint32_t> (reused.error()));
+				// Выводим исходный текст настроек
+				dump(text);
+				// Выводим результат проверки дерева настроек
+				return false;
+			}
+			// Выполняем учёт сличения записи свежей с записью занятой
+			totals.transcribed++;
 		}
 		/**
 		 * Выполняем проверку разбора на дереве, прежним разбором уже занятом
@@ -1947,7 +2108,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	// Выводим статистику работы генератора
 	::fprintf(
 		stdout,
-		"ini fuzz: %llu texts (%llu corrupted), %llu events, %llu parsed to the end, %llu trees, %llu rewrites, %llu grafts (%llu refused), %llu transcoded (%llu untranscodable)\n",
+		"ini fuzz: %llu texts (%llu corrupted), %llu events, %llu parsed to the end, %llu trees, %llu rewrites, %llu grafts (%llu refused), %llu transcoded (%llu untranscodable), %llu transcribed\n",
 		static_cast <unsigned long long> (totals.texts),
 		static_cast <unsigned long long> (totals.corrupted),
 		static_cast <unsigned long long> (totals.events),
@@ -1957,7 +2118,8 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		static_cast <unsigned long long> (totals.grafted),
 		static_cast <unsigned long long> (totals.grafts - totals.grafted),
 		static_cast <unsigned long long> (totals.transcoded),
-		static_cast <unsigned long long> (totals.untranscodable)
+		static_cast <unsigned long long> (totals.untranscodable),
+		static_cast <unsigned long long> (totals.transcribed)
 	);
 	// Выходим из приложения
 	return EXIT_SUCCESS;

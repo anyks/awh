@@ -145,12 +145,14 @@ namespace {
 		 *       отняло бы у прогона половину подач, а отчёт остался бы прежним
 		 */
 		uint64_t untranscodable;
+		// Количество сличений записи свежей с записью, прежней подачей занятой
+		uint64_t transcribed;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
 		Statistic() noexcept :
-		 texts(0), corrupted(0), survived(0), events(0), trees(0), rewrites(0), restyled(0), unstyled(0), transcoded(0), untranscodable(0),
+		 texts(0), corrupted(0), survived(0), events(0), trees(0), rewrites(0), restyled(0), unstyled(0), transcoded(0), untranscodable(0), transcribed(0),
 		 grafts(0), grafted(0) {}
 	} totals;
 
@@ -433,6 +435,116 @@ namespace {
 	 * @return       построенный текст настроек
 	 *
 	 */
+	/**
+	 * Имена таблиц да ключей, прямою подачею в запись отдаваемые
+	 *
+	 * @note Имена подобраны так, чтобы задеть все виды ограждения: голое имя, имя со
+	 *       знаком точки, имя с кавычкою, имя пустое да имя знаками Юникода
+	 */
+	static const char * NAMES[] = {"a", "b", "c.d", "e\"f", "", "ключ", "g h", "i-j"};
+
+	/**
+	 * Значения, прямою подачею в запись отдаваемые
+	 *
+	 * @note Значения подобраны так, чтобы задеть подъём ограды: голый текст, текст со
+	 *       знаком перевода строки, текст с кавычкою да текст с обратною косою чертою
+	 */
+	static const char * VALUES[] = {"value", "a\nb", "q\"q", "s\\s", "", "значение", " \t "};
+
+	/**
+	 * @brief Метод подачи заготовленной череды вызовов в запись
+	 *
+	 * @details Запись доселе поверялась одним лишь деревом, а оно на всякую перезапись
+	 *          заводит объект записи заново. Прямая подача - объявления таблиц, ключи,
+	 *          значения да ограждения - не поверялась вовсе, и остаток прежней подачи в
+	 *          объекте записи охвата не имел. Череда вызовов заготавливается наперёд
+	 *          числами, а не берётся у источника по ходу подачи: два объекта записи
+	 *          обязаны получить череду одну и ту же знак в знак
+	 *
+	 * @param script череда вызовов, числами заготовленная
+	 * @param writer объект записи, куда ведётся подача
+	 * @param traces исход всякого вызова череды
+	 *
+	 */
+	void replay(const vector <uint32_t> & script, toml::writer_t & writer, vector <bool> & traces) noexcept {
+		// Выполняем очистку перечня исходов вызовов
+		traces.clear();
+		// Выполняем резервирование памяти под перечень исходов вызовов
+		traces.reserve(script.size());
+		/**
+		 * Выполняем подачу заготовленной череды вызовов
+		 */
+		for(size_t i = 0; i < script.size(); i++){
+			// Число, разновидность вызова несущее
+			const uint32_t number = script.at(i);
+			// Имя таблицы либо ключа, числом выбранное
+			const string name = NAMES[number % (sizeof(NAMES) / sizeof(NAMES[0]))];
+			// Значение, числом выбранное
+			const string value = VALUES[(number / 8) % (sizeof(VALUES) / sizeof(VALUES[0]))];
+			/**
+			 * Выполняем выборку разновидности вызова
+			 */
+			switch(number % 12){
+				// Выполняем объявление таблицы
+				case 0: traces.push_back(writer.table(name)); break;
+				// Выполняем объявление таблицы перечня
+				case 1: traces.push_back(writer.arrayTable(name)); break;
+				// Выполняем запись пары со строковым значением
+				case 2: traces.push_back(writer.key(name) && writer.text(value)); break;
+				// Выполняем запись пары с логическим значением
+				case 3: traces.push_back(writer.key(name) && writer.boolean(((number / 4) % 2) == 0)); break;
+				// Выполняем запись пары с целым значением
+				case 4: traces.push_back(writer.key(name) && writer.integer(static_cast <int64_t> (number) - 2048)); break;
+				// Выполняем запись пары с дробным значением
+				case 5: traces.push_back(writer.key(name) && writer.real(static_cast <double> (number) / 64.0)); break;
+				/**
+				 * Выполняем запись пары с перечнем значений
+				 */
+				case 6: {
+					// Признак успеха записи пары с перечнем значений
+					bool result = (writer.key(name) && writer.arrayOpen((((number / 16) % 2) == 0)));
+					/**
+					 * Выполняем запись значений перечня
+					 */
+					for(uint32_t j = 0; result && (j < (number % 4)); j++)
+						// Выполняем запись целого значения перечня
+						result = writer.integer(static_cast <int64_t> (j));
+					// Выполняем закрытие перечня значений
+					traces.push_back(result && writer.arrayClose());
+				} break;
+				/**
+				 * Выполняем запись пары со встроенной таблицей
+				 */
+				case 7: {
+					// Признак успеха записи пары со встроенной таблицей
+					bool result = (writer.key(name) && writer.inlineOpen());
+					/**
+					 * Выполняем запись пар встроенной таблицы
+					 */
+					for(uint32_t j = 0; result && (j < (number % 3)); j++)
+						// Выполняем запись пары встроенной таблицы
+						result = (writer.key(string(1, static_cast <char> ('a' + j))) && writer.text(value));
+					// Выполняем закрытие встроенной таблицы
+					traces.push_back(result && writer.inlineClose());
+				} break;
+				// Выполняем запись примечания
+				case 8: traces.push_back(writer.comment(value)); break;
+				// Выполняем запись примечания в конце строки
+				case 9: traces.push_back(writer.trailing(value)); break;
+				// Выполняем запись пустой строки
+				case 10: traces.push_back(writer.blank()); break;
+				/**
+				 * Выполняем открытие построения, закрытым не оставляемого
+				 *
+				 * @note Построение это намеренно не закрывается: остаток стопы открытых
+				 *       построений иначе не заводится вовсе, и очистка её охвата не имеет.
+				 *       Проверено снятием очистки стопы - без сего случая оно не всплывало
+				 */
+				case 11: traces.push_back(writer.key(name) && ((((number / 32) % 2) == 0) ? writer.arrayOpen() : writer.inlineOpen())); break;
+			}
+		}
+	}
+
 	string generate(mt19937 & engine) noexcept {
 		// Собираемый текст настроек
 		string result;
@@ -1957,11 +2069,105 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		if(!hostile(engine))
 			// Выходим из приложения с кодом ошибки
 			return EXIT_FAILURE;
+		/**
+		 * Выполняем сличение записи свежей с записью, прежней подачей уже занятой
+		 *
+		 * @details Объект записи потребитель вправе держать один на многие тексты,
+		 * очищая его между ними. Остаток прежней подачи - накопленный текст, стопа
+		 * открытых построений, перечень объявленных таблиц, признак начатой строки да
+		 * код прежнего отказа - обязан пропадать без следа: запись, очищенная от
+		 * прежнего, обязана собрать следующий текст ровно так же, как собрала бы его
+		 * запись свежая. Дефект такого рода прогоном свежей записи не показывается
+		 * ни разу: вылезает он лишь у потребителя, собирающего одним объектом много
+		 * текстов подряд
+		 *
+		 * @note Череда вызовов заготавливается наперёд, а не берётся у источника по
+		 *       ходу подачи: возьми её всякий объект записи сам, и сличались бы две
+		 *       разные череды, а расхождение их за дефект принять было бы нельзя
+		 */
+		{
+			// Череда вызовов, наудачу заготовленная
+			vector <uint32_t> script(1 + (engine() % 24));
+			/**
+			 * Выполняем заготовку череды вызовов
+			 */
+			for(size_t j = 0; j < script.size(); j++)
+				// Выполняем выборку очередного вызова череды
+				script.at(j) = static_cast <uint32_t> (engine());
+			// Настройки записи текста настроек, наудачу выбранные
+			toml::writer_t::settings_t writing;
+			// Устанавливаем признак дозволенных знаков Юникода наудачу
+			writing.unicode = ((engine() % 2) == 0);
+			// Устанавливаем подъём ограды до несущей содержимое наудачу
+			writing.promote = ((engine() % 2) == 0);
+			// Устанавливаем запись пробелов вокруг знака равенства наудачу
+			writing.spaces = ((engine() % 2) == 0);
+			// Устанавливаем запись отступа перед парами объявленной таблицы наудачу
+			writing.indent = ((engine() % 2) == 0);
+			// Устанавливаем запись пустой строки перед объявлением таблицы наудачу
+			writing.separated = ((engine() % 2) == 0);
+			// Устанавливаем вид знака конца строки наудачу
+			writing.newline = (((engine() % 2) == 0) ? toml::newline_t::LF : toml::newline_t::CRLF);
+			// Объект записи, живущий от прохода к проходу
+			static toml::writer_t reused(::logger());
+			// Выполняем очистку объекта записи от прежней подачи
+			reused.clear();
+			// Устанавливаем настройки записи объекту, прежней подачей занятому
+			reused.settings(writing);
+			// Создаём свежий объект записи для той же самой череды вызовов
+			toml::writer_t fresh(::logger(), writing);
+			// Исходы вызовов у свежего объекта записи
+			vector <bool> first;
+			// Исходы вызовов у объекта записи, прежней подачей занятого
+			vector <bool> second;
+			// Выполняем подачу череды вызовов свежему объекту записи
+			replay(script, fresh, first);
+			// Выполняем подачу той же череды объекту, прежней подачей занятому
+			replay(script, reused, second);
+			/**
+			 * Если исходы вызовов у двух объектов записи разошлись
+			 */
+			if(first != second){
+				// Выводим сообщение о расхождении исходов вызовов
+				::fprintf(stderr, "toml fuzz: исходы подачи у записи свежей и занятой разошлись\n");
+				// Выводим текст, собранный свежим объектом записи
+				dump(fresh.text());
+				// Выводим текст, собранный объектом, прежней подачей занятым
+				dump(reused.text());
+				// Выходим из приложения с кодом ошибки
+				return EXIT_FAILURE;
+			}
+			/**
+			 * Если собранный двумя объектами записи текст разошёлся
+			 */
+			if(fresh.text() != reused.text()){
+				// Выводим сообщение о расхождении собранного текста
+				::fprintf(stderr, "toml fuzz: запись, прежней подачей занятая, собрала текст иной\n");
+				// Выводим текст, собранный свежим объектом записи
+				dump(fresh.text());
+				// Выводим текст, собранный объектом, прежней подачей занятым
+				dump(reused.text());
+				// Выходим из приложения с кодом ошибки
+				return EXIT_FAILURE;
+			}
+			/**
+			 * Если код отказа у двух объектов записи разошёлся
+			 */
+			if(fresh.error() != reused.error()){
+				// Выводим сообщение о расхождении кода отказа
+				::fprintf(stderr, "toml fuzz: код отказа у записи свежей и занятой разошёлся: %u против %u\n",
+				 static_cast <uint32_t> (fresh.error()), static_cast <uint32_t> (reused.error()));
+				// Выходим из приложения с кодом ошибки
+				return EXIT_FAILURE;
+			}
+			// Выполняем учёт сличения записи свежей с записью занятой
+			totals.transcribed++;
+		}
 	}
 	// Выводим статистику работы генератора
 	::fprintf(
 		stdout,
-		"toml fuzz: %llu texts (%llu corrupted), %llu events, %llu parsed to the end, %llu trees, %llu rewrites, %llu restyled (%llu обойдено), %llu grafts (%llu refused), %llu transcoded (%llu untranscodable)\n",
+		"toml fuzz: %llu texts (%llu corrupted), %llu events, %llu parsed to the end, %llu trees, %llu rewrites, %llu restyled (%llu обойдено), %llu grafts (%llu refused), %llu transcoded (%llu untranscodable), %llu transcribed\n",
 		static_cast <unsigned long long> (totals.texts),
 		static_cast <unsigned long long> (totals.corrupted),
 		static_cast <unsigned long long> (totals.events),
@@ -1973,7 +2179,8 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		static_cast <unsigned long long> (totals.grafted),
 		static_cast <unsigned long long> (totals.grafts - totals.grafted),
 		static_cast <unsigned long long> (totals.transcoded),
-		static_cast <unsigned long long> (totals.untranscodable)
+		static_cast <unsigned long long> (totals.untranscodable),
+		static_cast <unsigned long long> (totals.transcribed)
 	);
 	// Выходим из приложения
 	return EXIT_SUCCESS;

@@ -156,6 +156,8 @@ namespace {
 		uint64_t recycled;
 		// Количество круговых ходов, директивою наречия обойдённых
 		uint64_t undirected;
+		// Количество сличений записи свежей с записью, прежней подачей занятой
+		uint64_t transcribed;
 		// Количество попыток кругового переноса значения в дерево
 		uint64_t grafts;
 		// Количество удавшихся переносов значения в дерево
@@ -166,7 +168,7 @@ namespace {
 		 */
 		Statistic() noexcept :
 		 texts(0), corrupted(0), survived(0), events(0), chunked(0), transcoded(0), unconverted(0), trees(0), kept(0), pruned(0),
-		 mirrored(0), edited(0), assembled(0), restyled(0), recycled(0), undirected(0), taken(0), grafts(0), grafted(0) {}
+		 mirrored(0), edited(0), assembled(0), restyled(0), recycled(0), undirected(0), transcribed(0), taken(0), grafts(0), grafted(0) {}
 	} totals;
 
 	/**
@@ -849,6 +851,105 @@ namespace {
 	 * @return       построенный текст
 	 *
 	 */
+	/**
+	 * Имена ключей, меток да опор, прямою подачею в запись отдаваемые
+	 *
+	 * @note Имена подобраны так, чтобы задеть все виды ограды: голое имя, имя со знаком
+	 *       двоеточия, имя с кавычкою, имя пустое да имя знаками Юникода
+	 */
+	static const char * NAMES[] = {"a", "b c", "d:e", "f\"g", "", "ключ", "#h", "- i"};
+
+	/**
+	 * Значения, прямою подачею в запись отдаваемые
+	 *
+	 * @note Значения подобраны так, чтобы задеть подъём ограды: голый текст, текст со
+	 *       знаком перевода строки, текст с кавычкою, текст, читаемый числом, да текст,
+	 *       читаемый признаком истины
+	 */
+	static const char * VALUES[] = {"value", "j\nk", "l\"m", "12:30", "true", "", "значение", " n "};
+
+	/**
+	 * @brief Метод подачи заготовленной череды вызовов в запись
+	 *
+	 * @details Запись доселе поверялась одним лишь деревом, а оно на всякую перезапись
+	 *          заводит объект записи заново. Прямая подача - построения, ключи, значения,
+	 *          опоры да метки - охвата не имела вовсе, а с нею и остаток прежней подачи
+	 *          в объекте записи. Череда вызовов заготавливается наперёд числами, а не
+	 *          берётся у источника по ходу подачи: два объекта записи обязаны получить
+	 *          череду одну и ту же знак в знак
+	 *
+	 * @param script   череда вызовов, числами заготовленная
+	 * @param writer   объект записи, куда ведётся подача
+	 * @param traces   исход всякого вызова череды
+	 * @param complete признак завершения записи по окончании череды
+	 *
+	 */
+	void replay(const vector <uint32_t> & script, yaml::writer_t & writer, vector <bool> & traces, const bool complete) noexcept {
+		// Выполняем очистку перечня исходов вызовов
+		traces.clear();
+		// Выполняем резервирование памяти под перечень исходов вызовов
+		traces.reserve(script.size());
+		/**
+		 * Выполняем подачу заготовленной череды вызовов
+		 */
+		for(size_t i = 0; i < script.size(); i++){
+			// Число, разновидность вызова несущее
+			const uint32_t number = script.at(i);
+			// Имя ключа, метки либо опоры, числом выбранное
+			const string name = NAMES[number % (sizeof(NAMES) / sizeof(NAMES[0]))];
+			// Значение, числом выбранное
+			const string value = VALUES[(number / 8) % (sizeof(VALUES) / sizeof(VALUES[0]))];
+			// Построение, числом выбранное
+			const yaml::layout_t layout = ((((number / 64) % 2) == 0) ? yaml::layout_t::BLOCK : yaml::layout_t::FLOW);
+			/**
+			 * Выполняем выборку разновидности вызова
+			 */
+			switch(number % 14){
+				// Выполняем открытие отображения
+				case 0: traces.push_back(writer.mapping(layout)); break;
+				// Выполняем открытие перечня
+				case 1: traces.push_back(writer.sequence(layout)); break;
+				// Выполняем закрытие построения
+				case 2: traces.push_back(writer.close()); break;
+				// Выполняем запись имени ключа
+				case 3: traces.push_back(writer.key(name)); break;
+				// Выполняем запись строкового значения
+				case 4: traces.push_back(writer.value(value)); break;
+				// Выполняем запись пустого значения
+				case 5: traces.push_back(writer.null()); break;
+				// Выполняем запись логического значения
+				case 6: traces.push_back(writer.value((((number / 4) % 2) == 0))); break;
+				// Выполняем запись целого значения
+				case 7: traces.push_back(writer.value(static_cast <int64_t> (number) - 2048)); break;
+				// Выполняем запись дробного значения
+				case 8: traces.push_back(writer.value(static_cast <double> (number) / 64.0)); break;
+				// Выполняем установку опоры
+				case 9: traces.push_back(writer.anchor(name)); break;
+				// Выполняем запись обращения к опоре
+				case 10: traces.push_back(writer.alias(name)); break;
+				// Выполняем запись примечания
+				case 11: traces.push_back(writer.comment(value)); break;
+				// Выполняем запись блочного значения
+				case 12: traces.push_back(writer.block(value,
+				 (((number / 128) % 2) == 0 ? yaml::style_t::LITERAL : yaml::style_t::FOLDED),
+				 static_cast <yaml::chomp_t> ((number / 256) % 3))); break;
+				// Выполняем открытие нового документа
+				case 13: traces.push_back(writer.document()); break;
+			}
+		}
+		/**
+		 * Если требуется завершить запись
+		 *
+		 * @note Завершение зовётся не всегда намеренно: оно закрывает построения, открытыми
+		 *       оставшиеся, и стопа уровней к очистке приходит пустою. Брось потребитель
+		 *       запись посреди построения - и очистка стопы получит работу; без сего пути
+		 *       снятие её ворошителем не ловилось вовсе, проверено опытом
+		 */
+		if(complete)
+			// Выполняем завершение записи
+			traces.push_back(writer.finish());
+	}
+
 	string generate(mt19937 & engine) noexcept {
 		// Собираемый текст
 		string result;
@@ -2452,9 +2553,103 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 				// Выходим из приложения с ошибкой
 				return EXIT_FAILURE;
 		}
+		/**
+		 * Выполняем сличение записи свежей с записью, прежней подачей уже занятой
+		 *
+		 * @details Объект записи потребитель вправе держать один на многие тексты,
+		 * очищая его между ними. Остаток прежней подачи - накопленный текст, стопа
+		 * открытых построений, назначенный отступ, опора с меткою, ждущие своего
+		 * значения, да код прежнего отказа - обязан пропадать без следа: запись,
+		 * очищенная от прежнего, обязана собрать следующий текст ровно так же, как
+		 * собрала бы его запись свежая. Дефект такого рода прогоном свежей записи не
+		 * показывается ни разу: вылезает он лишь у потребителя, собирающего одним
+		 * объектом много текстов подряд
+		 *
+		 * @note Череда вызовов заготавливается наперёд, а не берётся у источника по
+		 *       ходу подачи: возьми её всякий объект записи сам, и сличались бы две
+		 *       разные череды, а расхождение их за дефект принять было бы нельзя
+		 */
+		{
+			// Череда вызовов, наудачу заготовленная
+			vector <uint32_t> script(1 + (engine() % 24));
+			/**
+			 * Выполняем заготовку череды вызовов
+			 */
+			for(size_t j = 0; j < script.size(); j++)
+				// Выполняем выборку очередного вызова череды
+				script.at(j) = static_cast <uint32_t> (engine());
+			// Настройки записи текста, наудачу выбранные
+			yaml::writer_t::settings_t writing;
+			// Устанавливаем построение по умолчанию наудачу
+			writing.layout = (((engine() % 2) == 0) ? yaml::layout_t::BLOCK : yaml::layout_t::FLOW);
+			// Устанавливаем ширину отступа наудачу
+			writing.indent = (1 + (engine() % 8));
+			// Устанавливаем отступ записей перечня наудачу
+			writing.sequenceIndent = ((engine() % 2) == 0);
+			// Устанавливаем запись явного начала документа наудачу
+			writing.explicitStart = ((engine() % 2) == 0);
+			// Устанавливаем запись явного конца документа наудачу
+			writing.explicitEnd = ((engine() % 2) == 0);
+			// Объект записи, живущий от прохода к проходу
+			static yaml::writer_t reused(::logger());
+			// Выполняем очистку объекта записи от прежней подачи
+			reused.clear();
+			// Устанавливаем настройки записи объекту, прежней подачей занятому
+			reused.settings(writing);
+			// Создаём свежий объект записи для той же самой череды вызовов
+			yaml::writer_t fresh(::logger(), writing);
+			// Исходы вызовов у свежего объекта записи
+			vector <bool> first;
+			// Исходы вызовов у объекта записи, прежней подачей занятого
+			vector <bool> second;
+			// Признак завершения записи по окончании череды, наудачу выбранный
+			const bool complete = ((engine() % 4) != 0);
+			// Выполняем подачу череды вызовов свежему объекту записи
+			replay(script, fresh, first, complete);
+			// Выполняем подачу той же череды объекту, прежней подачей занятому
+			replay(script, reused, second, complete);
+			/**
+			 * Если исходы вызовов у двух объектов записи разошлись
+			 */
+			if(first != second){
+				// Выводим сообщение о расхождении исходов вызовов
+				::fprintf(stderr, "yaml fuzz: исходы подачи у записи свежей и занятой разошлись\n");
+				// Выводим текст, собранный свежим объектом записи
+				dump(fresh.text());
+				// Выводим текст, собранный объектом, прежней подачей занятым
+				dump(reused.text());
+				// Выходим из приложения с ошибкой
+				return EXIT_FAILURE;
+			}
+			/**
+			 * Если собранный двумя объектами записи текст разошёлся
+			 */
+			if(fresh.text() != reused.text()){
+				// Выводим сообщение о расхождении собранного текста
+				::fprintf(stderr, "yaml fuzz: запись, прежней подачей занятая, собрала текст иной\n");
+				// Выводим текст, собранный свежим объектом записи
+				dump(fresh.text());
+				// Выводим текст, собранный объектом, прежней подачей занятым
+				dump(reused.text());
+				// Выходим из приложения с ошибкой
+				return EXIT_FAILURE;
+			}
+			/**
+			 * Если код отказа у двух объектов записи разошёлся
+			 */
+			if(fresh.error() != reused.error()){
+				// Выводим сообщение о расхождении кода отказа
+				::fprintf(stderr, "yaml fuzz: код отказа у записи свежей и занятой разошёлся: %u против %u\n",
+				 static_cast <uint32_t> (fresh.error()), static_cast <uint32_t> (reused.error()));
+				// Выходим из приложения с ошибкой
+				return EXIT_FAILURE;
+			}
+			// Выполняем учёт сличения записи свежей с записью занятой
+			totals.transcribed++;
+		}
 	}
 	// Выводим итог работы генератора
-	::fprintf(stderr, "yaml fuzz: %llu texts (%llu corrupted, %llu survived), %llu events, %llu chunked, %llu transcoded (%llu не допущено), %llu trees, %llu kept, %llu pruned, %llu edited (%llu verified), %llu taken, %llu assembled, %llu restyled (%llu обойдено), %llu recycled, %llu grafts (%llu refused)\n",
+	::fprintf(stderr, "yaml fuzz: %llu texts (%llu corrupted, %llu survived), %llu events, %llu chunked, %llu transcoded (%llu не допущено), %llu trees, %llu kept, %llu pruned, %llu edited (%llu verified), %llu taken, %llu assembled, %llu restyled (%llu обойдено), %llu recycled, %llu grafts (%llu refused), %llu transcribed\n",
 		static_cast <unsigned long long> (totals.texts), static_cast <unsigned long long> (totals.corrupted),
 		static_cast <unsigned long long> (totals.survived), static_cast <unsigned long long> (totals.events),
 		static_cast <unsigned long long> (totals.chunked), static_cast <unsigned long long> (totals.transcoded),
@@ -2467,7 +2662,8 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		static_cast <unsigned long long> (totals.undirected),
 		static_cast <unsigned long long> (totals.recycled),
 		static_cast <unsigned long long> (totals.grafted),
-		static_cast <unsigned long long> (totals.grafts - totals.grafted));
+		static_cast <unsigned long long> (totals.grafts - totals.grafted),
+		static_cast <unsigned long long> (totals.transcribed));
 	// Выводим код успешного выхода из приложения
 	return EXIT_SUCCESS;
 }
