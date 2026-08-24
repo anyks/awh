@@ -848,12 +848,12 @@ void awh::eth::Network_Address::fillSource(const net::addr_t * net, net::src_t &
 				struct ifaddrs * ptr = nullptr;
 				// Выполняем получение списка сетевых интерфейсов
 				if(::getifaddrs(&ptr) != 0){
-					// Буфер временных данных для генерации IP-адреса
-					char buffer[INET_ADDRSTRLEN];
 					/**
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
+						// Буфер временных данных для генерации IP-адреса
+						char buffer[INET_ADDRSTRLEN];
 						// Записываем ошибку в лог
 						this->_log->debug(
 							"Unable to get list of network interfaces", __PRETTY_FUNCTION__,
@@ -935,12 +935,12 @@ void awh::eth::Network_Address::fillSource(const net::addr_t * net, net::src_t &
 				struct ifaddrs * ptr = nullptr;
 				// Выполняем получение списка сетевых интерфейсов
 				if(::getifaddrs(&ptr) != 0){
-					// Буфер временных данных для генерации IP-адреса
-					char buffer[INET_ADDRSTRLEN];
 					/**
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
+						// Буфер временных данных для генерации IP-адреса
+						char buffer[INET6_ADDRSTRLEN];
 						// Записываем ошибку в лог
 						this->_log->debug(
 							"Unable to get list of network interfaces", __PRETTY_FUNCTION__,

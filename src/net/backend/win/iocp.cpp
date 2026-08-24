@@ -10871,7 +10871,17 @@ namespace kernel {
 		 *       происходит вовсе. Установлено прогоном: набор вставал в самом начале,
 		 *       процесс спал с семью дескрипторами
 		 */
-		const bool exchanging = ((node != nullptr) && ((node->state.node == event::node_t::PEER) || (node->state.node == event::node_t::CLIENT)));
+		/**
+		 * @note Серверный узел допускается к обмену лишь с сохранением границ сообщения.
+		 *       Довод выше про слушающего касается ПОТОКОВОГО сервера: у датаграммного и
+		 *       сырого слушания нет вовсе, подключений он не принимает, а данные несёт
+		 *       сам - и приём, поданный ему, завершается принятой датаграммой
+		 *
+		 * @warning Отбор этот читается соседями как договор о видах узла: правя его,
+		 *          правь и разбор видов в `limited` ниже
+		 */
+		const bool exchanging = ((node != nullptr) && ((node->state.node == event::node_t::PEER) || (node->state.node == event::node_t::CLIENT) ||
+		 ((node->state.node == event::node_t::SERVER) && ((node->state.type == event::type_t::DATAGRAM) || (node->state.type == event::type_t::RAW)))));
 		/**
 		 * Признак заданного ограничителя входящей полосы
 		 *
@@ -10887,10 +10897,26 @@ namespace kernel {
 		 *       обмена у канала своё, а учёт полосы к нему не применяется вовсе
 		 */
 		const bool channel = ((node != nullptr) && (node->state.family == event::family_t::PIPE));
+		/**
+		 * @warning Вид узла здесь разбирается ПОИМЁННО, и сокращать разбор нельзя.
+		 *          Прежде тернарник читался «не `PEER` - значит `CLIENT`», и держалось это
+		 *          на том, что `exchanging` пропускал сюда лишь два вида узла. С допуском
+		 *          серверных узлов такое сокращение приводит серверный узел к чужому типу
+		 *          `client_t` и зовёт у него `limitedRead()` по неопределённому поведению.
+		 *
+		 *          Установлено щупом 24.08.2026: правка отбора БЕЗ правки этого места
+		 *          давала «полоса отсеяла 19 из 19» и съедала весь выигрыш, изображая
+		 *          бесполезность самой правки
+		 *
+		 * @note Своего учёта полосы у серверного узла нет вовсе: ведёт его общее ведро
+		 *       `::local::budget` в самом пути чтения, а здесь серверный узел покрывается
+		 *       лишь общим членом `::bandwidth::read`
+		 */
 		const bool limited = (
 			(::bandwidth::read > 0) || (exchanging && ((node->state.node == event::node_t::PEER) ?
 			 reinterpret_cast <::io::peer_t *> (node)->limitedRead() :
-			 reinterpret_cast <::io::client_t *> (node)->limitedRead()))
+			 ((node->state.node == event::node_t::CLIENT) ?
+			  reinterpret_cast <::io::client_t *> (node)->limitedRead() : false)))
 		);
 		/**
 		 * Годность подписки для родного приёма

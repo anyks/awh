@@ -464,6 +464,40 @@ namespace awh {
 					uint32_t _length;
 					// Смещение начала текущего поля в хранилище знаков записи
 					uint32_t _begin;
+					/**
+					 * \~russian
+					 * Смещение первого значащего знака текущего поля в хранилище записи
+					 *
+					 * @details Значащая часть поля - то, что останется от него по снятии
+					 * обвязки, - отслеживается по ходу разбора, а не считается по его
+					 * окончании: предел длины поля обязан отвечать отказом в том месте, где
+					 * он переполнен, а не тогда, когда поле уже осело в памяти целиком
+					 *
+					 * \~english
+					 * Offset of the first significant character of the current field in the storage of the record
+					 * @details The significant part of a field — what will be left of it once the trimming
+					 * is taken off — is tracked along the parsing rather than counted at its
+					 * end: the limit of the length of a field must answer with a refusal at the place where
+					 * it is overflown rather than when the field has already settled into the memory in full
+					 *
+					 * \~
+					 */
+					uint32_t _from;
+					/**
+					 * \~russian
+					 * Смещение за последним значащим знаком текущего поля в хранилище записи
+					 *
+					 * @note Совпадение его с началом поля означает, что значащих знаков поле
+					 * ещё не набрало: всё накопленное - обвязка
+					 *
+					 * \~english
+					 * Offset past the last significant character of the current field in the storage of the record
+					 * @note Its coincidence with the beginning of the field means that the field has not gathered
+					 * significant characters yet: everything accumulated is the trimming
+					 *
+					 * \~
+					 */
+					uint32_t _till;
 				private:
 					// Признак того, что разделитель определён или задан
 					bool _detected;
@@ -686,6 +720,34 @@ namespace awh {
 					 * \~
 					 */
 					bool fail(const error_t error) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод занесения ошибки разбора с указанием места
+					 *
+					 * @details Место указывается там, где знак, отказ вызвавший, к мигу
+					 * обнаружения отказа уже пройден: предел, сличаемый по накопленному,
+					 * узнаёт о переполнении лишь по дописывании знака, а указывать обязан
+					 * на сам знак - ровно так же, как это делает предел длины записи,
+					 * сличаемый до его прохождения
+					 *
+					 * @param error    код ошибки разбора
+					 * @param location место ошибки в исходном тексте
+					 * @return         признак продолжения разбора, всегда ложь
+					 *
+					 * \~english
+					 * @brief Method of recording a parsing error with an indication of the place
+					 * @details The place is indicated there where the character that has caused the refusal has
+					 * already been passed by the moment of the detection of the refusal: a limit compared against what has been
+					 * accumulated learns of the overflow only upon the appending of the character, while it is obliged to point
+					 * at the character itself — exactly as the limit of the length of a record does, being
+					 * compared before the passing of it
+					 * @param error    error code of the parsing
+					 * @param location place of the error in the source text
+					 * @return         flag of the continuation of the parsing, always false
+					 *
+					 * \~
+					 */
+					bool fail(const error_t error, const location_t & location) noexcept;
 				private:
 					/**
 					 * \~russian
@@ -702,6 +764,99 @@ namespace awh {
 					 * \~
 					 */
 					span_t trim(const uint32_t offset) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод учёта значащей части поля по вновь накопленным знакам
+					 *
+					 * @details Учёт ведётся по знакам, дописанным в хранилище с указанного
+					 * места: обвязка предела не расходует, и потому отслеживаются границы
+					 * значащей части, а не общая длина накопленного
+					 *
+					 * @param offset размер хранилища записи до дописывания знаков
+					 *
+					 * \~english
+					 * @brief Method of the accounting of the significant part of a field by the newly accumulated characters
+					 * @details The accounting is kept by the characters appended into the storage from the specified
+					 * place: the trimming does not spend the limit, and therefore the boundaries of the significant
+					 * part are tracked rather than the total length of what has been accumulated
+					 * @param offset size of the storage of the record before the appending of the characters
+					 *
+					 * \~
+					 */
+					void significant(const size_t offset) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод получения длины поля, пределом ограничиваемой
+					 *
+					 * @details Длина эта считается по значащей части поля, если обвязка
+					 * настройками снимается, и по накопленному целиком, если сохраняется
+					 *
+					 * @return длина текущего поля в байтах
+					 *
+					 * \~english
+					 * @brief Method of the obtaining of the length of a field restricted by the limit
+					 * @details This length is counted by the significant part of a field if the trimming
+					 * is taken off by the settings, and by what has been accumulated in full if it is preserved
+					 * @return length of the current field in bytes
+					 *
+					 * \~
+					 */
+					uint32_t extent() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод проверки снятия обвязки у текущего поля
+					 *
+					 * @return признак того, что обвязка текущего поля снимается настройками
+					 *
+					 * \~english
+					 * @brief Method of the check of the removal of the trimming of the current field
+					 * @return sign that the trimming of the current field is taken off by the settings
+					 *
+					 * \~
+					 */
+					bool trimming() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод проверки нахождения разбора внутри поля
+					 *
+					 * @details Хранилище записи копит не одни лишь поля: строка примечания
+					 * ложится туда же, полем не являясь. Предел длины поля её не касается,
+					 * и сличаться он обязан лишь пока разбор внутри поля
+					 *
+					 * @return признак того, что разбор находится внутри поля
+					 *
+					 * \~english
+					 * @brief Method of the check of the presence of the parsing inside a field
+					 * @details The storage of a record accumulates not the fields alone: a line of a comment
+					 * lies down there as well without being a field. The limit of the length of a field does not concern it,
+					 * and it must be compared only while the parsing is inside a field
+					 * @return sign that the parsing is inside a field
+					 *
+					 * \~
+					 */
+					bool inside() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод получения длины поля, какою она станет при значащем знаке следом
+					 *
+					 * @details Пробельные знаки остаются обвязкою лишь до тех пор, пока за ними
+					 * не встал знак значащий: встав, он обращает их в середину значащей части, и
+					 * длина поля прирастает разом на всю их череду. Быстрый проход укорачивается
+					 * потому по худшему случаю, а не по нынешней длине значащей части
+					 *
+					 * @return длина текущего поля в байтах по худшему случаю
+					 *
+					 * \~english
+					 * @brief Method of the obtaining of the length of a field as it will become upon a significant character next
+					 * @details Whitespace characters remain a trimming only for as long as a significant character has not
+					 * stood after them: having stood, it turns them into the middle of the significant part, and
+					 * the length of the field grows at once by their whole run. The fast pass is therefore shortened
+					 * by the worst case rather than by the present length of the significant part
+					 * @return length of the current field in bytes by the worst case
+					 *
+					 * \~
+					 */
+					uint32_t pending() const noexcept;
 				public:
 					/**
 					 * \~russian

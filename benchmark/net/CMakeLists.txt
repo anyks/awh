@@ -33,6 +33,7 @@ if (${CMAKE_BUILD_${BENCHMARK_NAME}_BENCHMARKS})
         list(APPEND ${PROJECT_NAME}_BENCHMARK_SOURCES
             io/io.cpp
             io/echo.cpp
+            io/datagram.cpp
             io/stream.cpp
             io/accept.cpp
             io/timers.cpp

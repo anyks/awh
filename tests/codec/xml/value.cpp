@@ -3461,3 +3461,39 @@ TEST(CodecXmlValue, WritingPathsAgree) {
 		ASSERT_EQ(writer.text(), value.dump(settings)) << sample;
 	}
 }
+
+/**
+ * @brief Проверка оглашения отказа открытия файла разметки
+ *
+ * @details Отказ открытия идёт мимо чтения, а вывод в лог ведёт именно оно: значение
+ *          отвечало на несуществующий файл голым признаком неудачи, тогда как отказ
+ *          разбора того же файла в лог уходил. Своего кода отказа значение не держит,
+ *          и единственным оглашением остаётся запись в журнале
+ *
+ * @note Проверка ведётся своим журналом, а не общим молчащим: перехват вывода тут и
+ *       есть предмет проверки
+ *
+ */
+TEST(CodecXmlValue, MissingFileIsReported) {
+	// Собираемые сообщения журнала
+	vector <string> messages;
+	// Объект журнала с перехватом вывода
+	awh::log_t log(&Silent::framework());
+	// Выполняем назначение приёмника вывода в функцию обратного вызова
+	log.mode({awh::log_t::mode_t::DEFERRED});
+	// Выполняем назначение перехвата сообщений журнала
+	log.subscribe([&messages](const awh::log_t::flag_t, string_view text) noexcept -> void {
+		// Выполняем сбор очередного сообщения журнала
+		messages.push_back(string(text));
+	});
+	// Значение разметки
+	xml::value_t value;
+	// Выполняем назначение журнала значению разметки
+	value.setLogger(&log);
+	// Выполняем проверку отказа разбора несуществующего файла
+	ASSERT_FALSE(value.load("/несуществующий/каталог/разметка.xml"));
+	// Выполняем проверку оглашения отказа в журнале
+	ASSERT_FALSE(messages.empty());
+	// Выполняем проверку упоминания причины отказа в сообщении
+	ASSERT_NE(messages.front().find(xml::message(xml::error_t::FILE_NOT_OPENED)), string::npos) << messages.front();
+}

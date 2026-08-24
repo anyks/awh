@@ -2535,6 +2535,16 @@ bool awh::codec::xml::Value::load(const string & filename) noexcept {
 	if(!file.is_open()){
 		// Выполняем очистку прежнего содержимого значения
 		this->clear();
+		/**
+		 * Если объект для работы с логами установлен
+		 *
+		 * @note Отказ этот идёт мимо чтения, а вывод в лог ведёт именно оно: без
+		 *       настоящего вывода открытие файла отказывало бы молча, тогда как отказ
+		 *       разбора того же файла в лог уходит
+		 */
+		if(this->_log != nullptr)
+			// Выполняем вывод сообщения об отказе
+			this->_log->print("XML value failed: %s", log_t::flag_t::CRITICAL, awh::codec::xml::message(error_t::FILE_NOT_OPENED));
 		// Выводим признак неудачного разбора
 		return false;
 	}

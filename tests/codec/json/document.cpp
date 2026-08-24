@@ -1654,3 +1654,20 @@ TEST(CodecJsonDocument, GraftSurvivesRewrite){
 		ASSERT_EQ(text.find("старое"), string::npos) << item.first << ": " << text;
 	}
 }
+
+/**
+ * @brief Проверка отличения ненайденного файла от внутреннего изъяна разбора
+ *
+ * @details Путь к файлу передаётся извне, и отказ открытия внутренним изъяном
+ *          разбора не является. Прежде отвечалось кодом внутренней ошибки, и
+ *          потребитель отправлялся искать дефект у нас вместо своего пути
+ *
+ */
+TEST(CodecJsonDocument, MissingFileIsNotInternal) {
+	// Дерево значений документа
+	json::document_t document(::logger());
+	// Выполняем проверку отказа разбора несуществующего файла
+	ASSERT_FALSE(document.load("/несуществующий/каталог/документ.json"));
+	// Выполняем проверку кода ошибки разбора
+	ASSERT_EQ(document.error(), json::error_t::FILE_NOT_OPENED);
+}

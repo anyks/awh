@@ -1392,11 +1392,22 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод разбора текста разметки из файла
 					 *
+					 * @note Файл поднимается в память целиком, а не читается кусками: отвод
+					 *       места под дерево снимается пред-разбором всего текста, и потоковым
+					 *       такой разбор быть не может. Тем настоящий метод и отличается от
+					 *       одноимённого у кодека JSON, читающего файл кусками. Файлу, в память
+					 *       не помещающемуся, предназначено потоковое чтение reader_t
+					 *
 					 * @param filename адрес разбираемого файла
 					 * @return         признак успешности разбора
 					 *
 					 * \~english
 					 * @brief Method of the parsing of a markup text from a file
+					 * @note The file is raised into the memory in full rather than read by chunks: the
+					 * reservation of the room for the tree is taken by a pre-scan of the whole text, and
+					 * such a parsing cannot be a streaming one. That is what tells the present method from
+					 * the same-named one of the json codec, which reads a file by chunks. A file that does
+					 * not fit into the memory is what the streaming reading of reader_t is meant for
 					 * @param filename address of the file being parsed
 					 * @return sign of the success of the parsing
 					 *

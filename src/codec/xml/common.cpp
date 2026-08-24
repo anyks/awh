@@ -317,6 +317,10 @@ const char * awh::codec::xml::message(const error_t error) noexcept {
 		case static_cast <uint8_t> (error_t::ENTITY_BOUNDARY):
 			// Выводим описание кода ошибки
 			return "logical structure crosses entity boundary";
+		// Если файл разметки открыть не удалось
+		case static_cast <uint8_t> (error_t::FILE_NOT_OPENED):
+			// Выводим описание кода ошибки
+			return "cannot open the markup file";
 	}
 	// Выводим описание неизвестного кода ошибки
 	return "unknown error";
