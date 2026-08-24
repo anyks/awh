@@ -149,8 +149,25 @@ $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/capture/pe.cpp" -o "
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/encoding/charset/charset.cpp" -o "$OUTPUT/charset.o"
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/encoding/charset/table.cpp" -o "$OUTPUT/charset-table.o"
 
+##
+# Сличаем перечень частей кодека с деревом исходных текстов
+#
+# Перечень держится вручную, и часть, к нему не приписанная, из стенда молча выпадает:
+# прогон отчитывается успехом по коду, какого в нём нет. Предупреждение об этом стояло
+# здесь с самого начала - теперь оно проверяется
+##
+PARTS="common encoding reader writer document value"
+PRESENT=$(ls "$ROOT/src/codec/toml"/*.cpp | while read -r FILE; do basename "$FILE" .cpp; done | sort | tr '\n' ' ')
+LISTED=$(for PART in $PARTS; do echo "$PART"; done | sort | tr '\n' ' ')
+if [ "$PRESENT" != "$LISTED" ]; then
+	echo "Перечень частей кодека разошёлся с деревом исходных текстов" >&2
+	echo "  в стенде: $LISTED" >&2
+	echo "  в дереве: $PRESENT" >&2
+	exit 5
+fi
+
 # Выполняем перебор всех частей кодека TOML
-for PART in common encoding reader writer document value; do
+for PART in $PARTS; do
 	# Выполняем сборку очередной части кодека TOML
 	$COMPILER $OPTIONS -c "$ROOT/src/codec/toml/$PART.cpp" -o "$OUTPUT/codec-$PART.o"
 	# Выполняем сборку проверок очередной части кодека TOML

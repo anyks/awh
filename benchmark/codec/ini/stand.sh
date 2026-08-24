@@ -147,8 +147,34 @@ $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/encoding/charset/table.cpp
 # Выполняем сборку точки входа набора замеров
 $COMPILER $OPTIONS -c "$ROOT/benchmark/main.cpp" -o "$OUTPUT/main.o"
 
+##
+# Сличаем перечни частей с деревом исходных текстов
+#
+# Перечни держатся вручную, и часть, к ним не приписанная, из стенда молча выпадает:
+# прогон отчитывается успехом по коду, какого в нём нет. Предупреждение об этом стояло
+# здесь с самого начала - теперь оно проверяется
+##
+PARTS="common encoding reader writer document value"
+BENCH="ini reader writer document value"
+CODEC_PRESENT=$(ls "$ROOT/src/codec/ini"/*.cpp | while read -r FILE; do basename "$FILE" .cpp; done | sort | tr '\n' ' ')
+CODEC_LISTED=$(for PART in $PARTS; do echo "$PART"; done | sort | tr '\n' ' ')
+BENCH_PRESENT=$(ls "$ROOT/benchmark/codec/ini"/*.cpp | while read -r FILE; do basename "$FILE" .cpp; done | sort | tr '\n' ' ')
+BENCH_LISTED=$(for PART in $BENCH; do echo "$PART"; done | sort | tr '\n' ' ')
+if [ "$CODEC_PRESENT" != "$CODEC_LISTED" ]; then
+	echo "Перечень частей кодека разошёлся с деревом исходных текстов" >&2
+	echo "  в стенде: $CODEC_LISTED" >&2
+	echo "  в дереве: $CODEC_PRESENT" >&2
+	exit 5
+fi
+if [ "$BENCH_PRESENT" != "$BENCH_LISTED" ]; then
+	echo "Перечень частей набора замеров разошёлся с деревом исходных текстов" >&2
+	echo "  в стенде: $BENCH_LISTED" >&2
+	echo "  в дереве: $BENCH_PRESENT" >&2
+	exit 5
+fi
+
 # Выполняем перебор всех частей кодека INI
-for PART in common encoding reader writer document value; do
+for PART in $PARTS; do
 	# Выполняем сборку очередной части кодека INI
 	$COMPILER $OPTIONS -c "$ROOT/src/codec/ini/$PART.cpp" -o "$OUTPUT/codec-$PART.o"
 	# Добавляем собранное к перечню объектных файлов стенда
@@ -156,7 +182,7 @@ for PART in common encoding reader writer document value; do
 done
 
 # Выполняем перебор всех частей набора замеров кодека INI
-for PART in ini reader writer document value; do
+for PART in $BENCH; do
 	# Выполняем сборку очередной части набора замеров
 	$COMPILER $OPTIONS -c "$ROOT/benchmark/codec/ini/$PART.cpp" -o "$OUTPUT/bench-$PART.o"
 	# Добавляем собранное к перечню объектных файлов стенда
