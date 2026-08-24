@@ -132,12 +132,21 @@ namespace {
 		uint64_t grafts;
 		// Количество удавшихся переносов владеющего значения
 		uint64_t grafted;
+		// Количество сличений подачи в кодировке UTF-16
+		uint64_t transcoded;
+		/**
+		 * Количество текстов, приведение каких к кодировке UTF-16 не удалось
+		 *
+		 * @note Счётчик этот сторожит само сличение: приведение, отказавшее молча,
+		 *       отняло бы у прогона половину подач, а отчёт остался бы прежним
+		 */
+		uint64_t untranscodable;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
 		Statistic() noexcept :
-		 texts(0), corrupted(0), survived(0), events(0), trees(0), rewrites(0),
+		 texts(0), corrupted(0), survived(0), events(0), trees(0), rewrites(0), transcoded(0), untranscodable(0),
 		 grafts(0), grafted(0) {}
 	} totals;
 
@@ -1627,9 +1636,14 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 				/**
 				 * Если приведение текста настроек к кодировке UTF-16 не удалось
 				 */
-				if(!transcode(text, big, wide))
+				if(!transcode(text, big, wide)){
+					// Выполняем учёт текста, приведению не поддавшегося
+					totals.untranscodable++;
 					// Выполняем переход к следующему порядку байтов
 					continue;
+				}
+				// Выполняем учёт сличения подачи в кодировке UTF-16
+				totals.transcoded++;
 				/**
 				 * Выполняем перебор размеров куска подачи текста настроек
 				 */
@@ -1689,7 +1703,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	// Выводим статистику работы генератора
 	::fprintf(
 		stdout,
-		"toml fuzz: %llu texts (%llu corrupted), %llu events, %llu parsed to the end, %llu trees, %llu rewrites, %llu grafts (%llu refused)\n",
+		"toml fuzz: %llu texts (%llu corrupted), %llu events, %llu parsed to the end, %llu trees, %llu rewrites, %llu grafts (%llu refused), %llu transcoded (%llu untranscodable)\n",
 		static_cast <unsigned long long> (totals.texts),
 		static_cast <unsigned long long> (totals.corrupted),
 		static_cast <unsigned long long> (totals.events),
@@ -1697,7 +1711,9 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		static_cast <unsigned long long> (totals.trees),
 		static_cast <unsigned long long> (totals.rewrites),
 		static_cast <unsigned long long> (totals.grafted),
-		static_cast <unsigned long long> (totals.grafts - totals.grafted)
+		static_cast <unsigned long long> (totals.grafts - totals.grafted),
+		static_cast <unsigned long long> (totals.transcoded),
+		static_cast <unsigned long long> (totals.untranscodable)
 	);
 	// Выходим из приложения
 	return EXIT_SUCCESS;

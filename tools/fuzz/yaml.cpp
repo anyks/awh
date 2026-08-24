@@ -128,6 +128,14 @@ namespace {
 		uint64_t chunked;
 		// Количество сличений кодировок
 		uint64_t transcoded;
+		/**
+		 * Количество текстов, к сличению подачи в кодировке UTF-16 не допущенных
+		 *
+		 * @note Счётчик этот сторожит само сличение: доводы отсева законны, однако
+		 *       отсев, ни в один счётчик не попадающий, отнял бы у прогона подачи молча,
+		 *       а отчёт остался бы прежним
+		 */
+		uint64_t unconverted;
 		// Количество собранных деревьев документов
 		uint64_t trees;
 		// Количество деревьев, исходный текст удержавших
@@ -151,7 +159,7 @@ namespace {
 		 *
 		 */
 		Statistic() noexcept :
-		 texts(0), corrupted(0), survived(0), events(0), chunked(0), transcoded(0), trees(0), kept(0), pruned(0),
+		 texts(0), corrupted(0), survived(0), events(0), chunked(0), transcoded(0), unconverted(0), trees(0), kept(0), pruned(0),
 		 mirrored(0), edited(0), assembled(0), taken(0), grafts(0), grafted(0) {}
 	} totals;
 
@@ -2093,9 +2101,12 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		 *          Сличать его с приведением к UTF-16 нечестно: это два разных текста, и
 		 *          расхождение их будет виною ворошителя, а не разбора
 		 */
-		if(recognised != yaml::encoding_t::UTF8)
+		if(recognised != yaml::encoding_t::UTF8){
+			// Выполняем учёт текста, к сличению не допущенного
+			totals.unconverted++;
 			// Выполняем переход к следующему проходу генератора
 			continue;
+		}
 		/**
 		 * Если текст несёт пустой байт
 		 *
@@ -2105,9 +2116,12 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		 *          описании, и разбор тут ни при чём: пустой знак тексту YAML не принадлежит
 		 *          вовсе, и приводить его к иной кодировке незачем
 		 */
-		if(source.find('\0') != string::npos)
+		if(source.find('\0') != string::npos){
+			// Выполняем учёт текста, к сличению не допущенного
+			totals.unconverted++;
 			// Выполняем переход к следующему проходу генератора
 			continue;
+		}
 		/**
 		 * Выполняем перебор обоих порядков байтов кодировки UTF-16
 		 */
@@ -2137,10 +2151,11 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		}
 	}
 	// Выводим итог работы генератора
-	::fprintf(stderr, "yaml fuzz: %llu texts (%llu corrupted, %llu survived), %llu events, %llu chunked, %llu transcoded, %llu trees, %llu kept, %llu pruned, %llu edited (%llu verified), %llu taken, %llu assembled, %llu grafts (%llu refused)\n",
+	::fprintf(stderr, "yaml fuzz: %llu texts (%llu corrupted, %llu survived), %llu events, %llu chunked, %llu transcoded (%llu не допущено), %llu trees, %llu kept, %llu pruned, %llu edited (%llu verified), %llu taken, %llu assembled, %llu grafts (%llu refused)\n",
 		static_cast <unsigned long long> (totals.texts), static_cast <unsigned long long> (totals.corrupted),
 		static_cast <unsigned long long> (totals.survived), static_cast <unsigned long long> (totals.events),
 		static_cast <unsigned long long> (totals.chunked), static_cast <unsigned long long> (totals.transcoded),
+		static_cast <unsigned long long> (totals.unconverted),
 		static_cast <unsigned long long> (totals.trees), static_cast <unsigned long long> (totals.kept),
 		static_cast <unsigned long long> (totals.pruned),
 		static_cast <unsigned long long> (totals.edited), static_cast <unsigned long long> (totals.mirrored), static_cast <unsigned long long> (totals.taken),

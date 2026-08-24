@@ -131,13 +131,22 @@ namespace {
 		uint64_t grafts;
 		// Количество удавшихся переносов владеющего значения
 		uint64_t grafted;
+		// Количество сличений подачи в кодировке UTF-16
+		uint64_t transcoded;
+		/**
+		 * Количество текстов, приведение каких к кодировке UTF-16 не удалось
+		 *
+		 * @note Счётчик этот сторожит само сличение: приведение, отказавшее молча,
+		 *       отняло бы у прогона половину подач, а отчёт остался бы прежним
+		 */
+		uint64_t untranscodable;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
 		Statistic() noexcept :
 		 texts(0), corrupted(0), survived(0),
-		 events(0), trees(0), rewrites(0), grafts(0), grafted(0) {}
+		 events(0), trees(0), rewrites(0), grafts(0), grafted(0), transcoded(0), untranscodable(0) {}
 	/**
 	 * Учёт проделанной работы
 	 *
@@ -381,16 +390,65 @@ namespace {
 				} break;
 				// Выполняем построение пустой строки
 				case 8: break;
-				// Выполняем построение произвольного набора знаков
+				/**
+				 * Выполняем построение произвольного набора знаков
+				 *
+				 * @note Половина наборов пишется произвольными байтами всего диапазона, а
+				 *       половина - произвольными знаками, годными в кодировке UTF-8. Прежде
+				 *       писались одни лишь байты, и текст годным UTF-8 не выходил: сличение
+				 *       подачи в кодировке UTF-16 такой текст пропускало, а пропуск тот ни
+				 *       в один счётчик не попадал. Семь текстов из десяти сличения того не
+				 *       проходили вовсе
+				 */
 				case 9: {
 					// Количество знаков произвольного набора
 					const uint32_t length = (engine() % 12);
+					// Признак записи набора байтами, кодировке не подчинёнными
+					const bool raw = ((engine() % 2) == 0);
 					/**
 					 * Выполняем дозапись знаков произвольного набора
 					 */
-					for(uint32_t j = 0; j < length; j++)
-						// Дописываем произвольный знак
-						result.push_back(static_cast <char> (engine() % 256));
+					for(uint32_t j = 0; j < length; j++){
+						/**
+						 * Если набор пишется произвольными байтами
+						 */
+						if(raw){
+							// Дописываем произвольный байт
+							result.push_back(static_cast <char> (engine() % 256));
+							// Выполняем переход к следующему знаку набора
+							continue;
+						}
+						// Получаем произвольное значение знака вне пары суррогатов
+						uint32_t code = (0x20 + (engine() % 0xD000));
+						// Смещаем значение знака за пару суррогатов
+						if(code >= 0xD800)
+							code += 0x800;
+						/**
+						 * Если знак записывается одним байтом
+						 */
+						if(code < 0x80)
+							// Дописываем знак одним байтом
+							result.push_back(static_cast <char> (code));
+						/**
+						 * Если знак записывается двумя байтами
+						 */
+						else if(code < 0x800) {
+							// Дописываем старший байт знака
+							result.push_back(static_cast <char> (0xC0 | (code >> 6)));
+							// Дописываем младший байт знака
+							result.push_back(static_cast <char> (0x80 | (code & 0x3F)));
+						/**
+						 * Если знак записывается тремя байтами
+						 */
+						} else {
+							// Дописываем старший байт знака
+							result.push_back(static_cast <char> (0xE0 | (code >> 12)));
+							// Дописываем средний байт знака
+							result.push_back(static_cast <char> (0x80 | ((code >> 6) & 0x3F)));
+							// Дописываем младший байт знака
+							result.push_back(static_cast <char> (0x80 | (code & 0x3F)));
+						}
+					}
 				} break;
 			}
 			// Дописываем знак завершения строки
@@ -1616,9 +1674,14 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 				// Текст настроек, приведённый к кодировке UTF-16
 				string wide;
 				// Если приведение текста настроек к кодировке UTF-16 не удалось
-				if(!transcode(text, big, wide))
+				if(!transcode(text, big, wide)){
+					// Выполняем учёт текста, приведению не поддавшегося
+					totals.untranscodable++;
 					// Выполняем переход к следующему порядку байтов
 					continue;
+				}
+				// Выполняем учёт сличения подачи в кодировке UTF-16
+				totals.transcoded++;
 				/**
 				 * Выполняем перебор размеров куска подачи текста настроек
 				 */
@@ -1663,7 +1726,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	// Выводим статистику работы генератора
 	::fprintf(
 		stdout,
-		"ini fuzz: %llu texts (%llu corrupted), %llu events, %llu parsed to the end, %llu trees, %llu rewrites, %llu grafts (%llu refused)\n",
+		"ini fuzz: %llu texts (%llu corrupted), %llu events, %llu parsed to the end, %llu trees, %llu rewrites, %llu grafts (%llu refused), %llu transcoded (%llu untranscodable)\n",
 		static_cast <unsigned long long> (totals.texts),
 		static_cast <unsigned long long> (totals.corrupted),
 		static_cast <unsigned long long> (totals.events),
@@ -1671,7 +1734,9 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		static_cast <unsigned long long> (totals.trees),
 		static_cast <unsigned long long> (totals.rewrites),
 		static_cast <unsigned long long> (totals.grafted),
-		static_cast <unsigned long long> (totals.grafts - totals.grafted)
+		static_cast <unsigned long long> (totals.grafts - totals.grafted),
+		static_cast <unsigned long long> (totals.transcoded),
+		static_cast <unsigned long long> (totals.untranscodable)
 	);
 	// Выходим из приложения
 	return EXIT_SUCCESS;
