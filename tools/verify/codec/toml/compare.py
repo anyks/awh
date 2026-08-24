@@ -120,6 +120,8 @@ def main():
 
 	# Счётчики исходов сличения
 	matched = refused = accepted = diverged = broken = 0
+	# Счётчики случаев, сличению не подлежащих, и срывов работы щупа
+	unreferenced = crashed = 0
 
 	# Перечень расхождений для раскладки
 	report = []
@@ -136,10 +138,27 @@ def main():
 				skipped += 1
 				continue
 			target = source[:-5] + '.json'
+			##
 			# Описания без эталона сличать нечем
+			#
+			# @note Считаются они отдельно: прежде такой случай отбрасывался молча, ни в
+			#       один счётчик не попадая, и отчёт выглядел полным, не будучи им
+			##
 			if not os.path.exists(target):
+				unreferenced += 1
 				continue
 			run = subprocess.run([dump, source], capture_output = True, text = True)
+			##
+			# Если работа щупа прекращена сигналом
+			#
+			# @note Срыв работы отказом разбора не является, и выдавать его за отвергнутый
+			#       текст нельзя: отказ есть суждение кодека, а срыв - его отсутствие
+			##
+			if run.returncode < 0:
+				crashed += 1
+				report.append({'случай': label, 'исход': 'щуп сорван сигналом %d' % (-run.returncode),
+				               'отказ': run.stderr.strip()[:400]})
+				continue
 			# Если разбор отверг годный текст
 			if run.returncode != 0:
 				broken += 1
@@ -171,6 +190,13 @@ def main():
 				skipped += 1
 				continue
 			run = subprocess.run([dump, source], capture_output = True, text = True)
+			# Если работа щупа прекращена сигналом
+			if run.returncode < 0:
+				crashed += 1
+				report.append({'случай': os.path.relpath(source, root),
+				               'исход': 'щуп сорван сигналом %d' % (-run.returncode),
+				               'отказ': run.stderr.strip()[:400]})
+				continue
 			# Если разбор верно отверг негодный текст
 			if run.returncode == 1:
 				refused += 1
@@ -179,13 +205,15 @@ def main():
 				report.append({'случай': os.path.relpath(source, root), 'исход': 'негодный текст принят',
 				               'выдача': run.stdout.strip()[:400]})
 
-	print('Всего случаев: %d' % (matched + diverged + broken + refused + accepted))
+	print('Всего случаев: %d' % (matched + diverged + broken + refused + accepted + crashed))
 	print('  дерево совпало:            %d' % matched)
 	print('  негодный текст отвергнут:  %d' % refused)
 	print('  НЕГОДНЫЙ ТЕКСТ ПРИНЯТ:     %d' % accepted)
 	print('  ДЕРЕВО РАЗОШЛОСЬ:          %d' % diverged)
 	print('  ГОДНЫЙ ТЕКСТ ОТВЕРГНУТ:    %d' % broken)
+	print('  ЩУП СОРВАН СИГНАЛОМ:       %d' % crashed)
 	print('  отсеяно как случаи 1.1.0:  %d' % skipped)
+	print('  годных текстов без эталона: %d' % unreferenced)
 
 	# Выполняем раскладку расхождений
 	if report:
@@ -202,13 +230,13 @@ def main():
 	# каталога, а не на состав его, и сличение отчитывалось нулём расхождений, не поверив
 	# ни единого случая
 	##
-	if (matched + diverged + broken + refused + accepted) == 0:
+	if (matched + diverged + broken + refused + accepted + crashed) == 0:
 		print('ОТКАЗ: корпус пуст, поверять нечего', file = sys.stderr)
 		return 2
 
 	# Отказом отвечаем при всяком расхождении: рост совпавших, купленный ослаблением
 	# отказов, ростом не является
-	return 1 if (accepted or diverged or broken) else 0
+	return 1 if (accepted or diverged or broken or crashed) else 0
 
 
 if __name__ == '__main__':

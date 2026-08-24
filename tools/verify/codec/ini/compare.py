@@ -148,7 +148,7 @@ def main():
 	report = []
 
 	for dialect, oracle, listed, folded, sectioned in ORACLES:
-		matched = diverged = refused = skipped = 0
+		matched = diverged = refused = skipped = crashed = 0
 		for name in sorted(os.listdir(root)):
 			if not name.endswith('.ini'):
 				continue
@@ -159,6 +159,18 @@ def main():
 				skipped += 1
 				continue
 			run = subprocess.run([dump, source, dialect], capture_output = True, text = True)
+			##
+			# Если работа щупа прекращена сигналом
+			#
+			# @note Срыв работы отказом разбора не является: отказ есть суждение кодека,
+			#       а срыв - его отсутствие, и смешивать их нельзя
+			##
+			if run.returncode < 0:
+				crashed += 1
+				report.append({'наречие': dialect, 'случай': name,
+				               'исход': 'щуп сорван сигналом %d' % (-run.returncode),
+				               'отказ': run.stderr.strip()[:400]})
+				continue
 			if run.returncode != 0:
 				refused += 1
 				report.append({'наречие': dialect, 'случай': name, 'исход': 'разбор отвергнут',
@@ -178,13 +190,14 @@ def main():
 				               'расхождения': diffs[:8]})
 			else:
 				matched += 1
-		totals[dialect] = (matched, diverged, refused, skipped)
+		totals[dialect] = (matched, diverged, refused, skipped, crashed)
 
-	for dialect, (matched, diverged, refused, skipped) in totals.items():
+	for dialect, (matched, diverged, refused, skipped, crashed) in totals.items():
 		print('Наречие %s:' % dialect)
 		print('  разбор совпал:          %d' % matched)
 		print('  РАЗБОР РАЗОШЁЛСЯ:       %d' % diverged)
 		print('  РАЗБОР ОТВЕРГНУТ:       %d' % refused)
+		print('  ЩУП СОРВАН СИГНАЛОМ:    %d' % crashed)
 		print('  эталон текст не осилил: %d' % skipped)
 
 	if report:
@@ -206,7 +219,7 @@ def main():
 		return 2
 
 	# Отказом отвечаем при всяком расхождении
-	return 1 if any((d or r) for _, d, r, _ in totals.values()) else 0
+	return 1 if any((d or r or c) for _, d, r, _, c in totals.values()) else 0
 
 
 if __name__ == '__main__':
