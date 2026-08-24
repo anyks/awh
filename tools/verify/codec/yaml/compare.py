@@ -64,14 +64,23 @@ for name in sorted(os.listdir(SRC)):
         if 'yaml' in merged:
             cases.append((name if i == 0 else '%s:%d' % (name, i), merged))
 
-ok = bad = failok = failbad = skipped = 0
+ok = bad = failok = failbad = skipped = marked = crashed = 0
 diffs = []
 for label, case in cases:
     body = case.get('yaml')
     if body is None: continue
     # Знаки набора: ␣ пробел, последовательность ———» есть одна подача, ∎ конец без перевода
     body = body.replace('␣', ' ').replace('—', '').replace('»', '\t').replace('∎', '').replace('↵', '')
-    if '<SPC>' in body or '<TAB>' in body: continue
+    ##
+    # Случаи с указателями знаков в теле сличению не подлежат
+    #
+    # Знаки «<SPC>» и «<TAB>» набор оставляет пояснением для человека, а не телом
+    # текста, и подставить их нечем. Прежде такой случай отбрасывался молча, ни в один
+    # счётчик не попадая: отчёт выглядел полным, не будучи им
+    ##
+    if '<SPC>' in body or '<TAB>' in body:
+        marked += 1
+        continue
     open('/tmp/yts.yaml', 'w', encoding='utf-8').write(body)
     r = subprocess.run([EVENTS, '/tmp/yts.yaml'], capture_output=True, text=True, errors='replace')
     got = r.stdout
@@ -80,14 +89,28 @@ for label, case in cases:
         else: failbad += 1; diffs.append((label, 'ДОЛЖЕН БЫЛ ОТКАЗАТЬ', case.get('tree', ''), got))
         continue
     want = case.get('tree')
-    if want is None: skipped += 1; continue
+    ##
+    # Случай без эталонного потока событий проверяется на живучесть
+    #
+    # Набор для части случаев потока не даёт вовсе - о них сказано, что они годны по
+    # правилам описания, но полезными не являются, и составители не желают поощрять
+    # их поддержку. Сличать там нечего, однако прежде такой случай пропускался совсем,
+    # и падение разбора на нём осталось бы незамеченным
+    ##
+    if want is None:
+        skipped += 1
+        # Если щуп прекратил работу сигналом либо донесением санитайзера
+        if (r.returncode < 0) or ('Sanitizer' in r.stderr) or ('runtime error' in r.stderr):
+            crashed += 1
+            diffs.append((label, 'ПАДЕНИЕ БЕЗ ЭТАЛОНА', '', (got + r.stderr)[:2000]))
+        continue
     # Знаки набора стоят и в эталонном дереве: пробел в конце записи иначе не разглядеть
     want = want.replace('␣', ' ').replace('—', '').replace('»', '\t').replace('∎', '').replace('↵', '')
     if got.strip() == want.strip(): ok += 1
     else: bad += 1; diffs.append((label, 'РАСХОЖДЕНИЕ', want, got))
 
-print('всего %d: совпало %d, разошлось %d, отказ верный %d, отказа не дал %d, без эталона %d'
-      % (len(cases), ok, bad, failok, failbad, skipped))
+print('всего %d: совпало %d, разошлось %d, отказ верный %d, отказа не дал %d, без эталона %d (падений %d), со знаками-пояснениями %d'
+      % (len(cases), ok, bad, failok, failbad, skipped, crashed, marked))
 
 ##
 # Пустой корпус — отказ, а не чистый прогон
@@ -105,4 +128,4 @@ json.dump([{'case': d[0], 'вид': d[1], 'эталон': d[2], 'наше': d[3]
 print('расхождения разложены в', path)
 
 # Отчитываемся отказом при всяком расхождении с эталоном
-sys.exit(1 if (bad or failbad) else 0)
+sys.exit(1 if (bad or failbad or crashed) else 0)
