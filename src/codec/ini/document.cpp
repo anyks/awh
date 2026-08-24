@@ -1614,10 +1614,18 @@ bool awh::codec::ini::Document::set(const string_view key, const string_view val
 			return false;
 		/**
 		 * Если объявленный раздел обнаружить не удалось
+		 *
+		 * @note Отказ этот означает наш собственный изъян: заведение раздела удалось,
+		 *       а розыск его тут же не нашёл. Прежде он отвечал ложью без кода ошибки
 		 */
-		if(!this->search(section, subsection, index))
+		if(!this->search(section, subsection, index)){
+			// Запоминаем код ошибки правки дерева настроек
+			this->_error = error_t::INTERNAL;
+			// Выполняем вывод сообщения об отказе в лог
+			this->report();
 			// Выводим отрицательный результат выполнения операции
 			return false;
+		}
 	}
 	// Выполняем поиск свойства в указателе свойств
 	const auto i = this->_properties.find(this->label(index, key));
@@ -1861,10 +1869,18 @@ bool awh::codec::ini::Document::push(const string_view key, const string_view va
 			return false;
 		/**
 		 * Если объявленный раздел обнаружить не удалось
+		 *
+		 * @note Отказ этот означает наш собственный изъян: заведение раздела удалось,
+		 *       а розыск его тут же не нашёл. Прежде он отвечал ложью без кода ошибки
 		 */
-		if(!this->search(section, subsection, index))
+		if(!this->search(section, subsection, index)){
+			// Запоминаем код ошибки правки дерева настроек
+			this->_error = error_t::INTERNAL;
+			// Выполняем вывод сообщения об отказе в лог
+			this->report();
 			// Выводим отрицательный результат выполнения операции
 			return false;
+		}
 	}
 	// Выводим результат заведения новой записи свойства
 	return this->attach(index, key, value);
@@ -1891,9 +1907,14 @@ bool awh::codec::ini::Document::erase(const string_view key, const string_view s
 	/**
 	 * Если раздел с таким именем не обнаружен
 	 */
-	if(!this->search(section, subsection, index))
+	if(!this->search(section, subsection, index)){
+		// Запоминаем код ошибки правки дерева настроек
+		this->_error = error_t::UNKNOWN_SECTION;
+		// Выполняем вывод сообщения об отказе в лог
+		this->report();
 		// Выводим отрицательный результат выполнения операции
 		return false;
+	}
 	// Выполняем поиск свойства в указателе свойств
 	const auto i = this->_properties.find(this->label(index, key));
 	/**
@@ -1903,7 +1924,6 @@ bool awh::codec::ini::Document::erase(const string_view key, const string_view s
 	 *       отсутствие свойства от изъяна имени не мог вовсе
 	 */
 	if((i == this->_properties.end()) || i->second.empty()){
-		// Выводим отрицательный результат выполнения операции
 		// Запоминаем код ошибки правки дерева настроек
 		this->_error = error_t::UNKNOWN_KEY;
 		// Выполняем вывод сообщения об отказе в лог
@@ -1984,9 +2004,14 @@ bool awh::codec::ini::Document::remove(const string_view section, const string_v
 	/**
 	 * Если имя удаляемого раздела пусто
 	 */
-	if(section.empty())
+	if(section.empty()){
+		// Запоминаем код ошибки правки дерева настроек
+		this->_error = error_t::EMPTY_SECTION;
+		// Выполняем вывод сообщения об отказе в лог
+		this->report();
 		// Выводим отрицательный результат выполнения операции
 		return false;
+	}
 	// Порядковый номер найденного раздела
 	uint32_t index = 0;
 	/**

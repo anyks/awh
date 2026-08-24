@@ -1969,6 +1969,14 @@ TEST(CodecIniDocument, UnknownNameReportsReason) {
 	ASSERT_FALSE(document.remove("missing"));
 	// Выполняем проверку кода ошибки правки дерева
 	ASSERT_EQ(document.error(), ini::error_t::UNKNOWN_SECTION);
+	// Выполняем проверку отказа сноса свойства из необъявленного раздела
+	ASSERT_FALSE(document.erase("k", "нет"));
+	// Выполняем проверку кода ошибки правки дерева
+	ASSERT_EQ(document.error(), ini::error_t::UNKNOWN_SECTION);
+	// Выполняем проверку отказа удаления раздела с пустым именем
+	ASSERT_FALSE(document.remove(""));
+	// Выполняем проверку кода ошибки правки дерева
+	ASSERT_EQ(document.error(), ini::error_t::EMPTY_SECTION);
 	/**
 	 * Выполняем проверку того, что опрос кодом ошибки не метится
 	 *

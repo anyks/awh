@@ -1225,19 +1225,36 @@ namespace {
 			/**
 			 * Выполняем выбор разновидности вносимой правки
 			 */
+			// Признак успеха внесённой правки дерева настроек
+			bool edited = true;
 			switch(kind){
 				// Если правкой является объявление таблицы
-				case 0: document.create(path); break;
+				case 0: edited = document.create(path); break;
 				// Если правкой является установка строкового значения
-				case 1: document.set(path, "правка"); break;
+				case 1: edited = document.set(path, "правка"); break;
 				// Если правкой является установка целого числа
-				case 2: document.set(path, static_cast <int64_t> (engine())); break;
+				case 2: edited = document.set(path, static_cast <int64_t> (engine())); break;
 				// Если правкой является установка числа с плавающей точкой
-				case 3: document.set(path, 0.5); break;
+				case 3: edited = document.set(path, 0.5); break;
 				// Если правкой является удаление пары
-				case 4: document.erase(path); break;
+				case 4: edited = document.erase(path); break;
 				// Если правкой является удаление таблицы
-				case 5: document.remove(path); break;
+				case 5: edited = document.remove(path); break;
+			}
+			/**
+			 * Если правка отвергнута, а причина отказа не названа
+			 *
+			 * @details Отказ, кода ошибки не назначающий, оставляет потребителя ни с чем:
+			 *          отличить отсутствие имени от изъяна его он тогда не может вовсе.
+			 *          Правило это поверяется здесь, а не глазами по исходному тексту:
+			 *          путей отказа у правки дерева десятки
+			 */
+			if(!edited && (document.error() == toml::error_t::NONE)){
+				// Выводим сообщение об отказе без названной причины
+				::fprintf(stderr, "toml fuzz: правка отвергнута без кода ошибки, разновидность %u, путь [%s]\n",
+				 static_cast <uint32_t> (kind), trace.c_str());
+				// Выводим отрицательный результат работы генератора
+				return false;
 			}
 		}
 		// Выполняем перезапись правленого дерева настроек

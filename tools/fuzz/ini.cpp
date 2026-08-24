@@ -1085,20 +1085,39 @@ namespace {
 			const string subsection(((engine() % 3) == 0) ? "sub" : "");
 			// Имя правимого свойства
 			const string key(1, static_cast <char> ('k' + (engine() % 4)));
+			// Признак успеха выполненной правки дерева настроек
+			bool edited = true;
+			// Разновидность выполняемой правки дерева настроек
+			const uint32_t kind = (engine() % 5);
 			/**
 			 * Выполняем выборку разновидности правки
 			 */
-			switch(engine() % 5){
+			switch(kind){
 				// Выполняем создание раздела
-				case 0: document.create(section, subsection); break;
+				case 0: edited = document.create(section, subsection); break;
 				// Выполняем установку значения свойства
-				case 1: document.set(key, "value", section, subsection); break;
+				case 1: edited = document.set(key, "value", section, subsection); break;
 				// Выполняем установку значения свойства со знаками записи
-				case 2: document.set(key, " a ; b \" c \\ d ", section, subsection); break;
+				case 2: edited = document.set(key, " a ; b \" c \\ d ", section, subsection); break;
 				// Выполняем удаление свойства
-				case 3: document.erase(key, section, subsection); break;
+				case 3: edited = document.erase(key, section, subsection); break;
 				// Выполняем удаление раздела
-				case 4: document.remove(section, subsection); break;
+				case 4: edited = document.remove(section, subsection); break;
+			}
+			/**
+			 * Если правка отвергнута, а причина отказа не названа
+			 *
+			 * @details Отказ, кода ошибки не назначающий, оставляет потребителя ни с чем:
+			 *          отличить отсутствие имени от изъяна его либо от запрета настроек
+			 *          он тогда не может вовсе. Правило это поверяется здесь, а не глазами
+			 *          по исходному тексту: путей отказа у правки дерева десятки
+			 */
+			if(!edited && (document.error() == ini::error_t::NONE)){
+				// Выводим сообщение об отказе без названной причины
+				::fprintf(stderr, "ini fuzz: правка отвергнута без кода ошибки, разновидность %u, раздел [%s] подраздел [%s] ключ [%s]\n",
+				 kind, section.c_str(), subsection.c_str(), key.c_str());
+				// Выводим отрицательный результат работы генератора
+				return false;
 			}
 		}
 		/**
