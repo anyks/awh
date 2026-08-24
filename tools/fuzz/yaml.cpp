@@ -1009,9 +1009,29 @@ namespace {
 	 * @return           состояние потокового чтения по окончании подачи
 	 *
 	 */
-	yaml::state_t consume(const string & text, const yaml::reader_t::settings_t & settings, const size_t chunk, vector <Event> & events, yaml::error_t * failure = nullptr, yaml::encoding_t * recognised = nullptr) noexcept {
+	yaml::state_t consume(const string & text, const yaml::reader_t::settings_t & settings, const size_t chunk, vector <Event> & events, yaml::error_t * failure = nullptr, yaml::encoding_t * recognised = nullptr, const bool recycle = false) noexcept {
+		/**
+		 * Объект потокового чтения, от подачи к подаче живущий
+		 *
+		 * @note Держится он тут ради поверки сброса: чтение, один текст уже прочитавшее,
+		 *       обязано по сбросу прочесть следующий ровно так же, как прочло бы его
+		 *       чтение свежее. Остаток прежней подачи - стопа открытых построений, метки,
+		 *       наречие, опознанная кодировка - обязан быть сброшен целиком
+		 */
+		static yaml::reader_t reused(::logger());
 		// Создаём объект потокового чтения текста
-		yaml::reader_t reader(::logger(), settings);
+		yaml::reader_t fresh(::logger(), settings);
+		/**
+		 * Если чтение ведётся объектом, прежней подачей занятым
+		 */
+		if(recycle){
+			// Выполняем сброс состояния прежней подачи
+			reused.clear();
+			// Выполняем установку настроек разбора очередной подачи
+			(void) reused.settings(settings);
+		}
+		// Объект потокового чтения, подачу выполняющий
+		yaml::reader_t & reader = (recycle ? reused : fresh);
 		// Размер куска подачи текста
 		const size_t size = ((chunk > 0) ? chunk : (text.empty() ? 1 : text.length()));
 		// Смещение начала очередного куска подачи
@@ -1503,6 +1523,55 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		if(state == yaml::state_t::FINISHED)
 			// Выполняем учёт разобранного до конца текста
 			totals.survived++;
+		/**
+		 * Выполняем сличение подачи свежим чтением с подачей чтением, сброшенным после
+		 * прежней подачи
+		 *
+		 * @details Чтение, один текст уже прочитавшее, обязано по сбросу прочесть
+		 *          следующий ровно так же, как прочло бы его чтение свежее: стопа
+		 *          открытых построений, метки, наречие, опознанная кодировка - остаток
+		 *          всего этого обязан быть сброшен целиком. Дефект такого рода прогоном
+		 *          свежего чтения не воспроизводится ни разу
+		 *
+		 * @note Чтение это живёт от прохода к проходу намеренно: чем длиннее череда
+		 *       прочитанных им текстов, тем вернее вылезет остаток
+		 */
+		{
+			// Перечень событий подачи текста чтением, прежней подачей занятым
+			vector <Event> reused;
+			// Код ошибки разбора текста чтением, прежней подачей занятым
+			yaml::error_t repeated = yaml::error_t::NONE;
+			// Выполняем подачу текста целиком чтением, прежней подачей занятым
+			const yaml::state_t achieved = consume(text, settings, 0, reused, &repeated, nullptr, true);
+			/**
+			 * Если состояние по окончании подачи со свежим чтением разошлось
+			 */
+			if(achieved != state){
+				// Выводим сообщение о расхождении состояния подачи
+				::fprintf(stderr, "yaml fuzz: reused reader state differs: %u против %u, settings %s\n",
+				 static_cast <uint32_t> (achieved), static_cast <uint32_t> (state), described(settings).c_str());
+				// Выводим разбираемый текст
+				dump(text);
+				// Выходим из приложения с ошибкой
+				return EXIT_FAILURE;
+			}
+			/**
+			 * Если код ошибки со свежим чтением разошёлся
+			 */
+			if(repeated != failure){
+				// Выводим сообщение о расхождении кода ошибки
+				::fprintf(stderr, "yaml fuzz: reused reader error differs: %s против %s, settings %s\n",
+				 yaml::message(repeated), yaml::message(failure), described(settings).c_str());
+				// Выводим разбираемый текст
+				dump(text);
+				// Выходим из приложения с ошибкой
+				return EXIT_FAILURE;
+			}
+			// Выполняем сличение перечней выданных событий
+			if(!compare(whole, reused, "сброшенное чтение", text, settings))
+				// Выходим из приложения с ошибкой
+				return EXIT_FAILURE;
+		}
 		/**
 		 * Выполняем сличение подачи целиком с подачей кусками нескольких размеров
 		 *

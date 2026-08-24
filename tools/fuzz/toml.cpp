@@ -606,9 +606,28 @@ namespace {
 	 * @return         состояние разбора по его завершении
 	 *
 	 */
-	toml::state_t consume(const string & text, const toml::reader_t::settings_t & settings, const size_t chunk, vector <Event> & events, Event * failure = nullptr) noexcept {
+	toml::state_t consume(const string & text, const toml::reader_t::settings_t & settings, const size_t chunk, vector <Event> & events, Event * failure = nullptr, const bool recycle = false) noexcept {
+		/**
+		 * Объект чтения, от подачи к подаче живущий
+		 *
+		 * @note Держится он тут ради поверки сброса: чтение, один текст уже прочитавшее,
+		 *       обязано по сбросу прочесть следующий ровно так же, как прочло бы его
+		 *       чтение свежее. Остаток прежней подачи обязан быть сброшен целиком
+		 */
+		static toml::reader_t reused(::logger());
 		// Создаём объект чтения текста настроек
-		toml::reader_t reader(::logger(), settings);
+		toml::reader_t fresh(::logger(), settings);
+		/**
+		 * Если чтение ведётся объектом, прежней подачей занятым
+		 */
+		if(recycle){
+			// Выполняем сброс состояния прежней подачи
+			reused.clear();
+			// Выполняем установку настроек разбора очередной подачи
+			(void) reused.settings(settings);
+		}
+		// Объект чтения, подачу выполняющий
+		toml::reader_t & reader = (recycle ? reused : fresh);
 		// Размер куска подачи текста настроек
 		const size_t size = (chunk > 0 ? chunk : text.length());
 		// Смещение начала очередного куска подачи
@@ -1744,6 +1763,45 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		if(state == toml::state_t::FINISHED)
 			// Выполняем учёт разобранного до конца текста настроек
 			totals.survived++;
+		/**
+		 * Выполняем сличение подачи свежим чтением с подачей чтением, сброшенным после
+		 * прежней подачи
+		 *
+		 * @details Чтение, один текст уже прочитавшее, обязано по сбросу прочесть
+		 *          следующий ровно так же, как прочло бы его чтение свежее: остаток
+		 *          прежней подачи обязан быть сброшен целиком. Дефект такого рода
+		 *          прогоном свежего чтения не воспроизводится ни разу - показывается он
+		 *          лишь у потребителя, читающего одним объектом много текстов подряд
+		 *
+		 * @note Чтение это живёт от прохода к проходу намеренно: чем длиннее череда
+		 *       прочитанных им текстов, тем вернее вылезет остаток
+		 */
+		{
+			// Перечень событий подачи текста чтением, прежней подачей занятым
+			vector <Event> reused;
+			// Итог отказа разбора текста чтением, прежней подачей занятым
+			Event repeated;
+			// Выполняем подачу текста настроек целиком чтением, прежней подачей занятым
+			const toml::state_t achieved = consume(text, settings, 0, reused, &repeated, true);
+			/**
+			 * Если состояние по окончании подачи со свежим чтением разошлось
+			 */
+			if(achieved != state){
+				// Выводим сообщение о расхождении состояния подачи
+				::fprintf(stderr, "toml fuzz: reused reader state differs: %u против %u\n",
+				 static_cast <uint32_t> (achieved), static_cast <uint32_t> (state));
+				// Выводим настройки разбора исходного текста настроек
+				dump(settings);
+				// Выводим разбираемый текст настроек
+				dump(text);
+				// Выводим отрицательный результат работы генератора
+				return EXIT_FAILURE;
+			}
+			// Выполняем сличение перечней выданных событий
+			if(!compare(whole, reused, 0, text))
+				// Выводим отрицательный результат работы генератора
+				return EXIT_FAILURE;
+		}
 		/**
 		 * Выполняем сличение подачи целиком с подачей кусками нескольких размеров
 		 *
