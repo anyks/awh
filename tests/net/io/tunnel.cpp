@@ -214,6 +214,105 @@ enum class tunnel_driver_t : uint8_t {
  * @param driver драйвер устройств туннеля для закрепления
  *
  */
+/**
+ * @brief Число устройств драйвера tap-windows6, стоящих на машине
+ *
+ * @details Устройства эти ставит УСТАНОВЩИК ДРАЙВЕРА, и число их конечно - движок лишь
+ *          отбирает свободное среди готовых. Тем MS Windows и отличается от систем
+ *          POSIX, где устройство заводится по требованию и считать нечего
+ *
+ * @note Без этого счёта проверки на несколько устройств ОТКАЗЫВАЛИ на машине, где
+ *       устройство одно, изображая дефект движка нехваткой оснащения. Замерено на
+ *       стенде Windows ARM64 24.08.2026: там стоит единственный адаптер, и
+ *       IoTunnelRaisesManyDevicesTest падал на втором туннеле из восьми
+ *
+ * @return число отысканных устройств
+ *
+ */
+static uint16_t tunnelDevicesCount() noexcept {
+	/**
+	 * Для операционной системы MS Windows
+	 */
+	#if _WIN32 || _WIN64
+		// Размер буфера под состав устройств машины
+		ULONG size = 0;
+		// Спрашиваем потребный размер буфера
+		if(::GetAdaptersAddresses(AF_UNSPEC, GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST | GAA_FLAG_SKIP_DNS_SERVER, nullptr, nullptr, &size) != ERROR_BUFFER_OVERFLOW)
+			// Выводим нулевое число устройств: состав машины неизвестен
+			return 0;
+		// Буфер под состав устройств машины
+		std::vector <uint8_t> buffer(static_cast <size_t> (size), 0);
+		// Объект списка устройств машины
+		PIP_ADAPTER_ADDRESSES addresses = reinterpret_cast <PIP_ADAPTER_ADDRESSES> (buffer.data());
+		// Выполняем получение состава устройств машины
+		if(::GetAdaptersAddresses(AF_UNSPEC, GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST | GAA_FLAG_SKIP_DNS_SERVER, nullptr, addresses, &size) != ERROR_SUCCESS)
+			// Выводим нулевое число устройств
+			return 0;
+		// Число отысканных устройств туннеля
+		uint16_t found = 0;
+		/**
+		 * Перебираем устройства машины
+		 */
+		for(PIP_ADAPTER_ADDRESSES item = addresses; item != nullptr; item = item->Next){
+			// Если описание устройства не получено
+			if(item->Description == nullptr)
+				// Переходим к следующему устройству
+				continue;
+			// Если описание устройства принадлежит драйверу tap-windows6
+			if(::wcsstr(item->Description, L"TAP-Windows") != nullptr)
+				// Увеличиваем счётчик отысканных устройств
+				found++;
+		}
+		// Выводим число отысканных устройств
+		return found;
+	/**
+	 * Для всех остальных операционных систем
+	 */
+	#else
+		// Устройств этого драйвера у прочих систем нет вовсе
+		return 0;
+	#endif
+}
+
+/**
+ * @brief Признак доступности драйвера Wintun
+ *
+ * @details Драйвер этот заводит адаптер ПО ТРЕБОВАНИЮ и при выходе процесса уносит его
+ *          с собою, оттого числом устройств он не ограничен вовсе - в отличие от
+ *          tap-windows6, устройства которого ставит установщик драйвера
+ *
+ * @note Библиотека ищется ТЕМ ЖЕ порядком, каким её ищет сам движок: рядом с двоичным
+ *       файлом и в системном каталоге. Иначе проверка судила бы о доступности не по
+ *       тому, что доступно движку
+ *
+ * @return признак доступности драйвера Wintun
+ *
+ */
+static bool tunnelWintunAvailable() noexcept {
+	/**
+	 * Для операционной системы MS Windows
+	 */
+	#if _WIN32 || _WIN64
+		// Выполняем загрузку библиотеки драйвера Wintun
+		HMODULE handle = ::LoadLibraryExW(L"wintun.dll", nullptr, LOAD_LIBRARY_SEARCH_APPLICATION_DIR | LOAD_LIBRARY_SEARCH_SYSTEM32);
+		// Если библиотека драйвера загружена
+		if(handle != nullptr){
+			// Освобождаем загруженную библиотеку
+			::FreeLibrary(handle);
+			// Выводим признак доступности драйвера
+			return true;
+		}
+		// Выводим признак недоступности драйвера
+		return false;
+	/**
+	 * Для всех остальных операционных систем
+	 */
+	#else
+		// Драйвера этого у прочих систем нет вовсе
+		return false;
+	#endif
+}
+
 static void tunnelPinDriver([[maybe_unused]] awh::engine::io_t * io, [[maybe_unused]] const tunnel_driver_t driver) noexcept {
 	/**
 	 * Для операционной системы MS Windows
@@ -242,6 +341,53 @@ static void tunnelPinDriver([[maybe_unused]] awh::engine::io_t * io, [[maybe_unu
 		}
 	#endif
 }
+
+/**
+ * @brief Закрепление драйвера, способного поднять нужное число устройств
+ *
+ * @details Устройства tap-windows6 ставит установщик драйвера, и число их конечно, а
+ *          Wintun заводит адаптер по требованию. Оттого проверке, которой нужно
+ *          несколько устройств, драйвер выбирается ПО СОСТАВУ МАШИНЫ: хватает
+ *          постоянных - берётся tap-windows6, не хватает - берётся Wintun
+ *
+ * @warning Прежде здесь стоял жёсткий tap-windows6, и на машине с единственным
+ *          устройством проверки эти отступали пропуском, хотя Wintun поднял бы их
+ *          беспрепятственно. Замерено на стенде Windows ARM64 24.08.2026
+ *
+ * @note Туннели этих проверок несут пакеты СЕТЕВОГО уровня, а их Wintun переносит
+ *       наравне с tap-windows6. Будь нужен канальный уровень с адресами, замена была
+ *       бы неравноценной и делать её было бы нельзя
+ *
+ * @param io    объект сетевого движка
+ * @param count потребное число устройств
+ * @return      название выбранного драйвера для доклада
+ *
+ */
+static const char * tunnelPinForCount([[maybe_unused]] awh::engine::io_t * io, [[maybe_unused]] const uint16_t count) noexcept {
+	/**
+	 * Для операционной системы MS Windows
+	 */
+	#if _WIN32 || _WIN64
+		// Если постоянных устройств на машине хватает
+		if(tunnelDevicesCount() >= count){
+			// Закрепляем драйвер tap-windows6
+			tunnelPinDriver(io, tunnel_driver_t::TAP);
+			// Выводим название выбранного драйвера
+			return "tap-windows6";
+		}
+		// Закрепляем драйвер Wintun: устройства он заводит по требованию
+		tunnelPinDriver(io, tunnel_driver_t::WINTUN);
+		// Выводим название выбранного драйвера
+		return "Wintun";
+	/**
+	 * Для всех остальных операционных систем
+	 */
+	#else
+		// Драйверов у прочих систем нет вовсе
+		return "";
+	#endif
+}
+
 
 /**
  * @brief Охранник узла туннеля: снос обязан пройти при любом исходе
@@ -337,53 +483,13 @@ static bool tunnelReady([[maybe_unused]] const uint16_t count) noexcept {
 	 */
 	#elif _WIN32 || _WIN64
 		/**
-		 * Считаем устройства драйвера tap-windows6, стоящие на машине
+		 * Выводим признак готовности окружения
 		 *
-		 * @details Устройства эти ставит УСТАНОВЩИК ДРАЙВЕРА, и число их конечно - движок
-		 *          лишь отбирает свободное среди готовых. Тем Windows и отличается от
-		 *          систем POSIX, где устройство заводится по требованию и готовить нечего
-		 *
-		 * @note Без этого счёта проверки на несколько устройств ОТКАЗЫВАЛИ на машине, где
-		 *       устройство одно, изображая дефект движка нехваткой оснащения. Замерено на
-		 *       стенде Windows ARM64 24.08.2026: там стоит единственный адаптер, и
-		 *       IoTunnelRaisesManyDevicesTest падал на втором туннеле из восьми
-		 *
-		 * @note Драйвер Wintun здесь не в счёт намеренно: он заводит адаптер по
-		 *       требованию, и проверки, которым нужно несколько устройств, закрепляют
-		 *       за собой именно tap-windows6
-		 *
+		 * @note Драйвер Wintun выручает там, где устройств tap-windows6 не хватает: он
+		 *       заводит адаптер по требованию и числом устройств не ограничен. Оттого
+		 *       доступность его означает готовность к любому их числу
 		 */
-		// Размер буфера под состав устройств машины
-		ULONG size = 0;
-		// Спрашиваем потребный размер буфера
-		if(::GetAdaptersAddresses(AF_UNSPEC, GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST | GAA_FLAG_SKIP_DNS_SERVER, nullptr, nullptr, &size) != ERROR_BUFFER_OVERFLOW)
-			// Выводим признак неготовности: состав устройств машине неизвестен
-			return false;
-		// Буфер под состав устройств машины
-		std::vector <uint8_t> buffer(static_cast <size_t> (size), 0);
-		// Объект списка устройств машины
-		PIP_ADAPTER_ADDRESSES addresses = reinterpret_cast <PIP_ADAPTER_ADDRESSES> (buffer.data());
-		// Выполняем получение состава устройств машины
-		if(::GetAdaptersAddresses(AF_UNSPEC, GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST | GAA_FLAG_SKIP_DNS_SERVER, nullptr, addresses, &size) != ERROR_SUCCESS)
-			// Выводим признак неготовности
-			return false;
-		// Число отысканных устройств туннеля
-		uint16_t found = 0;
-		/**
-		 * Перебираем устройства машины
-		 */
-		for(PIP_ADAPTER_ADDRESSES item = addresses; item != nullptr; item = item->Next){
-			// Если описание устройства не получено
-			if(item->Description == nullptr)
-				// Переходим к следующему устройству
-				continue;
-			// Если описание устройства принадлежит драйверу tap-windows6
-			if(::wcsstr(item->Description, L"TAP-Windows") != nullptr)
-				// Увеличиваем счётчик отысканных устройств
-				found++;
-		}
-		// Выводим признак готовности окружения
-		return (found >= count);
+		return ((tunnelDevicesCount() >= count) || tunnelWintunAvailable());
 	/**
 	 * Для всех остальных операционных систем
 	 */
@@ -1671,7 +1777,10 @@ TEST_F(IoFixture, IoTunnelRaisesManyDevicesTest){
 	 * Закрепляем драйвер устройств туннеля: у MS Windows их два, и выбор по умолчанию
 	 * решается составом каталога сборки, а не замыслом проверки
 	 */
-	tunnelPinDriver(this->_io.get(), tunnel_driver_t::TAP);
+	// Выбираем драйвер по составу машины: постоянных устройств может не хватить
+	const char * driver = tunnelPinForCount(this->_io.get(), TUNNEL_MANY);
+	// Докладываем выбранный драйвер: на разных машинах проверка идёт разными путями
+	SCOPED_TRACE(std::string("драйвер устройств: ") + driver);
 	// Выполняем инициализацию движка
 	ASSERT_TRUE(this->_io->initialize());
 	/**
@@ -1774,7 +1883,10 @@ TEST_F(IoFixture, IoTunnelCarriesOnEachDeviceTest){
 	 * Закрепляем драйвер устройств туннеля: у MS Windows их два, и выбор по умолчанию
 	 * решается составом каталога сборки, а не замыслом проверки
 	 */
-	tunnelPinDriver(this->_io.get(), tunnel_driver_t::TAP);
+	// Выбираем драйвер по составу машины: постоянных устройств может не хватить
+	const char * driver = tunnelPinForCount(this->_io.get(), TUNNEL_FLOWS);
+	// Докладываем выбранный драйвер: на разных машинах проверка идёт разными путями
+	SCOPED_TRACE(std::string("драйвер устройств: ") + driver);
 	// Выполняем инициализацию движка
 	ASSERT_TRUE(this->_io->initialize());
 	// Число дошедшего по каждому туннелю

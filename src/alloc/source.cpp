@@ -342,11 +342,12 @@ void * awh::alloc::SystemSource::alloc(const size_t size, const size_t alignment
 			// Отводим область у системы
 			void * result = ::VirtualAlloc(nullptr, rounded, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 			// Если область отведена
-			if(result != nullptr)
+			if(result != nullptr){
 				// Запоминаем действительно выданный размер
 				actual = rounded;
 				// Считаем взятое у системы
 				this->_taken.fetch_add(rounded, std::memory_order_relaxed);
+			}
 			// Выводим адрес отведённой области
 			return result;
 		}

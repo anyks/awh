@@ -125,6 +125,15 @@ void awh::codec::csv::Writer::field(const string_view text) noexcept {
 	// Запоминаем признак того, что поле начинает запись
 	const bool started = this->_started;
 	/**
+	 * Если поле начинает запись, запоминаем её начало в собранном тексте
+	 *
+	 * @note Нужно для различения записи без полей от записи из одного пустого поля:
+	 *       знаков не дают обе, а поступать с ними договор велит по-разному
+	 */
+	if(!started)
+		// Запоминаем положение начала текущей записи
+		this->_origin = this->_text.size();
+	/**
 	 * Если запись уже содержит поля
 	 */
 	if(this->_started)
@@ -304,6 +313,23 @@ template __AWH_SHARED_EXPORT__ void awh::codec::csv::Writer::number <double> (co
 void awh::codec::csv::Writer::record() noexcept {
 	// Выполняем запись метки порядка байтов
 	this->mark();
+	/**
+	 * Если запись содержит поля, но знаков не дала вовсе
+	 *
+	 * @note Случай этот один: запись из единственного ПУСТОГО поля. Пустою строкою она
+	 *       неотличима от записи БЕЗ полей, а разбор пустые строки пропускает, и запись
+	 *       круга не переживала бы. Пара кавычек её сохраняет - так же поступает
+	 *       эталонная реализация языка Python
+	 *
+	 * @note При запрещённых настройкою кавычках писать нечем, и запись теряется
+	 *       законно: договор без кавычек различить эти два случая не позволяет
+	 */
+	if(this->_started && (this->_text.size() == this->_origin) && (this->_settings.quoting != quoting_t::NONE)){
+		// Записываем открывающий знак кавычек
+		this->_text.push_back(this->_settings.quote);
+		// Записываем закрывающий знак кавычек
+		this->_text.push_back(this->_settings.quote);
+	}
 	// Записываем знак конца строки
 	this->_text.append(newline(this->_settings.newline));
 	// Снимаем признак наличия полей у записи
@@ -409,6 +435,8 @@ string awh::codec::csv::Writer::take() noexcept {
 void awh::codec::csv::Writer::clear() noexcept {
 	// Очищаем собранный текст
 	this->_text.clear();
+	// Сбрасываем положение начала текущей записи
+	this->_origin = 0;
 	// Снимаем признак наличия полей у записи
 	this->_started = false;
 }
@@ -439,7 +467,7 @@ void awh::codec::csv::Writer::settings(const settings_t & settings) noexcept {
  *
  */
 awh::codec::csv::Writer::Writer(const log_t * log) noexcept :
- _log(log), _started(false), _marked(false) {}
+ _log(log), _origin(0), _started(false), _marked(false) {}
 /**
  * @brief Конструктор
  *
@@ -449,4 +477,4 @@ awh::codec::csv::Writer::Writer(const log_t * log) noexcept :
  */
 awh::codec::csv::Writer::Writer(const log_t * log, const settings_t & settings) noexcept :
  _log(log),
- _settings(settings), _started(false), _marked(false) {}
+ _settings(settings), _origin(0), _started(false), _marked(false) {}

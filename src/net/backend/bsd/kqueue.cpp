@@ -66817,7 +66817,7 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 								// Вызываем функцию обратного вызова об ошибке отказа
 								client->callbacks.status(client->id, event::status_t::FAILURE);
 							// Устанавливаем текст ошибки
-							const string error = "Setting a timeout is allowed for actions (reading, writing, connect and disconnect) for client node";
+							const string error = "Setting a timeout is allowed for actions (reading, writing, connect and reconnect) for client node";
 							// Если установлена функция обратного вызова
 							if(client->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события

@@ -317,7 +317,7 @@ namespace awh {
 				TOO_MANY_FIELDS      = 0x0C, // Количество полей в записи превышает допустимое
 				FIELD_COUNT_MISMATCH = 0x0D, // Количество полей записи расходится с количеством полей заголовка
 				SEPARATOR_UNDETECTED = 0x0E, // Разделитель не удалось определить по содержимому
-				SEPARATOR_CONFLICT   = 0x0F, // Разделитель совпадает со знаком кавычек либо с переводом строки
+				SEPARATOR_CONFLICT   = 0x0F, // Разделитель не задан вовсе либо совпадает со знаком кавычек либо с переводом строки
 				EMPTY_HEADER         = 0x10, // Заголовок объявлен пустым именем поля
 				DUPLICATE_HEADER     = 0x11, // Имя поля в заголовке объявлено повторно
 				NO_HEADER            = 0x12, // Заголовок затребован, а текст пуст
@@ -566,7 +566,30 @@ namespace awh {
 			 * \~
 			 */
 			typedef struct __AWH_SHARED_EXPORT__ Location {
-				// Смещение от начала текста в байтах
+				/**
+				 * \~russian
+				 * @brief Смещение от начала текста в байтах
+				 *
+				 * @warning Смещение считается по тексту, ПРИВЕДЁННОМУ к UTF-8, а не по
+				 *          исходным байтам. Метка порядка байтов снята, а текст в иной
+				 *          кодировке уже переведён, и длины расходятся: документ Latin-1
+				 *          в 52 байта даёт смещение конца 54, а метка порядка байтов
+				 *          сдвигает все смещения на свою длину. Для указания места в
+				 *          ИСХОДНОМ файле смещение это негодно, если текст подан не в
+				 *          UTF-8 без метки
+				 *
+				 * \~english
+				 * @brief The offset from the beginning of the text in bytes
+				 *
+				 * @warning The offset is counted over the text CONVERTED to UTF-8 rather than over
+				 *          the source bytes. The byte order mark is stripped and a text in another
+				 *          encoding is already converted, so the lengths diverge: a Latin-1 document
+				 *          of 52 bytes gives the ending offset 54, and a byte order mark shifts every
+				 *          offset by its length. For pointing at a place in the SOURCE file this
+				 *          offset is unfit unless the text is supplied as UTF-8 without a mark
+				 *
+				 * \~
+				 */
 				uint64_t offset;
 				// Номер строки, считая с единицы
 				uint32_t line;

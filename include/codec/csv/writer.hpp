@@ -248,6 +248,24 @@ namespace awh {
 					// Собранный текст
 					string _text;
 				private:
+					/**
+					 * \~russian
+					 * @brief Положение начала текущей записи в собранном тексте
+					 *
+					 * @details Служит различению записи БЕЗ полей от записи из одного ПУСТОГО
+					 * поля: обе не дают знаков, но первая по договору теряется при обратном
+					 * чтении, а вторая обязана пережить круг и пишется парою кавычек
+					 *
+					 * \~english
+					 * @brief The position of the beginning of the current record in the collected text
+					 * @details It serves to distinguish a record WITHOUT fields from a record of a single
+					 * EMPTY field: neither gives characters, but the first one is lost upon the reverse
+					 * reading by the contract, while the second one must survive the round trip and is
+					 * written with a pair of the quotes
+					 *
+					 * \~
+					 */
+					size_t _origin;
 					// Признак того, что запись уже содержит поля
 					bool _started;
 					// Признак того, что метка порядка байтов уже записана

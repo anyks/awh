@@ -316,7 +316,27 @@ namespace {
 	 * @return        результат сличения
 	 *
 	 */
-	bool compare(const vector <Event> & whole, const vector <Event> & chunked, const size_t chunk, const string & text) noexcept {
+	bool compare(const vector <Event> & whole, const vector <Event> & chunked, const size_t chunk, const string & text, const bool refused) noexcept {
+		/**
+		 * Если количество выданных событий разошлось, а разбор окончился отказом
+		 *
+		 * @note Сколько событий разбор успел выдать ПРЕЖДЕ отказа, договором не
+		 *       установлено, и зависеть это вправе от нарезки: подача целиком отвергает
+		 *       негодную кодировку по всему буферу разом, а побайтовая успевает выдать
+		 *       поля, стоящие до негодного байта, - и выдаёт их верно. Требуется потому
+		 *       не равенство длин, а чтобы короткий перечень был началом длинного:
+		 *       расхождение внутри общего начала остаётся расхождением
+		 *
+		 * @note Так же судят и оба стенда сличения - соответствия XML и эталона CSV;
+		 *       строгость здесь была не замыслом, а недосмотром
+		 */
+		if(refused && (whole.size() != chunked.size()))
+			// Сличаем лишь общее начало перечней выданных событий
+			return compare(
+				vector <Event> (whole.begin(), whole.begin() + min(whole.size(), chunked.size())),
+				vector <Event> (chunked.begin(), chunked.begin() + min(whole.size(), chunked.size())),
+				chunk, text, false
+			);
 		/**
 		 * Если количество выданных событий разошлось
 		 */
@@ -1173,7 +1193,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 			/**
 			 * Если перечни выданных разбором событий разошлись
 			 */
-			if(!compare(whole, chunked, chunk, text)){
+			if(!compare(whole, chunked, chunk, text, ((error != csv::error_t::NONE) || (reached != csv::error_t::NONE)))){
 				// Выводим настройки разбора таблицы
 				dump(settings);
 				// Выходим из приложения с кодом ошибки

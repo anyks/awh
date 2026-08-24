@@ -165,9 +165,9 @@ const char * awh::codec::csv::message(const error_t error) noexcept {
 		// Если разделитель не удалось определить по содержимому
 		case static_cast <uint8_t> (error_t::SEPARATOR_UNDETECTED):
 			return "field separator could not be detected";
-		// Если разделитель совпадает с занятым разбором знаком
+		// Если разделитель не задан вовсе либо совпадает с занятым разбором знаком
 		case static_cast <uint8_t> (error_t::SEPARATOR_CONFLICT):
-			return "field separator conflicts with quote or newline";
+			return "field separator is unset or conflicts with quote or newline";
 		// Если заголовок объявлен пустым именем поля
 		case static_cast <uint8_t> (error_t::EMPTY_HEADER):
 			return "empty field name in header";

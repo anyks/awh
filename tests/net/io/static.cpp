@@ -18355,6 +18355,44 @@ TEST_F(IoFixture, IoConnectTimeoutAbandonsPendingTest){
 			if(ok) successes++; else failures++;
 		}
 	));
+	/**
+	 * Признак негодного окружения: ядро отвечает отсутствием маршрута
+	 *
+	 * @details Опыт требует, чтобы подключение к глухому адресу ушло в ОЖИДАНИЕ и
+	 *          срок по нему истёк. Отступление ниже ловит лишь СИНХРОННЫЙ отказ -
+	 *          когда `connect` вернул ложь сразу. Но отказ бывает и отложенным: на
+	 *          машине, где маршрута к канальному блоку нет вовсе, `connect` уходит
+	 *          в ожидание успешно, а спустя миг ядро отвечает `EHOSTUNREACH`, и
+	 *          срок не истекает никогда - отклик отказа приходит раньше
+	 *
+	 * @note Отступать по одному лишь факту отказа НЕЛЬЗЯ: отказ - это законный исход
+	 *       опыта, он проверяется утверждением ниже. Отступление положено только по
+	 *       названной ядром причине, иначе оно заглушило бы и настоящий дефект,
+	 *       обратив проверку в молчаливо отключённую
+	 *
+	 * @warning Установлено на стенде Windows ARM64 (Apple Silicon, сеть через мост):
+	 *          там маршрута к 169.254.0.0/16 нет, и обе проверки падали, изображая
+	 *          дефект движка. На стендах с таким маршрутом они проходят
+	 */
+	bool unreachable = false;
+	this->_io->on(eid, static_cast <awh::engine::callback::error_t> (
+		[&unreachable]([[maybe_unused]] const awh::event::id_t eid, [[maybe_unused]] const awh::event::error_t code, const std::string & text) noexcept -> void {
+			/**
+			 * Отмечаем негодность окружения по названной ядром причине
+			 *
+			 * @note Сверяется УСТОЙЧИВАЯ часть сообщения, а не полное его написание:
+			 *       одна и та же причина зовётся у систем по-разному («No route to
+			 *       host», «Network is unreachable», «Host is down»), и требовать
+			 *       дословного совпадения значило бы завести признак, мёртвый везде,
+			 *       кроме одной системы
+			 */
+			unreachable = (unreachable ||
+			 (text.find("route to host") != std::string::npos) ||
+			 (text.find("unreachable") != std::string::npos) ||
+			 (text.find("Unreachable") != std::string::npos) ||
+			 (text.find("is down") != std::string::npos));
+		}
+	));
 	this->_io->on(eid, static_cast <awh::engine::callback::timeout_t> (
 		[&expirations]([[maybe_unused]] const awh::event::id_t eid, const awh::event::action_t action, [[maybe_unused]] const uint32_t delay) noexcept -> bool {
 			if(action == awh::event::action_t::CONNECT) expirations++;
@@ -18383,6 +18421,19 @@ TEST_F(IoFixture, IoConnectTimeoutAbandonsPendingTest){
 	const auto start = std::chrono::steady_clock::now();
 	while((std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 3000) && this->_io->poll());
 	const std::string sign = std::string("сроков=") + std::to_string(expirations) + " отказов=" + std::to_string(failures) + " удач=" + std::to_string(successes);
+	/**
+	 * Если срок не истёк, а ядро назвало причиной отсутствие маршрута - окружение
+	 * для опыта негодно, и проверка отступает, а не отказывает
+	 */
+	if((expirations == 0) && unreachable){
+		// Уничтожаем заведённые события
+		this->_io->destroy(eid);
+		this->_io->destroy(tick);
+		// Завершаем работу движка
+		this->_io->deinitialize();
+		// Пропускаем проверку
+		GTEST_SKIP() << "ядро отвечает отсутствием маршрута к глухому адресу: " << sign;
+	}
 	/**
 	 * Срок ожидания срабатывает по меньшей мере однажды. Больше - если новая попытка,
 	 * начатая движком после отказа вызывающего, снова успела уйти в ожидание; ровно
@@ -19004,6 +19055,32 @@ TEST_F(IoFixture, IoAbandonedClientStaysUsableTest){
 	ASSERT_TRUE(this->_io->setTargetPort(eid, 8080));
 	this->_io->setTimeout(eid, awh::event::action_t::CONNECT, 500);
 	this->_io->setTimeout(tick, awh::event::action_t::NONE, 100);
+	/**
+	 * Признак негодного окружения: ядро отвечает отсутствием маршрута
+	 *
+	 * @note Довод тот же, что и у соседней проверки срока подключения: отказ бывает
+	 *       отложенным, и тогда срок не истекает никогда. Отступать по одному лишь
+	 *       факту отказа нельзя - только по названной ядром причине
+	 */
+	bool unreachable = false;
+	this->_io->on(eid, static_cast <awh::engine::callback::error_t> (
+		[&unreachable]([[maybe_unused]] const awh::event::id_t eid, [[maybe_unused]] const awh::event::error_t code, const std::string & text) noexcept -> void {
+			/**
+			 * Отмечаем негодность окружения по названной ядром причине
+			 *
+			 * @note Сверяется УСТОЙЧИВАЯ часть сообщения, а не полное его написание:
+			 *       одна и та же причина зовётся у систем по-разному («No route to
+			 *       host», «Network is unreachable», «Host is down»), и требовать
+			 *       дословного совпадения значило бы завести признак, мёртвый везде,
+			 *       кроме одной системы
+			 */
+			unreachable = (unreachable ||
+			 (text.find("route to host") != std::string::npos) ||
+			 (text.find("unreachable") != std::string::npos) ||
+			 (text.find("Unreachable") != std::string::npos) ||
+			 (text.find("is down") != std::string::npos));
+		}
+	));
 	this->_io->on(eid, static_cast <awh::engine::callback::connect_t> (
 		[&failures, &successes]([[maybe_unused]] const awh::event::id_t eid, const bool ok) noexcept -> void {
 			if(ok) successes++; else failures++;
@@ -19043,6 +19120,21 @@ TEST_F(IoFixture, IoAbandonedClientStaysUsableTest){
 	// Дожидаемся истечения срока ожидания подключения
 	auto start = std::chrono::steady_clock::now();
 	while((expirations < 1) && (std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 3000) && this->_io->poll());
+	/**
+	 * Если срок не истёк, а ядро назвало причиной отсутствие маршрута - окружение
+	 * для опыта негодно, и проверка отступает, а не отказывает. Довод тот же, что и
+	 * у соседней проверки срока: отказ бывает отложенным, и отступление по одному
+	 * лишь факту отказа заглушило бы настоящий дефект
+	 */
+	if((expirations == 0) && unreachable){
+		// Уничтожаем заведённые события
+		this->_io->destroy(eid);
+		this->_io->destroy(tick);
+		// Завершаем работу движка
+		this->_io->deinitialize();
+		// Пропускаем проверку
+		GTEST_SKIP() << "ядро отвечает отсутствием маршрута к глухому адресу";
+	}
 	ASSERT_GE(expirations, 1);
 	ASSERT_EQ(0, successes);
 	/**
