@@ -3833,8 +3833,8 @@ void awh::codec::toml::Reader::clear() noexcept {
  *
  */
 awh::codec::toml::Reader::Reader(const log_t * log) noexcept :
- _log(log), _decoder(log),
- _state(state_t::READY), _error(error_t::NONE), _decoding(error_t::NONE), _hungry(false), _final(false),
+ _log(log),
+ _state(state_t::READY), _error(error_t::NONE), _hungry(false), _final(false), _decoding(error_t::NONE), _decoder(log),
  _offset(0), _start(0), _probed(0), _anonymous(0), _base(0), _line(1), _bol(0), _current(0), _staging(0), _declaring(false), _appending(false) {}
 /**
  * @brief Конструктор
@@ -3844,8 +3844,8 @@ awh::codec::toml::Reader::Reader(const log_t * log) noexcept :
  *
  */
 awh::codec::toml::Reader::Reader(const log_t * log, const settings_t & settings) noexcept :
- _log(log), _decoder(log),
- _state(state_t::READY), _error(error_t::NONE), _decoding(error_t::NONE), _hungry(false), _final(false),
+ _log(log),
+ _state(state_t::READY), _error(error_t::NONE), _hungry(false), _final(false), _decoding(error_t::NONE), _decoder(log),
  _settings(settings), _offset(0), _start(0), _probed(0), _anonymous(0), _base(0), _line(1), _bol(0), _current(0),
  _staging(0), _declaring(false), _appending(false) {
 	// Выполняем установку навязанной извне кодировки исходного текста
