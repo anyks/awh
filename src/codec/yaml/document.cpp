@@ -2599,7 +2599,7 @@ void awh::codec::yaml::Document::compose(writer_t & writer, const uint32_t index
 				 * @note Нашёл это ворошитель круговым ходом снятого значения на тексте
 				 *       `---` с пустым телом
 				 */
-				writer.raw(string());
+				writer.blank();
 				// Выходим из сборки поддерева узла
 				break;
 			}

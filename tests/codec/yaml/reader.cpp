@@ -3964,3 +3964,24 @@ TEST(CodecYamlReader, BlanksAfterPlainScalar) {
 		"STREAM_START\nDOCUMENT_START\nMAPPING_START\nSCALAR\nSCALAR\n"
 		"MAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
 }
+/**
+ * @brief Проверка чтения метки, скобкой поточного построения оборванной
+ *
+ * @note Внутри скобок метка вправе оборваться знаком построения: `{a: !}` есть пара со
+ *       значением пустым, меткою помеченным. Прежде разбор отвергал такую запись, а
+ *       записывающий её порождал - текст выходил своим же разбором не читаемым
+ *
+ */
+TEST(CodecYamlReader, FlowTagEndedByBracket) {
+	// Выполняем проверку чтения метки, закрывающей скобкой оборванной
+	// Выполняем проверку чтения метки, закрывающей скобкой оборванной
+	ASSERT_EQ(events("{a: !}\n"),
+		"STREAM_START\nDOCUMENT_START\nMAPPING_START\n"
+		"SCALAR «a»\nSCALAR «» <!>\n"
+		"MAPPING_END\nDOCUMENT_END\nSTREAM_END\n");
+	// Выполняем проверку чтения метки, запятою оборванной
+	ASSERT_EQ(events("[!, 1]\n"),
+		"STREAM_START\nDOCUMENT_START\nSEQUENCE_START\n"
+		"SCALAR «» <!>\nSCALAR «1»\n"
+		"SEQUENCE_END\nDOCUMENT_END\nSTREAM_END\n");
+}

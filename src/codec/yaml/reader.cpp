@@ -2122,7 +2122,8 @@ bool awh::codec::yaml::Reader::property(const string_view line, size_t & offset)
 				 *       перечня того - хотя бы и буквы иной письменности - метка нести не
 				 *       вправе: записываются они долею с точкою кода, а не собою
 				 */
-				if((position == begin) && (position < line.size()) && !spacing(line[position]))
+				if((position == begin) && (position < line.size()) && !spacing(line[position]) &&
+				 !(!this->_flow.empty() && ((line[position] == ',') || (line[position] == '}') || (line[position] == ']'))))
 					// Выводим отказ ошибочного построения метки типа
 					return this->fail(error_t::INVALID_TAG, offset);
 				// Собираем метку типа из начала её и окончания

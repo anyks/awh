@@ -655,6 +655,40 @@ namespace awh {
 					bool null() noexcept;
 					/**
 					 * \~russian
+					 * @brief Метод записи пустого значения видом, построению доступным
+					 *
+					 * @details Пустота записывается пустотою же: строка `- ` есть запись перечня
+					 * с пустым значением. Внутри же построения поточного пустота записи не
+					 * имеет вовсе - `[a, ]` есть перечень из ОДНОГО значения, а не из двух, и
+					 * запятая там висячая. Значение, пустотою записанное в скобках, пропадало
+					 * бы из текста, и круговой ход перезаписи терял бы его молча
+					 *
+					 * @note Внутри скобок пустота потому записывается словом `null`, а по схеме
+					 * защитной - оградою пустою: слова `null` схема та не знает, и значение
+					 * вернулось бы строкою из четырёх букв. Ограда пустая при ней вернёт строку
+					 * пустую, что пустоте роднее всего - иного вида схема защитная не имеет
+					 *
+					 * @return признак успешной записи значения
+					 *
+					 * \~english
+					 * @brief Method of the writing of an empty value by the form available to the construction
+					 * @details Emptiness is written by emptiness itself: the line `- ` is a notation of a
+					 * sequence with an empty value. Inside a flow construction, however, emptiness has no
+					 * notation at all — `[a, ]` is a sequence of ONE value rather than of two, and the comma
+					 * there is a trailing one. A value written by emptiness inside the brackets would
+					 * disappear from the text, and the round trip of the rewriting would lose it silently
+					 * @note Inside the brackets emptiness is therefore written by the word `null`, and by the
+					 * failsafe schema by an empty quoting: that schema does not know the word `null`, and the
+					 * value would come back as a string of four letters. An empty quoting under it will give
+					 * back an empty string, which is the closest kin to emptiness — the failsafe schema has
+					 * no other kind
+					 * @return sign of the successful writing of the value
+					 *
+					 * \~
+					 */
+					bool blank() noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод записи логического значения
 					 *
 					 * @param value записываемое логическое значение

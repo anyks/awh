@@ -1471,7 +1471,7 @@ void awh::codec::yaml::Value::compose(writer_t & writer) const noexcept {
 			 * @note Нашёл это ворошитель круговым ходом снятого значения на записи
 			 *       `value: !`
 			 */
-			writer.raw(string());
+			writer.blank();
 		} break;
 		/**
 		 * Если значение строкою является

@@ -150,6 +150,10 @@ namespace {
 		uint64_t taken;
 		// Количество значений, потоковой сборкой собранных
 		uint64_t assembled;
+		// Количество круговых ходов перезаписи иным оформлением
+		uint64_t restyled;
+		// Количество круговых ходов, директивою наречия обойдённых
+		uint64_t undirected;
 		// Количество попыток кругового переноса значения в дерево
 		uint64_t grafts;
 		// Количество удавшихся переносов значения в дерево
@@ -160,7 +164,7 @@ namespace {
 		 */
 		Statistic() noexcept :
 		 texts(0), corrupted(0), survived(0), events(0), chunked(0), transcoded(0), unconverted(0), trees(0), kept(0), pruned(0),
-		 mirrored(0), edited(0), assembled(0), taken(0), grafts(0), grafted(0) {}
+		 mirrored(0), edited(0), assembled(0), restyled(0), undirected(0), taken(0), grafts(0), grafted(0) {}
 	} totals;
 
 	/**
@@ -1818,6 +1822,152 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 					// Выходим из приложения с ошибкой
 					return EXIT_FAILURE;
 				}
+				/**
+				 * Выполняем круговой ход перезаписи иным оформлением
+				 *
+				 * @details Оформление записи задаётся девятью настройками, а круговой ход
+				 *          поверял доселе одно лишь оформление по умолчанию. Текст, записанный
+				 *          скобками либо иною оградою, обязан читаться обратно и давать то же
+				 *          самое дерево: оформление сути значений не несёт, и всё, что круг
+				 *          переживает, есть суть
+				 *
+				 * @note Схема записи берётся схемою разбора: разойдись они, разошлось бы и
+				 *       разрешение видов скалярных значений, а это расхождение законное и к
+				 *       записи отношения не имеющее
+				 *
+				 * @note Ограда блочная в выборку не берётся: записывающий зовёт её наудачу и,
+				 *       ложь получив, законно отступает к ограде двойной - выбор её ничего к
+				 *       поверке не прибавляет
+				 *
+				 * @note Обращение с негодной кодировкой остаётся умолчанием: уклад REFUSE
+				 *       отдаёт пустоту намеренно, и круговой ход поверять там нечего
+				 */
+				{
+					/**
+					 * Если текст наречие своё директивою объявляет
+					 *
+					 * @details Проверка эта обходится стороною: директива `%YAML` переводит
+					 *          разбор на схему объявленного наречия, и схема действовавшая
+					 *          расходится тогда со схемою, настройками заданной. Записывающему
+					 *          же настройками передаётся именно заданная - выдачи схемы
+					 *          действовавшей дерево не имеет вовсе, - и перезапись выходила бы
+					 *          записанной по одной схеме, а прочтённой по другой. Расхождение
+					 *          то принадлежит ворошителю, а не записи
+					 *
+					 * @note Обход считается счётчиком: молчаливый пропуск обратил бы проверку
+					 *       в бездействующую там, где директивы часты
+					 */
+					if(document.dump().compare(0, 5, "%YAML") == 0)
+						// Выполняем учёт обойдённого кругового хода
+						totals.undirected++;
+					// Если наречие директивою не объявлено
+					else {
+					// Настройки записи текста, наудачу выбранные
+					yaml::writer_t::settings_t writing;
+					// Устанавливаем схему записи схемою разбора
+					writing.schema = tree.schema;
+					/**
+					 * Если действует схема защитная, пустоты не знающая
+					 *
+					 * @note Схема эта всякое скалярное значение числит строкою, и пустоты вида
+					 *       своего при ней нет вовсе. Внутри скобок пустота записи не имеет, и
+					 *       записывающему остаётся ограда пустая - строка, а не пустота.
+					 *       Круговой ход тут теряет вид значения не по дефекту записи, а по
+					 *       самой схеме, и требовать от него равенства деревьев нельзя
+					 */
+					if(writing.schema == yaml::schema_t::FAILSAFE)
+						// Выполняем учёт обойдённого кругового хода
+						totals.undirected++;
+					// Если схема пустоту выразить способна
+					else {
+					// Устанавливаем построение вместилищ наудачу
+					writing.layout = (((engine() % 2) == 0) ? yaml::layout_t::BLOCK : yaml::layout_t::FLOW);
+					// Порядковый номер ограды, значениям назначаемой
+					const uint32_t quoting = (engine() % 3);
+					// Устанавливаем ограду значений наудачу
+					writing.quoting = ((quoting == 0) ? yaml::style_t::PLAIN :
+					 ((quoting == 1) ? yaml::style_t::SINGLE : yaml::style_t::DOUBLE));
+					// Устанавливаем ширину отступа наудачу, нуля не допуская
+					writing.indent = static_cast <uint8_t> (1 + (engine() % 8));
+					// Устанавливаем отступ перечней наудачу
+					writing.sequenceIndent = ((engine() % 2) == 0);
+					// Устанавливаем запись черты начала документа наудачу
+					writing.explicitStart = ((engine() % 2) == 0);
+					// Устанавливаем запись черты конца документа наудачу
+					writing.explicitEnd = ((engine() % 2) == 0);
+					/**
+					 * Устанавливаем запись директивы наречия невыполняемой
+					 *
+					 * @note Директива наречия схему разбора переводит, и навязывать её тексту,
+					 *       её не имевшему, значило бы читать перезапись схемою иной, нежели
+					 *       та, какою она писана
+					 */
+					writing.version = false;
+					// Выполняем перезапись дерева выбранным оформлением
+					const string restyled = document.dump(writing);
+
+					/**
+					 * Если перезапись оформлением иным отдала пустоту при непустом дереве
+					 */
+					if(restyled.empty() && !document.empty()){
+						// Выводим сообщение о пустой перезаписи
+						::fprintf(stderr, "yaml fuzz: restyled rewrite is empty, layout %u quoting %u indent %u\n",
+						 static_cast <uint32_t> (writing.layout), quoting, static_cast <uint32_t> (writing.indent));
+						// Выводим разбираемый текст
+						dump(text);
+						// Выходим из приложения с ошибкой
+						return EXIT_FAILURE;
+					}
+					// Объект дерева, перезаписью иного оформления собранного
+					yaml::document_t reshaped(::logger(), limitless);
+					/**
+					 * Если разобрать перезапись иного оформления не удалось
+					 */
+					if(!reshaped.parse(restyled)){
+						// Выводим сообщение об отказе чтения перезаписи иного оформления
+						::fprintf(stderr, "yaml fuzz: restyled rewrite refused %s, layout %u quoting %u indent %u seq %u start %u end %u version %u\n",
+						 yaml::message(reshaped.error()), static_cast <uint32_t> (writing.layout), quoting,
+						 static_cast <uint32_t> (writing.indent), static_cast <uint32_t> (writing.sequenceIndent),
+						 static_cast <uint32_t> (writing.explicitStart), static_cast <uint32_t> (writing.explicitEnd),
+						 static_cast <uint32_t> (writing.version));
+						// Выводим перезапись иного оформления
+						dump(restyled);
+						// Выводим разбираемый текст
+						dump(text);
+						// Выходим из приложения с ошибкой
+						return EXIT_FAILURE;
+					}
+					/**
+					 * Если дерево перезаписи иного оформления с исходным разошлось
+					 *
+					 * @note Сличаются ДЕРЕВЬЯ, а не перезаписи их. Оформление узла ядро
+					 *       запоминает, и текст, оградою двойною записанный, перезапишется
+					 *       ею же: «12:30» против «"12:30"» - та же строка, записанная
+					 *       двояко. Сличение перезаписей звало бы это расхождением, чем и
+					 *       обмануло меня при первом же прогоне
+					 */
+					if(!(yaml::value_t(reshaped.root()) == yaml::value_t(document.root()))){
+						// Выводим сообщение о расхождении деревьев
+						::fprintf(stderr, "yaml fuzz: restyled rewrite differs, layout %u quoting %u indent %u seq %u start %u end %u version %u\n",
+						 static_cast <uint32_t> (writing.layout), quoting, static_cast <uint32_t> (writing.indent),
+						 static_cast <uint32_t> (writing.sequenceIndent), static_cast <uint32_t> (writing.explicitStart),
+						 static_cast <uint32_t> (writing.explicitEnd), static_cast <uint32_t> (writing.version));
+						// Выводим разбираемый текст
+						dump(text);
+						// Выводим перезапись иного оформления
+						dump(restyled);
+						// Выводим перезапись исходного дерева
+						dump(document.dump());
+						// Выводим перезапись дерева иного оформления
+						dump(reshaped.dump());
+						// Выходим из приложения с ошибкой
+						return EXIT_FAILURE;
+					}
+					// Выполняем учёт кругового хода перезаписи иным оформлением
+					totals.restyled++;
+					}
+					}
+				}
 			}
 			/**
 			 * Выполняем проверку правки дерева документа
@@ -2182,7 +2332,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		}
 	}
 	// Выводим итог работы генератора
-	::fprintf(stderr, "yaml fuzz: %llu texts (%llu corrupted, %llu survived), %llu events, %llu chunked, %llu transcoded (%llu не допущено), %llu trees, %llu kept, %llu pruned, %llu edited (%llu verified), %llu taken, %llu assembled, %llu grafts (%llu refused)\n",
+	::fprintf(stderr, "yaml fuzz: %llu texts (%llu corrupted, %llu survived), %llu events, %llu chunked, %llu transcoded (%llu не допущено), %llu trees, %llu kept, %llu pruned, %llu edited (%llu verified), %llu taken, %llu assembled, %llu restyled (%llu обойдено), %llu grafts (%llu refused)\n",
 		static_cast <unsigned long long> (totals.texts), static_cast <unsigned long long> (totals.corrupted),
 		static_cast <unsigned long long> (totals.survived), static_cast <unsigned long long> (totals.events),
 		static_cast <unsigned long long> (totals.chunked), static_cast <unsigned long long> (totals.transcoded),
@@ -2191,6 +2341,8 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		static_cast <unsigned long long> (totals.pruned),
 		static_cast <unsigned long long> (totals.edited), static_cast <unsigned long long> (totals.mirrored), static_cast <unsigned long long> (totals.taken),
 		static_cast <unsigned long long> (totals.assembled),
+		static_cast <unsigned long long> (totals.restyled),
+		static_cast <unsigned long long> (totals.undirected),
 		static_cast <unsigned long long> (totals.grafted),
 		static_cast <unsigned long long> (totals.grafts - totals.grafted));
 	// Выводим код успешного выхода из приложения

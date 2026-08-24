@@ -1441,3 +1441,59 @@ TEST(CodecYamlWriter, BlockRetreatLeavesNoReason) {
 	// Выполняем проверку сохранности содержимого в собранном тексте
 	ASSERT_NE(writer.text().find("\\n"), string::npos);
 }
+/**
+ * @brief Проверка сохранности пустого значения внутри поточного построения
+ *
+ * @note Пустота внутри скобок записи не имеет: `[a, ]` есть перечень из ОДНОГО значения,
+ *       а не из двух, и запятая там висячая. Правило подтверждено эталоном 5KJE набора
+ *       yaml-test-suite. Прежде значение пустое пропадало из текста молча
+ *
+ */
+TEST(CodecYamlWriter, FlowKeepsEmptyValue) {
+	// Объект дерева документа
+	yaml::document_t document(::logger());
+	// Выполняем разбор перечня с пустым значением
+	ASSERT_TRUE(document.parse("- yes\n-\n"));
+	// Настройки записи поточным построением
+	yaml::writer_t::settings_t writing;
+	// Устанавливаем построение вместилищ скобками
+	writing.layout = yaml::layout_t::FLOW;
+	// Выполняем перезапись дерева скобками
+	const string written = document.dump(writing);
+	// Выполняем проверку записи пустоты словом описания
+	ASSERT_NE(written.find("null"), string::npos);
+	// Объект дерева перезаписанного документа
+	yaml::document_t back(::logger());
+	// Выполняем разбор перезаписи
+	ASSERT_TRUE(back.parse(written));
+	// Выполняем проверку сохранности обоих значений перечня
+	ASSERT_TRUE(yaml::value_t(back.root()) == yaml::value_t(document.root()));
+}
+/**
+ * @brief Проверка подъёма ограды до двойной там, где заданная содержимого не несёт
+ *
+ * @note Ограда одинарная переводу строки отмены не имеет вовсе, и значение, ею
+ *       обнесённое, растекается по строкам, а обратным чтением свёртывается в пробел.
+ *       Прежде настройка ограды бралась как задана, отчего содержимое терялось
+ *
+ */
+TEST(CodecYamlWriter, QuotingRisesWhereContentDemands) {
+	// Объект дерева документа
+	yaml::document_t document(::logger());
+	// Выполняем разбор пары со значением о двух строках
+	ASSERT_TRUE(document.parse("key: \"первая\\nвторая\"\n"));
+	// Настройки записи оградою одинарной
+	yaml::writer_t::settings_t writing;
+	// Устанавливаем ограду значений одинарную
+	writing.quoting = yaml::style_t::SINGLE;
+	// Выполняем перезапись дерева оградою одинарной
+	const string written = document.dump(writing);
+	// Объект дерева перезаписанного документа
+	yaml::document_t back(::logger());
+	// Выполняем разбор перезаписи
+	ASSERT_TRUE(back.parse(written));
+	// Выполняем проверку сохранности перевода строки в значении
+	ASSERT_TRUE(yaml::value_t(back.root()) == yaml::value_t(document.root()));
+	// Выполняем проверку того, что ограда поднялась до двойной
+	ASSERT_NE(written.find("\\n"), string::npos);
+}
