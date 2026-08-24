@@ -1946,3 +1946,35 @@ TEST(CodecIniDocument, MalformedReferenceDiffersFromUnknown) {
 		ASSERT_EQ(document.error(), ini::error_t::UNKNOWN_REFERENCE);
 	}
 }
+
+/**
+ * @brief Проверка того, что правка неизвестного имени называет причину
+ *
+ * @details Снос неизвестного свойства и удаление неизвестного раздела отвечали ложью
+ *          без кода ошибки, и потребитель отличить отсутствие имени от изъяна его не
+ *          мог вовсе. Кодек TOML на том же случае причину называет, и расходиться им
+ *          в этом незачем
+ *
+ */
+TEST(CodecIniDocument, UnknownNameReportsReason) {
+	// Дерево настроек
+	ini::document_t document(::logger());
+	// Выполняем разбор текста настроек
+	ASSERT_TRUE(document.parse("[a]\nk = v\n"));
+	// Выполняем проверку отказа сноса необъявленного свойства
+	ASSERT_FALSE(document.erase("missing", "a"));
+	// Выполняем проверку кода ошибки правки дерева
+	ASSERT_EQ(document.error(), ini::error_t::UNKNOWN_KEY);
+	// Выполняем проверку отказа удаления необъявленного раздела
+	ASSERT_FALSE(document.remove("missing"));
+	// Выполняем проверку кода ошибки правки дерева
+	ASSERT_EQ(document.error(), ini::error_t::UNKNOWN_SECTION);
+	/**
+	 * Выполняем проверку того, что опрос кодом ошибки не метится
+	 *
+	 * @note Опрос наличия отсутствием отвечает законно, и отказом это не является
+	 */
+	ASSERT_FALSE(document.has("missing", "a"));
+	// Выполняем проверку сохранения дерева в целости
+	ASSERT_EQ(document.get("k", "a"), "v");
+}

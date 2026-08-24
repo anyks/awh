@@ -3654,9 +3654,12 @@ bool awh::codec::yaml::Document::place(const string & path, uint32_t & index, co
 	/**
 	 * Если дерево документа пусто
 	 */
-	if(this->_roots.empty())
+	if(this->_roots.empty()){
+		// Запоминаем код ошибки правки дерева документа
+		this->_error = error_t::EMPTY_TEXT;
 		// Выводим признак неудачного розыска узла
 		return false;
+	}
 	// Получаем путь к узлу без ведущего разделителя частей
 	const string route((!path.empty() && (path.front() == '/')) ? path.substr(1) : path);
 	/**
@@ -3682,9 +3685,12 @@ bool awh::codec::yaml::Document::place(const string & path, uint32_t & index, co
 	/**
 	 * Если вместилища по пути не оказалось
 	 */
-	if(!owner.valid())
+	if(!owner.valid()){
+		// Запоминаем код ошибки правки дерева документа
+		this->_error = error_t::UNKNOWN_NODE;
 		// Выводим признак неудачного розыска узла
 		return false;
+	}
 	// Получаем ссылку на разыскиваемый узел
 	value_t value;
 	/**
@@ -3694,9 +3700,12 @@ bool awh::codec::yaml::Document::place(const string & path, uint32_t & index, co
 		/**
 		 * Если имя разыскиваемого узла числом не является
 		 */
-		if(tail.empty() || (tail.find_first_not_of("0123456789") != string::npos))
+		if(tail.empty() || (tail.find_first_not_of("0123456789") != string::npos)){
+			// Запоминаем код ошибки правки дерева документа
+			this->_error = error_t::INVALID_PATH;
 			// Выводим признак неудачного розыска узла
 			return false;
+		}
 		// Получаем ссылку на значение перечня по номеру его
 		value = owner[static_cast <size_t> (::strtoull(tail.c_str(), nullptr, 10))];
 	/**
@@ -3708,7 +3717,12 @@ bool awh::codec::yaml::Document::place(const string & path, uint32_t & index, co
 	/**
 	 * Если вместилище вместилищем не является вовсе
 	 */
-	else return false;
+	else {
+		// Запоминаем код ошибки правки дерева документа
+		this->_error = error_t::INVALID_PATH;
+		// Выводим признак неудачного розыска узла
+		return false;
+	}
 	/**
 	 * Если разыскиваемый узел найден
 	 */
@@ -3721,9 +3735,12 @@ bool awh::codec::yaml::Document::place(const string & path, uint32_t & index, co
 	/**
 	 * Если заведение узла, розыском не найденного, не затребовано
 	 */
-	if(!create)
+	if(!create){
+		// Запоминаем код ошибки правки дерева документа
+		this->_error = error_t::UNKNOWN_NODE;
 		// Выводим признак неудачного розыска узла
 		return false;
+	}
 	/**
 	 * Если вместилище является перечнем значений
 	 *
@@ -3734,9 +3751,12 @@ bool awh::codec::yaml::Document::place(const string & path, uint32_t & index, co
 		/**
 		 * Если номер заводимого значения длине перечня не отвечает
 		 */
-		if(static_cast <size_t> (::strtoull(tail.c_str(), nullptr, 10)) != owner.size())
+		if(static_cast <size_t> (::strtoull(tail.c_str(), nullptr, 10)) != owner.size()){
+			// Запоминаем код ошибки правки дерева документа
+			this->_error = error_t::INVALID_PATH;
 			// Выводим признак неудачного розыска узла
 			return false;
+		}
 	}
 	// Выполняем заведение узла последним ребёнком вместилища
 	index = this->implant(owner._index);

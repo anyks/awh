@@ -582,6 +582,14 @@ const char * awh::codec::yaml::message(const error_t error) noexcept {
 		case static_cast <uint8_t> (error_t::FILE_NOT_OPENED):
 			// Выводим описание кода ошибки
 			return "cannot open the document file";
+		// Если узла по такому пути документ не несёт
+		case static_cast <uint8_t> (error_t::UNKNOWN_NODE):
+			// Выводим описание кода ошибки
+			return "no such node in the document";
+		// Если путь к узлу построен ошибочно
+		case static_cast <uint8_t> (error_t::INVALID_PATH):
+			// Выводим описание кода ошибки
+			return "malformed node path";
 	}
 	// Выводим описание неизвестного кода отказа
 	return "неизвестный код отказа";

@@ -2577,3 +2577,35 @@ TEST(CodecYamlDocument, MissingFileIsNotEmptyText) {
 	// Выполняем проверку кода ошибки чтения
 	ASSERT_EQ(document.error(), yaml::error_t::FILE_NOT_OPENED);
 }
+
+/**
+ * @brief Проверка того, что правка по неизвестному пути называет причину
+ *
+ * @details Розыск узла по пути отвечал ложью без кода ошибки на шести разных
+ *          основаниях разом, и потребитель ни одного из них не узнавал
+ *
+ */
+TEST(CodecYamlDocument, UnknownPathReportsReason) {
+	// Дерево документа
+	yaml::document_t document(::logger());
+	// Выполняем разбор текста документа
+	ASSERT_TRUE(document.parse("корень:\n  имя: значение\n  перечень:\n    - первый\n"));
+	// Выполняем проверку отказа снятия узла по неизвестному пути
+	ASSERT_FALSE(document.erase("/корень/нет"));
+	// Выполняем проверку кода ошибки правки дерева
+	ASSERT_EQ(document.error(), yaml::error_t::UNKNOWN_NODE);
+	/**
+	 * Выполняем проверку отказа правки пути, ведущего сквозь скалярное значение
+	 *
+	 * @note Узел «имя» несёт значение, а не вместилище, и пути сквозь него нет
+	 */
+	ASSERT_FALSE(document.set("/корень/имя/внутри", "значение"));
+	// Выполняем проверку кода ошибки правки дерева
+	ASSERT_EQ(document.error(), yaml::error_t::INVALID_PATH);
+	// Выполняем проверку отказа обращения к перечню не числом
+	ASSERT_FALSE(document.set("/корень/перечень/имя", "значение"));
+	// Выполняем проверку кода ошибки правки дерева
+	ASSERT_EQ(document.error(), yaml::error_t::INVALID_PATH);
+	// Выполняем проверку сохранения дерева в целости
+	ASSERT_NE(document.dump().find("имя: значение"), string::npos);
+}

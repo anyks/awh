@@ -1898,10 +1898,19 @@ bool awh::codec::ini::Document::erase(const string_view key, const string_view s
 	const auto i = this->_properties.find(this->label(index, key));
 	/**
 	 * Если свойство с таким именем не обнаружено
+	 *
+	 * @note Отказ этот прежде отвечал ложью без кода ошибки, и потребитель отличить
+	 *       отсутствие свойства от изъяна имени не мог вовсе
 	 */
-	if((i == this->_properties.end()) || i->second.empty())
+	if((i == this->_properties.end()) || i->second.empty()){
+		// Выводим отрицательный результат выполнения операции
+		// Запоминаем код ошибки правки дерева настроек
+		this->_error = error_t::UNKNOWN_KEY;
+		// Выполняем вывод сообщения об отказе в лог
+		this->report();
 		// Выводим отрицательный результат выполнения операции
 		return false;
+	}
 	/**
 	 * Выполняем перебор всех объявлений свойства
 	 */
@@ -1983,9 +1992,14 @@ bool awh::codec::ini::Document::remove(const string_view section, const string_v
 	/**
 	 * Если раздел с таким именем не обнаружен
 	 */
-	if(!this->search(section, subsection, index))
+	if(!this->search(section, subsection, index)){
+		// Запоминаем код ошибки правки дерева настроек
+		this->_error = error_t::UNKNOWN_SECTION;
+		// Выполняем вывод сообщения об отказе в лог
+		this->report();
 		// Выводим отрицательный результат выполнения операции
 		return false;
+	}
 	/**
 	 * Выполняем перебор всех записей разобранного текста
 	 */

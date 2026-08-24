@@ -339,6 +339,14 @@ const char * awh::codec::ini::message(const error_t error) noexcept {
 		case static_cast <uint8_t> (error_t::INVALID_REFERENCE):
 			// Выводим описание кода ошибки
 			return "malformed value reference";
+		// Если раздел с таким именем деревом не объявлен
+		case static_cast <uint8_t> (error_t::UNKNOWN_SECTION):
+			// Выводим описание кода ошибки
+			return "no such section in the document";
+		// Если свойство с таким именем деревом не объявлено
+		case static_cast <uint8_t> (error_t::UNKNOWN_KEY):
+			// Выводим описание кода ошибки
+			return "no such property in the document";
 	}
 	// Выводим описание неизвестного кода ошибки
 	return "unknown error";
