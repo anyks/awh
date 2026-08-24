@@ -79,7 +79,7 @@ size_t awh::RegularExpression::Hash::operator () (const key_t & key) const noexc
  *
  */
 awh::RegularExpression::RegularExpression(const log_t * log) noexcept :
- _error(error_t::NONE), _offset(0), _log(log) {}
+ _error(error_t::NONE), _offset(0), _log(log), _limit(awh::regex::MAX_STEPS) {}
 /**
  * @brief Метод извлечения кода ошибки последней сборки
  *
@@ -117,6 +117,16 @@ const string & awh::RegularExpression::message() const noexcept {
 void awh::RegularExpression::clear() noexcept {
 	// Выполняем очистку кэша собранных выражений
 	this->_cache.clear();
+}
+/**
+ * @brief Метод установки наибольшего допустимого объёма работы сопоставления
+ *
+ * @param limit наибольшее допустимое количество шагов сопоставления
+ *
+ */
+void awh::RegularExpression::limit(const size_t limit) noexcept {
+	// Выполняем установку наибольшего допустимого объёма работы сопоставления
+	this->_limit = limit;
 }
 /**
  * @brief Метод сборки регулярного выражения
@@ -287,6 +297,14 @@ bool awh::RegularExpression::test(string_view text, const exp_t & exp) const noe
 		// Выводим результат проверки наличия совпадения
 		return false;
 	}
+	/**
+	 * Выполняем установку наибольшего допустимого объёма работы сопоставления
+	 *
+	 * @note Потолок ставится движку перед каждым сопоставлением, а не единожды:
+	 *       движок принадлежит потоку исполнения, и поток, впервые обратившийся
+	 *       к выражению, взял бы иначе умолчание вместо настройки объекта
+	 */
+	engine().limit(this->_limit);
 	// Выводим результат проверки наличия совпадения в тексте
 	return engine().test(* exp, text, 0);
 }
@@ -333,6 +351,8 @@ bool awh::RegularExpression::match(string_view text, const exp_t & exp, vector <
 		// Выводим результат поиска совпадения
 		return false;
 	}
+	// Выполняем установку наибольшего допустимого объёма работы сопоставления
+	engine().limit(this->_limit);
 	/**
 	 * Если совпадение в тексте не обнаружено
 	 */

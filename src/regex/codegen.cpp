@@ -1651,7 +1651,7 @@ namespace {
 	 * @return        результат проверки применимости кодогенерации
 	 *
 	 */
-	bool walk(const awh::regex::program_t & program, size_t & runs, size_t & chains, size_t & deciders, size_t & loops, size_t & framed, size_t & recorded, size_t & atomics, size_t & looks, size_t & calls, size_t (& deeps)[5], bool & entangled, bool & referring, bool & rooting) noexcept {
+	bool walk(const awh::regex::program_t & program, size_t & runs, size_t & chains, size_t & deciders, size_t & loops, size_t & framed, size_t & recorded, size_t & atomics, size_t & looks, size_t & calls, size_t (& deeps)[5], bool & entangled, bool & referring, bool & rooting, size_t & grounds) noexcept {
 		// Выполняем сброс количества рядов повторения
 		runs = 0;
 		// Выполняем сброс количества цепочек ветвей выбора
@@ -1752,6 +1752,8 @@ namespace {
 		 *
 		 */
 		rooting = false;
+		// Выполняем сброс наибольшей глубины вложения атомарных групп
+		grounds = 0;
 		/**
 		 * @brief Обход области инструкций программы
 		 *
@@ -1895,6 +1897,20 @@ namespace {
 						return false;
 					// Увеличиваем глубину вложения атомарных групп
 					nesting++;
+					/**
+					 * Если глубина вложения наибольшую превысила
+					 *
+					 * @details Основание записи, закрытием группы возвращаемое,
+					 *          размечается глубиной вложения, а не номером группы:
+					 *          номер начинается с нуля на всяком уровне записи,
+					 *          и группы уровней разных встали бы местом одним.
+					 *          Глубины же одновременно открытых групп различны
+					 *          всегда - тем разметка и разводится.
+					 *
+					 */
+					if(nesting > grounds)
+						// Выполняем установку наибольшей глубины вложения групп
+						grounds = nesting;
 					// Переходим к следующей инструкции программы
 					pc++;
 				} break;
@@ -2150,9 +2166,6 @@ namespace {
 								 *          увёл бы сопоставление в запись чужую.
 								 *
 								 */
-								if(pacing > 0)
-									// Выводим неприменимость кодогенерации к программе
-									return false;
 								// Выполняем установку признака возврата основания записи
 								rooting = true;
 							}
@@ -2829,11 +2842,13 @@ bool awh::regex::Codegen::applicable(const program_t & program) noexcept {
 	 *
 	 */
 	bool rooting = false;
+	// Наибольшая глубина вложения атомарных групп выражения
+	size_t grounds = 0;
 	// Выводим результат проверки применимости кодогенерации
 	/**
 	 * Если обход программы применимости не выявил
 	 */
-	if(!walk(program, runs, chains, deciders, loops, framed, recorded, atomics, looks, calls, deeps, entangled, referring, rooting))
+	if(!walk(program, runs, chains, deciders, loops, framed, recorded, atomics, looks, calls, deeps, entangled, referring, rooting, grounds))
 		// Выводим неприменимость кодогенерации к программе
 		return false;
 	// Выводим применимость кодогенерации к программе
@@ -2891,6 +2906,8 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	 *
 	 */
 	bool rooting = false;
+	// Наибольшая глубина вложения атомарных групп выражения
+	size_t grounds = 0;
 	/**
 	 * Если кодогенерация сборкой не поддерживается
 	 */
@@ -2900,7 +2917,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	/**
 	 * Если кодогенерация к программе неприменима
 	 */
-	if(!walk(program, runs, chains, deciders, loops, framed, recorded, atomics, looks, calls, deeps, entangled, referring, rooting))
+	if(!walk(program, runs, chains, deciders, loops, framed, recorded, atomics, looks, calls, deeps, entangled, referring, rooting, grounds))
 		// Выводим результат порождения сопоставителя
 		return false;
 	// Подписываемся на перечисление регистров соглашения о вызове
@@ -3222,7 +3239,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	 */
 	const size_t basing = (span + 1);
 	// Получаем номер первого места кадра, сохраняющего регистры на время вызова
-	const size_t spill = (basing + (rooting ? atomics : 0));
+	const size_t spill = (basing + (rooting ? grounds : 0));
 	/**
 	 * Получаем признак пропуска пройденного участка при отказе попытки
 	 *
@@ -4063,9 +4080,9 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			 *          применимости и отвергает - см. rooting.
 			 *
 			 */
-			if(rooting && (depth == 0) && splitting)
-				// Выполняем сохранение основания записи в месте атомарной группы
-				emitter.store(reg_t::RECORD, reg_t::STACK, static_cast <uint32_t> (basing + atomic));
+			if(rooting && splitting)
+				// Выполняем сохранение основания записи в месте глубины вложения
+				emitter.store(reg_t::RECORD, reg_t::STACK, static_cast <uint32_t> (basing + guarded.size()));
 			// Выполняем запоминание номера атомарной группы, порождением ведомой
 			guarded.push_back(atomic);
 			// Переходим к атомарной группе следующей
@@ -4097,9 +4114,9 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			 *          опыт на «^((?:([a-z])|([^a-c])))+?\1(?>((?:\w|[^a-c])))+\G».
 			 *
 			 */
-			if(rooting && (depth == 0) && splitting && !guarded.empty())
+			if(rooting && splitting && !guarded.empty())
 				// Выполняем возвращение основания записи к сохранённому при открытии
-				emitter.fetch(reg_t::RECORD, reg_t::STACK, static_cast <uint32_t> (basing + guarded.back()));
+				emitter.fetch(reg_t::RECORD, reg_t::STACK, static_cast <uint32_t> (basing + (guarded.size() - 1)));
 			/**
 			 * Если номер атомарной группы запомнен
 			 */

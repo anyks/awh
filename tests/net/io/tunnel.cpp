@@ -333,6 +333,58 @@ static bool tunnelReady([[maybe_unused]] const uint16_t count) noexcept {
 		// Выводим признак готовности окружения
 		return (found >= count);
 	/**
+	 * Для операционной системы MS Windows
+	 */
+	#elif _WIN32 || _WIN64
+		/**
+		 * Считаем устройства драйвера tap-windows6, стоящие на машине
+		 *
+		 * @details Устройства эти ставит УСТАНОВЩИК ДРАЙВЕРА, и число их конечно - движок
+		 *          лишь отбирает свободное среди готовых. Тем Windows и отличается от
+		 *          систем POSIX, где устройство заводится по требованию и готовить нечего
+		 *
+		 * @note Без этого счёта проверки на несколько устройств ОТКАЗЫВАЛИ на машине, где
+		 *       устройство одно, изображая дефект движка нехваткой оснащения. Замерено на
+		 *       стенде Windows ARM64 24.08.2026: там стоит единственный адаптер, и
+		 *       IoTunnelRaisesManyDevicesTest падал на втором туннеле из восьми
+		 *
+		 * @note Драйвер Wintun здесь не в счёт намеренно: он заводит адаптер по
+		 *       требованию, и проверки, которым нужно несколько устройств, закрепляют
+		 *       за собой именно tap-windows6
+		 *
+		 */
+		// Размер буфера под состав устройств машины
+		ULONG size = 0;
+		// Спрашиваем потребный размер буфера
+		if(::GetAdaptersAddresses(AF_UNSPEC, GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST | GAA_FLAG_SKIP_DNS_SERVER, nullptr, nullptr, &size) != ERROR_BUFFER_OVERFLOW)
+			// Выводим признак неготовности: состав устройств машине неизвестен
+			return false;
+		// Буфер под состав устройств машины
+		std::vector <uint8_t> buffer(static_cast <size_t> (size), 0);
+		// Объект списка устройств машины
+		PIP_ADAPTER_ADDRESSES addresses = reinterpret_cast <PIP_ADAPTER_ADDRESSES> (buffer.data());
+		// Выполняем получение состава устройств машины
+		if(::GetAdaptersAddresses(AF_UNSPEC, GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST | GAA_FLAG_SKIP_DNS_SERVER, nullptr, addresses, &size) != ERROR_SUCCESS)
+			// Выводим признак неготовности
+			return false;
+		// Число отысканных устройств туннеля
+		uint16_t found = 0;
+		/**
+		 * Перебираем устройства машины
+		 */
+		for(PIP_ADAPTER_ADDRESSES item = addresses; item != nullptr; item = item->Next){
+			// Если описание устройства не получено
+			if(item->Description == nullptr)
+				// Переходим к следующему устройству
+				continue;
+			// Если описание устройства принадлежит драйверу tap-windows6
+			if(::wcsstr(item->Description, L"TAP-Windows") != nullptr)
+				// Увеличиваем счётчик отысканных устройств
+				found++;
+		}
+		// Выводим признак готовности окружения
+		return (found >= count);
+	/**
 	 * Для всех остальных операционных систем
 	 */
 	#else
@@ -2597,6 +2649,63 @@ TEST_F(IoFixture, IoTunnelRefusesCommitWithoutAddressTest){
 	// Адреса концов туннеля работника: свои, чтобы не спорить с прочими проверками
 	static constexpr const char * WORKER_LOCAL = "10.77.9.1";
 	static constexpr const char * WORKER_PEER  = "10.77.9.2";
+
+	/**
+	 * @brief Тест закрепления драйвера, выбранного самим модулем
+	 *
+	 * @details Драйверов у MS Windows два, и при значении AUTO выбор между ними делает
+	 *          модуль - по виду устройства и по тому, какой драйвер на машине стоит.
+	 *          Спросить о сделанном выборе вызывающему больше нечем: годность драйверов
+	 *          наружу не выведена
+	 *
+	 * @note Дефект, ради какого проверка заведена: выбор делался в местной переменной, а
+	 *       поле оставалось прежним - и `getDriver` отдавал AUTO даже после того, как
+	 *       устройство завелось. То есть в единственном случае, когда метод и стоит
+	 *       спрашивать, он отвечал «неизвестно»
+	 *
+	 */
+	TEST_F(IoFixture, IoTunnelRecordsChosenDriverTest){
+		// Если надзорных прав у процесса нет
+		if(!tunnelPrivileged())
+			// Пропускаем проверку
+			GTEST_SKIP() << "заведение туннельного устройства требует надзорных прав";
+		// Если окружение к заведению туннеля не готово
+		if(!tunnelReady(1))
+			// Пропускаем проверку
+			GTEST_SKIP() << "связи под туннели не заведены распорядителем машины";
+		// Выполняем инициализацию движка
+		ASSERT_TRUE(this->_io->initialize());
+		// Поручаем выбор драйвера модулю
+		this->_io->setDriver(awh::eth::iface_t::driver_t::AUTO);
+		// До заведения устройства выбора ещё нет, и отвечать движку нечем
+		ASSERT_EQ(this->_io->getDriver(), awh::eth::iface_t::driver_t::AUTO)
+			<< "движок назвал драйвер прежде, чем устройство завелось";
+		// Заводим событие туннеля
+		const awh::event::id_t tid = this->_io->event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV4);
+		// Ставим охранника узла: снос обязан пройти и при отказе утверждения
+		const TunnelGuard guard(this->_io.get(), tid);
+		// Узел обязан завестись
+		ASSERT_GT(tid, 0u) << "движок не записал узел туннеля";
+		// Устанавливаем опции события туннеля
+		ASSERT_TRUE(this->_io->setOptions(tid, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
+		// Устанавливаем адреса концов туннеля
+		ASSERT_TRUE(this->_io->setAddress(tid, awh::event::address_t::IPV4, TUNNEL_LOCAL));
+		ASSERT_TRUE(this->_io->setTarget(tid, TUNNEL_PEER));
+		// Фиксация настроек туннеля обязана пройти
+		ASSERT_TRUE(this->_io->commit(tid)) << "устройство туннеля не заведено";
+		/**
+		 * Выбор, сделанный модулем, обязан быть назван
+		 *
+		 * @note Утверждение стоит на ОТЛИЧИИ от AUTO, а не на конкретном драйвере: какой
+		 *       из двух будет выбран, решает состав машины, а не замысел проверки
+		 */
+		ASSERT_NE(this->_io->getDriver(), awh::eth::iface_t::driver_t::AUTO)
+			<< "устройство заведено, а движок драйвера так и не назвал";
+		// Сносим узел туннеля
+		ASSERT_TRUE(this->_io->destroy(tid));
+		// Сворачиваем движок
+		ASSERT_TRUE(this->_io->deinitialize());
+	}
 
 	/**
 	 * @brief Работник проверки снятия адреса устройства при разрушении движка

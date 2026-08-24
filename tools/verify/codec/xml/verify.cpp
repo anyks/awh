@@ -99,7 +99,7 @@ using namespace awh::codec;
  */
 namespace {
 	// Размеры подаваемого куска, при которых сличается исход разбора
-	static constexpr size_t CHUNKS[] = {1, 2, 3, 7};
+	static constexpr size_t CHUNKS[] = {1, 2, 3, 7, 63, 64, 65, 511, 512, 1024, 4096};
 	/**
 	 * @brief Функция записи знака в строение дерева с уходом служебных знаков
 	 *

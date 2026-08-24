@@ -389,6 +389,22 @@ namespace awh {
 				 */
 				size_t _budget;
 			private:
+				/**
+				 * \~russian
+				 * Наибольший допустимый объём работы сопоставления
+				 *
+				 * @details Потолок обрезает объём, вычисленный вызывающей стороною, и
+				 *          устанавливается ею же: умолчанием служит «MAX_STEPS».
+				 *
+				 * \~english
+				 * Largest admissible amount of work of the matching
+				 * @details The ceiling truncates the amount computed by the calling side and
+				 *          is set by it as well: «MAX_STEPS» serves as the default.
+				 *
+				 * \~
+				 */
+				size_t _ceiling;
+			private:
 				// Действующий объём работы текущего сопоставления
 				size_t _limit;
 			private:
@@ -610,6 +626,27 @@ namespace awh {
 				 * \~
 				 */
 				void budget(const size_t budget) noexcept;
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод установки наибольшего допустимого объёма работы сопоставления
+				 *
+				 * @details Потолок обрезает объём, вычисленный вызывающей стороною от длины
+				 *          текста и длины программы, и действует на все последующие
+				 *          сопоставления, а не на одно. Нуль потолок снимает вовсе.
+				 *
+				 * @param ceiling наибольшее допустимое количество шагов сопоставления
+				 *
+				 * \~english
+				 * @brief Method of setting the largest admissible amount of work of the matching
+				 * @details The ceiling truncates the amount computed by the calling side from the length
+				 *          of the text and the length of the program, and acts on all subsequent
+				 *          matches rather than on one. Zero removes the ceiling entirely.
+				 * @param ceiling largest admissible number of matching steps
+				 *
+				 * \~
+				 */
+				void ceiling(const size_t ceiling) noexcept;
 			public:
 				/**
 				 * \~russian

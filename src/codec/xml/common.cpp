@@ -245,10 +245,10 @@ const char * awh::codec::xml::message(const error_t error) noexcept {
 		case static_cast <uint8_t> (error_t::UNKNOWN_ENTITY):
 			// Выводим описание кода ошибки
 			return "reference to undeclared entity";
-		// Если обнаружена ссылка на внешнюю сущность
+		// Если встречена ссылка на внешнюю либо неразбираемую сущность там, где она запрещена
 		case static_cast <uint8_t> (error_t::EXTERNAL_ENTITY):
 			// Выводим описание кода ошибки
-			return "external entity references are not allowed";
+			return "reference to an external or unparsed entity is not allowed here";
 		// Если сущность ссылается сама на себя
 		case static_cast <uint8_t> (error_t::RECURSIVE_ENTITY):
 			// Выводим описание кода ошибки
@@ -313,10 +313,10 @@ const char * awh::codec::xml::message(const error_t error) noexcept {
 		case static_cast <uint8_t> (error_t::OVERFLOW_LIMIT):
 			// Выводим описание кода ошибки
 			return "configured parser limit exceeded";
-		// Если узел разметки пересекает границу подставленной сущности
+		// Если построение разметки пересекает границу подставленной сущности
 		case static_cast <uint8_t> (error_t::ENTITY_BOUNDARY):
 			// Выводим описание кода ошибки
-			return "element boundary crosses entity boundary";
+			return "logical structure crosses entity boundary";
 	}
 	// Выводим описание неизвестного кода ошибки
 	return "unknown error";

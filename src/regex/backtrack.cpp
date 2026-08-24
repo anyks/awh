@@ -23,6 +23,7 @@
 /**
  * Стандартные заголовочные файлы
  */
+#include <limits>
 #include <cstring>
 
 /**
@@ -41,7 +42,7 @@ using namespace awh;
  *
  */
 awh::regex::Backtrack::Backtrack() noexcept :
- _program(nullptr), _start(0), _steps(0), _budget(MAX_STEPS), _limit(MAX_STEPS), _member(INVALID_ADDRESS), _modes(0), _identity(0), _current(string_view::npos), _error(error_t::NONE) {
+ _program(nullptr), _start(0), _steps(0), _budget(MAX_STEPS), _ceiling(MAX_STEPS), _limit(MAX_STEPS), _member(INVALID_ADDRESS), _modes(0), _identity(0), _current(string_view::npos), _error(error_t::NONE) {
 	// Выполняем сброс таблицы принадлежности значений байта классу символов
 	::memset(this->_bytes, 0, sizeof(this->_bytes));
 }
@@ -53,7 +54,29 @@ awh::regex::Backtrack::Backtrack() noexcept :
  */
 void awh::regex::Backtrack::budget(const size_t budget) noexcept {
 	// Выполняем установку допустимого объёма работы сопоставления
-	this->_budget = ((budget < MAX_STEPS) ? budget : MAX_STEPS);
+	this->_budget = ((budget < this->_ceiling) ? budget : this->_ceiling);
+}
+/**
+ * @brief Метод установки наибольшего допустимого объёма работы сопоставления
+ *
+ * @param ceiling наибольшее допустимое количество шагов сопоставления
+ *
+ */
+void awh::regex::Backtrack::ceiling(const size_t ceiling) noexcept {
+	/**
+	 * Выполняем установку наибольшего допустимого объёма работы сопоставления
+	 *
+	 * @note Нуль потолок снимает вовсе: объём сопоставления ограничивается тогда
+	 *       лишь количеством точек возврата, а время его - ничем
+	 */
+	this->_ceiling = ((ceiling > 0) ? ceiling : numeric_limits <size_t>::max());
+	/**
+	 * Выполняем восстановление предельного объёма работы сопоставления
+	 *
+	 * @note Объём этот выставляется вызывающей стороною перед каждым сопоставлением,
+	 *       однако до первого из них он равен потолку прежнему, и его надо обновить
+	 */
+	this->_budget = this->_ceiling;
 }
 /**
  * @brief Метод извлечения кода ошибки последней операции
@@ -1349,7 +1372,7 @@ bool awh::regex::Backtrack::exec(const program_t & program, string_view text, co
 	 */
 	this->_limit = this->_budget;
 	// Выполняем восстановление предельного объёма работы сопоставления
-	this->_budget = MAX_STEPS;
+	this->_budget = this->_ceiling;
 	// Выполняем сброс кода ошибки последней операции
 	this->_error = error_t::NONE;
 	// Выполняем очистку набора границ совпадения и захваченных групп

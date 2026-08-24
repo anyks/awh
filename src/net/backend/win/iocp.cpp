@@ -17688,7 +17688,7 @@ namespace io {
 									// Если установлена функция обратного вызова
 									if(tunnel->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
-										tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, error);
+										tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_ADDRESS, error);
 									// Если функция обратного вызова для вывода события не установлена
 									else {
 										/**
@@ -17947,7 +17947,7 @@ namespace io {
 									// Если установлена функция обратного вызова
 									if(tunnel->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
-										tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, error);
+										tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_ADDRESS, error);
 									// Если функция обратного вызова для вывода события не установлена
 									else {
 										/**
@@ -17977,7 +17977,7 @@ namespace io {
 								// Если установлена функция обратного вызова
 								if(tunnel->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
-									tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, error);
+									tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_ADDRESS, error);
 								// Если функция обратного вызова для вывода события не установлена
 								else {
 									/**
@@ -18342,7 +18342,7 @@ namespace io {
 								// Если установлена функция обратного вызова
 								if(tunnel->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
-									tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, error);
+									tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_ADDRESS, error);
 								// Если функция обратного вызова для вывода события не установлена
 								else {
 									/**
@@ -18601,7 +18601,7 @@ namespace io {
 								// Если установлена функция обратного вызова
 								if(tunnel->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
-									tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, error);
+									tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_ADDRESS, error);
 								// Если функция обратного вызова для вывода события не установлена
 								else {
 									/**
@@ -18631,7 +18631,7 @@ namespace io {
 							// Если установлена функция обратного вызова
 							if(tunnel->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
-								tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, error);
+								tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_ADDRESS, error);
 							// Если функция обратного вызова для вывода события не установлена
 							else {
 								/**
@@ -28341,7 +28341,7 @@ namespace io {
 						// Вызываем функцию обратного вызова об ошибке отказа
 						origin->callbacks.status(origin->id, event::status_t::FAILURE);
 					// Устанавливаем текст ошибки
-					const string error = "Origin cannot send non-Datagram packet data";
+					const string error = "Origin cannot send packet data for socket types other than RAW and DATAGRAM";
 					// Если установлена функция обратного вызова
 					if(origin->callbacks.error != nullptr)
 						// Вызываем функцию обратного вызова ошибки события
@@ -33936,7 +33936,7 @@ namespace io {
 						// Вызываем функцию обратного вызова об ошибке отказа
 						server->callbacks.status(server->id, event::status_t::FAILURE);
 					// Устанавливаем текст ошибки
-					const string error = "Server cannot send non-Datagram packet data";
+					const string error = "Server cannot send packet data for socket types other than RAW and DATAGRAM";
 					// Если установлена функция обратного вызова
 					if(server->callbacks.error != nullptr)
 						// Вызываем функцию обратного вызова ошибки события
@@ -40469,7 +40469,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 									// Если установлена функция обратного вызова
 									if(dir->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
-										dir->callbacks.error(dir->id, event::error_t::EVENT_FAIL, error);
+										dir->callbacks.error(dir->id, event::error_t::INVALID_SOCKET, error);
 									// Если функция обратного вызова вывода ошибки не установлена
 									else {
 										/**
@@ -40500,7 +40500,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 								// Если установлена функция обратного вызова
 								if(dir->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
-									dir->callbacks.error(dir->id, event::error_t::INVALID_ADDRESS, error);
+									dir->callbacks.error(dir->id, event::error_t::INVALID, error);
 								// Если функция обратного вызова вывода ошибки не установлена
 								else {
 									/**
@@ -40531,7 +40531,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							// Если установлена функция обратного вызова
 							if(dir->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
-								dir->callbacks.error(dir->id, event::error_t::INVALID_ADDRESS, error);
+								dir->callbacks.error(dir->id, event::error_t::INVALID, error);
 							// Если функция обратного вызова вывода ошибки не установлена
 							else {
 								/**
@@ -40594,7 +40594,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 									// Если установлена функция обратного вызова
 									if(fs->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
-										fs->callbacks.error(fs->id, event::error_t::EVENT_FAIL, error);
+										fs->callbacks.error(fs->id, event::error_t::INVALID_SOCKET, error);
 									// Если функция обратного вызова вывода ошибки не установлена
 									else {
 										/**
@@ -40625,7 +40625,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 								// Если установлена функция обратного вызова
 								if(fs->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
-									fs->callbacks.error(fs->id, event::error_t::INVALID_ADDRESS, error);
+									fs->callbacks.error(fs->id, event::error_t::INVALID, error);
 								// Если функция обратного вызова вывода ошибки не установлена
 								else {
 									/**
@@ -40656,7 +40656,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							// Если установлена функция обратного вызова
 							if(fs->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
-								fs->callbacks.error(fs->id, event::error_t::INVALID_ADDRESS, error);
+								fs->callbacks.error(fs->id, event::error_t::INVALID, error);
 							// Если функция обратного вызова вывода ошибки не установлена
 							else {
 								/**
@@ -40737,7 +40737,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 									// Если установлена функция обратного вызова
 									if(ipc->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
-										ipc->callbacks.error(ipc->id, event::error_t::ALREADY_EXISTS, error);
+										ipc->callbacks.error(ipc->id, event::error_t::INVALID, error);
 									// Если функция обратного вызова вывода ошибки не установлена
 									else {
 										/**
@@ -40767,7 +40767,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							// Если установлена функция обратного вызова
 							if(ipc->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
-								ipc->callbacks.error(ipc->id, event::error_t::EVENT_FAIL, error);
+								ipc->callbacks.error(ipc->id, event::error_t::INVALID_SOCKET, error);
 							// Если функция обратного вызова вывода ошибки не установлена
 							else {
 								/**
@@ -41013,7 +41013,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							// Если установлена функция обратного вызова
 							if(tunnel->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
-								tunnel->callbacks.error(tunnel->id, event::error_t::EVENT_FAIL, error);
+								tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, error);
 							// Если функция обратного вызова вывода ошибки не установлена
 							else {
 								/**
@@ -41100,7 +41100,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 								// Если установлена функция обратного вызова
 								if(mediator->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
-									mediator->callbacks.error(mediator->id, event::error_t::EVENT_FAIL, error);
+									mediator->callbacks.error(mediator->id, event::error_t::ALREADY_EXISTS, error);
 								// Если функция обратного вызова вывода ошибки не установлена
 								else {
 									/**
@@ -41704,7 +41704,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															// Вызываем функцию обратного вызова об ошибке отказа
 															client->callbacks.status(client->id, event::status_t::FAILURE);
 														// Устанавливаем текст ошибки
-														const string error = "Unix-socket address is not set";
+														const string error = "Unix-socket address is not set or exceeds maximum path length";
 														// Если установлена функция обратного вызова
 														if(client->callbacks.error != nullptr)
 															// Вызываем функцию обратного вызова ошибки события
@@ -41740,7 +41740,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 													// Если установлена функция обратного вызова
 													if(client->callbacks.error != nullptr)
 														// Вызываем функцию обратного вызова ошибки события
-														client->callbacks.error(client->id, event::error_t::ALREADY_EXISTS, error);
+														client->callbacks.error(client->id, event::error_t::INVALID, error);
 													// Если функция обратного вызова вывода ошибки не установлена
 													else {
 														/**
@@ -41949,7 +41949,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	// Если установлена функция обратного вызова
 																	if(client->callbacks.error != nullptr)
 																		// Вызываем функцию обратного вызова ошибки события
-																		client->callbacks.error(client->id, event::error_t::INVALID_ADDRESS, error);
+																		client->callbacks.error(client->id, event::error_t::INVALID, error);
 																	// Если функция обратного вызова вывода ошибки не установлена
 																	else {
 																		/**
@@ -42223,7 +42223,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																// Если установлена функция обратного вызова
 																if(client->callbacks.error != nullptr)
 																	// Вызываем функцию обратного вызова ошибки события
-																	client->callbacks.error(client->id, event::error_t::INVALID_ADDRESS, error);
+																	client->callbacks.error(client->id, event::error_t::INVALID, error);
 																// Если функция обратного вызова вывода ошибки не установлена
 																else {
 																	/**
@@ -42258,7 +42258,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 														// Если установлена функция обратного вызова
 														if(client->callbacks.error != nullptr)
 															// Вызываем функцию обратного вызова ошибки события
-															client->callbacks.error(client->id, event::error_t::ALREADY_EXISTS, error);
+															client->callbacks.error(client->id, event::error_t::INVALID, error);
 														// Если функция обратного вызова вывода ошибки не установлена
 														else {
 															/**
@@ -42507,7 +42507,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	// Если установлена функция обратного вызова
 																	if(client->callbacks.error != nullptr)
 																		// Вызываем функцию обратного вызова ошибки события
-																		client->callbacks.error(client->id, event::error_t::INVALID_ADDRESS, error);
+																		client->callbacks.error(client->id, event::error_t::INVALID, error);
 																	// Если функция обратного вызова вывода ошибки не установлена
 																	else {
 																		/**
@@ -42807,7 +42807,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																// Если установлена функция обратного вызова
 																if(client->callbacks.error != nullptr)
 																	// Вызываем функцию обратного вызова ошибки события
-																	client->callbacks.error(client->id, event::error_t::INVALID_ADDRESS, error);
+																	client->callbacks.error(client->id, event::error_t::INVALID, error);
 																// Если функция обратного вызова вывода ошибки не установлена
 																else {
 																	/**
@@ -42842,7 +42842,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 														// Если установлена функция обратного вызова
 														if(client->callbacks.error != nullptr)
 															// Вызываем функцию обратного вызова ошибки события
-															client->callbacks.error(client->id, event::error_t::ALREADY_EXISTS, error);
+															client->callbacks.error(client->id, event::error_t::INVALID, error);
 														// Если функция обратного вызова вывода ошибки не установлена
 														else {
 															/**
@@ -42938,7 +42938,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							// Если установлена функция обратного вызова
 							if(client->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
-								client->callbacks.error(client->id, event::error_t::EVENT_FAIL, error);
+								client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
 							// Если функция обратного вызова вывода ошибки не установлена
 							else {
 								/**
@@ -43451,7 +43451,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															// Вызываем функцию обратного вызова об ошибке отказа
 															server->callbacks.status(server->id, event::status_t::FAILURE);
 														// Устанавливаем текст ошибки
-														const string error = "Unix-socket address is not set";
+														const string error = "Unix-socket address is not set or exceeds maximum path length";
 														// Если установлена функция обратного вызова
 														if(server->callbacks.error != nullptr)
 															// Вызываем функцию обратного вызова ошибки события
@@ -43487,7 +43487,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 													// Если установлена функция обратного вызова
 													if(server->callbacks.error != nullptr)
 														// Вызываем функцию обратного вызова ошибки события
-														server->callbacks.error(server->id, event::error_t::ALREADY_EXISTS, error);
+														server->callbacks.error(server->id, event::error_t::INVALID, error);
 													// Если функция обратного вызова вывода ошибки не установлена
 													else {
 														/**
@@ -43617,7 +43617,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 														// Если установлена функция обратного вызова
 														if(server->callbacks.error != nullptr)
 															// Вызываем функцию обратного вызова ошибки события
-															server->callbacks.error(server->id, event::error_t::ALREADY_EXISTS, error);
+															server->callbacks.error(server->id, event::error_t::INVALID, error);
 														// Если функция обратного вызова вывода ошибки не установлена
 														else {
 															/**
@@ -43782,7 +43782,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 														// Если установлена функция обратного вызова
 														if(server->callbacks.error != nullptr)
 															// Вызываем функцию обратного вызова ошибки события
-															server->callbacks.error(server->id, event::error_t::ALREADY_EXISTS, error);
+															server->callbacks.error(server->id, event::error_t::INVALID, error);
 														// Если функция обратного вызова вывода ошибки не установлена
 														else {
 															/**
@@ -43878,7 +43878,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							// Если установлена функция обратного вызова
 							if(server->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
-								server->callbacks.error(server->id, event::error_t::EVENT_FAIL, error);
+								server->callbacks.error(server->id, event::error_t::INVALID_SOCKET, error);
 							// Если функция обратного вызова вывода ошибки не установлена
 							else {
 								/**
@@ -54278,7 +54278,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 														// Вызываем функцию обратного вызова об ошибке отказа
 														client->callbacks.status(client->id, event::status_t::FAILURE);
 													// Устанавливаем текст ошибки
-													const string error = "MAC-address is not found";
+													const string error = "IPv4-address is not found";
 													// Если установлена функция обратного вызова
 													if(client->callbacks.error != nullptr)
 														// Вызываем функцию обратного вызова ошибки события
@@ -54338,7 +54338,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 														// Вызываем функцию обратного вызова об ошибке отказа
 														client->callbacks.status(client->id, event::status_t::FAILURE);
 													// Устанавливаем текст ошибки
-													const string error = "MAC-address is not found";
+													const string error = "IPv6-address is not found";
 													// Если установлена функция обратного вызова
 													if(client->callbacks.error != nullptr)
 														// Вызываем функцию обратного вызова ошибки события
@@ -54412,7 +54412,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 														// Вызываем функцию обратного вызова об ошибке отказа
 														server->callbacks.status(server->id, event::status_t::FAILURE);
 													// Устанавливаем текст ошибки
-													const string error = "MAC-address is not found";
+													const string error = "IPv4-address is not found";
 													// Если установлена функция обратного вызова
 													if(server->callbacks.error != nullptr)
 														// Вызываем функцию обратного вызова ошибки события
@@ -54476,7 +54476,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 														// Вызываем функцию обратного вызова об ошибке отказа
 														server->callbacks.status(server->id, event::status_t::FAILURE);
 													// Устанавливаем текст ошибки
-													const string error = "MAC-address is not found";
+													const string error = "IPv6-address is not found";
 													// Если установлена функция обратного вызова
 													if(server->callbacks.error != nullptr)
 														// Вызываем функцию обратного вызова ошибки события
@@ -55440,7 +55440,7 @@ uint16_t awh::engine::IO::getMaximumTransmissionUnit(const event::id_t id) const
 						// Если установлена функция обратного вызова
 						if(tunnel->callbacks.error != nullptr)
 							// Вызываем функцию обратного вызова ошибки события
-							tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_ADDRESS, error);
+							tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, error);
 						// Если функция обратного вызова для вывода события не установлена
 						else {
 							/**
@@ -55740,7 +55740,7 @@ bool awh::engine::IO::setMaximumTransmissionUnit(const event::id_t id, const uin
 						// Если установлена функция обратного вызова
 						if(tunnel->callbacks.error != nullptr)
 							// Вызываем функцию обратного вызова ошибки события
-							tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_ADDRESS, error);
+							tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, error);
 						// Если функция обратного вызова для вывода события не установлена
 						else {
 							/**
@@ -61574,7 +61574,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									// Вызываем функцию обратного вызова об ошибке отказа
 									tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = "Cannot splice events, a user node, and a tunnel node";
+								const string error = "Cannot splice events, a filesystem node, and a tunnel node";
 								// Если установлена функция обратного вызова
 								if(tunnel->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -61733,7 +61733,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									// Вызываем функцию обратного вызова об ошибке отказа
 									tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = "Cannot splice events, a user node, and a tunnel node";
+								const string error = "Cannot splice events, a inter-process communication node, and a tunnel node";
 								// Если установлена функция обратного вызова
 								if(tunnel->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -61859,7 +61859,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									// Вызываем функцию обратного вызова об ошибке отказа
 									tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = "Cannot splice events, a user node, and a tunnel node";
+								const string error = "Cannot splice events, a peer node, and a tunnel node";
 								// Если установлена функция обратного вызова
 								if(tunnel->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -61921,7 +61921,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									// Вызываем функцию обратного вызова об ошибке отказа
 									dir->callbacks.status(dir->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = "Cannot splice events, a peer node, and a directory node";
+								const string error = "Cannot splice events, a origin node, and a directory node";
 								// Если установлена функция обратного вызова
 								if(dir->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -61954,7 +61954,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									// Вызываем функцию обратного вызова об ошибке отказа
 									timer->callbacks.status(timer->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = "Cannot splice events, a peer node, and a timer node";
+								const string error = "Cannot splice events, a origin node, and a timer node";
 								// Если установлена функция обратного вызова
 								if(timer->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -61985,7 +61985,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									// Вызываем функцию обратного вызова об ошибке отказа
 									tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = "Cannot splice events, a user node, and a tunnel node";
+								const string error = "Cannot splice events, a origin node, and a tunnel node";
 								// Если установлена функция обратного вызова
 								if(tunnel->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -62823,7 +62823,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 									// Вызываем функцию обратного вызова об ошибке отказа
 									client->callbacks.status(client->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = "Only RAW, DATAGRAM and SEQPACKET socket types are supported for client nodes";
+								const string error = "Only RAW, STREAM, DATAGRAM and SEQPACKET socket types are supported for client nodes";
 								// Если установлена функция обратного вызова
 								if(client->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -62900,7 +62900,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 									// Вызываем функцию обратного вызова об ошибке отказа
 									client->callbacks.status(client->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = "Only STREAM and SEQPACKET socket types are supported for client nodes";
+								const string error = "Only RAW, STREAM, DATAGRAM and SEQPACKET socket types are supported for client nodes";
 								// Если установлена функция обратного вызова
 								if(client->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -62955,7 +62955,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 									// Вызываем функцию обратного вызова об ошибке отказа
 									server->callbacks.status(server->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = "Only RAW, DATAGRAM and SEQPACKET socket types are supported for server nodes";
+								const string error = "Only DATAGRAM and SEQPACKET socket types are supported for server nodes";
 								// Если установлена функция обратного вызова
 								if(server->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -63008,7 +63008,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 									// Вызываем функцию обратного вызова об ошибке отказа
 									server->callbacks.status(server->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = "Only STREAM and SEQPACKET socket types are supported for server nodes";
+								const string error = "Only STREAM, DATAGRAM and SEQPACKET socket types are supported for server nodes";
 								// Если установлена функция обратного вызова
 								if(server->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события

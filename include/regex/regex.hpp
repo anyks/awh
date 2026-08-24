@@ -215,6 +215,24 @@ namespace awh {
 			// Объект журнала событий
 			const log_t * _log;
 		private:
+			/**
+			 * \~russian
+			 * Наибольший допустимый объём работы сопоставления
+			 *
+			 * @details Потолок хранится полем объекта, а не движка: движок сопоставления
+			 *          принадлежит потоку исполнения, и настройка, на нём поставленная,
+			 *          действовала бы в одном потоке, тогда как принадлежит она объекту.
+			 *
+			 * \~english
+			 * Largest admissible amount of work of the matching
+			 * @details The ceiling is stored as a field of the object rather than of the engine: the matching
+			 *          engine belongs to the thread of execution, and a setting placed on it
+			 *          would act in one thread, whereas it belongs to the object.
+			 *
+			 * \~
+			 */
+			size_t _limit;
+		private:
 			// Кэш собранных регулярных выражений
 			mutable unordered_map <key_t, weak_ptr <const awh::regex::expression_t>, Hash> _cache;
 		public:
@@ -526,6 +544,42 @@ namespace awh {
 			 * \~
 			 */
 			void clear() noexcept;
+		public:
+			/**
+			 * \~russian
+			 * @brief Метод установки наибольшего допустимого объёма работы сопоставления
+			 *
+			 * @details Сопоставление выражений с вложенными кванторами требует времени,
+			 *          растущего с длиной текста показательно, поэтому объём работы
+			 *          исполнения с возвратом ограничивается. Исчерпание предела
+			 *          совпадения не отменяет: сопоставление доводится способом запасным,
+			 *          время которого от вида выражения не зависит, - оттого понижение
+			 *          предела лишь уводит на способ этот раньше, а повышение позволяет
+			 *          дойти с возвратом выражению более трудному. Нуль предел снимает
+			 *          вовсе, и время сопоставления не ограничивается ничем.
+			 *
+			 * @note Умолчанием служит десять миллионов шагов, чего достаёт выражениям
+			 *       обыкновенным на текстах любой длины
+			 *
+			 * @param limit наибольшее допустимое количество шагов сопоставления
+			 *
+			 * \~english
+			 * @brief Method of setting the largest admissible amount of work of the matching
+			 * @details Matching expressions with nested quantifiers requires time
+			 *          growing with the length of the text exponentially, therefore the amount of work
+			 *          of the execution with backtracking is bounded. Exhausting the limit
+			 *          does not cancel the match: the matching is completed by the fallback way,
+			 *          whose time does not depend on the kind of the expression, - therefore lowering
+			 *          the limit merely moves to that way earlier, and raising it allows
+			 *          a more difficult expression to be completed with backtracking. Zero removes the limit
+			 *          entirely, and the time of the matching is bounded by nothing.
+			 * @note Ten million steps serves as the default, which suffices for ordinary
+			 *       expressions on texts of any length
+			 * @param limit largest admissible number of matching steps
+			 *
+			 * \~
+			 */
+			void limit(const size_t limit) noexcept;
 		public:
 			/**
 			 * \~russian

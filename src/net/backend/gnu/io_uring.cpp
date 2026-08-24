@@ -4780,6 +4780,69 @@ namespace pool {
 	static constexpr uint32_t CQE_BUFFER = (1U << 0);
 
 	/**
+	 * @brief Заголовок, которым ядро предваряет принятое сообщение
+	 *
+	 * @details Родной приём датаграмм (`RECVMSG`) кладёт в буфер не одни лишь данные:
+	 *          сперва этот заголовок, за ним адрес отправителя, за ним служебные
+	 *          данные и только потом полезную нагрузку. Длины адреса и служебных
+	 *          данных в буфере берутся из ШАБЛОНА подачи, а не из заголовка: заголовок
+	 *          сообщает, сколько ядро заполнило, а место отведено по шаблону всегда
+	 *
+	 * @note Устройство подтверждено щупом на ядрах 6.1 и 6.18: обе выдают в точности
+	 *       такую раскладку
+	 *
+	 */
+	struct message_t {
+		uint32_t namelen;    /**< Заполненная длина адреса отправителя */
+		uint32_t controllen; /**< Заполненная длина служебных данных */
+		uint32_t payloadlen; /**< Длина полезной нагрузки */
+		uint32_t flags;      /**< Признаки принятого сообщения */
+	};
+
+	/**
+	 * @brief Место, отводимое в буфере под адрес отправителя
+	 *
+	 * @note Берётся наибольшим из возможных: подача одна на все семейства, а место
+	 *       отводится ею раз и навсегда
+	 *
+	 */
+	static constexpr uint32_t NAMELEN = sizeof(struct sockaddr_storage);
+
+	/**
+	 * @brief Место, отводимое в буфере под служебные данные
+	 *
+	 * @details Хватает на сведения о принятой датаграмме - целевой адрес с
+	 *          устройством, класс обслуживания и предел числа переходов - по обоим
+	 *          семействам сразу
+	 *
+	 * @warning Отводится ВСЕГДА, даже когда сведения не запрошены. Иначе раскладка
+	 *          буфера зависела бы от настроек узла, и один разбор не годился бы для
+	 *          всех: смещение нагрузки пришлось бы вычислять по узлу, а не по подаче
+	 *
+	 */
+	static constexpr uint32_t CTLLEN = 128;
+
+	/**
+	 * @brief Смещение полезной нагрузки от начала буфера
+	 *
+	 */
+	static constexpr uint32_t PAYLOAD = (sizeof(message_t) + ::pool::NAMELEN + ::pool::CTLLEN);
+
+	/**
+	 * @brief Шаблон описания принимаемого сообщения
+	 *
+	 * @details Ядро берёт из него ТОЛЬКО длины и признаки: буфера в нём нет вовсе,
+	 *          потому что буфер ядро выбирает из кольца само. Шаблон один на все
+	 *          подачи и на все дескрипторы - он не заполняется ядром и не меняется
+	 *          от подачи к подаче
+	 *
+	 * @warning Жить он обязан столько же, сколько кольцо: ядро читает его ПОСЛЕ
+	 *          возврата из обращения, у многократной подачи - на каждое сообщение
+	 *
+	 */
+	static struct msghdr sample = {};
+
+	/**
 	 * @brief Запись кольца буферов
 	 *
 	 */
@@ -4897,10 +4960,25 @@ namespace pool {
 		uint32_t offset; /**< Смещение неизрасходованного остатка */
 		uint32_t length; /**< Размер принятого в октетах */
 		/**
+		 * @brief Признак принятого сообщения, а не потока
+		 *
+		 * @details Сообщение отдаётся потребителю ЦЕЛИКОМ и ровно однажды: границы
+		 *          датаграмм обязаны дойти до него теми же, какими отправлены. Потоку
+		 *          же граница не положена вовсе, и он дробится по размеру буфера
+		 *          потребителя
+		 *
+		 */
+		bool datagram;
+		uint32_t namelen;    /**< Заполненная ядром длина адреса отправителя */
+		uint32_t controllen; /**< Заполненная ядром длина служебных данных */
+		uint32_t flags;      /**< Признаки принятого сообщения */
+		/**
 		 * @brief Конструктор
 		 *
 		 */
-		segment_t() noexcept : bid(0), offset(0), length(0) {}
+		segment_t() noexcept :
+		 bid(0), offset(0), length(0),
+		 datagram(false), namelen(0), controllen(0), flags(0) {}
 	};
 
 	/**
@@ -5071,6 +5149,17 @@ namespace pool {
 		::pool::ring = static_cast <entry_t *> (memory);
 		// Сбрасываем хвост кольца буферов
 		::pool::tail = 0;
+		/**
+		 * Заполняем шаблон описания принимаемого сообщения
+		 *
+		 * @note Место под адрес отправителя и под служебные сведения отводится ВСЕГДА,
+		 *       вне зависимости от настроек узла: раскладка буфера обязана быть одной
+		 *       и той же для всякого принятого сообщения, иначе разбор не знал бы, где
+		 *       у него начинается нагрузка
+		 */
+		::pool::sample.msg_namelen = ::pool::NAMELEN;
+		// Устанавливаем место, отводимое под служебные сведения
+		::pool::sample.msg_controllen = ::pool::CTLLEN;
 		// Отмечаем кольцо буферов заведённым
 		::pool::ready = true;
 		/**
@@ -5143,6 +5232,79 @@ namespace pool {
 			// Уменьшаем остаток нераспределённого
 			left -= portion;
 		}
+	}
+	/**
+	 * @brief Функция сохранения принятого ядром сообщения
+	 *
+	 * @details В отличие от потока, сообщение занимает ровно ОДИН буфер и отдаётся
+	 *          потребителю целиком: делить его нельзя, иначе граница датаграммы,
+	 *          заданная отправителем, до потребителя не дойдёт
+	 *
+	 * @param sock дескриптор сокета, по которому пришло сообщение
+	 * @param bid  номер выданного ядром буфера
+	 * @param res  общий объём принятого вместе с заголовком и отведёнными местами
+	 *
+	 */
+	static void keepMessage(const net::socket_t sock, const uint16_t bid, const uint32_t res) noexcept {
+		// Получаем адрес выданного ядром буфера
+		const uint8_t * buffer = ::pool::data(bid);
+		// Если дескриптор сокета неверен либо буфер получить не вышло
+		if((sock < 0) || (buffer == nullptr) || (res < sizeof(message_t))){
+			// Выполняем возврат буфера в кольцо
+			::pool::give(bid);
+			// Выходим из функции
+			return;
+		}
+		// Получаем заголовок принятого сообщения
+		const message_t * message = reinterpret_cast <const message_t *> (buffer);
+		// Если места под дескриптор в таблице не хватает
+		if(static_cast <size_t> (sock) >= ::pool::fetched.size())
+			// Выполняем расширение таблицы принятого
+			::pool::fetched.resize((static_cast <size_t> (sock) + 1));
+		// Получаем запись принятого по дескриптору
+		fetched_t & record = ::pool::fetched.at(static_cast <size_t> (sock));
+		/**
+		 * Если очередь порций израсходована целиком - начинаем её заново
+		 */
+		if(record.first >= record.queue.size()){
+			// Выполняем очистку очереди принятых порций
+			record.queue.clear();
+			// Сбрасываем номер первой неизрасходованной порции
+			record.first = 0;
+		}
+		// Принятое сообщение
+		segment_t segment;
+		// Устанавливаем номер буфера, в котором сообщение лежит
+		segment.bid = bid;
+		// Отмечаем порцию сообщением
+		segment.datagram = true;
+		/**
+		 * Устанавливаем длину полезной нагрузки
+		 *
+		 * @note Длина берётся из заголовка, а не из общего объёма завершения: объём
+		 *       несёт в себе и заголовок, и отведённые места, а нагрузка занимает
+		 *       лишь хвост буфера
+		 */
+		segment.length = message->payloadlen;
+		// Устанавливаем заполненную ядром длину адреса отправителя
+		segment.namelen = message->namelen;
+		// Устанавливаем заполненную ядром длину служебных данных
+		segment.controllen = message->controllen;
+		// Устанавливаем признаки принятого сообщения
+		segment.flags = message->flags;
+		/**
+		 * Ограничиваем длину нагрузки отведённым ей местом
+		 *
+		 * @note Нагрузка, не поместившаяся в буфер, ядром усечена, и признак усечения
+		 *       стоит в заголовке. Длина же в заголовке сообщает, сколько датаграмма
+		 *       занимала БЫ целиком, - брать её на веру значило бы читать за концом
+		 *       буфера
+		 */
+		if(segment.length > (::pool::SIZE - ::pool::PAYLOAD))
+			// Ограничиваем длину нагрузки отведённым ей местом
+			segment.length = (::pool::SIZE - ::pool::PAYLOAD);
+		// Добавляем сообщение в конец очереди
+		record.queue.push_back(segment);
 	}
 	/**
 	 * @brief Функция приёма данных из сокета
@@ -5225,6 +5387,184 @@ namespace pool {
 		}
 		// Выводим количество принятых октетов
 		return static_cast <ssize_t> (bytes);
+	}
+	/**
+	 * @brief Функция выдачи потребителю одного принятого сообщения
+	 *
+	 * @details Общая часть обоих посредников приёма датаграмм. Сообщение отдаётся
+	 *          ЦЕЛИКОМ и ровно однажды: порция помечается израсходованной независимо
+	 *          от того, вместилась ли она в буфер потребителя. Так же поступил бы и
+	 *          сам сокет - остаток датаграммы, не влезшей в буфер, ядро отбрасывает,
+	 *          а не оставляет до следующего приёма
+	 *
+	 * @param record  запись принятого по дескриптору
+	 * @param segment выдаваемое сообщение
+	 * @param size    размер буфера потребителя
+	 * @return        количество отданных октетов
+	 *
+	 */
+	static ssize_t deliver(fetched_t & record, segment_t & segment, const size_t size) noexcept {
+		// Получаем адрес выданного ядром буфера
+		const uint8_t * data = ::pool::data(segment.bid);
+		// Отмечаем порцию израсходованной
+		record.first++;
+		// Если адрес выданного ядром буфера получить не вышло
+		if(data == nullptr){
+			// Устанавливаем признак отсутствия данных
+			errno = EAGAIN;
+			// Выводим признак отсутствия данных
+			return -1;
+		}
+		// Вычисляем количество отдаваемых потребителю октетов
+		const size_t bytes = ((static_cast <size_t> (segment.length) < size) ? static_cast <size_t> (segment.length) : size);
+		// Наводим указатель принятого прямо на нагрузку в буфере кольца
+		::__awh_input__ = const_cast <uint8_t *> (data + ::pool::PAYLOAD);
+		// Откладываем возврат буфера в кольцо
+		::pool::deferred.push_back(segment.bid);
+		// Выводим количество принятых октетов
+		return static_cast <ssize_t> (bytes);
+	}
+	/**
+	 * @brief Функция приёма датаграммы с адресом отправителя
+	 *
+	 * @details Посредник между потребителем и двумя путями приёма, отвечающий за
+	 *          `recvfrom`. Если ядро уже приняло датаграмму само - она забирается из
+	 *          выданного им буфера вместе с адресом отправителя, и обращения к ядру не
+	 *          происходит вовсе
+	 *
+	 * @param sock    дескриптор сокета
+	 * @param buffer  буфер для приёма данных
+	 * @param size    размер буфера
+	 * @param address буфер для приёма адреса отправителя
+	 * @param length  размер буфера адреса отправителя
+	 * @return        количество принятых октетов либо признак ошибки
+	 *
+	 */
+	static ssize_t receiveFrom(const net::socket_t sock, void * buffer, const size_t size, struct sockaddr * address, socklen_t * length) noexcept {
+		// Если принятого по дескриптору нет
+		if(!::pool::pending(sock)){
+			// Если по дескриптору заведён приём в кольце - обычный приём запрещён
+			if(::pool::armed(sock)){
+				// Устанавливаем признак отсутствия данных
+				errno = EAGAIN;
+				// Выводим признак отсутствия данных
+				return -1;
+			}
+			// Наводим указатель принятого на буфер, отданный вызывающим
+			::__awh_input__ = static_cast <uint8_t *> (buffer);
+			// Выполняем приём данных обычным путём
+			return ::recvfrom(sock, buffer, size, MSG_NOSIGNAL, address, length);
+		}
+		// Получаем запись принятого по дескриптору
+		fetched_t & record = ::pool::fetched.at(static_cast <size_t> (sock));
+		// Получаем первую неизрасходованную порцию
+		segment_t & segment = record.queue.at(record.first);
+		// Получаем адрес выданного ядром буфера
+		const uint8_t * data = ::pool::data(segment.bid);
+		/**
+		 * Переносим потребителю адрес отправителя
+		 *
+		 * @note Переносится не отведённое место, а заполненная ядром длина: отведено
+		 *       под наибольшее семейство всегда, а заполнено ровно столько, сколько
+		 *       занимает адрес пришедшей датаграммы
+		 */
+		if((address != nullptr) && (length != nullptr) && (data != nullptr) && (segment.namelen > 0)){
+			// Вычисляем переносимую длину адреса отправителя
+			const socklen_t bytes = ((segment.namelen < static_cast <uint32_t> (* length)) ? static_cast <socklen_t> (segment.namelen) : (* length));
+			// Выполняем перенос адреса отправителя потребителю
+			::memcpy(address, (data + sizeof(message_t)), static_cast <size_t> (bytes));
+			// Устанавливаем длину адреса отправителя
+			(* length) = bytes;
+		}
+		// Выводим потребителю принятое сообщение
+		return ::pool::deliver(record, segment, size);
+	}
+	/**
+	 * @brief Функция приёма датаграммы со служебными сведениями
+	 *
+	 * @details Посредник между потребителем и двумя путями приёма, отвечающий за
+	 *          `recvmsg`. Переносит потребителю всё, что ядро сложило в буфер: адрес
+	 *          отправителя, служебные сведения о датаграмме и признаки приёма
+	 *
+	 * @warning Подача родного приёма ОБЯЗАНА отводить место под служебные сведения
+	 *          всегда. Иначе разбор их молча не находил бы - беда эта у движка уже
+	 *          случалась, и стоила она пропавших метаданных без единой строки в журнал
+	 *
+	 * @param sock    дескриптор сокета
+	 * @param message описание принимаемого сообщения
+	 * @return        количество принятых октетов либо признак ошибки
+	 *
+	 */
+	static ssize_t receiveMessage(const net::socket_t sock, struct msghdr * message) noexcept {
+		// Если описание принимаемого сообщения не задано
+		if(message == nullptr){
+			// Устанавливаем признак неверного довода
+			errno = EINVAL;
+			// Выводим признак ошибки
+			return -1;
+		}
+		// Если принятого по дескриптору нет
+		if(!::pool::pending(sock)){
+			// Если по дескриптору заведён приём в кольце - обычный приём запрещён
+			if(::pool::armed(sock)){
+				// Устанавливаем признак отсутствия данных
+				errno = EAGAIN;
+				// Выводим признак отсутствия данных
+				return -1;
+			}
+			// Наводим указатель принятого на буфер, отданный вызывающим
+			if((message->msg_iov != nullptr) && (message->msg_iovlen > 0))
+				// Наводим указатель принятого на буфер, отданный вызывающим
+				::__awh_input__ = static_cast <uint8_t *> (message->msg_iov[0].iov_base);
+			// Выполняем приём данных обычным путём
+			return ::recvmsg(sock, message, MSG_NOSIGNAL);
+		}
+		// Получаем запись принятого по дескриптору
+		fetched_t & record = ::pool::fetched.at(static_cast <size_t> (sock));
+		// Получаем первую неизрасходованную порцию
+		segment_t & segment = record.queue.at(record.first);
+		// Получаем адрес выданного ядром буфера
+		const uint8_t * data = ::pool::data(segment.bid);
+		// Размер буфера, отданного потребителем
+		size_t size = 0;
+		// Если буфер потребителю задан
+		if((message->msg_iov != nullptr) && (message->msg_iovlen > 0))
+			// Получаем размер буфера, отданного потребителем
+			size = message->msg_iov[0].iov_len;
+		// Если буфер выданного ядром сообщения получен
+		if(data != nullptr){
+			/**
+			 * Переносим потребителю адрес отправителя
+			 */
+			if((message->msg_name != nullptr) && (segment.namelen > 0)){
+				// Вычисляем переносимую длину адреса отправителя
+				const socklen_t bytes = ((segment.namelen < message->msg_namelen) ? static_cast <socklen_t> (segment.namelen) : message->msg_namelen);
+				// Выполняем перенос адреса отправителя потребителю
+				::memcpy(message->msg_name, (data + sizeof(message_t)), static_cast <size_t> (bytes));
+				// Устанавливаем длину адреса отправителя
+				message->msg_namelen = bytes;
+			// Если адрес отправителя ядром не заполнен
+			} else message->msg_namelen = 0;
+			/**
+			 * Переносим потребителю служебные сведения о датаграмме
+			 *
+			 * @note Место под них отведено в буфере ВСЕГДА, сразу за адресом
+			 *       отправителя, и лежат они по отведённой длине, а не по заполненной
+			 */
+			if((message->msg_control != nullptr) && (segment.controllen > 0)){
+				// Вычисляем переносимую длину служебных сведений
+				const size_t bytes = ((static_cast <size_t> (segment.controllen) < message->msg_controllen) ? static_cast <size_t> (segment.controllen) : message->msg_controllen);
+				// Выполняем перенос служебных сведений потребителю
+				::memcpy(message->msg_control, (data + sizeof(message_t) + ::pool::NAMELEN), bytes);
+				// Устанавливаем длину служебных сведений
+				message->msg_controllen = bytes;
+			// Если служебные сведения ядром не заполнены
+			} else message->msg_controllen = 0;
+		}
+		// Устанавливаем признаки принятого сообщения
+		message->msg_flags = static_cast <int32_t> (segment.flags);
+		// Выводим потребителю принятое сообщение
+		return ::pool::deliver(record, segment, size);
 	}
 	/**
 	 * @brief Функция снятия кольца буферов
@@ -5976,6 +6316,68 @@ namespace post {
 		 *          тем же соображениям: они выглядят убедительно и опровергаются только
 		 *          замером
 		 */
+		// Указываем ядру брать буфер из кольца
+		entry->flags |= static_cast <uint8_t> (IOSQE_BUFFER_SELECT);
+		// Устанавливаем номер набора буферов, из которого берётся буфер
+		entry->buf_group = ::pool::GROUP;
+		// Устанавливаем метку завершения
+		entry->user_data = result;
+		// Откладываем запись, если она заполнялась не потоком цикла
+		::post::publish(entry);
+		// Выводим метку завершения
+		return result;
+	}
+	/**
+	 * @brief Функция подачи приёма сообщения с выбором буфера ядром
+	 *
+	 * @details То же, чем является приём для потока, но для сокетов, сохраняющих
+	 *          границы. Приём (`RECV`) датаграммам не годится вовсе: он не отдаёт
+	 *          адреса отправителя, а без него принятая датаграмма потребителю
+	 *          бесполезна - отвечать ему некуда
+	 *
+	 *          Ядро складывает в буфер заголовок, адрес отправителя, служебные
+	 *          сведения и нагрузку - одним куском и на одну датаграмму
+	 *
+	 * @note Подача многократная, как и у потока: однократная означала бы запись на
+	 *       каждую датаграмму, то есть ту же работу, что у модели готовности
+	 *
+	 * @warning Ядро снимает многократность на ПУСТОЙ датаграмме, считая её обрывом по
+	 *          образцу `recv()==0`. Данные при этом не теряются: они ждут в очереди
+	 *          сокета и приходят после повторной подачи, которую движок выполняет
+	 *          общим порядком - по отсутствию признака продолжения. Установлено щупом
+	 *          на ядрах 6.1 и 6.18
+	 *
+	 * @param sock  дескриптор, с которого читаются сообщения
+	 * @param udata запись подписки, которой операция принадлежит
+	 * @return      метка завершения
+	 *
+	 */
+	static uint64_t fetchMessage(const net::socket_t sock, void * udata) noexcept {
+		// Выполняем добычу записи подачи
+		struct io_uring_sqe * entry = ::post::sqe();
+		// Если запись подачи добыть не удалось
+		if(entry == nullptr)
+			// Выводим отсутствие метки завершения
+			return ::inflight::INVALID;
+		// Занимаем запись учёта под операцию
+		const uint64_t result = ::inflight::acquire(::inflight::kind_t::RECVMSG, sock, udata);
+		// Устанавливаем код операции
+		entry->opcode = static_cast <uint8_t> (::ring::op_t::RECVMSG);
+		// Устанавливаем дескриптор, с которого читаются сообщения
+		entry->fd = static_cast <int32_t> (sock);
+		/**
+		 * Устанавливаем шаблон описания принимаемого сообщения
+		 *
+		 * @note Шаблон общий на все подачи и ядром не изменяется: из него берутся
+		 *       только отводимые длины
+		 */
+		entry->addr = reinterpret_cast <uint64_t> (&::pool::sample);
+		// Устанавливаем количество описаний принимаемого сообщения
+		entry->len = 1;
+		// Устанавливаем признак приёма без порождения сигнала обрыва
+		entry->msg_flags = MSG_NOSIGNAL;
+		// Устанавливаем признак многократного приёма
+		entry->ioprio |= (1U << 1);
 		// Указываем ядру брать буфер из кольца
 		entry->flags |= static_cast <uint8_t> (IOSQE_BUFFER_SELECT);
 		// Устанавливаем номер набора буферов, из которого берётся буфер
@@ -8042,7 +8444,32 @@ namespace kernel {
 			exchanging && !limited && (node->state.type == event::type_t::STREAM) &&
 			(node->state.protocol != event::protocol_t::SCTP) && !::splicing::eligible(node, &joined)
 		);
-		const bool fetching = (suitable && ::pool::create(log));
+		/**
+		 * Годность подписки для родного приёма сообщений
+		 *
+		 * @details Всё то же, что и у потока, но для сокетов, сохраняющих границы.
+		 *          Отличий от потокового условия ровно два, и оба идут от устройства
+		 *          приёма сообщений, а не от осторожности:
+		 *          - **тип обязан быть DATAGRAM**. Приём (`RECV`) адреса отправителя
+		 *            не отдаёт, и датаграммам нужен `RECVMSG`, у которого своя подача
+		 *            и своя раскладка буфера;
+		 *          - **объединение не проверяется**. Ядерное объединение заведено для
+		 *            потоковых узлов, и датаграммный источник ему не годится вовсе
+		 *
+		 * @warning Условие это ОБЯЗАНО совпадать с условием, по которому выбирается
+		 *          способ чтения. Разойдись они - приём завёлся бы по сокету, читаемому
+		 *          мимо кольца, и данные пропали бы молча. Оттого все точки чтения
+		 *          датаграмм переведены на посредников, и посредники сами решают, откуда
+		 *          брать принятое, а не место вызова
+		 */
+		const bool receivable = (
+			((events & ~static_cast <uint32_t> (EPOLLRDHUP)) == static_cast <uint32_t> (EPOLLIN)) &&
+			exchanging && !limited && (node->state.type == event::type_t::DATAGRAM) &&
+			(node->state.protocol != event::protocol_t::SCTP)
+		);
+		const bool fetching = ((suitable || receivable) && ::pool::create(log));
+		// Признак подачи родного приёма сообщений, а не потока
+		const bool messaging = (fetching && receivable);
 		/**
 		 * Годность подписки для приёма подключений через кольцо
 		 *
@@ -8084,7 +8511,8 @@ namespace kernel {
 		const bool repeatable = (accepting && (node->state.family == event::family_t::UDS));
 		// Выполняем подачу приёма подключения, родного приёма данных либо ожидания готовности
 		state.token = (accepting ? ::post::accept(state.sock, repeatable, &state) :
-		 (fetching ? ::post::fetch(state.sock, &state) : ::post::poll(state.sock, events, false, &state)));
+		 (messaging ? ::post::fetchMessage(state.sock, &state) :
+		 (fetching ? ::post::fetch(state.sock, &state) : ::post::poll(state.sock, events, false, &state))));
 		// Отмечаем заведение родного приёма по дескриптору
 		::pool::arm(state.sock, (fetching && (state.token != ::inflight::INVALID)));
 		// Если подать ожидание готовности не удалось
@@ -16191,7 +16619,7 @@ namespace io {
 									// Если установлена функция обратного вызова
 									if(tunnel->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
-										tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, error);
+										tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_ADDRESS, error);
 									// Если функция обратного вызова для вывода события не установлена
 									else {
 										/**
@@ -16424,7 +16852,7 @@ namespace io {
 									// Если установлена функция обратного вызова
 									if(tunnel->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
-										tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, error);
+										tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_ADDRESS, error);
 									// Если функция обратного вызова для вывода события не установлена
 									else {
 										/**
@@ -16454,7 +16882,7 @@ namespace io {
 								// Если установлена функция обратного вызова
 								if(tunnel->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
-									tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, error);
+									tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_ADDRESS, error);
 								// Если функция обратного вызова для вывода события не установлена
 								else {
 									/**
@@ -16769,7 +17197,7 @@ namespace io {
 								// Если установлена функция обратного вызова
 								if(tunnel->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
-									tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, error);
+									tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_ADDRESS, error);
 								// Если функция обратного вызова для вывода события не установлена
 								else {
 									/**
@@ -17002,7 +17430,7 @@ namespace io {
 								// Если установлена функция обратного вызова
 								if(tunnel->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
-									tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, error);
+									tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_ADDRESS, error);
 								// Если функция обратного вызова для вывода события не установлена
 								else {
 									/**
@@ -17032,7 +17460,7 @@ namespace io {
 							// Если установлена функция обратного вызова
 							if(tunnel->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
-								tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, error);
+								tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_ADDRESS, error);
 							// Если функция обратного вызова для вывода события не установлена
 							else {
 								/**
@@ -17585,7 +18013,7 @@ namespace io {
 									// Устанавливаем размер буфера для получения служебных метаданных из сокета
 									msg.msg_controllen = sizeof(::__awh_cmsgbuf__);
 									// Выполняем чтение данных и служебных метаданных из RAW-сокета
-									bytes = ::recvmsg(client->transfer.fd, &msg, MSG_NOSIGNAL);
+									bytes = ::pool::receiveMessage(client->transfer.fd, &msg);
 									/**
 									 * Извлекаем значение TTL/HopLimit из control message
 									 */
@@ -17848,7 +18276,7 @@ namespace io {
 								// Устанавливаем размер буфера для получения служебных метаданных из сокета
 								msg.msg_controllen = sizeof(::__awh_cmsgbuf__);
 								// Выполняем чтение данных и служебных метаданных из RAW-сокета
-								bytes = ::recvmsg(client->transfer.fd, &msg, MSG_NOSIGNAL);
+								bytes = ::pool::receiveMessage(client->transfer.fd, &msg);
 								/**
 								 * Извлекаем значение TTL/HopLimit из control message
 								 */
@@ -18079,7 +18507,7 @@ namespace io {
 									// Устанавливаем размер буфера для получения служебных метаданных из сокета
 									msg.msg_controllen = sizeof(::__awh_cmsgbuf__);
 									// Выполняем чтение данных и служебных метаданных из RAW-сокета
-									bytes = ::recvmsg(client->transfer.fd, &msg, MSG_NOSIGNAL);
+									bytes = ::pool::receiveMessage(client->transfer.fd, &msg);
 									/**
 									 * Извлекаем значение TTL/HopLimit из control message
 									 */
@@ -18193,10 +18621,10 @@ namespace io {
 								// Если не активирован режим получения информационных метаданных для дейтаграммных пакетов
 								} else {
 									// Выполняем чтение данных из сокета в обычном режиме
-									bytes = ::recvfrom(
+									bytes = ::pool::receiveFrom(
 										client->transfer.fd,
 										::__awh_buffer__,
-										AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL,
+										AWH_EVENT_MAX_BUFFER_SIZE,
 										&::trust_cast <struct sockaddr> (client->endpoint.server),
 										&client->endpoint.size
 									);
@@ -18355,7 +18783,7 @@ namespace io {
 								// Устанавливаем размер буфера для получения служебных метаданных из сокета
 								msg.msg_controllen = sizeof(::__awh_cmsgbuf__);
 								// Выполняем чтение данных и служебных метаданных из RAW-сокета
-								bytes = ::recvmsg(client->transfer.fd, &msg, MSG_NOSIGNAL);
+								bytes = ::pool::receiveMessage(client->transfer.fd, &msg);
 								/**
 								 * Извлекаем значение TTL/HopLimit из control message
 								 */
@@ -18469,10 +18897,10 @@ namespace io {
 							// Если не активирован режим получения информационных метаданных для дейтаграммных пакетов
 							} else {
 								// Выполняем чтение данных из сокета в обычном режиме
-								bytes = ::recvfrom(
+								bytes = ::pool::receiveFrom(
 									client->transfer.fd,
 									::__awh_buffer__,
-									AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL,
+									AWH_EVENT_MAX_BUFFER_SIZE,
 									&::trust_cast <struct sockaddr> (client->endpoint.server),
 									&client->endpoint.size
 								);
@@ -18901,10 +19329,10 @@ namespace io {
 										client->transfer.sctp.use().flags
 									);
 								// Выполняем чтение данных из UDP-сокета
-								else bytes = ::recvfrom(
+								else bytes = ::pool::receiveFrom(
 									client->transfer.fd,
 									::__awh_buffer__,
-									AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL,
+									AWH_EVENT_MAX_BUFFER_SIZE,
 									&::trust_cast <struct sockaddr> (client->endpoint.server),
 									&client->endpoint.size
 								);
@@ -19083,10 +19511,10 @@ namespace io {
 									client->transfer.sctp.use().flags
 								);
 							// Выполняем чтение данных из UDP-сокета
-							else bytes = ::recvfrom(
+							else bytes = ::pool::receiveFrom(
 								client->transfer.fd,
 								::__awh_buffer__,
-								AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL,
+								AWH_EVENT_MAX_BUFFER_SIZE,
 								&::trust_cast <struct sockaddr> (client->endpoint.server),
 								&client->endpoint.size
 							);
@@ -19386,7 +19814,7 @@ namespace io {
 									// Устанавливаем размер буфера для получения служебных метаданных из сокета
 									msg.msg_controllen = sizeof(::__awh_cmsgbuf__);
 									// Выполняем чтение данных и служебных метаданных из RAW-сокета
-									bytes = ::recvmsg(server->fd, &msg, MSG_NOSIGNAL);
+									bytes = ::pool::receiveMessage(server->fd, &msg);
 									/**
 									 * Извлекаем значение TTL/HopLimit из control message
 									 */
@@ -19500,11 +19928,10 @@ namespace io {
 								// Если не активирован режим получения информационных метаданных для дейтаграммных пакетов
 								} else {
 									// Выполняем чтение данных из UDP-сокета или RAW-сокета
-									bytes = ::recvfrom(
+									bytes = ::pool::receiveFrom(
 										server->fd,
 										::__awh_buffer__,
 										AWH_EVENT_MAX_BUFFER_SIZE,
-										MSG_NOSIGNAL,
 										&::trust_cast <struct sockaddr> (server->endpoint.client),
 										&server->endpoint.size
 									);
@@ -19693,7 +20120,7 @@ namespace io {
 								// Устанавливаем размер буфера для получения служебных метаданных из сокета
 								msg.msg_controllen = sizeof(::__awh_cmsgbuf__);
 								// Выполняем чтение данных и служебных метаданных из RAW-сокета
-								bytes = ::recvmsg(server->fd, &msg, MSG_NOSIGNAL);
+								bytes = ::pool::receiveMessage(server->fd, &msg);
 								/**
 								 * Извлекаем значение TTL/HopLimit из control message
 								 */
@@ -19807,10 +20234,10 @@ namespace io {
 							// Если не активирован режим получения информационных метаданных для дейтаграммных пакетов
 							} else {
 								// Выполняем чтение данных из UDP-сокета или RAW-сокета
-								bytes = ::recvfrom(
+								bytes = ::pool::receiveFrom(
 									server->fd,
 									::__awh_buffer__,
-									AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL,
+									AWH_EVENT_MAX_BUFFER_SIZE,
 									&::trust_cast <struct sockaddr> (server->endpoint.client),
 									&server->endpoint.size
 								);
@@ -27103,7 +27530,7 @@ namespace io {
 						// Вызываем функцию обратного вызова об ошибке отказа
 						origin->callbacks.status(origin->id, event::status_t::FAILURE);
 					// Устанавливаем текст ошибки
-					const string error = "Origin cannot send non-Datagram packet data";
+					const string error = "Origin cannot send packet data for socket types other than RAW and DATAGRAM";
 					// Если установлена функция обратного вызова
 					if(origin->callbacks.error != nullptr)
 						// Вызываем функцию обратного вызова ошибки события
@@ -32751,7 +33178,7 @@ namespace io {
 						// Вызываем функцию обратного вызова об ошибке отказа
 						server->callbacks.status(server->id, event::status_t::FAILURE);
 					// Устанавливаем текст ошибки
-					const string error = "Server cannot send non-Datagram packet data";
+					const string error = "Server cannot send packet data for socket types other than RAW and DATAGRAM";
 					// Если установлена функция обратного вызова
 					if(server->callbacks.error != nullptr)
 						// Вызываем функцию обратного вызова ошибки события
@@ -43098,7 +43525,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 									// Если установлена функция обратного вызова
 									if(dir->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
-										dir->callbacks.error(dir->id, event::error_t::EVENT_FAIL, error);
+										dir->callbacks.error(dir->id, event::error_t::INVALID_SOCKET, error);
 									// Если функция обратного вызова вывода ошибки не установлена
 									else {
 										/**
@@ -43129,7 +43556,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 								// Если установлена функция обратного вызова
 								if(dir->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
-									dir->callbacks.error(dir->id, event::error_t::INVALID_ADDRESS, error);
+									dir->callbacks.error(dir->id, event::error_t::INVALID, error);
 								// Если функция обратного вызова вывода ошибки не установлена
 								else {
 									/**
@@ -43160,7 +43587,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							// Если установлена функция обратного вызова
 							if(dir->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
-								dir->callbacks.error(dir->id, event::error_t::INVALID_ADDRESS, error);
+								dir->callbacks.error(dir->id, event::error_t::INVALID, error);
 							// Если функция обратного вызова вывода ошибки не установлена
 							else {
 								/**
@@ -43223,7 +43650,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 									// Если установлена функция обратного вызова
 									if(fs->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
-										fs->callbacks.error(fs->id, event::error_t::EVENT_FAIL, error);
+										fs->callbacks.error(fs->id, event::error_t::INVALID_SOCKET, error);
 									// Если функция обратного вызова вывода ошибки не установлена
 									else {
 										/**
@@ -43254,7 +43681,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 								// Если установлена функция обратного вызова
 								if(fs->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
-									fs->callbacks.error(fs->id, event::error_t::INVALID_ADDRESS, error);
+									fs->callbacks.error(fs->id, event::error_t::INVALID, error);
 								// Если функция обратного вызова вывода ошибки не установлена
 								else {
 									/**
@@ -43285,7 +43712,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							// Если установлена функция обратного вызова
 							if(fs->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
-								fs->callbacks.error(fs->id, event::error_t::INVALID_ADDRESS, error);
+								fs->callbacks.error(fs->id, event::error_t::INVALID, error);
 							// Если функция обратного вызова вывода ошибки не установлена
 							else {
 								/**
@@ -43352,7 +43779,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 									// Если установлена функция обратного вызова
 									if(ipc->callbacks.error != nullptr)
 										// Вызываем функцию обратного вызова ошибки события
-										ipc->callbacks.error(ipc->id, event::error_t::ALREADY_EXISTS, error);
+										ipc->callbacks.error(ipc->id, event::error_t::INVALID, error);
 									// Если функция обратного вызова вывода ошибки не установлена
 									else {
 										/**
@@ -43382,7 +43809,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							// Если установлена функция обратного вызова
 							if(ipc->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
-								ipc->callbacks.error(ipc->id, event::error_t::EVENT_FAIL, error);
+								ipc->callbacks.error(ipc->id, event::error_t::INVALID_SOCKET, error);
 							// Если функция обратного вызова вывода ошибки не установлена
 							else {
 								/**
@@ -43603,7 +44030,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							// Если установлена функция обратного вызова
 							if(tunnel->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
-								tunnel->callbacks.error(tunnel->id, event::error_t::EVENT_FAIL, error);
+								tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, error);
 							// Если функция обратного вызова вывода ошибки не установлена
 							else {
 								/**
@@ -43690,7 +44117,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 								// Если установлена функция обратного вызова
 								if(mediator->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
-									mediator->callbacks.error(mediator->id, event::error_t::EVENT_FAIL, error);
+									mediator->callbacks.error(mediator->id, event::error_t::ALREADY_EXISTS, error);
 								// Если функция обратного вызова вывода ошибки не установлена
 								else {
 									/**
@@ -44291,7 +44718,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															// Вызываем функцию обратного вызова об ошибке отказа
 															client->callbacks.status(client->id, event::status_t::FAILURE);
 														// Устанавливаем текст ошибки
-														const string error = "Unix-socket address is not set";
+														const string error = "Unix-socket address is not set or exceeds maximum path length";
 														// Если установлена функция обратного вызова
 														if(client->callbacks.error != nullptr)
 															// Вызываем функцию обратного вызова ошибки события
@@ -44327,7 +44754,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 													// Если установлена функция обратного вызова
 													if(client->callbacks.error != nullptr)
 														// Вызываем функцию обратного вызова ошибки события
-														client->callbacks.error(client->id, event::error_t::ALREADY_EXISTS, error);
+														client->callbacks.error(client->id, event::error_t::INVALID, error);
 													// Если функция обратного вызова вывода ошибки не установлена
 													else {
 														/**
@@ -44561,7 +44988,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	// Если установлена функция обратного вызова
 																	if(client->callbacks.error != nullptr)
 																		// Вызываем функцию обратного вызова ошибки события
-																		client->callbacks.error(client->id, event::error_t::INVALID_ADDRESS, error);
+																		client->callbacks.error(client->id, event::error_t::INVALID, error);
 																	// Если функция обратного вызова вывода ошибки не установлена
 																	else {
 																		/**
@@ -44835,7 +45262,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																// Если установлена функция обратного вызова
 																if(client->callbacks.error != nullptr)
 																	// Вызываем функцию обратного вызова ошибки события
-																	client->callbacks.error(client->id, event::error_t::INVALID_ADDRESS, error);
+																	client->callbacks.error(client->id, event::error_t::INVALID, error);
 																// Если функция обратного вызова вывода ошибки не установлена
 																else {
 																	/**
@@ -44870,7 +45297,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 														// Если установлена функция обратного вызова
 														if(client->callbacks.error != nullptr)
 															// Вызываем функцию обратного вызова ошибки события
-															client->callbacks.error(client->id, event::error_t::ALREADY_EXISTS, error);
+															client->callbacks.error(client->id, event::error_t::INVALID, error);
 														// Если функция обратного вызова вывода ошибки не установлена
 														else {
 															/**
@@ -45144,7 +45571,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	// Если установлена функция обратного вызова
 																	if(client->callbacks.error != nullptr)
 																		// Вызываем функцию обратного вызова ошибки события
-																		client->callbacks.error(client->id, event::error_t::INVALID_ADDRESS, error);
+																		client->callbacks.error(client->id, event::error_t::INVALID, error);
 																	// Если функция обратного вызова вывода ошибки не установлена
 																	else {
 																		/**
@@ -45444,7 +45871,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																// Если установлена функция обратного вызова
 																if(client->callbacks.error != nullptr)
 																	// Вызываем функцию обратного вызова ошибки события
-																	client->callbacks.error(client->id, event::error_t::INVALID_ADDRESS, error);
+																	client->callbacks.error(client->id, event::error_t::INVALID, error);
 																// Если функция обратного вызова вывода ошибки не установлена
 																else {
 																	/**
@@ -45479,7 +45906,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 														// Если установлена функция обратного вызова
 														if(client->callbacks.error != nullptr)
 															// Вызываем функцию обратного вызова ошибки события
-															client->callbacks.error(client->id, event::error_t::ALREADY_EXISTS, error);
+															client->callbacks.error(client->id, event::error_t::INVALID, error);
 														// Если функция обратного вызова вывода ошибки не установлена
 														else {
 															/**
@@ -45575,7 +46002,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							// Если установлена функция обратного вызова
 							if(client->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
-								client->callbacks.error(client->id, event::error_t::EVENT_FAIL, error);
+								client->callbacks.error(client->id, event::error_t::INVALID_SOCKET, error);
 							// Если функция обратного вызова вывода ошибки не установлена
 							else {
 								/**
@@ -46064,7 +46491,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															// Вызываем функцию обратного вызова об ошибке отказа
 															server->callbacks.status(server->id, event::status_t::FAILURE);
 														// Устанавливаем текст ошибки
-														const string error = "Unix-socket address is not set";
+														const string error = "Unix-socket address is not set or exceeds maximum path length";
 														// Если установлена функция обратного вызова
 														if(server->callbacks.error != nullptr)
 															// Вызываем функцию обратного вызова ошибки события
@@ -46100,7 +46527,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 													// Если установлена функция обратного вызова
 													if(server->callbacks.error != nullptr)
 														// Вызываем функцию обратного вызова ошибки события
-														server->callbacks.error(server->id, event::error_t::ALREADY_EXISTS, error);
+														server->callbacks.error(server->id, event::error_t::INVALID, error);
 													// Если функция обратного вызова вывода ошибки не установлена
 													else {
 														/**
@@ -46274,7 +46701,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 														// Если установлена функция обратного вызова
 														if(server->callbacks.error != nullptr)
 															// Вызываем функцию обратного вызова ошибки события
-															server->callbacks.error(server->id, event::error_t::ALREADY_EXISTS, error);
+															server->callbacks.error(server->id, event::error_t::INVALID, error);
 														// Если функция обратного вызова вывода ошибки не установлена
 														else {
 															/**
@@ -46483,7 +46910,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 														// Если установлена функция обратного вызова
 														if(server->callbacks.error != nullptr)
 															// Вызываем функцию обратного вызова ошибки события
-															server->callbacks.error(server->id, event::error_t::ALREADY_EXISTS, error);
+															server->callbacks.error(server->id, event::error_t::INVALID, error);
 														// Если функция обратного вызова вывода ошибки не установлена
 														else {
 															/**
@@ -46579,7 +47006,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							// Если установлена функция обратного вызова
 							if(server->callbacks.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки события
-								server->callbacks.error(server->id, event::error_t::EVENT_FAIL, error);
+								server->callbacks.error(server->id, event::error_t::INVALID_SOCKET, error);
 							// Если функция обратного вызова вывода ошибки не установлена
 							else {
 								/**
@@ -56830,7 +57257,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 														// Вызываем функцию обратного вызова об ошибке отказа
 														client->callbacks.status(client->id, event::status_t::FAILURE);
 													// Устанавливаем текст ошибки
-													const string error = "MAC-address is not found";
+													const string error = "IPv4-address is not found";
 													// Если установлена функция обратного вызова
 													if(client->callbacks.error != nullptr)
 														// Вызываем функцию обратного вызова ошибки события
@@ -56890,7 +57317,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 														// Вызываем функцию обратного вызова об ошибке отказа
 														client->callbacks.status(client->id, event::status_t::FAILURE);
 													// Устанавливаем текст ошибки
-													const string error = "MAC-address is not found";
+													const string error = "IPv6-address is not found";
 													// Если установлена функция обратного вызова
 													if(client->callbacks.error != nullptr)
 														// Вызываем функцию обратного вызова ошибки события
@@ -56964,7 +57391,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 														// Вызываем функцию обратного вызова об ошибке отказа
 														server->callbacks.status(server->id, event::status_t::FAILURE);
 													// Устанавливаем текст ошибки
-													const string error = "MAC-address is not found";
+													const string error = "IPv4-address is not found";
 													// Если установлена функция обратного вызова
 													if(server->callbacks.error != nullptr)
 														// Вызываем функцию обратного вызова ошибки события
@@ -57028,7 +57455,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 														// Вызываем функцию обратного вызова об ошибке отказа
 														server->callbacks.status(server->id, event::status_t::FAILURE);
 													// Устанавливаем текст ошибки
-													const string error = "MAC-address is not found";
+													const string error = "IPv6-address is not found";
 													// Если установлена функция обратного вызова
 													if(server->callbacks.error != nullptr)
 														// Вызываем функцию обратного вызова ошибки события
@@ -57996,7 +58423,7 @@ uint16_t awh::engine::IO::getMaximumTransmissionUnit(const event::id_t id) const
 						// Если установлена функция обратного вызова
 						if(tunnel->callbacks.error != nullptr)
 							// Вызываем функцию обратного вызова ошибки события
-							tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_ADDRESS, error);
+							tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, error);
 						// Если функция обратного вызова для вывода события не установлена
 						else {
 							/**
@@ -58296,7 +58723,7 @@ bool awh::engine::IO::setMaximumTransmissionUnit(const event::id_t id, const uin
 						// Если установлена функция обратного вызова
 						if(tunnel->callbacks.error != nullptr)
 							// Вызываем функцию обратного вызова ошибки события
-							tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_ADDRESS, error);
+							tunnel->callbacks.error(tunnel->id, event::error_t::INVALID_SOCKET, error);
 						// Если функция обратного вызова для вывода события не установлена
 						else {
 							/**
@@ -64016,7 +64443,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									// Вызываем функцию обратного вызова об ошибке отказа
 									tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = "Cannot splice events, a user node, and a tunnel node";
+								const string error = "Cannot splice events, a filesystem node, and a tunnel node";
 								// Если установлена функция обратного вызова
 								if(tunnel->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -64175,7 +64602,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									// Вызываем функцию обратного вызова об ошибке отказа
 									tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = "Cannot splice events, a user node, and a tunnel node";
+								const string error = "Cannot splice events, a inter-process communication node, and a tunnel node";
 								// Если установлена функция обратного вызова
 								if(tunnel->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -64301,7 +64728,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									// Вызываем функцию обратного вызова об ошибке отказа
 									tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = "Cannot splice events, a user node, and a tunnel node";
+								const string error = "Cannot splice events, a peer node, and a tunnel node";
 								// Если установлена функция обратного вызова
 								if(tunnel->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -64363,7 +64790,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									// Вызываем функцию обратного вызова об ошибке отказа
 									dir->callbacks.status(dir->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = "Cannot splice events, a peer node, and a directory node";
+								const string error = "Cannot splice events, a origin node, and a directory node";
 								// Если установлена функция обратного вызова
 								if(dir->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -64396,7 +64823,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									// Вызываем функцию обратного вызова об ошибке отказа
 									timer->callbacks.status(timer->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = "Cannot splice events, a peer node, and a timer node";
+								const string error = "Cannot splice events, a origin node, and a timer node";
 								// Если установлена функция обратного вызова
 								if(timer->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -64427,7 +64854,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									// Вызываем функцию обратного вызова об ошибке отказа
 									tunnel->callbacks.status(tunnel->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = "Cannot splice events, a user node, and a tunnel node";
+								const string error = "Cannot splice events, a origin node, and a tunnel node";
 								// Если установлена функция обратного вызова
 								if(tunnel->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -65235,7 +65662,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 									// Вызываем функцию обратного вызова об ошибке отказа
 									client->callbacks.status(client->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = "Only RAW, DATAGRAM and SEQPACKET socket types are supported for client nodes";
+								const string error = "Only RAW, STREAM, DATAGRAM and SEQPACKET socket types are supported for client nodes";
 								// Если установлена функция обратного вызова
 								if(client->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -65312,7 +65739,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 									// Вызываем функцию обратного вызова об ошибке отказа
 									client->callbacks.status(client->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = "Only STREAM and SEQPACKET socket types are supported for client nodes";
+								const string error = "Only RAW, STREAM, DATAGRAM and SEQPACKET socket types are supported for client nodes";
 								// Если установлена функция обратного вызова
 								if(client->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -65385,7 +65812,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 									// Вызываем функцию обратного вызова об ошибке отказа
 									server->callbacks.status(server->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = "Only RAW, DATAGRAM and SEQPACKET socket types are supported for server nodes";
+								const string error = "Only DATAGRAM and SEQPACKET socket types are supported for server nodes";
 								// Если установлена функция обратного вызова
 								if(server->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -65438,7 +65865,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 									// Вызываем функцию обратного вызова об ошибке отказа
 									server->callbacks.status(server->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = "Only STREAM and SEQPACKET socket types are supported for server nodes";
+								const string error = "Only STREAM, DATAGRAM and SEQPACKET socket types are supported for server nodes";
 								// Если установлена функция обратного вызова
 								if(server->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -76684,6 +77111,53 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 						else signalEvents = EPOLLERR;
 					}
 					/**
+					 * Если завершение принадлежит родному приёму сообщений
+					 *
+					 * @details Ядро приняло датаграмму само и сложило в выданный из кольца
+					 *          буфер её адрес, служебные сведения и нагрузку. Наружу, как и
+					 *          у потока, выдаётся обычная готовность к чтению: разбор ниже о
+					 *          разнице не знает вовсе
+					 *
+					 */
+					if((kind == ::inflight::kind_t::RECVMSG) && (owner != nullptr)){
+						// Получаем запись учёта подписки
+						::kernel::registry_t * state = reinterpret_cast <::kernel::registry_t *> (owner);
+						// Отмечаем родной приём снятым, если ядро его не продолжает
+						if(!more)
+							// Отмечаем родной приём снятым
+							::pool::arm(state->sock, false);
+						/**
+						 * Если сообщение принято
+						 *
+						 * @warning Сравнивать исход с нулём, как это делает поток, НЕЛЬЗЯ:
+						 *          исход приёма сообщения несёт общий объём вместе с
+						 *          заголовком и отведёнными местами, и нулём он не бывает
+						 *          никогда. Пустая датаграмма - законное сообщение, а не
+						 *          обрыв дальней стороны: у сокета с границами обрывать
+						 *          нечего. Установлено щупом: пустая датаграмма даёт исход
+						 *          96 при нулевой нагрузке
+						 */
+						if(completion.res > 0){
+							// Если ядро выдало буфер из кольца
+							if(completion.flags & ::pool::CQE_BUFFER)
+								// Откладываем принятое сообщение по дескриптору
+								::pool::keepMessage(state->sock, static_cast <uint16_t> (completion.flags >> 16), static_cast <uint32_t> (completion.res));
+							// Выдаём наружу готовность к чтению
+							signalEvents = EPOLLIN;
+						/**
+						 * Если буферов в кольце не осталось
+						 *
+						 * @note Исход этот не отказ, а обычное следствие нагрузки. Событие
+						 *       наружу не выдаётся: подписка остаётся несогласованной, и
+						 *       ближайшее согласование подаст приём заново
+						 */
+						} else if(completion.res == -ENOBUFS)
+							// Событий готовности не выдаём
+							signalEvents = 0;
+						// Если приём сообщения завершился отказом
+						else signalEvents = EPOLLERR;
+					}
+					/**
 					 * Если завершение принадлежит родной отправке
 					 *
 					 * @details Ядро отправило данные само. Потребитель же устроен по
@@ -76745,7 +77219,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					 *       обязан быть к нему готов, даже если многократных ожиданий
 					 *       движок не подаёт
 					 */
-					if(((kind == ::inflight::kind_t::POLL) || (kind == ::inflight::kind_t::RECV)) && !more){
+					if(((kind == ::inflight::kind_t::POLL) || (kind == ::inflight::kind_t::RECV) || (kind == ::inflight::kind_t::RECVMSG)) && !more){
 						// Если ожидание принадлежало дескриптору пробуждения цикла
 						if(signalData == ::kernel::waker)
 							// Выполняем повторную подачу ожидания дескриптора пробуждения
@@ -76796,7 +77270,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 						// Прекращаем перевод, остаток заберёт следующий оборот
 						break;
 					// Если завершение принадлежит не ожиданию готовности
-					if((kind != ::inflight::kind_t::POLL) && (kind != ::inflight::kind_t::RECV) && (kind != ::inflight::kind_t::SEND))
+					if((kind != ::inflight::kind_t::POLL) && (kind != ::inflight::kind_t::RECV) && (kind != ::inflight::kind_t::RECVMSG) && (kind != ::inflight::kind_t::SEND))
 						// Переходим к завершению следующему
 						continue;
 					/**
@@ -76805,7 +77279,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					 * @note Случай этот один - буферов в кольце не осталось. Подписка
 					 *       остаётся несогласованной и будет подана заново
 					 */
-					if((kind == ::inflight::kind_t::RECV) && (signalEvents == 0))
+					if(((kind == ::inflight::kind_t::RECV) || (kind == ::inflight::kind_t::RECVMSG)) && (signalEvents == 0))
 						// Переходим к завершению следующему
 						continue;
 					// Получаем запись учёта подписки, которой событие принадлежит

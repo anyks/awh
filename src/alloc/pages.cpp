@@ -45,9 +45,22 @@ awh::alloc::Pages::Pages() noexcept :
  * @return адрес выданной памяти либо nullptr
  *
  */
-void * awh::alloc::Pages::meta() noexcept {
-	// Размер выдаваемой учётной записи: наибольшая из двух
-	const size_t size = ((sizeof(span_t) > sizeof(chunk_t)) ? sizeof(span_t) : sizeof(chunk_t));
+void * awh::alloc::Pages::meta(const size_t size) noexcept {
+	/**
+	 * Выдаём ровно затребованное, а не наибольшую из записей
+	 *
+	 * Прежде здесь бралась наибольшая - то есть запись КУСКА, несущая указатели на все
+	 * пятьсот двенадцать его страниц. Записей же кусков десятки, а записей областей -
+	 * десятки тысяч, и каждая из них, весом в семь десятков байт, занимала четыре с
+	 * половиной килобайта. Замерено щупом: при куче в 243 мегабайта собственный её учёт
+	 * занимал 132 мегабайта - больше половины сверх самих блоков. Платится за это не
+	 * только памятью: каждая страница учёта стоит отказа страницы при первом обращении,
+	 * а у иных систем вход в ядро дорог
+	 *
+	 * Разные размеры в одной области под учёт уживаются потому, что записи поштучно не
+	 * отдаются вовсе: они живут столько же, сколько куча, а повторно используемые
+	 * ведутся списком СВОЕГО вида
+	 */
 	// Приводим размер к границе восьми байт
 	const size_t need = ((size + 7u) & ~static_cast <size_t> (7u));
 	// Если в текущем куске места не осталось
@@ -113,7 +126,7 @@ bool awh::alloc::Pages::rehash(const size_t length) noexcept {
 	// Запоминаем прежнюю запись таблицы
 	registry_t * previous = this->_registry.load(std::memory_order_relaxed);
 	// Берём у источника память под запись новой таблицы
-	registry_t * record = reinterpret_cast <registry_t *> (this->meta());
+	registry_t * record = reinterpret_cast <registry_t *> (this->meta(sizeof(registry_t)));
 	// Если память под запись не выдана
 	if(record == nullptr){
 		// Отдаём источнику взятую таблицу
@@ -347,7 +360,7 @@ void awh::alloc::Pages::mark(span_t * span) noexcept {
 	 * Запись по всем, а не по одной первой, нужна для поиска области по произвольному
 	 * адресу внутри неё - без этого разбор адреса сбоя пришлось бы вести перебором
 	 */
-	for(size_t i = 0; i < span->pages; i++)
+	for(size_t i = 0; i < span->pages; i++){
 		// Записываем область по очередной странице
 		/**
 		 * Запись отдаётся с отпусканием
@@ -356,6 +369,16 @@ void awh::alloc::Pages::mark(span_t * span) noexcept {
 		 * записанные в область поля, - прочёл бы недописанное
 		 */
 		span->chunk->index[first + i].store(span, std::memory_order_release);
+		/**
+		 * Правим метку разряда страницы вслед за областью
+		 *
+		 * `mark` - единственное место, где страницы переходят к другой области, оттого
+		 * метка правится здесь же: у свободной области её нет вовсе, а у выданной она
+		 * берётся из самой области. Разряд проставляется потом, методом `tag`, - в тот
+		 * же миг, когда область отдаётся разряду
+		 */
+		span->chunk->tags[first + i].store((span->released ? 0 : static_cast <uint8_t> (span->tag)), std::memory_order_release);
+	}
 }
 /**
  * @brief Метод внесения области в список свободных
@@ -435,13 +458,13 @@ awh::alloc::Pages::chunk_t * awh::alloc::Pages::grow() noexcept {
 	 * записи первыми, мы оставляем на пути после источника единственную точку отказа
 	 */
 	// Выдаём память под учётную запись куска
-	chunk_t * chunk = reinterpret_cast <chunk_t *> (this->meta());
+	chunk_t * chunk = reinterpret_cast <chunk_t *> (this->meta(sizeof(chunk_t)));
 	// Если память под учётную запись не выдана
 	if(chunk == nullptr)
 		// Отвечаем отказом
 		return nullptr;
 	// Выдаём память под учётную запись области, накрывающей кусок целиком
-	span_t * span = reinterpret_cast <span_t *> (this->meta());
+	span_t * span = reinterpret_cast <span_t *> (this->meta(sizeof(span_t)));
 	// Если память под учётную запись не выдана
 	if(span == nullptr)
 		// Отвечаем отказом
@@ -473,9 +496,12 @@ awh::alloc::Pages::chunk_t * awh::alloc::Pages::grow() noexcept {
 	 * но обещание это нигде не записано, а цена перебора - однажды на кусок в четыре
 	 * мегабайта
 	 */
-	for(size_t i = 0; i < PAGES; i++)
+	for(size_t i = 0; i < PAGES; i++){
 		// Обнуляем указатель области очередной страницы
 		chunk->index[i].store(nullptr, std::memory_order_relaxed);
+		// Обнуляем метку разряда очередной страницы
+		chunk->tags[i].store(0, std::memory_order_relaxed);
+	}
 	/**
 	 * Вносим кусок в таблицу поиска по адресу
 	 *
@@ -898,7 +924,7 @@ void * awh::alloc::Pages::alloc(const size_t pages) noexcept {
 			// Изымаем её из списка повторно используемых
 			this->_spare = rest->next;
 		// Если повторно используемой записи нет, берём новую
-		else rest = reinterpret_cast <span_t *> (this->meta());
+		else rest = reinterpret_cast <span_t *> (this->meta(sizeof(span_t)));
 		// Если память под учётную запись не выдана
 		if(rest == nullptr){
 			/**
@@ -1080,7 +1106,7 @@ bool awh::alloc::Pages::expand(void * addr, const size_t pages) noexcept {
 				// Изымаем её из списка повторно используемых
 				this->_spare = tail->next;
 			// Если повторно используемой записи нет, берём новую
-			else tail = reinterpret_cast <span_t *> (this->meta());
+			else tail = reinterpret_cast <span_t *> (this->meta(sizeof(span_t)));
 			/**
 			 * Если записи под остаток нет, берём соседа ЦЕЛИКОМ
 			 *
@@ -1486,8 +1512,33 @@ bool awh::alloc::Pages::tag(void * addr, const uint32_t tag) noexcept {
 	if((span == nullptr) || span->released)
 		// Помечать нечего
 		return false;
+	/**
+	 * Отвергаем метку, не вмещающуюся в байт
+	 *
+	 * Метка хранится байтом на страницу куска - тем и жив быстрый путь освобождения.
+	 * Не сверь мы её здесь, метка старшего разряда усеклась бы МОЛЧА, и освобождение
+	 * относило бы блок к чужому разряду. Отказ же звавший разберёт: он и без того
+	 * готов к тому, что пометить не вышло
+	 */
+	if(tag > 255)
+		// Помечать нечем
+		return false;
 	// Проставляем области метку владельца
 	span->tag = tag;
+	/**
+	 * Проставляем метку разряда по всем страницам области
+	 *
+	 * По всем, а не по первой: освобождение приходит с адресом ЛЮБОГО блока области, и
+	 * страница его вправе быть какой угодно внутри неё
+	 */
+	// Определяем номер первой страницы области в куске
+	const size_t first = static_cast <size_t> ((span->base - span->chunk->base) / PAGE);
+	/**
+	 * Перебираем страницы области
+	 */
+	for(size_t i = 0; i < span->pages; i++)
+		// Проставляем метку разряда очередной страницы
+		span->chunk->tags[first + i].store(static_cast <uint8_t> (tag), std::memory_order_release);
 	// Отвечаем успехом
 	return true;
 }

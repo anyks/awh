@@ -679,6 +679,33 @@ namespace awh {
 			public:
 				/**
 				 * \~russian
+				 * @brief Метод установки наибольшего допустимого объёма работы сопоставления
+				 *
+				 * @details Объём работы вычисляется движком от длины текста и длины программы,
+				 *          а потолок его обрезает. Исчерпание объёма прекращает исполнение с
+				 *          возвратом и переводит сопоставление на запасной способ, время
+				 *          которого от вида выражения не зависит: понижение потолка уводит
+				 *          на способ этот раньше, повышение - позволяет дойти с возвратом
+				 *          выражению более трудному. Нуль потолок снимает вовсе.
+				 *
+				 * @param limit наибольшее допустимое количество шагов сопоставления
+				 *
+				 * \~english
+				 * @brief Method of setting the largest admissible amount of work of the matching
+				 * @details The amount of work is computed by the engine from the length of the text and
+				 *          the length of the program, and the ceiling truncates it. Exhausting the amount stops the
+				 *          execution with backtracking and moves the matching to the fallback way, whose
+				 *          time does not depend on the kind of the expression: lowering the ceiling moves
+				 *          to that way earlier, raising it allows a more difficult expression to
+				 *          be completed with backtracking. Zero removes the ceiling entirely.
+				 * @param limit largest admissible number of matching steps
+				 *
+				 * \~
+				 */
+				void limit(const size_t limit) noexcept;
+			public:
+				/**
+				 * \~russian
 				 * @brief Конструктор
 				 *
 				 * @param log объект для работы с логами

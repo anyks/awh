@@ -153,8 +153,26 @@ namespace awh {
 			 */
 			#if _WIN32 || _WIN64
 				private:
-					// Драйвер, каким заводятся туннельные устройства
-					driver_t _driver;
+					/**
+					 * \~russian
+					 * @brief Драйвер, каким заводятся туннельные устройства
+					 *
+					 * @note Изменяемое (mutable) намеренно: заведение устройства идёт
+					 *       постоянным методом, а выбор, поручённый модулю значением AUTO,
+					 *       обязан закрепиться здесь - иначе `driver()` отдавал бы AUTO и
+					 *       вызывающему было бы нечем узнать, каким драйвером устройство
+					 *       заведено на деле
+					 *
+					 * \~english
+					 * @brief The driver the tunnel devices are started by
+					 *
+					 * @note Mutable on purpose: a device is started by a constant method,
+					 *       while the choice delegated to the module by the AUTO value must
+					 *       be recorded here - otherwise driver() would keep returning AUTO
+					 *
+					 * \~
+					 */
+					mutable driver_t _driver;
 				public:
 					/**
 					 * \~russian

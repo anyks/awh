@@ -32,7 +32,10 @@
  * Стандартные модули
  */
 #include <vector>
+#include <thread>
+#include <atomic>
 #include <cstdlib>
+#include <pthread.h>
 
 /**
  * Под санитайзерами проверять здесь нечего: захват не состоится
@@ -149,6 +152,73 @@ TEST_F(AllocFixture, HoldingsWalkStopsOnRequest){
 	for(void * block : alive)
 		// Освобождаем блок
 		::free(block);
+}
+
+/**
+ * @brief Тест съёма стека при ключах с большими номерами
+ *
+ * @details Заводит ключи, съедающие первый уровень места под значения, и лишь затем
+ *          включает учёт мест выдачи: ключ съёма достаётся тогда номер большой. У
+ *          glibc первая отметка такого ключа заводит второй уровень ВЫЗОВОМ `calloc`,
+ *          а тот приходит обратно в нашу выдачу - и если признак нахождения внутри
+ *          съёма хранится тем же ключом, отметка не поспевает лечь, поток отмечается
+ *          снова и срывает стек
+ *
+ * @note Проверка эта закрепляет НАМЕРЕННОЕ решение: признак хранится средствами
+ *       собирателя всюду, где обращение к месту потока памяти не просит, и ключом
+ *       системы лишь у macOS и OpenBSD, где просит наоборот. Прежний код валился здесь
+ *       в SIGSEGV на Debian, glibc 2.36
+ *
+ */
+TEST_F(AllocFixture, TraceSurvivesHighNumberedKeys){
+	// Ключи, съедающие первый уровень места под значения
+	pthread_key_t eaten[64];
+	/**
+	 * Перебираем заводимые ключи
+	 */
+	for(size_t i = 0; i < 64; i++)
+		// Заводим ключ, съедающий место
+		ASSERT_EQ(::pthread_key_create(&eaten[i], nullptr), 0) << "ключ " << i << " не заведён";
+	// Получаем действующие настройки
+	awh::alloc::options_t options = awh::alloc::Allocator::options();
+	// Задаём учёту мест выдачи долю выборки
+	options.profileRate = 1;
+	// Применяем настройки: ключ съёма заведётся ПОСЛЕ съеденных
+	awh::alloc::Allocator::options(options);
+	// Признак прохождения нагрузки свежим потоком
+	std::atomic <bool> passed(false);
+	/**
+	 * Гоняем нагрузку СВЕЖИМ потоком: отметка съёма ставится там впервые
+	 */
+	std::thread worker([&passed]() noexcept -> void {
+		/**
+		 * Перебираем блоки нагрузки
+		 */
+		for(size_t i = 0; i < 4096; i++){
+			// Выдаём блок
+			void * block = ::malloc(64 + (i % 512));
+			// Если блок выдан
+			if(block != nullptr)
+				// Освобождаем блок
+				::free(block);
+		}
+		// Отмечаем нагрузку пройденной
+		passed.store(true, std::memory_order_release);
+	});
+	// Дожидаемся потока нагрузки
+	worker.join();
+	// Нагрузка обязана пройти целиком, а не сорвать стек
+	EXPECT_TRUE(passed.load(std::memory_order_acquire));
+	// Выключаем учёт мест выдачи
+	options.profileRate = 0;
+	// Применяем настройки
+	awh::alloc::Allocator::options(options);
+	/**
+	 * Перебираем заведённые ключи
+	 */
+	for(size_t i = 0; i < 64; i++)
+		// Снимаем ключ, съедавший место
+		::pthread_key_delete(eaten[i]);
 }
 
 #endif // !AWH_ALLOC_SANITIZED

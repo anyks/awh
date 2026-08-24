@@ -282,6 +282,41 @@ namespace awh {
 				 * @brief Method of determining the class an address belongs to
 				 *
 				 */
+				/**
+				 * \~russian
+				 * @brief Метод быстрого опознания блока разряда
+				 *
+				 * @details Отвечает номером разряда одним чтением метки страницы, не
+				 *          трогая ни указателей страниц, ни учётной записи области
+				 *
+				 * @note Отказ означает лишь «быстрым путём не вышло»: разбор идёт полным
+				 *       путём через `owner`
+				 *
+				 * @param addr  разбираемый адрес
+				 * @param index номер разряда, которому принадлежит адрес
+				 * @param hint  место хранения подсказки поиска
+				 * @return      признак опознанного блока разряда
+				 *
+				 * \~english
+				 * @brief Method of quickly identifying a size class block
+				 *
+				 */
+				AWH_CENTRAL_INLINE bool sorted(const void * addr, size_t * index, void ** hint = nullptr) noexcept {
+					// Если куча не заведена либо разбирать нечего
+					if((this->_pages == nullptr) || (addr == nullptr) || (index == nullptr))
+						// Разбирать нечего
+						return false;
+					// Получаем метку разряда по адресу
+					const uint8_t tag = this->_pages->classify(addr, hint);
+					// Если метки у страницы нет
+					if(tag == 0)
+						// Быстрым путём не вышло
+						return false;
+					// Записываем номер разряда: метка на единицу больше него
+					(* index) = static_cast <size_t> (tag - 1);
+					// Отвечаем успехом
+					return true;
+				}
 				AWH_CENTRAL_INLINE bool owner(const void * addr, size_t * index, void ** begin, size_t * size, void ** hint = nullptr) noexcept {
 					// Если куча не заведена либо адрес не задан
 					if((this->_pages == nullptr) || (addr == nullptr))

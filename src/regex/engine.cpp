@@ -79,6 +79,16 @@ uint32_t awh::regex::Engine::captures() const noexcept {
 	return this->_expression.forward.captures;
 }
 /**
+ * @brief Метод установки наибольшего допустимого объёма работы сопоставления
+ *
+ * @param limit наибольшее допустимое количество шагов сопоставления
+ *
+ */
+void awh::regex::Engine::limit(const size_t limit) noexcept {
+	// Выполняем установку наибольшего допустимого объёма работы сопоставления
+	this->_backtrack.ceiling(limit);
+}
+/**
  * @brief Метод сборки регулярного выражения
  *
  * @param pattern текст регулярного выражения

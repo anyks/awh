@@ -213,6 +213,21 @@ namespace awh {
 					 */
 					// Указатели областей по номеру страницы куска
 					std::atomic <span_t *> index[PAGES];
+					/**
+					 * Метки разрядов по страницам куска
+					 *
+					 * Для блока разряда освобождению нужен ОДИН лишь номер разряда, а
+					 * добывался он двумя чтениями холодной памяти: указателя страницы
+					 * (четыре килобайта на кусок) и самой учётной записи области -
+					 * записи же лежат вразброс по своим кускам и на нагрузке занимают
+					 * мегабайты. Метка по странице стоит одного байта, весь массив -
+					 * полкилобайта на кусок, и в кэш он ложится целиком
+					 *
+					 * Нуль означает «страница разряду не отдана»: тогда разбор идёт
+					 * прежним, полным путём. Неделимые они потому, что читатель разбирает
+					 * адрес БЕЗ замка кучи
+					 */
+					std::atomic <uint8_t> tags[PAGES];
 				} chunk_t;
 				/**
 				 * @brief Запись таблицы поиска куска по адресу
@@ -296,7 +311,7 @@ namespace awh {
 				 * @return адрес выданной памяти либо nullptr
 				 *
 				 */
-				void * meta() noexcept;
+				void * meta(const size_t size) noexcept;
 				/**
 				 * @brief Метод взятия у источника нового куска
 				 *
@@ -594,6 +609,38 @@ namespace awh {
 				 * @brief Method of describing the region an address belongs to
 				 *
 				 */
+				/**
+				 * \~russian
+				 * @brief Метод получения метки разряда по адресу
+				 *
+				 * @details Быстрый путь освобождения: отвечает меткой разряда одним
+				 *          чтением, не трогая ни указателей страниц, ни учётной записи
+				 *          области
+				 *
+				 * @note Нуль означает «ответить меткой нельзя»: адрес не наш, либо
+				 *       страница разряду не отдана. Тогда разбор идёт полным путём -
+				 *       через `describe`
+				 *
+				 * @param addr разбираемый адрес
+				 * @param hint место хранения подсказки поиска
+				 * @return     метка разряда, увеличенная на единицу, либо нуль
+				 *
+				 * \~english
+				 * @brief Method of getting the size class tag by address
+				 *
+				 */
+				AWH_PAGES_INLINE uint8_t classify(const void * addr, void ** hint = nullptr) const noexcept {
+					// Ищем кусок, которому принадлежит адрес
+					const chunk_t * chunk = this->lookup(addr, hint);
+					// Если куска за адресом не нашлось
+					if(chunk == nullptr)
+						// Ответить меткой нельзя
+						return 0;
+					// Определяем номер страницы, которой принадлежит адрес
+					const size_t page = static_cast <size_t> ((reinterpret_cast <uintptr_t> (addr) - reinterpret_cast <uintptr_t> (chunk->base)) / PAGE);
+					// Выводим метку разряда страницы
+					return chunk->tags[page].load(std::memory_order_acquire);
+				}
 				AWH_PAGES_INLINE bool describe(const void * addr, void ** begin, size_t * pages, uint32_t * tag, void ** hint = nullptr) const noexcept {
 					// Ищем кусок, которому принадлежит адрес
 					const chunk_t * chunk = this->lookup(addr, hint);
