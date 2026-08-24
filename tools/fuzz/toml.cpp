@@ -128,6 +128,10 @@ namespace {
 		uint64_t trees;
 		// Количество выполненных перезаписей дерева
 		uint64_t rewrites;
+		// Количество круговых ходов перезаписи иным оформлением
+		uint64_t restyled;
+		// Количество круговых ходов, отказом записи обойдённых
+		uint64_t unstyled;
 		// Количество попыток кругового переноса владеющего значения
 		uint64_t grafts;
 		// Количество удавшихся переносов владеющего значения
@@ -146,7 +150,7 @@ namespace {
 		 *
 		 */
 		Statistic() noexcept :
-		 texts(0), corrupted(0), survived(0), events(0), trees(0), rewrites(0), transcoded(0), untranscodable(0),
+		 texts(0), corrupted(0), survived(0), events(0), trees(0), rewrites(0), restyled(0), unstyled(0), transcoded(0), untranscodable(0),
 		 grafts(0), grafted(0) {}
 	} totals;
 
@@ -1191,6 +1195,109 @@ namespace {
 			return false;
 		}
 		/**
+		 * Выполняем круговой ход перезаписи иным оформлением
+		 *
+		 * @details Оформление записи задаётся настройками, а круговой ход поверял доселе
+		 *          одно лишь оформление по умолчанию. Текст, записанный пробелами иными,
+		 *          отступом иным да концом строки иным, обязан читаться обратно и давать
+		 *          то же самое содержимое: оформление сути настроек не несёт
+		 *
+		 * @note Признак «unicode» берётся настройкою чтения, а не выбирается наудачу:
+		 *       описание его при поле говорит прямо, что поднимает его читающий, а не
+		 *       хотение пишущего, - разойдись они, и собранный текст читающему не дался бы
+		 *
+		 * @note Пределы записи наудачу не выбираются вовсе: превышение их даёт отказ
+		 *       законный, и круговой ход поверять там нечего
+		 */
+		{
+			// Настройки записи текста, наудачу выбранные
+			toml::writer_t::settings_t writing;
+			// Устанавливаем признак дозволенных знаков Юникода настройкою чтения
+			writing.unicode = reading.unicode;
+			// Устанавливаем подъём ограды до несущей содержимое наудачу
+			writing.promote = ((engine() % 2) == 0);
+			// Устанавливаем запись пробелов вокруг знака равенства наудачу
+			writing.spaces = ((engine() % 2) == 0);
+			// Устанавливаем запись отступа перед парами объявленной таблицы наудачу
+			writing.indent = ((engine() % 2) == 0);
+			// Устанавливаем запись пустой строки перед объявлением таблицы наудачу
+			writing.separated = ((engine() % 2) == 0);
+			// Устанавливаем вид знака конца строки наудачу
+			writing.newline = (((engine() % 2) == 0) ? toml::newline_t::LF : toml::newline_t::CRLF);
+			// Выполняем перезапись дерева настроек выбранным оформлением
+			const string restyled = document.text(writing);
+			/**
+			 * Если перезапись отвергнута названною причиною
+			 *
+			 * @note Отказ этот законен: при опущенном признаке подъёма ограды запись
+			 *       отвечает отказом там, где выбранная человеком ограда содержимого не
+			 *       несёт. Обход считается счётчиком - молчаливый пропуск обратил бы
+			 *       проверку в бездействующую
+			 */
+			if(restyled.empty() && (document.error() != toml::error_t::NONE))
+				// Выполняем учёт обойдённого кругового хода
+				totals.unstyled++;
+			// Если перезапись оформлением иным удалась
+			else {
+				/**
+				 * Собираемые настройки разбора перезаписи со снятыми пределами длины
+				 *
+				 * @note Пределы длины строки и имени ключа снимаются намеренно: оформление
+				 *       иное строку удлиняет - конец строки о двух знаках да отступ перед
+				 *       парами дают лишние байты, - и отказ по пределу законен, дефектом
+				 *       записи не будучи. Ворошитель напоролся на это при первом же прогоне:
+				 *       предел длины строки он ставит числом от единицы до шестидесяти
+				 *       четырёх, и перезапись концом строки CRLF его перебирала
+				 */
+				toml::document_t::settings_t unbound = settings;
+				// Настройки разбора с пределами по умолчанию
+				const toml::reader_t::settings_t limits;
+				// Снимаем предел длины логической строки
+				unbound.reader.maxLine = limits.maxLine;
+				// Снимаем предел длины имени ключа
+				unbound.reader.maxKey = limits.maxKey;
+				// Создаём объект дерева настроек для разбора перезаписи
+				toml::document_t reshaped(::logger());
+				/**
+				 * Если разобрать перезапись иного оформления не удалось
+				 */
+				if(!reshaped.parse(restyled, unbound)){
+					// Выводим сообщение об отказе чтения перезаписи иного оформления
+					::fprintf(stderr, "toml fuzz: restyled rewrite is not readable back: error=%u at %u:%u,"
+					 " promote=%d spaces=%d indent=%d separated=%d newline=%d\n",
+					 static_cast <uint32_t> (reshaped.error()), reshaped.errorLocation().line,
+					 reshaped.errorLocation().column, static_cast <int32_t> (writing.promote),
+					 static_cast <int32_t> (writing.spaces), static_cast <int32_t> (writing.indent),
+					 static_cast <int32_t> (writing.separated), static_cast <int32_t> (writing.newline));
+					// Выводим перезапись иного оформления
+					dump(restyled);
+					// Выводим разбираемый текст настроек
+					dump(text);
+					// Выводим результат проверки дерева настроек
+					return false;
+				}
+				/**
+				 * Если содержимое перезаписи иного оформления с исходным разошлось
+				 */
+				if(harvest(document) != harvest(reshaped)){
+					// Выводим сообщение о расхождении содержимого
+					::fprintf(stderr, "toml fuzz: restyled rewrite differs,"
+					 " promote=%d spaces=%d indent=%d separated=%d newline=%d\n",
+					 static_cast <int32_t> (writing.promote), static_cast <int32_t> (writing.spaces),
+					 static_cast <int32_t> (writing.indent), static_cast <int32_t> (writing.separated),
+					 static_cast <int32_t> (writing.newline));
+					// Выводим разбираемый текст настроек
+					dump(text);
+					// Выводим перезапись иного оформления
+					dump(restyled);
+					// Выводим результат проверки дерева настроек
+					return false;
+				}
+				// Выполняем учёт кругового хода перезаписи иным оформлением
+				totals.restyled++;
+			}
+		}
+		/**
 		 * Выполняем внесение правок в дерево настроек
 		 *
 		 * @details Правка меняет состав записей и перестраивает указатели поиска, и
@@ -1734,13 +1841,15 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	// Выводим статистику работы генератора
 	::fprintf(
 		stdout,
-		"toml fuzz: %llu texts (%llu corrupted), %llu events, %llu parsed to the end, %llu trees, %llu rewrites, %llu grafts (%llu refused), %llu transcoded (%llu untranscodable)\n",
+		"toml fuzz: %llu texts (%llu corrupted), %llu events, %llu parsed to the end, %llu trees, %llu rewrites, %llu restyled (%llu обойдено), %llu grafts (%llu refused), %llu transcoded (%llu untranscodable)\n",
 		static_cast <unsigned long long> (totals.texts),
 		static_cast <unsigned long long> (totals.corrupted),
 		static_cast <unsigned long long> (totals.events),
 		static_cast <unsigned long long> (totals.survived),
 		static_cast <unsigned long long> (totals.trees),
 		static_cast <unsigned long long> (totals.rewrites),
+		static_cast <unsigned long long> (totals.restyled),
+		static_cast <unsigned long long> (totals.unstyled),
 		static_cast <unsigned long long> (totals.grafted),
 		static_cast <unsigned long long> (totals.grafts - totals.grafted),
 		static_cast <unsigned long long> (totals.transcoded),
