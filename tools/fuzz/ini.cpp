@@ -135,6 +135,8 @@ namespace {
 		uint64_t transcoded;
 		// Количество сличений записи свежей с записью, прежней подачей занятой
 		uint64_t transcribed;
+		// Количество сличений перезаписи снятого значения с перезаписью дерева
+		uint64_t mirrored;
 		/**
 		 * Количество текстов, приведение каких к кодировке UTF-16 не удалось
 		 *
@@ -148,7 +150,7 @@ namespace {
 		 */
 		Statistic() noexcept :
 		 texts(0), corrupted(0), survived(0),
-		 events(0), trees(0), rewrites(0), grafts(0), grafted(0), transcoded(0), transcribed(0), untranscodable(0) {}
+		 events(0), trees(0), rewrites(0), grafts(0), grafted(0), transcoded(0), transcribed(0), mirrored(0), untranscodable(0) {}
 	/**
 	 * Учёт проделанной работы
 	 *
@@ -1208,6 +1210,73 @@ namespace {
 			totals.transcribed++;
 		}
 		/**
+		 * Выполняем круговой ход снятого значения через собственную перезапись
+		 *
+		 * @details Значение, с дерева снятое, обязано пережить свою же перезапись без
+		 * потерь: перезапись его читается тем же наречием, и снятое с прочтённого обязано
+		 * совпасть с исходным. Путь этот - снятие, перезапись, чтение, снятие - до сего
+		 * дня не поверялся вовсе, а именно им пользуется всякий, кто держит настройки
+		 * владеющим значением
+		 *
+		 * @note Сличается ЗНАЧЕНИЕ, а не текст: владеющее значение примечаний не держит
+		 *       вовсе, и требовать от его перезаписи дословного совпадения с перезаписью
+		 *       дерева значило бы требовать невозможного
+		 *
+		 * @note Ровно так вскрылось, что снятие брало значение ПОСЛЕ подстановки
+		 *       обращений: перезапись разрешала обращение навсегда, а знак `$`, удвоением
+		 *       защищённый, терял защиту и сам обращался в обращение
+		 */
+		{
+			// Значение, с дерева настроек снятое
+			const ini::value_t lifted(document);
+			/**
+			 * Перезапись снятого значения настройками наречия разбора
+			 *
+			 * @note Настройки записи берутся у дерева, а не умолчанием: умолчание
+			 *       подразделов не пишет вовсе, и всякий текст с подразделами давал бы
+			 *       отказ записи, за расхождение принимаемый
+			 */
+			const string taken = lifted.dump(document.writing());
+			/**
+			 * Если перезапись снятого значения не пуста
+			 *
+			 * @note Пустая перезапись означает отказ записи, а он поверяется своими
+			 *       проверками: сличать нечего, и круг пропускается
+			 */
+			if(!taken.empty()){
+				// Дерево настроек, собранное перезаписью снятого значения
+				ini::document_t rebuilt(::logger(), relaxed);
+				/**
+				 * Если перезапись снятого значения разобрана
+				 */
+				if(rebuilt.parse(taken)){
+					// Значение, снятое с дерева перезаписи
+					const ini::value_t back(rebuilt);
+					/**
+					 * Если снятое с перезаписи значение с исходным разошлось
+					 */
+					if(!(back == lifted)){
+						// Выводим сообщение о расхождении кругового хода
+						::fprintf(stderr, "ini fuzz: круговой ход снятого значения через перезапись расхождением окончился\n");
+						// Выводим исходный текст настроек
+						dump(text);
+						// Выводим перезапись дерева настроек
+						dump(document.text());
+						// Выводим перезапись снятого значения
+						dump(taken);
+						// Выводим перезапись значения, с перезаписи снятого
+						dump(back.dump(document.writing()));
+						// Выводим настройки разбора текста настроек
+						dump(reading);
+						// Выводим результат проверки дерева настроек
+						return false;
+					}
+					// Выполняем учёт кругового хода снятого значения
+					totals.mirrored++;
+				}
+			}
+		}
+		/**
 		 * Выполняем проверку разбора на дереве, прежним разбором уже занятом
 		 *
 		 * @details Дерево, разобравшее один текст, обязано разобрать следующий ровно так
@@ -2108,7 +2177,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	// Выводим статистику работы генератора
 	::fprintf(
 		stdout,
-		"ini fuzz: %llu texts (%llu corrupted), %llu events, %llu parsed to the end, %llu trees, %llu rewrites, %llu grafts (%llu refused), %llu transcoded (%llu untranscodable), %llu transcribed\n",
+		"ini fuzz: %llu texts (%llu corrupted), %llu events, %llu parsed to the end, %llu trees, %llu rewrites, %llu grafts (%llu refused), %llu transcoded (%llu untranscodable), %llu transcribed, %llu mirrored\n",
 		static_cast <unsigned long long> (totals.texts),
 		static_cast <unsigned long long> (totals.corrupted),
 		static_cast <unsigned long long> (totals.events),
@@ -2119,7 +2188,8 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		static_cast <unsigned long long> (totals.grafts - totals.grafted),
 		static_cast <unsigned long long> (totals.transcoded),
 		static_cast <unsigned long long> (totals.untranscodable),
-		static_cast <unsigned long long> (totals.transcribed)
+		static_cast <unsigned long long> (totals.transcribed),
+		static_cast <unsigned long long> (totals.mirrored)
 	);
 	// Выходим из приложения
 	return EXIT_SUCCESS;

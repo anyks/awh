@@ -1248,6 +1248,35 @@ namespace awh {
 					 * \~
 					 */
 					vector <bool> quotes(const string_view key, const string_view section = "", const string_view subsection = "") const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод получения перечня значений свойства до подстановки обращений
+					 *
+					 * @details Значение до подстановки держится деревом ради обратной записи:
+					 *          записать подставленное значило бы разрешить обращение навсегда, а
+					 *          оно на то и записано, чтобы разрешаться заново при каждом чтении
+					 *          файла. Выдаётся оно перечнем ровно той же длины и того же порядка,
+					 *          что и перечень значений
+					 *
+					 * @param key        имя искомого свойства
+					 * @param section    имя раздела
+					 * @param subsection имя подраздела
+					 * @return           перечень значений свойства до подстановки обращений
+					 *
+					 * \~english
+					 * @brief Method of getting the list of the values of a property before the substitution of the references
+					 * @details The value before the substitution is kept by the tree for the sake of the writing back:
+					 * to write a substituted one would mean to resolve a reference forever, while it is written exactly
+					 * so as to be resolved anew at every reading of the file. It is issued by a list of exactly the same
+					 * length and the same order as the list of the values
+					 * @param key        name of the property being sought
+					 * @param section    name of the section
+					 * @param subsection name of the subsection
+					 * @return           list of the values of a property before the substitution of the references
+					 *
+					 * \~
+					 */
+					vector <string_view> sources(const string_view key, const string_view section = "", const string_view subsection = "") const noexcept;
 				public:
 					/**
 					 * \~russian

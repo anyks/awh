@@ -1276,8 +1276,37 @@ void awh::codec::ini::Value::absorb(const Document & document) noexcept {
 		 * Выполняем перебор всех снятых имён свойств раздела
 		 */
 		for(auto & key : names){
-			// Получаем перечень значений одноимённого свойства
-			const vector <string_view> values = document.values(key, section, subsection);
+			/**
+			 * Получаем перечень значений одноимённого свойства до подстановки обращений
+			 *
+			 * @note Берётся значение ДО подстановки, а не после: владеющее значение несёт
+			 *       одну запись, и она же уходит в перезапись. Возьми оно подставленное -
+			 *       и обращение разрешилось бы навсегда, а знак `$`, удвоением
+			 *       защищённый, потерял бы защиту и сам обратился бы в обращение. Дерево
+			 *       по той же причине переписывает значение до подстановки. Нашёл это
+			 *       ворошитель сличением перезаписи снятого значения с перезаписью дерева
+			 */
+			const vector <string_view> raws = document.sources(key, section, subsection);
+			/**
+			 * Снимаем копии значений свойства немедля
+			 *
+			 * @note Копии обязательны по той же причине, что и у имён свойств: дерево
+			 *       выдаёт содержимое видами в своё хранилище знаков, а всякое следующее
+			 *       обращение к дереву вправе пересчитать подстановку обращений и
+			 *       хранилище переместить. Виды, взятые до пересчёта, повисли бы, и
+			 *       снятие брало бы содержимое из освобождённой памяти. Нашёл это
+			 *       ворошитель под санитайзером сразу по заведении снятия записи до
+			 *       подстановки: обращение за оградою идёт следом и пересчёт этот учиняет
+			 */
+			vector <string> values;
+			// Выполняем выделение места под копии значений свойства
+			values.reserve(raws.size());
+			/**
+			 * Выполняем перебор всех значений свойства
+			 */
+			for(auto & item : raws)
+				// Выполняем снятие копии очередного значения свойства
+				values.emplace_back(item);
 			/**
 			 * Получаем перечень признаков ограды значений свойства
 			 *
@@ -1299,7 +1328,7 @@ void awh::codec::ini::Value::absorb(const Document & document) noexcept {
 			 */
 			if(values.size() == 1){
 				// Выполняем установку простого значения свойства
-				holder.insert(string(key), Value(string(values.front()), (!quotes.empty() && quotes.front())));
+				holder.insert(string(key), Value(values.front(), (!quotes.empty() && quotes.front())));
 				// Выполняем переход к следующему свойству раздела
 				continue;
 			}
@@ -1316,7 +1345,7 @@ void awh::codec::ini::Value::absorb(const Document & document) noexcept {
 			 */
 			for(size_t i = 0; i < values.size(); i++)
 				// Выполняем добавление очередного значения в перечень
-				listed.push(Value(string(values.at(i)), ((i < quotes.size()) && quotes.at(i))));
+				listed.push(Value(values.at(i), ((i < quotes.size()) && quotes.at(i))));
 			// Выполняем установку перечня значений свойства
 			holder.insert(string(key), listed);
 		}
@@ -1720,54 +1749,20 @@ bool awh::codec::ini::Value::graft(Document & document) const noexcept {
 		// Выводим признак неудачного переноса
 		return false;
 	/**
-	 * Знак, которым начинается обращение к значению
+	 * Ограждение знака обращения при переносе не ведётся вовсе
 	 *
-	 * @note Знак этот берётся у дерева, куда перенос ведётся: подстановка обращений
-	 *       настройкою задаётся, и дерево, её не ведущее, оград не требует вовсе
+	 * @details Владеющее значение несёт запись ТАКОЮ, какова она в файле: снятие с
+	 *          дерева берёт значение до подстановки обращений, а перенос укладывает его
+	 *          в дерево тем же способом, каким укладывает запись `set()`, - раздельно
+	 *          с подстановкой. Правило это одно у дерева и у значения: запись `${цель}`
+	 *          означает обращение, а данными она становится удвоением знака
+	 *
+	 * @note Прежде здесь стояло ограждение удвоением: снятие брало значение ПОСЛЕ
+	 *       подстановки, и знак, данными бывший, без ограждения обратился бы обращением.
+	 *       Со снятием записи до подстановки ограждение стало вредным - оно удваивало
+	 *       уже удвоенное. Нашёл это ворошитель сличением перезаписи снятого значения с
+	 *       перезаписью дерева
 	 */
-	const char letter = ((document.settings().references == reference_t::SHELL) ? '$' :
-	 ((document.settings().references == reference_t::PYTHON) ? '%' : '\0'));
-	/**
-	 * @brief Функция ограждения знака обращения удвоением его
-	 *
-	 * @details Владеющее значение несёт значения РАЗРЕШЁННЫЕ: обращение, в тексте
-	 * стоявшее, подстановкою уже заменено, а знак, ограждённый удвоением, разбором
-	 * уже сведён к одинарному. Уложи такое значение в дерево дословно - и знак, данными
-	 * бывший, обратился бы обращением, а перенос выдал бы значение иное
-	 *
-	 * @note Нашёл это ворошитель круговым переносом на записи `$${цель}`
-	 *
-	 * @param value ограждаемое значение
-	 * @return      значение с ограждённым знаком обращения
-	 *
-	 */
-	const auto guarded = [letter](const string & value) noexcept -> string {
-		/**
-		 * Если ограждать нечего
-		 */
-		if((letter == '\0') || (value.find(letter) == string::npos))
-			// Выводим значение неизменным
-			return value;
-		// Собираемое значение с ограждённым знаком обращения
-		string result;
-		// Выполняем выделение места под собираемое значение
-		result.reserve(value.length() + 8);
-		/**
-		 * Выполняем перебор всех знаков значения
-		 */
-		for(size_t i = 0; i < value.length(); i++){
-			// Выполняем добавление очередного знака к собираемому значению
-			result.push_back(value.at(i));
-			/**
-			 * Если очередной знак знаком обращения является
-			 */
-			if(value.at(i) == letter)
-				// Выполняем удвоение знака обращения
-				result.push_back(letter);
-		}
-		// Выводим собранное значение
-		return result;
-	};
 	/**
 	 * @brief Функция переноса свойств вместилища в дерево настроек
 	 *
@@ -1777,7 +1772,7 @@ bool awh::codec::ini::Value::graft(Document & document) const noexcept {
 	 * @return           признак успешности переноса
 	 *
 	 */
-	const auto transfer = [&document, &guarded](const Value & holder, const string_view section, const string_view subsection) noexcept -> bool {
+	const auto transfer = [&document](const Value & holder, const string_view section, const string_view subsection) noexcept -> bool {
 		/**
 		 * Выполняем перебор всех пар вместилища
 		 */
@@ -1837,7 +1832,7 @@ bool awh::codec::ini::Value::graft(Document & document) const noexcept {
 					/**
 					 * Если перенести очередное значение перечня не удалось
 					 */
-					if(!document.push(holder._names.at(i), guarded(entry._text), section, subsection))
+					if(!document.push(holder._names.at(i), entry._text, section, subsection))
 						// Выводим признак неудачного переноса
 						return false;
 				}
@@ -1853,7 +1848,7 @@ bool awh::codec::ini::Value::graft(Document & document) const noexcept {
 			/**
 			 * Если перенести простое свойство не удалось
 			 */
-			if(!document.set(holder._names.at(i), guarded(item._text), section, subsection))
+			if(!document.set(holder._names.at(i), item._text, section, subsection))
 				// Выводим признак неудачного переноса
 				return false;
 		}
