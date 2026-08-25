@@ -147,12 +147,14 @@ namespace {
 		uint64_t untranscodable;
 		// Количество сличений записи свежей с записью, прежней подачей занятой
 		uint64_t transcribed;
+		// Количество круговых ходов снятого значения через перезапись
+		uint64_t mirrored;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
 		Statistic() noexcept :
-		 texts(0), corrupted(0), survived(0), events(0), trees(0), rewrites(0), restyled(0), unstyled(0), transcoded(0), untranscodable(0), transcribed(0),
+		 texts(0), corrupted(0), survived(0), events(0), trees(0), rewrites(0), restyled(0), unstyled(0), transcoded(0), untranscodable(0), transcribed(0), mirrored(0),
 		 grafts(0), grafted(0) {}
 	} totals;
 
@@ -1650,6 +1652,61 @@ namespace {
 	bool transplant(const toml::document_t & document, const string & text) noexcept {
 		// Выполняем снятие владеющего значения с дерева настроек
 		const toml::value_t lifted(document);
+		/**
+		 * Выполняем круговой ход снятого значения через собственную перезапись
+		 *
+		 * @details Значение, с дерева снятое, обязано пережить свою же перезапись без
+		 * потерь: перезапись его читается тем же наречием, и снятое с прочтённого обязано
+		 * совпасть с исходным. Путь этот - снятие, перезапись, чтение, снятие - именно
+		 * тот, каким пользуется всякий, кто держит настройки владеющим значением
+		 *
+		 * @note Сличается ЗНАЧЕНИЕ, а не текст: владеющее значение примечаний не держит
+		 *       вовсе, и требовать от его перезаписи дословного совпадения с перезаписью
+		 *       дерева значило бы требовать невозможного
+		 *
+		 * @note Настройки записи берутся у дерева, а не умолчанием: расходись они с
+		 *       наречием разбора - и отказ записи законный принимался бы за расхождение
+		 */
+		{
+			// Перезапись снятого значения настройками наречия разбора
+			const string taken = lifted.dump(document.writing());
+			/**
+			 * Если перезапись снятого значения не пуста
+			 *
+			 * @note Пустая перезапись означает отказ записи, а он поверяется своими
+			 *       проверками: сличать нечего, и круг пропускается
+			 */
+			if(!taken.empty()){
+				// Собираемое дерево настроек перезаписи снятого значения
+				toml::document_t rebuilt(::logger(), document.settings());
+				/**
+				 * Если перезапись снятого значения разобрана
+				 */
+				if(rebuilt.parse(taken)){
+					// Значение, снятое с дерева перезаписи
+					const toml::value_t back(rebuilt);
+					/**
+					 * Если снятое с перезаписи значение с исходным разошлось
+					 */
+					if(!(back == lifted)){
+						// Выводим сообщение о расхождении кругового хода
+						::fprintf(stderr, "toml fuzz: круговой ход снятого значения через перезапись расхождением окончился\n");
+						// Выводим исходный текст настроек
+						dump(text);
+						// Выводим перезапись дерева настроек
+						dump(document.text());
+						// Выводим перезапись снятого значения
+						dump(taken);
+						// Выводим перезапись значения, с перезаписи снятого
+						dump(back.dump(document.writing()));
+						// Выводим отрицательный результат проверки
+						return false;
+					}
+					// Выполняем учёт кругового хода снятого значения
+					totals.mirrored++;
+				}
+			}
+		}
 		// Собираемое дерево настроек, куда переносится значение
 		toml::document_t target(::logger());
 		/**
@@ -2167,7 +2224,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	// Выводим статистику работы генератора
 	::fprintf(
 		stdout,
-		"toml fuzz: %llu texts (%llu corrupted), %llu events, %llu parsed to the end, %llu trees, %llu rewrites, %llu restyled (%llu обойдено), %llu grafts (%llu refused), %llu transcoded (%llu untranscodable), %llu transcribed\n",
+		"toml fuzz: %llu texts (%llu corrupted), %llu events, %llu parsed to the end, %llu trees, %llu rewrites, %llu restyled (%llu обойдено), %llu grafts (%llu refused), %llu transcoded (%llu untranscodable), %llu transcribed, %llu mirrored\n",
 		static_cast <unsigned long long> (totals.texts),
 		static_cast <unsigned long long> (totals.corrupted),
 		static_cast <unsigned long long> (totals.events),
@@ -2180,7 +2237,8 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		static_cast <unsigned long long> (totals.grafts - totals.grafted),
 		static_cast <unsigned long long> (totals.transcoded),
 		static_cast <unsigned long long> (totals.untranscodable),
-		static_cast <unsigned long long> (totals.transcribed)
+		static_cast <unsigned long long> (totals.transcribed),
+		static_cast <unsigned long long> (totals.mirrored)
 	);
 	// Выходим из приложения
 	return EXIT_SUCCESS;

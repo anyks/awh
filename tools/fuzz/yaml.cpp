@@ -144,6 +144,8 @@ namespace {
 		uint64_t pruned;
 		// Количество правок, чтением перезаписи сличённых
 		uint64_t mirrored;
+		// Количество круговых ходов снятого значения через перезапись
+		uint64_t circling;
 		// Количество деревьев, правку принявших
 		uint64_t edited;
 		// Количество владеющих значений, с деревьев снятых
@@ -168,7 +170,7 @@ namespace {
 		 */
 		Statistic() noexcept :
 		 texts(0), corrupted(0), survived(0), events(0), chunked(0), transcoded(0), unconverted(0), trees(0), kept(0), pruned(0),
-		 mirrored(0), edited(0), assembled(0), restyled(0), recycled(0), undirected(0), transcribed(0), taken(0), grafts(0), grafted(0) {}
+		 mirrored(0), circling(0), edited(0), assembled(0), restyled(0), recycled(0), undirected(0), transcribed(0), taken(0), grafts(0), grafted(0) {}
 	} totals;
 
 	/**
@@ -1842,6 +1844,71 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 				if(document.root().valid()){
 					// Владеющее значение, с дерева документа снятое
 					const yaml::value_t taken(document.root());
+					/**
+					 * Выполняем круговой ход снятого значения через собственную перезапись
+					 *
+					 * @details Значение, с дерева снятое, обязано пережить свою же перезапись
+					 * без потерь: перезапись его читается тем же наречием, и снятое с
+					 * прочтённого обязано совпасть с исходным. Путь этот - снятие, перезапись,
+					 * чтение, снятие - именно тот, каким пользуется всякий, кто держит
+					 * настройки владеющим значением
+					 *
+					 * @note Сличается ЗНАЧЕНИЕ, а не текст: владеющее значение примечаний не
+					 *       держит вовсе, и требовать от его перезаписи дословного совпадения
+					 *       с перезаписью дерева значило бы требовать невозможного
+					 */
+					{
+						// Перезапись снятого значения
+						const string written = taken.dump();
+						/**
+						 * Если перезапись снятого значения не пуста
+						 *
+						 * @note Пустая перезапись означает отказ записи, а он поверяется своими
+						 *       проверками: сличать нечего, и круг пропускается
+						 */
+						if(!written.empty()){
+							/**
+							 * Собираемые настройки разбора перезаписи со снятыми пределами
+							 *
+							 * @note Пределы снимаются намеренно: ссылки деревом раскрываются, и
+							 *       перезапись раскрытого законно глубже исходного текста. Отказ
+							 *       по пределу означал бы вину ворошителя, а не записи
+							 */
+							yaml::document_t::settings_t unbound = tree;
+							// Выполняем снятие предела глубины вложенности
+							unbound.maxDepth = 0;
+							// Выполняем снятие предела длины скалярного значения
+							unbound.maxScalar = 0;
+							// Собираемое дерево документа перезаписи снятого значения
+							yaml::document_t rebuilt(::logger(), unbound);
+							/**
+							 * Если перезапись снятого значения разобрана
+							 */
+							if(rebuilt.parse(written)){
+								// Значение, снятое с дерева перезаписи
+								const yaml::value_t back(rebuilt.root());
+								/**
+								 * Если снятое с перезаписи значение с исходным разошлось
+								 */
+								if(!(back == taken)){
+									// Выводим сообщение о расхождении кругового хода
+									::fprintf(stderr, "yaml fuzz: круговой ход снятого значения через перезапись расхождением окончился\n");
+									// Выводим разбираемый текст
+									dump(text);
+									// Выводим перезапись дерева документа
+									dump(document.dump());
+									// Выводим перезапись снятого значения
+									dump(written);
+									// Выводим перезапись значения, с перезаписи снятого
+									dump(back.dump());
+									// Выходим из приложения с ошибкой
+									return EXIT_FAILURE;
+								}
+								// Выполняем учёт кругового хода снятого значения
+								totals.circling++;
+							}
+						}
+					}
 					// Разошедшийся путь извлечения, розыском выданный
 					string diverged;
 					/**
@@ -2649,7 +2716,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		}
 	}
 	// Выводим итог работы генератора
-	::fprintf(stderr, "yaml fuzz: %llu texts (%llu corrupted, %llu survived), %llu events, %llu chunked, %llu transcoded (%llu не допущено), %llu trees, %llu kept, %llu pruned, %llu edited (%llu verified), %llu taken, %llu assembled, %llu restyled (%llu обойдено), %llu recycled, %llu grafts (%llu refused), %llu transcribed\n",
+	::fprintf(stderr, "yaml fuzz: %llu texts (%llu corrupted, %llu survived), %llu events, %llu chunked, %llu transcoded (%llu не допущено), %llu trees, %llu kept, %llu pruned, %llu edited (%llu verified), %llu taken, %llu assembled, %llu restyled (%llu обойдено), %llu recycled, %llu grafts (%llu refused), %llu transcribed, %llu circling\n",
 		static_cast <unsigned long long> (totals.texts), static_cast <unsigned long long> (totals.corrupted),
 		static_cast <unsigned long long> (totals.survived), static_cast <unsigned long long> (totals.events),
 		static_cast <unsigned long long> (totals.chunked), static_cast <unsigned long long> (totals.transcoded),
@@ -2663,7 +2730,8 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		static_cast <unsigned long long> (totals.recycled),
 		static_cast <unsigned long long> (totals.grafted),
 		static_cast <unsigned long long> (totals.grafts - totals.grafted),
-		static_cast <unsigned long long> (totals.transcribed));
+		static_cast <unsigned long long> (totals.transcribed),
+		static_cast <unsigned long long> (totals.circling));
 	// Выводим код успешного выхода из приложения
 	return EXIT_SUCCESS;
 }
