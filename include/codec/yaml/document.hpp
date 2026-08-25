@@ -108,7 +108,43 @@ namespace awh {
 			 *
 			 * \~
 			 */
+			/**
+			 * \~russian
+			 * @brief Объявление владеющего значения наперёд
+			 *
+			 * @note Объявление нужно дружбе дерева: владеющее значение описано файлом
+			 *       иным, включаемым позже, а имя его дереву требуется здесь
+			 *
+			 * \~english
+			 * @brief Forward declaration of the owning value
+			 * @note The declaration is needed by the friendship of the tree
+			 *
+			 * \~
+			 */
+			class Value;
 			typedef class __AWH_SHARED_EXPORT__ Document {
+				private:
+					/**
+					 * \~russian
+					 * @brief Владеющее значение, дереву доступ дающее
+					 *
+					 * @details Доступ этот нужен переносу: ведётся он на копии дерева ради
+					 *          целости своей, а код отказа по неудаче обязан достаться дереву
+					 *          ИСХОДНОМУ - копия с ним пропадает, и потребитель остался бы с
+					 *          отказом без названной причины
+					 *
+					 * @note Имя пишется полным: у дерева есть свой вложенный вид `Value` -
+					 *       ссылка на узел, - и краткое имя назвало бы дружбой именно его
+					 *
+					 * \~english
+					 * @brief Owning value granted the access to the tree
+					 * @details This access is needed by the grafting: it is conducted on a copy of the tree
+					 * for the sake of its own integrity, while the code of the refusal must reach the
+					 * ORIGINAL tree — the copy vanishes with it
+					 *
+					 * \~
+					 */
+					friend class awh::codec::yaml::Value;
 				public:
 					/**
 					 * \~russian

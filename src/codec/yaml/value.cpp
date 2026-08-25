@@ -1800,7 +1800,50 @@ string awh::codec::yaml::Value::dump() const noexcept {
  * @return         признак успешности переноса
  *
  */
+/**
+ * @brief Метод переноса владеющего значения в дерево документа с целостью его
+ *
+ * @details Перенос обязан быть ЦЕЛЫМ: отказ посреди него оставлял дерево с частью
+ *          перенесённого, и потребитель, отказ получивший, не знал ни того, какая часть
+ *          легла, ни того, как её снять
+ *
+ * @note Перенос ведётся на копии дерева, а с нею дерево и подменяется по успехе. Цена
+ *       копии оправдана - перенос не есть быстрый путь, а целость его есть обещание,
+ *       потребителем проверяемое отказом
+ *
+ * @note Обход укладки вынесен в @c implant() именно ради этого: обход ведётся вглубь
+ *       рекурсией, и копия на всяком его шаге стоила бы квадрата
+ *
+ * @note Правило это одно с правилом записи: отказ не оставляет текста рваным
+ *
+ * @param document дерево документа, куда переносится значение
+ * @param path     путь, по какому укладывается значение
+ * @return         признак успешности переноса
+ *
+ */
 bool awh::codec::yaml::Value::graft(Document & document, const string & path) const noexcept {
+	// Рабочая копия дерева документа, куда ведётся перенос
+	Document staging(document);
+	/**
+	 * Если уложить значение в рабочую копию не удалось
+	 */
+	if(!this->implant(staging, path)){
+		/**
+		 * Запоминаем код отказа переноса исходному дереву
+		 *
+		 * @note Код берётся у копии: она с отказом и пропадает, а потребитель обязан
+		 *       узнать причину - отказ без названной причины оставляет его ни с чем
+		 */
+		document._error = staging.error();
+		// Выводим признак неудачного переноса
+		return false;
+	}
+	// Выполняем подмену дерева документа деревом переноса
+	document = ::std::move(staging);
+	// Выводим признак успешного переноса
+	return true;
+}
+bool awh::codec::yaml::Value::implant(Document & document, const string & path) const noexcept {
 	/**
 	 * Определяем вид переносимого значения
 	 */
@@ -1836,7 +1879,7 @@ bool awh::codec::yaml::Value::graft(Document & document, const string & path) co
 				/**
 				 * Если перенести очередное значение перечня не удалось
 				 */
-				if(!this->_items.at(i).graft(document, path + "/" + std::to_string(i)))
+				if(!this->_items.at(i).implant(document, path + "/" + std::to_string(i)))
 					// Выводим признак неудачного переноса
 					return false;
 			}
@@ -1886,7 +1929,7 @@ bool awh::codec::yaml::Value::graft(Document & document, const string & path) co
 				/**
 				 * Если перенести очередную пару отображения не удалось
 				 */
-				if(!this->_items.at(i).graft(document, path + "/" + this->_names.at(i)))
+				if(!this->_items.at(i).implant(document, path + "/" + this->_names.at(i)))
 					// Выводим признак неудачного переноса
 					return false;
 			}

@@ -1777,6 +1777,25 @@ bool awh::codec::ini::Value::save(const string & filename) const noexcept {
  */
 bool awh::codec::ini::Value::graft(Document & document) const noexcept {
 	/**
+	 * Рабочая копия дерева настроек, куда ведётся перенос
+	 *
+	 * @details Перенос обязан быть ЦЕЛЫМ: отказ посреди него оставлял дерево с частью
+	 *          перенесённого, и потребитель, отказ получивший, не знал ни того, какая
+	 *          часть легла, ни того, как её снять. Примечание при самом переносе тем и
+	 *          обосновывает отказ вместо молчаливого пропуска, что пропуск «оставил бы
+	 *          потребителя с деревом без части его значения», - а отказ оставлял ровно
+	 *          это же
+	 *
+	 * @note Перенос ведётся на копии, а с нею дерево и подменяется по успехе. Копия
+	 *       дерева безопасна: своих указателей оно не держит, а места записей хранит
+	 *       смещениями, не видами. Цена копии оправдана - перенос не есть быстрый путь,
+	 *       а целость его есть обещание, потребителем проверяемое отказом
+	 *
+	 * @note Правило это одно с правилом записи: отказ не оставляет текста рваным.
+	 *       Закреплено проверкой GraftLeavesTreeIntact
+	 */
+	Document staging(document);
+	/**
 	 * Если корень вместилищем пар не является
 	 */
 	if(this->_type != type_t::TABLE)
@@ -1806,7 +1825,7 @@ bool awh::codec::ini::Value::graft(Document & document) const noexcept {
 	 * @return           признак успешности переноса
 	 *
 	 */
-	const auto transfer = [&document](const Value & holder, const string_view section, const string_view subsection) noexcept -> bool {
+	const auto transfer = [&staging](const Value & holder, const string_view section, const string_view subsection) noexcept -> bool {
 		/**
 		 * Выполняем перебор всех пар вместилища
 		 */
@@ -1847,7 +1866,7 @@ bool awh::codec::ini::Value::graft(Document & document) const noexcept {
 				 *       свойства в разделе не было вовсе, а это и есть заход переноса
 				 *       в дерево пустое
 				 */
-				document.erase(holder._names.at(i), section, subsection);
+				staging.erase(holder._names.at(i), section, subsection);
 				/**
 				 * Выполняем перебор всех значений перечня
 				 */
@@ -1866,7 +1885,7 @@ bool awh::codec::ini::Value::graft(Document & document) const noexcept {
 					/**
 					 * Если перенести очередное значение перечня не удалось
 					 */
-					if(!document.push(holder._names.at(i), entry._text, section, subsection))
+					if(!staging.push(holder._names.at(i), entry._text, section, subsection))
 						// Выводим признак неудачного переноса
 						return false;
 				}
@@ -1882,7 +1901,7 @@ bool awh::codec::ini::Value::graft(Document & document) const noexcept {
 			/**
 			 * Если перенести простое свойство не удалось
 			 */
-			if(!document.set(holder._names.at(i), item._text, section, subsection))
+			if(!staging.set(holder._names.at(i), item._text, section, subsection))
 				// Выводим признак неудачного переноса
 				return false;
 		}
@@ -1892,9 +1911,12 @@ bool awh::codec::ini::Value::graft(Document & document) const noexcept {
 	/**
 	 * Если перенести свойства верхнего уровня не удалось
 	 */
-	if(!transfer(* this, "", ""))
+	if(!transfer(* this, "", "")){
+		// Запоминаем код отказа переноса исходному дереву
+		document._error = staging.error();
 		// Выводим признак неудачного переноса
 		return false;
+	}
 	/**
 	 * Выполняем перебор всех пар корневого вместилища
 	 */
@@ -1916,15 +1938,21 @@ bool awh::codec::ini::Value::graft(Document & document) const noexcept {
 		/**
 		 * Если объявить раздел не удалось
 		 */
-		if(!document.create(this->_names.at(i)))
+		if(!staging.create(this->_names.at(i))){
+			// Запоминаем код отказа переноса исходному дереву
+			document._error = staging.error();
 			// Выводим признак неудачного переноса
 			return false;
+		}
 		/**
 		 * Если перенести свойства раздела не удалось
 		 */
-		if(!transfer(section, this->_names.at(i), ""))
+		if(!transfer(section, this->_names.at(i), "")){
+			// Запоминаем код отказа переноса исходному дереву
+			document._error = staging.error();
 			// Выводим признак неудачного переноса
 			return false;
+		}
 		/**
 		 * Выполняем перебор всех пар раздела
 		 */
@@ -1946,15 +1974,21 @@ bool awh::codec::ini::Value::graft(Document & document) const noexcept {
 			/**
 			 * Если объявить подраздел не удалось
 			 */
-			if(!document.create(this->_names.at(i), section._names.at(j)))
+			if(!staging.create(this->_names.at(i), section._names.at(j))){
+				// Запоминаем код отказа переноса исходному дереву
+				document._error = staging.error();
 				// Выводим признак неудачного переноса
 				return false;
+			}
 			/**
 			 * Если перенести свойства подраздела не удалось
 			 */
-			if(!transfer(subsection, this->_names.at(i), section._names.at(j)))
+			if(!transfer(subsection, this->_names.at(i), section._names.at(j))){
+				// Запоминаем код отказа переноса исходному дереву
+				document._error = staging.error();
 				// Выводим признак неудачного переноса
 				return false;
+			}
 			/**
 			 * Выполняем перебор всех пар подраздела
 			 */
@@ -1970,10 +2004,11 @@ bool awh::codec::ini::Value::graft(Document & document) const noexcept {
 			}
 		}
 	}
+	// Выполняем подмену дерева настроек деревом переноса
+	document = ::std::move(staging);
 	// Выводим признак успешного переноса
 	return true;
 }
-
 /**
  * @brief Метод получения вместилища, сборкой открытого
  *

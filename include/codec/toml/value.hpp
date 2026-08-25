@@ -1231,6 +1231,29 @@ namespace awh {
 					 * \~
 					 */
 					bool inflate(Document & document, const vector <string_view> & path) const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод укладки владеющего значения в дерево настроек
+					 *
+					 * @details Обход укладки вынесен из @c graft() ради целости переноса: тот ведёт
+					 *          укладку на копии дерева и подменяет им дерево лишь по успехе, а обход
+					 *          идёт вглубь рекурсией - копия на всяком шаге стоила бы квадрата
+					 *
+					 * @param document дерево настроек, куда укладывается значение
+					 * @param path     составное имя, по какому укладывается значение
+					 * @return         признак успешности укладки
+					 *
+					 * \~english
+					 * @brief Method of the laying of an owning value into a tree of the settings
+					 * @details The traversal of the laying is taken out of @c graft() for the sake of the
+					 * integrity of the grafting: the latter conducts the laying on a copy of the tree
+					 * @param document tree of the settings the value is laid into
+					 * @param path     composite name the value is laid by
+					 * @return         sign of the success of the laying
+					 *
+					 * \~
+					 */
+					bool implant(Document & document, const vector <string_view> & path) const noexcept;
 				public:
 				public:
 					/**

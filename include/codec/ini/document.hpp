@@ -222,6 +222,25 @@ namespace awh {
 				private:
 					/**
 					 * \~russian
+					 * @brief Владеющее значение, дереву доступ дающее
+					 *
+					 * @details Доступ этот нужен переносу: ведётся он на копии дерева ради
+					 *          целости своей, а код отказа по неудаче обязан достаться дереву
+					 *          ИСХОДНОМУ - копия с ним пропадает, и потребитель остался бы с
+					 *          отказом без названной причины
+					 *
+					 * \~english
+					 * @brief Owning value granted the access to the tree
+					 * @details This access is needed by the grafting: it is conducted on a copy of the tree
+					 * for the sake of its own integrity, while the code of the refusal must reach the
+					 * ORIGINAL tree — the copy vanishes with it
+					 *
+					 * \~
+					 */
+					friend class Value;
+				private:
+					/**
+					 * \~russian
 					 * @brief Метод вывода сообщения об отказе в лог
 					 *
 					 * @details Код отказа остаётся доступен потребителю через error(): журнал
