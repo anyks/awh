@@ -26,13 +26,43 @@
 /**
  * Подключаем системные заголовочные файлы
  */
-#include <sys/mman.h>
+/**
+ * Заголовок отображения памяти нужен лишь системам POSIX
+ *
+ * @note У MS Windows его нет вовсе, и подключение без заслона валило сборку ВСЕГО
+ *       набора abc - под этой системой не шла ни одна его проверка. Участок памяти
+ *       там запрашивается своим средством, VirtualAlloc
+ */
+#if !defined(_WIN32) && !defined(_WIN64)
+	#include <sys/mman.h>
+#else
+	/**
+	 * Подключаем единую точку подключения системных заголовков MS Windows
+	 *
+	 * @note Прямое подключение windows.h здесь непригодно: оно затягивает макросы,
+	 *       сталкивающиеся с именами членов перечислений модуля, и заголовок
+	 *       кодека перестаёт разбираться вовсе. Единая точка и пара
+	 *       macro_push.hpp / macro_pop.hpp заведены ровно для этого
+	 */
+	#include <sys/win32.hpp>
+
+	// Признак отказа выдачи участка памяти приводится к общему для систем виду
+	#define MAP_FAILED (reinterpret_cast <void *> (-1))
+#endif
 
 /**
  * Подключаем заголовочные файлы проекта
  */
 #include <gtest/gtest.h>
 #include <codec/abc/abc.hpp>
+
+/**
+ * Снимаем макросы MS Windows, сталкивающиеся с именами членов перечислений AWH
+ *
+ * @note Снятие идёт ПОСЛЕ всех подключений и возвращается в конце файла: макросы эти
+ *       нужны самим заголовкам MS Windows, и снимать их прежде подключения нельзя
+ */
+#include <sys/macro_push.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -747,8 +777,24 @@ TEST_F(ContainerFixture, RecordBeyondEntryField) {
 	}
 	// Размер запрашиваемого отображения памяти
 	const size_t size = (static_cast <size_t> (numeric_limits <uint32_t>::max()) + 1);
-	// Выполняем запрос отображения памяти у системы
-	void * buffer = ::mmap(nullptr, size, PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	/**
+	 * Выполняем запрос отображения памяти у системы
+	 *
+	 * @note Средства разные, а требуемое одно: участок памяти свыше четырёх гигабайт,
+	 *       доступный на чтение. У POSIX это безымянное отображение, заполняемое
+	 *       нулями лениво; у MS Windows - VirtualAlloc, и плата за него берётся из
+	 *       общего счёта памяти системы, оттого отказ там вероятнее. Отказ и там и
+	 *       там ведёт к пропуску проверки, заведённому ниже
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		void * buffer = ::mmap(nullptr, size, PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	#else
+		void * buffer = ::VirtualAlloc(nullptr, size, MEM_RESERVE | MEM_COMMIT, PAGE_READONLY);
+		// Приводим признак отказа к общему для систем виду
+		if(buffer == nullptr)
+			// Отмечаем отказ выдачи участка памяти
+			buffer = MAP_FAILED;
+	#endif
 	/**
 	 * Если отображения памяти система не дала, проверить сторожа нечем
 	 */
@@ -769,7 +815,11 @@ TEST_F(ContainerFixture, RecordBeyondEntryField) {
 	// Размер накопленных записей
 	const size_t pending = assembler.pending();
 	// Выполняем возврат отображения памяти системе
-	::munmap(buffer, size);
+	#if !defined(_WIN32) && !defined(_WIN64)
+		::munmap(buffer, size);
+	#else
+		::VirtualFree(buffer, 0, MEM_RELEASE);
+	#endif
 	// Выполняем проверку отказа внесения записи
 	ASSERT_FALSE(appended) << "запись длиною " << size << " внесена усечённою";
 	// Выполняем проверку кода отказа внесения записи
@@ -885,3 +935,8 @@ TEST_F(ContainerFixture, FailuresReachLogger) {
 		ASSERT_TRUE(records.empty()) << "успешная работа оставила запись: " << records.front();
 	}
 }
+
+/**
+ * Возвращаем снятые макросы MS Windows
+ */
+#include <sys/macro_pop.hpp>

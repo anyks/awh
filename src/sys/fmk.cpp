@@ -6834,8 +6834,18 @@ string awh::Framework::formatted(const char * format, ...) const noexcept {
 		 * Выполняем отлов ошибок
 		 */
 		try {
+			/**
+			 * @warning Тип обязан быть знаковым: функции семейства printf отвечают об
+			 *          отказе числом -1, и при беззнаковом типе оно обращалось в SIZE_MAX.
+			 *          Проверка length >= 0 делалась при этом истинной ВСЕГДА, ветка
+			 *          length < 0 - мёртвым кодом, а size = length + 1 давало НУЛЬ:
+			 *          буфер сжимался до нуля, следующий круг снова получал -1, и метод
+			 *          оставался в кругу навсегда. У широкого близнеца это не край, а
+			 *          обиход: vswprintf при нехватке буфера отдаёт -1, а НЕ потребную
+			 *          длину, поэтому удвоение буфера - единственный там путь роста
+			 */
 			// Размер полученной строки
-			size_t length = 0;
+			int32_t length = 0;
 			// Создаем буфер данных
 			result.resize(1024);
 			/**
@@ -6849,7 +6859,7 @@ string awh::Framework::formatted(const char * format, ...) const noexcept {
 				// Выполняем запись в буфер данных
 				length = ::vsnprintf(result.data(), result.size(), format, args2);
 				// Если результат получен
-				if((length >= 0) && (length < result.size())){
+				if((length >= 0) && (static_cast <size_t> (length) < result.size())){
 					// Завершаем список аргументов
 					va_end(args);
 					// Завершаем список локальных аргументов
@@ -6870,7 +6880,7 @@ string awh::Framework::formatted(const char * format, ...) const noexcept {
 					// Увеличиваем размер буфера в два раза
 					size = (result.size() * 2);
 				// Увеличиваем размер буфера на один байт
-				else size = (length + 1);
+				else size = (static_cast <size_t> (length) + 1);
 				// Очищаем буфер данных
 				result.clear();
 				// Выделяем память для буфера
@@ -6941,8 +6951,18 @@ wstring awh::Framework::formatted(const wchar_t * format, ...) const noexcept {
 		 * Выполняем отлов ошибок
 		 */
 		try {
+			/**
+			 * @warning Тип обязан быть знаковым: функции семейства printf отвечают об
+			 *          отказе числом -1, и при беззнаковом типе оно обращалось в SIZE_MAX.
+			 *          Проверка length >= 0 делалась при этом истинной ВСЕГДА, ветка
+			 *          length < 0 - мёртвым кодом, а size = length + 1 давало НУЛЬ:
+			 *          буфер сжимался до нуля, следующий круг снова получал -1, и метод
+			 *          оставался в кругу навсегда. У широкого близнеца это не край, а
+			 *          обиход: vswprintf при нехватке буфера отдаёт -1, а НЕ потребную
+			 *          длину, поэтому удвоение буфера - единственный там путь роста
+			 */
 			// Размер полученной строки
-			size_t length = 0;
+			int32_t length = 0;
 			// Создаем буфер данных
 			result.resize(1024);
 			/**
@@ -6956,7 +6976,7 @@ wstring awh::Framework::formatted(const wchar_t * format, ...) const noexcept {
 				// Выполняем запись в буфер данных
 				length = ::vswprintf(result.data(), result.size(), format, args2);
 				// Если результат получен
-				if((length >= 0) && (length < result.size())){
+				if((length >= 0) && (static_cast <size_t> (length) < result.size())){
 					// Завершаем список аргументов
 					va_end(args);
 					// Завершаем список локальных аргументов
@@ -6977,7 +6997,7 @@ wstring awh::Framework::formatted(const wchar_t * format, ...) const noexcept {
 					// Увеличиваем размер буфера в два раза
 					size = (result.size() * 2);
 				// Увеличиваем размер буфера на один байт
-				else size = (length + 1);
+				else size = (static_cast <size_t> (length) + 1);
 				// Очищаем буфер данных
 				result.clear();
 				// Выделяем память для буфера

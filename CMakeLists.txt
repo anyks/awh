@@ -1480,6 +1480,16 @@ if (${CMAKE_BUILD_SAMPLES})
     # Указываем что нужно собрать приложение работы с распределителем памяти
     option(CMAKE_BUILD_ALLOC_APP_SAMPLE "Build Allocator app sample" ON)
 
+    # Устанавливаем имя приложения работы со своим источником страниц
+    SET(SOURCE_APP_NAME alloc-source)
+    # Указываем что нужно собрать приложение работы со своим источником страниц
+    option(CMAKE_BUILD_SOURCE_APP_SAMPLE "Build Allocator page source app sample" ON)
+
+    # Устанавливаем имя приложения настройки распределителя под нагрузку
+    SET(TUNING_APP_NAME alloc-tuning)
+    # Указываем что нужно собрать приложение настройки распределителя под нагрузку
+    option(CMAKE_BUILD_TUNING_APP_SAMPLE "Build Allocator tuning app sample" ON)
+
     # Устанавливаем имя приложения работы с укрытой памятью
     SET(KEEPER_APP_NAME keeper)
     # Указываем что нужно собрать приложение работы с укрытой памятью
@@ -2110,6 +2120,30 @@ if (${CMAKE_BUILD_SAMPLES})
         # Выводим сообщение о сборке семпла
         message(STATUS "Build sample ALLOC: No\n")
     endif (${CMAKE_BUILD_ALLOC_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы со своим источником страниц
+    if (${CMAKE_BUILD_SOURCE_APP_SAMPLE})
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample ALLOC SOURCE: Yes\n")
+        # Выполняем создание приложения работы со своим источником страниц
+        add_sample(${SOURCE_APP_NAME} sample/alloc/source.cpp alloc)
+    # Если не нужно собирать семплы для работы со своим источником страниц
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample ALLOC SOURCE: No\n")
+    endif (${CMAKE_BUILD_SOURCE_APP_SAMPLE})
+
+    # Если нужно собрать семплы настройки распределителя под нагрузку
+    if (${CMAKE_BUILD_TUNING_APP_SAMPLE})
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample ALLOC TUNING: Yes\n")
+        # Выполняем создание приложения настройки распределителя под нагрузку
+        add_sample(${TUNING_APP_NAME} sample/alloc/tuning.cpp alloc)
+    # Если не нужно собирать семплы настройки распределителя под нагрузку
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample ALLOC TUNING: No\n")
+    endif (${CMAKE_BUILD_TUNING_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с укрытой памятью
     if (${CMAKE_BUILD_KEEPER_APP_SAMPLE})
@@ -3123,6 +3157,26 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_ALLOC_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы со своим источником страниц
+        if (${CMAKE_BUILD_SOURCE_APP_SAMPLE})
+            # Выполняем сборку приложения своего источника страниц
+            target_link_libraries(
+                ${SOURCE_APP_NAME}
+                ${AWH_LIB_NAME}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_SOURCE_APP_SAMPLE})
+
+        # Если нужно собрать семплы настройки распределителя под нагрузку
+        if (${CMAKE_BUILD_TUNING_APP_SAMPLE})
+            # Выполняем сборку приложения настройки распределителя
+            target_link_libraries(
+                ${TUNING_APP_NAME}
+                ${AWH_LIB_NAME}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_TUNING_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с укрытой памятью
         if (${CMAKE_BUILD_KEEPER_APP_SAMPLE})
@@ -4273,6 +4327,28 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_ALLOC_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы со своим источником страниц
+        if (${CMAKE_BUILD_SOURCE_APP_SAMPLE})
+            # Выполняем сборку приложения своего источника страниц
+            target_link_libraries(
+                ${SOURCE_APP_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_SOURCE_APP_SAMPLE})
+
+        # Если нужно собрать семплы настройки распределителя под нагрузку
+        if (${CMAKE_BUILD_TUNING_APP_SAMPLE})
+            # Выполняем сборку приложения настройки распределителя
+            target_link_libraries(
+                ${TUNING_APP_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_TUNING_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с укрытой памятью
         if (${CMAKE_BUILD_KEEPER_APP_SAMPLE})
@@ -5462,6 +5538,14 @@ if (${CMAKE_BUILD_SAMPLES})
             # Если нужно собрать семплы для работы с укрытой памятью
             if (${CMAKE_BUILD_KEEPER_APP_SAMPLE})
                 # Выполняем сборку приложения укрытой памяти
+                add_custom_command(TARGET "${SOURCE_APP_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${SOURCE_APP_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${SOURCE_APP_NAME}\" to enable core dump on macOS"
+                )
+                add_custom_command(TARGET "${TUNING_APP_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${TUNING_APP_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${TUNING_APP_NAME}\" to enable core dump on macOS"
+                )
                 add_custom_command(TARGET "${KEEPER_APP_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${KEEPER_APP_NAME}>" "${entitlements_file}"
                     COMMENT "Sign target \"${KEEPER_APP_NAME}\" to enable core dump on macOS"
@@ -6076,6 +6160,8 @@ if (${CMAKE_BUILD_SAMPLES})
             # Если нужно собрать семплы для работы с укрытой памятью
             if (${CMAKE_BUILD_KEEPER_APP_SAMPLE})
                 # Выполняем анализ приложения укрытой памяти
+                pvs_studio_add_target(TARGET ${SOURCE_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${SOURCE_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+                pvs_studio_add_target(TARGET ${TUNING_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${TUNING_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
                 pvs_studio_add_target(TARGET ${KEEPER_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${KEEPER_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
             endif (${CMAKE_BUILD_KEEPER_APP_SAMPLE})
 
@@ -6611,6 +6697,8 @@ if (${CMAKE_BUILD_SAMPLES})
     # Если нужно собрать семплы для работы с укрытой памятью
     if (${CMAKE_BUILD_KEEPER_APP_SAMPLE})
         # Устанавливаем приложение работы с укрытой памятью
+        install(TARGETS ${SOURCE_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+        install(TARGETS ${TUNING_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
         install(TARGETS ${KEEPER_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
     endif (${CMAKE_BUILD_KEEPER_APP_SAMPLE})
 

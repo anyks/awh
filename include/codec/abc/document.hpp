@@ -125,6 +125,14 @@ namespace awh {
 			 * `editor_t::append` с закреплением `commit`, а разобранное поднять обратно в
 			 * значение через `Value(const Document::value_t &)`
 			 *
+			 * @warning **Замком работа НЕ защищена: один объект — один поток.** Замок держит
+			 * лишь `Editor` — ему он нужен ради фиксации по сроку своим потоком, — и
+			 * равняться по нему нельзя. Замер 25.08.2026, один `Fetcher` на четыре потока:
+			 * тринадцать донесений TSan и девятнадцать неверно прочитанных записей из
+			 * четырёхсот, молча. Свой объект у всякого потока над ОБЩИМ источником чтения:
+			 * ноль донесений, ноль расхождений — источник читается, а не правится, и делится
+			 * свободно
+			 *
 			 * \~english
 			 * @brief Class of the tree of a document
 			 * @details The tree lies as one container of the nodes in a row: the children stand right after
@@ -136,6 +144,12 @@ namespace awh {
 			 * allocations instead of an allocation for every node
 			 *
 			 * \~
+			 * @warning **The work is NOT protected by a lock: one object — one thread.** Only `Editor`
+			 * holds a lock, and one must not judge the others by it. A measurement of 25.08.2026, one `Fetcher`
+			 * on four threads: thirteen reports of TSan and nineteen records of four hundred read wrongly,
+			 * silently. An own object per thread over a SHARED source of the reading: zero reports,
+			 * zero divergences
+			 *
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Document {
 				private:

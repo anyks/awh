@@ -17,6 +17,20 @@ CHUNKS = [0, 1, 2, 3, 7, 63, 64, 65, 511, 512, 1024, 4096]
 # предшествующие, с эталоном совпадают
 UNTERMINATED = 'unterminated quoted field'
 
+# Отказы режима заголовка, признаваемые намеренными расхождениями с эталоном
+#
+# Эталон о заголовке не судит вовсе: пустое имя он отдаёт пустым ключом, повторное имя
+# молча теряет вместе со значением, а по пустому тексту выдаёт «fieldnames = None» и ни
+# единой записи. Разбор наш все три случая отвергает нарочно, и правила эти записаны
+# кодами отказов: имя поля есть ключ обращения, а ключ пустой либо повторный обращения
+# не задаёт. Сличается здесь лишь то, что ПРИНЯТОЕ нами совпадает с эталоном
+HEADING = (
+	'empty field name in header',
+	'duplicate field name in header',
+	'header requested but input is empty',
+	'field count does not match the header'
+)
+
 
 def oracle(path):
 	"""Разбор таблицы эталоном - модулем csv языка Python"""
@@ -32,6 +46,32 @@ def oracle(path):
 			if (len(row) == 1) and (row[0] == ''):
 				continue
 			rows.append(row)
+	return rows
+
+
+def heading(path):
+	"""Разбор таблицы заголовком эталоном - модулем csv языка Python
+
+	Сличению подлежат лишь таблицы, у каких всякая запись несёт ровно столько полей,
+	сколько несёт заголовок: запись короче заголовка эталон дополняет пустыми значениями
+	по ключам, а длиннее - складывает остаток в отдельный ключ, тогда как разбор наш
+	отдаёт запись как есть. Расхождение это не в разборе, а в СПОСОБЕ ВЫДАЧИ: у эталона
+	запись есть отображение, у нас - перечень, и ровнять одно к другому значило бы
+	сличать не разбор, а собственный переводчик. Таблицы неровные сличаются обычным
+	путём, без заголовка, и без надзора не остаются
+	"""
+
+	rows = oracle(path)
+	# Если таблица пуста, заголовка в ней нет вовсе
+	if not rows:
+		return None
+	# Количество полей заголовка таблицы
+	width = len(rows[0])
+	# Выполняем перебор всех записей таблицы
+	for row in rows[1:]:
+		# Если количество полей записи расходится с заголовком, сличение пропускается
+		if len(row) != width:
+			return None
 	return rows
 
 
@@ -58,8 +98,29 @@ def main():
 		except Exception as error:
 			print('эталон отказал на %s: %s' % (name, error))
 			continue
+		# Получаем разбор таблицы заголовком эталоном
+		try:
+			headed = heading(path)
+		except Exception:
+			headed = None
 		# Выполняем перебор всех размеров куска подачи
 		for chunk in CHUNKS:
+			# Выполняем сличение разбора таблицы заголовком
+			if headed is not None:
+				run = subprocess.run([dump, path, str(chunk), 'header'], capture_output = True)
+				checked += 1
+				# Если разбор заголовком прекращён отказом
+				if run.returncode != 0:
+					note = run.stderr.decode().strip()
+					# Если отказ намеренным расхождением с эталоном не является
+					if (note not in HEADING) and (note != UNTERMINATED):
+						mismatch.append((name, chunk, 'отказ разбора заголовком: ' + note, ''))
+					else:
+						expected += 1
+				else:
+					value = json.loads(run.stdout.decode('utf-8'))
+					if value != headed:
+						mismatch.append((name, chunk, 'заголовком: ' + json.dumps(value, ensure_ascii = False), json.dumps(headed, ensure_ascii = False)))
 			result = subprocess.run([dump, path, str(chunk)], capture_output = True)
 			checked += 1
 			# Если разбор прекращён отказом

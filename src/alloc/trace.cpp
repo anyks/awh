@@ -227,7 +227,7 @@ namespace {
  */
 bool awh::alloc::Trace::init() noexcept {
 	// Если съём уже заведён
-	if(this->_warmed)
+	if(this->_warmed.load(std::memory_order_acquire))
 		// Заводить нечего
 		return true;
 	/**
@@ -271,7 +271,7 @@ bool awh::alloc::Trace::init() noexcept {
 	// Массив под адреса прогревочного съёма
 	const void * frames[8];
 	// Отмечаем съём прогретым прежде прогрева: иначе прогрев ушёл бы в отказ готовности
-	this->_warmed = true;
+	this->_warmed.store(true, std::memory_order_release);
 	// Прогреваем съём
 	static_cast <void> (this->capture(frames, 8, 0));
 	// Отвечаем успехом
@@ -303,7 +303,7 @@ void awh::alloc::Trace::reset() noexcept {
 		this->_keyed = false;
 	}
 	// Отмечаем съём непрогретым
-	this->_warmed = false;
+	this->_warmed.store(false, std::memory_order_release);
 }
 /**
  * @brief Метод съёма стека вызовов
@@ -316,7 +316,7 @@ void awh::alloc::Trace::reset() noexcept {
  */
 size_t awh::alloc::Trace::capture(const void ** frames, const size_t depth, const size_t skip) noexcept {
 	// Если снимать некуда либо съём не заведён
-	if((frames == nullptr) || (depth == 0) || !this->_warmed)
+	if((frames == nullptr) || (depth == 0) || !this->_warmed.load(std::memory_order_acquire))
 		// Снимать нечего
 		return 0;
 	/**
@@ -450,7 +450,7 @@ bool awh::alloc::Trace::resolve(const void * frame, symbol_t & symbol) noexcept 
  */
 bool awh::alloc::Trace::ready() const noexcept {
 	// Выводим признак готовности съёма
-	return this->_warmed;
+	return this->_warmed.load(std::memory_order_acquire);
 }
 /**
  * @brief Метод получения названия способа съёма

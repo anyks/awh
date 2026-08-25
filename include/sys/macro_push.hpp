@@ -122,6 +122,8 @@
 #pragma push_macro("ERROR")
 #pragma push_macro("DELETE")
 #pragma push_macro("FAILED")
+#pragma push_macro("TRUE")
+#pragma push_macro("FALSE")
 #pragma push_macro("STRICT")
 #pragma push_macro("NO_ERROR")
 #pragma push_macro("ALTERNATE")
@@ -139,6 +141,8 @@
 #undef ERROR
 #undef DELETE
 #undef FAILED
+#undef TRUE
+#undef FALSE
 #undef STRICT
 #undef NO_ERROR
 #undef ALTERNATE

@@ -1017,11 +1017,33 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод извлечения строкового значения
 					 *
+					 * @details Извлечение это есть ПРОВЕРКА ВИДА, ровно как извлечение числом:
+					 * значение, строкою не являющееся, отвечает отказом, а не записью своей.
+					 * Запись значения добывается перезаписью его - `dump()`, - а у числа ещё и
+					 * отдельным `raw()`; разведены они намеренно: «дай мне строку» и «дай мне
+					 * запись текстом» суть разные вопросы, и видовому наречию отвечать на
+					 * первый вторым нечестно
+					 *
+					 * @note Кодеки XML и INI на том же месте выдают запись, и это НЕ расхождение
+					 *       недосмотром: видов у них нет вовсе, всякое значение там и есть текст,
+					 *       и отвечать отказом им попросту нечему. Правило это следует из
+					 *       устройства наречия, а не из вкуса кодека
+					 *
 					 * @param result переменная, куда помещается извлечённое значение
 					 * @return       признак успешности извлечения
 					 *
 					 * \~english
 					 * @brief Method of the extraction of a string value
+					 * @details This extraction is a CHECK OF THE KIND, exactly as the extraction by a number:
+					 * a value that is not a string answers with a refusal rather than with its own record.
+					 * The record of a value is obtained by rewriting it — `dump()` — and for a number also
+					 * by the separate `raw()`; they are separated deliberately: "give me a string" and
+					 * "give me the record as a text" are different questions, and for a typed notation
+					 * to answer the first with the second is dishonest
+					 * @note The codecs XML and INI issue the record at the same place, and this is NOT a divergence
+					 *       by an oversight: they have no kinds at all, every value there is a text,
+					 *       and there is simply nothing for them to refuse. This rule follows from
+					 *       the structure of the notation rather than from the taste of the codec
 					 * @param result variable where the extracted value is placed
 					 * @return sign of the success of the extraction
 					 *

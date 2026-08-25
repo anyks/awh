@@ -65,6 +65,8 @@
 #pragma pop_macro("FS")
 #pragma pop_macro("INVALID_SOCKET")
 #pragma pop_macro("TRANSPARENT")
+#pragma pop_macro("FALSE")
+#pragma pop_macro("TRUE")
 #pragma pop_macro("ALTERNATE")
 #pragma pop_macro("NO_ERROR")
 #pragma pop_macro("STRICT")

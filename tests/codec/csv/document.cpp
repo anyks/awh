@@ -27,6 +27,8 @@
 #include <vector>
 #include <cstdio>
 #include <fstream>
+#include <csignal>
+#include <sys/resource.h>
 
 /**
  * Подключаем заголовочные файлы проекта
@@ -724,4 +726,125 @@ TEST(CodecCsvDocument, NarrowingRefusesInsteadOfWrapping) {
 	ASSERT_TRUE(document.numeric(0, 3, small));
 	// Выполняем проверку приведённого значения
 	ASSERT_EQ(small, static_cast <int8_t> (127));
+}
+
+/**
+ * @brief Проверка доклада об отказе записи файла таблицы
+ *
+ * @details Признак успеха снимался с потока ДО закрытия его, а буфер поток сбрасывает
+ * именно закрытием: текст, целиком уместившийся в буфер, уходил отказом сброса молча,
+ * а вызов отчитывался успехом. Замер дал успех при 64 байтах из 190 в файле. У кодеков
+ * JSON и XML то же место чинено тем же порядком
+ *
+ * @note Код отказа уходит в журнал, а не в `error()`: запись объявлена `const`, и селить
+ *       в ней код отказа некуда
+ *
+ */
+TEST(CodecCsvDocument, WriteFailureIsNotSuccess) {
+	// Собираемые сообщения журнала
+	vector <string> messages;
+	// Объект журнала с перехватом вывода
+	awh::log_t log(&Silent::framework());
+	// Выполняем назначение приёмника вывода в функцию обратного вызова
+	log.mode({awh::log_t::mode_t::DEFERRED});
+	// Выполняем назначение перехвата сообщений журнала
+	log.subscribe([&messages](const awh::log_t::flag_t, string_view text) noexcept -> void {
+		// Выполняем сбор очередного сообщения журнала
+		messages.push_back(string(text));
+	});
+	// Собираемый текст таблицы
+	string text("имя,второе\n");
+	/**
+	 * Выполняем сборку текста таблицы крупнее допустимого предела
+	 */
+	for(uint16_t i = 0; i < 6; i++)
+		// Добавляем очередную запись таблицы
+		text.append("значение" + std::to_string(i) + ",второе\n");
+	// Дерево значений таблицы
+	csv::document_t document(&log);
+	// Выполняем проверку разбора собранного текста таблицы
+	ASSERT_TRUE(document.parse(text));
+	/**
+	 * @brief Сторож предельного размера файла процесса
+	 *
+	 * @note Предел этот - настройка ПРОЦЕССА, и снимать её обязательно: оставленная,
+	 *       она валила бы соседние проверки, пишущие файлы
+	 *
+	 */
+	struct Guard {
+		// Прежний предел размера файла процесса
+		struct rlimit limit;
+		// Прежний обработчик сигнала превышения предела
+		void (* handler)(int32_t);
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Guard() noexcept {
+			// Выполняем снятие прежнего предела размера файла
+			::getrlimit(RLIMIT_FSIZE, &this->limit);
+			// Выполняем отключение сигнала превышения предела
+			this->handler = ::signal(SIGXFSZ, SIG_IGN);
+			// Предел размера файла, заведомо меньший текста таблицы
+			struct rlimit bound = this->limit;
+			// Выполняем установку предела размера файла
+			bound.rlim_cur = 64;
+			// Выполняем назначение предела размера файла процессу
+			::setrlimit(RLIMIT_FSIZE, &bound);
+		}
+		/**
+		 * @brief Деструктор
+		 *
+		 */
+		~Guard() noexcept {
+			// Выполняем возврат прежнего предела размера файла
+			::setrlimit(RLIMIT_FSIZE, &this->limit);
+			// Выполняем возврат прежнего обработчика сигнала
+			::signal(SIGXFSZ, this->handler);
+		}
+	} guard;
+	// Адрес файла, в который ведётся запись таблицы
+	const string filename = "./awh-codec-csv-write-failure.csv";
+	// Выполняем снос прежнего файла таблицы
+	::remove(filename.c_str());
+	// Выполняем проверку отказа записи усечённого файла таблицы
+	ASSERT_FALSE(document.write(filename));
+	// Выполняем проверку оглашения отказа в журнале
+	ASSERT_FALSE(messages.empty());
+	// Выполняем проверку упоминания причины отказа в сообщении
+	ASSERT_NE(messages.back().find(csv::message(csv::error_t::FILE_NOT_WRITTEN)), string::npos) << messages.back();
+	// Выполняем снос усечённого файла таблицы
+	::remove(filename.c_str());
+}
+
+/**
+ * @brief Проверка доклада об отказе открытия файла таблицы на запись
+ *
+ * @details Чтение файла оглашает отказ открытия кодом `FILE_NOT_OPENED`, а запись
+ * прежде возвращала голое отрицание без единого слова: несимметрия эта оставляла
+ * потребителя без причины отказа там, где та известна
+ *
+ */
+TEST(CodecCsvDocument, WriteToMissingDirectoryIsReported) {
+	// Собираемые сообщения журнала
+	vector <string> messages;
+	// Объект журнала с перехватом вывода
+	awh::log_t log(&Silent::framework());
+	// Выполняем назначение приёмника вывода в функцию обратного вызова
+	log.mode({awh::log_t::mode_t::DEFERRED});
+	// Выполняем назначение перехвата сообщений журнала
+	log.subscribe([&messages](const awh::log_t::flag_t, string_view text) noexcept -> void {
+		// Выполняем сбор очередного сообщения журнала
+		messages.push_back(string(text));
+	});
+	// Дерево значений таблицы
+	csv::document_t document(&log);
+	// Выполняем проверку разбора текста таблицы
+	ASSERT_TRUE(document.parse("имя\nзначение\n"));
+	// Выполняем проверку отказа записи в несуществующий каталог
+	ASSERT_FALSE(document.write("/несуществующий/каталог/таблица.csv"));
+	// Выполняем проверку оглашения отказа в журнале
+	ASSERT_FALSE(messages.empty());
+	// Выполняем проверку упоминания причины отказа в сообщении
+	ASSERT_NE(messages.back().find(csv::message(csv::error_t::FILE_NOT_OPENED)), string::npos) << messages.back();
 }

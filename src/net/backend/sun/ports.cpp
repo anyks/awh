@@ -8854,6 +8854,23 @@ namespace timer {
 										}
 										// Обрабатываем событие готовности сокета на чтение
 										::io::read(peer, 0, io, eth, addr, fmk, log);
+										/**
+										 * Возвращаем подписку, если узел её так и не получил обратно
+										 *
+										 * @warning Обработчик снял готовность выше и положился на то, что
+										 *          обработка вернёт её сама. Она возвращает НЕ ВСЕГДА: узел
+										 *          остаётся без подписки и без взведённого таймера, то есть
+										 *          глохнет навсегда
+										 */
+										if((peer->state.status != event::status_t::DESTROYED) && (peer->state.status != event::status_t::GARBAGE)){
+											// Если подписка так и не возвращена
+											if(!(peer->activity & ::activity::READ)){
+												// Отмечаем активность узла
+												peer->activity |= ::activity::READ;
+												// Возвращаем подписку на событие
+												::events::read(peer->transfer.fd, peer, event::mode_t::ENABLED, log);
+											}
+										}
 									}
 								// Если идентификатор события совпадает с идентификатором таймаута на ограничение пропускной способности на запись данных
 								} else if(timer.id == peer->bandwidth().write.timeout.id) {
@@ -8870,6 +8887,23 @@ namespace timer {
 										}
 										// Обрабатываем событие доступности сокета на запись
 										::io::write(peer, eth, log);
+										/**
+										 * Возвращаем подписку, если узел её так и не получил обратно
+										 *
+										 * @warning Обработчик снял готовность выше и положился на то, что
+										 *          обработка вернёт её сама. Она возвращает НЕ ВСЕГДА: узел
+										 *          остаётся без подписки и без взведённого таймера, то есть
+										 *          глохнет навсегда
+										 */
+										if((peer->state.status != event::status_t::DESTROYED) && (peer->state.status != event::status_t::GARBAGE)){
+											// Если подписка так и не возвращена
+											if(!(peer->activity & ::activity::WRITE)){
+												// Отмечаем активность узла
+												peer->activity |= ::activity::WRITE;
+												// Возвращаем подписку на событие
+												::events::write(peer->transfer.fd, peer, event::mode_t::ENABLED, log);
+											}
+										}
 									}
 								}
 							} break;
@@ -8937,6 +8971,23 @@ namespace timer {
 										}
 										// Обрабатываем событие готовности сокета на чтение
 										::io::read(client, 0, io, eth, addr, fmk, log);
+										/**
+										 * Возвращаем подписку, если узел её так и не получил обратно
+										 *
+										 * @warning Обработчик снял готовность выше и положился на то, что
+										 *          обработка вернёт её сама. Она возвращает НЕ ВСЕГДА: узел
+										 *          остаётся без подписки и без взведённого таймера, то есть
+										 *          глохнет навсегда
+										 */
+										if((client->state.status != event::status_t::DESTROYED) && (client->state.status != event::status_t::GARBAGE)){
+											// Если подписка так и не возвращена
+											if(!(client->activity & ::activity::READ)){
+												// Отмечаем активность узла
+												client->activity |= ::activity::READ;
+												// Возвращаем подписку на событие
+												::events::read(client->transfer.fd, client, event::mode_t::ENABLED, log);
+											}
+										}
 									}
 								// Если идентификатор события совпадает с идентификатором таймаута на ограничение пропускной способности на запись данных
 								} else if(timer.id == client->bandwidth().write.timeout.id) {
@@ -8953,6 +9004,23 @@ namespace timer {
 										}
 										// Обрабатываем событие доступности сокета на запись
 										::io::write(client, eth, log);
+										/**
+										 * Возвращаем подписку, если узел её так и не получил обратно
+										 *
+										 * @warning Обработчик снял готовность выше и положился на то, что
+										 *          обработка вернёт её сама. Она возвращает НЕ ВСЕГДА: узел
+										 *          остаётся без подписки и без взведённого таймера, то есть
+										 *          глохнет навсегда
+										 */
+										if((client->state.status != event::status_t::DESTROYED) && (client->state.status != event::status_t::GARBAGE)){
+											// Если подписка так и не возвращена
+											if(!(client->activity & ::activity::WRITE)){
+												// Отмечаем активность узла
+												client->activity |= ::activity::WRITE;
+												// Возвращаем подписку на событие
+												::events::write(client->transfer.fd, client, event::mode_t::ENABLED, log);
+											}
+										}
 									}
 								// Если идентификатор события совпадает с идентификатором таймаута на запись данных
 								} else if(timer.id == client->timeouts.write.id) {
@@ -10556,6 +10624,23 @@ namespace timer {
 										}
 										// Обрабатываем событие готовности сокета на чтение
 										::io::read(peer, 0, io, eth, addr, fmk, log);
+										/**
+										 * Возвращаем подписку, если узел её так и не получил обратно
+										 *
+										 * @warning Обработчик снял готовность выше и положился на то, что
+										 *          обработка вернёт её сама. Она возвращает НЕ ВСЕГДА: узел
+										 *          остаётся без подписки и без взведённого таймера, то есть
+										 *          глохнет навсегда
+										 */
+										if((peer->state.status != event::status_t::DESTROYED) && (peer->state.status != event::status_t::GARBAGE)){
+											// Если подписка так и не возвращена
+											if(!(peer->activity & ::activity::READ)){
+												// Отмечаем активность узла
+												peer->activity |= ::activity::READ;
+												// Возвращаем подписку на событие
+												::events::read(peer->transfer.fd, peer, event::mode_t::ENABLED, log);
+											}
+										}
 									}
 								// Если идентификатор события совпадает с идентификатором таймаута на ограничение пропускной способности на запись данных
 								} else if(timer.id == peer->bandwidth().write.timeout.id) {
@@ -10572,6 +10657,23 @@ namespace timer {
 										}
 										// Обрабатываем событие доступности сокета на запись
 										::io::write(peer, eth, log);
+										/**
+										 * Возвращаем подписку, если узел её так и не получил обратно
+										 *
+										 * @warning Обработчик снял готовность выше и положился на то, что
+										 *          обработка вернёт её сама. Она возвращает НЕ ВСЕГДА: узел
+										 *          остаётся без подписки и без взведённого таймера, то есть
+										 *          глохнет навсегда
+										 */
+										if((peer->state.status != event::status_t::DESTROYED) && (peer->state.status != event::status_t::GARBAGE)){
+											// Если подписка так и не возвращена
+											if(!(peer->activity & ::activity::WRITE)){
+												// Отмечаем активность узла
+												peer->activity |= ::activity::WRITE;
+												// Возвращаем подписку на событие
+												::events::write(peer->transfer.fd, peer, event::mode_t::ENABLED, log);
+											}
+										}
 									}
 								}
 							} break;
@@ -10639,6 +10741,23 @@ namespace timer {
 										}
 										// Обрабатываем событие готовности сокета на чтение
 										::io::read(client, 0, io, eth, addr, fmk, log);
+										/**
+										 * Возвращаем подписку, если узел её так и не получил обратно
+										 *
+										 * @warning Обработчик снял готовность выше и положился на то, что
+										 *          обработка вернёт её сама. Она возвращает НЕ ВСЕГДА: узел
+										 *          остаётся без подписки и без взведённого таймера, то есть
+										 *          глохнет навсегда
+										 */
+										if((client->state.status != event::status_t::DESTROYED) && (client->state.status != event::status_t::GARBAGE)){
+											// Если подписка так и не возвращена
+											if(!(client->activity & ::activity::READ)){
+												// Отмечаем активность узла
+												client->activity |= ::activity::READ;
+												// Возвращаем подписку на событие
+												::events::read(client->transfer.fd, client, event::mode_t::ENABLED, log);
+											}
+										}
 									}
 								// Если идентификатор события совпадает с идентификатором таймаута на ограничение пропускной способности на запись данных
 								} else if(timer.id == client->bandwidth().write.timeout.id) {
@@ -10655,6 +10774,23 @@ namespace timer {
 										}
 										// Обрабатываем событие доступности сокета на запись
 										::io::write(client, eth, log);
+										/**
+										 * Возвращаем подписку, если узел её так и не получил обратно
+										 *
+										 * @warning Обработчик снял готовность выше и положился на то, что
+										 *          обработка вернёт её сама. Она возвращает НЕ ВСЕГДА: узел
+										 *          остаётся без подписки и без взведённого таймера, то есть
+										 *          глохнет навсегда
+										 */
+										if((client->state.status != event::status_t::DESTROYED) && (client->state.status != event::status_t::GARBAGE)){
+											// Если подписка так и не возвращена
+											if(!(client->activity & ::activity::WRITE)){
+												// Отмечаем активность узла
+												client->activity |= ::activity::WRITE;
+												// Возвращаем подписку на событие
+												::events::write(client->transfer.fd, client, event::mode_t::ENABLED, log);
+											}
+										}
 									}
 								// Если идентификатор события совпадает с идентификатором таймаута на запись данных
 								} else if(timer.id == client->timeouts.write.id) {

@@ -63,4 +63,42 @@ for index in range(4000):
 	text = ''.join(random.choice(alphabet) for _ in range(random.randint(1, 30)))
 	open(os.path.join(root, 'rough_%04d.csv' % index), 'w', newline = '', encoding = 'utf-8').write(text)
 
+# Порождение таблиц с настоящим заголовком
+#
+# Корпус выше собирался под разбор БЕЗ заголовка, и ветви заголовка он почти не задевает:
+# у шести таблиц из десяти первая запись несёт пустое имя, и разбор отвергает их прежде
+# сличения. Семейство это заводится ради того, чтобы имена были годными, а сличению
+# доставалось само СОДЕРЖИМОЕ, а не отказ по заголовку
+random.seed(31337)
+
+# Образцы имён полей, годных заголовку
+titles = ['имя', 'a', 'b b', '"в кавычках"', 'ʤ', 'x"y', 'долгое имя поля', 'n1', '_', '0']
+
+for index in range(1000):
+	# Количество полей таблицы
+	width = random.randint(1, 5)
+	# Собираем имена полей заголовка, не допуская повторов и пустых имён
+	names = random.sample(titles, width)
+	# Знак конца строки, общий для всей таблицы
+	newline = random.choice(['\n', '\r\n'])
+
+	def quoted(value):
+		"""Запись поля с отменой кавычек внутри него"""
+
+		# Поле, несущее знаки разбора, берётся в кавычки обязательно
+		if any(letter in value for letter in ',"\n\r'):
+			return '"' + value.replace('"', '""') + '"'
+		# Прочие поля берутся в кавычки через раз
+		return ('"' + value + '"') if (random.random() < 0.3) else value
+
+	text = ','.join(quoted(name) for name in names) + newline
+	# Выполняем сборку записей таблицы ровно по ширине заголовка
+	for _ in range(random.randint(0, 6)):
+		values = []
+		for _ in range(width):
+			value = ''.join(random.choice(pieces) for _ in range(random.randint(0, 3)))
+			values.append(quoted(value))
+		text += ','.join(values) + newline
+	open(os.path.join(root, 'headed_%04d.csv' % index), 'w', newline = '', encoding = 'utf-8').write(text)
+
 print('составлено файлов:', len(os.listdir(root)))

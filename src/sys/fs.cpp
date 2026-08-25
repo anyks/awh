@@ -1985,15 +1985,18 @@ bool awh::Filesystem::mkdir(string_view addr, string_view user, string_view grou
 	// Проверяем существует ли нужный нам каталог
 	if((result = (this->type(addr) == type_t::NONE))){
 		// Создаем каталог
-		if((result = this->mkdir(addr))){
+		if((result = this->mkdir(addr)))
 			/**
-			 * Для операционной системы не являющейся MS Windows
+			 * @warning Охват «не MS Windows» здесь стоял с той поры, когда у метода
+			 *          chown тела под MS Windows ещё не было. Тело появилось - оно
+			 *          ставит владельца через LookupAccountNameW и SetNamedSecurityInfoW,
+			 *          - а охват остался, и каталог создавался там БЕЗ владельца,
+			 *          причём молча: метод отвечал истиной, будто права поставлены.
+			 *          Название группы под MS Windows не применяется, о чём сказано
+			 *          у самого chown, но владелец обязан ставиться на всех системах
 			 */
-			#if !_WIN32 && !_WIN64
-				// Устанавливаем права на каталог
-				result = this->chown(addr, user, group);
-			#endif
-		}
+			// Устанавливаем права на каталог
+			result = this->chown(addr, user, group);
 	}
 	// Сообщаем что каталог и так существует
 	return result;

@@ -591,6 +591,10 @@ bool awh::alloc::Central::occupy(const size_t arena, const bool confined) noexce
  *
  */
 void awh::alloc::Central::ceiling(const size_t limit) noexcept {
+	// Если куча не заведена
+	if(this->_pages == nullptr)
+		// Задавать потолок нечему
+		return;
 	// Захватываем замок кучи
 	hold_t hold(this->_heap);
 	// Задаём куче потолок взятого у источника

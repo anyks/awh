@@ -77,18 +77,17 @@ $ sudo pkgin install git cmake gmake googletest
 $ sudo pkg install git cmake gmake googletest
 ```
 
-> On aarch64 the vendored GPerfTools cannot build its CPU profiler — its `getpc-inl.h` has
-> no entry for that pair of system and architecture. The build turns the profiler off and
-> keeps TcMalloc, which is what the library actually uses.
-
 ### OpenBSD
 
 ```bash
 $ doas pkg_add git cmake gmake googletest
 ```
 
-> TcMalloc is not available on OpenBSD at all: GPerfTools calls `syscall(2)`, which OpenBSD
-> removed on purpose. The system allocator takes its place.
+> On OpenBSD the C runtime calls its allocator directly, by an internal name, so symbol
+> substitution never reaches those calls. Defining the internal names hands them over to
+> us as well, but only under static linking — in a shared `libc` they are already bound
+> inside it. Build with `-DCMAKE_BUILD_ALLOCATOR_OPENBSD_FULL=YES` and link your program
+> with `-static`. Details are in `include/alloc/README.md`.
 
 ### Linux
 
@@ -336,9 +335,9 @@ $ make
 
 Sanitizers are enabled for the test library and every unit test binary at once.
 Use a separate build directory: object files built with and without sanitizers
-are not interchangeable. The TcMalloc allocator is switched off automatically —
-AddressSanitizer replaces the allocator itself, and a second replacement makes it
-blind. The set of sanitizers is chosen by `CMAKE_BUILD_SANITIZE_LIST`
+are not interchangeable. On macOS the built-in allocator drops its symbol
+interposition automatically under a sanitizer — AddressSanitizer replaces the
+allocator itself, and a second replacement makes it blind. The set of sanitizers is chosen by `CMAKE_BUILD_SANITIZE_LIST`
 (`address,undefined` by default; `thread` is incompatible with `address` and is
 enabled separately).
 

@@ -1502,3 +1502,114 @@ TEST(CodecAbcWriter, SpannedIndefinite) {
 	// Выполняем проверку записи с нулевым размахом
 	ASSERT_EQ(submit(compose(0)), abc::error_t::INVALID_LENGTH);
 }
+/**
+ * @brief Проверка того, что порог укладки ссылкой записи не меняет
+ *
+ * @details Содержимое, чей размер порог превысил, ложится ВРЕЗКОЙ, а не копией в буфер.
+ *          Собранная запись обязана от того не измениться ни единым октетом: по ней
+ *          считается подпись контейнера, и запись, зависящая от порога, обратила бы
+ *          подпись в лотерею. Ширина размаха при том обязана считать и уложенное
+ *          ссылкой - без этого объявленный размах уводил бы пропуск не туда
+ *
+ * @note Поверяются разом три выдачи: цельный буфер, куски вразброс и объявленная длина
+ *
+ */
+TEST(CodecAbcWriter, ReferenceKeepsRecord){
+	/**
+	 * @brief Функция сборки записи при заданном пороге укладки ссылкой
+	 *
+	 * @param reference порог укладки содержимого ссылкой в октетах
+	 * @param width     ширина крупного содержимого записи
+	 * @param spanned   признак объявления размаха вместимых
+	 * @param pieces    буфер, куда следует сложить куски собранной записи подряд
+	 * @param length    объявленная длина собранной записи
+	 * @return          собранная запись цельным буфером
+	 */
+	const auto build = [](const size_t reference, const size_t width, const bool spanned,
+	 vector <uint8_t> & pieces, size_t & length) noexcept -> vector <uint8_t> {
+		// Сборка бинарной записи
+		abc::writer_t writer(::logger());
+		// Получаем настройки сборки записи
+		abc::writer_t::settings_t settings = writer.settings();
+		// Выполняем установку порога укладки содержимого ссылкой
+		settings.reference = reference;
+		// Выполняем установку порога объявления размаха вместимых
+		settings.spanned = (spanned ? static_cast <uint64_t> (1) : static_cast <uint64_t> (0));
+		// Выполняем установку настроек сборки записи
+		writer.settings(settings);
+		// Крупное содержимое, какое порог укладки ссылкой и превышает
+		const string big(width, 'B');
+		// Двоичное содержимое той же ширины
+		const vector <uint8_t> blob(width, 0xAB);
+		// Признак успешности укладки значений записи
+		bool held = writer.mapBegin(static_cast <uint64_t> (3));
+		// Выполняем укладку первой пары отображения
+		held = held && writer.text("aa") && writer.text(big);
+		// Выполняем укладку второй пары отображения
+		held = held && writer.text("bb") && writer.blob(blob.data(), blob.size());
+		// Выполняем укладку третьей пары отображения вместимым
+		held = held && writer.text("cc") && writer.arrayBegin(static_cast <uint64_t> (3));
+		// Выполняем укладку значений вместимого
+		held = held && writer.text(big) && writer.number(static_cast <uint64_t> (42)) && writer.text("хвост");
+		// Выполняем закрытие вместимого и отображения
+		held = held && writer.arrayEnd() && writer.mapEnd();
+		// Если уложить запись не удалось
+		if(!held) return {};
+		// Выполняем получение объявленной длины собранной записи
+		length = writer.length();
+		// Выполняем очистку буфера кусков собранной записи
+		pieces.clear();
+		/**
+		 * Выполняем перебор всех кусков собранной записи
+		 */
+		for(const auto & piece : writer.pieces()){
+			// Выполняем получение указателя на октеты очередного куска
+			const uint8_t * octets = reinterpret_cast <const uint8_t *> (piece.buffer);
+			// Выполняем складывание октетов очередного куска подряд
+			pieces.insert(pieces.end(), octets, octets + piece.size);
+		}
+		// Выводим собранную запись цельным буфером
+		return vector <uint8_t> (writer.record().begin(), writer.record().end());
+	};
+	/**
+	 * Выполняем перебор ширины крупного содержимого записи
+	 */
+	for(const size_t width : {static_cast <size_t> (8), static_cast <size_t> (64),
+	 static_cast <size_t> (512), static_cast <size_t> (4096)}){
+		/**
+		 * Выполняем перебор объявления размаха вместимых
+		 */
+		for(const bool spanned : {false, true}){
+			// Буфер кусков эталонной записи
+			vector <uint8_t> pieces;
+			// Объявленная длина эталонной записи
+			size_t length = 0;
+			// Выполняем сборку эталонной записи: порог снят, всё копируется
+			const vector <uint8_t> truth = build(0, width, spanned, pieces, length);
+			// Выполняем проверку того, что эталонная запись собрана
+			ASSERT_FALSE(truth.empty()) << "ширина: " << width;
+			// Выполняем проверку того, что куски эталонной записи сошлись с нею
+			ASSERT_EQ(pieces, truth) << "ширина: " << width;
+			// Выполняем проверку того, что объявленная длина сошлась с записью
+			ASSERT_EQ(length, truth.size()) << "ширина: " << width;
+			/**
+			 * Выполняем перебор порогов укладки содержимого ссылкой
+			 */
+			for(const size_t reference : {static_cast <size_t> (1), static_cast <size_t> (8),
+			 static_cast <size_t> (64), static_cast <size_t> (512), static_cast <size_t> (4096)}){
+				// Буфер кусков собранной записи
+				vector <uint8_t> parts;
+				// Объявленная длина собранной записи
+				size_t declared = 0;
+				// Выполняем сборку записи при очередном пороге укладки ссылкой
+				const vector <uint8_t> record = build(reference, width, spanned, parts, declared);
+				// Выполняем проверку того, что запись сошлась с эталонной октет в октет
+				ASSERT_EQ(record, truth) << "ширина: " << width << ", порог: " << reference;
+				// Выполняем проверку того, что куски сошлись с цельным буфером
+				ASSERT_EQ(parts, record) << "ширина: " << width << ", порог: " << reference;
+				// Выполняем проверку того, что объявленная длина считает и уложенное ссылкой
+				ASSERT_EQ(declared, truth.size()) << "ширина: " << width << ", порог: " << reference;
+			}
+		}
+	}
+}

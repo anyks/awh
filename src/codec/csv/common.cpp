@@ -188,6 +188,10 @@ const char * awh::codec::csv::message(const error_t error) noexcept {
 		case static_cast <uint8_t> (error_t::FILE_NOT_OPENED):
 			// Выводим описание кода ошибки
 			return "cannot open the table file";
+		// Если текст таблицы записать в файл не удалось
+		case static_cast <uint8_t> (error_t::FILE_NOT_WRITTEN):
+			// Выводим описание кода ошибки
+			return "cannot write the table file";
 	}
 	// Выводим сообщение о неизвестной ошибке
 	return "unknown error";

@@ -476,10 +476,31 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод установки настроек записи текста
 					 *
+					 * @details Настройки вступают в силу с ближайшего записываемого поля, а
+					 * записанное прежде остаётся записанным: собранного текста установка эта
+					 * не трогает
+					 *
+					 * @warning Разделитель, знак кавычек и знак конца строки принадлежат
+					 *          ВСЕМУ ФАЙЛУ по устройству самого наречия: таблица знает один
+					 *          разделитель, и читатель определяет его по первой записи. Смена
+					 *          их посреди записи даёт текст, обратно НЕ читаемый, - замер дал
+					 *          четыре записанных поля против трёх прочитанных, - и отказом
+					 *          она не отвечает: своего канала отказа у записи нет вовсе.
+					 *          Настройки эти ставятся до первого поля либо не ставятся вовсе
+					 *
 					 * @param settings настройки записи текста
 					 *
 					 * \~english
 					 * @brief Method of setting the settings of the writing of a text
+					 * @details The settings take effect from the nearest field being written, while
+					 * what has been written before remains written: this setting does not touch the assembled text
+					 * @warning The separator, the quote character and the line ending belong to the WHOLE FILE
+					 *          by the structure of the notation itself: a table knows one separator, and
+					 *          the reader determines it by the first record. Changing them in the middle of the writing
+					 *          gives a text that is NOT readable back — a measurement gave four written fields
+					 *          against three read ones — and it does not answer with a refusal: the writing has
+					 *          no failure channel of its own at all. These settings are set before the first field
+					 *          or are not set at all
 					 * @param settings settings of the writing of a text
 					 *
 					 * \~

@@ -118,6 +118,14 @@ namespace awh {
 			 * объявленную. Правка записи с сохранением того, как она была уложена, - дело
 			 * документа, а не значения
 			 *
+			 * @warning **Замком работа НЕ защищена: один объект — один поток.** Замок держит
+			 * лишь `Editor` — ему он нужен ради фиксации по сроку своим потоком, — и
+			 * равняться по нему нельзя. Замер 25.08.2026, один `Fetcher` на четыре потока:
+			 * тринадцать донесений TSan и девятнадцать неверно прочитанных записей из
+			 * четырёхсот, молча. Свой объект у всякого потока над ОБЩИМ источником чтения:
+			 * ноль донесений, ноль расхождений — источник читается, а не правится, и делится
+			 * свободно
+			 *
 			 * \~english
 			 * @brief Class of an owning value of a document
 			 * @details A value owns its own subtree and is composable: it is put into the containers,
@@ -137,6 +145,12 @@ namespace awh {
 			 * of a record with the preservation of how it was laid is the business of the document rather than of the value
 			 *
 			 * \~
+			 * @warning **The work is NOT protected by a lock: one object — one thread.** Only `Editor`
+			 * holds a lock, and one must not judge the others by it. A measurement of 25.08.2026, one `Fetcher`
+			 * on four threads: thirteen reports of TSan and nineteen records of four hundred read wrongly,
+			 * silently. An own object per thread over a SHARED source of the reading: zero reports,
+			 * zero divergences
+			 *
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Value {
 				public:
@@ -1317,6 +1331,14 @@ namespace awh {
 			 * Договор тот же, что у сборок прочих кодеков, - разнятся лишь имена
 			 * вместилищ, `map` и `array` вместо `table` и `array` у TOML
 			 *
+			 * @warning **Замком работа НЕ защищена: один объект — один поток.** Замок держит
+			 * лишь `Editor` — ему он нужен ради фиксации по сроку своим потоком, — и
+			 * равняться по нему нельзя. Замер 25.08.2026, один `Fetcher` на четыре потока:
+			 * тринадцать донесений TSan и девятнадцать неверно прочитанных записей из
+			 * четырёхсот, молча. Свой объект у всякого потока над ОБЩИМ источником чтения:
+			 * ноль донесений, ноль расхождений — источник читается, а не правится, и делится
+			 * свободно
+			 *
 			 * \~english
 			 * @brief Class of the streaming assembly of an owning value of ABC
 			 * @details The assembly leads the containers itself and relieves the consumer of the traversal
@@ -1324,6 +1346,12 @@ namespace awh {
 			 * The contract is the same as that of the assemblies of the other containers
 			 *
 			 * \~
+			 * @warning **The work is NOT protected by a lock: one object — one thread.** Only `Editor`
+			 * holds a lock, and one must not judge the others by it. A measurement of 25.08.2026, one `Fetcher`
+			 * on four threads: thirteen reports of TSan and nineteen records of four hundred read wrongly,
+			 * silently. An own object per thread over a SHARED source of the reading: zero reports,
+			 * zero divergences
+			 *
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Builder {
 				private:

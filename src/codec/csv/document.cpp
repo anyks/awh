@@ -552,9 +552,23 @@ bool awh::codec::csv::Document::write(const string & filename) const noexcept {
 	/**
 	 * Если файл таблицы открыть не удалось
 	 */
-	if(!file.is_open())
+	/**
+	 * Если файл таблицы открыть не удалось
+	 *
+	 * @note Отказ этот идёт мимо разбора, а вывод в лог ведёт именно он: без настоящего
+	 *       вывода запись файла отказывала бы молча, тогда как чтение того же файла
+	 *       оглашает отказ кодом `FILE_NOT_OPENED`
+	 */
+	if(!file.is_open()){
+		/**
+		 * Если объект для работы с логами установлен
+		 */
+		if(this->_log != nullptr)
+			// Выполняем вывод сообщения об отказе
+			this->_log->print("CSV document failed: %s", log_t::flag_t::CRITICAL, awh::codec::csv::message(error_t::FILE_NOT_OPENED));
 		// Выводим признак неудачной записи
 		return false;
+	}
 	// Запись текста таблицы
 	writer_t writer(this->_log, this->_settings.writer);
 	/**
@@ -600,12 +614,30 @@ bool awh::codec::csv::Document::write(const string & filename) const noexcept {
 	const string text = writer.take();
 	// Записываем остаток собранного текста в файл таблицы
 	file.write(text.data(), static_cast <streamsize> (text.size()));
-	// Получаем признак успешной записи файла таблицы
-	const bool result = static_cast <bool> (file);
-	// Закрываем файл таблицы
+	/**
+	 * Выполняем закрытие файла таблицы ДО сличения исхода
+	 *
+	 * @note Порядок здесь значим: поток сбрасывает свой буфер закрытием своим, и
+	 *       признак, снятый прежде закрытия, отказа сброса не видит. Текст, целиком
+	 *       уместившийся в буфер, уходил бы отказом молча, а вызов отчитывался бы
+	 *       успехом - у кодеков JSON и XML то же место чинено тем же порядком
+	 */
 	file.close();
-	// Выводим результат записи
-	return result;
+	/**
+	 * Если запись текста таблицы в файл не удалась
+	 */
+	if(!file){
+		/**
+		 * Если объект для работы с логами установлен
+		 */
+		if(this->_log != nullptr)
+			// Выполняем вывод сообщения об отказе
+			this->_log->print("CSV document failed: %s", log_t::flag_t::CRITICAL, awh::codec::csv::message(error_t::FILE_NOT_WRITTEN));
+		// Выводим признак неудачной записи
+		return false;
+	}
+	// Выводим признак успешной записи
+	return true;
 }
 /**
  * @brief Метод получения кода ошибки разбора

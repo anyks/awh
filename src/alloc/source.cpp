@@ -102,17 +102,14 @@ size_t awh::alloc::SystemSource::granularity() const noexcept {
 	return detected;
 }
 /**
- * @brief Метод выдачи области страниц
+ * @brief Метод задания просьбы о крупных страницах
  *
- * @param size      требуемый размер в байтах
- * @param alignment требуемое выравнивание в байтах
- * @param actual    действительно выданный размер
- * @return          адрес выданной области либо nullptr
+ * @param wanted признак просьбы о крупных страницах
  *
  */
 void awh::alloc::SystemSource::superpages(const bool wanted) noexcept {
 	// Запоминаем признак просьбы о крупных страницах
-	this->_superpages = wanted;
+	this->_superpages.store(wanted, std::memory_order_relaxed);
 }
 /**
  * @brief Метод задания потолка взятого у системы
@@ -303,7 +300,7 @@ void * awh::alloc::SystemSource::alloc(const size_t size, const size_t alignment
 	 * себе самой и вольного выравнивания не держит. Отказ - обычный исход, и выдача
 	 * идёт дальше обычным путём
 	 */
-	if(this->_superpages && (align <= grain)){
+	if(this->_superpages.load(std::memory_order_relaxed) && (align <= grain)){
 		// Отводим область крупными страницами
 		void * result = __awh_source_huge__(rounded);
 		// Если область отведена
@@ -394,7 +391,7 @@ void * awh::alloc::SystemSource::alloc(const size_t size, const size_t alignment
 		 * страниц отдельным отображением не даёт вовсе, но собирает их из обычных по
 		 * совету. Ни к чему систему он не обязывает, и ответ его нам безразличен
 		 */
-		if(this->_superpages && (probe != MAP_FAILED))
+		if(this->_superpages.load(std::memory_order_relaxed) && (probe != MAP_FAILED))
 			// Советуем системе собрать крупные страницы
 			__awh_source_advise__(probe, span);
 		// Если область не отображена

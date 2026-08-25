@@ -103,6 +103,14 @@ namespace awh {
 			 * подписывается: одинаковое содержимое обязано давать одинаковые октеты, иначе
 			 * подпись при пересборке перестаёт совпадать
 			 *
+			 * @warning **Замком работа НЕ защищена: один объект — один поток.** Замок держит
+			 * лишь `Editor` — ему он нужен ради фиксации по сроку своим потоком, — и
+			 * равняться по нему нельзя. Замер 25.08.2026, один `Fetcher` на четыре потока:
+			 * тринадцать донесений TSan и девятнадцать неверно прочитанных записей из
+			 * четырёхсот, молча. Свой объект у всякого потока над ОБЩИМ источником чтения:
+			 * ноль донесений, ноль расхождений — источник читается, а не правится, и делится
+			 * свободно
+			 *
 			 * \~english
 			 * @brief Class of the assembling of a binary record
 			 * @details The assembling keeps the account of the containers itself: a value beyond the declared length,
@@ -114,6 +122,12 @@ namespace awh {
 			 * the signature ceases to coincide at a reassembling
 			 *
 			 * \~
+			 * @warning **The work is NOT protected by a lock: one object — one thread.** Only `Editor`
+			 * holds a lock, and one must not judge the others by it. A measurement of 25.08.2026, one `Fetcher`
+			 * on four threads: thirteen reports of TSan and nineteen records of four hundred read wrongly,
+			 * silently. An own object per thread over a SHARED source of the reading: zero reports,
+			 * zero divergences
+			 *
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Writer {
 				public:

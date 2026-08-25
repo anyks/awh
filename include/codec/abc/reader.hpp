@@ -110,6 +110,14 @@ namespace awh {
 			 * процентов времени разбора смотря по системе (стенды Linux против macOS). Ради
 			 * этого заведён и сценарий замера «плата за заведение разбирателя»
 			 *
+			 * @warning **Замком работа НЕ защищена: один объект — один поток.** Замок держит
+			 * лишь `Editor` — ему он нужен ради фиксации по сроку своим потоком, — и
+			 * равняться по нему нельзя. Замер 25.08.2026, один `Fetcher` на четыре потока:
+			 * тринадцать донесений TSan и девятнадцать неверно прочитанных записей из
+			 * четырёхсот, молча. Свой объект у всякого потока над ОБЩИМ источником чтения:
+			 * ноль донесений, ноль расхождений — источник читается, а не правится, и делится
+			 * свободно
+			 *
 			 * \~english
 			 * @brief Class of the streaming reading of a binary record
 			 * @details The reading issues the events as the record is parsed without holding it in full.
@@ -124,6 +132,12 @@ namespace awh {
 			 * of what is being parsed at all and therefore falls entirely upon the cheap parsing
 			 *
 			 * \~
+			 * @warning **The work is NOT protected by a lock: one object — one thread.** Only `Editor`
+			 * holds a lock, and one must not judge the others by it. A measurement of 25.08.2026, one `Fetcher`
+			 * on four threads: thirteen reports of TSan and nineteen records of four hundred read wrongly,
+			 * silently. An own object per thread over a SHARED source of the reading: zero reports,
+			 * zero divergences
+			 *
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Reader {
 				public:

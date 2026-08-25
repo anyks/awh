@@ -1358,11 +1358,29 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод извлечения строкового значения
 					 *
+					 * @details Извлечение это отдаёт содержимое узла ВСЕГДА, каким бы оно ни
+					 * было: своих видов у разметки нет вовсе, всякое значение здесь есть текст,
+					 * и отказывать по виду попросту нечему. Узел с записью `1` отвечает истиной
+					 * и выдаёт `1`, хотя извлечение логическим и числовым тот же узел разбирают
+					 *
+					 * @note Кодеки JSON и TOML на том же месте отвечают ОТКАЗОМ, и это НЕ
+					 *       расхождение недосмотром: виды у них есть, и извлечение строкою
+					 *       служит им проверкою вида, а запись выдаётся отдельным способом.
+					 *       Правило следует из устройства наречия, а не из вкуса кодека
+					 *
 					 * @param result переменная, куда помещается извлечённое значение
 					 * @return       признак успешности извлечения
 					 *
 					 * \~english
 					 * @brief Method of the extraction of a string value
+					 * @details This extraction issues the content of the node ALWAYS, whatever it may
+					 * be: the markup has no kinds of its own at all, every value here is a text,
+					 * and there is simply nothing to refuse by the kind. A node with the record `1` answers with a truth
+					 * and issues `1`, although the extraction by a logical and by a numeric parse the same node
+					 * @note The codecs JSON and TOML answer with a REFUSAL at the same place, and this is NOT
+					 *       a divergence by an oversight: they have the kinds, and the extraction by a string
+					 *       serves them as a check of the kind, while the record is issued by a separate means.
+					 *       The rule follows from the structure of the notation rather than from the taste of the codec
 					 * @param result variable where the extracted value is placed
 					 * @return sign of the success of the extraction
 					 *

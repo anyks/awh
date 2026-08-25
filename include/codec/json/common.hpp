@@ -546,11 +546,22 @@ namespace awh {
 			 * задаёт вовсе, и реализации расходятся: одни берут первое значение, другие
 			 * последнее, третьи собирают все
 			 *
+			 * @warning Дерево, разобранное правилом `KEEP`, записывается повторами и
+			 *          обратно читается ЛИШЬ правилом `FIRST`, `LAST` либо `KEEP`:
+			 *          умолчательное правило `ERROR` такой текст отвергает отказом
+			 *          `DUPLICATE_KEY`. Круговой ход через умолчания на нём рвётся, и
+			 *          сохраняющему повторы надлежит знать, чем их потом читать
+			 *
 			 * \~english
 			 * @brief Rules of the handling of a repeating name of a field of an object
 			 * @details The standard permits the repeating names but does not set the behaviour
 			 * for them at all, and the implementations diverge: some take the first value, others
 			 * the last one, the third ones collect all of them
+			 * @warning A tree parsed by the rule `KEEP` is written with the repetitions and is read
+			 *          back ONLY by the rule `FIRST`, `LAST` or `KEEP`: the default rule `ERROR`
+			 *          rejects such a text with a `DUPLICATE_KEY` refusal. The round trip through
+			 *          the defaults breaks upon it, and whoever preserves the repetitions ought to
+			 *          know what will read them afterwards
 			 *
 			 * \~
 			 */
@@ -567,15 +578,28 @@ namespace awh {
 			 *
 			 * @details Разбор определяет вид числа и преобразует его всегда: повторного
 			 * разбора записи не бывает вовсе. Правило это задаёт лишь то, как поступать с
-			 * числом, не вместимым ни в один родной вид, - целым свыше `2^64` либо записью
-			 * точнее `double`
+			 * числом, ВЕЛИЧИНА которого не вмещается ни в один родной вид: целым за пределами
+			 * `int64_t` и `uint64_t` либо дробным, вышедшим за пределы `double` - как вверх,
+			 * обращаясь в бесконечность, так и вниз, обращаясь в нуль
+			 *
+			 * @note Излишняя ТОЧНОСТЬ записи отказом не считается ни при каком правиле:
+			 *       запись `0.1234567890123456789012345` величиною в `double` вмещается и
+			 *       округляется до `0.12345678901234568`, как округлил бы её сам язык.
+			 *       Отвергать всякую запись, точнее `double`, значило бы отвергать и `0.1`,
+			 *       записанное двадцатью знаками, - то есть обычную запись обычного числа
 			 *
 			 * \~english
 			 * @brief Rules of the conversion of the numbers at the parsing
 			 * @details The parsing determines the kind of a number and converts it always: a repeated
 			 * parsing of the record does not happen at all. This rule sets only how to handle a
-			 * number not containable in any native kind — an integer above `2^64` or a record
-			 * more precise than a `double`
+			 * number whose MAGNITUDE is not containable in any native kind: an integer beyond the limits
+			 * of `int64_t` and `uint64_t`, or a real that has left the range of a `double` — either upwards,
+			 * turning into an infinity, or downwards, turning into a zero
+			 * @note An excessive PRECISION of a record is not counted as a refusal under any rule:
+			 *       the record `0.1234567890123456789012345` is containable in a `double` by its magnitude and
+			 *       is rounded to `0.12345678901234568`, as the language itself would round it.
+			 *       To reject every record more precise than a `double` would be to reject `0.1` too,
+			 *       written with twenty digits — that is, an ordinary record of an ordinary number
 			 *
 			 * \~
 			 */

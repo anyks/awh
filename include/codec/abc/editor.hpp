@@ -711,6 +711,12 @@ namespace awh {
 					 * подаётся снаружи: хранить его строкой значило бы платить за него
 					 * всякой записью ради одной лишь уборки
 					 *
+					 * @warning Носитель уборки обязан быть ИНЫМ, нежели тот, откуда контейнер
+					 * читается: уборка читает живые записи кадр за кадром и тут же кладёт
+					 * убранное, и общий носитель разрушается по мере чтения. Отказа при том не
+					 * будет - выйдет успех и урезанный контейнер. Убирать на место исходного
+					 * следует переносом убранного, а не подачей той же работы записи
+					 *
 					 * @param target работа записи октетов убираемого контейнера
 					 * @param kind   вид содержимого записей убираемого контейнера
 					 * @param length полная длина убранного контейнера
@@ -730,6 +736,10 @@ namespace awh {
 					 * @note The kind of the content of a record is not stored by the index, therefore it is submitted
 					 * to the compaction from outside: to store it by a row would mean to pay for it
 					 * at every record for the sake of the compaction alone
+					 * @warning The medium of the compaction is obliged to be OTHER than the one the container
+					 * is read from: the compaction reads the live records chunk by chunk and lays the compacted
+					 * at once, and a shared medium is destroyed as it is read. There will be no refusal at that —
+					 * a success and a truncated container will come out
 					 * @param target work of the writing of the octets of the container being compacted
 					 * @param kind kind of the content of the records of the container being compacted
 					 * @param length full length of the compacted container

@@ -296,6 +296,29 @@ namespace awh {
 					 * \~
 					 */
 					void clear() noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод усечения оглавления до заданного количества строк
+					 *
+					 * @details Служит ОТКАТУ: фиксация вносит строки по ходу записи кадров, а
+					 * отказ посреди неё обязан вернуть оглавление к тому, чем оно было. Без
+					 * отката повторная фиксация вносила строки заново, и записи двоились
+					 *
+					 * @note Количество, большее нынешнего, оглавления не трогает: работа
+					 * усекает, а не заводит строк из ничего
+					 *
+					 * @param size количество строк, до какого следует усечь оглавление
+					 *
+					 * \~english
+					 * @brief Method of the truncation of the index to a given count of the rows
+					 * @details Serves the ROLLBACK: the commit brings the rows in as the chunks are written,
+					 * and a refusal in the middle of it is obliged to return the index to what it was
+					 * @note A count greater than the present one does not touch the index
+					 * @param size count of the rows the index should be truncated to
+					 *
+					 * \~
+					 */
+					void truncate(const size_t size) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -373,6 +396,14 @@ namespace awh {
 			 * в одном кадре, и снимать его наново на всякую запись значило бы платить
 			 * расшифровкой и разжатием за каждую из них
 			 *
+			 * @warning **Замком работа НЕ защищена: один объект — один поток.** Замок держит
+			 * лишь `Editor` — ему он нужен ради фиксации по сроку своим потоком, — и
+			 * равняться по нему нельзя. Замер 25.08.2026, один `Fetcher` на четыре потока:
+			 * тринадцать донесений TSan и девятнадцать неверно прочитанных записей из
+			 * четырёхсот, молча. Свой объект у всякого потока над ОБЩИМ источником чтения:
+			 * ноль донесений, ноль расхождений — источник читается, а не правится, и делится
+			 * свободно
+			 *
 			 * \~english
 			 * @brief Class of the fetching of a record of a container by its number
 			 * @details The fetcher holds in the memory the index and one taken chunk rather than
@@ -386,6 +417,12 @@ namespace awh {
 			 * by a decryption and a decompression for each of them
 			 *
 			 * \~
+			 * @warning **The work is NOT protected by a lock: one object — one thread.** Only `Editor`
+			 * holds a lock, and one must not judge the others by it. A measurement of 25.08.2026, one `Fetcher`
+			 * on four threads: thirteen reports of TSan and nineteen records of four hundred read wrongly,
+			 * silently. An own object per thread over a SHARED source of the reading: zero reports,
+			 * zero divergences
+			 *
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Fetcher {
 				public:
