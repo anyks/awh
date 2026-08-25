@@ -1039,11 +1039,39 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод извлечения строкового значения
 					 *
+					 * @details Извлечение выдаёт ЗАПИСЬ всякого скалярного значения, каков бы
+					 *          ни был разрешённый вид его: число `12` выдаётся записью `12`,
+					 *          признак истины - записью `true`, пустое значение - записью `~`
+					 *          либо тою, какою оно записано. Вместилище - отображение да
+					 *          перечень - отвечает отказом
+					 *
+					 * @note Правило это у пяти кодеков рамки РАЗНОЕ, и разное намеренно - оно
+					 *       следует из устройства наречия, а не выбрано наудачу:
+					 *       @li у XML и INI видов нет вовсе, всякое значение там текст, и
+					 *           отказывать по виду попросту нечему;
+					 *       @li у JSON и TOML виды суть хранение, и извлечение строкою служит
+					 *           им проверкою вида ровно так же, как извлечение числом;
+					 *       @li у YAML вид есть РАЗРЕШЕНИЕ над записанным скаляром, а не
+					 *           хранение его. Запись первична - ею держатся ограда, блочное
+					 *           построение и правило усечения переводов строк, - и выдать её
+					 *           обязано всякое скалярное значение. Отказ по разрешённому виду
+					 *           отнял бы у потребителя доступ к тому, что в файле написано.
+					 *
+					 * @note Общей проверки на все пять кодеков тут быть не должно: она
+					 *       закрепила бы единообразие там, где его нет по устройству
+					 *
 					 * @param result переменная, куда помещается извлечённое значение
 					 * @return       признак успешности извлечения
 					 *
 					 * \~english
 					 * @brief Method of the extraction of a string value
+					 * @details The extraction issues the RECORD of any scalar value, whatever its resolved
+					 * kind: the number `12` is issued by the record `12`, the sign of truth by the record
+					 * `true`. A container — a mapping and a list — answers with a refusal
+					 * @note This rule differs among the five codecs of the framework deliberately: it follows
+					 * from the arrangement of the dialect. XML and INI have no kinds at all; for JSON and TOML
+					 * the kinds are the storage; for YAML a kind is a RESOLUTION over the written scalar, and
+					 * the record is primary
 					 * @param result variable where the extracted value is placed
 					 * @return sign of the success of the extraction
 					 *
