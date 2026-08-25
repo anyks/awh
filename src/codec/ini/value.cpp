@@ -77,6 +77,48 @@ namespace {
 	 */
 	constexpr size_t DEPTH = static_cast <size_t> (awh::codec::ini::MAX_DEPTH);
 	/**
+	 * @brief Функция записи свойства с оградою, значением запомненной
+	 *
+	 * @details Ограда, человеком поставленная, сохраняется при перезаписи наравне со
+	 *          знаком примечания: снимать её значило бы править то, о чём не просили.
+	 *          Дерево настроек поступает так же и тем же способом - подменою настройки
+	 *          на время одной записи: своего довода у записи для этого нет, ограду она
+	 *          ставит по надобности
+	 *
+	 * @note Подмена ведётся лишь при настройке ограждения по надобности: выбери человек
+	 *       ограждение всегда либо никогда - и решение это принадлежит ему, а не памяти
+	 *       прочитанного значения
+	 *
+	 * @param writer объект записи текста настроек
+	 * @param quoted признак значения, оградою обнесённого
+	 * @param key    имя записываемого свойства
+	 * @param value  записываемое значение свойства
+	 * @return       признак успешности записи свойства
+	 *
+	 */
+	static bool quoting(awh::codec::ini::writer_t & writer, const bool quoted, const string & key, const string & value) noexcept {
+		/**
+		 * Если ограду ставить не требуется либо ставит её сама запись
+		 */
+		if(!quoted || (writer.settings().quoting != awh::codec::ini::quoting_t::AUTO))
+			// Выполняем запись свойства как оно есть
+			return writer.property(key, value);
+		// Получаем настройки записи текста настроек
+		awh::codec::ini::writer_t::settings_t current = writer.settings();
+		// Устанавливаем ограждение значения кавычками
+		current.quoting = awh::codec::ini::quoting_t::ALWAYS;
+		// Выполняем установку настроек записи текста настроек
+		writer.settings(current);
+		// Выполняем запись свойства со значением
+		const bool result = writer.property(key, value);
+		// Возвращаем ограждение значения кавычками по надобности
+		current.quoting = awh::codec::ini::quoting_t::AUTO;
+		// Выполняем установку настроек записи текста настроек
+		writer.settings(current);
+		// Выводим признак успешности записи свойства
+		return result;
+	}
+	/**
 	 * @brief Функция проверки записи на числовую
 	 *
 	 * @param text  проверяемая запись
@@ -1237,6 +1279,16 @@ void awh::codec::ini::Value::absorb(const Document & document) noexcept {
 			// Получаем перечень значений одноимённого свойства
 			const vector <string_view> values = document.values(key, section, subsection);
 			/**
+			 * Получаем перечень признаков ограды значений свойства
+			 *
+			 * @note Ограда снимается наравне с содержимым: человек, писавший файл руками,
+			 *       поставил её сам, и владеющее значение, её потерявшее, переписало бы
+			 *       файл иначе, чем тот был написан. Перечень выдаётся длиною ровно с
+			 *       перечень значений, но проверка длины стоит всё равно: расходись они -
+			 *       и обращение по номеру ушло бы за край
+			 */
+			const vector <bool> quotes = document.quotes(key, section, subsection);
+			/**
 			 * Если значений одноимённого свойства нет вовсе
 			 */
 			if(values.empty())
@@ -1247,7 +1299,7 @@ void awh::codec::ini::Value::absorb(const Document & document) noexcept {
 			 */
 			if(values.size() == 1){
 				// Выполняем установку простого значения свойства
-				holder.insert(string(key), Value(string(values.front())));
+				holder.insert(string(key), Value(string(values.front()), (!quotes.empty() && quotes.front())));
 				// Выполняем переход к следующему свойству раздела
 				continue;
 			}
@@ -1262,9 +1314,9 @@ void awh::codec::ini::Value::absorb(const Document & document) noexcept {
 			/**
 			 * Выполняем перебор всех значений одноимённого свойства
 			 */
-			for(auto & value : values)
+			for(size_t i = 0; i < values.size(); i++)
 				// Выполняем добавление очередного значения в перечень
-				listed.push(Value(string(value)));
+				listed.push(Value(string(values.at(i)), ((i < quotes.size()) && quotes.at(i))));
 			// Выполняем установку перечня значений свойства
 			holder.insert(string(key), listed);
 		}
@@ -1503,7 +1555,7 @@ string awh::codec::ini::Value::dump(const writer_t::settings_t & settings) const
 					 *       Повтор же имени читается настройкой `duplicates` в перечень -
 					 *       ровно тем способом, каким этот перечень и был снят
 					 */
-					if(!writer.property(holder._names.at(i), item._items.at(j)._text))
+					if(!::quoting(writer, item._items.at(j)._quoted, holder._names.at(i), item._items.at(j)._text))
 						// Выводим признак неудачной записи
 						return false;
 				}
@@ -1519,7 +1571,7 @@ string awh::codec::ini::Value::dump(const writer_t::settings_t & settings) const
 			/**
 			 * Если записать простое свойство не удалось
 			 */
-			if(!writer.property(holder._names.at(i), item._text))
+			if(!::quoting(writer, item._quoted, holder._names.at(i), item._text))
 				// Выводим признак неудачной записи
 				return false;
 		}
