@@ -25,7 +25,16 @@
 #include <limits>
 #include <fstream>
 #include <csignal>
-#include <sys/resource.h>
+
+/**
+ * Заголовок пределов ресурсов процесса нужен лишь системам POSIX
+ *
+ * @note У MS Windows его нет вовсе, и подключение без заслона валило сборку ВСЕГО
+ *       набора JSON - под этой системой не шла ни одна его проверка
+ */
+#if !defined(_WIN32) && !defined(_WIN64)
+	#include <sys/resource.h>
+#endif
 
 /**
  * Подключаем заголовочные файлы проекта
@@ -1717,6 +1726,10 @@ TEST(CodecJsonDocument, WriteFailureIsNotSuccess) {
 	json::document_t document(&log);
 	// Выполняем проверку разбора собранного текста документа
 	ASSERT_TRUE(document.parse(text));
+/**
+ * Для систем, не являющихся MS Windows
+ */
+#if !defined(_WIN32) && !defined(_WIN64)
 	/**
 	 * @brief Сторож предельного размера файла процесса
 	 *
@@ -1758,14 +1771,48 @@ TEST(CodecJsonDocument, WriteFailureIsNotSuccess) {
 	} guard;
 	// Адрес файла, в который ведётся запись документа
 	const string filename = "./awh-codec-json-write-failure.json";
+/**
+ * Для операционной системы MS Windows
+ */
+#else
+	/**
+	 * Отказ записи добывается НЕПРИГОДНЫМ ПУТЁМ, а не пределом размера файла
+	 *
+	 * @details Предела `RLIMIT_FSIZE` у MS Windows нет вовсе, и повторить им усечённую
+	 *          запись нельзя. Отступить же здесь молча означало бы отменить проверку:
+	 *          отступающая проверка выглядит пройденной. Оттого берётся путь в
+	 *          несуществующем каталоге - запись по нему отвечает отказом достоверно,
+	 *          и оглашение отказа в журнале проверяется тем же утверждением
+	 *
+	 * @warning Проверяется при этом ИНОЙ путь отказа: у POSIX запись начинается и
+	 *          обрывается пределом, здесь же не удаётся само заведение файла. Общим
+	 *          остаётся требуемое - отказ обязан быть оглашён, а не проглочен
+	 */
+	const string filename = "./awh-nonexistent-directory/write-failure.json";
+#endif
 	// Выполняем снос прежнего файла документа
 	::remove(filename.c_str());
 	// Выполняем проверку отказа записи усечённого файла документа
 	ASSERT_FALSE(document.save(filename));
 	// Выполняем проверку оглашения отказа в журнале
 	ASSERT_FALSE(messages.empty());
-	// Выполняем проверку упоминания причины отказа в сообщении
-	ASSERT_NE(messages.back().find(json::message(json::error_t::FILE_NOT_WRITTEN)), string::npos) << messages.back();
+	/**
+	 * Выполняем проверку упоминания причины отказа в сообщении
+	 *
+	 * @note Код причины у систем РАЗНЫЙ, и это не послабление: у POSIX запись
+	 *       начинается и обрывается пределом размера файла, оттого причиной служит
+	 *       FILE_NOT_WRITTEN; у MS Windows предела такого нет, отказ добывается
+	 *       непригодным путём, и не удаётся само заведение файла - FILE_NOT_OPENED.
+	 *       Требуемое же у обеих систем одно и то же и проверяется одинаково строго:
+	 *       отказ обязан быть ОГЛАШЁН, а не проглочен молча
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Выполняем проверку упоминания причины обрыва записи
+		ASSERT_NE(messages.back().find(json::message(json::error_t::FILE_NOT_WRITTEN)), string::npos) << messages.back();
+	#else
+		// Выполняем проверку упоминания причины невозможности завести файл
+		ASSERT_NE(messages.back().find(json::message(json::error_t::FILE_NOT_OPENED)), string::npos) << messages.back();
+	#endif
 	// Выполняем снос усечённого файла документа
 	::remove(filename.c_str());
 }

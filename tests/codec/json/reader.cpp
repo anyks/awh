@@ -1634,3 +1634,54 @@ TEST(CodecJsonReader, FeedAfterLastChunkRefused) {
 	// Выполняем проверку того, что разбор дошёл до конца без отказа
 	ASSERT_EQ(reader.error(), json::error_t::NONE);
 }
+
+/**
+ * @brief Проверка сохранности места отказа при снятии событий
+ *
+ * @details События, собранные до отказа, снимаются потребителем уже после него, и всякое
+ * снятое событие место текущего события переписывает. Одним полем на место события и
+ * место отказа последнее терялось обычным ходом работы: у текста «[1,2,@]» смещение
+ * отказа 5 обращалось в 3 по снятии трёх событий
+ *
+ */
+TEST(CodecJsonReader, ErrorLocationSurvivesEventDraining) {
+	/**
+	 * @brief Ожидаемое место отказа разбора
+	 *
+	 */
+	struct Probe {
+		// Разбираемый текст документа
+		const char * text;
+		// Ожидаемое смещение отказа от начала текста
+		uint64_t offset;
+	};
+	// Перечень разбираемых текстов с местами отказа в них
+	const vector <Probe> probes = {
+		{"[@]", 1},
+		{"[1,x]", 3},
+		{"[1,2,@]", 5}
+	};
+	/**
+	 * Выполняем перебор всех разбираемых текстов
+	 */
+	for(const Probe & probe : probes){
+		// Чтение документа
+		json::reader_t reader(::logger());
+		// Длина разбираемого текста документа
+		const size_t size = ::strlen(probe.text);
+		// Выполняем подачу разбираемого текста целиком
+		reader.feed(probe.text, size, true);
+		// Выполняем проверку отказа разбора поданного текста
+		ASSERT_NE(reader.error(), json::error_t::NONE) << probe.text;
+		// Выполняем проверку места отказа сразу после подачи
+		ASSERT_EQ(reader.errorLocation().offset, probe.offset) << probe.text;
+		/**
+		 * Выполняем снятие всех собранных до отказа событий
+		 */
+		while(reader.next())
+			// Выполняем обращение к месту текущего события
+			(void) reader.location();
+		// Выполняем проверку сохранности места отказа после снятия событий
+		ASSERT_EQ(reader.errorLocation().offset, probe.offset) << probe.text;
+	}
+}

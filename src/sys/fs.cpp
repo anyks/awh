@@ -715,7 +715,7 @@ void awh::Filesystem::symlink(string_view first, string_view second) const noexc
 								// Получаем адрес каталога где хранится файл
 								const string & working = filename.substr(0, pos + 1);
 								// Извлекаем имя файла
-								string name = ::move(filename.substr(pos + 1, filename.length() - (pos + static_cast <size_t> (offset))));
+								string name = filename.substr(pos + 1, filename.length() - (pos + static_cast <size_t> (offset)));
 								// Ищем расширение файла
 								if((pos = name.find('.')) != string::npos)
 									// Устанавливаем имя файла
@@ -1680,9 +1680,9 @@ bool awh::Filesystem::chown(string_view addr, string_view user, [[maybe_unused]]
 			// Размер SID-а пользователя/группы и домена пользователя
 			DWORD sidSize = 0, domainSize = 0;
 			// Получаем путь к файлу
-			wstring fileName = ::move(this->_fmk->convert(addr.data()));
+			wstring fileName = this->_fmk->convert(addr.data());
 			// Получаем имя пользователя
-			wstring userName = ::move(this->_fmk->convert(user.data()));
+			wstring userName = this->_fmk->convert(user.data());
 			// Первый вызов — получаем размеры буферов
 			::LookupAccountNameW(nullptr, userName.c_str(), nullptr, &sidSize, nullptr, &domainSize, &sidType);
 			// Если мы получиши ошибку извлечения размеров буфера
@@ -1719,7 +1719,7 @@ bool awh::Filesystem::chown(string_view addr, string_view user, [[maybe_unused]]
 				return result;
 			}
 			// Объект параметров доступа
-			EXPLICIT_ACCESSW ea = {0};
+			EXPLICIT_ACCESSW ea = {};
 			// Зануляем объект параметров доступа
 			::ZeroMemory(&ea, sizeof(EXPLICIT_ACCESS));
 			// Устанавливаем новые права
@@ -3657,7 +3657,7 @@ void awh::Filesystem::readfile(string_view filename, const function <void (strin
 							 */
 							while(li.QuadPart < length.QuadPart){
 								// Создаём объект перекрытого ввода-вывода
-								OVERLAPPED overlapped = {0};
+								OVERLAPPED overlapped = {};
 								// Устанавливаем смещение для чтения
 								overlapped.Offset = li.LowPart;
 								// Устанавливаем старшее смещение для чтения
@@ -3948,7 +3948,7 @@ void awh::Filesystem::readfile(string_view filename, const size_t size, const fu
 							 */
 							while(li.QuadPart < length.QuadPart){
 								// Создаём объект перекрытого ввода-вывода
-								OVERLAPPED overlapped = {0};
+								OVERLAPPED overlapped = {};
 								// Устанавливаем смещение для чтения
 								overlapped.Offset = li.LowPart;
 								// Устанавливаем старшее смещение для чтения

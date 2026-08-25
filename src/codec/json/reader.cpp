@@ -935,6 +935,8 @@ void awh::codec::json::Reader::reset() noexcept {
 	this->_current = item_t();
 	// Сбрасываем положение текущего события в исходном тексте
 	this->_position = location_t();
+	// Сбрасываем положение обнаруженного отказа в исходном тексте
+	this->_failure = location_t();
 	// Сбрасываем смещение от начала текста
 	this->_offset = 0;
 	// Устанавливаем номер первой строки текста
@@ -1077,6 +1079,16 @@ const awh::codec::json::location_t & awh::codec::json::Reader::location() const 
 	return this->_position;
 }
 /**
+ * @brief Метод получения места обнаружения отказа
+ *
+ * @return положение обнаруженного отказа в исходном тексте
+ *
+ */
+const awh::codec::json::location_t & awh::codec::json::Reader::errorLocation() const noexcept {
+	// Выводим положение обнаруженного отказа в исходном тексте
+	return this->_failure;
+}
+/**
  * @brief Метод извлечения кода отказа разбора
  *
  * @return код отказа разбора
@@ -1210,6 +1222,16 @@ bool awh::codec::json::Reader::fail(const error_t error) noexcept {
 	this->_position.column = this->_column;
 	// Устанавливаем глубину вложенности, на какой произошёл отказ
 	this->_position.depth = static_cast <uint32_t> (this->_nesting.size());
+	/**
+	 * Запоминаем место отказа отдельным полем
+	 *
+	 * @note Одного поля на место события и место отказа мало: события, собранные до
+	 *       отказа, снимаются потребителем уже после него, и всякое снятое событие
+	 *       место текущего события переписывает - место отказа терялось обычным ходом
+	 *       работы. Замер дал у текста «[1,2,@]» смещение 5 сразу после подачи и 3
+	 *       после снятия трёх событий
+	 */
+	this->_failure = this->_position;
 	/**
 	 * Если объект ведения журнала работы установлен
 	 *

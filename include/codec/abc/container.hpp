@@ -702,12 +702,25 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод выдачи содержимого очередного кадра
 					 *
+					 * @note Отсутствие кадра НЕ означает отказа: кадр вправе быть ещё не подан
+					 * целиком. Отличаются два эти положения кодом отказа - `TRUNCATED_HEADER` и
+					 * `TRUNCATED_CHUNK` значат «подай ещё октетов», а не «всё пропало»; при
+					 * `NONE` кадры кончились. Снятие продолжается подачей и новым вызовом,
+					 * сбрасывать сниматель при этом НЕ нужно
+					 *
+					 * @note Конец тела опознаётся `complete()`, а не концом кадров: за телом
+					 * лежат оглавление, запись подписи и хвостовой заголовок
+					 *
 					 * @param result буфер, куда следует положить содержимое кадра
 					 * @param chunk  снятые сведения о кадре
 					 * @return       признак выданного кадра
 					 *
 					 * \~english
 					 * @brief Method of the issuing of the content of the next chunk
+					 * @note The absence of a chunk does NOT mean a refusal: the chunk may be not yet
+					 * submitted in full. The codes `TRUNCATED_HEADER` and `TRUNCATED_CHUNK` mean
+					 * "submit more octets" rather than "all is lost"; at `NONE` the chunks are over
+					 * @note The end of the body is recognised by `complete()` rather than by the end of the chunks
 					 * @param result buffer the content of the chunk should be placed into
 					 * @param chunk taken information about the chunk
 					 * @return sign of an issued chunk

@@ -185,6 +185,144 @@ namespace {
 	 * @return     признак того, что устройство найдено
 	 *
 	 */
+	/**
+	 * @brief Объявление функции получения опознавателя устройства по его названию
+	 *
+	 * @note Объявление нужно наперёд: поиск по таблице стоит выше её тела, а разносить
+	 *       посредники по файлу ради порядка обращений незачем
+	 *
+	 * @param name название сетевого устройства
+	 * @param luid опознаватель устройства
+	 * @return     результат получения опознавателя
+	 *
+	 */
+	bool __awh_ifluid__(const string & name, NET_LUID & luid) noexcept;
+	/**
+	 * @brief Функция поиска маршрута в таблице системы
+	 *
+	 * @details Отвечает на вопрос «есть ли ТАКОЙ маршрут», а не «каким путём пойдёт
+	 *          пакет»: второе выдаёт `GetBestRoute2`, и после сноса заданного маршрута
+	 *          он отвечает маршрутом по умолчанию, отчего проверить снос им нельзя
+	 *
+	 *          Условия совпадения взяты у эталонного бэкенда BSD: сличается лишь то,
+	 *          что названо, - шлюз при ненулевом значении, назначение при ненулевом,
+	 *          устройство при непустом названии. Длина префикса не сличается: ищущий
+	 *          её обычно не знает, а у эталона её тоже нет в условиях
+	 *
+	 * @param route объект маршрута: и условия поиска, и место для ответа
+	 * @param log   объект работы с логами
+	 * @return      результат поиска маршрута
+	 *
+	 */
+	bool __awh_lookup__(awh::eth::gateway_t::route_t & route, const awh::log_t * log) noexcept {
+		// Семейство адресов, в каком идёт поиск
+		const ADDRESS_FAMILY family = (route.destination->size == 4 ? AF_INET : AF_INET6);
+		// Искомый адрес назначения в виде записи системы
+		SOCKADDR_INET destination{};
+		// Если перевести адрес назначения не удалось
+		if(!::__awh_to_sockaddr__(route.destination.get(), destination)){
+			// Выводим в журнал сообщение о неподдерживаемом виде адреса
+			log->print("%s: only IPv4 and IPv6 destinations are supported", awh::log_t::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__);
+			// Выводим отрицательный результат поиска
+			return false;
+		}
+		// Искомый адрес шлюза в виде записи системы
+		SOCKADDR_INET gateway{};
+		// Признак того, что шлюз участвует в условиях поиска
+		bool byGateway = false;
+		// Если шлюз передан, переводим его в запись системы
+		if(route.gateway != nullptr)
+			// Отмечаем участие шлюза в условиях по успеху перевода
+			byGateway = ::__awh_to_sockaddr__(route.gateway.get(), gateway);
+		// Если шлюз назван нулевым адресом, из условий он выбывает
+		if(byGateway && (family == AF_INET))
+			// Снимаем условие при нулевом адресе шлюза
+			byGateway = (gateway.Ipv4.sin_addr.s_addr != 0);
+		// Опознаватель устройства, каким задан маршрут
+		NET_LUID luid{};
+		// Признак того, что устройство участвует в условиях поиска
+		bool byInterface = false;
+		// Если название устройства передано
+		if(!route.ifname.empty()){
+			// Если опознаватель устройства получить не удалось
+			if(!::__awh_ifluid__(route.ifname, luid)){
+				// Выводим в журнал сообщение о ненайденном устройстве
+				log->print("%s: interface \"%s\" was not found", awh::log_t::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__, route.ifname.c_str());
+				// Выводим отрицательный результат поиска
+				return false;
+			}
+			// Отмечаем участие устройства в условиях поиска
+			byInterface = true;
+		}
+		// Признак того, что назначение участвует в условиях поиска
+		const bool byDestination = ((family == AF_INET)
+			? (destination.Ipv4.sin_addr.s_addr != 0)
+			: (::memcmp(&destination.Ipv6.sin6_addr, &::in6addr_any, sizeof(struct in6_addr)) != 0));
+		// Таблица маршрутов системы
+		PMIB_IPFORWARD_TABLE2 table = nullptr;
+		// Если снять таблицу маршрутов не удалось
+		if(::GetIpForwardTable2(family, &table) != NO_ERROR){
+			// Выводим в журнал сообщение о невозможности снять таблицу
+			log->print("%s: route table could not be read", awh::log_t::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__);
+			// Выводим отрицательный результат поиска
+			return false;
+		}
+		// Признак того, что маршрут найден
+		bool result = false;
+		/**
+		 * Обходим все записи таблицы маршрутов
+		 */
+		for(ULONG i = 0; (i < table->NumEntries) && !result; i++){
+			// Получаем очередную запись таблицы
+			const MIB_IPFORWARD_ROW2 & row = table->Table[i];
+			// Если семейство записи не совпадает с искомым, запись пропускается
+			if(row.DestinationPrefix.Prefix.si_family != family)
+				// Переходим к следующей записи
+				continue;
+			// Если назначение названо и не совпало, запись пропускается
+			if(byDestination){
+				// Если адреса назначения различаются
+				if((family == AF_INET)
+					? (row.DestinationPrefix.Prefix.Ipv4.sin_addr.s_addr != destination.Ipv4.sin_addr.s_addr)
+					: (::memcmp(&row.DestinationPrefix.Prefix.Ipv6.sin6_addr, &destination.Ipv6.sin6_addr, sizeof(struct in6_addr)) != 0))
+					// Переходим к следующей записи
+					continue;
+			}
+			// Если шлюз назван и не совпал, запись пропускается
+			if(byGateway){
+				// Если адреса шлюза различаются
+				if((family == AF_INET)
+					? (row.NextHop.Ipv4.sin_addr.s_addr != gateway.Ipv4.sin_addr.s_addr)
+					: (::memcmp(&row.NextHop.Ipv6.sin6_addr, &gateway.Ipv6.sin6_addr, sizeof(struct in6_addr)) != 0))
+					// Переходим к следующей записи
+					continue;
+			}
+			// Если устройство названо и не совпало, запись пропускается
+			if(byInterface && (row.InterfaceLuid.Value != luid.Value))
+				// Переходим к следующей записи
+				continue;
+			// Заполняем название устройства найденного маршрута
+			route.ifname = ::__awh_ifname__(row.InterfaceLuid);
+			// Заполняем длину префикса найденного маршрута
+			route.prefix = static_cast <uint8_t> (row.DestinationPrefix.PrefixLength);
+			// Заполняем адрес шлюза найденного маршрута
+			route.gateway = ::__awh_from_sockaddr__(row.NextHop);
+			// Отмечаем маршрут найденным
+			result = true;
+		}
+		// Освобождаем таблицу маршрутов
+		::FreeMibTable(table);
+		// Выводим результат поиска маршрута
+		return result;
+	}
+	/**
+	 * @brief Функция получения опознавателя устройства по его названию
+	 *
+	 * @param name название сетевого устройства
+	 * @param luid опознаватель устройства
+	 * @return     результат получения опознавателя
+	 *
+	 */
 	bool __awh_ifluid__(const string & name, NET_LUID & luid) noexcept {
 		// Если название устройства не передано
 		if(name.empty())
@@ -258,6 +396,81 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 		this->_log->print("%s: destination address is not initialized", log_t::flag_t::CRITICAL, ::__AWH_GATEWAY_BACKEND__);
 		// Выводим отрицательный результат получения
 		return false;
+	}
+	/**
+	 * Разделяем два вопроса, какие метод обязан различать
+	 *
+	 * @details Назван лишь пустой адрес - спрашивается маршрут ПО УМОЛЧАНИЮ, и на него
+	 *          отвечает сама система. Названы адрес, шлюз либо устройство - спрашивается
+	 *          НАЛИЧИЕ такого маршрута в таблице, и отвечать на него `GetBestRoute2`
+	 *          нельзя: он выдаёт путь, каким машина пошла бы к адресу, и после сноса
+	 *          заданного маршрута честно отвечает маршрутом по умолчанию
+	 *
+	 * @warning Различия этого прежде не было, и метод отвечал успехом ВСЕГДА, пока в
+	 *          системе есть маршрут по умолчанию. Проверить снос им было нельзя вовсе:
+	 *          GatewayRemoveByInterfaceIPv4 находила снесённый маршрут. Условия
+	 *          совпадения взяты у эталонного бэкенда BSD дословно - шлюз, назначение и
+	 *          устройство сличаются лишь тогда, когда названы; длина префикса не
+	 *          сличается, потому что спрашивающий её обычно не знает
+	 */
+	{
+		// Признак того, что назначение не названо
+		bool emptyDestination = true;
+		/**
+		 * Определяем, названо ли назначение
+		 */
+		switch(route.destination->size){
+			// Для адреса IPv4
+			case 4:
+				// Назначение считается неназванным при нулевом адресе
+				emptyDestination = (awh_cast <net::addr_net_ipv4_t *> (route.destination.get())->address == 0);
+			break;
+			// Для адреса IPv6
+			case 16: {
+				// Обходим все октеты адреса назначения
+				for(uint8_t i = 0; i < 16; i++){
+					// Если очередной октет ненулевой
+					if(awh_cast <net::addr_net_ipv6_t *> (route.destination.get())->address[i] != 0){
+						// Отмечаем назначение названным
+						emptyDestination = false;
+						// Прекращаем обход
+						break;
+					}
+				}
+			} break;
+		}
+		// Признак того, что шлюз не назван
+		bool emptyGateway = true;
+		// Если шлюз передан
+		if(route.gateway != nullptr){
+			/**
+			 * Определяем, названо ли значение шлюза
+			 */
+			switch(route.gateway->size){
+				// Для адреса IPv4
+				case 4:
+					// Шлюз считается неназванным при нулевом адресе
+					emptyGateway = (awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address == 0);
+				break;
+				// Для адреса IPv6
+				case 16: {
+					// Обходим все октеты адреса шлюза
+					for(uint8_t i = 0; i < 16; i++){
+						// Если очередной октет ненулевой
+						if(awh_cast <net::addr_net_ipv6_t *> (route.gateway.get())->address[i] != 0){
+							// Отмечаем шлюз названным
+							emptyGateway = false;
+							// Прекращаем обход
+							break;
+						}
+					}
+				} break;
+			}
+		}
+		// Если спрошено наличие ЗАДАННОГО маршрута, отвечаем поиском по таблице
+		if(!emptyDestination || !emptyGateway || !route.ifname.empty())
+			// Выводим результат поиска маршрута в таблице системы
+			return ::__awh_lookup__(route, this->_log);
 	}
 	// Адрес назначения в виде записи системы
 	SOCKADDR_INET destination{};

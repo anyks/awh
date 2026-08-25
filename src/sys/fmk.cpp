@@ -7983,7 +7983,7 @@ void awh::Framework::setLocale(string_view locale) noexcept {
 		 */
 		#if _WIN32 || _WIN64
 			// Параметры устанавливаемого шрифта
-			CONSOLE_FONT_INFOEX fontInfo = {0};
+			CONSOLE_FONT_INFOEX fontInfo = {};
 			// Устанавливаем размер буфера шрифта
 			fontInfo.cbSize = sizeof(CONSOLE_FONT_INFOEX);
 			// Формируем параметры шрифта

@@ -215,6 +215,24 @@ void awh::codec::abc::Document::assemble(void * context, reader_t & reader, cons
 	}
 }
 /**
+ * @brief Функция поверки места в хранилище октетов дерева документа
+ *
+ * @details Узел дерева держит смещение и длину содержимого тридцатью двумя разрядами
+ *          НАМЕРЕННО: дерево тем и живо, что тесно, а восемьдесят разрядов на узел
+ *          стоили бы памяти на всяком документе ради невиданного. Но выход за предел
+ *          обязан быть ОТКАЗОМ, а не усечением: усечённое смещение указывает в чужое
+ *          место хранилища, и узел молча выдаёт не своё содержимое
+ *
+ * @param held объём хранилища, уже занятый содержимым
+ * @param size объём содержимого, какое требуется положить
+ * @return     признак того, что содержимое в хранилище умещается
+ *
+ */
+static bool room(const size_t held, const size_t size) noexcept {
+	// Выводим признак того, что содержимое умещается в предел смещения узла
+	return (size <= (static_cast <size_t> (numeric_limits <uint32_t>::max()) - held));
+}
+/**
  * @brief Метод сборки дерева документа по событию разбора
  *
  * @param context указание на состояние сборки дерева документа
@@ -242,6 +260,13 @@ bool awh::codec::abc::Document::digest(void * context, Document * self, const re
 	if(state->segment != numeric_limits <uint32_t>::max()){
 		// Выполняем получение значения снятого куска
 		const reader_t::value_t chunk = reader.value();
+		// Если кусок значения в хранилище октетов не умещается
+		if(!::room(self->_storage.size(), chunk.data.size())){
+			// Выполняем установку кода отказа недопустимой длины
+			self->fail(error_t::INVALID_LENGTH);
+			// Сообщаем, что сборка дерева отвечена отказом
+			return false;
+		}
 		// Выполняем перенос содержимого куска в хранилище
 		self->_storage.append(chunk.data);
 		// Выполняем наращивание длины содержимого собираемого значения
@@ -280,6 +305,13 @@ bool awh::codec::abc::Document::digest(void * context, Document * self, const re
 	 * Если событием является начало значения, собираемого кусками
 	 */
 	if((event == event_t::STRING_BEGIN) || (event == event_t::BLOB_BEGIN)){
+		// Если хранилище октетов исчерпано, смещение содержимого узлу негодно
+		if(!::room(self->_storage.size(), 0)){
+			// Выполняем установку кода отказа недопустимой длины
+			self->fail(error_t::INVALID_LENGTH);
+			// Сообщаем, что сборка дерева отвечена отказом
+			return false;
+		}
 		// Выполняем установку вида значения узла
 		node.type = value.type;
 		// Выполняем установку смещения содержимого в хранилище
@@ -320,6 +352,13 @@ bool awh::codec::abc::Document::digest(void * context, Document * self, const re
 		case static_cast <uint32_t> (type_t::STRING):
 		case static_cast <uint32_t> (type_t::BLOB):
 		case static_cast <uint32_t> (type_t::UUID): {
+			// Если содержимое значения в хранилище октетов не умещается
+			if(!::room(self->_storage.size(), value.data.size())){
+				// Выполняем установку кода отказа недопустимой длины
+				self->fail(error_t::INVALID_LENGTH);
+				// Сообщаем, что сборка дерева отвечена отказом
+				return false;
+			}
 			// Выполняем установку смещения содержимого в хранилище
 			node.offset = static_cast <uint32_t> (self->_storage.size());
 			// Выполняем установку длины содержимого
@@ -332,6 +371,13 @@ bool awh::codec::abc::Document::digest(void * context, Document * self, const re
 		 */
 		case static_cast <uint32_t> (type_t::EXTENDED):
 		case static_cast <uint32_t> (type_t::DECIMAL): {
+			// Если величина вместе с порядком в хранилище октетов не умещается
+			if(!::room(self->_storage.size(), value.data.size() + 8)){
+				// Выполняем установку кода отказа недопустимой длины
+				self->fail(error_t::INVALID_LENGTH);
+				// Сообщаем, что сборка дерева отвечена отказом
+				return false;
+			}
 			// Выполняем установку смещения содержимого в хранилище
 			node.offset = static_cast <uint32_t> (self->_storage.size());
 			// Выполняем установку длины октетов величины
@@ -356,6 +402,13 @@ bool awh::codec::abc::Document::digest(void * context, Document * self, const re
 		 * Если значение является открытым расширением
 		 */
 		case static_cast <uint32_t> (type_t::CUSTOM): {
+			// Если расширение вместе с номером подвида в хранилище не умещается
+			if(!::room(self->_storage.size(), value.data.size() + 8)){
+				// Выполняем установку кода отказа недопустимой длины
+				self->fail(error_t::INVALID_LENGTH);
+				// Сообщаем, что сборка дерева отвечена отказом
+				return false;
+			}
 			// Выполняем установку смещения содержимого в хранилище
 			node.offset = static_cast <uint32_t> (self->_storage.size());
 			// Выполняем установку длины октетов расширения

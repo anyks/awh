@@ -585,15 +585,28 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод снятия значения с узла дерева разметки
 					 *
-					 * @param node узел дерева разметки
+					 * @details Дерево глубже предела `MAX_DEPTH` не снимается вовсе: снятие
+					 * возвратно, и глубина дерева ложится прямо на стек вызовов - замер дал
+					 * срыв стека около 20 000 уровней. Дерево, снятию не поддавшееся,
+					 * оставляет значение неопределённым, как оставляет его и узел
+					 * недействительный, а причина уходит в журнал
+					 *
+					 * @param node  узел дерева разметки
+					 * @param depth глубина вложенности снимаемого узла
+					 * @return      признак успешности снятия
 					 *
 					 * \~english
 					 * @brief Method of the taking of a value from a node of a markup tree
-					 * @param node node of the markup tree
+					 * @details A tree deeper than the limit `MAX_DEPTH` is not taken at all: the taking
+					 * is recursive, and the depth of the tree falls directly upon the stack of the calls — a measurement gave
+					 * an overflow of the stack at about 20 000 levels. A tree that has not yielded to the taking
+					 * leaves the value undefined, just as an invalid node leaves it, while the reason goes to the log
+					 * @param node  node of the markup tree
+					 * @param depth depth of the nesting of the node being taken
 					 *
 					 * \~
 					 */
-					void absorb(const node_t & node) noexcept;
+					bool absorb(const node_t & node, const uint32_t depth = 0) noexcept;
 				private:
 					/**
 					 * \~russian

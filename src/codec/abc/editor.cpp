@@ -1153,7 +1153,7 @@ bool awh::codec::abc::Editor::commit() noexcept {
 		 * Если выработать подпись корня дерева не вышло
 		 */
 		if(!this->_signer->sign(this->_name, sign.root.data(), sign.root.size(), sign.hash, sign.signature) ||
-		 sign.signature.empty()){
+		 sign.signature.empty() || (sign.signature.size() > 0xFFFF) || (sign.root.size() > 0xFFFF)){
 			// Выполняем установку кода отказа выработки подписи
 			this->fail(error_t::SIGNING_FAILED);
 			// Выводим признак неудачной фиксации правок
@@ -1464,7 +1464,7 @@ bool awh::codec::abc::Editor::compact(sink_t target, const payload_t kind, uint6
 		 * Если подписать свёртку по кадрам убранного контейнера не вышло
 		 */
 		if(!this->_signer->sign(this->_name, sign.root.data(), sign.root.size(), sign.hash, sign.signature) ||
-		 sign.signature.empty()){
+		 sign.signature.empty() || (sign.signature.size() > 0xFFFF) || (sign.root.size() > 0xFFFF)){
 			// Выполняем установку кода отказа подписания контейнера
 			this->fail(error_t::SIGNING_FAILED);
 			// Выводим признак неудачной уборки контейнера

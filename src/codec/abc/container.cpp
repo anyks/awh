@@ -451,7 +451,7 @@ bool awh::codec::abc::Assembler::complete(vector <uint8_t> & result) noexcept {
 		 * Если выработать подпись корня дерева не вышло
 		 */
 		if(!this->_signer->sign(this->_name, sign.root.data(), sign.root.size(), sign.hash, sign.signature) ||
-		 sign.signature.empty()){
+		 sign.signature.empty() || (sign.signature.size() > 0xFFFF) || (sign.root.size() > 0xFFFF)){
 			// Выполняем установку кода отказа выработки подписи
 			this->fail(error_t::SIGNING_FAILED);
 			// Выводим признак неудачной сборки контейнера

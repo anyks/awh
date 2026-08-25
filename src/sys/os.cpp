@@ -2490,7 +2490,7 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 			// Размер SID-а пользователя/группы и домена пользователя
 			DWORD sidSize = 0, domainSize = 0;
 			// Выполняем конвертирование название пользователя/группы
-			wstring account = ::move(::convert(name)), actualDomain = L"";
+			wstring account = ::convert(name), actualDomain = L"";
 			// Выполняем поиск разделителя
 			const size_t pos = account.find(L"\\");
 			// Если позиция разделителя доменного имя найдена
@@ -2567,7 +2567,7 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 			// Размер SID-а пользователя и домена пользователя
 			DWORD sidSize = 0, domainSize = 0;
 			// Выполняем конвертирование название пользователя/группы
-			const wstring account = ::move(::convert(user));
+			const wstring account = ::convert(user);
 			// Первый вызов — получаем размеры буферов
 			::LookupAccountNameW(nullptr, account.c_str(), nullptr, &sidSize, nullptr, &domainSize, &sidType);
 			// Если мы получиши ошибку извлечения размеров буфера

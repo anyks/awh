@@ -893,7 +893,17 @@ namespace awh {
 					// Получаем предел ближнего участка текста
 					const size_t horizon = (((pos + LOOKAHEAD) < text.size()) ? (pos + LOOKAHEAD) : text.size());
 					// Получаем обзор ближнего участка текста
-					const string_view near(text.data(), horizon);
+					/**
+					 * Обзор ближнего участка текста
+					 *
+					 * @warning Имя `near` здесь непригодно: у MS Windows это МАКРОС,
+					 *          доставшийся от моделей памяти и объявленный в windows.h.
+					 *          Объявление с ним рассыпается подстановкой, и заголовок
+					 *          переставал собираться всюду, где windows.h подключён
+					 *          раньше. Снять имя через macro_push.hpp тоже можно, но
+					 *          заголовок не должен зависеть от порядка подключений
+					 */
+					const string_view nearby(text.data(), horizon);
 					// Получаем положение поиска первого байта искомого
 					size_t current = pos;
 					/**
@@ -901,7 +911,7 @@ namespace awh {
 					 */
 					for(size_t attempt = 0; attempt < ATTEMPTS; attempt++) {
 						// Выполняем поиск первого байта искомого в ближнем участке
-						const size_t candidate = near.find(what.front(), current);
+						const size_t candidate = nearby.find(what.front(), current);
 						/**
 						 * Если первый байт искомого в ближнем участке не обнаружен
 						 */

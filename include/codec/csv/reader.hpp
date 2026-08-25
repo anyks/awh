@@ -992,6 +992,31 @@ namespace awh {
 					 * \~
 					 */
 					const location_t & location() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод получения места обнаружения отказа
+					 *
+					 * @details Место это выдаётся независимо от того, исчерпаны ли события
+					 * разбора: `location()` отдаёт его лишь по исчерпании их, оставаясь до
+					 * того местом текущего события, и обойтись одним им можно не всегда
+					 *
+					 * @note Доступ этот заведён ради единообразия с кодеками JSON и XML: там
+					 *       место отказа иначе не получить вовсе
+					 *
+					 * @return положение обнаруженного отказа в исходном тексте
+					 *
+					 * \~english
+					 * @brief Method of getting the place of the detection of an error
+					 * @details This place is issued independently of whether the events of the parsing are
+					 * exhausted: `location()` issues it only upon their exhaustion, remaining until then
+					 * the place of the current event, and it is not always possible to make do with it alone
+					 * @note This accessor is provided for the sake of the uniformity with the codecs JSON and XML:
+					 *       there the place of the error cannot be obtained otherwise at all
+					 * @return position of the detected error in the source text
+					 *
+					 * \~
+					 */
+					const location_t & errorLocation() const noexcept;
 				public:
 					/**
 					 * \~russian

@@ -136,13 +136,19 @@
 	/**
 	 * Имя размера блока своё у каждой системы
 	 *
-	 * У macOS и MS Windows входы наши частные, и размер спрашивается у частного же
-	 * имени. У систем ELF подмена именами отдаёт нам системные имена, и спрашивать надо
-	 * ИХ - тем самым проверяя заодно, что модуль их вправду выставил: `malloc_usable_size`
-	 * у Linux и Solaris, `malloc_size` у FreeBSD. У OpenBSD и NetBSD такого имени нет
-	 * вовсе, и размер там не проверяется - это свойство системы, а не пропуск
+	 * У MS Windows входы наши частные, и размер спрашивается у частного же имени. У
+	 * систем ELF подмена именами отдаёт нам системные имена, и спрашивать надо ИХ - тем
+	 * самым проверяя заодно, что модуль их вправду выставил: `malloc_usable_size` у Linux
+	 * и Solaris, `malloc_size` у FreeBSD. У OpenBSD и NetBSD такого имени нет вовсе, и
+	 * размер там не проверяется - это свойство системы, а не пропуск
+	 *
+	 * У macOS захват ДВОЙНОЙ - зона и подмена имён разом, - и спрашивать надо системное
+	 * `malloc_size`: путь его идёт через раздачу libsystem по зонам, и ответ верным
+	 * размером означает, что ОБЕ половины захвата на месте
 	 */
-	#if defined(__APPLE__) || defined(__MACH__) || defined(_WIN32) || defined(_WIN64)
+	#if defined(__APPLE__) || defined(__MACH__)
+		#define AWH_FUZZ_MSIZE ::malloc_size
+	#elif defined(_WIN32) || defined(_WIN64)
 		#define AWH_FUZZ_MSIZE __awh_alloc_msize__
 	#elif defined(__linux__) || ((defined(__sun__) || defined(__sun) || defined(sun)) && (defined(__SVR4) || defined(__svr4__)))
 		#define AWH_FUZZ_MSIZE ::malloc_usable_size

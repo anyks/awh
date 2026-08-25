@@ -543,6 +543,15 @@ namespace awh {
 				private:
 					// Положение текущего события в исходном тексте
 					location_t _position;
+					/**
+					 * Положение обнаруженного отказа в исходном тексте
+					 *
+					 * @note Место отказа держится ОТДЕЛЬНО от места события: события, собранные
+					 *       до отказа, снимаются потребителем уже после него, и всякое снятое
+					 *       событие место текущего события переписывает. Одним полем на двоих
+					 *       место отказа терялось обычным ходом работы
+					 */
+					location_t _failure;
 					// Смещение от начала текста в байтах
 					uint64_t _offset;
 					// Номер строки, считая с единицы
@@ -1029,6 +1038,26 @@ namespace awh {
 					 * \~
 					 */
 					error_t error() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод получения места обнаружения отказа
+					 *
+					 * @details Место это стоит НЕ на месте текущего события: события, собранные
+					 * до отказа, снимаются уже после него, и место текущего события ими
+					 * переписывается, а место отказа остаётся
+					 *
+					 * @return положение обнаруженного отказа в исходном тексте
+					 *
+					 * \~english
+					 * @brief Method of getting the place of the detection of an error
+					 * @details This place stands NOT at the place of the current event: the events assembled
+					 * before the error are taken already after it, and the place of the current event is
+					 * overwritten by them, while the place of the error remains
+					 * @return position of the detected error in the source text
+					 *
+					 * \~
+					 */
+					const location_t & errorLocation() const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод извлечения кодировки исходного текста
