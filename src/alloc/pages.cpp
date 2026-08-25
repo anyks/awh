@@ -886,7 +886,17 @@ void awh::alloc::Pages::destroy() noexcept {
  * @return      адрес выданной области либо nullptr
  *
  */
-void * awh::alloc::Pages::alloc(const size_t pages) noexcept {
+void * awh::alloc::Pages::alloc(const size_t pages, size_t * served) noexcept {
+	/**
+	 * Сообщаем действительно выданное число страниц
+	 *
+	 * Выданное бывает БОЛЬШЕ затребованного: не найдись памяти под учётную запись
+	 * остатка, область выдаётся целиком, не делясь. Спрашивавший прежде узнавал об
+	 * этом полным разбором адреса сразу за выдачей - а слой этот знал ответ и так
+	 */
+	if(served != nullptr)
+		// Пока выдавать нечего
+		(* served) = 0;
 	// Если требуемое число страниц не задано либо куча не заведена
 	if((pages == 0) || (this->_source == nullptr))
 		// Выдавать нечего
@@ -955,6 +965,10 @@ void * awh::alloc::Pages::alloc(const size_t pages) noexcept {
 			this->_state.free -= (span->pages * PAGE);
 			// Увеличиваем выданное наружу
 			this->_state.used += (span->pages * PAGE);
+			// Если требуется действительно выданное число страниц
+			if(served != nullptr)
+				// Сообщаем выданное целиком: область не делилась
+				(* served) = span->pages;
 			// Выводим адрес выданной области
 			return span->base;
 		}
@@ -1004,6 +1018,10 @@ void * awh::alloc::Pages::alloc(const size_t pages) noexcept {
 	this->_state.free -= (span->pages * PAGE);
 	// Увеличиваем выданное наружу
 	this->_state.used += (span->pages * PAGE);
+	// Если требуется действительно выданное число страниц
+	if(served != nullptr)
+		// Сообщаем действительно выданное число страниц
+		(* served) = span->pages;
 	// Выводим адрес выданной области
 	return span->base;
 }

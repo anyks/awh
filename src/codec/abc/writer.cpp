@@ -236,6 +236,28 @@ void awh::codec::abc::Writer::flatten() const noexcept {
 		}
 		// Выполняем сдвиг отрезка записи имени поля
 		frame.key.offset += static_cast <uint32_t> (shift);
+		/**
+		 * Выполняем сдвиг отрезков записей прежних имён полей вместимого
+		 *
+		 * @note Сдвиг у всякого имени свой: врезка, вставшая после имени, его не двигает
+		 */
+		for(auto & key : frame.keys){
+			// Размер содержимого, вклеенного перед отрезком имени поля
+			size_t own = 0;
+			/**
+			 * Выполняем перебор врезок чужого содержимого
+			 */
+			for(auto & cut : this->_cuts){
+				// Если врезка стоит после отрезка имени поля
+				if(cut.offset > static_cast <size_t> (key.offset))
+					// Выполняем прекращение перебора врезок
+					break;
+				// Выполняем учёт размера вклеенного содержимого
+				own += cut.size;
+			}
+			// Выполняем сдвиг отрезка записи имени поля
+			key.offset += static_cast <uint32_t> (own);
+		}
 	}
 	// Выполняем замену буфера собираемой записи цельным
 	this->_record.swap(result);
@@ -292,6 +314,31 @@ bool awh::codec::abc::Writer::account(const size_t start) noexcept {
 			if((compare >= 0) && this->_settings.canonical)
 				// Выполняем объявление отказа сборки
 				return this->fail(error_t::UNORDERED_KEY);
+		}
+		/**
+		 * Если повторы отвергаются вне строгого вида, сличаем имя со ВСЕМИ прежними
+		 *
+		 * @note У строгого вида перечень не нужен: имена там идут по возрастанию, и сличения
+		 *       с предыдущим довольно - повтор встал бы рядом. Вне его повтор бывает через
+		 *       любое число полей, и предыдущего мало
+		 */
+		if(this->_settings.duplicates && !this->_settings.canonical){
+			/**
+			 * Выполняем перебор отрезков записей прежних имён полей вместимого
+			 */
+			for(const auto & key : frame.keys){
+				// Если длины записей имён не совпадают, имена различны заведомо
+				if(static_cast <size_t> (key.length) != length)
+					// Переходим к следующему отрезку записи имени поля
+					continue;
+				// Если записи имён совпали октет в октет
+				if((length == 0) || (::memcmp(this->_record.data() + key.offset,
+				 this->_record.data() + start, length) == 0))
+					// Выполняем объявление отказа сборки
+					return this->fail(error_t::DUPLICATE_KEY);
+			}
+			// Выполняем запоминание отрезка записи уложенного имени поля
+			frame.keys.push_back(span_t(static_cast <uint32_t> (start), static_cast <uint32_t> (length)));
 		}
 		// Выполняем запоминание отрезка записи уложенного имени поля
 		frame.key = span_t(static_cast <uint32_t> (start), static_cast <uint32_t> (length));
@@ -428,8 +475,23 @@ bool awh::codec::abc::Writer::close(const bool mapping) noexcept {
 	 *       сняв размах, прибавляет его к своему месту и оказывается за вместимым
 	 */
 	if(spanned > 0){
+		// Размер содержимого, уложенного ссылкой внутри закрытого вместимого
+		size_t referenced = 0;
+		/**
+		 * Выполняем перебор врезок чужого содержимого
+		 *
+		 * @note Содержимое, уложенное ссылкой, во вместилище сборки не лежит и вклеивается
+		 *       лишь выдачей записи - а размах объявлен в октетах ГОТОВОЙ записи. Не считая
+		 *       врезок, размах выходил короче истинного, и своё же чтение отвечало отказом
+		 */
+		for(auto & cut : this->_cuts){
+			// Если врезка стоит внутри закрытого вместимого
+			if(cut.offset >= (spanned + SPAN_LENGTH))
+				// Выполняем учёт размера вклеиваемого содержимого
+				referenced += cut.size;
+		}
 		// Выполняем вычисление размаха закрытого вместимого
-		const uint64_t width = static_cast <uint64_t> (this->_record.size() - (spanned + SPAN_LENGTH));
+		const uint64_t width = static_cast <uint64_t> ((this->_record.size() + referenced) - (spanned + SPAN_LENGTH));
 		// Выполняем перебор всех октетов записи размаха
 		for(size_t i = 0; i < SPAN_LENGTH; i++)
 			// Выполняем укладку очередного октета размаха

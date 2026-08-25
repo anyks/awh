@@ -255,6 +255,8 @@ bool awh::codec::csv::Reader::inside() const noexcept {
 		case static_cast <uint8_t> (state_t::QUOTE_IN_FIELD):
 		// Если разбор встретил знак отмены внутри поля в кавычках
 		case static_cast <uint8_t> (state_t::ESCAPE):
+		// Если разбор встретил знак отмены внутри поля без кавычек
+		case static_cast <uint8_t> (state_t::ESCAPE_UNQUOTED):
 			// Выводим признак нахождения внутри поля
 			return true;
 	}
@@ -601,9 +603,19 @@ void awh::codec::csv::Reader::marking() noexcept {
 	/**
 	 * Если способ записи кавычки признаёт знак отмены
 	 */
-	if((this->_settings.escape == escape_t::BACKSLASH) || (this->_settings.escape == escape_t::BOTH))
+	if((this->_settings.escape == escape_t::BACKSLASH) || (this->_settings.escape == escape_t::BOTH)){
 		// Отмечаем знак отмены
 		this->_breakQuoted[static_cast <uint8_t> ('\\')] = true;
+		/**
+		 * Отмечаем знак отмены и в поле без кавычек
+		 *
+		 * @note Запись без кавычек предваряет знаком отмены разделитель и знаки конца
+		 *       строки - иначе поле разорвало бы запись надвое, - и чтение обязано
+		 *       снимать эти отмены. Без отметки быстрый проход глотал бы знак отмены,
+		 *       не отдавая его разбору по знакам
+		 */
+		this->_breakUnquoted[static_cast <uint8_t> ('\\')] = true;
+	}
 }
 /**
  * @brief Метод быстрого прохода по знакам, состояния не меняющим
@@ -774,7 +786,8 @@ bool awh::codec::csv::Reader::parse(const char letter) noexcept {
 	 */
 	const bool terminator = (
 		((letter == '\r') || (letter == '\n')) &&
-		(this->_state != state_t::QUOTED) && (this->_state != state_t::ESCAPE)
+		(this->_state != state_t::QUOTED) && (this->_state != state_t::ESCAPE) &&
+		(this->_state != state_t::ESCAPE_UNQUOTED)
 	);
 	/**
 	 * Если знак входит в содержимое записи, а длина её превышает допустимую
@@ -1014,6 +1027,28 @@ bool awh::codec::csv::Reader::step(const char letter) noexcept {
 		 */
 		case static_cast <uint8_t> (state_t::UNQUOTED): {
 			/**
+			 * Если знаком является знак отмены и способ записи его признаёт
+			 *
+			 * @details Запись без кавычек (`quoting_t::NONE`) предваряет знаком отмены
+			 * разделитель, знаки конца строки и сам знак отмены: иначе поле разорвало бы
+			 * запись надвое. Чтение снимало эти отмены лишь ВНУТРИ кавычек, и записанное
+			 * без кавычек прочитывалось не тем, чем записано, - причём молча: поле
+			 * `a,b` уходило текстом `a\\,b`, а читалось двумя полями `a\\` и `b`
+			 *
+			 * @note Так же поступает и обиход: `escapechar` модуля `csv` языка Python
+			 *       при чтении снимает особое значение со следующего знака
+			 */
+			if((letter == '\\') && ((this->_settings.escape == escape_t::BACKSLASH) || (this->_settings.escape == escape_t::BOTH))){
+				// Переводим разбор в состояние знака отмены внутри поля без кавычек
+				this->_state = state_t::ESCAPE_UNQUOTED;
+				// Увеличиваем смещение от начала текста
+				this->_offset++;
+				// Увеличиваем положение в текущей строке
+				this->_column++;
+				// Выводим признак продолжения разбора
+				return true;
+			}
+			/**
 			 * Если знаком является разделитель полей
 			 */
 			if(letter == this->_separator){
@@ -1174,6 +1209,28 @@ bool awh::codec::csv::Reader::step(const char letter) noexcept {
 		/**
 		 * Если разбор находится в состоянии знака отмены
 		 */
+		/**
+		 * Если разбор находится в состоянии знака отмены внутри поля без кавычек
+		 *
+		 * @note Знак, следующий за отменою, особого значения не имеет: и разделитель, и
+		 *       знак конца строки ложатся в содержимое поля как есть
+		 */
+		case static_cast <uint8_t> (state_t::ESCAPE_UNQUOTED): {
+			// Дописываем знак к содержимому поля
+			this->_storage.push_back(letter);
+			// Запоминаем признак наличия полей у записи
+			this->_started = true;
+			// Запоминаем признак изменения содержимого поля разбором
+			this->_modified = true;
+			// Переводим разбор в состояние поля без кавычек
+			this->_state = state_t::UNQUOTED;
+			// Увеличиваем смещение от начала текста
+			this->_offset++;
+			// Увеличиваем положение в текущей строке
+			this->_column++;
+			// Выводим признак продолжения разбора
+			return true;
+		}
 		case static_cast <uint8_t> (state_t::ESCAPE): {
 			// Дописываем знак к содержимому поля
 			this->_storage.push_back(letter);
@@ -1878,6 +1935,19 @@ bool awh::codec::csv::Reader::feed(const char * buffer, const size_t size, const
 				lines++;
 				// Сбрасываем длину последней строки отложенного текста
 				length = 0;
+				/**
+				 * Если записей для определения разделителя набралось довольно
+				 *
+				 * @warning Просмотр обрывается здесь ОБЯЗАТЕЛЬНО: за порогом определения
+				 *          откладывать больше нечего, и знаки за ним ждёт обычный разбор.
+				 *          Просмотр, идущий дальше порога, видит при подаче целиком то,
+				 *          чего при подаче кусками в этот миг ещё нет, и отвечает отказом
+				 *          там, где подача кусками успевает разобрать текст обычным
+				 *          порядком: коды отказа у двух подач выходили разные
+				 */
+				if(lines >= this->_settings.detect)
+					// Прекращаем просмотр отложенного текста
+					break;
 				// Выполняем переход к следующему знаку
 				continue;
 			}

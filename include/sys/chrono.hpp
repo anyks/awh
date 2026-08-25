@@ -2377,6 +2377,32 @@ namespace awh {
 			 * \~
 			 */
 			void makeDate(const uint64_t date, dt_t & dt) const noexcept;
+			/**
+			 * \~russian
+			 * @brief Метод заполнения объекта даты из штампа времени в указанной временной зоне
+			 *
+			 * @details Раскладка момента времени сразу в нужной зоне: связка из раскладки
+			 *          в нулевой зоне и последующей перекладки собирала штамп обратно из
+			 *          полей, чтобы тут же разложить его во второй раз
+			 *
+			 * @param date дата из которой необходимо заполнить объект
+			 * @param zone смещение временной зоны в секундах
+			 * @param dt   объект даты который необходимо заполнить
+			 *
+			 * \~english
+			 * @brief Method of filling a date object from a timestamp in the specified time zone
+			 *
+			 * @details Decomposing the moment straight into the required zone: decomposing
+			 *          in the zero zone and shifting afterwards assembled the timestamp back
+			 *          from the fields only to decompose it a second time
+			 *
+			 * @param date date the object is needed to be filled from
+			 * @param zone time zone offset in seconds
+			 * @param dt   date object that needs to be filled
+			 *
+			 * \~
+			 */
+			void makeDate(const uint64_t date, const int32_t zone, dt_t & dt) const noexcept;
 		private:
 			/**
 			 * \~russian

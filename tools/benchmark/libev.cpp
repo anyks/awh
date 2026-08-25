@@ -342,6 +342,193 @@ namespace {
 		return result;
 	}
 	/**
+	 * @brief Структура состояния датаграммного сокета
+	 *
+	 */
+	typedef struct Datagram {
+		// Наблюдатель готовности сокета
+		ev_io watcher;
+		// Дескриптор датаграммного сокета
+		int32_t fd;
+		// Состояние прогона сценария
+		echo_t * state;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit Datagram() noexcept : watcher{}, fd(-1), state(nullptr) {}
+	} datagram_t;
+
+	// Признак того, что датаграммный прогон упёрся в предельный срок
+	static bool gExpired = false;
+
+	/**
+	 * @brief Функция обратного вызова готовности чтения приёмника датаграмм
+	 *
+	 * @details Приёмник обслуживает ВСЕХ отправителей одним сокетом, поэтому
+	 *          адрес отправителя извлекается у каждой датаграммы и ответ уходит
+	 *          по нему же. Накопления принятых октетов здесь нет намеренно:
+	 *          датаграмма приходит целиком, и частично принятого сообщения
+	 *          не бывает
+	 *
+	 * @param watcher наблюдатель готовности приёмника датаграмм
+	 *
+	 */
+	static void receiverRead(struct ev_loop *, ev_io * watcher, int32_t) noexcept {
+		// Адрес отправителя датаграммы
+		struct sockaddr_in source{};
+		// Размер структуры адреса отправителя
+		socklen_t length = sizeof(source);
+		/**
+		 * Выполняем приём всех ожидающих датаграмм
+		 */
+		while(true){
+			// Восстанавливаем размер структуры адреса отправителя
+			length = sizeof(source);
+			// Выполняем приём датаграммы
+			const ssize_t bytes = ::recvfrom(watcher->fd, gBuffer.data(), ECHO_PAYLOAD, 0, reinterpret_cast <struct sockaddr *> (&source), &length);
+			// Если ожидающих датаграмм не осталось
+			if(bytes <= 0)
+				// Завершаем приём датаграмм
+				return;
+			// Возвращаем принятые октеты отправителю
+			::sendto(watcher->fd, gBuffer.data(), static_cast <size_t> (bytes), 0, reinterpret_cast <const struct sockaddr *> (&source), length);
+		}
+	}
+	/**
+	 * @brief Функция обратного вызова готовности чтения отправителя датаграмм
+	 *
+	 * @param loop    цикл событий стенда
+	 * @param watcher наблюдатель готовности отправителя датаграмм
+	 *
+	 */
+	static void emitterRead(struct ev_loop * loop, ev_io * watcher, int32_t) noexcept {
+		// Получаем состояние отправителя
+		datagram_t * datagram = reinterpret_cast <datagram_t *> (watcher->data);
+		// Выполняем приём датаграммы
+		const ssize_t bytes = ::recv(watcher->fd, gBuffer.data(), ECHO_PAYLOAD, 0);
+		// Если датаграмма не принята
+		if(bytes <= 0)
+			// Ожидаем следующей готовности сокета
+			return;
+		// Если обмен следует продолжать
+		if(datagram->state->account())
+			// Отправляем следующую датаграмму
+			::send(watcher->fd, gPayload, ECHO_PAYLOAD, 0);
+		// Останавливаем цикл событий
+		else ::ev_break(loop, EVBREAK_ALL);
+	}
+	/**
+	 * @brief Функция обратного вызова истечения предельного срока прогона
+	 *
+	 * @param loop цикл событий стенда
+	 *
+	 */
+	static void expire(struct ev_loop * loop, ev_timer *, int32_t) noexcept {
+		// Отмечаем прогон упёршимся в предельный срок
+		gExpired = true;
+		// Останавливаем цикл событий
+		::ev_break(loop, EVBREAK_ALL);
+	}
+	/**
+	 * @brief Функция прогона сценария датаграммного обмена
+	 *
+	 * @details Постановка повторяет сценарий обмена короткими сообщениями во всём,
+	 *          кроме переноса: та же нагрузка, то же количество обменов, тот же
+	 *          учёт границ прогрева и замера. Только так разница между итогами
+	 *          выражает цену переноса, а не разницу постановок
+	 *
+	 * @note Отправителей много, а приёмник ОДИН - у датаграмм принятого сокета
+	 *       на каждого отправителя не возникает. Этим датаграммный сценарий на
+	 *       множестве отличается от потокового, и разницу их итогов следует
+	 *       читать с оглядкой на это, а не как отставание переноса
+	 *
+	 * @warning Предельный срок здесь не украшение. Переспроса у датаграмм нет:
+	 *          единственная потерянная датаграмма оставляет отправителя ждать
+	 *          ответа, которого не будет, и прогон встал бы навсегда
+	 *
+	 * @param senders количество одновременных отправителей
+	 * @param rounds  требуемое количество обменов замера
+	 * @return        итоги прогона сценария
+	 *
+	 */
+	static outcome_t transmit(const size_t senders, const size_t rounds) noexcept {
+		// Итоги прогона сценария
+		outcome_t result;
+		// Сбрасываем признак истечения предельного срока
+		gExpired = false;
+		// Состояние прогона сценария
+		echo_t state(senders, rounds);
+		// Создаём цикл событий стенда
+		struct ev_loop * loop = ::ev_loop_new(EVFLAG_AUTO);
+		// Параметры привязки приёмника датаграмм
+		struct sockaddr_in address{};
+		// Создаём приёмник датаграмм петлевого интерфейса
+		const int32_t server = receiver(address);
+		// Наблюдатель готовности приёмника датаграмм
+		ev_io listen{};
+		// Инициализируем наблюдатель готовности приёмника датаграмм
+		ev_io_init(&listen, &::receiverRead, server, EV_READ);
+		// Активируем наблюдатель готовности приёмника датаграмм
+		::ev_io_start(loop, &listen);
+		// Список состояний отправителей
+		vector <unique_ptr <datagram_t>> clients;
+		// Резервируем память под состояния отправителей
+		clients.reserve(senders);
+		/**
+		 * Выполняем создание требуемого количества отправителей
+		 */
+		for(size_t i = 0; i < senders; i++){
+			// Создаём состояние отправителя
+			clients.push_back(unique_ptr <datagram_t> (new datagram_t));
+			// Получаем состояние созданного отправителя
+			datagram_t * datagram = clients.back().get();
+			// Выполняем создание отправителя датаграмм
+			datagram->fd = emitter(address);
+			// Устанавливаем состояние прогона сценария
+			datagram->state = &state;
+			// Инициализируем наблюдатель готовности чтения отправителя
+			ev_io_init(&datagram->watcher, &::emitterRead, datagram->fd, EV_READ);
+			// Устанавливаем состояние отправителя наблюдателю
+			datagram->watcher.data = datagram;
+			// Активируем наблюдатель готовности чтения отправителя
+			::ev_io_start(loop, &datagram->watcher);
+			// Отправляем первую датаграмму, начиная обмен
+			::send(datagram->fd, gPayload, ECHO_PAYLOAD, 0);
+		}
+		// Наблюдатель предельного срока прогона
+		ev_timer deadline{};
+		// Инициализируем наблюдатель предельного срока прогона
+		ev_timer_init(&deadline, &::expire, static_cast <double> (DATAGRAM_DEADLINE), 0.0);
+		// Активируем наблюдатель предельного срока прогона
+		::ev_timer_start(loop, &deadline);
+		/**
+		 * Запускаем цикл событий до выполнения требуемого количества обменов
+		 */
+		::ev_run(loop, 0);
+		// Если прогон уложился в предельный срок
+		if(!gExpired){
+			// Устанавливаем количество выполненных операций
+			result.operations = state.done;
+			// Устанавливаем объём переданных данных с учётом обоих направлений обмена
+			result.bytes = (state.done * ECHO_PAYLOAD * 2);
+			// Устанавливаем затраченное время
+			result.seconds = elapsed(state.start, state.finish);
+		}
+		/**
+		 * Выполняем освобождение отправителей датаграмм
+		 */
+		for(auto & datagram : clients)
+			// Выполняем закрытие сокета отправителя
+			::close(datagram->fd);
+		// Выполняем закрытие приёмника датаграмм
+		::close(server);
+		// Освобождаем цикл событий стенда
+		::ev_loop_destroy(loop);
+		// Выводим итоги прогона сценария
+		return result;
+	}
+	/**
 	 * @brief Функция обратного вызова завершения подключения сценария наблюдения
 	 *
 	 * @details Отличается от обмена тем, что первое сообщение не отправляется:
@@ -1237,6 +1424,20 @@ int32_t main(int32_t argc, char ** argv){
 		report("net/io/echo/single", "обменов/с", perSecond(outcome), outcome);
 	}
 	// Если сценарий обмена на множестве подключений выполняется
+	// Если сценарий датаграммного обмена одним отправителем выполняется
+	if(selected("net/io/datagram/single", name)){
+		// Выполняем прогон сценария датаграммного обмена одним отправителем
+		const outcome_t outcome = ::transmit(1, ECHO_SINGLE_ROUNDS);
+		// Выводим результат прогона сценария
+		report("net/io/datagram/single", "обменов/с", perSecond(outcome), outcome);
+	}
+	// Если сценарий датаграммного обмена множеством отправителей выполняется
+	if(selected("net/io/datagram/multi", name)){
+		// Выполняем прогон сценария датаграммного обмена множеством отправителей
+		const outcome_t outcome = ::transmit(ECHO_MULTI_CONNECTIONS, ECHO_MULTI_ROUNDS);
+		// Выводим результат прогона сценария
+		report("net/io/datagram/multi", "обменов/с", perSecond(outcome), outcome);
+	}
 	if(selected("net/io/idle/exchanges", name)){
 		// Выполняем прогон сценария обмена при множестве наблюдаемых подключений
 		const outcome_t outcome = ::watched();

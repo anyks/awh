@@ -1808,7 +1808,7 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
  * @return       результат работы функции
  *
  */
-bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::family_t family, const net::socket_mode_t mode, const uint16_t option, const event::protocol_t proto) const noexcept {
+bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::family_t family, const net::socket_mode_t mode, const uint16_t option, [[maybe_unused]] const event::protocol_t proto) const noexcept {
 	// Переменная результата
 	bool result = false;
 	// Если сокет корректен

@@ -29,6 +29,7 @@
 /**
  * Стандартные заголовочные файлы
  */
+#include <memory>
 #include <random>
 #include <string>
 #include <vector>
@@ -37,6 +38,7 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <regex/engine.hpp>
+#include <regex/storage.hpp>
 
 /**
  * Подключаем заголовочные файлы тестового окружения
@@ -309,6 +311,84 @@ namespace {
 		return result;
 	}
 	/**
+	 * @brief Функция сличения одного заданного образца с эталонной реализацией
+	 *
+	 * @details Образец задаётся, а не порождается: путь исполнения, случайностью
+	 *          достигаемый редко, требует условий заданных. Проход в обратном
+	 *          направлении - как раз таков: движок берёт его лишь тогда, когда
+	 *          выражение ведущего литерала не несёт, а совпадение завершается
+	 *          дальше предела исполнения с возвратом. Выражения же порождаемые
+	 *          сходятся близ начала текста, отчего путь этот случайными образцами
+	 *          не достигался вовсе - вскрыто порчей, смещавшей найденное начало
+	 *          на байт: исчерпывающий прогон её ловил, а быстрый пропускал.
+	 *
+	 * @param pattern регулярное выражение сличения
+	 * @param text    текст сопоставления
+	 * @param jit     флаг сличения сопоставителя в виде порождённого машинного кода
+	 *
+	 */
+	void verify([[maybe_unused]] const string & pattern, [[maybe_unused]] const string & text,
+	 [[maybe_unused]] const bool jit) noexcept(false) {
+		/**
+		 * Если сборка выполняется со сличением с эталонной реализацией
+		 */
+		#if defined(AWH_TEST_PCRE2)
+			// Создаём объект движка регулярных выражений
+			regex::engine_t engine(::logger());
+			// Получаем набор режимов сопоставления движком
+			const uint32_t flags = (jit ? static_cast <uint32_t> (regex::flag_t::JIT) : 0);
+			// Код ошибки сборки эталонного регулярного выражения
+			int code = 0;
+			// Смещение ошибки сборки эталонного регулярного выражения
+			PCRE2_SIZE spot = 0;
+			// Выполняем сборку эталонного регулярного выражения
+			pcre2_code * reference = ::pcre2_compile(reinterpret_cast <PCRE2_SPTR> (pattern.c_str()),
+			 PCRE2_ZERO_TERMINATED, 0, &code, &spot, nullptr);
+			// Выполняем проверку сборки эталонного регулярного выражения
+			ASSERT_NE(reference, nullptr) << "эталон не собрал «" << pattern << "»";
+			// Выполняем размещение набора границ эталонного совпадения
+			pcre2_match_data * data = ::pcre2_match_data_create_from_pattern(reference, nullptr);
+			// Выполняем сопоставление эталонного регулярного выражения
+			const int count = ::pcre2_match(reference, reinterpret_cast <PCRE2_SPTR> (text.c_str()), text.size(), 0, 0, data, nullptr);
+			// Получаем набор границ эталонного совпадения
+			PCRE2_SIZE * bounds = ::pcre2_get_ovector_pointer(data);
+			// Получаем вердикт эталонного сопоставления
+			const bool expected = (count > 0);
+			// Получаем начальную границу эталонного совпадения
+			const size_t begin = (expected ? static_cast <size_t> (bounds[0]) : 0);
+			// Получаем конечную границу эталонного совпадения
+			const size_t finish = (expected ? static_cast <size_t> (bounds[1]) : 0);
+			// Выполняем освобождение набора границ эталонного совпадения
+			::pcre2_match_data_free(data);
+			// Выполняем освобождение эталонного регулярного выражения
+			::pcre2_code_free(reference);
+			// Создаём собираемое регулярное выражение
+			regex::expression_t compiled;
+			// Выполняем проверку сборки регулярного выражения движком
+			ASSERT_TRUE(engine.build(pattern, flags, compiled)) << "не собрано «" << pattern << "»";
+			// Создаём набор границ совпадения и захваченных групп
+			vector <pair <size_t, size_t>> captures;
+			// Выполняем сопоставление регулярного выражения движком
+			const bool obtained = engine.exec(compiled, text, 0, captures);
+			// Выполняем проверку совпадения вердикта сопоставления
+			ASSERT_EQ(obtained, expected) << "«" << pattern << "» на тексте в " << text.size() << " байтов";
+			/**
+			 * Если совпадение в тексте обнаружено
+			 */
+			if(expected) {
+				// Выполняем проверку начальной границы совпадения
+				ASSERT_EQ(captures.front().first, begin) << "«" << pattern << "» на тексте в " << text.size() << " байтов";
+				// Выполняем проверку конечной границы совпадения
+				ASSERT_EQ(captures.front().second, finish) << "«" << pattern << "» на тексте в " << text.size() << " байтов";
+			}
+			// Выполняем проверку совпадения вердикта проверки наличия
+			ASSERT_EQ(engine.test(compiled, text, 0), expected) << "проверка наличия: «" << pattern << "»";
+		#else
+			// Выходим из сличения с эталонной реализацией
+			GTEST_SKIP() << "эталонная реализация PCRE2 сборке недоступна";
+		#endif
+	}
+	/**
 	 * @brief Функция сличения границ совпадения с эталонной реализацией
 	 *
 	 * @param samples количество порождаемых образцов сличения
@@ -316,11 +396,12 @@ namespace {
 	 * @param seed    начальное значение источника псевдослучайных значений
 	 * @param utf     флаг порождения образцов в режиме разбора UTF-8
 	 * @param jit     флаг сличения сопоставителя в виде порождённого машинного кода
+	 * @param kept    флаг сличения выражения, сохранение и восстановление прошедшего
 	 *
 	 */
 	void compare([[maybe_unused]] const size_t samples, [[maybe_unused]] const size_t length,
 	 [[maybe_unused]] const uint32_t seed, [[maybe_unused]] const bool utf,
-	 [[maybe_unused]] const bool jit = false) noexcept(false) {
+	 [[maybe_unused]] const bool jit = false, [[maybe_unused]] const bool kept = false) noexcept(false) {
 		/**
 		 * Если сборка выполняется со сличением с эталонной реализацией
 		 */
@@ -329,6 +410,8 @@ namespace {
 			mt19937 gen(seed);
 			// Создаём объект движка регулярных выражений
 			regex::engine_t engine(::logger());
+			// Создаём объект хранилища собранных выражений
+			const regex::storage_t storage(::logger());
 			// Получаем набор режимов сопоставления движком
 			const uint32_t flags = ((utf ? (static_cast <uint32_t> (regex::flag_t::UTF) | static_cast <uint32_t> (regex::flag_t::UCP)) : 0) |
 			 (jit ? static_cast <uint32_t> (regex::flag_t::JIT) : 0));
@@ -364,8 +447,20 @@ namespace {
 					continue;
 				// Выполняем размещение набора границ эталонного совпадения
 				pcre2_match_data * data = ::pcre2_match_data_create_from_pattern(reference, nullptr);
+				/**
+				 * Получаем позицию начала поиска совпадения
+				 *
+				 * @details Сличение шло прежде от нуля всегда, тогда как позиция
+				 *          начала есть довод открытого API и смысл выражения
+				 *          меняет: «\G» привязывается к ней самой, «\A» и «^» -
+				 *          по-прежнему к началу текста. Треть образцов берёт
+				 *          позицию ненулевую: обе стороны получают её одну и ту же,
+				 *          и расхождение договора вышло бы расхождением вердикта.
+				 *
+				 */
+				const size_t start = (((sample % 3) == 0) ? (gen() % (text.size() + 1)) : 0);
 				// Выполняем сопоставление эталонного регулярного выражения
-				const int count = ::pcre2_match(reference, reinterpret_cast <PCRE2_SPTR> (text.c_str()), text.size(), 0, 0, data, nullptr);
+				const int count = ::pcre2_match(reference, reinterpret_cast <PCRE2_SPTR> (text.c_str()), text.size(), start, 0, data, nullptr);
 				/**
 				 * Если эталон предел возврата исчерпал
 				 *
@@ -432,10 +527,37 @@ namespace {
 				if(compiled.machine != nullptr)
 					// Увеличиваем количество образцов, машинным кодом сопоставляемых
 					generated++;
+				/**
+				 * Если выражение сличается по прохождении хранилища
+				 *
+				 * @details Выражение сохраняется и восстанавливается перед самим
+				 *          сопоставлением, отчего сличению подлежит уже оно -
+				 *          восстановленное. Дефект укладки или разбора записи
+				 *          выйдет расхождением вердикта либо границ, а не молчаливым
+				 *          отличием, какого проверки хранилища на образцах заданных
+				 *          могут и не задеть.
+				 *
+				 */
+				if(kept) {
+					// Создаём запись хранилища собранных выражений
+					string record;
+					// Создаём набор восстановленных выражений
+					vector <regex::storage_t::exp_t> restored;
+					// Выполняем сохранение собранного выражения в записи хранилища
+					ASSERT_TRUE(storage.save({make_shared <const regex::expression_t> (compiled)}, record))
+						<< "не сохранено «" << expression << "», код " << static_cast <uint32_t> (storage.error());
+					// Выполняем восстановление выражения из записи хранилища
+					ASSERT_TRUE(storage.load(record, restored))
+						<< "не восстановлено «" << expression << "», код " << static_cast <uint32_t> (storage.error());
+					// Выполняем проверку количества восстановленных выражений
+					ASSERT_EQ(restored.size(), static_cast <size_t> (1)) << "«" << expression << "»";
+					// Выполняем установку восстановленного выражения сличаемым
+					compiled = (* restored.front());
+				}
 				// Создаём набор границ совпадения и захваченных групп
 				vector <pair <size_t, size_t>> captures;
 				// Выполняем сопоставление регулярного выражения движком
-				const bool obtained = engine.exec(compiled, text, 0, captures);
+				const bool obtained = engine.exec(compiled, text, start, captures);
 				/**
 				 * Если допустимый объём работы сопоставления исчерпан
 				 *
@@ -456,15 +578,15 @@ namespace {
 				// Увеличиваем количество выполненных сличений
 				checked++;
 				// Выполняем проверку совпадения вердикта сопоставления
-				ASSERT_EQ(obtained, expected) << "«" << expression << "» на тексте «" << text << "»";
+				ASSERT_EQ(obtained, expected) << "«" << expression << "» на тексте «" << text << "» с позиции " << start;
 				/**
 				 * Если совпадение в тексте обнаружено
 				 */
 				if(expected) {
 					// Выполняем проверку начальной границы совпадения
-					ASSERT_EQ(captures.front().first, begin) << "«" << expression << "» на тексте «" << text << "»";
+					ASSERT_EQ(captures.front().first, begin) << "«" << expression << "» на тексте «" << text << "» с позиции " << start;
 					// Выполняем проверку конечной границы совпадения
-					ASSERT_EQ(captures.front().second, finish) << "«" << expression << "» на тексте «" << text << "»";
+					ASSERT_EQ(captures.front().second, finish) << "«" << expression << "» на тексте «" << text << "» с позиции " << start;
 					/**
 					 * Выполняем проверку достаточности набора границ
 					 *
@@ -473,7 +595,7 @@ namespace {
 					 *          а сличение одних лишь границ совпадения её не видит.
 					 *
 					 */
-					ASSERT_GE(captures.size(), expects.size()) << "«" << expression << "» на тексте «" << text << "»";
+					ASSERT_GE(captures.size(), expects.size()) << "«" << expression << "» на тексте «" << text << "» с позиции " << start;
 					/**
 					 * Выполняем обход границ захваченных групп эталона
 					 */
@@ -511,7 +633,7 @@ namespace {
 				 *          вовсе - его держала одна лишь проверка ручная о сотне пар.
 				 *
 				 */
-				const bool verdict = engine.test(compiled, text, 0);
+				const bool verdict = engine.test(compiled, text, start);
 				/**
 				 * Если допустимый объём работы проверки наличия исчерпан
 				 */
@@ -521,7 +643,7 @@ namespace {
 				// Увеличиваем количество выполненных сличений вердикта наличия
 				verdicts++;
 				// Выполняем проверку совпадения вердикта наличия с эталоном
-				ASSERT_EQ(verdict, expected) << "проверка наличия: «" << expression << "» на тексте «" << text << "»";
+				ASSERT_EQ(verdict, expected) << "проверка наличия: «" << expression << "» на тексте «" << text << "» с позиции " << start;
 			}
 			/**
 			 * Если ни одного сличения не выполнено
@@ -623,6 +745,61 @@ TEST(Regex, ReferenceCodegenUnicode) {
 	compare((SAMPLES / 4), 300, 83, true, true);
 }
 /**
+ * @brief Сличение с эталоном у выражений, сохранение и восстановление прошедших
+ *
+ * @details Хранилище проверялось образцами заданными, а сличение с эталоном
+ *          выражений восстановленных не касалось вовсе: укладка записи и разбор
+ *          её шли мимо оракула. Здесь всякий образец порождаемый перед
+ *          сопоставлением проходит запись и чтение, отчего дефект укладки
+ *          выходит расхождением вердикта либо границ.
+ *
+ */
+TEST(Regex, ReferenceStorage) {
+	// Выполняем сличение на текстах обычной длины
+	compare((SAMPLES / 4), 24, 31, false, false, true);
+	// Выполняем сличение в режиме разбора UTF-8
+	compare((SAMPLES / 4), 24, 37, true, false, true);
+}
+/**
+ * @brief Сличение с эталоном у поиска начала совпадения проходом в обратном направлении
+ *
+ * @details Путь этот берётся движком при трёх условиях разом: выражение обратимо
+ *          и ведущего литерала не несёт, поиск начат с нуля, а совпадение
+ *          завершается дальше предела исполнения с возвратом - четырёх килобайт.
+ *          Образцы порождаемые сходятся близ начала текста, отчего путь этот
+ *          им недостижим: порча, смещавшая найденное начало на байт, валила
+ *          исчерпывающий прогон и быстрого не трогала вовсе. Оттого условия
+ *          задаются здесь прямо, а не выпрашиваются у случайности.
+ *
+ */
+TEST(Regex, ReferenceReverse) {
+	// Получаем длину участка текста, предел исполнения с возвратом превосходящую
+	constexpr size_t LENGTH = 0x2000;
+	// Создаём текст сопоставления, совпадение в конце своём несущий
+	const string tail(string(LENGTH, 'a') + "0");
+	// Создаём текст сопоставления, совпадения не несущий вовсе
+	const string absent(LENGTH, 'a');
+	// Создаём текст сопоставления, совпадение в середине своём несущий
+	const string middle(string(LENGTH, 'a') + "0" + string(LENGTH, 'b'));
+	/**
+	 * Выполняем сличение обоими способами сопоставления
+	 */
+	for(const bool jit : {false, true}) {
+		// Выполняем сличение ряда, литералом завершаемого
+		verify("[a-z]+0", tail, jit);
+		// Выполняем сличение ряда, совпадения не дающего
+		verify("[a-z]+0", absent, jit);
+		// Выполняем сличение ряда, совпадение в середине текста дающего
+		verify("[a-z]+0", middle, jit);
+		// Выполняем сличение ряда с захватом границ группы
+		verify("([a-z])[a-z]+0", tail, jit);
+		// Выполняем сличение ряда ленивого
+		verify("[a-z]+?0", tail, jit);
+		// Выполняем сличение выбора ветвей без ведущего литерала
+		verify("(?:[a-y]|z)+0", tail, jit);
+	}
+}
+/**
  * @brief Исчерпывающее сличение границ совпадения с эталонной реализацией
  *
  * @details Прогон отключён намеренно: он занимает минуты и предназначен для запуска
@@ -647,4 +824,8 @@ TEST(Regex, DISABLED_ReferenceThorough) {
 	compare((THOROUGH / 4), 400, 19, false, true);
 	// Выполняем сличение порождённым машинным кодом в режиме разбора UTF-8
 	compare((THOROUGH / 2), 24, 23, true, true);
+	// Выполняем сличение выражений, сохранение и восстановление прошедших
+	compare((THOROUGH / 4), 24, 41, false, false, true);
+	// Выполняем сличение восстановленных выражений в режиме разбора UTF-8
+	compare((THOROUGH / 4), 24, 43, true, false, true);
 }

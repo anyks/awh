@@ -105,7 +105,8 @@ namespace {
  *
  */
 awh::codec::abc::Reader::Settings::Settings() noexcept :
- stream(false), validate(true), maxString(0), maxBlob(0), maxDepth(0), maxNodes(0) {}
+ stream(false), validate(true), canonical(false), maxString(0), maxBlob(0),
+ maxDepth(0), maxNodes(0), maxEvents(0) {}
 /**
  * @brief Конструктор
  *
@@ -138,6 +139,8 @@ void awh::codec::abc::Reader::reset() noexcept {
 	this->_location.depth = 0;
 	// Выполняем очистку буфера накопленных октетов
 	this->_buffer.clear();
+	// Выполняем очистку ведущих октетов разбираемой единицы
+	this->_lead.clear();
 	// Выполняем сброс смещения разбора в буфере
 	this->_offset = 0;
 	// Выполняем сброс смещения начала буфера
@@ -424,6 +427,41 @@ bool awh::codec::abc::Reader::settle(record_t & record) noexcept {
 		frame_t & frame = this->_stack.back();
 		// Если ожидается имя поля отображения
 		if(frame.mapping && frame.expectKey){
+			/**
+			 * Если вид записи строгий, имена полей отображения поверяются на возрастание
+			 *
+			 * @details Сличение идёт по ПОЛНОЙ записи имени, вместе с меткою, и точно тем же
+			 * порядком, каким сличает их сборка: по общей части, а при совпадении её - по длине.
+			 * Возрастание строгое, оттого повтор имени тою же поверкой и отсеивается
+			 */
+			if(this->_settings.canonical){
+				// Собираемая запись имени поля отображения
+				vector <uint8_t> key = this->_lead;
+				// Если содержимое имени поля отображения объявлено
+				if(record.span.length > 0)
+					// Выполняем добавление содержимого имени поля к записи его
+					key.insert(key.end(), this->_buffer.data() + static_cast <size_t> (record.span.offset),
+					 this->_buffer.data() + static_cast <size_t> (record.span.offset) + static_cast <size_t> (record.span.length));
+				// Если имя поля в этом вместимом уже было
+				if(frame.marked){
+					// Выполняем получение длины сличаемой части записей имён
+					const size_t shared = ((frame.key.size() < key.size()) ? frame.key.size() : key.size());
+					// Выполняем сличение записей имён по общей их части
+					int32_t compare = ((shared > 0) ? ::memcmp(frame.key.data(), key.data(), shared) : 0);
+					// Если общая часть записей имён совпала, сличаем их по длине
+					if(compare == 0)
+						// Выполняем сличение записей имён по их длине
+						compare = ((frame.key.size() < key.size()) ? -1 : ((frame.key.size() > key.size()) ? 1 : 0));
+					// Если имена полей отображения идут не по возрастанию
+					if(compare >= 0)
+						// Выполняем объявление отказа разбора
+						return this->fail(error_t::UNORDERED_KEY);
+				}
+				// Выполняем запоминание записи имени поля отображения
+				frame.key.swap(key);
+				// Выполняем установку признака уложенного имени поля
+				frame.marked = true;
+			}
 			// Выполняем установку вида события имени поля отображения
 			record.event = event_t::KEY;
 			// Выполняем снятие признака ожидания имени поля
@@ -502,6 +540,31 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 		}
 		// Выполняем объявление отказа разбора
 		return this->fail(error);
+	}
+	/**
+	 * Если вид записи строгий, снятая единица поверяется на единственность записи
+	 *
+	 * @details Строгий вид требует, чтобы одно и то же значение записывалось единственным
+	 * способом: иначе запись, сличаемая октет в октет либо подписываемая, зависела бы от
+	 * прихоти собирателя. Условий тому три, и два из них поверяются здесь, единицею:
+	 * наименьшая ширина записи метки и запрет неопределённой длины. Третье - возрастание
+	 * имён полей отображения - поверяется выдачей имени, где известно содержимое его
+	 *
+	 * @note Одиночные значения и расширения из поверки ширины изъяты: подробность метки
+	 * занята у них разновидностью, а не шириной ведомой записи, и наименьшей быть не может
+	 */
+	if(this->_settings.canonical){
+		// Если единица объявлена неопределённой длины
+		if(unit.indefinite)
+			// Выполняем объявление отказа разбора
+			return this->fail(error_t::INDEFINITE_REFUSED);
+		// Если подробность метки шире наименьшей, вмещающей значение
+		if((unit.group != group_t::SINGLE) && (unit.group != group_t::EXTEND) &&
+		   (unit.detail != abc::fit(unit.value)))
+			// Выполняем объявление отказа разбора
+			return this->fail(error_t::NON_MINIMAL_TAG);
+		// Выполняем запоминание ведущих октетов снятой единицы
+		this->_lead.assign(this->_buffer.data() + this->_offset, this->_buffer.data() + offset);
 	}
 	// Собираемое событие разбора
 	record_t record;
@@ -646,10 +709,26 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 				return this->fail(error_t::INVALID_SEGMENT);
 			// Выполняем получение предела длины значения
 			const uint64_t limit = (text ? this->_settings.maxString : this->_settings.maxBlob);
+			/**
+			 * Признак того, что кусок принадлежит значению неопределённой длины
+			 */
+			const bool piece = (!this->_stack.empty() &&
+			 (this->_stack.back().segment != type_t::UNDEFINED));
+			/**
+			 * Длина, с какою сличается предел: у значения, собираемого кусками, это СУММА
+			 * кусков, а не всякий кусок порознь - иначе предел обходится дроблением
+			 */
+			const uint64_t length = (piece ? (this->_stack.back().gathered + unit.value) : unit.value);
 			// Если длина значения превышает допустимую
-			if((limit > 0) && (unit.value > limit))
+			if((limit > 0) && (length > limit))
 				// Выполняем объявление отказа разбора
 				return this->fail(text ? error_t::STRING_TOO_LONG : error_t::BLOB_TOO_LONG);
+			/**
+			 * Если кусок принадлежит значению неопределённой длины, выполняем учёт длины его
+			 */
+			if(piece)
+				// Выполняем учёт длины куска во вместимом
+				this->_stack.back().gathered = length;
 			// Выполняем сдвиг смещения разбора
 			this->_offset = offset;
 			// Выполняем установку количества недостающих октетов
@@ -1236,6 +1315,16 @@ bool awh::codec::abc::Reader::process() noexcept {
 				if(unit.group != group_t::UNSIGNED)
 					// Выполняем объявление отказа разбора
 					return this->fail(error_t::INVALID_BIGNUM);
+				/**
+				 * Если длина октетов величины превышает допустимую
+				 *
+				 * @note Предел двоичного содержимого держит и величину неограниченной ширины:
+				 *       октеты её отводятся ровно так же, и без поверки объявленная длина
+				 *       обращалась бы в отведение любого размера по чужому слову
+				 */
+				if((this->_settings.maxBlob > 0) && (unit.value > this->_settings.maxBlob))
+					// Выполняем объявление отказа разбора
+					return this->fail(error_t::BLOB_TOO_LONG);
 				// Выполняем сдвиг смещения разбора
 				this->_offset = offset;
 				// Выполняем установку количества недостающих октетов
@@ -1414,6 +1503,14 @@ bool awh::codec::abc::Reader::process() noexcept {
 				if(!this->_settings.stream)
 					// Выполняем объявление отказа разбора
 					return this->fail(error_t::TRAILING_OCTETS);
+				/**
+				 * Выполняем сброс счёта узлов документа
+				 *
+				 * @note Предел узлов объявлен НА ДОКУМЕНТ, а счёт вёлся на весь поток: поток
+				 *       из тысяч малых документов оттого упирался в предел, какого ни один из
+				 *       них и близко не брал
+				 */
+				this->_nodes = 0;
 				// Выполняем перевод разбора в ожидание очередной единицы
 				this->_state = state_t::ITEM;
 			} break;
@@ -1444,6 +1541,23 @@ bool awh::codec::abc::Reader::feed(const void * buffer, const size_t size, const
 	if((buffer == nullptr) && (size > 0))
 		// Выполняем объявление отказа разбора
 		return this->fail(error_t::INTERNAL);
+	/**
+	 * Если неснятых событий накопилось свыше предела
+	 *
+	 * @details Отказ этот - обратное давление, а не поломка: потребителю велено снять
+	 *          накопленное и подать наново. Без него очередь событий росла безо всякой
+	 *          границы, покуда её не снимают: пределы на строку, на данные, на глубину и на
+	 *          узлы держат разбор, а память держит именно она
+	 *
+	 * @note Разбор при таком отказе НЕ портится: состояние его цело, и подача после снятия
+	 *       событий продолжается с того же места
+	 */
+	if((this->_settings.maxEvents > 0) && (this->_events.size() >= this->_settings.maxEvents)){
+		// Выполняем установку кода отказа подачи
+		this->_error = error_t::OVERFLOW_LIMIT;
+		// Выводим признак неудачной подачи
+		return false;
+	}
 	/**
 	 * Если место под приём октетов было выдано, а принятого подано не было, выданное
 	 * место обращается вспять: содержимым записи хвост его не является вовсе

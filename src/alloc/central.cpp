@@ -312,7 +312,7 @@ void awh::alloc::Central::back(const size_t index, void * head, void * tail, con
  * @return     адрес выданной памяти либо nullptr
  *
  */
-void * awh::alloc::Central::take(const size_t pages) noexcept {
+void * awh::alloc::Central::take(const size_t pages, size_t * served) noexcept {
 	/**
 	 * Пробуем взять область, пока есть изымаемые
 	 *
@@ -348,7 +348,7 @@ void * awh::alloc::Central::take(const size_t pages) noexcept {
 			// Захватываем замок кучи
 			hold_t hold(this->_heap);
 			// Берём у кучи область требуемого размера
-			void * result = this->_pages->alloc(pages);
+			void * result = this->_pages->alloc(pages, served);
 			// Если область выдана
 			if(result != nullptr)
 				// Выводим выданную область
@@ -390,7 +390,7 @@ void * awh::alloc::Central::take(const size_t pages) noexcept {
  * @return     адрес выданной памяти либо nullptr
  *
  */
-void * awh::alloc::Central::alloc(const size_t size) noexcept {
+void * awh::alloc::Central::alloc(const size_t size, size_t * served) noexcept {
 	// Если куча не заведена либо размер не задан
 	if((this->_pages == nullptr) || (size == 0))
 		// Выдавать нечего
@@ -410,8 +410,22 @@ void * awh::alloc::Central::alloc(const size_t size) noexcept {
 	if(pages > Pages::PAGES)
 		// Отвечаем отказом
 		return nullptr;
+	// Число действительно выданных страниц
+	size_t taken = 0;
+	// Берём у кучи область требуемого размера
+	void * result = this->take(pages, ((served != nullptr) ? &taken : nullptr));
+	/**
+	 * Сообщаем действительно выданный размер
+	 *
+	 * Куча выдаёт БОЛЬШЕ затребованного, не найдись у неё памяти под учётную запись
+	 * остатка. Спрашивавший прежде узнавал об этом полным разбором адреса сразу за
+	 * выдачей, а слой этот знал ответ и так: разбор стоил 4 наносекунды на действие
+	 */
+	if(served != nullptr)
+		// Записываем действительно выданный размер
+		(* served) = (taken * Pages::PAGE);
 	// Выводим выданную кучей область
-	return this->take(pages);
+	return result;
 }
 /**
  * @brief Метод расширения выданной сверх разрядов области на месте

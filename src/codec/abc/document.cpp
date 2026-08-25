@@ -507,10 +507,17 @@ bool awh::codec::abc::Document::parse(const void * buffer, const size_t size) no
  *
  */
 bool awh::codec::abc::Document::build(writer_t & writer) const noexcept {
-	// Если дерево документа пусто
-	if(this->_nodes.empty())
+	// Выполняем сброс кода отказа сборки записи
+	this->_error = error_t::NONE;
+	/**
+	 * Если дерево документа пусто
+	 */
+	if(this->_nodes.empty()){
+		// Выполняем установку кода отказа сборки записи
+		this->_error = error_t::EMPTY_RECORD;
 		// Сообщаем, что сборка отвечена отказом
 		return false;
+	}
 	// Стек количеств оставшихся детей открытых вместимых
 	vector <pair <bool, uint32_t>> stack;
 	/**
@@ -625,8 +632,18 @@ bool awh::codec::abc::Document::build(writer_t & writer) const noexcept {
 					double real = 0.0;
 					// Выполняем снятие дробного значения из разрядной записи
 					::memcpy(&real, &bits, sizeof(real));
-					// Выполняем укладку дробного значения
-					result = writer.number(real);
+					/**
+					 * Если значение уложено было одинарной точностью, кладём его ею же
+					 *
+					 * @note Без этого дробное одинарной точности росло при перекладке вдвое -
+					 *       четыре октета обращались в восемь, - и запись, разобранная деревом
+					 *       и уложенная наново, переставала совпадать с исходной октет в октет
+					 */
+					if(static_cast <uint32_t> (node.type) & static_cast <uint32_t> (type_t::FLOAT))
+						// Выполняем укладку дробного значения одинарной точности
+						result = writer.number(static_cast <float> (real));
+					// Выполняем укладку дробного значения двойной точности
+					else result = writer.number(real);
 				// Если значение является целым со знаком
 				} else if(static_cast <uint32_t> (node.type) & static_cast <uint32_t> (type_t::SIGNED))
 					// Выполняем укладку целого со знаком
@@ -635,10 +652,15 @@ bool awh::codec::abc::Document::build(writer_t & writer) const noexcept {
 				else result = writer.number(bits);
 			} break;
 		}
-		// Если укладка значения отвечена отказом
-		if(!result)
+		/**
+		 * Если укладка значения отвечена отказом
+		 */
+		if(!result){
+			// Выполняем перенос повода отказа от сборки записи
+			this->_error = writer.error();
 			// Сообщаем, что сборка отвечена отказом
 			return false;
+		}
 		/**
 		 * Признак того, что уложенное значение завершено. Вместимое, детей не имеющее,
 		 * завершено сразу: значения, какое бы его закрыло, за ним не последует, и без
@@ -651,10 +673,15 @@ bool awh::codec::abc::Document::build(writer_t & writer) const noexcept {
 			const bool mapping = stack.back().first;
 			// Выполняем снятие вместимого со стека открытых
 			stack.pop_back();
-			// Если закрытие вместимого отвечено отказом
-			if(!(mapping ? writer.mapEnd() : writer.arrayEnd()))
+			/**
+			 * Если закрытие вместимого отвечено отказом
+			 */
+			if(!(mapping ? writer.mapEnd() : writer.arrayEnd())){
+				// Выполняем перенос повода отказа от сборки записи
+				this->_error = writer.error();
 				// Сообщаем, что сборка отвечена отказом
 				return false;
+			}
 			// Выполняем установку признака завершённости уложенного значения
 			settled = true;
 		}
@@ -676,14 +703,28 @@ bool awh::codec::abc::Document::build(writer_t & writer) const noexcept {
 			const bool mapping = stack.back().first;
 			// Выполняем снятие вместимого со стека открытых
 			stack.pop_back();
-			// Если закрытие вместимого отвечено отказом
-			if(!(mapping ? writer.mapEnd() : writer.arrayEnd()))
+			/**
+			 * Если закрытие вместимого отвечено отказом
+			 */
+			if(!(mapping ? writer.mapEnd() : writer.arrayEnd())){
+				// Выполняем перенос повода отказа от сборки записи
+				this->_error = writer.error();
 				// Сообщаем, что сборка отвечена отказом
 				return false;
+			}
 		}
 	}
+	/**
+	 * Если вместимые остались незакрытыми
+	 */
+	if(!stack.empty()){
+		// Выполняем установку кода отказа сборки записи
+		this->_error = error_t::UNBALANCED_CONTAINER;
+		// Сообщаем, что сборка отвечена отказом
+		return false;
+	}
 	// Сообщаем об успешности сборки записи
-	return stack.empty();
+	return true;
 }
 /**
  * @brief Метод заведения указателя имён полей отображения

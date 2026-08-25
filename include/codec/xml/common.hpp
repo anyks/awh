@@ -325,6 +325,46 @@ namespace awh {
 
 			/**
 			 * \~russian
+			 * @brief Наибольший допустимый объём одного события в байтах
+			 *
+			 * @details Чтение накапливает построение целиком, прежде чем его разбирать:
+			 * метка, примечание, указание обработчику, значение атрибута и описание типа
+			 * документа ложатся в память до того, как разбор к ним приступит. Предел этот -
+			 * ЕДИНСТВЕННОЕ, что накопление стережёт: прочие пределы сличаются по
+			 * разобранному, а до разбора дело не доходит вовсе
+			 *
+			 * @warning Прежде предел этот умолчанием снимался, и разбор при умолчаниях
+			 * памяти не берёг вовсе: имя метки без закрывающей скобки, незакрытое
+			 * примечание, значение атрибута без кавычки и описание типа документа без
+			 * скобки набирали по 64 мегабайта и более, не отвечая отказом. Предел имени в
+			 * 8192 знака при этом стоял и не спасал: сличается он по имени разобранному,
+			 * а разбор ждал конца метки. Умолчание сведено к тем же 16 мегабайтам, какими
+			 * стерегут память кодеки JSON (`MAX_STRING`) и CSV (`MAX_RECORD`)
+			 *
+			 * @note Снять предел по-прежнему можно, задав ноль: договор о том не изменился
+			 *
+			 * \~english
+			 * @brief Largest admissible volume of a single event in bytes
+			 * @details The reading accumulates a construct in full before parsing it: a tag,
+			 * a comment, a processing instruction, an attribute value and a document type definition
+			 * lie down into the memory before the parsing gets to them. This limit is the ONLY thing
+			 * that guards that accumulation: the other limits are compared against what has been
+			 * parsed, while the parsing does not get to it at all
+			 * @warning Formerly this limit was removed by default, and the parsing did not guard the memory
+			 * at all under the defaults: a tag name without a closing bracket, an unclosed comment,
+			 * an attribute value without a quote and a document type definition without a bracket gathered
+			 * 64 megabytes and more without answering with a refusal. The limit of a name of 8192 characters
+			 * stood there and did not save: it is compared against a name that has been parsed, while the
+			 * parsing waited for the end of the tag. The default has been brought to the same 16 megabytes
+			 * with which the json (`MAX_STRING`) and csv (`MAX_RECORD`) codecs guard the memory
+			 * @note It is still possible to remove the limit by giving a zero: the contract about that has not changed
+			 *
+			 * \~
+			 */
+			constexpr uint64_t MAX_EVENT = 0x1000000;
+
+			/**
+			 * \~russian
 			 * @brief Наибольшее кодовое значение знака Юникода
 			 *
 			 * \~english
@@ -447,7 +487,9 @@ namespace awh {
 				INVALID_NAMESPACE       = 0x26, // Объявлению пространства имён дано недопустимое значение
 				OVERFLOW_LIMIT          = 0x27, // Превышен предел, заданный настройками разбора
 				ENTITY_BOUNDARY         = 0x28, // Построение разметки пересекает границу подставленной сущности
-				FILE_NOT_OPENED         = 0x29  // Файл разметки открыть не удалось
+				FILE_NOT_OPENED         = 0x29, // Файл разметки открыть не удалось
+				TEXT_ALREADY_ENDED      = 0x2A, // Подача продолжена после объявленного конца текста
+				FILE_NOT_WRITTEN        = 0x2B  // Текст разметки записать в файл не удалось
 			};
 
 			/**

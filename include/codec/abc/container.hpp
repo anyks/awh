@@ -742,6 +742,31 @@ namespace awh {
 					[[nodiscard]] bool ready() const noexcept;
 					/**
 					 * \~russian
+					 * @brief Метод проверки исчерпанности тела контейнера
+					 *
+					 * @details Заголовок объявляет длину тела наперёд, и по ней усечённый
+					 * контейнер отличается от целого. Без этой поверки подрядный съём выдаёт
+					 * кадры до тех, каких недостаёт, и молчит: оборвавшаяся подача с виду
+					 * ничем не отличается от завершённой
+					 *
+					 * @note Поверяется тело: оглавление, запись подписи и хвостовой заголовок
+					 * лежат за ним, и подрядному съёму они не выдаются
+					 *
+					 * @return признак того, что тело контейнера подано целиком
+					 *
+					 * \~english
+					 * @brief Method of the checking of the exhaustion of the body of a container
+					 * @details The header declares the length of the body in advance, and by it a truncated
+					 * container differs from a whole one
+					 * @note The body is checked: the index, the record of the signature and the tail header
+					 * lie beyond it
+					 * @return sign that the body of the container has been submitted in full
+					 *
+					 * \~
+					 */
+					[[nodiscard]] bool complete() const noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод извлечения снятого заголовка опознания контейнера
 					 *
 					 * @return снятый заголовок опознания

@@ -161,6 +161,12 @@ namespace awh {
 			 * @details These bits lie in the header openly and are read before the body: by them
 			 * the consumer learns what to do with the body while having neither the key nor the body itself
 			 *
+			 * @note Признак `CANONICAL` есть ОБЪЯВЛЕНИЕ собирателя, а не поверенная истина:
+			 * заголовок читается прежде тела, и поверить его наперёд нельзя. Поверяется он
+			 * разбором самих записей - настройкой `Reader::Settings::canonical`, какую
+			 * потребитель ставит по этому признаку: `reader.settings().canonical =
+			 * fetcher.header().is(flag_t::CANONICAL)`
+			 *
 			 * \~
 			 */
 			enum class flag_t : uint16_t {

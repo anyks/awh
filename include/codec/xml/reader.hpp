@@ -1887,6 +1887,31 @@ namespace awh {
 					 */
 					error_t _decoding;
 				private:
+					/**
+					 * \~russian
+					 * Отказ разбора, отложенный до выдачи накопленного содержимого
+					 *
+					 * @details Ссылка на необъявленную сущность стоит посреди содержимого, и
+					 * содержимое, разобранное до неё, отказом не отменяется: подача кусками
+					 * успевала выдать его событием, а подача целиком выбрасывала - тот же текст
+					 * давал разный набор событий. Отказ потому запоминается, накопленное
+					 * выдаётся событием, и лишь следом за ним разбор отвечает отказом
+					 *
+					 * \~english
+					 * Refusal of the parsing deferred until the issuing of the accumulated content
+					 * @details A reference to an undeclared entity stands in the middle of a content, and the
+					 * content parsed before it is not cancelled by the refusal: the feeding by chunks
+					 * managed to issue it as an event, while the feeding in full discarded it — the same text
+					 * gave a different set of events. The refusal is therefore remembered, what has been accumulated
+					 * is issued as an event, and only after it does the parsing answer with a refusal
+					 *
+					 * \~
+					 */
+					error_t _deferred;
+				private:
+					// Положение отложенного отказа разбора в исходном тексте
+					size_t _postponed;
+				private:
 					// Определённая кодировка исходного текста
 					encoding_t _encoding;
 				private:
@@ -2011,6 +2036,10 @@ namespace awh {
 					 * читается состоянием @c state_t::FAILED и кодом ошибки, как всякий
 					 * другой
 					 *
+					 * @note Пустой указатель на буфер приравнивается к пустой подаче независимо от
+					 * заданного размера: проверка стоит в приведении текста, и разыменования не
+					 * происходит. Отвечает разбор при этом по своему правилу о пустом тексте
+					 *
 					 * @param buffer буфер очередного куска исходного текста
 					 * @param size   размер буфера очередного куска исходного текста
 					 * @param end    признак того, что кусок является последним
@@ -2031,6 +2060,9 @@ namespace awh {
 					 * by the @c next() method — while the next chunk will no longer be accepted. The refusal
 					 * is read by the @c state_t::FAILED state and by the error code, like every
 					 * other one
+					 * @note A null pointer to the buffer is equated to an empty feeding independently of
+					 * the given size: the check stands in the conversion of the text, and no dereferencing
+					 * takes place. The parsing answers thereby by its own rule about an empty text
 					 * @param buffer buffer of the next chunk of the source text
 					 * @param size   size of the buffer of the next chunk of the source text
 					 * @param end    flag of the chunk being the last one

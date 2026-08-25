@@ -731,7 +731,7 @@ namespace awh {
 					string _storage;
 				private:
 					// Код отказа разбора записи
-					error_t _error;
+					mutable error_t _error;
 				private:
 					// Указатели имён полей отображений, заводимые по требованию
 					mutable unordered_map <uint32_t, unordered_map <string_view, uint32_t>> _index;
@@ -812,11 +812,24 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод сборки записи из дерева документа
 					 *
+					 * @warning Собранная запись равна разобранной по СМЫСЛУ, но не по октетам:
+					 * дерево хранит состав вместимого, а не вид записи его, и вместимое
+					 * неопределённой длины укладывается обратно определённым. Так, массив
+					 * `9F 01 02 03 DF` (5 окт.) выходит записью `83 01 02 03` (4 окт.)
+					 *
+					 * @warning Подпись контейнера считается по ОКТЕТАМ: запись, прочитанная в
+					 * дерево и уложенная обратно, подписи своей более не отвечает. Кому нужна
+					 * дословность, тот держит исходные октеты сам, а не пересобирает их деревом
+					 *
 					 * @param writer сборщик бинарной записи
 					 * @return       признак успешности сборки
 					 *
 					 * \~english
 					 * @brief Method of the assembling of a record from a tree of a document
+					 * @warning The assembled record equals the parsed one by the MEANING but not by the octets:
+					 * a container of an indefinite length is laid back as a definite one
+					 * @warning The signature of a container is computed over the OCTETS: a record read into
+					 * a tree and laid back no longer agrees with its signature
 					 * @param writer assembler of a binary record
 					 * @return sign of the success of the assembling
 					 *

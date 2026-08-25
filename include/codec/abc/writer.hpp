@@ -236,6 +236,21 @@ namespace awh {
 						span_t key;
 						/**
 						 * \~russian
+						 * Отрезки записей всех имён полей вместимого
+						 *
+						 * @note Перечень ведётся ЛИШЬ при поверке повторов вне строгого вида: у
+						 * строгого вида имена идут по возрастанию, и сличения с предыдущим довольно,
+						 * а вне его повтор бывает через любое число полей
+						 *
+						 * \~english
+						 * Segments of the records of all the names of the fields of a container
+						 * @note The list is kept ONLY at the checking of the repeats outside the canonical kind
+						 *
+						 * \~
+						 */
+						vector <span_t> keys;
+						/**
+						 * \~russian
 						 * Смещение отведённого места записи размаха, ноль - размах не объявлен
 						 *
 						 * @note Ноль признаком отсутствия годится: перед размахом лежит хотя бы

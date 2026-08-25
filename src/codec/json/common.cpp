@@ -143,6 +143,12 @@ const char * awh::codec::json::message(const error_t error) noexcept {
 		// Если файл документа открыть не удалось
 		case static_cast <uint8_t> (error_t::FILE_NOT_OPENED):
 			return "cannot open the document file";
+		// Если подача продолжена после объявленного конца текста
+		case static_cast <uint8_t> (error_t::TEXT_ALREADY_ENDED):
+			return "feeding continued after the text was declared complete";
+		// Если текст документа записать в файл не удалось
+		case static_cast <uint8_t> (error_t::FILE_NOT_WRITTEN):
+			return "cannot write the document file";
 	}
 	// Выводим описание неизвестного кода отказа
 	return "unknown error";

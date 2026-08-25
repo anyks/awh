@@ -216,6 +216,13 @@ bool awh::codec::abc::Schedule::touch() noexcept {
  *
  */
 bool awh::codec::abc::Schedule::working() const noexcept {
+	/**
+	 * Выполняем захват замка состояния отбоя срока
+	 *
+	 * @note Признак этот правится потоком отбоя, и чтение его без замка есть гонка -
+	 *       TSan её видит. Замок здесь ничего не стоит: спрашивают состояние редко
+	 */
+	lock_guard <mutex> lock(this->_mtx);
 	// Выводим признак работы отбоя срока
 	return this->_working;
 }
@@ -226,6 +233,8 @@ bool awh::codec::abc::Schedule::working() const noexcept {
  *
  */
 awh::codec::abc::Schedule::mode_t awh::codec::abc::Schedule::mode() const noexcept {
+	// Выполняем захват замка состояния отбоя срока
+	lock_guard <mutex> lock(this->_mtx);
 	// Выводим способ отбоя срока
 	return this->_mode;
 }

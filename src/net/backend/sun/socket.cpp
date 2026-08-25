@@ -396,7 +396,7 @@ int32_t awh::eth::Socket::getError(const net::socket_t sock) const noexcept {
  */
 uint32_t awh::eth::Socket::getTimeout(const net::socket_t sock, const net::socket_event_t event) const noexcept {
 	// Создаём объект таймаута
-	struct timeval timeout{0};
+	struct timeval timeout{};
 	// Получаем размер объекта таймаута
 	socklen_t length = sizeof(timeout);
 	/**
@@ -475,7 +475,7 @@ bool awh::eth::Socket::setTimeout(const net::socket_t sock, const net::socket_ev
 	// Переменная результата
 	bool result = false;
 	// Создаём объект таймаута
-	struct timeval timeout{0};
+	struct timeval timeout{};
 	// Устанавливаем время в секундах
 	timeout.tv_sec = (msec > 0 ? (msec / 1000) : 0);
 	// Устанавливаем время счётчика (микросекунды)
@@ -1883,7 +1883,7 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
  * @return       результат работы функции
  *
  */
-bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::family_t family, const net::socket_mode_t mode, const uint16_t option, const event::protocol_t proto) const noexcept {
+bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::family_t family, const net::socket_mode_t mode, const uint16_t option, [[maybe_unused]] const event::protocol_t proto) const noexcept {
 	// Переменная результата
 	bool result = false;
 	// Если сокет корректен
@@ -2273,7 +2273,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 			// Если необходимо отключить сигнал SIGILL
 			case event::options::NO_SIGILL: {
 				// Создаем структуру активации сигнала
-				struct sigaction act{0};
+				struct sigaction act{};
 				// Обнуляем маску блокируемых сигналов
 				sigemptyset(&act.sa_mask);
 				/**
@@ -2448,7 +2448,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 				 */
 				#if defined(__illumos__)
 					// Создаем структуру активации сигнала
-					struct sigaction act{0};
+					struct sigaction act{};
 					// Обнуляем маску блокируемых сигналов
 					sigemptyset(&act.sa_mask);
 					/**
@@ -3709,7 +3709,7 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 						// Если адрес является IPv4
 						case 4: {
 							// Формируем объект multicast request
-							struct ip_mreq mreq{0};
+							struct ip_mreq mreq{};
 							// Устанавливаем адрес multicast-группы
 							mreq.imr_multiaddr.s_addr = awh_cast <const net::addr_net_ipv4_t *> (group)->address;
 							// Устанавливаем адрес сетевого интерфейса
@@ -3741,7 +3741,7 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 						// Если адрес является IPv6
 						case 16: {
 							// Формируем объект multicast request
-							struct ipv6_mreq mreq{0};
+							struct ipv6_mreq mreq{};
 							// Устанавливаем адрес multicast-группы
 							::memcpy(&mreq.ipv6mr_multiaddr, &awh_cast <const net::addr_net_ipv6_t *> (group)->address[0], sizeof(mreq.ipv6mr_multiaddr));
 							// Получаем индекс сетевого интерфейса по его IPv6-адресу (из кеша или через getifaddrs)
@@ -3781,7 +3781,7 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 						// Если адрес является IPv4
 						case 4: {
 							// Формируем объект multicast request
-							struct ip_mreq mreq{0};
+							struct ip_mreq mreq{};
 							// Устанавливаем адрес multicast-группы
 							mreq.imr_multiaddr.s_addr = awh_cast <const net::addr_net_ipv4_t *> (group)->address;
 							// Устанавливаем адрес сетевого интерфейса
@@ -3813,7 +3813,7 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 						// Если адрес является IPv6
 						case 16: {
 							// Формируем объект multicast request
-							struct ipv6_mreq mreq{0};
+							struct ipv6_mreq mreq{};
 							// Устанавливаем адрес multicast-группы
 							::memcpy(&mreq.ipv6mr_multiaddr, &awh_cast <const net::addr_net_ipv6_t *> (group)->address[0], sizeof(mreq.ipv6mr_multiaddr));
 							// Получаем индекс сетевого интерфейса по его IPv6-адресу (из кеша или через getifaddrs)
@@ -3922,7 +3922,7 @@ bool awh::eth::Socket::ready() const noexcept {
 	return true;
 }
 
-awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const event::type_t type, const event::protocol_t proto, const uint16_t options) const noexcept {
+awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const event::type_t type, const event::protocol_t proto, [[maybe_unused]] const uint16_t options) const noexcept {
 	/**
 	 * Признаки, которые ядро принимает прямо при создании сокета
 	 *
@@ -4451,7 +4451,7 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
  * @return        подмножество опций, наложенных при создании сокета
  *
  */
-uint16_t awh::eth::Socket::inborn(const uint16_t options) const noexcept {
+uint16_t awh::eth::Socket::inborn([[maybe_unused]] const uint16_t options) const noexcept {
 	// Результат работы функции
 	uint16_t result = event::options::NONE;
 	/**
@@ -4727,7 +4727,7 @@ awh::eth::Socket::Socket(const fmk_t * fmk, const log_t * log) noexcept : _fmk(f
 	/**
 	 * Выполняем одноразовую инициализацию мьютексов для кешей IGD и шлюза для всех экземпляров класса Port_Mapping
 	 */
-	std::call_once(::__awh_init_once__, [this]() noexcept {
+	std::call_once(::__awh_init_once__, []() noexcept {
 		// Активируем работу мьютекса блокировки потока при работе с глобальным кэшем сетевых интерфейсов
 		::__awh_iface_cache_mutex__.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
 	});

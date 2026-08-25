@@ -738,6 +738,33 @@ namespace {
 		return (((letter >= 'A') && (letter <= 'Z')) ? static_cast <char> (letter + ('a' - 'A')) : letter);
 	}
 	/**
+	 * @brief Функция приведения обозначения временной зоны к строчным буквам
+	 *
+	 * @details Обозначения зон - данные протокольные и состоят из букв латиницы,
+	 *          поэтому приводятся они правилами ASCII, а не правилами локали:
+	 *          приведение средствами фреймворка обходится в 45 наносекунд против
+	 *          8, а сопоставление обозначения зоны с таблицей стоит двух сотен
+	 *
+	 * @param text   обозначение временной зоны
+	 * @param length длина обозначения временной зоны
+	 * @return       обозначение временной зоны строчными буквами
+	 *
+	 */
+	inline string lowerZone(const char * text, const size_t length) noexcept {
+		// Обозначение временной зоны строчными буквами
+		string result;
+		// Выделяем память под обозначение временной зоны разом
+		result.resize(length);
+		/**
+		 * Выполняем перебор всех символов обозначения временной зоны
+		 */
+		for(size_t i = 0; i < length; i++)
+			// Приводим очередной символ обозначения к строчной букве
+			result[i] = ::toLowerChar(text[i]);
+		// Выводим обозначение временной зоны строчными буквами
+		return result;
+	}
+	/**
 	 * @brief Функция получения куска текста, занятого группой совпадения
 	 *
 	 * @details Длина совпадения знаковая, поскольку разбор отсутствие группы
@@ -2516,12 +2543,8 @@ void awh::Chrono::moveDate(dt_t & dt, const uint64_t date) const noexcept {
 	const int32_t offset = dt.offset;
 	// Запоминаем обозначение временной зоны объекта
 	const zone_t zone = dt.zone;
-	// Сбрасываем смещение временной зоны для разложения в нулевой зоне
-	dt.offset = 0;
-	// Раскладываем штамп времени в нулевой зоне
-	this->makeDate(date, dt);
-	// Перекладываем объект даты обратно в его временную зону
-	this->shiftDate(dt, offset);
+	// Раскладываем штамп времени в временной зоне объекта
+	this->makeDate(date, offset, dt);
 	// Восстанавливаем обозначение временной зоны объекта
 	dt.zone = zone;
 }
@@ -2693,33 +2716,54 @@ uint64_t awh::Chrono::makeStamp(const dt_t & dt) const noexcept {
  *
  */
 void awh::Chrono::shiftDate(dt_t & dt, const int32_t zone) const noexcept {
-	// Получаем момент времени, описываемый объектом даты
-	const uint64_t stamp = this->makeStamp(dt);
-	// Получаем смещение новой временной зоны в миллисекундах, приведя его к земным пределам
-	const int64_t offset = (static_cast <int64_t> (::clampZone(zone)) * 1000);
-	// Момент времени, записанный в новой временной зоне
-	uint64_t result = stamp;
+	/**
+	 * Момент времени берётся у самого объекта: перекладка меняет зону записи, а не
+	 * её момент, и сборка штампа здесь - единственный способ его узнать
+	 */
+	// Заполняем объект даты полями указанной временной зоны
+	this->makeDate(this->makeStamp(dt), zone, dt);
+}
+/**
+ * @brief Метод заполнения объекта даты из штампа времени в указанной временной зоне
+ *
+ * @details Раскладка момента времени сразу в нужной зоне: связка из раскладки в
+ *          нулевой зоне и последующей перекладки собирала штамп обратно из полей,
+ *          чтобы тут же разложить его во второй раз, и на каждую запись даты
+ *          приходилось два разложения и одна сборка вместо одного разложения
+ *
+ * @param date дата в UnixTimestamp
+ * @param zone смещение временной зоны в секундах
+ * @param dt   объект даты который необходимо заполнить
+ *
+ */
+void awh::Chrono::makeDate(const uint64_t date, const int32_t zone, dt_t & dt) const noexcept {
+	// Получаем смещение временной зоны, приведённое к земным пределам
+	const int32_t value = ::clampZone(zone);
+	// Получаем смещение временной зоны в миллисекундах
+	const int64_t offset = (static_cast <int64_t> (value) * 1000);
+	// Момент времени, записанный в указанной временной зоне
+	uint64_t result = date;
 	// Если временная зона отстаёт от нулевой
 	if(offset < 0)
 		/**
 		 * Начало эпохи - предел представимости календаря: записи, уходящие за него,
 		 * приводятся к нему самому
 		 */
-		result = ((static_cast <uint64_t> (-offset) > stamp) ? 0 : (stamp - static_cast <uint64_t> (-offset)));
+		result = ((static_cast <uint64_t> (-offset) > date) ? 0 : (date - static_cast <uint64_t> (-offset)));
 	/**
 	 * Конец эпохи - такой же предел представимости, как и её начало, и перекладка
 	 * насыщается им наравне с ним: прежде сложение у самого края разрядности
 	 * переполнялось и уводило запись в начало эпохи
 	 */
 	// Если временная зона опережает нулевую
-	else result = ::clampDate(stamp + static_cast <uint64_t> (offset));
+	else result = ::clampDate(date + static_cast <uint64_t> (offset));
 	/**
 	 * Смещение выставляется до разложения, а не после: признак летнего времени сводной
 	 * зоны выводится из самого смещения, и разложение видело прежнее его значение
 	 */
-	// Устанавливаем смещение новой временной зоны, приведённое к земным пределам
-	dt.offset = ::clampZone(zone);
-	// Заполняем объект даты полями новой временной зоны
+	// Устанавливаем смещение указанной временной зоны, приведённое к земным пределам
+	dt.offset = value;
+	// Заполняем объект даты полями указанной временной зоны
 	this->makeDate(result, dt);
 }
 /**
@@ -8883,7 +8927,7 @@ awh::Chrono::zone_t awh::Chrono::matchTimeZone(string_view zone) const noexcept 
 						// Получаем извлечённое название временной зоны
 						string name(zone.data() + match[0].begin, static_cast <size_t> (match[0].end - match[0].begin));
 						// Выполняем поиск временной зоны в таблице соответствия
-						auto j = matches.find(this->_fmk->transform(name, fmk_t::transform_t::LOWER_CASE));
+						auto j = matches.find(::lowerZone(name.data(), name.length()));
 						// Если временная зона найдена в таблице соответствия
 						if(j != matches.end())
 							// Устанавливаем найденную временную зону
@@ -9499,7 +9543,7 @@ int32_t awh::Chrono::getTimeZone(string_view zone) const noexcept {
 				// Признак того, что смещение, указанное за названием зоны, следует наложить
 				bool apply = true;
 				// Выполняем поиск временной зоны в списке временных зон
-				auto i = this->_timeZones.find(this->_fmk->transform(name, fmk_t::transform_t::LOWER_CASE));
+				auto i = this->_timeZones.find(::lowerZone(name.data(), name.length()));
 				// Если временная зона найдена
 				if(i != this->_timeZones.end()){
 					// Устанавливаем значение временной зоны
@@ -9664,8 +9708,6 @@ int32_t awh::Chrono::getTimeZone(const storage_t storage) const noexcept {
 			case static_cast <uint8_t> (storage_t::GLOBAL): {
 				// Получаем текущее время с точностью до секунды
 				const time_t stamp = std::time(nullptr);
-				// Получаем значение переменной окружения, задающей временную зону
-				const char * name = ::getenv("TZ");
 				/**
 				 * Смещение временной зоны окружения меняется лишь при переходе на летнее
 				 * время либо при правке переменной окружения TZ: первое происходит на
@@ -9689,6 +9731,14 @@ int32_t awh::Chrono::getTimeZone(const storage_t storage) const noexcept {
 				static thread_local bool cached = false;
 				// Значение переменной окружения TZ, при котором снято смещение
 				static thread_local string cachedName;
+				// Получаем значение переменной окружения, задающей временную зону
+				const char * name = ::getenv("TZ");
+				/**
+				 * Правка переменной окружения TZ применяется немедленно, а не с началом
+				 * следующей секунды: сличение переменной обходится дешевле спроса зоны у
+				 * системы, а откладывать правку нельзя - зона выставляется окружением
+				 * обычно при запуске, и до конца секунды записи уходили бы в прежней зоне
+				 */
 				// Если запомненное смещение временной зоны окружения ещё годно
 				if(cached && (cachedStamp == stamp) &&
 				   (cachedName.compare((name != nullptr) ? name : "") == 0))
@@ -9871,7 +9921,7 @@ void awh::Chrono::addTimeZone(string_view name, const int32_t offset) noexcept {
 		 * пропускалось, и поправить однажды заданную зону было нечем
 		 */
 		// Выполняем добавление временной зоны в список временных зон
-		this->_timeZones.insert_or_assign(this->_fmk->transform(name, fmk_t::transform_t::LOWER_CASE), ::clampZone(offset));
+		this->_timeZones.insert_or_assign(::lowerZone(name.data(), name.length()), ::clampZone(offset));
 	/**
 	 * Если возникает ошибка
 	 */
@@ -9898,17 +9948,12 @@ void awh::Chrono::addTimeZone(string_view name, const int32_t offset) noexcept {
  *
  */
 void awh::Chrono::setTimeZones(const unordered_map <string, int32_t> & zones) noexcept {
-	// Название временной зоны
-	string name = "";
 	/**
 	 * Выполняем перебор всего списка временных зон
 	 */
-	for(auto & zone : zones){
-		// Получаем название временной зоны
-		name = zone.first;
+	for(auto & zone : zones)
 		// Выполняем добавление временной зоны в список временных зон
-		this->_timeZones.insert_or_assign(this->_fmk->transform(name, fmk_t::transform_t::LOWER_CASE), ::clampZone(zone.second));
-	}
+		this->_timeZones.insert_or_assign(::lowerZone(zone.first.data(), zone.first.length()), ::clampZone(zone.second));
 }
 /**
  * @brief Метод установки штампа времени в указанных единицах измерения
@@ -10014,12 +10059,8 @@ void awh::Chrono::timestamp(const uint64_t date, const type_t type) noexcept {
 			 * сдвинутым на величину зоны
 			 */
 			const int32_t zone = this->_dt.offset;
-			// Выполняем сброс временной зоны
-			this->_dt.offset = 0;
-			// Заполняем объект даты из штампа времени
-			this->makeDate(stamp, this->_dt);
-			// Перекладываем объект даты обратно в свою временную зону
-			this->shiftDate(this->_dt, zone);
+			// Заполняем объект даты из штампа времени в его собственной временной зоне
+			this->makeDate(stamp, zone, this->_dt);
 		/**
 		 * Если возникает ошибка
 		 */
@@ -11215,12 +11256,8 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 				 * Прежде такие поля оставались в объекте сырыми, и формирование записи
 				 * читало названия месяцев и дней недели за границами своих таблиц
 				 */
-				// Выполняем сброс временной зоны
-				this->_dt.offset = 0;
-				// Заполняем объект даты полями нулевой зоны
-				this->makeDate(result, this->_dt);
-				// Перекладываем объект даты во временную зону записи
-				this->shiftDate(this->_dt, offset);
+				// Заполняем объект даты полями временной зоны записи
+				this->makeDate(result, offset, this->_dt);
 			} break;
 			// Если хранилище глобальное
 			case static_cast <uint8_t> (storage_t::GLOBAL): {
@@ -11575,7 +11612,7 @@ bool awh::Chrono::validateTimeZone(string_view zone) const noexcept {
 		// Получаем название временной зоны
 		string name(zone.data() + match[1].begin, static_cast <size_t> (match[1].end - match[1].begin));
 		// Если название найдено в списке временных зон
-		if(this->_timeZones.find(this->_fmk->transform(name, fmk_t::transform_t::LOWER_CASE)) != this->_timeZones.end())
+		if(this->_timeZones.find(::lowerZone(name.data(), name.length())) != this->_timeZones.end())
 			// Обозначение пригодно
 			return true;
 		// Если название временной зоны является числом
@@ -13262,9 +13299,7 @@ string awh::Chrono::format(const uint64_t date, string_view format) const noexce
 		// Создаем структуру времени
 		dt_t dt;
 		// Заполняем объект даты из штампа времени
-		this->makeDate(date, dt);
-		// Перекладываем объект даты во временную зону окружения
-		this->shiftDate(dt, this->getTimeZone());
+		this->makeDate(date, this->getTimeZone(), dt);
 		// Выполняем формирование формата даты
 		return this->format(dt, format);
 	}
@@ -13291,9 +13326,7 @@ string awh::Chrono::format(const uint64_t date, const int32_t zone, string_view 
 		// Создаем структуру времени
 		dt_t dt;
 		// Заполняем объект даты из штампа времени
-		this->makeDate(date, dt);
-		// Перекладываем объект даты в указанную временную зону
-		this->shiftDate(dt, zone);
+		this->makeDate(date, zone, dt);
 		// Выполняем формирование формата даты
 		return this->format(dt, format);
 	}
@@ -13350,8 +13383,6 @@ string awh::Chrono::format(const uint64_t date, string_view zone, string_view fo
 	if(!format.empty()){
 		// Создаем структуру времени
 		dt_t dt;
-		// Заполняем объект даты из штампа времени
-		this->makeDate(date, dt);
 		// Устанавливаем временную зону
 		dt.zone = this->matchTimeZone(zone);
 		/**
@@ -13360,8 +13391,8 @@ string awh::Chrono::format(const uint64_t date, string_view zone, string_view fo
 		 * запись смещения, а сопоставление обозначений видит в нём одну лишь зону UTC
 		 * и хвост теряет
 		 */
-		// Перекладываем объект даты в указанную временную зону
-		this->shiftDate(dt, (::composite(dt.zone) ? this->getTimeZone(dt.zone, date) : this->getTimeZone(zone)));
+		// Заполняем объект даты из штампа времени в указанной временной зоне
+		this->makeDate(date, (::composite(dt.zone) ? this->getTimeZone(dt.zone, date) : this->getTimeZone(zone)), dt);
 		// Выполняем формирование формата даты
 		return this->format(dt, format);
 	}
@@ -13402,9 +13433,7 @@ string awh::Chrono::format(string_view format, const storage_t storage) const no
 				// Создаем структуру времени
 				dt_t dt;
 				// Заполняем объект даты из штампа времени
-				this->makeDate(this->timestamp(type_t::MILLISECONDS), dt);
-				// Перекладываем объект даты во временную зону окружения
-				this->shiftDate(dt, this->getTimeZone(storage));
+				this->makeDate(this->timestamp(type_t::MILLISECONDS), this->getTimeZone(storage), dt);
 				// Выполняем формирование формата даты
 				return this->format(dt, format);
 			}
@@ -13443,9 +13472,7 @@ string awh::Chrono::format(const int32_t zone, string_view format, const storage
 				// Создаем структуру времени
 				dt_t dt;
 				// Заполняем объект даты из штампа времени
-				this->makeDate(this->timestamp(type_t::MILLISECONDS), dt);
-				// Перекладываем объект даты в указанную временную зону
-				this->shiftDate(dt, zone);
+				this->makeDate(this->timestamp(type_t::MILLISECONDS), zone, dt);
 				// Выполняем формирование формата даты
 				return this->format(dt, format);
 			}
@@ -13538,8 +13565,8 @@ string awh::Chrono::format(string_view zone, string_view format, const storage_t
 				 * запись смещения, а сопоставление обозначений видит в нём одну лишь зону UTC
 				 * и хвост теряет
 				 */
-				// Перекладываем объект даты в указанную временную зону
-				this->shiftDate(dt, (::composite(dt.zone) ? this->getTimeZone(dt.zone, date) : this->getTimeZone(zone)));
+				// Заполняем объект даты из штампа времени в указанной временной зоне
+				this->makeDate(date, (::composite(dt.zone) ? this->getTimeZone(dt.zone, date) : this->getTimeZone(zone)), dt);
 				// Выполняем формирование формата даты
 				return this->format(dt, format);
 			}
@@ -13549,12 +13576,10 @@ string awh::Chrono::format(string_view zone, string_view format, const storage_t
 				dt_t dt;
 				// Получаем текущий момент времени
 				const uint64_t date = this->timestamp(type_t::MILLISECONDS);
-				// Заполняем объект даты из штампа времени
-				this->makeDate(date, dt);
 				// Устанавливаем временную зону
 				dt.zone = this->matchTimeZone(zone);
-				// Перекладываем объект даты в указанную временную зону
-				this->shiftDate(dt, (::composite(dt.zone) ? this->getTimeZone(dt.zone, date) : this->getTimeZone(zone)));
+				// Заполняем объект даты из штампа времени в указанной временной зоне
+				this->makeDate(date, (::composite(dt.zone) ? this->getTimeZone(dt.zone, date) : this->getTimeZone(zone)), dt);
 				// Выполняем формирование формата даты
 				return this->format(dt, format);
 			}

@@ -1809,16 +1809,50 @@ bool awh::codec::json::Document::save(const string & filename, const format_t fo
 	ofstream file(filename, ios::binary | ios::trunc);
 	/**
 	 * Если файл документа открыть не удалось
+	 *
+	 * @note Отказ этот идёт мимо чтения, а вывод в лог ведёт именно оно: без
+	 *       настоящего вывода запись файла отказывала бы молча, тогда как отказ
+	 *       разбора того же файла в лог уходит
 	 */
-	if(!file.is_open())
+	if(!file.is_open()){
+		/**
+		 * Если объект для работы с логами установлен
+		 */
+		if(this->_log != nullptr)
+			// Выполняем вывод сообщения об отказе
+			this->_log->print("JSON document failed: %s", log_t::flag_t::CRITICAL, awh::codec::json::message(error_t::FILE_NOT_OPENED));
 		// Выводим признак неудачной записи
 		return false;
+	}
 	// Получаем собранный текст документа
 	const string text = this->dump(format);
 	// Выполняем запись текста документа в файл
 	file.write(text.data(), static_cast <streamsize> (text.size()));
+	/**
+	 * Выполняем закрытие файла документа
+	 *
+	 * @note Закрытие обязано идти ЯВНО и до вывода признака: поток сбрасывает
+	 *       свой буфер разрушением своим, то есть уже ПОСЛЕ вычисления
+	 *       возвращаемого значения. Текст, целиком уместившийся в буфер, уходил
+	 *       бы отказом сброса молча, а вызов отчитывался бы успехом - замер дал
+	 *       успех при 512 байтах из 1101 в файле
+	 */
+	file.close();
+	/**
+	 * Если запись текста документа в файл не удалась
+	 */
+	if(!file){
+		/**
+		 * Если объект для работы с логами установлен
+		 */
+		if(this->_log != nullptr)
+			// Выполняем вывод сообщения об отказе
+			this->_log->print("JSON document failed: %s", log_t::flag_t::CRITICAL, awh::codec::json::message(error_t::FILE_NOT_WRITTEN));
+		// Выводим признак неудачной записи
+		return false;
+	}
 	// Выводим признак успешности записи
-	return static_cast <bool> (file);
+	return true;
 }
 /**
  * @brief Метод извлечения корневого значения документа

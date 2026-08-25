@@ -348,6 +348,213 @@ namespace {
 		return result;
 	}
 	/**
+	 * @brief Структура состояния датаграммного сокета
+	 *
+	 */
+	typedef struct Datagram {
+		// Дескриптор датаграммного сокета
+		uv_udp_t handle;
+		// Состояние прогона сценария
+		echo_t * state;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit Datagram() noexcept : handle{}, state(nullptr) {}
+	} datagram_t;
+
+	// Признак того, что датаграммный прогон упёрся в предельный срок
+	static bool gExpired = false;
+
+	/**
+	 * @brief Функция обратного вызова приёма датаграммы приёмником
+	 *
+	 * @details Приёмник обслуживает ВСЕХ отправителей одним дескриптором, поэтому
+	 *          адрес отправителя приходит отдельным доводом и ответ уходит по нему же
+	 *
+	 * @note Отправка выполняется через `uv_udp_try_send` намеренно. Обычный
+	 *       `uv_udp_send` требует ЗАПРОСА на каждую отправку, а у приёмника их
+	 *       разом столько, сколько отправителей, и запрос пришлось бы либо
+	 *       выделять на каждый ответ, либо переиспользовать занятый. Первое
+	 *       внесло бы в замер выделения памяти, которых нет у прочих стендов,
+	 *       второе - неопределённое поведение
+	 *
+	 * @param handle дескриптор приёмника датаграмм
+	 * @param size   размер принятой датаграммы
+	 * @param buffer буфер принятой датаграммы
+	 * @param source адрес отправителя датаграммы
+	 *
+	 */
+	static void receiverRead(uv_udp_t * handle, ssize_t size, const uv_buf_t * buffer, const struct sockaddr * source, uint32_t) noexcept {
+		// Если датаграмма не принята
+		if((size <= 0) || (source == nullptr))
+			// Ожидаем следующего приёма
+			return;
+		// Формируем блок возвращаемых данных
+		uv_buf_t response = ::uv_buf_init(buffer->base, static_cast <uint32_t> (size));
+		// Возвращаем принятые октеты отправителю
+		::uv_udp_try_send(handle, &response, 1, source);
+	}
+	/**
+	 * @brief Функция обратного вызова приёма датаграммы отправителем
+	 *
+	 * @note Накопления принятых октетов здесь нет намеренно: датаграмма приходит
+	 *       целиком, и частично принятого сообщения не бывает
+	 *
+	 * @param handle дескриптор отправителя датаграмм
+	 * @param size   размер принятой датаграммы
+	 *
+	 */
+	static void emitterRead(uv_udp_t * handle, ssize_t size, const uv_buf_t *, const struct sockaddr *, uint32_t) noexcept {
+		// Если датаграмма не принята
+		if(size <= 0)
+			// Ожидаем следующего приёма
+			return;
+		// Получаем состояние отправителя
+		datagram_t * datagram = reinterpret_cast <datagram_t *> (handle->data);
+		// Если обмен следует продолжать
+		if(datagram->state->account()){
+			// Формируем блок отправляемых данных
+			uv_buf_t payload = ::uv_buf_init(reinterpret_cast <char *> (gPayload), ECHO_PAYLOAD);
+			// Отправляем следующую датаграмму
+			::uv_udp_try_send(handle, &payload, 1, nullptr);
+		// Останавливаем цикл событий
+		} else ::uv_stop(handle->loop);
+	}
+	/**
+	 * @brief Функция обратного вызова истечения предельного срока прогона
+	 *
+	 * @param timer наблюдатель предельного срока прогона
+	 *
+	 */
+	static void expire(uv_timer_t * timer) noexcept {
+		// Отмечаем прогон упёршимся в предельный срок
+		gExpired = true;
+		// Останавливаем цикл событий
+		::uv_stop(timer->loop);
+	}
+	/**
+	 * @brief Функция прогона сценария датаграммного обмена
+	 *
+	 * @details Постановка повторяет сценарий обмена короткими сообщениями во всём,
+	 *          кроме переноса: та же нагрузка, то же количество обменов, тот же
+	 *          учёт границ прогрева и замера. Только так разница между итогами
+	 *          выражает цену переноса, а не разницу постановок
+	 *
+	 * @note Датаграммы здесь идут через СОБСТВЕННЫЙ дескриптор библиотеки
+	 *       `uv_udp_t`, а не через сырой сокет, - ровно как потоковые сценарии
+	 *       этого стенда идут через `uv_tcp_t`. Взять здесь сырой сокет значило бы
+	 *       мерить у libuv не то, чем она пользуется на деле
+	 *
+	 * @note Отправителей много, а приёмник ОДИН - у датаграмм принятого сокета
+	 *       на каждого отправителя не возникает. Этим датаграммный сценарий на
+	 *       множестве отличается от потокового, и разницу их итогов следует
+	 *       читать с оглядкой на это, а не как отставание переноса
+	 *
+	 * @warning Предельный срок здесь не украшение. Переспроса у датаграмм нет:
+	 *          единственная потерянная датаграмма оставляет отправителя ждать
+	 *          ответа, которого не будет, и прогон встал бы навсегда
+	 *
+	 * @param senders количество одновременных отправителей
+	 * @param rounds  требуемое количество обменов замера
+	 * @return        итоги прогона сценария
+	 *
+	 */
+	static outcome_t transmit(const size_t senders, const size_t rounds) noexcept {
+		// Итоги прогона сценария
+		outcome_t result;
+		// Сбрасываем признак истечения предельного срока
+		gExpired = false;
+		// Состояние прогона сценария
+		echo_t state(senders, rounds);
+		// Цикл событий стенда
+		uv_loop_t loop{};
+		// Выполняем инициализацию цикла событий стенда
+		::uv_loop_init(&loop);
+		// Параметры привязки приёмника датаграмм
+		struct sockaddr_in address{};
+		// Формируем адрес привязки приёмника датаграмм
+		::uv_ip4_addr("127.0.0.1", 0, &address);
+		// Дескриптор приёмника датаграмм
+		uv_udp_t server{};
+		// Выполняем инициализацию дескриптора приёмника датаграмм
+		::uv_udp_init(&loop, &server);
+		// Выполняем привязку приёмника датаграмм
+		::uv_udp_bind(&server, reinterpret_cast <const struct sockaddr *> (&address), 0);
+		// Требуемый объём приёмного буфера сокета
+		int32_t capacity = DATAGRAM_BUFFER;
+		// Расширяем приёмный буфер приёмника датаграмм
+		::uv_recv_buffer_size(reinterpret_cast <uv_handle_t *> (&server), &capacity);
+		// Размер структуры параметров сокета
+		int32_t length = sizeof(address);
+		// Извлекаем параметры привязки приёмника датаграмм
+		::uv_udp_getsockname(&server, reinterpret_cast <struct sockaddr *> (&address), &length);
+		// Запускаем приём датаграмм приёмником
+		::uv_udp_recv_start(&server, &::allocate, &::receiverRead);
+		// Список состояний отправителей
+		vector <unique_ptr <datagram_t>> clients;
+		// Резервируем память под состояния отправителей
+		clients.reserve(senders);
+		/**
+		 * Выполняем создание требуемого количества отправителей
+		 */
+		for(size_t i = 0; i < senders; i++){
+			// Создаём состояние отправителя
+			clients.push_back(unique_ptr <datagram_t> (new datagram_t));
+			// Получаем состояние созданного отправителя
+			datagram_t * datagram = clients.back().get();
+			// Устанавливаем состояние прогона сценария
+			datagram->state = &state;
+			// Выполняем инициализацию дескриптора отправителя
+			::uv_udp_init(&loop, &datagram->handle);
+			// Устанавливаем состояние отправителя дескриптору
+			datagram->handle.data = datagram;
+			// Требуемый объём приёмного буфера сокета
+			int32_t size = DATAGRAM_BUFFER;
+			// Расширяем приёмный буфер отправителя датаграмм
+			::uv_recv_buffer_size(reinterpret_cast <uv_handle_t *> (&datagram->handle), &size);
+			// Закрепляем за отправителем адрес приёмника датаграмм
+			::uv_udp_connect(&datagram->handle, reinterpret_cast <const struct sockaddr *> (&address));
+			// Запускаем приём датаграмм отправителем
+			::uv_udp_recv_start(&datagram->handle, &::allocate, &::emitterRead);
+			// Формируем блок отправляемых данных
+			uv_buf_t payload = ::uv_buf_init(reinterpret_cast <char *> (gPayload), ECHO_PAYLOAD);
+			// Отправляем первую датаграмму, начиная обмен
+			::uv_udp_try_send(&datagram->handle, &payload, 1, nullptr);
+		}
+		// Наблюдатель предельного срока прогона
+		uv_timer_t deadline{};
+		// Выполняем инициализацию наблюдателя предельного срока прогона
+		::uv_timer_init(&loop, &deadline);
+		// Активируем наблюдатель предельного срока прогона
+		::uv_timer_start(&deadline, &::expire, (static_cast <uint64_t> (DATAGRAM_DEADLINE) * 1000), 0);
+		/**
+		 * Запускаем цикл событий до выполнения требуемого количества обменов
+		 */
+		::uv_run(&loop, UV_RUN_DEFAULT);
+		// Если прогон уложился в предельный срок
+		if(!gExpired){
+			// Устанавливаем количество выполненных операций
+			result.operations = state.done;
+			// Устанавливаем объём переданных данных с учётом обоих направлений обмена
+			result.bytes = (state.done * ECHO_PAYLOAD * 2);
+			// Устанавливаем затраченное время
+			result.seconds = elapsed(state.start, state.finish);
+		}
+		/**
+		 * Выполняем остановку отправителей датаграмм
+		 */
+		for(auto & datagram : clients)
+			// Останавливаем приём датаграмм отправителем
+			::uv_udp_recv_stop(&datagram->handle);
+		// Останавливаем приём датаграмм приёмником
+		::uv_udp_recv_stop(&server);
+		// Освобождаем цикл событий стенда
+		::uv_loop_close(&loop);
+		// Выводим итоги прогона сценария
+		return result;
+	}
+	/**
 	 * @brief Функция обратного вызова завершения подключения сценария наблюдения
 	 *
 	 * @details Отличается от обмена тем, что первое сообщение не отправляется:
@@ -1304,6 +1511,20 @@ int32_t main(int32_t argc, char ** argv){
 		report("net/io/echo/single", "обменов/с", perSecond(outcome), outcome);
 	}
 	// Если сценарий обмена на множестве подключений выполняется
+	// Если сценарий датаграммного обмена одним отправителем выполняется
+	if(selected("net/io/datagram/single", name)){
+		// Выполняем прогон сценария датаграммного обмена одним отправителем
+		const outcome_t outcome = ::transmit(1, ECHO_SINGLE_ROUNDS);
+		// Выводим результат прогона сценария
+		report("net/io/datagram/single", "обменов/с", perSecond(outcome), outcome);
+	}
+	// Если сценарий датаграммного обмена множеством отправителей выполняется
+	if(selected("net/io/datagram/multi", name)){
+		// Выполняем прогон сценария датаграммного обмена множеством отправителей
+		const outcome_t outcome = ::transmit(ECHO_MULTI_CONNECTIONS, ECHO_MULTI_ROUNDS);
+		// Выводим результат прогона сценария
+		report("net/io/datagram/multi", "обменов/с", perSecond(outcome), outcome);
+	}
 	if(selected("net/io/idle/exchanges", name)){
 		// Выполняем прогон сценария обмена при множестве наблюдаемых подключений
 		const outcome_t outcome = ::watched();

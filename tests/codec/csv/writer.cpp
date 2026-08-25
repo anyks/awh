@@ -696,3 +696,74 @@ TEST(CodecCsvWriter, EmptySingleFieldSurvivesRoundTrip) {
 		}
 	}
 }
+
+/**
+ * @brief Проверка кругового обхода записи без кавычек
+ *
+ * @details Записанное без кавычек читается лишь при способе отмены знаком: кавычек нет,
+ *          и единственным способом уберечь разделитель и знаки конца строки внутри поля
+ *          остаётся знак отмены. Запись их ставила, а чтение снимало отмены ЛИШЬ внутри
+ *          кавычек - и записанное прочитывалось не тем, чем записано, причём молча:
+ *          поле «a,b» уходило текстом «a\,b», а читалось двумя полями «a\» и «b»
+ *
+ */
+TEST(CodecCsvWriter, UnquotedEscapingSurvivesRoundTrip) {
+	/**
+	 * @brief Функция кругового обхода записи и чтения
+	 *
+	 * @param fields записываемые поля записи
+	 * @return       поля, прочитанные из записанного текста
+	 *
+	 */
+	const auto trip = [](const vector <string> & fields) noexcept -> vector <string> {
+		// Настройки записи таблицы без кавычек
+		csv::writer_t::settings_t ws;
+		// Отменяем заключение полей в кавычки
+		ws.quoting = csv::quoting_t::NONE;
+		// Запись таблицы
+		csv::writer_t writer(::logger(), ws);
+		// Выполняем запись всех полей записи
+		for(const string & field : fields) writer.field(field);
+		// Выполняем завершение записи
+		writer.record();
+		// Получаем записанный текст таблицы
+		const string text(writer.text());
+		// Настройки чтения таблицы со способом отмены знаком
+		csv::reader_t::settings_t rs;
+		// Устанавливаем способ отмены знаком
+		rs.escape = csv::escape_t::BACKSLASH;
+		// Чтение таблицы
+		csv::reader_t reader(::logger(), rs);
+		// Прочитанные поля записи
+		vector <string> result;
+		// Выполняем подачу записанного текста целиком
+		reader.feed(text.data(), text.size(), true);
+		/**
+		 * Выполняем перебор всех событий разбора
+		 */
+		while(reader.next()){
+			// Если событием является поле, заносим его содержимое
+			if(reader.event() == csv::event_t::FIELD) result.push_back(string(reader.field().value));
+		}
+		// Выполняем проверку того, что разбор прошёл без отказа
+		EXPECT_EQ(reader.error(), csv::error_t::NONE);
+		// Выводим прочитанные поля записи
+		return result;
+	};
+	// Выполняем проверку кругового обхода поля с разделителем
+	ASSERT_EQ(trip({"a,b", "c"}), (vector <string> {"a,b", "c"}));
+	// Выполняем проверку кругового обхода поля с переводом строки
+	ASSERT_EQ(trip({"a\nb", "c"}), (vector <string> {"a\nb", "c"}));
+	// Выполняем проверку кругового обхода поля с возвратом каретки
+	ASSERT_EQ(trip({"a\rb", "c"}), (vector <string> {"a\rb", "c"}));
+	// Выполняем проверку кругового обхода поля со знаком отмены
+	ASSERT_EQ(trip({"a\\b", "c"}), (vector <string> {"a\\b", "c"}));
+	// Выполняем проверку кругового обхода поля с кавычкой
+	ASSERT_EQ(trip({"a\"b", "c"}), (vector <string> {"a\"b", "c"}));
+	// Выполняем проверку кругового обхода поля с обвязкой пробелами
+	ASSERT_EQ(trip({"  a  ", "c"}), (vector <string> {"  a  ", "c"}));
+	// Выполняем проверку кругового обхода пустого поля
+	ASSERT_EQ(trip({"", "c"}), (vector <string> {"", "c"}));
+	// Выполняем проверку кругового обхода поля из одних лишь знаков отмены
+	ASSERT_EQ(trip({"\\\\", "c"}), (vector <string> {"\\\\", "c"}));
+}

@@ -521,7 +521,10 @@ namespace awh {
 				 * @brief Method of allocating a region of pages
 				 *
 				 */
-				void * alloc(const size_t pages) noexcept;
+				/**
+				 * @param served действительно выданное число страниц, либо nullptr
+				 */
+				void * alloc(const size_t pages, size_t * served = nullptr) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод возврата области страниц

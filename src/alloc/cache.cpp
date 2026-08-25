@@ -95,7 +95,7 @@ namespace {
  *
  */
 awh::alloc::Cache::Cache() noexcept :
- _owner(nullptr), _central(nullptr), _classes(nullptr), _bytes(0), _limit(LIMIT), _tally(0), _freed(0), _yield(false), _hint(nullptr), _next(nullptr), _busy(false) {
+ _owner(nullptr), _central(nullptr), _classes(nullptr), _bytes(0), _limit(LIMIT), _kept(LIMIT), _tally(0), _freed(0), _yield(false), _hint(nullptr), _next(nullptr), _busy(false) {
 	// Обнуляем списки свободных блоков
 	::memset(this->_lists, 0, sizeof(this->_lists));
 }
@@ -119,6 +119,8 @@ bool awh::alloc::Cache::init(central_t * central, classes_t * classes, const siz
 	this->_classes = classes;
 	// Запоминаем предел кэша
 	this->_limit.store(((limit > 0) ? limit : LIMIT), std::memory_order_relaxed);
+	// Запоминаем предел, заданный приложением
+	this->_kept.store(((limit > 0) ? limit : LIMIT), std::memory_order_relaxed);
 	// Лежащего в кэше пока нет
 	this->_bytes.store(0, std::memory_order_relaxed);
 	/**
@@ -272,9 +274,12 @@ void * awh::alloc::Cache::refill(const size_t index) noexcept {
 	 * Читаем прежде обмена: обмен - действие пишущее, и делать его на каждом пополнении
 	 * значило бы гонять строку памяти между ядрами без всякой нужды
 	 */
-	if(this->_yield.load(std::memory_order_acquire) && this->_yield.exchange(false, std::memory_order_acq_rel))
+	if(this->_yield.load(std::memory_order_acquire) && this->_yield.exchange(false, std::memory_order_acq_rel)){
 		// Отдаём блоки кэша центральным спискам
 		this->flush();
+		// Возвращаем на место предел, заданный приложением
+		this->_limit.store(this->_kept.load(std::memory_order_relaxed), std::memory_order_relaxed);
+	}
 	// Голова изымаемой у центральных списков цепочки
 	void * head = nullptr;
 	// Хвост изымаемой цепочки
@@ -326,6 +331,8 @@ void awh::alloc::Cache::relieve() noexcept {
 	if(this->_yield.load(std::memory_order_acquire) && this->_yield.exchange(false, std::memory_order_acq_rel)){
 		// Отдаём блоки кэша центральным спискам
 		this->flush();
+		// Возвращаем на место предел, заданный приложением
+		this->_limit.store(this->_kept.load(std::memory_order_relaxed), std::memory_order_relaxed);
 		// Отдавать излишек больше нечего: кэш пуст
 		return;
 	}
@@ -352,6 +359,22 @@ void awh::alloc::Cache::relieve() noexcept {
 	 * дали то же самое в пределах разброса. Значима не глубина, а само наличие
 	 * запаса, - оттого взята самая мелкая из них, при какой кэш остаётся полнее
 	 */
+	/**
+	 * Поднимаем рычаг обратно, если просьба досталась не нам
+	 *
+	 * Просьбу опустошиться ставит чужой поток, опуская рабочий предел до нуля, а
+	 * снять её вправе и пополнение разряда - тот же признак читается и там. Достанься
+	 * просьба пополнению между двумя записями ставящего, и рычаг остался бы опущенным
+	 * при снятой просьбе: кэш с нулевым пределом опустошается на КАЖДОМ освобождении,
+	 * и опустошался бы так навсегда
+	 *
+	 * Ставящий пишет рычаг ПРЕЖДЕ просьбы, и окно это закрыто уже там. Здесь оно
+	 * закрывается вторично: одно сличение на холодном пути стоит того, чтобы полный
+	 * отказ работы кэша не зависел от порядка двух записей в чужом потоке
+	 */
+	if(this->_limit.load(std::memory_order_relaxed) == 0)
+		// Возвращаем на место предел, заданный приложением
+		this->_limit.store(this->_kept.load(std::memory_order_relaxed), std::memory_order_relaxed);
 	// Считаем цель отдачи: предел кэша правит чужой поток, и вид у него неделимый
 	const size_t target = ((this->_limit.load(std::memory_order_relaxed) / 4u) * 3u);
 	while(this->_bytes.load(std::memory_order_relaxed) > target){
@@ -383,6 +406,8 @@ void awh::alloc::Cache::relieve() noexcept {
 void awh::alloc::Cache::limit(const size_t limit) noexcept {
 	// Запоминаем предел кэша
 	this->_limit.store(((limit > 0) ? limit : LIMIT), std::memory_order_relaxed);
+	// Запоминаем предел, заданный приложением
+	this->_kept.store(((limit > 0) ? limit : LIMIT), std::memory_order_relaxed);
 }
 /**
  * @brief Метод получения объёма лежащего в кэше
@@ -423,6 +448,17 @@ size_t awh::alloc::Cache::bytes() const noexcept {
 #else
 	// Ключ хранения кэша, отслеживаемый системой
 	static pthread_key_t __awh_alloc_key__;
+	/**
+	 * Определения ключа и признака его заведённости, объявленных в заголовочном файле
+	 *
+	 * Заведены ради быстрого пути `local` у macOS: тот читает ключ прямо, не заходя
+	 * сюда вызовом. Доводы записаны у объявления
+	 */
+	#if defined(AWH_ALLOC_TSD)
+		pthread_key_t awh::alloc::__awh_alloc_tsd__ = 0;
+		std::atomic <bool> awh::alloc::__awh_alloc_armed__(false);
+		std::atomic <size_t> awh::alloc::__awh_alloc_direct__(awh::alloc::AWH_ALLOC_NOSLOT);
+	#endif
 	/**
 	 * Зеркало кэша потока средствами собирателя
 	 *
@@ -731,7 +767,7 @@ static void __awh_alloc_finish__(void * value) noexcept {
  *
  */
 awh::alloc::Caches::Caches() noexcept :
- _central(nullptr), _classes(nullptr), _lock(), _caches(nullptr), _count(0), _limit(Cache::LIMIT), _keyed(false) {}
+ _central(nullptr), _classes(nullptr), _lock(), _caches(nullptr), _count(0), _budget(BUDGET), _limit(0), _keyed(false) {}
 /**
  * @brief Метод заведения управляющего кэшами
  *
@@ -819,6 +855,53 @@ bool awh::alloc::Caches::arm() noexcept {
 		// Заводим ключ хранения с откликом завершения потока
 		this->_keyed = (::pthread_key_create(&__awh_alloc_key__, &__awh_alloc_finish__) == 0);
 		/**
+		 * Открываем быстрый путь чтения ключа, а не заводим второй ключ
+		 *
+		 * Ключ здесь один и тот же: быстрый путь лишь читает его без вызова. Признак
+		 * ставится ПОСЛЕ заведения и лишь при удаче - до того читать ключ нельзя
+		 */
+		#if defined(AWH_ALLOC_TSD)
+			// Запоминаем заведённый ключ хранения
+			awh::alloc::__awh_alloc_tsd__ = __awh_alloc_key__;
+			// Открываем быстрый путь чтения ключа
+			awh::alloc::__awh_alloc_armed__.store(this->_keyed, std::memory_order_release);
+			/**
+			 * Проверяем прямое чтение места потока ОПЫТОМ, а не доверием
+			 *
+			 * Устройство места потока у macOS договором не объявлено: ни то, что значения
+			 * ключей лежат в нём по своим номерам, ни то, что основание берётся из
+			 * `tpidrro_el0`. Полагаться на это вслепую нельзя - смена устройства читала бы
+			 * нам мусор вместо кэша, и молча.
+			 *
+			 * Оттого кладём метку обычным средством, читаем прямым обращением и сличаем.
+			 * Разошлось - прямой путь не заводится вовсе, и всё идёт как шло. Проверка
+			 * стоит одного вызова на процесс
+			 *
+			 * Номер ключа сверяется с пределом их числа: место потока отведено под
+			 * `PTHREAD_KEYS_MAX` значений, и чтение за этим пределом ушло бы за конец
+			 */
+			if(this->_keyed && (static_cast <size_t> (__awh_alloc_key__) < static_cast <size_t> (PTHREAD_KEYS_MAX))){
+				// Получаем основание места потока
+				void ** slots = awh::alloc::__awh_alloc_slots__();
+				// Если основание получено
+				if(slots != nullptr){
+					// Запоминаем значение ключа, какое было до проверки
+					void * const kept = ::pthread_getspecific(__awh_alloc_key__);
+					// Метка, по какой опознаётся место потока
+					void * const mark = reinterpret_cast <void *> (static_cast <uintptr_t> (0xA110C1D5ull));
+					// Кладём метку обычным средством
+					if(::pthread_setspecific(__awh_alloc_key__, mark) == 0){
+						// Если прямое чтение вернуло ту же метку
+						if(slots[static_cast <size_t> (__awh_alloc_key__)] == mark)
+							// Заводим прямое чтение места потока
+							awh::alloc::__awh_alloc_direct__.store(static_cast <size_t> (__awh_alloc_key__), std::memory_order_release);
+						// Возвращаем значение ключа на место
+						static_cast <void> (::pthread_setspecific(__awh_alloc_key__, kept));
+					}
+				}
+			}
+		#endif
+		/**
 		 * Отмечаем ключ заведённым ПОСЛЕ его заведения
 		 *
 		 * Порядок здесь значим: пока признак не выставлен, обращения за кэшем отвечают
@@ -828,6 +911,43 @@ bool awh::alloc::Caches::arm() noexcept {
 	#endif
 	// Выводим признак заведённого ключа
 	return this->_keyed;
+}
+/**
+ * @brief Метод заведения кэша текущему потоку
+ *
+ * @return заведённый кэш либо nullptr
+ *
+ */
+void awh::alloc::Caches::reshare() noexcept {
+	/**
+	 * Заданный приложением предел не трогаем вовсе
+	 *
+	 * Он - предел каждого кэша порознь, и делить его между потоками значило бы
+	 * ослушаться приложения. Общий запас работает лишь тогда, когда предел оставлен
+	 * на усмотрение модуля
+	 */
+	if(this->_limit.load(std::memory_order_relaxed) > 0)
+		// Раздавать нечего: предел задан приложением
+		return;
+	// Считаем число кэшей, между какими делится запас
+	const size_t count = ((this->_count > 0) ? this->_count : 1);
+	// Считаем долю запаса, отводимую кэшу потока
+	size_t share = (this->_budget.load(std::memory_order_relaxed) / count);
+	// Если доля мельче наименьшей
+	if(share < SHARE)
+		// Отводим кэшу наименьшую долю
+		share = SHARE;
+	/**
+	 * Раздаём долю всем заведённым кэшам, включая занятые
+	 *
+	 * Кэш работающего потока трогать нельзя - к спискам его обращается лишь хозяин, -
+	 * а предел трогать МОЖНО: он неделимый и читается хозяином без замка. Заведение
+	 * нового потока сужает долю прочим, и лишнее они отдадут сами, дойдя до отдачи
+	 * излишка
+	 */
+	for(cache_t * cache = this->_caches; cache != nullptr; cache = cache->_next)
+		// Задаём долю очередному кэшу
+		cache->limit(share);
 }
 /**
  * @brief Метод заведения кэша текущему потоку
@@ -886,9 +1006,18 @@ awh::alloc::cache_t * awh::alloc::Caches::create() noexcept {
 		this->_caches = result;
 		// Увеличиваем число заведённых кэшей
 		this->_count++;
+		// Раздаём долю общего запаса заново: кэшей стало больше
+		this->reshare();
 	}
 	// Заводим кэш
-	if(!result->init(this->_central, this->_classes, this->_limit.load(std::memory_order_relaxed))){
+	/**
+	 * Заводим кэш с ЕГО долей, а не с общим пределом
+	 *
+	 * Долю ему раздала `reshare` под замком, и заведение обязано её сохранить: возьми
+	 * оно общий предел - новый кэш получил бы либо нуль (усмотрение модуля), либо
+	 * заданный приложением предел мимо всякой раздачи
+	 */
+	if(!result->init(this->_central, this->_classes, result->_kept.load(std::memory_order_relaxed))){
 		// Отмечаем кэш свободным
 		result->_busy = false;
 		// Отвечаем отказом
@@ -985,15 +1114,26 @@ void awh::alloc::Caches::limit(const size_t limit) noexcept {
 	// Захватываем замок общего списка кэшей
 	hold_t hold(this->_lock);
 	// Запоминаем предел кэша потока
-	const size_t chosen = ((limit > 0) ? limit : Cache::LIMIT);
-	// Запоминаем предел кэша потока
-	this->_limit.store(chosen, std::memory_order_relaxed);
+	this->_limit.store(limit, std::memory_order_relaxed);
+	/**
+	 * Нуль возвращает раздачу доли общего запаса
+	 *
+	 * Нуль в настройках значит «по усмотрению модуля», и усмотрение это - общий на
+	 * процесс запас, делённый между кэшами. Прежде нуль подменялся здесь постоянной
+	 * величиной, и усмотрения не оставалось никакого
+	 */
+	if(limit == 0){
+		// Раздаём долю общего запаса заведённым кэшам
+		this->reshare();
+		// Задавать больше нечего
+		return;
+	}
 	/**
 	 * Задаём предел уже заведённым кэшам
 	 */
 	for(cache_t * cache = this->_caches; cache != nullptr; cache = cache->_next)
 		// Задаём предел очередному кэшу
-		cache->limit(chosen);
+		cache->limit(limit);
 }
 /**
  * @brief Метод получения объёма, лежащего во всех кэшах
@@ -1072,6 +1212,28 @@ size_t awh::alloc::Caches::flush() noexcept {
 		 * поля `_yield`
 		 */
 		if(cache != own){
+			/**
+			 * Обнуляем рабочий предел кэша, чтобы просьба была замечена скоро
+			 *
+			 * Просьбу читает хозяин, и читает её на ХОЛОДНЫХ путях - пополнении разряда
+			 * и отдаче излишка, - а не на каждом освобождении: то стоило бы около пяти
+			 * сотых на трёх сценариях замера разом. Поток же, который только освобождает
+			 * и ничего не просит, на пополнение не заходит вовсе, а в отдачу излишка
+			 * попадает, лишь перебрав предел, - и просьба ждала бы там долго
+			 *
+			 * Обнулённый предел заводит отдачу излишка на ПЕРВОМ ЖЕ освобождении, и та
+			 * просьбу видит. Заданный приложением предел хранится тем временем в `_kept`
+			 * и возвращается на место, едва просьба исполнена
+			 *
+			 * Порядок двух записей ЗНАЧИМ: рычаг опускается ПРЕЖДЕ просьбы. Обратный
+			 * оставлял окно - хозяин, снявший просьбу между записями, вернул бы предел
+			 * на место ДО того, как мы его обнулим, и рычаг остался бы опущенным при
+			 * снятой просьбе. Кэш же с нулевым пределом опустошается на КАЖДОМ
+			 * освобождении, и опустошался бы так навсегда. Окно закрыто и со второй
+			 * стороны - самолечением в `Cache::relieve`, - но порядок дешевле починки
+			 */
+			// Опускаем рычаг: рабочего предела у кэша больше нет
+			cache->_limit.store(0, std::memory_order_release);
 			// Ставим кэшу просьбу опустошиться
 			cache->_yield.store(true, std::memory_order_release);
 			// Опустошать чужой кэш нам нечем
@@ -1134,6 +1296,17 @@ void awh::alloc::Caches::destroy() noexcept {
 			 */
 			__awh_alloc_keyed__.store(false, std::memory_order_release);
 			// Снимаем ключ хранения кэша
+			/**
+			 * Закрываем быстрый путь ПРЕЖДЕ сноса ключа
+			 *
+			 * Иначе чтение успело бы спросить снесённый ключ
+			 */
+			#if defined(AWH_ALLOC_TSD)
+				// Закрываем прямое чтение места потока
+				awh::alloc::__awh_alloc_direct__.store(awh::alloc::AWH_ALLOC_NOSLOT, std::memory_order_release);
+				// Закрываем быстрый путь чтения ключа
+				awh::alloc::__awh_alloc_armed__.store(false, std::memory_order_release);
+			#endif
 			::pthread_key_delete(__awh_alloc_key__);
 		#endif
 		// Отмечаем ключ снятым

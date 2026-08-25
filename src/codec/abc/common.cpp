@@ -190,6 +190,9 @@ const char * awh::codec::abc::message(const error_t error) noexcept {
 		// Если запись открытого расширения повреждена
 		case static_cast <uint8_t> (error_t::INVALID_EXTENSION):
 			return "record of the open extension is damaged";
+		// Если метка несёт запись шире наименьшей при строгом виде записи
+		case static_cast <uint8_t> (error_t::NON_MINIMAL_TAG):
+			return "tag carries a record wider than the smallest one at the strict kind of the record";
 	}
 	// Выводим результат по умолчанию
 	return "unknown error";

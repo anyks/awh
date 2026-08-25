@@ -237,7 +237,10 @@ namespace awh {
 				 * @brief Method of allocating memory beyond the size classes
 				 *
 				 */
-				void * alloc(const size_t size) noexcept;
+				/**
+				 * @param served действительно выданный размер в байтах, либо nullptr
+				 */
+				void * alloc(const size_t size, size_t * served = nullptr) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод расширения выданной сверх разрядов области на месте
@@ -454,7 +457,7 @@ namespace awh {
 				 * @return      address of the allocated span or nullptr
 				 *
 				 */
-				void * take(const size_t pages) noexcept;
+				void * take(const size_t pages, size_t * served = nullptr) noexcept;
 			public:
 				/**
 				 * \~russian

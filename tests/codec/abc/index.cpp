@@ -677,3 +677,110 @@ TEST_F(IndexFixture, EntryBeyondChunk) {
 		else ASSERT_EQ(error, abc::error_t::INVALID_INDEX);
 	}
 }
+/**
+ * @brief Проверка того, что объявленная длина кадра места не заводит
+ *
+ * @details Длина уложенного содержимого кадра прочитана из САМОГО контейнера и
+ *          недоверенна. Порча четырёх октетов её на `0xFFFFFFFF` заставляла выборку
+ *          требовать у источника 4 294 967 319 октетов - и заводить их - лишь затем,
+ *          чтобы следом ответить отказом по недочитанному. Тело же ограничено
+ *          заголовком, и кадр, за него выходящий, негоден заведомо
+ *
+ * @note Источник здесь заводит место ПО ЗАТРЕБОВАННОМУ, а границы блюдёт после:
+ *       так ведёт себя всякий наивный источник, и сторож обязан стоять выше него
+ *
+ */
+TEST_F(IndexFixture, ChunkLengthAllocation) {
+	// Октеты собранного контейнера
+	vector <uint8_t> data;
+	{
+		// Сборщик контейнера
+		abc::assembler_t assembler(this->_log.get());
+		// Получаем настройки сборки контейнера
+		abc::assembler_t::settings_t settings = assembler.settings();
+		// Выполняем установку порога накопления, дающего кадр на всякую запись
+		settings.block = 1;
+		// Выполняем установку настроек сборки контейнера
+		assembler.settings(settings);
+		/**
+		 * Выполняем внесение череды записей в собираемый контейнер
+		 */
+		for(size_t i = 0; i < 4; i++){
+			// Выполняем сборку очередной записи
+			const vector <uint8_t> item = record(string{"запись номер "} + to_string(i));
+			// Выполняем внесение очередной записи в собираемый контейнер
+			ASSERT_TRUE(assembler.append(item.data(), item.size(), abc::payload_t::TEXT))
+				<< "код отказа: " << abc::message(assembler.error());
+		}
+		// Выполняем завершение сборки контейнера
+		ASSERT_TRUE(assembler.complete(data)) << "код отказа: " << abc::message(assembler.error());
+	}
+	// Наибольшее место, заведённое источником за прогон
+	size_t peak = 0;
+	/**
+	 * Источник октетов контейнера, заводящий место по затребованному
+	 *
+	 * @param offset смещение читаемых октетов
+	 * @param size   размер читаемых октетов
+	 * @param result буфер, куда следует положить прочитанное
+	 * @return       признак успешности чтения
+	 */
+	const auto source = [&data, &peak](const uint64_t offset, const size_t size, vector <uint8_t> & result) noexcept -> bool {
+		// Выполняем очистку буфера прочитанных октетов
+		result.clear();
+		// Выполняем учёт наибольшего затребованного размера чтения
+		peak = ((size > peak) ? size : peak);
+		// Если затребованное чтение выходит за пределы записи контейнера
+		if((offset + static_cast <uint64_t> (size)) > static_cast <uint64_t> (data.size()))
+			// Выводим признак неудачного чтения
+			return false;
+		// Выполняем выдачу затребованных октетов записи контейнера
+		result.assign(data.begin() + static_cast <ptrdiff_t> (offset),
+		 data.begin() + static_cast <ptrdiff_t> (offset) + static_cast <ptrdiff_t> (size));
+		// Выводим признак успешного чтения
+		return true;
+	};
+	// Смещение объявленной длины кадра второй записи контейнера
+	uint64_t place = 0;
+	{
+		// Выборщик записей контейнера
+		abc::fetcher_t fetcher(this->_log.get());
+		// Выполняем открытие годного контейнера
+		ASSERT_TRUE(fetcher.open(source)) << "код отказа: " << abc::message(fetcher.error());
+		// Буфер выбранной записи контейнера
+		vector <uint8_t> item;
+		// Выполняем проверку того, что запись годного контейнера выбирается
+		ASSERT_TRUE(fetcher.record(2, item)) << "код отказа: " << abc::message(fetcher.error());
+		// Выполняем получение смещения объявленной длины кадра второй записи
+		place = abc::HEADER_LENGTH + fetcher.index().entries().at(2).chunk + 4;
+	}
+	// Выполняем проверку того, что длина кадра в запись контейнера умещается
+	ASSERT_LE(place + 4, static_cast <uint64_t> (data.size()));
+	/**
+	 * Выполняем порчу объявленной длины кадра второй записи наибольшим числом
+	 */
+	for(size_t i = 0; i < 4; i++)
+		// Выполняем порчу очередного октета объявленной длины кадра
+		data.at(static_cast <size_t> (place) + i) = 0xFF;
+	// Выполняем сброс наибольшего заведённого места
+	peak = 0;
+	// Выборщик записей испорченного контейнера
+	abc::fetcher_t fetcher(this->_log.get());
+	// Выполняем открытие испорченного контейнера
+	ASSERT_TRUE(fetcher.open(source)) << "код отказа: " << abc::message(fetcher.error());
+	// Буфер выбранной записи контейнера
+	vector <uint8_t> item;
+	// Выполняем проверку того, что испорченная запись отвечена отказом
+	ASSERT_FALSE(fetcher.record(2, item));
+	// Выполняем проверку того, что отказ объявлен неопознанным кадром
+	ASSERT_EQ(fetcher.error(), abc::error_t::INVALID_CHUNK);
+	/**
+	 * Выполняем проверку того, что места по объявленной длине заведено не было.
+	 *
+	 * Порог взят с запасом: кадр годной записи невелик, а порча требовала 4 ГиБ,
+	 * и промах меж ними ни с чем не спутать
+	 */
+	ASSERT_LT(peak, static_cast <size_t> (64 * 1024)) << "заведено место по объявленной длине: " << peak;
+	// Выполняем проверку того, что соседняя запись контейнера по-прежнему выбирается
+	ASSERT_TRUE(fetcher.record(3, item)) << "код отказа: " << abc::message(fetcher.error());
+}

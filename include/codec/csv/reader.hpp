@@ -305,7 +305,24 @@ namespace awh {
 						ESCAPE         = 0x05, // Знак отмены внутри поля в кавычках
 						AFTER_CR       = 0x06, // Возврат каретки, принадлежность его решает следующий знак
 						COMMENT        = 0x07, // Внутри строки примечания
-						FAILED         = 0x08  // Разбор прекращён ошибкой
+						FAILED         = 0x08, // Разбор прекращён ошибкой
+						/**
+						 * \~russian
+						 * Знак отмены внутри поля без кавычек
+						 *
+						 * @details Стоит последним, а не рядом с состоянием знака отмены внутри
+						 * поля в кавычках, ибо перечень этот вызывающему виден: перенумеровать
+						 * прежние состояния значило бы переменить договор ради порядка чтения
+						 *
+						 * \~english
+						 * Escape character inside a field without quotes
+						 * @details It stands last rather than beside the state of the escape character inside
+						 * a field in quotes, for this list is visible to the caller: to renumber the previous
+						 * states would mean to change the contract for the sake of the order of reading
+						 *
+						 * \~
+						 */
+						ESCAPE_UNQUOTED = 0x09
 					};
 					/**
 					 * \~russian
@@ -878,6 +895,10 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод подачи очередного куска текста
 					 *
+					 * @note Пустой указатель на буфер приравнивается к пустой подаче независимо от
+					 * заданного размера: проверка стоит в приведении текста, и разыменования не
+					 * происходит. Отвечает разбор при этом по своему правилу о пустом тексте
+					 *
 					 * @param buffer буфер с куском текста
 					 * @param size   размер куска текста в байтах
 					 * @param last   признак того, что кусок является последним
@@ -885,6 +906,9 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of feeding the next chunk of a text
+					 * @note A null pointer to the buffer is equated to an empty feeding independently of
+					 * the given size: the check stands in the conversion of the text, and no dereferencing
+					 * takes place. The parsing answers thereby by its own rule about an empty text
 					 * @param buffer buffer with the chunk of the text
 					 * @param size   size of the chunk of the text in bytes
 					 * @param last   flag of the chunk being the last one

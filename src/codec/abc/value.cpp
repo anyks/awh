@@ -162,12 +162,92 @@ const awh::codec::abc::Value & awh::codec::abc::Value::undefined() noexcept {
  *
  */
 awh::codec::abc::Value & awh::codec::abc::Value::scrap() noexcept {
-	// Отбросное значение, общее на весь процесс
-	static Value result;
+	/**
+	 * Отбросное значение, СВОЁ У ВСЯКОГО ПОТОКА
+	 *
+	 * @note Значение это правится всяким обращением к отсутствующему полю, и общее на
+	 *       процесс было бы гонкой у двух потоков, читающих РАЗНЫЕ деревья: TSan видит её
+	 *       на очистке. Своё у потока стоит одного указателя в потоковой памяти
+	 */
+	static thread_local Value result;
 	// Выполняем очистку отбросного значения
 	result.clear();
 	// Выводим ссылку на отбросное значение
 	return result;
+}
+/**
+ * @brief Метод копирования значения без возвратности
+ *
+ * @param value копируемое значение
+ *
+ */
+void awh::codec::abc::Value::clone(const Value & value) noexcept {
+	/**
+	 * @brief Работа копирования собственных полей значения, детей не трогающая
+	 *
+	 * @param from откуда копируется
+	 * @param into куда копируется
+	 *
+	 */
+	auto own = [](const Value & from, Value & into) noexcept -> void {
+		// Выполняем установку вида узла значения
+		into._kind = from._kind;
+		// Выполняем установку вида значения
+		into._type = from._type;
+		// Выполняем установку числа значения
+		into._number = from._number;
+		// Выполняем установку содержимого значения
+		into._text = from._text;
+		// Выполняем установку десятичного порядка величины
+		into._exponent = from._exponent;
+		// Выполняем установку признака отрицательности величины
+		into._negative = from._negative;
+	};
+	// Выполняем копирование собственных полей корня
+	own(value, * this);
+	// Вместилище пар «откуда - куда», ожидающих копирования детей
+	vector <pair <const Value *, Value *>> pending;
+	// Выполняем внесение корня в ожидающие копирования
+	pending.emplace_back(& value, this);
+	/**
+	 * Выполняем обход всех вместимых без возвратности
+	 */
+	while(!pending.empty()){
+		// Выполняем снятие очередной пары с вместилища ожидающих
+		const pair <const Value *, Value *> item = pending.back();
+		// Выполняем снятие пары с вместилища ожидающих
+		pending.pop_back();
+		// Выполняем заведение места под имена полей отображения
+		item.second->_keys.resize(item.first->_keys.size());
+		/**
+		 * Выполняем перебор имён полей отображения
+		 */
+		for(size_t i = 0; i < item.first->_keys.size(); i++){
+			// Выполняем копирование собственных полей имени поля
+			own(item.first->_keys.at(i), item.second->_keys.at(i));
+			/**
+			 * Если имя поля само вместимым является
+			 */
+			if(!item.first->_keys.at(i)._keys.empty() || !item.first->_keys.at(i)._items.empty())
+				// Выполняем внесение имени поля в ожидающие копирования
+				pending.emplace_back(& item.first->_keys.at(i), & item.second->_keys.at(i));
+		}
+		// Выполняем заведение места под значения вместимого
+		item.second->_items.resize(item.first->_items.size());
+		/**
+		 * Выполняем перебор значений вместимого
+		 */
+		for(size_t i = 0; i < item.first->_items.size(); i++){
+			// Выполняем копирование собственных полей значения
+			own(item.first->_items.at(i), item.second->_items.at(i));
+			/**
+			 * Если значение само вместимым является
+			 */
+			if(!item.first->_items.at(i)._keys.empty() || !item.first->_items.at(i)._items.empty())
+				// Выполняем внесение значения в ожидающие копирования
+				pending.emplace_back(& item.first->_items.at(i), & item.second->_items.at(i));
+		}
+	}
 }
 /**
  * @brief Метод разбора звена пути на номер значения
@@ -257,8 +337,19 @@ awh::codec::abc::Value::Value(const kind_t kind) noexcept :
 		case static_cast <uint8_t> (kind_t::BLOB): this->_type = type_t::BLOB; break;
 		// Если заводится отметка времени
 		case static_cast <uint8_t> (kind_t::TIME): this->_type = type_t::TIME; break;
-		// Если заводится опознаватель
-		case static_cast <uint8_t> (kind_t::UUID): this->_type = type_t::UUID; break;
+		/**
+		 * Если заводится опознаватель
+		 *
+		 * @note Опознаватель заводится нулевым, а не пустым: ширина его строго
+		 *       шестнадцать октетов, и пустой узел уложить было бы нечем - одно такое поле
+		 *       обращало бы в негодность всё дерево
+		 */
+		case static_cast <uint8_t> (kind_t::UUID): {
+			// Выполняем установку вида значения
+			this->_type = type_t::UUID;
+			// Выполняем заведение опознавателя нулевым
+			this->_text.assign(UUID_WIDTH, '\0');
+		} break;
 		// Если заводится массив
 		case static_cast <uint8_t> (kind_t::ARRAY): this->_type = type_t::ARRAY; break;
 		// Если заводится отображение
@@ -355,15 +446,22 @@ awh::codec::abc::Value::Value(const Document::value_t & value) noexcept :
  *
  */
 awh::codec::abc::Value::Value(const Value & value) noexcept :
- _kind(value._kind), _type(value._type), _number(value._number), _text(value._text),
- _exponent(value._exponent), _negative(value._negative), _keys(value._keys), _items(value._items) {
+ _kind(kind_t::NONE), _type(type_t::UNDEFINED), _exponent(0), _negative(false) {
+	// Выполняем сброс числа значения
+	this->_number.natural = 0;
 	/**
-	 * Указатель поиска копии НЕ достаётся намеренно
+	 * Выполняем копирование значения без возвратности
 	 *
-	 * @note Заведётся он у копии заново при первом же поиске по имени. Копирование его
-	 *       стоило бы выделения памяти и счёта отпечатков на всякое имя - и стоило бы
-	 *       того ВСЯКОМУ копированию узла, тогда как ищут по имени далеко не во всяком
+	 * @note Вместилище детей копирует их само, а всякий ребёнок - своих: возвратность эта
+	 *       принадлежит вместилищу, и дерево в десятки тысяч уровней срывало ею стек.
+	 *       Обход ведётся своим вместилищем пар, как то сделано у очистки и укладки
+	 *
+	 * @note Указатель поиска копии НЕ достаётся намеренно: заведётся он у копии заново при
+	 *       первом же поиске по имени, а копирование его стоило бы выделения памяти и счёта
+	 *       отпечатков на всякое имя - и стоило бы того ВСЯКОМУ копированию узла, тогда как
+	 *       ищут по имени далеко не во всяком
 	 */
+	this->clone(value);
 }
 /**
  * @brief Конструктор переноса
@@ -394,22 +492,8 @@ awh::codec::abc::Value & awh::codec::abc::Value::operator = (const Value & value
 		return (* this);
 	// Выполняем очистку присваиваемого значения
 	this->clear();
-	// Выполняем установку вида узла значения
-	this->_kind = value._kind;
-	// Выполняем установку вида значения
-	this->_type = value._type;
-	// Выполняем установку числа значения
-	this->_number = value._number;
-	// Выполняем установку содержимого значения
-	this->_text = value._text;
-	// Выполняем установку десятичного порядка величины
-	this->_exponent = value._exponent;
-	// Выполняем установку признака отрицательности величины
-	this->_negative = value._negative;
-	// Выполняем установку имён полей отображения
-	this->_keys = value._keys;
-	// Выполняем установку значений вместимого
-	this->_items = value._items;
+	// Выполняем копирование значения без возвратности
+	this->clone(value);
 	// Выполняем снос указателя поиска: заведётся он заново при первом же поиске
 	this->unindex();
 	// Выводим ссылку на присвоенное значение
@@ -624,6 +708,27 @@ int64_t awh::codec::abc::Value::exponent() const noexcept {
 bool awh::codec::abc::Value::negative() const noexcept {
 	// Выводим признак того, что величина меньше нуля
 	return this->_negative;
+}
+/**
+ * @brief Метод извлечения цифр числа неограниченной ширины
+ *
+ * @param result извлекаемые цифры числа старшим октетом вперёд
+ * @return       признак успешности извлечения
+ *
+ */
+bool awh::codec::abc::Value::digits(vector <uint8_t> & result) const noexcept {
+	// Выполняем очистку буфера извлекаемых цифр числа
+	result.clear();
+	/**
+	 * Если значение числом неограниченной ширины не является
+	 */
+	if(!this->is(type_t::EXTENDED) && !this->is(type_t::DECIMAL))
+		// Выводим признак неудачного извлечения
+		return false;
+	// Выполняем извлечение цифр числа
+	result.assign(this->_text.begin(), this->_text.end());
+	// Выводим признак успешного извлечения
+	return true;
 }
 /**
  * @brief Метод разыскания поля отображения по имени
@@ -1530,10 +1635,23 @@ bool awh::codec::abc::Value::compose(writer_t & writer) const noexcept {
 				// Выполняем укладку числа неограниченной ширины
 				return writer.decimal(node._text.data(), node._text.size(), node._negative, node._exponent);
 		}
-		// Если значение является дробным
-		if((static_cast <uint32_t> (node._type) & static_cast <uint32_t> (type_t::REAL)) != 0)
-			// Выполняем укладку дробного значения
+		/**
+		 * Если значение является дробным
+		 */
+		if((static_cast <uint32_t> (node._type) & static_cast <uint32_t> (type_t::REAL)) != 0){
+			/**
+			 * Если значение уложено было одинарной точностью, кладём его ею же
+			 *
+			 * @note Без этого дробное одинарной точности росло при перекладке вдвое, и
+			 *       запись, разобранная деревом и уложенная наново, переставала совпадать с
+			 *       исходной октет в октет
+			 */
+			if((static_cast <uint32_t> (node._type) & static_cast <uint32_t> (type_t::FLOAT)) != 0)
+				// Выполняем укладку дробного значения одинарной точности
+				return writer.number(static_cast <float> (node._number.real));
+			// Выполняем укладку дробного значения двойной точности
 			return writer.number(node._number.real);
+		}
 		// Если значение является целым со знаком
 		if((static_cast <uint32_t> (node._type) & static_cast <uint32_t> (type_t::SIGNED)) != 0)
 			// Выполняем укладку целого со знаком
@@ -1656,6 +1774,33 @@ bool awh::codec::abc::Value::parse(const void * buffer, const size_t size) noexc
 void awh::codec::abc::Value::setLogger(const log_t * log) noexcept {
 	// Выполняем установку объекта логирования
 	this->_log = log;
+}
+/**
+ * @brief Метод сборки записи из владеющего значения
+ *
+ * @return собранная запись
+ *
+ */
+bool awh::codec::abc::Value::dump(vector <uint8_t> & result, error_t & error) const noexcept {
+	// Выполняем очистку буфера собираемой записи
+	result.clear();
+	// Выполняем сброс кода отказа сборки записи
+	error = error_t::NONE;
+	// Сборщик бинарной записи
+	writer_t writer(this->_log);
+	/**
+	 * Если укладка значения в собираемую запись отвечена отказом
+	 */
+	if(!this->compose(writer)){
+		// Выполняем перенос повода отказа от сборки записи
+		error = writer.error();
+		// Сообщаем, что сборка отвечена отказом
+		return false;
+	}
+	// Выполняем выдачу собранной записи
+	result = writer.record();
+	// Сообщаем об успешности сборки записи
+	return true;
 }
 /**
  * @brief Метод сборки записи из владеющего значения

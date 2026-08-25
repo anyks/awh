@@ -164,7 +164,7 @@ namespace awh {
 					uint64_t _stamp;
 				private:
 					// Замок состояния отбоя срока
-					mutex _mtx;
+					mutable mutex _mtx;
 				private:
 					// Условная переменная ожидания срока
 					condition_variable _cond;

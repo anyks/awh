@@ -399,6 +399,25 @@ namespace awh {
 					 * \~
 					 */
 					static Value & scrap() noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод копирования значения без возвратности
+					 *
+					 * @details Копирование вместимого вместе с детьми возвратно по устройству
+					 * вместилища, и дерево в десятки тысяч уровней срывало им стек. Обход ведётся
+					 * своим вместилищем пар «откуда - куда», как то сделано у очистки и укладки
+					 *
+					 * @param value копируемое значение
+					 *
+					 * \~english
+					 * @brief Method of the copying of a value without a recursion
+					 * @details The copying of a container together with its children is recursive by the design
+					 * of the storage, and a tree of tens of thousands of levels tore the stack by it
+					 * @param value value being copied
+					 *
+					 * \~
+					 */
+					void clone(const Value & value) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -535,6 +554,28 @@ namespace awh {
 					 * \~
 					 */
 					[[nodiscard]] bool negative() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод извлечения цифр числа неограниченной ширины
+					 *
+					 * @details Целое любой ширины и десятичное несут величину октетами, а не
+					 * родным числом: ни одно числовое извлечение их не берёт, и без этого вида
+					 * число, разобранное в дерево, было бы можно лишь перенести, но не прочесть.
+					 * Знак берётся `negative()`, десятичный разряд - `exponent()`
+					 *
+					 * @param result извлекаемые цифры числа старшим октетом вперёд
+					 * @return       признак успешности извлечения
+					 *
+					 * \~english
+					 * @brief Method of the extraction of the digits of a number of an unlimited width
+					 * @details An integer of any width and a decimal carry the magnitude by octets rather than
+					 * by a native number: no numeric extraction takes them
+					 * @param result extracted digits of the number, the most significant octet first
+					 * @return sign of the success of the extraction
+					 *
+					 * \~
+					 */
+					[[nodiscard]] bool digits(vector <uint8_t> & result) const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод извлечения имени поля отображения по его номеру
@@ -925,15 +966,50 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод сборки записи из владеющего значения
 					 *
+					 * @warning Собранная запись равна разобранной по СМЫСЛУ, но не по октетам:
+					 * значение хранит состав вместимого, а не вид записи его, и вместимое
+					 * неопределённой длины укладывается обратно определённым. Так, отображение
+					 * `BF 42 D0 B0 01 42 D0 B1 02 DF` (10 окт.) выходит записью в 9 октетов
+					 *
+					 * @warning Подпись контейнера считается по ОКТЕТАМ: запись, прочитанная во
+					 * владеющее значение и уложенная обратно, подписи своей более не отвечает
+					 *
 					 * @return собранная запись
 					 *
 					 * \~english
 					 * @brief Method of the assembling of a record from an owning value
+					 * @warning The assembled record equals the parsed one by the MEANING but not by the octets:
+					 * a container of an indefinite length is laid back as a definite one
+					 * @warning The signature of a container is computed over the OCTETS: a record read into
+					 * an owning value and laid back no longer agrees with its signature
 					 * @return assembled record
 					 *
 					 * \~
 					 */
 					vector <uint8_t> dump() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод сборки записи из владеющего значения с поводом отказа
+					 *
+					 * @details Вид этот заведён ради повода: `dump()` отвечает на отказ пустой
+					 * записью, а по ней не узнать, что именно не легло - непригодный узел,
+					 * повторяющееся имя поля либо превышенная глубина
+					 *
+					 * @param result собранная запись
+					 * @param error  код отказа, если сборка не удалась
+					 * @return       признак успешности сборки
+					 *
+					 * \~english
+					 * @brief Method of the assembling of a record from an owning value with a reason of the refusal
+					 * @details This kind is introduced for the sake of the reason: `dump()` answers a refusal
+					 * by an empty record, and by it one cannot learn what exactly has not been laid
+					 * @param result assembled record
+					 * @param error code of the refusal if the assembling has not succeeded
+					 * @return sign of the success of the assembling
+					 *
+					 * \~
+					 */
+					[[nodiscard]] bool dump(vector <uint8_t> & result, error_t & error) const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод переноса владеющего значения в дерево документа
@@ -1129,6 +1205,27 @@ namespace awh {
 					 * \~
 					 */
 					Value(const char * value) noexcept;
+					/**
+					 * \~russian
+					 * @brief Конструктор от указателя запрещён
+					 *
+					 * @details Конструктор от истинности неявен намеренно - `insert("к", true)`
+					 * без него не собрать, - и всякий указатель проходил бы в него стандартным
+					 * преобразованием, молча обращаясь в ИСТИНУ. Ловушка эта тем острее, что
+					 * всякий иной разряд кодека берёт журнал конструктором, и `value_t v(log)`
+					 * собиралось бы молча. Строковый литерал сюда не попадает: `Value(const char *)`
+					 * стоит рядом и как не шаблонный предпочитается
+					 *
+					 * \~english
+					 * @brief The constructor from a pointer is forbidden
+					 * @details The constructor from a boolean is implicit deliberately — `insert("k", true)`
+					 * cannot be assembled without it — and every pointer would pass into it by a standard
+					 * conversion, silently turning into TRUE
+					 *
+					 * \~
+					 */
+					template <typename T>
+					Value(T *) = delete;
 					/**
 					 * \~russian
 					 * @brief Конструктор

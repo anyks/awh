@@ -156,6 +156,31 @@ namespace awh {
 						bool stream;
 						// Признак проверки строк на соответствие кодировке UTF-8
 						bool validate;
+						/**
+						 * \~russian
+						 * Признак поверки записи на строгий вид
+						 *
+						 * @details Строгий вид требует трёх условий разом: наименьшая запись всякой
+						 * метки (значение, вместимое наименьшей шириной, шире не пишется), запрет
+						 * неопределённой длины и возрастание имён полей отображения. Сборка тем же
+						 * признаком (`Writer::Settings::canonical`) их соблюдает, а заголовок
+						 * контейнера объявляет признаком `flag_t::CANONICAL`
+						 *
+						 * @note Признак этот по умолчанию снят: запись, собранная не строгим видом,
+						 * годна к разбору, и поверка навязывалась бы всякому потребителю. Строгий вид
+						 * нужен там, где запись подписывается либо сличается октет в октет: одно и то
+						 * же значение обязано записываться единственным способом
+						 *
+						 * \~english
+						 * Flag of the checking of the record for the strict kind
+						 * @details The strict kind demands three conditions at once: the smallest record of
+						 * every tag, the prohibition of the indefinite length and the ascending of the names
+						 * of the fields of a mapping
+						 * @note This flag is removed by default
+						 *
+						 * \~
+						 */
+						bool canonical;
 						// Наибольшая допустимая длина строкового значения в октетах, ноль - без предела
 						uint64_t maxString;
 						// Наибольшая допустимая длина двоичного значения в октетах, ноль - без предела
@@ -164,6 +189,29 @@ namespace awh {
 						uint32_t maxDepth;
 						// Наибольшее допустимое количество узлов документа, ноль - предел модуля
 						uint32_t maxNodes;
+						/**
+						 * \~russian
+						 * Наибольшее допустимое количество неснятых событий, ноль - без предела
+						 *
+						 * @details Пределы на строку, на данные, на глубину и на узлы держат разбор,
+						 * а память держит очередь событий: потребитель, подающий и не снимающий,
+						 * растит её без всякой границы. Замер 24.08.2026, поток 79 720 окт. о 20 000
+						 * документах: очередь снимается - 20 624 окт. взято, не снимается -
+						 * 21 233 552 окт., умножение в 266 раз
+						 *
+						 * @note Предел этот по умолчанию снят: подающий и снимающий подряд в него не
+						 * упрётся никогда, а поточному потребителю он даёт границу, за какой подача
+						 * отвечает отказом вместо молчаливого роста
+						 *
+						 * \~english
+						 * Greatest admissible number of the unclaimed events, zero — without a limit
+						 * @details The limits on a string, on data, on the depth and on the nodes hold the parsing,
+						 * while the memory is held by the queue of the events
+						 * @note This limit is removed by default
+						 *
+						 * \~
+						 */
+						size_t maxEvents;
 						/**
 						 * \~russian
 						 * @brief Конструктор
@@ -343,6 +391,52 @@ namespace awh {
 						type_t segment;
 						/**
 						 * \~russian
+						 * Длина кусков значения, собранная вместимым
+						 *
+						 * @note Предел длины значения поверяется по СУММЕ кусков, а не по всякому
+						 * куску порознь: значение неопределённой длины иначе обходило бы предел
+						 * дроблением на куски ниже него
+						 *
+						 * \~english
+						 * Length of the pieces of a value gathered by the container
+						 * @note The limit of the length of a value is checked by the SUM of the pieces
+						 * rather than by every piece separately
+						 *
+						 * \~
+						 */
+						uint64_t gathered;
+						/**
+						 * \~russian
+						 * Признак того, что имя поля отображения этим вместимым уже укладывалось
+						 *
+						 * \~english
+						 * Flag that a name of a field of a mapping has already been laid by this container
+						 *
+						 * \~
+						 */
+						bool marked;
+						/**
+						 * \~russian
+						 * Запись имени поля отображения, разобранного прежде, у строгого вида
+						 *
+						 * @details Возрастание имён поверяется сличением с ПРЕДЫДУЩИМ именем, а не со
+						 * всеми: у строгого вида имена идут по возрастанию, и повтор встал бы рядом.
+						 * Запись держится своей копией, а не отрезком буфера: буфер ужимается по
+						 * выдаче событий, и отрезок в нём ужатия не переживает
+						 *
+						 * @note Вместилище это наполняется ЛИШЬ при строгом виде разбора: вне его
+						 * сличать нечего, и памяти оно не занимает вовсе
+						 *
+						 * \~english
+						 * Record of the name of a field of a mapping parsed previously, at the strict kind
+						 * @details The ascending is checked by the comparison with the PREVIOUS name
+						 * @note This container is filled ONLY at the strict kind of the parsing
+						 *
+						 * \~
+						 */
+						vector <uint8_t> key;
+						/**
+						 * \~russian
 						 * @brief Конструктор
 						 *
 						 *
@@ -353,7 +447,7 @@ namespace awh {
 						 */
 						Frame() noexcept :
 						 beyond(0), mapping(false), indefinite(false), expectKey(false), remain(0),
-						 segment(type_t::UNDEFINED) {}
+						 segment(type_t::UNDEFINED), gathered(0), marked(false) {}
 					} frame_t;
 					/**
 					 * \~russian
@@ -459,6 +553,27 @@ namespace awh {
 					 * \~
 					 */
 					location_t _mark;
+				private:
+					/**
+					 * \~russian
+					 * Ведущие октеты разбираемой единицы у строгого вида разбора
+					 *
+					 * @details Сличение имён полей отображения идёт по ПОЛНОЙ записи имени, вместе
+					 * с меткою: так же сличает их и сборка, и всякий иной порядок разошёлся бы с нею.
+					 * Метка вместе с ведомой ею записью держится здесь, а содержимое берётся отрезком
+					 * события в миг выдачи его
+					 *
+					 * @note Вместилище это наполняется ЛИШЬ при строгом виде разбора
+					 *
+					 * \~english
+					 * Leading octets of the unit being parsed at the strict kind of the parsing
+					 * @details The comparison of the names of the fields of a mapping goes by the FULL record
+					 * of a name together with the tag, the same way as the writing compares them
+					 * @note This container is filled ONLY at the strict kind of the parsing
+					 *
+					 * \~
+					 */
+					vector <uint8_t> _lead;
 				private:
 					// Смещение разбора в буфере накопленных октетов
 					size_t _offset;
@@ -807,9 +922,13 @@ namespace awh {
 					 * @note Звать надлежит сразу по событию начала вместимого. Пропуск выдаёт
 					 * событие конца его, и разбор продолжается с записи, стоящей следом
 					 *
-					 * @note Отказом отвечается, если размах не объявлен, если вместимое несёт
-					 * неопределённую длину либо если октеты его ещё не поданы целиком:
-					 * поточному чтению пропускать нечего, покуда пропускаемое не пришло
+					 * @note Отказом отвечается, если размах не объявлен либо если октеты
+					 * вместимого ещё не поданы целиком: поточному чтению пропускать нечего,
+					 * покуда пропускаемое не пришло
+					 *
+					 * @note Неопределённая длина пропуску НЕ мешает: размах объявлен в октетах,
+					 * и метка конца вместимого лежит внутри него. Проверено 25.08.2026 подачей
+					 * всякой нарезкой - от одного октета до целой записи
 					 *
 					 * @return признак успешного пропуска вместимого
 					 *
@@ -819,8 +938,10 @@ namespace awh {
 					 * is declared by a tag upon the assembling (the setting `spanned` of the assembling)
 					 * @note It ought to be called right upon the event of the beginning of a container. The skipping
 					 * issues the event of its end, and the parsing continues from the record standing next
-					 * @note It is answered by a refusal if the span is not declared, if the container carries
-					 * an indefinite length or if its octets have not yet been submitted as a whole
+					 * @note It is answered by a refusal if the span is not declared or if the octets of the container
+					 * have not yet been submitted as a whole
+					 * @note An indefinite length does NOT hinder the skipping: the span is declared in octets,
+					 * and the tag of the end of the container lies inside it
 					 * @return sign of the success of the skipping of the container
 					 *
 					 * \~
@@ -843,10 +964,20 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод извлечения значения текущего события
 					 *
+					 * @warning Строка и двоичное содержимое выдаются ССЫЛКОЙ во вместилище
+					 * разбора, копии не делается вовсе - ради того событийное чтение и заводят.
+					 * Ссылка эта годна ЛИШЬ ДО СЛЕДУЮЩЕЙ ПОДАЧИ: разбор срезает разобранное
+					 * начало вместилища, и выданное прежде указывает уже в чужое место.
+					 * Пережить подачу должна КОПИЯ, снятая потребителем
+					 *
 					 * @return значение текущего события разбора
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the value of the current event
+					 * @warning A string and a binary content are issued by a REFERENCE into the storage
+					 * of the parsing, no copy is made at all. This reference is valid ONLY UNTIL THE NEXT
+					 * SUBMISSION: the parsing trims the parsed beginning of the storage. What must outlive
+					 * the submission is a COPY taken by the consumer
 					 * @return value of the current event of the parsing
 					 *
 					 * \~

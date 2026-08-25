@@ -430,8 +430,27 @@ namespace awh {
 			 * \~russian
 			 * @brief Правило заключения поля в кавычки при записи
 			 *
+			 * @warning Записанное без кавычек (`NONE`) читается ТОЛЬКО при способе отмены
+			 * `escape_t::BACKSLASH` либо `escape_t::BOTH`: кавычек нет, и единственным
+			 * способом уберечь разделитель и знаки конца строки внутри поля остаётся знак
+			 * отмены. Запись ставит его независимо от собственной настройки `escape` -
+			 * настройка эта описывает отмену кавычки ВНУТРИ кавычек, а их тут нет вовсе.
+			 * Чтение же снимало отмены лишь внутри кавычек, и записанное прочитывалось не
+			 * тем, чем записано, причём молча: поле `a,b` уходило текстом `a\,b`, а читалось
+			 * двумя полями `a\` и `b`. Так же поступает и обиход - `escapechar` модуля `csv`
+			 * языка Python при чтении снимает особое значение со следующего знака
+			 *
 			 * \~english
 			 * @brief Rule of enclosing a field in quotes at the writing
+			 * @warning What has been written without quotes (`NONE`) is read ONLY with the escaping method
+			 * `escape_t::BACKSLASH` or `escape_t::BOTH`: there are no quotes, and the only way to protect
+			 * the separator and the end-of-line characters inside a field is the escape character.
+			 * The writing puts it independently of its own `escape` setting — that setting describes the escaping
+			 * of a quote INSIDE quotes, and there are none here at all. The reading, however, removed the escapes
+			 * only inside quotes, and what had been written was read back as something other than what was written,
+			 * and silently at that: the field `a,b` went out as the text `a\,b` and was read as two fields `a\` and `b`.
+			 * The custom does the same — the `escapechar` of the `csv` module of the Python language removes
+			 * the special meaning from the following character at the reading
 			 *
 			 * \~
 			 */

@@ -948,3 +948,104 @@ TEST(CodecAbcReader, FailureReachesLogger) {
 		ASSERT_TRUE(records.empty()) << "успешный разбор оставил запись: " << records.front();
 	}
 }
+/**
+ * @brief Проверка поверки записи на строгий вид
+ *
+ * @details Строгий вид требует трёх условий разом: наименьшая запись всякой метки,
+ * запрет неопределённой длины и возрастание имён полей отображения. Признак
+ * `flag_t::CANONICAL` заголовка контейнера есть ОБЪЯВЛЕНИЕ собирателя, а поверяется
+ * оно здесь, разбором самих записей
+ *
+ * @note Проверка эта закрепляет и то, что вне строгого вида все четыре записи
+ * разбираются: поверка обязана быть настройкой, а не свойством разбора
+ *
+ */
+TEST(CodecAbcReader, CanonicalRefusal){
+	/**
+	 * Работа разбора записи затребованным видом
+	 *
+	 * @param record    разбираемая запись
+	 * @param canonical признак поверки на строгий вид
+	 * @return          код отказа разбора
+	 */
+	auto digest = [](const vector <uint8_t> & record, const bool canonical) noexcept -> abc::error_t {
+		// Разборщик бинарной записи
+		abc::reader_t reader(::logger());
+		// Выполняем получение настроек разбора
+		abc::reader_t::settings_t settings = reader.settings();
+		// Выполняем установку признака поверки на строгий вид
+		settings.canonical = canonical;
+		// Выполняем установку настроек разбора
+		reader.settings(settings);
+		// Если подача записи разборщику отвечена отказом
+		if(!reader.feed(record.data(), record.size(), true))
+			// Выводим код отказа разбора
+			return reader.error();
+		// Сообщаем, что запись разобрана
+		return abc::error_t::NONE;
+	};
+	// Строгая запись отображения из двух пар: имена идут по возрастанию
+	const vector <uint8_t> strict = {0xA2, 0x41, 'a', 0x01, 0x41, 'b', 0x02};
+	// Та же пара, но имена идут по убыванию
+	const vector <uint8_t> unordered = {0xA2, 0x41, 'b', 0x02, 0x41, 'a', 0x01};
+	// То же имя, объявленное дважды
+	const vector <uint8_t> duplicate = {0xA2, 0x41, 'a', 0x01, 0x41, 'a', 0x02};
+	// Число единица, уложенное ведомым октетом вместо самой метки
+	const vector <uint8_t> wide = {0x18, 0x01};
+	// Массив неопределённой длины
+	const vector <uint8_t> indefinite = {0x9F, 0x01, 0xDF};
+	/**
+	 * Вне строгого вида разбираются ВСЕ пять записей: поверка есть настройка
+	 */
+	ASSERT_EQ(digest(strict, false), abc::error_t::NONE);
+	ASSERT_EQ(digest(unordered, false), abc::error_t::NONE);
+	ASSERT_EQ(digest(duplicate, false), abc::error_t::NONE);
+	ASSERT_EQ(digest(wide, false), abc::error_t::NONE);
+	ASSERT_EQ(digest(indefinite, false), abc::error_t::NONE);
+	/**
+	 * Строгим видом принимается лишь строгая запись, прочие отвергаются по своему поводу
+	 */
+	ASSERT_EQ(digest(strict, true), abc::error_t::NONE);
+	ASSERT_EQ(digest(unordered, true), abc::error_t::UNORDERED_KEY);
+	ASSERT_EQ(digest(duplicate, true), abc::error_t::UNORDERED_KEY);
+	ASSERT_EQ(digest(wide, true), abc::error_t::NON_MINIMAL_TAG);
+	ASSERT_EQ(digest(indefinite, true), abc::error_t::INDEFINITE_REFUSED);
+}
+/**
+ * @brief Проверка согласия строгой сборки со строгим разбором
+ *
+ * @details Сборка и разбор судят о строгом виде порознь, и разойтись им нельзя:
+ * запись, собранная строгим видом, обязана строгим видом и приниматься
+ *
+ */
+TEST(CodecAbcReader, CanonicalAgreesWithWriter){
+	// Сборка бинарной записи строгим видом
+	abc::writer_t writer(::logger());
+	// Выполняем получение настроек сборки
+	abc::writer_t::settings_t settings = writer.settings();
+	// Выполняем установку строгого вида записи
+	settings.canonical = true;
+	// Выполняем установку настроек сборки
+	writer.settings(settings);
+	// Выполняем укладку начала отображения
+	ASSERT_TRUE(writer.mapBegin(static_cast <uint64_t> (3)));
+	// Выполняем укладку первой пары отображения
+	ASSERT_TRUE(writer.text("aa") && writer.number(static_cast <uint64_t> (0)));
+	// Выполняем укладку второй пары отображения
+	ASSERT_TRUE(writer.text("bb") && writer.number(static_cast <uint64_t> (300)));
+	// Выполняем укладку третьей пары отображения
+	ASSERT_TRUE(writer.text("cc") && writer.text(string(400, 'z')));
+	// Выполняем укладку конца отображения
+	ASSERT_TRUE(writer.mapEnd());
+	// Разборщик бинарной записи строгим видом
+	abc::reader_t reader(::logger());
+	// Выполняем получение настроек разбора
+	abc::reader_t::settings_t parsing = reader.settings();
+	// Выполняем установку признака поверки на строгий вид
+	parsing.canonical = true;
+	// Выполняем установку настроек разбора
+	reader.settings(parsing);
+	// Выполняем подачу собранной записи разборщику
+	ASSERT_TRUE(reader.feed(writer.record().data(), writer.record().size(), true))
+		<< "код отказа: " << abc::message(reader.error());
+}

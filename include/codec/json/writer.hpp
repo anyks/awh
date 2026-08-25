@@ -423,11 +423,33 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод записи строкового значения
 					 *
+					 * @warning Негодная последовательность байтов UTF-8 в записываемом значении
+					 * ЗАМЕЩАЕТСЯ знаком замены U+FFFD, а запись отвечает успехом: договор JSON
+					 * велит тексту быть годным UTF-8, а замещение предписано самой кодировкой -
+					 * годной началом последовательности считается наибольшая её часть, оттого
+					 * `C3 28` даёт знак замены и скобку, а не два знака замены. Значение при этом
+					 * меняется молча, и вызывающему, кому важна сохранность байтов, проверять
+					 * их годность следует ДО записи
+					 *
+					 * @note Кодек XML в том же положении отвечает отказом `INVALID_ENCODING`:
+					 * договор XML запрещает такие знаки прямо, тогда как JSON требует лишь
+					 * годной кодировки текста. Расхождение это задано форматами, а не недоделкой
+					 *
 					 * @param value записываемое строковое значение
 					 * @return      признак успешности записи
 					 *
 					 * \~english
 					 * @brief Method of the writing of a string value
+					 * @warning An invalid sequence of UTF-8 bytes in the value being written is REPLACED
+					 * with the replacement character U+FFFD, while the writing answers with a success: the json
+					 * protocol orders a text to be a valid UTF-8, and the replacement is prescribed by the encoding
+					 * itself — the largest part of a sequence that is valid as its beginning is considered parsed,
+					 * therefore `C3 28` gives a replacement character and a bracket rather than two replacement characters.
+					 * The value thereby changes silently, and a caller to whom the preservation of the bytes matters
+					 * should check their validity BEFORE the writing
+					 * @note The xml codec in the same position answers with an `INVALID_ENCODING` refusal:
+					 * the xml protocol forbids such characters directly, whereas json requires only
+					 * a valid encoding of the text. This divergence is set by the formats rather than by an omission
 					 * @param value string value being written
 					 * @return sign of the success of the writing
 					 *

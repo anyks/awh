@@ -321,6 +321,14 @@ const char * awh::codec::xml::message(const error_t error) noexcept {
 		case static_cast <uint8_t> (error_t::FILE_NOT_OPENED):
 			// Выводим описание кода ошибки
 			return "cannot open the markup file";
+		// Если подача продолжена после объявленного конца текста
+		case static_cast <uint8_t> (error_t::TEXT_ALREADY_ENDED):
+			// Выводим описание кода ошибки
+			return "feeding continued after the text was declared complete";
+		// Если текст разметки записать в файл не удалось
+		case static_cast <uint8_t> (error_t::FILE_NOT_WRITTEN):
+			// Выводим описание кода ошибки
+			return "cannot write the markup file";
 	}
 	// Выводим описание неизвестного кода ошибки
 	return "unknown error";

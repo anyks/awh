@@ -24,6 +24,8 @@
 #include <cstdio>
 #include <limits>
 #include <fstream>
+#include <csignal>
+#include <sys/resource.h>
 
 /**
  * Подключаем заголовочные файлы проекта
@@ -1670,4 +1672,100 @@ TEST(CodecJsonDocument, MissingFileIsNotInternal) {
 	ASSERT_FALSE(document.load("/несуществующий/каталог/документ.json"));
 	// Выполняем проверку кода ошибки разбора
 	ASSERT_EQ(document.error(), json::error_t::FILE_NOT_OPENED);
+}
+
+/**
+ * @brief Проверка доклада об отказе записи файла документа
+ *
+ * @details Поток сбрасывает свой буфер разрушением своим, то есть уже после вычисления
+ * возвращаемого значения: текст, целиком уместившийся в буфер, уходил отказом сброса
+ * молча, а вызов отчитывался успехом. Запись обязана закрывать файл ЯВНО и отчитываться
+ * по исходу закрытия
+ *
+ * @note Код отказа уходит в журнал, а не в `error()`: запись объявлена `const`, и
+ *       селить в ней код отказа некуда
+ *
+ */
+TEST(CodecJsonDocument, WriteFailureIsNotSuccess) {
+	// Собираемые сообщения журнала
+	vector <string> messages;
+	// Объект журнала с перехватом вывода
+	awh::log_t log(&Silent::framework());
+	// Выполняем назначение приёмника вывода в функцию обратного вызова
+	log.mode({awh::log_t::mode_t::DEFERRED});
+	// Выполняем назначение перехвата сообщений журнала
+	log.subscribe([&messages](const awh::log_t::flag_t, string_view text) noexcept -> void {
+		// Выполняем сбор очередного сообщения журнала
+		messages.push_back(string(text));
+	});
+	// Собираемый текст документа
+	string text("[");
+	/**
+	 * Выполняем сборку текста документа крупнее допустимого предела
+	 */
+	for(uint16_t i = 0; i < 100; i++){
+		// Если значение документа не первое, добавляем разделитель значений
+		if(i > 0)
+			// Добавляем разделитель значений документа
+			text.append(",");
+		// Добавляем очередное значение документа
+		text.append("1234567890");
+	}
+	// Завершаем сборку текста документа
+	text.append("]");
+	// Дерево значений документа
+	json::document_t document(&log);
+	// Выполняем проверку разбора собранного текста документа
+	ASSERT_TRUE(document.parse(text));
+	/**
+	 * @brief Сторож предельного размера файла процесса
+	 *
+	 * @note Предел этот - настройка ПРОЦЕССА, и снимать её обязательно: оставленная,
+	 *       она валила бы соседние проверки, пишущие файлы
+	 *
+	 */
+	struct Guard {
+		// Прежний предел размера файла процесса
+		struct rlimit limit;
+		// Прежний обработчик сигнала превышения предела
+		void (* handler)(int32_t);
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Guard() noexcept {
+			// Выполняем снятие прежнего предела размера файла
+			::getrlimit(RLIMIT_FSIZE, &this->limit);
+			// Выполняем отключение сигнала превышения предела
+			this->handler = ::signal(SIGXFSZ, SIG_IGN);
+			// Предел размера файла, заведомо меньший текста документа
+			struct rlimit bound = this->limit;
+			// Выполняем установку предела размера файла
+			bound.rlim_cur = 512;
+			// Выполняем назначение предела размера файла процессу
+			::setrlimit(RLIMIT_FSIZE, &bound);
+		}
+		/**
+		 * @brief Деструктор
+		 *
+		 */
+		~Guard() noexcept {
+			// Выполняем возврат прежнего предела размера файла
+			::setrlimit(RLIMIT_FSIZE, &this->limit);
+			// Выполняем возврат прежнего обработчика сигнала
+			::signal(SIGXFSZ, this->handler);
+		}
+	} guard;
+	// Адрес файла, в который ведётся запись документа
+	const string filename = "./awh-codec-json-write-failure.json";
+	// Выполняем снос прежнего файла документа
+	::remove(filename.c_str());
+	// Выполняем проверку отказа записи усечённого файла документа
+	ASSERT_FALSE(document.save(filename));
+	// Выполняем проверку оглашения отказа в журнале
+	ASSERT_FALSE(messages.empty());
+	// Выполняем проверку упоминания причины отказа в сообщении
+	ASSERT_NE(messages.back().find(json::message(json::error_t::FILE_NOT_WRITTEN)), string::npos) << messages.back();
+	// Выполняем снос усечённого файла документа
+	::remove(filename.c_str());
 }

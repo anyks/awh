@@ -45,7 +45,7 @@ awh::alloc::Guard::record_t * const awh::alloc::Guard::_tomb = reinterpret_cast 
 awh::alloc::Guard::Guard() noexcept :
  _source(nullptr), _table(nullptr), _length(0), _region(0), _enrolled(0), _buried(0), _meta(nullptr),
  _metaLeft(0), _metaChunks(nullptr), _spare(nullptr), _oldest(nullptr), _newest(nullptr),
- _sealedBytes(0), _rate(0), _counter(0) {}
+ _sealedBytes(0), _rate(0), _unable(false), _counter(0) {}
 
 /**
  * @brief Метод выдачи памяти под учётную запись
@@ -341,6 +341,15 @@ bool awh::alloc::Guard::init(source_t * source) noexcept {
 		return false;
 	// Запоминаем источник страниц
 	this->_source = source;
+	/**
+	 * Снимаем приговор источнику: источник задан заново
+	 *
+	 * Приговор выносится ЭТОМУ источнику, а не заслонам вообще, и с новым источником
+	 * пересматривается: заведение идёт при захвате выдачи памяти процесса, и приложение
+	 * вправе снять захват и завести его снова с другим источником
+	 */
+	// Снимаем приговор: источник задан заново
+	this->_unable.store(false, std::memory_order_relaxed);
 	// Отвечаем успехом
 	return true;
 }
@@ -499,6 +508,8 @@ void * awh::alloc::Guard::alloc(const size_t size) noexcept {
 	 * каждая выдача брала бы у него область впустую
 	 */
 	if(!this->_source->protect(base, page, false)){
+		// Выносим источнику приговор: закрывать страницы он не умеет
+		this->_unable.store(true, std::memory_order_relaxed);
 		// Выключаем выборку заслонов
 		this->_rate.store(0, std::memory_order_relaxed);
 		// Отдаём источнику взятую область
@@ -508,6 +519,8 @@ void * awh::alloc::Guard::alloc(const size_t size) noexcept {
 	}
 	// Закрываем задний заслон
 	if(!this->_source->protect((base + page + data), page, false)){
+		// Выносим источнику приговор: закрывать страницы он не умеет
+		this->_unable.store(true, std::memory_order_relaxed);
 		// Выключаем выборку заслонов
 		this->_rate.store(0, std::memory_order_relaxed);
 		// Открываем передний заслон прежде отдачи
@@ -786,6 +799,17 @@ bool awh::alloc::Guard::resolve(const void * addr, const void ** begin, size_t *
  *
  */
 void awh::alloc::Guard::rate(const size_t rate) noexcept {
+	/**
+	 * Оживить выборку у негодного источника нельзя
+	 *
+	 * Приговор источнику выносится однажды и не пересматривается: страниц он закрывать
+	 * не умеет и не научится, а всякая оживлённая выборка стоила бы впустую взятой
+	 * области. Прежде выключение писало нуль прямо в долю, и правка настроек оживляла
+	 * заслоны заново - выключение «насовсем» не было таковым ни разу
+	 */
+	if(this->_unable.load(std::memory_order_relaxed) && (rate > 0))
+		// Задавать нечего: заслоны с этим источником невозможны
+		return;
 	// Запоминаем долю выборки
 	this->_rate.store(rate, std::memory_order_relaxed);
 }

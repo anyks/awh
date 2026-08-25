@@ -32,7 +32,7 @@
  * @brief Конструктор
  *
  */
-awh::alloc::Classes::Classes() noexcept : _count(0) {
+awh::alloc::Classes::Classes() noexcept : _count(0), _maximum(DEFAULT) {
 	// Обнуляем размеры блоков разрядов
 	::memset(this->_size, 0, sizeof(this->_size));
 	// Обнуляем числа страниц разрядов
@@ -50,11 +50,29 @@ awh::alloc::Classes::Classes() noexcept : _count(0) {
  * @return число заведённых разрядов
  *
  */
-size_t awh::alloc::Classes::init() noexcept {
+size_t awh::alloc::Classes::init(const size_t limit) noexcept {
 	// Если таблицы уже построены
 	if(this->_count > 0)
 		// Строить повторно незачем
 		return this->_count;
+	/**
+	 * Запоминаем действующую границу разрядов
+	 *
+	 * Нуль означает усмотрение модуля, а усмотрение это - `DEFAULT`. Выше ёмкости
+	 * таблиц поиска граница не идёт: те построены на `MAXIMUM` и больше не вместят
+	 */
+	// Приводим заданную границу к усмотрению модуля
+	size_t bound = ((limit > 0) ? limit : DEFAULT);
+	// Если граница вышла за ёмкость таблиц поиска
+	if(bound > MAXIMUM)
+		// Опускаем границу до ёмкости таблиц
+		bound = MAXIMUM;
+	// Если граница мельче выравнивания
+	if(bound < ALIGN)
+		// Поднимаем границу до выравнивания
+		bound = ALIGN;
+	// Запоминаем действующую границу разрядов
+	this->_maximum = bound;
 	// Число заведённых разрядов
 	size_t count = 0;
 	/**
@@ -63,7 +81,7 @@ size_t awh::alloc::Classes::init() noexcept {
 	 * Шаг берётся равным восьмой доле размера, но не меньше выравнивания: так потеря
 	 * на округлении держится ниже 12,5 %, а число разрядов остаётся в семи десятках
 	 */
-	for(size_t size = ALIGN; (size <= MAXIMUM) && (count < LIMIT); count++){
+	for(size_t size = ALIGN; (size <= bound) && (count < LIMIT); count++){
 		/**
 		 * Разряды сверх порога мелкого запроса кратны шагу крупной таблицы
 		 *
@@ -75,7 +93,7 @@ size_t awh::alloc::Classes::init() noexcept {
 			// Приводим размер разряда к границе шага крупной таблицы
 			size = ((size + (STEP_LARGE - 1)) & ~(STEP_LARGE - 1));
 		// Если приведённый размер вышел за порог
-		if(size > MAXIMUM)
+		if(size > bound)
 			// Разрядов больше нет
 			break;
 		// Запоминаем размер блока разряда
@@ -187,9 +205,9 @@ size_t awh::alloc::Classes::init() noexcept {
 		 * Без этого шаг перескакивает порог, разрядов сверх последнего не заводится, и
 		 * запросы между последним разрядом и порогом остаются без разряда вовсе
 		 */
-		if((next > MAXIMUM) && (size < MAXIMUM))
+		if((next > bound) && (size < bound))
 			// Доводим последний разряд до порога
-			next = MAXIMUM;
+			next = bound;
 		// Переходим к следующему разряду
 		size = next;
 	}

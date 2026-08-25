@@ -765,6 +765,10 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод подачи куска разбираемого текста
 					 *
+					 * @note Пустой указатель на буфер приравнивается к пустой подаче независимо от
+					 * заданного размера: проверка стоит в приведении текста, и разыменования не
+					 * происходит. Отвечает разбор при этом по своему правилу о пустом тексте
+					 *
 					 * @param buffer буфер подаваемого текста
 					 * @param size   размер буфера подаваемого текста
 					 * @param last   признак того, что кусок последний
@@ -772,6 +776,9 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of the feeding of a chunk of a text being parsed
+					 * @note A null pointer to the buffer is equated to an empty feeding independently of
+					 * the given size: the check stands in the conversion of the text, and no dereferencing
+					 * takes place. The parsing answers thereby by its own rule about an empty text
 					 * @param buffer buffer of the text being fed
 					 * @param size size of the buffer of the text being fed
 					 * @param last flag that the chunk is the last one

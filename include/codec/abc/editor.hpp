@@ -144,8 +144,24 @@ namespace awh {
 					 * \~russian
 					 * @brief Работа чтения октетов контейнера
 					 *
+					 * @warning Затребованный размер чтения НЕДОВЕРЕНЕН: берётся он из длины,
+					 * объявленной самим контейнером, а её вправе испортить кто угодно. Работа
+					 * обязана сперва сличить смещение и размер с настоящим размером носителя и
+					 * ответить отказом, и лишь потом заводить место: порча четырёх октетов длины
+					 * кадра заставляла заводить 4 ГиБ, чтобы следом ответить отказом по
+					 * недочитанному (замер 25.08.2026 на файле в 216 октетов). Приёмник
+					 * `Storage::source()` сторожа этого держит
+					 *
+					 * @note Чтение за концом носителя обязано отвечать ОТКАЗОМ, а не усечённой
+					 * выдачей: обрывок иначе неотличим от целого кадра
+					 *
 					 * \~english
 					 * @brief Work of the reading of the octets of a container
+					 * @warning The requested size of the reading is UNTRUSTED: it is taken from the length
+					 * declared by the container itself. The work is obliged first to compare the offset and the size
+					 * with the real size of the medium and to answer with a refusal, and only then to allocate
+					 * @note The reading past the end of the medium is obliged to answer with a REFUSAL rather than
+					 * with a truncated issue
 					 *
 					 * \~
 					 */

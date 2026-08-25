@@ -248,6 +248,17 @@ namespace {
 	constexpr uint32_t MAX_IMMEDIATE = 0xFFF;
 
 	/**
+	 * @brief Наибольшее число, парой команд с разрядом сдвига укладываемое
+	 *
+	 * @details Разряд сдвига несёт двенадцать старших разрядов числа, а поле
+	 *          команды - двенадцать младших, отчего пара команд покрывает
+	 *          двадцать четыре разряда. Кадр в шестнадцать мегабайтов стеку
+	 *          машины и без того непосилен.
+	 *
+	 */
+	constexpr uint32_t MAX_SHIFTED = 0xFFFFFF;
+
+	/**
 	 * @brief Наибольшее смещение перехода по условию в командах
 	 *
 	 * @details Условный переход несёт девятнадцать разрядов смещения со знаком,
@@ -368,9 +379,16 @@ namespace {
 	 * @return       собранная команда процессора
 	 *
 	 */
-	inline uint32_t add(const uint32_t target, const uint32_t source, const uint32_t value) noexcept {
-		// Выводим собранную команду «add xtarget, xsource, #value»
-		return (0x91000000u | (value << 10) | (source << 5) | target);
+	inline uint32_t add(const uint32_t target, const uint32_t source, const uint32_t value, const bool shifted = false) noexcept {
+		/**
+		 * Выводим собранную команду «add xtarget, xsource, #value»
+		 *
+		 * @details Разряд сдвига переносит число на двенадцать разрядов влево,
+		 *          отчего команда несёт кратные четырём килобайтам величины
+		 *          сверх поля своего.
+		 *
+		 */
+		return (0x91000000u | (shifted ? 0x00400000u : 0u) | (value << 10) | (source << 5) | target);
 	}
 	/**
 	 * @brief Функция сборки команды вычитания числа из значения регистра
@@ -381,7 +399,7 @@ namespace {
 	 * @return       собранная команда процессора
 	 *
 	 */
-	inline uint32_t sub(const uint32_t target, const uint32_t source, const uint32_t value) noexcept {
+	inline uint32_t sub(const uint32_t target, const uint32_t source, const uint32_t value, const bool shifted = false) noexcept {
 		/**
 		 * Выводим собранную команду «sub xtarget, xsource, #value»
 		 *
@@ -390,7 +408,7 @@ namespace {
 		 *          стека сделало бы его непригодным вовсе.
 		 *
 		 */
-		return (0xD1000000u | (value << 10) | (source << 5) | target);
+		return (0xD1000000u | (shifted ? 0x00400000u : 0u) | (value << 10) | (source << 5) | target);
 	}
 	/**
 	 * @brief Функция сборки команды переноса значения регистра
@@ -682,8 +700,32 @@ void awh::regex::Emitter::add(const reg_t target, const reg_t source, const uint
 	 * Если прибавляемое число в поле команды не помещается
 	 */
 	if(value > MAX_IMMEDIATE) {
-		// Выполняем установку флага отказа порождения машинного кода
-		this->_failed = true;
+		/**
+		 * Если число и разрядом сдвига не покрывается
+		 *
+		 * @details Разряд сдвига несёт двенадцать старших разрядов числа,
+		 *          отчего пара команд покрывает величины до шестнадцати
+		 *          мегабайтов. Величина большая означала бы кадр, стеку
+		 *          машины непосильный, - такое выражение кодогенерации
+		 *          не получает вовсе.
+		 *
+		 */
+		if(value > MAX_SHIFTED) {
+			// Выполняем установку флага отказа порождения машинного кода
+			this->_failed = true;
+			// Выходим из метода размещения сложения
+			return;
+		}
+		// Выполняем размещение команды сложения старших разрядов числа
+		::emit(this->_code, ::add(static_cast <uint32_t> (target), static_cast <uint32_t> (source), (value >> 12), true));
+		/**
+		 * Если младшие разряды числа пусты
+		 */
+		if((value & MAX_IMMEDIATE) == 0)
+			// Выходим из метода размещения сложения
+			return;
+		// Выполняем размещение команды сложения младших разрядов числа
+		::emit(this->_code, ::add(static_cast <uint32_t> (target), static_cast <uint32_t> (target), (value & MAX_IMMEDIATE)));
 		// Выходим из метода размещения сложения
 		return;
 	}
@@ -703,8 +745,25 @@ void awh::regex::Emitter::sub(const reg_t target, const reg_t source, const uint
 	 * Если вычитаемое число в поле команды не помещается
 	 */
 	if(value > MAX_IMMEDIATE) {
-		// Выполняем установку флага отказа порождения машинного кода
-		this->_failed = true;
+		/**
+		 * Если число и разрядом сдвига не покрывается - см. метод сложения
+		 */
+		if(value > MAX_SHIFTED) {
+			// Выполняем установку флага отказа порождения машинного кода
+			this->_failed = true;
+			// Выходим из метода размещения вычитания
+			return;
+		}
+		// Выполняем размещение команды вычитания старших разрядов числа
+		::emit(this->_code, ::sub(static_cast <uint32_t> (target), static_cast <uint32_t> (source), (value >> 12), true));
+		/**
+		 * Если младшие разряды числа пусты
+		 */
+		if((value & MAX_IMMEDIATE) == 0)
+			// Выходим из метода размещения вычитания
+			return;
+		// Выполняем размещение команды вычитания младших разрядов числа
+		::emit(this->_code, ::sub(static_cast <uint32_t> (target), static_cast <uint32_t> (target), (value & MAX_IMMEDIATE)));
 		// Выходим из метода размещения вычитания
 		return;
 	}
