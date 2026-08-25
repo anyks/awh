@@ -1459,6 +1459,29 @@ namespace awh {
 					bool table(const vector <string_view> & path) const noexcept;
 					/**
 					 * \~russian
+					 * @brief Метод получения признака записи перечня несколькими строками
+					 *
+					 * @details Признак этот хранится деревом ради обратной записи: перечень,
+					 *          человеком растянутый на несколько строк, обязан остаться
+					 *          растянутым и после перезаписи, а сведённый в одну строку -
+					 *          сведённым
+					 *
+					 * @param path составное имя искомого перечня
+					 * @return     признак записи перечня несколькими строками
+					 *
+					 * \~english
+					 * @brief Method of getting the flag of the writing of a list by several lines
+					 * @details This flag is kept by the tree for the sake of the writing back: a list
+					 * stretched by a human over several lines must remain stretched after a rewriting as
+					 * well, and one brought into a single line — brought into it
+					 * @param path composite name of the list being sought
+					 * @return     flag of the writing of a list by several lines
+					 *
+					 * \~
+					 */
+					bool multiline(const vector <string_view> & path) const noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод получения количества таблиц набора таблиц
 					 *
 					 * @param path составное имя искомого набора таблиц

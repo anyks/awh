@@ -1640,6 +1640,14 @@ bool awh::codec::toml::Value::absorb(const Document & document, const vector <st
 		case static_cast <uint8_t> (type_t::ARRAY): {
 			// Назначаем значению тип перечня
 			this->_type = type_t::ARRAY;
+			/**
+			 * Снимаем признак записи перечня несколькими строками
+			 *
+			 * @note Признак снимается наравне с содержимым: перечень, человеком растянутый
+			 *       на несколько строк, владеющее значение прежде сводило в одну, тогда как
+			 *       дерево его намеренно хранит и намеренно же растягивает обратно
+			 */
+			this->_multiline = document.multiline(path);
 			// Получаем количество значений перечня
 			const size_t length = document.length(path);
 			/**
