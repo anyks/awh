@@ -666,18 +666,18 @@ namespace awh {
 					 * записях, а не частотой знака: частота обманывается текстом, где
 					 * запятых в значениях больше, чем разделителей
 					 *
-					 * @return признак успешного определения
+					 * @note Отказать определение не умеет: текст, разделителя не содержащий,
+					 *       разбирается в один столбец с запятой, названной договором
 					 *
 					 * \~english
 					 * @brief Method of determining the separator by the postponed text
 					 * @details The separator is determined by the constancy of the number of the fields in the
 					 * records rather than by the frequency of a character: the frequency is deceived by a text where
 					 * there are more commas in the values than separators
-					 * @return flag of a successful determination
 					 *
 					 * \~
 					 */
-					bool detect() noexcept;
+					void detect() noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод подсчёта полей при заданном разделителе
@@ -1122,6 +1122,22 @@ namespace awh {
 					 * \~
 					 */
 					Reader(const log_t * log) noexcept;
+				public:
+					/**
+					 * \~russian
+					 * @brief Метод установки объекта ведения журнала работы
+					 *
+					 * @param log объект ведения журнала работы
+					 *
+					 * \~english
+					 * @brief Method of the setting of the object of the keeping of the work log
+					 *
+					 * @param log the object of the keeping of the work log
+					 *
+					 * \~
+					 */
+					void setLogger(const log_t * log) noexcept;
+				public:
 					/**
 					 * \~russian
 					 * @brief Конструктор

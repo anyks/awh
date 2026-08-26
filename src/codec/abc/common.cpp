@@ -70,9 +70,6 @@ const char * awh::codec::abc::message(const error_t error) noexcept {
 		// Если объявленная длина недопустима
 		case static_cast <uint8_t> (error_t::INVALID_LENGTH):
 			return "declared length is inadmissible";
-		// Если объявленная длина превышает остаток записи
-		case static_cast <uint8_t> (error_t::LENGTH_OVERFLOW):
-			return "declared length exceeds the remainder of the record";
 		// Если строка не отвечает кодировке UTF-8
 		case static_cast <uint8_t> (error_t::INVALID_ENCODING):
 			return "string does not conform to the UTF-8 encoding";

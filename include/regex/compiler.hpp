@@ -189,11 +189,91 @@ namespace awh {
 				// Набор адресов инструкций рекурсивного вызова и номеров вызываемых групп
 				vector <pair <address_t, uint32_t>> _calls;
 			private:
-				// Соответствие номеров групп адресам их рекурсивно вызываемых тел
-				map <uint32_t, address_t> _sections;
+				/**
+				 * \~russian
+				 * Соответствие номеров групп адресам их рекурсивно вызываемых тел
+				 *
+				 * @details Соответствие держится плотным рядом, а не отображением
+				 *          упорядоченным: номера захватывающих групп идут подряд
+				 *          от единицы, и число их известно разбором. Отображение
+				 *          размещало узел на каждую запись и уравновешивало
+				 *          дерево, тогда как ряд берётся номером прямо, а место
+				 *          под него отводится однажды и построения переживает.
+				 *
+				 *          Отсутствие записи означено приметою `INVALID_ADDRESS`.
+				 *
+				 * \~english
+				 * Correspondence of the group numbers to the addresses of their recursively called bodies
+				 * @details The correspondence is held by a dense sequence rather than an ordered map:
+				 *          the numbers of the capturing groups run consecutively from one,
+				 *          and their count is known from the parsing.
+				 *
+				 * \~
+				 */
+				vector <address_t> _sections;
 			private:
-				// Соответствие номеров групп индексам их узлов синтаксического дерева
-				map <uint32_t, node_id_t> _groups;
+				/**
+				 * \~russian
+				 * Соответствие номеров групп индексам их узлов синтаксического дерева
+				 *
+				 * @details Держится плотным рядом по тем же доводам, что и
+				 *          соответствие адресов тел. Отсутствие записи означено
+				 *          приметою `INVALID_NODE`.
+				 *
+				 * \~english
+				 * Correspondence of the group numbers to the indices of their nodes of the syntax tree
+				 * @details Held by a dense sequence for the same reasons as the correspondence
+				 *          of the addresses of the bodies.
+				 *
+				 * \~
+				 */
+				vector <node_id_t> _groups;
+			private:
+				/**
+				 * \~russian
+				 * Сберегательный ряд адресов переходов, построением накапливаемых
+				 *
+				 * @details Выбор одной из ветвей и повторение с границами копят
+				 *          адреса переходов прежде, чем разрешить их: число
+				 *          ветвей и проходов заранее не известно. Ряд для того
+				 *          заводился на каждый узел, а узлов таких в выражении
+				 *          столько же, сколько чередований и повторителей.
+				 *
+				 *          Ряд ныне общий, а вложенность держится отметкою
+				 *          основания: построение помнит длину ряда при входе,
+				 *          копит поверх неё и усекает ряд обратно, разрешив
+				 *          переходы. Место, однажды отведённое, переживает
+				 *          и узлы, и построения.
+				 *
+				 * \~english
+				 * Scratch sequence of the jump addresses accumulated by the building
+				 * @details Alternation and bounded repetition accumulate the addresses
+				 *          of the jumps before resolving them: the number of branches
+				 *          and passes is not known in advance.
+				 *
+				 * \~
+				 */
+				vector <address_t> _exits;
+			private:
+				/**
+				 * \~russian
+				 * Сберегательный след узлов при проверке продвижения по тексту
+				 *
+				 * @details Проверка обязательного продвижения обходит дерево
+				 *          со следом, вызовы рекурсивные различающим, и след
+				 *          этот заводился на каждую проверку. Проверка зовётся
+				 *          на всякое повторение неограниченное, а вложенности
+				 *          не знает - оттого достаточно очистки, а не отметки.
+				 *
+				 * \~english
+				 * Scratch trace of the nodes for the check of advancing over the text
+				 * @details The check of the obligatory advancing walks the tree
+				 *          with a trace telling the recursive calls apart, and that trace
+				 *          was introduced for every check.
+				 *
+				 * \~
+				 */
+				mutable vector <node_id_t> _visited;
 			private:
 				// Код ошибки последней операции компиляции
 				error_t _error;

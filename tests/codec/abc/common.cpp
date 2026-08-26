@@ -89,7 +89,7 @@ TEST(CodecAbcCommon, Messages) {
 	const vector <abc::error_t> errors = {
 		abc::error_t::NONE, abc::error_t::INTERNAL, abc::error_t::UNEXPECTED_EOF,
 		abc::error_t::UNKNOWN_TAG, abc::error_t::RESERVED_TAG, abc::error_t::INVALID_LENGTH,
-		abc::error_t::LENGTH_OVERFLOW, abc::error_t::INVALID_ENCODING,
+		abc::error_t::INVALID_ENCODING,
 		abc::error_t::NUMBER_OUT_OF_RANGE, abc::error_t::INVALID_BIGNUM,
 		abc::error_t::INVALID_DECIMAL, abc::error_t::UNBALANCED_BREAK,
 		abc::error_t::MISSING_VALUE, abc::error_t::DUPLICATE_KEY,

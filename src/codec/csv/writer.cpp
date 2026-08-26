@@ -471,6 +471,16 @@ void awh::codec::csv::Writer::settings(const settings_t & settings) noexcept {
 	this->_settings = settings;
 }
 /**
+ * @brief Метод установки объекта ведения журнала работы
+ *
+ * @param log объект ведения журнала работы
+ *
+ */
+void awh::codec::csv::Writer::setLogger(const log_t * log) noexcept {
+	// Устанавливаем объект ведения журнала работы
+	this->_log = log;
+}
+/**
  * @brief Конструктор
  *
  * @param log объект для работы с логами

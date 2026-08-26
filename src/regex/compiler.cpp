@@ -576,7 +576,10 @@ bool awh::regex::Compiler::compileAlternate(const node_id_t id) noexcept {
 		// Выводим результат выполнения компиляции
 		return true;
 	// Создаём набор адресов инструкций перехода к завершению выражения
-	vector <address_t> exits;
+	// Получаем отметку основания набора адресов перехода к завершению в сберегательном ряду
+	const size_t base = this->_exits.size();
+	// Заводим обозреватель набора адресов переходов
+	vector <address_t> & exits = this->_exits;
 	// Получаем индекс очередной ветви выражения
 	node_id_t branch = node.child;
 	/**
@@ -632,9 +635,11 @@ bool awh::regex::Compiler::compileAlternate(const node_id_t id) noexcept {
 	/**
 	 * Выполняем установку адресов перехода к завершению выражения
 	 */
-	for(auto & jump : exits)
+	for(size_t i = base; i < exits.size(); i++)
 		// Выполняем установку адреса инструкции перехода
-		this->_program->instructions.at(jump).jump.target = this->position();
+		this->_program->instructions.at(exits.at(i)).jump.target = this->position();
+	// Выполняем усечение сберегательного ряда до отметки основания
+	this->_exits.resize(base);
 	// Выводим результат выполнения компиляции
 	return true;
 }
@@ -1087,7 +1092,10 @@ bool awh::regex::Compiler::compileIteration(const node_id_t id) noexcept {
 		return true;
 	}
 	// Создаём набор адресов инструкций завершения необязательных повторений
-	vector <address_t> exits;
+	// Получаем отметку основания набора адресов завершения повторений в сберегательном ряду
+	const size_t base = this->_exits.size();
+	// Заводим обозреватель набора адресов переходов
+	vector <address_t> & exits = this->_exits;
 	/**
 	 * Выполняем размещение необязательных повторений элемента выражения
 	 */
@@ -1120,7 +1128,9 @@ bool awh::regex::Compiler::compileIteration(const node_id_t id) noexcept {
 	/**
 	 * Выполняем установку адресов завершения необязательных повторений
 	 */
-	for(auto & split : exits) {
+	for(size_t i = base; i < exits.size(); i++) {
+		// Получаем адрес инструкции ветвления очередного повторения
+		const address_t split = exits.at(i);
 		/**
 		 * Если квантор повторения является жадным
 		 */
@@ -1130,6 +1140,8 @@ bool awh::regex::Compiler::compileIteration(const node_id_t id) noexcept {
 		// Выполняем установку адреса ветви завершения повторения
 		else this->_program->instructions.at(split).split.first = this->position();
 	}
+	// Выполняем усечение сберегательного ряда до отметки основания
+	this->_exits.resize(base);
 	// Выводим результат выполнения компиляции
 	return true;
 }
@@ -1502,9 +1514,10 @@ void awh::regex::Compiler::collect(const node_id_t id) noexcept {
 			 *          с одним номером, рекурсивный вызов при этом обращается к первой.
 			 *
 			 */
-			if(this->_groups.count(node.group.number) == 0)
+			if((node.group.number < this->_groups.size()) &&
+			 (this->_groups.at(node.group.number) == INVALID_NODE))
 				// Выполняем сохранение индекса узла захватывающей группы
-				this->_groups.emplace(node.group.number, current);
+				this->_groups.at(node.group.number) = current;
 		}
 		// Выполняем сбор узлов вложенной цепочки
 		this->collect(node.child);
@@ -2583,10 +2596,19 @@ void awh::regex::Compiler::analyze() noexcept {
  *
  */
 bool awh::regex::Compiler::advancing(const node_id_t id) const noexcept {
-	// Создаём след узлов, проверка каких не завершена
-	vector <node_id_t> visited;
+	/**
+	 * Выполняем очистку следа узлов, проверка каких не завершена
+	 *
+	 * @details След общий на все проверки: заводился он прежде на каждую,
+	 *          а проверка зовётся на всякое повторение неограниченное.
+	 *          Вложенности проверка не знает - обход ведётся со следом
+	 *          переданным, - оттого достаточно очистки, а место, однажды
+	 *          отведённое, проверки переживает.
+	 *
+	 */
+	this->_visited.clear();
 	// Выводим результат проверки обязательного продвижения узла по тексту
-	return this->advancing(id, visited);
+	return this->advancing(id, this->_visited);
 }
 /**
  * @brief Метод проверки обязательного продвижения узла по тексту со следом обхода
@@ -2740,7 +2762,8 @@ bool awh::regex::Compiler::advancing(const node_id_t id, vector <node_id_t> & vi
 			/**
 			 * Если вызываемая группа сборкою уже пройдена
 			 */
-			else if(this->_groups.count(node.recurse.number) != 0)
+			else if((node.recurse.number < this->_groups.size()) &&
+			 (this->_groups.at(node.recurse.number) != INVALID_NODE))
 				// Выполняем установку индекса узла вызываемой группы
 				called = this->_groups.at(node.recurse.number);
 			// Получаем результат проверки продвижения вызываемого узла
@@ -3279,7 +3302,7 @@ bool awh::regex::Compiler::compileSections() noexcept {
 		/**
 		 * Если тело вызываемой группы уже размещено
 		 */
-		if(this->_sections.count(number) != 0)
+		if((number < this->_sections.size()) && (this->_sections.at(number) != INVALID_ADDRESS))
 			// Переходим к следующему рекурсивному вызову
 			continue;
 		// Индекс узла тела вызываемой группы
@@ -3293,7 +3316,7 @@ bool awh::regex::Compiler::compileSections() noexcept {
 		/**
 		 * Если вызываемая группа обнаружена в синтаксическом дереве
 		 */
-		else if(this->_groups.count(number) != 0)
+		else if((number < this->_groups.size()) && (this->_groups.at(number) != INVALID_NODE))
 			// Выполняем установку индекса узла вызываемой группы
 			node = this->_groups.at(number);
 		/**
@@ -3313,7 +3336,7 @@ bool awh::regex::Compiler::compileSections() noexcept {
 		 *          и не приводит к бесконечному размещению.
 		 *
 		 */
-		this->_sections.emplace(number, this->position());
+		this->_sections.at(number) = this->position();
 		/**
 		 * Если компиляция тела вызываемой группы не выполнена
 		 */
@@ -3393,10 +3416,31 @@ bool awh::regex::Compiler::compile(const Parser & parser, program_t & program) n
 	this->_atomics = 0;
 	// Выполняем очистку набора инструкций рекурсивного вызова
 	this->_calls.clear();
-	// Выполняем очистку соответствия номеров групп адресам их тел
-	this->_sections.clear();
-	// Выполняем очистку соответствия номеров групп индексам их узлов
-	this->_groups.clear();
+	/**
+	 * Выполняем сброс соответствий, номерами захватывающих групп берущихся
+	 *
+	 * @details Ряды заводятся по числу групп, разбором названному, и место,
+	 *          однажды отведённое, построения переживает: сброс длины его
+	 *          не касается. Единица придачи отводит место номеру нулевому,
+	 *          захватывающей группе не отвечающему, - обращение по номеру
+	 *          тем и остаётся прямым.
+	 *
+	 */
+	this->_sections.assign((parser.captures() + 1), INVALID_ADDRESS);
+	// Выполняем сброс соответствия номеров групп индексам их узлов
+	this->_groups.assign((parser.captures() + 1), INVALID_NODE);
+	/**
+	 * Выполняем очистку сберегательных рядов построения
+	 *
+	 * @details Построение, отказом прекращённое, ряды за собою не усекает:
+	 *          усечение там лишнее, ибо программа выбрасывается целиком.
+	 *          Очистка началом построения это и покрывает, а место, рядам
+	 *          отведённое, построения переживает.
+	 *
+	 */
+	this->_exits.clear();
+	// Выполняем очистку следа узлов проверки продвижения по тексту
+	this->_visited.clear();
 	// Выполняем очистку компилируемой программы
 	program.clear();
 	/**

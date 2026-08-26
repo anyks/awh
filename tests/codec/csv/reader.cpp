@@ -1616,16 +1616,24 @@ TEST(CodecCsvReader, EncodingVerdictIndependentOfChunking) {
 		// Ожидаемый код отказа разбора
 		csv::error_t error;
 	};
-	// Перечень подач с ожидаемым кодом отказа
+	/**
+	 * Перечень подач с ожидаемым кодом отказа
+	 *
+	 * @note Негодная последовательность стоит НЕ в начале текста нарочно: первые четыре
+	 *       байта приведение копит ради метки порядка байтов и разбирает их разом, и
+	 *       последовательность, разорванная внутри этого окна, переноса через границу
+	 *       куска не задевает вовсе. Обнаружено покрытием: ветви переноса молчали, тогда
+	 *       как подачи по одному байту, казалось, обязаны были их пройти
+	 */
 	const vector <Probe> probes = {
-		{"усечённая последовательность", csv::encoding_t::UTF8, {'a', ',', 0xD0}, csv::error_t::INVALID_ENCODING},
-		{"негодное продолжение", csv::encoding_t::UTF8, {'a', ',', 0xD0, 0x20, 'b', '\n'}, csv::error_t::INVALID_ENCODING},
-		{"избыточно длинная запись", csv::encoding_t::UTF8, {'a', ',', 0xC0, 0xAF, '\n'}, csv::error_t::INVALID_ENCODING},
-		{"суррогат тремя байтами", csv::encoding_t::UTF8, {'a', ',', 0xED, 0xA0, 0x80, '\n'}, csv::error_t::INVALID_ENCODING},
-		{"знак за пределом Юникода", csv::encoding_t::UTF8, {'a', ',', 0xF5, 0x80, 0x80, 0x80, '\n'}, csv::error_t::INVALID_ENCODING},
-		{"недопустимый знак U+0085", csv::encoding_t::UTF8, {'a', ',', 0xC2, 0x85, '\n'}, csv::error_t::INVALID_CHARACTER},
+		{"усечённая последовательность", csv::encoding_t::UTF8, {'a', 'b', 'c', ',', 0xD0}, csv::error_t::INVALID_ENCODING},
+		{"негодное продолжение", csv::encoding_t::UTF8, {'a', 'b', 'c', ',', 0xD0, 0x20, 'b', '\n'}, csv::error_t::INVALID_ENCODING},
+		{"избыточно длинная запись", csv::encoding_t::UTF8, {'a', 'b', 'c', ',', 0xC0, 0xAF, '\n'}, csv::error_t::INVALID_ENCODING},
+		{"суррогат тремя байтами", csv::encoding_t::UTF8, {'a', 'b', 'c', ',', 0xED, 0xA0, 0x80, '\n'}, csv::error_t::INVALID_ENCODING},
+		{"знак за пределом Юникода", csv::encoding_t::UTF8, {'a', 'b', 'c', ',', 0xF5, 0x80, 0x80, 0x80, '\n'}, csv::error_t::INVALID_ENCODING},
+		{"недопустимый знак U+0085", csv::encoding_t::UTF8, {'a', 'b', 'c', ',', 0xC2, 0x85, '\n'}, csv::error_t::INVALID_CHARACTER},
 		// Четырёхбайтовый знак законен и обязан проходить при всякой нарезке
-		{"знак вне основной плоскости", csv::encoding_t::UTF8, {'a', ',', 0xF0, 0x9F, 0x98, 0x80, '\n'}, csv::error_t::NONE},
+		{"знак вне основной плоскости", csv::encoding_t::UTF8, {'a', 'b', 'c', ',', 0xF0, 0x9F, 0x98, 0x80, '\n'}, csv::error_t::NONE},
 		/**
 		 * Трёхбайтовая последовательность, оборванная посреди себя
 		 *
@@ -1634,13 +1642,25 @@ TEST(CodecCsvReader, EncodingVerdictIndependentOfChunking) {
 		 *       кусок её не довершает - и текст на нём кончается. Двухбайтовой
 		 *       последовательностью такого не достать: её обрыв приходит уже последним куском
 		 */
-		{"обрыв трёхбайтовой последовательности", csv::encoding_t::UTF8, {'a', ',', 0xE0, 0xA0}, csv::error_t::INVALID_ENCODING},
+		{"обрыв трёхбайтовой последовательности", csv::encoding_t::UTF8, {'a', 'b', 'c', ',', 0xE0, 0xA0}, csv::error_t::INVALID_ENCODING},
 		// Четырёхбайтовая последовательность, оборванная за два байта до конца
-		{"обрыв четырёхбайтовой последовательности", csv::encoding_t::UTF8, {'a', ',', 0xF0, 0x9F, 0x98}, csv::error_t::INVALID_ENCODING},
-		{"обрыв единицы кодирования", csv::encoding_t::UTF16LE, {'a', 0, ',', 0, 'b'}, csv::error_t::INVALID_ENCODING},
-		{"одинокая суррогатная половина", csv::encoding_t::UTF16LE, {'a', 0, ',', 0, 0x00, 0xD8, '\n', 0}, csv::error_t::INVALID_ENCODING},
+		{"обрыв четырёхбайтовой последовательности", csv::encoding_t::UTF8, {'a', 'b', 'c', ',', 0xF0, 0x9F, 0x98}, csv::error_t::INVALID_ENCODING},
+		{"обрыв единицы кодирования", csv::encoding_t::UTF16LE, {'a', 0, 'b', 0, ',', 0, 'b'}, csv::error_t::INVALID_ENCODING},
+		{"одинокая суррогатная половина", csv::encoding_t::UTF16LE, {'a', 0, 'b', 0, ',', 0, 0x00, 0xD8, '\n', 0}, csv::error_t::INVALID_ENCODING},
+		// Одинокая половина у прямого порядка байтов разбирается своею ветвью
+		{"одинокая половина UTF-16BE", csv::encoding_t::UTF16BE, {0, 'a', 0, 'b', 0, ',', 0xD8, 0x00, 0, '\n'}, csv::error_t::INVALID_ENCODING},
+		// Суррогатная пара у прямого порядка байтов законна
+		{"суррогатная пара UTF-16BE", csv::encoding_t::UTF16BE, {0, 'a', 0, 'b', 0, ',', 0xD8, 0x3D, 0xDE, 0x00, 0, '\n'}, csv::error_t::NONE},
+		// Байт, кодировке Windows-1252 неизвестный
+		{"неопределённый байт CP1252", csv::encoding_t::CP1252, {'a', 'b', 'c', ',', 0x81, '\n'}, csv::error_t::INVALID_CHARACTER},
+		// Управляющий знак у однобайтовых кодировок
+		{"управляющий знак CP1252", csv::encoding_t::CP1252, {'a', 'b', 'c', ',', 0x01, '\n'}, csv::error_t::INVALID_CHARACTER},
+		{"управляющий знак US-ASCII", csv::encoding_t::ASCII, {'a', 'b', 'c', ',', 0x01, '\n'}, csv::error_t::INVALID_CHARACTER},
+		// Знак 0x85 у Windows-1252 есть многоточие и вполне законен, а у ISO-8859-1 - область C1
+		{"знак 0x85 у CP1252 законен", csv::encoding_t::CP1252, {'a', 'b', 'c', ',', 0x85, '\n'}, csv::error_t::NONE},
+		{"знак 0x85 у ISO-8859-1 недопустим", csv::encoding_t::LATIN1, {'a', 'b', 'c', ',', 0x85, '\n'}, csv::error_t::INVALID_CHARACTER},
 		// Суррогатная пара законна и обязана проходить при всякой нарезке
-		{"суррогатная пара", csv::encoding_t::UTF16LE, {'a', 0, ',', 0, 0x3D, 0xD8, 0x00, 0xDE, '\n', 0}, csv::error_t::NONE}
+		{"суррогатная пара", csv::encoding_t::UTF16LE, {'a', 0, 'b', 0, ',', 0, 0x3D, 0xD8, 0x00, 0xDE, '\n', 0}, csv::error_t::NONE}
 	};
 	/**
 	 * Выполняем перебор всех подач
@@ -1655,4 +1675,458 @@ TEST(CodecCsvReader, EncodingVerdictIndependentOfChunking) {
 			// Выполняем проверку совпадения исхода при подаче кусками
 			ASSERT_EQ(parse(probe.encoding, probe.bytes, step), probe.error) << probe.title << ", кусок " << step;
 	}
+}
+
+/**
+ * @brief Проверка предела длины поля, понижённого при незавершённом поле
+ *
+ * @details Длина поля сличается с пределом дважды: по ходу накопления знаков и по
+ * завершении поля. Сличение по ходу довольно, покуда предел стоит на месте, а
+ * понижение его между подачами оставляет уже накопленное поле непроверенным - и ловит
+ * его лишь сличение при завершении. Ветвь эта покрытием пройдена не была
+ *
+ */
+TEST(CodecCsvReader, FieldLimitLoweredMidField) {
+	// Чтение текста таблицы
+	csv::reader_t reader(::logger());
+	// Выполняем проверку подачи длинного поля при снятом пределе
+	ASSERT_TRUE(reader.feed("aaaaaaaa", 8, false));
+	// Получаем настройки разбора
+	csv::reader_t::settings_t settings = reader.settings();
+	// Выполняем понижение предела длины поля
+	settings.maxField = 2;
+	// Выполняем установку настроек разбора
+	reader.settings(settings);
+	// Выполняем проверку отказа завершения накопленного поля
+	ASSERT_FALSE(reader.feed(",b\r\n", 4, true));
+	// Выполняем проверку кода отказа разбора
+	ASSERT_EQ(reader.error(), csv::error_t::FIELD_TOO_LONG);
+}
+
+/**
+ * @brief Проверка отказа одиночного перевода строки при строгом разборе
+ *
+ * @details Договор знаком конца строки называет возврат каретки с переводом строки, и
+ * строгий разбор одиночного перевода не принимает
+ *
+ */
+TEST(CodecCsvReader, StrictRefusesLoneLineFeed) {
+	// Настройки разбора
+	csv::reader_t::settings_t settings;
+	// Выполняем указание строгого разбора
+	settings.strict = true;
+	// Чтение текста таблицы
+	csv::reader_t reader(::logger(), settings);
+	// Выполняем проверку отказа разбора текста с одиночным переводом строки
+	ASSERT_FALSE(reader.feed("a,b\nc,d\n"));
+	// Выполняем проверку кода отказа разбора
+	ASSERT_EQ(reader.error(), csv::error_t::INVALID_CHARACTER);
+	// Чтение текста таблицы знаками конца строки по договору
+	csv::reader_t strict(::logger(), settings);
+	// Выполняем проверку разбора текста знаками конца строки по договору
+	ASSERT_TRUE(strict.feed("a,b\r\nc,d\r\n"));
+}
+
+/**
+ * @brief Проверка места отказа, переживающего опустошение очереди событий
+ *
+ * @details События, отказу предшествующие, выдаются и после него, и место отказа обязано
+ * оставаться на месте, покуда их выбирают. Кодек JSON чинен тем же порядком
+ *
+ */
+TEST(CodecCsvReader, ErrorLocationSurvivesEventDraining) {
+	// Настройки разбора
+	csv::reader_t::settings_t settings;
+	// Выполняем указание предела длины поля
+	settings.maxField = 3;
+	// Чтение текста таблицы
+	csv::reader_t reader(::logger(), settings);
+	// Выполняем проверку отказа разбора текста таблицы
+	ASSERT_FALSE(reader.feed("ab,cd\r\nloooooong,cd\r\n"));
+	// Запоминаем место обнаружения отказа
+	const csv::location_t location = reader.errorLocation();
+	// Выполняем проверку строки, в которой обнаружен отказ
+	ASSERT_EQ(location.line, static_cast <uint32_t> (2));
+	// Количество выданных событий разбора
+	size_t events = 0;
+	/**
+	 * Выполняем перебор всех событий разбора
+	 */
+	while(reader.next())
+		// Выполняем учёт очередного события разбора
+		events++;
+	// Выполняем проверку выдачи событий, отказу предшествующих
+	ASSERT_EQ(events, static_cast <size_t> (3));
+	// Выполняем проверку неизменности места обнаружения отказа
+	ASSERT_EQ(reader.errorLocation().line, location.line);
+	// Выполняем проверку неизменности положения отказа в строке
+	ASSERT_EQ(reader.errorLocation().column, location.column);
+	// Выполняем проверку выдачи места отказа по опустошении очереди событий
+	ASSERT_EQ(reader.location().line, location.line);
+}
+
+/**
+ * @brief Проверка завершения разбора, уже прекращённого отказом
+ *
+ * @details Завершение обязано выходить тут же: довершать нечего, а довершив, оно
+ * выдало бы оборванную запись за целую
+ *
+ */
+TEST(CodecCsvReader, FinishAfterFailureKeepsVerdict) {
+	// Настройки разбора
+	csv::reader_t::settings_t settings;
+	// Выполняем указание предела длины поля
+	settings.maxField = 2;
+	// Чтение текста таблицы
+	csv::reader_t reader(::logger(), settings);
+	// Выполняем проверку отказа разбора текста таблицы
+	ASSERT_FALSE(reader.feed("looong,b\r\n", 10, false));
+	// Выполняем проверку кода отказа разбора
+	ASSERT_EQ(reader.error(), csv::error_t::FIELD_TOO_LONG);
+	// Выполняем проверку отказа подачи, разбор завершающей
+	ASSERT_FALSE(reader.feed("", 0, true));
+	// Выполняем проверку неизменности кода отказа разбора
+	ASSERT_EQ(reader.error(), csv::error_t::FIELD_TOO_LONG);
+}
+
+/**
+ * @brief Проверка предела длины записи при неопределённом разделителе
+ *
+ * @details Отложенный текст, копимый до определения разделителя, сличается с пределом
+ * длины записи по знакам конца строки: не сличайся он, текст без знаков конца строки
+ * копился бы в памяти без предела вовсе
+ *
+ */
+TEST(CodecCsvReader, RecordLimitAppliesBeforeDetection) {
+	// Настройки разбора
+	csv::reader_t::settings_t settings;
+	// Выполняем указание предела длины записи
+	settings.maxRecord = 8;
+	// Чтение текста таблицы
+	csv::reader_t reader(::logger(), settings);
+	// Выполняем проверку отказа разбора текста таблицы
+	ASSERT_FALSE(reader.feed("aaaaaaaaaaaaaaaaaaaa,b\r\n"));
+	// Выполняем проверку кода отказа разбора
+	ASSERT_EQ(reader.error(), csv::error_t::RECORD_TOO_LONG);
+}
+
+/**
+ * @brief Проверка разбора текста, разделителя не содержащего
+ *
+ * @details Текст в один столбец разделителя не содержит вовсе, и отличить его от
+ * неразбираемого нельзя ни одним способом: разделителем такому тексту берётся запятая,
+ * названная договором, а отказом он не отвечает
+ *
+ * @note Прежде здесь стоял код отказа `SEPARATOR_UNDETECTED`, поднять который было
+ *       нечем: определение разделителя отказывать не умеет вовсе
+ *
+ */
+TEST(CodecCsvReader, TextWithoutSeparatorParsedAsSingleColumn) {
+	// Чтение текста таблицы
+	csv::reader_t reader(::logger());
+	// Выполняем проверку разбора текста таблицы
+	ASSERT_TRUE(reader.feed("один\r\nдва\r\nтри\r\n"));
+	// Выполняем проверку разделителя, названного договором
+	ASSERT_EQ(reader.separator(), ',');
+	// Выполняем проверку отсутствия отказа разбора
+	ASSERT_EQ(reader.error(), csv::error_t::NONE);
+	// Количество выданных полей таблицы
+	size_t fields = 0;
+	/**
+	 * Выполняем перебор всех событий разбора
+	 */
+	while(reader.next()){
+		// Если событием является поле записи
+		if(reader.event() == csv::event_t::FIELD)
+			// Выполняем учёт очередного поля записи
+			fields++;
+	}
+	// Выполняем проверку количества выданных полей таблицы
+	ASSERT_EQ(fields, static_cast <size_t> (3));
+}
+
+/**
+ * @brief Проверка кодировки, определённой по метке порядка байтов
+ *
+ * @details Кодировка выдаётся наружу, а покрытием выдача эта пройдена не была вовсе
+ *
+ */
+TEST(CodecCsvReader, EncodingReportedBySignature) {
+	// Чтение текста таблицы
+	csv::reader_t reader(::logger());
+	// Текст таблицы с меткой порядка байтов UTF-8
+	const char text[] = {'\xef', '\xbb', '\xbf', 'a', ',', 'b', '\r', '\n'};
+	// Выполняем проверку разбора текста таблицы
+	ASSERT_TRUE(reader.feed(text, sizeof(text), true));
+	// Выполняем проверку определённой кодировки исходного текста
+	ASSERT_EQ(reader.encoding(), csv::encoding_t::UTF8);
+	// Выполняем сброс состояния разбора
+	reader.reset();
+	// Выполняем проверку сброса определённой кодировки исходного текста
+	ASSERT_EQ(reader.encoding(), csv::encoding_t::NONE);
+}
+
+/**
+ * @brief Проверка предела длины записи у текста, разделителя ещё не имеющего
+ *
+ * @details Текст, копимый до определения разделителя, сличается с пределом длины записи
+ * по знакам конца строки: не сличайся он, подача без знаков конца строки копилась бы в
+ * памяти без предела вовсе. Сличение это стоит ОТДЕЛЬНО от сличения при разборе, и
+ * покрытием пройдено не было: проверки подавали текст целиком, а тогда разделитель
+ * определяется тут же и до отложенного сличения дело не доходит
+ *
+ */
+TEST(CodecCsvReader, RecordLimitAppliesToDeferredText) {
+	// Настройки разбора
+	csv::reader_t::settings_t settings;
+	// Выполняем указание предела длины записи
+	settings.maxRecord = 8;
+	// Выполняем просьбу определить разделитель по содержимому
+	settings.separator = '\0';
+	// Выполняем указание количества записей для определения разделителя
+	settings.detect = 16;
+	// Чтение текста таблицы
+	csv::reader_t reader(::logger(), settings);
+	// Собираемый текст таблицы
+	string text(40, 'a');
+	// Дописываем тексту таблицы окончание записи
+	text.append(",b\r\n");
+	// Выполняем проверку отказа подачи куска текста таблицы
+	ASSERT_FALSE(reader.feed(text.data(), text.size(), false));
+	// Выполняем проверку кода отказа разбора
+	ASSERT_EQ(reader.error(), csv::error_t::RECORD_TOO_LONG);
+	// Выполняем проверку строки, в которой обнаружен отказ
+	ASSERT_EQ(reader.errorLocation().line, static_cast <uint32_t> (1));
+	// Выполняем проверку положения знака, предел переполнившего
+	ASSERT_EQ(reader.errorLocation().column, static_cast <uint32_t> (9));
+}
+
+/**
+ * @brief Проверка определения разделителя по образцу записей
+ *
+ * @details Разделитель определяется постоянством количества полей в записях. Просмотр
+ * прекращается по набору записей, названному настройками, а незавершённая последняя
+ * запись входит в образец лишь тогда, когда завершённых не набралось вовсе
+ *
+ * @note Определение ведётся лишь тогда, когда разделитель настройками НЕ задан: пустой
+ *       знак-разделитель и есть просьба определить его по содержимому
+ *
+ */
+TEST(CodecCsvReader, SeparatorDetectedFromSample) {
+	// Настройки разбора
+	csv::reader_t::settings_t settings;
+	// Выполняем просьбу определить разделитель по содержимому
+	settings.separator = '\0';
+	// Выполняем указание количества записей для определения разделителя
+	settings.detect = 2;
+	{
+		// Чтение текста таблицы
+		csv::reader_t reader(::logger(), settings);
+		// Собираемый текст таблицы
+		string text;
+		/**
+		 * Выполняем сбор записей текста таблицы
+		 */
+		for(size_t i = 0; i < 10; i++)
+			// Заносим очередную запись текста таблицы
+			text.append("a;b;c\r\n");
+		// Выполняем проверку подачи куска текста таблицы
+		ASSERT_TRUE(reader.feed(text.data(), text.size(), false));
+		// Выполняем проверку определённого разделителя полей
+		ASSERT_EQ(reader.separator(), ';');
+	}
+	{
+		// Выполняем указание количества записей для определения разделителя
+		settings.detect = 8;
+		// Чтение текста таблицы
+		csv::reader_t reader(::logger(), settings);
+		// Выполняем проверку разбора текста таблицы одною незавершённой записью
+		ASSERT_TRUE(reader.feed("a;b;c"));
+		// Выполняем проверку определённого разделителя полей
+		ASSERT_EQ(reader.separator(), ';');
+	}
+}
+
+/**
+ * @brief Проверка полей в кавычках при отмене знаком косой черты
+ *
+ * @details Кавычка внутри поля в кавычках значение своё берёт от следующего знака, и
+ * разбор его ведётся отдельной ветвью. Ветвь эта покрытием пройдена не была: проверки
+ * кавычек брали удвоение, принятое договором, а при отмене косой чертой удвоение не
+ * признаётся и конец поля разбирается тут же
+ *
+ */
+TEST(CodecCsvReader, QuotedFieldsWithBackslashEscape) {
+	// Настройки разбора
+	csv::reader_t::settings_t settings;
+	// Выполняем указание отмены знаком косой черты
+	settings.escape = csv::escape_t::BACKSLASH;
+	{
+		// Чтение текста таблицы
+		csv::reader_t reader(::logger(), settings);
+		// Выполняем проверку разбора текста таблицы
+		ASSERT_TRUE(reader.feed("\"a\",\"b\"\r\n"));
+		// Собранные поля записи таблицы
+		vector <string> fields;
+		/**
+		 * Выполняем перебор всех событий разбора
+		 */
+		while(reader.next()){
+			// Если событием является поле записи
+			if(reader.event() == csv::event_t::FIELD)
+				// Заносим содержимое очередного поля записи
+				fields.emplace_back(reader.field().value);
+		}
+		// Выполняем проверку собранных полей записи таблицы
+		ASSERT_EQ(fields, (vector <string> {"a", "b"}));
+	}
+	{
+		// Выполняем указание строгого разбора
+		settings.strict = true;
+		// Чтение текста таблицы
+		csv::reader_t reader(::logger(), settings);
+		// Выполняем проверку отказа разбора одиночного перевода строки за полем в кавычках
+		ASSERT_FALSE(reader.feed("\"a\",\"b\"\n"));
+		// Выполняем проверку кода отказа разбора
+		ASSERT_EQ(reader.error(), csv::error_t::INVALID_CHARACTER);
+	}
+}
+
+/**
+ * @brief Проверка отказов, обнаруженных в отложенном тексте
+ *
+ * @details Текст, копимый до определения разделителя, разбирается разом по определении
+ * его, и отказы этого разбора приходят иным путём, нежели отказы обычной подачи. Тем же
+ * путём приходит и отложенный отказ приведения кодировки: он обнаружен прежде разбора,
+ * а объявляется лишь после него, чтобы события, отказу предшествующие, были выданы
+ *
+ */
+TEST(CodecCsvReader, DeferredTextReportsFailures) {
+	// Настройки разбора
+	csv::reader_t::settings_t settings;
+	// Выполняем просьбу определить разделитель по содержимому
+	settings.separator = '\0';
+	{
+		// Настройки строгого разбора
+		csv::reader_t::settings_t strict = settings;
+		// Выполняем указание строгого разбора
+		strict.strict = true;
+		// Чтение текста таблицы
+		csv::reader_t reader(::logger(), strict);
+		// Выполняем проверку отказа разбора отложенного текста таблицы
+		ASSERT_FALSE(reader.feed("a,b\r\nc,\"d\"мусор\r\n"));
+		// Выполняем проверку кода отказа разбора
+		ASSERT_EQ(reader.error(), csv::error_t::TRAILING_CHARACTERS);
+	}
+	{
+		// Чтение текста таблицы
+		csv::reader_t reader(::logger(), settings);
+		// Текст таблицы с негодной последовательностью знаков UTF-8
+		const char text[] = {'a', ',', 'b', '\r', '\n', 'c', ',', '\xc2', '\xc2'};
+		// Выполняем проверку отказа разбора отложенного текста таблицы
+		ASSERT_FALSE(reader.feed(text, sizeof(text), true));
+		// Выполняем проверку кода отказа приведения кодировки
+		ASSERT_EQ(reader.error(), csv::error_t::INVALID_ENCODING);
+		// Количество выданных полей таблицы
+		size_t fields = 0;
+		/**
+		 * Выполняем перебор всех событий разбора
+		 */
+		while(reader.next()){
+			// Если событием является поле записи
+			if(reader.event() == csv::event_t::FIELD)
+				// Выполняем учёт очередного поля записи
+				fields++;
+		}
+		// Выполняем проверку выдачи полей, отказу предшествующих
+		ASSERT_EQ(fields, static_cast <size_t> (3));
+	}
+}
+
+/**
+ * @brief Проверка определения разделителя при знаке кавычек, разделителю равном
+ *
+ * @details Проверяемый знак, со знаком кавычек совпавший, для разбора непригоден и из
+ * рассмотрения выбывает. Ветвь эта покрытием пройдена не была: знаком кавычек всюду
+ * стояла кавычка, разделителем не проверяемая
+ *
+ */
+TEST(CodecCsvReader, DetectionSkipsSeparatorEqualToQuote) {
+	// Настройки разбора
+	csv::reader_t::settings_t settings;
+	// Выполняем просьбу определить разделитель по содержимому
+	settings.separator = '\0';
+	// Выполняем указание знака кавычек, с проверяемым разделителем совпадающего
+	settings.quote = ',';
+	// Чтение текста таблицы
+	csv::reader_t reader(::logger(), settings);
+	// Выполняем проверку разбора текста таблицы
+	ASSERT_TRUE(reader.feed("a;b;c\r\nd;e;f\r\n"));
+	// Выполняем проверку определённого разделителя полей
+	ASSERT_EQ(reader.separator(), ';');
+}
+
+/**
+ * @brief Проверка пределов, понижённых перед завершением поля в кавычках
+ *
+ * @details Завершение поля и завершение записи отвечают отказом и в разборе поля в
+ * кавычках, а не в одном лишь поле без кавычек. Ветви эти покрытием пройдены не были
+ *
+ */
+TEST(CodecCsvReader, LimitsRefuseAtQuotedFieldEnd) {
+	{
+		// Чтение текста таблицы
+		csv::reader_t reader(::logger());
+		// Выполняем проверку подачи поля в кавычках при снятом пределе
+		ASSERT_TRUE(reader.feed("\"aaaaaaaa\"", 10, false));
+		// Получаем настройки разбора
+		csv::reader_t::settings_t settings = reader.settings();
+		// Выполняем понижение предела длины поля
+		settings.maxField = 2;
+		// Выполняем установку настроек разбора
+		reader.settings(settings);
+		// Выполняем проверку отказа завершения поля в кавычках
+		ASSERT_FALSE(reader.feed(",b\r\n", 4, true));
+		// Выполняем проверку кода отказа разбора
+		ASSERT_EQ(reader.error(), csv::error_t::FIELD_TOO_LONG);
+	}
+	{
+		// Чтение текста таблицы
+		csv::reader_t reader(::logger());
+		// Выполняем проверку подачи записи с полем в кавычках при снятом пределе
+		ASSERT_TRUE(reader.feed("a,\"bbbbbbbb\"", 12, false));
+		// Получаем настройки разбора
+		csv::reader_t::settings_t settings = reader.settings();
+		// Выполняем понижение предела количества полей записи
+		settings.maxFields = 1;
+		// Выполняем установку настроек разбора
+		reader.settings(settings);
+		// Выполняем проверку отказа завершения записи полем в кавычках
+		ASSERT_FALSE(reader.feed("\r\n", 2, true));
+		// Выполняем проверку кода отказа разбора
+		ASSERT_EQ(reader.error(), csv::error_t::TOO_MANY_FIELDS);
+	}
+}
+
+/**
+ * @brief Проверка расхождения количества полей у записи, полем в кавычках оканчивающейся
+ *
+ * @details Завершение записи отвечает отказом и тогда, когда последнее поле её стоит в
+ * кавычках: ветвь эта покрытием пройдена не была - проверки расхождения брали записи
+ * полями без кавычек
+ *
+ */
+TEST(CodecCsvReader, FieldCountMismatchAtQuotedRecordEnd) {
+	// Настройки разбора
+	csv::reader_t::settings_t settings;
+	// Выполняем указание на присутствие заголовка таблицы
+	settings.header = csv::header_t::PRESENT;
+	// Выполняем указание отказа при расхождении количества полей
+	settings.ragged = csv::ragged_t::ERROR;
+	// Чтение текста таблицы
+	csv::reader_t reader(::logger(), settings);
+	// Выполняем проверку отказа разбора текста таблицы
+	ASSERT_FALSE(reader.feed("a,b,c\r\nx,\"y\"\r\n"));
+	// Выполняем проверку кода отказа разбора
+	ASSERT_EQ(reader.error(), csv::error_t::FIELD_COUNT_MISMATCH);
 }

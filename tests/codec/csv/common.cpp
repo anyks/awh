@@ -259,6 +259,10 @@ TEST(CodecCsvCommon, Unsigned) {
 	ASSERT_FALSE(csv::integer("+42", result));
 	// Выполняем проверку отказа приведения отрицательного числа
 	ASSERT_FALSE(csv::integer("-42", result));
+	// Выполняем проверку отказа приведения пустого содержимого
+	ASSERT_FALSE(csv::integer("", result));
+	// Выполняем проверку отказа приведения одной лишь пробельной обвязки
+	ASSERT_FALSE(csv::integer("   ", result));
 }
 /**
  * @brief Проверка приведения содержимого поля к числу с плавающей точкой
@@ -318,4 +322,44 @@ TEST(CodecCsvCommon, Boolean) {
 	ASSERT_FALSE(csv::boolean("может быть", result));
 	// Выполняем проверку отказа приведения пустого содержимого
 	ASSERT_FALSE(csv::boolean("", result));
+}
+
+/**
+ * @brief Проверка имён кодировок исходного текста
+ *
+ * @details Имена эти уходят в сообщения об отказе, и промах в перечне обнаружился бы
+ * лишь чтением журнала. Покрытием пройдены не были имена трёх кодировок из семи
+ *
+ */
+TEST(CodecCsvCommon, EncodingNames) {
+	// Выполняем проверку имени неопределённой кодировки
+	ASSERT_STREQ(csv::name(csv::encoding_t::NONE), "none");
+	// Выполняем проверку имени кодировки UTF-8
+	ASSERT_STREQ(csv::name(csv::encoding_t::UTF8), "UTF-8");
+	// Выполняем проверку имени кодировки UTF-16 с обратным порядком байтов
+	ASSERT_STREQ(csv::name(csv::encoding_t::UTF16LE), "UTF-16LE");
+	// Выполняем проверку имени кодировки UTF-16 с прямым порядком байтов
+	ASSERT_STREQ(csv::name(csv::encoding_t::UTF16BE), "UTF-16BE");
+	// Выполняем проверку имени кодировки ISO-8859-1
+	ASSERT_STREQ(csv::name(csv::encoding_t::LATIN1), "ISO-8859-1");
+	// Выполняем проверку имени кодировки US-ASCII
+	ASSERT_STREQ(csv::name(csv::encoding_t::ASCII), "US-ASCII");
+	// Выполняем проверку имени кодировки Windows-1252
+	ASSERT_STREQ(csv::name(csv::encoding_t::CP1252), "windows-1252");
+}
+
+/**
+ * @brief Проверка последовательностей знака конца строки
+ *
+ * @details Знак конца строки уходит в записываемый текст, и промах здесь дал бы текст,
+ * настройке не отвечающий
+ *
+ */
+TEST(CodecCsvCommon, NewlineSequences) {
+	// Выполняем проверку возврата каретки с переводом строки
+	ASSERT_EQ(csv::newline(csv::newline_t::CRLF), "\r\n");
+	// Выполняем проверку одиночного перевода строки
+	ASSERT_EQ(csv::newline(csv::newline_t::LF), "\n");
+	// Выполняем проверку одиночного возврата каретки
+	ASSERT_EQ(csv::newline(csv::newline_t::CR), "\r");
 }

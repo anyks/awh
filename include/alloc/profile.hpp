@@ -262,6 +262,24 @@ namespace awh {
 				 *
 				 */
 				size_t seek(const void * block) const noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод снятия записи с учёта по месту в таблице
+				 *
+				 * @note Зовётся ПОД замком учёта: правит таблицу, счётчики и состояние
+				 *
+				 * @note Заведён общим куском для снятия блока с учёта и для вытеснения
+				 *       прежней записи того же адреса: два места правят одни и те же
+				 *       шесть величин, и разойдись они хоть в одной - счёт живых блоков
+				 *       поехал бы молча
+				 *
+				 * @param index место снимаемой записи в таблице
+				 *
+				 * \~english
+				 * @brief Method of removing a record from the table by its slot
+				 *
+				 */
+				void discard(const size_t index) noexcept;
 			public:
 				/**
 				 * \~russian

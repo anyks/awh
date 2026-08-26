@@ -140,6 +140,16 @@ void awh::regex::Parser::reset() noexcept {
 	this->_errorPos = 0;
 	// Выполняем очистку арены узлов синтаксического дерева
 	this->_nodes.clear();
+	/**
+	 * Выполняем очистку сберегательного ряда составов узлов
+	 *
+	 * @details Разбор, отказом прекращённый, ряд за собою не усекает: усечение
+	 *          там лишнее, ибо дерево выбрасывается целиком. Очистка началом
+	 *          разбора это и покрывает, а место, ряду отведённое, разборы
+	 *          переживает: очистка длины его не касается.
+	 *
+	 */
+	this->_items.clear();
 	// Выполняем очистку хранилища классов символов
 	this->_classes.clear();
 	// Выполняем очистку хранилища имён именованных групп
@@ -453,27 +463,29 @@ void awh::regex::Parser::appendChild(const node_id_t parent, const node_id_t chi
  * @return      индекс созданного узла в арене узлов
  *
  */
-awh::regex::node_id_t awh::regex::Parser::makeList(const node_t type, const vector <node_id_t> & items) noexcept {
+awh::regex::node_id_t awh::regex::Parser::makeList(const node_t type, const vector <node_id_t> & items, const size_t from) noexcept {
+	// Получаем количество дочерних узлов, отметкою основания отсекаемое
+	const size_t count = ((items.size() > from) ? (items.size() - from) : 0);
 	/**
 	 * Если набор дочерних узлов пуст
 	 */
-	if(items.empty())
+	if(count == 0)
 		// Выводим индекс созданного узла пустого выражения
 		return this->createNode(node_t::EMPTY);
 	/**
 	 * Если набор состоит из единственного узла
 	 */
-	if(items.size() == 1)
+	if(count == 1)
 		// Выводим индекс единственного узла набора без обёртки
-		return items.front();
+		return items.at(from);
 	// Выполняем создание узла синтаксического дерева
 	const node_id_t result = this->createNode(type);
 	// Выполняем установку первого дочернего узла
-	this->_nodes.at(result).child = items.front();
+	this->_nodes.at(result).child = items.at(from);
 	/**
 	 * Выполняем связывание дочерних узлов между собой
 	 */
-	for(size_t i = 1; i < items.size(); i++)
+	for(size_t i = (from + 1); i < items.size(); i++)
 		// Выполняем установку следующего узла того же уровня вложенности
 		this->_nodes.at(items.at(i - 1)).next = items.at(i);
 	// Выводим индекс созданного узла в арене узлов
@@ -638,8 +650,17 @@ awh::regex::node_id_t awh::regex::Parser::makeClass(class_t & value) noexcept {
 	this->normalize(value);
 	// Получаем индекс класса символов в хранилище классов
 	const uint32_t index = static_cast <uint32_t> (this->_classes.size());
-	// Выполняем размещение класса символов в хранилище классов
-	this->_classes.push_back(value);
+	/**
+	 * Выполняем размещение класса символов в хранилище классов
+	 *
+	 * @details Класс передаётся владением, а не снимком: у всех зовущих он
+	 *          после размещения мёртв - узел ссылается на хранилище номером.
+	 *          Снимок же стоил размещения рядов заново на каждый класс
+	 *          выражения, и копирующий конструктор класса выходил в образце
+	 *          стека наравне с самим разбором.
+	 *
+	 */
+	this->_classes.push_back(::move(value));
 	// Выполняем создание узла класса символов
 	const node_id_t result = this->createNode(node_t::CLASS);
 	// Выполняем установку индекса класса символов
@@ -656,8 +677,26 @@ awh::regex::node_id_t awh::regex::Parser::makeClass(class_t & value) noexcept {
  *
  */
 bool awh::regex::Parser::shorthand(const char letter, class_t & result) const noexcept {
-	// Создаём набор диапазонов сокращённого класса символов
-	vector <range_t> ranges;
+	/**
+	 * @brief Наибольшее число диапазонов сокращённого класса символов
+	 *
+	 * @details Самый обширный из сокращённых классов - горизонтальный пробел -
+	 *          задаётся девятью диапазонами, и больше их не бывает ни у одного.
+	 *
+	 */
+	constexpr size_t WIDEST = 9;
+	/**
+	 * Заводим набор диапазонов сокращённого класса символов
+	 *
+	 * @details Набор взят постоянным по месту, а не рядом растущим: число
+	 *          диапазонов у всякого сокращённого класса известно наперёд,
+	 *          а ряд размещался заново на каждое вхождение «\d», «\w», «\s»
+	 *          в выражении - и выходил в образце стека среди первых.
+	 *
+	 */
+	range_t ranges[WIDEST];
+	// Количество диапазонов, набором занятых
+	size_t count = 0;
 	/**
 	 * Если установлен режим соответствия сокращённых классов свойствам Юникода
 	 *
@@ -695,54 +734,54 @@ bool awh::regex::Parser::shorthand(const char letter, class_t & result) const no
 	 */
 	switch(ascii::toLower(letter)) {
 		// Выполняем формирование класса десятичных цифр
-		case 'd': ranges.emplace_back(0x30, 0x39); break;
+		case 'd': ranges[count++] = range_t(0x30, 0x39); break;
 		// Выполняем формирование класса символов слова
 		case 'w': {
 			// Добавляем диапазон десятичных цифр
-			ranges.emplace_back(0x30, 0x39);
+			ranges[count++] = range_t(0x30, 0x39);
 			// Добавляем диапазон прописных букв
-			ranges.emplace_back(0x41, 0x5A);
+			ranges[count++] = range_t(0x41, 0x5A);
 			// Добавляем знак подчёркивания
-			ranges.emplace_back(0x5F, 0x5F);
+			ranges[count++] = range_t(0x5F, 0x5F);
 			// Добавляем диапазон строчных букв
-			ranges.emplace_back(0x61, 0x7A);
+			ranges[count++] = range_t(0x61, 0x7A);
 		} break;
 		// Выполняем формирование класса пробельных символов
 		case 's': {
 			// Добавляем диапазон управляющих пробельных символов
-			ranges.emplace_back(0x09, 0x0D);
+			ranges[count++] = range_t(0x09, 0x0D);
 			// Добавляем символ пробела
-			ranges.emplace_back(0x20, 0x20);
+			ranges[count++] = range_t(0x20, 0x20);
 		} break;
 		// Выполняем формирование класса горизонтальных пробельных символов
 		case 'h': {
 			// Добавляем символ горизонтальной табуляции
-			ranges.emplace_back(0x09, 0x09);
+			ranges[count++] = range_t(0x09, 0x09);
 			// Добавляем символ пробела
-			ranges.emplace_back(0x20, 0x20);
+			ranges[count++] = range_t(0x20, 0x20);
 			// Добавляем неразрывный пробел
-			ranges.emplace_back(0xA0, 0xA0);
+			ranges[count++] = range_t(0xA0, 0xA0);
 			// Добавляем пробел огама
-			ranges.emplace_back(0x1680, 0x1680);
+			ranges[count++] = range_t(0x1680, 0x1680);
 			// Добавляем разделитель монгольской гласной
-			ranges.emplace_back(0x180E, 0x180E);
+			ranges[count++] = range_t(0x180E, 0x180E);
 			// Добавляем диапазон пробелов различной ширины
-			ranges.emplace_back(0x2000, 0x200A);
+			ranges[count++] = range_t(0x2000, 0x200A);
 			// Добавляем узкий неразрывный пробел
-			ranges.emplace_back(0x202F, 0x202F);
+			ranges[count++] = range_t(0x202F, 0x202F);
 			// Добавляем математический пробел средней ширины
-			ranges.emplace_back(0x205F, 0x205F);
+			ranges[count++] = range_t(0x205F, 0x205F);
 			// Добавляем идеографический пробел
-			ranges.emplace_back(0x3000, 0x3000);
+			ranges[count++] = range_t(0x3000, 0x3000);
 		} break;
 		// Выполняем формирование класса вертикальных пробельных символов
 		case 'v': {
 			// Добавляем диапазон символов перевода строки
-			ranges.emplace_back(0x0A, 0x0D);
+			ranges[count++] = range_t(0x0A, 0x0D);
 			// Добавляем символ следующей строки
-			ranges.emplace_back(0x85, 0x85);
+			ranges[count++] = range_t(0x85, 0x85);
 			// Добавляем разделители строк и абзацев
-			ranges.emplace_back(0x2028, 0x2029);
+			ranges[count++] = range_t(0x2028, 0x2029);
 		} break;
 		// Выводим отсутствие сокращённого класса символов
 		default: return false;
@@ -758,7 +797,9 @@ bool awh::regex::Parser::shorthand(const char letter, class_t & result) const no
 		/**
 		 * Выполняем формирование дополнения набора диапазонов
 		 */
-		for(auto & range : ranges) {
+		for(size_t i = 0; i < count; i++) {
+			// Получаем очередной диапазон сокращённого класса символов
+			const range_t & range = ranges[i];
 			/**
 			 * Если дополняемый диапазон не пуст
 			 */
@@ -789,7 +830,7 @@ bool awh::regex::Parser::shorthand(const char letter, class_t & result) const no
 		return true;
 	}
 	// Выполняем добавление диапазонов в класс символов
-	result.ranges.insert(result.ranges.end(), ranges.begin(), ranges.end());
+	result.ranges.insert(result.ranges.end(), ranges, (ranges + count));
 	// Выводим результат добавления сокращённого класса символов
 	return true;
 }
@@ -3400,7 +3441,18 @@ awh::regex::node_id_t awh::regex::Parser::parseGroup() noexcept {
 		// Наибольший номер захватывающей группы среди разобранных ветвей
 		uint32_t maximum = begin;
 		// Создаём набор ветвей группы со сбросом нумерации
-		vector <node_id_t> items;
+		/**
+		 * Получаем отметку основания состава в сберегательном ряду
+		 *
+		 * @details Ряд общий на все вызовы, а вложенность держится отметкою:
+		 *          вызов накапливает состав поверх неё и усекает ряд обратно.
+		 *          Отказ разбора усечения не требует - разбор прекращается
+		 *          целиком, а ряд очищается началом следующего.
+		 *
+		 */
+		const size_t base = this->_items.size();
+		// Заводим обозреватель состава накапливаемого узла
+		vector <node_id_t> & items = this->_items;
 		/**
 		 * Выполняем разбор ветвей группы со сбросом нумерации
 		 */
@@ -3443,7 +3495,9 @@ awh::regex::node_id_t awh::regex::Parser::parseGroup() noexcept {
 		// Выполняем установку отсутствия имени группы
 		this->_nodes.at(result).group.name = NO_NAME;
 		// Выполняем формирование узла выбора одной из ветвей группы
-		const node_id_t body = this->makeList(node_t::ALTERNATE, items);
+		const node_id_t body = this->makeList(node_t::ALTERNATE, items, base);
+		// Выполняем усечение сберегательного ряда до отметки основания
+		this->_items.resize(base);
 		// Выполняем добавление тела группы
 		this->appendChild(result, body);
 	// Если разбирается прочая группа регулярного выражения
@@ -3832,7 +3886,18 @@ awh::regex::node_id_t awh::regex::Parser::parseConcat() noexcept {
 	// Получаем размер текста регулярного выражения
 	const size_t size = this->_pattern.size();
 	// Создаём набор элементов последовательности
-	vector <node_id_t> items;
+	/**
+	 * Получаем отметку основания состава в сберегательном ряду
+	 *
+	 * @details Ряд общий на все вызовы, а вложенность держится отметкою:
+	 *          вызов накапливает состав поверх неё и усекает ряд обратно.
+	 *          Отказ разбора усечения не требует - разбор прекращается
+	 *          целиком, а ряд очищается началом следующего.
+	 *
+	 */
+	const size_t base = this->_items.size();
+	// Заводим обозреватель состава накапливаемого узла
+	vector <node_id_t> & items = this->_items;
 	/**
 	 * Флаг размещения барьера перед текущей позицией разбора
 	 *
@@ -3952,7 +4017,11 @@ awh::regex::node_id_t awh::regex::Parser::parseConcat() noexcept {
 		items.push_back(node);
 	}
 	// Выводим индекс сформированного узла последовательности элементов
-	return this->makeList(node_t::CONCAT, items);
+	// Выполняем формирование узла последовательности элементов
+	const node_id_t outcome = this->makeList(node_t::CONCAT, items, base);
+	// Выполняем усечение сберегательного ряда до отметки основания
+	this->_items.resize(base);
+	return outcome;
 }
 /**
  * @brief Метод разбора выражения выбора одной из ветвей
@@ -3978,7 +4047,18 @@ awh::regex::node_id_t awh::regex::Parser::parseAlternate() noexcept {
 		// Выводим индекс сформированного узла первой ветви
 		return first;
 	// Создаём набор ветвей выражения
-	vector <node_id_t> items;
+	/**
+	 * Получаем отметку основания состава в сберегательном ряду
+	 *
+	 * @details Ряд общий на все вызовы, а вложенность держится отметкою:
+	 *          вызов накапливает состав поверх неё и усекает ряд обратно.
+	 *          Отказ разбора усечения не требует - разбор прекращается
+	 *          целиком, а ряд очищается началом следующего.
+	 *
+	 */
+	const size_t base = this->_items.size();
+	// Заводим обозреватель состава накапливаемого узла
+	vector <node_id_t> & items = this->_items;
 	// Выполняем добавление первой ветви выражения
 	items.push_back(first);
 	/**
@@ -3999,7 +4079,11 @@ awh::regex::node_id_t awh::regex::Parser::parseAlternate() noexcept {
 		items.push_back(branch);
 	}
 	// Выводим индекс сформированного узла выбора одной из ветвей
-	return this->makeList(node_t::ALTERNATE, items);
+	// Выполняем формирование узла выбора одной из ветвей
+	const node_id_t outcome = this->makeList(node_t::ALTERNATE, items, base);
+	// Выполняем усечение сберегательного ряда до отметки основания
+	this->_items.resize(base);
+	return outcome;
 }
 /**
  * @brief Метод предварительного прохода по регулярному выражению

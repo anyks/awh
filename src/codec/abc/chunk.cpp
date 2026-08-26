@@ -31,6 +31,11 @@
 #include <codec/abc/encoding.hpp>
 
 /**
+ * Подключаем заголовочный файл выработки свёрток: кадр несёт контрольную сумму
+ */
+#include <cryptography/hash.hpp>
+
+/**
  * Стандартные заголовочные файлы
  */
 #include <cstring>
@@ -51,6 +56,14 @@ namespace {
 	 *
 	 */
 	constexpr uint8_t Encrypted = 0x01;
+	/**
+	 * @brief Зерно контрольной суммы кадра
+	 *
+	 * @note Зерно своё, не заголовка контейнера: сумма кадра и сумма заголовка кроют
+	 *       разное, и общее зерно роднило бы их без всякой нужды
+	 *
+	 */
+	constexpr uint64_t Seed = 0x41424348554E4B01ull;
 	/**
 	 * @brief Разряд объявления кадра мусором
 	 *
@@ -155,6 +168,72 @@ void awh::codec::abc::Packer::compressor(const compressor::block_t * value) noex
 void awh::codec::abc::Packer::crypto(const crypto_t * value) noexcept {
 	// Выполняем установку модуля шифрования
 	this->_crypto = value;
+}
+/**
+ * @brief Функция выработки контрольной суммы кадра
+ *
+ * @param buffer буфер кадра целиком, от заголовка его
+ * @param size   размер кадра в октетах
+ * @return       выработанная контрольная сумма кадра
+ *
+ */
+uint64_t awh::codec::abc::digest(const void * buffer, const size_t size) noexcept {
+	// Выполняем получение указателя на октеты кадра
+	const uint8_t * octets = reinterpret_cast <const uint8_t *> (buffer);
+	// Если кадр короче заголовка своего
+	if((octets == nullptr) || (size < CHUNK_HEADER))
+		// Выводим пустую контрольную сумму
+		return 0;
+	// Заголовок кадра, приведённый к виду, каким сумма и вырабатывается
+	uint8_t head[CHUNK_HEADER];
+	// Выполняем перенос заголовка кадра
+	::memcpy(head, octets, CHUNK_HEADER);
+	/**
+	 * Выполняем снятие разряда мусора с признаков кадра: разряд учётный, метится
+	 * правкой одного октета уже уложенного кадра, и сумма ему следовать не обязана
+	 */
+	head[CHUNK_FLAGS] = static_cast <uint8_t> (head[CHUNK_FLAGS] & ~CHUNK_WASTE);
+	// Выполняем обнуление места самой контрольной суммы: в себя она не входит
+	::memset(head + CHUNK_DIGEST, 0, 8);
+	// Выработанная контрольная сумма заголовка кадра
+	uint64_t result = awh::hashing::generate(head, CHUNK_HEADER, Seed);
+	// Если у кадра есть содержимое
+	if(size > CHUNK_HEADER)
+		// Выполняем выработку суммы по содержимому кадра с зерном заголовка
+		result = awh::hashing::generate(octets + CHUNK_HEADER, size - CHUNK_HEADER, result);
+	// Выводим выработанную контрольную сумму кадра
+	return result;
+}
+/**
+ * @brief Функция обёртки уложенной записи кадром
+ *
+ * @param result     буфер уложенной записи, обёртываемой кадром
+ * @param number     порядковый номер кадра
+ * @param generation поколение записи кадра
+ *
+ */
+void awh::codec::abc::envelope(vector <uint8_t> & result, const uint64_t number, const uint32_t generation) noexcept {
+	// Выполняем получение длины обёртываемой записи
+	const uint64_t length = static_cast <uint64_t> (result.size());
+	// Выполняем отведение места под заголовок кадра впереди записи
+	result.insert(result.begin(), CHUNK_HEADER, 0);
+	// Выполняем получение указателя на заголовок кадра
+	uint8_t * head = result.data();
+	/**
+	 * Выполняем объявление кадра мусором: содержимое его записью контейнера не
+	 * является, и подрядное чтение обязано его пропустить
+	 */
+	head[CHUNK_FLAGS] = CHUNK_WASTE;
+	// Выполняем укладку длины уложенного содержимого кадра
+	abc::fixed(head + 4, length, 4);
+	// Выполняем укладку длины исходного содержимого кадра
+	abc::fixed(head + 8, length, 4);
+	// Выполняем укладку порядкового номера кадра
+	abc::fixed(head + 12, number, 8);
+	// Выполняем укладку поколения записи кадра
+	abc::fixed(head + 20, static_cast <uint64_t> (generation), 4);
+	// Выполняем укладку контрольной суммы кадра-обёртки
+	abc::fixed(result.data() + CHUNK_DIGEST, abc::digest(result.data(), result.size()), 8);
 }
 /**
  * @brief Метод укладки кадра
@@ -288,6 +367,12 @@ bool awh::codec::abc::Packer::pack(const void * buffer, const size_t size, const
 	if(!payload.empty())
 		// Выполняем укладку содержимого кадра
 		result.insert(result.end(), payload.begin(), payload.end());
+	/**
+	 * Выполняем укладку контрольной суммы кадра последней, по кадру готовому:
+	 * сумма кроет заголовок вместе с содержимым, и вырабатывать её раньше нечем
+	 */
+	abc::fixed(result.data() + start + CHUNK_DIGEST,
+	 abc::digest(result.data() + start, result.size() - start), 8);
 	// Сообщаем, что укладка успешна
 	return true;
 }
@@ -341,6 +426,21 @@ bool awh::codec::abc::Packer::unpack(const void * buffer, const size_t size, siz
 	if((size - offset - CHUNK_HEADER) < static_cast <size_t> (length)){
 		// Выполняем установку кода отказа обрыва кадра
 		this->fail(error_t::TRUNCATED_CHUNK);
+		// Сообщаем, что кадр не снят
+		return false;
+	}
+	/**
+	 * Если контрольная сумма кадра не сошлась
+	 *
+	 * @details Сличение стоит ПРЕЖДЕ всякого толкования кадра: за ним идут разжатие и
+	 *          расшифровка, а подавать им испорченное - значит гадать по итогу их. Без
+	 *          суммы порча октета внутри кадра проходила молча: развёртка 25.08.2026
+	 *          дала 24 молчаливо неверных чтения из 530 при порче кадра оглавления
+	 */
+	if(abc::gather(head + CHUNK_DIGEST, 8) !=
+	 abc::digest(head, static_cast <size_t> (CHUNK_HEADER + length))){
+		// Выполняем установку кода отказа несошедшейся суммы
+		this->fail(error_t::INVALID_CHECKSUM);
 		// Сообщаем, что кадр не снят
 		return false;
 	}

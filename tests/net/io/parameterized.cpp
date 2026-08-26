@@ -865,7 +865,7 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 			// Сведения о порождённом процессе
 			PROCESS_INFORMATION process{};
 			// Выполняем порождение работника
-			const BOOL spawned = ::CreateProcessW(executable, command.data(), nullptr, nullptr, FALSE, 0, nullptr, nullptr, &startup, &process);
+			const BOOL spawned = ::CreateProcessW(executable, command.data(), nullptr, nullptr, 0 /* FALSE: макрос снят macro_push.hpp ради членов перечислений AWH */, 0, nullptr, nullptr, &startup, &process);
 			// Работник обязан быть порождён
 			ASSERT_TRUE(spawned) << "Дочерний процесс создать не удалось";
 			// Отсчёт времени ожидания доклада

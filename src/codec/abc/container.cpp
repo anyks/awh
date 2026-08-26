@@ -395,6 +395,11 @@ bool awh::codec::abc::Assembler::complete(vector <uint8_t> & result) noexcept {
 		 * лежит за телом, и длиною тела оно не считается
 		 */
 		this->_header.index = static_cast <uint64_t> (HEADER_LENGTH + this->_body.size());
+		/**
+		 * Выполняем объявление длины содержимого кадра оглавления: заголовок несёт
+		 * контрольную сумму, и длина, им объявленная, поверяет прочитанную из кадра
+		 */
+		this->_header.extent = static_cast <uint32_t> (tail.size() - CHUNK_HEADER);
 	}
 	// Выполняем установку длины тела собранного контейнера
 	this->_header.length = static_cast <uint64_t> (this->_body.size());
@@ -459,6 +464,12 @@ bool awh::codec::abc::Assembler::complete(vector <uint8_t> & result) noexcept {
 		}
 		// Выполняем укладку записи подписи владельца контейнера
 		abc::pack(sign, signature);
+		/**
+		 * Выполняем обёртку записи подписи кадром: тело контейнера обходится кадрами
+		 * подряд, и запись подписи, оказавшись внутри обхода при следующей фиксации,
+		 * обязана быть кадром, а не голой записью
+		 */
+		abc::envelope(signature, this->_number, static_cast <uint32_t> (this->_header.generation));
 		/**
 		 * Выполняем установку смещения подписи от начала контейнера: подпись лежит
 		 * за оглавлением, ибо оглавление ею же и подписано
@@ -1041,7 +1052,19 @@ bool awh::codec::abc::verify(const crypto_t & crypto, const string & name,
 	/**
 	 * Если снять запись подписи владельца контейнера не вышло
 	 */
-	if(!abc::unpack(octets + header.signature, size - static_cast <size_t> (header.signature), sign, error))
+	/**
+	 * Если поданных октетов недостаёт на заголовок кадра записи подписи
+	 */
+	if((header.signature + CHUNK_HEADER) > static_cast <uint64_t> (size)){
+		// Выводим признак несошедшейся подписи
+		return ::refuse(error_t::TRUNCATED_SIGNATURE, error, log);
+	}
+	/**
+	 * Выполняем снятие записи подписи из кадра-обёртки: смещение подписи указывает на
+	 * заголовок кадра, а сама запись лежит за ним
+	 */
+	if(!abc::unpack(octets + header.signature + CHUNK_HEADER,
+	 size - static_cast <size_t> (header.signature + CHUNK_HEADER), sign, error))
 		// Выводим признак несошедшейся подписи
 		return ::refuse(error, error, log);
 	// Корень дерева свёрток поверяемого контейнера

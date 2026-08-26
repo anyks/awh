@@ -190,6 +190,33 @@ namespace awh {
 				// Арена узлов синтаксического дерева
 				vector <node_data_t> _nodes;
 			private:
+				/**
+				 * \~russian
+				 * Сберегательный ряд составов узлов, разбором накапливаемых
+				 *
+				 * @details Разбор последовательности и разбор выбора ветвей
+				 *          накапливают состав узла прежде, чем связать его:
+				 *          число элементов заранее не известно. Ряд для того
+				 *          заводился на каждый вызов, а вызовы эти приходятся
+				 *          на всякую группу и всякую ветвь выражения - и
+                 *          всякий раз размещался заново.
+				 *
+				 *          Ряд ныне общий, а вложенность держится отметкою
+				 *          основания: вызов помнит длину ряда при входе,
+				 *          накапливает поверх неё и усекает ряд обратно,
+				 *          связав состав. Место, однажды отведённое,
+				 *          переживает и вызовы, и разборы.
+				 *
+				 * \~english
+				 * Scratch sequence of the node contents accumulated by the parsing
+				 * @details Parsing a concatenation and parsing an alternation
+				 *          accumulate the content of a node before linking it:
+				 *          the number of elements is not known in advance.
+				 *
+				 * \~
+				 */
+				vector <node_id_t> _items;
+			private:
 				// Хранилище классов символов
 				vector <class_t> _classes;
 			private:
@@ -757,7 +784,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				node_id_t makeList(const node_t type, const vector <node_id_t> & items) noexcept;
+				node_id_t makeList(const node_t type, const vector <node_id_t> & items, const size_t from = 0) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод создания узла рекурсивного вызова

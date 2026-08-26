@@ -470,3 +470,187 @@ TEST(CodecCsvEncoding, Reset) {
 	// Выполняем проверку приведённого текста
 	ASSERT_EQ(result, "b");
 }
+
+/**
+ * @brief Проверка отказов приведения, покрытием не пройденных
+ *
+ * @details Собраны здесь ветви, до которых прежние проверки не доходили: негодный
+ * первый байт последовательности UTF-8, обрыв текста посреди последовательности,
+ * одинокая младшая половина суррогатной пары в обоих порядках байтов, недопустимый
+ * знак в UTF-16 и приведение, продолженное после отказа
+ *
+ * @note Негодные последовательности стоят НЕ в начале текста нарочно: первые четыре
+ *       байта приведение копит ради метки порядка байтов и разбирает их разом
+ *
+ */
+TEST(CodecCsvEncoding, RefusalsUncoveredBefore) {
+	{
+		// Приведение текста таблицы
+		csv::decoder_t decoder(::logger());
+		// Выполняем навязывание кодировки исходного текста
+		ASSERT_TRUE(decoder.encoding(csv::encoding_t::UTF8));
+		// Полученный приведением текст таблицы
+		string result;
+		// Текст с негодным первым байтом последовательности знака
+		const char text[] = {'a', ',', 'b', ',', '\xf8'};
+		// Выполняем проверку отказа приведения текста таблицы
+		ASSERT_FALSE(decoder.convert(text, sizeof(text), true, result));
+		// Выполняем проверку кода отказа приведения
+		ASSERT_EQ(decoder.error(), csv::error_t::INVALID_ENCODING);
+		// Выполняем проверку отказа приведения, продолженного после отказа
+		ASSERT_FALSE(decoder.convert("a,b\r\n", 5, true, result));
+		// Выполняем проверку неизменности кода отказа приведения
+		ASSERT_EQ(decoder.error(), csv::error_t::INVALID_ENCODING);
+	}
+	{
+		// Приведение текста таблицы
+		csv::decoder_t decoder(::logger());
+		// Выполняем навязывание кодировки исходного текста
+		ASSERT_TRUE(decoder.encoding(csv::encoding_t::UTF8));
+		// Полученный приведением текст таблицы
+		string result;
+		// Текст, оборвавшийся посреди последовательности знака
+		const char text[] = {'a', ',', 'b', ',', '\xd0'};
+		// Выполняем проверку отказа приведения текста таблицы
+		ASSERT_FALSE(decoder.convert(text, sizeof(text), true, result));
+		// Выполняем проверку кода отказа приведения
+		ASSERT_EQ(decoder.error(), csv::error_t::INVALID_ENCODING);
+	}
+	{
+		// Приведение текста таблицы
+		csv::decoder_t decoder(::logger());
+		// Выполняем навязывание кодировки исходного текста
+		ASSERT_TRUE(decoder.encoding(csv::encoding_t::UTF16LE));
+		// Полученный приведением текст таблицы
+		string result;
+		// Текст с одинокой младшей половиной суррогатной пары
+		const char text[] = {'a', 0, ',', 0, '\x00', '\xdc'};
+		// Выполняем проверку отказа приведения текста таблицы
+		ASSERT_FALSE(decoder.convert(text, sizeof(text), true, result));
+		// Выполняем проверку кода отказа приведения
+		ASSERT_EQ(decoder.error(), csv::error_t::INVALID_ENCODING);
+	}
+	{
+		// Приведение текста таблицы
+		csv::decoder_t decoder(::logger());
+		// Выполняем навязывание кодировки исходного текста
+		ASSERT_TRUE(decoder.encoding(csv::encoding_t::UTF16BE));
+		// Полученный приведением текст таблицы
+		string result;
+		// Текст с одинокой младшей половиной суррогатной пары
+		const char text[] = {0, 'a', 0, ',', '\xdc', '\x00'};
+		// Выполняем проверку отказа приведения текста таблицы
+		ASSERT_FALSE(decoder.convert(text, sizeof(text), true, result));
+		// Выполняем проверку кода отказа приведения
+		ASSERT_EQ(decoder.error(), csv::error_t::INVALID_ENCODING);
+	}
+	{
+		// Приведение текста таблицы
+		csv::decoder_t decoder(::logger());
+		// Выполняем навязывание кодировки исходного текста
+		ASSERT_TRUE(decoder.encoding(csv::encoding_t::UTF16LE));
+		// Полученный приведением текст таблицы
+		string result;
+		// Текст с управляющим знаком, в тексте таблицы недопустимым
+		const char text[] = {'a', 0, ',', 0, '\x01', '\x00'};
+		// Выполняем проверку отказа приведения текста таблицы
+		ASSERT_FALSE(decoder.convert(text, sizeof(text), true, result));
+		// Выполняем проверку кода отказа приведения
+		ASSERT_EQ(decoder.error(), csv::error_t::INVALID_CHARACTER);
+	}
+}
+
+/**
+ * @brief Проверка снятия навязанной извне кодировки исходного текста
+ *
+ * @details Кодировка, навязанная извне, снимается указанием неопределённой: приведение
+ * возвращается к определению её по метке порядка байтов. Ветвь эта покрытием пройдена
+ * не была
+ *
+ */
+TEST(CodecCsvEncoding, ForcedEncodingCleared) {
+	// Приведение текста таблицы
+	csv::decoder_t decoder(::logger());
+	// Выполняем проверку навязывания кодировки исходного текста
+	ASSERT_TRUE(decoder.encoding(csv::encoding_t::LATIN1));
+	// Выполняем проверку навязанной кодировки исходного текста
+	ASSERT_EQ(decoder.encoding(), csv::encoding_t::LATIN1);
+	// Выполняем проверку снятия навязанной кодировки исходного текста
+	ASSERT_TRUE(decoder.encoding(csv::encoding_t::NONE));
+	// Выполняем проверку сброса кодировки исходного текста
+	ASSERT_EQ(decoder.encoding(), csv::encoding_t::NONE);
+	// Полученный приведением текст таблицы
+	string result;
+	// Текст таблицы с меткой порядка байтов UTF-8
+	const char text[] = {'\xef', '\xbb', '\xbf', 'a', ',', 'b', '\r', '\n'};
+	// Выполняем проверку приведения текста таблицы
+	ASSERT_TRUE(decoder.convert(text, sizeof(text), true, result));
+	// Выполняем проверку кодировки, определённой по метке порядка байтов
+	ASSERT_EQ(decoder.encoding(), csv::encoding_t::UTF8);
+}
+
+/**
+ * @brief Проверка обрыва последовательности знака, объявленного отдельной подачей
+ *
+ * @details Последовательность, границей куска разорванная, приведением удерживается до
+ * следующей подачи, и обрыв её обнаруживается лишь объявлением конца текста. Ветвь эта
+ * покрытием пройдена не была: проверки объявляли конец текста тою же подачей, и обрыв
+ * ловился разбором последовательности, а не сличением удержанного остатка
+ *
+ */
+TEST(CodecCsvEncoding, HeldSequenceRefusedAtTextEnd) {
+	{
+		// Приведение текста таблицы
+		csv::decoder_t decoder(::logger());
+		// Выполняем навязывание кодировки исходного текста
+		ASSERT_TRUE(decoder.encoding(csv::encoding_t::UTF8));
+		// Полученный приведением текст таблицы
+		string result;
+		// Текст, оканчивающийся началом последовательности знака
+		const char text[] = {'a', ',', 'b', ',', '\xd0'};
+		// Выполняем проверку подачи куска текста таблицы
+		ASSERT_TRUE(decoder.convert(text, sizeof(text), false, result));
+		// Выполняем проверку отказа объявления конца текста таблицы
+		ASSERT_FALSE(decoder.convert("", 0, true, result));
+		// Выполняем проверку кода отказа приведения
+		ASSERT_EQ(decoder.error(), csv::error_t::INVALID_ENCODING);
+	}
+	{
+		// Приведение текста таблицы
+		csv::decoder_t decoder(::logger());
+		// Выполняем навязывание кодировки исходного текста
+		ASSERT_TRUE(decoder.encoding(csv::encoding_t::UTF16LE));
+		// Полученный приведением текст таблицы
+		string result;
+		// Текст нечётной длины, пару байтов не добравший
+		const char text[] = {'a', 0, ',', 0, 'b'};
+		// Выполняем проверку подачи куска текста таблицы
+		ASSERT_TRUE(decoder.convert(text, sizeof(text), false, result));
+		// Выполняем проверку приведённой части текста таблицы
+		ASSERT_EQ(result, "a,");
+		// Выполняем проверку отказа объявления конца текста таблицы
+		ASSERT_FALSE(decoder.convert("", 0, true, result));
+		// Выполняем проверку кода отказа приведения
+		ASSERT_EQ(decoder.error(), csv::error_t::INVALID_ENCODING);
+	}
+	{
+		// Приведение текста таблицы
+		csv::decoder_t decoder(::logger());
+		// Выполняем навязывание кодировки исходного текста
+		ASSERT_TRUE(decoder.encoding(csv::encoding_t::UTF16LE));
+		// Полученный приведением текст таблицы
+		string result;
+		// Начало текста таблицы нечётной длины
+		const char head[] = {'a', 0, ',', 0, 'b'};
+		// Выполняем проверку подачи первого куска текста таблицы
+		ASSERT_TRUE(decoder.convert(head, sizeof(head), false, result));
+		// Продолжение текста таблицы, пару добирающее и вновь её обрывающее
+		const char tail[] = {0, 'c', 0};
+		// Выполняем проверку подачи второго куска текста таблицы
+		ASSERT_TRUE(decoder.convert(tail, sizeof(tail), false, result));
+		// Выполняем проверку приведённого текста таблицы
+		ASSERT_EQ(result, "a,bc");
+		// Выполняем проверку отсутствия отказа приведения
+		ASSERT_EQ(decoder.error(), csv::error_t::NONE);
+	}
+}

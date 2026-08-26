@@ -224,6 +224,29 @@ namespace awh {
 				uint64_t records;
 				// Смещение оглавления от начала контейнера, ноль - оглавления нет
 				uint64_t index;
+				/**
+				 * \~russian
+				 * Длина содержимого кадра оглавления в октетах
+				 *
+				 * @details Длина эта объявлена ЗАГОЛОВКОМ, а заголовок несёт контрольную сумму:
+				 * ею и поверяется длина, прочитанная из самого кадра оглавления. Тело контейнера
+				 * ограничено полем `length`, а оглавление лежит ЗА телом, и сличать его длину
+				 * было не с чем: испорченные четыре октета заставляли завести до четырёх
+				 * гигабайт памяти прежде, чем чтение ответит отказом по недочитанному
+				 *
+				 * @note Ширина тридцать два разряда, а не шестьдесят четыре: длина содержимого
+				 * кадра и в самом кадре объявлена тридцатью двумя, и шире быть не может
+				 *
+				 * \~english
+				 * Length of the content of the index chunk in octets
+				 * @details This length is declared by the HEADER, and the header carries a checksum: by it
+				 * the length read from the index chunk itself is checked
+				 * @note The width is thirty-two bits rather than sixty-four: the length of the content
+				 * of a chunk is declared by thirty-two bits in the chunk itself as well
+				 *
+				 * \~
+				 */
+				uint32_t extent;
 				// Смещение подписи от начала контейнера, ноль - подписи нет
 				uint64_t signature;
 				/**

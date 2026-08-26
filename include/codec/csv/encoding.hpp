@@ -414,6 +414,22 @@ namespace awh {
 					 */
 					void reset() noexcept;
 				public:
+				public:
+					/**
+					 * \~russian
+					 * @brief Метод установки объекта ведения журнала работы
+					 *
+					 * @param log объект ведения журнала работы
+					 *
+					 * \~english
+					 * @brief Method of the setting of the object of the keeping of the work log
+					 *
+					 * @param log the object of the keeping of the work log
+					 *
+					 * \~
+					 */
+					void setLogger(const log_t * log) noexcept;
+				public:
 					/**
 					 * \~russian
 					 * @brief Конструктор

@@ -609,13 +609,29 @@ TEST_F(IndexFixture, EntryBeyondChunk) {
 	 * @param value  устанавливаемое значение поля
 	 *
 	 */
-	const auto spike = [entry](vector <uint8_t> & data, const size_t shift, const uint32_t value) noexcept -> void {
+	const auto spike = [entry, &header](vector <uint8_t> & data, const size_t shift, const uint32_t value) noexcept -> void {
 		/**
 		 * Выполняем перебор всех октетов правимого поля
 		 */
 		for(size_t i = 0; i < 4; i++)
 			// Выполняем укладку очередного октета поля
 			data.at(entry + shift + i) = static_cast <uint8_t> ((value >> (i * 8)) & 0xFF);
+		/**
+		 * Выполняем обновление контрольной суммы кадра оглавления
+		 *
+		 * @note Правка кадра НА МЕСТЕ обязана обновить сумму его, иначе снятие кадра
+		 *       ответит отказом суммы, а проверка эта поверяет не сумму, а строку
+		 *       оглавления, указывающую за кадр
+		 */
+		{
+			// Выполняем получение смещения кадра оглавления в записи контейнера
+			const size_t place = static_cast <size_t> (header.index);
+			// Выполняем получение длины уложенного содержимого кадра оглавления
+			const size_t length = static_cast <size_t> (abc::gather(data.data() + place + 4, 4));
+			// Выполняем укладку обновлённой контрольной суммы кадра оглавления
+			abc::fixed(data.data() + place + abc::CHUNK_DIGEST,
+			 abc::digest(data.data() + place, abc::CHUNK_HEADER + length), 8);
+		}
 	};
 	/**
 	 * Выполняем проверку отказа выборки по непомерной длине записи

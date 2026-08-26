@@ -641,6 +641,15 @@ namespace awh {
 					 * @param result полученное значение
 					 * @return       результат приведения
 					 *
+					 * @note Число, в затребованный вид не помещающееся, отвергается, а не
+					 *       усекается: «300» к `uint8_t` и «1e308» к `float` отвечают отказом
+					 *       равно. Кодек JSON здесь ведёт себя иначе - там приведение
+					 *       упирается в предел вида, - и расхождение это намеренно: там
+					 *       выдаётся само значение, отказать которым нечем, а здесь выдаётся
+					 *       признак успеха, и он обязан быть правдив
+					 * @warning Записи «inf» и «nan» переносятся в дробный вид как есть: они
+					 *          пределом не ограничены, и терять им нечего
+					 *
 					 * \~english
 					 * @brief Method of converting the content of a field to a number or to a logical value
 					 * @tparam T type of the value being obtained
@@ -779,6 +788,22 @@ namespace awh {
 					 * \~
 					 */
 					Document(const log_t * log) noexcept;
+				public:
+					/**
+					 * \~russian
+					 * @brief Метод установки объекта ведения журнала работы
+					 *
+					 * @param log объект ведения журнала работы
+					 *
+					 * \~english
+					 * @brief Method of the setting of the object of the keeping of the work log
+					 *
+					 * @param log the object of the keeping of the work log
+					 *
+					 * \~
+					 */
+					void setLogger(const log_t * log) noexcept;
+				public:
 					/**
 					 * \~russian
 					 * @brief Конструктор

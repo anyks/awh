@@ -98,7 +98,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			constexpr size_t CHUNK_HEADER = 24;
+			constexpr size_t CHUNK_HEADER = 32;
 
 			/**
 			 * \~russian
@@ -128,6 +128,32 @@ namespace awh {
 			 * \~
 			 */
 			constexpr uint8_t CHUNK_WASTE = 0x02;
+
+			/**
+			 * \~russian
+			 * @brief Смещение контрольной суммы в заголовке кадра
+			 *
+			 * @details Сумма кроет заголовок кадра вместе с содержимым его, а САМА в неё не
+			 * входит. Разряд мусора при выработке снимается: он учётный, метится правкой
+			 * одного октета уже уложенного кадра, и сумма ему следовать не обязана
+			 *
+			 * @details Заведена она затем, что кадр иначе ничем не заверен: заголовок
+			 * контейнера свою сумму несёт, а кадр нёс лишь объявленные длины, и порча октета
+			 * внутри кадра проходила МОЛЧА. Развёртка 25.08.2026 дала 24 молчаливо неверных
+			 * чтения из 530 при порче одного лишь кадра оглавления, а он ведёт выборку по
+			 * всему контейнеру
+			 *
+			 * \~english
+			 * @brief Offset of the checksum in the header of a chunk
+			 * @details The sum covers the header of the chunk together with its content while ITSELF is not
+			 * included in it. The bit of the waste is cleared upon the production: it is an accounting one
+			 * @details It has been introduced because otherwise a chunk is certified by nothing: a corruption
+			 * of an octet inside a chunk passed SILENTLY — 24 silently wrong readings of 530 by the sweep
+			 * of 25.08.2026 over the index chunk alone
+			 *
+			 * \~
+			 */
+			constexpr size_t CHUNK_DIGEST = 24;
 
 			/**
 			 * \~russian
@@ -238,6 +264,66 @@ namespace awh {
 			 *
 			 * \~
 			 */
+			/**
+			 * \~russian
+			 * @brief Функция обёртки уложенной записи кадром
+			 *
+			 * @details Заголовок кадра ставится ВПЕРЕДИ поданной записи, а сама она остаётся
+			 * как есть. Служит записи подписи владельца: тело контейнера обходится кадрами
+			 * подряд, и всё, что лежит внутри обхода, обязано быть кадром. Без обёртки место
+			 * записи подписи приходилось бы затирать кадром-заглушкой при следующей фиксации,
+			 * а между затиранием и записью головного заголовка оставалось окно, где обрыв
+			 * губил подпись прежнего поколения
+			 *
+			 * @note Кадр метится МУСОРОМ: содержимое его записью контейнера не является, и
+			 * подрядное чтение обязано его пропустить
+			 *
+			 * @param result     буфер уложенной записи, обёртываемой кадром
+			 * @param number     порядковый номер кадра
+			 * @param generation поколение записи кадра
+			 *
+			 * \~english
+			 * @brief Function of the wrapping of a laid record by a chunk
+			 * @details The header of the chunk is put IN FRONT of the submitted record while the record
+			 * itself is left as is. It serves the record of the signature of the owner: the body of a container
+			 * is walked by the chunks in a row, and everything lying inside the walk is obliged to be a chunk
+			 * @note The chunk is marked as a WASTE: its content is not a record of the container
+			 * @param result buffer of the laid record being wrapped by a chunk
+			 * @param number ordinal number of the chunk
+			 * @param generation generation of the record of the chunk
+			 *
+			 * \~
+			 */
+			/**
+			 * \~russian
+			 * @brief Функция выработки контрольной суммы кадра
+			 *
+			 * @details Сумма кроет заголовок кадра вместе с содержимым его, а САМА в неё не
+			 * входит. Разряд мусора при выработке снимается: он учётный, метится правкой
+			 * одного октета уже уложенного кадра, и сумма ему следовать не обязана
+			 *
+			 * @note Работа открыта наружу ради тех, кто правит кадр НА МЕСТЕ: всякая правка
+			 * содержимого обязана обновить сумму, иначе снятие кадра ответит отказом
+			 *
+			 * @param buffer буфер кадра целиком, от заголовка его
+			 * @param size   размер кадра в октетах
+			 * @return       выработанная контрольная сумма кадра
+			 *
+			 * \~english
+			 * @brief Function of the production of the checksum of a chunk
+			 * @details The sum covers the header of the chunk together with its content while ITSELF is not
+			 * included in it. The bit of the waste is cleared upon the production
+			 * @note The work is opened outwards for those who edit a chunk IN PLACE
+			 * @param buffer buffer of the whole chunk, from its header
+			 * @param size size of the chunk in octets
+			 * @return produced checksum of the chunk
+			 *
+			 * \~
+			 */
+			[[nodiscard]] __AWH_SHARED_EXPORT__ uint64_t digest(const void * buffer, const size_t size) noexcept;
+
+			__AWH_SHARED_EXPORT__ void envelope(vector <uint8_t> & result, const uint64_t number, const uint32_t generation) noexcept;
+
 			typedef class __AWH_SHARED_EXPORT__ Packer {
 				public:
 					/**

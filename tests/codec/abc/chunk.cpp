@@ -479,6 +479,28 @@ TEST_F(ChunkFixture, Sequence) {
  *
  */
 TEST_F(ChunkFixture, Failures) {
+	/**
+	 * @brief Функция обновления контрольной суммы правленого кадра
+	 *
+	 * @details Кадр несёт контрольную сумму, и сличается она ПРЕЖДЕ толкования полей его.
+	 *          Проверка эта поверяет поля, а не сумму, оттого правка поля обязана сумму
+	 *          обновить - иначе отказ придёт по сумме, и до поверяемого дело не дойдёт
+	 *
+	 * @param data октеты правленого кадра
+	 *
+	 */
+	const auto refresh = [](vector <uint8_t> & data) noexcept -> void {
+		// Если кадр короче заголовка своего
+		if(data.size() < abc::CHUNK_HEADER) return;
+		// Выполняем получение длины уложенного содержимого кадра
+		const size_t length = static_cast <size_t> (abc::gather(data.data() + 4, 4));
+		// Если содержимое кадра в поданные октеты не умещается
+		if((abc::CHUNK_HEADER + length) > data.size()) return;
+		// Выполняем укладку обновлённой контрольной суммы кадра
+		abc::fixed(data.data() + abc::CHUNK_DIGEST,
+		 abc::digest(data.data(), abc::CHUNK_HEADER + length), 8);
+	};
+
 	// Укладчик кадров
 	abc::packer_t packer(this->_log.get());
 	// Укладываемое содержимое кадра
@@ -510,6 +532,8 @@ TEST_F(ChunkFixture, Failures) {
 		vector <uint8_t> damaged = record;
 		// Выполняем установку неведомого разряда кадра
 		damaged.at(1) = 0x80;
+		// Выполняем обновление контрольной суммы правленого кадра
+		refresh(damaged);
 		// Смещение снятия кадра
 		size_t offset = 0;
 		// Снятое содержимое кадра
@@ -527,6 +551,8 @@ TEST_F(ChunkFixture, Failures) {
 		vector <uint8_t> damaged = record;
 		// Выполняем порчу объявленной длины исходного содержимого
 		damaged.at(8) = static_cast <uint8_t> (damaged.at(8) + 1);
+		// Выполняем обновление контрольной суммы правленого кадра
+		refresh(damaged);
 		// Смещение снятия кадра
 		size_t offset = 0;
 		// Снятое содержимое кадра
@@ -561,6 +587,28 @@ TEST_F(ChunkFixture, Failures) {
  *
  */
 TEST_F(ChunkFixture, UnknownMethod) {
+	/**
+	 * @brief Функция обновления контрольной суммы правленого кадра
+	 *
+	 * @details Кадр несёт контрольную сумму, и сличается она ПРЕЖДЕ толкования полей его.
+	 *          Проверка эта поверяет поля, а не сумму, оттого правка поля обязана сумму
+	 *          обновить - иначе отказ придёт по сумме, и до поверяемого дело не дойдёт
+	 *
+	 * @param data октеты правленого кадра
+	 *
+	 */
+	const auto refresh = [](vector <uint8_t> & data) noexcept -> void {
+		// Если кадр короче заголовка своего
+		if(data.size() < abc::CHUNK_HEADER) return;
+		// Выполняем получение длины уложенного содержимого кадра
+		const size_t length = static_cast <size_t> (abc::gather(data.data() + 4, 4));
+		// Если содержимое кадра в поданные октеты не умещается
+		if((abc::CHUNK_HEADER + length) > data.size()) return;
+		// Выполняем укладку обновлённой контрольной суммы кадра
+		abc::fixed(data.data() + abc::CHUNK_DIGEST,
+		 abc::digest(data.data(), abc::CHUNK_HEADER + length), 8);
+	};
+
 	// Укладчик кадров
 	abc::packer_t packer(this->_log.get());
 	// Выполняем установку модуля сжатия
@@ -582,6 +630,8 @@ TEST_F(ChunkFixture, UnknownMethod) {
 		vector <uint8_t> damaged = record;
 		// Выполняем установку неведомого метода сжатия
 		damaged.at(0) = static_cast <uint8_t> (method);
+		// Выполняем обновление контрольной суммы правленого кадра
+		refresh(damaged);
 		// Смещение снятия кадра
 		size_t offset = 0;
 		// Снятое содержимое кадра
@@ -610,6 +660,8 @@ TEST_F(ChunkFixture, UnknownMethod) {
 		ASSERT_TRUE(packer.pack(nullptr, 0, abc::payload_t::TEXT, 2, 0, empty));
 		// Выполняем установку неведомого метода сжатия
 		empty.at(0) = 0x7F;
+		// Выполняем обновление контрольной суммы правленого кадра
+		refresh(empty);
 		// Смещение снятия кадра
 		size_t offset = 0;
 		// Снятое содержимое кадра
@@ -654,5 +706,122 @@ TEST_F(ChunkFixture, UnknownMethod) {
 		[[maybe_unused]] const bool unpacked = plain.unpack(damaged.data(), damaged.size(), offset, content, chunk);
 		// Выполняем проверку того, что кадр не отвечен отказом опознания
 		ASSERT_NE(plain.error(), abc::error_t::INVALID_CHUNK) << "метод сжатия: " << static_cast <uint16_t> (method);
+	}
+}
+/**
+ * @brief Проверка контрольной суммы кадра
+ *
+ * @details Кадр несёт сумму, кроющую заголовок его вместе с содержимым. Без неё порча
+ *          октета внутри кадра проходила МОЛЧА: развёртка 25.08.2026 дала 10 392
+ *          молчаливо неверных чтения из 11 880 у контейнера без подписи и шифрования
+ *
+ * @note Разряд мусора в сумму НЕ входит: им фиксация метит прежнее оглавление правкой
+ *       одного октета уже уложенного кадра, и пересчитывать сумму она не обязана
+ *
+ */
+TEST_F(ChunkFixture, ChecksumRefusal) {
+	// Укладчик кадра
+	abc::packer_t packer(this->_log.get());
+	// Укладываемое содержимое кадра
+	const string payload(512, 'z');
+	// Буфер уложенного кадра
+	vector <uint8_t> record;
+	// Выполняем укладку кадра
+	ASSERT_TRUE(packer.pack(payload.data(), payload.size(), abc::payload_t::TEXT, 1, 0, record));
+	/**
+	 * Выполняем проверку того, что нетронутый кадр снимается
+	 */
+	{
+		// Смещение снятия кадра
+		size_t offset = 0;
+		// Снятое содержимое кадра
+		vector <uint8_t> content;
+		// Снятые сведения о кадре
+		abc::chunk_t chunk;
+		// Выполняем проверку снятия нетронутого кадра
+		ASSERT_TRUE(packer.unpack(record.data(), record.size(), offset, content, chunk))
+			<< "код отказа: " << abc::message(packer.error());
+		// Выполняем проверку снятого содержимого кадра
+		ASSERT_EQ(string(content.begin(), content.end()), payload);
+	}
+	/**
+	 * Выполняем порчу всякого октета кадра тремя способами: сумма обязана поймать всё
+	 */
+	{
+		// Количество порч, отвеченных отказом суммы
+		size_t caught = 0;
+		// Количество порч, отвеченных иным отказом
+		size_t other = 0;
+		// Количество порч, прошедших молча
+		size_t silent = 0;
+		/**
+		 * Выполняем перебор всех октетов уложенного кадра
+		 */
+		for(size_t place = 0; place < record.size(); place++){
+			/**
+			 * Выполняем перебор всех способов порчи октета
+			 */
+			for(const uint8_t mask : {static_cast <uint8_t> (0x01),
+			 static_cast <uint8_t> (0x80), static_cast <uint8_t> (0xFF)}){
+				// Буфер повреждаемого кадра
+				vector <uint8_t> damaged = record;
+				// Выполняем порчу очередного октета кадра
+				damaged.at(place) = static_cast <uint8_t> (damaged.at(place) ^ mask);
+				/**
+				 * Если порча пришлась на разряд мусора, кадр остаётся годным: разряд
+				 * этот учётный, и сумма ему не следует
+				 */
+				if((place == abc::CHUNK_FLAGS) && ((mask & ~abc::CHUNK_WASTE) == 0))
+					// Переходим к следующему способу порчи
+					continue;
+				// Смещение снятия кадра
+				size_t offset = 0;
+				// Снятое содержимое кадра
+				vector <uint8_t> content;
+				// Снятые сведения о кадре
+				abc::chunk_t chunk;
+				// Если испорченный кадр снялся
+				if(packer.unpack(damaged.data(), damaged.size(), offset, content, chunk)){
+					// Если снятое содержимое сошлось с исходным, порча прошла молча
+					if(string(content.begin(), content.end()) == payload)
+						// Выполняем учёт порчи, прошедшей молча без вреда
+						continue;
+					// Выполняем учёт порчи, прошедшей молча
+					silent++;
+				// Если отказ объявлен несошедшейся суммой
+				} else if(packer.error() == abc::error_t::INVALID_CHECKSUM)
+					// Выполняем учёт порчи, пойманной суммой
+					caught++;
+				// Иначе выполняем учёт порчи, пойманной иным сторожем
+				else other++;
+			}
+		}
+		// Выполняем проверку того, что молча не прошла ни одна порча
+		ASSERT_EQ(silent, 0ul) << "порч прошло молча: " << silent
+			<< ", поймано суммой: " << caught << ", иными сторожами: " << other;
+		// Выполняем проверку того, что сумма поймала подавляющее большинство порч
+		ASSERT_GT(caught, other) << "поймано суммой: " << caught << ", иными сторожами: " << other;
+	}
+	/**
+	 * Выполняем проверку того, что пометка кадра мусором суммы не ломает
+	 */
+	{
+		// Буфер помечаемого кадра
+		vector <uint8_t> marked = record;
+		// Выполняем пометку кадра мусором правкой одного октета
+		marked.at(abc::CHUNK_FLAGS) = static_cast <uint8_t> (marked.at(abc::CHUNK_FLAGS) | abc::CHUNK_WASTE);
+		// Смещение снятия кадра
+		size_t offset = 0;
+		// Снятое содержимое кадра
+		vector <uint8_t> content;
+		// Снятые сведения о кадре
+		abc::chunk_t chunk;
+		// Выполняем проверку снятия помеченного кадра
+		ASSERT_TRUE(packer.unpack(marked.data(), marked.size(), offset, content, chunk))
+			<< "код отказа: " << abc::message(packer.error());
+		// Выполняем проверку того, что содержимое помеченного кадра снялось верно
+		ASSERT_EQ(string(content.begin(), content.end()), payload);
+		// Выполняем проверку того, что кадр объявлен мусором
+		ASSERT_TRUE(chunk.waste);
 	}
 }

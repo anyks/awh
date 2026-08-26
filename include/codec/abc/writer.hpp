@@ -256,13 +256,19 @@ namespace awh {
 						 * строгого вида имена идут по возрастанию, и сличения с предыдущим довольно,
 						 * а вне его повтор бывает через любое число полей
 						 *
+						 * @note Отрезки эти лежат НЕ в самом звене, а общим перечнем сборки
+						 * («_keys»), звено же держит лишь начало своей их части. Перечень в звене
+						 * заводил бы память на всякое вместимое: запись из ста тысяч отображений
+						 * стоила бы четырёхсот тысяч выделений против считанных единиц
+						 *
 						 * \~english
-						 * Segments of the records of all the names of the fields of a container
+						 * Beginning of the part of the shared list of the segments of the records of the names
 						 * @note The list is kept ONLY at the checking of the repeats outside the canonical kind
+						 * @note The segments lie in the shared list of the assembling rather than in the link itself
 						 *
 						 * \~
 						 */
-						vector <span_t> keys;
+						size_t base;
 						/**
 						 * \~russian
 						 * Смещение отведённого места записи размаха, ноль - размах не объявлен
@@ -307,7 +313,7 @@ namespace awh {
 						 */
 						Frame() noexcept :
 						 mapping(false), indefinite(false), expectKey(false), marked(false), remain(0),
-						 spanned(0), segment(type_t::UNDEFINED) {}
+						 base(0), spanned(0), segment(type_t::UNDEFINED) {}
 					} frame_t;
 					/**
 					 * \~russian
@@ -395,6 +401,29 @@ namespace awh {
 					 * \~
 					 */
 					mutable vector <frame_t> _stack;
+					/**
+					 * \~russian
+					 * Отрезки записей имён полей всех вместимых стека
+					 *
+					 * @details Перечень общий: часть его, принадлежащая звену, начинается со
+					 * смещения «frame_t::base» и тянется до конца, ибо учёт имени ведётся лишь у
+					 * верхнего звена, а снятие звена усекает перечень до его начала
+					 *
+					 * @note Перечень общий заведён ради памяти: он держит вместимость между
+					 * вместимыми, тогда как перечень в самом звене заводился бы заново на всякое
+					 * отображение записи
+					 *
+					 * @note Перечень переменен по той же причине, что и стек: вклейка содержимого,
+					 * уложенного ссылкой, сдвигает отрезки, отсчитанные от начала буфера
+					 *
+					 * \~english
+					 * Segments of the records of the names of the fields of all the containers of the stack
+					 * @details The list is shared: the part belonging to a link begins at the offset «frame_t::base»
+					 * @note The shared list is set up for the sake of the memory: it keeps its capacity between the containers
+					 *
+					 * \~
+					 */
+					mutable vector <span_t> _keys;
 				private:
 					// Признак того, что сборка отвечена отказом
 					bool _failed;

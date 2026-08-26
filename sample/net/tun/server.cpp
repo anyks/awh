@@ -186,11 +186,11 @@ static void onSignal(int32_t signal) noexcept {
 					// Выдерживаем паузу, давая серверу снять адрес и убрать устройство
 					std::this_thread::sleep_for(std::chrono::milliseconds(50));
 				// Выводим признак обработанного события
-				return TRUE;
+				return 1 /* TRUE: макрос снят macro_push.hpp */;
 			}
 		}
 		// Выводим признак необработанного события
-		return FALSE;
+		return 0 /* FALSE: макрос снят macro_push.hpp */;
 	}
 #endif
 
@@ -349,7 +349,7 @@ int32_t main(int32_t argc, char * argv[]){
 		 *       завершение сеанса до `::signal` не доходят, а `SIGBREAK` подобием сигналов
 		 *       не обслуживается. Снятый силой сервер оставлял адрес на устройстве
 		 */
-		::SetConsoleCtrlHandler(onConsole, TRUE);
+		::SetConsoleCtrlHandler(onConsole, 1 /* TRUE: макрос снят macro_push.hpp */);
 		// Устанавливаем обработчик сигнала прерывания работы
 		::signal(SIGBREAK, onSignal);
 	#endif

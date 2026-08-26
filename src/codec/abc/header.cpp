@@ -76,7 +76,7 @@ namespace {
  */
 awh::codec::abc::Header::Header() noexcept :
  version(VERSION_MAJOR), revision(VERSION_MINOR), flags(static_cast <uint16_t> (flag_t::NONE)),
- content(0), length(0), records(0), index(0), signature(0), generation(0) {
+ content(0), length(0), records(0), index(0), extent(0), signature(0), generation(0) {
 	// Выполняем обнуление признака владельца контейнера
 	::memset(this->owner, 0, OWNER_LENGTH);
 	// Выполняем обнуление отпечатка открытого ключа
@@ -133,6 +133,8 @@ void awh::codec::abc::Header::pack(vector <uint8_t> & result) const noexcept {
 	::memcpy(buffer + 8, this->owner, OWNER_LENGTH);
 	// Выполняем укладку вида содержимого контейнера
 	abc::fixed(buffer + 24, static_cast <uint64_t> (this->content), 4);
+	// Выполняем укладку длины содержимого кадра оглавления
+	abc::fixed(buffer + 28, static_cast <uint64_t> (this->extent), 4);
 	// Выполняем укладку длины тела контейнера
 	abc::fixed(buffer + 32, this->length, 8);
 	// Выполняем укладку количества записей в теле контейнера
@@ -220,6 +222,8 @@ bool awh::codec::abc::Header::unpack(const void * buffer, const size_t size, err
 	::memcpy(this->owner, octets + 8, OWNER_LENGTH);
 	// Выполняем снятие вида содержимого контейнера
 	this->content = static_cast <uint32_t> (abc::gather(octets + 24, 4));
+	// Выполняем снятие длины содержимого кадра оглавления
+	this->extent = static_cast <uint32_t> (abc::gather(octets + 28, 4));
 	// Выполняем снятие длины тела контейнера
 	this->length = abc::gather(octets + 32, 8);
 	// Выполняем снятие количества записей в теле контейнера

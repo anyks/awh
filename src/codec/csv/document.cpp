@@ -22,6 +22,7 @@
 /**
  * Стандартные заголовочные файлы
  */
+#include <cmath>
 #include <fstream>
 
 /**
@@ -908,6 +909,21 @@ bool awh::codec::csv::Document::numeric(const size_t row, const size_t col, T & 
 		if(!real(value, number))
 			// Выводим признак неудачного приведения
 			return false;
+		/**
+		 * Если число в затребованный вид не помещается
+		 *
+		 * @note Отказ отвечает тому же правилу, что и сужение целых: запись «1e400»
+		 *       приведение к `double` отвергает, и запись «1e308», к `float` равно
+		 *       не вмещающаяся, обязана отвечать отказом же. Прежде она отдавала
+		 *       бесконечность признаком успеха, выдавая утрату числа за приведение
+		 * @warning Сличение ведётся лишь для конечных чисел: записи «inf» и «nan»
+		 *          в затребованный вид переносятся как есть, ибо теряться там нечему
+		 */
+		if(!::isinf(number) && !::isnan(number) &&
+		   ((number > static_cast <double> (numeric_limits <T>::max())) ||
+		    (number < static_cast <double> (numeric_limits <T>::lowest()))))
+			// Выводим признак неудачного приведения
+			return false;
 		// Запоминаем полученное значение
 		result = static_cast <T> (number);
 		// Выводим признак успешного приведения
@@ -1224,6 +1240,16 @@ void awh::codec::csv::Document::report() const noexcept {
 	if(this->_log != nullptr)
 		// Выполняем вывод сообщения об отказе
 		this->_log->print("CSV document failed: %s", log_t::flag_t::CRITICAL, awh::codec::csv::message(this->_error));
+}
+/**
+ * @brief Метод установки объекта ведения журнала работы
+ *
+ * @param log объект ведения журнала работы
+ *
+ */
+void awh::codec::csv::Document::setLogger(const log_t * log) noexcept {
+	// Устанавливаем объект ведения журнала работы
+	this->_log = log;
 }
 /**
  * @brief Конструктор

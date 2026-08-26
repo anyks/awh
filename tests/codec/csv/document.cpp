@@ -23,6 +23,7 @@
 /**
  * Стандартные заголовочные файлы
  */
+#include <cmath>
 #include <string>
 #include <vector>
 #include <cstdio>
@@ -726,6 +727,12 @@ TEST(CodecCsvDocument, NarrowingRefusesInsteadOfWrapping) {
 	ASSERT_TRUE(document.numeric(0, 3, small));
 	// Выполняем проверку приведённого значения
 	ASSERT_EQ(small, static_cast <int8_t> (127));
+	// Выполняем проверку отказа приведения числа «300», в один байт со знаком не помещающегося
+	ASSERT_FALSE(document.numeric(0, 0, small));
+	// Выполняем проверку приведения того же числа к виду в два байта без знака
+	ASSERT_TRUE(document.numeric(0, 0, word));
+	// Выполняем проверку приведённого значения
+	ASSERT_EQ(word, static_cast <uint16_t> (300));
 }
 
 /**
@@ -847,4 +854,430 @@ TEST(CodecCsvDocument, WriteToMissingDirectoryIsReported) {
 	ASSERT_FALSE(messages.empty());
 	// Выполняем проверку упоминания причины отказа в сообщении
 	ASSERT_NE(messages.back().find(csv::message(csv::error_t::FILE_NOT_OPENED)), string::npos) << messages.back();
+}
+
+/**
+ * @brief Проверка отказа сужения дробного числа, в затребованный вид не помещающегося
+ *
+ * @details Приведение к `float` числа «1e308» отдавало бесконечность признаком успеха,
+ * тогда как то же число видом `double` разбирается точно, а запись «1e400», в `double`
+ * не помещающаяся, отвечает отказом. Утрата числа выдавалась за приведение, и правило
+ * кодека - отвергать не поместившееся - соблюдалось для целых видов и обходилось для
+ * дробных. Обнаружено покрытием: ветвь дробного приведения не была пройдена вовсе
+ *
+ * @note Записи «inf» и «nan» отказом отвечать не должны: они пределом вида не ограничены
+ *
+ */
+TEST(CodecCsvDocument, RealNarrowingRefusesInsteadOfInfinity) {
+	// Таблица значений
+	csv::document_t document(::logger());
+	// Выполняем разбор текста таблицы
+	ASSERT_TRUE(document.parse("1e308,3.5,-1e300,1e400,inf,-inf,nan\r\n"));
+	// Извлекаемое число дробным видом одинарной точности
+	float single = 0.f;
+	// Извлекаемое число дробным видом двойной точности
+	double couple = 0.;
+	// Выполняем проверку отказа приведения числа, в одинарную точность не помещающегося
+	ASSERT_FALSE(document.numeric(0, 0, single));
+	// Выполняем проверку приведения того же числа к двойной точности
+	ASSERT_TRUE(document.numeric(0, 0, couple));
+	// Выполняем проверку приведённого значения
+	ASSERT_DOUBLE_EQ(couple, 1e308);
+	// Выполняем проверку приведения помещающегося числа
+	ASSERT_TRUE(document.numeric(0, 1, single));
+	// Выполняем проверку приведённого значения
+	ASSERT_FLOAT_EQ(single, 3.5f);
+	// Выполняем проверку отказа приведения отрицательного числа, в вид не помещающегося
+	ASSERT_FALSE(document.numeric(0, 2, single));
+	// Выполняем проверку отказа приведения числа, и в двойную точность не помещающегося
+	ASSERT_FALSE(document.numeric(0, 3, couple));
+	// Выполняем проверку отказа того же числа и для одинарной точности
+	ASSERT_FALSE(document.numeric(0, 3, single));
+	/**
+	 * Выполняем перебор записей бесконечности и не-числа
+	 */
+	for(size_t i = 4; i < 7; i++){
+		// Выполняем проверку приведения записи к двойной точности
+		ASSERT_TRUE(document.numeric(0, i, couple)) << i;
+		// Выполняем проверку приведения записи к одинарной точности
+		ASSERT_TRUE(document.numeric(0, i, single)) << i;
+	}
+	// Выполняем проверку переноса не-числа в одинарную точность
+	ASSERT_TRUE(::isnan(single));
+}
+
+/**
+ * @brief Проверка записи таблицы, собранного текста которой не вмещает буфер
+ *
+ * @details Запись изымает собранный текст кусками, и ветвь эта покрытием пройдена не
+ * была: все проверки записи брали таблицы в десятки байт. Заголовок таблицы записью
+ * равно не был затронут ни разу
+ *
+ */
+TEST(CodecCsvDocument, LargeTableSurvivesRoundTrip) {
+	// Настройки таблицы
+	csv::document_t::settings_t settings;
+	// Выполняем указание на присутствие заголовка таблицы
+	settings.reader.header = csv::header_t::PRESENT;
+	// Исходная таблица значений
+	csv::document_t document(::logger(), settings);
+	// Собираемый текст таблицы
+	string text = "alpha,beta,gamma\r\n";
+	/**
+	 * Выполняем сбор записей таблицы
+	 */
+	for(size_t i = 0; i < 20000; i++)
+		// Заносим очередную запись таблицы
+		text.append(std::to_string(i)).append(",\"поле, с разделителем ").append(std::to_string(i)).append("\",v").append(std::to_string(i)).append("\r\n");
+	// Выполняем проверку разбора текста таблицы
+	ASSERT_TRUE(document.parse(text));
+	// Выполняем проверку количества собранных записей
+	ASSERT_EQ(document.rows(), static_cast <size_t> (20000));
+	// Адрес файла таблицы
+	const string filename = "./csv-large-round-trip.csv";
+	// Выполняем проверку записи таблицы в файл
+	ASSERT_TRUE(document.write(filename));
+	// Полученная обратным чтением таблица значений
+	csv::document_t back(::logger(), settings);
+	// Выполняем проверку чтения записанного файла таблицы
+	ASSERT_TRUE(back.read(filename));
+	// Выполняем проверку совпадения заголовков таблиц
+	ASSERT_EQ(document.header(), back.header());
+	// Выполняем проверку совпадения количества записей
+	ASSERT_EQ(document.rows(), back.rows());
+	/**
+	 * Выполняем перебор всех записей таблицы
+	 */
+	for(size_t i = 0; i < document.rows(); i++){
+		/**
+		 * Выполняем перебор всех полей записи
+		 */
+		for(size_t j = 0; j < 3; j++)
+			// Выполняем проверку совпадения содержимого поля
+			ASSERT_EQ(document.get(i, j), back.get(i, j)) << i << ':' << j;
+	}
+	// Выполняем удаление файла таблицы
+	::remove(filename.c_str());
+}
+
+/**
+ * @brief Проверка отказа установки заголовка таблицы с пустым именем столбца
+ *
+ * @details Обращение к столбцу ведётся по имени, и пустым именем столбец недостижим:
+ * принять такое имя значило бы оставить столбец без доступа. Отказ обязан снимать
+ * заголовок целиком, а не оставлять его собранным наполовину
+ *
+ */
+TEST(CodecCsvDocument, EmptyColumnNameRefused) {
+	// Таблица значений
+	csv::document_t document(::logger());
+	// Выполняем проверку разбора текста таблицы
+	ASSERT_TRUE(document.parse("1,2,3\r\n"));
+	// Выполняем проверку установки годного заголовка таблицы
+	ASSERT_TRUE(document.header({"альфа", "бета", "гамма"}));
+	// Выполняем проверку количества столбцов заголовка
+	ASSERT_EQ(document.header().size(), static_cast <size_t> (3));
+	// Выполняем проверку отказа установки заголовка с пустым именем столбца
+	ASSERT_FALSE(document.header({"альфа", "", "гамма"}));
+	// Выполняем проверку снятия заголовка целиком
+	ASSERT_TRUE(document.header().empty());
+	// Выполняем проверку недостижимости столбца по прежнему имени
+	ASSERT_TRUE(document.col("альфа").empty());
+}
+
+/**
+ * @brief Проверка разбора пустого текста таблицы вместилищем
+ *
+ * @details Подача пустого текста нужна затем, чтобы разбор объявил его окончание, и
+ * ветвь эта покрытием пройдена не была ни разбором текста, ни выдачей записями
+ *
+ */
+TEST(CodecCsvDocument, EmptyTextParsedWholly) {
+	// Таблица значений
+	csv::document_t document(::logger());
+	// Выполняем проверку разбора пустого текста таблицы
+	ASSERT_TRUE(document.parse(""));
+	// Выполняем проверку отсутствия отказа разбора
+	ASSERT_EQ(document.error(), csv::error_t::NONE);
+	// Выполняем проверку отсутствия записей таблицы
+	ASSERT_EQ(document.rows(), static_cast <size_t> (0));
+	// Количество выданных записей таблицы
+	size_t count = 0;
+	// Выполняем проверку разбора пустого текста таблицы выдачей записями
+	ASSERT_TRUE(document.parse("", [&count](const vector <string_view> &) noexcept -> bool {
+		// Выполняем учёт очередной выданной записи
+		count++;
+		// Выводим признак продолжения разбора
+		return true;
+	}));
+	// Выполняем проверку отсутствия выданных записей
+	ASSERT_EQ(count, static_cast <size_t> (0));
+	// Выполняем проверку отсутствия отказа разбора
+	ASSERT_EQ(document.error(), csv::error_t::NONE);
+}
+
+/**
+ * @brief Проверка отказа выдачи записями без переданного обработчика
+ *
+ * @details Отказ этот собственный внутренний изъян и означает: обработчик обязателен,
+ * а разбор без него смысла не имеет
+ *
+ */
+TEST(CodecCsvDocument, MissingCallbackRefused) {
+	// Таблица значений
+	csv::document_t document(::logger());
+	// Пустой обработчик записей таблицы
+	const function <bool (const vector <string_view> &)> empty;
+	// Выполняем проверку отказа разбора текста таблицы без обработчика
+	ASSERT_FALSE(document.parse("1,2\r\n", empty));
+	// Выполняем проверку кода отказа разбора
+	ASSERT_EQ(document.error(), csv::error_t::INTERNAL);
+	// Выполняем проверку отказа чтения файла таблицы без обработчика
+	ASSERT_FALSE(document.read("./csv-нет-такого-файла.csv", empty));
+	// Выполняем проверку кода отказа чтения
+	ASSERT_EQ(document.error(), csv::error_t::INTERNAL);
+	// Выполняем проверку отказа чтения отсутствующего файла таблицы годным обработчиком
+	ASSERT_FALSE(document.read("./csv-нет-такого-файла.csv", [](const vector <string_view> &) noexcept -> bool {
+		// Выводим признак продолжения чтения
+		return true;
+	}));
+	// Выполняем проверку кода отказа чтения
+	ASSERT_EQ(document.error(), csv::error_t::FILE_NOT_OPENED);
+}
+
+/**
+ * @brief Проверка сбора заголовка таблицы выдачей записями
+ *
+ * @details Имена столбцов переносятся в контейнер и выдачей записями: записи там не
+ * оседают, а заголовок нужен уже после чтения. Ветвь эта покрытием пройдена не была
+ *
+ */
+TEST(CodecCsvDocument, HeaderCollectedByCallbackParsing) {
+	// Настройки таблицы
+	csv::document_t::settings_t settings;
+	// Выполняем указание на присутствие заголовка таблицы
+	settings.reader.header = csv::header_t::PRESENT;
+	// Таблица значений
+	csv::document_t document(::logger(), settings);
+	// Количество выданных записей таблицы
+	size_t count = 0;
+	// Выполняем проверку разбора текста таблицы выдачей записями
+	ASSERT_TRUE(document.parse("альфа,бета\r\n1,2\r\n3,4\r\n", [&count](const vector <string_view> & record) noexcept -> bool {
+		// Выполняем учёт очередной выданной записи
+		count++;
+		// Выводим признак прекращения разбора после первой же записи
+		return false;
+	}));
+	// Выполняем проверку прекращения разбора обработчиком
+	ASSERT_EQ(count, static_cast <size_t> (1));
+	// Выполняем проверку сбора заголовка таблицы
+	ASSERT_EQ(document.header().size(), static_cast <size_t> (2));
+	// Выполняем проверку первого имени столбца заголовка
+	ASSERT_EQ(document.header().front(), "альфа");
+	// Выполняем проверку записей, в контейнере не осевших
+	ASSERT_EQ(document.rows(), static_cast <size_t> (0));
+}
+
+/**
+ * @brief Проверка прекращения выдачи записями при отказе разбора
+ *
+ * @details Подача куска чтению отвечает отказом, и обходы обязаны прекращать подачу
+ * тут же: продолжение кормило бы отказавшее чтение впустую. Ветви эти покрытием
+ * пройдены не были ни разбором текста, ни чтением файла
+ *
+ */
+TEST(CodecCsvDocument, MalformedTextStopsCallbackParsing) {
+	// Настройки таблицы
+	csv::document_t::settings_t settings;
+	// Выполняем указание предела длины поля таблицы
+	settings.reader.maxField = 4;
+	// Таблица значений
+	csv::document_t document(::logger(), settings);
+	// Количество выданных записей таблицы
+	size_t count = 0;
+	// Обработчик очередной записи таблицы
+	const auto callback = [&count](const vector <string_view> &) noexcept -> bool {
+		// Выполняем учёт очередной выданной записи
+		count++;
+		// Выводим признак продолжения разбора
+		return true;
+	};
+	// Выполняем проверку отказа разбора текста таблицы выдачей записями
+	ASSERT_FALSE(document.parse("аб,вг\r\nслишком длинное поле,вг\r\n", callback));
+	// Выполняем проверку оглашения отказа разбора
+	ASSERT_NE(document.error(), csv::error_t::NONE);
+	// Адрес файла таблицы
+	const string filename = "./csv-malformed-callback.csv";
+	{
+		// Поток записи файла таблицы
+		ofstream file(filename, ios::binary);
+		// Выполняем запись текста таблицы в файл
+		file << "аб,вг\r\nслишком длинное поле,вг\r\n";
+	}
+	// Сбрасываем количество выданных записей таблицы
+	count = 0;
+	// Выполняем проверку отказа чтения файла таблицы выдачей записями
+	ASSERT_FALSE(document.read(filename, callback));
+	// Выполняем проверку оглашения отказа чтения
+	ASSERT_NE(document.error(), csv::error_t::NONE);
+	// Выполняем проверку отказа чтения файла таблицы целиком
+	ASSERT_FALSE(document.read(filename));
+	// Выполняем проверку оглашения отказа чтения
+	ASSERT_NE(document.error(), csv::error_t::NONE);
+	// Выполняем удаление файла таблицы
+	::remove(filename.c_str());
+}
+
+/**
+ * @brief Проверка выдачи настроек контейнера
+ *
+ * @details Выдача настроек покрытием пройдена не была вовсе: проверки настройки лишь
+ * устанавливали. Выданные настройки обязаны отвечать установленным
+ *
+ */
+TEST(CodecCsvDocument, SettingsReadBack) {
+	// Таблица значений
+	csv::document_t document(::logger());
+	// Настройки таблицы
+	csv::document_t::settings_t settings;
+	// Выполняем указание на присутствие заголовка таблицы
+	settings.reader.header = csv::header_t::PRESENT;
+	// Выполняем указание предела длины поля таблицы
+	settings.reader.maxField = 128;
+	// Выполняем установку настроек таблицы
+	document.settings(settings);
+	// Выполняем проверку выданного признака присутствия заголовка
+	ASSERT_EQ(document.settings().reader.header, csv::header_t::PRESENT);
+	// Выполняем проверку выданного предела длины поля
+	ASSERT_EQ(document.settings().reader.maxField, static_cast <size_t> (128));
+}
+
+/**
+ * @brief Проверка прекращения чтения файла таблицы обработчиком
+ *
+ * @details Ложь, выданная обработчиком, прекращает чтение файла, и ветвь эта покрытием
+ * пройдена не была: проверки прекращения брали разбор текста, а не чтение файла
+ *
+ */
+TEST(CodecCsvDocument, CallbackStopsFileReading) {
+	// Таблица значений
+	csv::document_t document(::logger());
+	// Адрес файла таблицы
+	const string filename = "./csv-callback-stop-file.csv";
+	{
+		// Поток записи файла таблицы
+		ofstream file(filename, ios::binary);
+		// Выполняем запись текста таблицы в файл
+		file << "1,2\r\n3,4\r\n5,6\r\n";
+	}
+	// Количество выданных записей таблицы
+	size_t count = 0;
+	// Выполняем проверку чтения файла таблицы выдачей записями
+	ASSERT_TRUE(document.read(filename, [&count](const vector <string_view> &) noexcept -> bool {
+		// Выполняем учёт очередной выданной записи
+		count++;
+		// Выводим признак прекращения чтения после первой же записи
+		return false;
+	}));
+	// Выполняем проверку прекращения чтения обработчиком
+	ASSERT_EQ(count, static_cast <size_t> (1));
+	// Выполняем проверку отсутствия отказа чтения
+	ASSERT_EQ(document.error(), csv::error_t::NONE);
+	// Выполняем удаление файла таблицы
+	::remove(filename.c_str());
+}
+
+/**
+ * @brief Проверка установки объекта ведения журнала работы после создания
+ *
+ * @details Кодеки JSON и XML дают установку журнала всякому своему классу, а кодек CSV
+ * не давал её вовсе: журнал принимался лишь конструктором. Расхождение это в договоре
+ * трёх кодеков одного устройства, и держать его нечем
+ *
+ * @note Запись таблицы своих сообщений не имеет и журнал держит ради того же договора:
+ *       проверяется здесь лишь то, что установка сборке текста не мешает
+ *
+ */
+TEST(CodecCsvDocument, LoggerSetAfterCreation) {
+	// Собираемые сообщения журнала
+	vector <string> messages;
+	// Объект журнала с перехватом вывода
+	awh::log_t log(&Silent::framework());
+	// Выполняем назначение приёмника вывода в функцию обратного вызова
+	log.mode({awh::log_t::mode_t::DEFERRED});
+	// Выполняем назначение перехвата сообщений журнала
+	log.subscribe([&messages](const awh::log_t::flag_t, string_view text) noexcept -> void {
+		// Выполняем сбор очередного сообщения журнала
+		messages.push_back(string(text));
+	});
+	{
+		// Таблица значений без объекта ведения журнала работы
+		csv::document_t document(nullptr);
+		// Выполняем проверку разбора текста таблицы
+		ASSERT_TRUE(document.parse("имя\nзначение\n"));
+		// Выполняем проверку отказа записи в несуществующий каталог
+		ASSERT_FALSE(document.write("/несуществующий/каталог/таблица.csv"));
+		// Выполняем проверку молчания журнала, покуда он не установлен
+		ASSERT_TRUE(messages.empty());
+		// Выполняем установку объекта ведения журнала работы
+		document.setLogger(&log);
+		// Выполняем проверку отказа записи в несуществующий каталог
+		ASSERT_FALSE(document.write("/несуществующий/каталог/таблица.csv"));
+		// Выполняем проверку оглашения отказа в журнале
+		ASSERT_FALSE(messages.empty());
+	}
+	// Очищаем собранные сообщения журнала
+	messages.clear();
+	{
+		// Чтение текста таблицы без объекта ведения журнала работы
+		csv::reader_t reader(nullptr);
+		// Негодная последовательность знаков UTF-8
+		const char broken[] = {'a', ',', 'b', ',', '\xc2', '\xc2'};
+		// Выполняем проверку отказа разбора негодного текста таблицы
+		ASSERT_FALSE(reader.feed(broken, sizeof(broken), true));
+		// Выполняем проверку молчания журнала, покуда он не установлен
+		ASSERT_TRUE(messages.empty());
+		// Выполняем сброс состояния чтения
+		reader.reset();
+		// Выполняем установку объекта ведения журнала работы
+		reader.setLogger(&log);
+		// Выполняем проверку отказа разбора негодного текста таблицы
+		ASSERT_FALSE(reader.feed(broken, sizeof(broken), true));
+		// Выполняем проверку оглашения отказа в журнале
+		ASSERT_FALSE(messages.empty());
+	}
+	// Очищаем собранные сообщения журнала
+	messages.clear();
+	{
+		// Приведение текста таблицы без объекта ведения журнала работы
+		csv::decoder_t decoder(nullptr);
+		// Полученный приведением текст таблицы
+		string result;
+		// Негодная последовательность знаков UTF-8
+		const char broken[] = {'a', ',', 'b', ',', '\xc2', '\xc2'};
+		// Выполняем проверку отказа приведения негодного текста таблицы
+		ASSERT_FALSE(decoder.convert(broken, sizeof(broken), true, result));
+		// Выполняем проверку молчания журнала, покуда он не установлен
+		ASSERT_TRUE(messages.empty());
+		// Выполняем сброс состояния приведения
+		decoder.reset();
+		// Выполняем установку объекта ведения журнала работы
+		decoder.setLogger(&log);
+		// Выполняем проверку отказа приведения негодного текста таблицы
+		ASSERT_FALSE(decoder.convert(broken, sizeof(broken), true, result));
+		// Выполняем проверку оглашения отказа в журнале
+		ASSERT_FALSE(messages.empty());
+	}
+	{
+		// Запись таблицы без объекта ведения журнала работы
+		csv::writer_t writer(nullptr);
+		// Выполняем установку объекта ведения журнала работы
+		writer.setLogger(&log);
+		// Выполняем запись поля таблицы
+		writer.field("значение");
+		// Выполняем завершение записи таблицы
+		writer.record();
+		// Выполняем проверку собранного текста таблицы
+		ASSERT_EQ(writer.take(), "значение\r\n");
+	}
 }

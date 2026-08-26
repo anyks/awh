@@ -2952,7 +2952,7 @@ TEST_F(IoFixture, IoTunnelRefusesCommitWithoutAddressTest){
 		// Сведения о порождённом процессе
 		PROCESS_INFORMATION process{};
 		// Выполняем порождение работника
-		ASSERT_TRUE(::CreateProcessW(executable, command.data(), nullptr, nullptr, FALSE, 0, nullptr, nullptr, &startup, &process)) << "порождение работника не удалось";
+		ASSERT_TRUE(::CreateProcessW(executable, command.data(), nullptr, nullptr, 0 /* FALSE: макрос снят macro_push.hpp ради членов перечислений AWH */, 0, nullptr, nullptr, &startup, &process)) << "порождение работника не удалось";
 		/**
 		 * Ожидаем завершения работника предельным сроком
 		 *

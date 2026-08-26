@@ -162,9 +162,6 @@ const char * awh::codec::csv::message(const error_t error) noexcept {
 		// Если количество полей записи расходится с количеством полей заголовка
 		case static_cast <uint8_t> (error_t::FIELD_COUNT_MISMATCH):
 			return "field count differs from expected";
-		// Если разделитель не удалось определить по содержимому
-		case static_cast <uint8_t> (error_t::SEPARATOR_UNDETECTED):
-			return "field separator could not be detected";
 		// Если разделитель не задан вовсе либо совпадает с занятым разбором знаком
 		case static_cast <uint8_t> (error_t::SEPARATOR_CONFLICT):
 			return "field separator is unset or conflicts with quote or newline";
@@ -318,7 +315,14 @@ string_view awh::codec::csv::newline(const newline_t newline) noexcept {
 		case static_cast <uint8_t> (newline_t::CR):
 			return "\r";
 	}
-	// Выводим знак конца строки, принятый договором
+	/**
+	 * Выводим знак конца строки, принятый договором
+	 *
+	 * @note Ветвь эта НЕДОСТИЖИМА и оттого не покрыта: всякий вид знака конца строки
+	 *       разобран выше своим случаем, и добраться сюда можно лишь значением, виду
+	 *       не принадлежащим. Снимать её нельзя - она держит выдачу определённой и
+	 *       при заведении нового вида, покуда случай его не дописан
+	 */
 	return "\r\n";
 }
 /**

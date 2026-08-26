@@ -66,6 +66,8 @@ void awh::codec::abc::Writer::reset() noexcept {
 	this->_cuts.clear();
 	// Выполняем очистку стека вместимых
 	this->_stack.clear();
+	// Выполняем очистку отрезков записей имён полей вместимых
+	this->_keys.clear();
 	// Выполняем сброс признака отказа сборки
 	this->_failed = false;
 	// Выполняем сброс количества собранных документов
@@ -236,28 +238,28 @@ void awh::codec::abc::Writer::flatten() const noexcept {
 		}
 		// Выполняем сдвиг отрезка записи имени поля
 		frame.key.offset += static_cast <uint32_t> (shift);
+	}
+	/**
+	 * Выполняем сдвиг отрезков записей прежних имён полей всех вместимых стека
+	 *
+	 * @note Сдвиг у всякого имени свой: врезка, вставшая после имени, его не двигает
+	 */
+	for(auto & key : this->_keys){
+		// Размер содержимого, вклеенного перед отрезком имени поля
+		size_t own = 0;
 		/**
-		 * Выполняем сдвиг отрезков записей прежних имён полей вместимого
-		 *
-		 * @note Сдвиг у всякого имени свой: врезка, вставшая после имени, его не двигает
+		 * Выполняем перебор врезок чужого содержимого
 		 */
-		for(auto & key : frame.keys){
-			// Размер содержимого, вклеенного перед отрезком имени поля
-			size_t own = 0;
-			/**
-			 * Выполняем перебор врезок чужого содержимого
-			 */
-			for(auto & cut : this->_cuts){
-				// Если врезка стоит после отрезка имени поля
-				if(cut.offset > static_cast <size_t> (key.offset))
-					// Выполняем прекращение перебора врезок
-					break;
-				// Выполняем учёт размера вклеенного содержимого
-				own += cut.size;
-			}
-			// Выполняем сдвиг отрезка записи имени поля
-			key.offset += static_cast <uint32_t> (own);
+		for(auto & cut : this->_cuts){
+			// Если врезка стоит после отрезка имени поля
+			if(cut.offset > static_cast <size_t> (key.offset))
+				// Выполняем прекращение перебора врезок
+				break;
+			// Выполняем учёт размера вклеенного содержимого
+			own += cut.size;
 		}
+		// Выполняем сдвиг отрезка записи имени поля
+		key.offset += static_cast <uint32_t> (own);
 	}
 	// Выполняем замену буфера собираемой записи цельным
 	this->_record.swap(result);
@@ -326,7 +328,9 @@ bool awh::codec::abc::Writer::account(const size_t start) noexcept {
 			/**
 			 * Выполняем перебор отрезков записей прежних имён полей вместимого
 			 */
-			for(const auto & key : frame.keys){
+			for(size_t i = frame.base; i < this->_keys.size(); i++){
+				// Выполняем получение отрезка записи прежнего имени поля
+				const span_t & key = this->_keys.at(i);
 				// Если длины записей имён не совпадают, имена различны заведомо
 				if(static_cast <size_t> (key.length) != length)
 					// Переходим к следующему отрезку записи имени поля
@@ -338,7 +342,7 @@ bool awh::codec::abc::Writer::account(const size_t start) noexcept {
 					return this->fail(error_t::DUPLICATE_KEY);
 			}
 			// Выполняем запоминание отрезка записи уложенного имени поля
-			frame.keys.push_back(span_t(static_cast <uint32_t> (start), static_cast <uint32_t> (length)));
+			this->_keys.push_back(span_t(static_cast <uint32_t> (start), static_cast <uint32_t> (length)));
 		}
 		// Выполняем запоминание отрезка записи уложенного имени поля
 		frame.key = span_t(static_cast <uint32_t> (start), static_cast <uint32_t> (length));
@@ -413,6 +417,8 @@ bool awh::codec::abc::Writer::open(const bool mapping, const uint64_t count, con
 	frame_t frame;
 	// Выполняем установку смещения отведённого места записи размаха
 	frame.spanned = spanned;
+	// Выполняем установку начала части перечня отрезков имён полей вместимого
+	frame.base = this->_keys.size();
 	// Выполняем установку признака отображения
 	frame.mapping = mapping;
 	// Выполняем установку признака неопределённой длины
@@ -460,6 +466,12 @@ bool awh::codec::abc::Writer::close(const bool mapping) noexcept {
 	const bool indefinite = frame.indefinite;
 	// Смещение отведённого места записи размаха закрываемого вместимого
 	const size_t spanned = frame.spanned;
+	/**
+	 * Выполняем усечение перечня отрезков имён полей до начала части снимаемого звена
+	 *
+	 * @note Усечение вместимости не отнимает: перечень держит её до самой очистки сборки
+	 */
+	this->_keys.resize(this->_stack.back().base);
 	// Выполняем снятие звена со стека вместимых
 	this->_stack.pop_back();
 	// Выполняем получение смещения начала записи закрытого вместимого
@@ -905,6 +917,8 @@ bool awh::codec::abc::Writer::segment(const bool string) noexcept {
 	frame_t frame;
 	// Выполняем установку вида значения, собираемого кусками
 	frame.segment = (string ? type_t::STRING : type_t::BLOB);
+	// Выполняем установку начала части перечня отрезков имён полей вместимого
+	frame.base = this->_keys.size();
 	// Выполняем установку признака неопределённой длины
 	frame.indefinite = true;
 	// Выполняем добавление звена в стек вместимых
@@ -931,6 +945,12 @@ bool awh::codec::abc::Writer::segmentEnd(const bool string) noexcept {
 	 (string ? type_t::STRING : type_t::BLOB)))
 		// Выполняем объявление отказа сборки
 		return this->fail(error_t::UNBALANCED_CONTAINER);
+	/**
+	 * Выполняем усечение перечня отрезков имён полей до начала части снимаемого звена
+	 *
+	 * @note Усечение вместимости не отнимает: перечень держит её до самой очистки сборки
+	 */
+	this->_keys.resize(this->_stack.back().base);
 	// Выполняем снятие звена со стека вместимых
 	this->_stack.pop_back();
 	// Выполняем получение смещения начала записи конца значения
