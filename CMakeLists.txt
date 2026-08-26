@@ -1064,6 +1064,7 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/sys/fmk.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/log.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/procre.cpp"
+    "${CMAKE_SOURCE_DIR}/src/sys/fiber.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/chrono.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/signals.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/version.cpp"
@@ -1523,6 +1524,11 @@ if (${CMAKE_BUILD_SAMPLES})
     SET(PROCRE_APP_SYS_NAME sys-procre)
     # Указываем что нужно собрать приложение работы с резольвером процессов
     option(CMAKE_BUILD_PROCRE_SYS_APP_SAMPLE "Build Process Resolver app sample" ON)
+
+    # Устанавливаем имя приложения работы с волокнами
+    SET(FIBER_APP_SYS_NAME sys-fiber)
+    # Указываем что нужно собрать приложение работы с волокнами
+    option(CMAKE_BUILD_FIBER_SYS_APP_SAMPLE "Build Fiber app sample" ON)
 
     # Устанавливаем имя приложения работы с шифрованием и хэшированием
     SET(CRYPTO_APP_CRYPTOGRAPHY_NAME cryptography-crypto)
@@ -2217,6 +2223,17 @@ if (${CMAKE_BUILD_SAMPLES})
         message(STATUS "Build sample Filesystem: No\n")
     endif (${CMAKE_BUILD_FILESYSTEM_SYS_APP_SAMPLE})
 
+    # Если нужно собрать семплы для работы с волокнами
+    if (${CMAKE_BUILD_FIBER_SYS_APP_SAMPLE})
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample Fiber: Yes\n")
+        # Выполняем создание приложения работы с волокнами
+        add_sample(${FIBER_APP_SYS_NAME} sample/sys/fiber.cpp sys)
+    # Если не нужно собирать семплы для работы с волокнами
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample Fiber: No\n")
+    endif (${CMAKE_BUILD_FIBER_SYS_APP_SAMPLE})
     # Если нужно собрать семплы для работы с резольвером процессов
     if (${CMAKE_BUILD_PROCRE_SYS_APP_SAMPLE})
         # Выводим сообщение о сборке семпла
@@ -3247,6 +3264,16 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_PROCRE_SYS_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с волокнами
+        if (${CMAKE_BUILD_FIBER_SYS_APP_SAMPLE})
+            # Выполняем сборку приложения работы с волокнами
+            target_link_libraries(
+                ${FIBER_APP_SYS_NAME}
+                ${AWH_LIB_NAME}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_FIBER_SYS_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с шифрованием и хэшированием
         if (${CMAKE_BUILD_CRYPTO_CRYPTOGRAPHY_APP_SAMPLE})
@@ -4426,6 +4453,17 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_PROCRE_SYS_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с волокнами
+        if (${CMAKE_BUILD_FIBER_SYS_APP_SAMPLE})
+            # Выполняем сборку приложения работы с волокнами
+            target_link_libraries(
+                ${FIBER_APP_SYS_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_FIBER_SYS_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с шифрованием и хэшированием
         if (${CMAKE_BUILD_CRYPTO_CRYPTOGRAPHY_APP_SAMPLE})

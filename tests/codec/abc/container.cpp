@@ -852,6 +852,129 @@ TEST_F(ContainerFixture, RecordBeyondEntryField) {
  *          Отдельно поверяется, что отказ, ПРИНЯТЫЙ от нижнего слоя, записи не двоит
  *
  */
+/**
+ * @brief Проверка отказов поверки подписи на порченом устройстве контейнера
+ *
+ * @details Поверка подписи ходит по октетам контейнера, доверяя объявленным в них длинам,
+ *          и объявления эти приходят от того, кто контейнер подал. Проверяется, что
+ *          порча устройства отвечается ОТКАЗОМ С НАЗВАННОЙ ПРИЧИНОЙ, а не выходом за
+ *          поданные октеты: заголовок несёт свою контрольную сумму и потому пересобирается
+ *          заново на всякой порче, иначе отказ приходил бы по сумме, не доходя до разбора
+ *
+ */
+TEST_F(ContainerFixture, VerifyRefusesBrokenLayout) {
+	// Выполняем заведение ключа владельца контейнера
+	ASSERT_TRUE(this->_crypto->generateKey("владелец", crypto_t::signature_t::ED25519));
+	// Сборщик контейнера
+	abc::assembler_t assembler(this->_log.get());
+	// Выполняем объявление подписи собираемого контейнера
+	assembler.sign(this->_crypto.get(), "владелец");
+	// Выполняем сборку записи для проверок
+	const vector <uint8_t> item = record("подписанное содержимое контейнера");
+	// Выполняем внесение записи в собираемый контейнер
+	ASSERT_TRUE(assembler.append(item.data(), item.size(), abc::payload_t::TEXT))
+		<< "код отказа: " << abc::message(assembler.error());
+	// Буфер собранного контейнера
+	vector <uint8_t> origin;
+	// Выполняем завершение сборки контейнера
+	ASSERT_TRUE(assembler.complete(origin)) << "код отказа: " << abc::message(assembler.error());
+	// Код отказа поверки подписи владельца
+	abc::error_t error = abc::error_t::NONE;
+	// Выполняем проверку того, что подпись собранного контейнера сходится
+	ASSERT_TRUE(abc::verify(* this->_crypto, "владелец", origin.data(), origin.size(), error, this->_log.get()))
+		<< "код отказа: " << abc::message(error);
+	// Заголовок опознания собранного контейнера
+	abc::header_t header;
+	// Выполняем снятие заголовка опознания собранного контейнера
+	ASSERT_TRUE(header.unpack(origin.data(), origin.size(), error)) << "код отказа: " << abc::message(error);
+	// Выполняем проверку того, что место подписи заголовком объявлено
+	ASSERT_GT(header.signature, 0ull);
+	/**
+	 * Выполняем проверку отказа поверки на пустых октетах
+	 */
+	{
+		// Выполняем проверку отказа поверки подписи на пустых октетах
+		ASSERT_FALSE(abc::verify(* this->_crypto, "владелец", nullptr, 0, error, this->_log.get()));
+		// Выполняем проверку кода отказа поверки подписи
+		ASSERT_EQ(error, abc::error_t::INTERNAL);
+	}
+	/**
+	 * Выполняем проверку отказа поверки при месте подписи за поданными октетами
+	 */
+	{
+		// Буфер порченого контейнера
+		vector <uint8_t> broken = origin;
+		// Заголовок порченого контейнера
+		abc::header_t spiked = header;
+		// Выполняем увод места подписи за поданные октеты
+		spiked.signature = static_cast <uint64_t> (broken.size());
+		// Буфер пересобранного заголовка порченого контейнера
+		vector <uint8_t> record;
+		// Выполняем пересборку заголовка с новой контрольной суммой
+		spiked.pack(record);
+		// Выполняем укладку пересобранного заголовка в порченый контейнер
+		::memcpy(broken.data(), record.data(), record.size());
+		// Выполняем проверку отказа поверки подписи порченого контейнера
+		ASSERT_FALSE(abc::verify(* this->_crypto, "владелец", broken.data(), broken.size(), error, this->_log.get()));
+		// Выполняем проверку кода отказа поверки подписи
+		ASSERT_EQ(error, abc::error_t::TRUNCATED_SIGNATURE);
+	}
+	/**
+	 * Выполняем проверку отказа поверки при усечении октетов на заголовке кадра подписи
+	 */
+	{
+		// Буфер усечённого контейнера
+		vector <uint8_t> cut = origin;
+		// Выполняем усечение октетов посреди заголовка кадра записи подписи
+		cut.resize(static_cast <size_t> (header.signature) + (abc::CHUNK_HEADER / 2));
+		// Выполняем проверку отказа поверки подписи усечённого контейнера
+		ASSERT_FALSE(abc::verify(* this->_crypto, "владелец", cut.data(), cut.size(), error, this->_log.get()));
+		// Выполняем проверку кода отказа поверки подписи
+		ASSERT_EQ(error, abc::error_t::TRUNCATED_SIGNATURE);
+	}
+	/**
+	 * Выполняем проверку отказа поверки при длине кадра, уходящей за подпись
+	 */
+	{
+		// Буфер порченого контейнера
+		vector <uint8_t> broken = origin;
+		/**
+		 * Выполняем увод объявленной длины первого кадра тела за место подписи
+		 *
+		 * @note Контрольная сумма кадра здесь не пересобирается намеренно: поверка подписи
+		 *       ходит по кадрам как по октетам и сумм их не сличает вовсе, - потому отказ
+		 *       обязан прийти именно по устройству, а не по сумме
+		 */
+		for(uint8_t i = 0; i < 4; i++)
+			// Выполняем укладку очередного октета объявленной длины кадра
+			broken.at(abc::HEADER_LENGTH + 4 + i) = 0xFF;
+		// Выполняем проверку отказа поверки подписи порченого контейнера
+		ASSERT_FALSE(abc::verify(* this->_crypto, "владелец", broken.data(), broken.size(), error, this->_log.get()));
+		// Выполняем проверку кода отказа поверки подписи
+		ASSERT_EQ(error, abc::error_t::TRUNCATED_CHUNK);
+	}
+	/**
+	 * Выполняем проверку отказа поверки при месте подписи посреди заголовка кадра
+	 */
+	{
+		// Буфер порченого контейнера
+		vector <uint8_t> broken = origin;
+		// Заголовок порченого контейнера
+		abc::header_t spiked = header;
+		// Выполняем сдвиг места подписи внутрь заголовка первого кадра тела
+		spiked.signature = (abc::HEADER_LENGTH + (abc::CHUNK_HEADER / 2));
+		// Буфер пересобранного заголовка порченого контейнера
+		vector <uint8_t> record;
+		// Выполняем пересборку заголовка с новой контрольной суммой
+		spiked.pack(record);
+		// Выполняем укладку пересобранного заголовка в порченый контейнер
+		::memcpy(broken.data(), record.data(), record.size());
+		// Выполняем проверку отказа поверки подписи порченого контейнера
+		ASSERT_FALSE(abc::verify(* this->_crypto, "владелец", broken.data(), broken.size(), error, this->_log.get()));
+		// Выполняем проверку кода отказа поверки подписи
+		ASSERT_EQ(error, abc::error_t::TRUNCATED_CHUNK);
+	}
+}
 TEST_F(ContainerFixture, FailuresReachLogger) {
 	// Объект журнала проверки
 	log_t log(this->_fmk.get());

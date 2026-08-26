@@ -659,6 +659,215 @@ TEST_F(EditorFixture, CompactCommitsPending) {
 	ASSERT_EQ(picked, item);
 }
 /**
+ * @brief Проверка сохранения подписи уборкой мусора
+ *
+ * @details Уборка складывает контейнер заново на другом носителе, и подпись ей приходится
+ *          вырабатывать наново: тело у убранного контейнера иное, и прежняя подпись к нему
+ *          не подходит. Проверяется, что подпись эта на убранном контейнере сходится, а
+ *          отпечаток владельца и признак подписанности уборкой сохранены
+ *
+ */
+TEST_F(EditorFixture, CompactKeepsSignature) {
+	// Выполняем заведение ключа владельца контейнера
+	ASSERT_TRUE(this->_crypto->generateKey("владелец", crypto_t::signature_t::ED25519));
+	// Носитель, несущий правимый контейнер
+	Medium medium;
+	// Выполняем сборку контейнера с тремя записями
+	this->build(medium, {"первая", "вторая", "третья"});
+	// Правщик контейнера
+	abc::editor_t editor(this->_log.get());
+	// Выполняем открытие контейнера правщиком
+	ASSERT_TRUE(this->open(editor, medium)) << "код отказа: " << abc::message(editor.error());
+	// Выполняем объявление подписи правимого контейнера
+	ASSERT_TRUE(editor.sign(this->_crypto.get(), "владелец")) << "код отказа: " << abc::message(editor.error());
+	// Выполняем снос второй записи контейнера
+	ASSERT_TRUE(editor.erase(1)) << "код отказа: " << abc::message(editor.error());
+	// Выполняем фиксацию накопленных правок на носителе
+	ASSERT_TRUE(editor.commit()) << "код отказа: " << abc::message(editor.error());
+	// Выполняем проверку того, что мусор правкой накопился
+	ASSERT_GT(editor.garbage(), 0ull);
+	// Носитель, куда следует убрать контейнер
+	Medium cleaned;
+	// Полная длина убранного контейнера
+	uint64_t length = 0;
+	// Выполняем уборку мусора перестройкой контейнера
+	ASSERT_TRUE(editor.compact([&cleaned](const uint64_t offset, const void * buffer, const size_t size) noexcept -> bool {
+		// Выполняем запись поданных октетов убранного контейнера
+		return cleaned.write(offset, buffer, size);
+	}, abc::payload_t::TEXT, length)) << "код отказа: " << abc::message(editor.error());
+	// Выполняем проверку полной длины убранного контейнера
+	ASSERT_EQ(length, static_cast <uint64_t> (cleaned.data.size()));
+	// Код отказа поверки подписи владельца
+	abc::error_t error = abc::error_t::NONE;
+	/**
+	 * Выполняем поверку подписи владельца убранного контейнера: уборка сложила тело
+	 * заново, и подпись обязана сойтись именно на новом теле
+	 */
+	ASSERT_TRUE(abc::verify(* this->_crypto, "владелец", cleaned.data.data(), cleaned.data.size(), error, this->_log.get()))
+		<< "код отказа: " << abc::message(error);
+	// Буфер выбранной записи убранного контейнера
+	vector <uint8_t> picked;
+	// Выполняем выборку уцелевшей записи из убранного контейнера
+	ASSERT_TRUE(this->pick(cleaned, 2, picked, error)) << "код отказа: " << abc::message(error);
+	// Выполняем проверку выбранной записи контейнера
+	ASSERT_EQ(picked, abc::value_t(string{"третья"}).dump());
+	// Правщик убранного контейнера
+	abc::editor_t opened(this->_log.get());
+	// Выполняем открытие убранного контейнера правщиком
+	ASSERT_TRUE(this->open(opened, cleaned)) << "код отказа: " << abc::message(opened.error());
+	// Выполняем проверку того, что признак подписанности уборкой сохранён
+	ASSERT_TRUE(opened.header().is(abc::flag_t::SIGNED));
+	// Выполняем проверку того, что мусора в убранном контейнере не осталось
+	ASSERT_EQ(opened.garbage(), 0ull);
+	// Выполняем порчу одного октета тела убранного контейнера
+	cleaned.data.at(abc::HEADER_LENGTH + abc::CHUNK_HEADER + 1) ^= 0xFF;
+	// Выполняем проверку отказа поверки подписи после порчи тела
+	ASSERT_FALSE(abc::verify(* this->_crypto, "владелец", cleaned.data.data(), cleaned.data.size(), error, this->_log.get()));
+}
+/**
+ * @brief Проверка снятия подписи уборкой контейнера без подписывающего
+ *
+ * @details Подпись вырабатывается уборкой наново, а вырабатывать её нечем, если
+ *          подписывающий правщику не объявлен. Убранный контейнер обязан выйти
+ *          неподписанным честно: с погашенным признаком, обнулённым местом подписи и
+ *          вычищенным отпечатком, - а не с признаком подписанности при отсутствующей подписи
+ *
+ */
+TEST_F(EditorFixture, CompactWithoutSignerDropsSignature) {
+	// Выполняем заведение ключа владельца контейнера
+	ASSERT_TRUE(this->_crypto->generateKey("владелец", crypto_t::signature_t::ED25519));
+	// Носитель, несущий правимый контейнер
+	Medium medium;
+	// Выполняем сборку контейнера с двумя записями
+	this->build(medium, {"первая", "вторая"});
+	// Правщик контейнера
+	abc::editor_t editor(this->_log.get());
+	// Выполняем открытие контейнера правщиком
+	ASSERT_TRUE(this->open(editor, medium)) << "код отказа: " << abc::message(editor.error());
+	// Выполняем объявление подписи правимого контейнера
+	ASSERT_TRUE(editor.sign(this->_crypto.get(), "владелец")) << "код отказа: " << abc::message(editor.error());
+	// Выполняем фиксацию накопленных правок на носителе
+	ASSERT_TRUE(editor.commit()) << "код отказа: " << abc::message(editor.error());
+	// Носитель, несущий подписанный контейнер
+	Medium signed_;
+	// Выполняем перенос подписанного контейнера на отдельный носитель
+	signed_.data = medium.data;
+	// Правщик подписанного контейнера, подписывающего которому не объявлено
+	abc::editor_t plain(this->_log.get());
+	// Выполняем открытие подписанного контейнера правщиком без подписывающего
+	ASSERT_TRUE(this->open(plain, signed_)) << "код отказа: " << abc::message(plain.error());
+	// Выполняем проверку того, что открытый контейнер подписан
+	ASSERT_TRUE(plain.header().is(abc::flag_t::SIGNED));
+	// Носитель, куда следует убрать контейнер
+	Medium cleaned;
+	// Полная длина убранного контейнера
+	uint64_t length = 0;
+	// Выполняем уборку мусора перестройкой контейнера
+	ASSERT_TRUE(plain.compact([&cleaned](const uint64_t offset, const void * buffer, const size_t size) noexcept -> bool {
+		// Выполняем запись поданных октетов убранного контейнера
+		return cleaned.write(offset, buffer, size);
+	}, abc::payload_t::TEXT, length)) << "код отказа: " << abc::message(plain.error());
+	// Правщик убранного контейнера
+	abc::editor_t opened(this->_log.get());
+	// Выполняем открытие убранного контейнера правщиком
+	ASSERT_TRUE(this->open(opened, cleaned)) << "код отказа: " << abc::message(opened.error());
+	// Выполняем проверку того, что признак подписанности уборкой погашен
+	ASSERT_FALSE(opened.header().is(abc::flag_t::SIGNED));
+	// Выполняем проверку того, что место подписи убранного контейнера обнулено
+	ASSERT_EQ(opened.header().signature, 0ull);
+	// Выполняем проверку того, что записи убранного контейнера уцелели
+	ASSERT_EQ(opened.records(), 2ull);
+	// Код отказа поверки подписи владельца
+	abc::error_t error = abc::error_t::NONE;
+	// Выполняем проверку отказа поверки подписи у неподписанного контейнера
+	ASSERT_FALSE(abc::verify(* this->_crypto, "владелец", cleaned.data.data(), cleaned.data.size(), error, this->_log.get()));
+}
+/**
+ * @brief Проверка отката фиксации, оборванной отказом записи на носитель
+ *
+ * @details Фиксация переписывает оглавление целиком и вырабатывает подпись наново, а
+ *          носитель волен отказать посреди этой работы. Проверяется обрыв на всяком месте
+ *          подряд: прежнее поколение контейнера обязано пережить обрыв целиком - подпись
+ *          его сходится, а все записи читаются, - ибо новые кадры ложатся ЗА концом
+ *          прежнего тела, а заголовок с новым местом оглавления пишется последним
+ *
+ * @note Обрыв поверяется по одному отказу за проверку: правщик заводится наново на всякий
+ *       круг, иначе состояние его тянулось бы от круга к кругу и место отказа терялось бы
+ *
+ */
+TEST_F(EditorFixture, CommitRollbackKeepsPreviousGeneration) {
+	// Выполняем заведение ключа владельца контейнера
+	ASSERT_TRUE(this->_crypto->generateKey("владелец", crypto_t::signature_t::ED25519));
+	// Носитель, несущий подписанный контейнер прежнего поколения
+	Medium origin;
+	{
+		// Выполняем сборку контейнера с тремя записями
+		this->build(origin, {"первая", "вторая", "третья"});
+		// Правщик контейнера
+		abc::editor_t editor(this->_log.get());
+		// Выполняем открытие контейнера правщиком
+		ASSERT_TRUE(this->open(editor, origin)) << "код отказа: " << abc::message(editor.error());
+		// Выполняем объявление подписи правимого контейнера
+		ASSERT_TRUE(editor.sign(this->_crypto.get(), "владелец")) << "код отказа: " << abc::message(editor.error());
+		// Выполняем фиксацию подписи прежнего поколения на носителе
+		ASSERT_TRUE(editor.commit()) << "код отказа: " << abc::message(editor.error());
+	}
+	// Код отказа поверки подписи владельца
+	abc::error_t error = abc::error_t::NONE;
+	// Выполняем проверку того, что подпись прежнего поколения сходится
+	ASSERT_TRUE(abc::verify(* this->_crypto, "владелец", origin.data.data(), origin.data.size(), error, this->_log.get()))
+		<< "код отказа: " << abc::message(error);
+	// Количество отказавших фиксаций за весь обход
+	size_t refused = 0;
+	/**
+	 * Выполняем обход всех мест обрыва записи на носитель
+	 */
+	for(int allow = 0; allow < 8; allow++){
+		// Носитель круга, несущий снимок прежнего поколения
+		Medium medium;
+		// Выполняем снятие снимка прежнего поколения на носитель круга
+		medium.data = origin.data;
+		// Правщик контейнера круга
+		abc::editor_t editor(this->_log.get());
+		// Выполняем открытие контейнера правщиком
+		ASSERT_TRUE(this->open(editor, medium)) << "код отказа: " << abc::message(editor.error());
+		// Выполняем объявление подписи правимого контейнера
+		ASSERT_TRUE(editor.sign(this->_crypto.get(), "владелец")) << "код отказа: " << abc::message(editor.error());
+		// Выполняем сборку дописываемой записи
+		const vector <uint8_t> item = abc::value_t(string{"четвёртая"}).dump();
+		// Выполняем дописывание записи в конец контейнера
+		ASSERT_TRUE(editor.append(item.data(), item.size(), abc::payload_t::TEXT))
+			<< "код отказа: " << abc::message(editor.error());
+		// Выполняем объявление предела удавшихся записей на носитель
+		medium.allow = allow;
+		// Выполняем учёт исхода фиксации, оборванной отказом записи
+		if(!editor.commit())
+			// Выполняем учёт отказавшей фиксации
+			refused++;
+		// Выполняем снятие предела удавшихся записей на носитель
+		medium.allow = -1;
+		/**
+		 * Выполняем поверку подписи носителя круга: обрыв на любом месте обязан оставить
+		 * прежнее поколение целым, ибо новые кадры ложатся за концом прежнего тела
+		 */
+		ASSERT_TRUE(abc::verify(* this->_crypto, "владелец", medium.data.data(), medium.data.size(), error, this->_log.get()))
+			<< "обрыв на записи " << allow << ", код отказа: " << abc::message(error);
+		// Буфер выбранной записи контейнера
+		vector <uint8_t> picked;
+		/**
+		 * Выполняем выборку всех записей прежнего поколения
+		 */
+		for(uint64_t number = 0; number < 3; number++){
+			// Выполняем выборку очередной записи с носителя круга
+			ASSERT_TRUE(this->pick(medium, number, picked, error))
+				<< "обрыв на записи " << allow << ", запись " << number
+				<< ", код отказа: " << abc::message(error);
+		}
+	}
+	// Выполняем проверку того, что обход застал отказы фиксации
+	ASSERT_GT(refused, 0u);
+}
+/**
  * @brief Проверка фиксации по сроку, поверяемому при обращении
  *
  */

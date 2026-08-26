@@ -7182,6 +7182,18 @@ awh::codec::xml::standalone_t awh::codec::xml::Reader::standalone() const noexce
 	return this->_standalone;
 }
 /**
+ * @brief Метод установки объекта ведения журнала работы
+ *
+ * @param log объект ведения журнала работы
+ *
+ */
+void awh::codec::xml::Reader::setLogger(const log_t * log) noexcept {
+	// Устанавливаем объект ведения журнала работы
+	this->_log = log;
+	// Выполняем установку объекта ведения журнала приведению исходного текста
+	this->_decoder.setLogger(log);
+}
+/**
  * @brief Конструктор
  *
  */

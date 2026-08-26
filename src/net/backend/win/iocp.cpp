@@ -14264,11 +14264,16 @@ namespace timer {
 										 *          насмерть при обоих заведённых глобальных пределах); у IOCP тот же
 										 *          обработчик, и щуп подтвердил состояние 7 раз за прогон группы полосы
 										 *
+										 *          Приостановленный узел исключается ОТДЕЛЬНО: pause() ставит ему
+										 *          состояние PAUSED и снимает подписку намеренно, по воле потребителя,
+										 *          а признак живости узла этого не различает - возврат разбудил бы его
+										 *          против воли. То же и с CANCELLED
+										 *
 										 *          Возврат идёт ТОЛЬКО при снятом таймере: если обработка таймер взвела,
 										 *          узел придержан намеренно ради предела полосы, и возврат подписки этот
 										 *          предел обошёл бы. Из 6837 наблюдений щупа 6830 были именно такими
 										 */
-										if((::io::living.count(peer) > 0) && !(peer->activity & ::activity::READ) && (peer->bandwidth().read.timeout.status != event::status_t::PENDING)){
+										if((::io::living.count(peer) > 0) && (peer->state.status != event::status_t::PAUSED) && (peer->state.status != event::status_t::CANCELLED) && !(peer->activity & ::activity::READ) && (peer->bandwidth().read.timeout.status != event::status_t::PENDING)){
 											// Отмечаем активность на чтение данных
 											peer->activity |= ::activity::READ;
 											// Возвращаем событие готовности сокета на чтение
@@ -14298,11 +14303,16 @@ namespace timer {
 										 *          насмерть при обоих заведённых глобальных пределах); у IOCP тот же
 										 *          обработчик, и щуп подтвердил состояние 7 раз за прогон группы полосы
 										 *
+										 *          Приостановленный узел исключается ОТДЕЛЬНО: pause() ставит ему
+										 *          состояние PAUSED и снимает подписку намеренно, по воле потребителя,
+										 *          а признак живости узла этого не различает - возврат разбудил бы его
+										 *          против воли. То же и с CANCELLED
+										 *
 										 *          Возврат идёт ТОЛЬКО при снятом таймере: если обработка таймер взвела,
 										 *          узел придержан намеренно ради предела полосы, и возврат подписки этот
 										 *          предел обошёл бы. Из 6837 наблюдений щупа 6830 были именно такими
 										 */
-										if((::io::living.count(peer) > 0) && !(peer->activity & ::activity::WRITE) && (peer->bandwidth().write.timeout.status != event::status_t::PENDING)){
+										if((::io::living.count(peer) > 0) && (peer->state.status != event::status_t::PAUSED) && (peer->state.status != event::status_t::CANCELLED) && !(peer->activity & ::activity::WRITE) && (peer->bandwidth().write.timeout.status != event::status_t::PENDING)){
 											// Отмечаем активность на запись данных
 											peer->activity |= ::activity::WRITE;
 											// Возвращаем событие доступности сокета на запись
@@ -14383,11 +14393,16 @@ namespace timer {
 										 *          насмерть при обоих заведённых глобальных пределах); у IOCP тот же
 										 *          обработчик, и щуп подтвердил состояние 7 раз за прогон группы полосы
 										 *
+										 *          Приостановленный узел исключается ОТДЕЛЬНО: pause() ставит ему
+										 *          состояние PAUSED и снимает подписку намеренно, по воле потребителя,
+										 *          а признак живости узла этого не различает - возврат разбудил бы его
+										 *          против воли. То же и с CANCELLED
+										 *
 										 *          Возврат идёт ТОЛЬКО при снятом таймере: если обработка таймер взвела,
 										 *          узел придержан намеренно ради предела полосы, и возврат подписки этот
 										 *          предел обошёл бы. Из 6837 наблюдений щупа 6830 были именно такими
 										 */
-										if((::io::living.count(client) > 0) && !(client->activity & ::activity::READ) && (client->bandwidth().read.timeout.status != event::status_t::PENDING)){
+										if((::io::living.count(client) > 0) && (client->state.status != event::status_t::PAUSED) && (client->state.status != event::status_t::CANCELLED) && !(client->activity & ::activity::READ) && (client->bandwidth().read.timeout.status != event::status_t::PENDING)){
 											// Отмечаем активность на чтение данных
 											client->activity |= ::activity::READ;
 											// Возвращаем событие готовности сокета на чтение
@@ -14417,11 +14432,16 @@ namespace timer {
 										 *          насмерть при обоих заведённых глобальных пределах); у IOCP тот же
 										 *          обработчик, и щуп подтвердил состояние 7 раз за прогон группы полосы
 										 *
+										 *          Приостановленный узел исключается ОТДЕЛЬНО: pause() ставит ему
+										 *          состояние PAUSED и снимает подписку намеренно, по воле потребителя,
+										 *          а признак живости узла этого не различает - возврат разбудил бы его
+										 *          против воли. То же и с CANCELLED
+										 *
 										 *          Возврат идёт ТОЛЬКО при снятом таймере: если обработка таймер взвела,
 										 *          узел придержан намеренно ради предела полосы, и возврат подписки этот
 										 *          предел обошёл бы. Из 6837 наблюдений щупа 6830 были именно такими
 										 */
-										if((::io::living.count(client) > 0) && !(client->activity & ::activity::WRITE) && (client->bandwidth().write.timeout.status != event::status_t::PENDING)){
+										if((::io::living.count(client) > 0) && (client->state.status != event::status_t::PAUSED) && (client->state.status != event::status_t::CANCELLED) && !(client->activity & ::activity::WRITE) && (client->bandwidth().write.timeout.status != event::status_t::PENDING)){
 											// Отмечаем активность на запись данных
 											client->activity |= ::activity::WRITE;
 											// Возвращаем событие доступности сокета на запись
@@ -14597,11 +14617,16 @@ namespace timer {
 										 *          насмерть при обоих заведённых глобальных пределах); у IOCP тот же
 										 *          обработчик, и щуп подтвердил состояние 7 раз за прогон группы полосы
 										 *
+										 *          Приостановленный узел исключается ОТДЕЛЬНО: pause() ставит ему
+										 *          состояние PAUSED и снимает подписку намеренно, по воле потребителя,
+										 *          а признак живости узла этого не различает - возврат разбудил бы его
+										 *          против воли. То же и с CANCELLED
+										 *
 										 *          Возврат идёт ТОЛЬКО при снятом таймере: если обработка таймер взвела,
 										 *          узел придержан намеренно ради предела полосы, и возврат подписки этот
 										 *          предел обошёл бы. Из 6837 наблюдений щупа 6830 были именно такими
 										 */
-										if((::io::living.count(server) > 0) && !(server->activity & ::activity::READ) && (server->wrate.timeout.status != event::status_t::PENDING)){
+										if((::io::living.count(server) > 0) && (server->state.status != event::status_t::PAUSED) && (server->state.status != event::status_t::CANCELLED) && !(server->activity & ::activity::READ) && (server->wrate.timeout.status != event::status_t::PENDING)){
 											// Отмечаем активность на чтение данных
 											server->activity |= ::activity::READ;
 											// Возвращаем событие готовности сокета на чтение
@@ -15998,11 +16023,16 @@ namespace timer {
 										 *          насмерть при обоих заведённых глобальных пределах); у IOCP тот же
 										 *          обработчик, и щуп подтвердил состояние 7 раз за прогон группы полосы
 										 *
+										 *          Приостановленный узел исключается ОТДЕЛЬНО: pause() ставит ему
+										 *          состояние PAUSED и снимает подписку намеренно, по воле потребителя,
+										 *          а признак живости узла этого не различает - возврат разбудил бы его
+										 *          против воли. То же и с CANCELLED
+										 *
 										 *          Возврат идёт ТОЛЬКО при снятом таймере: если обработка таймер взвела,
 										 *          узел придержан намеренно ради предела полосы, и возврат подписки этот
 										 *          предел обошёл бы. Из 6837 наблюдений щупа 6830 были именно такими
 										 */
-										if((::io::living.count(peer) > 0) && !(peer->activity & ::activity::READ) && (peer->bandwidth().read.timeout.status != event::status_t::PENDING)){
+										if((::io::living.count(peer) > 0) && (peer->state.status != event::status_t::PAUSED) && (peer->state.status != event::status_t::CANCELLED) && !(peer->activity & ::activity::READ) && (peer->bandwidth().read.timeout.status != event::status_t::PENDING)){
 											// Отмечаем активность на чтение данных
 											peer->activity |= ::activity::READ;
 											// Возвращаем событие готовности сокета на чтение
@@ -16032,11 +16062,16 @@ namespace timer {
 										 *          насмерть при обоих заведённых глобальных пределах); у IOCP тот же
 										 *          обработчик, и щуп подтвердил состояние 7 раз за прогон группы полосы
 										 *
+										 *          Приостановленный узел исключается ОТДЕЛЬНО: pause() ставит ему
+										 *          состояние PAUSED и снимает подписку намеренно, по воле потребителя,
+										 *          а признак живости узла этого не различает - возврат разбудил бы его
+										 *          против воли. То же и с CANCELLED
+										 *
 										 *          Возврат идёт ТОЛЬКО при снятом таймере: если обработка таймер взвела,
 										 *          узел придержан намеренно ради предела полосы, и возврат подписки этот
 										 *          предел обошёл бы. Из 6837 наблюдений щупа 6830 были именно такими
 										 */
-										if((::io::living.count(peer) > 0) && !(peer->activity & ::activity::WRITE) && (peer->bandwidth().write.timeout.status != event::status_t::PENDING)){
+										if((::io::living.count(peer) > 0) && (peer->state.status != event::status_t::PAUSED) && (peer->state.status != event::status_t::CANCELLED) && !(peer->activity & ::activity::WRITE) && (peer->bandwidth().write.timeout.status != event::status_t::PENDING)){
 											// Отмечаем активность на запись данных
 											peer->activity |= ::activity::WRITE;
 											// Возвращаем событие доступности сокета на запись
@@ -16117,11 +16152,16 @@ namespace timer {
 										 *          насмерть при обоих заведённых глобальных пределах); у IOCP тот же
 										 *          обработчик, и щуп подтвердил состояние 7 раз за прогон группы полосы
 										 *
+										 *          Приостановленный узел исключается ОТДЕЛЬНО: pause() ставит ему
+										 *          состояние PAUSED и снимает подписку намеренно, по воле потребителя,
+										 *          а признак живости узла этого не различает - возврат разбудил бы его
+										 *          против воли. То же и с CANCELLED
+										 *
 										 *          Возврат идёт ТОЛЬКО при снятом таймере: если обработка таймер взвела,
 										 *          узел придержан намеренно ради предела полосы, и возврат подписки этот
 										 *          предел обошёл бы. Из 6837 наблюдений щупа 6830 были именно такими
 										 */
-										if((::io::living.count(client) > 0) && !(client->activity & ::activity::READ) && (client->bandwidth().read.timeout.status != event::status_t::PENDING)){
+										if((::io::living.count(client) > 0) && (client->state.status != event::status_t::PAUSED) && (client->state.status != event::status_t::CANCELLED) && !(client->activity & ::activity::READ) && (client->bandwidth().read.timeout.status != event::status_t::PENDING)){
 											// Отмечаем активность на чтение данных
 											client->activity |= ::activity::READ;
 											// Возвращаем событие готовности сокета на чтение
@@ -16151,11 +16191,16 @@ namespace timer {
 										 *          насмерть при обоих заведённых глобальных пределах); у IOCP тот же
 										 *          обработчик, и щуп подтвердил состояние 7 раз за прогон группы полосы
 										 *
+										 *          Приостановленный узел исключается ОТДЕЛЬНО: pause() ставит ему
+										 *          состояние PAUSED и снимает подписку намеренно, по воле потребителя,
+										 *          а признак живости узла этого не различает - возврат разбудил бы его
+										 *          против воли. То же и с CANCELLED
+										 *
 										 *          Возврат идёт ТОЛЬКО при снятом таймере: если обработка таймер взвела,
 										 *          узел придержан намеренно ради предела полосы, и возврат подписки этот
 										 *          предел обошёл бы. Из 6837 наблюдений щупа 6830 были именно такими
 										 */
-										if((::io::living.count(client) > 0) && !(client->activity & ::activity::WRITE) && (client->bandwidth().write.timeout.status != event::status_t::PENDING)){
+										if((::io::living.count(client) > 0) && (client->state.status != event::status_t::PAUSED) && (client->state.status != event::status_t::CANCELLED) && !(client->activity & ::activity::WRITE) && (client->bandwidth().write.timeout.status != event::status_t::PENDING)){
 											// Отмечаем активность на запись данных
 											client->activity |= ::activity::WRITE;
 											// Возвращаем событие доступности сокета на запись
@@ -16331,11 +16376,16 @@ namespace timer {
 										 *          насмерть при обоих заведённых глобальных пределах); у IOCP тот же
 										 *          обработчик, и щуп подтвердил состояние 7 раз за прогон группы полосы
 										 *
+										 *          Приостановленный узел исключается ОТДЕЛЬНО: pause() ставит ему
+										 *          состояние PAUSED и снимает подписку намеренно, по воле потребителя,
+										 *          а признак живости узла этого не различает - возврат разбудил бы его
+										 *          против воли. То же и с CANCELLED
+										 *
 										 *          Возврат идёт ТОЛЬКО при снятом таймере: если обработка таймер взвела,
 										 *          узел придержан намеренно ради предела полосы, и возврат подписки этот
 										 *          предел обошёл бы. Из 6837 наблюдений щупа 6830 были именно такими
 										 */
-										if((::io::living.count(server) > 0) && !(server->activity & ::activity::READ) && (server->wrate.timeout.status != event::status_t::PENDING)){
+										if((::io::living.count(server) > 0) && (server->state.status != event::status_t::PAUSED) && (server->state.status != event::status_t::CANCELLED) && !(server->activity & ::activity::READ) && (server->wrate.timeout.status != event::status_t::PENDING)){
 											// Отмечаем активность на чтение данных
 											server->activity |= ::activity::READ;
 											// Возвращаем событие готовности сокета на чтение

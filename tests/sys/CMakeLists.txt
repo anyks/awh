@@ -81,6 +81,8 @@ if(${GTest_FOUND})
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_COMPRESSOR_TEST "Build unit COMPRESSOR test for ${UNIT_TEST_NAME}" ON)
         # Указываем что нужно собрать тесты для работы с пуллам потоков
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_THREADPOOL_TEST "Build unit THREADPOOL test for ${UNIT_TEST_NAME}" ON)
+        # Указываем что нужно собрать тесты для модуля волокон
+        option(CMAKE_BUILD_${UNIT_TEST_NAME}_FIBER_TEST "Build unit FIBER test for ${UNIT_TEST_NAME}" ON)
         # Указываем что нужно собрать тесты для работы с файловой системой
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_FS_TEST "Build unit FS test for ${UNIT_TEST_NAME}" ON)
         # Указываем что нужно собрать тесты для работы с функциями обратного вызова
@@ -227,6 +229,21 @@ if(${GTest_FOUND})
             # Выводим сообщение о сборке тестов для модуля работы с компрессором
             message(STATUS "Build tests COMPRESSOR module: No\n")
         endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_COMPRESSOR_TEST})
+
+        # Если нужно собрать тесты для работы с волокнами
+        if (${CMAKE_BUILD_${UNIT_TEST_NAME}_FIBER_TEST})
+            # Выводим сообщение о сборке тестов для модуля волокон
+            message(STATUS "Build tests FIBER module: Yes\n")
+            # Дополняем список источников тестами для модуля волокон
+            list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
+                fiber/fiber.cpp
+                fiber/static.cpp
+            )
+        # Если не нужно собрать тесты для работы с волокнами
+        else()
+            # Выводим сообщение о сборке тестов для модуля волокон
+            message(STATUS "Build tests FIBER module: No\n")
+        endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_FIBER_TEST})
 
         # Если нужно собрать тесты для работы с пуллам потоков
         if (${CMAKE_BUILD_${UNIT_TEST_NAME}_THREADPOOL_TEST})

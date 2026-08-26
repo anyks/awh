@@ -2324,6 +2324,8 @@ void awh::codec::csv::Reader::settings(const settings_t & settings) noexcept {
 void awh::codec::csv::Reader::setLogger(const log_t * log) noexcept {
 	// Устанавливаем объект ведения журнала работы
 	this->_log = log;
+	// Выполняем установку объекта ведения журнала приведению исходного текста
+	this->_decoder.setLogger(log);
 }
 /**
  * @brief Конструктор

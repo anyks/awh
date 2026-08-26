@@ -215,6 +215,130 @@ TEST(CodecAbcDocument, Roundtrip) {
 	ASSERT_EQ(rebuild.record(), writer.record());
 }
 /**
+ * @brief Проверка извлечения дробных значений, целому не отвечающих
+ *
+ * @details Договор извлечения велит переносить дробное в целое округлением, а что делать
+ * с не-числом и с бесконечностями, округление не определяет вовсе. Договор кодека таков:
+ * не-число даёт НОЛЬ, а выходящее за отрезок вида прижимается к его краю, - и отказом
+ * извлечение при этом НЕ отвечает, ибо значение числом является
+ *
+ */
+TEST(CodecAbcDocument, RealToIntegerEdges) {
+	// Сборщик бинарной записи
+	abc::writer_t writer(::logger());
+	// Выполняем укладку массива дробных значений
+	ASSERT_TRUE(writer.arrayBegin(static_cast <uint64_t> (5)));
+	// Выполняем укладку не-числа
+	ASSERT_TRUE(writer.number(numeric_limits <double>::quiet_NaN()));
+	// Выполняем укладку положительной бесконечности
+	ASSERT_TRUE(writer.number(numeric_limits <double>::infinity()));
+	// Выполняем укладку отрицательной бесконечности
+	ASSERT_TRUE(writer.number(-numeric_limits <double>::infinity()));
+	// Выполняем укладку дробного, округляемого с уводом половины от нуля
+	ASSERT_TRUE(writer.number(static_cast <double> (2.5)));
+	// Выполняем укладку отрицательного дробного
+	ASSERT_TRUE(writer.number(static_cast <double> (-2.5)));
+	// Выполняем укладку конца массива значений
+	ASSERT_TRUE(writer.arrayEnd());
+	// Дерево документа
+	abc::document_t document(::logger());
+	// Выполняем разбор записи в дерево документа
+	ASSERT_TRUE(document.parse(writer.record().data(), writer.record().size()))
+		<< "код отказа: " << abc::message(document.error());
+	// Корень разобранного дерева документа
+	const abc::document_t::value_t root = document.root();
+	// Извлекаемое целое значение со знаком
+	int64_t integer = 1;
+	// Извлекаемое целое значение без знака
+	uint64_t natural = 1;
+	// Извлекаемое дробное значение
+	double real = 0.0;
+	// Выполняем проверку того, что не-число извлекается дробным
+	ASSERT_TRUE(root.at(0).value(real));
+	// Выполняем проверку того, что извлечённое дробное числом не является
+	ASSERT_TRUE(::isnan(real));
+	// Выполняем проверку того, что не-число целым даёт ноль
+	ASSERT_TRUE(root.at(0).value(integer));
+	// Выполняем проверку извлечённого из не-числа целого
+	ASSERT_EQ(integer, static_cast <int64_t> (0));
+	// Выполняем проверку того, что не-число целым без знака даёт ноль
+	ASSERT_TRUE(root.at(0).value(natural));
+	// Выполняем проверку извлечённого из не-числа целого без знака
+	ASSERT_EQ(natural, static_cast <uint64_t> (0));
+	// Выполняем проверку того, что бесконечность целым прижимается к краю отрезка
+	ASSERT_TRUE(root.at(1).value(integer));
+	// Выполняем проверку прижатия положительной бесконечности к верхнему краю
+	ASSERT_EQ(integer, numeric_limits <int64_t>::max());
+	// Выполняем проверку того, что отрицательная бесконечность прижимается к нижнему краю
+	ASSERT_TRUE(root.at(2).value(integer));
+	// Выполняем проверку прижатия отрицательной бесконечности к нижнему краю
+	ASSERT_EQ(integer, numeric_limits <int64_t>::lowest());
+	// Выполняем проверку того, что отрицательная бесконечность без знака даёт ноль
+	ASSERT_TRUE(root.at(2).value(natural));
+	// Выполняем проверку извлечённого из отрицательной бесконечности целого без знака
+	ASSERT_EQ(natural, static_cast <uint64_t> (0));
+	// Выполняем проверку округления половины с уводом от нуля
+	ASSERT_TRUE(root.at(3).value(integer));
+	// Выполняем проверку округлённого положительного дробного
+	ASSERT_EQ(integer, static_cast <int64_t> (3));
+	// Выполняем проверку округления отрицательной половины с уводом от нуля
+	ASSERT_TRUE(root.at(4).value(integer));
+	// Выполняем проверку округлённого отрицательного дробного
+	ASSERT_EQ(integer, static_cast <int64_t> (-3));
+}
+/**
+ * @brief Проверка кругового обхода записи с двоичными значениями и метками времени
+ *
+ * @details Круговой обход «Roundtrip» ведётся по записи из чисел, строк и вместимых, а
+ * пересборка двоичного значения, опознавателя, метки времени и дробного одинарной
+ * точности лежала вне его вовсе. Собираются они иными работами сборщика, и промах в любой
+ * из них обратил бы пересборку в запись, подписью не сходящуюся
+ *
+ */
+TEST(CodecAbcDocument, TypedRoundtrip) {
+	// Октеты двоичного значения записи
+	static const vector <uint8_t> blob = {0x00, 0x11, 0x22, 0x33, 0xFF, 0xFE};
+	// Октеты опознавателя записи
+	static const vector <uint8_t> uuid = {
+		0x55, 0x0E, 0x84, 0x00, 0xE2, 0x9B, 0x41, 0xD4,
+		0xA7, 0x16, 0x44, 0x66, 0x55, 0x44, 0x00, 0x00
+	};
+	// Сборщик исходной бинарной записи
+	abc::writer_t writer(::logger());
+	// Выполняем укладку массива значений разного вида
+	ASSERT_TRUE(writer.arrayBegin(static_cast <uint64_t> (5)));
+	// Выполняем укладку двоичного значения записи
+	ASSERT_TRUE(writer.blob(blob.data(), blob.size()));
+	// Выполняем укладку опознавателя записи
+	ASSERT_TRUE(writer.uuid(uuid.data(), uuid.size()));
+	// Выполняем укладку метки времени записи
+	ASSERT_TRUE(writer.timestamp(static_cast <int64_t> (1755993600)));
+	// Выполняем укладку дробного одинарной точности
+	ASSERT_TRUE(writer.number(static_cast <float> (0.5f)));
+	// Выполняем укладку отрицательной метки времени записи
+	ASSERT_TRUE(writer.timestamp(static_cast <int64_t> (-86400)));
+	// Выполняем укладку конца массива значений
+	ASSERT_TRUE(writer.arrayEnd());
+	// Дерево документа
+	abc::document_t document(::logger());
+	// Выполняем разбор записи в дерево документа
+	ASSERT_TRUE(document.parse(writer.record().data(), writer.record().size()))
+		<< "код отказа: " << abc::message(document.error());
+	// Выполняем проверку количества значений разобранного массива
+	ASSERT_EQ(document.root().size(), 5u);
+	// Сборщик пересобираемой бинарной записи
+	abc::writer_t rebuild(::logger());
+	// Выполняем сборку записи из дерева документа
+	ASSERT_TRUE(document.build(rebuild)) << "код отказа: " << abc::message(rebuild.error());
+	// Выполняем проверку завершённости пересобранной записи
+	ASSERT_TRUE(rebuild.complete()) << "код отказа: " << abc::message(rebuild.error());
+	/**
+	 * Выполняем проверку совпадения пересобранной записи с исходной октет в октет:
+	 * расхождение означало бы, что подпись при пересборке перестаёт совпадать
+	 */
+	ASSERT_EQ(rebuild.record(), writer.record());
+}
+/**
  * @brief Проверка обращения неопределённой длины в объявленную
  *
  * @details Дерево длины не помнит: оно знает количество детей, а не то, как оно было
