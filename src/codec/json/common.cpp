@@ -149,6 +149,15 @@ const char * awh::codec::json::message(const error_t error) noexcept {
 		// Если текст документа записать в файл не удалось
 		case static_cast <uint8_t> (error_t::FILE_NOT_WRITTEN):
 			return "cannot write the document file";
+		// Если корень документа уже несёт значение
+		case static_cast <uint8_t> (error_t::MULTIPLE_ROOTS):
+			return "the document root already holds a value";
+		// Если ни одно вместилище не открыто
+		case static_cast <uint8_t> (error_t::NO_CONTAINER_OPEN):
+			return "no container is open";
+		// Если имя поля записано вне объекта
+		case static_cast <uint8_t> (error_t::KEY_OUTSIDE_OBJECT):
+			return "a field name is allowed only inside an object and only once";
 	}
 	// Выводим описание неизвестного кода отказа
 	return "unknown error";

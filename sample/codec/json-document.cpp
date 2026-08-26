@@ -207,8 +207,8 @@ int main(int argc, char * argv[]) noexcept {
 	if(!document.parse(text)){
 		// Выводим причину отказа разбора вместе с местом её
 		cerr << "Разбор отвергнут: " << json::message(document.error())
-		     << " (строка " << document.location().line
-		     << ", знак " << document.location().column << ")" << endl;
+		     << " (строка " << document.errorLocation().line
+		     << ", знак " << document.errorLocation().column << ")" << endl;
 		// Выходим из приложения с кодом ошибки
 		return EXIT_FAILURE;
 	}

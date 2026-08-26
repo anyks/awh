@@ -1369,7 +1369,17 @@ bool awh::codec::abc::Editor::commit() noexcept {
 		 * Выполняем обёртку записи подписи кадром: следующая фиксация обойдёт её как
 		 * мусорный кадр, не затирая, и прежнее поколение переживёт обрыв целиком
 		 */
-		abc::envelope(signature, this->_number, static_cast <uint32_t> (this->_header.generation + 1));
+		/**
+		 * Если обернуть запись подписи кадром не вышло
+		 */
+		if(!abc::envelope(signature, this->_number, static_cast <uint32_t> (this->_header.generation + 1))){
+			// Выполняем установку кода отказа подписи
+			this->fail(error_t::SIGNING_FAILED);
+			// Выполняем откат состояния, правимого фиксацией
+			rollback();
+			// Выводим признак неудачной фиксации правок
+			return false;
+		}
 		/**
 		 * Если записать подпись владельца на носитель не вышло
 		 */
@@ -1701,8 +1711,15 @@ bool awh::codec::abc::Editor::compact(sink_t target, const payload_t kind, uint6
 		}
 		// Выполняем укладку записи подписи в октеты
 		abc::pack(sign, signature);
-		// Выполняем обёртку записи подписи кадром убранного контейнера
-		abc::envelope(signature, number, 0);
+		/**
+		 * Если обернуть запись подписи кадром убранного контейнера не вышло
+		 */
+		if(!abc::envelope(signature, number, 0)){
+			// Выполняем установку кода отказа подписи
+			this->fail(error_t::SIGNING_FAILED);
+			// Выводим признак неудачной уборки контейнера
+			return false;
+		}
 		/**
 		 * Если записать запись подписи на носитель не вышло
 		 */

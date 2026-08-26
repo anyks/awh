@@ -719,6 +719,60 @@ TEST_F(ChunkFixture, UnknownMethod) {
  *       одного октета уже уложенного кадра, и пересчитывать сумму она не обязана
  *
  */
+/**
+ * @brief Проверка обёртки уложенной записи кадром
+ *
+ * @details Обёртка ставит заголовок кадра ВПЕРЕДИ поданной записи, метит его мусором и
+ *          кладёт контрольную сумму. Проверяется, что вышедший кадр снимается штатным
+ *          снятием, объявлен мусором, содержимое отдаёт то самое, а сумма его сходится
+ *
+ */
+TEST_F(ChunkFixture, EnvelopeWraps) {
+	// Укладчик кадра
+	abc::packer_t packer(this->_log.get());
+	// Обёртываемая запись
+	const string payload(300, 'w');
+	// Буфер обёртываемой записи
+	vector <uint8_t> record(payload.begin(), payload.end());
+	// Выполняем обёртку записи кадром
+	ASSERT_TRUE(abc::envelope(record, 7, 3));
+	// Выполняем проверку того, что кадр вырос ровно на заголовок свой
+	ASSERT_EQ(record.size(), payload.size() + abc::CHUNK_HEADER);
+	// Смещение снятия кадра
+	size_t offset = 0;
+	// Снятое содержимое кадра
+	vector <uint8_t> content;
+	// Снятые сведения о кадре
+	abc::chunk_t chunk;
+	// Выполняем снятие обёрнутого кадра
+	ASSERT_TRUE(packer.unpack(record.data(), record.size(), offset, content, chunk))
+		<< "код отказа: " << abc::message(packer.error());
+	// Выполняем проверку того, что кадр объявлен мусором
+	ASSERT_TRUE(chunk.waste);
+	// Выполняем проверку того, что содержимое кадра не сжато
+	ASSERT_EQ(chunk.method, compressor::method_t::NONE);
+	// Выполняем проверку того, что содержимое кадра не зашифровано
+	ASSERT_FALSE(chunk.encrypted);
+	// Выполняем проверку порядкового номера снятого кадра
+	ASSERT_EQ(chunk.number, static_cast <uint64_t> (7));
+	// Выполняем проверку поколения записи снятого кадра
+	ASSERT_EQ(chunk.generation, static_cast <uint32_t> (3));
+	// Выполняем проверку снятого содержимого кадра
+	ASSERT_EQ(string(content.begin(), content.end()), payload);
+	// Выполняем проверку того, что смещение сдвинулось на весь кадр
+	ASSERT_EQ(offset, record.size());
+	/**
+	 * Выполняем проверку того, что сумма обёртки сходится: порча октета содержимого
+	 * обязана быть поймана ею наравне с кадром, уложенным укладчиком
+	 */
+	record.at(abc::CHUNK_HEADER + 10) ^= 0xFF;
+	// Выполняем сброс смещения снятия кадра
+	offset = 0;
+	// Выполняем проверку отказа снятия порченого кадра
+	ASSERT_FALSE(packer.unpack(record.data(), record.size(), offset, content, chunk));
+	// Выполняем проверку кода отказа снятия порченого кадра
+	ASSERT_EQ(packer.error(), abc::error_t::INVALID_CHECKSUM);
+}
 TEST_F(ChunkFixture, ChecksumRefusal) {
 	// Укладчик кадра
 	abc::packer_t packer(this->_log.get());

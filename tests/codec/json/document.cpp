@@ -636,7 +636,7 @@ TEST(CodecJsonDocument, Failure) {
 	// Выполняем проверку кода отказа разбора
 	ASSERT_EQ(doc.error(), json::error_t::TRAILING_COMMA);
 	// Выполняем проверку номера строки отказа разбора
-	ASSERT_EQ(doc.location().line, 3u);
+	ASSERT_EQ(doc.errorLocation().line, 3u);
 	// Выполняем проверку того, что документ после отказа остался пуст
 	ASSERT_TRUE(doc.empty());
 	// Выполняем разбор годного текста документа после отказа
@@ -1376,7 +1376,7 @@ TEST(CodecJsonDocument, InvalidAccessAndFailure) {
 		// Выполняем проверку кода ошибки разбора
 		ASSERT_EQ(document.error(), json::error_t::EXPECTED_VALUE);
 		// Выполняем проверку того, что место ошибки записано
-		ASSERT_EQ(document.location().line, static_cast <size_t> (1));
+		ASSERT_EQ(document.errorLocation().line, static_cast <size_t> (1));
 		// Выполняем проверку того, что дерево после отказа осталось пустым
 		ASSERT_FALSE(document.root().valid());
 	}

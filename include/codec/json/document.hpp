@@ -1742,13 +1742,18 @@ namespace awh {
 					 *
 					 * @return положение отказа разбора в исходном тексте
 					 *
+					 * @note Имя названо явным нарочно: у чтения `location()` означает место
+					 *       ТЕКУЩЕГО события, а не отказа, и одно имя о двух значениях
+					 *       заводило потребителя в западню при переходе с уровня на уровень.
+					 *       Кодеки XML, TOML и INI зовут его так же
+					 *
 					 * \~english
 					 * @brief Method of the extraction of the position of the refusal of the parsing in the source text
 					 * @return position of the refusal of the parsing in the source text
 					 *
 					 * \~
 					 */
-					const location_t & location() const noexcept;
+					const location_t & errorLocation() const noexcept;
 				public:
 					/**
 					 * \~russian

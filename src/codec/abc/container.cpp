@@ -469,7 +469,12 @@ bool awh::codec::abc::Assembler::complete(vector <uint8_t> & result) noexcept {
 		 * подряд, и запись подписи, оказавшись внутри обхода при следующей фиксации,
 		 * обязана быть кадром, а не голой записью
 		 */
-		abc::envelope(signature, this->_number, static_cast <uint32_t> (this->_header.generation));
+		if(!abc::envelope(signature, this->_number, static_cast <uint32_t> (this->_header.generation))){
+			// Выполняем установку кода отказа подписи
+			this->fail(error_t::SIGNING_FAILED);
+			// Сообщаем, что завершение сборки отвечено отказом
+			return false;
+		}
 		/**
 		 * Выполняем установку смещения подписи от начала контейнера: подпись лежит
 		 * за оглавлением, ибо оглавление ею же и подписано

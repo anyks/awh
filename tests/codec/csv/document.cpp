@@ -264,7 +264,7 @@ TEST(CodecCsvDocument, RaggedError) {
 	// Выполняем проверку кода ошибки разбора
 	ASSERT_EQ(document.error(), csv::error_t::FIELD_COUNT_MISMATCH);
 	// Выполняем проверку номера записи, на какой разбор прекращён
-	ASSERT_EQ(document.location().line, 2u);
+	ASSERT_EQ(document.errorLocation().line, 2u);
 }
 
 /**
@@ -475,7 +475,7 @@ TEST(CodecCsvDocument, File) {
 	// Объект контейнера таблицы
 	csv::document_t document(::logger());
 	// Выполняем чтение таблицы из файла
-	ASSERT_TRUE(document.read(filename));
+	ASSERT_TRUE(document.load(filename));
 	// Выполняем проверку количества прочитанных записей таблицы
 	ASSERT_EQ(document.rows(), 3u);
 	// Выполняем проверку содержимого поля прочитанной таблицы
@@ -483,11 +483,11 @@ TEST(CodecCsvDocument, File) {
 	// Адрес файла, в какой записывается таблица
 	const string output = "./awh_csv_file_out.csv";
 	// Выполняем запись таблицы в файл
-	ASSERT_TRUE(document.write(output));
+	ASSERT_TRUE(document.save(output));
 	// Объект контейнера полученной обратно таблицы
 	csv::document_t result(::logger());
 	// Выполняем чтение записанной таблицы из файла
-	ASSERT_TRUE(result.read(output));
+	ASSERT_TRUE(result.load(output));
 	// Выполняем проверку количества записей полученной обратно таблицы
 	ASSERT_EQ(result.rows(), document.rows());
 	// Выполняем проверку содержимого поля полученной обратно таблицы
@@ -506,7 +506,7 @@ TEST(CodecCsvDocument, FileMissing) {
 	// Объект контейнера таблицы
 	csv::document_t document(::logger());
 	// Выполняем проверку отказа чтения отсутствующего файла таблицы
-	ASSERT_FALSE(document.read("./awh_csv_missing.csv"));
+	ASSERT_FALSE(document.load("./awh_csv_missing.csv"));
 }
 
 /**
@@ -682,7 +682,7 @@ TEST(CodecCsvDocument, MissingFileIsNotInternal) {
 	// Таблица значений
 	csv::document_t document(::logger());
 	// Выполняем проверку отказа чтения несуществующего файла
-	ASSERT_FALSE(document.read("/несуществующий/каталог/таблица.csv"));
+	ASSERT_FALSE(document.load("/несуществующий/каталог/таблица.csv"));
 	// Выполняем проверку кода ошибки чтения
 	ASSERT_EQ(document.error(), csv::error_t::FILE_NOT_OPENED);
 }
@@ -815,7 +815,7 @@ TEST(CodecCsvDocument, WriteFailureIsNotSuccess) {
 	// Выполняем снос прежнего файла таблицы
 	::remove(filename.c_str());
 	// Выполняем проверку отказа записи усечённого файла таблицы
-	ASSERT_FALSE(document.write(filename));
+	ASSERT_FALSE(document.save(filename));
 	// Выполняем проверку оглашения отказа в журнале
 	ASSERT_FALSE(messages.empty());
 	// Выполняем проверку упоминания причины отказа в сообщении
@@ -849,7 +849,7 @@ TEST(CodecCsvDocument, WriteToMissingDirectoryIsReported) {
 	// Выполняем проверку разбора текста таблицы
 	ASSERT_TRUE(document.parse("имя\nзначение\n"));
 	// Выполняем проверку отказа записи в несуществующий каталог
-	ASSERT_FALSE(document.write("/несуществующий/каталог/таблица.csv"));
+	ASSERT_FALSE(document.save("/несуществующий/каталог/таблица.csv"));
 	// Выполняем проверку оглашения отказа в журнале
 	ASSERT_FALSE(messages.empty());
 	// Выполняем проверку упоминания причины отказа в сообщении
@@ -936,11 +936,11 @@ TEST(CodecCsvDocument, LargeTableSurvivesRoundTrip) {
 	// Адрес файла таблицы
 	const string filename = "./csv-large-round-trip.csv";
 	// Выполняем проверку записи таблицы в файл
-	ASSERT_TRUE(document.write(filename));
+	ASSERT_TRUE(document.save(filename));
 	// Полученная обратным чтением таблица значений
 	csv::document_t back(::logger(), settings);
 	// Выполняем проверку чтения записанного файла таблицы
-	ASSERT_TRUE(back.read(filename));
+	ASSERT_TRUE(back.load(filename));
 	// Выполняем проверку совпадения заголовков таблиц
 	ASSERT_EQ(document.header(), back.header());
 	// Выполняем проверку совпадения количества записей
@@ -1121,7 +1121,7 @@ TEST(CodecCsvDocument, MalformedTextStopsCallbackParsing) {
 	// Выполняем проверку оглашения отказа чтения
 	ASSERT_NE(document.error(), csv::error_t::NONE);
 	// Выполняем проверку отказа чтения файла таблицы целиком
-	ASSERT_FALSE(document.read(filename));
+	ASSERT_FALSE(document.load(filename));
 	// Выполняем проверку оглашения отказа чтения
 	ASSERT_NE(document.error(), csv::error_t::NONE);
 	// Выполняем удаление файла таблицы
@@ -1216,13 +1216,13 @@ TEST(CodecCsvDocument, LoggerSetAfterCreation) {
 		// Выполняем проверку разбора текста таблицы
 		ASSERT_TRUE(document.parse("имя\nзначение\n"));
 		// Выполняем проверку отказа записи в несуществующий каталог
-		ASSERT_FALSE(document.write("/несуществующий/каталог/таблица.csv"));
+		ASSERT_FALSE(document.save("/несуществующий/каталог/таблица.csv"));
 		// Выполняем проверку молчания журнала, покуда он не установлен
 		ASSERT_TRUE(messages.empty());
 		// Выполняем установку объекта ведения журнала работы
 		document.setLogger(&log);
 		// Выполняем проверку отказа записи в несуществующий каталог
-		ASSERT_FALSE(document.write("/несуществующий/каталог/таблица.csv"));
+		ASSERT_FALSE(document.save("/несуществующий/каталог/таблица.csv"));
 		// Выполняем проверку оглашения отказа в журнале
 		ASSERT_FALSE(messages.empty());
 	}

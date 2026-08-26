@@ -2664,10 +2664,14 @@ TEST(CodecJsonValue, LoggerReportsFailures){
 		/**
 		 * Выполняем проверку того, что запись несёт ДОВОД отказа
 		 *
-		 * @warning Здесь это существеннее, чем у разбора: кода отказа у записи нет, и
-		 *          запись без довода не оставила бы потребителю ничего вовсе
+		 * @note Прежде здесь стояло сличение с «object»: довод отказа был строкою в
+		 *       журнале и одною на три разные беды. Ныне у записи есть код отказа, и
+		 *       сообщение журнала строится по нему же - сличается потому описание кода,
+		 *       а не заученное слово
 		 */
-		ASSERT_NE(caught.front().second.find("object"), string::npos) << caught.front().second;
+		ASSERT_EQ(writer.error(), json::error_t::NO_CONTAINER_OPEN);
+		// Выполняем проверку того, что сообщение журнала строится по коду отказа
+		ASSERT_NE(caught.front().second.find(json::message(writer.error())), string::npos) << caught.front().second;
 	}
 }
 

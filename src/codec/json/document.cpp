@@ -1933,7 +1933,7 @@ awh::codec::json::error_t awh::codec::json::Document::error() const noexcept {
  * @return положение отказа разбора в исходном тексте
  *
  */
-const awh::codec::json::location_t & awh::codec::json::Document::location() const noexcept {
+const awh::codec::json::location_t & awh::codec::json::Document::errorLocation() const noexcept {
 	// Выводим положение отказа разбора в исходном тексте
 	return this->_position;
 }

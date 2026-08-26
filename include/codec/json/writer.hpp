@@ -244,18 +244,22 @@ namespace awh {
 					 * отказа через него не идёт: о беде сообщено там, где она случилась, и
 					 * второе сообщение лишь запутало бы читающего журнал
 					 *
-					 * @param reason довод отказа записи
+					 * @param error код отказа записи
 					 * @return       всегда ложь, ради возврата им из места отказа
 					 *
 					 * \~english
 					 * @brief Method of the refusal of the writing with a report of its reason to the log
 					 *
-					 * @param reason the reason of the refusal of the writing
+					 * @param error the code of the refusal of the writing
 					 * @return       always false, for the returning by it from the place of the refusal
 					 *
 					 * \~
 					 */
-					bool refuse(const char * reason) const noexcept;
+					bool refuse(const error_t error) noexcept;
+				private:
+					// Код отказа последней операции записи
+					error_t _error;
+				private:
 					// Признак того, что хотя бы один документ уже записан
 					bool _started;
 				private:
@@ -611,6 +615,26 @@ namespace awh {
 					 * \~
 					 */
 					size_t size() const noexcept;
+				public:
+					/**
+					 * \~russian
+					 * @brief Метод получения кода отказа записи
+					 *
+					 * @return код отказа последней операции записи
+					 *
+					 * @note Прежде довод отказа уходил лишь в журнал строкою, и потребитель,
+					 *       журнала не назначивший, признаком `false` довольствовался без
+					 *       возможности узнать причину вовсе. Запись разметки XML отдаёт код
+					 *       отказа с самого начала, и расходиться с нею здесь нечем
+					 *
+					 * \~english
+					 * @brief Method of getting the error code of the writing
+					 *
+					 * @return error code of the last operation of the writing
+					 *
+					 * \~
+					 */
+					error_t error() const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод извлечения текущей глубины вложенности

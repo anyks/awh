@@ -266,36 +266,6 @@ namespace awh {
 			 */
 			/**
 			 * \~russian
-			 * @brief Функция обёртки уложенной записи кадром
-			 *
-			 * @details Заголовок кадра ставится ВПЕРЕДИ поданной записи, а сама она остаётся
-			 * как есть. Служит записи подписи владельца: тело контейнера обходится кадрами
-			 * подряд, и всё, что лежит внутри обхода, обязано быть кадром. Без обёртки место
-			 * записи подписи приходилось бы затирать кадром-заглушкой при следующей фиксации,
-			 * а между затиранием и записью головного заголовка оставалось окно, где обрыв
-			 * губил подпись прежнего поколения
-			 *
-			 * @note Кадр метится МУСОРОМ: содержимое его записью контейнера не является, и
-			 * подрядное чтение обязано его пропустить
-			 *
-			 * @param result     буфер уложенной записи, обёртываемой кадром
-			 * @param number     порядковый номер кадра
-			 * @param generation поколение записи кадра
-			 *
-			 * \~english
-			 * @brief Function of the wrapping of a laid record by a chunk
-			 * @details The header of the chunk is put IN FRONT of the submitted record while the record
-			 * itself is left as is. It serves the record of the signature of the owner: the body of a container
-			 * is walked by the chunks in a row, and everything lying inside the walk is obliged to be a chunk
-			 * @note The chunk is marked as a WASTE: its content is not a record of the container
-			 * @param result buffer of the laid record being wrapped by a chunk
-			 * @param number ordinal number of the chunk
-			 * @param generation generation of the record of the chunk
-			 *
-			 * \~
-			 */
-			/**
-			 * \~russian
 			 * @brief Функция выработки контрольной суммы кадра
 			 *
 			 * @details Сумма кроет заголовок кадра вместе с содержимым его, а САМА в неё не
@@ -322,7 +292,42 @@ namespace awh {
 			 */
 			[[nodiscard]] __AWH_SHARED_EXPORT__ uint64_t digest(const void * buffer, const size_t size) noexcept;
 
-			__AWH_SHARED_EXPORT__ void envelope(vector <uint8_t> & result, const uint64_t number, const uint32_t generation) noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция обёртки уложенной записи кадром
+			 *
+			 * @details Заголовок кадра ставится ВПЕРЕДИ поданной записи, а сама она остаётся
+			 * как есть. Служит записи подписи владельца: тело контейнера обходится кадрами
+			 * подряд, и всё, что лежит внутри обхода, обязано быть кадром. Без обёртки место
+			 * записи подписи приходилось бы затирать кадром-заглушкой при следующей фиксации,
+			 * а между затиранием и записью головного заголовка оставалось окно, где обрыв
+			 * губил подпись прежнего поколения
+			 *
+			 * @note Кадр метится МУСОРОМ: содержимое его записью контейнера не является, и
+			 * подрядное чтение обязано его пропустить
+			 *
+			 * @note Отказом отвечается запись, в кадр не вмещающаяся: длина кадра объявлена
+			 * четырьмя октетами, и запись длиннее легла бы в них усечённой МОЛЧА
+			 *
+			 * @param result     буфер уложенной записи, обёртываемой кадром
+			 * @param number     порядковый номер кадра
+			 * @param generation поколение записи кадра
+			 * @return           признак успешной обёртки записи кадром
+			 *
+			 * \~english
+			 * @brief Function of the wrapping of a laid record by a chunk
+			 * @details The header of the chunk is put IN FRONT of the submitted record while the record
+			 * itself is left as is. It serves the record of the signature of the owner: the body of a container
+			 * is walked by the chunks in a row, and everything lying inside the walk is obliged to be a chunk
+			 * @note The chunk is marked as a WASTE: its content is not a record of the container
+			 * @param result buffer of the laid record being wrapped by a chunk
+			 * @param number ordinal number of the chunk
+			 * @param generation generation of the record of the chunk
+			 * @return true if the record has been wrapped by a chunk
+			 *
+			 * \~
+			 */
+			[[nodiscard]] __AWH_SHARED_EXPORT__ bool envelope(vector <uint8_t> & result, const uint64_t number, const uint32_t generation) noexcept;
 
 			typedef class __AWH_SHARED_EXPORT__ Packer {
 				public:

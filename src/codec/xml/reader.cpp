@@ -1138,7 +1138,7 @@ bool awh::codec::xml::Reader::qualify(const size_t begin, const size_t end, cons
 	 * @note Повод этот от ошибочного построения отличается, и запоминается он отдельно:
 	 *       вызывающему выдаётся свой код отказа
 	 */
-	if(count > this->_settings.maxName){
+	if((this->_settings.maxName > 0) && (count > this->_settings.maxName)){
 		// Запоминаем, что имя превысило предел, заданный настройками
 		this->_overlong = true;
 		// Выводим отрицательный результат выполнения операции
@@ -1486,7 +1486,7 @@ bool awh::codec::xml::Reader::expand(const string_view name, string & result, co
 	/**
 	 * Если общий объём подстановки превысил допустимый
 	 */
-	if(this->_expansion > this->_settings.maxExpansion){
+	if((this->_settings.maxExpansion > 0) && (this->_expansion > this->_settings.maxExpansion)){
 		// Выполняем отказ разбора с сообщением о нём в журнал
 		return this->refuse(error_t::ENTITY_LIMIT_EXCEEDED);
 	}
@@ -3001,7 +3001,7 @@ bool awh::codec::xml::Reader::parseSubset(size_t offset, const size_t end) noexc
 				/**
 				 * Если количество объявленных сущностей превысило допустимое
 				 */
-				if(this->_entities.size() >= this->_settings.maxEntities){
+				if((this->_settings.maxEntities > 0) && (this->_entities.size() >= this->_settings.maxEntities)){
 					// Выполняем отказ разбора с сообщением о нём в журнал
 					return this->refuse(error_t::ENTITY_COUNT_EXCEEDED);
 				}
@@ -5875,7 +5875,7 @@ awh::codec::xml::Reader::step_t awh::codec::xml::Reader::parseElement() noexcept
 		/**
 		 * Если количество атрибутов узла превысило допустимое
 		 */
-		if((this->_attributes.size() + this->_declares.size()) >= this->_settings.maxAttributes)
+		if((this->_settings.maxAttributes > 0) && ((this->_attributes.size() + this->_declares.size()) >= this->_settings.maxAttributes))
 			// Выводим ошибку превышения заданного настройками предела
 			return this->fail(error_t::OVERFLOW_LIMIT, pos);
 		// Собираемый атрибут узла
@@ -6015,7 +6015,7 @@ awh::codec::xml::Reader::step_t awh::codec::xml::Reader::parseElement() noexcept
 				 *       проверка одних лишь записанных обходилась бы объявлением
 				 *       перечня атрибутов в описании типа документа
 				 */
-				if((this->_attributes.size() + this->_declares.size()) >= this->_settings.maxAttributes)
+				if((this->_settings.maxAttributes > 0) && ((this->_attributes.size() + this->_declares.size()) >= this->_settings.maxAttributes))
 					// Выводим ошибку превышения заданного настройками предела
 					return this->fail(error_t::OVERFLOW_LIMIT, this->_offset);
 				// Собираемый атрибут узла
@@ -6102,7 +6102,7 @@ awh::codec::xml::Reader::step_t awh::codec::xml::Reader::parseElement() noexcept
 	/**
 	 * Если глубина вложенности узлов превысила допустимую
 	 */
-	if(this->_stack.size() >= this->_settings.maxDepth)
+	if((this->_settings.maxDepth > 0) && (this->_stack.size() >= this->_settings.maxDepth))
 		// Выводим ошибку превышения допустимой глубины вложенности
 		return this->fail(error_t::DEPTH_EXCEEDED, this->_offset);
 	// Собираемый узел разметки
@@ -7334,7 +7334,7 @@ bool awh::codec::xml::Reader::inject(const size_t begin, const size_t end, const
 	/**
 	 * Если общий объём подстановки превысил допустимый
 	 */
-	if(this->_expansion > this->_settings.maxExpansion){
+	if((this->_settings.maxExpansion > 0) && (this->_expansion > this->_settings.maxExpansion)){
 		// Выполняем отказ разбора с сообщением о нём в журнал
 		return this->refuse(error_t::ENTITY_LIMIT_EXCEEDED);
 	}

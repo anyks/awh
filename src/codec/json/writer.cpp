@@ -259,7 +259,11 @@ awh::codec::json::Writer::Settings::Settings() noexcept :
  * @brief Конструктор
  *
  */
-bool awh::codec::json::Writer::refuse(const char * reason) const noexcept {
+bool awh::codec::json::Writer::refuse(const error_t error) noexcept {
+	// Запоминаем код отказа записи
+	this->_error = error;
+	// Получаем описание кода отказа записи
+	const char * reason = awh::codec::json::message(error);
 	/**
 	 * Если объект ведения журнала работы установлен
 	 */
@@ -299,7 +303,7 @@ void awh::codec::json::Writer::setLogger(const log_t * log) noexcept {
  *
  */
 awh::codec::json::Writer::Writer(const log_t * log) noexcept :
- _empty(true), _keyed(false), _log(log), _started(false), _taken(0) {}
+ _empty(true), _error(error_t::NONE), _keyed(false), _log(log), _started(false), _taken(0) {}
 /**
  * @brief Метод записи разделителя перед очередным значением
  *
@@ -324,7 +328,7 @@ bool awh::codec::json::Writer::separate() noexcept {
 	 */
 	if(!this->_nesting.empty() && (this->_nesting.back() == kind_t::OBJECT))
 		// Выполняем отказ записи с сообщением о доводе его в журнал
-		return this->refuse("a value is not allowed here, a field name is expected");
+		return this->refuse(error_t::EXPECTED_KEY);
 	/**
 	 * Если запись ведётся вне вместилищ, а значение уже записано
 	 *
@@ -333,7 +337,7 @@ bool awh::codec::json::Writer::separate() noexcept {
 	 */
 	if(this->_nesting.empty() && !this->_empty)
 		// Выполняем отказ записи с сообщением о доводе его в журнал
-		return this->refuse("the document root already holds a value");
+		return this->refuse(error_t::MULTIPLE_ROOTS);
 	/**
 	 * Если вне вместилищ начинается второй документ, а документы ничем не разделены
 	 *
@@ -342,7 +346,7 @@ bool awh::codec::json::Writer::separate() noexcept {
 	 */
 	if(this->_nesting.empty() && this->_started && !this->_settings.stream)
 		// Выполняем отказ записи с сообщением о доводе его в журнал
-		return this->refuse("the document is already finished and the stream mode is off");
+		return this->refuse(error_t::TEXT_ALREADY_ENDED);
 	/**
 	 * Если вместилище уже содержит значения
 	 */
@@ -582,6 +586,8 @@ void awh::codec::json::Writer::quoted(const string & text) noexcept {
  *
  */
 void awh::codec::json::Writer::reset() noexcept {
+	// Выполняем сброс кода отказа записи
+	this->_error = error_t::NONE;
 	// Выполняем очистку собранного текста
 	this->_result.clear();
 	// Выполняем очистку стека видов открытых вместилищ
@@ -607,7 +613,7 @@ bool awh::codec::json::Writer::object() noexcept {
 	 */
 	if(this->_nesting.size() >= MAX_DEPTH)
 		// Выполняем отказ записи с сообщением о доводе его в журнал
-		return this->refuse("the nesting depth exceeds the allowed one");
+		return this->refuse(error_t::DEPTH_EXCEEDED);
 	/**
 	 * Если запись значения в этом месте недопустима
 	 */
@@ -637,7 +643,7 @@ bool awh::codec::json::Writer::array() noexcept {
 	 */
 	if(this->_nesting.size() >= MAX_DEPTH)
 		// Выполняем отказ записи с сообщением о доводе его в журнал
-		return this->refuse("the nesting depth exceeds the allowed one");
+		return this->refuse(error_t::DEPTH_EXCEEDED);
 	/**
 	 * Если запись значения в этом месте недопустима
 	 */
@@ -667,13 +673,13 @@ bool awh::codec::json::Writer::close() noexcept {
 	 */
 	if(this->_nesting.empty())
 		// Выполняем отказ записи с сообщением о доводе его в журнал
-		return this->refuse("no container is open");
+		return this->refuse(error_t::NO_CONTAINER_OPEN);
 	/**
 	 * Если имя поля объекта записано, а значение его - ещё нет
 	 */
 	if(this->_keyed)
 		// Выполняем отказ записи с сообщением о доводе его в журнал
-		return this->refuse("the field name is already written");
+		return this->refuse(error_t::DUPLICATE_KEY);
 	// Получаем вид закрываемого вместилища
 	const kind_t kind = this->_nesting.back();
 	// Удаляем вид закрываемого вместилища из стека
@@ -708,11 +714,29 @@ bool awh::codec::json::Writer::close() noexcept {
  */
 bool awh::codec::json::Writer::key(const string & name) noexcept {
 	/**
-	 * Если запись ведётся вне объекта либо имя поля объекта уже записано
+	 * Если ни одно вместилище не открыто
+	 *
+	 * @note Три довода отказа разведены порознь нарочно: прежде они схлопывались в один
+	 *       код, и потребитель, получивший его, не мог отличить записи имени вне
+	 *       вместилища от записи внутри массива и от повторной записи имени. Кодек CSV
+	 *       чинен в своё время от того же изъяна - причина обязана следовать за бедою,
+	 *       а не за местом сличения
 	 */
-	if(this->_nesting.empty() || (this->_nesting.back() != kind_t::OBJECT) || this->_keyed)
+	if(this->_nesting.empty())
 		// Выполняем отказ записи с сообщением о доводе его в журнал
-		return this->refuse("a field name is allowed only inside an object and only once");
+		return this->refuse(error_t::NO_CONTAINER_OPEN);
+	/**
+	 * Если запись ведётся не внутри объекта
+	 */
+	if(this->_nesting.back() != kind_t::OBJECT)
+		// Выполняем отказ записи с сообщением о доводе его в журнал
+		return this->refuse(error_t::KEY_OUTSIDE_OBJECT);
+	/**
+	 * Если имя поля объекта уже записано
+	 */
+	if(this->_keyed)
+		// Выполняем отказ записи с сообщением о доводе его в журнал
+		return this->refuse(error_t::DUPLICATE_KEY);
 	/**
 	 * Если отказ на негодную кодировку затребован, а имя поля ей не отвечает
 	 *
@@ -721,7 +745,7 @@ bool awh::codec::json::Writer::key(const string & name) noexcept {
 	 */
 	if((this->_settings.malformed == malformed_t::REFUSE) && !::conforms(name))
 		// Выполняем отказ записи с сообщением о доводе его в журнал
-		return this->refuse("the field name does not conform to the encoding");
+		return this->refuse(error_t::INVALID_ENCODING);
 	/**
 	 * Если объект уже содержит поля
 	 */
@@ -833,7 +857,7 @@ bool awh::codec::json::Writer::value(const string & value) noexcept {
 	 */
 	if((this->_settings.malformed == malformed_t::REFUSE) && !::conforms(value))
 		// Выполняем отказ записи с сообщением о доводе его в журнал
-		return this->refuse("the value does not conform to the encoding");
+		return this->refuse(error_t::INVALID_ENCODING);
 	/**
 	 * Если запись значения в этом месте недопустима
 	 */
@@ -936,7 +960,7 @@ bool awh::codec::json::Writer::value(const double value) noexcept {
 		 */
 		if(!this->_settings.allowInfinityAndNan)
 			// Выполняем отказ записи с сообщением о доводе его в журнал
-			return this->refuse("a non-finite number is refused, «allowInfinityAndNan» is off");
+			return this->refuse(error_t::INVALID_NUMBER);
 		/**
 		 * Если запись значения в этом месте недопустима
 		 */
@@ -1109,7 +1133,7 @@ bool awh::codec::json::Writer::produced(const char * value, const size_t size) n
 	 */
 	if(size > MAX_NUMBER)
 		// Выполняем отказ записи с сообщением о доводе его в журнал
-		return this->refuse("the record of the number exceeds the allowed length");
+		return this->refuse(error_t::NUMBER_TOO_LONG);
 	/**
 	 * Если запись значения в этом месте недопустима
 	 */
@@ -1138,14 +1162,14 @@ bool awh::codec::json::Writer::raw(const string & value) noexcept {
 		 */
 		if(!this->_settings.allowInfinityAndNan || ((value != "NaN") && (value != "Infinity") && (value != "-Infinity")))
 			// Выполняем отказ записи с сообщением о доводе его в журнал
-			return this->refuse("the record of the number is not recognised as a non-finite one");
+			return this->refuse(error_t::INVALID_NUMBER);
 	}
 	/**
 	 * Если длина записи числа превышает допустимую
 	 */
 	if(value.size() > MAX_NUMBER)
 		// Выполняем отказ записи с сообщением о доводе его в журнал
-		return this->refuse("the record of the number exceeds the allowed length");
+		return this->refuse(error_t::NUMBER_TOO_LONG);
 	/**
 	 * Если запись значения в этом месте недопустима
 	 */
@@ -1173,7 +1197,7 @@ bool awh::codec::json::Writer::finish() noexcept {
 	 */
 	if(!this->_nesting.empty() || this->_empty)
 		// Выполняем отказ записи с сообщением о доводе его в журнал
-		return this->refuse("the document is not finished");
+		return this->refuse(error_t::UNEXPECTED_EOF);
 	/**
 	 * Если документы разделяются переводом строки
 	 */
@@ -1215,6 +1239,16 @@ string awh::codec::json::Writer::take() noexcept {
 	this->_result.clear();
 	// Выводим изъятый собранный текст
 	return result;
+}
+/**
+ * @brief Метод получения кода отказа записи
+ *
+ * @return код отказа последней операции записи
+ *
+ */
+awh::codec::json::error_t awh::codec::json::Writer::error() const noexcept {
+	// Выводим код отказа последней операции записи
+	return this->_error;
 }
 /**
  * @brief Метод извлечения размера собранного текста

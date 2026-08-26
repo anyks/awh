@@ -6976,3 +6976,108 @@ TEST(CodecXmlReader, LoggerSetAfterCreation) {
 		ASSERT_FALSE(messages.empty());
 	}
 }
+
+/**
+ * @brief Проверка того, что ноль снимает предел, а не задаёт предел в ноль
+ *
+ * @details Кодеки JSON и CSV договором объявляют ноль снятием предела, и предел объёма
+ * события у самого чтения разметки держался того же правила. Прочие же пять пределов
+ * чтения ноль понимали пределом В НОЛЬ и отвечали отказом на всякий текст. Расхождение
+ * доходило до нелепости: `maxDepth = 0` у записи разметки предел снимал, а у чтения той
+ * же разметки - валил разбор, при одном имени поля и одном кодеке
+ *
+ * @note Обнаружено сличением договоров кодеков между собой: у пределов разметки не было
+ *       сказано о нуле ни слова, тогда как у JSON и CSV сказано у всякого
+ *
+ */
+TEST(CodecXmlReader, ZeroLimitMeansNoLimit) {
+	// Разбираемый текст разметки
+	const string text = "<r a=\"1\" b=\"2\"><n>текст</n></r>";
+	// Разбираемый текст разметки с объявленной сущностью
+	const string entity = "<!DOCTYPE r [<!ENTITY e \"x\">]><r>&e;</r>";
+	/**
+	 * @brief Прогон разбора с заданными настройками
+	 *
+	 * @param settings настройки разбора
+	 * @param text     разбираемый текст разметки
+	 * @return         количество выданных событий разбора
+	 *
+	 */
+	const auto run = [](const xml::reader_t::settings_t & settings, const string & text) noexcept -> pair <size_t, xml::error_t> {
+		// Чтение текста разметки
+		xml::reader_t reader(::logger(), settings);
+		// Выполняем подачу текста разметки
+		reader.feed(text);
+		// Количество выданных событий разбора
+		size_t events = 0;
+		/**
+		 * Выполняем перебор всех событий разбора
+		 */
+		while(reader.next())
+			// Выполняем учёт очередного события разбора
+			events++;
+		// Выводим итог разбора текста разметки
+		return make_pair(events, reader.error());
+	};
+	{
+		// Настройки разбора со снятым пределом глубины вложенности
+		xml::reader_t::settings_t settings;
+		// Выполняем снятие предела глубины вложенности
+		settings.maxDepth = 0;
+		// Выполняем проверку отсутствия отказа разбора
+		ASSERT_EQ(run(settings, text).second, xml::error_t::NONE);
+	}
+	{
+		// Настройки разбора со снятым пределом длины имени
+		xml::reader_t::settings_t settings;
+		// Выполняем снятие предела длины имени
+		settings.maxName = 0;
+		// Выполняем проверку отсутствия отказа разбора
+		ASSERT_EQ(run(settings, text).second, xml::error_t::NONE);
+	}
+	{
+		// Настройки разбора со снятым пределом количества атрибутов
+		xml::reader_t::settings_t settings;
+		// Выполняем снятие предела количества атрибутов
+		settings.maxAttributes = 0;
+		// Выполняем проверку отсутствия отказа разбора
+		ASSERT_EQ(run(settings, text).second, xml::error_t::NONE);
+	}
+	{
+		// Настройки разбора со снятым пределом количества сущностей
+		xml::reader_t::settings_t settings;
+		// Выполняем снятие предела количества объявленных сущностей
+		settings.maxEntities = 0;
+		// Выполняем проверку отсутствия отказа разбора
+		ASSERT_EQ(run(settings, entity).second, xml::error_t::NONE);
+	}
+	{
+		// Настройки разбора со снятым пределом объёма подстановки
+		xml::reader_t::settings_t settings;
+		// Выполняем снятие предела объёма подстановки сущностей
+		settings.maxExpansion = 0;
+		// Выполняем проверку отсутствия отказа разбора
+		ASSERT_EQ(run(settings, entity).second, xml::error_t::NONE);
+	}
+	{
+		// Настройки разбора со снятым пределом объёма события
+		xml::reader_t::settings_t settings;
+		// Выполняем снятие предела объёма события
+		settings.maxEvent = 0;
+		// Выполняем проверку отсутствия отказа разбора
+		ASSERT_EQ(run(settings, text).second, xml::error_t::NONE);
+	}
+	{
+		// Настройки разбора с пределами, заданными единицей
+		xml::reader_t::settings_t settings;
+		// Выполняем указание предела глубины вложенности
+		settings.maxDepth = 1;
+		/**
+		 * Выполняем проверку того, что предел ЗАДАННЫЙ по-прежнему держится
+		 *
+		 * @note Сличение это обязательно: снятие предела нулём не должно обращаться в
+		 *       снятие предела вовсе
+		 */
+		ASSERT_EQ(run(settings, text).second, xml::error_t::DEPTH_EXCEEDED);
+	}
+}

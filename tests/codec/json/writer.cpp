@@ -1109,3 +1109,84 @@ TEST(CodecJsonWriter, InfinityAfterTopLevelValue) {
 		}
 	}
 }
+
+/**
+ * @brief Проверка выдачи кода отказа записи
+ *
+ * @details Довод отказа уходил лишь в журнал строкою: потребитель получал `false` и
+ * узнать причину не мог вовсе, а без назначенного журнала довод пропадал бесследно.
+ * Запись разметки XML отдаёт код отказа с самого начала, и расходиться с нею здесь
+ * нечем. Обнаружено сличением договоров трёх кодеков между собой
+ *
+ * @note Сброс состояния снимает и код отказа: запись, начатая заново, отвечать прежней
+ *       бедою не должна
+ *
+ */
+TEST(CodecJsonWriter, RefusalReportsErrorCode) {
+	{
+		// Запись документа
+		json::writer_t writer(::logger());
+		// Выполняем проверку отсутствия отказа у свежей записи
+		ASSERT_EQ(writer.error(), json::error_t::NONE);
+		// Выполняем проверку отказа записи имени поля вне вместилища
+		ASSERT_FALSE(writer.key("имя"));
+		// Выполняем проверку кода отказа записи
+		ASSERT_EQ(writer.error(), json::error_t::NO_CONTAINER_OPEN);
+		// Выполняем сброс состояния записи
+		writer.reset();
+		// Выполняем проверку снятия кода отказа сбросом
+		ASSERT_EQ(writer.error(), json::error_t::NONE);
+	}
+	{
+		// Запись документа
+		json::writer_t writer(::logger());
+		// Выполняем проверку открытия массива
+		ASSERT_TRUE(writer.array());
+		// Выполняем проверку отказа записи имени поля внутри массива
+		ASSERT_FALSE(writer.key("имя"));
+		// Выполняем проверку кода отказа записи
+		ASSERT_EQ(writer.error(), json::error_t::KEY_OUTSIDE_OBJECT);
+	}
+	{
+		// Запись документа
+		json::writer_t writer(::logger());
+		// Выполняем проверку записи значения верхнего уровня
+		ASSERT_TRUE(writer.value(static_cast <int64_t> (1)));
+		// Выполняем проверку отказа записи второго значения верхнего уровня
+		ASSERT_FALSE(writer.value(static_cast <int64_t> (2)));
+		// Выполняем проверку кода отказа записи
+		ASSERT_EQ(writer.error(), json::error_t::MULTIPLE_ROOTS);
+	}
+	{
+		// Запись документа
+		json::writer_t writer(::logger());
+		// Выполняем проверку открытия объекта
+		ASSERT_TRUE(writer.object());
+		// Выполняем проверку записи имени поля объекта
+		ASSERT_TRUE(writer.key("имя"));
+		// Выполняем проверку отказа записи имени поля повторно
+		ASSERT_FALSE(writer.key("второе"));
+		// Выполняем проверку кода отказа записи
+		ASSERT_EQ(writer.error(), json::error_t::DUPLICATE_KEY);
+	}
+	{
+		// Запись документа
+		json::writer_t writer(::logger());
+		// Выполняем проверку открытия объекта
+		ASSERT_TRUE(writer.object());
+		// Выполняем проверку отказа завершения незакрытого документа
+		ASSERT_FALSE(writer.finish());
+		// Выполняем проверку кода отказа записи
+		ASSERT_EQ(writer.error(), json::error_t::UNEXPECTED_EOF);
+	}
+	{
+		// Запись документа
+		json::writer_t writer(::logger());
+		// Выполняем проверку отказа записи нечисла при отключённом послаблении
+		ASSERT_FALSE(writer.value(::std::numeric_limits <double>::infinity()));
+		// Выполняем проверку кода отказа записи
+		ASSERT_EQ(writer.error(), json::error_t::INVALID_NUMBER);
+		// Выполняем проверку описания кода отказа записи
+		ASSERT_STRNE(json::message(writer.error()), json::message(json::error_t::NONE));
+	}
+}

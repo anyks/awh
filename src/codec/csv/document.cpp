@@ -190,7 +190,7 @@ bool awh::codec::csv::Document::parse(const string_view text) noexcept {
 	// Запоминаем код ошибки разбора
 	this->_error = reader.error();
 	// Запоминаем положение ошибки в исходном тексте
-	this->_location = reader.location();
+	this->_location = reader.errorLocation();
 	// Выполняем перестроение соответствия имён столбцов
 	this->reindex();
 	// Выводим результат разбора
@@ -217,7 +217,7 @@ bool awh::codec::csv::Document::parse(const string_view text, const settings_t &
  * @return         результат чтения
  *
  */
-bool awh::codec::csv::Document::read(const string & filename) noexcept {
+bool awh::codec::csv::Document::load(const string & filename) noexcept {
 	// Выполняем очистку таблицы
 	this->clear();
 	// Открываем файл таблицы для чтения
@@ -265,7 +265,7 @@ bool awh::codec::csv::Document::read(const string & filename) noexcept {
 	// Запоминаем код ошибки разбора
 	this->_error = reader.error();
 	// Запоминаем положение ошибки в исходном тексте
-	this->_location = reader.location();
+	this->_location = reader.errorLocation();
 	// Выполняем перестроение соответствия имён столбцов
 	this->reindex();
 	// Выводим результат чтения
@@ -437,7 +437,7 @@ bool awh::codec::csv::Document::read(const string & filename, const function <bo
 	// Запоминаем код ошибки разбора
 	this->_error = reader.error();
 	// Запоминаем положение ошибки в исходном тексте
-	this->_location = reader.location();
+	this->_location = reader.errorLocation();
 	/**
 	 * Выполняем перебор всех имён столбцов заголовка
 	 *
@@ -522,7 +522,7 @@ bool awh::codec::csv::Document::parse(const string_view text, const function <bo
 	// Запоминаем код ошибки разбора
 	this->_error = reader.error();
 	// Запоминаем положение ошибки в исходном тексте
-	this->_location = reader.location();
+	this->_location = reader.errorLocation();
 	/**
 	 * Выполняем перебор всех имён столбцов заголовка
 	 */
@@ -547,7 +547,7 @@ bool awh::codec::csv::Document::parse(const string_view text, const function <bo
  * @return         результат записи
  *
  */
-bool awh::codec::csv::Document::write(const string & filename) const noexcept {
+bool awh::codec::csv::Document::save(const string & filename) const noexcept {
 	// Открываем файл таблицы для записи
 	ofstream file(filename, ios::binary | ios::trunc);
 	/**
@@ -656,7 +656,7 @@ awh::codec::csv::error_t awh::codec::csv::Document::error() const noexcept {
  * @return положение ошибки в исходном тексте
  *
  */
-const awh::codec::csv::location_t & awh::codec::csv::Document::location() const noexcept {
+const awh::codec::csv::location_t & awh::codec::csv::Document::errorLocation() const noexcept {
 	// Выводим положение ошибки в исходном тексте
 	return this->_location;
 }

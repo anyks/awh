@@ -19,6 +19,12 @@
 #include <vector>
 #include <string>
 #include <cstdint>
+/**
+ * @note Заголовок cmath нужен ради std::isnan. Собиратели посвежее подтягивают его
+ *       попутно другими заголовками, а gcc 12 с glibc 2.36 и gcc у NetBSD 10 - нет,
+ *       и сборка валится. Проверено на стендах Debian 12 и NetBSD 10.1
+ */
+#include <cmath>
 #include <limits>
 #include <functional>
 
@@ -256,7 +262,7 @@ TEST(CodecAbcDocument, RealToIntegerEdges) {
 	// Выполняем проверку того, что не-число извлекается дробным
 	ASSERT_TRUE(root.at(0).value(real));
 	// Выполняем проверку того, что извлечённое дробное числом не является
-	ASSERT_TRUE(::isnan(real));
+	ASSERT_TRUE(std::isnan(real));
 	// Выполняем проверку того, что не-число целым даёт ноль
 	ASSERT_TRUE(root.at(0).value(integer));
 	// Выполняем проверку извлечённого из не-числа целого

@@ -351,7 +351,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool read(const string & filename) noexcept;
+					bool load(const string & filename) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод чтения таблицы из файла записями
@@ -372,6 +372,11 @@ namespace awh {
 					 * @param filename адрес файла таблицы для чтения
 					 * @param callback обработчик очередной записи, ложь прекращает чтение
 					 * @return         результат чтения
+					 *
+					 * @note Имя оставлено отличным от `load()` нарочно: `load()` вбирает
+					 *       таблицу в контейнер, а чтение это лишь пропускает записи мимо,
+					 *       ничего не удерживая. Прочие кодеки зовут вбирающую пару
+					 *       `load()` и `save()`, и таблица тому договору отвечает
 					 *
 					 * \~english
 					 * @brief Method of reading a table from a file by records
@@ -423,7 +428,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool write(const string & filename) const noexcept;
+					bool save(const string & filename) const noexcept;
 				public:
 					/**
 					 * \~russian
@@ -444,13 +449,18 @@ namespace awh {
 					 *
 					 * @return положение ошибки в исходном тексте
 					 *
+					 * @note Имя названо явным нарочно: у чтения `location()` означает место
+					 *       ТЕКУЩЕГО события, а не отказа, и одно имя о двух значениях
+					 *       заводило потребителя в западню при переходе с уровня на уровень.
+					 *       Кодеки XML, TOML и INI зовут его так же
+					 *
 					 * \~english
 					 * @brief Method of getting the position of a parsing error
 					 * @return position of the error in the source text
 					 *
 					 * \~
 					 */
-					const location_t & location() const noexcept;
+					const location_t & errorLocation() const noexcept;
 				public:
 					/**
 					 * \~russian

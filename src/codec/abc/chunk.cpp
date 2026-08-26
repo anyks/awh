@@ -212,9 +212,19 @@ uint64_t awh::codec::abc::digest(const void * buffer, const size_t size) noexcep
  * @param generation поколение записи кадра
  *
  */
-void awh::codec::abc::envelope(vector <uint8_t> & result, const uint64_t number, const uint32_t generation) noexcept {
+bool awh::codec::abc::envelope(vector <uint8_t> & result, const uint64_t number, const uint32_t generation) noexcept {
 	// Выполняем получение длины обёртываемой записи
 	const uint64_t length = static_cast <uint64_t> (result.size());
+	/**
+	 * Если длина обёртываемой записи в запись кадра не вмещается
+	 *
+	 * @note Длина кадра объявлена четырьмя октетами, и запись длиннее легла бы в них
+	 *       усечённой МОЛЧА: кадр вышел бы годным по виду, а содержимое его -
+	 *       оборванным, и вскрылось бы это лишь у читающего
+	 */
+	if(length > static_cast <uint64_t> (numeric_limits <uint32_t>::max()))
+		// Сообщаем, что обернуть запись кадром не удалось
+		return false;
 	// Выполняем отведение места под заголовок кадра впереди записи
 	result.insert(result.begin(), CHUNK_HEADER, 0);
 	// Выполняем получение указателя на заголовок кадра
@@ -234,6 +244,8 @@ void awh::codec::abc::envelope(vector <uint8_t> & result, const uint64_t number,
 	abc::fixed(head + 20, static_cast <uint64_t> (generation), 4);
 	// Выполняем укладку контрольной суммы кадра-обёртки
 	abc::fixed(result.data() + CHUNK_DIGEST, abc::digest(result.data(), result.size()), 8);
+	// Сообщаем, что запись обёрнута кадром
+	return true;
 }
 /**
  * @brief Метод укладки кадра

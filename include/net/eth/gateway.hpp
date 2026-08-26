@@ -158,21 +158,46 @@ namespace awh {
 				 * \~russian
 				 * @brief Метод получения маршрута для указанного адреса
 				 *
-				 * @details Спрашивает у системы, каким путём она отправит пакет для
-				 * заданного адреса, и дозаполняет объект маршрута ответом
+				 * @details Отвечает на ОДИН из двух вопросов, смотря по тому, что задано
+				 * в объекте маршрута:
+				 * - объект пуст: спрашивает у системы, каким путём она отправит пакет для
+				 *   заданного адреса, и дозаполняет объект ответом;
+				 * - в объекте названы условия (устройство, шлюз, адрес назначения): ищет
+				 *   в таблице маршрутов запись, совпадающую по НАЗВАННЫМ условиям, и
+				 *   дозаполняет остальное
 				 *
-				 * @note Довод здесь и входной, и выходной: адрес назначения задаёт
-				 * спрашивающий, а устройство, шлюз и префикс проставляет система
+				 * @warning Различие это существенно, а не косметично. «Каким путём пойдёт
+				 * пакет» и «есть ли такой маршрут» - разные вопросы: пока в системе есть
+				 * маршрут по умолчанию, на первый вопрос ответ есть ВСЕГДА, в том числе
+				 * для маршрута, которого в таблице нет вовсе. Ответ на второй вопрос при
+				 * этом отрицательный
+				 *
+				 * @note Длина префикса условием совпадения НЕ считается намеренно: система
+				 * вправе хранить маршрут с иной длиной, и требование совпадения по ней
+				 * отсеивало бы существующие записи
+				 *
+				 * @note Довод здесь и входной, и выходной: условия задаёт спрашивающий, а
+				 * недостающее - устройство, шлюз и префикс - проставляет система
 				 *
 				 * @param route объект для извлечения маршрута
 				 * @return      результат получения маршрута
 				 *
 				 * \~english
 				 * @brief Method of getting the route for the specified address
-				 * @details Asks the system by which path it will send a packet for
-				 * the given address, and fills up the route object with the answer
-				 * @note The argument here is both an input and an output one: the address of the destination is set by
-				 * the asking side, and the device, the gateway and the prefix are put down by the system
+				 * @details Answers ONE of the two questions, depending on what is set in the route object:
+				 * if the object is empty, it asks the system by which path it will send a packet for
+				 * the given address and fills up the object with the answer; if conditions are named in
+				 * the object (the device, the gateway, the address of the destination), it looks in the
+				 * table of the routes for the record matching by the NAMED conditions and fills up the rest
+				 * @warning This difference is essential, not cosmetic. «By which path will the packet go» and
+				 * «does such a route exist» are different questions: as long as there is a default route in the
+				 * system, the answer to the first one exists ALWAYS, including for a route which is not in the
+				 * table at all, while the answer to the second one is negative
+				 * @note The length of the prefix is deliberately NOT counted as a condition of the matching: the
+				 * system has the right to keep the route with another length, and the requirement of the matching
+				 * by it would sift out the existing records
+				 * @note The argument here is both an input and an output one: the conditions are set by
+				 * the asking side, and what is missing — the device, the gateway and the prefix — is put down by the system
 				 * @param route object to extract the route into
 				 * @return      result of the getting of the route
 				 *
