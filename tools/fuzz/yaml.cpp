@@ -156,6 +156,8 @@ namespace {
 		uint64_t restyled;
 		// Количество разборов деревом, прежним разбором занятым
 		uint64_t recycled;
+		// Количество текстов, написанием хвостовым поверенных
+		uint64_t tailed;
 		// Количество круговых ходов, директивою наречия обойдённых
 		uint64_t undirected;
 		// Количество сличений записи свежей с записью, прежней подачей занятой
@@ -170,7 +172,7 @@ namespace {
 		 */
 		Statistic() noexcept :
 		 texts(0), corrupted(0), survived(0), events(0), chunked(0), transcoded(0), unconverted(0), trees(0), kept(0), pruned(0),
-		 mirrored(0), circling(0), edited(0), assembled(0), restyled(0), recycled(0), undirected(0), transcribed(0), taken(0), grafts(0), grafted(0) {}
+		 mirrored(0), circling(0), edited(0), assembled(0), restyled(0), recycled(0), tailed(0), undirected(0), transcribed(0), taken(0), grafts(0), grafted(0) {}
 	} totals;
 
 	/**
@@ -1911,6 +1913,95 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 				// Выполняем учёт разбора деревом, прежним разбором занятым
 				totals.recycled++;
 			}
+			/**
+			 * Выполняем проверку независимости исхода разбора от хвостового перевода строки
+			 *
+			 * @details Описание языка о переводе строки в конце текста не говорит ничего:
+			 *          текст, разбором принятый, обязан приниматься и с переводом, и без
+			 *          него, отдавая то же дерево. Разница здесь есть порок сама по себе
+			 *
+			 * @note Правило это завелось находкою и тут же нашло три порока склейки строк:
+			 *       кавычку внутри продолжения простого значения, кавычку за свойством
+			 *       значения и написание `-\"`. Строка последняя, перевода не имеющая,
+			 *       склейке не подлежит вовсе, и пороки эти на ней не проявлялись
+			 */
+			{
+				// Собираем написание текста иное - с хвостовым переводом строки либо без него
+				const string written = ((!text.empty() && (text.back() == '\n')) ?
+				 text.substr(0, (text.size() - 1)) : (text + "\n"));
+				// Дерево документа, написание иное разбирающее
+				yaml::document_t tailed(::logger(), tree);
+				// Выполняем разбор написания иного
+				const bool taken = tailed.parse(written);
+				/**
+				 * Если исход разбора написания иного с исходом исходного разошёлся
+				 */
+				if(taken != parsed){
+					// Выводим сообщение о расхождении исхода разбора
+					::fprintf(stderr, "yaml fuzz: trailing newline changes verdict: %s против %s, settings %s\n",
+					 (taken ? "принят" : "отвергнут"), (parsed ? "принят" : "отвергнут"),
+					 described(settings).c_str());
+					// Выводим разбираемый текст
+					dump(text);
+					// Выходим из приложения с ошибкой
+					return EXIT_FAILURE;
+				}
+				// Признак удержания переводов блочным значением
+				bool keeping = false;
+				/**
+				 * Выполняем розыск указателя удержания переводов у блочных значений
+				 *
+				 * @warning Правилу `chomp_t::KEEP` перевод хвостовой есть СОДЕРЖИМОЕ, и
+				 *          снятие его значение меняет по праву. Сличать деревья тут нельзя:
+				 *          ворошитель назвал бы расхождением ровно то, чего описание языка
+				 *          и требует. Половина же исхода разбора правилу тому неподвластна
+				 *          и остаётся строгой
+				 *
+				 * @note Розыск ведётся перебором, а не поиском записи «|+»: между знаком
+				 *       блока и указателем удержания вправе стоять указатель отступа - и
+				 *       написание `>1+` поиск записью пропускал, чем и подал ложное
+				 *       расхождение на первом же прогоне
+				 */
+				for(size_t i = 0; !keeping && (i < text.size()); i++){
+					/**
+					 * Если знак блочное значение открывает
+					 */
+					if((text.at(i) == '|') || (text.at(i) == '>')){
+						// Смещение знака, за знаком блока стоящего
+						size_t position = (i + 1);
+						/**
+						 * Выполняем пропуск указателя отступа блочного значения
+						 */
+						while((position < text.size()) && (text.at(position) >= '0') && (text.at(position) <= '9'))
+							// Выполняем переход к следующему знаку текста
+							position++;
+						// Запоминаем признак удержания переводов блочным значением
+						keeping = ((position < text.size()) && (text.at(position) == '+'));
+					}
+				}
+				/**
+				 * Если разбор удался, а деревья написаний разошлись
+				 *
+				 * @note Сличаются ДЕРЕВЬЯ, а не перезаписи их: перевод хвостовой удержанный
+				 *       исходный текст меняет, и сличение перезаписей звало бы это
+				 *       расхождением при настройках, оформление сохраняющих
+				 */
+				if(parsed && !keeping && !(yaml::value_t(tailed.root()) == yaml::value_t(document.root()))){
+					// Выводим сообщение о расхождении деревьев написаний
+					::fprintf(stderr, "yaml fuzz: trailing newline changes tree, settings %s\n",
+					 described(settings).c_str());
+					// Выводим разбираемый текст
+					dump(text);
+					// Выводим перезапись дерева написания иного
+					dump(tailed.dump());
+					// Выводим перезапись дерева исходного написания
+					dump(document.dump());
+					// Выходим из приложения с ошибкой
+					return EXIT_FAILURE;
+				}
+				// Выполняем учёт разбора написания иного
+				totals.tailed++;
+			}
 			if(parsed){
 				// Выполняем учёт собранного дерева документа
 				totals.trees++;
@@ -2813,7 +2904,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		}
 	}
 	// Выводим итог работы генератора
-	::fprintf(stderr, "yaml fuzz: %llu texts (%llu corrupted, %llu survived), %llu events, %llu chunked, %llu transcoded (%llu не допущено), %llu trees, %llu kept, %llu pruned, %llu edited (%llu verified), %llu taken, %llu assembled, %llu restyled (%llu обойдено), %llu recycled, %llu grafts (%llu refused), %llu transcribed, %llu circling\n",
+	::fprintf(stderr, "yaml fuzz: %llu texts (%llu corrupted, %llu survived), %llu events, %llu chunked, %llu transcoded (%llu не допущено), %llu trees, %llu kept, %llu pruned, %llu edited (%llu verified), %llu taken, %llu assembled, %llu restyled (%llu обойдено), %llu recycled (%llu хвостом), %llu grafts (%llu refused), %llu transcribed, %llu circling\n",
 		static_cast <unsigned long long> (totals.texts), static_cast <unsigned long long> (totals.corrupted),
 		static_cast <unsigned long long> (totals.survived), static_cast <unsigned long long> (totals.events),
 		static_cast <unsigned long long> (totals.chunked), static_cast <unsigned long long> (totals.transcoded),
@@ -2825,6 +2916,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		static_cast <unsigned long long> (totals.restyled),
 		static_cast <unsigned long long> (totals.undirected),
 		static_cast <unsigned long long> (totals.recycled),
+		static_cast <unsigned long long> (totals.tailed),
 		static_cast <unsigned long long> (totals.grafted),
 		static_cast <unsigned long long> (totals.grafts - totals.grafted),
 		static_cast <unsigned long long> (totals.transcribed),
