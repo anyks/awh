@@ -414,9 +414,9 @@ bool awh::codec::json::Decoder::process(const char * buffer, const size_t size, 
 	/**
 	 * Определяем кодировку исходного текста
 	 */
-	switch(static_cast <uint8_t> (this->_encoding)){
+	switch(this->_encoding){
 		// Если кодировкой является UTF-8
-		case static_cast <uint8_t> (encoding_t::UTF8): {
+		case encoding_t::UTF8: {
 			// Положение разбираемого байта в переданном буфере
 			size_t offset = 0;
 			/**
@@ -589,9 +589,9 @@ bool awh::codec::json::Decoder::process(const char * buffer, const size_t size, 
 			}
 		} break;
 		// Если кодировкой является UTF-16 с обратным порядком байтов
-		case static_cast <uint8_t> (encoding_t::UTF16LE):
+		case encoding_t::UTF16LE:
 		// Если кодировкой является UTF-16 с прямым порядком байтов
-		case static_cast <uint8_t> (encoding_t::UTF16BE): {
+		case encoding_t::UTF16BE: {
 			// Получаем признак обратного порядка байтов кодировки
 			const bool reverse = (this->_encoding == encoding_t::UTF16LE);
 			// Положение разбираемого байта в переданном буфере
@@ -716,7 +716,7 @@ bool awh::codec::json::Decoder::process(const char * buffer, const size_t size, 
 		} break;
 		// Если кодировкой является ISO-8859-1
 		// Если кодировкой является Windows-1252
-		case static_cast <uint8_t> (encoding_t::CP1252): {
+		case encoding_t::CP1252: {
 			/**
 			 * Выполняем перебор переданных байтов исходного текста
 			 */
@@ -761,7 +761,7 @@ bool awh::codec::json::Decoder::process(const char * buffer, const size_t size, 
 				}
 			}
 		} break;
-		case static_cast <uint8_t> (encoding_t::LATIN1): {
+		case encoding_t::LATIN1: {
 			/**
 			 * Выполняем перебор переданных байтов исходного текста
 			 */
@@ -799,7 +799,7 @@ bool awh::codec::json::Decoder::process(const char * buffer, const size_t size, 
 			}
 		} break;
 		// Если кодировкой является US-ASCII
-		case static_cast <uint8_t> (encoding_t::ASCII): {
+		case encoding_t::ASCII: {
 			/**
 			 * Выполняем перебор переданных байтов исходного текста
 			 */

@@ -107,18 +107,33 @@ using namespace awh::codec;
  */
 TEST(CodecXmlCommon, Messages) {
 	/**
-	 * Выполняем перебор всех кодов ошибок разбора
+	 * Выполняем перебор всех кодов отказа, договором отведённых
+	 *
+	 * @note Перебор ведётся числом от нуля до последнего кода перечня: список кодов,
+	 *       выписанный рукою, от перечня отстаёт молча - именно так коды, заведённые
+	 *       последними, не сличались вовсе
 	 */
-	for(uint8_t i = 0; i <= static_cast <uint8_t> (xml::error_t::ENTITY_BOUNDARY); i++){
-		// Получаем описание очередного кода ошибки разбора
-		const char * message = xml::message(static_cast <xml::error_t> (i));
-		// Выполняем проверку наличия описания кода ошибки
-		ASSERT_NE(message, nullptr) << static_cast <uint32_t> (i);
-		// Выполняем проверку того, что описание кода ошибки не пусто
-		ASSERT_FALSE(string(message).empty()) << static_cast <uint32_t> (i);
+	for(uint32_t code = 0; code <= static_cast <uint32_t> (xml::error_t::TOO_MANY_ATTRIBUTES); code++){
+		// Получаем описание очередного кода отказа
+		const char * message = xml::message(static_cast <xml::error_t> (code));
+		// Выполняем проверку наличия описания кода отказа
+		ASSERT_NE(message, nullptr) << code;
+		// Выполняем проверку того, что описание кода отказа не пусто
+		ASSERT_GT(::strlen(message), 0u) << code;
+		// Выполняем проверку того, что код отказа описанием ОПОЗНАН
+		ASSERT_STRNE(message, "unknown error") << code;
 	}
+	/**
+	 * Выполняем проверку того, что перечень кодов на том и оканчивается
+	 *
+	 * @note Сличение это отмечает конец перечня, а сторожем НЕ является: код, дописанный
+	 *       без описания, оно пропускает - именно его отсутствие оно и сличает. Проверено
+	 *       щупом: дописанный код отказа проверку не уронил. Сторожем тут выступает
+	 *       собиратель - смотри примечание у самой выдачи описаний
+	 */
+	ASSERT_STREQ(xml::message(static_cast <xml::error_t> (static_cast <uint32_t> (xml::error_t::TOO_MANY_ATTRIBUTES) + 1)), "unknown error");
 	// Выполняем проверку описания кода, договором не отведённого
-	ASSERT_NE(xml::message(static_cast <xml::error_t> (0xFF)), nullptr);
+	ASSERT_STREQ(xml::message(static_cast <xml::error_t> (0xFF)), "unknown error");
 }
 /**
  * @brief Проверка названий кодировок исходного текста

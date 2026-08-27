@@ -156,6 +156,30 @@ namespace awh {
 				// Объект разбора, предоставляющий синтаксическое дерево
 				const Parser * _parser;
 			private:
+				/**
+				 * \~russian
+				 * @brief Арена узлов синтаксического дерева объекта разбора
+				 *
+				 * @details Арена сберегается указателем потому, что извлечение
+				 *          узла по индексу происходит на каждом шаге построения,
+				 *          а метод извлечения объекта разбора лежит в единице
+				 *          трансляции чужой и подстановке не поддаётся. Обращение
+				 *          через сбережённый указатель встраивается целиком, и
+				 *          вызов подпрограммы на месте каждого обращения исчезает.
+				 *
+				 * \~english
+				 * @brief Arena of the syntax tree nodes of the parser object
+				 * @details The arena is kept as a pointer because getting a node by
+				 *          index happens at every step of the compilation, while the
+				 *          getter of the parser object lies in a foreign translation
+				 *          unit and cannot be inlined. Access through the kept pointer
+				 *          is inlined entirely, and the subroutine call at the place
+				 *          of every access disappears.
+				 *
+				 * \~
+				 */
+				const vector <node_data_t> * _arena;
+			private:
 				// Компилируемая программа регулярного выражения
 				program_t * _program;
 			private:
@@ -275,6 +299,30 @@ namespace awh {
 				 */
 				mutable vector <node_id_t> _visited;
 			private:
+				/**
+				 * \~russian
+				 * Сберегательный ряд узлов цепочки при построении развёрнутом
+				 *
+				 * @details Развёрнутое выражение сопоставляет последовательность
+				 *          элементов в обратном порядке, отчего узлы цепочки
+				 *          строятся с конца, а связка узлов ведёт лишь вперёд -
+				 *          цепочку приходится накапливать. Ряд для того
+				 *          заводился на каждый уровень вложенности.
+				 *
+				 *          Ряд ныне общий, а вложенность держится отметкою
+				 *          основания - тем же порядком, каким живут прочие
+				 *          сберегательные ряды разбора и построения.
+				 *
+				 * \~english
+				 * Scratch sequence of the nodes of a chain for the reversed building
+				 * @details A reversed expression matches the sequence of the elements
+				 *          in the reverse order, which is why the nodes of a chain
+				 *          are built from the end, while the linking of the nodes leads only forward.
+				 *
+				 * \~
+				 */
+				vector <node_id_t> _chain;
+			private:
 				// Код ошибки последней операции компиляции
 				error_t _error;
 			public:
@@ -369,6 +417,21 @@ namespace awh {
 				 */
 				error_t error() const noexcept;
 			private:
+				/**
+				 * \~russian
+				 * @brief Метод извлечения узла синтаксического дерева
+				 *
+				 * @param id индекс узла в арене узлов
+				 * @return   узел синтаксического дерева
+				 *
+				 * \~english
+				 * @brief Method of getting a node of the syntax tree
+				 * @param id index of the node in the node arena
+				 * @return   node of the syntax tree
+				 *
+				 * \~
+				 */
+				const node_data_t & node(const node_id_t id) const noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод компиляции цепочки узлов синтаксического дерева

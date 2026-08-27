@@ -58,11 +58,6 @@ void awh::alloc::Spin::onStuck(void (* callback)()) noexcept {
 	::__awh_spin_stuck__ = callback;
 }
 /**
- * @brief Конструктор
- *
- */
-awh::alloc::Spin::Spin() noexcept : _held(0) {}
-/**
  * @brief Метод захвата замка кружением
  *
  */

@@ -4004,6 +4004,37 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	 */
 	this->_feasible = (possible && !narrowing);
 	/**
+	 * Выполняем вывод признака отодвигания начала поиска обязательным литералом
+	 *
+	 * @details Отодвигание требует удаления ограниченного - беспредельное места
+	 *          начала не называет, - и отсутствия привязки к началу попытки
+	 *          поиска: привязка эта равняется на позицию, сопоставителю
+	 *          переданную, и отодвигание её сдвинуло бы саму привязку,
+	 *          обратив отказ в мнимое совпадение.
+	 *
+	 */
+	this->_skipping = (this->_feasible && (this->_prefilter.distance != string_view::npos));
+	/**
+	 * Если отодвигание начала поиска выводится
+	 */
+	if(this->_skipping) {
+		/**
+		 * Выполняем обход инструкций программы сопоставления
+		 */
+		for(auto & instruction : program.instructions) {
+			/**
+			 * Если инструкция проверяет привязку к началу попытки поиска
+			 */
+			if((instruction.type == awh::regex::opcode_t::ANCHOR) &&
+			 (instruction.assertion.type == awh::regex::anchor_t::SEARCH_HEAD)) {
+				// Выполняем отмену отодвигания начала поиска совпадения
+				this->_skipping = false;
+				// Выходим из обхода инструкций программы сопоставления
+				break;
+			}
+		}
+	}
+	/**
 	 * Если отбор позиций начала попытки по обязательному литералу порождается
 	 *
 	 * @details Отбор выдаёт позицию, раньше какой совпадение начаться не может,
@@ -7556,7 +7587,7 @@ bool awh::regex::Codegen::save(string & result) const noexcept {
 	 *          восстановлении нечем, оттого он и пишется.
 	 *
 	 */
-	result.push_back(static_cast <char> (this->_feasible ? 1 : 0));
+	result.push_back(static_cast <char> ((this->_feasible ? 1 : 0) | (this->_skipping ? 2 : 0)));
 	// Выполняем запись размера записи кадра порождённого сопоставителя
 	writeSize(static_cast <uint64_t> (this->_frame), result);
 	// Выполняем запись наибольшего количества записей кадра
@@ -7611,7 +7642,11 @@ bool awh::regex::Codegen::restore(string_view data, size_t & offset, const progr
 		// Выводим результат восстановления сопоставителя
 		return false;
 	// Получаем признак проверки возможности совпадения перед сопоставлением
-	const bool feasible = (static_cast <uint8_t> (data[offset++]) != 0);
+	const uint8_t marks = static_cast <uint8_t> (data[offset++]);
+	// Получаем признак проверки возможности совпадения
+	const bool feasible = ((marks & 0x01) != 0);
+	// Получаем признак отодвигания начала поиска обязательным литералом
+	const bool skipping = ((marks & 0x02) != 0);
 	// Размер записи кадра порождённого сопоставителя
 	uint64_t sizing = 0;
 	// Наибольшее количество записей кадра порождённого сопоставителя
@@ -7740,6 +7775,8 @@ bool awh::regex::Codegen::restore(string_view data, size_t & offset, const progr
 	this->_prefilter = program.prefilter;
 	// Выполняем установку признака проверки возможности совпадения
 	this->_feasible = feasible;
+	// Выполняем установку признака отодвигания начала поиска
+	this->_skipping = skipping;
 	// Выполняем размещение набора адресов обстановки исполнения
 	this->_context.assign((SLOT_TABLES + this->_offsets.size()), nullptr);
 	/**
@@ -7792,6 +7829,8 @@ bool awh::regex::Codegen::restore(string_view data, size_t & offset, const progr
 void awh::regex::Codegen::clear() noexcept {
 	// Выполняем сброс признака проверки возможности совпадения
 	this->_feasible = false;
+	// Выполняем сброс признака отодвигания начала поиска совпадения
+	this->_skipping = false;
 	// Выполняем освобождение исполняемой памяти порождённого сопоставителя
 	this->_assembly.release();
 	// Выполняем очистку таблиц принадлежности значений байта
@@ -7861,9 +7900,45 @@ bool awh::regex::Codegen::exec(string_view text, const size_t start, vector <pai
 	 *          Выполняемая единожды на сопоставление, она принадлежит входу.
 	 *
 	 */
-	if(this->_feasible && !this->_prefilter.possible(text, start))
-		// Выводим результат поиска совпадения
-		return false;
+	// Позиция начала поиска, обязательным литералом отодвигаемая
+	size_t seeking = start;
+	/**
+	 * Если проверка возможности совпадения выполняется
+	 */
+	if(this->_feasible) {
+		/**
+		 * Если начало поиска обязательным литералом отодвигается
+		 *
+		 * @details Поиск литерала называет и место вхождения его, а с ним -
+		 *          позицию, раньше какой совпадение начаться не может: участок
+		 *          до неё пропускается разом взамен перебора позиций по одной.
+		 *          Отсутствие литерала при том различается тем же поиском -
+		 *          отдельной проверки оно не требует.
+		 *
+		 */
+		if(this->_skipping) {
+			// Получаем позицию, раньше какой совпадение начаться не может
+			const size_t bound = this->_prefilter.bounded(text, start);
+			/**
+			 * Если обязательный литерал в тексте не обнаружен
+			 *
+			 * @details Отбор выдаёт размер текста, вхождения не обнаружив,
+			 *          а позиция эта началом совпадения быть не может: литерал
+			 *          непуст, и вхождение его лежало бы раньше конца текста.
+			 *
+			 */
+			if(bound >= text.size())
+				// Выводим результат поиска совпадения
+				return false;
+			// Выполняем отодвигание начала поиска совпадения
+			seeking = bound;
+		/**
+		 * Если возможность совпадения проверяется без отодвигания
+		 */
+		} else if(!this->_prefilter.possible(text, start))
+			// Выводим результат поиска совпадения
+			return false;
+	}
 	// Получаем требуемое количество границ обнаруженного совпадения
 	const size_t count = ((static_cast <size_t> (this->_captures) + 1) * 2);
 	/**
@@ -8001,7 +8076,7 @@ bool awh::regex::Codegen::exec(string_view text, const size_t start, vector <pai
 	// Выполняем сброс приметы отказа порождённого сопоставителя
 	bounds[count + 2] = 0;
 	// Получаем позицию начала поиска совпадения
-	const size_t position = ((start > text.size()) ? text.size() : start);
+	const size_t position = ((seeking > text.size()) ? text.size() : seeking);
 	/**
 	 * Если совпадение в тексте не обнаружено
 	 */
@@ -8074,4 +8149,4 @@ size_t awh::regex::Codegen::length() const noexcept {
  *
  */
 awh::regex::Codegen::Codegen(const log_t * log) noexcept :
- _assembly(log), _log(log), _feasible(false), _captures(0), _frame(0), _levels(0), _identity(0), _matcher(nullptr) {}
+ _assembly(log), _log(log), _feasible(false), _skipping(false), _captures(0), _frame(0), _levels(0), _identity(0), _matcher(nullptr) {}

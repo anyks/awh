@@ -246,19 +246,33 @@ bool awh::codec::csv::Reader::inside() const noexcept {
 	/**
 	 * Определяем состояние разбора текста
 	 */
-	switch(static_cast <uint8_t> (this->_state)){
+	switch(this->_state){
 		// Если разбор находится внутри поля без кавычек
-		case static_cast <uint8_t> (state_t::UNQUOTED):
+		case state_t::UNQUOTED:
 		// Если разбор находится внутри поля в кавычках
-		case static_cast <uint8_t> (state_t::QUOTED):
+		case state_t::QUOTED:
 		// Если разбор встретил кавычку внутри поля в кавычках
-		case static_cast <uint8_t> (state_t::QUOTE_IN_FIELD):
+		case state_t::QUOTE_IN_FIELD:
 		// Если разбор встретил знак отмены внутри поля в кавычках
-		case static_cast <uint8_t> (state_t::ESCAPE):
+		case state_t::ESCAPE:
 		// Если разбор встретил знак отмены внутри поля без кавычек
-		case static_cast <uint8_t> (state_t::ESCAPE_UNQUOTED):
+		case state_t::ESCAPE_UNQUOTED:
 			// Выводим признак нахождения внутри поля
 			return true;
+		/**
+		 * Если разбор дошёл до членов перечня, обработки здесь не требующих
+		 *
+		 * @note Обрабатываются они своим порядком выше, а состояние отказа разбора не продолжает вовсе
+		 *
+		 * @warning Перечислены они НАМЕРЕННО вместо `default`: ветвь `default` глушит
+		 *          `-Wswitch`, и член, в перечень дописанный, прошёл бы это место молча
+		 */
+		case state_t::RECORD_START:
+		case state_t::FIELD_START:
+		case state_t::AFTER_CR:
+		case state_t::COMMENT:
+		case state_t::FAILED:
+		break;
 	}
 	// Выводим признак нахождения вне поля
 	return false;
@@ -631,14 +645,14 @@ size_t awh::codec::csv::Reader::bulk(const char * buffer, const size_t size) noe
 	/**
 	 * Определяем состояние разбора текста
 	 */
-	switch(static_cast <uint8_t> (this->_state)){
+	switch(this->_state){
 		// Если разбор находится внутри поля без кавычек
-		case static_cast <uint8_t> (state_t::UNQUOTED):
+		case state_t::UNQUOTED:
 			// Получаем разметку знаков поля без кавычек
 			marks = this->_breakUnquoted;
 		break;
 		// Если разбор находится внутри поля в кавычках
-		case static_cast <uint8_t> (state_t::QUOTED):
+		case state_t::QUOTED:
 			// Получаем разметку знаков поля в кавычках
 			marks = this->_breakQuoted;
 		break;
@@ -853,7 +867,7 @@ bool awh::codec::csv::Reader::step(const char letter) noexcept {
 	/**
 	 * Определяем состояние разбора текста
 	 */
-	switch(static_cast <uint8_t> (this->_state)){
+	switch(this->_state){
 		/**
 		 * Если разбор находится в состоянии отказа
 		 *
@@ -862,7 +876,7 @@ bool awh::codec::csv::Reader::step(const char letter) noexcept {
 		 *       попадает вовсе. Снимать её нельзя: она держит разбор остановленным и
 		 *       при заведении места вызова, подачи не спрашивающего
 		 */
-		case static_cast <uint8_t> (state_t::FAILED):
+		case state_t::FAILED:
 			// Выводим признак прекращения разбора
 			return false;
 		/**
@@ -872,7 +886,7 @@ bool awh::codec::csv::Reader::step(const char letter) noexcept {
 		 *       перевод строки лишь дополняет его. Оттого запись завершается здесь, а
 		 *       перевод строки, если он пришёл, поглощается без последствий
 		 */
-		case static_cast <uint8_t> (state_t::AFTER_CR): {
+		case state_t::AFTER_CR: {
 			// Переводим разбор в состояние начала записи
 			this->_state = state_t::RECORD_START;
 			/**
@@ -894,7 +908,7 @@ bool awh::codec::csv::Reader::step(const char letter) noexcept {
 		/**
 		 * Если разбор находится в состоянии начала записи
 		 */
-		case static_cast <uint8_t> (state_t::RECORD_START): {
+		case state_t::RECORD_START: {
 			/**
 			 * Если знак начинает строку примечания
 			 */
@@ -931,7 +945,7 @@ bool awh::codec::csv::Reader::step(const char letter) noexcept {
 		/**
 		 * Если разбор находится в состоянии строки примечания
 		 */
-		case static_cast <uint8_t> (state_t::COMMENT): {
+		case state_t::COMMENT: {
 			/**
 			 * Если знаком является знак конца строки
 			 */
@@ -989,7 +1003,7 @@ bool awh::codec::csv::Reader::step(const char letter) noexcept {
 		/**
 		 * Если разбор находится в состоянии начала поля
 		 */
-		case static_cast <uint8_t> (state_t::FIELD_START): {
+		case state_t::FIELD_START: {
 			// Запоминаем положение начала поля в исходном тексте
 			this->_position.offset = this->_offset;
 			// Запоминаем номер строки начала поля
@@ -1030,7 +1044,7 @@ bool awh::codec::csv::Reader::step(const char letter) noexcept {
 		/**
 		 * Если разбор находится в состоянии поля без кавычек
 		 */
-		case static_cast <uint8_t> (state_t::UNQUOTED): {
+		case state_t::UNQUOTED: {
 			/**
 			 * Если знаком является знак отмены и способ записи его признаёт
 			 *
@@ -1162,7 +1176,7 @@ bool awh::codec::csv::Reader::step(const char letter) noexcept {
 		/**
 		 * Если разбор находится в состоянии поля в кавычках
 		 */
-		case static_cast <uint8_t> (state_t::QUOTED): {
+		case state_t::QUOTED: {
 			/**
 			 * Если знаком является кавычка
 			 */
@@ -1220,7 +1234,7 @@ bool awh::codec::csv::Reader::step(const char letter) noexcept {
 		 * @note Знак, следующий за отменою, особого значения не имеет: и разделитель, и
 		 *       знак конца строки ложатся в содержимое поля как есть
 		 */
-		case static_cast <uint8_t> (state_t::ESCAPE_UNQUOTED): {
+		case state_t::ESCAPE_UNQUOTED: {
 			// Дописываем знак к содержимому поля
 			this->_storage.push_back(letter);
 			// Запоминаем признак наличия полей у записи
@@ -1236,7 +1250,7 @@ bool awh::codec::csv::Reader::step(const char letter) noexcept {
 			// Выводим признак продолжения разбора
 			return true;
 		}
-		case static_cast <uint8_t> (state_t::ESCAPE): {
+		case state_t::ESCAPE: {
 			// Дописываем знак к содержимому поля
 			this->_storage.push_back(letter);
 			// Запоминаем признак изменения содержимого поля разбором
@@ -1257,7 +1271,7 @@ bool awh::codec::csv::Reader::step(const char letter) noexcept {
 		 *       кавычку в содержимом, разделитель либо знак конца строки - конец поля,
 		 *       а всё прочее договором не описано
 		 */
-		case static_cast <uint8_t> (state_t::QUOTE_IN_FIELD): {
+		case state_t::QUOTE_IN_FIELD: {
 			/**
 			 * Если знаком является кавычка и способ записи признаёт удвоение
 			 */
@@ -1404,7 +1418,7 @@ void awh::codec::csv::Reader::finish() noexcept {
 	/**
 	 * Определяем состояние разбора текста
 	 */
-	switch(static_cast <uint8_t> (this->_state)){
+	switch(this->_state){
 		/**
 		 * Если разбор находится в состоянии отказа
 		 *
@@ -1412,7 +1426,7 @@ void awh::codec::csv::Reader::finish() noexcept {
 		 *       отвергается прежде завершения. Снимать её нельзя: довершение отказавшего
 		 *       разбора выдало бы оборванную запись за целую
 		 */
-		case static_cast <uint8_t> (state_t::FAILED):
+		case state_t::FAILED:
 			// Выходим из метода, разбор уже прекращён
 			return;
 		/**
@@ -1422,9 +1436,9 @@ void awh::codec::csv::Reader::finish() noexcept {
 		 *       описано, но принять его значило бы принять и текст, оборванный посреди
 		 *       передачи, за целый
 		 */
-		case static_cast <uint8_t> (state_t::QUOTED):
+		case state_t::QUOTED:
 		// Если разбор находится в состоянии знака отмены
-		case static_cast <uint8_t> (state_t::ESCAPE):
+		case state_t::ESCAPE:
 			// Заносим ошибку незакрытого поля в кавычках
 			this->fail(error_t::UNTERMINATED_QUOTE);
 			// Выходим из метода
@@ -1434,7 +1448,7 @@ void awh::codec::csv::Reader::finish() noexcept {
 		 *
 		 * @note Запись здесь уже завершена самим возвратом каретки: довершать нечего
 		 */
-		case static_cast <uint8_t> (state_t::AFTER_CR):
+		case state_t::AFTER_CR:
 			// Переводим разбор в состояние начала записи
 			this->_state = state_t::RECORD_START;
 			// Выходим из метода
@@ -1442,7 +1456,7 @@ void awh::codec::csv::Reader::finish() noexcept {
 		/**
 		 * Если разбор находится в состоянии строки примечания
 		 */
-		case static_cast <uint8_t> (state_t::COMMENT): {
+		case state_t::COMMENT: {
 			/**
 			 * Если выдача событий примечаний включена
 			 */
@@ -1469,7 +1483,7 @@ void awh::codec::csv::Reader::finish() noexcept {
 		 * @note Текст, оканчивающийся знаком конца строки, довершать нечем: запись уже
 		 *       завершена, и добавлять пустую здесь значило бы выдумывать её
 		 */
-		case static_cast <uint8_t> (state_t::RECORD_START):
+		case state_t::RECORD_START:
 			/**
 			 * Если заголовок затребован настройками, а разобран не был
 			 *
@@ -1488,6 +1502,19 @@ void awh::codec::csv::Reader::finish() noexcept {
 				this->fail(error_t::NO_HEADER);
 			// Выходим из метода
 			return;
+		/**
+		 * Если разбор дошёл до членов перечня, обработки здесь не требующих
+		 *
+		 * @note Довершаются они общим порядком ниже: поле у них завершается своим содержимым, а не особым случаем
+		 *
+		 * @warning Перечислены они НАМЕРЕННО вместо `default`: ветвь `default` глушит
+		 *          `-Wswitch`, и член, в перечень дописанный, прошёл бы это место молча
+		 */
+		case state_t::FIELD_START:
+		case state_t::UNQUOTED:
+		case state_t::QUOTE_IN_FIELD:
+		case state_t::ESCAPE_UNQUOTED:
+		break;
 	}
 	/**
 	 * Если завершить последнее поле удалось
@@ -1846,11 +1873,11 @@ void awh::codec::csv::Reader::reset() noexcept {
  *
  * @param buffer буфер с куском текста
  * @param size   размер куска текста в байтах
- * @param last   признак того, что кусок является последним
+ * @param end    признак того, что кусок является последним
  * @return       признак успешного разбора поданного куска
  *
  */
-bool awh::codec::csv::Reader::feed(const char * buffer, const size_t size, const bool last) noexcept {
+bool awh::codec::csv::Reader::feed(const void * buffer, const size_t size, const bool end) noexcept {
 	/**
 	 * Если разбор уже прекращён отказом
 	 */
@@ -1875,7 +1902,7 @@ bool awh::codec::csv::Reader::feed(const char * buffer, const size_t size, const
 		// Выводим ошибку непригодного разделителя
 		return this->fail(error_t::SEPARATOR_CONFLICT);
 	// Запоминаем признак подачи текста целиком
-	this->_last = (this->_last || last);
+	this->_last = (this->_last || end);
 	/**
 	 * Если очередь собранных событий разбора пуста
 	 *
@@ -1908,7 +1935,7 @@ bool awh::codec::csv::Reader::feed(const char * buffer, const size_t size, const
 	/**
 	 * Если приведение куска текста к кодировке UTF-8 не удалось
 	 */
-	if(!this->_decoder.convert(buffer, size, last, this->_decoded)){
+	if(!this->_decoder.convert(buffer, size, end, this->_decoded)){
 		/**
 		 * Запоминаем код отказа приведения как есть
 		 *

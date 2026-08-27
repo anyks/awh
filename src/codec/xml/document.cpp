@@ -422,7 +422,7 @@ bool awh::codec::xml::Document::parse(const string_view text, const reader_t::se
 			 */
 			this->clear();
 			// Запоминаем код ошибки разбора
-			this->_error = error_t::OVERFLOW_LIMIT;
+			this->_error = error_t::STORAGE_EXHAUSTED;
 			// Запоминаем положение обнаруженной ошибки
 			this->_errorLocation = location;
 			/**
@@ -439,11 +439,11 @@ bool awh::codec::xml::Document::parse(const string_view text, const reader_t::se
 					this->_log->debug("XML document build failed at line %llu column %llu: %s", __PRETTY_FUNCTION__,
 					                  ::std::make_tuple(location.line, location.column), log_t::flag_t::CRITICAL,
 					                  static_cast <unsigned long long> (location.line),
-					                  static_cast <unsigned long long> (location.column), message(error_t::OVERFLOW_LIMIT));
+					                  static_cast <unsigned long long> (location.column), message(error_t::STORAGE_EXHAUSTED));
 				#else
 					this->_log->print("XML document build failed at line %llu column %llu: %s", log_t::flag_t::CRITICAL,
 					                  static_cast <unsigned long long> (location.line),
-					                  static_cast <unsigned long long> (location.column), message(error_t::OVERFLOW_LIMIT));
+					                  static_cast <unsigned long long> (location.column), message(error_t::STORAGE_EXHAUSTED));
 				#endif
 			}
 			// Выводим отрицательный результат выполнения операции
@@ -452,11 +452,11 @@ bool awh::codec::xml::Document::parse(const string_view text, const reader_t::se
 		/**
 		 * Определяем вид полученного события разбора
 		 */
-		switch(static_cast <uint8_t> (reader.event())){
+		switch(reader.event()){
 			/**
 			 * Если получено начало узла разметки
 			 */
-			case static_cast <uint8_t> (event_t::ELEMENT_OPEN): {
+			case event_t::ELEMENT_OPEN: {
 				// Выполняем добавление узла разметки к дереву
 				const node_id_t id = append(parent, kind_t::ELEMENT);
 				// Если добавить узел не удалось, разбор прекращается пределом
@@ -531,7 +531,7 @@ bool awh::codec::xml::Document::parse(const string_view text, const reader_t::se
 			/**
 			 * Если получен конец узла разметки
 			 */
-			case static_cast <uint8_t> (event_t::ELEMENT_CLOSE): {
+			case event_t::ELEMENT_CLOSE: {
 				/**
 				 * Если родительский узел указан
 				 */
@@ -542,28 +542,43 @@ bool awh::codec::xml::Document::parse(const string_view text, const reader_t::se
 			/**
 			 * Если получено содержимое узла
 			 */
-			case static_cast <uint8_t> (event_t::TEXT):
-			case static_cast <uint8_t> (event_t::SPACE):
-			case static_cast <uint8_t> (event_t::CDATA):
-			case static_cast <uint8_t> (event_t::COMMENT):
-			case static_cast <uint8_t> (event_t::DOCTYPE):
-			case static_cast <uint8_t> (event_t::PROCESSING): {
+			case event_t::TEXT:
+			case event_t::SPACE:
+			case event_t::CDATA:
+			case event_t::COMMENT:
+			case event_t::DOCTYPE:
+			case event_t::PROCESSING: {
 				// Вид добавляемого узла дерева
 				kind_t kind = kind_t::TEXT;
 				/**
 				 * Определяем вид полученного события разбора
 				 */
-				switch(static_cast <uint8_t> (reader.event())){
+				switch(reader.event()){
 					// Если получен раздел дословного текста
-					case static_cast <uint8_t> (event_t::CDATA): kind = kind_t::CDATA; break;
+					case event_t::CDATA: kind = kind_t::CDATA; break;
 					// Если получено незначимое пробельное содержимое
-					case static_cast <uint8_t> (event_t::SPACE): kind = kind_t::SPACE; break;
+					case event_t::SPACE: kind = kind_t::SPACE; break;
 					// Если получено примечание
-					case static_cast <uint8_t> (event_t::COMMENT): kind = kind_t::COMMENT; break;
+					case event_t::COMMENT: kind = kind_t::COMMENT; break;
 					// Если получено описание типа документа
-					case static_cast <uint8_t> (event_t::DOCTYPE): kind = kind_t::DOCTYPE; break;
+					case event_t::DOCTYPE: kind = kind_t::DOCTYPE; break;
 					// Если получено указание обработчику
-					case static_cast <uint8_t> (event_t::PROCESSING): kind = kind_t::PROCESSING; break;
+					case event_t::PROCESSING: kind = kind_t::PROCESSING; break;
+					/**
+					 * Если разбор дошёл до членов перечня, обработки здесь не требующих
+					 *
+					 * @note Строения дерева они здесь не меняют: объявление снимается настройками, границы узлов и текст разобраны выше своим случаем, а конец текста и неопределённое событие содержимого не несут
+					 *
+					 * @warning Перечислены они НАМЕРЕННО вместо `default`: ветвь `default` глушит
+					 *          `-Wswitch`, и член, в перечень дописанный, прошёл бы это место молча
+					 */
+					case event_t::NONE:
+					case event_t::DECLARATION:
+					case event_t::ELEMENT_OPEN:
+					case event_t::ELEMENT_CLOSE:
+					case event_t::TEXT:
+					case event_t::FINISH:
+					break;
 				}
 				// Выполняем добавление узла к дереву
 				const node_id_t id = append(parent, kind);
@@ -580,6 +595,18 @@ bool awh::codec::xml::Document::parse(const string_view text, const reader_t::se
 					// Запоминаем цель указания обработчику
 					this->_nodes[id].name = title(reader.name());
 			} break;
+			/**
+			 * Если разбор дошёл до видов, обработки здесь не требующих
+			 *
+			 * @note Дерева они не пополняют: объявление снимается настройками, а прочие событиями строения не являются
+			 *
+			 * @warning Перечислены они НАМЕРЕННО вместо `default`: приведение к `default`
+			 *          глушит `-Wswitch`, и новый член перечня пройдёт молча
+			 */
+			case event_t::NONE:
+			case event_t::DECLARATION:
+			case event_t::FINISH:
+			break;
 		}
 	}
 	/**
@@ -590,7 +617,7 @@ bool awh::codec::xml::Document::parse(const string_view text, const reader_t::se
 	 */
 	if(overflow || (reader.state() != state_t::FINISHED)){
 		// Запоминаем код ошибки разбора
-		const error_t error = (overflow ? error_t::OVERFLOW_LIMIT : reader.error());
+		const error_t error = (overflow ? error_t::STORAGE_EXHAUSTED : reader.error());
 		// Запоминаем положение обнаруженной ошибки
 		const location_t location = (overflow ? reader.location() : reader.errorLocation());
 		/**

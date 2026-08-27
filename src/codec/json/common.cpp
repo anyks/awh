@@ -51,112 +51,126 @@ using namespace std;
 const char * awh::codec::json::message(const error_t error) noexcept {
 	/**
 	 * Определяем код отказа разбора
+	 *
+	 * @note Сличение ведётся по САМОМУ перечню, а не по приведённому к байту значению,
+	 *       и ветви `default` здесь нет нарочно: так собиратель сам сообщает о коде,
+	 *       описания не получившем, - предупреждением `-Wswitch` с именем этого кода.
+	 *       Приведение к байту, стоявшее здесь прежде, защиту эту снимало вовсе, и коды,
+	 *       дописанные в перечень, оставались без описания молча. Проверено щупом:
+	 *       дописанный код вызывает предупреждение по имени
+	 *
+	 * @warning Возвращать приведение нельзя: сторожем тут выступает собиратель, а не
+	 *          проверка. Проверка описаний перечень перебрать не может - о том, что код
+	 *          объявлен, ей узнать неоткуда
 	 */
-	switch(static_cast <uint8_t> (error)){
+	/**
+	 * Определяем код отказа разбора
+	 */
+	switch(error){
 		// Если ошибок не обнаружено
-		case static_cast <uint8_t> (error_t::NONE):
+		case error_t::NONE:
 			return "no error";
 		// Если произошла внутренняя ошибка разбора
-		case static_cast <uint8_t> (error_t::INTERNAL):
+		case error_t::INTERNAL:
 			return "internal parser error";
 		// Если текст оборвался посреди значения
-		case static_cast <uint8_t> (error_t::UNEXPECTED_EOF):
+		case error_t::UNEXPECTED_EOF:
 			return "unexpected end of text";
 		// Если знак недопустим в этом месте текста
-		case static_cast <uint8_t> (error_t::INVALID_CHARACTER):
+		case error_t::INVALID_CHARACTER:
 			return "invalid character";
 		// Если последовательность байтов не отвечает объявленной кодировке
-		case static_cast <uint8_t> (error_t::INVALID_ENCODING):
+		case error_t::INVALID_ENCODING:
 			return "invalid byte sequence for the declared encoding";
 		// Если объявленная кодировка не поддерживается
-		case static_cast <uint8_t> (error_t::UNSUPPORTED_ENCODING):
+		case error_t::UNSUPPORTED_ENCODING:
 			return "unsupported encoding";
 		// Если строка не закрыта до конца текста
-		case static_cast <uint8_t> (error_t::UNTERMINATED_STRING):
+		case error_t::UNTERMINATED_STRING:
 			return "unterminated string";
 		// Если отменяющая последовательность не опознана
-		case static_cast <uint8_t> (error_t::INVALID_ESCAPE):
+		case error_t::INVALID_ESCAPE:
 			return "invalid escape sequence";
 		// Если запись \uXXXX содержит недопустимые знаки
-		case static_cast <uint8_t> (error_t::INVALID_UNICODE):
+		case error_t::INVALID_UNICODE:
 			return "invalid unicode escape";
 		// Если суррогат не образует пары
-		case static_cast <uint8_t> (error_t::UNPAIRED_SURROGATE):
+		case error_t::UNPAIRED_SURROGATE:
 			return "unpaired surrogate";
 		// Если управляющий знак стоит внутри строки без экранирования
-		case static_cast <uint8_t> (error_t::CONTROL_IN_STRING):
+		case error_t::CONTROL_IN_STRING:
 			return "unescaped control character in string";
 		// Если запись числа не отвечает стандарту
-		case static_cast <uint8_t> (error_t::INVALID_NUMBER):
+		case error_t::INVALID_NUMBER:
 			return "invalid number";
 		// Если число не представимо затребованным видом
-		case static_cast <uint8_t> (error_t::NUMBER_OUT_OF_RANGE):
+		case error_t::NUMBER_OUT_OF_RANGE:
 			return "number out of range";
 		// Если вместо true, false либо null стоит иное
-		case static_cast <uint8_t> (error_t::INVALID_LITERAL):
+		case error_t::INVALID_LITERAL:
 			return "invalid literal";
 		// Если за окончанием документа стоят знаки
-		case static_cast <uint8_t> (error_t::TRAILING_CHARACTERS):
+		case error_t::TRAILING_CHARACTERS:
 			return "trailing characters after document";
 		// Если ожидалось значение
-		case static_cast <uint8_t> (error_t::EXPECTED_VALUE):
+		case error_t::EXPECTED_VALUE:
 			return "value expected";
 		// Если ожидалось имя поля объекта
-		case static_cast <uint8_t> (error_t::EXPECTED_KEY):
+		case error_t::EXPECTED_KEY:
 			return "object key expected";
 		// Если ожидалось двоеточие после имени поля
-		case static_cast <uint8_t> (error_t::EXPECTED_COLON):
+		case error_t::EXPECTED_COLON:
 			return "colon expected";
 		// Если ожидалась запятая либо закрывающая скобка
-		case static_cast <uint8_t> (error_t::EXPECTED_COMMA):
+		case error_t::EXPECTED_COMMA:
 			return "comma or closing bracket expected";
 		// Если запятая стоит перед закрывающей скобкой при строгом разборе
-		case static_cast <uint8_t> (error_t::TRAILING_COMMA):
+		case error_t::TRAILING_COMMA:
 			return "trailing comma";
 		// Если имя поля объекта объявлено повторно
-		case static_cast <uint8_t> (error_t::DUPLICATE_KEY):
+		case error_t::DUPLICATE_KEY:
 			return "duplicate object key";
 		// Если глубина вложенности превышает допустимую
-		case static_cast <uint8_t> (error_t::DEPTH_EXCEEDED):
+		case error_t::DEPTH_EXCEEDED:
 			return "maximum nesting depth exceeded";
 		// Если длина строкового значения превышает допустимую
-		case static_cast <uint8_t> (error_t::STRING_TOO_LONG):
+		case error_t::STRING_TOO_LONG:
 			return "string is too long";
 		// Если длина записи числа превышает допустимую
-		case static_cast <uint8_t> (error_t::NUMBER_TOO_LONG):
+		case error_t::NUMBER_TOO_LONG:
 			return "number is too long";
 		// Если количество узлов документа превышает допустимое
-		case static_cast <uint8_t> (error_t::TOO_MANY_NODES):
+		case error_t::TOO_MANY_NODES:
 			return "too many nodes";
 		// Если примечание встречено при строгом разборе
-		case static_cast <uint8_t> (error_t::COMMENT_NOT_ALLOWED):
+		case error_t::COMMENT_NOT_ALLOWED:
 			return "comments are not allowed";
 		// Если примечание не закрыто до конца текста
-		case static_cast <uint8_t> (error_t::UNTERMINATED_COMMENT):
+		case error_t::UNTERMINATED_COMMENT:
 			return "unterminated comment";
 		// Если текст пуст, а документ затребован
-		case static_cast <uint8_t> (error_t::EMPTY_TEXT):
+		case error_t::EMPTY_TEXT:
 			return "empty text";
 		// Если превышен предел, заданный настройками разбора
-		case static_cast <uint8_t> (error_t::OVERFLOW_LIMIT):
+		case error_t::OVERFLOW_LIMIT:
 			return "parser limit exceeded";
 		// Если файл документа открыть не удалось
-		case static_cast <uint8_t> (error_t::FILE_NOT_OPENED):
+		case error_t::FILE_NOT_OPENED:
 			return "cannot open the document file";
 		// Если подача продолжена после объявленного конца текста
-		case static_cast <uint8_t> (error_t::TEXT_ALREADY_ENDED):
+		case error_t::TEXT_ALREADY_ENDED:
 			return "feeding continued after the text was declared complete";
 		// Если текст документа записать в файл не удалось
-		case static_cast <uint8_t> (error_t::FILE_NOT_WRITTEN):
+		case error_t::FILE_NOT_WRITTEN:
 			return "cannot write the document file";
 		// Если корень документа уже несёт значение
-		case static_cast <uint8_t> (error_t::MULTIPLE_ROOTS):
+		case error_t::MULTIPLE_ROOTS:
 			return "the document root already holds a value";
 		// Если ни одно вместилище не открыто
-		case static_cast <uint8_t> (error_t::NO_CONTAINER_OPEN):
+		case error_t::NO_CONTAINER_OPEN:
 			return "no container is open";
 		// Если имя поля записано вне объекта
-		case static_cast <uint8_t> (error_t::KEY_OUTSIDE_OBJECT):
+		case error_t::KEY_OUTSIDE_OBJECT:
 			return "a field name is allowed only inside an object and only once";
 	}
 	// Выводим описание неизвестного кода отказа
@@ -173,27 +187,27 @@ const char * awh::codec::json::name(const kind_t kind) noexcept {
 	/**
 	 * Определяем вид узла документа
 	 */
-	switch(static_cast <uint8_t> (kind)){
+	switch(kind){
 		// Если узел не определён
-		case static_cast <uint8_t> (kind_t::NONE):
+		case kind_t::NONE:
 			return "none";
 		// Если узел является пустым значением
-		case static_cast <uint8_t> (kind_t::NUL):
+		case kind_t::NUL:
 			return "null";
 		// Если узел является логическим значением
-		case static_cast <uint8_t> (kind_t::BOOL):
+		case kind_t::BOOL:
 			return "boolean";
 		// Если узел является числом
-		case static_cast <uint8_t> (kind_t::NUMBER):
+		case kind_t::NUMBER:
 			return "number";
 		// Если узел является строкой
-		case static_cast <uint8_t> (kind_t::STRING):
+		case kind_t::STRING:
 			return "string";
 		// Если узел является массивом
-		case static_cast <uint8_t> (kind_t::ARRAY):
+		case kind_t::ARRAY:
 			return "array";
 		// Если узел является объектом
-		case static_cast <uint8_t> (kind_t::OBJECT):
+		case kind_t::OBJECT:
 			return "object";
 	}
 	// Выводим название неизвестного вида узла
@@ -210,58 +224,77 @@ const char * awh::codec::json::name(const type_t type) noexcept {
 	/**
 	 * Определяем вид значения документа
 	 */
-	switch(static_cast <uint16_t> (type)){
+	switch(type){
 		// Если значения нет вовсе
-		case static_cast <uint16_t> (type_t::UNDEFINED):
+		case type_t::UNDEFINED:
 			return "undefined";
 		// Если значение является пустым
-		case static_cast <uint16_t> (type_t::NUL):
+		case type_t::NUL:
 			return "null";
 		// Если значение является логическим
-		case static_cast <uint16_t> (type_t::BOOL):
+		case type_t::BOOL:
 			return "boolean";
 		// Если значение является строкой
-		case static_cast <uint16_t> (type_t::STRING):
+		case type_t::STRING:
 			return "string";
 		// Если значение является массивом
-		case static_cast <uint16_t> (type_t::ARRAY):
+		case type_t::ARRAY:
 			return "array";
 		// Если значение является объектом
-		case static_cast <uint16_t> (type_t::OBJECT):
+		case type_t::OBJECT:
 			return "object";
 		// Если значение является целым со знаком шириною в один байт
-		case static_cast <uint16_t> (type_t::INT8):
+		case type_t::INT8:
 			return "int8";
 		// Если значение является целым со знаком шириною в два байта
-		case static_cast <uint16_t> (type_t::INT16):
+		case type_t::INT16:
 			return "int16";
 		// Если значение является целым со знаком шириною в четыре байта
-		case static_cast <uint16_t> (type_t::INT32):
+		case type_t::INT32:
 			return "int32";
 		// Если значение является целым со знаком шириною в восемь байтов
-		case static_cast <uint16_t> (type_t::INT64):
+		case type_t::INT64:
 			return "int64";
 		// Если значение является целым без знака шириною в один байт
-		case static_cast <uint16_t> (type_t::UINT8):
+		case type_t::UINT8:
 			return "uint8";
 		// Если значение является целым без знака шириною в два байта
-		case static_cast <uint16_t> (type_t::UINT16):
+		case type_t::UINT16:
 			return "uint16";
 		// Если значение является целым без знака шириною в четыре байта
-		case static_cast <uint16_t> (type_t::UINT32):
+		case type_t::UINT32:
 			return "uint32";
 		// Если значение является целым без знака шириною в восемь байтов
-		case static_cast <uint16_t> (type_t::UINT64):
+		case type_t::UINT64:
 			return "uint64";
 		// Если значение является дробным одинарной точности
-		case static_cast <uint16_t> (type_t::FLOAT):
+		case type_t::FLOAT:
 			return "float";
 		// Если значение является дробным двойной точности
-		case static_cast <uint16_t> (type_t::DOUBLE):
+		case type_t::DOUBLE:
 			return "double";
 		// Если значение является числом, не вместимым ни в один родной вид
-		case static_cast <uint16_t> (type_t::EXTENDED):
+		case type_t::EXTENDED:
 			return "extended";
+		/**
+		 * Если видом является составное имя, вид собою не называющее
+		 *
+		 * @note Перечень этот - набор РАЗРЯДОВ, и составные имена собирают по нескольку
+		 *       разрядов сразу. Видом хранения отдельного значения они не бывают никогда,
+		 *       а имени своего не имеют - выдаётся им название неизвестного вида, ровно
+		 *       как было и до перечисления
+		 *
+		 * @warning Перечислены они НАМЕРЕННО вместо `default`: ветвь `default` глушит
+		 *          `-Wswitch`, и вид, в перечень дописанный, ушёл бы БЕЗ названия молча.
+		 *          Приведение вида к числу глушит сторожа тем же порядком - возвращать
+		 *          его нельзя
+		 */
+		case type_t::SIGNED:
+		case type_t::UNSIGNED:
+		case type_t::INT:
+		case type_t::REAL:
+		case type_t::NUMBER:
+		break;
 	}
 	// Выводим название неизвестного вида значения
 	return "unknown";

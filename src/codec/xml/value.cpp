@@ -496,11 +496,11 @@ void awh::codec::xml::Value::gather(string & result) const noexcept {
 		/**
 		 * Определяем вид вложенного узла
 		 */
-		switch(static_cast <uint8_t> (item._kind)){
+		switch(item._kind){
 			// Если узел является текстовым содержимым либо дословным разделом
-			case static_cast <uint8_t> (kind_t::TEXT):
-			case static_cast <uint8_t> (kind_t::CDATA):
-			case static_cast <uint8_t> (kind_t::SPACE):
+			case kind_t::TEXT:
+			case kind_t::CDATA:
+			case kind_t::SPACE:
 				// Добавляем содержимое узла к собираемому содержимому
 				result.append(item._text);
 			break;
@@ -510,9 +510,23 @@ void awh::codec::xml::Value::gather(string & result) const noexcept {
 			 * @note Содержимое вложенной разметки собирается наравне со своим: ровно так
 			 *       его собирает и узел дерева
 			 */
-			case static_cast <uint8_t> (kind_t::ELEMENT):
+			case kind_t::ELEMENT:
 				// Выполняем сбор содержимого вложенного узла разметки
 				item.gather(result);
+			break;
+			/**
+			 * Если разбор дошёл до членов перечня, обработки здесь не требующих
+			 *
+			 * @note Вложенных узлов они не имеют, и обходить у них нечего
+			 *
+			 * @warning Перечислены они НАМЕРЕННО вместо `default`: ветвь `default` глушит
+			 *          `-Wswitch`, и член, в перечень дописанный, прошёл бы это место молча
+			 */
+			case kind_t::NONE:
+			case kind_t::DOCUMENT:
+			case kind_t::COMMENT:
+			case kind_t::PROCESSING:
+			case kind_t::DOCTYPE:
 			break;
 		}
 	}
@@ -527,16 +541,28 @@ string awh::codec::xml::Value::text() const noexcept {
 	/**
 	 * Определяем вид хранимого узла
 	 */
-	switch(static_cast <uint8_t> (this->_kind)){
+	switch(this->_kind){
 		// Если узел владеет содержимым своим
-		case static_cast <uint8_t> (kind_t::TEXT):
-		case static_cast <uint8_t> (kind_t::CDATA):
-		case static_cast <uint8_t> (kind_t::SPACE):
-		case static_cast <uint8_t> (kind_t::COMMENT):
-		case static_cast <uint8_t> (kind_t::PROCESSING):
-		case static_cast <uint8_t> (kind_t::DOCTYPE):
+		case kind_t::TEXT:
+		case kind_t::CDATA:
+		case kind_t::SPACE:
+		case kind_t::COMMENT:
+		case kind_t::PROCESSING:
+		case kind_t::DOCTYPE:
 			// Выводим собственное содержимое узла
 			return this->_text;
+		/**
+		 * Если разбор дошёл до видов, обработки здесь не требующих
+		 *
+		 * @note Собственного содержимого у них нет: у корня и у разметки оно лежит во вложенных узлах, а узел неопределённый его не имеет
+		 *
+		 * @warning Перечислены они НАМЕРЕННО вместо `default`: приведение к `default`
+		 *          глушит `-Wswitch`, и новый член перечня пройдёт молча
+		 */
+		case kind_t::NONE:
+		case kind_t::DOCUMENT:
+		case kind_t::ELEMENT:
+		break;
 	}
 	// Собираемое содержимое вложенных текстовых узлов
 	string result;
@@ -556,14 +582,14 @@ bool awh::codec::xml::Value::text(const string & text) noexcept {
 	/**
 	 * Определяем вид хранимого узла
 	 */
-	switch(static_cast <uint8_t> (this->_kind)){
+	switch(this->_kind){
 		/**
 		 * Если узел ещё не определён
 		 *
 		 * @note Значение неопределённое перерождается узлом текстовым: содержимое без
 		 *       имени есть текст, и иного вида, годного ему, у разметки нет
 		 */
-		case static_cast <uint8_t> (kind_t::NONE):
+		case kind_t::NONE:
 			// Устанавливаем вид узла текстовым содержимым
 			this->_kind = kind_t::TEXT;
 		/**
@@ -574,12 +600,12 @@ bool awh::codec::xml::Value::text(const string & text) noexcept {
 		 */
 		[[fallthrough]];
 		// Если узел владеет содержимым своим
-		case static_cast <uint8_t> (kind_t::TEXT):
-		case static_cast <uint8_t> (kind_t::CDATA):
-		case static_cast <uint8_t> (kind_t::SPACE):
-		case static_cast <uint8_t> (kind_t::COMMENT):
-		case static_cast <uint8_t> (kind_t::PROCESSING):
-		case static_cast <uint8_t> (kind_t::DOCTYPE):
+		case kind_t::TEXT:
+		case kind_t::CDATA:
+		case kind_t::SPACE:
+		case kind_t::COMMENT:
+		case kind_t::PROCESSING:
+		case kind_t::DOCTYPE:
 			// Устанавливаем собственное содержимое узла
 			this->_text = text;
 			// Выводим признак успешной установки
@@ -590,7 +616,7 @@ bool awh::codec::xml::Value::text(const string & text) noexcept {
 		 * @note Собственного содержимого у разметки нет вовсе: установка заменяет все
 		 *       вложенные узлы одним узлом текстовым
 		 */
-		case static_cast <uint8_t> (kind_t::ELEMENT): {
+		case kind_t::ELEMENT: {
 			// Выполняем очистку вложенных узлов
 			this->_items.clear();
 			/**
@@ -613,6 +639,16 @@ bool awh::codec::xml::Value::text(const string & text) noexcept {
 			// Выводим признак успешной установки
 			return true;
 		}
+		/**
+		 * Если разбор дошёл до видов, обработки здесь не требующих
+		 *
+		 * @note Собственного содержимого у корня дерева нет: содержимое ложится во вложенные узлы
+		 *
+		 * @warning Перечислены они НАМЕРЕННО вместо `default`: приведение к `default`
+		 *          глушит `-Wswitch`, и новый член перечня пройдёт молча
+		 */
+		case kind_t::DOCUMENT:
+		break;
 	}
 	// Выводим признак неудачной установки
 	return false;
@@ -2135,11 +2171,11 @@ bool awh::codec::xml::Value::compose(writer_t & writer, const bool preserve) con
 	/**
 	 * Определяем вид хранимого узла
 	 */
-	switch(static_cast <uint8_t> (this->_kind)){
+	switch(this->_kind){
 		/**
 		 * Если узел является корнем дерева
 		 */
-		case static_cast <uint8_t> (kind_t::DOCUMENT): {
+		case kind_t::DOCUMENT: {
 			/**
 			 * Выполняем перебор всех вложенных узлов
 			 */
@@ -2157,7 +2193,7 @@ bool awh::codec::xml::Value::compose(writer_t & writer, const bool preserve) con
 		/**
 		 * Если узел является узлом разметки
 		 */
-		case static_cast <uint8_t> (kind_t::ELEMENT): {
+		case kind_t::ELEMENT: {
 			/**
 			 * Собираемые связывания префиксов, объявляемые самим узлом
 			 *
@@ -2205,9 +2241,9 @@ bool awh::codec::xml::Value::compose(writer_t & writer, const bool preserve) con
 				/**
 				 * Определяем вид вложенного содержимого
 				 */
-				switch(static_cast <uint8_t> (item.kind())){
+				switch(item.kind()){
 					// Если вложенным содержимым является текст
-					case static_cast <uint8_t> (kind_t::TEXT): {
+					case kind_t::TEXT: {
 						// Получаем содержимое текстового узла
 						const string content = item.text();
 						/**
@@ -2232,16 +2268,29 @@ bool awh::codec::xml::Value::compose(writer_t & writer, const bool preserve) con
 					 *       содержимое: он ставится там, где знаки берутся дословно, и отступ
 					 *       подле него содержимое меняет. Древесный путь записи судит так же
 					 */
-					case static_cast <uint8_t> (kind_t::CDATA):
+					case kind_t::CDATA:
 						// Запоминаем, что узел несёт непробельное содержимое
 						wordy = true;
 					break;
 					// Если вложенным содержимым является узел разметки, примечание либо указание
-					case static_cast <uint8_t> (kind_t::ELEMENT):
-					case static_cast <uint8_t> (kind_t::COMMENT):
-					case static_cast <uint8_t> (kind_t::PROCESSING):
+					case kind_t::ELEMENT:
+					case kind_t::COMMENT:
+					case kind_t::PROCESSING:
 						// Запоминаем, что узел несёт вложенные узлы
 						nested = true;
+					break;
+					/**
+					 * Если разбор дошёл до членов перечня, обработки здесь не требующих
+					 *
+					 * @note Имени они не имеют: корень безымянен, описание типа документа и пробельное содержимое именуются своим порядком, а узел неопределённый имени не имеет
+					 *
+					 * @warning Перечислены они НАМЕРЕННО вместо `default`: ветвь `default` глушит
+					 *          `-Wswitch`, и член, в перечень дописанный, прошёл бы это место молча
+					 */
+					case kind_t::NONE:
+					case kind_t::DOCUMENT:
+					case kind_t::DOCTYPE:
+					case kind_t::SPACE:
 					break;
 				}
 			}
@@ -2352,20 +2401,20 @@ bool awh::codec::xml::Value::compose(writer_t & writer, const bool preserve) con
 			return writer.close();
 		}
 		// Если узел является текстовым содержимым либо пробельным
-		case static_cast <uint8_t> (kind_t::TEXT):
-		case static_cast <uint8_t> (kind_t::SPACE):
+		case kind_t::TEXT:
+		case kind_t::SPACE:
 			// Выводим признак успешности записи текстового содержимого
 			return writer.text(this->_text);
 		// Если узел является дословным разделом
-		case static_cast <uint8_t> (kind_t::CDATA):
+		case kind_t::CDATA:
 			// Выводим признак успешности записи дословного раздела
 			return writer.cdata(this->_text);
 		// Если узел является примечанием
-		case static_cast <uint8_t> (kind_t::COMMENT):
+		case kind_t::COMMENT:
 			// Выводим признак успешности записи примечания
 			return writer.comment(this->_text);
 		// Если узел является указанием обработчику
-		case static_cast <uint8_t> (kind_t::PROCESSING):
+		case kind_t::PROCESSING:
 			// Выводим признак успешности записи указания обработчику
 			return writer.processing(this->_local, this->_text);
 		/**
@@ -2375,9 +2424,19 @@ bool awh::codec::xml::Value::compose(writer_t & writer, const bool preserve) con
 		 *       принадлежит тексту исходному, а собранный нами текст своего описания не
 		 *       требует. Узел такой пропускается молча
 		 */
-		case static_cast <uint8_t> (kind_t::DOCTYPE):
+		case kind_t::DOCTYPE:
 			// Выводим признак успешности записи
 			return true;
+		/**
+		 * Если разбор дошёл до видов, обработки здесь не требующих
+		 *
+		 * @note Записи у узла неопределённого нет никакой
+		 *
+		 * @warning Перечислены они НАМЕРЕННО вместо `default`: приведение к `default`
+		 *          глушит `-Wswitch`, и новый член перечня пройдёт молча
+		 */
+		case kind_t::NONE:
+		break;
 	}
 	// Выводим признак неуспешности записи узла неопознанного вида
 	return false;
@@ -2437,21 +2496,21 @@ bool awh::codec::xml::Value::absorb(const node_t & node, const uint32_t depth) n
 	/**
 	 * Определяем вид хранимого узла
 	 */
-	switch(static_cast <uint8_t> (this->_kind)){
+	switch(this->_kind){
 		// Если узел владеет содержимым своим
-		case static_cast <uint8_t> (kind_t::TEXT):
-		case static_cast <uint8_t> (kind_t::CDATA):
-		case static_cast <uint8_t> (kind_t::SPACE):
-		case static_cast <uint8_t> (kind_t::COMMENT):
-		case static_cast <uint8_t> (kind_t::PROCESSING):
-		case static_cast <uint8_t> (kind_t::DOCTYPE):
+		case kind_t::TEXT:
+		case kind_t::CDATA:
+		case kind_t::SPACE:
+		case kind_t::COMMENT:
+		case kind_t::PROCESSING:
+		case kind_t::DOCTYPE:
 			// Выполняем снятие собственного содержимого узла
 			this->_text = node.text();
 		break;
 		/**
 		 * Если узел является узлом разметки
 		 */
-		case static_cast <uint8_t> (kind_t::ELEMENT): {
+		case kind_t::ELEMENT: {
 			// Получаем свойства узла дерева разметки
 			const vector <attribute_t> attributes = node.attributes();
 			// Выполняем выделение памяти под свойства узла
@@ -2493,6 +2552,17 @@ bool awh::codec::xml::Value::absorb(const node_t & node, const uint32_t depth) n
 				this->_bindings.back().uri.assign(item.uri.data(), item.uri.size());
 			}
 		} break;
+		/**
+		 * Если разбор дошёл до видов, обработки здесь не требующих
+		 *
+		 * @note Имени у них нет: корень дерева безымянен, а узел неопределённый имени не имеет
+		 *
+		 * @warning Перечислены они НАМЕРЕННО вместо `default`: приведение к `default`
+		 *          глушит `-Wswitch`, и новый член перечня пройдёт молча
+		 */
+		case kind_t::NONE:
+		case kind_t::DOCUMENT:
+		break;
 	}
 	// Количество вложенных узлов дерева разметки
 	size_t count = 0;
@@ -2571,15 +2641,20 @@ bool awh::codec::xml::Value::parse(const string & text, const reader_t::settings
 	 *       срыв стека на снятии дерева около 20 000 уровней, потому предел этот
 	 *       владеющему значению обязателен, каким бы его ни задали разбору
 	 *
-	 * @note Ноль огранению не подлежит: разбору он значит отказ всякому узлу, и
-	 *       дерева глубже нуля из него не выйдет вовсе
+	 * @note Ноль огранению подлежит НАРАВНЕ с числом завышенным: ноль значит
+	 *       отсутствие предела, и дерево из него выходит какой угодно глубины.
+	 *       Прежде довод здесь стоял обратный - будто ноль разбору значит отказ
+	 *       всякому узлу, - и был он верен до того, как ноль обрёл нынешний смысл.
+	 *       Довод пережил правку, а огранение нуля не покрывало: разбор при нуле
+	 *       проходил, а отказывало снятие дерева своим заслоном - и отказ этот
+	 *       место в тексте назвать уже не мог
 	 *
 	 * @note Огранение идёт молча и до разбора: подними мы отказ по настройке,
 	 *       и разбор текста, дереву доступного, отказывал бы значению по причине,
 	 *       к самому тексту отношения не имеющей. Предел же выдаёт отказ
 	 *       `DEPTH_EXCEEDED` ровно там, где текст его и превысил
 	 */
-	if(bounded.maxDepth > MAX_DEPTH)
+	if((bounded.maxDepth == 0) || (bounded.maxDepth > MAX_DEPTH))
 		// Выполняем огранение предела вложенности
 		bounded.maxDepth = MAX_DEPTH;
 	/**

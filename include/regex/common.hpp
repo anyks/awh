@@ -1697,7 +1697,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			Node() noexcept :
+			constexpr Node() noexcept :
 			 type(node_t::EMPTY), flags(0), child(INVALID_NODE),
 			 next(INVALID_NODE), offset(0), literal{0} {}
 		} node_data_t;

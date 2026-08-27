@@ -580,9 +580,9 @@ const awh::codec::json::Value & awh::codec::json::Value::at(const string & path)
 		/**
 		 * Определяем вид значения, к какому обращается очередное звено пути
 		 */
-		switch(static_cast <uint8_t> (result->_kind)){
+		switch(result->_kind){
 			// Если звено пути обращается к значению массива
-			case static_cast <uint8_t> (kind_t::ARRAY): {
+			case kind_t::ARRAY: {
 				// Номер значения массива, разыскиваемый звеном пути
 				size_t index = 0;
 				/**
@@ -596,7 +596,7 @@ const awh::codec::json::Value & awh::codec::json::Value::at(const string & path)
 				result = &result->_items.at(index);
 			} break;
 			// Если звено пути обращается к полю объекта
-			case static_cast <uint8_t> (kind_t::OBJECT): {
+			case kind_t::OBJECT: {
 				// Выполняем розыск номера поля объекта по имени
 				const size_t index = result->lookup(token);
 				/**
@@ -1088,34 +1088,34 @@ bool awh::codec::json::Value::extract(T & result) const noexcept {
 	/**
 	 * Определяем вид хранения значения
 	 */
-	switch(static_cast <uint16_t> (this->_type)){
+	switch(this->_type){
 		// Если значение является целым со знаком любой ширины
-		case static_cast <uint16_t> (type_t::INT8):
-		case static_cast <uint16_t> (type_t::INT16):
-		case static_cast <uint16_t> (type_t::INT32):
-		case static_cast <uint16_t> (type_t::INT64):
+		case type_t::INT8:
+		case type_t::INT16:
+		case type_t::INT32:
+		case type_t::INT64:
 			// Устанавливаем извлечённое значение приведением языка
 			result = static_cast <T> (this->_number.integer);
 		break;
 		// Если значение является целым без знака любой ширины
-		case static_cast <uint16_t> (type_t::UINT8):
-		case static_cast <uint16_t> (type_t::UINT16):
-		case static_cast <uint16_t> (type_t::UINT32):
-		case static_cast <uint16_t> (type_t::UINT64):
+		case type_t::UINT8:
+		case type_t::UINT16:
+		case type_t::UINT32:
+		case type_t::UINT64:
 			// Устанавливаем извлечённое значение приведением языка
 			result = static_cast <T> (this->_number.natural);
 		break;
 		// Если значение является дробным одинарной точности
-		case static_cast <uint16_t> (type_t::FLOAT):
+		case type_t::FLOAT:
 		// Если значение является дробным двойной точности
-		case static_cast <uint16_t> (type_t::DOUBLE):
+		case type_t::DOUBLE:
 			// Устанавливаем извлечённое значение приведением дробного
 			result = ::convert <T> (this->_number.real);
 		break;
 		/**
 		 * Если значение является числом, не вместимым ни в один родной вид
 		 */
-		case static_cast <uint16_t> (type_t::EXTENDED): {
+		case type_t::EXTENDED: {
 			// Разбираемое дробное число
 			double number = 0.;
 			/**
@@ -1131,7 +1131,27 @@ bool awh::codec::json::Value::extract(T & result) const noexcept {
 		/**
 		 * Если значение числом не является вовсе
 		 */
-		default:
+		/**
+		 * Если видом хранения число не является вовсе
+		 *
+		 * @note Перечислены виды НАМЕРЕННО вместо `default`: ветвь `default` глушит
+		 *       `-Wswitch`, и числовой вид, в перечень дописанный, отдавал бы отказ
+		 *       извлечения молча, вместо разбора своим случаем
+		 *
+		 * @note Составные имена перечня собирают по нескольку разрядов сразу и видом
+		 *       хранения отдельного значения не бывают никогда
+		 */
+		case type_t::UNDEFINED:
+		case type_t::NUL:
+		case type_t::BOOL:
+		case type_t::STRING:
+		case type_t::ARRAY:
+		case type_t::OBJECT:
+		case type_t::SIGNED:
+		case type_t::UNSIGNED:
+		case type_t::INT:
+		case type_t::REAL:
+		case type_t::NUMBER:
 			// Выводим признак неудачного извлечения
 			return false;
 	}
@@ -1278,42 +1298,42 @@ bool awh::codec::json::Value::compose(writer_t & writer) const noexcept {
 	/**
 	 * Определяем вид хранимого значения
 	 */
-	switch(static_cast <uint8_t> (this->_kind)){
+	switch(this->_kind){
 		/**
 		 * Если значение ещё не определено
 		 *
 		 * @note Значения неопределённого стандарт не знает вовсе, и записывается оно
 		 *       пустым значением: иного вида, годного ему, в стандарте нет
 		 */
-		case static_cast <uint8_t> (kind_t::NONE):
+		case kind_t::NONE:
 		// Если значение является пустым
-		case static_cast <uint8_t> (kind_t::NUL):
+		case kind_t::NUL:
 			// Выводим признак успешности записи пустого значения
 			return writer.null();
 		// Если значение является логическим
-		case static_cast <uint8_t> (kind_t::BOOL):
+		case kind_t::BOOL:
 			// Выводим признак успешности записи логического значения
 			return writer.value(this->_number.flag);
 		/**
 		 * Если значение является числом
 		 */
-		case static_cast <uint8_t> (kind_t::NUMBER): {
+		case kind_t::NUMBER: {
 			/**
 			 * Определяем вид хранения числа
 			 */
-			switch(static_cast <uint16_t> (this->_type)){
+			switch(this->_type){
 				// Если число является целым со знаком любой ширины
-				case static_cast <uint16_t> (type_t::INT8):
-				case static_cast <uint16_t> (type_t::INT16):
-				case static_cast <uint16_t> (type_t::INT32):
-				case static_cast <uint16_t> (type_t::INT64):
+				case type_t::INT8:
+				case type_t::INT16:
+				case type_t::INT32:
+				case type_t::INT64:
 					// Выводим признак успешности записи целого числа со знаком
 					return writer.value(this->_number.integer);
 				// Если число является целым без знака любой ширины
-				case static_cast <uint16_t> (type_t::UINT8):
-				case static_cast <uint16_t> (type_t::UINT16):
-				case static_cast <uint16_t> (type_t::UINT32):
-				case static_cast <uint16_t> (type_t::UINT64):
+				case type_t::UINT8:
+				case type_t::UINT16:
+				case type_t::UINT32:
+				case type_t::UINT64:
 					// Выводим признак успешности записи целого числа без знака
 					return writer.value(this->_number.natural);
 				/**
@@ -1323,14 +1343,37 @@ bool awh::codec::json::Value::compose(writer_t & writer) const noexcept {
 				 *       вид его - лишь памятью о записи, какою оно пришло: сужение до
 				 *       `float` и обратно точного значения не меняет вовсе
 				 */
-				case static_cast <uint16_t> (type_t::FLOAT):
-				case static_cast <uint16_t> (type_t::DOUBLE):
+				case type_t::FLOAT:
+				case type_t::DOUBLE:
 					// Выводим признак успешности записи дробного числа
 					return writer.value(this->_number.real);
 				// Если число в родной вид не вместилось
-				case static_cast <uint16_t> (type_t::EXTENDED):
+				case type_t::EXTENDED:
 					// Выводим признак успешности записи числа его записью
 					return writer.raw(this->_text);
+			/**
+			 * Если видом хранения число не является
+			 *
+			 * @note Перебор этот ведётся внутри числового вида узла, и виды нечисловые
+			 *       места его не достигают. Составные же имена перечня собирают по нескольку
+			 *       разрядов сразу и видом хранения отдельного значения не бывают никогда
+			 *
+			 * @warning Перечислены они НАМЕРЕННО вместо `default`: ветвь `default` глушит
+			 *          `-Wswitch`, и числовой вид, в перечень дописанный, прошёл бы это
+			 *          место молча. Приведение вида к числу глушит сторожа тем же порядком
+			 */
+			case type_t::UNDEFINED:
+			case type_t::NUL:
+			case type_t::BOOL:
+			case type_t::STRING:
+			case type_t::ARRAY:
+			case type_t::OBJECT:
+			case type_t::SIGNED:
+			case type_t::UNSIGNED:
+			case type_t::INT:
+			case type_t::REAL:
+			case type_t::NUMBER:
+			break;
 			}
 			/**
 			 * Выводим признак неуспешности записи числа неопознанного вида хранения
@@ -1344,13 +1387,13 @@ bool awh::codec::json::Value::compose(writer_t & writer) const noexcept {
 			return false;
 		}
 		// Если значение является строкой
-		case static_cast <uint8_t> (kind_t::STRING):
+		case kind_t::STRING:
 			// Выводим признак успешности записи строкового значения
 			return writer.value(this->_text);
 		/**
 		 * Если значение является массивом
 		 */
-		case static_cast <uint8_t> (kind_t::ARRAY): {
+		case kind_t::ARRAY: {
 			/**
 			 * Если открытие массива завершилось отказом
 			 */
@@ -1383,7 +1426,7 @@ bool awh::codec::json::Value::compose(writer_t & writer) const noexcept {
 		/**
 		 * Если значение является объектом
 		 */
-		case static_cast <uint8_t> (kind_t::OBJECT): {
+		case kind_t::OBJECT: {
 			/**
 			 * Если открытие объекта завершилось отказом
 			 */
@@ -1452,39 +1495,39 @@ void awh::codec::json::Value::absorb(const Document::value_t & value) noexcept {
 	/**
 	 * Определяем вид хранимого значения
 	 */
-	switch(static_cast <uint8_t> (this->_kind)){
+	switch(this->_kind){
 		// Если значение является логическим
-		case static_cast <uint8_t> (kind_t::BOOL):
+		case kind_t::BOOL:
 			// Выполняем извлечение логического значения
 			value.value(this->_number.flag);
 		break;
 		/**
 		 * Если значение является числом
 		 */
-		case static_cast <uint8_t> (kind_t::NUMBER): {
+		case kind_t::NUMBER: {
 			/**
 			 * Определяем вид хранения числа
 			 */
-			switch(static_cast <uint16_t> (this->_type)){
+			switch(this->_type){
 				// Если число является целым со знаком любой ширины
-				case static_cast <uint16_t> (type_t::INT8):
-				case static_cast <uint16_t> (type_t::INT16):
-				case static_cast <uint16_t> (type_t::INT32):
-				case static_cast <uint16_t> (type_t::INT64):
+				case type_t::INT8:
+				case type_t::INT16:
+				case type_t::INT32:
+				case type_t::INT64:
 					// Выполняем извлечение целого числа со знаком
 					value.value(this->_number.integer);
 				break;
 				// Если число является целым без знака любой ширины
-				case static_cast <uint16_t> (type_t::UINT8):
-				case static_cast <uint16_t> (type_t::UINT16):
-				case static_cast <uint16_t> (type_t::UINT32):
-				case static_cast <uint16_t> (type_t::UINT64):
+				case type_t::UINT8:
+				case type_t::UINT16:
+				case type_t::UINT32:
+				case type_t::UINT64:
 					// Выполняем извлечение целого числа без знака
 					value.value(this->_number.natural);
 				break;
 				// Если число является дробным любой точности
-				case static_cast <uint16_t> (type_t::FLOAT):
-				case static_cast <uint16_t> (type_t::DOUBLE):
+				case type_t::FLOAT:
+				case type_t::DOUBLE:
 					// Выполняем извлечение дробного числа
 					value.value(this->_number.real);
 				break;
@@ -1494,14 +1537,37 @@ void awh::codec::json::Value::absorb(const Document::value_t & value) noexcept {
 				 * @note Число такое снимается записью своей: разобрать его не во что,
 				 *       а записать обратно обязано ровно тем, чем оно пришло
 				 */
-				case static_cast <uint16_t> (type_t::EXTENDED):
+				case type_t::EXTENDED:
 					// Выполняем снятие записи числа
 					this->_text = value.raw();
 				break;
+			/**
+			 * Если видом хранения число не является
+			 *
+			 * @note Перебор этот ведётся внутри числового вида узла, и виды нечисловые
+			 *       места его не достигают. Составные же имена перечня собирают по нескольку
+			 *       разрядов сразу и видом хранения отдельного значения не бывают никогда
+			 *
+			 * @warning Перечислены они НАМЕРЕННО вместо `default`: ветвь `default` глушит
+			 *          `-Wswitch`, и числовой вид, в перечень дописанный, прошёл бы это
+			 *          место молча. Приведение вида к числу глушит сторожа тем же порядком
+			 */
+			case type_t::UNDEFINED:
+			case type_t::NUL:
+			case type_t::BOOL:
+			case type_t::STRING:
+			case type_t::ARRAY:
+			case type_t::OBJECT:
+			case type_t::SIGNED:
+			case type_t::UNSIGNED:
+			case type_t::INT:
+			case type_t::REAL:
+			case type_t::NUMBER:
+			break;
 			}
 		} break;
 		// Если значение является строкой
-		case static_cast <uint8_t> (kind_t::STRING): {
+		case kind_t::STRING: {
 			// Получаем строковое содержимое узла документа
 			const string_view text = value.text();
 			// Выполняем снятие строкового содержимого собственной памятью
@@ -1510,8 +1576,8 @@ void awh::codec::json::Value::absorb(const Document::value_t & value) noexcept {
 		/**
 		 * Если значение является массивом либо объектом
 		 */
-		case static_cast <uint8_t> (kind_t::ARRAY):
-		case static_cast <uint8_t> (kind_t::OBJECT): {
+		case kind_t::ARRAY:
+		case kind_t::OBJECT: {
 			// Выполняем выделение памяти под значения вместилища
 			this->_items.reserve(value.size());
 			/**
@@ -1546,6 +1612,17 @@ void awh::codec::json::Value::absorb(const Document::value_t & value) noexcept {
 			 */
 			this->reindex();
 		} break;
+		/**
+		 * Если разбор дошёл до видов, обработки здесь не требующих
+		 *
+		 * @note Содержимого своего они не имеют
+		 *
+		 * @warning Перечислены они НАМЕРЕННО вместо `default`: приведение к `default`
+		 *          глушит `-Wswitch`, и новый член перечня пройдёт молча
+		 */
+		case kind_t::NONE:
+		case kind_t::NUL:
+		break;
 	}
 }
 /**
@@ -1732,24 +1809,24 @@ bool awh::codec::json::Value::operator == (const Value & value) const noexcept {
 	/**
 	 * Определяем вид сличаемых значений
 	 */
-	switch(static_cast <uint8_t> (this->_kind)){
+	switch(this->_kind){
 		// Если значения не определены либо являются пустыми
-		case static_cast <uint8_t> (kind_t::NONE):
-		case static_cast <uint8_t> (kind_t::NUL):
+		case kind_t::NONE:
+		case kind_t::NUL:
 			// Выводим признак совпадения значений
 			return true;
 		// Если значения являются логическими
-		case static_cast <uint8_t> (kind_t::BOOL):
+		case kind_t::BOOL:
 			// Выводим признак совпадения логических значений
 			return (this->_number.flag == value._number.flag);
 		// Если значения являются строками
-		case static_cast <uint8_t> (kind_t::STRING):
+		case kind_t::STRING:
 			// Выводим признак совпадения строковых значений
 			return (this->_text.compare(value._text) == 0);
 		/**
 		 * Если значения являются числами
 		 */
-		case static_cast <uint8_t> (kind_t::NUMBER): {
+		case kind_t::NUMBER: {
 			/**
 			 * Если оба числа являются целыми со знаком
 			 */
@@ -1800,7 +1877,7 @@ bool awh::codec::json::Value::operator == (const Value & value) const noexcept {
 		/**
 		 * Если значения являются массивами
 		 */
-		case static_cast <uint8_t> (kind_t::ARRAY): {
+		case kind_t::ARRAY: {
 			/**
 			 * Если количество значений массивов разнится
 			 */
@@ -1824,7 +1901,7 @@ bool awh::codec::json::Value::operator == (const Value & value) const noexcept {
 		/**
 		 * Если значения являются объектами
 		 */
-		case static_cast <uint8_t> (kind_t::OBJECT): {
+		case kind_t::OBJECT: {
 			/**
 			 * Если количество полей объектов разнится
 			 */
@@ -2029,29 +2106,29 @@ awh::codec::json::Value::Value(const kind_t kind) noexcept : _kind(kind), _type(
 	/**
 	 * Определяем вид заводимого значения
 	 */
-	switch(static_cast <uint8_t> (kind)){
+	switch(kind){
 		// Если значение является пустым
-		case static_cast <uint8_t> (kind_t::NUL):
+		case kind_t::NUL:
 			// Устанавливаем вид хранения пустого значения
 			this->_type = type_t::NUL;
 		break;
 		// Если значение является логическим
-		case static_cast <uint8_t> (kind_t::BOOL):
+		case kind_t::BOOL:
 			// Устанавливаем вид хранения логического значения
 			this->_type = type_t::BOOL;
 		break;
 		// Если значение является строкой
-		case static_cast <uint8_t> (kind_t::STRING):
+		case kind_t::STRING:
 			// Устанавливаем вид хранения строкового значения
 			this->_type = type_t::STRING;
 		break;
 		// Если значение является массивом
-		case static_cast <uint8_t> (kind_t::ARRAY):
+		case kind_t::ARRAY:
 			// Устанавливаем вид хранения массива
 			this->_type = type_t::ARRAY;
 		break;
 		// Если значение является объектом
-		case static_cast <uint8_t> (kind_t::OBJECT):
+		case kind_t::OBJECT:
 			// Устанавливаем вид хранения объекта
 			this->_type = type_t::OBJECT;
 		break;
@@ -2062,9 +2139,19 @@ awh::codec::json::Value::Value(const kind_t kind) noexcept : _kind(kind), _type(
 		 *       такое значение целым без знака, а точный вид его определяется числом,
 		 *       какое в него положат
 		 */
-		case static_cast <uint8_t> (kind_t::NUMBER):
+		case kind_t::NUMBER:
 			// Устанавливаем вид хранения числа наиболее узким
 			this->_type = type_t::UINT8;
+		break;
+		/**
+		 * Если разбор дошёл до видов, обработки здесь не требующих
+		 *
+		 * @note Имени у неопределённого вида нет
+		 *
+		 * @warning Перечислены они НАМЕРЕННО вместо `default`: приведение к `default`
+		 *          глушит `-Wswitch`, и новый член перечня пройдёт молча
+		 */
+		case kind_t::NONE:
 		break;
 	}
 }
@@ -2582,14 +2669,14 @@ uint32_t awh::codec::json::Document::transplant(const json::Value & value, const
 	/**
 	 * Определяем вид переносимого значения
 	 */
-	switch(static_cast <uint8_t> (value.kind())){
+	switch(value.kind()){
 		/**
 		 * Если значение ещё не определено
 		 *
 		 * @note Значения неопределённого стандарт не знает вовсе, и ложится оно в дерево
 		 *       пустым значением: иного вида, годного ему, в стандарте нет
 		 */
-		case static_cast <uint8_t> (kind_t::NONE):
+		case kind_t::NONE:
 			// Устанавливаем вид хранения пустого значения
 			nodes.at(index).type = type_t::NUL;
 		break;
@@ -2599,7 +2686,7 @@ uint32_t awh::codec::json::Document::transplant(const json::Value & value, const
 		 * @note Логическое значение хранится длиною записи своей: `true` длиною в четыре
 		 *       знака, `false` - в пять. Ровно так его кладёт и разбор
 		 */
-		case static_cast <uint8_t> (kind_t::BOOL): {
+		case kind_t::BOOL: {
 			// Извлекаемое логическое значение
 			bool flag = false;
 			// Выполняем извлечение логического значения
@@ -2610,7 +2697,7 @@ uint32_t awh::codec::json::Document::transplant(const json::Value & value, const
 		/**
 		 * Если значение является строкой
 		 */
-		case static_cast <uint8_t> (kind_t::STRING): {
+		case kind_t::STRING: {
 			// Выполняем перенос содержимого строки в хранилище знаков документа
 			this->_storage.append(value.text());
 			// Устанавливаем длину содержимого строки
@@ -2619,7 +2706,7 @@ uint32_t awh::codec::json::Document::transplant(const json::Value & value, const
 		/**
 		 * Если значение является числом
 		 */
-		case static_cast <uint8_t> (kind_t::NUMBER): {
+		case kind_t::NUMBER: {
 			/**
 			 * Если число хранится записью своей
 			 */
@@ -2679,8 +2766,8 @@ uint32_t awh::codec::json::Document::transplant(const json::Value & value, const
 		/**
 		 * Если значение является массивом либо объектом
 		 */
-		case static_cast <uint8_t> (kind_t::ARRAY):
-		case static_cast <uint8_t> (kind_t::OBJECT): {
+		case kind_t::ARRAY:
+		case kind_t::OBJECT: {
 			// Устанавливаем количество детей вместилища
 			nodes.at(index).length(static_cast <uint32_t> (value.size()));
 			// Количество узлов поддерева вместилища, считая само вместилище
@@ -2698,6 +2785,16 @@ uint32_t awh::codec::json::Document::transplant(const json::Value & value, const
 			// Выводим количество узлов перенесённого поддерева
 			return extent;
 		}
+		/**
+		 * Если разбор дошёл до видов, обработки здесь не требующих
+		 *
+		 * @note Пустое значение уложено видом хранения выше, и содержимого своего не имеет
+		 *
+		 * @warning Перечислены они НАМЕРЕННО вместо `default`: приведение к `default`
+		 *          глушит `-Wswitch`, и новый член перечня пройдёт молча
+		 */
+		case kind_t::NUL:
+		break;
 	}
 	// Выводим количество узлов перенесённого поддерева
 	return 1;

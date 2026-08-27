@@ -285,11 +285,11 @@ size_t awh::codec::json::Reader::bulk(const char * buffer, const size_t size) no
 	/**
 	 * Определяем состояние разбора текста
 	 */
-	switch(static_cast <uint8_t> (this->_state)){
+	switch(this->_state){
 		/**
 		 * Если разбор находится внутри строки
 		 */
-		case static_cast <uint8_t> (state_t::STRING): {
+		case state_t::STRING: {
 			/**
 			 * Выполняем проход по восьми байтам разом
 			 *
@@ -358,9 +358,9 @@ size_t awh::codec::json::Reader::bulk(const char * buffer, const size_t size) no
 		/**
 		 * Если разбор находится внутри записи числа там, где цифра состояния не меняет
 		 */
-		case static_cast <uint8_t> (state_t::NUMBER_INTEGER):
-		case static_cast <uint8_t> (state_t::NUMBER_FRACTION):
-		case static_cast <uint8_t> (state_t::NUMBER_POWER): {
+		case state_t::NUMBER_INTEGER:
+		case state_t::NUMBER_FRACTION:
+		case state_t::NUMBER_POWER: {
 			/**
 			 * Выполняем проход по цифрам записи числа
 			 *
@@ -570,11 +570,11 @@ bool awh::codec::json::Reader::process(const char * text, const size_t size) noe
  *
  * @param buffer буфер подаваемого текста
  * @param size   размер буфера подаваемого текста
- * @param last   признак того, что кусок последний
+ * @param end    признак того, что кусок последний
  * @return       признак успешности разбора
  *
  */
-bool awh::codec::json::Reader::feed(const char * buffer, const size_t size, const bool last) noexcept {
+bool awh::codec::json::Reader::feed(const void * buffer, const size_t size, const bool end) noexcept {
 	/**
 	 * Если разбор уже прекращён отказом
 	 */
@@ -614,7 +614,7 @@ bool awh::codec::json::Reader::feed(const char * buffer, const size_t size, cons
 		return false;
 	}
 	// Запоминаем признак подачи последнего куска текста
-	this->_last = (this->_last || last);
+	this->_last = (this->_last || end);
 	/**
 	 * Если очередь собранных событий разбора опустела
 	 *
@@ -801,12 +801,12 @@ bool awh::codec::json::Reader::feed(const char * buffer, const size_t size, cons
 		/**
 		 * Определяем состояние разбора текста
 		 */
-		switch(static_cast <uint8_t> (this->_state)){
+		switch(this->_state){
 			// Если разбор находится внутри записи числа
-			case static_cast <uint8_t> (state_t::NUMBER_ZERO):
-			case static_cast <uint8_t> (state_t::NUMBER_INTEGER):
-			case static_cast <uint8_t> (state_t::NUMBER_FRACTION):
-			case static_cast <uint8_t> (state_t::NUMBER_POWER):
+			case state_t::NUMBER_ZERO:
+			case state_t::NUMBER_INTEGER:
+			case state_t::NUMBER_FRACTION:
+			case state_t::NUMBER_POWER:
 				/**
 				 * Завершаем запись числа концом текста
 				 *
@@ -819,7 +819,7 @@ bool awh::codec::json::Reader::feed(const char * buffer, const size_t size, cons
 					return false;
 			break;
 			// Если разбор находится в начале документа
-			case static_cast <uint8_t> (state_t::DOCUMENT_START):
+			case state_t::DOCUMENT_START:
 				// Выводим ошибку пустого текста
 				return this->fail(error_t::EMPTY_TEXT);
 			/**
@@ -829,30 +829,30 @@ bool awh::codec::json::Reader::feed(const char * buffer, const size_t size, cons
 			 *       указывает на незакрытую кавычку прямо, а общий обрыв текста
 			 *       заставил бы разыскивать причину самому
 			 */
-			case static_cast <uint8_t> (state_t::STRING):
-			case static_cast <uint8_t> (state_t::ESCAPE):
-			case static_cast <uint8_t> (state_t::UNICODE_1):
-			case static_cast <uint8_t> (state_t::UNICODE_2):
-			case static_cast <uint8_t> (state_t::UNICODE_3):
-			case static_cast <uint8_t> (state_t::UNICODE_4):
-			case static_cast <uint8_t> (state_t::SURROGATE_SLASH):
-			case static_cast <uint8_t> (state_t::SURROGATE_U):
-			case static_cast <uint8_t> (state_t::SURROGATE_1):
-			case static_cast <uint8_t> (state_t::SURROGATE_2):
-			case static_cast <uint8_t> (state_t::SURROGATE_3):
-			case static_cast <uint8_t> (state_t::SURROGATE_4):
+			case state_t::STRING:
+			case state_t::ESCAPE:
+			case state_t::UNICODE_1:
+			case state_t::UNICODE_2:
+			case state_t::UNICODE_3:
+			case state_t::UNICODE_4:
+			case state_t::SURROGATE_SLASH:
+			case state_t::SURROGATE_U:
+			case state_t::SURROGATE_1:
+			case state_t::SURROGATE_2:
+			case state_t::SURROGATE_3:
+			case state_t::SURROGATE_4:
 				// Выводим ошибку незакрытой строки
 				return this->fail(error_t::UNTERMINATED_STRING);
 			// Если разбор находится внутри примечания в скобках
-			case static_cast <uint8_t> (state_t::SLASH):
-			case static_cast <uint8_t> (state_t::COMMENT_BLOCK):
-			case static_cast <uint8_t> (state_t::COMMENT_STAR):
+			case state_t::SLASH:
+			case state_t::COMMENT_BLOCK:
+			case state_t::COMMENT_STAR:
 				// Выводим ошибку незакрытого примечания
 				return this->fail(error_t::UNTERMINATED_COMMENT);
 			// Если разбор окончен
-			case static_cast <uint8_t> (state_t::DOCUMENT_END):
+			case state_t::DOCUMENT_END:
 			// Если разбор прекращён отказом
-			case static_cast <uint8_t> (state_t::FAILED):
+			case state_t::FAILED:
 			break;
 			/**
 			 * Если разбор находится посреди значения
@@ -997,39 +997,52 @@ awh::codec::json::Reader::value_t awh::codec::json::Reader::value() const noexce
 	/**
 	 * Определяем вид текущего события
 	 */
-	switch(static_cast <uint8_t> (this->_current.event)){
+	switch(this->_current.event){
 		// Если событие является именем поля объекта либо строкой
-		case static_cast <uint8_t> (event_t::KEY):
-		case static_cast <uint8_t> (event_t::STRING):
+		case event_t::KEY:
+		case event_t::STRING:
 			// Устанавливаем вид значения
 			result.kind = kind_t::STRING;
 		break;
 		// Если событие является пустым значением
-		case static_cast <uint8_t> (event_t::NUL):
+		case event_t::NUL:
 			// Устанавливаем вид значения
 			result.kind = kind_t::NUL;
 		break;
 		// Если событие является логическим значением
-		case static_cast <uint8_t> (event_t::BOOL):
+		case event_t::BOOL:
 			// Устанавливаем вид значения
 			result.kind = kind_t::BOOL;
 		break;
 		// Если событие является числом
-		case static_cast <uint8_t> (event_t::NUMBER):
+		case event_t::NUMBER:
 			// Устанавливаем вид значения
 			result.kind = kind_t::NUMBER;
 		break;
 		// Если событие является началом либо концом массива
-		case static_cast <uint8_t> (event_t::ARRAY_BEGIN):
-		case static_cast <uint8_t> (event_t::ARRAY_END):
+		case event_t::ARRAY_BEGIN:
+		case event_t::ARRAY_END:
 			// Устанавливаем вид значения
 			result.kind = kind_t::ARRAY;
 		break;
 		// Если событие является началом либо концом объекта
-		case static_cast <uint8_t> (event_t::OBJECT_BEGIN):
-		case static_cast <uint8_t> (event_t::OBJECT_END):
+		case event_t::OBJECT_BEGIN:
+		case event_t::OBJECT_END:
 			// Устанавливаем вид значения
 			result.kind = kind_t::OBJECT;
+		break;
+		/**
+		 * Если разбор дошёл до членов перечня, обработки здесь не требующих
+		 *
+		 * @note Места этого они не достигают: примечание и границы документа выдаются своим порядком, а неопределённое событие не выдаётся вовсе
+		 *
+		 * @warning Перечислены они НАМЕРЕННО вместо `default`: ветвь `default` глушит
+		 *          `-Wswitch`, и член, в перечень дописанный, прошёл бы это место молча
+		 */
+		case event_t::NONE:
+		case event_t::COMMENT:
+		case event_t::DOCUMENT:
+		case event_t::FINISH:
 		break;
 	}
 	// Выводим извлечённое значение текущего события
@@ -1526,9 +1539,9 @@ bool awh::codec::json::Reader::number(const char letter) noexcept {
 	/**
 	 * Определяем состояние разбора записи числа
 	 */
-	switch(static_cast <uint8_t> (this->_state)){
+	switch(this->_state){
 		// Если прочитан знак минуса
-		case static_cast <uint8_t> (state_t::NUMBER_MINUS): {
+		case state_t::NUMBER_MINUS: {
 			/**
 			 * Если за знаком минуса следует нуль
 			 */
@@ -1571,7 +1584,7 @@ bool awh::codec::json::Reader::number(const char letter) noexcept {
 				return this->fail(error_t::INVALID_NUMBER);
 		} break;
 		// Если прочитан ведущий нуль
-		case static_cast <uint8_t> (state_t::NUMBER_ZERO): {
+		case state_t::NUMBER_ZERO: {
 			/**
 			 * Если за ведущим нулём следует цифра
 			 *
@@ -1599,7 +1612,7 @@ bool awh::codec::json::Reader::number(const char letter) noexcept {
 			}
 		} break;
 		// Если разбор находится внутри целой части числа
-		case static_cast <uint8_t> (state_t::NUMBER_INTEGER): {
+		case state_t::NUMBER_INTEGER: {
 			/**
 			 * Если знак является цифрой
 			 */
@@ -1634,7 +1647,7 @@ bool awh::codec::json::Reader::number(const char letter) noexcept {
 			}
 		} break;
 		// Если прочитана точка
-		case static_cast <uint8_t> (state_t::NUMBER_POINT): {
+		case state_t::NUMBER_POINT: {
 			/**
 			 * Если за точкой не следует цифра
 			 */
@@ -1647,7 +1660,7 @@ bool awh::codec::json::Reader::number(const char letter) noexcept {
 			belongs = true;
 		} break;
 		// Если разбор находится внутри дробной части числа
-		case static_cast <uint8_t> (state_t::NUMBER_FRACTION): {
+		case state_t::NUMBER_FRACTION: {
 			/**
 			 * Если знак является цифрой
 			 */
@@ -1674,7 +1687,7 @@ bool awh::codec::json::Reader::number(const char letter) noexcept {
 			}
 		} break;
 		// Если прочитана буква порядка
-		case static_cast <uint8_t> (state_t::NUMBER_EXPONENT): {
+		case state_t::NUMBER_EXPONENT: {
 			/**
 			 * Если за буквой порядка следует знак
 			 */
@@ -1699,7 +1712,7 @@ bool awh::codec::json::Reader::number(const char letter) noexcept {
 				return this->fail(error_t::INVALID_NUMBER);
 		} break;
 		// Если прочитан знак порядка
-		case static_cast <uint8_t> (state_t::NUMBER_SIGN): {
+		case state_t::NUMBER_SIGN: {
 			/**
 			 * Если за знаком порядка не следует цифра
 			 */
@@ -1712,7 +1725,7 @@ bool awh::codec::json::Reader::number(const char letter) noexcept {
 			belongs = true;
 		} break;
 		// Если разбор находится внутри цифр порядка
-		case static_cast <uint8_t> (state_t::NUMBER_POWER): {
+		case state_t::NUMBER_POWER: {
 			/**
 			 * Если знак является цифрой
 			 */
@@ -1729,6 +1742,15 @@ bool awh::codec::json::Reader::number(const char letter) noexcept {
 				// Устанавливаем признак принадлежности знака записи числа
 				belongs = true;
 		} break;
+		/**
+		 * Если разбор дошёл до прочих членов перечня
+		 *
+		 * @note Прочие состояния разбора обрабатываются своим порядком выше
+		 *
+		 * @warning `default` здесь НАМЕРЕННЫЙ: неохваченных членов слишком много, чтобы
+		 *          перечислять их; ценою тому - молчание `-Wswitch` у этого перебора
+		 */
+		default: break;
 	}
 	/**
 	 * Если знак принадлежит записи числа
@@ -1788,7 +1810,7 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 	/**
 	 * Определяем состояние разбора текста
 	 */
-	switch(static_cast <uint8_t> (this->_state)){
+	switch(this->_state){
 		// Если разбор прекращён отказом
 		/**
 		 * @note Ветвь эта НЕДОСТИЖИМА и оттого не покрыта: разбор, прекращённый отказом, до
@@ -1796,13 +1818,13 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 		 *
 		 * @warning Снимать ветвь нельзя: она и есть страж того, что отказ не будет обойдён
 		 */
-		case static_cast <uint8_t> (state_t::FAILED):
+		case state_t::FAILED:
 			// Выводим признак неудачного разбора
 			return false;
 		// Если разбор находится в начале документа либо ожидает значения
-		case static_cast <uint8_t> (state_t::DOCUMENT_START):
-		case static_cast <uint8_t> (state_t::VALUE_START):
-		case static_cast <uint8_t> (state_t::AFTER_COMMA): {
+		case state_t::DOCUMENT_START:
+		case state_t::VALUE_START:
+		case state_t::AFTER_COMMA: {
 			/**
 			 * Если знак является пробельным
 			 */
@@ -1863,7 +1885,7 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 				return false;
 		} break;
 		// Если разбор ожидает имени поля объекта
-		case static_cast <uint8_t> (state_t::KEY_START): {
+		case state_t::KEY_START: {
 			/**
 			 * Если знак является пробельным
 			 */
@@ -1945,7 +1967,7 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 			return this->fail(error_t::EXPECTED_KEY);
 		}
 		// Если разбор ожидает двоеточия за именем поля объекта
-		case static_cast <uint8_t> (state_t::AFTER_KEY): {
+		case state_t::AFTER_KEY: {
 			/**
 			 * Если знак является пробельным
 			 */
@@ -1983,7 +2005,7 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 			this->_state = state_t::VALUE_START;
 		} break;
 		// Если разбор ожидает запятой либо закрывающей скобки
-		case static_cast <uint8_t> (state_t::AFTER_VALUE): {
+		case state_t::AFTER_VALUE: {
 			/**
 			 * Если знак является пробельным
 			 */
@@ -2060,7 +2082,7 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 			return this->fail(error_t::EXPECTED_COMMA);
 		}
 		// Если разбор находится внутри строки
-		case static_cast <uint8_t> (state_t::STRING): {
+		case state_t::STRING: {
 			/**
 			 * Если знак закрывает строку
 			 */
@@ -2119,7 +2141,7 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 			this->_length++;
 		} break;
 		// Если разбор находится внутри отменяющей последовательности
-		case static_cast <uint8_t> (state_t::ESCAPE): {
+		case state_t::ESCAPE: {
 			// Знак, каким отменяющая последовательность заменяется
 			char replacement = '\0';
 			/**
@@ -2192,14 +2214,14 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 			this->_state = state_t::STRING;
 		} break;
 		// Если разбор находится внутри кодового значения знака
-		case static_cast <uint8_t> (state_t::UNICODE_1):
-		case static_cast <uint8_t> (state_t::UNICODE_2):
-		case static_cast <uint8_t> (state_t::UNICODE_3):
-		case static_cast <uint8_t> (state_t::UNICODE_4):
-		case static_cast <uint8_t> (state_t::SURROGATE_1):
-		case static_cast <uint8_t> (state_t::SURROGATE_2):
-		case static_cast <uint8_t> (state_t::SURROGATE_3):
-		case static_cast <uint8_t> (state_t::SURROGATE_4): {
+		case state_t::UNICODE_1:
+		case state_t::UNICODE_2:
+		case state_t::UNICODE_3:
+		case state_t::UNICODE_4:
+		case state_t::SURROGATE_1:
+		case state_t::SURROGATE_2:
+		case state_t::SURROGATE_3:
+		case state_t::SURROGATE_4: {
 			// Значение шестнадцатеричного знака
 			uint32_t digit = 0;
 			/**
@@ -2284,7 +2306,7 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 			this->_state = state_t::STRING;
 		} break;
 		// Если разбор ожидает знака отмены младшего суррогата
-		case static_cast <uint8_t> (state_t::SURROGATE_SLASH): {
+		case state_t::SURROGATE_SLASH: {
 			/**
 			 * Если знак отмены не пришёл
 			 */
@@ -2295,7 +2317,7 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 			this->_state = state_t::SURROGATE_U;
 		} break;
 		// Если разбор ожидает буквы кодового значения младшего суррогата
-		case static_cast <uint8_t> (state_t::SURROGATE_U): {
+		case state_t::SURROGATE_U: {
 			/**
 			 * Если буква кодового значения не пришла
 			 */
@@ -2308,14 +2330,14 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 			this->_state = state_t::SURROGATE_1;
 		} break;
 		// Если разбор находится внутри записи числа
-		case static_cast <uint8_t> (state_t::NUMBER_MINUS):
-		case static_cast <uint8_t> (state_t::NUMBER_ZERO):
-		case static_cast <uint8_t> (state_t::NUMBER_INTEGER):
-		case static_cast <uint8_t> (state_t::NUMBER_POINT):
-		case static_cast <uint8_t> (state_t::NUMBER_FRACTION):
-		case static_cast <uint8_t> (state_t::NUMBER_EXPONENT):
-		case static_cast <uint8_t> (state_t::NUMBER_SIGN):
-		case static_cast <uint8_t> (state_t::NUMBER_POWER): {
+		case state_t::NUMBER_MINUS:
+		case state_t::NUMBER_ZERO:
+		case state_t::NUMBER_INTEGER:
+		case state_t::NUMBER_POINT:
+		case state_t::NUMBER_FRACTION:
+		case state_t::NUMBER_EXPONENT:
+		case state_t::NUMBER_SIGN:
+		case state_t::NUMBER_POWER: {
 			// Запоминаем смещение от начала текста прежде разбора знака
 			const uint64_t offset = this->_offset;
 			/**
@@ -2335,7 +2357,7 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 				return true;
 		} break;
 		// Если разбор находится внутри литерала
-		case static_cast <uint8_t> (state_t::LITERAL): {
+		case state_t::LITERAL: {
 			/**
 			 * Если знак расходится с разбираемым литералом
 			 */
@@ -2366,7 +2388,7 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 			return this->settle();
 		}
 		// Если разбор определяет вид примечания
-		case static_cast <uint8_t> (state_t::SLASH): {
+		case state_t::SLASH: {
 			/**
 			 * Определяем знак, задающий вид примечания
 			 */
@@ -2406,7 +2428,7 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 			}
 		} break;
 		// Если разбор находится внутри примечания до конца строки
-		case static_cast <uint8_t> (state_t::COMMENT_LINE): {
+		case state_t::COMMENT_LINE: {
 			/**
 			 * Если примечание окончено переводом строки
 			 */
@@ -2438,7 +2460,7 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 			}
 		} break;
 		// Если разбор находится внутри закрываемого примечания
-		case static_cast <uint8_t> (state_t::COMMENT_BLOCK): {
+		case state_t::COMMENT_BLOCK: {
 			/**
 			 * Если знак вправе закрывать примечание
 			 */
@@ -2459,7 +2481,7 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 			}
 		} break;
 		// Если разбор определяет закрытие примечания
-		case static_cast <uint8_t> (state_t::COMMENT_STAR): {
+		case state_t::COMMENT_STAR: {
 			/**
 			 * Если примечание закрыто
 			 */
@@ -2507,7 +2529,7 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 			}
 		} break;
 		// Если документ разобран до конца
-		case static_cast <uint8_t> (state_t::DOCUMENT_END): {
+		case state_t::DOCUMENT_END: {
 			/**
 			 * Если знак является пробельным
 			 */

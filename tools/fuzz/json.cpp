@@ -113,6 +113,42 @@ using namespace awh::codec;
  */
 namespace {
 	/**
+	 * @brief Перечни всех членов настроек, выбираемых наудачу
+	 *
+	 * @details Член берётся из перечня по длине его: выбор по остатку от числа,
+	 * вписанного рукой, от перечня отставал молча - `number_t` знает два члена, а
+	 * остаток брался от трёх, и в настройки уходило значение ВНЕ перечня
+	 *
+	 * @note Полноту перечней блюдёт собиратель: сторож ниже перебирает члены без
+	 *       ветви `default`, и член, в перечень дописанный, отзовётся `-Wswitch`
+	 *
+	 */
+	static const json::duplicate_t DUPLICATES[] = {
+		json::duplicate_t::ERROR, json::duplicate_t::FIRST, json::duplicate_t::LAST, json::duplicate_t::KEEP
+	};
+	// Перечень всех правил преобразования чисел
+	static const json::number_t NUMBERS[] = {
+		json::number_t::NATIVE, json::number_t::CHECK
+	};
+	/**
+	 * @brief Сторож полноты перечней настроек
+	 *
+	 * @warning Ветвь `default` здесь ставить нельзя: она глушит `-Wswitch`, и сторож
+	 *          перестанет кусать
+	 *
+	 */
+	[[maybe_unused]] void guard(const json::duplicate_t duplicates, const json::number_t numbers) noexcept {
+		// Перебираем все правила обращения с повторяющимся именем поля объекта
+		switch(duplicates){
+			case json::duplicate_t::ERROR: case json::duplicate_t::FIRST:
+			case json::duplicate_t::LAST: case json::duplicate_t::KEEP: break;
+		}
+		// Перебираем все правила преобразования чисел
+		switch(numbers){
+			case json::number_t::NATIVE: case json::number_t::CHECK: break;
+		}
+	}
+	/**
 	 * @brief Учёт проделанной работы
 	 *
 	 */
@@ -1557,9 +1593,9 @@ int main(int argc, char * argv[]) noexcept {
 		// Устанавливаем разрешение разбора потока документов
 		settings.reader.stream = ((engine() % 2) != 0);
 		// Устанавливаем правило обращения с повторяющимся именем поля объекта
-		settings.duplicates = static_cast <json::duplicate_t> (engine() % 4);
+		settings.duplicates = DUPLICATES[engine() % (sizeof(DUPLICATES) / sizeof(DUPLICATES[0]))];
 		// Устанавливаем правило преобразования чисел
-		settings.numbers = static_cast <json::number_t> (engine() % 3);
+		settings.numbers = NUMBERS[engine() % (sizeof(NUMBERS) / sizeof(NUMBERS[0]))];
 		// Выполняем сборку текста документа
 		string text = ::building(engine, settings.reader);
 		// Увеличиваем счёт построенных текстов документов

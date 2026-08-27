@@ -600,9 +600,9 @@ namespace {
  *
  */
 awh::codec::xml::Reader::Settings::Settings() noexcept :
- namespaces(true), entities(true), comments(true), processing(true),
+ namespaces(true), entities(true), emitComments(true), emitProcessing(true),
  separateSpaces(false), mergeText(false), defaults(true), externals(false),
- maxDepth(MAX_DEPTH), maxName(MAX_NAME), maxAttributes(4096),
+ maxDepth(MAX_DEPTH), maxName(MAX_NAME), maxAttributes(MAX_ATTRIBUTES),
  maxEntities(MAX_ENTITY_COUNT), maxExpansion(MAX_ENTITY_EXPANSION),
  maxEvent(MAX_EVENT), encoding(encoding_t::NONE) {}
 /**
@@ -981,7 +981,7 @@ awh::codec::xml::span_t awh::codec::xml::Reader::store(const string_view text) n
 	 */
 	if((this->_names.size() + text.length()) > static_cast <size_t> (0xFFFFFFFFu)){
 		// Выполняем отказ разбора с сообщением о нём в журнал
-		this->refuse(error_t::OVERFLOW_LIMIT);
+		this->refuse(error_t::STORAGE_EXHAUSTED);
 		// Выводим пустой отрезок хранилища знаков
 		return span_t();
 	}
@@ -1707,7 +1707,7 @@ bool awh::codec::xml::Reader::parseValue(size_t & offset, const size_t end, span
 			 */
 			if(this->_scratch.size() > static_cast <size_t> (0xFFFFFFFFu)){
 				// Выполняем отказ разбора с сообщением о нём в журнал
-				return this->refuse(error_t::OVERFLOW_LIMIT);
+				return this->refuse(error_t::STORAGE_EXHAUSTED);
 			}
 			value.length = static_cast <uint32_t> (this->_scratch.size() - value.offset);
 			// Выводим положительный результат выполнения операции
@@ -1960,11 +1960,11 @@ bool awh::codec::xml::Reader::subsetLiteral(size_t & offset, const size_t end, c
 		/**
 		 * Определяем вид разбираемого значения
 		 */
-		switch(static_cast <uint8_t> (kind)){
+		switch(kind){
 			/**
 			 * Если разбирается значение объявляемой сущности
 			 */
-			case static_cast <uint8_t> (literal_t::ENTITY): {
+			case literal_t::ENTITY: {
 				/**
 				 * Если обнаружена ссылка на параметрическую сущность
 				 *
@@ -2072,7 +2072,7 @@ bool awh::codec::xml::Reader::subsetLiteral(size_t & offset, const size_t end, c
 			/**
 			 * Если разбирается объявленное по умолчанию значение атрибута
 			 */
-			case static_cast <uint8_t> (literal_t::ATTRIBUTE): {
+			case literal_t::ATTRIBUTE: {
 				/**
 				 * Если обнаружен знак начала разметки
 				 *
@@ -2162,7 +2162,7 @@ bool awh::codec::xml::Reader::subsetLiteral(size_t & offset, const size_t end, c
 			/**
 			 * Если разбирается обозначение общедоступного источника
 			 */
-			case static_cast <uint8_t> (literal_t::PUBLIC): {
+			case literal_t::PUBLIC: {
 				/**
 				 * Если знак недопустим в обозначении общедоступного источника
 				 */
@@ -2170,6 +2170,16 @@ bool awh::codec::xml::Reader::subsetLiteral(size_t & offset, const size_t end, c
 					// Выводим отрицательный результат выполнения операции
 					return false;
 			} break;
+			/**
+			 * Если разбор дошёл до видов, обработки здесь не требующих
+			 *
+			 * @note Подстановок в значении внешнего опознавателя договор не допускает вовсе
+			 *
+			 * @warning Перечислены они НАМЕРЕННО вместо `default`: приведение к `default`
+			 *          глушит `-Wswitch`, и новый член перечня пройдёт молча
+			 */
+			case literal_t::SYSTEM:
+			break;
 		}
 		/**
 		 * Если значение собирается
@@ -4033,7 +4043,7 @@ awh::codec::xml::Reader::step_t awh::codec::xml::Reader::parseComment() noexcept
 	/**
 	 * Если примечания выдаются отдельным событием
 	 */
-	if(this->_settings.comments){
+	if(this->_settings.emitComments){
 		/**
 		 * Если содержимое примечания требует приведения
 		 */
@@ -4666,7 +4676,7 @@ awh::codec::xml::Reader::step_t awh::codec::xml::Reader::parseProcessing() noexc
 	/**
 	 * Если указания обработчику выдаются отдельным событием
 	 */
-	if(this->_settings.processing){
+	if(this->_settings.emitProcessing){
 		/**
 		 * Выполняем пропуск пробельных знаков перед данными указания
 		 */
@@ -5876,8 +5886,8 @@ awh::codec::xml::Reader::step_t awh::codec::xml::Reader::parseElement() noexcept
 		 * Если количество атрибутов узла превысило допустимое
 		 */
 		if((this->_settings.maxAttributes > 0) && ((this->_attributes.size() + this->_declares.size()) >= this->_settings.maxAttributes))
-			// Выводим ошибку превышения заданного настройками предела
-			return this->fail(error_t::OVERFLOW_LIMIT, pos);
+			// Выводим ошибку превышения предела количества атрибутов узла
+			return this->fail(error_t::TOO_MANY_ATTRIBUTES, pos);
 		// Собираемый атрибут узла
 		record_t record;
 		/**
@@ -6016,8 +6026,8 @@ awh::codec::xml::Reader::step_t awh::codec::xml::Reader::parseElement() noexcept
 				 *       перечня атрибутов в описании типа документа
 				 */
 				if((this->_settings.maxAttributes > 0) && ((this->_attributes.size() + this->_declares.size()) >= this->_settings.maxAttributes))
-					// Выводим ошибку превышения заданного настройками предела
-					return this->fail(error_t::OVERFLOW_LIMIT, this->_offset);
+					// Выводим ошибку превышения предела количества атрибутов узла
+					return this->fail(error_t::TOO_MANY_ATTRIBUTES, this->_offset);
 				// Собираемый атрибут узла
 				record_t record;
 				// Запоминаем префикс имени атрибута
@@ -6085,7 +6095,7 @@ awh::codec::xml::Reader::step_t awh::codec::xml::Reader::parseElement() noexcept
 				 */
 				if(this->_scratch.size() > static_cast <size_t> (0xFFFFFFFFu))
 					// Выводим ошибку выхода за предел разрядности отрезка
-					return this->fail(error_t::OVERFLOW_LIMIT, this->_offset);
+					return this->fail(error_t::STORAGE_EXHAUSTED, this->_offset);
 				// Запоминаем длину значения атрибута
 				record.value.length = static_cast <uint32_t> (this->_scratch.size() - record.value.offset);
 				// Выполняем добавление собранного атрибута
@@ -6909,13 +6919,13 @@ bool awh::codec::xml::Reader::next() noexcept {
 	/**
 	 * Определяем итог выполненного шага разбора
 	 */
-	switch(static_cast <uint8_t> (this->parse())){
+	switch(this->parse()){
 		// Если разбор прекращён ошибкой
-		case static_cast <uint8_t> (step_t::FAILED):
+		case step_t::FAILED:
 			// Выводим отсутствие очередного события разбора
 			return false;
 		// Если для продолжения разбора требуется следующий кусок текста
-		case static_cast <uint8_t> (step_t::HUNGRY): {
+		case step_t::HUNGRY: {
 			/**
 			 * Если приведение исходного текста отказало
 			 *
@@ -6933,6 +6943,16 @@ bool awh::codec::xml::Reader::next() noexcept {
 			// Выводим отсутствие очередного события разбора
 			return false;
 		}
+		/**
+		 * Если разбор дошёл до видов, обработки здесь не требующих
+		 *
+		 * @note Разбор завершён, и продолжать нечего
+		 *
+		 * @warning Перечислены они НАМЕРЕННО вместо `default`: приведение к `default`
+		 *          глушит `-Wswitch`, и новый член перечня пройдёт молча
+		 */
+		case step_t::DONE:
+		break;
 	}
 	/**
 	 * Если содержимое полученного события превысило предел, заданный настройками

@@ -808,6 +808,26 @@ else()
 endif()
 
 # Выполняем подключение хидеров
+#
+# @warning Пометка SYSTEM здесь роздана НАОБОРОТ здравому смыслу: наши собственные
+#          заголовки числятся системными (предупреждения в них глохнут), а третья
+#          сторона - обычными (её шум идёт в вывод сборки). Правка этого разобрана
+#          26.08.2026 и ОТВЕРГНУТА ОПЫТОМ, а не забыта:
+#
+#          - выгоды нет вовсе: скрытых предупреждений в наших заголовках не нашлось ни
+#            одного (202 исходника, -Wall -Wextra, сличение обоих укладов);
+#          - цена немалая: перевод третьей стороны на SYSTEM переставляет её каталоги
+#            ПОСЛЕ всех обычных в строке собирателя, и заголовки BoringSSL перестают
+#            находиться - сборка встала с 40 ошибками вида «unknown type name 'CBB'».
+#
+#          Сличение имён заголовков этого не предсказало и предсказать не могло: у нас с
+#          третьей стороной одноимённых нет вовсе (221 против 252), а спорят они не с
+#          нами, а с заголовками САМОЙ СИСТЕМЫ. Кто возьмётся за это снова - пусть
+#          начинает с них
+#
+# @note Порядок слов у CMake строгий: BEFORE первым, SYSTEM вторым. С обратным CMake
+#       принимает ключевое слово за имя каталога, и в строке сборки появляется
+#       `-isystem <корень>/BEFORE` - наблюдалось
 include_directories(BEFORE ${DEPEND_INCLUDE_DIRS})
 include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/include)
 include_directories(BEFORE ${CMAKE_SOURCE_DIR}/contrib/include)
@@ -1491,6 +1511,11 @@ if (${CMAKE_BUILD_SAMPLES})
     # Указываем что нужно собрать приложение настройки распределителя под нагрузку
     option(CMAKE_BUILD_TUNING_APP_SAMPLE "Build Allocator tuning app sample" ON)
 
+    # Устанавливаем имя приложения поиска дефектов памяти прикладного кода
+    SET(DEBUG_APP_NAME alloc-debug)
+    # Указываем что нужно собрать приложение поиска дефектов памяти прикладного кода
+    option(CMAKE_BUILD_DEBUG_APP_SAMPLE "Build Allocator debugging app sample" ON)
+
     # Устанавливаем имя приложения работы с укрытой памятью
     SET(KEEPER_APP_NAME keeper)
     # Указываем что нужно собрать приложение работы с укрытой памятью
@@ -2150,6 +2175,18 @@ if (${CMAKE_BUILD_SAMPLES})
         # Выводим сообщение о сборке семпла
         message(STATUS "Build sample ALLOC TUNING: No\n")
     endif (${CMAKE_BUILD_TUNING_APP_SAMPLE})
+
+    # Если нужно собрать семплы поиска дефектов памяти прикладного кода
+    if (${CMAKE_BUILD_DEBUG_APP_SAMPLE})
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample ALLOC DEBUG: Yes\n")
+        # Выполняем создание приложения поиска дефектов памяти прикладного кода
+        add_sample(${DEBUG_APP_NAME} sample/alloc/debug.cpp alloc)
+    # Если не нужно собирать семплы поиска дефектов памяти прикладного кода
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample ALLOC DEBUG: No\n")
+    endif (${CMAKE_BUILD_DEBUG_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с укрытой памятью
     if (${CMAKE_BUILD_KEEPER_APP_SAMPLE})
@@ -3194,6 +3231,16 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_TUNING_APP_SAMPLE})
+
+        # Если нужно собрать семплы поиска дефектов памяти прикладного кода
+        if (${CMAKE_BUILD_DEBUG_APP_SAMPLE})
+            # Выполняем сборку приложения поиска дефектов памяти
+            target_link_libraries(
+                ${DEBUG_APP_NAME}
+                ${AWH_LIB_NAME}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_DEBUG_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с укрытой памятью
         if (${CMAKE_BUILD_KEEPER_APP_SAMPLE})
@@ -4376,6 +4423,17 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_TUNING_APP_SAMPLE})
+
+        # Если нужно собрать семплы поиска дефектов памяти прикладного кода
+        if (${CMAKE_BUILD_DEBUG_APP_SAMPLE})
+            # Выполняем сборку приложения поиска дефектов памяти
+            target_link_libraries(
+                ${DEBUG_APP_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_DEBUG_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с укрытой памятью
         if (${CMAKE_BUILD_KEEPER_APP_SAMPLE})
@@ -5573,6 +5631,15 @@ if (${CMAKE_BUILD_SAMPLES})
                 )
             endif (${CMAKE_BUILD_ALLOC_APP_SAMPLE})
 
+            # Если нужно собрать семплы поиска дефектов памяти прикладного кода
+            if (${CMAKE_BUILD_DEBUG_APP_SAMPLE})
+                # Подписываем приложение поиска дефектов памяти
+                add_custom_command(TARGET "${DEBUG_APP_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${DEBUG_APP_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${DEBUG_APP_NAME}\" to enable core dump on macOS"
+                )
+            endif (${CMAKE_BUILD_DEBUG_APP_SAMPLE})
+
             # Если нужно собрать семплы для работы с укрытой памятью
             if (${CMAKE_BUILD_KEEPER_APP_SAMPLE})
                 # Выполняем сборку приложения укрытой памяти
@@ -6195,6 +6262,12 @@ if (${CMAKE_BUILD_SAMPLES})
                 pvs_studio_add_target(TARGET ${ALLOC_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${ALLOC_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
             endif (${CMAKE_BUILD_ALLOC_APP_SAMPLE})
 
+            # Если нужно собрать семплы поиска дефектов памяти прикладного кода
+            if (${CMAKE_BUILD_DEBUG_APP_SAMPLE})
+                # Выполняем анализ приложения поиска дефектов памяти
+                pvs_studio_add_target(TARGET ${DEBUG_APP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${DEBUG_APP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+            endif (${CMAKE_BUILD_DEBUG_APP_SAMPLE})
+
             # Если нужно собрать семплы для работы с укрытой памятью
             if (${CMAKE_BUILD_KEEPER_APP_SAMPLE})
                 # Выполняем анализ приложения укрытой памяти
@@ -6731,6 +6804,12 @@ if (${CMAKE_BUILD_SAMPLES})
         # Устанавливаем приложение работы с распределителем памяти
         install(TARGETS ${ALLOC_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
     endif (${CMAKE_BUILD_ALLOC_APP_SAMPLE})
+
+    # Если нужно собрать семплы поиска дефектов памяти прикладного кода
+    if (${CMAKE_BUILD_DEBUG_APP_SAMPLE})
+        # Устанавливаем приложение поиска дефектов памяти прикладного кода
+        install(TARGETS ${DEBUG_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+    endif (${CMAKE_BUILD_DEBUG_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с укрытой памятью
     if (${CMAKE_BUILD_KEEPER_APP_SAMPLE})

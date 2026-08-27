@@ -170,9 +170,9 @@ TEST(CodecXmlDocument, Bindings) {
 		// Настройки разбора текста разметки
 		xml::reader_t::settings_t settings;
 		// Выполняем отключение выдачи примечаний отдельным событием
-		settings.comments = false;
+		settings.emitComments = false;
 		// Выполняем отключение выдачи указаний обработчику отдельным событием
-		settings.processing = false;
+		settings.emitProcessing = false;
 		// Если разбор текста разметки выполнить не удалось, выводим отказ
 		if(!document.parse(text, settings)) return string("ОТКАЗ РАЗБОРА");
 		// Объект записи текста разметки

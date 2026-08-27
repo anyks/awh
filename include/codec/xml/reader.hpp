@@ -141,11 +141,11 @@ namespace awh {
 			 *
 			 *  while(reader.feed(chunk, size, last)){
 			 *    while(reader.next()){
-			 *      switch(static_cast <uint8_t> (reader.event())){
-			 *        case static_cast <uint8_t> (event_t::ELEMENT_OPEN):
+			 *      switch(reader.event()){
+			 *        case event_t::ELEMENT_OPEN:
 			 *          // Обработка начала узла: reader.name(), reader.attributes()
 			 *        break;
-			 *        case static_cast <uint8_t> (event_t::TEXT):
+			 *        case event_t::TEXT:
 			 *          // Обработка содержимого узла: reader.text()
 			 *        break;
 			 *      }
@@ -177,11 +177,11 @@ namespace awh {
 			 *
 			 *  while(reader.feed(chunk, size, last)){
 			 *    while(reader.next()){
-			 *      switch(static_cast <uint8_t> (reader.event())){
-			 *        case static_cast <uint8_t> (event_t::ELEMENT_OPEN):
+			 *      switch(reader.event()){
+			 *        case event_t::ELEMENT_OPEN:
 			 *          // The handling of the beginning of a node: reader.name(), reader.attributes()
 			 *        break;
-			 *        case static_cast <uint8_t> (event_t::TEXT):
+			 *        case event_t::TEXT:
 			 *          // The handling of the content of a node: reader.text()
 			 *        break;
 			 *      }
@@ -214,9 +214,9 @@ namespace awh {
 						// Флаг подстановки ссылок на объявленные сущности
 						bool entities;
 						// Флаг выдачи примечаний отдельным событием
-						bool comments;
+						bool emitComments;
 						// Флаг выдачи указаний обработчику отдельным событием
-						bool processing;
+						bool emitProcessing;
 						// Флаг отделения незначимого пробельного содержимого от текстового
 						bool separateSpaces;
 						/**
@@ -268,7 +268,28 @@ namespace awh {
 						 * \~
 						 */
 						bool externals;
-						// Наибольшая допустимая глубина вложенности узлов, ноль - без предела
+						/**
+						 * \~russian
+						 * @brief Наибольшая допустимая глубина вложенности узлов, ноль - без предела
+						 *
+						 * @warning Предел этот САМИМ ЧТЕНИЕМ соблюдается как задан, а вот владеющее
+						 * значение `Value` огранивает его потолком `MAX_DEPTH`: дерево разметки
+						 * плоско, но работы ПО ГОТОВОМУ ЗНАЧЕНИЮ - снятие дерева, размножение,
+						 * сличение и запись - идут возвратом, и глубина ложится прямо на стек
+						 * вызовов. Предел, поднятый выше потолка либо снятый нулём, у владеющего
+						 * значения силы не имеет
+						 *
+						 * \~english
+						 * @brief Largest admissible depth of the nesting of the nodes, zero — without a limit
+						 * @warning The present limit is observed as set BY THE READING ITSELF, while
+						 * the owning `Value` bounds it by the `MAX_DEPTH` ceiling: the tree of a markup
+						 * is flat, but the works ON THE READY VALUE — the taking of the tree, the copying,
+						 * the comparison and the writing — go by a recursion, and the depth falls right onto
+						 * the stack of the calls. A limit raised above the ceiling or removed by a zero has
+						 * no force at the owning value
+						 *
+						 * \~
+						 */
 						uint32_t maxDepth;
 						// Наибольшая допустимая длина имени в знаках, ноль - без предела
 						uint32_t maxName;
@@ -2075,7 +2096,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool feed(const void * buffer, const size_t size, const bool end) noexcept;
+					bool feed(const void * buffer, const size_t size, const bool end = false) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод передачи исходного текста целиком

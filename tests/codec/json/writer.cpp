@@ -105,25 +105,25 @@ TEST(CodecJsonWriter, Scalars) {
 	// Выполняем проверку собранного текста
 	ASSERT_EQ(writer.text(), "null");
 	// Выполняем сброс состояния записи
-	writer.reset();
+	writer.clear();
 	// Выполняем проверку записи истины
 	ASSERT_TRUE(writer.value(true));
 	// Выполняем проверку собранного текста
 	ASSERT_EQ(writer.text(), "true");
 	// Выполняем сброс состояния записи
-	writer.reset();
+	writer.clear();
 	// Выполняем проверку записи целого числа со знаком
 	ASSERT_TRUE(writer.value(static_cast <int64_t> (-42)));
 	// Выполняем проверку собранного текста
 	ASSERT_EQ(writer.text(), "-42");
 	// Выполняем сброс состояния записи
-	writer.reset();
+	writer.clear();
 	// Выполняем проверку записи беззнакового целого числа
 	ASSERT_TRUE(writer.value(static_cast <uint64_t> (18446744073709551615ull)));
 	// Выполняем проверку собранного текста
 	ASSERT_EQ(writer.text(), "18446744073709551615");
 	// Выполняем сброс состояния записи
-	writer.reset();
+	writer.clear();
 	// Выполняем проверку записи строкового значения
 	ASSERT_TRUE(writer.value(string("текст")));
 	// Выполняем проверку собранного текста
@@ -143,7 +143,7 @@ TEST(CodecJsonWriter, Containers) {
 	// Выполняем проверку собранного текста
 	ASSERT_EQ(writer.text(), "[]");
 	// Выполняем сброс состояния записи
-	writer.reset();
+	writer.clear();
 	// Выполняем запись объекта с полями
 	ASSERT_TRUE(writer.object());
 	// Выполняем запись имени первого поля объекта
@@ -202,7 +202,7 @@ TEST(CodecJsonWriter, Structure) {
 	// Выполняем проверку собранного текста
 	ASSERT_EQ(writer.text(), "{\"a\":true}");
 	// Выполняем сброс состояния записи
-	writer.reset();
+	writer.clear();
 	// Выполняем открытие массива
 	ASSERT_TRUE(writer.array());
 	// Выполняем проверку отклонения имени поля объекта внутри массива
@@ -255,7 +255,7 @@ TEST(CodecJsonWriter, Pretty) {
 	// Выполняем установку настроек записи текста
 	writer.settings(settings);
 	// Выполняем сброс состояния записи
-	writer.reset();
+	writer.clear();
 	// Выполняем запись массива со значением
 	writer.array();
 	// Выполняем запись значения массива
@@ -269,7 +269,7 @@ TEST(CodecJsonWriter, Pretty) {
 	// Выполняем установку настроек записи текста
 	writer.settings(settings);
 	// Выполняем сброс состояния записи
-	writer.reset();
+	writer.clear();
 	// Выполняем запись массива со значением
 	writer.array();
 	// Выполняем запись значения массива
@@ -291,13 +291,13 @@ TEST(CodecJsonWriter, Escapes) {
 	// Выполняем проверку записи знаков сокращёнными записями
 	ASSERT_EQ(writer.text(), "\"\\\"\\\\\\b\\f\\n\\r\\t\"");
 	// Выполняем сброс состояния записи
-	writer.reset();
+	writer.clear();
 	// Выполняем запись строки с управляющим знаком без сокращённой записи
 	ASSERT_TRUE(writer.value(string(1, '\x01')));
 	// Выполняем проверку записи управляющего знака кодовым значением
 	ASSERT_EQ(writer.text(), "\"\\u0001\"");
 	// Выполняем сброс состояния записи
-	writer.reset();
+	writer.clear();
 	// Выполняем запись строки с косой чертой
 	ASSERT_TRUE(writer.value(string("a/b")));
 	// Выполняем проверку записи косой черты как есть по умолчанию
@@ -309,7 +309,7 @@ TEST(CodecJsonWriter, Escapes) {
 	// Выполняем установку настроек записи текста
 	writer.settings(settings);
 	// Выполняем сброс состояния записи
-	writer.reset();
+	writer.clear();
 	// Выполняем запись строки с косой чертой
 	ASSERT_TRUE(writer.value(string("a/b")));
 	// Выполняем проверку экранирования косой черты
@@ -319,13 +319,13 @@ TEST(CodecJsonWriter, Escapes) {
 	// Выполняем установку настроек записи текста
 	writer.settings(settings);
 	// Выполняем сброс состояния записи
-	writer.reset();
+	writer.clear();
 	// Выполняем запись строки со знаками вне US-ASCII
 	ASSERT_TRUE(writer.value(string("é€")));
 	// Выполняем проверку записи знаков кодовыми значениями
 	ASSERT_EQ(writer.text(), "\"\\u00e9\\u20ac\"");
 	// Выполняем сброс состояния записи
-	writer.reset();
+	writer.clear();
 	/**
 	 * Выполняем запись знака за пределами одного слова
 	 */
@@ -421,7 +421,7 @@ TEST(CodecJsonWriter, Raw) {
 	// Выполняем проверку сохранности точности записи числа
 	ASSERT_EQ(writer.text(), "9007199254740993");
 	// Выполняем сброс состояния записи
-	writer.reset();
+	writer.clear();
 	// Выполняем проверку отклонения записи с ведущим нулём
 	ASSERT_FALSE(writer.raw("01"));
 	// Выполняем проверку отклонения записи, числом не являющейся
@@ -574,7 +574,7 @@ TEST(CodecJsonWriter, Literals) {
 	// Выполняем проверку того, что записан именно строковый литерал
 	ASSERT_EQ(writer.text(), "\"да\"");
 	// Выполняем сброс записи текста документа
-	writer.reset();
+	writer.clear();
 	// Выполняем запись строки языка Си, поданной указанием
 	const char * text = "строка";
 	// Выполняем запись строкового значения
@@ -582,7 +582,7 @@ TEST(CodecJsonWriter, Literals) {
 	// Выполняем проверку записанного строкового значения
 	ASSERT_EQ(writer.text(), "\"строка\"");
 	// Выполняем сброс записи текста документа
-	writer.reset();
+	writer.clear();
 	/**
 	 * Выполняем запись пустого указания
 	 *
@@ -593,13 +593,13 @@ TEST(CodecJsonWriter, Literals) {
 	// Выполняем проверку записанного пустого значения
 	ASSERT_EQ(writer.text(), "null");
 	// Выполняем сброс записи текста документа
-	writer.reset();
+	writer.clear();
 	// Выполняем проверку того, что запись логического значения способа не сменила
 	ASSERT_TRUE(writer.value(true));
 	// Выполняем проверку записанного логического значения
 	ASSERT_EQ(writer.text(), "true");
 	// Выполняем сброс записи текста документа
-	writer.reset();
+	writer.clear();
 	// Выполняем запись имени поля объекта строковым литералом
 	ASSERT_TRUE(writer.object());
 	// Выполняем запись имени поля объекта
@@ -1133,7 +1133,7 @@ TEST(CodecJsonWriter, RefusalReportsErrorCode) {
 		// Выполняем проверку кода отказа записи
 		ASSERT_EQ(writer.error(), json::error_t::NO_CONTAINER_OPEN);
 		// Выполняем сброс состояния записи
-		writer.reset();
+		writer.clear();
 		// Выполняем проверку снятия кода отказа сбросом
 		ASSERT_EQ(writer.error(), json::error_t::NONE);
 	}

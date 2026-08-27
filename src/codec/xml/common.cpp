@@ -150,183 +150,198 @@ bool awh::codec::xml::Name::operator != (const Name & name) const noexcept {
  */
 const char * awh::codec::xml::message(const error_t error) noexcept {
 	/**
-	 * Определяем код ошибки разбора
+	 * Определяем код отказа разбора
+	 *
+	 * @note Сличение ведётся по САМОМУ перечню, а не по приведённому к байту значению,
+	 *       и ветви `default` здесь нет нарочно: так собиратель сам сообщает о коде,
+	 *       описания не получившем, - предупреждением `-Wswitch` с именем этого кода.
+	 *       Приведение к байту, стоявшее здесь прежде, защиту эту снимало вовсе, и коды,
+	 *       дописанные в перечень, оставались без описания молча. Проверено щупом:
+	 *       дописанный код вызывает предупреждение по имени
+	 *
+	 * @warning Возвращать приведение нельзя: сторожем тут выступает собиратель, а не
+	 *          проверка. Проверка описаний перечень перебрать не может - о том, что код
+	 *          объявлен, ей узнать неоткуда
 	 */
-	switch(static_cast <uint8_t> (error)){
+	switch(error){
 		// Если ошибок не обнаружено
-		case static_cast <uint8_t> (error_t::NONE):
+		case error_t::NONE:
 			// Выводим описание кода ошибки
 			return "no error";
 		// Если произошла внутренняя ошибка разбора
-		case static_cast <uint8_t> (error_t::INTERNAL):
+		case error_t::INTERNAL:
 			// Выводим описание кода ошибки
 			return "internal parser error";
-		// Если текст оборвался посреди разметки
-		case static_cast <uint8_t> (error_t::UNEXPECTED_EOF):
-			// Выводим описание кода ошибки
-			return "unexpected end of input";
 		// Если знак недопустим в разметке
-		case static_cast <uint8_t> (error_t::INVALID_CHARACTER):
+		case error_t::INVALID_CHARACTER:
 			// Выводим описание кода ошибки
 			return "character is not allowed in XML";
 		// Если последовательность байтов не отвечает объявленной кодировке
-		case static_cast <uint8_t> (error_t::INVALID_ENCODING):
+		case error_t::INVALID_ENCODING:
 			// Выводим описание кода ошибки
 			return "malformed byte sequence for the declared encoding";
 		// Если объявленная кодировка не поддерживается
-		case static_cast <uint8_t> (error_t::UNSUPPORTED_ENCODING):
+		case error_t::UNSUPPORTED_ENCODING:
 			// Выводим описание кода ошибки
 			return "unsupported character encoding";
 		// Если объявление разметки построено ошибочно
-		case static_cast <uint8_t> (error_t::INVALID_DECLARATION):
+		case error_t::INVALID_DECLARATION:
 			// Выводим описание кода ошибки
 			return "malformed XML declaration";
 		// Если объявленное издание разметки не поддерживается
-		case static_cast <uint8_t> (error_t::UNSUPPORTED_VERSION):
+		case error_t::UNSUPPORTED_VERSION:
 			// Выводим описание кода ошибки
 			return "unsupported XML version";
 		// Если имя содержит недопустимые знаки либо пусто
-		case static_cast <uint8_t> (error_t::INVALID_NAME):
+		case error_t::INVALID_NAME:
 			// Выводим описание кода ошибки
 			return "invalid name";
 		// Если длина имени превышает допустимую
-		case static_cast <uint8_t> (error_t::NAME_TOO_LONG):
+		case error_t::NAME_TOO_LONG:
 			// Выводим описание кода ошибки
 			return "name is too long";
 		// Если метка построена ошибочно
-		case static_cast <uint8_t> (error_t::INVALID_TAG):
+		case error_t::INVALID_TAG:
 			// Выводим описание кода ошибки
 			return "malformed tag";
 		// Если метка не закрыта до конца текста
-		case static_cast <uint8_t> (error_t::UNCLOSED_TAG):
+		case error_t::UNCLOSED_TAG:
 			// Выводим описание кода ошибки
 			return "unclosed tag";
 		// Если имя закрывающей метки не совпадает с открывающей
-		case static_cast <uint8_t> (error_t::MISMATCHED_TAG):
+		case error_t::MISMATCHED_TAG:
 			// Выводим описание кода ошибки
 			return "end tag does not match start tag";
 		// Если обнаружена закрывающая метка без соответствующей открывающей
-		case static_cast <uint8_t> (error_t::UNEXPECTED_CLOSE_TAG):
+		case error_t::UNEXPECTED_CLOSE_TAG:
 			// Выводим описание кода ошибки
 			return "end tag without matching start tag";
 		// Если в тексте более одного корневого узла
-		case static_cast <uint8_t> (error_t::MULTIPLE_ROOTS):
+		case error_t::MULTIPLE_ROOTS:
 			// Выводим описание кода ошибки
 			return "more than one root element";
 		// Если в тексте отсутствует корневой узел
-		case static_cast <uint8_t> (error_t::MISSING_ROOT):
+		case error_t::MISSING_ROOT:
 			// Выводим описание кода ошибки
 			return "document has no root element";
 		// Если текстовое содержимое обнаружено вне корневого узла
-		case static_cast <uint8_t> (error_t::CONTENT_OUTSIDE_ROOT):
+		case error_t::CONTENT_OUTSIDE_ROOT:
 			// Выводим описание кода ошибки
 			return "character data outside of root element";
 		// Если превышена допустимая глубина вложенности узлов
-		case static_cast <uint8_t> (error_t::DEPTH_EXCEEDED):
+		case error_t::DEPTH_EXCEEDED:
 			// Выводим описание кода ошибки
 			return "maximum element nesting depth exceeded";
 		// Если атрибут построен ошибочно
-		case static_cast <uint8_t> (error_t::INVALID_ATTRIBUTE):
+		case error_t::INVALID_ATTRIBUTE:
 			// Выводим описание кода ошибки
 			return "malformed attribute";
 		// Если атрибут с таким именем в узле уже объявлен
-		case static_cast <uint8_t> (error_t::DUPLICATE_ATTRIBUTE):
+		case error_t::DUPLICATE_ATTRIBUTE:
 			// Выводим описание кода ошибки
 			return "duplicate attribute name";
 		// Если значение атрибута не заключено в кавычки
-		case static_cast <uint8_t> (error_t::UNQUOTED_ATTRIBUTE):
+		case error_t::UNQUOTED_ATTRIBUTE:
 			// Выводим описание кода ошибки
 			return "attribute value is not quoted";
 		// Если ссылка на сущность построена ошибочно
-		case static_cast <uint8_t> (error_t::INVALID_REFERENCE):
+		case error_t::INVALID_REFERENCE:
 			// Выводим описание кода ошибки
 			return "malformed entity reference";
 		// Если обнаружена ссылка на необъявленную сущность
-		case static_cast <uint8_t> (error_t::UNKNOWN_ENTITY):
+		case error_t::UNKNOWN_ENTITY:
 			// Выводим описание кода ошибки
 			return "reference to undeclared entity";
 		// Если встречена ссылка на внешнюю либо неразбираемую сущность там, где она запрещена
-		case static_cast <uint8_t> (error_t::EXTERNAL_ENTITY):
+		case error_t::EXTERNAL_ENTITY:
 			// Выводим описание кода ошибки
 			return "reference to an external or unparsed entity is not allowed here";
 		// Если сущность ссылается сама на себя
-		case static_cast <uint8_t> (error_t::RECURSIVE_ENTITY):
+		case error_t::RECURSIVE_ENTITY:
 			// Выводим описание кода ошибки
 			return "recursive entity reference";
 		// Если превышена допустимая глубина вложенности сущностей
-		case static_cast <uint8_t> (error_t::ENTITY_DEPTH_EXCEEDED):
+		case error_t::ENTITY_DEPTH_EXCEEDED:
 			// Выводим описание кода ошибки
 			return "maximum entity nesting depth exceeded";
 		// Если превышен допустимый объём подстановки сущностей
-		case static_cast <uint8_t> (error_t::ENTITY_LIMIT_EXCEEDED):
+		case error_t::ENTITY_LIMIT_EXCEEDED:
 			// Выводим описание кода ошибки
 			return "maximum entity expansion size exceeded";
 		// Если превышено допустимое количество объявленных сущностей
-		case static_cast <uint8_t> (error_t::ENTITY_COUNT_EXCEEDED):
+		case error_t::ENTITY_COUNT_EXCEEDED:
 			// Выводим описание кода ошибки
 			return "too many entity declarations";
 		// Если числовая ссылка построена ошибочно либо указывает на недопустимое кодовое значение
-		case static_cast <uint8_t> (error_t::INVALID_CHAR_REFERENCE):
+		case error_t::INVALID_CHAR_REFERENCE:
 			// Выводим описание кода ошибки
 			return "malformed or out-of-range character reference";
 		// Если примечание построено ошибочно
-		case static_cast <uint8_t> (error_t::INVALID_COMMENT):
+		case error_t::INVALID_COMMENT:
 			// Выводим описание кода ошибки
 			return "malformed comment";
 		// Если раздел дословного текста построен ошибочно
-		case static_cast <uint8_t> (error_t::INVALID_CDATA):
+		case error_t::INVALID_CDATA:
 			// Выводим описание кода ошибки
 			return "malformed CDATA section";
 		// Если указание обработчику построено ошибочно
-		case static_cast <uint8_t> (error_t::INVALID_PROCESSING):
+		case error_t::INVALID_PROCESSING:
 			// Выводим описание кода ошибки
 			return "malformed processing instruction";
 		// Если имя указания обработчику отведено договором
-		case static_cast <uint8_t> (error_t::RESERVED_PROCESSING):
+		case error_t::RESERVED_PROCESSING:
 			// Выводим описание кода ошибки
 			return "processing instruction target is reserved";
 		// Если описание типа документа построено ошибочно
-		case static_cast <uint8_t> (error_t::INVALID_DOCTYPE):
+		case error_t::INVALID_DOCTYPE:
 			// Выводим описание кода ошибки
 			return "malformed document type declaration";
 		// Если описание типа документа расположено не на своём месте
-		case static_cast <uint8_t> (error_t::DOCTYPE_MISPLACED):
+		case error_t::DOCTYPE_MISPLACED:
 			// Выводим описание кода ошибки
 			return "document type declaration is misplaced";
 		// Если префикс пространства имён построен ошибочно
-		case static_cast <uint8_t> (error_t::INVALID_PREFIX):
+		case error_t::INVALID_PREFIX:
 			// Выводим описание кода ошибки
 			return "malformed namespace prefix";
 		// Если префикс не связан ни с одним пространством имён
-		case static_cast <uint8_t> (error_t::UNBOUND_PREFIX):
+		case error_t::UNBOUND_PREFIX:
 			// Выводим описание кода ошибки
 			return "namespace prefix is not bound";
 		// Если выполнена попытка переопределить отведённый договором префикс
-		case static_cast <uint8_t> (error_t::RESERVED_PREFIX):
+		case error_t::RESERVED_PREFIX:
 			// Выводим описание кода ошибки
 			return "reserved namespace prefix cannot be redefined";
 		// Если объявлению пространства имён дано недопустимое значение
-		case static_cast <uint8_t> (error_t::INVALID_NAMESPACE):
+		case error_t::INVALID_NAMESPACE:
 			// Выводим описание кода ошибки
 			return "invalid namespace declaration";
 		// Если превышен предел, заданный настройками разбора
-		case static_cast <uint8_t> (error_t::OVERFLOW_LIMIT):
+		case error_t::OVERFLOW_LIMIT:
 			// Выводим описание кода ошибки
 			return "configured parser limit exceeded";
+		// Если разбираемый текст не помещается в разрядность хранилища
+		case error_t::STORAGE_EXHAUSTED:
+			// Выводим описание кода ошибки
+			return "the text does not fit the width of the parser storage";
+		// Если количество атрибутов у узла превышает допустимое
+		case error_t::TOO_MANY_ATTRIBUTES:
+			// Выводим описание кода ошибки
+			return "too many attributes in the element";
 		// Если построение разметки пересекает границу подставленной сущности
-		case static_cast <uint8_t> (error_t::ENTITY_BOUNDARY):
+		case error_t::ENTITY_BOUNDARY:
 			// Выводим описание кода ошибки
 			return "logical structure crosses entity boundary";
 		// Если файл разметки открыть не удалось
-		case static_cast <uint8_t> (error_t::FILE_NOT_OPENED):
+		case error_t::FILE_NOT_OPENED:
 			// Выводим описание кода ошибки
 			return "cannot open the markup file";
 		// Если подача продолжена после объявленного конца текста
-		case static_cast <uint8_t> (error_t::TEXT_ALREADY_ENDED):
+		case error_t::TEXT_ALREADY_ENDED:
 			// Выводим описание кода ошибки
 			return "feeding continued after the text was declared complete";
 		// Если текст разметки записать в файл не удалось
-		case static_cast <uint8_t> (error_t::FILE_NOT_WRITTEN):
+		case error_t::FILE_NOT_WRITTEN:
 			// Выводим описание кода ошибки
 			return "cannot write the markup file";
 	}
@@ -344,25 +359,25 @@ const char * awh::codec::xml::name(const encoding_t encoding) noexcept {
 	/**
 	 * Определяем кодировку исходного текста
 	 */
-	switch(static_cast <uint8_t> (encoding)){
+	switch(encoding){
 		// Если кодировкой является UTF-8
-		case static_cast <uint8_t> (encoding_t::UTF8):
+		case encoding_t::UTF8:
 			// Выводим название кодировки
 			return "UTF-8";
 		// Если кодировкой является UTF-16 с обратным порядком байтов
-		case static_cast <uint8_t> (encoding_t::UTF16LE):
+		case encoding_t::UTF16LE:
 			// Выводим название кодировки
 			return "UTF-16LE";
 		// Если кодировкой является UTF-16 с прямым порядком байтов
-		case static_cast <uint8_t> (encoding_t::UTF16BE):
+		case encoding_t::UTF16BE:
 			// Выводим название кодировки
 			return "UTF-16BE";
 		// Если кодировкой является ISO-8859-1
-		case static_cast <uint8_t> (encoding_t::LATIN1):
+		case encoding_t::LATIN1:
 			// Выводим название кодировки
 			return "ISO-8859-1";
 		// Если кодировкой является US-ASCII
-		case static_cast <uint8_t> (encoding_t::ASCII):
+		case encoding_t::ASCII:
 			// Выводим название кодировки
 			return "US-ASCII";
 		/**
@@ -371,9 +386,19 @@ const char * awh::codec::xml::name(const encoding_t encoding) noexcept {
 		 * @note Имени самой кодировки вид этот не несёт: какая именно взята, хранится
 		 *       таблицею у разбора, а сюда приходит один лишь вид
 		 */
-		case static_cast <uint8_t> (encoding_t::SINGLE):
+		case encoding_t::SINGLE:
 			// Выводим обозначение вида кодировки
 			return "single-byte";
+		/**
+		 * Если разбор дошёл до видов, обработки здесь не требующих
+		 *
+		 * @note Имени у неопределённой кодировки нет
+		 *
+		 * @warning Перечислены они НАМЕРЕННО вместо `default`: приведение к `default`
+		 *          глушит `-Wswitch`, и новый член перечня пройдёт молча
+		 */
+		case encoding_t::NONE:
+		break;
 	}
 	// Выводим название неопределённой кодировки
 	return "";

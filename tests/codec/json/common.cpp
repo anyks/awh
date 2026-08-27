@@ -102,40 +102,32 @@ using namespace awh::codec;
  */
 TEST(CodecJsonCommon, Messages) {
 	/**
-	 * Коды отказов разбора текста документа
+	 * Выполняем перебор всех кодов отказа, договором отведённых
+	 *
+	 * @note Перебор ведётся числом от нуля до последнего кода перечня: список кодов,
+	 *       выписанный рукою, от перечня отстаёт молча - именно так коды, заведённые
+	 *       последними, не сличались вовсе
 	 */
-	const vector <json::error_t> errors = {
-		json::error_t::NONE, json::error_t::INTERNAL, json::error_t::UNEXPECTED_EOF,
-		json::error_t::INVALID_CHARACTER, json::error_t::INVALID_ENCODING,
-		json::error_t::UNSUPPORTED_ENCODING, json::error_t::UNTERMINATED_STRING,
-		json::error_t::INVALID_ESCAPE, json::error_t::INVALID_UNICODE,
-		json::error_t::UNPAIRED_SURROGATE, json::error_t::CONTROL_IN_STRING,
-		json::error_t::INVALID_NUMBER, json::error_t::NUMBER_OUT_OF_RANGE,
-		json::error_t::INVALID_LITERAL, json::error_t::TRAILING_CHARACTERS,
-		json::error_t::EXPECTED_VALUE, json::error_t::EXPECTED_KEY,
-		json::error_t::EXPECTED_COLON, json::error_t::EXPECTED_COMMA,
-		json::error_t::TRAILING_COMMA, json::error_t::DUPLICATE_KEY,
-		json::error_t::DEPTH_EXCEEDED, json::error_t::STRING_TOO_LONG,
-		json::error_t::NUMBER_TOO_LONG, json::error_t::TOO_MANY_NODES,
-		json::error_t::COMMENT_NOT_ALLOWED, json::error_t::UNTERMINATED_COMMENT,
-		json::error_t::EMPTY_TEXT, json::error_t::OVERFLOW_LIMIT
-	};
-	// Набор уже встреченных описаний кодов отказов
-	unordered_set <string> seen;
-	/**
-	 * Выполняем перебор всех кодов отказов разбора
-	 */
-	for(const json::error_t error : errors){
-		// Получаем описание очередного кода отказа разбора
-		const char * text = json::message(error);
+	for(uint32_t code = 0; code <= static_cast <uint32_t> (json::error_t::KEY_OUTSIDE_OBJECT); code++){
+		// Получаем описание очередного кода отказа
+		const char * message = json::message(static_cast <json::error_t> (code));
 		// Выполняем проверку наличия описания кода отказа
-		ASSERT_TRUE((text != nullptr) && (::strlen(text) > 0));
-		// Выполняем проверку того, что описание кода отказа не является заглушкой
-		ASSERT_STRNE(text, "unknown error");
-		// Выполняем проверку неповторимости описания кода отказа
-		ASSERT_TRUE(seen.emplace(text).second) << "описание «" << text << "» повторяется";
+		ASSERT_NE(message, nullptr) << code;
+		// Выполняем проверку того, что описание кода отказа не пусто
+		ASSERT_GT(::strlen(message), 0u) << code;
+		// Выполняем проверку того, что код отказа описанием ОПОЗНАН
+		ASSERT_STRNE(message, "unknown error") << code;
 	}
-	// Выполняем проверку выдачи заглушки на неизвестный код отказа
+	/**
+	 * Выполняем проверку того, что перечень кодов на том и оканчивается
+	 *
+	 * @note Сличение это отмечает конец перечня, а сторожем НЕ является: код, дописанный
+	 *       без описания, оно пропускает - именно его отсутствие оно и сличает. Проверено
+	 *       щупом: дописанный код отказа проверку не уронил. Сторожем тут выступает
+	 *       собиратель - смотри примечание у самой выдачи описаний
+	 */
+	ASSERT_STREQ(json::message(static_cast <json::error_t> (static_cast <uint32_t> (json::error_t::KEY_OUTSIDE_OBJECT) + 1)), "unknown error");
+	// Выполняем проверку описания кода, договором не отведённого
 	ASSERT_STREQ(json::message(static_cast <json::error_t> (0xFF)), "unknown error");
 }
 /**

@@ -119,7 +119,7 @@ void awh::codec::csv::Writer::quoted(const string_view text) noexcept {
  * @param text содержимое записываемого поля
  *
  */
-void awh::codec::csv::Writer::field(const string_view text) noexcept {
+bool awh::codec::csv::Writer::field(const string_view text) noexcept {
 	// Выполняем запись метки порядка байтов
 	this->mark();
 	// Запоминаем признак того, что поле начинает запись
@@ -151,7 +151,6 @@ void awh::codec::csv::Writer::field(const string_view text) noexcept {
 	 */
 	const bool commented = (
 		!started && (this->_settings.comment != '\0') &&
-		(this->_settings.quoting != quoting_t::NONE) &&
 		!text.empty() && (text.front() == this->_settings.comment)
 	);
 	/**
@@ -165,7 +164,6 @@ void awh::codec::csv::Writer::field(const string_view text) noexcept {
 	 */
 	const bool signatured = (
 		!started && this->_text.empty() &&
-		(this->_settings.quoting != quoting_t::NONE) &&
 		(text.length() >= 3) && (static_cast <uint8_t> (text[0]) == 0xEF) &&
 		(static_cast <uint8_t> (text[1]) == 0xBB) && (static_cast <uint8_t> (text[2]) == 0xBF)
 	);
@@ -178,17 +176,18 @@ void awh::codec::csv::Writer::field(const string_view text) noexcept {
 	 */
 	const bool escaped = (
 		(this->_settings.escape != escape_t::DOUBLE) &&
-		(this->_settings.quoting != quoting_t::NONE) &&
 		(text.find('\\') != string_view::npos)
 	);
 	/**
 	 * Если поле требуется заключить в кавычки
 	 */
-	if(commented || signatured || escaped || quotable(text, this->_settings.separator, this->_settings.quote, this->_settings.quoting)){
+	if((this->_settings.quoting != quoting_t::NONE) &&
+	   (commented || signatured || escaped ||
+	    quotable(text, this->_settings.separator, this->_settings.quote, this->_settings.quoting))){
 		// Записываем содержимое поля с обрамлением кавычками
 		this->quoted(text);
-		// Выходим из метода
-		return;
+		// Выводим признак успешной записи поля
+		return true;
 	}
 	/**
 	 * Если кавычки не ставятся вовсе
@@ -200,23 +199,76 @@ void awh::codec::csv::Writer::field(const string_view text) noexcept {
 	 */
 	if(this->_settings.quoting == quoting_t::NONE){
 		/**
+		 * Если содержимое поля установленными настройками записи непредставимо
+		 *
+		 * @note Кавычки не ставятся вовсе, и знак, разрывающий запись, укрыть можно лишь
+		 *       знаком отмены. Способ же записи кавычки, знака отмены не признающий,
+		 *       отмену эту при обратном чтении не снимет: поле «а,б» ушло бы тремя
+		 *       полями вместо двух. Представления такому полю нет никакого, и запись
+		 *       отвергает его вместо порчи молчаливой
+		 *
+		 * @note Отказ стоит у поля, а не у настроек: поле, знаков разрывающих не
+		 *       содержащее, теми же настройками записывается верно
+		 */
+		if(this->_settings.escape != escape_t::BACKSLASH){
+			/**
+			 * Если поле начинает запись знаком примечания либо меткой порядка байтов
+			 *
+			 * @note Укрыть их без кавычек можно лишь знаком отмены, а способ записи
+			 *       кавычки, отмены не признающий, при обратном чтении её не снимет
+			 */
+			if(commented || signatured)
+				// Выводим признак отказа записи поля
+				return this->refuse(error_t::UNWRITABLE_FIELD);
+			/**
+			 * Выполняем перебор всех знаков содержимого поля
+			 */
+			for(const char letter : text){
+				// Если знак разрывает запись
+				if((letter == this->_settings.separator) || (letter == this->_settings.quote) ||
+				   (letter == '\r') || (letter == '\n') || (letter == '\\'))
+					// Выводим признак отказа записи поля
+					return this->refuse(error_t::UNWRITABLE_FIELD);
+			}
+		}
+		/**
+		 * Если поле начинает запись знаком примечания либо меткой порядка байтов
+		 *
+		 * @note Знак отмены ставится ПЕРЕД ними: строку, знаком примечания начатую,
+		 *       разбор числит примечанием и теряет всю запись, а метку, стоящую в
+		 *       самом начале текста, снимает признаком кодировки. Кавычек же здесь
+		 *       нет, и укрыть их можно лишь отменой. Найдено ворошителем, едва он
+		 *       стал порождать запись без кавычек вовсе
+		 */
+		if(commented || signatured)
+			// Записываем знак отмены
+			this->_text.push_back('\\');
+		/**
 		 * Выполняем перебор всех знаков содержимого поля
 		 */
 		for(const char letter : text){
 			/**
-			 * Если знак разрывает запись
+			 * Если знак требует отмены
+			 *
+			 * @note Кавычка отменяется наравне со знаком разрывающим: поле, кавычкой
+			 *       начатое, разбор числит кавычным и ищет ему пары до самого конца
+			 *       текста, отвечая `unterminated quoted field`. Найдено ворошителем,
+			 *       едва он стал порождать запись без кавычек вовсе
 			 */
-			if((letter == this->_settings.separator) || (letter == '\r') || (letter == '\n') || (letter == '\\'))
+			if((letter == this->_settings.separator) || (letter == this->_settings.quote) ||
+			   (letter == '\r') || (letter == '\n') || (letter == '\\'))
 				// Записываем знак отмены
 				this->_text.push_back('\\');
 			// Записываем знак содержимого поля
 			this->_text.push_back(letter);
 		}
-		// Выходим из метода
-		return;
+		// Выводим признак успешной записи поля
+		return true;
 	}
 	// Записываем содержимое поля как есть
 	this->_text.append(text);
+	// Выводим признак успешной записи поля
+	return true;
 }
 /**
  * @brief Метод записи числового поля записи
@@ -231,7 +283,7 @@ void awh::codec::csv::Writer::field(const string_view text) noexcept {
  *
  */
 template <typename T>
-void awh::codec::csv::Writer::number(const T value) noexcept {
+bool awh::codec::csv::Writer::number(const T value) noexcept {
 	// Хранилище записи числового значения поля
 	char buffer[64];
 	// Длина записи числового значения поля
@@ -243,10 +295,8 @@ void awh::codec::csv::Writer::number(const T value) noexcept {
 	 *       причислен к целым, и без этого истина записалась бы единицей
 	 */
 	if constexpr(is_same <T, bool>::value){
-		// Выполняем запись поля с логическим значением
-		this->field(value ? "true" : "false");
-		// Выходим из метода
-		return;
+		// Выводим результат записи поля с логическим значением
+		return this->field(value ? "true" : "false");
 	/**
 	 * Если записывается число с плавающей точкой
 	 */
@@ -294,28 +344,26 @@ void awh::codec::csv::Writer::number(const T value) noexcept {
 	 *          заслон может понадобиться в тот же день
 	 */
 	if((length <= 0) || (static_cast <size_t> (length) >= sizeof(buffer))){
-		// Выполняем запись пустого поля
-		this->field("");
-		// Выходим из метода
-		return;
+		// Выводим результат записи пустого поля
+		return this->field("");
 	}
-	// Выполняем запись поля с числовым значением
-	this->field(string_view(buffer, static_cast <size_t> (length)));
+	// Выводим результат записи поля с числовым значением
+	return this->field(string_view(buffer, static_cast <size_t> (length)));
 }
 /**
  * Выполняем явное порождение метода записи числового поля для всех числовых типов
  */
-template __AWH_SHARED_EXPORT__ void awh::codec::csv::Writer::number <bool> (const bool) noexcept;
-template __AWH_SHARED_EXPORT__ void awh::codec::csv::Writer::number <int8_t> (const int8_t) noexcept;
-template __AWH_SHARED_EXPORT__ void awh::codec::csv::Writer::number <uint8_t> (const uint8_t) noexcept;
-template __AWH_SHARED_EXPORT__ void awh::codec::csv::Writer::number <int16_t> (const int16_t) noexcept;
-template __AWH_SHARED_EXPORT__ void awh::codec::csv::Writer::number <uint16_t> (const uint16_t) noexcept;
-template __AWH_SHARED_EXPORT__ void awh::codec::csv::Writer::number <int32_t> (const int32_t) noexcept;
-template __AWH_SHARED_EXPORT__ void awh::codec::csv::Writer::number <uint32_t> (const uint32_t) noexcept;
-template __AWH_SHARED_EXPORT__ void awh::codec::csv::Writer::number <int64_t> (const int64_t) noexcept;
-template __AWH_SHARED_EXPORT__ void awh::codec::csv::Writer::number <uint64_t> (const uint64_t) noexcept;
-template __AWH_SHARED_EXPORT__ void awh::codec::csv::Writer::number <float> (const float) noexcept;
-template __AWH_SHARED_EXPORT__ void awh::codec::csv::Writer::number <double> (const double) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Writer::number <bool> (const bool) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Writer::number <int8_t> (const int8_t) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Writer::number <uint8_t> (const uint8_t) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Writer::number <int16_t> (const int16_t) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Writer::number <uint16_t> (const uint16_t) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Writer::number <int32_t> (const int32_t) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Writer::number <uint32_t> (const uint32_t) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Writer::number <int64_t> (const int64_t) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Writer::number <uint64_t> (const uint64_t) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Writer::number <float> (const float) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Writer::number <double> (const double) noexcept;
 /**
  * @brief Метод завершения текущей записи
  *
@@ -351,31 +399,54 @@ void awh::codec::csv::Writer::record() noexcept {
  * @param fields поля записываемой записи
  *
  */
-void awh::codec::csv::Writer::record(const vector <string> & fields) noexcept {
+bool awh::codec::csv::Writer::record(const vector <string> & fields) noexcept {
 	/**
 	 * Выполняем перебор всех полей записи
 	 */
-	for(const string & value : fields)
-		// Записываем очередное поле записи
-		this->field(value);
+	for(const string & value : fields){
+		/**
+		 * Если очередное поле записать не удалось
+		 *
+		 * @note Запись при этом НЕ завершается: собранный текст остаётся оборванным
+		 *       на месте отказа намеренно, дабы порченая запись не ушла к читающему
+		 *       законченной. Продолжать сбор после отказа не следует
+		 */
+		if(!this->field(value))
+			// Выводим признак отказа записи
+			return false;
+	}
 	// Завершаем текущую запись
 	this->record();
+	// Выводим признак успешной записи
+	return true;
 }
+
 /**
  * @brief Метод записи целой записи полем за полем
  *
  * @param fields поля записываемой записи
  *
  */
-void awh::codec::csv::Writer::record(const vector <string_view> & fields) noexcept {
+bool awh::codec::csv::Writer::record(const vector <string_view> & fields) noexcept {
 	/**
 	 * Выполняем перебор всех полей записи
 	 */
-	for(const string_view value : fields)
-		// Записываем очередное поле записи
-		this->field(value);
+	for(const string_view value : fields){
+		/**
+		 * Если очередное поле записать не удалось
+		 *
+		 * @note Запись при этом НЕ завершается: собранный текст остаётся оборванным
+		 *       на месте отказа намеренно, дабы порченая запись не ушла к читающему
+		 *       законченной. Продолжать сбор после отказа не следует
+		 */
+		if(!this->field(value))
+			// Выводим признак отказа записи
+			return false;
+	}
 	// Завершаем текущую запись
 	this->record();
+	// Выводим признак успешной записи
+	return true;
 }
 /**
  * @brief Метод записи текста целиком
@@ -383,13 +454,42 @@ void awh::codec::csv::Writer::record(const vector <string_view> & fields) noexce
  * @param records записываемые записи
  *
  */
-void awh::codec::csv::Writer::write(const vector <vector <string>> & records) noexcept {
+bool awh::codec::csv::Writer::write(const vector <vector <string>> & records) noexcept {
 	/**
 	 * Выполняем перебор всех записываемых записей
 	 */
-	for(const vector <string> & fields : records)
-		// Записываем очередную запись
-		this->record(fields);
+	for(const vector <string> & fields : records){
+		// Если очередную запись записать не удалось
+		if(!this->record(fields))
+			// Выводим признак отказа записи
+			return false;
+	}
+	// Выводим признак успешной записи
+	return true;
+}
+/**
+ * @brief Метод получения собранного текста
+ *
+ * @return собранный текст
+ *
+ */
+bool awh::codec::csv::Writer::refuse(const error_t error) noexcept {
+	// Запоминаем код отказа записи
+	this->_error = error;
+	// Выполняем вывод сообщения об отказе в журнал работы
+	this->_log->print("%s", log_t::flag_t::CRITICAL, message(error));
+	// Выводим признак отказа записи
+	return false;
+}
+/**
+ * @brief Метод получения кода отказа записи
+ *
+ * @return код отказа записи
+ *
+ */
+awh::codec::csv::error_t awh::codec::csv::Writer::error() const noexcept {
+	// Выводим код отказа записи
+	return this->_error;
 }
 /**
  * @brief Метод получения собранного текста
@@ -449,6 +549,16 @@ void awh::codec::csv::Writer::clear() noexcept {
 	this->_origin = 0;
 	// Снимаем признак наличия полей у записи
 	this->_started = false;
+	/**
+	 * Снимаем признак записанной метки порядка байтов
+	 *
+	 * @note Метка ставится однажды в самое начало собираемого текста, и очистка
+	 *       текста обязана вернуть возможность её поставить: иначе следующий текст
+	 *       ушёл бы без метки, хотя настройки её велят
+	 */
+	this->_marked = false;
+	// Сбрасываем код отказа записи
+	this->_error = error_t::NONE;
 }
 /**
  * @brief Метод получения настроек записи текста
@@ -487,7 +597,7 @@ void awh::codec::csv::Writer::setLogger(const log_t * log) noexcept {
  *
  */
 awh::codec::csv::Writer::Writer(const log_t * log) noexcept :
- _log(log), _origin(0), _started(false), _marked(false) {}
+ _log(log), _origin(0), _started(false), _marked(false), _error(error_t::NONE) {}
 /**
  * @brief Конструктор
  *
@@ -497,4 +607,4 @@ awh::codec::csv::Writer::Writer(const log_t * log) noexcept :
  */
 awh::codec::csv::Writer::Writer(const log_t * log, const settings_t & settings) noexcept :
  _log(log),
- _settings(settings), _origin(0), _started(false), _marked(false) {}
+ _settings(settings), _origin(0), _started(false), _marked(false), _error(error_t::NONE) {}

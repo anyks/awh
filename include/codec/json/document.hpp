@@ -1513,7 +1513,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool parse(const string & text) noexcept;
+					bool parse(const string_view text) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод потоковой выдачи значений разбираемого текста
@@ -1537,7 +1537,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool parse(const string & text, const callback_t & callback) noexcept;
+					bool parse(const string_view text, const callback_t & callback) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод разбора текста документа из файла

@@ -989,7 +989,7 @@ TEST(CodecXmlReader, Limits) {
 		// Выполняем разбор собранного текста разметки
 		::run(text, 4096, error, settings);
 		// Выполняем проверку прекращения разбора превышением предела
-		ASSERT_EQ(error, xml::error_t::OVERFLOW_LIMIT);
+		ASSERT_EQ(error, xml::error_t::TOO_MANY_ATTRIBUTES);
 	}
 	/**
 	 * @brief Метод разбора текста разметки целиком
@@ -1373,7 +1373,7 @@ TEST(CodecXmlReader, SpliceOffset) {
 		// Настройки разбора с выдачей примечаний отдельным событием
 		xml::reader_t::settings_t settings;
 		// Выполняем включение выдачи примечаний отдельным событием
-		settings.comments = true;
+		settings.emitComments = true;
 		// Объект потокового чтения текста разметки
 		xml::reader_t reader(::logger(), settings);
 		// Смещение примечания в исходном тексте
@@ -2323,7 +2323,7 @@ TEST(CodecXmlReader, Location) {
 	// Настройки разбора с выдачей примечаний отдельным событием
 	xml::reader_t::settings_t settings;
 	// Выполняем включение выдачи примечаний отдельным событием
-	settings.comments = true;
+	settings.emitComments = true;
 	// Объект потокового чтения текста разметки
 	xml::reader_t reader(::logger(), settings);
 	// Выполняем передачу текста разметки
@@ -3797,7 +3797,7 @@ TEST(CodecXmlReader, RefusalCodes) {
 		// Выполняем разбор текста разметки с превышением предела
 		::run("<a x=\"1\" y=\"2\" z=\"3\"/>", 4096, error, settings);
 		// Выполняем проверку кода ошибки разбора
-		ASSERT_EQ(error, xml::error_t::OVERFLOW_LIMIT);
+		ASSERT_EQ(error, xml::error_t::TOO_MANY_ATTRIBUTES);
 	}
 	{
 		// Настройки разбора с заданным пределом объёма события
@@ -7080,4 +7080,68 @@ TEST(CodecXmlReader, ZeroLimitMeansNoLimit) {
 		 */
 		ASSERT_EQ(run(settings, text).second, xml::error_t::DEPTH_EXCEEDED);
 	}
+}
+
+/**
+ * @brief Проверка того, что причина отказа отвечает беде, а не месту сличения
+ *
+ * @details Один код `OVERFLOW_LIMIT` отвечал за три разные беды: превышение предела
+ * объёма события, превышение предела количества атрибутов и выход за разрядность
+ * хранилища разбора. Последняя настройками не задаётся вовсе, и сообщение «configured
+ * parser limit exceeded» отправляло потребителя искать предел, какого он не ставил.
+ * Кодеки JSON и CSV дают всякому своему пределу собственный код, и расходиться с ними
+ * здесь нечем
+ *
+ * @note Выход за разрядность хранилища проверкою не достигается - он требует четырёх
+ *       гигабайт текста в одном разборе, - и сличается здесь лишь то, что код его
+ *       заведён отдельным и описание его о настройках не говорит
+ *
+ */
+TEST(CodecXmlReader, LimitRefusalsNameTheirOwnCause) {
+	{
+		// Настройки разбора с пределом количества атрибутов
+		xml::reader_t::settings_t settings;
+		// Выполняем указание предела количества атрибутов узла
+		settings.maxAttributes = 2;
+		// Чтение текста разметки
+		xml::reader_t reader(::logger(), settings);
+		// Выполняем подачу текста разметки
+		reader.feed("<r a=\"1\" b=\"2\" c=\"3\"/>");
+		/**
+		 * Выполняем опустошение очереди событий разбора
+		 */
+		while(reader.next())
+			// Выполняем переход к следующему событию разбора
+			continue;
+		// Выполняем проверку кода отказа разбора
+		ASSERT_EQ(reader.error(), xml::error_t::TOO_MANY_ATTRIBUTES);
+	}
+	{
+		// Настройки разбора с пределом объёма события
+		xml::reader_t::settings_t settings;
+		// Выполняем указание предела объёма события
+		settings.maxEvent = 8;
+		// Чтение текста разметки
+		xml::reader_t reader(::logger(), settings);
+		// Выполняем подачу текста разметки
+		reader.feed("<r>очень длинное содержимое узла разметки</r>");
+		/**
+		 * Выполняем опустошение очереди событий разбора
+		 */
+		while(reader.next())
+			// Выполняем переход к следующему событию разбора
+			continue;
+		// Выполняем проверку кода отказа разбора
+		ASSERT_EQ(reader.error(), xml::error_t::OVERFLOW_LIMIT);
+	}
+	// Выполняем проверку того, что коды эти различны
+	ASSERT_NE(xml::error_t::TOO_MANY_ATTRIBUTES, xml::error_t::OVERFLOW_LIMIT);
+	// Выполняем проверку того, что разрядность хранилища заведена отдельным кодом
+	ASSERT_NE(xml::error_t::STORAGE_EXHAUSTED, xml::error_t::OVERFLOW_LIMIT);
+	// Выполняем проверку того, что описания кодов различны
+	ASSERT_STRNE(xml::message(xml::error_t::STORAGE_EXHAUSTED), xml::message(xml::error_t::OVERFLOW_LIMIT));
+	// Выполняем проверку того, что описание разрядности о настройках не говорит
+	ASSERT_EQ(string(xml::message(xml::error_t::STORAGE_EXHAUSTED)).find("configured"), string::npos);
+	// Выполняем проверку описания предела количества атрибутов
+	ASSERT_STRNE(xml::message(xml::error_t::TOO_MANY_ATTRIBUTES), xml::message(xml::error_t::OVERFLOW_LIMIT));
 }

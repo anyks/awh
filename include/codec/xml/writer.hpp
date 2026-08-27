@@ -976,6 +976,35 @@ namespace awh {
 					const string & text() const noexcept;
 					/**
 					 * \~russian
+					 * @brief Метод изъятия собранного текста разметки
+					 *
+					 * @details Собранный текст переносится звучащему, а сборщик остаётся
+					 * пустым: подача разметки наружу кусками идёт без списывания текста,
+					 * тогда как @c text() отдаёт ссылку и списывания требует
+					 *
+					 * @note Изымать текст дозволено и посреди разметки: собранное есть
+					 *       начало её, и остальное доберётся следующими кусками. Состояние
+					 *       записи изъятие НЕ трогает - глубина, пространства имён и
+					 *       признак корня переживают его
+					 *
+					 * @return изъятый собранный текст разметки
+					 *
+					 * \~english
+					 * @brief Method of the taking of the assembled markup text
+					 * @details The assembled text is moved to the caller, while the assembler remains
+					 * empty: the issuance of a markup outwards by chunks goes without a copying of the text,
+					 * whereas @c text() issues a reference and requires a copying
+					 * @note It is permitted to take the text in the middle of a markup as well: what has been
+					 * assembled is the beginning of it, and the rest will arrive with the following chunks. The state
+					 * of the writing is NOT touched by the taking — the depth, the namespaces and
+					 * the flag of the root survive it
+					 * @return the taken assembled markup text
+					 *
+					 * \~
+					 */
+					string take() noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод отведения места под собираемый текст разметки
 					 *
 					 * @details Отводится место наперёд, чтобы рост накопителя по ходу записи

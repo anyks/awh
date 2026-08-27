@@ -449,43 +449,43 @@ bool awh::codec::json::Document::Value::extract(T & result) const noexcept {
 	/**
 	 * Определяем вид значения узла документа
 	 */
-	switch(static_cast <uint16_t> (node.type)){
+	switch(node.type){
 		// Если значение является целым со знаком шириною в один байт
-		case static_cast <uint16_t> (type_t::INT8):
+		case type_t::INT8:
 		// Если значение является целым со знаком шириною в два байта
-		case static_cast <uint16_t> (type_t::INT16):
+		case type_t::INT16:
 		// Если значение является целым со знаком шириною в четыре байта
-		case static_cast <uint16_t> (type_t::INT32):
+		case type_t::INT32:
 		// Если значение является целым со знаком шириною в восемь байтов
-		case static_cast <uint16_t> (type_t::INT64):
+		case type_t::INT64:
 			// Устанавливаем извлечённое значение приведением языка
 			result = static_cast <T> (node.number <int64_t> ());
 		break;
 		// Если значение является целым без знака шириною в один байт
-		case static_cast <uint16_t> (type_t::UINT8):
+		case type_t::UINT8:
 		// Если значение является целым без знака шириною в два байта
-		case static_cast <uint16_t> (type_t::UINT16):
+		case type_t::UINT16:
 		// Если значение является целым без знака шириною в четыре байта
-		case static_cast <uint16_t> (type_t::UINT32):
+		case type_t::UINT32:
 		// Если значение является целым без знака шириною в восемь байтов
-		case static_cast <uint16_t> (type_t::UINT64):
+		case type_t::UINT64:
 			// Устанавливаем извлечённое значение приведением языка
 			result = static_cast <T> (node.number <uint64_t> ());
 		break;
 		// Если значение является дробным одинарной точности
-		case static_cast <uint16_t> (type_t::FLOAT):
+		case type_t::FLOAT:
 			// Устанавливаем извлечённое значение приведением дробного
 			result = ::convert <T> (static_cast <double> (node.number <float> ()));
 		break;
 		// Если значение является дробным двойной точности
-		case static_cast <uint16_t> (type_t::DOUBLE):
+		case type_t::DOUBLE:
 			// Устанавливаем извлечённое значение приведением дробного
 			result = ::convert <T> (node.number <double> ());
 		break;
 		/**
 		 * Если значение является числом, не вместимым ни в один родной вид
 		 */
-		case static_cast <uint16_t> (type_t::EXTENDED): {
+		case type_t::EXTENDED: {
 			// Получаем запись числа, хранимую узлом
 			const string_view text(this->_doc->_storage.data() + node.offset, node.length());
 			// Разбираемое дробное число
@@ -503,7 +503,27 @@ bool awh::codec::json::Document::Value::extract(T & result) const noexcept {
 		/**
 		 * Если значение числом не является вовсе
 		 */
-		default:
+		/**
+		 * Если видом хранения число не является вовсе
+		 *
+		 * @note Перечислены виды НАМЕРЕННО вместо `default`: ветвь `default` глушит
+		 *       `-Wswitch`, и числовой вид, в перечень дописанный, прошёл бы это
+		 *       место молча, отдавая отказ извлечения вместо разбора своего
+		 *
+		 * @note Составные имена перечня собирают по нескольку разрядов сразу и видом
+		 *       хранения отдельного значения не бывают никогда
+		 */
+		case type_t::UNDEFINED:
+		case type_t::NUL:
+		case type_t::BOOL:
+		case type_t::STRING:
+		case type_t::ARRAY:
+		case type_t::OBJECT:
+		case type_t::SIGNED:
+		case type_t::UNSIGNED:
+		case type_t::INT:
+		case type_t::REAL:
+		case type_t::NUMBER:
 			// Выводим признак неудачного извлечения
 			return false;
 	}
@@ -669,39 +689,62 @@ void awh::codec::json::Document::compose(writer_t & writer, const node_t & node)
 	/**
 	 * Определяем вид значения узла документа
 	 */
-	switch(static_cast <uint16_t> (node.type)){
+	switch(node.type){
 		// Если значение является целым со знаком любой ширины
-		case static_cast <uint16_t> (type_t::INT8):
-		case static_cast <uint16_t> (type_t::INT16):
-		case static_cast <uint16_t> (type_t::INT32):
-		case static_cast <uint16_t> (type_t::INT64):
+		case type_t::INT8:
+		case type_t::INT16:
+		case type_t::INT32:
+		case type_t::INT64:
 			// Выполняем запись целого числа со знаком
 			writer.value(node.number <int64_t> ());
 		break;
 		// Если значение является целым без знака любой ширины
-		case static_cast <uint16_t> (type_t::UINT8):
-		case static_cast <uint16_t> (type_t::UINT16):
-		case static_cast <uint16_t> (type_t::UINT32):
-		case static_cast <uint16_t> (type_t::UINT64):
+		case type_t::UINT8:
+		case type_t::UINT16:
+		case type_t::UINT32:
+		case type_t::UINT64:
 			// Выполняем запись целого числа без знака
 			writer.value(node.number <uint64_t> ());
 		break;
 		// Если значение является дробным одинарной точности
-		case static_cast <uint16_t> (type_t::FLOAT):
+		case type_t::FLOAT:
 			// Выполняем запись дробного числа одинарной точности
 			writer.value(static_cast <double> (node.number <float> ()));
 		break;
 		// Если значение является дробным двойной точности
-		case static_cast <uint16_t> (type_t::DOUBLE):
+		case type_t::DOUBLE:
 			// Выполняем запись дробного числа двойной точности
 			writer.value(node.number <double> ());
 		break;
 		/**
 		 * Если значение является числом, не вместимым ни в один родной вид
 		 */
-		case static_cast <uint16_t> (type_t::EXTENDED):
+		case type_t::EXTENDED:
 			// Выполняем запись числа его записью, как она стояла в тексте
 			writer.raw(string(this->_storage.data() + node.offset, node.length()));
+		break;
+		/**
+		 * Если видом хранения число не является
+		 *
+		 * @note Перебор этот ведётся внутри числового вида узла, и виды нечисловые
+		 *       места его не достигают. Составные же имена перечня собирают по нескольку
+		 *       разрядов сразу и видом хранения отдельного значения не бывают никогда
+		 *
+		 * @warning Перечислены они НАМЕРЕННО вместо `default`: ветвь `default` глушит
+		 *          `-Wswitch`, и числовой вид, в перечень дописанный, прошёл бы это
+		 *          место молча. Приведение вида к числу глушит сторожа тем же порядком
+		 */
+		case type_t::UNDEFINED:
+		case type_t::NUL:
+		case type_t::BOOL:
+		case type_t::STRING:
+		case type_t::ARRAY:
+		case type_t::OBJECT:
+		case type_t::SIGNED:
+		case type_t::UNSIGNED:
+		case type_t::INT:
+		case type_t::REAL:
+		case type_t::NUMBER:
 		break;
 	}
 }
@@ -1069,22 +1112,22 @@ bool awh::codec::json::Document::digest(reader_t & reader, const event_t event, 
 	/**
 	 * Определяем вид очередного события разбора
 	 */
-	switch(static_cast <uint8_t> (event)){
+	switch(event){
 		// Если событие является открытием объекта
-		case static_cast <uint8_t> (event_t::OBJECT_BEGIN):
+		case event_t::OBJECT_BEGIN:
 			// Устанавливаем вид заводимого узла документа
 			node.type = type_t::OBJECT;
 		break;
 		// Если событие является открытием массива
-		case static_cast <uint8_t> (event_t::ARRAY_BEGIN):
+		case event_t::ARRAY_BEGIN:
 			// Устанавливаем вид заводимого узла документа
 			node.type = type_t::ARRAY;
 		break;
 		/**
 		 * Если событие является закрытием вместилища
 		 */
-		case static_cast <uint8_t> (event_t::OBJECT_END):
-		case static_cast <uint8_t> (event_t::ARRAY_END): {
+		case event_t::OBJECT_END:
+		case event_t::ARRAY_END: {
 			/**
 			 * Если закрывается вместилище, какое не открывалось
 			 */
@@ -1125,24 +1168,24 @@ bool awh::codec::json::Document::digest(reader_t & reader, const event_t event, 
 			return true;
 		}
 		// Если событие является пустым значением
-		case static_cast <uint8_t> (event_t::NUL):
+		case event_t::NUL:
 			// Устанавливаем вид заводимого узла документа
 			node.type = type_t::NUL;
 		break;
 		// Если событие является логическим значением
-		case static_cast <uint8_t> (event_t::BOOL):
+		case event_t::BOOL:
 			// Устанавливаем вид заводимого узла документа
 			node.type = type_t::BOOL;
 		break;
 		// Если событие является строковым значением
-		case static_cast <uint8_t> (event_t::STRING):
+		case event_t::STRING:
 			// Устанавливаем вид заводимого узла документа
 			node.type = type_t::STRING;
 		break;
 		/**
 		 * Если событие является числом
 		 */
-		case static_cast <uint8_t> (event_t::NUMBER): {
+		case event_t::NUMBER: {
 			// Получаем запись разбираемого числа
 			const string_view text(reader.storage().data() + content.offset, content.length);
 			/**
@@ -1223,6 +1266,14 @@ bool awh::codec::json::Document::digest(reader_t & reader, const event_t event, 
 	if(node.nested()){
 		/**
 		 * Если глубина вложенности превышает допустимую
+		 */
+		/**
+		 * Если предел вложенности превышен
+		 *
+		 * @note Заслон этот ЗАПАСНОЙ: настройки разбора огранены пределом `MAX_DEPTH`
+		 *       выше, и разбор отказывает прежде, назвав место в тексте. Достижим он
+		 *       лишь сборкой дерева в обход разбора - ею и оберегается стек работ,
+		 *       идущих по готовому дереву возвратом
 		 */
 		if(this->_nesting.size() >= MAX_DEPTH){
 			// Запоминаем код отказа разбора
@@ -1376,25 +1427,35 @@ bool awh::codec::json::Document::deduplicate(const uint32_t parent, const reader
 			/**
 			 * Определяем правило обращения с повторяющимся именем поля объекта
 			 */
-			switch(static_cast <uint8_t> (this->_settings.duplicates)){
+			switch(this->_settings.duplicates){
 				// Если повторяющееся имя поля объекта отвергается
-				case static_cast <uint8_t> (duplicate_t::ERROR): {
+				case duplicate_t::ERROR: {
 					// Запоминаем код отказа разбора
 					this->_error = error_t::DUPLICATE_KEY;
 					// Выводим признак неудачного разбора
 					return false;
 				}
 				// Если удерживается первое поле объекта
-				case static_cast <uint8_t> (duplicate_t::FIRST):
+				case duplicate_t::FIRST:
 					// Добавляем номер узла повторного поля объекта к сносимым
 					removed.push_back(child);
 				break;
 				// Если удерживается последнее поле объекта
-				case static_cast <uint8_t> (duplicate_t::LAST):
+				case duplicate_t::LAST:
 					// Добавляем номер узла прежнего поля объекта к сносимым
 					removed.push_back(this->_naming[place].second);
 					// Запоминаем номер узла последнего поля объекта
 					this->_naming[place].second = child;
+				break;
+				/**
+				 * Если разбор дошёл до видов, обработки здесь не требующих
+				 *
+				 * @note Повторное имя поля объекта удерживается как есть, и сносить нечего
+				 *
+				 * @warning Перечислены они НАМЕРЕННО вместо `default`: приведение к `default`
+				 *          глушит `-Wswitch`, и новый член перечня пройдёт молча
+				 */
+				case duplicate_t::KEEP:
 				break;
 			}
 		}
@@ -1460,7 +1521,7 @@ void awh::codec::json::Document::clear() noexcept {
  * @return     признак успешности разбора
  *
  */
-bool awh::codec::json::Document::parse(const string & text) noexcept {
+bool awh::codec::json::Document::parse(const string_view text) noexcept {
 	// Выполняем разбор текста документа без потоковой выдачи значений
 	return this->parse(text, nullptr);
 }
@@ -1472,7 +1533,7 @@ bool awh::codec::json::Document::parse(const string & text) noexcept {
  * @return         признак успешности разбора
  *
  */
-bool awh::codec::json::Document::parse(const string & text, const callback_t & callback) noexcept {
+bool awh::codec::json::Document::parse(const string_view text, const callback_t & callback) noexcept {
 	// Выполняем очистку документа
 	this->clear();
 	// Выполняем сброс состояния чтения текста документа
@@ -1480,7 +1541,33 @@ bool awh::codec::json::Document::parse(const string & text, const callback_t & c
 	// Получаем чтение текста документа
 	reader_t & reader = this->_reader;
 	// Выполняем установку настроек разбора текста
-	reader.settings(this->_settings.reader);
+	/**
+	 * Выполняем установку настроек разбора текста, огранённых пределом вложенности
+	 *
+	 * @note Огранение это обязательно: дерево документа плоско и глубины не боится, а
+	 *       вот работы ПО ГОТОВОМУ ДЕРЕВУ - снятие владеющим значением и запись - идут
+	 *       возвратом, и глубина дерева ложится прямо на стек вызовов
+	 *
+	 * @note Ноль огранивается НАРАВНЕ с числом завышенным: разбору ноль значит
+	 *       отсутствие предела, и дерево из него выходит какой угодно глубины
+	 *
+	 * @note Огранение идёт молча и до разбора: прежде предел этот стоял заслоном у
+	 *       самой сборки дерева, и настройка, поднятая звучащим выше `MAX_DEPTH`,
+	 *       молча не имела силы вовсе. Ныне отказ выдаёт разбор - ровно там, где текст
+	 *       предел и превысил, и с местом в тексте
+	 *
+	 * @note Устроено это тем же порядком, что и у владеющего значения разметки
+	 */
+	{
+		// Настройки разбора, огранённые пределом вложенности
+		reader_t::settings_t bounded = this->_settings.reader;
+		// Если предел вложенности снят либо поднят выше допустимого
+		if((bounded.maxDepth == 0) || (bounded.maxDepth > MAX_DEPTH))
+			// Выполняем огранение предела вложенности
+			bounded.maxDepth = MAX_DEPTH;
+		// Выполняем установку настроек разбора текста
+		reader.settings(bounded);
+	}
 	// Запоминаем обработчик потоковой выдачи значений
 	this->_callback = & callback;
 	// Получаем признак потоковой выдачи значений
@@ -1622,7 +1709,33 @@ bool awh::codec::json::Document::load(const string & filename) noexcept {
 	// Получаем чтение текста документа
 	reader_t & reader = this->_reader;
 	// Выполняем установку настроек разбора текста
-	reader.settings(this->_settings.reader);
+	/**
+	 * Выполняем установку настроек разбора текста, огранённых пределом вложенности
+	 *
+	 * @note Огранение это обязательно: дерево документа плоско и глубины не боится, а
+	 *       вот работы ПО ГОТОВОМУ ДЕРЕВУ - снятие владеющим значением и запись - идут
+	 *       возвратом, и глубина дерева ложится прямо на стек вызовов
+	 *
+	 * @note Ноль огранивается НАРАВНЕ с числом завышенным: разбору ноль значит
+	 *       отсутствие предела, и дерево из него выходит какой угодно глубины
+	 *
+	 * @note Огранение идёт молча и до разбора: прежде предел этот стоял заслоном у
+	 *       самой сборки дерева, и настройка, поднятая звучащим выше `MAX_DEPTH`,
+	 *       молча не имела силы вовсе. Ныне отказ выдаёт разбор - ровно там, где текст
+	 *       предел и превысил, и с местом в тексте
+	 *
+	 * @note Устроено это тем же порядком, что и у владеющего значения разметки
+	 */
+	{
+		// Настройки разбора, огранённые пределом вложенности
+		reader_t::settings_t bounded = this->_settings.reader;
+		// Если предел вложенности снят либо поднят выше допустимого
+		if((bounded.maxDepth == 0) || (bounded.maxDepth > MAX_DEPTH))
+			// Выполняем огранение предела вложенности
+			bounded.maxDepth = MAX_DEPTH;
+		// Выполняем установку настроек разбора текста
+		reader.settings(bounded);
+	}
 	/**
 	 * Выполняем установку обработчика прямой выдачи событий разбора
 	 *
@@ -1742,14 +1855,14 @@ string awh::codec::json::Document::dump(const format_t format) const noexcept {
 		/**
 		 * Определяем вид очередного узла документа
 		 */
-		switch(static_cast <uint8_t> (json::kind(node.type))){
+		switch(json::kind(node.type)){
 			// Если узел является пустым значением
-			case static_cast <uint8_t> (kind_t::NUL):
+			case kind_t::NUL:
 				// Выполняем запись пустого значения
 				writer.null();
 			break;
 			// Если узел является логическим значением
-			case static_cast <uint8_t> (kind_t::BOOL):
+			case kind_t::BOOL:
 				// Выполняем запись логического значения
 				writer.value(node.length() == 4);
 			break;
@@ -1759,29 +1872,39 @@ string awh::codec::json::Document::dump(const format_t format) const noexcept {
 			 * @note Число пишется прямо в общий объект записи: сборка записи его отдельным
 			 *       объектом стоила бы заведения такого объекта на всякое число документа
 			 */
-			case static_cast <uint8_t> (kind_t::NUMBER):
+			case kind_t::NUMBER:
 				// Выполняем запись числа, хранимого узлом
 				this->compose(writer, node);
 			break;
 			// Если узел является строкой
-			case static_cast <uint8_t> (kind_t::STRING):
+			case kind_t::STRING:
 				// Выполняем запись строкового значения
 				writer.value(string(this->_storage.data() + node.offset, node.length()));
 			break;
 			// Если узел является массивом
-			case static_cast <uint8_t> (kind_t::ARRAY): {
+			case kind_t::ARRAY: {
 				// Выполняем открытие массива
 				writer.array();
 				// Добавляем номер узла за последним узлом массива в стек
 				nesting.push_back(index + node.extent());
 			} break;
 			// Если узел является объектом
-			case static_cast <uint8_t> (kind_t::OBJECT): {
+			case kind_t::OBJECT: {
 				// Выполняем открытие объекта
 				writer.object();
 				// Добавляем номер узла за последним узлом объекта в стек
 				nesting.push_back(index + node.extent());
 			} break;
+			/**
+			 * Если разбор дошёл до видов, обработки здесь не требующих
+			 *
+			 * @note Узел неопределённый в дерево не ложится
+			 *
+			 * @warning Перечислены они НАМЕРЕННО вместо `default`: приведение к `default`
+			 *          глушит `-Wswitch`, и новый член перечня пройдёт молча
+			 */
+			case kind_t::NONE:
+			break;
 		}
 	}
 	/**

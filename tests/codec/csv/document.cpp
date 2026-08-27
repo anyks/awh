@@ -1062,7 +1062,7 @@ TEST(CodecCsvDocument, HeaderCollectedByCallbackParsing) {
 	// Количество выданных записей таблицы
 	size_t count = 0;
 	// Выполняем проверку разбора текста таблицы выдачей записями
-	ASSERT_TRUE(document.parse("альфа,бета\r\n1,2\r\n3,4\r\n", [&count](const vector <string_view> & record) noexcept -> bool {
+	ASSERT_TRUE(document.parse("альфа,бета\r\n1,2\r\n3,4\r\n", [&count](const vector <string_view> &) noexcept -> bool {
 		// Выполняем учёт очередной выданной записи
 		count++;
 		// Выводим признак прекращения разбора после первой же записи
@@ -1279,5 +1279,57 @@ TEST(CodecCsvDocument, LoggerSetAfterCreation) {
 		writer.record();
 		// Выполняем проверку собранного текста таблицы
 		ASSERT_EQ(writer.take(), "значение\r\n");
+	}
+}
+/**
+ * @brief Проверка подъёма отказа записи всеми путями выдачи таблицы
+ *
+ * @details Поле, установленными настройками записи непредставимое, обязано отказом
+ *          подниматься и у выдачи текста, и у сохранения в файл, и по заголовку, и по
+ *          записям: иначе порченая таблица ушла бы к читающему целой
+ *
+ * @note Выдача текста отдаёт при отказе ПУСТУЮ строку: вывод её - строка, признака
+ *       отказа у неё нет вовсе, а таблица непустая пустого текста не даёт никогда.
+ *       Причину оглашает журналом сама запись
+ *
+ * @note Пути эти карта покрытия показала непройденными: отказ был заведён, а проверен
+ *       лишь у самой записи, минуя контейнер
+ *
+ */
+TEST(CodecCsvDocument, UnwritableFieldStopsEveryOutput){
+	/**
+	 * Выполняем перебор двух путей: по записям и по заголовку
+	 */
+	for(uint8_t heading = 0; heading < 2; heading++){
+		// Объект контейнера таблицы
+		csv::document_t document(::logger());
+		// Настройки контейнера
+		csv::document_t::settings_t settings;
+		/**
+		 * Если проверяется путь по заголовку
+		 */
+		if(heading != 0)
+			// Устанавливаем признак объявленного заголовка
+			settings.reader.header = csv::header_t::PRESENT;
+		// Выполняем установку настроек контейнера
+		document.settings(settings);
+		// Выполняем разбор таблицы, поле которой содержит разделитель
+		ASSERT_TRUE(document.parse(string("\"а,б\",в\r\nпервое,второе\r\n"))) << csv::message(document.error());
+		// Получаем настройки контейнера для правки
+		csv::document_t::settings_t writing = document.settings();
+		// Устанавливаем отказ от кавычек вовсе
+		writing.writer.quoting = csv::quoting_t::NONE;
+		// Устанавливаем способ записи кавычки удвоением
+		writing.writer.escape = csv::escape_t::DOUBLE;
+		// Выполняем установку настроек контейнера
+		document.settings(writing);
+		// Выполняем проверку того, что выдача текста отказала пустою строкою
+		ASSERT_TRUE(document.text().empty()) << uint32_t(heading);
+		// Адрес файла, в какой записывается таблица
+		const string output = "./awh_csv_unwritable.csv";
+		// Выполняем проверку отказа сохранения таблицы в файл
+		ASSERT_FALSE(document.save(output)) << uint32_t(heading);
+		// Выполняем снос оставленного файла
+		::remove(output.c_str());
 	}
 }

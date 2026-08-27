@@ -195,6 +195,16 @@ bool awh::Vault::ready() const noexcept {
 	return this->_ready;
 }
 /**
+ * @brief Метод получения сведений о состоявшейся защите памяти склада
+ *
+ * @return сведения о состоявшейся защите
+ *
+ */
+const awh::alloc::shelter_t & awh::Vault::shelter() const noexcept {
+	// Выводим сведения о состоявшейся защите
+	return this->_shelter;
+}
+/**
  * @brief Метод укладки тайны на склад
  *
  * @param name название тайны
@@ -223,6 +233,20 @@ bool awh::Vault::store(const std::string & name, const void * data, const size_t
 		// Отвечаем отказом
 		return false;
 	}
+	/**
+	 * Прежний шифротекст затирается ПРЕЖДЕ перезаписи
+	 *
+	 * Перенос поверх прежнего значения возвращает старый буфер куче незатёртым, и
+	 * шифротекст, снятый со склада перезаписью, остался бы лежать в памяти - тогда
+	 * как снятие через `erase` и роспуск склада его затирают. Перезапись была
+	 * единственным путём, каким содержимое покидало склад нетронутым
+	 */
+	// Выполняем поиск прежней тайны того же названия
+	auto i = this->_secrets.find(name);
+	// Если тайна того же названия на складе уже лежит
+	if((i != this->_secrets.end()) && !i->second.empty())
+		// Затираем прежний шифротекст тайны
+		::OPENSSL_cleanse(i->second.data(), i->second.size());
 	// Укладываем шифротекст тайны на склад
 	this->_secrets[name] = ::std::move(cipher);
 	// Отвечаем успехом
@@ -338,7 +362,23 @@ size_t awh::Vault::count() const noexcept {
  *
  */
 awh::Vault::Vault(const fmk_t * fmk, const log_t * log) noexcept :
- _secrets(), _crypto(fmk, log), _ready(false), _fmk(fmk), _log(log) {
+ _secrets(), _crypto(fmk, log), _ready(false), _shelter(), _fmk(fmk), _log(log) {
+	/**
+	 * Спрашиваем у распределителя, какая защита состоялась НА ДЕЛЕ
+	 *
+	 * Спрашивается это единожды при заведении склада пробной выдачей: обещания у
+	 * систем разные, а само хранилище языка спросить об этом неоткуда - оно передаёт
+	 * распределителю пустоту вместо сведений. Не спроси склад здесь, о молчаливом
+	 * понижении защиты не узнал бы никто
+	 */
+	{
+		// Выполняем пробную укрытую выдачу
+		void * probe = awh::alloc::Allocator::secure(KEYSIZE, &this->_shelter);
+		// Если пробная выдача удалась
+		if(probe != nullptr)
+			// Возвращаем пробную выдачу распределителю
+			awh::alloc::Allocator::release(probe);
+	}
 	// Случайный ключ склада
 	uint8_t key[KEYSIZE];
 	// Случайная соль склада

@@ -271,6 +271,9 @@ namespace awh {
 					// Признак того, что метка порядка байтов уже записана
 					bool _marked;
 				private:
+					// Код отказа записи текста
+					error_t _error;
+				private:
 					/**
 					 * \~russian
 					 * @brief Метод записи метки порядка байтов
@@ -286,6 +289,21 @@ namespace awh {
 					 * \~
 					 */
 					void mark() noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод отказа записи текста
+					 *
+					 * @param error код отказа записи
+					 * @return      признак отказа записи, всегда ложь
+					 *
+					 * \~english
+					 * @brief Method of the refusal of the writing of a text
+					 * @param error code of the refusal of the writing
+					 * @return      flag of the refusal of the writing, always false
+					 *
+					 * \~
+					 */
+					bool refuse(const error_t error) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод записи содержимого поля с обрамлением кавычками
@@ -312,7 +330,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					void field(const string_view text) noexcept;
+					bool field(const string_view text) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод записи числового поля записи
@@ -328,7 +346,7 @@ namespace awh {
 					 * \~
 					 */
 					template <typename T>
-					void number(const T value) noexcept;
+					bool number(const T value) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -359,7 +377,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					void record(const vector <string> & fields) noexcept;
+					bool record(const vector <string> & fields) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод записи целой записи полем за полем
@@ -372,7 +390,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					void record(const vector <string_view> & fields) noexcept;
+					bool record(const vector <string_view> & fields) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -392,7 +410,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					void write(const vector <vector <string>> & records) noexcept;
+					bool write(const vector <vector <string>> & records) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -406,6 +424,24 @@ namespace awh {
 					 *
 					 * \~
 					 */
+					/**
+					 * \~russian
+					 * @brief Метод получения кода отказа записи
+					 *
+					 * @details Код удерживается до очистки собранного текста: у записи,
+					 * отказавшей на поле, он называет причину отказа
+					 *
+					 * @return код отказа записи
+					 *
+					 * \~english
+					 * @brief Method of the obtaining of the code of the refusal of the writing
+					 * @details The code is held until the clearing of the collected text: for the writing
+					 * that refused on a field, it names the reason of the refusal
+					 * @return code of the refusal of the writing
+					 *
+					 * \~
+					 */
+					error_t error() const noexcept;
 					const string & text() const noexcept;
 					/**
 					 * \~russian

@@ -289,9 +289,9 @@ namespace {
 		// Устанавливаем флаг подстановки ссылок на объявленные сущности
 		result.entities = ((flags & 0x02) != 0);
 		// Устанавливаем флаг выдачи примечаний отдельным событием
-		result.comments = ((flags & 0x04) != 0);
+		result.emitComments = ((flags & 0x04) != 0);
 		// Устанавливаем флаг выдачи указаний обработчику отдельным событием
-		result.processing = ((flags & 0x08) != 0);
+		result.emitProcessing = ((flags & 0x08) != 0);
 		// Устанавливаем флаг отделения незначимого пробельного содержимого
 		result.separateSpaces = ((flags & 0x10) != 0);
 		// Устанавливаем флаг подстановки значений атрибутов, объявленных по умолчанию
@@ -1021,7 +1021,7 @@ namespace {
 			}
 			// Выводим настройки разбора, при которых обнаружено расхождение
 			::fprintf(stderr, "xml fuzz: ns=%d ent=%d com=%d pi=%d sp=%d def=%d depth=%u name=%u attrs=%u ents=%u exp=%llu event=%llu\n",
-				(int) options.namespaces, (int) options.entities, (int) options.comments, (int) options.processing,
+				(int) options.namespaces, (int) options.entities, (int) options.emitComments, (int) options.emitProcessing,
 				(int) options.separateSpaces, (int) options.defaults, options.maxDepth, options.maxName,
 				options.maxAttributes, options.maxEntities,
 				(unsigned long long) options.maxExpansion, (unsigned long long) options.maxEvent);
@@ -1058,7 +1058,7 @@ namespace {
 					b.space, (int) b.empty, b.attributes.size(), b.bindings.size(), b.text.c_str());
 				// Выводим настройки разбора, при которых обнаружено расхождение
 				::fprintf(stderr, "xml fuzz: ns=%d ent=%d com=%d pi=%d sp=%d def=%d depth=%u name=%u attrs=%u ents=%u exp=%llu event=%llu\n",
-					(int) options.namespaces, (int) options.entities, (int) options.comments, (int) options.processing,
+					(int) options.namespaces, (int) options.entities, (int) options.emitComments, (int) options.emitProcessing,
 					(int) options.separateSpaces, (int) options.defaults, options.maxDepth, options.maxName,
 					options.maxAttributes, options.maxEntities,
 					(unsigned long long) options.maxExpansion, (unsigned long long) options.maxEvent);
@@ -1740,7 +1740,7 @@ namespace {
 			// Выводим сообщение о расхождении повторной перезаписи
 			::fprintf(stderr, "xml fuzz: rewrite unstable, collapse=%d escape=%d ns=%d ent=%d com=%d pi=%d sp=%d def=%d depth=%u name=%u attrs=%u ents=%u exp=%llu event=%llu\n",
 				(int) settings.collapse, (int) settings.escapeNonAscii,
-				(int) options.namespaces, (int) options.entities, (int) options.comments, (int) options.processing,
+				(int) options.namespaces, (int) options.entities, (int) options.emitComments, (int) options.emitProcessing,
 				(int) options.separateSpaces, (int) options.defaults, options.maxDepth, options.maxName,
 				options.maxAttributes, options.maxEntities,
 				(unsigned long long) options.maxExpansion, (unsigned long long) options.maxEvent);

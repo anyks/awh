@@ -314,7 +314,7 @@ uint32_t awh::regex::Parser::options() const noexcept {
  */
 const awh::regex::node_data_t & awh::regex::Parser::node(const node_id_t id) const noexcept {
 	// Создаём узел пустого выражения для отсутствующего индекса
-	static const node_data_t empty;
+	static constexpr node_data_t empty{};
 	/**
 	 * Если индекс узла находится за пределами арены узлов
 	 */

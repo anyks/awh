@@ -32,6 +32,9 @@
 # Переменные окружения:
 #   CXX    — собиратель, по умолчанию «c++»
 #   FLAGS  — добавочные ключи сборки
+#   SANITIZE — набор надзирателей, по умолчанию «address,undefined»; пустое значение
+#              отключает их вовсе. У целей MS Windows отключается само: тел
+#              надзирателей у MinGW нет, и связывание валится на «cannot find -lasan»
 #
 
 # Прекращаем работу при первом же отказе
@@ -61,8 +64,94 @@ if [ ! -f "$ROOT/tools/fuzz/$CODEC.cpp" ]; then
 	exit 1
 fi
 
+# Определяем цель собирателя: по ней решается вопрос о надзирателях
+TARGET=$("$COMPILER" -dumpmachine 2>/dev/null || echo "")
+
+# Набор надзирателей, какими собирается ворошитель
+SANITIZE="${SANITIZE:-address,undefined}"
+
+# Уровень оптимизации сборки ворошителя
+LEVEL="-O1"
+
+# Отключаем надзирателей у целей MS Windows и поднимаем уровень оптимизации
+#
+# У MinGW тел надзирателей нет вовсе: сборка доходит до связывания и валится
+# на «cannot find -lasan». Проверять это доводом при каждом вызове со стенда
+# бестолку - цель собирателя известна ему самому, и решение берётся отсюда.
+# Наблюдать за памятью под MS Windows нечем; отчёты со стендов той системы
+# сличаются с POSIX по СЧЁТЧИКАМ работы, а не по надзору за памятью.
+#
+# Уровень поднимается по НЕОБХОДИМОСТИ, а не ради скорости: GCC 16 при «-O1»
+# отказывается собирать посредников «always_inline» вовсе, когда они уходят
+# предикатом в шаблон - «inlining failed in call to always_inline
+# awh::ascii::isDigit: indirect function call with a yet undetermined callee».
+# Тело фреймворка такими посредниками устроено намеренно, и «-O1» ему негоден.
+case "$TARGET" in
+	*mingw*|*windows*|*cygwin*) SANITIZE=""; LEVEL="-O2";;
+esac
+
+##
+# Проверяем, поддерживает ли собиратель надзирателей на деле
+#
+# @details Перечнем систем этого не решить: у одного и того же семейства сборки
+#          собирателя расходятся. Solaris 11.4 отвечает «-fsanitize=address is not
+#          supported in this configuration» и валит сборку целиком - а надзиратель тут
+#          не цель, а подспорье, и его отсутствие поводом не ворошить не является
+#
+# @note Проба ведётся сборкой пустой единицы трансляции: иного способа спросить
+#       собирателя о поддержке нет
+##
+if [ -n "$SANITIZE" ]; then
+	if ! echo 'int main(){return 0;}' | $COMPILER -fsanitize=$SANITIZE -x c++ - -o /dev/null > /dev/null 2>&1; then
+		echo "надзиратели собирателем не поддержаны: ворошитель собирается без них"
+		SANITIZE=""
+		##
+		# Поднимаем уровень вместе со снятием надзирателя
+		#
+		# @note По той же причине, что и у MinGW выше: GCC при «-O1» отказывается
+		#       собирать посредников «always_inline», ушедших предикатом в шаблон.
+		#       Уровень тут связан не с системой, а с ОТСУТСТВИЕМ надзирателя:
+		#       Solaris 11.4 упёрся ровно в это, и правило «нет надзирателя - значит
+		#       -O2» покрывает обе системы разом
+		##
+		LEVEL="-O2"
+	fi
+fi
+
 # Собираем ключи сборки ворошителя
-OPTIONS="-std=gnu++17 -O1 -g -fsanitize=address,undefined -I$ROOT/include $FLAGS"
+#
+# Ключ «-Wswitch» стоит здесь НАМЕРЕННО: ворошители выбирают члены настроек из
+# перечней, а полноту тех перечней блюдёт собиратель - сторожа в самих ворошителях
+# перебирают члены без ветви «default». Без этого ключа сторожа мертвы: «quoting_t»
+# получил четвёртого члена, а выбор брался по остатку от трёх, и целая ветвь записи
+# CSV не ворошилась ни разу. Прочие предупреждения ключом «FLAGS» ставит зовущий.
+OPTIONS="-std=gnu++17 $LEVEL -g -Wswitch -I$ROOT/include $FLAGS"
+
+##
+# Добавляем надзирателей, если они не отменены
+#
+# @warning Вместе с надзирателем ОБЯЗАТЕЛЕН ключ «AWH_ALLOC_DISABLED», и это не прихоть.
+#          У систем ELF наш распределитель встаёт на место системного САМИМ
+#          СВЯЗЫВАНИЕМ: файл определяет знак «malloc», и связывающий берёт его, звал кто
+#          «capture» или нет. А ASAN при своём заведении расставляет перехватчики и
+#          зовёт «malloc» ДО того, как наш распределитель заведён, - и падает внутри
+#          «reserve». Замерено на Fedora (glibc 2.41): ворошитель валился с кодом 139
+#          даже при НУЛЕ проходов, стек упирался в
+#          «__asan::InitializeAsanInterceptors». Без этого ключа НИ ОДИН ворошитель не
+#          работает НИ НА ОДНОЙ системе ELF - ни сетевой, ни кодека
+#
+# @note У macOS того же не случается: там подмена идёт зоной, а не связыванием, и ASAN
+#       перехватывает выдачу памяти раньше нас. Оттого дефект и не виден с рабочей машины
+#
+# @note Потеря невелика: под надзирателем наш распределитель всё равно не работает -
+#       ASAN подменяет выдачу памяти собою. Ворошителю поверяется разбор, а не
+#       распределитель, и у того есть свой набор проверок
+##
+if [ -n "$SANITIZE" ]; then
+	OPTIONS="-fsanitize=$SANITIZE -DAWH_ALLOC_DISABLED $OPTIONS"
+else
+	echo "надзиратели отключены (цель $TARGET)"
+fi
 
 # Выполняем заведение каталога сборки
 mkdir -p "$OUTPUT"
@@ -102,9 +191,14 @@ fi
 #
 # У MS Windows журнал зовёт «WSAGetLastError»: посредник «__awh_strerror__» разбирает
 # сетевые коды отказов, каких «strerror» от MinGW не знает
+#
+# «-liphlpapi» нужна сетевой зоне: «if_nametoindex» и «if_indextoname», какими разбор
+# адреса переводит зону IPv6 в номер устройства и обратно, у MS Windows живут ИМЕННО
+# там, а не в «ws2_32». Без неё связывание валится на них двоих, и валится только у
+# сетевой зоны - кодеки этих имён не зовут вовсе, оттого прежде нехватки не было видно
 ##
 case "$(uname -s)" in
-	MINGW*|MSYS*|CYGWIN*) SYSTEM_LIBS="-lws2_32" ;;
+	MINGW*|MSYS*|CYGWIN*) SYSTEM_LIBS="-lws2_32 -liphlpapi" ;;
 	*) SYSTEM_LIBS="" ;;
 esac
 
@@ -179,10 +273,136 @@ for PART in $FRAMEWORK; do
 	OBJECTS="$OBJECTS $OUTPUT/$NAME.o"
 done
 
+##
+# Отбираем части, какие поверяет ворошитель
+#
+# @details Ворошители делятся на два рода. У кодека части лежат все разом в
+#          «src/codec/<имя>», и перечислять их не нужно — берётся весь каталог.
+#          У сетевой зоны своего каталога нет: разбор адресов, разбор URI и сетевой
+#          движок живут вперемешку с прочим в «src/net», и части им перечисляются
+#          поимённо
+#
+# @note Движок берётся ПО СИСТЕМЕ, как и в CMakeLists.txt: маской его не снять, у
+#       каждой системы он свой, и собранные разом они столкнулись бы определениями
+##
+case "$CODEC" in
+	# Ворошитель разбора сетевых адресов
+	addr) TARGET="src/net/addr.cpp src/net/net.cpp" ;;
+	# Ворошитель разбора URI
+	uri) TARGET="src/net/uri.cpp src/net/addr.cpp src/net/net.cpp" ;;
+	# Ворошитель сетевого движка
+	io)
+		# Отбираем движок по системе
+		case "$(uname -s)" in
+			# У систем BSD и macOS движком служит kqueue
+			Darwin|FreeBSD|OpenBSD|NetBSD|DragonFly) BACKEND="src/net/backend/bsd/kqueue.cpp" ;;
+			# У систем Sun движком служат Event Ports
+			SunOS) BACKEND="src/net/backend/sun/ports.cpp" ;;
+			# У MS Windows движком служит порт завершения ввода-вывода
+			MINGW*|MSYS*|CYGWIN*) BACKEND="src/net/backend/win/iocp.cpp" ;;
+			# У прочих систем движком служит epoll
+			*) BACKEND="src/net/backend/gnu/epoll.cpp" ;;
+		esac
+		# Если движок задан переменной окружения, берём его
+		if [ -n "$AWH_FUZZ_ENGINE" ]; then
+			case "$AWH_FUZZ_ENGINE" in
+				io_uring)
+					BACKEND="src/net/backend/gnu/io_uring.cpp"
+					# Движок кольца заводится только своим признаком сборки
+					OPTIONS="$OPTIONS -DAWH_ENGINE_IO_URING"
+				;;
+				epoll) BACKEND="src/net/backend/gnu/epoll.cpp" ;;
+				*) echo "движок «$AWH_FUZZ_ENGINE» неизвестен" >&2; exit 1 ;;
+			esac
+			echo "движок задан переменной окружения: $AWH_FUZZ_ENGINE"
+		fi
+		# Отбираем платформенные части по тому же доводу
+		case "$(uname -s)" in
+			# У систем BSD и macOS платформенные части лежат у kqueue
+			Darwin|FreeBSD|OpenBSD|NetBSD|DragonFly) PLATFORM="bsd" ;;
+			# У систем Sun платформенные части лежат у Event Ports
+			SunOS) PLATFORM="sun" ;;
+			# У MS Windows платформенные части лежат у порта завершения
+			MINGW*|MSYS*|CYGWIN*) PLATFORM="win" ;;
+			# У прочих систем платформенные части лежат у epoll
+			*) PLATFORM="gnu" ;;
+		esac
+		TARGET="$BACKEND
+			$ROOT/src/net/backend/$PLATFORM/addr.cpp
+			$ROOT/src/net/backend/$PLATFORM/eth.cpp
+			$ROOT/src/net/backend/$PLATFORM/iface.cpp
+			$ROOT/src/net/backend/$PLATFORM/gateway.cpp
+			$ROOT/src/net/backend/$PLATFORM/socket.cpp
+			src/net/addr.cpp src/net/uri.cpp src/net/fds.cpp
+			src/net/net.cpp src/net/queue.cpp"
+		##
+		# Часть SCTP берётся лишь там, где протокол есть в системе
+		#
+		# @note Ровно так же поступает и CMakeLists.txt. У macOS и DragonFly заголовка
+		#       «netinet/sctp.h» нет вовсе, и сборка встаёт ещё на нём
+		##
+		if [ -f /usr/include/netinet/sctp.h ] || [ -f /usr/local/include/netinet/sctp.h ]; then
+			TARGET="$TARGET $ROOT/src/net/backend/$PLATFORM/sctp.cpp"
+			##
+			# Тела SCTP лежат в отдельной библиотеке, и зовётся она по-разному
+			#
+			# @note У систем GNU это «libsctp», у систем Sun — «libsctp» же, но рядом с
+			#       ней нужна ещё «libdladm»: через неё идёт вся работа с сетевыми
+			#       устройствами, без неё связывание валится на dladm_open и соседях
+			##
+			case "$PLATFORM" in
+				gnu) SYSTEM_LIBS="$SYSTEM_LIBS -lsctp" ;;
+				sun) SYSTEM_LIBS="$SYSTEM_LIBS -lsctp -ldladm" ;;
+			esac
+		fi
+		##
+		# Прослойка netlink берётся только у систем GNU
+		#
+		# @note Через неё идут все обращения к сетевым устройствам, адресам и маршрутам:
+		#       у прочих систем то же делается через ioctl и route(4), и отдельного тела
+		#       им не нужно
+		##
+		if [ "$PLATFORM" = "gnu" ]; then
+			TARGET="$TARGET $ROOT/src/net/backend/gnu/netlink.cpp"
+		fi
+	;;
+	# Прочие ворошители поверяют кодеки, и части их берутся каталогом целиком
+	*) TARGET="" ;;
+esac
+
+##
+# Собираем перечисленные поимённо части сетевой зоны
+#
+# @note Пересобираются они всегда, наравне с частями кодека: ворошителем поверяется
+#       именно они, и брать их из кэша значит поверять вчерашний код
+##
+for PART in $TARGET; do
+	# Приводим путь к полному, если он задан от корня дерева
+	case "$PART" in
+		/*) FULL="$PART" ;;
+		*) FULL="$ROOT/$PART" ;;
+	esac
+	# Собираем имя объектного файла очередной части
+	##
+	# Собираем имя объектного файла очередной части
+	#
+	# @note Имя составляется из названия части и названия её каталога, а не обрезком
+	#       пути: родной `tail` систем Sun довода `-c` не знает вовсе и отвечает
+	#       «cannot open '40'», отчего сборка встаёт ещё до первого вызова собирателя.
+	#       Пары «каталог + имя» довольно: части сетевой зоны по каталогам не
+	#       повторяются
+	##
+	NAME="target-$(basename "$(dirname "$FULL")")-$(basename "$FULL" .cpp)"
+	# Выполняем сборку очередной части
+	$COMPILER $OPTIONS -c "$FULL" -o "$OUTPUT/$NAME.o"
+	# Добавляем собранное к перечню объектных файлов
+	OBJECTS="$OBJECTS $OUTPUT/$NAME.o"
+done
+
 # Выполняем перебор всех частей кодека
 #
 # @note Части кодека пересобираются всегда: ворошителем поверяется именно они
-for PART in "$ROOT/src/codec/$CODEC/"*.cpp; do
+for PART in $([ -d "$ROOT/src/codec/$CODEC" ] && echo "$ROOT/src/codec/$CODEC/"*.cpp); do
 	# Собираем имя объектного файла очередной части
 	NAME="codec-$(basename "$PART" .cpp)"
 	# Выполняем сборку очередной части кодека

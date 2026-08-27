@@ -182,3 +182,68 @@ TEST_F(VaultFixture, HandleIsMovableOnly){
 	EXPECT_FALSE(std::is_copy_constructible <awh::vault_t::Handle>::value);
 	EXPECT_FALSE(std::is_copy_assignable <awh::vault_t::Handle>::value);
 }
+/**
+ * @brief Тест перезаписи тайны на складе
+ *
+ * @note Утверждается здесь ЗАМЕНА, а не затирание прежнего шифротекста: затирание
+ *       следствий наружу не даёт вовсе - взятие отдаёт новое содержимое и с ним, и
+ *       без него, - и проверка эта, проведённая мутацией, снятие затирания переживает.
+ *       Затирание прежнего шифротекста при перезаписи держится на разборе кода, а не
+ *       на этой проверке; закрывающей проверки у него нет
+ *
+ */
+TEST_F(VaultFixture, RewrittenSecretReplacesTheFormerOne){
+	// Прежнее содержимое тайны
+	const std::string former = "прежний пароль";
+	// Новое содержимое тайны
+	const std::string latter = "новый пароль, какому прежний уступает место";
+	// Укладываем прежнюю тайну на склад
+	ASSERT_TRUE(this->_vault->store("password", former.data(), former.size()));
+	// Снимаем шифротекст прежней тайны
+	std::vector <char> before;
+	ASSERT_TRUE(this->_vault->sealed("password", before));
+	// Перезаписываем тайну новым содержимым
+	ASSERT_TRUE(this->_vault->store("password", latter.data(), latter.size()));
+	// Число тайн на складе от перезаписи не растёт
+	EXPECT_EQ(this->_vault->count(), static_cast <size_t> (1));
+	// Взятие обязано отдать НОВОЕ содержимое, а не прежнее
+	awh::vault_t::Handle handle = this->_vault->borrow("password");
+	ASSERT_TRUE(handle.valid());
+	EXPECT_EQ(std::string(handle.data(), handle.size()), latter);
+	// Шифротекст обязан смениться целиком
+	std::vector <char> after;
+	ASSERT_TRUE(this->_vault->sealed("password", after));
+	EXPECT_NE(std::string(after.data(), after.size()), std::string(before.data(), before.size()));
+}
+/**
+ * @brief Тест сведений о состоявшейся защите памяти склада
+ *
+ * @note Проверяется здесь не сама защита - обещания у систем разные, и утверждать
+ *       `wired` значило бы валить проверку там, где система права такого не даёт, - а
+ *       то, что склад об этом СПРАШИВАЕТ: не спроси он, оба признака остались бы
+ *       ложными на всякой системе, и молчаливое понижение защиты было бы неотличимо
+ *       от честного
+ *
+ */
+TEST_F(VaultFixture, VaultReportsAchievedShelter){
+	// Снимаем сведения о состоявшейся защите
+	const awh::alloc::shelter_t & shelter = this->_vault->shelter();
+	// Сведения обязаны совпасть с тем, что отвечает сам распределитель
+	awh::alloc::shelter_t expected;
+	void * probe = awh::alloc::Allocator::secure(64, &expected);
+	ASSERT_NE(probe, nullptr);
+	awh::alloc::Allocator::release(probe);
+	// Склад обязан отвечать то же, что и распределитель
+	EXPECT_EQ(shelter.hidden, expected.hidden);
+	EXPECT_EQ(shelter.wired, expected.wired);
+	/**
+	 * Хоть одна защита обязана состояться на заявленных системах
+	 *
+	 * Укрытия от снимка нет у Linux, macOS и NetBSD, а запрет подкачки требует прав у
+	 * illumos: порознь каждый признак вправе быть ложным, но оба ложных разом означали
+	 * бы, что укрытая выдача не даёт ничего сверх обычной
+	 */
+	EXPECT_TRUE(shelter.hidden || shelter.wired);
+	// Защита памяти к готовности склада отношения не имеет: шифрование состоится и без неё
+	EXPECT_TRUE(this->_vault->ready());
+}

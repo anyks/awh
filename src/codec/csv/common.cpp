@@ -117,78 +117,84 @@ namespace {
  */
 const char * awh::codec::csv::message(const error_t error) noexcept {
 	/**
-	 * Определяем код ошибки разбора
+	 * Определяем код отказа разбора
+	 *
+	 * @note Сличение ведётся по САМОМУ перечню, а не по приведённому к байту значению,
+	 *       и ветви `default` здесь нет нарочно: так собиратель сам сообщает о коде,
+	 *       описания не получившем, - предупреждением `-Wswitch` с именем этого кода.
+	 *       Приведение к байту, стоявшее здесь прежде, защиту эту снимало вовсе, и коды,
+	 *       дописанные в перечень, оставались без описания молча. Проверено щупом:
+	 *       дописанный код вызывает предупреждение по имени
+	 *
+	 * @warning Возвращать приведение нельзя: сторожем тут выступает собиратель, а не
+	 *          проверка. Проверка описаний перечень перебрать не может - о том, что код
+	 *          объявлен, ей узнать неоткуда
 	 */
-	switch(static_cast <uint8_t> (error)){
+	switch(error){
 		// Если ошибок не обнаружено
-		case static_cast <uint8_t> (error_t::NONE):
+		case error_t::NONE:
 			return "no error";
 		// Если произошла внутренняя ошибка разбора
-		case static_cast <uint8_t> (error_t::INTERNAL):
+		case error_t::INTERNAL:
 			return "internal parser error";
-		// Если текст оборвался посреди записи
-		case static_cast <uint8_t> (error_t::UNEXPECTED_EOF):
-			return "unexpected end of input";
 		// Если знак недопустим в тексте
-		case static_cast <uint8_t> (error_t::INVALID_CHARACTER):
+		case error_t::INVALID_CHARACTER:
 			return "invalid character";
 		// Если последовательность байтов не отвечает объявленной кодировке
-		case static_cast <uint8_t> (error_t::INVALID_ENCODING):
+		case error_t::INVALID_ENCODING:
 			return "invalid byte sequence for the declared encoding";
 		// Если объявленная кодировка не поддерживается
-		case static_cast <uint8_t> (error_t::UNSUPPORTED_ENCODING):
+		case error_t::UNSUPPORTED_ENCODING:
 			return "unsupported encoding";
 		// Если поле в кавычках не закрыто до конца текста
-		case static_cast <uint8_t> (error_t::UNTERMINATED_QUOTE):
+		case error_t::UNTERMINATED_QUOTE:
 			return "unterminated quoted field";
 		// Если внутри поля без кавычек встретилась одиночная кавычка
-		case static_cast <uint8_t> (error_t::UNESCAPED_QUOTE):
+		case error_t::UNESCAPED_QUOTE:
 			return "unescaped quote in unquoted field";
 		// Если за закрывающей кавычкой поля обнаружены знаки
-		case static_cast <uint8_t> (error_t::TRAILING_CHARACTERS):
+		case error_t::TRAILING_CHARACTERS:
 			return "characters after closing quote";
-		// Если перед открывающей кавычкой поля обнаружены знаки
-		case static_cast <uint8_t> (error_t::LEADING_CHARACTERS):
-			return "characters before opening quote";
 		// Если длина поля превышает допустимую
-		case static_cast <uint8_t> (error_t::FIELD_TOO_LONG):
+		case error_t::FIELD_TOO_LONG:
 			return "field is too long";
 		// Если длина записи превышает допустимую
-		case static_cast <uint8_t> (error_t::RECORD_TOO_LONG):
+		case error_t::RECORD_TOO_LONG:
 			return "record is too long";
 		// Если количество полей в записи превышает допустимое
-		case static_cast <uint8_t> (error_t::TOO_MANY_FIELDS):
+		case error_t::TOO_MANY_FIELDS:
 			return "too many fields in record";
 		// Если количество полей записи расходится с количеством полей заголовка
-		case static_cast <uint8_t> (error_t::FIELD_COUNT_MISMATCH):
+		case error_t::FIELD_COUNT_MISMATCH:
 			return "field count differs from expected";
 		// Если разделитель не задан вовсе либо совпадает с занятым разбором знаком
-		case static_cast <uint8_t> (error_t::SEPARATOR_CONFLICT):
+		case error_t::SEPARATOR_CONFLICT:
 			return "field separator is unset or conflicts with quote or newline";
 		// Если заголовок объявлен пустым именем поля
-		case static_cast <uint8_t> (error_t::EMPTY_HEADER):
+		case error_t::EMPTY_HEADER:
 			return "empty field name in header";
 		// Если имя поля в заголовке объявлено повторно
-		case static_cast <uint8_t> (error_t::DUPLICATE_HEADER):
+		case error_t::DUPLICATE_HEADER:
 			return "duplicate field name in header";
 		// Если заголовок затребован, а текст пуст
-		case static_cast <uint8_t> (error_t::NO_HEADER):
+		case error_t::NO_HEADER:
 			return "header requested but input is empty";
-		// Если превышен предел, заданный настройками разбора
-		case static_cast <uint8_t> (error_t::OVERFLOW_LIMIT):
-			return "parser limit exceeded";
 		// Если подача продолжена после объявленного конца текста
-		case static_cast <uint8_t> (error_t::TEXT_ALREADY_ENDED):
+		case error_t::TEXT_ALREADY_ENDED:
 			// Выводим описание кода ошибки
 			return "feeding continued after the text was declared complete";
 		// Если файл таблицы открыть не удалось
-		case static_cast <uint8_t> (error_t::FILE_NOT_OPENED):
+		case error_t::FILE_NOT_OPENED:
 			// Выводим описание кода ошибки
 			return "cannot open the table file";
 		// Если текст таблицы записать в файл не удалось
-		case static_cast <uint8_t> (error_t::FILE_NOT_WRITTEN):
+		case error_t::FILE_NOT_WRITTEN:
 			// Выводим описание кода ошибки
 			return "cannot write the table file";
+		// Если содержимое поля установленными настройками записи непредставимо
+		case error_t::UNWRITABLE_FIELD:
+			// Выводим описание кода ошибки
+			return "unwritable field";
 	}
 	// Выводим сообщение о неизвестной ошибке
 	return "unknown error";
@@ -204,27 +210,27 @@ const char * awh::codec::csv::name(const encoding_t encoding) noexcept {
 	/**
 	 * Определяем кодировку исходного текста
 	 */
-	switch(static_cast <uint8_t> (encoding)){
+	switch(encoding){
 		// Если кодировка не определена
-		case static_cast <uint8_t> (encoding_t::NONE):
+		case encoding_t::NONE:
 			return "none";
 		// Если кодировкой является UTF-8
-		case static_cast <uint8_t> (encoding_t::UTF8):
+		case encoding_t::UTF8:
 			return "UTF-8";
 		// Если кодировкой является UTF-16 с обратным порядком байтов
-		case static_cast <uint8_t> (encoding_t::UTF16LE):
+		case encoding_t::UTF16LE:
 			return "UTF-16LE";
 		// Если кодировкой является UTF-16 с прямым порядком байтов
-		case static_cast <uint8_t> (encoding_t::UTF16BE):
+		case encoding_t::UTF16BE:
 			return "UTF-16BE";
 		// Если кодировкой является ISO-8859-1
-		case static_cast <uint8_t> (encoding_t::LATIN1):
+		case encoding_t::LATIN1:
 			return "ISO-8859-1";
 		// Если кодировкой является US-ASCII
-		case static_cast <uint8_t> (encoding_t::ASCII):
+		case encoding_t::ASCII:
 			return "US-ASCII";
 		// Если кодировкой является Windows-1252
-		case static_cast <uint8_t> (encoding_t::CP1252):
+		case encoding_t::CP1252:
 			return "windows-1252";
 	}
 	// Выводим название неизвестной кодировки
@@ -304,15 +310,15 @@ string_view awh::codec::csv::newline(const newline_t newline) noexcept {
 	/**
 	 * Определяем вид знака конца строки
 	 */
-	switch(static_cast <uint8_t> (newline)){
+	switch(newline){
 		// Если знаком конца строки является возврат каретки с переводом строки
-		case static_cast <uint8_t> (newline_t::CRLF):
+		case newline_t::CRLF:
 			return "\r\n";
 		// Если знаком конца строки является перевод строки
-		case static_cast <uint8_t> (newline_t::LF):
+		case newline_t::LF:
 			return "\n";
 		// Если знаком конца строки является одиночный возврат каретки
-		case static_cast <uint8_t> (newline_t::CR):
+		case newline_t::CR:
 			return "\r";
 	}
 	/**

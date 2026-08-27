@@ -231,7 +231,7 @@ namespace {
 	 */
 	static uint64_t compose(awh::codec::json::writer_t & writer) noexcept {
 		// Выполняем сброс состояния записи текста документа
-		writer.reset();
+		writer.clear();
 		// Выполняем открытие объекта документа
 		writer.object();
 		// Записываем имя поля состояния ответа
@@ -292,7 +292,7 @@ namespace {
 	 */
 	static uint64_t digits(awh::codec::json::writer_t & writer) noexcept {
 		// Выполняем сброс состояния записи текста документа
-		writer.reset();
+		writer.clear();
 		// Выполняем открытие массива чисел
 		writer.array();
 		/**
@@ -317,7 +317,7 @@ namespace {
 		// Получаем перечень записываемых строковых значений
 		const vector <string> & values = ::values();
 		// Выполняем сброс состояния записи текста документа
-		writer.reset();
+		writer.clear();
 		// Выполняем открытие массива строк
 		writer.array();
 		/**

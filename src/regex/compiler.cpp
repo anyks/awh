@@ -273,7 +273,7 @@ namespace {
  *
  */
 awh::regex::Compiler::Compiler() noexcept :
- _parser(nullptr), _program(nullptr), _reverse(false), _full(false),
+ _parser(nullptr), _arena(nullptr), _program(nullptr), _reverse(false), _full(false),
  _cells(0), _atomics(0), _error(error_t::NONE) {}
 /**
  * @brief Метод извлечения кода ошибки компиляции
@@ -380,7 +380,7 @@ uint32_t awh::regex::Compiler::store(const class_t & value) noexcept {
  */
 bool awh::regex::Compiler::merging(const node_id_t id) noexcept {
 	// Получаем узел выбора одной из ветвей
-	const node_data_t & node = this->_parser->node(id);
+	const node_data_t & node = this->node(id);
 	/**
 	 * Если сопоставление ведётся без учёта регистра символов
 	 */
@@ -409,7 +409,7 @@ bool awh::regex::Compiler::merging(const node_id_t id) noexcept {
 	 */
 	while(branch != INVALID_NODE) {
 		// Получаем узел очередной ветви выражения
-		const node_data_t & value = this->_parser->node(branch);
+		const node_data_t & value = this->node(branch);
 		/**
 		 * Если ветвь выражения свёртке не подлежит
 		 *
@@ -559,7 +559,7 @@ bool awh::regex::Compiler::merging(const node_id_t id) noexcept {
  */
 bool awh::regex::Compiler::compileAlternate(const node_id_t id) noexcept {
 	// Получаем узел выбора одной из ветвей
-	const node_data_t & node = this->_parser->node(id);
+	const node_data_t & node = this->node(id);
 	/**
 	 * Если ветви выбора сводятся к одному классу символов
 	 *
@@ -587,7 +587,7 @@ bool awh::regex::Compiler::compileAlternate(const node_id_t id) noexcept {
 	 */
 	while(branch != INVALID_NODE) {
 		// Получаем индекс следующей ветви выражения
-		const node_id_t next = this->_parser->node(branch).next;
+		const node_id_t next = this->node(branch).next;
 		/**
 		 * Если ветвь выражения является последней
 		 */
@@ -662,7 +662,7 @@ bool awh::regex::Compiler::compileAlternate(const node_id_t id) noexcept {
  */
 bool awh::regex::Compiler::flattening(const node_id_t id) noexcept {
 	// Получаем узел повторения
-	const node_data_t & node = this->_parser->node(id);
+	const node_data_t & node = this->node(id);
 	/**
 	 * Если повторение обязательным является либо ограничено сверху
 	 *
@@ -698,7 +698,7 @@ bool awh::regex::Compiler::flattening(const node_id_t id) noexcept {
 	 */
 	while(inner != INVALID_NODE) {
 		// Получаем узел тела повторения очередной
-		const node_data_t & value = this->_parser->node(inner);
+		const node_data_t & value = this->node(inner);
 		/**
 		 * Если узел тела группою без захвата не является
 		 */
@@ -721,7 +721,7 @@ bool awh::regex::Compiler::flattening(const node_id_t id) noexcept {
 		// Выводим неприменимость свёртки повторения
 		return false;
 	// Получаем узел тела повторения
-	const node_data_t & body = this->_parser->node(inner);
+	const node_data_t & body = this->node(inner);
 	// Получаем индекс первой части тела повторения
 	node_id_t part = ((body.type == node_t::CONCAT) ? body.child : inner);
 	/**
@@ -744,7 +744,7 @@ bool awh::regex::Compiler::flattening(const node_id_t id) noexcept {
 	 */
 	while(part != INVALID_NODE) {
 		// Получаем узел очередной части тела повторения
-		const node_data_t & value = this->_parser->node(part);
+		const node_data_t & value = this->node(part);
 		// Переходим к части тела следующей
 		part = value.next;
 		/**
@@ -776,7 +776,7 @@ bool awh::regex::Compiler::flattening(const node_id_t id) noexcept {
 			// Выводим неприменимость свёртки повторения
 			return false;
 		// Получаем узел повторяемого элемента части тела
-		const node_data_t & item = this->_parser->node(value.child);
+		const node_data_t & item = this->node(value.child);
 		/**
 		 * Если повторяемый элемент продолжение имеет
 		 */
@@ -883,7 +883,7 @@ bool awh::regex::Compiler::flattening(const node_id_t id) noexcept {
  */
 bool awh::regex::Compiler::compileRepeat(const node_id_t id) noexcept {
 	// Получаем узел повторения
-	const node_data_t & node = this->_parser->node(id);
+	const node_data_t & node = this->node(id);
 	/**
 	 * Если повторение сводится к ряду одиночных символов
 	 *
@@ -959,7 +959,7 @@ bool awh::regex::Compiler::compileRepeat(const node_id_t id) noexcept {
  */
 bool awh::regex::Compiler::compileIteration(const node_id_t id) noexcept {
 	// Получаем узел повторения
-	const node_data_t & node = this->_parser->node(id);
+	const node_data_t & node = this->node(id);
 	// Получаем индекс повторяемого элемента выражения
 	const node_id_t child = node.child;
 	/**
@@ -1160,7 +1160,7 @@ bool awh::regex::Compiler::compileNode(const node_id_t id) noexcept {
 		// Выводим результат выполнения компиляции
 		return true;
 	// Получаем узел синтаксического дерева
-	const node_data_t & node = this->_parser->node(id);
+	const node_data_t & node = this->node(id);
 	/**
 	 * Определяем тип узла синтаксического дерева
 	 */
@@ -1360,6 +1360,23 @@ bool awh::regex::Compiler::compileNode(const node_id_t id) noexcept {
 			if(node.group.number == 0)
 				// Выводим результат компиляции тела группы
 				return this->compileChain(node.child);
+			/**
+			 * Если компилируется развёрнутая программа сопоставления
+			 *
+			 * @details Развёрнутая программа исполняется единственно проходом
+			 *          детерминированным, а он захватов не ведёт вовсе:
+			 *          сохранение границ проходится им насквозь наравне
+			 *          с переходом. Итог прохода - позиция начала совпадения,
+			 *          и границы групп в нём не спрашиваются ни разу.
+			 *
+			 *          Инструкции эти оттого и не размещаются: у образца стенда
+			 *          их восемнадцать из шестидесяти девяти - четверть
+			 *          программы, строимая, хранимая и проходимая впустую.
+			 *
+			 */
+			if(this->_reverse)
+				// Выводим результат компиляции тела группы
+				return this->compileChain(node.child);
 			// Выполняем размещение инструкции сохранения начала захвата
 			const address_t begin = this->emit(opcode_t::SAVE, node.flags);
 			/**
@@ -1502,7 +1519,7 @@ void awh::regex::Compiler::collect(const node_id_t id) noexcept {
 	 */
 	while(current != INVALID_NODE) {
 		// Получаем обходимый узел синтаксического дерева
-		const node_data_t & node = this->_parser->node(current);
+		const node_data_t & node = this->node(current);
 		/**
 		 * Если узел является захватывающей группой
 		 */
@@ -1526,6 +1543,33 @@ void awh::regex::Compiler::collect(const node_id_t id) noexcept {
 	}
 }
 /**
+ * @brief Метод извлечения узла синтаксического дерева
+ *
+ * @param id индекс узла в арене узлов
+ * @return   узел синтаксического дерева
+ *
+ * @details Посредник этот повторяет метод объекта разбора, но лежит в единице
+ *          трансляции построителя и потому подставляется на месте обращения
+ *          целиком. Обращение к узлу происходит на каждом шаге построения,
+ *          и вызов подпрограммы на месте каждого из них обходился дороже
+ *          самого извлечения.
+ *
+ */
+const awh::regex::node_data_t & awh::regex::Compiler::node(const node_id_t id) const noexcept {
+	// Создаём узел пустого выражения для отсутствующего индекса
+	static constexpr node_data_t empty{};
+	// Получаем обозреватель арены узлов синтаксического дерева
+	const vector <node_data_t> & nodes = (* this->_arena);
+	/**
+	 * Если индекс узла находится за пределами арены узлов
+	 */
+	if(id >= static_cast <node_id_t> (nodes.size()))
+		// Выводим узел пустого выражения
+		return empty;
+	// Выводим узел синтаксического дерева
+	return nodes[id];
+}
+/**
  * @brief Метод компиляции цепочки узлов синтаксического дерева
  *
  * @param id индекс первого узла цепочки в арене узлов
@@ -1541,18 +1585,30 @@ bool awh::regex::Compiler::compileChain(const node_id_t id) noexcept {
 	 *
 	 */
 	if(this->_reverse) {
-		// Создаём набор индексов узлов цепочки
-		vector <node_id_t> items;
+		// Получаем отметку основания цепочки в сберегательном ряду
+		const size_t base = this->_chain.size();
+		// Заводим обозреватель набора индексов узлов цепочки
+		vector <node_id_t> & items = this->_chain;
 		/**
 		 * Выполняем обход цепочки узлов одного уровня вложенности
 		 */
-		for(node_id_t index = id; index != INVALID_NODE; index = this->_parser->node(index).next)
+		for(node_id_t index = id; index != INVALID_NODE; index = this->node(index).next)
 			// Выполняем добавление индекса очередного узла цепочки
 			items.push_back(index);
 		/**
+		 * Получаем границу цепочки в сберегательном ряду
+		 *
+		 * @details Граница снимается прежде обхода намеренно: построение узла
+		 *          заходит в цепочки вложенные, а те копят своё в том же ряду
+		 *          поверх границы этой. Длина ряда посреди обхода принадлежит
+		 *          уже не нам, и обход по ней прошёл бы по чужому.
+		 *
+		 */
+		const size_t bound = items.size();
+		/**
 		 * Выполняем компиляцию узлов цепочки в обратном порядке
 		 */
-		for(size_t i = items.size(); i > 0; i--) {
+		for(size_t i = bound; i > base; i--) {
 			/**
 			 * Если компиляция очередного узла цепочки не выполнена
 			 */
@@ -1560,13 +1616,15 @@ bool awh::regex::Compiler::compileChain(const node_id_t id) noexcept {
 				// Выводим результат выполнения компиляции
 				return false;
 		}
+		// Выполняем усечение сберегательного ряда до отметки основания
+		this->_chain.resize(base);
 		// Выводим результат выполнения компиляции
 		return true;
 	}
 	/**
 	 * Выполняем обход цепочки узлов одного уровня вложенности
 	 */
-	for(node_id_t index = id; index != INVALID_NODE; index = this->_parser->node(index).next) {
+	for(node_id_t index = id; index != INVALID_NODE; index = this->node(index).next) {
 		/**
 		 * Если компиляция очередного узла цепочки не выполнена
 		 */
@@ -1586,7 +1644,7 @@ bool awh::regex::Compiler::compileChain(const node_id_t id) noexcept {
  */
 string awh::regex::Compiler::literal(const node_id_t id) const noexcept {
 	// Получаем узел синтаксического дерева
-	const node_data_t & node = this->_parser->node(id);
+	const node_data_t & node = this->node(id);
 	/**
 	 * Если узел сопоставляется без учёта регистра символов
 	 *
@@ -1691,7 +1749,7 @@ size_t awh::regex::Compiler::spanningNode(const node_id_t id) const noexcept {
 		// Выводим наибольшую длину сопоставления узла
 		return 0;
 	// Получаем узел синтаксического дерева
-	const node_data_t & node = this->_parser->node(id);
+	const node_data_t & node = this->node(id);
 	// Получаем наибольшую длину одиночного символа в байтах
 	const size_t letter = (((this->_program->flags & static_cast <uint32_t> (flag_t::UTF)) != 0) ? 4 : 1);
 	/**
@@ -1742,7 +1800,7 @@ size_t awh::regex::Compiler::spanningNode(const node_id_t id) const noexcept {
 			/**
 			 * Выполняем обход ветвей выбора одной из них
 			 */
-			for(node_id_t index = node.child; index != INVALID_NODE; index = this->_parser->node(index).next) {
+			for(node_id_t index = node.child; index != INVALID_NODE; index = this->node(index).next) {
 				// Получаем наибольшую длину сопоставления очередной ветви
 				const size_t length = this->spanningNode(index);
 				/**
@@ -1817,7 +1875,7 @@ size_t awh::regex::Compiler::spanning(const node_id_t id) const noexcept {
 	/**
 	 * Выполняем обход цепочки узлов одного уровня вложенности
 	 */
-	for(node_id_t index = id; index != INVALID_NODE; index = this->_parser->node(index).next) {
+	for(node_id_t index = id; index != INVALID_NODE; index = this->node(index).next) {
 		// Получаем наибольшую длину сопоставления очередного узла
 		const size_t length = this->spanningNode(index);
 		/**
@@ -1856,7 +1914,7 @@ string awh::regex::Compiler::requiredNode(const node_id_t id, size_t & distance)
 		// Выводим отсутствие обязательного литерала
 		return string();
 	// Получаем узел синтаксического дерева
-	const node_data_t & node = this->_parser->node(id);
+	const node_data_t & node = this->node(id);
 	/**
 	 * Определяем тип узла синтаксического дерева
 	 */
@@ -1919,7 +1977,7 @@ string awh::regex::Compiler::required(const node_id_t id, size_t & distance) con
 	/**
 	 * Выполняем обход цепочки узлов одного уровня вложенности
 	 */
-	for(node_id_t index = id; index != INVALID_NODE; index = this->_parser->node(index).next) {
+	for(node_id_t index = id; index != INVALID_NODE; index = this->node(index).next) {
 		// Получаем литерал, сопоставляемый очередным узлом целиком
 		const string value = this->literal(index);
 		/**
@@ -2306,9 +2364,9 @@ string awh::regex::Compiler::leading(const node_id_t id) const noexcept {
 	/**
 	 * Выполняем обход цепочки узлов одного уровня вложенности
 	 */
-	for(node_id_t index = id; index != INVALID_NODE; index = this->_parser->node(index).next) {
+	for(node_id_t index = id; index != INVALID_NODE; index = this->node(index).next) {
 		// Получаем очередной узел синтаксического дерева
-		const node_data_t & node = this->_parser->node(index);
+		const node_data_t & node = this->node(index);
 		/**
 		 * Если узел является привязкой к позиции в тексте
 		 *
@@ -2637,7 +2695,7 @@ bool awh::regex::Compiler::advancing(const node_id_t id, vector <node_id_t> & vi
 		// Выводим результат проверки обязательного продвижения узла по тексту
 		return false;
 	// Получаем проверяемый узел арены узлов
-	const node_data_t & node = this->_parser->node(id);
+	const node_data_t & node = this->node(id);
 	/**
 	 * Определяем тип проверяемого узла выражения
 	 *
@@ -2676,7 +2734,7 @@ bool awh::regex::Compiler::advancing(const node_id_t id, vector <node_id_t> & vi
 			/**
 			 * Выполняем обход узлов цепочки одного уровня вложенности
 			 */
-			for(node_id_t index = node.child; index != INVALID_NODE; index = this->_parser->node(index).next) {
+			for(node_id_t index = node.child; index != INVALID_NODE; index = this->node(index).next) {
 				/**
 				 * Если очередной узел цепочки продвигается по тексту
 				 */
@@ -2701,7 +2759,7 @@ bool awh::regex::Compiler::advancing(const node_id_t id, vector <node_id_t> & vi
 			/**
 			 * Выполняем обход ветвей выбора одного уровня вложенности
 			 */
-			for(node_id_t index = node.child; index != INVALID_NODE; index = this->_parser->node(index).next) {
+			for(node_id_t index = node.child; index != INVALID_NODE; index = this->node(index).next) {
 				// Запоминаем наличие ветвей выбора
 				branching = true;
 				/**
@@ -2792,9 +2850,9 @@ size_t awh::regex::Compiler::sweeps(const node_id_t id, const bool inside, bool 
 	/**
 	 * Выполняем обход цепочки узлов одного уровня вложенности
 	 */
-	for(node_id_t index = id; index != INVALID_NODE; index = this->_parser->node(index).next) {
+	for(node_id_t index = id; index != INVALID_NODE; index = this->node(index).next) {
 		// Получаем очередной узел синтаксического дерева
-		const node_data_t & node = this->_parser->node(index);
+		const node_data_t & node = this->node(index);
 		/**
 		 * Если узел является повторением
 		 */
@@ -2808,7 +2866,7 @@ size_t awh::regex::Compiler::sweeps(const node_id_t id, const bool inside, bool 
 			/**
 			 * Если повторение неограничено и повторяет любой символ
 			 */
-			if((node.repeat.max == UNBOUNDED) && (this->_parser->node(node.child).type == node_t::ANY))
+			if((node.repeat.max == UNBOUNDED) && (this->node(node.child).type == node_t::ANY))
 				// Увеличиваем количество неограниченных повторений любого символа
 				result++;
 			// Выполняем обход тела повторения
@@ -2842,9 +2900,9 @@ void awh::regex::Compiler::sweeping() noexcept {
 	/**
 	 * Выполняем спуск к первому сопоставляющему узлу выражения
 	 */
-	while((first != INVALID_NODE) && ((this->_parser->node(first).type == node_t::CONCAT) || (this->_parser->node(first).type == node_t::GROUP)))
+	while((first != INVALID_NODE) && ((this->node(first).type == node_t::CONCAT) || (this->node(first).type == node_t::GROUP)))
 		// Переходим к первому дочернему узлу
-		first = this->_parser->node(first).child;
+		first = this->node(first).child;
 	/**
 	 * Если первый узел выражения отсутствует
 	 */
@@ -2852,11 +2910,11 @@ void awh::regex::Compiler::sweeping() noexcept {
 		// Выходим из метода распознавания выражения
 		return;
 	// Получаем первый сопоставляющий узел выражения
-	const node_data_t & node = this->_parser->node(first);
+	const node_data_t & node = this->node(first);
 	/**
 	 * Если выражение начинается не с неограниченного повторения любого символа
 	 */
-	if((node.type != node_t::REPEAT) || (node.repeat.max != UNBOUNDED) || (this->_parser->node(node.child).type != node_t::ANY))
+	if((node.type != node_t::REPEAT) || (node.repeat.max != UNBOUNDED) || (this->node(node.child).type != node_t::ANY))
 		// Выходим из метода распознавания выражения
 		return;
 	/**
@@ -2899,9 +2957,9 @@ bool awh::regex::Compiler::anchoring(const node_id_t id, const bool chain) const
 	/**
 	 * Выполняем обход цепочки узлов одного уровня вложенности
 	 */
-	for(node_id_t index = id; index != INVALID_NODE; index = (chain ? this->_parser->node(index).next : INVALID_NODE)) {
+	for(node_id_t index = id; index != INVALID_NODE; index = (chain ? this->node(index).next : INVALID_NODE)) {
 		// Получаем очередной узел синтаксического дерева
-		const node_data_t & node = this->_parser->node(index);
+		const node_data_t & node = this->node(index);
 		/**
 		 * Определяем тип очередного узла синтаксического дерева
 		 */
@@ -2969,7 +3027,7 @@ bool awh::regex::Compiler::anchoring(const node_id_t id, const bool chain) const
 				/**
 				 * Выполняем обход ветвей выражения
 				 */
-				for(node_id_t branch = node.child; branch != INVALID_NODE; branch = this->_parser->node(branch).next) {
+				for(node_id_t branch = node.child; branch != INVALID_NODE; branch = this->node(branch).next) {
 					/**
 					 * Если ветвь выражения привязкой не начинается
 					 */
@@ -3108,7 +3166,7 @@ void awh::regex::Compiler::mark() noexcept {
  */
 bool awh::regex::Compiler::compileLook(const node_id_t id, address_t & address) noexcept {
 	// Получаем узел проверки окружения
-	const node_data_t & node = this->_parser->node(id);
+	const node_data_t & node = this->node(id);
 	// Определяем направление проверки окружения
 	const bool backward = ((node.look.type == look_t::BEHIND) || (node.look.type == look_t::BEHIND_NEG));
 	// Определяем знак проверки окружения
@@ -3173,7 +3231,7 @@ bool awh::regex::Compiler::compileLook(const node_id_t id, address_t & address) 
  */
 bool awh::regex::Compiler::compileCondition(const node_id_t id) noexcept {
 	// Получаем узел условного выражения
-	const node_data_t & node = this->_parser->node(id);
+	const node_data_t & node = this->node(id);
 	// Получаем индекс первой ветви условного выражения
 	node_id_t branch = node.child;
 	/**
@@ -3219,7 +3277,7 @@ bool awh::regex::Compiler::compileCondition(const node_id_t id) noexcept {
 			// Выводим результат выполнения компиляции
 			return false;
 		// Переходим к ветви выполненного условия
-		branch = this->_parser->node(branch).next;
+		branch = this->node(branch).next;
 	/**
 	 * Выполняем размещение инструкции перехода по ветвям условного выражения
 	 */
@@ -3270,7 +3328,7 @@ bool awh::regex::Compiler::compileCondition(const node_id_t id) noexcept {
 		/**
 		 * Если компиляция ветви невыполненного условия не выполнена
 		 */
-		if(!this->compileNode(this->_parser->node(branch).next))
+		if(!this->compileNode(this->node(branch).next))
 			// Выводим результат выполнения компиляции
 			return false;
 	}
@@ -3406,6 +3464,8 @@ bool awh::regex::Compiler::compileReverse(const Parser & parser, program_t & pro
 bool awh::regex::Compiler::compile(const Parser & parser, program_t & program) noexcept {
 	// Выполняем установку объекта разбора регулярного выражения
 	this->_parser = &parser;
+	// Выполняем установку арены узлов синтаксического дерева
+	this->_arena = &parser.nodes();
 	// Выполняем установку компилируемой программы
 	this->_program = &program;
 	// Выполняем сброс кода ошибки компиляции
@@ -3441,6 +3501,8 @@ bool awh::regex::Compiler::compile(const Parser & parser, program_t & program) n
 	this->_exits.clear();
 	// Выполняем очистку следа узлов проверки продвижения по тексту
 	this->_visited.clear();
+	// Выполняем очистку сберегательного ряда узлов цепочки
+	this->_chain.clear();
 	// Выполняем очистку компилируемой программы
 	program.clear();
 	/**

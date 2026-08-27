@@ -112,6 +112,53 @@ using namespace awh::codec;
  */
 namespace {
 	/**
+	 * @brief Перечни всех членов настроек, выбираемых наудачу
+	 *
+	 * @details Член берётся из перечня по остатку от его длины: выбор по остатку от
+	 * числа, вписанного рукой, отставал от перечня молча - `quoting_t::NONE` не
+	 * порождался вовсе, а вся ветвь записи без кавычек не ворошилась ни разу
+	 *
+	 * @note Полноту перечней блюдёт собиратель: сторож ниже перебирает члены без
+	 *       ветви `default`, и член, в перечень дописанный, отзовётся `-Wswitch`
+	 *
+	 */
+	static const csv::quoting_t QUOTINGS[] = {
+		csv::quoting_t::MINIMAL, csv::quoting_t::ALL, csv::quoting_t::NONNUMERIC, csv::quoting_t::NONE
+	};
+	// Перечень всех способов записи кавычки внутри поля
+	static const csv::escape_t ESCAPES[] = {
+		csv::escape_t::DOUBLE, csv::escape_t::BACKSLASH, csv::escape_t::BOTH
+	};
+	// Перечень всех знаков конца строки
+	static const csv::newline_t NEWLINES[] = {
+		csv::newline_t::CRLF, csv::newline_t::LF, csv::newline_t::CR
+	};
+	/**
+	 * @brief Сторож полноты перечней настроек
+	 *
+	 * @details Перебирает члены каждого перечня без ветви `default`: член, в перечень
+	 * дописанный, отзовётся предупреждением собирателя, и перечень выше будет пополнен
+	 *
+	 * @warning Ветвь `default` здесь ставить нельзя: она глушит `-Wswitch`, и сторож
+	 *          перестанет кусать
+	 *
+	 */
+	[[maybe_unused]] void guard(const csv::quoting_t quoting, const csv::escape_t escape, const csv::newline_t newline) noexcept {
+		// Перебираем все правила заключения поля в кавычки
+		switch(quoting){
+			case csv::quoting_t::MINIMAL: case csv::quoting_t::ALL:
+			case csv::quoting_t::NONNUMERIC: case csv::quoting_t::NONE: break;
+		}
+		// Перебираем все способы записи кавычки внутри поля
+		switch(escape){
+			case csv::escape_t::DOUBLE: case csv::escape_t::BACKSLASH: case csv::escape_t::BOTH: break;
+		}
+		// Перебираем все знаки конца строки
+		switch(newline){
+			case csv::newline_t::CRLF: case csv::newline_t::LF: case csv::newline_t::CR: break;
+		}
+	}
+	/**
 	 * @brief Учёт проделанной работы
 	 *
 	 */
@@ -622,20 +669,52 @@ namespace {
 		/**
 		 * Выполняем перебор всех записей собранной таблицы
 		 */
-		for(size_t i = 0; i < document.rows(); i++){
+		if(document.settings().writer.quoting == csv::quoting_t::NONE){
 			/**
-			 * Если запись состоит из единственного пустого поля
-			 *
-			 * @note Записывается такая запись пустой строкой, а разбор пустые строки
-			 *       пропускает: круговой ход её не сохраняет, и это свойство самой
-			 *       записи CSV, а не дефект. Случай этот из проверки исключается
+			 * Выполняем перебор всех записей собранной таблицы
 			 */
-			if((document.size(i) == 1) && document.get(i, size_t(0)).empty())
-				// Выводим результат проверки кругового хода
-				return true;
+			for(size_t i = 0; i < document.rows(); i++){
+				/**
+				 * Если запись состоит из единственного пустого поля
+				 *
+				 * @note БЕЗ КАВЫЧЕК записывается такая запись пустой строкой, а разбор
+				 *       пустые строки пропускает: круговой ход её не сохраняет, и это
+				 *       свойство самой записи CSV, а не дефект. При всяком ином правиле
+				 *       кавычек она пишется парою кавычек и круг переживает - прежде
+				 *       прощение стояло БЕЗ этого условия и снимало проверку кругового
+				 *       хода у целой таблицы там, где круг был верен
+				 */
+				if((document.size(i) == 1) && document.get(i, size_t(0)).empty())
+					// Выводим результат проверки кругового хода
+					return true;
+			}
 		}
 		// Выполняем перезапись собранной таблицы
 		const string rewritten = document.text();
+		/**
+		 * Если перезапись отказала
+		 *
+		 * @note Пустой текст у таблицы непустой означает отказ записи: без кавычек
+		 *       вовсе знак разрывающий укрывается знаком отмены, а способ записи
+		 *       кавычки, отмены не признающий, снять её при обратном чтении не сможет.
+		 *       Отказ этот законен, и случай исключается из проверки
+		 */
+		if(rewritten.empty() && (document.rows() > 0)){
+			/**
+			 * Если отказ пришёл при настройках, поле представить способных
+			 */
+			if((document.settings().writer.quoting != csv::quoting_t::NONE) ||
+			   (document.settings().writer.escape == csv::escape_t::BACKSLASH)){
+				// Выводим сообщение о неоправданном отказе перезаписи
+				::fprintf(stderr, "csv fuzz: rewrite refused without cause: quoting=%u escape=%u\n",
+					static_cast <uint32_t> (document.settings().writer.quoting),
+					static_cast <uint32_t> (document.settings().writer.escape));
+				// Выводим результат проверки кругового хода
+				return false;
+			}
+			// Выводим результат проверки кругового хода
+			return true;
+		}
 		// Выполняем учёт перезаписи таблицы
 		totals.rewrites++;
 		// Контейнер перезаписанной таблицы
@@ -856,19 +935,41 @@ namespace {
 		// Настройки записи таблицы
 		csv::writer_t::settings_t writing;
 		// Задаём правило заключения поля в кавычки
-		writing.quoting = static_cast <csv::quoting_t> (engine() % 3);
+		writing.quoting = QUOTINGS[engine() % (sizeof(QUOTINGS) / sizeof(QUOTINGS[0]))];
 		// Задаём способ записи кавычки внутри поля
-		writing.escape = static_cast <csv::escape_t> (engine() % 2);
+		writing.escape = ESCAPES[engine() % (sizeof(ESCAPES) / sizeof(ESCAPES[0]))];
 		// Задаём знак конца строки
-		writing.newline = static_cast <csv::newline_t> (engine() % 3);
+		writing.newline = NEWLINES[engine() % (sizeof(NEWLINES) / sizeof(NEWLINES[0]))];
 		// Задаём строгое прочтение кавычек лишь при знаке конца строки договора
 		const bool strict = (writing.newline == csv::newline_t::CRLF);
 		// Задаём знак-разделитель полей
 		writing.separator = ((engine() % 2) == 0 ? ',' : ';');
 		// Запись таблицы
 		csv::writer_t writer(::logger(), writing);
-		// Выполняем запись записи полем за полем
-		writer.record(fields);
+		/**
+		 * Если записать запись не удалось
+		 *
+		 * @note Отказ этот законен: без кавычек знак разрывающий укрывается знаком
+		 *       отмены, а способ записи кавычки удвоением отмену эту при обратном
+		 *       чтении не снимет. Представления такому полю нет, и запись отвергает
+		 *       его вместо порчи молчаливой
+		 */
+		if(!writer.record(fields)){
+			/**
+			 * Если отказ пришёл при настройках, поле представить способных
+			 */
+			if((writer.error() != csv::error_t::UNWRITABLE_FIELD) ||
+			   (writing.quoting != csv::quoting_t::NONE) || (writing.escape == csv::escape_t::BACKSLASH)){
+				// Выводим сообщение о неоправданном отказе записи
+				::fprintf(stderr, "csv fuzz: hostile record refused without cause: %s, quoting=%u escape=%u\n",
+					csv::message(writer.error()), static_cast <uint32_t> (writing.quoting),
+					static_cast <uint32_t> (writing.escape));
+				// Выводим результат проверки кругового хода
+				return false;
+			}
+			// Выводим результат проверки кругового хода
+			return true;
+		}
 		/**
 		 * Если записанное неотличимо от пустой строки
 		 *
@@ -897,7 +998,9 @@ namespace {
 		 */
 		if(error != csv::error_t::NONE){
 			// Выводим сообщение о неразбираемости записанной записи
-			::fprintf(stderr, "csv fuzz: hostile record is not readable back: %s\n", csv::message(error));
+			::fprintf(stderr, "csv fuzz: hostile record is not readable back: %s, quoting=%u escape=%u newline=%u separator=%c strict=%u\n",
+				csv::message(error), static_cast <uint32_t> (writing.quoting), static_cast <uint32_t> (writing.escape),
+				static_cast <uint32_t> (writing.newline), writing.separator, static_cast <uint32_t> (strict));
 			// Выводим записанную таблицу
 			dump(writer.text());
 			// Выводим результат проверки кругового хода
@@ -919,17 +1022,12 @@ namespace {
 		/**
 		 * Если полученные обратно поля с записанными разошлись
 		 *
-		 * @note Запись без кавычек вовсе перевода строки внутри поля не передаёт: знак
-		 *       этот запись завершает, и отменить его нечем. Случай этот из проверки
-		 *       исключается, а не выдаётся расхождением
+		 * @note Прощения записи без кавычек здесь БОЛЬШЕ НЕТ: оно прощало всякое
+		 *       расхождение при `quoting = NONE` и тем укрывало порчу - запись ставила
+		 *       знак отмены, не блюдя собственный способ записи кавычки. Поле,
+		 *       непредставимое настройками, ныне отвергается записью выше
 		 */
 		if(result != fields){
-			/**
-			 * Если запись велась без кавычек вовсе
-			 */
-			if(writing.quoting == csv::quoting_t::NONE)
-				// Выводим результат проверки кругового хода
-				return true;
 			// Выводим сообщение о расхождении полученных обратно полей
 			::fprintf(stderr, "csv fuzz: hostile record differs after round trip: quoting=%u escape=%u newline=%u\n",
 				static_cast <uint32_t> (writing.quoting), static_cast <uint32_t> (writing.escape),
@@ -1106,7 +1204,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		// Задаём знак начала строки примечания
 		settings.comment = ((engine() % 3) == 0 ? '#' : '\0');
 		// Задаём способ записи кавычки внутри поля
-		settings.escape = static_cast <csv::escape_t> (engine() % 3);
+		settings.escape = ESCAPES[engine() % (sizeof(ESCAPES) / sizeof(ESCAPES[0]))];
 		// Задаём признак наличия заголовка
 		settings.header = static_cast <csv::header_t> (engine() % 2);
 		// Задаём способ снятия обвязки с содержимого поля
@@ -1230,7 +1328,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		// Задаём знак начала строки примечания, признаваемый разбором
 		document.writer.comment = settings.comment;
 		// Задаём правило заключения поля в кавычки
-		document.writer.quoting = static_cast <csv::quoting_t> (engine() % 3);
+		document.writer.quoting = QUOTINGS[engine() % (sizeof(QUOTINGS) / sizeof(QUOTINGS[0]))];
 		/**
 		 * Задаём знак конца строки
 		 *
@@ -1238,7 +1336,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		 *       названный договором: записав таблицу иным знаком и прочитав её строго,
 		 *       мы получили бы отказ по несогласованности настроек, а не по дефекту
 		 */
-		document.writer.newline = (settings.strict ? csv::newline_t::CRLF : static_cast <csv::newline_t> (engine() % 3));
+		document.writer.newline = (settings.strict ? csv::newline_t::CRLF : NEWLINES[engine() % (sizeof(NEWLINES) / sizeof(NEWLINES[0]))]);
 		/**
 		 * Задаём способ записи кавычки внутри поля
 		 *

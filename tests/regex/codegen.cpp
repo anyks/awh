@@ -2889,3 +2889,118 @@ TEST(Regex, CompilerSubsetRefusal) {
 		ASSERT_FALSE(expression.backtracking) << pattern;
 	}
 }
+
+/**
+ * @brief Тест отодвигания начала поиска обязательным литералом
+ *
+ * @details Поиск обязательного литерала называет и позицию, раньше какой
+ *          совпадение начаться не может, и участок до неё пропускается разом.
+ *
+ *          Отодвигание отменяется привязкой к началу попытки поиска: привязка
+ *          эта равняется на позицию, сопоставителю переданную, и отодвигание
+ *          её сдвинуло бы саму привязку, обратив отказ в мнимое совпадение.
+ *          Изъян этот был живым и пойман сличением с эталоном; проверка держит
+ *          его отдельно затем, чтобы место отказа лежало при причине, а не
+ *          в случайном образце перебора.
+ *
+ */
+TEST(Regex, CodegenSkipping) {
+	/**
+	 * Если кодогенерация сборкой не поддерживается
+	 */
+	if(!regex::emitter_t::available() || !regex::assembly_t::available())
+		// Выходим из проверки отодвигания начала поиска
+		GTEST_SKIP() << "кодогенерация сборкой не поддерживается";
+	/**
+	 * @brief Выражения, привязку к началу попытки поиска несущие
+	 *
+	 */
+	const char * headed[] = {
+		"(?:\\b[0-9]|\\G\\w)(?m)a+.+", "\\Gabc", "(?:x|\\G)abc", "\\G[a-z]+9"
+	};
+	/**
+	 * @brief Выражения, привязки к началу попытки поиска лишённые
+	 *
+	 */
+	const char * plain[] = {
+		"(?:HT|TP)/1", "[a-z]+/v1", "(?:fox|dog)trot", "\\w+@[a-z]+\\.com"
+	};
+	// Количество выражений, порождением проверенных
+	size_t machined = 0;
+	// Количество сличений, совпадение обнаруживших
+	size_t matched = 0;
+	/**
+	 * @brief Тексты сличения обеих сторон границы
+	 *
+	 */
+	const string texts[] = {
+		string("GET /index.html HTTP/1.1 abc x y99a99c1a_bb foxtrot forman@anyks.com path/v19"),
+		(string(600, 'q') + " HTTP/1.1 abc a99c1a_bb foxtrot forman@anyks.com path/v19"),
+		string("abc"), string("x\n ya99c1a_bb \ncy01z_z1"), string()
+	};
+	/**
+	 * Выполняем обход выражений обеих сторон границы
+	 */
+	for(const char * pattern : {headed[0], headed[1], headed[2], headed[3],
+	 plain[0], plain[1], plain[2], plain[3]}) {
+		// Создаём объект движка регулярных выражений
+		regex::engine_t engine(::logger());
+		// Создаём выражение эталонное, порождения машинного кода лишённое
+		regex::expression_t reference;
+		// Выполняем проверку сборки выражения эталонного
+		ASSERT_TRUE(engine.build(pattern, 0, reference)) << pattern;
+		// Создаём собираемое регулярное выражение
+		regex::expression_t expression;
+		// Выполняем проверку сборки выражения с порождением машинного кода
+		ASSERT_TRUE(engine.build(pattern, static_cast <uint32_t> (regex::flag_t::JIT), expression)) << pattern;
+		/**
+		 * Если порождение машинного кода выражению не выполнено
+		 */
+		if(!expression.machine)
+			// Переходим к выражению следующему набора
+			continue;
+		// Увеличиваем количество выражений, порождением проверенных
+		machined++;
+		/**
+		 * Выполняем обход текстов сличения
+		 */
+		for(const string & text : texts) {
+			/**
+			 * Выполняем обход позиций начала поиска совпадения
+			 */
+			for(const size_t start : {static_cast <size_t> (0), (text.size() / 3), text.size()}) {
+				// Набор границ захвата исполнения программы
+				vector <pair <size_t, size_t>> plainly;
+				// Набор границ захвата порождённого машинного кода
+				vector <pair <size_t, size_t>> machine;
+				// Выполняем сопоставление исполнением программы
+				const bool one = engine.exec(reference, text, start, plainly);
+				// Выполняем сопоставление порождённым машинным кодом
+				const bool two = expression.machine->exec(text, start, machine);
+				// Выполняем проверку совпадения вердиктов обеих дорог
+				ASSERT_EQ(one, two) << pattern << " на «" << text << "» с позиции " << start;
+				/**
+				 * Если совпадение обеими дорогами обнаружено
+				 */
+				if(one && !plainly.empty() && !machine.empty()) {
+					// Увеличиваем количество сличений, совпадение обнаруживших
+					matched++;
+					// Выполняем проверку совпадения начальной границы
+					ASSERT_EQ(plainly.front().first, machine.front().first)
+					 << pattern << " на «" << text << "» с позиции " << start;
+					// Выполняем проверку совпадения конечной границы
+					ASSERT_EQ(plainly.front().second, machine.front().second)
+					 << pattern << " на «" << text << "» с позиции " << start;
+				}
+			}
+		}
+	}
+	/**
+	 * Выполняем проверку прохождения проверкою порождённого кода
+	 */
+	ASSERT_GT(machined, static_cast <size_t> (4));
+	/**
+	 * Выполняем проверку того, что сличению было что сличать
+	 */
+	ASSERT_GT(matched, static_cast <size_t> (5));
+}

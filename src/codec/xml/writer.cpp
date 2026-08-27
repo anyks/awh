@@ -1557,12 +1557,28 @@ bool awh::codec::xml::Writer::element(const node_t & node, const bool preserve) 
 				/**
 				 * Определяем вид вложенного узла дерева
 				 */
-				switch(static_cast <uint8_t> (next.kind())){
+				switch(next.kind()){
 					// Если вложенный узел является текстовым либо пробельным содержимым
-					case static_cast <uint8_t> (kind_t::TEXT):
-					case static_cast <uint8_t> (kind_t::SPACE):
+					case kind_t::TEXT:
+					case kind_t::SPACE:
 						// Запоминаем, что вложенный узел является пробельным содержимым
 						blank = true;
+					break;
+					/**
+					 * Если разбор дошёл до членов перечня, обработки здесь не требующих
+					 *
+					 * @note Отступа перед собою они не требуют
+					 *
+					 * @warning Перечислены они НАМЕРЕННО вместо `default`: ветвь `default` глушит
+					 *          `-Wswitch`, и член, в перечень дописанный, прошёл бы это место молча
+					 */
+					case kind_t::NONE:
+					case kind_t::DOCUMENT:
+					case kind_t::ELEMENT:
+					case kind_t::CDATA:
+					case kind_t::COMMENT:
+					case kind_t::PROCESSING:
+					case kind_t::DOCTYPE:
 					break;
 				}
 				// Если вложенный узел пробельным содержимым не является, пропускать нечего
@@ -1605,11 +1621,11 @@ bool awh::codec::xml::Writer::element(const node_t & node, const bool preserve) 
 		/**
 		 * Определяем вид записываемого узла дерева
 		 */
-		switch(static_cast <uint8_t> (current.kind())){
+		switch(current.kind()){
 			/**
 			 * Если записывается корень дерева разметки
 			 */
-			case static_cast <uint8_t> (kind_t::DOCUMENT): {
+			case kind_t::DOCUMENT: {
 				// Собираемый кадр обхода узлов верхнего уровня
 				Frame frame;
 				// Запоминаем первый узел верхнего уровня
@@ -1628,7 +1644,7 @@ bool awh::codec::xml::Writer::element(const node_t & node, const bool preserve) 
 			/**
 			 * Если записывается узел разметки
 			 */
-			case static_cast <uint8_t> (kind_t::ELEMENT): {
+			case kind_t::ELEMENT: {
 				/**
 				 * Получаем объявления пространств имён, записанные узлу
 				 *
@@ -1692,7 +1708,7 @@ bool awh::codec::xml::Writer::element(const node_t & node, const bool preserve) 
 						/**
 						 * Определяем вид вложенного узла дерева
 						 */
-						switch(static_cast <uint8_t> (child.kind())){
+						switch(child.kind()){
 							/**
 							 * Если вложенный узел является разделом дословного текста
 							 *
@@ -1700,13 +1716,13 @@ bool awh::codec::xml::Writer::element(const node_t & node, const bool preserve) 
 							 *       его содержимое: он ставится там, где знаки берутся дословно, и
 							 *       отступ рядом с ним переменил бы содержимое объемлющего узла
 							 */
-							case static_cast <uint8_t> (kind_t::CDATA):
+							case kind_t::CDATA:
 								// Запоминаем, что узел несёт значимое содержимое
 								wordy = true;
 							break;
 							// Если вложенный узел является содержимым
-							case static_cast <uint8_t> (kind_t::TEXT):
-							case static_cast <uint8_t> (kind_t::SPACE): {
+							case kind_t::TEXT:
+							case kind_t::SPACE: {
 								// Получаем содержимое вложенного узла
 								const string content = child.text();
 								/**
@@ -1725,11 +1741,23 @@ bool awh::codec::xml::Writer::element(const node_t & node, const bool preserve) 
 								}
 							} break;
 							// Если вложенный узел является узлом разметки, примечанием либо указанием
-							case static_cast <uint8_t> (kind_t::ELEMENT):
-							case static_cast <uint8_t> (kind_t::COMMENT):
-							case static_cast <uint8_t> (kind_t::PROCESSING):
+							case kind_t::ELEMENT:
+							case kind_t::COMMENT:
+							case kind_t::PROCESSING:
 								// Запоминаем, что узел несёт вложенные узлы
 								nested = true;
+							break;
+							/**
+							 * Если разбор дошёл до видов, обработки здесь не требующих
+							 *
+							 * @note Записи в этом месте у них нет: корень и объявление типа документа пишутся выше своим порядком, а узел неопределённый не пишется вовсе
+							 *
+							 * @warning Перечислены они НАМЕРЕННО вместо `default`: приведение к `default`
+							 *          глушит `-Wswitch`, и новый член перечня пройдёт молча
+							 */
+							case kind_t::NONE:
+							case kind_t::DOCUMENT:
+							case kind_t::DOCTYPE:
 							break;
 						}
 					}
@@ -1801,32 +1829,43 @@ bool awh::codec::xml::Writer::element(const node_t & node, const bool preserve) 
 				stack.push_back(frame);
 			} break;
 			// Если записывается текстовое содержимое
-			case static_cast <uint8_t> (kind_t::TEXT):
+			case kind_t::TEXT:
 			/**
 			 * Если записывается незначимое пробельное содержимое
 			 *
 			 * @note Пробельное содержимое записывается наравне с текстовым: отделено оно
 			 *       лишь для того, кто его различает, а из записи выпадать не вправе
 			 */
-			case static_cast <uint8_t> (kind_t::SPACE): {
+			case kind_t::SPACE: {
 				// Если записать содержимое не удалось, выводим отрицательный результат
 				if(!this->text(current.text())) return false;
 			} break;
 			// Если записывается раздел дословного текста
-			case static_cast <uint8_t> (kind_t::CDATA): {
+			case kind_t::CDATA: {
 				// Если записать раздел дословного текста не удалось
 				if(!this->cdata(current.text())) return false;
 			} break;
 			// Если записывается примечание
-			case static_cast <uint8_t> (kind_t::COMMENT): {
+			case kind_t::COMMENT: {
 				// Если записать примечание не удалось, выводим отрицательный результат
 				if(!this->comment(current.text())) return false;
 			} break;
 			// Если записывается указание обработчику
-			case static_cast <uint8_t> (kind_t::PROCESSING): {
+			case kind_t::PROCESSING: {
 				// Если записать указание обработчику не удалось
 				if(!this->processing(current.name().local, current.text())) return false;
 			} break;
+			/**
+			 * Если разбор дошёл до видов, обработки здесь не требующих
+			 *
+			 * @note Записи в этом месте у них нет: объявление типа документа пишется выше своим порядком, а узел неопределённый не пишется вовсе
+			 *
+			 * @warning Перечислены они НАМЕРЕННО вместо `default`: приведение к `default`
+			 *          глушит `-Wswitch`, и новый член перечня пройдёт молча
+			 */
+			case kind_t::NONE:
+			case kind_t::DOCTYPE:
+			break;
 		}
 		// Выполняем сброс узла, записанного на этом заходе
 		current = node_t();
@@ -1892,6 +1931,20 @@ void awh::codec::xml::Writer::reserve(const size_t size) noexcept {
 	this->_text.reserve(size);
 }
 /**
+ * @brief Метод изъятия собранного текста разметки
+ *
+ * @return изъятый собранный текст разметки
+ *
+ */
+string awh::codec::xml::Writer::take() noexcept {
+	// Изымаемый собранный текст разметки
+	string result;
+	// Выполняем изъятие собранного текста разметки
+	result.swap(this->_text);
+	// Выводим изъятый собранный текст разметки
+	return result;
+}
+/**
  * @brief Метод очистки собранного текста разметки
  *
  */
@@ -1915,10 +1968,6 @@ void awh::codec::xml::Writer::clear() noexcept {
 	// Выполняем сброс счётчика назначенных префиксов
 	this->_counter = 0;
 }
-/**
- * @brief Конструктор
- *
- */
 /**
  * @brief Метод отказа записи с сообщением о нём в журнал
  *

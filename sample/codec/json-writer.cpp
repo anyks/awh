@@ -170,7 +170,7 @@ int main(int argc, char * argv[]) noexcept {
 	// Выводим собранный текст документа
 	cout << writer.text() << endl;
 	// Выполняем сброс записи текста документа
-	writer.reset();
+	writer.clear();
 	// Получаем настройки записи текста документа
 	json::writer_t::settings_t settings = writer.settings();
 	/**
@@ -191,7 +191,7 @@ int main(int argc, char * argv[]) noexcept {
 	// Выводим собранный текст документа
 	cout << writer.text() << endl;
 	// Выполняем сброс записи текста документа
-	writer.reset();
+	writer.clear();
 	/**
 	 * Устанавливаем сжатый вид записи
 	 */

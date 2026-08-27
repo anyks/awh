@@ -103,11 +103,11 @@ void awh::codec::csv::Document::consume(reader_t & reader) noexcept {
 		/**
 		 * Определяем вид события разбора
 		 */
-		switch(static_cast <uint8_t> (reader.event())){
+		switch(reader.event()){
 			/**
 			 * Если событием является поле заголовка
 			 */
-			case static_cast <uint8_t> (event_t::HEADER): {
+			case event_t::HEADER: {
 				// Получаем содержимое поля заголовка
 				const string_view value = reader.field().value;
 				// Заносим указание на имя столбца
@@ -118,7 +118,7 @@ void awh::codec::csv::Document::consume(reader_t & reader) noexcept {
 			/**
 			 * Если событием является поле записи
 			 */
-			case static_cast <uint8_t> (event_t::FIELD): {
+			case event_t::FIELD: {
 				// Получаем содержимое поля записи
 				const string_view value = reader.field().value;
 				/**
@@ -142,9 +142,22 @@ void awh::codec::csv::Document::consume(reader_t & reader) noexcept {
 			/**
 			 * Если событием является конец записи
 			 */
-			case static_cast <uint8_t> (event_t::RECORD):
+			case event_t::RECORD:
 				// Снимаем признак начатой записи
 				this->_opened = false;
+			break;
+			/**
+			 * Если разбор дошёл до членов перечня, обработки здесь не требующих
+			 *
+			 * @note Дерева они не пополняют: примечание и пустая строка содержимым таблицы не являются, а конец текста и неопределённое событие полей не несут
+			 *
+			 * @warning Перечислены они НАМЕРЕННО вместо `default`: ветвь `default` глушит
+			 *          `-Wswitch`, и член, в перечень дописанный, прошёл бы это место молча
+			 */
+			case event_t::NONE:
+			case event_t::COMMENT:
+			case event_t::BLANK:
+			case event_t::FINISH:
 			break;
 		}
 	}
@@ -299,11 +312,11 @@ static bool dispatch(awh::codec::csv::reader_t & reader, string & storage, vecto
 		/**
 		 * Определяем вид события разбора
 		 */
-		switch(static_cast <uint8_t> (reader.event())){
+		switch(reader.event()){
 			/**
 			 * Если событием является поле записи
 			 */
-			case static_cast <uint8_t> (event_t::FIELD): {
+			case event_t::FIELD: {
 				// Получаем содержимое поля записи
 				const string_view value = reader.field().value;
 				// Заносим указание на поле в буфере записи
@@ -314,7 +327,7 @@ static bool dispatch(awh::codec::csv::reader_t & reader, string & storage, vecto
 			/**
 			 * Если событием является конец записи
 			 */
-			case static_cast <uint8_t> (event_t::RECORD): {
+			case event_t::RECORD: {
 				/**
 				 * Если полей у записи не собрано вовсе
 				 *
@@ -355,6 +368,20 @@ static bool dispatch(awh::codec::csv::reader_t & reader, string & storage, vecto
 					// Выводим признак прекращения чтения
 					return false;
 			} break;
+			/**
+			 * Если разбор дошёл до членов перечня, обработки здесь не требующих
+			 *
+			 * @note Дерева они не пополняют: заголовок здесь уже снят выше, примечание и пустая строка содержимым таблицы не являются, а конец текста и неопределённое событие полей не несут
+			 *
+			 * @warning Перечислены они НАМЕРЕННО вместо `default`: ветвь `default` глушит
+			 *          `-Wswitch`, и член, в перечень дописанный, прошёл бы это место молча
+			 */
+			case event_t::NONE:
+			case event_t::HEADER:
+			case event_t::COMMENT:
+			case event_t::BLANK:
+			case event_t::FINISH:
+			break;
 		}
 	}
 	// Выводим признак продолжения чтения
@@ -579,9 +606,18 @@ bool awh::codec::csv::Document::save(const string & filename) const noexcept {
 		/**
 		 * Выполняем перебор всех имён столбцов
 		 */
-		for(const span_t & name : this->_header)
-			// Записываем имя очередного столбца
-			writer.field(string_view(this->_names.data() + name.offset, name.length));
+		for(const span_t & name : this->_header){
+			/**
+			 * Если имя очередного столбца записать не удалось
+			 *
+			 * @note Причина отказа оглашается журналом самой записью - тем же порядком,
+			 *       каким сохранение оглашает отказ открытия файла: сохранение
+			 *       константно намеренно, и кода отказа разбора оно не трогает
+			 */
+			if(!writer.field(string_view(this->_names.data() + name.offset, name.length)))
+				// Выводим признак неудачного сохранения таблицы
+				return false;
+		}
 		// Завершаем запись заголовка
 		writer.record();
 	}
@@ -596,9 +632,12 @@ bool awh::codec::csv::Document::save(const string & filename) const noexcept {
 		/**
 		 * Выполняем перебор всех полей записи
 		 */
-		for(uint32_t j = begin; j < end; j++)
-			// Записываем очередное поле записи
-			writer.field(this->get(this->_fields.at(j)));
+		for(uint32_t j = begin; j < end; j++){
+			// Если очередное поле записи записать не удалось
+			if(!writer.field(this->get(this->_fields.at(j))))
+				// Выводим признак неудачного сохранения таблицы
+				return false;
+		}
 		// Завершаем запись
 		writer.record();
 		/**
@@ -1149,9 +1188,19 @@ string awh::codec::csv::Document::text() const noexcept {
 		/**
 		 * Выполняем перебор всех имён столбцов
 		 */
-		for(const span_t & name : this->_header)
-			// Записываем имя очередного столбца
-			writer.field(string_view(this->_names.data() + name.offset, name.length));
+		for(const span_t & name : this->_header){
+			/**
+			 * Если имя очередного столбца записать не удалось
+			 *
+			 * @note Отдаётся при этом текст ПУСТОЙ намеренно: вывод здесь строка, и
+			 *       признака отказа у него нет вовсе, а текст оборванный ушёл бы
+			 *       звучащему таблицей законченной. Причину оглашает журналом сама
+			 *       запись, а таблица непустая пустого текста не даёт никогда
+			 */
+			if(!writer.field(string_view(this->_names.data() + name.offset, name.length)))
+				// Выводим пустой текст таблицы
+				return string();
+		}
 		// Завершаем запись заголовка
 		writer.record();
 	}
@@ -1164,9 +1213,12 @@ string awh::codec::csv::Document::text() const noexcept {
 		/**
 		 * Выполняем перебор всех полей записи
 		 */
-		for(size_t j = 0; j < count; j++)
-			// Записываем очередное поле записи
-			writer.field(this->get(this->_fields.at(this->_records.at(i) + j)));
+		for(size_t j = 0; j < count; j++){
+			// Если очередное поле записи записать не удалось
+			if(!writer.field(this->get(this->_fields.at(this->_records.at(i) + j))))
+				// Выводим пустой текст таблицы
+				return string();
+		}
 		// Завершаем запись
 		writer.record();
 	}

@@ -303,7 +303,8 @@ void awh::codec::json::Writer::setLogger(const log_t * log) noexcept {
  *
  */
 awh::codec::json::Writer::Writer(const log_t * log) noexcept :
- _empty(true), _error(error_t::NONE), _keyed(false), _log(log), _started(false), _taken(0) {}
+ _empty(true), _keyed(false), _log(log),
+ _error(error_t::NONE), _started(false), _taken(0) {}
 /**
  * @brief Метод записи разделителя перед очередным значением
  *
@@ -585,7 +586,7 @@ void awh::codec::json::Writer::quoted(const string & text) noexcept {
  * удерживает
  *
  */
-void awh::codec::json::Writer::reset() noexcept {
+void awh::codec::json::Writer::clear() noexcept {
 	// Выполняем сброс кода отказа записи
 	this->_error = error_t::NONE;
 	// Выполняем очистку собранного текста

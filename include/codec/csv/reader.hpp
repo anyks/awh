@@ -115,10 +115,10 @@ namespace awh {
 			 *  reader.feed(chunk.data(), chunk.size(), last);
 			 *
 			 *  while(reader.next()){
-			 *      switch(static_cast <uint8_t> (reader.event())){
-			 *          case static_cast <uint8_t> (event_t::HEADER): break;
-			 *          case static_cast <uint8_t> (event_t::FIELD): break;
-			 *          case static_cast <uint8_t> (event_t::RECORD): break;
+			 *      switch(reader.event()){
+			 *          case event_t::HEADER: break;
+			 *          case event_t::FIELD: break;
+			 *          case event_t::RECORD: break;
 			 *      }
 			 *  }
 			 *  @endcode
@@ -143,10 +143,10 @@ namespace awh {
 			 *  reader.feed(chunk.data(), chunk.size(), last);
 			 *
 			 *  while(reader.next()){
-			 *      switch(static_cast <uint8_t> (reader.event())){
-			 *          case static_cast <uint8_t> (event_t::HEADER): break;
-			 *          case static_cast <uint8_t> (event_t::FIELD): break;
-			 *          case static_cast <uint8_t> (event_t::RECORD): break;
+			 *      switch(reader.event()){
+			 *          case event_t::HEADER: break;
+			 *          case event_t::FIELD: break;
+			 *          case event_t::RECORD: break;
 			 *      }
 			 *  }
 			 *  @endcode
@@ -901,7 +901,7 @@ namespace awh {
 					 *
 					 * @param buffer буфер с куском текста
 					 * @param size   размер куска текста в байтах
-					 * @param last   признак того, что кусок является последним
+					 * @param end    признак того, что кусок является последним
 					 * @return       признак успешного разбора поданного куска
 					 *
 					 * \~english
@@ -911,12 +911,12 @@ namespace awh {
 					 * takes place. The parsing answers thereby by its own rule about an empty text
 					 * @param buffer buffer with the chunk of the text
 					 * @param size   size of the chunk of the text in bytes
-					 * @param last   flag of the chunk being the last one
+					 * @param end    flag of the chunk being the last one
 					 * @return       flag of the successful parsing of the fed chunk
 					 *
 					 * \~
 					 */
-					bool feed(const char * buffer, const size_t size, const bool last = false) noexcept;
+					bool feed(const void * buffer, const size_t size, const bool end = false) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод подачи текста целиком

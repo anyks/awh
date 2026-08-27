@@ -767,11 +767,11 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 	/**
 	 * Определяем кодировку исходного текста
 	 */
-	switch(static_cast <uint8_t> (this->_encoding)){
+	switch(this->_encoding){
 		/**
 		 * Если кодировкой является UTF-8
 		 */
-		case static_cast <uint8_t> (encoding_t::UTF8): {
+		case encoding_t::UTF8: {
 			/**
 			 * Выполняем дочитывание удержанной последовательности знака
 			 */
@@ -1028,8 +1028,8 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 		/**
 		 * Если кодировкой является UTF-16 в любом из порядков байтов
 		 */
-		case static_cast <uint8_t> (encoding_t::UTF16LE):
-		case static_cast <uint8_t> (encoding_t::UTF16BE): {
+		case encoding_t::UTF16LE:
+		case encoding_t::UTF16BE: {
 			// Получаем признак обратного порядка байтов
 			const bool reverse = (this->_encoding == encoding_t::UTF16LE);
 			/**
@@ -1119,8 +1119,8 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 		/**
 		 * Если кодировкой является ISO-8859-1 либо US-ASCII
 		 */
-		case static_cast <uint8_t> (encoding_t::LATIN1):
-		case static_cast <uint8_t> (encoding_t::ASCII): {
+		case encoding_t::LATIN1:
+		case encoding_t::ASCII: {
 			// Получаем признак кодировки US-ASCII
 			const bool strict = (this->_encoding == encoding_t::ASCII);
 			/**
@@ -1154,7 +1154,7 @@ bool awh::codec::xml::Decoder::convert(const void * buffer, const size_t size, c
 		 *       границы кусков ему безразличны по устройству, и переноса недобранной
 		 *       последовательности здесь нет вовсе - в отличие от UTF-8 и UTF-16
 		 */
-		case static_cast <uint8_t> (encoding_t::SINGLE): {
+		case encoding_t::SINGLE: {
 			/**
 			 * Если таблица кодировки не задана
 			 *

@@ -197,6 +197,8 @@ namespace awh {
 		private:
 			// Признак заведённого склада
 			bool _ready;
+			// Сведения о защите, состоявшейся у укрытой памяти склада
+			awh::alloc::shelter_t _shelter;
 		private:
 			// Объект фреймворка
 			[[maybe_unused]] const fmk_t * _fmk;
@@ -220,6 +222,30 @@ namespace awh {
 			 */
 			bool ready() const noexcept;
 		public:
+			/**
+			 * \~russian
+			 * @brief Метод получения сведений о состоявшейся защите памяти склада
+			 *
+			 * @note Обещания у систем разные, и спрашивать положено тому, кто склад
+			 *       заводит: укрытия от снимка памяти нет у Linux, macOS и NetBSD, а
+			 *       право на запрет подкачки ограничено пределом и у illumos требует
+			 *       прав. Ответ говорит о том, что состоялось НА ДЕЛЕ, а не о том, о
+			 *       чём просили, - молчаливого понижения защиты здесь нет, но узнать
+			 *       о нём звавший может лишь спросив
+			 *
+			 * @warning Шифрование тайн состоится и без всякой защиты памяти: признаки
+			 *          эти о `ready` не говорят ничего, и склад с пустой защитой
+			 *          работает так же, лишь обещая меньше
+			 *
+			 * @return сведения о состоявшейся защите
+			 *
+			 * \~english
+			 * @brief Method of getting the information about the achieved protection of the vault memory
+			 *
+			 * @return information about the achieved protection
+			 *
+			 */
+			const awh::alloc::shelter_t & shelter() const noexcept;
 			/**
 			 * \~russian
 			 * @brief Метод укладки тайны на склад

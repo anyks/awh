@@ -325,19 +325,26 @@ namespace awh {
 				public:
 					/**
 					 * \~russian
-					 * @brief Метод сброса состояния записи
+					 * @brief Метод очистки собранного текста документа
 					 *
-					 * @details Сброс возвращает сборщик к пустому тексту, а выделенную память
+					 * @details Очистка возвращает сборщик к пустому тексту, а выделенную память
 					 * удерживает
 					 *
+					 * @note Имя общее с записью разметки и таблицы намеренно: возвращение к
+					 *       пустому тексту у всех трёх кодеков зовётся `clear()`, а `reset()`
+					 *       у них оставлено чтению
+					 *
 					 * \~english
-					 * @brief Method of the reset of the state of the writing
-					 * @details The reset returns the assembler to an empty text while holding
+					 * @brief Method of the clearing of the assembled text of a document
+					 * @details The clearing returns the assembler to an empty text while holding
 					 * the allocated memory
+					 * @note The name is common with the writing of a markup and of a table deliberately:
+					 * the returning to an empty text is called `clear()` in all the three codecs, while
+					 * `reset()` is left to the reading in them
 					 *
 					 * \~
 					 */
-					void reset() noexcept;
+					void clear() noexcept;
 				public:
 					/**
 					 * \~russian

@@ -220,7 +220,28 @@ namespace awh {
 						uint32_t maxString;
 						// Наибольшая допустимая длина записи числа в байтах, ноль - без предела
 						uint32_t maxNumber;
-						// Наибольшая допустимая глубина вложенности, ноль - без предела
+						/**
+						 * \~russian
+						 * @brief Наибольшая допустимая глубина вложенности, ноль - без предела
+						 *
+						 * @warning Предел этот САМИМ ЧТЕНИЕМ соблюдается как задан, а вот
+						 * контейнер `Document` огранивает его потолком `MAX_DEPTH`: дерево
+						 * документа плоско, но работы ПО ГОТОВОМУ ДЕРЕВУ - снятие владеющим
+						 * значением и запись - идут возвратом, и глубина ложится прямо на стек
+						 * вызовов. Предел, поднятый выше потолка либо снятый нулём, у
+						 * контейнера силы не имеет
+						 *
+						 * \~english
+						 * @brief Largest admissible depth of the nesting, zero — without a limit
+						 * @warning The present limit is observed as set BY THE READING ITSELF, while
+						 * the `Document` container bounds it by the `MAX_DEPTH` ceiling: the tree of a
+						 * document is flat, but the works ON THE READY TREE — the taking by an owning
+						 * value and the writing — go by a recursion, and the depth falls right onto the stack
+						 * of the calls. A limit raised above the ceiling or removed by a zero has no
+						 * force at the container
+						 *
+						 * \~
+						 */
 						uint32_t maxDepth;
 						/**
 						 * \~russian
@@ -780,7 +801,7 @@ namespace awh {
 					 *
 					 * @param buffer буфер подаваемого текста
 					 * @param size   размер буфера подаваемого текста
-					 * @param last   признак того, что кусок последний
+					 * @param end    признак того, что кусок последний
 					 * @return       признак успешности разбора
 					 *
 					 * \~english
@@ -790,12 +811,12 @@ namespace awh {
 					 * takes place. The parsing answers thereby by its own rule about an empty text
 					 * @param buffer buffer of the text being fed
 					 * @param size size of the buffer of the text being fed
-					 * @param last flag that the chunk is the last one
+					 * @param end  flag that the chunk is the last one
 					 * @return sign of the success of the parsing
 					 *
 					 * \~
 					 */
-					bool feed(const char * buffer, const size_t size, const bool last = false) noexcept;
+					bool feed(const void * buffer, const size_t size, const bool end = false) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод подачи текста целиком
