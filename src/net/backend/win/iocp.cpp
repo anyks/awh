@@ -2753,9 +2753,26 @@ namespace std {
 					} break;
 					// Если адрес установлен как IPv6
 					case static_cast <uint8_t> (event::family_t::IPV6): {
-						// Безопасное чтение 128-битного адреса как двух uint64_t
-						const uint64_t hi = (* reinterpret_cast <const uint64_t *> (&id.ip6.address[0]));
-						const uint64_t lo = (* reinterpret_cast <const uint64_t *> (&id.ip6.address[0] + 8));
+						/**
+						 * Октеты 128-битного адреса вычитываются КОПИРОВАНИЕМ
+						 *
+						 * @warning Прежде тут стояло приведение адреса массива октетов к
+						 *          «const uint64_t *» с чтением по нему, и обещание безопасности
+						 *          в комментарии кода не подкреплялось ничем: массив октетов
+						 *          выравнивания по восьми не обещает вовсе. У x86 такое сходит с
+						 *          рук, у ARM и SPARC - валит выполнение либо читает не то.
+						 *          Найдено надзирателем undefined: «load of misaligned address,
+						 *          which requires 8 byte alignment». Ветвь UNIX-сокета ниже
+						 *          поступает верно и довод свой поясняет - тут же он нарушен
+						 *
+						 * @note Копирование ничего не стоит: собиратель обращает его в ту же пару
+						 *       чтений, когда выравнивание ему известно
+						 */
+						uint64_t hi = 0, lo = 0;
+						// Забираем старшую половину адреса
+						::memcpy(&hi, &id.ip6.address[0], sizeof(hi));
+						// Забираем младшую половину адреса
+						::memcpy(&lo, &id.ip6.address[0] + sizeof(hi), sizeof(lo));
 						// Комбинируем хеш-коды IPv6 адреса
 						this->combine(result, hash <uint64_t> {}(hi));
 						this->combine(result, hash <uint64_t> {}(lo));
