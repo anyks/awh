@@ -1429,3 +1429,54 @@ TEST(CodecIniReader, RefusalCodes) {
 		ASSERT_EQ(reader.error(), probe.error) << probe.note;
 	}
 }
+/**
+ * @brief Проверка расположения примечания в строке
+ *
+ * @details Расположение примечания - своя строка, конец строки свойства либо конец
+ *          строки объявления раздела - набор проверок не сличал ни разу. Расположение
+ *          есть договор наравне с содержимым примечания: по нему запись возвращает
+ *          примечание на своё место, и расположение неверное переносит примечание к
+ *          иной строке молча, а перезапись текста устойчивости лишается
+ *
+ * @note Признание примечаний в конце строки настройкою открывается: без неё разбор
+ *       берёт знак начала примечания частью значения, и заходы TAIL с HEADER не
+ *       достаются вовсе
+ *
+ */
+TEST(CodecIniReader, CommentPlacement) {
+	// Настройки разбора текста настроек
+	ini::reader_t::settings_t settings;
+	// Задаём признание примечаний в конце строки
+	settings.inlineComments = true;
+	// Задаём выдачу примечаний отдельным событием
+	settings.emitComments = true;
+	// Объект потокового чтения текста
+	ini::reader_t reader(::logger(), settings);
+	// Разбираемый текст с примечаниями трёх расположений
+	const string text = "; своя строка\n[раздел] ; за разделом\nk = v ; за свойством\n";
+	// Выполняем подачу разбираемого текста настроек
+	ASSERT_TRUE(reader.feed(text));
+	// Собираемый ряд расположений примечаний
+	string result;
+	/**
+	 * Выполняем перебор всех событий разбора
+	 */
+	while(reader.next()){
+		/**
+		 * Если событие примечанием является
+		 */
+		if(reader.event() == ini::event_t::COMMENT)
+			// Выполняем запись расположения примечания числом
+			result.append(std::to_string(static_cast <uint32_t> (reader.comment().placement))).append("\n");
+	}
+	// Выполняем проверку кода ошибки разбора
+	ASSERT_EQ(reader.error(), ini::error_t::NONE);
+	// Выполняем проверку собранного ряда расположений примечаний
+	ASSERT_EQ(result,
+		// Примечание, строку целиком занимающее
+		string(std::to_string(static_cast <uint32_t> (ini::placement_t::OWN))).append("\n")
+		// Примечание в конце строки объявления раздела
+		.append(std::to_string(static_cast <uint32_t> (ini::placement_t::HEADER))).append("\n")
+		// Примечание в конце строки свойства
+		.append(std::to_string(static_cast <uint32_t> (ini::placement_t::TAIL))).append("\n"));
+}
