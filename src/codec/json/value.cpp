@@ -2633,6 +2633,13 @@ awh::codec::json::value_t awh::codec::json::Builder::finish() noexcept {
 	return result;
 }
 /**
+ * @brief Наибольшее смещение, вместимое указанием на содержимое узла
+ *
+ * @note Постоянная та же, какой стережёт себя сборка дерева из разбора: смещение
+ *       содержимого узла занимает четыре байта
+ */
+static constexpr size_t STORAGE_LIMIT = static_cast <size_t> (0xFFFFFFFFu);
+/**
  * @brief Метод переноса владеющего значения в перечень узлов дерева
  *
  * @param value переносимое владеющее значение
@@ -2650,6 +2657,21 @@ uint32_t awh::codec::json::Document::transplant(const json::Value & value, const
 	 * Если узел является полем объекта
 	 */
 	if(name != nullptr){
+		/**
+		 * Если имя поля объекта в разрядность хранилища знаков уже не помещается
+		 *
+		 * @details Смещение содержимого узла занимает четыре байта, и переполнение его
+		 * молча УСЕКАЕТ смещение: содержимое, за четвёртым гигабайтом лежащее, указывало
+		 * бы в начало хранилища - на чужие знаки. Сборка дерева из разбора это место
+		 * стережёт отказом `OVERFLOW_LIMIT`, а прививка значения не стерегла: тот же
+		 * дефект жил во втором пути роста дерева
+		 */
+		if((this->_storage.size() + name->size()) > ::STORAGE_LIMIT){
+			// Запоминаем код отказа переноса значения
+			this->_error = error_t::OVERFLOW_LIMIT;
+			// Выводим размах перенесённого поддерева
+			return static_cast <uint32_t> (nodes.size() - index);
+		}
 		// Выполняем перенос имени поля объекта в хранилище знаков документа
 		this->_storage.append(* name);
 		// Устанавливаем признак того, что узел является полем объекта
@@ -2698,6 +2720,18 @@ uint32_t awh::codec::json::Document::transplant(const json::Value & value, const
 		 * Если значение является строкой
 		 */
 		case kind_t::STRING: {
+			/**
+			 * Если содержимое строки в разрядность хранилища знаков уже не помещается
+			 *
+			 * @note Довод общий со сторожем имени поля: смещение содержимого узла
+			 *       занимает четыре байта, и переполнение его усекает молча
+			 */
+			if((this->_storage.size() + value.text().size()) > ::STORAGE_LIMIT){
+				// Запоминаем код отказа переноса значения
+				this->_error = error_t::OVERFLOW_LIMIT;
+				// Выводим размах перенесённого поддерева
+				return static_cast <uint32_t> (nodes.size() - index);
+			}
 			// Выполняем перенос содержимого строки в хранилище знаков документа
 			this->_storage.append(value.text());
 			// Устанавливаем длину содержимого строки
@@ -2713,6 +2747,15 @@ uint32_t awh::codec::json::Document::transplant(const json::Value & value, const
 			if(value.type() == type_t::EXTENDED){
 				// Получаем запись числа
 				const string record = value.raw();
+				/**
+				 * Если запись числа в разрядность хранилища знаков уже не помещается
+				 */
+				if((this->_storage.size() + record.size()) > ::STORAGE_LIMIT){
+					// Запоминаем код отказа переноса значения
+					this->_error = error_t::OVERFLOW_LIMIT;
+					// Выводим размах перенесённого поддерева
+					return static_cast <uint32_t> (nodes.size() - index);
+				}
 				// Выполняем перенос записи числа в хранилище знаков документа
 				this->_storage.append(record);
 				// Устанавливаем длину записи числа

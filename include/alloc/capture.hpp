@@ -108,6 +108,33 @@ namespace awh {
 			// Выделение памяти с требуемым выравниванием
 			void * (* memalign)(size_t, size_t);
 			/**
+			 * Выровненная семья MS Windows
+			 *
+			 * У MSVCRT выровненная выдача идёт СВОИМИ именами, и нашего `malloc` они не
+			 * зовут: блок, выданный `_aligned_malloc`, шёл мимо распределителя целиком -
+			 * ни учёт мест выдачи, ни заслоны, ни отчёт его не считали. Оттого семья эта
+			 * перехватывается наравне с обычной выдачей
+			 *
+			 * Порядок доводов у `_aligned_malloc` ОБРАТЕН порядку `memalign`: размер
+			 * идёт первым, выравнивание вторым. Держать их одним полем оттого нельзя
+			 *
+			 * Освобождать выданное обязан `_aligned_free`, а не `free`: у MSVCRT это
+			 * разные пути, и перехватить один без другого значило бы отдать наш блок
+			 * чужому распределителю. Семья потому и перехватывается ЦЕЛИКОМ либо не
+			 * перехватывается вовсе
+			 *
+			 * Прочим системам поля эти не нужны и остаются пустыми: у ELF и macOS
+			 * выровненная выдача идёт через `memalign` выше
+			 */
+			// Выделение памяти с требуемым выравниванием (размер, выравнивание)
+			void * (* alignedAlloc)(size_t, size_t);
+			// Освобождение памяти, выданной с выравниванием
+			void (* alignedFree)(void *);
+			// Изменение размера памяти, выданной с выравниванием
+			void * (* alignedRealloc)(void *, size_t, size_t);
+			// Определение размера памяти, выданной с выравниванием
+			size_t (* alignedMsize)(void *, size_t, size_t);
+			/**
 			 * @brief Конструктор
 			 *
 			 * @note Помечен `constexpr` НЕ ради скорости, а ради порядка построения, и
@@ -129,7 +156,9 @@ namespace awh {
 			 */
 			constexpr Functions() noexcept :
 			 malloc(nullptr), free(nullptr), calloc(nullptr),
-			 realloc(nullptr), msize(nullptr), memalign(nullptr) {}
+			 realloc(nullptr), msize(nullptr), memalign(nullptr),
+			 alignedAlloc(nullptr), alignedFree(nullptr),
+			 alignedRealloc(nullptr), alignedMsize(nullptr) {}
 		} functions_t;
 		/**
 		 * Сторож постоянного заведения набора функций

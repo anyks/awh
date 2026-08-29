@@ -152,7 +152,9 @@ static struct Totals {
 	uint64_t issued;
 	// Число вызовов с заведомо негодным описателем
 	uint64_t invalids;
-} totals = {0, 0, 0, 0, 0, 0, 0};
+	// Число вызовов методов SCTP
+	uint64_t sctps;
+} totals = {0, 0, 0, 0, 0, 0, 0, 0};
 
 /**
  * Семейства адресов, какие ворошитель подаёт
@@ -199,6 +201,49 @@ static const char * IFACES[] = {
 	"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 	"%s", "%n", "../../etc/passwd", "\xff\xfe\xfd", "\x7f", "lo0;reboot"
 };
+/**
+ * Ворошение SCTP берётся лишь у систем, где протокол есть
+ *
+ * @note Список тот же, что и у самой библиотеки (include/net/eth/eth.hpp): у прочих
+ *       систем объекта `sctp` нет вовсе, и обращение к нему не собралось бы
+ */
+#if __linux__ || __FreeBSD__ || __sun
+	/**
+	 * Возможности SCTP, о каких ворошитель спрашивает
+	 */
+	static const awh::net::sctp::feature_t FEATURES[] = {
+		awh::net::sctp::feature_t::NONE,
+		awh::net::sctp::feature_t::AUTHENTICATION,
+		awh::net::sctp::feature_t::STREAM_RESET,
+		awh::net::sctp::feature_t::ASSOC_RESET,
+		awh::net::sctp::feature_t::STREAM_CHANGE,
+		awh::net::sctp::feature_t::SENDER_DRY,
+		awh::net::sctp::feature_t::MULTIHOMING,
+		awh::net::sctp::feature_t::PARTIAL_MESSAGE
+	};
+	/**
+	 * Виды сроков SCTP, какие ворошитель подаёт
+	 */
+	static const awh::net::sctp::timeout_t TIMEOUTS[] = {
+		awh::net::sctp::timeout_t::NONE,
+		awh::net::sctp::timeout_t::INIT,
+		awh::net::sctp::timeout_t::DATA,
+		awh::net::sctp::timeout_t::SACK,
+		awh::net::sctp::timeout_t::SHUTDOWN,
+		awh::net::sctp::timeout_t::HEARTBEAT,
+		awh::net::sctp::timeout_t::COOKIE,
+		awh::net::sctp::timeout_t::SHUTDOWNACK
+	};
+	/**
+	 * Виды проверки подлинности SCTP, какие ворошитель подаёт
+	 */
+	static const awh::net::sctp::auth_type_t AUTHS[] = {
+		awh::net::sctp::auth_type_t::HMAC_RSVD,
+		awh::net::sctp::auth_type_t::HMAC_SHA1,
+		awh::net::sctp::auth_type_t::HMAC_SHA256
+	};
+#endif
+
 /**
  * @brief Функция снятия имени сетевого устройства
  *
@@ -572,6 +617,148 @@ static void gateways(const awh::eth_t & eth, mt19937_64 & engine) noexcept {
 }
 
 /**
+ * @brief Функция ворошения методов работы с SCTP
+ *
+ * @details Поверхность эта вся из внешних доводов: описатель, число потоков, номер
+ *          ключа, состав чанков - всё приходит от потребителя. Дважды она уже давала
+ *          тонкие откаты (смена договора приёма, длина служебных данных у систем Sun),
+ *          и оба раза отказом они не сообщались
+ *
+ * @warning Сокет заводится ворошителем и им же закрывается. Заведение SCTP-сокета
+ *          волен отвергнуть сам ядро - настройка протокола есть не всюду, - и это НЕ
+ *          находка: тогда подаётся обычный потоковый сокет, чтобы договор получил
+ *          описатель не того наречия. Это тоже ворошение, притом полезное
+ *
+ * @param eth    объект работы с сетевыми устройствами
+ * @param engine источник случайных чисел
+ *
+ */
+#if __linux__ || __FreeBSD__ || __sun
+	static void sctps(const awh::eth_t & eth, mt19937_64 & engine) noexcept {
+		// Описатель, каким ведётся ворошение
+		awh::net::socket_t sock = awh::net::invalid_socket_t;
+		// Признак того, что описатель заведён ворошителем
+		bool owned = false;
+		/**
+		 * Определяем род подаваемого описателя
+		 */
+		switch(static_cast <uint8_t> (::pick(engine, 4))){
+			// Подаём сокет SCTP
+			case 0:
+			case 1: {
+				// Заводим сокет SCTP
+				sock = static_cast <awh::net::socket_t> (::socket(AF_INET, SOCK_STREAM, IPPROTO_SCTP));
+				// Если сокет SCTP завести не удалось, подаём обычный потоковый
+				if(sock == awh::net::invalid_socket_t)
+					// Заводим обычный потоковый сокет
+					sock = static_cast <awh::net::socket_t> (::socket(AF_INET, SOCK_STREAM, 0));
+				// Если сокет заведён, запоминаем владение
+				owned = (sock != awh::net::invalid_socket_t);
+				// Считаем заведённый сокет
+				::totals.issued += (owned ? 1 : 0);
+			} break;
+			// Подаём описатель чужого рода
+			case 2: {
+				// Заводим обычный файл вместо сокета
+				sock = static_cast <awh::net::socket_t> (::open("/dev/null", O_RDWR));
+				// Если файл открыть удалось, запоминаем владение
+				owned = (sock != awh::net::invalid_socket_t);
+			} break;
+			// Подаём заведомо негодный описатель
+			case 3: {
+				// Выбираем негодное число описателя
+				sock = static_cast <awh::net::socket_t> (::pick(engine, 2) == 0 ? -1 : 100000);
+				// Считаем вызов с негодным описателем
+				::totals.invalids++;
+			} break;
+		}
+		// Считаем вызов метода SCTP
+		::totals.sctps++;
+		/**
+		 * Определяем ворошимый метод
+		 */
+		switch(static_cast <uint8_t> (::pick(engine, 10))){
+			// Спрашиваем состояние связи
+			case 0: {
+				// Состояние связи SCTP
+				awh::net::sctp::status_t status{};
+				// Выполняем снятие состояния связи
+				static_cast <void> (eth.sctp.status(sock, status));
+			} break;
+			// Задаём параметры установки связи
+			case 1: {
+				// Параметры установки связи SCTP
+				awh::net::sctp::initmsg_t initmsg{};
+				// Задаём число попыток подключения
+				initmsg.attempts = static_cast <uint16_t> (engine());
+				// Задаём число исходящих потоков
+				initmsg.ostreams = static_cast <uint16_t> (engine());
+				// Задаём число входящих потоков
+				initmsg.istreams = static_cast <uint16_t> (engine());
+				// Выполняем установку параметров связи
+				static_cast <void> (eth.sctp.initMessages(sock, initmsg));
+			} break;
+			// Спрашиваем поддержку возможности протокола
+			case 2: static_cast <void> (eth.sctp.supported(
+				FEATURES[::pick(engine, sizeof(FEATURES) / sizeof(FEATURES[0]))]
+			)); break;
+			// Задаём состав видов проверки подлинности
+			case 3: {
+				// Собираемый состав видов проверки подлинности
+				vector <awh::net::sctp::auth_type_t> types;
+				/**
+				 * Собираем состав видов проверки подлинности
+				 */
+				for(size_t i = 0, count = static_cast <size_t> (::pick(engine, 6)); i < count; i++)
+					// Добавляем очередной вид проверки подлинности
+					types.push_back(AUTHS[::pick(engine, sizeof(AUTHS) / sizeof(AUTHS[0]))]);
+				// Выполняем установку состава видов проверки подлинности
+				static_cast <void> (eth.sctp.authenticateSupportAlgorithms(sock, types));
+			} break;
+			// Задаём ключ проверки подлинности
+			case 4: {
+				// Длина задаваемого ключа: пустой подаётся намеренно
+				const size_t length = static_cast <size_t> (::pick(engine, 128));
+				// Собираемый ключ проверки подлинности
+				string key(length, '\0');
+				/**
+				 * Собираем ключ проверки подлинности из случайных октетов
+				 */
+				for(size_t i = 0; i < length; i++)
+					// Записываем очередной октет ключа
+					key[i] = static_cast <char> (::pick(engine, 256));
+				// Выполняем установку ключа проверки подлинности
+				static_cast <void> (eth.sctp.authenticateKey(sock, static_cast <uint16_t> (engine()), key));
+			} break;
+			// Спрашиваем срок протокола
+			case 5: static_cast <void> (eth.sctp.timeout(sock, static_cast <uint32_t> (engine()),
+				TIMEOUTS[::pick(engine, sizeof(TIMEOUTS) / sizeof(TIMEOUTS[0]))]
+			)); break;
+			// Задаём срок протокола
+			case 6: static_cast <void> (eth.sctp.timeout(sock, static_cast <uint32_t> (engine()),
+				TIMEOUTS[::pick(engine, sizeof(TIMEOUTS) / sizeof(TIMEOUTS[0]))],
+				static_cast <uint32_t> (engine())
+			)); break;
+			// Спрашиваем современность оснастки протокола
+			case 7: static_cast <void> (eth.sctp.modern()); break;
+			// Спрашиваем поддержку частичной выдачи
+			case 8: static_cast <void> (eth.sctp.partial()); break;
+			// Задаём выдачу сведений о принятом сообщении
+			case 9: {
+				// Задаём выдачу сведений о принятом сообщении
+				static_cast <void> (eth.sctp.receiveInfo(sock, (::pick(engine, 2) == 0)));
+				// Задаём явную границу записи
+				static_cast <void> (eth.sctp.explicitEndOfRecord(sock, (::pick(engine, 2) == 0)));
+			} break;
+		}
+		// Если описатель заведён ворошителем, закрываем его
+		if(owned)
+			// Закрываем описатель ворошителя
+			static_cast <void> (::close(static_cast <int32_t> (sock)));
+	}
+#endif
+
+/**
  * @brief Функция снятия перечня открытых описателей процесса
  *
  * @details Утечка описателей отказом не сообщается и падением не проявляется: она
@@ -685,7 +872,16 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		/**
 		 * Определяем ворошимую часть договора
 		 */
-		switch(static_cast <uint8_t> (::pick(engine, 4))){
+		/**
+		 * @note Долей ворошения SCTP отведена та же, что и прочим частям, лишь у систем
+		 *       с протоколом: у прочих её нет вовсе, и разбор идёт по четырём
+		 */
+		#if __linux__ || __FreeBSD__ || __sun
+			const uint8_t parts = 5;
+		#else
+			const uint8_t parts = 4;
+		#endif
+		switch(static_cast <uint8_t> (::pick(engine, parts))){
 			// Ворошим методы сетевых устройств
 			case 0: ::ifaces(eth, engine); break;
 			// Ворошим методы работы с адресами
@@ -694,6 +890,12 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 			case 2: ::sockets(eth, engine); break;
 			// Ворошим методы работы со шлюзами
 			case 3: ::gateways(eth, engine); break;
+			/**
+			 * Ворошим методы работы с SCTP
+			 */
+			#if __linux__ || __FreeBSD__ || __sun
+				case 4: ::sctps(eth, engine); break;
+			#endif
 		}
 		// Если разогрев закончен, снимаем эталонный перечень описателей
 		if(round == warmup)
@@ -743,11 +945,13 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		"  вызовов методов шлюзов: %llu\n"
 		"  заведено пробных сокетов: %llu\n"
 		"  вызовов с негодным описателем: %llu\n"
+		"  вызовов методов SCTP: %llu\n"
 		"  описателей после разогрева (%llu проходов): %zu, в конце: %zu\n",
 		static_cast <unsigned long long> (seed), static_cast <unsigned long long> (::totals.rounds),
 		static_cast <unsigned long long> (::totals.ifaces), static_cast <unsigned long long> (::totals.addrs),
 		static_cast <unsigned long long> (::totals.sockets), static_cast <unsigned long long> (::totals.gateways),
 		static_cast <unsigned long long> (::totals.issued), static_cast <unsigned long long> (::totals.invalids),
+		static_cast <unsigned long long> (::totals.sctps),
 		static_cast <unsigned long long> (warmup), opened.size(), remained.size()
 	);
 	// Выводим итог работы ворошителя

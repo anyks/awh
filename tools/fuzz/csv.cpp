@@ -967,10 +967,20 @@ namespace {
 		 */
 		if(!writer.record(fields)){
 			/**
+			 * Признак записи, состоящей из единственного пустого поля
+			 *
+			 * @note Пометить её без кавычек нечем: пустою строкою она неотличима от записи
+			 *       БЕЗ полей, а разбор пустые строки пропускает. Прежде запись такую теряли
+			 *       молча, ныне она отвергается наравне с полем непредставимым - и отказ этот
+			 *       законен при ЛЮБОМ способе записи кавычки, отмена его не спасает
+			 */
+			const bool blank = ((fields.size() == 1) && fields.front().empty());
+			/**
 			 * Если отказ пришёл при настройках, поле представить способных
 			 */
 			if((writer.error() != csv::error_t::UNWRITABLE_FIELD) ||
-			   (writing.quoting != csv::quoting_t::NONE) || (writing.escape == csv::escape_t::BACKSLASH)){
+			   (writing.quoting != csv::quoting_t::NONE) ||
+			   (!blank && (writing.escape == csv::escape_t::BACKSLASH))){
 				// Выводим сообщение о неоправданном отказе записи
 				::fprintf(stderr, "csv fuzz: hostile record refused without cause: %s, quoting=%u escape=%u\n",
 					csv::message(writer.error()), static_cast <uint32_t> (writing.quoting),

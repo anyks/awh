@@ -29,6 +29,7 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
+#include <regex/probe.hpp>
 #include <regex/pike.hpp>
 
 /**
@@ -496,6 +497,16 @@ bool awh::regex::Pike::exec(const program_t & program, string_view text, const s
 		if((found == NO_SLOTS) && !bound && this->_current.empty() && program.prefilter.active) {
 			// Выполняем поиск ближайшей позиции возможного начала совпадения
 			const size_t candidate = program.prefilter.search(text, pos);
+			/**
+			 * Если отбор позиций начало попытки продвинул
+			 *
+			 * @details Учитывается продвижение, а не самое обращение к отбору:
+			 *          отбор, позиции не пропускающий, работы не снимает вовсе.
+			 *
+			 */
+			if(candidate > pos)
+				// Выполняем учёт отбора позиций у исполнения без возврата
+				AWH_REGEX_TICK(path_t::PIKING);
 			/**
 			 * Если позиция возможного начала совпадения не обнаружена
 			 *

@@ -29,6 +29,7 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
+#include <regex/probe.hpp>
 #include <regex/backtrack.hpp>
 
 /**
@@ -1441,6 +1442,17 @@ bool awh::regex::Backtrack::exec(const program_t & program, string_view text, co
 				// Выполняем отбор позиции начала совпадения по обязательному литералу
 				const size_t limit = program.prefilter.bounded(text, pos);
 				/**
+				 * Если отодвигание начало поиска продвинуло
+				 *
+				 * @details Учитывается продвижение, а не самое обращение:
+				 *          отодвигание, позиции не пропускающее, работы
+				 *          не снимает вовсе.
+				 *
+				 */
+				if(limit > pos)
+					// Выполняем учёт отодвигания начала поиска обязательным литералом
+					AWH_REGEX_TICK(path_t::BOUNDING);
+				/**
 				 * Если обязательный литерал в оставшемся тексте отсутствует
 				 */
 				if(limit >= size)
@@ -1466,6 +1478,16 @@ bool awh::regex::Backtrack::exec(const program_t & program, string_view text, co
 		if(!bound && program.prefilter.active) {
 			// Выполняем поиск ближайшей позиции возможного начала совпадения
 			const size_t candidate = program.prefilter.search(text, pos);
+			/**
+			 * Если отбор позиций начало попытки продвинул
+			 *
+			 * @details Учитывается продвижение, а не самое обращение к отбору:
+			 *          отбор, позиции не пропускающий, работы не снимает вовсе.
+			 *
+			 */
+			if(candidate > pos)
+				// Выполняем учёт отбора позиций у исполнения с возвратом
+				AWH_REGEX_TICK(path_t::TRACKING);
 			/**
 			 * Если позиция возможного начала совпадения не обнаружена
 			 */

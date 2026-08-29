@@ -2453,16 +2453,17 @@ string awh::regex::Compiler::leading(const node_id_t id) const noexcept {
 			// Выходим из обхода цепочки узлов
 			break;
 		}
-		// Получаем литерал, сопоставляемый очередным узлом целиком
-		const string value = this->literal(index);
 		/**
 		 * Если очередной узел литерал не сопоставляет
+		 *
+		 * @details Литерал узла добавляется в накапливаемый прямо, без заведения
+		 *          строки на узел: разбор зовётся на всякий узел цепочки, а при
+		 *          отказе накопленное остаётся неизменным.
+		 *
 		 */
-		if(value.empty())
+		if(!this->literal(index, result))
 			// Выходим из обхода цепочки узлов
 			break;
-		// Выполняем добавление литерала узла в ведущий литерал
-		result.append(value);
 	}
 	// Выводим ведущий литерал совпадения выражения
 	return result;
@@ -2530,6 +2531,19 @@ void awh::regex::Compiler::condense() noexcept {
 		// Выходим из метода распознавания выражения
 		return;
 	/**
+	 * Заводим собираемую последовательность символов выражения
+	 *
+	 * @details Сбор ведётся отдельно от программы, а не прямо в неё: сбор,
+	 *          посреди пути прекращённый, оставлял в программе последовательность
+	 *          неполную. Признак сопоставления литералом при том оставался ложным,
+	 *          и вреда сопоставлению не выходило, но последовательность эта жила
+	 *          в памяти всякой такой программы и уходила в запись хранилища.
+	 *          Мерою по набору Grok: у 175 выражений из 295, литералом
+	 *          не сопоставляемых, оставалось 3278 байтов, а у одного - 345.
+	 *
+	 */
+	string text;
+	/**
 	 * Выполняем сбор последовательности символов выражения
 	 */
 	for(size_t i = 1; i < (instructions.size() - 2); i++) {
@@ -2558,7 +2572,7 @@ void awh::regex::Compiler::condense() noexcept {
 		 */
 		if(code < 0x80) {
 			// Выполняем добавление символа в последовательность выражения
-			program.text.append(1, static_cast <char> (code));
+			text.append(1, static_cast <char> (code));
 			// Переходим к следующей инструкции программы
 			continue;
 		}
@@ -2577,7 +2591,7 @@ void awh::regex::Compiler::condense() noexcept {
 				// Выходим из метода распознавания выражения
 				return;
 			// Выполняем добавление байта в последовательность выражения
-			program.text.append(1, static_cast <char> (code));
+			text.append(1, static_cast <char> (code));
 			// Переходим к следующей инструкции программы
 			continue;
 		}
@@ -2586,31 +2600,31 @@ void awh::regex::Compiler::condense() noexcept {
 		 */
 		if(code < 0x800) {
 			// Выполняем добавление первого байта последовательности UTF-8
-			program.text.append(1, static_cast <char> (0xC0 | (code >> 6)));
+			text.append(1, static_cast <char> (0xC0 | (code >> 6)));
 			// Выполняем добавление продолжающего байта последовательности UTF-8
-			program.text.append(1, static_cast <char> (0x80 | (code & 0x3F)));
+			text.append(1, static_cast <char> (0x80 | (code & 0x3F)));
 		/**
 		 * Если символ состоит из трёх байтов
 		 */
 		} else if(code < 0x10000) {
 			// Выполняем добавление первого байта последовательности UTF-8
-			program.text.append(1, static_cast <char> (0xE0 | (code >> 12)));
+			text.append(1, static_cast <char> (0xE0 | (code >> 12)));
 			// Выполняем добавление продолжающего байта последовательности UTF-8
-			program.text.append(1, static_cast <char> (0x80 | ((code >> 6) & 0x3F)));
+			text.append(1, static_cast <char> (0x80 | ((code >> 6) & 0x3F)));
 			// Выполняем добавление продолжающего байта последовательности UTF-8
-			program.text.append(1, static_cast <char> (0x80 | (code & 0x3F)));
+			text.append(1, static_cast <char> (0x80 | (code & 0x3F)));
 		/**
 		 * Выполняем добавление символа из четырёх байтов
 		 */
 		} else {
 			// Выполняем добавление первого байта последовательности UTF-8
-			program.text.append(1, static_cast <char> (0xF0 | (code >> 18)));
+			text.append(1, static_cast <char> (0xF0 | (code >> 18)));
 			// Выполняем добавление продолжающего байта последовательности UTF-8
-			program.text.append(1, static_cast <char> (0x80 | ((code >> 12) & 0x3F)));
+			text.append(1, static_cast <char> (0x80 | ((code >> 12) & 0x3F)));
 			// Выполняем добавление продолжающего байта последовательности UTF-8
-			program.text.append(1, static_cast <char> (0x80 | ((code >> 6) & 0x3F)));
+			text.append(1, static_cast <char> (0x80 | ((code >> 6) & 0x3F)));
 			// Выполняем добавление продолжающего байта последовательности UTF-8
-			program.text.append(1, static_cast <char> (0x80 | (code & 0x3F)));
+			text.append(1, static_cast <char> (0x80 | (code & 0x3F)));
 		}
 	}
 	/**
@@ -2620,9 +2634,11 @@ void awh::regex::Compiler::condense() noexcept {
 	 *          что поиском последовательности не выражается.
 	 *
 	 */
-	if(program.text.empty())
+	if(text.empty())
 		// Выходим из метода распознавания выражения
 		return;
+	// Выполняем установку последовательности символов выражения
+	program.text = ::move(text);
 	// Выполняем установку признака сопоставления выражения литералом
 	program.plain = true;
 }

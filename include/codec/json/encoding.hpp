@@ -188,6 +188,42 @@ namespace awh {
 
 			/**
 			 * \~russian
+			 * @brief Метод извлечения кодовой точки из последовательности UTF-8
+			 *
+			 * @details При негодной последовательности выдаётся знак замены U+FFFD, а
+			 * разобранной считается наибольшая часть её, годная началом последовательности
+			 *
+			 * @note Судья годности здесь ОДИН на весь кодек: запись рвёт им дословный перенос
+			 *       отрезка, а `escapable()` им же судит о необходимости этого переноса. Прежде
+			 *       правило жило лишь внутри записи, а `escapable()` о негодных
+			 *       последовательностях не знал вовсе и разрешал переносить дословно то, что
+			 *       запись при умолчательном `REPLACE` перезаписывает знаком замены
+			 *
+			 * @param text   разбираемое содержимое
+			 * @param offset положение разбираемого байта в содержимом
+			 * @param code   полученная кодовая точка
+			 * @param valid  признак годности разобранной последовательности
+			 * @return       количество разобранных байтов содержимого
+			 *
+			 * \~english
+			 * @brief Method of the extraction of a code point from a UTF-8 sequence
+			 * @details At a malformed sequence the replacement character U+FFFD is produced, and
+			 * the largest part of it suitable as the beginning of a sequence is considered parsed
+			 * @note The judge of the validity here is ONE for the whole codec: the writing breaks
+			 *       the verbatim transfer of a segment by it, and `escapable()` judges by it the
+			 *       necessity of that transfer
+			 * @param text   content being parsed
+			 * @param offset position of the byte being parsed in the content
+			 * @param code   obtained code point
+			 * @param valid  flag of the validity of the parsed sequence
+			 * @return       number of the parsed bytes of the content
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ size_t decode(const string & text, const size_t offset, uint32_t & code, bool & valid) noexcept;
+
+			/**
+			 * \~russian
 			 * @brief Класс приведения исходного текста к кодировке UTF-8
 			 *
 			 * @details Определяет кодировку исходного текста по метке порядка байтов, после

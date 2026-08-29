@@ -569,13 +569,23 @@ namespace awh {
 					 * записанное прежде остаётся записанным: собранного текста установка эта
 					 * не трогает
 					 *
-					 * @warning Разделитель, знак кавычек и знак конца строки принадлежат
-					 *          ВСЕМУ ФАЙЛУ по устройству самого наречия: таблица знает один
-					 *          разделитель, и читатель определяет его по первой записи. Смена
-					 *          их посреди записи даёт текст, обратно НЕ читаемый, - замер дал
-					 *          четыре записанных поля против трёх прочитанных, - и отказом
-					 *          она не отвечает: своего канала отказа у записи нет вовсе.
-					 *          Настройки эти ставятся до первого поля либо не ставятся вовсе
+					 * @warning Разделитель, знак кавычек, знак примечания и способ записи
+					 *          кавычки внутри поля принадлежат ВСЕМУ ФАЙЛУ по устройству
+					 *          самого наречия: таблица знает один разделитель, и читатель
+					 *          определяет его по первой записи. Смена их посреди записи
+					 *          давала текст, обратно НЕ читаемый, - замер дал четыре
+					 *          записанных поля против трёх прочитанных. Ныне смена эта
+					 *          СНИМАЕТСЯ: сборка начата - грамматика текста держится
+					 *          прежняя, и `settings()` выдаёт её же, говоря лишь о том,
+					 *          что действует. Отказом установка не отвечает: своего канала
+					 *          отказа у неё нет вовсе, а отказ latch оборвал бы запись
+					 *          таблицы, ни в чём не повинной. Очистка текста грамматику
+					 *          отпускает, и объект записи годен заново
+					 *
+					 * @note Знак конца строки и правило заключения в кавычки всему файлу НЕ
+					 *       принадлежат: они решаются на каждой записи заново, и смешение их
+					 *       разбор принимает - замер дал все четыре поля текста, писанного
+					 *       вперемешку переводом строки и парой знаков
 					 *
 					 * @param settings настройки записи текста
 					 *
@@ -583,13 +593,20 @@ namespace awh {
 					 * @brief Method of setting the settings of the writing of a text
 					 * @details The settings take effect from the nearest field being written, while
 					 * what has been written before remains written: this setting does not touch the assembled text
-					 * @warning The separator, the quote character and the line ending belong to the WHOLE FILE
-					 *          by the structure of the notation itself: a table knows one separator, and
-					 *          the reader determines it by the first record. Changing them in the middle of the writing
-					 *          gives a text that is NOT readable back — a measurement gave four written fields
-					 *          against three read ones — and it does not answer with a refusal: the writing has
-					 *          no failure channel of its own at all. These settings are set before the first field
-					 *          or are not set at all
+					 * @warning The separator, the quote character, the comment character and the way of the writing
+					 *          of a quote inside a field belong to the WHOLE FILE by the structure of the notation
+					 *          itself: a table knows one separator, and the reader determines it by the first record.
+					 *          Changing them in the middle of the writing used to give a text that is NOT readable
+					 *          back — a measurement gave four written fields against three read ones. Now such
+					 *          a change is DROPPED: once the assembling has begun, the grammar of the text is held
+					 *          as it was, and `settings()` returns it as well, telling only of what is in effect.
+					 *          The setting does not answer with a refusal: it has no failure channel of its own,
+					 *          while a latched refusal would break off the writing of a table that is not at fault.
+					 *          The clearing of the text releases the grammar, and the object of the writing is fit anew
+					 * @note The line ending and the rule of the enclosing in quotes do NOT belong to the whole file:
+					 *       they are decided anew on each record, and their mixing is accepted by the parsing —
+					 *       a measurement gave all the four fields of a text written with a line feed and a pair
+					 *       of characters intermixed
 					 * @param settings settings of the writing of a text
 					 *
 					 * \~

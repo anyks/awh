@@ -53,7 +53,7 @@ TEST(CodecCsvCommon, Messages) {
 	 *       выписанный рукою, от перечня отстаёт молча - именно так коды, заведённые
 	 *       последними, не сличались вовсе
 	 */
-	for(uint32_t code = 0; code <= static_cast <uint32_t> (csv::error_t::FILE_NOT_READ); code++){
+	for(uint32_t code = 0; code <= static_cast <uint32_t> (csv::error_t::STORAGE_EXHAUSTED); code++){
 		// Получаем описание очередного кода отказа
 		const char * message = csv::message(static_cast <csv::error_t> (code));
 		// Выполняем проверку наличия описания кода отказа
@@ -71,7 +71,7 @@ TEST(CodecCsvCommon, Messages) {
 	 *       щупом: дописанный код отказа проверку не уронил. Сторожем тут выступает
 	 *       собиратель - смотри примечание у самой выдачи описаний
 	 */
-	ASSERT_STREQ(csv::message(static_cast <csv::error_t> (static_cast <uint32_t> (csv::error_t::FILE_NOT_READ) + 1)), "unknown error");
+	ASSERT_STREQ(csv::message(static_cast <csv::error_t> (static_cast <uint32_t> (csv::error_t::STORAGE_EXHAUSTED) + 1)), "unknown error");
 	// Выполняем проверку описания кода, договором не отведённого
 	ASSERT_STREQ(csv::message(static_cast <csv::error_t> (0xFF)), "unknown error");
 }
@@ -373,4 +373,57 @@ TEST(CodecCsvCommon, NewlineSequences) {
 	ASSERT_EQ(csv::newline(csv::newline_t::LF), "\n");
 	// Выполняем проверку одиночного возврата каретки
 	ASSERT_EQ(csv::newline(csv::newline_t::CR), "\r");
+}
+/**
+ * @brief Проверка неприкосновенности выходной переменной при отказе приведения
+ *
+ * @details Разбор числа вёлся ПРЯМО в выходную переменную, а отказ выносился уже после
+ * него: отвергнутое «1e3» оставляло у звучащего единицу вместо нетронутого значения, и
+ * ошибка обращения оборачивалась правдоподобным числом. Звучащий, итог приведения не
+ * проверивший, получал не умолчание своё, а обломок разбора
+ */
+TEST(CodecCsvCommon, RefusedConversionLeavesResultUntouched){
+	// Значения, целым числом не являющиеся, но числом начинающиеся
+	const vector <string> corpus = {"1e3", "52abc", "12,5", "3.14.15", "0x10"};
+	// Значения, дробным числом не являющиеся, но числом начинающиеся
+	const vector <string> reals = {"52abc", "12,5", "3.14.15"};
+	/**
+	 * Выполняем перебор всех проверяемых значений
+	 */
+	for(const string & text : corpus){
+		// Выходное значение целого числа со знаком
+		int64_t signedNumber = -777;
+		// Выполняем проверку отказа приведения к целому со знаком
+		ASSERT_FALSE(csv::integer(text, signedNumber)) << text;
+		// Выполняем проверку неприкосновенности выходного значения
+		ASSERT_EQ(signedNumber, static_cast <int64_t> (-777)) << text;
+		// Выходное значение целого числа без знака
+		uint64_t unsignedNumber = 777;
+		// Выполняем проверку отказа приведения к целому без знака
+		ASSERT_FALSE(csv::integer(text, unsignedNumber)) << text;
+		// Выполняем проверку неприкосновенности выходного значения
+		ASSERT_EQ(unsignedNumber, static_cast <uint64_t> (777)) << text;
+	}
+	/**
+	 * Приведение, отказом не оканчивающееся
+	 */
+	{
+		// Выходное значение целого числа со знаком
+		int64_t number = -777;
+		// Выполняем проверку успеха приведения
+		ASSERT_TRUE(csv::integer("42", number));
+		// Выполняем проверку разобранного значения
+		ASSERT_EQ(number, static_cast <int64_t> (42));
+	}
+	/**
+	 * Выполняем перебор значений, дробным числом не являющихся
+	 */
+	for(const string & text : reals){
+		// Выходное значение числа с плавающей точкой
+		double realNumber = -0.5;
+		// Выполняем проверку отказа приведения к числу с плавающей точкой
+		ASSERT_FALSE(csv::real(text, realNumber)) << text;
+		// Выполняем проверку неприкосновенности выходного значения
+		ASSERT_EQ(realNumber, -0.5) << text;
+	}
 }

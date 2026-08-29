@@ -842,3 +842,91 @@ TEST_F(EthFixture, AddressFillSourceNetIPv6Test){
 	// Префикс источника должен быть установлен в /128
 	ASSERT_EQ(128, static_cast <uint16_t> (static_cast <awh::net::addr_net_ipv6_t *> (source.ip.get())->prefix));
 }
+
+/**
+ * @brief Тест отказа заполнения источника несличимой парой видов адреса
+ *
+ * @details Закрепляет находку ворошителя `tools/fuzz/eth.cpp` от 29.08.2026. Разбор
+ *          ведётся по виду адреса ИСТОЧНИКА, а поданная сеть приводилась к тому же виду
+ *          БЕЗ ПРОВЕРКИ: источник IPv6 и сеть IPv4 давали чтение шестнадцати октетов
+ *          там, где выделено четыре, и надзиратель `address` отвечал на это
+ *          `heap-buffer-overflow` в `ipv6PrefixEqual`
+ *
+ * @warning Оба довода объявлены общим основанием `net::addr_t`, и запретить такую пару
+ *          языком нечем - вид её несёт поле `size`, по нему договор и обязан сличать.
+ *          Достижимо это не одним ворошителем: движок зовёт метод с адресом, заданным
+ *          потребителем, и вид его с семейством узла разойтись волен
+ *
+ */
+TEST_F(EthFixture, AddressFillSourceMismatchedKindTest){
+	/**
+	 * Источник IPv6, а поданная сеть IPv4
+	 */
+	{
+		// Временный объект для извлечения сетевого интерфейса IPv6
+		awh::net::src_t source(std::make_unique <awh::net::addr_net_ipv6_t> ());
+		// Создаём объект сети IPv4
+		std::unique_ptr <awh::net::addr_t> net = std::make_unique <awh::net::addr_net_ipv4_t> ();
+		// Устанавливаем адрес сети
+		static_cast <awh::net::addr_net_ipv4_t *> (net.get())->address = 0x0100007F;
+		// Устанавливаем префикс сети
+		static_cast <awh::net::addr_net_ipv4_t *> (net.get())->prefix = 8;
+		// Несличимая пара обязана отвечать отказом, а не чтением за границей
+		ASSERT_NO_THROW(this->_eth->addr.fillSource(net.get(), source));
+		// Название устройства обязано остаться незаполненным
+		ASSERT_TRUE(source.iface.empty());
+	}
+	/**
+	 * Источник IPv4, а поданная сеть IPv6
+	 */
+	{
+		// Временный объект для извлечения сетевого интерфейса IPv4
+		awh::net::src_t source(std::make_unique <awh::net::addr_net_ipv4_t> ());
+		// Создаём объект сети IPv6
+		std::unique_ptr <awh::net::addr_t> net = std::make_unique <awh::net::addr_net_ipv6_t> ();
+		// Устанавливаем адрес loopback IPv6
+		static_cast <awh::net::addr_net_ipv6_t *> (net.get())->address[15] = 1;
+		// Устанавливаем префикс сети
+		static_cast <awh::net::addr_net_ipv6_t *> (net.get())->prefix = 128;
+		// Несличимая пара обязана отвечать отказом, а не чтением за границей
+		ASSERT_NO_THROW(this->_eth->addr.fillSource(net.get(), source));
+		// Название устройства обязано остаться незаполненным
+		ASSERT_TRUE(source.iface.empty());
+	}
+	/**
+	 * Пустая сеть
+	 */
+	{
+		// Временный объект для извлечения сетевого интерфейса IPv4
+		awh::net::src_t source(std::make_unique <awh::net::addr_net_ipv4_t> ());
+		// Пустая сеть обязана отвечать отказом, а не разыменованием нуля
+		ASSERT_NO_THROW(this->_eth->addr.fillSource(static_cast <const awh::net::addr_t *> (nullptr), source));
+		// Название устройства обязано остаться незаполненным
+		ASSERT_TRUE(source.iface.empty());
+	}
+}
+
+/**
+ * @brief Тест принадлежности подсети при префиксе шире самого адреса
+ *
+ * @details Закрепляет находку ворошителя `tools/fuzz/eth.cpp` от 29.08.2026. Проверки
+ *          верхней границы префикса не было вовсе, и значение свыше тридцати двух
+ *          давало `1U << (32 - prefix)` - сдвиг на ОТРИЦАТЕЛЬНОЕ число разрядов, то
+ *          есть поведение неопределённое. Довод приходит полем `uint8_t`, и запретить
+ *          такое значение типом нечем
+ *
+ */
+TEST_F(EthFixture, AddressSubnetOversizedPrefixTest){
+	// Адрес, принадлежность какого проверяется
+	const uint32_t ip = 0x0100007F;
+	// Префикс шире самого адреса описывает один-единственный узел
+	ASSERT_TRUE(this->_eth->addr.isInSubnet(ip, ip, 33));
+	// Адрес, отличный от названного, такой подсети не принадлежит
+	ASSERT_FALSE(this->_eth->addr.isInSubnet(ip, 0x0200007F, 33));
+	// Наибольшее значение поля довода обязано разбираться тем же порядком
+	ASSERT_TRUE(this->_eth->addr.isInSubnet(ip, ip, 255));
+	// Префикс ровно по ширине адреса сличает адреса целиком
+	ASSERT_TRUE(this->_eth->addr.isInSubnet(ip, ip, 32));
+	// Нулевой префикс принимает любой адрес
+	ASSERT_TRUE(this->_eth->addr.isInSubnet(ip, 0x0200007F, 0));
+}

@@ -105,7 +105,7 @@ namespace {
  *
  */
 awh::codec::abc::Reader::Settings::Settings() noexcept :
- stream(false), validate(true), canonical(false), duplicates(duplicate_t::REFUSE),
+ stream(false), malformed(malformed_t::REFUSE), canonical(false), duplicates(duplicate_t::REFUSE),
  maxString(0), maxBlob(0), maxDepth(0), maxNodes(0), maxEvents(0) {}
 /**
  * @brief Конструктор
@@ -153,6 +153,8 @@ void awh::codec::abc::Reader::reset() noexcept {
 	this->_spans.clear();
 	// Выполняем очистку октетов записей имён полей вместимых
 	this->_pool.clear();
+	// Выполняем очистку хранилища исправленных строк
+	this->_repair.clear();
 	// Выполняем очистку очереди собранных событий
 	this->_events.clear();
 	// Выполняем сброс смещения первого невыданного события
@@ -1154,26 +1156,64 @@ bool awh::codec::abc::Reader::process() noexcept {
 				if((this->_buffer.size() - this->_offset) < this->_pending)
 					// Сообщаем, что разбор успешен
 					return true;
+				// Признак того, что содержимое строки было исправлено
+				bool repaired = false;
+				// Отрезок исправленного содержимого строки в своём хранилище
+				span_t span;
 				// Если строку следует проверить на соответствие кодировке
-				if((this->_awaited == type_t::STRING) && this->_settings.validate){
+				if((this->_awaited == type_t::STRING) && (this->_settings.malformed != malformed_t::PASS)){
 					// Смещение первой негодной последовательности
 					size_t position = 0;
-					// Если строка кодировке UTF-8 не отвечает
+					/**
+					 * Если строка кодировке UTF-8 не отвечает
+					 */
 					if(!abc::utf8(this->_buffer.data() + this->_offset, static_cast <size_t> (this->_pending), position)){
-						// Выполняем сдвиг смещения разбора к негодной последовательности
-						this->_offset += position;
-						// Выполняем объявление отказа разбора
-						return this->fail(error_t::INVALID_ENCODING);
+						/**
+						 * Если правилом объявлен отказ на негодную строку
+						 */
+						if(this->_settings.malformed == malformed_t::REFUSE){
+							// Выполняем сдвиг смещения разбора к негодной последовательности
+							this->_offset += position;
+							// Выполняем объявление отказа разбора
+							return this->fail(error_t::INVALID_ENCODING);
+						}
+						// Исправленное содержимое строки
+						vector <uint8_t> patched;
+						/**
+						 * Выполняем исправление строки знаком замены. Ложится она в отдельное
+						 * хранилище: длина замены с длиною подменяемого не совпадает, и вписать
+						 * её на место негодной значило бы двигать всё, что за нею стоит
+						 */
+						abc::repair(this->_buffer.data() + this->_offset, static_cast <size_t> (this->_pending), patched);
+						/**
+						 * Выполняем установку отрезка исправленной строки в своём хранилище.
+						 *
+						 * Хранилище это РАСТЁТ, а не переписывается: события копятся очередью, и
+						 * вторая исправленная строка затёрла бы первую, ещё не выданную
+						 */
+						span = span_t(static_cast <uint32_t> (this->_repair.size()), static_cast <uint32_t> (patched.size()));
+						// Выполняем перенос исправленного содержимого в хранилище
+						this->_repair.insert(this->_repair.end(), patched.begin(), patched.end());
+						// Запоминаем, что содержимое строки было исправлено
+						repaired = true;
 					}
 				}
 				// Собираемое событие разбора
 				record_t record;
+				// Выполняем установку признака исправления содержимого строки
+				record.repaired = repaired;
 				// Выполняем установку вида события значения
 				record.event = ((this->_awaited == type_t::STRING) ? event_t::STRING : event_t::BLOB);
 				// Выполняем установку вида значения
 				record.type = this->_awaited;
-				// Выполняем установку отрезка содержимого значения
+				/**
+				 * Выполняем установку отрезка содержимого значения. Отрезок этот смотрит в
+				 * буфер разбора ВСЕГДА, исправлено содержимое либо нет: им пользуется
+				 * сличение имён полей, а оно ведётся по ЗАПИСИ имени
+				 */
 				record.span = span_t(static_cast <uint32_t> (this->_offset), static_cast <uint32_t> (this->_pending));
+				// Выполняем установку отрезка исправленного содержимого строки
+				record.patch = span;
 				// Выполняем сдвиг смещения разбора
 				this->_offset += static_cast <size_t> (this->_pending);
 				// Выполняем сброс количества недостающих октетов
@@ -1836,8 +1876,21 @@ awh::codec::abc::Reader::value_t awh::codec::abc::Reader::value() const noexcept
 	result.negative = this->_current.negative;
 	// Выполняем установку признака неопределённой длины вместимого
 	result.indefinite = this->_current.indefinite;
+	// Выполняем установку признака исправления содержимого строки
+	result.repaired = this->_current.repaired;
+	/**
+	 * Если содержимое строки было исправлено, берётся оно из своего хранилища
+	 *
+	 * @note Отрезок события смотрит в буфер разбора, а исправленная строка лежит вне его:
+	 * длина замены с длиною подменяемого не совпадает. Оттого признак исправления и
+	 * заведён - без него содержимое бралось бы отрезком, то есть строкою НЕИСПРАВЛЕННОЙ
+	 */
+	if(this->_current.repaired)
+		// Выполняем установку содержимого значения видом на хранилище исправленных строк
+		result.data = string_view(reinterpret_cast <const char *> (this->_repair.data() + this->_current.patch.offset),
+		 static_cast <size_t> (this->_current.patch.length));
 	// Если содержимое значения не пусто
-	if(this->_current.span.length > 0)
+	else if(this->_current.span.length > 0)
 		// Выполняем установку содержимого значения видом на буфер разбора
 		result.data = string_view(reinterpret_cast <const char *> (this->_buffer.data() + this->_current.span.offset),
 		 static_cast <size_t> (this->_current.span.length));

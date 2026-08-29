@@ -417,3 +417,43 @@ TEST(CodecXmlCommon, Converters) {
 		ASSERT_TRUE(flag);
 	}
 }
+/**
+ * @brief Проверка неприкосновенности выходной переменной при отказе приведения
+ *
+ * @details Довод тот же, что и у таблицы: разбор числа вёлся прямо в выходную переменную,
+ * и отвергнутое «1e3» оставляло у звучащего единицу вместо нетронутого значения
+ */
+TEST(CodecXmlCommon, RefusedConversionLeavesResultUntouched){
+	// Значения, целым числом не являющиеся, но числом начинающиеся
+	const vector <string> corpus = {"1e3", "52abc", "3.14.15", "0x10"};
+	// Значения, дробным числом не являющиеся, но числом начинающиеся
+	const vector <string> reals = {"52abc", "3.14.15"};
+	/**
+	 * Выполняем перебор всех проверяемых значений
+	 */
+	for(const string & text : corpus){
+		// Выходное значение целого числа со знаком
+		int64_t signedNumber = -777;
+		// Выполняем проверку отказа приведения к целому со знаком
+		ASSERT_FALSE(xml::integer(text, signedNumber)) << text;
+		// Выполняем проверку неприкосновенности выходного значения
+		ASSERT_EQ(signedNumber, static_cast <int64_t> (-777)) << text;
+		// Выходное значение целого числа без знака
+		uint64_t unsignedNumber = 777;
+		// Выполняем проверку отказа приведения к целому без знака
+		ASSERT_FALSE(xml::integer(text, unsignedNumber)) << text;
+		// Выполняем проверку неприкосновенности выходного значения
+		ASSERT_EQ(unsignedNumber, static_cast <uint64_t> (777)) << text;
+	}
+	/**
+	 * Выполняем перебор значений, дробным числом не являющихся
+	 */
+	for(const string & text : reals){
+		// Выходное значение числа с плавающей точкой
+		double realNumber = -0.5;
+		// Выполняем проверку отказа приведения к числу с плавающей точкой
+		ASSERT_FALSE(xml::real(text, realNumber)) << text;
+		// Выполняем проверку неприкосновенности выходного значения
+		ASSERT_EQ(realNumber, -0.5) << text;
+	}
+}

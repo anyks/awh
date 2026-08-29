@@ -102,7 +102,20 @@ esac
 #       собирателя о поддержке нет
 ##
 if [ -n "$SANITIZE" ]; then
-	if ! echo 'int main(){return 0;}' | $COMPILER -fsanitize=$SANITIZE -x c++ - -o /dev/null > /dev/null 2>&1; then
+	##
+	# Проба ведёт СВЯЗЫВАНИЕ, и единица её не пуста
+	#
+	# @warning Пустой единицы мало. Собиратель принимает ключ, тела же надзирателя
+	#          вызываются лишь теми проверками, какие в единице встретились: пустая
+	#          не тянет ни одного, и проба отвечала удачей там, где связывание потом
+	#          валилось. У NetBSD 10.5 так и вышло - тело `__ubsan_handle_dynamic_type
+	#          _cache_miss` там отсутствует, и ворошитель встал на нём, пройдя пробу.
+	#          Оттого единица несёт многоликий тип и приведение по нему: этим
+	#          затягивается проверка указателя на таблицу методов, самая частая у нас
+	#
+	# @note Двоеточие в конце - чтобы собиратель не убрал приведение как ненужное
+	##
+	if ! printf '%s\n' 'struct A { virtual ~A(){} };' 'struct B : A { int v = 0; };' 'int main(){ A * a = new B(); B * b = dynamic_cast <B *> (a); const int r = (b != nullptr ? b->v : 1); delete a; return r; }' | $COMPILER -fsanitize=$SANITIZE -x c++ - -o /dev/null > /dev/null 2>&1; then
 		echo "надзиратели собирателем не поддержаны: ворошитель собирается без них"
 		SANITIZE=""
 		##
@@ -197,8 +210,22 @@ fi
 # там, а не в «ws2_32». Без неё связывание валится на них двоих, и валится только у
 # сетевой зоны - кодеки этих имён не зовут вовсе, оттого прежде нехватки не было видно
 ##
+##
+# У систем Sun вызовы сокетов живут в отдельных библиотеках
+#
+# @details У Solaris и illumos «socket», «freeifaddrs», «sendmsg» и соседи лежат не в
+#          libc, а в libsocket и libnsl, а работа с канальными связями - в libdladm.
+#          Связывать их надо ВСЕГДА, а не вместе с SCTP
+#
+# @warning Прежде эти библиотеки добавлялись ЛИШЬ внутри ветви SCTP, вместе с «-lsctp».
+#          У Solaris заголовок SCTP есть, и нехватки не было видно; у illumos его на
+#          месте не оказалось, ветвь не сработала, и связывание встало на
+#          «__xnet_sendmsg» и «freeifaddrs». Признак у беды тот же, что и у ветви MS
+#          Windows ниже: валится только сетевая зона, кодеки этих имён не зовут вовсе
+##
 case "$(uname -s)" in
 	MINGW*|MSYS*|CYGWIN*) SYSTEM_LIBS="-lws2_32 -liphlpapi" ;;
+	SunOS) SYSTEM_LIBS="-lsocket -lnsl -ldladm" ;;
 	*) SYSTEM_LIBS="" ;;
 esac
 
@@ -352,7 +379,26 @@ case "$CODEC" in
 		# @note Ровно так же поступает и CMakeLists.txt. У macOS и DragonFly заголовка
 		#       «netinet/sctp.h» нет вовсе, и сборка встаёт ещё на нём
 		##
-		if [ -f /usr/include/netinet/sctp.h ] || [ -f /usr/local/include/netinet/sctp.h ]; then
+		##
+		# Признак берётся по СИСТЕМЕ, а не по одному наличию заголовка
+		#
+		# @details Тело библиотеки объявляет часть SCTP под `#if __linux__ || __FreeBSD__
+		#          || __sun` (include/net/eth/eth.hpp), и список этот и есть договор
+		#
+		# @warning Прежде довод был один - наличие «netinet/sctp.h». У NetBSD заголовок
+		#          на месте, а объявления `net::sctp` нет, и сборка валилась на
+		#          «'awh::net::sctp' has not been declared». Ядро NetBSD SCTP не даёт
+		#          (см. записи по стендам), так что расхождение это не случайно: сборщик
+		#          судил по заголовку, а библиотека - по системе
+		#
+		# @note Наличие заголовка сверяется ВДОБАВОК к системе: у Solaris он лежит не
+		#       всегда, и брать часть без него нельзя
+		##
+		case "$(uname -s)" in
+			Linux|FreeBSD|SunOS) SCTP_ALLOWED="yes" ;;
+			*) SCTP_ALLOWED="no" ;;
+		esac
+		if [ "$SCTP_ALLOWED" = "yes" ] && { [ -f /usr/include/netinet/sctp.h ] || [ -f /usr/local/include/netinet/sctp.h ]; }; then
 			TARGET="$TARGET $ROOT/src/net/backend/$PLATFORM/sctp.cpp"
 			##
 			# Тела SCTP лежат в отдельной библиотеке, и зовётся она по-разному
@@ -363,7 +409,7 @@ case "$CODEC" in
 			##
 			case "$PLATFORM" in
 				gnu) SYSTEM_LIBS="$SYSTEM_LIBS -lsctp" ;;
-				sun) SYSTEM_LIBS="$SYSTEM_LIBS -lsctp -ldladm" ;;
+				sun) SYSTEM_LIBS="$SYSTEM_LIBS -lsctp" ;;
 			esac
 		fi
 		##

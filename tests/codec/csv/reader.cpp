@@ -2130,3 +2130,43 @@ TEST(CodecCsvReader, FieldCountMismatchAtQuotedRecordEnd) {
 	// Выполняем проверку кода отказа разбора
 	ASSERT_EQ(reader.error(), csv::error_t::FIELD_COUNT_MISMATCH);
 }
+/**
+ * @brief Проверка снятия кодировки, навязать которую посреди текста нельзя
+ *
+ * @details Приведение к UTF-8 кодировку посреди текста не меняет и указание такое
+ * отвергает. Прежде указание молча пропадало - применялось оно лишь сбросом, - а
+ * `settings()` объявляли навязанную кодировку и после: настройки лгали о том, чего на
+ * деле не происходит, и звучащий был введён в заблуждение собственной же просьбой
+ *
+ * @note Поступаем ровно как разбор разметки XML: несбывшееся указание снимается, и
+ *       настройки говорят лишь о том, что действует
+ */
+TEST(CodecCsvReader, ForcedEncodingDroppedWhenUnappliable){
+	// Объект чтения текста таблицы
+	csv::reader_t reader(::logger());
+	// Выполняем подачу первого куска текста таблицы
+	ASSERT_TRUE(reader.feed("а,б\r\n", 7, false));
+	// Получаем настройки разбора текста
+	csv::reader_t::settings_t settings = reader.settings();
+	// Навязываем кодировку исходного текста посреди подачи
+	settings.encoding = csv::encoding_t::UTF16LE;
+	// Выполняем установку настроек разбора
+	reader.settings(settings);
+	// Выполняем проверку того, что несбывшееся указание снято
+	ASSERT_EQ(reader.settings().encoding, csv::encoding_t::NONE);
+	// Выполняем проверку того, что приведение осталось при прежней кодировке
+	ASSERT_EQ(reader.encoding(), csv::encoding_t::UTF8);
+	/**
+	 * Кодировка, навязанная до начала подачи
+	 */
+	{
+		// Настройки разбора текста
+		csv::reader_t::settings_t forced;
+		// Навязываем кодировку исходного текста
+		forced.encoding = csv::encoding_t::UTF16LE;
+		// Объект чтения текста таблицы
+		csv::reader_t fresh(::logger(), forced);
+		// Выполняем проверку того, что указание, сбыться способное, сохранено
+		ASSERT_EQ(fresh.settings().encoding, csv::encoding_t::UTF16LE);
+	}
+}

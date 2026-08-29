@@ -124,6 +124,10 @@ namespace {
 		uint64_t stretched;
 		// Количество записей, сличённых строгим разбором с обычным
 		uint64_t canonical;
+		// Количество записей, поверенных правилами повтора имени поля
+		uint64_t resolved;
+		// Количество записей, поверенных правилами негодной кодировки
+		uint64_t patched;
 		// Количество поверенных заслонов разбора от враждебной записи
 		uint64_t guarded;
 		/**
@@ -132,7 +136,7 @@ namespace {
 		 */
 		Statistic() noexcept :
 		 records(0), corrupted(0), survived(0), events(0), trees(0), containers(0),
-		 fetches(0), edits(0), compactions(0), verified(0), assemblies(0), skips(0), spikes(0), swept(0), reread(0), stable(0), edited(0), stretched(0), canonical(0), guarded(0) {}
+		 fetches(0), edits(0), compactions(0), verified(0), assemblies(0), skips(0), spikes(0), swept(0), reread(0), stable(0), edited(0), stretched(0), canonical(0), resolved(0), patched(0), guarded(0) {}
 	} totals;
 
 	/**
@@ -1188,6 +1192,185 @@ namespace {
 				}
 			}
 		}
+	}
+	/**
+	 * @brief Функция поверки правил обращения со строкой негодной кодировки
+	 *
+	 * @details Правило `malformed_t::REPLACE` подменяет негодную последовательность знаком
+	 *          U+FFFD, а знак этот ДЛИННЕЕ подменяемого: содержимое ложится в отдельное
+	 *          хранилище, тогда как отрезок события смотрит в буфер разбора. Уклад этот
+	 *          есть место, где ошибка выдаёт не отказ, а чужое содержимое, - и поверяется
+	 *          он на порченых записях, где негодные строки заводятся сами собою
+	 *
+	 * @note Поверяется главное утверждение правила: строка, выданная подменою, ОБЯЗАНА
+	 *       отвечать кодировке UTF-8. Утверждение это сильное и самодостаточное - оно
+	 *       ловит и недоделанную подмену, и подмену, читающую чужое хранилище, и подмену,
+	 *       выдающую отрезок буфера разбора вместо исправленного содержимого
+	 *
+	 * @param buffer буфер разбираемой записи
+	 *
+	 */
+	void encoding(const vector <uint8_t> & buffer) noexcept {
+		// Разбиратель бинарной записи
+		abc::reader_t reader(::logger());
+		// Выполняем получение настроек разбора
+		abc::reader_t::settings_t settings = reader.settings();
+		// Выполняем установку правила подмены негодной последовательности
+		settings.malformed = abc::malformed_t::REPLACE;
+		// Выполняем установку настроек разбора
+		reader.settings(settings);
+		/**
+		 * Если подача записи разбирателю отвечена отказом
+		 */
+		if(!reader.feed(buffer.data(), buffer.size(), true)){
+			/**
+			 * Если отказ объявлен негодной кодировкой, подмена своей работы не сделала
+			 */
+			if(reader.error() == abc::error_t::INVALID_ENCODING){
+				// Выводим сообщение об отказе подмены
+				::fprintf(stderr, "abc fuzz: the replacement rule refused a record by the encoding\n");
+				// Выполняем выход с признаком отказа
+				::exit(1);
+			}
+			// Выходим из функции
+			return;
+		}
+		/**
+		 * Выполняем снятие всех событий разбора
+		 */
+		while(reader.next()){
+			// Если событие строковым значением не является
+			if(reader.event() != abc::event_t::STRING)
+				// Переходим к следующему событию разбора
+				continue;
+			// Выполняем снятие значения строкового события
+			const abc::reader_t::value_t value = reader.value();
+			// Смещение первой негодной последовательности
+			size_t position = 0;
+			/**
+			 * Если строка, выданная подменою, кодировке не отвечает
+			 */
+			if(!abc::utf8(reinterpret_cast <const uint8_t *> (value.data.data()), value.data.size(), position)){
+				// Выводим сообщение о негодной строке, выданной подменою
+				::fprintf(stderr, "abc fuzz: the replacement rule issued a malformed string at %zu (repaired %d)\n",
+				 position, static_cast <int> (value.repaired));
+				// Выполняем выход с признаком отказа
+				::exit(1);
+			}
+		}
+		// Выполняем учёт поверки правил негодной кодировки
+		totals.patched++;
+	}
+	/**
+	 * @brief Функция поверки правил выбора значения при повторе имени поля
+	 *
+	 * @details Правила `FIRST` и `LAST` осуществлены ДЕРЕВОМ, а не потоковым разбором, и
+	 *          осуществление их изымает пары из уже построенного отображения. Изъятие это
+	 *          переносит уцелевшие узлы на новое место, а размах поддерева хранится у
+	 *          узла числом, - и порча его вскрылась бы не отказом, а молчаливой выдачей
+	 *          чужого содержимого. Здесь правила эти поверяются на всякой записи с
+	 *          дозволенным повтором
+	 *
+	 * @note Поверяются ТРИ утверждения разом: дерево по всякому правилу собирается без
+	 *       отказа, пар в нём не больше, чем при `KEEP`, а пересборка записи из дерева
+	 *       даёт запись, разбираемую вновь. Последнее и есть строжайшая поверка укладу:
+	 *       собиратель обходит узлы по размахам их, и расхождение между объявленным
+	 *       числом детей и настоящим числом узлов оборачивается незавершённой записью
+	 *
+	 * @param buffer буфер разбираемой записи
+	 *
+	 */
+	void resolving(const vector <uint8_t> & buffer) noexcept {
+		// Правила выбора значения, поверяемые на записи
+		static const abc::duplicate_t rules[3] = {
+			abc::duplicate_t::KEEP, abc::duplicate_t::FIRST, abc::duplicate_t::LAST
+		};
+		// Количество узлов дерева, собранного правилом `KEEP`
+		size_t held = 0;
+		/**
+		 * Выполняем обход поверяемых правил выбора значения
+		 */
+		for(uint8_t i = 0; i < 3; i++){
+			// Настройки разбора записи
+			abc::reader_t::settings_t settings;
+			// Выполняем установку поверяемого правила выбора значения
+			settings.duplicates = rules[i];
+			// Дерево документа
+			abc::document_t document(::logger());
+			/**
+			 * Если сборка дерева документа отвечена отказом
+			 */
+			if(!document.parse(buffer.data(), buffer.size(), settings)){
+				// Выводим сообщение об отказе сборки дерева
+				::fprintf(stderr, "abc fuzz: duplicate rule %u refused the tree: %s\n",
+				 static_cast <unsigned> (i), abc::message(document.error()));
+				// Выполняем выход с признаком отказа
+				::exit(1);
+			}
+			// Выполняем получение количества узлов собранного дерева
+			const size_t size = document.nodes();
+			/**
+			 * Если правилом взят пропуск повтора, запоминаем размер дерева опорою
+			 */
+			if(rules[i] == abc::duplicate_t::KEEP)
+				// Выполняем запоминание опорного размера дерева
+				held = size;
+			/**
+			 * Если выбор одного из значений дерево УВЕЛИЧИЛ, изъятие пары пошло не туда
+			 */
+			else if(size > held){
+				// Выводим сообщение о разрастании дерева
+				::fprintf(stderr, "abc fuzz: duplicate rule %u grew the tree: %zu against %zu\n",
+				 static_cast <unsigned> (i), size, held);
+				// Выполняем выход с признаком отказа
+				::exit(1);
+			}
+			// Сборщик записи, пересобираемой из дерева документа
+			abc::writer_t rebuild(::logger());
+			// Выполняем получение настроек сборки записи
+			abc::writer_t::settings_t assembly = rebuild.settings();
+			/**
+			 * Выполняем снятие отказа на повтор имени поля: правилом `KEEP` повторы в
+			 * дереве остаются, и сборщик отверг бы пересборку своим умолчанием
+			 */
+			assembly.duplicates = false;
+			// Выполняем установку настроек сборки записи
+			rebuild.settings(assembly);
+			/**
+			 * Если пересборка записи из дерева отвечена отказом
+			 */
+			if(!document.build(rebuild) || !rebuild.complete()){
+				// Выводим сообщение об отказе пересборки записи
+				::fprintf(stderr, "abc fuzz: duplicate rule %u broke the rewriting: %s\n",
+				 static_cast <unsigned> (i), abc::message(rebuild.error()));
+				// Выполняем выход с признаком отказа
+				::exit(1);
+			}
+			// Дерево документа, собранное из пересобранной записи
+			abc::document_t repeated(::logger());
+			/**
+			 * Если пересобранная запись более не разбирается
+			 */
+			if(!repeated.parse(rebuild.record().data(), rebuild.record().size(), settings)){
+				// Выводим сообщение об отказе разбора пересобранной записи
+				::fprintf(stderr, "abc fuzz: duplicate rule %u broke the reread: %s\n",
+				 static_cast <unsigned> (i), abc::message(repeated.error()));
+				// Выполняем выход с признаком отказа
+				::exit(1);
+			}
+			/**
+			 * Если пересобранное дерево разошлось с исходным по количеству узлов
+			 */
+			if(repeated.nodes() != size){
+				// Выводим сообщение о расхождении деревьев
+				::fprintf(stderr, "abc fuzz: duplicate rule %u changed the tree on the reread: %zu against %zu\n",
+				 static_cast <unsigned> (i), repeated.nodes(), size);
+				// Выполняем выход с признаком отказа
+				::exit(1);
+			}
+		}
+		// Выполняем учёт поверки правил выбора значения
+		totals.resolved++;
 	}
 	/**
 	 * @brief Функция сличения строгого разбора с обычным
@@ -2520,6 +2703,12 @@ int main(int argc, char * argv[]) noexcept {
 			if(assembledCanonical)
 				// Выполняем сличение строгого разбора с обычным
 				canonical(item);
+			/**
+			 * Если запись собрана с дозволенным повтором имени, поверяем правила выбора
+			 */
+			if(assembledDuplicates)
+				// Выполняем поверку правил выбора значения при повторе имени поля
+				resolving(item);
 			// Выполняем поверку заслонов разбора от враждебной записи
 			limits(item);
 			// Выполняем сличение разбора записи при разной нарезке на куски
@@ -2539,6 +2728,8 @@ int main(int argc, char * argv[]) noexcept {
 			 * но не вправе выходить за буфер и рушить работу
 			 */
 			slicing(spoiled);
+			// Выполняем поверку правил обращения со строкой негодной кодировки
+			encoding(spoiled);
 			// Выполняем сличение разбора порченой записи с пропуском вместимого
 			skipping(spoiled, false);
 			// Выполняем сборку дерева документа из порченой записи
@@ -2571,13 +2762,13 @@ int main(int argc, char * argv[]) noexcept {
 	// Выводим учёт проделанной работы
 	::printf("abc fuzz: %llu records (%llu corrupted), %llu parsed to the end, %llu events, "
 	 "%llu trees, %llu containers, %llu fetches, %llu edits, %llu compactions, %llu signatures verified, "
-	 "%llu values assembled, %llu skipping runs, %llu spiked spans, %llu swept records, %llu reread records, %llu stable rewritings, %llu edited values, %llu stretched chunks, %llu canonical records, %llu guarded parsings\n",
+	 "%llu values assembled, %llu skipping runs, %llu spiked spans, %llu swept records, %llu reread records, %llu stable rewritings, %llu edited values, %llu stretched chunks, %llu canonical records, %llu resolved records, %llu patched records, %llu guarded parsings\n",
 	 static_cast <unsigned long long> (totals.records), static_cast <unsigned long long> (totals.corrupted),
 	 static_cast <unsigned long long> (totals.survived), static_cast <unsigned long long> (totals.events),
 	 static_cast <unsigned long long> (totals.trees), static_cast <unsigned long long> (totals.containers),
 	 static_cast <unsigned long long> (totals.fetches), static_cast <unsigned long long> (totals.edits),
 	 static_cast <unsigned long long> (totals.compactions), static_cast <unsigned long long> (totals.verified),
-	 static_cast <unsigned long long> (totals.assemblies), static_cast <unsigned long long> (totals.skips), static_cast <unsigned long long> (totals.spikes), static_cast <unsigned long long> (totals.swept), static_cast <unsigned long long> (totals.reread), static_cast <unsigned long long> (totals.stable), static_cast <unsigned long long> (totals.edited), static_cast <unsigned long long> (totals.stretched), static_cast <unsigned long long> (totals.canonical), static_cast <unsigned long long> (totals.guarded));
+	 static_cast <unsigned long long> (totals.assemblies), static_cast <unsigned long long> (totals.skips), static_cast <unsigned long long> (totals.spikes), static_cast <unsigned long long> (totals.swept), static_cast <unsigned long long> (totals.reread), static_cast <unsigned long long> (totals.stable), static_cast <unsigned long long> (totals.edited), static_cast <unsigned long long> (totals.stretched), static_cast <unsigned long long> (totals.canonical), static_cast <unsigned long long> (totals.resolved), static_cast <unsigned long long> (totals.patched), static_cast <unsigned long long> (totals.guarded));
 	// Выводим успешное завершение работы
 	return 0;
 }

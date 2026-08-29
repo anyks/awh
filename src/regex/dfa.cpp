@@ -29,6 +29,7 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
+#include <regex/probe.hpp>
 #include <regex/dfa.hpp>
 
 /**
@@ -524,9 +525,12 @@ uint32_t awh::regex::Dfa::state(const vector <address_t> & list, const uint32_t 
 	/**
 	 * Если состояние обнаружено в кэше состояний автомата
 	 */
-	if(i != this->_cache.end())
+	if(i != this->_cache.end()) {
+		// Выполняем учёт обращения к кэшу состояний автомата
+		AWH_REGEX_TICK(path_t::CACHING);
 		// Выводим индекс обнаруженного состояния автомата
 		return i->second;
+	}
 	// Получаем индекс создаваемого состояния автомата
 	const uint32_t result = static_cast <uint32_t> (this->_states.size());
 	// Выполняем создание состояния детерминированного автомата
@@ -1050,6 +1054,17 @@ bool awh::regex::Dfa::scan(string_view text, const size_t from, size_t & result)
 		if(!backward && prefilter.active && ((this->_marks[current] & SCANT) != 0)) {
 			// Выполняем поиск ближайшей позиции возможного начала совпадения
 			const size_t candidate = prefilter.search(text, pos);
+			/**
+			 * Если отбор позиций начало попытки продвинул
+			 *
+			 * @details Учитывается продвижение, а не самое обращение к отбору:
+			 *          отбор, позиции не пропускающий, работы не снимает вовсе,
+			 *          и учёт обращения не отличал бы его от отбора отменённого.
+			 *
+			 */
+			if(candidate > pos)
+				// Выполняем учёт отбора позиций у детерминированного исполнения
+				AWH_REGEX_TICK(path_t::SEEKING);
 			/**
 			 * Если пропущена хотя бы одна позиция текста
 			 */

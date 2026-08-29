@@ -42,6 +42,13 @@
  */
 #if !defined(_WIN32) && !defined(_WIN64)
 	#include <unistd.h>
+	/**
+	 * У систем Apple сброс доводится до пластины лишь особым доводом управления
+	 * описателем, оттого здесь и заголовок его
+	 */
+	#if defined(__APPLE__) || defined(__MACH__)
+		#include <fcntl.h>
+	#endif
 #else
 	#include <io.h>
 #endif
@@ -325,6 +332,20 @@ bool awh::codec::abc::Storage::flush() noexcept {
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
 		const int flushed = ::_commit(descriptor);
+	/**
+	 * Если работа идёт под системою Apple
+	 *
+	 * @details `fsync` там выносит записанное из ядра в НАКОПИТЕЛЬ, но опустошить
+	 *          вместилище самого накопителя не велит, и обрыв питания записанное теряет:
+	 *          обещание пережить обрыв, данное выше, `fsync` под macOS НЕ выполняет.
+	 *          Доводит до пластины лишь `F_FULLFSYNC`, и заведён он ровно для этого
+	 *
+	 * @note Отказ `F_FULLFSYNC` откатывается к `fsync`, а не объявляется отказом записи:
+	 *       довод этот поддержан не всяким видом файловой системы (сетевые его не знают),
+	 *       и отказ его означает лишь недоступность полного сброса, а не потерю записи
+	 */
+	#elif defined(__APPLE__) || defined(__MACH__)
+		const int flushed = ((::fcntl(descriptor, F_FULLFSYNC, 0) == -1) ? ::fsync(descriptor) : 0);
 	#else
 		const int flushed = ::fsync(descriptor);
 	#endif

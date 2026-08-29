@@ -46,7 +46,10 @@ namespace {
 	/**
 	 * Имена подменяемых функций в порядке полей набора functions_t
 	 */
-	static const char * const NAMES[] = {"malloc", "free", "calloc", "realloc", "_msize"};
+	static const char * const NAMES[] = {
+		"malloc", "free", "calloc", "realloc", "_msize",
+		"_aligned_malloc", "_aligned_free", "_aligned_realloc", "_aligned_msize"
+	};
 	/**
 	 * @brief Функция извлечения адреса поля набора функций
 	 *
@@ -70,6 +73,14 @@ namespace {
 			case 3: return reinterpret_cast <const void *> (functions.realloc);
 			// Определение размера выделенного блока
 			case 4: return reinterpret_cast <const void *> (functions.msize);
+			// Выделение памяти с требуемым выравниванием
+			case 5: return reinterpret_cast <const void *> (functions.alignedAlloc);
+			// Освобождение памяти, выданной с выравниванием
+			case 6: return reinterpret_cast <const void *> (functions.alignedFree);
+			// Изменение размера памяти, выданной с выравниванием
+			case 7: return reinterpret_cast <const void *> (functions.alignedRealloc);
+			// Определение размера памяти, выданной с выравниванием
+			case 8: return reinterpret_cast <const void *> (functions.alignedMsize);
 		}
 		// Поля с таким номером нет
 		return nullptr;
@@ -97,6 +108,14 @@ namespace {
 			case 3: functions.realloc = reinterpret_cast <void * (*)(void *, size_t)> (addr); break;
 			// Определение размера выделенного блока
 			case 4: functions.msize = reinterpret_cast <size_t (*)(const void *)> (addr); break;
+			// Выделение памяти с требуемым выравниванием
+			case 5: functions.alignedAlloc = reinterpret_cast <void * (*)(size_t, size_t)> (addr); break;
+			// Освобождение памяти, выданной с выравниванием
+			case 6: functions.alignedFree = reinterpret_cast <void (*)(void *)> (addr); break;
+			// Изменение размера памяти, выданной с выравниванием
+			case 7: functions.alignedRealloc = reinterpret_cast <void * (*)(void *, size_t, size_t)> (addr); break;
+			// Определение размера памяти, выданной с выравниванием
+			case 8: functions.alignedMsize = reinterpret_cast <size_t (*)(void *, size_t, size_t)> (addr); break;
 		}
 	}
 };
@@ -208,6 +227,26 @@ size_t awh::alloc::PECapture::prologue(const void * entry, const size_t need, si
 			 * Разбираем код операции
 			 */
 			switch(opcode){
+				/**
+				 * Безусловный переход по относительному смещению
+				 *
+				 * Встречается прямо на входе: `_aligned_malloc` у `msvcrt.dll` - это
+				 * `xor r8d, r8d` да переход на общее тело, три октета и пять. Не знай
+				 * разбиратель этой команды, он останавливался бы на трёх октетах,
+				 * пятерых для подмены не набирал и отвечал отказом - выровненная семья
+				 * оттого и не перехватывалась вовсе
+				 *
+				 * Переносить такую команду ДОСЛОВНО нельзя: смещение у неё считается от
+				 * своего же места, и в мостике оно указало бы мимо. Перенос пересчитывает
+				 * смещение - тем же порядком, каким уже переносятся короткие условные
+				 * переходы
+				 */
+				case 0xE9: {
+					// Учитываем четырёхоктетное смещение перехода
+					length += 4;
+					// Разбор команды окончен
+					break;
+				}
 				/**
 				 * Команды без дополнительных байт: занесение и снятие со стека
 				 */
@@ -577,7 +616,43 @@ bool awh::alloc::PECapture::apply(patch_t & patch, void * entry, const void * ta
 			 * пересчёта. Пересчитанное смещение в один байт уже не уложится, оттого
 			 * команда пересобирается в двухбайтовый вид с четырёхбайтовым смещением
 			 */
-			if((command[0] >= 0x70u) && (command[0] <= 0x7Fu)){
+			/**
+			 * Переносим безусловный переход с пересчётом смещения
+			 *
+			 * Смещение считается от места СЛЕДУЮЩЕЙ команды, а в мостике место это
+			 * иное: перенеси мы команду дословно - переход указал бы мимо тела
+			 */
+			if(command[0] == 0xE9u){
+				// Прочитанное смещение перехода
+				int32_t offset = 0;
+				// Снимаем смещение перехода
+				::memcpy(&offset, (command + 1), sizeof(offset));
+				// Определяем настоящую цель перехода
+				const uint8_t * aim = (command + 5 + static_cast <intptr_t> (offset));
+				/**
+				 * Если цель лежит внутри вытесняемой области
+				 *
+				 * Перенос её означал бы переход на команды, каких в мостике нет: место
+				 * подмены занято нашим переходом
+				 */
+				if((aim >= reinterpret_cast <const uint8_t *> (entry)) && (aim < (reinterpret_cast <const uint8_t *> (entry) + moved)))
+					// Отвечаем отказом
+					return false;
+				// Записываем код операции безусловного перехода
+				relay[used] = 0xE9u;
+				// Определяем пересчитанное смещение перехода
+				const int64_t shift = (static_cast <int64_t> (aim - (relay + used + 5)));
+				// Если пересчитанное смещение не укладывается в четыре байта
+				if((shift > 0x7FFFFFFFll) || (shift < -0x80000000ll))
+					// Отвечаем отказом
+					return false;
+				// Сужаем пересчитанное смещение перехода
+				const int32_t narrow = static_cast <int32_t> (shift);
+				// Переносим пересчитанное смещение
+				::memcpy((relay + used + 1), &narrow, sizeof(narrow));
+				// Учитываем занятое командой место
+				used += 5;
+			} else if((command[0] >= 0x70u) && (command[0] <= 0x7Fu)){
 				// Определяем настоящую цель перехода
 				const uint8_t * aim = (command + 2 + static_cast <intptr_t> (static_cast <int8_t> (command[1])));
 				/**
@@ -789,6 +864,77 @@ bool awh::alloc::PECapture::acquire(const functions_t & hooks, functions_t & ori
 		// Отдаём прежнюю функцию вызывающей стороне
 		put(originals, i, this->_patches[i].body);
 	}
+	/**
+	 * Накладываем выровненную семью ОТДЕЛЬНОЙ группой
+	 *
+	 * Группа эта необязательна: не найдись хоть одно её имя - обязательная пятёрка
+	 * остаётся наложенной, и распределитель работает. Выровненная выдача пойдёт мимо
+	 * нас, как шла и прежде, но памятью процесса мы владеть не перестанем
+	 *
+	 * Внутри же группы правило прежнее - всё или ничего: `_aligned_malloc` без
+	 * `_aligned_free` отдал бы наш блок чужому распределителю
+	 */
+	{
+		// Входы функций выровненной семьи
+		void * aligned[ALIGNED_COUNT] = {nullptr};
+		// Признак пригодности ядра группы
+		bool suitable = true;
+		/**
+		 * Разбираем входы всего ядра прежде, чем править хоть один
+		 */
+		for(size_t i = 0; (i < ALIGNED_CORE) && suitable; i++){
+			// Получаем адрес входа очередной функции
+			aligned[i] = reinterpret_cast <void *> (::GetProcAddress(module, NAMES[ALIGNED_FIRST + i]));
+			// Если функция не найдена, вход её заплаткой не начинается либо замены нет
+			suitable = ((aligned[i] != nullptr) && this->suits(aligned[i]) &&
+			 (pick(hooks, (ALIGNED_FIRST + i)) != nullptr));
+		}
+		/**
+		 * Разбираем измерение ОТДЕЛЬНО от ядра
+		 *
+		 * Не отдай его библиотека - ядро всё равно ложится: спросить размер нашего
+		 * блока прежним измерением там некому, имени этого попросту нет
+		 */
+		if(suitable){
+			// Номер измерения в наборе имён
+			const size_t index = (ALIGNED_FIRST + ALIGNED_CORE);
+			// Получаем адрес входа измерения
+			void * entry = reinterpret_cast <void *> (::GetProcAddress(module, NAMES[index]));
+			// Берём измерение лишь пригодным к подмене
+			aligned[ALIGNED_CORE] = ((entry != nullptr) && this->suits(entry) &&
+			 (pick(hooks, index) != nullptr)) ? entry : nullptr;
+		}
+		/**
+		 * Накладываем подмены группы, если ядро её пригодно целиком
+		 *
+		 * Место измерения при этом может быть пустым: тогда оно просто пропускается
+		 */
+		for(size_t i = 0; suitable && (i < ALIGNED_COUNT); i++){
+			// Если места этого у библиотеки нет
+			if(aligned[i] == nullptr)
+				// Подменять нечего
+				continue;
+			// Номер очередной подмены
+			const size_t index = (ALIGNED_FIRST + i);
+			// Накладываем очередную подмену
+			if(!this->apply(this->_patches[index], aligned[i], pick(hooks, index))){
+				/**
+				 * Откатываем наложенное ГРУППОЙ, не трогая обязательную пятёрку
+				 *
+				 * Половина группы оставила бы выданное нами на прежнем распределителе
+				 */
+				for(size_t j = 0; j < i; j++)
+					// Снимаем ранее наложенную подмену группы
+					this->revert(this->_patches[ALIGNED_FIRST + j]);
+				// Группу взять не вышло
+				suitable = false;
+				// Накладывать больше нечего
+				break;
+			}
+			// Отдаём прежнюю функцию вызывающей стороне
+			put(originals, index, this->_patches[index].body);
+		}
+	}
 	// Отмечаем захват состоявшимся
 	this->_acquired = true;
 	// Отвечаем успехом
@@ -804,9 +950,12 @@ void awh::alloc::PECapture::release() noexcept {
 		// Снимать нечего
 		return;
 	/**
-	 * Снимаем наложенные подмены
+	 * Снимаем наложенные подмены, обязательные и выровненные разом
+	 *
+	 * Обходим ВСЕ места, а не одну обязательную пятёрку: выровненная семья могла и не
+	 * лечь, и тогда места её пусты - снятие само разбирает наложенное по признаку
 	 */
-	for(size_t i = 0; i < PATCH_COUNT; i++)
+	for(size_t i = 0; i < PATCH_TOTAL; i++)
 		// Снимаем очередную подмену
 		this->revert(this->_patches[i]);
 	// Отмечаем захват снятым

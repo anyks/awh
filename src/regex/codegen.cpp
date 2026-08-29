@@ -3580,6 +3580,17 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	 !this->_prefilter.literal.empty() && (this->_prefilter.distance != string_view::npos) &&
 	 (this->_prefilter.distance <= NARROWING));
 	/**
+	 * Выполняем установку способа отбора позиций, порождением избранного
+	 *
+	 * @details Опознание это в самом отборе не участвует и заведено ради
+	 *          проверки: отбор есть ускоритель чистый, гашение всякого
+	 *          из способов вердикта не меняет, и сличение вердиктов
+	 *          такого гашения не замечает.
+	 *
+	 */
+	this->_filter = (seek ? filter_t::SEEK : (lining ? filter_t::LINING :
+	 (sifting ? filter_t::SIFTING : (narrowing ? filter_t::NARROWING : filter_t::NONE))));
+	/**
 	 * Получаем номер места кадра, действующий отказ сопоставления несущего
 	 *
 	 * @details Отказ, действующий в очередной миг сопоставления, известен лишь
@@ -7587,7 +7598,8 @@ bool awh::regex::Codegen::save(string & result) const noexcept {
 	 *          восстановлении нечем, оттого он и пишется.
 	 *
 	 */
-	result.push_back(static_cast <char> ((this->_feasible ? 1 : 0) | (this->_skipping ? 2 : 0)));
+	result.push_back(static_cast <char> ((this->_feasible ? 1 : 0) | (this->_skipping ? 2 : 0) |
+	 (static_cast <uint8_t> (this->_filter) << 2)));
 	// Выполняем запись размера записи кадра порождённого сопоставителя
 	writeSize(static_cast <uint64_t> (this->_frame), result);
 	// Выполняем запись наибольшего количества записей кадра
@@ -7647,6 +7659,21 @@ bool awh::regex::Codegen::restore(string_view data, size_t & offset, const progr
 	const bool feasible = ((marks & 0x01) != 0);
 	// Получаем признак отодвигания начала поиска обязательным литералом
 	const bool skipping = ((marks & 0x02) != 0);
+	/**
+	 * Получаем способ отбора позиций начала попытки сопоставления
+	 *
+	 * @details Способ вложен в самый код и оттуда не читается, оттого он
+	 *          и пишется наравне с признаками: без него сопоставитель
+	 *          восстановленный о своём же отборе отвечал бы отсутствием.
+	 *
+	 */
+	const uint8_t filtering = ((marks >> 2) & 0x07);
+	/**
+	 * Если способ отбора позиций записи не отвечает
+	 */
+	if(filtering > static_cast <uint8_t> (filter_t::NARROWING))
+		// Выводим результат восстановления сопоставителя
+		return false;
 	// Размер записи кадра порождённого сопоставителя
 	uint64_t sizing = 0;
 	// Наибольшее количество записей кадра порождённого сопоставителя
@@ -7777,6 +7804,8 @@ bool awh::regex::Codegen::restore(string_view data, size_t & offset, const progr
 	this->_feasible = feasible;
 	// Выполняем установку признака отодвигания начала поиска
 	this->_skipping = skipping;
+	// Выполняем установку способа отбора позиций начала попытки сопоставления
+	this->_filter = static_cast <filter_t> (filtering);
 	// Выполняем размещение набора адресов обстановки исполнения
 	this->_context.assign((SLOT_TABLES + this->_offsets.size()), nullptr);
 	/**
@@ -7831,6 +7860,8 @@ void awh::regex::Codegen::clear() noexcept {
 	this->_feasible = false;
 	// Выполняем сброс признака отодвигания начала поиска совпадения
 	this->_skipping = false;
+	// Выполняем сброс способа отбора позиций начала попытки сопоставления
+	this->_filter = filter_t::NONE;
 	// Выполняем освобождение исполняемой памяти порождённого сопоставителя
 	this->_assembly.release();
 	// Выполняем очистку таблиц принадлежности значений байта
@@ -8143,10 +8174,40 @@ size_t awh::regex::Codegen::length() const noexcept {
 	return this->_assembly.length();
 }
 /**
+ * @brief Метод извлечения способа отбора позиций
+ *
+ * @return способ отбора позиций, порождением избранный
+ *
+ */
+awh::regex::filter_t awh::regex::Codegen::filter() const noexcept {
+	// Выводим способ отбора позиций, порождением избранный
+	return this->_filter;
+}
+/**
+ * @brief Метод извлечения признака проверки возможности совпадения
+ *
+ * @return признак проверки возможности совпадения перед сопоставлением
+ *
+ */
+bool awh::regex::Codegen::feasibility() const noexcept {
+	// Выводим признак проверки возможности совпадения перед сопоставлением
+	return this->_feasible;
+}
+/**
+ * @brief Метод извлечения признака отодвигания начала поиска
+ *
+ * @return признак отодвигания начала поиска обязательным литералом
+ *
+ */
+bool awh::regex::Codegen::skipping() const noexcept {
+	// Выводим признак отодвигания начала поиска обязательным литералом
+	return this->_skipping;
+}
+/**
  * @brief Конструктор
  *
  * @param log объект для работы с логами
  *
  */
 awh::regex::Codegen::Codegen(const log_t * log) noexcept :
- _assembly(log), _log(log), _feasible(false), _skipping(false), _captures(0), _frame(0), _levels(0), _identity(0), _matcher(nullptr) {}
+ _assembly(log), _log(log), _filter(filter_t::NONE), _feasible(false), _skipping(false), _captures(0), _frame(0), _levels(0), _identity(0), _matcher(nullptr) {}

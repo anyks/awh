@@ -765,6 +765,62 @@ namespace awh {
 					 * \~
 					 */
 					const unordered_map <string_view, uint32_t> & naming(const uint32_t index) const noexcept;
+				private:
+					/**
+					 * \~russian
+					 * @brief Метод сличения двух поддеревьев дерева документа
+					 *
+					 * @details Сличение ведётся по значению узлов, а не по записи, их
+					 * породившей: дерево записи уже не помнит. Оттого два имени, писанные
+					 * разной шириною метки, но несущие одно число, сличаются РАВНЫМИ, тогда
+					 * как отказ `duplicate_t::REFUSE` у разбирателя сличает полную запись и
+					 * счёл бы их различными. Расхождение это намеренно: правила `FIRST` и
+					 * `LAST` выбирают между ЗНАЧЕНИЯМИ, и ширина метки к выбору отношения
+					 * не имеет
+					 *
+					 * @param left  номер узла первого сличаемого поддерева
+					 * @param right номер узла второго сличаемого поддерева
+					 * @return      признак совпадения поддеревьев
+					 *
+					 * \~english
+					 * @brief Method of the comparison of two subtrees of the tree of a document
+					 * @details The comparison is conducted by the value of the nodes rather than by the record
+					 * that produced them: the tree no longer remembers the record
+					 * @param left number of the node of the first subtree being compared
+					 * @param right number of the node of the second subtree being compared
+					 * @return sign of the coincidence of the subtrees
+					 *
+					 * \~
+					 */
+					[[nodiscard]] bool identical(const uint32_t left, const uint32_t right) const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод применения правила повтора имени к закрытому отображению
+					 *
+					 * @details Правило применяется в миг закрытия отображения оттого, что
+					 * узлы его о ту пору суть ХВОСТ перечня: ничего построенного позади них
+					 * ещё нет, и изъятие пары не двигает ни одного стороннего узла. Размах
+					 * поддерева хранится длиною, а не указателем, оттого уцелевшие пары
+					 * переносятся на новое место как есть
+					 *
+					 * @note Потоковый разбор правил `FIRST` и `LAST` осуществить не может:
+					 * выбор между первым и последним требует видеть отображение целиком, а
+					 * события выдаются по одному и назад разбор не ходит. Оттого правила эти
+					 * живут деревом, а разбиратель их пропускает наравне с `KEEP`
+					 *
+					 * @param index номер узла закрываемого отображения
+					 * @param rule  правило обращения с повторяющимся именем поля
+					 *
+					 * \~english
+					 * @brief Method of the application of the rule of a repeating name to a closed mapping
+					 * @details The rule is applied at the moment of the closing of a mapping because its nodes
+					 * are the TAIL of the list by that time
+					 * @param index number of the node of the mapping being closed
+					 * @param rule rule of the handling of a repeating name of a field
+					 *
+					 * \~
+					 */
+					void resolve(const uint32_t index, const duplicate_t rule) noexcept;
 				public:
 					/**
 					 * \~russian

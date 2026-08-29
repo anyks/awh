@@ -23,6 +23,7 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
+#include <regex/probe.hpp>
 #include <regex/engine.hpp>
 
 /**
@@ -333,6 +334,8 @@ bool awh::regex::Engine::test(const expression_t & expression, string_view text,
 	 *
 	 */
 	if(expression.machine) {
+		// Выполняем учёт сопоставления порождённым машинным кодом
+		AWH_REGEX_TICK(path_t::MACHINE);
 		// Признак отказа порождённого сопоставителя от сопоставления
 		bool refused = false;
 		// Выполняем сопоставление порождённым машинным кодом
@@ -363,9 +366,12 @@ bool awh::regex::Engine::test(const expression_t & expression, string_view text,
 	 *          многократно быстрее любого исполнения программы.
 	 *
 	 */
-	if(expression.forward.plain)
+	if(expression.forward.plain) {
+		// Выполняем учёт поиска последовательности выражения в тексте
+		AWH_REGEX_TICK(path_t::PLAIN);
 		// Выводим результат поиска последовательности выражения в тексте
 		return (seek(text, expression.forward.text, start) != string_view::npos);
+	}
 	/**
 	 * Если обязательный литерал совпадения в тексте отсутствует
 	 *
@@ -444,6 +450,8 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
 	 *
 	 */
 	if(expression.machine) {
+		// Выполняем учёт сопоставления порождённым машинным кодом
+		AWH_REGEX_TICK(path_t::MACHINE);
 		// Признак отказа порождённого сопоставителя от сопоставления
 		bool refused = false;
 		// Выполняем сопоставление порождённым машинным кодом
@@ -481,6 +489,8 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
 	 *
 	 */
 	if(expression.forward.plain) {
+		// Выполняем учёт поиска последовательности выражения в тексте
+		AWH_REGEX_TICK(path_t::PLAIN);
 		// Выполняем поиск последовательности выражения в тексте
 		const size_t position = seek(text, expression.forward.text, start);
 		/**

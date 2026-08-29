@@ -487,15 +487,29 @@ bool awh::codec::xml::integer(const string_view text, int64_t & result) noexcept
 	if(value.empty())
 		// Выводим признак неудачного разбора
 		return false;
+	// Разобранное значение, выходной переменной ещё не отданное
+	int64_t number = 0;
 	// Выполняем разбор целого числа со знаком
-	const lexical_t::result_t <char> res = lexical_t::fromChars(value.data(), value.data() + value.length(), result);
+	const lexical_t::result_t <char> res = lexical_t::fromChars(value.data(), value.data() + value.length(), number);
 	/**
-	 * Выводим признак успешного разбора, если число разобрано целиком
+	 * Выводим признак успешного приведения, если число разобрано целиком
 	 *
 	 * @note Остаток за числом отвергается намеренно: «52abc» числом не является,
-	 *       и приведение такого содержимого к 52 скрыло бы ошибку в исходном тексте
+	 *       и приведение такого поля к 52 скрыло бы ошибку в содержимом
+	 *
+	 * @note Разбор ведётся в СВОЮ переменную, а выходная трогается лишь по успеху:
+	 *       прежде разбор писал прямо в неё, и отвергнутое «1e3» оставляло у звучащего
+	 *       единицу вместо нетронутого значения - ошибка обращения оборачивалась
+	 *       правдоподобным числом
 	 */
-	return (static_cast <bool> (res) && (res.ptr == (value.data() + value.length())));
+	if(static_cast <bool> (res) && (res.ptr == (value.data() + value.length()))){
+		// Запоминаем разобранное значение
+		result = number;
+		// Выводим признак успешного приведения
+		return true;
+	}
+	// Выводим признак неудачного приведения
+	return false;
 }
 /**
  * @brief Метод разбора целого числа без знака из содержимого разметки
@@ -523,10 +537,30 @@ bool awh::codec::xml::integer(const string_view text, uint64_t & result) noexcep
 	if((value.front() == '-') || (value.front() == '+'))
 		// Выводим признак неудачного разбора
 		return false;
+	// Разобранное значение, выходной переменной ещё не отданное
+	uint64_t number = 0;
 	// Выполняем разбор целого числа без знака
-	const lexical_t::result_t <char> res = lexical_t::fromChars(value.data(), value.data() + value.length(), result);
+	const lexical_t::result_t <char> res = lexical_t::fromChars(value.data(), value.data() + value.length(), number);
 	// Выводим признак успешного разбора, если число разобрано целиком
-	return (static_cast <bool> (res) && (res.ptr == (value.data() + value.length())));
+	/**
+	 * Выводим признак успешного приведения, если число разобрано целиком
+	 *
+	 * @note Остаток за числом отвергается намеренно: «52abc» числом не является,
+	 *       и приведение такого поля к 52 скрыло бы ошибку в содержимом
+	 *
+	 * @note Разбор ведётся в СВОЮ переменную, а выходная трогается лишь по успеху:
+	 *       прежде разбор писал прямо в неё, и отвергнутое «1e3» оставляло у звучащего
+	 *       единицу вместо нетронутого значения - ошибка обращения оборачивалась
+	 *       правдоподобным числом
+	 */
+	if(static_cast <bool> (res) && (res.ptr == (value.data() + value.length()))){
+		// Запоминаем разобранное значение
+		result = number;
+		// Выводим признак успешного приведения
+		return true;
+	}
+	// Выводим признак неудачного приведения
+	return false;
 }
 /**
  * @brief Метод разбора числа с плавающей точкой из содержимого разметки
@@ -545,10 +579,30 @@ bool awh::codec::xml::real(const string_view text, double & result) noexcept {
 	if(value.empty())
 		// Выводим признак неудачного разбора
 		return false;
+	// Разобранное значение, выходной переменной ещё не отданное
+	double number = 0;
 	// Выполняем разбор числа с плавающей точкой
-	const lexical_t::result_t <char> res = lexical_t::fromChars(value.data(), value.data() + value.length(), result);
+	const lexical_t::result_t <char> res = lexical_t::fromChars(value.data(), value.data() + value.length(), number);
 	// Выводим признак успешного разбора, если число разобрано целиком
-	return (static_cast <bool> (res) && (res.ptr == (value.data() + value.length())));
+	/**
+	 * Выводим признак успешного приведения, если число разобрано целиком
+	 *
+	 * @note Остаток за числом отвергается намеренно: «52abc» числом не является,
+	 *       и приведение такого поля к 52 скрыло бы ошибку в содержимом
+	 *
+	 * @note Разбор ведётся в СВОЮ переменную, а выходная трогается лишь по успеху:
+	 *       прежде разбор писал прямо в неё, и отвергнутое «1e3» оставляло у звучащего
+	 *       единицу вместо нетронутого значения - ошибка обращения оборачивалась
+	 *       правдоподобным числом
+	 */
+	if(static_cast <bool> (res) && (res.ptr == (value.data() + value.length()))){
+		// Запоминаем разобранное значение
+		result = number;
+		// Выводим признак успешного приведения
+		return true;
+	}
+	// Выводим признак неудачного приведения
+	return false;
 }
 /**
  * @brief Метод разбора логического значения из содержимого разметки

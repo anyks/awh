@@ -184,8 +184,228 @@ typedef struct Building {
 	uint32_t segment;
 	// Признак отказа сборки дерева документа
 	bool failed;
+	/**
+	 * Правило обращения с повторяющимся именем поля отображения.
+	 *
+	 * Правило это живёт состоянием сборки, а не документом: применяется оно в миг
+	 * закрытия отображения, а собранному документу знать о нём уже незачем
+	 */
+	awh::codec::abc::duplicate_t duplicates;
 } building_t;
 
+/**
+ * @brief Функция поверки того, что содержимое узла лежит в хранилище октетов
+ *
+ * @details Узел держит содержимое своё двояко: число родного вида ложится прямо в поле
+ *          содержимого, а строка, двоичные данные и величина неограниченной ширины - в
+ *          хранилище, узлу же остаётся смещение. Сличение узлов обязано знать, куда
+ *          смотреть, - на то и заведена поверка эта
+ *
+ * @param type вид значения узла
+ * @return     признак того, что содержимое узла лежит в хранилище октетов
+ *
+ */
+static bool stored(const awh::codec::abc::type_t type) noexcept {
+	/**
+	 * Определяем вид значения узла
+	 */
+	switch(static_cast <uint32_t> (type)){
+		// Если содержимое узла лежит в хранилище октетов
+		case static_cast <uint32_t> (awh::codec::abc::type_t::STRING):
+		case static_cast <uint32_t> (awh::codec::abc::type_t::BLOB):
+		case static_cast <uint32_t> (awh::codec::abc::type_t::UUID):
+		case static_cast <uint32_t> (awh::codec::abc::type_t::EXTENDED):
+		case static_cast <uint32_t> (awh::codec::abc::type_t::DECIMAL):
+		case static_cast <uint32_t> (awh::codec::abc::type_t::CUSTOM):
+			// Сообщаем, что содержимое узла лежит в хранилище октетов
+			return true;
+	}
+	// Сообщаем, что содержимое узла лежит в поле содержимого его
+	return false;
+}
+/**
+ * @brief Метод сличения двух поддеревьев дерева документа
+ *
+ * @param left  номер узла первого сличаемого поддерева
+ * @param right номер узла второго сличаемого поддерева
+ * @return      признак совпадения поддеревьев
+ *
+ */
+bool awh::codec::abc::Document::identical(const uint32_t left, const uint32_t right) const noexcept {
+	// Выполняем получение размаха первого сличаемого поддерева
+	const uint32_t extent = this->_nodes.at(left).extent();
+	// Если размахи поддеревьев расходятся, поддеревья различны
+	if(extent != this->_nodes.at(right).extent())
+		// Сообщаем, что поддеревья различны
+		return false;
+	// Если поддеревья за пределы дерева выходят, сличать нечего
+	if((static_cast <size_t> (left) + extent > this->_nodes.size()) ||
+	   (static_cast <size_t> (right) + extent > this->_nodes.size()))
+		// Сообщаем, что поддеревья различны
+		return false;
+	/**
+	 * Выполняем обход узлов сличаемых поддеревьев
+	 */
+	for(uint32_t i = 0; i < extent; i++){
+		// Выполняем получение узла первого сличаемого поддерева
+		const node_t & first = this->_nodes.at(left + i);
+		// Выполняем получение узла второго сличаемого поддерева
+		const node_t & second = this->_nodes.at(right + i);
+		// Если виды значений узлов либо признаки их расходятся
+		if((first.type != second.type) || (first.negative != second.negative) ||
+		   (first.keyed != second.keyed) || (first.length() != second.length()))
+			// Сообщаем, что поддеревья различны
+			return false;
+		/**
+		 * Если узел является вместимым, содержимое его есть уклад поддерева
+		 */
+		if(first.container()){
+			// Если размахи поддеревьев вместимых расходятся
+			if(first.extent() != second.extent())
+				// Сообщаем, что поддеревья различны
+				return false;
+			// Продолжаем обход узлов поддеревьев
+			continue;
+		}
+		/**
+		 * Если содержимое узла лежит в хранилище октетов
+		 */
+		if(::stored(first.type)){
+			/**
+			 * Объём сличаемого содержимого. У величины неограниченной ширины, у
+			 * десятичного числа и у открытого расширения впереди содержимого лежат
+			 * восемь октетов порядка либо номера подвида, и сличать их обязательно:
+			 * два числа с одной величиной, но разным порядком, суть числа разные
+			 */
+			const size_t size = (static_cast <size_t> (first.length()) +
+			 ((first.type == type_t::EXTENDED) || (first.type == type_t::DECIMAL) ||
+			  (first.type == type_t::CUSTOM) ? 8 : 0));
+			// Если содержимое узлов расходится
+			if(::memcmp(this->_storage.data() + first.offset, this->_storage.data() + second.offset, size) != 0)
+				// Сообщаем, что поддеревья различны
+				return false;
+			// Продолжаем обход узлов поддеревьев
+			continue;
+		}
+		// Если разрядные записи значений узлов расходятся
+		if((first.content[0] != second.content[0]) || (first.content[1] != second.content[1]))
+			// Сообщаем, что поддеревья различны
+			return false;
+	}
+	// Сообщаем, что поддеревья совпадают
+	return true;
+}
+/**
+ * @brief Метод применения правила повтора имени к закрытому отображению
+ *
+ * @param index номер узла закрываемого отображения
+ * @param rule  правило обращения с повторяющимся именем поля
+ *
+ */
+void awh::codec::abc::Document::resolve(const uint32_t index, const duplicate_t rule) noexcept {
+	/**
+	 * Если правило выбора одного из значений не задано, работы нет: `REFUSE` отвечен
+	 * разбирателем ещё до дерева, а `KEEP` тем и живёт, что оставляет всё как есть
+	 */
+	if((rule != duplicate_t::FIRST) && (rule != duplicate_t::LAST))
+		// Выходим из метода
+		return;
+	// Если узел отображением не является либо пар в нём меньше двух
+	if((this->_nodes.at(index).type != type_t::MAP) || (this->_nodes.at(index).length() < 4))
+		// Выходим из метода
+		return;
+	// Перечень пар отображения: номер узла имени и размах пары в узлах
+	vector <pair <uint32_t, uint32_t>> pairs;
+	// Выполняем получение предела детей отображения
+	const uint32_t bound = static_cast <uint32_t> (this->_nodes.size());
+	/**
+	 * Выполняем обход пар закрываемого отображения
+	 */
+	for(uint32_t child = (index + 1); child < bound;){
+		// Выполняем получение номера узла значения пары
+		const uint32_t value = (child + this->_nodes.at(child).extent());
+		// Если значение пары за предел детей выходит, отображение неполно
+		if(value >= bound)
+			// Выходим из метода
+			return;
+		// Выполняем получение номера узла имени следующей пары
+		const uint32_t next = (value + this->_nodes.at(value).extent());
+		// Выполняем учёт пары отображения
+		pairs.push_back(make_pair(child, next - child));
+		// Выполняем переход к следующей паре отображения
+		child = next;
+	}
+	// Признаки того, что пара в отображении остаётся
+	vector <bool> living(pairs.size(), true);
+	// Признак того, что хотя бы одна пара из отображения выбыла
+	bool dropped = false;
+	/**
+	 * Выполняем обход пар отображения в поиске повторяющихся имён
+	 */
+	for(size_t i = 0; i < pairs.size(); i++){
+		// Если пара из отображения уже выбыла, сличать её незачем
+		if(!living.at(i))
+			// Переходим к следующей паре отображения
+			continue;
+		/**
+		 * Выполняем обход пар, стоящих следом за сличаемой
+		 */
+		for(size_t j = (i + 1); j < pairs.size(); j++){
+			// Если пара из отображения уже выбыла, сличать её незачем
+			if(!living.at(j))
+				// Переходим к следующей паре отображения
+				continue;
+			// Если имена пар различны
+			if(!this->identical(pairs.at(i).first, pairs.at(j).first))
+				// Переходим к следующей паре отображения
+				continue;
+			// Выполняем изъятие пары, правилом не выбранной
+			living.at(rule == duplicate_t::FIRST ? j : i) = false;
+			// Запоминаем, что пара из отображения выбыла
+			dropped = true;
+			/**
+			 * Если правилом оставлено последнее значение, сличаемая пара выбыла сама,
+			 * и сличать с нею остальные более незачем
+			 */
+			if(rule == duplicate_t::LAST)
+				// Прекращаем обход пар, стоящих следом за сличаемой
+				break;
+		}
+	}
+	// Если ни одна пара из отображения не выбыла, переносить нечего
+	if(!dropped)
+		// Выходим из метода
+		return;
+	// Уцелевшие узлы отображения
+	vector <node_t> kept;
+	// Количество детей, уцелевших в отображении
+	uint32_t count = 0;
+	// Выполняем резервирование места под уцелевшие узлы
+	kept.reserve(this->_nodes.size() - index - 1);
+	/**
+	 * Выполняем перенос уцелевших пар отображения
+	 */
+	for(size_t i = 0; i < pairs.size(); i++){
+		// Если пара из отображения выбыла, переносить её незачем
+		if(!living.at(i))
+			// Переходим к следующей паре отображения
+			continue;
+		// Выполняем перенос узлов уцелевшей пары
+		kept.insert(kept.end(), this->_nodes.begin() + pairs.at(i).first,
+		 this->_nodes.begin() + pairs.at(i).first + pairs.at(i).second);
+		/**
+		 * Выполняем учёт детей уцелевшей пары. Пара несёт ДВУХ детей отображения -
+		 * имя да значение, - сколько бы узлов ни лежало в поддереве значения её
+		 */
+		count += 2;
+	}
+	// Выполняем снятие прежних детей отображения
+	this->_nodes.resize(index + 1);
+	// Выполняем перенос уцелевших узлов в дерево документа
+	this->_nodes.insert(this->_nodes.end(), kept.begin(), kept.end());
+	// Выполняем установку количества уцелевших детей отображения
+	this->_nodes.at(index).length(count);
+}
 /**
  * @brief Метод приёма события разбора, выданного прямо из чтения
  *
@@ -299,6 +519,13 @@ bool awh::codec::abc::Document::digest(void * context, Document * self, const re
 		const uint32_t index = state->stack.back();
 		// Выполняем снятие номера узла со стека
 		state->stack.pop_back();
+		/**
+		 * Выполняем применение правила повтора имени к закрытому отображению.
+		 *
+		 * Делается это ПРЕЖДЕ установки размаха: правило вправе изъять пару, и размах,
+		 * снятый до изъятия, считал бы узлы, коих в дереве более нет
+		 */
+		self->resolve(index, state->duplicates);
 		// Выполняем установку размаха поддерева закрытого вместимого
 		self->_nodes.at(index).extent(static_cast <uint32_t> (self->_nodes.size()) - index);
 		// Сообщаем, что событие принято
@@ -501,7 +728,7 @@ bool awh::codec::abc::Document::parse(const void * buffer, const size_t size, co
 	// Выполняем установку настроек разбора записи
 	reader.settings(settings);
 	// Состояние сборки дерева документа
-	building_t state{this, {}, numeric_limits <uint32_t>::max(), false};
+	building_t state{this, {}, numeric_limits <uint32_t>::max(), false, settings.duplicates};
 	/**
 	 * Выполняем установку обработчика прямой выдачи событий разбора.
 	 *

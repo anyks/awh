@@ -551,18 +551,29 @@ TEST(ForkFixture, SurvivesThreadStarvation){
 			 * `RLIMIT_NTHR`, у Linux - `RLIMIT_NPROC`, а у macOS и FreeBSD предела по
 			 * потокам нет вовсе. Проверено щупом здесь же: при `RLIMIT_NPROC` в единицу
 			 * поток у macOS заводится как ни в чём не бывало
+			 *
+			 * Третья ветвь нужна системам Sun: у Solaris и OpenIndiana нет НИ ОДНОГО из
+			 * этих пределов - число нитей там держит надел (`zone.max-lwps`), а не
+			 * `getrlimit`. Прежде ветвей было две, и `RLIMIT_NPROC` считался
+			 * существующим всюду, где нет `RLIMIT_NTHR`: набор проверок там не
+			 * СОБИРАЛСЯ вовсе - `‘RLIMIT_NPROC’ was not declared in this scope`.
+			 * Оставшись без предела, проверка не выдумывает отказ, а доходит до сверки
+			 * «кусается ли предел» ниже и честно пропускается
 			 */
 			#if defined(RLIMIT_NTHR)
 				// Предел числа потоков процесса
 				const int32_t what = RLIMIT_NTHR;
-			#else
+			#elif defined(RLIMIT_NPROC)
 				// Предел числа процессов пользователя
 				const int32_t what = RLIMIT_NPROC;
+			#else
+				// Предела, ограничивающего заведение потоков, у системы нет
+				const int32_t what = -1;
 			#endif
 			// Предел, ограничивающий заведение потоков
 			struct rlimit bound;
 			// Спрашиваем действующий предел
-			if(::getrlimit(what, &bound) == 0){
+			if((what >= 0) && (::getrlimit(what, &bound) == 0)){
 				// Опускаем мягкий предел до одного
 				bound.rlim_cur = 1;
 				// Ставим опущенный предел

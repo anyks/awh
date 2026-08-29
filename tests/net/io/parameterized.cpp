@@ -741,7 +741,7 @@ TEST_P(IoTimerParameterizedFixture, IoTimerTest){
 		 */
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds((this->_parameter.timeout * 6) + 5000);
 		// Выполняем опрос активных событий
-		while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll());
+		while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
 	}
@@ -892,7 +892,7 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 			 */
 			while(!stop && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 20))
 				// Выполняем оборот опроса
-				ASSERT_TRUE(this->_io->poll(100));
+				ASSERT_TRUE(this->_io->poll(__AWH_TEST_POLL_SLICE__));
 			// Дожидаемся завершения работника
 			::WaitForSingleObject(process.hProcess, 5000);
 			// Закрываем описатели порождённого процесса
@@ -1225,7 +1225,7 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 						// Срок, за который ожидаемое событие обязано прийти
 						const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
 						// Выполняем опрос активных событий
-						while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll());
+						while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
 						// Если срок вышел, событие через устройство так и не пришло
 						EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
 					}
@@ -1471,7 +1471,7 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 						// Срок, за который ожидаемое событие обязано прийти
 						const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
 						// Выполняем опрос активных событий
-						while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll());
+						while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
 						// Если срок вышел, событие через устройство так и не пришло
 						EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
 					}
@@ -1792,7 +1792,7 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 						// Срок, за который ожидаемое событие обязано прийти
 						const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
 						// Выполняем опрос активных событий
-						while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll());
+						while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
 						// Если срок вышел, событие через устройство так и не пришло
 						EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
 					}
@@ -2033,7 +2033,7 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 						// Срок, за который ожидаемое событие обязано прийти
 						const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
 						// Выполняем опрос активных событий
-						while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll());
+						while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
 						// Если срок вышел, событие через устройство так и не пришло
 						EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
 					}

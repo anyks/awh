@@ -1103,6 +1103,7 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/encoding/idna/punycode.cpp"
     "${CMAKE_SOURCE_DIR}/src/encoding/idna/context.cpp"
     "${CMAKE_SOURCE_DIR}/src/encoding/idna/idna.cpp"
+    "${CMAKE_SOURCE_DIR}/src/regex/probe.cpp"
     "${CMAKE_SOURCE_DIR}/src/regex/prefilter.cpp"
     "${CMAKE_SOURCE_DIR}/src/regex/text.cpp"
     "${CMAKE_SOURCE_DIR}/src/regex/parser.cpp"
@@ -1327,6 +1328,19 @@ if (CMAKE_BUILD_TESTS)
     add_library(${AWH_LIB_GCOV_NAME} STATIC ${SOURCE_FILES})
     # Включаем флаги компиляции для сбора статистики покрытия кода
     target_compile_options(${AWH_LIB_GCOV_NAME} PRIVATE ${GCC_COVERAGE_COMPILE_FLAGS})
+    ##
+     # Заводим учёт путей исполнения сопоставления у библиотеки проверок.
+     #
+     # Ускорители модуля регулярных выражений вердикта не меняют: отключение всякого
+     # из них оставляет итог верным, а поиск замедляет, - оттого сличение вердиктов
+     # такого отключения не замечает вовсе. Проба гашения показала, что семь путей
+     # исполнения гасились, не сорвав ни одной проверки набора, и порождённый машинный
+     # код был среди них. Учёт этот позволяет проверкам удостоверять, что путь пройден.
+     #
+     # Признак ставится библиотеке проверок, а не рабочей: приращение счётчика
+     # обходится в десятки наносекунд у сопоставления, укладывающегося в двадцать.
+     ##
+    target_compile_definitions(${AWH_LIB_GCOV_NAME} PRIVATE AWH_REGEX_PROBING)
 endif (CMAKE_BUILD_TESTS)
 
 ##

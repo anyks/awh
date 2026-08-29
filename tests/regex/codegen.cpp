@@ -2672,6 +2672,132 @@ TEST(Regex, CodegenStorageForeign) {
 }
 
 /**
+ * @brief Проверка избрания способа отбора позиций порождённым кодом
+ *
+ * @details Отбор позиций начала попытки сопоставления ведётся в порождённом коде
+ *          четырьмя способами, и способ избирается по составу выражения. Отбор
+ *          есть ускоритель чистый: гашение всякого из способов вердикта не меняет,
+ *          а лишь заставляет проходить текст попыткой в каждой позиции. Сплошная
+ *          проба гашения показала, что все четыре способа гасились, не сорвав
+ *          ни одной проверки набора, - оттого способ и опознаётся здесь прямо.
+ *
+ */
+TEST(Regex, CodegenFilter) {
+	/**
+	 * Если кодогенерация сборкой не поддерживается
+	 */
+	if(!regex::emitter_t::available() || !regex::assembly_t::available())
+		// Выходим из проверки избрания способа отбора позиций
+		GTEST_SKIP() << "кодогенерация сборкой не поддерживается";
+	/**
+	 * @brief Набор выражений с ожидаемым способом отбора позиций
+	 *
+	 */
+	static const struct {
+		// Регулярное выражение, подлежащее порождению
+		const char * pattern;
+		// Набор режимов сборки регулярного выражения
+		const uint32_t flags;
+		// Ожидаемый способ отбора позиций начала попытки
+		const regex::filter_t filter;
+		// Ожидаемый признак проверки возможности совпадения
+		const bool feasibility;
+		// Ожидаемый признак отодвигания начала поиска
+		const bool skipping;
+	} SAMPLES[] = {
+		{"HTTP/1\\.[01]",  0,                                              regex::filter_t::SEEK,      false, false},
+		{"[a-z]+/v1",      0,                                              regex::filter_t::NONE,      true,  false},
+		{"^[a-z]+[0-9]",   static_cast <uint32_t> (regex::flag_t::MULTILINE), regex::filter_t::LINING,  false, false},
+		{"(?:aa|bb|cc) ",  0,                                              regex::filter_t::SIFTING,   true,  true},
+		{"(?:HT|TP)/1",    0,                                              regex::filter_t::SIFTING,   true,  true},
+		{"\\w+@\\w+",      0,                                              regex::filter_t::SIFTING,   true,  false},
+		{"(?:fox|dog)trot",0,                                              regex::filter_t::NARROWING, false, false},
+		{"^abc",           0,                                              regex::filter_t::NONE,      false, false}
+	};
+	// Количество выражений, порождением проверенных
+	size_t machined = 0;
+	// Количество сопоставителей, восстановление прошедших
+	size_t restoring = 0;
+	/**
+	 * Выполняем обход набора выражений
+	 */
+	for(auto & sample : SAMPLES) {
+		// Создаём объект движка регулярных выражений
+		regex::engine_t engine(::logger());
+		// Создаём собираемое регулярное выражение
+		regex::expression_t expression;
+		// Выполняем сборку регулярного выражения
+		ASSERT_TRUE(engine.build(sample.pattern, sample.flags, expression)) << sample.pattern;
+		// Создаём объект порождения машинного кода
+		regex::codegen_t codegen(::logger());
+		/**
+		 * Если порождение сопоставителя выражения не выполнено
+		 */
+		if(!codegen.compile(expression.forward)) {
+			// Выполняем проверку неприменимости порождения к программе
+			ASSERT_FALSE(regex::codegen_t::applicable(expression.forward)) << sample.pattern;
+			// Переходим к следующему выражению набора
+			continue;
+		}
+		// Выполняем учёт выражения, порождением проверенного
+		machined++;
+		// Выполняем проверку избранного способа отбора позиций
+		EXPECT_EQ(codegen.filter(), sample.filter) << sample.pattern << " -> "
+		 << static_cast <uint32_t> (codegen.filter());
+		/**
+		 * Выполняем проверку признаков проверки возможности и отодвигания
+		 *
+		 * @details Признаки эти ускорители такие же чистые, как и самый отбор:
+		 *          проба гашения показала, что гашение проверки возможности
+		 *          не срывало ни одной проверки набора, а с нею гасло
+		 *          и отодвигание начала поиска, от неё зависящее.
+		 *
+		 */
+		EXPECT_EQ(codegen.feasibility(), sample.feasibility) << sample.pattern;
+		// Выполняем проверку признака отодвигания начала поиска
+		EXPECT_EQ(codegen.skipping(), sample.skipping) << sample.pattern;
+		// Заводим запись сохранения порождённого сопоставителя
+		string record;
+		// Выполняем сохранение порождённого сопоставителя
+		ASSERT_TRUE(codegen.save(record)) << sample.pattern;
+		// Создаём объект порождения, запись принимающий
+		regex::codegen_t restored(::logger());
+		// Смещение чтения записи сохранения
+		size_t offset = 0;
+		/**
+		 * Если восстановление порождённого сопоставителя выполнено
+		 *
+		 * @details Способ отбора вложен в самый код и оттуда не читается,
+		 *          оттого он и пишется записью: сопоставитель восстановленный
+		 *          обязан отвечать о своём отборе тем же способом.
+		 *
+		 */
+		if(restored.restore(record, offset, expression.forward)) {
+			// Выполняем учёт сопоставителя, восстановление прошедшего
+			restoring++;
+			// Выполняем проверку способа отбора у сопоставителя восстановленного
+			EXPECT_EQ(restored.filter(), sample.filter) << sample.pattern;
+			// Выполняем проверку признака проверки возможности у восстановленного
+			EXPECT_EQ(restored.feasibility(), sample.feasibility) << sample.pattern;
+			// Выполняем проверку признака отодвигания у восстановленного
+			EXPECT_EQ(restored.skipping(), sample.skipping) << sample.pattern;
+		}
+	}
+	/**
+	 * Выполняем проверку охвата набора выражений
+	 *
+	 * @details Проверка охвата обязательна: порождение, всякому выражению
+	 *          отказавшее, оставило бы проверку пройденной, ни одного способа
+	 *          отбора не сличив.
+	 *
+	 */
+	ASSERT_EQ(machined, (sizeof(SAMPLES) / sizeof(SAMPLES[0])));
+	// Выполняем проверку охвата восстановлением записи
+	ASSERT_EQ(restoring, machined);
+}
+
+
+/**
  * @brief Тест отбора позиций начала попытки по обязательному литералу
  *
  * @details Отбор этот порождается лишь у выражений, чей обязательный литерал

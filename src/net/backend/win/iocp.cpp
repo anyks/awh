@@ -8023,9 +8023,37 @@ namespace post {
 		 *          отсутствием метки, и узел закрывается тем же путём, каким закрылся бы
 		 *          при чтении нуля октет
 		 */
-		if((error != ERROR_PIPE_NOT_CONNECTED) && (error != ERROR_BROKEN_PIPE) && (::post::log != nullptr))
-			// Записываем ошибку в лог
-			::post::log->print("%s: cannot submit %s on descriptor %llu: %s", log_t::flag_t::CRITICAL, ::__AWH_IO_BACKEND__, name, static_cast <uint64_t> (sock), ::kernel::message(error).c_str());
+		if((error != ERROR_PIPE_NOT_CONNECTED) && (error != ERROR_BROKEN_PIPE) && (::post::log != nullptr)){
+			/**
+			 * Состояние описателя снимается ЗДЕСЬ ЖЕ, а не оставляется на разбор
+			 *
+			 * @details Один код отказа о причине не говорит: WSAEINVAL (10022) при подаче
+			 *          приёма приходит и когда сокет не привязан, и когда номер уже
+			 *          принадлежит другому объекту, и когда род его для такого обращения
+			 *          негоден. Лечатся эти случаи по-разному, а различить их потом,
+			 *          по журналу, нельзя ничем - к разбору описателя уже нет
+			 *
+			 * @note Заведено по отказу, ловящемуся раз на тридцать полных прогонов набора и
+			 *       НЕ ловящемуся в одиночку (0 из 60) и семейством (0 из 40). Ждать такой
+			 *       случай дорого, и придти он обязан со свидетельством, а не с одним кодом
+			 */
+			// Разновидность описателя и длина места под ответ
+			int32_t kind = 0, length = static_cast <int32_t> (sizeof(kind));
+			// Признак того, что описатель является гнездом
+			const bool socket = (::__awh_getsockopt__(static_cast <SOCKET> (sock), SOL_SOCKET, SO_TYPE, &kind, &length) == 0);
+			// Место под имя описателя
+			struct sockaddr_storage address{};
+			// Длина места под имя
+			int32_t size = static_cast <int32_t> (sizeof(address));
+			// Признак того, что описатель привязан
+			const bool bound = (socket && (::__awh_getsockname__(static_cast <SOCKET> (sock), reinterpret_cast <struct sockaddr *> (&address), &size) == 0));
+			// Записываем ошибку в лог вместе с состоянием описателя
+			::post::log->print(
+				"%s: cannot submit %s on descriptor %llu: %s (гнездо: %s, разновидность: %d, привязан: %s)",
+				log_t::flag_t::CRITICAL, ::__AWH_IO_BACKEND__, name, static_cast <uint64_t> (sock),
+				::kernel::message(error).c_str(), (socket ? "да" : "нет"), kind, (bound ? "да" : "нет")
+			);
+		}
 		// Выводим отсутствие метки завершения
 		return ::inflight::INVALID;
 	}

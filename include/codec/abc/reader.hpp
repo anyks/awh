@@ -168,8 +168,43 @@ namespace awh {
 						 * \~
 						 */
 						bool stream;
-						// Признак проверки строк на соответствие кодировке UTF-8
-						bool validate;
+						/**
+						 * \~russian
+						 * Правило обращения со строкой, не отвечающей кодировке UTF-8
+						 *
+						 * @details Правило это стоит НА МЕСТЕ прежнего признака проверки строк, а
+						 * не рядом с ним: две настройки на одно дело суть ловушка, где одна молча
+						 * отменяет другую. `REFUSE` отвечает прежнему признаку поднятым, `PASS` -
+						 * снятым, а `REPLACE` заведён им обоим третьим исходом
+						 *
+						 * @note `REPLACE` подменяет негодную последовательность знаком U+FFFD
+						 * НАИБОЛЬШЕЙ ОСМЫСЛЕННОЙ ЧАСТЬЮ, как то предписано Юникодом, и содержимое
+						 * события ложится в отдельное хранилище исправленных строк: длина замены
+						 * с длиною подменяемого не совпадает, и отрезок в буфере разбора её не
+						 * вместил бы. Признак `record_t::repaired` сообщает потребителю, откуда
+						 * взято содержимое
+						 *
+						 * @note Сличение имён полей - на повтор и на возрастание - ведётся по
+						 * записи, а НЕ по исправленной строке. Оттого `REPLACE` повторов не
+						 * создаёт: два разных негодных имени, обратившихся в один знак замены,
+						 * повтором не станут. Уклад этот намеренный: поверка строгого вида есть
+						 * договор о ЗАПИСИ, и исправление содержимого его не касается
+						 *
+						 * @note Умолчанием взят ОТКАЗ: строка объявлена кодировкой UTF-8, а данные,
+						 * ей не подчинённые, записываются двоичным значением, - на то оно и
+						 * заведено. `REPLACE` есть уступка носителю, где негодные октеты уже
+						 * лежат и переписать их нельзя
+						 *
+						 * \~english
+						 * Rule of the handling of a string not conforming to the UTF-8 encoding
+						 * @details This rule stands IN PLACE of the former flag of the checking of the strings
+						 * rather than beside it: two settings for one matter are a trap
+						 * @note `REPLACE` substitutes a malformed sequence by the U+FFFD character by the
+						 * MAXIMAL SUBPART, and the content of the event is placed into a separate storage
+						 *
+						 * \~
+						 */
+						malformed_t malformed;
 						/**
 						 * \~russian
 						 * Признак поверки записи на строгий вид
@@ -321,6 +356,23 @@ namespace awh {
 						bool indefinite;
 						/**
 						 * \~russian
+						 * Признак того, что содержимое строки было исправлено
+						 *
+						 * @note Признак этот поднимается лишь правилом `malformed_t::REPLACE` и
+						 * лишь на строке, кодировке не отвечавшей. Потребителю он нужен затем,
+						 * что исправление есть ПОТЕРЯ: негодные октеты подменены знаком замены
+						 * и восстановлению не подлежат, - и решение, годится ли такое значение
+						 * в дело, принадлежит потребителю, а не кодеку
+						 *
+						 * \~english
+						 * Flag that the content of the string was repaired
+						 * @note This flag is raised only by the rule `malformed_t::REPLACE`
+						 *
+						 * \~
+						 */
+						bool repaired;
+						/**
+						 * \~russian
 						 * @brief Конструктор
 						 *
 						 *
@@ -331,7 +383,8 @@ namespace awh {
 						 */
 						Value() noexcept :
 						 type(type_t::UNDEFINED), count(0), number(0), integer(0), real(0.0),
-						 exponent(0), boolean(false), negative(false), indefinite(false) {}
+						 exponent(0), boolean(false), negative(false), indefinite(false),
+						 repaired(false) {}
 					} value_t;
 					/**
 					 * \~russian
@@ -582,10 +635,43 @@ namespace awh {
 						 * \~
 						 */
 						location_t location;
+						/**
+						 * \~russian
+						 * Признак того, что содержимое взято из хранилища исправленных строк
+						 *
+						 * @note Признак этот поднимается лишь правилом `malformed_t::REPLACE` и
+						 * лишь на строке, кодировке не отвечавшей: длина замены с длиною
+						 * подменяемого не совпадает, и отрезок в буфере разбора её не вместил бы
+						 *
+						 * \~english
+						 * Flag that the content is taken from the storage of the repaired strings
+						 * @note This flag is raised only by the rule `malformed_t::REPLACE`
+						 *
+						 * \~
+						 */
+						bool repaired;
+						/**
+						 * \~russian
+						 * Отрезок исправленного содержимого в хранилище исправленных строк
+						 *
+						 * @note Отрезок этот заведён ОТДЕЛЬНЫМ от `span` намеренно: `span`
+						 * обязан смотреть в буфер разбора ВСЕГДА, ибо им пользуется сличение
+						 * имён полей - и на повтор, и на возрастание, - а сличение это ведётся
+						 * по ЗАПИСИ имени, а не по исправленному содержимому его. Подмени
+						 * исправление отрезок записи, сличение читало бы чужое хранилище
+						 *
+						 * \~english
+						 * Segment of the repaired content in the storage of the repaired strings
+						 * @note This segment is made SEPARATE from `span` deliberately: `span` must look
+						 * into the buffer of the parsing ALWAYS, for it is used by the comparison of the names
+						 *
+						 * \~
+						 */
+						span_t patch;
 						Record() noexcept :
 						 event(event_t::NONE), type(type_t::UNDEFINED), count(0), number(0),
 						 integer(0), real(0.0), exponent(0), boolean(false), negative(false),
-						 indefinite(false) {}
+						 indefinite(false), repaired(false) {}
 					} record_t;
 				private:
 					// Настройки разбора записи
@@ -686,6 +772,23 @@ namespace awh {
 					 * \~
 					 */
 					vector <uint8_t> _pool;
+					/**
+					 * \~russian
+					 * Хранилище строки, исправленной правилом `malformed_t::REPLACE`
+					 *
+					 * @details Хранилище это заведено отдельным от буфера разбора НАМЕРЕННО:
+					 * знак замены занимает три октета, а подменяемая последовательность - от
+					 * одного до четырёх, и вписать исправленную строку на место негодной значило
+					 * бы двигать всё, что за нею стоит, вместе со смещениями разбора. Хранилище
+					 * живёт одним событием и переписывается на всякой исправленной строке
+					 *
+					 * \~english
+					 * Storage of a string repaired by the rule `malformed_t::REPLACE`
+					 * @details This storage is made separate from the buffer of the parsing DELIBERATELY
+					 *
+					 * \~
+					 */
+					vector <uint8_t> _repair;
 				private:
 					/**
 					 * \~russian

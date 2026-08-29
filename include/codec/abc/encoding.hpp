@@ -387,6 +387,30 @@ namespace awh {
 			 * \~
 			 */
 			[[nodiscard]] __AWH_SHARED_EXPORT__ bool utf8(const uint8_t * buffer, const size_t size, size_t & position) noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция исправления строки, не отвечающей кодировке UTF-8
+			 *
+			 * @details Замена ведётся НАИБОЛЬШЕЙ ОСМЫСЛЕННОЙ ЧАСТЬЮ, как то предписано
+			 * Юникодом: негодная последовательность заменяется ОДНИМ знаком U+FFFD, сколько
+			 * бы октетов она ни заняла. Замена октета за октетом дала бы на усечённой
+			 * четырёхоктетной точке три знака вместо одного
+			 *
+			 * @param buffer буфер исправляемой строки
+			 * @param size   размер исправляемой строки в октетах
+			 * @param result буфер, куда ложится исправленная строка
+			 *
+			 * \~english
+			 * @brief Function of the repair of a string not conforming to the UTF-8 encoding
+			 * @details The substitution is conducted by the MAXIMAL SUBPART as is prescribed by Unicode:
+			 * a malformed sequence is substituted by ONE U+FFFD character however many octets it occupied
+			 * @param buffer buffer of the string being repaired
+			 * @param size size of the string being repaired in octets
+			 * @param result buffer where the repaired string is placed
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ void repair(const uint8_t * buffer, const size_t size, vector <uint8_t> & result) noexcept;
 		};
 	};
 };

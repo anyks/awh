@@ -988,6 +988,40 @@ namespace awh {
 		 *
 		 * \~
 		 */
+		/**
+		 * \~russian
+		 * @brief Способ отбора позиций начала попытки сопоставления
+		 *
+		 * @details Способ избирается порождением по составу выражения и в код
+		 *          вкладывается, отчего снаружи неразличим. Опознание его
+		 *          выведено наружу затем, что отбор есть ускоритель чистый:
+		 *          отключение всякого из способов вердикта не меняет вовсе,
+		 *          а лишь замедляет поиск, - и сличение вердиктов такого
+		 *          отключения не замечает. Сплошная проба гашения показала,
+		 *          что все четыре способа гасились, не сорвав ни одной
+		 *          проверки набора.
+		 *
+		 * \~english
+		 * @brief Way of selecting the positions where a match attempt begins
+		 * @details The way is chosen by the generation according to the composition of
+		 *          the expression and is embedded into the code, hence indistinguishable
+		 *          from the outside. Its identification is exposed because the selection
+		 *          is a pure accelerator: turning off any of the ways does not change the
+		 *          verdict at all and only slows down the search, and comparing verdicts
+		 *          does not notice such a switch-off. A sweeping probe of switching them
+		 *          off showed that all four ways could be switched off without failing
+		 *          a single test of the suite.
+		 *
+		 * \~
+		 */
+		enum class filter_t : uint8_t {
+			NONE      = 0x00, // Отбор позиций не выполняется
+			SEEK      = 0x01, // Отбор поиском ведущего литерала совпадения
+			LINING    = 0x02, // Отбор поиском начал строк текста
+			SIFTING   = 0x03, // Отбор просеиванием байтов по таблице
+			NARROWING = 0x04  // Отбор поиском обязательного литерала совпадения
+		};
+
 		typedef class __AWH_SHARED_EXPORT__ Codegen {
 			private:
 				/**
@@ -1079,6 +1113,17 @@ namespace awh {
 				 * \~
 				 */
 				prefilter_t _prefilter;
+			private:
+				/**
+				 * \~russian
+				 * Способ отбора позиций, порождением избранный
+				 *
+				 * \~english
+				 * Way of selecting the positions chosen by the generation
+				 *
+				 * \~
+				 */
+				filter_t _filter;
 			private:
 				/**
 				 * \~russian
@@ -1520,6 +1565,45 @@ namespace awh {
 				 * \~
 				 */
 				size_t length() const noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод извлечения способа отбора позиций
+				 *
+				 * @return способ отбора позиций, порождением избранный
+				 *
+				 * \~english
+				 * @brief Method of getting the way of selecting the positions
+				 * @return way of selecting the positions chosen by the generation
+				 *
+				 * \~
+				 */
+				filter_t filter() const noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод извлечения признака проверки возможности совпадения
+				 *
+				 * @return признак проверки возможности совпадения перед сопоставлением
+				 *
+				 * \~english
+				 * @brief Method of getting the indication of the check of the possibility of a match
+				 * @return indication of the check of the possibility of a match before matching
+				 *
+				 * \~
+				 */
+				bool feasibility() const noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод извлечения признака отодвигания начала поиска
+				 *
+				 * @return признак отодвигания начала поиска обязательным литералом
+				 *
+				 * \~english
+				 * @brief Method of getting the indication of the shifting of the beginning of the search
+				 * @return indication of the shifting of the beginning of the search by the required literal
+				 *
+				 * \~
+				 */
+				bool skipping() const noexcept;
 			public:
 				/**
 				 * \~russian

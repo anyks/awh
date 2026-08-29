@@ -784,3 +784,50 @@ TEST_F(EthFixture, GatewayRemoveUnsupportedFamily){
 	// Удаление маршрута должно завершиться неудачей
 	ASSERT_FALSE(this->_eth->gateway.remove(route));
 }
+
+/**
+ * @brief Тест отказа подбора маршрута по несличимой паре видов адреса
+ *
+ * @details Закрепляет находку ворошителя `tools/fuzz/eth.cpp` от 29.08.2026. Разбор
+ *          ведётся по виду ШЛЮЗА, а адрес назначения приводился к тому же виду БЕЗ
+ *          ПРОВЕРКИ. У систем GNU заслон стоял на ЧТЕНИИ назначения, а на ЗАПИСИ
+ *          найденного маршрута его не было вовсе: назначение иного вида переписывалось
+ *          шестнадцатью октетами при выделенных четырёх
+ *
+ * @warning Запись хуже чтения: порча уходит за пределы объекта молча, и надзиратель
+ *          ловит её не всегда. У MS Windows та же беда даёт не выход за границу, а
+ *          мусорный ответ - `SOCKADDR_INET` там объединение, места хватает всегда
+ *
+ */
+TEST_F(EthFixture, GatewayMismatchedKindTest){
+	/**
+	 * Шлюз IPv4, а назначение IPv6
+	 */
+	{
+		// Маршрут, каким ведётся проверка
+		awh::eth::gateway_t::route_t route{};
+		// Заводим шлюз маршрута семейства IPv4
+		route.gateway = std::make_unique <awh::net::addr_net_ipv4_t> ();
+		// Заводим адрес назначения маршрута семейства IPv6
+		route.destination = std::make_unique <awh::net::addr_net_ipv6_t> ();
+		// Несличимая пара обязана отвечать отказом, а не порчей памяти
+		ASSERT_NO_THROW(static_cast <void> (this->_eth->gateway.get(route)));
+		// Подбор по несличимой паре обязан отвечать отказом
+		ASSERT_FALSE(this->_eth->gateway.get(route));
+	}
+	/**
+	 * Шлюз IPv6, а назначение IPv4
+	 */
+	{
+		// Маршрут, каким ведётся проверка
+		awh::eth::gateway_t::route_t route{};
+		// Заводим шлюз маршрута семейства IPv6
+		route.gateway = std::make_unique <awh::net::addr_net_ipv6_t> ();
+		// Заводим адрес назначения маршрута семейства IPv4
+		route.destination = std::make_unique <awh::net::addr_net_ipv4_t> ();
+		// Несличимая пара обязана отвечать отказом, а не порчей памяти
+		ASSERT_NO_THROW(static_cast <void> (this->_eth->gateway.get(route)));
+		// Подбор по несличимой паре обязан отвечать отказом
+		ASSERT_FALSE(this->_eth->gateway.get(route));
+	}
+}

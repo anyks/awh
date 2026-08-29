@@ -199,6 +199,10 @@ const char * awh::codec::csv::message(const error_t error) noexcept {
 		case error_t::FILE_NOT_READ:
 			// Выводим описание кода ошибки
 			return "cannot read the table file";
+		// Если разбираемая таблица не помещается в разрядность хранилища
+		case error_t::STORAGE_EXHAUSTED:
+			// Выводим описание кода ошибки
+			return "the table does not fit into the capacity of the storage";
 	}
 	// Выводим сообщение о неизвестной ошибке
 	return "unknown error";
@@ -457,15 +461,29 @@ bool awh::codec::csv::integer(const string_view text, int64_t & result) noexcept
 	if(value.empty())
 		// Выводим признак неудачного приведения
 		return false;
+	// Разобранное значение, выходной переменной ещё не отданное
+	int64_t number = 0;
 	// Выполняем разбор целого числа со знаком
-	const lexical_t::result_t <char> res = lexical_t::fromChars(value.data(), value.data() + value.length(), result);
+	const lexical_t::result_t <char> res = lexical_t::fromChars(value.data(), value.data() + value.length(), number);
 	/**
 	 * Выводим признак успешного приведения, если число разобрано целиком
 	 *
 	 * @note Остаток за числом отвергается намеренно: «52abc» числом не является,
 	 *       и приведение такого поля к 52 скрыло бы ошибку в содержимом
+	 *
+	 * @note Разбор ведётся в СВОЮ переменную, а выходная трогается лишь по успеху:
+	 *       прежде разбор писал прямо в неё, и отвергнутое «1e3» оставляло у звучащего
+	 *       единицу вместо нетронутого значения - ошибка обращения оборачивалась
+	 *       правдоподобным числом
 	 */
-	return (static_cast <bool> (res) && (res.ptr == (value.data() + value.length())));
+	if(static_cast <bool> (res) && (res.ptr == (value.data() + value.length()))){
+		// Запоминаем разобранное значение
+		result = number;
+		// Выводим признак успешного приведения
+		return true;
+	}
+	// Выводим признак неудачного приведения
+	return false;
 }
 /**
  * @brief Метод приведения содержимого поля к целому числу без знака
@@ -493,10 +511,29 @@ bool awh::codec::csv::integer(const string_view text, uint64_t & result) noexcep
 	if((value.front() == '-') || (value.front() == '+'))
 		// Выводим признак неудачного приведения
 		return false;
+	// Разобранное значение, выходной переменной ещё не отданное
+	uint64_t number = 0;
 	// Выполняем разбор целого числа без знака
-	const lexical_t::result_t <char> res = lexical_t::fromChars(value.data(), value.data() + value.length(), result);
-	// Выводим признак успешного приведения, если число разобрано целиком
-	return (static_cast <bool> (res) && (res.ptr == (value.data() + value.length())));
+	const lexical_t::result_t <char> res = lexical_t::fromChars(value.data(), value.data() + value.length(), number);
+	/**
+	 * Выводим признак успешного приведения, если число разобрано целиком
+	 *
+	 * @note Остаток за числом отвергается намеренно: «52abc» числом не является,
+	 *       и приведение такого поля к 52 скрыло бы ошибку в содержимом
+	 *
+	 * @note Разбор ведётся в СВОЮ переменную, а выходная трогается лишь по успеху:
+	 *       прежде разбор писал прямо в неё, и отвергнутое «1e3» оставляло у звучащего
+	 *       единицу вместо нетронутого значения - ошибка обращения оборачивалась
+	 *       правдоподобным числом
+	 */
+	if(static_cast <bool> (res) && (res.ptr == (value.data() + value.length()))){
+		// Запоминаем разобранное значение
+		result = number;
+		// Выводим признак успешного приведения
+		return true;
+	}
+	// Выводим признак неудачного приведения
+	return false;
 }
 /**
  * @brief Метод приведения содержимого поля к числу с плавающей точкой
@@ -515,10 +552,29 @@ bool awh::codec::csv::real(const string_view text, double & result) noexcept {
 	if(value.empty())
 		// Выводим признак неудачного приведения
 		return false;
+	// Разобранное значение, выходной переменной ещё не отданное
+	double number = 0;
 	// Выполняем разбор числа с плавающей точкой
-	const lexical_t::result_t <char> res = lexical_t::fromChars(value.data(), value.data() + value.length(), result);
-	// Выводим признак успешного приведения, если число разобрано целиком
-	return (static_cast <bool> (res) && (res.ptr == (value.data() + value.length())));
+	const lexical_t::result_t <char> res = lexical_t::fromChars(value.data(), value.data() + value.length(), number);
+	/**
+	 * Выводим признак успешного приведения, если число разобрано целиком
+	 *
+	 * @note Остаток за числом отвергается намеренно: «52abc» числом не является,
+	 *       и приведение такого поля к 52 скрыло бы ошибку в содержимом
+	 *
+	 * @note Разбор ведётся в СВОЮ переменную, а выходная трогается лишь по успеху:
+	 *       прежде разбор писал прямо в неё, и отвергнутое «1e3» оставляло у звучащего
+	 *       единицу вместо нетронутого значения - ошибка обращения оборачивалась
+	 *       правдоподобным числом
+	 */
+	if(static_cast <bool> (res) && (res.ptr == (value.data() + value.length()))){
+		// Запоминаем разобранное значение
+		result = number;
+		// Выводим признак успешного приведения
+		return true;
+	}
+	// Выводим признак неудачного приведения
+	return false;
 }
 /**
  * @brief Метод приведения содержимого поля к логическому значению

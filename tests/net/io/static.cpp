@@ -406,7 +406,7 @@ TEST_F(IoFixture, IoTimerPairTest){
 	 *       перезаряжаться, ждать накопления срабатываний бессмысленно - без
 	 *       ограничения тест не падал бы, а висел
 	 */
-	while(((intervals < 5) || (timeouts < 1)) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 10) && this->_io->poll());
+	while(((intervals < 5) || (timeouts < 1)) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 10) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
 	/**
 	 * Проверяем что интервал перезаряжался, а не смолкал после первого срабатывания.
 	 * Именно этой проверки и не хватало: одиночного срабатывания хватало любому
@@ -1760,7 +1760,7 @@ TEST_F(IoFixture, IoTCPTest){
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
 		// Выполняем опрос активных событий
-		while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll());
+		while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
 	}
@@ -2495,7 +2495,7 @@ TEST_F(IoFixture, IoUDPTest){
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
 		// Выполняем опрос активных событий
-		while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll());
+		while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
 	}
@@ -2613,7 +2613,7 @@ TEST_F(IoFixture, IoDatagramInfoTest){
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
 		// Выполняем опрос активных событий
-		while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll());
+		while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
 	}
@@ -3358,7 +3358,7 @@ TEST_F(IoFixture, IoUDPConnectTest){
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
 		// Выполняем опрос активных событий
-		while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll());
+		while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
 	}
@@ -3951,7 +3951,7 @@ TEST_F(IoFixture, IoUDSTest){
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
 		// Выполняем опрос активных событий
-		while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll());
+		while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
 	}
@@ -4688,7 +4688,7 @@ TEST_F(IoFixture, IoUDPUDSTest){
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
 		// Выполняем опрос активных событий
-		while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll());
+		while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
 	}
@@ -5626,7 +5626,7 @@ TEST_F(IoFixture, IoBroadcastTest){
 			// Срок, за который ожидаемое событие обязано прийти
 			const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
 			// Выполняем опрос активных событий
-			while(!stop && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 20) && (std::chrono::steady_clock::now() < deadline) && this->_io->poll());
+			while(!stop && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 20) && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
 			// Если срок вышел, событие через устройство так и не пришло
 			EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
 		}
@@ -6378,7 +6378,7 @@ TEST_F(IoFixture, IoUDPSpliceConnectTest){
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
 		// Выполняем опрос активных событий
-		while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll());
+		while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
 	}
@@ -7006,7 +7006,7 @@ TEST_F(IoFixture, IoFsTest){
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
 		// Выполняем опрос активных событий
-		while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll());
+		while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
 	}
@@ -7244,7 +7244,7 @@ TEST_F(IoFixture, IoFsDirEntriesTest){
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
 		// Выполняем опрос активных событий
-		while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll());
+		while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
 	}
@@ -7493,7 +7493,7 @@ TEST_F(IoFixture, IoFsDirEntriesWindowsTest){
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
 		// Выполняем опрос активных событий
-		while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll());
+		while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
 	}
@@ -7640,7 +7640,7 @@ TEST_F(IoFixture, IoUDSMultiAcceptTest){
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
 		// Выполняем опрос активных событий
-		while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll());
+		while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
 	}
@@ -7789,7 +7789,7 @@ TEST_F(IoFixture, IoFsFollowTest){
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
 		// Выполняем опрос активных событий
-		while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll());
+		while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
 	}
@@ -7910,7 +7910,7 @@ TEST_F(IoFixture, IoFsCyrillicPathTest){
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
 		// Выполняем опрос активных событий
-		while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll());
+		while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
 	}
@@ -8050,7 +8050,7 @@ TEST_F(IoFixture, IoFsWatchStatesTest){
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
 		// Выполняем опрос активных событий
-		while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll());
+		while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
 	}
@@ -8229,7 +8229,7 @@ TEST_F(IoFixture, IoFsForeignRenameTest){
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
 		// Выполняем опрос активных событий
-		while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll());
+		while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
 	}
@@ -8512,7 +8512,7 @@ TEST_F(IoFixture, IoEventsTest){
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
 		// Выполняем опрос активных событий
-		while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll());
+		while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
 	}
@@ -9263,7 +9263,7 @@ TEST_F(IoFixture, IoMulticast1Test){
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
 		// Выполняем опрос активных событий
-		while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(100));
+		while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
 	}
@@ -10095,7 +10095,7 @@ TEST_F(IoFixture, IoMulticast3Test){
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
 		// Выполняем опрос активных событий
-		while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(100));
+		while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
 	}
@@ -10956,7 +10956,7 @@ TEST_F(IoFixture, IoTLSTest){
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
 		// Выполняем опрос активных событий
-		while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll());
+		while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
 	}
@@ -11817,7 +11817,7 @@ TEST_F(IoFixture, IoMultiTLSTest){
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
 		// Выполняем опрос активных событий
-		while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll());
+		while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
 	}
@@ -12661,7 +12661,7 @@ TEST_F(IoFixture, IoDTLSTest){
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
 		// Выполняем опрос активных событий
-		while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll());
+		while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
 	}
@@ -13579,7 +13579,7 @@ TEST_F(IoFixture, IoDTLSTest){
 			// Срок, за который ожидаемое событие обязано прийти
 			const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
 			// Выполняем опрос активных событий
-			while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll());
+			while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
 			// Если срок вышел, событие через устройство так и не пришло
 			EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
 		}
@@ -14419,7 +14419,7 @@ TEST_F(IoFixture, IoDTLSTest){
 			// Срок, за который ожидаемое событие обязано прийти
 			const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
 			// Выполняем опрос активных событий
-			while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll());
+			while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
 			// Если срок вышел, событие через устройство так и не пришло
 			EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
 		}
@@ -15367,7 +15367,7 @@ TEST_F(IoFixture, IoDTLSTest){
 			// Срок, за который ожидаемое событие обязано прийти
 			const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
 			// Выполняем опрос активных событий
-			while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll());
+			while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
 			// Если срок вышел, событие через устройство так и не пришло
 			EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
 		}
@@ -16456,7 +16456,7 @@ TEST_F(IoFixture, IoDTLSTest){
 			// Срок, за который ожидаемое событие обязано прийти
 			const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
 			// Выполняем опрос активных событий
-			while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll());
+			while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
 			// Если срок вышел, событие через устройство так и не пришло
 			EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
 		}
@@ -17517,7 +17517,7 @@ TEST_F(IoFixture, IoDTLSTest){
 			// Срок, за который ожидаемое событие обязано прийти
 			const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
 			// Выполняем опрос активных событий
-			while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll());
+			while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
 			// Если срок вышел, событие через устройство так и не пришло
 			EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
 		}
@@ -17684,7 +17684,7 @@ TEST_F(IoFixture, IoOriginKeyedRoutingTest){
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
 		// Выполняем опрос активных событий
-		while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll());
+		while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
 	}
@@ -17853,7 +17853,7 @@ TEST_F(IoFixture, IoOriginLimitTest){
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
 		// Выполняем опрос активных событий
-		while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll());
+		while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
 	}
@@ -17990,7 +17990,7 @@ TEST_F(IoFixture, IoOriginNamespaceTest){
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
 		// Выполняем опрос активных событий
-		while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll());
+		while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
 	}
@@ -18105,7 +18105,7 @@ TEST_F(IoFixture, IoOriginBindTest){
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
 		// Выполняем опрос активных событий
-		while(!stop && (sessions == 0) && (std::chrono::steady_clock::now() < deadline) && this->_io->poll());
+		while(!stop && (sessions == 0) && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
 	}
@@ -18142,7 +18142,7 @@ TEST_F(IoFixture, IoOriginBindTest){
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
 		// Выполняем опрос активных событий
-		while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll());
+		while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
 	}
@@ -18179,7 +18179,7 @@ TEST_F(IoFixture, IoOriginBindTest){
 		// Срок, за который ожидаемое событие обязано прийти
 		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
 		// Выполняем опрос активных событий
-		while(!stop && (sessions < 2) && (std::chrono::steady_clock::now() < deadline) && this->_io->poll());
+		while(!stop && (sessions < 2) && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
 		// Если срок вышел, событие через устройство так и не пришло
 		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
 	}
@@ -19303,7 +19303,7 @@ TEST_F(IoFixture, IoConnectTimeoutAbandonsPendingTest){
 	ASSERT_TRUE(this->_io->launch(eid));
 	ASSERT_TRUE(this->_io->launch(tick));
 	const auto start = std::chrono::steady_clock::now();
-	while((std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 3000) && this->_io->poll());
+	while((std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 3000) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
 	const std::string sign = std::string("сроков=") + std::to_string(expirations) + " отказов=" + std::to_string(failures) + " удач=" + std::to_string(successes);
 	/**
 	 * Если срок не истёк, а ядро назвало причиной отсутствие маршрута - окружение
@@ -19467,7 +19467,7 @@ TEST_F(IoFixture, IoDestroyOverridesAutoReconnectTest){
 	ASSERT_TRUE(this->_io->launch(tick));
 	// Дожидаемся подключения
 	auto start = std::chrono::steady_clock::now();
-	while((successes < 1) && (std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 2000) && this->_io->poll());
+	while((successes < 1) && (std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 2000) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
 	ASSERT_EQ(1, successes);
 	// Уничтожаем событие по своей воле, не снимая опции самостоятельного переподключения
 	this->_io->destroy(eid);
@@ -19475,7 +19475,7 @@ TEST_F(IoFixture, IoDestroyOverridesAutoReconnectTest){
 	const uint8_t reborn = rebirths, connected = successes;
 	// Крутим цикл заведомо дольше срока переподключения, давая подъёму случиться
 	start = std::chrono::steady_clock::now();
-	while((std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 2000) && this->_io->poll());
+	while((std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 2000) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
 	const std::string sign = std::string("возрождений=") + std::to_string(rebirths - reborn) +
 		" подключений=" + std::to_string(successes - connected);
 	// Уничтоженное по воле вызывающего событие не вправе подняться ни разу
@@ -19533,7 +19533,7 @@ TEST_F(IoFixture, IoRebuildRevivesClientTest){
 	ASSERT_TRUE(this->_io->launch(tick));
 	// Дожидаемся первого подключения
 	auto start = std::chrono::steady_clock::now();
-	while((successes < 1) && (std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 2000) && this->_io->poll());
+	while((successes < 1) && (std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 2000) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
 	ASSERT_EQ(1, successes);
 	// Возвращаем событие в работу перестройкой
 	const bool rebuilt = this->_io->rebuild(eid);
@@ -19541,7 +19541,7 @@ TEST_F(IoFixture, IoRebuildRevivesClientTest){
 	const bool relaunched = (reconnected && this->_io->launch(eid));
 	// Дожидаемся второго подключения
 	start = std::chrono::steady_clock::now();
-	while((successes < 2) && (std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 2000) && this->_io->poll());
+	while((successes < 2) && (std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 2000) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
 	const std::string sign = std::string("перестройка=") + (rebuilt ? "да" : "нет") +
 		" подключение=" + (reconnected ? "да" : "нет") + " запуск=" + (relaunched ? "да" : "нет") +
 		" удач=" + std::to_string(successes) + " отказов=" + std::to_string(failures);
@@ -19645,7 +19645,7 @@ TEST_F(IoFixture, IoAutoReconnectAfterConnectTimeoutTest){
 	ASSERT_TRUE(this->_io->launch(eid));
 	ASSERT_TRUE(this->_io->launch(tick));
 	const auto start = std::chrono::steady_clock::now();
-	while((std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 4000) && this->_io->poll());
+	while((std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 4000) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
 	const std::string sign = std::string("сроков=") + std::to_string(expirations) +
 		" переподключений=" + std::to_string(reconnects) + " отказов=" + std::to_string(failures) +
 		" удач=" + std::to_string(successes) + " состояния: " + trace;
@@ -19751,7 +19751,15 @@ TEST_F(IoFixture, IoAutoReconnectOnTimeoutRefusalTest){
 	uint32_t slowest = 0;
 	while((std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 4000)){
 		const auto tock = std::chrono::steady_clock::now();
-		const bool ok = this->_io->poll();
+		/**
+		 * Опрос с пределом по сроку самого цикла
+		 *
+		 * @warning Умолчанием опрос ждёт БЕЗ ПРЕДЕЛА, и не приди событие вовсе - замер
+		 *          повис бы внутри одного оборота, не дойдя до собственного сторожа.
+		 *          Предел взят равным окну замера: события приходят много раньше, и на
+		 *          измеряемую величину он не влияет, а зависание отсекает
+		 */
+		const bool ok = this->_io->poll(4000);
 		const uint32_t spent = static_cast <uint32_t> (std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - tock).count());
 		if(spent > slowest) slowest = spent;
 		if(!ok) break;
@@ -19859,7 +19867,7 @@ TEST_F(IoFixture, IoRebuildDuringReconnectTest){
 	ASSERT_TRUE(this->_io->launch(tick));
 	// Дожидаемся первого подключения
 	auto start = std::chrono::steady_clock::now();
-	while((successes < 1) && (std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 2000) && this->_io->poll());
+	while((successes < 1) && (std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 2000) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
 	ASSERT_EQ(1, successes);
 	/**
 	 * Рвём связь со стороны получателя: принимаем подключение и закрываем принятый
@@ -19876,7 +19884,7 @@ TEST_F(IoFixture, IoRebuildDuringReconnectTest){
 	ASSERT_EQ(0, ::closesocket(peer));
 	// Даём обрыву дойти и назначению состояться, не дожидаясь самого подъёма
 	start = std::chrono::steady_clock::now();
-	while((std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 400) && this->_io->poll());
+	while((std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 400) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
 	// Возвращаем событие в работу перестройкой поверх назначенного переподключения
 	const bool rebuilt = this->_io->rebuild(eid);
 	const bool reconnected = (rebuilt && this->_io->connect(eid));
@@ -19886,7 +19894,7 @@ TEST_F(IoFixture, IoRebuildDuringReconnectTest){
 	 * проявился бы именно после её истечения
 	 */
 	start = std::chrono::steady_clock::now();
-	while((std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 2500) && this->_io->poll());
+	while((std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 2500) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
 	const std::string sign = std::string("перестройка=") + (rebuilt ? "да" : "нет") +
 		" подключение=" + (reconnected ? "да" : "нет") + " запуск=" + (relaunched ? "да" : "нет") +
 		" удач=" + std::to_string(successes) + " отказов=" + std::to_string(failures);
@@ -20003,7 +20011,7 @@ TEST_F(IoFixture, IoAbandonedClientStaysUsableTest){
 	ASSERT_TRUE(this->_io->launch(tick));
 	// Дожидаемся истечения срока ожидания подключения
 	auto start = std::chrono::steady_clock::now();
-	while((expirations < 1) && (std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 3000) && this->_io->poll());
+	while((expirations < 1) && (std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 3000) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
 	/**
 	 * Если срок не истёк, а ядро назвало причиной отсутствие маршрута - окружение
 	 * для опыта негодно, и проверка отступает, а не отказывает. Довод тот же, что и
@@ -20113,7 +20121,7 @@ TEST_F(IoFixture, IoPromptDeadlineAfterIntervalTest){
 	 * перезарядка интервала уже лежит в очереди изменений отложенным взводом
 	 */
 	auto start = std::chrono::steady_clock::now();
-	while((intervals < 1) && (std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 3000) && this->_io->poll());
+	while((intervals < 1) && (std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 3000) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
 	ASSERT_GE(intervals, 1);
 	/**
 	 * Взводим ближний срок мгновенным путём
@@ -20124,7 +20132,7 @@ TEST_F(IoFixture, IoPromptDeadlineAfterIntervalTest){
 	const auto armed = std::chrono::steady_clock::now();
 	ASSERT_TRUE(this->_io->rearmTimeout(prompt, awh::event::action_t::NONE, PROMPT));
 	// Дожидаемся наступления ближнего срока
-	while((prompts < 1) && (std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - armed).count() < 3000) && this->_io->poll());
+	while((prompts < 1) && (std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - armed).count() < 3000) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
 	// Запоминаем время, за которое ближний срок наступил
 	const int64_t spent = std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - armed).count();
 	// Собираем подпись для отчёта об отказе
@@ -20303,7 +20311,7 @@ TEST_F(IoFixture, IoTimerAndSocketSameBatchTest){
 	// Запоминаем время начала опроса событий
 	const auto start = std::chrono::steady_clock::now();
 	// Ведём опрос событий отведённое стенду время
-	while((std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 2000) && this->_io->poll());
+	while((std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 2000) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
 	// Останавливаем поток
 	running.store(false);
 	// Дожидаемся завершения нити потока
@@ -21323,7 +21331,15 @@ TEST_F(IoFixture, IoSnapshotHandoffTest){
 			 *       снимка: отклик работает посреди разбора событий, а правка подписок
 			 *       принадлежит самому циклу опроса
 			 */
-			while(!accepted && this->_io->poll()){
+			/**
+			 * Срок, за какой подключение обязано быть принято
+			 *
+			 * @warning Сторожа тут не было НИКАКОГО: не примись подключение - цикл не
+			 *          кончился бы никогда, и работник висел бы молча, а проверка ждала
+			 *          бы его до предела набора. Отсутствие сторожа хуже недостижимого
+			 */
+			const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
+			while(!accepted && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(__AWH_TEST_POLL_SLICE__)){
 				/**
 				 * Если событие поднято, но приём подключений ещё не включён
 				 *
@@ -21786,7 +21802,7 @@ TEST_F(IoFixture, IoManyReadyDescriptorsTest){
 	// Срок, отведённый на приём всех сообщений
 	const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
 	// Выполняем опрос событий, пока не придут все сообщения либо не выйдет срок
-	while((received < COUNT) && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(100));
+	while((received < COUNT) && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
 	// Проверяем, что дошли все отправленные сообщения
 	ASSERT_EQ(COUNT, received) << "часть готовности потеряна: пришло " << received << " из " << COUNT;
 	// Уничтожаем все события движка
