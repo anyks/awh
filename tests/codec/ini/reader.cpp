@@ -1347,3 +1347,85 @@ TEST(CodecIniReader, UnsetSettingsFieldsByEvents) {
 		ASSERT_NE(trace(text, fallback), trace(text, tuned));
 	}
 }
+/**
+ * @brief Проверка кодов отказа, ни одной проверкой не сличаемых
+ *
+ * @details Восемь кодов отказа набор проверок не сличал ни разу: отказ проверялся
+ *          самим отказом, а причина его - нет. Код отказа есть договор кодека с
+ *          потребителем наравне с самим отказом: по нему потребитель судит, чинить ли
+ *          текст, поднимать ли предел либо просить новый кусок, и код неверный уводит
+ *          его в сторону, тогда как отказ остаётся на месте
+ *
+ * @note Всякий заход даёт настройку, отказ ему открывающую: предел строки, предел
+ *       продолжений и отказ на повтор раздела при обращении с повторами по умолчанию
+ *       не действуют вовсе
+ *
+ * @note Кода INTERNAL тут нет: он есть застава последнего рубежа, доводом
+ *       недостижимая. Кода UNEXPECTED_EOF нет тоже: разбор не выдаёт его нигде - он
+ *       заведён заделом на будущее
+ *
+ */
+TEST(CodecIniReader, RefusalCodes) {
+	/**
+	 * @brief Описание проверяемого захода отказа
+	 *
+	 */
+	struct probe_t {
+		// Пояснение проверяемого захода
+		const char * note;
+		// Разбираемый текст настроек
+		const char * text;
+		// Ожидаемый код отказа разбора
+		ini::error_t error;
+		// Тело, настройку захода задающее
+		void (* tune)(ini::reader_t::settings_t & settings) noexcept;
+	};
+	// Набор проверяемых заходов отказа
+	static const probe_t PROBES[] = {
+		{"имя раздела не закрыто скобкой", "[раздел\n", ini::error_t::UNCLOSED_SECTION,
+		 [](ini::reader_t::settings_t &) noexcept -> void {}},
+		{"за именем раздела содержимое лишнее", "[раздел] хвост\n", ini::error_t::UNEXPECTED_CONTENT,
+		 [](ini::reader_t::settings_t &) noexcept -> void {}},
+		{"имя свойства пусто", "= значение\n", ini::error_t::EMPTY_KEY,
+		 [](ini::reader_t::settings_t &) noexcept -> void {}},
+		{"строка длиннее предела", "a = значение\n", ini::error_t::LINE_TOO_LONG,
+		 [](ini::reader_t::settings_t & settings) noexcept -> void {
+			// Задаём предел длины строки, разбираемым текстом превышаемый
+			settings.maxLine = 4;
+		}},
+		{"продолжений больше предела", "a = один \\\nдва \\\nтри\n", ini::error_t::CONTINUATION_EXCEEDED,
+		 [](ini::reader_t::settings_t & settings) noexcept -> void {
+			// Задаём признание строк продолжения
+			settings.continuations = true;
+			// Задаём предел числа продолжений, разбираемым текстом превышаемый
+			settings.maxContinuation = 1;
+		}},
+		{"раздел объявлен дважды", "[раздел]\na = 1\n[раздел]\nb = 2\n", ini::error_t::DUPLICATE_SECTION,
+		 [](ini::reader_t::settings_t & settings) noexcept -> void {
+			// Задаём отказ разбора на повтор объявления раздела
+			settings.duplicates = ini::duplicate_t::ERROR;
+		}}
+	};
+	/**
+	 * Выполняем перебор проверяемых заходов отказа
+	 */
+	for(auto & probe : PROBES){
+		// Настройки разбора текста настроек
+		ini::reader_t::settings_t settings;
+		// Выполняем задание настройки, заходу потребной
+		probe.tune(settings);
+		// Объект потокового чтения текста
+		ini::reader_t reader(::logger(), settings);
+		// Выполняем подачу разбираемого текста настроек
+		ASSERT_TRUE(reader.feed(probe.text)) << probe.note;
+		/**
+		 * Выполняем перебор всех событий разбора
+		 *
+		 * @note Подача текста отказа не выдаёт: она лишь копит текст, а разбор идёт
+		 *       перебором событий, и код отказа выдаётся по его окончании
+		 */
+		while(reader.next());
+		// Выполняем проверку выданного кода отказа разбора
+		ASSERT_EQ(reader.error(), probe.error) << probe.note;
+	}
+}
