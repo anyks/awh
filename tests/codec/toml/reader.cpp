@@ -2282,3 +2282,63 @@ TEST(CodecTomlReader, RefusalCodes) {
 		ASSERT_EQ(document.error(), toml::error_t::APPEND_TO_TABLE);
 	}
 }
+/**
+ * @brief Проверка событий объявления набора таблиц и встроенной таблицы
+ *
+ * @details Виды событий ARRAY_TABLE, INLINE_OPEN и INLINE_CLOSE набор проверок не
+ *          сличал ни разу: потребитель потокового разбора разбирает выдачу по виду
+ *          события, и вид неверный уводит его в сторону молча - выдача остаётся, а
+ *          смысл её меняется. Набор таблиц потребитель тем самым принял бы за таблицу
+ *          обычную, а встроенную таблицу - за перечень
+ *
+ * @note Судится ряд событий дословно вместе с именами ключей: вид события без имени
+ *       ключа договора не выражает - по имени потребитель и строит своё дерево
+ *
+ */
+TEST(CodecTomlReader, ArrayTableAndInlineEvents) {
+	// Объект потокового чтения текста
+	toml::reader_t reader(::logger());
+	// Разбираемый текст с набором таблиц и встроенной таблицей
+	const string text = "[[items]]\nname = \"первый\"\npoint = {x = 1, y = 2}\n";
+	// Выполняем проверку успешности разбора текста
+	ASSERT_TRUE(reader.feed(text.data(), text.size(), true));
+	// Собираемый ряд событий разбора
+	string result;
+	/**
+	 * Выполняем перебор всех событий разбора
+	 */
+	while(reader.next()){
+		// Выполняем запись вида очередного события числом
+		result.append(std::to_string(static_cast <uint32_t> (reader.event())));
+		/**
+		 * Если событие имя ключа несёт
+		 */
+		if(reader.event() == toml::event_t::KEY){
+			/**
+			 * Выполняем перебор составных частей имени ключа
+			 */
+			for(auto & part : reader.path())
+				// Выполняем запись составной части имени ключа
+				result.append("«").append(part.name).append("»");
+		}
+		// Выполняем запись разделителя событий
+		result.append("\n");
+	}
+	// Выполняем проверку собранного ряда событий разбора
+	ASSERT_EQ(result,
+		// Объявление очередной таблицы набора таблиц
+		string(std::to_string(static_cast <uint32_t> (toml::event_t::ARRAY_TABLE))).append("\n")
+		// Имя простого ключа вместе со значением его
+		.append(std::to_string(static_cast <uint32_t> (toml::event_t::KEY))).append("«name»\n")
+		.append(std::to_string(static_cast <uint32_t> (toml::event_t::VALUE))).append("\n")
+		// Имя ключа встроенной таблицы вместе с её открытием
+		.append(std::to_string(static_cast <uint32_t> (toml::event_t::KEY))).append("«point»\n")
+		.append(std::to_string(static_cast <uint32_t> (toml::event_t::INLINE_OPEN))).append("\n")
+		// Пары встроенной таблицы
+		.append(std::to_string(static_cast <uint32_t> (toml::event_t::KEY))).append("«x»\n")
+		.append(std::to_string(static_cast <uint32_t> (toml::event_t::VALUE))).append("\n")
+		.append(std::to_string(static_cast <uint32_t> (toml::event_t::KEY))).append("«y»\n")
+		.append(std::to_string(static_cast <uint32_t> (toml::event_t::VALUE))).append("\n")
+		// Закрытие встроенной таблицы
+		.append(std::to_string(static_cast <uint32_t> (toml::event_t::INLINE_CLOSE))).append("\n"));
+}
