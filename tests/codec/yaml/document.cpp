@@ -3239,3 +3239,31 @@ TEST(CodecYamlDocument, WholeDoubleKeepsFractionalPart) {
 	// Выполняем проверку того, что запись целого дробной не числится
 	ASSERT_FALSE(document.root()["значения"]["прежнее"].is(yaml::type_t::DOUBLE));
 }
+/**
+ * @brief Проверка отказа пометки узла ссылкою чужой либо недействительной
+ *
+ * @details Пометка узла правленым берёт ссылку на узел, и ссылка эта обязана
+ *          принадлежать тому самому дереву: ссылка чужого дерева указывает номером на
+ *          узел свой, а у нас тем номером стоял бы узел посторонний, и пометка легла бы
+ *          не туда. Строку этого отказа пересечение прогонов числило слепой -
+ *          помечались лишь узлы свои
+ *
+ */
+TEST(CodecYamlDocument, TouchRefusesForeignAndInvalidReference) {
+	// Объект первого дерева документа
+	yaml::document_t document(::logger());
+	// Выполняем разбор текста в первое дерево документа
+	ASSERT_TRUE(document.parse("server:\n  port: 8080\n"));
+	// Объект второго дерева документа
+	yaml::document_t other(::logger());
+	// Выполняем разбор текста во второе дерево документа
+	ASSERT_TRUE(other.parse("server:\n  port: 9090\n"));
+	// Выполняем проверку пометки узла ссылкою своего дерева
+	ASSERT_TRUE(document.touch(document.root().at("/server/port")));
+	// Выполняем проверку отказа пометки узла ссылкою дерева чужого
+	ASSERT_FALSE(document.touch(other.root().at("/server/port")));
+	// Выполняем проверку отказа пометки узла ссылкою недействительной
+	ASSERT_FALSE(document.touch(document.root().at("/server/нет")));
+	// Выполняем проверку отказа пометки узла ссылкою, дерева за собою не имеющей
+	ASSERT_FALSE(document.touch(yaml::document_t::value_t()));
+}
