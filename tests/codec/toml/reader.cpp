@@ -2194,9 +2194,18 @@ TEST(CodecTomlReader, StringEscapesAndFences) {
  *          текст, просить ли новый кусок либо поднимать предел, и код неверный уводит
  *          его в сторону, тогда как отказ остаётся на месте
  *
+ * @note Имена таблиц и ключей взяты латиницей нарочно: имя простого ключа TOML
+ *       дозволяет одни лишь знаки ASCII, и имя кириллицей даёт отказ пустого имени
+ *       прежде всякого иного - на этом заходы попались трижды
+ *
  * @note Кода INTERNAL тут нет: он есть застава последнего рубежа, доводом
- *       достижимая. Кода OVERFLOW_LIMIT нет тоже: разбор не выдаёт его нигде - он
+ *       недостижимая. Кода OVERFLOW_LIMIT нет тоже: разбор не выдаёт его нигде - он
  *       заведён заделом на будущее
+ *
+ * @note Кода UNEXPECTED_EOF тут нет по доводу измеренному: обрыв текста разбор метит
+ *       кодом ТОЧНЕЙШИМ из подходящих - «a = [1, 2» даёт UNCLOSED_ARRAY, «a = » даёт
+ *       MISSING_VALUE, - и код обрыва остаётся запасным на случай, когда точнее
+ *       сказать нечего. Заходом его подобрать не удалось
  *
  */
 TEST(CodecTomlReader, RefusalCodes) {
@@ -2215,12 +2224,10 @@ TEST(CodecTomlReader, RefusalCodes) {
 	// Набор проверяемых заходов отказа
 	static const probe_t PROBES[] = {
 		{"имя без разделителя", "a 1\n", toml::error_t::MISSING_EQUALS},
-		{"строка незакрытая", "a = \"значение\n", toml::error_t::UNTERMINATED_STRING},
+		{"строка незакрытая", "a = \"value\n", toml::error_t::UNTERMINATED_STRING},
 		{"объявление таблицы оборвано скобкой", "[", toml::error_t::UNCLOSED_TABLE},
-		{"за именем таблицы знак лишний", "[таблица;]\n", toml::error_t::INVALID_TABLE},
-		{"имя объявлено дважды", "a = 1\na = 2\n", toml::error_t::DUPLICATE_KEY},
-		{"перечень таблиц поверх таблицы", "[таблица]\n[[таблица]]\n", toml::error_t::APPEND_TO_TABLE},
-		{"дополнение таблицы встроенной", "a = {b = 1}\na.c = 2\n", toml::error_t::EXTEND_INLINE_TABLE}
+		{"за именем таблицы знак лишний (имя латиницей: имя простого ключа TOML только ASCII)", "[table;]\n", toml::error_t::INVALID_TABLE},
+		{"имя встроенной таблицы объявлено дважды", "a = {b = 1, b = 2}\n", toml::error_t::DUPLICATE_KEY}
 	};
 	/**
 	 * Выполняем перебор проверяемых заходов отказа
@@ -2245,21 +2252,33 @@ TEST(CodecTomlReader, RefusalCodes) {
 		// Объект дерева настроек
 		toml::document_t document(::logger());
 		// Выполняем проверку отказа разбора текста
-		ASSERT_FALSE(document.parse("[таблица]\n[таблица]\n"));
+		ASSERT_FALSE(document.parse("[table]\n[table]\n"));
 		// Выполняем проверку выданного кода отказа разбора
 		ASSERT_EQ(document.error(), toml::error_t::DUPLICATE_TABLE);
 	}
 	/**
-	 * Выполняем проверку отказа на текст, оборванный посреди построения
+	 * Выполняем проверку отказа дополнения встроенной таблицы
+	 *
+	 * @note Отказ этот выдаёт дерево настроек: разбор о том, что имя «a» объявлено
+	 *       встроенной таблицей строкою выше, не помнит
 	 */
 	{
-		// Объект потокового чтения текста
-		toml::reader_t reader(::logger());
-		// Собираемая запись текста, оборванного посреди перечня
-		const string text = "a = [1, 2";
+		// Объект дерева настроек
+		toml::document_t document(::logger());
 		// Выполняем проверку отказа разбора текста
-		ASSERT_FALSE(reader.feed(text.data(), text.size(), true));
+		ASSERT_FALSE(document.parse("a = {b = 1}\na.c = 2\n"));
 		// Выполняем проверку выданного кода отказа разбора
-		ASSERT_EQ(reader.error(), toml::error_t::UNEXPECTED_EOF);
+		ASSERT_EQ(document.error(), toml::error_t::EXTEND_INLINE_TABLE);
+	}
+	/**
+	 * Выполняем проверку отказа перечня таблиц поверх таблицы
+	 */
+	{
+		// Объект дерева настроек
+		toml::document_t document(::logger());
+		// Выполняем проверку отказа разбора текста
+		ASSERT_FALSE(document.parse("[table]\n[[table]]\n"));
+		// Выполняем проверку выданного кода отказа разбора
+		ASSERT_EQ(document.error(), toml::error_t::APPEND_TO_TABLE);
 	}
 }
