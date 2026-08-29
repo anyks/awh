@@ -968,13 +968,16 @@ TEST(CodecAbcReader, CanonicalRefusal){
 	 * @param canonical признак поверки на строгий вид
 	 * @return          код отказа разбора
 	 */
-	auto digest = [](const vector <uint8_t> & record, const bool canonical) noexcept -> abc::error_t {
+	auto digest = [](const vector <uint8_t> & record, const bool canonical,
+	 const abc::duplicate_t duplicates = abc::duplicate_t::KEEP) noexcept -> abc::error_t {
 		// Разборщик бинарной записи
 		abc::reader_t reader(::logger());
 		// Выполняем получение настроек разбора
 		abc::reader_t::settings_t settings = reader.settings();
 		// Выполняем установку признака поверки на строгий вид
 		settings.canonical = canonical;
+		// Выполняем установку правила обращения с повтором имени поля
+		settings.duplicates = duplicates;
 		// Выполняем установку настроек разбора
 		reader.settings(settings);
 		// Если подача записи разборщику отвечена отказом
@@ -996,12 +999,28 @@ TEST(CodecAbcReader, CanonicalRefusal){
 	const vector <uint8_t> indefinite = {0x9F, 0x01, 0xDF};
 	/**
 	 * Вне строгого вида разбираются ВСЕ пять записей: поверка есть настройка
+	 *
+	 * @note Повтор имени поля разбирается лишь при правиле, его дозволяющем: умолчанием
+	 * взят ОТКАЗ, и он поверяется ниже отдельно. Прочие четыре записи от правила этого
+	 * не зависят вовсе
 	 */
 	ASSERT_EQ(digest(strict, false), abc::error_t::NONE);
 	ASSERT_EQ(digest(unordered, false), abc::error_t::NONE);
 	ASSERT_EQ(digest(duplicate, false), abc::error_t::NONE);
 	ASSERT_EQ(digest(wide, false), abc::error_t::NONE);
 	ASSERT_EQ(digest(indefinite, false), abc::error_t::NONE);
+	/**
+	 * Повтор имени поля отвергается УМОЛЧАНИЕМ вне строгого вида
+	 *
+	 * @details Умолчание это объявлено у самого правила `duplicate_t`: молчаливый выбор
+	 * одного из двух значений означал бы потерю данных, а повтор имени есть приём
+	 * путаницы разборов. Прочие четыре записи повтора не несут и умолчанием проходят
+	 */
+	ASSERT_EQ(digest(duplicate, false, abc::duplicate_t::REFUSE), abc::error_t::DUPLICATE_KEY);
+	ASSERT_EQ(digest(strict, false, abc::duplicate_t::REFUSE), abc::error_t::NONE);
+	ASSERT_EQ(digest(unordered, false, abc::duplicate_t::REFUSE), abc::error_t::NONE);
+	ASSERT_EQ(digest(wide, false, abc::duplicate_t::REFUSE), abc::error_t::NONE);
+	ASSERT_EQ(digest(indefinite, false, abc::duplicate_t::REFUSE), abc::error_t::NONE);
 	/**
 	 * Строгим видом принимается лишь строгая запись, прочие отвергаются по своему поводу
 	 */

@@ -1164,10 +1164,16 @@ TEST(CodecJsonWriter, RefusalReportsErrorCode) {
 		ASSERT_TRUE(writer.object());
 		// Выполняем проверку записи имени поля объекта
 		ASSERT_TRUE(writer.key("имя"));
-		// Выполняем проверку отказа записи имени поля повторно
+		/**
+		 * Выполняем проверку отказа записи имени поля повторно
+		 *
+		 * @note Код отказа - `EXPECTED_VALUE`: повторено ничего не было, недостаёт
+		 *       значения. Прежде здесь стоял `DUPLICATE_KEY`, договором отведённый
+		 *       повторённому ИМЕНИ поля
+		 */
 		ASSERT_FALSE(writer.key("второе"));
 		// Выполняем проверку кода отказа записи
-		ASSERT_EQ(writer.error(), json::error_t::DUPLICATE_KEY);
+		ASSERT_EQ(writer.error(), json::error_t::EXPECTED_VALUE);
 	}
 	{
 		// Запись документа
@@ -1188,5 +1194,46 @@ TEST(CodecJsonWriter, RefusalReportsErrorCode) {
 		ASSERT_EQ(writer.error(), json::error_t::INVALID_NUMBER);
 		// Выполняем проверку описания кода отказа записи
 		ASSERT_STRNE(json::message(writer.error()), json::message(json::error_t::NONE));
+	}
+}
+/**
+ * @brief Проверка смысла кода отказа при недостающем значении
+ *
+ * @details Имя поля, записанное дважды подряд, и объект, закрытый с именем без значения, -
+ * это недостающее ЗНАЧЕНИЕ, а не повторённое имя. Код `DUPLICATE_KEY` договором отведён
+ * повторённому имени поля, и разбор выставляет его именно в этом смысле: один код на два
+ * разных случая лишил бы звучащего возможности отличить порчу данных от своей же ошибки
+ * обращения к сборщику
+ */
+TEST(CodecJsonWriter, MissingValueIsNotDuplicateKey){
+	/**
+	 * Второе имя поля подряд
+	 */
+	{
+		// Объект записи текста документа
+		json::writer_t writer(::logger());
+		// Выполняем открытие объекта
+		ASSERT_TRUE(writer.object());
+		// Выполняем запись имени поля объекта
+		ASSERT_TRUE(writer.key("первое"));
+		// Выполняем проверку отказа записи второго имени подряд
+		ASSERT_FALSE(writer.key("второе"));
+		// Выполняем проверку кода отказа записи
+		ASSERT_EQ(writer.error(), json::error_t::EXPECTED_VALUE);
+	}
+	/**
+	 * Закрытие объекта с именем поля, значения не получившим
+	 */
+	{
+		// Объект записи текста документа
+		json::writer_t writer(::logger());
+		// Выполняем открытие объекта
+		ASSERT_TRUE(writer.object());
+		// Выполняем запись имени поля объекта
+		ASSERT_TRUE(writer.key("имя"));
+		// Выполняем проверку отказа закрытия объекта
+		ASSERT_FALSE(writer.close());
+		// Выполняем проверку кода отказа записи
+		ASSERT_EQ(writer.error(), json::error_t::EXPECTED_VALUE);
 	}
 }

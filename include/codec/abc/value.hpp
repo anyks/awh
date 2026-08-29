@@ -976,6 +976,32 @@ namespace awh {
 					 * \~
 					 */
 					[[nodiscard]] bool parse(const void * buffer, const size_t size) noexcept;
+				public:
+					/**
+					 * \~russian
+					 * @brief Метод разбора записи затребованными настройками разбора
+					 *
+					 * @details Настройки нужны там, где запись собрана укладом, какой разбор
+					 * умолчанием отвергает: повтор имени поля отображения отвергается умолчанием,
+					 * и без этого вида работы владеющее значение такой записи не прочло бы вовсе
+					 *
+					 * @param buffer   буфер разбираемой записи
+					 * @param size     размер разбираемой записи
+					 * @param settings настройки разбора записи
+					 * @return         признак успешного разбора
+					 *
+					 * \~english
+					 * @brief Method of the parsing of a record by the demanded settings of the parsing
+					 * @details The settings are needed where a record is assembled by an order which the parsing
+					 * refuses by default
+					 * @param buffer buffer of the record being parsed
+					 * @param size size of the record being parsed
+					 * @param settings settings of the parsing of the record
+					 * @return flag of the successful parsing
+					 *
+					 * \~
+					 */
+					[[nodiscard]] bool parse(const void * buffer, const size_t size, const reader_t::settings_t & settings) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод сборки записи из владеющего значения

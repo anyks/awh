@@ -109,8 +109,24 @@ static constexpr const char * TUNNEL_PEER  = "10.77.0.2";
  *
  */
 static uint16_t tunnelPort() noexcept {
-	// Нижняя и верхняя границы разряда портов, отведённого под временные
-	constexpr uint16_t BEGIN = 49152, END = 65535;
+	/**
+	 * Нижняя и верхняя границы разряда портов, отведённого проверкам
+	 *
+	 * @details Разряд вычисляется ОДИН раз за процесс и лежит ВНЕ того, каким
+	 *          распоряжается система: подробности у `__awh_test_port_range__`
+	 */
+	static const std::pair <uint16_t, uint16_t> range = [](void) noexcept -> std::pair <uint16_t, uint16_t> {
+		// Границы разряда, отводимого проверкам
+		uint16_t begin = 0, end = 0;
+		// Выполняем выбор разряда портов для проверок
+		__awh_test_port_range__(begin, end);
+		// Выводим выбранный разряд портов
+		return std::make_pair(begin, end);
+	}();
+	// Нижняя граница разряда портов, отведённого проверкам
+	const uint16_t BEGIN = range.first;
+	// Верхняя граница разряда портов, отведённого проверкам
+	const uint16_t END = range.second;
 	// Счётчик выданных портов
 	static uint16_t count = 0;
 	// Выводим следующий порт разряда
@@ -963,7 +979,8 @@ TEST_F(IoFixture, IoTunnelAcceptsWrittenPacketTest){
 	// Слушаем на всех адресах: пакет придёт устройством туннеля
 	bound.sin_addr.s_addr = INADDR_ANY;
 	// Занимаем порт приёмником
-	ASSERT_EQ(::bind(fd, reinterpret_cast <struct sockaddr *> (&bound), sizeof(bound)), 0);
+	ASSERT_EQ(::bind(fd, reinterpret_cast <struct sockaddr *> (&bound), sizeof(bound)), 0)
+	 << "порт " << port << ", код отказа " << __awh_last_error__();
 	/**
 	 * Ставим приёмнику срок ожидания
 	 *
@@ -1265,7 +1282,8 @@ TEST_F(IoFixture, IoTunnelDeliversFirstWrittenPacketTest){
 	// Слушаем на всех адресах: пакет придёт устройством туннеля
 	bound.sin_addr.s_addr = INADDR_ANY;
 	// Занимаем порт приёмником
-	ASSERT_EQ(::bind(fd, reinterpret_cast <struct sockaddr *> (&bound), sizeof(bound)), 0);
+	ASSERT_EQ(::bind(fd, reinterpret_cast <struct sockaddr *> (&bound), sizeof(bound)), 0)
+	 << "порт " << port << ", код отказа " << __awh_last_error__();
 	/**
 	 * Ставим приёмнику срок ожидания
 	 */

@@ -33,6 +33,7 @@
 #include <vector>
 #include <limits>
 #include <fstream>
+#include <sys/stat.h>
 #include <algorithm>
 #include <type_traits>
 
@@ -178,6 +179,23 @@ awh::codec::json::Document::Document(const log_t * log) noexcept : _reader(log),
  * @return     признак наличия поля объекта
  *
  */
+/**
+ * @brief Функция проверки того, что адрес указывает на каталог
+ *
+ * @details Каталог, поданный вместо файла, ОТКРЫВАЕТСЯ потоком успешно, а чтение его
+ * ставит признаки конца и отказа - те же самые, какими отзывается файл ПУСТОЙ. Отличить
+ * их по одному лишь потоку нельзя, и распознаётся каталог по самому адресу
+ *
+ * @param filename проверяемый адрес
+ * @return         признак того, что адрес указывает на каталог
+ *
+ */
+static bool directory(const string & filename) noexcept {
+	// Сведения об объекте файловой системы
+	struct stat info;
+	// Выводим результат проверки того, что адрес указывает на каталог
+	return ((::stat(filename.c_str(), & info) == 0) && S_ISDIR(info.st_mode));
+}
 bool awh::codec::json::Document::Value::contains(const string & name) const noexcept {
 	// Выводим признак наличия поля объекта
 	return (* this)[name].valid();
@@ -1704,6 +1722,26 @@ bool awh::codec::json::Document::load(const string & filename) noexcept {
 		// Выводим признак неудачного разбора
 		return false;
 	}
+	/**
+	 * Если адрес указывает на каталог
+	 *
+	 * @note Каталог открывается успешно, а читается признаками конца и отказа - теми же,
+	 *       какими отзывается файл пустой. Без этой проверки разбор документа принимал бы
+	 *       каталог за файл пустой и отвечал бы на него не тем доводом, а разбор таблицы -
+	 *       и вовсе УСПЕХОМ, отдавая таблицу без записей
+	 */
+	if(::directory(filename)){
+		// Запоминаем код отказа чтения файла документа
+		this->_error = error_t::FILE_NOT_READ;
+		/**
+		 * Если объект для работы с логами установлен
+		 */
+		if(this->_log != nullptr)
+			// Выполняем вывод сообщения об отказе
+			this->_log->print("JSON document failed: %s", log_t::flag_t::CRITICAL, awh::codec::json::message(this->_error));
+		// Выводим признак неудачного разбора
+		return false;
+	}
 	// Выполняем сброс состояния чтения текста документа
 	this->_reader.reset();
 	// Получаем чтение текста документа
@@ -1770,6 +1808,37 @@ bool awh::codec::json::Document::load(const string & filename) noexcept {
 			// Прекращаем чтение файла документа
 			break;
 	}
+	/**
+	 * Если чтение файла оборвалось отказом
+	 *
+	 * @details Отказ чтения от конца файла по одному лишь количеству прочитанного
+	 * неотличим: каталог, поданный вместо файла, ОТКРЫВАЕТСЯ успешно, а читается
+	 * отказом, и без этой проверки он выглядел бы файлом пустым. Разбор таблицы пустой
+	 * текст принимает таблицей без записей и отвечал на каталог УСПЕХОМ, а разбор JSON и
+	 * разметки отвечали `EMPTY_TEXT` - доводом ложным, отправляющим искать изъян в
+	 * содержимом файла вместо изъяна доступа к нему
+	 *
+	 * @note Проверка стоит после цикла, а не внутри: признак негодности потока
+	 *       сбрасывается лишь явно, и после цикла он тот же
+	 */
+	if(file.bad()){
+		// Выполняем снятие обработчика прямой выдачи событий разбора
+		reader.handler(nullptr, nullptr);
+		// Выполняем перенос знаков разбора в хранилище документа
+		reader.release(this->_storage);
+		// Выполняем очистку собранного к мигу отказа
+		this->clear();
+		// Запоминаем код отказа чтения файла документа
+		this->_error = error_t::FILE_NOT_READ;
+		/**
+		 * Если объект для работы с логами установлен
+		 */
+		if(this->_log != nullptr)
+			// Выполняем вывод сообщения об отказе
+			this->_log->print("JSON document failed: %s", log_t::flag_t::CRITICAL, awh::codec::json::message(this->_error));
+		// Выводим признак неудачного разбора
+		return false;
+	}
 	// Выполняем снятие обработчика прямой выдачи событий разбора
 	reader.handler(nullptr, nullptr);
 	// Выполняем перенос знаков разбора в хранилище документа целиком, без копии
@@ -1802,6 +1871,17 @@ bool awh::codec::json::Document::load(const string & filename) noexcept {
  * стека закрываемых вместилищ
  *
  * @param format вид оформления собираемого текста
+ * @return       собранный текст документа
+ *
+ */
+string awh::codec::json::Document::dump() const noexcept {
+	// Выводим собранный текст документа оформлением из настроек записи
+	return this->dump(this->_settings.writer.format);
+}
+/**
+ * @brief Метод получения текста документа затребованным оформлением
+ *
+ * @param format затребованное оформление собираемого текста
  * @return       собранный текст документа
  *
  */
@@ -1925,6 +2005,18 @@ string awh::codec::json::Document::dump(const format_t format) const noexcept {
  * @param filename адрес записываемого файла
  * @param format   вид оформления собираемого текста
  * @return         признак успешности записи
+ *
+ */
+bool awh::codec::json::Document::save(const string & filename) const noexcept {
+	// Выводим результат сохранения текста документа оформлением из настроек записи
+	return this->save(filename, this->_settings.writer.format);
+}
+/**
+ * @brief Метод сохранения текста документа в файл затребованным оформлением
+ *
+ * @param filename адрес файла для сохранения
+ * @param format   затребованное оформление собираемого текста
+ * @return         признак успешности сохранения
  *
  */
 bool awh::codec::json::Document::save(const string & filename, const format_t format) const noexcept {

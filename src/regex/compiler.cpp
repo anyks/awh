@@ -1643,6 +1643,28 @@ bool awh::regex::Compiler::compileChain(const node_id_t id) noexcept {
  *
  */
 string awh::regex::Compiler::literal(const node_id_t id) const noexcept {
+	// Формируемый литерал узла синтаксического дерева
+	string result;
+	// Выполняем формирование литерала узла синтаксического дерева
+	this->literal(id, result);
+	// Выводим литерал узла синтаксического дерева
+	return result;
+}
+/**
+ * @brief Метод дополнения литерала, сопоставляемого узлом целиком
+ *
+ * @details Вид этот дополняет литерал переданный, а не выводит свой: разбор
+ *          обязательного литерала зовёт его на всякий узел цепочки, и вывод
+ *          строкою заводил там строку на узел, тут же отбрасываемую.
+ *          Дополнение ведётся так, что при отказе литерал переданный
+ *          остаётся неизменным.
+ *
+ * @param id     индекс узла в арене узлов
+ * @param result дополняемый литерал совпадения
+ * @return       результат сопоставления узла литералом
+ *
+ */
+bool awh::regex::Compiler::literal(const node_id_t id, string & result) const noexcept {
 	// Получаем узел синтаксического дерева
 	const node_data_t & node = this->node(id);
 	/**
@@ -1654,7 +1676,7 @@ string awh::regex::Compiler::literal(const node_id_t id) const noexcept {
 	 */
 	if((node.flags & static_cast <uint32_t> (flag_t::CASELESS)) != 0)
 		// Выводим отсутствие литерала узла
-		return string();
+		return false;
 	/**
 	 * Если узел сопоставляет одиночный символ
 	 */
@@ -1664,9 +1686,11 @@ string awh::regex::Compiler::literal(const node_id_t id) const noexcept {
 		 */
 		if(node.literal.code > 0x7F)
 			// Выводим отсутствие литерала узла
-			return string();
-		// Выводим литерал одиночного символа
-		return string(1, static_cast <char> (node.literal.code));
+			return false;
+		// Выполняем добавление символа в дополняемый литерал
+		result.append(1, static_cast <char> (node.literal.code));
+		// Выводим наличие литерала узла
+		return true;
 	}
 	/**
 	 * Если узел сопоставляет последовательность символов
@@ -1679,11 +1703,13 @@ string awh::regex::Compiler::literal(const node_id_t id) const noexcept {
 		 */
 		if(source == nullptr)
 			// Выводим отсутствие литерала узла
-			return string();
-		// Формируемый литерал последовательности символов
-		string result;
+			return false;
 		/**
-		 * Выполняем формирование литерала последовательности символов
+		 * Выполняем проверку принадлежности последовательности набору ASCII
+		 *
+		 * @details Проверка ведётся прежде добавления затем, что литерал
+		 *          дополняемый при отказе обязан остаться неизменным.
+		 *
 		 */
 		for(uint32_t i = 0; i < node.string.length; i++) {
 			/**
@@ -1691,15 +1717,19 @@ string awh::regex::Compiler::literal(const node_id_t id) const noexcept {
 			 */
 			if(source[i] > 0x7F)
 				// Выводим отсутствие литерала узла
-				return string();
-			// Выполняем добавление символа в литерал последовательности
-			result.append(1, static_cast <char> (source[i]));
+				return false;
 		}
-		// Выводим литерал последовательности символов
-		return result;
+		/**
+		 * Выполняем добавление последовательности в дополняемый литерал
+		 */
+		for(uint32_t i = 0; i < node.string.length; i++)
+			// Выполняем добавление очередного символа последовательности
+			result.append(1, static_cast <char> (source[i]));
+		// Выводим наличие литерала узла
+		return true;
 	}
 	// Выводим отсутствие литерала узла
-	return string();
+	return false;
 }
 /**
  * @brief Метод извлечения обязательного литерала узла
@@ -1978,30 +2008,30 @@ string awh::regex::Compiler::required(const node_id_t id, size_t & distance) con
 	 * Выполняем обход цепочки узлов одного уровня вложенности
 	 */
 	for(node_id_t index = id; index != INVALID_NODE; index = this->node(index).next) {
-		// Получаем литерал, сопоставляемый очередным узлом целиком
-		const string value = this->literal(index);
+		// Получаем длину литерала, по смежным узлам накопленного
+		const size_t reached = run.size();
 		/**
 		 * Если очередной узел сопоставляет литерал целиком
 		 *
 		 * @details Смежные узлы литералов образуют непрерывную последовательность
 		 *          символов, присутствующую в любом совпадении выражения.
+		 *          Литерал узла добавляется в накапливаемый прямо, без заведения
+		 *          строки на узел: разбор зовётся на всякий узел цепочки.
 		 *
 		 */
-		if(!value.empty()) {
+		if(this->literal(index, run)) {
 			/**
 			 * Если накопление литерала лишь начинается
 			 */
-			if(run.empty())
+			if(reached == 0)
 				// Выполняем установку удаления накапливаемого литерала
 				reach = passed;
-			// Выполняем накопление литерала по смежным узлам
-			run.append(value);
 			/**
 			 * Если длина цепочки ещё ограничена
 			 */
 			if(passed != string_view::npos)
 				// Выполняем накопление длины, цепочкой поглощаемой
-				passed += value.size();
+				passed += (run.size() - reached);
 			// Переходим к следующему узлу цепочки
 			continue;
 		}
@@ -2076,10 +2106,21 @@ string awh::regex::Compiler::required(const node_id_t id, size_t & distance) con
 bool awh::regex::Compiler::reachable(const address_t address) noexcept {
 	// Получаем предварительный отбор позиций сопоставления
 	prefilter_t & prefilter = this->_program->prefilter;
-	// Создаём набор отметок посещения инструкций программы
-	vector <bool> visited(this->_program->instructions.size(), false);
-	// Создаём стек обхода инструкций программы
-	vector <address_t> stack;
+	/**
+	 * Заводим обозреватели сберегательных рядов обхода
+	 *
+	 * @details Ряды принадлежат построителю, а не обходу: место, однажды
+	 *          отведённое, обход переживает, отчего обход второй и далее
+	 *          размещения не запрашивает вовсе.
+	 *
+	 */
+	vector <bool> & visited = this->_marks;
+	// Заводим обозреватель сберегательного ряда стека обхода
+	vector <address_t> & stack = this->_stack;
+	// Выполняем сброс отметок посещения инструкций программы
+	visited.assign(this->_program->instructions.size(), false);
+	// Выполняем очистку стека обхода инструкций программы
+	stack.clear();
 	// Выполняем размещение исходной инструкции в стеке обхода
 	stack.push_back(address);
 	/**
@@ -3460,8 +3501,45 @@ bool awh::regex::Compiler::compileReverse(const Parser & parser, program_t & pro
  * @param program компилируемая программа регулярного выражения
  * @return        результат выполнения компиляции
  *
+ * @details Построение ведётся над программой сберегательной, а вызывающей
+ *          стороне итог достаётся присвоением. Устройство это заведено ради
+ *          размещений: наборы программы растут удвоением, и построение
+ *          над программой чистой запрашивало место столько раз, сколько
+ *          удвоений от восьми записей до конечной длины, перенося при каждом
+ *          всё накопленное. Наборы сберегательной программы место своё
+ *          переживают, отчего при построении втором и далее не запрашивают
+ *          его вовсе, а присвоение размещает ровно по длине конечной -
+ *          одним запросом на набор и одним переносом.
+ *
  */
 bool awh::regex::Compiler::compile(const Parser & parser, program_t & program) noexcept {
+	/**
+	 * Если построение программы регулярного выражения не выполнено
+	 */
+	if(!this->build(parser, this->_scratch)) {
+		// Выполняем очистку компилируемой программы
+		program.clear();
+		// Выводим результат выполнения компиляции
+		return false;
+	}
+	// Выполняем присвоение построенной программы вызывающей стороне
+	program = this->_scratch;
+	// Выводим результат выполнения компиляции
+	return true;
+}
+/**
+ * @brief Метод построения программы регулярного выражения
+ *
+ * @param parser  объект разбора регулярного выражения
+ * @param program строимая программа регулярного выражения
+ * @return        результат выполнения построения
+ *
+ * @details Построение ведётся над программой сберегательной, построителю
+ *          принадлежащей, а не над программой вызывающей стороны: наборы
+ *          её место своё переживают, и наполнение их размещения не просит.
+ *
+ */
+bool awh::regex::Compiler::build(const Parser & parser, program_t & program) noexcept {
 	// Выполняем установку объекта разбора регулярного выражения
 	this->_parser = &parser;
 	// Выполняем установку арены узлов синтаксического дерева
@@ -3503,8 +3581,8 @@ bool awh::regex::Compiler::compile(const Parser & parser, program_t & program) n
 	this->_visited.clear();
 	// Выполняем очистку сберегательного ряда узлов цепочки
 	this->_chain.clear();
-	// Выполняем очистку компилируемой программы
-	program.clear();
+	// Выполняем сброс сберегательной программы построителя
+	program.reset();
 	/**
 	 * Выполняем присвоение опознания компилируемой программе
 	 *
@@ -3556,7 +3634,7 @@ bool awh::regex::Compiler::compile(const Parser & parser, program_t & program) n
 	 */
 	if(!this->compileNode(parser.root())) {
 		// Выполняем очистку компилируемой программы
-		program.clear();
+		program.reset();
 		// Выводим результат выполнения компиляции
 		return false;
 	}
@@ -3581,7 +3659,7 @@ bool awh::regex::Compiler::compile(const Parser & parser, program_t & program) n
 	 */
 	if(!this->compileSections()) {
 		// Выполняем очистку компилируемой программы
-		program.clear();
+		program.reset();
 		// Выводим результат выполнения компиляции
 		return false;
 	}

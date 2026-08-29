@@ -1568,7 +1568,36 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					string dump(const format_t format = format_t::COMPACT) const noexcept;
+					string dump() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод получения текста документа затребованным оформлением
+					 *
+					 * @details Оформление, здесь затребованное, ПЕРЕКРЫВАЕТ настройку записи:
+					 * прочие же настройки - способ экранирования и ширина отступа - берутся
+					 * из настроек контейнера
+					 *
+					 * @note Перегрузка эта заведена взамен довода с умолчанием: умолчание
+					 *       `COMPACT` перекрывало настройку `writer.format` ВСЕГДА, и настройка
+					 *       эта через общий путь силы не имела вовсе
+					 *
+					 * @param format затребованное оформление собираемого текста
+					 * @return       собранный текст документа
+					 *
+					 * \~english
+					 * @brief Method of the obtaining of the text of a document by a requested formatting
+					 * @details The formatting requested here OVERRIDES the setting of the writing:
+					 * the rest of the settings — the manner of the escaping and the width of the indentation —
+					 * are taken from the settings of the container
+					 * @note The present overload has been introduced instead of an argument with a default:
+					 * the `COMPACT` default overrode the `writer.format` setting ALWAYS, and that setting
+					 * had no force through the common path at all
+					 * @param format requested formatting of the assembled text
+					 * @return       assembled text of the document
+					 *
+					 * \~
+					 */
+					string dump(const format_t format) const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод записи документа в файл
@@ -1585,7 +1614,27 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool save(const string & filename, const format_t format = format_t::COMPACT) const noexcept;
+					bool save(const string & filename) const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод сохранения текста документа в файл затребованным оформлением
+					 *
+					 * @details Оформление, здесь затребованное, ПЕРЕКРЫВАЕТ настройку записи
+					 *
+					 * @param filename адрес файла для сохранения
+					 * @param format   затребованное оформление собираемого текста
+					 * @return         признак успешности сохранения
+					 *
+					 * \~english
+					 * @brief Method of the saving of the text of a document into a file by a requested formatting
+					 * @details The formatting requested here OVERRIDES the setting of the writing
+					 * @param filename address of the file for the saving
+					 * @param format   requested formatting of the assembled text
+					 * @return         flag of the success of the saving
+					 *
+					 * \~
+					 */
+					bool save(const string & filename, const format_t format) const noexcept;
 				public:
 					/**
 					 * \~russian

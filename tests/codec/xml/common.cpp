@@ -113,7 +113,7 @@ TEST(CodecXmlCommon, Messages) {
 	 *       выписанный рукою, от перечня отстаёт молча - именно так коды, заведённые
 	 *       последними, не сличались вовсе
 	 */
-	for(uint32_t code = 0; code <= static_cast <uint32_t> (xml::error_t::TOO_MANY_ATTRIBUTES); code++){
+	for(uint32_t code = 0; code <= static_cast <uint32_t> (xml::error_t::FILE_NOT_READ); code++){
 		// Получаем описание очередного кода отказа
 		const char * message = xml::message(static_cast <xml::error_t> (code));
 		// Выполняем проверку наличия описания кода отказа
@@ -131,7 +131,7 @@ TEST(CodecXmlCommon, Messages) {
 	 *       щупом: дописанный код отказа проверку не уронил. Сторожем тут выступает
 	 *       собиратель - смотри примечание у самой выдачи описаний
 	 */
-	ASSERT_STREQ(xml::message(static_cast <xml::error_t> (static_cast <uint32_t> (xml::error_t::TOO_MANY_ATTRIBUTES) + 1)), "unknown error");
+	ASSERT_STREQ(xml::message(static_cast <xml::error_t> (static_cast <uint32_t> (xml::error_t::FILE_NOT_READ) + 1)), "unknown error");
 	// Выполняем проверку описания кода, договором не отведённого
 	ASSERT_STREQ(xml::message(static_cast <xml::error_t> (0xFF)), "unknown error");
 }
@@ -143,11 +143,19 @@ TEST(CodecXmlCommon, Encodings) {
 	/**
 	 * Выполняем проверку названия неопределённой кодировки
 	 *
-	 * @note Неопределённой кодировке отвечает пустое название, а не пустой указатель:
-	 *       выдача его читающему безопасна и печатается без отдельной проверки
+	 * @note Неопределённой кодировке отвечает название, а не пустой указатель: выдача
+	 *       его читающему безопасна и печатается без отдельной проверки
+	 *
+	 * @note Прежде здесь утверждалась ПУСТОТА названия, доводом же при ней стояло лишь
+	 *       «не пустой указатель» - самой пустоты не обосновывал никто. Пустотою же
+	 *       отвечала и кодировка, перечню не принадлежащая: два разных случая были
+	 *       неотличимы, а звучащий, вписывающий название в журнал, получал дыру в
+	 *       сообщении. Кодеки документа и таблицы зовут эти случаи «none» и «unknown»,
+	 *       и разметка приведена к тому же. Несущей пустота не была: имя кодировки в
+	 *       самом кодеке не звучит нигде, а объявление пишет «encoding="UTF-8"» дословно
 	 */
 	ASSERT_NE(xml::name(xml::encoding_t::NONE), nullptr);
-	ASSERT_TRUE(string(xml::name(xml::encoding_t::NONE)).empty());
+	ASSERT_EQ(string(xml::name(xml::encoding_t::NONE)), "none");
 	// Выполняем проверку названия кодировки UTF-8
 	ASSERT_EQ(string(xml::name(xml::encoding_t::UTF8)), "UTF-8");
 	// Выполняем проверку названия кодировки UTF-16 с обратным порядком байтов
@@ -158,8 +166,18 @@ TEST(CodecXmlCommon, Encodings) {
 	ASSERT_EQ(string(xml::name(xml::encoding_t::LATIN1)), "ISO-8859-1");
 	// Выполняем проверку названия кодировки US-ASCII
 	ASSERT_EQ(string(xml::name(xml::encoding_t::ASCII)), "US-ASCII");
+	/**
+	 * Выполняем проверку названия НЕОПРЕДЕЛЁННОЙ кодировки
+	 *
+	 * @note Утверждение это заведено взамен прежнего «имя не есть ноль»: имя пустое ему
+	 *       отвечало, а пустотою же звалась и кодировка, перечню не принадлежащая - два
+	 *       разных случая были неотличимы, и проверка того не замечала
+	 */
+	ASSERT_EQ(string(xml::name(xml::encoding_t::NONE)), "none");
 	// Выполняем проверку названия кодировки, договором не отведённой
-	ASSERT_NE(xml::name(static_cast <xml::encoding_t> (0xFF)), nullptr);
+	ASSERT_EQ(string(xml::name(static_cast <xml::encoding_t> (0xFF))), "unknown");
+	// Выполняем проверку того, что два эти случая различимы
+	ASSERT_STRNE(xml::name(xml::encoding_t::NONE), xml::name(static_cast <xml::encoding_t> (0xFF)));
 	// Выполняем проверку разбора названий кодировок обратно
 	ASSERT_EQ(xml::encoding("UTF-8"), xml::encoding_t::UTF8);
 	// Выполняем проверку разбора названия кодировки в другом написании

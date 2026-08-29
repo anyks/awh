@@ -1950,3 +1950,33 @@ TEST(AllocSourceTest, CeilingHoldsWithUnalignedLimit){
 	// Взятое у системы обязано остаться под потолком
 	EXPECT_LE(source.taken(), limit);
 }
+/**
+ * @brief Тест неизменности настроек, действующих лишь при заведении
+ *
+ * @note Утверждается здесь ЧЕСТНОСТЬ ОТВЕТА, а не поведение слоёв: размер занимаемой
+ *       области, запрет обращаться к системе и граница разрядов задним числом не
+ *       двигаются, и `options()` обязан отдавать действующее значение, а не
+ *       затребованное. Приложение, читающее оттуда границу разрядов, иначе получало бы
+ *       своё число при действующем прежнем
+ *
+ */
+TEST_F(AllocFixture, StartupOnlySettingsAreNotOverwritten){
+	// Снимаем действующие настройки
+	const awh::alloc::options_t before = awh::alloc::Allocator::options();
+	// Собираем настройки, где все три задаются заново
+	awh::alloc::options_t options = before;
+	// Задаём иной размер занимаемой области
+	options.arena = (before.arena + (16u * 1024u * 1024u));
+	// Задаём запрет обращаться к системе
+	options.confined = !before.confined;
+	// Задаём иную границу разрядов
+	options.classLimit = ((before.classLimit > 0) ? (before.classLimit / 2u) : (64u * 1024u));
+	// Применяем настройки на ходу
+	awh::alloc::Allocator::options(options);
+	// Снимаем настройки заново
+	const awh::alloc::options_t after = awh::alloc::Allocator::options();
+	// Все три обязаны остаться прежними
+	EXPECT_EQ(after.arena, before.arena);
+	EXPECT_EQ(after.confined, before.confined);
+	EXPECT_EQ(after.classLimit, before.classLimit);
+}

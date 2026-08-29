@@ -195,6 +195,30 @@ namespace awh {
 						 * \~
 						 */
 						bool canonical;
+						/**
+						 * \~russian
+						 * Правило обращения с повторяющимся именем поля отображения
+						 *
+						 * @details Потоковому разбору доступны лишь ДВА исхода из четырёх: отказ и
+						 * пропуск. Выбор одного из двух значений (`FIRST`, `LAST`) требует видеть
+						 * отображение целиком, а разбор выдаёт события по одному и назад не ходит, -
+						 * решают их дерево документа и владеющее значение. Здесь `FIRST`, `LAST` и
+						 * `KEEP` ведут себя одинаково: событие повтора выдаётся как есть
+						 *
+						 * @note Умолчанием взят ОТКАЗ, как то и объявлено у самого правила: повтор
+						 * имени есть приём путаницы разборов, и принимать его молча небезопасно.
+						 * Сборщик записи отвергает повтор своим умолчанием точно так же
+						 *
+						 * \~english
+						 * Rule of the handling of a repeating name of a field of a mapping
+						 * @details Only TWO outcomes of the four are available to the streaming parsing:
+						 * the refusal and the passing through. The choice of one of the two values requires
+						 * seeing the whole mapping, whereby it is decided by the tree of the document
+						 * @note The refusal is taken by default, as is declared at the rule itself
+						 *
+						 * \~
+						 */
+						duplicate_t duplicates;
 						// Наибольшая допустимая длина строкового значения в октетах, ноль - без предела
 						uint64_t maxString;
 						// Наибольшая допустимая длина двоичного значения в октетах, ноль - без предела
@@ -451,6 +475,35 @@ namespace awh {
 						vector <uint8_t> key;
 						/**
 						 * \~russian
+						 * Начало части общего перечня имён полей, принадлежащей вместимому
+						 *
+						 * @details Перечень ведётся общим на весь стек (`_spans` вместе с `_pool`), а
+						 * звено держит лишь начало своей части: перечень в самом звене заводил бы
+						 * память на всякое отображение записи
+						 *
+						 * @note Перечень наполняется ЛИШЬ при правиле `duplicate_t::REFUSE` вне
+						 * строгого вида: строгий вид отсеивает повтор возрастанием, а прочие
+						 * правила решаются деревом, а не потоковым разбором
+						 *
+						 * \~english
+						 * Beginning of the part of the shared list of the names of the fields belonging to a container
+						 * @note The list is filled ONLY at the rule `duplicate_t::REFUSE` outside the strict kind
+						 *
+						 * \~
+						 */
+						size_t base;
+						/**
+						 * \~russian
+						 * Начало части общего вместилища октетов имён, принадлежащей вместимому
+						 *
+						 * \~english
+						 * Beginning of the part of the shared container of the octets of the names belonging to a container
+						 *
+						 * \~
+						 */
+						size_t mark;
+						/**
+						 * \~russian
 						 * @brief Конструктор
 						 *
 						 *
@@ -461,7 +514,7 @@ namespace awh {
 						 */
 						Frame() noexcept :
 						 beyond(0), mapping(false), indefinite(false), expectKey(false), remain(0),
-						 segment(type_t::UNDEFINED), gathered(0), marked(false) {}
+						 segment(type_t::UNDEFINED), gathered(0), marked(false), base(0), mark(0) {}
 					} frame_t;
 					/**
 					 * \~russian
@@ -600,6 +653,39 @@ namespace awh {
 				private:
 					// Стек вместимых разбора
 					vector <frame_t> _stack;
+				private:
+					/**
+					 * \~russian
+					 * Отрезки записей имён полей всех вместимых стека
+					 *
+					 * @details Перечень общий: часть его, принадлежащая звену, начинается со
+					 * смещения «frame_t::base», а снятие звена усекает перечень до него. Общим он
+					 * заведён ради памяти: вместимость держится между отображениями, тогда как
+					 * перечень в самом звене заводился бы заново на всякое из них
+					 *
+					 * @note Наполняется ЛИШЬ при правиле `duplicate_t::REFUSE` вне строгого вида
+					 *
+					 * \~english
+					 * Segments of the records of the names of the fields of all the containers of the stack
+					 * @note Filled ONLY at the rule `duplicate_t::REFUSE` outside the strict kind
+					 *
+					 * \~
+					 */
+					vector <pair <uint32_t, uint32_t>> _spans;
+				private:
+					/**
+					 * \~russian
+					 * Октеты записей имён полей всех вместимых стека
+					 *
+					 * @note Октеты держатся своей копией, а не отрезком буфера разбора: буфер
+					 * ужимается по выдаче событий, и отрезок в нём ужатия не переживает
+					 *
+					 * \~english
+					 * Octets of the records of the names of the fields of all the containers of the stack
+					 *
+					 * \~
+					 */
+					vector <uint8_t> _pool;
 				private:
 					/**
 					 * \~russian

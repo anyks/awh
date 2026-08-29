@@ -180,6 +180,57 @@ namespace awh {
 				 */
 				const vector <node_data_t> * _arena;
 			private:
+				/**
+				 * \~russian
+				 * @brief Сберегательная программа построения
+				 *
+				 * @details Построение ведётся над этой программой, а вызывающей
+				 *          стороне итог достаётся присвоением. Наборы её место
+				 *          своё переживают, отчего построение размещений почти
+				 *          не запрашивает, а присвоение отводит вызывающей
+				 *          стороне ровно по длине конечной.
+				 *
+				 * \~english
+				 * @brief Scratch program of the compilation
+				 * @details The build is carried out over this program, and the calling
+				 *          side receives the outcome by assignment. Its sequences outlive
+				 *          their space, so the build requests almost no allocations, while
+				 *          the assignment allocates for the calling side exactly by the
+				 *          final length.
+				 *
+				 * \~
+				 */
+				program_t _scratch;
+			private:
+				/**
+				 * \~russian
+				 * @brief Сберегательный ряд отметок посещения инструкций
+				 *
+				 * @details Ряд принадлежит построителю затем, что обход
+				 *          инструкций ведётся при всяком построении, а место,
+				 *          однажды отведённое, построение переживает.
+				 *
+				 * \~english
+				 * @brief Scratch sequence of the visit marks of the instructions
+				 * @details The sequence belongs to the compiler because the traversal
+				 *          of the instructions is carried out at every build, while
+				 *          the space allocated once outlives the build.
+				 *
+				 * \~
+				 */
+				vector <bool> _marks;
+			private:
+				/**
+				 * \~russian
+				 * @brief Сберегательный ряд стека обхода инструкций
+				 *
+				 * \~english
+				 * @brief Scratch sequence of the traversal stack of the instructions
+				 *
+				 * \~
+				 */
+				vector <address_t> _stack;
+			private:
 				// Компилируемая программа регулярного выражения
 				program_t * _program;
 			private:
@@ -432,6 +483,23 @@ namespace awh {
 				 * \~
 				 */
 				const node_data_t & node(const node_id_t id) const noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод построения программы регулярного выражения
+				 *
+				 * @param parser  объект разбора регулярного выражения
+				 * @param program строимая программа регулярного выражения
+				 * @return        результат выполнения построения
+				 *
+				 * \~english
+				 * @brief Method of building the program of a regular expression
+				 * @param parser  parsing object of the regular expression
+				 * @param program program of the regular expression being built
+				 * @return        result of performing the build
+				 *
+				 * \~
+				 */
+				bool build(const Parser & parser, program_t & program) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод компиляции цепочки узлов синтаксического дерева
@@ -1045,6 +1113,23 @@ namespace awh {
 				 * \~
 				 */
 				string literal(const node_id_t id) const noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод дополнения литерала, сопоставляемого узлом целиком
+				 *
+				 * @param id     индекс узла в арене узлов
+				 * @param result дополняемый литерал совпадения
+				 * @return       результат сопоставления узла литералом
+				 *
+				 * \~english
+				 * @brief Method of appending the literal matched by the node as a whole
+				 * @param id     index of the node in the node arena
+				 * @param result literal of the match being appended
+				 * @return       result of the node being matched by a literal
+				 *
+				 * \~
+				 */
+				bool literal(const node_id_t id, string & result) const noexcept;
 			private:
 				/**
 				 * \~russian

@@ -105,8 +105,8 @@ namespace {
  *
  */
 awh::codec::abc::Reader::Settings::Settings() noexcept :
- stream(false), validate(true), canonical(false), maxString(0), maxBlob(0),
- maxDepth(0), maxNodes(0), maxEvents(0) {}
+ stream(false), validate(true), canonical(false), duplicates(duplicate_t::REFUSE),
+ maxString(0), maxBlob(0), maxDepth(0), maxNodes(0), maxEvents(0) {}
 /**
  * @brief Конструктор
  *
@@ -149,6 +149,10 @@ void awh::codec::abc::Reader::reset() noexcept {
 	this->_reserved = 0;
 	// Выполняем очистку стека вместимых
 	this->_stack.clear();
+	// Выполняем очистку отрезков записей имён полей вместимых
+	this->_spans.clear();
+	// Выполняем очистку октетов записей имён полей вместимых
+	this->_pool.clear();
 	// Выполняем очистку очереди собранных событий
 	this->_events.clear();
 	// Выполняем сброс смещения первого невыданного события
@@ -367,6 +371,9 @@ bool awh::codec::abc::Reader::unwind() noexcept {
 		record_t record;
 		// Выполняем установку вида события конца вместимого
 		record.event = (frame.mapping ? event_t::MAP_END : event_t::ARRAY_END);
+		// Выполняем усечение перечня имён полей до начал частей снимаемого звена
+		this->_spans.resize(this->_stack.back().base);
+		this->_pool.resize(this->_stack.back().mark);
 		// Выполняем снятие звена со стека вместимых
 		this->_stack.pop_back();
 		// Выполняем выдачу события конца вместимого
@@ -461,6 +468,52 @@ bool awh::codec::abc::Reader::settle(record_t & record) noexcept {
 				frame.key.swap(key);
 				// Выполняем установку признака уложенного имени поля
 				frame.marked = true;
+			}
+			/**
+			 * Если повтор имени поля отвергается вне строгого вида
+			 *
+			 * @details У строгого вида поверка эта не нужна: имена там идут строго
+			 * возрастающими, и повтор отсеивается тем же сличением с предыдущим. Вне его
+			 * повтор бывает через любое число полей, и предыдущего мало - оттого перечень
+			 * ведётся по ВСЕМ именам вместимого
+			 */
+			else if(this->_settings.duplicates == duplicate_t::REFUSE){
+				// Смещение записи имени поля в общем вместилище октетов
+				const size_t offset = this->_pool.size();
+				/**
+				 * Выполняем перенос ведущих октетов имени поля в общее вместилище: сличение
+				 * идёт ПОЛНОЙ записью имени, вместе с меткою
+				 */
+				this->_pool.insert(this->_pool.end(), this->_lead.begin(), this->_lead.end());
+				// Если содержимое имени поля отображения объявлено
+				if(record.span.length > 0)
+					// Выполняем перенос октетов имени поля в общее вместилище
+					this->_pool.insert(this->_pool.end(),
+					 this->_buffer.data() + static_cast <size_t> (record.span.offset),
+					 this->_buffer.data() + static_cast <size_t> (record.span.offset) + static_cast <size_t> (record.span.length));
+				// Длина записи имени поля отображения
+				const size_t length = (this->_pool.size() - offset);
+				/**
+				 * Выполняем перебор отрезков записей прежних имён полей вместимого
+				 */
+				for(size_t i = frame.base; i < this->_spans.size(); i++){
+					// Выполняем получение отрезка записи прежнего имени поля
+					const pair <uint32_t, uint32_t> & span = this->_spans.at(i);
+					// Если длины записей имён не совпадают, имена различны заведомо
+					if(static_cast <size_t> (span.second) != length)
+						// Переходим к следующему отрезку записи имени поля
+						continue;
+					// Если записи имён совпали октет в октет
+					if((length == 0) || (::memcmp(this->_pool.data() + static_cast <size_t> (span.first),
+					 this->_pool.data() + offset, length) == 0)){
+						// Выполняем возврат вместилища октетов к прежнему виду
+						this->_pool.resize(offset);
+						// Выполняем объявление отказа разбора
+						return this->fail(error_t::DUPLICATE_KEY);
+					}
+				}
+				// Выполняем запоминание отрезка записи уложенного имени поля
+				this->_spans.emplace_back(static_cast <uint32_t> (offset), static_cast <uint32_t> (length));
 			}
 			// Выполняем установку вида события имени поля отображения
 			record.event = event_t::KEY;
@@ -563,9 +616,18 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 		   (unit.detail != abc::fit(unit.value)))
 			// Выполняем объявление отказа разбора
 			return this->fail(error_t::NON_MINIMAL_TAG);
+	}
+	/**
+	 * Если ведущие октеты единицы понадобятся сличению имён полей
+	 *
+	 * @details Имена сличаются ПОЛНОЙ записью, вместе с меткою, а не одним содержимым:
+	 * у имени числового содержимое лежит в самой метке и отрезок его пуст, - и сличение
+	 * по одному содержимому схлопнуло бы все такие имена в повтор. Установлено проверкой
+	 * `CodecAbcValue.NonStringKeys`, покрасневшей на первой же сборке этой поверки
+	 */
+	if(this->_settings.canonical || (this->_settings.duplicates == duplicate_t::REFUSE))
 		// Выполняем запоминание ведущих октетов снятой единицы
 		this->_lead.assign(this->_buffer.data() + this->_offset, this->_buffer.data() + offset);
-	}
 	// Собираемое событие разбора
 	record_t record;
 	/**
@@ -695,6 +757,11 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 				frame.segment = segment;
 				// Выполняем установку признака неопределённой длины
 				frame.indefinite = true;
+				/**
+				 * Выполняем установку начал частей перечня имён полей вместимого
+				 */
+				frame.base = this->_spans.size();
+				frame.mark = this->_pool.size();
 				// Выполняем добавление звена в стек вместимых
 				this->_stack.push_back(frame);
 				// Сообщаем, что разбор успешен
@@ -819,6 +886,11 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 			this->_span = 0;
 			// Выполняем сброс места записи за вместимым
 			this->_beyond = 0;
+			/**
+			 * Выполняем установку начал частей перечня имён полей вместимого
+			 */
+			frame.base = this->_spans.size();
+			frame.mark = this->_pool.size();
 			// Выполняем добавление звена в стек вместимых
 			this->_stack.push_back(frame);
 			// Выполняем закрытие вместимого, если значений у него нет вовсе
@@ -918,6 +990,9 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 						const bool string = (frame.segment == type_t::STRING);
 						// Выполняем сдвиг смещения разбора
 						this->_offset = offset;
+						// Выполняем усечение перечня имён полей до начал частей снимаемого звена
+						this->_spans.resize(this->_stack.back().base);
+						this->_pool.resize(this->_stack.back().mark);
 						// Выполняем снятие звена со стека вместимых
 						this->_stack.pop_back();
 						// Выполняем установку вида события конца значения
@@ -959,6 +1034,9 @@ bool awh::codec::abc::Reader::item(bool & done) noexcept {
 					const bool mapping = frame.mapping;
 					// Выполняем сдвиг смещения разбора
 					this->_offset = offset;
+					// Выполняем усечение перечня имён полей до начал частей снимаемого звена
+					this->_spans.resize(this->_stack.back().base);
+					this->_pool.resize(this->_stack.back().mark);
 					// Выполняем снятие звена со стека вместимых
 					this->_stack.pop_back();
 					// Выполняем установку вида события конца вместимого

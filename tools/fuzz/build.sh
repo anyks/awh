@@ -290,8 +290,15 @@ case "$CODEC" in
 	addr) TARGET="src/net/addr.cpp src/net/net.cpp" ;;
 	# Ворошитель разбора URI
 	uri) TARGET="src/net/uri.cpp src/net/addr.cpp src/net/net.cpp" ;;
-	# Ворошитель сетевого движка
-	io)
+	##
+	# Ворошитель сетевого движка и ворошитель модуля сетевых устройств
+	#
+	# @note Части у них общие, кроме одной: движок нужен лишь первому. Ворошитель
+	#       «eth» трогает только договор «awh::eth_t», и тело движка ему ни к чему -
+	#       собирать его значило бы платить сборкой самой крупной части дерева за
+	#       то, чего ворошитель не зовёт
+	##
+	io|eth)
 		# Отбираем движок по системе
 		case "$(uname -s)" in
 			# У систем BSD и macOS движком служит kqueue
@@ -327,6 +334,10 @@ case "$CODEC" in
 			# У прочих систем платформенные части лежат у epoll
 			*) PLATFORM="gnu" ;;
 		esac
+		# Ворошителю сетевых устройств тело движка не нужно
+		if [ "$CODEC" = "eth" ]; then
+			BACKEND=""
+		fi
 		TARGET="$BACKEND
 			$ROOT/src/net/backend/$PLATFORM/addr.cpp
 			$ROOT/src/net/backend/$PLATFORM/eth.cpp
@@ -364,6 +375,24 @@ case "$CODEC" in
 		##
 		if [ "$PLATFORM" = "gnu" ]; then
 			TARGET="$TARGET $ROOT/src/net/backend/gnu/netlink.cpp"
+		fi
+		##
+		# Части устройства туннеля и разметки очередей берутся у MS Windows
+		#
+		# @note У наречий POSIX и то, и другое живёт внутри «eth.cpp» и «socket.cpp», а
+		#       у MS Windows вынесено отдельными частями: заведение устройства идёт через
+		#       драйвер стороннего поставщика, а разметка - через отдельную службу качества
+		#       обслуживания. Без них связывание валится на «awh::win::tunnel::create» и
+		#       соседях, причём ЛИШЬ у ворошителей сетевой зоны: кодеки этих имён не зовут
+		#
+		# @note «-lole32» нужна там же: опознаватель драйвера туннеля разбирается вызовом
+		#       «CLSIDFromString», и это единственное имя из библиотеки объектной модели
+		##
+		if [ "$PLATFORM" = "win" ]; then
+			TARGET="$TARGET
+				$ROOT/src/net/backend/win/tunnel.cpp
+				$ROOT/src/net/backend/win/qos.cpp"
+			SYSTEM_LIBS="$SYSTEM_LIBS -lole32"
 		fi
 	;;
 	# Прочие ворошители поверяют кодеки, и части их берутся каталогом целиком

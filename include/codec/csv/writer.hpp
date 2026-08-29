@@ -306,6 +306,59 @@ namespace awh {
 					bool refuse(const error_t error) noexcept;
 					/**
 					 * \~russian
+					 * @brief Метод отката неудавшейся операции записи
+					 *
+					 * @details Отказ записи местный: объект остаётся годным, и записанное им
+					 * до отказа обязано быть возвращено к тому виду, какой имело до начала
+					 * операции. Иначе знак-разделитель, записанный прежде проверки поля,
+					 * обратил бы отвергнутое поле в ПУСТОЕ: таблица ушла бы той же ширины и
+					 * без всякого следа порчи
+					 *
+					 * @param size    размер собранного текста до начала операции
+					 * @param origin  положение начала записи до начала операции
+					 * @param started признак наличия полей у записи до начала операции
+					 * @param marked  признак записанной метки порядка байтов до начала операции
+					 * @param error   код отказа записи
+					 * @return        признак отказа записи, всегда ложь
+					 *
+					 * \~english
+					 * @brief Method of the rollback of a failed operation of the writing
+					 * @details The refusal of the writing is local: the object remains usable, and
+					 * what has been written by it before the refusal ought to be returned to the state
+					 * it had before the beginning of the operation. Otherwise the separator character
+					 * written before the check of the field would turn the rejected field into an EMPTY
+					 * one: the table would go out with the same width and without any trace of the damage
+					 * @param size    size of the collected text before the beginning of the operation
+					 * @param origin  position of the beginning of the record before the beginning of the operation
+					 * @param started flag of the presence of the fields at the record before the beginning of the operation
+					 * @param marked  flag of the written byte order mark before the beginning of the operation
+					 * @param error   code of the refusal of the writing
+					 * @return        flag of the refusal of the writing, always false
+					 *
+					 * \~
+					 */
+					/**
+					 * \~russian
+					 * @brief Метод возврата сборщика к прежнему виду
+					 *
+					 * @param size    размер собранного текста до начала операции
+					 * @param origin  положение начала записи до начала операции
+					 * @param started признак наличия полей у записи до начала операции
+					 * @param marked  признак записанной метки порядка байтов до начала операции
+					 *
+					 * \~english
+					 * @brief Method of the return of the collector to the previous state
+					 * @param size    size of the collected text before the beginning of the operation
+					 * @param origin  position of the beginning of the record before the beginning of the operation
+					 * @param started flag of the presence of the fields at the record before the beginning of the operation
+					 * @param marked  flag of the written byte order mark before the beginning of the operation
+					 *
+					 * \~
+					 */
+					void revert(const size_t size, const size_t origin, const bool started, const bool marked) noexcept;
+					bool rollback(const size_t size, const size_t origin, const bool started, const bool marked, const error_t error) noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод записи содержимого поля с обрамлением кавычками
 					 *
 					 * @param text содержимое записываемого поля

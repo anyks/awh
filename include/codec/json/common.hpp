@@ -464,7 +464,8 @@ namespace awh {
 				FILE_NOT_WRITTEN      = 0x1F, // Текст документа записать в файл не удалось
 				MULTIPLE_ROOTS        = 0x20, // Корень документа уже несёт значение
 				NO_CONTAINER_OPEN     = 0x21, // Ни одно вместилище не открыто
-				KEY_OUTSIDE_OBJECT    = 0x22  // Имя поля допустимо лишь внутри объекта и лишь однажды
+				KEY_OUTSIDE_OBJECT    = 0x22, // Имя поля допустимо лишь внутри объекта и лишь однажды
+				FILE_NOT_READ         = 0x23  // Файл документа прочитать не удалось
 			};
 
 			/**
@@ -856,6 +857,28 @@ namespace awh {
 			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ const char * name(const type_t type) noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция получения названия кодировки исходного текста
+			 *
+			 * @note Заведена наравне с кодеками разметки и таблицы: у них выдача эта была, а у
+			 *       документа её не было вовсе, и опознанную кодировку звучащему нечем было
+			 *       назвать - ни в журнал, ни в сообщение об отказе
+			 *
+			 * @param encoding кодировка исходного текста
+			 * @return         название кодировки
+			 *
+			 * \~english
+			 * @brief Function of the obtaining of the name of an encoding of a source text
+			 * @note It has been introduced on a par with the codecs of a markup and of a table: they had
+			 * the present issuance, while the document did not have it at all, and the caller had nothing
+			 * to name the recognized encoding with — neither into a log nor into a message about a refusal
+			 * @param encoding encoding of a source text
+			 * @return         name of the encoding
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ const char * name(const encoding_t encoding) noexcept;
 			/**
 			 * \~russian
 			 * @brief Функция получения вида узла по виду значения

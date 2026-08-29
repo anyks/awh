@@ -297,6 +297,14 @@ namespace {
 		// Устанавливаем флаг подстановки значений атрибутов, объявленных по умолчанию
 		result.defaults = ((flags & 0x20) != 0);
 		/**
+		 * Устанавливаем флаг отказа при ссылке на внешнюю сущность в содержимом
+		 *
+		 * @note Флаг этот прежде не перебирался вовсе, а вместе с ним недостижимы были
+		 *       обе ветви обхождения со ссылкой: и отказ при строгости, и распознание
+		 *       с пропуском при снятой строгости
+		 */
+		result.externals = ((flags & 0x40) != 0);
+		/**
 		 * Устанавливаем флаг склеивания подряд идущих кусков текстового содержимого
 		 *
 		 * @details Склейка выключена у кодека по умолчанию, и путь частичной выдачи
@@ -385,12 +393,25 @@ namespace {
 	 * @param engine   источник псевдослучайных чисел
 	 * @param valid    признак построения заведомо правильной разметки
 	 * @param declared признак объявленных описанием типа сущностей
+	 * @param external признак объявленной описанием типа ВНЕШНЕЙ сущности
 	 * @return         построенное содержимое узла разметки
-	 *
 	 */
-	string content(mt19937 & engine, const bool valid, const bool declared) noexcept {
+	string content(mt19937 & engine, const bool valid, const bool declared, const bool external) noexcept {
 		// Результат работы функции - построенное содержимое узла разметки
 		string result;
+		/**
+		 * Если описание типа объявило внешнюю сущность
+		 *
+		 * @note Ссылка на неё выбирается ПРЕЖДЕ прочего содержимого и с высокой долей:
+		 *       вложенная в общий перебор, она выпадала раз на шестьдесят тысяч проходов,
+		 *       и обе ветви обхождения со ссылкою оставались ворошителю недостижимы
+		 */
+		if(external && ((engine() % 2) == 0)){
+			// Дописываем содержимое со ссылкой на внешнюю сущность
+			result.append(valid ? "до&ext;после" : "до&ext");
+			// Выводим построенное содержимое узла разметки
+			return result;
+		}
 		/**
 		 * Выполняем выборку записи содержимого узла разметки
 		 */
@@ -409,6 +430,16 @@ namespace {
 				if(declared)
 					// Дописываем содержимое со ссылками на объявленные сущности
 					result.append(valid ? "&plain;&plain;&plain;&plain;&plain;&plain;&plain;&plain;" : "&plain; &markup; &loop;");
+				/**
+				 * Иначе, если описание типа объявило ВНЕШНЮЮ сущность
+				 *
+				 * @note Ссылка эта прежде не порождалась вовсе: описание типа сущность
+				 *       объявляло, а ссылки на неё в содержимом не было ни одной, и ветвь
+				 *       обхождения с нею ворошителю была недостижима
+				 */
+				else if(external)
+					// Дописываем содержимое со ссылкой на внешнюю сущность
+					result.append("до&ext;после");
 				// Иначе дописываем содержимое со ссылками на отведённые договором сущности
 				else result.append("&amp;&amp;&amp;");
 			} break;
@@ -455,8 +486,9 @@ namespace {
 	 * @param valid    признак построения заведомо правильной разметки
 	 * @param declared признак объявленных описанием типа сущностей
 	 *
+	 * @param external признак объявленной описанием типа ВНЕШНЕЙ сущности
 	 */
-	void element(string & result, mt19937 & engine, const uint32_t depth, const bool valid, const bool declared) noexcept {
+	void element(string & result, mt19937 & engine, const uint32_t depth, const bool valid, const bool declared, const bool external) noexcept {
 		// Имя построенного узла разметки
 		const string name(::title(engine, valid));
 		// Дописываем знак начала открывающей метки узла
@@ -576,7 +608,7 @@ namespace {
 				// Дописываем текстовое содержимое узла
 				case 0:
 				case 1:
-				case 2: result.append(::content(engine, valid, declared)); break;
+				case 2: result.append(::content(engine, valid, declared, external)); break;
 				// Дописываем раздел дословного текста
 				case 3: result.append(((engine() % 2) == 0) ? "<![CDATA[ a < b & c ]]>" : "<![CDATA[ a\r\n b\r c ]]>"); break;
 				// Дописываем примечание
@@ -596,7 +628,7 @@ namespace {
 					// Если предел глубины вложенности не исчерпан
 					if(depth < 6)
 						// Выполняем построение вложенного узла разметки
-						::element(result, engine, (depth + 1), valid, declared);
+						::element(result, engine, (depth + 1), valid, declared, external);
 					// Иначе дописываем текстовое содержимое узла
 					else result.append("deep");
 				} break;
@@ -640,6 +672,8 @@ namespace {
 		 *       где описание типа объявило, на что они указывают
 		 */
 		bool declared = false;
+		// Признак объявленной описанием типа ВНЕШНЕЙ сущности
+		bool external = false;
 		/**
 		 * Если требуется дописать метку порядка байтов
 		 */
@@ -709,6 +743,8 @@ namespace {
 					case 5: {
 						// Дописываем объявление внешней сущности с прочими записями подмножества
 						result.append("<!ENTITY ext SYSTEM \"e.xml\">\n<?target данные?>\n<!-- примечание -->\n");
+						// Запоминаем, что описание типа объявило внешнюю сущность
+						external = true;
 						// Запоминаем, что сущности «plain» описание типа документа не объявило
 						declared = false;
 					} break;
@@ -780,7 +816,7 @@ namespace {
 			}
 		}
 		// Выполняем построение корневого узла разметки
-		::element(result, engine, 0, valid, declared);
+		::element(result, engine, 0, valid, declared, external);
 		/**
 		 * Если требуется дописать второй узел верхнего уровня
 		 *
@@ -789,7 +825,7 @@ namespace {
 		 */
 		if(!valid && ((engine() % 8) == 0))
 			// Выполняем построение второго узла верхнего уровня
-			::element(result, engine, 0, valid, declared);
+			::element(result, engine, 0, valid, declared, external);
 		// Дописываем знак завершения строки
 		result.push_back('\n');
 		// Выводим построенный текст разметки

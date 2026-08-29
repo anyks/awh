@@ -721,6 +721,57 @@ namespace awh {
 			}
 			/**
 			 * \~russian
+			 * @brief Метод сброса программы с сохранением размещения наборов
+			 *
+			 * @details Сброс отличается от очистки тем, что место, наборами
+			 *          программы занятое, за ними остаётся. Заведён он ради
+			 *          сберегательной программы построителя: она наполняется
+			 *          при каждой компиляции и место, однажды отведённое,
+			 *          переживает построение.
+			 *
+			 * \~english
+			 * @brief Method of resetting the program keeping the allocations of its sequences
+			 * @details The reset differs from clearing in that the space occupied by the
+			 *          sequences of the program stays with them. It is introduced for the
+			 *          scratch program of the compiler: that one is filled at every
+			 *          compilation, and the space allocated once outlives the build.
+			 *
+			 * \~
+			 */
+			void reset() noexcept {
+				// Выполняем сброс опознания программы регулярного выражения
+				this->id = 0;
+				// Выполняем сброс количества захватывающих групп
+				this->captures = 0;
+				// Выполняем сброс количества ячеек состояния
+				this->cells = 0;
+				// Выполняем сброс набора режимов компиляции
+				this->flags = 0;
+				// Выполняем сброс набора инструкций программы
+				this->instructions.reset();
+				// Выполняем сброс хранилища ссылок на классы символов
+				this->classes.reset();
+				// Выполняем сброс набора диапазонов кодовых значений
+				this->ranges.reset();
+				// Выполняем сброс набора ссылок на свойства Юникода
+				this->properties.reset();
+				// Выполняем сброс хранилища последовательностей символов
+				this->strings.reset();
+				// Выполняем освобождение держателя записи хранилища
+				this->blob.reset();
+				// Выполняем очистку предварительного отбора позиций
+				this->prefilter.clear();
+				// Выполняем сброс признака сопоставления выражения литералом
+				this->plain = false;
+				// Выполняем очистку последовательности символов выражения
+				this->text.clear();
+				// Выполняем сброс признака прохода текста единственной попыткой
+				this->sweeping = false;
+				// Выполняем сброс признака привязки к позиции начала поиска
+				this->anchored = false;
+			}
+			/**
+			 * \~russian
 			 * @brief Метод очистки программы регулярного выражения
 			 *
 			 * \~english

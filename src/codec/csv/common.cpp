@@ -195,6 +195,10 @@ const char * awh::codec::csv::message(const error_t error) noexcept {
 		case error_t::UNWRITABLE_FIELD:
 			// Выводим описание кода ошибки
 			return "unwritable field";
+		// Если файл таблицы прочитать не удалось
+		case error_t::FILE_NOT_READ:
+			// Выводим описание кода ошибки
+			return "cannot read the table file";
 	}
 	// Выводим сообщение о неизвестной ошибке
 	return "unknown error";

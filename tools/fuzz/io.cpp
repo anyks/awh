@@ -472,6 +472,18 @@ static vector <int32_t> descriptorList() noexcept {
 	return result;
 }
 /**
+ * @brief Внешнее объявление щупа учёта заведений описателей
+ *
+ * @details Щуп собирается отдельным файлом и в сборку входит не всегда. Объявление
+ *          слабое: без щупа имя разрешается нулём, и обращение к нему не делается
+ *
+ * @param fds   перечень описателей, признанных утёкшими
+ * @param count число описателей в перечне
+ *
+ */
+extern "C" void __awh_fdtrace_report__(const int32_t * fds, const size_t count) __attribute__((weak));
+
+/**
  * @brief Функция вывода рода описателя
  *
  * @param fd описатель, род какого требуется назвать
@@ -562,9 +574,57 @@ static const char * descriptorKind([[maybe_unused]] const int32_t fd) noexcept {
 			return reason;
 		}
 		// Если описатель является сокетом
-		if(S_ISSOCK(info.st_mode))
-			// Сообщаем, что описатель является сокетом
-			return "сокет";
+		if(S_ISSOCK(info.st_mode)){
+			// Собираемое описание сокета
+			static char socketKind[512];
+			// Устройство, род и наречие сокета
+			int32_t domain = -1, kind = -1, protocol = -1;
+			// Длина снимаемой настройки сокета
+			socklen_t length = static_cast <socklen_t> (sizeof(int32_t));
+			/**
+			 * Настройки SO_DOMAIN, SO_TYPE и SO_PROTOCOL заведены не всюду: у Linux они
+			 * есть все три, у macOS и BSD - лишь часть, поэтому неснятые остаются -1
+			 */
+			#ifdef SO_DOMAIN
+				// Выполняем снятие устройства сокета
+				static_cast <void> (::getsockopt(fd, SOL_SOCKET, SO_DOMAIN, &domain, &length));
+				// Восстанавливаем длину снимаемой настройки
+				length = static_cast <socklen_t> (sizeof(int32_t));
+			#endif
+			#ifdef SO_TYPE
+				// Выполняем снятие рода сокета
+				static_cast <void> (::getsockopt(fd, SOL_SOCKET, SO_TYPE, &kind, &length));
+				// Восстанавливаем длину снимаемой настройки
+				length = static_cast <socklen_t> (sizeof(int32_t));
+			#endif
+			#ifdef SO_PROTOCOL
+				// Выполняем снятие наречия сокета
+				static_cast <void> (::getsockopt(fd, SOL_SOCKET, SO_PROTOCOL, &protocol, &length));
+			#endif
+			// Имя, каким сокет привязан
+			struct sockaddr_storage name{};
+			// Длина имени сокета
+			socklen_t named = static_cast <socklen_t> (sizeof(name));
+			// Порт, каким сокет привязан
+			uint32_t port = 0;
+			// Семейство имени сокета
+			int32_t family = -1;
+			// Если имя сокета снять удалось
+			if(::getsockname(fd, reinterpret_cast <struct sockaddr *> (&name), &named) == 0){
+				// Запоминаем семейство имени сокета
+				family = static_cast <int32_t> (name.ss_family);
+				/**
+				 * @note Обращение без «::» намеренно: у macOS ntohs заведён макросом, и
+				 *       обращение к нему как к имени пространства имён сборку валит
+				 */
+				port = static_cast <uint32_t> (ntohs(reinterpret_cast <struct sockaddr_in *> (&name)->sin_port));
+			}
+			// Собираем описание сокета
+			::snprintf(socketKind, sizeof(socketKind), "сокет, устройство %d, род %d, наречие %d, семейство имени %d, порт %u",
+			 domain, kind, protocol, family, port);
+			// Выводим описание сокета
+			return socketKind;
+		}
 		// Если описатель является каналом
 		if(S_ISFIFO(info.st_mode))
 			// Сообщаем, что описатель является каналом
@@ -904,6 +964,8 @@ int main(int argc, char * argv[]) noexcept {
 	if((::totals.rounds > warmup) && (after > before)){
 		// Сообщаем об утечке описателей
 		::fprintf(stderr, "НАХОДКА: описатели утекли, после разогрева было %zu, в конце %zu\n", before, after);
+		// Перечень утёкших описателей для щупа учёта заведений
+		vector <int32_t> traced;
 		/**
 		 * Перебираем описатели, оставшиеся после работы
 		 */
@@ -923,10 +985,22 @@ int main(int argc, char * argv[]) noexcept {
 				}
 			}
 			// Если описатель появился за время работы, называем его
-			if(!known)
+			if(!known){
 				// Выводим описатель и его род
 				::fprintf(stderr, "  утёк описатель %d, род: %s\n", fd, ::descriptorKind(fd));
+				// Запоминаем описатель для щупа учёта заведений
+				traced.push_back(fd);
+			}
 		}
+		/**
+		 * Если щуп учёта заведений описателей в сборку включён, спрашиваем у него
+		 * места заведения утёкших описателей
+		 *
+		 * @note Объявление слабое: без щупа тела у него нет, и обращение не делается
+		 */
+		if(::__awh_fdtrace_report__ != nullptr)
+			// Выводим места заведения утёкших описателей
+			::__awh_fdtrace_report__(traced.data(), traced.size());
 		// Запоминаем, что находка сделана: выйти отказом надо ПОСЛЕ вывода итогов
 		leaked = true;
 	}

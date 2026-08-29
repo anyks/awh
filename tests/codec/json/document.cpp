@@ -2106,3 +2106,63 @@ TEST(CodecJsonDocument, NestingLimitBoundedBeforeParsing){
 		ASSERT_NE(doc.errorLocation().offset, json::NO_OFFSET) << limit;
 	}
 }
+/**
+ * @brief Проверка того, что оформление берётся из настроек записи
+ *
+ * @details Выдача текста без довода берёт оформление из настроек контейнера, а выдача
+ *          с доводом его перекрывает: обе возможности разведены перегрузками
+ *
+ * @note Прежде довод стоял с умолчанием `COMPACT` и перекрывал настройку `writer.format`
+ *       ВСЕГДА - настройка эта через общий путь силы не имела вовсе, хотя объявлена
+ *       наравне со способом экранирования и шириною отступа, какие оттуда берутся
+ *
+ */
+TEST(CodecJsonDocument, FormatTakenFromSettings){
+	// Объект документа
+	json::document_t doc(::logger());
+	// Выполняем разбор текста документа
+	ASSERT_TRUE(doc.parse(string("{\"а\":1}"))) << json::message(doc.error());
+	// Выполняем проверку того, что умолчанием оформление сжатое
+	ASSERT_EQ(doc.dump().find('\n'), string::npos);
+	// Получаем настройки контейнера для правки
+	json::document_t::settings_t settings = doc.settings();
+	// Устанавливаем нарядное оформление собираемого текста
+	settings.writer.format = json::format_t::PRETTY;
+	// Выполняем установку настроек контейнера
+	doc.settings(settings);
+	// Выполняем проверку того, что выдача без довода настройку соблюдает
+	ASSERT_NE(doc.dump().find('\n'), string::npos);
+	// Выполняем проверку того, что довод настройку перекрывает
+	ASSERT_EQ(doc.dump(json::format_t::COMPACT).find('\n'), string::npos);
+	// Адрес файла, в какой записывается документ
+	const string output = "./awh_json_format_settings.json";
+	// Выполняем проверку сохранения документа в файл
+	ASSERT_TRUE(doc.save(output));
+	// Объект документа, прочитанного обратно
+	json::document_t back(::logger());
+	// Выполняем чтение записанного документа
+	ASSERT_TRUE(back.load(output)) << json::message(back.error());
+	// Выполняем проверку того, что сохранение настройку соблюдает
+	ASSERT_NE(back.dump(json::format_t::PRETTY).find('\n'), string::npos);
+	// Выполняем снос оставленного файла
+	::remove(output.c_str());
+}
+/**
+ * @brief Проверка отказа чтения каталога, поданного вместо файла
+ *
+ * @details Каталог открывается потоком успешно, а читается признаками конца и отказа -
+ * теми же, какими отзывается файл пустой. Прежде разбор отвечал на него `EMPTY_TEXT`,
+ * отправляя искать изъян в содержимом файла вместо изъяна доступа к нему
+ */
+TEST(CodecJsonDocument, DirectoryIsNotAnEmptyFile){
+	// Объект контейнера документа
+	json::document_t doc(::logger());
+	// Выполняем проверку отказа чтения каталога
+	ASSERT_FALSE(doc.load("."));
+	// Выполняем проверку кода отказа чтения
+	ASSERT_EQ(doc.error(), json::error_t::FILE_NOT_READ);
+	// Выполняем проверку отказа чтения отсутствующего файла
+	ASSERT_FALSE(doc.load("./нет-такого-файла-документа.json"));
+	// Выполняем проверку того, что отказ этот отличен от отказа чтения каталога
+	ASSERT_EQ(doc.error(), json::error_t::FILE_NOT_OPENED);
+}

@@ -114,8 +114,24 @@
  *
  */
 static uint16_t port() noexcept {
-	// Нижняя и верхняя границы разряда портов, отведённого под временные
-	constexpr uint16_t BEGIN = 49152, END = 65535;
+	/**
+	 * Нижняя и верхняя границы разряда портов, отведённого проверкам
+	 *
+	 * @details Разряд вычисляется ОДИН раз за процесс и лежит ВНЕ того, каким
+	 *          распоряжается система: подробности у `__awh_test_port_range__`
+	 */
+	static const std::pair <uint16_t, uint16_t> range = [](void) noexcept -> std::pair <uint16_t, uint16_t> {
+		// Границы разряда, отводимого проверкам
+		uint16_t begin = 0, end = 0;
+		// Выполняем выбор разряда портов для проверок
+		__awh_test_port_range__(begin, end);
+		// Выводим выбранный разряд портов
+		return std::make_pair(begin, end);
+	}();
+	// Нижняя граница разряда портов, отведённого проверкам
+	const uint16_t BEGIN = range.first;
+	// Верхняя граница разряда портов, отведённого проверкам
+	const uint16_t END = range.second;
 	/**
 	 * Начало отсчёта выбирается случайным ОДИН раз за процесс
 	 *
@@ -131,12 +147,12 @@ static uint16_t port() noexcept {
 	 *          изъян был лишь у illumos - там порт отпускается неспешно, а повторного
 	 *          использования порта нет вовсе
 	 */
-	static const uint16_t begin = [](void) noexcept -> uint16_t {
+	static const uint16_t begin = [](const uint16_t lower, const uint16_t upper) noexcept -> uint16_t {
 		// Задаём начальное значение генератора случайных чисел
 		::srandom(static_cast <uint32_t> (::time(nullptr) ^ ::getpid()));
 		// Выводим случайное начало отсчёта из отведённого разряда
-		return static_cast <uint16_t> (BEGIN + (::random() % (END - BEGIN + 1)));
-	}();
+		return static_cast <uint16_t> (lower + (::random() % (upper - lower + 1)));
+	}(BEGIN, END);
 	// Счётчик выданных портов
 	static uint32_t offset = 0;
 	/**

@@ -53,7 +53,7 @@ TEST(CodecCsvCommon, Messages) {
 	 *       выписанный рукою, от перечня отстаёт молча - именно так коды, заведённые
 	 *       последними, не сличались вовсе
 	 */
-	for(uint32_t code = 0; code <= static_cast <uint32_t> (csv::error_t::UNWRITABLE_FIELD); code++){
+	for(uint32_t code = 0; code <= static_cast <uint32_t> (csv::error_t::FILE_NOT_READ); code++){
 		// Получаем описание очередного кода отказа
 		const char * message = csv::message(static_cast <csv::error_t> (code));
 		// Выполняем проверку наличия описания кода отказа
@@ -71,7 +71,7 @@ TEST(CodecCsvCommon, Messages) {
 	 *       щупом: дописанный код отказа проверку не уронил. Сторожем тут выступает
 	 *       собиратель - смотри примечание у самой выдачи описаний
 	 */
-	ASSERT_STREQ(csv::message(static_cast <csv::error_t> (static_cast <uint32_t> (csv::error_t::UNWRITABLE_FIELD) + 1)), "unknown error");
+	ASSERT_STREQ(csv::message(static_cast <csv::error_t> (static_cast <uint32_t> (csv::error_t::FILE_NOT_READ) + 1)), "unknown error");
 	// Выполняем проверку описания кода, договором не отведённого
 	ASSERT_STREQ(csv::message(static_cast <csv::error_t> (0xFF)), "unknown error");
 }

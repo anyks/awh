@@ -567,8 +567,20 @@ void awh::eth::Network_Address::fillSource(const net::addr_t * net, net::src_t &
 				const uint8_t prefix = awh_cast <const net::addr_net_ipv4_t *> (net)->prefix;
 				// Получаем адрес устройства
 				const uint32_t value = reinterpret_cast <struct sockaddr_in *> (address->Address.lpSockaddr)->sin_addr.s_addr;
-				// Собираем маску заданной сети в порядке следования байт сети
-				const uint32_t mask = (prefix == 0 ? 0 : ::htonl(~((1U << (32 - prefix)) - 1)));
+				/**
+				 * Собираем маску заданной сети в порядке следования байт сети
+				 *
+				 * @warning Верхний край проверяется наравне с нижним: длина префикса
+				 *          приходит полем октета, и значение свыше 32 обращает сдвиг
+				 *          в сдвиг на ОТРИЦАТЕЛЬНОЕ число разрядов - поведение
+				 *          неопределённое. Найдено надзирателем undefined у наречий
+				 *          POSIX: «shift exponent -2 is negative». Довод приходит от
+				 *          потребителя, ограничивать его выше по течению нечем
+				 */
+				const uint32_t mask = (
+					(prefix == 0) ? 0 :
+					((prefix >= 32) ? 0xFFFFFFFFU : ::htonl(~((1U << (32 - prefix)) - 1)))
+				);
 				// Определяем принадлежность адреса устройства заданной сети
 				matched = ((value & mask) == (awh_cast <const net::addr_net_ipv4_t *> (net)->address & mask));
 			}

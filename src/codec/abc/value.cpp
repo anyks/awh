@@ -1752,12 +1752,26 @@ bool awh::codec::abc::Value::compose(writer_t & writer) const noexcept {
  *
  */
 bool awh::codec::abc::Value::parse(const void * buffer, const size_t size) noexcept {
+	// Выполняем разбор записи настройками разбора по умолчанию
+	return this->parse(buffer, size, reader_t::settings_t());
+}
+/**
+ * @brief Метод разбора записи затребованными настройками
+ *
+ * @param buffer   буфер разбираемой записи
+ * @param size     размер разбираемой записи
+ * @param settings настройки разбора записи
+ * @return         признак успешного разбора
+ *
+ */
+bool awh::codec::abc::Value::parse(const void * buffer, const size_t size,
+ const reader_t::settings_t & settings) noexcept {
 	// Выполняем очистку разбираемого значения
 	this->clear();
 	// Дерево разбираемого документа
 	document_t document(this->_log);
 	// Если разбор записи в дерево документа отвечен отказом
-	if(!document.parse(buffer, size))
+	if(!document.parse(buffer, size, settings))
 		// Сообщаем, что разбор отвечен отказом
 		return false;
 	// Выполняем перенесение корня дерева документа

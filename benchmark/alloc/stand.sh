@@ -152,6 +152,16 @@ for rival in jemalloc tcmalloc_minimal; do
 	# Ключи связывания годного каталога
 	FOUND=""
 	##
+	# Найденность отмечается ОТДЕЛЬНЫМ признаком, а не пустотой ключей
+	#
+	# Ключи годного каталога пусты, когда соперник лежит на пути поиска по умолчанию, -
+	# а так он лежит у большинства систем Linux. Судить о находке по пустоте строки
+	# значило бы объявлять «не доказано» именно там, где соперник и вправду обслуживает
+	# выдачу: обе пробы проходили, признак оставался пустым, и соперник отбрасывался.
+	# Проверено на Debian 12, где jemalloc и tcmalloc лежат в /usr/lib
+	##
+	SEIZED=""
+	##
 	# Перебираем каталоги ПООДИНОЧКЕ
 	#
 	# Годным считается первый каталог, чей соперник прошёл все три испытания подряд:
@@ -190,7 +200,7 @@ for rival in jemalloc tcmalloc_minimal; do
 		# `malloc_zone_from_ptr` у macOS зовёт зоной «DefaultMallocZone» даже блоки
 		# самого tcmalloc. Оба щупа отвечали «соперник в стороне», и оба врали
 		##
-		[ -n "$SERVES" ] || { FOUND="$LINK"; break; }
+		[ -n "$SERVES" ] || { FOUND="$LINK"; SEIZED="да"; break; }
 		$CXX -std=c++17 -O2 $FLAGS $LINK -D"AWH_RIVAL_$SERVES" -o "$OUT/serves-$rival" -x c++ - "-l$rival" > "$OUT/serves-$rival.log" 2>&1 <<-'SERVE' || continue
 		#include <cstdlib>
 		#include <cstddef>
@@ -220,6 +230,7 @@ for rival in jemalloc tcmalloc_minimal; do
 		"$OUT/serves-$rival" > /dev/null 2>&1 || continue
 		# Каталог годен: соперник доказал обслуживание
 		FOUND="$LINK"
+		SEIZED="да"
 		break
 	done
 	##
@@ -229,7 +240,7 @@ for rival in jemalloc tcmalloc_minimal; do
 	# сличает нас с системным распределителем под чужим именем. Порог скорости по такому
 	# столбцу судить нельзя
 	##
-	if [ -z "$FOUND" ]; then
+	if [ -z "$SEIZED" ]; then
 		echo "--- соперник $rival: обслуживание выдачи НЕ ДОКАЗАНО ни в одном каталоге - пропущен"
 		continue
 	fi

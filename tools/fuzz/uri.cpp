@@ -129,6 +129,8 @@ namespace {
 		uint64_t records;
 		// Количество испорченных записей адресов
 		uint64_t corrupted;
+		// Число найденных расхождений договора
+		uint64_t findings;
 		// Количество записей, разбор переживших
 		uint64_t parsed;
 		// Количество проверок устойчивости приведения к принятому виду
@@ -144,7 +146,7 @@ namespace {
 		 *
 		 */
 		Statistic() noexcept :
-		 records(0), corrupted(0), parsed(0), settled(0), compared(0), queries(0), formats(0) {}
+		 records(0), corrupted(0), findings(0), parsed(0), settled(0), compared(0), queries(0), formats(0) {}
 	};
 	/**
 	 * @brief Функция получения случайного числа в заданных пределах
@@ -608,6 +610,19 @@ int main(int argc, char * argv[]) noexcept {
 	 *       правильным записям, и находка на испорченной сама по себе дефектом не служит
 	 */
 	const uint32_t damage = ((argc > 3) ? static_cast <uint32_t> (::atoll(argv[3])) : 3);
+	/**
+	 * Признак остановки на первой же находке
+	 *
+	 * @details Остановка нужна розыску: находка печатается вместе с записью, какой она
+	 *          добыта, и дальше идёт разбор. Но она же мешает СМЕТАНИЮ: под надзирателями
+	 *          памяти ворошитель ценен проходами по негодным записям, а до них дело не
+	 *          доходит вовсе - прогон встаёт на первом же расхождении договора, какое на
+	 *          испорченной записи расхождением и не является
+	 *
+	 * @note Нуль велит идти до конца, считая находки. Печатается всё равно лишь первая:
+	 *       вывод сотен однородных находок пользы не несёт
+	 */
+	const bool halt = ((argc > 4) ? (::atoll(argv[4]) != 0) : true);
 	// Источник случайных чисел
 	mt19937_64 engine(seed);
 	// Учёт проделанной работы
@@ -644,31 +659,44 @@ int main(int argc, char * argv[]) noexcept {
 		/**
 		 * Если приведение к принятому виду в умном виде печати неустойчиво
 		 */
-		if(!::settled(text, awh::uri_t::format_t::SMART, totals))
-			// Выходим из приложения с кодом ошибки
-			return EXIT_FAILURE;
+		if(!::settled(text, awh::uri_t::format_t::SMART, totals)){
+			// Считаем находку
+			totals.findings++;
+			// Выходим из приложения с кодом ошибки, если остановка затребована
+			if(halt)
+				return EXIT_FAILURE;
+		}
 		/**
 		 * Если приведение к принятому виду в полном виде печати неустойчиво
 		 *
 		 * @note Оба вида печати проверяются намеренно: умный прячет схему и порт при
 		 *       их отсутствии, полный выписывает всегда, и пути печати у них разные
 		 */
-		if(!::settled(text, awh::uri_t::format_t::FULL, totals))
-			// Выходим из приложения с кодом ошибки
-			return EXIT_FAILURE;
+		if(!::settled(text, awh::uri_t::format_t::FULL, totals)){
+			// Считаем находку
+			totals.findings++;
+			// Выходим из приложения с кодом ошибки, если остановка затребована
+			if(halt)
+				return EXIT_FAILURE;
+		}
 		// Увеличиваем счёт проверок согласия видов печати
 		totals.formats++;
 		/**
 		 * Если порядок параметров запроса неустойчив
 		 */
-		if(!::ordered(text, totals))
-			// Выходим из приложения с кодом ошибки
-			return EXIT_FAILURE;
+		if(!::ordered(text, totals)){
+			// Считаем находку
+			totals.findings++;
+			// Выходим из приложения с кодом ошибки, если остановка затребована
+			if(halt)
+				return EXIT_FAILURE;
+		}
 	}
 	// Выводим итоги проделанной работы
 	::fprintf(stdout,
 		"ЗЕРНО=%llu ПРОХОДОВ=%llu\n"
 		"  записей построено: %llu, из них испорчено: %llu\n"
+		"  находок договора: %llu\n"
 		"  разбор пережили: %llu\n"
 		"  проверок устойчивости приведения: %llu\n"
 		"  проверок согласия сличения с печатью: %llu\n"
@@ -676,6 +704,7 @@ int main(int argc, char * argv[]) noexcept {
 		"  проверок устойчивости порядка параметров: %llu\n",
 		static_cast <unsigned long long> (seed), static_cast <unsigned long long> (count),
 		static_cast <unsigned long long> (totals.records), static_cast <unsigned long long> (totals.corrupted),
+		static_cast <unsigned long long> (totals.findings),
 		static_cast <unsigned long long> (totals.parsed), static_cast <unsigned long long> (totals.settled),
 		static_cast <unsigned long long> (totals.compared), static_cast <unsigned long long> (totals.formats),
 		static_cast <unsigned long long> (totals.queries));

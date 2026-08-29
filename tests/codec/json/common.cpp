@@ -108,7 +108,7 @@ TEST(CodecJsonCommon, Messages) {
 	 *       выписанный рукою, от перечня отстаёт молча - именно так коды, заведённые
 	 *       последними, не сличались вовсе
 	 */
-	for(uint32_t code = 0; code <= static_cast <uint32_t> (json::error_t::KEY_OUTSIDE_OBJECT); code++){
+	for(uint32_t code = 0; code <= static_cast <uint32_t> (json::error_t::FILE_NOT_READ); code++){
 		// Получаем описание очередного кода отказа
 		const char * message = json::message(static_cast <json::error_t> (code));
 		// Выполняем проверку наличия описания кода отказа
@@ -126,7 +126,7 @@ TEST(CodecJsonCommon, Messages) {
 	 *       щупом: дописанный код отказа проверку не уронил. Сторожем тут выступает
 	 *       собиратель - смотри примечание у самой выдачи описаний
 	 */
-	ASSERT_STREQ(json::message(static_cast <json::error_t> (static_cast <uint32_t> (json::error_t::KEY_OUTSIDE_OBJECT) + 1)), "unknown error");
+	ASSERT_STREQ(json::message(static_cast <json::error_t> (static_cast <uint32_t> (json::error_t::FILE_NOT_READ) + 1)), "unknown error");
 	// Выполняем проверку описания кода, договором не отведённого
 	ASSERT_STREQ(json::message(static_cast <json::error_t> (0xFF)), "unknown error");
 }
@@ -268,4 +268,50 @@ TEST(CodecJsonCommon, TypeNames) {
 		// Выполняем проверку отвечающего виду значения вида узла
 		ASSERT_EQ(json::kind(item.type), item.kind) << item.name;
 	}
+}
+/**
+ * @brief Проверка названий кодировок исходного текста
+ *
+ * @details Выдача эта заведена наравне с кодеками разметки и таблицы: у них она была, а
+ *          у документа её не было вовсе, и опознанную кодировку звучащему нечем было
+ *          назвать - ни в журнал, ни в сообщение об отказе
+ *
+ * @note Сквозной обход перечня ведётся до последнего его члена: полноту выдачи блюдёт
+ *       собиратель ключом `-Wswitch`, а настоящая проверка сличает сами названия и
+ *       требует, чтобы неопределённая кодировка отличалась от кодировки, перечню не
+ *       принадлежащей
+ *
+ */
+TEST(CodecJsonCommon, EncodingNames){
+	// Выполняем проверку названия неопределённой кодировки
+	ASSERT_EQ(string(json::name(json::encoding_t::NONE)), "none");
+	// Выполняем проверку названия кодировки UTF-8
+	ASSERT_EQ(string(json::name(json::encoding_t::UTF8)), "UTF-8");
+	// Выполняем проверку названия кодировки UTF-16 с обратным порядком байтов
+	ASSERT_EQ(string(json::name(json::encoding_t::UTF16LE)), "UTF-16LE");
+	// Выполняем проверку названия кодировки UTF-16 с прямым порядком байтов
+	ASSERT_EQ(string(json::name(json::encoding_t::UTF16BE)), "UTF-16BE");
+	// Выполняем проверку названия кодировки ISO-8859-1
+	ASSERT_EQ(string(json::name(json::encoding_t::LATIN1)), "ISO-8859-1");
+	// Выполняем проверку названия кодировки US-ASCII
+	ASSERT_EQ(string(json::name(json::encoding_t::ASCII)), "US-ASCII");
+	// Выполняем проверку названия кодировки Windows-1252
+	ASSERT_EQ(string(json::name(json::encoding_t::CP1252)), "windows-1252");
+	/**
+	 * Выполняем сквозной обход всех членов перечня кодировок
+	 */
+	for(uint32_t code = 0; code <= static_cast <uint32_t> (json::encoding_t::CP1252); code++){
+		// Получаем название очередной кодировки
+		const char * title = json::name(static_cast <json::encoding_t> (code));
+		// Выполняем проверку того, что название выдано
+		ASSERT_NE(title, nullptr) << code;
+		// Выполняем проверку того, что название не пусто
+		ASSERT_STRNE(title, "") << code;
+		// Выполняем проверку того, что название опознано
+		ASSERT_STRNE(title, "unknown") << code;
+	}
+	// Выполняем проверку названия кодировки, перечню не принадлежащей
+	ASSERT_EQ(string(json::name(static_cast <json::encoding_t> (0xFF))), "unknown");
+	// Выполняем проверку того, что два эти случая различимы
+	ASSERT_STRNE(json::name(json::encoding_t::NONE), json::name(static_cast <json::encoding_t> (0xFF)));
 }

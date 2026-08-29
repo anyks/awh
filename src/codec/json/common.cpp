@@ -163,6 +163,9 @@ const char * awh::codec::json::message(const error_t error) noexcept {
 		// Если текст документа записать в файл не удалось
 		case error_t::FILE_NOT_WRITTEN:
 			return "cannot write the document file";
+		// Если файл документа прочитать не удалось
+		case error_t::FILE_NOT_READ:
+			return "cannot read the document file";
 		// Если корень документа уже несёт значение
 		case error_t::MULTIPLE_ROOTS:
 			return "the document root already holds a value";
@@ -211,6 +214,54 @@ const char * awh::codec::json::name(const kind_t kind) noexcept {
 			return "object";
 	}
 	// Выводим название неизвестного вида узла
+	return "unknown";
+}
+/**
+ * @brief Функция получения названия кодировки исходного текста
+ *
+ * @param encoding кодировка исходного текста
+ * @return         название кодировки
+ *
+ */
+const char * awh::codec::json::name(const encoding_t encoding) noexcept {
+	/**
+	 * Определяем кодировку исходного текста
+	 *
+	 * @warning Приведение кодировки к числу здесь ставить нельзя: оно лишает собиратель
+	 *          возможности видеть перечень, и кодировка, в него дописанная, ушла бы БЕЗ
+	 *          названия молча. Ветвь `default` глушит сторожа тем же порядком
+	 */
+	switch(encoding){
+		// Если кодировка не определена
+		case encoding_t::NONE:
+			// Выводим название кодировки
+			return "none";
+		// Если кодировкой является UTF-8
+		case encoding_t::UTF8:
+			// Выводим название кодировки
+			return "UTF-8";
+		// Если кодировкой является UTF-16 с обратным порядком байтов
+		case encoding_t::UTF16LE:
+			// Выводим название кодировки
+			return "UTF-16LE";
+		// Если кодировкой является UTF-16 с прямым порядком байтов
+		case encoding_t::UTF16BE:
+			// Выводим название кодировки
+			return "UTF-16BE";
+		// Если кодировкой является ISO-8859-1
+		case encoding_t::LATIN1:
+			// Выводим название кодировки
+			return "ISO-8859-1";
+		// Если кодировкой является US-ASCII
+		case encoding_t::ASCII:
+			// Выводим название кодировки
+			return "US-ASCII";
+		// Если кодировкой является Windows-1252
+		case encoding_t::CP1252:
+			// Выводим название кодировки
+			return "windows-1252";
+	}
+	// Выводим название неизвестной кодировки
 	return "unknown";
 }
 /**

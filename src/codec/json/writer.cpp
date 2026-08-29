@@ -677,10 +677,16 @@ bool awh::codec::json::Writer::close() noexcept {
 		return this->refuse(error_t::NO_CONTAINER_OPEN);
 	/**
 	 * Если имя поля объекта записано, а значение его - ещё нет
+	 *
+	 * @note Отказ этот - `EXPECTED_VALUE`, а не `DUPLICATE_KEY`: повторено здесь ничего
+	 *       не было, объект закрывается с именем, значения так и не получившим. Код
+	 *       `DUPLICATE_KEY` договором отведён повторённому ИМЕНИ поля, и разбор
+	 *       выставляет его именно в этом смысле: один код на два разных случая лишил бы
+	 *       звучащего возможности отличить порчу данных от своей же ошибки обращения
 	 */
 	if(this->_keyed)
 		// Выполняем отказ записи с сообщением о доводе его в журнал
-		return this->refuse(error_t::DUPLICATE_KEY);
+		return this->refuse(error_t::EXPECTED_VALUE);
 	// Получаем вид закрываемого вместилища
 	const kind_t kind = this->_nesting.back();
 	// Удаляем вид закрываемого вместилища из стека
@@ -734,10 +740,13 @@ bool awh::codec::json::Writer::key(const string & name) noexcept {
 		return this->refuse(error_t::KEY_OUTSIDE_OBJECT);
 	/**
 	 * Если имя поля объекта уже записано
+	 *
+	 * @note Отказ этот - `EXPECTED_VALUE` по тому же доводу, что и у закрытия объекта:
+	 *       имена эти могут быть и вовсе разными, а недостаёт здесь значения
 	 */
 	if(this->_keyed)
 		// Выполняем отказ записи с сообщением о доводе его в журнал
-		return this->refuse(error_t::DUPLICATE_KEY);
+		return this->refuse(error_t::EXPECTED_VALUE);
 	/**
 	 * Если отказ на негодную кодировку затребован, а имя поля ей не отвечает
 	 *

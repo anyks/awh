@@ -130,6 +130,14 @@ namespace {
 	static const json::number_t NUMBERS[] = {
 		json::number_t::NATIVE, json::number_t::CHECK
 	};
+	// Перечень всех видов оформления собираемого текста
+	static const json::format_t FORMATS[] = {
+		json::format_t::COMPACT, json::format_t::PRETTY
+	};
+	// Перечень всех способов экранирования при записи
+	static const json::escape_t ESCAPES[] = {
+		json::escape_t::MINIMAL, json::escape_t::SOLIDUS, json::escape_t::ASCII
+	};
 	/**
 	 * @brief Сторож полноты перечней настроек
 	 *
@@ -146,6 +154,23 @@ namespace {
 		// Перебираем все правила преобразования чисел
 		switch(numbers){
 			case json::number_t::NATIVE: case json::number_t::CHECK: break;
+		}
+	}
+	/**
+	 * @brief Сторож полноты перечней настроек записи
+	 *
+	 * @warning Ветвь `default` здесь ставить нельзя: она глушит `-Wswitch`, и сторож
+	 *          перестанет кусать
+	 *
+	 */
+	[[maybe_unused]] void guardWriting(const json::format_t format, const json::escape_t escape) noexcept {
+		// Перебираем все виды оформления собираемого текста
+		switch(format){
+			case json::format_t::COMPACT: case json::format_t::PRETTY: break;
+		}
+		// Перебираем все способы экранирования при записи
+		switch(escape){
+			case json::escape_t::MINIMAL: case json::escape_t::SOLIDUS: case json::escape_t::ASCII: break;
 		}
 	}
 	/**
@@ -1596,6 +1621,26 @@ int main(int argc, char * argv[]) noexcept {
 		settings.duplicates = DUPLICATES[engine() % (sizeof(DUPLICATES) / sizeof(DUPLICATES[0]))];
 		// Устанавливаем правило преобразования чисел
 		settings.numbers = NUMBERS[engine() % (sizeof(NUMBERS) / sizeof(NUMBERS[0]))];
+		/**
+		 * Устанавливаем настройки записи текста документа
+		 *
+		 * @note Перебирались прежде ОДНИ настройки разбора: перезапись дерева шла всегда
+		 *       умолчаниями, и ни нарядное оформление, ни способы экранирования сверх
+		 *       предписанного стандартом не ворошились ни разу
+		 */
+		settings.writer.format = FORMATS[engine() % (sizeof(FORMATS) / sizeof(FORMATS[0]))];
+		// Устанавливаем способ экранирования при записи
+		settings.writer.escape = ESCAPES[engine() % (sizeof(ESCAPES) / sizeof(ESCAPES[0]))];
+		// Устанавливаем ширину отступа нарядного оформления
+		settings.writer.indent = static_cast <uint8_t> (engine() % 5);
+		/**
+		 * Устанавливаем разрешение записей нечисла и бесконечности
+		 *
+		 * @note Разрешение берётся тем же, что и у разбора: записанное с дозволения
+		 *       нечисло без дозволения обратно не читается, и расхождение означало бы
+		 *       здесь несогласованность настроек, а не дефект
+		 */
+		settings.writer.allowInfinityAndNan = settings.reader.allowInfinityAndNan;
 		// Выполняем сборку текста документа
 		string text = ::building(engine, settings.reader);
 		// Увеличиваем счёт построенных текстов документов

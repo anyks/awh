@@ -122,13 +122,17 @@ namespace {
 		uint64_t edited;
 		// Количество контейнеров с растянутым за тело кадром
 		uint64_t stretched;
+		// Количество записей, сличённых строгим разбором с обычным
+		uint64_t canonical;
+		// Количество поверенных заслонов разбора от враждебной записи
+		uint64_t guarded;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
 		Statistic() noexcept :
 		 records(0), corrupted(0), survived(0), events(0), trees(0), containers(0),
-		 fetches(0), edits(0), compactions(0), verified(0), assemblies(0), skips(0), spikes(0), swept(0), reread(0), stable(0), edited(0), stretched(0) {}
+		 fetches(0), edits(0), compactions(0), verified(0), assemblies(0), skips(0), spikes(0), swept(0), reread(0), stable(0), edited(0), stretched(0), canonical(0), guarded(0) {}
 	} totals;
 
 	/**
@@ -207,6 +211,16 @@ namespace {
 	 *
 	 */
 	mt19937_64 source(SEED);
+	/**
+	 * @brief Признак того, что последняя построенная запись собрана строгим видом
+	 *
+	 */
+	bool assembledCanonical = false;
+	/**
+	 * @brief Признак того, что сборщику дозволены повторы имён полей отображения
+	 *
+	 */
+	bool assembledDuplicates = false;
 
 	/**
 	 * @brief Функция получения случайного числа в пределах
@@ -430,12 +444,25 @@ namespace {
 				/**
 				 * Выполняем построение всех полей отображения
 				 */
+				// Имя поля отображения, уложенное последним
+				string previous;
 				for(uint64_t i = 0; i < count; i++){
 					/**
 					 * Выполняем сборку имени поля отображения возрастающим: строгий вид
 					 * записи имена по возрастанию и требует
 					 */
-					const string key = ("k" + to_string(i) + "_" + text(static_cast <size_t> (number(0, 6))));
+					string key = ("k" + to_string(i) + "_" + text(static_cast <size_t> (number(0, 6))));
+					/**
+					 * Если повторы имён дозволены, через раз укладываем имя повторно
+					 *
+					 * @note Повтор кладётся ОКТЕТ В ОКТЕТ: имя, отличное хоть одним октетом,
+					 * повтором не является вовсе, и поверка прошла бы мимо
+					 */
+					if(assembledDuplicates && !previous.empty())
+						// Выполняем повторную укладку имени поля отображения
+						key = previous;
+					// Выполняем запоминание уложенного имени поля отображения
+					previous = key;
 					// Если уложить имя поля отображения не вышло
 					if(!writer.text(key))
 						// Выводим признак неудачного построения
@@ -479,6 +506,25 @@ namespace {
 		abc::writer_t::settings_t settings = writer.settings();
 		// Выполняем установку строгого вида записи через раз
 		settings.canonical = (number(0, 1) == 1);
+		/**
+		 * Выполняем запоминание строгости построенной записи: сличение строгого разбора
+		 * ведётся лишь по тем записям, какие строгими и собраны
+		 */
+		assembledCanonical = settings.canonical;
+		/**
+		 * Выполняем снятие поверки повторов имён полей у трети нестрогих записей
+		 *
+		 * @details Записи с ПОВТОРЯЮЩИМСЯ именем поля ворошитель не строил вовсе: имена
+		 * шли возрастающими всегда. Между тем повтор имени есть излюбленный приём
+		 * путаницы разборов, а кодек его на проводе допускает, и разбор с деревом обязаны
+		 * обойтись с ним без порчи памяти и без расхождения путей
+		 *
+		 * @note Строгому виду повторы недоступны по устройству: имена там идут строго
+		 * возрастающими, и повтор отсеивается тою же поверкой
+		 */
+		settings.duplicates = (settings.canonical || (number(0, 1) == 1));
+		// Выполняем запоминание дозволенности повторов имён полей
+		assembledDuplicates = !settings.duplicates;
 		/**
 		 * Выполняем снятие проверки строк через раз: проверка эта отвергает то, что
 		 * разбору всё равно придётся встретить на носителе
@@ -570,9 +616,59 @@ namespace {
 	 * @return       признак записи, разобранной до конца
 	 *
 	 */
-	bool parse(const vector <uint8_t> & buffer, const size_t chunk, vector <Event> & events, const bool direct = false) noexcept {
+	/**
+	 * @brief Функция выдачи настроек разбора под собранную запись
+	 *
+	 * @details Умолчанием разбор отвергает повтор имени поля отображения, и запись,
+	 *          собранная с повторами, до дерева и владеющего значения не дошла бы вовсе.
+	 *          Слоям этим повтор надлежит ВИДЕТЬ: обойтись с ним без порчи памяти обязаны
+	 *          они, а не один потоковый разбор
+	 *
+	 * @return настройки разбора записи
+	 *
+	 */
+	abc::reader_t::settings_t settings() noexcept {
+		// Настройки разбора записи
+		abc::reader_t::settings_t result;
+		// Если запись собрана с дозволенными повторами имён
+		if(assembledDuplicates)
+			// Выполняем дозволение повтора имени поля отображения
+			result.duplicates = abc::duplicate_t::KEEP;
+		// Выводим настройки разбора записи
+		return result;
+	}
+	bool parse(const vector <uint8_t> & buffer, const size_t chunk, vector <Event> & events,
+	 const bool direct = false, const bool canonical = false,
+	 const uint32_t depth = 0, const uint64_t content = 0) noexcept {
 		// Разбиратель бинарной записи
 		abc::reader_t reader(::logger());
+		/**
+		 * Если разбору объявлены строгий вид либо пределы
+		 */
+		if(canonical || (depth > 0) || (content > 0) || assembledDuplicates){
+			// Получаем настройки разбора бинарной записи
+			abc::reader_t::settings_t settings = reader.settings();
+			// Выполняем установку строгого вида записи
+			settings.canonical = canonical;
+			// Выполняем установку предела глубины вложенности
+			settings.maxDepth = depth;
+			/**
+			 * Если запись собрана с дозволенными повторами имён, разбору дозволяем их тоже
+			 *
+			 * @details Умолчанием разбор повтор ОТВЕРГАЕТ, и запись с повтором до дерева и
+			 * владеющего значения не дошла бы вовсе. Ворошителю же нужно, чтобы слои эти
+			 * повтор ВИДЕЛИ: обойтись с ним без порчи памяти обязаны они, а не один разбор
+			 */
+			if(assembledDuplicates)
+				// Выполняем дозволение повтора имени поля отображения
+				settings.duplicates = abc::duplicate_t::KEEP;
+			// Выполняем установку предела длины строкового значения
+			settings.maxString = content;
+			// Выполняем установку предела длины двоичного значения
+			settings.maxBlob = content;
+			// Выполняем установку настроек разбора бинарной записи
+			reader.settings(settings);
+		}
 		// Выполняем очистку запомненных событий разбора
 		events.clear();
 		// Смещение подачи разбираемой записи
@@ -1094,6 +1190,192 @@ namespace {
 		}
 	}
 	/**
+	 * @brief Функция сличения строгого разбора с обычным
+	 *
+	 * @details Запись, собранная СТРОГИМ видом, обязана разбираться строгим разбором
+	 *          знак в знак с обычным: строгий вид требует наименьшей ширины метки,
+	 *          объявленной длины вместимых и возрастания имён полей, - и сборщик,
+	 *          объявивший строгость, всё это уже соблюл. Отказ строгого разбора на такой
+	 *          записи означал бы, что сборщик и разбор понимают строгость ПО-РАЗНОМУ, а
+	 *          проволочная запись тем самым перестала бы быть договором
+	 *
+	 * @note Договор этот держался одной нарочной проверкой на одной записи. Здесь он
+	 *       поверяется на всякой строгой записи ворошителя
+	 *
+	 * @param buffer буфер разбираемой записи
+	 *
+	 */
+	void canonical(const vector <uint8_t> & buffer) noexcept {
+		// События обычного разбора записи
+		vector <Event> plain;
+		// Выполняем обычный разбор записи
+		const bool loose = parse(buffer, 0, plain);
+		// События строгого разбора записи
+		vector <Event> strict;
+		// Выполняем строгий разбор записи
+		const bool tight = parse(buffer, 0, strict, false, true);
+		/**
+		 * Если исходы разборов разошлись
+		 */
+		if(loose != tight){
+			// Выводим сообщение о расхождении исходов разбора
+			::fprintf(stderr, "abc fuzz: canonical parsing differs on a canonical record: %d against %d\n",
+			 static_cast <int> (loose), static_cast <int> (tight));
+			// Выполняем выход с признаком отказа
+			::exit(1);
+		}
+		/**
+		 * Если количество событий разборов разошлось
+		 */
+		if(plain.size() != strict.size()){
+			// Выводим сообщение о расхождении количества событий
+			::fprintf(stderr, "abc fuzz: canonical parsing changed the event count: %zu against %zu\n",
+			 plain.size(), strict.size());
+			// Выполняем выход с признаком отказа
+			::exit(1);
+		}
+		/**
+		 * Выполняем сличение всех событий разбора
+		 */
+		for(size_t i = 0; i < plain.size(); i++){
+			// Если очередные события разбора разошлись
+			if(plain.at(i) != strict.at(i)){
+				// Выводим сообщение о расхождении события разбора
+				::fprintf(stderr, "abc fuzz: canonical parsing changed event %zu\n", i);
+				// Выполняем выход с признаком отказа
+				::exit(1);
+			}
+		}
+		// Выполняем учёт сличения строгого разбора
+		totals.canonical++;
+	}
+	/**
+	 * @brief Функция поверки заслонов разбора от враждебной записи
+	 *
+	 * @details Пределы разбора - глубина вложенности и длины значений - ворошителем не
+	 *          трогались вовсе: все они стоят нулём, то есть сняты. Между тем заслоны
+	 *          эти и есть защита от записи, поданной злоумышленником, и молчаливо
+	 *          испортившийся заслон не виден ничем
+	 *
+	 * @details Сторож САМОКАЛИБРУЕТСЯ, а не гадает: наибольшая глубина берётся из самого
+	 *          разбора записи, а не назначается на глаз. Предел, равный ей, обязан запись
+	 *          ПРИНЯТЬ, а предел на единицу меньший - ОТВЕРГНУТЬ. Обе половины
+	 *          существенны: заслон, отвергающий всё подряд, прошёл бы одну первую, а
+	 *          заслон снятый - одну вторую
+	 *
+	 * @note Предел количества событий сюда НЕ входит: он есть обратное давление, а не
+	 *       отказ, - разбор при нём цел и продолжается по снятии событий, - и сторожем
+	 *       отказа его строить было бы ложью о его назначении
+	 *
+	 * @param buffer буфер разбираемой записи
+	 *
+	 */
+	void limits(const vector <uint8_t> & buffer) noexcept {
+		// События разбора записи без всяких пределов
+		vector <Event> whole;
+		/**
+		 * Если запись до конца не разобрана, поверять заслоны не на чем
+		 */
+		if(!parse(buffer, 0, whole) || whole.empty())
+			// Выходим из работы
+			return;
+		/**
+		 * Наименьший предел глубины, при каком запись обязана разбираться
+		 *
+		 * @note Начало вместимого сообщает СВОЙ уровень, каким он был ДО вкладывания, а
+		 *       заслон сличает уровень, каким он станет ПОСЛЕ, - оттого началу и нужен
+		 *       предел на единицу больший сообщённого. Установлено замером, а не чтением:
+		 *       по коду это не видно, и первая сборка сторожа краснела именно здесь
+		 */
+		uint32_t deepest = 0;
+		/**
+		 * Выполняем розыск наименьшего достаточного предела глубины
+		 */
+		for(const Event & event : whole){
+			// Признак того, что событие открывает вместимое
+			const bool opens = ((event.event == static_cast <uint8_t> (abc::event_t::ARRAY_BEGIN)) ||
+			 (event.event == static_cast <uint8_t> (abc::event_t::MAP_BEGIN)));
+			// Предел глубины, потребный этому событию
+			const uint32_t needed = (event.depth + (opens ? 1 : 0));
+			// Если потребный предел превышает найденный
+			if(needed > deepest)
+				// Выполняем запоминание наибольшего потребного предела
+				deepest = needed;
+		}
+		/**
+		 * Если запись вложенности не имеет вовсе, поверять глубину не на чем
+		 */
+		if(deepest > 1){
+			// События разбора записи с пределом, равным её глубине
+			vector <Event> fitting;
+			/**
+			 * Если запись с достаточным пределом глубины не разобрана
+			 */
+			if(!parse(buffer, 0, fitting, false, false, deepest)){
+				// Выводим сообщение об отвергнутой записи с достаточным пределом
+				::fprintf(stderr, "abc fuzz: depth limit %u refused a record of depth %u\n",
+				 deepest, deepest);
+				// Выполняем выход с признаком отказа
+				::exit(1);
+			}
+			/**
+			 * Если выдача событий при достаточном пределе разошлась
+			 */
+			if(fitting.size() != whole.size()){
+				// Выводим сообщение о расхождении выдачи событий
+				::fprintf(stderr, "abc fuzz: depth limit changed the event count: %zu against %zu\n",
+				 whole.size(), fitting.size());
+				// Выполняем выход с признаком отказа
+				::exit(1);
+			}
+			// События разбора записи с пределом на единицу меньшим глубины
+			vector <Event> tight;
+			/**
+			 * Если запись с недостаточным пределом глубины всё же разобрана
+			 */
+			if(parse(buffer, 0, tight, false, false, (deepest - 1))){
+				// Выводим сообщение о заслоне, пропустившем запись
+				::fprintf(stderr, "abc fuzz: depth limit %u let through a record of depth %u\n",
+				 (deepest - 1), deepest);
+				// Выполняем выход с признаком отказа
+				::exit(1);
+			}
+			// Выполняем учёт поверенного заслона глубины
+			totals.guarded++;
+		}
+		/**
+		 * Выполняем поверку пределов длины значений
+		 *
+		 * @note Предел берётся размером ВСЕЙ записи: содержимое всякого значения лежит
+		 *       внутри неё, и превзойти её не может ни одно значение, ни сумма кусков
+		 *       собираемого кусками. Стало быть, такой предел обязан пропустить запись
+		 *       целиком, а отказ его означал бы, что заслон сличает не ту величину
+		 */
+		vector <Event> roomy;
+		/**
+		 * Если запись с заведомо достаточным пределом длин не разобрана
+		 */
+		if(!parse(buffer, 0, roomy, false, false, 0, static_cast <uint64_t> (buffer.size()))){
+			// Выводим сообщение об отвергнутой записи с достаточным пределом длин
+			::fprintf(stderr, "abc fuzz: content limit %zu refused a record of %zu octets\n",
+			 buffer.size(), buffer.size());
+			// Выполняем выход с признаком отказа
+			::exit(1);
+		}
+		/**
+		 * Если выдача событий при достаточном пределе длин разошлась
+		 */
+		if(roomy.size() != whole.size()){
+			// Выводим сообщение о расхождении выдачи событий
+			::fprintf(stderr, "abc fuzz: content limit changed the event count: %zu against %zu\n",
+			 whole.size(), roomy.size());
+			// Выполняем выход с признаком отказа
+			::exit(1);
+		}
+		// Выполняем учёт поверенного заслона длин
+		totals.guarded++;
+	}
+	/**
 	 * @brief Функция сличения разбора записи при разной нарезке на куски
 	 *
 	 * @param buffer буфер разбираемой записи
@@ -1260,7 +1542,7 @@ namespace {
 		/**
 		 * Если разобрать запись в дерево документа не вышло
 		 */
-		if(!document.parse(buffer.data(), buffer.size()))
+		if(!document.parse(buffer.data(), buffer.size(), ::settings()))
 			// Прекращаем сборку дерева документа
 			return;
 		// Выполняем увеличение количества собранных деревьев
@@ -1270,7 +1552,7 @@ namespace {
 		/**
 		 * Если разобрать запись во владеющее значение не вышло
 		 */
-		if(!value.parse(buffer.data(), buffer.size()))
+		if(!value.parse(buffer.data(), buffer.size(), ::settings()))
 			// Прекращаем сборку дерева документа
 			return;
 		// Выполняем перезапись владеющего значения
@@ -1286,7 +1568,7 @@ namespace {
 		/**
 		 * Если разобрать перезапись не вышло
 		 */
-		if(!repeated.parse(rewritten.data(), rewritten.size())){
+		if(!repeated.parse(rewritten.data(), rewritten.size(), ::settings())){
 			// Выводим сообщение о неразбираемой перезаписи
 			::fprintf(stderr, "abc fuzz: rewritten record is not parsable\n");
 			// Выполняем выход с признаком расхождения
@@ -2232,6 +2514,14 @@ int main(int argc, char * argv[]) noexcept {
 			if(!assemble(item))
 				// Переходим к следующей строимой записи
 				continue;
+			/**
+			 * Если запись собрана строгим видом, сличаем строгий разбор с обычным
+			 */
+			if(assembledCanonical)
+				// Выполняем сличение строгого разбора с обычным
+				canonical(item);
+			// Выполняем поверку заслонов разбора от враждебной записи
+			limits(item);
 			// Выполняем сличение разбора записи при разной нарезке на куски
 			slicing(item);
 			// Выполняем сличение разбора записи с пропуском вложенного вместимого
@@ -2281,13 +2571,13 @@ int main(int argc, char * argv[]) noexcept {
 	// Выводим учёт проделанной работы
 	::printf("abc fuzz: %llu records (%llu corrupted), %llu parsed to the end, %llu events, "
 	 "%llu trees, %llu containers, %llu fetches, %llu edits, %llu compactions, %llu signatures verified, "
-	 "%llu values assembled, %llu skipping runs, %llu spiked spans, %llu swept records, %llu reread records, %llu stable rewritings, %llu edited values, %llu stretched chunks\n",
+	 "%llu values assembled, %llu skipping runs, %llu spiked spans, %llu swept records, %llu reread records, %llu stable rewritings, %llu edited values, %llu stretched chunks, %llu canonical records, %llu guarded parsings\n",
 	 static_cast <unsigned long long> (totals.records), static_cast <unsigned long long> (totals.corrupted),
 	 static_cast <unsigned long long> (totals.survived), static_cast <unsigned long long> (totals.events),
 	 static_cast <unsigned long long> (totals.trees), static_cast <unsigned long long> (totals.containers),
 	 static_cast <unsigned long long> (totals.fetches), static_cast <unsigned long long> (totals.edits),
 	 static_cast <unsigned long long> (totals.compactions), static_cast <unsigned long long> (totals.verified),
-	 static_cast <unsigned long long> (totals.assemblies), static_cast <unsigned long long> (totals.skips), static_cast <unsigned long long> (totals.spikes), static_cast <unsigned long long> (totals.swept), static_cast <unsigned long long> (totals.reread), static_cast <unsigned long long> (totals.stable), static_cast <unsigned long long> (totals.edited), static_cast <unsigned long long> (totals.stretched));
+	 static_cast <unsigned long long> (totals.assemblies), static_cast <unsigned long long> (totals.skips), static_cast <unsigned long long> (totals.spikes), static_cast <unsigned long long> (totals.swept), static_cast <unsigned long long> (totals.reread), static_cast <unsigned long long> (totals.stable), static_cast <unsigned long long> (totals.edited), static_cast <unsigned long long> (totals.stretched), static_cast <unsigned long long> (totals.canonical), static_cast <unsigned long long> (totals.guarded));
 	// Выводим успешное завершение работы
 	return 0;
 }

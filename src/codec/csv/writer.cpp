@@ -120,6 +120,20 @@ void awh::codec::csv::Writer::quoted(const string_view text) noexcept {
  *
  */
 bool awh::codec::csv::Writer::field(const string_view text) noexcept {
+	/**
+	 * Снимок состояния сборщика, снимаемый до всякой его правки
+	 *
+	 * @note Нужен для отката: содержимое поля проверяется на представимость лишь
+	 *       после записи метки порядка байтов и знака-разделителя, а отказ обязан
+	 *       вернуть сборщик к тому виду, какой он имел до вызова
+	 */
+	const size_t restore = this->_text.size();
+	// Снимок положения начала текущей записи
+	const size_t beginning = this->_origin;
+	// Снимок признака наличия полей у записи
+	const bool opened = this->_started;
+	// Снимок признака записанной метки порядка байтов
+	const bool signature = this->_marked;
 	// Выполняем запись метки порядка байтов
 	this->mark();
 	// Запоминаем признак того, что поле начинает запись
@@ -218,8 +232,8 @@ bool awh::codec::csv::Writer::field(const string_view text) noexcept {
 			 *       кавычки, отмены не признающий, при обратном чтении её не снимет
 			 */
 			if(commented || signatured)
-				// Выводим признак отказа записи поля
-				return this->refuse(error_t::UNWRITABLE_FIELD);
+				// Выполняем откат неудавшейся записи поля
+				return this->rollback(restore, beginning, opened, signature, error_t::UNWRITABLE_FIELD);
 			/**
 			 * Выполняем перебор всех знаков содержимого поля
 			 */
@@ -227,8 +241,8 @@ bool awh::codec::csv::Writer::field(const string_view text) noexcept {
 				// Если знак разрывает запись
 				if((letter == this->_settings.separator) || (letter == this->_settings.quote) ||
 				   (letter == '\r') || (letter == '\n') || (letter == '\\'))
-					// Выводим признак отказа записи поля
-					return this->refuse(error_t::UNWRITABLE_FIELD);
+					// Выполняем откат неудавшейся записи поля
+					return this->rollback(restore, beginning, opened, signature, error_t::UNWRITABLE_FIELD);
 			}
 		}
 		/**
@@ -401,19 +415,34 @@ void awh::codec::csv::Writer::record() noexcept {
  */
 bool awh::codec::csv::Writer::record(const vector <string> & fields) noexcept {
 	/**
+	 * Снимок состояния сборщика, снимаемый до всякой его правки
+	 *
+	 * @note Нужен для отката: отказ на любом из полей снимает и все записанные прежде
+	 */
+	const size_t restore = this->_text.size();
+	// Снимок положения начала текущей записи
+	const size_t beginning = this->_origin;
+	// Снимок признака наличия полей у записи
+	const bool opened = this->_started;
+	// Снимок признака записанной метки порядка байтов
+	const bool signature = this->_marked;
+	/**
 	 * Выполняем перебор всех полей записи
 	 */
 	for(const string & value : fields){
 		/**
 		 * Если очередное поле записать не удалось
 		 *
-		 * @note Запись при этом НЕ завершается: собранный текст остаётся оборванным
-		 *       на месте отказа намеренно, дабы порченая запись не ушла к читающему
-		 *       законченной. Продолжать сбор после отказа не следует
+		 * @note Записанные до отказа поля снимаются: запись эта - одна операция, и
+		 *       уйти она обязана либо целиком, либо никак. Оборванная её половина,
+		 *       оставленная в тексте, склеилась бы со следующей записью в одну
 		 */
-		if(!this->field(value))
+		if(!this->field(value)){
+			// Выполняем возврат сборщика к виду, какой он имел до начала записи
+			this->revert(restore, beginning, opened, signature);
 			// Выводим признак отказа записи
 			return false;
+		}
 	}
 	// Завершаем текущую запись
 	this->record();
@@ -429,19 +458,34 @@ bool awh::codec::csv::Writer::record(const vector <string> & fields) noexcept {
  */
 bool awh::codec::csv::Writer::record(const vector <string_view> & fields) noexcept {
 	/**
+	 * Снимок состояния сборщика, снимаемый до всякой его правки
+	 *
+	 * @note Нужен для отката: отказ на любом из полей снимает и все записанные прежде
+	 */
+	const size_t restore = this->_text.size();
+	// Снимок положения начала текущей записи
+	const size_t beginning = this->_origin;
+	// Снимок признака наличия полей у записи
+	const bool opened = this->_started;
+	// Снимок признака записанной метки порядка байтов
+	const bool signature = this->_marked;
+	/**
 	 * Выполняем перебор всех полей записи
 	 */
 	for(const string_view value : fields){
 		/**
 		 * Если очередное поле записать не удалось
 		 *
-		 * @note Запись при этом НЕ завершается: собранный текст остаётся оборванным
-		 *       на месте отказа намеренно, дабы порченая запись не ушла к читающему
-		 *       законченной. Продолжать сбор после отказа не следует
+		 * @note Записанные до отказа поля снимаются: запись эта - одна операция, и
+		 *       уйти она обязана либо целиком, либо никак. Оборванная её половина,
+		 *       оставленная в тексте, склеилась бы со следующей записью в одну
 		 */
-		if(!this->field(value))
+		if(!this->field(value)){
+			// Выполняем возврат сборщика к виду, какой он имел до начала записи
+			this->revert(restore, beginning, opened, signature);
 			// Выводим признак отказа записи
 			return false;
+		}
 	}
 	// Завершаем текущую запись
 	this->record();
@@ -456,13 +500,34 @@ bool awh::codec::csv::Writer::record(const vector <string_view> & fields) noexce
  */
 bool awh::codec::csv::Writer::write(const vector <vector <string>> & records) noexcept {
 	/**
+	 * Снимок состояния сборщика, снимаемый до всякой его правки
+	 *
+	 * @note Нужен для отката: отказ на любом из полей снимает и все записанные прежде
+	 */
+	const size_t restore = this->_text.size();
+	// Снимок положения начала текущей записи
+	const size_t beginning = this->_origin;
+	// Снимок признака наличия полей у записи
+	const bool opened = this->_started;
+	// Снимок признака записанной метки порядка байтов
+	const bool signature = this->_marked;
+	/**
 	 * Выполняем перебор всех записываемых записей
 	 */
 	for(const vector <string> & fields : records){
-		// Если очередную запись записать не удалось
-		if(!this->record(fields))
+		/**
+		 * Если очередную запись записать не удалось
+		 *
+		 * @note Записанные до отказа записи снимаются по тому же доводу: запись
+		 *       таблицы целиком - одна операция, и уйти она обязана либо целиком,
+		 *       либо никак
+		 */
+		if(!this->record(fields)){
+			// Выполняем возврат сборщика к виду, какой он имел до начала записи таблицы
+			this->revert(restore, beginning, opened, signature);
 			// Выводим признак отказа записи
 			return false;
+		}
 	}
 	// Выводим признак успешной записи
 	return true;
@@ -473,6 +538,42 @@ bool awh::codec::csv::Writer::write(const vector <vector <string>> & records) no
  * @return собранный текст
  *
  */
+/**
+ * @brief Метод возврата сборщика к прежнему виду
+ *
+ * @param size    размер собранного текста до начала операции
+ * @param origin  положение начала записи до начала операции
+ * @param started признак наличия полей у записи до начала операции
+ * @param marked  признак записанной метки порядка байтов до начала операции
+ *
+ */
+void awh::codec::csv::Writer::revert(const size_t size, const size_t origin, const bool started, const bool marked) noexcept {
+	// Возвращаем собранный текст к виду, какой он имел до начала операции
+	this->_text.resize(size);
+	// Возвращаем положение начала текущей записи
+	this->_origin = origin;
+	// Возвращаем признак наличия полей у записи
+	this->_started = started;
+	// Возвращаем признак записанной метки порядка байтов
+	this->_marked = marked;
+}
+/**
+ * @brief Метод отката неудавшейся операции записи с сообщением об отказе
+ *
+ * @param size    размер собранного текста до начала операции
+ * @param origin  положение начала записи до начала операции
+ * @param started признак наличия полей у записи до начала операции
+ * @param marked  признак записанной метки порядка байтов до начала операции
+ * @param error   код отказа записи
+ * @return        признак отказа записи, всегда ложь
+ *
+ */
+bool awh::codec::csv::Writer::rollback(const size_t size, const size_t origin, const bool started, const bool marked, const error_t error) noexcept {
+	// Выполняем возврат сборщика к виду, какой он имел до начала операции
+	this->revert(size, origin, started, marked);
+	// Выполняем отказ записи с сообщением о нём в журнал
+	return this->refuse(error);
+}
 bool awh::codec::csv::Writer::refuse(const error_t error) noexcept {
 	// Запоминаем код отказа записи
 	this->_error = error;
