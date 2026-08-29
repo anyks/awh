@@ -950,6 +950,11 @@ bool awh::codec::toml::Writer::stamped(const stamp_t & stamp, const type_t type)
 bool awh::codec::toml::Writer::declare(const part_t * parts, const size_t count, const bool array) noexcept {
 	/**
 	 * Если запись очередной строки текста не готова
+	 *
+	 * @warning Сторож этот равнозначен: имя таблицы, записываемое следом, отвергается
+	 *          поверкой имени тем же кодом и с тем же откатом текста, и порча захода
+	 *          ни одной проверки не роняет - замерено. Проверкою он не закрепляется
+	 *          намеренно: закреплять в нём нечего
 	 */
 	if(!this->ready())
 		// Выводим отрицательный результат выполнения операции
