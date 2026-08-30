@@ -4661,3 +4661,39 @@ TEST(CodecYamlReader, RemarkAfterQuestionColonAndAlias) {
 		ASSERT_EQ(remarks, sample.second) << sample.second;
 	}
 }
+/**
+ * @brief Проверка непринятия настроек разбора посреди текста
+ *
+ * @details Смена правил разбора посреди текста развела бы начало его с концом: первая
+ *          половина оказалась бы прочитана одними правилами, вторая иными. Оттого
+ *          чтение, разбор начавшее, настроек больше не принимает, и строку этого
+ *          отказа пересечение трёх прогонов числило слепой - настройки задавались
+ *          лишь до подачи текста
+ *
+ */
+TEST(CodecYamlReader, SettingsRefusedWhileParsing) {
+	// Объект чтения текста документа
+	yaml::reader_t reader(::logger());
+	// Настройки разбора текста
+	yaml::reader_t::settings_t settings;
+	// Выполняем проверку принятия настроек до подачи текста
+	ASSERT_TRUE(reader.settings(settings));
+	// Первый кусок текста документа
+	const string first = "первый: 1\n";
+	// Выполняем подачу первого куска текста, концом текста не объявленного
+	ASSERT_TRUE(reader.feed(first.data(), first.size(), false));
+	// Выполняем проверку непринятия настроек посреди разбора
+	ASSERT_FALSE(reader.settings(settings));
+	// Второй кусок текста документа
+	const string second = "второй: 2\n";
+	// Выполняем подачу второго куска текста концом текста
+	ASSERT_TRUE(reader.feed(second.data(), second.size(), true));
+	// Выполняем снятие событий разбора
+	while(reader.next());
+	// Выполняем проверку того, что разбор отказом не сорван
+	ASSERT_EQ(reader.error(), yaml::error_t::NONE);
+	// Выполняем сброс чтения в исходное состояние
+	reader.clear();
+	// Выполняем проверку принятия настроек по сбросе чтения
+	ASSERT_TRUE(reader.settings(settings));
+}
