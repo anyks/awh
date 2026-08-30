@@ -1698,3 +1698,37 @@ TEST(CodecIniWriter, UnsetSettingsFields) {
 		ASSERT_EQ(writer.text(), "[раздел/подраздел]\n");
 	}
 }
+/**
+ * @brief Проверка отказа записи имени подраздела с переводом строки
+ *
+ * @details Имя подраздела, кавычками ограждаемое, перевода строки нести не вправе:
+ *          строка на нём оборвётся, и объявление раздела распадётся надвое. Отказ
+ *          обязан откатить собранный текст к состоянию до вызова - иначе в тексте
+ *          осталась бы открытая кавычка. Строки эти пересечение трёх прогонов числило
+ *          слепыми
+ *
+ */
+TEST(CodecIniWriter, QuotedSubsectionRefusesNewline) {
+	// Настройки записи текста настроек
+	ini::writer_t::settings_t settings;
+	// Задаём построение подраздела кавычками
+	settings.subsections = ini::subsection_t::QUOTED;
+	// Объект записи текста настроек
+	ini::writer_t writer(::logger(), settings);
+	// Выполняем запись раздела с подразделом годным
+	ASSERT_TRUE(writer.section("server", "origin"));
+	// Выполняем запись свойства раздела
+	ASSERT_TRUE(writer.property("key", "value"));
+	// Запоминаем собранный текст настроек до отказа
+	const string before = writer.text();
+	// Выполняем проверку отказа записи подраздела с переводом строки
+	ASSERT_FALSE(writer.section("server", "имя\nвторое"));
+	// Выполняем проверку кода ошибки записи
+	ASSERT_EQ(writer.error(), ini::error_t::INVALID_SUBSECTION);
+	// Выполняем проверку того, что собранный текст откачен к состоянию до вызова
+	ASSERT_EQ(writer.text(), before);
+	// Выполняем проверку отказа записи подраздела с возвратом каретки
+	ASSERT_FALSE(writer.section("server", "имя\rвторое"));
+	// Выполняем проверку того, что собранный текст откачен и во второй раз
+	ASSERT_EQ(writer.text(), before);
+}
